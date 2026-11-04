@@ -83,7 +83,7 @@ import { decideRekick } from "./chain-watchdog.ts";
 import { advanceProgress, baseConsumedPrefix, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
-import { ageCutoffMs, textFieldShape, categoryParam, COMPANY_TOKEN_SHAPE, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, salaryTokenInQuery, WIDENING_FILTERS } from "./filters.ts";
+import { ageCutoffMs, textFieldShape, categoryParam, COMPANY_TOKEN_SHAPE, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, vendorSourcesParam, splitPage, salaryFromQueryText, salaryTokenInQuery, WIDENING_FILTERS } from "./filters.ts";
 import { BRAND_MIN_OPEN, foldName, foldTypeahead, pickRoute, rerankWindow, RETRIEVER_FOR, ringWordPattern, simpleRouteFilters, singularReading, splitExclusions, startsWithWord, stopwordTokens, titleExcluded, withLiveBrands, type TitleFilter } from "./search-routing.ts";
 import { planRankedPage, RANKED_WINDOW, RING_WINDOW, rowsReached, symbolLiteralRows } from "./paging.ts";
 import { collapseClusters, continuePastSeam, GROUP_OVERFETCH, interleaveByCompany, rowClusterKey, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
@@ -96,8 +96,9 @@ import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointA
 import { realQuestionVendors, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { beforeDeadline, SLIM_SPECS, streamSlim } from "./slim-stream.ts";
 import { withWorkdayLanguage } from "./request-headers.ts";
-import { ANON_OFFSET_CEILING, anonBudgetGate, anonBudgetStatus, budgetEcho, BUDGETED_ACTIONS, callerAddress, exemptKind, offsetCeiling, pageCeiling } from "./anon-budget.ts";
+import { ANON_OFFSET_CEILING, anonBudgetGate, anonBudgetStatus, budgetEcho, callerAddress, exemptKind, METERED_ACTIONS, offsetCeiling, pageCeiling } from "./anon-budget.ts";
 import { boardPassAction } from "./board-pass.ts";
+import { isScheduledCaller } from "../_shared/email-cron.ts";
 import {
   addressAllowance, admitDemand, CLICK_PER_ADDRESS_HOUR, DEMAND_QUEUE_KEY, demandLaneStatus, FIT_PER_ADDRESS_HOUR, incidentRows, readDemand,
   REPORT_PER_ADDRESS_HOUR, stampDemandServed, summariseIncidents, takeDemand, VERIFY_PER_ADDRESS_HOUR, writeIncidents,
@@ -139,7 +140,7 @@ const json = (body: unknown, status = 200) =>
 // a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.100"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.101"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // Rationale: docs/job-board-index-notes.md#n483-const-name_sync_version
@@ -2261,7 +2262,7 @@ function chainKey(): Promise<string> {
   return chainKeyPromise;
 }
 
-// Rationale: docs/job-board-index-notes.md#n1170-const-status_memo_ms-_000
+// One status answer per isolate per half minute for a caller without a credential (.88). A memo hit costs no database, so it is not counted (S13-114).
 const STATUS_MEMO_MS = 30_000;
 let statusMemo: { at: number; text: string } | null = null;
 /** host_sweep without a maintenance credential: one sweep per this gap, arrival to arrival (the cron's is 60 minutes). */
@@ -5195,7 +5196,7 @@ const MAINTENANCE_ANY_GAP_MS = 10 * 60_000; // floor between any two kicks
 const MAINTENANCE_STALL_MS = 12 * 60_000;
 
 // Rationale: docs/job-board-index-notes.md#n1180-async-function-mayberekickdeadchain-clie
-async function maybeRekickDeadChain(client: SupabaseClient, opts: { inHop?: boolean } = {}): Promise<Record<string, unknown> | null> {
+async function maybeRekickDeadChain(client: SupabaseClient, opts: { inHop?: boolean; readOnly?: boolean } = {}): Promise<Record<string, unknown> | null> {
   try {
     const { data: rows } = await client.from("job_board_meta").select("k, v, updated_at").in("k", ["slice_stats", "chain_kick", "chain_watchdog", "slice_trace", "refresh_progress"]);
     const byKey = new Map<string, { v: unknown; updated_at: string }>();
@@ -5220,8 +5221,9 @@ async function maybeRekickDeadChain(client: SupabaseClient, opts: { inHop?: bool
     const lastKick = wd
       ? { ...((wd.v ?? {}) as Record<string, unknown>), ageMin: Math.round((now - new Date(wd.updated_at).getTime()) / 60_000) }
       : null;
-    const report = { at: new Date(now).toISOString(), ...verdict, kicked: false, lastKick };
+    const report = { at: new Date(now).toISOString(), ...verdict, kicked: false, lastKick, ...(opts.readOnly ? { readOnly: true } : {}) };
     if (verdict.decision !== "rekick") return report;
+    if (opts.readOnly) return report;
     if (opts.inHop) {
       console.warn(`[JOB-BOARD] chain watchdog (in-hop, observing only): pulse ${Math.round((verdict.pulseAgeMs ?? 0) / 1000)}s old (> ${Math.round(verdict.thresholdMs / 1000)}s) from ${verdict.pulse ?? "none"} while this hop runs — a tail outlasted the window; no kick`);
       return { ...report, decision: "in_hop" };
@@ -5253,6 +5255,34 @@ async function maybeRekickDeadChain(client: SupabaseClient, opts: { inHop?: bool
     console.warn("[JOB-BOARD] chain watchdog failed (non-fatal):", String(e).slice(0, 150));
     return null;
   }
+}
+
+/**
+ * THE SCHEDULER'S WATCH (S13-114). status used to run the watchdog and write
+ * the coverage copy for whoever asked, so an anonymous read could stamp a row
+ * and kick a refresh. Both now run here, on pg_cron's clock (migration
+ * 20261103221000): the kick decided and throttled exactly as before, and the
+ * last good coverage stored at most once per COVERAGE_COPY_EVERY_MS.
+ */
+const BOARD_UPKEEP_KEY = "board_upkeep";
+const COVERAGE_COPY_EVERY_MS = 15 * 60_000;
+async function boardUpkeep(client: SupabaseClient): Promise<Record<string, unknown>> {
+  const watchdog = await maybeRekickDeadChain(client);
+  const [coverage, stored] = await Promise.all([
+    withDeadline(client.rpc("get_date_coverage"), 2_500),
+    client.from("job_board_meta").select("updated_at").eq("k", "date_coverage_cache").maybeSingle(),
+  ]);
+  const storedAgeMs = Date.now() - Date.parse(String((stored.data as { updated_at?: string } | null)?.updated_at ?? ""));
+  const rows = (coverage as { data?: unknown }).data;
+  const now = new Date().toISOString();
+  let coverageStored = false;
+  if (Array.isArray(rows) && rows.length && !(storedAgeMs < COVERAGE_COPY_EVERY_MS)) {
+    const { error } = await client.from("job_board_meta").upsert({ k: "date_coverage_cache", v: rows, updated_at: now }, { onConflict: "k" });
+    coverageStored = !error;
+  }
+  const v = { at: now, watchdog: watchdog?.decision ?? null, kicked: watchdog?.kicked === true, coverageStored };
+  await client.from("job_board_meta").upsert({ k: BOARD_UPKEEP_KEY, v, updated_at: now }, { onConflict: "k" });
+  return v;
 }
 
 async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
@@ -6283,8 +6313,13 @@ async function handleRequest(req: Request): Promise<Response> {
   const action = String(body.action ?? "list");
   const client = db();
 
+  // S13-114: an anonymous status is the isolate's last answer while that costs no database, and a counted read when it does not.
+  const statusFresh = action === "status" && ((await exemptKind(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) !== null || await isMaintenance(req, body));
+  if (action === "status" && !statusFresh && statusMemo && Date.now() - statusMemo.at < STATUS_MEMO_MS) {
+    return new Response(statusMemo.text, { headers: { ...corsHeaders, "Content-Type": "application/json", "x-status-age-ms": String(Date.now() - statusMemo.at) } });
+  }
   // Rationale: docs/job-board-index-notes.md#n700-if-budgeted_actions-has-action
-  if (BUDGETED_ACTIONS.has(action)) {
+  if (METERED_ACTIONS.has(action) && !statusFresh) {
     const refused = await anonBudgetGate(req, action, {
       rpc: (args, signal) => client.rpc("job_board_anon_check", args).abortSignal(signal),
       serviceKey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -6426,13 +6461,15 @@ async function handleRequest(req: Request): Promise<Response> {
       return json({ swept: slice.length, cursor: wrapped ? 0 : cursor, of: list.length, wrapped, persisted: !persistErr });
     }
 
-    if (action === "status") {
-      // .88: a caller without a credential gets this isolate's last answer
-      // while it is under STATUS_MEMO_MS old; ours and maintenance read fresh.
-      const statusFresh = (await exemptKind(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) !== null || await isMaintenance(req, body);
-      if (!statusFresh && statusMemo && Date.now() - statusMemo.at < STATUS_MEMO_MS) {
-        return new Response(statusMemo.text, { headers: { ...corsHeaders, "Content-Type": "application/json", "x-status-age-ms": String(Date.now() - statusMemo.at) } });
+    // S13-114: the watchdog and the coverage copy, on the scheduler's clock. No other caller reaches them through here.
+    if (action === "upkeep") {
+      if (!(await isScheduledCaller(req.headers, client, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""))) {
+        return json({ error: "upkeep is the scheduler's action" }, 403);
       }
+      return json(await boardUpkeep(client));
+    }
+
+    if (action === "status") {
       // Rationale: docs/job-board-index-notes.md#n202-try
       try {
       // Rationale: docs/job-board-index-notes.md#n706-const-anonbudgetread-promise-resolve
@@ -6444,6 +6481,9 @@ async function handleRequest(req: Request): Promise<Response> {
       // Rationale: docs/job-board-index-notes.md#n707-const-passendread-promise-resolve
       const passEndRead = Promise.resolve(
         client.from("job_board_meta").select("v").eq("k", "pass_end").maybeSingle(),
+      ).catch(() => null);
+      const upkeepRead = Promise.resolve(
+        client.from("job_board_meta").select("v, updated_at").eq("k", BOARD_UPKEEP_KEY).maybeSingle(),
       ).catch(() => null);
       const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop, oracleRepair, staleMeta, freshRow] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
@@ -6509,6 +6549,7 @@ async function handleRequest(req: Request): Promise<Response> {
       const anonBudgetRow = await anonBudgetRead;
       const demandRow = await demandRead;
       const passEndRow = await passEndRead;
+      const upkeepRow = (await upkeepRead)?.data ?? null;
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
       const rfV = { total: (refreshMeta.data as { total?: unknown } | null)?.total as number | undefined };
@@ -6517,18 +6558,10 @@ async function handleRequest(req: Request): Promise<Response> {
       const now = Date.now();
       const ageMin = (ts?: string | null) => (ts ? Math.round((now - new Date(ts).getTime()) / 60000) : null);
 
-      // Rationale: docs/job-board-index-notes.md#n209-array-isarray-datecov-as-data-unkno
-      if (Array.isArray((dateCov as { data?: unknown }).data)) {
-        void client.from("job_board_meta").upsert({
-          k: "date_coverage_cache",
-          v: (dateCov as { data: unknown[] }).data,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "k" }).then(() => {}, () => {});
-      }
       // Rationale: docs/job-board-index-notes.md#n722-const-pbbacklognow-await-undatedbacklog
       const pbBacklogNow = await undatedBacklog(client);
-      // Rationale: docs/job-board-index-notes.md#n210-chainwatchdog
-      const chainWatchdog = await maybeRekickDeadChain(client);
+      // S13-114: every caller reads the verdict; only a credential may act on it. The scheduler's upkeep is what acts.
+      const chainWatchdog = await maybeRekickDeadChain(client, { readOnly: !statusFresh });
       // Serialised once, here, so the memo holds the exact bytes this caller gets.
       const statusText = JSON.stringify({
         statusDegraded: false,
@@ -6864,6 +6897,7 @@ async function handleRequest(req: Request): Promise<Response> {
         })(),
         // Rationale: docs/job-board-index-notes.md#n739-chainwatchdog
         chainWatchdog,
+        boardUpkeep: upkeepRow ? { ...(upkeepRow.v as Record<string, unknown>), ageMin: ageMin(upkeepRow.updated_at) } : null,
         quarantinedVendors: (((breaker.data?.v ?? {}) as { quarantined?: string[] }).quarantined ?? []),
         // Rationale: docs/job-board-index-notes.md#n221-boardflow
         boardFlow: (() => {
@@ -9017,7 +9051,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
     return json({ error: "Unknown action" }, 400);
   } catch (e) {
-    console.error("[JOB-BOARD] error:", e);
+    console.error("[JOB-BOARD] error:", body.noLog === true ? (e as Error)?.name ?? "error" : e);
     return json({ error: "Job board temporarily unavailable" }, 500);
   }
 }
@@ -9280,7 +9314,6 @@ async function serveList(
         workMode: applied.workMode ?? undefined,
         country: applied.country ?? undefined,
         salaryFloor: applied.salaryFloor ?? undefined,
-        sendableOnly: applied.sendableOnly || undefined,
       },
       route,
       took_ms: Date.now() - reqStart,
@@ -9331,7 +9364,7 @@ async function serveList(
     if (v.length) {
       console.error(
         `[JOB-BOARD] filter integrity: ${v.length} violation(s) on ${jobs.length} rows ` +
-          `— ${JSON.stringify(v.slice(0, 3))}`,
+          `— ${JSON.stringify(noLog ? v.slice(0, 3).map((x) => x.field) : v.slice(0, 3))}`,
       );
     }
     // Rationale: docs/job-board-index-notes.md#n1486-if-v-length
@@ -9454,7 +9487,6 @@ async function serveList(
       q = wanted.length > 1 ? q.in("category", wanted) : q.eq("category", wanted[0]);
     }
     // Rationale: docs/job-board-index-notes.md#n855-if-applied-sendableonly-q-q-in
-    if (applied.sendableOnly) q = q.in("source", [...SENDABLE_VENDORS]);
     // Rationale: docs/job-board-index-notes.md#n856-if-applied-experience-length-q-q
     if (applied.experience.length === 1) q = q.eq("experience_band", applied.experience[0]);
     else if (applied.experience.length > 1) q = q.in("experience_band", applied.experience);
@@ -9518,7 +9550,7 @@ async function serveList(
         p_category: categoryParam(applied),
         // Spread-omitted when off: including the key (even null) against the
         // pre-p_sources SQL would 404 the whole RPC during the deploy window.
-        ...sendableSourcesParam(applied),
+        ...vendorSourcesParam(applied),
         p_experience: applied.experience.length ? applied.experience : null,
         p_salary_floor: applied.salaryFloor,
         p_companies: applied.companies.length ? applied.companies : null,
@@ -9548,6 +9580,9 @@ async function serveList(
   // phraseText, not a plain join: a quoted phrase is one term here and must
   // reach the tsquery parser back inside its quotes, or the tip is a lie.
   const qText = phraseText(qt.terms).slice(0, 200) || (qt.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
+  // S13-104: a search our servers ask not to log reaches no log line, its words or an error's text, which can quote them.
+  const qLog = noLog ? "(not logged)" : JSON.stringify(qText);
+  const errLog = (text: string) => (noLog ? "(not logged)" : text);
   // The router's employer keys: the table, plus the live employer list's (S12-014).
   const routeAliases = qText ? routeAliasesFor(client) : ROUTE_TABLE;
   /** The SIMPLE route's split title match, with an employer's boards beside its key (S12-014). */
@@ -9668,7 +9703,7 @@ async function serveList(
           Math.min(ROUTED_DEADLINE_MS, budgetLeft()),
         ) as { data: unknown[] | null; error?: unknown };
         markFrom("related_count", t_related_count);
-        if (rcRows === null) console.warn(`[JOB-BOARD] routed count (${routeDecision.route}) hit its deadline for q=${JSON.stringify(qText)}`);
+        if (rcRows === null) console.warn(`[JOB-BOARD] routed count (${routeDecision.route}) hit its deadline for q=${qLog}`);
         // Empty window falls through, because the LIST falls through on an empty
         // window too — matching its behaviour is the whole point of this block.
         if (!rcErr && Array.isArray(rcRows) && rcRows.length > 0) {
@@ -9694,7 +9729,7 @@ async function serveList(
           p_remote: applied.remote ? true : null,
           p_country: applied.country,
           p_category: categoryParam(applied),
-          ...sendableSourcesParam(applied),
+          ...vendorSourcesParam(applied),
           p_experience: applied.experience.length ? applied.experience : null,
           p_salary_floor: applied.salaryFloor,
           p_companies: applied.companies.length ? applied.companies : null,
@@ -9853,7 +9888,7 @@ async function serveList(
       if (!res.error && Array.isArray(res.data)) salRows = res.data;
     } catch { /* answered below as unavailable, never by the substring path */ }
     markFrom("salary_sorted", t_salary_sorted);
-    if (salRows === null) console.warn(`[JOB-BOARD] salary-sorted search failed or hit its deadline for q=${JSON.stringify(qText)}`);
+    if (salRows === null) console.warn(`[JOB-BOARD] salary-sorted search failed or hit its deadline for q=${qLog}`);
     {
       // No pay-ordered row on page one is said out loud; the recency ILIKE never stands in (L8-01, L8-02).
       const salJobs = ((salRows ?? []) as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
@@ -9931,7 +9966,7 @@ async function serveList(
       Math.min(7_000, budgetLeft()),
     ) as { data: unknown[] | null; error?: unknown };
     markFrom("newest_sorted", t_newest_sorted);
-    if (newRows === null) console.warn(`[JOB-BOARD] newest-sorted search hit its deadline for q=${JSON.stringify(qText)}`);
+    if (newRows === null) console.warn(`[JOB-BOARD] newest-sorted search hit its deadline for q=${qLog}`);
     if (!newErr && Array.isArray(newRows) && newRows.length > 0) {
       const newJobs = (newRows as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
       const newGrouped = groupSimilar
@@ -10014,7 +10049,7 @@ async function serveList(
     ) as { data: unknown[] | null; error?: unknown };
     markFrom("routed_retriever", t_routed_retriever);
     if (routedRows === null) {
-      console.warn(`[JOB-BOARD] routed retrieval (${routeDecision.route}) hit its deadline for q=${JSON.stringify(qText)}`);
+      console.warn(`[JOB-BOARD] routed retrieval (${routeDecision.route}) hit its deadline for q=${qLog}`);
     }
     if (!rErr && Array.isArray(routedRows) && routedRows.length > 0) {
       const mapped = (routedRows as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
@@ -10152,7 +10187,7 @@ async function serveList(
         p_category: categoryParam(applied),
         // Spread-omitted when off: including the key (even null) against the
         // pre-p_sources SQL would 404 the whole RPC during the deploy window.
-        ...sendableSourcesParam(applied),
+        ...vendorSourcesParam(applied),
         p_experience: applied.experience.length ? applied.experience : null,
         p_salary_floor: applied.salaryFloor,
         p_companies: applied.companies.length ? applied.companies : null,
@@ -10176,13 +10211,13 @@ async function serveList(
       markFrom("search_jobs", t_search_jobs_3);
       if (rankedAnswer.timedOut) {
         rankedFellBack = "deadline: search_jobs answered neither the full call nor the title tier in time";
-        console.error(`[JOB-BOARD] ranked search missed both clocks for q=${JSON.stringify(qText)}`);
+        console.error(`[JOB-BOARD] ranked search missed both clocks for q=${qLog}`);
       }
       // Rationale: docs/job-board-index-notes.md#n890-if-rankerr
       if (rankErr) {
         rankedFellBack = (rankErr.code ? `${rankErr.code}: ` : "") +
           String(rankErr.message ?? rankErr).slice(0, 160);
-        console.error(`[JOB-BOARD] ranked search failed for q=${JSON.stringify(qText)}: ${rankedFellBack}`);
+        console.error(`[JOB-BOARD] ranked search failed for q=${qLog}: ${errLog(rankedFellBack)}`);
       }
       if (!rankErr && Array.isArray(ranked)) {
         // Rationale: docs/job-board-index-notes.md#n891-const-trr-number-ranked-as-total_rows
@@ -10228,7 +10263,7 @@ async function serveList(
           const qVec = Array.isArray(qVecRaw) ? qVecRaw as number[] : null;
           if (!qVec) {
             semanticDegraded = "embed";
-            console.warn(`[JOB-BOARD] query embedding unavailable or past deadline for q=${JSON.stringify(qText)}`);
+            console.warn(`[JOB-BOARD] query embedding unavailable or past deadline for q=${qLog}`);
             return [];
           }
           const t_semantic = Date.now();
@@ -10242,13 +10277,13 @@ async function serveList(
           if (sem === null && !sErr) {
             semanticDegraded = "ann_deadline";
             markFrom("semantic", t_semantic, "deadline");
-            console.warn(`[JOB-BOARD] semantic ANN missed its ${annMs}ms deadline (or threw) for q=${JSON.stringify(qText)}`);
+            console.warn(`[JOB-BOARD] semantic ANN missed its ${annMs}ms deadline (or threw) for q=${qLog}`);
             return [];
           }
           if (sErr) {
             semanticDegraded = "ann_error";
             markFrom("semantic", t_semantic, "error");
-            console.error(`[JOB-BOARD] semantic ANN failed for q=${JSON.stringify(qText)}: ${sErr.code ?? ""} ${String(sErr.message ?? sErr).slice(0, 120)}`);
+            console.error(`[JOB-BOARD] semantic ANN failed for q=${qLog}: ${sErr.code ?? ""} ${errLog(String(sErr.message ?? sErr).slice(0, 120))}`);
             return [];
           }
 
@@ -10268,7 +10303,7 @@ async function serveList(
             // Rationale: docs/job-board-index-notes.md#n895-if-semfiltered-null
             if (semFiltered === null) {
               semanticDegraded = "refilter_deadline";
-              console.warn(`[JOB-BOARD] semantic re-filter exceeded its deadline for q=${JSON.stringify(qText)}`);
+              console.warn(`[JOB-BOARD] semantic re-filter exceeded its deadline for q=${qLog}`);
             }
             semSource = Array.isArray(semFiltered)
               ? (semFiltered as Array<Record<string, unknown>>)
@@ -10337,7 +10372,7 @@ async function serveList(
                     p_remote: applied.remote ? true : null,
                     p_country: applied.country,
                     p_category: categoryParam(applied),
-                    ...sendableSourcesParam(applied),
+                    ...vendorSourcesParam(applied),
                     p_experience: applied.experience.length ? applied.experience : null,
                     p_salary_floor: applied.salaryFloor,
                     p_companies: applied.companies.length ? applied.companies : null,
@@ -10483,7 +10518,7 @@ async function serveList(
             markFrom("simple_config", t_simple_config);
             // Rationale: docs/job-board-index-notes.md#n905-if-simplerows-null
             if (simpleRows === null) {
-              console.warn(`[JOB-BOARD] exact-word tier exceeded its deadline for q=${JSON.stringify(qText)}`);
+              console.warn(`[JOB-BOARD] exact-word tier exceeded its deadline for q=${qLog}`);
             }
             if (!sErr2 && Array.isArray(simpleRows) && simpleRows.length > 0) {
               // Rationale: docs/job-board-index-notes.md#n906-const-seensimple-new-set-string
@@ -10663,7 +10698,7 @@ async function serveList(
               headRows = (hr as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
               ringResolved = true;
             } else {
-              console.warn(`[JOB-BOARD] head-term ring missed its deadline for q=${JSON.stringify(qText)}`);
+              console.warn(`[JOB-BOARD] head-term ring missed its deadline for q=${qLog}`);
             }
           } catch { /* the ranked window alone is still a valid page */ }
         }
@@ -10928,7 +10963,7 @@ async function serveList(
       }
     } catch (e) {
       // Rationale: docs/job-board-index-notes.md#n940-console-error-job-board-ranked-path
-      console.error(`[JOB-BOARD] ranked path failed, serving recency instead: ${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}`);
+      console.error(`[JOB-BOARD] ranked path failed, serving recency instead: ${errLog(e instanceof Error ? `${e.name}: ${e.message}` : String(e))}`);
       rankedFellBack = e instanceof Error ? `${e.name}: ${e.message}`.slice(0, 160) : String(e).slice(0, 160);
     }
   }

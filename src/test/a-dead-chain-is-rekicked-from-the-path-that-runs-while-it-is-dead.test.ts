@@ -178,7 +178,7 @@ describe("decideRekick — the never-fires, as behaviour", () => {
 });
 
 describe("the wiring in index.ts", () => {
-  const FN = IDX.slice(IDX.indexOf("async function maybeRekickDeadChain("), IDX.indexOf("async function maybeKickMaintenance("));
+  const FN = IDX.slice(IDX.indexOf("async function maybeRekickDeadChain("), IDX.indexOf("const BOARD_UPKEEP_KEY"));
 
   it("exists, reads its FIVE rows in one query, and hands every pulse, the stamp time and SLICE_LOCK_MS to the decision", () => {
     expect(FN.length).toBeGreaterThan(500);
@@ -215,12 +215,12 @@ describe("the wiring in index.ts", () => {
     expect(inHop).toBeGreaterThan(gate);
     expect(inHop).toBeLessThan(paused);
     expect(FN.slice(inHop, paused)).toMatch(/return \{ \.\.\.report, decision: "in_hop" \};/);
-    expect(FN).toMatch(/^async function maybeRekickDeadChain\(client: SupabaseClient, opts: \{ inHop\?: boolean \} = \{\}\)/);
+    expect(FN).toMatch(/^async function maybeRekickDeadChain\(client: SupabaseClient, opts: \{ inHop\?: boolean; readOnly\?: boolean \} = \{\}\)/);
     // maybeKickMaintenance is the in-hop caller and says so; status is not.
     const MK = IDX.slice(IDX.indexOf("async function maybeKickMaintenance("), IDX.indexOf("maintenance kick skipped", IDX.indexOf("async function maybeKickMaintenance(")));
     expect(MK).toMatch(/await maybeRekickDeadChain\(client, \{ inHop: true \}\);/);
     const STATUS = IDX.slice(IDX.indexOf('if (action === "status") {'), IDX.indexOf('if (action === "vendor-health") {'));
-    expect(STATUS).toMatch(/const chainWatchdog = await maybeRekickDeadChain\(client\);/);
+    expect(STATUS).toMatch(/const chainWatchdog = await maybeRekickDeadChain\(client, \{ readOnly: !statusFresh \}\);/);
     expect(STATUS).not.toMatch(/inHop/);
   });
 
@@ -259,12 +259,15 @@ describe("the wiring in index.ts", () => {
     expect(MK.slice(call, gap)).not.toMatch(/\breturn\b/);
   });
 
-  it("is evaluated from the status action too — the path that runs while the chain is dead — and its decision is published", () => {
+  it("is evaluated from status for the report and acted on by the scheduler's upkeep — a path that runs while the chain is dead", () => {
     const STATUS = IDX.slice(IDX.indexOf('if (action === "status") {'), IDX.indexOf('if (action === "vendor-health") {'));
-    expect(STATUS).toMatch(/const chainWatchdog = await maybeRekickDeadChain\(client\);/);
+    expect(STATUS).toMatch(/const chainWatchdog = await maybeRekickDeadChain\(client, \{ readOnly: !statusFresh \}\);/);
+    const UPKEEP = IDX.slice(IDX.indexOf("async function boardUpkeep("), IDX.indexOf("async function maybeKickMaintenance("));
+    expect(UPKEEP).toMatch(/const watchdog = await maybeRekickDeadChain\(client\);/);
+    expect(readFileSync(resolve(ROOT, "supabase/migrations/20261103221000_the_scheduler_not_an_anonymous_reader_wakes_a_dead_chain.sql"), "utf8")).toMatch(/'job-board-upkeep', '2-59\/5 \* \* \* \*'/);
     expect(STATUS).toMatch(/\n\s+chainWatchdog,\n/);
     // The verdict's fields and the last kick both reach the payload.
-    expect(FN).toMatch(/const report = \{ at: new Date\(now\)\.toISOString\(\), \.\.\.verdict, kicked: false, lastKick \};/);
+    expect(FN).toMatch(/const report = \{ at: new Date\(now\)\.toISOString\(\), \.\.\.verdict, kicked: false, lastKick, /);
     expect(FN).toMatch(/return \{ \.\.\.report, kicked: true \};/);
   });
 

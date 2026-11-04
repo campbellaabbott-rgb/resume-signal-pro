@@ -94,14 +94,11 @@ describe("an unavailable measurement says so", () => {
     expect(board).toMatch(/dcCache\.data\?\.v as unknown\[\]/);
   });
 
-  it("fills its own cache from reads that already succeed", () => {
-    // No cron to schedule and nothing extra to keep alive: the first live read
-    // after a deploy populates it.
-    expect(board).toMatch(/k: "date_coverage_cache"/);
-  });
-
-  it("never fails the status page over its own cache write", () => {
-    expect(board).toMatch(/\.then\(\(\) => \{\}, \(\) => \{\}\)/);
+  it("the cache is filled by the scheduler's upkeep and never by a status read (S13-114)", () => {
+    const upkeep = board.slice(board.indexOf("async function boardUpkeep("), board.indexOf("async function maybeKickMaintenance("));
+    expect(upkeep).toMatch(/k: "date_coverage_cache"/);
+    const status = board.slice(board.indexOf('if (action === "status") {'), board.indexOf('if (action === "vendor-health") {'));
+    expect(status).not.toMatch(/date_coverage_cache"[^\n]*upsert|upsert\(\{ k: "date_coverage_cache"/);
   });
 });
 

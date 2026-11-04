@@ -43,7 +43,7 @@ const run = (applied: Record<string, unknown>, rpc: { n: number; capped: boolean
     postedAfterBound: null,
     rankedLocationParam: () => null,
     categoryParam: () => null,
-    sendableSourcesParam: () => ({}),
+    vendorSourcesParam: () => ({}),
     payParams: () => ({}),
     extraFilterParams: () => ({}),
     COUNT_CAP: 10_000,

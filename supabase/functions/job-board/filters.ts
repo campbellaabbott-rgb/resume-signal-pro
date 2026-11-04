@@ -1,7 +1,6 @@
 // Rationale: docs/job-board-index-notes.md#n1051-import-job_categories-from-categories-ts
 import { JOB_CATEGORIES } from "./categories.ts";
 import { isExperienceBand } from "./experience.ts";
-import { SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import type { JobSourceKind } from "./sources.ts";
 
 // Defined in ../_shared/board-domains.ts so public-api's bundle can read the
@@ -45,8 +44,6 @@ export type AppliedFilters = {
   category: string | null;
   // Rationale: docs/job-board-index-notes.md#n1259-includeuncategorised-boolean
   includeUncategorised: boolean;
-  // Rationale: docs/job-board-index-notes.md#n1260-sendableonly-boolean
-  sendableOnly: boolean;
   experience: string[];
   salaryFloor: number | null;
   // Rationale: docs/job-board-index-notes.md#n1261-includeunstatedpay-boolean
@@ -84,7 +81,6 @@ const RPC_BOUND_FILTERS = new Set<keyof AppliedFilters>([
   "employmentType",
   "category",
   "includeUncategorised",
-  "sendableOnly",
   "experience",
   "salaryFloor",
   // Rationale: docs/job-board-index-notes.md#n1053-excludeagencies
@@ -244,10 +240,6 @@ export function normalizeFilters(
   const includeUncategorised = wantsUncategorised && !sortingBySalary;
   if (wantsUncategorised && sortingBySalary) ignored.push("includeUncategorised");
 
-  // Literal true only, same contract as includeUncategorised: a truthy string
-  // from a query param must not silently narrow a search to 5.4% of the board.
-  const sendableOnly = body.sendableOnly === true;
-
   // Rationale: docs/job-board-index-notes.md#n1063-const-excludeagencies-body-excludeagenci
   const excludeAgencies = body.excludeAgencies === true;
   const hasDescription = body.hasDescription === true;
@@ -371,8 +363,8 @@ export function normalizeFilters(
   if (body.companies !== undefined && body.companies !== null && !Array.isArray(body.companies)) {
     ignored.push("companies");
   }
-  // Rationale: docs/job-board-index-notes.md#n1082-if-body-sendableonly-undefined-body-send
-  if (body.sendableOnly !== undefined && body.sendableOnly !== null && typeof body.sendableOnly !== "boolean") {
+  // S13-118: the retired agent-ready filter narrows nothing, for any caller. One still sent is named, never silently dropped.
+  if (body.sendableOnly !== undefined && body.sendableOnly !== null && body.sendableOnly !== false) {
     ignored.push("sendableOnly");
   }
   if (body.includeUncategorised !== undefined && body.includeUncategorised !== null && typeof body.includeUncategorised !== "boolean") {
@@ -406,7 +398,6 @@ export function normalizeFilters(
       employmentType,
       category,
       includeUncategorised,
-      sendableOnly,
       experience,
       salaryFloor,
       salaryCeiling,
@@ -510,10 +501,6 @@ export function filterViolations(
       const pp = r.postedAt ? Date.parse(String(r.postedAt)) : NaN;
       if (!Number.isFinite(pp) || pp < postedFloor) push("postedAfter", `>=${a.postedAfter}`, r.postedAt);
     }
-    // Rationale: docs/job-board-index-notes.md#n1091-if-a-sendableonly-sendable_vendors-inclu
-    if (a.sendableOnly && !SENDABLE_VENDORS.includes(String(r.source ?? ""))) {
-      push("sendableOnly", SENDABLE_VENDORS.join("|"), r.source);
-    }
     if (a.experience.length && !a.experience.includes(String(r.experienceBand ?? ""))) {
       push("experience", a.experience.join("|"), r.experienceBand);
     }
@@ -611,28 +598,12 @@ export function categoryParam(a: Pick<AppliedFilters, "category" | "includeUncat
   return a.includeUncategorised ? `${a.category},other` : a.category;
 }
 
-// Rationale: docs/job-board-index-notes.md#n1282-function-mergedsourcelist-a-pick-applied
-// Rationale: docs/job-board-index-notes.md#n1283-function-mergedsourcelist-a-pick-applied
-// Rationale: docs/job-board-index-notes.md#n1284-function-mergedsourcelist-a-pick-applied
-function mergedSourceList(a: Pick<AppliedFilters, "sendableOnly"> & Partial<Pick<AppliedFilters, "vendors">>): string[] | null {
-  const v = a.vendors?.length ? a.vendors : null;
-  const send = a.sendableOnly ? [...SENDABLE_VENDORS] : null;
-  if (v && send) {
-    const set = new Set<string>(send);
-    const both = v.filter((x) => set.has(x));
-    return both.length ? both : [""];
-  }
-  return v ?? send;
+export function rescueVendorsParam(a: Partial<Pick<AppliedFilters, "vendors">>): { p_vendors: string[] } | Record<string, never> {
+  return a.vendors?.length ? { p_vendors: a.vendors } : {};
 }
 
-export function rescueVendorsParam(a: Pick<AppliedFilters, "sendableOnly"> & Partial<Pick<AppliedFilters, "vendors">>): { p_vendors: string[] } | Record<string, never> {
-  const list = mergedSourceList(a);
-  return list ? { p_vendors: list } : {};
-}
-
-export function sendableSourcesParam(a: Pick<AppliedFilters, "sendableOnly"> & Partial<Pick<AppliedFilters, "vendors">>): { p_sources: string[] } | Record<string, never> {
-  const list = mergedSourceList(a);
-  return list ? { p_sources: list } : {};
+export function vendorSourcesParam(a: Partial<Pick<AppliedFilters, "vendors">>): { p_sources: string[] } | Record<string, never> {
+  return a.vendors?.length ? { p_sources: a.vendors } : {};
 }
 
 // Rationale: docs/job-board-index-notes.md#n1285-export-function-extrafilterparams-a-appl

@@ -11,10 +11,17 @@ import { BOARD_READER_HEADER, boardReaderKey } from "../_shared/board-reader-key
 import { inChina } from "./geo-cn.ts";
 import { type PassState, passStateOf, readBoardPass } from "./board-pass.ts";
 
-/** Actions that hand out postings. A body with no action is a list. */
+/** Actions that hand out postings: counted, and a pass can be required for them. A body with no action is a list. */
 export const BUDGETED_ACTIONS: ReadonlySet<string> = new Set([
   "list", "detail", "facets", "company-suggest", "exists", "semantic-search", "application-questions", "verify",
 ]);
+/**
+ * Everything the meter counts: those, and status (S13-114), whose every
+ * computed answer is about forty reads. status hands out no posting and our own
+ * heartbeat reads it with the publishable key, so no pass is asked for it: it
+ * is refused only by the address cap or a listed network or country.
+ */
+export const METERED_ACTIONS: ReadonlySet<string> = new Set([...BUDGETED_ACTIONS, "status"]);
 
 /**
  * ONE ROW PER ADDRESS PER UTC DAY, whatever the caller declares: the kind only
@@ -312,9 +319,9 @@ export async function anonBudgetGate(
   action: string,
   opts: { rpc: AnonCheckRpc; serviceKey: string; cors: Record<string, string>; passSecret?: string },
 ): Promise<Response | null> {
-  if (!BUDGETED_ACTIONS.has(action)) return null;
+  if (!METERED_ACTIONS.has(action)) return null;
   try {
-    const classified = await classifyCaller(req.headers, opts.serviceKey, opts.passSecret ?? "");
+    const classified = await classifyCaller(req.headers, opts.serviceKey, BUDGETED_ACTIONS.has(action) ? opts.passSecret ?? "" : "");
     if (classified.exempt) return null;
     const caller = classified as CountedCaller;
     const args = {

@@ -431,7 +431,6 @@ describe("isUnfiltered — mechanical, so all six are counted the day they exist
       workMode: "remote",
       employmentType: "internship",
       includeUncategorised: true,
-      sendableOnly: true,
       category: "engineering",
       experience: ["senior"],
       salaryFloor: 100_000,
@@ -499,7 +498,6 @@ describe("rpcBlindFilters — the six bind in ONE place, and it is not the RPCs"
       experience: ["senior"],
       salaryFloor: 100_000,
       maxAgeDays: 7,
-      sendableOnly: true,
       companies: ["tok"],
     }).applied)).toEqual([]);
     // ALL SIX HAVE NOW MOVED OUT OF THE BLIND SET, in two steps, and the

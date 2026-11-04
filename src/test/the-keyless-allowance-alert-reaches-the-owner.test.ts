@@ -15,8 +15,8 @@
  * counted door as every owner note; a malformed share or count is still
  * refused, and a stranger's post is still a 401.
  *
- * Held (agent-mcp is another builder's file this round): agent-mcp keeps its
- * claim when the note fails, so a day whose note was refused stays silent.
+ * The other half, agent-mcp giving its claim back when the note was not mailed,
+ * is held in a-refused-allowance-note-gives-its-claim-back.test.ts.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";

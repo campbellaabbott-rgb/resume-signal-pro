@@ -32,7 +32,7 @@ import { mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
-import { ADDRESS_DAILY_CAP, BUDGETED_ACTIONS, BUILD_DAILY_CAP, PROBE_DAILY_CAP } from "../../supabase/functions/job-board/anon-budget";
+import { ADDRESS_DAILY_CAP, BUDGETED_ACTIONS, BUILD_DAILY_CAP, METERED_ACTIONS, PROBE_DAILY_CAP } from "../../supabase/functions/job-board/anon-budget";
 
 const ROOT = resolve(__dirname, "../..");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
@@ -165,9 +165,12 @@ describe("every caller that reads the board names its budget", () => {
   });
 
   it("the uncounted calls our monitors make stay uncounted", () => {
-    for (const a of ["status", "vendor-health", "click", "report", "budget-echo", "refresh", "fit-batch", "fit-terms", "searchQuality"]) {
-      expect(BUDGETED_ACTIONS.has(a), a).toBe(false);
+    for (const a of ["vendor-health", "click", "report", "budget-echo", "refresh", "fit-batch", "fit-terms", "searchQuality"]) {
+      expect(METERED_ACTIONS.has(a), a).toBe(false);
     }
+    // S13-114: status is counted when it reads, and hands out no posting, so it never asks for a pass.
+    expect(METERED_ACTIONS.has("status")).toBe(true);
+    expect(BUDGETED_ACTIONS.has("status")).toBe(false);
   });
 });
 
