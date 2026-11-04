@@ -97,6 +97,16 @@ const STAND_INS = `
       EXECUTE format('CREATE POLICY own_rows ON public.%I FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id)', t);
     END LOOP;
   END $s$;
+  -- A busy public table a policy opens to everyone, a table no policy opens at
+  -- all, and one only anon's policy opens.
+  CREATE TABLE public.job_board_postings (id bigserial PRIMARY KEY, title text);
+  ALTER TABLE public.job_board_postings ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY read_all ON public.job_board_postings FOR SELECT USING (true);
+  CREATE TABLE public.no_policy_at_all (id bigserial PRIMARY KEY, secret text);
+  ALTER TABLE public.no_policy_at_all ENABLE ROW LEVEL SECURITY;
+  CREATE TABLE public.anon_read_only (id bigserial PRIMARY KEY, title text);
+  ALTER TABLE public.anon_read_only ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY anon_reads ON public.anon_read_only FOR SELECT TO anon USING (true);
   -- A function PUBLIC may execute that acts on auth.uid(): the kind of thing
   -- only the role switch, never a table policy, keeps a connector token from.
   CREATE FUNCTION public.my_resume() RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
@@ -117,6 +127,8 @@ const SEED = `
   INSERT INTO public.agent_submissions (user_id, status) VALUES ('${A}', 'sent');
   INSERT INTO public.saved_searches (user_id, q) VALUES ('${A}', 'nurse');
   INSERT INTO storage.objects (bucket_id, name, owner) VALUES ('resumes', '${A}/cv.pdf', '${A}');
+  INSERT INTO public.no_policy_at_all (secret) VALUES ('service role only');
+  INSERT INTO public.anon_read_only (title) VALUES ('public');
 `;
 
 const OPEN: PGlite[] = [];
@@ -285,14 +297,66 @@ describe("2. the database refuses a connector token, hooked or not, and serves a
     expect(await landed(db, "hooked")).toEqual({ phone: 0, queue: 0, file: 0 });
   });
 
-  it("the policy came from the catalogue: every table with row level security carries it, restrictive, for the signed-in role", async () => {
-    const r = (await db.query<{ tbl: string; permissive: boolean; roles: string }>(`
+  it("the policy came from the catalogue: every table a policy opens to the signed-in role carries it, restrictive, for that role, and no other table is touched", async () => {
+    const r = (await db.query<{ tbl: string; permissive: boolean | null; roles: string }>(`
       SELECT c.oid::regclass::text AS tbl, p.polpermissive AS permissive, array_to_string(ARRAY(SELECT rolname FROM pg_roles WHERE oid = ANY (p.polroles)), ',') AS roles
         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
         LEFT JOIN pg_policy p ON p.polrelid = c.oid AND p.polname = 'a_connector_token_reaches_no_row'
        WHERE c.relrowsecurity AND n.nspname IN ('public', 'storage') ORDER BY 1`)).rows;
-    expect(r.map((x) => x.tbl)).toEqual(["agent_mandates", "agent_queue", "agent_submissions", "saved_searches", "storage.objects"]);
-    for (const x of r) expect(x, x.tbl).toMatchObject({ permissive: false, roles: "authenticated" });
+    const carrying = r.filter((x) => x.permissive !== null);
+    expect(carrying.map((x) => x.tbl)).toEqual(["agent_mandates", "agent_queue", "agent_submissions", "job_board_postings", "saved_searches", "storage.objects"]);
+    for (const x of carrying) expect(x, x.tbl).toMatchObject({ permissive: false, roles: "authenticated" });
+    expect(r.filter((x) => x.permissive === null).map((x) => x.tbl)).toEqual(["anon_read_only", "no_policy_at_all"]);
+  });
+
+  it("a table no policy opens to the signed-in role answers a connector token nothing without the policy", async () => {
+    for (const t of ["no_policy_at_all", "anon_read_only"]) {
+      const r = await asToken(db, UNHOOKED_CLAIMS, `SELECT * FROM public.${t}`);
+      expect(r.error, t).toBeNull();
+      expect(r.rows, t).toEqual([]);
+    }
+  });
+});
+
+// ── the live site, while the file applies ───────────────────────────────────
+
+describe("20261103161000 on the live site: every lock it takes is held to its end", () => {
+  /** CREATE POLICY answers "could not get the lock in time" for its first n calls. */
+  const busyFor = (n: number) => `
+    CREATE SEQUENCE public.busy_seq;
+    CREATE FUNCTION public.busy_table() RETURNS event_trigger LANGUAGE plpgsql AS $f$
+    BEGIN
+      IF nextval('public.busy_seq') <= ${n} THEN
+        RAISE EXCEPTION 'canceling statement due to lock timeout' USING ERRCODE = '55P03';
+      END IF;
+    END $f$;
+    CREATE EVENT TRIGGER busy_table ON ddl_command_start WHEN TAG IN ('CREATE POLICY') EXECUTE FUNCTION public.busy_table();`;
+  const carrying = async (db: PGlite) => (await db.query<{ tbl: string }>(`
+    SELECT polrelid::regclass::text AS tbl FROM pg_policy WHERE polname = 'a_connector_token_reaches_no_row' ORDER BY 1`)).rows.map((x) => x.tbl);
+
+  it("a table it cannot lock in time does not stop the apply: it is left to the hook, and a re-run picks it up", async () => {
+    const db = await boot({ hook: true, rows: false });
+    await db.exec(busyFor(1));
+    await db.exec(ROWS);
+    expect(await carrying(db), "the busy board table went first, while nothing else was held").toEqual(["agent_mandates", "agent_queue", "agent_submissions", "saved_searches", "storage.objects"]);
+    await db.exec(ROWS);
+    expect(await carrying(db)).toContain("job_board_postings");
+  }, 60_000);
+
+  it("a person's own table left without it fails the apply, which is safe to re-run", async () => {
+    const db = await boot({ hook: true, rows: false });
+    await db.exec(busyFor(1000));
+    await expect(db.exec(ROWS)).rejects.toThrow(/a person's own tables lack the connector policy/);
+  }, 60_000);
+
+  it("one table waits at most two seconds, and the board's busy tables go first", () => {
+    const code = ROWS.split("\n").filter((l) => !l.trimStart().startsWith("--")).join("\n");
+    const firstCreate = code.indexOf("CREATE POLICY");
+    expect(firstCreate).toBeGreaterThan(0);
+    const bound = code.indexOf("set_config('lock_timeout', '2s', true)");
+    expect(bound, "the loop sets no lock timeout of its own").toBeGreaterThan(-1);
+    expect(bound).toBeLessThan(firstCreate);
+    expect(code).toMatch(/ORDER BY \(c\.relname LIKE 'job\\_board\\_%'\) DESC, 2/);
   });
 });
 
@@ -500,7 +564,7 @@ const CALLERS: Record<string, string> = {
   "_shared/website-session.ts": "the website-session check itself (R1): refuses client_id, any role but authenticated and any other audience (r1-server-website-session)",
   "_shared/checkout-buyer.ts": "section 3b here and w4b-a-connected-apps-token-never-buys-or-opens-billing",
   "_shared/signed-in-email.ts": "section 3 (check-subscription) here",
-  "_shared/model-spend-gate.ts": "section 3c here: refuses any role but authenticated, so every hooked token",
+  "_shared/model-spend-gate.ts": "section 3c here and a-connected-apps-token-is-no-one-at-the-spend-gate: refuses any role but authenticated and any token carrying a client_id, hooked or not",
   "agent-connect/index.ts": "section 3 here",
   "agent-access/index.ts": "section 3 here",
   "agent-pass-status/index.ts": "section 3 here",

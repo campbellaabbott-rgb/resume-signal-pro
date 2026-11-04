@@ -579,8 +579,7 @@ export const FIELD_ROLES: Record<string, readonly string[]> = {
  *  now reads dated_n/n at 99.4% for finance — two claims that cannot both be
  *  true, and until someone re-establishes what posted_at means (memory: it was
  *  rolling-capped) neither is printed as a percentage. The chip keeps its
- *  words and no figure. sendableOnly filters on `source`, which every served
- *  row carries, so it has no hidden population and needs neither. */
+ *  words and no figure. */
 export interface ConstraintChip {
   id: string;
   /** The English fallback; the render interpolates a t() key built from `id`. */
@@ -599,7 +598,6 @@ export const CONSTRAINT_CHIPS: readonly ConstraintChip[] = [
   { id: "entry", label: "Open to beginners", patch: { experience: "entry" } },
   { id: "fullTime", label: "Full-time", patch: { employmentType: "full_time" } },
   { id: "week", label: "Posted this week", patch: { maxAgeDays: 7 }, note: "roles carrying the employer's own date only" },
-  { id: "apply", label: "One-click apply", patch: { sendableOnly: true } },
 ];
 
 /** THE FOUR THINGS A FIELD CAN STATE, AND THE COLUMN EACH ONE IS COUNTED ON.

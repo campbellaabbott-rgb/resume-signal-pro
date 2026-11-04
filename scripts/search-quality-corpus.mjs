@@ -20,9 +20,8 @@
 // artifacts of the instrument:
 //   * "minSalary is ignored" — the API takes salaryFloor; minSalary was a
 //     name this script invented, so the board correctly ignored it. Same for
-//     agentReadyOnly, whose real name is sendableOnly, and companyTokens,
-//     whose real name is companies. VERIFY A PARAMETER NAME AGAINST THE
-//     SERVER before reporting that a filter does nothing.
+//     companyTokens, whose real name is companies. VERIFY A PARAMETER NAME
+//     AGAINST THE SERVER before reporting that a filter does nothing.
 //   * "10,000 is served as an exact total" — the response carries
 //     countCapped:true beside it and the page renders "10,000+". The script
 //     simply did not capture the disclosure field.
@@ -118,7 +117,6 @@ const FILTERS = [
   { label: "category healthcare", body: { category: "healthcare" }, expect: "narrow" },
   { label: "excludeAgencies", body: { excludeAgencies: true }, expect: "narrow" },
   { label: "freshness 7d", body: { maxAgeDays: 7 }, expect: "narrow" },
-  { label: "sendableOnly", body: { sendableOnly: true }, expect: "narrow" },
   // WIDENING by contract — these exist to include more, and must not be
   // judged against the narrowing rule (the isUnfiltered exemption pair).
   { label: "includeUncategorised", body: { includeUncategorised: true }, expect: "widen-ok" },

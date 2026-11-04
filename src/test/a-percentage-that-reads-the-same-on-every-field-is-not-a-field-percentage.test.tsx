@@ -177,7 +177,6 @@ const wire = (opts: {
     if (b.experience === "entry") total = 5_929;
     if (b.employmentType === "full_time") total = 7_030;
     if (typeof b.maxAgeDays === "number") total = 8_832;
-    if (b.sendableOnly === true) total = 6_867;
     if (b.country === "US") return { data: { total: 10_000, countCapped: true, filterCoverage: BOARD_COVERAGE }, error: null };
     if (b.country === "CA") total = 1_285;
     if (b.country === "GB") total = 1_900;
@@ -455,12 +454,12 @@ describe("6. outage honesty", () => {
     wire({ chip: (b) => (b.workMode === "remote" || b.hasStatedPay === true || b.country === "CA" ? { data: null, error: { message: "boom" } } : null) });
     mount();
     await openField("finance");
-    await waitFor(() => expect(panelText()).toContain("3 of the 14 narrowings could not be counted"));
+    await waitFor(() => expect(panelText()).toContain("3 of the 13 narrowings could not be counted"));
     expect(panelText()).not.toContain("2,346");
     expect(panelText()).not.toContain("8,050");
     expect(panelText()).not.toContain("1,285");
     expect(panelText()).toContain("3,452");
-    expect(CONSTRAINT_CHIPS.length + COUNTRY_CHIPS.length).toBe(14);
+    expect(CONSTRAINT_CHIPS.length + COUNTRY_CHIPS.length).toBe(13);
   });
 });
 
@@ -603,7 +602,7 @@ describe("10. the keys", () => {
   it("the literals the sentences mirror are pinned to the source they describe", () => {
     // explore.whereNote says "Six countries we chose" in all nine locales. The
     // only thing that makes six true is COUNTRY_CHIPS.length, and the sum pin
-    // in §6 (CONSTRAINT_CHIPS + COUNTRY_CHIPS = 14) would stay green if one
+    // in §6 (CONSTRAINT_CHIPS + COUNTRY_CHIPS = 13) would stay green if one
     // row moved from one list to the other. Pin the count the sentence names.
     expect(COUNTRY_CHIPS.length, "explore.whereNote says \"Six countries\" in nine locales — a seventh chip makes all nine false").toBe(6);
     expect(doc("en").whereNote).toMatch(/^Six countries/);

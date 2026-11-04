@@ -4573,6 +4573,8 @@ rest of this bundle.
 
 ## n209-array-isarray-datecov-as-data-unkno
 
+RETIRED in job-board 2026-09-09.101: status no longer stores the date coverage; upkeep does, at most every 15 minutes (S13-114). Kept as history; no pointer in the code names this section.
+
 Above: `if (Array.isArray((dateCov as { data?: unknown }).data)) {`
 
 SELF-POPULATING CACHE. Whenever the live query beats its deadline, its
@@ -4585,6 +4587,8 @@ Fire-and-forget: a status page must never fail because it could not
 write its own cache.
 
 ## n210-chainwatchdog
+
+RETIRED in job-board 2026-09-09.101: status no longer runs the watchdog for an anonymous caller; upkeep does, on the scheduler's key (S13-114). Kept as history; no pointer in the code names this section.
 
 Above: `const chainWatchdog = await maybeRekickDeadChain(client);`
 
@@ -16760,6 +16764,8 @@ from the shape guard above (that one requires a NON-boolean), so
 
 ## n1082-if-body-sendableonly-undefined-body-send
 
+RETIRED in job-board 2026-09-09.101: the agent-ready flag narrows nothing and is named in ignoredFilters (S13-118). Kept as history; no pointer in the code names this section.
+
 In `supabase/functions/job-board/filters.ts`, above: `if (body.sendableOnly !== undefined && body.sendableOnly !== null && typeof body.sendableOnly !== "boolean") {`
 
 sendableOnly AND includeUncategorised were the two that had the `=== true`
@@ -16877,6 +16883,8 @@ undated rows are excluded by the predicate, so one arriving under the
 filter is the defect.
 
 ## n1091-if-a-sendableonly-sendable_vendors-inclu
+
+RETIRED in job-board 2026-09-09.101: the agent-ready flag narrows nothing and is named in ignoredFilters (S13-118). Kept as history; no pointer in the code names this section.
 
 In `supabase/functions/job-board/filters.ts`, above: `if (a.sendableOnly && !SENDABLE_VENDORS.includes(String(r.source ?? ""))) {`
 
@@ -18009,6 +18017,8 @@ timeout with one chunk in flight; a sweep the clock stopped runs again in
 a new hop (pass-end.ts PASS_END_SWEEP_HOPS).
 
 ## n1170-const-status_memo_ms-_000
+
+RETIRED in job-board 2026-09-09.101: the memo stays with a one-line comment of its own, since an anonymous status answered from it costs no database and one that computes is counted (S13-114). Kept as history; no pointer in the code names this section.
 
 In `supabase/functions/job-board/index.ts`, above: `const STATUS_MEMO_MS = 30_000;`
 
@@ -19811,6 +19821,8 @@ whose field is unknown. They never send the flag, so they never widen.
 
 ## n1260-sendableonly-boolean
 
+RETIRED in job-board 2026-09-09.101: the field left AppliedFilters (S13-118). Kept as history; no pointer in the code names this section.
+
 In `supabase/functions/job-board/filters.ts`, above: `sendableOnly: boolean;`
 
 "Only jobs the agent can apply to." A FILTER, never a sort — the
@@ -20133,6 +20145,8 @@ hazard as a comma surviving into the mandate's PostgREST or().
 
 ## n1282-function-mergedsourcelist-a-pick-applied
 
+RETIRED in job-board 2026-09-09.101: the agent-ready filter left the source list (S13-118). Kept as history; no pointer in the code names this section.
+
 In `supabase/functions/job-board/filters.ts`, above: `function mergedSourceList(a: Pick<AppliedFilters, "sendableOnly"> & Partial<Pick<AppliedFilters, "vendors">>): string[] | null {`
 
 The agent-ready filter as an RPC body FRAGMENT, spread into the call.
@@ -20151,6 +20165,8 @@ plain string[], which is what the RPC's text[] expects from supabase-js.
 
 ## n1283-function-mergedsourcelist-a-pick-applied
 
+RETIRED in job-board 2026-09-09.101: the agent-ready filter left the source list (S13-118). Kept as history; no pointer in the code names this section.
+
 In `supabase/functions/job-board/filters.ts`, above: `function mergedSourceList(a: Pick<AppliedFilters, "sendableOnly"> & Partial<Pick<AppliedFilters, "vendors">>): string[] | null {`
 
 The rescue tier's twin of sendableSourcesParam, and it exists so that the
@@ -20164,6 +20180,8 @@ of the shared constant: the fifth copy of a vendor list is the one that goes
 stale when adapter five lands.
 
 ## n1284-function-mergedsourcelist-a-pick-applied
+
+RETIRED in job-board 2026-09-09.101: the agent-ready filter left the source list (S13-118). Kept as history; no pointer in the code names this section.
 
 In `supabase/functions/job-board/filters.ts`, above: `function mergedSourceList(a: Pick<AppliedFilters, "sendableOnly"> & Partial<Pick<AppliedFilters, "vendors">>): string[] | null {`
 

@@ -4291,7 +4291,10 @@
     "prepSubtitle": "Onderbouwde antwoorden op de echte sollicitatievragen van {{company}}, gebaseerd op je gescande cv. Controleer en bewerk elk antwoord en solliciteer daarna op de eigen site van {{company}} — wij versturen nooit iets voor je.",
     "prepAlreadyApplied": "Je hebt deze vacature al als 'gesolliciteerd' gemarkeerd. Opnieuw solliciteren op dezelfde functie kan tegen je werken — controleer het goed voordat je nogmaals verstuurt.",
     "tailorResume": "Pas mijn cv aan voor deze functie",
+    "tailorResumeOpen": "Open je aangepaste cv",
+    "tailorResumeAgain": "Opnieuw aanpassen",
     "coverLetter": "Stel een sollicitatiebrief op",
+    "coverLetterOpen": "Open je sollicitatiebrief",
     "prepInterview": "Bereid interviewvragen voor",
     "coverTitle": "Je sollicitatiebrief",
     "coverSubtitle": "Gebaseerd op je cv voor deze functie — controleer en bewerk voordat je verstuurt. We verzinnen nooit ervaring die je niet hebt.",
@@ -5029,8 +5032,7 @@
       "pay80k": "vanaf $80.000",
       "entry": "Open voor beginners",
       "fullTime": "Fulltime",
-      "week": "Deze week geplaatst",
-      "apply": "Solliciteren met één klik"
+      "week": "Deze week geplaatst"
     },
     "country": {
       "US": "Verenigde Staten",

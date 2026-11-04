@@ -58,6 +58,8 @@ const ROUND_KEYS = [
   "productSuccess.refusal.busy.title", "productSuccess.refusal.busy.body",
   "writingRefusal.busyTitle", "writingRefusal.busyEveryone", "writingRefusal.busyNetwork",
   "proPlan.toast.alreadyUnconfirmedBody", "oauthConsent.scopesAsked", "oauthConsent.scopeUnexpected",
+  // the held pages
+  "jobsPage.tailorResumeOpen", "jobsPage.tailorResumeAgain", "jobsPage.coverLetterOpen",
 ];
 
 /** The keys the round's sentences took over: no source calls them any more. */

@@ -4324,7 +4324,10 @@
     "prepSubtitle": "Respostas fundamentadas às perguntas reais de candidatura da {{company}}, extraídas do seu currículo analisado. Reveja e edite cada uma e depois candidate-se no site da própria {{company}} — nunca submetemos por si.",
     "prepAlreadyApplied": "Já marcou este anúncio como candidatado. Voltar a candidatar-se à mesma vaga pode prejudicá-lo — confirme antes de submeter de novo.",
     "tailorResume": "Adaptar o meu currículo a esta vaga",
+    "tailorResumeOpen": "Abrir seu currículo adaptado",
+    "tailorResumeAgain": "Adaptar de novo",
     "coverLetter": "Redigir carta de apresentação",
+    "coverLetterOpen": "Abrir sua carta de apresentação",
     "prepInterview": "Preparar perguntas de entrevista",
     "coverTitle": "A sua carta de apresentação",
     "coverSubtitle": "Baseada no seu currículo para esta vaga — reveja e edite antes de enviar. Nunca inventamos experiência que não tem.",
@@ -5075,8 +5078,7 @@
       "pay80k": "a partir de 80 000 $",
       "entry": "Aberto a principiantes",
       "fullTime": "Tempo integral",
-      "week": "Publicado esta semana",
-      "apply": "Candidatura num clique"
+      "week": "Publicado esta semana"
     },
     "country": {
       "US": "Estados Unidos",

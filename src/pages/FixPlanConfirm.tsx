@@ -23,7 +23,7 @@ import { stashedFragment, takeStashed } from "@/lib/auth-fragment";
 type State = "ready" | "confirming" | "done" | "already" | "optedOut" | "invalid" | "error" | "errorFinal" | "missing";
 
 export default function FixPlanConfirm() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [token] = useState<string | null>(() =>
     typeof window === "undefined" ? null : dripTokenFromHash(stashedFragment(window.location.hash)));
   const [state, setState] = useState<State>(token ? "ready" : "missing");
@@ -36,7 +36,7 @@ export default function FixPlanConfirm() {
     if (!token) return;
     setState("confirming");
     try {
-      const { data, error } = await supabase.functions.invoke("send-scan-report", { body: { action: "confirm-drip", token } });
+      const { data, error } = await supabase.functions.invoke("send-scan-report", { body: { action: "confirm-drip", token, language: i18n.language } });
       const d = data as { success?: boolean; queued?: boolean; reason?: string } | null;
       if (!error && d?.success) {
         setState(d.queued ? "done" : d.reason === "opted_out" ? "optedOut" : "already");

@@ -124,7 +124,7 @@ export const CLIENT_CALLABLE: AllowedFunction[] = [
 
   // ── capabilities: the caller holds an unguessable token naming its own rows
   A("public.get_analysis_by_share_id(text)", "src/pages/Success.tsx", "own rows: the analysis behind a 24/32-hex share id"),
-  A("public.delete_analysis_by_share_id(text)", "src/pages/Success.tsx", "own rows: deletes the analysis behind a share id", "deletes the one analysis whose share id the caller holds -- the share id IS the ownership proof"),
+  A("public.delete_analysis_by_share_id(text)", "src/pages/Success.tsx", "own rows: deletes the analysis behind a share id, for its buyer", "takes '<share id>:<purchase reference>' and deletes the one analysis that purchase redeemed; a share id alone raises, so a forwarded link deletes nothing (20261103130000)"),
   // Read-only since 20261005123000: a paid delivery that failed once must be
   // able to read the résumé again (defect sweep 1.27); the 24-hour retention
   // job deletes it.

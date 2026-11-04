@@ -9,9 +9,12 @@
 -- agent mandate (resume text, phone, apply settings), the queue, the
 -- submissions, the saved resume in the 'resumes' bucket.
 --
--- So every table in public with row level security on, and storage.objects,
--- gets one RESTRICTIVE policy for the signed-in role: a request whose JWT
--- carries a non-empty client_id matches no row, for reading and for writing.
+-- So every table in public whose row level security a policy opens to the
+-- signed-in role, and storage.objects, gets one RESTRICTIVE policy for that
+-- role: a request whose JWT carries a non-empty client_id matches no row, for
+-- reading and for writing. A table with row level security on and no policy
+-- that names the signed-in role (or PUBLIC) answers such a token nothing
+-- already, and is left alone.
 -- A restrictive policy only ever narrows what the permissive policies
 -- allow, and a website session never carries client_id (an empty one is
 -- read as absent, as the hook reads it), so nothing a signed-in visitor can
@@ -22,6 +25,15 @@
 -- The tables are read from the catalogue, never listed by hand. A table that
 -- turns on row level security later does not get the policy by itself: the
 -- hook is the layer that covers everything.
+--
+-- THIS RUNS ON THE LIVE SITE. CREATE POLICY takes an ACCESS EXCLUSIVE lock on
+-- its table, this block is one transaction, and every lock it gets is held to
+-- its end. Waiting behind a long statement (crons on the board's tables run up
+-- to two minutes) would queue every reader of that table behind it, and hold
+-- every table already done. So one table gets at most two seconds, a table
+-- that cannot be had in that time is left to the hook with a NOTICE (a re-run
+-- picks it up), the board's busy tables go first, while little is held, and
+-- only a person's own tables are required, which see short transactions.
 --
 -- WHAT THIS LAYER DOES NOT COVER (the audit-rest fixer's review): a SECURITY
 -- DEFINER function the signed-in role may execute (agent_cancel_pending,
@@ -40,6 +52,7 @@ DECLARE
   v_qual constant text := '(coalesce((SELECT auth.jwt() ->> ''client_id''), '''') = '''')';
   v_skipped text[] := '{}';
 BEGIN
+  PERFORM set_config('lock_timeout', '2s', true);
   FOR r IN
     SELECT c.oid, format('%I.%I', n.nspname, c.relname) AS tbl
       FROM pg_class c
@@ -47,20 +60,26 @@ BEGIN
      WHERE c.relkind IN ('r', 'p')
        AND c.relrowsecurity
        AND (n.nspname = 'public' OR (n.nspname = 'storage' AND c.relname = 'objects'))
+       AND (
+         format('%I.%I', n.nspname, c.relname) IN ('public.agent_mandates', 'public.agent_queue', 'public.agent_submissions', 'storage.objects')
+         OR EXISTS (SELECT 1 FROM pg_policy o
+                     WHERE o.polrelid = c.oid AND o.polpermissive
+                       AND (0::oid = ANY (o.polroles) OR to_regrole('authenticated')::oid = ANY (o.polroles)))
+       )
        AND NOT EXISTS (SELECT 1 FROM pg_policy p
                         WHERE p.polrelid = c.oid AND p.polname = 'a_connector_token_reaches_no_row')
-     ORDER BY 2
+     ORDER BY (c.relname LIKE 'job\_board\_%') DESC, 2
   LOOP
     BEGIN
       EXECUTE format(
         'CREATE POLICY a_connector_token_reaches_no_row ON %s AS RESTRICTIVE FOR ALL TO %I USING %s WITH CHECK %s',
         r.tbl, 'authenticated', v_qual, v_qual);
-    EXCEPTION WHEN insufficient_privilege THEN
+    EXCEPTION WHEN insufficient_privilege OR lock_not_available THEN
       v_skipped := v_skipped || r.tbl;
     END;
   END LOOP;
   IF cardinality(v_skipped) > 0 THEN
-    RAISE NOTICE 'a_connector_token_reaches_no_row: not owner of %, left to the hook', v_skipped;
+    RAISE NOTICE 'a_connector_token_reaches_no_row: not owner of, or could not lock in 2s, %: left to the hook', v_skipped;
   END IF;
 END $$;
 
@@ -69,7 +88,8 @@ END $$;
 -- the signed-in role, for every command, with the same expression for
 -- reading and writing; and that expression is true for a website session's
 -- claims, for no claims at all and for an empty client_id, and false for a
--- connector's.
+-- connector's. A required table that was busy fails the apply here, and the
+-- file is safe to re-run.
 DO $$
 DECLARE
   v_missing text[];
@@ -84,13 +104,19 @@ BEGIN
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
    WHERE c.relkind IN ('r', 'p') AND c.relrowsecurity
      AND (n.nspname = 'public' OR (n.nspname = 'storage' AND c.relname = 'objects'))
+     AND (
+       format('%I.%I', n.nspname, c.relname) IN ('public.agent_mandates', 'public.agent_queue', 'public.agent_submissions', 'storage.objects')
+       OR EXISTS (SELECT 1 FROM pg_policy o
+                   WHERE o.polrelid = c.oid AND o.polpermissive
+                     AND (0::oid = ANY (o.polroles) OR to_regrole('authenticated')::oid = ANY (o.polroles)))
+     )
      AND NOT EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid AND p.polname = 'a_connector_token_reaches_no_row');
   IF EXISTS (SELECT 1 FROM unnest(coalesce(v_missing, '{}')) t
               WHERE t IN ('public.agent_mandates', 'public.agent_queue', 'public.agent_submissions', 'storage.objects')) THEN
     RAISE EXCEPTION 'self-check: a person''s own tables lack the connector policy: %', v_missing;
   END IF;
   IF cardinality(coalesce(v_missing, '{}')) > 0 THEN
-    RAISE NOTICE 'self-check: % table(s) without the connector policy (not owner), left to the hook: %', cardinality(v_missing), v_missing;
+    RAISE NOTICE 'self-check: % table(s) without the connector policy (not owner, or busy), left to the hook: %', cardinality(v_missing), v_missing;
   END IF;
   FOREACH v_expr IN ARRAY ARRAY['public.agent_mandates', 'public.agent_queue', 'public.agent_submissions', 'storage.objects'] LOOP
     IF to_regclass(v_expr) IS NOT NULL

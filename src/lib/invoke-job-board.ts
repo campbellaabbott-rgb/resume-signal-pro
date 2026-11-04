@@ -11,8 +11,8 @@
  * With it set:
  *   - a counted read waits for a pass first (about a second, once a half hour;
  *     never longer than board-pass.ts's one deadline, script load included);
- *     an uncounted call (status, click, report) never waits, but starts the
- *     check so the pass is ready for the counted read behind it;
+ *     a call that hands out no posting (status, click, report) never waits, but
+ *     starts the check so the pass is ready for the counted read behind it;
  *   - the pass a call is given is the pass it sends as x-rb-pass;
  *   - a refusal with code "pass" gets a fresh pass and ONE retry -- the single
  *     exception to "a budget refusal is never retried" (src/lib/board-budget.ts),

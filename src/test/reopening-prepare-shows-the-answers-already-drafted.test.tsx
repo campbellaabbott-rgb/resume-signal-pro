@@ -8,7 +8,7 @@
  * job, spending the daily writing allowance on answers the person already
  * had. The panel now keeps a draft per job, for the same résumé, posting and
  * language, while the page is open; "Draft again" asks for a new one. (The
- * letter half lives in src/pages/Jobs.tsx, another round's file.)
+ * letter and résumé half is reopening-prepare-opens-the-letter-and-resume-already-drafted.)
  *
  * Mounted for real; only the backend is faked.
  */

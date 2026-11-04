@@ -715,11 +715,9 @@ describe("5. every priced thing is priced by the query its own link runs", () =>
     // even see — and it does so through a family, not a key of its own: the
     // share is said once per family in one sentence under the row, because
     // remote and onsite share a denominator and a figure identical on two
-    // chips is not a chip figure. Two chips belong to no family, and they are
-    // OPPOSITE cases that must not share a render:
+    // chips is not a chip figure. One chip belongs to no family (the retired
+    // agent-ready filter's was the other, and is gone with its filter):
     //
-    //   apply — genuinely complete. sendableOnly filters on `source`, which
-    //     every served row carries, so an invented "100%" would be noise.
     //   week  — the chip that hides the MOST. maxAgeDays binds `posted_at`, the
     //     employer's own stated date, NOT effective_posted. The per-field scan
     //     carries dated_n, but this file's earlier note recorded whole vendors
@@ -754,7 +752,7 @@ describe("5. every priced thing is priced by the query its own link runs", () =>
     expect(floor?.id).toBe("pay");
     expect(floor!.chips).toContain("pay80k");
     for (const c of CONSTRAINT_CHIPS.filter((x) => !inFamily.has(x.id))) {
-      expect(["week", "apply"]).toContain(c.id);
+      expect(c.id).toBe("week");
     }
     // And no chip carries a coverage key of its own any more.
     for (const c of CONSTRAINT_CHIPS) expect("coverageKey" in c, `${c.id} carries a per-chip coverage key again`).toBe(false);
@@ -762,7 +760,9 @@ describe("5. every priced thing is priced by the query its own link runs", () =>
     expect(week.patch).toEqual({ maxAgeDays: 7 });
     expect(week.note, "the chip bounded by dated_n disclosed nothing").toBeTruthy();
     expect(week.note!).toMatch(/employer's own date/i);
-    expect(CONSTRAINT_CHIPS.find((c) => c.id === "apply")!.note).toBeUndefined();
+    // The agent-ready filter narrows nothing since job-board .101: no chip asks
+    // for it, and so no field panel spends a probe on it.
+    for (const c of CONSTRAINT_CHIPS) expect(c.patch, c.id).not.toHaveProperty("sendableOnly");
     expect(COUNTRY_CHIPS.length).toBeGreaterThan(0);
   });
 
@@ -965,7 +965,7 @@ describe("6. opening a field prices what is inside it, from the query each link 
       if (body.country === "US") total = 5_002;
       // A filter the server refuses is NAMED, and the chip for it must not
       // render a count for a query the click will never run.
-      if (body.sendableOnly === true) return { data: { total: 88, ignoredFilters: ["sendableOnly"] }, error: null };
+      if (body.employmentType === "full_time") return { data: { total: 88, ignoredFilters: ["employmentType"] }, error: null };
       return {
         data: {
           total,
@@ -1072,7 +1072,7 @@ describe("6. opening a field prices what is inside it, from the query each link 
     expect(visibleText()).not.toContain("20%");
     // A chip the server named in ignoredFilters priced a query the click will
     // not run, so it does not render at all.
-    expect(visibleText()).not.toContain("One-click apply");
+    expect(visibleText()).not.toContain("Full-time");
     // AND THE CHIP THAT HIDES THE MOST STATES SO IN WORDS. maxAgeDays binds
     // posted_at, so every posting from a structurally undated vendor is
     // excluded however new it is; coverageDisclosure publishes no key for it,

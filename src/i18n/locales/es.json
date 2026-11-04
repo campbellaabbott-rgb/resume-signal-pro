@@ -4324,7 +4324,10 @@
     "prepSubtitle": "Respuestas fundamentadas a las preguntas reales de postulación de {{company}}, extraídas de tu currículum escaneado. Revisa y edita cada una, y luego postúlate en el propio sitio de {{company}} — nunca enviamos por ti.",
     "prepAlreadyApplied": "Ya marcaste esta publicación como postulada. Volver a postularte al mismo puesto puede jugarte en contra — verifica bien antes de enviar de nuevo.",
     "tailorResume": "Adaptar mi currículum a este puesto",
+    "tailorResumeOpen": "Abrir tu currículum adaptado",
+    "tailorResumeAgain": "Adaptarlo de nuevo",
     "coverLetter": "Redactar una carta de presentación",
+    "coverLetterOpen": "Abrir tu carta de presentación",
     "prepInterview": "Preparar preguntas de entrevista",
     "coverTitle": "Tu carta de presentación",
     "coverSubtitle": "Basada en tu currículum para este puesto — revisa y edita antes de enviar. Nunca inventamos experiencia que no tienes.",
@@ -5078,8 +5081,7 @@
       "pay80k": "desde 80.000 $",
       "entry": "Abierto a principiantes",
       "fullTime": "Jornada completa",
-      "week": "Publicado esta semana",
-      "apply": "Postulación en un clic"
+      "week": "Publicado esta semana"
     },
     "country": {
       "US": "Estados Unidos",

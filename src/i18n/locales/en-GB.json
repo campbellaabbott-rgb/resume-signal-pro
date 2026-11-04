@@ -4291,7 +4291,10 @@
     "prepSubtitle": "Grounded answers to {{company}}'s real application questions, drawn from your scanned CV. Review and edit each one, then apply on {{company}}'s own site — we never submit for you.",
     "prepAlreadyApplied": "You've already marked this posting as applied. Re-applying to the same role can count against you — double-check before you submit again.",
     "tailorResume": "Tailor my CV for this role",
+    "tailorResumeOpen": "Open your tailored CV",
+    "tailorResumeAgain": "Tailor it again",
     "coverLetter": "Draft a cover letter",
+    "coverLetterOpen": "Open your cover letter",
     "prepInterview": "Prep interview questions",
     "coverTitle": "Your cover letter",
     "coverSubtitle": "Grounded in your CV for this role — review and edit before you send. We never invent experience you don't have.",
@@ -5029,8 +5032,7 @@
       "pay80k": "$80,000+",
       "entry": "Open to beginners",
       "fullTime": "Full-time",
-      "week": "Posted this week",
-      "apply": "One-click apply"
+      "week": "Posted this week"
     },
     "country": {
       "US": "United States",

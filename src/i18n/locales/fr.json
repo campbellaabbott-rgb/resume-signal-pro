@@ -4324,7 +4324,10 @@
     "prepSubtitle": "Des réponses fondées aux vraies questions de candidature de {{company}}, tirées de votre CV scanné. Relisez et modifiez chacune, puis postulez sur le site de {{company}} — nous n'envoyons jamais à votre place.",
     "prepAlreadyApplied": "Vous avez déjà marqué cette annonce comme postulée. Repostuler au même poste peut jouer contre vous — vérifiez bien avant de renvoyer votre candidature.",
     "tailorResume": "Adapter mon CV à ce poste",
+    "tailorResumeOpen": "Ouvrir votre CV adapté",
+    "tailorResumeAgain": "L'adapter à nouveau",
     "coverLetter": "Rédiger une lettre de motivation",
+    "coverLetterOpen": "Ouvrir votre lettre de motivation",
     "prepInterview": "Préparer les questions d'entretien",
     "coverTitle": "Votre lettre de motivation",
     "coverSubtitle": "Fondée sur votre CV pour ce poste — relisez et modifiez avant l'envoi. Nous n'inventons jamais d'expérience que vous n'avez pas.",
@@ -5075,8 +5078,7 @@
       "pay80k": "à partir de 80 000 $",
       "entry": "Ouvert aux débutants",
       "fullTime": "Temps plein",
-      "week": "Publié cette semaine",
-      "apply": "Candidature en un clic"
+      "week": "Publié cette semaine"
     },
     "country": {
       "US": "États-Unis",

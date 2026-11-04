@@ -4291,7 +4291,10 @@
     "prepSubtitle": "Mga sagot na nakabatay sa totoong application questions ng {{company}}, hango sa na-scan mong resume. I-review at i-edit ang bawat isa, saka mag-apply sa sariling site ng {{company}} — hindi kami kailanman nagsu-submit para sa iyo.",
     "prepAlreadyApplied": "Minarkahan mo na ang posting na ito bilang applied. Maaaring maging kontra sa iyo ang muling pag-apply sa parehong role — siguraduhin muna bago ka mag-submit ulit.",
     "tailorResume": "I-tailor ang résumé ko para sa role na ito",
+    "tailorResumeOpen": "Buksan ang na-tailor mong résumé",
+    "tailorResumeAgain": "I-tailor ulit",
     "coverLetter": "Mag-draft ng cover letter",
+    "coverLetterOpen": "Buksan ang cover letter mo",
     "prepInterview": "Ihanda ang mga tanong sa interview",
     "coverTitle": "Ang cover letter mo",
     "coverSubtitle": "Nakabatay sa résumé mo para sa role na ito — i-review at i-edit bago ipadala. Hindi kami kailanman nag-iimbento ng karanasang wala ka.",
@@ -5029,8 +5032,7 @@
       "pay80k": "$80,000 pataas",
       "entry": "Bukas sa nagsisimula",
       "fullTime": "Full-time",
-      "week": "Na-post ngayong linggo",
-      "apply": "One-click na pag-apply"
+      "week": "Na-post ngayong linggo"
     },
     "country": {
       "US": "Estados Unidos",

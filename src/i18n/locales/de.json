@@ -4291,7 +4291,10 @@
     "prepSubtitle": "Fundierte Antworten auf die echten Bewerbungsfragen von {{company}}, gestützt auf deinen gescannten Lebenslauf. Prüfe und bearbeite jede einzelne, dann bewirb dich auf der eigenen Seite von {{company}} — wir senden nie für dich ab.",
     "prepAlreadyApplied": "Du hast diese Anzeige bereits als beworben markiert. Sich erneut auf dieselbe Stelle zu bewerben kann gegen dich sprechen — prüf das, bevor du noch einmal absendest.",
     "tailorResume": "Meinen Lebenslauf auf diese Stelle zuschneiden",
+    "tailorResumeOpen": "Deinen zugeschnittenen Lebenslauf öffnen",
+    "tailorResumeAgain": "Erneut zuschneiden",
     "coverLetter": "Anschreiben entwerfen",
+    "coverLetterOpen": "Dein Anschreiben öffnen",
     "prepInterview": "Interviewfragen vorbereiten",
     "coverTitle": "Dein Anschreiben",
     "coverSubtitle": "Gestützt auf deinen Lebenslauf für diese Stelle — prüfe und bearbeite es vor dem Absenden. Wir erfinden nie Erfahrung, die du nicht hast.",
@@ -5029,8 +5032,7 @@
       "pay80k": "ab 80.000 $",
       "entry": "Für Einsteiger offen",
       "fullTime": "Vollzeit",
-      "week": "Diese Woche veröffentlicht",
-      "apply": "Bewerbung mit einem Klick"
+      "week": "Diese Woche veröffentlicht"
     },
     "country": {
       "US": "Vereinigte Staaten",

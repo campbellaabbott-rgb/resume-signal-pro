@@ -71,7 +71,7 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
       // The report request never carries the pulse choice: send-scan-report's
       // own write to the pulse list enrolled an address with no confirmation.
       const { data, error } = await supabase.functions.invoke("send-scan-report", {
-        body: { email: trimmed, dripOptIn, ...payload },
+        body: { email: trimmed, dripOptIn, language: i18n.language, ...payload },
       });
       if (error || !(data as { success?: boolean })?.success) {
         // A refusal says why (an inbox's daily allowance, an address that

@@ -183,7 +183,7 @@ describe("/fix-plan/confirm: the sequence starts only on the person's click", ()
     expect(invoke, "the page started the sequence on load").not.toHaveBeenCalled();
     fireEvent.click(button);
     await waitFor(() => expect(screen.getByText(/The first email arrives in two days/)).toBeInTheDocument());
-    expect(invoke).toHaveBeenCalledWith("send-scan-report", { body: { action: "confirm-drip", token: SIGNED } });
+    expect(invoke).toHaveBeenCalledWith("send-scan-report", { body: { action: "confirm-drip", token: SIGNED, language: "en" } });
     // Cleared by a passive effect after the success render: waited for.
     await waitFor(() => expect(window.location.hash).toBe(""));
   });

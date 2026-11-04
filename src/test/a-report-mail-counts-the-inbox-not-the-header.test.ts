@@ -472,7 +472,7 @@ describe("a sentence reaches the mail only under the scan's seal", () => {
     expect(scan).toMatch(/await attachScanMailSeal\(attachMailCopy\(responseData, resumeText\), .*\);\n\s*return new Response\(\s*JSON\.stringify\(responseData\)/);
     const page = read("src/components/FreeKeywordResults.tsx");
     expect(page).toMatch(/const emailReportPayload = withMailSentences\(\{[\s\S]*?mailSeal: reportMeta\?\.mailSeal \?\? null,[\s\S]*?\}, reportMeta\?\.mailSentences\);/);
-    expect(read("src/components/EmailReportCapture.tsx")).toMatch(/body: \{ email: trimmed, dripOptIn, \.\.\.payload \}/);
+    expect(read("src/components/EmailReportCapture.tsx")).toMatch(/body: \{ email: trimmed, dripOptIn, language: i18n\.language, \.\.\.payload \}/);
   });
 });
 
@@ -543,7 +543,7 @@ describe("the fix-plan sequence starts only when the inbox's owner presses its b
   it("the button's page is a button, not a page load, and is wired and kept out of the index", () => {
     const page = read("src/pages/FixPlanConfirm.tsx");
     expect(page).toMatch(/onClick=\{confirm\}/);
-    expect(page).toMatch(/invoke\("send-scan-report", \{ body: \{ action: "confirm-drip", token \} \}\)/);
+    expect(page).toMatch(/invoke\("send-scan-report", \{ body: \{ action: "confirm-drip", token, language: i18n\.language \} \}\)/);
     expect(page).not.toMatch(/useEffect\(\(\) => \{\s*(?:void )?confirm\(\)/);
     expect(read("src/App.tsx")).toMatch(/<Route path="\/fix-plan\/confirm" element=\{<FixPlanConfirm \/>\} \/>/);
     expect(read("public/robots.txt").match(/^Disallow: \/fix-plan\/confirm$/gm)?.length).toBe(read("public/robots.txt").match(/^Disallow: \/market-pulse\/confirm$/gm)?.length);
