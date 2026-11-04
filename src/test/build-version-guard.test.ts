@@ -1515,7 +1515,12 @@ const PINNED = {
   // superseded from the whole lap, the description sweep asks once a rotation
   // and exists answers on detail's predicate (n1440-n1442), and City, ST read
   // as typed (n1460). sources.ts unchanged.
-  buildVersion: "2026-09-09.100",
+  // 2026-09-09.101 (fix/audit-rest-held-board, the held items of the
+  // audit-rest round): no query text reaches a log when the caller asked for
+  // none (S13-104), an anonymous status is counted and writes nothing and the
+  // scheduler has its own upkeep action (S13-114), and the retired agent-ready
+  // flag narrows nothing (S13-118). sources.ts unchanged.
+  buildVersion: "2026-09-09.101",
 };
 
 /**

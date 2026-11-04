@@ -334,8 +334,8 @@ describe("the keyless branch is counted in its own table and nowhere else", () =
     expect(UNKEYED).toMatch(/const subjectHash = subject \? await bucketHash\(secret, utcDay\(\), subject\) : "";/);
     expect(ALLOWANCE).toMatch(/bucket: `u:chatgpt:\$\{subjectHash\}`/);
     expect(UNKEYED).not.toMatch(/p_bucket: (address|subject|connection)\b/);
-    // And the subject's log line carries no address beside it.
-    expect(UNKEYED).toMatch(/console\.log\(`\[AGENT-MCP\] keyless subject \$\{subjectHash\} \(\$\{toolName\}\)`\)/);
+    // And no log line carries the hash (S13-104), nor an address beside it.
+    expect(UNKEYED).not.toMatch(/console\.[a-z]+\([^\n]*subjectHash/);
     expect(UNKEYED).not.toMatch(/ipHash/);
   });
 

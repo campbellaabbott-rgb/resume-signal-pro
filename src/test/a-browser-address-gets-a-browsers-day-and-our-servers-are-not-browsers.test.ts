@@ -263,8 +263,8 @@ describe("the handler: who is counted, and what a refusal is", () => {
     expect(String(db.checks[1].args.p_bucket)).toMatch(/^ip:[0-9a-f]{16}$/);
   });
 
-  it("status, refresh, click, report and budget-echo never call the counter", async () => {
-    for (const body of [{ action: "status" }, { action: "refresh", resetCatalogHighwater: true }, { action: "click" }, { action: "report" }]) {
+  it("refresh, click, report and budget-echo never call the counter", async () => {
+    for (const body of [{ action: "refresh", resetCatalogHighwater: true }, { action: "click" }, { action: "report" }]) {
       const res = await post(body);
       expect(res.status, JSON.stringify(body)).toBeLessThan(500);
     }
@@ -355,7 +355,7 @@ describe("the handler: who is counted, and what a refusal is", () => {
 
 describe("the meter shares nothing with the request budget, and a browser cannot send its headers", () => {
   const INDEX = codeOf(read("supabase/functions/job-board/index.ts"));
-  const gateAt = INDEX.indexOf("if (BUDGETED_ACTIONS.has(action))");
+  const gateAt = INDEX.indexOf("if (METERED_ACTIONS.has(action) && !statusFresh)");
   const GATE = INDEX.slice(gateAt, INDEX.indexOf("if (action ===", gateAt));
   const MODULE = codeOf(read("supabase/functions/job-board/anon-budget.ts"));
   const MIGRATION = sqlCodeOf(read("supabase/migrations/20261002140000_a_browser_address_gets_a_browsers_day_and_the_count_is_readable.sql"));

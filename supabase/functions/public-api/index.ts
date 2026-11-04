@@ -383,7 +383,8 @@ const LIST_FILTERS = [
 // 2026-10-11.36 (the second recheck of the descope, 2026-10-25): the application route marks a cover-letter text box answeredBy "you" with cvMayHelp, as the answers panel and origin/main leave it with the person; it was the one question main leaves to the person that the route sent to a draft.
 // 2026-10-11.37 (recheck 3, 2026-10-26): no rule change. The field notes say last_verified_at (and last_seen) is when the board last read the employer's feed, not proof the read listed the posting: a large board is read in windows.
 // 2026-11-02.1 (board-stream round, 2026-11-01): a city typed in its own language binds the English name it adds to its country (S13-006; _shared/location-terms.ts and _shared/location-match.ts): the /v1 location or() refuses a US-placed row for "Vienna@Austria" unless it names Austria, and the explain trace shows "Vienna" with outsideUsUnlessNaming.
-const FN_BUILD = "public-api.2026-11-02.1";
+// 2026-11-03.1 (audit-rest held items, 2026-11-04): no rule change. engine=ranked sends agent_ready_only to the board as its vendor list, because the board reads no such flag since job-board .101 (S13-118).
+const FN_BUILD = "public-api.2026-11-03.1";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -829,6 +830,13 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
   if (statedPayP instanceof Response) return statedPayP;
   const agentReadyP = boolParam(p, "agent_ready_only", headers);
   if (agentReadyP instanceof Response) return agentReadyP;
+  // agent_ready_only is the vendor list since job-board .101, which reads no
+  // such flag (S13-118). Beside source it narrows both ways, as the default
+  // engine's two .in() do: a source outside the list leaves no row to ask for.
+  const sources = agentReadyP === true
+    ? (lists.source.length ? lists.source : [...SENDABLE_VENDORS]).filter((s) => SENDABLE_VENDORS.includes(s))
+    : lists.source;
+  const noRowCanMatch = agentReadyP === true && sources.length === 0;
   // snake_case /v1 params -> camelCase board body. Names differ where the board
   // and the public API named the same predicate differently (company_token ->
   // companies, source -> vendor, experience_band -> experience).
@@ -858,7 +866,7 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
     ...(lists.work_mode.length ? { workMode: lists.work_mode.join(",") } : {}),
     ...(lists.experience_band.length ? { experience: lists.experience_band.join(",") } : {}),
     ...(p.get("department") ? { department: p.get("department") } : {}),
-    ...(lists.source.length ? { vendor: lists.source.join(",") } : {}),
+    ...(sources.length ? { vendor: sources.join(",") } : {}),
     ...(remoteP === true ? { remote: true } : {}),
     ...(Number.isFinite(salaryMin) && salaryMin > 0 ? { salaryFloor: salaryMin } : {}),
     ...(Number.isFinite(salaryMax) && salaryMax > 0 ? { salaryCeiling: salaryMax } : {}),
@@ -878,7 +886,6 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
     ...(statedPayP === true ? { hasStatedPay: true } : {}),
     ...(p.get("pay_basis") ? { payBasis: p.get("pay_basis") } : {}),
     ...(maxAgeInt !== null ? { maxAgeDays: maxAgeInt } : {}),
-    ...(agentReadyP === true ? { sendableOnly: true } : {}),
     ...(p.get("sort") === "newest" || p.get("sort") === "salary" ? { sort: p.get("sort") } : {}),
   };
   const exclRaw = p.get("exclude_agencies");
@@ -888,7 +895,7 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
 
   let r: Record<string, unknown>;
   try {
-    r = await board(body);
+    r = noRowCanMatch ? { jobs: [], total: 0, hasMore: false } : await board(body);
   } catch (e) {
     console.error("[PUBLIC-API] ranked engine call failed:", String((e as Error)?.message ?? e).slice(0, 160));
     return fail(502, "ranked_unavailable", "The ranked engine did not respond. Retry, or drop engine=ranked to use the default.", headers);

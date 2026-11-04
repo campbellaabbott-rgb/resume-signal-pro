@@ -1,26 +1,24 @@
 /**
- * "ONLY JOBS THE AGENT CAN APPLY TO" — A FILTER, NEVER A SORT.
+ * THE RETIRED AGENT-READY FILTER NARROWS NOTHING, AND IS NAMED WHEN ASKED FOR
+ * (job-board .101, audit-rest S13-118).
  *
- * 31,552 of 588,607 postings (5.4%, measured live 2026-08-07) sit on the four
- * vendors the worker can drive. This filter narrows the board to them — the
- * filter form of the Sparkles badge, both reading the same SENDABLE_VENDORS
- * mirror, so the chip and the filter cannot mean different things.
+ * The flag narrowed a search to the four vendors the worker could drive, about
+ * 5% of the board. The owner retired the server-side apply agent on 2026-10-11
+ * and the board's own control went, but a search saved with the flag kept being
+ * mailed through that narrowing while the page it linked to showed everything.
+ * Now no caller can narrow through it: a request carrying it is answered on the
+ * whole board with the flag named in ignoredFilters.
  *
- * TWO INCIDENTS SHAPE EVERY ASSERTION HERE:
- *
- *   1. .order("category") — ranking by a non-indexed expression turned a 0.3s
- *      page into a 17.5s 500. So this is a FILTER composing with the date
- *      index, and this file pins that no sendability ORDER BY exists.
- *
- *   2. The partial rollout — the July purchase gate landed on the streaming
- *      fallbacks and missed the primaries; the category filter once reached
- *      the direct query and missed the RPCs. So this file counts CALL SITES:
- *      the direct query plus all three RPC bodies.
+ * WHAT STAYS FROM THE FILTER'S LIFE: the vendor list reaches the RPCs through
+ * p_sources, and two incidents still shape that. Ranking by a non-indexed
+ * expression turned a 0.3s page into a 17.5s 500, so no source ORDER BY exists;
+ * and a filter once reached the direct query and missed the RPCs, so this file
+ * counts call sites.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { normalizeFilters, sendableSourcesParam, filterViolations, type AppliedFilters } from "../../supabase/functions/job-board/filters";
+import { normalizeFilters, vendorSourcesParam, filterViolations, type AppliedFilters } from "../../supabase/functions/job-board/filters";
 import { SENDABLE_VENDORS } from "../../supabase/functions/_shared/apply-automation";
 
 const board = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
@@ -38,57 +36,58 @@ const mig = readdirSync(DIR).filter((f) => f.endsWith(".sql"))
 
 const norm = (b: Record<string, unknown>) => normalizeFilters(b, 200).applied;
 
-describe("the flag only turns on for a literal true", () => {
-  it("is off by default", () => {
-    expect(norm({}).sendableOnly).toBe(false);
+describe("the flag narrows nothing, for any caller", () => {
+  it("leaves no trace on the filters a query is built from, whatever was sent", () => {
+    for (const v of [undefined, true, false, "true", "1", 1, {}, []]) {
+      const applied = norm({ sendableOnly: v });
+      expect(Object.keys(applied), `${JSON.stringify(v)} must not reach the applied filters`).not.toContain("sendableOnly");
+      expect(applied).toEqual(norm({}));
+    }
   });
 
-  it("is on when asked", () => {
-    expect(norm({ sendableOnly: true }).sendableOnly).toBe(true);
+  it("a request asking for it is told the filter was not applied", () => {
+    for (const v of [true, "true", 1, {}, []]) {
+      expect(normalizeFilters({ sendableOnly: v } as never, 15).ignored, JSON.stringify(v)).toContain("sendableOnly");
+    }
   });
 
-  it("ignores truthy impostors — a query-param string must not narrow to 5% of the board", () => {
-    for (const v of ["true", "1", 1, {}, "yes"]) {
-      expect(norm({ sendableOnly: v }).sendableOnly, `${JSON.stringify(v)} must not enable it`).toBe(false);
+  it("a request not asking for it is told nothing", () => {
+    for (const body of [{}, { sendableOnly: false }, { sendableOnly: null }]) {
+      expect(normalizeFilters(body as never, 15).ignored, JSON.stringify(body)).not.toContain("sendableOnly");
     }
   });
 });
 
 describe("the RPC fragment, and why it is a fragment", () => {
-  it("omits the key entirely when off", () => {
+  it("omits the key entirely when no vendor was asked for, the flag included", () => {
     // Including p_sources (even null) against the pre-migration SQL matches no
-    // signature and PostgREST 404s the WHOLE search. Absence is the deploy-
-    // window tolerance: only the toggle itself needs the migration.
-    expect(sendableSourcesParam({ sendableOnly: false })).toEqual({});
-    expect("p_sources" in sendableSourcesParam({ sendableOnly: false })).toBe(false);
+    // signature and PostgREST 404s the WHOLE search.
+    expect(vendorSourcesParam(norm({}))).toEqual({});
+    expect(vendorSourcesParam(norm({ sendableOnly: true }))).toEqual({});
+    expect("p_sources" in vendorSourcesParam(norm({ sendableOnly: true }))).toBe(false);
   });
 
-  it("carries the mirror's vendors when on", () => {
-    expect(sendableSourcesParam({ sendableOnly: true })).toEqual({ p_sources: [...SENDABLE_VENDORS] });
-  });
-
-  it("hands out a copy, not the shared constant", () => {
-    const a = sendableSourcesParam({ sendableOnly: true }) as { p_sources: string[] };
-    const b = sendableSourcesParam({ sendableOnly: true }) as { p_sources: string[] };
-    expect(a.p_sources).not.toBe(b.p_sources);
+  it("carries the vendors a caller did ask for", () => {
+    expect(vendorSourcesParam({ vendors: ["greenhouse", "lever"] })).toEqual({ p_sources: ["greenhouse", "lever"] });
   });
 });
 
 describe("every call site, because there are four", () => {
-  it("the direct query filters on source from the same mirror", () => {
-    expect(board).toMatch(/if \(applied\.sendableOnly\) q = q\.in\("source", \[\.\.\.SENDABLE_VENDORS\]\)/);
+  it("the direct query has no agent-ready branch left", () => {
+    expect(board).not.toMatch(/applied\.sendableOnly/);
+    expect(board).not.toMatch(/q = q\.in\("source", \[\.\.\.SENDABLE_VENDORS\]\)/);
   });
 
   it("all three RPC bodies spread the fragment", () => {
     // Asserts the PROPERTY, not a count. This hardcoded the number of
     // search_jobs call sites, so adding a legitimate one — the clustering
-    // top-up on the ranked path — failed a guard about sendable sources
+    // top-up on the ranked path — failed a guard about vendor sources
     // that the new call actually satisfies. Every call site must spread the
     // fragment; how many there are is not the contract.
     const calls = (board.match(/client\.rpc\("search_jobs", \{/g) ?? []).length;
-    const withFragment = (board.match(/sendableSourcesParam\(applied\)/g) ?? []).length;
+    const withFragment = (board.match(/vendorSourcesParam\(applied\)/g) ?? []).length;
     expect(calls, "guard would be vacuous with no search_jobs calls").toBeGreaterThanOrEqual(2);
-    expect(withFragment, `a search_jobs call site omits sendableSourcesParam(applied)`).toBeGreaterThanOrEqual(calls);
+    expect(withFragment, `a search_jobs call site omits vendorSourcesParam(applied)`).toBeGreaterThanOrEqual(calls);
   });
 
   it("never sorts by sendability", () => {
@@ -131,22 +130,16 @@ describe("the SQL took the list as a parameter", () => {
   });
 });
 
-describe("the self-check knows the new filter", () => {
-  const base: AppliedFilters = norm({});
+describe("the self-check no longer knows the retired filter", () => {
   const row = (source: string, category = "engineering") => ({ source, category, token: "t" });
 
-  it("flags a walled-vendor row under the filter", () => {
-    const v = filterViolations([row("workday")], { ...base, sendableOnly: true });
-    expect(v.some((x) => x.field === "sendableOnly")).toBe(true);
+  it("a row from a vendor the agent never drove is no violation, even on a request carrying the flag", () => {
+    const applied: AppliedFilters = norm({ sendableOnly: true });
+    expect(filterViolations([row("workday")], applied)).toEqual([]);
   });
 
-  it("passes a drivable row", () => {
-    const v = filterViolations([row(SENDABLE_VENDORS[0])], { ...base, sendableOnly: true });
-    expect(v).toEqual([]);
-  });
-
-  it("says nothing when the filter is off", () => {
-    expect(filterViolations([row("workday")], base)).toEqual([]);
+  it("says nothing when the flag was not sent", () => {
+    expect(filterViolations([row("workday")], norm({}))).toEqual([]);
   });
 });
 
@@ -177,11 +170,9 @@ describe("REGRESSION: the opt-in's own rows are not violations", () => {
 });
 
 describe("the board's side of the filter is retired with the apply agent", () => {
-  // The server keeps the predicate and its fence (above and below): a search
-  // saved with it still narrows in the nightly digest. The board stopped
-  // offering it when the owner retired the server-side apply agent
-  // (2026-10-11; pass B, 2026-10-12): applying happens through people's own
-  // AIs, so no board filter narrows to the forms that agent could drive.
+  // The board stopped offering it when the owner retired the server-side apply
+  // agent (2026-10-11; pass B, 2026-10-12): applying happens through people's
+  // own AIs, so no board filter narrows to the forms that agent could drive.
   const code = jobs.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 
   it("the board neither reads nor writes the parameter", () => {
@@ -198,28 +189,7 @@ describe("the board's side of the filter is retired with the apply agent", () =>
   });
 });
 
-describe("the agent filter is inside the never-silently-dropped fence", () => {
-  it("names sendableOnly in ignoredFilters when it is not a boolean", () => {
-    // PROVEN LIVE on 2026-08-17 against the deployed build:
-    //   {"action":"list","sendableOnly":"true","limit":25}
-    //     -> total 598,066, ignoredFilters ABSENT, 0 of 25 rows sendable
-    //   {"action":"list","remote":"true","limit":5}
-    //     -> total 598,066, ignoredFilters ["remote"]
-    // Same failure shape, one named and one silent — and the silent one gates
-    // the $99/mo product. ~16x over-serve (36,489 sendable rows vs 600,803).
-    for (const bogus of ["true", 1, {}, []]) {
-      const { applied, ignored } = normalizeFilters({ sendableOnly: bogus } as never, 15);
-      expect(applied.sendableOnly, `${JSON.stringify(bogus)} must not enable the filter`).toBe(false);
-      expect(ignored, `${JSON.stringify(bogus)} must be REPORTED, not dropped in silence`).toContain("sendableOnly");
-    }
-  });
-
-  it("leaves a real boolean alone", () => {
-    expect(normalizeFilters({ sendableOnly: true } as never, 15).ignored).not.toContain("sendableOnly");
-    expect(normalizeFilters({ sendableOnly: false } as never, 15).ignored).not.toContain("sendableOnly");
-    expect(normalizeFilters({} as never, 15).ignored).not.toContain("sendableOnly");
-  });
-
+describe("the rescue tiers' gate", () => {
   it("derives filtersActive mechanically, so a new filter cannot be forgotten", () => {
     // The rescue tiers (fuzzy, semantic, fuzzy-augmentation) stand down when a
     // filter is active, because none of those RPCs takes filter params. That

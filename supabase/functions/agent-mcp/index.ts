@@ -340,7 +340,8 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
 // 2026-10-11.37 (the merge recheck, 2026-10-25): companiesUnresolved also names a name held because its one exact match is a staffing agency's board or has under 10 open roles, and the guide says to ask before using a held candidate.
 // 2026-10-11.38 (recheck 3, 2026-10-26): a name is held only when its one exact match has under 10 open roles, never because the catalogue labels the board an agency's, and a held name is one the board carries; recheckedAt and get_job say the stamp is when the board last read the employer's feed, which may not have included the posting.
 // 2026-11-02.1 (board-stream round, 2026-11-01): a country word inside another place is not that country (S13-041, query-place.ts countryOf over _shared/work-countries.ts countryMentions); the location argument still goes to the board as typed (S9-002's country and remote reading measured and declined: it lost rows main found, n1461); the keyless page cap holds whatever credential failed (S13-103, answerUnkeyed); check_jobs_open's basis says open is get_job's row test only when the board's exists answer names that test (S13-076), and the weaker sentence otherwise.
-const FN_BUILD = "agent-mcp.2026-11-02.1";
+// 2026-11-03.1 (audit-rest held items, 2026-11-04): no per-person hash in the log, and a ChatGPT call's failure logs no error text (S13-104); a claimed 50% alert is given back unless notify-owner mailed it (S13-040); agentReadyOnly reaches the board as its vendor list (S13-118).
+const FN_BUILD = "agent-mcp.2026-11-03.1";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -2445,6 +2446,22 @@ function searchBody(args: Record<string, unknown>): Record<string, unknown> {
     }
     postedAfter = new Date(raw).toISOString();
   }
+  // agentReadyOnly: undeclared since the apply agent was retired (its schema
+  // said "jobs the agent can submit to"); still honoured for an old client, as
+  // the vendor filter it always was. The board itself reads no such flag since
+  // .101 (S13-118), so it travels as the vendor list.
+  let vendor = args.vendor ? String(args.vendor) : "";
+  if (args.agentReadyOnly === true) {
+    const asked = vendor ? vendor.split(",").map((v) => v.trim().toLowerCase()) : SENDABLE_VENDORS;
+    const both = asked.filter((v) => SENDABLE_VENDORS.includes(v));
+    if (!both.length) {
+      throw new ToolArgumentError(
+        `agentReadyOnly narrows to ${SENDABLE_VENDORS.join(", ")}, and vendor ${JSON.stringify(vendor)} is none of them, so no posting can match.`,
+        "Drop agentReadyOnly or the vendor.",
+      );
+    }
+    vendor = both.join(",");
+  }
   return {
     action: "list", limit, includeFacets: false,
     // EVERY POSTING, NOT ONE CARD PER TITLE (S8-029): the board folds an
@@ -2473,12 +2490,8 @@ function searchBody(args: Record<string, unknown>): Record<string, unknown> {
     ...(args.hasStatedPay === true ? { hasStatedPay: true } : {}),
     ...(args.payBasis === "hourly" || args.payBasis === "salaried" ? { payBasis: String(args.payBasis) } : {}),
     ...(maxYears !== undefined ? { maxYears } : {}),
-    ...(args.vendor ? { vendor: String(args.vendor) } : {}),
+    ...(vendor ? { vendor } : {}),
     ...(args.excludeAgencies === true ? { excludeAgencies: true } : {}),
-    // Undeclared since the apply agent was retired (its schema said "jobs the
-    // agent can submit to"); still honoured for an old client, as the
-    // board's own vendor filter it always was.
-    ...(args.agentReadyOnly === true ? { sendableOnly: true } : {}),
     ...(args.sort === "newest" ? { sort: "newest" } : args.sort === "salary" ? { sort: "salary" } : {}),
     ...(offset !== undefined && offset > 0 ? { offset } : {}),
   };
@@ -2715,7 +2728,7 @@ async function runGetJobs(args: Record<string, unknown>, ctx: Ctx = KEYED_CTX): 
       } catch (e) {
         // ONE BAD ID MUST NOT COST THE OTHERS. The detail stays server-side;
         // the agent gets the id and a reason it can act on.
-        console.error(`[AGENT-MCP] get_jobs detail failed for ${id}:`, String((e as Error)?.message ?? e).slice(0, 200));
+        console.error(`[AGENT-MCP] get_jobs detail failed${ctx.noLog ? "" : ` for ${id}`}:`, ctx.noLog ? String((e as Error)?.name ?? "Error") : String((e as Error)?.message ?? e).slice(0, 200));
         return { ok: false as const, id, reason: "error" as const };
       }
     }));
@@ -4113,23 +4126,48 @@ function countCall(client: SupabaseClient, host: Partition, surface: "keyless" |
  * share per day across every isolate, and mails the owner through
  * notify-owner, the counted door. Remembered per isolate so a busy share asks
  * the database once.
+ *
+ * A CLAIM STANDS ONLY FOR A NOTE THAT WAS MAILED (S13-040). A refusal, a
+ * rate-capped door, a failed send or a call that never arrived gives the claim
+ * back, and this isolate asks again once ALERT_RETRY_MS has passed, so a day
+ * whose first note failed is not a silent day and a down mailer is not asked
+ * on every keyless call.
  */
-const alertsClaimed = new Set<string>();
+const ALERT_RETRY_MS = 10 * 60_000;
+/** Per isolate, per day and share: when this isolate may ask again. A claim that stands, or another isolate's, never expires. */
+const alertsClaimed = new Map<string, number>();
 function maybeAlert(client: SupabaseClient, share: string, used: number, cap: number): void {
   if (!(cap > 0) || used * 2 < cap) return;
-  const memo = `${new Date().toISOString().slice(0, 10)}:${share}`;
-  if (alertsClaimed.has(memo)) return;
-  alertsClaimed.add(memo);
+  const day = new Date().toISOString().slice(0, 10);
+  const memo = `${day}:${share}`;
+  if ((alertsClaimed.get(memo) ?? 0) > Date.now()) return;
+  alertsClaimed.set(memo, Number.POSITIVE_INFINITY);
   background((async () => {
     const { data, error } = await client.rpc("mcp_allowance_alert_claim", { p_share: share, p_used: used, p_cap: cap });
+    if (error) alertsClaimed.set(memo, Date.now() + ALERT_RETRY_MS);
     if (error || data !== true) return;
-    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/notify-owner`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, apikey: key },
-      body: JSON.stringify({ type: "allowance", share, used, cap }),
-    });
-    console.log(`[AGENT-MCP] keyless allowance alert: ${share} at ${used} of ${cap} (owner note ${res.status})`);
+    let answer = "not sent";
+    let mailed = false;
+    try {
+      const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+      const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/notify-owner`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, apikey: key },
+        body: JSON.stringify({ type: "allowance", share, used, cap }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      answer = String(res.status);
+      // 200 is not the proof: a rate-capped door answers 200 {skipped}, and only {success:true} went out.
+      mailed = res.ok && (await res.json().catch(() => null) as { success?: unknown } | null)?.success === true;
+      if (!res.bodyUsed) await res.body?.cancel();
+    } catch (e) {
+      answer = String((e as Error)?.name ?? "failed");
+    }
+    console.log(`[AGENT-MCP] keyless allowance alert: ${share} at ${used} of ${cap} (owner note ${answer}${mailed ? "" : ", claim given back"})`);
+    if (mailed) return;
+    alertsClaimed.set(memo, Date.now() + ALERT_RETRY_MS);
+    const { error: backErr } = await client.from("mcp_allowance_alerts").delete().eq("day", day).eq("share", share.slice(0, 64));
+    if (backErr) console.error("[AGENT-MCP] keyless allowance claim not given back:", String(backErr.message ?? "").slice(0, 160));
   })());
 }
 
@@ -4306,9 +4344,9 @@ async function answerUnkeyed(
     // A ChatGPT caller stamps its user as `openai/subject` in _meta. It keys
     // that user's own bucket only on a call from OpenAI's published egress;
     // from anywhere else it is the caller's own word and keys nothing (the
-    // hash above is made only for a ChatGPT host). Logged as the day's keyed
-    // hash and alone: never beside an address.
-    if (subject) console.log(`[AGENT-MCP] keyless subject ${subjectHash} (${toolName})`);
+    // hash above is made only for a ChatGPT host). The hash is never logged:
+    // the Privacy page says it is gone when its day ends, and a log outlives
+    // the day (S13-104).
     // Measurement for a later claude.ai-versus-API sub-share: the user agent
     // of calls from Anthropic's range. A hint, never a credential.
     if (host === "claude") console.log(`[AGENT-MCP] claude-range ${toolName} ua=${(req.headers.get("user-agent") ?? "").slice(0, 80)}`);
@@ -4922,7 +4960,8 @@ Deno.serve(async (req) => {
     }
     // A tool failure is a RESULT with isError, not a protocol error. The
     // DETAILED error stays server-side; the client gets a generic line.
-    console.error(`[AGENT-MCP] tool ${toolName} failed:`, String((e as Error)?.message ?? e).slice(0, 300));
+    // A ChatGPT search reaches no log line (S13-104), and an error's text can quote what it was asked.
+    console.error(`[AGENT-MCP] tool ${toolName} failed:`, ctx.noLog ? String((e as Error)?.name ?? "Error") : String((e as Error)?.message ?? e).slice(0, 300));
     return json(rpcResult(id, toolErr(`The ${toolName} tool hit an internal error. Try again shortly.`)), 200, rateHeaders);
   }
 });
