@@ -8,6 +8,86 @@ earlier are still in `index.ts` around the constant. New notes go here, newest f
 `BUILD_VERSION` itself still moves with every deploy, and `src/test/build-version-guard.test.ts`
 still pins it.
 
+## 2026-09-09.101
+
+AUDIT-REST (branch fix/audit-rest, merging fix/audit-rest-money, -pages, -abuse, -account, -held-board, -held-mail and -held-pages, on deployed main c4a29736, 2026-11-04). This closes the 57 items of the 2026-10-31 audit that no other round owned. 48 landed in the first pass, with a review and an independent recheck. The items that pass held because the free-scan and board-stream rounds were editing their files were built after those rounds reached main. S12-019 stays with its own salary project, and S9-001 stays open on one path, below.
+
+Ships:
+- job-board 2026-09-09.101.
+- 60 functions at 2026-11-03.1. Their own changes: admin-regenerate-delivery, agent-access, agent-connect, agent-mcp, agent-pass-status, analyze-resume, api-key-request, check-subscription, company-claim, create-agent-checkout, create-checkout, create-pass-checkout, create-portal-session, create-product-checkout, create-subscription-checkout, create-test-coupon, get-analytics, mail-watch, notify-owner, parse-spreadsheet, public-api, reconcile-stripe, save-lead, scan-heartbeat, send-analysis-email, send-market-pulse, send-scan-report, send-search-digest, shortlist-evaluate, stripe-webhook, verify-product-purchase, withdraw-subscription.
+- Through _shared/model-spend-gate.ts only, one S9-001 line: analyze-linkedin-profile, application-fit, free-keyword-scan, free-keyword-scan-stream, generate-application-answers, generate-apply-package, generate-ats-defense, generate-career-path, generate-career-snapshot, generate-cover-letter, generate-cover-letter-stream, generate-elevator-pitch, generate-freelance-boost, generate-graduate-gameplan, generate-interview-coach, generate-keyword-fix, generate-premium-package, generate-premium-package-stream, generate-product-preview, generate-recruiter-view, generate-resume-roast, generate-summary, generate-tailored-resume, import-freelance-profile, job-fit, nl-search, parse-resume-structured, test-ai-fallback.
+- Fourteen migrations, 20261103100000 to 20261103240000.
+- A frontend publish, which the merge into main makes by itself.
+- Generate the deploy message over the whole branch at the merge commit (scripts/deploy-ledger.mjs --message). On the merge day src/config/seller.ts PRIVACY_LAST_UPDATED must read that day (UTC), or the ledger refuses the message; it reads 2026-11-04 now.
+
+APPLY ORDER. All fourteen go in step 1, before the functions, in filename order. None waits for a function.
+- 20261103100000 an affiliate buying under an alias of their own address earns nothing.
+- 20261103110000 a retired pass is not started by a search.
+- 20261103120000 a cron whose vault secret is gone is seen. mail-watch reads its absence as "not judged".
+- 20261103130000 a share link reads an analysis and only its buyer deletes it. The page is published ahead of it: until it applies, a buyer's delete says it failed and deletes nothing, so it stays in step 1. No function calls it.
+- 20261103160000 a connector token is not a website session. It rewrites the access-token hook, which is off today. A website sign-in comes back exactly as it went in, and any failure on that path returns the event as received.
+- 20261103161000 a connector token reaches no row. A restrictive policy on every table a policy opens to the signed-in role, and on storage.objects. A website session carries no client_id, so it reads and writes what it did. CREATE POLICY takes ACCESS EXCLUSIVE and the file is one transaction, so each table waits at most 2 s for its lock and the board's busy tables go first. A table it cannot lock is left to the hook with a NOTICE. A person's own table left without the policy stops the apply, and the file is safe to re-run.
+- 20261103165000 a mail the provider refused hands its count back (mail_door_give). 20261103170000 a key link the provider refused is not counted as mailed. Both callers are best effort, so a caller that serves first keeps today's counts.
+- 20261103190000 the scan total counts completed analyses only, so the homepage, /trust and /methodology figure gets lower.
+- 20261103191000 a mail remembers the language it was asked in (market_pulse_subscribers.locale). 20261103195000 a claim mail is written in the language the claim was made in (company_claims.locale). Each function reads its column on its own, so a function that serves first only stays English.
+- 20261103220000 a stored search no longer asks for the retired agent-ready filter. Any order.
+- 20261103221000 the scheduler, not an anonymous reader, wakes a dead chain: cron job-board-upkeep at 2-59/5. BEFORE job-board: under .100 the cron gets a 400 and writes nothing while .100's status still runs the watchdog; a .101 without this file has no watchdog until it arrives.
+- 20261103240000 a saved search remembers the language it was switched on in (user_job_searches.locale, filled by a trigger from the browser's Accept-Language). Any order. NULL is English. Not proven: that Accept-Language reaches PostgREST's request.headers through Lovable Cloud. If it does not, digests stay English with no failure. Read after a few days: select locale, count(*) from user_job_searches group by 1.
+
+Deploy agent-mcp and public-api with job-board. Their vendor list works on .100. A .101 under the old builds widens agentReadyOnly and agent_ready_only to the whole board, with the flag named, until they land.
+
+FRONTEND FIRST. The merge publishes the pages ahead of the functions and migrations, and every page works against what is live on c4a29736:
+- The Success page sends '<share id>:<purchase reference>'. The live RPC refuses that format, so a delete says it failed until 20261103130000 applies. Nothing is lost.
+- The report form and the fix-plan button send `language`. The live send-scan-report ignores it and the scanner's seal does not cover it, so those mails stay in the browser's language until it deploys.
+- The Explore chip for the retired filter is gone a little before job-board stops honouring it.
+- ProductSuccess reads the live 400 and the new 503 alike. The Pro card reads check-subscription's linkPending, which is live.
+- The homepage's cleared posting box, the report with no posting, and Prepare's kept letter and résumé need no new function: store_temp_resume takes a null posting and generate-tailored-resume takes no description.
+- The fonts move to /fonts/ with the publish. Section 98-seo-speed accepts both.
+
+FIRST PASS, 48 ITEMS (first-pass commits fix/audit-rest-money, -pages, -abuse, -account).
+- Money (S13-028, -043, -059, -060, -061, -062, -063, -069, -074, -081, -096, -109). A paid order the webhook missed is re-delivered by reconcile-stripe as a signed checkout.session.completed event, once a fortnight per session and 10 a run. A decline mails once per payment intent, an abandoned checkout mails nobody, and an affiliate is mailed the commission the conversion row holds. The RU/NG/PK header block is gone; it read headers the platform never sends. A test coupon without a code gets an 80-bit random one. mail-watch judges each order by its own mail and rings for any failing or vault-less cron. scan-heartbeat writes its row and alerts within its own 115 s budget.
+- Pages (S13-021, -026, -027, -048, -051, -053, -054, -055, -079, -101, -123, -125, -128, -130, S12-051, half of S12-052, FA-1, FA-2). The Full Analysis report shows every item and fits narrow screens. Only the buyer can delete an analysis. A past buyer's refused link says why. The analysis mail is in the buyer's language, with the page's grade bands. Interview Coach keeps a draft per question. Prepare keeps drafted answers per job. The owner's regeneration walks the shared model chain and mails only what a model wrote.
+- Abuse (S13-071, -072, -073, -085, -091, S13-066, half of S13-098, S9-001's layers). Spreadsheet uploads have a 10 MB cap, a 20-an-hour limit and a 15 s clock on the Sheets fetch. The claim domain proof uses the Public Suffix List. A refused key or claim mail hands its count back. A shortlist blocklist entry is a phrase, never a regex. CSV exports neutralise formulas.
+- Account (S12-011, S12-078, S12-185, S13-070, S13-084, -086, -087, -093, -100, -105, half of S13-083, the pulse half of S13-102, the badge half of S13-118). Fonts are self-hosted. A Google sign-up records the Terms version it was shown. get-analytics reads the newest days of a busy range. /agents says the read tools need no key. The gap report re-measures fit against the matching résumé. An address with an unlinked plan is shown it, with how to link it; the checkout answers alreadySubscribed there anyway, so no sale is lost.
+- The review's 23 findings were answered on the branch, each with a test that failed first (migration 20261103195000, verify section 99zzzz-audit-rest-fixer.sh).
+
+HELD ITEMS, BUILT NOW.
+- S13-104. With noLog, no query text or error text reaches a log line, on any path. agent-mcp logs no per-person hash on any call, and a ChatGPT tool failure logs the error's kind. src/config/mcp-privacy.ts needs no edit: its hash row becomes true of logs from this deploy.
+- S13-114. An anonymous status answered from the memo costs no database. One that computes is counted and refusable, reports chainWatchdog readOnly true, and writes and kicks nothing. Upkeep (x-email-cron or the service role, 403 otherwise) runs the watchdog and stores date_coverage_cache at most every 15 minutes, keeping the last good copy on an empty read, and stamps status.boardUpkeep. status is in METERED_ACTIONS, not BUDGETED_ACTIONS, so no pass is asked for it. scan-heartbeat's status read stays anonymous and counted: 144 a day against caps in the millions.
+- S13-118. The flag narrows nothing and is named in ignoredFilters. 20261103220000 strips the stored key. /v1 and the connector send the vendor list. The digest neither sends nor links it. The Explore chip is gone.
+- S13-040. agent-mcp keeps a claim only for a note notify-owner says it mailed. Otherwise the row is deleted and the isolate asks again after 10 minutes.
+- S13-083. A zero-result alert says "We found it" at its first real match, read from search_digest_sent. A daily search mailed only before 2026-10-08 gets it once.
+- S13-102. The report mail, the four fix-plan mails and the digest come from copy tables in all 9 languages. Report and drip take the page's language, then Accept-Language, then English. The digest takes the search's locale. The scanner's sealed sentences stay in the language the scan wrote them in. No native speaker reviewed the translations.
+- S13-098. A send the provider refused answers 502 and hands back the recipient, report and ceiling counts. The network's count stays. A suppressed address keeps its count, so that answer still looks like a mail.
+- S13-067. One address alerts the owner once a day, all addresses 20 an hour, with one notice a day past that. Every lead is still saved. A counter that cannot answer leaves the alert as today. The lead form's 10-an-hour limit now counts a /24 or /48 network, and the lookup waits for validation. Declined from the register: refusing when the rate RPC errors, and alerting only on a new row.
+- S13-068. Unsubscribing keeps a row already there, so a bounce or complaint is never lowered.
+- reconcile-stripe has a clock. Each list call waits 15 s with one retry, paging stops at 45 s and keeps what it read, no re-delivery starts past 90 s and none runs past 105 s. A session left over is sent by the next run and said in the mail. job_board_meta k=reconcile_stripe_run gains deferred and listCut.
+- S13-039. The uploader's two $5 presses read the box: an empty box or an import failure sentence buys against no posting, and a removed posting does not return on reload.
+- S13-124. With no job title and no posting text the tailored résumé card is not offered, and no title or description is invented. The $5 and Pro controls are untouched.
+- S12-052. A letter or tailored résumé already drafted for that job, résumé, posting text and language reopens without another draft, in memory only, for at most 20 jobs.
+- S9-001's spend-gate line. provenCaller reads a client_id as no one, so a connector token is counted as a stranger by address, hooked or not.
+
+STILL OPEN.
+- S9-001 on Supabase Auth's own /auth/v1/user. GoTrue checks a token's signature, sub and session, never its aud, role or client_id, so a connector token can read the account there and PUT an email or password change. The hook covers the database, the restrictive policy covers RLS tables only, and neither reaches that path.
+- S12-019 (_shared/salary-extract.ts): its own salary project, under the corpus rule. No change here.
+
+OWNER STEPS.
+- S9-001: keep the Supabase OAuth server OFF until verify line S passes with RB_CONNECTOR_TOKEN (a token minted for a test client). While the server is off, line S is INFO; once its discovery answers 200 unprobed, it is FAIL. Enable the access-token hook (Authentication > Hooks > Custom Access Token, public.custom_access_token_hook) before the OAuth server.
+- S13-061: a refusal by region, if wanted, is a Stripe Radar rule. No header refuses a sale now.
+- S12-011: remove Lovable's /~flock.js (step D5).
+- S13-043: the $5 rehearsal needs STRIPE_TEST_SECRET_KEY (sk_test_) and STRIPE_TEST_WEBHOOK_SECRET.
+- S13-066: parse-spreadsheet still runs SheetJS 0.18.5. Vendoring 0.20.3 is the owner's choice.
+- S13-063: the unverified affiliate signup.
+
+Expect after deploy:
+- mail-watch's first R10 mail if any cron fails today.
+- Daily searches with nothing in search_digest_sent get "We found it" on their next mail.
+- Digests of existing searches stay English until their owner's client next writes the row. The site's picker language is not read for digests: the optional Jobs.tsx locale write was not made.
+
+UPLOAD. job-board plus all of _shared is 4,418,343 raw bytes against the 4,450,000 guard: 31,657 spare, 21,657 under the 4,440,000 line. No comment moved. PENDING_SHARED lists no round in flight.
+
+VERIFY. scripts/verify-deploy.d/99zzzz-audit-rest-money.sh, -pages, -abuse, -account, -fixer, -held-board, -held-mail and -held-pages, read-only, plus 98-seo-speed.sh (accepts /fonts/). The build lines, page-chunk lines and column lines show this deploy landed. G2 in -abuse and section 98-seo-speed pass before this deploy as well, and say so. reconcile-stripe's own tell is deferred and listCut in its run stamp after its next run. Not provable without a purchase, a model call or a sent mail: the $5 press (S13-039), the mails' languages on a real send, and a regenerated delivery. The suite proves those.
+
 ## 2026-09-09.100
 
 BOARD STREAM (branch fix/board-stream on main b929839e, merged with main 21518390, 2026-11-01; the board-stream groups of the 2026-10-31 bug audit, then a review of the merge whose 14 findings are answered in REVIEW below, then a recheck of those fixes whose 9 findings are answered in RECHECK). It merges fix/bs-search (4a094a32), fix/bs-fields (9d0f00b7), fix/bs-reach (91dcc00d), fix/bs-lifecycle (67c880d9), fix/bs-ui (73dc7d57) and fix/bs-mcp (fad6003e). Ledger reservation `board-stream`:

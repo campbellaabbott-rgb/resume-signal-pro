@@ -69,7 +69,9 @@ describe("the wave-4 sections ask for every wave-4 build", () => {
         unasked.push(`${fn} carries ${head.date}.${head.n}; the wave-4 sections ask for ${asks.map((a) => `${a.date}.${a.n}`).join(", ") || "nothing"}`);
       }
     }
-    expect(wave4, "no wave-4 build was found: the date filter is wrong").toBeGreaterThanOrEqual(10);
+    // Each later round re-stamps some of these and takes them out of this count
+    // (audit-rest left 8), so the floor asks only that the filter finds any.
+    expect(wave4, "no wave-4 build was found: the date filter is wrong").toBeGreaterThan(0);
     expect(unasked, unasked.join("\n")).toEqual([]);
   });
 

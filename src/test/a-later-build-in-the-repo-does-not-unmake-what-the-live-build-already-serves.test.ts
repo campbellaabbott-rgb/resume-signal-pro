@@ -94,13 +94,16 @@ describe("datedAtDeploy: a date the live build made history stays history", () =
     }
   });
 
-  it("the real policy: the Privacy page's two dates are history with .96 live, so no draft says to re-date them", () => {
+  it("the real policy: the two dates job-board .93 made history stay history with .96 live, and only audit-rest's .101 re-date is due", () => {
     const real = L.datedAtDeploy(policy, AHEAD(), readRepo, "2026-11-02");
     expect(real.errors).toEqual([]);
-    expect(real.checks.length).toBe(2);
-    expect(real.checks.every((c: { due: boolean }) => !c.due)).toBe(true);
-    const msg: string[] = L.lovableMessage({ head: "abc12345", draftOf: "fix/post-deploy", phases: L.migrationPhases([], {}, []), toDeploy: [], dated: real.checks });
+    type Check = { constant: string; due: boolean; need: string };
+    const at93 = real.checks.filter((c: Check) => c.need === "job-board.2026-09-09.93");
+    expect(at93.length).toBe(2);
+    expect(at93.every((c: Check) => !c.due)).toBe(true);
+    const msg: string[] = L.lovableMessage({ head: "abc12345", draftOf: "fix/post-deploy", phases: L.migrationPhases([], {}, []), toDeploy: [], dated: at93 });
     expect(msg.join("\n")).not.toMatch(/On the merge day, before merging, set/);
+    expect(real.checks.filter((c: Check) => c.due).map((c: Check) => `${c.constant}@${c.need}`)).toEqual(["PRIVACY_LAST_UPDATED@job-board.2026-09-09.101"]);
   });
 });
 

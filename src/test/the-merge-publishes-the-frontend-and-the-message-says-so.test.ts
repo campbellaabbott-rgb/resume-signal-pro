@@ -170,13 +170,13 @@ describe("a constant dated at the deploy is checked against the day the message 
     expect(msg.join("\n")).toMatch(/On the merge day, before merging, set src\/config\/a\.ts A_DAY \(it reads 2026-10-31\) to that day \(UTC\): the deploy message refuses another day while job-board is older than job-board\.2026-09-09\.93 \(the page names the day\)\./);
   });
 
-  it("the real policy dates the Privacy page and the connector log by job-board .93, and both read the same day", () => {
+  it("the real policy dates the Privacy page and the connector log by job-board .93, and the Privacy page again by .101", () => {
     const real = L.datedAtDeploy(policy, rows(LIVE), (f: string) => { try { return readFileSync(resolve(ROOT, f), "utf8"); } catch { return null; } }, "2026-10-31");
     expect(real.errors).toEqual([]);
-    expect(real.checks.map((c: { file: string; constant: string }) => `${c.file}#${c.constant}`).sort()).toEqual([
-      "src/config/mcp-privacy.ts#CONNECTOR_SEARCH_LOG_CHANGED",
-      "src/config/seller.ts#PRIVACY_LAST_UPDATED",
+    expect(real.checks.map((c: { file: string; constant: string; need: string }) => `${c.file}#${c.constant}@${c.need}`).sort()).toEqual([
+      "src/config/mcp-privacy.ts#CONNECTOR_SEARCH_LOG_CHANGED@job-board.2026-09-09.93",
+      "src/config/seller.ts#PRIVACY_LAST_UPDATED@job-board.2026-09-09.101",
+      "src/config/seller.ts#PRIVACY_LAST_UPDATED@job-board.2026-09-09.93",
     ]);
-    expect(new Set(real.checks.map((c: { value: string }) => c.value)).size).toBe(1);
   });
 });
