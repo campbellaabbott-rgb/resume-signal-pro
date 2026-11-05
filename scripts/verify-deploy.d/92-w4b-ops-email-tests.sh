@@ -35,8 +35,11 @@ console.log((age!==null&&age<=30?"PASS":"FAIL")+"  the heartbeat last ran "+(age
 // read PASS. down and unhealthy are exact, so degraded, which any one optional
 // check sets, cannot trip this. success_rate cannot see the AI chain failing: a
 // fallback scan is logged completed, so the scan time is the only witness, 25-30 s
-// when the model answers and 1-2 s when it does not. The bars sit far from both,
-// over the hour p50, so one odd scan cannot trip them, and a mixed hour is INFO.
+// when the model answers and 1-2 s when it fails fast. The bars sit far from both,
+// over the hour p50, so one odd scan cannot trip them, and a mixed hour is INFO. A
+// chain that times out is slow too, and also falls back and logs completed
+// (free-keyword-scan: 55 s an attempt, 85 s in all), so a p50 past 50 s is not
+// judged, and the PASS says only that the scans did not fail fast.
 const OWNER="OWNER: press the heartbeat button on /scan-metrics, then check the Lovable credit balance and auto top-up";
 const hb=String(r.last_heartbeat_status??"");
 if(hb==="down"||hb==="unhealthy")console.log("FAIL  the last heartbeat says status "+hb+" ("+JSON.stringify(issues).slice(0,200)+"). "+OWNER);
@@ -47,7 +50,8 @@ else{const n=Number(br.total_scans)||0,p=Number(br.p50_duration_ms);const sec=Nu
   if(!n||br.p50_duration_ms==null||!Number.isFinite(p))console.log("INFO  no heartbeat scan in the last hour, so the AI chain is not judged");
   else if(p<=5000)console.log("FAIL  the heartbeat scans took "+sec+" s at p50 over "+n+" in the last hour, not the 25-30 s of a model answer: the AI model chain is failing fast and scans fall back to the rule-based report, while success_rate reads "+br.success_rate+"% because a fallback is logged completed. "+OWNER);
   else if(p<15000)console.log("INFO  the heartbeat scans took "+sec+" s at p50 over "+n+" in the last hour: a mixed hour, between the 1-2 s of the fallback and the 25-30 s of a model answer, so it is not judged");
-  else console.log("PASS  the heartbeat scans took "+sec+" s at p50 over "+n+" in the last hour: the model answered (a fallback takes 1-2 s, and a bar of 15 s leaves room for a quick model)");}
+  else if(p>50000)console.log("INFO  the heartbeat scans took "+sec+" s at p50 over "+n+" in the last hour, near the 55 s a model attempt may take: a slow model cannot be told from a chain that timed out and fell back to the rule-based report, so it is not judged");
+  else console.log("PASS  the heartbeat scans took "+sec+" s at p50 over "+n+" in the last hour: they did not fail fast (a fast failure falls back in 1-2 s, and a bar of 15 s leaves room for a quick model)");}
 const stale=issues.some((x)=>/^Heartbeat has (not run|never run)/.test(String(x)));
 if(age!==null&&age<=30)console.log((stale?"FAIL":"PASS")+"  get_scan_health_status names no stopped heartbeat while it is running"+(stale?" ("+JSON.stringify(issues).slice(0,200)+")":""));
 const visitorWording=issues.some((x)=>/^(Visitor scan|Every visitor scan|High visitor scan|Heartbeat has)/.test(String(x)));

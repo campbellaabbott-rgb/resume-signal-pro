@@ -128,7 +128,9 @@ const get=async(u)=>{try{const r=await fetch(u);return r.ok?await r.text():""}ca
   if(!ctrl)info("no candidate board is live with no US posting"+(printable?" and a printable cell in the bundle":"")+", so the gate is not judged (20261009160300)");
   else{const c=await R("get_employer_lca_wages",{p_tokens:[ctrl]});
     if(!Array.isArray(c.j))ok(false,"get_employer_lca_wages as anon -> HTTP "+c.status+" "+c.t.slice(0,120));
-    else ok(!!c.j[0]&&c.j[0].ow_soc_code==null,"a board with no live US posting prints no H-1B wage cell ("+ctrl+": 0 US rows of "+ctrlAll+" served"+(printable?", and a printable cell in the bundle":"; its bundle cell not checked, tsx unavailable")+"; it answers "+(c.j[0]&&c.j[0].ow_soc_code?c.j[0].ow_worksite_state+" "+c.j[0].ow_wage_low+"-"+c.j[0].ow_wage_high:"none")+"; 20261009160300)");}
+    else{const dark=!!c.j[0]&&c.j[0].ow_soc_code==null;const said="a board with no live US posting prints no H-1B wage cell ("+ctrl+": 0 US rows of "+ctrlAll+" served"+(printable?", and a printable cell in the bundle":"; its bundle cell not checked, tsx unavailable")+"; it answers "+(c.j[0]&&c.j[0].ow_soc_code?c.j[0].ow_worksite_state+" "+c.j[0].ow_wage_low+"-"+c.j[0].ow_wage_high:"none")+"; 20261009160300)";
+      // A control with no cell of its own answers null whether or not the gate works, so with no reading of the bundle a null is not judged; a lit cell is a FAIL either way.
+      if(printable||!dark)ok(dark,said);else info(said+": not judged");}}
   {const t="generalmotors~wd5~Careers_GM";const c=await R("get_employer_lca_wages",{p_tokens:[t]});
     if(!Array.isArray(c.j))ok(false,"get_employer_lca_wages as anon -> HTTP "+c.status+" "+c.t.slice(0,120));
     else ok(!!c.j[0]&&c.j[0].ow_soc_code!=null,t+(c.j[0]&&c.j[0].ow_soc_code!=null?" answers a wage cell ("+c.j[0].ow_worksite_state+", "+c.j[0].ow_filings_n+" filings): the reader still lights a board that hires in the US, so the nulls above are not a dead reader":" answers no cell: the reader is dark for a board with US postings and a bundle cell, so the nulls above prove nothing"));}

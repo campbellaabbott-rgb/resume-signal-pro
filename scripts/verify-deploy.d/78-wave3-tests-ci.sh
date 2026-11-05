@@ -7,10 +7,13 @@
 #     it, judged from .3: the wave 3 integration build that carries both this
 #     branch's .2 (the header) and wave3/board-data-ingest's .1 (the parsers).
 #     job-fit and application-fit are stamped by wave3/job-board (section 71);
-#   - the board's outside alarm (board-health.yml) parses, and its schedule is
-#     alive: a scheduled run inside a day, because GitHub delivers about 5 of
-#     its 48 slots a day (S12-069, printed as the cadence), and it reads two
-#     fields the board publishes (L12-01);
+#   - the board's outside alarm (board-health.yml) parses: its triggers are
+#     schedule and workflow_dispatch, so a failed push run on main exists only
+#     when GitHub could not read the file, and one newer than the last scheduled
+#     run is a FAIL at once, while the day below would still read alive. Its
+#     schedule is alive: a scheduled run inside a day, because GitHub delivers
+#     about 5 of its 48 slots a day (S12-069, printed as the cadence), and it
+#     reads two fields the board publishes (L12-01);
 #   - CI on main runs every check whatever an earlier one said, runs the Deno
 #     tests and the guards on built output, and its `test` job can pass
 #     (L12-02 interim, L12-04, L12-10, L12-11, S8-130);
@@ -49,7 +52,7 @@ else
   # run's files in place and this section judged CI from them. Every file is
   # removed first, and each read names the run it belongs to.
   rm -f /tmp/vd_78_bh.json /tmp/vd_78_ci.json /tmp/vd_78_bw.json /tmp/vd_78_dep.json /tmp/vd_78_ci_jobs.json /tmp/vd_78_dep.log
-  gh run list --workflow board-health.yml --limit 200 --json event,conclusion,createdAt > /tmp/vd_78_bh.json 2>/dev/null
+  gh run list --workflow board-health.yml --limit 200 --json event,conclusion,createdAt,headBranch > /tmp/vd_78_bh.json 2>/dev/null
   gh run list --workflow ci.yml --branch main --limit 20 --json databaseId,conclusion,createdAt,headSha > /tmp/vd_78_ci.json 2>/dev/null
   gh run list --workflow botwall-sweep.yml --limit 5 --json event,conclusion,createdAt > /tmp/vd_78_bw.json 2>/dev/null
   gh run list --workflow deploy.yml --branch main --limit 1 --json databaseId,conclusion,createdAt > /tmp/vd_78_dep.json 2>/dev/null
@@ -64,7 +67,11 @@ const since=Date.parse(process.env.VD78_SINCE||"");
 const bh=rd("/tmp/vd_78_bh.json")||[];const sched=bh.filter((r)=>r.event==="schedule");
 if(!bh.length)ok(false,"board-health has no runs GitHub can list");
 else{const last=sched[0];const ageMin=last?Math.round((Date.now()-Date.parse(last.createdAt))/60000):null;
-  ok(!!last&&ageMin<=1440,"board-health'"'"'s schedule is alive: "+(last?"latest scheduled run "+last.createdAt+" ("+last.conclusion+"), "+ageMin+" min ago (bar 1440: past it the schedule is dead, not late; the worst gap on record is 623 min)":"no scheduled run listed -- the file on main does not parse, or GitHub disabled the schedule"));
+  const failedPush=bh.find((r)=>r.event==="push"&&r.conclusion==="failure"&&r.headBranch==="main");
+  const lastT=last?Date.parse(last.createdAt):-Infinity;
+  if(last&&Number.isFinite(since)&&lastT<since)info("the newest scheduled run predates the workflow\x27s last change ("+process.env.VD78_SINCE+"), so the file as last changed has not run yet");
+  if(failedPush&&Date.parse(failedPush.createdAt)>lastT&&!(Number.isFinite(since)&&Date.parse(failedPush.createdAt)<since))ok(false,"board-health does not parse on main: a push run failed at "+failedPush.createdAt+(last?", newer than its latest scheduled run "+last.createdAt:", and no scheduled run is listed")+". The workflow has no push trigger, so that run exists only when GitHub could not read the file");
+  else ok(!!last&&ageMin<=1440,"board-health'"'"'s schedule is alive: "+(last?"latest scheduled run "+last.createdAt+" ("+last.conclusion+"), "+ageMin+" min ago (bar 1440: past it the schedule is dead, not late; the worst gap on record is 623 min)":"no scheduled run listed -- the file on main does not parse, or GitHub disabled the schedule"));
   const wk=sched.filter((r)=>Date.now()-Date.parse(r.createdAt)<=7*864e5).map((r)=>Date.parse(r.createdAt));
   const gaps=wk.slice(1).map((t,i)=>(wk[i]-t)/60000);
   if(gaps.length)info("board-health cadence, last 7 days: "+wk.length+" scheduled run(s) of the 336 its cron asks for, worst gap "+Math.round(Math.max(...gaps))+" min, so an outage is first probed hours late (S12-069); only the healthy path has run live: the failure logic is proven against a fake gh, and its label, issue and mail have never fired in production");

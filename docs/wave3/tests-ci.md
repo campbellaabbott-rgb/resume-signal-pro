@@ -207,7 +207,9 @@ nothing to undo in the database.
   on every push that does not break something. Section 78 prints the count.
 - **board-health:** the cron asks every 30 minutes and GitHub delivers about
   five runs a day (section 78 prints the cadence; dead past a day). The first
-  one ever is the proof that the file now parses.
+  one ever is the proof that the file now parses. A failed push run on main
+  newer than the last scheduled run is a FAIL at once: the workflow has no push
+  trigger, so GitHub writes that run only when it cannot read the file.
 - **Deploy verify:** red on every push while production lags main's job-board
   build; green after a re-run once job-board is deployed. A red run naming
   "not a YYYY-MM-DD.N build" means job-board's status changed shape.

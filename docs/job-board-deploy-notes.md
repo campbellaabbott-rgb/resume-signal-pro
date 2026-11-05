@@ -127,6 +127,7 @@ MCP (fix/bs-mcp; n1460-n1463; verify 99zzzz-board-mcp.sh)
 - A place typed as a person's AI types it is read as City, ST (S9-002; job-board query-place.ts cityState).
   - Live .96: "Austin, TX 78701" gave 0 against 96 for "Austin, TX"; "New York NY" gave 0 against 204.
   - A trailing ZIP, a dotted code or a missing comma now reads as the city in that state under all three spellings. locationExpandedFrom says so.
+  - CORRECTION 2026-11-05 (read live on .100): this holds for the location field only. In q a place still needs its comma and no ZIP: "nurse in Austin, TX" 78 and "nurse in New York, NY" 129 (only these answer intentFilters), against 1 each for "nurse in Austin TX", "nurse in New York NY" and "nurse in Austin, TX 78701". The q path is the next job-board round's.
   - Corpus: 886 inputs over 1,755 live rows. 0 rows lost, and 652 added, all in the state read.
 
 INTEGRATION (fix/board-stream)

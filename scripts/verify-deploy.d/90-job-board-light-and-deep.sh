@@ -21,8 +21,10 @@
 # status.lastWrapMin if a later build publishes it; the ledger VD90_WRAPS (default
 # ~/.config/resumebooster/verify-state/cold-wraps.json), which holds a wrap only for
 # the build that ran it and learns one here when the age's stamp moved between two
-# readings close enough that no whole wrap could hide between them (300 min); and
-# failing both the pace of the rotation in progress, which is a pace, never a PASS.
+# readings close enough that no whole wrap could hide between them (300 min), and
+# whose wrap counts for 48 hours, since a reading that old says nothing of the
+# rotation running now; and failing both the pace of the rotation in progress, which
+# is a pace, never a PASS.
 echo "== 90. job-board .90: light re-read in the visit, registry by board, greenhouse streamed light, vendors named, deep lane ahead of base =="
 J '{"action":"status"}' > /tmp/vd_90_status_0.json; date +%s > /tmp/vd_90_status_0.t
 curl -s -m 30 -o /dev/null -D /tmp/vd_90_preflight.txt -X OPTIONS "$B/functions/v1/job-board" -H "x-rb-budget: probe" \
@@ -176,7 +178,7 @@ if(WF&&v90&&Number.isFinite(age)&&S.length){
   WL.lastRead={at:tRead,stamp,build:st.version};
   try{fs.mkdirSync(require("path").dirname(WF),{recursive:true});fs.writeFileSync(WF,JSON.stringify(WL,null,1)+"\n")}catch{}}
 const RULE="past it the written rule is to roll back with DEEP_LANE_TAKE = 0, but the cause is unproven: rotation.ts did not change on .100, and .96 read about 455 and .92 about 386. The next job-board round measures the cursor once a minute for 30 minutes inside a cold phase against the bootstrap drain, then fixes the cause or rewrites this bound on that evidence";
-const pubWrap=Number(st.lastWrapMin);const mine=WL.wraps.filter((w)=>w&&w.build===st.version&&Number.isFinite(Number(w.wrapMin)));const lastW=mine[mine.length-1];
+const pubWrap=Number(st.lastWrapMin);const mine=WL.wraps.filter((w)=>w&&w.build===st.version&&Number.isFinite(Number(w.wrapMin))&&Date.now()-Date.parse(w.endedAt)<=48*3600000);const lastW=mine[mine.length-1];
 const wrapLine=(min,src)=>ok(min<=393,"the last completed cold rotation on "+st.version+" took "+min+" min ("+src+"; want at most 393 = 5h57m + 10%"+(min<=393?"":"; "+RULE)+")");
 if(v90&&Number.isFinite(age)&&Number.isFinite(at)&&age*60000<=Date.now()-at){
   if(age>393)ok(false,"the cold rotation running on "+shortV+" is "+age+" min old (want at most 393 = 5h57m + 10%; "+RULE+")");}
@@ -185,8 +187,8 @@ if(v90&&Number.isFinite(pubWrap)&&pubWrap>0)wrapLine(pubWrap,"status.lastWrapMin
 else if(v90&&lastW)wrapLine(Number(lastW.wrapMin),"ended "+lastW.endedAt+", "+lastW.how);
 else if(v90&&Number.isFinite(age)&&age<=393){
   const N=Number(st.coldBoards)||0,c=Number((st.cursor||{}).cold);
-  if(N>0&&c/N>=0.25){const pace=Math.round(N*age/c);console.log((pace>393?"FAIL":"INFO")+"  no completed wrap is readable, and at the pace so far ("+c+" of "+N+" boards in "+age+" min) this rotation takes "+pace+" min: a pace, not a wrap (want at most 393"+(pace>393?"; "+RULE:"")+")")}
-  else info("no completed wrap is readable and the rotation in progress is too young to pace ("+age+" min, cursor "+c+" of "+N+"), so the 393-minute bound is not judged");}
+  if(N>0&&c/N>=0.25){const pace=Math.round(N*age/c);console.log((pace>393?"FAIL":"INFO")+"  no completed wrap from the last 48 h is readable, and at the pace so far ("+c+" of "+N+" boards in "+age+" min) this rotation takes "+pace+" min: a pace, not a wrap (want at most 393"+(pace>393?"; "+RULE:"")+")")}
+  else info("no completed wrap from the last 48 h is readable and the rotation in progress is too young to pace ("+age+" min, cursor "+c+" of "+N+"), so the 393-minute bound is not judged");}
 // F7: pg against its own feed.
 const P=D.pg||{};
 if(!P.feed||!P.served||P.feed.err||P.served.err||!Array.isArray(P.feed.pos))info("workday:pg~wd5~1000 "+((P.feed&&P.feed.err)||(P.served&&P.served.err)||"unreadable")+" -- cannot judge");

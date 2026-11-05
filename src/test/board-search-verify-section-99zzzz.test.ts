@@ -35,6 +35,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { RING_WINDOW } from "../../supabase/functions/job-board/paging";
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -126,7 +127,7 @@ function routes(o: Over = {}): Route[] {
   const build = o.build === undefined ? "job-board.2026-09-09.100" : o.build;
   const mcp = o.mcp === undefined ? "agent-mcp.2026-11-02.1" : o.mcp;
   const api = o.api === undefined ? "public-api.2026-11-02.1" : o.api;
-  const walk = { 0: page(50, "w0", { nextOffset: 57 }), 57: page(50, "w57", { nextOffset: 109 }), 109: page(50, "w109", { nextOffset: 174 }), 174: page(50, "w174", { nextOffset: 243, ...TOPUP }), ...(o.walk ?? {}) };
+  const walk = { 0: page(50, "w0", { nextOffset: 57 }), 57: page(50, "w57", { nextOffset: 109 }), 109: page(50, "w109", { nextOffset: 174 }), 174: page(50, "w174", { nextOffset: 550, ...TOPUP }), ...(o.walk ?? {}) };
   const others: Record<string, Record<number, string>> = {
     "crew member": { 0: page(60, "crew", { nextOffset: 580, ...TOPUP }), ...(o.walks?.["crew member"] ?? {}) },
     caregiver: { 0: page(60, "care", { nextOffset: 580, ...TOPUP }), ...(o.walks?.caregiver ?? {}) },
@@ -298,13 +299,13 @@ describe("section 99zzzz: the search reads what was typed", () => {
 
   it("walks past a nextOffset of 200: the ring's seam sits later, and stopping there read a page that was never the seam", () => {
     // Live on 2026-11-05 "crew member" read 171 to 286 and only then reached its seam, 30 cards with a top-up.
-    const r = run(routes({ walk: { 0: page(50, "n", { nextOffset: 250 }), 250: page(7, "m", { nextOffset: 500 }) } }));
+    const r = run(routes({ walk: { 0: page(50, "n", { nextOffset: 250 }), 250: page(7, "m", { nextOffset: RING_WINDOW }) } }));
     expect(hasLine(r.lines, "FAIL", /seam walk for nurse \(limit 50\) served short pages that had more: \["offset 250 served 7 cards"\]/), show(r.lines)).toBe(true);
     expect(r.calls.filter((c) => /"q":"nurse","limit":50/.test(c)).map((c) => /"offset":(\d+)/.exec(c)?.[1])).toEqual(["0", "250", "250"]);
   });
 
   it("reads more than one query at the site's own page size: a seam page with no top-up on any of them is a FAIL", () => {
-    const r = run(routes({ walks: { "crew member": { 0: page(30, "c", { nextOffset: 500 }) } } }));
+    const r = run(routes({ walks: { "crew member": { 0: page(30, "c", { nextOffset: RING_WINDOW }) } } }));
     expect(hasLine(r.lines, "FAIL", /seam walk for crew member \(limit 60\) served short pages that had more: \["offset 0 served 30 cards"\]/), show(r.lines)).toBe(true);
     expect(run(routes()).calls.filter((c) => /"limit":60,"offset":/.test(c) && /"groupSimilar":true/.test(c)).length).toBe(3);
   });
@@ -320,7 +321,7 @@ describe("section 99zzzz: the search reads what was typed", () => {
     expect(hasLine(thin.lines, "FAIL", /the seam page for nurse \(limit 50\) at offset 174 served 21 cards after its one top-up read, under half a page.*next job-board round/), show(thin.lines)).toBe(true);
     expect(hasLine(thin.lines, "PASS", /the seam walk continues past the seam on 4 of 4 queries/), show(thin.lines)).toBe(true);
     // A read that ran and added nothing did not continue.
-    const nothing = run(routes({ walk: { 174: page(20, "w174", { nextOffset: 500, ...TOPUP }) } }));
+    const nothing = run(routes({ walk: { 174: page(20, "w174", { nextOffset: RING_WINDOW, ...TOPUP }) } }));
     expect(hasLine(nothing.lines, "FAIL", /seam walk for nurse \(limit 50\): the top-up read at offset 174 added nothing/), show(nothing.lines)).toBe(true);
   });
 
@@ -330,10 +331,62 @@ describe("section 99zzzz: the search reads what was typed", () => {
     expect(r.calls.filter((c) => /"q":"nurse","limit":50,"offset":174/.test(c)).length).toBe(2);
   });
 
-  it("a page past rank 200 that folds short with no read is the disclosed limit, named and not a FAIL", () => {
-    const r = run(routes({ walk: { 174: page(50, "w174", { nextOffset: 243 }), 243: page(20, "deep", { nextOffset: 520 }) } }));
+  it("a page past its seam that folds short with no read is the disclosed limit, named and not a FAIL", () => {
+    // A query with no ring: its seam is the 200 window, and its deep page walks SQL rank, so nextOffset is not the ring's end.
+    const r = run(routes({ walk: { 174: page(50, "w174", { nextOffset: 243 }), 243: page(20, "deep", { nextOffset: 323 }) } }));
     expect(verdicts(r.lines, "FAIL"), show(r.lines)).toEqual([]);
-    expect(hasLine(r.lines, "INFO", /past rank 200 nurse@50 offset 243 folded to 20 cards/), show(r.lines)).toBe(true);
+    expect(hasLine(r.lines, "INFO", /past its seam nurse@50 offset 243 folded to 20 cards/), show(r.lines)).toBe(true);
+  });
+
+  it("the ring's end in the section is the product's own number, and no other literal judges nextOffset", () => {
+    expect(Number(/^\s*VDBS_RING=(\d+)$/m.exec(SECTION)?.[1])).toBe(RING_WINDOW);
+    expect(SECTION).not.toMatch(/nextOffset\s*(?:===|!==|<=?|>=?)\s*\d/);
+  });
+
+  // Live on 2026-11-05 crew member read 0, 87, 171, 286, and the page at 286 is its seam, past rank 200.
+  const CREW = { 0: page(60, "c0", { nextOffset: 87 }), 87: page(60, "c1", { nextOffset: 171 }), 171: page(60, "c2", { nextOffset: 286 }) };
+
+  it("a ring's seam page past rank 200 with no read is S13-012, never the disclosed limit", () => {
+    const r = run(routes({ walks: { "crew member": { ...CREW, 286: page(7, "c3", { nextOffset: RING_WINDOW }) } } }));
+    expect(hasLine(r.lines, "FAIL", /seam walk for crew member \(limit 60\) served short pages that had more: \["offset 286 served 7 cards"\]/), show(r.lines)).toBe(true);
+    expect(hasLine(r.lines, "INFO", /crew member.*folded to 7 cards/), show(r.lines)).toBe(false);
+    expect(hasLine(r.lines, "PASS", /the seam walk continues past the seam/), show(r.lines)).toBe(false);
+  });
+
+  it("the top-up gone on all four queries is a FAIL on each, and no PASS says the walk continues", () => {
+    const short = (p: string, count = 7) => page(count, p, { nextOffset: RING_WINDOW });
+    const r = run(routes({
+      walk: { 0: page(50, "n0", { nextOffset: 60 }), 60: short("n1") },
+      walks: {
+        "crew member": { ...CREW, 286: short("c3") },
+        caregiver: { 0: page(60, "g0", { nextOffset: 137 }), 137: page(60, "g1", { nextOffset: 286 }), 286: short("g2") },
+        "customer service": { 0: page(60, "s0", { nextOffset: 71 }), 71: page(60, "s1", { nextOffset: 136 }), 136: page(60, "s2", { nextOffset: 229 }), 229: short("s3") },
+      },
+    }));
+    for (const who of ["nurse", "crew member", "caregiver", "customer service"]) {
+      expect(hasLine(r.lines, "FAIL", new RegExp(`seam walk for ${who} \\(limit \\d+\\) served short pages that had more`)), `${who}${show(r.lines)}`).toBe(true);
+    }
+    expect(hasLine(r.lines, "PASS", /the seam walk continues past the seam/), show(r.lines)).toBe(false);
+  });
+
+  it("a read that ran past rank 200 and added nothing is a FAIL, not a page that stayed short", () => {
+    const r = run(routes({ walks: { "crew member": { ...CREW, 286: page(30, "c3", { nextOffset: RING_WINDOW, ...TOPUP }) } } }));
+    expect(hasLine(r.lines, "FAIL", /seam walk for crew member \(limit 60\): the top-up read at offset 286 added nothing/), show(r.lines)).toBe(true);
+    expect(hasLine(r.lines, "INFO", /stayed short after their one read: crew member/), show(r.lines)).toBe(false);
+  });
+
+  it("a walk that made no extra read at all cannot PASS: the continuation was not exercised, so it is INFO", () => {
+    const full = (p: string, limit: number) => page(limit, p, { nextOffset: RING_WINDOW });
+    const r = run(routes({ walk: { 0: full("n", 50) }, walks: { "crew member": { 0: full("c", 60) }, caregiver: { 0: full("g", 60) }, "customer service": { 0: full("s", 60) } } }));
+    expect(hasLine(r.lines, "PASS", /the seam walk continues past the seam/), show(r.lines)).toBe(false);
+    expect(hasLine(r.lines, "INFO", /no page of the 4 walks made the extra read/), show(r.lines)).toBe(true);
+    expect(verdicts(r.lines, "FAIL"), show(r.lines)).toEqual([]);
+  });
+
+  it("six full pages that stop short of the ring's end did not reach the seam, whatever rank they passed", () => {
+    const pages = Object.fromEntries([0, 60, 120, 180, 240, 300].map((off) => [off, page(50, `p${off}`, { nextOffset: off + 60 })]));
+    const r = run(routes({ walk: pages }));
+    expect(hasLine(r.lines, "INFO", /seam walk for nurse stopped after 6 full pages without reaching the seam/), show(r.lines)).toBe(true);
   });
 
   it("FAILs every unreadable answer, never crashing into silence", () => {

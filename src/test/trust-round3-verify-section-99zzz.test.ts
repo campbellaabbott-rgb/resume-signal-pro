@@ -452,6 +452,16 @@ describe("section 99zzz: trust round 3", () => {
     expect(has(noEntry.lines, "FAIL", /the served app.s entry could not be read/), show(noEntry.lines)).toBe(true);
   });
 
+  it("A1: a reader that leaves out a cleared board cannot hide it: an empty answer or a missing row is a FAIL naming the boards", () => {
+    const rows = (skip: string) => JSON.stringify(CLEARED.filter(([, t]) => t !== skip).map(([, t]) => ({ company_token: t, open_roles: 3, feed_total: 10, feed_read_at: iso(1 * H), feed_state: "ok", fills_90d: 1 })));
+    const empty = run(routes({ curveBody: "[]" }));
+    expect(has(empty.lines, "FAIL", new RegExp(`A1 get_company_fill_curve answered 0 row\\(s\\) for the ${new Set(CLEARED.map(([, t]) => t)).size} cleared boards.*${esc(CONVERGINT)}`)), show(empty.lines)).toBe(true);
+    const missing = run(routes({ curveBody: rows(CONVERGINT) }));
+    expect(has(missing.lines, "FAIL", new RegExp(`A1 get_company_fill_curve answered 19 row\\(s\\) for the 20 cleared boards and none for: ${esc(CONVERGINT)}`)), show(missing.lines)).toBe(true);
+    const whole = run(routes());
+    expect(has(whole.lines, "FAIL", /A1 get_company_fill_curve answered/), show(whole.lines)).toBe(false);
+  });
+
   it("A1 names a cleared board that serves nothing: a large feed is a FAIL once due, a small one is named, and a stale reader row is not believed", () => {
     const lost = { [CONVERGINT]: { open_roles: 0, feed_total: 294, feed_read_at: "2026-11-02T16:54:22.995+00:00", feed_state: "ok", fills_90d: 188 } };
     const due = run(routes({ curve: lost, solo: { [CONVERGINT]: 0 }, buildSince: iso(30 * H) }));

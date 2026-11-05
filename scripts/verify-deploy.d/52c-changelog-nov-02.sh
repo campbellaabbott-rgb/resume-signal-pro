@@ -60,7 +60,7 @@ while IFS= read -r T; do
   else echo "FAIL  the US English changelog strings carry \"$T\", but the crawler copy of /changelog does not (the prerender did not rebuild)"; fi
 done <<'VD52C_TITLES'
 Jobs at Truist, Geico, Nordstrom and Wawa join the board
-Jobs an employer took down now leave our biggest boards
+Jobs an employer took down now leave the Kroger, AutoZone, Marriott and Kotak boards
 Job searches that read what you typed
 Job details that read what the employer stated
 Search results for Honeywell Aerospace, LCS and others now carry the new name

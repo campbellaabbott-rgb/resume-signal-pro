@@ -755,16 +755,24 @@ NC=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$B/rest/v1/checkout_starts_ne
 probe record_checkout_start '{"p_stripe_session_id":"cs_probe_anon_denied_000","p_checkout_function":"verify-deploy","p_product_type":"probe","p_product_id":"verify-probe","p_visitor_id":"verify-probe","p_amount_cents":0,"p_currency":"usd","p_origin_path":"/","p_mode":"payment","p_metadata":{}}'
 
 echo "== 7c. the funnel reader and writer answer, and count only people who opted in =="
+# THE WINDOW STAYS INSIDE THE STEP. landing_view fell from tens of rows a day to
+# about one around 2026-11-01, so a window reaching past that day passes on rows
+# from before it. It is the whole days since 2026-11-02, at most a week.
+VD7C_DAYS=$(node -e 'process.stdout.write(String(Math.max(1,Math.min(7,Math.floor((Date.now()-Date.parse("2026-11-02T00:00:00Z"))/864e5)))))')
 R get_funnel_cohort_stats '{"p_cohort_dimension":"trafficSource","p_days_back":1}' > /tmp/vd_7c_1.json
-R get_funnel_cohort_stats '{"p_cohort_dimension":"trafficSource","p_days_back":7}' > /tmp/vd_7c_7.json
-node -e '
+R get_funnel_cohort_stats "{\"p_cohort_dimension\":\"trafficSource\",\"p_days_back\":$VD7C_DAYS}" > /tmp/vd_7c_w.json
+VD7C_DAYS="$VD7C_DAYS" node -e '
 const fs=require("fs");const rd=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
-const d1=rd("/tmp/vd_7c_1.json"),d7=rd("/tmp/vd_7c_7.json");
+const d1=rd("/tmp/vd_7c_1.json"),d7=rd("/tmp/vd_7c_w.json"),days=process.env.VD7C_DAYS,since="since 2026-11-02 (the last "+days+" day(s))";
 const stages=(j)=>{const t={};for(const k of ["landing_view","upload_started","scan_started","results_viewed","product_clicked","checkout_started","purchase_completed"])t[k]=j.reduce((a,r)=>a+Number(r[k]||0),0);return t};
 if(!Array.isArray(d7)||!Array.isArray(d1)){console.log("FAIL  cohort reader: "+JSON.stringify(Array.isArray(d7)?d1:d7).slice(0,160));process.exit(0)}
 const w=stages(d7);
-console.log("INFO  funnel stages, 24h "+JSON.stringify(stages(d1))+", 7d "+JSON.stringify(w)+". Since about 2026-11-01 these count only people who opted in to analytics (the consent gate is the inferred cause of the step), so they are not traffic: 2026-11-05 read landing_view 115 over 7 days and 4,007 over 30, and no older baseline applies");
-console.log((w.landing_view>0?"PASS":"FAIL")+"  the funnel records and reads back a consenting visitor: "+w.landing_view+" landing_view over 7 days (zero means the writer or the reader is dead, whatever the traffic)");'
+console.log("INFO  funnel stages, 24h "+JSON.stringify(stages(d1))+", "+since+" "+JSON.stringify(w)+". Since about 2026-11-01 these count only people who opted in to analytics (the consent gate is the inferred cause of the step), so they are not traffic: 2026-11-05 read landing_view 1 over 4 days, 112 over 7 and 3,999 over 30, and no older baseline applies");
+const later=["upload_started","scan_started","results_viewed","product_clicked","checkout_started","purchase_completed"].filter((k)=>w[k]>0);
+if(w.landing_view>=3)console.log("PASS  the funnel records and reads back consenting visitors: "+w.landing_view+" landing_view "+since);
+else console.log("INFO  "+w.landing_view+" landing_view "+since+": this cannot separate a dead writer from no one opting in (at about one row in four days a live writer gives zero in a week about one time in six). The proof of the writer is a consenting test visit, an owner step, not a count");
+if(later.length)console.log("PASS  a later funnel stage records "+since+": "+later.map((k)=>k+" "+w[k]).join(", "));
+else console.log("INFO  no later funnel stage holds a row "+since+": with so few opt-ins that is not a broken writer");'
 
 echo "== 7d. the crawler reads the prices: /pricing sells Pro at \$45 and nothing retired, /agents names no retired price =="
 # Re-pointed 2026-10-24 (profiles+design verify triage). The apply pivot

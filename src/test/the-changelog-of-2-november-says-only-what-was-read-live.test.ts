@@ -111,6 +111,128 @@ describe("the limits the review of this deploy set, in every language", () => {
   });
 });
 
+describe("what the last read of these entries found false, held in every language", () => {
+  const TAKEN = "takenDownJobsLeaveOurBiggestBoards";
+  const DETAILS = "jobDetailsFromWhatTheEmployerStated";
+  const BOARD = "theBoardStaysPutWhileYouRead";
+  const REPORT = "theFreeReportsNumbersNowAgree";
+  type Pins = {
+    /** The word that made the title promise every large board. */ biggest: RegExp;
+    /** A capped read counts only while the jobs past the cap are older than 30 days. */ window: string; close: string;
+    /** Accenture and USAJOBS are larger and cannot be read to the end yet. */ others: string;
+    /** A place with no comma or a ZIP holds in the location field, and not in the main box. */ field: string; mainBox: string;
+    /** "such as" states a class, and hp, wm and gm do not route. */ shortClass: RegExp; shortLimit: string;
+    /** Two Boyd rows in Greece, New York are still filed under Greece. */ most: string; two: string;
+    /** PwC's page pools three of its four boards. */ pool: string; allOf: RegExp;
+    /** Only rewrites whose bullet is in the draft land. */ report: string; oldReport: RegExp;
+  };
+  const EN_PINS: Pins = {
+    biggest: /biggest/, window: "older than 30 days", close: "Marriott is close to that line", others: "Other large boards, such as Accenture and USAJOBS",
+    field: "In the location box", mainBox: "In the main search box", shortClass: /such as CVS/, shortLimit: "Other short employer names may still search as plain words",
+    most: "Most jobs in Lake Wales", two: "two Greece, New York jobs still show as Greece", pool: "(three of PwC's four)", allOf: /lists and counts all of them/,
+    report: "the bullets your draft already has", oldReport: /applied to it and are not lost/,
+  };
+  const PINS: Record<(typeof LOCALES)[number], Pins> = {
+    en: EN_PINS,
+    "en-GB": EN_PINS,
+    de: {
+      biggest: /größten/, window: "älter als 30 Tage", close: "Marriott ist nah an dieser Linie", others: "Andere große Boards, etwa Accenture und USAJOBS",
+      field: "Im Ortsfeld", mainBox: "Im Hauptsuchfeld", shortClass: /wie CVS/, shortLimit: "Andere kurze Arbeitgebernamen",
+      most: "Die meisten Stellen in Lake Wales", two: "zwei Stellen in Greece, New York", pool: "(drei von vier bei PwC)", allOf: /listet und zählt jetzt alle\./,
+      report: "die dein Entwurf schon hat", oldReport: /gehen nicht verloren/,
+    },
+    es: {
+      biggest: /más grandes/, window: "más de 30 días", close: "Marriott está cerca de esa línea", others: "Otros tablones grandes, como Accenture y USAJOBS",
+      field: "En el campo de ubicación", mainBox: "En el cuadro principal de búsqueda", shortClass: /como CVS/, shortLimit: "Otros nombres cortos de empleadores",
+      most: "La mayoría de los empleos en Lake Wales", two: "dos empleos en Greece, Nueva York", pool: "(tres de los cuatro de PwC)", allOf: /los muestra y los cuenta todos/,
+      report: "las viñetas que tu borrador ya tiene", oldReport: /se aplican a él y no se pierden/,
+    },
+    fr: {
+      biggest: /plus grands/, window: "plus de 30 jours", close: "Marriott est proche de cette ligne", others: "D'autres grands tableaux, comme Accenture et USAJOBS",
+      field: "Dans le champ du lieu", mainBox: "Dans le champ de recherche principal", shortClass: /comme CVS/, shortLimit: "D'autres noms courts d'employeurs",
+      most: "La plupart des offres à Lake Wales", two: "deux offres à Greece", pool: "(trois des quatre de PwC)", allOf: /les liste et les compte désormais tous/,
+      report: "aux puces que votre brouillon contient déjà", oldReport: /y sont appliquées et ne sont pas perdues/,
+    },
+    hi: {
+      biggest: /सबसे बड़े/, window: "30 दिन से पुरानी", close: "Marriott इस रेखा के क़रीब है", others: "दूसरे बड़े बोर्ड, जैसे Accenture और USAJOBS",
+      field: "लोकेशन बॉक्स में", mainBox: "मुख्य खोज बॉक्स में", shortClass: /3M जैसे/, shortLimit: "दूसरे छोटे नियोक्ता नाम",
+      most: "की ज़्यादातर नौकरियाँ", two: "की दो नौकरियाँ अब भी ग्रीस में", pool: "(PwC के चार में से तीन)", allOf: /उन सभी को दिखाता और गिनता है/,
+      report: "जो आपके ड्राफ़्ट में पहले से हैं", oldReport: /उसी पर लागू होते हैं और खोते नहीं/,
+    },
+    nl: {
+      biggest: /grootste/, window: "ouder is dan 30 dagen", close: "Marriott zit dicht bij die lijn", others: "Andere grote borden, zoals Accenture en USAJOBS",
+      field: "In het locatieveld", mainBox: "In het hoofdzoekvak", shortClass: /zoals CVS/, shortLimit: "Andere korte werkgeversnamen",
+      most: "De meeste vacatures in Lake Wales", two: "twee vacatures in Greece, New York", pool: "(drie van de vier van PwC)", allOf: /toont en telt ze nu allemaal/,
+      report: "die je concept al heeft", oldReport: /erop toegepast en gaan ze niet verloren/,
+    },
+    pt: {
+      biggest: /maiores/, window: "mais de 30 dias", close: "A Marriott está perto dessa linha", others: "Outros quadros grandes, como Accenture e USAJOBS",
+      field: "No campo de local", mainBox: "Na caixa principal de busca", shortClass: /como CVS/, shortLimit: "Outros nomes curtos de empregadores",
+      most: "A maioria das vagas em Lake Wales", two: "duas vagas em Greece, em Nova York", pool: "(três dos quatro da PwC)", allOf: /lista e conta todos eles/,
+      report: "aos tópicos que seu rascunho já tem", oldReport: /são aplicadas a ele e não se perdem/,
+    },
+    tl: {
+      biggest: /pinakamalalaki/, window: "higit sa 30 araw", close: "Malapit sa linyang iyon ang Marriott", others: "ibang malalaking board, gaya ng Accenture at USAJOBS",
+      field: "Sa location box", mainBox: "Sa pangunahing search box", shortClass: /gaya ng CVS/, shortLimit: "iba pang maiikling pangalan ng employer",
+      most: "Ang karamihan ng mga trabaho sa Lake Wales", two: "dalawang trabaho sa Greece, New York", pool: "(tatlo sa apat ng PwC)", allOf: /ang lahat ng ito\./,
+      report: "sa mga bullet na mayroon na ang draft mo", oldReport: /nailalapat dito ang mga pag-aayos ng report at hindi nawawala/,
+    },
+  };
+  const each = (fn: (l: (typeof LOCALES)[number], p: Pins) => void) => { for (const l of LOCALES) fn(l, PINS[l]); };
+
+  it("the takedown title names the four boards the fix reached, and does not promise the biggest: Accenture and USAJOBS are larger and cannot be read to the end", () => {
+    each((l, p) => {
+      const { title, description } = shard(l)[TAKEN];
+      for (const name of ["Kroger", "AutoZone", "Marriott", "Kotak"]) expect(title, `${l}: ${name}`).toContain(name);
+      expect(title, l).not.toMatch(p.biggest);
+      expect(description, l).toContain(p.others);
+    });
+  });
+  it("the capped read is conditional, and Marriott is named as close to the line", () => {
+    each((l, p) => {
+      const d = shard(l)[TAKEN].description;
+      expect(d, l).toContain(p.window);
+      expect(d, l).toContain(p.close);
+    });
+  });
+  it("a place with no comma or a ZIP is the location field's: the main search box still needs its comma, and says so with phrases as typed", () => {
+    each((l, p) => {
+      const d = shard(l)[SEARCH].description;
+      expect(d, l).toContain(p.field);
+      expect(d, l).toContain(p.mainBox);
+      for (const q of ["nurse in Austin, TX", "nurse in Austin TX"]) expect(d, `${l}: ${q}`).toContain(q);
+    });
+  });
+  it("the short names are the three that route, not a class, and the limit is stated", () => {
+    each((l, p) => {
+      const d = shard(l)[SEARCH].description;
+      expect(d, l).not.toMatch(p.shortClass);
+      expect(d, l).toContain(p.shortLimit);
+    });
+  });
+  it("Greece, New York says most, and names the two rows still filed abroad", () => {
+    each((l, p) => {
+      const d = shard(l)[DETAILS].description;
+      expect(d, l).toContain(p.most);
+      expect(d, l).toContain(p.two);
+    });
+  });
+  it("PwC's page counts the three boards it pools, not all of an employer's boards", () => {
+    each((l, p) => {
+      const d = shard(l)[BOARD].description;
+      expect(d, l).toContain(p.pool);
+      expect(d, l).not.toMatch(p.allOf);
+    });
+  });
+  it("a kept draft takes only the rewrites whose bullet it holds, and the page says how many", () => {
+    each((l, p) => {
+      const d = shard(l)[REPORT].description;
+      expect(d, l).toContain(p.report);
+      expect(d, l).not.toMatch(p.oldReport);
+    });
+  });
+});
+
 describe("what the entries owe the reader", () => {
   it("every language corrects the 31 October sentence and names all four employers", () => {
     for (const l of LOCALES) {

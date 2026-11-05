@@ -50,8 +50,13 @@
 #     code ships one read, and n1417 says rows that fold into few clusters stay
 #     short (6 of 34 seam pages on 2026-11-04). So every page short after its read
 #     is named; one under half a page is a FAIL, the reported symptom still open
-#     (the next job-board round owes it more reads); a page past rank 200 that
-#     folds short with no read is the limit the deploy notes disclose, and INFO.
+#     (the next job-board round owes it more reads). The ring's seam page answers
+#     the ring's end plus the deep rows its read used, so a short page answering
+#     exactly the ring's end made no read, or a read that added nothing: a FAIL at
+#     any offset below the ring's end. A page past its seam that folds short with
+#     no read is the limit the deploy notes disclose, and INFO. The PASS needs at
+#     least one page that made the read: with none the continuation was not
+#     exercised, and the line is INFO.
 #
 # READ-ONLY. Three OPTIONS preflights; job-board list reads sent with
 # x-rb-budget: probe (about 45: the seam walks read at most 6 pages each, and a
@@ -91,8 +96,10 @@ if [ "$VDBS_LIVE" = 1 ]; then
   J '{"action":"list","q":"","location":"Wien","limit":50,"groupSimilar":false,"includeFacets":false}' > /tmp/vd_bsearch_wien_browse.json
   J '{"action":"list","q":"engineer","location":"Wien","limit":50,"groupSimilar":false,"includeFacets":false}' > /tmp/vd_bsearch_wien_ranked.json
   # Each walk stops at the page that carries the top-up, at a short page, at the
-  # ring's end (RING_WINDOW, 500) or when there is no more: the ring's seam sits
-  # past nextOffset 200 (crew member read 171 to 286 before it reached its own).
+  # ring's end or when there is no more: the ring's seam sits past nextOffset 200
+  # (crew member read 171 to 286 before it reached its own). The ring's end is
+  # paging.ts RING_WINDOW; a test holds this number to it.
+  VDBS_RING=400
   while IFS='|' read -r VDBS_W VDBS_Q VDBS_L; do
     VDBS_OFF=0; VDBS_N=0
     while [ "$VDBS_N" -lt 6 ]; do
@@ -100,7 +107,7 @@ if [ "$VDBS_LIVE" = 1 ]; then
       VDBS_ASK="{\"action\":\"list\",\"q\":\"$VDBS_Q\",\"limit\":$VDBS_L,\"offset\":$VDBS_OFF,\"groupSimilar\":true,\"includeFacets\":false}"
       J "$VDBS_ASK" > "$VDBS_F"
       if node -e 'try{const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.exit(j&&j.hasMore===true&&Array.isArray(j.jobs)&&j.jobs.length<Number(process.argv[2])&&!(j.phaseMs&&"seam_topup" in j.phaseMs)?0:1)}catch{process.exit(1)}' "$VDBS_F" "$VDBS_L"; then J "$VDBS_ASK" > "$VDBS_F"; fi
-      VDBS_NEXT=$(node -e 'try{const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));const topup=!!(j&&j.phaseMs&&"seam_topup" in j.phaseMs);const short=j&&Array.isArray(j.jobs)&&j.jobs.length<Number(process.argv[2]);process.stdout.write(j&&j.hasMore===true&&Number.isInteger(j.nextOffset)&&!topup&&!short&&j.nextOffset<500?String(j.nextOffset):"")}catch{}' "$VDBS_F" "$VDBS_L")
+      VDBS_NEXT=$(node -e 'try{const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));const topup=!!(j&&j.phaseMs&&"seam_topup" in j.phaseMs);const short=j&&Array.isArray(j.jobs)&&j.jobs.length<Number(process.argv[2]);process.stdout.write(j&&j.hasMore===true&&Number.isInteger(j.nextOffset)&&!topup&&!short&&j.nextOffset<Number(process.argv[3])?String(j.nextOffset):"")}catch{}' "$VDBS_F" "$VDBS_L" "$VDBS_RING")
       VDBS_N=$((VDBS_N + 1))
       if [ -z "$VDBS_NEXT" ] || [ "$VDBS_NEXT" -le "$VDBS_OFF" ]; then break; fi
       VDBS_OFF=$VDBS_NEXT
@@ -208,31 +215,34 @@ const usUnnamed=(j)=>j.jobs.filter((x)=>x.country==="US"&&!/austria/i.test(Strin
   else say("PASS","engineer in Wien ranks "+j.jobs.length+" rows, none placed in the US without naming Austria, "+anchored.length+" of them named Vienna with a title the head-term ring does not find (the anchored arm of 20261102100000)");}}
 // S13-012.
 {const WALKS=[["nurse",50],["crew member",60],["caregiver",60],["customer service",60]];
+  // The ring seam (paging.ts RING_WINDOW, passed in) and the 200 window a query with no ring stops at.
+  const RING=Number(process.argv[1]),WINDOW=200;
   const reached=[],after=[],deep=[];let broke=false,seamPages=0;
   WALKS.forEach(([who,limit],w)=>{
     const pages=[];for(let n=0;n<6;n++){const raw=(()=>{try{return fs.readFileSync("/tmp/vd_bsearch_walk_"+w+"_"+n+".json","utf8")}catch{return null}})();if(raw===null)break;let j=null;try{j=JSON.parse(raw)}catch{}pages.push(j)}
     const bad=pages.findIndex((j)=>!ok(j));
     if(!pages.length||bad>=0){broke=true;say("FAIL","the seam walk for "+who+": page "+(bad<0?0:bad)+" is unreadable: "+peek("walk_"+w+"_"+(bad<0?0:bad)));return}
-    let off=0;const seen=new Set();const dup=[],noRead=[],nothing=[],offs=[];
+    let off=0,pastSeam=false;const seen=new Set();const dup=[],noRead=[],nothing=[],offs=[];
     for(const j of pages){offs.push(off+":"+j.jobs.length);for(const x of j.jobs){const id=String(x.id);if(seen.has(id))dup.push(id);seen.add(id)}
       const topup=!!(j.phaseMs&&"seam_topup" in j.phaseMs),short=j.hasMore===true&&j.jobs.length<limit;
       if(topup)seamPages++;
       if(short&&topup){
-        if(j.nextOffset===500)nothing.push(off);
+        if(j.nextOffset===RING||j.nextOffset===WINDOW)nothing.push(off);
         else if(j.jobs.length*2<limit)say("FAIL","the seam page for "+who+" (limit "+limit+") at offset "+off+" served "+j.jobs.length+" cards after its one top-up read, under half a page (nextOffset "+j.nextOffset+"): it continued as promised, and one read did not come near filling it. The next job-board round owes it more reads (S13-012)");
         else after.push(who+"@"+limit+" offset "+off+": "+j.jobs.length+" cards");}
       else if(short&&limit-j.jobs.length>2){
-        if(off<200||j.nextOffset===500)noRead.push("offset "+off+" served "+j.jobs.length+" cards");
-        else deep.push(who+"@"+limit+" offset "+off+" folded to "+j.jobs.length+" cards");}
+        if(off<WINDOW||(off<RING&&j.nextOffset===RING))noRead.push("offset "+off+" served "+j.jobs.length+" cards");
+        else{pastSeam=true;deep.push(who+"@"+limit+" offset "+off+" folded to "+j.jobs.length+" cards");}}
       off=j.nextOffset;}
-    const last=pages[pages.length-1];const crossed=last.hasMore!==true||!!(last.phaseMs&&"seam_topup" in last.phaseMs)||(Number.isInteger(last.nextOffset)&&last.nextOffset>=200);
+    const last=pages[pages.length-1];const crossed=last.hasMore!==true||!!(last.phaseMs&&"seam_topup" in last.phaseMs)||pastSeam||(Number.isInteger(last.nextOffset)&&last.nextOffset>=RING);
     if(noRead.length){broke=true;say("FAIL","the seam walk for "+who+" (limit "+limit+") served short pages that had more: "+JSON.stringify(noRead)+" over "+JSON.stringify(offs)+", with no top-up read on either ask (S13-012: the continuation did not run)")}
     else if(nothing.length){broke=true;say("FAIL","the seam walk for "+who+" (limit "+limit+"): the top-up read at offset "+nothing.join(", ")+" added nothing (nextOffset stayed at the seam)")}
     else if(dup.length){broke=true;say("FAIL","the seam walk for "+who+" served a card twice: "+JSON.stringify(dup.slice(0,3)))}
     else if(!crossed)say("INFO","the seam walk for "+who+" stopped after "+pages.length+" full pages without reaching the seam: "+JSON.stringify(offs));
     else reached.push(who+"@"+limit+" "+JSON.stringify(offs)+" to "+last.nextOffset);});
-  if(!broke&&reached.length)say("PASS","the seam walk continues past the seam on "+reached.length+" of "+WALKS.length+" queries ("+seamPages+" page(s) made the extra read, no card twice): "+reached.join("; "));
+  if(!broke&&reached.length&&seamPages>0)say("PASS","the seam walk continues past the seam on "+reached.length+" of "+WALKS.length+" queries ("+seamPages+" page(s) made the extra read, no card twice): "+reached.join("; "));
+  else if(!broke&&reached.length)say("INFO","no page of the "+WALKS.length+" walks made the extra read: "+reached.join("; ")+" (none was short at its seam, so the continuation was not exercised)");
   if(after.length)say("INFO",after.length+" of "+seamPages+" seam page(s) stayed short after their one read: "+after.join("; ")+" (the code promises the continuation, not a full page; the next job-board round owes more reads)");
-  if(deep.length)say("INFO","past rank 200 "+deep.join("; ")+" with no extra read: the limit the deploy notes disclose");}
-' || echo "FAIL  section 99zzzz judge threw"
+  if(deep.length)say("INFO","past its seam "+deep.join("; ")+" with no extra read: the limit the deploy notes disclose");}
+' "$VDBS_RING" || echo "FAIL  section 99zzzz judge threw"
 fi

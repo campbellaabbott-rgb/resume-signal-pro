@@ -45,7 +45,9 @@
 #       true of an empty board too, so each cleared board serving nothing is
 #       named beside its feed: 50 or more on its feed and 0 served is a FAIL a
 #       day after the first slice (get_company_fill_curve, then the board's own
-#       list, because the curve is the reader and the list is what is served);
+#       list, because the curve is the reader and the list is what is served). The
+#       reader answers one row per board asked, so a board it leaves out is a FAIL
+#       naming it; a board with no feed_total can only be named in the INFO;
 #   A2  every row of the staffing companies' boards this round labels carries
 #       agency true (Jobandtalent's three, Aya Healthcare, Traba, Zenjob, Staff
 #       Zone, Coople's two, Ingenovis Health, Insight Global and six of
@@ -346,7 +348,8 @@ else{
   // A1, the boards themselves. The flag line above is true of an empty board, so a board that lost its rows hid inside its PASS. The reader says which are empty, and the board\x27s own list says what is served.
   const nameOf=(t)=>{const x=CL.find((y)=>y[1]===t);return x&&x[2]?x[2]:t};const CUR=json("/tmp/vd_99zzz_curve.json");
   if(!Array.isArray(CUR))out("FAIL","A1 get_company_fill_curve is unreadable, so a cleared board that lost its rows cannot be named: "+peek("/tmp/vd_99zzz_curve.json"));
-  else{const quiet=[];
+  else{const quiet=[];const asked=[...new Set(CL.map((y)=>y[1]))],got=new Set(CUR.map((r)=>r&&r.company_token)),absent=asked.filter((t)=>!got.has(t));
+    if(absent.length)out("FAIL","A1 get_company_fill_curve answered "+CUR.length+" row(s) for the "+asked.length+" cleared boards and none for: "+absent.join(", ")+": it answers one row per board asked, so a board that lost its rows hides behind this");
     for(const r of CUR){if(!r||Number(r.open_roles)!==0||!CL.some((y)=>y[1]===r.company_token))continue;
       const t=r.company_token,f="/tmp/vd_99zzz_cl_"+t+".json",j=json(f);
       if(!j||typeof j.total!=="number"){out("FAIL","A1 "+t+": the list is unreadable: "+peek(f));continue}

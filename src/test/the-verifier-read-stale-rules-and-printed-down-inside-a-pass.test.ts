@@ -15,7 +15,8 @@
  *           looked at the fallback, which logs completed;
  *   62      fb_has wrote a broken pipe to stderr every time grep stopped early;
  *   7c      the funnel line compared opt-in counts to a baseline of all traffic
- *           and could not fail.
+ *           and could not fail; its first rewrite passed on rows from before the
+ *           consent step, so it now reads only the days since that step.
  * Each check runs the shipped shell in bash against fakes (curl, gh and node's
  * fetch), never the network.
  */
@@ -133,9 +134,13 @@ if(a[0]==="run"&&a[1]==="list"){const w=a[a.indexOf("--workflow")+1];const lim=N
 process.stdout.write(JSON.stringify(w==="board-health.yml"?${JSON.stringify(rows)}.slice(0,lim):[]));process.exit(0)}
 process.exit(1);
 `;
-  const sched = (minAgo: number, conclusion = "success") => ({ event: "schedule", conclusion, createdAt: iso(minAgo * MIN) });
-  const push = (minAgo: number) => ({ event: "push", conclusion: "success", createdAt: iso(minAgo * MIN) });
+  const sched = (minAgo: number, conclusion = "success") => ({ event: "schedule", conclusion, createdAt: iso(minAgo * MIN), headBranch: "main" });
+  const push = (minAgo: number) => ({ event: "push", conclusion: "success", createdAt: iso(minAgo * MIN), headBranch: "main" });
+  // The workflow has no push trigger, so GitHub writes this row only when it could not read the file.
+  const broke = (minAgo: number, headBranch = "main") => ({ event: "push", conclusion: "failure", createdAt: iso(minAgo * MIN), headBranch });
   const s78 = () => sectionFile("78-wave3-tests-ci.sh");
+  /** The section reads the workflow's last change from git, so a case that turns on it says when. */
+  const changed = (minAgo: number) => `git() { echo ${iso(minAgo * MIN)}; }\n${s78()}`;
 
   it("a run 230 minutes old is the schedule alive: GitHub delivers about five a day, so the old 90-minute bar failed a healthy schedule", () => {
     const lines = run(s78(), { gh: gh([sched(230), sched(500), sched(800)]) });
@@ -153,6 +158,31 @@ process.exit(1);
     const rows = [...Array.from({ length: 30 }, (_, i) => push(i + 1)), sched(200)];
     const lines = run(s78(), { gh: gh(rows) });
     expect(has(lines, "PASS", /board-health's schedule is alive.*200 min ago/), show(lines)).toBe(true);
+  });
+  it("a merge that stopped the file parsing FAILs at once: its failed push is newer than the last scheduled run, which alone reads alive for a day", () => {
+    const lines = run(changed(120), { gh: gh([broke(5), broke(20), broke(50), sched(300), sched(600)]) });
+    expect(has(lines, "FAIL", /board-health does not parse on main: a push run failed at .*newer than its latest scheduled run/), show(lines)).toBe(true);
+    expect(has(lines, "PASS", /board-health's schedule is alive/), show(lines)).toBe(false);
+    expect(has(lines, "INFO", /the file as last changed has not run yet/), show(lines)).toBe(true);
+    const noneYet = run(changed(120), { gh: gh([broke(5), broke(20)]) });
+    expect(has(noneYet, "FAIL", /board-health does not parse on main: a push run failed at/), show(noneYet)).toBe(true);
+  });
+  it("a failed push older than the last scheduled run is history: the file was read again after it", () => {
+    const lines = run(changed(9000), { gh: gh([sched(230), broke(4000), broke(4100), sched(5000)]) });
+    expect(has(lines, "PASS", /board-health's schedule is alive.*230 min ago/), show(lines)).toBe(true);
+    expect(has(lines, "FAIL", /does not parse/), show(lines)).toBe(false);
+  });
+  it("a failed push on another branch says nothing about the file on main, and neither does one before the file's last change", () => {
+    const branch = run(changed(9000), { gh: gh([broke(5, "claude/some-old-branch"), sched(230)]) });
+    expect(has(branch, "FAIL", /does not parse/), show(branch)).toBe(false);
+    expect(has(branch, "PASS", /board-health's schedule is alive.*230 min ago/), show(branch)).toBe(true);
+    const fixedSince = run(changed(10), { gh: gh([broke(30), sched(230)]) });
+    expect(has(fixedSince, "FAIL", /does not parse/), show(fixedSince)).toBe(false);
+    expect(has(fixedSince, "INFO", /the file as last changed has not run yet/), show(fixedSince)).toBe(true);
+  });
+  it("a scheduled run newer than the file's last change prints no such INFO", () => {
+    const lines = run(changed(9000), { gh: gh([sched(230)]) });
+    expect(has(lines, "INFO", /the file as last changed has not run yet/), show(lines)).toBe(false);
   });
   it("the cadence is INFO naming S12-069, and says only the healthy path has run live", () => {
     const lines = run(s78(), { gh: gh([sched(230), sched(500), sched(800)]) });
@@ -216,6 +246,15 @@ describe("sections 5t and 77: the H-1B cells answer to what the refusals keep", 
     const noControl = run(s77(), { fetch: [{ match: LEDGER, body: JSON.stringify(REFUSED.map(none)) }, { match: lca("generalmotors~wd5~Careers_GM"), body: JSON.stringify([cell("generalmotors~wd5~Careers_GM")]) }, ...["siei", "crown-equipment", "RolandBerger", "techster", "rystad-energy"].map((t) => us(t, 5))] });
     expect(has(noControl, "INFO", /no candidate board.*gate is not judged/), show(noControl)).toBe(true);
   });
+  it("with no helper to read the bundle, a null on the control board proves nothing: INFO, and a lit cell is still a FAIL", () => {
+    const fetch = (over: Partial<Record<string, unknown>> = {}) => [{ match: LEDGER, body: JSON.stringify(REFUSED.map(none)) }, ...gate(over)];
+    const noTsx = `npx() { return 1; }\n${s77()}`;
+    const blind = run(noTsx, { fetch: fetch() });
+    expect(has(blind, "INFO", /a board with no live US posting.*siei.*bundle cell not checked.*not judged/), show(blind)).toBe(true);
+    expect(has(blind, "PASS", /a board with no live US posting/), show(blind)).toBe(false);
+    const lit = run(noTsx, { fetch: fetch({ siei: cell("siei") }) });
+    expect(has(lit, "FAIL", /a board with no live US posting prints no H-1B wage cell \(siei/), show(lit)).toBe(true);
+  });
   it("a null from the reader is not vacuous: a board with US postings and a bundle cell must still answer one", () => {
     const fetch = [{ match: LEDGER, body: JSON.stringify(REFUSED.map(none)) }, ...gate({ gm: none("generalmotors~wd5~Careers_GM") })];
     const lines = run(s77(), { fetch });
@@ -240,9 +279,16 @@ describe("sections 63 and 92: the heartbeat's liveness is one line, its verdict 
     const lines = run(s92(), { R: { get_scan_health_status: health({ status: "degraded", last_heartbeat_status: "degraded", issues: ["Last heartbeat: degraded"] }), get_scan_success_rate: beat(1400) } });
     expect(has(lines, "FAIL", /heartbeat scans took 1\.4 s at p50.*AI model chain.*\/scan-metrics.*credit/), show(lines)).toBe(true);
   });
-  it("a healthy reading never FAILs: degraded alone is INFO, and 26 s at p50 is the model answering", () => {
+  it("a p50 near the per-attempt timeout cannot tell a slow model from a chain that timed out and fell back: INFO, never a PASS", () => {
+    const lines = run(s92(), { R: { get_scan_health_status: health(), get_scan_success_rate: beat(58000) } });
+    expect(has(lines, "INFO", /heartbeat scans took 58\.0 s at p50.*timed out/), show(lines)).toBe(true);
+    expect(lines.filter((l) => l.startsWith("PASS") && /heartbeat scans/.test(l)), show(lines)).toEqual([]);
+    expect(lines.join("\n")).not.toMatch(/model answered/);
+  });
+  it("a healthy reading never FAILs: degraded alone is INFO, and 26 s at p50 did not fail fast", () => {
     const lines = run(s92(), { R: { get_scan_health_status: health({ status: "degraded", last_heartbeat_status: "degraded", issues: ["Last heartbeat: degraded"] }), get_scan_success_rate: beat(26839) } });
-    expect(has(lines, "PASS", /heartbeat scans took 26\.8 s at p50.*model answered/), show(lines)).toBe(true);
+    expect(has(lines, "PASS", /heartbeat scans took 26\.8 s at p50.*did not fail fast/), show(lines)).toBe(true);
+    expect(lines.join("\n")).not.toMatch(/model answered/);
     expect(lines.filter((l) => l.startsWith("FAIL") && /heartbeat scans|the heartbeat|AI model|status down/.test(l)), show(lines)).toEqual([]);
     expect(has(lines, "INFO", /get_scan_health_status: status degraded/), show(lines)).toBe(true);
   });
@@ -273,13 +319,35 @@ describe("section 62: fb_has writes nothing to stderr when grep stops early", ()
 });
 
 describe("section 7c: the funnel is read for what it counts now", () => {
-  const stage = (n: number) => JSON.stringify([{ landing_view: n, upload_started: 0, scan_started: 0, results_viewed: 0, product_clicked: 0, checkout_started: 0, purchase_completed: 0 }]);
-  it("a reader and writer that record a consenting visitor PASS; zero landing views in the week FAILs", () => {
+  const stage = (n: number, later = 0) => JSON.stringify([{ landing_view: n, upload_started: later, scan_started: 0, results_viewed: 0, product_clicked: 0, checkout_started: 0, purchase_completed: 0 }]);
+  const DAYS_SINCE_STEP = Math.floor((Date.now() - Date.parse("2026-11-02T00:00:00Z")) / 864e5);
+  /** A reader that holds rows only older than the step: a window reaching past it finds them, and one that stays inside it finds none. */
+  const onlyBeforeStep = `R() { D=$(printf '%s' "$2" | sed -E 's/.*"p_days_back":([0-9]+).*/\\1/'); if [ "$D" -gt ${DAYS_SINCE_STEP} ]; then echo '${stage(112, 1)}'; else echo '${stage(0)}'; fi; }\n`;
+
+  it("rows from before the consent step prove nothing: a dead writer with an old week behind it does not PASS", () => {
+    const lines = run(onlyBeforeStep + section("7c. "));
+    expect(lines.filter((l) => l.startsWith("PASS")), show(lines)).toEqual([]);
+    expect(has(lines, "INFO", /0 landing_view since 2026-11-02.*cannot separate a dead writer from no one opting in/), show(lines)).toBe(true);
+    expect(lines.filter((l) => l.startsWith("FAIL")), show(lines)).toEqual([]);
+  });
+  it("zero or a low count is INFO, because a live writer gives zero in a week about one time in six, and a real proof is a consenting visit", () => {
+    for (const n of [0, 1, 2]) {
+      const lines = run(section("7c. "), { R: { get_funnel_cohort_stats: stage(n) } });
+      expect(has(lines, "INFO", new RegExp(`${n} landing_view since 2026-11-02.*cannot separate a dead writer from no one opting in.*consenting test visit.*owner`)), show(lines)).toBe(true);
+      expect(lines.filter((l) => l.startsWith("PASS") || l.startsWith("FAIL")), show(lines)).toEqual([]);
+    }
+  });
+  it("several rows since the step PASS, naming the window; a reader error stays a FAIL", () => {
     const alive = run(section("7c. "), { R: { get_funnel_cohort_stats: stage(115) } });
-    expect(has(alive, "PASS", /funnel.*115 landing_view/), show(alive)).toBe(true);
-    const dead = run(section("7c. "), { R: { get_funnel_cohort_stats: stage(0) } });
-    expect(has(dead, "FAIL", /funnel.*0 landing_view/), show(dead)).toBe(true);
+    expect(has(alive, "PASS", /funnel.*115 landing_view since 2026-11-02/), show(alive)).toBe(true);
     expect(has(run(section("7c. "), { R: { get_funnel_cohort_stats: '{"code":"42501"}' } }), "FAIL", /cohort reader/)).toBe(true);
+  });
+  it("the claim that later stages record has its own line: PASS when one is above zero, INFO when none is, and landing views cannot carry it", () => {
+    const none = run(section("7c. "), { R: { get_funnel_cohort_stats: stage(115) } });
+    expect(has(none, "INFO", /no later funnel stage.*since 2026-11-02/), show(none)).toBe(true);
+    expect(has(none, "PASS", /later funnel stage/), show(none)).toBe(false);
+    const some = run(section("7c. "), { R: { get_funnel_cohort_stats: stage(1, 2) } });
+    expect(has(some, "PASS", /a later funnel stage records since 2026-11-02.*upload_started.*2/), show(some)).toBe(true);
   });
   it("says it counts only people who opted in, and no longer compares to a baseline of all traffic", () => {
     const lines = run(section("7c. "), { R: { get_funnel_cohort_stats: stage(115) } });
