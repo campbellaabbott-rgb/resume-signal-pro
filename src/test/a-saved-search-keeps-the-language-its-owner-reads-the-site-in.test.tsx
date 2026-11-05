@@ -15,7 +15,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import i18n from "@/i18n";
@@ -82,6 +82,8 @@ const writes = () => h.calls.filter((c) => c.table === "user_job_searches");
 /** PostgREST's answer for a body naming a column its schema does not have. */
 const NO_COLUMN = { code: "PGRST204", message: "Could not find the 'locale' column of 'user_job_searches' in the schema cache" };
 const refuseTheLanguage = (row: Record<string, unknown>) => ("locale" in row ? NO_COLUMN : null);
+/** The older rollout gap the board's alert and watch already go around. */
+const NO_CADENCE = { code: "PGRST204", message: "Could not find the 'digest_cadence' column" };
 const row = (extra: Record<string, unknown> = {}) => ({
   id: "s1", name: "Nurse", params: { q: "nurse" }, last_seen_at: "2026-10-30T00:00:00Z", digest_opt_in: false, fit_threshold: 0, digest_cadence: "weekly", ...extra,
 });
@@ -161,6 +163,49 @@ describe("the account's saved-searches card", () => {
     expect("locale" in second.row).toBe(false);
     expect(await screen.findByLabelText("Turn off weekly email for Nurse", {}, SLOW)).toBeTruthy();
   });
+
+  const fitWrites = () => writes().filter((c) => "fit_threshold" in c.row);
+  const openWrites = () => writes().filter((c) => "last_seen_at" in c.row);
+  /** The fit bar shows only on a row whose mail is on. */
+  const moveTheFitBar = async () => {
+    h.rows = [row({ digest_opt_in: true })];
+    render(<MemoryRouter><SavedSearchesCard /></MemoryRouter>);
+    fireEvent.change(await screen.findByRole("combobox", {}, SLOW), { target: { value: "20" } });
+  };
+  const openTheSearch = async () => {
+    render(<MemoryRouter><SavedSearchesCard /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: "Nurse" }, SLOW));
+  };
+
+  it("moving the fit bar names the language the page is read in", async () => {
+    await i18n.changeLanguage("fr");
+    await moveTheFitBar();
+    await waitFor(() => expect(fitWrites().length).toBe(1), SLOW);
+    expect(fitWrites()[0].row).toEqual({ fit_threshold: 20, locale: "fr" });
+  });
+
+  it("with no such column yet the fit bar goes again without it", async () => {
+    h.refuse = refuseTheLanguage;
+    await moveTheFitBar();
+    await waitFor(() => expect(fitWrites().length).toBe(2), SLOW);
+    expect(fitWrites().map((c) => c.row)).toEqual([{ fit_threshold: 20, locale: "en" }, { fit_threshold: 20 }]);
+  });
+
+  it("opening a search takes the language its owner reads the site in", async () => {
+    await i18n.changeLanguage("nl");
+    await openTheSearch();
+    await waitFor(() => expect(openWrites().length).toBe(1), SLOW);
+    expect(openWrites()[0].row.locale).toBe("nl");
+  });
+
+  it("with no such column yet opening a search goes again without it", async () => {
+    h.refuse = refuseTheLanguage;
+    await openTheSearch();
+    await waitFor(() => expect(openWrites().length).toBe(2), SLOW);
+    const [first, second] = openWrites();
+    expect(first.row.locale).toBe("en");
+    expect("locale" in second.row).toBe(false);
+  });
 });
 
 describe("the notifications panel", () => {
@@ -221,7 +266,7 @@ describe("the board's own saves", () => {
   });
 
   it("an alert with neither new column yet still saves, the digest on", async () => {
-    h.refuse = (r) => ("locale" in r ? NO_COLUMN : "digest_cadence" in r ? { code: "PGRST204", message: "Could not find the 'digest_cadence' column" } : null);
+    h.refuse = (r) => ("locale" in r ? NO_COLUMN : "digest_cadence" in r ? NO_CADENCE : null);
     mount("/jobs?q=underwater%20basket%20weaving");
     fireEvent.click(await screen.findByRole("button", { name: /Alert me when this exists/ }, SLOW));
     await waitFor(() => expect(writes().some((c) => c.op === "insert" && !("locale" in c.row) && !("digest_cadence" in c.row))).toBe(true), SLOW);
@@ -238,6 +283,96 @@ describe("the board's own saves", () => {
     fireEvent.click(cta);
     await waitFor(() => expect(writes().some((c) => c.op === "update")).toBe(true), SLOW);
     expect(writes().find((c) => c.op === "update")!.row).toMatchObject({ digest_opt_in: true, locale: "de" });
+  });
+
+  const inserts = () => writes().filter((c) => c.op === "insert");
+  const updates = () => writes().filter((c) => c.op === "update");
+  const pressTheGermanAlert = async () => {
+    await i18n.changeLanguage("de");
+    mount("/jobs?q=underwater%20basket%20weaving");
+    const cta = await waitFor(() => { const b = [...document.querySelectorAll("button")].find((x) => /alert|benachrichtig/i.test(x.textContent ?? "")); expect(b).toBeTruthy(); return b!; }, SLOW);
+    fireEvent.click(cta);
+  };
+
+  it("an alert with no cadence column yet goes again and keeps the language", async () => {
+    h.refuse = (r) => ("digest_cadence" in r ? NO_CADENCE : null);
+    await pressTheGermanAlert();
+    await waitFor(() => expect(inserts().length).toBe(2), SLOW);
+    const [first, second] = inserts();
+    expect(first.row).toMatchObject({ digest_cadence: "daily", locale: "de" });
+    expect(second.row).toMatchObject({ digest_opt_in: true, locale: "de" });
+    expect("digest_cadence" in second.row).toBe(false);
+  });
+
+  it("an alert on a search already saved, with no cadence column yet, goes again and keeps the language", async () => {
+    h.refuse = (r, op) => (op === "insert" ? { code: "23505", message: 'duplicate key value violates unique constraint "user_job_searches_user_id_name_key"' } : "digest_cadence" in r ? NO_CADENCE : null);
+    await pressTheGermanAlert();
+    await waitFor(() => expect(updates().length).toBe(2), SLOW);
+    expect(updates().map((c) => c.row)).toEqual([
+      { digest_opt_in: true, digest_cadence: "daily", locale: "de" },
+      { digest_opt_in: true, locale: "de" },
+    ]);
+  });
+
+  // WATCHING AN EMPLOYER: the Watch button on the employer's own page saves a
+  // search on that board with its mail already on, so the language has to ride
+  // on the insert; no later write is sure to bring it.
+  const ROLE = {
+    id: "workday:acme:1", source: "workday", token: "acme", company: "Acme", title: "Store Manager", location: "Austin, TX, USA", country: "US",
+    salary: null, salaryMinAnnual: null, salaryMaxAnnual: null, salaryPeriod: null, salaryCurrency: null,
+    workMode: "onsite", employmentType: "full_time", experienceBand: "mid", minYears: 3, category: "operations", department: null, agency: false,
+    postedAt: "2026-10-30T00:00:00Z", lastSeen: "2026-10-30T00:00:00Z", recheckedAt: "2026-10-30T00:00:00Z", applyUrl: "https://x/1", remote: false,
+  };
+  const mountEmployer = () => {
+    const path = "/jobs/company/acme";
+    window.history.replaceState({}, "", path);
+    h.invoke.mockImplementation(async (fn: string, o: { body?: Record<string, unknown> } | undefined) => {
+      const b = o?.body ?? {};
+      if (fn === "job-board" && (b.action === "list" || b.action === undefined)) {
+        return b.countOnly
+          ? { data: { total: 1 } }
+          : { data: { ...EMPTY, jobs: [ROLE], total: 1, totalAllCompanies: 1, companies: [{ token: "acme", name: "Acme", open: 1 }], companiesCount: 1, unknownCompanies: [] } };
+      }
+      return { data: {} };
+    });
+    return render(
+      <MemoryRouter initialEntries={[path]}>
+        <Routes><Route path="/jobs/company/:companyToken" element={<Jobs />} /></Routes>
+      </MemoryRouter>,
+    );
+  };
+  const pressWatch = async (name: RegExp) => { fireEvent.click(await screen.findByRole("button", { name }, SLOW)); };
+
+  it("a watch pressed on a German page is mailed in German", async () => {
+    await i18n.changeLanguage("de");
+    mountEmployer();
+    await pressWatch(/Acme beobachten/);
+    await waitFor(() => expect(inserts().length).toBe(1), SLOW);
+    expect(inserts()[0].row).toMatchObject({ params: { company: "acme" }, digest_opt_in: true, digest_cadence: "daily", locale: "de" });
+  });
+
+  it("a watch with no cadence column yet goes again and keeps the language", async () => {
+    await i18n.changeLanguage("de");
+    h.refuse = (r) => ("digest_cadence" in r ? NO_CADENCE : null);
+    mountEmployer();
+    await pressWatch(/Acme beobachten/);
+    await waitFor(() => expect(inserts().length).toBe(2), SLOW);
+    const [first, second] = inserts();
+    expect(first.row).toMatchObject({ digest_cadence: "daily", locale: "de" });
+    expect(second.row).toMatchObject({ params: { company: "acme" }, digest_opt_in: true, locale: "de" });
+    expect("digest_cadence" in second.row).toBe(false);
+  });
+
+  it("a watch with neither new column yet still saves, the digest on", async () => {
+    h.refuse = (r) => ("locale" in r ? NO_COLUMN : "digest_cadence" in r ? NO_CADENCE : null);
+    mountEmployer();
+    await pressWatch(/Watch Acme/);
+    await waitFor(() => expect(inserts().some((c) => !("locale" in c.row) && !("digest_cadence" in c.row))).toBe(true), SLOW);
+    expect(inserts()[0].row.locale).toBe("en");
+    expect(inserts().at(-1)!.row).toMatchObject({ params: { company: "acme" }, digest_opt_in: true });
+    await waitFor(() => expect(h.toast).toHaveBeenCalled(), SLOW);
+    expect(titles()).toContain("Watching Acme");
+    expect(titles()).not.toContain("Couldn't save — try again.");
   });
 });
 
