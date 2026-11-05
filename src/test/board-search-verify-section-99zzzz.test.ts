@@ -24,7 +24,9 @@
  *     asks, Vienna VA under Wien on either path, a ranked Wien search with no
  *     anchored arm, and the 7-card page at offset 174;
  *   - a Wien row whose location names a US state and ZIP is a FAIL at any depth
- *     of the list and with no country on file, as live on 2026-11-05;
+ *     of the list and with no country on file, as live on 2026-11-05, unless the
+ *     row names Austria too; a list whose total says more than the walk read
+ *     never PASSes;
  *   - a total that drifted between two asks and agrees when asked again is a
  *     PASS, an unstated total is INFO, and an empty phrase page is INFO;
  *   - an unreadable answer is a FAIL that shows it, never silence;
@@ -334,6 +336,51 @@ describe("section 99zzzz: the search reads what was typed", () => {
     expect(hasLine(cut.lines, "PASS", /location Wien: none of its/), show(cut.lines)).toBe(false);
     expect(hasLine(cut.lines, "INFO", /location Wien: none of the 180 rows read names a US state and ZIP, but the walk stopped before the end of the list/), show(cut.lines)).toBe(true);
     expect(cut.calls.filter((c) => /"location":"Wien","limit":60/.test(c)).length, "at most twenty pages").toBe(20);
+  });
+
+  it("a page that ends the list while its total says more reads N of T and does not PASS, with hasMore false or absent", () => {
+    const clean = wienRows(Array.from({ length: 60 }, (_, i) => `${1010 + i} Wien`), "AT");
+    for (const hasMore of [false, undefined]) {
+      const r = run(routes({ wien: { 0: list(clean, { total: 673, hasMore, nextOffset: 60 }) } }));
+      expect(hasLine(r.lines, "PASS", /location Wien: none of its/), `hasMore ${hasMore}\n${show(r.lines)}`).toBe(false);
+      expect(hasLine(r.lines, "INFO", /location Wien: none of the 60 rows read names a US state and ZIP, but it read 60 of 673/), `hasMore ${hasMore}\n${show(r.lines)}`).toBe(true);
+    }
+    const unstated = run(routes({ wien: { 0: JSON.stringify({ jobs: clean, nextOffset: 60 }) } }));
+    expect(hasLine(unstated.lines, "PASS", /location Wien: none of its/), `neither sign of the end\n${show(unstated.lines)}`).toBe(false);
+    expect(hasLine(unstated.lines, "INFO", /location Wien: none of the 60 rows read names a US state and ZIP, but it read 60 of an unstated total/), show(unstated.lines)).toBe(true);
+    // The total on the last page reached, and a walk that read all of it, as live on 2026-11-05 (670 of 670).
+    const whole = run(routes({ wien: { 0: list(clean, { total: 61, hasMore: true, nextOffset: 60 }), 60: list(wienRows(["1100 Wien"], "AT"), { total: 61 }) } }));
+    expect(hasLine(whole.lines, "PASS", /location Wien: none of its 61 rows names a US state and ZIP/), show(whole.lines)).toBe(true);
+    // A FAIL is not softened by a short read: the row it found is still served.
+    failsWith({ wien: { 0: list(wienRows([VA]), { total: 673 }) } }, /location Wien serves 1 of 1 rows whose location names a US state and ZIP/);
+  });
+
+  it("a row naming Austria beside a US office is a real Austrian row, as the sibling Wien lines hold, so no fix could clear it: it does not FAIL", () => {
+    const r = run(routes({ wien: { 0: list(wienRows(["Vienna, Austria; McLean, VA 22102", "Wien, Austria; New York, NY 10001"], "AT")) } }));
+    expect(verdicts(r.lines, "FAIL"), show(r.lines)).toEqual([]);
+    expect(hasLine(r.lines, "PASS", /location Wien: none of its 2 rows names a US state and ZIP/), show(r.lines)).toBe(true);
+    // The same address with no Austria in it is the defect.
+    failsWith({ wien: { 0: list(wienRows(["McLean, VA 22102"], "AT")) } }, /location Wien serves 1 of 1 rows whose location names a US state and ZIP/);
+  });
+
+  it("a state-shaped code with no ZIP is not an address: Wien's own code passes", () => {
+    const r = run(routes({ wien: { 0: list(wienRows(["Wien, WI"], "AT")) } }));
+    expect(verdicts(r.lines, "FAIL"), show(r.lines)).toEqual([]);
+    expect(hasLine(r.lines, "PASS", /location Wien: none of its 1 rows names a US state and ZIP/), show(r.lines)).toBe(true);
+  });
+
+  it("the Wien FAIL names the no-country cause only for a row with no country, so it does not contradict the row it prints", () => {
+    const NOCOUNTRY = /a row with no country on file passes it/;
+    const none = run(routes({ wien: { 0: list(wienRows([VA])) } }));
+    expect(hasLine(none.lines, "FAIL", NOCOUNTRY), show(none.lines)).toBe(true);
+    const us = run(routes({ wien: { 0: list(wienRows(["Vienna, VA 22182"], "US")) } }));
+    expect(hasLine(us.lines, "FAIL", /location Wien serves 1 of 1 rows .*country \["US"\].*filed in the US, which the alias refusal should stop/), show(us.lines)).toBe(true);
+    expect(hasLine(us.lines, "FAIL", NOCOUNTRY), show(us.lines)).toBe(false);
+    const at = run(routes({ wien: { 0: list(wienRows(["McLean, VA 22102"], "AT")) } }));
+    expect(hasLine(at.lines, "FAIL", /location Wien serves 1 of 1 rows .*country \["AT"\]/), show(at.lines)).toBe(true);
+    expect(hasLine(at.lines, "FAIL", NOCOUNTRY), show(at.lines)).toBe(false);
+    const mixed = run(routes({ wien: { 0: list([...wienRows(["McLean, VA 22102"], "AT"), ...wienRows([VA])]) } }));
+    expect(hasLine(mixed.lines, "FAIL", NOCOUNTRY), show(mixed.lines)).toBe(true);
   });
 
   it("FAILs the 7-card seam page and a card served twice, and follows nextOffset to the seam", () => {

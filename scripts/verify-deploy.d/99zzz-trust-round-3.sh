@@ -50,8 +50,8 @@
 #       naming it; a board with no feed_total can only be named in the INFO. The
 #       curve keeps its last positive total for 7 days after a read that states 0,
 #       so such a board is read a third time, in get_company_hiring_health: a
-#       board total of 0 is an INFO calling the curve stale, a positive one still
-#       FAILs, and one that cannot be read cannot pass;
+#       board total of 0 is an INFO saying what it read and what it could not tell,
+#       a positive one still FAILs, and one that cannot be read cannot pass;
 #   A2  every row of the staffing companies' boards this round labels carries
 #       agency true (Jobandtalent's three, Aya Healthcare, Traba, Zenjob, Staff
 #       Zone, Coople's two, Ingenovis Health, Insight Global and six of
@@ -364,8 +364,9 @@ else{
       if(j.total>0)continue;
       const fed=Number(r.feed_total);
       if(r.feed_total!=null&&fed>=50){const hr=Array.isArray(HEALTH)?HEALTH.find((x)=>x&&x.company_token===t):null,own=hr&&hr.feed_total!=null&&Number.isFinite(Number(hr.feed_total))?Number(hr.feed_total):null;
-        if(own===0){out("INFO","A1 "+nameOf(t)+" serves 0 rows and the board\x27s own total is 0: the curve\x27s total of "+fed+" (read "+r.feed_read_at+") is stale, because a read that states 0 writes no total and the curve keeps the last positive one for up to 7 days");continue}
-        const msg="A1 "+nameOf(t)+" serves 0 rows though its feed listed "+fed+" (read "+r.feed_read_at+", state "+r.feed_state+", "+r.fills_90d+" fills in 90 days) and the board\x27s own total "+(own===null?"could not be read ("+peek("/tmp/vd_99zzz_health.json")+")":"is "+own)+": settle it with the owner SQL on job_board_board_state and one vendor read; if a bad read stamped it, its closures are false";
+        if(own===0){out("INFO","A1 "+nameOf(t)+" serves 0 rows and the board\x27s own total is 0: the last read stated 0, after the curve\x27s "+fed+" (read "+r.feed_read_at+"), which the curve keeps for up to 7 days because a read that states 0 writes no total. This line cannot tell an employer that moved or emptied from one bad read of 0: one vendor read settles it, and closures from a bad read are false");continue}
+        const ownSays=own!==null?"is "+own:hr&&hr.feed_total===null?"is null (no stamp, as the 03:51 UTC orphan cleanup leaves a board with no stored rows; read again after one lap)":"could not be read ("+peek("/tmp/vd_99zzz_health.json")+")";
+        const msg="A1 "+nameOf(t)+" serves 0 rows though its feed listed "+fed+" (read "+r.feed_read_at+", state "+r.feed_state+", "+r.fills_90d+" fills in 90 days) and the board\x27s own total "+ownSays+": settle it with the owner SQL on job_board_board_state and one vendor read; if a bad read stamped it, its closures are false";
         if(ageH!==null&&ageH>24)out("FAIL",msg);else out("INFO",msg+"; "+waitWhy(24));}
       else quiet.push(nameOf(t)+" ("+(r.feed_total==null?"no feed read":"feed "+fed+", state "+r.feed_state+", read "+r.feed_read_at)+", "+r.fills_90d+" fills)");}
     if(quiet.length)out("INFO","A1 "+quiet.length+" cleared board(s) serve no row, none with a feed of 50 or more: "+quiet.join("; "));}

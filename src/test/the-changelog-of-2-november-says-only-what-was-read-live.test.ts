@@ -128,6 +128,9 @@ describe("what the last read of these entries found false, held in every languag
     /** Greece, New York has at least four rows still filed abroad, so its half is cut and Lake Wales stands alone. */ lake: string; still: string; greece: RegExp;
     /** The renamed boards, not an employer's boards: LCS has a second. And no count the page can differ from on publish day. */ boards: string; oldBoards: RegExp; lcs: string;
     /** PwC's page pools three of its four boards. */ pool: string; allOf: RegExp;
+    /** A stored description is never rewritten: rows posted before the deploy still repeat, so only new rows are claimed. */ lever: string; oldLever: RegExp;
+    /** "cvs in Austin, TX" reaches no CVS job, so the claim is the name alone and never "every search". */ short: string; oldShort: RegExp;
+    /** A part-time intern or temp stays part-time, 208 of 760 read live, so the claim is most of them. */ personio: string; oldPersonio: RegExp;
     /** Only rewrites whose bullet is in the draft land. */ report: string; oldReport: RegExp;
   };
   const EN_PINS: Pins = {
@@ -140,6 +143,9 @@ describe("what the last read of these entries found false, held in every languag
     boards: "the four boards we renamed for them", oldBoards: /these four employers' boards/, lcs: "counts only its own board's roles",
     pool: "(three of PwC's four)", allOf: /lists and counts all of them/,
     report: "the bullets your draft already has", oldReport: /applied to it and are not lost/,
+    lever: "New Lever job descriptions no longer repeat their opening", oldLever: /(?<!New )Lever job descriptions no longer repeat/,
+    short: "A search for CVS, UPS or 3M alone now goes to that employer's jobs", oldShort: /on every search/,
+    personio: "Most Personio internships and temporary jobs are now", oldPersonio: /(?<!Most )Personio internships and temporary jobs are now/,
   };
   const PINS: Record<(typeof LOCALES)[number], Pins> = {
     en: EN_PINS,
@@ -154,6 +160,9 @@ describe("what the last read of these entries found false, held in every languag
       boards: "auf den vier Boards", oldBoards: /auf den Boards dieser vier Arbeitgeber/, lcs: "nur die Stellen ihres eigenen Boards",
       pool: "(drei von vier bei PwC)", allOf: /listet und zählt jetzt alle\./,
       report: "die dein Entwurf schon hat", oldReport: /gehen nicht verloren/,
+      lever: "Beschreibungen neuer Lever-Stellen wiederholen ihren Anfang nicht mehr", oldLever: /Stellenbeschreibungen von Lever/,
+      short: "Eine Suche nur nach CVS, UPS oder 3M führt jetzt zu den Stellen dieses Arbeitgebers", oldShort: /bei jeder Suche/,
+      personio: "Die meisten Praktika und befristeten Stellen von Personio", oldPersonio: /Praktika und befristete Stellen von Personio/,
     },
     es: {
       biggest: /más grandes/, window: "más de 30 días", close: "Marriott está cerca de esa línea", others: "Otros tablones grandes, como Accenture y USAJOBS",
@@ -165,6 +174,9 @@ describe("what the last read of these entries found false, held in every languag
       boards: "los cuatro tablones que renombramos", oldBoards: /los tablones de estos cuatro empleadores/, lcs: "solo los puestos de su propio tablón",
       pool: "(tres de los cuatro de PwC)", allOf: /los muestra y los cuenta todos/,
       report: "las viñetas que tu borrador ya tiene", oldReport: /se aplican a él y no se pierden/,
+      lever: "Las descripciones de los empleos nuevos de Lever ya no repiten su comienzo", oldLever: /Las descripciones de empleo de Lever/,
+      short: "Una búsqueda solo de CVS, UPS o 3M ahora lleva a los empleos de ese empleador", oldShort: /en cada búsqueda/,
+      personio: "La mayoría de las prácticas y los empleos temporales de Personio", oldPersonio: /Las prácticas y los empleos temporales de Personio/,
     },
     fr: {
       biggest: /plus grands/, window: "plus de 30 jours", close: "Marriott est proche de cette ligne", others: "D'autres grands tableaux, comme Accenture et USAJOBS",
@@ -176,6 +188,9 @@ describe("what the last read of these entries found false, held in every languag
       boards: "les quatre tableaux que nous avons renommés", oldBoards: /les tableaux de ces quatre employeurs/, lcs: "seulement les postes de son propre tableau",
       pool: "(trois des quatre de PwC)", allOf: /les liste et les compte désormais tous/,
       report: "aux puces que votre brouillon contient déjà", oldReport: /y sont appliquées et ne sont pas perdues/,
+      lever: "Les descriptions des nouvelles offres Lever ne répètent plus leur début", oldLever: /Les descriptions de poste de Lever/,
+      short: "Une recherche portant uniquement sur CVS, UPS ou 3M mène désormais aux offres de cet employeur", oldShort: /à chaque recherche/,
+      personio: "La plupart des stages et des emplois temporaires de Personio", oldPersonio: /Les stages et les emplois temporaires de Personio/,
     },
     hi: {
       biggest: /सबसे बड़े/, window: "30 दिन से पुरानी", close: "Marriott इस रेखा के क़रीब है", others: "दूसरे बड़े बोर्ड, जैसे Accenture और USAJOBS",
@@ -187,6 +202,9 @@ describe("what the last read of these entries found false, held in every languag
       boards: "उन चार बोर्ड की हर पोस्टिंग", oldBoards: /इन चार नियोक्ताओं के बोर्ड/, lcs: "सिर्फ़ अपने बोर्ड के रोल गिनता है",
       pool: "(PwC के चार में से तीन)", allOf: /उन सभी को दिखाता और गिनता है/,
       report: "जो आपके ड्राफ़्ट में पहले से हैं", oldReport: /उसी पर लागू होते हैं और खोते नहीं/,
+      lever: "Lever की नई नौकरियों के विवरण अब अपनी शुरुआत नहीं दोहराते", oldLever: /Lever के नौकरी विवरण/,
+      short: "सिर्फ़ CVS, UPS या 3M की खोज अब उसी नियोक्ता की नौकरियों पर ले जाती है", oldShort: /हर खोज में/,
+      personio: "Personio की ज़्यादातर इंटर्नशिप और अस्थायी नौकरियाँ", oldPersonio: /Personio की इंटर्नशिप/,
     },
     nl: {
       biggest: /grootste/, window: "ouder is dan 30 dagen", close: "Marriott zit dicht bij die lijn", others: "Andere grote borden, zoals Accenture en USAJOBS",
@@ -198,6 +216,9 @@ describe("what the last read of these entries found false, held in every languag
       boards: "op de vier borden", oldBoards: /op de borden van deze vier werkgevers/, lcs: "alleen de functies van zijn eigen bord",
       pool: "(drie van de vier van PwC)", allOf: /toont en telt ze nu allemaal/,
       report: "die je concept al heeft", oldReport: /erop toegepast en gaan ze niet verloren/,
+      lever: "Beschrijvingen van nieuwe Lever-vacatures herhalen hun begin niet meer", oldLever: /Functiebeschrijvingen van Lever/,
+      short: "Een zoekopdracht op alleen CVS, UPS of 3M leidt nu naar de vacatures van die werkgever", oldShort: /bij elke zoekopdracht/,
+      personio: "De meeste stages en tijdelijke banen van Personio", oldPersonio: /Stages en tijdelijke banen van Personio/,
     },
     pt: {
       biggest: /maiores/, window: "mais de 30 dias", close: "A Marriott está perto dessa linha", others: "Outros quadros grandes, como Accenture e USAJOBS",
@@ -209,6 +230,9 @@ describe("what the last read of these entries found false, held in every languag
       boards: "nos quatro quadros que renomeamos", oldBoards: /nos quadros desses quatro empregadores/, lcs: "só as vagas do próprio quadro",
       pool: "(três dos quatro da PwC)", allOf: /lista e conta todos eles/,
       report: "aos tópicos que seu rascunho já tem", oldReport: /são aplicadas a ele e não se perdem/,
+      lever: "As descrições das vagas novas da Lever não repetem mais a abertura", oldLever: /As descrições de vagas da Lever/,
+      short: "Uma busca só por CVS, UPS ou 3M agora leva às vagas desse empregador", oldShort: /em toda busca/,
+      personio: "A maioria dos estágios e das vagas temporárias da Personio", oldPersonio: /Estágios e vagas temporárias da Personio/,
     },
     tl: {
       biggest: /pinakamalalaki/, window: "higit sa 30 araw", close: "Malapit sa linyang iyon ang Marriott", others: "ibang malalaking board, gaya ng Accenture at USAJOBS",
@@ -220,6 +244,9 @@ describe("what the last read of these entries found false, held in every languag
       boards: "sa apat na board na pinalitan namin ng pangalan", oldBoards: /sa mga board ng apat na employer/, lcs: "Ang mga role lang ng sarili nitong board",
       pool: "(tatlo sa apat ng PwC)", allOf: /ang lahat ng ito\./,
       report: "sa mga bullet na mayroon na ang draft mo", oldReport: /nailalapat dito ang mga pag-aayos ng report at hindi nawawala/,
+      lever: "ng mga paglalarawan ng mga bagong trabaho mula sa Lever", oldLever: /paglalarawan ng trabaho mula sa Lever/,
+      short: "ang paghahanap ng CVS, UPS o 3M lang", oldShort: /sa bawat paghahanap/,
+      personio: "ang karamihan ng mga internship at pansamantalang trabaho mula sa Personio", oldPersonio: /May tamang label na ang mga internship/,
     },
   };
   const each = (fn: (l: (typeof LOCALES)[number], p: Pins) => void) => { for (const l of LOCALES) fn(l, PINS[l]); };
@@ -268,6 +295,27 @@ describe("what the last read of these entries found false, held in every languag
       const d = shard(l)[SEARCH].description;
       expect(d, l).not.toMatch(p.shortClass);
       expect(d, l).toContain(p.shortLimit);
+    });
+  });
+  it("the short names route when typed alone: a place after them can reach no job of theirs, so no sentence says every search", () => {
+    each((l, p) => {
+      const d = shard(l)[SEARCH].description;
+      expect(d, l).toContain(p.short);
+      expect(d, l).not.toMatch(p.oldShort);
+    });
+  });
+  it("Lever's descriptions are claimed for new rows only: a stored row keeps its old text until it ages out", () => {
+    each((l, p) => {
+      const d = shard(l)[DETAILS].description;
+      expect(d, l).toContain(p.lever);
+      expect(d, l).not.toMatch(p.oldLever);
+    });
+  });
+  it("Personio's labels are claimed for most rows: a part-time intern or temp still shows as part-time", () => {
+    each((l, p) => {
+      const d = shard(l)[DETAILS].description;
+      expect(d, l).toContain(p.personio);
+      expect(d, l).not.toMatch(p.oldPersonio);
     });
   });
   it("Lake Wales stands alone, the limit names a place that holds, and no count of Greece, New York rows is left to go false", () => {

@@ -177,7 +177,7 @@ if(WF&&v90&&Number.isFinite(age)&&S.length){
   if(prev&&prev.build===st.version&&stamp-prev.stamp>60*60000&&stamp-prev.at<=300*60000)WL.wraps.push({endedAt:new Date(stamp).toISOString(),wrapMin:Math.round((stamp-prev.stamp)/60000),build:st.version,how:"the age stamp moved between two readings"});
   WL.lastRead={at:tRead,stamp,build:st.version};
   try{fs.mkdirSync(require("path").dirname(WF),{recursive:true});fs.writeFileSync(WF,JSON.stringify(WL,null,1)+"\n")}catch{}}
-const RULE="on .100 the cause is partly established: chain stops, then list-started slices holding the lock, the description sweep part of it. The fix rides the next job-board build; judge it by list position over two laps";
+const RULE=st.version==="2026-09-09.100"?"on .100 the cause is partly established: chain stops, then list-started slices holding the lock, the description sweep part of it. The fix rides the next job-board build; judge it by list position over two laps":"count the chain stops by mode and judge the lap by list position over two laps";
 const pubWrap=Number(st.lastWrapMin);const mine=WL.wraps.filter((w)=>w&&w.build===st.version&&Number.isFinite(Number(w.wrapMin))&&Date.now()-Date.parse(w.endedAt)<=48*3600000);const lastW=mine[mine.length-1];
 const wrapLine=(min,src)=>ok(min<=393,"the last completed cold rotation on "+st.version+" took "+min+" min ("+src+"; want at most 393 = 5h57m + 10%"+(min<=393?"":"; "+RULE)+")");
 if(v90&&Number.isFinite(age)&&Number.isFinite(at)&&age*60000<=Date.now()-at){

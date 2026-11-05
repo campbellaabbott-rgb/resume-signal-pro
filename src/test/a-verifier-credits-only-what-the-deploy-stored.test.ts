@@ -253,10 +253,10 @@ describe("section 90 judges the .90 claims", () => {
     expect(line(out, /not an alias/)).toMatch(/^FAIL/);
   });
 
-  it("a cold rotation on .90 past 393 minutes FAILs and names the chain stops, not the rollback; one begun before the deploy is INFO", () => {
+  it("a cold rotation past 393 minutes FAILs and names the chain stops, not the rollback; one begun before the deploy is INFO", () => {
     const fx = healthy(8);
-    for (const s of [fx.status0, fx.status1]) s.lastRotationAgeMin = 400;
-    const running = line(run90(fx), /cold rotation running on \.90 is 400 min old/);
+    for (const s of [fx.status0, fx.status1]) { s.lastRotationAgeMin = 400; s.version = "2026-09-09.100"; }
+    const running = line(run90(fx), /cold rotation running on \.100 is 400 min old/);
     expect(running).toMatch(/^FAIL .*chain stops.*next job-board build/);
     expect(running).not.toMatch(/DEEP_LANE_TAKE/);
     const early = healthy(5);
@@ -265,9 +265,9 @@ describe("section 90 judges the .90 claims", () => {
   });
 
   describe("the cold rotation is judged by its last completed wrap, never by how young the running one is", () => {
-    const VERSION = "2026-09-09.90";
+    const VERSION = "2026-09-09.100";
     const ledger = (body: unknown) => { const d = mkdtempSync(join(tmpdir(), "vd-wraps-")); const f = join(d, "cold-wraps.json"); if (body !== null) writeFileSync(f, JSON.stringify(body)); return f; };
-    const aged = (age: number, cold = 22240) => { const fx = healthy(36); for (const s of [fx.status0, fx.status1]) { s.lastRotationAgeMin = age; s.cursor = { ...s.cursor, cold }; } return fx; };
+    const aged = (age: number, cold = 22240, version = VERSION) => { const fx = healthy(36); for (const s of [fx.status0, fx.status1]) { s.version = version; s.lastRotationAgeMin = age; s.cursor = { ...s.cursor, cold }; } return fx; };
     const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
     const ENDED = hoursAgo(3);
     const wrap = (wrapMin: number, build = VERSION, endedAt = ENDED) => ({ endedAt, wrapMin, build, how: "age stamp moved" });
@@ -275,12 +275,27 @@ describe("section 90 judges the .90 claims", () => {
     it("a wrap of 597 minutes FAILs while the running rotation is 2 minutes old, which used to read PASS", () => {
       const out = run90(aged(2, 32), { VD90_WRAPS: ledger({ wraps: [wrap(612), wrap(597)] }) });
       const l = line(out, /last completed cold rotation/);
-      expect(l).toMatch(new RegExp(`^FAIL  the last completed cold rotation on 2026-09-09\\.90 took 597 min \\(ended ${ENDED.replace(/\./g, "\\.")}`));
+      expect(l).toMatch(new RegExp(`^FAIL  the last completed cold rotation on 2026-09-09\\.100 took 597 min \\(ended ${ENDED.replace(/\./g, "\\.")}`));
       expect(l).toMatch(/want at most 393/);
       expect(l, "the lane rollback is not the response: the laps were long because no slice ran").not.toMatch(/DEEP_LANE_TAKE/);
       expect(l, "the cause is only partly established, and the line says so").toMatch(/partly established.*chain stops.*next job-board build/);
       expect(l, "the withdrawn figure stays out").not.toMatch(/455/);
       expect(out.filter((x) => /^PASS .*cold rotation/.test(x)), out.join("\n")).toEqual([]);
+    });
+    it("the words about .100's fix are printed on .100 only: a later build's long wrap still FAILs, and does not say the fix has yet to ship", () => {
+      const later = "2026-09-09.101";
+      const l = line(run90(aged(2, 32, later), { VD90_WRAPS: ledger({ wraps: [wrap(450, later)] }) }), /last completed cold rotation/);
+      expect(l).toMatch(/^FAIL  the last completed cold rotation on 2026-09-09\.101 took 450 min .*want at most 393/);
+      expect(l, "a reader would conclude the fix has not shipped").not.toMatch(/next job-board build|partly established|on \.100/);
+      expect(l).toMatch(/chain stops by mode.*list position over two laps/);
+      const running = line(run90(aged(400, 22240, later)), /cold rotation running on \.101 is 400 min old/);
+      expect(running).toMatch(/^FAIL /);
+      expect(running).not.toMatch(/next job-board build|partly established|on \.100/);
+      const pace = line(run90(aged(300, 12000, later)), /a pace, not a wrap/);
+      expect(pace).toMatch(/^FAIL /);
+      expect(pace).not.toMatch(/next job-board build|partly established|on \.100/);
+      const earlier = line(run90(aged(2, 32, "2026-09-09.96"), { VD90_WRAPS: ledger({ wraps: [wrap(450, "2026-09-09.96")] }) }), /last completed cold rotation/);
+      expect(earlier).not.toMatch(/next job-board build|partly established|on \.100/);
     });
     it("a wrap inside the bound PASSes, from the published field first and the ledger after", () => {
       expect(line(run90(aged(2, 32), { VD90_WRAPS: ledger({ wraps: [wrap(350)] }) }), /last completed cold rotation/)).toMatch(/^PASS .*took 350 min/);

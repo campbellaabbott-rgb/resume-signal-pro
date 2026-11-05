@@ -37,10 +37,12 @@
 #   - location "Wien" browses no row filed in the US unless the row names
 #     Austria (S13-006, the job-board branch builder);
 #   - no row under location "Wien", read to the end of the list, has a location
-#     that names a US state and ZIP. The alias refusal stops only rows filed in
-#     the US, so a Vienna, Virginia row with no country on file passes it. It
-#     FAILs today on two WorldStrides rows, and the next job-board round owes the
-#     fix. An unreadable page is a FAIL, and no rows or a walk cut short are INFO;
+#     that names a US state and ZIP, unless the row names Austria too. The alias
+#     refusal stops only rows filed in the US, so a Vienna, Virginia row with no
+#     country on file passes it. It FAILs today on two WorldStrides rows, and the
+#     next job-board round owes the fix. An unreadable page is a FAIL. No rows, a
+#     walk cut short, or a walk that read fewer rows than the last page's total
+#     are INFO;
 #   - q "engineer" in "Wien" is ranked (ranked true, search_jobs among the
 #     phases timed), ranks no row filed in the US unless it names Austria, and serves a row
 #     named Vienna without Wien whose title does not start with "engineer"
@@ -224,10 +226,12 @@ const usUnnamed=(j)=>j.jobs.filter((x)=>x.country==="US"&&!/austria/i.test(Strin
   const pages=[];for(let n=0;n<20;n++){const raw=(()=>{try{return fs.readFileSync("/tmp/vd_bsearch_wienall_"+n+".json","utf8")}catch{return null}})();if(raw===null)break;let j=null;try{j=JSON.parse(raw)}catch{}pages.push(j)}
   const bad=pages.findIndex((j)=>!ok(j));
   if(!pages.length||bad>=0)unreadable("wienall_"+Math.max(bad,0),"location Wien, page "+Math.max(bad,0)+" of the walk to its end");
-  else{const rows=pages.flatMap((j)=>j.jobs),hit=rows.filter((x)=>US_ZIP.test(String(x.location||"")));
-    if(hit.length)say("FAIL","location Wien serves "+hit.length+" of "+rows.length+" rows whose location names a US state and ZIP: "+JSON.stringify(hit.slice(0,3).map((x)=>x.location))+" ("+[...new Set(hit.map((x)=>String(x.company)))].slice(0,3).join(", ")+"; country "+JSON.stringify(hit[0].country??null)+"): the alias refusal stops only rows filed in the US, so a row with no country on file passes it. The next job-board round owes the fix");
+  else{const rows=pages.flatMap((j)=>j.jobs),hit=rows.filter((x)=>US_ZIP.test(String(x.location||""))&&!/austria/i.test(String(x.location||""))),last=pages[pages.length-1],stated=typeof last.total==="number";
+    const why=hit.some((x)=>x.country==null)?": the alias refusal stops only rows filed in the US, so a row with no country on file passes it":hit.some((x)=>x.country==="US")?": a row filed in the US, which the alias refusal should stop":"";
+    if(hit.length)say("FAIL","location Wien serves "+hit.length+" of "+rows.length+" rows whose location names a US state and ZIP: "+JSON.stringify(hit.slice(0,3).map((x)=>x.location))+" ("+[...new Set(hit.map((x)=>String(x.company)))].slice(0,3).join(", ")+"; country "+JSON.stringify([...new Set(hit.map((x)=>x.country??null))])+")"+why+". The next job-board round owes the fix");
     else if(!rows.length)say("INFO","location Wien served no row, so no location was read for a US state and ZIP");
-    else if(pages[pages.length-1].hasMore===true)say("INFO","location Wien: none of the "+rows.length+" rows read names a US state and ZIP, but the walk stopped before the end of the list");
+    else if(last.hasMore===true)say("INFO","location Wien: none of the "+rows.length+" rows read names a US state and ZIP, but the walk stopped before the end of the list");
+    else if(stated?rows.length<last.total:last.hasMore!==false)say("INFO","location Wien: none of the "+rows.length+" rows read names a US state and ZIP, but it read "+rows.length+" of "+(stated?last.total:"an unstated total")+", so the list was not read to its end");
     else say("PASS","location Wien: none of its "+rows.length+" rows names a US state and ZIP");}}
 {const j=read("wien_ranked");if(!ok(j))unreadable("wien_ranked","engineer in Wien (ranked)");else{
   const us=usUnnamed(j);const viennaOnly=j.jobs.filter((x)=>/vienna/i.test(String(x.location||""))&&!/wien/i.test(String(x.location||"")));

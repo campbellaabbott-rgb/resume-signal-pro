@@ -491,9 +491,11 @@ describe("section 99zzz: trust round 3", () => {
     const due = (o: Over) => run(routes({ curve: lost, solo: { [CONVERGINT]: 0 }, buildSince: iso(30 * H), ...o }));
     const a1 = (lines: string[]) => lines.filter((l) => /A1 Convergint/.test(l));
 
-    it("a board whose own total is 0 reads INFO, says so, and calls the curve's total stale: live on 2026-11-05", () => {
+    it("a board whose own total is 0 reads INFO and says only what it read: a last read that stated 0, after the curve's total, which cannot tell a move from one bad read", () => {
       const { lines } = due({ ownTotal: { [CONVERGINT]: 0 } });
-      expect(has(lines, "INFO", /A1 Convergint serves 0 rows and the board's own total is 0: the curve's total of 294 \(read 2026-11-02T16:54:22\.995\+00:00\) is stale/), show(lines)).toBe(true);
+      expect(has(lines, "INFO", /A1 Convergint serves 0 rows and the board's own total is 0: the last read stated 0, after the curve's 294 \(read 2026-11-02T16:54:22\.995\+00:00\)/), show(lines)).toBe(true);
+      expect(has(lines, "INFO", /This line cannot tell an employer that moved or emptied from one bad read of 0: one vendor read settles it, and closures from a bad read are false/), show(lines)).toBe(true);
+      expect(a1(lines).filter((l) => /is stale/.test(l)), "it read two numbers: it does not know which one is wrong").toEqual([]);
       expect(lines.filter((l) => /^FAIL  A1 Convergint/.test(l)), show(lines)).toEqual([]);
     });
 
@@ -507,15 +509,23 @@ describe("section 99zzz: trust round 3", () => {
       expect(has(otherZero.lines, "INFO", /A1 \S*geant\S* serves 0 rows and the board's own total is 0/i), show(otherZero.lines)).toBe(true);
     });
 
-    it("an unreadable health read does not PASS: it FAILs naming the board, and so does a row with no total or no row at all", () => {
-      for (const o of [{ healthBody: "<html>gateway" }, { healthBody: '{"code":"42501"}' }, { healthBody: "[]" }, { ownTotal: { [CONVERGINT]: null } }, {}] as Over[]) {
+    it("an unreadable health read does not PASS: it FAILs naming the board, and so does a row with no such field or no row at all", () => {
+      for (const o of [{ healthBody: "<html>gateway" }, { healthBody: '{"code":"42501"}' }, { healthBody: "[]" }, { healthBody: JSON.stringify([{ company_token: CONVERGINT, open_roles: 0 }]) }, {}] as Over[]) {
         const { lines } = due(o);
         expect(has(lines, "FAIL", /A1 Convergint serves 0 rows though its feed listed 294 .* and the board's own total could not be read.*vendor read/), `${JSON.stringify(o)}\n${show(lines)}`).toBe(true);
+        expect(a1(lines).filter((l) => /03:51/.test(l)), `an answer that did not say null is not a stamp the cleanup removed: ${JSON.stringify(o)}`).toEqual([]);
         expect(a1(lines).filter((l) => /^(PASS|INFO)/.test(l)), show(lines)).toEqual([]);
       }
       // Another board's reply is not this board's total.
       const elsewhere = due({ ownTotal: { [OTHER]: 0 } });
       expect(has(elsewhere.lines, "FAIL", /A1 Convergint .* could not be read/), show(elsewhere.lines)).toBe(true);
+    });
+
+    it("a health row whose total is null still FAILs, and says it read no stamp: the nightly orphan cleanup deletes the stamp of a board with no stored rows until its next visit", () => {
+      const { lines } = due({ ownTotal: { [CONVERGINT]: null } });
+      expect(has(lines, "FAIL", /A1 Convergint serves 0 rows though its feed listed 294 .* and the board's own total is null \(no stamp, as the 03:51 UTC orphan cleanup leaves a board with no stored rows; read again after one lap\).*vendor read/), show(lines)).toBe(true);
+      expect(a1(lines).filter((l) => /could not be read/.test(l)), "the reader answered: null is what it said").toEqual([]);
+      expect(a1(lines).filter((l) => /^(PASS|INFO)/.test(l)), show(lines)).toEqual([]);
     });
 
     it("before the first day an unread or positive total waits as INFO, and a 0 reads the same at any age", () => {
