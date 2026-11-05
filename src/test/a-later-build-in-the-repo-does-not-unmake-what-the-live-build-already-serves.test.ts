@@ -148,22 +148,26 @@ describe("migrationPhases: a before rule its function broke stays broken under a
   const NAMES = [file("20261025100000"), file("20261026100000")];
   const REARM = file("20261030100000");
   const MAIN_AT_96 = [row("job-board", "job-board.2026-09-09.96", "job-board.2026-09-09.96"), AHEAD()[1]];
+  // These cases are production on 2026-11-01, when job-board .96 was the newest record. A later record moves the
+  // bar (a live .96 then reads short of it), so they read the ledger as it stood; the last case reads today's record.
+  const records = policy.verifiedDeploys as Array<{ functions?: Record<string, string> }>;
+  const at96 = { ...policy, verifiedDeploys: records.slice(0, records.findIndex((d) => d.functions?.["job-board"] === "job-board.2026-09-09.96") + 1) };
 
   it("the files this stands on: both name migrations, and their repair, are on disk", () => {
     expect([...NAMES, REARM].every(Boolean)).toBe(true);
   });
 
   it("live .96 under repo .98, the repair not pending: both stop the message, as on main at .96", () => {
-    const main = L.migrationPhases(NAMES, policy, MAIN_AT_96, onDisk);
-    const ahead = L.migrationPhases(NAMES, policy, AHEAD(), onDisk);
+    const main = L.migrationPhases(NAMES, at96, MAIN_AT_96, onDisk);
+    const ahead = L.migrationPhases(NAMES, at96, AHEAD(), onDisk);
     expect(main.errors.map((e: string) => e.slice(0, 14))).toEqual(["20261025100000", "20261026100000"]);
     expect(ahead.errors).toEqual(main.errors);
     expect(ahead.errors.every((e: string) => e.includes("already answers job-board.2026-09-09.96, and its repairedBy 20261030100000 is not pending")), ahead.errors.join("\n")).toBe(true);
   });
 
   it("live .96 under repo .98, the repair pending: no error, and the notes say job-board deployed first, as on main at .96", () => {
-    const main = L.migrationPhases([...NAMES, REARM], policy, MAIN_AT_96, onDisk);
-    const ahead = L.migrationPhases([...NAMES, REARM], policy, AHEAD(), onDisk);
+    const main = L.migrationPhases([...NAMES, REARM], at96, MAIN_AT_96, onDisk);
+    const ahead = L.migrationPhases([...NAMES, REARM], at96, AHEAD(), onDisk);
     expect(ahead.errors).toEqual([]);
     expect(ahead.pre).toEqual(main.pre);
     expect(ahead.pre.slice(0, 2).map((p: { note: string }) => p.note)).toEqual([
@@ -173,8 +177,8 @@ describe("migrationPhases: a before rule its function broke stays broken under a
   });
 
   it("the record is the newest verified deploy's build: live .92 under repo .98 is short of .96 and reads 'before job-board' with no error", () => {
-    expect(policy.verifiedDeploys.at(-1).functions["job-board"]).toBe("job-board.2026-09-09.96");
-    const short = L.migrationPhases(NAMES, policy, AHEAD("job-board.2026-09-09.92"), onDisk);
+    expect(at96.verifiedDeploys.at(-1)?.functions?.["job-board"]).toBe("job-board.2026-09-09.96");
+    const short = L.migrationPhases(NAMES, at96, AHEAD("job-board.2026-09-09.92"), onDisk);
     expect(short.errors).toEqual([]);
     expect(short.pre.map((p: { note: string }) => p.note)).toEqual(["before job-board", "before job-board"]);
     // A repair recorded with no verified deploy of the function keeps main's own rule: "deploy" reads "before".
@@ -193,5 +197,18 @@ describe("migrationPhases: a before rule its function broke stays broken under a
       expect(unread.errors, String(jb)).toEqual([]);
       expect(unread.pre.slice(0, 2).map((p: { note: string }) => p.note), String(jb)).toEqual(["before job-board", "before job-board"]);
     }
+  });
+
+  it("the bar is the real ledger's newest record, whatever build that is: a live build at it stops the message, one short of it reads 'before job-board'", () => {
+    const newest = [...records].reverse().find((d) => d.functions?.["job-board"])?.functions?.["job-board"] as string;
+    const n = Number(/\.(\d+)$/.exec(newest)?.[1]);
+    const nth = (k: number) => newest.replace(/\d+$/, String(k));
+    const under = (have: string) => [row("job-board", nth(n + 1), have), AHEAD()[1]];
+    expect(under(newest)[0].state).toBe("deploy");
+    const at = L.migrationPhases(NAMES, policy, under(newest), onDisk);
+    expect(at.errors.map((e: string) => e.slice(0, 14))).toEqual(["20261025100000", "20261026100000"]);
+    const short = L.migrationPhases(NAMES, policy, under(nth(n - 1)), onDisk);
+    expect(short.errors).toEqual([]);
+    expect(short.pre.map((p: { note: string }) => p.note)).toEqual(["before job-board", "before job-board"]);
   });
 });
