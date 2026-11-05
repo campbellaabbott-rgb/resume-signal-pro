@@ -125,6 +125,6 @@ case "$VDARV_FONT_CODE:$VDARV_FONT_TYPE" in
 esac
 
 echo "INFO  S13-083 first match is proved in the suite (a-zero-result-alert-says-we-found-it-when-the-first-match-arrives.test.ts), since it needs a real send"
-echo "INFO  S13-102 on every saved-search writer is proved in the suite (a-saved-search-keeps-the-language-its-owner-reads-the-site-in.test.tsx)"
+echo "INFO  S13-102 on every saved-search writer is proved in the suite (a-saved-search-keeps-the-language-its-owner-reads-the-site-in.test.tsx, explores-save-press-names-the-language-the-page-is-read-in.test.tsx)"
 echo "INFO  S12-078 the Terms wait for the mailbox guard: proved in the suite (a-google-account-records-the-terms-it-was-shown.test.tsx), since it needs a real sign-up"
 echo "INFO  S9-001 the owner's catalogue read before the OAuth server is proved against a skipped table in the suite (a-token-minted-for-a-connected-app-works-only-at-the-connector.test.ts), since the policies are not readable from here"
