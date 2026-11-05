@@ -253,10 +253,12 @@ describe("section 90 judges the .90 claims", () => {
     expect(line(out, /not an alias/)).toMatch(/^FAIL/);
   });
 
-  it("a cold rotation on .90 past 393 minutes FAILs and names the rollback; one begun before the deploy is INFO", () => {
+  it("a cold rotation on .90 past 393 minutes FAILs and names the chain stops, not the rollback; one begun before the deploy is INFO", () => {
     const fx = healthy(8);
     for (const s of [fx.status0, fx.status1]) s.lastRotationAgeMin = 400;
-    expect(line(run90(fx), /cold rotation running on \.90 is 400 min old/)).toMatch(/^FAIL .*DEEP_LANE_TAKE = 0/);
+    const running = line(run90(fx), /cold rotation running on \.90 is 400 min old/);
+    expect(running).toMatch(/^FAIL .*chain stops.*next job-board build/);
+    expect(running).not.toMatch(/DEEP_LANE_TAKE/);
     const early = healthy(5);
     for (const s of [early.status0, early.status1]) s.lastRotationAgeMin = 400;
     expect(line(run90(early), /lastRotationAgeMin = 400/)).toMatch(/^INFO/);
@@ -275,8 +277,9 @@ describe("section 90 judges the .90 claims", () => {
       const l = line(out, /last completed cold rotation/);
       expect(l).toMatch(new RegExp(`^FAIL  the last completed cold rotation on 2026-09-09\\.90 took 597 min \\(ended ${ENDED.replace(/\./g, "\\.")}`));
       expect(l).toMatch(/want at most 393/);
-      expect(l).toMatch(/DEEP_LANE_TAKE = 0/);
-      expect(l, "the rollback is not proven the cure, and the line says so").toMatch(/unproven.*next job-board round/);
+      expect(l, "the lane rollback is not the response: the laps were long because no slice ran").not.toMatch(/DEEP_LANE_TAKE/);
+      expect(l, "the cause is only partly established, and the line says so").toMatch(/partly established.*chain stops.*next job-board build/);
+      expect(l, "the withdrawn figure stays out").not.toMatch(/455/);
       expect(out.filter((x) => /^PASS .*cold rotation/.test(x)), out.join("\n")).toEqual([]);
     });
     it("a wrap inside the bound PASSes, from the published field first and the ledger after", () => {

@@ -128,6 +128,8 @@ type Over = {
   shell?: string; entry?: string; chunks?: Record<string, string>;
   /** get_company_fill_curve's rows by board (default: three open roles each), or its whole reply; and a board's own list total. */
   curve?: Record<string, Row>; curveBody?: string; solo?: Record<string, number | string>;
+  /** get_company_hiring_health's feed_total by board, or its whole reply. The default is no route: its unreadable reply. */
+  ownTotal?: Record<string, number | null>; healthBody?: string;
 };
 /** A list reply as index.ts sends it: every asked token uncarried gives unknownCompanies; a mix names the uncarried in companiesUnresolved. */
 type Scoped = { jobs: Row[]; unknownCompanies?: string[]; unresolved?: string[] };
@@ -212,6 +214,7 @@ function routes(o: Over = {}): Route[] {
     { match: `^GET ${SITE}/assets/index-AAAA\\.js$`, body: o.entry ?? "console.log(1)" },
     ...Object.entries(o.chunks ?? {}).map(([name, body]) => ({ match: `^GET ${SITE}/assets/${esc(name)}$`, body })),
     { match: `^POST https://p\\.supabase\\.co/rest/v1/rpc/get_company_fill_curve`, body: o.curveBody ?? JSON.stringify(curve) },
+    ...(o.ownTotal || o.healthBody !== undefined ? [{ match: `^POST https://p\\.supabase\\.co/rest/v1/rpc/get_company_hiring_health`, body: o.healthBody ?? JSON.stringify(Object.entries(o.ownTotal ?? {}).map(([t, feed_total]) => ({ company_token: t, open_roles: 0, closed_90d: 188, superseded_90d: 88, feed_total }))) }] : []),
     { match: `^POST ${FB}\\t\\{"action":"status"\\}`, body: status },
     ...nameRoutes,
     ...soloRoutes,
@@ -464,11 +467,11 @@ describe("section 99zzz: trust round 3", () => {
 
   it("A1 names a cleared board that serves nothing: a large feed is a FAIL once due, a small one is named, and a stale reader row is not believed", () => {
     const lost = { [CONVERGINT]: { open_roles: 0, feed_total: 294, feed_read_at: "2026-11-02T16:54:22.995+00:00", feed_state: "ok", fills_90d: 188 } };
-    const due = run(routes({ curve: lost, solo: { [CONVERGINT]: 0 }, buildSince: iso(30 * H) }));
-    expect(has(due.lines, "FAIL", /A1 Convergint serves 0 rows though its feed listed 294 \(read 2026-11-02T16:54:22\.995\+00:00, state ok, 188 fills in 90 days\).*job_board_board_state.*vendor read.*closures are false/), show(due.lines)).toBe(true);
+    const due = run(routes({ curve: lost, solo: { [CONVERGINT]: 0 }, ownTotal: { [CONVERGINT]: 294 }, buildSince: iso(30 * H) }));
+    expect(has(due.lines, "FAIL", /A1 Convergint serves 0 rows though its feed listed 294 \(read 2026-11-02T16:54:22\.995\+00:00, state ok, 188 fills in 90 days\) and the board's own total is 294.*job_board_board_state.*vendor read.*closures are false/), show(due.lines)).toBe(true);
     // The agency line is a different claim, and still holds.
     expect(has(due.lines, "PASS", /A1 all 2 row\(s\) on the 20 employers' own boards cleared of the flag carry agency false/), show(due.lines)).toBe(true);
-    const early = run(routes({ curve: lost, solo: { [CONVERGINT]: 0 } }));
+    const early = run(routes({ curve: lost, solo: { [CONVERGINT]: 0 }, ownTotal: { [CONVERGINT]: 294 } }));
     expect(has(early.lines, "INFO", /A1 Convergint serves 0 rows though its feed listed 294/), show(early.lines)).toBe(true);
     expect(early.lines.filter((l) => /^FAIL  A1 Convergint/.test(l)), show(early.lines)).toEqual([]);
     const small = run(routes({ curve: { "30e05070-07b1-4b26-9028-b97dae32cdd1": { open_roles: 0, feed_total: 19, feed_state: "empty", fills_90d: 0 }, studentplacements: { open_roles: 0, feed_total: null, feed_read_at: null, feed_state: null, fills_90d: 0 } }, solo: { "30e05070-07b1-4b26-9028-b97dae32cdd1": 0, studentplacements: 0 }, buildSince: iso(30 * H) }));
@@ -480,6 +483,60 @@ describe("section 99zzz: trust round 3", () => {
     expect(has(run(routes({ curveBody: '{"code":"42501"}' })).lines, "FAIL", /A1 get_company_fill_curve is unreadable/)).toBe(true);
     // Only the boards the reader says are empty are asked again.
     expect(run(routes()).calls.filter((c) => /"limit":1\}/.test(c) && c.includes(`"companies":["${CONVERGINT}"]`))).toEqual([]);
+  });
+
+  describe("A1 reads the board's own total beside the curve, because the curve keeps a stale positive total for 7 days after the vendor's total goes to 0", () => {
+    const OTHER = "geant";
+    const lost = { [CONVERGINT]: { open_roles: 0, feed_total: 294, feed_read_at: "2026-11-02T16:54:22.995+00:00", feed_state: "ok", fills_90d: 188 } };
+    const due = (o: Over) => run(routes({ curve: lost, solo: { [CONVERGINT]: 0 }, buildSince: iso(30 * H), ...o }));
+    const a1 = (lines: string[]) => lines.filter((l) => /A1 Convergint/.test(l));
+
+    it("a board whose own total is 0 reads INFO, says so, and calls the curve's total stale: live on 2026-11-05", () => {
+      const { lines } = due({ ownTotal: { [CONVERGINT]: 0 } });
+      expect(has(lines, "INFO", /A1 Convergint serves 0 rows and the board's own total is 0: the curve's total of 294 \(read 2026-11-02T16:54:22\.995\+00:00\) is stale/), show(lines)).toBe(true);
+      expect(lines.filter((l) => /^FAIL  A1 Convergint/.test(l)), show(lines)).toEqual([]);
+    });
+
+    it("the original defect still FAILs: a positive own total with zero served, naming the board, on any cleared board and not only Convergint", () => {
+      const pos = due({ ownTotal: { [CONVERGINT]: 1 } });
+      expect(has(pos.lines, "FAIL", /A1 Convergint serves 0 rows though its feed listed 294 .* and the board's own total is 1/), show(pos.lines)).toBe(true);
+      const curve = { [OTHER]: { open_roles: 0, feed_total: 75, feed_read_at: "2026-11-04T10:00:00.000+00:00", feed_state: "ok", fills_90d: 3 } };
+      const other = run(routes({ curve, solo: { [OTHER]: 0 }, ownTotal: { [OTHER]: 75 }, buildSince: iso(30 * H) }));
+      expect(has(other.lines, "FAIL", /A1 \S*geant\S* serves 0 rows though its feed listed 75 .* and the board's own total is 75/i), show(other.lines)).toBe(true);
+      const otherZero = run(routes({ curve, solo: { [OTHER]: 0 }, ownTotal: { [OTHER]: 0 }, buildSince: iso(30 * H) }));
+      expect(has(otherZero.lines, "INFO", /A1 \S*geant\S* serves 0 rows and the board's own total is 0/i), show(otherZero.lines)).toBe(true);
+    });
+
+    it("an unreadable health read does not PASS: it FAILs naming the board, and so does a row with no total or no row at all", () => {
+      for (const o of [{ healthBody: "<html>gateway" }, { healthBody: '{"code":"42501"}' }, { healthBody: "[]" }, { ownTotal: { [CONVERGINT]: null } }, {}] as Over[]) {
+        const { lines } = due(o);
+        expect(has(lines, "FAIL", /A1 Convergint serves 0 rows though its feed listed 294 .* and the board's own total could not be read.*vendor read/), `${JSON.stringify(o)}\n${show(lines)}`).toBe(true);
+        expect(a1(lines).filter((l) => /^(PASS|INFO)/.test(l)), show(lines)).toEqual([]);
+      }
+      // Another board's reply is not this board's total.
+      const elsewhere = due({ ownTotal: { [OTHER]: 0 } });
+      expect(has(elsewhere.lines, "FAIL", /A1 Convergint .* could not be read/), show(elsewhere.lines)).toBe(true);
+    });
+
+    it("before the first day an unread or positive total waits as INFO, and a 0 reads the same at any age", () => {
+      const early = (o: Over) => run(routes({ curve: lost, solo: { [CONVERGINT]: 0 }, ...o })).lines;
+      for (const o of [{ ownTotal: { [CONVERGINT]: 294 } }, {}] as Over[]) expect(early(o).filter((l) => /^FAIL  A1 Convergint/.test(l)), show(early(o))).toEqual([]);
+      expect(has(early({ ownTotal: { [CONVERGINT]: 0 } }), "INFO", /A1 Convergint serves 0 rows and the board's own total is 0/)).toBe(true);
+    });
+
+    it("asks the reader only for a board the curve says is empty with a total of 50 or more, and a clean run does not ask at all", () => {
+      const asks = (lines: { calls: string[] }) => lines.calls.filter((c) => c.includes("get_company_hiring_health"));
+      const one = run(routes({ curve: { ...lost, [OTHER]: { open_roles: 0, feed_total: 19, feed_state: "empty", fills_90d: 0 } }, solo: { [CONVERGINT]: 0, [OTHER]: 0 }, ownTotal: { [CONVERGINT]: 0 }, buildSince: iso(30 * H) }));
+      expect(asks(one), one.calls.join("\n")).toHaveLength(1);
+      expect(asks(one)[0]).toContain(`"p_tokens":["${CONVERGINT}"]`);
+      expect(asks(one)[0]).not.toContain(OTHER);
+      expect(asks(run(routes()))).toEqual([]);
+    });
+
+    it("a list serving rows still ends the question, whatever either reader says", () => {
+      const { lines } = due({ solo: { [CONVERGINT]: 12 }, ownTotal: { [CONVERGINT]: 0 } });
+      expect(a1(lines), show(lines)).toEqual([]);
+    });
   });
 
   it("a good .98 deploy prints no C1 or C2 FAIL", () => {

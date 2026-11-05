@@ -47,7 +47,11 @@
 #       day after the first slice (get_company_fill_curve, then the board's own
 #       list, because the curve is the reader and the list is what is served). The
 #       reader answers one row per board asked, so a board it leaves out is a FAIL
-#       naming it; a board with no feed_total can only be named in the INFO;
+#       naming it; a board with no feed_total can only be named in the INFO. The
+#       curve keeps its last positive total for 7 days after a read that states 0,
+#       so such a board is read a third time, in get_company_hiring_health: a
+#       board total of 0 is an INFO calling the curve stale, a positive one still
+#       FAILs, and one that cannot be read cannot pass;
 #   A2  every row of the staffing companies' boards this round labels carries
 #       agency true (Jobandtalent's three, Aya Healthcare, Traba, Zenjob, Staff
 #       Zone, Coople's two, Ingenovis Health, Insight Global and six of
@@ -84,7 +88,8 @@
 #       the live row at the same store.
 #
 # READ-ONLY. One OPTIONS preflight; job-board status, list and detail reads
-# sent with x-rb-budget: probe; the anon reader get_company_fill_curve; GETs of
+# sent with x-rb-budget: probe; the anon readers get_company_fill_curve and
+# get_company_hiring_health; GETs of
 # the site's shell, its entry and the chunks the entry names (up to the whole
 # list, about 300), the sitemap, LCS's company page and up to ten listed pages of
 # this round's boards, the pages as Googlebot. Nothing is written.
@@ -244,6 +249,9 @@ if [ "$VDZ3_LIVE" = 1 ]; then
   J "{\"action\":\"list\",\"companies\":$VDZ3_CT,\"excludeAgencies\":true,\"groupSimilar\":false,\"includeFacets\":false,\"limit\":1}" > /tmp/vd_99zzz_cleared_ex.json
   # A1's other half: each cleared board the reader says is empty, asked alone.
   R get_company_fill_curve "{\"p_tokens\":$VDZ3_CT}" > /tmp/vd_99zzz_curve.json
+  # The curve's total outlives a vendor total of 0 by up to 7 days, so a board it calls empty with 50 or more is read once more, from the board's own stamp.
+  VDZ3_HT=$(node -e 'try{const c=JSON.parse(require("fs").readFileSync("/tmp/vd_99zzz_curve.json","utf8"));console.log(JSON.stringify(c.filter((r)=>r&&Number(r.open_roles)===0&&r.feed_total!=null&&Number(r.feed_total)>=50).map((r)=>r.company_token)))}catch{console.log("[]")}')
+  [ "$VDZ3_HT" = "[]" ] || R get_company_hiring_health "{\"p_tokens\":$VDZ3_HT}" > /tmp/vd_99zzz_health.json
   for VDZ3_T in $(node -e 'try{for(const r of JSON.parse(require("fs").readFileSync("/tmp/vd_99zzz_curve.json","utf8")))if(r&&Number(r.open_roles)===0)console.log(r.company_token)}catch{}'); do
     J "{\"action\":\"list\",\"companies\":[\"$VDZ3_T\"],\"groupSimilar\":false,\"includeFacets\":false,\"limit\":1}" > "/tmp/vd_99zzz_cl_$VDZ3_T.json"
   done
@@ -346,7 +354,7 @@ else{
     else if(visRead.length||(ageH!==null&&ageH>24))out("FAIL","A1 "+n+" of "+C.total+" row(s) on the cleared boards still carry the agency flag"+(vis.length?" ("+[...new Set(vis.map((r)=>r.token))].slice(0,4).join(", ")+")":"")+" "+(visRead.length?"after this build read the board":"24 h after the first slice")+" (each visit re-stamps up to 1,000 rows)");
     else out("INFO","A1 "+n+" row(s) on the cleared boards still carry the agency flag; "+waitWhy(24));}
   // A1, the boards themselves. The flag line above is true of an empty board, so a board that lost its rows hid inside its PASS. The reader says which are empty, and the board\x27s own list says what is served.
-  const nameOf=(t)=>{const x=CL.find((y)=>y[1]===t);return x&&x[2]?x[2]:t};const CUR=json("/tmp/vd_99zzz_curve.json");
+  const nameOf=(t)=>{const x=CL.find((y)=>y[1]===t);return x&&x[2]?x[2]:t};const CUR=json("/tmp/vd_99zzz_curve.json"),HEALTH=json("/tmp/vd_99zzz_health.json");
   if(!Array.isArray(CUR))out("FAIL","A1 get_company_fill_curve is unreadable, so a cleared board that lost its rows cannot be named: "+peek("/tmp/vd_99zzz_curve.json"));
   else{const quiet=[];const asked=[...new Set(CL.map((y)=>y[1]))],got=new Set(CUR.map((r)=>r&&r.company_token)),absent=asked.filter((t)=>!got.has(t));
     if(absent.length)out("FAIL","A1 get_company_fill_curve answered "+CUR.length+" row(s) for the "+asked.length+" cleared boards and none for: "+absent.join(", ")+": it answers one row per board asked, so a board that lost its rows hides behind this");
@@ -355,7 +363,9 @@ else{
       if(!j||typeof j.total!=="number"){out("FAIL","A1 "+t+": the list is unreadable: "+peek(f));continue}
       if(j.total>0)continue;
       const fed=Number(r.feed_total);
-      if(r.feed_total!=null&&fed>=50){const msg="A1 "+nameOf(t)+" serves 0 rows though its feed listed "+fed+" (read "+r.feed_read_at+", state "+r.feed_state+", "+r.fills_90d+" fills in 90 days): settle it with the owner SQL on job_board_board_state and one vendor read; if a bad read stamped it, its closures are false";
+      if(r.feed_total!=null&&fed>=50){const hr=Array.isArray(HEALTH)?HEALTH.find((x)=>x&&x.company_token===t):null,own=hr&&hr.feed_total!=null&&Number.isFinite(Number(hr.feed_total))?Number(hr.feed_total):null;
+        if(own===0){out("INFO","A1 "+nameOf(t)+" serves 0 rows and the board\x27s own total is 0: the curve\x27s total of "+fed+" (read "+r.feed_read_at+") is stale, because a read that states 0 writes no total and the curve keeps the last positive one for up to 7 days");continue}
+        const msg="A1 "+nameOf(t)+" serves 0 rows though its feed listed "+fed+" (read "+r.feed_read_at+", state "+r.feed_state+", "+r.fills_90d+" fills in 90 days) and the board\x27s own total "+(own===null?"could not be read ("+peek("/tmp/vd_99zzz_health.json")+")":"is "+own)+": settle it with the owner SQL on job_board_board_state and one vendor read; if a bad read stamped it, its closures are false";
         if(ageH!==null&&ageH>24)out("FAIL",msg);else out("INFO",msg+"; "+waitWhy(24));}
       else quiet.push(nameOf(t)+" ("+(r.feed_total==null?"no feed read":"feed "+fed+", state "+r.feed_state+", read "+r.feed_read_at)+", "+r.fills_90d+" fills)");}
     if(quiet.length)out("INFO","A1 "+quiet.length+" cleared board(s) serve no row, none with a feed of 50 or more: "+quiet.join("; "));}
