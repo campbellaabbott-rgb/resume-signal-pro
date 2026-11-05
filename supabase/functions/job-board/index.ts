@@ -6343,6 +6343,8 @@ async function handleRequest(req: Request): Promise<Response> {
   }
 
   try {
+    // Rationale: docs/job-board-index-notes.md#n776-body-nolog-body-nolog-true-await
+    body.noLog = body.noLog === true && (await exemptKind(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) === "reader" ? true : undefined;
     if (action === "searchQuality") {
       // Rationale: docs/job-board-index-notes.md#n701-if-await-ismaintenance-req-body-return
       if (!(await isMaintenance(req, body))) return json({ error: "searchQuality is a maintenance action" }, 403);
@@ -7757,8 +7759,6 @@ async function handleRequest(req: Request): Promise<Response> {
 
       // Rationale: docs/job-board-index-notes.md#n775-body-caller-resolvecaller-req-body-undef
       body.caller = resolveCaller(req, body) ?? undefined;
-      // Rationale: docs/job-board-index-notes.md#n776-body-nolog-body-nolog-true-await
-      body.noLog = body.noLog === true && (await exemptKind(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) === "reader" ? true : undefined;
       // .88: no more rows a call than the page holds -- 60, whatever limit is
       // sent, for anyone without a secret (anon-budget.ts pageCeiling).
       const rowCap = await pageCeiling(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");

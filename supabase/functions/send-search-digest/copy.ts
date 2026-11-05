@@ -3,7 +3,7 @@
  *
  * The digest runs on a schedule with no request in hand, so its language is
  * the one kept on the saved search (user_job_searches.locale, 20261103240000:
- * written from the browser that saved the search or switched its mail on).
+ * written by the owner's page, in the language that page was read in).
  * NULL, or anything that is not one of the site's nine, is English. A saved
  * search's name and the words a person searched for stay as they wrote them.
  *

@@ -4,10 +4,10 @@
  * S13-102; migration 20261103240000).
  *
  * The digest runs on a schedule with no request in hand, and nothing stored a
- * language it could read. The migration adds user_job_searches.locale and a
- * trigger that fills it from the browser's own Accept-Language. Applied here to
- * pglite with the roles and the row level security of production, writing as
- * the owner's role with the headers PostgREST would set.
+ * language it could read. The migration adds user_job_searches.locale, which the
+ * owner's page writes (a-saved-search-keeps-the-language-its-owner-reads-the-site-in).
+ * Applied here to pglite with the roles and the row level security of production,
+ * writing as the owner's role with the headers PostgREST would set.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
@@ -47,10 +47,10 @@ beforeAll(async () => {
 afterAll(async () => { await pg.close(); });
 
 /** One PostgREST-shaped write: the owner's role, their id, the request's headers. */
-async function asOwner<T>(language: string | null, sql: string, params: unknown[] = [], user = USER): Promise<T[]> {
+async function asOwner<T>(headersJson: string | null, sql: string, params: unknown[] = [], user = USER): Promise<T[]> {
   await pg.exec("BEGIN");
   try {
-    await pg.query("SELECT set_config('request.headers', $1, true), set_config('request.jwt.sub', $2, true)", [language === null ? "" : language, user]);
+    await pg.query("SELECT set_config('request.headers', $1, true), set_config('request.jwt.sub', $2, true)", [headersJson === null ? "" : headersJson, user]);
     await pg.exec("SET LOCAL ROLE authenticated");
     const r = await pg.query<T>(sql, params);
     await pg.exec("COMMIT");
@@ -62,76 +62,38 @@ async function asOwner<T>(language: string | null, sql: string, params: unknown[
 }
 const headers = (lang: string) => JSON.stringify({ "accept-language": lang, host: "harness" });
 let n = 0;
-const insert = (lang: string | null, extra = "") =>
-  asOwner<{ id: string; locale: string | null }>(lang === null ? null : headers(lang), `INSERT INTO public.user_job_searches (user_id, name${extra ? ", locale" : ""}) VALUES ('${USER}', 'search ${++n}'${extra ? `, '${extra}'` : ""}) RETURNING id, locale`);
+const insert = (lang: string | null, locale = "") =>
+  asOwner<{ id: string; locale: string | null }>(lang === null ? null : headers(lang), `INSERT INTO public.user_job_searches (user_id, name${locale ? ", locale" : ""}) VALUES ('${USER}', 'search ${++n}'${locale ? `, '${locale}'` : ""}) RETURNING id, locale`);
 
-describe("the trigger, on the owner's own writes", () => {
-  it("runs for the owner's role though that role cannot call the function", async () => {
-    const r = await pg.query<{ anon: boolean; auth: boolean }>(`
-      SELECT has_function_privilege('anon', 'public.user_job_search_locale_from_request()', 'EXECUTE') AS anon,
-             has_function_privilege('authenticated', 'public.user_job_search_locale_from_request()', 'EXECUTE') AS auth`);
-    expect(r.rows[0]).toEqual({ anon: false, auth: false });
-    expect((await insert("fr"))[0].locale).toBe("fr");
+describe("the column, on the owner's own writes", () => {
+  it("keeps the language the page sent, and the browser's own preference decides nothing", async () => {
+    expect((await insert("de", "en"))[0].locale, "English chosen on a German browser").toBe("en");
+    expect((await insert("en-US,en;q=0.9", "es"))[0].locale, "Spanish chosen on an English browser").toBe("es");
   });
 
-  const samples: Array<[string, string | null]> = [
-    ["fr", "fr"], ["fr-CA,fr;q=0.9,en;q=0.8", "fr"], ["de-DE", "de"], ["pt-BR,pt;q=0.9", "pt"], ["en-GB,en;q=0.9", "en-GB"], ["en-US,en;q=0.5", "en"],
-    ["es-419", "es"], ["hi-IN", "hi"], ["nl", "nl"], ["tl-PH", "tl"], ["ja,de;q=0.5", "de"], ["ja,ko,zh", null], ["*", null], ["", null],
-    ["a,b,c,d,e,f,de", null],
-  ];
-  for (const [header, want] of samples) {
-    it(`Accept-Language ${JSON.stringify(header)} stores ${want}`, async () => {
-      expect((await insert(header))[0].locale).toBe(want);
-    });
-  }
-
-  it("no headers at all, and a header that is not JSON, save the row with no language", async () => {
+  it("a write that names no language leaves none, whatever the browser prefers, and the digest reads that as English", async () => {
+    expect((await insert("de"))[0].locale).toBeNull();
     expect((await insert(null))[0].locale).toBeNull();
-    const r = await asOwner<{ locale: string | null }>("{not json", `INSERT INTO public.user_job_searches (user_id, name) VALUES ('${USER}', 'bad headers') RETURNING locale`);
-    expect(r[0].locale).toBeNull();
   });
 
-  it("a language the client sends wins over its browser's", async () => {
-    expect((await insert("fr", "nl"))[0].locale).toBe("nl");
+  it("switching the digest on with the page's language takes it, also over the same value a browser would have changed", async () => {
+    const [{ id }] = await insert("de", "en");
+    const same = await asOwner<{ locale: string }>(headers("de"), "UPDATE public.user_job_searches SET digest_opt_in = true, locale = 'en' WHERE id = $1 RETURNING locale", [id]);
+    expect(same[0].locale, "the owner reads English; the German browser is not asked").toBe("en");
+    const moved = await asOwner<{ locale: string }>(headers("de"), "UPDATE public.user_job_searches SET last_seen_at = now(), locale = 'nl' WHERE id = $1 RETURNING locale", [id]);
+    expect(moved[0].locale).toBe("nl");
   });
 
-  it("an existing row with no language takes one at its owner's next write", async () => {
-    const [{ id }] = await insert(null);
-    const r = await asOwner<{ locale: string }>(headers("de"), "UPDATE public.user_job_searches SET last_seen_at = now() WHERE id = $1 RETURNING locale", [id]);
-    expect(r[0].locale).toBe("de");
-  });
-
-  it("an ordinary write keeps a language already kept", async () => {
-    const [{ id }] = await insert("fr");
-    const r = await asOwner<{ locale: string }>(headers("de"), "UPDATE public.user_job_searches SET last_seen_at = now(), name = name || ' x' WHERE id = $1 RETURNING locale", [id]);
+  it("a write that names no language keeps the one kept", async () => {
+    const [{ id }] = await insert("fr", "fr");
+    const r = await asOwner<{ locale: string }>(headers("de"), "UPDATE public.user_job_searches SET last_seen_at = now(), digest_opt_in = true, name = name || ' x' WHERE id = $1 RETURNING locale", [id]);
     expect(r[0].locale).toBe("fr");
   });
 
-  it("switching the digest on takes the language of that browser", async () => {
-    const [{ id }] = await insert("fr");
-    const r = await asOwner<{ locale: string }>(headers("es"), "UPDATE public.user_job_searches SET digest_opt_in = true WHERE id = $1 RETURNING locale", [id]);
-    expect(r[0].locale).toBe("es");
-  });
-
-  it("switching it on from a browser whose language we do not carry keeps the one kept", async () => {
-    const [{ id }] = await insert("fr");
-    const r = await asOwner<{ locale: string }>(headers("ja"), "UPDATE public.user_job_searches SET digest_opt_in = true WHERE id = $1 RETURNING locale", [id]);
-    expect(r[0].locale).toBe("fr");
-  });
-
-  it("switching it on with an explicit language keeps the explicit one", async () => {
-    const [{ id }] = await insert("fr");
-    const r = await asOwner<{ locale: string }>(headers("es"), "UPDATE public.user_job_searches SET digest_opt_in = true, locale = 'nl' WHERE id = $1 RETURNING locale", [id]);
-    expect(r[0].locale).toBe("nl");
-  });
-
-  it("the digest's own stamps fire nothing: the scheduler's headers can't set a language", async () => {
-    const [{ id }] = await insert(null);
-    await pg.exec("BEGIN");
-    await pg.query("SELECT set_config('request.headers', $1, true)", [headers("de")]);
-    const r = await pg.query<{ locale: string | null }>("UPDATE public.user_job_searches SET digest_last_sent_at = now(), digest_attempted_at = now() WHERE id = $1 RETURNING locale", [id]);
-    await pg.exec("COMMIT");
-    expect(r.rows[0].locale).toBeNull();
+  it("every language the page writes is one the column takes", async () => {
+    for (const lang of ["en", "en-GB", "de", "es", "fr", "hi", "nl", "pt", "tl"]) {
+      expect((await insert("*", lang))[0].locale).toBe(lang);
+    }
   });
 
   it("a language that is not one of the nine is refused at the column", async () => {
@@ -148,32 +110,30 @@ describe("the trigger, on the owner's own writes", () => {
 describe("the migration", () => {
   it("runs again without change, its self-check included", async () => {
     await pg.exec(SQL);
+    const c = await pg.query<{ n: number }>("SELECT count(*)::int AS n FROM pg_constraint WHERE conrelid = 'public.user_job_searches'::regclass AND conname = 'user_job_searches_locale_known'");
+    expect(c.rows[0].n).toBe(1);
+  });
+
+  it("puts no trigger on the table: no browser's header writes a reader's language", async () => {
     const t = await pg.query<{ n: number }>("SELECT count(*)::int AS n FROM pg_trigger WHERE tgrelid = 'public.user_job_searches'::regclass AND NOT tgisinternal");
-    expect(t.rows[0].n).toBe(1);
+    expect(t.rows[0].n).toBe(0);
   });
 
-  it("the self-check fails a trigger function opened to a client role", async () => {
-    await pg.exec("BEGIN");
-    await pg.exec("GRANT EXECUTE ON FUNCTION public.user_job_search_locale_from_request() TO authenticated");
+  it("the self-check fails a table with no such check, and one that lost its row level security", async () => {
     const block = SQL.slice(SQL.lastIndexOf("DO $$"), SQL.lastIndexOf("NOTIFY pgrst"));
-    await expect(pg.exec(block)).rejects.toThrow(/open to a client role/);
+    await pg.exec("BEGIN");
+    await pg.exec("ALTER TABLE public.user_job_searches DROP CONSTRAINT user_job_searches_locale_known");
+    await expect(pg.exec(block)).rejects.toThrow(/has no locale check/);
+    await pg.exec("ROLLBACK");
+    await pg.exec("BEGIN");
+    await pg.exec("ALTER TABLE public.user_job_searches DISABLE ROW LEVEL SECURITY");
+    await expect(pg.exec(block)).rejects.toThrow(/lost row level security/);
     await pg.exec("ROLLBACK");
   });
 
-  it("the self-check fails a trigger that fills nothing", async () => {
-    await pg.exec("BEGIN");
-    await pg.exec(`CREATE OR REPLACE FUNCTION public.user_job_search_locale_from_request() RETURNS trigger LANGUAGE plpgsql AS $f$ BEGIN RETURN NEW; END $f$`);
-    const block = SQL.slice(SQL.lastIndexOf("DO $$"), SQL.lastIndexOf("NOTIFY pgrst"));
-    await expect(pg.exec(block)).rejects.toThrow(/a French browser stored nothing/);
-    await pg.exec("ROLLBACK");
-  });
-
-  it("the self-check leaves no probe table and no headers behind", async () => {
-    await pg.exec("BEGIN");
-    const block = SQL.slice(SQL.lastIndexOf("DO $$"), SQL.lastIndexOf("NOTIFY pgrst"));
-    await pg.exec(block);
-    const r = await pg.query<{ probe: string | null; headers: string | null }>("SELECT to_regclass('pg_temp._user_job_search_locale_probe')::text AS probe, NULLIF(current_setting('request.headers', true), '') AS headers");
-    await pg.exec("COMMIT");
-    expect(r.rows[0]).toEqual({ probe: null, headers: null });
+  it("the column's own comment says what writes it", async () => {
+    const r = await pg.query<{ c: string }>("SELECT col_description('public.user_job_searches'::regclass, a.attnum) AS c FROM pg_attribute a WHERE a.attrelid = 'public.user_job_searches'::regclass AND a.attname = 'locale'");
+    expect(r.rows[0].c).toMatch(/site language the owner's page was read in/);
+    expect(r.rows[0].c).not.toMatch(/browser/);
   });
 });

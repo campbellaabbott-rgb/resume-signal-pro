@@ -63,7 +63,7 @@ describe("the free API key form", () => {
     expect(line?.querySelector('a[href="/terms"]')).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Email address"), { target: { value: "dev@example.org" } });
     fireEvent.click(button);
-    await waitFor(() => expect(invoke).toHaveBeenCalledWith("api-key-request", { body: { email: "dev@example.org", name: "", termsVersion: TERMS_VERSION } }));
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("api-key-request", { body: { email: "dev@example.org", name: "", language: "en", termsVersion: TERMS_VERSION } }));
   });
 });
 

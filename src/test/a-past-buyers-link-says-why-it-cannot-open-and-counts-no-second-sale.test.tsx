@@ -109,7 +109,11 @@ describe("S13-048: a refused purchase link says why, under no success header", (
     verifyAnswers(refusal(400, { error: "We couldn't find that purchase. If you just paid, wait a moment and refresh; otherwise the link may have expired." }));
     open(`?session_id=cs_live_cutshort01&product=coverLetter`);
     expect(await screen.findByRole("heading", { name: /couldn't find this purchase/ }, SLOW)).toBeTruthy();
-    expect(tryAgain()).toBeNull();
+    // The live build answers any Stripe failure with this very sentence until
+    // verify-product-purchase 2026-11-03.1 deploys, and it tells a buyer to
+    // refresh: a press costs nothing, and the page must not take it away.
+    expect(tryAgain(), "a buyer who just paid, on a Stripe that blinked, had no way to try again").toBeTruthy();
+    expect(screen.getByText(/If you just paid, wait a moment and try again/)).toBeTruthy();
     const box = screen.getByLabelText(/purchase link or reference/i);
     fireEvent.change(box, { target: { value: "https://resumebooster.work/product-success?session_id=cs_live_thewholelink99&product=coverLetter" } });
     fireEvent.click(screen.getByRole("button", { name: /Open my purchase/ }));

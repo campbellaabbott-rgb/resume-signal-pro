@@ -28,6 +28,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
 import en from "../i18n/locales/en.json";
+import { PRIVACY_EMAIL } from "@/lib/resume-retention";
 
 const h = vi.hoisted(() => ({ invoke: vi.fn(), rpc: vi.fn(), toast: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({
@@ -171,6 +172,23 @@ describe("a page opened from a share link alone", () => {
     expect(screen.getByTestId("shared-view-delete-note").textContent).toMatch(/Only the buyer can delete/);
     expect(deletes).toEqual([]);
     expect(saved.has(SHARE)).toBe(true);
+  });
+
+  it("gives a buyer who arrived from an older purchase mail a way out: that mail's link is this very page", async () => {
+    arrive(`/success?share=${SHARE}`);
+    page();
+    await screen.findByTestId("analysis");
+    const note = screen.getByTestId("shared-view-delete-note").textContent ?? "";
+    expect(note, "every mail sent before send-analysis-email 2026-11-03.1 links here, so this sends its reader in a circle").not.toMatch(/purchase email/);
+    expect(note).toMatch(/the order in your account/);
+    expect(note).toContain(PRIVACY_EMAIL);
+  });
+
+  it("the Privacy page names the same ways, not only a results page a shared link does not delete from", () => {
+    const privacy = readFileSync(resolve(process.cwd(), "src/pages/Privacy.tsx"), "utf8");
+    const line = privacy.split("\n").find((l) => l.includes("Analysis Results:"))!;
+    expect(line).toMatch(/the order in your account/);
+    expect(line).not.toMatch(/delete it from the results page/);
   });
 });
 

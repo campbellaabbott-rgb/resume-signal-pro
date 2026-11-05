@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { BellRing, ExternalLink, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { writeWithDigestLocale } from "@/lib/saved-search-locale";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { searchToQuery, searchToBoardBody, type JobSearchParams } from "@/lib/job-search-params";
 
@@ -47,7 +48,7 @@ export const isDaily = (s: { digest_cadence?: string | null }) => s.digest_caden
 const table = () => (supabase as unknown as { from: (t: string) => any }).from("user_job_searches");
 
 export function SavedSearchesCard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [searches, setSearches] = useState<SavedSearch[]>([]);
   const [newCounts, setNewCounts] = useState<Record<string, { n: number; capped: boolean }>>({});
@@ -86,7 +87,7 @@ export function SavedSearchesCard() {
   }, []);
 
   const open = async (s: SavedSearch) => {
-    table().update({ last_seen_at: new Date().toISOString() }).eq("id", s.id).then(() => {}, () => {});
+    void writeWithDigestLocale(i18n.language, (lang) => table().update({ last_seen_at: new Date().toISOString(), ...lang }).eq("id", s.id)).then(() => {}, () => {});
     navigate(searchToQuery(openedParams(s.params)));
   };
 
@@ -100,7 +101,8 @@ export function SavedSearchesCard() {
   const toggleDigest = async (s: SavedSearch) => {
     const next = !s.digest_opt_in;
     setSearches((prev) => prev.map((x) => (x.id === s.id ? { ...x, digest_opt_in: next } : x)));
-    await table().update({ digest_opt_in: next }).eq("id", s.id).then(() => {}, () => {
+    // The digest is written in the language the page is read in (S13-102).
+    await writeWithDigestLocale(i18n.language, (lang) => table().update({ digest_opt_in: next, ...lang }).eq("id", s.id)).then(() => {}, () => {
       setSearches((prev) => prev.map((x) => (x.id === s.id ? { ...x, digest_opt_in: !next } : x)));
     });
   };
@@ -108,7 +110,7 @@ export function SavedSearchesCard() {
   // Fit-threshold alert: only email about roles that clear this résumé-fit bar.
   const setThreshold = async (s: SavedSearch, value: number) => {
     setSearches((prev) => prev.map((x) => (x.id === s.id ? { ...x, fit_threshold: value } : x)));
-    await table().update({ fit_threshold: value }).eq("id", s.id).then(() => {}, () => {});
+    await writeWithDigestLocale(i18n.language, (lang) => table().update({ fit_threshold: value, ...lang }).eq("id", s.id)).then(() => {}, () => {});
   };
 
   if (!loaded || searches.length === 0) return null;

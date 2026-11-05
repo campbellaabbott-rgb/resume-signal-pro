@@ -694,7 +694,7 @@
       "copyLink": "Kopyahin ang link"
     },
     "sharedView": "Tinitingnan ang na-share na pagsusuri",
-    "sharedViewDeleteNote": "Ang bumili lang ang makakabura sa pagsusuring ito, mula sa link sa kanyang purchase email.",
+    "sharedViewDeleteNote": "Ang bumili lang ang makakabura sa pagsusuring ito, at hindi ito mabubura gamit ang ibinahaging link na ito. Kung binili mo ito, burahin ito mula sa page na bumukas pagkatapos ng iyong bayad o mula sa order sa iyong account, o sumulat sa {{email}} mula sa address na ipinambayad mo at buburahin namin ito.",
     "sharedComputer": {
       "title": "Gumagamit ka ba ng pampubliko o shared na computer?",
       "body": "Burahin ang data ng browser na ito kapag tapos ka na. Itinatago ang pagsusuri sa aming mga server nang {{days}} araw, at hanggang doon ay mabubuksan ito ng sinumang may link nito. Burahin ito sa ibaba kung ayaw mong itago ito."
@@ -2265,7 +2265,7 @@
       },
       "notFound": {
         "title": "Hindi namin mahanap ang purchase na ito",
-        "body": "Hindi tugma ang link na ito sa anumang purchase na mababasa namin: maaaring putol ito o expired na. I-paste sa ibaba ang buong link mula sa iyong purchase email, o makipag-ugnayan sa support."
+        "body": "Hindi tugma ang link na ito sa anumang purchase na mababasa namin: maaaring putol ito o expired na. Kung kakabayad mo lang, maghintay sandali at subukan ulit. Kung hindi, i-paste sa ibaba ang buong link mula sa iyong purchase email, o makipag-ugnayan sa support."
       },
       "signInAgain": {
         "title": "Mag-sign in para mabuksan ito",

@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { BellRing } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { writeWithDigestLocale } from "@/lib/saved-search-locale";
 
 interface SearchRow { id: string; name: string; digest_opt_in: boolean; digest_cadence?: string | null }
 interface MandateRow { user_id: string; active: boolean; email_opt_in: boolean }
@@ -15,7 +16,7 @@ const table = () => (supabase as unknown as { from: (t: string) => any }).from("
 const mandates = () => (supabase as unknown as { from: (t: string) => any }).from("agent_mandates");
 
 export function NotificationsPanel() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [rows, setRows] = useState<SearchRow[]>([]);
   const [mandate, setMandate] = useState<MandateRow | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -38,7 +39,8 @@ export function NotificationsPanel() {
 
   const toggle = async (id: string, next: boolean) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, digest_opt_in: next } : r)));
-    try { await table().update({ digest_opt_in: next }).eq("id", id); } catch { /* optimistic; digest cron re-reads */ }
+    // The digest is written in the language the page is read in (S13-102).
+    try { await writeWithDigestLocale(i18n.language, (lang) => table().update({ digest_opt_in: next, ...lang }).eq("id", id)); } catch { /* optimistic; digest cron re-reads */ }
   };
 
   // Always render once loaded — the one panel claiming to show every email

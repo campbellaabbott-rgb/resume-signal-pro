@@ -694,7 +694,7 @@
       "copyLink": "Link kopieren"
     },
     "sharedView": "Geteilte Analyse anzeigen",
-    "sharedViewDeleteNote": "Nur der Käufer kann diese Analyse löschen, über den Link in seiner Kauf-E-Mail.",
+    "sharedViewDeleteNote": "Nur der Käufer kann diese Analyse löschen, über diesen geteilten Link geht das nicht. Wenn Sie sie gekauft haben, löschen Sie sie auf der Seite, die sich nach Ihrer Zahlung geöffnet hat, oder über die Bestellung in Ihrem Konto, oder schreiben Sie von der Adresse, mit der Sie bezahlt haben, an {{email}}, dann löschen wir sie.",
     "sharedComputer": {
       "title": "Nutzen Sie einen öffentlichen oder geteilten Computer?",
       "body": "Löschen Sie die Daten dieses Browsers, wenn Sie fertig sind. Die Analyse selbst wird {{days}} Tage auf unseren Servern aufbewahrt, und bis dahin kann sie jeder mit ihrem Link öffnen. Löschen Sie sie unten, wenn sie nicht aufbewahrt werden soll."
@@ -2265,7 +2265,7 @@
       },
       "notFound": {
         "title": "Wir konnten diesen Kauf nicht finden",
-        "body": "Dieser Link passt zu keinem Kauf, den wir lesen können: Er ist vielleicht abgeschnitten oder abgelaufen. Füge unten den ganzen Link aus deiner Kauf-E-Mail ein oder wende dich an den Support."
+        "body": "Dieser Link passt zu keinem Kauf, den wir lesen können: Er ist vielleicht abgeschnitten oder abgelaufen. Wenn du gerade bezahlt hast, warte einen Moment und versuch es noch einmal. Sonst füge unten den ganzen Link aus deiner Kauf-E-Mail ein oder wende dich an den Support."
       },
       "signInAgain": {
         "title": "Melde dich an, um das zu öffnen",

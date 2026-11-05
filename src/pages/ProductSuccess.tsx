@@ -1203,7 +1203,7 @@ export default function ProductSuccess() {
                     : verifyRefusal === 'sign_in_again' ? t('productSuccess.refusal.signInAgain.body', 'This link was made before an update to how a plan opens its included tools. Sign in with the account that holds your plan, then open the tool again from its page. While your plan is active it is included, and nothing is charged.')
                     : verifyRefusal === 'busy' ? t('productSuccess.refusal.busy.body', "The payment provider didn't answer in time. Your purchase is safe. Wait a moment and try again.")
                     : verifyRefusal === 'unpaid' ? t('productSuccess.refusal.unpaid.body', "The payment has not been confirmed. Some bank payments take a few days, and you'll get an email when it goes through. If you left the checkout before paying, nothing was charged.")
-                    : verifyRefusal === 'not_found' ? t('productSuccess.refusal.notFound.body', "This link doesn't match a purchase we can read: it may be cut short or have expired. Paste the whole link from your purchase email below, or contact support.")
+                    : verifyRefusal === 'not_found' ? t('productSuccess.refusal.notFound.body', "This link doesn't match a purchase we can read: it may be cut short or have expired. If you just paid, wait a moment and try again. Otherwise paste the whole link from your purchase email below, or contact support.")
                     : t('productSuccess.couldNotVerifyDescription')}
                 </p>
                 {(!sessionId || verifyRefusal === 'not_found') && (

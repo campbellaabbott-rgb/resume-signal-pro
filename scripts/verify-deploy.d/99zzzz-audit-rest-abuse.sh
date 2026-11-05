@@ -32,9 +32,12 @@
 #
 # WHAT THIS SECTION CANNOT SEE. The hook's new body, the mcp_client role and
 # the restrictive policies live where the publishable key reads nothing;
-# each migration's own self-check fails its apply if any of them is wrong,
-# so an applied migration is the proof. The client-side CSV changes
-# (Shortlist, /errors) and the consent sentence ship in the frontend.
+# each migration's own self-check fails its apply if any of them is wrong.
+# That proves the hook, the role, a person's own tables and storage.objects,
+# but not every table: 20261103161000 skips a busy table outside those with a
+# NOTICE, so the deploy notes' owner steps carry a catalogue read to run before
+# the OAuth server goes on. The client-side CSV changes (Shortlist, /errors)
+# and the consent sentence ship in the frontend.
 #
 # READ-ONLY. OPTIONS preflights, three GET probes of revoked functions and one
 # GET of the auth server's discovery document. Nothing is posted.

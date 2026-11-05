@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { AdminAuthGate } from "@/components/dashboard/AdminAuthGate";
 import { adminAuthHeaders } from "@/lib/admin-auth";
+import { analyticsCutNote } from "@/lib/analytics-cut-note";
 
 interface MetricData {
   variant: string;
@@ -35,7 +36,7 @@ interface AudienceData {
   daily: Array<{ day: string; visitors: number; events: number; newVisitors: number }>;
   bySurface: Array<{ surface: string; visitors: number }>;
   truncated: boolean;
-  /** When truncated: the oldest moment fully read. Earlier days are partial. */
+  /** When truncated: the oldest moment fully read. Earlier days are partial. Absent from a build before 2026-11-03.1. */
   coveredFrom?: string | null;
   /** When truncated: new and returning are approximate on every day, the read ones too. */
   visitorSplitApproximate?: boolean;
@@ -340,7 +341,7 @@ function AnalyticsDashboardContent() {
 
             {data.audience.truncated && (
               <p className="mt-4 text-[11px] text-warning">
-                The read ran out of time before the oldest events{data.audience.coveredFrom ? ` (everything from ${data.audience.coveredFrom.slice(0, 16).replace("T", " ")} UTC on was read)` : ""}, so the earlier days are a FLOOR, not a total. New and returning visitors are approximate on every day, the fully read ones too: a visitor whose first visit fell in the unread part is counted as new on a later day, so returning is undercounted. Narrow the date range for exact figures.
+                {analyticsCutNote(data.audience)}
               </p>
             )}
           </div>

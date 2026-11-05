@@ -142,6 +142,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
+import { writeWithDigestLocale } from "@/lib/saved-search-locale";
 import { companyRowScope } from "@/pages/Companies";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, Bookmark, Briefcase, Layers, LucideIcon, MapPin, Search, SlidersHorizontal } from "lucide-react";
@@ -259,7 +260,7 @@ const rpc = (fn: string, args?: Record<string, unknown>) =>
  *  borrow its sentence. */
 const searchesTable = () => (supabase as unknown as {
   from: (t: string) => {
-    insert: (row: { user_id: string; name: string; params: JobSearchParams }) =>
+    insert: (row: { user_id: string; name: string; params: JobSearchParams; locale?: string }) =>
       Promise<{ error: { code?: string; message?: string } | null }>;
   };
 }).from("user_job_searches");
@@ -2151,7 +2152,7 @@ export default function Explore() {
     const params = sliceParams();
     const name = searchName(params, t(`jobsPage.categories.${openField}`, CATEGORY_LABELS[openField] ?? openField));
     try {
-      const { error } = await searchesTable().insert({ user_id: user.id, name, params });
+      const { error } = await writeWithDigestLocale(i18n.language, (lang) => searchesTable().insert({ user_id: user.id, name, params, ...lang }));
       // 23505 is UNIQUE(user_id, name): the reader already has this exact
       // slice, which is a different message from a failure and must not borrow
       // its sentence.

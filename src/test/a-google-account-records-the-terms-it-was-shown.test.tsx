@@ -128,6 +128,65 @@ describe("the account the Google return brings", () => {
     expect(termsCalls()).toHaveLength(1);
   });
 
+  describe("and the mailbox guard's window", () => {
+    // The guard refuses to record a proof if the account changed since its
+    // sign-in, and the Terms write is such a change (a user_modified entry in
+    // the auth log). So the write waits until the guard has answered.
+    const guardAsks = () => h.invoke.mock.calls.filter((c) => c[0] === "auth-signed-in");
+    const heldGuard = () => {
+      let answer: (v: unknown) => void = () => undefined;
+      h.invoke.mockImplementation(() => new Promise((r) => { answer = r; }));
+      return (v: unknown) => answer(v);
+    };
+
+    it("writes the Terms only after the guard has answered", async () => {
+      const answer = heldGuard();
+      noteTermsShown(Date.now() - 4_000);
+      mountAuth();
+      emit("SIGNED_IN", googleSession());
+      await flush();
+      expect(guardAsks(), "the guard was never asked").toHaveLength(1);
+      expect(termsCalls(), "the write landed inside the guard's window").toHaveLength(0);
+      await act(async () => { answer({ data: { proven: true, passwordCleared: false }, error: null }); });
+      await waitFor(() => expect(termsCalls()).toHaveLength(1));
+      expect(localStorage.getItem(GOOGLE_TERMS_KEY)).toBeNull();
+    });
+
+    it("a guard that could not answer still lets the Terms be written", async () => {
+      h.invoke.mockRejectedValue(new Error("network"));
+      noteTermsShown(Date.now() - 4_000);
+      mountAuth();
+      emit("SIGNED_IN", googleSession());
+      await waitFor(() => expect(termsCalls()).toHaveLength(1));
+    });
+
+    it("a session that ended while the guard was asked writes nothing on whoever comes next, and keeps the mark", async () => {
+      const answer = heldGuard();
+      noteTermsShown(Date.now() - 4_000);
+      mountAuth();
+      emit("SIGNED_IN", googleSession());
+      await flush();
+      emit("SIGNED_OUT", null);
+      await act(async () => { answer({ data: { proven: true, passwordCleared: false }, error: null }); });
+      await flush();
+      expect(termsCalls()).toHaveLength(0);
+      expect(localStorage.getItem(GOOGLE_TERMS_KEY)).not.toBeNull();
+    });
+
+    it("two events for one sign-in write the Terms once", async () => {
+      const answer = heldGuard();
+      noteTermsShown(Date.now() - 4_000);
+      mountAuth();
+      emit("SIGNED_IN", googleSession());
+      emit("INITIAL_SESSION", googleSession());
+      await flush();
+      await act(async () => { answer({ data: { proven: true, passwordCleared: false }, error: null }); });
+      await waitFor(() => expect(termsCalls()).toHaveLength(1));
+      await flush();
+      expect(termsCalls()).toHaveLength(1);
+    });
+  });
+
   it("without a mark writes nothing", async () => {
     mountAuth();
     emit("SIGNED_IN", googleSession());

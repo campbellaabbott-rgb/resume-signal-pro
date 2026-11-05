@@ -117,7 +117,7 @@ describe("the held board section", () => {
   it("a good deploy passes every claim and fails none", () => {
     const { lines, out } = run(good());
     expect(fails(lines), out).toEqual([]);
-    expect(lines.filter((l) => l.startsWith("PASS")).length, out).toBe(10);
+    expect(lines.filter((l) => l.startsWith("PASS")).length, out).toBe(9);
   });
 
   it("a later build passes", () => {
@@ -168,6 +168,19 @@ describe("the held board section", () => {
   it("a status that was not counted fails, and only the ALL rows are added", () => {
     const { lines } = run(goodWith(hourly(10, 10)));
     expect(fails(lines)).toEqual([expect.stringMatching(/probe count grew by 0/)]);
+  });
+
+  it("a count that grew passes nothing, because other probes grow the same counter on the build before this round too", () => {
+    const { lines, out } = run(goodWith(hourly(10, 25)));
+    expect(lines.some((l) => /^PASS .*probe count/.test(l)), out).toBe(false);
+    expect(lines.some((l) => /^INFO .*probe count grew by 15 .*shared with every other probe/.test(l)), out).toBe(true);
+    expect(fails(lines)).toEqual([]);
+  });
+
+  it("the header no longer says every line fails on the build before this round", () => {
+    const head = SECTION.split("\n").slice(0, 25).join("\n");
+    expect(head).not.toMatch(/every one fails on the job-board \.100 build/);
+    expect(head).toMatch(/each fails on the job-board \.100 build, S2 aside/);
   });
 
   it("a status answered only from its memo judges neither readOnly nor the count, and says so", () => {

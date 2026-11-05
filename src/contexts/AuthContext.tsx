@@ -494,14 +494,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (key !== currentKey.current) { currentKey.current = key; setGuardResult(readGuardCache(key ?? "") ?? GUARD_IDLE); }
         // Outside the callback: auth-js holds its lock while it notifies, and
         // a function call reads the session through that same lock.
-        const timer = setTimeout(() => { timers.delete(timer); void ensureGuard(s); }, 0);
-        timers.add(timer);
         if (typeof s.user?.user_metadata?.terms_version === "string" && s.user.user_metadata.terms_version) clearTermsShown();
-        const terms = termsToRecord(s.user);
-        if (terms) {
-          const termsTimer = setTimeout(() => { timers.delete(termsTimer); void recordTerms(terms); }, 0);
-          timers.add(termsTimer);
-        }
+        // THE TERMS WAIT FOR THE GUARD. The write is a user_modified entry in
+        // the auth log, and the guard refuses to record this sign-in's proof
+        // (changed_since_sign_in) when the account changed since it, so written
+        // alongside the guard it usually cost the new account its proof. Read
+        // when the guard has answered: an earlier event may have written them,
+        // or this session may have ended.
+        const timer = setTimeout(() => {
+          timers.delete(timer);
+          void ensureGuard(s).catch(() => undefined).then(() => {
+            if (currentKey.current !== key) return;
+            const terms = termsToRecord(s.user);
+            if (terms) void recordTerms(terms);
+          });
+        }, 0);
+        timers.add(timer);
       }
       setSession(s);
       setLoading(false);

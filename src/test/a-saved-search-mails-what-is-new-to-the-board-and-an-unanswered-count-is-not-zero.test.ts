@@ -91,7 +91,7 @@ function install(extra: Record<string, unknown> = {}) {
   rpc("search_digest_claim_batch", perRun([claimed(extra)]));
   rpc("search_digest_record_sent", (a) => (a.p_posting_ids as string[]).length);
   // The claim stamped the row; a give-back restores PREV.
-  db.rows("user_job_searches").push({ id: SID, digest_last_sent_at: "2026-10-07T14:23:00.000Z", digest_opt_in: true });
+  db.rows("user_job_searches").push({ id: SID, digest_last_sent_at: "2026-10-07T14:23:00.000Z", digest_opt_in: true, created_at: "2026-10-20T09:00:00.000Z" });
 }
 const run = () => search(new Request("https://harness.supabase.co/functions/v1/send-search-digest", {
   method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${SERVICE}` }, body: JSON.stringify({ action: "send" }),

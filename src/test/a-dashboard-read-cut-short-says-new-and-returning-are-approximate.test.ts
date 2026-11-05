@@ -18,6 +18,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createRollup } from "../../supabase/functions/get-analytics/rollup";
+import { analyticsCutNote } from "../lib/analytics-cut-note";
 
 const ev = (day: string, visitor: string) => ({ test_name: "product_conversion", variant: "a", event_type: "view", created_at: `${day}T12:00:00Z`, visitor_id: visitor });
 
@@ -44,9 +45,29 @@ describe("the rollup", () => {
 });
 
 describe("the dashboard's note", () => {
+  const page = readFileSync(resolve(__dirname, "../pages/AnalyticsDashboard.tsx"), "utf8");
+
   it("says new and returning are approximate on every day when the read was cut short", () => {
-    const page = readFileSync(resolve(__dirname, "../pages/AnalyticsDashboard.tsx"), "utf8");
-    const note = page.slice(page.indexOf("{data.audience.truncated && ("), page.indexOf("{data.audience.truncated && (") + 900);
+    const note = analyticsCutNote({ coveredFrom: "2026-10-10T08:30:00Z" });
     expect(note).toMatch(/New and returning visitors are approximate on every day, the fully read ones too/);
+    expect(note).toMatch(/the earlier days are a FLOOR/);
+    expect(note).toContain("2026-10-10 08:30 UTC");
+  });
+
+  it("a read that names no moment still says the earlier days are the partial ones", () => {
+    expect(analyticsCutNote({ coveredFrom: null })).toMatch(/the earlier days are a FLOOR/);
+  });
+
+  it("a build that sends no coveredFrom read oldest first and cut the newest days: the note names that end", () => {
+    // get-analytics before 2026-11-03.1, which keeps serving after the merge
+    // publishes this page and until the function deploys.
+    const note = analyticsCutNote({});
+    expect(note).toMatch(/newest days/);
+    expect(note).not.toMatch(/earlier days/);
+    expect(note).toMatch(/FLOOR/);
+  });
+
+  it("is the note the page prints", () => {
+    expect(page).toContain("{analyticsCutNote(data.audience)}");
   });
 });

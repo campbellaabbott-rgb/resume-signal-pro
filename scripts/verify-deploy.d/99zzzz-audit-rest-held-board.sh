@@ -8,14 +8,17 @@
 # Named 99zzzz so it sorts after 99zzz-trust-round-3.sh in byte order ("-"
 # sorts before "z") and under a collating locale that ignores the dash.
 #
-# THE CLAIMS, one line each; every one fails on the job-board .100 build:
+# THE CLAIMS, one line each; each fails on the job-board .100 build, S2 aside:
 #   B1  job-board serves 2026-09-09.101 or later;
 #   B2  agent-mcp and public-api serve 2026-11-03.1 or later;
 #   F1  a list asking for the retired flag has it named in ignoredFilters;
 #   F2  that list is not narrowed to the four vendors the flag used to mean;
 #   U1  upkeep, asked with the publishable key, is refused as the scheduler's;
 #   S1  a status this request made compute reports the watchdog readOnly;
-#   S2  that computed status grew the meter's probe count;
+#   S2  that computed status moved the meter's probe count. The count is shared
+#       with every other probe in that minute (15 in 20 s measured on .100, with
+#       no status read), so growth proves nothing: no growth is a FAIL, and
+#       growth is INFO. The suite proves a status is counted;
 #   C1  the job-board-upkeep cron exists and is active;
 #   C2  status publishes boardUpkeep, and fifteen minutes after .101's first
 #       slice it says the job ran inside the last fifteen minutes.
@@ -101,7 +104,7 @@ else{
   const tot=(rows)=>(Array.isArray(rows)?rows:[]).filter((r)=>r.bh_kind==="probe"&&r.bh_country==="ALL").reduce((n,r)=>n+Number(r.bh_requests||0),0);
   const before=js("/tmp/vd_hb_before.json"),after=js("/tmp/vd_hb_after.json");
   if(!Array.isArray(before)||!Array.isArray(after))info("get_board_anon_hourly unreadable: whether a status is counted cannot be judged here ("+short(after)+")");
-  else{const d=tot(after)-tot(before);ok(d>=1,"the meter\u0027s probe count grew by "+d+" across a computed status (want at least 1: status is counted)");}
+  else{const d=tot(after)-tot(before);if(d<1)ok(false,"the meter\u0027s probe count grew by "+d+" across a computed status (want at least 1: status is counted)");else info("the meter\u0027s probe count grew by "+d+" across a computed status: the count is shared with every other probe, so this alone shows nothing (S1 and B1 judge the build, and anonymous-budget tests prove a status is counted)");}
 }
 
 // C1

@@ -773,6 +773,11 @@ export function sliceNote(build, deploying = build) {
  *                                       without 20261025100000 and 20261026100000)
  *                                       and this pending migration repairs that;
  *                                       its afterMigrations must name this one.
+ *   note: "<sentence>"                  printed on the file's own line, in whatever
+ *                                       step it lands; a `why` never reaches the
+ *                                       message, so this is where a file that may
+ *                                       be applied again says so (the message's
+ *                                       failure sentence defers to it).
  *
  * A migration with no `after` goes before the functions, as every migration
  * did. An `after` function that already answers the named build (or later)
@@ -808,6 +813,7 @@ export function migrationPhases(pending, policy, rows, onDisk = null) {
   const rules = Object.entries(order).filter(([k]) => !k.startsWith("_"));
   for (const [stamp, e] of rules) {
     if (!/^\d{14}$/.test(stamp)) out.errors.push(`migrationOrder key "${stamp}" is not a 14-digit migration stamp`);
+    if (e?.note !== undefined && !(typeof e.note === "string" && e.note.trim())) out.errors.push(`migrationOrder ${stamp}: note must be a sentence, printed on the file's line`);
     if (e?.after !== undefined && e.after !== "frontend" && !afterRule(e.after)) {
       out.errors.push(`migrationOrder ${stamp}: after "${e.after}" is neither "frontend" nor "fn:<name>@<YYYY-MM-DD.N>" nor "slice:job-board@<YYYY-MM-DD.N>"`);
     }
@@ -867,16 +873,17 @@ export function migrationPhases(pending, policy, rows, onDisk = null) {
       if (!repair) out.errors.push(`${file} must apply before ${fn}, but ${fn} already answers ${have} and this message deploys none: it deployed first. Name the pending migration that repairs that (migrationOrder ${stamp} repairedBy, ordered after it by its afterMigrations), or drop the rule if it waits for a build main does not carry yet`);
       else if (!repairPending) out.errors.push(`${file} must apply before ${fn}, but ${fn} already answers ${have}, and its repairedBy ${repair} is not pending, so nothing in this message repairs that`);
     }
+    const ownNote = typeof e?.note === "string" ? e.note : "";
     const beforeNote = [afterMigNote, stillBefore.length ? `before ${stillBefore.join(" and ")}` : "", ...wentFirstNotes].filter(Boolean).join("; ");
     for (const fn of before) if (!byFn.has(fn)) out.errors.push(`${file} must apply before ${fn}, but main has no function ${fn}`);
-    if (!e?.after) { out.pre.push({ file, note: beforeNote }); continue; }
+    if (!e?.after) { out.pre.push({ file, note: [beforeNote, ownNote].filter(Boolean).join("; ") }); continue; }
     if (e.after === "frontend") {
       if (before.length) out.errors.push(`${file} waits for the frontend, yet it must apply before ${before.join(" and ")}`);
-      out.afterFrontend.push({ file, note: [afterMigNote, "after the frontend is published"].filter(Boolean).join("; ") });
+      out.afterFrontend.push({ file, note: [afterMigNote, "after the frontend is published", ownNote].filter(Boolean).join("; ") });
       continue;
     }
     const rule = afterRule(e.after);
-    if (!rule) { out.pre.push({ file, note: beforeNote }); continue; } // its rule is reported above
+    if (!rule) { out.pre.push({ file, note: [beforeNote, ownNote].filter(Boolean).join("; ") }); continue; } // its rule is reported above
     const { fn, build: b } = rule;
     const need = `${fn}.${b}`;
     const r = byFn.get(fn);
@@ -884,12 +891,12 @@ export function migrationPhases(pending, policy, rows, onDisk = null) {
     if (!r.want || !buildAtLeast(r.want, need)) { out.errors.push(`${file} waits for ${need}, but main carries ${r.want ?? "no build the ledger can read"}: that step can never come`); continue; }
     if (before.includes(fn)) { out.errors.push(`${file} must apply both before and after ${fn}`); continue; }
     if (answersAtLeast(r, need)) {
-      out.pre.push({ file, note: [beforeNote, `${fn} already answers ${r.have}`].filter(Boolean).join("; ") });
+      out.pre.push({ file, note: [beforeNote, `${fn} already answers ${r.have}`, ownNote].filter(Boolean).join("; ") });
       continue;
     }
     // Deploying in this message, or its live build could not be read: wait for it.
     const waitNote = rule.kind === "slice" ? sliceNote(b, String(r.want).slice(fn.length + 1)) : `once ${fn} answers ${need} or later`;
-    out.afterFunctions.push({ file, note: [beforeNote, waitNote].filter(Boolean).join("; "), ...(rule.kind === "slice" ? { slice: true } : {}) });
+    out.afterFunctions.push({ file, note: [beforeNote, waitNote, ownNote].filter(Boolean).join("; "), ...(rule.kind === "slice" ? { slice: true } : {}) });
   }
   // A file ordered after another must not sit in an earlier step than it.
   const steps = [out.pre, out.afterFunctions, out.afterFrontend];

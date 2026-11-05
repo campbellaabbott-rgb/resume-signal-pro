@@ -26,7 +26,7 @@ interface Props {
 }
 
 export function CompanyClaim({ companyToken, companyName, variant = "inline", open: openProp, onOpenChange }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [verified, setVerified] = useState<boolean | null>(null);
   const [website, setWebsite] = useState<string | null>(null);
   const [openState, setOpenState] = useState(false);
@@ -120,7 +120,9 @@ export function CompanyClaim({ companyToken, companyName, variant = "inline", op
     setSending(true);
     try {
       const { data, error } = await supabase.functions.invoke("company-claim", {
-        body: { action: "request", companyToken, companyName, workEmail: email.trim() },
+        // The page's language writes the verification mail and the later
+        // "verified" notice (S13-102); the live build ignores a field it does not read.
+        body: { action: "request", companyToken, companyName, workEmail: email.trim(), language: i18n.language },
       });
       const err = error ? t("jobsPage.claim.sendFail", "Could not send the verification email — please try again.") : (data as { error?: string } | null)?.error;
       if (err) {

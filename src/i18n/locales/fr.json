@@ -695,7 +695,7 @@
       "copyLink": "Copier le lien"
     },
     "sharedView": "Visualisation de l'analyse partagée",
-    "sharedViewDeleteNote": "Seul l'acheteur peut supprimer cette analyse, depuis le lien de son e-mail d'achat.",
+    "sharedViewDeleteNote": "Seul l'acheteur peut supprimer cette analyse, et ce lien partagé ne le permet pas. Si vous l'avez achetée, supprimez-la depuis la page ouverte après votre paiement ou depuis la commande dans votre compte, ou écrivez à {{email}} depuis l'adresse utilisée pour payer et nous la supprimerons.",
     "sharedComputer": {
       "title": "Vous utilisez un ordinateur public ou partagé ?",
       "body": "Effacez les données de ce navigateur quand vous avez terminé. L'analyse elle-même est conservée sur nos serveurs pendant {{days}} jours, et toute personne disposant de son lien peut l'ouvrir d'ici là. Supprimez-la ci-dessous si vous ne voulez pas qu'elle soit conservée."
@@ -2283,7 +2283,7 @@
       },
       "notFound": {
         "title": "Nous n'avons pas trouvé cet achat",
-        "body": "Ce lien ne correspond à aucun achat que nous pouvons lire : il est peut-être tronqué ou expiré. Collez ci-dessous le lien complet de votre e-mail d'achat, ou contactez le support."
+        "body": "Ce lien ne correspond à aucun achat que nous pouvons lire : il est peut-être tronqué ou expiré. Si vous venez de payer, patientez un instant et réessayez. Sinon, collez ci-dessous le lien complet de votre e-mail d'achat, ou contactez le support."
       },
       "signInAgain": {
         "title": "Connectez-vous pour ouvrir ceci",

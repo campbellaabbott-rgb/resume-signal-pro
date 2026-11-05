@@ -695,7 +695,7 @@
       "copyLink": "Copiar link"
     },
     "sharedView": "A ver análise partilhada",
-    "sharedViewDeleteNote": "Só quem a comprou pode excluir esta análise, pelo link no e-mail da compra.",
+    "sharedViewDeleteNote": "Só quem comprou pode excluir esta análise, e este link compartilhado não permite isso. Se você a comprou, exclua-a pela página aberta depois do pagamento ou pelo pedido na sua conta, ou escreva para {{email}} do endereço com que pagou e nós a excluiremos.",
     "sharedComputer": {
       "title": "Está usando um computador público ou compartilhado?",
       "body": "Apague os dados deste navegador quando terminar. A análise fica salva em nossos servidores por {{days}} dias e, até lá, qualquer pessoa com o link dela pode abri-la. Exclua-a abaixo se não quiser que ela fique salva."
@@ -2283,7 +2283,7 @@
       },
       "notFound": {
         "title": "Não conseguimos encontrar esta compra",
-        "body": "Este link não corresponde a nenhuma compra que conseguimos ler: ele pode estar cortado ou ter expirado. Cole abaixo o link completo do e-mail da compra ou entre em contato com o suporte."
+        "body": "Este link não corresponde a nenhuma compra que conseguimos ler: ele pode estar cortado ou ter expirado. Se você acabou de pagar, aguarde um momento e tente novamente. Caso contrário, cole abaixo o link completo do e-mail da compra ou entre em contato com o suporte."
       },
       "signInAgain": {
         "title": "Entre para abrir isto",

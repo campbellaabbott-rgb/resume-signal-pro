@@ -38,6 +38,7 @@ import { ALL_BOARD_SOURCES, SERVING_SOURCES } from "@/config/ats-vendors";
 import { SERVING_SOURCE_LIST } from "@/config/ats-vendors";
 import { MultiSelectFilter } from "@/components/board/MultiSelectFilter";
 import { markDeadForRobots, clearDeadForRobots } from "@/lib/seo-robots";
+import { writeWithDigestLocale } from "@/lib/saved-search-locale";
 import { BOARD_BUDGET_ERROR, boardBudgetRefusal, httpStatusOf, markBoardBudgetRefused, readBoardBudgetRefusal, useBoardBudgetRefusal } from "@/lib/board-budget";
 import { BoardBudgetNotice } from "@/components/jobs/BoardBudgetNotice";
 import { Link, useLocation, useNavigate, useNavigationType, useParams } from "react-router-dom";
@@ -3834,16 +3835,18 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
           : t("jobsPage.nExperience", "{{n}} levels", { n: experience.split(",").filter(Boolean).length }))
         : undefined,
     );
-    let { error: err } = await searchesTable().insert({
-      user_id: session.user.id, name, params,
+    // The page's language is what the digest is written in (S13-102); a
+    // database with no such column yet takes the write without it.
+    let { error: err } = await writeWithDigestLocale(i18n.language, (lang) => searchesTable().insert({
+      user_id: session.user.id, name, params, ...lang,
       ...(alert ? { digest_opt_in: true, digest_cadence: "daily" } : {}),
-    });
+    }));
     // Deploy-skew guard (same as watchCompany): a missing cadence column must
     // not fail the save — fall back to opt-in without it.
     if (err && alert && /digest_cadence/.test(err.message ?? "")) {
-      ({ error: err } = await searchesTable().insert({
-        user_id: session.user.id, name, params, digest_opt_in: true,
-      }));
+      ({ error: err } = await writeWithDigestLocale(i18n.language, (lang) => searchesTable().insert({
+        user_id: session.user.id, name, params, digest_opt_in: true, ...lang,
+      })));
     }
     // AN ALERT ON A SEARCH ALREADY SAVED TURNS THE ALERT ON (sweep S11-037).
     // The name is a pure function of the filters and the table is unique on
@@ -3852,13 +3855,13 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     // gets the digest, at the cadence an alert promises. A plain Save on the
     // same collision changes nothing.
     if (err && err.code === "23505" && alert) {
-      let { error: upErr } = await searchesTable()
-        .update({ digest_opt_in: true, digest_cadence: "daily" })
-        .eq("user_id", session.user.id).eq("name", name);
+      let { error: upErr } = await writeWithDigestLocale(i18n.language, (lang) => searchesTable()
+        .update({ digest_opt_in: true, digest_cadence: "daily", ...lang })
+        .eq("user_id", session.user.id).eq("name", name));
       if (upErr && /digest_cadence/.test(upErr.message ?? "")) {
-        ({ error: upErr } = await searchesTable()
-          .update({ digest_opt_in: true })
-          .eq("user_id", session.user.id).eq("name", name));
+        ({ error: upErr } = await writeWithDigestLocale(i18n.language, (lang) => searchesTable()
+          .update({ digest_opt_in: true, ...lang })
+          .eq("user_id", session.user.id).eq("name", name)));
       }
       toast(upErr
         ? { title: t("jobsPage.saveFailed", "Couldn't save — try again.") }
@@ -5099,23 +5102,25 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     // A watch click is an explicit ask to hear about new roles: opt the
     // search into the DAILY alert loop (per-search unsubscribe in every
     // email), and the toast below says exactly that.
-    let { error: err } = await searchesTable().insert({
+    let { error: err } = await writeWithDigestLocale(i18n.language, (lang) => searchesTable().insert({
       user_id: session.user.id,
       name: watchName,
       params,
       digest_opt_in: true,
       digest_cadence: "daily",
-    });
+      ...lang,
+    }));
     // Deploy-skew guard: if the cadence migration hasn't applied yet the
     // column doesn't exist — save the watch WITHOUT it rather than failing
     // the user's click on our own rollout gap (weekly emails until it lands).
     if (err && /digest_cadence/.test(err.message ?? "")) {
-      ({ error: err } = await searchesTable().insert({
+      ({ error: err } = await writeWithDigestLocale(i18n.language, (lang) => searchesTable().insert({
         user_id: session.user.id,
         name: watchName,
         params,
         digest_opt_in: true,
-      }));
+        ...lang,
+      })));
     }
     if (err && err.code === "23505") {
       toast({ title: boardsNamed

@@ -101,6 +101,7 @@ const messageOf = (b: ApiError): string | null =>
   b && typeof b.error === "object" && b.error?.message ? b.error.message : null;
 
 function GetAKeyBody({ box }: { box: React.RefObject<HTMLDivElement> }) {
+  const { i18n } = useTranslation();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -122,9 +123,10 @@ function GetAKeyBody({ box }: { box: React.RefObject<HTMLDivElement> }) {
     setBusy(true); setErr(null);
     try {
       // The Terms version the line above the button showed (item 12); the
-      // function records it with the request.
+      // function records it with the request. The page's language writes the
+      // confirmation mail (S13-102); the live build ignores a field it does not read.
       const { termsVersion } = purchaseTerms();
-      const { data, error } = await supabase.functions.invoke("api-key-request", { body: { email, name, ...(termsVersion ? { termsVersion } : {}) } });
+      const { data, error } = await supabase.functions.invoke("api-key-request", { body: { email, name, language: i18n.language, ...(termsVersion ? { termsVersion } : {}) } });
       const d = (error ? await errorBodyOf(error) : data) as ApiError & { requested?: boolean };
       if (error || !d?.requested) { setErr(messageOf(d) ?? "Could not send the confirmation email. Try again shortly."); return; }
       setRequestedFor(email.trim());

@@ -694,7 +694,7 @@
       "copyLink": "Copy link"
     },
     "sharedView": "Viewing shared analysis",
-    "sharedViewDeleteNote": "Only the buyer can delete this analysis, from the link in their purchase email.",
+    "sharedViewDeleteNote": "Only the buyer can delete this analysis, and this shared link cannot. If you bought it, delete it from the page your payment opened or from the order in your account, or write to {{email}} from the address you paid with and we will delete it.",
     "sharedComputer": {
       "title": "Using a public or shared computer?",
       "body": "Clear this browser's data when you're done. The analysis itself is kept on our servers for {{days}} days, and anyone with its link can open it until then. Delete it below if you don't want it kept."
@@ -2265,7 +2265,7 @@
       },
       "notFound": {
         "title": "We couldn't find this purchase",
-        "body": "This link doesn't match a purchase we can read: it may be cut short or have expired. Paste the whole link from your purchase email below, or contact support."
+        "body": "This link doesn't match a purchase we can read: it may be cut short or have expired. If you just paid, wait a moment and try again. Otherwise paste the whole link from your purchase email below, or contact support."
       },
       "signInAgain": {
         "title": "Sign in to open this",

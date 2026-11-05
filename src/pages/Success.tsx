@@ -52,7 +52,7 @@ import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { usePersonalization } from "@/hooks/use-personalization";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { PRODUCTS } from "@/config/products";
-import { SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention";
+import { PRIVACY_EMAIL, SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention";
 import { forgetStashedSessionFor, forgetStashedShare, stashShareFor, stashedSessionIdFor, stashedShareFor } from "@/lib/auth-fragment";
 
 /**
@@ -914,9 +914,11 @@ const Success = () => {
                         {isGeneratingPdf ? t('success.actions.generatingPdf', 'Generating...') : t('success.actions.savePdf', 'Save as PDF')}
                       </Button>
                       {/* A forwarded link carries no purchase, so it cannot delete
-                          (S13-079): the buyer deletes from their own link. */}
+                          (S13-079). Nor can a buyer's own older mail: every mail
+                          before send-analysis-email 2026-11-03.1 links to this view,
+                          so the ways out are the ones that hold a purchase. */}
                       <p className="w-full text-sm text-muted-foreground" data-testid="shared-view-delete-note">
-                        {t('success.sharedViewDeleteNote', 'Only the buyer can delete this analysis, from the link in their purchase email.')}
+                        {t('success.sharedViewDeleteNote', 'Only the buyer can delete this analysis, and this shared link cannot. If you bought it, delete it from the page your payment opened or from the order in your account, or write to {{email}} from the address you paid with and we will delete it.', { email: PRIVACY_EMAIL })}
                       </p>
                     </div>
                   )}

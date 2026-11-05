@@ -129,6 +129,68 @@ describe("job-board's list, with the reader proof and noLog", () => {
     expect(logged()).not.toContain(WORD);
   });
 
+  /** Each failure path below, driven for real: the line must fire, carry no words, and name them when nobody asked it not to. */
+  const bothWays = async (body: Record<string, unknown>, answer: (q: Query) => Answer | undefined, line: RegExp) => {
+    board.reset();
+    board.answer(answer);
+    await board.post({ action: "list", q: SECRET, caller: "mcp", noLog: true, ...body }, await board.readerHeaders()).catch(() => null);
+    expect(logged(), "the path never fired, so this proves nothing").toMatch(line);
+    expect(logged()).not.toContain(WORD);
+
+    lines.length = 0;
+    board.reset();
+    board.answer(answer);
+    await board.post({ action: "list", q: SECRET, caller: "mcp", ...body }, await board.readerHeaders()).catch(() => null);
+    const named = lines.filter((l) => line.test(l)).join("\n");
+    expect(named, "the control: the same line, no flag, keeps what an operator reads").toContain(WORD);
+  };
+
+  /** Every read the list makes throws, its head row aside: nothing inside the list is left to catch it. */
+  const everyReadThrows = (q: Query): undefined => {
+    if (q.table !== "job_board_meta") throw new Error(`socket closed during "${SECRET}"`);
+    return undefined;
+  };
+
+  it("a throw that reaches the handler's outer catch logs its kind, and no text", async () => {
+    await bothWays({}, everyReadThrows, /\[JOB-BOARD\] error:/);
+  });
+
+  it("the outer catch asks for the proof too: the flag from a browser trims no error", async () => {
+    board.reset();
+    board.answer(() => { throw new Error(`socket closed during "${SECRET}"`); });
+    // Not the list: its dispatch dropped the flag on its own. Any other action read it raw.
+    await board.post({ action: "facets", noLog: true }, { authorization: "Bearer anon-key-for-tests", origin: "https://resumebooster.work" }).catch(() => null);
+    expect(logged()).toMatch(/\[JOB-BOARD\] error:/);
+    expect(lines.filter((l) => /\[JOB-BOARD\] error:/.test(l)).join("\n"), "a browser's own flag took the operator's error text away").toContain(WORD);
+  });
+
+  it("a throw inside the ranked path logs no error text", async () => {
+    await bothWays({}, (q) => {
+      if (q.rpc !== "search_jobs") return undefined;
+      const row: Record<string, unknown> = {};
+      Object.defineProperty(row, "total_rows", { enumerable: true, get() { throw new Error(`bad row for "${SECRET}"`); } });
+      return { data: [row], error: null };
+    }, /ranked path failed, serving recency instead/);
+  });
+
+  it("a semantic search that errors logs no error text", async () => {
+    const g = globalThis as Record<string, unknown>;
+    g.Supabase = { ai: { Session: class { async run() { return new Array(384).fill(0.01); } } } };
+    try {
+      await bothWays({}, (q) => (
+        q.rpc === "search_jobs_semantic" ? { data: null, error: { code: "XX000", message: `could not read "${SECRET}"` } } : undefined
+      ), /semantic ANN failed/);
+    } finally {
+      delete g.Supabase;
+    }
+  });
+
+  it("a row that breaks a filter logs which field did, and not the values", async () => {
+    const row = { id: "p1", total_rows: 1, title: "Nurse", company: "Acme", company_token: "acme", source: "greenhouse", country: WORD, location: "Leeds", apply_url: "https://acme.example/1", rank: 1 };
+    await bothWays({ country: "US" }, (q) => (q.rpc === "search_jobs" ? { data: [row], error: null } : undefined), /filter integrity/);
+    expect(logged()).toContain(WORD);
+  });
+
   it("every line in the handler that names a query names it through the flag", () => {
     const code = codeOf(readFileSync(resolve(process.cwd(), "supabase/functions/job-board/index.ts"), "utf8"));
     const named = code.split("\n").filter((l) => /console\.(log|info|warn|error|debug)\(/.test(l) && /\bq=/.test(l));

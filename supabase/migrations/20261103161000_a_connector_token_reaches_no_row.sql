@@ -31,9 +31,12 @@
 -- its end. Waiting behind a long statement (crons on the board's tables run up
 -- to two minutes) would queue every reader of that table behind it, and hold
 -- every table already done. So one table gets at most two seconds, a table
--- that cannot be had in that time is left to the hook with a NOTICE (a re-run
--- picks it up), the board's busy tables go first, while little is held, and
--- only a person's own tables are required, which see short transactions.
+-- that cannot be had in that time, or that deadlocks, is left to the hook with
+-- a NOTICE (a re-run picks it up), the board's busy tables go first, while
+-- little is held, and only a person's own tables are required, which see short
+-- transactions. An applied file therefore does not prove every table carries
+-- the policy: the deploy notes' owner steps hold a catalogue read that lists
+-- what a busy minute left, to run before the OAuth server is switched on.
 --
 -- WHAT THIS LAYER DOES NOT COVER (the audit-rest fixer's review): a SECURITY
 -- DEFINER function the signed-in role may execute (agent_cancel_pending,
@@ -74,12 +77,12 @@ BEGIN
       EXECUTE format(
         'CREATE POLICY a_connector_token_reaches_no_row ON %s AS RESTRICTIVE FOR ALL TO %I USING %s WITH CHECK %s',
         r.tbl, 'authenticated', v_qual, v_qual);
-    EXCEPTION WHEN insufficient_privilege OR lock_not_available THEN
+    EXCEPTION WHEN insufficient_privilege OR lock_not_available OR deadlock_detected THEN
       v_skipped := v_skipped || r.tbl;
     END;
   END LOOP;
   IF cardinality(v_skipped) > 0 THEN
-    RAISE NOTICE 'a_connector_token_reaches_no_row: not owner of, or could not lock in 2s, %: left to the hook', v_skipped;
+    RAISE NOTICE 'a_connector_token_reaches_no_row: not owner of, or could not lock in 2s or deadlocked on, %: left to the hook', v_skipped;
   END IF;
 END $$;
 

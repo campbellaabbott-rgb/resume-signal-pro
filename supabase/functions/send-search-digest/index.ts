@@ -90,6 +90,8 @@ const BOARD_CALL_MS = 20_000;
 const RUN_HARD_MS = 140_000;
 /** Rows read per search: the window's newest, deduped against what was already mailed. */
 const CANDIDATES = 60;
+/** search_digest_sent (20261008120000) began filling with the deploy of 2026-10-11: a search older than this may have been mailed before it. */
+const SENT_RECORD_BEGAN_MS = Date.UTC(2026, 9, 12);
 
 /**
  * The board's answer for THIS window, or null. The digest asks for newSince
@@ -525,12 +527,20 @@ Deno.serve(async (req) => {
         // stamp by its first real match and never got it. search_digest_sent
         // keeps a search's last mailed postings until the next mail replaces
         // them, so a row there means a mail went; a read that failed is not
-        // "never", so it gets the plain subject.
+        // "never", so it gets the plain subject. The wait has to have happened:
+        // a first-ever run with matches (no earlier stamp) is an ordinary watch
+        // on day one. A search older than that record may have been mailed before
+        // it began, so "never" cannot be read for it either.
         const isDaily = String((s as { digest_cadence?: string }).digest_cadence ?? "") === "daily";
-        const { data: everMailed, error: everErr } = isDaily
+        const waited = isDaily && !!s.digest_last_sent_at;
+        const { data: everMailed, error: everErr } = waited
           ? await supabase.from("search_digest_sent").select("posting_id").eq("search_id", s.id).limit(1)
           : { data: null, error: null };
-        const firstMatch = isDaily && !everErr && Array.isArray(everMailed) && everMailed.length === 0;
+        let firstMatch = waited && !everErr && Array.isArray(everMailed) && everMailed.length === 0;
+        if (firstMatch) {
+          const { data: born, error: bornErr } = await supabase.from("user_job_searches").select("created_at").eq("id", s.id).maybeSingle();
+          firstMatch = !bornErr && Date.parse(String((born as { created_at?: unknown } | null)?.created_at ?? "")) >= SENT_RECORD_BEGAN_MS;
+        }
         const subject = firstMatch
           ? c.subjectFirstMatch(shownCount, newCount, s.name)
           : strongMode

@@ -58,4 +58,4 @@ export const TERMS_LAST_UPDATED: string = TERMS_VERSION;
 // is that deploy's day too: set at the merge into main, and the ledger refuses
 // a deploy message otherwise (docs/deploy-ledger.json datedAtDeploy). Audit-rest's
 // publish moves it again: the page stops naming Google Fonts as a processor.
-export const PRIVACY_LAST_UPDATED = "2026-11-04";
+export const PRIVACY_LAST_UPDATED = "2026-11-05";

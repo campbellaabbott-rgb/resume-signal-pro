@@ -38,7 +38,10 @@ export const VERIFY_REFUSAL_RETRIES: Readonly<Record<VerifyRefusal, boolean>> = 
   refunded: false,
   withdrawn: false,
   sign_in_again: false,
-  not_found: false,
+  // The function's own sentence tells a buyer to refresh, and until
+  // verify-product-purchase 2026-11-03.1 serves it also covers a Stripe that
+  // did not answer. A press costs nothing.
+  not_found: true,
 };
 
 const NOT_FOUND = /couldn't find that purchase|^Invalid session$|^Session ID is required$/i;

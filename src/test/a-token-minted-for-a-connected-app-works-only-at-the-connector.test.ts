@@ -322,12 +322,12 @@ describe("2. the database refuses a connector token, hooked or not, and serves a
 
 describe("20261103161000 on the live site: every lock it takes is held to its end", () => {
   /** CREATE POLICY answers "could not get the lock in time" for its first n calls. */
-  const busyFor = (n: number) => `
+  const busyFor = (n: number, errcode = "55P03") => `
     CREATE SEQUENCE public.busy_seq;
     CREATE FUNCTION public.busy_table() RETURNS event_trigger LANGUAGE plpgsql AS $f$
     BEGIN
       IF nextval('public.busy_seq') <= ${n} THEN
-        RAISE EXCEPTION 'canceling statement due to lock timeout' USING ERRCODE = '55P03';
+        RAISE EXCEPTION 'canceling statement due to lock timeout' USING ERRCODE = '${errcode}';
       END IF;
     END $f$;
     CREATE EVENT TRIGGER busy_table ON ddl_command_start WHEN TAG IN ('CREATE POLICY') EXECUTE FUNCTION public.busy_table();`;
@@ -341,6 +341,29 @@ describe("20261103161000 on the live site: every lock it takes is held to its en
     expect(await carrying(db), "the busy board table went first, while nothing else was held").toEqual(["agent_mandates", "agent_queue", "agent_submissions", "saved_searches", "storage.objects"]);
     await db.exec(ROWS);
     expect(await carrying(db)).toContain("job_board_postings");
+  }, 60_000);
+
+  it("a deadlock on a table does not stop the apply either: the table is left to the hook, and a re-run picks it up", async () => {
+    const db = await boot({ hook: true, rows: false });
+    await db.exec(busyFor(1, "40P01"));
+    await db.exec(ROWS);
+    expect(await carrying(db)).not.toContain("job_board_postings");
+    expect(await carrying(db)).toContain("agent_mandates");
+    await db.exec(ROWS);
+    expect(await carrying(db)).toContain("job_board_postings");
+  }, 60_000);
+
+  it("the owner's catalogue read before the OAuth server lists the table a busy apply left, and none after a re-run", async () => {
+    const notes = readFileSync(resolve(ROOT, "docs/job-board-deploy-notes.md"), "utf8");
+    const read = /`(SELECT [^`]*AS left_without_the_connector_policy[^`]*;)`/.exec(notes)?.[1];
+    expect(read, "the deploy notes carry no catalogue read of the tables still without the policy").toBeTruthy();
+    const listed = async (db: PGlite) => (await db.query<{ left_without_the_connector_policy: string }>(read as string)).rows.map((x) => x.left_without_the_connector_policy);
+    const db = await boot({ hook: true, rows: false });
+    await db.exec(busyFor(1));
+    await db.exec(ROWS);
+    expect(await listed(db)).toEqual(["public.job_board_postings"]);
+    await db.exec(ROWS);
+    expect(await listed(db)).toEqual([]);
   }, 60_000);
 
   it("a person's own table left without it fails the apply, which is safe to re-run", async () => {

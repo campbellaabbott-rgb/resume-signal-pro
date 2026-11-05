@@ -1,8 +1,10 @@
 -- THE SCAN TOTAL COUNTS COMPLETED ANALYSES ONLY (audit 2026-10-31, S13-087).
 --
--- get_scan_totals is the figure the homepage bake prints as "the scanner has
--- completed N scans", /trust as "N Resumes Analyzed" and /methodology as "N
--- resumes processed" and "N resumes analyzed". Its last definition
+-- get_scan_totals is the figure the homepage prints in the browser as "the
+-- scanner has completed N scans", /trust as "N Resumes Analyzed" and
+-- /methodology as "N resumes processed" and "N resumes analyzed". No baked page
+-- prints it: the bake reads it and writes it nowhere, so a crawler and a browser
+-- cannot read two totals and nothing needs a re-bake. Its last definition
 -- (20260709124621) counted every scan_metrics row of type free, free-stream
 -- or paid, whatever its status: a 'failed' attempt, and the 'validation_error'
 -- row the free scan logs before it goes on to the rule-based report and logs

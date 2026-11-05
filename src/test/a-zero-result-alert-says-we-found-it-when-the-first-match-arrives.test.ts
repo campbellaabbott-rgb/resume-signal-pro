@@ -65,7 +65,7 @@ function install(extra: Record<string, unknown> = {}) {
     return { data: [{ sd_id: SID, sd_user_id: "abcd-user", sd_name: "Nurse jobs", sd_params: { q: "nurse" }, sd_prev_sent_at: "2026-10-06T14:23:00.000Z", sd_fit_threshold: 0, sd_cadence: "daily", ...extra }], error: null };
   };
   db.rpcs.search_digest_record_sent = (a) => ({ data: (a.p_posting_ids as string[]).length, error: null });
-  db.rows("user_job_searches").push({ id: SID, digest_last_sent_at: "2026-11-03T14:23:00.000Z", digest_opt_in: true });
+  db.rows("user_job_searches").push({ id: SID, digest_last_sent_at: "2026-11-03T14:23:00.000Z", digest_opt_in: true, created_at: "2026-10-20T09:00:00.000Z" });
 }
 const run = () => search(new Request("https://harness.supabase.co/functions/v1/send-search-digest", {
   method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${SERVICE}` }, body: JSON.stringify({ action: "send" }),
@@ -108,6 +108,33 @@ describe("the subject of a zero-result alert's first match", () => {
     expect(reads).toBe(2);
     expect(sent).toHaveLength(1);
     expect(sent[0].subject).toBe("2 new nurse matches — Nurse jobs");
+  });
+
+  it("a first-ever run that already has matches is an ordinary watch, not a wait that ended: the plain subject", async () => {
+    install({ sd_prev_sent_at: null });
+    await run();
+    expect(sent).toHaveLength(1);
+    expect(sent[0].subject).toBe("2 new nurse matches — Nurse jobs");
+  });
+
+  it("a search older than the record of what was mailed may have been mailed: the plain subject", async () => {
+    install();
+    db.rows("user_job_searches")[0].created_at = "2026-09-20T09:00:00.000Z";
+    await run();
+    expect(sent).toHaveLength(1);
+    expect(sent[0].subject).toBe("2 new nurse matches — Nurse jobs");
+  });
+
+  it("a search whose age cannot be read is not called a first match, and the mail still goes", async () => {
+    install();
+    const realFrom = db.from.bind(db);
+    db.from = ((table: string) => {
+      if (table === "user_job_searches") db.faults.push({ table, op: "select", error: { code: "57014", message: "fake: timed out" } });
+      return realFrom(table);
+    }) as typeof db.from;
+    try { await run(); } finally { db.from = realFrom; }
+    expect(sent).toHaveLength(1);
+    expect(sent[0].subject).not.toMatch(/We found it/);
   });
 
   it("a weekly search never says We found it", async () => {

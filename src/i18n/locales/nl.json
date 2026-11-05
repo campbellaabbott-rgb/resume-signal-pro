@@ -694,7 +694,7 @@
       "copyLink": "Link kopiëren"
     },
     "sharedView": "Gedeelde analyse bekijken",
-    "sharedViewDeleteNote": "Alleen de koper kan deze analyse verwijderen, via de link in de aankoopmail.",
+    "sharedViewDeleteNote": "Alleen de koper kan deze analyse verwijderen, en met deze gedeelde link kan dat niet. Heb je hem gekocht, verwijder hem dan via de pagina die na je betaling openging of via de bestelling in je account, of schrijf vanaf het adres waarmee je betaalde naar {{email}}, dan verwijderen wij hem.",
     "sharedComputer": {
       "title": "Gebruik je een openbare of gedeelde computer?",
       "body": "Wis de gegevens van deze browser als je klaar bent. De analyse zelf wordt {{days}} dagen op onze servers bewaard, en tot dan kan iedereen met de link hem openen. Verwijder hem hieronder als je niet wilt dat hij bewaard blijft."
@@ -2265,7 +2265,7 @@
       },
       "notFound": {
         "title": "We konden deze aankoop niet vinden",
-        "body": "Deze link past bij geen aankoop die we kunnen lezen: hij is misschien afgekapt of verlopen. Plak hieronder de volledige link uit je aankoopmail, of neem contact op met support."
+        "body": "Deze link past bij geen aankoop die we kunnen lezen: hij is misschien afgekapt of verlopen. Heb je net betaald, wacht dan even en probeer het opnieuw. Plak anders hieronder de volledige link uit je aankoopmail, of neem contact op met support."
       },
       "signInAgain": {
         "title": "Log in om dit te openen",

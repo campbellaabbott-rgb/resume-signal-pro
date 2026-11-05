@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import { Bookmark } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { writeWithDigestLocale } from "@/lib/saved-search-locale";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { boardBudgetRefusal, markBoardBudgetRefused, readBoardBudgetRefusal } from "@/lib/board-budget";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,7 +25,7 @@ import { searchToQuery, searchToBoardBody, type JobSearchParams } from "@/lib/jo
 interface SavedSearch { id: string; name: string; params: JobSearchParams; last_seen_at?: string | null }
 
 export function SavedSearchPills() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [searches, setSearches] = useState<SavedSearch[]>([]);
   const [newCounts, setNewCounts] = useState<Record<string, number>>({});
@@ -100,10 +101,10 @@ export function SavedSearchPills() {
     // be killed by the page unload — chain the navigation on the update, and
     // navigate regardless of the write's outcome).
     const go = () => window.location.assign(searchToQuery(s.params));
-    (supabase as unknown as { from: (t: string) => any })
+    void writeWithDigestLocale(i18n.language, (lang) => (supabase as unknown as { from: (t: string) => any })
       .from("user_job_searches")
-      .update({ last_seen_at: new Date().toISOString() })
-      .eq("id", s.id)
+      .update({ last_seen_at: new Date().toISOString(), ...lang })
+      .eq("id", s.id))
       .then(go, go);
   };
 

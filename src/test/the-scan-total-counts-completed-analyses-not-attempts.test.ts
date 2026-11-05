@@ -2,8 +2,8 @@
 /**
  * THE SCAN TOTAL COUNTS COMPLETED ANALYSES, NOT ATTEMPTS (S13-087).
  *
- * get_scan_totals is printed as "the scanner has completed N scans" (the
- * homepage bake), "N Resumes Analyzed" (/trust) and "N resumes analyzed"
+ * get_scan_totals is printed in the browser as "the scanner has completed N
+ * scans" (the homepage), "N Resumes Analyzed" (/trust) and "N resumes analyzed"
  * (/methodology). Its last definition counted every scan_metrics row of the
  * real-scan types whatever its status: failed attempts, and the
  * validation_error row the free scan logs before it carries on to its
