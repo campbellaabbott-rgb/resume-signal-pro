@@ -34,10 +34,15 @@
 #     "quality engineer iso 13485" keeps 13485, a number stored titles hold;
 #   - "cvs" and "3m" route to their employer on every ask, six asks across
 #     whatever isolates answer (S12-014: a cold isolate routed nothing);
-#   - location "Wien" browses no row placed in the US unless the row names
+#   - location "Wien" browses no row filed in the US unless the row names
 #     Austria (S13-006, the job-board branch builder);
+#   - no row under location "Wien", read to the end of the list, has a location
+#     that names a US state and ZIP. The alias refusal stops only rows filed in
+#     the US, so a Vienna, Virginia row with no country on file passes it. It
+#     FAILs today on two WorldStrides rows, and the next job-board round owes the
+#     fix. An unreadable page is a FAIL, and no rows or a walk cut short are INFO;
 #   - q "engineer" in "Wien" is ranked (ranked true, search_jobs among the
-#     phases timed), ranks no US row unless it names Austria, and serves a row
+#     phases timed), ranks no row filed in the US unless it names Austria, and serves a row
 #     named Vienna without Wien whose title does not start with "engineer"
 #     (the head-term ring finds those by title), which only the anchored arm
 #     of migration 20261102100000 can match (S13-006, search_jobs);
@@ -59,8 +64,8 @@
 #     exercised, and the line is INFO.
 #
 # READ-ONLY. Three OPTIONS preflights; job-board list reads sent with
-# x-rb-budget: probe (about 45: the seam walks read at most 6 pages each, and a
-# short page twice).
+# x-rb-budget: probe (about 60: the seam walks read at most 6 pages each, and a
+# short page twice; the walk of every row under Wien reads at most 20 pages).
 echo "== 99zzzz. The search reads what was typed: phrases, negated work modes, ZIPs, filler, short employer names, local city names, and the page at the seam =="
 
 VDBS_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/job-board" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
@@ -95,6 +100,16 @@ if [ "$VDBS_LIVE" = 1 ]; then
   for VDBS_I in 1 2; do J '{"action":"list","q":"3m","limit":3,"groupSimilar":false,"includeFacets":false}' > "/tmp/vd_bsearch_route_3m_$VDBS_I.json"; done
   J '{"action":"list","q":"","location":"Wien","limit":50,"groupSimilar":false,"includeFacets":false}' > /tmp/vd_bsearch_wien_browse.json
   J '{"action":"list","q":"engineer","location":"Wien","limit":50,"groupSimilar":false,"includeFacets":false}' > /tmp/vd_bsearch_wien_ranked.json
+  # Every row under Wien, to the end of the list: the first page need not hold the row the refusal cannot stop.
+  VDBS_OFF=0; VDBS_N=0
+  while [ "$VDBS_N" -lt 20 ]; do
+    VDBS_F="/tmp/vd_bsearch_wienall_$VDBS_N.json"
+    J "{\"action\":\"list\",\"q\":\"\",\"location\":\"Wien\",\"limit\":60,\"offset\":$VDBS_OFF,\"groupSimilar\":false,\"includeFacets\":false}" > "$VDBS_F"
+    VDBS_NEXT=$(node -e 'try{const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));const o=Number(process.argv[2]);process.stdout.write(j&&Array.isArray(j.jobs)&&j.jobs.length&&j.hasMore===true?String(Number.isInteger(j.nextOffset)&&j.nextOffset>o?j.nextOffset:o+j.jobs.length):"")}catch{}' "$VDBS_F" "$VDBS_OFF")
+    VDBS_N=$((VDBS_N + 1))
+    [ -n "$VDBS_NEXT" ] || break
+    VDBS_OFF=$VDBS_NEXT
+  done
   # Each walk stops at the page that carries the top-up, at a short page, at the
   # ring's end or when there is no more: the ring's seam sits past nextOffset 200
   # (crew member read 171 to 286 before it reached its own). The ring's end is
@@ -201,18 +216,28 @@ const unreadable=(f,what)=>say("FAIL",what+": the list is unreadable: "+peek(f))
 const usUnnamed=(j)=>j.jobs.filter((x)=>x.country==="US"&&!/austria/i.test(String(x.location||"")));
 {const j=read("wien_browse");if(!ok(j))unreadable("wien_browse","location Wien (browse)");else{
   const us=usUnnamed(j);
-  if(us.length)say("FAIL","location Wien browses "+us.length+" of "+j.jobs.length+" rows placed in the US: "+JSON.stringify(us.slice(0,3).map((x)=>x.location)));
+  if(us.length)say("FAIL","location Wien browses "+us.length+" of "+j.jobs.length+" rows filed in the US: "+JSON.stringify(us.slice(0,3).map((x)=>x.location)));
   else if(!j.jobs.length)say("FAIL","location Wien browses no row at all (Vienna, Austria has hundreds)");
-  else say("PASS","location Wien browses "+j.jobs.length+" rows, none placed in the US without naming Austria");}}
+  else say("PASS","location Wien browses "+j.jobs.length+" rows, none filed in the US without naming Austria");}}
+// The refusal reads the row\u2019s country, so this reads what the row says. DE is left out of the codes: a German row can read DE 10115.
+{const US_ZIP=/(?:^|[\s,])(?:A[KLRZ]|C[AOT]|DC|FL|GA|HI|I[ADLN]|K[SY]|LA|M[ADEINOST]|N[CDEHJMVY]|O[HKR]|PA|RI|S[CD]|T[NX]|UT|V[AIT]|W[AIVY]|Virginia|Illinois|Georgia|Maryland|Missouri|Ohio|New Jersey|Maine|South Dakota)[\s,]+\d{5}(?:-\d{4})?\b/;
+  const pages=[];for(let n=0;n<20;n++){const raw=(()=>{try{return fs.readFileSync("/tmp/vd_bsearch_wienall_"+n+".json","utf8")}catch{return null}})();if(raw===null)break;let j=null;try{j=JSON.parse(raw)}catch{}pages.push(j)}
+  const bad=pages.findIndex((j)=>!ok(j));
+  if(!pages.length||bad>=0)unreadable("wienall_"+Math.max(bad,0),"location Wien, page "+Math.max(bad,0)+" of the walk to its end");
+  else{const rows=pages.flatMap((j)=>j.jobs),hit=rows.filter((x)=>US_ZIP.test(String(x.location||"")));
+    if(hit.length)say("FAIL","location Wien serves "+hit.length+" of "+rows.length+" rows whose location names a US state and ZIP: "+JSON.stringify(hit.slice(0,3).map((x)=>x.location))+" ("+[...new Set(hit.map((x)=>String(x.company)))].slice(0,3).join(", ")+"; country "+JSON.stringify(hit[0].country??null)+"): the alias refusal stops only rows filed in the US, so a row with no country on file passes it. The next job-board round owes the fix");
+    else if(!rows.length)say("INFO","location Wien served no row, so no location was read for a US state and ZIP");
+    else if(pages[pages.length-1].hasMore===true)say("INFO","location Wien: none of the "+rows.length+" rows read names a US state and ZIP, but the walk stopped before the end of the list");
+    else say("PASS","location Wien: none of its "+rows.length+" rows names a US state and ZIP");}}
 {const j=read("wien_ranked");if(!ok(j))unreadable("wien_ranked","engineer in Wien (ranked)");else{
   const us=usUnnamed(j);const viennaOnly=j.jobs.filter((x)=>/vienna/i.test(String(x.location||""))&&!/wien/i.test(String(x.location||"")));
   const anchored=viennaOnly.filter((x)=>!/^engineer\b/i.test(String(x.title||"")));
   if(j.ranked!==true)say("FAIL","engineer in Wien was not ranked (ranked "+JSON.stringify(j.ranked)+(j.rankedFellBack?", fell back: "+String(j.rankedFellBack).slice(0,120):"")+"): the anchored arm cannot be judged on this answer");
   else if(!(j.phaseMs&&typeof j.phaseMs.search_jobs==="number"))say("FAIL","engineer in Wien was ranked but search_jobs did not run (phases "+JSON.stringify(Object.keys(j.phaseMs||{}))+"): its rows are not the answer of search_jobs");
-  else if(us.length)say("FAIL","engineer in Wien ranks "+us.length+" of "+j.jobs.length+" rows placed in the US: "+JSON.stringify(us.slice(0,3).map((x)=>x.location)));
+  else if(us.length)say("FAIL","engineer in Wien ranks "+us.length+" of "+j.jobs.length+" rows filed in the US: "+JSON.stringify(us.slice(0,3).map((x)=>x.location)));
   else if(!viennaOnly.length)say("FAIL","engineer in Wien serves "+j.jobs.length+" rows and none named Vienna without Wien: search_jobs has no anchored arm (migration 20261102100000 not applied?)");
   else if(!anchored.length)say("FAIL","engineer in Wien serves "+viennaOnly.length+" rows named Vienna without Wien, and none named Vienna without Wien outside the titles the head-term ring finds (every one starts with engineer): no evidence of the anchored arm of search_jobs");
-  else say("PASS","engineer in Wien ranks "+j.jobs.length+" rows, none placed in the US without naming Austria, "+anchored.length+" of them named Vienna with a title the head-term ring does not find (the anchored arm of 20261102100000)");}}
+  else say("PASS","engineer in Wien ranks "+j.jobs.length+" rows, none filed in the US without naming Austria, "+anchored.length+" of them named Vienna with a title the head-term ring does not find (the anchored arm of 20261102100000)");}}
 // S13-012.
 {const WALKS=[["nurse",50],["crew member",60],["caregiver",60],["customer service",60]];
   // The ring seam (paging.ts RING_WINDOW, passed in) and the 200 window a query with no ring stops at.
