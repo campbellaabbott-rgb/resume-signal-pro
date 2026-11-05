@@ -24,10 +24,11 @@
 # FAIL only when this build wrote it (lastSeen, set at insert, after
 # buildSince) and INFO otherwise; from job-board .98 every visit re-files the
 # board's stored rows it did not read (n1399), and the board's read or 24 h
-# after .98's first slice is the deadline again. The page lines wait for the
-# frontend publish whose app scripts carry this round's override mirror (the
-# Hong Kong Baptist University row), and a bare token's page also for the
-# name-sync lane's version 6.
+# after .98's first slice is the deadline again. The page lines read the served
+# app for this round's override mirror (the Hong Kong Baptist University row) by
+# walking the entry's whole chunk list: it lives in a lazy chunk no page names,
+# which read as "does not carry" for months. A list read to its end without it
+# is a FAIL. A bare token's page also waits for the name-sync lane's version 6.
 #
 # THE CLAIMS, one line each (FAIL only once what it waits for has happened):
 #   N1  each renamed board with open roles serves its rows under its new name,
@@ -40,7 +41,11 @@
 #       flag carries agency false (Convergint 228 open on 2026-10-26; eight
 #       served none that day though their own feeds listed roles), counted
 #       over all of their rows: the list's total for the twenty, and again
-#       with excludeAgencies, which drops a flagged row, must agree;
+#       with excludeAgencies, which drops a flagged row, must agree. That is
+#       true of an empty board too, so each cleared board serving nothing is
+#       named beside its feed: 50 or more on its feed and 0 served is a FAIL a
+#       day after the first slice (get_company_fill_curve, then the board's own
+#       list, because the curve is the reader and the list is what is served);
 #   A2  every row of the staffing companies' boards this round labels carries
 #       agency true (Jobandtalent's three, Aya Healthcare, Traba, Zenjob, Staff
 #       Zone, Coople's two, Ingenovis Health, Insight Global and six of
@@ -71,13 +76,16 @@
 #       rows, mostly the country, kept one Greece, NY row in its first 60 on
 #       2026-10-26), up to three pages a spelling; a "Cardiff, Wales" row is
 #       still filed GB (the control);
-#   C2  two named postings ("NY - Greece", "Greece, NY #0185") and Kohl's two
-#       rows at its "Lake Wales (1250)" store (R504030, R503656) are filed US.
+#   C2  two named postings ("NY - Greece", "Greece, NY #0185") and Kohl's row
+#       at its "Lake Wales (1250)" store (R504030) are filed US. Cases close:
+#       on 2026-11-05 BJ's R255468 and Kohl's R503656 had, and BJ's R259209 is
+#       the live row at the same store.
 #
 # READ-ONLY. One OPTIONS preflight; job-board status, list and detail reads
-# sent with x-rb-budget: probe; GETs of the sitemap, LCS's company page, up to
-# ten listed pages of this round's boards and the app scripts they name, as
-# Googlebot. Nothing is written.
+# sent with x-rb-budget: probe; the anon reader get_company_fill_curve; GETs of
+# the site's shell, its entry and the chunks the entry names (up to the whole
+# list, about 300), the sitemap, LCS's company page and up to ten listed pages of
+# this round's boards, the pages as Googlebot. Nothing is written.
 echo "== 99zzz. Trust round 3: true names, agency labels, one feed read once, countries, the dedupe's own boards =="
 
 VDZ3_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/job-board" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
@@ -131,9 +139,9 @@ VDZ3_NAMES='[
 ["oracle","eexs~us2~CX_12051","Eastcasle Place","Eastcastle Place"],
 ["oracle","eexs~us2~CX_21005","RSL - Farmington Hills","Rose Senior Living Farmington Hills"]
 ]'
-# The twenty boards cleared of the agency flag (A1): vendor, token.
+# The twenty boards cleared of the agency flag (A1): vendor, token, and a name where the token says none.
 VDZ3_CLEARED='[
-["ukg","recruiting2~CON1074CVTG~1831b61a-1945-44fa-afd8-624795c9b30d"],
+["ukg","recruiting2~CON1074CVTG~1831b61a-1945-44fa-afd8-624795c9b30d","Convergint"],
 ["ukg","recruiting~ban1010~e9066a66-c3b9-e25c-d036-116705c05e46"],
 ["ukg","recruiting~LAF1002LAFA~1a07d948-3361-48d7-89f2-002c5a48346c"],
 ["ukg","recruiting2~SAP1000SPID~5e557a61-9707-4f47-8f76-9c11b2bfbf9e"],
@@ -194,19 +202,30 @@ while IFS="$(printf '\t')" read -r VDZ3_PATH VDZ3_KIND VDZ3_TOK || [ -n "${VDZ3_
   VDZ3_I=$((VDZ3_I + 1))
   curl -s -m 60 -A "$UA" -o "/tmp/vd_99zzz_pg_$VDZ3_I.html" "$SITE$VDZ3_PATH" 2>/dev/null
 done < /tmp/vd_99zzz_pages.txt 2>/dev/null
-# The app scripts those pages and LCS's company page name: the mirror rides one of them.
+# The app's scripts: the entry, every chunk it names, and what those pages name;
+# the mirror rides one of them. A chunk named for employers is read first, and
+# the walk stops where the mirror is. grep -a: a chunk may hold a NUL byte.
+curl -s -m 60 -A "$UA" -o /tmp/vd_99zzz_shell.html "$SITE/" 2>/dev/null
+VDZ3_ENTRY=$(LC_ALL=C grep -ao '/assets/index-[^"]*\.js' /tmp/vd_99zzz_shell.html 2>/dev/null | head -1)
+: > /tmp/vd_99zzz_entry.js
+[ -z "$VDZ3_ENTRY" ] || curl -s -m 60 -o /tmp/vd_99zzz_entry.js "$SITE$VDZ3_ENTRY" 2>/dev/null
 : > /tmp/vd_99zzz_assets.txt
-node -e '
-const fs=require("fs");const out=new Set();
-for(const f of ["/tmp/vd_99zzz_lcs.html",...Array.from({length:10},(_,i)=>"/tmp/vd_99zzz_pg_"+(i+1)+".html")]){let h="";try{h=fs.readFileSync(f,"utf8")}catch{}
-  for(const m of h.matchAll(/<(?:script[^>]*\ssrc|link[^>]*\srel="modulepreload"[^>]*\shref)="(\/assets\/[A-Za-z0-9_.-]+\.js)"/g))out.add(m[1]);}
-fs.writeFileSync("/tmp/vd_99zzz_assets.txt",[...out].slice(0,30).map((u)=>u+"\n").join(""));
+VDZ3_ENTRY="$VDZ3_ENTRY" node -e '
+const fs=require("fs");const rd=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};
+const names=[];const entry=rd("/tmp/vd_99zzz_entry.js");
+if(process.env.VDZ3_ENTRY)names.push(process.env.VDZ3_ENTRY.replace(/^\/assets\//,""));
+for(const m of entry.matchAll(/(?:\.\/|\/?assets\/)([A-Za-z0-9_.-]+-[A-Za-z0-9_-]{6,}\.js)/g))names.push(m[1]);
+for(const f of ["/tmp/vd_99zzz_lcs.html",...Array.from({length:10},(_,i)=>"/tmp/vd_99zzz_pg_"+(i+1)+".html")]){
+  for(const m of rd(f).matchAll(/<(?:script[^>]*\ssrc|link[^>]*\srel="modulepreload"[^>]*\shref)="\/assets\/([A-Za-z0-9_.-]+\.js)"/g))names.push(m[1]);}
+const all=[...new Set(names)];const first=all.filter((x)=>/employer/i.test(x));
+fs.writeFileSync("/tmp/vd_99zzz_assets.txt",[...first,...all.filter((x)=>!first.includes(x))].map((x)=>"/assets/"+x+"\n").join(""));
 ' 2>/dev/null
 VDZ3_I=0
 while IFS= read -r VDZ3_A || [ -n "$VDZ3_A" ]; do
   [ -n "$VDZ3_A" ] || continue
   VDZ3_I=$((VDZ3_I + 1))
   curl -s -m 60 -o "/tmp/vd_99zzz_asset_$VDZ3_I.js" "$SITE$VDZ3_A" 2>/dev/null
+  if LC_ALL=C grep -aEq 'fa-ewqq-saasfaprod1~ocs~CX_1["'"'"'`][[:space:]]*,[[:space:]]*["'"'"'`]Hong Kong Baptist University' "/tmp/vd_99zzz_asset_$VDZ3_I.js" 2>/dev/null; then break; fi
 done < /tmp/vd_99zzz_assets.txt 2>/dev/null
 
 if [ "$VDZ3_LIVE" = 1 ]; then
@@ -221,6 +240,11 @@ if [ "$VDZ3_LIVE" = 1 ]; then
   VDZ3_FT=$(printf '%s' "$VDZ3_FLAGGED" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.stringify([...new Set(JSON.parse(s).map((x)=>x[1]))])))')
   J "{\"action\":\"list\",\"companies\":$VDZ3_CT,\"groupSimilar\":false,\"includeFacets\":false,\"limit\":60}" > /tmp/vd_99zzz_cleared.json
   J "{\"action\":\"list\",\"companies\":$VDZ3_CT,\"excludeAgencies\":true,\"groupSimilar\":false,\"includeFacets\":false,\"limit\":1}" > /tmp/vd_99zzz_cleared_ex.json
+  # A1's other half: each cleared board the reader says is empty, asked alone.
+  R get_company_fill_curve "{\"p_tokens\":$VDZ3_CT}" > /tmp/vd_99zzz_curve.json
+  for VDZ3_T in $(node -e 'try{for(const r of JSON.parse(require("fs").readFileSync("/tmp/vd_99zzz_curve.json","utf8")))if(r&&Number(r.open_roles)===0)console.log(r.company_token)}catch{}'); do
+    J "{\"action\":\"list\",\"companies\":[\"$VDZ3_T\"],\"groupSimilar\":false,\"includeFacets\":false,\"limit\":1}" > "/tmp/vd_99zzz_cl_$VDZ3_T.json"
+  done
   J "{\"action\":\"list\",\"companies\":$VDZ3_FT,\"groupSimilar\":false,\"includeFacets\":false,\"limit\":60}" > /tmp/vd_99zzz_flagged.json
   J "{\"action\":\"list\",\"companies\":$VDZ3_FT,\"excludeAgencies\":true,\"groupSimilar\":false,\"includeFacets\":false,\"limit\":60}" > /tmp/vd_99zzz_flagged_ex.json
   for VDZ3_T in careers.delmarva.com careers.comed.com careers.baycenterfoods.com careers.chick-fil-a.com careers.ynvgroup.com careers.monifai.com; do
@@ -248,9 +272,8 @@ if [ "$VDZ3_LIVE" = 1 ]; then
     done
   done < <(printf '%s' "$VDZ3_LOCS" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{for(const [,l] of JSON.parse(s))console.log(l)})')
   J '{"action":"detail","id":"workday:cvshealth~wd1~CVS_Health_Careers:R1075322"}' > /tmp/vd_99zzz_d_cvs.json
-  J '{"action":"detail","id":"workday:bjswholesaleclub~wd1~BJsCareers:R255468"}' > /tmp/vd_99zzz_d_bjs.json
+  J '{"action":"detail","id":"workday:bjswholesaleclub~wd1~BJsCareers:R259209"}' > /tmp/vd_99zzz_d_bjs.json
   J '{"action":"detail","id":"workday:kohls~wd504~kohlscareers:R504030"}' > /tmp/vd_99zzz_d_kohls.json
-  J '{"action":"detail","id":"workday:kohls~wd504~kohlscareers:R503656"}' > /tmp/vd_99zzz_d_kohls2.json
 fi
 
 VDZ3_LIVE="$VDZ3_LIVE" VDZ3_REFILE="$VDZ3_REFILE" VDZ3_H="$VDZ3_H" VDZ3_NAMES="$VDZ3_NAMES" VDZ3_CLEARED="$VDZ3_CLEARED" VDZ3_FLAGGED="$VDZ3_FLAGGED" VDZ3_LOCS="$VDZ3_LOCS" VDZ3_DUPS="$VDZ3_DUPS" node -e '
@@ -285,9 +308,12 @@ else{const L=JSON.parse(E.VDZ3_NAMES);const stale=[],good=[],empty=[],waiting=[]
   else if(good.length)out("PASS","N1 "+good.length+" renamed board(s) serve their new names"+(waiting.length?", "+waiting.length+" still wait for the lane":"")+(empty.length?"; "+empty.length+" served no row":""));
   else out("INFO","N1 no renamed board served a row under its new name yet: "+waiting.length+" wait for the lane ("+(nd||"no names step in passEnd")+"), "+empty.length+" served no row");
   if(!stale.length&&waiting.length)out("INFO","N1 waiting: "+waiting.slice(0,4).join("; ")+(waiting.length>4?" ...":""));}
-// The publish that carries this round: an app script holds the Hong Kong Baptist University override.
-let assets=0,pub=false;for(let i=1;i<=30;i++){const s=txt("/tmp/vd_99zzz_asset_"+i+".js");if(!s)continue;assets++;if(/fa-ewqq-saasfaprod1~ocs~CX_1["\x27`]\s*,\s*["\x27`]Hong Kong Baptist University/.test(s))pub=true}
-out("INFO",pub?"the served app carries this round\x27s employer names (of "+assets+" app script(s) read): the page lines below are judged":"the served app does not carry this round\x27s employer names yet ("+assets+" app script(s) read): the page lines below are INFO until the frontend publish after this branch");
+// The app carries this round when a script on the entry\x27s chunk list holds the Hong Kong Baptist University override.
+const listed=txt("/tmp/vd_99zzz_assets.txt").split("\n").filter(Boolean);let assets=0,pub=false,holder=null;
+for(let i=1;i<=listed.length;i++){const s=txt("/tmp/vd_99zzz_asset_"+i+".js");if(!s)continue;assets++;if(/fa-ewqq-saasfaprod1~ocs~CX_1["\x27`]\s*,\s*["\x27`]Hong Kong Baptist University/.test(s)){pub=true;holder=listed[i-1].replace(/^\/assets\//,"");break}}
+if(pub)out("INFO","the served app carries this round\x27s employer names (in "+holder+", "+assets+" script(s) read): the page lines below are judged");
+else if(!txt("/tmp/vd_99zzz_entry.js"))out("FAIL","the served app\x27s entry could not be read ("+assets+" script(s) read from the pages), so this round\x27s names in the app are not judged");
+else out("FAIL","no chunk of the served app holds this round\x27s employer names ("+assets+" script(s) read of "+listed.length+" listed): a later publish dropped the mirror, or its shape changed");
 const pages=txt("/tmp/vd_99zzz_pages.txt").split("\n").filter(Boolean).map((l,i)=>{const [path,kind,tok]=l.split("\t");const h=txt("/tmp/vd_99zzz_pg_"+(i+1)+".html");
   const lds=[...h.matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)].map((m)=>{try{return JSON.parse(m[1].replace(/\\u003c/g,"<"))}catch{return {}}}).flatMap((x)=>Array.isArray(x&&x["@graph"])?x["@graph"]:[x]);
   const jp=lds.find((x)=>x&&x["@type"]==="JobPosting");const coll=lds.find((x)=>x&&x["@type"]==="CollectionPage");
@@ -305,7 +331,7 @@ const pages=txt("/tmp/vd_99zzz_pages.txt").split("\n").filter(Boolean).map((l,i)
     else if(!p.baked)out("INFO","N2 "+p.path+" is not a baked page (no CollectionPage or JobPosting), so it is not judged");
     else if(!oldShown&&shows)out("PASS","N2 "+p.path+" names "+nw+" and never \""+old+"\" ("+[...p.printed].join(" / ")+")");
     else if(pub&&(p.tok.includes("~")||laneDone))out("FAIL","N2 "+p.path+(oldShown?" names the old label \""+old+"\"":" does not name "+nw)+" (it names "+([...p.printed].join(" / ")||"nobody")+")");
-    else out("INFO","N2 "+p.path+" prints title \""+p.title+"\": it waits for "+(pub?"the name-sync lane\x27s version 6 and a bake after it":"the publish that carries this round"));}}
+    else out("INFO","N2 "+p.path+" prints title \""+p.title+"\": "+(pub?"it waits for the name-sync lane\x27s version 6 and a bake after it":"it is not judged: no chunk of the served app holds this round\x27s names"));}}
 // A1, A2: every row, by the total of each scope and its total with excludeAgencies (which drops a flagged row).
 if(!LIVE)out("INFO","A1/A2 agency labels: wait for job-board .96");
 else{
@@ -317,6 +343,19 @@ else{
     else if(n<=0)out("PASS","A1 all "+C.total+" row(s) on the "+CL.length+" employers\x27 own boards cleared of the flag carry agency false (excludeAgencies keeps all "+CX.total+"; "+toks.size+" board(s) on the first page)");
     else if(visRead.length||(ageH!==null&&ageH>24))out("FAIL","A1 "+n+" of "+C.total+" row(s) on the cleared boards still carry the agency flag"+(vis.length?" ("+[...new Set(vis.map((r)=>r.token))].slice(0,4).join(", ")+")":"")+" "+(visRead.length?"after this build read the board":"24 h after the first slice")+" (each visit re-stamps up to 1,000 rows)");
     else out("INFO","A1 "+n+" row(s) on the cleared boards still carry the agency flag; "+waitWhy(24));}
+  // A1, the boards themselves. The flag line above is true of an empty board, so a board that lost its rows hid inside its PASS. The reader says which are empty, and the board\x27s own list says what is served.
+  const nameOf=(t)=>{const x=CL.find((y)=>y[1]===t);return x&&x[2]?x[2]:t};const CUR=json("/tmp/vd_99zzz_curve.json");
+  if(!Array.isArray(CUR))out("FAIL","A1 get_company_fill_curve is unreadable, so a cleared board that lost its rows cannot be named: "+peek("/tmp/vd_99zzz_curve.json"));
+  else{const quiet=[];
+    for(const r of CUR){if(!r||Number(r.open_roles)!==0||!CL.some((y)=>y[1]===r.company_token))continue;
+      const t=r.company_token,f="/tmp/vd_99zzz_cl_"+t+".json",j=json(f);
+      if(!j||typeof j.total!=="number"){out("FAIL","A1 "+t+": the list is unreadable: "+peek(f));continue}
+      if(j.total>0)continue;
+      const fed=Number(r.feed_total);
+      if(r.feed_total!=null&&fed>=50){const msg="A1 "+nameOf(t)+" serves 0 rows though its feed listed "+fed+" (read "+r.feed_read_at+", state "+r.feed_state+", "+r.fills_90d+" fills in 90 days): settle it with the owner SQL on job_board_board_state and one vendor read; if a bad read stamped it, its closures are false";
+        if(ageH!==null&&ageH>24)out("FAIL",msg);else out("INFO",msg+"; "+waitWhy(24));}
+      else quiet.push(nameOf(t)+" ("+(r.feed_total==null?"no feed read":"feed "+fed+", state "+r.feed_state+", read "+r.feed_read_at)+", "+r.fills_90d+" fills)");}
+    if(quiet.length)out("INFO","A1 "+quiet.length+" cleared board(s) serve no row, none with a feed of 50 or more: "+quiet.join("; "));}
   const FL=JSON.parse(E.VDZ3_FLAGGED),F=json("/tmp/vd_99zzz_flagged.json"),U=json("/tmp/vd_99zzz_flagged_ex.json");
   if(!F||typeof F.total!=="number"||!Array.isArray(F.jobs)||!U||typeof U.total!=="number"||!Array.isArray(U.jobs))out("FAIL","A2 the staffing boards\x27 lists are unreadable: "+peek("/tmp/vd_99zzz_flagged.json")+" / "+peek("/tmp/vd_99zzz_flagged_ex.json"));
   else{const un=U.jobs,unRead=un.filter((r)=>readSince([r])),toks=new Set(F.jobs.map(bk));
@@ -331,8 +370,8 @@ else{
   else for(const p of mine){const agencyPage=/Roles listed by|a staffing agency\x27s board/i.test(p.h);
     if(!p.baked)out("INFO","A3 "+p.path+" is not a baked page, so it is not judged");
     else if(!agencyPage)out("PASS","A3 "+p.path+" is an employer\x27s page (H1 \""+p.h1+"\")");
-    else if(pub)out("FAIL","A3 "+p.path+" is still the agency variant (H1 \""+p.h1+"\") after the publish that carries this round");
-    else out("INFO","A3 "+p.path+" is the agency variant until the publish after this branch (the bake reads the catalogue\x27s flag)");}}
+    else if(pub)out("FAIL","A3 "+p.path+" is still the agency variant (H1 \""+p.h1+"\"), and the served app holds this round\x27s names");
+    else out("INFO","A3 "+p.path+" is the agency variant, not judged: no chunk of the served app holds this round\x27s names (the bake reads the catalogue\x27s flag)");}}
 // I1, I2, I3
 if(!LIVE)out("INFO","I1/I2/I3 iCIMS scope: wait for job-board .96");
 else{
@@ -401,7 +440,7 @@ else{const LOCS=JSON.parse(E.VDZ3_LOCS);const REFILE=E.VDZ3_REFILE==="1";
   else if(!cw.length)out("INFO","C1 control: no \"Cardiff, Wales\" row is served, so the control is not judged");
   else{const notGb=cw.filter((r)=>r.country!=="GB");out(notGb.length?"FAIL":"PASS","C1 control: "+(cw.length-notGb.length)+" of "+cw.length+" \"Cardiff, Wales\" row(s) filed GB"+(notGb.length?" (the rule must leave Wales a country: "+notGb.slice(0,2).map((r)=>r.country).join("/")+")":""));}
   // C2
-  for(const [k,label,h] of [["cvs","CVS Health R1075322 (\"NY - Greece\")",24],["bjs","BJ\x27s R255468 (\"Greece, NY #0185\")",24],["kohls","Kohl\x27s R504030 (\"Lake Wales (1250)\", placed by migration 20261026110000)",48],["kohls2","Kohl\x27s R503656 (\"Lake Wales (1250)\", placed by migration 20261026110000)",48]]){
+  for(const [k,label,h] of [["cvs","CVS Health R1075322 (\"NY - Greece\")",24],["bjs","BJ\x27s R259209 (\"Greece, NY #0185\")",24],["kohls","Kohl\x27s R504030 (\"Lake Wales (1250)\", placed by migration 20261026110000)",48]]){
     const d=json("/tmp/vd_99zzz_d_"+k+".json");const j=d&&d.job;const mig=k.startsWith("kohls");
     const readNow=!mig&&REFILE&&!!(j&&j.recheckedAt)&&readSince([j]);const newNow=!mig&&!!j&&wroteSince(j);
     if(!d)out("FAIL","C2 "+label+": the detail is unreadable: "+peek("/tmp/vd_99zzz_d_"+k+".json"));

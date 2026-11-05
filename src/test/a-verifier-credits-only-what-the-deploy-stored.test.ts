@@ -262,6 +262,59 @@ describe("section 90 judges the .90 claims", () => {
     expect(line(run90(early), /lastRotationAgeMin = 400/)).toMatch(/^INFO/);
   });
 
+  describe("the cold rotation is judged by its last completed wrap, never by how young the running one is", () => {
+    const VERSION = "2026-09-09.90";
+    const ledger = (body: unknown) => { const d = mkdtempSync(join(tmpdir(), "vd-wraps-")); const f = join(d, "cold-wraps.json"); if (body !== null) writeFileSync(f, JSON.stringify(body)); return f; };
+    const aged = (age: number, cold = 22240) => { const fx = healthy(36); for (const s of [fx.status0, fx.status1]) { s.lastRotationAgeMin = age; s.cursor = { ...s.cursor, cold }; } return fx; };
+    const wrap = (wrapMin: number, build = VERSION) => ({ endedAt: "2026-11-05T07:09:00Z", wrapMin, build, how: "age stamp moved" });
+
+    it("a wrap of 597 minutes FAILs while the running rotation is 2 minutes old, which used to read PASS", () => {
+      const out = run90(aged(2, 32), { VD90_WRAPS: ledger({ wraps: [wrap(612), wrap(597)] }) });
+      const l = line(out, /last completed cold rotation/);
+      expect(l).toMatch(/^FAIL  the last completed cold rotation on 2026-09-09\.90 took 597 min \(ended 2026-11-05T07:09:00Z/);
+      expect(l).toMatch(/want at most 393/);
+      expect(l).toMatch(/DEEP_LANE_TAKE = 0/);
+      expect(l, "the rollback is not proven the cure, and the line says so").toMatch(/unproven.*next job-board round/);
+      expect(out.filter((x) => /^PASS .*cold rotation/.test(x)), out.join("\n")).toEqual([]);
+    });
+    it("a wrap inside the bound PASSes, from the published field first and the ledger after", () => {
+      expect(line(run90(aged(2, 32), { VD90_WRAPS: ledger({ wraps: [wrap(350)] }) }), /last completed cold rotation/)).toMatch(/^PASS .*took 350 min/);
+      const pub = aged(2, 32); for (const s of [pub.status0, pub.status1]) (s as unknown as { lastWrapMin: number }).lastWrapMin = 320;
+      expect(line(run90(pub, { VD90_WRAPS: ledger({ wraps: [wrap(597)] }) }), /last completed cold rotation/)).toMatch(/^PASS .*took 320 min \(status\.lastWrapMin/);
+      const over = aged(2, 32); for (const s of [over.status0, over.status1]) (s as unknown as { lastWrapMin: number }).lastWrapMin = 500;
+      expect(line(run90(over), /last completed cold rotation/)).toMatch(/^FAIL .*took 500 min/);
+    });
+    it("a wrap measured on another build is not this build's wrap", () => {
+      const out = run90(aged(120), { VD90_WRAPS: ledger({ wraps: [wrap(597, "2026-09-09.89")] }) });
+      expect(out.some((x) => /last completed cold rotation/.test(x)), out.join("\n")).toBe(false);
+    });
+    it("with no wrap readable a mid-rotation reading is a pace, never a PASS, and a slow pace FAILs", () => {
+      const fine = line(run90(aged(120)), /a pace, not a wrap/);
+      expect(fine).toMatch(/^INFO .*this rotation takes 240 min/);
+      expect(line(run90(aged(300, 12000)), /a pace, not a wrap/)).toMatch(/^FAIL .*this rotation takes 1110 min/);
+      expect(line(run90(aged(20, 1000)), /no completed wrap/)).toMatch(/^INFO/);
+      expect(run90(aged(120)).filter((x) => /^PASS .*cold rotation/.test(x))).toEqual([]);
+    });
+    it("the ledger learns a wrap only when two readings prove no whole wrap hid between them", () => {
+      const now = Date.now();
+      const adjacent = ledger({ wraps: [], lastRead: { at: now - 200 * 60000, stamp: now - 800 * 60000, build: VERSION } });
+      expect(line(run90(aged(5, 100), { VD90_WRAPS: adjacent }), /last completed cold rotation/)).toMatch(/^FAIL .*took 79\d min/);
+      const saved = JSON.parse(readFileSync(adjacent, "utf8")) as { wraps: Array<{ wrapMin: number; build: string }>; lastRead: { build: string } };
+      expect(saved.wraps.length).toBe(1);
+      expect(saved.wraps[0].build).toBe(VERSION);
+      expect(saved.lastRead.build).toBe(VERSION);
+      // Seven hours between readings: a whole wrap may have run inside them, so nothing is learned.
+      const gap = ledger({ wraps: [], lastRead: { at: now - 420 * 60000, stamp: now - 800 * 60000, build: VERSION } });
+      const out = run90(aged(5, 100), { VD90_WRAPS: gap });
+      expect(out.some((x) => /last completed cold rotation/.test(x)), out.join("\n")).toBe(false);
+      expect((JSON.parse(readFileSync(gap, "utf8")) as { wraps: unknown[] }).wraps).toEqual([]);
+      // No stamp move, no wrap.
+      const same = ledger({ wraps: [], lastRead: { at: now - 60 * 60000, stamp: now - 125 * 60000, build: VERSION } });
+      run90(aged(120), { VD90_WRAPS: same });
+      expect((JSON.parse(readFileSync(same, "utf8")) as { wraps: unknown[] }).wraps).toEqual([]);
+    });
+  });
+
   it("pg below its feed is INFO for two rotations, FAIL after; the bootstrap take above 24 FAILs", () => {
     const young = healthy(10);
     young.data.pg.served = pgServed(200, young.since);

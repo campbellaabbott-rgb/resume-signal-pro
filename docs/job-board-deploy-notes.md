@@ -54,7 +54,7 @@ SEARCH (fix/bs-search; n1410-n1418; verify 99zzzz-board-search.sh)
   - Corpus: 859 rows over 18 probes. Main served 91 US homonyms, this build 0, with no row lost in the city's country.
 - A grouped page short at the 200-row seam continues past it (S13-012; clusters.ts continuePastSeam).
   - The extra read is one search_jobs call, capped at 1.5 s and recorded as phaseMs.seam_topup. nextOffset resumes after the deep rows it used.
-  - A deep page past rank 200 can still fold short.
+  - A deep page past rank 200 can still fold short, and so can the seam page itself: one read of folded rows does not always fill it (live 2026-11-05: nurse at limit 50 served 21 cards, crew member at 60 served 30; verify 99zzzz names them).
 
 FIELDS (fix/bs-fields; n1420-n1428; verify 99zzzz-board-fields.sh)
 - An age and a story no longer set a years floor (S12-013; experience.ts).
@@ -604,7 +604,7 @@ FRONTEND HANDOFFS (frontend-board group): render `sortUnavailable`, `facetSource
 
 ### THE COLD CURSOR (follow-up (c)): A FINDING, PLUS A RECORD
 
-From code: every cold slice writes the cursor at admission by the whole base slice (80) and, if it survives, corrected to the base boards it started, so a poll between reads a step back of 80 - started (the 2026-10-06 readings: 137 -> 104 = 47 started, 285 -> 212 = 7). Nothing is skipped or repeated. The 6-7 minute stills are (1) the pass's last slice (coldDone 160) returning without chaining, so the next pass waits for the :x4/:x9 cron past the 3-minute lock (19:42:49 -> 19:50 on 10-06), and (2) chain deaths waiting the same way (19:33 -> 19:39:40). NOT CHANGED: chaining the next pass directly would remove ~7 min a pass (~12% of the rotation) and add load (the pass-end tail and the hot phase back to back): the owner's decision. NEW: `status.sliceStats.cursorStep {from, admitted, to, base, started}` on every cold slice (null on a hot one). MEASURE: poll status once a minute through a cold stretch; every step back must equal `admitted - to` of a cursorStep with `to = from + started`; a step back that no cursorStep explains is a real regression (two chains), and `coldDone` going DOWN is its signature. n434.
+From code: every cold slice writes the cursor at admission by the whole base slice (80) and, if it survives, corrected to the base boards it started (since .92, S8-087, to the prefix of the base slice started or skipped as dormant, so to - from need not equal started; section 61 (c) judges that), so a poll between reads a step back of 80 - started (the 2026-10-06 readings: 137 -> 104 = 47 started, 285 -> 212 = 7). Nothing is skipped or repeated. The 6-7 minute stills are (1) the pass's last slice (coldDone 160) returning without chaining, so the next pass waits for the :x4/:x9 cron past the 3-minute lock (19:42:49 -> 19:50 on 10-06), and (2) chain deaths waiting the same way (19:33 -> 19:39:40). NOT CHANGED: chaining the next pass directly would remove ~7 min a pass (~12% of the rotation) and add load (the pass-end tail and the hot phase back to back): the owner's decision. NEW: `status.sliceStats.cursorStep {from, admitted, to, base, started}` on every cold slice (null on a hot one). MEASURE: poll status once a minute through a cold stretch; every step back must equal `admitted - to` of a cursorStep with `to = from + started`; a step back that no cursorStep explains is a real regression (two chains), and `coldDone` going DOWN is its signature. n434.
 
 ### SMARTRECRUITERS WHOLE-BOARD READS (follow-up (d)): DECIDED AGAINST, CAP KEPT
 

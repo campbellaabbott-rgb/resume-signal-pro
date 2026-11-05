@@ -122,6 +122,7 @@ ${PROBE}
     PATH: `${join(dir, "bin")}:${dirname(process.execPath)}:${process.env.PATH ?? ""}`,
     VD_FX: join(dir, "fx.json"), VD_ROUTES: join(dir, "routes.json"), VD_CALLS: join(dir, "calls.log"),
     NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --require ${join(dir, "nofetch.cjs")}`.trim(),
+    HOME: dir, // section 90 keeps its wrap ledger under HOME: a fixture never writes to the owner's.
   };
   delete env.DAY30_APPLIED_AT;
   let out = "";

@@ -41,15 +41,20 @@
 #       addressCountry is the row's country (NG, US), never the old one;
 #   R1  talent.reyesholdings.com serves only Reyes Beverage Group's portal and
 #       jobportal.martinbrower.com none of the other four brands' portals, so
-#       the two pages list different roles; the three new brand boards are
-#       carried and serve rows within 12 hours of the first slice;
+#       the two pages list different roles; each of the three new brand boards
+#       is carried and, read alone, serves rows within 12 hours of the first slice,
+#       or its own feed shows why it lawfully serves none: every posting past the
+#       30-day window. A feed that answers nothing excuses nothing, since a
+#       misspelt brand answers exactly that;
 #   R2  the two Reyes company pages print different open counts;
 #   S1  the stored rows of the three named boards carry the new names (search,
 #       the API and get_company_intel read the stored rows).
 #
 # READ-ONLY. GETs of seven public pages, the sitemap and the app scripts the
 # pages name, as Googlebot; one OPTIONS preflight; job-board status, list and detail reads
-# sent with x-rb-budget: probe. Nothing is written.
+# sent with x-rb-budget: probe; and, for a new Reyes board that serves nothing, GETs
+# of that employer's own public feed (https://<board>/api/jobs?page=N&limit=100&brand=...).
+# Nothing is written.
 echo "== 99zz. Trusted pages: the six D7 pages are named, placed and marked up honestly =="
 
 VDZZ_AXIA_TOK="recruiting~REG1001RWHM~3f9058a6-91f2-4cf1-bf33-bc76cb9f0522"
@@ -84,23 +89,46 @@ while IFS= read -r VDZZ_A || [ -n "$VDZZ_A" ]; do
   curl -s -m 60 -o "/tmp/vd_99zz_asset_$VDZZ_I.js" "$SITE$VDZZ_A" 2>/dev/null
 done < /tmp/vd_99zz_assets.txt 2>/dev/null
 
+# One board's list, by nextOffset. An anonymous page holds at most 60 rows whatever
+# limit asks, so a stride of 100 skipped rows 60-99 of every page.
+VDZZ_WALK() {
+  local off=0 n=0 next
+  while [ "$n" -lt 10 ]; do
+    J "$2,\"limit\":60,\"offset\":$off}" > "$1_$n.json"
+    next=$(node -e 'try{const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));const off=Number(process.argv[2]);if(j&&j.hasMore===true&&Array.isArray(j.jobs)){const nx=Number.isInteger(j.nextOffset)&&j.nextOffset>off?j.nextOffset:off+j.jobs.length;if(nx>off)process.stdout.write(String(nx))}}catch{}' "$1_$n.json" "$off")
+    n=$((n + 1))
+    [ -n "$next" ] || break
+    off=$next
+  done
+}
+
 if [ "$VDZZ_LIVE" = 1 ]; then
   J '{"action":"status"}' > /tmp/vd_99zz_status.json
   J '{"action":"list","companies":["ThePlace1"],"vendor":["smartrecruiters"],"groupSimilar":false,"includeFacets":false,"limit":50}' > /tmp/vd_99zz_place_list.json
-  for VDZZ_O in 0 100 200; do
-    J "{\"action\":\"list\",\"companies\":[\"bristolmyerssquibb~wd5~BMS\"],\"location\":\"New Brunswick\",\"groupSimilar\":false,\"includeFacets\":false,\"limit\":100,\"offset\":$VDZZ_O}" > "/tmp/vd_99zz_bms_nb_$VDZZ_O.json"
-    node -e 'try{const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.exit(j&&j.hasMore?0:1)}catch{process.exit(1)}' "/tmp/vd_99zz_bms_nb_$VDZZ_O.json" || break
-  done
+  VDZZ_WALK /tmp/vd_99zz_bms_nb "{\"action\":\"list\",\"companies\":[\"bristolmyerssquibb~wd5~BMS\"],\"location\":\"New Brunswick\",\"groupSimilar\":false,\"includeFacets\":false"
   J '{"action":"detail","id":"smartrecruiters:ThePlace1:744000154839819"}' > /tmp/vd_99zz_place_detail.json
   J '{"action":"detail","id":"workday:bristolmyerssquibb~wd5~BMS:R1607072-1"}' > /tmp/vd_99zz_bms_detail.json
   for VDZZ_T in talent.reyesholdings.com jobportal.martinbrower.com; do
-    for VDZZ_O in 0 100 200 300 400; do
-      J "{\"action\":\"list\",\"companies\":[\"$VDZZ_T\"],\"vendor\":[\"icims\"],\"groupSimilar\":false,\"includeFacets\":false,\"limit\":100,\"offset\":$VDZZ_O}" > "/tmp/vd_99zz_reyes_${VDZZ_T}_$VDZZ_O.json"
-      node -e 'try{const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.exit(j&&j.hasMore?0:1)}catch{process.exit(1)}' "/tmp/vd_99zz_reyes_${VDZZ_T}_$VDZZ_O.json" || break
-    done
+    VDZZ_WALK "/tmp/vd_99zz_reyes_$VDZZ_T" "{\"action\":\"list\",\"companies\":[\"$VDZZ_T\"],\"vendor\":[\"icims\"],\"groupSimilar\":false,\"includeFacets\":false"
   done
-  J '{"action":"list","companies":["jobportal.reyescocacola.com","jobportal.reyesfleet.com","jobportal.reyesholdings.com"],"vendor":["icims"],"groupSimilar":false,"includeFacets":false,"limit":50}' > /tmp/vd_99zz_reyes_new.json
-  J "{\"action\":\"list\",\"companies\":[\"$VDZZ_AXIA_TOK\",\"icfcjb~ocs~CX_1\",\"eexs~us2~CX_3001\"],\"groupSimilar\":false,\"includeFacets\":false,\"limit\":30}" > /tmp/vd_99zz_names.json
+  # Each new brand board alone: a merged list judges by which board's rows are
+  # newest. Only a board that serves nothing has its own feed read, page by page.
+  for VDZZ_B in "jobportal.reyescocacola.com|Reyes%20Coca-Cola%20Bottling" "jobportal.reyesfleet.com|Reyes%20Fleet%20Management" "jobportal.reyesholdings.com|Reyes%20Holdings"; do
+    VDZZ_T=${VDZZ_B%%|*}; VDZZ_BR=${VDZZ_B#*|}
+    J "{\"action\":\"list\",\"companies\":[\"$VDZZ_T\"],\"vendor\":[\"icims\"],\"groupSimilar\":false,\"includeFacets\":false,\"limit\":1}" > "/tmp/vd_99zz_reyes_new_$VDZZ_T.json"
+    if node -e 'try{const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.exit(j&&Array.isArray(j.jobs)&&!j.jobs.length&&!(Array.isArray(j.unknownCompanies)&&j.unknownCompanies.length)?0:1)}catch{process.exit(1)}' "/tmp/vd_99zz_reyes_new_$VDZZ_T.json"; then
+      VDZZ_PG=1
+      while [ "$VDZZ_PG" -le 20 ]; do
+        curl -s -m 60 -o "/tmp/vd_99zz_feed_${VDZZ_T}_$VDZZ_PG.json" "https://$VDZZ_T/api/jobs?page=$VDZZ_PG&limit=100&brand=$VDZZ_BR" 2>/dev/null
+        node -e 'try{const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.exit(j&&Array.isArray(j.jobs)&&j.jobs.length>=100?0:1)}catch{process.exit(1)}' "/tmp/vd_99zz_feed_${VDZZ_T}_$VDZZ_PG.json" || break
+        VDZZ_PG=$((VDZZ_PG + 1))
+      done
+    fi
+  done
+  # The names, each board alone: a merged page of 30 read one board and called it two.
+  for VDZZ_T in "$VDZZ_AXIA_TOK" icfcjb~ocs~CX_1 eexs~us2~CX_3001; do
+    J "{\"action\":\"list\",\"companies\":[\"$VDZZ_T\"],\"groupSimilar\":false,\"includeFacets\":false,\"limit\":10}" > "/tmp/vd_99zz_names_$VDZZ_T.json"
+  done
 fi
 
 VDZZ_LIVE="$VDZZ_LIVE" VDZZ_H="$VDZZ_H" node -e '
@@ -180,12 +208,12 @@ const countryCase=(label,rows,want,detailFile,pageKey,extra)=>{
 };
 const PL=json("/tmp/vd_99zz_place_list.json");
 countryCase("ThePlace1 rows whose location ends in Nigeria",PL&&Array.isArray(PL.jobs)?PL.jobs.filter((r)=>/Nigeria\s*$/.test(String(r.location||""))):null,"NG","/tmp/vd_99zz_place_detail.json","place");
-const BN=[0,100,200].map((o)=>json("/tmp/vd_99zz_bms_nb_"+o+".json")).filter(Boolean);const bmsDetail=json("/tmp/vd_99zz_bms_detail.json");
+const BN=[0,1,2,3,4,5,6,7,8,9].map((o)=>json("/tmp/vd_99zz_bms_nb_"+o+".json")).filter(Boolean);const bmsDetail=json("/tmp/vd_99zz_bms_detail.json");
 const bmsRows=BN.length&&Array.isArray(BN[0].jobs)?[...BN.flatMap((j)=>Array.isArray(j.jobs)?j.jobs:[]).filter((r)=>/-\s*NJ\s*-\s*US\s*$/.test(String(r.location||""))),...(bmsDetail&&bmsDetail.job?[bmsDetail.job]:[])]:null;
 countryCase("Bristol Myers Squibb rows at \"New Brunswick - NJ - US\" (every New Brunswick row on the board, whatever its country, plus the D7 posting)",bmsRows?[...new Map(bmsRows.map((r)=>[r.id,r])).values()]:null,"US","/tmp/vd_99zz_bms_detail.json","bms",(rows)=>{const c=rows.filter((r)=>r.salaryCurrency==="CAD").length;return c?c+" with pay in CAD":""});
 // R1
 if(LIVE){
-  const rows=(t)=>{const a=[];for(const o of [0,100,200,300,400]){const j=json("/tmp/vd_99zz_reyes_"+t+"_"+o+".json");if(j&&Array.isArray(j.jobs))a.push(...j.jobs)}return a};
+  const rows=(t)=>{const a=[];for(let o=0;o<10;o++){const j=json("/tmp/vd_99zz_reyes_"+t+"_"+o+".json");if(j&&Array.isArray(j.jobs))a.push(...j.jobs)}return a};
   const host=(u)=>{try{return new URL(u).hostname}catch{return "?"}};
   const T=rows("talent.reyesholdings.com"),M=rows("jobportal.martinbrower.com");
   const others=new Set(["careers-reyesbeveragegroup.icims.com","careers-reyescocacola.icims.com","careers-reyesfleetmanagement.icims.com","careers-reyesholdings.icims.com"]);
@@ -197,13 +225,25 @@ if(LIVE){
   else if(!tBad.length&&!mBad.length&&!shared)out("PASS",msg);
   else if(readSince||(ageH!==null&&ageH>24))out("FAIL",msg+(readSince?" after this build read both boards":" more than 24 h after the first slice")+" (migration 20261025110000 applied after .95 moves them; re-run it if it ran early)");
   else out("INFO",msg+": the boards have not both been read by this build yet");
-  const N=json("/tmp/vd_99zz_reyes_new.json");
-  if(!N||!Array.isArray(N.jobs))out("FAIL","the three new Reyes boards\x27 list is unreadable: "+peek("/tmp/vd_99zz_reyes_new.json"));
-  else{const un=Array.isArray(N.unknownCompanies)?N.unknownCompanies:[];const toks=new Set(N.jobs.map((r)=>r.token));
-    if(un.length)out("FAIL","the serving catalogue does not carry "+un.join(", "));
-    else if(toks.size===3)out("PASS","the three new Reyes brand boards are carried and each serves rows ("+N.total+" in all)");
-    else if(ageH!==null&&ageH>12)out("FAIL","only "+toks.size+" of the three new Reyes brand boards serve rows "+ageH.toFixed(1)+" h after the first slice (a new board is first read 2-3 h after the deploy)");
-    else out("INFO","the three new Reyes brand boards are carried; "+toks.size+" serve rows so far (first visit 2-3 h after the deploy; FAIL after 12 h)");}
+  // Each new brand board against its own feed. In the window means 1 to 29 days old by posted_date, else create_date, or undated (isDatedBefore keeps undated rows): the margin keeps a posting read an hour ago, or leaving the window today, out of the verdict.
+  const serving=[];
+  for(const [t,brand] of [["jobportal.reyescocacola.com","Reyes Coca-Cola Bottling"],["jobportal.reyesfleet.com","Reyes Fleet Management"],["jobportal.reyesholdings.com","Reyes Holdings"]]){
+    const f="/tmp/vd_99zz_reyes_new_"+t+".json";const j=json(f);
+    if(!j||!Array.isArray(j.jobs)){out("FAIL","the new Reyes board "+t+": the list is unreadable: "+peek(f));continue}
+    const un=[...(Array.isArray(j.unknownCompanies)?j.unknownCompanies:[]),...(Array.isArray(j.companiesUnresolved)?j.companiesUnresolved.map((u)=>u&&u.asked):[])];
+    if(un.includes(t)){out("FAIL","the serving catalogue does not carry "+t);continue}
+    if(j.jobs.some((r)=>r.token===t)){serving.push(t+" "+(typeof j.total==="number"?j.total:j.jobs.length));continue}
+    const posts=[];let broken=false;
+    for(let p=1;p<=20;p++){const fj=json("/tmp/vd_99zz_feed_"+t+"_"+p+".json");if(!fj||!Array.isArray(fj.jobs)){broken=true;break}posts.push(...fj.jobs);if(fj.jobs.length<100)break}
+    const oldDays=(x)=>{const d=(x&&x.data)||{};const at=Date.parse(d.posted_date??d.create_date??"");return Number.isFinite(at)?(Date.now()-at)/86400000:null};
+    const inWin=posts.filter((x)=>{const a=oldDays(x);return a===null||(a>=1&&a<=29)});
+    const due=ageH!==null&&ageH>12;const v=due?"FAIL":"INFO";const when=ageH!==null?ageH.toFixed(1)+" h after the first slice":"before any slice of this build";const wait=due?"":" (a new board is first read 2-3 h after the deploy; FAIL after 12 h)";
+    if(inWin.length)out(v,t+" serves no row "+when+" though its own feed lists "+inWin.length+" posting(s) inside the 30-day window (of "+posts.length+"), e.g. requisition "+((inWin[0].data||{}).req_id??"?")+wait);
+    else if(broken)out(v,t+" serves no row "+when+" and its feed is unreadable, so nothing excuses it: "+peek("/tmp/vd_99zz_feed_"+t+"_1.json")+wait);
+    else if(!posts.length)out(v,t+" serves no row "+when+" and its feed lists no posting for brand \""+brand+"\": a misspelt brand answers exactly that, so this is not excused"+wait);
+    else out("INFO",t+" serves no row, and none of its "+posts.length+" feed posting(s) is inside the 30-day window: a brand board may lawfully serve nothing");}
+  if(serving.length===3)out("PASS","the three new Reyes brand boards are carried and each serves rows ("+serving.join(", ")+")");
+  else if(serving.length)out("PASS",serving.length+" of the three new Reyes brand boards serve rows ("+serving.join(", ")+"); the others are judged above");
   // R2
   const tp=page("talent"),mp=page("mb");const cnt=(p)=>{const m=p.title.match(/: ([\d,]+) open roles/);return m?m[1]:null};
   const clean=!tBad.length&&!mBad.length&&!shared;
@@ -214,12 +254,13 @@ if(LIVE){
 }else{out("INFO","the Reyes boards wait for job-board .95")}
 // S1
 if(LIVE){
-  const NM=json("/tmp/vd_99zz_names.json");const want={"recruiting~REG1001RWHM~3f9058a6-91f2-4cf1-bf33-bc76cb9f0522":"Axia Women\x27s Health","icfcjb~ocs~CX_1":"Honeywell Aerospace","eexs~us2~CX_3001":"LCS"};
+  const want={"recruiting~REG1001RWHM~3f9058a6-91f2-4cf1-bf33-bc76cb9f0522":"Axia Women\x27s Health","icfcjb~ocs~CX_1":"Honeywell Aerospace","eexs~us2~CX_3001":"LCS"};
   const steps=S&&S.passEnd&&S.passEnd.steps;const nd=steps&&steps.names&&String(steps.names.detail||"");const lane=/name sync v(\d+) (?:complete|done)/.exec(nd||"");const laneDone=!!lane&&Number(lane[1])>=5;
-  if(!NM||!Array.isArray(NM.jobs))out("FAIL","the named boards\x27 list is unreadable: "+peek("/tmp/vd_99zz_names.json"));
-  else{const stale=NM.jobs.filter((r)=>want[r.token]&&r.company!==want[r.token]);const seen=new Set(NM.jobs.map((r)=>r.token));
-    const m=Object.keys(want).filter((t)=>seen.has(t)).length+" of 3 boards served";
-    if(!NM.jobs.length)out("INFO","none of the three named boards served a row, so the stored names are not judged");
+  const NM=Object.keys(want).map((t)=>[t,json("/tmp/vd_99zz_names_"+t+".json")]);const nb=NM.find(([,j])=>!j||!Array.isArray(j.jobs));
+  if(nb)out("FAIL","the named board "+nb[0]+": the list is unreadable: "+peek("/tmp/vd_99zz_names_"+nb[0]+".json"));
+  else{const jobs=NM.flatMap(([,j])=>j.jobs);const stale=jobs.filter((r)=>want[r.token]&&r.company!==want[r.token]);
+    const m=NM.filter(([,j])=>j.jobs.length).length+" of 3 boards served";
+    if(!jobs.length)out("INFO","none of the three named boards served a row, so the stored names are not judged");
     else if(!stale.length)out("PASS","the stored rows read the employer names ("+m+")");
     else if(laneDone||(ageH!==null&&ageH>48))out("FAIL",stale.length+" stored row(s) still carry an old name ("+[...new Set(stale.map((r)=>r.token+" = "+r.company))].join("; ")+") "+(laneDone?"after the name-sync lane reported version "+lane[1]+" done":"more than 48 h after the first slice")+": migration 20261025100000 must be applied before job-board .95, or the lane finished without its rows");
     else out("INFO",stale.length+" stored row(s) still carry an old name; the name-sync lane has not reported version 5 done ("+(nd||"no names step in passEnd")+")");}

@@ -115,8 +115,17 @@ const SITEMAP = sitemap(["/jobs/company/eexs~us2~CX_3001", "/jobs/posting/oracle
 type Over = {
   build?: string | null; pub?: boolean; axia?: string; honeywell?: string; lcs?: string; talent?: string; mb?: string; place?: string; bms?: string;
   asset?: string; sitemap?: string; buildSince?: string; placeRows?: unknown[]; bmsCa?: unknown[]; bmsNb?: unknown[]; placeDetail?: unknown; bmsDetail?: unknown;
-  talentRows?: unknown[]; mbRows?: unknown[]; newRows?: unknown[]; unknownNew?: string[]; nameRows?: unknown[]; namesDetail?: string;
+  talentRows?: unknown[]; mbRows?: unknown[]; newRows?: unknown[]; unknownNew?: string[]; nameRows?: Array<{ token: string; company: string }>; namesDetail?: string;
+  /** What a merged list of the three new boards puts on its first page (the read this section used to judge them by). */
+  mergedNew?: unknown[];
+  /** The brand feeds, by board: page number to reply. */
+  feeds?: Record<string, Record<number, { status?: number; body?: string }>>;
+  /** Anonymous pages of at most 60 rows, by offset. */
+  talentPages?: Record<number, unknown>; bmsPages?: Record<number, unknown>;
 };
+const BRAND: Record<string, string> = { "jobportal.reyescocacola.com": "Reyes%20Coca-Cola%20Bottling", "jobportal.reyesfleet.com": "Reyes%20Fleet%20Management", "jobportal.reyesholdings.com": "Reyes%20Holdings" };
+const posted = (daysAgo: number | null, req = 37012) => ({ data: { req_id: String(req), ...(daysAgo === null ? {} : { posted_date: new Date(Date.now() - daysAgo * 24 * 3_600_000).toISOString() }) } });
+const feed = (jobs: unknown[], totalCount = jobs.length) => ({ body: JSON.stringify({ jobs, totalCount }) });
 const place = (id: string, country: string, read: string) => ({ id: `smartrecruiters:ThePlace1:${id}`, token: "ThePlace1", company: "The Place", location: "Lagos, LA, Nigeria", country, recheckedAt: read });
 const bms = (id: string, country: string, cur: string | null, read: string) => ({ id: `workday:bristolmyerssquibb~wd5~BMS:${id}`, token: "bristolmyerssquibb~wd5~BMS", location: "New Brunswick - NJ - US", country, salaryCurrency: cur, recheckedAt: read });
 const icims = (token: string, req: number, host: string, read: string) => ({ id: `icims:${token}:${req}`, token, applyUrl: `https://${host}/jobs/${req}/job`, recheckedAt: read });
@@ -146,13 +155,23 @@ function routes(o: Over = {}): Route[] {
     { match: `^POST ${FB}\\t\\{"action":"status"\\}`, body: status },
     { match: `^POST ${FB}\\t.*"action":"list".*"ThePlace1"`, body: list(o.placeRows ?? [place("744000154839819", "NG", read), place("744000152481767", "NG", read)]) },
     { match: `^POST ${FB}\\t.*"action":"list".*"bristolmyerssquibb~wd5~BMS".*"country":"CA"`, body: list(o.bmsCa ?? []) },
+    ...Object.entries(o.bmsPages ?? {}).map(([off, body]) => ({ match: `^POST ${FB}\\t.*"bristolmyerssquibb~wd5~BMS".*"location":"New Brunswick".*"offset":${off}\\}`, body: JSON.stringify(body) })),
     { match: `^POST ${FB}\\t.*"action":"list".*"bristolmyerssquibb~wd5~BMS".*"location":"New Brunswick"`, body: list(o.bmsNb ?? [...(o.bmsCa ?? []), bms("R1607072-1", "US", "USD", read)]) },
     { match: `^POST ${FB}\\t.*"action":"detail".*ThePlace1`, body: JSON.stringify(o.placeDetail ?? { job: place("744000154839819", "NG", read) }) },
     { match: `^POST ${FB}\\t.*"action":"detail".*bristolmyerssquibb`, body: JSON.stringify(o.bmsDetail ?? { job: bms("R1607072-1", "US", "USD", read) }) },
+    ...Object.entries(o.talentPages ?? {}).map(([off, body]) => ({ match: `^POST ${FB}\\t.*"action":"list".*"talent\\.reyesholdings\\.com".*"offset":${off}\\}`, body: JSON.stringify(body) })),
     { match: `^POST ${FB}\\t.*"action":"list".*"talent\\.reyesholdings\\.com"`, body: list(T) },
     { match: `^POST ${FB}\\t.*"action":"list".*"jobportal\\.martinbrower\\.com"`, body: list(M) },
-    { match: `^POST ${FB}\\t.*"action":"list".*"jobportal\\.reyescocacola\\.com"`, body: list(N, o.unknownNew ? { unknownCompanies: o.unknownNew } : {}) },
-    { match: `^POST ${FB}\\t.*"action":"list".*"icfcjb~ocs~CX_1"`, body: list(names) },
+    { match: `^POST ${FB}\\t.*"companies":\\["jobportal\\.reyescocacola\\.com","jobportal\\.reyesfleet\\.com"`, body: list(o.mergedNew ?? N, o.unknownNew ? { unknownCompanies: o.unknownNew } : {}) },
+    ...Object.keys(BRAND).map((t) => {
+      const mine = (N as Array<{ token: string }>).filter((r) => r.token === t);
+      return { match: `^POST ${FB}\\t.*"companies":\\["${t.replace(/\./g, "\\.")}"\\]`, body: list(o.unknownNew?.includes(t) ? [] : mine, o.unknownNew?.includes(t) ? { unknownCompanies: [t] } : {}) };
+    }),
+    ...Object.entries(BRAND).flatMap(([t, brand]) => {
+      const pages = o.feeds?.[t] ?? { 1: feed([posted(3)]) };
+      return Object.entries(pages).map(([n, r]) => ({ match: `^GET https://${t.replace(/\./g, "\\.")}/api/jobs\\?page=${n}&limit=100&brand=${brand}$`, ...r }));
+    }),
+    ...[AXIA, "icfcjb~ocs~CX_1", "eexs~us2~CX_3001"].map((t) => ({ match: `^POST ${FB}\\t.*"action":"list","companies":\\["${t}"\\]`, body: list(names.filter((r) => r.token === t)) })),
   ];
 }
 const verdicts = (lines: string[], v: "PASS" | "FAIL" | "INFO") => lines.filter((l) => l.startsWith(`${v}  `));
@@ -270,7 +289,68 @@ describe("section 99zz: the six D7 pages", () => {
     const missing = run(routes({ unknownNew: ["jobportal.reyesfleet.com"] }));
     expect(has(missing.lines, "FAIL", /does not carry jobportal\.reyesfleet\.com/), show(missing.lines)).toBe(true);
     const slow = run(routes({ buildSince: iso(13 * H), newRows: [icims("jobportal.reyescocacola.com", 10, "x.icims.com", read)] }));
-    expect(has(slow.lines, "FAIL", /only 1 of the three new Reyes brand boards serve rows/), show(slow.lines)).toBe(true);
+    expect(has(slow.lines, "FAIL", /jobportal\.reyesfleet\.com serves no row 13\.0 h after the first slice though its own feed lists 1 posting\(s\) inside the 30-day window \(of 1\), e\.g\. requisition 37012/), show(slow.lines)).toBe(true);
+    expect(has(slow.lines, "PASS", /1 of the three new Reyes brand boards serve rows \(jobportal\.reyescocacola\.com 1\)/), show(slow.lines)).toBe(true);
+  });
+
+  it("R1: each new board is read alone: a one-row board does not lose to the 50 newest rows of the others", () => {
+    const read = iso(1 * H);
+    const big = Array.from({ length: 50 }, (_, i) => icims("jobportal.reyescocacola.com", 100 + i, "x.icims.com", read));
+    const r = run(routes({ buildSince: iso(13 * H), mergedNew: big }));
+    expect(has(r.lines, "PASS", /three new Reyes brand boards are carried and each serves rows \(jobportal\.reyescocacola\.com 1, jobportal\.reyesfleet\.com 1, jobportal\.reyesholdings\.com 1\)/), show(r.lines)).toBe(true);
+    expect(has(r.lines, "FAIL", /Reyes brand boards/), show(r.lines)).toBe(false);
+    expect(r.calls.some((c) => /"companies":\["jobportal\.reyescocacola\.com","jobportal\.reyesfleet/.test(c)), "a merged read judges by which rows are newest").toBe(false);
+  });
+
+  it("R1: an empty board is judged against its own feed: only postings past the window is lawful, and a feed that says nothing excuses nothing", () => {
+    const read = iso(1 * H);
+    const two = [icims("jobportal.reyescocacola.com", 10, "x.icims.com", read), icims("jobportal.reyesholdings.com", 12, "x.icims.com", read)];
+    const late = iso(13 * H);
+    // Everything the feed lists is older than the window: serving nothing is right, and it is named.
+    const lawful = run(routes({ buildSince: late, newRows: two, feeds: { "jobportal.reyesfleet.com": { 1: feed([posted(45), posted(90, 2)]) } } }));
+    expect(has(lawful.lines, "INFO", /jobportal\.reyesfleet\.com serves no row, and none of its 2 feed posting\(s\) is inside the 30-day window/), show(lawful.lines)).toBe(true);
+    expect(lawful.lines.filter((l) => l.startsWith("FAIL") && /reyesfleet/.test(l)), show(lawful.lines)).toEqual([]);
+    // An undated posting stays in the window: isDatedBefore keeps undated rows.
+    const undated = run(routes({ buildSince: late, newRows: two, feeds: { "jobportal.reyesfleet.com": { 1: feed([posted(null)]) } } }));
+    expect(has(undated.lines, "FAIL", /jobportal\.reyesfleet\.com serves no row .* lists 1 posting/), show(undated.lines)).toBe(true);
+    // The hole in the excuse: a misspelt brand answers totalCount 0, and an unreadable feed answers nothing.
+    const zero = run(routes({ buildSince: late, newRows: two, feeds: { "jobportal.reyesfleet.com": { 1: feed([]) } } }));
+    expect(has(zero.lines, "FAIL", /jobportal\.reyesfleet\.com serves no row .* its feed lists no posting for brand "Reyes Fleet Management"/), show(zero.lines)).toBe(true);
+    const broken = run(routes({ buildSince: late, newRows: two, feeds: { "jobportal.reyesfleet.com": { 1: { status: 500, body: "<html>bad gateway" } } } }));
+    expect(has(broken.lines, "FAIL", /jobportal\.reyesfleet\.com serves no row .* its feed is unreadable/), show(broken.lines)).toBe(true);
+    // Before 12 h each of them waits.
+    for (const over of [{ feeds: { "jobportal.reyesfleet.com": { 1: feed([]) } } }, { feeds: { "jobportal.reyesfleet.com": { 1: { status: 500, body: "x" } } } }, { feeds: { "jobportal.reyesfleet.com": { 1: feed([posted(3)]) } } }]) {
+      const early = run(routes({ newRows: two, ...over }));
+      expect(has(early.lines, "INFO", /jobportal\.reyesfleet\.com serves no row/), show(early.lines)).toBe(true);
+      expect(early.lines.filter((l) => l.startsWith("FAIL") && /reyesfleet/.test(l)), show(early.lines)).toEqual([]);
+    }
+    // A posting on a later page of the feed is found: pages are read until a short one.
+    const full = Array.from({ length: 100 }, (_, i) => posted(60, i));
+    const paged = run(routes({ buildSince: late, newRows: two, feeds: { "jobportal.reyesfleet.com": { 1: feed(full, 101), 2: feed([posted(3, 777)], 101) } } }));
+    expect(has(paged.lines, "FAIL", /jobportal\.reyesfleet\.com serves no row .* lists 1 posting\(s\) inside the 30-day window \(of 101\), e\.g\. requisition 777/), show(paged.lines)).toBe(true);
+  });
+
+  it("R1 and C2: anonymous pages hold 60 rows, so a stride of 100 skipped rows 60-99 of every page; the walk follows nextOffset", () => {
+    const read = iso(1 * H);
+    const clean = Array.from({ length: 60 }, (_, i) => icims("talent.reyesholdings.com", 1000 + i, "careers-reyesbeveragegroup.icims.com", read));
+    const r = run(routes({ talentPages: {
+      0: { jobs: clean, total: 62, hasMore: true, nextOffset: 60 },
+      60: { jobs: [icims("talent.reyesholdings.com", 2, "careers-reyescocacola.icims.com", read)], total: 62, hasMore: true, nextOffset: 100 },
+      100: { jobs: [icims("talent.reyesholdings.com", 3, "careers-reyesbeveragegroup.icims.com", read)], total: 62, hasMore: false, nextOffset: 101 },
+    } }));
+    expect(has(r.lines, "FAIL", /talent\.reyesholdings\.com serves 62 row\(s\), 1 off Reyes Beverage Group's portal/), show(r.lines)).toBe(true);
+    const nb = Array.from({ length: 60 }, (_, i) => bms(`R${i}`, "US", "USD", read));
+    const c2 = run(routes({ bmsPages: { 0: { jobs: nb, hasMore: true, nextOffset: 60 }, 60: { jobs: [bms("R900", "US", "CAD", read)], hasMore: false, nextOffset: 61 } } }));
+    expect(has(c2.lines, "FAIL", /Bristol Myers Squibb .*1 with pay in CAD/), show(c2.lines)).toBe(true);
+  });
+
+  it("S1: each named board is read alone, so a PASS says how many were really served", () => {
+    const r = run(routes());
+    expect(has(r.lines, "PASS", /stored rows read the employer names \(3 of 3 boards served\)/), show(r.lines)).toBe(true);
+    const twoOnly = run(routes({ nameRows: [{ token: "icfcjb~ocs~CX_1", company: "Honeywell Aerospace" }, { token: "eexs~us2~CX_3001", company: "LCS" }] }));
+    expect(has(twoOnly.lines, "PASS", /stored rows read the employer names \(2 of 3 boards served\)/), show(twoOnly.lines)).toBe(true);
+    const calls = r.calls.filter((c) => /"limit":10\}/.test(c) && /"icfcjb~ocs~CX_1"/.test(c));
+    expect(calls.length).toBe(1);
   });
 
   it("R2: the two Reyes pages printing one count once the boards are clean and published is a FAIL", () => {
@@ -299,5 +379,11 @@ describe("section 99zz: the six D7 pages", () => {
     expect(maps.length).toBe(1);
     expect(maps[0]).toContain(`ua:${UA}`);
     expect(calls.filter((c) => /^curl\t(?:PUT|DELETE|PATCH) /.test(c))).toEqual([]);
+    // The only reads outside this site and the board are GETs of the three brand feeds, and only of an empty board.
+    expect(calls.filter((c) => /^curl\tGET https:\/\/jobportal\./.test(c))).toEqual([]);
+    const empty = run(routes({ newRows: [] }));
+    const feeds = empty.calls.filter((c) => /^curl\t\w+ https:\/\/jobportal\./.test(c));
+    expect(feeds.length).toBe(3);
+    for (const c of feeds) expect(c, c).toMatch(/^curl\tGET /);
   });
 });

@@ -205,7 +205,8 @@ nothing to undo in the database.
 
 - **CI:** the pass rate of the next 20 CI runs on main. Expected: `test` green
   on every push that does not break something. Section 78 prints the count.
-- **board-health:** scheduled runs every 30 minutes (section 78). The first
+- **board-health:** the cron asks every 30 minutes and GitHub delivers about
+  five runs a day (section 78 prints the cadence; dead past a day). The first
   one ever is the proof that the file now parses.
 - **Deploy verify:** red on every push while production lags main's job-board
   build; green after a re-run once job-board is deployed. A red run naming

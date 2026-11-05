@@ -2099,8 +2099,8 @@ Secrets and settings:
 - `CANARY_EMAIL` (a mailbox you read, with an account) and `HC_PING_URL` (a
   healthchecks.io check, 15-minute period) for mail-watch; a second,
   separate check for the heartbeat in `HC_HEARTBEAT_PING_URL` (10-minute
-  period, 20-minute grace); the GitHub secret `BOARD_HEALTH_PING_URL` (30
-  minutes, 60 grace). Never one check for two senders.
+  period, 20-minute grace); the GitHub secret `BOARD_HEALTH_PING_URL` (12 h
+  period, 12 h grace: GitHub delivers about five scheduled runs a day). Never one check for two senders.
 - Confirm the vault holds `email_cron_key` and
   `email_queue_service_role_key`, so the mail-watch cron posts.
 - Optional: `MCP_BUCKET_SECRET` (changing it later rotates every keyless

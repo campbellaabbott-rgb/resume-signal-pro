@@ -7,8 +7,10 @@
 #     it, judged from .3: the wave 3 integration build that carries both this
 #     branch's .2 (the header) and wave3/board-data-ingest's .1 (the parsers).
 #     job-fit and application-fit are stamped by wave3/job-board (section 71);
-#   - the board's outside alarm (board-health.yml) parses, runs on its
-#     schedule, and reads two fields the board publishes (L12-01);
+#   - the board's outside alarm (board-health.yml) parses, and its schedule is
+#     alive: a scheduled run inside a day, because GitHub delivers about 5 of
+#     its 48 slots a day (S12-069, printed as the cadence), and it reads two
+#     fields the board publishes (L12-01);
 #   - CI on main runs every check whatever an earlier one said, runs the Deno
 #     tests and the guards on built output, and its `test` job can pass
 #     (L12-02 interim, L12-04, L12-10, L12-11, S8-130);
@@ -47,7 +49,7 @@ else
   # run's files in place and this section judged CI from them. Every file is
   # removed first, and each read names the run it belongs to.
   rm -f /tmp/vd_78_bh.json /tmp/vd_78_ci.json /tmp/vd_78_bw.json /tmp/vd_78_dep.json /tmp/vd_78_ci_jobs.json /tmp/vd_78_dep.log
-  gh run list --workflow board-health.yml --limit 30 --json event,conclusion,createdAt > /tmp/vd_78_bh.json 2>/dev/null
+  gh run list --workflow board-health.yml --limit 200 --json event,conclusion,createdAt > /tmp/vd_78_bh.json 2>/dev/null
   gh run list --workflow ci.yml --branch main --limit 20 --json databaseId,conclusion,createdAt,headSha > /tmp/vd_78_ci.json 2>/dev/null
   gh run list --workflow botwall-sweep.yml --limit 5 --json event,conclusion,createdAt > /tmp/vd_78_bw.json 2>/dev/null
   gh run list --workflow deploy.yml --branch main --limit 1 --json databaseId,conclusion,createdAt > /tmp/vd_78_dep.json 2>/dev/null
@@ -59,10 +61,13 @@ else
 const fs=require("fs");const rd=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
 const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const since=Date.parse(process.env.VD78_SINCE||"");
-const bh=rd("/tmp/vd_78_bh.json")||[];const sched=bh.filter((r)=>r.event==="schedule"&&(!Number.isFinite(since)||Date.parse(r.createdAt)>=since));
+const bh=rd("/tmp/vd_78_bh.json")||[];const sched=bh.filter((r)=>r.event==="schedule");
 if(!bh.length)ok(false,"board-health has no runs GitHub can list");
-else{const last=sched[0];
-  ok(!!last&&Date.now()-Date.parse(last.createdAt)<=90*60000,"board-health ran on its schedule within 90 min: "+(last?last.createdAt+" ("+last.conclusion+"), "+sched.length+" scheduled run(s) since the workflow last changed":"none since "+process.env.VD78_SINCE+" -- the file on main still does not parse, or main does not carry the fix")+" (before 2026-10-10: 561 runs, every one a 0-second push failure)");
+else{const last=sched[0];const ageMin=last?Math.round((Date.now()-Date.parse(last.createdAt))/60000):null;
+  ok(!!last&&ageMin<=1440,"board-health'"'"'s schedule is alive: "+(last?"latest scheduled run "+last.createdAt+" ("+last.conclusion+"), "+ageMin+" min ago (bar 1440: past it the schedule is dead, not late; the worst gap on record is 623 min)":"no scheduled run listed -- the file on main does not parse, or GitHub disabled the schedule"));
+  const wk=sched.filter((r)=>Date.now()-Date.parse(r.createdAt)<=7*864e5).map((r)=>Date.parse(r.createdAt));
+  const gaps=wk.slice(1).map((t,i)=>(wk[i]-t)/60000);
+  if(gaps.length)info("board-health cadence, last 7 days: "+wk.length+" scheduled run(s) of the 336 its cron asks for, worst gap "+Math.round(Math.max(...gaps))+" min, so an outage is first probed hours late (S12-069); only the healthy path has run live: the failure logic is proven against a fake gh, and its label, issue and mail have never fired in production");
   if(last&&last.conclusion==="failure")info("the latest scheduled board-health run FAILED: the probe found the board unhealthy, and its issue (label board-health) says why");}
 const ci=rd("/tmp/vd_78_ci.json")||[];
 if(ci.length){const green=ci.filter((r)=>r.conclusion==="success").length;info("CI on main: "+green+" of the last "+ci.length+" runs green (5 of 20 before wave 3: of the 15 red, 14 failed on flaky render or race tests and 1 on the over-budget light-list case)");}

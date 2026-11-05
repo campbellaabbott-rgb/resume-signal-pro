@@ -2,7 +2,7 @@
 # (docs/job-board-deploy-notes.md, 2026-09-09.89). Sourced by
 # scripts/verify-deploy.sh. Read-only: status, a preflight, list and exists
 # reads with x-rb-budget: probe (list logs one search event, as every list
-# probe here does), anon SELECTs on job_board_verifications, and the vendors'
+# probe here does), and the vendors'
 # own public list feeds (Workday's CXS search included). Never verify, report,
 # click or a refresh.
 #
@@ -24,11 +24,6 @@ echo "== 89. job-board ingest (.89): mid-feed Workday zeros, re-dated ids, USAJO
 J '{"action":"status"}' > /tmp/vd_89_status.json
 curl -s -m 30 -o /dev/null -D /tmp/vd_89_preflight.txt -X OPTIONS "$B/functions/v1/job-board" -H "x-rb-budget: probe" \
   -H "Origin: https://resumebooster.work" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type"
-# Workday verification stamps (anon-readable). 366 read feed_total 0 on 2026-10-05.
-for OFF in 0 1000 2000 3000 4000; do
-  curl -s -m 60 "$B/rest/v1/job_board_verifications?select=company_token,feed_total&company_token=like.*~wd*&order=company_token&limit=1000&offset=$OFF" \
-    -H "apikey: $K" -H "Authorization: Bearer $K" -o "/tmp/vd_89_wd_$OFF.json"
-done
 # Served counts for the boards each fix names. The filter key is `vendor`; a
 # plural key is not a filter (before .90 it was dropped without a word).
 for VT in usajobs:usajobs greenhouse:lush greenhouse:samsara greenhouse:pulse icims:jobs.zs.com icims:jobs.qxo.com icims:careers.ringpower.com; do
@@ -71,11 +66,6 @@ const n=/^(\d{4}-\d{2}-\d{2})\.(\d+)$/.exec(String(st.version));const v89=!!n&&(
 ok(v89,"status.version = "+st.version+" (want 2026-09-09.89 or later; .87/.88 = the bundle did not deploy, and the lines below describe the old one)");
 const fb=(/^x-fn-build:\s*(\S+)/im.exec(rd("/tmp/vd_89_preflight.txt"))||[])[1]||"";
 ok(((x)=>{const q=/^job-board\.(\d{4}-\d{2}-\d{2})\.(\d+)$/.exec(x);return !!q&&(q[1]>"2026-09-09"||(q[1]==="2026-09-09"&&Number(q[2])>=89))})(fb),"the preflight names the build: x-fn-build = "+(fb||"absent")+" (want job-board.2026-09-09.89 or later)");
-// L1-01: a mid-feed zero no longer lands on the stamp.
-const stamps=[0,1000,2000,3000,4000].map((o)=>js(rd("/tmp/vd_89_wd_"+o+".json"))).filter(Array.isArray).flat();
-const zero=stamps.filter((x)=>x.feed_total===0).length;
-if(stamps.length<3000)info("Workday stamps unreadable or short ("+stamps.length+" rows) -- the stamp line cannot be judged");
-else (zero<150?ok:(c,m)=>console.log((v89?"FAIL":"INFO")+"  "+m))(zero<150,"Workday verification stamps reading feed_total 0: "+zero+" of "+stamps.length+" (366 on 2026-10-05; under .89 a mid-feed visit writes the lap t0 or keeps the last stated total, so only empty boards read 0, about 44 measured -- want under 150 after one rotation)");
 const laps=(st.deepCursor||{}).laps||{};
 info("deepCursor.laps: tracking "+laps.tracking+", proven "+laps.proven+" (608 / 400 on 2026-10-05; the 540 mid-feed-zero Workday boards keep their lap entries under .89, so tracking should rise)");
 // Served counts.

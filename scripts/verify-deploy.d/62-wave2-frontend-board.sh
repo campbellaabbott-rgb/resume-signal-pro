@@ -20,7 +20,7 @@ else
   POSTJS=$(curl -s -m 30 "$SITE/assets/$FB_POST")
   EXPLJS=$(curl -s -m 30 "$SITE/assets/$FB_EXPL")
   COMPJS=$(curl -s -m 30 "$SITE/assets/$FB_COMP")
-  fb_has() { printf '%s' "$1" | grep -qF -- "$2"; }
+  fb_has() { grep -qF -- "$2" <<<"$1"; }
 
   # L2-17: the board stamps its own history entries and remounts on navigation.
   # Same chunk carries L2-01 (lander answer), L2-02 (field count), L2-03 (facet

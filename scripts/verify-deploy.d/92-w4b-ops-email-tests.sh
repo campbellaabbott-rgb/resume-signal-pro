@@ -23,15 +23,33 @@ done
 probe cron_http_answers '{"p_minutes":60,"p_error_minutes":180}'
 
 R get_scan_health_status '{}' > /tmp/vd_92_health.json
+R get_scan_success_rate '{"p_scan_type":"heartbeat","p_hours_back":1}' > /tmp/vd_92_beat.json
 node -e '
 const fs=require("fs");let j=null;try{j=JSON.parse(fs.readFileSync("/tmp/vd_92_health.json","utf8"))}catch{}
 const r=Array.isArray(j)?j[0]:null;
 if(!r||typeof r!=="object"){console.log("FAIL  get_scan_health_status as anon answered no row: "+JSON.stringify(j).slice(0,160)+" (the ScanMetrics page and post-publish-smoke read it with the publishable key)");process.exit(0)}
 const age=r.last_heartbeat_time?Math.round((Date.now()-Date.parse(r.last_heartbeat_time))/60000):null;
 const issues=Array.isArray(r.issues)?r.issues:[];
-console.log((age!==null&&age<=30?"PASS":"FAIL")+"  the heartbeat last ran "+(age===null?"never":age+" min ago")+" (status "+r.last_heartbeat_status+"; over 30 min is the dead-man check-alerts mails about)");
+console.log((age!==null&&age<=30?"PASS":"FAIL")+"  the heartbeat last ran "+(age===null?"never":age+" min ago")+" (over 30 min is the dead-man check-alerts mails about)");
+// LIVENESS IS NOT THE VERDICT. A heartbeat that ran and found the product down
+// read PASS. down and unhealthy are exact, so degraded, which any one optional
+// check sets, cannot trip this. success_rate cannot see the AI chain failing: a
+// fallback scan is logged completed, so the scan time is the only witness, 25-30 s
+// when the model answers and 1-2 s when it does not. The bars sit far from both,
+// over the hour p50, so one odd scan cannot trip them, and a mixed hour is INFO.
+const OWNER="OWNER: press the heartbeat button on /scan-metrics, then check the Lovable credit balance and auto top-up";
+const hb=String(r.last_heartbeat_status??"");
+if(hb==="down"||hb==="unhealthy")console.log("FAIL  the last heartbeat says status "+hb+" ("+JSON.stringify(issues).slice(0,200)+"). "+OWNER);
+let beat=null;try{beat=JSON.parse(fs.readFileSync("/tmp/vd_92_beat.json","utf8"))}catch{}
+const br=Array.isArray(beat)?beat[0]:null;
+if(!br||typeof br!=="object")console.log("INFO  get_scan_success_rate for the heartbeat is unreadable, so the AI chain is not judged: "+JSON.stringify(beat).slice(0,120));
+else{const n=Number(br.total_scans)||0,p=Number(br.p50_duration_ms);const sec=Number.isFinite(p)?(p/1000).toFixed(1):"?";
+  if(!n||br.p50_duration_ms==null||!Number.isFinite(p))console.log("INFO  no heartbeat scan in the last hour, so the AI chain is not judged");
+  else if(p<=5000)console.log("FAIL  the heartbeat scans took "+sec+" s at p50 over "+n+" in the last hour, not the 25-30 s of a model answer: the AI model chain is failing fast and scans fall back to the rule-based report, while success_rate reads "+br.success_rate+"% because a fallback is logged completed. "+OWNER);
+  else if(p<15000)console.log("INFO  the heartbeat scans took "+sec+" s at p50 over "+n+" in the last hour: a mixed hour, between the 1-2 s of the fallback and the 25-30 s of a model answer, so it is not judged");
+  else console.log("PASS  the heartbeat scans took "+sec+" s at p50 over "+n+" in the last hour: the model answered (a fallback takes 1-2 s, and a bar of 15 s leaves room for a quick model)");}
 const stale=issues.some((x)=>/^Heartbeat has (not run|never run)/.test(String(x)));
-if(age!==null&&age<=30)console.log((stale?"FAIL":"PASS")+"  get_scan_health_status names no stopped heartbeat while it is running ("+JSON.stringify(issues).slice(0,200)+")");
+if(age!==null&&age<=30)console.log((stale?"FAIL":"PASS")+"  get_scan_health_status names no stopped heartbeat while it is running"+(stale?" ("+JSON.stringify(issues).slice(0,200)+")":""));
 const visitorWording=issues.some((x)=>/^(Visitor scan|Every visitor scan|High visitor scan|Heartbeat has)/.test(String(x)));
 const oldWording=issues.some((x)=>/^(Success rate below|No successful scans in last hour|High latency:)/.test(String(x)));
 if(oldWording)console.log("FAIL  get_scan_health_status still speaks the old reader ("+JSON.stringify(issues).slice(0,200)+"): 20261011200000, which counts visitor scans only, is not applied");
