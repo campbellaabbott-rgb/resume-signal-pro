@@ -112,6 +112,7 @@ describe("the limits the review of this deploy set, in every language", () => {
 });
 
 describe("what the last read of these entries found false, held in every language", () => {
+  const REACH = "truistGeicoAndNordstromJoinTheBoard";
   const TAKEN = "takenDownJobsLeaveOurBiggestBoards";
   const DETAILS = "jobDetailsFromWhatTheEmployerStated";
   const BOARD = "theBoardStaysPutWhileYouRead";
@@ -120,13 +121,20 @@ describe("what the last read of these entries found false, held in every languag
     /** The word that made the title promise every large board. */ biggest: RegExp;
     /** A capped read counts only while the jobs past the cap are older than 30 days. */ window: string; close: string;
     /** Accenture and USAJOBS are larger and cannot be read to the end yet. */ others: string;
-    /** A place with no comma or a ZIP holds in the location field, and not in the main box. */ field: string; mainBox: string;
+    /**
+     * The location box gets the two forms read, and no class of place: a class fails on what people type.
+     * Read live 6 November, against 4,309 for the comma form: lower case "austin tx" 158 and "seattle wa 98101" 0; abroad "Berlin Germany" 0.
+     */ field: string; place: string; oldPlace: RegExp; mainBox: string;
     /** "such as" states a class, and hp, wm and gm do not route. */ shortClass: RegExp; shortLimit: string;
     /** Only a city plus a two-letter code needs the comma: "nurse in Austin" and "nurse in Austin Texas" work without one. */ city: string; oldBox: RegExp;
     /** Two Vienna, Virginia rows with no country on file still appear under Wien. */ wien: string; oldWien: RegExp;
-    /** A ZIP a job title holds is searched as a word, so only one no title holds is dropped and named. */ zip: string; oldZip: RegExp;
+    /**
+     * The one search read, and no rule about ZIP codes. Nothing emptied before: "nurse 94105" served nurses from anywhere
+     * with the number unnamed. What changed is the notice, and a kept ZIP still gets none ("nurse 98101").
+     */ zip: string; oldZip: RegExp;
+    /** What we served from the 52 boards on 5 November (11,948), not the 52 of the 53 serving rows (12,582), nor the employers' own totals (21,269). */ reach: string; oldReach: RegExp;
     /** Greece, New York has at least four rows still filed abroad, so its half is cut and Lake Wales stands alone. */ lake: string; still: string; greece: RegExp;
-    /** The renamed boards, not an employer's boards: LCS has a second. And no count the page can differ from on publish day. */ boards: string; oldBoards: RegExp; lcs: string;
+    /** The renamed boards, not an employer's boards: LCS has a second, and two renamed. So no count of boards, and none the page can differ from on publish day. */ boards: string; oldBoards: RegExp; lcs: string;
     /** PwC's page pools three of its four boards. */ pool: string; allOf: RegExp;
     /** A stored description is never rewritten: rows posted before the deploy still repeat, so only new rows are claimed. */ lever: string; oldLever: RegExp;
     /** "cvs in Austin, TX" reaches no CVS job, so the claim is the name alone and never "every search". */ short: string; oldShort: RegExp;
@@ -135,12 +143,13 @@ describe("what the last read of these entries found false, held in every languag
   };
   const EN_PINS: Pins = {
     biggest: /biggest/, window: "older than 30 days", close: "Marriott is close to that line", others: "Other large boards, such as Accenture and USAJOBS",
-    field: "In the location box", mainBox: "In the main search box", shortClass: /such as CVS/, shortLimit: "Other short employer names may still search as plain words",
+    field: "In the location box", place: "and now they do", oldPlace: /a place typed with a ZIP|a US city and state/, mainBox: "In the main search box", shortClass: /such as CVS/, shortLimit: "Other short employer names may still search as plain words",
     city: "a city with a two-letter state code still needs its comma", oldBox: /still needs its comma and no ZIP/,
     wien: "almost none in Vienna, Virginia", oldWien: /and not in Vienna, Virginia/,
-    zip: "A ZIP code that appears in no job title", oldZip: /A ZIP code added to a search/,
+    zip: "shows nurse jobs from anywhere, and the page now says it ignored the number", oldZip: /A ZIP code|no longer empties/,
+    reach: "we showed about 12,000 jobs from these 52 boards", oldReach: /listed about|12,600/,
     lake: "Jobs in Lake Wales, Florida are now filed under the United States", still: "such as Turkey, Texas", greece: /Greece/,
-    boards: "the four boards we renamed for them", oldBoards: /these four employers' boards/, lcs: "counts only its own board's roles",
+    boards: "the boards we renamed for them", oldBoards: /these four employers' boards|four boards/, lcs: "counts only its own board's roles",
     pool: "(three of PwC's four)", allOf: /lists and counts all of them/,
     report: "the bullets your draft already has", oldReport: /applied to it and are not lost/,
     lever: "New Lever job descriptions no longer repeat their opening", oldLever: /(?<!New )Lever job descriptions no longer repeat/,
@@ -152,12 +161,13 @@ describe("what the last read of these entries found false, held in every languag
     "en-GB": EN_PINS,
     de: {
       biggest: /größten/, window: "älter als 30 Tage", close: "Marriott ist nah an dieser Linie", others: "Andere große Boards, etwa Accenture und USAJOBS",
-      field: "Im Ortsfeld", mainBox: "Im Hauptsuchfeld", shortClass: /wie CVS/, shortLimit: "Andere kurze Arbeitgebernamen",
+      field: "Im Ortsfeld", place: "jetzt finden sie welche", oldPlace: /ein Ort mit US-Postleitzahl/, mainBox: "Im Hauptsuchfeld", shortClass: /wie CVS/, shortLimit: "Andere kurze Arbeitgebernamen",
       city: "braucht eine Stadt mit zweistelligem Bundesstaat-Kürzel weiter ihr Komma", oldBox: /braucht ein Ort weiter sein Komma/,
       wien: "fast keine mehr in Vienna, Virginia", oldWien: /nicht mehr in Vienna, Virginia/,
-      zip: "die in keinem Stellentitel vorkommt", oldZip: /Eine US-Postleitzahl in der Suche/,
+      zip: "zeigt Pflegestellen von überall, und die Seite sagt jetzt, dass sie die Zahl ignoriert hat", oldZip: /Eine US-Postleitzahl|leert die Ergebnisse/,
+      reach: "zeigten wir etwa 12.000 Stellen von diesen 52 Boards", oldReach: /listeten|12\.600/,
       lake: "Stellen in Lake Wales, Florida, stehen jetzt unter den USA", still: "etwa Turkey, Texas", greece: /Greece|Griechenland/,
-      boards: "auf den vier Boards", oldBoards: /auf den Boards dieser vier Arbeitgeber/, lcs: "nur die Stellen ihres eigenen Boards",
+      boards: "auf den Boards gelesen, die wir für sie umbenannt haben", oldBoards: /auf den Boards dieser vier Arbeitgeber|vier Boards/, lcs: "nur die Stellen ihres eigenen Boards",
       pool: "(drei von vier bei PwC)", allOf: /listet und zählt jetzt alle\./,
       report: "die dein Entwurf schon hat", oldReport: /gehen nicht verloren/,
       lever: "Beschreibungen neuer Lever-Stellen wiederholen ihren Anfang nicht mehr", oldLever: /Stellenbeschreibungen von Lever/,
@@ -166,12 +176,13 @@ describe("what the last read of these entries found false, held in every languag
     },
     es: {
       biggest: /más grandes/, window: "más de 30 días", close: "Marriott está cerca de esa línea", others: "Otros tablones grandes, como Accenture y USAJOBS",
-      field: "En el campo de ubicación", mainBox: "En el cuadro principal de búsqueda", shortClass: /como CVS/, shortLimit: "Otros nombres cortos de empleadores",
+      field: "En el campo de ubicación", place: "antes no encontraban ningún empleo y ahora sí", oldPlace: /un lugar escrito con código postal/, mainBox: "En el cuadro principal de búsqueda", shortClass: /como CVS/, shortLimit: "Otros nombres cortos de empleadores",
       city: "una ciudad con un código de estado de dos letras sigue necesitando su coma", oldBox: /un lugar sigue necesitando su coma/,
       wien: "casi ninguno en Vienna, Virginia", oldWien: /ya no en Vienna, Virginia/,
-      zip: "que no aparece en ningún título de empleo", oldZip: /añadido a una búsqueda/,
+      zip: "muestra empleos de enfermería de cualquier lugar, y la página ahora dice que ignoró el número", oldZip: /Un código postal|ya no deja vacía/,
+      reach: "mostrábamos unos 12.000 empleos de estos 52 tablones", oldReach: /12\.600/,
       lake: "Los empleos en Lake Wales, Florida, ahora están clasificados en Estados Unidos", still: "como Turkey, Texas", greece: /Greece|Grecia/,
-      boards: "los cuatro tablones que renombramos", oldBoards: /los tablones de estos cuatro empleadores/, lcs: "solo los puestos de su propio tablón",
+      boards: "de los tablones que renombramos", oldBoards: /los tablones de estos cuatro empleadores|cuatro tablones/, lcs: "solo los puestos de su propio tablón",
       pool: "(tres de los cuatro de PwC)", allOf: /los muestra y los cuenta todos/,
       report: "las viñetas que tu borrador ya tiene", oldReport: /se aplican a él y no se pierden/,
       lever: "Las descripciones de los empleos nuevos de Lever ya no repiten su comienzo", oldLever: /Las descripciones de empleo de Lever/,
@@ -180,12 +191,13 @@ describe("what the last read of these entries found false, held in every languag
     },
     fr: {
       biggest: /plus grands/, window: "plus de 30 jours", close: "Marriott est proche de cette ligne", others: "D'autres grands tableaux, comme Accenture et USAJOBS",
-      field: "Dans le champ du lieu", mainBox: "Dans le champ de recherche principal", shortClass: /comme CVS/, shortLimit: "D'autres noms courts d'employeurs",
+      field: "Dans le champ du lieu", place: "ils en trouvent désormais", oldPlace: /un lieu tapé avec un code postal/, mainBox: "Dans le champ de recherche principal", shortClass: /comme CVS/, shortLimit: "D'autres noms courts d'employeurs",
       city: "une ville suivie d'un code d'État à deux lettres a toujours besoin de sa virgule", oldBox: /un lieu a toujours besoin de sa virgule/,
       wien: "presque aucune à Vienna, en Virginie", oldWien: /non plus à Vienna/,
-      zip: "qui ne figure dans aucun intitulé de poste", oldZip: /ajouté à une recherche/,
+      zip: "affiche des postes infirmiers de partout, et la page dit désormais qu'elle a ignoré le nombre", oldZip: /Un code postal|ne vide plus/,
+      reach: "nous affichions environ 12 000 offres de ces 52 tableaux", oldReach: /listaient|12 600/,
       lake: "Les offres à Lake Wales, en Floride, sont désormais classées aux États-Unis", still: "comme Turkey, au Texas", greece: /Greece|Grèce/,
-      boards: "les quatre tableaux que nous avons renommés", oldBoards: /les tableaux de ces quatre employeurs/, lcs: "seulement les postes de son propre tableau",
+      boards: "sur les tableaux que nous avons renommés", oldBoards: /les tableaux de ces quatre employeurs|quatre tableaux/, lcs: "seulement les postes de son propre tableau",
       pool: "(trois des quatre de PwC)", allOf: /les liste et les compte désormais tous/,
       report: "aux puces que votre brouillon contient déjà", oldReport: /y sont appliquées et ne sont pas perdues/,
       lever: "Les descriptions des nouvelles offres Lever ne répètent plus leur début", oldLever: /Les descriptions de poste de Lever/,
@@ -194,12 +206,13 @@ describe("what the last read of these entries found false, held in every languag
     },
     hi: {
       biggest: /सबसे बड़े/, window: "30 दिन से पुरानी", close: "Marriott इस रेखा के क़रीब है", others: "दूसरे बड़े बोर्ड, जैसे Accenture और USAJOBS",
-      field: "लोकेशन बॉक्स में", mainBox: "मुख्य खोज बॉक्स में", shortClass: /3M जैसे/, shortLimit: "दूसरे छोटे नियोक्ता नाम",
+      field: "लोकेशन बॉक्स में", place: "अब ढूँढते हैं", oldPlace: /ZIP कोड के साथ या बिना कॉमा/, mainBox: "मुख्य खोज बॉक्स में", shortClass: /3M जैसे/, shortLimit: "दूसरे छोटे नियोक्ता नाम",
       city: "दो अक्षरों वाले राज्य कोड के साथ लिखे शहर को अब भी कॉमा चाहिए", oldBox: /जगह को अब भी कॉमा चाहिए/,
       wien: "Vienna, Virginia की लगभग कोई नहीं", oldWien: /Vienna, Virginia की नहीं/,
-      zip: "जो ZIP कोड किसी नौकरी के शीर्षक में नहीं आता", oldZip: /खोज में जोड़ा गया ZIP कोड/,
+      zip: "कहीं की भी नर्स की नौकरियाँ दिखाता है, और पेज अब बताता है कि उसने वह संख्या छोड़ दी", oldZip: /ZIP कोड|ख़ाली नहीं करता/,
+      reach: "इन 52 बोर्ड की लगभग 12,000 नौकरियाँ दिखाईं", oldReach: /12,600/,
       lake: "Lake Wales, Florida की नौकरियाँ अब ब्रिटेन में नहीं, अमेरिका में दर्ज हैं", still: "जैसे Turkey, Texas", greece: /Greece|ग्रीस/,
-      boards: "उन चार बोर्ड की हर पोस्टिंग", oldBoards: /इन चार नियोक्ताओं के बोर्ड/, lcs: "सिर्फ़ अपने बोर्ड के रोल गिनता है",
+      boards: "उन बोर्ड की हर पोस्टिंग", oldBoards: /इन चार नियोक्ताओं के बोर्ड|चार बोर्ड/, lcs: "सिर्फ़ अपने बोर्ड के रोल गिनता है",
       pool: "(PwC के चार में से तीन)", allOf: /उन सभी को दिखाता और गिनता है/,
       report: "जो आपके ड्राफ़्ट में पहले से हैं", oldReport: /उसी पर लागू होते हैं और खोते नहीं/,
       lever: "Lever की नई नौकरियों के विवरण अब अपनी शुरुआत नहीं दोहराते", oldLever: /Lever के नौकरी विवरण/,
@@ -208,12 +221,13 @@ describe("what the last read of these entries found false, held in every languag
     },
     nl: {
       biggest: /grootste/, window: "ouder is dan 30 dagen", close: "Marriott zit dicht bij die lijn", others: "Andere grote borden, zoals Accenture en USAJOBS",
-      field: "In het locatieveld", mainBox: "In het hoofdzoekvak", shortClass: /zoals CVS/, shortLimit: "Andere korte werkgeversnamen",
+      field: "In het locatieveld", place: "en nu wel", oldPlace: /een plaats met een Amerikaanse postcode/, mainBox: "In het hoofdzoekvak", shortClass: /zoals CVS/, shortLimit: "Andere korte werkgeversnamen",
       city: "een stad met een staatcode van twee letters nog steeds een komma nodig", oldBox: /heeft een plaats nog steeds een komma nodig/,
       wien: "bijna geen meer in Vienna, Virginia", oldWien: /niet meer in Vienna, Virginia/,
-      zip: "die in geen enkele functietitel staat", oldZip: /Een Amerikaanse postcode in een zoekopdracht/,
+      zip: "toont vacatures voor verpleegkundigen van overal, en de pagina zegt nu dat het getal is genegeerd", oldZip: /Een Amerikaanse postcode|niet meer leeg/,
+      reach: "toonden we ongeveer 12.000 vacatures van deze 52 borden", oldReach: /12\.600/,
       lake: "Vacatures in Lake Wales, Florida, staan nu onder de Verenigde Staten", still: "zoals Turkey, Texas", greece: /Greece|Griekenland/,
-      boards: "op de vier borden", oldBoards: /op de borden van deze vier werkgevers/, lcs: "alleen de functies van zijn eigen bord",
+      boards: "op de borden die we voor hen hebben hernoemd", oldBoards: /op de borden van deze vier werkgevers|vier borden/, lcs: "alleen de functies van zijn eigen bord",
       pool: "(drie van de vier van PwC)", allOf: /toont en telt ze nu allemaal/,
       report: "die je concept al heeft", oldReport: /erop toegepast en gaan ze niet verloren/,
       lever: "Beschrijvingen van nieuwe Lever-vacatures herhalen hun begin niet meer", oldLever: /Functiebeschrijvingen van Lever/,
@@ -222,12 +236,13 @@ describe("what the last read of these entries found false, held in every languag
     },
     pt: {
       biggest: /maiores/, window: "mais de 30 dias", close: "A Marriott está perto dessa linha", others: "Outros quadros grandes, como Accenture e USAJOBS",
-      field: "No campo de local", mainBox: "Na caixa principal de busca", shortClass: /como CVS/, shortLimit: "Outros nomes curtos de empregadores",
+      field: "No campo de local", place: "e agora encontram", oldPlace: /um local digitado com código ZIP/, mainBox: "Na caixa principal de busca", shortClass: /como CVS/, shortLimit: "Outros nomes curtos de empregadores",
       city: "uma cidade com código de estado de duas letras ainda precisa da vírgula", oldBox: /um local ainda precisa da vírgula/,
       wien: "quase nenhuma em Vienna, na Virgínia", oldWien: /não mais em Vienna/,
-      zip: "que não aparece em nenhum título de vaga", oldZip: /adicionado a uma busca/,
+      zip: "mostra vagas de enfermagem de qualquer lugar, e a página agora diz que ignorou o número", oldZip: /Um código ZIP|não esvazia mais/,
+      reach: "mostrávamos cerca de 12.000 vagas desses 52 quadros", oldReach: /listavam|12\.600/,
       lake: "As vagas em Lake Wales, na Flórida, agora estão registradas nos Estados Unidos", still: "como Turkey, no Texas", greece: /Greece|Grécia/,
-      boards: "nos quatro quadros que renomeamos", oldBoards: /nos quadros desses quatro empregadores/, lcs: "só as vagas do próprio quadro",
+      boards: "nos quadros que renomeamos", oldBoards: /nos quadros desses quatro empregadores|quatro quadros/, lcs: "só as vagas do próprio quadro",
       pool: "(três dos quatro da PwC)", allOf: /lista e conta todos eles/,
       report: "aos tópicos que seu rascunho já tem", oldReport: /são aplicadas a ele e não se perdem/,
       lever: "As descrições das vagas novas da Lever não repetem mais a abertura", oldLever: /As descrições de vagas da Lever/,
@@ -236,12 +251,13 @@ describe("what the last read of these entries found false, held in every languag
     },
     tl: {
       biggest: /pinakamalalaki/, window: "higit sa 30 araw", close: "Malapit sa linyang iyon ang Marriott", others: "ibang malalaking board, gaya ng Accenture at USAJOBS",
-      field: "Sa location box", mainBox: "Sa pangunahing search box", shortClass: /gaya ng CVS/, shortLimit: "iba pang maiikling pangalan ng employer",
+      field: "Sa location box", place: "pero nakakahanap na sila ngayon", oldPlace: /ang lugar na may ZIP code/, mainBox: "Sa pangunahing search box", shortClass: /gaya ng CVS/, shortLimit: "iba pang maiikling pangalan ng employer",
       city: "kailangan pa rin ng comma ng lungsod na may dalawang-letrang state code", oldBox: /kailangan pa rin ng lugar ang comma/,
       wien: "halos wala sa Vienna, Virginia", oldWien: /hindi na sa Vienna, Virginia/,
-      zip: "wala sa anumang pamagat ng trabaho", oldZip: /kapag may ZIP code sa paghahanap/,
+      zip: "ng mga trabahong nurse mula kahit saan, at sinasabi na ngayon ng page na hindi nito isinama ang numero", oldZip: /ZIP code|Hindi na nauubos/,
+      reach: "nagpakita kami ng humigit-kumulang 12,000 trabaho mula sa 52 board na ito", oldReach: /12,600/,
       lake: "ang mga trabaho sa Lake Wales, Florida", still: "gaya ng Turkey, Texas", greece: /Greece/,
-      boards: "sa apat na board na pinalitan namin ng pangalan", oldBoards: /sa mga board ng apat na employer/, lcs: "Ang mga role lang ng sarili nitong board",
+      boards: "sa mga board na pinalitan namin ng pangalan", oldBoards: /sa mga board ng apat na employer|apat na board/, lcs: "Ang mga role lang ng sarili nitong board",
       pool: "(tatlo sa apat ng PwC)", allOf: /ang lahat ng ito\./,
       report: "sa mga bullet na mayroon na ang draft mo", oldReport: /nailalapat dito ang mga pag-aayos ng report at hindi nawawala/,
       lever: "ng mga paglalarawan ng mga bagong trabaho mula sa Lever", oldLever: /paglalarawan ng trabaho mula sa Lever/,
@@ -266,10 +282,12 @@ describe("what the last read of these entries found false, held in every languag
       expect(d, l).toContain(p.close);
     });
   });
-  it("a place with no comma or a ZIP is the location field's: in the main search box only a city with a two-letter code still needs its comma, and it says so with phrases as typed", () => {
+  it("the location box names the two forms it read and no class of place, and in the main search box only a city with a two-letter code still needs its comma, with phrases as typed", () => {
     each((l, p) => {
       const d = shard(l)[SEARCH].description;
       expect(d, l).toContain(p.field);
+      expect(d, l).toContain(p.place);
+      expect(d, l).not.toMatch(p.oldPlace);
       expect(d, l).toContain(p.mainBox);
       expect(d, l).toContain(p.city);
       expect(d, l).not.toMatch(p.oldBox);
@@ -283,11 +301,18 @@ describe("what the last read of these entries found false, held in every languag
       expect(d, l).not.toMatch(p.oldWien);
     });
   });
-  it("only a ZIP no job title holds is ignored and named: others are searched as words", () => {
+  it("the ZIP sentence is one search read: no rule about ZIP codes, and never that a search used to empty", () => {
     each((l, p) => {
       const d = shard(l)[SEARCH].description;
       expect(d, l).toContain(p.zip);
       expect(d, l).not.toMatch(p.oldZip);
+    });
+  });
+  it("the 52 boards' count is what we served from those 52, not the jobs they list", () => {
+    each((l, p) => {
+      const d = shard(l)[REACH].description;
+      expect(d, l).toContain(p.reach);
+      expect(d, l).not.toMatch(p.oldReach);
     });
   });
   it("the short names are the three that route, not a class, and the limit is stated", () => {

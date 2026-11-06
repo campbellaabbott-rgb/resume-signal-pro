@@ -44,6 +44,7 @@ SEARCH (fix/bs-search; n1410-n1418; verify 99zzzz-board-search.sh)
   - Only when no stored title holds the number: one indexed title lookup per number, at most three, 1.5 s each, and an error or timeout keeps it. ISO 13485, IATF 16949 and a store's "(02330)" stay searched (live: 35 of 60 five-digit numbers are in a title).
   - It is also kept when it is the whole query, a unit follows ("26000 lbs") or it is the query's pay figure. We hold no ZIP-to-place data, so a ZIP is not turned into a location.
   - Corpus: 44 ZIP queries, 37 dropped and the 7 a title holds kept; 587 live titles and 1,685 numeric titles as queries, none changed from main.
+  - CORRECTION 2026-11-06 (read live on .100): the lookup reads title_tsv, which also holds company and department, so a kept ZIP is not always in a title, and a kept one gets no notice: "nurse 98101" names nothing and no served title holds it. The changelog claims only "nurse 94105". The rule is the next job-board round's.
 - The router routes the same way in every isolate (S12-014; route-brands.ts).
   - Live .96: "cvs" routed EMPLOYER in one isolate and SIMPLE (17 rows) in the next.
   - Now a cold isolate's table carries every catalogue employer and 21 short brand names measured live.
@@ -129,6 +130,7 @@ MCP (fix/bs-mcp; n1460-n1463; verify 99zzzz-board-mcp.sh)
   - Live .96: "Austin, TX 78701" gave 0 against 96 for "Austin, TX"; "New York NY" gave 0 against 204.
   - A trailing ZIP, a dotted code or a missing comma now reads as the city in that state under all three spellings. locationExpandedFrom says so.
   - CORRECTION 2026-11-05 (read live on .100): this holds for the location field only. In q a place still needs its comma and no ZIP: "nurse in Austin, TX" 78 and "nurse in New York, NY" 129 (only these answer intentFilters), against 1 each for "nurse in Austin TX", "nurse in New York NY" and "nurse in Austin, TX 78701". The q path is the next job-board round's.
+  - CORRECTION 2026-11-06 (read live on .100): the location field holds for a US city with its state spelled out or its two-letter code in capitals, 204 of 204 forms over 51 cities. cityState takes a two-letter tail only in capitals, so "austin tx" reads 158 against 4,309 and "seattle wa 98101" 0. With no state, "Seattle 98101" reads 0; abroad, "Berlin Germany" 0 and "Paris France" 4. The changelog names the two forms and no class. The rest is the next job-board round's.
   - Corpus: 886 inputs over 1,755 live rows. 0 rows lost, and 652 added, all in the state read.
 
 INTEGRATION (fix/board-stream)
