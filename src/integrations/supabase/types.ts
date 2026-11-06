@@ -3983,6 +3983,7 @@ export type Database = {
           industry: string
           last_score: number | null
           last_sent_at: string | null
+          locale: string | null
           subscribed_at: string
           unsubscribed_at: string | null
         }
@@ -3997,6 +3998,7 @@ export type Database = {
           industry?: string
           last_score?: number | null
           last_sent_at?: string | null
+          locale?: string | null
           subscribed_at?: string
           unsubscribed_at?: string | null
         }
@@ -4011,6 +4013,7 @@ export type Database = {
           industry?: string
           last_score?: number | null
           last_sent_at?: string | null
+          locale?: string | null
           subscribed_at?: string
           unsubscribed_at?: string | null
         }
