@@ -1457,6 +1457,13 @@
       "when": 1793636959298,
       "tag": "0207_20261102164000_a_perk_is_shown_only_from_the_extractor_output_its_audit_judged",
       "breakpoints": true
+    },
+    {
+      "idx": 208,
+      "version": "7",
+      "when": 1793977756659,
+      "tag": "0208_20261103100000_an_affiliate_buying_under_an_alias_of_their_own_address_earns_nothing",
+      "breakpoints": true
     }
   ]
 }

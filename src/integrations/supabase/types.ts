@@ -47,24 +47,6 @@ export type Database = {
         }
         Relationships: []
       }
-      _mig_staging: {
-        Row: {
-          md5: string
-          name: string
-          sql: string
-        }
-        Insert: {
-          md5: string
-          name: string
-          sql: string
-        }
-        Update: {
-          md5?: string
-          name?: string
-          sql?: string
-        }
-        Relationships: []
-      }
       ab_test_events: {
         Row: {
           created_at: string
@@ -5610,6 +5592,7 @@ export type Database = {
         Args: { p_credits: number; p_email: string }
         Returns: boolean
       }
+      affiliate_address_key: { Args: { p_email: string }; Returns: string }
       agent_adoption_metrics: {
         Args: { p_days: number }
         Returns: {

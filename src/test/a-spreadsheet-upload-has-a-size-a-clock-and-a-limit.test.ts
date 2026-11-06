@@ -122,7 +122,7 @@ const post = (body: BodyInit, headers: Record<string, string> = {}) =>
   }));
 const multipart = (name: string, bytes: Uint8Array | string) => {
   const fd = new FormData();
-  fd.append("file", new File([bytes], name));
+  fd.append("file", new File([typeof bytes === "string" ? bytes : new Uint8Array(bytes)], name));
   return fd;
 };
 
