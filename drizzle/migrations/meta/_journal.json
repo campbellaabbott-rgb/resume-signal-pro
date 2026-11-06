@@ -1506,6 +1506,13 @@
       "when": 1793979458850,
       "tag": "0214_20261103170000_a_key_link_the_provider_refused_is_not_counted_as_mailed",
       "breakpoints": true
+    },
+    {
+      "idx": 215,
+      "version": "7",
+      "when": 1793979485195,
+      "tag": "0215_20261103190000_the_scan_total_counts_completed_analyses_only",
+      "breakpoints": true
     }
   ]
 }
