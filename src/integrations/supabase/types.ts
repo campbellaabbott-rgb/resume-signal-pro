@@ -1036,6 +1036,7 @@ export type Database = {
           id: string
           issued_key_id: string | null
           key_name: string | null
+          mail_refused_at: string | null
           mailbox: string
           request_net: string | null
           terms_version: string | null
@@ -1050,6 +1051,7 @@ export type Database = {
           id?: string
           issued_key_id?: string | null
           key_name?: string | null
+          mail_refused_at?: string | null
           mailbox: string
           request_net?: string | null
           terms_version?: string | null
@@ -1064,6 +1066,7 @@ export type Database = {
           id?: string
           issued_key_id?: string | null
           key_name?: string | null
+          mail_refused_at?: string | null
           mailbox?: string
           request_net?: string | null
           terms_version?: string | null
@@ -1432,6 +1435,7 @@ export type Database = {
           domain_match: boolean
           id: string
           last_sent_at: string | null
+          locale: string | null
           note: string | null
           owner_approved_at: string | null
           status: string
@@ -1448,6 +1452,7 @@ export type Database = {
           domain_match?: boolean
           id?: string
           last_sent_at?: string | null
+          locale?: string | null
           note?: string | null
           owner_approved_at?: string | null
           status?: string
@@ -1464,6 +1469,7 @@ export type Database = {
           domain_match?: boolean
           id?: string
           last_sent_at?: string | null
+          locale?: string | null
           note?: string | null
           owner_approved_at?: string | null
           status?: string
@@ -3980,6 +3986,7 @@ export type Database = {
           industry: string
           last_score: number | null
           last_sent_at: string | null
+          locale: string | null
           subscribed_at: string
           unsubscribed_at: string | null
         }
@@ -3994,6 +4001,7 @@ export type Database = {
           industry?: string
           last_score?: number | null
           last_sent_at?: string | null
+          locale?: string | null
           subscribed_at?: string
           unsubscribed_at?: string | null
         }
@@ -4008,6 +4016,7 @@ export type Database = {
           industry?: string
           last_score?: number | null
           last_sent_at?: string | null
+          locale?: string | null
           subscribed_at?: string
           unsubscribed_at?: string | null
         }
@@ -5370,6 +5379,7 @@ export type Database = {
           fit_threshold: number
           id: string
           last_seen_at: string
+          locale: string | null
           name: string
           params: Json
           user_id: string
@@ -5383,6 +5393,7 @@ export type Database = {
           fit_threshold?: number
           id?: string
           last_seen_at?: string
+          locale?: string | null
           name: string
           params?: Json
           user_id: string
@@ -5396,6 +5407,7 @@ export type Database = {
           fit_threshold?: number
           id?: string
           last_seen_at?: string
+          locale?: string | null
           name?: string
           params?: Json
           user_id?: string
@@ -5936,6 +5948,10 @@ export type Database = {
           rq_reason: string
           rq_send: boolean
         }[]
+      }
+      api_key_request_unsent: {
+        Args: { p_token_hash: string }
+        Returns: boolean
       }
       api_key_retire_idle: { Args: never; Returns: number }
       application_form_cache_put: {
@@ -7626,6 +7642,10 @@ export type Database = {
         Returns: Json
       }
       logout_affiliate: { Args: { p_session_token: string }; Returns: boolean }
+      mail_door_give: {
+        Args: { p_bucket: string; p_door: string; p_window_minutes: number }
+        Returns: boolean
+      }
       mail_door_take: {
         Args: {
           p_bucket: string

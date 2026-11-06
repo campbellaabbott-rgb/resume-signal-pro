@@ -1471,6 +1471,76 @@
       "when": 1793978385201,
       "tag": "0209_20261103110000_a_retired_pass_is_not_started_by_a_search",
       "breakpoints": true
+    },
+    {
+      "idx": 210,
+      "version": "7",
+      "when": 1793979298961,
+      "tag": "0210_20261103130000_a_share_link_reads_an_analysis_and_only_its_buyer_deletes_it",
+      "breakpoints": true
+    },
+    {
+      "idx": 211,
+      "version": "7",
+      "when": 1793979346859,
+      "tag": "0211_20261103160000_a_connector_token_is_not_a_website_session",
+      "breakpoints": true
+    },
+    {
+      "idx": 212,
+      "version": "7",
+      "when": 1793979384420,
+      "tag": "0212_20261103161000_a_connector_token_reaches_no_row",
+      "breakpoints": true
+    },
+    {
+      "idx": 213,
+      "version": "7",
+      "when": 1793979409131,
+      "tag": "0213_20261103165000_a_mail_the_provider_refused_hands_its_count_back",
+      "breakpoints": true
+    },
+    {
+      "idx": 214,
+      "version": "7",
+      "when": 1793979458850,
+      "tag": "0214_20261103170000_a_key_link_the_provider_refused_is_not_counted_as_mailed",
+      "breakpoints": true
+    },
+    {
+      "idx": 215,
+      "version": "7",
+      "when": 1793979485195,
+      "tag": "0215_20261103190000_the_scan_total_counts_completed_analyses_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 216,
+      "version": "7",
+      "when": 1793979504349,
+      "tag": "0216_20261103191000_a_mail_remembers_the_language_it_was_asked_in",
+      "breakpoints": true
+    },
+    {
+      "idx": 217,
+      "version": "7",
+      "when": 1793979526534,
+      "tag": "0217_20261103195000_a_claim_mail_is_written_in_the_language_the_claim_was_made_in",
+      "breakpoints": true
+    },
+    {
+      "idx": 218,
+      "version": "7",
+      "when": 1793979546198,
+      "tag": "0218_20261103220000_a_stored_search_no_longer_asks_for_the_retired_agent_ready_filter",
+      "breakpoints": true
+    },
+    {
+      "idx": 219,
+      "version": "7",
+      "when": 1793979567075,
+      "tag": "0219_20261103240000_a_saved_search_remembers_the_language_it_was_switched_on_in",
+      "breakpoints": true
     }
   ]
 }
