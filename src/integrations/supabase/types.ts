@@ -1036,6 +1036,7 @@ export type Database = {
           id: string
           issued_key_id: string | null
           key_name: string | null
+          mail_refused_at: string | null
           mailbox: string
           request_net: string | null
           terms_version: string | null
@@ -1050,6 +1051,7 @@ export type Database = {
           id?: string
           issued_key_id?: string | null
           key_name?: string | null
+          mail_refused_at?: string | null
           mailbox: string
           request_net?: string | null
           terms_version?: string | null
@@ -1064,6 +1066,7 @@ export type Database = {
           id?: string
           issued_key_id?: string | null
           key_name?: string | null
+          mail_refused_at?: string | null
           mailbox?: string
           request_net?: string | null
           terms_version?: string | null
@@ -5936,6 +5939,10 @@ export type Database = {
           rq_reason: string
           rq_send: boolean
         }[]
+      }
+      api_key_request_unsent: {
+        Args: { p_token_hash: string }
+        Returns: boolean
       }
       api_key_retire_idle: { Args: never; Returns: number }
       application_form_cache_put: {
