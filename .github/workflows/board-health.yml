@@ -29,25 +29,22 @@
 # for), and key rotation stays a one-file change. A missing/unparseable .env
 # still alarms loudly rather than passing vacuously.
 #
-# Schedule note: GitHub fires scheduled workflows with best-effort timing
-# (typically +3-10 min). Fine here — this is an outage alarm, not a metric.
+# Schedule note: GitHub fires scheduled workflows best-effort. Measured
+# 2026-10-12..11-05: about 5 of the 48 slots a day, median gap about 5 h, worst
+# 10.4 h, so an outage is first probed hours late. section 78 of the verifier
+# calls the schedule dead after a day, and prints the cadence.
 #
-# EVERY 30 MINUTES, not every 10 (changed 2026-08-19). At */10 this one
-# workflow ran ~4,320 times a month and consumed the entire 2,000-minute free
-# tier on its own — the other two scheduled workflows total ~150 runs between
-# them. It was the whole reason the account ran out of Actions minutes.
-#
-# Nothing is lost by the change, and the note directly above says why: this is
-# an outage ALARM, and its own failure threshold is "no refresh slice in 6
-# hours". A cadence three times finer than the thing it watches was buying
-# precision the alarm never used. ~1,440 runs/month leaves room for CI.
+# ASKS EVERY 30 MINUTES, not every 10 (changed 2026-08-19): this is an outage
+# ALARM, and its own failure threshold is "no refresh slice in 6 hours". No
+# scheduled run is on record before 2026-10-12, so the old note's run count and
+# minutes bill were arithmetic on the cron, never a measurement.
 #
 # AT MINUTES 17 AND 47, NOT :00 AND :30 (S12-069). GitHub's scheduler is
 # busiest on the hour and the half hour and drops scheduled runs under load:
 # on 2026-10-12 it ran 3 of about 40 slots, so an outage at 06:20Z was first
-# probed at 15:47Z. Off-peak minutes are dropped less often, and the step
-# "Tell the outside check" below makes a dropped run visible: a healthchecks.io
-# check outside GitHub that mails when the pings stop.
+# probed at 15:47Z. The off-peak minutes did not cure it (about 5 a day since,
+# cause unknown). The step "Tell the outside check" below makes a dropped run
+# visible: a healthchecks.io check outside GitHub that mails when the pings stop.
 name: board-health
 on:
   schedule:
@@ -138,8 +135,8 @@ jobs:
           fi
 
       # THE ALARM'S OWN DEAD-MAN (S12-069). Every run pings the healthchecks.io
-      # check in the repository secret BOARD_HEALTH_PING_URL (period 30 min,
-      # grace 60): plain when the board is healthy, /fail when the probe found
+      # check in the repository secret BOARD_HEALTH_PING_URL (period 12 h, grace
+      # 12 h, what GitHub delivers): plain when the board is healthy, /fail when the probe found
       # it failing or the probe itself broke, and nothing when GitHub skipped
       # the run, which is what the check mails about. Without the secret it
       # says so and does nothing, so the monitor still needs no configuration.
@@ -180,7 +177,7 @@ jobs:
               --label board-health \
               --body "$STAMP — $NOTE
 
-          This issue was opened by .github/workflows/board-health.yml, which probes the live board every 30 minutes from outside the database. Close it once the board is verified healthy; the monitor comments here instead of opening duplicates while it stays open."
+          This issue was opened by .github/workflows/board-health.yml, which probes the live board from outside the database (its cron asks every 30 minutes; GitHub delivers about 5 runs a day). Close it once the board is verified healthy; the monitor comments here instead of opening duplicates while it stays open."
           fi
 
       # A FAILING PROBE FAILS THE RUN. The issue is the thread; a red scheduled

@@ -13,6 +13,18 @@
 # 2026-10-05/06, +10% = 393 min) for a board visited by the rotation, two for
 # pg (base visit plus deep visit). VD90_POLLS=N adds N status reads 60 s apart
 # for the deep-lane and cursor-rate lines (default 0: two reads, start and end).
+#
+# THE ROTATION BOUND is judged on the LAST COMPLETED wrap. lastRotationAgeMin
+# resets at each wrap, so a young reading proves nothing about the rotation that
+# just finished: it read PASS at 2 min old against wraps of about 600. The wrap's
+# length is stored in a row closed to anon, so the sources are, best first:
+# status.lastWrapMin if a later build publishes it; the ledger VD90_WRAPS (default
+# ~/.config/resumebooster/verify-state/cold-wraps.json), which holds a wrap only for
+# the build that ran it and learns one here when the age's stamp moved between two
+# readings close enough that no whole wrap could hide between them (300 min), and
+# whose wrap counts for 48 hours, since a reading that old says nothing of the
+# rotation running now; and failing both the pace of the rotation in progress, which
+# is a pace, never a PASS.
 echo "== 90. job-board .90: light re-read in the visit, registry by board, greenhouse streamed light, vendors named, deep lane ahead of base =="
 J '{"action":"status"}' > /tmp/vd_90_status_0.json; date +%s > /tmp/vd_90_status_0.t
 curl -s -m 30 -o /dev/null -D /tmp/vd_90_preflight.txt -X OPTIONS "$B/functions/v1/job-board" -H "x-rb-budget: probe" \
@@ -68,7 +80,7 @@ while [ "$VD90_I" -le "$VD90_N" ]; do
   sleep 60; J '{"action":"status"}' > "/tmp/vd_90_status_$VD90_I.json"; date +%s > "/tmp/vd_90_status_$VD90_I.t"; VD90_I=$((VD90_I+1))
 done
 J '{"action":"status"}' > "/tmp/vd_90_status_$VD90_I.json"; date +%s > "/tmp/vd_90_status_$VD90_I.t"
-VD90_AT="${VD90_AT:-}" VD90_LAST="$VD90_I" node -e '
+VD90_WRAPS="${VD90_WRAPS:-$HOME/.config/resumebooster/verify-state/cold-wraps.json}" VD90_AT="${VD90_AT:-}" VD90_LAST="$VD90_I" node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const rd=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};const js=(s)=>{try{return JSON.parse(s)}catch{return null}};
 const S=[];for(let i=0;i<=Number(process.env.VD90_LAST);i++){const s=js(rd("/tmp/vd_90_status_"+i+".json"));const t=Number(rd("/tmp/vd_90_status_"+i+".t"));if(s&&typeof s==="object"&&!Array.isArray(s))S.push({s,t:t*1000})}
@@ -157,9 +169,26 @@ else info("bootstrapQueue.lastSlice = "+JSON.stringify(bq)+" (24 at rest on .90,
 // F7: the cold cursor rate, by cursor advance only.
 let dCold=0,dMin=0,back=0;for(let i=1;i<S.length;i++){const a=S[i-1].s.cursor||{},b=S[i].s.cursor||{};const L=Number(S[i].s.coldBoards)||0;if(typeof a.cold!=="number"||typeof b.cold!=="number")continue;const d=b.cold-a.cold;if(d>=0&&!(L>0&&d>L/2))dCold+=d;else if(L>0&&d<0&&-d>L/2)dCold+=d+L;else back++;dMin+=(S[i].t-S[i-1].t)/60000}
 info("cold cursor "+JSON.stringify((S[0]||{s:{}}).s.cursor)+" -> "+JSON.stringify(st.cursor)+": "+dCold+" boards in "+dMin.toFixed(1)+" min"+(dMin>0?" = "+(dCold/dMin).toFixed(0)+"/min":"")+(back?", "+back+" backward step(s) not counted (a slice resuming behind the last persisted cursor; .89 did it too, 2026-10-06)":"")+" (reference on .89: 83-131/min in cold-only samples, 44,399 boards in 5h57m; the cursor moves a slice (up to 80 boards) at a time and a hot phase parks it, so a sample of a few minutes reads high or low; set VD90_POLLS=30 for a usable one and take your own pre-deploy baseline)");
-const age=Number(st.lastRotationAgeMin);
-if(v90&&Number.isFinite(age)&&Number.isFinite(at)&&age*60000<=Date.now()-at)ok(age<=393,"the cold rotation running on .90 is "+age+" min old (want at most 393 = 5h57m + 10%; past it, roll back with DEEP_LANE_TAKE = 0)");
+const age=Number(st.lastRotationAgeMin);const shortV=m?"."+m[2]:String(st.version);
+const WF=process.env.VD90_WRAPS||"";let WL={wraps:[],lastRead:null};
+if(WF){const x=js(rd(WF));if(x&&Array.isArray(x.wraps))WL=x}
+if(WF&&v90&&Number.isFinite(age)&&S.length){
+  const tRead=S[S.length-1].t||Date.now(),stamp=tRead-age*60000,prev=WL.lastRead;
+  if(prev&&prev.build===st.version&&stamp-prev.stamp>60*60000&&stamp-prev.at<=300*60000)WL.wraps.push({endedAt:new Date(stamp).toISOString(),wrapMin:Math.round((stamp-prev.stamp)/60000),build:st.version,how:"the age stamp moved between two readings"});
+  WL.lastRead={at:tRead,stamp,build:st.version};
+  try{fs.mkdirSync(require("path").dirname(WF),{recursive:true});fs.writeFileSync(WF,JSON.stringify(WL,null,1)+"\n")}catch{}}
+const RULE=st.version==="2026-09-09.100"?"on .100 the cause is partly established: chain stops, then list-started slices holding the lock, the description sweep part of it. The fix rides the next job-board build; judge it by list position over two laps":"count the chain stops by mode and judge the lap by list position over two laps";
+const pubWrap=Number(st.lastWrapMin);const mine=WL.wraps.filter((w)=>w&&w.build===st.version&&Number.isFinite(Number(w.wrapMin))&&Date.now()-Date.parse(w.endedAt)<=48*3600000);const lastW=mine[mine.length-1];
+const wrapLine=(min,src)=>ok(min<=393,"the last completed cold rotation on "+st.version+" took "+min+" min ("+src+"; want at most 393 = 5h57m + 10%"+(min<=393?"":"; "+RULE)+")");
+if(v90&&Number.isFinite(age)&&Number.isFinite(at)&&age*60000<=Date.now()-at){
+  if(age>393)ok(false,"the cold rotation running on "+shortV+" is "+age+" min old (want at most 393 = 5h57m + 10%; "+RULE+")");}
 else info("lastRotationAgeMin = "+age+" (the rotation in progress began before the deploy, or not .90 yet; the first rotation wholly on .90 must wrap within 393 min)");
+if(v90&&Number.isFinite(pubWrap)&&pubWrap>0)wrapLine(pubWrap,"status.lastWrapMin");
+else if(v90&&lastW)wrapLine(Number(lastW.wrapMin),"ended "+lastW.endedAt+", "+lastW.how);
+else if(v90&&Number.isFinite(age)&&age<=393){
+  const N=Number(st.coldBoards)||0,c=Number((st.cursor||{}).cold);
+  if(N>0&&c/N>=0.25){const pace=Math.round(N*age/c);console.log((pace>393?"FAIL":"INFO")+"  no completed wrap from the last 48 h is readable, and at the pace so far ("+c+" of "+N+" boards in "+age+" min) this rotation takes "+pace+" min: a pace, not a wrap (want at most 393"+(pace>393?"; "+RULE:"")+")")}
+  else info("no completed wrap from the last 48 h is readable and the rotation in progress is too young to pace ("+age+" min, cursor "+c+" of "+N+"), so the 393-minute bound is not judged");}
 // F7: pg against its own feed.
 const P=D.pg||{};
 if(!P.feed||!P.served||P.feed.err||P.served.err||!Array.isArray(P.feed.pos))info("workday:pg~wd5~1000 "+((P.feed&&P.feed.err)||(P.served&&P.served.err)||"unreadable")+" -- cannot judge");

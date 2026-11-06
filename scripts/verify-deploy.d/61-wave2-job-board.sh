@@ -100,12 +100,12 @@ for(const [q,want] of [["당근","당근마켓"],["ΒΙΚΟΣ","ΒΙΚΟΣ"],["�
   else{const f=Array.isArray(fa.findings)?fa.findings:[];const rl=f.filter((x)=>/RateLimitError/.test(String(x.detail||""))&&x.kind!=="throttled").length;
     const fresh=String(fa.at||"")>"2026-10-08";
     (fresh?late:((c,msg)=>info(msg)))(rl===0,"L1-07 filterAudit at "+fa.at+": "+rl+" RateLimitError findings not called throttled, throttledCases "+fa.throttledCases+", incomplete "+fa.incomplete+" (want 0; judged on an audit run after 2026-10-08)")}}
-// (c): the cursor step.
+// (c): the cursor step. Since .92 (S8-087, n446) the cursor passes the prefix of the base slice started or skipped as dormant, so to - from is not started: a dormant skip passed puts it above, a deferral ahead of later starts below. What must hold: admission wrote from + base, the write-back stays inside the base slice, it is not the admission value left standing (more than 8 above started), and it moved at all when a board started.
 {const cs=(st.sliceStats||{}).cursorStep;
   if(cs===undefined)late(false,"(c) sliceStats.cursorStep absent (want present on .91: null on a hot slice, {from,admitted,to,base,started} on a cold one)");
   else if(cs===null)info("(c) sliceStats.cursorStep null: the last slice was hot; re-run during the cold phase");
-  else{const n=Number(st.coldBoards)||Number((st.cursor||{}).coldBoards)||0;const want=n?(cs.from+cs.started)%n:cs.from+cs.started;
-    late(cs.to===want||cs.to===cs.from+cs.started,"(c) cursorStep "+JSON.stringify(cs)+": to = from + started (the admitted value is the optimistic write a poll can see first)")}}
+  else{const n=Number(st.coldBoards)||Number((st.cursor||{}).coldBoards)||0;const fwd=(x)=>n?((x%n)+n)%n:x;const step=fwd(cs.to-cs.from);
+    late(fwd(cs.admitted-cs.from)===cs.base&&step<=cs.base&&step-cs.started<=8&&(step>0||cs.started===0),"(c) cursorStep "+JSON.stringify(cs)+": stepped "+step+" for "+cs.started+" started (want admitted = from + base, the step inside base, at most 8 above started, and above 0 when a board started; a dormant skip passed adds 1, a deferral ahead of later starts subtracts: S8-087. A first base board deferred ahead of later starts reads frozen once, so re-run once before believing a step of 0)")}}
 // (a): SNOWFLAKE-3, judged by what is stored now (the board may have unlisted them).
 {const ids=["ashby:snowflake:66eeda70-4d91-43a4-bb84-998c26f329f5","ashby:snowflake:37033502-bd37-4f77-a92e-9b7934998857","ashby:snowflake:132a2e95-7ec0-488c-94d2-b0917c597ef9"];
   const r=await call({action:"exists",ids});const o=(r&&r.open)||{};

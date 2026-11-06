@@ -39,6 +39,7 @@ const SCRIPT = readFileSync(resolve(ROOT, "scripts/verify-deploy.sh"), "utf8");
 const SECTION = readFileSync(resolve(ROOT, "scripts/verify-deploy.d/99zzz-trust-round-3.sh"), "utf8");
 const BUILD_GE = /^build_ge\(\) \{[\s\S]*?^\}$/m.exec(SCRIPT)?.[0] ?? "";
 const J_HELPER = /^J\(\) \{.*\}$/m.exec(SCRIPT)?.[0] ?? "";
+const R_HELPER = /^R\(\) \{.*\}$/m.exec(SCRIPT)?.[0] ?? "";
 const KEY = "pk_test_SECRET_marker_99zzz";
 const UA = "Googlebot-test-ua";
 const FB = "https://p\\.supabase\\.co/functions/v1/job-board";
@@ -84,7 +85,7 @@ function runSection(section: string, routes: Route[]): { lines: string[]; calls:
   writeFileSync(join(dir, "routes.json"), JSON.stringify(routes));
   writeFileSync(join(dir, "calls.log"), "");
   writeFileSync(join(dir, "nofetch.cjs"), 'globalThis.fetch = async () => { throw new Error("no network in this test"); };\n');
-  const prelude = `set -u\nK=${KEY}; B=https://p.supabase.co; SITE=https://site.test; UA=${UA}\n${BUILD_GE}\n${J_HELPER}\n`;
+  const prelude = `set -u\nK=${KEY}; B=https://p.supabase.co; SITE=https://site.test; UA=${UA}\n${BUILD_GE}\n${J_HELPER}\n${R_HELPER}\n`;
   writeFileSync(join(dir, "run.sh"), prelude + section.split("/tmp/").join(`${dir}/`));
   const env: NodeJS.ProcessEnv = {
     ...process.env,
@@ -123,6 +124,12 @@ type Over = {
   flagged?: Row[]; flaggedEx?: Row[];
   pruned?: Scoped; brands?: Scoped; dupq?: Record<string, Row[]>;
   oracle?: Record<string, number>; places?: Record<string, Row[]>; pages?: Record<string, Row[][]>; details?: Record<string, unknown>;
+  /** The site's shell and entry chunk, and the chunks the entry names. */
+  shell?: string; entry?: string; chunks?: Record<string, string>;
+  /** get_company_fill_curve's rows by board (default: three open roles each), or its whole reply; and a board's own list total. */
+  curve?: Record<string, Row>; curveBody?: string; solo?: Record<string, number | string>;
+  /** get_company_hiring_health's feed_total by board, or its whole reply. The default is no route: its unreadable reply. */
+  ownTotal?: Record<string, number | null>; healthBody?: string;
 };
 /** A list reply as index.ts sends it: every asked token uncarried gives unknownCompanies; a mix names the uncarried in companiesUnresolved. */
 type Scoped = { jobs: Row[]; unknownCompanies?: string[]; unresolved?: string[] };
@@ -181,15 +188,19 @@ function routes(o: Over = {}): Route[] {
     { match: `^POST ${FB}\\t\\{"action":"list","companies":\\["jobandtalent"[^\\]]*\\],"excludeAgencies":true`, body: list(flaggedEx) },
     { match: `^POST ${FB}\\t\\{"action":"list","companies":\\["jobandtalent"[^\\]]*\\],"groupSimilar"`, body: list(flagged) },
   ];
+  const curve = CLEARED.map(([, t]) => ({ company_token: t, open_roles: 3, feed_total: 10, feed_read_at: read, feed_state: "ok", fills_90d: 1, ...(o.curve?.[t] ?? {}) }));
+  const soloRoutes: Route[] = Object.entries(o.solo ?? {}).map(([t, v]) => ({
+    match: `^POST ${FB}\\t\\{"action":"list","companies":\\["${esc(t)}"\\],"groupSimilar"`,
+    body: typeof v === "string" ? v : JSON.stringify({ jobs: v ? [{ token: t }] : [], total: v, hasMore: false }),
+  }));
   const dupRoutes: Route[] = DUPS.map(([t, q]) => ({
     match: `^POST ${FB}\\t\\{"action":"list","vendor":\\["icims"\\],"q":"${esc(q.replace(/'/g, "\\u0027"))}"`,
     body: list(o.dupq?.[t] ?? [{ id: `icims:careers.landrysinc.com:${t.length}`, source: "icims", token: "careers.landrysinc.com" }]),
   }));
   const D: Record<string, unknown> = {
     cvs: { job: { id: "workday:cvshealth~wd1~CVS_Health_Careers:R1075322", location: "NY - Greece", country: "US", recheckedAt: read } },
-    bjs: { job: { id: "workday:bjswholesaleclub~wd1~BJsCareers:R255468", location: "Greece, NY #0185", country: "US", recheckedAt: read } },
+    bjs: { job: { id: "workday:bjswholesaleclub~wd1~BJsCareers:R259209", location: "Greece, NY #0185", country: "US", recheckedAt: read } },
     kohls: { job: { id: "workday:kohls~wd504~kohlscareers:R504030", location: "Lake Wales (1250)", country: "US" } },
-    kohls2: { job: { id: "workday:kohls~wd504~kohlscareers:R503656", location: "Lake Wales (1250)", country: "US" } },
     ...(o.details ?? {}),
   };
   return [
@@ -199,9 +210,14 @@ function routes(o: Over = {}): Route[] {
     { match: `^GET ${SITE}/jobs/company/${HUDSON}$`, body: o.hudson ?? company("Hudson Regional Health", 148) },
     { match: `^GET ${SITE}/jobs/company/${esc(CONVERGINT)}$`, body: o.convergint ?? company("Convergint", 228) },
     { match: `^GET ${SITE}/assets/CompanyPage-CCCC\\.js$`, body: o.pub === false ? "const m=new Map([]);" : MIRROR },
-    { match: `^GET ${SITE}/assets/index-AAAA\\.js$`, body: "console.log(1)" },
+    { match: `^GET ${SITE}/$`, body: o.shell ?? '<html><head><script type="module" crossorigin src="/assets/index-AAAA.js"></script></head></html>' },
+    { match: `^GET ${SITE}/assets/index-AAAA\\.js$`, body: o.entry ?? "console.log(1)" },
+    ...Object.entries(o.chunks ?? {}).map(([name, body]) => ({ match: `^GET ${SITE}/assets/${esc(name)}$`, body })),
+    { match: `^POST https://p\\.supabase\\.co/rest/v1/rpc/get_company_fill_curve`, body: o.curveBody ?? JSON.stringify(curve) },
+    ...(o.ownTotal || o.healthBody !== undefined ? [{ match: `^POST https://p\\.supabase\\.co/rest/v1/rpc/get_company_hiring_health`, body: o.healthBody ?? JSON.stringify(Object.entries(o.ownTotal ?? {}).map(([t, feed_total]) => ({ company_token: t, open_roles: 0, closed_90d: 188, superseded_90d: 88, feed_total }))) }] : []),
     { match: `^POST ${FB}\\t\\{"action":"status"\\}`, body: status },
     ...nameRoutes,
+    ...soloRoutes,
     ...agencyRoutes,
     ...icimsRoutes,
     // Under .96 a scope of four uncarried hosts never reads the table: uncarriedListReply, jobs [] and total 0.
@@ -213,7 +229,6 @@ function routes(o: Over = {}): Route[] {
     { match: `^POST ${FB}\\t\\{"action":"detail","id":"workday:cvshealth`, body: JSON.stringify(D.cvs) },
     { match: `^POST ${FB}\\t\\{"action":"detail","id":"workday:bjswholesaleclub`, body: JSON.stringify(D.bjs) },
     { match: `^POST ${FB}\\t\\{"action":"detail","id":"workday:kohls~wd504~kohlscareers:R504030"`, body: JSON.stringify(D.kohls) },
-    { match: `^POST ${FB}\\t\\{"action":"detail","id":"workday:kohls~wd504~kohlscareers:R503656"`, body: JSON.stringify(D.kohls2) },
   ];
 }
 const verdicts = (lines: string[], v: "PASS" | "FAIL" | "INFO") => lines.filter((l) => l.startsWith(`${v}  `));
@@ -240,7 +255,7 @@ describe("section 99zzz: trust round 3", () => {
       /A1 all 2 row\(s\) on the 20 employers' own boards cleared of the flag carry agency false \(excludeAgencies keeps all 2/, /A2 all 3 row\(s\) on the 17 staffing companies' boards carry agency true \(excludeAgencies leaves none/, new RegExp(`A3 /jobs/company/${esc(CONVERGINT)} is an employer's page`),
       /I1 careers\.delmarva\.com serves 2 row\(s\), none on another portal/, /I1 careers\.monifai\.com serves 2/, /I2 the four duplicate hosts are not carried, and a search for each one's stored company name serves none of their rows/,
       /I3 the four Exelon brand boards are carried; 2 serve rows/, /O1 LCS "All" serves 12/, /C1 2 Lake Wales, FL row\(s\), all filed US/, /C1 1 Greece, NY row\(s\), all filed US/,
-      /C1 1 Peru, IN\/IL row\(s\), all filed US/, /C1 control: 1 of 1 "Cardiff, Wales" row\(s\) filed GB/, /C2 CVS Health R1075322 .* is filed US/, /C2 BJ's R255468 .* is filed US/, /C2 Kohl's R504030 .* is filed US/, /C2 Kohl's R503656 .* is filed US/]) {
+      /C1 1 Peru, IN\/IL row\(s\), all filed US/, /C1 control: 1 of 1 "Cardiff, Wales" row\(s\) filed GB/, /C2 CVS Health R1075322 .* is filed US/, /C2 BJ's R259209 .* is filed US/, /C2 Kohl's R504030 .* is filed US/]) {
       expect(has(lines, "PASS", re), `${re}\n${show(lines)}`).toBe(true);
     }
   });
@@ -267,7 +282,7 @@ describe("section 99zzz: trust round 3", () => {
   it("N2: a listed page naming the old label is a FAIL once published (and, for a bare token, once the lane is done); INFO before; nothing listed is INFO", () => {
     const old = company("HRH Secaucus University Transparent", 148);
     expect(has(run(routes({ hudson: old })).lines, "FAIL", /N2 .* names the old label "HRH Secaucus University Transparent"/)).toBe(true);
-    expect(has(run(routes({ hudson: old, pub: false })).lines, "INFO", /N2 .* waits for the publish that carries this round/)).toBe(true);
+    expect(has(run(routes({ hudson: old, pub: false })).lines, "INFO", /N2 .* is not judged: no chunk of the served app holds this round's names/)).toBe(true);
     expect(has(run(routes({ hudson: old, namesDetail: "name sync v6: 4 waiting" })).lines, "INFO", /N2 .* waits for the name-sync lane's version 6/)).toBe(true);
     expect(has(run(routes({ sitemap: sitemap(["/jobs/company/dominos"]) })).lines, "INFO", /N2 the sitemap lists no page of a renamed board/)).toBe(true);
     expect(has(run(routes({ sitemap: "" })).lines, "FAIL", /N2 the sitemap did not answer/)).toBe(true);
@@ -298,7 +313,7 @@ describe("section 99zzz: trust round 3", () => {
     const call = run(routes()).calls.find((c) => /"companies":\["jobandtalent"/.test(c) && !c.includes("excludeAgencies"))!;
     expect(new Set((JSON.parse(call.split("\t")[2]) as { companies: string[] }).companies)).toEqual(new Set(FLAGGED.map(([, t]) => t)));
     expect(has(run(routes({ convergint: company("Convergint", 228, true) })).lines, "FAIL", /A3 .* is still the agency variant/)).toBe(true);
-    expect(has(run(routes({ convergint: company("Convergint", 228, true), pub: false })).lines, "INFO", /A3 .* is the agency variant until the publish/)).toBe(true);
+    expect(has(run(routes({ convergint: company("Convergint", 228, true), pub: false })).lines, "INFO", /A3 .* is the agency variant, not judged: no chunk of the served app holds this round's names/)).toBe(true);
   });
 
   it("I1: a row on another portal of the feed is a FAIL once due", () => {
@@ -399,13 +414,12 @@ describe("section 99zzz: trust round 3", () => {
     expect(has(run(routes({ places: { cardiff: [] } })).lines, "INFO", /C1 control: no "Cardiff, Wales" row is served/)).toBe(true);
   });
 
-  it("C2: Kohl's two rows at its Lake Wales store wait 48 h for the migration, then a GB row is a FAIL", () => {
+  it("C2: Kohl's row at its Lake Wales store waits 48 h for the migration, then a GB row is a FAIL", () => {
     const kohlsGb = { kohls: { job: { id: "workday:kohls~wd504~kohlscareers:R504030", location: "Lake Wales (1250)", country: "GB" } } };
     expect(has(run(routes({ details: kohlsGb })).lines, "INFO", /C2 Kohl's R504030 .* is filed GB; .*FAIL after 48 h/)).toBe(true);
     expect(has(run(routes({ details: kohlsGb, buildSince: iso(50 * H) })).lines, "FAIL", /C2 Kohl's R504030 .* is filed GB 48 h after the first slice: apply migration 20261026110000/)).toBe(true);
     expect(has(run(routes({ build: R98, details: kohlsGb, buildSince: iso(50 * H) })).lines, "FAIL", /C2 Kohl's R504030 .* is filed GB 48 h after the first slice: apply migration 20261026110000/)).toBe(true);
-    expect(has(run(routes({ details: { kohls2: { gone: true } } })).lines, "INFO", /C2 Kohl's R503656 .* is no longer served/)).toBe(true);
-    expect(has(run(routes({ details: { kohls2: { job: { id: "x", country: "GB" } } }, buildSince: iso(50 * H) })).lines, "FAIL", /C2 Kohl's R503656 .* is filed GB 48 h after the first slice: apply migration 20261026110000/)).toBe(true);
+    expect(has(run(routes({ details: { kohls: { gone: true } } })).lines, "INFO", /C2 Kohl's R504030 .* is no longer served/)).toBe(true);
   });
 
   it("C2: CVS's or BJ's posting still filed abroad is a FAIL from .98 once its board is visited or past its deadline, and on .96 only if this build wrote it", () => {
@@ -420,7 +434,119 @@ describe("section 99zzz: trust round 3", () => {
     expect(has(live96.lines, "INFO", /C2 CVS Health R1075322 .* is filed GR; this build re-derives a stored row only when its board's window reaches it/), show(live96.lines)).toBe(true);
     expect(has(run(routes({ details: cvsGr(read), buildSince: iso(30 * H) })).lines, "INFO", /C2 CVS Health R1075322 .* is filed GR; this build/)).toBe(true);
     expect(has(run(routes({ details: cvsGr(read, iso(2 * H)) })).lines, "FAIL", /C2 CVS Health R1075322 .* is filed GR and this build wrote it \(lastSeen after its first slice\)/)).toBe(true);
-    expect(has(run(routes({ details: { bjs: { gone: true } } })).lines, "INFO", /C2 BJ's R255468 .* is no longer served/)).toBe(true);
+    expect(has(run(routes({ details: { bjs: { gone: true } } })).lines, "INFO", /C2 BJ's R259209 .* is no longer served/)).toBe(true);
+  });
+
+  it("reads the entry's whole chunk list: the names live in a lazy chunk no page names, which read as 'does not carry' on the live app", () => {
+    const entry = 'const __vite__mapDeps=["assets/Footer-COGdNeJS.js","assets/employer-CJLYvvCU.js","assets/Jobs-DDDDDDDD.js"];';
+    const r = run(routes({ pub: false, entry, chunks: { "employer-CJLYvvCU.js": MIRROR, "Footer-COGdNeJS.js": "footer", "Jobs-DDDDDDDD.js": "jobs" } }));
+    expect(has(r.lines, "INFO", /the served app carries this round's employer names \(in employer-CJLYvvCU\.js/), show(r.lines)).toBe(true);
+    expect(verdicts(r.lines, "FAIL"), show(r.lines)).toEqual([]);
+    // The chunk the name points at is read first, and the walk stops there.
+    expect(r.calls.filter((c) => /assets\/(?:Footer|Jobs)-/.test(c))).toEqual([]);
+    // A chunk holding a NUL byte is not a binary file to this walk: plain grep skips it without a word.
+    const nul = run(routes({ pub: false, entry: 'x="assets/Other-EEEEEEEE.js"', chunks: { "Other-EEEEEEEE.js": `\u0000${MIRROR}` } }));
+    expect(has(nul.lines, "INFO", /carries this round's employer names \(in Other-EEEEEEEE\.js/), show(nul.lines)).toBe(true);
+    // A chunk named only by another chunk is out of reach only if the entry does not name it.
+    const none = run(routes({ pub: false, entry, chunks: { "employer-CJLYvvCU.js": "no names", "Footer-COGdNeJS.js": "footer", "Jobs-DDDDDDDD.js": "jobs" } }));
+    expect(has(none.lines, "FAIL", /no chunk of the served app holds this round's employer names \(5 script\(s\) read/), show(none.lines)).toBe(true);
+    expect(none.lines.join("\n")).not.toMatch(/frontend publish|until the publish|the publish that carries this round/);
+    const noEntry = run(routes({ pub: false, shell: "<html></html>" }));
+    expect(has(noEntry.lines, "FAIL", /the served app.s entry could not be read/), show(noEntry.lines)).toBe(true);
+  });
+
+  it("A1: a reader that leaves out a cleared board cannot hide it: an empty answer or a missing row is a FAIL naming the boards", () => {
+    const rows = (skip: string) => JSON.stringify(CLEARED.filter(([, t]) => t !== skip).map(([, t]) => ({ company_token: t, open_roles: 3, feed_total: 10, feed_read_at: iso(1 * H), feed_state: "ok", fills_90d: 1 })));
+    const empty = run(routes({ curveBody: "[]" }));
+    expect(has(empty.lines, "FAIL", new RegExp(`A1 get_company_fill_curve answered 0 row\\(s\\) for the ${new Set(CLEARED.map(([, t]) => t)).size} cleared boards.*${esc(CONVERGINT)}`)), show(empty.lines)).toBe(true);
+    const missing = run(routes({ curveBody: rows(CONVERGINT) }));
+    expect(has(missing.lines, "FAIL", new RegExp(`A1 get_company_fill_curve answered 19 row\\(s\\) for the 20 cleared boards and none for: ${esc(CONVERGINT)}`)), show(missing.lines)).toBe(true);
+    const whole = run(routes());
+    expect(has(whole.lines, "FAIL", /A1 get_company_fill_curve answered/), show(whole.lines)).toBe(false);
+  });
+
+  it("A1 names a cleared board that serves nothing: a large feed is a FAIL once due, a small one is named, and a stale reader row is not believed", () => {
+    const lost = { [CONVERGINT]: { open_roles: 0, feed_total: 294, feed_read_at: "2026-11-02T16:54:22.995+00:00", feed_state: "ok", fills_90d: 188 } };
+    const due = run(routes({ curve: lost, solo: { [CONVERGINT]: 0 }, ownTotal: { [CONVERGINT]: 294 }, buildSince: iso(30 * H) }));
+    expect(has(due.lines, "FAIL", /A1 Convergint serves 0 rows though its feed listed 294 \(read 2026-11-02T16:54:22\.995\+00:00, state ok, 188 fills in 90 days\) and the board's own total is 294.*job_board_board_state.*vendor read.*closures are false/), show(due.lines)).toBe(true);
+    // The agency line is a different claim, and still holds.
+    expect(has(due.lines, "PASS", /A1 all 2 row\(s\) on the 20 employers' own boards cleared of the flag carry agency false/), show(due.lines)).toBe(true);
+    const early = run(routes({ curve: lost, solo: { [CONVERGINT]: 0 }, ownTotal: { [CONVERGINT]: 294 } }));
+    expect(has(early.lines, "INFO", /A1 Convergint serves 0 rows though its feed listed 294/), show(early.lines)).toBe(true);
+    expect(early.lines.filter((l) => /^FAIL  A1 Convergint/.test(l)), show(early.lines)).toEqual([]);
+    const small = run(routes({ curve: { "30e05070-07b1-4b26-9028-b97dae32cdd1": { open_roles: 0, feed_total: 19, feed_state: "empty", fills_90d: 0 }, studentplacements: { open_roles: 0, feed_total: null, feed_read_at: null, feed_state: null, fills_90d: 0 } }, solo: { "30e05070-07b1-4b26-9028-b97dae32cdd1": 0, studentplacements: 0 }, buildSince: iso(30 * H) }));
+    expect(has(small.lines, "INFO", /A1 2 cleared board\(s\) serve no row, none with a feed of 50 or more: 30e05070-07b1-4b26-9028-b97dae32cdd1 \(feed 19, state empty.*0 fills\); studentplacements \(no feed read\b/), show(small.lines)).toBe(true);
+    expect(small.lines.filter((l) => /^FAIL  A1/.test(l)), show(small.lines)).toEqual([]);
+    const stale = run(routes({ curve: lost, solo: { [CONVERGINT]: 12 }, buildSince: iso(30 * H) }));
+    expect(stale.lines.filter((l) => /A1 Convergint/.test(l)), show(stale.lines)).toEqual([]);
+    expect(has(run(routes({ curve: lost, solo: { [CONVERGINT]: "<html>gateway" }, buildSince: iso(30 * H) })).lines, "FAIL", /A1 recruiting2~CON1074CVTG.*the list is unreadable/)).toBe(true);
+    expect(has(run(routes({ curveBody: '{"code":"42501"}' })).lines, "FAIL", /A1 get_company_fill_curve is unreadable/)).toBe(true);
+    // Only the boards the reader says are empty are asked again.
+    expect(run(routes()).calls.filter((c) => /"limit":1\}/.test(c) && c.includes(`"companies":["${CONVERGINT}"]`))).toEqual([]);
+  });
+
+  describe("A1 reads the board's own total beside the curve, because the curve keeps a stale positive total for 7 days after the vendor's total goes to 0", () => {
+    const OTHER = "geant";
+    const lost = { [CONVERGINT]: { open_roles: 0, feed_total: 294, feed_read_at: "2026-11-02T16:54:22.995+00:00", feed_state: "ok", fills_90d: 188 } };
+    const due = (o: Over) => run(routes({ curve: lost, solo: { [CONVERGINT]: 0 }, buildSince: iso(30 * H), ...o }));
+    const a1 = (lines: string[]) => lines.filter((l) => /A1 Convergint/.test(l));
+
+    it("a board whose own total is 0 reads INFO and says only what it read: a last read that stated 0, after the curve's total, which cannot tell a move from one bad read", () => {
+      const { lines } = due({ ownTotal: { [CONVERGINT]: 0 } });
+      expect(has(lines, "INFO", /A1 Convergint serves 0 rows and the board's own total is 0: the last read stated 0, after the curve's 294 \(read 2026-11-02T16:54:22\.995\+00:00\)/), show(lines)).toBe(true);
+      expect(has(lines, "INFO", /This line cannot tell an employer that moved or emptied from one bad read of 0: one vendor read settles it, and closures from a bad read are false/), show(lines)).toBe(true);
+      expect(a1(lines).filter((l) => /is stale/.test(l)), "it read two numbers: it does not know which one is wrong").toEqual([]);
+      expect(lines.filter((l) => /^FAIL  A1 Convergint/.test(l)), show(lines)).toEqual([]);
+    });
+
+    it("the original defect still FAILs: a positive own total with zero served, naming the board, on any cleared board and not only Convergint", () => {
+      const pos = due({ ownTotal: { [CONVERGINT]: 1 } });
+      expect(has(pos.lines, "FAIL", /A1 Convergint serves 0 rows though its feed listed 294 .* and the board's own total is 1/), show(pos.lines)).toBe(true);
+      const curve = { [OTHER]: { open_roles: 0, feed_total: 75, feed_read_at: "2026-11-04T10:00:00.000+00:00", feed_state: "ok", fills_90d: 3 } };
+      const other = run(routes({ curve, solo: { [OTHER]: 0 }, ownTotal: { [OTHER]: 75 }, buildSince: iso(30 * H) }));
+      expect(has(other.lines, "FAIL", /A1 \S*geant\S* serves 0 rows though its feed listed 75 .* and the board's own total is 75/i), show(other.lines)).toBe(true);
+      const otherZero = run(routes({ curve, solo: { [OTHER]: 0 }, ownTotal: { [OTHER]: 0 }, buildSince: iso(30 * H) }));
+      expect(has(otherZero.lines, "INFO", /A1 \S*geant\S* serves 0 rows and the board's own total is 0/i), show(otherZero.lines)).toBe(true);
+    });
+
+    it("an unreadable health read does not PASS: it FAILs naming the board, and so does a row with no such field or no row at all", () => {
+      for (const o of [{ healthBody: "<html>gateway" }, { healthBody: '{"code":"42501"}' }, { healthBody: "[]" }, { healthBody: JSON.stringify([{ company_token: CONVERGINT, open_roles: 0 }]) }, {}] as Over[]) {
+        const { lines } = due(o);
+        expect(has(lines, "FAIL", /A1 Convergint serves 0 rows though its feed listed 294 .* and the board's own total could not be read.*vendor read/), `${JSON.stringify(o)}\n${show(lines)}`).toBe(true);
+        expect(a1(lines).filter((l) => /03:51/.test(l)), `an answer that did not say null is not a stamp the cleanup removed: ${JSON.stringify(o)}`).toEqual([]);
+        expect(a1(lines).filter((l) => /^(PASS|INFO)/.test(l)), show(lines)).toEqual([]);
+      }
+      // Another board's reply is not this board's total.
+      const elsewhere = due({ ownTotal: { [OTHER]: 0 } });
+      expect(has(elsewhere.lines, "FAIL", /A1 Convergint .* could not be read/), show(elsewhere.lines)).toBe(true);
+    });
+
+    it("a health row whose total is null still FAILs, and says it read no stamp: the nightly orphan cleanup deletes the stamp of a board with no stored rows until its next visit", () => {
+      const { lines } = due({ ownTotal: { [CONVERGINT]: null } });
+      expect(has(lines, "FAIL", /A1 Convergint serves 0 rows though its feed listed 294 .* and the board's own total is null \(no stamp, as the 03:51 UTC orphan cleanup leaves a board with no stored rows; read again after one lap\).*vendor read/), show(lines)).toBe(true);
+      expect(a1(lines).filter((l) => /could not be read/.test(l)), "the reader answered: null is what it said").toEqual([]);
+      expect(a1(lines).filter((l) => /^(PASS|INFO)/.test(l)), show(lines)).toEqual([]);
+    });
+
+    it("before the first day an unread or positive total waits as INFO, and a 0 reads the same at any age", () => {
+      const early = (o: Over) => run(routes({ curve: lost, solo: { [CONVERGINT]: 0 }, ...o })).lines;
+      for (const o of [{ ownTotal: { [CONVERGINT]: 294 } }, {}] as Over[]) expect(early(o).filter((l) => /^FAIL  A1 Convergint/.test(l)), show(early(o))).toEqual([]);
+      expect(has(early({ ownTotal: { [CONVERGINT]: 0 } }), "INFO", /A1 Convergint serves 0 rows and the board's own total is 0/)).toBe(true);
+    });
+
+    it("asks the reader only for a board the curve says is empty with a total of 50 or more, and a clean run does not ask at all", () => {
+      const asks = (lines: { calls: string[] }) => lines.calls.filter((c) => c.includes("get_company_hiring_health"));
+      const one = run(routes({ curve: { ...lost, [OTHER]: { open_roles: 0, feed_total: 19, feed_state: "empty", fills_90d: 0 } }, solo: { [CONVERGINT]: 0, [OTHER]: 0 }, ownTotal: { [CONVERGINT]: 0 }, buildSince: iso(30 * H) }));
+      expect(asks(one), one.calls.join("\n")).toHaveLength(1);
+      expect(asks(one)[0]).toContain(`"p_tokens":["${CONVERGINT}"]`);
+      expect(asks(one)[0]).not.toContain(OTHER);
+      expect(asks(run(routes()))).toEqual([]);
+    });
+
+    it("a list serving rows still ends the question, whatever either reader says", () => {
+      const { lines } = due({ solo: { [CONVERGINT]: 12 }, ownTotal: { [CONVERGINT]: 0 } });
+      expect(a1(lines), show(lines)).toEqual([]);
+    });
   });
 
   it("a good .98 deploy prints no C1 or C2 FAIL", () => {

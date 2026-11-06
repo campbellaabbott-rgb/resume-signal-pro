@@ -27,6 +27,13 @@
  * placeholder date, a date before land/all's last change, a date after the
  * deploy's record, a publish with no record at all, a description that names
  * another entry, and an older build.
+ *
+ * NEWER ENTRIES SIT ABOVE THESE (the changelog of 2 November). The seventeen
+ * are found by their first key, not by being the newest, and the description
+ * is judged against the first entry the page lists: a later batch on top is
+ * the healthy case, and it printed a FAIL when the line pinned this batch's
+ * title. A title newer entries pushed past the newest 30 passes only when the
+ * page really lists 30 entries that are all at least as new.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -51,9 +58,11 @@ const PENDING = existsSync(PENDING_FILE)
   : null;
 /** The day the healthy fixture's deploy went live and was recorded. */
 const DAY = "2026-11-02";
+const THIS_AT = TREE.findIndex((e) => e.id === "theHomePageIsTheJobSearch");
 const THIS_DEPLOY = PENDING
   ? PENDING.entries.map((e) => ({ id: e.key, date: DAY, tags: e.category.split(",").map((t) => t.trim()).filter(Boolean) }))
-  : TREE.slice(0, 17);
+  : TREE.slice(THIS_AT, THIS_AT + 17);
+const OURS = new Set(THIS_DEPLOY.map((e) => e.id));
 /** The site after the changelog step: this deploy's entries above the tree's, and their English text. */
 const ENTRIES = PENDING ? [...THIS_DEPLOY, ...TREE] : TREE;
 const EN: Record<string, Text> = PENDING ? { ...TREE_EN, ...Object.fromEntries(PENDING.entries.map((e) => [e.key, e.en])) } : TREE_EN;
@@ -86,7 +95,7 @@ const TAG = { new: "New", improved: "Improved", fixed: "Fixed" } as Record<strin
 
 /** The crawler /changelog as the bake writes it (scripts/prerender-seo.mjs): its description and the newest 30 articles. */
 function changelogPage(over: { titles?: (t: string) => string | null; date?: string; first?: string } = {}): string {
-  const items = ENTRIES.slice(0, 30).map((e, i) => ({ ...e, title: i < 17 && over.titles ? over.titles(EN[e.id].title) : EN[e.id]?.title, date: i < 17 && over.date ? over.date : e.date }));
+  const items = ENTRIES.slice(0, 30).map((e) => ({ ...e, title: OURS.has(e.id) && over.titles ? over.titles(EN[e.id].title) : EN[e.id]?.title, date: OURS.has(e.id) && over.date ? over.date : e.date }));
   const shown = items.filter((e) => e.title);
   const first = over.first ?? `${shown[0].date}): ${shown[0].title}`;
   return `<html><head><meta name="description" content="What changed and when, newest first — including honest postmortems. Latest (${esc(first)}."></head><body><main><h1>Changelog</h1><div class="space-y-4">${shown
@@ -169,7 +178,7 @@ describe("the premise: the seventeen entries 52b names wait for the deploy, or f
     expect(THIS_DEPLOY).toHaveLength(17);
     expect(listed).toEqual(TITLES);
     expect(THIS_DEPLOY[0].id).toBe("theHomePageIsTheJobSearch");
-    expect(ENTRIES[17].id).toBe("workdayCompanyPagesLostTheirFacts");
+    expect(ENTRIES[ENTRIES.findIndex((e) => e.id === THIS_DEPLOY[16].id) + 1].id).toBe("workdayCompanyPagesLostTheirFacts");
   });
 
   it("while they are pending the tree carries none of them, and the pending file dates nothing", () => {
@@ -209,6 +218,38 @@ describe("section 52b on a healthy deploy, after the publish", () => {
     for (const l of lines) expect(l, l).toMatch(/^(PASS|FAIL|INFO|==) /);
     expect(calls.some((c) => c.includes("en-GB-")), "the section read the British chunk").toBe(false);
     for (const c of calls) expect(c, c).toMatch(/^(GET|OPTIONS) /);
+  });
+});
+
+describe("newer entries above these are the healthy case", () => {
+  const article = (date: string, title: string) => `<article class="rounded-xl border border-border bg-card p-4"><p class="text-xs text-muted-foreground mb-1">${date} · Fixed</p><h2 class="text-sm font-semibold text-foreground mb-1">${esc(title)}</h2></article>`;
+  const page = (date: string, n = 30) => `<html><head><meta name="description" content="What changed and when, newest first — including honest postmortems. Latest (${date}): Entry 0."></head><body><main><h1>Changelog</h1><div class="space-y-4">${Array.from({ length: n }, (_, i) => article(date, `Entry ${i}`)).join("")}</div></main></body></html>`;
+
+  it("a batch above these: the description names that batch's first entry, and 52b passes it", () => {
+    const newer = `<html><head><meta name="description" content="What changed and when, newest first — including honest postmortems. Latest (2026-12-01): A newer entry."></head><body><main><h1>Changelog</h1><div class="space-y-4">${article("2026-12-01", "A newer entry")}${changelogPage().split('<div class="space-y-4">')[1]}`;
+    const { lines } = run({ changelog: newer });
+    expect(fails(lines), show(lines)).toEqual([]);
+    expect(has(lines, "PASS", /^\/changelog's description names the newest entry, "A newer entry"$/), show(lines)).toBe(true);
+  });
+
+  it("thirty newer entries push the seventeen off the page: each title is judged in the US strings and passes, and the date is INFO", () => {
+    const { lines } = run({ changelog: page("2026-12-01") });
+    expect(fails(lines), show(lines)).toEqual([]);
+    for (const t of TITLES) expect(has(lines, "PASS", new RegExp(`^"${t.replace(/[.*+?^\${}()|[\]\\]/g, "\\$&")}" is past the newest 30 entries the crawler page lists, and the US English changelog strings carry it$`)), t).toBe(true);
+    expect(has(lines, "INFO", /^"The home page is now the job search" is past the newest 30 entries the crawler page lists, so its date cannot be read there$/), show(lines)).toBe(true);
+  });
+
+  it("thirty entries OLDER than the seventeen is a prerender that did not rebuild, not a batch that pushed them off: FAIL", () => {
+    const { lines } = run({ changelog: page("2026-10-11") });
+    for (const t of TITLES) expect(has(lines, "FAIL", new RegExp(`carry "${t.replace(/[.*+?^\${}()|[\]\\]/g, "\\$&")}", but the crawler copy of /changelog does not`)), t).toBe(true);
+    expect(lines.some((l) => /^PASS .*is past the newest 30/.test(l)), show(lines)).toBe(false);
+    expect(has(lines, "FAIL", /^\/changelog lists no date beside "The home page is now the job search"/), show(lines)).toBe(true);
+  });
+
+  it("fewer than thirty entries cannot have pushed anything off: FAIL", () => {
+    const { lines } = run({ changelog: page("2026-12-01", 29) });
+    for (const t of TITLES) expect(has(lines, "FAIL", new RegExp(`carry "${t.replace(/[.*+?^\${}()|[\]\\]/g, "\\$&")}", but the crawler copy of /changelog does not`)), t).toBe(true);
+    expect(lines.some((l) => /^PASS .*is past the newest 30/.test(l)), show(lines)).toBe(false);
   });
 });
 
@@ -267,7 +308,13 @@ describe("each claim can FAIL after the publish", () => {
     const sameDayAsLanding = run({ changelog: changelogPage({ date: "2026-10-31" }), recorded: "2026-11-02" }).lines;
     expect(has(sameDayAsLanding, "PASS", /^\/changelog dates this deploy's entries 2026-10-31 \(the deploy was recorded 2026-11-02\)$/), show(sameDayAsLanding)).toBe(true);
     const other = run({ changelog: changelogPage({ first: `${PUBLISHED_DAY}): Jobs filed in the wrong country` }) }).lines;
-    expect(has(other, "FAIL", /^\/changelog's description does not name "The home page is now the job search"/), show(other)).toBe(true);
+    expect(has(other, "FAIL", /^\/changelog's description names "Jobs filed in the wrong country" as the newest entry, but the first entry the page lists is "/), show(other)).toBe(true);
+    expect(has(other, "PASS", /^\/changelog's description names the newest entry/), show(other)).toBe(false);
+  });
+
+  it("a description with no newest entry at all", () => {
+    const none = run({ changelog: changelogPage().replace(/ Latest \([^"]*"/, '"') }).lines;
+    expect(has(none, "FAIL", /^\/changelog's description names no newest entry/), show(none)).toBe(true);
   });
 
   it("an older build, and a preflight with no build, of a function an entry describes as live", () => {

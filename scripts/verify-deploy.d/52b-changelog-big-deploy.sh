@@ -9,11 +9,11 @@
 # docs/changelog-pending/one-deploy.json, and the changelog step (deploy notes,
 # after verify and --record-deploy) applies them with
 # scripts/apply-pending-changelog.mjs in a frontend-only publish.
-# With the twelve entries section 52 judges (17, 18 and 25 October) they are
-# 29 of the newest 30 entries the crawler copy of /changelog lists, so each
-# title must be on that page. Section 52 has no fallback for a title pushed
-# past the newest 30: one more entry above these (an 18th) is the most the
-# page can take before section 52 FAILs.
+# The crawler copy of /changelog lists only the newest 30 entries, so each
+# title must be on that page, or be past it: the US chunk carries the title and
+# the page really lists 30 entries, none older than this batch's day. A bake
+# from before them, or a title lost from the list, leaves older entries on the
+# page and still FAILs.
 #
 # BEFORE AND AFTER THAT PUBLISH. The US English changelog chunk the browser
 # loads (scripts/verify-us-english.sh, never en-GB) tells the two apart: it
@@ -70,11 +70,17 @@ else
   echo "INFO  the US English changelog chunk ($VD52B_CH) does not carry this deploy's entries yet: the changelog step after the deploy verifies has not been published, so every line below is INFO"
 fi
 
-# Every title, on the crawler page.
+# Every title, on the crawler page or past the newest 30 it lists.
+VD52B_DATES=$(printf '%s' "$VD52B_CL" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2} · [A-Za-z ·]*</p><h2' | cut -c1-10)
+VD52B_N=$(printf '%s' "$VD52B_DATES" | grep -c '^[0-9]')
+VD52B_OLDEST=$(printf '%s\n' "$VD52B_DATES" | sort | head -1)
+VD52B_PAST=0
+if [ "$VD52B_N" -ge 30 ] && [ ! "$VD52B_OLDEST" \< "2026-10-31" ]; then VD52B_PAST=1; fi
 while IFS= read -r T; do
   [ -n "$T" ] || continue
   if printf '%s' "$VD52B_CL" | grep -qF "$T"; then echo "PASS  /changelog serves crawlers \"$T\""
-  elif [ "$VD52B_PUB" = 1 ] && printf '%s' "$VD52B_US" | grep -qF "$T"; then echo "FAIL  the US English changelog strings carry \"$T\", but the crawler copy of /changelog does not (the prerender did not rebuild, or newer entries pushed it past the newest 30)"
+  elif [ "$VD52B_PUB" = 1 ] && [ "$VD52B_PAST" = 1 ] && printf '%s' "$VD52B_US" | grep -qF "$T"; then echo "PASS  \"$T\" is past the newest 30 entries the crawler page lists, and the US English changelog strings carry it"
+  elif [ "$VD52B_PUB" = 1 ] && printf '%s' "$VD52B_US" | grep -qF "$T"; then echo "FAIL  the US English changelog strings carry \"$T\", but the crawler copy of /changelog does not (the prerender did not rebuild)"
   elif [ "$VD52B_PUB" = 1 ]; then echo "FAIL  this deploy's entries are published, but neither /changelog nor the US English changelog strings carry \"$T\" (an entry was dropped or retitled when it landed)"
   else echo "INFO  /changelog does not serve \"$T\" yet (the changelog step after the deploy verifies has not been published)"; fi
 done <<'VD52B_TITLES'
@@ -97,20 +103,25 @@ A second analysis in one tab, a throttled sign-in email and an expired reset lin
 Pages that hold still, and what search engines read
 VD52B_TITLES
 
-# The date the changelog step wrote, against the deploy's record, and the page's description, which quotes the newest title.
+# The date the changelog step wrote, against the deploy's record, and the page's description,
+# which quotes the first entry the page lists: a later batch above these is the healthy case.
 VD52B_LEDGER=${VD52B_LEDGER:-docs/deploy-ledger.json}
 VD52B_REC=$(node -e 'let p={};try{p=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))}catch{};const ok=(b)=>{const m=/^job-board\.(\d{4}-\d{2}-\d{2})\.(\d+)$/.exec(String(b||""));return !!m&&(m[1]>"2026-09-09"||(m[1]==="2026-09-09"&&Number(m[2])>=96))};const d=(p.verifiedDeploys||[]).filter((e)=>ok(e&&e.functions&&e.functions["job-board"])).map((e)=>String(e.date||"")).filter((x)=>/^\d{4}-\d{2}-\d{2}$/.test(x)).sort();process.stdout.write(d[0]||"")' "$VD52B_LEDGER" 2>/dev/null)
 if printf '%s' "$VD52B_CL" | grep -q "DATE_OF_DEPLOY"; then
   echo "FAIL  /changelog prints the placeholder DATE_OF_DEPLOY: the changelog step did not fill the entries' date"
 elif [ "$VD52B_PUB" = 1 ]; then
   VD52B_DATE=$(printf '%s' "$VD52B_CL" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2} · [A-Za-z ·]*</p><h2[^>]*>The home page is now the job search<' | head -1 | cut -c1-10)
-  if [ -z "$VD52B_DATE" ]; then echo "FAIL  /changelog lists no date beside \"The home page is now the job search\""
+  if [ -z "$VD52B_DATE" ] && [ "$VD52B_PAST" = 1 ]; then echo "INFO  \"The home page is now the job search\" is past the newest 30 entries the crawler page lists, so its date cannot be read there"
+  elif [ -z "$VD52B_DATE" ]; then echo "FAIL  /changelog lists no date beside \"The home page is now the job search\""
   elif [ -z "$VD52B_REC" ]; then echo "FAIL  /changelog carries this deploy's entries (dated $VD52B_DATE), but $VD52B_LEDGER verifiedDeploys records no deploy serving job-board 2026-09-09.96 or later: the entries went out before the deploy was verified and recorded"
   elif [ "$VD52B_DATE" \< "2026-10-31" ]; then echo "FAIL  /changelog dates this deploy's entries $VD52B_DATE, before land/all's last change (2026-10-31): nothing they describe was live then"
   elif [ "$VD52B_DATE" \> "$VD52B_REC" ]; then echo "FAIL  /changelog dates this deploy's entries $VD52B_DATE, after the deploy was recorded ($VD52B_REC): an entry is dated by the day its change went live, which comes before the record"
   else echo "PASS  /changelog dates this deploy's entries $VD52B_DATE (the deploy was recorded $VD52B_REC)"; fi
-  if printf '%s' "$VD52B_CL" | grep -qE 'Latest \([0-9]{4}-[0-9]{2}-[0-9]{2}\): The home page is now the job search\.'; then echo "PASS  /changelog's description names the newest entry, \"The home page is now the job search\""
-  else echo "FAIL  /changelog's description does not name \"The home page is now the job search\" as the newest entry (another entry sits above it in changelog.ts, or the bake did not rebuild)"; fi
+  VD52B_LATEST=$(printf '%s' "$VD52B_CL" | grep -oE 'Latest \([0-9]{4}-[0-9]{2}-[0-9]{2}\): [^"]*"' | head -1 | sed -E 's/^Latest \([^)]*\): //; s/\."$//')
+  VD52B_FIRST=$(printf '%s' "$VD52B_CL" | grep -oE '</p><h2[^>]*>[^<]*<' | head -1 | sed -E 's/^<\/p><h2[^>]*>//; s/<$//')
+  if [ -z "$VD52B_LATEST" ]; then echo "FAIL  /changelog's description names no newest entry (the bake fell back to its no-entries sentence, or its markup moved)"
+  elif [ "$VD52B_LATEST" = "$VD52B_FIRST" ]; then echo "PASS  /changelog's description names the newest entry, \"$VD52B_LATEST\""
+  else echo "FAIL  /changelog's description names \"$VD52B_LATEST\" as the newest entry, but the first entry the page lists is \"$VD52B_FIRST\" (the bake did not rebuild both)"; fi
 else
   echo "INFO  the entries' date and the page description are judged after the publish"
 fi

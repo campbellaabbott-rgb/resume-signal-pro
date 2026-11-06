@@ -105,7 +105,9 @@ console.log("INFO  rb-auth-mail-drain cron: schedule "+JSON.stringify(q.ch_sched
 # The sentinel, from its public status reader (it is never run from here).
 R get_scan_health_status '{}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{}const r=Array.isArray(j)?j[0]:j;if(!r){console.log("INFO  get_scan_health_status unreadable: "+s.slice(0,120));return}
 const age=r.last_heartbeat_time?Math.round((Date.now()-Date.parse(r.last_heartbeat_time))/60000):null;
-console.log((age!==null&&age<=20?"PASS":"FAIL")+"  the sentinel ran "+(age===null?"never":age+" min ago")+", status "+r.last_heartbeat_status+" (a run older than 20 min after the deploy means its cron is refused: check the key)");
+console.log((age!==null&&age<=20?"PASS":"FAIL")+"  the sentinel ran "+(age===null?"never":age+" min ago")+" (a run older than 20 min after the deploy means its cron is refused: check the key)");
+const hb=String(r.last_heartbeat_status??"");
+console.log((hb==="down"||hb==="unhealthy"?"FAIL":"INFO")+"  the sentinel\x27s last run says status "+hb+(hb==="down"||hb==="unhealthy"?": the product was found failing; section 92 judges the AI chain by its scan time. OWNER: open /scan-metrics and read the heartbeat":" (only down or unhealthy is a FAIL here: degraded covers any one of its optional checks)"));
 console.log("INFO  last_successful_scan "+r.last_successful_scan+", scans_last_hour "+r.scans_last_hour+" (the heartbeat now runs an uncached scan every 10 min, typed heartbeat)");})'
 # The heartbeat's uncached scan is not a resume anyone scanned: the public counter must not climb 6 an hour by itself.
 R get_today_scan_count '{}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const n=Number(s);const h=new Date().getUTCHours()+new Date().getUTCMinutes()/60;

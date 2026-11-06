@@ -497,10 +497,19 @@ if [ -f "$LCA_PAYLOAD" ]; then
   export LCA_FROM="$(lcaconst LCA_COVERAGE_FROM)" LCA_TO="$(lcaconst LCA_COVERAGE_TO)"
   export LCA_CELLS="$(lcaconst LCA_CELL_COUNT)" LCA_TOKENS="$(lcaconst LCA_TOKEN_COUNT)" LCA_WRITES="$(lcaconst LCA_CELL_WRITES)"
   echo "INFO  the bundle carries $LCA_CELLS cells / $LCA_TOKENS tokens / $LCA_WRITES filings, labelled \"$LCA_Q\" ($LCA_FROM..$LCA_TO) from $LCA_FILE published $LCA_PUB"
+  # What lca_wages writes is the bundle less its refusals, so the resident load
+  # answers to those counts, computed from the same rules the loader runs.
+  export LCA_KEPT="$(npx --no-install tsx scripts/verify-lca-post-refusal.mjs 2>/dev/null)"
   R get_lca_load_state '{}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  lca load state non-JSON")}const r=Array.isArray(j)?j[0]:j;if(!r)return console.log("FAIL  lca load state answered no row");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);if(!Number(r.ls_cells))return console.log("INFO  the period is not loaded yet: 0 cells resident (fire the lca_wages POST)");
-ok(String(r.ls_cells)===process.env.LCA_CELLS,"every cell landed: "+r.ls_cells+" resident, bundle carries "+process.env.LCA_CELLS);
-ok(String(r.ls_tokens)===process.env.LCA_TOKENS,"every board token landed: "+r.ls_tokens+" of "+process.env.LCA_TOKENS);
-ok(String(r.ls_filings)===process.env.LCA_WRITES,"the filings behind them: "+r.ls_filings+" of "+process.env.LCA_WRITES);
+let kept=null;try{kept=JSON.parse(process.env.LCA_KEPT||"")}catch{}
+const stale=" -- the resident load predates the refusals: the owner\x27s POST {action:\"lca_wages\"} on layoff-filings has not run since they shipped";
+const raw=String(r.ls_cells)===process.env.LCA_CELLS;
+if(!kept)console.log("INFO  this checkout could not count what the refusals keep (npx tsx unavailable), so "+r.ls_cells+" resident cells, "+r.ls_tokens+" tokens and "+r.ls_filings+" filings are not judged");
+else{
+ok(Number(r.ls_cells)===kept.cells,"every cell the refusals keep landed: "+r.ls_cells+" resident, want "+kept.cells+" (the bundle carries "+process.env.LCA_CELLS+")"+(raw?stale:""));
+ok(Number(r.ls_tokens)===kept.tokens,"every board token the refusals keep landed: "+r.ls_tokens+" of "+kept.tokens+" (the bundle carries "+process.env.LCA_TOKENS+")"+(raw?stale:""));
+ok(Number(r.ls_filings)===kept.filings,"the filings behind them: "+r.ls_filings+" of "+kept.filings+" (the bundle carries "+process.env.LCA_WRITES+")"+(raw?stale:""));
+}
 ok(Number(r.ls_periods)===1,"exactly one labelled period is resident ("+r.ls_periods+") -- more than one is a load that left a mixture");
 ok(r.ls_fiscal_quarter===process.env.LCA_Q,"label -> "+r.ls_fiscal_quarter+" (bundle says "+process.env.LCA_Q+")");
 ok(String(r.ls_published_on).slice(0,10)===process.env.LCA_PUB,"published on -> "+String(r.ls_published_on).slice(0,10));
@@ -745,8 +754,25 @@ NC=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$B/rest/v1/checkout_starts_ne
 [ "$NC" = "404" ] && echo "PASS  negative control checkout_starts_never_existed -> 404" || echo "FAIL  negative control -> HTTP $NC (the 42501 above cannot be read as presence)"
 probe record_checkout_start '{"p_stripe_session_id":"cs_probe_anon_denied_000","p_checkout_function":"verify-deploy","p_product_type":"probe","p_product_id":"verify-probe","p_visitor_id":"verify-probe","p_amount_cents":0,"p_currency":"usd","p_origin_path":"/","p_mode":"payment","p_metadata":{}}'
 
-echo "== 7c. the writer's key names the variant: later funnel stages leave zero (a day of traffic after deploy) =="
-R get_funnel_cohort_stats '{"p_cohort_dimension":"trafficSource","p_days_back":1}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  cohort reader non-JSON: "+s.slice(0,120))}if(!Array.isArray(j))return console.log("FAIL  cohort reader: "+JSON.stringify(j).slice(0,160));const sum=k=>j.reduce((a,r)=>a+Number(r[k]||0),0);const later=["upload_started","scan_started","results_viewed","product_clicked","checkout_started","purchase_completed"];const t={};for(const k of ["landing_view",...later])t[k]=sum(k);console.log("INFO  24h stages: "+JSON.stringify(t)+" (baseline 2026-09-27: landing 136,048/30d, every later stage 0)");const any=later.some(k=>t[k]>0);console.log((any?"PASS":"INFO")+"  a later stage is non-zero"+(any?"":" -- not yet: judge this a day after deploy, not on the hour"))})'
+echo "== 7c. the funnel reader and writer answer, and count only people who opted in =="
+# THE WINDOW STAYS INSIDE THE STEP. landing_view fell from tens of rows a day to
+# about one around 2026-11-01, so a window reaching past that day passes on rows
+# from before it. It is the whole days since 2026-11-02, at most a week.
+VD7C_DAYS=$(node -e 'process.stdout.write(String(Math.max(1,Math.min(7,Math.floor((Date.now()-Date.parse("2026-11-02T00:00:00Z"))/864e5)))))')
+R get_funnel_cohort_stats '{"p_cohort_dimension":"trafficSource","p_days_back":1}' > /tmp/vd_7c_1.json
+R get_funnel_cohort_stats "{\"p_cohort_dimension\":\"trafficSource\",\"p_days_back\":$VD7C_DAYS}" > /tmp/vd_7c_w.json
+VD7C_DAYS="$VD7C_DAYS" node -e '
+const fs=require("fs");const rd=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
+const d1=rd("/tmp/vd_7c_1.json"),d7=rd("/tmp/vd_7c_w.json"),days=process.env.VD7C_DAYS,since="since 2026-11-02 (the last "+days+" day(s))";
+const stages=(j)=>{const t={};for(const k of ["landing_view","upload_started","scan_started","results_viewed","product_clicked","checkout_started","purchase_completed"])t[k]=j.reduce((a,r)=>a+Number(r[k]||0),0);return t};
+if(!Array.isArray(d7)||!Array.isArray(d1)){console.log("FAIL  cohort reader: "+JSON.stringify(Array.isArray(d7)?d1:d7).slice(0,160));process.exit(0)}
+const w=stages(d7);
+console.log("INFO  funnel stages, 24h "+JSON.stringify(stages(d1))+", "+since+" "+JSON.stringify(w)+". Since about 2026-11-01 these count only people who opted in to analytics (the consent gate is the inferred cause of the step), so they are not traffic: 2026-11-05 read landing_view 1 over 4 days, 112 over 7 and 3,999 over 30, and no older baseline applies");
+const later=["upload_started","scan_started","results_viewed","product_clicked","checkout_started","purchase_completed"].filter((k)=>w[k]>0);
+if(w.landing_view>=3)console.log("PASS  the funnel records and reads back consenting visitors: "+w.landing_view+" landing_view "+since);
+else console.log("INFO  "+w.landing_view+" landing_view "+since+": this cannot separate a dead writer from no one opting in (at about one row in four days a live writer gives zero in a week about one time in six). The proof of the writer is a consenting test visit, an owner step, not a count");
+if(later.length)console.log("PASS  a later funnel stage records "+since+": "+later.map((k)=>k+" "+w[k]).join(", "));
+else console.log("INFO  no later funnel stage holds a row "+since+": with so few opt-ins that is not a broken writer");'
 
 echo "== 7d. the crawler reads the prices: /pricing sells Pro at \$45 and nothing retired, /agents names no retired price =="
 # Re-pointed 2026-10-24 (profiles+design verify triage). The apply pivot

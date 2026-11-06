@@ -23,18 +23,23 @@
  *     filler searched, the ZIP unnamed, one cold isolate's SIMPLE route in four
  *     asks, Vienna VA under Wien on either path, a ranked Wien search with no
  *     anchored arm, and the 7-card page at offset 174;
+ *   - a Wien row whose location names a US state and ZIP is a FAIL at any depth
+ *     of the list and with no country on file, as live on 2026-11-05, unless the
+ *     row names Austria too; a list whose total says more than the walk read
+ *     never PASSes;
  *   - a total that drifted between two asks and agrees when asked again is a
  *     PASS, an unstated total is INFO, and an empty phrase page is INFO;
  *   - an unreadable answer is a FAIL that shows it, never silence;
  *   - the key is never printed, every call to a function carries x-rb-budget:
- *     probe, every POST is a job-board list read, and the seam walk follows
- *     nextOffset and stops at the seam.
+ *     probe, every POST is a job-board list read, and the seam walks follow
+ *     nextOffset to the page that carries the top-up, on four queries.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { RING_WINDOW } from "../../supabase/functions/job-board/paging";
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -115,13 +120,25 @@ type Over = {
   phrase?: string; verb?: string; noremote?: string; rf?: string[]; rp?: string[]; nearme?: string; zip?: string;
   participle?: string; hh?: string; hp?: string; career?: string; iso?: string;
   cvs?: string[]; m3?: string[]; browse?: string; ranked?: string; walk?: Record<number, string>;
+  /** The walk of every row under Wien, by offset. */
+  wien?: Record<number, string>;
+  /** A sequence for one nurse page: a top-up that timed out on the first ask and ran on the second. */
+  walkAsks?: Record<number, string[]>;
+  /** The other seam walks, by query. */
+  walks?: Record<string, Record<number, string>>;
 };
+const TOPUP = { phaseMs: { search_jobs: 120, seam_topup: 300 } };
 const q = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function routes(o: Over = {}): Route[] {
   const build = o.build === undefined ? "job-board.2026-09-09.100" : o.build;
   const mcp = o.mcp === undefined ? "agent-mcp.2026-11-02.1" : o.mcp;
   const api = o.api === undefined ? "public-api.2026-11-02.1" : o.api;
-  const walk = { 0: page(50, "w0", { nextOffset: 57 }), 57: page(50, "w57", { nextOffset: 109 }), 109: page(50, "w109", { nextOffset: 174 }), 174: page(50, "w174", { nextOffset: 243 }), ...(o.walk ?? {}) };
+  const walk = { 0: page(50, "w0", { nextOffset: 57 }), 57: page(50, "w57", { nextOffset: 109 }), 109: page(50, "w109", { nextOffset: 174 }), 174: page(50, "w174", { nextOffset: 550, ...TOPUP }), ...(o.walk ?? {}) };
+  const others: Record<string, Record<number, string>> = {
+    "crew member": { 0: page(60, "crew", { nextOffset: 580, ...TOPUP }), ...(o.walks?.["crew member"] ?? {}) },
+    caregiver: { 0: page(60, "care", { nextOffset: 580, ...TOPUP }), ...(o.walks?.caregiver ?? {}) },
+    "customer service": { 0: page(60, "serv", { nextOffset: 580, ...TOPUP }), ...(o.walks?.["customer service"] ?? {}) },
+  };
   const ask = (needle: string) => `^POST ${FB}\\t\\{"action":"list","q":"${q(needle)}"`;
   return [
     { match: `^OPTIONS ${FB}$`, status: 204, headers: build ? { "x-fn-build": build } : {} },
@@ -141,9 +158,12 @@ function routes(o: Over = {}): Route[] {
     { match: ask("nurse 94105"), body: o.zip ?? list([job("Registered Nurse")], { droppedTerms: ["94105"] }) },
     { match: ask("cvs"), bodies: o.cvs ?? [routed("EMPLOYER", "CVS Health")] },
     { match: ask("3m"), bodies: o.m3 ?? [routed("EMPLOYER", "3M")] },
+    ...Object.entries(o.wien ?? {}).map(([off, body]) => ({ match: `^POST ${FB}\\t\\{"action":"list","q":"","location":"Wien","limit":60,"offset":${off},`, body })),
     { match: `^POST ${FB}\\t\\{"action":"list","q":"","location":"Wien"`, body: o.browse ?? list([job("Data Analyst", { location: "Vienna", country: "AT" }), job("SEO Manager", { location: "Wien, Austria", country: "AT" })]) },
     { match: `^POST ${FB}\\t\\{"action":"list","q":"engineer","location":"Wien"`, body: o.ranked ?? list([job("Software Engineer", { location: "Vienna, Austria", country: "AT" }), job("Engineer", { location: "Wien", country: "AT" }), job("Engineer", { location: "Vienna HQ", country: null })], RANKED) },
+    ...Object.entries(o.walkAsks ?? {}).map(([off, bodies]) => ({ match: `^POST ${FB}\\t\\{"action":"list","q":"nurse","limit":50,"offset":${off},`, bodies })),
     ...Object.entries(walk).map(([off, body]) => ({ match: `^POST ${FB}\\t\\{"action":"list","q":"nurse","limit":50,"offset":${off},`, body })),
+    ...Object.entries(others).flatMap(([who, pages]) => Object.entries(pages).map(([off, body]) => ({ match: `^POST ${FB}\\t\\{"action":"list","q":"${who}","limit":60,"offset":${off},`, body }))),
   ];
 }
 const verdicts = (lines: string[], v: "PASS" | "FAIL" | "INFO") => lines.filter((l) => l.startsWith(`${v}  `));
@@ -164,11 +184,11 @@ describe("section 99zzzz: the search reads what was typed", () => {
       /supervisor -"team lead" excludes \["team lead"\] and none of its 2 titles/, /nurse not requiring travel excludes \["travel"\]/, /no remote nurse excludes remote/,
       /cdl not required driver excludes \["required"\] only/, /medical coder-remote lifts the remote filter and counts 412/, /career keeps main.s title search/, /quality engineer iso 13485 keeps 13485 searched/,
       /remote-first engineer lifts the remote filter and counts 8628, exactly what remote engineer counts/, /jobs near me searches no words/, /nurse 94105 drops the ZIP/,
-      /cvs and 3m route to CVS Health and 3M on all 6 asks/, /location Wien browses 2 rows/, /engineer in Wien ranks 3 rows, .* 1 of them named Vienna/,
-      /seam walk for nurse \(limit 50\) served 4 full pages to nextOffset 243/]) {
+      /cvs and 3m route to CVS Health and 3M on all 6 asks/, /location Wien browses 2 rows/, /location Wien: none of its 2 rows names a US state and ZIP/, /engineer in Wien ranks 3 rows, .* 1 of them named Vienna/,
+      /the seam walk continues past the seam on 4 of 4 queries/]) {
       expect(pass.some((l) => re.test(l)), `${re}\n${show(lines)}`).toBe(true);
     }
-    expect(pass.length).toBe(17);
+    expect(pass.length).toBe(18);
     expect(lines[0]).toMatch(/^== 99zzzz\. /);
   });
 
@@ -249,9 +269,9 @@ describe("section 99zzzz: the search reads what was typed", () => {
   });
 
   it("FAILs Vienna VA under Wien on the browse path and the ranked path, and a ranked Wien with no anchored arm; a US row naming Austria passes", () => {
-    failsWith({ browse: list([job("Sales Associate", { location: "Vienna, WV", country: "US" }), job("SEO", { location: "Vienna", country: "AT" })]) }, /location Wien browses 1 of 2 rows placed in the US: \["Vienna, WV"\]/);
+    failsWith({ browse: list([job("Sales Associate", { location: "Vienna, WV", country: "US" }), job("SEO", { location: "Vienna", country: "AT" })]) }, /location Wien browses 1 of 2 rows filed in the US: \["Vienna, WV"\]/);
     failsWith({ browse: list([]) }, /location Wien browses no row at all/);
-    failsWith({ ranked: list([job("Engineer", { location: "Vienna, OH - USA", country: "US" }), job("Engineer", { location: "Vienna", country: "AT" })], RANKED) }, /engineer in Wien ranks 1 of 2 rows placed in the US: \["Vienna, OH - USA"\]/);
+    failsWith({ ranked: list([job("Engineer", { location: "Vienna, OH - USA", country: "US" }), job("Engineer", { location: "Vienna", country: "AT" })], RANKED) }, /engineer in Wien ranks 1 of 2 rows filed in the US: \["Vienna, OH - USA"\]/);
     failsWith({ ranked: list([job("Data Engineer", { location: "Wien, Austria", country: "AT" })], RANKED) }, /none named Vienna without Wien: search_jobs has no anchored arm/);
   });
 
@@ -266,7 +286,101 @@ describe("section 99zzzz: the search reads what was typed", () => {
     failsWith({ ranked: list([job("Software Engineer", { location: "Vienna, Austria", country: "AT" })], { ranked: true }) },
       /search_jobs did not run/);
     const named = run(routes({ browse: list([job("Analyst", { location: "Vienna, Austria; New York, NY", country: "US" })]) }));
-    expect(hasLine(named.lines, "PASS", /location Wien browses 1 rows, none placed in the US without naming Austria/), show(named.lines)).toBe(true);
+    expect(hasLine(named.lines, "PASS", /location Wien browses 1 rows, none filed in the US without naming Austria/), show(named.lines)).toBe(true);
+  });
+
+  // Live on 2026-11-05: 674 rows under Wien, two of them WorldStrides at this address with country null, which the alias refusal cannot stop.
+  const VA = "1919 Gallows Road Suite 700 Vienna VA 22182";
+  const CLEAN = ["1010 Wien", "Wien, Austria", "AT-Vienna", "Vienna HQ", "Zentrale (Wien)", "Flagship Store Wien", "A-1100 Wien", "DE 10115 Berlin", "Vienna, Austria"];
+  const wienRows = (locations: string[], country: string | null = null) => locations.map((location) => job("Analyst", { location, country }));
+
+  it("FAILs a Wien row whose location names a US state and ZIP, with no country on file, and names the next job-board round", () => {
+    const r = run(routes({ wien: { 0: list([...wienRows([VA]), ...wienRows(["Wien, Austria"], "AT")]) } }));
+    expect(hasLine(r.lines, "FAIL", new RegExp(`location Wien serves 1 of 2 rows whose location names a US state and ZIP: \\["${q(VA)}"\\].*next job-board round`)), show(r.lines)).toBe(true);
+    expect(hasLine(r.lines, "PASS", /location Wien: none of its/), show(r.lines)).toBe(false);
+    for (const location of ["Vienna VA 22182-1234", "Vienna, WV 26105", "Vienna, Virginia 22182", "1919 Gallows Road Suite 700 Vienna VA 22182; 218 West Water Street Suite 400 Charlottesville VA 22902"]) {
+      failsWith({ wien: { 0: list(wienRows([location])) } }, /location Wien serves 1 of 1 rows whose location names a US state and ZIP/);
+    }
+  });
+
+  it("finds that row on any page: the walk reads to the end of the list, past the page the browse line reads", () => {
+    const first = list(wienRows(Array.from({ length: 60 }, (_, i) => `${1010 + i} Wien`), "AT"), { hasMore: true, nextOffset: 60 });
+    const r = run(routes({ wien: { 0: first, 60: list(wienRows([VA])) } }));
+    expect(hasLine(r.lines, "FAIL", /location Wien serves 1 of 61 rows whose location names a US state and ZIP/), show(r.lines)).toBe(true);
+    expect(r.calls.filter((c) => /"location":"Wien","limit":60/.test(c)).map((c) => /"offset":(\d+)/.exec(c)?.[1])).toEqual(["0", "60"]);
+  });
+
+  it("clean rows PASS, a German postcode among them, and the row's own country is not what clears it", () => {
+    const r = run(routes({ wien: { 0: list(wienRows(CLEAN)) } }));
+    expect(hasLine(r.lines, "PASS", new RegExp(`location Wien: none of its ${CLEAN.length} rows names a US state and ZIP`)), show(r.lines)).toBe(true);
+    expect(hasLine(r.lines, "FAIL", /location Wien serves/), show(r.lines)).toBe(false);
+    failsWith({ wien: { 0: list(wienRows([VA], "AT")) } }, /location Wien serves 1 of 1 rows whose location names a US state and ZIP/);
+  });
+
+  it("an unreadable list does not PASS, on the first page or a later one", () => {
+    const html = "<html>gateway</html>";
+    const none = run(routes({ wien: { 0: html } }));
+    expect(hasLine(none.lines, "FAIL", /location Wien, page 0 of the walk to its end: the list is unreadable: <html>gateway/), show(none.lines)).toBe(true);
+    expect(hasLine(none.lines, "PASS", /location Wien: none of its/), show(none.lines)).toBe(false);
+    const later = run(routes({ wien: { 0: list(wienRows(CLEAN), { hasMore: true, nextOffset: 60 }), 60: html } }));
+    expect(hasLine(later.lines, "FAIL", /location Wien, page 1 of the walk to its end: the list is unreadable/), show(later.lines)).toBe(true);
+    expect(hasLine(later.lines, "PASS", /location Wien: none of its/), show(later.lines)).toBe(false);
+  });
+
+  it("no rows, or a walk stopped before the end of the list, read nothing to the end and do not PASS", () => {
+    const empty = run(routes({ wien: { 0: list([]) } }));
+    expect(hasLine(empty.lines, "PASS", /location Wien: none of its/), show(empty.lines)).toBe(false);
+    expect(hasLine(empty.lines, "INFO", /location Wien served no row/), show(empty.lines)).toBe(true);
+    const pages = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [i * 60, list(wienRows(CLEAN), { hasMore: true, nextOffset: (i + 1) * 60 })]));
+    const cut = run(routes({ wien: pages }));
+    expect(hasLine(cut.lines, "PASS", /location Wien: none of its/), show(cut.lines)).toBe(false);
+    expect(hasLine(cut.lines, "INFO", /location Wien: none of the 180 rows read names a US state and ZIP, but the walk stopped before the end of the list/), show(cut.lines)).toBe(true);
+    expect(cut.calls.filter((c) => /"location":"Wien","limit":60/.test(c)).length, "at most twenty pages").toBe(20);
+  });
+
+  it("a page that ends the list while its total says more reads N of T and does not PASS, with hasMore false or absent", () => {
+    const clean = wienRows(Array.from({ length: 60 }, (_, i) => `${1010 + i} Wien`), "AT");
+    for (const hasMore of [false, undefined]) {
+      const r = run(routes({ wien: { 0: list(clean, { total: 673, hasMore, nextOffset: 60 }) } }));
+      expect(hasLine(r.lines, "PASS", /location Wien: none of its/), `hasMore ${hasMore}\n${show(r.lines)}`).toBe(false);
+      expect(hasLine(r.lines, "INFO", /location Wien: none of the 60 rows read names a US state and ZIP, but it read 60 of 673/), `hasMore ${hasMore}\n${show(r.lines)}`).toBe(true);
+    }
+    const unstated = run(routes({ wien: { 0: JSON.stringify({ jobs: clean, nextOffset: 60 }) } }));
+    expect(hasLine(unstated.lines, "PASS", /location Wien: none of its/), `neither sign of the end\n${show(unstated.lines)}`).toBe(false);
+    expect(hasLine(unstated.lines, "INFO", /location Wien: none of the 60 rows read names a US state and ZIP, but it read 60 of an unstated total/), show(unstated.lines)).toBe(true);
+    // The total on the last page reached, and a walk that read all of it, as live on 2026-11-05 (670 of 670).
+    const whole = run(routes({ wien: { 0: list(clean, { total: 61, hasMore: true, nextOffset: 60 }), 60: list(wienRows(["1100 Wien"], "AT"), { total: 61 }) } }));
+    expect(hasLine(whole.lines, "PASS", /location Wien: none of its 61 rows names a US state and ZIP/), show(whole.lines)).toBe(true);
+    // A FAIL is not softened by a short read: the row it found is still served.
+    failsWith({ wien: { 0: list(wienRows([VA]), { total: 673 }) } }, /location Wien serves 1 of 1 rows whose location names a US state and ZIP/);
+  });
+
+  it("a row naming Austria beside a US office is a real Austrian row, as the sibling Wien lines hold, so no fix could clear it: it does not FAIL", () => {
+    const r = run(routes({ wien: { 0: list(wienRows(["Vienna, Austria; McLean, VA 22102", "Wien, Austria; New York, NY 10001"], "AT")) } }));
+    expect(verdicts(r.lines, "FAIL"), show(r.lines)).toEqual([]);
+    expect(hasLine(r.lines, "PASS", /location Wien: none of its 2 rows names a US state and ZIP/), show(r.lines)).toBe(true);
+    // The same address with no Austria in it is the defect.
+    failsWith({ wien: { 0: list(wienRows(["McLean, VA 22102"], "AT")) } }, /location Wien serves 1 of 1 rows whose location names a US state and ZIP/);
+  });
+
+  it("a state-shaped code with no ZIP is not an address: Wien's own code passes", () => {
+    const r = run(routes({ wien: { 0: list(wienRows(["Wien, WI"], "AT")) } }));
+    expect(verdicts(r.lines, "FAIL"), show(r.lines)).toEqual([]);
+    expect(hasLine(r.lines, "PASS", /location Wien: none of its 1 rows names a US state and ZIP/), show(r.lines)).toBe(true);
+  });
+
+  it("the Wien FAIL names the no-country cause only for a row with no country, so it does not contradict the row it prints", () => {
+    const NOCOUNTRY = /a row with no country on file passes it/;
+    const none = run(routes({ wien: { 0: list(wienRows([VA])) } }));
+    expect(hasLine(none.lines, "FAIL", NOCOUNTRY), show(none.lines)).toBe(true);
+    const us = run(routes({ wien: { 0: list(wienRows(["Vienna, VA 22182"], "US")) } }));
+    expect(hasLine(us.lines, "FAIL", /location Wien serves 1 of 1 rows .*country \["US"\].*filed in the US, which the alias refusal should stop/), show(us.lines)).toBe(true);
+    expect(hasLine(us.lines, "FAIL", NOCOUNTRY), show(us.lines)).toBe(false);
+    const at = run(routes({ wien: { 0: list(wienRows(["McLean, VA 22102"], "AT")) } }));
+    expect(hasLine(at.lines, "FAIL", /location Wien serves 1 of 1 rows .*country \["AT"\]/), show(at.lines)).toBe(true);
+    expect(hasLine(at.lines, "FAIL", NOCOUNTRY), show(at.lines)).toBe(false);
+    const mixed = run(routes({ wien: { 0: list([...wienRows(["McLean, VA 22102"], "AT"), ...wienRows([VA])]) } }));
+    expect(hasLine(mixed.lines, "FAIL", NOCOUNTRY), show(mixed.lines)).toBe(true);
   });
 
   it("FAILs the 7-card seam page and a card served twice, and follows nextOffset to the seam", () => {
@@ -277,10 +391,103 @@ describe("section 99zzzz: the search reads what was typed", () => {
     const offs = calls.filter((c) => /"q":"nurse","limit":50/.test(c)).map((c) => /"offset":(\d+)/.exec(c)?.[1]);
     expect(offs).toEqual(["0", "57", "109", "174"]);
     const ended = run(routes({ walk: { 57: page(30, "w57", { hasMore: false, nextOffset: 87 }) } }));
-    expect(hasLine(ended.lines, "PASS", /served 2 full pages/), show(ended.lines)).toBe(true);
+    expect(hasLine(ended.lines, "PASS", /the seam walk continues past the seam on 4 of 4 queries/), show(ended.lines)).toBe(true);
+    expect(verdicts(ended.lines, "FAIL"), show(ended.lines)).toEqual([]);
     const stuck = run(routes({ walk: { 0: page(50, "a", { nextOffset: 1 }), 1: page(50, "b", { nextOffset: 2 }), 2: page(50, "c", { nextOffset: 3 }), 3: page(50, "d", { nextOffset: 4 }), 4: page(50, "e", { nextOffset: 5 }), 5: page(50, "f", { nextOffset: 6 }) } }));
     expect(stuck.calls.filter((c) => /"q":"nurse","limit":50/.test(c)).length, "at most six pages").toBe(6);
-    expect(hasLine(stuck.lines, "INFO", /stopped after 6 full pages without reaching the seam/), show(stuck.lines)).toBe(true);
+    expect(hasLine(stuck.lines, "INFO", /seam walk for nurse stopped after 6 full pages without reaching the seam/), show(stuck.lines)).toBe(true);
+  });
+
+  it("walks past a nextOffset of 200: the ring's seam sits later, and stopping there read a page that was never the seam", () => {
+    // Live on 2026-11-05 "crew member" read 171 to 286 and only then reached its seam, 30 cards with a top-up.
+    const r = run(routes({ walk: { 0: page(50, "n", { nextOffset: 250 }), 250: page(7, "m", { nextOffset: RING_WINDOW }) } }));
+    expect(hasLine(r.lines, "FAIL", /seam walk for nurse \(limit 50\) served short pages that had more: \["offset 250 served 7 cards"\]/), show(r.lines)).toBe(true);
+    expect(r.calls.filter((c) => /"q":"nurse","limit":50/.test(c)).map((c) => /"offset":(\d+)/.exec(c)?.[1])).toEqual(["0", "250", "250"]);
+  });
+
+  it("reads more than one query at the site's own page size: a seam page with no top-up on any of them is a FAIL", () => {
+    const r = run(routes({ walks: { "crew member": { 0: page(30, "c", { nextOffset: RING_WINDOW }) } } }));
+    expect(hasLine(r.lines, "FAIL", /seam walk for crew member \(limit 60\) served short pages that had more: \["offset 0 served 30 cards"\]/), show(r.lines)).toBe(true);
+    expect(run(routes()).calls.filter((c) => /"limit":60,"offset":/.test(c) && /"groupSimilar":true/.test(c)).length).toBe(3);
+  });
+
+  it("the promise is the continuation, one read: short after it is named, and under half a page is a FAIL that says the page continued", () => {
+    // What the code shipped (index.ts n1417): one search_jobs call, and "a deep page whose own rows fold into a few clusters is still short".
+    const named = run(routes({ walks: { "crew member": { 0: page(30, "c", { nextOffset: 580, ...TOPUP }) }, caregiver: { 0: page(47, "g", { nextOffset: 580, ...TOPUP }) } } }));
+    expect(verdicts(named.lines, "FAIL"), show(named.lines)).toEqual([]);
+    expect(hasLine(named.lines, "PASS", /the seam walk continues past the seam on 4 of 4 queries/), show(named.lines)).toBe(true);
+    expect(hasLine(named.lines, "INFO", /2 of 4 seam page\(s\) stayed short after their one read: crew member@60 offset 0: 30 cards; caregiver@60 offset 0: 47 cards/), show(named.lines)).toBe(true);
+    // Verify's own query, live on 2026-11-05: 21 cards at offset 192.
+    const thin = run(routes({ walk: { 174: page(21, "w174", { nextOffset: 550, ...TOPUP }) } }));
+    expect(hasLine(thin.lines, "FAIL", /the seam page for nurse \(limit 50\) at offset 174 served 21 cards after its one top-up read, under half a page.*next job-board round/), show(thin.lines)).toBe(true);
+    expect(hasLine(thin.lines, "PASS", /the seam walk continues past the seam on 4 of 4 queries/), show(thin.lines)).toBe(true);
+    // A read that ran and added nothing did not continue.
+    const nothing = run(routes({ walk: { 174: page(20, "w174", { nextOffset: RING_WINDOW, ...TOPUP }) } }));
+    expect(hasLine(nothing.lines, "FAIL", /seam walk for nurse \(limit 50\): the top-up read at offset 174 added nothing/), show(nothing.lines)).toBe(true);
+  });
+
+  it("a top-up that timed out serves the short page by design, so it is asked once more before it is a FAIL", () => {
+    const r = run(routes({ walkAsks: { 174: [page(7, "w174", { nextOffset: 400 }), page(50, "w174", { nextOffset: 243, ...TOPUP })] } }));
+    expect(verdicts(r.lines, "FAIL"), show(r.lines)).toEqual([]);
+    expect(r.calls.filter((c) => /"q":"nurse","limit":50,"offset":174/.test(c)).length).toBe(2);
+  });
+
+  it("a page past its seam that folds short with no read is the disclosed limit, named and not a FAIL", () => {
+    // A query with no ring: its seam is the 200 window, and its deep page walks SQL rank, so nextOffset is not the ring's end.
+    const r = run(routes({ walk: { 174: page(50, "w174", { nextOffset: 243 }), 243: page(20, "deep", { nextOffset: 323 }) } }));
+    expect(verdicts(r.lines, "FAIL"), show(r.lines)).toEqual([]);
+    expect(hasLine(r.lines, "INFO", /past its seam nurse@50 offset 243 folded to 20 cards/), show(r.lines)).toBe(true);
+  });
+
+  it("the ring's end in the section is the product's own number, and no other literal judges nextOffset", () => {
+    expect(Number(/^\s*VDBS_RING=(\d+)$/m.exec(SECTION)?.[1])).toBe(RING_WINDOW);
+    expect(SECTION).not.toMatch(/nextOffset\s*(?:===|!==|<=?|>=?)\s*\d/);
+  });
+
+  // Live on 2026-11-05 crew member read 0, 87, 171, 286, and the page at 286 is its seam, past rank 200.
+  const CREW = { 0: page(60, "c0", { nextOffset: 87 }), 87: page(60, "c1", { nextOffset: 171 }), 171: page(60, "c2", { nextOffset: 286 }) };
+
+  it("a ring's seam page past rank 200 with no read is S13-012, never the disclosed limit", () => {
+    const r = run(routes({ walks: { "crew member": { ...CREW, 286: page(7, "c3", { nextOffset: RING_WINDOW }) } } }));
+    expect(hasLine(r.lines, "FAIL", /seam walk for crew member \(limit 60\) served short pages that had more: \["offset 286 served 7 cards"\]/), show(r.lines)).toBe(true);
+    expect(hasLine(r.lines, "INFO", /crew member.*folded to 7 cards/), show(r.lines)).toBe(false);
+    expect(hasLine(r.lines, "PASS", /the seam walk continues past the seam/), show(r.lines)).toBe(false);
+  });
+
+  it("the top-up gone on all four queries is a FAIL on each, and no PASS says the walk continues", () => {
+    const short = (p: string, count = 7) => page(count, p, { nextOffset: RING_WINDOW });
+    const r = run(routes({
+      walk: { 0: page(50, "n0", { nextOffset: 60 }), 60: short("n1") },
+      walks: {
+        "crew member": { ...CREW, 286: short("c3") },
+        caregiver: { 0: page(60, "g0", { nextOffset: 137 }), 137: page(60, "g1", { nextOffset: 286 }), 286: short("g2") },
+        "customer service": { 0: page(60, "s0", { nextOffset: 71 }), 71: page(60, "s1", { nextOffset: 136 }), 136: page(60, "s2", { nextOffset: 229 }), 229: short("s3") },
+      },
+    }));
+    for (const who of ["nurse", "crew member", "caregiver", "customer service"]) {
+      expect(hasLine(r.lines, "FAIL", new RegExp(`seam walk for ${who} \\(limit \\d+\\) served short pages that had more`)), `${who}${show(r.lines)}`).toBe(true);
+    }
+    expect(hasLine(r.lines, "PASS", /the seam walk continues past the seam/), show(r.lines)).toBe(false);
+  });
+
+  it("a read that ran past rank 200 and added nothing is a FAIL, not a page that stayed short", () => {
+    const r = run(routes({ walks: { "crew member": { ...CREW, 286: page(30, "c3", { nextOffset: RING_WINDOW, ...TOPUP }) } } }));
+    expect(hasLine(r.lines, "FAIL", /seam walk for crew member \(limit 60\): the top-up read at offset 286 added nothing/), show(r.lines)).toBe(true);
+    expect(hasLine(r.lines, "INFO", /stayed short after their one read: crew member/), show(r.lines)).toBe(false);
+  });
+
+  it("a walk that made no extra read at all cannot PASS: the continuation was not exercised, so it is INFO", () => {
+    const full = (p: string, limit: number) => page(limit, p, { nextOffset: RING_WINDOW });
+    const r = run(routes({ walk: { 0: full("n", 50) }, walks: { "crew member": { 0: full("c", 60) }, caregiver: { 0: full("g", 60) }, "customer service": { 0: full("s", 60) } } }));
+    expect(hasLine(r.lines, "PASS", /the seam walk continues past the seam/), show(r.lines)).toBe(false);
+    expect(hasLine(r.lines, "INFO", /no page of the 4 walks made the extra read/), show(r.lines)).toBe(true);
+    expect(verdicts(r.lines, "FAIL"), show(r.lines)).toEqual([]);
+  });
+
+  it("six full pages that stop short of the ring's end did not reach the seam, whatever rank they passed", () => {
+    const pages = Object.fromEntries([0, 60, 120, 180, 240, 300].map((off) => [off, page(50, `p${off}`, { nextOffset: off + 60 })]));
+    const r = run(routes({ walk: pages }));
+    expect(hasLine(r.lines, "INFO", /seam walk for nurse stopped after 6 full pages without reaching the seam/), show(r.lines)).toBe(true);
   });
 
   it("FAILs every unreadable answer, never crashing into silence", () => {
@@ -298,7 +505,7 @@ describe("section 99zzzz: the search reads what was typed", () => {
     const { out, calls } = run(routes());
     expect(out).not.toContain(KEY);
     const fns = calls.filter((c) => /functions\/v1\//.test(c));
-    expect(fns.length).toBe(3 + 12 + 6 + 2 + 4);
+    expect(fns.length).toBe(3 + 12 + 6 + 2 + 1 + 7);
     for (const c of fns) expect(c, c).toMatch(/headers:.*x-rb-budget: probe/);
     const posts = calls.filter((c) => /^curl\tPOST /.test(c));
     for (const p of posts) expect(p, p).toMatch(new RegExp(`^curl\\tPOST ${FB}\\t\\{"action":"list"`));

@@ -162,8 +162,9 @@ signature and the same grants, two definitions are rewritten from the catalogue.
 - After layoff-filings 2026-10-09.1 serves: run `POST {action:"lca_wages"}`
   (the quarterly load, cron key) so the swap removes the ledger and twin-token
   cells; until then `get_employer_lca_wages(['socialfinance','sunday'])` still
-  answers cells (section 77 prints them, INFO). Migration 160300 already hides
-  sigmasoftware2 (no live US posting).
+  answers cells (section 77 FAILs and names this step). Migration 160300 hides a
+  board with no live US posting; sigmasoftware2 has one today, so its cell goes
+  only with this load.
 - Apply 160100 only after the new layoff-filings serves (above).
 - After layoff-filings 2026-10-09.1 serves (and ideally after 160000, whose
   readers print the flag it corrects): run `POST {action:"edgar_reread"}`

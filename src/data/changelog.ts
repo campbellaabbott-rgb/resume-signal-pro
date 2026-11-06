@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "truistGeicoAndNordstromJoinTheBoard", date: "2026-11-02", tags: ["new"] },
+  { id: "takenDownJobsLeaveOurBiggestBoards", date: "2026-11-02", tags: ["fixed"] },
+  { id: "searchesThatReadWhatYouTyped", date: "2026-11-02", tags: ["fixed"] },
+  { id: "jobDetailsFromWhatTheEmployerStated", date: "2026-11-02", tags: ["fixed"] },
+  { id: "searchResultsCarryTheEmployersNewNames", date: "2026-11-02", tags: ["fixed"] },
+  { id: "theBoardStaysPutWhileYouRead", date: "2026-11-02", tags: ["improved", "fixed"] },
+  { id: "theFreeReportsNumbersNowAgree", date: "2026-11-02", tags: ["fixed"] },
   { id: "theHomePageIsTheJobSearch", date: "2026-10-31", tags: ["new"] },
   { id: "aPricingPageThatStartsWithWhatIsFree", date: "2026-10-31", tags: ["improved"] },
   { id: "whatWeStoppedSelling", date: "2026-10-31", tags: ["improved"] },

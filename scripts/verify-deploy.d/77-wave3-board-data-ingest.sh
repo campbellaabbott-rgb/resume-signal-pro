@@ -16,7 +16,8 @@
 # x-rb-budget: probe. Nothing is written, sent or triggered.
 # PRE-DEPLOY (2026-10-10, run from this branch): every build line FAILs, the
 # bundle literal lines FAIL, eu~lookers and eu~rubyhotels answer identical
-# intel, sigmasoftware2 answers a TX wage cell, lf_workforce is absent;
+# intel, the refused wage cells answer until the owner's lca_wages load has run,
+# lf_workforce is absent;
 # job-fit/application-fit carry no x-fn-build; the peso line PASSes (0 of 47).
 echo "== 77. wave 3 board-data-ingest: board explanations, phone header, layoff filings, landers, wage cells, parsers =="
 
@@ -32,7 +33,10 @@ W77_LF=$(curl -s -m 30 "$B/functions/v1/layoff-filings" -H "apikey: $K" -H "Auth
 if build_ge "lf" "lf.$W77_LF" "2026-10-09" "3"; then echo "PASS  layoff-filings version = $W77_LF (IL earliest notice date, OR counts, refused feeds re-read, SEC retries, MA updates, lca refusals)"
 else echo "FAIL  layoff-filings version = $W77_LF (want 2026-10-09.3 or later: the integration build carrying board-data-ingest and tests-ci; 2026-09-25.1 = the previous build)"; fi
 
-B="$B" K="$K" SITE="$SITE" node -e '
+# The gate's control boards: which of them hold a printable wage cell in the
+# bundle, by the rules the loader runs (empty without tsx: the line says so).
+W77_LCA=$(npx --no-install tsx scripts/verify-lca-post-refusal.mjs siei crown-equipment RolandBerger techster rystad-energy 2>/dev/null)
+B="$B" K="$K" SITE="$SITE" W77_LCA="$W77_LCA" node -e '
 const B=process.env.B,K=process.env.K,SITE=process.env.SITE;
 const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
 const info=(m)=>console.log("INFO  "+m);
@@ -100,11 +104,36 @@ const get=async(u)=>{try{const r=await fetch(u);return r.ok?await r.text():""}ca
   const a=await R("get_company_intel",{p_token:"eu~lookers"}),b=await R("get_company_intel",{p_token:"eu~rubyhotels"});
   if(a.status!==200||b.status!==200){ok(false,"get_company_intel as anon -> "+a.status+"/"+b.status)}
   else ok(a.t!==b.t,"eu~lookers and eu~rubyhotels answer their own intel, not one pooled answer (20261009160200; usd_n "+(a.j&&a.j.usd_n)+" / "+(b.j&&b.j.usd_n)+")");
-  const w=await R("get_employer_lca_wages",{p_tokens:["sigmasoftware2"]});
-  if(!Array.isArray(w.j)){ok(false,"get_employer_lca_wages as anon -> HTTP "+w.status+" "+w.t.slice(0,120))}
-  else ok(w.j[0]&&w.j[0].ow_soc_code==null,"a board with no live US posting prints no H-1B wage cell (sigmasoftware2: "+(w.j[0]&&w.j[0].ow_soc_code?w.j[0].ow_worksite_state+" "+w.j[0].ow_wage_low+"-"+w.j[0].ow_wage_high:"none")+"; 20261009160300)");
-  const sf=await R("get_employer_lca_wages",{p_tokens:["socialfinance","sunday"]});
-  if(Array.isArray(sf.j))info("ledger/twin cells still in the table until the owner runs POST {action:\"lca_wages\"} on the new layoff-filings: "+sf.j.map(r=>r.ow_company_token+"="+(r.ow_soc_code?"cell":"none")).join(", "));
+  // TWO DIFFERENT THINGS HIDE A WAGE CELL, and the old line blamed the wrong one
+  // for sigmasoftware2. THE LEDGER (S8-024): lca_wages refuses a name that is not
+  // this employer, but the table keeps the last load until the owner runs it
+  // again, so these answer another employer\x27s filings until then.
+  const REFUSED=["sigmasoftware2","socialfinance","sunday","echo"];
+  const led=await R("get_employer_lca_wages",{p_tokens:REFUSED});
+  if(!Array.isArray(led.j))ok(false,"get_employer_lca_wages as anon -> HTTP "+led.status+" "+led.t.slice(0,120));
+  else{const lit=led.j.filter((r)=>r.ow_soc_code!=null||r.ow_employer_filings_n!=null);
+    if(led.j.length!==REFUSED.length)ok(false,"get_employer_lca_wages answered "+led.j.length+" rows for "+REFUSED.length+" refused tokens: "+led.t.slice(0,120));
+    else ok(!lit.length,lit.length?lit.length+" refused token(s) still answer a wage cell or an employer count, each another employer\x27s filings under this name: "+lit.map((r)=>r.ow_company_token+" = "+(r.ow_soc_code?r.ow_worksite_state+" "+r.ow_wage_low+"-"+r.ow_wage_high:"no cell")+", "+r.ow_employer_filings_n+" filings").join("; ")+". OWNER: run POST {action:\"lca_wages\"} on layoff-filings (the x-layoff-cron key, or one net.http_post from a Lovable SQL session reading the vault); section 5t judges the load":"the "+REFUSED.length+" refused tokens answer no cell and no employer count ("+REFUSED.join(", ")+"): the owner\x27s lca_wages load has run since the refusals shipped");}
+  // THE GATE (20261009160300): a board with no live US posting prints no cell.
+  // Its premise is read live on a control board, so a board that starts hiring in
+  // the US, or stops serving, cannot read as the gate working. A null from the
+  // reader is not vacuous either: the last line asks a board that must answer.
+  let printable=null;try{printable=JSON.parse(process.env.W77_LCA||"").printable}catch{}
+  const L=async(body)=>{try{return await (await fetch(B+"/functions/v1/job-board",{method:"POST",headers:{"content-type":"application/json","x-rb-budget":"probe",apikey:K,authorization:"Bearer "+K},body:JSON.stringify(body)})).json()}catch{return {}}};
+  let ctrl=null,ctrlAll=0;
+  for(const t of ["siei","crown-equipment","RolandBerger","techster","rystad-energy"]){
+    if(printable&&!printable.includes(t))continue;
+    const us=await L({action:"list",country:"US",companies:[t],groupSimilar:false,includeFacets:false,limit:1});if(us.total!==0)continue;
+    const all=await L({action:"list",companies:[t],groupSimilar:false,includeFacets:false,limit:1});if(all.total>0){ctrl=t;ctrlAll=all.total;break}}
+  if(!ctrl)info("no candidate board is live with no US posting"+(printable?" and a printable cell in the bundle":"")+", so the gate is not judged (20261009160300)");
+  else{const c=await R("get_employer_lca_wages",{p_tokens:[ctrl]});
+    if(!Array.isArray(c.j))ok(false,"get_employer_lca_wages as anon -> HTTP "+c.status+" "+c.t.slice(0,120));
+    else{const dark=!!c.j[0]&&c.j[0].ow_soc_code==null;const said="a board with no live US posting prints no H-1B wage cell ("+ctrl+": 0 US rows of "+ctrlAll+" served"+(printable?", and a printable cell in the bundle":"; its bundle cell not checked, tsx unavailable")+"; it answers "+(c.j[0]&&c.j[0].ow_soc_code?c.j[0].ow_worksite_state+" "+c.j[0].ow_wage_low+"-"+c.j[0].ow_wage_high:"none")+"; 20261009160300)";
+      // A control with no cell of its own answers null whether or not the gate works, so with no reading of the bundle a null is not judged; a lit cell is a FAIL either way.
+      if(printable||!dark)ok(dark,said);else info(said+": not judged");}}
+  {const t="generalmotors~wd5~Careers_GM";const c=await R("get_employer_lca_wages",{p_tokens:[t]});
+    if(!Array.isArray(c.j))ok(false,"get_employer_lca_wages as anon -> HTTP "+c.status+" "+c.t.slice(0,120));
+    else ok(!!c.j[0]&&c.j[0].ow_soc_code!=null,t+(c.j[0]&&c.j[0].ow_soc_code!=null?" answers a wage cell ("+c.j[0].ow_worksite_state+", "+c.j[0].ow_filings_n+" filings): the reader still lights a board that hires in the US, so the nulls above are not a dead reader":" answers no cell: the reader is dark for a board with US postings and a bundle cell, so the nulls above prove nothing"));}
   const p=await R("get_layoff_partition");
   const rows=Array.isArray(p.j)?p.j:[];
   const lag=rows.map(r=>r.lp_warn_lag_p50_days).find(v=>v!=null);
