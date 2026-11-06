@@ -5592,6 +5592,7 @@ export type Database = {
         Args: { p_credits: number; p_email: string }
         Returns: boolean
       }
+      affiliate_address_key: { Args: { p_email: string }; Returns: string }
       agent_adoption_metrics: {
         Args: { p_days: number }
         Returns: {
