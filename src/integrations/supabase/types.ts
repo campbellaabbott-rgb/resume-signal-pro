@@ -7626,6 +7626,10 @@ export type Database = {
         Returns: Json
       }
       logout_affiliate: { Args: { p_session_token: string }; Returns: boolean }
+      mail_door_give: {
+        Args: { p_bucket: string; p_door: string; p_window_minutes: number }
+        Returns: boolean
+      }
       mail_door_take: {
         Args: {
           p_bucket: string
