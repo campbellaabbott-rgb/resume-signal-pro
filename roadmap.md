@@ -1,7 +1,8 @@
-# Deployment checklist e919377b
-- [x] Verify synced commit contains e919377b and re-run deployment ledger.
-- [ ] BLOCKED: first migration applied as 0208, but exact-source comparison found an accidentally duplicated `AND d.stripe_session_id <> p_stripe_session_id` predicate; stop for user direction, without rewriting or reapplying.
-- [ ] Deploy the 61 listed functions and verify each OPTIONS build header; blocked by migration fidelity issue.
-- [ ] Verify held migration sections 82 and 86; release its ledger hold only if proven, without applying it; blocked by stopped deployment.
-- [ ] Verify live frontend commit; publish only if needed; blocked by stopped deployment.
+# Deployment checklist 91b20f5c
+- [x] Verify synced commit is 91b20f5c and re-run deployment ledger.
+- [x] Leave migration 0208 as applied, per user instruction; do not reapply it.
+- [ ] Apply remaining 13 migrations individually in order; compare each applied SQL with its original and stop on failure or difference.
+- [ ] Deploy the 61 listed functions and verify each OPTIONS build header.
+- [x] Leave 20261011103000 held and docs/deploy-ledger.json unchanged; never apply 20260928003117.
+- [ ] Verify live frontend commit; publish only if needed.
 - [x] Resolve existing spreadsheet-test compile error and run its tests (23 tests passed across spreadsheet and affiliate files; build OK).
