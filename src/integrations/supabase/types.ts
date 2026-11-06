@@ -1435,6 +1435,7 @@ export type Database = {
           domain_match: boolean
           id: string
           last_sent_at: string | null
+          locale: string | null
           note: string | null
           owner_approved_at: string | null
           status: string
@@ -1451,6 +1452,7 @@ export type Database = {
           domain_match?: boolean
           id?: string
           last_sent_at?: string | null
+          locale?: string | null
           note?: string | null
           owner_approved_at?: string | null
           status?: string
@@ -1467,6 +1469,7 @@ export type Database = {
           domain_match?: boolean
           id?: string
           last_sent_at?: string | null
+          locale?: string | null
           note?: string | null
           owner_approved_at?: string | null
           status?: string
