@@ -5379,6 +5379,7 @@ export type Database = {
           fit_threshold: number
           id: string
           last_seen_at: string
+          locale: string | null
           name: string
           params: Json
           user_id: string
@@ -5392,6 +5393,7 @@ export type Database = {
           fit_threshold?: number
           id?: string
           last_seen_at?: string
+          locale?: string | null
           name: string
           params?: Json
           user_id: string
@@ -5405,6 +5407,7 @@ export type Database = {
           fit_threshold?: number
           id?: string
           last_seen_at?: string
+          locale?: string | null
           name?: string
           params?: Json
           user_id?: string
