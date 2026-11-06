@@ -47,24 +47,6 @@ export type Database = {
         }
         Relationships: []
       }
-      _mig_staging: {
-        Row: {
-          md5: string
-          name: string
-          sql: string
-        }
-        Insert: {
-          md5: string
-          name: string
-          sql: string
-        }
-        Update: {
-          md5?: string
-          name?: string
-          sql?: string
-        }
-        Relationships: []
-      }
       ab_test_events: {
         Row: {
           created_at: string
