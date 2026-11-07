@@ -31,6 +31,7 @@
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { SLOW } from "./helpers/mount-budget";
 import { FREE_USER, WRITING_STUBS, WritingWorld, loadWriter, post, tokenFor } from "./helpers/writing-harness";
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 240_000 });
@@ -77,10 +78,34 @@ class Gateway {
 const tick = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 /**
- * Runs one request on the fake clock: real I/O first (the gates resolve on it,
- * not on the clock), then the clock in one-second steps until the answer
- * comes, for at most `maxMs` (past every old worst case, so an old handler
- * fails on what it did, not on a stuck test).
+ * Runs one request on the fake clock, in one-second steps until the answer
+ * comes, for at most `maxMs` of it (past every old worst case, so an old
+ * handler fails on what it did, not on a stuck test). The clock moves only
+ * while the request is waiting on it -- a timer of its own is pending -- and
+ * stands still while it waits on real I/O (the gates resolve on that, not on
+ * the clock).
+ *
+ * THE CLOCK RAN WHILE THE GATES WERE STILL WORKING (2026-11-07). This used to
+ * give the request 3,000 setImmediate turns to reach the gateway and then step
+ * the clock whatever the request was doing. But the spend gates name the
+ * purchase's bucket with crypto.subtle.digest (_shared/model-spend-gate.ts),
+ * which Node runs on its libuv threadpool: it comes back in real time, not in
+ * turns. On a loaded runner it came back a few milliseconds late, the loop had
+ * stepped the fake clock past 120 s by then, and generate-ats-defense -- which
+ * measures its 125 s from the request's start, as it must -- found under 5 s
+ * left and gave the 504 without ever asking gpt-5: "expected [] to deeply
+ * equal [['openai/gpt-5', 90000]]" on main's CI, 2026-11-06. A 10 ms real
+ * delay put on digest fails five of the ten cases here on every run, that one
+ * with CI's very message (premium-package and freelance-boost hash too); 10
+ * ms on the request and response bodies as well fails all ten. Nothing in the
+ * product was wrong: live, the clock is the wall clock and the gates spend
+ * microseconds of it. Waiting for a pending timer before each step makes the
+ * request's own real work cost it nothing on the fake clock, however slow the
+ * host is.
+ *
+ * A request that is neither done nor waiting on a timer for SLOW.timeout of
+ * real time is stuck on something else; it fails here, saying so, inside the
+ * per-test budget (helpers/mount-budget.ts) rather than as "Test timed out".
  */
 async function drive<T>(gateway: Gateway, request: () => Promise<T>, maxMs = 400_000): Promise<{ result: T; at: number }> {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
@@ -88,9 +113,19 @@ async function drive<T>(gateway: Gateway, request: () => Promise<T>, maxMs = 400
   let done = false;
   let at = 0;
   const pending = request().finally(() => { done = true; at = Date.now() - gateway.t0; });
-  for (let i = 0; i < 3_000 && !done && gateway.seen.length === 0; i++) await tick();
-  for (let t = 0; t < maxMs && !done; t += 1_000) {
+  let waitingOnIoSince: number | null = null;
+  for (let t = 0; t < maxMs && !done;) {
+    if (vi.getTimerCount() === 0) {
+      waitingOnIoSince ??= performance.now();
+      if (performance.now() - waitingOnIoSince > SLOW.timeout) {
+        throw new Error(`the request waited ${SLOW.timeout} ms of real time at ${t} ms on the fake clock with no timer pending and no answer: stuck on something the clock cannot move and that never came back`);
+      }
+      await tick();
+      continue;
+    }
+    waitingOnIoSince = null;
     await vi.advanceTimersByTimeAsync(1_000);
+    t += 1_000;
     for (let i = 0; i < 10 && !done; i++) await tick();
   }
   const result = await pending;

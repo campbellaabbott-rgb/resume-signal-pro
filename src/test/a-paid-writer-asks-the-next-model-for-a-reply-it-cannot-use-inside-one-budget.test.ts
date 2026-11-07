@@ -30,6 +30,7 @@
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { SLOW } from "./helpers/mount-budget";
 import { FREE_USER, WRITING_STUBS, WritingWorld, loadWriter, post, tokenFor } from "./helpers/writing-harness";
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 240_000 });
@@ -74,16 +75,43 @@ class Gateway {
 
 const tick = () => new Promise<void>((resolve) => setImmediate(resolve));
 
-/** One request on the fake clock: real I/O first (the gates), then the clock in one-second steps until the answer comes. */
+/**
+ * One request on the fake clock, in one-second steps until the answer comes.
+ * The clock moves only while the request is waiting on it -- a timer of its
+ * own is pending -- and stands still while it waits on real I/O (the gates).
+ *
+ * THE SAME RACE AS the-paid-writers-walk-one-chain-inside-one-deadline.test.ts
+ * (2026-11-07), whose drive() comment tells it in full. This loop used to give
+ * the request 3,000 setImmediate turns and then step the clock whatever the
+ * request was doing; the spend gates' crypto.subtle.digest comes back in real
+ * time on Node's threadpool, so on a loaded runner the clock ran past the
+ * deadline before the first model was asked. With 10 ms of real delay on
+ * digest the old loop failed three or four of the twenty cases here on every
+ * run; it had not yet failed on main's CI.
+ *
+ * A request that is neither done nor waiting on a timer for SLOW.timeout of
+ * real time is stuck on something else; it fails here, saying so, inside the
+ * per-test budget (helpers/mount-budget.ts) rather than as "Test timed out".
+ */
 async function drive<T>(gateway: Gateway, request: () => Promise<T>, maxMs = 400_000): Promise<{ result: T; at: number }> {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
   gateway.start();
   let done = false;
   let at = 0;
   const pending = request().finally(() => { done = true; at = Date.now() - gateway.t0; });
-  for (let i = 0; i < 3_000 && !done && gateway.seen.length === 0; i++) await tick();
-  for (let t = 0; t < maxMs && !done; t += 1_000) {
+  let waitingOnIoSince: number | null = null;
+  for (let t = 0; t < maxMs && !done;) {
+    if (vi.getTimerCount() === 0) {
+      waitingOnIoSince ??= performance.now();
+      if (performance.now() - waitingOnIoSince > SLOW.timeout) {
+        throw new Error(`the request waited ${SLOW.timeout} ms of real time at ${t} ms on the fake clock with no timer pending and no answer: stuck on something the clock cannot move and that never came back`);
+      }
+      await tick();
+      continue;
+    }
+    waitingOnIoSince = null;
     await vi.advanceTimersByTimeAsync(1_000);
+    t += 1_000;
     for (let i = 0; i < 10 && !done; i++) await tick();
   }
   const result = await pending;

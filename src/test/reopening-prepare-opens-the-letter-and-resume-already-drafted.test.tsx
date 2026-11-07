@@ -107,8 +107,8 @@ afterEach(async () => {
 });
 
 const mount = () => render(<MemoryRouter initialEntries={["/jobs"]}><Jobs /></MemoryRouter>);
-async function openPrepare() {
-  fireEvent.click(await screen.findByRole("button", { name: /Prep answers/ }, SLOW));
+async function openPrepare(prep: RegExp = /Prep answers/) {
+  fireEvent.click(await screen.findByRole("button", { name: prep }, SLOW));
   await screen.findByRole("dialog", {}, SLOW);
   await screen.findByRole("button", { name: /Draft a cover letter|Open your cover letter|Anschreiben/ }, SLOW);
 }
@@ -230,8 +230,18 @@ describe("the cover letter in the Prepare dialog", () => {
     it("the page's language changed", async () => {
       await draftThenLeave();
       await i18n.changeLanguage("de");
-      await settle();
-      await openPrepare();
+      // WAIT FOR THE GERMAN PAGE, NOT FOR 20 MS (2026-11-07). German loads
+      // after the switch (src/i18n/index.ts loadLocale), and this case looked
+      // for the English "Prep answers" 20 ms later, so it held only while
+      // German was still on its way: run alone, de.json is transformed cold
+      // and lands ~300 ms late, after the English button was found (German
+      // then relabelled that same node before the click). In the full suite
+      // eighteen other files have already loaded German, the transform is
+      // cached, and it lands in ~30 ms: the button already read "Antworten
+      // vorbereiten" and CI failed on /Prep answers/ every run. Waiting for
+      // the German button holds whether German lands early or late, and the
+      // dialog's /Anschreiben entwerfen/ below no longer rides on luck.
+      await openPrepare(/Antworten vorbereiten/);
       letterAnswer = () => letter("Sehr geehrtes Team.");
       fireEvent.click(button(/Anschreiben entwerfen/));
       expect(await screen.findByText("Sehr geehrtes Team.", {}, SLOW)).toBeTruthy();

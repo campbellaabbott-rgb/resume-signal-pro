@@ -277,6 +277,29 @@ describe("newest first must order by date, and the sentence under it must be tru
     // THE GENERAL PROPERTY, walked over every state that can print one. A claim
     // on screen whose state sends a different sort is the defect class; so is a
     // claim nobody declared in CLAIMS.
+    //
+    // A REQUEST IS NOT A REPLY (2026-11-07). The three search states below used
+    // to end on the body alone, and a search page prints its order claim only
+    // once the reply for THAT body is on screen (`orderClaimCurrent` in Jobs.tsx,
+    // "no claim until the reply for this search is on screen"). The body is
+    // recorded synchronously inside mount(), so that wait passed on its first
+    // check and the walk read the page wherever the reply happened to be. It was
+    // usually there by luck of ordering: waitFor ends on a setTimeout(0), and
+    // React commits the reply in a Scheduler task (setImmediate) that normally
+    // runs first, in the same turn of the event loop. But the Scheduler yields
+    // after a 5 ms frame, so a loaded worker that lost 5 ms before reaching that
+    // task (preempted, a GC) pushed the commit one turn later, behind the timer,
+    // and the walk read a page with no claim on it yet: "newest search,
+    // relevance window asks for sort=newest and prints no claim that describes
+    // it" (main, 2026-11-06, e919377b). MEASURED by queueing a CPU-holding
+    // Scheduler task ahead of the reply: 6 ms failed that state 3 of 3 with the
+    // CI message, 4 ms passed, and 6 ms before every state failed "whole match
+    // set" first. So these states also wait for the reply's rows, and fetchJobs
+    // sets the rows in the same batch that makes the claim current (data, its
+    // signature, loading and refreshing cleared together). The relevance state
+    // was passing vacuously, over a page with no sentence on it yet, and is now
+    // held to the reply's sentence too.
+    const replyOnScreen = () => waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
     const states: Array<{ name: string; go: () => Promise<void> }> = [
       { name: "default browse", go: async () => { mount(); await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW); } },
       { name: "company filter", go: async () => { mount("/jobs?company=acme"); await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW); } },
@@ -304,7 +327,11 @@ describe("newest first must order by date, and the sentence under it must be tru
       },
       {
         name: "relevance search",
-        go: async () => { mount("/jobs?q=engineer"); await waitFor(() => expect(lastBody().q).toBe("engineer"), SLOW); },
+        go: async () => {
+          mount("/jobs?q=engineer");
+          await waitFor(() => expect(lastBody().q).toBe("engineer"), SLOW);
+          await replyOnScreen();
+        },
       },
       // THE THREE STATES THE TABLE COULD NOT SEE, added because the
       // reverse-direction check below never ran over a q+newest body — and that
@@ -314,6 +341,7 @@ describe("newest first must order by date, and the sentence under it must be tru
         go: async () => {
           mount("/jobs?q=engineer&sort=newest", { sortScope: "matchSet", sortMatcher: "title" });
           await waitFor(() => expect(lastBody().sort).toBe("newest"), SLOW);
+          await replyOnScreen();
         },
       },
       {
@@ -321,6 +349,7 @@ describe("newest first must order by date, and the sentence under it must be tru
         go: async () => {
           mount("/jobs?q=engineer&sort=newest", { sortScope: "relevanceWindow", sortScopeRows: 200 });
           await waitFor(() => expect(lastBody().sort).toBe("newest"), SLOW);
+          await replyOnScreen();
         },
       },
       {

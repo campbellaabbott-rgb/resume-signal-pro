@@ -43,6 +43,26 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: null, session: null, loading: false }) }));
 
+// GERMAN LANDS WHEN THE TEST SAYS SO (2026-11-07). The first case asserts the
+// footer is absent at mount, which is only a claim about the gate while the
+// German main locale has NOT landed, and nothing held it back: with de.json
+// already transformed by other files in the full suite it lands ~30 ms after
+// the switch, so on a loaded CI runner, where act() and the mount start that
+// late, the page was rightly drawn whole in German at once, footer included,
+// and the assertion failed (3 of 5 runs). The page was right; the premise was
+// a race. Holding the main locale's import until the case releases it makes
+// the wait certain, however fast or slow the loader is. No other case here
+// uses German (see the header).
+const german = vi.hoisted(() => {
+  let open = () => {};
+  const released = new Promise<void>((r) => { open = r; });
+  return { released, land: () => open() };
+});
+vi.mock("@/i18n/locales/de.json", async (importOriginal) => {
+  await german.released;
+  return importOriginal();
+});
+
 function stubTable() {
   const th: Record<string, unknown> = {};
   const self = () => th;
@@ -98,10 +118,12 @@ function watchH1(root: HTMLElement): { seen: string[]; stop: () => void } {
 describe("the first render waits for the reader's language", () => {
   it("homepage in German: no English frame, then the German headline", async () => {
     await act(async () => { void i18n.changeLanguage("de"); });
+    expect(i18n.hasResourceBundle("de", "translation"), "German landed before the mount: nothing here would be waiting").toBe(false);
     const { container } = mount("home");
     const h1s = watchH1(container);
     expect(container.querySelector("header"), "the header renders at once").not.toBeNull();
     expect(container.querySelector("footer"), "the footer waits with the page, so it is not pushed down when the page lands").toBeNull();
+    german.land();
     await waitFor(() => expect(container.querySelector("main h1")?.textContent).toBe(homeH1("de")), SLOW);
     expect(container.querySelector("footer"), "the footer lands with the page").not.toBeNull();
     h1s.stop();
