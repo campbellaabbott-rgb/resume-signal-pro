@@ -4573,7 +4573,7 @@ rest of this bundle.
 
 ## n209-array-isarray-datecov-as-data-unkno
 
-RETIRED in job-board 2026-09-09.101: status no longer stores the date coverage; upkeep does, at most every 15 minutes (S13-114). Kept as history; no pointer in the code names this section.
+RETIRED in job-board 2026-09-09.101: status no longer stores the date coverage; upkeep does, at most every 15 minutes (S13-114). Kept as history; no pointer in the code names this section. Since the upkeep hotfix (2026-11-07) no schedule calls upkeep (20261103221000 is neverApply), so the stored copy only ages, and 20261107100000 kicks a dead chain from SQL instead.
 
 Above: `if (Array.isArray((dateCov as { data?: unknown }).data)) {`
 
@@ -4588,7 +4588,7 @@ write its own cache.
 
 ## n210-chainwatchdog
 
-RETIRED in job-board 2026-09-09.101: status no longer runs the watchdog for an anonymous caller; upkeep does, on the scheduler's key (S13-114). Kept as history; no pointer in the code names this section.
+RETIRED in job-board 2026-09-09.101: status no longer runs the watchdog for an anonymous caller; upkeep does, on the scheduler's key (S13-114). Kept as history; no pointer in the code names this section. Since the upkeep hotfix (2026-11-07) no schedule calls upkeep (20261103221000 is neverApply); 20261107100000 kicks a dead chain from SQL every minute once every pulse is past the watchdog's threshold.
 
 Above: `const chainWatchdog = await maybeRekickDeadChain(client);`
 

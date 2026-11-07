@@ -10,7 +10,10 @@
  * call:
  *   - a good deploy prints no FAIL;
  *   - the build live before this round (job-board .100, the older agent-mcp and
- *     public-api, no cron) fails every claim the section makes;
+ *     public-api, no dead-chain kick) fails every claim the section makes, the
+ *     shared probe count and the chain's pulse aside;
+ *   - C1 is the dead-chain kick of 20261107100000 (20261103221000's upkeep job
+ *     never applies), C2 the chain's freshest pulse against the kick's bound;
  *   - each claim fails alone when only its own fix is missing;
  *   - a status that only ever answers from its memo is INFO, not a guess;
  *   - every POST is job-board with the probe header or an anon aggregate, and
@@ -94,11 +97,12 @@ const hourly = (a: number, b: number): Route => ({
   bodies: [a, b].map((n) => JSON.stringify([{ bh_hour: "h", bh_kind: "probe", bh_country: "ALL", bh_requests: n }, { bh_hour: "h", bh_kind: "probe", bh_country: "US", bh_requests: 999 }])),
 });
 const cron = (rows: unknown): Route => ({ match: "^POST https://p\\.supabase\\.co/rest/v1/rpc/get_cron_health", body: JSON.stringify(rows) });
-const JOB = { ch_jobname: "job-board-upkeep", ch_schedule: "2-59/5 * * * *", ch_active: true };
+const JOB = { ch_jobname: "job-board-dead-chain-kick", ch_schedule: "* * * * *", ch_active: true, ch_runs: 60, ch_last_status: "succeeded" };
 const LONG_SERVED = () => new Date(Date.now() - 60 * 60_000).toISOString();
 const GOOD_STATUS = () => ({
-  chainWatchdog: { decision: "within_window", kicked: false, readOnly: true },
-  boardUpkeep: { at: "x", watchdog: "within_window", kicked: false, coverageStored: true, ageMin: 3 },
+  chainWatchdog: { decision: "within_window", kicked: false, readOnly: true, pulseAgeMs: 40_000, thresholdMs: 202_000 },
+  ingestPaused: false,
+  boardUpkeep: null,
   sliceStats: { build: "2026-09-09.101", buildSince: LONG_SERVED() },
 });
 const builds = (): Route[] => [preflight("job-board", "job-board.2026-09-09.101"), preflight("agent-mcp", "agent-mcp.2026-11-03.1"), preflight("public-api", "public-api.2026-11-03.1")];
@@ -137,9 +141,9 @@ describe("the held board section", () => {
     const F = fails(lines);
     for (const claim of [
       /job-board x-fn-build = job-board\.2026-09-09\.100, older/, /agent-mcp x-fn-build .* older/, /public-api x-fn-build .* older/,
-      /retired flag has it named/, /0 of 25 rows/, /upkeep answered 400/, /readOnly/, /probe count grew by 0/, /no cron job is named job-board-upkeep/, /status publishes no boardUpkeep/,
+      /retired flag has it named/, /0 of 25 rows/, /upkeep answered 400/, /readOnly/, /probe count grew by 0/, /no cron job is named job-board-dead-chain-kick/,
     ]) expect(F.some((l) => claim.test(l)), `${claim}\n${out}`).toBe(true);
-    expect(F, out).toHaveLength(10);
+    expect(F, out).toHaveLength(9);
   });
 
   it("a build with no header fails", () => {
@@ -180,7 +184,7 @@ describe("the held board section", () => {
   it("the header no longer says every line fails on the build before this round", () => {
     const head = SECTION.split("\n").slice(0, 25).join("\n");
     expect(head).not.toMatch(/every one fails on the job-board \.100 build/);
-    expect(head).toMatch(/each fails on the job-board \.100 build, S2 aside/);
+    expect(head).toMatch(/each fails on the job-board \.100 build, S2 and C2 aside/);
   });
 
   it("a status answered only from its memo judges neither readOnly nor the count, and says so", () => {
@@ -190,21 +194,43 @@ describe("the held board section", () => {
     expect(calls.filter((c) => c.includes('"action":"status"'))).toHaveLength(6);
   });
 
-  it("a missing or stopped cron fails", () => {
+  it("a missing, stopped, wrongly scheduled or failing dead-chain kick fails, and a missing one names its migration", () => {
     expect(fails(run(goodWith(cron([]))).lines), "an empty aggregate is INFO").toEqual([]);
-    expect(fails(run(goodWith(cron([{ ...JOB, ch_active: false }]))).lines)).toEqual([expect.stringMatching(/job-board-upkeep is scheduled .* active false/)]);
-    expect(fails(run(goodWith(cron([{ ch_jobname: "other", ch_active: true }]))).lines)).toEqual([expect.stringMatching(/no cron job is named job-board-upkeep/)]);
+    expect(fails(run(goodWith(cron([{ ...JOB, ch_active: false }]))).lines)).toEqual([expect.stringMatching(/job-board-dead-chain-kick is scheduled .* active false.*: it is not active$/)]);
+    expect(fails(run(goodWith(cron([{ ...JOB, ch_schedule: "2-59/5 * * * *" }]))).lines)).toEqual([expect.stringMatching(/job-board-dead-chain-kick is scheduled 2-59\/5 .*: it is not scheduled every minute$/)]);
+    expect(fails(run(goodWith(cron([{ ...JOB, ch_runs: 0, ch_last_status: null }]))).lines)).toEqual([expect.stringMatching(/: it has not run in the last hour$/)]);
+    expect(fails(run(goodWith(cron([{ ...JOB, ch_failed: 60, ch_last_status: "failed" }]))).lines)).toEqual([expect.stringMatching(/: its last run failed \(60 of 60 failed\)$/)]);
+    expect(fails(run(goodWith(cron([{ ch_jobname: "job-board-upkeep", ch_schedule: "2-59/5 * * * *", ch_active: true, ch_runs: 12, ch_last_status: "succeeded" }]))).lines))
+      .toEqual(["FAIL  no cron job is named job-board-dead-chain-kick: migration 20261107100000 has not run, so a dead chain waits for the :x4/:x9 crons (3-8 min)"]);
+    const passed = run(good()).lines;
+    expect(passed.some((l) => /^PASS {2}job-board-dead-chain-kick is scheduled \* \* \* \* \*, active true, 60 run\(s\) in the last hour, the last succeeded$/.test(l)), passed.join("\n")).toBe(true);
   });
 
-  it("an upkeep job that stopped running fails only once the build has served fifteen minutes", () => {
-    const stale = { ...GOOD_STATUS(), boardUpkeep: { ageMin: 40, watchdog: "within_window", kicked: false } };
-    expect(fails(run(goodWith(status(stale))).lines)).toEqual([expect.stringMatching(/upkeep: it last ran 40 min ago/)]);
-    const never = { ...GOOD_STATUS(), boardUpkeep: null };
-    expect(fails(run(goodWith(status(never))).lines)).toEqual([expect.stringMatching(/upkeep: it has never run/)]);
-    const young = { ...never, sliceStats: { build: "2026-09-09.101", buildSince: new Date(Date.now() - 5 * 60_000).toISOString() } };
-    const { lines } = run(goodWith(status(young)));
-    expect(fails(lines)).toEqual([]);
-    expect(lines.some((l) => /^INFO .*has served under fifteen minutes/.test(l))).toBe(true);
+  it("a chain silent past the kick's bound fails, one inside it passes, a paused ingest is INFO, and boardUpkeep is only INFO", () => {
+    const at = (pulseAgeMs: number, over: Record<string, unknown> = {}) => run(goodWith(status({ ...GOOD_STATUS(), chainWatchdog: { decision: "chain_alive", kicked: false, readOnly: true, pulseAgeMs, thresholdMs: 202_000 }, ...over })));
+    // The bound is the watchdog's threshold plus 120 s: 322 s here.
+    const past = at(360_000);
+    expect(fails(past.lines), past.out).toEqual([expect.stringMatching(/^FAIL {2}the chain is silent 38 s past the dead-chain kick's bound: its freshest pulse is 360 s old against 202 s plus 120 s \(decision chain_alive\)/)]);
+    const inside = at(321_000);
+    expect(fails(inside.lines), inside.out).toEqual([]);
+    expect(inside.lines.some((l) => /^PASS {2}the chain's freshest pulse is 321 s old, inside the dead-chain kick's bound of 322 s/.test(l)), inside.out).toBe(true);
+    const paused = at(3_600_000, { ingestPaused: true });
+    expect(fails(paused.lines), paused.out).toEqual([]);
+    expect(paused.lines.some((l) => /^INFO {2}ingest is paused \(status\.ingestPaused\)/.test(l)), paused.out).toBe(true);
+    const noPulse = run(goodWith(status({ ...GOOD_STATUS(), chainWatchdog: { decision: "no_pulse", kicked: false, readOnly: true, pulseAgeMs: null, thresholdMs: 202_000 } })));
+    expect(fails(noPulse.lines), noPulse.out).toEqual([]);
+    expect(noPulse.lines.some((l) => /^INFO {2}status reports no chainWatchdog pulseAgeMs and thresholdMs/.test(l)), noPulse.out).toBe(true);
+    // Upkeep has no scheduled caller by decision: never run, run long ago, or not published, it is INFO.
+    for (const boardUpkeep of [null, { ageMin: 900, watchdog: "within_window", kicked: false }]) {
+      const r = run(goodWith(status({ ...GOOD_STATUS(), boardUpkeep })));
+      expect(fails(r.lines), r.out).toEqual([]);
+      expect(r.lines.some((l) => /^INFO {2}upkeep has no scheduled caller by decision \(20261103221000 neverApply\); boardUpkeep (null|last ran 900 min ago)$/.test(l)), r.out).toBe(true);
+    }
+    const unpublished: Record<string, unknown> = { ...GOOD_STATUS() };
+    delete unpublished.boardUpkeep;
+    const r = run(goodWith(status(unpublished)));
+    expect(fails(r.lines), r.out).toEqual([]);
+    expect(r.lines.some((l) => /boardUpkeep not in the status read$/.test(l)), r.out).toBe(true);
   });
 
   it("only reads: the POSTs are job-board with the probe header and two anon aggregates, and the key is never printed", () => {

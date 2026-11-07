@@ -2,7 +2,7 @@
 /**
  * AN ANONYMOUS STATUS IS COUNTED AND WRITES NOTHING, AND THE SCHEDULER HAS ITS
  * OWN DOOR FOR THE TWO JOBS STATUS DID ON THE SIDE (audit-rest S13-114;
- * job-board .101, migration 20261103221000).
+ * job-board .101).
  *
  * WHAT WAS WRONG. status answered anyone, uncounted. Each computed answer ran
  * about forty reads, wrote date_coverage_cache unconditionally, and could stamp
@@ -17,16 +17,19 @@
  * scheduler's key or the service role and does both jobs. A credentialed
  * status keeps its fresh answer, because the deploy checks read it.
  *
- * WHY THE WATCHDOG WAS NOT SIMPLY MADE READ-ONLY. Its real driver was the
- * heartbeat's anonymous status read; without the upkeep job a dead chain would
- * wait for the next cron that missed the slice lock.
+ * WHAT RESTARTS A DEAD CHAIN NOW (the upkeep hotfix, 2026-11-07). The
+ * watchdog's only act is the keyless {"action":"refresh"} the :x4/:x9 refresh
+ * crons already send, and a chain that dies between hops reads chain_alive to
+ * it. Measured 2026-11-07: of four deaths in 47 minutes, a five-minute upkeep
+ * job would have restarted none sooner than the crons. No schedule calls
+ * upkeep; 20261107100000 sends the same refresh from SQL every minute once
+ * every pulse is stale (a-dead-chain-is-kicked-on-the-databases-clock-and-
+ * reads-no-key.test.ts).
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { PGlite } from "@electric-sql/pglite";
 import { ANON, bootBoardHandler, SVC, type BoardHandler } from "./helpers/board-handler";
-import { migration } from "./helpers/agent-db";
 import { eqs, type Answer, type Query } from "./helpers/proxy-db";
 import { anonBudgetGate, BUDGETED_ACTIONS, METERED_ACTIONS } from "../../supabase/functions/job-board/anon-budget";
 import { isScheduledCaller } from "../../supabase/functions/_shared/email-cron";
@@ -280,41 +283,16 @@ describe("the meter's two lists", () => {
 });
 
 describe("the schedule", () => {
-  const SQL = readFileSync(resolve(process.cwd(), "supabase/migrations/20261103221000_the_scheduler_not_an_anonymous_reader_wakes_a_dead_chain.sql"), "utf8");
-
-  it("runs every five minutes, between the refresh crons, carrying the scheduler's key and posting the action", () => {
-    expect(SQL).toMatch(/cron\.schedule\('job-board-upkeep', '2-59\/5 \* \* \* \*'/);
-    expect(SQL).toMatch(/'x-email-cron', \(SELECT decrypted_secret FROM vault\.decrypted_secrets WHERE name = 'email_cron_key' LIMIT 1\)/);
-    expect(SQL).toMatch(/body := '\{"action":"upkeep"\}'::jsonb/);
-    expect(SQL).toMatch(/WHERE EXISTS \(SELECT 1 FROM vault\.decrypted_secrets WHERE name = 'email_cron_key'\)/);
-  });
-
-  const FILE = "20261103221000_the_scheduler_not_an_anonymous_reader_wakes_a_dead_chain.sql";
-  /** pg_cron's three names as a stand-in, so the file's own branches run in Postgres. */
-  const withCron = async (activeByDefault: boolean) => {
-    const db = new PGlite();
-    await db.exec(`
-      CREATE SCHEMA cron;
-      CREATE TABLE cron.job (jobid serial PRIMARY KEY, jobname text UNIQUE, schedule text, command text, active boolean DEFAULT ${activeByDefault});
-      CREATE FUNCTION cron.schedule(n text, s text, c text) RETURNS bigint LANGUAGE sql AS $f$ INSERT INTO cron.job (jobname, schedule, command) VALUES (n, s, c) RETURNING jobid::bigint $f$;
-      CREATE FUNCTION cron.unschedule(n text) RETURNS boolean LANGUAGE sql AS $f$ DELETE FROM cron.job WHERE jobname = n RETURNING true $f$;
-    `);
-    return db;
-  };
-
-  it("run twice in Postgres it leaves one active job on its schedule", async () => {
-    const db = await withCron(true);
-    await db.exec(migration(FILE));
-    await db.exec(migration(FILE));
-    const { rows } = await db.query<{ jobname: string; schedule: string; active: boolean }>("SELECT jobname, schedule, active FROM cron.job");
-    expect(rows).toEqual([{ jobname: "job-board-upkeep", schedule: "2-59/5 * * * *", active: true }]);
-  });
-
-  it("verifies itself: a job that did not come up active stops the migration", async () => {
-    await expect((await withCron(false)).exec(migration(FILE))).rejects.toThrow(/not an active cron job/);
-  });
-
-  it("passes on a database without pg_cron", async () => {
-    await expect(new PGlite().exec(migration(FILE))).resolves.toBeDefined();
+  it("no schedule calls upkeep: docs/deploy-ledger.json never applies 20261103221000, says why, and no order rule names it", () => {
+    const ledger = JSON.parse(readFileSync(resolve(process.cwd(), "docs/deploy-ledger.json"), "utf8")) as {
+      neverApply: string[]; neverApplyWhy: Record<string, string>; migrationOrder: Record<string, { afterMigrations?: string[]; repairedBy?: string }>;
+    };
+    expect(ledger.neverApply).toContain("20261103221000");
+    expect(ledger.neverApplyWhy["20261103221000"]).toMatch(/^superseded by 20261107100000: /);
+    expect(Object.keys(ledger.migrationOrder)).not.toContain("20261103221000");
+    for (const [stamp, rule] of Object.entries(ledger.migrationOrder)) {
+      if (stamp.startsWith("_")) continue;
+      expect([...(rule.afterMigrations ?? []), rule.repairedBy ?? ""], stamp).not.toContain("20261103221000");
+    }
   });
 });

@@ -258,6 +258,19 @@ describe("section 49 reads all three", () => {
     expect(lines).toContain("INFO  applied by behaviour, no stub: 20261008125000_digests.sql (get_cron_health lists send-search-digest active)");
   });
 
+  it("a file never applied by decision is one INFO line with its own reason, never a FAIL, and one with no reason reads superseded", () => {
+    const refused = "20261103221000_the_scheduler_not_an_anonymous_reader_wakes_a_dead_chain.sql";
+    const old = "20260928003117_a_timeout_that_blanks_a_section_is_raised_where_the_cron_pays_for_it.sql";
+    const lines = runSection49({ ...base, rows: [{ fn: "c", want: "c.1", have: "c.1", state: "live" }], holds: [],
+      migrations: { pending: [], hold: [], neverApplyPresent: [old, refused], neverApplyWhy: { [refused]: "superseded by 20261107100000: the dead-chain kick runs in SQL" } } });
+    expect(lines.filter((l) => /never applied/.test(l))).toEqual([
+      `INFO  never applied, by decision (docs/deploy-ledger.json neverApply): ${old} (superseded)`,
+      `INFO  never applied, by decision (docs/deploy-ledger.json neverApply): ${refused} (superseded by 20261107100000: the dead-chain kick runs in SQL)`,
+    ]);
+    expect(lines.some((l) => l.startsWith("FAIL")), lines.join("\n")).toBe(false);
+    expect(lines).toContain("PASS  no migration on main is missing from the staged-runner record or its behaviour proof");
+  });
+
   it("positive control: nothing to deploy, nothing pending, no hold, and section 49 passes", () => {
     const lines = runSection49({ ...base, rows: [{ fn: "c", want: "c.1", have: "c.1", state: "live" }], holds: [] });
     expect(lines.filter((l) => l.startsWith("PASS"))).toHaveLength(2);

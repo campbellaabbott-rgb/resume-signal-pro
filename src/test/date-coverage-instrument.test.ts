@@ -94,7 +94,7 @@ describe("an unavailable measurement says so", () => {
     expect(board).toMatch(/dcCache\.data\?\.v as unknown\[\]/);
   });
 
-  it("the cache is filled by the scheduler's upkeep and never by a status read (S13-114)", () => {
+  it("the cache is written only by the upkeep action, never by a status read (S13-114); no schedule calls upkeep, so status's fallback copy reports its own growing age", () => {
     const upkeep = board.slice(board.indexOf("async function boardUpkeep("), board.indexOf("async function maybeKickMaintenance("));
     expect(upkeep).toMatch(/k: "date_coverage_cache"/);
     const status = board.slice(board.indexOf('if (action === "status") {'), board.indexOf('if (action === "vendor-health") {'));

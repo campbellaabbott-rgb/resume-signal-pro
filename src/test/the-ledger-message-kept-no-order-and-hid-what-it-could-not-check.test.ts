@@ -108,6 +108,25 @@ describe("S11-049: a migration sits in the step its constraint names", () => {
     expect(at(/Do NOT apply in this session: 20261009100300_held\.sql/)).toBeLessThan(at(/^2\. Deploy these 4 edge functions/));
   });
 
+  it("prints each never-applied file with its own reason on one line, and a file with no reason as superseded", () => {
+    const p = L.migrationPhases(["20261107100000_kick.sql"], {}, []);
+    const never = ["20260928003117_old.sql", "20261103120000_reads_the_store.sql", "20261103221000_upkeep.sql"];
+    const why = L.neverApplyReasons(never, { neverApplyWhy: { "20261103120000": "Lovable refused it", "20261103221000": "superseded by 20261107100000", "2026110322": "a short key matches nothing" } });
+    expect(why).toEqual({ "20260928003117_old.sql": "superseded", "20261103120000_reads_the_store.sql": "Lovable refused it", "20261103221000_upkeep.sql": "superseded by 20261107100000" });
+    const msg = L.lovableMessage({ head: "abc12345", phases: p, neverApply: never, neverApplyWhy: why });
+    const lines = msg.filter((l) => /NEVER apply/.test(l));
+    expect(lines).toEqual(["   NEVER apply: 20260928003117_old.sql (superseded), 20261103120000_reads_the_store.sql (Lovable refused it), 20261103221000_upkeep.sql (superseded by 20261107100000)."]);
+    // One line: the step lines around it keep their places.
+    expect(msg.indexOf(lines[0])).toBe(msg.findIndex((l) => /^ {3}1\. 20261107100000_kick\.sql/.test(l)) + 1);
+    // With no reasons handed in, every file reads superseded, as before.
+    expect(L.lovableMessage({ head: "abc12345", phases: p, neverApply: never }).filter((l) => /NEVER apply/.test(l)))
+      .toEqual([`   NEVER apply: ${never.map((f) => `${f} (superseded)`).join(", ")}.`]);
+    // The report hands main's reasons to the message and to --json.
+    const src = readFileSync(resolve(ROOT, "scripts/deploy-ledger.mjs"), "utf8");
+    expect(src).toMatch(/neverApplyWhy: neverApplyReasons\(repo\.filter\(never\), policy\),/);
+    expect(src).toMatch(/neverApply: mig\.neverApplyPresent, neverApplyWhy: mig\.neverApplyWhy,/);
+  });
+
   it("refuses a rule that can never be met, instead of guessing an order", () => {
     const bad = {
       migrationOrder: {

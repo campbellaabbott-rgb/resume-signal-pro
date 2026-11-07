@@ -114,6 +114,20 @@ describe("the audit-rest money section", () => {
     expect(fails(lines)).toHaveLength(FNS.length + MIGRATED.length);
   });
 
+  it("the two FAILs of the vault file no message carries name the owner's step, and the other migration's FAIL does not", () => {
+    const { lines, out } = run([
+      ...preflights((fn) => `${fn}.2026-11-03.1`),
+      ...MIGRATED.map((fn) => rpcAnswer(fn, 404, { code: "PGRST202", message: "Could not find the function" })),
+      cron(CRON),
+    ]);
+    const owner = "it reads the vault, so no Lovable message carries it (neverApply); only the owner's own SQL run clears this line, and until then mail-watch R10 does not judge a disarmed job";
+    expect(fails(lines), out).toEqual([
+      "FAIL  affiliate_address_key does not exist: 20261103100000 has not applied",
+      `FAIL  cron_command_secret_names does not exist: 20261103120000 has not applied: ${owner}`,
+      `FAIL  cron_disarmed_jobs does not exist: 20261103120000 has not applied: ${owner}`,
+    ]);
+  });
+
   it("a later build passes, a missing header fails, and a function anon can run fails", () => {
     const { lines, out } = run([
       ...preflights((fn) => (fn === "mail-watch" ? null : `${fn}.2026-11-14.2`)),

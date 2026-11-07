@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { decideRekick, type RekickInput } from "../../supabase/functions/job-board/chain-watchdog.ts";
 
@@ -29,6 +29,13 @@ import { decideRekick, type RekickInput } from "../../supabase/functions/job-boa
  *      trips in the gap, and the watchdog's own throttle was read-then-write
  *      across two. Both are compare-and-set now, and a lost race reads as
  *      "skipped"/"throttled", never as a second chain.
+ *   5. THE PATH THAT RUNS WHILE THE CHAIN IS DEAD (the upkeep hotfix,
+ *      2026-11-07). 20261103221000, the scheduler's upkeep job, never applied:
+ *      Lovable refused it on 2026-11-06 and it is neverApply. The watchdog's
+ *      only act is the keyless {"action":"refresh"} the :x4/:x9 crons send,
+ *      so 20261107100000 sends that same request from SQL every minute once
+ *      every pulse is past the watchdog's threshold. That minute kick is the
+ *      path that runs while the chain is dead; status only reports.
  *
  * The never-fires are asserted as BEHAVIOUR of the pure decision
  * (chain-watchdog.ts) with every input the runtime could hand it, then as
@@ -259,16 +266,27 @@ describe("the wiring in index.ts", () => {
     expect(MK.slice(call, gap)).not.toMatch(/\breturn\b/);
   });
 
-  it("is evaluated from status for the report and acted on by the scheduler's upkeep — a path that runs while the chain is dead", () => {
+  it("evaluated from status for the report; upkeep can act on it; the database's minute kick restarts a dead chain", () => {
     const STATUS = IDX.slice(IDX.indexOf('if (action === "status") {'), IDX.indexOf('if (action === "vendor-health") {'));
     expect(STATUS).toMatch(/const chainWatchdog = await maybeRekickDeadChain\(client, \{ readOnly: !statusFresh \}\);/);
     const UPKEEP = IDX.slice(IDX.indexOf("async function boardUpkeep("), IDX.indexOf("async function maybeKickMaintenance("));
     expect(UPKEEP).toMatch(/const watchdog = await maybeRekickDeadChain\(client\);/);
-    expect(readFileSync(resolve(ROOT, "supabase/migrations/20261103221000_the_scheduler_not_an_anonymous_reader_wakes_a_dead_chain.sql"), "utf8")).toMatch(/'job-board-upkeep', '2-59\/5 \* \* \* \*'/);
     expect(STATUS).toMatch(/\n\s+chainWatchdog,\n/);
     // The verdict's fields and the last kick both reach the payload.
     expect(FN).toMatch(/const report = \{ at: new Date\(now\)\.toISOString\(\), \.\.\.verdict, kicked: false, lastKick, /);
     expect(FN).toMatch(/return \{ \.\.\.report, kicked: true \};/);
+    // The kick itself runs in the database, every minute, and sends exactly the
+    // request the two refresh crons send (20260909219000), byte for byte.
+    const migrations = resolve(ROOT, "supabase/migrations");
+    const KICK = readFileSync(resolve(migrations, readdirSync(migrations).find((f) => f.startsWith("20261107100000_")) as string), "utf8");
+    const CRONS = readFileSync(resolve(migrations, readdirSync(migrations).find((f) => f.startsWith("20260909219000_")) as string), "utf8");
+    expect(KICK).toMatch(/cron\.schedule\('job-board-dead-chain-kick', '\* \* \* \* \*'/);
+    const post = (sql: string) => /SELECT net\.http_post\(\s*url := '([^']+)',\s*headers := '([^']+)'::jsonb,\s*body := '([^']+)'::jsonb\s*\)/.exec(sql)?.slice(1);
+    expect(post(KICK)).toEqual(post(CRONS));
+    expect(post(KICK)).toEqual(["https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/job-board", '{"Content-Type": "application/json"}', '{"action":"refresh"}']);
+    // The same three pulses the watchdog reads (chain-watchdog.ts), and never the chain_kick stamp.
+    for (const k of ["'refresh_progress'", "'slice_trace'", "'slice_stats'", "'coldEmaMs'"]) expect(KICK).toContain(k);
+    expect(KICK.replace(/--[^\n]*/g, "")).not.toMatch(/chain_kick/);
   });
 
   it("instrumentation can never be the thing that breaks a slice or a status call", () => {

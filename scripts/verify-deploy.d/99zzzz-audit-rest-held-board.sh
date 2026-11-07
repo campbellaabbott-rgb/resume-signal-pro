@@ -1,14 +1,16 @@
 # shellcheck shell=bash
 # ── 99zzzz. AUDIT-REST, THE HELD BOARD ITEMS (branch fix/audit-rest-held-board):
-# S13-114 (an anonymous status is counted and writes nothing; the scheduler has
-# its own upkeep action), S13-118 (the retired agent-ready flag narrows nothing),
-# S13-104 and S13-040 (below, in the suite). job-board .101, agent-mcp and
-# public-api 2026-11-03.1, migrations 20261103220000 and 20261103221000.
+# S13-114 (an anonymous status is counted and writes nothing; upkeep answers
+# only the scheduler; a dead chain is kicked by the database's own clock),
+# S13-118 (the retired agent-ready flag narrows nothing), S13-104 and S13-040
+# (below, in the suite). job-board .101, agent-mcp and public-api 2026-11-03.1,
+# migrations 20261103220000 and 20261107100000 (the upkeep hotfix:
+# 20261103221000 never applies, docs/deploy-ledger.json neverApply).
 #
 # Named 99zzzz so it sorts after 99zzz-trust-round-3.sh in byte order ("-"
 # sorts before "z") and under a collating locale that ignores the dash.
 #
-# THE CLAIMS, one line each; each fails on the job-board .100 build, S2 aside:
+# THE CLAIMS, one line each; each fails on the job-board .100 build, S2 and C2 aside:
 #   B1  job-board serves 2026-09-09.101 or later;
 #   B2  agent-mcp and public-api serve 2026-11-03.1 or later;
 #   F1  a list asking for the retired flag has it named in ignoredFilters;
@@ -19,9 +21,15 @@
 #       with every other probe in that minute (15 in 20 s measured on .100, with
 #       no status read), so growth proves nothing: no growth is a FAIL, and
 #       growth is INFO. The suite proves a status is counted;
-#   C1  the job-board-upkeep cron exists and is active;
-#   C2  status publishes boardUpkeep, and fifteen minutes after .101's first
-#       slice it says the job ran inside the last fifteen minutes.
+#   C1  the job-board-dead-chain-kick cron (20261107100000) is active, runs
+#       every minute, and its last run in the hour succeeded;
+#   C2  the chain's freshest pulse (status.chainWatchdog.pulseAgeMs) is inside
+#       the kick's bound: the watchdog's thresholdMs plus 120 s, for the kick's
+#       one-minute tick and a hop's first stamp (5.6 s measured). INFO when
+#       status reports no pulse or ingest is paused; it judges only the moment
+#       it reads, and a memo answer can understate the age by 30 s.
+#   Upkeep has no scheduled caller, by decision: an INFO line says so, with
+#   status.boardUpkeep as read.
 # Not provable from outside, so proved in the suite: no query text and no
 # per-person hash in a log line, an allowance note's claim given back, the
 # stored flag stripped from user_job_searches (the row is private; the migration
@@ -31,7 +39,7 @@
 # READ-ONLY: OPTIONS preflights, one list and up to six status reads with
 # x-rb-budget: probe, one upkeep the anon key is refused, and the anon telemetry
 # and cron aggregates. Nothing is sent, bought or written.
-echo "== 99zzzz. audit-rest held board items: status counted and read-only, upkeep, the retired flag (job-board .101) =="
+echo "== 99zzzz. audit-rest held board items: status counted and read-only, upkeep refused, the dead-chain kick, the retired flag (job-board .101, 20261107100000) =="
 
 vdhb_build() { # $1 fn -> the x-fn-build its preflight answers
   curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$1" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+:[[:space:]]*//'
@@ -108,24 +116,37 @@ else{
 }
 
 // C1
+const KICK="job-board-dead-chain-kick";
 const cron=js("/tmp/vd_hb_cron.json");
 if(!Array.isArray(cron)||cron.length===0)info("get_cron_health unreadable or empty: the schedule cannot be read here");
 else{
-  const job=cron.find((r)=>r.ch_jobname==="job-board-upkeep");
-  ok(!!job&&job.ch_active===true,job?"job-board-upkeep is scheduled "+job.ch_schedule+", active "+job.ch_active:"no cron job is named job-board-upkeep: migration 20261103221000 has not run, and with .101 serving no watchdog runs");
+  const job=cron.find((r)=>r.ch_jobname===KICK);
+  if(!job)ok(false,"no cron job is named "+KICK+": migration 20261107100000 has not run, so a dead chain waits for the :x4/:x9 crons (3-8 min)");
+  else{
+    const runs=Number(job.ch_runs||0),wrong=[];
+    if(job.ch_active!==true)wrong.push("it is not active");
+    if(job.ch_schedule!=="* * * * *")wrong.push("it is not scheduled every minute");
+    if(!(runs>=1))wrong.push("it has not run in the last hour");
+    else if(job.ch_last_status!=="succeeded")wrong.push("its last run "+job.ch_last_status+" ("+Number(job.ch_failed||0)+" of "+runs+" failed)");
+    ok(!wrong.length,KICK+" is scheduled "+job.ch_schedule+", active "+job.ch_active+", "+runs+" run(s) in the last hour, the last "+job.ch_last_status+(wrong.length?": "+wrong.join("; "):""));
+  }
 }
 
 // C2
-if(!st||typeof st!=="object"||!("catalogSize" in st))info("no status body to read boardUpkeep from ("+short(st)+")");
-else if(!("boardUpkeep" in st))ok(false,"status publishes no boardUpkeep: no build carrying upkeep is serving");
+if(!st||typeof st!=="object"||!("catalogSize" in st))info("no status body to read the chain\u0027s pulse from ("+short(st)+")");
+else if(st.ingestPaused===true)info("ingest is paused (status.ingestPaused), so no kick is due and the chain\u0027s pulse is not judged");
 else{
-  const u=st.boardUpkeep;
-  const ss=st.sliceStats||{};
-  const servedMin=typeof ss.buildSince==="string"?(Date.now()-Date.parse(ss.buildSince))/60000:NaN;
-  const seen=u&&typeof u.ageMin==="number"?"it last ran "+u.ageMin+" min ago (watchdog "+u.watchdog+", kicked "+u.kicked+")":"it has never run";
-  if(!(servedMin>=15))info("status publishes boardUpkeep; "+seen+", and "+(ss.build||"this build")+" has served under fifteen minutes (buildSince "+short(ss.buildSince)+"), so a missing run is not judged yet");
-  else ok(!!u&&typeof u.ageMin==="number"&&u.ageMin<=15,"upkeep: "+seen+", "+Math.round(servedMin)+" min after this build\u0027s first slice (want within 15: its cron runs every five minutes)");
+  const wd=st.chainWatchdog;
+  const age=wd&&typeof wd.pulseAgeMs==="number"?wd.pulseAgeMs:null,th=wd&&typeof wd.thresholdMs==="number"?wd.thresholdMs:null;
+  if(age===null||th===null)info("status reports no chainWatchdog pulseAgeMs and thresholdMs ("+short(wd)+"): the chain\u0027s pulse cannot be judged here");
+  else{
+    const bound=th+120000,s=(ms)=>Math.round(ms/1000);
+    if(age<=bound)ok(true,"the chain\u0027s freshest pulse is "+s(age)+" s old, inside the dead-chain kick\u0027s bound of "+s(bound)+" s (the watchdog\u0027s threshold "+s(th)+" s plus 120 s; decision "+wd.decision+")");
+    else ok(false,"the chain is silent "+s(age-bound)+" s past the dead-chain kick\u0027s bound: its freshest pulse is "+s(age)+" s old against "+s(th)+" s plus 120 s (decision "+wd.decision+"), so no kick restarted it");
+  }
 }
+const bu=st&&typeof st==="object"?st.boardUpkeep:undefined;
+info("upkeep has no scheduled caller by decision (20261103221000 neverApply); boardUpkeep "+(bu===undefined?"not in the status read":bu===null?"null":typeof bu.ageMin==="number"?"last ran "+bu.ageMin+" min ago":short(bu)));
 
 info("S13-104 is proved in the suite (a-search-asked-not-to-be-logged-reaches-no-log-line-on-any-path.test.ts), since function logs are not readable from here");
 info("S13-040 is proved in the suite (a-refused-allowance-note-gives-its-claim-back.test.ts): a claim stands only for a note notify-owner says it mailed");

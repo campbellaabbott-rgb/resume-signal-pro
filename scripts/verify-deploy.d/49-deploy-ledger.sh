@@ -7,7 +7,10 @@
 # section printed PASS (S11-048). A held migration whose every condition is
 # live is a FAIL until it is released (S12-032); a declared rollback is a
 # deploy like any other (S12-161); a migration with no stub that production
-# shows applied is INFO, not "not applied" (S12-162).
+# shows applied is INFO, not "not applied" (S12-162). A file that never
+# applies by decision (neverApply: superseded, or one Lovable's agent refuses)
+# is one INFO line with its reason from neverApplyWhy, never a FAIL (the
+# upkeep hotfix, 2026-11-07).
 echo "== 49. deploy ledger: main vs production =="
 L49=$(node scripts/deploy-ledger.mjs --json 2>/dev/null)
 if [ -z "$L49" ]; then echo "FAIL  the deploy ledger did not run (node scripts/deploy-ledger.mjs --json)"; else
@@ -25,6 +28,8 @@ let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
   const why=new Map((mig.unproven||[]).map(u=>[u.file,u.why]));
   if(!mig.pending.length) console.log("PASS  no migration on main is missing from the staged-runner record or its behaviour proof");
   for(const f of mig.pending) console.log("FAIL  migration not applied: "+f+(why.has(f)?" (its behaviour proof: "+why.get(f)+")":""));
+  const never=mig.neverApplyWhy||{};
+  for(const f of (mig.neverApplyPresent||[])) console.log("INFO  never applied, by decision (docs/deploy-ledger.json neverApply): "+f+" ("+(never[f]||"superseded")+")");
   for(const p of (mig.appliedByBehaviour||[])) console.log("INFO  applied by behaviour, no stub: "+p.file+" (get_cron_health lists "+p.jobs.join(", ")+" active)");
   const holds=Array.isArray(j.holds)?j.holds:null;
   if(holds){

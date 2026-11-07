@@ -668,6 +668,24 @@ export function recordRefusal({ refusal = null, toDeploy = [], unreachable = [],
   return gap.length ? `${gap.length} function(s) do not answer main's build yet (${gap.slice(0, 6).join(", ")}${gap.length > 6 ? ", ..." : ""}): a deploy is recorded only once nothing is left to deploy` : null;
 }
 
+/**
+ * WHY A FILE NEVER APPLIES, PRINTED BESIDE IT (the upkeep hotfix, 2026-11-07).
+ * neverApply held only superseded files, and the message said "(superseded)"
+ * after every one. Since 2026-11-06 it also holds files Lovable's agent refuses
+ * to run (20261103120000 and 20261103221000 read the vault), and "superseded"
+ * was false for 120000. `policy.neverApplyWhy` maps a 14-digit stamp to its
+ * reason; a file with no entry reads "superseded". Only a whole stamp matches.
+ * Pure.
+ *
+ *   returns { "<file>": "<reason>" } for every file given
+ */
+export function neverApplyReasons(files, policy) {
+  const why = Object.entries(policy?.neverApplyWhy ?? {}).filter(([k, v]) => /^\d{14}$/.test(k) && typeof v === "string" && v.trim());
+  const out = {};
+  for (const f of files ?? []) out[f] = why.find(([stamp]) => String(f).startsWith(`${stamp}_`))?.[1] ?? "superseded";
+  return out;
+}
+
 function stubRecord() {
   const stubs = readdirSync(DRIZZLE_DIR).filter((f) => f.endsWith(".sql")).sort();
   return { count: stubs.length, newest: stubs[stubs.length - 1] ?? null };
@@ -694,6 +712,7 @@ function migrations(policy) {
   const never = (f) => policy.neverApply.some((n) => f.startsWith(n));
   return {
     pending: pending.filter((f) => !hold.includes(f)), hold, neverApplyPresent: repo.filter(never),
+    neverApplyWhy: neverApplyReasons(repo.filter(never), policy),
     // Everything else on disk is applied: recorded by the runner, applied outside it, before the baseline, or written by Lovable as it applied.
     applied: repo.filter((f) => !pending.includes(f) && !never(f)),
   };
@@ -1006,7 +1025,7 @@ export function checkoutRefusal({ head, originMain, fetched = true, behind = 0, 
  * count such a copy as applied). `dated` is datedAtDeploy's checks: a draft
  * names each one still due.
  */
-export function lovableMessage({ head, draftOf = null, phases, hold = [], holds = null, neverApply = [], toDeploy = [], unreachable = [], liveAhead = [], dated = [] }) {
+export function lovableMessage({ head, draftOf = null, phases, hold = [], holds = null, neverApply = [], neverApplyWhy = {}, toDeploy = [], unreachable = [], liveAhead = [], dated = [] }) {
   const L = [];
   const holdsAny = hold.length || (holds && holds.length) || neverApply.length;
   const backendSteps = (phases.pre.length || holdsAny ? 1 : 0) + (toDeploy.length ? 1 : 0) + (phases.afterFunctions.length ? 1 : 0);
@@ -1049,7 +1068,8 @@ export function lovableMessage({ head, draftOf = null, phases, hold = [], holds 
         L.push(`   RELEASABLE, still held: ${h.file}. Every condition it names is live (${h.conditions.map((c) => `${c.fn} answers ${c.have}`).join("; ")}). Confirm what only you can check (${h.until || "see its hold"}), then release it in docs/deploy-ledger.json and regenerate this message; do not apply it from this one.`);
       }
     } else if (hold.length) L.push(`   Do NOT apply in this session: ${hold.join(", ")} (a later message releases ${hold.length === 1 ? "it" : "them"}).`);
-    if (neverApply.length) L.push(`   NEVER apply: ${neverApply.join(", ")} (superseded).`);
+    // One line, each file with its own reason (neverApplyReasons), so the indices of the lines after it do not move.
+    if (neverApply.length) L.push(`   NEVER apply: ${neverApply.map((f) => `${f} (${neverApplyWhy?.[f] || "superseded"})`).join(", ")}.`);
   };
   if (phases.pre.length) {
     migs(phases.pre, phases.pre.length === 1 ? `Apply this migration (it is self-verifying and safe to re-run):` : `Apply these ${phases.pre.length} migrations, in this order, one at a time (each is self-verifying and safe to re-run):`);
@@ -1275,7 +1295,10 @@ async function main(argv) {
     }
   }
   for (const st of holds.stale) console.log(`  STALE HOLD  ${st}: holdUntilVerified names no pending migration (applied, or no such file): remove it`);
-  if (mig.neverApplyPresent.length) console.log(`NEVER apply (superseded): ${mig.neverApplyPresent.join(", ")}`);
+  if (mig.neverApplyPresent.length) {
+    console.log(`NEVER apply:`);
+    for (const f of mig.neverApplyPresent) console.log(`  ${f} (${mig.neverApplyWhy[f] || "superseded"})`);
+  }
   if (dated.checks.length || dated.errors.length) {
     console.log(`Dated at the deploy (docs/deploy-ledger.json datedAtDeploy):`);
     for (const c of dated.checks) console.log(`  ${!c.due ? "HISTORY" : c.ok ? "TODAY" : "WRONG DAY"}  ${c.file} ${c.constant} = ${c.value}${c.due ? ` (must read the deploy day while ${c.fn} is older than ${c.need}; today is ${c.today})` : ` (${c.fn} answers ${c.need} or later)`}`);
@@ -1309,7 +1332,7 @@ async function main(argv) {
       let branch = "";
       try { branch = git("rev-parse", "--abbrev-ref", "HEAD"); } catch { /* detached */ }
       const draftOf = args.has("--message") ? null : (branch && branch !== "HEAD" ? branch : head);
-      for (const l of lovableMessage({ head, draftOf, phases, hold: mig.hold, holds: holds.holds, neverApply: mig.neverApplyPresent, toDeploy, unreachable, liveAhead, dated: dated.checks })) console.log(l);
+      for (const l of lovableMessage({ head, draftOf, phases, hold: mig.hold, holds: holds.holds, neverApply: mig.neverApplyPresent, neverApplyWhy: mig.neverApplyWhy, toDeploy, unreachable, liveAhead, dated: dated.checks })) console.log(l);
     }
   }
   process.exitCode = exitWithDated(args.has("--message"));

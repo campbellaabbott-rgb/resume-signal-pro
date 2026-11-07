@@ -21,7 +21,11 @@
 #   M1  20261103100000 applied: affiliate_address_key exists and anon may not
 #       run it (a GET: PostgREST runs it read-only);
 #   M3  20261103120000 applied: cron_disarmed_jobs and
-#       cron_command_secret_names exist and anon may not run them;
+#       cron_command_secret_names exist and anon may not run them. The file
+#       reads the vault, Lovable's agent refused it on 2026-11-06, and it is
+#       neverApply (docs/deploy-ledger.json), so no deploy message carries it:
+#       its two FAILs stay until the owner runs it in the SQL editor, an owner
+#       step like SPF on send, and their text says so;
 #   C   what mail-watch's R10 will ring for on its first run, from the anon
 #       cron aggregate section 7m already reads (INFO: the jobs failing or
 #       switched off in the last 26 hours, so the first R10 mail is expected);
@@ -48,19 +52,20 @@ done
 
 # A migration's function, asked by a GET: 42501 means PostgREST found it and
 # anon may not run it (applied, closed); PGRST202 means it does not exist.
-vdm_applied() { # $1 fn  $2 query string  $3 migration
+vdm_applied() { # $1 fn  $2 query string  $3 migration  $4 what a missing function means, when more than "has not applied"
   local code
   code=$(curl -s -m 60 "$B/rest/v1/rpc/$1${2:+?$2}" -H "apikey: $K" -H "Authorization: Bearer $K" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);console.log(Array.isArray(j)||typeof j==="string"||typeof j==="boolean"||j===null?"RAN":(j.code||"NOCODE"))}catch{console.log("NONJSON")}})')
   case "$code" in
     42501) echo "PASS  $1 exists and anon may not run it ($3 applied)" ;;
-    PGRST202) echo "FAIL  $1 does not exist: $3 has not applied" ;;
+    PGRST202) echo "FAIL  $1 does not exist: $3 has not applied${4:+: $4}" ;;
     RAN) echo "FAIL  $1 ran for anon: $3 must leave it to the service role" ;;
     *) echo "FAIL  $1 probe -> $code (want 42501)" ;;
   esac
 }
 vdm_applied affiliate_address_key "p_email=probe%40example.invalid" 20261103100000
-vdm_applied cron_command_secret_names "p_command=probe" 20261103120000
-vdm_applied cron_disarmed_jobs "" 20261103120000
+VDM_OWNER_STEP="it reads the vault, so no Lovable message carries it (neverApply); only the owner's own SQL run clears this line, and until then mail-watch R10 does not judge a disarmed job"
+vdm_applied cron_command_secret_names "p_command=probe" 20261103120000 "$VDM_OWNER_STEP"
+vdm_applied cron_disarmed_jobs "" 20261103120000 "$VDM_OWNER_STEP"
 
 rm -f /tmp/vd_99zzzz_cron.json
 R get_cron_health '{"p_hours":26}' > /tmp/vd_99zzzz_cron.json

@@ -16,7 +16,14 @@ production answers, and every migration on main with the ones Lovable's staged
 runner recorded (`drizzle/migrations`), and prints the Lovable message that
 closes the gap. Policy lives in `docs/deploy-ledger.json`:
 
-- `neverApply`: superseded migrations (applying them would revert a later one).
+- `neverApply`: files no Lovable message may carry: superseded ones (applying
+  them would revert a later one), and since 2026-11-06 any file that reads the
+  vault, which Lovable's agent refuses ("Agent access to secrets is not
+  allowed"; 20261103120000 and 20261103221000). Each names its reason in
+  `neverApplyWhy` (stamp -> reason; a file with no entry reads "superseded"),
+  which the message's one NEVER apply line and section 49's INFO line print
+  beside the file. A file the owner later applies by hand moves to
+  `appliedOutsideDrizzle`.
 - `holdUntilVerified`: migrations that start scheduled work; they go out in a
   second message only after the first one verifies live. Each names
   `releaseWhen`, the `fn:<name>@<YYYY-MM-DD.N>` builds the ledger reads from
@@ -208,7 +215,8 @@ the order as `deployOrder`.
 | 3.5 | Oracle hosts with no region: JPMorgan Chase (`oracle-regionless`; oh/, and trust/pages, trust/spa-gate and trust/census-tools for the trusted-pages fix that rides the same deploy). Deploys before phase 3, so phase 3 takes a job-board build after .95 when it merges | 20261025* (trust/pages only) | 2026-09-09.95 | 2026-10-15 |
 | 3.75 | trust round 3: catalogue names, agency labels, iCIMS scope, US towns, Oracle pool sites (`trust-round-3`; trust/round3, on trust/pages). Ships after 3.5 and the homepage switch-over (a frontend publish), before phase 3, so it took .96 and phase 3 moved to .97 on 2026-10-26 | 20261026* | 2026-09-09.96 | 2026-10-26 |
 | 4 | company profiles phase 3, vendor benefits capture (`company-profiles-phase3`; profiles-p3/). Reserved .94 until 2026-10-25 and .96 until 2026-10-26; neither is used, because .95 and .96 deploy first | 20261013* | 2026-09-09.97 | 2026-10-13 |
-| after | next | 20261015* onwards, one day each; taken: 2026-10-15 (oracle-regionless's function day), 20261016* (resume-match's), 20261017* (the disk-plan migration's), 20261025* (oracle-regionless's, for trust/pages), 20261026* (trust-round-3's), 2026-10-27 (land/all's function day: sales stay on, no migration), 2026-10-31 (land/all's second: the territory refusal removed, create-checkout, create-subscription-checkout and create-product-checkout at 2026-10-31.1; home-pricing stamps free-keyword-scan and its stream 2026-10-31.1 too, different functions, so hp/switch-over's merge must stamp the three checkouts above 2026-10-31.1) | 2026-09-09.98+ | that day |
+| 4.1 | upkeep hotfix (`upkeep-hotfix`; fix/upkeep-vault-free): the dead-chain kick on the database's clock, after audit-rest's 2026-11-06 deploy left its two vault files refused | 20261107* | none | none |
+| after | next | 20261015* onwards, one day each; taken: 2026-10-15 (oracle-regionless's function day), 20261016* (resume-match's), 20261017* (the disk-plan migration's), 20261025* (oracle-regionless's, for trust/pages), 20261026* (trust-round-3's), 2026-10-27 (land/all's function day: sales stay on, no migration), 2026-10-31 (land/all's second: the territory refusal removed, create-checkout, create-subscription-checkout and create-product-checkout at 2026-10-31.1; home-pricing stamps free-keyword-scan and its stream 2026-10-31.1 too, different functions, so hp/switch-over's merge must stamp the three checkouts above 2026-10-31.1), 20261107* (upkeep-hotfix's; no function) | 2026-09-09.98+ | that day |
 
 A migration stamp need not sort in deploy order. Wave 4's 20261011* deploys
 after profiles' 20261012*, and the ledger lists whatever the staged runner has
