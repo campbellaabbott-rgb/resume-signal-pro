@@ -48,6 +48,18 @@ closes the gap. Policy lives in `docs/deploy-ledger.json`:
   reports as ch_timeout (2026-10-31: 20261014120000 re-schedules
   20261014100000's rb-auth-mail-drain, and only its command begins with
   '10s'). Prefer it to `appliedOutsideDrizzle`, which nothing re-checks.
+  It proves a job by its name, not its command. A file proved this way whose
+  job is later unscheduled or paused reads as not applied again, so its
+  rollback adds it to `neverApply` in the same change.
+- `retypedRead`: per migration stamp, what a person found on reading the
+  diff when Lovable's stub ran another text than the repo file. Lovable's
+  agent retypes migration SQL and does not pipe the file, and its stub of
+  20261103100000 (drizzle 0208, 2026-11-06) carries a condition twice that
+  the file has once. The ledger compares every stub it matches by stamped
+  name or title with its file, comments and whitespace aside (a stub that
+  only runs SQL staged under a name holds no text, and a file older than
+  `drizzleBaseline` is not compared). Section 49 FAILs a difference with no
+  entry and prints one with an entry as INFO.
 - `rollbacks`: a rollback on purpose, `"<fn>": { "from": "<live build>" }`.
   That function is deployed at main's build by the next message and FAILs
   section 49 until it answers it; any other function live ahead of main

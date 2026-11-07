@@ -13,7 +13,11 @@
  *     public-api, no dead-chain kick) fails every claim the section makes, the
  *     shared probe count and the chain's pulse aside;
  *   - C1 is the dead-chain kick of 20261107100000 (20261103221000's upkeep job
- *     never applies), C2 the chain's freshest pulse against the kick's bound;
+ *     never applies), C2 the chain's freshest pulse against the kick's bound:
+ *     INFO while the chain is alive, a PASS labelled a regression guard
+ *     between the watchdog's threshold and the bound, since the build before
+ *     this round reads there too, and INFO for a minute or two after an
+ *     unpause, before the kick's next tick;
  *   - each claim fails alone when only its own fix is missing;
  *   - a status that only ever answers from its memo is INFO, not a guess;
  *   - every POST is job-board with the probe header or an anon aggregate, and
@@ -118,10 +122,11 @@ const good = (): Route[] => [
 const goodWith = (...over: Route[]): Route[] => [...over, ...good()];
 
 describe("the held board section", () => {
-  it("a good deploy passes every claim and fails none", () => {
+  it("a good deploy passes every claim and fails none, and a live chain is INFO, not a PASS the kick earned", () => {
     const { lines, out } = run(good());
     expect(fails(lines), out).toEqual([]);
-    expect(lines.filter((l) => l.startsWith("PASS")).length, out).toBe(9);
+    expect(lines.filter((l) => l.startsWith("PASS")).length, out).toBe(8);
+    expect(lines, out).toContain("INFO  the chain is alive: its freshest pulse is 40 s old, inside the watchdog's threshold of 202 s, so the dead-chain kick had nothing to do (decision within_window); C1 is the line that proves the deploy");
   });
 
   it("a later build passes", () => {
@@ -144,6 +149,26 @@ describe("the held board section", () => {
       /retired flag has it named/, /0 of 25 rows/, /upkeep answered 400/, /readOnly/, /probe count grew by 0/, /no cron job is named job-board-dead-chain-kick/,
     ]) expect(F.some((l) => claim.test(l)), `${claim}\n${out}`).toBe(true);
     expect(F, out).toHaveLength(9);
+  });
+
+  it("the build live before this round, with its chain alive, gets no bare PASS for the chain's pulse", () => {
+    const before = (pulseAgeMs: number) => run([
+      preflight("job-board", "job-board.2026-09-09.100"), preflight("agent-mcp", "agent-mcp.2026-11-02.1"), preflight("public-api", "public-api.2026-11-02.1"),
+      list({ jobs: JOBS.map(() => ({ source: "breezy" })) }),
+      upkeep(400, "Unknown action"),
+      status({ chainWatchdog: { decision: "within_window", kicked: false, pulseAgeMs, thresholdMs: 202_000 }, ingestPaused: false, sliceStats: { build: "2026-09-09.100", buildSince: LONG_SERVED() } }),
+      hourly(10, 10),
+      cron([{ ch_jobname: "job-board-refresh", ch_active: true }]),
+    ]);
+    const alive = before(40_000);
+    expect(alive.lines.filter((l) => /chain/.test(l) && l.startsWith("PASS")), alive.out).toEqual([]);
+    expect(alive.lines.some((l) => /^INFO {2}the chain is alive: its freshest pulse is 40 s old/.test(l)), alive.out).toBe(true);
+    expect(fails(alive.lines), alive.out).toHaveLength(9);
+    // A read that lands past the threshold and inside the bound passes before this deploy too, so it says so.
+    const late = before(300_000);
+    expect(late.lines.filter((l) => /freshest pulse/.test(l)), late.out).toEqual([
+      "PASS  regression guard, true before this deploy as well: the chain's freshest pulse is 300 s old, past the watchdog's threshold of 202 s and inside the dead-chain kick's bound of 322 s (decision within_window)",
+    ]);
   });
 
   it("a build with no header fails", () => {
@@ -206,17 +231,29 @@ describe("the held board section", () => {
     expect(passed.some((l) => /^PASS {2}job-board-dead-chain-kick is scheduled \* \* \* \* \*, active true, 60 run\(s\) in the last hour, the last succeeded$/.test(l)), passed.join("\n")).toBe(true);
   });
 
-  it("a chain silent past the kick's bound fails, one inside it passes, a paused ingest is INFO, and boardUpkeep is only INFO", () => {
+  it("a chain silent past the kick's bound fails, one inside it passes as a regression guard, a live one, a paused ingest and a fresh unpause are INFO, and boardUpkeep is only INFO", () => {
     const at = (pulseAgeMs: number, over: Record<string, unknown> = {}) => run(goodWith(status({ ...GOOD_STATUS(), chainWatchdog: { decision: "chain_alive", kicked: false, readOnly: true, pulseAgeMs, thresholdMs: 202_000 }, ...over })));
     // The bound is the watchdog's threshold plus 120 s: 322 s here.
     const past = at(360_000);
     expect(fails(past.lines), past.out).toEqual([expect.stringMatching(/^FAIL {2}the chain is silent 38 s past the dead-chain kick's bound: its freshest pulse is 360 s old against 202 s plus 120 s \(decision chain_alive\)/)]);
     const inside = at(321_000);
     expect(fails(inside.lines), inside.out).toEqual([]);
-    expect(inside.lines.some((l) => /^PASS {2}the chain's freshest pulse is 321 s old, inside the dead-chain kick's bound of 322 s/.test(l)), inside.out).toBe(true);
+    expect(inside.lines.some((l) => /^PASS {2}regression guard, true before this deploy as well: the chain's freshest pulse is 321 s old, past the watchdog's threshold of 202 s and inside the dead-chain kick's bound of 322 s/.test(l)), inside.out).toBe(true);
+    const alive = at(202_000);
+    expect(fails(alive.lines), alive.out).toEqual([]);
+    expect(alive.lines.filter((l) => /freshest pulse/.test(l)), alive.out).toEqual([expect.stringMatching(/^INFO {2}the chain is alive: its freshest pulse is 202 s old, inside the watchdog's threshold of 202 s/)]);
     const paused = at(3_600_000, { ingestPaused: true });
     expect(fails(paused.lines), paused.out).toEqual([]);
     expect(paused.lines.some((l) => /^INFO {2}ingest is paused \(status\.ingestPaused\)/.test(l)), paused.out).toBe(true);
+    // Just unpaused: status still reports the pulses from before the pause, and the kick's next tick has not come.
+    const unpaused = at(3_600_000, { ingestPaused: false, ingestPausedAgeMin: 1 });
+    expect(fails(unpaused.lines), unpaused.out).toEqual([]);
+    expect(unpaused.lines.some((l) => /^INFO {2}ingest was unpaused 1 min ago \(status\.ingestPausedAgeMin\): the kick's next tick restarts the chain/.test(l)), unpaused.out).toBe(true);
+    // Unpaused long ago, or never paused: the pulse is judged.
+    for (const ingestPausedAgeMin of [3, 900, null]) {
+      const judged = at(3_600_000, { ingestPaused: false, ingestPausedAgeMin });
+      expect(fails(judged.lines), judged.out).toEqual([expect.stringMatching(/^FAIL {2}the chain is silent 3278 s past the dead-chain kick's bound/)]);
+    }
     const noPulse = run(goodWith(status({ ...GOOD_STATUS(), chainWatchdog: { decision: "no_pulse", kicked: false, readOnly: true, pulseAgeMs: null, thresholdMs: 202_000 } })));
     expect(fails(noPulse.lines), noPulse.out).toEqual([]);
     expect(noPulse.lines.some((l) => /^INFO {2}status reports no chainWatchdog pulseAgeMs and thresholdMs/.test(l)), noPulse.out).toBe(true);

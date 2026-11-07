@@ -10,7 +10,10 @@
 # shows applied is INFO, not "not applied" (S12-162). A file that never
 # applies by decision (neverApply: superseded, or one Lovable's agent refuses)
 # is one INFO line with its reason from neverApplyWhy, never a FAIL (the
-# upkeep hotfix, 2026-11-07).
+# upkeep hotfix, 2026-11-07). A stub Lovable retyped into another text than
+# its repo file, comments and whitespace aside, is a FAIL until a person has
+# read the diff and recorded it under retypedRead, then INFO (the upkeep
+# hotfix review, 2026-11-07).
 echo "== 49. deploy ledger: main vs production =="
 L49=$(node scripts/deploy-ledger.mjs --json 2>/dev/null)
 if [ -z "$L49" ]; then echo "FAIL  the deploy ledger did not run (node scripts/deploy-ledger.mjs --json)"; else
@@ -31,6 +34,10 @@ let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
   const never=mig.neverApplyWhy||{};
   for(const f of (mig.neverApplyPresent||[])) console.log("INFO  never applied, by decision (docs/deploy-ledger.json neverApply): "+f+" ("+(never[f]||"superseded")+")");
   for(const p of (mig.appliedByBehaviour||[])) console.log("INFO  applied by behaviour, no stub: "+p.file+" (get_cron_health lists "+p.jobs.join(", ")+" active)");
+  for(const r of (mig.retyped||[])){
+    if(r.read) console.log("INFO  Lovable\x27s stub "+r.stub+" ran another text than "+r.file+", read: "+r.read);
+    else console.log("FAIL  Lovable\x27s stub "+r.stub+" ran another text than "+r.file+" (comments and whitespace aside): the repo reads ..."+r.repo+"... where the stub reads ..."+r.ran+"... Diff the two, and record what the difference means under retypedRead in docs/deploy-ledger.json");
+  }
   const holds=Array.isArray(j.holds)?j.holds:null;
   if(holds){
     for(const h of holds){

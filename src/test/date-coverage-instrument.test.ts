@@ -99,6 +99,10 @@ describe("an unavailable measurement says so", () => {
     expect(upkeep).toMatch(/k: "date_coverage_cache"/);
     const status = board.slice(board.indexOf('if (action === "status") {'), board.indexOf('if (action === "vendor-health") {'));
     expect(status).not.toMatch(/date_coverage_cache"[^\n]*upsert|upsert\(\{ k: "date_coverage_cache"/);
+    // The copy's age is its own row's: with no caller it grows, and a status
+    // read never stamps it fresh.
+    expect(status).toMatch(/select\("v, updated_at"\)\.eq\("k", "date_coverage_cache"\)/);
+    expect(status).toMatch(/dateCoverageAgeMin: Array\.isArray\(\(dateCov as \{ data\?: unknown \}\)\.data\)\n\s+\? ageMin\([^\n]*computed_at[^\n]*\)\n\s+: ageMin\(dcCache\.data\?\.updated_at \?\? null\),/);
   });
 });
 

@@ -28,14 +28,19 @@
 -- would have posted at 17:51:00. Four deaths in 47 minutes that afternoon,
 -- each dark 4.2-6.6 min.
 --
--- THE CONDITION IS WRITTEN ONCE. The job's WHERE clause and the check below
--- are the same text, so the check runs exactly what the job will run, and a
--- typo stops the apply instead of failing every minute.
+-- THE WHOLE JOB IS CHECKED BEFORE IT RUNS. The job's WHERE clause and the
+-- first check below are the same text, written once, and that check runs the
+-- condition once. The second plans the command the job stored, the post with
+-- its headers and body as well as the condition, without running it: a plan
+-- calls nothing, so it posts nothing. A slip anywhere in the job, the kind a
+-- retyped file carries, stops the apply instead of failing every minute.
 --
 -- APPLY ORDER: any. Every job-board build answers {"action":"refresh"}.
--- Undo: SELECT cron.unschedule('job-board-dead-chain-kick'). Safe to re-run.
--- Self-verifying: the condition must evaluate, and the job must come up
--- active, every minute.
+-- Undo: SELECT cron.unschedule('job-board-dead-chain-kick'), and in the same
+-- change add 20261107100000 to neverApply in docs/deploy-ledger.json with its
+-- reason, or the next deploy message schedules it again. Safe to re-run.
+-- Self-verifying: the condition must evaluate, the stored command must plan,
+-- and the job must come up active, every minute.
 DO $$
 DECLARE
   v_when constant text := $when$
@@ -56,6 +61,7 @@ DECLARE
   v_due boolean;
   v_active boolean;
   v_schedule text;
+  v_command text;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron') THEN
     RAISE NOTICE 'pg_cron is not installed here; job-board-dead-chain-kick not scheduled';
@@ -77,11 +83,16 @@ BEGIN
       headers := '{"Content-Type": "application/json"}'::jsonb,
       body := '{"action":"refresh"}'::jsonb
     )
-    WHERE$job$ || v_when || E';\n');
+    WHERE$job$ || v_when || ';');
 
-  SELECT j.active, j.schedule INTO v_active, v_schedule FROM cron.job j WHERE j.jobname = 'job-board-dead-chain-kick';
+  SELECT j.active, j.schedule, j.command INTO v_active, v_schedule, v_command FROM cron.job j WHERE j.jobname = 'job-board-dead-chain-kick';
   IF v_active IS NOT TRUE OR v_schedule IS DISTINCT FROM '* * * * *' THEN
     RAISE EXCEPTION 'S13-114: job-board-dead-chain-kick is not an active cron job every minute after scheduling';
+  END IF;
+
+  -- The command as stored, planned and not run.
+  IF to_regclass('public.job_board_meta') IS NOT NULL THEN
+    EXECUTE 'EXPLAIN ' || v_command;
   END IF;
   RAISE NOTICE 'job-board-dead-chain-kick runs every minute; it would post now: %', coalesce(v_due::text, 'unknown (no job_board_meta here)');
 END $$;

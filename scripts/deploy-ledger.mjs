@@ -686,26 +686,71 @@ export function neverApplyReasons(files, policy) {
   return out;
 }
 
+/**
+ * A STUB THAT RAN ANOTHER TEXT (the upkeep hotfix review, 2026-11-07).
+ * Lovable's agent retypes migration SQL; it does not pipe the file. Its stub
+ * of 20261103100000 (drizzle 0208, 2026-11-06) carries a condition twice that
+ * the repo file has once: the ledger matched the stub by its name, read the
+ * file as applied, and only a hand diff found the difference. `pairs` are the
+ * stubs matched to a repo file by stamped name or title, each with both texts.
+ * A stub that only runs SQL staged under a name holds no text of its own and
+ * is skipped. Comments and whitespace are set aside on both sides, since
+ * Lovable drops comments. `policy.retypedRead` maps a stamp to what reading
+ * the diff found; a difference with no entry is unread. Pure.
+ *
+ *   returns [{ file, stub, repo: "<excerpt>", ran: "<excerpt>", read: "<what reading it found>" | null }]
+ */
+export function retypedStubs(pairs, policy) {
+  const read = Object.entries(policy?.retypedRead ?? {}).filter(([k, v]) => /^\d{14}$/.test(k) && typeof v === "string" && v.trim());
+  const out = [];
+  for (const { file, stub, repoSql, stubSql } of pairs ?? []) {
+    if (STAGED_EXEC.test(String(stubSql ?? ""))) continue;
+    const a = sqlText(repoSql), b = sqlText(stubSql);
+    if (a === b) continue;
+    let i = 0;
+    while (i < a.length && i < b.length && a[i] === b[i]) i++;
+    const cut = (t) => t.slice(Math.max(0, i - 40), i + 60);
+    out.push({ file, stub, repo: cut(a), ran: cut(b), read: read.find(([stamp]) => String(file).startsWith(`${stamp}_`))?.[1] ?? null });
+  }
+  return out;
+}
+/** A stub that executes the SQL staged under a name, the runner's call and nothing else. */
+const STAGED_EXEC = /_mig_exec\s*\(\s*\(\s*SELECT\s+sql\s+FROM\s+public\._mig_stag/i;
+/** SQL with its comments and runs of whitespace set aside, to compare a retyped copy with its file. Pure. */
+export function sqlText(sql) {
+  return String(sql ?? "").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ").replace(/\s+/g, " ").trim();
+}
+
 function stubRecord() {
   const stubs = readdirSync(DRIZZLE_DIR).filter((f) => f.endsWith(".sql")).sort();
   return { count: stubs.length, newest: stubs[stubs.length - 1] ?? null };
 }
 
-function migrations(policy) {
+/**
+ * The repo's migrations against the staged-runner record: pending, held,
+ * never applied by decision, applied, and the stubs that ran another text
+ * than their file (retypedStubs). Reads the working tree only; no git, no
+ * network.
+ */
+export function migrations(policy) {
   const repo = readdirSync(MIG_DIR).filter((f) => /^\d{14}_.+\.sql$/.test(f)).sort();
   const lovableAuthored = (f) => /^\d{14}_[0-9a-f]{8}-[0-9a-f]{4}-/.test(f);
   const applied = new Set();
   const byTitle = new Map(repo.map((f) => [f.replace(/^\d{14}_/, ""), f]));
-  for (const d of readdirSync(DRIZZLE_DIR).filter((f) => f.endsWith(".sql"))) {
+  const baseline = policy.drizzleBaseline;
+  const pairs = [];
+  for (const d of readdirSync(DRIZZLE_DIR).filter((f) => f.endsWith(".sql")).sort()) {
     const src = readFileSync(join(DRIZZLE_DIR, d), "utf8");
     const staged = /_mig_stage WHERE name = '([^']+)'/.exec(src);
     if (staged) { applied.add(staged[1]); continue; }
     const stamped = /^\d{4}_(\d{14}_.+\.sql)$/.exec(d);
-    if (stamped && repo.includes(stamped[1])) { applied.add(stamped[1]); continue; }
     const title = d.replace(/^\d{4}_/, "");
-    if (byTitle.has(title)) applied.add(byTitle.get(title));
+    const file = stamped && repo.includes(stamped[1]) ? stamped[1] : byTitle.get(title);
+    if (!file) continue;
+    applied.add(file);
+    // Before the baseline every file counts as applied whatever its stub says.
+    if (file >= baseline) pairs.push({ file, stub: d, repoSql: readFileSync(join(MIG_DIR, file), "utf8"), stubSql: src });
   }
-  const baseline = policy.drizzleBaseline;
   const pending = repo.filter((f) => f >= baseline && !lovableAuthored(f) && !applied.has(f)
     && !policy.neverApply.some((n) => f.startsWith(n)) && !policy.appliedOutsideDrizzle.some((n) => f.startsWith(n)));
   const hold = pending.filter((f) => policy.holdUntilVerified.some((h) => f.startsWith(h.stamp)));
@@ -713,6 +758,7 @@ function migrations(policy) {
   return {
     pending: pending.filter((f) => !hold.includes(f)), hold, neverApplyPresent: repo.filter(never),
     neverApplyWhy: neverApplyReasons(repo.filter(never), policy),
+    retyped: retypedStubs(pairs, policy),
     // Everything else on disk is applied: recorded by the runner, applied outside it, before the baseline, or written by Lovable as it applied.
     applied: repo.filter((f) => !pending.includes(f) && !never(f)),
   };
@@ -1298,6 +1344,10 @@ async function main(argv) {
   if (mig.neverApplyPresent.length) {
     console.log(`NEVER apply:`);
     for (const f of mig.neverApplyPresent) console.log(`  ${f} (${mig.neverApplyWhy[f] || "superseded"})`);
+  }
+  if (mig.retyped.length) {
+    console.log(`Stubs that ran another text than their repo file (comments and whitespace aside; docs/deploy-ledger.json retypedRead):`);
+    for (const r of mig.retyped) console.log(`  ${r.read ? "READ" : "UNREAD"}  ${r.stub} vs ${r.file}: the repo reads "...${r.repo}..." where the stub reads "...${r.ran}..."${r.read ? ` (${r.read})` : ""}`);
   }
   if (dated.checks.length || dated.errors.length) {
     console.log(`Dated at the deploy (docs/deploy-ledger.json datedAtDeploy):`);

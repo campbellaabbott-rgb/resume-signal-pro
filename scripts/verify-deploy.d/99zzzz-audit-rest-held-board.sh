@@ -25,9 +25,15 @@
 #       every minute, and its last run in the hour succeeded;
 #   C2  the chain's freshest pulse (status.chainWatchdog.pulseAgeMs) is inside
 #       the kick's bound: the watchdog's thresholdMs plus 120 s, for the kick's
-#       one-minute tick and a hop's first stamp (5.6 s measured). INFO when
-#       status reports no pulse or ingest is paused; it judges only the moment
-#       it reads, and a memo answer can understate the age by 30 s.
+#       one-minute tick and a hop's first stamp (5.6 s measured). A pulse
+#       inside the threshold is INFO: the chain is alive and the kick had
+#       nothing to do. One past it and inside the bound is a PASS labelled a
+#       regression guard, since reads land there before this deploy as well.
+#       Past the bound it FAILs, and C1 stays the line that proves the deploy.
+#       INFO when status reports no pulse, when ingest is paused, and when it
+#       was unpaused under 3 minutes ago (status.ingestPausedAgeMin), before
+#       the kick's next tick; it judges only the moment it reads, and a memo
+#       answer can understate the age by 30 s.
 #   Upkeep has no scheduled caller, by decision: an INFO line says so, with
 #   status.boardUpkeep as read.
 # Not provable from outside, so proved in the suite: no query text and no
@@ -135,13 +141,15 @@ else{
 // C2
 if(!st||typeof st!=="object"||!("catalogSize" in st))info("no status body to read the chain\u0027s pulse from ("+short(st)+")");
 else if(st.ingestPaused===true)info("ingest is paused (status.ingestPaused), so no kick is due and the chain\u0027s pulse is not judged");
+else if(typeof st.ingestPausedAgeMin==="number"&&st.ingestPausedAgeMin<3)info("ingest was unpaused "+st.ingestPausedAgeMin+" min ago (status.ingestPausedAgeMin): the kick\u0027s next tick restarts the chain, so its pulse is not judged yet");
 else{
   const wd=st.chainWatchdog;
   const age=wd&&typeof wd.pulseAgeMs==="number"?wd.pulseAgeMs:null,th=wd&&typeof wd.thresholdMs==="number"?wd.thresholdMs:null;
   if(age===null||th===null)info("status reports no chainWatchdog pulseAgeMs and thresholdMs ("+short(wd)+"): the chain\u0027s pulse cannot be judged here");
   else{
     const bound=th+120000,s=(ms)=>Math.round(ms/1000);
-    if(age<=bound)ok(true,"the chain\u0027s freshest pulse is "+s(age)+" s old, inside the dead-chain kick\u0027s bound of "+s(bound)+" s (the watchdog\u0027s threshold "+s(th)+" s plus 120 s; decision "+wd.decision+")");
+    if(age<=th)info("the chain is alive: its freshest pulse is "+s(age)+" s old, inside the watchdog\u0027s threshold of "+s(th)+" s, so the dead-chain kick had nothing to do (decision "+wd.decision+"); C1 is the line that proves the deploy");
+    else if(age<=bound)ok(true,"regression guard, true before this deploy as well: the chain\u0027s freshest pulse is "+s(age)+" s old, past the watchdog\u0027s threshold of "+s(th)+" s and inside the dead-chain kick\u0027s bound of "+s(bound)+" s (decision "+wd.decision+")");
     else ok(false,"the chain is silent "+s(age-bound)+" s past the dead-chain kick\u0027s bound: its freshest pulse is "+s(age)+" s old against "+s(th)+" s plus 120 s (decision "+wd.decision+"), so no kick restarted it");
   }
 }
