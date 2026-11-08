@@ -34,6 +34,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import * as L from "../../scripts/deploy-ledger.mjs";
+import { withWave4PruneHeld } from "./helpers/released-holds";
 
 const ROOT = resolve(__dirname, "../..");
 const policy = JSON.parse(readFileSync(resolve(ROOT, "docs/deploy-ledger.json"), "utf8"));
@@ -109,9 +110,11 @@ describe("datedAtDeploy: a date the live build made history stays history", () =
 
 describe("holdStates: a condition the live build meets is met", () => {
   const HELD = ["20261011103000_a_chat_users_searches_are_kept_a_month_not_half_a_year.sql"];
+  // The prune was released 2026-11-08; these cases read its hold as it stood.
+  const held = withWave4PruneHeld(policy);
 
   it("live .96 under repo .98 and agent-mcp .38: both conditions met, the hold is releasable (as on main at .96)", () => {
-    const h = L.holdStates(HELD, policy, AHEAD()).holds[0];
+    const h = L.holdStates(HELD, held, AHEAD()).holds[0];
     expect(h.conditions.map((c: { need: string; met: boolean }) => [c.need, c.met])).toEqual([
       ["job-board.2026-09-09.93", true],
       ["agent-mcp.2026-10-11.3", true],
@@ -121,7 +124,7 @@ describe("holdStates: a condition the live build meets is met", () => {
 
   it("the teeth: live .92 or no live header under repo .98 is not met", () => {
     for (const jb of ["job-board.2026-09-09.92", null]) {
-      const h = L.holdStates(HELD, policy, AHEAD(jb)).holds[0];
+      const h = L.holdStates(HELD, held, AHEAD(jb)).holds[0];
       expect(h.conditions[0].met, String(jb)).toBe(false);
       expect(h.releasable).toBe(false);
     }

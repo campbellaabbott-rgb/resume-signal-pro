@@ -19,8 +19,10 @@
  *     matching would count such a copy as applied);
  *   - the held 20261011103000 is held for this whole session, even once the
  *     builds it waits for serve, and released by a later message after verify
- *     sections 82 and 86 pass (it starts an irreversible 30-day prune); its
- *     `until` names the build that will serve (.96), never ".93 serving";
+ *     sections 82 and 86 pass (it starts an irreversible 30-day prune). It was
+ *     released on 2026-11-08, once they had: these cases read its hold as it
+ *     stood, and the real ledger is checked for the release itself (no hold
+ *     left, its job-board condition kept as an after-rule);
  *   - a slice-gated file written for .95 names the build this deploy carries
  *     (.96) in the OPTIONS clause, and both say when to stop retrying;
  *   - a constant dated at the deploy (the Privacy page's last update and the
@@ -32,9 +34,12 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import * as L from "../../scripts/deploy-ledger.mjs";
+import { withWave4PruneHeld } from "./helpers/released-holds";
 
 const ROOT = resolve(__dirname, "../..");
 const policy = JSON.parse(readFileSync(resolve(ROOT, "docs/deploy-ledger.json"), "utf8"));
+// The policy of 2026-10-31, while the prune was still held (released 2026-11-08).
+const held = withWave4PruneHeld(policy);
 const repoBuild = (fn: string) => L.buildOf(fn, readFileSync(resolve(ROOT, "supabase/functions", fn, "index.ts"), "utf8"));
 const LIVE: Record<string, string> = {
   "job-board": "job-board.2026-09-09.92",
@@ -52,7 +57,7 @@ const PRE = ["20261025100000_a_board_named_by_its_logo_or_a_site_label_takes_the
 
 describe("the message says the merge publishes the frontend, and what to do when a migration fails", () => {
   const phases = L.migrationPhases([...PRE, ...SCOPE], policy, rows(LIVE));
-  const holds = L.holdStates(HELD, policy, rows(LIVE)).holds;
+  const holds = L.holdStates(HELD, held, rows(LIVE)).holds;
 
   it("a deploy message keeps its first line and then tells Lovable to work straight through", () => {
     const msg: string[] = L.lovableMessage({ head: "abc12345", phases, hold: HELD, holds, toDeploy: [] });
@@ -77,7 +82,7 @@ describe("the message says the merge publishes the frontend, and what to do when
 
 describe("the held prune waits for another message, not for builds this one deploys", () => {
   it("held now: not in this session, even once the builds it waits for serve, and released after sections 82 and 86", () => {
-    const holds = L.holdStates(HELD, policy, rows(LIVE)).holds;
+    const holds = L.holdStates(HELD, held, rows(LIVE)).holds;
     const msg = L.lovableMessage({ head: "abc12345", phases: L.migrationPhases([], policy, rows(LIVE)), hold: HELD, holds, toDeploy: [] }).join("\n");
     expect(msg).toMatch(/Do NOT apply in this session, even once the builds it waits for serve: 20261011103000_a_chat_users_searches_are_kept_a_month_not_half_a_year\.sql \(waits for job-board\.2026-09-09\.93 or later, live job-board\.2026-09-09\.92; agent-mcp\.2026-10-11\.3 or later, live agent-mcp\.2026-10-09\.71; a later message releases it once verify sections 82 and 86 pass/);
     expect(msg).not.toMatch(/Do NOT apply yet/);
@@ -88,12 +93,18 @@ describe("the held prune waits for another message, not for builds this one depl
     expect(msg).toMatch(/Do NOT apply in this session: 20261009100300_held\.sql \(a later message releases it\)\./);
   });
 
-  it("the policy's until names sections 82 and 86 and the build that will serve, never .93 serving", () => {
-    const h = policy.holdUntilVerified.find((x: { stamp: string }) => x.stamp === "20261011103000");
-    expect(h.until).toMatch(/^verify sections 82 and 86 pass/);
-    expect(h.until).toMatch(/job-board 2026-09-09\.93 or later \(this deploy's \.96\)/);
-    expect(h.until).toMatch(/agent-mcp 2026-10-11\.3 or later \(this deploy's \.38\)/);
-    expect(h.until).not.toMatch(/\.93 serving/);
+  it("released 2026-11-08 once sections 82 and 86 passed: no hold is left, its job-board condition stays an after-rule, and the next message applies it before the functions", () => {
+    expect(policy.holdUntilVerified.map((x: { stamp: string }) => x.stamp)).not.toContain("20261011103000");
+    const rule = policy.migrationOrder["20261011103000"];
+    expect(rule.after).toBe("fn:job-board@2026-09-09.93");
+    expect(rule.why).toMatch(/released 2026-11-08/);
+    expect(rule.why).toMatch(/verify sections 82 and 86 passed in full/);
+    expect(policy._holdNote).toMatch(/20261011103000 \(wave 4\) was released 2026-11-08/);
+    const now = L.migrationPhases(HELD, policy, rows({ ...LIVE, "job-board": "job-board.2026-09-09.101" }));
+    expect(now.errors).toEqual([]);
+    expect(now.pre).toEqual([{ file: HELD[0], note: "job-board already answers job-board.2026-09-09.101" }]);
+    // The teeth: under the live .92 of 2026-10-31 it would have waited for the job-board step.
+    expect(L.migrationPhases(HELD, policy, rows(LIVE)).afterFunctions.map((m: { file: string }) => m.file)).toEqual(HELD);
   });
 });
 
