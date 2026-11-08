@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { CONSENT_EVENT, analyticsAllowed } from '@/lib/consent';
 
 interface AffiliateSession {
   affiliateId: string;
@@ -243,36 +244,89 @@ export function useAffiliateAuth() {
   };
 }
 
-// Hook to track referral clicks and store referral code
+/**
+ * A REFERRAL IS STORED AND ITS CLICK LOGGED ONLY AFTER THE VISITOR ALLOWS
+ * ANALYTICS (hotfix H6; sweep M-S14-021, C-S14-009).
+ *
+ * An affiliate link (/?ref=CODE, and /r/CODE, which sends the browser there)
+ * used to write a 30-day cookie and a localStorage entry and log the click
+ * (user agent, referrer, an address hash) on the first render, before the
+ * analytics banner was answered: the consent gate of S12-011 never covered
+ * this hook. Now the code is held in this page's memory, which stores nothing
+ * on the device, until analyticsAllowed() is true. A visitor who allows
+ * analytics later in the same visit, on any page, still counts: the consent
+ * event releases the held code then. A "No thanks" stores and logs nothing,
+ * and a later yes from the Privacy page's control still releases it.
+ */
+let heldReferralCode: string | null = null;
+let waitingForConsent = false;
+
+/** The referral as it was always recorded: storage, cookie, one click row. */
+function recordReferral(refCode: string): void {
+  // Store referral code in both localStorage and cookie for redundancy
+  const expiryTimestamp = Date.now() + (REFERRAL_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+  const storageData = JSON.stringify({ code: refCode, expires: expiryTimestamp });
+
+  try {
+    localStorage.setItem(REFERRAL_STORAGE_KEY, storageData);
+  } catch {
+    // Blocked storage: the cookie below still carries it
+  }
+  setCookie(REFERRAL_STORAGE_KEY, storageData, REFERRAL_EXPIRY_DAYS);
+
+  // Track the click with visitor hash (async, fire-and-forget)
+  (async () => {
+    try {
+      const visitorHash = await generateVisitorHash();
+      await supabase.rpc('track_affiliate_click', {
+        p_referral_code: refCode,
+        p_ip_hash: visitorHash,
+        p_user_agent: navigator.userAgent.slice(0, 200), // Limit length
+        p_referrer: document.referrer?.slice(0, 500) || null,
+      });
+      console.debug('Affiliate click tracked with hash:', visitorHash.slice(0, 4) + '...');
+    } catch {
+      // Silently fail - don't affect user experience
+      console.debug('Affiliate click tracking failed');
+    }
+  })();
+}
+
+function stopWaitingForConsent(): void {
+  if (!waitingForConsent) return;
+  waitingForConsent = false;
+  window.removeEventListener(CONSENT_EVENT, releaseHeldReferral);
+}
+
+/** Record the held code once analytics are allowed; until then, keep waiting. */
+function releaseHeldReferral(): void {
+  if (!heldReferralCode) {
+    stopWaitingForConsent();
+    return;
+  }
+  if (!analyticsAllowed()) {
+    if (!waitingForConsent) {
+      waitingForConsent = true;
+      window.addEventListener(CONSENT_EVENT, releaseHeldReferral);
+      console.debug('Affiliate referral held until analytics are allowed');
+    }
+    return;
+  }
+  const code = heldReferralCode;
+  heldReferralCode = null;
+  stopWaitingForConsent();
+  recordReferral(code);
+}
+
+// Hook to track referral clicks and store referral code, once allowed
 export function useAffiliateTracking() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const refCode = urlParams.get('ref');
-    
+
     if (refCode) {
-      // Store referral code in both localStorage and cookie for redundancy
-      const expiryTimestamp = Date.now() + (REFERRAL_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
-      const storageData = JSON.stringify({ code: refCode, expires: expiryTimestamp });
-      
-      localStorage.setItem(REFERRAL_STORAGE_KEY, storageData);
-      setCookie(REFERRAL_STORAGE_KEY, storageData, REFERRAL_EXPIRY_DAYS);
-      
-      // Track the click with visitor hash (async, fire-and-forget)
-      (async () => {
-        try {
-          const visitorHash = await generateVisitorHash();
-          await supabase.rpc('track_affiliate_click', {
-            p_referral_code: refCode,
-            p_ip_hash: visitorHash,
-            p_user_agent: navigator.userAgent.slice(0, 200), // Limit length
-            p_referrer: document.referrer?.slice(0, 500) || null,
-          });
-          console.debug('Affiliate click tracked with hash:', visitorHash.slice(0, 4) + '...');
-        } catch {
-          // Silently fail - don't affect user experience
-          console.debug('Affiliate click tracking failed');
-        }
-      })();
+      heldReferralCode = refCode;
+      releaseHeldReferral();
     }
   }, []);
 }
@@ -309,12 +363,16 @@ export function getStoredReferralCode(): string | null {
   } catch {
     deleteCookie(REFERRAL_STORAGE_KEY);
   }
-  
-  return null;
+
+  // A code held until analytics are allowed: this page's memory, never
+  // stored, so a purchase started in the same visit still names its referrer.
+  return heldReferralCode;
 }
 
 // Clear referral code after successful purchase
 export function clearReferralCode(): void {
+  heldReferralCode = null;
+  stopWaitingForConsent();
   localStorage.removeItem(REFERRAL_STORAGE_KEY);
   deleteCookie(REFERRAL_STORAGE_KEY);
 }
