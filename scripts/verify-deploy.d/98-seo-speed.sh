@@ -6,11 +6,17 @@
 # the new claims FAIL by design; nothing here may crash.
 #   SEO-020  the app stylesheet imports nothing; no font stylesheet is
 #            requested: the head declares the faces inline (font-display
-#            optional, woff2 on the font host or, since S12-011, served
-#            from this site's /fonts/) and preloads the Inter latin
-#            file, so the face is known at the first layout and is used (the
-#            media-swap head of the round's first try rendered Inter on no
-#            load at all); no Stripe preconnect
+#            optional), so the face is known at the first layout and is used
+#            (the media-swap head of the round's first try rendered Inter on
+#            no load at all); no Stripe preconnect
+#   B12      (SEO/GEO audit 2026-11-07, F06, PERF-02) every face names a
+#            hashed /assets/*.woff2 the build emitted, and the Inter latin
+#            file answers as a woff2 with an immutable year-long cache (the
+#            /fonts/ copies carried no Cache-Control and never a 304)
+#   PERF-01  no font is preloaded, and every route-chunk hint on / and
+#            /pricing (the static ones and the ones the homepage script
+#            adds) asks at fetchpriority low, so the stylesheet is the first
+#            paint's one high-priority fetch
 #   SEO-021  the entry carries the code that keeps the prerendered page on
 #            screen (its mount attribute); that #root never empties is a
 #            browser measurement, recorded in the round's report
@@ -61,14 +67,44 @@ const gz = (b) => zlib.gzipSync(b, { level: 9 }).length;
   const inlineCss = [...head.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]).join("\n");
   const faces = [...inlineCss.matchAll(/@font-face\s*\{([^}]*)\}/g)].map((m) => m[1]);
   const interFaces = faces.filter((f) => /font-family:\s*[\x27"]?Inter[\x27"]?\s*;/.test(f));
-  const latinSrc = ((interFaces.find((f) => /unicode-range:\s*U\+0000-00FF/.test(f)) || "").match(/url\(([^)]+)\)/) || [])[1];
-  const preloaded = latinSrc && links.some((l) => attr(l, "rel") === "preload" && attr(l, "as") === "font" && /\scrossorigin/.test(l) && attr(l, "href") === latinSrc.replace(/[\x27"]/g, ""));
-  const allOptional = faces.length > 0 && faces.every((f) => /font-display:\s*optional/.test(f) && /url\((?:https:\/\/fonts\.gstatic\.com\/|\/fonts\/)[^)]+\.woff2\)/.test(f));
-  if (!fontSheets.length && interFaces.length && allOptional && preloaded) out("PASS", `the head declares ${faces.length} faces inline (font-display optional, woff2 ${faces.every((f) => /url\(\/fonts\//.test(f)) ? "served from /fonts/ on this site" : "on the font host"}) and preloads the Inter latin file: no font stylesheet request, the face is known at the first layout and never re-wraps the page (SEO-020, SEO-022)`);
-  else out("FAIL", `the font head: ${fontSheets.length} font stylesheet request(s), ${interFaces.length} inline Inter face(s), ${allOptional ? "all" : "not all"} optional on the font host, the latin file ${preloaded ? "preloaded" : "NOT preloaded"} (want inline optional faces and a preloaded latin file, no stylesheet request: an optional face declared after the first layout is never used) (SEO-020, SEO-022)`);
+  const srcOf = (f) => ((f.match(/url\(([^)]+)\)/) || [])[1] || "").replace(/[\x27"]/g, "");
+  const latinSrc = srcOf(interFaces.find((f) => /unicode-range:\s*U\+0000-00FF/.test(f)) || "");
+  const fontPreloads = links.filter((l) => attr(l, "rel") === "preload" && attr(l, "as") === "font").map((l) => attr(l, "href"));
+  const optional = faces.length > 0 && faces.every((f) => /font-display:\s*optional/.test(f));
+  const hashed = faces.length > 0 && faces.every((f) => /^\/assets\/[a-z0-9-]+-[A-Za-z0-9_-]{6,}\.woff2$/.test(srcOf(f)));
+  if (!fontSheets.length && interFaces.length && optional && hashed && !fontPreloads.length) out("PASS", `the head declares ${faces.length} faces inline, font-display optional, each a hashed /assets/ woff2, and preloads no font: no font stylesheet request, the face is known at the first layout, never re-wraps the page and never competes with the stylesheet (SEO-020, B12, PERF-01)`);
+  else out("FAIL", `the font head: ${fontSheets.length} font stylesheet request(s), ${interFaces.length} inline Inter face(s), ${optional ? "all" : "not all"} optional, ${hashed ? "all" : "not all"} hashed /assets/ files (first: ${srcOf(faces[0] || "") || "none"}), ${fontPreloads.length} font preload(s)${fontPreloads.length ? ` (${fontPreloads[0]})` : ""} (want inline optional faces on hashed /assets/ files and no font preload) (SEO-020, B12, PERF-01)`);
+  // B12: the latin face as served. Hashed /assets/ files carry the host\x27s immutable cache; /fonts/ did not.
+  if (!latinSrc) out("FAIL", "no Inter face covers latin (U+0000-00FF): the font file\x27s cache cannot be read (B12)");
+  else {
+    let font = { status: 0, cc: "", magic: "" };
+    try {
+      const r = await fetch(latinSrc.startsWith("http") ? latinSrc : SITE + latinSrc, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(30000) });
+      const b = Buffer.from(await r.arrayBuffer());
+      font = { status: r.status, cc: r.headers.get("cache-control") || "", magic: b.subarray(0, 4).toString("latin1") };
+    } catch (e) { /* judged below */ }
+    const maxAge = Number((font.cc.match(/max-age=(\d+)/) || [])[1] || 0);
+    if (font.status === 200 && font.magic === "wOF2" && /\bimmutable\b/.test(font.cc) && maxAge >= 31536000) out("PASS", `${latinSrc} is a woff2 served with Cache-Control: ${font.cc}: a repeat load reads it from the disk cache (B12)`);
+    else out("FAIL", `${latinSrc} answered ${font.status}, ${font.magic === "wOF2" ? "a woff2" : "not a woff2"}, Cache-Control: ${font.cc || "none"} (want a woff2 with an immutable cache of a year or more) (B12)`);
+  }
   const stripe = links.filter((l) => /^(preconnect|dns-prefetch)$/.test(attr(l, "rel") || "") && /stripe\.com/.test(attr(l, "href") || ""));
   if (stripe.length) out("FAIL", `the head still opens a connection to ${attr(stripe[0], "href")}, which no page loads (SEO-020)`);
   else out("PASS", "the head opens no connection to Stripe (SEO-020)");
+
+  // ---- PERF-01: route-chunk hints ask at low priority ----
+  {
+    const pricing = await get("/pricing");
+    const hintTags = (h) => tags(headOf(h), "link").filter((l) => (attr(l, "rel") || "") === "modulepreload");
+    const pages = [["/", home.body], ["/pricing", pricing.status === 200 ? pricing.body : ""]];
+    const counted = pages.map(([p, h]) => [p, hintTags(h)]);
+    const loud = counted.flatMap(([p, ts]) => ts.filter((t) => attr(t, "fetchpriority") !== "low").map((t) => `${p} ${attr(t, "href")}`));
+    const homeScript = (home.body.match(/<script data-home-preload="1">([\s\S]*?)<\/script>/) || [])[1] || "";
+    const scriptLoud = homeScript && !/\.fetchPriority="low"/.test(homeScript);
+    const empty = counted.filter(([, ts]) => !ts.length).map(([p]) => p);
+    if (pricing.status !== 200) out("FAIL", `/pricing answered ${pricing.status}: its route-chunk hints cannot be read (PERF-01)`);
+    else if (!empty.length && !loud.length && !scriptLoud) out("PASS", `every route-chunk hint on / and /pricing (${counted.map(([p, ts]) => `${p}: ${ts.length}`).join(", ")}${homeScript ? ", and the ones the homepage script adds" : ""}) asks at fetchpriority low: none competes with the stylesheet (PERF-01)`);
+    else out("FAIL", `route-chunk hints that compete with the stylesheet: ${empty.length ? `no hint at all on ${empty.join(", ")}; ` : ""}${loud.length} without fetchpriority low${loud.length ? ` (${loud.slice(0, 2).join(", ")})` : ""}${scriptLoud ? "; the homepage script adds hints at the default priority" : ""} (PERF-01)`);
+  }
 
   // ---- SEO-040 and SEO-021: the entry ----
   const entry = (home.body.match(/<script type="module"[^>]*src="(\/assets\/index-[^"]+\.js)"/) || [])[1];

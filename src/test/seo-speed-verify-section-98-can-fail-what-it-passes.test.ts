@@ -7,10 +7,13 @@
  * link (SEO-020), the entry's mount code (SEO-021), the entry budget and its
  * strings (SEO-040), the share image, the touch icon and the tab icon, read
  * as bytes and content types (the image follow-ups), and the descriptions
- * (OBS-3). This file runs the section, in bash, against a local site built
- * from this checkout's own files (the positive control) and against the site
- * as it shipped before the round (the negative one): every line that passes
- * on the first must fail on the second.
+ * (OBS-3), and since the SEO/GEO audit of 2026-11-07 the fonts' hashed,
+ * cached files (B12) and the route-chunk hints' priority (PERF-01). This file
+ * runs the section, in bash, against a local site built from this checkout's
+ * own files (the positive control) and against the site as it shipped before
+ * the round (the negative one): every line that passes on the first must fail
+ * on the second. A third site is the one served on 2026-11-07, before B12 and
+ * PERF-01: the lines those two add fail there, and every older line passes.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createServer, type Server } from "node:http";
@@ -19,6 +22,7 @@ import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { AddressInfo } from "node:net";
+import { fallbackPreloadHtml, modulepreloadTag } from "../../scripts/prerender-preload.mjs";
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -28,12 +32,22 @@ const EN = JSON.parse(readFileSync(resolve(ROOT, "src/i18n/locales/en.json"), "u
 const INDEX = readFileSync(resolve(ROOT, "index.html"), "utf8");
 const pub = (f: string) => readFileSync(resolve(ROOT, "public", f));
 
-type Site = Record<string, { type: string; body: Buffer | string; status?: number }>;
+type Site = Record<string, { type: string; body: Buffer | string; status?: number; headers?: Record<string, string> }>;
 
-/** The homepage the build would serve: this checkout's index.html with the entry and stylesheet vite adds. */
-const homepage = (head: string) => INDEX.replace("</head>", `${head}</head>`);
+/** The face files index.html names, by name. */
+const FACES = [...INDEX.matchAll(/url\(\/src\/assets\/fonts\/([a-z0-9-]+)\.woff2\)/g)].map((m) => m[1]);
+const IMMUTABLE = { "cache-control": "public, max-age=31536000, immutable" };
+/** The homepage the build would serve: this checkout's index.html with each face at the hashed address vite writes, and the entry and stylesheet vite adds. */
+const homepage = (head: string) => INDEX.replace(/\/src\/assets\/fonts\/([a-z0-9-]+)\.woff2/g, "/assets/$1-Ab12Cd34.woff2").replace("</head>", `${head}</head>`);
+const fontFiles = (path: (name: string) => string, headers: Record<string, string>): Site =>
+  Object.fromEntries(FACES.map((n) => [path(n), { type: "font/woff2", body: readFileSync(resolve(ROOT, "src/assets/fonts", `${n}.woff2`)), headers }]));
+/** The bake's hints on "/" (the SPA fallback) and /pricing, as fallbackPreloadHtml and modulepreloadTag write them. */
+const HOME_HINTS = fallbackPreloadHtml(["HomePage-after.js"], { always: ["Footer-after.js"] });
+const PRICING_PAGE = (hints: string) => `<!doctype html><html><head><title>Pricing</title>${hints}</head><body><div id="root"></div></body></html>`;
 const AFTER: Site = {
-  "/": { type: "text/html; charset=utf-8", body: homepage(`<script type="module" crossorigin src="/assets/index-after.js"></script><link rel="stylesheet" crossorigin href="/assets/index-after.css">`) },
+  "/": { type: "text/html; charset=utf-8", body: homepage(`<script type="module" crossorigin src="/assets/index-after.js"></script><link rel="stylesheet" crossorigin href="/assets/index-after.css">${HOME_HINTS}`) },
+  "/pricing": { type: "text/html; charset=utf-8", body: PRICING_PAGE(["PricingPage-after.js", "Footer-after.js"].map(modulepreloadTag).join("")) },
+  ...fontFiles((n) => `/assets/${n}-Ab12Cd34.woff2`, IMMUTABLE),
   "/assets/index-after.css": { type: "text/css", body: "body{margin:0}" },
   "/assets/index-after.js": { type: "text/javascript", body: `import"./dep-after.js";const N=new Set(${JSON.stringify(Object.keys(EN))});const m="data-app-mount";` },
   "/assets/dep-after.js": { type: "text/javascript", body: "export const x=1;" },
@@ -73,6 +87,23 @@ const BEFORE: Site = {
   "/favicon.ico": { type: "text/html; charset=utf-8", body: "<!doctype html><html></html>" },
 };
 
+/**
+ * The site as served on 2026-11-07, before B12 and PERF-01: the faces on the
+ * public/fonts copies (an ETag, no Cache-Control), the latin file preloaded,
+ * and every route-chunk hint at the default priority. Everything else is as
+ * this checkout builds it.
+ */
+const NOV7_HEAD = INDEX.replace(/\/src\/assets\/fonts\//g, "/fonts/").replace("<style>", `<link rel="preload" as="font" type="font/woff2" crossorigin href="/fonts/inter-latin.woff2" /><style>`);
+const NOV7: Site = {
+  ...AFTER,
+  "/": {
+    type: "text/html; charset=utf-8",
+    body: NOV7_HEAD.replace("</head>", `<script type="module" crossorigin src="/assets/index-after.js"></script><link rel="stylesheet" crossorigin href="/assets/index-after.css"><link rel="modulepreload" href="/assets/Footer-after.js"><script data-home-preload="1">if(location.pathname==="/"){["HomePage-after.js"].forEach(function(f){var l=document.createElement("link");l.rel="modulepreload";l.href="/assets/"+f;document.head.appendChild(l);});}</script></head>`),
+  },
+  "/pricing": { type: "text/html; charset=utf-8", body: PRICING_PAGE('<link rel="modulepreload" href="/assets/PricingPage-after.js"><link rel="modulepreload" href="/assets/Footer-after.js">') },
+  ...fontFiles((n) => `/fonts/${n}.woff2`, { etag: '"65850a373e258f1c897a2b3d75eb74de"' }),
+};
+
 let server: Server;
 let site: Site = AFTER;
 let base = "";
@@ -80,7 +111,7 @@ beforeAll(async () => {
   server = createServer((req, res) => {
     const r = site[(req.url || "/").split("?")[0]];
     if (!r) { res.writeHead(404, { "content-type": "text/plain" }); res.end("Not Found"); return; }
-    res.writeHead(r.status ?? 200, { "content-type": r.type });
+    res.writeHead(r.status ?? 200, { "content-type": r.type, ...(r.headers ?? {}) });
     res.end(r.body);
   });
   await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
@@ -102,22 +133,34 @@ async function runSection(which: Site): Promise<string[]> {
 describe("section 98", () => {
   let after: string[] = [];
   let before: string[] = [];
+  let nov7: string[] = [];
   beforeAll(async () => {
     after = await runSection(AFTER);
     before = await runSection(BEFORE);
+    nov7 = await runSection(NOV7);
   });
 
   it("passes every line on a site built from this checkout", () => {
-    expect(after.length, after.join("\n")).toBeGreaterThanOrEqual(12);
+    expect(FACES.length).toBe(13);
+    expect(after.length, after.join("\n")).toBeGreaterThanOrEqual(14);
     expect(after.filter((l) => !l.startsWith("PASS")), after.join("\n")).toEqual([]);
   });
 
   it("fails every one of those lines on the site as it shipped before the round", () => {
     expect(before.length, before.join("\n")).toBe(after.length);
     expect(before.filter((l) => l.startsWith("PASS")), before.join("\n")).toEqual([]);
-    for (const tag of ["SEO-020", "SEO-021", "SEO-040", "og-image.png", "apple-touch-icon", "favicon.png", "favicon.ico", "verified"]) {
+    for (const tag of ["SEO-020", "SEO-021", "SEO-040", "B12", "PERF-01", "og-image.png", "apple-touch-icon", "favicon.png", "favicon.ico", "verified"]) {
       expect(before.some((l) => l.startsWith("FAIL") && l.includes(tag)), `a FAIL line names ${tag}`).toBe(true);
     }
+  });
+
+  it("on the site as served 2026-11-07 fails exactly the font head, the font file's cache and the hints' priority", () => {
+    expect(nov7.length, nov7.join("\n")).toBe(after.length);
+    const failed = nov7.filter((l) => !l.startsWith("PASS"));
+    expect(failed, nov7.join("\n")).toHaveLength(3);
+    expect(failed.some((l) => /^FAIL\s+the font head: .*not all hashed \/assets\/ files \(first: \/fonts\/inter-latin\.woff2\), 1 font preload\(s\) \(\/fonts\/inter-latin\.woff2\)/.test(l)), failed.join("\n")).toBe(true);
+    expect(failed.some((l) => /^FAIL\s+\/fonts\/inter-latin\.woff2 answered 200, a woff2, Cache-Control: none .*\(B12\)$/.test(l)), failed.join("\n")).toBe(true);
+    expect(failed.some((l) => /^FAIL\s+route-chunk hints that compete with the stylesheet: 3 without fetchpriority low .*the homepage script adds hints at the default priority \(PERF-01\)$/.test(l)), failed.join("\n")).toBe(true);
   });
 
   it("is listed where verify-deploy.sh sources it and prints only PASS, FAIL or INFO lines", () => {

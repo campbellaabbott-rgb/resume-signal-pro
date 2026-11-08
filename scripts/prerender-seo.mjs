@@ -46,7 +46,7 @@ import {
   bannedSourcePhrasesIn, orgNode, orgRef, websiteRef, withWebsiteGraph, boardSnapshot, asOfPhrase, ORG_ID, fitSentence,
 } from "./prerender-copy.mjs";
 import { legalBodyFromTsx, legalText } from "./prerender-legal.mjs";
-import { routeChunkPrefix, preloadClosure, fallbackPreloadHtml } from "./prerender-preload.mjs";
+import { routeChunkPrefix, preloadClosure, fallbackPreloadHtml, fontHeadProblems, modulepreloadTag } from "./prerender-preload.mjs";
 // The employer's own answer for each posting, GET only (B01, B06).
 import { EMPLOYER_READ_BUDGET_MS, applyEmployerStatements, distrustImplausibleClosures, employerReadLine, readEmployers, summarizeEmployerReads } from "./employer-reads.mjs";
 import { EMPLOYER_STATED_META, employerStatedOf } from "./employer-statements.mjs";
@@ -1374,7 +1374,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       const scanner = scannerRoute ? { files: preloadClosure(scannerRoute, { readChunk, entry: ENTRY_CHUNK, skip: FOOTER_CHUNK ? [FOOTER_CHUNK] : [] }), predicate: D.scannerAddressScript() } : null;
       preloadCache.set(key, fallback
         ? fallbackPreloadHtml(files, { always: FOOTER_CHUNK ? [FOOTER_CHUNK] : [], scanner })
-        : files.map((f) => `<link rel="modulepreload" href="/assets/${f}">`).join(""));
+        : files.map(modulepreloadTag).join(""));
     }
     return preloadCache.get(key);
   };
@@ -1386,6 +1386,14 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
   const template = readFileSync(join(dist, "index.html"), "utf8");
   if (!template.includes('<div id="root"></div>')) {
     throw new Error('dist/index.html does not contain <div id="root"></div> — template shape changed');
+  }
+  // Every page copies this head, so its fonts are checked once, here (B12,
+  // PERF-01): each face must name a hashed file the build emitted, and no
+  // font may be preloaded. Said loudly, never blocking.
+  {
+    const fontProblems = fontHeadProblems(template, assetFiles);
+    if (fontProblems.length) console.warn(`[prerender-seo] FONT HEAD: ${fontProblems.length} problem(s) in the head every page copies: ${fontProblems.slice(0, 3).join("; ")}`);
+    else console.log("[prerender-seo] font head: every face names a hashed /assets/ file this build emitted, and no font is preloaded");
   }
 
   // ---- Helpers ----
