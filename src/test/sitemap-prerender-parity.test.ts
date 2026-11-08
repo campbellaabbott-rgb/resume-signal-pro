@@ -465,7 +465,9 @@ describe.skipIf(skipWithoutDist(built))("B04 (b, c) and B09: what the built page
 
   it("(c) the homepage prints its strip's heading only over rows, each a posting page this bake wrote, dated as the employer stated", () => {
     const home = readFileSync(FALLBACK_FILE, "utf8");
-    const strip = /<ul data-home-strip="">([\s\S]*?)<\/ul>/.exec(home);
+    // The bake prints the list's class before its marker; a pattern that wanted
+    // the marker first found no rows on every bake that printed some.
+    const strip = /<ul\b[^>]*\sdata-home-strip=""[^>]*>([\s\S]*?)<\/ul>/.exec(home);
     const rows = strip ? [...strip[1].matchAll(/<a href="(\/jobs\/posting\/[^"]+)"/g)].map((m) => m[1]) : [];
     expect(home.includes("On the board now"), "the heading is printed exactly when rows are").toBe(rows.length > 0);
     for (const r of rows) expect(servedFile(norm(r)), r).not.toBeNull();
