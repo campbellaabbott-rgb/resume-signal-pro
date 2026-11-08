@@ -34,6 +34,13 @@ import { MCP_PAGE_HOSTS, MCP_TOOL_NAMES, MCP_ADD_TO_CLAUDE_LIVE, claudeInstallLi
 import { MCP_URL } from "@/lib/mcp-test";
 
 /**
+ * The site the prompts send a reader to when the connector is not added yet.
+ * The prompt is pasted into another app, so it carries the canonical address,
+ * never the origin the copy was made on (a preview or a local build).
+ */
+export const HANDOFF_SITE = "https://resumebooster.work";
+
+/**
  * Where the browser remembers which agent the person uses. Spelled ONCE, here:
  * the receipt page (/agents/pass), the switchboard (/agents) and the board all
  * read and write it through the two functions below, so a buyer who chose a
@@ -88,23 +95,53 @@ export interface HandoffJob {
    * the same. Kept on the type so the board's call sites compile unchanged.
    */
   sendable?: boolean;
+  /**
+   * The employer's own apply link (cleanApplyUrl of the row), the posting's
+   * title and the employer's name: what the prompt hands an app that has no
+   * connector, so the hand-off still helps where the server cannot be called.
+   */
+  applyUrl?: string | null;
+  title?: string | null;
+  company?: string | null;
 }
 
 /**
- * The one-line prompt for a posting. It opens with a tool that answers with
- * NO key (the fetch alias — get_job needs a key or a sign-in, and a prompt
- * whose first call walls the person is the wall in a new coat), shows the
- * posting, then asks for the employer's own apply link and what the posting
- * asks applicants for — and says the person applies themselves. It names no
- * apply-agent tool and asks nothing to be sent: the server-side apply agent
- * is switched off, and applying yourself is the only apply path (connect
- * spec D1). The guard asserts the FIRST tool each prompt names is in the
- * unkeyed set, and that no prompt names a dormant apply tool.
+ * Where a person adds the connector for the host they use: the /agents tile
+ * for it, by the host's id (the page opens that tile from the fragment). A
+ * name the page has no tile for gets the page itself.
+ */
+export function setupPath(hostName: string): string {
+  const h = MCP_PAGE_HOSTS.find((x) => x.name === hostName);
+  return h ? `/agents#${h.id}` : "/agents";
+}
+
+/**
+ * The prompt for a posting (CJ-05, APPLY-1107-02, 2026-11-07). It calls
+ * apply_myself, which answers with no key and reads the employer's real
+ * application form: each question with who answers it (the person, their
+ * details, or a draft from their CV), so the person's AI walks the form the
+ * employer will show rather than guessing from the description. The rules
+ * ride in the sentence as well as in the tool's own description: the person
+ * answers what is theirs, only the CV-draftable questions are drafted, every
+ * draft is shown first, and the AI stops before Submit. Nothing is ever sent
+ * for them (the server-side apply agent is retired).
+ *
+ * It works whether or not the connector is added: an app that cannot reach
+ * the server is told where to add it, and meanwhile helps with the
+ * employer's own link, which the prompt carries.
  */
 export function agentPrompt(job: HandoffJob): string {
+  const named = job.title ? `"${job.title}"${job.company ? ` at ${job.company}` : ""}` : "this posting";
+  const where = job.applyUrl
+    ? `open the employer's apply link for ${named} (${job.applyUrl})`
+    : `open ${named} on the board (${HANDOFF_SITE}/jobs?job=${encodeURIComponent(job.id)})`;
   return (
-    `Using the resumebooster MCP server (${MCP_URL}), call ${tool("fetch")} with job id "${job.id}" and show me the posting; ` +
-    "then give me the employer's apply link and list what the posting asks applicants for. I will apply myself, on the employer's site."
+    `Using the Resume Booster MCP server (${MCP_URL}), call ${tool("apply_myself")} with job id "${job.id}" ` +
+    "(with format \"markdown\" if you cannot open a browser) and help me apply myself: " +
+    "ask me every question it marks you, your_details or your_documents, and any question about me whatever its mark; " +
+    "draft only the ones it marks draft_from_your_cv, from the CV I give you or keep in this project; " +
+    "show me every draft before it goes into the form, and stop before Submit. I press Submit myself. " +
+    `If that server is not connected here, tell me I can add it free at ${HANDOFF_SITE}/agents, and meanwhile ${where} and help me with that form the same way.`
   );
 }
 
@@ -190,9 +227,12 @@ export function toSearchJobsArgs(body: Record<string, unknown>, sort?: SearchSor
  * whole of what the person was looking at.
  */
 export function searchPrompt(args: Record<string, unknown>, opts: { activelyHiring?: boolean } = {}): string {
+  // The apply half of the hand-off rides here too (APPLY-1107-02): a result
+  // the person picks is walked through the employer's form, never sent.
   const head =
-    `Using the resumebooster MCP server (${MCP_URL}), call ${tool("search_jobs")} with ${JSON.stringify(args)} ` +
-    "and show me the top results, each with the employer's apply link.";
+    `Using the Resume Booster MCP server (${MCP_URL}), call ${tool("search_jobs")} with ${JSON.stringify(args)} ` +
+    `and show me the top results, each with the employer's apply link; for any I pick, offer ${tool("apply_myself")} to walk me through the employer's form, and I submit it myself. ` +
+    `If that server is not connected here, tell me I can add it free at ${HANDOFF_SITE}/agents.`;
   return opts.activelyHiring
     ? `${head} The board's "Actively hiring" filter is applied in the browser, not by ${tool("search_jobs")}, so it is not included here.`
     : head;

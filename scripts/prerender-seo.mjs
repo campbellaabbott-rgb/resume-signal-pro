@@ -398,6 +398,8 @@ export { BOARD_SOURCE_LIST, SERVING_SOURCE_LIST, SERVING_SOURCES, DORMANT_SOURCE
 export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_TIER_BADGE, MCP_FIT_ALLOWANCE, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../src/config/mcp-tools";
 export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_WITHHELD_NOTE, MCP_INSTALL_REPO_URL, MCP_REGISTRY_ENTRY_URL, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, stepSegments, curlInitialize, andList } from "../src/config/mcp-tools";
 export { MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT } from "../src/config/mcp-tools";
+export { MCP_FORMS_ALLOWANCE, MCP_CONNECTOR_NAME } from "../src/config/mcp-tools";
+export { applyYourselfBakeHtml } from "../src/components/agents/apply-yourself-copy";
 export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
 export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingEmployer, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle, postingPageTitleAvoiding, postingPathParts } from "../src/components/jobs/posting-page";
 export { ldEmploymentType, postingJsonLdShape } from "../src/components/jobs/posting-page";
@@ -2198,6 +2200,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
         <h3 class="text-sm font-semibold mt-4">${esc(H.ai.neverTitle)}</h3>
         <ul class="mt-2 space-y-1.5 text-sm text-muted-foreground">${[2, 3].map((n) => `<li><b class="text-foreground">${esc(H.ai[`never${n}Lead`])}</b> ${esc(H.ai[`never${n}`])}</li>`).join("")}</ul>
         <p class="mt-4 flex flex-wrap gap-3 text-sm"><a href="/agents#claude" class="text-primary underline">${esc(H.ai.claude)}</a> <a href="/agents#chatgpt" class="text-primary underline">${esc(H.ai.chatgpt)}</a> <a href="/agents#claude-code" class="text-primary underline">${esc(H.ai.claudeCode)}</a></p>
+        <p class="mt-3 text-sm text-muted-foreground">${hpLinks(hp(H.ai.chatgptFree, {}, "home.ai.chatgptFree"), { claude: "/agents#claude" })}</p>
         ${reach && VENDOR_STAMP ? `<p class="mt-3 text-xs text-muted-foreground">${esc(hp(H.ai.reach, { searchable: enCount(reach.searchable), total: enCount(VENDOR_TOTAL), names: D.homeAndList(reach.names, "en"), withheld: enCount(reach.withheld), date: VENDOR_STAMP.date, time: VENDOR_STAMP.time }, "home.ai.reach"))}</p>` : ""}
       </section>
       <section class="mt-10">
@@ -3996,6 +3999,16 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">How to connect it</h2>
           <p class="text-sm text-muted-foreground">Connecting your AI to the board is free and needs no account. The steps for Claude, ChatGPT and Claude Code are on <a href="/agents" class="text-primary">${esc(FOOTER_AGENTS_LABEL)}</a>; the board itself is at <a href="/jobs" class="text-primary">/jobs</a>.</p>
         </section>
+        ${(() => {
+          // APPLY-1107-12: the crawler copy carries the steps, the allowance
+          // and the browser guidance the page shows, and names the tool that
+          // reads the employer's form, off the mirror.
+          const formTool = D.MCP_ANON_TOOLS.find((t) => t.tier === "read" && /application form/i.test(t.body));
+          return `<section class="mb-8"><h2 class="text-xl font-bold mb-3">${esc(D.EN_LOCALE.agentConnect.applyTitle)}</h2>
+            ${formTool ? `<p class="text-sm text-muted-foreground mb-3">In Claude or ChatGPT, ask your AI to use the <code>${esc(formTool.name)}</code> tool on a posting: ${esc(formTool.body)}</p>` : ""}
+            ${D.applyYourselfBakeHtml(D.EN_LOCALE.agentConnect)}
+          </section>`;
+        })()}
         ${cta("Check your resume first", "See how your resume reads to an applicant-tracking system before you apply anywhere: free, no signup.", "Scan my resume free")}`,
     });
 
@@ -4038,8 +4051,25 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       const h = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       const badge = D.MCP_TIER_BADGE;
       const codes = (arr) => arr.map((t) => `<code>${t.name}</code>`).join(", ");
-      // Every board total names its date basis (SEO-026).
-      const countClause = BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} live postings (${BOARD_AS_OF})` : "the live postings";
+      // THE COUNT IS WHAT THE AI CAN REACH (CJ-11, GEO-1107-03): the
+      // homepage's figure, from the same read (get_board_vendor_counts) and
+      // the same subtraction (aiReach), exact and dated, never the whole
+      // board floored up. An unread board prints no figure at all.
+      const reach3 = BOARD_VENDOR && VENDOR_TOTAL !== null && VENDOR_STAMP ? D.aiReach(BOARD_VENDOR.counts, VENDOR_TOTAL) : null;
+      const reachCount = reach3 ? D.fmtCount(reach3.searchable, { lng: "en" }) : null;
+      const countClause = reach3 ? `${reachCount} live postings (counted ${VENDOR_STAMP.date})` : "the live postings";
+      const AC = (D.EN_LOCALE && D.EN_LOCALE.agentConnect) || {};
+      const fillAC = (key, vals) => {
+        const s = AC[key];
+        if (typeof s !== "string" || !s) throw new Error(`[prerender-seo] /agents: agentConnect.${key} is missing`);
+        return s.replace(/\{\{(\w+)\}\}/g, (_m, k) => {
+          if (!(k in vals)) throw new Error(`[prerender-seo] /agents: agentConnect.${key} has no value for {{${k}}}`);
+          return String(vals[k]);
+        });
+      };
+      const reachLine = reach3
+        ? fillAC("reachLine", { searchable: reachCount, total: D.fmtCount(VENDOR_TOTAL, { lng: "en" }), names: D.homeAndList(reach3.names, "en"), withheld: D.fmtCount(reach3.withheld, { lng: "en" }), date: VENDOR_STAMP.date, time: VENDOR_STAMP.time })
+        : "";
       // NOTHING RETIRED IS BAKED (the apply pivot, 2026-10-11). The server-side
       // agent, its plan and its pass are retired; applying is the person's own,
       // on the employer's site, with their AI's help. The mirror below
@@ -4110,10 +4140,22 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       // The one long-tail block the page keeps: the prose fallback for any agent.
       const moreBlock = (m) => `<div class="mt-4"><h4 class="font-semibold mb-1">${h(m.name)}${m.caveat ? ` <span class="text-xs font-normal text-muted-foreground">(${h(m.caveat)})</span>` : ""}</h4>${stepsHtml(m.steps(ctx))}${keyedHtml(m)}</div>`;
       const copyThePromptHtml = D.MCP_COPY_THE_PROMPT ? moreBlock(D.MCP_COPY_THE_PROMPT) : "";
+      // What a panel says before its steps (CJ-01, CJ-03, PLT-1107-11), in
+      // the page's own English strings: the vendor's plan rule quoted with its
+      // link and date and the way in for a reader it shuts out, where a phone
+      // user adds it, and that Claude Code already has a Claude connector.
+      const readOn = (day) => new Date(`${day}T12:00:00Z`).toLocaleDateString("en", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+      const tagLinks = (text, links) => h(text).replace(/&lt;(\w+)&gt;(.*?)&lt;\/\1&gt;/g, (_m, tag, inner) => (links[tag] ? `<a href="${links[tag]}" class="text-primary underline">${inner}</a>` : inner));
+      const hostNotes = (host) => [
+        host.planRule ? `<p class="text-sm text-muted-foreground mb-2">${tagLinks(fillAC("chatgptPlanRule", { date: readOn(host.planRule.read), quote: host.planRule.quote }), { rule: h(host.planRule.url), claude: "#claude" })}</p>` : "",
+        host.phone ? `<p class="text-sm text-muted-foreground mb-2">${h(fillAC("phoneNote", { site: host.phone.site, app: host.phone.app }))}</p>` : "",
+        host.fromClaude ? `<p class="text-sm text-muted-foreground mb-2">${h(fillAC("claudeConnectorCarriesOver", { name: D.MCP_CONNECTOR_NAME }))}</p>` : "",
+      ].filter(Boolean).join("\n            ");
       const hostPanel = (host) => `
           <section id="${host.id}" class="mb-8 p-4 rounded-2xl border border-border">
             <h3 class="text-lg font-semibold mb-2">${h(host.name)}${host.small ? ` <span class="text-sm font-normal text-muted-foreground">— ${h(host.small)}</span>` : ""}</h3>
             ${deeplinksHtml(host)}
+            ${hostNotes(host)}
             ${stepsHtml(host.steps(ctx))}
             <p class="text-sm text-muted-foreground mt-3">${inline(D.MCP_SIGN_IN_NEUTRAL)}</p>
             <p class="text-sm mt-2"><strong class="text-foreground">How you know it worked:</strong> ${inline(host.verify)}</p>
@@ -4169,6 +4211,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
           ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Connect your agent" }])}
           <h1 class="text-3xl font-bold mb-3">Your AI agent can use this job board directly</h1>
           <p class="text-muted-foreground mb-8">Search ${countClause} from employers' own hiring systems, read full postings and check a shortlist is still open, from the AI you already use. ${h(APPLY_YOURSELF_LINE)} <a href="/agent" class="text-primary underline">How applying with your own AI works</a>. The server is listed in the official MCP registry as <code>work.resumebooster/jobs</code>.</p>
+          ${reachLine ? `<p class="text-sm text-muted-foreground -mt-6 mb-8"><time datetime="${VENDOR_STAMP.iso}">${h(reachLine)}</time></p>` : ""}
           <section class="mb-8"><h2 class="text-xl font-bold mb-2">Which agent do you use?</h2>
             <p class="text-sm text-muted-foreground mb-3">Pick one. You will see only the steps for that app.</p>
             <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">${hostButtons}</div>
@@ -4200,7 +4243,8 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
             <p class="text-sm text-muted-foreground mt-2">Any other app reaches every tool your key allows when it can send an Authorization header; how to set each one up is in <a href="${h(D.MCP_INSTALL_REPO_URL)}">the install repository</a>.</p>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">The search and read tools</h2>
-            <ul class="space-y-1.5">${keptTools.map((t) => `<li class="text-sm text-muted-foreground"><code>${t.name}</code> (${badge[t.tier] ?? "key"}${D.MCP_ANON_TOOL_NAMES.includes(t.name) ? `; answers with no key, ${D.MCP_ANON_CAPS.perAddressPerDay}/day per network address` : ""}) — ${h(scrubRetired(t.body))}</li>`).join("")}</ul>
+            <ul class="space-y-1.5">${keptTools.map((t) => `<li class="text-sm text-muted-foreground"><code>${t.name}</code> (${badge[t.tier] ?? "key"}${D.MCP_ANON_TOOL_NAMES.includes(t.name) ? (/application form/i.test(t.body) ? "; answers with no key, on the form-reading allowance below" : `; answers with no key, ${D.MCP_ANON_CAPS.perAddressPerDay}/day per network address`) : ""}) — ${h(scrubRetired(t.body))}</li>`).join("")}</ul>
+            <p class="text-sm text-muted-foreground mt-2">${h(D.MCP_FORMS_ALLOWANCE)}</p>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">Prompts and resources your host can list</h2>
             <p class="text-sm text-muted-foreground mb-2">Beside the tools, the server registers ready-made prompts and a few readable documents. Hosts that list them show them under the server's name; listing costs no call and needs no key.</p>
@@ -4211,7 +4255,8 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
             <p class="text-sm text-muted-foreground mt-3">On the <a href="/jobs">board</a>, every posting and every search has a control that copies a prompt for your agent — it names the posting's id or the search's arguments and this server's URL.</p>
           </section>
           <section id="apply-yourself" class="mb-8"><h2 class="text-xl font-bold mb-3">Applying stays yours</h2>
-            <p class="text-sm text-muted-foreground">${h(APPLY_YOURSELF_LINE)} Your AI can read a posting in full and help you draft; you check every answer before it goes anywhere.</p>
+            <p class="text-sm text-muted-foreground mb-3">${h(APPLY_YOURSELF_LINE)} Your AI can read a posting in full and help you draft; you check every answer before it goes anywhere.</p>
+            ${D.applyYourselfBakeHtml(AC)}
           </section>
           <p class="text-sm text-muted-foreground">Rather integrate with code? The plain JSON API at <a href="/data-api">Hiring Data &amp; API</a> (/v1) covers the same data with cursors and ETags. The install blocks for every host — the apps above and the rest — are published as a repository with a README that says the same things in the same order: <a href="${h(D.MCP_INSTALL_REPO_URL)}">${h(D.MCP_INSTALL_REPO_URL)}</a>. The board itself is at <a href="/jobs">/jobs</a>.</p>`,
       });
@@ -4878,6 +4923,17 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
     // whose purpose was the retired apply agent is not offered here, the same
     // rule the /agents page applies (the apply pivot, 2026-10-11).
     const LLMS_TOOLS = D.MCP_TOOLS.filter((t) => t.tier !== "apply" && !/\bapply agent\b|\bsubmit/i.test(String(t.body ?? "").split(/(?<=[.!?])\s+/)[0]));
+    // What the connector can reach (CJ-11, GEO-1107-03): the /agents page's
+    // own sentence, from the same read and subtraction as the homepage, or
+    // nothing when the board was not read.
+    const LLMS_REACH = BOARD_VENDOR && VENDOR_STAMP ? D.aiReach(BOARD_VENDOR.counts, VENDOR_TOTAL) : null;
+    const LLMS_REACH_LINE = LLMS_REACH
+      ? fillCopy(D.EN_LOCALE.agentConnect.reachLine, {
+          searchable: D.fmtCount(LLMS_REACH.searchable, { lng: "en" }), total: D.fmtCount(VENDOR_TOTAL, { lng: "en" }),
+          names: D.homeAndList(LLMS_REACH.names, "en"), withheld: D.fmtCount(LLMS_REACH.withheld, { lng: "en" }),
+          date: VENDOR_STAMP.date, time: VENDOR_STAMP.time,
+        }, "agentConnect.reachLine")
+      : "";
     lines.push("## The live job board and its data pages (from the board's own lifecycle log)");
     lines.push(`- Live job board: ${SITE}/jobs — every posting ${SOURCE_SENTENCE} (${D.SERVING_SOURCE_LIST}); no dated posting older than 30 days, undated ones shown with no age rather than a guessed one. Per-field pages at /jobs/field/{slug}, per-employer pages at /jobs/company/{token}.`);
     lines.push(`- Ghost Job Index: ${SITE}/ghost-job-index — the board's live measure of posting reality: how many roles are open, how long postings stay up, how fast they come down, and which employers are actively hiring, from the closure log the board keeps for every posting it has watched. A posting coming down is never called a hire — a hire, a withdrawal, a cancelled requisition and a retitle are indistinguishable from the feed.`);
@@ -4887,7 +4943,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
     lines.push(companiesLlmsLine({ site: SITE, count: COMPANY_PAGE_COUNT }));
     lines.push(`- About: ${SITE}/about — what resumebooster.work is, what the board is, and how its counts are made and dated.`);
     lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API over the live board at ${API_BASE}/v1 (every path below is relative to ${API_BASE}; the addresses under ${SITE}/v1 are pages that point here), with free self-serve keys (${FREE_KEY_RATE_SENTENCE}): GET /v1/jobs, /v1/jobs/{id}, /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (${D.MCP_FIT_ALLOWANCE}, counted together with fit_resume on the MCP server). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
-    lines.push(`- MCP server for AI agents: ${SITE}/agents (listed in the official MCP registry as ${MCP_REGISTRY_NAME}) — search and read tools (${LLMS_TOOLS.map((t) => t.name).join(", ")}) over the same board. MCP server address (Streamable HTTP): ${MCP_URL} — registry name ${MCP_REGISTRY_NAME}. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per network address — an office or a home connection counts as one; from ChatGPT each person has their own ${D.MCP_ANON_CAPS.chatgptPerPerson}, and Claude's users share ${D.MCP_ANON_CAPS.hostPoolPerDay} a day first — ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, and ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} ${D.MCP_PAID_TOOLS.length === 1 ? "gives" : "give"} ${D.MCP_FIT_ALLOWANCE}. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.page && x.header).map((x) => x.name))}, and any other app that can send a header, with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => x.page && !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; the page's own steps are at ${SITE}/agents#<host> for ${D.MCP_PAGE_HOSTS.map((x) => x.id).join(", ")}; setup for every other app is in the install repository's README at ${D.MCP_INSTALL_REPO_URL}. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}`);
+    lines.push(`- MCP server for AI agents: ${SITE}/agents (listed in the official MCP registry as ${MCP_REGISTRY_NAME}) — search and read tools (${LLMS_TOOLS.map((t) => t.name).join(", ")}) over the same board.${LLMS_REACH_LINE ? ` ${LLMS_REACH_LINE}` : ""} ${D.MCP_FORMS_ALLOWANCE} MCP server address (Streamable HTTP): ${MCP_URL} — registry name ${MCP_REGISTRY_NAME}. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per network address — an office or a home connection counts as one; from ChatGPT each person has their own ${D.MCP_ANON_CAPS.chatgptPerPerson}, and Claude's users share ${D.MCP_ANON_CAPS.hostPoolPerDay} a day first — ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, and ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} ${D.MCP_PAID_TOOLS.length === 1 ? "gives" : "give"} ${D.MCP_FIT_ALLOWANCE}. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.page && x.header).map((x) => x.name))}, and any other app that can send a header, with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => x.page && !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; the page's own steps are at ${SITE}/agents#<host> for ${D.MCP_PAGE_HOSTS.map((x) => x.id).join(", ")}; setup for every other app is in the install repository's README at ${D.MCP_INSTALL_REPO_URL}. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}`);
     lines.push("");
     if (insights?.overall?.n) {
       const o = insights.overall;
@@ -4972,6 +5028,9 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       // THE TWO ADDRESSES (SEO-014, SEO-015), restated from the bake's own
       // constants so the file and /agents and /data-api cannot disagree.
       sub(/MCP server address \(Streamable HTTP\): \S+/, `MCP server address (Streamable HTTP): ${MCP_URL}`);
+      // WHAT THE CONNECTOR REACHES (CJ-11): the /agents sentence, restated
+      // from a live read only; the pattern takes what it wrote last time.
+      if (LLMS_REACH_LINE) sub(/Your AI searches [\d,]+ of the [\d,]+ open postings: [^.]+\. Counted [^.]+ UTC\./, LLMS_REACH_LINE);
       sub(/API address: \S+/, `API address: ${API_BASE}/v1`);
       // THE GUIDE AND COMPARISON LISTS, GENERATED (SEO-027) from the same
       // modules the pages render, filtered to the pages this bake made

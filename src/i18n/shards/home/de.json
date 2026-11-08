@@ -118,6 +118,7 @@
       "claude": "In Claude einrichten",
       "chatgpt": "In ChatGPT einrichten",
       "claudeCode": "Claude Code einrichten",
+      "chatgptFree": "Du nutzt ChatGPT Free? <claude>Nimm den kostenlosen Tarif von Claude</claude>: Er kann einen eigenen Connector hinzufügen, ChatGPT Free nicht.",
       "reach": "Deine KI durchsucht {{searchable}} der {{total}} offenen Stellenanzeigen: Anzeigen von {{names}} ({{withheld}}) bleiben auf dieser Website. Gezählt am {{date}}, {{time}} UTC.",
       "figureLabel": "Illustration einer Suche aus Claude",
       "figureChip": "Illustration",

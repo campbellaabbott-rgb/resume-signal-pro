@@ -121,6 +121,7 @@
       "claude": "Configurar en Claude",
       "chatgpt": "Configurar en ChatGPT",
       "claudeCode": "Configurar Claude Code",
+      "chatgptFree": "¿Usas ChatGPT Free? <claude>Usa el plan gratuito de Claude</claude>, que puede añadir un conector personalizado; ChatGPT Free no puede.",
       "reach": "Tu IA busca en {{searchable}} de las {{total}} ofertas abiertas: las ofertas de {{names}} ({{withheld}}) se quedan en este sitio. Contadas el {{date}}, {{time}} UTC.",
       "figureLabel": "Ilustración de una búsqueda desde Claude",
       "figureChip": "Ilustración",

@@ -118,6 +118,7 @@
       "claude": "Instellen in Claude",
       "chatgpt": "Instellen in ChatGPT",
       "claudeCode": "Claude Code instellen",
+      "chatgptFree": "Gebruik je ChatGPT Free? <claude>Neem het gratis abonnement van Claude</claude>: daarmee kun je één eigen connector toevoegen, met ChatGPT Free niet.",
       "reach": "Je AI zoekt in {{searchable}} van de {{total}} open vacatures: vacatures van {{names}} ({{withheld}}) blijven op deze site. Geteld op {{date}}, {{time}} UTC.",
       "figureLabel": "Illustratie van een zoekopdracht vanuit Claude",
       "figureChip": "Illustratie",

@@ -118,6 +118,7 @@
       "claude": "Set up in Claude",
       "chatgpt": "Set up in ChatGPT",
       "claudeCode": "Set up Claude Code",
+      "chatgptFree": "On ChatGPT Free? <claude>Use Claude's free plan</claude>, which can add one custom connector; ChatGPT Free cannot add one.",
       "reach": "Your AI searches {{searchable}} of the {{total}} open postings: {{names}} postings ({{withheld}}) stay on this website. Counted {{date}}, {{time}} UTC.",
       "figureLabel": "Illustration of a search from Claude",
       "figureChip": "Illustration",

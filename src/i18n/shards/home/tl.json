@@ -118,6 +118,7 @@
       "claude": "I-set up sa Claude",
       "chatgpt": "I-set up sa ChatGPT",
       "claudeCode": "I-set up ang Claude Code",
+      "chatgptFree": "Naka-ChatGPT Free ka? <claude>Gamitin ang libreng plan ng Claude</claude>, na puwedeng magdagdag ng isang custom connector; hindi ito magagawa ng ChatGPT Free.",
       "reach": "Naghahanap ang AI mo sa {{searchable}} sa {{total}} bukas na posting: ang mga posting ng {{names}} ({{withheld}}) ay nananatili sa website na ito. Binilang noong {{date}}, {{time}} UTC.",
       "figureLabel": "Ilustrasyon ng isang paghahanap mula sa Claude",
       "figureChip": "Ilustrasyon",

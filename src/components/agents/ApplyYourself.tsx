@@ -26,7 +26,7 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { ClipboardCheck, Globe, ShieldCheck } from "lucide-react";
-import { formVendorPhrase, MCP_FORM_VENDORS_ON_CHATGPT, MCP_STEPS_CHECKED } from "@/config/mcp-tools";
+import { formVendorPhrase, MCP_FORM_VENDORS_ON_CHATGPT, MCP_STEPS_CHECKED, formsAllowanceIn } from "@/config/mcp-tools";
 
 /** The checked date in the reader's language, from the mirror's ISO day. */
 const checkedOn = (lang: string) =>
@@ -57,6 +57,12 @@ export function ApplyYourself() {
       <ol className="list-decimal pl-5 space-y-2 text-sm text-muted-foreground mb-4">
         {steps.map((s, i) => <li key={i} className="pl-1">{s}</li>)}
       </ol>
+      {/* APPLY-1107-12: the forms allowance by where the call comes from,
+          every figure off the mirror the first-call guard pins to the
+          server's ANON_ALLOWANCE.forms. */}
+      <p className="text-sm text-muted-foreground mb-4" data-forms-allowance>
+        {t("agentConnect.applyAllowance", "Reading an application form draws on a free allowance of its own, apart from searching: Claude's users share {{claude}} form reads a day ({{claudePerMinute}} a minute); from ChatGPT, {{perPerson}} a day for each person, within {{chatgpt}} a day for all of ChatGPT; from any other app, {{perConnection}} a day per internet connection.", formsAllowanceIn(lang))}
+      </p>
       <p className="text-sm font-medium text-foreground mb-5 flex items-center gap-2" data-we-never-submit>
         <ShieldCheck className="w-4 h-4 text-success shrink-0" aria-hidden /> {t("agentConnect.applyNever", "Resume Booster never submits anything for you.")}
       </p>

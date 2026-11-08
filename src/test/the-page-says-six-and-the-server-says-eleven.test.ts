@@ -193,9 +193,11 @@ describe("the page says six and the server says eleven", () => {
     expect(literal.exec(TOOLS_SRC)?.[0], "a tool description spells a corpus count").toBeUndefined();
     for (const t of MCP_TOOLS) expect(literal.exec(t.body)?.[0], `${t.name} mirror body spells a count`).toBeUndefined();
     // The page states the figure the way the homepage does — from the live
-    // board, with count-free copy when the read fails.
-    expect(PAGE).toMatch(/useBoardTotals\(\)/);
-    expect(PAGE).toMatch(/roundedFloor\(/);
+    // board, with count-free copy when the read fails. Since CJ-11 that is the
+    // homepage's own reach: the postings the AI can search, the withheld
+    // systems subtracted (the-agents-count-is-never-above-what-the-ai-can-reach).
+    expect(PAGE).toMatch(/useBoardVendorCounts\(\)/);
+    expect(PAGE).toMatch(/aiReach\(vendor\.counts, vendor\.openTotal\)/);
   });
 
   it("the sendable-vendor mirror equals the Deno list the apply pipeline obeys", () => {

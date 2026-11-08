@@ -16,7 +16,7 @@
 // branch with a stubbed server and never by regex.
 
 import {
-  MCP_ANON_CAPS, MCP_PROTOCOL_VERSION, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, MCP_HOSTS, MCP_PAGE_HOSTS, readSignInFact,
+  MCP_ANON_CAPS, MCP_PROTOCOL_VERSION, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, MCP_HOSTS, readSignInFact,
   andList, MCP_ANON_TOOL_NAMES, type SignInFact, type SignInState,
 } from "@/config/mcp-tools";
 
@@ -30,12 +30,9 @@ export const MCP_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent-
 
 /**
  * The hosts that sign a person in (no key field) — the server's fact is
- * about all of them, so the full table — and the key-carrying hosts the
- * sentence tells the person to connect FROM: only the page's tiles, never a
- * host the page sends to GitHub. Read off the host mirror, never typed.
+ * about all of them, so the full table. Read off the host mirror, never typed.
  */
 const chatHosts = () => andList(MCP_HOSTS.filter((h) => !h.header).map((h) => h.name));
-const keyHosts = () => andList(MCP_PAGE_HOSTS.filter((h) => h.header).map((h) => h.name));
 
 export interface McpTestReport {
   /** Whether initialize answered at all; the sentence below explains either way. */
@@ -178,7 +175,9 @@ export function signInLine(state: SignInState, checkedAt: string | null): string
     case "on":
       return "switched on — those apps show a Connect card when a tool needs your account.";
     case "off":
-      return `not available yet — from those apps only ${andList(MCP_ANON_TOOL_NAMES)} answer, and the server says so in words instead of showing a card. To use everything, connect from ${keyHosts()} with a free key.`;
+      // CJ-08: what works is said as enough, because it is; no chat reader
+      // is sent to another app for a key they do not need.
+      return `not available yet, and not needed to search, read postings in full or apply yourself: from those apps ${andList(MCP_ANON_TOOL_NAMES)} answer with no sign-in, and a tool that needs your account says so in words instead of showing a card.`;
     default:
       return `could not be checked just now${checkedAt ? ` (the server's last check was ${checkedAt})` : ""}; try again in a minute.`;
   }

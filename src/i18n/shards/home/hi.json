@@ -118,6 +118,7 @@
       "claude": "Claude में सेट अप करें",
       "chatgpt": "ChatGPT में सेट अप करें",
       "claudeCode": "Claude Code सेट अप करें",
+      "chatgptFree": "ChatGPT Free पर हैं? <claude>Claude का मुफ़्त प्लान इस्तेमाल करें</claude>, जिसमें एक कस्टम कनेक्टर जोड़ा जा सकता है; ChatGPT Free में नहीं जोड़ा जा सकता।",
       "reach": "आपका AI {{total}} खुली पोस्टिंग में से {{searchable}} में खोजता है: {{names}} की पोस्टिंग ({{withheld}}) इसी वेबसाइट पर रहती हैं। {{date}}, {{time}} UTC को गिनी गईं।",
       "figureLabel": "Claude से एक खोज का चित्रण",
       "figureChip": "चित्रण",
