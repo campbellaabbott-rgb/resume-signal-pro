@@ -65,7 +65,9 @@ describe("while the banner is open", () => {
     const { FloatingHelpButton } = await import("@/components/FloatingHelpButton");
     const { container } = render(<FloatingHelpButton />);
     const box = container.querySelector<HTMLElement>("[data-floating-help]")!;
-    expect(box.style.marginBottom).toBe("var(--consent-banner-h, 0px)");
+    // By a transform since PERF-05, which no layout-shift score counts.
+    expect(box.style.transform).toBe("translateY(calc(-1 * (var(--consent-banner-h, 0px) + 0px)))");
+    expect(box.style.marginBottom).toBe("");
   });
 
   it("the body is two paragraphs, so neither is the page's largest painted block", () => {
