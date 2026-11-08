@@ -1,0 +1,14 @@
+{
+  "paidAnalysis": {
+    "recovery": {
+      "postingTitle": "Die Stellenanzeige, für die Sie diese Analyse gekauft haben",
+      "postingNote": "Ihr Kauf wurde mit einer Stellenanzeige getätigt. Fügen Sie sie hier ein, dann wird die Analyse daran gemessen. Sie können das Feld leer lassen.",
+      "postingPlaceholder": "Stellenanzeige einfügen (optional)"
+    },
+    "clipped": {
+      "posting": "Die Stellenanzeige war länger als {{max}} Zeichen, daher hat diese Analyse die ersten {{max}} gelesen.",
+      "linkedIn": "Ihr LinkedIn-Text war länger als {{max}} Zeichen, daher hat diese Analyse die ersten {{max}} gelesen."
+    },
+    "inProgress": "Ihre Analyse wird bereits erstellt. Diese Seite zeigt sie, sobald sie fertig ist."
+  }
+}

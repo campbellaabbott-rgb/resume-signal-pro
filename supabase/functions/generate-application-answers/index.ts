@@ -30,6 +30,7 @@ import { resolveLanguageName } from "../_shared/language-instruction.ts";
 import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting-text.ts";
 import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 import { signInRequired } from "../_shared/writing-allowance.ts";
+import { websiteSessionOf, type WebsiteAuth } from "../_shared/website-session.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -98,7 +99,11 @@ import { signInRequired } from "../_shared/writing-allowance.ts";
 // tag or the end of its table cell, as a browser rebuilds it.
 // Nothing else in this bundle changed since main's f8d72a9b, the build the
 // 2026-10-31 deploy put live (docs/deploy-ledger.json, verifiedDeploys).
-const FN_BUILD = "generate-application-answers.2026-11-03.1";
+// 2026-11-10.1 (S14 hotfix, lane spend, M-S14-009): the screening-answers
+// path asks for a website session, or our own servers' key, before the
+// spend gate; anyone else is answered 401 sign_in_required, uncounted.
+// Nothing else in this bundle changed.
+const FN_BUILD = "generate-application-answers.2026-11-10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -248,6 +253,21 @@ serve(async (req) => {
       // Null, not a degraded note. The caller sends the candidate's own words
       // instead — a generic note is a fine outcome; a false one is not.
       return json({ note: null, issues: lastIssues, version: COVER_NOTE_VERSION });
+    }
+
+    // ── screening answers ────────────────────────────────────────────────────
+    // A WEBSITE SESSION OR OUR OWN SERVERS (M-S14-009). Every page that asks
+    // for answers is signed in (the board's Prepare opens only for a session,
+    // the account's apply copilot lives on /account), and the apply agent
+    // calls with the service-role key; but the function answered the
+    // publishable key, so a script spent up to 300 model calls an hour here
+    // that no signed-out page can make. Refused before the spend gate, so a
+    // refusal costs nothing and counts nothing. The body names the code and
+    // no sentence: the page words a sign_in_required in the reader's language
+    // (applyAnswers.signIn).
+    if (!isServiceRoleCaller(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) {
+      const site = await websiteSessionOf(req.headers, supabase.auth as unknown as WebsiteAuth);
+      if (!("session" in site)) return json({ error: "sign_in_required", code: "sign_in_required" }, 401);
     }
 
     const hasExplicit = Array.isArray(questions) && questions.length > 0;

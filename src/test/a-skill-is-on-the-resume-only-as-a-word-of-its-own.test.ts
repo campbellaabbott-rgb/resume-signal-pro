@@ -182,6 +182,7 @@ describe("one presence test everywhere", () => {
     const version = primary.match(/const REPORT_ENGINE_VERSION = '([^']+)'/)?.[1];
     expect(version).toBeTruthy();
     expect(version).not.toBe(["scan", "v2026-10-09-s11"].join("-"));
-    expect(stream).toMatch(/const cacheInput = `v7\|/);
+    // v7 for this wave; v8 since the key reads the whole text (M-S14-064).
+    expect(Number(/const cacheInput = `v(\d+)\|/.exec(stream)?.[1])).toBeGreaterThanOrEqual(7);
   });
 });

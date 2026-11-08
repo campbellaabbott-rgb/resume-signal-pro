@@ -46,7 +46,11 @@ import { proIncludes } from "../_shared/pro-perks.ts";
 // 2026-10-31.1 (owner 2026-10-27, on the EU, the EEA, the UK and India: "keep selling as today"): nobody is refused for where they are, as on main: no territory refusal, and a billing address only with the EU/UK switch on, as sessionPolicy always did. Nothing here is sold today, so only that dead path changed.
 // 2026-10-31.2 (land/all carries the homepage switch-over): the bundle is 2026-10-31.1's code with the switch-over's "packages" line in _shared/pro-perks.ts, so it is neither branch's build; what this function does is unchanged.
 // 2026-11-03.1 (S9-001, fix/audit-rest-abuse): _shared/checkout-buyer.ts refuses a connected app's token whatever role it names; nothing here is sold, so only that dead path changed.
-const FN_BUILD = "create-product-checkout.2026-11-03.1";
+// 2026-11-10.1 (hotfix lane pro, sweep S14): no change of its own; the
+// _shared/pro.ts it bundles refreshes a cache row that names a Stripe
+// customer by that customer instead of clearing it when an address
+// search finds nothing, and gained the by-customer and by-account readers.
+const FN_BUILD = "create-product-checkout.2026-11-10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

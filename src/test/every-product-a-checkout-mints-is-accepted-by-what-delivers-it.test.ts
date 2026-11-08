@@ -316,8 +316,11 @@ describe("each minted product is accepted by what delivers it", () => {
 });
 
 describe("a claim always names the product it paid for", () => {
-  // assertPaidSession accepts a claim with no product as grandfathered -- so a
-  // writer that omits it mints a receipt every paid generator honours.
+  // assertPaidSession accepted a claim with no product as grandfathered, so a
+  // writer that omitted it minted a receipt every paid generator honoured.
+  // Since S14 (M-S14-057) the gate refuses an unnamed claim written after
+  // claims began naming their product, which would lock that writer's buyers
+  // out instead: either way the product must be named.
   const files: string[] = [];
   const walk = (dir: string) => {
     for (const d of readdirSync(dir, { withFileTypes: true })) {

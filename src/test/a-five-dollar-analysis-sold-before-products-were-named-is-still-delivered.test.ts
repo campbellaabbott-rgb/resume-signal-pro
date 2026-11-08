@@ -110,7 +110,14 @@ describe("a legacy session is redeemed once, for this product, and only paid", (
     expect(h.aiCalls()).toBe(1);
   });
 
-  it("two requests racing on one legacy session hand back one analysis", async () => {
+  it("two requests racing on one legacy session hand back one analysis, even with no run lease to take", async () => {
+    // Since the 2026-11-10 hotfix a run holds a lease on its session and a
+    // second request is told the analysis is in progress (see
+    // a-paid-analysis-asks-stripe-only-for-a-purchase-and-runs-one-model-call-at-a-time).
+    // This is the world before the lease table exists: both runs go ahead,
+    // and the legacy purchase is still delivered once.
+    const missing = { code: "42P01", message: 'relation "public.analysis_run_leases" does not exist' };
+    for (const op of ["select", "select", "insert", "insert"]) h.db.faults.push({ table: "analysis_run_leases", op, error: missing });
     const id = sell(legacyFullAnalysisSession("cs_live_legacy_race"));
     let open!: () => void;
     const gate = new Promise<void>((r) => { open = r; });
@@ -153,8 +160,10 @@ describe("a legacy session is redeemed once, for this product, and only paid", (
 
   it("an old webhook's unnamed claim is named once the analysis is delivered -- it was a key to every paid generator", async () => {
     const id = sell(legacyFullAnalysisSession("cs_live_legacy_stamp"));
-    h.db.rows("used_stripe_sessions").push({ session_id: id, product_type: null, ip_address: null });
-    expect(await assertPaidSession(h.db, id, ["premium_package"]), "precondition: an unnamed claim is accepted everywhere").toBeNull();
+    // Claimed before products were named (20260827180000), with no address:
+    // the one unnamed claim the gate still lets through (M-S14-057).
+    h.db.rows("used_stripe_sessions").push({ session_id: id, product_type: null, ip_address: null, used_at: "2026-06-01T00:00:00Z" });
+    expect(await assertPaidSession(h.db, id, ["premium_package"]), "precondition: an older unnamed claim is accepted everywhere").toBeNull();
     expect((await ask(id)).status).toBe(200);
     await h.settle();
     expect(h.db.rows("used_stripe_sessions").filter((c) => c.session_id === id).map((c) => c.product_type)).toEqual(["full_analysis"]);

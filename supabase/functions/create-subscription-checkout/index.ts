@@ -38,7 +38,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { PRO_PRICE_CENTS, PRO_PRODUCT_NAME, subscriptionStandingByEmail } from "../_shared/pro.ts";
+import { accountSubscriptionStanding, PRO_PRICE_CENTS, PRO_PRODUCT_NAME } from "../_shared/pro.ts";
 import { manualAgentGrant } from "../_shared/agent.ts";
 import { checkoutVerdict, verdictBody } from "../_shared/subscription-standing.ts";
 import { signedInUser } from "../_shared/signed-in-email.ts";
@@ -79,7 +79,13 @@ import { proStripeDescription } from "../_shared/pro-perks.ts";
 // code with the switch-over's "packages" line in Pro's Stripe description;
 // neither branch's build, and nothing else changed.
 // 2026-11-03.1 (S9-001, fix/audit-rest-abuse): _shared/checkout-buyer.ts and _shared/signed-in-email.ts refuse a connected app's token whatever role it names (the access-token hook gives it role mcp_client).
-const FN_BUILD = "create-subscription-checkout.2026-11-03.1";
+// 2026-11-10.1 (hotfix lane pro, sweep S14: M-S14-002, M-S14-006): the
+// double-billing guard reads the plans of the Stripe customers this account's
+// own rows name as well as its address's, so a member whose billing email
+// changed in Stripe's portal, or whose sign-in email changed here, is pointed
+// to the plan they have instead of sold a second one. Who a new plan is
+// billed to is unchanged, and a customer that cannot be read refuses nothing.
+const FN_BUILD = "create-subscription-checkout.2026-11-10.1";
 
 /** What Stripe's page and receipts say Pro is: the Pro card's own items (_shared/pro-perks.ts), as sentences. */
 export const PRO_STRIPE_DESCRIPTION = proStripeDescription();
@@ -146,8 +152,9 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
 
     // Don't double-bill: a live plan, or one that owes money, is answered
-    // before Stripe is asked for anything new.
-    const standing = await subscriptionStandingByEmail(stripe, email);
+    // before Stripe is asked for anything new. The account's own plans count
+    // wherever their billing address now is (S14).
+    const standing = await accountSubscriptionStanding(stripe, supabase, { id: buyer.id, email });
     const verdict = checkoutVerdict(standing, "pro");
     if (verdict.kind !== "proceed") return json(verdictBody(verdict));
 

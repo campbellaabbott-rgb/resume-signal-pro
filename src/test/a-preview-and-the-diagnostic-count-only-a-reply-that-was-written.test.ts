@@ -132,7 +132,8 @@ describe("test-ai-fallback, run as shipped", () => {
     world = new WritingWorld();
     world.install();
   });
-  const ask = (mode = "quick") => post(handler, "test-ai-fallback", { mode }, "anon");
+  // The diagnostic answers only the admin key or our own servers (M-S14-056).
+  const ask = (mode = "quick") => post(handler, "test-ai-fallback", { mode }, "service");
 
   it("a chain whose every model answered 200 with no text is not healthy", async () => {
     world.reply = () => cutOff("");

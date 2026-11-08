@@ -68,6 +68,7 @@ const STUBS: Record<string, string> = {
 const RESUME = "Jane Doe -- Senior software engineer with ten years of TypeScript, Postgres and payments work. Led a team of five. ".repeat(3);
 const POSTING = "We are hiring a senior engineer to own our checkout and fulfilment services end to end, with on-call and mentoring.";
 const PAID = "cs_harness_paid";
+const ADMIN_KEY = "admin-harness-key";
 
 type Case = {
   fn: string;
@@ -96,12 +97,15 @@ const CASES: Case[] = [
   { fn: "generate-elevator-pitch", perAddress: 20, global: 200, body: { resumeText: RESUME } },
   { fn: "generate-recruiter-view", perAddress: 20, global: 200, body: { resumeText: RESUME } },
   { fn: "generate-resume-roast", perAddress: 20, global: 200, body: { resumeText: RESUME } },
+  // Signed-in website sessions only since S14 (M-S14-009): `call` sends one.
   { fn: "generate-application-answers", perAddress: 30, global: 300, body: { resumeText: RESUME, jobTitle: "Engineer", jobDescription: POSTING } },
   { fn: "generate-product-preview", perAddress: 20, global: 200, body: { productId: "freelance_transition_pro", resumeText: RESUME } },
   { fn: "nl-search", perAddress: 40, global: 600, body: { query: "remote product roles over 150k" } },
   { fn: "analyze-linkedin-profile", perAddress: 10, global: 100, body: { resumeText: RESUME, linkedinText: RESUME } },
-  { fn: "import-freelance-profile", perAddress: 10, window: 1440, global: 100, body: { profileText: RESUME } },
-  { fn: "test-ai-fallback", perAddress: 3, global: 30, body: { mode: "quick" } },
+  // A Freelance Boost buyer's tool since S14 (M-S14-058): purchase-gated, so no function-wide ceiling.
+  { fn: "import-freelance-profile", perAddress: 10, window: 1440, body: { profileText: RESUME, sessionId: PAID } },
+  // The owner's diagnostic since S14 (M-S14-056): the admin key rides in the body, as /health-check sends it.
+  { fn: "test-ai-fallback", perAddress: 3, global: 30, body: { mode: "quick", adminKey: ADMIN_KEY } },
   { fn: "parse-resume-structured", perAddress: 15, window: 1440, global: 150, body: { resumeText: RESUME } },
   { fn: "shortlist-evaluate", perAddress: 60, global: 300, auth: `Bearer ${sessionToken("user-harness")}`, body: { roleId: "role-1", jdText: POSTING, resumeText: RESUME, attested: true } },
   { fn: "generate-keyword-fix", perAddress: 20, body: { resumeText: RESUME, jobDescription: POSTING, jobTitle: "Engineer", sessionId: PAID } },
@@ -113,7 +117,7 @@ const CASES: Case[] = [
   { fn: "generate-freelance-boost", perAddress: 20, body: { sessionId: PAID, targetRole: "Product designer", projects: [{ clientType: "a dental practice", problem: "no bookings", deliverable: "a booking site", toolsSkills: "Figma", outcome: "", duration: "3 months" }] } },
 ];
 /** The generators whose own purchase check (assertPaidSession) runs before the gate. */
-const CHECKED_FIRST = ["generate-keyword-fix", "generate-career-snapshot", "generate-graduate-gameplan", "generate-premium-package", "generate-premium-package-stream", "generate-cover-letter-stream"];
+const CHECKED_FIRST = ["generate-keyword-fix", "generate-career-snapshot", "generate-graduate-gameplan", "generate-premium-package", "generate-premium-package-stream", "generate-cover-letter-stream", "import-freelance-profile"];
 
 type RateArgs = { p_function: string; p_ip: string; p_max_requests: number; p_window_minutes: number };
 type Verdict = { data: unknown; error: { message: string } | null };
@@ -123,7 +127,8 @@ let db: FakeDb;
 let rateCalls: RateArgs[];
 let aiBodies: Array<Record<string, unknown>>;
 let rate: (a: RateArgs) => Verdict;
-const SERVICE_KEY = "service-role-harness-key";
+// As long as a real one: isServiceRoleCaller refuses a key under 32 characters.
+const SERVICE_KEY = "service-role-harness-key-0123456789abcdef";
 
 beforeAll(async () => {
   const g = globalThis as Record<string, unknown>;
@@ -133,6 +138,7 @@ beforeAll(async () => {
     SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY,
     LOVABLE_API_KEY: "lovable_harness",
     STRIPE_SECRET_KEY: "sk_test_harness",
+    ADMIN_API_KEY: ADMIN_KEY,
   };
   g.Deno = { env: { get: (k: string) => env[k] }, serve: (h: unknown) => { g.__edgeHandler = h; } };
   g.EdgeRuntime = { waitUntil: () => undefined };
@@ -149,7 +155,9 @@ beforeAll(async () => {
 
 beforeEach(() => {
   db = new FakeDb({ used_stripe_sessions: ["session_id"] });
-  db.rows("used_stripe_sessions").push({ session_id: PAID, product_type: null });
+  // An older buyer's claim (no product, no address, before products were
+  // named), which every paid generator still accepts (M-S14-057).
+  db.rows("used_stripe_sessions").push({ session_id: PAID, product_type: null, ip_address: null, used_at: "2026-08-01T00:00:00Z" });
   db.rows("shortlist_roles").push({ id: "role-1", jd_version: 1, jd_text: POSTING });
   rateCalls = [];
   aiBodies = [];
@@ -173,11 +181,13 @@ beforeEach(() => {
  * in front of them is held exactly as before.
  */
 const WRITING_TOOLS = new Set(["generate-cover-letter", "generate-tailored-resume", "generate-interview-coach"]);
+/** Signed-in only as well: the screening answers (M-S14-009). */
+const SIGNED_IN_ONLY = new Set([...WRITING_TOOLS, "generate-application-answers"]);
 const b64url = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
 const SIGNED_IN = `${b64url({ alg: "HS256" })}.${b64url({ role: "authenticated", sub: "user-harness", aud: "authenticated" })}.c2ln`;
 
 async function call(c: Case, headers: Record<string, string>) {
-  const bearer = WRITING_TOOLS.has(c.fn) ? SIGNED_IN : "anon_harness";
+  const bearer = SIGNED_IN_ONLY.has(c.fn) ? SIGNED_IN : "anon_harness";
   const res = await handlers.get(c.fn)!(new Request(`https://harness.supabase.co/functions/v1/${c.fn}`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: c.auth ?? `Bearer ${bearer}`, apikey: "anon_harness", ...headers },

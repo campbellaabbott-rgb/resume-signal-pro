@@ -24,7 +24,12 @@ import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 // itself, whose message quoted the report text around it.
 // Nothing of main's past f8d72a9b, the build the 2026-10-31 deploy put live,
 // rides along.
-const FN_BUILD = "generate-ats-defense.2026-11-03.1";
+// 2026-11-10.1 (S14 hotfix, lane spend, M-S14-057): _shared/paid-session.ts
+// refuses a claim that names no product unless it may be an older buyer's
+// (no address beside it, written before 2026-08-27 18:00 UTC, not test
+// mode); migration 20261110140000 names the rest from the order, content,
+// checkout and grant records. Nothing else in this bundle changed.
+const FN_BUILD = "generate-ats-defense.2026-11-10.1";
 /** Reports one purchase may generate in a day (regenerations included). */
 const ATS_DEFENSE_PER_PURCHASE_DAY = 10;
 

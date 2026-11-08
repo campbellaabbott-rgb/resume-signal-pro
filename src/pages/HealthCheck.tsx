@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { RefreshCw, CheckCircle, AlertTriangle, XCircle, Activity, Database, Zap, CreditCard, ArrowLeft, BarChart3, Clock, FileSearch, AlertOctagon, Mail, ShieldAlert, Ban, DollarSign, Webhook, FileWarning, Bell, Shuffle, Shield, ShieldOff, Timer, Flame, Snowflake, Thermometer, Target } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { adminAuthHeaders, adminRpc } from '@/lib/admin-auth';
+import { adminAuthHeaders, adminRpc, getStoredAdminKey } from '@/lib/admin-auth';
 import { getAllCircuitStates, resetServiceCircuit } from '@/hooks/use-circuit-breaker';
 import { HealthTrendChart } from '@/components/dashboard/HealthTrendChart';
 import { EmailTrendChart } from '@/components/dashboard/EmailTrendChart';
@@ -518,8 +518,14 @@ function HealthCheckContent() {
   const fetchAIFallbackStatus = async (mode: 'quick' | 'all' = 'quick') => {
     setAIFallbackLoading(true);
     try {
+      // The owner's key: the diagnostic spends paid model calls and answers
+      // nobody else (M-S14-056). It rides in the body, not as x-admin-key:
+      // this page publishes before the function, and the build serving
+      // until then refuses that header in its preflight, so the browser
+      // would stop the request before it left.
+      const adminKey = getStoredAdminKey();
       const { data, error } = await supabase.functions.invoke('test-ai-fallback', {
-        body: { mode },
+        body: adminKey ? { mode, adminKey } : { mode },
       });
       // 3 tests an hour (register L3-09): a refusal is not a degraded model
       // chain, so the last result stays and the panel says why it is old.

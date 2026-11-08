@@ -37,7 +37,11 @@ import { retrieveFailureAnswer } from "./retrieve-failure.ts";
 // purchase" 400 as before; any other retrieve failure (a rate limit, a
 // timeout, a 5xx) is a 503 the success page offers to try again
 // (./retrieve-failure.ts), no longer a dead end for a buyer who has just paid.
-const FN_BUILD = "verify-product-purchase.2026-11-03.1";
+// 2026-11-10.1 (hotfix lane pro, sweep S14): no change of its own; the
+// _shared/pro.ts it bundles refreshes a cache row that names a Stripe
+// customer by that customer instead of clearing it when an address
+// search finds nothing, and gained the by-customer and by-account readers.
+const FN_BUILD = "verify-product-purchase.2026-11-10.1";
 
 /** Why a sale of this product cannot be delivered while it is not sold, or null. */
 function retiredReasonOf(productType: string | null | undefined): string | null {
