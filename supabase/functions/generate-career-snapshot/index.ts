@@ -25,7 +25,10 @@ import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 // (no address beside it, written before 2026-08-27 18:00 UTC, not test
 // mode); migration 20261110140000 names the rest from the order, content,
 // checkout and grant records. Nothing else in this bundle changed.
-const FN_BUILD = "generate-career-snapshot.2026-11-10.1";
+// 2026-11-10.2 (cost audit 2026-11-08, lane ai): this file is unchanged. The shared
+// model-call helper it imports (_shared/ai-fallback.ts) gained the free-tool
+// chain and a numbers-only usage line, so the build moves with it.
+const FN_BUILD = "generate-career-snapshot.2026-11-10.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

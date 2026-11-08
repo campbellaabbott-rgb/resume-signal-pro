@@ -123,7 +123,10 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 // buyer's network no longer lock the buyer out; an unknown id is counted per
 // network as above; and an unbound Pro row whose customer left its address
 // is no longer kept live by that customer (_shared/pro.ts).
-const FN_BUILD = "analyze-resume.2026-11-10.2";
+// 2026-11-10.3 (cost audit 2026-11-08, lane ai): this file is unchanged. The shared
+// model-call helper it imports (_shared/ai-fallback.ts) gained the free-tool
+// chain and a numbers-only usage line, so the build moves with it.
+const FN_BUILD = "analyze-resume.2026-11-10.3";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };

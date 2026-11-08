@@ -33,7 +33,11 @@ import { callAIForUsableReply, describeError, looksLikeBrokenJson, type UsableRe
 // (the chain may answer with another). Bodies (messages,
 // max_completion_tokens 12000 and 4000) are unchanged. Nothing else changed
 // since main 21518390.
-const FN_BUILD = "admin-regenerate-delivery.2026-11-03.1";
+// 2026-11-09.1 (cost audit 2026-11-08, lane ai): this file is unchanged. The shared
+// model-call helper it imports (_shared/ai-fallback.ts) now logs one usage
+// line per reply it reads, token counts and the model id only, so the build
+// moves with it.
+const FN_BUILD = "admin-regenerate-delivery.2026-11-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

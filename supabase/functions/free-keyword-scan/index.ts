@@ -535,7 +535,10 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // read as written, version floors and street numbers are not metrics, apostrophe
 // years and a Portuguese "o momento" are dates, and federal agencies,
 // foundations and postdocs are transitions while a marine engineer is not.
-const FN_BUILD = "free-keyword-scan.2026-11-03.1";
+// 2026-11-09.1 (cost audit 2026-11-08, lane ai): this file is unchanged. The shared
+// model-call helper that _shared/scan-models.ts imports gained the free-tool
+// chain and a numbers-only usage line, so the build moves with it.
+const FN_BUILD = "free-keyword-scan.2026-11-09.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

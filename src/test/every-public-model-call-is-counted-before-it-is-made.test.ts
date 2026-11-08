@@ -36,6 +36,13 @@
  * generator; on the free ones a purchase is off the ceiling only for a product
  * the function delivers (a $2 scan pack is not), and the retired
  * tailored-resume stream answers 410 without reading anything.
+ *
+ * The cost audit of 2026-11-08 found seven more model endpoints nothing
+ * called (the summary, the roast, the recruiter view, the elevator pitch,
+ * the LinkedIn analysis and the cover-letter and Premium Package streams).
+ * Each is retired the same way, so each is held below to the same rule: 410
+ * before any count, read or model call, and a build on the preflight. The
+ * warm-up no longer lists the two of them it pinged.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { SET_OUTPUT_TOKENS } from "../../supabase/functions/generate-interview-coach/prep-set";
@@ -87,21 +94,16 @@ type Case = {
 const sessionToken = (sub: string) => ["e30", Buffer.from(JSON.stringify({ sub, role: "authenticated", aud: "authenticated" })).toString("base64url"), "sig"].join(".");
 
 const CASES: Case[] = [
-  { fn: "generate-summary", perAddress: 30, global: 600, body: { atsScore: 71, formatGrade: "B", industry: "tech", experienceLevel: "mid", topStrength: "Clear metrics", redFlagsCount: 2, quickWins: [{ fix: "Quantify the 2023 launch" }], improvementPotential: { estimatedScoreIncrease: 12 }, candidateName: "Jane Doe" } },
   { fn: "generate-interview-coach", perAddress: 20, global: 200, body: { resumeText: RESUME, targetRole: "Engineer", mode: "generate" } },
   // Career Path is retired (owner decision 2026-10-12): only a past buyer's
   // page reaches the model, so the gate is held on that call.
   { fn: "generate-career-path", perAddress: 20, global: 200, body: { resumeText: RESUME, isPremium: true, sessionId: PAID } },
   { fn: "generate-cover-letter", perAddress: 20, global: 200, body: { resumeText: RESUME, jobTitle: "Engineer", jobDescription: POSTING } },
   { fn: "generate-tailored-resume", perAddress: 20, global: 200, body: { resumeText: RESUME, jobTitle: "Engineer", jobDescription: POSTING } },
-  { fn: "generate-elevator-pitch", perAddress: 20, global: 200, body: { resumeText: RESUME } },
-  { fn: "generate-recruiter-view", perAddress: 20, global: 200, body: { resumeText: RESUME } },
-  { fn: "generate-resume-roast", perAddress: 20, global: 200, body: { resumeText: RESUME } },
   // Signed-in website sessions only since S14 (M-S14-009): `call` sends one.
   { fn: "generate-application-answers", perAddress: 30, global: 300, body: { resumeText: RESUME, jobTitle: "Engineer", jobDescription: POSTING } },
   { fn: "generate-product-preview", perAddress: 20, global: 200, body: { productId: "freelance_transition_pro", resumeText: RESUME } },
   { fn: "nl-search", perAddress: 40, global: 600, body: { query: "remote product roles over 150k" } },
-  { fn: "analyze-linkedin-profile", perAddress: 10, global: 100, body: { resumeText: RESUME, linkedinText: RESUME } },
   // A Freelance Boost buyer's tool since S14 (M-S14-058): purchase-gated, so no function-wide ceiling.
   { fn: "import-freelance-profile", perAddress: 10, window: 1440, body: { profileText: RESUME, sessionId: PAID } },
   // The owner's diagnostic since S14 (M-S14-056): the admin key rides in the body, as /health-check sends it.
@@ -112,12 +114,15 @@ const CASES: Case[] = [
   { fn: "generate-career-snapshot", perAddress: 20, body: { resumeText: RESUME, jobDescription: POSTING, jobTitle: "Engineer", sessionId: PAID } },
   { fn: "generate-graduate-gameplan", perAddress: 20, body: { resumeText: RESUME, jobDescription: POSTING, jobTitle: "Engineer", sessionId: PAID } },
   { fn: "generate-premium-package", perAddress: 20, body: { resumeText: RESUME, jobDescription: POSTING, jobTitle: "Engineer", sessionId: PAID } },
-  { fn: "generate-premium-package-stream", perAddress: 20, body: { resumeText: RESUME, jobDescription: POSTING, jobTitle: "Engineer", sessionId: PAID } },
-  { fn: "generate-cover-letter-stream", perAddress: 20, body: { resumeText: RESUME, jobDescription: POSTING, jobTitle: "Engineer", sessionId: PAID } },
   { fn: "generate-freelance-boost", perAddress: 20, body: { sessionId: PAID, targetRole: "Product designer", projects: [{ clientType: "a dental practice", problem: "no bookings", deliverable: "a booking site", toolsSkills: "Figma", outcome: "", duration: "3 months" }] } },
 ];
 /** The generators whose own purchase check (assertPaidSession) runs before the gate. */
-const CHECKED_FIRST = ["generate-keyword-fix", "generate-career-snapshot", "generate-graduate-gameplan", "generate-premium-package", "generate-premium-package-stream", "generate-cover-letter-stream", "import-freelance-profile"];
+const CHECKED_FIRST = ["generate-keyword-fix", "generate-career-snapshot", "generate-graduate-gameplan", "generate-premium-package", "import-freelance-profile"];
+/** Model endpoints nothing called, retired by the cost audit of 2026-11-08: each answers 410 and calls nothing. */
+const RETIRED_2026_11 = [
+  "generate-summary", "generate-resume-roast", "generate-recruiter-view", "generate-elevator-pitch",
+  "analyze-linkedin-profile", "generate-cover-letter-stream", "generate-premium-package-stream",
+];
 
 type RateArgs = { p_function: string; p_ip: string; p_max_requests: number; p_window_minutes: number };
 type Verdict = { data: unknown; error: { message: string } | null };
@@ -151,6 +156,7 @@ beforeAll(async () => {
   };
   for (const c of CASES) handlers.set(c.fn, await loadEdgeHandler(c.fn, STUBS));
   handlers.set("generate-tailored-resume-stream", await loadEdgeHandler("generate-tailored-resume-stream", STUBS));
+  for (const fn of RETIRED_2026_11) handlers.set(fn, await loadEdgeHandler(fn, STUBS));
 }, 180_000);
 
 beforeEach(() => {
@@ -415,10 +421,11 @@ describe("the warm-up spends nothing on any function it pings", () => {
     expect(warmed).toContain("generate-cover-letter");
     expect(warmed).toContain("generate-keyword-fix");
     expect(warmed, "the retired stream is still being warmed").not.toContain("generate-tailored-resume-stream");
-    expect(gated.length).toBeGreaterThanOrEqual(5);
+    for (const fn of RETIRED_2026_11) expect(warmed, `${fn} is retired and still being warmed`).not.toContain(fn);
+    expect(gated.length).toBeGreaterThanOrEqual(3);
   });
 
-  for (const fn of ["generate-cover-letter", "generate-cover-letter-stream", "generate-tailored-resume", "generate-summary", "generate-keyword-fix"]) {
+  for (const fn of ["generate-cover-letter", "generate-tailored-resume", "generate-keyword-fix"]) {
     it(`${fn}: a warm-up ping is refused before any count or model call`, async () => {
       expect(warmed).toContain(fn);
       const r = await handlers.get(fn)!(new Request(`https://harness.supabase.co/functions/v1/${fn}`, {
@@ -467,6 +474,37 @@ describe("the retired tailored-resume stream does nothing at all", () => {
     // 2026-10-04.1 or any later build (re-stamped 2026-10-10.1: 56789de5 changed it unstamped).
     expect(buildIsAtLeast(res.headers.get("x-fn-build"), "generate-tailored-resume-stream", "2026-10-04")).toBe(true);
   });
+});
+
+describe("the seven model endpoints nothing called are retired and do nothing at all", () => {
+  for (const fn of RETIRED_2026_11) {
+    it(`${fn}: a claimed purchase, a visitor's request and a warm-up ping each get 410 retired, with no count, read or model call`, async () => {
+      db.rows("used_stripe_sessions").push({ session_id: "cs_live_scanpack", product_type: "scan_pack" });
+      const reads = vi.spyOn(db, "from");
+      for (const body of [
+        { resumeText: RESUME, jobTitle: "Engineer", jobDescription: POSTING, sessionId: PAID },
+        { resumeText: RESUME, linkedinText: RESUME, atsScore: 71 },
+        { _warmup: true, timestamp: 1 },
+      ]) {
+        const res = await handlers.get(fn)!(new Request(`https://harness.supabase.co/functions/v1/${fn}`, {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: `Bearer ${SERVICE_KEY}`, apikey: "anon_harness", "cf-connecting-ip": "198.51.100.4" },
+          body: JSON.stringify(body),
+        }));
+        expect(res.status, JSON.stringify(body)).toBe(410);
+        expect((await res.json()).code).toBe("retired");
+      }
+      expect(rateCalls).toEqual([]);
+      expect(reads).not.toHaveBeenCalled();
+      expect(aiBodies).toEqual([]);
+    });
+
+    it(`${fn}: still answers its retired build on the preflight, so the deploy is provable from outside`, async () => {
+      const res = await handlers.get(fn)!(new Request(`https://harness.supabase.co/functions/v1/${fn}`, { method: "OPTIONS" }));
+      expect(res.status).toBe(200);
+      expect(buildIsAtLeast(res.headers.get("x-fn-build"), fn, "2026-11-09"), String(res.headers.get("x-fn-build"))).toBe(true);
+    });
+  }
 });
 
 describe("the free cover-letter primary bounds its input like its stream twin", () => {

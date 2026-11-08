@@ -42,7 +42,10 @@ import { BOOST_MAX_TOKENS, decideStructure, readBoostReply, type BoostReply } fr
 // _shared/pro.ts it bundles refreshes a cache row that names a Stripe
 // customer by that customer instead of clearing it when an address
 // search finds nothing, and gained the by-customer and by-account readers.
-const FN_BUILD = "generate-freelance-boost.2026-11-10.1";
+// 2026-11-10.2 (cost audit 2026-11-08, lane ai): this file is unchanged. The shared
+// model-call helper it imports (_shared/ai-fallback.ts) gained the free-tool
+// chain and a numbers-only usage line, so the build moves with it.
+const FN_BUILD = "generate-freelance-boost.2026-11-10.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

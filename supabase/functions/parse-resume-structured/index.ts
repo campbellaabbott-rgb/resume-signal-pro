@@ -17,7 +17,10 @@ import { callAIWithModelFallback, describeError, describeReply } from "../_share
 // text around it, which could be the person's name or email. Nothing else in
 // this function changed, and nothing of main's past f8d72a9b, the build the
 // 2026-10-31 deploy put live, rides along.
-const FN_BUILD = "parse-resume-structured.2026-11-03.1";
+// 2026-11-09.1 (cost audit 2026-11-08, lane ai): this file is unchanged. The shared
+// model-call helper it imports (_shared/ai-fallback.ts) gained the free-tool
+// chain and a numbers-only usage line, so the build moves with it.
+const FN_BUILD = "parse-resume-structured.2026-11-09.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
