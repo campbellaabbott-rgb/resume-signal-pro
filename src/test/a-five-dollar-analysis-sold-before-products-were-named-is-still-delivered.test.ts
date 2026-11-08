@@ -153,8 +153,10 @@ describe("a legacy session is redeemed once, for this product, and only paid", (
 
   it("an old webhook's unnamed claim is named once the analysis is delivered -- it was a key to every paid generator", async () => {
     const id = sell(legacyFullAnalysisSession("cs_live_legacy_stamp"));
-    h.db.rows("used_stripe_sessions").push({ session_id: id, product_type: null, ip_address: null });
-    expect(await assertPaidSession(h.db, id, ["premium_package"]), "precondition: an unnamed claim is accepted everywhere").toBeNull();
+    // Claimed before products were named (20260827180000), with no address:
+    // the one unnamed claim the gate still lets through (M-S14-057).
+    h.db.rows("used_stripe_sessions").push({ session_id: id, product_type: null, ip_address: null, used_at: "2026-06-01T00:00:00Z" });
+    expect(await assertPaidSession(h.db, id, ["premium_package"]), "precondition: an older unnamed claim is accepted everywhere").toBeNull();
     expect((await ask(id)).status).toBe(200);
     await h.settle();
     expect(h.db.rows("used_stripe_sessions").filter((c) => c.session_id === id).map((c) => c.product_type)).toEqual(["full_analysis"]);

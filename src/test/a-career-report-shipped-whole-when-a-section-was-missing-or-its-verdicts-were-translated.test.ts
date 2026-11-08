@@ -89,7 +89,8 @@ beforeAll(async () => {
 
 beforeEach(() => {
   db = new FakeDb({ used_stripe_sessions: ["session_id"] });
-  db.rows("used_stripe_sessions").push({ session_id: "cs_paid", product_type: null });
+  // An older buyer's claim: no product, no address, from before claims named one (M-S14-057).
+  db.rows("used_stripe_sessions").push({ session_id: "cs_paid", product_type: null, ip_address: null, used_at: "2026-08-01T00:00:00Z" });
   db.rpcs.check_rate_limit = () => ({ data: true, error: null });
   (globalThis as Record<string, unknown>).__crDb = db;
   asked = [];

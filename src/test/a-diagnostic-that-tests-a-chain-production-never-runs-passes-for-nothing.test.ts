@@ -23,7 +23,7 @@ import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harnes
 import { DEFAULT_MODELS } from "../../supabase/functions/_shared/ai-fallback";
 import { SCAN_MODEL_CHAIN } from "../../supabase/functions/_shared/scan-models";
 
-const env: Record<string, string> = { SUPABASE_URL: "https://harness.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "svc", LOVABLE_API_KEY: "lov" };
+const env: Record<string, string> = { SUPABASE_URL: "https://harness.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "svc", LOVABLE_API_KEY: "lov", ADMIN_API_KEY: "admin-harness-key" };
 const asked: Array<Record<string, unknown>> = [];
 let failModels = new Set<string>();
 let handler: EdgeHandler;
@@ -52,7 +52,8 @@ beforeAll(async () => {
 beforeEach(() => { asked.length = 0; failModels = new Set(); });
 
 const run = (mode: string) => handler(new Request("https://harness.supabase.co/functions/v1/test-ai-fallback", {
-  method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.7" }, body: JSON.stringify({ mode }),
+  // The /health-check page's own call: the owner's admin key (M-S14-056).
+  method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.7", "x-admin-key": "admin-harness-key" }, body: JSON.stringify({ mode }),
 }));
 
 describe("the quick test walks the chains production runs", () => {

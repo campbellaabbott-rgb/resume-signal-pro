@@ -15,6 +15,8 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { assertPaidSession } from "../_shared/paid-session.ts";
+import { proGrantRefusal } from "../_shared/pro-standing.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -27,7 +29,13 @@ import { modelSpendGate } from "../_shared/model-spend-gate.ts";
 // unused here).
 // Nothing else in this bundle changed since main's f8d72a9b, the build the
 // 2026-10-31 deploy put live (docs/deploy-ledger.json, verifiedDeploys).
-const FN_BUILD = "import-freelance-profile.2026-11-03.1";
+// 2026-11-10.1 (S14 hotfix, lane spend, M-S14-058 and M-S14-057): runs only
+// for a Freelance Boost or Transition Pro purchase (the claim, or a Pro
+// grant its account may still redeem), checked before anything is counted;
+// then the address's ten a day and the purchase's own ten, no function-wide
+// ceiling. Carries the paid-session.ts that refuses an unnamed claim unless
+// it may be an older buyer's.
+const FN_BUILD = "import-freelance-profile.2026-11-10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,17 +43,46 @@ const corsHeaders = {
   "x-fn-build": FN_BUILD,
 };
 
-// Ten imports a day per address (the allowance it always had), plus a
-// function-wide hourly ceiling. The limiter used to read `allowed === false`,
-// so a limiter error -- or a first forwarded hop over 45 characters, which
-// makes check_rate_limit raise -- skipped the limit; the gate fails closed.
-const IMPORT_LIMITS = { perAddress: 10, windowMinutes: 1440, globalPerHour: 100 };
+// A PAST BUYER'S TOOL, CHECKED AS ONE (M-S14-058). The page offers the import
+// only beside a Freelance Boost purchase, but the function checked none: any
+// caller with the publishable key got ten model extractions a day per
+// address, a hundred an hour site-wide. It now asks for the purchase the page
+// already holds (its session_id) before anything is counted or spent: a
+// Checkout session whose claim names a Freelance Boost or Transition Pro, or
+// a Pro member's grant for one that its account may still redeem, which is
+// the generator's own rule (generate-freelance-boost). Once the purchase is
+// proven the address keeps its ten a day and the purchase gets ten of its
+// own; there is no function-wide ceiling, which on a purchase-gated tool
+// would only let strangers lock buyers out.
+const IMPORT_LIMITS = { perAddress: 10, windowMinutes: 1440, perSessionPerDay: 10 };
+/** The two purchases the generator delivers, in the spelling the checkout wrote into Stripe. */
+const FREELANCE_PRODUCTS: readonly string[] = ["freelance_boost", "freelance_transition_pro"];
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const NO_PURCHASE = "Import is part of a Freelance Boost purchase. Open the link in your purchase email to use it.";
+
+// deno-lint-ignore no-explicit-any
+type Db = { from: (table: string) => any; rpc: (fn: string, args: Record<string, unknown>) => any };
+
+/** null when the session is a Freelance Boost purchase that may still be used; otherwise the status and why not. */
+async function purchaseRefusal(db: Db, sessionId: unknown): Promise<{ status: number; error: string } | null> {
+  if (typeof sessionId !== "string" || sessionId.length === 0 || sessionId.length > 255) return { status: 402, error: NO_PURCHASE };
+  if (sessionId.startsWith("pro_")) {
+    const grantId = sessionId.slice(4);
+    if (!UUID_RE.test(grantId)) return { status: 402, error: NO_PURCHASE };
+    const { data: grant, error } = await db.from("pro_grants").select("product_type, user_id, revoked_at").eq("id", grantId).maybeSingle();
+    if (error) return { status: 503, error: "We couldn't check your purchase just now. Please try again in a minute." };
+    if (!grant || !FREELANCE_PRODUCTS.includes(String(grant.product_type ?? ""))) return { status: 402, error: NO_PURCHASE };
+    return await proGrantRefusal(db, grant);
+  }
+  const refusal = await assertPaidSession(db, sessionId, FREELANCE_PRODUCTS);
+  return refusal ? { status: 402, error: refusal } : null;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { profileText } = await req.json();
+    const { profileText, sessionId } = await req.json();
     if (typeof profileText !== "string" || profileText.trim().length < 80) {
       return new Response(JSON.stringify({ error: "Paste your full profile text (at least a few lines)." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -54,7 +91,13 @@ serve(async (req) => {
     const text = profileText.slice(0, 20000);
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", { auth: { persistSession: false } });
-    const refused = await modelSpendGate(supabase, req, "import-freelance-profile", IMPORT_LIMITS, corsHeaders);
+    const notBought = await purchaseRefusal(supabase, sessionId);
+    if (notBought) {
+      return new Response(JSON.stringify({ error: notBought.error, ...(notBought.status === 402 ? { requiresPurchase: true } : {}) }), {
+        status: notBought.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const refused = await modelSpendGate(supabase, req, "import-freelance-profile", IMPORT_LIMITS, corsHeaders, { session: sessionId });
     if (refused) return refused;
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
