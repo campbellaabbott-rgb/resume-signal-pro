@@ -1099,13 +1099,18 @@ const tally={};for(const r of j){const t=r.insufficient_reason_30===null?"suffic
 console.log("INFO  largest-boards day-30 verdicts: "+JSON.stringify(tally)+" (before the fix 107 of the top 150 were sufficient, 100 of them lap_proven)");
 })()'
 # THE FIELD ROWS, FROM THE CACHE PRODUCTION ACTUALLY HAS. Read-only on
-# 2026-10-02 at 01:40Z and 03:48Z: get_stats_cache carries no fill_curve part
-# (20260928004823 and 20260928011742 have not applied there), so a check that
-# read only that part printed "no cached field rows" on every run and never
-# judged the field grain at all. The rows that exist are get_explore_cache's
-# field_curves -- get_category_fill_curve(90, 300) keyed by category,
-# rewritten whole at :07 -- and that is what is judged here; the stats part is
-# judged the same way whenever it exists.
+# 2026-10-02 at 01:40Z and 03:48Z get_stats_cache carried no fill_curve part
+# (20260928004823 had not applied there), so a check that read only that part
+# never judged the field grain at all, and this section moved to the explore
+# cache's field_curves, the copy that existed. Read-only on 2026-11-08 at
+# 16:29Z BOTH exist: the stats part carries 18 rows of get_category_fill_curve
+# (90, 300) with its own stamp and variant, rewritten by the :27 run. The
+# explore copy is retired by 20261109110500 -- no page reads it, and it cost
+# the :07 run a second pass over the same curve -- so the STATS PART IS THE
+# FIELD CHECK. The explore part is judged the same way only while a cache row
+# still carries it (today's, until the first :07 run on the new writer), and
+# its absence is INFO. A run in which neither carries rows judged no field
+# row, and that is a FAIL.
 # DATED AGAINST THE APPLY, NOT TRUSTED FOR BEING PRESENT. The re-issue removes
 # both parts at apply, but a :07 run already scanning when it commits finishes
 # on the definition it began with and then replaces its whole row, putting the
@@ -1189,6 +1194,7 @@ const judge=(label,rows,stamp,carried)=>{
 };
 const s=rd("/tmp/vd_7h_explore.json");let j;try{j=JSON.parse(s)}catch{}
 const g=Array.isArray(j)?j[0]:j;
+let exploreJudged=false;
 if(j===undefined)console.log("FAIL  get_explore_cache answered no JSON (a 60s client timeout, or an HTML error page) -- "+s.slice(0,120));
 else if(!g||typeof g!=="object"||("code" in g&&"message" in g))console.log("FAIL  get_explore_cache errored: "+JSON.stringify(g).slice(0,160));
 else{
@@ -1196,14 +1202,12 @@ else{
   const stale=Array.isArray(g.stale_parts)?g.stale_parts:[];
   if(!Number.isFinite(ageMin))console.log("FAIL  explore cache carries no usable computed_at ("+root+")");
   else if(ageMin>MAX_EXPLORE_AGE_MIN)console.log("FAIL  explore cache last ran "+Math.round(ageMin)+" min ago (computed_at "+root+"): the :07 refresh has stopped, so its rows reflect nothing recent");
-  if(!("field_curves" in g)){
-    if(Number.isFinite(at)&&Date.parse(root)>=at)console.log("FAIL  explore cache: a run that began after the apply wrote no field_curves key, which refresh_explore_cache always writes -- something else replaced the row");
-    else console.log("INFO  explore cache: field_curves withheld at apply (20261002121843) and no :07 run has completed since (root computed_at "+root+"); re-run after the next :07 -- the absence cannot outlive the "+MAX_EXPLORE_AGE_MIN+"-minute bar above without a FAIL");
-  }else{
+  if(!("field_curves" in g))console.log("INFO  explore cache carries no field_curves (root computed_at "+root+"): the copy is retired by 20261109110500 and no page reads it -- the stats cache fill_curve below is the field check");
+  else{
     const fc=g.field_curves;
     const rows=fc&&typeof fc==="object"&&!Array.isArray(fc)?Object.entries(fc).map(([category,r])=>Object.assign({category},r)):[];
     if(!rows.length)console.log("FAIL  explore cache: field_curves is empty"+(stale.includes("field_curves")?" and stale_parts names it":"")+" -- the :07 run could not compute the field curve and had nothing to carry, so the field rows are blank (the five-minute header is the suspect: the floor added a join per observability row)");
-    else judge("explore cache field_curves ("+rows.length+" fields)",rows,root,stale.includes("field_curves"));
+    else{exploreJudged=true;judge("explore cache field_curves ("+rows.length+" fields)",rows,root,stale.includes("field_curves"))}
   }
 }
 console.log("INFO  20261002121843 has no anon-readable proof of its own (its result shape is unchanged); with service role: SELECT pg_get_functiondef(\x27public.get_category_fill_curve(int, int)\x27::regprocedure) LIKE \x27%watched_from%\x27 -- true once it applied (its own self-verify raises otherwise)");
@@ -1211,7 +1215,7 @@ let m=null;try{m=JSON.parse(rd("/tmp/vd_cat_meta.json"))}catch{}
 const keys=m&&Array.isArray(m.cache_keys)?m.cache_keys:[];
 if(!m)console.log("FAIL  section 4 left no stats-cache meta to read");
 else if(!keys.length||(keys.includes("code")&&keys.includes("message")))console.log("FAIL  get_stats_cache errored or answered nothing (keys: "+keys.join(",")+")");
-else if(!m.present)console.log("INFO  stats cache carries no fill_curve part (20260928004823 not live in production as of 2026-10-02, or withheld at apply and no :27 run since) -- the explore arm above is the field check");
+else if(!m.present)console.log(exploreJudged?"INFO  stats cache carries no fill_curve part (or it was withheld at apply and no :27 run has completed since) -- the explore rows above are the only field rows judged this run":"FAIL  neither cache carries the field rows: the stats cache has no fill_curve part and the explore cache no field_curves, so no field row was judged");
 else{let r=null;try{r=JSON.parse(rd("/tmp/vd_cat.json"))}catch{}
   if(!Array.isArray(r)||!r.length)console.log("FAIL  stats cache fill_curve is present but carries no rows (stale_parts "+JSON.stringify(m.stale_parts)+")");
   else judge("stats cache fill_curve ("+r.length+" fields)",r,m.computed_at,m.carried);
