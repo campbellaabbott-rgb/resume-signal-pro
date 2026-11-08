@@ -1518,19 +1518,19 @@
     },
     "aSharedLinkCanNoLongerDeleteAPaidAnalysis": {
       "title": "Um link compartilhado não consegue mais excluir uma análise paga",
-      "description": "Antes, qualquer pessoa com o link compartilhado de uma análise paga podia excluí-la. Agora o link compartilhado continua abrindo a análise, mas não consegue excluí-la. Para excluir, também é preciso a compra com que a análise foi paga, então isso só funciona pelo próprio link de compra de quem comprou (a página aberta depois do pagamento, o link no e-mail de compra ou o pedido na conta) ou escrevendo para nós do endereço usado no pagamento. A página compartilhada diz isso."
+      "description": "Antes, qualquer pessoa com o link compartilhado de uma análise paga podia excluí-la. Agora o link compartilhado continua abrindo a análise, mas não consegue excluí-la. Para excluir, também é preciso a compra original, então isso só funciona pelo próprio link de compra de quem comprou (a página aberta depois do pagamento ou o pedido na conta) ou escrevendo para nós do endereço usado no pagamento. A página compartilhada diz isso."
     },
     "aPurchaseLinkThatDoesNotOpenSaysWhy": {
       "title": "Um link de compra que não abre agora costuma dizer por quê",
-      "description": "Quando um link para uma compra na página do produto não abre (ferramentas e pacotes de análises comprados avulsos, e ferramentas incluídas em um plano Pro), a página agora costuma dizer por quê. Ela pode dizer que o pagamento não foi concluído, que a compra foi reembolsada ou que vieram verificações demais da sua conexão na última hora. Ou pode dizer que não encontramos a compra, talvez porque o link foi cortado ou expirou. Um link sem referência de compra pede que você cole o link do seu e-mail de compra, ou a própria referência. Se o provedor de pagamento não responder a tempo, a página diz que sua compra está segura e oferece “Tentar novamente”. Isso está nos nove idiomas. A página da Análise Completa não mudou."
+      "description": "Quando um link para uma compra na página do produto não abre (ferramentas e pacotes de análises comprados avulsos, e ferramentas incluídas em um plano Pro), a página agora costuma dizer por quê. Ela pode dizer que o pagamento não foi concluído, que a compra foi reembolsada ou que vieram verificações demais da sua conexão na última hora. Ou pode dizer que não encontramos a compra, talvez porque o link foi cortado ou expirou. Um link sem referência de compra pede que você cole o link do seu e-mail de compra, ou a própria referência. Se o provedor de pagamento não responder a tempo, a página diz que sua compra está segura e oferece “Tentar novamente”. Isso vale para os nove idiomas. A página da Análise Completa não mudou."
     },
     "draftsForAJobReopenWithoutBeingWrittenAgain": {
       "title": "Rascunhos para uma vaga voltam a abrir sem ser escritos de novo",
-      "description": "Na janela “Prepare a sua candidatura” do quadro de vagas, uma carta de apresentação, um currículo adaptado ou um conjunto de respostas de candidatura que você já redigiu para uma vaga agora volta a abrir sem ser escrito de novo, então reabrir uma carta de apresentação ou um currículo adaptado não gasta sua cota diária de escrita uma segunda vez. Isso funciona enquanto a página continuar aberta, para suas 20 vagas mais recentes, desde que seu currículo, a vaga e seu idioma não mudem; recarregar a página ou abrir uma nova aba começa do zero. “Adaptar de novo” e “Redigir novamente” escrevem um novo. Quando o redator de cartas ou de currículos está ocupado para todos, ele agora diz isso e diz que não é o seu próprio limite."
+      "description": "Na janela “Prepare a sua candidatura” do quadro de vagas, uma carta de apresentação, um currículo adaptado ou um conjunto de respostas de candidatura que você já redigiu para uma vaga agora volta a abrir sem ser escrito de novo, então reabrir uma carta de apresentação ou um currículo adaptado não gasta sua cota diária de escrita uma segunda vez. Isso funciona enquanto a página continuar aberta, para as últimas 20 vagas para as quais você preparou a candidatura, desde que seu currículo, a vaga e seu idioma não mudem; recarregar a página ou abrir uma nova aba começa do zero. “Adaptar de novo” e “Redigir novamente” escrevem um novo. Quando o redator de cartas ou de currículos está sobrecarregado para todos, ele agora avisa e diz que não é o seu próprio limite."
     },
     "theInterviewCoachKeepsEachAnswerApart": {
       "title": "O Coach de Entrevista guarda cada resposta separada, e adaptar exige uma vaga real",
-      "description": "No Coach de Entrevista do relatório gratuito, cada pergunta agora guarda a própria resposta. Antes, uma resposta digitada para uma pergunta aparecia nas caixas das outras perguntas e podia ser enviada como resposta delas, e “Tentar novamente” em uma pergunta apagava todas. O relatório também só oferece um currículo adaptado quando tem um cargo ou uma vaga para adaptar. Antes, ele podia inventar um cargo a partir do seu setor."
+      "description": "No Coach de Entrevista do relatório gratuito, cada pergunta agora guarda a própria resposta. Antes, uma resposta digitada para uma pergunta aparecia nas caixas das outras perguntas e podia ser enviada como resposta delas, e “Tentar novamente” em uma pergunta apagava todas as respostas. O relatório também só oferece um currículo adaptado quando tem um cargo ou uma vaga a que adaptá-lo. Antes, ele podia inventar um cargo a partir do seu setor."
     },
     "searchAndReportEmailsInYourLanguage": {
       "title": "E-mails de buscas e do relatório chegam no idioma que você usava",
@@ -1542,7 +1542,7 @@
     },
     "theOneClickApplyFilterIsGone": {
       "title": "O filtro “Candidatura num clique” saiu do Explorar",
-      "description": "A contagem do filtro cobria só vagas de quatro sistemas de contratação, embora desde 31 de outubro o quadro que ele abria já listasse todas as vagas. Buscas salvas que ainda tinham essa restrição agora contam e enviam por e-mail vagas novas do quadro inteiro; abrir uma delas mostra o quadro inteiro desde 31 de outubro."
+      "description": "A contagem do filtro cobria só vagas de quatro sistemas de contratação, embora escolhê-lo já mostrasse todas as vagas. Buscas salvas que ainda tinham esse filtro agora contam e enviam por e-mail vagas novas do quadro inteiro; abrir uma delas já mostrava todas as vagas."
     },
     "theBoardChecksEveryMinuteForAStoppedRefresh": {
       "title": "O quadro de vagas verifica a cada minuto se a atualização parou",

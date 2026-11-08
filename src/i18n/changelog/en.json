@@ -1514,11 +1514,11 @@
     },
     "ourFontsComeFromOurOwnSite": {
       "title": "Our fonts now come from our own site",
-      "description": "Our pages no longer load their fonts from Google. The fonts now come from our own site, so opening a page asks Google's font servers for nothing."
+      "description": "Our pages no longer load their fonts from Google. The fonts now come from our own site, so opening a page sends no request to Google's font servers."
     },
     "aSharedLinkCanNoLongerDeleteAPaidAnalysis": {
       "title": "A shared link can no longer delete a paid analysis",
-      "description": "Before, anyone who had the share link to a paid analysis could delete it. Now the share link can still open the analysis but cannot delete it. Deleting also needs the purchase the analysis was bought with, so it works only from the buyer's own purchase link (the page their payment opened, the link in their purchase email, or the order in their account) or by writing to us from the address they paid with. The shared page says so."
+      "description": "Before, anyone who had the share link to a paid analysis could delete it. Now the share link can still open the analysis but cannot delete it. Deleting also needs the original purchase, so it works only from the buyer's own purchase link (the page their payment opened or the order in their account) or by writing to us from the address they paid with. The shared page says so."
     },
     "aPurchaseLinkThatDoesNotOpenSaysWhy": {
       "title": "A purchase link that doesn't open now usually says why",
@@ -1526,7 +1526,7 @@
     },
     "draftsForAJobReopenWithoutBeingWrittenAgain": {
       "title": "Drafts for a job reopen without being written again",
-      "description": "In the job board's “Prepare your application” window, a cover letter, tailored résumé or set of application answers you already drafted for a job now opens again without being written again, so reopening a cover letter or tailored résumé doesn't use your daily writing allowance a second time. This works while the page stays open, for your 20 most recent jobs, as long as your résumé, the posting and your language are unchanged; a reload or a new tab starts fresh. “Tailor it again” and “Draft again” write a new one. When the cover-letter or résumé writer is busy for everyone, it now says so and says it isn't your own limit."
+      "description": "In the job board's “Prepare your application” window, a cover letter, tailored résumé or set of application answers you already drafted for a job now opens again without being written again, so reopening a cover letter or tailored résumé doesn't use your daily writing allowance a second time. This works while the page stays open, for the last 20 jobs you prepared for, as long as your résumé, the posting and your language are unchanged; a reload or a new tab starts fresh. “Tailor it again” and “Draft again” write a new one. When the cover-letter or résumé writer is busy for everyone, it now says so and says it isn't your own limit."
     },
     "theInterviewCoachKeepsEachAnswerApart": {
       "title": "The Interview Coach keeps each answer apart, and tailoring needs a real job",
@@ -1542,7 +1542,7 @@
     },
     "theOneClickApplyFilterIsGone": {
       "title": "The One-click apply filter is gone from Explore",
-      "description": "The filter's count covered only jobs on four hiring systems, though since 31 October the board it opened already listed every job. Saved searches that still carried that narrowing now count and email new jobs from the whole board; opening one has shown the whole board since 31 October."
+      "description": "The filter's count covered only jobs on four hiring systems, though choosing it already showed every job. Saved searches that still had this filter on now count and email new jobs from the whole board; opening one already showed every job."
     },
     "theBoardChecksEveryMinuteForAStoppedRefresh": {
       "title": "The job board checks every minute for a stopped refresh",

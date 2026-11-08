@@ -1518,7 +1518,7 @@
     },
     "aSharedLinkCanNoLongerDeleteAPaidAnalysis": {
       "title": "Ein geteilter Link kann eine bezahlte Analyse nicht mehr löschen",
-      "description": "Bisher konnte jeder, der den geteilten Link zu einer bezahlten Analyse hatte, sie löschen. Jetzt öffnet der geteilte Link die Analyse weiterhin, kann sie aber nicht löschen. Zum Löschen braucht es auch den Kauf, mit dem die Analyse gekauft wurde; es geht also nur über den eigenen Kauflink des Käufers (die Seite, die sich nach der Zahlung geöffnet hat, den Link in der Kauf-E-Mail oder die Bestellung im Konto) oder per Nachricht an uns von der Adresse, mit der bezahlt wurde. Die geteilte Seite sagt das."
+      "description": "Bisher konnte jeder, der den geteilten Link zu einer bezahlten Analyse hatte, sie löschen. Jetzt öffnet der geteilte Link die Analyse weiterhin, kann sie aber nicht löschen. Zum Löschen braucht es auch den ursprünglichen Kauf; es geht also nur über den eigenen Kauflink des Käufers (die Seite, die sich nach der Zahlung geöffnet hat, oder die Bestellung im Konto) oder per Nachricht an uns von der Adresse, mit der bezahlt wurde. Das steht auch auf der geteilten Seite."
     },
     "aPurchaseLinkThatDoesNotOpenSaysWhy": {
       "title": "Ein Kauflink, der sich nicht öffnet, sagt jetzt meist, warum",
@@ -1526,7 +1526,7 @@
     },
     "draftsForAJobReopenWithoutBeingWrittenAgain": {
       "title": "Entwürfe für eine Stelle öffnen sich wieder, ohne neu geschrieben zu werden",
-      "description": "Im Fenster „Bereite deine Bewerbung vor“ des Job-Boards öffnet sich ein Anschreiben, ein zugeschnittener Lebenslauf oder ein Satz Bewerbungsantworten, den du für eine Stelle schon entworfen hast, jetzt wieder, ohne neu geschrieben zu werden. Ein erneut geöffnetes Anschreiben oder ein zugeschnittener Lebenslauf verbraucht dein tägliches Schreibkontingent also kein zweites Mal. Das gilt, solange die Seite offen bleibt, für deine 20 zuletzt genutzten Stellen und solange dein Lebenslauf, die Anzeige und deine Sprache gleich bleiben; ein Neuladen oder ein neuer Tab beginnt von vorn. „Erneut zuschneiden“ und „Neu entwerfen“ schreiben einen neuen Entwurf. Wenn der Anschreiben- oder Lebenslauf-Schreiber für alle ausgelastet ist, sagt er das jetzt und sagt, dass es nicht dein eigenes Limit ist."
+      "description": "Im Fenster „Bereite deine Bewerbung vor“ des Job-Boards öffnet sich ein Anschreiben, ein zugeschnittener Lebenslauf oder ein Satz Bewerbungsantworten, den du für eine Stelle schon entworfen hast, jetzt wieder, ohne neu geschrieben zu werden. Ein Anschreiben oder zugeschnittener Lebenslauf, den du erneut öffnest, verbraucht dein tägliches Schreibkontingent also kein zweites Mal. Das gilt, solange die Seite offen bleibt, für deine 20 zuletzt genutzten Stellen und solange dein Lebenslauf, die Anzeige und deine Sprache gleich bleiben; ein Neuladen oder ein neuer Tab beginnt von vorn. „Erneut zuschneiden“ und „Neu entwerfen“ schreiben einen neuen Entwurf. Wenn der Anschreiben- oder Lebenslauf-Schreiber für alle ausgelastet ist, sagt er das jetzt und sagt, dass es nicht dein eigenes Limit ist."
     },
     "theInterviewCoachKeepsEachAnswerApart": {
       "title": "Der Interview-Coach hält jede Antwort getrennt, und Zuschneiden braucht eine echte Stelle",
@@ -1534,7 +1534,7 @@
     },
     "searchAndReportEmailsInYourLanguage": {
       "title": "Such- und Berichts-E-Mails kommen in der Sprache, die du genutzt hast",
-      "description": "E-Mails zu deinen gespeicherten Suchen, die E-Mail mit dem kostenlosen Bericht und die Fix-Plan-E-Mails danach kommen jetzt in der Sprache, die du auf der Website genutzt hast. Bei den Fix-Plan-E-Mails ist das die Sprache der Seite, auf der du den Knopf gedrückt hast, der sie gestartet hat. Bisher kamen sie alle auf Englisch. Eine Suche, die vor diesem Update gespeichert wurde, verschickt weiter englische E-Mails, bis du sie aus deinen gespeicherten Suchen öffnest, ihre E-Mail ein- oder ausschaltest, ihre Benachrichtigungsschwelle änderst oder auf dem Job-Board wieder Benachrichtigungen für sie einschaltest. Die Ergebnisse deines Scans selbst bleiben in der Sprache, in der der Scan sie geschrieben hat."
+      "description": "E-Mails zu deinen gespeicherten Suchen, die E-Mail mit dem kostenlosen Bericht und die Fix-Plan-E-Mails danach kommen jetzt in der Sprache, die du auf der Website genutzt hast. Bei den Fix-Plan-E-Mails ist das die Sprache der Seite, auf der du den Button gedrückt hast, der sie gestartet hat. Bisher kamen sie alle auf Englisch. Eine Suche, die vor diesem Update gespeichert wurde, verschickt weiter englische E-Mails, bis du sie aus deinen gespeicherten Suchen öffnest, ihre E-Mail ein- oder ausschaltest, ihre Benachrichtigungsschwelle änderst oder auf dem Job-Board wieder Benachrichtigungen für sie einschaltest. Die Ergebnisse deines Scans selbst bleiben in der Sprache, in der der Scan sie geschrieben hat."
     },
     "yourAccountSaysWhichSearchEmailsComeDaily": {
       "title": "Deine Kontoseite sagt, welche Such-E-Mails täglich kommen",
@@ -1542,10 +1542,10 @@
     },
     "theOneClickApplyFilterIsGone": {
       "title": "Der Filter „Bewerbung mit einem Klick“ ist aus Entdecken verschwunden",
-      "description": "Die Zahl, die der Filter zeigte, umfasste nur Stellen auf vier Bewerbungssystemen, obwohl das Board, das er öffnete, seit dem 31. Oktober schon jede Stelle listete. Gespeicherte Suchen, die diese Einschränkung noch trugen, zählen und mailen neue Stellen jetzt aus dem ganzen Board; beim Öffnen zeigt eine solche Suche schon seit dem 31. Oktober das ganze Board."
+      "description": "Die Zahl, die der Filter zeigte, umfasste nur Stellen auf vier Bewerbungssystemen, obwohl ein Klick darauf schon jede Stelle zeigte. Gespeicherte Suchen, die diesen Filter noch enthielten, zählen und mailen neue Stellen jetzt aus dem ganzen Board; eine solche Suche zeigte beim Öffnen schon vorher jede Stelle."
     },
     "theBoardChecksEveryMinuteForAStoppedRefresh": {
-      "title": "Das Job-Board prüft jede Minute, ob seine Aktualisierung steht",
+      "title": "Das Job-Board prüft jede Minute, ob seine Aktualisierung stillsteht",
       "description": "Das Job-Board prüft jetzt jede Minute, ob die Aktualisierung seiner Stellen angehalten hat, und fordert einen Neustart an, sobald sie einige Minuten still war. Dass es eine angehaltene Aktualisierung neu gestartet hat, haben wir noch nicht gesehen."
     }
   }

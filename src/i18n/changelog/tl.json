@@ -1518,7 +1518,7 @@
     },
     "aSharedLinkCanNoLongerDeleteAPaidAnalysis": {
       "title": "Hindi na kayang burahin ng ibinahaging link ang isang bayad na analysis",
-      "description": "Dati, kahit sino na may share link ng isang bayad na analysis ay kayang burahin ito. Ngayon, nabubuksan pa rin ng share link ang analysis pero hindi na nito ito kayang burahin. Kailangan na rin para makabura ang mismong pagbili ng analysis, kaya gumagana lang ito mula sa sariling purchase link ng bumili (ang page na bumukas pagkatapos ng bayad niya, ang link sa purchase email niya, o ang order sa account niya) o sa pagsulat sa amin mula sa address na ipinambayad niya. Sinasabi ito ng ibinahaging page."
+      "description": "Dati, kahit sino na may share link ng isang bayad na analysis ay kayang burahin ito. Ngayon, nabubuksan pa rin ng share link ang analysis pero hindi na nito ito kayang burahin. Para mabura ito, kailangan na rin ang mismong pagbili ng analysis, kaya gumagana lang ito mula sa sariling purchase link ng bumili (ang page na bumukas pagkatapos ng bayad niya o ang order sa account niya) o sa pagsulat sa amin mula sa address na ginamit niya sa pagbayad. Sinasabi ito ng ibinahaging page."
     },
     "aPurchaseLinkThatDoesNotOpenSaysWhy": {
       "title": "Kadalasan nang sinasabi ng purchase link na hindi bumubukas kung bakit",
@@ -1526,7 +1526,7 @@
     },
     "draftsForAJobReopenWithoutBeingWrittenAgain": {
       "title": "Muling bumubukas ang mga draft para sa isang trabaho nang hindi isinusulat ulit",
-      "description": "Sa window na “Ihanda ang aplikasyon mo” ng job board, muling bumubukas nang hindi isinusulat ulit ang cover letter, na-tailor na resume o set ng mga sagot sa aplikasyon na na-draft mo na para sa isang trabaho, kaya hindi na nagagamit sa ikalawang pagkakataon ang pang-araw-araw mong writing allowance kapag binuksan mo ulit ang cover letter o na-tailor na resume. Gumagana ito habang nakabukas ang page, para sa 20 pinakabago mong trabaho, basta't hindi nagbago ang resume mo, ang posting at ang wika mo; nagsisimula sa simula ang pag-reload o bagong tab. Sumusulat ng bago ang “I-tailor ulit” at “I-draft ulit”. Kapag abala para sa lahat ang taga-sulat ng cover letter o resume, sinasabi na nito iyon at sinasabing hindi iyon ang sarili mong limit."
+      "description": "Sa window na “Ihanda ang aplikasyon mo” ng job board, muling bumubukas nang hindi isinusulat ulit ang cover letter, na-tailor na resume o set ng mga sagot sa aplikasyon na na-draft mo na para sa isang trabaho, kaya hindi na nagagamit sa ikalawang pagkakataon ang pang-araw-araw mong writing allowance kapag binuksan mo ulit ang cover letter o na-tailor na resume. Gumagana ito habang nakabukas ang page, para sa huling 20 trabahong pinaghandaan mo, basta't hindi nagbago ang resume mo, ang posting at ang wika mo; kapag nag-reload ka o nagbukas ng bagong tab, magsisimula ulit ito sa simula. Sumusulat ng bago ang “I-tailor ulit” at “I-draft ulit”. Kapag abala para sa lahat ang taga-sulat ng cover letter o resume, sinasabi na nito iyon at sinasabing hindi iyon ang sarili mong limit."
     },
     "theInterviewCoachKeepsEachAnswerApart": {
       "title": "Hiwalay na ang bawat sagot sa Interview Coach, at kailangan ng totoong trabaho para mag-tailor",
@@ -1534,19 +1534,19 @@
     },
     "searchAndReportEmailsInYourLanguage": {
       "title": "Dumarating na sa wikang ginamit mo ang mga email ng paghahanap at report",
-      "description": "Dumarating na sa wikang ginagamit mo sa site ang mga email para sa mga naka-save mong paghahanap, ang email ng libreng report at ang mga email ng fix plan pagkatapos nito. Para sa mga email ng fix plan, iyon ang wika ng page kung saan mo pinindot ang button na nagsimula sa mga ito. Dati, nasa Ingles silang lahat. Ang paghahanap na na-save bago ang update na ito ay patuloy na nagpapadala ng mga email sa Ingles hanggang buksan mo ito mula sa mga naka-save mong paghahanap, i-on o i-off ang email nito, baguhin ang alert threshold nito, o i-on ulit ang mga alert nito mula sa job board. Nananatili ang mga natuklasan ng scan mo sa wikang isinulat ng scan."
+      "description": "Dumarating na sa wikang ginamit mo sa site ang mga email para sa mga naka-save mong paghahanap, ang email ng libreng report at ang mga email ng fix plan pagkatapos nito. Para sa mga email ng fix plan, iyon ang wika ng page kung saan mo pinindot ang button na nagsimula sa mga ito. Dati, nasa Ingles silang lahat. Ang paghahanap na na-save bago ang update na ito ay patuloy na nagpapadala ng mga email sa Ingles hanggang buksan mo ito mula sa mga naka-save mong paghahanap, i-on o i-off ang email nito, baguhin ang alert threshold nito, o i-on ulit ang mga alert nito mula sa job board. Nananatili ang mga natuklasan ng scan mo sa wikang ginamit ng scan sa pagsulat ng mga ito."
     },
     "yourAccountSaysWhichSearchEmailsComeDaily": {
       "title": "Sinasabi ng account page mo kung aling mga email ng paghahanap ang dumarating araw-araw",
       "description": "Sinasabi na ngayon ng account page mo, sa tabi ng bawat naka-save na paghahanap na inililista nito (ang 20 pinakabago), kung araw-araw o lingguhan kang ini-email ng paghahanap na iyon: araw-araw ang mga alert at sinusubaybayang kumpanya, lingguhan ang ibang paghahanap. Dati, lingguhan ang tawag nito sa lahat. Sinasabi na ngayon ng page na nararating mo mula sa confirmation email ng market pulse kung ano ang ipinapadala ng pulse: ang mga pangunahing keyword para sa larangan mo mula sa aming piniling keyword guide, hindi bilang ng mga posting ngayong buwan."
     },
     "theOneClickApplyFilterIsGone": {
-      "title": "Wala na sa Explore ang filter na “One-click na pag-apply”",
-      "description": "Mga trabaho lang sa apat na hiring system ang saklaw ng bilang ng filter, kahit mula 31 Oktubre ay nakalista na sa board na binubuksan nito ang bawat trabaho. Ang mga naka-save na paghahanap na may ganoong paghihigpit pa ay bumibilang at nag-e-email na ngayon ng mga bagong trabaho mula sa buong board; mula 31 Oktubre, buong board na ang ipinapakita kapag binuksan ang isa sa mga ito."
+      "title": "Wala na sa Tuklasin ang filter na “One-click na pag-apply”",
+      "description": "Mga trabaho lang sa apat na hiring system ang saklaw ng bilang ng filter, kahit lumalabas na noon ang bawat trabaho kapag pinili ito. Ang mga naka-save na paghahanap na may ganitong filter pa ay bumibilang at nag-e-email na ngayon ng mga bagong trabaho mula sa buong board; kapag binuksan ang isa sa mga ito, lumalabas na noon ang bawat trabaho."
     },
     "theBoardChecksEveryMinuteForAStoppedRefresh": {
       "title": "Sinusuri ng job board bawat minuto kung huminto ang refresh nito",
-      "description": "Sinusuri na ngayon ng job board bawat minuto kung huminto ang refresh ng mga listing nito, at humihiling ito ng restart kapag ilang minuto na itong tahimik. Hindi pa namin ito nakitang mag-restart ng huminto nang refresh."
+      "description": "Sinusuri na ngayon ng job board bawat minuto kung huminto ang refresh ng mga listing nito, at humihiling ito ng restart kapag ilang minuto na itong tahimik. Hindi pa namin ito nakitang mag-restart ng refresh na huminto."
     }
   }
 }

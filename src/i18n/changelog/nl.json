@@ -1518,7 +1518,7 @@
     },
     "aSharedLinkCanNoLongerDeleteAPaidAnalysis": {
       "title": "Een gedeelde link kan een betaalde analyse niet meer verwijderen",
-      "description": "Eerder kon iedereen met de gedeelde link naar een betaalde analyse die analyse verwijderen. Nu opent de gedeelde link de analyse nog steeds, maar kan hij hem niet verwijderen. Verwijderen vraagt ook de aankoop waarmee de analyse is gekocht, dus het werkt alleen via de eigen aankooplink van de koper (de pagina die na de betaling openging, de link in de aankoopmail of de bestelling in het account) of door ons te schrijven vanaf het adres waarmee is betaald. De gedeelde pagina zegt dat."
+      "description": "Eerder kon iedereen met de gedeelde link naar een betaalde analyse die analyse verwijderen. Nu opent de gedeelde link de analyse nog steeds, maar kan hij hem niet verwijderen. Voor verwijderen is ook de oorspronkelijke aankoop nodig, dus het werkt alleen via de eigen aankooplink van de koper (de pagina die na de betaling openging of de bestelling in het account) of door ons te schrijven vanaf het adres waarmee is betaald. Dat staat ook op de gedeelde pagina."
     },
     "aPurchaseLinkThatDoesNotOpenSaysWhy": {
       "title": "Een aankooplink die niet opent, zegt nu meestal waarom",
@@ -1526,7 +1526,7 @@
     },
     "draftsForAJobReopenWithoutBeingWrittenAgain": {
       "title": "Concepten voor een vacature gaan weer open zonder opnieuw te worden geschreven",
-      "description": "In het venster “Bereid je sollicitatie voor” van het vacaturebord gaat een sollicitatiebrief, aangepast cv of set sollicitatieantwoorden die je al voor een vacature hebt opgesteld, nu weer open zonder opnieuw te worden geschreven. Een sollicitatiebrief of aangepast cv opnieuw openen kost je dagelijkse schrijftegoed dus geen tweede keer. Dit werkt zolang de pagina open blijft, voor je 20 meest recente vacatures, en zolang je cv, de vacature en je taal niet veranderen; herladen of een nieuw tabblad begint opnieuw. “Opnieuw aanpassen” en “Opnieuw opstellen” schrijven een nieuwe. Als de brief- of cv-schrijver voor iedereen druk is, zegt hij dat nu en zegt hij dat het niet je eigen limiet is."
+      "description": "In het venster “Bereid je sollicitatie voor” van het vacaturebord gaat een sollicitatiebrief, aangepast cv of set sollicitatieantwoorden die je al voor een vacature hebt opgesteld, nu weer open zonder opnieuw te worden geschreven. Een sollicitatiebrief of aangepast cv opnieuw openen kost je dagelijkse schrijftegoed dus geen tweede keer. Dit werkt zolang de pagina open blijft, voor de laatste 20 vacatures waarvoor je een sollicitatie hebt voorbereid, en zolang je cv, de vacature en je taal niet veranderen; herladen of een nieuw tabblad begint opnieuw. “Opnieuw aanpassen” en “Opnieuw opstellen” schrijven een nieuwe. Als de brief- of cv-schrijver voor iedereen overbelast is, meldt hij dat nu en zegt hij erbij dat het niet je eigen limiet is."
     },
     "theInterviewCoachKeepsEachAnswerApart": {
       "title": "De Interviewcoach houdt elk antwoord apart, en aanpassen vraagt een echte vacature",
@@ -1541,8 +1541,8 @@
       "description": "Je accountpagina zegt nu naast elke opgeslagen zoekopdracht die ze toont (de 20 nieuwste) of die zoekopdracht je dagelijks of wekelijks mailt: alerts en gevolgde bedrijven dagelijks, andere zoekopdrachten wekelijks. Eerder noemde ze ze allemaal wekelijks. De pagina waar je via de bevestigingsmail van de marktpuls komt, zegt nu wat de puls stuurt: de belangrijkste trefwoorden voor jouw vakgebied uit onze samengestelde trefwoordengids, geen telling van de vacatures van deze maand."
     },
     "theOneClickApplyFilterIsGone": {
-      "title": "Het filter “Solliciteren met één klik” is weg uit Ontdekken",
-      "description": "De telling van het filter omvatte alleen vacatures op vier wervingssystemen, terwijl het bord dat het opende sinds 31 oktober al elke vacature toonde. Opgeslagen zoekopdrachten die die beperking nog hadden, tellen en mailen nu nieuwe vacatures van het hele bord; zo'n zoekopdracht openen toont al sinds 31 oktober het hele bord."
+      "title": "Het filter “Solliciteren met één klik” is weg uit Ontdek",
+      "description": "De telling van het filter omvatte alleen vacatures op vier wervingssystemen, terwijl je na het kiezen ervan al elke vacature zag. Opgeslagen zoekopdrachten die dit filter nog aan hadden, tellen en mailen nu nieuwe vacatures van het hele bord; zo'n zoekopdracht openen toonde al elke vacature."
     },
     "theBoardChecksEveryMinuteForAStoppedRefresh": {
       "title": "Het vacaturebord controleert elke minuut of zijn verversing is gestopt",

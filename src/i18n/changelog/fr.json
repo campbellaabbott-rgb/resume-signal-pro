@@ -1518,7 +1518,7 @@
     },
     "aSharedLinkCanNoLongerDeleteAPaidAnalysis": {
       "title": "Un lien partagé ne peut plus supprimer une analyse payante",
-      "description": "Avant, toute personne ayant le lien de partage d'une analyse payante pouvait la supprimer. Désormais, le lien de partage ouvre toujours l'analyse, mais ne peut pas la supprimer. La suppression demande aussi l'achat avec lequel l'analyse a été achetée : elle ne fonctionne donc que depuis le propre lien d'achat de l'acheteur (la page ouverte après son paiement, le lien de son e-mail d'achat ou la commande dans son compte) ou en nous écrivant depuis l'adresse utilisée pour payer. La page partagée le dit."
+      "description": "Avant, toute personne ayant le lien de partage d'une analyse payante pouvait la supprimer. Désormais, le lien de partage ouvre toujours l'analyse, mais ne peut pas la supprimer. La suppression exige aussi l'achat d'origine : elle ne fonctionne donc que depuis le propre lien d'achat de l'acheteur (la page ouverte après son paiement ou la commande dans son compte) ou en nous écrivant depuis l'adresse utilisée pour payer. La page partagée l'indique."
     },
     "aPurchaseLinkThatDoesNotOpenSaysWhy": {
       "title": "Un lien d'achat qui ne s'ouvre pas dit désormais le plus souvent pourquoi",
@@ -1526,7 +1526,7 @@
     },
     "draftsForAJobReopenWithoutBeingWrittenAgain": {
       "title": "Les brouillons pour une offre se rouvrent sans être réécrits",
-      "description": "Dans la fenêtre « Préparez votre candidature » du tableau d'offres, une lettre de motivation, un CV adapté ou un ensemble de réponses de candidature que vous avez déjà rédigé pour une offre se rouvre désormais sans être réécrit : rouvrir une lettre de motivation ou un CV adapté ne consomme donc pas une seconde fois votre quota quotidien de rédaction. Cela fonctionne tant que la page reste ouverte, pour vos 20 offres les plus récentes, et tant que votre CV, l'offre et votre langue ne changent pas ; un rechargement ou un nouvel onglet repart de zéro. « L'adapter à nouveau » et « Rédiger à nouveau » en rédigent un nouveau. Quand le rédacteur de lettres ou de CV est occupé pour tout le monde, il le dit désormais et précise que ce n'est pas votre propre limite."
+      "description": "Dans la fenêtre « Préparez votre candidature » du tableau d'offres, une lettre de motivation, un CV adapté ou un ensemble de réponses de candidature que vous avez déjà rédigé pour une offre se rouvre désormais sans être réécrit : rouvrir une lettre de motivation ou un CV adapté ne consomme donc pas une seconde fois votre quota quotidien de rédaction. Cela fonctionne tant que la page reste ouverte, pour les 20 dernières offres pour lesquelles vous avez préparé une candidature, et tant que votre CV, l'offre et votre langue ne changent pas ; un rechargement ou un nouvel onglet repart de zéro. « L'adapter à nouveau » et « Rédiger à nouveau » en rédigent un nouveau. Quand le rédacteur de lettres ou de CV est saturé pour tout le monde, il l'indique désormais et précise que ce n'est pas votre propre limite."
     },
     "theInterviewCoachKeepsEachAnswerApart": {
       "title": "Le Coach d'entretien garde chaque réponse à part, et l'adaptation demande un vrai poste",
@@ -1542,7 +1542,7 @@
     },
     "theOneClickApplyFilterIsGone": {
       "title": "Le filtre « Candidature en un clic » a disparu d'Explorer",
-      "description": "Le décompte du filtre ne couvrait que les offres de quatre systèmes de recrutement, alors que depuis le 31 octobre le tableau qu'il ouvrait listait déjà toutes les offres. Les recherches enregistrées qui portaient encore cette restriction comptent et envoient désormais par e-mail les nouvelles offres de tout le tableau ; en ouvrir une affiche tout le tableau depuis le 31 octobre."
+      "description": "Le décompte du filtre ne couvrait que les offres de quatre systèmes de recrutement, alors que le choisir affichait déjà toutes les offres. Les recherches enregistrées qui avaient encore ce filtre comptent et envoient désormais par e-mail les nouvelles offres de tout le tableau ; en ouvrir une affichait déjà toutes les offres."
     },
     "theBoardChecksEveryMinuteForAStoppedRefresh": {
       "title": "Le tableau d'offres vérifie chaque minute si son actualisation s'est arrêtée",
