@@ -12,6 +12,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { keyMatches } from "../_shared/admin-key.ts";
+import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 import { callAIForUsableReply, DEFAULT_MODELS, THINKING_TOKENS } from "../_shared/ai-fallback.ts";
 import { SCAN_MODEL_CHAIN } from "../_shared/scan-models.ts";
 
@@ -30,11 +32,15 @@ import { SCAN_MODEL_CHAIN } from "../_shared/scan-models.ts";
 // platform's 150 s, and ended in the platform's 504 instead of this report
 // at the moment the report matters most. Nothing of main's past f8d72a9b,
 // the build the 2026-10-31 deploy put live, rides along.
-const FN_BUILD = "test-ai-fallback.2026-11-03.1";
+// 2026-11-10.1 (S14 hotfix, lane spend, M-S14-056): answers only the
+// owner's admin key (x-admin-key, or adminKey in the body) or the service
+// role; anyone else is answered 401 before anything is counted or spent.
+// Nothing else in this bundle changed.
+const FN_BUILD = "test-ai-fallback.2026-11-10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-admin-key",
   "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,
 };
@@ -102,6 +108,26 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // THE OWNER'S DIAGNOSTIC, AND NOBODY ELSE'S (M-S14-056). Every call here is
+  // up to four paid model calls on the project's own key, and it was the one
+  // /health-check panel with no key: any stranger could spend them and use up
+  // the owner's three an hour, during an outage when the report matters
+  // most. It answers the owner's ADMIN_API_KEY or our own servers'
+  // service-role key; anyone else is answered 401 before anything is counted
+  // or spent. The key comes as x-admin-key, as the other operator functions
+  // take it, or as the body's adminKey, which is how /health-check sends it:
+  // the build before this one does not allow that header in its preflight,
+  // so a browser that sent it would be stopped before the request while the
+  // page publishes ahead of this function, and a body field reaches both.
+  const body = await req.json().catch(() => ({})) as { mode?: unknown; adminKey?: unknown } | null;
+  const presented = req.headers.get("x-admin-key") || (typeof body?.adminKey === "string" ? body.adminKey : "");
+  const byOwner = keyMatches(presented, Deno.env.get("ADMIN_API_KEY") ?? "");
+  if (!byOwner && !isServiceRoleCaller(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) {
+    return new Response(JSON.stringify({ success: false, error: "Unauthorized: the AI diagnostic needs the admin key." }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   // RATE LIMITED, because every call here is N PAID model invocations on the
   // project's own key. Three an hour is ample for a health probe and useless
   // as a drain; the shared gate fails closed.
@@ -115,7 +141,7 @@ serve(async (req) => {
     new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
-    const { mode = "quick" } = await req.json().catch(() => ({ mode: "quick" }));
+    const mode = body?.mode === "all" ? "all" : "quick";
     logStep("Starting AI fallback test", { mode });
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");

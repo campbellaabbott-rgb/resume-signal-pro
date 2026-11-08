@@ -13,7 +13,9 @@
  *   - a cover-note request with the publishable key is answered 401
  *     {error:'sign_in_required'} and no model is called, nothing counted;
  *   - our own servers (the service-role key) still reach the generator;
- *   - the screening-answers mode the /apply page uses is not refused.
+ *   - the screening-answers mode a signed-in page uses is not refused (since
+ *     S14, M-S14-009, that mode needs a website session too: see
+ *     s14-spend-a-signed-out-stranger-drafts-no-screening-answers.test.ts).
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
@@ -21,7 +23,10 @@ import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harnes
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 180_000 });
 
 const SERVE = "export function serve(h) { globalThis.__edgeHandler = h; }";
-const CLIENT = "export function createClient() { const db = globalThis.__gaaDb; return { rpc: (n, a) => db.rpc(n, a), from: (t) => db.from(t), auth: { getUser: async () => ({ data: { user: null }, error: { message: 'no' } }) } }; }";
+// The auth server knows one session, SIGNED_IN; it refuses every other token.
+const CLIENT = "export function createClient() { const db = globalThis.__gaaDb; return { rpc: (n, a) => db.rpc(n, a), from: (t) => db.from(t), auth: { getUser: async (jwt) => jwt === globalThis.__gaaSession ? ({ data: { user: { id: 'user-harness' } }, error: null }) : ({ data: { user: null }, error: { message: 'no' } }) } }; }";
+const b64url = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
+const SIGNED_IN = `${b64url({ alg: "HS256" })}.${b64url({ role: "authenticated", sub: "user-harness", aud: "authenticated" })}.c2ln`;
 const SERVICE_KEY = "service-role-harness-key-0123456789abcdef";
 const RESUME = "Jane Doe -- Senior software engineer with ten years of TypeScript, Postgres and payments work. Led a team of five. ".repeat(3);
 const POSTING = "We are hiring a senior engineer to own our checkout and fulfilment services end to end, with on-call and mentoring.";
@@ -54,6 +59,7 @@ beforeEach(() => {
   aiCalls = 0;
   rateCalls = 0;
   (globalThis as Record<string, unknown>).__gaaDb = db;
+  (globalThis as Record<string, unknown>).__gaaSession = SIGNED_IN;
   db.rpcs.check_rate_limit = () => { rateCalls++; return { data: true, error: null }; };
   db.rpcs.get_cached_response = () => ({ data: null, error: null });
   db.rpcs.store_cached_response = () => ({ data: null, error: null });
@@ -87,8 +93,14 @@ describe("the cover-note mode takes the writing tools' account gate", () => {
     expect(aiCalls).toBeGreaterThan(0);
   });
 
-  it("the screening-answers mode the apply page uses is not refused by it", async () => {
-    const r = await call({ resumeText: RESUME, jobTitle: "Engineer", jobDescription: POSTING });
+  it("the screening-answers mode a signed-in page uses is not refused by it", async () => {
+    const r = await call({ resumeText: RESUME, jobTitle: "Engineer", jobDescription: POSTING }, SIGNED_IN);
     expect(r.status).not.toBe(401);
+  });
+
+  it("a signed-in session is still refused a cover note: that mode is our own servers' only", async () => {
+    const r = await call(COVER, SIGNED_IN);
+    expect(r.status).toBe(401);
+    expect(aiCalls).toBe(0);
   });
 });
