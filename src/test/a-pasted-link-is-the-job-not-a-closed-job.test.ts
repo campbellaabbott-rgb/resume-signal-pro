@@ -12,7 +12,8 @@
  * an id or a link through one reader (agent-mcp/job-link.ts); what names no
  * job is listed as unknown, never closed, and a well-formed id the board does
  * not hold is said to be closed, past the window, or never carried (the board's
- * exists answer cannot tell those apart).
+ * exists answer cannot tell those apart). An employer link on Greenhouse's or
+ * Lever's EU host names the eu~ id the board holds (recheck, 2026-11-08).
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { isJobIdShape, parseJobId } from "../../supabase/functions/agent-mcp/job-link";
@@ -37,6 +38,19 @@ describe("the one job reader names the board id a link points at", () => {
     ["https://jobs.lever.co/acme/2f0c6c4e-9a8b-4c1d-8e2f-0a1b2c3d4e5f/apply", "lever:acme:2f0c6c4e-9a8b-4c1d-8e2f-0a1b2c3d4e5f"],
     ["https://jobs.ashbyhq.com/clera/f062a52d-8407-4b0b-9ab2-995252bc4b6c", "ashby:clera:f062a52d-8407-4b0b-9ab2-995252bc4b6c"],
   ])("%s is %s", (sent, id) => {
+    expect(parseJobId(sent)).toBe(id);
+  });
+
+  // An employer in Greenhouse's or Lever's EU region is held as eu~<token>
+  // (connect W1 recheck, 2026-11-08). Each pair below is a live row's id and
+  // the applyUrl the board itself served for it (job-board list, 2026-11-08).
+  it.each([
+    ["https://job-boards.eu.greenhouse.io/imc/jobs/4960533101", "greenhouse:eu~imc:4960533101"],
+    ["https://job-boards.eu.greenhouse.io/lookers/jobs/5029791101", "greenhouse:eu~lookers:5029791101"],
+    ["https://boards.eu.greenhouse.io/lookers/jobs/5029791101", "greenhouse:eu~lookers:5029791101"],
+    ["https://boards.eu.greenhouse.io/embed/job_app?for=lookers&token=5029791101", "greenhouse:eu~lookers:5029791101"],
+    ["https://jobs.eu.lever.co/mobileye/28d00939-d06e-4f6d-84aa-4f155fe88b62", "lever:eu~mobileye:28d00939-d06e-4f6d-84aa-4f155fe88b62"],
+  ])("an EU-region employer link %s is the EU posting %s", (sent, id) => {
     expect(parseJobId(sent)).toBe(id);
   });
 
@@ -91,6 +105,13 @@ describe("the job tools answer a pasted link as the posting it names", () => {
     expect(out.unknownNote).toMatch(/not checked/);
     expect(out.closedNote).toMatch(/never carried/);
     expect(out.checked).toBe(2);
+  });
+
+  it("check_jobs_open asks the board about an EU Greenhouse link's EU id, never the US id it does not hold", async () => {
+    const link = "https://job-boards.eu.greenhouse.io/imc/jobs/4960533101";
+    const out = JSON.parse((await mcp.call({ ids: [link] }, { name: "check_jobs_open" })).text);
+    expect(mcp.boardCalls).toEqual([{ action: "exists", ids: ["greenhouse:eu~imc:4960533101"] }]);
+    expect(out.readAs).toEqual({ [link]: "greenhouse:eu~imc:4960533101" });
   });
 
   it("get_jobs names an entry that is no job as notAJobId and reads the link beside it", async () => {

@@ -102,7 +102,7 @@ import { postingExcerptOf } from "./posting-excerpt.ts";
 // The first search answers the question as asked: a place moved out of the
 // query (spec D2 §2.3). An employer name is resolved by job-board itself, one
 // rule for every spelling (sweep S12-080).
-import { placeHint, placeInQuery, readLocationArg, readQuery, type QueryReading } from "./query-place.ts";
+import { placeHint, placeInQuery, readLocationArg, readQuery, sponsorshipOnly, type QueryReading } from "./query-place.ts";
 import { parseJobId } from "./job-link.ts";
 // OpenAI's published ChatGPT egress as last read, for when the live list
 // cannot be (sweep S12-085).
@@ -345,7 +345,7 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
 // 2026-10-11.38 (recheck 3, 2026-10-26): a name is held only when its one exact match has under 10 open roles, never because the catalogue labels the board an agency's, and a held name is one the board carries; recheckedAt and get_job say the stamp is when the board last read the employer's feed, which may not have included the posting.
 // 2026-11-02.1 (board-stream round, 2026-11-01): a country word inside another place is not that country (S13-041, query-place.ts countryOf over _shared/work-countries.ts countryMentions); the location argument still goes to the board as typed (S9-002's country and remote reading measured and declined: it lost rows main found, n1461); the keyless page cap holds whatever credential failed (S13-103, answerUnkeyed); check_jobs_open's basis says open is get_job's row test only when the board's exists answer names that test (S13-076), and the weaker sentence otherwise.
 // 2026-11-03.1 (audit-rest held items, 2026-11-04): no per-person hash in the log, and a ChatGPT call's failure logs no error text (S13-104); a claimed 50% alert is given back unless notify-owner mailed it (S13-040); agentReadyOnly reaches the board as its vendor list (S13-118).
-// 2026-11-08.1 (connect W1 and W3, 2026-11-08): a search is read as people type it: a trailing place with no "in" ("registered nurse jobs Austin TX"), a city before its country kept as the city ("near Manchester UK", and a location argument "London, UK" as London in GB), places after en, à, au, em, bei, nahe, cerca de and près de, "posted this week" as maxAgeDays, "jobs at Humana" as an employer the board resolves (re-run as typed when it resolves none), and visa-sponsorship words taken out of the query with a note that the board cannot filter on sponsorship (query-place.ts, a 3,282-case corpus never worse than main); every job tool reads the board's posting-page link, a ?job= link and a Greenhouse, Lever or Ashby link as the id (job-link.ts), and check_jobs_open lists what is not a job id in unknown, never in closed; an exhausted search never claims the keyless page limit, a page of description-only matches says so, withheld rows name why and where to see them, a ZIP or a misspelt place gets a hint; get_jobs hands back at most 15,000 characters of description, requirements first, and none by default for more than 3 ids; the ChatGPT search title carries the place and the employer's date; the guide lists only the prompts and resources the caller is offered, and says whose date postedAt is; a keyless Claude Code call refused for the minute is told so.
+// 2026-11-08.1 (connect W1 and W3, 2026-11-08): a search is read as people type it: a trailing place with no "in" ("registered nurse jobs Austin TX"; a city and state code only when the board's city table knows the city, so "Customer Service TX" stays whole), a city before its country kept as the city ("near Manchester UK", and a location argument "London, UK" as London in GB), places after en, à, au, em, bei, nahe, cerca de and près de, "posted this week" as maxAgeDays, "jobs at Humana" as an employer the board resolves (re-run as typed when it resolves none), and visa-sponsorship words taken out of the query with a note that the board cannot filter on sponsorship, a search of only those words searching nothing rather than every job (query-place.ts, a 3,299-case corpus never worse than main); every job tool reads the board's posting-page link, a ?job= link and a Greenhouse, Lever or Ashby link as the id, an EU-region one as its eu~ id (job-link.ts), and check_jobs_open lists what is not a job id in unknown, never in closed; an exhausted search never claims the keyless page limit, a page of description-only matches says so, withheld rows name why and where to see them, a ZIP or a misspelt place gets a hint; get_jobs hands back at most 15,000 characters of description, requirements first, and none by default for more than 3 ids; the ChatGPT search title carries the place and the employer's date; the guide lists only the prompts and resources the caller is offered, and says whose date postedAt is; a keyless Claude Code call refused for the minute is told so.
 // 2026-11-08.1, continued (connect W4 and W5, 2026-11-08): apply_myself reads ten hiring systems' forms on Claude, Claude Code and keys (Paylocity, Workable, Teamtailor, Lever and BambooHR added; ChatGPT stays Greenhouse and Recruitee), a Pinpoint posting on the employer's own domain, a Breezy page's CV settings and a Pinpoint page's equality block and consent; a Paylocity screen that ends an application says "the employer screens applications on this answer" and never names an answer; a written question that mentions a CV is not a file and a consent is marked consent (563 labels, never worse than main); route.captcha says visible, invisible or none, with iCIMS and UKG measured account-first and Paylocity neither; a form not read says why; postingTerms leave out boilerplate sentences and postingExcerpt carries the posting's own lines on applying and requirements; the apply prompts end with an in-chat application log step and the packet links the free tracker; the apply prompt and rule 3 may use a CV the person keeps in the conversation's project or memory once they confirm the file.
 const FN_BUILD = "agent-mcp.2026-11-08.1";
 /** Where a free key is minted — the page every refusal in this file points at. */
@@ -2084,7 +2084,7 @@ function guideText(edition: Edition, keyed: boolean): string {
     `- \`countCapped\` means \`total\` is where the board stopped counting: say "at least" that many, never "exactly".`,
     `- \`total\` counts postings whose TITLE matches; \`relatedTotal\` counts those that only mention the words in their description, and rows past the title matches are those (\`matchScope: "description"\`; \`matchNote\` when a whole page is). Say which you mean.`,
     `- \`postedAt\` is the date the employer's own hiring system gives for the posting, not when this board first saw it; it is absent when the feed states none, which does not make a posting old.`,
-    `- \`locationInterpreted\` says what was read out of the query into a filter (a place, remote, a date window, an employer) and \`from\` the words as typed; \`sponsorshipNote\` means this board cannot filter by visa sponsorship, so never say a posting sponsors unless its own text does.`,
+    `- \`locationInterpreted\` says what was read out of the query into a filter (a place, remote, a date window, an employer) and \`from\` the words as typed; \`sponsorshipNote\` means this board cannot filter by visa sponsorship, so never say a posting sponsors unless its own text does. \`notSearched\` means the search named nothing the board can look for (only sponsorship words): ask the person for a role or a place.`,
     `- \`withheld\` counts postings on the page this server may not hand on (SmartRecruiters, USAJOBS); \`withheldNote\` gives the site search where they open. \`locationHint\` means a place was not read: places go by name, never a ZIP code.`,
     `- \`unknownCompanies\` names an employer this board does not carry under that name, and \`companiesUnresolved\` a name that matched no single employer, or only a board with under 10 open roles, which we carry, with candidates to ask about before you use one: neither is an employer with no openings.`,
     `- Pay and seniority arrive parsed (\`salaryMinAnnual\`, \`salaryMaxAnnual\`, \`experienceBand\`, \`minYears\`) and are ABSENT when the posting states none: absence is not zero.`,
@@ -2633,6 +2633,17 @@ const SPONSORSHIP_NOTE =
   "This board cannot filter by visa sponsorship, so those words were left out of the search: in a description they matched employers saying they do NOT sponsor. " +
   "Each posting's own wording is in get_job; say a posting sponsors only when its text says so.";
 
+/** Said instead of a search whose query was only visa-sponsorship words. */
+const SPONSORSHIP_ONLY_NOTE =
+  "This search named only visa sponsorship, which this board cannot filter by, so nothing was searched rather than every job on the board. " +
+  "Ask the person what role they want, and where, then search for that.";
+
+/** A filter that keeps a search to some part of the board: a place, an employer or a field. */
+function narrowsTheSearch(args: Record<string, unknown>): boolean {
+  const set = (v: unknown) => (Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && String(v).trim() !== "");
+  return set(args.location) || set(args.country) || companyTokens(args.companies).length > 0 || set(args.category) || set(args.department);
+}
+
 /** True when the board read no employer from a name the query named after "at". */
 function employerUnread(r: Record<string, unknown>, asked: readonly string[]): boolean {
   const some = (v: unknown) => (Array.isArray(v) ? v.length > 0 : !!v);
@@ -2680,6 +2691,19 @@ function unboundScope(asked: readonly string[], r: Record<string, unknown>): Rec
  */
 async function runSearchJobs(input: Record<string, unknown>, ctx: Ctx = KEYED_CTX, employerNotes: Record<string, unknown> | null = null): Promise<unknown> {
   const { args, reading } = searchAsMeant(input, employerNotes ? { employer: false } : {});
+  // NOTHING LEFT BUT SPONSORSHIP WORDS (connect W1 recheck, 2026-11-08): with
+  // them taken out, "visa sponsorship" sent no query and the board answered
+  // its whole catalogue beside the sponsorship note. With no role, place,
+  // employer or field left to search, nothing is searched, and the answer
+  // asks for one.
+  if (sponsorshipOnly(reading) && !narrowsTheSearch(args)) {
+    return {
+      jobs: [], hasMore: false, countUnavailable: true, notSearched: true,
+      notSearchedNote: SPONSORSHIP_ONLY_NOTE,
+      sponsorshipNote: SPONSORSHIP_NOTE,
+      locationInterpreted: reading,
+    };
+  }
   const r = await board(await servableSearchBody(args), ctx);
   // "jobs at <Name>" that the board resolved to no employer is searched again
   // as typed (connect W1, BR-09), inside the same counted call, and the

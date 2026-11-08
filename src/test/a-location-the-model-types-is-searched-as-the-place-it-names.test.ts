@@ -71,7 +71,7 @@ describe("job-board: 'City, ST' however the model types it is the city in that s
 
 describe("agent-mcp reads a location argument only in the shape 'City, <country>'", () => {
   it("query-place's one location reader splits a city from its country and leaves every other place as typed", () => {
-    expect(Object.keys(mcpPlace).sort()).toEqual(["placeHint", "placeInQuery", "readLocationArg", "readQuery"]);
+    expect(Object.keys(mcpPlace).sort()).toEqual(["placeHint", "placeInQuery", "readLocationArg", "readQuery", "sponsorshipOnly"]);
     for (const typed of ["United States", "remote", "Remote TX", "Austin, TX 78701", "Austin, TX", "Texas", "Berlin, DE"]) {
       expect(mcpPlace.readLocationArg(typed), typed).toBeNull();
     }

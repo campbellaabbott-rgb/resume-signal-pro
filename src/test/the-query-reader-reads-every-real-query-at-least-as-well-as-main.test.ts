@@ -10,8 +10,12 @@
  * (fixtures/model-queries-2026-11.json, saved beside the build's other corpora
  * in ~/.config/resumebooster/seo-connect-build/corpora/):
  *
- *   - seeker: 169 queries people and models send (the browse lens's live calls
- *     among them), each with the reading it should get. Every one exact.
+ *   - seeker: 186 queries people and models send (the browse lens's live calls
+ *     among them), each with the reading it should get. Every one exact. The
+ *     recheck's seventeen (source recheck-role-state and recheck-metro, 2026-11-08)
+ *     are title words before a state code ("Customer Service TX" once searched
+ *     a town called Service), which main kept whole and so must this reader,
+ *     and a metro shorthand before a state code.
  *   - titles: 1,967 of the board's own titles that carry a place, a date, a
  *     sponsorship or an employer word, each with its row. A title typed as a
  *     query must still find its row: read whole, or lifted only to a place,
@@ -108,6 +112,11 @@ describe("the corpus is the size the rule asks for", () => {
     expect(CORPUS.country.length).toBeGreaterThanOrEqual(1_100);
     expect(CORPUS.seeker.length + CORPUS.titles.length + CORPUS.country.length + CORPUS.locationArgs.length).toBeGreaterThanOrEqual(300);
     expect(QUERY_FILLER.has("jobs")).toBe(true);
+  });
+
+  it("holds the recheck's title words before a state code", () => {
+    expect(CORPUS.seeker.filter((s) => s.source === "recheck-role-state").length).toBeGreaterThanOrEqual(15);
+    expect(CORPUS.seeker.map((s) => s.q)).toEqual(expect.arrayContaining(["Customer Service TX", "Nurse ICU CA", "Data Entry CA", "Customer Service, TX"]));
   });
 });
 

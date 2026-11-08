@@ -36,17 +36,22 @@ const decode = (s: string): string => {
 function employerLink(u: URL): string | null {
   const host = u.hostname.toLowerCase();
   const seg = u.pathname.split("/").filter(Boolean).map(decode);
-  // job-boards.greenhouse.io/<token>/jobs/<id>, boards.greenhouse.io/<token>/jobs/<id>
+  // A tenant in Greenhouse's or Lever's EU region is held under its token with
+  // the "eu~" prefix (job-board/normalize.ts greenhouseApi and leverApi), so a
+  // link on an EU host names greenhouse:eu~<token>:<id>, never the US id
+  // greenhouse:<token>:<id>, which the board does not hold.
+  const eu = /(?:^|\.)eu\.(?:greenhouse\.io|lever\.co)$/.test(host) ? "eu~" : "";
+  // job-boards(.eu).greenhouse.io/<token>/jobs/<id>, boards(.eu).greenhouse.io/<token>/jobs/<id>
   if (/(?:^|\.)greenhouse\.io$/.test(host)) {
-    if (seg.length >= 3 && seg[1] === "jobs" && /^\d+$/.test(seg[2])) return `greenhouse:${seg[0]}:${seg[2]}`;
-    // boards.greenhouse.io/embed/job_app?for=<token>&token=<id>
+    if (seg.length >= 3 && seg[1] === "jobs" && /^\d+$/.test(seg[2])) return `greenhouse:${eu}${seg[0]}:${seg[2]}`;
+    // boards(.eu).greenhouse.io/embed/job_app?for=<token>&token=<id>
     const forToken = u.searchParams.get("for");
     const jobId = u.searchParams.get("token");
-    if (forToken && jobId && /^\d+$/.test(jobId)) return `greenhouse:${forToken}:${jobId}`;
+    if (forToken && jobId && /^\d+$/.test(jobId)) return `greenhouse:${eu}${forToken}:${jobId}`;
     return null;
   }
   // jobs.lever.co/<token>/<uuid>[/apply], jobs.eu.lever.co/<token>/<uuid>
-  if (/(?:^|\.)lever\.co$/.test(host) && seg.length >= 2 && /^[0-9a-f-]{36}$/i.test(seg[1])) return `lever:${seg[0]}:${seg[1]}`;
+  if (/(?:^|\.)lever\.co$/.test(host) && seg.length >= 2 && /^[0-9a-f-]{36}$/i.test(seg[1])) return `lever:${eu}${seg[0]}:${seg[1]}`;
   // jobs.ashbyhq.com/<token>/<uuid>[/application]
   if (/(?:^|\.)ashbyhq\.com$/.test(host) && seg.length >= 2 && /^[0-9a-f-]{36}$/i.test(seg[1])) return `ashby:${seg[0]}:${seg[1]}`;
   return null;

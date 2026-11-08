@@ -17,10 +17,13 @@
 //     unknown word after "in" is left alone: "Engineer in Training" and "Head
 //     of Growth in Fintech" are titles, and a two-letter code alone ("Director
 //     of IN programs") is never read as a state;
-//   - with no preposition, only a trailing "City, ST" / "City ST", a state or
-//     province by name, a metro alias or a city of the board's table moves
-//     (connect W1, CJ-06: "registered nurse jobs Austin TX" answered total 0),
-//     and never after "of", "the", "for" and the like ("University of Texas");
+//   - with no preposition, only a trailing "City, ST" / "City ST" whose city
+//     is in the board's city table (or a metro alias before the code), a
+//     state or province by name, a metro alias or a city of the board's table
+//     moves (connect W1, CJ-06: "registered nurse jobs Austin TX" answered
+//     total 0), and never after "of", "the", "for" and the like ("University
+//     of Texas"); title words before a state code ("Customer Service TX",
+//     "Nurse ICU CA") are no city, and the query stays whole as main sends it;
 //   - a trailing "remote" or "anywhere" sets remote:true; a leading one is a
 //     title ("Remote Sensing Analyst"). A remote the person excluded (a minus
 //     on it, or a negating word before it) is never lifted: the query goes to
@@ -34,7 +37,9 @@
 //   - visa-sponsorship words leave the query, because the board cannot filter
 //     on sponsorship and the description tier ranked the employers' refusal
 //     disclaimers first (BR-01); a bare "sponsorship" or "visa" stays, since a
-//     marketing role or an employer can be called that;
+//     marketing role or an employer can be called that. When nothing but
+//     those words (and search filler) is left, sponsorshipOnly says so and the
+//     server searches nothing rather than every job;
 //   - "City, ST" is kept as written, because a city name can span states and
 //     the per-city state shares that would justify dropping the state are not
 //     in this repository; the answer says so in locationInterpreted;
@@ -106,18 +111,12 @@ const METRO_SKIP = new Set(["the city", "la"]);
 const CITY_NOT_FROM_QUERY = new Set(["reading", "nice", "cali", "bern", "gent", "roma"]);
 /** State codes that are also words a query ends on ("nurse in OR" is the operating room). */
 const CODE_IS_A_WORD = new Set(["or", "me", "in", "ok", "hi", "id"]);
-/**
- * State codes that are also credentials or modalities in a job title
- * ("Orthopedic PA", "Physician MD", "Radiologic Technologist CT"): read as a
- * state after a city only when that city is in the board's own city table.
- */
-const CODE_IS_A_CREDENTIAL = new Set(["pa", "ma", "md", "ct", "mt", "ms", "pe", "ne", "nd", "de", "co", "sc", "va", "al", "la", "ga", "nb", "ns", "on"]);
 /** Words a job title ends a role with, never a city before a state code ("Registered Nurse, TX"). */
 const ROLE_WORD = /^(?:nurse|assistant|engineer|manager|technician|technologist|tech|specialist|analyst|developer|director|associate|representative|rep|physician|therapist|coordinator|driver|clerk|teacher|lead|supervisor|officer|agent|consultant|administrator|pharmacist|hygienist|worker|operator|mechanic|electrician|cook|cashier|intern|sales|remote|hybrid|onsite|jobs?|roles?|positions?|openings?|practitioner|aide|scientist|designer|accountant|attorney|paralegal|counselor|advisor|adviser|recruiter|executive|president|vp|head|chef|server|nanny|tutor|instructor|professor|librarian|planner|buyer|editor|writer|producer|architect|programmer|admin|staff|team|member|part-time|full-time|time|contract|temp|travel|prn|per diem)$/i;
 /** City-table names that are also lower-case words ("wine cork"): a place with no preposition only when capitalised. */
 const CITY_IS_A_WORD = new Set(["cork", "essen", "buffalo", "lima", "oxford", "wellington", "porto", "phoenix", "florence", "naples", "brighton", "cambridge", "columbus"]);
 /** Words that end a city name only with the word before them ("Salt Lake City", "Colorado Springs"). */
-const CITY_SUFFIX = new Set(["city", "springs", "beach", "falls", "heights", "park", "rapids", "hills", "island", "valley", "creek", "harbor", "harbour", "point", "grove", "junction", "gardens", "lake", "lakes", "bay", "bluffs", "rock", "village", "worth", "antonio", "francisco", "diego", "jose", "york", "orleans", "vegas", "angeles", "louis", "paso", "haven", "brunswick", "london", "britain", "rochelle", "jersey", "mexico"]);
+const CITY_SUFFIX = new Set(["city", "area", "springs", "beach", "falls", "heights", "park", "rapids", "hills", "island", "valley", "creek", "harbor", "harbour", "point", "grove", "junction", "gardens", "lake", "lakes", "bay", "bluffs", "rock", "village", "worth", "antonio", "francisco", "diego", "jose", "york", "orleans", "vegas", "angeles", "louis", "paso", "haven", "brunswick", "london", "britain", "rochelle", "jersey", "mexico"]);
 /** Words that begin a city name ("San", "Fort", "St."). */
 const CITY_PREFIX = new Set(["san", "santa", "santo", "los", "las", "el", "new", "fort", "ft", "ft.", "st", "st.", "saint", "salt", "grand", "palm", "port", "mount", "mt", "mt.", "west", "east", "north", "south", "little", "baton", "corpus", "colorado", "kansas", "oklahoma", "jersey", "sioux", "cedar", "round", "sugar", "college", "des", "boca", "daly", "coral", "overland", "rancho", "lake", "long", "virginia", "pompano", "glen", "bowling", "hot", "ann", "cape", "eau", "white", "green", "oak", "carson", "iowa", "sioux", "royal", "bloomfield", "university", "upper", "lower"]);
 /**
@@ -173,14 +172,26 @@ function cityState(place: string): string | null {
   return has(STATE_ALIASES, code.toLowerCase()) ? `${m[1].trim()}, ${code}` : null;
 }
 
-/** "Austin TX": a city and a state code in capitals that is not also a word. */
+/**
+ * "Austin TX": a city of the board's own table and a state code in capitals
+ * that is not also a word. With no comma, the words before the code are a
+ * city only when the board knows the city: "Engineer in Training TX" and
+ * "Nurse in ICU CA" name no town called Training or ICU, and main kept both
+ * whole (connect W1 recheck, 2026-11-08).
+ */
 function cityStateLoose(place: string): string | null {
   const m = /^([A-Za-z][A-Za-z .'-]{1,40}?)\s+([A-Z]{2})$/.exec(place.trim());
   if (!m) return null;
   const code = m[2].toLowerCase();
   if (CODE_IS_A_WORD.has(code) || !has(STATE_ALIASES, code)) return null;
-  if (CODE_IS_A_CREDENTIAL.has(code) && !knownCity(m[1])) return null;
+  if (!knownCity(m[1])) return null;
   return `${m[1].trim()}, ${m[2]}`;
+}
+
+/** A metro shorthand the board expands ("NYC", "Bay Area"), or null. Never a state's own name. */
+function metroAlias(place: string): string | null {
+  const p = norm(place);
+  return p.length > 2 && !METRO_SKIP.has(p) && has(METRO_ALIASES, p) ? place.trim() : null;
 }
 
 /**
@@ -314,7 +325,7 @@ function trailingPlace(query: string): { head: string; location: string; words: 
   if (words.length < 2) return null;
   const last = words[words.length - 1];
   const prev = words[words.length - 2];
-  // "City, ST" or "City ST".
+  // "City, ST" or "City ST", where the city is one the board knows by name.
   if (/^[A-Za-z]{2}$/.test(last) && has(STATE_ALIASES, last.toLowerCase())) {
     const comma = /,$/.test(prev);
     const code = last.toLowerCase();
@@ -325,9 +336,18 @@ function trailingPlace(query: string): { head: string; location: string; words: 
       const head = tidy(headWords.join(" "));
       // "Security Agent - Houston, TX": a separator before the place is a job title's own place, not a search's.
       const titled = headWords.length > 0 && (/[,;:|–—-]$/.test(headWords[headWords.length - 1]) || /^(?:southern|northern|western|eastern|central|greater|upstate|downstate|downtown|metro|north|south|east|west)$/i.test(headWords[headWords.length - 1]));
-      const cityOk = /^[A-Z]/.test(city) && cityWords.every((w) => !ROLE_WORD.test(w.replace(/[,.]+$/, ""))) && !NOT_A_CITY.test(cityWords[0]);
-      const credential = CODE_IS_A_CREDENTIAL.has(code) && !knownCity(city);
-      if (head && cityOk && !credential && !titled && !NAME_BEFORE_PLACE.test(head) && !PREPOSITION_AT_END.test(head)) {
+      const capitalised = /^[A-Z]/.test(city) && cityWords.every((w) => !ROLE_WORD.test(w.replace(/[,.]+$/, "")));
+      // A capitalised title word is not a town (connect W1 recheck, 2026-11-08):
+      // "Customer Service TX" searched q "Customer" in a place called
+      // "Service, TX" and found 0 where main's whole query found 26. The words
+      // before the code count only when they are a city of the board's own
+      // table or a metro shorthand it expands; anything else stays whole, as
+      // main sends it.
+      const metro = capitalised ? metroAlias(city) : null;
+      const known = capitalised && !metro && knownCity(city) !== null;
+      if (head && (known || metro) && !titled && !NAME_BEFORE_PLACE.test(head) && !PREPOSITION_AT_END.test(head)) {
+        // A metro shorthand goes as itself, so the board expands it ("Bay Area" is three cities, "Bay Area, CA" none).
+        if (metro) return { head, location: metro, words: words.slice(headWords.length).join(" ") };
         const location = `${city}, ${last.toUpperCase()}`;
         return { head, location, words: words.slice(headWords.length).join(" "), note: `"${location}" was kept as written: a city name can span states.` };
       }
@@ -393,6 +413,22 @@ function liftSponsorship(query: string): { rest: string; words: string } | null 
   rest = rest.replace(/\s+/g, " ").trim();
   for (let i = 0; i < 3; i++) rest = tidy(rest.replace(HANGING_JOINER, "").replace(LEADING_JOINER, ""));
   return { rest, words: taken.join(" ") };
+}
+
+/** A word of a search that names no role: filler, a work mode, the employers asked about. */
+const NO_ROLE_WORD = /^(?:jobs?|roles?|positions?|openings?|vacanc(?:y|ies)|careers?|work|opportunities|hiring|companies|employers|remote|anywhere|hybrid|stellen|stelle|stellenangebote|empleos?|trabajos?|ofertas?|emplois?|postes?|vagas?|vacatures?)$/i;
+
+/**
+ * True when the reading took visa-sponsorship words out and left no role word
+ * behind (connect W1 recheck, 2026-11-08): "visa sponsorship", "H1B",
+ * "companies that sponsor H1B visas" and "Tier 2 sponsorship jobs" left the
+ * query empty or "jobs", and the board answered the whole board beside a
+ * sponsorship note. The board cannot filter on sponsorship, so such a search
+ * names nothing it can look for.
+ */
+export function sponsorshipOnly(r: QueryReading | null | undefined): boolean {
+  if (!r?.sponsorship) return false;
+  return String(r.query ?? "").split(/[\s,]+/).filter(Boolean).every((w) => NO_ROLE_WORD.test(w));
 }
 
 /**
