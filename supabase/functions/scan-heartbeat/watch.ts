@@ -162,3 +162,72 @@ export async function pingDeadMan(
     return "failed";
   }
 }
+
+/**
+ * THE HOURLY TIER (cost audit 2026-11-08, Do first #1; owner decision
+ * 2026-11-08). Every run was a full uncached scan (two model calls carrying
+ * the whole scan prompt), four filtered board reads, the vendor canary and two
+ * whole-table storage reads, 144 times a day: about 98% of the free scanner's
+ * model calls were this monitor. The 10-minute cron stays, and so do the
+ * healthchecks.io ping, job-board status and every cheap check; the costly
+ * ones run on the first run of each UTC hour (minute 0-9: the ten-minute
+ * cron's :00 run). A run the owner or our own service role starts by hand is
+ * always a full run: someone asked for the whole answer.
+ */
+export const FULL_RUN_MINUTES = 10;
+export function isFullRun(now: Date, byCron: boolean): boolean {
+  return !byCron || now.getUTCMinutes() < FULL_RUN_MINUTES;
+}
+/** The reason every check the off-hour run leaves out is skipped with. */
+export const HOURLY = "runs hourly";
+
+/**
+ * THE AI PROBE'S VERDICT. It failed on a reply with no text, and its model
+ * thinks before it answers: with a 100-token cap the thinking can spend the
+ * whole budget and the reply comes back empty (finish_reason length), which
+ * read as 'degraded' about a gateway and a model that had both answered. A
+ * reply that holds a choice is an answer, whatever its text; one with no
+ * choice at all is not.
+ */
+export function aiProbeCheck(reply: unknown): { passed: boolean; error?: string } {
+  const choices = reply && typeof reply === "object" ? (reply as { choices?: unknown }).choices : undefined;
+  const first = Array.isArray(choices) ? choices[0] : undefined;
+  return first && typeof first === "object"
+    ? { passed: true }
+    : { passed: false, error: "the AI gateway answered 200 with no choice in the reply" };
+}
+
+/**
+ * THE OFF-HOUR SCAN (owner decision 2026-11-08: no scan model call on the
+ * other five runs of the hour). The heartbeat still posts its résumé to
+ * free-keyword-scan, with NO_MODEL_FIELD set and its secret, and the scanner
+ * answers the rule-based report without calling a model. That proves the
+ * function boots, reads the request and builds a report every ten minutes;
+ * the model path itself is proved by the AI probe every run and by the full
+ * scan every hour. Judged here: a refusal, an error, a cached or malformed
+ * report, or a report that does not say the request was honoured (a scanner
+ * that ran its model anyway: an older build, or a secret that differs between
+ * the two functions) each fail scan_path.
+ */
+export const NO_MODEL_FIELD = "heartbeatNoModel";
+export const SCAN_PATH_CHECK = "scan_path";
+export function noModelScanCheck(
+  status: number,
+  report: unknown,
+  errorText = "",
+): { passed: boolean; error?: string; severity?: "down" | "degraded" } {
+  if (status === 429) {
+    return { passed: false, severity: "degraded", error: "rate-limited: the scan path was not exercised this run (is HEARTBEAT_SECRET set on both functions?)" };
+  }
+  if (status < 200 || status > 299) return { passed: false, severity: "down", error: `HTTP ${status}: ${clip(errorText, 200)}` };
+  const r = report && typeof report === "object" ? (report as Record<string, unknown>) : {};
+  if (r.cachedReport === true) return { passed: false, severity: "degraded", error: "served from the 7-day report cache: the scan path was not exercised" };
+  const meta = r.reportMeta && typeof r.reportMeta === "object" ? (r.reportMeta as { reportId?: unknown }) : {};
+  if (typeof r.atsScoreEstimate !== "number" || !meta.reportId) {
+    return { passed: false, severity: "degraded", error: "the rule-based report is missing atsScoreEstimate/reportMeta" };
+  }
+  if (r[NO_MODEL_FIELD] !== true) {
+    return { passed: false, severity: "degraded", error: "free-keyword-scan did not say it skipped its model, so it may have run a full scan off the hour (an older build, or HEARTBEAT_SECRET differs between the two functions)" };
+  }
+  return { passed: true };
+}
