@@ -20,6 +20,7 @@ const SAME_EMPLOYER: ReadonlyArray<[string, string, string]> = [
   // [override board token, other board token, evidence]
   ["spgi~wd5~SPGI_Careers", "careers.spglobal.com", "S&P Global's own careers host and its Workday tenant spgi"],
   ["rochester~wd5~UR_Staff", "ur~wd1~URcareers", "two Workday tenants of the University of Rochester: hiringOrganization \"001 University of Rochester\" (20261009100100) and the URcareers site (20260721330000)"],
+  ["signetjewelers~wd1~BlueNile", "blue-nile", "Signet's BlueNile site (\"Blue Nile was founded in 1999\") and the Workable account blue-nile, whose url is bluenile.com, read 2026-11-08 (20261108100000)"],
 ];
 
 const fold = (s: string) => s.trim().toLowerCase();

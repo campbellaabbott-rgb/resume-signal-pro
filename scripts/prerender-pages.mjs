@@ -685,6 +685,23 @@ export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null, 
  * inside postingJsonLd (scripts/prerender-posting-rule.mjs).
  */
 export { postingRowEligible } from "./prerender-posting-rule.mjs";
+export { postingFreshNameReason } from "./prerender-posting-rule.mjs";
+
+/**
+ * WHETHER THE POSTING POOL'S WALK READS ANOTHER PAGE OF THE NEWEST LIST (B02).
+ *
+ * The walk reads up to `pages` list pages and stops at `rowCap` rows, as it
+ * always has. Past that it reads on, to `maxPages` at most, only while the rows
+ * a new page may come from (`selectable`: rule 1 and postingFreshNameReason
+ * both pass) are fewer than the new pages it may write, and only while the
+ * bake's board reads left exceed that number, so the details of the postings
+ * it chooses can still be read. A walk with no new pages to write reads none.
+ */
+export function postingPoolWalksOn({ page, rows, selectable, freshBudget, budgetLeft, pages, maxPages, rowCap }) {
+  if (!(freshBudget > 0)) return false;
+  if (page < pages && rows < rowCap) return true;
+  return page < maxPages && selectable < freshBudget && budgetLeft > freshBudget;
+}
 
 /**
  * HOW MANY NEW POSTING PAGES ONE BAKE MAY ADD (rule 3 of the bake's posting

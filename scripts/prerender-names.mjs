@@ -14,7 +14,8 @@
 // (Booking.com, Crypto.com, Alarm.com, Checkout.com) and 72 ending in Global
 // (Abt Global, FGS Global, Forge Global): real employers, named as they name
 // themselves. So a name is refused only when it cannot be anyone's name:
-// logo or file-name text, a careers or jobs subdomain used as a name, or
+// logo or file-name text, a careers or jobs subdomain used as a name, a web
+// address with a scheme or a path, a logo caption listing its colours, or
 // nothing but a generic word once the career-site label is off.
 //
 // WHAT A REFUSAL DOES (owner decision D7, 2026-10-11). A page indexable on the
@@ -46,8 +47,55 @@ const GENERIC_NAMES = new Set([
   "us", "usa", "en", "main", "default", "test", "demo", "staff", "team", "only",
 ]);
 
-/** Words that describe an image file rather than an employer; two of them in one name is alt text. */
-const IMAGE_WORDS = /\b(?:logo|logos|wordmark|wht|blk|background|horizontal|vertical|stacked|reversed|transparent|colou?r|rgb|hex|banner|icon|header|footer|midnight)\b/g;
+/**
+ * Words that describe an image file rather than an employer; two of them in
+ * one name is alt text. "Email" and "signature" joined the list from ADP
+ * boards named by their logo file (SEO/GEO audit 2026-11-07, B02): "VHB Email
+ * Signature" was a Google for Jobs hiringOrganization while its own postings
+ * name Villas of Holly Brook. One alone stays a name ("Signature Healthcare").
+ */
+const IMAGE_WORDS = /\b(?:logo|logos|wordmark|wht|blk|background|horizontal|vertical|stacked|reversed|transparent|colou?r|rgb|hex|banner|icon|header|footer|midnight|email|signature)\b/g;
+
+/**
+ * A logo file's variant words, which no employer's name carries, so one is
+ * enough: "AVITA Health Systems unstacked", "Group withMVSB wtag" (with
+ * tagline), "Klipboard No Strapline Full (1)". Each was a live ADP board name.
+ */
+const LOGO_VARIANT_WORDS = /\b(?:unstacked|wtag|strapline)\b/i;
+
+/** A file copy's suffix ("Full (1)", "transparent (3)"): counts as one image word. */
+const COPY_SUFFIX = /\(\d{1,2}\)$/;
+
+/**
+ * A name that is a web address, not a name: a scheme ("https://www.deag.de/
+ * navi-bottom/investors/karriere.html?t=1" was a Personio board's company
+ * name and so its markup's hiringOrganization), a leading "www.", or a domain
+ * followed by a path. A bare domain stays a name: Booking.com, Alarm.com and
+ * HealthCareersInSask.ca are how those employers or sites write themselves.
+ */
+const WEB_ADDRESS = /:\/\/|^www\.|^[a-z0-9-]+(?:\.[a-z0-9-]+)+\/\S/i;
+
+/** Colour words, as a logo caption lists its palette. */
+const COLOUR_WORDS = new Set([
+  "black", "white", "red", "blue", "green", "gold", "silver", "grey", "gray", "navy", "coral", "burgundy",
+  "maroon", "teal", "orange", "purple", "yellow", "pink", "cyan", "magenta", "violet", "brown", "beige",
+  "cream", "ivory", "turquoise", "aqua", "lime", "olive", "plum", "bronze", "copper", "charcoal",
+]);
+
+/**
+ * A logo caption that names its colours: two or more colour words beside a
+ * run-together "...Text" token ("CASES Gold+Coral+Burgundy BurgundyText", an
+ * ADP board first baked 2026-11-06). Two colours alone are a name ("Blue Cross
+ * Blue Shield", "Black & Veatch Red"), and so is a "...Text" word alone
+ * ("OpenText").
+ */
+function isColourCaption(n) {
+  if (!/[a-z]Text\b/.test(n)) return false;
+  // Split at every non-letter and at each lower-to-upper step, without a
+  // lookbehind: the app's bundle runs this module in browsers too.
+  const words = n.replace(/([a-z])([A-Z])/g, "$1 $2").split(/[^A-Za-z]+/).map((w) => w.toLowerCase()).filter(Boolean);
+  return words.filter((w) => COLOUR_WORDS.has(w)).length >= 2;
+}
 
 /**
  * The name with any trailing career-site label taken off. Never empties a
@@ -82,9 +130,11 @@ export function unpublishableNameReason(name, { codeShaped = false } = {}) {
   if (/\bcmyk\b|\bscreenshot at\b/i.test(n)) return "logo or image text";
   // "Logo" alone is a word some employers carry ("Logo Brands"), so it counts
   // only beside a second word that describes an image file, never by itself.
-  const imageWords = (n.toLowerCase().match(IMAGE_WORDS) || []).length;
-  if (imageWords >= 2) return "logo or image text";
+  const imageWords = (n.toLowerCase().match(IMAGE_WORDS) || []).length + (COPY_SUFFIX.test(n) ? 1 : 0);
+  if (imageWords >= 2 || LOGO_VARIANT_WORDS.test(n)) return "logo or image text";
   if (/^(?:https?:\/\/)?(?:careers?|jobs?|apply|recruiting|talent|hiring|work)\.[a-z0-9-]+(?:\.[a-z0-9-]+)+\/?$/i.test(n)) return "careers subdomain";
+  if (WEB_ADDRESS.test(n)) return "web address";
+  if (isColourCaption(n)) return "colour caption";
   if (/^(?:only\s+)?(?:external|internal)\s+(?:postings?|jobs?|careers?|candidates?)$/i.test(n)) return "generic label";
   if (GENERIC_NAMES.has(n.toLowerCase())) return "generic word";
   return null;

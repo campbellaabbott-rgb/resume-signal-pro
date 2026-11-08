@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
   PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
-  bakeLanders, D7_TRUSTED_COMPANY_TOKENS, employerBoardsOf, employerPageOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, postingRowEligible, postingStubEntry, postingStubPage,
+  bakeLanders, D7_TRUSTED_COMPANY_TOKENS, employerBoardsOf, employerPageOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, postingFreshNameReason, postingPoolWalksOn, postingRowEligible, postingStubEntry, postingStubPage,
   LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, LLMS_TXT_COMPANIES, companiesLlmsLine, readCompanyIntel, llmsTxtCompaniesCount, duplicateSkeletons, landerBreakers, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
 } from "./prerender-pages.mjs";
 // The once-published pages, the ceiling, the dates and the duplicate groups
@@ -402,7 +402,8 @@ export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
 export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingEmployer, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle, postingPageTitleAvoiding, postingPathParts } from "../src/components/jobs/posting-page";
 export { ldEmploymentType, postingJsonLdShape } from "../src/components/jobs/posting-page";
 export { JOB_POSTING_MARKUP } from "../src/config/seo-switches";
-export { boardName, employerName, isCodeShapedName, possessive } from "../src/lib/company-display";
+export { boardName, employerName, isCodeShapedName, isUnreviewedTenantName, possessive } from "../src/lib/company-display";
+export { systemLabel } from "../src/lib/listing/apply-url";
 export { POSTING_MIN_DESCRIPTION, postingDescribedEnough, postingMarkupGate, postingNameVerdict } from "../src/components/jobs/posting-page";
 export { isCollidedToken } from "../src/lib/board-collisions";
 export { FEDERAL_LISTING_RESULT_CAP, isFederalListingBoard } from "../src/lib/company/lander-model";
@@ -889,6 +890,9 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
     // that exists, and the field's printed label, "other" included. A caller
     // that passes none gets the stored spellings and the live board's address.
     const companyName = typeof P.companyName === "function" ? P.companyName : (_t, stored) => String(stored ?? "");
+    // The vendor's own name for a hiring system ("UKG", not "ukg"), as the
+    // homepage's sources table prints it (B02).
+    const systemName = typeof P.systemName === "function" ? P.systemName : (source) => String(source ?? "");
     const companyHref = typeof P.companyHref === "function"
       ? P.companyHref
       : (token, query) => `/jobs?company=${encodeURIComponent(String(token ?? ""))}${query ? `&${query}` : ""}`;
@@ -1182,7 +1186,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       // than a sentence someone typed: one row per hiring system that has rows.
       const srcRows = Array.isArray(cov?.by_source)
         ? cov.by_source.filter((r) => isObj(r) && typeof r.source === "string" && num(r.total) !== null)
-            .map((r) => [esc(r.source), fmt(r.total), num(r.pay_pct) !== null ? `${r.pay_pct}%` : "—", num(r.mode_pct) !== null ? `${r.mode_pct}%` : "—"])
+            .map((r) => [esc(systemName(r.source)), fmt(r.total), num(r.pay_pct) !== null ? `${r.pay_pct}%` : "—", num(r.mode_pct) !== null ? `${r.mode_pct}%` : "—"])
         : [];
       const systems = srcRows.length
         ? table("By hiring system", ["System", "Postings", "State pay", "State work mode"], srcRows,
@@ -2469,6 +2473,12 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
   // the pool below stops at three times the page cap, 1,200 rows.
   const POSTING_LIST_PAGES = 20;
   const POSTING_LIST_PAGE_ROWS = 60;
+  // B02: past the twenty, ten more at most, and only while the rows a new page
+  // may come from cannot fill the budget (postingPoolWalksOn). Measured
+  // 2026-11-08 over the 600 newest rows: 590 pass rule 1, and of those 576
+  // may still get a new page, 13 have a name no one wrote and 1 a logo
+  // caption (529, 60 and 1 before that day's overrides and readings).
+  const POSTING_LIST_PAGES_MAX = 30;
   /** Rendered into /jobs so the selection is visible from the board itself. */
   let postingIndexSection = "";
   /** Paths this block wrote as live pages, for the sitemap assertion. */
@@ -2737,31 +2747,42 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       const seenIds = new Set();
       let offset = 0;
       let poolDuplicates = 0;
-      for (let p = 0; p < POSTING_LIST_PAGES && freshBudget > 0; p++) {
+      // SEO-006 and B02: a NEW posting page is refused when its employer's
+      // name cannot be anyone's (logo text, a careers subdomain, a web
+      // address, a colour caption, a bare generic word) or when nobody ever
+      // wrote it (the board's own code: "Atd", "Starfish", "Creatoriq"); a
+      // carried one keeps its page this round (owner decision D7).
+      const freshNameReason = (job) => postingFreshNameReason(job, D);
+      // The rows the new pages can come from, counted as the walk reads them:
+      // past its usual twenty pages the walk reads on only while they are too
+      // few to fill the budget, and never into the reads their details need.
+      let poolSelectable = 0;
+      let poolPagesRead = 0;
+      for (let p = 0; postingPoolWalksOn({ page: p, rows: pool.length, selectable: poolSelectable, freshBudget, budgetLeft: boardBudget.left, pages: POSTING_LIST_PAGES, maxPages: POSTING_LIST_PAGES_MAX, rowCap: POSTING_PAGE_CAP * 3 }); p++) {
         const j = await boardRead({ action: "list", sort: "newest", limit: POSTING_LIST_PAGE_ROWS, includeFacets: false, offset });
         if (!j || !Array.isArray(j.jobs) || j.jobs.length === 0) break;
+        poolPagesRead++;
         for (const row of j.jobs) {
           if (!row || typeof row.id !== "string") continue;
           if (seenIds.has(row.id)) { poolDuplicates++; continue; }
           seenIds.add(row.id);
           pool.push(row);
+          if (eligibleRow(row) && !freshNameReason(row)) poolSelectable++;
         }
         if (!j.hasMore || typeof j.nextOffset !== "number") break;
         offset = j.nextOffset;
-        if (pool.length >= POSTING_PAGE_CAP * 3) break;
       }
       if (poolDuplicates) console.warn(`[prerender-seo] posting pool: ${poolDuplicates} duplicate row(s) across offset pages — the board shifted under the walk; deduped by id`);
 
-      // SEO-006: a NEW posting page is refused when its employer's name cannot
-      // be anyone's (logo text, a careers subdomain, a bare generic word); a
-      // carried one keeps its page this round (owner decision D7).
-      const postingName = (job) => D.postingNameVerdict(job);
       let freshNameRefused = 0;
+      let freshNameUnreviewed = 0;
       const fresh = [];
       for (const j of pool) {
         if (fresh.length >= freshBudget) break;
         if (!eligibleRow(j)) continue;
-        if (postingName(j).reason) { freshNameRefused++; continue; }
+        const nameWhy = freshNameReason(j);
+        if (nameWhy === "unreviewed tenant name") { freshNameUnreviewed++; continue; }
+        if (nameWhy) { freshNameRefused++; continue; }
         if (carryBase.recheck.has(D.postingPagePath(j.id)) || carryBase.stubs.has(D.postingPagePath(j.id))) continue;
         if (takenBy(j)) continue;
         claimIdentity(j, D.postingPagePath(j.id));
@@ -2942,7 +2963,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
             </ul>
           </section>`;
       }
-      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new from a pool of ${pool.length}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} show employer-stated pay on the page (none in the markup); ${titlesDisambiguated} title${titlesDisambiguated === 1 ? "" : "s"} took its town, its stated date or a short reference to stay unique; fresh budget ${freshBudget} (carried live ${carriedLive}, ceiling ${POSTING_PAGE_CEILING}; ${retiredExpiring} expiring within ${POSTING_EXPIRY_NEAR_DAYS} days gave way to the reserve); ${countryMismatch} with a location ending in another country (job markup withheld; a carried one keeps its page under D7 and is on the dry run); ${nameWithheld} carried with an employer name the gate refuses (job markup withheld, "the employer" printed, on the dry run); carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}; job markup ${D.JOB_POSTING_MARKUP === false ? "OFF by the owner's STOP switch (src/config/seo-switches.ts): every live page kept, none marked up" : "on"}`);
+      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new from a pool of ${pool.length} over ${poolPagesRead} list page${poolPagesRead === 1 ? "" : "s"}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed, ${freshNameUnreviewed} new refused for a name no one wrote (the board's own code)) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} show employer-stated pay on the page (none in the markup); ${titlesDisambiguated} title${titlesDisambiguated === 1 ? "" : "s"} took its town, its stated date or a short reference to stay unique; fresh budget ${freshBudget} (carried live ${carriedLive}, ceiling ${POSTING_PAGE_CEILING}; ${retiredExpiring} expiring within ${POSTING_EXPIRY_NEAR_DAYS} days gave way to the reserve); ${countryMismatch} with a location ending in another country (job markup withheld; a carried one keeps its page under D7 and is on the dry run); ${nameWithheld} carried with an employer name the gate refuses (job markup withheld, "the employer" printed, on the dry run); carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}; job markup ${D.JOB_POSTING_MARKUP === false ? "OFF by the owner's STOP switch (src/config/seo-switches.ts): every live page kept, none marked up" : "on"}`);
       // A carried page the board did not answer for is the symptom to look at
       // first: it is an "unchecked" noindex page until a later bake reaches it.
       // THE EMPLOYER READS, IN ONE LINE (B01): a large unknown share means the
@@ -2989,6 +3010,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       return query ? `${href}${href.includes("?") ? "&" : "?"}${query}` : href;
     },
     companyName: (token, stored) => D.employerName(token, stored),
+    systemName: (source) => D.systemLabel(source) ?? String(source ?? ""),
     fieldLabel: (slug) => (slug === "other" ? "Roles we could not sort into a field" : CATEGORY_LANDERS.find(([s]) => s === slug)?.[1] ?? String(slug).replace(/_/g, " ")),
   });
   for (const [k, v] of Object.entries(DATA_FIGURES)) {

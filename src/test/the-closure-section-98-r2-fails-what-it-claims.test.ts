@@ -8,8 +8,9 @@
  * stubbed site and stubbed employer systems twice: once with the defect it
  * exists to catch (a posting its employer closed still baked live, a posting
  * page serving no job markup with the switch on, an employer-closed stub left
- * in the sitemap serving markup) and once fixed. A line that passes on both
- * could not fail.
+ * in the sitemap serving markup, a JobPosting naming its employer by a logo
+ * caption, a company page titled by its tenant code, a raw vendor key in the
+ * pay table) and once fixed. A line that passes on both could not fail.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -59,7 +60,14 @@ const show = (lines: string[]) => lines.join("\n");
 const A = "/jobs/posting/greenhouse/acme/1001";
 const B = "/jobs/posting/greenhouse/acme/1002";
 const C = "/jobs/posting/greenhouse/acme/1003";
-const jp = (path: string) => `<script type="application/ld+json" id="rb-posting-ld">${JSON.stringify({ "@context": "https://schema.org", "@type": "JobPosting", url: `${SITE}${path}` })}</script>`;
+const jp = (path: string, org?: string) => `<script type="application/ld+json" id="rb-posting-ld">${JSON.stringify({ "@context": "https://schema.org", "@type": "JobPosting", url: `${SITE}${path}`, ...(org ? { hiringOrganization: { "@type": "Organization", name: org } } : {}) })}</script>`;
+/** The company pages G5 reads, with the code they were titled by and the name they must print. */
+const NAMED: ReadonlyArray<[string, string, string]> = [
+  ["nyuhs~wd12~nyuhscareers1", "Nyuhs", "United Health Services"],
+  ["papajohns~wd1~PapaJohnsCareers", "Papajohns", "Papa John&#39;s"],
+  ["ssctech~wd1~ssctechnologies", "Ssctech", "SS&amp;C Technologies"],
+  ["hubinternational~wd1~HUBInternational", "Hubinternational", "HUB International"],
+];
 const page = (head: string) => `<!doctype html><html><head>${head}</head><body><h1>Job</h1></body></html>`;
 
 function site(fixed: boolean): Route[] {
@@ -74,9 +82,17 @@ function site(fixed: boolean): Route[] {
   return [
     { match: `^${esc(`${SITE}/sitemap.xml`)}$`, body: `<urlset>${inSitemap.map((p) => `<url><loc>${SITE}${p}</loc></url>`).join("")}</urlset>`, type: "application/xml" },
     { match: `^${esc(`${SITE}/prerender-ledger.json`)}$`, body: JSON.stringify(ledger), type: "application/json" },
-    { match: `^${esc(`${SITE}${A}`)}$`, body: page(jp(A)) },
+    // Unfixed: its JobPosting names the employer by an ADP logo file's caption.
+    { match: `^${esc(`${SITE}${A}`)}$`, body: page(jp(A, fixed ? "Acme" : "VHB Email Signature")) },
     // Unfixed: a posting page that serves no JobPosting while the switch is on.
-    { match: `^${esc(`${SITE}${B}`)}$`, body: page(fixed ? jp(B) : "") },
+    { match: `^${esc(`${SITE}${B}`)}$`, body: page(fixed ? jp(B, "Acme") : "") },
+    // Unfixed: company pages titled by their tenant code.
+    ...NAMED.map(([t, code, name]) => {
+      const shown = fixed ? name : code;
+      return { match: `^${esc(`${SITE}/jobs/company/${t}`)}$`, body: page(`<title>${shown} jobs: 12 open roles from their own hiring system</title>`).replace("<h1>Job</h1>", `<h1>Open roles at ${shown}</h1>`) };
+    }),
+    // Unfixed: the pay table prints a raw vendor key.
+    { match: `^${esc(`${SITE}/pay-transparency`)}$`, body: page(`<table><tr><td class="py-1 pr-3">${fixed ? "UKG Pro Recruiting" : "ukg"}</td><td>900</td></tr><tr><td class="py-1 pr-3">Workday</td><td>40</td></tr></table>`) },
     // Unfixed: the employer-closed stub still serves its markup and no noindex.
     { match: `^${esc(`${SITE}${C}`)}$`, body: page(fixed ? `<meta name="robots" content="noindex, follow">` : jp(C)) },
     { match: "^https://boards-api\\.greenhouse\\.io/v1/boards/acme/jobs/1001$", body: "{}", type: "application/json" },
@@ -103,6 +119,24 @@ describe("section 98-r2 judges what it says it judges", () => {
   it("G3 FAILs an employer-closed stub left in the sitemap or serving markup", () => {
     expect(has(bad, "FAIL", /G3 1 postings closed at the employer: 1 still in the sitemap, 1 of the first 1 serving markup or no noindex/), show(bad)).toBe(true);
     expect(has(good, "PASS", /G3 1 postings closed at the employer: 0 still in the sitemap, 0 of the first 1/), show(good)).toBe(true);
+  });
+
+  it("G4 FAILs a JobPosting that names its employer by a logo caption, judged by the bake's own gate", () => {
+    expect(has(bad, "FAIL", new RegExp(`G4 0 of 1 JobPosting employer names .*${esc(A)} "VHB Email Signature" \\(logo or image text\\)`)), show(bad)).toBe(true);
+    expect(has(good, "PASS", /G4 2 of 2 JobPosting employer names on sitemap posting pages are names/), show(good)).toBe(true);
+  });
+
+  it("G5 FAILs a company page still titled by its tenant code", () => {
+    expect(has(bad, "FAIL", /G5 \/jobs\/company\/nyuhs~wd12~nyuhscareers1 names United Health Services: title "Nyuhs jobs/), show(bad)).toBe(true);
+    for (const [t] of NAMED) expect(has(good, "PASS", new RegExp(`G5 /jobs/company/${esc(t)} names `)), show(good)).toBe(true);
+    // The served entities are read as the characters they are.
+    expect(has(good, "PASS", /G5 \/jobs\/company\/papajohns~wd1~PapaJohnsCareers names Papa John's: title "Papa John's jobs/), show(good)).toBe(true);
+    expect(has(good, "PASS", /G5 \/jobs\/company\/ssctech~wd1~ssctechnologies names SS&C Technologies/), show(good)).toBe(true);
+  });
+
+  it("G6 FAILs a raw vendor key in the pay table", () => {
+    expect(has(bad, "FAIL", /G6 \/pay-transparency prints raw vendor keys in its table: ukg/), show(bad)).toBe(true);
+    expect(has(good, "PASS", /G6 \/pay-transparency prints no raw vendor key in its table/), show(good)).toBe(true);
   });
 
   it("sends only GETs, to the site and the employers' own systems", () => {
