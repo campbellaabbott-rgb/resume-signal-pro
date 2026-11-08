@@ -1133,3 +1133,679 @@ The posting's application form, or the reason there is none. Never throws:
 a fault of the vendor's is `unreachable`, and a fault of the cache is read
 past (the vendor is asked) or written past (the answer is still returned).
 ```
+
+## s80
+
+`supabase/functions/_shared/fit-gate.ts`, WHO MAY SCORE A RESUME ... Above: `import { FIT_FREE_PER_DAY, fitAllowed, fitFreeLeft, fitStanding } from "./fit-allowance.ts";`
+
+```text
+WHO MAY SCORE A RESUME FOR FREE, ON BOTH DOORS (owner decision 2026-10-11,
+MCP economics decision 2).
+
+The free allowance (FIT_FREE_PER_DAY, _shared/fit-allowance.ts) is for a key
+whose email address was confirmed (it came through api-key-request's emailed
+link) or whose account has proven its mailbox. A key that is neither is
+refused and told where a confirmed one comes from; a paid tier or a paid
+plan scores under job-fit's own per-key ceiling; a read that failed is
+"unknown", refused, never opened.
+
+THIS WAS TWO RULES. POST /v1/fit (w4/api) read api_key_fit_allowance and
+refused an unconfirmed key, while fit_resume in agent-mcp (w4/mcp) gave the
+25 to every live key: an agent key minted for an unproven password account
+scored on the connector and was refused on /v1. The wave-4 integration moved
+the rule here, out of public-api/fit-allowance.ts (which re-exports it), so
+both doors read the same SQL reader (20261011110000, endpoints '/v1/fit' and
+'/mcp/fit_resume') through the same decision. The reader counts the two
+doors together: 25 a key a day in all, never 25 on each.
+
+Pure apart from the import-free fit-allowance.ts, so the Node suite walks it
+by value and Deno imports it unchanged.
+```
+
+## s81
+
+`supabase/functions/_shared/fit-gate.ts`, The decision. `standing` is undefined ... Above: `export function fitGate(o: { paid: boolean; plan: boolean; standing: FitKeyStanding | null | undefined }): FitGate {`
+
+```text
+The decision. `standing` is undefined when it could not be read (refused as
+unknown, never opened), null when the key has no standing row (refused as
+unconfirmed). `paid` is the door's own tier test; `plan` is something on the
+key's account that opens the full allowance.
+```
+
+## s82
+
+`supabase/functions/_shared/fit-allowance.ts`, HOW MANY RÉSUMÉ-FIT SCORINGS A ... Above: `export const FIT_FREE_PER_DAY = 25;`
+
+```text
+HOW MANY RÉSUMÉ-FIT SCORINGS A KEY GETS IN A DAY.
+
+Owner decision 2026-10-11 (economics decision 2(a)): fit scoring is free
+fair use, 25 calls a day, on any key the board issued -- every live key is
+email-confirmed (api_key_issue mints only after the mailbox clicks its link,
+20261004100000) or minted by a signed-in account -- and 1,000 a day for a
+paid tier, a live pass, the Agent plan or Pro. It is never offered on
+ChatGPT. The scorer is a dictionary scorer with no model call, and the site
+already scores at 60 an hour per address, so this is a bound, not a price.
+
+The 1,000 is job-fit's own per-key bucket (FIT_KEY_MAX): it stays the
+backstop for every key. The 25 is counted from api_usage, the table the key
+check meters every call into, so a free key's fit day is the same day its
+quota counts, and the count includes the call being decided.
+
+One module so the connector and POST /v1/fit cannot give the same key two
+different allowances. Import-free.
+```
+
+## s83
+
+`supabase/functions/_shared/fit-allowance.ts`, Whether this call may score, ... Above: `export function fitAllowed(standing: FitStanding, usedIncludingThisCall: number): boolean {`
+
+```text
+Whether this call may score, given the day's count INCLUDING this call (the
+key check counts before the tool runs). A full standing is bounded by the
+scorer itself, never here.
+```
+
+## s84
+
+`supabase/functions/_shared/key-tier.ts`, The tier predicates, shared — ... Above: `import { PASS_TIER } from "./pass.ts";`
+
+```text
+The tier predicates, shared — so agent-mcp and public-api cannot answer
+"is this key paid" differently. Before this file each spelled the same
+inline string predicate (one copy in agent-mcp, three in public-api), and a
+new tier would have had to be added to all four by hand or silently become
+paid in the ones that were missed.
+
+The pass is the reason the two questions are separate. It is sold as "your
+agent", never "your script" (project_public_data_api: /v1 is a promise to
+someone else's code), so a live pass answers key_tier = PASS_TIER and must
+read as UNPAID to every /v1 gate — the ranked engine, /v1/fit, the long
+changes window — while fit_resume opens to it, because the pipeline refuses
+unattended release on unknown or low fit and "research the board and apply"
+is honest only if research can score before the spend.
+
+Import-free apart from pass.ts, so the Node test suite can walk the values.
+```
+
+## s85
+
+`supabase/functions/_shared/key-tier.ts`, Paid for /v1 purposes and ... Above: `export function isPaidKeyTier(tier: string | null | undefined): boolean {`
+
+```text
+Paid for /v1 purposes and for the "paid" MCP tools other than fit_resume.
+Null, free, trial and the pass all answer false; any other non-null tier is
+paid — the same shape the inline predicate had, plus the pass exclusion.
+```
+
+## s86
+
+`supabase/functions/_shared/greenhouse-api.ts`, WHICH HOST ANSWERS A GREENHOUSE ... Above: `export function greenhouseApi(token: string): { host: string; token: string } {`
+
+```text
+WHICH HOST ANSWERS A GREENHOUSE TENANT.
+
+A board token carrying the `eu~` prefix is a tenant hosted in Greenhouse's
+EU region, and its public board API answers only on the EU host: asking the
+US host for one of its postings reads as "no public form" for every EU
+posting. The board's own copy lives in job-board/normalize.ts; this one is
+for readers outside job-board (the apply_myself form reader in
+_shared/application-form.ts), which must never import job-board's files.
+The function below is held BYTE-IDENTICAL to normalize.ts's by
+src/test/the-greenhouse-host-rule-is-one-rule-in-two-files.test.ts until
+job-board imports it from here.
+```
+
+## s87
+
+`supabase/functions/_shared/mandate-reach.ts`, How far a mandate reaches: ... Above: `export function clampAge(n: number | null | undefined): number | null {`
+
+```text
+How far a mandate reaches: posting age, and whether the uncategorised bucket
+is in scope.
+
+IN _shared RATHER THAN IN agent-runner, and for one reason: agent-runner
+imports from `https://deno.land/...`, so a vitest suite cannot import it at
+all — the Node ESM loader refuses an https specifier. Every test of that file
+is therefore a regex over its source text, which can check that a line exists
+and can never check what it does.
+
+These two rules are worth more than that. `applyCategory` decides whether a
+subscriber sees 27.6% of the board, and `applyMaxAge` is the difference
+between "posted this week" and "we noticed it this week" — a distinction this
+codebase has already published a false public statistic by blurring. Pure,
+dependency-free, and directly executable by a test.
+```
+
+## s88
+
+`supabase/functions/_shared/mandate-reach.ts`, The board's clamp, not a ... Above: `export function clampAge(n: number | null | undefined): number | null {`
+
+```text
+The board's clamp, not a second opinion about it.
+
+job-board's filters.ts: `Number.isFinite(n) && n >= 1 ? Math.min(n, 30) : null`.
+Two definitions of "how fresh is fresh" over one corpus is how two surfaces
+start disagreeing about the same posting.
+```
+
+## s89
+
+`supabase/functions/_shared/mandate-reach.ts`, The two fences every read ... Above: `export function applyServingFences<T extends Filterable>(qb: T, now: number = Date.now()): T {`
+
+```text
+The two fences every read of the corpus carries — except, until now, the one
+that decides what a paying subscriber's agent applies to.
+
+`missing_since IS NULL` means the employer's own feed still lists the posting.
+The 30-day floor is the board's serving window. Every surface that shows a
+posting to a person binds both: the list path, the detail route
+(job-board/index.ts:7790) and the public API. agent-runner bound NEITHER, at
+either of its two selection queries.
+
+MEASURED 2026-08-27, replaying the runner's exact predicates: 65 of 400
+candidate rows carried a `missing_since` stamp — 16.2%, stable across three
+consecutive fetches. Fenced, the same query returns a full 400 rows with those
+65 swapped for live ones, so the fence costs the subscriber no reach; it only
+changes WHICH postings are in the pool.
+
+AND NOTHING DOWNSTREAM RE-CHECKS. apply-broker re-validates the mandate and
+the entitlement at claim time but never re-reads the posting; apply-agent does
+fetch the fenced detail route, but under a comment reading "A failure degrades
+the draft; it never blocks the send", so a withdrawn posting yields no
+description and the packet is built anyway. Selection time is the only place.
+
+30 IS FRESH_WINDOW_DAYS in job-board, referenced rather than re-guessed — two
+definitions of the serving window over one corpus is how two surfaces start
+disagreeing about the same posting.
+```
+
+## s90
+
+`supabase/functions/_shared/mandate-reach.ts`, The category filter, and the ... Above: `export function applyCategory<T extends Filterable>(`
+
+```text
+The category filter, and the bucket it used to remove without saying so.
+
+`other` is not a junk drawer — it is where a posting lands when the title
+classifier could not place it, which happens to ordinary engineering,
+operations and healthcare roles all day. It held 162,800 of 590,808 postings
+on 2026-08-05, so `.eq("category", …)` cost a subscriber 27.6% of the board
+the moment they chose a field, invisibly, and the symptom was a thin morning
+queue with no explanation anywhere.
+
+OPT-IN, and off is the old behaviour exactly. `other` genuinely does mix
+fields, so widening it for everybody would put warehouse roles in an
+engineering queue. Alongside title terms it costs almost nothing, because
+then the title filter is doing the work and the category filter can only ever
+REMOVE postings whose title already matched — which is what the UI says.
+
+Absent or null behaves as false, which is what lets the runner deploy before
+the migration that adds the column.
+```
+
+## s91
+
+`supabase/functions/_shared/mandate-reach.ts`, The posting-age floor, on the ... Above: `export function applyMaxAge<T extends Filterable>(`
+
+```text
+The posting-age floor, on the date the EMPLOYER stated.
+
+Distinct from the runner's 36-hour `first_seen` lookback, which is about when
+WE saw a posting. A feed routinely surfaces a role posted five months ago and
+it arrived in the queue as today's find.
+
+Undated postings fall outside this because `gte` cannot be satisfied by NULL.
+That exclusion is deliberate and is exactly what the board does: "posted
+within 7 days" is not a claim available about a posting carrying no date, and
+we never substitute a guess for one.
+```
+
+## s92
+
+`supabase/functions/_shared/mandate-reach.ts`, WHICH COUNTRIES THE AGENT MAY ... Above: `export function parseCountries(raw: string | null | undefined): string[] {`
+
+```text
+WHICH COUNTRIES THE AGENT MAY APPLY IN — and why `location` could not say it.
+
+A mandate matched place by substring on the posting's own location TEXT.
+Measured against production 2026-08-07:
+
+    country = DE          11,511 postings   what the board can express
+    location ~ "Germany"   7,594            what a mandate could express
+    location ~ "Berlin"    2,604
+
+    country = GB          21,126
+    location ~ "London"   10,195
+
+So a person who wants "anywhere in Germany" had no way to say it: a third of
+German postings never spell the country in their location line — they say
+"Berlin" or "Munich, Bavaria" — and naming cities means naming every city or
+losing the rest. The board has had a normalised `country` column all along
+and the mandate simply had no field for it. This is that field.
+
+ISO-3166-1 alpha-2, VALIDATED, because an unrecognised code must not become a
+filter. `country.in.(GERMANY)` matches no row, and a mandate that silently
+matches nothing is indistinguishable from a quiet job market — the exact
+shape of failure this project keeps writing post-mortems about. Anything that
+is not two letters is dropped here, and the UI only ever emits codes the
+board's own facet returned.
+
+Absent, null or empty means NO country predicate — every posting stays in
+scope, which is precisely today's behaviour. That is what lets the runner
+ship before the migration lands.
+```
+
+## s93
+
+`supabase/functions/_shared/mandate-reach.ts`, Deduped: `in.(DE,DE)` is harmless but ... Above: `.filter((c, i, all) => all.indexOf(c) === i)`
+
+```text
+Deduped: `in.(DE,DE)` is harmless but a repeated code in the UI's chips
+reads as a bug in the thing the person just typed.
+```
+
+## s94
+
+`supabase/functions/_shared/mandate-reach.ts`, Same bound as splitTerms uses ... Above: `.slice(0, 12);`
+
+```text
+Same bound as splitTerms uses for titles and places. Nobody job-hunts in
+30 countries, and the URL PostgREST builds has a length limit.
+```
+
+## s95
+
+`supabase/functions/_shared/mandate-reach.ts`, ONE SAVED SEARCH, RUN WITH ... Above: `export function searchRunRow<`
+
+```text
+ONE SAVED SEARCH, RUN WITH THE MANDATE'S PROFILE.
+
+The run row copied every criterion off the search except `countries`, so a
+search scoped to Germany on a mandate with no country ran worldwide, and a
+US-only search on a GB mandate returned only GB (L9-04). The panel saves
+countries per search and the runner selected the column; the one line that
+carried it across was missing, and the guard beside it only counted call
+sites. Reach is per SEARCH, the same rule the age and uncategorised fields
+already follow: the search's value wins, including an explicit "anywhere"
+(null). Only a search row read WITHOUT the column (the select's fallback
+rung, before its migration) keeps the mandate's value.
+```
+
+## s96
+
+`supabase/functions/_shared/run-stamp.ts`, The apply-agent run stamp: what ... Above: `export type RunTrigger = "cron" | "manual";`
+
+```text
+The apply-agent run stamp: what gets written, and what must NOT be.
+
+This is four lines of logic that carry the entire weight of one question —
+"does the hourly schedule actually fire?" — so it lives somewhere it can be
+tested rather than inline in a 470-line edge function.
+
+THE PROPERTY THAT MATTERS. `lastCronAt` advances ONLY on a genuine cron
+firing. A hand invocation records itself in `at`/`trigger` and leaves
+`lastCronAt` exactly as it found it.
+
+That asymmetry is the whole design. apply-agent's cron is wrapped in
+`WHERE EXISTS (... vault.decrypted_secrets WHERE name =
+'apply_agent_maintenance_key')`, so with no key it fires NOTHING — silently,
+and correctly, because a cron collecting a 403 every hour looks healthy until
+somebody reads the logs. The cost is that "armed" and "never armed" leave
+identical traces: no packets, no errors, nothing.
+
+If a manual run could advance `lastCronAt`, the one field that separates
+those two states would answer an easier question than the one being asked —
+"was this function invoked" rather than "does the schedule work" — and would
+report a healthy schedule on the strength of somebody curling it by hand.
+That is worse than no field at all, because it would be believed.
+```
+
+## s97
+
+`supabase/functions/_shared/run-stamp.ts`, Whether a wake is configured. ... Above: `wakeConfig?: { url: boolean; token: boolean; body: string };`
+
+```text
+Whether a wake is configured. Booleans and a shape only — never the URL,
+never the token. Optional for the same reason senderOnline is: agent-runner
+has no sender to wake.
+```
+
+## s98
+
+`supabase/functions/_shared/run-stamp.ts`, OPTIONAL BECAUSE NOT EVERY STAMPED ... Above: `senderOnline?: boolean;`
+
+```text
+OPTIONAL BECAUSE NOT EVERY STAMPED JOB HAS A SENDER.
+
+These two describe apply-agent's world: whether a worker is alive to
+submit, and whether the résumé bucket exists. agent-runner has neither —
+it scores and queues, and never touches the worker or a file.
+
+Made optional rather than filled with a placeholder. `senderOnline: false`
+on a runner stamp would be a fact about a thing that job does not do, and
+a reader comparing two stamps would have no way to tell "the sender is
+down" from "this job has no sender". A missing field says the second.
+```
+
+## s99
+
+`supabase/functions/_shared/run-stamp.ts`, OMITTED, NOT DEFAULTED. `senderOnline: f ... Above: `...(facts.senderOnline === undefined ? {} : { senderOnline: facts.senderOnline }),`
+
+```text
+OMITTED, NOT DEFAULTED. `senderOnline: false` on a runner stamp would be
+a fact about something that job does not do, and a reader comparing two
+stamps could not tell "the sender is down" from "this job has no sender".
+```
+
+## s100
+
+`supabase/functions/_shared/run-stamp.ts`, SHIPPED BROKEN 2026-08-06, CAUGHT THE ... Above: `...(facts.wakeConfig === undefined ? {} : { wakeConfig: facts.wakeConfig }),`
+
+```text
+SHIPPED BROKEN 2026-08-06, CAUGHT THE SAME DAY. apply-agent passed
+`wakeConfig: wakeConfig()` and this constructor silently dropped it: the
+field is optional on RunStamp, so tsc had nothing to object to, and the
+status endpoint read `null` on every run.
+
+That null is the exact fault this field exists to remove. "Wake is not
+configured" and "the wake field is never written" produced the identical
+value, and the first was reported as fact off the back of it. A stamp
+that can only be wrong in the reassuring direction is worse than absent.
+```
+
+## s101
+
+`supabase/functions/_shared/run-stamp.ts`, Is the SCHEDULE proven to ... Above: `export const SCHEDULE_PROVEN_WITHIN_MIN = 120;`
+
+```text
+Is the SCHEDULE proven to work? Two hours of slack on an hourly job absorbs
+one missed tick without crying wolf, and is still far short of the gap a
+genuinely dead cron produces (which is forever).
+```
+
+## s102
+
+`supabase/functions/_shared/apply-release.ts`, The decision to actually send ... Above: `import { automationFor, isSendableVendor } from "./apply-automation.ts";`
+
+```text
+The decision to actually send an application in the candidate's name.
+
+Everything else in the agent can be retried, edited or ignored. This cannot:
+once a packet is released and the hands submit it, a real employer has a real
+application from a real person, and there is no unsend. So this file is
+deliberately paranoid, deliberately pure, and deliberately dull to read.
+
+It returns a REASON on every refusal rather than a bare false, because "the
+agent did nothing last night" must always be answerable. A silent no is
+indistinguishable from a broken cron, which is the same trap as an alarm that
+only records failures.
+```
+
+## s103
+
+`supabase/functions/_shared/apply-release.ts`, Has a worker checked in ... Above: `senderOnline: boolean;`
+
+```text
+Has a worker checked in recently enough to be trusted to send?
+
+The worker is a separate service — it needs a real browser, which edge
+functions do not have — so it can be down while everything here is up. If it
+is, releasing a packet moves it into a state that says "on its way" and
+nothing ever collects it.
+
+That is the worst failure this product can have now that it is sold: a
+subscriber pays, watches a queue that looks like it is about to act, and
+nothing is applied for. A refusal with a reason is recoverable; a promise
+that quietly does nothing is not.
+```
+
+## s104
+
+`supabase/functions/_shared/apply-release.ts`, NB FOR ANYONE EDITING THIS ... Above: `| "held-for-review"`
+
+```text
+NB FOR ANYONE EDITING THIS UNION: src/test/agent-visibility parses the
+region as TEXT — it slices at the first semicolon and regexes for quoted
+lowercase words. So a comment in here must contain NEITHER a semicolon nor
+a quoted word, or it truncates the list or invents a code. Both happened
+while adding the two below, and the drift guard caught both.
+
+The on-ramp. Not a fault and not a misconfiguration — it means the packet is
+good and the candidate is going to watch it go. In the union so every
+consumer switching on a refusal must decide how to present it, instead of
+falling through to a generic blocked state that reads as a problem.
+```
+
+## s105
+
+`supabase/functions/_shared/apply-release.ts`, Written by agent_cancel_pending rather t ... Above: `| "cancelled-by-you";`
+
+```text
+Written by agent_cancel_pending rather than decideRelease. It lives here so
+there is ONE closed vocabulary for why something was not sent. A code that
+exists only in the database renders to a candidate as a raw slug.
+```
+
+## s106
+
+`supabase/functions/_shared/apply-release.ts`, The refusals a PERSON may ... Above: `export const APPROVABLE_REFUSALS: ReadonlySet<ReleaseRefusal> = new Set<ReleaseRefusal>([`
+
+```text
+The refusals a PERSON may override with "Approve and send"
+(agent_packet_decide, 20261009124100, holds the same list; a test pins
+them equal). The moment ones (the candidate's say-so, the on-ramp, the
+sender, the day's cap), and the fit floor with an unknown fit: OWNER
+DECISION 2026-10-11, the floor guards only unattended sends (S11-042).
+```
+
+## s107
+
+`supabase/functions/_shared/apply-release.ts`, The refusal a WAITING packet ... Above: `export function refusalToStore(previous: string, next: ReleaseRefusal): string {`
+
+```text
+The refusal a WAITING packet stores once it is decided again. The reason a
+candidate reads is today's: a packet stored "sender-offline" that the sender
+is back for but that still has gaps is "not-ready", not "queued for when the
+sender is back", and "daily-cap" for a vendor taken off the auto list is not
+"goes out tomorrow" (review of S11-042, register 1.09). The one exception is
+a packet waiting for a person ("review-mode", "held-for-review") that an
+unattended-only rule now refuses ("vendor-not-allowed"): the person's own
+approval is what that rule does not govern, so it keeps the code its Approve
+button reads. "not-ready" is never masked.
+```
+
+## s108
+
+`supabase/functions/_shared/apply-release.ts`, Order matters only for which ... Above: `if (i.alreadySubmitted) {`
+
+```text
+Order matters only for which reason a candidate sees first; each check is
+independently sufficient to refuse.
+```
+
+## s109
+
+`supabase/functions/_shared/apply-release.ts`, Checked third, straight after the ... Above: `if (!i.senderOnline) {`
+
+```text
+Checked third, straight after the two "never send twice" rules, because
+when the sender is down this is the only true explanation and every reason
+below it would be a misleading one. A candidate told "fit is under your
+floor" would go and lower their floor; the fit was never the problem.
+
+Deliberately refuses rather than releasing optimistically. A packet left
+unreleased is picked up on the next run at no cost. A packet released to
+nobody looks sent and is not.
+```
+
+## s110
+
+`supabase/functions/_shared/apply-release.ts`, Belt and braces against the ... Above: `if (automationFor(src).tier !== "auto") {`
+
+```text
+Belt and braces against the allow-list drifting from the measurement: even
+if a candidate (or a migration default) lists a vendor, it is only released
+unattended when the MEASURED tier says no human step is needed. The list can
+narrow the measurement; it can never widen it.
+```
+
+## s111
+
+`supabase/functions/_shared/apply-release.ts`, NO CAPTCHA IS NOT AN ... Above: `if (!isSendableVendor(src)) {`
+
+```text
+NO CAPTCHA IS NOT AN ADAPTER. The tier above answers "is there a CAPTCHA
+in the way"; whether the worker can reach a submit on this vendor at all
+is SENDABLE_VENDORS (the mirror of the worker's adapters). Oracle is
+`auto` above and has no submit path, so releasing it handed the worker a
+packet it could only refuse — a release that read as "on its way".
+```
+
+## s112
+
+`supabase/functions/_shared/apply-release.ts`, An unknown fit is not ... Above: `if (i.fitPct === null || !Number.isFinite(i.fitPct)) {`
+
+```text
+An unknown fit is not a low fit, and it is not a high one either. Sending on
+"we could not tell" is how an agent ends up applying to things its owner
+would be embarrassed by.
+```
+
+## s113
+
+`supabase/functions/_shared/apply-release.ts`, THE ON-RAMP. The first few ... Above: `const hold = Number(i.holdFirstN ?? 0);`
+
+```text
+THE ON-RAMP. The first few auto-mode releases are held for approval even
+though everything else passed — the packet is good, and that is exactly why
+it is a fair one to show somebody before it goes out unattended.
+
+Placed AFTER the substantive checks on purpose: a candidate on their first
+day should be shown a packet that would really have been sent, not one that
+would have been refused for fit or vendor anyway. Otherwise the on-ramp
+teaches them about the wrong thing.
+
+Fails OPEN on missing values, like every other guard here: a mandate row
+written before this column existed has holdFirstN undefined, and reading
+that as "hold everything" would silently stop a working agent.
+```
+
+## s114
+
+`supabase/functions/_shared/apply-release.ts`, Checked last so the reason ... Above: `if (i.sentToday >= i.dailyCap) {`
+
+```text
+Checked last so the reason a candidate sees is about THIS job where possible,
+and only about the cap when the job itself was otherwise sendable.
+```
+
+## s115
+
+`supabase/functions/_shared/apply-release.ts`, Count the release against the ... Above: `if (d.release) sent += 1;`
+
+```text
+Count the release against the cap IMMEDIATELY. Deciding a whole batch
+against the same starting count is how a cap of 5 sends 30 — every item
+sees "0 sent today" and every item passes.
+```
+
+## s116
+
+`supabase/functions/_shared/wake-sender.ts`, Ask whatever hosts the apply ... Above: `const TIMEOUT_MS = 4_000;`
+
+```text
+Ask whatever hosts the apply worker to start one.
+
+HOST-AGNOSTIC ON PURPOSE. This POSTs to whatever URL is in the
+`WORKER_START_URL` secret and does not care what is on the other end — a Fly
+Machines start call, a GitHub Actions workflow_dispatch, a Cloud Run job, a
+webhook on a home machine. Picking the host is a decision that has not been
+made, and hard-coding one provider here would make that decision by accident.
+
+WITH THE SECRET UNSET THIS IS A NO-OP, which is the state today: no worker
+exists, so there is nothing to wake, and every caller carries on unaffected.
+
+FAILURE IS ALWAYS SILENT TO THE CALLER. Waking a sender is an optimisation on
+top of a system that already works without it — packets sit as `ready` and
+drain whenever a worker next appears. A wake that throws must never fail the
+release path that called it, because then a broken webhook would stop
+applications being PREPARED, which is strictly worse than them being prepared
+and waiting.
+```
+
+## s117
+
+`supabase/functions/_shared/wake-sender.ts`, What to POST. `WORKER_START_BODY` verbat ... Above: `function bodyFor(): string {`
+
+```text
+What to POST. `WORKER_START_BODY` verbatim when set, otherwise a readable
+reason for hosts that do not care.
+
+Invalid JSON in the secret falls back to the default rather than throwing:
+a typo in a wake payload must not take down the path that PREPARES
+applications, which would turn a cosmetic misconfiguration into customers
+getting nothing at all.
+```
+
+## s118
+
+`supabase/functions/_shared/wake-sender.ts`, @param needed Whether there is ... Above: `export async function wakeSender(needed: boolean): Promise<WakeResult> {`
+
+```text
+@param needed  Whether there is actually paid work waiting. Passing false is
+               not an error — it records that we deliberately did not wake,
+               which is what makes "0 sent" readable later.
+```
+
+## s119
+
+`supabase/functions/_shared/wake-sender.ts`, Most start APIs (Fly, GitHub) ... Above: `...(token ? { Authorization: 'Bearer ${token}' } : {}),`
+
+```text
+Most start APIs (Fly, GitHub) authenticate with a bearer token. Sent
+only when one is configured, so a plain unauthenticated webhook works
+too without receiving a stray Authorization header.
+```
+
+## s120
+
+`supabase/functions/_shared/wake-sender.ts`, The body the HOST needs, ... Above: `body: bodyFor(),`
+
+```text
+The body the HOST needs, not the body we would like to send.
+
+GitHub's workflow_dispatch endpoint REQUIRES a `ref` and rejects
+anything without one with 422 — so the human-readable reason below,
+which is the useful default for a plain webhook, silently fails against
+the host we actually use. Configurable rather than special-cased,
+because hard-coding GitHub's shape here would undo the point of this
+module being host-agnostic.
+```
+
+## s121
+
+`supabase/functions/_shared/wake-sender.ts`, IS THE WAKE EVEN CONFIGURED ... Above: `export type WakeConfig = {`
+
+```text
+IS THE WAKE EVEN CONFIGURED — answerable without there being work to wake for.
+
+`wakeSender` short-circuits on `needed === false` and never reads
+WORKER_START_URL, so with an empty queue the whole configuration is
+unobservable. That is precisely backwards: the only moment it reports
+"no-url" is the moment a paying customer's packets are already sitting
+unsent, which is the silent-gate shape this codebase keeps having to fix.
+
+The distinction matters because the wake is what makes sending feel instant.
+Without it the Actions cron is the only path, and that is a ~6 hour worst
+case whenever the other host is asleep.
+
+BOOLEANS AND A SHAPE, NEVER THE VALUES. A URL would name the host and a token
+is a credential; neither belongs in a response the board serves to anyone.
+`body` is reported because of a documented trap rather than for completeness:
+GitHub's dispatch endpoint rejects a payload without `ref` with a 422, and
+wake-sender's default body is a human-readable reason GitHub will not accept.
+So a GitHub host with `body: "default"` is misconfigured in a way that only
+shows up as a failed wake.
+```

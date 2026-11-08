@@ -29,10 +29,12 @@ describe("the seo-connect reservation", () => {
   it("lists every verify section either branch added", () => {
     expect(r.verifySections).toEqual(expect.arrayContaining(["98-seo-r2.sh", "98-seo-speed.sh", "99zzzz-ca3-apply.sh", "99zzzz-ca3-search.sh"]));
   });
-  it("names the two functions the connect track builds, and no fe function", () => {
+  it("names the two functions the connect track builds, and the fe track's two comment-only builds", () => {
     expect(r.fnBuildDate).toMatch(/agent-mcp at 2026-11-08\.1/);
     expect(r.fnBuildDate).toMatch(/public-api at 2026-11-08\.1/);
-    expect(r.fnBuildDate).toMatch(/the fe track changes no edge function/);
+    // The fe track's only builds move comments out of _shared for the job-board upload tally.
+    expect(r.fnBuildDate).toMatch(/agent-runner and apply-agent at 2026-11-08\.1 on fix\/seo-connect-fe, comment-only/);
+    expect(r.fnBuildDate).toMatch(/the fe track changes no other edge function/);
   });
   it("names the fe track's one migration here and in the next free range", () => {
     expect(r.migrations).toMatch(/20261108100000/);

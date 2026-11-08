@@ -14,7 +14,7 @@
  * scoring-rate table.
  */
 import { describe, expect, it } from "vitest";
-import { computeImpactAnalysis, raceCategory, sexCategory } from "../../supabase/functions/_shared/impact-ratio";
+import { computeImpactAnalysis, raceCategory, sexCategory } from "@/lib/impact-ratio";
 
 const people = (n: number, f: (i: number) => Record<string, unknown>) => Array.from({ length: n }, (_, i) => f(i));
 /** A group by name, whatever its case. */
