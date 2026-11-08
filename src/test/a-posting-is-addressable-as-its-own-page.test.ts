@@ -174,7 +174,7 @@ describe("the route and the generator agree about where a posting lives", () => 
     // actually holds. A guard that reads an identifier which is null on every
     // response is this repository's documented failure mode, so the loop must
     // not reference one.
-    const block = GEN.slice(GEN.indexOf("const pool = []"), GEN.indexOf("const fresh = []"));
+    const block = GEN.slice(GEN.indexOf("const pool = []"), GEN.indexOf("const freshOrder = freshPoolOrder("));
     expect(block.length, "the pool loop moved — re-point this guard").toBeGreaterThan(200);
     expect(block, "the pool loop reads a cursor the board does not return for this sort")
       .not.toMatch(/cursor/i);

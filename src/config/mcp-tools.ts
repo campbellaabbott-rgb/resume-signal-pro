@@ -287,6 +287,15 @@ export const MCP_MINT_PATH = "/data-api";
 export const MCP_TEST_QUERY = "nurse";
 /** The public install repository (mirrors this file's hosts by id). */
 export const MCP_INSTALL_REPO_URL = "https://github.com/campbellaabbott-rgb/resumebooster-mcp";
+/** The server's name in the official MCP registry. */
+export const MCP_REGISTRY_SERVER_NAME = "work.resumebooster/jobs";
+/**
+ * The registry's own page for this server: its latest version's entry, the
+ * name's slash encoded as the registry's API spells it (GEO-1107-07; it
+ * answered 200 on 2026-11-07). The software's sameAs names this, never a
+ * search over the registry.
+ */
+export const MCP_REGISTRY_ENTRY_URL = `https://registry.modelcontextprotocol.io/v0/servers/${encodeURIComponent(MCP_REGISTRY_SERVER_NAME)}/versions/latest`;
 /**
  * The one sentence printed wherever the address is pasted. The Supabase URL
  * is the canonical and ONLY address: a redirect drops the Authorization

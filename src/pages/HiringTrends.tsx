@@ -134,6 +134,7 @@ export default function HiringTrends() {
         title="Weekly Hiring Trends — how many jobs were really posted this week?"
         description="Live weekly hiring data from companies' official job boards: new postings per week, which fields are hiring, entry-level and remote counts, and how many postings came down — no estimates, no surveys."
         path="/hiring-trends"
+        preferBakedHead
       />
       <Header />
       <main className="max-w-4xl mx-auto px-4 py-10">

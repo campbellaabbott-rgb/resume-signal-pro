@@ -65,7 +65,7 @@ function fixtureLeaks({ sitemapXml, ledger, oncePublished }: { sitemapXml: strin
 }
 
 const seed = (name: string) => read(`scripts/seo-seed/${name}`).split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")).map(norm);
-const ONCE_PUBLISHED = new Set([...seed("published-posting-paths.txt"), ...seed("published-company-paths.txt")]);
+const ONCE_PUBLISHED = new Set([...seed("published-posting-paths.txt"), ...seed("published-company-paths.txt"), ...seed("seen-in-search-indexes.txt")]);
 const SITEMAP = read("public/sitemap.xml");
 const LEDGER = JSON.parse(read("public/prerender-ledger.json")) as Ledger;
 

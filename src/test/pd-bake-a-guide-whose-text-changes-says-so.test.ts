@@ -22,7 +22,7 @@ const RECORDED: Record<string, { hash: string; updated: string }> = {
   "resume-keywords-guide": { hash: "3eeb80151ceb3f02", updated: "2026-07-06" },
   "career-change-resume": { hash: "4178157bbd57fede", updated: "2026-10-24" },
   "resume-format-that-survives-ats": { hash: "f9f66986ed7052f9", updated: "2026-07-06" },
-  "freelance-work-on-resume": { hash: "dbae4d71719595c0", updated: "2026-10-25" },
+  "freelance-work-on-resume": { hash: "a5df0a57dff60bd1", updated: "2026-11-08" },
   "fractional-roles-on-resume": { hash: "62407ede51011398", updated: "2026-10-25" },
   "what-resume-score-means": { hash: "3b87cd6327e2fd30", updated: "2026-10-10" },
   "how-the-apply-agent-works": { hash: "7e56d79719e472dd", updated: "2026-10-25" },

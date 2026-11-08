@@ -182,7 +182,14 @@
       "methodology": "Methodologie",
       "dataApi": "Wervingsdata en API",
       "agents": "Verbind je agent",
-      "payTransparency": "Salaristransparantie-index"
+      "payTransparency": "Salaristransparantie-index",
+      "ghostJobIndex": "Spookvacature-index",
+      "hiringTrends": "Wekelijkse wervingstrends",
+      "entryLevelIndex": "Starters-index",
+      "atsBenchmarks": "ATS-scorebenchmarks",
+      "cvStandards": "Cv-normen per land",
+      "affiliates": "Partnerprogramma",
+      "about": "Over ons"
     }
   },
   "howItWorks": {
@@ -5462,7 +5469,15 @@
     "layoffReasonEvents": "minder dan {{minEvents}} van die vacatures zagen we verwijderd of opnieuw geplaatst worden, dus er is niets om een aandeel tegen af te meten",
     "layoffReasonFills": "minder dan {{minFills}} van die vacatures zagen we definitief verwijderd worden, en het aandeel dat deze zin zou afdrukken is een verwijderingsaandeel",
     "layoffReasonRelists": "we zagen meer van die vacatures opnieuw geplaatst worden dan definitief verwijderd, dus het verwijderingsaandeel zou op de kleinere helft van wat we zagen rusten",
-    "layoffReasonPrecision": "het interval is meer dan {{maxRel}}% zo breed als het aandeel vacatures dat het als verwijderd opgeeft, en legt dat aandeel dus niet vast"
+    "layoffReasonPrecision": "het interval is meer dan {{maxRel}}% zo breed als het aandeel vacatures dat het als verwijderd opgeeft, en legt dat aandeel dus niet vast",
+    "seoTitle": "Resume Booster Spookvacature-index: hoeveel zijn er echt?",
+    "seoDescription": "De live meting van Resume Booster van hoe vers vacatures zijn: open vacatures, leeftijd volgens de werkgeversdatum en weggehaalde, niet herplaatste vacatures.",
+    "fillTerm": "Hoe vaak vacatures worden weggehaald en niet opnieuw geplaatst",
+    "fillCurveTitle": "Hoe vaak vacatures worden weggehaald en niet opnieuw geplaatst, per vakgebied",
+    "fillMethod": "Het aandeel van de vacatures in een vakgebied dat definitief is weggehaald — weggehaald en niet opnieuw geplaatst onder dezelfde titel — binnen 14 dagen na de datum die het bedrijf zelf publiceerde, nooit onze ontdekkingsdatum en nooit een mediaan. Een verwijdering noemen we nooit een aanname: een aanname, een teruggetrokken vacature en een geschrapte functie zien er in een feed hetzelfde uit. Vacatures die terugkomen tellen als herplaatsingen en staan apart; samen vormen ze het aandeel dat het bord überhaupt verliet, dus het aandeel dat definitief is weggehaald is altijd het kleinere getal. Vroeger publiceerden we een mediane tijd tot sluiting met het venster ernaast; het venster was het probleem. Het bord laat elke vacature ouder dan 30 dagen vallen, dus een vacature die langer online blijft verlaat het bord in plaats van als gesloten te worden geregistreerd, en elk zo'n getal eiste dan ook dat een vacature een week had gestaan voordat hij meetelde. Een mediaan uit een venster van [7, 30] dagen komt rond 15 uit, wat werkgevers ook doen — gemeten op 2026-09-06 kwamen achttien vakgebieden, van verpleging tot recht, detailhandel en ML-onderzoek, tot op 1,4 dag overeen over zo'n 600.000 sluitingen. Vacatures die de grens overleven, en vacatures die vandaag nog online staan, tellen nu als onvoltooid in plaats van uit de steekproef te vallen, en dat is precies wat dat getal fout deed: de traagste gevallen weglaten en de mediaan van de rest nemen is geen censurering maar truncatie, en het trekt het antwoord onbegrensd omlaag. Herplaatsingen onder dezelfde titel worden als eigen uitkomst apart gehouden en niet als definitief weggehaald geteld. Het 14-dagengetal bundelt alleen vacatures van borden die we tot het einde lezen, geplaatst nadat we elk bord begonnen te volgen: een bord dat we maar deels kunnen lezen ziet de meeste van zijn verwijderingen niet, en zijn vacatures zouden meetellen als vacatures die nooit zijn weggehaald. Waar op dag 30 minder dan de helft van de vacatures in een vakgebied definitief was weggehaald, is er geen typisch getal te geven, en dat zeggen we in plaats van er een te verzinnen.",
+    "closureRecordYoung": "We registreren een verwijdering wanneer een latere lezing van de feed van de werkgever de vacature niet meer vindt; een verwijdering noemen we nooit een aanname. We houden dat register pas sinds kort bij, dus het vult zich de komende weken. We laten het liever eerlijk zien dan dat we een geschiedenis faken.",
+    "methodRemoval": "Haalt een bedrijf een vacature weg, dan verdwijnt die van dit bord zodra een latere lezing van de feed van dat bedrijf hem niet meer vindt, en we registreren de verwijdering: de verwijderingscijfers op deze pagina zijn op dat register gebouwd, en een verwijdering noemen we nooit een aanname.",
+    "methodRecheck": "Wie op het live bord een vacature opent waarvan we de feed meer dan {{hours}} uur geleden voor het laatst lazen, laat ons het systeem van de werkgever opnieuw raadplegen, waar dat systeem dat toestaat."
   },
   "agentPass": {
     "checkingSignIn": "Aanmelding controleren…",

@@ -1,8 +1,8 @@
 {
   "home": {
     "seo": {
-      "title": "Live Jobs Straight From Employers' Own Hiring Systems",
-      "description": "Search live jobs read from employers' own hiring systems and USAJOBS, then apply on the employer's site. Free, and searching needs no account."
+      "title": "Resume Booster — Live Jobs Straight From Employers",
+      "description": "Resume Booster is a free job board of live jobs read from employers' own hiring systems and USAJOBS. Apply on the employer's site; searching needs no account."
     },
     "hero": {
       "title": "Live jobs, straight from employers' own hiring systems.",
@@ -35,7 +35,10 @@
       "total_one": "{{formatted}} open posting in all",
       "total_other": "{{formatted}} open postings in all",
       "seeAll": "See all postings",
-      "applyNote": "You apply on the employer's own site."
+      "applyNote": "You apply on the employer's own site.",
+      "bakedNote": "Posted in the last {{days}} days by the employer's own date, each with a page of its own here; checked against the board on {{date}}.",
+      "bakedPosted": "posted {{date}}, as stated by the employer",
+      "dataLead": "The board's own measurements, each dated by its data:"
     },
     "rail": {
       "title": "The board today",

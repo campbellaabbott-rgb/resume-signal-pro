@@ -512,6 +512,7 @@ export default function AgentConnect() {
         title="Connect Claude or ChatGPT — Search Jobs and Apply Yourself"
         description={`Search ${countClause} from Claude or ChatGPT, free, and apply yourself on the employer's own site with your AI's help.`}
         path="/agents"
+        preferBakedHead
       />
       <Header />
 

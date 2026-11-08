@@ -126,6 +126,7 @@ export default function EntryLevelIndex() {
         title="The Entry-Level Index — who's actually hiring entry-level right now?"
         description={`A live ranking of companies with real entry-level openings — junior, graduate, and early-career roles counted from companies' official job boards, refreshed all day: ${t("boardSource.tailNoOld")}.`}
         path="/entry-level-index"
+        preferBakedHead
       />
       <Header />
       <main className="max-w-4xl mx-auto px-4 py-10">

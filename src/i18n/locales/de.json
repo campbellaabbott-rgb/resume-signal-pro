@@ -182,7 +182,14 @@
       "methodology": "Methodik",
       "dataApi": "Einstellungsdaten & API",
       "agents": "Deinen Agenten verbinden",
-      "payTransparency": "Gehaltstransparenz-Index"
+      "payTransparency": "Gehaltstransparenz-Index",
+      "ghostJobIndex": "Ghost-Job-Index",
+      "hiringTrends": "Wöchentliche Einstellungstrends",
+      "entryLevelIndex": "Einstiegs-Index",
+      "atsBenchmarks": "ATS-Score-Vergleichswerte",
+      "cvStandards": "Lebenslauf-Standards nach Land",
+      "affiliates": "Partnerprogramm",
+      "about": "Über uns"
     }
   },
   "howItWorks": {
@@ -5462,7 +5469,15 @@
     "layoffReasonEvents": "weniger als {{minEvents}} dieser Stellen haben wir entfernt oder neu ausgeschrieben gesehen, es gibt also nichts, woran ein Anteil gemessen werden könnte",
     "layoffReasonFills": "weniger als {{minFills}} dieser Stellen haben wir endgültig entfernt gesehen, und der Anteil, den dieser Satz drucken würde, ist ein Entfernungsanteil",
     "layoffReasonRelists": "mehr dieser Stellen haben wir neu ausgeschrieben als endgültig entfernt gesehen, der Entfernungsanteil würde also auf der kleineren Hälfte des Gesehenen ruhen",
-    "layoffReasonPrecision": "das Intervall ist mehr als {{maxRel}}% so breit wie der Anteil der Stellen, die es als entfernt ausweist, und legt diesen Anteil damit nicht fest"
+    "layoffReasonPrecision": "das Intervall ist mehr als {{maxRel}}% so breit wie der Anteil der Stellen, die es als entfernt ausweist, und legt diesen Anteil damit nicht fest",
+    "seoTitle": "Resume Booster Ghost-Job-Index: Wie viele Stellen sind echt?",
+    "seoDescription": "Resume Booster misst live, wie aktuell Stellenanzeigen sind: offene Stellen, Alter nach Arbeitgeberdatum und entfernte, nicht neu ausgeschriebene Stellen.",
+    "fillTerm": "Wie oft Stellen entfernt und nicht neu ausgeschrieben werden",
+    "fillCurveTitle": "Wie oft Stellen entfernt und nicht neu ausgeschrieben werden, nach Bereich",
+    "fillMethod": "Der Anteil der Stellen eines Bereichs, die endgültig entfernt wurden — entfernt und nicht unter demselben Titel neu ausgeschrieben — innerhalb von 14 Tagen nach dem Datum, das das Unternehmen selbst veröffentlicht hat, nie nach unserem Fund-Datum und nie als Median. Eine Entfernung nennen wir nie eine Einstellung: Eine Einstellung, ein Rückzug und eine gestrichene Stelle sehen in einem Feed gleich aus. Stellen, die wieder erscheinen, zählen als Neuausschreibungen und werden getrennt gezeigt; beide zusammen sind der Anteil, der das Board überhaupt verlassen hat, daher ist der Anteil der endgültig entfernten Stellen immer die kleinere Zahl. Früher haben wir eine mediane Zeit bis zur Schließung veröffentlicht und ihr Fenster daneben genannt; das Fenster war das Problem. Das Board entfernt jede Anzeige, die älter als 30 Tage ist, sodass eine länger offene Stelle das Board verlässt, statt als geschlossen erfasst zu werden, und jede solche Zahl verlangte dann, dass eine Anzeige eine Woche gestanden hatte, bevor sie überhaupt zählte. Ein Median aus einem Fenster von [7, 30] Tagen landet bei etwa 15, egal was Arbeitgeber tun — gemessen am 2026-09-06 stimmten achtzehn Bereiche von Pflege über Recht und Einzelhandel bis zur ML-Forschung über rund 600.000 Schließungen auf 1,4 Tage genau überein. Stellen, die die Grenze überdauern, und Stellen, die heute noch online sind, zählen jetzt als unabgeschlossen, statt aus der Stichprobe zu fallen — genau das hatte jene Zahl falsch gemacht: Die langsamsten Fälle wegzulassen und vom Rest den Median zu nehmen, ist keine Zensierung, sondern Trunkierung, und es verzerrt das Ergebnis unbegrenzt nach unten. Neuausschreibungen unter demselben Titel werden als eigenes Ergebnis geführt und nicht als endgültig entfernt gezählt. Die 14-Tage-Zahl umfasst nur Stellen auf Boards, die wir bis zum Ende lesen, und nur solche, die nach Beginn unserer Beobachtung des jeweiligen Boards veröffentlicht wurden: Ein Board, das wir nur in Teilen lesen können, sieht die meisten seiner Entfernungen nicht, und seine Stellen kämen als Stellen in die Auswertung, die nie entfernt wurden. Wo bis Tag 30 weniger als die Hälfte der Stellen eines Bereichs endgültig entfernt war, gibt es keinen typischen Wert, und wir sagen das, statt einen zu erfinden.",
+    "closureRecordYoung": "Wir verbuchen eine Entfernung, wenn ein späteres Lesen des Feeds des Arbeitgebers die Anzeige nicht mehr findet; eine Entfernung nennen wir nie eine Einstellung. Diese Aufzeichnung führen wir erst seit Kurzem, daher füllt sie sich in den kommenden Wochen. Wir zeigen das lieber ehrlich, als eine Historie vorzutäuschen.",
+    "methodRemoval": "Entfernt ein Unternehmen eine Stelle, verlässt sie dieses Board, sobald ein späteres Lesen des Feeds dieses Unternehmens sie nicht mehr findet, und wir verbuchen die Entfernung: Die Entfernungszahlen auf dieser Seite beruhen auf diesem Protokoll, und eine Entfernung nennen wir nie eine Einstellung.",
+    "methodRecheck": "Wer auf dem Live-Board eine Anzeige öffnet, deren Feed wir zuletzt vor mehr als {{hours}} Stunden gelesen haben, löst eine neue Abfrage beim System des Arbeitgebers aus, sofern dieses System das zulässt."
   },
   "agentPass": {
     "checkingSignIn": "Anmeldung wird geprüft…",

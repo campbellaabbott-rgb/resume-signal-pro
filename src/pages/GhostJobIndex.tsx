@@ -26,6 +26,7 @@ import { FILL_RATE_MIN_TRACKING_DAYS } from "@/pages/Jobs";
 // that serves nineteen. Both now read the one array, which also drops the
 // source that serves no rows. See src/config/ats-vendors.ts.
 import { SERVING_SOURCE_LIST, servingSourceSummary } from "@/config/ats-vendors";
+import { VERIFY_ON_VIEW_AFTER_HOURS } from "@/lib/seo/source-copy";
 // closed_90d counts 90 days; observed_days is the age of a ledger that is no
 // longer pruned. The days the count covers are defined once, beside the
 // ceiling /hiring-trends divides by the same span.
@@ -1004,10 +1005,14 @@ export default function GhostJobIndex() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* The baked head is kept for a reader of the bake's language: its
+          description is the dated figure line (GEO-1107-04). These words are
+          the head of an SPA visit and of every other language. */}
       <SEO
-        title="The Ghost Job Index — how many job postings are actually real?"
-        description={`A live, honest look at job-posting freshness: how many roles are open right now, how many employers have one, how long postings stay open, and which employers actually fill roles — computed from postings each ${t("boardSource.notCopied")}.`}
+        title={t("ghostIndex.seoTitle")}
+        description={t("ghostIndex.seoDescription")}
         path="/ghost-job-index"
+        preferBakedHead
       />
       <Header />
       {/* pt-24, NOT py-10: the header is a fixed h-16 bar that emits no spacer,
@@ -1019,7 +1024,7 @@ export default function GhostJobIndex() {
       <main id="main-content" tabIndex={-1} className="max-w-4xl mx-auto px-4 pt-24 pb-10 focus:outline-none">
         <div className="flex items-center gap-2 mb-2">
           <Activity className="w-6 h-6 text-primary" />
-          <h1 className="text-3xl md:text-4xl font-bold">The Ghost Job Index</h1>
+          <h1 className="text-3xl md:text-4xl font-bold">Resume Booster Ghost Job Index</h1>
         </div>
         <p className="text-muted-foreground mb-1">
           Ghost jobs — postings that are stale, already filled, or never real — waste job seekers' time everywhere.
@@ -1231,7 +1236,7 @@ export default function GhostJobIndex() {
             { term: "Open roles", method: `A live count of postings currently served from companies' official hiring systems (${servingSourceSummary()}) — each ${t("boardSource.notCopied")}. Postings a feed stops serving are removed after a confirmation pass.` },
             { term: "30-day freshness cap", method: "Postings whose company-stated date is older than 30 days are dropped at ingestion AND filtered at read time — the board cannot serve a stale posting even mid-sweep. Undated postings can't be judged old, so they're kept and simply show no age. Past the cap a posting is deleted, not watched, so nothing on this page says how long postings stay up beyond it. What can be measured is how many reach it: for each field, the share of dated roles from a stated posting window that were still advertised when they reached day 30, with its interval, and beside it the share taken down for good (a ceiling: a takedown we have not yet seen re-listed counts there) and the share re-listed (a floor). The three sum to one before each is rounded to the nearest point, so the printed figures can add to one more or less than a hundred. The pool that line is computed over is narrower than the table above it, in two steps, and the line says how much of the field survived both. First, it is counted only on boards we read to the end — on a board we can only read part of, a takedown is invisible and every posting would seem to reach the cap. Second: of those boards, only the ones that logged at least five takedowns, in any field, in the 90 days before the cohort began. The rule reads evidence from before the cohort and never the cohort's own events: a board that can show us nothing would yield a share of one by construction rather than by measurement, and admitting a board because its own roles came down during the cohort selected on the outcome (on 753 sampled full-read boards the boards that rule left out read 0.892 still up at day 30 against 0.435 for those it kept). A board first watched too recently to have that history waits until it has it, and the line says how many company job boards it is pooled over. What it cannot fix is weighting: the share is an average over the roles that remain, so one very large board with only a handful of events of its own still pulls it, and where the row tells us so we print how much of the figure sits on a single company's board. Fields with no line are named above the table, each with the term that withheld it, and never with a zero. A role still advertised at day 30 is a fact about that posting, not proof of anything about the employer: a role can be genuinely open for longer than a month." },
             { term: "Median posting age", method: "Computed only from postings whose company states its own post date (the coverage share is shown next to the number). Undated postings are excluded from age stats, never estimated. We never use our own discovery time as a posting age." },
-            { term: "How often roles are actually filled", method: "The share of a field's roles taken down for good — down, and not re-listed under the same title — within 14 days of the date the company itself published, never our discovery date, and never a median. Roles that come back up are counted as re-listings and shown separately; the two together are the share that left the board at all, so the fill figure is always the smaller number. We used to publish a median time to close and state its window beside it; the window was the problem. The board drops any posting older than 30 days, so a role that stays up longer leaves the board instead of being recorded as closed, and every fill surface then required a posting to have stood a week before it counted at all. A median drawn from a window of [7, 30] days lands near 15 whatever employers do — measured 2026-09-06, eighteen fields spanning nursing, law, retail and ML research agreed to within 1.4 days across roughly 600,000 closures. Roles that outlive the cap, and roles still up today, are now counted as unfinished rather than dropped from the sample, which is what that figure got wrong: dropping the slowest cases and taking a median of the rest is not censoring, it is truncation, and it biases the answer down without bound. Same-title relistings are held out as their own outcome, not counted as fills. The 14-day figure pools only roles on boards we read to the end, posted after we began watching each board: a board we can read only a part at a time cannot see most of its takedowns, and its roles entered the pool as roles that never came down. Where fewer than half of a field's roles had been taken down for good by day 30 there is no typical figure to give and we say so instead of manufacturing one." },
+            { term: t("ghostIndex.fillTerm"), method: t("ghostIndex.fillMethod") },
             { term: "Confirmed-live accuracy", method: "Every day we draw ~100 served postings and re-check each at the company's own system. Draws are spread evenly across hiring systems rather than taken at random from the corpus, so a small vendor is checked as hard as a large one — which also means the blended figure weights systems equally, not by how many postings each contributes. Per-vendor results are published unedited alongside it, including runs that fail or miss a system. The percentage is a share of the probes that DECIDED, and the count it was computed on is printed beside it: a probe we could not reach, and a probe on a feed larger than one read of ours, both leave the denominator instead of being scored either way. That exclusion is not a rounding detail — around a tenth of our boards page short of the vendor's own advertised total, and on those a posting's absence from our read is evidence about our page cap, not about the employer. Saying 'we could not decide' is the only honest answer there, and it is why this figure is published with its own basis attached." },
             { term: "Re-verification freshness", method: "Every board carries a verification stamp from the refresh loop; the median and 95th-percentile ages shown are computed from those stamps at page load — a measurement, not a promise." },
           ]}
@@ -1295,11 +1300,7 @@ export default function GhostJobIndex() {
                   give, and we say that instead of manufacturing one. */}
             </p>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              We log every posting the moment a company takes it down — the only way to know which employers truly
-              hire versus perpetually collect applications. We started keeping that record recently, so this fills in
-              over the coming weeks. We'd rather show it honestly than fake a history.
-            </p>
+            <p className="text-sm text-muted-foreground">{t("ghostIndex.closureRecordYoung")}</p>
           )}
         </div>
 
@@ -1460,7 +1461,7 @@ export default function GhostJobIndex() {
         {shownCurve.length > 0 && (
           <div className="mb-8">
             <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
-              <Briefcase className="w-4 h-4 text-primary" /> How often roles are actually filled, by field
+              <Briefcase className="w-4 h-4 text-primary" /> {t("ghostIndex.fillCurveTitle")}
             </h2>
             {/* THE CURVE'S OWN DATE. These rows come off the hourly cache with
                 the stamp of the run that computed THEM, which on a carried run
@@ -1666,7 +1667,7 @@ export default function GhostJobIndex() {
         {(fillCurveStatus === "absent" || fillCurveStatus === "unreadable") && (
           <div className="mb-8">
             <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
-              <Briefcase className="w-4 h-4 text-primary" /> How often roles are actually filled, by field
+              <Briefcase className="w-4 h-4 text-primary" /> {t("ghostIndex.fillCurveTitle")}
             </h2>
             <p className="text-sm text-muted-foreground">
               {fillCurveStatus === "absent"
@@ -1690,8 +1691,8 @@ export default function GhostJobIndex() {
           <ul className="text-[13px] text-muted-foreground space-y-1.5">
             <li>· {t("boardSource.sentence")}</li>
             <li>· Any role whose <em>stated</em> posting date passes 30 days is automatically dropped, so dated ghost/pipeline postings other boards leave up for months never appear. Postings whose company publishes no date cannot be judged old — those we keep, and they show no age rather than a guessed one.</li>
-            <li>· When a company removes a role, it disappears here within one refresh cycle — and we log the closure, which is how the "actually fills roles" figures are built.</li>
-            <li>· Every posting is re-checked live the moment you click Apply.</li>
+            <li>· {t("ghostIndex.methodRemoval")}</li>
+            <li>· {t("ghostIndex.methodRecheck", { hours: VERIFY_ON_VIEW_AFTER_HOURS })}</li>
           </ul>
           {/* Date-provenance table: which hiring systems state their own post
               dates, measured live from the corpus. Undated postings never show

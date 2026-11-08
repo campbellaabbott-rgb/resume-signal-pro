@@ -182,7 +182,14 @@
       "methodology": "Metodología",
       "dataApi": "Datos de contratación y API",
       "agents": "Conecta tu agente",
-      "payTransparency": "Índice de transparencia salarial"
+      "payTransparency": "Índice de transparencia salarial",
+      "ghostJobIndex": "Índice de empleos fantasma",
+      "hiringTrends": "Tendencias semanales de contratación",
+      "entryLevelIndex": "Índice de empleos de nivel inicial",
+      "atsBenchmarks": "Referencias de puntuación ATS",
+      "cvStandards": "Normas de currículum por país",
+      "affiliates": "Afiliados",
+      "about": "Acerca de"
     }
   },
   "howItWorks": {
@@ -5508,7 +5515,15 @@
     "layoffReasonEvents": "vimos retirarse o volver a publicarse menos de {{minEvents}} de esas vacantes, así que no hay nada contra lo que medir una proporción",
     "layoffReasonFills": "vimos retirarse definitivamente menos de {{minFills}} de esas vacantes, y la proporción que esta frase imprimiría es una proporción de retiradas",
     "layoffReasonRelists": "vimos volver a publicarse más de esas vacantes que retirarse definitivamente, así que la proporción de retiradas se apoyaría en la mitad más pequeña de lo que vimos",
-    "layoffReasonPrecision": "el intervalo es más de un {{maxRel}}% tan ancho como la proporción de vacantes que dice retiradas, así que no fija esa proporción"
+    "layoffReasonPrecision": "el intervalo es más de un {{maxRel}}% tan ancho como la proporción de vacantes que dice retiradas, así que no fija esa proporción",
+    "seoTitle": "Índice de empleos fantasma de Resume Booster: ¿son reales?",
+    "seoDescription": "Medida en vivo de Resume Booster de la frescura de las ofertas: abiertas, antigüedad según la fecha del empleador y retiradas sin republicar.",
+    "fillTerm": "Con qué frecuencia se retiran ofertas sin republicarlas",
+    "fillCurveTitle": "Con qué frecuencia se retiran ofertas sin republicarlas, por campo",
+    "fillMethod": "La proporción de las ofertas de un campo retiradas definitivamente — retiradas y no republicadas con el mismo título — dentro de los 14 días posteriores a la fecha que publicó la propia empresa, nunca nuestra fecha de descubrimiento y nunca una mediana. Un retiro nunca se llama contratación: una contratación, una retirada y una vacante cancelada se ven igual desde un feed. Las ofertas que vuelven a aparecer cuentan como republicaciones y se muestran aparte; las dos juntas son la proporción que salió del tablón, así que la proporción retirada definitivamente siempre es el número menor. Antes publicábamos una mediana del tiempo hasta el cierre con su ventana al lado; la ventana era el problema. El tablón descarta cualquier oferta de más de 30 días, así que una oferta que sigue publicada más tiempo sale del tablón en lugar de registrarse como cerrada, y cada una de esas cifras exigía además que la oferta llevara una semana publicada antes de contar. Una mediana tomada de una ventana de [7, 30] días cae cerca de 15 hagan lo que hagan los empleadores — medido el 2026-09-06, dieciocho campos que van de la enfermería al derecho, el comercio minorista y la investigación en ML coincidieron con un margen de 1,4 días en unos 600.000 cierres. Las ofertas que superan el límite, y las que siguen publicadas hoy, ahora cuentan como no terminadas en lugar de quedar fuera de la muestra, que es lo que esa cifra hacía mal: descartar los casos más lentos y tomar la mediana del resto no es censura, es truncamiento, y sesga la respuesta hacia abajo sin límite. Las republicaciones con el mismo título se tratan como un resultado propio y no cuentan como retiradas definitivamente. La cifra de 14 días agrupa solo ofertas de tablones que leemos hasta el final, publicadas después de que empezáramos a seguir cada tablón: un tablón que solo podemos leer por partes no ve la mayoría de sus retiros, y sus ofertas entrarían como ofertas que nunca se retiraron. Donde menos de la mitad de las ofertas de un campo se habían retirado definitivamente al día 30 no hay una cifra típica que dar, y lo decimos en lugar de inventarla.",
+    "closureRecordYoung": "Registramos un retiro cuando una lectura posterior del feed del empleador ya no encuentra la oferta; un retiro nunca se llama contratación. Empezamos a llevar ese registro hace poco, así que se completará en las próximas semanas. Preferimos mostrarlo con honestidad antes que fingir un historial.",
+    "methodRemoval": "Cuando una empresa retira una oferta, esta sale del tablón cuando una lectura posterior del feed de esa empresa ya no la encuentra, y registramos el retiro: las cifras de retiros de esta página se construyen con ese registro, y un retiro nunca se llama contratación.",
+    "methodRecheck": "Abrir una oferta en el tablón en vivo vuelve a consultar el sistema del empleador cuando leímos el feed de esa oferta por última vez hace más de {{hours}} horas, si ese sistema lo permite."
   },
   "agentPass": {
     "checkingSignIn": "Comprobando la sesión…",

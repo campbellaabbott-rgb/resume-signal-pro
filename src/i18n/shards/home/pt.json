@@ -1,8 +1,8 @@
 {
   "home": {
     "seo": {
-      "title": "Vagas ao vivo, direto dos sistemas dos empregadores",
-      "description": "Busque vagas ao vivo lidas dos próprios sistemas de recrutamento dos empregadores e do USAJOBS e candidate-se no site do empregador. Grátis, e a busca não exige conta."
+      "title": "Resume Booster — vagas ao vivo, direto dos empregadores",
+      "description": "Resume Booster é um quadro de vagas gratuito com vagas ao vivo dos sistemas dos empregadores e do USAJOBS. Candidate-se no site deles; buscar não exige conta."
     },
     "hero": {
       "title": "Vagas ao vivo, direto dos próprios sistemas de recrutamento dos empregadores.",
@@ -37,7 +37,10 @@
       "total_many": "{{formatted}} vagas abertas no total",
       "total_other": "{{formatted}} vagas abertas no total",
       "seeAll": "Ver todas as vagas",
-      "applyNote": "Você se candidata no site do próprio empregador."
+      "applyNote": "Você se candidata no site do próprio empregador.",
+      "bakedNote": "Publicadas nos últimos {{days}} dias pela data do próprio empregador, cada uma com sua própria página aqui; conferidas com o quadro em {{date}}.",
+      "bakedPosted": "publicada em {{date}}, segundo o empregador",
+      "dataLead": "As medições do próprio quadro, cada uma datada pelos seus dados:"
     },
     "rail": {
       "title": "O quadro hoje",

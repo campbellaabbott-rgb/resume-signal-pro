@@ -385,10 +385,10 @@ export const GUIDES: Record<string, Guide> = {
     title: "How to Put Freelance Work on Your Resume (Upwork, Fiverr, Gigs)",
     h1: "How to put freelance work on your resume",
     description:
-      "The structure decision (one consolidated role vs. a projects section), the bullet formula that translates gigs into employer language, and what to do when a project has no metrics.",
+      "One consolidated role or a projects section, the bullet formula that turns gigs into employer language, and what to do when a project has no metrics.",
     tldr:
       "Freelance work belongs on your resume as real experience, structured by one decision: continuous freelancing with a coherent focus becomes ONE consolidated role ('Independent UX Consultant, 2021–present') with project bullets under it; scattered or part-time projects become a 'Selected Projects' section. Write every bullet as verb + deliverable + scope + outcome, translate platform language into employer language ('made websites' → 'designed and shipped responsive marketing sites'), and never paste platform stats like Job Success % — recruiters don't hire profiles, they hire experience.",
-    updated: "2026-10-25",
+    updated: "2026-11-08",
     published: "2026-07-07",
     minutes: 6,
     sections: [

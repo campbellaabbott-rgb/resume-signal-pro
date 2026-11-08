@@ -704,6 +704,61 @@ export function postingPoolWalksOn({ page, rows, selectable, freshBudget, budget
 }
 
 /**
+ * THE ORDER THE NEW-PAGE BUDGET TAKES ITS CANDIDATES IN (B04: LINK-07, F09).
+ *
+ * The budget went to the newest rows of the board, and only 71 of 491 live
+ * company pages shared a token with a posting page (2026-11-06): a company
+ * page listed its own openings as plain text because none of them had a page.
+ * Now the employers with a company page this bake writes come first, one
+ * candidate per employer per round, up to `perEmployer` each, and an employer
+ * with no carried posting page before one that has some. Each employer's
+ * candidates are its rows in the newest pool first, then its company page's
+ * cached openings (`cached`, ids only: their rows are read and judged after
+ * the detail read). Every other pool row follows, in the pool's own order.
+ * Nothing is added past the budget and no cap moves: this is only an order.
+ * Pure; a row or id appears once.
+ */
+export function freshPoolOrder({ pool, pageTokens, hasPage, carriedTokens = new Set(), cached = () => [], perEmployer = 3 }) {
+  const rows = Array.isArray(pool) ? pool.filter((r) => r && typeof r.id === "string") : [];
+  const tokenOf = (r) => (typeof r.token === "string" && r.token ? r.token : null);
+  const inPool = new Set(rows.map((r) => r.id));
+  const poolByToken = new Map();
+  for (const r of rows) {
+    const t = tokenOf(r);
+    if (!t) continue;
+    if (!poolByToken.has(t)) poolByToken.set(t, []);
+    poolByToken.get(t).push(r);
+  }
+  const tokens = [];
+  const seenTokens = new Set();
+  for (const t of [...(pageTokens ?? []), ...poolByToken.keys()]) {
+    if (typeof t !== "string" || !t || seenTokens.has(t) || !hasPage(t)) continue;
+    seenTokens.add(t);
+    tokens.push(t);
+  }
+  // No carried posting page first; the order within each half is kept.
+  const ordered = [...tokens.filter((t) => !carriedTokens.has(t)), ...tokens.filter((t) => carriedTokens.has(t))];
+  const queue = new Map(ordered.map((t) => {
+    const own = poolByToken.get(t) ?? [];
+    const fromCache = (cached(t) ?? [])
+      .filter((c) => c && typeof c.id === "string" && !inPool.has(c.id))
+      .map((c) => ({ id: c.id, token: t, cached: true }));
+    const ids = new Set();
+    return [t, [...own, ...fromCache].filter((c) => (ids.has(c.id) ? false : (ids.add(c.id), true))).slice(0, perEmployer)];
+  }));
+  const out = [];
+  const taken = new Set();
+  for (let round = 0; round < perEmployer; round++) {
+    for (const t of ordered) {
+      const c = queue.get(t)[round];
+      if (c && !taken.has(c.id)) { taken.add(c.id); out.push(c); }
+    }
+  }
+  for (const r of rows) if (!taken.has(r.id)) { taken.add(r.id); out.push(r); }
+  return out;
+}
+
+/**
  * HOW MANY NEW POSTING PAGES ONE BAKE MAY ADD (rule 3 of the bake's posting
  * block). The carried set has no cap: every URL the live site published is
  * re-checked and keeps its page while the posting lives (L13-36). The budget
@@ -779,17 +834,21 @@ export const FINGERPRINT_VERSION = 2;
  * whose text moved without its stated date moving still says it changed.
  * `fp` is this bake's fingerprint (version FINGERPRINT_VERSION); `legacyFp`
  * the old algorithm's, compared only against a ledger entry written before the
- * version existed, so the switch itself re-dates nothing.
+ * version existed, so the switch itself re-dates nothing. With `exact`, a
+ * stated date is the lastmod itself (a data page's measurement day).
  */
-export function pageDates({ fp, legacyFp, prior, today, stated = null }) {
+export function pageDates({ fp, legacyFp, prior, today, stated = null, exact = false }) {
   const p = prior && typeof prior === "object" ? prior : null;
   const same = !!p && (p.fpv === FINGERPRINT_VERSION ? p.fp === fp : p.fp === legacyFp);
   const priorChanged = p && typeof p.changed === "string" ? p.changed : p && typeof p.lastmod === "string" ? p.lastmod : null;
   const changed = same && priorChanged && priorChanged <= today ? priorChanged : today;
   const st = typeof stated === "string" && /^\d{4}-\d{2}-\d{2}/.test(stated) ? (stated.slice(0, 10) > today ? today : stated.slice(0, 10)) : null;
   // A stated page the ledger has never seen takes its stated date: the build
-  // day is not the day a guide changed.
-  const lastmod = st ? (!p ? st : (st > changed ? st : changed)) : changed;
+  // day is not the day a guide changed. An EXACT stated date (B09, DATE-09) is
+  // the day the page's figures were measured, the date its Dataset markup
+  // states: the sitemap says that day and no other, whatever the count-blind
+  // fingerprint did.
+  const lastmod = st ? (exact || !p ? st : (st > changed ? st : changed)) : changed;
   return { lastmod, changed: st && !p ? st : changed, fp, fpv: FINGERPRINT_VERSION };
 }
 

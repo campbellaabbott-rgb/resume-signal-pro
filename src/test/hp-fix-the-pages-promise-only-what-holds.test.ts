@@ -76,7 +76,8 @@ describe("one noun for a package", () => {
 describe("the \"/\" title", () => {
   it("is 60 characters or fewer in every language, and keeps the headline's words in English", () => {
     for (const l of LNGS) expect([...home(l).seo.title].length, `${l}: ${home(l).seo.title}`).toBeLessThanOrEqual(60);
-    expect(home("en").seo.title).toMatch(/Live Jobs Straight From Employers' Own Hiring Systems/);
+    // B03: the title leads with the name a search for it types.
+    expect(home("en").seo.title).toMatch(/^Resume Booster — Live Jobs Straight From Employers$/);
   });
 });
 

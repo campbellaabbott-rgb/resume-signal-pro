@@ -182,7 +182,14 @@
       "methodology": "Méthodologie",
       "dataApi": "Données de recrutement et API",
       "agents": "Connecter votre agent",
-      "payTransparency": "Indice de transparence salariale"
+      "payTransparency": "Indice de transparence salariale",
+      "ghostJobIndex": "Indice des offres fantômes",
+      "hiringTrends": "Tendances hebdomadaires du recrutement",
+      "entryLevelIndex": "Indice des postes débutants",
+      "atsBenchmarks": "Repères de score ATS",
+      "cvStandards": "Normes de CV par pays",
+      "affiliates": "Affiliation",
+      "about": "À propos"
     }
   },
   "howItWorks": {
@@ -5508,7 +5515,15 @@
     "layoffReasonEvents": "moins de {{minEvents}} de ces postes ont été vus retirés ou republiés, il n'y a donc rien à quoi mesurer une part",
     "layoffReasonFills": "moins de {{minFills}} de ces postes ont été vus retirés définitivement, et la part que cette phrase imprimerait est une part de retraits",
     "layoffReasonRelists": "plus de ces postes ont été vus republiés que retirés définitivement, la part de retraits reposerait donc sur la plus petite moitié de ce que nous avons vu",
-    "layoffReasonPrecision": "l'intervalle est plus de {{maxRel}}% aussi large que la part de postes qu'il dit retirés, il ne fixe donc pas cette part"
+    "layoffReasonPrecision": "l'intervalle est plus de {{maxRel}}% aussi large que la part de postes qu'il dit retirés, il ne fixe donc pas cette part",
+    "seoTitle": "Indice des offres fantômes Resume Booster : réelles ou non ?",
+    "seoDescription": "La mesure en direct de Resume Booster de la fraîcheur des offres : offres ouvertes, âge selon la date de l'employeur, et offres retirées sans republication.",
+    "fillTerm": "À quelle fréquence les offres sont retirées sans être republiées",
+    "fillCurveTitle": "À quelle fréquence les offres sont retirées sans être republiées, par domaine",
+    "fillMethod": "La part des offres d'un domaine retirées pour de bon — retirées, et non republiées sous le même intitulé — dans les 14 jours suivant la date publiée par l'entreprise elle-même, jamais notre date de découverte, et jamais une médiane. Un retrait n'est jamais appelé une embauche : une embauche, un retrait de candidature et un poste annulé se ressemblent vus depuis un flux. Les offres qui réapparaissent sont comptées comme republiées et affichées à part ; les deux ensemble forment la part qui a quitté le site, donc la part retirée pour de bon est toujours le plus petit nombre. Nous publiions autrefois une durée médiane jusqu'à la fermeture, avec sa fenêtre à côté ; la fenêtre était le problème. Le site écarte toute offre de plus de 30 jours, donc une offre restée en ligne plus longtemps quitte le site au lieu d'être enregistrée comme fermée, et chacun de ces chiffres exigeait en plus qu'une offre soit en ligne depuis une semaine avant de compter. Une médiane tirée d'une fenêtre de [7, 30] jours tombe près de 15 quoi que fassent les employeurs — mesuré le 2026-09-06, dix-huit domaines allant des soins infirmiers au droit, au commerce de détail et à la recherche en ML concordaient à 1,4 jour près sur environ 600 000 fermetures. Les offres qui dépassent la limite, et celles encore en ligne aujourd'hui, sont désormais comptées comme inachevées au lieu d'être écartées de l'échantillon, et c'est ce que ce chiffre faisait mal : écarter les cas les plus lents et prendre la médiane du reste n'est pas une censure, c'est une troncature, qui biaise la réponse vers le bas sans limite. Les republications sous le même intitulé sont traitées comme un résultat à part, et non comptées comme retirées pour de bon. Le chiffre à 14 jours ne regroupe que des offres de sites que nous lisons jusqu'au bout, publiées après le début de notre suivi de chaque site : un site que nous ne pouvons lire que par morceaux ne voit pas la plupart de ses retraits, et ses offres entreraient dans le calcul comme des offres jamais retirées. Là où moins de la moitié des offres d'un domaine avaient été retirées pour de bon au jour 30, il n'y a pas de chiffre typique à donner, et nous le disons plutôt que d'en fabriquer un.",
+    "closureRecordYoung": "Nous enregistrons un retrait quand une lecture ultérieure du flux de l'employeur ne trouve plus l'offre ; un retrait n'est jamais appelé une embauche. Nous tenons ce registre depuis peu, il se complétera donc dans les semaines à venir. Nous préférons le montrer honnêtement plutôt que de simuler un historique.",
+    "methodRemoval": "Quand une entreprise retire une offre, celle-ci quitte le site dès qu'une lecture ultérieure du flux de cette entreprise ne la trouve plus, et nous enregistrons le retrait : les chiffres de retraits de cette page sont construits à partir de ce registre, et un retrait n'est jamais appelé une embauche.",
+    "methodRecheck": "Ouvrir une offre sur le site en direct interroge à nouveau le système de l'employeur quand nous avons lu le flux de cette offre pour la dernière fois il y a plus de {{hours}} heures, si ce système le permet."
   },
   "agentPass": {
     "checkingSignIn": "Vérification de la connexion…",

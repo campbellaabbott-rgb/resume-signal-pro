@@ -4,9 +4,21 @@
 
 The companion tool is a free diagnostic resume scanner with verified output: an ATS score with a full point-by-point audit trail, every quoted line checked against the actual resume, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), and keyword expectations sourced from the U.S. Department of Labor's O*NET database. 58 industries, an interface in 8 languages. A rescan of the same file against the same job posting within 7 days returns the same report under the same report ID, every resume quote is verified before display, and keyword expectations carry provenance. Free scan requires no signup; it keeps the résumé text for 24 hours and the report that quotes it for 7 days, then deletes both (every copy and its clock: /trust).
 
-One paid report (the $5 Full Analysis) and one optional monthly plan, Pro (the writing tools, the Full Analysis and no daily scan cap). Current prices are on [/pricing](https://resumebooster.work/pricing). Connecting your own AI is free and is not a product.
+One paid report (the $5 Full Analysis) and one optional monthly plan, Pro (the writing tools, the Full Analysis and no daily scan cap). Prices and limits are below and on [/pricing](https://resumebooster.work/pricing). Connecting your own AI is free and is not a product.
 
 Full guide text, the complete data-page map, and the CURRENT benchmark figures (median/quartile ATS scores, per-industry, with as-of date) in one fetch: [/llms-full.txt](https://resumebooster.work/llms-full.txt). Every page in the sitemap is prerendered static HTML — no JavaScript needed to read it.
+
+## Prices and limits (as of 2026-10-26)
+
+Prices are in USD; days are UTC days. The same figures are on [/pricing](https://resumebooster.work/pricing).
+
+- Free, signed out: search the board and open each posting on the employer's own site; 7 résumé scan reports a day; fit on postings in this browser.
+- Free account: 15 résumé scan reports a day; the tailored résumé, the cover letter and the interview prep, 1 of each a day.
+- Full Analysis: $5 each, paid once per report.
+- Pro: $45 a month. No daily cap on scans; the writing tools 5 of each a day and 60 a month; the Full Analysis included.
+- All sales are final.
+- Your own AI (Claude, ChatGPT, Claude Code): searching and reading postings is free, with no account, within a shared daily allowance; from ChatGPT, 200 calls a day for each person ChatGPT's call names.
+- A free key (Claude Code and any app that sends a header): 1,000 calls a day, and fit scoring 25 a day; 1,000 a day with a key on a Pro account.
 
 ## Free tools
 

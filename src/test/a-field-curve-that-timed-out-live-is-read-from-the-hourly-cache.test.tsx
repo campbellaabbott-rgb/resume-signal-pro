@@ -81,7 +81,10 @@ const HOUR = 3_600_000;
 const LIVE_FN = "get_category_fill_curve";
 const CACHE_FN = "get_stats_cache";
 const READER = "readCachedFillCurve";
-const HEADING = "How often roles are actually filled, by field";
+// The heading is the main locale's words since the page stopped calling a
+// takedown a fill (GEO-1107-04); the source holds its key.
+const HEADING = (JSON.parse(read("src/i18n/locales/en.json")) as { ghostIndex: { fillCurveTitle: string } }).ghostIndex.fillCurveTitle;
+const HEADING_IN_CODE = 't("ghostIndex.fillCurveTitle")';
 const AS_OF = "Field figures as of ";
 const NOT_YET = "have not been computed yet";
 const UNREADABLE = "could not be read just now";
@@ -382,7 +385,7 @@ function ghostViolations(code: string): string[] {
   }
   const stamp = "`" + AS_OF + "${new Date(fillCurveComputedAt).toLocaleString()}`";
   if (!code.includes(stamp)) out.push("the section does not print the curve's own computed_at");
-  const h2 = code.indexOf(HEADING);
+  const h2 = code.indexOf(HEADING_IN_CODE);
   const end = code.indexOf("Measured from our own lifecycle log over the last", h2);
   const section = h2 === -1 || end === -1 ? "" : code.slice(h2, end);
   if (!section) out.push("the section is gone");

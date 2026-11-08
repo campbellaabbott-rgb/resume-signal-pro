@@ -27,4 +27,11 @@ export const BANNED_SOURCE_CLAIMS: readonly RegExp[] = [
   /never a repost/i,
   /re-?checks a posting when you open it/i,
   /\bverified openings\b/i,
+  // B09 / GEO-1107-04: a takedown is logged when a later read of the feed
+  // finds the posting gone, never at the instant it happens; and a takedown
+  // is never called a fill or a hire.
+  /\bthe moment (?:a|an|the) (?:company|employer)s? (?:takes|took|removes|pulls)\b/i,
+  /\bthe moment (?:a|an|the) (?:posting|role|job) (?:comes|came|goes|went) down\b/i,
+  /\b(?:actually|truly) (?:fill|fills|filled) (?:roles|the role|positions)\b/i,
+  /\broles are actually filled\b/i,
 ];

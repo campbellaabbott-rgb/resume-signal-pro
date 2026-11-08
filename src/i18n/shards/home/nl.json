@@ -1,8 +1,8 @@
 {
   "home": {
     "seo": {
-      "title": "Actuele vacatures, rechtstreeks uit systemen van werkgevers",
-      "description": "Zoek actuele vacatures uit de eigen wervingssystemen van werkgevers en van USAJOBS, en solliciteer op de site van de werkgever. Gratis, en zoeken vraagt geen account."
+      "title": "Resume Booster — actuele vacatures direct van werkgevers",
+      "description": "Resume Booster is een gratis vacaturebank met actuele vacatures uit werkgeverssystemen en USAJOBS. Solliciteer bij de werkgever; zoeken vraagt geen account."
     },
     "hero": {
       "title": "Actuele vacatures, rechtstreeks uit de eigen wervingssystemen van werkgevers.",
@@ -35,7 +35,10 @@
       "total_one": "{{formatted}} open vacature in totaal",
       "total_other": "{{formatted}} open vacatures in totaal",
       "seeAll": "Alle vacatures bekijken",
-      "applyNote": "Je solliciteert op de eigen site van de werkgever."
+      "applyNote": "Je solliciteert op de eigen site van de werkgever.",
+      "bakedNote": "Geplaatst in de laatste {{days}} dagen volgens de eigen datum van de werkgever, elk met een eigen pagina hier; op {{date}} met het bord gecontroleerd.",
+      "bakedPosted": "geplaatst op {{date}}, volgens de werkgever",
+      "dataLead": "De eigen metingen van het bord, elk gedateerd naar de gegevens:"
     },
     "rail": {
       "title": "Het bord vandaag",

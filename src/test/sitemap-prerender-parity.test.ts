@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { skipWithoutDist } from "./helpers/built-output";
+import { codeOf as codeOfSource } from "./helpers/strip-comments";
+import { APP_FOOTER_LINKS, BAKED_FOOTER_LINKS, BAKED_HEADER_LINKS, DATA_PAGE_LINKS } from "@/lib/site-links";
+import { HOME_ROWS_WINDOW_DAYS } from "@/lib/home/rows";
+import { REDATING_SOURCES } from "@/lib/listing/age";
+import { bracketsBalanced } from "../../scripts/prerender-copy.mjs";
 
 /**
  * EVERY URL WE SUBMIT FOR INDEXING MUST SERVE ITS OWN HTML.
@@ -364,5 +369,159 @@ describe.skipIf(skipWithoutDist(built))("sitemap URLs serve their own prerendere
         "that disagrees with the URL it sits on tells the crawler to index " +
         "something else.",
     ).toEqual([]);
+  });
+});
+
+// ---- B04 / B09 (2026-11-08): what a crawler that runs no JavaScript can reach, and what it is told ----
+
+/**
+ * (a) ONE LIST FOR BOTH FOOTERS (B04, LINK-03). The footer the app renders and
+ * the one the bake writes into every page were two typed lists, and on
+ * 2026-11-07 the baked one linked none of /guides, the three ATS guides beside
+ * Workday's, /builder, /data-api, /privacy or /terms. Both now render
+ * src/lib/site-links.ts; neither may type a list of its own again.
+ */
+describe("B04 (a): the app's footer and the bake's shell render one list", () => {
+  const footer = codeOfSource(readFileSync(resolve(ROOT, "src/components/Footer.tsx"), "utf8"));
+  const bake = codeOfSource(readFileSync(resolve(ROOT, "scripts/prerender-seo.mjs"), "utf8"));
+
+  it("Footer.tsx renders the lists from src/lib/site-links.ts and types no path but /explore", () => {
+    expect(footer).toMatch(/import \{[^}]*\bFOOTER_RESOURCES\b[^}]*\bFOOTER_BOTTOM\b|import \{[^}]*\bFOOTER_BOTTOM\b[^}]*\bFOOTER_RESOURCES\b/);
+    expect(footer).toMatch(/from "@\/lib\/site-links"/);
+    const typed = [...footer.matchAll(/\b(?:to|href)=\{?["'`](\/[^"'`]*)/g)].map((m) => m[1]);
+    expect(typed).toEqual(["/explore"]);
+    expect(footer).not.toMatch(/\bto:\s*["']\//);
+  });
+
+  it("the bake's header and footer render the same module's lists and type no link of their own", () => {
+    expect(bake).toMatch(/export \{[^}]*\bBAKED_FOOTER_LINKS\b[^}]*\} from "\.\.\/src\/lib\/site-links"/);
+    const shellAt = bake.indexOf("const shell = (contentHtml, lang) =>");
+    expect(shellAt).toBeGreaterThan(-1);
+    const shell = bake.slice(shellAt, bake.indexOf("</div>`;", shellAt));
+    const footerHtml = shell.slice(shell.indexOf("<footer"), shell.indexOf("</footer>"));
+    const navHtml = shell.slice(shell.indexOf("<nav"), shell.indexOf("</nav>"));
+    expect(footerHtml).toContain("${SHELL_FOOTER_NAV}");
+    expect(navHtml).toContain("${SHELL_HEADER_NAV}");
+    expect(footerHtml).not.toMatch(/href="\//);
+    expect(navHtml).not.toMatch(/href="\//);
+    expect(bake).toMatch(/const SHELL_FOOTER_NAV = D\.BAKED_FOOTER_LINKS\.map/);
+    expect(bake).toMatch(/const SHELL_HEADER_NAV = D\.BAKED_HEADER_LINKS\.map/);
+  });
+
+  it("the baked footer carries every link the app's carries, the guides, the data pages and the legal pages; the baked header carries /guides", () => {
+    const baked = BAKED_FOOTER_LINKS.map((l) => l.to);
+    for (const l of APP_FOOTER_LINKS) expect(baked, l.to).toContain(l.to);
+    for (const p of ["/guides", "/ats/workday", "/ats/greenhouse", "/ats/lever", "/ats/icims", "/builder", "/data-api", "/privacy", "/terms", "/research/ats-score-benchmarks", ...DATA_PAGE_LINKS.map((l) => l.to)]) {
+      expect(baked, p).toContain(p);
+    }
+    expect(BAKED_HEADER_LINKS.map((l) => l.to)).toContain("/guides");
+    expect(new Set(baked).size).toBe(baked.length);
+  });
+});
+
+/** The family a path belongs to: its first segment, or its first two under /jobs and the localized trees. */
+const familyOf = (p: string): string => {
+  if (p === "/") return "/";
+  const seg = p.replace(/^\/|\/$/g, "").split("/");
+  return seg.length > 1 && ["jobs", "es", "fr", "pt", "de", "nl", "hi", "tl"].includes(seg[0]) ? seg.slice(0, 2).join("/") : seg[0];
+};
+const norm = (p: string) => p.replace(/\/$/, "") || "/";
+const sitemapLastmods = (): Map<string, string> => {
+  const xml = readFileSync(resolve(ROOT, "dist/sitemap.xml"), "utf8");
+  return new Map([...xml.matchAll(/<loc>([^<]+)<\/loc>\s*<lastmod>([^<]+)<\/lastmod>/g)].map((m) => [norm(m[1].trim().slice(SITE.length) || "/"), m[2].trim().slice(0, 10)]));
+};
+const jsonLdOf = (html: string): Array<Record<string, unknown>> =>
+  [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+    .map((m) => { try { return JSON.parse(m[1]); } catch { return null; } })
+    .flatMap((d) => (Array.isArray(d) ? d : d && Array.isArray(d["@graph"]) ? d["@graph"] : [d]))
+    .filter((d): d is Record<string, unknown> => !!d && typeof d === "object");
+const unescapeAttr = (s: string) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+
+describe.skipIf(skipWithoutDist(built))("B04 (b, c) and B09: what the built pages link and say", () => {
+  it("(b) every standalone sitemap page has 2 inbound links from pages outside its family; every company and posting page has 1", () => {
+    const paths = sitemapPaths().map(norm);
+    const size = new Map<string, number>();
+    for (const p of paths) size.set(familyOf(p), (size.get(familyOf(p)) ?? 0) + 1);
+    const inbound = new Map<string, Set<string>>();
+    for (const p of paths) {
+      const f = servedFile(p);
+      if (!f) continue;
+      for (const m of readFileSync(f, "utf8").matchAll(/href="(\/[^"#?]*)/g)) {
+        const t = norm(m[1]);
+        if (familyOf(t) === familyOf(p)) continue;
+        if (!inbound.has(t)) inbound.set(t, new Set());
+        inbound.get(t)!.add(p);
+      }
+    }
+    const short: string[] = [];
+    for (const p of paths) {
+      if (p === "/") continue;
+      const n = inbound.get(p)?.size ?? 0;
+      const need = /^\/jobs\/(?:company|posting)\//.test(p) ? 1 : size.get(familyOf(p)) === 1 ? 2 : 0;
+      if (n < need) short.push(`${p} (${n} of ${need})`);
+    }
+    expect(short, "sitemap pages a crawler that runs no script reaches almost only from the sitemap").toEqual([]);
+  });
+
+  it("(c) the homepage prints its strip's heading only over rows, each a posting page this bake wrote, dated as the employer stated", () => {
+    const home = readFileSync(FALLBACK_FILE, "utf8");
+    const strip = /<ul data-home-strip="">([\s\S]*?)<\/ul>/.exec(home);
+    const rows = strip ? [...strip[1].matchAll(/<a href="(\/jobs\/posting\/[^"]+)"/g)].map((m) => m[1]) : [];
+    expect(home.includes("On the board now"), "the heading is printed exactly when rows are").toBe(rows.length > 0);
+    for (const r of rows) expect(servedFile(norm(r)), r).not.toBeNull();
+    if (strip) expect(strip[1]).toMatch(/as stated by the employer/);
+    // When the bake wrote a page the strip's rule keeps (dated inside the
+    // window by a source that keeps its dates), the strip is not empty.
+    const today = [...sitemapLastmods().values()].sort().pop() ?? "";
+    const windowStart = new Date(Date.parse(`${today}T00:00:00Z`) - HOME_ROWS_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
+    const inWindow = sitemapPaths().map(norm).filter((p) => p.startsWith("/jobs/posting/") && !REDATING_SOURCES.includes(p.split("/")[3] ?? "")).filter((p) => {
+      const f = servedFile(p);
+      const job = f ? jsonLdOf(readFileSync(f, "utf8")).find((b) => b["@type"] === "JobPosting") : undefined;
+      const posted = typeof job?.datePosted === "string" ? job.datePosted.slice(0, 10) : "";
+      return posted >= windowStart && posted <= today;
+    });
+    if (inWindow.length) expect(rows.length, `${inWindow.length} posting pages dated inside the window, none on the homepage`).toBeGreaterThan(0);
+  });
+
+  it("B09: a page's sitemap lastmod is the day its own Article or Dataset says it was modified", () => {
+    const lastmods = sitemapLastmods();
+    const off: string[] = [];
+    let dated = 0;
+    for (const [p, lm] of lastmods) {
+      const f = servedFile(p);
+      if (!f) continue;
+      for (const b of jsonLdOf(readFileSync(f, "utf8"))) {
+        if ((b["@type"] === "Article" || b["@type"] === "Dataset") && typeof b.dateModified === "string") {
+          dated++;
+          if (b.dateModified.slice(0, 10) !== lm) off.push(`${p}: ${b["@type"]} ${b.dateModified} vs sitemap ${lm}`);
+        }
+      }
+    }
+    expect(dated).toBeGreaterThan(5);
+    expect(off).toEqual([]);
+  });
+
+  it("B09: every sitemap page's description is 70 characters or more, ends a sentence and closes its brackets", () => {
+    const bad: string[] = [];
+    for (const p of sitemapPaths().map(norm)) {
+      const f = servedFile(p);
+      if (!f) continue;
+      const d = unescapeAttr(/<meta name="description" content="([^"]*)"/.exec(readFileSync(f, "utf8"))?.[1] ?? "");
+      // A posting page's description quotes the employer's own title, brackets and all.
+      const balanced = p.startsWith("/jobs/posting/") || bracketsBalanced(d);
+      if (d.length < 70 || !/[.!?…]["'”’)\]]*$/.test(d) || !balanced) bad.push(`${p} (${d.length}): ${d.slice(-60)}`);
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it("B09: the stray address search engines hold has a file of its own, marked noindex, out of the sitemap", () => {
+    const stray = "/jobs/company/0ebd29d1-d85b-444e-b36b-430da3d7bc58";
+    const f = servedFile(stray);
+    expect(f, "the seeded path fell through to the homepage").not.toBeNull();
+    expect(f).not.toBe(FALLBACK_FILE);
+    const h = readFileSync(f!, "utf8");
+    expect(h).toMatch(/<meta name="robots" content="noindex/);
+    expect(/<title>([\s\S]*?)<\/title>/.exec(h)?.[1]).not.toBe(/<title>([\s\S]*?)<\/title>/.exec(readFileSync(FALLBACK_FILE, "utf8"))?.[1]);
+    expect(sitemapPaths().map(norm)).not.toContain(stray);
   });
 });

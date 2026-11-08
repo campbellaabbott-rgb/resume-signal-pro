@@ -97,6 +97,7 @@ export default function PayTransparencyIndex() {
         title="Pay Transparency Index — who actually states salaries?"
         description="A live ranking of fields, hiring systems, and large employers by the share of job postings that state pay — counted from companies' own posting text and ATS fields. No estimates, no modeled ranges."
         path="/pay-transparency"
+        preferBakedHead
       />
       <Header />
       <main className="min-h-screen pt-20">

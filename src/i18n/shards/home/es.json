@@ -1,8 +1,8 @@
 {
   "home": {
     "seo": {
-      "title": "Empleos en vivo, directos de los sistemas de las empresas",
-      "description": "Busca empleos en vivo leídos de los propios sistemas de selección de los empleadores y de USAJOBS, y postúlate en el sitio del empleador. Gratis, y buscar no requiere cuenta."
+      "title": "Resume Booster — empleos en vivo, directos de las empresas",
+      "description": "Resume Booster es una bolsa de empleo gratuita con ofertas en vivo de los sistemas de los empleadores y USAJOBS. Postúlate en su sitio; buscar no pide cuenta."
     },
     "hero": {
       "title": "Empleos en vivo, directos de los propios sistemas de selección de los empleadores.",
@@ -37,7 +37,10 @@
       "total_many": "{{formatted}} ofertas abiertas en total",
       "total_other": "{{formatted}} ofertas abiertas en total",
       "seeAll": "Ver todas las ofertas",
-      "applyNote": "Te postulas en el sitio del propio empleador."
+      "applyNote": "Te postulas en el sitio del propio empleador.",
+      "bakedNote": "Publicadas en los últimos {{days}} días según la fecha del propio empleador, cada una con su propia página aquí; comprobadas con el tablón el {{date}}.",
+      "bakedPosted": "publicada el {{date}}, según el empleador",
+      "dataLead": "Las mediciones propias del tablón, cada una fechada por sus datos:"
     },
     "rail": {
       "title": "El tablón hoy",

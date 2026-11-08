@@ -21,11 +21,13 @@ import { codeOf } from "./helpers/strip-comments";
 const ROOT = resolve(__dirname, "../..");
 const COMMITTED = readFileSync(resolve(ROOT, "public/llms.txt"), "utf8");
 const pricingLine = (t: string) => /^- \[Pricing\]\([^)]*\): (.*)$/m.exec(t)?.[1] ?? "";
+// The sentence after the paid line points at the dated price block the file
+// carries since GEO-1107-06 (llmsPriceLines), and at /pricing.
 const paidLine = (t: string) => t.split("\n").find((l) => /One (?:paid report|optional monthly plan)|No paid product/.test(l)) ?? "";
 
 describe("the committed file is the form with both on sale", () => {
   it("names both products, Pro with the Full Analysis, and nothing opening soon", () => {
-    expect(paidLine(COMMITTED)).toMatch(/^One paid report \(the \$5 Full Analysis\) and one optional monthly plan, Pro \(the writing tools, the Full Analysis and no daily scan cap\)\. Current prices/);
+    expect(paidLine(COMMITTED)).toMatch(/^One paid report \(the \$5 Full Analysis\) and one optional monthly plan, Pro \(the writing tools, the Full Analysis and no daily scan cap\)\. Prices and limits are below and on \[\/pricing\]/);
     expect(pricingLine(COMMITTED)).toBe("The free tools, the $5 Full Analysis and Pro.");
     expect(COMMITTED).not.toMatch(/open(?:s for purchase)? soon/i);
     expect(llmsSaleLines(COMMITTED, { fullAnalysis: true, pro: true })).toBe(COMMITTED);
@@ -35,21 +37,21 @@ describe("the committed file is the form with both on sale", () => {
 describe("each sale state", () => {
   it("both switches off: no paid product, and no promise that one opens", () => {
     const t = llmsSaleLines(COMMITTED, { fullAnalysis: false, pro: false });
-    expect(paidLine(t)).toMatch(/^No paid product is on sale\. Current prices/);
+    expect(paidLine(t)).toMatch(/^No paid product is on sale\. Prices and limits are below and on \[\/pricing\]/);
     expect(pricingLine(t)).toBe("The free tools.");
     expect(t).not.toMatch(/soon/i);
   });
 
   it("the Full Analysis alone on sale: it alone is named", () => {
     const t = llmsSaleLines(COMMITTED, { fullAnalysis: true, pro: false });
-    expect(paidLine(t)).toMatch(/^One paid report \(the \$5 Full Analysis\)\. Current prices/);
+    expect(paidLine(t)).toMatch(/^One paid report \(the \$5 Full Analysis\)\. Prices and limits are below and on \[\/pricing\]/);
     expect(pricingLine(t)).toBe("The free tools and the $5 Full Analysis.");
     expect(t).not.toMatch(/soon/i);
   });
 
   it("Pro alone on sale: Pro without the Full Analysis the page leaves out", () => {
     const t = llmsSaleLines(COMMITTED, { fullAnalysis: false, pro: true });
-    expect(paidLine(t)).toMatch(/^One optional monthly plan, Pro \(the writing tools and no daily scan cap\)\. Current prices/);
+    expect(paidLine(t)).toMatch(/^One optional monthly plan, Pro \(the writing tools and no daily scan cap\)\. Prices and limits are below and on \[\/pricing\]/);
     expect(pricingLine(t)).toBe("The free tools and Pro.");
   });
 

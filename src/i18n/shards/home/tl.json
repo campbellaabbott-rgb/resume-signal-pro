@@ -1,8 +1,8 @@
 {
   "home": {
     "seo": {
-      "title": "Live na trabaho, diretso mula sa hiring system ng employer",
-      "description": "Maghanap ng live na trabaho na binasa mula sa sariling hiring system ng mga employer at sa USAJOBS, saka mag-apply sa site ng employer. Libre, at walang account na kailangan para maghanap."
+      "title": "Resume Booster — live na trabaho, diretso mula sa employer",
+      "description": "Ang Resume Booster ay libreng job board ng live na trabaho mula sa hiring system ng employer at USAJOBS. Mag-apply sa site nila; walang account sa paghahanap."
     },
     "hero": {
       "title": "Live na trabaho, diretso mula sa sariling hiring system ng mga employer.",
@@ -35,7 +35,10 @@
       "total_one": "{{formatted}} bukas na posting sa kabuuan",
       "total_other": "{{formatted}} bukas na posting sa kabuuan",
       "seeAll": "Tingnan ang lahat ng posting",
-      "applyNote": "Sa sariling site ng employer ka nag-a-apply."
+      "applyNote": "Sa sariling site ng employer ka nag-a-apply.",
+      "bakedNote": "Na-post sa huling {{days}} araw ayon sa sariling petsa ng employer, bawat isa may sariling pahina rito; sinuri laban sa board noong {{date}}.",
+      "bakedPosted": "na-post noong {{date}}, ayon sa employer",
+      "dataLead": "Ang sariling sukat ng board, bawat isa may petsa ayon sa datos nito:"
     },
     "rail": {
       "title": "Ang board ngayon",
