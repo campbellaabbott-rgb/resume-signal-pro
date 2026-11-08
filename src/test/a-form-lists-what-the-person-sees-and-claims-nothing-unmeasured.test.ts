@@ -16,7 +16,10 @@
  * packet builders.
  */
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { readApplicationForm, type FormCache, type FormCacheRow, type PostingRef } from "../../supabase/functions/_shared/application-form";
+import { formBlock } from "../../supabase/functions/public-api/application";
 import { applyMyselfAnswer, applyMyselfMarkdown, routeFor } from "../../supabase/functions/agent-mcp/apply-myself";
 import { routeFor as v1RouteFor } from "../../supabase/functions/public-api/application";
 import { automationFor } from "../../supabase/functions/_shared/apply-automation";
@@ -79,7 +82,7 @@ describe("Greenhouse: what the person fills in, and only the consent the form as
 describe("a hiring system nobody measured is not said to have no account and no CAPTCHA (S12-174)", () => {
   it("Taleo answers null for both, in the JSON and in the packet", () => {
     expect(automationFor("taleo").tier).toBe("unknown");
-    expect(routeFor("taleo")).toEqual({ submitter: "you", needsEmployerAccount: null, captchaLikely: null, attachFilesYourself: true });
+    expect(routeFor("taleo")).toEqual({ submitter: "you", needsEmployerAccount: null, captchaLikely: null, captcha: null, attachFilesYourself: true });
     const posting = { id: "taleo:acme:1", title: "Analyst", company: "Acme", location: null, pay: null, postedAt: null, applyUrl: "https://acme.taleo.net/careersection/1", siteUrl: "https://resumebooster.work/jobs?job=taleo:acme:1" };
     const md = applyMyselfMarkdown(applyMyselfAnswer(posting, { kind: "no-reader", vendor: "taleo" }, []));
     expect(md).toMatch(/We have not measured whether this hiring system asks for an account or a CAPTCHA\./);
@@ -94,5 +97,55 @@ describe("a hiring system nobody measured is not said to have no account and no 
   it("a measured system keeps its measured answer", () => {
     expect(routeFor("lever")).toMatchObject({ needsEmployerAccount: false, captchaLikely: true });
     expect(routeFor("workday")).toMatchObject({ needsEmployerAccount: true, captchaLikely: false });
+  });
+});
+
+/**
+ * Connect W4 (APPLY-1107-10): parts of the forms the readers already fetched
+ * were dropped. Breezy's apply page carries its own field settings (whether
+ * the CV and a cover letter are asked for, and required), and Pinpoint's
+ * carries an equality-monitoring block and a required data-processing
+ * consent. They are listed now, on a page with questions and on one without.
+ */
+describe("what a Breezy or Pinpoint page shows beside its questions is listed (APPLY-1107-10)", () => {
+  const fixture = (f: string) => readFileSync(resolve(__dirname, "fixtures/forms", f), "utf8");
+  const serve = (url: string, body: string) => (async (u: string) => (String(u) === url ? new Response(body, { status: 200 }) : new Response("", { status: 404 }))) as typeof fetch;
+
+  it("Breezy: the CV and cover-letter settings become the documents", async () => {
+    const slug = "fb71083e7019-retail-store-support-specialist-temecula-ca";
+    const r = await readApplicationForm(
+      { id: `breezy:srs-merchandising:${slug}`, source: "breezy", token: "srs-merchandising", applyUrl: `https://srs-merchandising.breezy.hr/p/${slug}` },
+      { fetch: serve(`https://srs-merchandising.breezy.hr/p/${slug}/apply`, fixture("breezy-srs-merchandising-fb71083e7019.html")) },
+    );
+    if (r.kind !== "read") throw new Error(r.kind);
+    expect(r.form.documents.map((d) => d.name)).toEqual(expect.arrayContaining(["Resume / CV"]));
+    expect(r.form.documents.length).toBeGreaterThan(0);
+  });
+
+  it("Pinpoint with no questions: the page's equality block and required consent, in the connector's answer and on /v1", async () => {
+    const uuid = "f1f1d168-d683-461d-9bbe-3f59cf471fb3";
+    const r = await readApplicationForm(
+      { id: "pinpoint:miller:612189", source: "pinpoint", token: "miller", applyUrl: `https://miller.pinpointhq.com/en/postings/${uuid}` },
+      { fetch: serve(`https://miller.pinpointhq.com/en/postings/${uuid}/applications/new`, fixture("pinpoint-miller-612189.html")) },
+    );
+    expect(r).toMatchObject({ kind: "absent", pageRead: true });
+    if (r.kind !== "absent") return;
+    expect(r.alsoOnForm?.some((x) => /^Voluntary equality-monitoring questions/.test(x))).toBe(true);
+    expect(r.alsoOnForm?.some((x) => /^Data-protection consent \(required\)/.test(x))).toBe(true);
+    const posting = { id: "pinpoint:miller:612189", title: "Joiner", company: "Miller", location: null, pay: null, postedAt: null, applyUrl: `https://miller.pinpointhq.com/en/postings/${uuid}`, siteUrl: "https://resumebooster.work/jobs?job=pinpoint:miller:612189" };
+    const a = applyMyselfAnswer(posting, r, []);
+    expect(a.form.alsoOnForm).toEqual(r.alsoOnForm);
+    expect(applyMyselfMarkdown(a)).toMatch(/Also on the form: Data-protection consent \(required\)/);
+    expect(formBlock(r)?.alsoOnForm).toEqual(r.alsoOnForm);
+  });
+
+  it("Pinpoint with questions: the same block sits beside them", async () => {
+    const uuid = "f4e1b6a1-b3f1-47ec-8c82-433203558a6e";
+    const r = await readApplicationForm(
+      { id: "pinpoint:eastwestrail:612221", source: "pinpoint", token: "eastwestrail", applyUrl: `https://eastwestrail.pinpointhq.com/en/postings/${uuid}` },
+      { fetch: serve(`https://eastwestrail.pinpointhq.com/en/postings/${uuid}/applications/new`, fixture("pinpoint-eastwestrail-612221.html")) },
+    );
+    if (r.kind !== "read") throw new Error(r.kind);
+    expect(r.form.alsoOnForm.length).toBeGreaterThan(0);
   });
 });
