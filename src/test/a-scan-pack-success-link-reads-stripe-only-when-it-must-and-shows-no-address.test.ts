@@ -10,14 +10,18 @@
  *     a Checkout session is refused now with no read;
  *   - a pack already credited and recorded is answered from our rows, so a
  *     reload of the success page reads Stripe no more;
- *   - every read is counted per caller network under the function's own
- *     name, and a count that cannot be taken refuses;
+ *   - every read is counted under the function's own name, and a count that
+ *     cannot be taken refuses: per caller network for an id our records do
+ *     not know, and by the purchase for a pack the webhook claimed or the
+ *     checkout minted, so strangers on the buyer's network cannot spend the
+ *     buyer's reads (review of M-S14-050);
  *   - the reply carried the buyer's whole address to whoever held the link:
- *     it is masked now.
+ *     it is masked now, and the log no longer carries the session's
+ *     metadata, where the address also is (review of C-S14-049).
  * And scan-credits shows a held purchase's address masked; only a signed-in
  * account sees its own address whole (its own test covers that half).
  */
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { buildIsAtLeast } from "./helpers/fn-build";
@@ -118,6 +122,58 @@ describe("verify-scan-pack-purchase", () => {
     const spent = await verify("cs_live_pack_spent_aaaaa");
     expect(spent.status).toBe(429);
     expect(reads).toEqual([]);
+  });
+
+  /** check_rate_limit as the database answers it: the buyer's network spent by strangers, every purchase's own allowance free. */
+  function networkSpentByStrangers() {
+    const counted: Array<Record<string, unknown>> = [];
+    db.rpcs.check_rate_limit = (a) => { counted.push(a); return { data: a.p_function !== "verify-scan-pack-purchase", error: null }; };
+    return counted;
+  }
+
+  it("a pack create-scan-pack-checkout minted is credited even when strangers on the buyer's network spent the network's reads", async () => {
+    const counted = networkSpentByStrangers();
+    const id = "cs_live_pack_minted_shared";
+    db.rows("checkout_starts").push({ stripe_session_id: id, product_type: "scan_pack", metadata: {} });
+    const r = await verify(id);
+    expect(r.status, JSON.stringify(r.json)).toBe(200);
+    expect(r.json).toMatchObject({ verified: true, creditsAdded: 3 });
+    expect(reads).toEqual([id]);
+    expect(counted.map((c) => c.p_function)).toEqual(["verify-scan-pack-purchase:purchase"]);
+    expect(String(counted[0].p_ip)).toMatch(/^[0-9a-f]{32}$/);
+  });
+
+  it("a pack the webhook claimed but has not recorded yet is read by its own allowance too", async () => {
+    const counted = networkSpentByStrangers();
+    const id = "cs_live_pack_claimed_shared";
+    db.rows("used_stripe_sessions").push({ session_id: id, product_type: "scan_pack", ip_address: null });
+    const r = await verify(id);
+    expect(r.status, JSON.stringify(r.json)).toBe(200);
+    expect(counted.map((c) => c.p_function)).toEqual(["verify-scan-pack-purchase:purchase"]);
+  });
+
+  it("an id our records do not know still spends only its network's allowance", async () => {
+    const counted = networkSpentByStrangers();
+    const r = await verify("cs_live_pack_invented_aaaa");
+    expect(r.status).toBe(429);
+    expect(counted.map((c) => c.p_function)).toEqual(["verify-scan-pack-purchase"]);
+    expect(reads).toEqual([]);
+  });
+
+  it("writes no buyer's address to the function log, the session's metadata included", async () => {
+    const logged: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...a: unknown[]) => { logged.push(a.map(String).join(" ")); });
+    const errs = vi.spyOn(console, "error").mockImplementation((...a: unknown[]) => { logged.push(a.map(String).join(" ")); });
+    try {
+      const r = await verify("cs_live_pack_logged_aaaaa");
+      expect(r.status).toBe(200);
+      await verify("cs_live_pack_logged_aaaaa");
+    } finally {
+      spy.mockRestore();
+      errs.mockRestore();
+    }
+    expect(logged.some((l) => l.includes("Session retrieved")), "the log line this guards moved").toBe(true);
+    expect(logged.filter((l) => l.includes("jane.buyer")), "the buyer's address was logged").toEqual([]);
   });
 
   it("answers this hotfix's build on the preflight", async () => {

@@ -16,8 +16,11 @@
  *     the first was still working) each started a model run.
  * What holds now: a reference that cannot be a purchase is refused with no
  * read; a delivered analysis is answered from our rows with no read; every
- * read is counted per network under analyze-resume's own name, and a count
- * that cannot be taken refuses; the shared budget refuses nobody here; a
+ * read is counted under analyze-resume's own name, and a count that cannot be
+ * taken refuses: per network for an id our records do not know, and by the
+ * purchase for one the webhook claimed or create-checkout minted, so strangers
+ * on the buyer's network cannot lock the buyer out (review of M-S14-050);
+ * the shared budget refuses nobody here; a
  * second request while a run holds the session's lease is told 409
  * analysis_in_progress and gets the first run's analysis when it asks again;
  * a failed run frees the session, so a failure still uses nothing up.
@@ -111,6 +114,56 @@ describe("every Stripe read is counted, under analyze-resume's own name", () => 
     expect(r.status).toBe(429);
     expect(r.json.code).toBe("rate_limited_stripe_reads");
     expect(reads).toEqual([]);
+  });
+
+  /** check_rate_limit as the database answers it: the buyer's network spent by strangers, every purchase's own allowance free. */
+  function networkSpentByStrangers() {
+    const counted: Array<Record<string, unknown>> = [];
+    h.db.rpcs.check_rate_limit = (a) => { counted.push(a); return { data: a.p_function !== "analyze-resume", error: null }; };
+    return counted;
+  }
+
+  it("a purchase create-checkout minted is read even when strangers on the buyer's network spent the network's reads", async () => {
+    const counted = networkSpentByStrangers();
+    const id = buy("cs_live_minted_on_shared_network");
+    h.db.rows("checkout_starts").push({ stripe_session_id: id, product_type: "full_analysis", metadata: {} });
+    const r = await h.call({ resumeText: RESUME, sessionId: id });
+    expect(r.status, JSON.stringify(r.json)).toBe(200);
+    expect(reads).toEqual([id]);
+    expect(counted).toHaveLength(1);
+    expect(counted[0].p_function).toBe("analyze-resume:purchase");
+    expect(String(counted[0].p_ip)).toMatch(/^[0-9a-f]{32}$/);
+  });
+
+  it("a purchase the webhook already claimed is read the same way, by its own allowance", async () => {
+    const counted = networkSpentByStrangers();
+    const id = buy("cs_live_claimed_on_shared_network");
+    h.db.rows("used_stripe_sessions").push({ session_id: id, product_type: "full_analysis", ip_address: null });
+    const r = await h.call({ resumeText: RESUME, sessionId: id });
+    expect(r.status, JSON.stringify(r.json)).toBe(200);
+    expect(counted.map((c) => c.p_function)).toEqual(["analyze-resume:purchase"]);
+  });
+
+  it("an id our records do not know still spends only its network's allowance, and a spent one reads nothing", async () => {
+    const counted = networkSpentByStrangers();
+    const r = await h.call({ resumeText: RESUME, sessionId: buy("cs_live_invented_by_a_stranger") });
+    expect(r.status).toBe(429);
+    expect(r.json.code).toBe("rate_limited_stripe_reads");
+    expect(counted.map((c) => c.p_function)).toEqual(["analyze-resume"]);
+    expect(reads).toEqual([]);
+  });
+
+  it("a known purchase's own allowance is bounded too, and a start for another product is not this purchase", async () => {
+    const id = buy("cs_live_minted_retried");
+    h.db.rows("checkout_starts").push({ stripe_session_id: id, product_type: "full_analysis", metadata: {} });
+    h.db.rpcs.check_rate_limit = () => ({ data: false, error: null });
+    expect((await h.call({ resumeText: RESUME, sessionId: id })).status).toBe(429);
+    expect(reads).toEqual([]);
+    const counted = networkSpentByStrangers();
+    const pack = buy("cs_live_scan_pack_start");
+    h.db.rows("checkout_starts").push({ stripe_session_id: pack, product_type: "scan_pack", metadata: {} });
+    expect((await h.call({ resumeText: RESUME, sessionId: pack })).status).toBe(429);
+    expect(counted.map((c) => c.p_function)).toEqual(["analyze-resume"]);
   });
 
   it("the shared per-address budget refuses a paying buyer nothing", async () => {

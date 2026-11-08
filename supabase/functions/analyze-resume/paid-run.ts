@@ -16,7 +16,8 @@ import { ANALYSIS_BUDGET_MS } from "./analysis-parts.ts";
  * A Stripe Checkout session id, as checkout_resume_refs accepts one. Loose on
  * purpose: the shape check only keeps junk ("x", a URL, a 10 kB string) away
  * from Stripe. A caller can always invent a well-formed id, so what bounds
- * the Stripe reads is the per-network count taken before each one.
+ * the Stripe reads is the count taken before each one: per network for an id
+ * our records do not know, per purchase for one they do.
  */
 const CHECKOUT_SESSION = /^cs_[A-Za-z0-9_]{1,250}$/;
 const PRO_GRANT = /^pro_([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
@@ -57,12 +58,44 @@ export function clipText(text: string, max: number): { text: string; clip: Clip 
 /** The rate_limits bucket name analyze-resume counts its Stripe reads under. */
 export const STRIPE_READ_COUNTER = "analyze-resume";
 /**
- * Stripe reads per caller network per hour. A buyer's page asks once per
- * visit (a delivered analysis is answered from our own rows, with no read),
- * so this leaves room for a household or an office of buyers and none for a
- * loop that would spend the account's shared read limit.
+ * Stripe reads per caller network per hour, for an id our records do not
+ * know. A buyer's page asks once per visit (a delivered analysis is answered
+ * from our own rows, with no read), so this leaves room for a household or an
+ * office of buyers and none for a loop that would spend the account's shared
+ * read limit.
  */
 export const STRIPE_READS_PER_NETWORK_PER_HOUR = 30;
+/**
+ * The bucket name a purchase our records know is counted under: its own
+ * allowance, keyed by the purchase, so neither a stranger on the buyer's
+ * network nor anyone without the id can spend it (review of M-S14-050).
+ */
+export const STRIPE_READ_PURCHASE_COUNTER = "analyze-resume:purchase";
+/** Stripe reads per known purchase per hour: about two a visit, so fifteen visits, retries after a timeout included. */
+export const STRIPE_READS_PER_PURCHASE_PER_HOUR = 30;
+
+/**
+ * Whether our own records know this checkout session as a Full Analysis:
+ * a payment claim on it (`claimed`: the webhook's, read beside the delivery
+ * lookup), or the start create-checkout recorded when it minted it
+ * (checkout_starts, since 2026-09-27). Neither can be written by a caller, so
+ * an invented id is never known. A read that fails knows nothing.
+ */
+export async function purchaseWeKnow(db: StoreDb, sessionId: string, claimed: boolean): Promise<boolean> {
+  if (claimed) return true;
+  try {
+    const { data, error } = await db.from("checkout_starts").select("product_type").eq("stripe_session_id", sessionId).maybeSingle();
+    return !error && data?.product_type === "full_analysis";
+  } catch {
+    return false;
+  }
+}
+
+/** A known purchase's own bucket: 32 hex of a keyed hash of its session id (rate_limits takes 45 characters). */
+export async function purchaseReadBucket(secret: string, sessionId: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${secret}:${STRIPE_READ_PURCHASE_COUNTER}:${sessionId}`));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+}
 
 // ── One run at a time ──────────────────────────────────────────────────────
 

@@ -33,11 +33,15 @@ import {
   MAX_JOB_DESCRIPTION_LENGTH,
   MAX_LINKEDIN_LENGTH,
   STRIPE_READ_COUNTER,
+  STRIPE_READ_PURCHASE_COUNTER,
   STRIPE_READS_PER_NETWORK_PER_HOUR,
+  STRIPE_READS_PER_PURCHASE_PER_HOUR,
   checkoutHadPosting,
   claimRunLease,
   clipText,
+  purchaseReadBucket,
   purchaseRefOf,
+  purchaseWeKnow,
   releaseRunLease,
   runLeaseHeld,
   storedInputsFor,
@@ -113,6 +117,12 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 // 2026-11-10.2 (fix/hotfix-2026-11-10, the integration): both lanes' changes
 // above together. hotfix/pro and hotfix/paid each stamped 2026-11-10.1 on
 // code of its own, so the merged code takes the next sequence (DEPLOY-LEDGER §3).
+// With the integration's review: a purchase our records know (a payment
+// claim, or the start create-checkout recorded) has its Stripe reads counted
+// by the purchase under analyze-resume:purchase, so invented ids from the
+// buyer's network no longer lock the buyer out; an unknown id is counted per
+// network as above; and an unbound Pro row whose customer left its address
+// is no longer kept live by that customer (_shared/pro.ts).
 const FN_BUILD = "analyze-resume.2026-11-10.2";
 
 // Declare EdgeRuntime for background tasks
@@ -657,17 +667,32 @@ serve(async (req) => {
       // The same shape a paid $0 session has, so everything below reads it unchanged.
       session = { payment_status: "paid", amount_total: 0, currency: "usd", metadata: { product_type: FULL_ANALYSIS_PRODUCT_TYPE } };
     } else {
-      // EVERY STRIPE READ IS COUNTED BEFORE IT IS MADE (H3), per caller
-      // network (an IPv4 /24, an IPv6 /48, as a keyed hash), under this
+      // EVERY STRIPE READ IS COUNTED BEFORE IT IS MADE (H3), under this
       // function's own name. A count that cannot be taken is a refusal:
       // Stripe is never asked blind.
-      const readBucket = await networkBucket(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", STRIPE_READ_COUNTER);
-      const { data: readAllowed, error: readCountError } = await supabase.rpc('check_rate_limit', {
-        p_ip: readBucket,
-        p_function: STRIPE_READ_COUNTER,
-        p_max_requests: STRIPE_READS_PER_NETWORK_PER_HOUR,
-        p_window_minutes: 60,
-      });
+      //
+      // A PURCHASE WE KNOW IS COUNTED BY THE PURCHASE (review of M-S14-050).
+      // Counted per caller network (an IPv4 /24, an IPv6 /48), invented ids
+      // from anyone on a buyer's office, campus or carrier network spent the
+      // buyer's reads, and the buyer was refused the analysis they paid for
+      // for an hour. A session the webhook claimed, or one create-checkout
+      // minted, now has its own allowance that only its id can spend; an id
+      // our records do not know still shares its network's.
+      const readSecret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+      const knownPurchase = await purchaseWeKnow(supabase, sessionId, !!claimLookup.data && prior.state === 'none');
+      const { data: readAllowed, error: readCountError } = await supabase.rpc('check_rate_limit', knownPurchase
+        ? {
+          p_ip: await purchaseReadBucket(readSecret, sessionId),
+          p_function: STRIPE_READ_PURCHASE_COUNTER,
+          p_max_requests: STRIPE_READS_PER_PURCHASE_PER_HOUR,
+          p_window_minutes: 60,
+        }
+        : {
+          p_ip: await networkBucket(req.headers, readSecret, STRIPE_READ_COUNTER),
+          p_function: STRIPE_READ_COUNTER,
+          p_max_requests: STRIPE_READS_PER_NETWORK_PER_HOUR,
+          p_window_minutes: 60,
+        });
       if (readCountError) {
         console.error("[ANALYZE-RESUME] The Stripe read could not be counted; not reading blind:", readCountError);
         return new Response(
@@ -676,7 +701,7 @@ serve(async (req) => {
         );
       }
       if (readAllowed !== true) {
-        console.log("[ANALYZE-RESUME] Stripe reads for this network are spent for the hour");
+        console.log(`[ANALYZE-RESUME] Stripe reads for this ${knownPurchase ? "purchase" : "network"} are spent for the hour`);
         return new Response(
           JSON.stringify({ error: ERROR_MESSAGES.RATE_LIMITED, code: 'rate_limited_stripe_reads' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '3600' } }

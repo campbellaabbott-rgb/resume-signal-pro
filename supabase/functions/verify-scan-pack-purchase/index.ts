@@ -14,13 +14,26 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 // Checkout session never reaches Stripe; a purchase already credited and
 // recorded is answered from our own rows; every Stripe read is counted per
 // caller network under this function's name, and a count that cannot be
-// taken refuses; the buyer's address is masked in every reply.
+// taken refuses; the buyer's address is masked in every reply. With the
+// integration's review: a pack our records know (a claim not yet recorded,
+// or a session create-scan-pack-checkout minted) has its Stripe reads counted
+// by the purchase, so invented ids from the buyer's network no longer lock
+// the buyer out; and the session's metadata, which carries the buyer's
+// address, is no longer written to the log.
 const FN_BUILD = "verify-scan-pack-purchase.2026-11-10.1";
 
 /** A Stripe Checkout session id, as the other paid doors accept one. */
 const CHECKOUT_SESSION = /^cs_[A-Za-z0-9_]{1,250}$/;
-/** Stripe reads per caller network per hour: a buyer's page asks once per visit. */
+/** Stripe reads per caller network per hour, for an id our records do not know: a buyer's page asks once per visit. */
 const STRIPE_READS_PER_NETWORK_PER_HOUR = 20;
+/** The bucket name, and the hourly allowance, of a purchase our records know (its id alone spends it). */
+const STRIPE_READ_PURCHASE_COUNTER = "verify-scan-pack-purchase:purchase";
+const STRIPE_READS_PER_PURCHASE_PER_HOUR = 20;
+/** A known purchase's own bucket: 32 hex of a keyed hash of its session id (rate_limits takes 45 characters). */
+async function purchaseBucket(secret: string, id: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${secret}:${STRIPE_READ_PURCHASE_COUNTER}:${id}`));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+}
 /**
  * How scan_credit_session_grants keys a purchase: the SHA-256 of its session
  * id, as _shared/scan-credits.ts sessionHash computes it (that module is not
@@ -120,16 +133,42 @@ serve(async (req) => {
       }
     }
 
-    // EVERY STRIPE READ IS COUNTED BEFORE IT IS MADE (H3), per caller
-    // network (a keyed hash of the IPv4 /24 or IPv6 /48), under this
+    // EVERY STRIPE READ IS COUNTED BEFORE IT IS MADE (H3), under this
     // function's own name. A count that cannot be taken is a refusal.
-    const readBucket = await networkBucket(req.headers, supabaseServiceKey ?? "", "verify-scan-pack-purchase");
-    const { data: readAllowed, error: readCountError } = await supabase.rpc('check_rate_limit', {
-      p_ip: readBucket,
-      p_function: 'verify-scan-pack-purchase',
-      p_max_requests: STRIPE_READS_PER_NETWORK_PER_HOUR,
-      p_window_minutes: 60,
-    });
+    //
+    // A PURCHASE WE KNOW IS COUNTED BY THE PURCHASE (review of M-S14-050):
+    // a pack the webhook claimed but has not recorded yet, or a session
+    // create-scan-pack-checkout minted (checkout_starts), has its own
+    // allowance, which only its id can spend. Counted per network, invented
+    // ids from anyone on the buyer's network locked the buyer out of the
+    // credits they paid for. An id our records do not know still shares its
+    // network's allowance (a keyed hash of the IPv4 /24 or IPv6 /48).
+    let knownPurchase = !claimLookupError && (claim?.product_type === 'scan_credits' || claim?.product_type === 'scan_pack');
+    if (!knownPurchase) {
+      try {
+        const { data: start, error: startError } = await supabase
+          .from('checkout_starts')
+          .select('product_type')
+          .eq('stripe_session_id', sessionId)
+          .maybeSingle();
+        knownPurchase = !startError && start?.product_type === 'scan_pack';
+      } catch {
+        knownPurchase = false;
+      }
+    }
+    const { data: readAllowed, error: readCountError } = await supabase.rpc('check_rate_limit', knownPurchase
+      ? {
+        p_ip: await purchaseBucket(supabaseServiceKey ?? "", sessionId),
+        p_function: STRIPE_READ_PURCHASE_COUNTER,
+        p_max_requests: STRIPE_READS_PER_PURCHASE_PER_HOUR,
+        p_window_minutes: 60,
+      }
+      : {
+        p_ip: await networkBucket(req.headers, supabaseServiceKey ?? "", "verify-scan-pack-purchase"),
+        p_function: 'verify-scan-pack-purchase',
+        p_max_requests: STRIPE_READS_PER_NETWORK_PER_HOUR,
+        p_window_minutes: 60,
+      });
     if (readCountError) {
       console.error("[VERIFY-SCAN-PACK-PURCHASE] The Stripe read could not be counted; not reading blind:", readCountError.message);
       return new Response(
@@ -171,9 +210,13 @@ serve(async (req) => {
       );
     }
     
+    // Only what this function reads: the session's metadata carries the
+    // buyer's whole address (create-scan-pack-checkout writes customer_email
+    // there), and the log is not where an address belongs (review of C-S14-049).
     logStep("Session retrieved", {
       status: session.payment_status,
-      metadata: session.metadata
+      product_type: session.metadata?.product_type ?? null,
+      credits: session.metadata?.credits ?? null,
     });
 
     // Verify payment completed: 'paid', or a $0 session a 100%-off code
