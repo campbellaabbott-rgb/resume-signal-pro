@@ -1864,8 +1864,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       
       console.log("[Checkout] Resume stored, calling create-checkout");
 
-      // Store only the temp session UUID locally (no PII)
-      setResumeData('tempSessionId', tempSessionData);
+      // The pointer is kept only under the purchase it belongs to, once
+      // create-checkout names it (below): one that named no purchase was read
+      // by the success page of any other purchase opened in this browser.
 
       // Use resilient checkout caller with built-in retry logic
       console.log("[Checkout] Calling create-checkout with resilient caller");

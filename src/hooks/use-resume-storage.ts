@@ -6,7 +6,9 @@ const STORAGE_KEYS = ['tempSessionId'] as const;
  * The pointer lives as long as the stored copy it points to (temp_resume_storage,
  * 24 hours). It was one hour, so a buyer who paid and came back later the same
  * day had lost the pointer to a copy the server still held, and the analysis
- * ran without the posting it was bought against (H4, C-S14-010).
+ * ran without the posting it was bought against (H4, C-S14-010). Only a
+ * pointer kept under its purchase ("tempSessionId:<session>") is written or
+ * read now; the bare key is only cleared, as an older page may have left one.
  */
 export const EXPIRY_MS = TEMP_RESUME_HOURS * 60 * 60 * 1000;
 

@@ -9,12 +9,15 @@
  * The section is run against a fake curl that answers from routes and logs
  * every call:
  *   - a good deploy (four preflights on 2026-11-10.1, the lease table closed
- *     to anon, the published page carrying the PDF fix and the stored ask)
- *     prints PASS lines and no FAIL;
+ *     to anon, the published page carrying the PDF fix and the stored ask and
+ *     reading only its own purchase's pointer, the homepage's press keeping
+ *     no pointer that names no purchase) prints PASS lines and no FAIL;
  *   - today, before the deploy (older builds, no table, the page before the
  *     merge), prints INFO lines and no FAIL;
  *   - with analyze-resume live, a missing table and an unpublished page FAIL;
- *     a table anon can read FAILs; a missing build header FAILs;
+ *     a page or press still using the pointer that names no purchase FAILs;
+ *     a table anon can read FAILs; a missing build header FAILs; a bundle
+ *     whose press cannot be found FAILs rather than passing over nothing;
  *   - nothing is POSTed, and the publishable key is never printed.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
@@ -82,14 +85,20 @@ const preflights = (build: (fn: string) => string | null): Route[] =>
 const lease = (status: number, body: unknown): Route => ({ match: "^GET https://p\\.supabase\\.co/rest/v1/analysis_run_leases\\?", status, body: JSON.stringify(body) });
 const CLOSED = lease(401, { code: "42501", message: "permission denied for table analysis_run_leases" });
 const MISSING = lease(404, { code: "PGRST205", message: "Could not find the table 'public.analysis_run_leases' in the schema cache" });
-const NEW_PAGE = 'const s="*,*::before,*::after{animation:none!important;transition:none!important}";jsx("div",{id:"quantification",children:x});f({body:{language:l.language,resumeText:"",sessionId:n,fromStored:!0}});';
+const NEW_PAGE = 'const s="*,*::before,*::after{animation:none!important;transition:none!important}";jsx("div",{id:"quantification",children:x});f({body:{language:l.language,resumeText:"",sessionId:n,fromStored:!0}});N&&Ye(`tempSessionId:${N}`),Ye("tempSessionId");const v=Ke(`tempSessionId:${N}`);if(!v){}';
+/** The page as published today: its purchase's pointer, or else the one naming no purchase. */
+const OLD_FALLBACK = 'const v=Ke(`tempSessionId:${N}`)||Ke("tempSessionId");if(!v){}';
 // The toaster's own stylesheet switches animations off in the other order; a
 // page carrying only that has not shipped the PDF fix.
-const OLD_PAGE = '.sonner-loading-bar{transition:none!important;animation:none!important}jsx("div",{id:"metrics",children:x});f({body:{resumeText:"",sessionId:n,language:l.language}});';
-const site = (chunk: string | null): Route[] => [
+const OLD_PAGE = '.sonner-loading-bar{transition:none!important;animation:none!important}jsx("div",{id:"metrics",children:x});f({body:{resumeText:"",sessionId:n,language:l.language}});' + OLD_FALLBACK;
+/** The homepage's press, after and before: the old one kept a pointer naming no purchase before create-checkout answered. */
+const NEW_PRESS = 'console.log("[Checkout] Resume stored, calling create-checkout"),console.log("[Checkout] Calling create-checkout");W())return;va("tempSessionId"),f();Os(`tempSessionId:${he.sessionId}`,Te)';
+const OLD_PRESS = 'console.log("[Checkout] Resume stored, calling create-checkout"),Os("tempSessionId",Te),console.log("[Checkout] C");W())return;va("tempSessionId"),f();';
+const site = (chunk: string | null, press: string | null = NEW_PRESS): Route[] => [
   { match: "^GET https://site\\.test/$", body: '<script type="module" src="/assets/index-AbC123.js"></script>' },
-  { match: "^GET https://site\\.test/assets/index-AbC123\\.js$", body: chunk === null ? "no chunks here" : 'import("./Success-XyZ789.js")' },
+  { match: "^GET https://site\\.test/assets/index-AbC123\\.js$", body: chunk === null ? "no chunks here" : 'import("./Success-XyZ789.js");import("./Index-IdX456.js")' },
   { match: "^GET https://site\\.test/assets/Success-XyZ789\\.js$", body: chunk ?? "" },
+  { match: "^GET https://site\\.test/assets/Index-IdX456\\.js$", body: press ?? "a chunk without the press" },
 ];
 const fails = (lines: string[]) => lines.filter((l) => l.startsWith("FAIL"));
 
@@ -97,26 +106,27 @@ describe("the hotfix paid section", () => {
   it("a good deploy passes every claim and fails none", () => {
     const { lines, out } = run([...preflights((fn) => `${fn}.2026-11-10.1`), CLOSED, ...site(NEW_PAGE)]);
     expect(fails(lines), out).toEqual([]);
-    expect(lines.filter((l) => l.startsWith("PASS")).length, out).toBe(FNS.length + 2);
+    expect(lines.filter((l) => l.startsWith("PASS")).length, out).toBe(FNS.length + 3);
   });
 
   it("today, before anything is deployed, prints no FAIL: every claim reads as not yet", () => {
-    const { lines, out } = run([...preflights((fn) => `${fn}.2026-11-03.1`), MISSING, ...site(OLD_PAGE)]);
+    const { lines, out } = run([...preflights((fn) => `${fn}.2026-11-03.1`), MISSING, ...site(OLD_PAGE, OLD_PRESS)]);
     expect(fails(lines), out).toEqual([]);
     expect(lines.filter((l) => l.startsWith("PASS")), out).toEqual([]);
-    expect(lines.filter((l) => /^INFO  HP[123] /.test(l)).length, out).toBe(FNS.length + 2);
+    expect(lines.filter((l) => /^INFO  HP[1235] /.test(l)).length, out).toBe(FNS.length + 3);
   });
 
   it("the frontend published first, before the functions: the page passes and nothing fails", () => {
     const { lines, out } = run([...preflights((fn) => `${fn}.2026-11-03.1`), MISSING, ...site(NEW_PAGE)]);
     expect(fails(lines), out).toEqual([]);
     expect(lines.some((l) => l.startsWith("PASS  HP3 ")), out).toBe(true);
+    expect(lines.some((l) => l.startsWith("PASS  HP5 ")), out).toBe(true);
   });
 
   it("with analyze-resume live, a missing lease table and an unpublished page fail", () => {
-    const { lines, out } = run([...preflights((fn) => `${fn}.2026-11-10.1`), MISSING, ...site(OLD_PAGE)]);
-    expect(fails(lines).map((l) => l.slice(0, 9)), out).toEqual(["FAIL  HP2", "FAIL  HP3"]);
-    expect(fails(lines)[1], out).toContain("the PDF's animation switch-off; the quantification section; the ask from the copy kept at checkout");
+    const { lines, out } = run([...preflights((fn) => `${fn}.2026-11-10.1`), MISSING, ...site(OLD_PAGE, OLD_PRESS)]);
+    expect(fails(lines).map((l) => l.slice(0, 9)), out).toEqual(["FAIL  HP2", "FAIL  HP3", "FAIL  HP5"]);
+    expect(fails(lines)[1], out).toContain("the PDF's animation switch-off; the quantification section; the ask from the copy kept at checkout; reading only its own purchase's pointer");
   });
 
   it("a lease table anon can read fails; a missing build header fails; a later build passes", () => {
@@ -133,7 +143,21 @@ describe("the hotfix paid section", () => {
 
   it("an entry that names no Success chunk fails rather than passing over nothing", () => {
     const { lines, out } = run([...preflights((fn) => `${fn}.2026-11-10.1`), CLOSED, ...site(null)]);
-    expect(fails(lines).map((l) => l.slice(0, 9)), out).toEqual(["FAIL  HP3"]);
+    expect(fails(lines).map((l) => l.slice(0, 9)), out).toEqual(["FAIL  HP3", "FAIL  HP5"]);
+  });
+
+  it("a published success page that still falls back to the pointer naming no purchase fails once analyze-resume is live, and only for that", () => {
+    const { lines, out } = run([...preflights((fn) => `${fn}.2026-11-10.1`), CLOSED, ...site(NEW_PAGE.replace("const v=Ke(`tempSessionId:${N}`);if(!v){}", OLD_FALLBACK))]);
+    expect(fails(lines), out).toHaveLength(1);
+    expect(fails(lines)[0], out).toMatch(/^FAIL  HP3 .* lacks reading only its own purchase's pointer while analyze-resume serves/);
+  });
+
+  it("a published press that still keeps the pointer naming no purchase fails once analyze-resume is live; a chunk without the press fails as unjudgeable", () => {
+    const old = run([...preflights((fn) => `${fn}.2026-11-10.1`), CLOSED, ...site(NEW_PAGE, OLD_PRESS)]);
+    expect(fails(old.lines), old.out).toEqual([expect.stringMatching(/^FAIL  HP5 the published homepage \(Index-IdX456\.js\) still keeps a stored-résumé pointer naming no purchase while analyze-resume serves/)]);
+    const gone = run([...preflights((fn) => `${fn}.2026-11-10.1`), CLOSED, ...site(NEW_PAGE, null)]);
+    expect(fails(gone.lines).map((l) => l.slice(0, 9)), gone.out).toEqual(["FAIL  HP5"]);
+    expect(fails(gone.lines)[0], gone.out).toContain("cannot be judged");
   });
 
   it("never writes: nothing is POSTed, and the key is never printed", () => {

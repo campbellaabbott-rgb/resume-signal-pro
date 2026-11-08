@@ -313,10 +313,13 @@ const Success = () => {
         return;
       }
 
-      // Prefer session-scoped temp session ID, fallback to legacy key
-      const tempSessionId =
-        getResumeData(`tempSessionId:${sessionId}`) ||
-        getResumeData("tempSessionId");
+      // ONLY THIS PURCHASE'S OWN POINTER (review of C-S14-010). The key that
+      // named no purchase was kept for a day like the rest, so an abandoned
+      // checkout's résumé and posting on this browser were analysed for a
+      // different purchase opened here (the emailed link, another device's
+      // payment), and that purchase's own stored copy went unread. Without
+      // this purchase's pointer the page asks by the session alone below.
+      const tempSessionId = getResumeData(`tempSessionId:${sessionId}`);
 
       if (!tempSessionId) {
         // No résumé in this tab: an analysis this purchase already received
