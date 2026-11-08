@@ -135,6 +135,22 @@ export function previousSitemap({ dir, liveSitemapXml }) {
   return { raw: "", from: "", everSaved, reason: last ? "own" : everSaved ? "missing" : "none" };
 }
 
+/**
+ * The saved ledger the Google Indexing notifier (B08) diffs against: the
+ * newest one that is not the live ledger itself, by the same rule as
+ * previousSitemap. `reason` is "none", "missing" or "own" as there.
+ */
+export function previousLedger({ dir, liveLedgerText }) {
+  const p = pairPaths(dir);
+  const live = String(liveLedgerText ?? "");
+  const last = readOr(p.ledger);
+  const prev = readOr(p.prevLedger);
+  const everSaved = existsSync(p.log);
+  if (last && last !== live) return { raw: last, from: p.ledger, everSaved, reason: "" };
+  if (last && prev && prev !== live) return { raw: prev, from: p.prevLedger, everSaved, reason: "" };
+  return { raw: "", from: "", everSaved, reason: last ? "own" : everSaved ? "missing" : "none" };
+}
+
 const isMain = (() => {
   try { return Boolean(process.argv[1]) && realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
 })();

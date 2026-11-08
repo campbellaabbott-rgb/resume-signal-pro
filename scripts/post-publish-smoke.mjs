@@ -424,6 +424,20 @@ try {
   else record(ping.line, ping.status === "PASS");
 }
 
+// ---- 10. The Google Indexing API's list for this publish (B08), DRY RUN ONLY ----
+// The posting pages this publish added (URL_UPDATED) and retired
+// (URL_DELETED), diffed against the previous publish's saved ledger, printed
+// with their counts. This step NEVER sends, whatever the environment says:
+// argv is empty, so the --send half of the go-ahead is never given here. A
+// send is the owner's own command (scripts/google-indexing-notify.mjs --send
+// with INDEXING_SEND=1). The list is information, never a pass or a fail.
+{
+  const { notify } = await import("./google-indexing-notify.mjs");
+  const idx = await notify({ argv: [], env: process.env });
+  if (idx.report) process.stdout.write(idx.report);
+  console.log(`INFO  ${idx.line}`);
+}
+
 // ---- Verdict ----
 const failures = results.filter((r) => !r.ok);
 console.log(failures.length === 0
