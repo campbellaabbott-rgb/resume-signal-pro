@@ -95,7 +95,12 @@ import { postingSource } from "@/lib/employer-key";
 import { collidedBoards, isCollidedToken } from "@/lib/board-collisions";
 import { BoardCollisionNotice } from "@/components/jobs/BoardCollisionNotice";
 import { SimilarCompanies } from "@/components/jobs/SimilarCompanies";
-import { TailoredResumeModal, type TailoredResumeContent } from "@/components/TailoredResumeModal";
+import type { TailoredResumeContent } from "@/components/TailoredResumeModal";
+import { Suspense, lazy } from "react";
+// Loaded on the first press that drafts one (PERF-03): a company page, a field
+// lander and /jobs no longer download the dialog to paint and hydrate, as the
+// scanner (Index.tsx) already does.
+const TailoredResumeModal = lazy(() => import("@/components/TailoredResumeModal").then((m) => ({ default: m.TailoredResumeModal })));
 import { supabase } from "@/integrations/supabase/client";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { heldBoardPass } from "@/lib/board-pass";
@@ -12421,12 +12426,16 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
         </DialogContent>
       </Dialog>
 
-      <TailoredResumeModal
-        isOpen={tailoredOpen}
-        onClose={() => setTailoredOpen(false)}
-        content={tailoredContent}
-        isLoading={tailoredLoading}
-      />
+      {(tailoredOpen || tailoredContent) && (
+        <Suspense fallback={null}>
+          <TailoredResumeModal
+            isOpen={tailoredOpen}
+            onClose={() => setTailoredOpen(false)}
+            content={tailoredContent}
+            isLoading={tailoredLoading}
+          />
+        </Suspense>
+      )}
 
       <Dialog open={coverOpen} onOpenChange={(o) => { if (!o) setCoverOpen(false); }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
