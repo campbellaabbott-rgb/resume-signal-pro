@@ -206,7 +206,12 @@ so is a late stamp or a function live ahead of main.
    the ledger reads RELEASABLE (empty their `holdUntilVerified` entries, keep
    the condition as a `migrationOrder` after-rule) and send them in a second
    message.
-4. Then the next integration may merge.
+4. CHANGELOG: once the deploy verifies, the user-visible changes it shipped get
+   changelog entries (src/data/changelog.ts + all nine src/i18n/changelog
+   files, through `node scripts/apply-pending-changelog.mjs`), every claim
+   re-checked against production, dated by the day they went live. They ship
+   in the next frontend publish. Nothing not yet live gets an entry.
+5. Then the next integration may merge.
 
 Branches keep working while main is frozen; they merge when it thaws, against
 the new main, and the ledger is re-run.
