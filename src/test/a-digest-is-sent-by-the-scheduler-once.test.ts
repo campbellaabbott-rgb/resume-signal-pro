@@ -27,6 +27,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { buildIsAtLeast } from "./helpers/fn-build";
 import { SELLER_SET_STUB } from "./helpers/seller-set";
 import { MAIL_DOOR_VERIFY, bootMailDoorDb, rows } from "./helpers/mail-door-db";
 
@@ -274,6 +275,7 @@ describe("send-agent-digest answers the scheduler and our service role, nobody e
 
   it("the preflight answers its build", async () => {
     const res = await agent(new Request("https://harness.supabase.co/functions/v1/send-agent-digest", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toMatch(/^send-agent-digest\.2026-10-(0[4-9]|[1-3]\d)\.\d+$/);
+    // This build or a later one: a date pattern fails the day the function is rebuilt for anything else.
+    expect(buildIsAtLeast(res.headers.get("x-fn-build"), "send-agent-digest", "2026-10-04", 1), String(res.headers.get("x-fn-build"))).toBe(true);
   });
 });

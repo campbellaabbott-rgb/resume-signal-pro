@@ -9,13 +9,15 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 // bundle still serving. The same value rides as a response header on every
 // answer INCLUDING the CORS preflight, so a deploy can be checked with an
 // OPTIONS request that writes no row and spends no budget.
-const BUILD_VERSION = "2026-10-09.2";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const BUILD_VERSION = "2026-11-09.1";
 
 // OPTIMIZATION: Removed alert system - not needed for tracking events
 // Removed EdgeRuntime dependency for simpler, faster execution
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Max-Age': '7200',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'x-fn-build': `track-ab-event.${BUILD_VERSION}`,
 };

@@ -86,10 +86,12 @@ import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting
 // 2026-11-10.2 (fix/hotfix-2026-11-10, the integration): both lanes' changes
 // above together. hotfix/pro and hotfix/spend each stamped 2026-11-10.1 on
 // code of its own, so the merged code takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "generate-apply-package.2026-11-10.2";
+// 2026-11-10.3 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "generate-apply-package.2026-11-10.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Max-Age': '7200',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'x-fn-build': FN_BUILD,
 };

@@ -30,7 +30,8 @@ import { requireWebsiteSession } from "../_shared/website-session.ts";
 
 // Provable from outside without a session: every response, the preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "auth-signed-in.2026-10-14.1";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "auth-signed-in.2026-11-09.1";
 
 /** At most this many calls per session per hour (the site calls once per sign-in). */
 const CALLS_PER_HOUR = 20;
@@ -49,6 +50,7 @@ function corsHeaders(req: Request): Record<string, string> {
   const allowed = !!origin && (checkoutOrigin(origin, (k) => Deno.env.get(k)) === origin || LOVABLE_PREVIEW.test(origin));
   return {
     "Access-Control-Allow-Origin": allowed ? origin : SITE_ORIGIN,
+    "Access-Control-Max-Age": "7200",
     "Access-Control-Allow-Headers":
       "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
     "Access-Control-Allow-Methods": "POST, OPTIONS",

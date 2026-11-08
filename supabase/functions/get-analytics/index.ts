@@ -13,12 +13,14 @@ import { createRollup, type AnalyticsEvent } from "./rollup.ts";
 // newest first, and folded into the counts as it arrives (./rollup.ts); a run
 // that spends its time budget leaves the oldest days partial and says from
 // where (audience.coveredFrom), never the newest.
-const FN_BUILD = "get-analytics.2026-11-03.1";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "get-analytics.2026-11-09.1";
 /** Nothing new is asked for after this long (the isolate dies near 150 s). */
 const READ_BUDGET_MS = 110_000;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Max-Age': '7200',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-key',
   'Access-Control-Expose-Headers': 'x-fn-build',
   'x-fn-build': FN_BUILD,

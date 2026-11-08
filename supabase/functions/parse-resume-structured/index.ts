@@ -17,10 +17,12 @@ import { callAIWithModelFallback, describeError, describeReply } from "../_share
 // text around it, which could be the person's name or email. Nothing else in
 // this function changed, and nothing of main's past f8d72a9b, the build the
 // 2026-10-31 deploy put live, rides along.
-const FN_BUILD = "parse-resume-structured.2026-11-03.1";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "parse-resume-structured.2026-11-09.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Max-Age': '7200',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'x-fn-build': FN_BUILD,
 };

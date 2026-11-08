@@ -71,10 +71,12 @@ import { retiredCheckoutAnswer } from "../_shared/apply-agent-retired.ts";
 // _shared/pro.ts it bundles refreshes a cache row that names a Stripe
 // customer by that customer instead of clearing it when an address
 // search finds nothing, and gained the by-customer and by-account readers.
-const FN_BUILD = "create-agent-checkout.2026-11-10.1";
+// 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "create-agent-checkout.2026-11-10.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,

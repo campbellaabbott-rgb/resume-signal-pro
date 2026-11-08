@@ -15,6 +15,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { buildIsAtLeast } from "./helpers/fn-build";
 
 const ROOT = resolve(__dirname, "../..");
 const sent: Array<{ html: string }> = [];
@@ -68,6 +69,8 @@ describe("the report mail's Full Analysis button", () => {
 
   it("the function says which build carries the new destination", () => {
     const src = readFileSync(resolve(ROOT, "supabase/functions/send-scan-report/index.ts"), "utf8");
-    expect(src).toMatch(/const FN_BUILD = "send-scan-report\.2026-11-03\.1";/);
+    // That build or a later one: an exact pin fails the day the function is rebuilt for anything else.
+    const stamp = /const FN_BUILD = "([^"]+)";/.exec(src)?.[1];
+    expect(buildIsAtLeast(stamp, "send-scan-report", "2026-11-03", 1), String(stamp)).toBe(true);
   });
 });

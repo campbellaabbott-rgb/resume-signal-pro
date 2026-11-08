@@ -43,10 +43,12 @@ import { websiteSessionOf, type WebsiteAuth } from "../_shared/website-session.t
 // recorded (S12-103), and the caller is a website session or nobody (CP-C).
 // 2026-11-10.1 (hotfix H3, C-S14-049): the address a held purchase was made
 // with is shown masked; only a signed-in account sees its own address whole.
-const FN_BUILD = "scan-credits.2026-11-10.1";
+// 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "scan-credits.2026-11-10.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Expose-Headers": "x-fn-build",

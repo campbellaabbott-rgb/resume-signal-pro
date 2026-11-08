@@ -53,10 +53,12 @@ import { requireWebsiteSession } from "../_shared/website-session.ts";
 // 2026-10-14.1, so this build sorts after that day.
 // 2026-10-14.25 (wave 4 round 2): plans found by the account, a bound legacy
 // plan accepted, keys and lists erased, a website session only.
-const FN_BUILD = "delete-account.2026-10-14.25";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "delete-account.2026-11-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,

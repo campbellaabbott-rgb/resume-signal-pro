@@ -341,7 +341,8 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
 // 2026-10-11.38 (recheck 3, 2026-10-26): a name is held only when its one exact match has under 10 open roles, never because the catalogue labels the board an agency's, and a held name is one the board carries; recheckedAt and get_job say the stamp is when the board last read the employer's feed, which may not have included the posting.
 // 2026-11-02.1 (board-stream round, 2026-11-01): a country word inside another place is not that country (S13-041, query-place.ts countryOf over _shared/work-countries.ts countryMentions); the location argument still goes to the board as typed (S9-002's country and remote reading measured and declined: it lost rows main found, n1461); the keyless page cap holds whatever credential failed (S13-103, answerUnkeyed); check_jobs_open's basis says open is get_job's row test only when the board's exists answer names that test (S13-076), and the weaker sentence otherwise.
 // 2026-11-03.1 (audit-rest held items, 2026-11-04): no per-person hash in the log, and a ChatGPT call's failure logs no error text (S13-104); a claimed 50% alert is given back unless notify-owner mailed it (S13-040); agentReadyOnly reaches the board as its vendor list (S13-118).
-const FN_BUILD = "agent-mcp.2026-11-03.1";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "agent-mcp.2026-11-09.1";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -548,6 +549,7 @@ async function egressHost(address: string, claimsChatGpt: boolean): Promise<"cla
 // is exposed (spec D2 §2.6).
 const cors = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers":
     "authorization, x-api-key, x-client-info, apikey, content-type, mcp-protocol-version, mcp-session-id, last-event-id",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",

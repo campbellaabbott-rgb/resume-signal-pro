@@ -9,13 +9,15 @@ import { checkoutOrigin } from "../_shared/checkout-policy.ts";
 // switched off. It is unauthenticated (verify_jwt false), minted a Stripe
 // test session for any caller, returned to the public dev page and rehearsed
 // none of the real checkout path. A POST answers 410 before Stripe.
-const FN_BUILD = "create-test-checkout.2026-10-11.23";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "create-test-checkout.2026-11-09.1";
 
 /** The dev checkout's switch: off. Typed `boolean` so the dormant path still type-checks. */
 const TEST_CHECKOUT_ON: boolean = false;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,

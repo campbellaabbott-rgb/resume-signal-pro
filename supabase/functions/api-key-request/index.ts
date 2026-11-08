@@ -56,7 +56,8 @@ import { KEY_COPY, mailLanguageOf, type MailLanguage } from "./copy.ts";
 // Also 2026-11-03.1 (S13-102, the audit-rest fixer): the confirmation mail
 // is written in the asking page's language (body.language, else the
 // browser's Accept-Language, else English; ./copy.ts).
-const FN_BUILD = "api-key-request.2026-11-03.1";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "api-key-request.2026-11-09.1";
 
 /**
  * Résumé fit scoring calls a UTC day on the key this door mints (owner
@@ -71,6 +72,7 @@ const SITE = "https://resumebooster.work";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "x-fn-build": FN_BUILD,

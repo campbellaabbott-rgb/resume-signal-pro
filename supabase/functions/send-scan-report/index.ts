@@ -78,10 +78,12 @@ import { mailLanguageOf, REPORT_COPY, reportDate, type MailLanguage, type Report
 // written in the reader's language (S13-102, copy.ts); a mail that never left
 // hands its counts back (S13-098, mail_door_give); an unsubscribe never lowers
 // a bounce or a complaint (S13-068).
-const FN_BUILD = "send-scan-report.2026-11-03.1";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "send-scan-report.2026-11-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "x-fn-build": FN_BUILD,
 };

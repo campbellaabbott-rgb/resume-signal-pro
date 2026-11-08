@@ -30,10 +30,12 @@ import { SHORTLIST_ATTESTATION_TEXT, SHORTLIST_ATTESTATION_VERSION } from "../_s
 // 2026-11-03.1 (S13-073, fix/audit-rest-abuse): the body's extra blocklist is
 // read as literal phrases (caller-blocklist.ts), never compiled as a caller's
 // regular expression.
-const FN_BUILD = "shortlist-evaluate.2026-11-03.1";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "shortlist-evaluate.2026-11-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,
