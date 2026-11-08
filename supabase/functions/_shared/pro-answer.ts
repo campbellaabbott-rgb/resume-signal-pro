@@ -127,20 +127,51 @@ export function accountAnswer(input: AccountAnswerInput): AccountAnswer {
 }
 
 /**
- * The customer "Manage billing" opens: the address's own live or owing plan,
- * else the account's bound customer (read before the lookup; the binding is
- * the proof), else what the lookup found. A mailbox proof counts only for a
- * customer Stripe lists for that address.
+ * The customer "Manage billing" opens: the address's own live or owing plan;
+ * else a live or owing plan the address's row reached through its customer
+ * when that plan is this account's (`foundIsOwn`: the plan or a row bound to
+ * this account names it); else the account's bound customer (read before the
+ * lookup; the binding is the proof); else what the lookup found. A mailbox
+ * proof counts only for a customer Stripe lists for that address.
  */
 export function portalCustomerOf(
   found: { stripeCustomerId: string | null; status: string; matchedBy?: "address" | "customer" },
   boundCustomer: string | null,
+  foundIsOwn = false,
 ): { customerId: string | null; viaBinding: boolean; mailboxCounts: boolean } {
-  const byAddress = found.matchedBy === "address" && !!found.stripeCustomerId && statusRank(found.status) >= 2;
-  const customerId = byAddress ? found.stripeCustomerId : boundCustomer ?? found.stripeCustomerId ?? null;
+  const standing = !!found.stripeCustomerId && statusRank(found.status) >= 2;
+  const byAddress = found.matchedBy === "address" && standing;
+  // A member with two bound plans (one ended, one owing): the one the lookup
+  // just read live or owing is opened, never whichever row was written last.
+  const byOwnCustomer = !byAddress && found.matchedBy === "customer" && standing && foundIsOwn;
+  const customerId = byAddress || byOwnCustomer ? found.stripeCustomerId : boundCustomer ?? found.stripeCustomerId ?? null;
   return {
     customerId,
-    viaBinding: !byAddress && !!boundCustomer && customerId === boundCustomer,
+    viaBinding: byOwnCustomer || (!byAddress && !!boundCustomer && customerId === boundCustomer),
     mailboxCounts: !!customerId && found.stripeCustomerId === customerId && found.matchedBy === "address",
   };
+}
+
+export type BoundRow = { stripe_customer_id?: unknown; status?: unknown; current_period_end?: unknown };
+
+/**
+ * The customer an account's bound Pro or agent rows name for billing: a live
+ * plan's first, then an owing one's, then any other; in the order given
+ * (Pro rows before agent rows, newest first) only between rows that rank
+ * alike. The newest row alone used to decide, and a refresh of an ended
+ * plan's row made it the newest (review of M-S14-002).
+ */
+export function boundCustomerOfRows(rows: ReadonlyArray<BoundRow>, now: number = Date.now()): string | null {
+  let best: string | null = null;
+  let bestRank = 0;
+  for (const r of rows) {
+    const id = r.stripe_customer_id;
+    if (typeof id !== "string" || !/^cus_[A-Za-z0-9]+$/.test(id)) continue;
+    const rank = rowRank({ status: r.status as string | null, current_period_end: r.current_period_end as string | null } as PlanRow, now) || 1;
+    if (rank > bestRank) {
+      best = id;
+      bestRank = rank;
+    }
+  }
+  return best;
 }

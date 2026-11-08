@@ -30,6 +30,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { STRIPE_WEBHOOKS_REAL_SHAPE, signStripePayload } from "./helpers/stripe-signature";
 import { buildIsAtLeast } from "./helpers/fn-build";
+import { boundCustomerOfRows, portalCustomerOf } from "../../supabase/functions/_shared/pro-answer";
 import RAW from "./fixtures/stripe-pro-billing-email-change-events.json";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 240_000 });
@@ -338,6 +339,86 @@ describe("an address's plan is described only to the account it belongs to (C-S1
     describesNothing(await proCard("jwt-stranger"), "an unproven account");
     proven.add(STRANGER_ID);
     expect(await proCard("jwt-stranger"), "the account that proved the mailbox owns the unbound plan").toMatchObject({ status: "past_due", needsPaymentUpdate: true });
+  });
+});
+
+describe("a plan kept by its customer is kept only for the account it is bound to (review of M-S14-002)", () => {
+  /** The unbound plan's buyer moved its billing email; the old address is now someone else's, proven. */
+  function unboundPlanLeftItsAddress() {
+    boughtPro({ metadata: {}, rowUserId: null });
+    world.subs[M.subscriptionId].metadata = {};
+    stripeSent("customer.updated");
+    proven.add(STRANGER_ID);
+  }
+
+  it("an unbound plan whose payer moved its billing email is not kept live for whoever proves the old address", async () => {
+    unboundPlanLeftItsAddress();
+    describesNothing(await proCard("jwt-stranger"), "the account that inherited the old address");
+    expect(db.rows("pro_subscribers").find((r) => r.email === M.signInEmail), "the old address's row was kept live by a customer that left it")
+      .toMatchObject({ status: "inactive", stripe_customer_id: M.customerId, user_id: null });
+    expect(world.portals).toEqual([]);
+  });
+
+  it("a subscription event refreshes no unbound row its customer has left, and the payer's new address reads the plan", async () => {
+    unboundPlanLeftItsAddress();
+    await proCard("jwt-stranger");
+    const ev = f.events["customer.subscription.updated"];
+    ev.data.object.status = "active";
+    ev.data.object.metadata = {};
+    expect(await deliver("customer.subscription.updated")).toBe(200);
+    expect(db.rows("pro_subscribers").find((r) => r.email === M.signInEmail), "a webhook made the old address's unbound row live again")
+      .toMatchObject({ status: "inactive", stripe_customer_id: M.customerId, user_id: null });
+    expect(db.rows("pro_subscribers").find((r) => r.email === M.newBillingEmail)).toMatchObject({ status: "active", stripe_customer_id: M.customerId });
+    describesNothing(await (await call("check-subscription", "jwt-stranger")).json(), "the old address's account, after the event");
+  });
+
+  it("a member with an ended plan on a former address opens billing on the plan that owes, after the Pro card refreshed the ended one", async () => {
+    // The ended plan's row comes first, as the newest does once the Pro card has refreshed it.
+    world.customers.cus_TformerPlan01 = { id: "cus_TformerPlan01", object: "customer", email: "former@example.org" };
+    db.rows("pro_subscribers").push({
+      email: "former@example.org", stripe_customer_id: "cus_TformerPlan01", status: "canceled", current_period_end: null,
+      updated_at: new Date(Date.now() - 5 * 3600_000).toISOString(), user_id: M.userId, cancel_at_period_end: false,
+    });
+    boughtPro();
+    world.subs.sub_1SQformerPlan01 = {
+      ...JSON.parse(JSON.stringify(f.subscriptionAfterPurchase)), id: "sub_1SQformerPlan01", customer: "cus_TformerPlan01", status: "canceled",
+    };
+    stripeSent("customer.updated");
+    stripeSent("customer.subscription.updated");
+    expect(await proCard()).toMatchObject({ status: "past_due", needsPaymentUpdate: true });
+    expect(db.rows("pro_subscribers").find((r) => r.email === "former@example.org")?.status).toBe("canceled");
+    const billing = await manageBilling();
+    expect(billing.status).toBe(200);
+    expect(world.portals.map((p) => p.customer), "billing opened the ended plan's customer, not the one that owes").toEqual([M.customerId]);
+  });
+
+  it("the portal opens the account's own owing plan the lookup reached by its customer before another bound customer", () => {
+    const owing = { stripeCustomerId: "cus_Towing01", status: "past_due", matchedBy: "customer" as const };
+    expect(portalCustomerOf(owing, "cus_Tended01", true)).toEqual({ customerId: "cus_Towing01", viaBinding: true, mailboxCounts: false });
+    // Not the account's own: the binding decides, exactly as before.
+    expect(portalCustomerOf(owing, "cus_Tended01", false).customerId).toBe("cus_Tended01");
+    expect(portalCustomerOf(owing, null).customerId).toBe("cus_Towing01");
+    expect(portalCustomerOf(owing, null).viaBinding).toBe(false);
+    // An ended plan reached by its customer never displaces the bound one.
+    expect(portalCustomerOf({ ...owing, status: "canceled" }, "cus_Tended01", true).customerId).toBe("cus_Tended01");
+  });
+
+  it("an account's bound customer for billing is the live plan's, then the owing plan's, and only then the newest row's", () => {
+    const now = Date.now();
+    const later = new Date(now + 20 * 86400_000).toISOString();
+    expect(boundCustomerOfRows([
+      { stripe_customer_id: "cus_Tended01", status: "canceled", current_period_end: null },
+      { stripe_customer_id: "cus_Towing01", status: "past_due", current_period_end: null },
+    ], now)).toBe("cus_Towing01");
+    expect(boundCustomerOfRows([
+      { stripe_customer_id: "cus_Towing01", status: "past_due", current_period_end: null },
+      { stripe_customer_id: "cus_Tlive01", status: "active", current_period_end: later },
+    ], now)).toBe("cus_Tlive01");
+    expect(boundCustomerOfRows([
+      { stripe_customer_id: "cus_Tnewest01", status: "canceled", current_period_end: null },
+      { stripe_customer_id: "cus_Tolder01", status: "canceled", current_period_end: null },
+    ], now)).toBe("cus_Tnewest01");
+    expect(boundCustomerOfRows([{ stripe_customer_id: null, status: "active" }, { stripe_customer_id: "not-a-customer", status: "active" }], now)).toBeNull();
   });
 });
 

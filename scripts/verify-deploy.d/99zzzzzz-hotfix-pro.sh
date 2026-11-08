@@ -22,8 +22,11 @@
 #   O   the owner's Stripe steps (INFO).
 #
 # WHAT THIS SECTION CANNOT SEE. Each H1 claim needs a signed-in member with a
-# plan, or a signed Stripe event, and this script has neither. They are
-# proven on the shipped handlers by
+# plan, or a signed Stripe event, and this script has neither: so do the two
+# the integration's review added (an unbound row whose customer left its
+# address is not kept live for whoever proves that mailbox; a member with two
+# bound plans opens billing on the live or owing one). They are proven on the
+# shipped handlers by
 # src/test/a-pro-member-who-changes-their-billing-email-in-stripe-keeps-pro-the-portal-and-no-second-plan.test.ts
 # and on the shared modules by
 # supabase/functions/check-subscription/billing_email_change_test.ts.

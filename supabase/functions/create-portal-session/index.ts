@@ -13,7 +13,7 @@ import { checkProByEmail } from "../_shared/pro.ts";
 import { provenMailbox } from "../_shared/mailbox-proof.ts";
 import { checkoutOrigin } from "../_shared/checkout-policy.ts";
 import { refusedCallerBody, websiteTokenRefusal } from "../_shared/checkout-buyer.ts";
-import { portalCustomerOf } from "../_shared/pro-answer.ts";
+import { boundCustomerOfRows, portalCustomerOf, type BoundRow } from "../_shared/pro-answer.ts";
 
 // Provable from outside without an account: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -33,7 +33,9 @@ import { portalCustomerOf } from "../_shared/pro-answer.ts";
 // anything, and preferred whenever the address holds no live or owing plan,
 // so a member whose billing email changed in Stripe's portal still reaches
 // billing; a plan found only through the customer its row names is opened
-// for the account it is bound to, never on a proof of the old mailbox.
+// for the account it is bound to, never on a proof of the old mailbox; and a
+// member with two bound plans is sent to the live or owing one, never to the
+// one whose row was written last.
 const FN_BUILD = "create-portal-session.2026-11-10.1";
 
 const corsHeaders = {
@@ -62,25 +64,30 @@ async function rowBindsCustomer(
   return false;
 }
 
-/** The Stripe customer a Pro or agent cache row bound to this account names, newest first; null for none. */
+/**
+ * The Stripe customer a Pro or agent cache row bound to this account names:
+ * a live plan's first, then an owing one's, then any (Pro before agent,
+ * newest first only between alike); null for none. The newest row alone used
+ * to decide, and check-subscription's refresh of an ended plan made its row
+ * the newest, so a member owing on another plan was sent to the ended one.
+ */
 async function boundCustomerOf(
   // deno-lint-ignore no-explicit-any
   db: { from: (t: string) => any },
   userId: string,
 ): Promise<string | null> {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) return null;
+  const rows: BoundRow[] = [];
   for (const table of ["pro_subscribers", "agent_subscribers"]) {
     try {
-      const { data, error } = await db.from(table).select("stripe_customer_id, updated_at")
+      const { data, error } = await db.from(table).select("stripe_customer_id, status, current_period_end, updated_at")
         .eq("user_id", userId).order("updated_at", { ascending: false }).limit(10);
-      const rows = !error && Array.isArray(data) ? data as Array<{ stripe_customer_id?: unknown }> : [];
-      const id = rows.map((r) => r.stripe_customer_id).find((c) => typeof c === "string" && c.startsWith("cus_"));
-      if (typeof id === "string") return id;
+      if (!error && Array.isArray(data)) rows.push(...(data as BoundRow[]));
     } catch (_) {
       // An unread table names no customer.
     }
   }
-  return null;
+  return boundCustomerOfRows(rows);
 }
 
 serve(async (req) => {
@@ -135,9 +142,14 @@ serve(async (req) => {
     // no customer and the member was told "No subscription found".
     const boundCustomer = await boundCustomerOf(supabase, uid);
     const found = await checkProByEmail(stripe, supabase, email);
-    // The address's own live or owing plan is opened as before; otherwise the
-    // plan this account is bound to; otherwise whatever the lookup found.
-    const { customerId, viaBinding, mailboxCounts } = portalCustomerOf(found, boundCustomer);
+    // A plan the address's row reached through its customer is this
+    // account's when the plan names it or a row bound to it names that customer.
+    const foundIsOwn = found.matchedBy === "customer" && !!uid && !!found.stripeCustomerId &&
+      (found.boundUserId === uid || await rowBindsCustomer(supabase, uid, found.stripeCustomerId));
+    // The address's own live or owing plan is opened as before; then this
+    // account's live or owing plan the lookup reached by its customer; then
+    // the plan this account is bound to; otherwise whatever the lookup found.
+    const { customerId, viaBinding, mailboxCounts } = portalCustomerOf(found, boundCustomer, foundIsOwn);
     if (!customerId) {
       return new Response(JSON.stringify({ error: "No subscription found for this account" }), {
         status: 404,

@@ -218,21 +218,33 @@ async function writeCustomerPlan(db: TableClient, plan: CustomerPlan, rows: Read
   return written;
 }
 
-/** Every Pro row that names this customer, refreshed from Stripe by its id, whatever address the row is kept under. */
+/**
+ * Whether a row may be kept by its customer, wherever its address now is: it
+ * is bound to an account, or the plan names its buyer (the write binds it).
+ * An unbound row is handed by pro_entitlement_rows to whoever proves its
+ * mailbox, so a customer that left the address must not keep it live for
+ * them (review of M-S14-002): it is left to its address, as before S14.
+ */
+function followedByCustomer(row: { user_id?: unknown }, plan: CustomerPlan): boolean {
+  return (typeof row.user_id === "string" && row.user_id !== "") || !!plan.boundUserId;
+}
+
+/** Every Pro row that names this customer and is bound to an account (or that its plan's buyer binds), refreshed from Stripe by its id, whatever address the row is kept under. */
 export async function refreshCustomerRows(stripe: Stripe, db: TableClient, customerId: string): Promise<{ rows: number; plan: CustomerPlan | null }> {
   if (!isStripeCustomerId(customerId)) return { rows: 0, plan: null };
-  let rows: Array<{ email: string; updated_at: string }>;
+  let rows: Array<{ email: string; updated_at: string; user_id: unknown }>;
   try {
-    const { data, error } = await db.from("pro_subscribers").select("email, updated_at").eq("stripe_customer_id", customerId);
+    const { data, error } = await db.from("pro_subscribers").select("email, updated_at, user_id").eq("stripe_customer_id", customerId);
     if (error || !Array.isArray(data) || !data.length) return { rows: 0, plan: null };
-    rows = (data as Array<{ email?: unknown; updated_at?: unknown }>)
+    rows = (data as Array<{ email?: unknown; updated_at?: unknown; user_id?: unknown }>)
       .filter((r) => typeof r.email === "string" && r.email)
-      .map((r) => ({ email: r.email as string, updated_at: String(r.updated_at) }));
+      .map((r) => ({ email: r.email as string, updated_at: String(r.updated_at), user_id: r.user_id ?? null }));
   } catch (_) {
     return { rows: 0, plan: null };
   }
   const plan = await customerPlan(stripe, customerId);
-  return plan ? { rows: await writeCustomerPlan(db, plan, rows), plan } : { rows: 0, plan: null };
+  if (!plan) return { rows: 0, plan: null };
+  return { rows: await writeCustomerPlan(db, plan, rows.filter((r) => followedByCustomer(r, plan))), plan };
 }
 
 export interface FollowedAddress { moved: number; left: number; failed: boolean }
@@ -301,10 +313,13 @@ export interface ProRefreshOptions {
  * ProRefreshOptions); a missing one stays missing until the webhook writes it
  * when the payment lands.
  *
- * A ROW NAMING A STRIPE CUSTOMER IS NEVER CLEARED BECAUSE THE ADDRESS FOUND
- * NOTHING (S14, M-S14-002): it is refreshed by that customer, and the answer
- * is that customer's plan (matchedBy "customer"). Only a row naming no
- * customer is downgraded, and only as it was read.
+ * A ROW BOUND TO AN ACCOUNT IS NEVER CLEARED BECAUSE THE ADDRESS FOUND
+ * NOTHING (S14, M-S14-002): it is refreshed by the customer it names, and the
+ * answer is that customer's plan (matchedBy "customer"). So is an unbound
+ * row whose plan names its buyer: the write binds it to that account. Any
+ * other unbound row (one pro_entitlement_rows hands to whoever proves the
+ * address) whose customer has left the address is downgraded as it was read,
+ * the customer kept on it, and so is a row naming no customer.
  */
 export async function checkProByEmail(
   stripe: Stripe,
@@ -358,9 +373,9 @@ export async function checkProByEmail(
   // No subscription anywhere in Stripe for this address. No row was seen:
   // nothing to refresh or downgrade, and none is created.
   if (opts.seenUpdatedAt === null) return result;
-  let row: { stripe_customer_id?: unknown; updated_at?: unknown } | null;
+  let row: { stripe_customer_id?: unknown; updated_at?: unknown; user_id?: unknown } | null;
   try {
-    const { data, error } = await supabase.from("pro_subscribers").select("stripe_customer_id, updated_at").eq("email", normalized).maybeSingle();
+    const { data, error } = await supabase.from("pro_subscribers").select("stripe_customer_id, updated_at, user_id").eq("email", normalized).maybeSingle();
     if (error) return result;
     row = data ?? null;
   } catch (_) {
@@ -374,12 +389,21 @@ export async function checkProByEmail(
   if (isStripeCustomerId(row.stripe_customer_id)) {
     const plan = await customerPlan(stripe, row.stripe_customer_id);
     if (!plan) return result;
-    await writeCustomerPlan(supabase, plan, [{ email: normalized, updated_at: seen }]);
-    return plan;
+    if (followedByCustomer(row, plan)) {
+      await writeCustomerPlan(supabase, plan, [{ email: normalized, updated_at: seen }]);
+      return plan;
+    }
   }
   try {
-    // A row naming no customer: downgraded, as read, never created.
-    await supabase.from("pro_subscribers").update(cached).eq("email", normalized).eq("updated_at", seen);
+    // A row naming no customer, or an unbound one whose customer has left
+    // this address: downgraded, as read, never created. The customer it
+    // names is kept, so the row is still found if the address comes back.
+    await supabase.from("pro_subscribers").update({
+      ...(isStripeCustomerId(row.stripe_customer_id) ? {} : { stripe_customer_id: null }),
+      status: cached.status,
+      current_period_end: cached.current_period_end,
+      updated_at: cached.updated_at,
+    }).eq("email", normalized).eq("updated_at", seen);
   } catch (_) {
     // Cache refresh is best-effort; the caller already has the live answer.
   }
