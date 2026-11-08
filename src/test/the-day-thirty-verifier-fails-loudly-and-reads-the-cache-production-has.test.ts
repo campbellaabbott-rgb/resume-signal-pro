@@ -50,7 +50,7 @@
  *
  * AND SINCE 2026-11-09 THE STATS PART IS THE FIELD CHECK. By 2026-11-08 the
  * stats cache carried the same rows with a stamp of its own (read-only,
- * 16:29Z: 18 fields), and 20261109110500 retires the explore copy, which no
+ * 16:29Z: 18 fields), and 20261109110000 retires the explore copy, which no
  * page read. So the base fixture below is the cache as it stands after that
  * file: field rows in the stats part, none in the explore part. An explore
  * part that lacks them is INFO, never the FAIL it was while the explore copy
@@ -163,7 +163,7 @@ interface Fixture {
   journal?: unknown;
 }
 
-/** The caches as they stand after 20261109110500: field rows in the stats part, none in the explore part. */
+/** The caches as they stand after 20261109110000: field rows in the stats part, none in the explore part. */
 const base = (): Fixture => ({
   facets: { companies: TOKENS.map((token) => ({ token, open: 10 })) },
   largest: "rows",
@@ -300,7 +300,7 @@ describe("the field rows: read from the stats cache, and dated against the apply
     // was a FAIL ("something else replaced the row"); the new writer never
     // writes the key, so that FAIL would fire on every run after the paste.
     const { lines } = run({ ...base(), applied: iso(50), explore: { computed_at: iso(10), stale_parts: [], field_grid: {}, repost_index: {} } });
-    expect(has(lines, "INFO", /explore cache carries no field_curves .*retired by 20261109110500/), show(lines)).toBe(true);
+    expect(has(lines, "INFO", /explore cache carries no field_curves .*retired by 20261109110000/), show(lines)).toBe(true);
     expect(lines.filter((l) => l.startsWith("FAIL")), show(lines)).toEqual([]);
   });
 

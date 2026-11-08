@@ -1105,7 +1105,7 @@ console.log("INFO  largest-boards day-30 verdicts: "+JSON.stringify(tally)+" (be
 # cache's field_curves, the copy that existed. Read-only on 2026-11-08 at
 # 16:29Z BOTH exist: the stats part carries 18 rows of get_category_fill_curve
 # (90, 300) with its own stamp and variant, rewritten by the :27 run. The
-# explore copy is retired by 20261109110500 -- no page reads it, and it cost
+# explore copy is retired by 20261109110000 -- no page reads it, and it cost
 # the :07 run a second pass over the same curve -- so the STATS PART IS THE
 # FIELD CHECK. The explore part is judged the same way only while a cache row
 # still carries it (today's, until the first :07 run on the new writer), and
@@ -1202,7 +1202,7 @@ else{
   const stale=Array.isArray(g.stale_parts)?g.stale_parts:[];
   if(!Number.isFinite(ageMin))console.log("FAIL  explore cache carries no usable computed_at ("+root+")");
   else if(ageMin>MAX_EXPLORE_AGE_MIN)console.log("FAIL  explore cache last ran "+Math.round(ageMin)+" min ago (computed_at "+root+"): the :07 refresh has stopped, so its rows reflect nothing recent");
-  if(!("field_curves" in g))console.log("INFO  explore cache carries no field_curves (root computed_at "+root+"): the copy is retired by 20261109110500 and no page reads it -- the stats cache fill_curve below is the field check");
+  if(!("field_curves" in g))console.log("INFO  explore cache carries no field_curves (root computed_at "+root+"): the copy is retired by 20261109110000 and no page reads it -- the stats cache fill_curve below is the field check");
   else{
     const fc=g.field_curves;
     const rows=fc&&typeof fc==="object"&&!Array.isArray(fc)?Object.entries(fc).map(([category,r])=>Object.assign({category},r)):[];

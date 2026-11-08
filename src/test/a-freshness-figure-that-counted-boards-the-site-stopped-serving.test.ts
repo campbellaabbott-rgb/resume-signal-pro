@@ -44,7 +44,14 @@ describe("20260909221000 — the freshness rollup, re-issued over live rows", ()
     expect(defs).toEqual(["CREATE OR REPLACE FUNCTION public.refresh_job_board_stats("]);
     const newest = readdirSync(MIG_DIR).filter((f) => f.endsWith(".sql"))
       .filter((f) => readFileSync(resolve(MIG_DIR, f), "utf8").includes("CREATE OR REPLACE FUNCTION public.refresh_job_board_stats")).sort().pop();
-    expect(newest).toBe(FILE);
+    // RE-ANCHORED 2026-11-09. 20261109121000 re-issues the function to read
+    // the postings once for both coverage rows. What this pin protected is
+    // that the freshness block it introduced is the one that runs, so a
+    // later definition must carry that block byte for byte.
+    if (newest !== FILE) {
+      expect(newest! > FILE!, `${newest} sorts before ${FILE}`).toBe(true);
+      expect(block(strip(readFileSync(resolve(MIG_DIR, newest!), "utf8")))).toBe(block(SQL));
+    }
     // The RPC that projects the row is NOT re-issued: same signature, one function per file.
     expect(SQL).not.toMatch(/get_freshness_stats/);
     expect(SQL).not.toMatch(/DROP FUNCTION/);
