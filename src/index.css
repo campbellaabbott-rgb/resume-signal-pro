@@ -493,3 +493,13 @@
 body[data-scroll-locked] [data-floating-help] {
   display: none !important;
 }
+
+/* The analytics banner gives way too (hotfix H7, sweep M-S14-001). It is fixed
+   at the bottom on layer 60, above a sheet's 50, so on a phone it covered the
+   posting sheet's Apply and "Check my fit"; and while a dialog holds the page
+   it is inert, so a tap on it fell through to the button underneath. Hidden
+   only while the page is locked: it is back, unanswered, when the sheet
+   closes. */
+body[data-scroll-locked] [data-consent-banner] {
+  display: none !important;
+}

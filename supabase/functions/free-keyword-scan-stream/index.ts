@@ -6456,7 +6456,11 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // review changes byte for byte. The recheck on a third corpus, also
 // unshipped: the shared modules carry the primary's recheck changes byte for
 // byte, and the date flags read apostrophe years ("Mar '21").
-const FN_BUILD = "free-keyword-scan-stream.2026-11-03.1";
+// 2026-11-10.1 (hotfix, privacy lane; sweep M-S14-064): the report cache is
+// keyed on the whole text, whitespace collapsed and lowercased, as the
+// primary's is; the old key deleted every letter outside A-Z, so two people's
+// Chinese or Japanese résumés shared one cached report. Key version v8.
+const FN_BUILD = "free-keyword-scan-stream.2026-11-10.1";
 
 /** The primary's report id formula (free-keyword-scan/report-meta.ts reportIdFor): this report's cache key and its score. */
 async function streamReportId(cacheKey: string, score: unknown): Promise<string> {
@@ -7515,36 +7519,18 @@ serve(async (req) => {
       const hasJobDescription = jobDescriptionText && typeof jobDescriptionText === 'string' && jobDescriptionText.trim().length > 50;
       const truncatedJobDescription = hasJobDescription ? jobDescriptionText.substring(0, MAX_JOB_DESCRIPTION_LENGTH) : null;
 
-      // ======================== Robust AI Response Caching ========================
-      // Aggressive normalization for maximum cache hits without affecting analysis quality
-      const normalizeForCache = (text: string): string => {
-        return text
-          .replace(/[\r\n]+/g, ' ')                    // Replace all newlines with space
-          .replace(/\s+/g, ' ')                        // Collapse all whitespace to single space
-          .replace(/[^\w\s]/g, '')                     // Remove punctuation/special chars
-          .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '') // Remove phone numbers
-          .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '') // Remove emails
-          .replace(/\b\d{5}(-\d{4})?\b/g, '')          // Remove zip codes
-          // Synonym normalization - common abbreviations
-          .replace(/\bsr\b/gi, 'senior')
-          .replace(/\bjr\b/gi, 'junior')
-          .replace(/\bmgr\b/gi, 'manager')
-          .replace(/\bdir\b/gi, 'director')
-          .replace(/\bvp\b/gi, 'vice president')
-          .replace(/\bexec\b/gi, 'executive')
-          .replace(/\bassoc\b/gi, 'associate')
-          .replace(/\basst\b/gi, 'assistant')
-          .replace(/\badmin\b/gi, 'administrator')
-          .replace(/\bdev\b/gi, 'developer')
-          .replace(/\beng\b/gi, 'engineer')
-          .replace(/\bmkt\b/gi, 'marketing')
-          .replace(/\bops\b/gi, 'operations')
-          // Remove filler phrases that don't affect analysis
-          .replace(/\b(responsible for|duties included|tasked with|worked on|assisted with|helped with|in charge of|accountable for)\b/gi, '')
-          .trim()
-          .toLowerCase();
-      };
-      
+      // ======================== AI Response Caching ========================
+      // THE KEY IS THE WHOLE TEXT (sweep M-S14-064). The key used to be built
+      // from an "aggressive" normaliser whose punctuation strip had no Unicode
+      // flag, so it deleted every letter outside A-Z: every Chinese, Japanese,
+      // Korean, Cyrillic or Arabic word. Two different people's Chinese
+      // résumés keyed alike on their dates alone, and the second person, or
+      // anyone, was served the first person's cached report. Now, as the
+      // primary keys its report cache: the whole text, whitespace collapsed and
+      // lowercased, nothing else removed. The key's version moved with it, so
+      // no report cached under the old key is ever served.
+      const normalizeForCache = (text: string): string => text.replace(/\s+/g, ' ').trim().toLowerCase();
+
       // The WHOLE text, and every input that changes the report (register
       // L5-10): the key used to hash only the first 3,000 characters of the
       // résumé and 1,500 of the posting, and ignored the applying-to country
@@ -7559,7 +7545,7 @@ serve(async (req) => {
       // the résumé the IP country decides it, so it is part of the key
       // (sweep S8-070; the wave 2 notes' open follow-up).
       const keyCountry = effectiveCountryOf(validTargetCountry, detectCountryFromResume(resumeText), ipCountry);
-      const cacheInput = `v7|${normalizedResume}|${normalizedJob}|${keyCountry}|${languageKey}`;
+      const cacheInput = `v8|${normalizedResume}|${normalizedJob}|${keyCountry}|${languageKey}`;
       const cacheKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cacheInput))
         .then(hash => Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''))
         .then(hex => hex.substring(0, 32));
