@@ -1,0 +1,14 @@
+{
+  "paidAnalysis": {
+    "recovery": {
+      "postingTitle": "L'offre d'emploi pour laquelle vous avez acheté cette analyse",
+      "postingNote": "Votre achat a été fait avec une offre d'emploi. Collez-la ici et l'analyse sera mesurée par rapport à elle. Vous pouvez laisser ce champ vide.",
+      "postingPlaceholder": "Collez l'offre d'emploi (facultatif)"
+    },
+    "clipped": {
+      "posting": "L'offre d'emploi dépassait {{max}} caractères : cette analyse en a lu les {{max}} premiers.",
+      "linkedIn": "Votre texte LinkedIn dépassait {{max}} caractères : cette analyse en a lu les {{max}} premiers."
+    },
+    "inProgress": "Votre analyse est déjà en cours. Cette page l'affichera dès qu'elle sera prête."
+  }
+}

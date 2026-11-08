@@ -72,6 +72,15 @@ export interface AnalysisData {
   experienceLevel?: string;
   hasLinkedIn?: boolean;
   hasJobDescription?: boolean;
+  /**
+   * Text read up to its cap rather than whole (hotfix H4): analyze-resume
+   * reads the first 20,000 characters of a posting and 30,000 of LinkedIn
+   * text instead of refusing a buyer who has paid, and says so here.
+   */
+  inputsClipped?: {
+    jobDescription?: { from: number; to: number };
+    linkedIn?: { from: number; to: number };
+  };
   jobDescriptionAlignment?: {
     matchScore: number;
     extractedKeywords: string[];
@@ -417,6 +426,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
     ...(data.summaryRewrite?.professionalSummary ? [{ id: "summary", label: t('analysisResults.nav.summary'), icon: User }] : []),
     ...(data.industryInsights?.whatRecruitersLookFor ? [{ id: "industry", label: t('analysisResults.nav.industry'), icon: Target }] : []),
     ...(data.skillsGap && (safeArray(data.skillsGap.missingTechnical).length > 0 || safeArray(data.skillsGap.missingSoft).length > 0) ? [{ id: "skills", label: t('analysisResults.nav.skillsGap'), icon: Brain }] : []),
+    ...(safeArray(data.quantificationOpportunities).length > 0 ? [{ id: "quantification", label: t('analysisResults.quantificationOpportunities'), icon: BarChart3 }] : []),
     ...(data.achievementMetrics ? [{ id: "metrics", label: t('analysisResults.nav.metricsGuide'), icon: TrendingUp }] : []),
     ...(optimizedBullets.length > 0 ? [{ id: "bullets", label: t('analysisResults.nav.bullets'), icon: CheckCircle2 }] : []),
     ...(actionVerbs.length > 0 ? [{ id: "verbs", label: t('analysisResults.nav.verbs'), icon: Zap }] : []),
@@ -458,6 +468,17 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
 
           {/* Header with stats */}
           <div className="text-center space-y-8" id="overview">
+            {/* What was read up to its cap (H4): on the page, in print and in the PDF. */}
+            {(data.inputsClipped?.jobDescription || data.inputsClipped?.linkedIn) && (
+              <div className="mx-auto max-w-2xl rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-left text-sm text-foreground space-y-1" data-testid="inputs-clipped" role="note">
+                {data.inputsClipped?.jobDescription && (
+                  <p>{t('paidAnalysis.clipped.posting', { max: data.inputsClipped.jobDescription.to.toLocaleString() })}</p>
+                )}
+                {data.inputsClipped?.linkedIn && (
+                  <p>{t('paidAnalysis.clipped.linkedIn', { max: data.inputsClipped.linkedIn.to.toLocaleString() })}</p>
+                )}
+              </div>
+            )}
             <div className="no-print">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/20 text-sm text-success mb-4 animate-fade-in">
                 <CheckCircle2 className="w-4 h-4" />
@@ -1735,8 +1756,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             </div>
           )}
 
-          {/* Quantification Opportunities */}
+          {/* Quantification Opportunities: a section of its own, so the PDF,
+              which captures the report section by section, includes it (M-S14-085). */}
           {safeArray(data.quantificationOpportunities).length > 0 && (
+            <div id="quantification">
             <ResultCard
               icon={BarChart3}
               title={t('analysisResults.quantificationOpportunities')}
@@ -1762,6 +1785,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 ))}
               </div>
             </ResultCard>
+            </div>
           )}
 
           {/* Achievement Metrics - Role-Specific Quantification Guide */}
@@ -2061,7 +2085,7 @@ interface ResultCardProps {
 
 function ResultCard({ icon: Icon, title, subtitle, iconColor, bgColor, borderColor, children }: ResultCardProps) {
   return (
-    <div className="rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 overflow-hidden animate-fade-in hover:border-primary/20 transition-all duration-300 pdf-keep-together">
+    <div data-result-card="" className="rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 overflow-hidden animate-fade-in hover:border-primary/20 transition-all duration-300 pdf-keep-together">
       <div className={cn("px-6 py-5 border-b", borderColor, bgColor)}>
         <div className="flex items-center gap-3">
           <div className={cn("p-2.5 rounded-xl", bgColor, iconColor)}>

@@ -27,6 +27,24 @@ import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/paymen
 import { sessionKeyFor } from "./stripe-mode.ts";
 // The buyer's mail language, one of the site's nine or none (FA-1).
 import { checkoutLanguageOf } from "../_shared/checkout-policy.ts";
+// The paid run's doors (hotfix 2026-11-10): which purchase a request names,
+// the posting and LinkedIn caps, the one-run lease, the stored inputs.
+import {
+  MAX_JOB_DESCRIPTION_LENGTH,
+  MAX_LINKEDIN_LENGTH,
+  STRIPE_READ_COUNTER,
+  STRIPE_READS_PER_NETWORK_PER_HOUR,
+  checkoutHadPosting,
+  claimRunLease,
+  clipText,
+  purchaseRefOf,
+  releaseRunLease,
+  runLeaseHeld,
+  storedInputsFor,
+  type Clip,
+  type StoredInputs,
+} from "./paid-run.ts";
+import { networkBucket } from "../_shared/network-bucket.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -71,9 +89,24 @@ import { checkoutLanguageOf } from "../_shared/checkout-policy.ts";
 // Pro member's included analysis, or a sale the webhook has not reached)
 // records that language in metadata.language, where send-analysis-email
 // looks next. It had neither, so a Pro member's mail was always English.
-const FN_BUILD = "analyze-resume.2026-11-03.1";
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// 2026-11-10.1 (hotfix, lane paid: H3, H4, M-S14-005, C-S14-010): a session
+// id that cannot be a purchase is refused before any Stripe read; a delivered
+// analysis is answered from our own rows with no Stripe read; every Stripe
+// read is counted per caller network under this function's name, and a count
+// that cannot be taken refuses (503) rather than reads blind; the shared
+// per-address budget no longer stands in front of a paying buyer (the payment
+// is proved first, and nothing after it is anonymous). One run per purchase
+// at a time: a lease (analysis_run_leases, 20261110120000) is claimed before
+// the model is asked, a second request is answered 409 analysis_in_progress,
+// and a failed run frees it, so a retry still works. A posting over 20,000
+// characters, or LinkedIn text over 30,000, is read up to the cap and the
+// report says so (inputsClipped), never refused after payment. The inputs a
+// purchase was bought against are read back from the temporary store by the
+// purchase (checkout_resume_refs, pro_grants.resume_session_id): a request
+// with no posting or LinkedIn text gets the stored ones, a session-only ask
+// is told what is stored (storedInputs, checkoutHadPosting), and fromStored
+// runs the analysis from the stored copy.
+const FN_BUILD = "analyze-resume.2026-11-10.1";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -172,8 +205,6 @@ const corsHeaders = {
 };
 
 const MAX_RESUME_LENGTH = 50000;
-const MAX_LINKEDIN_LENGTH = 30000;
-const MAX_JOB_DESCRIPTION_LENGTH = 20000;
 
 const ERROR_MESSAGES = {
   INTERNAL: 'An error occurred while processing your request. Please try again.',
@@ -184,6 +215,8 @@ const ERROR_MESSAGES = {
   SESSION_USED: 'This session has already been used for analysis.',
   // Under 200 characters: the success page shows a message that short as it is.
   TIMED_OUT: 'The analysis took too long and was stopped before anything was saved. Your purchase is safe: nothing was charged twice, and trying again is free.',
+  // Also under 200 characters. The success page polls on its code.
+  IN_PROGRESS: 'Your analysis is already being made. This page shows it as soon as it is ready.',
 };
 
 // Helper to get client IP from request (prioritize Cloudflare's trusted header)
@@ -444,9 +477,21 @@ serve(async (req) => {
   const clientIp = getClientIp(req);
 
   try {
-    const { resumeText, linkedInText, jobDescriptionText: askedJobDescription, sessionId, language: askedLanguage } = await req.json();
+    const {
+      resumeText: askedResume,
+      linkedInText: askedLinkedIn,
+      jobDescriptionText: askedJobDescription,
+      sessionId,
+      language: askedLanguage,
+      fromStored,
+    } = await req.json();
+    // What the analysis is made from. A request may name none of the three
+    // and still be answered: from the stored copy the purchase was bought
+    // against (fromStored), or from the analysis it already received.
+    let resumeText: string = typeof askedResume === 'string' ? askedResume : '';
+    let linkedInText: string = typeof askedLinkedIn === 'string' ? askedLinkedIn : '';
     // A paid analysis is never framed around a link (_shared/job-description-input.ts, S11-032).
-    const jobDescriptionText = scannableJobDescription(askedJobDescription);
+    let jobDescriptionText = scannableJobDescription(askedJobDescription);
 
     // EARLY INPUT VALIDATION (fail fast before payment verification)
     //
@@ -455,7 +500,7 @@ serve(async (req) => {
     // résumé (a reload, Back, a restored tab): the analysis the purchase
     // already received is handed back below, after the payment and
     // redemption checks. Without a session there is nothing to answer.
-    const noResume = !resumeText || typeof resumeText !== 'string' || resumeText.trim().length === 0;
+    const noResume = resumeText.trim().length === 0;
     if (noResume && !sessionId) {
       return new Response(
         JSON.stringify({ error: 'Resume text is required' }),
@@ -471,26 +516,6 @@ serve(async (req) => {
       );
     }
 
-    // Validate LinkedIn text if provided
-    const hasLinkedIn = linkedInText && typeof linkedInText === 'string' && linkedInText.trim().length > 0;
-    if (hasLinkedIn && linkedInText.length > MAX_LINKEDIN_LENGTH) {
-      console.log(`[ANALYZE-RESUME] LinkedIn too long: ${linkedInText.length} characters`);
-      return new Response(
-        JSON.stringify({ error: 'LinkedIn text is too long. Please limit to 30,000 characters.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate job description text if provided  
-    const hasJobDescription = jobDescriptionText.trim().length > 0;
-    if (hasJobDescription && jobDescriptionText.length > MAX_JOB_DESCRIPTION_LENGTH) {
-      console.log(`[ANALYZE-RESUME] Job description too long: ${jobDescriptionText.length} characters`);
-      return new Response(
-        JSON.stringify({ error: 'Job description is too long. Please limit to 20,000 characters.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // CRITICAL: Verify Stripe payment before analysis
     if (!sessionId) {
       console.log("[ANALYZE-RESUME] Missing sessionId - payment verification required");
@@ -500,9 +525,22 @@ serve(async (req) => {
       );
     }
 
+    // A REFERENCE THAT CANNOT BE A PURCHASE NEVER REACHES STRIPE (H3). Only a
+    // Checkout session id or a Pro grant can be one; anything else was sent
+    // to Stripe with the live key and answered 401 after the read, which let
+    // any caller spend the read limit the checkouts and the webhook share.
+    const ref = purchaseRefOf(sessionId);
+    if (!ref) {
+      console.log("[ANALYZE-RESUME] The session id is not a purchase reference; refused before any Stripe read");
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Use optimized shared Supabase client with connection pooling
     const supabase = getServiceClient();
-    
+
     if (!supabase) {
       console.error("[ANALYZE-RESUME] Supabase client not available");
       return new Response(
@@ -510,30 +548,63 @@ serve(async (req) => {
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    // clientIp already declared at line 666 — do not redeclare here
 
-    // Check global rate limit (100 req/hr across ALL functions)
-    const { data: globalAllowed, error: globalRlError } = await supabase.rpc('check_global_rate_limit', {
-      p_ip: clientIp,
-      p_max_requests: 100,
-      p_window_minutes: 60
-    });
-
-    if (globalRlError) {
-      console.error("[ANALYZE-RESUME] Global rate limit check error:", globalRlError);
+    // HAS THIS SESSION ALREADY HAD ITS ANALYSIS? Asked first, from our own
+    // rows, before any Stripe read or AI spend (H3): every reload of a
+    // delivered analysis used to read Stripe again.
+    //
+    // The webhook's claim on used_stripe_sessions is NOT the answer: it is
+    // written on payment, before anything exists, and treating it as "used" is
+    // how the success page met a 409 on every purchase. The answer is the
+    // purchased_content row this function writes once an analysis exists (see
+    // priorRedemptionOf for every case, including claims the pre-fix code left).
+    // The claim's address is read with it: a claim naming no product is a
+    // payment claim when nobody recorded an address, and the old
+    // analyze-resume's own mark when somebody did. A lookup error refuses
+    // rather than risks a second analysis.
+    //
+    // A refunded or disputed payment is analysed no more (L6-18), and its
+    // delivered copy is no longer handed out: Stripe still answers 'paid' for
+    // it, so the webhook's record is asked.
+    const [deliveredLookup, claimLookup, refunded] = await Promise.all([
+      supabase.from('purchased_content').select('product_type, generated_content').eq('stripe_session_id', sessionId).maybeSingle(),
+      supabase.from('used_stripe_sessions').select('product_type, ip_address').eq('session_id', sessionId).maybeSingle(),
+      sessionWasRefunded(supabase, sessionId),
+    ]);
+    if (deliveredLookup.error || claimLookup.error) {
+      console.error("[ANALYZE-RESUME] Redemption lookup failed:", deliveredLookup.error ?? claimLookup.error);
       return new Response(
-        JSON.stringify({ error: 'Service temporarily unavailable. Please try again shortly.' }),
+        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-    } else if (!globalAllowed) {
-      console.log(`[ANALYZE-RESUME] Global rate limit exceeded for IP: ${clientIp}`);
+    }
+    if (refunded) {
       return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.RATE_LIMITED, code: 'rate_limited_budget' }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '3600' } }
+        JSON.stringify({ error: REFUNDED_PURCHASE_MESSAGE }),
+        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const prior = priorRedemptionOf(deliveredLookup.data, claimLookup.data);
+    if (prior.state === 'delivered') {
+      console.log(`[ANALYZE-RESUME] Session ${sessionId} already has its analysis; returning it`);
+      return await analysisAlreadyDelivered(supabase, prior.shareId);
+    }
+    // Being made right now by another request (the lease below): the page
+    // asks again shortly, and that costs no Stripe read.
+    if (prior.state === 'none' && await runLeaseHeld(supabase, sessionId)) {
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.IN_PROGRESS, code: 'analysis_in_progress', retryable: true }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '5' } }
       );
     }
 
-    // Verify Stripe payment
+    // THE PAYMENT IS PROVED BEFORE ANYTHING ELSE IS ASKED OF THE CALLER
+    // (M-S14-050). The shared per-address budget used to answer 429 here,
+    // before the payment was looked at, so two heavy users behind one address
+    // could lock a paying buyer out of the analysis they had just bought.
+    // Nothing past the proof is anonymous: a purchase is analysed once, one
+    // run at a time (the lease below), so that budget guarded nothing a
+    // payment does not.
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) {
       console.error("[ANALYZE-RESUME] STRIPE_SECRET_KEY is not set");
@@ -544,7 +615,7 @@ serve(async (req) => {
     }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
-    
+
     let session;
     let customerEmail: string | null = null;
     // A PRO MEMBER'S INCLUDED ANALYSIS (platform sweep L3-04): create-checkout
@@ -553,14 +624,8 @@ serve(async (req) => {
     // once, by the purchased_content insert -- and only while the ACCOUNT
     // that minted it may still mint (the one rule, _shared/pro-standing.ts).
     let proGrant: { id: string; email: string; user_id?: string | null; consumed_at?: string | null; revoked_at?: string | null } | null = null;
-    if (typeof sessionId === "string" && sessionId.startsWith("pro_")) {
-      const grantId = sessionId.slice(4);
-      if (!UUID_RE.test(grantId)) {
-        return new Response(
-          JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+    if (ref.kind === "pro") {
+      const grantId = ref.grantId;
       const { data: grant, error: grantError } = await supabase
         .from('pro_grants')
         .select('id, email, user_id, product_type, consumed_at, revoked_at')
@@ -585,6 +650,31 @@ serve(async (req) => {
       // The same shape a paid $0 session has, so everything below reads it unchanged.
       session = { payment_status: "paid", amount_total: 0, currency: "usd", metadata: { product_type: FULL_ANALYSIS_PRODUCT_TYPE } };
     } else {
+      // EVERY STRIPE READ IS COUNTED BEFORE IT IS MADE (H3), per caller
+      // network (an IPv4 /24, an IPv6 /48, as a keyed hash), under this
+      // function's own name. A count that cannot be taken is a refusal:
+      // Stripe is never asked blind.
+      const readBucket = await networkBucket(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", STRIPE_READ_COUNTER);
+      const { data: readAllowed, error: readCountError } = await supabase.rpc('check_rate_limit', {
+        p_ip: readBucket,
+        p_function: STRIPE_READ_COUNTER,
+        p_max_requests: STRIPE_READS_PER_NETWORK_PER_HOUR,
+        p_window_minutes: 60,
+      });
+      if (readCountError) {
+        console.error("[ANALYZE-RESUME] The Stripe read could not be counted; not reading blind:", readCountError);
+        return new Response(
+          JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (readAllowed !== true) {
+        console.log("[ANALYZE-RESUME] Stripe reads for this network are spent for the hour");
+        return new Response(
+          JSON.stringify({ error: ERROR_MESSAGES.RATE_LIMITED, code: 'rate_limited_stripe_reads' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '3600' } }
+        );
+      }
       // THE TEST KEY FOR A TEST SESSION, AND ONLY FOR ONE (S13-043): see
       // stripe-mode.ts. A failure of any kind is the refusal below.
       const sessionKey = sessionKeyFor(sessionId, (k) => Deno.env.get(k));
@@ -628,42 +718,6 @@ serve(async (req) => {
     const paidTotal: number | null = session.amount_total ?? null;
     console.log(`[ANALYZE-RESUME] Payment verified: ${paidTotal} ${session.currency} for session: ${sessionId}`);
 
-    // A refunded or disputed payment is analysed no more (L6-18): Stripe still
-    // answers 'paid' for it, so the webhook's record is asked.
-    if (await sessionWasRefunded(supabase, sessionId)) {
-      return new Response(
-        JSON.stringify({ error: REFUNDED_PURCHASE_MESSAGE }),
-        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // HAS THIS SESSION ALREADY HAD ITS ANALYSIS? Asked before any AI spend.
-    //
-    // The webhook's claim on used_stripe_sessions is NOT the answer: it is
-    // written on payment, before anything exists, and treating it as "used" is
-    // how the success page met a 409 on every purchase. The answer is the
-    // purchased_content row this function writes once an analysis exists (see
-    // priorRedemptionOf for every case, including claims the pre-fix code left).
-    // The claim's address is read with it: a claim naming no product is a
-    // payment claim when nobody recorded an address, and the old
-    // analyze-resume's own mark when somebody did. A lookup error refuses
-    // rather than risks a second analysis.
-    const [deliveredLookup, claimLookup] = await Promise.all([
-      supabase.from('purchased_content').select('product_type, generated_content').eq('stripe_session_id', sessionId).maybeSingle(),
-      supabase.from('used_stripe_sessions').select('product_type, ip_address').eq('session_id', sessionId).maybeSingle(),
-    ]);
-    if (deliveredLookup.error || claimLookup.error) {
-      console.error("[ANALYZE-RESUME] Redemption lookup failed:", deliveredLookup.error ?? claimLookup.error);
-      return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    const prior = priorRedemptionOf(deliveredLookup.data, claimLookup.data);
-    if (prior.state === 'delivered') {
-      console.log(`[ANALYZE-RESUME] Session ${sessionId} already has its analysis; returning it`);
-      return await analysisAlreadyDelivered(supabase, prior.shareId);
-    }
     if (prior.state === 'refused') {
       console.log(`[ANALYZE-RESUME] Session ${sessionId} not redeemable: ${prior.reason}`);
       return new Response(
@@ -671,14 +725,75 @@ serve(async (req) => {
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    // Asked by the session alone and nothing delivered yet: the résumé is
-    // needed to make it (S11-016).
-    if (noResume) {
+
+    // WHAT THE PURCHASE WAS BOUGHT AGAINST (C-S14-010). The success page
+    // holds a pointer to the stored résumé, posting and LinkedIn text; when
+    // it has lost it (another device, a cleared browser, a return the next
+    // day) it sent the résumé alone, and the purchase was redeemed by an
+    // analysis without the posting it was sold against. The store keeps the
+    // copy 24 hours, and create-checkout records which copy a checkout was
+    // made from, so the purchase reads it back here.
+    const wantsStored = noResume || !jobDescriptionText.trim() || !linkedInText.trim();
+    const stored: StoredInputs | null = wantsStored ? await storedInputsFor(supabase, ref) : null;
+    if (noResume && !(fromStored === true && stored)) {
+      // Asked by the session alone and nothing delivered yet: the résumé is
+      // needed to make it (S11-016). The page is told what is stored, so it
+      // can ask for the analysis from that copy, or, when the copy is gone,
+      // ask the buyer for the posting the checkout recorded too.
+      const hadPosting = stored ? null : await checkoutHadPosting(supabase, ref);
       return new Response(
-        JSON.stringify({ error: 'Resume text is required' }),
+        JSON.stringify({
+          error: 'Resume text is required',
+          ...(stored ? { storedInputs: { resume: true, posting: !!scannableJobDescription(stored.jobDescription).trim(), linkedIn: !!stored.linkedIn.trim() } } : {}),
+          ...(hadPosting !== null ? { checkoutHadPosting: hadPosting } : {}),
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    let inputsFromCheckout = false;
+    if (stored) {
+      if (noResume) {
+        resumeText = stored.resume;
+        inputsFromCheckout = true;
+      }
+      if (!jobDescriptionText.trim() && stored.jobDescription.trim()) {
+        jobDescriptionText = scannableJobDescription(stored.jobDescription);
+        inputsFromCheckout = true;
+      }
+      if (!linkedInText.trim() && stored.linkedIn.trim()) {
+        linkedInText = stored.linkedIn;
+        inputsFromCheckout = true;
+      }
+      if (inputsFromCheckout) console.log("[ANALYZE-RESUME] Using the inputs stored at checkout for what this request did not send");
+    }
+    if (resumeText.length > MAX_RESUME_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: 'Resume text is too long. Please limit to 50,000 characters.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // A LONG POSTING IS READ UP TO THE CAP, NEVER REFUSED AFTER PAYMENT (H4,
+    // C-S14-012). A posting over 20,000 characters (LinkedIn text over 30,000)
+    // used to be answered 400 here, after the buyer had paid, and Try again
+    // read the same stored text into the same refusal for 24 hours. The
+    // analysis now reads the first 20,000 (30,000) and the report says so.
+    const inputsClipped: { jobDescription?: Clip; linkedIn?: Clip } = {};
+    const clippedPosting = clipText(jobDescriptionText, MAX_JOB_DESCRIPTION_LENGTH);
+    if (clippedPosting.clip) {
+      console.log(`[ANALYZE-RESUME] Job description clipped: ${clippedPosting.clip.from} -> ${clippedPosting.clip.to} characters`);
+      jobDescriptionText = clippedPosting.text;
+      inputsClipped.jobDescription = clippedPosting.clip;
+    }
+    const clippedLinkedIn = clipText(linkedInText, MAX_LINKEDIN_LENGTH);
+    if (clippedLinkedIn.clip) {
+      console.log(`[ANALYZE-RESUME] LinkedIn text clipped: ${clippedLinkedIn.clip.from} -> ${clippedLinkedIn.clip.to} characters`);
+      linkedInText = clippedLinkedIn.text;
+      inputsClipped.linkedIn = clippedLinkedIn.clip;
+    }
+    const hasLinkedIn = linkedInText.trim().length > 0;
+    const hasJobDescription = jobDescriptionText.trim().length > 0;
+
     // An undelivered Pro grant: spent nowhere else, not taken back, and the
     // account that minted it still holds a plan that may mint. Refused before
     // any AI spend; a refused grant is not spent.
@@ -699,10 +814,9 @@ serve(async (req) => {
       }
     }
 
-    // NOTHING IS CLAIMED HERE. The claim used to be written at this point,
-    // before the analysis existed, so a single AI failure below turned every
-    // retry with the same session into a 409. The session is redeemed in
-    // deliver(), once there is something to deliver.
+    // THE SESSION IS REDEEMED ONLY IN deliver(), once there is something to
+    // deliver: the claim used to be written here, before the analysis
+    // existed, so a single AI failure turned every retry into a 409.
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -1131,6 +1245,35 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
     mailLanguage = checkoutLanguageOf({ language: language.code });
     console.log(`[ANALYZE-RESUME] Report language: ${language.code} (${language.source}); résumé: ${language.resume?.code ?? "not named"}`);
 
+    // ONE RUN PER PURCHASE AT A TIME (M-S14-005, C-S14-005). Two tabs, a
+    // double click, or a retry while the first run was still working each
+    // started a model run of their own for one purchase. The run now holds a
+    // lease on its session until it has delivered or failed: a second request
+    // meanwhile is answered 409 analysis_in_progress (retryable), and the page
+    // asks again until the first run's analysis is there. A failed run frees
+    // the session in the finally below, so a failure still never uses the
+    // purchase up; a run the platform kills frees it when the lease lapses.
+    const leaseHolder = crypto.randomUUID();
+    const lease = await claimRunLease(supabase, sessionId, leaseHolder);
+    if (lease === 'busy') {
+      console.log(`[ANALYZE-RESUME] Session ${sessionId} is being analysed by another request`);
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.IN_PROGRESS, code: 'analysis_in_progress', retryable: true }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '5' } }
+      );
+    }
+    if (lease === 'unavailable') console.warn("[ANALYZE-RESUME] The run lease could not be taken; going on without it");
+    try {
+    // The run before this one may have delivered between the redemption
+    // lookup above and this lease: its analysis is the answer.
+    if (lease === 'claimed') {
+      const again = await supabase.from('purchased_content').select('product_type, generated_content').eq('stripe_session_id', sessionId).maybeSingle();
+      if (!again.error && again.data) {
+        const now = priorRedemptionOf(again.data, claimLookup.data);
+        if (now.state === 'delivered') return await analysisAlreadyDelivered(supabase, now.shareId);
+      }
+    }
+
     // THE ANALYSIS IN PARALLEL PARTS (S13-001; analysis-parts.ts): the
     // résumé analysis in one call and, only when the buyer gave them, the
     // LinkedIn section and the posting section in a call each, each capped at
@@ -1176,9 +1319,14 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
     // this flag: a report whose LinkedIn section call failed and went out
     // without it does not claim it.
     if (hasLinkedIn && !(analysis.linkedInAnalysis && typeof analysis.linkedInAnalysis === 'object')) analysis.hasLinkedIn = false;
+    // What was read up to the cap rather than whole (H4): the report says so.
+    if (inputsClipped.jobDescription || inputsClipped.linkedIn) analysis.inputsClipped = inputsClipped;
 
     console.log("[ANALYZE-RESUME] Analysis complete; redeeming the session...");
     return await deliver(analysis);
+    } finally {
+      if (lease === 'claimed') await releaseRunLease(supabase, sessionId, leaseHolder);
+    }
 
   } catch (error) {
     trackPerformance(requestStartTime, 'analyze-resume', false, { error: error instanceof Error ? error.message : 'Unknown' }, clientIp);

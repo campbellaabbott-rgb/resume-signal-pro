@@ -1,0 +1,14 @@
+{
+  "paidAnalysis": {
+    "recovery": {
+      "postingTitle": "De vacature waarvoor je deze analyse hebt gekocht",
+      "postingNote": "Je aankoop is gedaan met een vacature. Plak die hier, dan wordt de analyse eraan afgemeten. Je mag dit veld leeg laten.",
+      "postingPlaceholder": "Plak de vacaturetekst (optioneel)"
+    },
+    "clipped": {
+      "posting": "De vacature was langer dan {{max}} tekens, dus deze analyse heeft de eerste {{max}} gelezen.",
+      "linkedIn": "Je LinkedIn-tekst was langer dan {{max}} tekens, dus deze analyse heeft de eerste {{max}} gelezen."
+    },
+    "inProgress": "Je analyse wordt al gemaakt. Deze pagina toont hem zodra hij klaar is."
+  }
+}

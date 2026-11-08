@@ -128,7 +128,14 @@ describe("one session, one analysis", () => {
     expect(h.aiCalls()).toBe(1);
   });
 
-  it("two requests racing on one session hand back one analysis between them", async () => {
+  it("two requests racing on one session hand back one analysis between them, even with no run lease to take", async () => {
+    // Since the 2026-11-10 hotfix a run holds a lease on its session, and a
+    // second request is told the analysis is in progress (see
+    // a-paid-analysis-asks-stripe-only-for-a-purchase-and-runs-one-model-call-at-a-time).
+    // This is the world before the lease table exists, or when it cannot be
+    // read: both runs go ahead, and the purchase is still delivered once.
+    const missing = { code: "42P01", message: 'relation "public.analysis_run_leases" does not exist' };
+    for (const op of ["select", "select", "insert", "insert"]) h.db.faults.push({ table: "analysis_run_leases", op, error: missing });
     const id = buy("cs_live_race");
     let open!: () => void;
     const gate = new Promise<void>((r) => { open = r; });
