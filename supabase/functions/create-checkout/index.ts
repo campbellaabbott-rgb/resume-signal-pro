@@ -62,7 +62,10 @@ import { REHEARSAL_UNCONFIGURED, rehearsalKeyOf } from "./owner-rehearsal.ts";
 // page had a posting (hasPosting in its checkout_starts row), so the analysis
 // reads them by the purchase on another device or after the page lost them.
 // Best effort and time-bounded: a sale never waits on it or fails for it.
-const FN_BUILD = "create-checkout.2026-11-10.1";
+// 2026-11-10.2 (fix/hotfix-2026-11-10, the integration): both lanes' changes
+// above together. hotfix/pro and hotfix/paid each stamped 2026-11-10.1 on
+// code of its own, so the merged code takes the next sequence (DEPLOY-LEDGER §3).
+const FN_BUILD = "create-checkout.2026-11-10.2";
 
 /** How long the checkout waits for the résumé reference before answering without it. */
 const RESUME_REF_WAIT_MS = 2_000;

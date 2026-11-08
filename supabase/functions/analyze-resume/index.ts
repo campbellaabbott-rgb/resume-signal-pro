@@ -110,7 +110,10 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 // with no posting or LinkedIn text gets the stored ones, a session-only ask
 // is told what is stored (storedInputs, checkoutHadPosting), and fromStored
 // runs the analysis from the stored copy.
-const FN_BUILD = "analyze-resume.2026-11-10.1";
+// 2026-11-10.2 (fix/hotfix-2026-11-10, the integration): both lanes' changes
+// above together. hotfix/pro and hotfix/paid each stamped 2026-11-10.1 on
+// code of its own, so the merged code takes the next sequence (DEPLOY-LEDGER §3).
+const FN_BUILD = "analyze-resume.2026-11-10.2";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
