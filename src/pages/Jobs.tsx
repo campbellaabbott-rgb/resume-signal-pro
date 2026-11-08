@@ -97,6 +97,8 @@ import { BoardCollisionNotice } from "@/components/jobs/BoardCollisionNotice";
 import { SimilarCompanies } from "@/components/jobs/SimilarCompanies";
 import { TailoredResumeModal, type TailoredResumeContent } from "@/components/TailoredResumeModal";
 import { supabase } from "@/integrations/supabase/client";
+import { isAutomatedAgent } from "@/lib/home/automation";
+import { boardStripFreshnessData } from "@/lib/home/use-board-freshness";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { heldBoardPass } from "@/lib/board-pass";
 import { readBoardFacets } from "@/lib/board-facets";
@@ -2449,6 +2451,15 @@ export default function Jobs() {
 
 function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMemo }) {
   const { t, i18n } = useTranslation();
+  // A CRAWLER OR A DRIVEN BROWSER IS NOT SHOWN THE DECORATION (cost audit
+  // 2026-11-08). The employer badges (fill curve, growth, layoff filings), the
+  // country counts, the salary benchmarks and the takedown ticker are reads a
+  // person looks at; a crawler indexes the list and the baked page, and it
+  // used to spend the same seven RPCs per render. It still gets the list call,
+  // every filter, and each fallback a failed read would give a person; the
+  // one exception is the "Actively hiring" filter, which partitions on the
+  // curves and the growth rows, so a crawler with it on still asks for them.
+  const [crawlerVisit] = useState(() => isAutomatedAgent());
   // SEO-010: an employer link goes to its written company page, or to the
   // live board filtered to the board when the bake wrote none.
   const companyHref = useCompanyBoardHref();
@@ -2818,6 +2829,9 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // is the failure this file's own comment records, and 57014 is a timeout, not
   // a fixed bug — it can come back the moment the table grows.
   useEffect(() => {
+    // A crawler gets the picker a failed facet read gives a person: the
+    // countries on the page, no counts.
+    if (crawlerVisit) { setCountryFacetSettled(true); return; }
     let cancelled = false;
     const read = (rows: unknown) =>
       (Array.isArray(rows) ? rows as Array<{ country?: string; n?: number }> : [])
@@ -2847,7 +2861,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       setCountryFacet(rows);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [crawlerVisit]);
   // A SKIP-LINK PRESS THAT LANDED DURING HYDRATION IS STILL A PRESS.
   // The served HTML's #main-content target does not exist until React mounts
   // (the prerendered shell emits a bare <main>), so the first key a keyboard
@@ -3278,15 +3292,19 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   useEffect(() => {
     let alive = true;
     const sb = supabase as unknown as { rpc: (f: string) => Promise<{ data: unknown }> };
-    void sb.rpc("get_takedowns_today").then(({ data }) => {
-      if (alive && typeof data === "number" && data > 0) setTakedownsToday(data);
-    }).catch(() => { /* strip clause hides */ });
-    void sb.rpc("get_freshness_stats").then(({ data }) => {
+    if (!crawlerVisit) {
+      void sb.rpc("get_takedowns_today").then(({ data }) => {
+        if (alive && typeof data === "number" && data > 0) setTakedownsToday(data);
+      }).catch(() => { /* strip clause hides */ });
+    }
+    // The homepage's answer when the visitor came from it a moment ago
+    // (src/lib/home/use-board-freshness.ts), else asked now.
+    void boardStripFreshnessData().then((data) => {
       const row = Array.isArray(data) ? (data[0] as { p50_min?: number } | undefined) : undefined;
       if (alive && typeof row?.p50_min === "number") setRecheckP50Min(Math.round(row.p50_min));
     }).catch(() => { /* strip clause hides */ });
     return () => { alive = false; };
-  }, []);
+  }, [crawlerVisit]);
   const [data, setData] = useState<BoardResponse | null>(null);
   // The filter body the on-screen reply was asked for (see landerReplyCurrent:
   // a sentence about a reply must not speak for a question asked since).
@@ -3494,6 +3512,9 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // promise a fill record; the lifecycle log observes a posting disappearing,
   // not a hire, so both surfaces now say what is measured.)
   const [activelyHiringOnly, setActivelyHiringOnly] = useState(initial.get("activelyHiring") === "1");
+  // The curves and growth rows: always for a person; for a crawler only while
+  // the filter that partitions on them is on (see crawlerVisit).
+  const employerSignalsWanted = !crawlerVisit || activelyHiringOnly;
   /**
    * EVERY FILTER, ONCE, IN ONE OBJECT — the argument to boardFilterBody().
    *
@@ -4447,6 +4468,8 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     // selected, and the detail panel's salary context needs it for ANY posting.
     if (benchmarksAttempted.current) return;
     benchmarksAttempted.current = true;
+    // A crawler sees what a thin sample shows a person: no benchmark line.
+    if (crawlerVisit) return;
     (async () => {
       // Promise.resolve assimilates the PostgREST builder (a thenable WITHOUT
       // .catch — calling .catch on it throws) into a real Promise.
@@ -4475,7 +4498,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       }
       setBenchmarks(map);
     })();
-  }, []);
+  }, [crawlerVisit]);
 
   // Debounced re-query on filter change (immediate on first mount).
   const first = useRef(true);
@@ -5750,6 +5773,9 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // wrapper's memo, so a board page remounted for (an employer page, then
   // Back) does not ask again (src/lib/board-curve-memo.ts).
   useEffect(() => {
+    // A crawler's cards carry no employer badge (the slot a curve not yet
+    // answered leaves empty), unless the "Actively hiring" filter needs them.
+    if (!employerSignalsWanted) { setHealthPending(false); return; }
     const unasked = Array.from(new Set(jobs.map((j) => j.token).filter((x): x is string => !!x && !isCollidedToken(x))))
       .filter((tok) => !healthAttempted.current.has(tok))
       .slice(0, 200);
@@ -5837,7 +5863,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       // back so the next run asks again — see `settled` above.
       if (!settled) batch.forEach((tok) => healthAttempted.current.delete(tok));
     };
-  }, [jobs, curveMemo]);
+  }, [jobs, curveMemo, employerSignalsWanted]);
 
   // THE OTHER HALF, FETCHED THE SAME WAY: get_company_growth for the visible
   // tokens, batched, deduped, cancel-safe. Same cap, same `settled` rule (only
@@ -5846,6 +5872,8 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // unchanged. A row per token asked comes back, so a missing row means we
   // did not ask — never that the board did not grow.
   useEffect(() => {
+    // Not for a crawler either, unless the filter needs it (see the curve).
+    if (!employerSignalsWanted) { setGrowthPending(false); return; }
     // Not for a shared board name either, for the same reason as the curve.
     const batch = Array.from(new Set(jobs.map((j) => j.token).filter((x): x is string => !!x && !isCollidedToken(x))))
       .filter((tok) => !growthAttempted.current.has(tok))
@@ -5885,7 +5913,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       cancelled = true;
       if (!settled) batch.forEach((tok) => growthAttempted.current.delete(tok));
     };
-  }, [jobs]);
+  }, [jobs, employerSignalsWanted]);
 
   // A FOURTH OBSERVED FACT, KEPT APART FROM THE THREE VERDICTS ABOVE. The
   // newest qualifying layoff filing per visible employer, one row per token
@@ -5899,7 +5927,8 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // Neither is asked about a token two hiring systems carry: a filing matched
   // to that token cannot be told apart between the two employers behind it,
   // and an absent filing is never read as "none" (every surface already says so).
-  const layoffFilingOf = useEmployerLayoffFilings(jobs.map((j) => (isCollidedToken(j.token) ? null : j.token)));
+  // A crawler is asked about no filing: the chip is decoration to it.
+  const layoffFilingOf = useEmployerLayoffFilings(crawlerVisit ? [] : jobs.map((j) => (isCollidedToken(j.token) ? null : j.token)));
   const landerLayoffFilings = useEmployerLayoffFilingsAll(landerCollision ? null : landerCompany);
 
   /** THE PAGE'S ONE READING OF THE CLOSURE RECORD. Three answers, and every
