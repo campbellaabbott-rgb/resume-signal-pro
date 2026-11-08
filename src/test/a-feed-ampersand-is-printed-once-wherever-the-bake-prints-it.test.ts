@@ -16,6 +16,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { postingJsonLdShape, postingPageDescription, postingPageTitle, postingText, type PostingRow } from "@/components/jobs/posting-page";
 import { landerOpenings } from "../../scripts/prerender-pages.mjs";
+import { skipWithoutDist } from "./helpers/built-output";
 
 const esc = (s: string) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const DESC = "Du unterstützt unser Team bei KI &amp; Automatisierung und arbeitest eng mit den Fachbereichen zusammen. ".repeat(6);
@@ -84,8 +85,14 @@ function htmlFiles(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-describe.skipIf(!built)("the built tree (dist guard)", () => {
+describe.skipIf(skipWithoutDist(built))("the built tree (dist guard)", () => {
   const files = built ? htmlFiles(DIST) : [];
+
+  // Under RB_REQUIRE_DIST=1 a missing build runs this block; without this, both checks below pass on zero files.
+  it("has a built tree to read", () => {
+    expect(built, "dist/index.html is missing: run npm run build first").toBe(true);
+    expect(files.length).toBeGreaterThan(0);
+  });
 
   it("prints '&amp;amp;' nowhere in any HTML file", () => {
     const hits = files.filter((f) => readFileSync(f, "utf8").includes("&amp;amp;"));
