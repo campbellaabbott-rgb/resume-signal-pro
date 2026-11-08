@@ -47,6 +47,9 @@ import {
 } from "./prerender-copy.mjs";
 import { legalBodyFromTsx, legalText } from "./prerender-legal.mjs";
 import { routeChunkPrefix, preloadClosure, fallbackPreloadHtml } from "./prerender-preload.mjs";
+// The employer's own answer for each posting, GET only (B01, B06).
+import { EMPLOYER_READ_BUDGET_MS, applyEmployerStatements, distrustImplausibleClosures, employerReadLine, readEmployers, summarizeEmployerReads } from "./employer-reads.mjs";
+import { EMPLOYER_STATED_META, employerStatedOf } from "./employer-statements.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 // A BAKE CAN BE POINTED AWAY FROM THE CHECKOUT. PRERENDER_OUT names a
@@ -108,7 +111,7 @@ export const setContent = (html, prefix, value) => putVerbatim(html, new RegExp(
 // sets the meta robots tag for pages that exist only to serve their own URL
 // (an auth wall, say) and should never be indexed at all.
 export const composeHtml = (
-  { path, title, description, content, jsonLd = [], hreflang = null, lang = null, isFallback = false, canonical = null, robots = null },
+  { path, title, description, content, jsonLd = [], hreflang = null, lang = null, isFallback = false, canonical = null, robots = null, employerStated = null },
   { template, D, esc, shell, preloadFor, publicHref, onTruncated },
 ) => {
   // SERP snippets truncate ~160 chars; clamp at a word boundary so no page
@@ -166,6 +169,14 @@ export const composeHtml = (
   }
   let headExtra = `<link rel="canonical" href="${isFallback ? `${SITE}/` : `${SITE}${publicHref(canonical || path)}`}" />\n<meta name="x-prerendered" content="1" />\n`;
   if (lang) headExtra += `<meta http-equiv="content-language" content="${lang}" />\n`;
+  // WHAT THE EMPLOYER STATED, FOR THE PAGE THAT HYDRATES OVER THIS ONE (B06).
+  // The bake put the employer's own end date, time type, remote field,
+  // original date and address into this posting's row; the React page re-reads
+  // the row from the board, which has none of them, and applies these same
+  // statements to it (scripts/employer-statements.mjs) before it writes its
+  // lines and its markup.
+  const stated = employerStatedOf(employerStated);
+  if (stated) headExtra += `<meta name="${EMPLOYER_STATED_META}" content="${esc(JSON.stringify(stated))}" />\n`;
   // THE ORGANIZATION, ON EVERY PAGE (SEO-011a): '#org' appeared nowhere in
   // the bake. Everything below that means us points at it by @id. No
   // legalName, address, contactPoint or sameAs until the owner supplies them.
@@ -254,8 +265,16 @@ export function bakePostingPage(row, description, { D, SITE, carried }) {
   if (!postingRowEligible(row, D) || !D.postingDescribedEnough(description)) {
     return { path, named, nameRefused, rawJob, job, ld: null, live: false, nameOnly: false, mismatchOnly: false, nm: null };
   }
-  const nameOnly = !!nameRefused && !!path && !!D.postingJsonLd(rawJob, description, { site: SITE, ignoreNameGate: true });
-  const ld = nameRefused ? null : D.postingJsonLd(job, description, { site: SITE });
+  // WHETHER A ROW KEEPS ITS PAGE IS DECIDED ON THE MARKUP IT WOULD CARRY
+  // (postingJsonLdShape), never on the owner's STOP switch (B01): with
+  // JOB_POSTING_MARKUP off, D.postingJsonLd answers null for every row, and
+  // reading that as "no page" would retire every posting page at once. The
+  // switch takes the markup off a page and leaves the page, its title and its
+  // index where they were.
+  const nameOnly = !!nameRefused && !!path && !!D.postingJsonLdShape(rawJob, description, { site: SITE, ignoreNameGate: true });
+  const shape = nameRefused ? null : D.postingJsonLdShape(job, description, { site: SITE });
+  const ld = shape ? D.postingJsonLd(job, description, { site: SITE }) : null;
+  const switchedOff = !!shape && !ld;
   // A page whose markup we cannot stand behind is not written as a live
   // page. Its URL keeps a noindex page instead and never reaches the
   // sitemap, which is the whole contract. A location that ends in
@@ -266,12 +285,59 @@ export function bakePostingPage(row, description, { D, SITE, carried }) {
   // dry-run list as one that would be marked noindex. A new one gets no
   // page. The markup is withheld either way: a Nigerian job is never
   // marked up as a Louisiana one.
-  const mismatchOnly = !ld && !!path && D.postingCountryMismatch(job) && !!D.postingJsonLd(job, description, { site: SITE, ignoreCountryMismatch: true });
-  if (!path || (!ld && !((mismatchOnly || nameOnly) && carried))) {
-    return { path, named, nameRefused, rawJob, job, ld: null, live: false, nameOnly, mismatchOnly, nm: null };
+  const mismatchOnly = !shape && !!path && D.postingCountryMismatch(job) && !!D.postingJsonLdShape(job, description, { site: SITE, ignoreCountryMismatch: true });
+  if (!path || (!shape && !((mismatchOnly || nameOnly) && carried))) {
+    return { path, named, nameRefused, rawJob, job, ld: null, live: false, nameOnly, mismatchOnly, switchedOff: false, nm: null };
   }
   const nm = nameRefused ? "the employer" : D.postingEmployer(job);
-  return { path, named, nameRefused, rawJob, job, ld, live: true, nameOnly, mismatchOnly, nm };
+  return { path, named, nameRefused, rawJob, job, ld, live: true, nameOnly, mismatchOnly, switchedOff, nm };
+}
+
+/**
+ * THE EMPLOYER'S OWN ANSWER FOR EACH ROW ABOUT TO KEEP A LIVE PAGE (B01, B06).
+ * `list` holds the bake's { job, description, ... } items; each job is read
+ * at its employer (scripts/employer-reads.mjs, GET only, under the shared
+ * `deadline`), an implausible run of closures is not trusted, and every answer
+ * is recorded in `results`. Returns the items to keep, each job carrying what
+ * its employer states (applyEmployerStatements) and each item the statements
+ * themselves (`stated`, which the page's head hands to the React page), and the
+ * items whose employer closed the posting. `readOpts` reaches readEmployers (a
+ * test's fetchImpl).
+ */
+export async function askEmployersAbout(list, { D, deadline, results = new Map(), readOpts = {} }) {
+  const raw = await readEmployers(list.map((d) => d.job), { deadline, ...readOpts });
+  const answers = distrustImplausibleClosures(raw);
+  for (const [k, v] of answers) results.set(k, v);
+  const keep = [];
+  const closed = [];
+  for (const d of list) {
+    const r = answers.get(d.job.id);
+    if (r?.state === "closed") { closed.push(d); continue; }
+    const stated = employerStatedOf(r?.stated);
+    if (stated) {
+      d.job = applyEmployerStatements(d.job, stated, { employmentTypeOf: D.ldEmploymentType });
+      d.stated = stated;
+    }
+    keep.push(d);
+  }
+  return { keep, closed };
+}
+
+/** The "no longer listed" page a posting its employer closed gets: state "gone", basis "employer" (B01). */
+export function employerClosedStub(job, D) {
+  return { id: job.id, path: D.postingPagePath(job.id), state: "gone", basis: "employer", job, title: job.title, company: job.company };
+}
+
+/**
+ * WHY A LIVE POSTING PAGE CARRIES NO JOB MARKUP, as its ledger entry records
+ * it (`markupWithheld`), or null when it carries its markup. "name" and
+ * "country" are owner decision D7's carried pages; "switch" is every page
+ * while the owner's STOP switch is off (B01).
+ */
+export function postingMarkupWithheld(page) {
+  if (page.ld) return null;
+  if (page.switchedOff) return "switch";
+  return page.nameRefused ? "name" : "country";
 }
 
 // Importable for its pure functions (the guard renders a template through
@@ -307,7 +373,7 @@ export { COMPETITORS } from "../src/data/competitors";
 export { VENDORS } from "../src/data/ats-vendors";
 export { ES_INDUSTRIES, isSpanish } from "../src/data/es-industries";
 export { SCREENER_NOTES } from "../src/data/screener-notes";
-export { GUIDES, GUIDES_INDEX_DESCRIPTION, GUIDES_INDEX_TITLE, GUIDES_INTRO, guideGrounding } from "../src/data/guides";
+export { GUIDES, GUIDES_INDEX_DESCRIPTION, GUIDES_INDEX_TITLE, GUIDES_INTRO, GUIDE_ARTICLE_IMAGE_PATH, guideGrounding } from "../src/data/guides";
 export { buildIndustryFaqs } from "../src/data/industry-faqs";
 export { COUNTRY_STANDARDS } from "../supabase/functions/free-keyword-scan/country-standards";
 export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from "../src/data/cv-standards-content";
@@ -334,6 +400,8 @@ export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_AD
 export { MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT } from "../src/config/mcp-tools";
 export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
 export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingEmployer, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle, postingPageTitleAvoiding, postingPathParts } from "../src/components/jobs/posting-page";
+export { ldEmploymentType, postingJsonLdShape } from "../src/components/jobs/posting-page";
+export { JOB_POSTING_MARKUP } from "../src/config/seo-switches";
 export { boardName, employerName, isCodeShapedName, possessive } from "../src/lib/company-display";
 export { POSTING_MIN_DESCRIPTION, postingDescribedEnough, postingMarkupGate, postingNameVerdict } from "../src/components/jobs/posting-page";
 export { isCollidedToken } from "../src/lib/board-collisions";
@@ -1783,7 +1851,11 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
         "@type": "Article",
         headline: g.h1,
         description: g.description,
+        // First published and last changed, each the guide's own committed
+        // date, and the share card the page already carries (SD-09).
+        datePublished: g.published,
         dateModified: g.updated,
+        image: `${SITE}${D.GUIDE_ARTICLE_IMAGE_PATH}`,
         // The site's one Organization, by @id (SEO-011a).
         author: orgRef(SITE),
         publisher: orgRef(SITE),
@@ -2411,6 +2483,8 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
   const postingLedger = {};
   /** Every company path this site has published, and what it is now (SEO-002), published as the ledger's companies map. */
   const companyLedger = {};
+  /** Each posting's employer answer this bake (B01): open, closed or unknown, by row id; counted into the ledger. */
+  const employerResults = new Map();
   /** Tombstones written (under a kilobyte each, never in the sitemap), counted for the log. */
   let tombstonesWritten = 0;
   const writeTombstone = (path, token = null) => {
@@ -2496,7 +2570,8 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       });
       write(postingStubPage({
         path: s.path, id: s.id, state: s.state, since: s.state === "gone" ? e.since : null,
-        title: e.title, company: e.company, windowDays: D.BOARD_FRESH_WINDOW_DAYS, duplicateOf: s.duplicateOf ?? null,
+        // As the posting's own page printed them (postingText, B07/F08).
+        title: typeof e.title === "string" ? D.postingText(e.title) : e.title, company: typeof e.company === "string" ? D.postingText(e.company) : e.company, windowDays: D.BOARD_FRESH_WINDOW_DAYS, duplicateOf: s.duplicateOf ?? null,
         basis: s.seed || (e.seed && s.state === "retired") ? "seed" : (s.basis ?? null), ceiling: POSTING_PAGE_CEILING, esc,
         companyLink: e.token ? companyLinkHtml(e.token, e.company || "this employer") : "",
       }));
@@ -2588,6 +2663,27 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
           stubs.push({ ...c, path, state: c.state === "found" ? "retired" : c.state });
         }
       }
+      // RULE 8 — THE EMPLOYER'S OWN ANSWER (B01, B06). The board's detail
+      // action reads our stored row, so a posting its employer took down kept
+      // a live page and its JobPosting until our crawler noticed: on
+      // 2026-11-08 this bake baked Sanford R-0278723, Fresenius R0270716 and
+      // JCI WD30282057 live while each employer's Workday answered 403 S22.
+      // Every row about to keep a live page is asked of its employer's own
+      // system (scripts/employer-reads.mjs, GET only, bounded by one deadline
+      // shared with the new postings below). A row the employer closed gets
+      // the "no longer listed" page with basis "employer" (noindex, no
+      // JobPosting, out of the sitemap); an unknown answer keeps the page as
+      // it was. The same answer carries what the employer states (its end
+      // date, time type, a fully remote posting, its original date and its
+      // address), put into the row's own fields before the page is decided.
+      const employerDeadline = Date.now() + EMPLOYER_READ_BUDGET_MS;
+      const askEmployers = (list) => askEmployersAbout(list, { D, deadline: employerDeadline, results: employerResults });
+      {
+        const { keep, closed } = await askEmployers(detailed);
+        for (const d of closed) stubs.push(employerClosedStub(d.job, D));
+        detailed.length = 0;
+        detailed.push(...keep);
+      }
       // Rule 7 — the ceiling. Carried live pages past it give up their page,
       // the oldest employer date first, to the "retired" page that says why.
       {
@@ -2672,10 +2768,19 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
         fresh.push(j);
       }
       let freshWritten = 0;
+      const freshFound = [];
       for (const c of await readDetails(fresh.map((j) => j.id))) {
         if (c.state !== "found" || !eligibleRow(c.job) || !describedEnough(c.description)) continue;
-        detailed.push({ job: c.job, description: c.description, first: TODAY, carried: false });
-        freshWritten++;
+        freshFound.push({ job: c.job, description: c.description, first: TODAY, carried: false });
+      }
+      // Rule 8 for the new postings: one the employer already closed was
+      // never published, so it simply gets no page.
+      let freshEmployerClosed = 0;
+      {
+        const { keep, closed } = await askEmployers(freshFound);
+        freshEmployerClosed = closed.length;
+        detailed.push(...keep);
+        freshWritten = keep.length;
       }
       const eligible = pool.filter(eligibleRow);
 
@@ -2710,7 +2815,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       const postingTitlesTaken = new Set();
       let titlesDisambiguated = 0;
       let nameWithheld = 0;
-      for (const { description, first, carried, page } of detailed) {
+      for (const { description, first, carried, page, stated } of detailed) {
         // What bakePostingPage decided for this row (above): the page's path,
         // the row its page prints (a refused name blanked), its markup, and
         // whether it keeps a live page.
@@ -2744,7 +2849,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
           // and a locality is refused by the producer's own rules read back
           // (a dash at an end, a country's name inside it, a site code...).
           if (ld.jobLocationType === "TELECOMMUTE" && job.workModeSource !== "vendor") wrong.push("TELECOMMUTE with no vendor flag");
-          const why = typeof locality === "string" ? D.localityProblem(locality) : null;
+          const why = typeof locality === "string" ? D.localityProblem(locality, ld.jobLocation?.address) : null;
           if (why) wrong.push(`a junk addressLocality "${locality}" (${why})`);
           if ("baseSalary" in ld) wrong.push("baseSalary");
           if (wrong.length) markupFound.push({ path, wrong });
@@ -2753,6 +2858,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
         write({
           path,
           ...(lang && lang !== "en" ? { lang } : {}),
+          ...(stated ? { employerStated: stated } : {}),
           // The page's own sentences, for the banned-phrase check; never the employer's text.
           ownText: `${D.postingPageDescription(job)} ${ownSentence} the application happens on ${possessive(nm)} own hiring system; this board only links to it.`,
           title: (() => {
@@ -2795,12 +2901,17 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
         // from what the live site published, or new under postingFreshBudget.
         // The built-output guard judges the ceiling from it (the bound on the
         // live set is max(ceiling, carried), never POSTING_PAGE_CAP).
-        // `markupWithheld` names why a page D7 keeps indexable carries no
-        // JobPosting: "name" (the name gate refuses the employer's name) or
-        // "country" (the location ends in another country's name). The
-        // built-output guard accepts a page with no job markup only when its
-        // entry says so, and the page was carried.
-        postingLedger[path] = { state: "live", since: TODAY, first, carried, title, company: nm, token: job.token ?? null, ...(ld ? {} : { markupWithheld: nameRefused ? "name" : "country" }) };
+        // `markupWithheld` names why a page carries no JobPosting: "name"
+        // (the name gate refuses the employer's name) or "country" (the
+        // location ends in another country's name), for a page D7 keeps
+        // indexable, and "switch" for every page while the owner's STOP switch
+        // is off (B01). The built-output guard accepts a page with no job
+        // markup only when its entry says so, and, for D7's two, the page was
+        // carried.
+        // `applyUrl` rides along for the daily closure check, which reads each
+        // live posting at its employer from the ledger alone (B01).
+        const withheld = postingMarkupWithheld(page);
+        postingLedger[path] = { state: "live", since: TODAY, first, carried, title, company: nm, token: job.token ?? null, ...(job.applyUrl ? { applyUrl: String(job.applyUrl) } : {}), ...(withheld ? { markupWithheld: withheld } : {}) };
       }
 
       // The URLs this site published that get no live page: each keeps a
@@ -2818,7 +2929,9 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       if (postingPaths.length) {
         const links = detailed
           .filter((d) => postingPaths.includes(D.postingPagePath(d.job.id)))
-          .map((d) => `<li><a href="${D.postingPagePath(d.job.id)}">${esc(d.job.title)}</a> — ${esc(D.postingEmployer(d.job))}${d.job.location ? `, ${esc(String(d.job.location).trim())}` : ""}</li>`)
+          // Each line as the posting's own page prints it (postingText): a feed's
+          // "&amp;" is one ampersand, never escaped twice (B07, F08).
+          .map((d) => `<li><a href="${D.postingPagePath(d.job.id)}">${esc(D.postingText(d.job.title))}</a> — ${esc(D.postingEmployer(d.job))}${d.job.location ? `, ${esc(D.postingText(d.job.location))}` : ""}</li>`)
           .join("\n              ");
         postingIndexSection = `
           <section>
@@ -2829,9 +2942,17 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
             </ul>
           </section>`;
       }
-      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new from a pool of ${pool.length}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} show employer-stated pay on the page (none in the markup); ${titlesDisambiguated} title${titlesDisambiguated === 1 ? "" : "s"} took a requisition key to stay unique; fresh budget ${freshBudget} (carried live ${carriedLive}, ceiling ${POSTING_PAGE_CEILING}; ${retiredExpiring} expiring within ${POSTING_EXPIRY_NEAR_DAYS} days gave way to the reserve); ${countryMismatch} with a location ending in another country (job markup withheld; a carried one keeps its page under D7 and is on the dry run); ${nameWithheld} carried with an employer name the gate refuses (job markup withheld, "the employer" printed, on the dry run); carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}`);
+      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new from a pool of ${pool.length}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} show employer-stated pay on the page (none in the markup); ${titlesDisambiguated} title${titlesDisambiguated === 1 ? "" : "s"} took its town, its stated date or a short reference to stay unique; fresh budget ${freshBudget} (carried live ${carriedLive}, ceiling ${POSTING_PAGE_CEILING}; ${retiredExpiring} expiring within ${POSTING_EXPIRY_NEAR_DAYS} days gave way to the reserve); ${countryMismatch} with a location ending in another country (job markup withheld; a carried one keeps its page under D7 and is on the dry run); ${nameWithheld} carried with an employer name the gate refuses (job markup withheld, "the employer" printed, on the dry run); carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}; job markup ${D.JOB_POSTING_MARKUP === false ? "OFF by the owner's STOP switch (src/config/seo-switches.ts): every live page kept, none marked up" : "on"}`);
       // A carried page the board did not answer for is the symptom to look at
       // first: it is an "unchecked" noindex page until a later bake reaches it.
+      // THE EMPLOYER READS, IN ONE LINE (B01): a large unknown share means the
+      // build network could not reach the vendors, and the daily check is the
+      // backstop; it is recorded in the ledger as well.
+      {
+        const summary = summarizeEmployerReads(employerResults);
+        console.log(`[prerender-seo] ${employerReadLine(summary)}; ${freshEmployerClosed} of them new postings the employer had already closed (no page)`);
+        if (summary.checked && summary.unknown / summary.checked > 0.2) console.warn(`[prerender-seo] employer reads: ${summary.unknown} of ${summary.checked} answers unknown (over 20%) — pages kept as they were; the daily closure check is the backstop`);
+      }
       if (stubCount("unchecked")) {
         console.warn(`[prerender-seo] posting pages: ${stubCount("unchecked")} published posting URL(s) could not be re-checked (board refusal, error or the call budget) — each carries a noindex "could not re-check" page until a bake reaches it`);
       }
@@ -3175,7 +3296,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
         const own = landerByToken.get(c.employerPrimary ?? c.primary) ?? c;
         const tokens = employerBoardsOf(LANDERS, c.token);
         const facts = landerFacts(intelOf.get(own.token), { countryName, fieldLabel: fieldLabelOf });
-        const listed = landerOpenings({ postings: tokens.flatMap((t) => postingsByToken.get(t) ?? []), cached: landerOpeningsCache[own.token], today: TODAY, pageFor: bakedPostingPage });
+        const listed = landerOpenings({ postings: tokens.flatMap((t) => postingsByToken.get(t) ?? []), cached: landerOpeningsCache[own.token], today: TODAY, pageFor: bakedPostingPage, text: D.postingText });
         return [c.token, { primary, facts, openings: listed.openings, at: listed.at, ownContent: landerHasOwnContent({ openings: listed.openings }), answered: listed.answered }];
       }));
       // A page whose text matches another page's once names and numbers are
@@ -3299,7 +3420,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
           const f = facetByToken.get(token);
           const openN = f ? openRolesOf(f) : null;
           const onBoard = !!f && ((typeof openN === "number" ? openN : (f.count ?? 0)) > 0);
-          const listed = landerOpenings({ postings: postingsByToken.get(token) ?? [], cached: priorOpenings[token], today: TODAY, pageFor: bakedPostingPage });
+          const listed = landerOpenings({ postings: postingsByToken.get(token) ?? [], cached: priorOpenings[token], today: TODAY, pageFor: bakedPostingPage, text: D.postingText });
           const state = companyCarryState({ prior, today: TODAY, onBoard, cachedYoung: listed.answered });
           const name = f ? bakeEmployerName(token, f.name, NAME_PARTS).name : (prior && typeof prior.name === "string" ? prior.name : null);
           const seed = !prior && seedCompanySet.has(path);
@@ -4800,6 +4921,8 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
     // must know about them.
     const ledgerOut = {
       builtAt: TODAY,
+      // What the employers answered this bake (B01): counts only, by vendor.
+      ...(employerResults.size ? { employerReads: { at: TODAY, ...summarizeEmployerReads(employerResults) } } : {}),
       postings: postingLedger,
       openings: landerOpeningsCache,
       companies: companyLedger,

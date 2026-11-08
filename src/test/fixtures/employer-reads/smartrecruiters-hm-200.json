@@ -1,0 +1,139 @@
+{
+ "id": "744000156135889",
+ "name": "Department Manager - Scottsdale Fashion Square",
+ "uuid": "e9f1d17f-d32e-4c55-95a0-b87c3c9e71dc",
+ "jobId": "c2632006-a190-4006-a149-dc2a766297d5",
+ "jobAdId": "74fe54d2-c6cd-4189-b71a-a6734606c541",
+ "defaultJobAd": true,
+ "refNumber": "REF132247H",
+ "company": {
+  "name": "H&M Group",
+  "identifier": "HMGroup"
+ },
+ "location": {
+  "city": "Scottsdale",
+  "region": "AZ",
+  "country": "us",
+  "address": "7014 East Camelback Road",
+  "postalCode": "85251",
+  "remote": false,
+  "hybrid": false,
+  "latitude": "33.5053796",
+  "longitude": "-111.9293798",
+  "fullLocation": "Scottsdale, AZ, United States"
+ },
+ "customField": [
+  {
+   "fieldId": "659d54fc7bb2116f8160084a",
+   "fieldLabel": "Job Type",
+   "valueId": "Store",
+   "valueLabel": "Store"
+  },
+  {
+   "fieldId": "659d553f6d64e50e0450df59",
+   "fieldLabel": "Sub Family",
+   "valueId": "2000073",
+   "valueLabel": "Store"
+  },
+  {
+   "fieldId": "659d19037bb2116f81600849",
+   "fieldLabel": "Business Area",
+   "valueId": "100115",
+   "valueLabel": "Continent North America"
+  },
+  {
+   "fieldId": "COUNTRY",
+   "fieldLabel": "Country/Region",
+   "valueId": "us",
+   "valueLabel": "United States"
+  },
+  {
+   "fieldId": "635a2978703919071e0b3671",
+   "fieldLabel": "Evergreen Posting",
+   "valueId": "e77e9a7b-f798-4e1e-8c79-f54116db5de3",
+   "valueLabel": "No"
+  },
+  {
+   "fieldId": "659d554e48e74850cd8b0a4e",
+   "fieldLabel": "Generic Job",
+   "valueId": "3000222",
+   "valueLabel": "Store Department Manager"
+  },
+  {
+   "fieldId": "5f71daf86c81f15360dbfcf9",
+   "fieldLabel": "Department",
+   "valueId": "1957506",
+   "valueLabel": "H&M"
+  },
+  {
+   "fieldId": "5f71daf86c81f15360dbfcf8",
+   "fieldLabel": "Brands",
+   "valueId": "441360b6-60d3-43cd-9011-13a104b2dce8",
+   "valueLabel": "H&M"
+  },
+  {
+   "fieldId": "61a4fc1a8de81a7bc3107507",
+   "fieldLabel": "BACKGROUND CHECK",
+   "valueId": "1880ae03-0a4a-4126-98bc-2a28d2ca89b3",
+   "valueLabel": "37934-Hennes & Mauritz"
+  },
+  {
+   "fieldId": "63ef20786199a30bcdd26eae",
+   "fieldLabel": "Pipeline",
+   "valueId": "df7f245e-4815-4d8d-8081-0b381eede105",
+   "valueLabel": "No"
+  },
+  {
+   "fieldId": "659d552b62e4707b12220788",
+   "fieldLabel": "Job Family",
+   "valueId": "1000007",
+   "valueLabel": "Customer Experience & Sales"
+  },
+  {
+   "fieldId": "61a4fc309aeee83da037b0e7",
+   "fieldLabel": "BILL CODE",
+   "valueLabel": "US0209"
+  },
+  {
+   "fieldId": "659d18e69389bd3ddbb08562",
+   "fieldLabel": "Business Group",
+   "valueId": "200299",
+   "valueLabel": "US & PR"
+  }
+ ],
+ "releasedDate": "2026-10-17T18:18:26.523Z",
+ "creator": {
+  "name": "",
+  "avatarUrl": ""
+ },
+ "postingUrl": "https://jobs.smartrecruiters.com/HMGroup/744000156135889-department-manager-scottsdale-fashion-square",
+ "applyUrl": "https://jobs.smartrecruiters.com/HMGroup/744000156135889-department-manager-scottsdale-fashion-square?oga=true",
+ "referralUrl": "https://jobs.smartrecruiters.com/external-referrals/company/HMGroup/publication/e9f1d17f-d32e-4c55-95a0-b87c3c9e71dc?dcr_ci=HMGroup",
+ "active": true,
+ "visibility": "PUBLIC",
+ "industry": {
+  "id": "retail",
+  "label": "Retail"
+ },
+ "function": {
+  "id": "sales",
+  "label": "Sales"
+ },
+ "department": {
+  "id": 1957506,
+  "label": "H&M"
+ },
+ "experienceLevel": {
+  "id": "mid_senior_level",
+  "label": "Mid-Senior Level"
+ },
+ "typeOfEmployment": {
+  "id": "permanent",
+  "label": "Full-time"
+ },
+ "language": {
+  "code": "en",
+  "label": "English",
+  "labelNative": "English (US)"
+ }
+}

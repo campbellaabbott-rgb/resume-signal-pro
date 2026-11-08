@@ -16,6 +16,7 @@ import { crawlerText, jsonLdBlocks } from "../../scripts/prerender-retired.mjs";
 import { OFF_PAGE_HOST_NAMES, bannedSourcePhrasesIn } from "../../scripts/prerender-copy.mjs";
 import { AFFILIATE_PRO_FIRST_MONTH_CENTS, formatUsd } from "@/config/affiliate-commission";
 import { mcpServerUrl, publicApiBase } from "@/config/public-endpoints";
+import { GUIDES } from "@/data/guides";
 
 // Several reads below walk a few thousand written files; on a loaded machine
 // that outruns the 5-second default, which would report a timeout, not a defect.
@@ -223,6 +224,20 @@ describe("SEO-034: a page in another language says so, and links its own scan pa
     const es = page("/es/industrias/healthcare");
     expect(es).toContain('href="/es/revisar-curriculum" class="inline-flex');
     expect((jsonLdBlocks(es) as Array<Record<string, unknown>>).some((b) => b["@type"] === "BreadcrumbList")).toBe(true);
+  });
+});
+
+describe("SD-09: every guide's Article states when it was first published, and its image", () => {
+  it("writes each guide's committed first-publish date, its last change and the share card the page carries", () => {
+    for (const g of Object.values(GUIDES)) {
+      const html = page(`/guides/${g.slug}`);
+      const art = (jsonLdBlocks(html) as Array<Record<string, unknown>>).find((b) => b["@type"] === "Article")!;
+      expect(art, g.slug).toBeTruthy();
+      expect(art.datePublished, g.slug).toBe(g.published);
+      expect(art.dateModified, g.slug).toBe(g.updated);
+      expect(art.image, g.slug).toBe(`${SITE}/og-image.png`);
+      expect(meta(html, /<meta property="og:image" content="([^"]*)"/), g.slug).toBe(`${SITE}/og-image.png`);
+    }
   });
 });
 

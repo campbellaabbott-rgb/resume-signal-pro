@@ -373,7 +373,8 @@ export const carrySitemaps = ({ ledgerSource, liveSitemap, committedSitemap }) =
 /**
  * The noindex page a posting URL keeps once the posting has no live page
  * here. Three states, each saying only what the bake knows: "gone" (the board
- * answered that it no longer serves it), "retired" (still on the board, but
+ * answered that it no longer serves it, or, with basis "employer", the
+ * employer's own hiring system did: B01), "retired" (still on the board, but
  * no longer carrying everything a page of its own must state, or another
  * page already carries the same requisition) and "unchecked" (the board did
  * not answer when this was built). Never the homepage, never indexed.
@@ -411,7 +412,12 @@ export function postingStubPage({ path, id, state, since, title, company, compan
         : basis === "expiring"
           ? `${what} is still on the live board, but the date its employer put on it leaves it only a few days in the board's window, so this site gave its page to a newer posting and this page states nothing more about it. ${boardLink("Open it on the live board")}.`
           : `${what} is still on the live board, but no longer carries everything a page of its own must state, so this page states nothing more about it. ${boardLink("Open it on the live board")}.`;
-  const lead = state === "gone"
+  // CLOSED AT THE EMPLOYER (B01): the bake asked the employer's own system
+  // and it answered that it no longer serves the posting, so this page says
+  // that, and only that.
+  const lead = state === "gone" && basis === "employer"
+    ? `${what} is no longer listed. When this page was built${since ? ` (${esc(since)})` : ""}, the employer's own hiring system answered that it no longer serves this posting, so this page states nothing more about it.`
+    : state === "gone"
     ? `${what} is no longer listed on this board${since ? ` (recorded ${esc(since)})` : ""}. That is a statement about this board, not about the employer: the posting may have been taken down, or the date the employer put on it passed the board's ${windowDays}-day window.`
     : state === "retired"
       ? retiredLead
@@ -422,7 +428,13 @@ export function postingStubPage({ path, id, state, since, title, company, compan
     robots: twin ? null : "noindex, follow",
     title: t ? `${head} — ${t}` : head,
     // Built up to the snippet budget (OBS-2): a long title drops the employer, then itself.
-    description: state === "gone"
+    description: state === "gone" && basis === "employer"
+      ? [
+        `${t ? `${t}${c ? ` at ${c}` : ""}` : "This posting"} is no longer listed by its employer. Browse the live openings instead.`,
+        `${t ?? "This posting"} is no longer listed by its employer.`,
+        "This posting is no longer listed by its employer. Browse the live openings instead.",
+      ].find((d) => d.length <= 160)
+      : state === "gone"
       ? [
         `${t ? `${t}${c ? ` at ${c}` : ""}` : "This posting"} is no longer listed on this board. Browse the live openings instead.`,
         `${t ?? "This posting"} is no longer listed on this board.`,
@@ -889,7 +901,7 @@ export function nextOpeningsCache({ prior, reads, tokens, today, maxAgeDays = LA
  * young enough to print: a posting page or two with no listing read says
  * nothing about how many roles the employer lists.
  */
-export function landerOpenings({ postings = [], cached = null, today, maxAgeDays = LANDER_OPENINGS_MAX_AGE_DAYS, limit = LANDER_OPENINGS_SHOWN, pageFor = () => null }) {
+export function landerOpenings({ postings = [], cached = null, today, maxAgeDays = LANDER_OPENINGS_MAX_AGE_DAYS, limit = LANDER_OPENINGS_SHOWN, pageFor = () => null, text = (s) => s }) {
   const e = youngEntry(cached, today, maxAgeDays);
   const out = [];
   const ids = new Set();
@@ -908,7 +920,10 @@ export function landerOpenings({ postings = [], cached = null, today, maxAgeDays
     if (ids.has(r.id)) continue;
     ids.add(r.id);
     const page = pageFor(r.id);
-    out.push({ href: typeof page === "string" && page.startsWith("/jobs/posting/") ? page : null, title: r.title, place: r.place ?? "" });
+    // A listed row's title as the posting's own page prints it (`text` is
+    // postingText): a feed that sent "KI &amp; Automatisierung" is printed with
+    // one ampersand, not escaped a second time (B07, F08).
+    out.push({ href: typeof page === "string" && page.startsWith("/jobs/posting/") ? page : null, title: text(r.title), place: text(r.place ?? "") });
   }
   return { openings: out, at: e ? e.at : null, answered: !!e };
 }

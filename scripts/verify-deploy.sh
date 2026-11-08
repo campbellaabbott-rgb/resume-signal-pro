@@ -2,7 +2,9 @@
 # READ-ONLY post-deploy proof. Sequential, anon key only (plus the owner's own
 # free /v1 key from .env.local for the keyed MCP checks). Every line is a claim
 # a deploy note made; each prints PASS / FAIL / INFO. Never a write, never a
-# refresh/sweep/backfill/verify action, never anything to an employer system.
+# refresh/sweep/backfill/verify action, never anything to an employer system
+# but section 98-r2's GETs (the owner's daily closure check, B01: one GET per
+# live posting page, four at a time, asking whether the employer still serves it).
 # The one file it keeps is local: the live sitemap and ledger, saved to
 # ~/.config/resumebooster/seo/ at the end of the run for the next one (B10).
 #

@@ -65,6 +65,7 @@ import {
   postingPageDescription,
   postingPagePath,
   postingPageTitle,
+  postingWithEmployerStatements,
   type PostingRow,
 } from "@/components/jobs/posting-page";
 import { possessive } from "@/lib/company-display";
@@ -206,7 +207,15 @@ export default function JobPosting() {
         setState(httpStatusOf(res.error) === 404 ? "unlisted" : "failed");
         return;
       }
-      const row = data.job ?? null;
+      // WHAT THE EMPLOYER STATED AT THE BAKE STAYS (B06): the bake wrote the
+      // employer's own end date, time type, remote field, original date and
+      // address into this page and its markup, and the board's row has none
+      // of them. The statements the bake wrote into the head of this very
+      // address are applied to the row before anything is printed or marked up.
+      const bakedPath = postingPagePath(id);
+      const baked = bakedPath ? bakedHeadFor(bakedPath) : null;
+      const stated = baked?.indexable ? baked.employerStated : null;
+      const row = data.job && stated ? postingWithEmployerStatements(data.job, stated) : data.job ?? null;
       setJob(row);
       setDescription(typeof data.description === "string" ? data.description : null);
       // A row we cannot find, and a row that is no longer live, are the same

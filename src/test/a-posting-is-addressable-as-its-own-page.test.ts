@@ -251,7 +251,7 @@ describe("the route and the generator agree about where a posting lives", () => 
  * Returns the problem, or null.
  */
 type PostingLedgerEntry = { state?: string; carried?: boolean; markupWithheld?: string } | undefined;
-const WITHHELD_REASONS = new Set(["name", "country"]);
+const WITHHELD_REASONS = new Set(["name", "country", "switch"]);
 function postingPageProblem(path: string, html: string, entry: PostingLedgerEntry): string | null {
   if (!/<h1>[^<]+<\/h1>/.test(html)) return "no heading";
   // ATTRIBUTES ALLOWED ON THE TAG. The JobPosting block carries the id the
@@ -263,6 +263,9 @@ function postingPageProblem(path: string, html: string, entry: PostingLedgerEntr
   const withheld = entry?.markupWithheld;
   if (withheld !== undefined) {
     if (!WITHHELD_REASONS.has(withheld)) return `the ledger withholds its markup for an unknown reason "${withheld}"`;
+    // THE OWNER'S STOP SWITCH (B01) takes the markup off every page, new or
+    // carried, and leaves the page: such a page must serve none at all.
+    if (withheld === "switch") return blocks.length ? `the ledger says the STOP switch is off and the page serves ${blocks.length} job entities` : null;
     if (entry?.carried !== true) return `the ledger withholds its markup (${withheld}) on a page that was not carried: D7 keeps only pages indexable today`;
     if (blocks.length !== 0) return `the ledger says its markup is withheld (${withheld}) and the page serves ${blocks.length} job entities`;
     if (withheld === "name" && !/<p>The employer\b/.test(html)) return "the ledger withholds its markup for the employer's name, and the page still prints a name";
@@ -300,6 +303,11 @@ describe("a posting page is judged by its own heading and markup, or by the reas
     expect(postingPageProblem(P, page(crumbs, "<p>ThePlace — Lagos</p>"), { state: "live", carried: true, markupWithheld: "budget" })).toMatch(/unknown reason/);
   });
 
+  it("passes any page, new or carried, that the owner's STOP switch keeps without markup, and fails one that still serves it", () => {
+    expect(postingPageProblem(P, page(crumbs, "<p>ThePlace — Lagos</p>"), { state: "live", carried: false, markupWithheld: "switch" })).toBeNull();
+    expect(postingPageProblem(P, page(ld(`${SITE}${P}`) + crumbs, "<p>ThePlace — Lagos</p>"), { state: "live", carried: true, markupWithheld: "switch" })).toMatch(/STOP switch is off and the page serves 1/);
+  });
+
   it("fails a page without its own heading, and markup that names another address", () => {
     expect(postingPageProblem(P, "<html><body><p>x</p></body></html>", { state: "live", carried: true })).toBe("no heading");
     expect(postingPageProblem(P, page(ld(`${SITE}/jobs`), ""), { state: "live", carried: true })).toBe(`markup names ${SITE}/jobs`);
@@ -307,9 +315,11 @@ describe("a posting page is judged by its own heading and markup, or by the reas
 
   it("the bake writes the reason into the ledger entry of every live page it writes without markup", () => {
     const bake = codeOf(read("scripts/prerender-seo.mjs"));
-    expect(bake).toMatch(/postingLedger\[path\] = \{ state: "live", since: TODAY, first, carried, title, company: nm, token: job\.token \?\? null, \.\.\.\(ld \? \{\} : \{ markupWithheld: nameRefused \? "name" : "country" \}\) \};/);
-    // A page is written without markup only when it is carried and D7 keeps it.
-    expect(bake).toMatch(/if \(!path \|\| \(!ld && !\(\(mismatchOnly \|\| nameOnly\) && carried\)\)\) \{/);
+    expect(bake).toMatch(/const withheld = postingMarkupWithheld\(page\);\s+postingLedger\[path\] = \{ state: "live", since: TODAY, first, carried, title, company: nm, token: job\.token \?\? null, \.\.\.\(job\.applyUrl \? \{ applyUrl: String\(job\.applyUrl\) \} : \{\}\), \.\.\.\(withheld \? \{ markupWithheld: withheld \} : \{\}\) \};/);
+    // A page is written without markup only when it is carried and D7 keeps
+    // it, decided on the markup the row WOULD carry, so the STOP switch never
+    // takes a page away.
+    expect(bake).toMatch(/if \(!path \|\| \(!shape && !\(\(mismatchOnly \|\| nameOnly\) && carried\)\)\) \{/);
   });
 });
 
@@ -375,12 +385,13 @@ describe.skipIf(skipWithoutDist(built))("every posting URL in the built sitemap 
       if (!f) continue;
       const why = postingPageProblem(p, readFileSync(f, "utf8"), postings[p]);
       if (why) wrong.push(`${p} → ${why}`);
-      else if (postings[p]?.markupWithheld) withheld.push(`${p} (${postings[p]!.markupWithheld})`);
+      else if (postings[p]?.markupWithheld && postings[p]!.markupWithheld !== "switch") withheld.push(`${p} (${postings[p]!.markupWithheld})`);
     }
     expect(wrong, "a posting page without its own heading and its own job markup is a page about nothing").toEqual([]);
     // A HANDFUL, NOT A HABIT. D7 keeps the few carried pages a stricter rule
     // would drop; a fault that withholds markup across the set (a country
     // reader that reads every row as a mismatch) would otherwise pass here.
+    // The owner's STOP switch is the one deliberate habit, and is not counted.
     expect(withheld.length, `pages kept without job markup: ${withheld.join(", ")}`).toBeLessThanOrEqual(Math.max(5, Math.ceil(paths.length * 0.02)));
   });
 });

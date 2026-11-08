@@ -126,9 +126,9 @@ describe("TELECOMMUTE only on the hiring system's own remote field (SEO-003's gu
   it("is the rule the bake's markup guard and section 98 read back", () => {
     const bake = readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8");
     expect(bake).toMatch(/ld\.jobLocationType === "TELECOMMUTE" && job\.workModeSource !== "vendor"\) wrong\.push/);
-    expect(bake).toMatch(/D\.localityProblem\(locality\)/);
+    expect(bake).toMatch(/D\.localityProblem\(locality, ld\.jobLocation\?\.address\)/);
     const verify = readFileSync(resolve(__dirname, "../../scripts/verify-deploy.d/98-seo-round.sh"), "utf8");
-    expect(verify).toMatch(/localityProblem\(a\.addressLocality\)/);
+    expect(verify).toMatch(/localityProblem\(a\.addressLocality, a\)/);
   });
 });
 
@@ -174,8 +174,8 @@ describe("a carried posting whose employer name the gate refuses names no employ
   it("is how the bake writes it: the markup withheld, the page kept, the name not printed", () => {
     const bake = readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8");
     expect(bake).toMatch(/const job = nameRefused \? \{ \.\.\.rawJob, company: "" \} : rawJob;/);
-    expect(bake).toMatch(/const ld = nameRefused \? null : D\.postingJsonLd\(job, description, \{ site: SITE \}\);/);
-    expect(bake).toMatch(/if \(!path \|\| \(!ld && !\(\(mismatchOnly \|\| nameOnly\) && carried\)\)\) \{/);
+    expect(bake).toMatch(/const shape = nameRefused \? null : D\.postingJsonLdShape\(job, description, \{ site: SITE \}\);/);
+    expect(bake).toMatch(/if \(!path \|\| \(!shape && !\(\(mismatchOnly \|\| nameOnly\) && carried\)\)\) \{/);
     expect(bake).toMatch(/const nm = nameRefused \? "the employer" : D\.postingEmployer\(job\);/);
   });
 });
