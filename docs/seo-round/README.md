@@ -310,7 +310,7 @@ Fixed = in this branch, with the evidence named. Owner = only the owner can act.
 - SEO-020 self-hosting: download Inter 400/500/600/700 and JetBrains Mono 400 woff2 (latin, latin-ext) into `public/fonts/`, add `@font-face` rules to `src/index.css`, preload Inter 400 and 600 from `index.html` after R1's script, drop the fonts.gstatic.com preconnect, and update `fontProblems()` and section 98-seo-speed to the self-hosted form. Keep `font-display: optional`.
 - D7: sign or refuse the rows in `docs/company-profiles/name-gate-dry-run.md`, including the 24-board rotation at the ceiling (section 4).
 - IndexNow resubmission, after the deploy is verified and the stubs are live (section 98 C3 passing):
-  `node scripts/indexnow-ping.mjs --urls scripts/seo-seed/indexnow-historical-urls.txt --dry-run` lists without sending (run 2026-10-24: 2,925 URLs, 5 other pages, 1,513 company pages, 1,407 posting pages; one submission fits Bing's 10,000 limit; nothing was sent). Without `--dry-run` it submits; that needs the owner's OK.
+  `node scripts/indexnow-ping.mjs --urls scripts/seo-seed/indexnow-historical-urls.txt --dry-run` lists without sending (run 2026-10-24: 2,925 URLs, 5 other pages, 1,513 company pages, 1,407 posting pages; one submission fits Bing's 10,000 limit; nothing was sent). It submits only with the owner's go-ahead in the environment, `INDEXNOW_SEND=1` (since 2026-11-07; without it every run is a dry run, `--dry-run` or not).
 
 ## The bake writes committed files
 

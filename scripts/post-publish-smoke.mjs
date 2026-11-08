@@ -408,17 +408,20 @@ try {
   record("agent server sign-in honesty", false, String(e));
 }
 
-// ---- 9. Tell search engines what this publish changed (SEO report S3) ----
-// IndexNow pings were manual-only, so Bing (which feeds ChatGPT search and
-// Copilot) heard of a change at its next crawl. A CLEAN pass now submits the
-// URLs whose sitemap date is the publish day plus the posting URLs the
-// publish retired, read from the live sitemap and ledger. Only on a clean
-// pass: a broken publish is not one to advertise. NO_INDEXNOW=1 skips it.
-if (results.every((r) => r.ok) && !process.env.NO_INDEXNOW) {
-  const { submitChanged } = await import("./indexnow-ping.mjs");
-  const r = await submitChanged();
-  record("IndexNow told what this publish changed", !(r.submitted && !r.ok),
-    r.submitted ? `${r.submitted} URL(s), HTTP ${r.status}` : `nothing submitted (${r.reason})`);
+// ---- 9. What this publish changed, for search engines (SEO report S3) ----
+// The URLs whose sitemap date is the publish day plus the posting URLs the
+// publish retired, read from the live sitemap and ledger, printed as a dry
+// run with their count. SENT ONLY WITH THE OWNER'S GO-AHEAD: INDEXNOW_SEND=1
+// on a clean pass (a broken publish is not one to advertise). This step sent
+// on every clean pass until the SEO/GEO audit of 2026-11-07 (IDX-05), so a
+// routine verify told Bing about some 960 URLs nobody had said go for.
+// NO_INDEXNOW=1 skips even the list. The rule lives in afterPublishPing.
+{
+  const { afterPublishPing } = await import("./indexnow-ping.mjs");
+  const ping = await afterPublishPing({ env: process.env, clean: results.every((r) => r.ok) });
+  if (ping.report) process.stdout.write(ping.report);
+  if (ping.status === "INFO") console.log(`INFO  ${ping.line}`);
+  else record(ping.line, ping.status === "PASS");
 }
 
 // ---- Verdict ----

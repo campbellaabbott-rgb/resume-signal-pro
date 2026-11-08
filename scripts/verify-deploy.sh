@@ -3,12 +3,22 @@
 # free /v1 key from .env.local for the keyed MCP checks). Every line is a claim
 # a deploy note made; each prints PASS / FAIL / INFO. Never a write, never a
 # refresh/sweep/backfill/verify action, never anything to an employer system.
+# The one file it keeps is local: the live sitemap and ledger, saved to
+# ~/.config/resumebooster/seo/ at the end of the run for the next one (B10).
 #
 # Lives in the repository (scripts/verify-deploy.sh) since 2026-09-21, after a
 # workflow cleanup deleted the scratchpad copy that had grown over a week.
 # Usage: bash scripts/verify-deploy.sh   (from anywhere; it cd's to the repo)
 set -u
 cd "$(dirname "$0")/.."
+# NOTHING THIS RUN STARTS TELLS A SEARCH ENGINE ANYTHING. An IndexNow send is
+# a write to Bing, Yandex, Seznam and Naver, and each one needs the owner's
+# go-ahead (2026-11-07); this script only reads. So NO_INDEXNOW is set and a
+# go-ahead left in the calling shell is dropped, for every section and every
+# tool a section starts. A send is its own command, run on purpose:
+#   INDEXNOW_SEND=1 node scripts/indexnow-ping.mjs --changed
+export NO_INDEXNOW=1
+unset INDEXNOW_SEND
 # THE TALLY (S12-163). The run is piped through scripts/verify-deploy-tally.mjs,
 # which passes every line on and then says what the run itself proved: a
 # section that printed no verdict or hit a script error is a FAIL, and every
@@ -1552,5 +1562,15 @@ const failing=rows.filter((r)=>r.ch_last_status==="failed");if(failing.length)in
 # branches never conflict at its end. Each is sourced here, in name order,
 # with K, RB, B, SITE, UA and the J/R/MC/probe/title helpers above in scope.
 for f in scripts/verify-deploy.d/*.sh; do [ -f "$f" ] && . "$f"; done
+
+# THE PAIR THE NEXT PUBLISH IS JUDGED AGAINST (B10, SEO/GEO audit 2026-11-07,
+# F10). Section 76 F2a judges what became of the posting URLs the previous
+# publish named, which only a sitemap saved before this publish can say, and
+# the manual save before each publish never happened. So the run keeps the
+# live sitemap and ledger itself, here at its very end: a run that died
+# part-way never gets here and keeps the pair it had. Two GETs; a body that is
+# not a sitemap or a ledger is never saved (scripts/seo-previous-publish.mjs).
+echo "== save. the live sitemap and ledger, kept for the next publish's F2a =="
+SITE="$SITE" UA="$UA" node scripts/seo-previous-publish.mjs --save
 
 echo "done."
