@@ -7,11 +7,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface ResumeRecoveryProps {
-  onResumeTextReady: (text: string) => void;
+  /** The résumé, and the posting when the buyer gave one in the box below. */
+  onResumeTextReady: (text: string, posting?: string) => void;
   disabled?: boolean;
+  /**
+   * The purchase was bought against a job posting the page no longer holds
+   * (C-S14-010): the box for it is shown, so the analysis is measured against
+   * the posting the buyer paid for rather than the résumé alone.
+   */
+  askPosting?: boolean;
 }
 
-export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryProps) {
+export function ResumeRecovery({ onResumeTextReady, disabled, askPosting }: ResumeRecoveryProps) {
   const { toast } = useToast();
   const { t } = useTranslation();
   const [mode, setMode] = useState<"upload" | "paste">("upload");
@@ -20,6 +27,7 @@ export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryPr
   const [textInput, setTextInput] = useState("");
   const [extractedText, setExtractedText] = useState<string>("");
   const [isExtracting, setIsExtracting] = useState(false);
+  const [postingInput, setPostingInput] = useState("");
 
   const isValidFileType = (file: File) => {
     const validTypes = [
@@ -258,13 +266,34 @@ export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryPr
         </div>
       )}
 
+      {askPosting && (
+        <div className="mt-6 space-y-2" data-testid="recovery-posting">
+          <label htmlFor="recovery-posting" className="block text-sm font-medium">
+            {t("paidAnalysis.recovery.postingTitle")}
+          </label>
+          <p className="text-xs text-muted-foreground leading-relaxed">{t("paidAnalysis.recovery.postingNote")}</p>
+          <textarea
+            id="recovery-posting"
+            value={postingInput}
+            onChange={(e) => setPostingInput(e.target.value)}
+            placeholder={t("paidAnalysis.recovery.postingPlaceholder")}
+            className="w-full h-40 p-4 rounded-xl bg-background/50 border border-border/50 text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 resize-none text-sm leading-relaxed transition-all"
+          />
+        </div>
+      )}
+
       {/* Submit button */}
       <div className="mt-6 flex flex-col items-center gap-3">
         <Button
           variant="hero"
           size="xl"
           disabled={disabled || isExtracting || !canAnalyze}
-          onClick={() => onResumeTextReady(mode === "paste" ? textInput.trim() : extractedText.trim())}
+          onClick={() => {
+            const posting = askPosting ? postingInput.trim() : "";
+            const resume = mode === "paste" ? textInput.trim() : extractedText.trim();
+            if (posting) onResumeTextReady(resume, posting);
+            else onResumeTextReady(resume);
+          }}
           className="min-w-[200px] gap-2"
         >
           {isExtracting ? (

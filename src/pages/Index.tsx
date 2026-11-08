@@ -1874,6 +1874,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       // The temporary-store id above is all the success page needs.
       const checkoutResult = await resilientCallers.createCheckout({
         hasLinkedIn: !!linkedInContent,
+        // Whether a posting was given: kept with the checkout, so the success
+        // page can ask for it if the stored copy is gone (C-S14-010).
+        hasJobDescription: !!jobDescriptionContent?.trim(),
         tempSessionId: tempSessionData,
         currency: currency.code,
         promoCode,

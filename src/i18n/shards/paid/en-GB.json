@@ -1,0 +1,14 @@
+{
+  "paidAnalysis": {
+    "recovery": {
+      "postingTitle": "The job posting you bought this analysis for",
+      "postingNote": "Your purchase was made with a job posting. Paste it here and the analysis is measured against it. You can leave this empty.",
+      "postingPlaceholder": "Paste the job posting (optional)"
+    },
+    "clipped": {
+      "posting": "The job posting was longer than {{max}} characters, so this analysis read its first {{max}}.",
+      "linkedIn": "Your LinkedIn text was longer than {{max}} characters, so this analysis read its first {{max}}."
+    },
+    "inProgress": "Your analysis is already being made. This page shows it as soon as it is ready."
+  }
+}

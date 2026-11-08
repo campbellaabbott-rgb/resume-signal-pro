@@ -135,6 +135,8 @@ export async function analyzeResumeHarness(stubs: Record<string, string> = {}): 
       used_stripe_sessions: ["session_id"],
       purchased_content: ["stripe_session_id"],
       resume_analyses: ["share_id"],
+      // The run lease's primary key (20261110120000).
+      analysis_run_leases: ["session_id"],
     });
     db.rpcs.check_global_rate_limit = () => ({ data: true, error: null });
     db.rpcs.check_rate_limit = () => ({ data: true, error: null });

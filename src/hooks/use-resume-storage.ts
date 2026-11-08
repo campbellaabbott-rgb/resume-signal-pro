@@ -1,6 +1,14 @@
 // Storage for non-PII session data only (temp session IDs, not resume content)
+import { TEMP_RESUME_HOURS } from "@/lib/resume-retention";
+
 const STORAGE_KEYS = ['tempSessionId'] as const;
-const EXPIRY_MS = 60 * 60 * 1000; // 1 hour (matches server-side expiry)
+/**
+ * The pointer lives as long as the stored copy it points to (temp_resume_storage,
+ * 24 hours). It was one hour, so a buyer who paid and came back later the same
+ * day had lost the pointer to a copy the server still held, and the analysis
+ * ran without the posting it was bought against (H4, C-S14-010).
+ */
+export const EXPIRY_MS = TEMP_RESUME_HOURS * 60 * 60 * 1000;
 
 interface StoredItem {
   value: string;

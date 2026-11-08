@@ -236,6 +236,17 @@ describe("the scan-credits handler", () => {
     expect(elsewhere.json.credits).toBe(3);
   });
 
+  it("a held purchase shows the address it was made with masked; a signed-in account sees its own whole (C-S14-049)", async () => {
+    // A session id travels (a shared browser, a forwarded success page), so
+    // holding one shows which address was credited, never the address.
+    const held = await ask("anon_harness", [HELD]);
+    expect(held.json.credits).toBe(3);
+    expect(held.json.email).toBe("o***@example.com");
+    expect(buildIsAtLeast(held.build, "scan-credits", "2026-11-10", 1), `build ${held.build}`).toBe(true);
+    const own = await ask(JWT.ownerPassword, [HELD]);
+    expect(own.json.email).toBe("owner@example.com");
+  });
+
   it("no session and no account: zero, without a database call", async () => {
     const r = await ask("anon_harness");
     expect(r.json).toMatchObject({ credits: 0, signedIn: false, mailboxProven: false });

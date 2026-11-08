@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
+import { rememberCheckoutResume, tempResumeIdOf } from "../_shared/checkout-resume-ref.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { accountProStanding } from "../_shared/pro.ts";
 import { FULL_ANALYSIS_PRODUCT_NAME, FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
@@ -51,11 +52,20 @@ import { REHEARSAL_UNCONFIGURED, rehearsalKeyOf } from "./owner-rehearsal.ts";
 // true in the body and an sk_test_ test key (owner-rehearsal.ts). Without
 // the owner's key the body's testMode is ignored and every session is live.
 // 2026-11-03.1 (S9-001, fix/audit-rest-abuse): _shared/checkout-buyer.ts refuses a connected app's token whatever role it names; the access-token hook gives it role mcp_client, which the old check passed to the auth server as a buyer.
-// 2026-11-10.1 (hotfix lane pro, sweep S14): no change of its own; the
-// _shared/pro.ts it bundles refreshes a cache row that names a Stripe
-// customer by that customer instead of clearing it when an address
-// search finds nothing, and gained the by-customer and by-account readers.
+// 2026-11-10.1 (hotfix lane pro, sweep S14): the _shared/pro.ts it bundles
+// refreshes a cache row that names a Stripe customer by that customer instead
+// of clearing it when an address search finds nothing, and gained the
+// by-customer and by-account readers.
+// 2026-11-10.1 (hotfix H4, C-S14-010): the checkout records which stored
+// résumé, posting and LinkedIn text it was bought against
+// (checkout_resume_refs, as create-product-checkout does), and whether the
+// page had a posting (hasPosting in its checkout_starts row), so the analysis
+// reads them by the purchase on another device or after the page lost them.
+// Best effort and time-bounded: a sale never waits on it or fails for it.
 const FN_BUILD = "create-checkout.2026-11-10.1";
+
+/** How long the checkout waits for the résumé reference before answering without it. */
+const RESUME_REF_WAIT_MS = 2_000;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -649,6 +659,26 @@ serve(async (req) => {
     // Create checkout session with retry logic
     const session = await createStripeSessionWithRetry(stripe, sessionParams, idempotencyKey);
 
+    // WHAT THE PURCHASE WAS BOUGHT AGAINST (C-S14-010): the stored copy's id
+    // stays on our side, keyed by the session, so analyze-resume can read the
+    // résumé, posting and LinkedIn text by the purchase for the 24 hours the
+    // store keeps them. Never blocks the purchase: a reference not written in
+    // time leaves the analysis as it was before, asking the page for them.
+    const tempResumeId = tempResumeIdOf(requestBody?.tempSessionId);
+    if (tempResumeId) {
+      let wait: ReturnType<typeof setTimeout> | undefined;
+      const kept = await Promise.race([
+        rememberCheckoutResume(supabase, session.id, tempResumeId),
+        new Promise<"slow">((resolve) => { wait = setTimeout(() => resolve("slow"), RESUME_REF_WAIT_MS); }),
+      ]);
+      clearTimeout(wait);
+      if (kept !== "recorded") logStep("Résumé reference not kept", { sessionId: session.id, outcome: kept });
+    }
+    // Whether the page held a posting when it checked out: kept with the
+    // start, so the success page can ask for the posting even once the
+    // stored copy has expired.
+    const hasPosting = typeof requestBody?.hasJobDescription === "boolean" ? requestBody.hasJobDescription : null;
+
     // The start is on record before the browser has the url, so no
     // navigation can race it; keyed on the session id, so a second checkout
     // is a second row. Never blocks the purchase.
@@ -661,7 +691,7 @@ serve(async (req) => {
       currency: session.currency ?? currency,
       mode: session.mode ?? "payment",
       context: checkoutContextOf(requestBody),
-      metadata: { promo: !!promotionCodeId, requestedCurrency: requestedCurrency ?? null, termsVersion: policy.terms_version || null, referral: !!policy.referral_code, withdrawalWaiver: policy.withdrawal_waiver ?? null, ...(ownerTestMode ? { testMode: true } : {}) },
+      metadata: { promo: !!promotionCodeId, requestedCurrency: requestedCurrency ?? null, termsVersion: policy.terms_version || null, referral: !!policy.referral_code, withdrawalWaiver: policy.withdrawal_waiver ?? null, ...(hasPosting !== null ? { hasPosting } : {}), ...(ownerTestMode ? { testMode: true } : {}) },
     });
     // The account behind the session, before the browser has the url.
     await recordCheckoutBuyer(supabase, { stripeSessionId: session.id, caller, checkoutFunction: "create-checkout", productType: "full_analysis" });
