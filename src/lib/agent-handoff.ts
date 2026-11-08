@@ -139,7 +139,9 @@ export function agentPrompt(job: HandoffJob): string {
     `Using the Resume Booster MCP server (${MCP_URL}), call ${tool("apply_myself")} with job id "${job.id}" ` +
     "(with format \"markdown\" if you cannot open a browser) and help me apply myself: " +
     "ask me every question it marks you, your_details or your_documents, and any question about me whatever its mark; " +
-    "draft only the ones it marks draft_from_your_cv, from the CV I give you or keep in this project; " +
+    // Rule 3 as the live server states it ("only from the CV given in this
+    // chat"); a CV kept in the project follows its deploy (owner decision 5).
+    "draft only the ones it marks draft_from_your_cv, from the CV I give you in this chat; " +
     "show me every draft before it goes into the form, and stop before Submit. I press Submit myself. " +
     `If that server is not connected here, tell me I can add it free at ${HANDOFF_SITE}/agents, and meanwhile ${where} and help me with that form the same way.`
   );

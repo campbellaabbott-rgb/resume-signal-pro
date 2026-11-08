@@ -2,8 +2,12 @@
  * THE /agents PAGE TELLS EACH READER THEIR OWN WAY IN (connect wave 2,
  * 2026-11-07).
  *
- *   - CJ-03: neither chat app can add a connector in its phone app; a phone
- *     user adds it once in the phone's browser and the app then has it.
+ *   - CJ-03: Claude's phone app has no add dialog; a phone user adds it once
+ *     in the phone's browser at claude.ai and the app then has it (Anthropic:
+ *     the mobile apps use servers "already added via claude.ai"). ChatGPT has
+ *     no such source (custom MCP is on ChatGPT web; whether a plugin then
+ *     works in the ChatGPT app is owner action 2), so its tile says nothing
+ *     about phones (the fix round of 2026-11-08).
  *   - PLT-1107-11: Claude Code signed in with a claude.ai account already has
  *     every connector added in Claude.
  *   - CJ-02 (copy): Claude's dialog is "+ Add", "Add custom connector", name,
@@ -51,18 +55,17 @@ const words = (h: McpHost, addToClaude = false) =>
 /** A baked host panel, by id. */
 const bakedPanel = (html: string, id: string) => html.slice(html.indexOf(`<section id="${id}"`), html.indexOf("</section>", html.indexOf(`<section id="${id}"`)));
 
-describe("a phone user is told to add it once in the phone's browser (CJ-03)", () => {
-  it("the Claude and ChatGPT panels say where, and the app it then appears in; Claude Code says nothing of phones", () => {
+describe("a phone user is told to add it once in the phone's browser where that is documented (CJ-03)", () => {
+  it("the Claude panel says where, and the app it then appears in; ChatGPT and Claude Code say nothing of phones", () => {
     expect(panel(host("claude")).querySelector('[data-phone-note="claude"]')!.textContent)
       .toBe("On a phone? Add it once in your phone's browser at claude.ai, not in the app; it then appears in the Claude app.");
-    expect(panel(host("chatgpt")).querySelector('[data-phone-note="chatgpt"]')!.textContent)
-      .toBe("On a phone? Add it once in your phone's browser at chatgpt.com, not in the app; it then appears in the ChatGPT app.");
+    expect(panel(host("chatgpt")).querySelector("[data-phone-note]")).toBeNull();
     expect(panel(host("claude-code")).querySelector("[data-phone-note]")).toBeNull();
   });
-  it("the bake's panels carry it", async () => {
+  it("the bake's Claude panel carries it, and no baked panel says a plugin appears in the ChatGPT app", async () => {
     const html = (await bakeAgents()).content;
     expect(bakedText(bakedPanel(html, "claude"))).toContain("Add it once in your phone's browser at claude.ai, not in the app; it then appears in the Claude app.");
-    expect(bakedText(bakedPanel(html, "chatgpt"))).toContain("Add it once in your phone's browser at chatgpt.com, not in the app; it then appears in the ChatGPT app.");
+    expect(bakedText(html)).not.toMatch(/appears in the ChatGPT app/);
   });
 });
 
@@ -135,9 +138,25 @@ describe("nothing promises ChatGPT will offer a sign-in later (PLT-1107-09)", ()
 describe("the form reader's allowance is said per app (APPLY-1107-12)", () => {
   const F = MCP_ANON_CAPS.forms;
   it("the mirror's sentence names Claude's shared pool and its minute, ChatGPT's per-person day inside its share, and a connection's day", () => {
-    expect(MCP_FORMS_ALLOWANCE).toContain(`Claude's users share ${F.shares.claude.toLocaleString("en-US")} form reads a day (${F.perMinute.claude} a minute)`);
-    expect(MCP_FORMS_ALLOWANCE).toContain(`from ChatGPT, ${F.perBucket} a day for each person, within ${F.shares.chatgpt.toLocaleString("en-US")} a day for all of ChatGPT`);
-    expect(MCP_FORMS_ALLOWANCE).toContain(`from any other app, ${F.perBucket} a day per internet connection`);
+    // The fix round of 2026-11-08: "Claude's users share" read, beside a
+    // Claude Code tile, as a Claude Code reader's allowance, and Claude Code
+    // on the person's own machine is counted per connection (lookupBucket's
+    // "other" partition); ChatGPT's 100 is a person's only when ChatGPT's
+    // call names them, and calls that name nobody share ChatGPT's 2,000.
+    expect(MCP_FORMS_ALLOWANCE).toContain(`claude.ai and Claude's apps share ${F.shares.claude.toLocaleString("en-US")} form reads a day (${F.perMinute.claude} a minute)`);
+    expect(MCP_FORMS_ALLOWANCE).toContain(`from ChatGPT, ${F.perBucket} a day for each person ChatGPT's call names, within ${F.shares.chatgpt.toLocaleString("en-US")} a day for all of ChatGPT`);
+    expect(MCP_FORMS_ALLOWANCE).toContain(`from Claude Code or any other app, ${F.perBucket} a day per internet connection`);
+    expect(MCP_FORMS_ALLOWANCE).not.toMatch(/Claude's users share/);
+  });
+  it("every language says the same three audiences, with every figure placeholder", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    for (const l of ["en", "en-GB", "de", "es", "fr", "hi", "nl", "pt", "tl"]) {
+      const s: string = JSON.parse(readFileSync(resolve(__dirname, `../i18n/locales/${l}.json`), "utf8")).agentConnect.applyAllowance;
+      for (const p of ["claude", "claudePerMinute", "perPerson", "chatgpt", "perConnection"]) expect(s, `${l} lacks {{${p}}}`).toContain(`{{${p}}}`);
+      expect(s, `${l} names claude.ai`).toContain("claude.ai");
+      expect(s, `${l} names Claude Code beside the per-connection figure`).toMatch(/Claude Code[^;]*\{\{perConnection\}\}/);
+    }
   });
   it("the page's apply section prints it", () => {
     const { container } = render(<MemoryRouter><ApplyYourself /></MemoryRouter>);

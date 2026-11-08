@@ -1530,9 +1530,13 @@ export default function GhostJobIndex() {
                         and X(14) = 0.25 had 55% of its roles off the board and
                         this said 30%. The share that left is 1 − still_open_14
                         and is stated in the caption; the number here is the
-                        one that means a job was actually filled. */}
+                        share taken down for good, which is not a hire (the
+                        method text says so), and the row says it in the
+                        reader's own locale. */}
                     <span className="text-[11px] text-success font-semibold shrink-0">
-                      {Math.round(r.fill_rate_14 * 100)}% filled by day {FILL_HORIZON_DAYS}
+                      {t("ghostIndex.fillRowTakenDown", "{{pct}}% taken down and not re-listed by day {{days}}", {
+                        pct: Math.round(r.fill_rate_14 * 100), days: FILL_HORIZON_DAYS,
+                      })}
                     </span>
                     {/* The competing event, rendered rather than fetched and
                         dropped. It is a FLOOR: the collector logs at most one
@@ -1541,10 +1545,12 @@ export default function GhostJobIndex() {
                         on screen the reader has no way to see that the fill
                         figure beside it is the smaller half of what left. */}
                     <span className="text-[11px] text-muted-foreground shrink-0 w-16 text-right hidden sm:inline">
-                      ≥{Math.round(r.relist_rate_14 * 100)}% re-listed
+                      {t("ghostIndex.fillRowRelisted", "≥{{pct}}% re-listed", { pct: Math.round(r.relist_rate_14 * 100) })}
                     </span>
                     <span className="text-[11px] text-muted-foreground shrink-0 w-32 text-right">
-                      {Math.round(r.fill_rate_14_lo * 100)}–{Math.round(r.fill_rate_14_hi * 100)}% · {r.n_at_risk_14.toLocaleString()} tracked
+                      {t("ghostIndex.fillRowInterval", "{{lo}}–{{hi}}% · {{n}} tracked", {
+                        lo: Math.round(r.fill_rate_14_lo * 100), hi: Math.round(r.fill_rate_14_hi * 100), n: r.n_at_risk_14.toLocaleString(),
+                      })}
                     </span>
                   </div>
                   {/* STILL ADVERTISED AT DAY 30 — S(30) with its interval,

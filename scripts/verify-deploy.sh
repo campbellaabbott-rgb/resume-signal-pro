@@ -571,25 +571,54 @@ SM=$(curl -s -m 30 "$SITE/sitemap.xml")
 NP=$(printf '%s' "$SM" | grep -c "jobs/posting/")
 echo "$([ "$NP" -gt 0 ] && echo PASS || echo FAIL)  sitemap carries $NP posting URLs"
 printf '%s' "$SM" | grep -oE "<loc>[^<]*jobs/posting/[^<]*</loc>" | sed -E 's/<\/?loc>//g' | head -3 > /tmp/vd_posting_urls.txt
+# THE STOP SWITCH AND THE PAGES THE BAKE WITHHOLDS MARKUP FROM (B01), read as
+# 98-r2 G2 reads them. With JOB_POSTING_MARKUP false every posting page serves
+# no JobPosting, and that is the publish the owner's STOP rule prescribes; a
+# page the ledger marks markupWithheld for a reason of its own (anything but
+# the switch) serves none either. Every other page serves at least one.
+VD5V_SWITCH=$(/usr/bin/grep -Eo '^export const JOB_POSTING_MARKUP = (true|false);' src/config/seo-switches.ts 2>/dev/null | /usr/bin/grep -Eo '(true|false)' || echo "")
+[ -z "$VD5V_SWITCH" ] && echo "FAIL  src/config/seo-switches.ts names no JOB_POSTING_MARKUP = true|false line: 5v judges each page as if the switch were on"
+curl -s -m 30 "$SITE/prerender-ledger.json" > /tmp/vd_5v_ledger.json
+vd5v_withheld() { VD5V_URL="$1" node -e 'let l={};try{l=JSON.parse(require("fs").readFileSync("/tmp/vd_5v_ledger.json","utf8")).postings||{}}catch{}const p=String(process.env.VD5V_URL).replace(/^https?:\/\/[^/]+/,"");const w=l[p]&&l[p].markupWithheld;process.stdout.write(w&&w!=="switch"?String(w):"")'; }
 HOMET=$(title /)
+VD5V_FULL=""
 while read -r u; do
   [ -z "$u" ] && continue
   page=$(curl -s -m 30 -A "$UA" "$u")
   t=$(printf '%s' "$page" | grep -oE "<title>[^<]*</title>" | head -1)
   ld=$(printf '%s' "$page" | grep -c '"@type": *"JobPosting"')
   can=$(printf '%s' "$page" | grep -c 'rel="canonical"')
-  if [ -n "$t" ] && [ "$t" != "$HOMET" ] && [ "$ld" -ge 1 ] && [ "$can" -ge 1 ]; then echo "PASS  $(basename "$u") -> $t  (JobPosting blocks $ld, canonical $can)"; else echo "FAIL  $u -> title=$t jobposting=$ld canonical=$can"; fi
+  why=$(vd5v_withheld "$u")
+  if [ "$VD5V_SWITCH" = "false" ]; then want=0; reason="the STOP switch is off"
+  elif [ -n "$why" ]; then want=0; reason="the ledger withholds its markup ($why)"
+  else want=1; reason="the STOP switch is on"; fi
+  if [ "$want" -eq 1 ]; then wanted="at least 1"; okld=$([ "$ld" -ge 1 ] && echo 1 || echo 0); else wanted=0; okld=$([ "$ld" -eq 0 ] && echo 1 || echo 0); fi
+  if [ -n "$t" ] && [ "$t" != "$HOMET" ] && [ "$okld" = 1 ] && [ "$can" -ge 1 ]; then echo "PASS  $(basename "$u") -> $t  (JobPosting blocks $ld, want $wanted: $reason; canonical $can)"; else echo "FAIL  $u -> title=$t jobposting=$ld (want $wanted: $reason) canonical=$can"; fi
+  [ "$want" -eq 1 ] && [ -z "$VD5V_FULL" ] && VD5V_FULL="$u"
 done < /tmp/vd_posting_urls.txt
-printf '%s' "$SM" | grep -oE "<loc>[^<]*jobs/posting/[^<]*</loc>" | sed -E 's/<\/?loc>//g' | head -1 | while read -r u; do
-  printf '%s' "$(curl -s -m 30 -A "$UA" "$u")" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const m=/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/g;let x,ok=0,bad=0,vt=null;while((x=m.exec(s))){try{const j=JSON.parse(x[1]);const t=j["@type"];if(t==="JobPosting"){ok++;vt=j.validThrough;for(const k of ["title","description","datePosted","hiringOrganization","jobLocation"])if(!j[k])bad++}}catch{bad++}}console.log((ok===1&&bad===0?"PASS":"FAIL")+"  exactly one parseable JobPosting entity with every required property (entities "+ok+", problems "+bad+")");console.log((vt&&/T\d\d:\d\d:\d\d/.test(vt)?"PASS":"FAIL")+"  validThrough carries a time, not a bare date: "+vt)})'
-done
+# A fully remote posting (B06: the employer's own remote field) is placed by
+# its applicant country, with a jobLocation only where a town is stated, so
+# the entity check takes either.
+if [ -n "$VD5V_FULL" ]; then
+  printf '%s' "$(curl -s -m 30 -A "$UA" "$VD5V_FULL")" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const m=/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/g;let x,ok=0,bad=0,vt=null;while((x=m.exec(s))){try{const j=JSON.parse(x[1]);const t=j["@type"];if(t==="JobPosting"){ok++;vt=j.validThrough;for(const k of ["title","description","datePosted","hiringOrganization"])if(!j[k])bad++;if(!j.jobLocation&&!(j.jobLocationType==="TELECOMMUTE"&&j.applicantLocationRequirements))bad++}}catch{bad++}}console.log((ok===1&&bad===0?"PASS":"FAIL")+"  exactly one parseable JobPosting entity with every required property, a place or a remote page\x27s applicant country (entities "+ok+", problems "+bad+")");console.log((vt&&/T\d\d:\d\d:\d\d/.test(vt)?"PASS":"FAIL")+"  validThrough carries a time, not a bare date: "+vt)})'
+else
+  echo "INFO  no sampled posting page is meant to carry markup ($([ "$VD5V_SWITCH" = "false" ] && echo "the STOP switch is off" || echo "the ledger withholds it on each")): the entity check has nothing to read"
+fi
 
 echo "== 5w. the four data pages now serve numbers, and no vendor with zero rows is offered =="
 for p in /ghost-job-index /pay-transparency /hiring-trends /entry-level-index; do
   n=$(curl -s -m 30 -A "$UA" "$SITE$p" | sed -E 's/<script[^>]*>.*<\/script>//g; s/<[^>]*>/ /g' | grep -oE "[0-9]" | wc -l | tr -d ' ')
   [ "$n" -gt 20 ] && echo "PASS  $p serves $n digits to a crawler" || echo "FAIL  $p serves $n digits"
 done
-curl -s -m 30 -A "$UA" "$SITE/jobs" | grep -qi "usajobs" && echo "FAIL  /jobs still offers USAJOBS while it serves no rows" || echo "PASS  USAJOBS is not offered on /jobs (its adapter is unkeyed and serves 0 rows)"
+# USAJOBS, JUDGED ON WHAT A READER OF /jobs SEES AND AGAINST THE BOARD'S OWN
+# PER-SOURCE FACET. The #org description on every page names USAJOBS among the
+# systems the site reads, which is true while the facet counts its rows, so
+# scripts (the JSON-LD with them) are stripped before the line looks, and it
+# fails only when /jobs offers USAJOBS while the facet counts none. The
+# dormancy marker in src/config/ats-vendors.ts is set against the same count.
+curl -s -m 30 -A "$UA" "$SITE/jobs" > /tmp/vd_5w_jobs.html
+curl -s -m 60 "$B/rest/v1/rpc/get_board_vendor_counts" -H "apikey: $K" -H "Authorization: Bearer $K" > /tmp/vd_5w_facet.json
+node -e '(()=>{const fs=require("fs");let html="";try{html=fs.readFileSync("/tmp/vd_5w_jobs.html","utf8")}catch{}const text=html.replace(/<script\b[\s\S]*?<\/script>/gi," ").replace(/<style\b[\s\S]*?<\/style>/gi," ").replace(/<[^>]*>/g," ");const offered=/usajobs/i.test(text);let n=null;try{const f=JSON.parse(fs.readFileSync("/tmp/vd_5w_facet.json","utf8")).sourcesFacet;if(f&&typeof f==="object"&&!Array.isArray(f))n=Number(f.usajobs||0)}catch{}let vendors="";try{vendors=fs.readFileSync("src/config/ats-vendors.ts","utf8")}catch{}const entry=/\{\s*key:\s*"usajobs"[^}]*\}/.exec(vendors);const dormant=entry?/serving:\s*false/.test(entry[0]):null;if(n===null){console.log("INFO  the board\x27s per-source facet could not be read: /jobs "+(offered?"names":"does not name")+" USAJOBS in its visible text, not judged");return}if(n===0)console.log((offered?"FAIL":"PASS")+"  the facet counts 0 USAJOBS rows and /jobs "+(offered?"offers USAJOBS in its visible text":"does not offer it"));else console.log("INFO  the facet counts "+n+" USAJOBS rows, so /jobs may offer it (its visible text "+(offered?"does":"does not")+")");if(dormant===null)console.log("INFO  src/config/ats-vendors.ts carries no usajobs entry to set against the facet");else if(dormant&&n>0)console.log("INFO  src/config/ats-vendors.ts marks usajobs dormant (serving: false) while the facet counts "+n+" rows: the vendor menu and the sources lines leave out a system the board serves (the owner\x27s call to lift the marker)");else if(!dormant&&n===0)console.log("FAIL  src/config/ats-vendors.ts marks usajobs as serving while the facet counts 0 rows: the menu offers an empty filter");else console.log("PASS  src/config/ats-vendors.ts marks usajobs "+(dormant?"dormant":"serving")+" and the facet counts "+n+" rows")})()'
 if [ -n "$RB" ]; then
   curl -s -m 30 "$B/functions/v1/public-api/v1/jobs?source=usajobs&limit=1" -H "Authorization: Bearer $RB" -H "apikey: $K" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  /v1 non-JSON: "+s.slice(0,120))}const t=JSON.stringify(j).toLowerCase();const refused=/terms|not available|cannot be redistributed|unsupported source/.test(t);console.log((refused?"PASS":"FAIL")+"  /v1 refuses source=usajobs by name: "+JSON.stringify(j).slice(0,200))})'
 fi

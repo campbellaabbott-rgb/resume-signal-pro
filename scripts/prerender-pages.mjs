@@ -426,6 +426,10 @@ export function postingStubPage({ path, id, state, since, title, company, compan
     path,
     ...(twin ? { canonical: twin } : {}),
     robots: twin ? null : "noindex, follow",
+    // The closure rides in the head (POSTING_CLOSED_META), so the React page
+    // that hydrates over this one shows the posting gone, though the board
+    // still serves its stored row.
+    ...(state === "gone" && basis === "employer" ? { postingClosed: "employer" } : {}),
     title: t ? `${head} — ${t}` : head,
     // Built up to the snippet budget (OBS-2): a long title drops the employer, then itself.
     description: state === "gone" && basis === "employer"
@@ -451,6 +455,29 @@ export function postingStubPage({ path, id, state, since, title, company, compan
 }
 
 /**
+ * The stub a kept ledger entry is rewritten from at a later bake, with no
+ * board read: a gone or seeded page inside its window (postingCarryBase's
+ * stubs). It carries the entry's basis: a posting the employer's own system
+ * closed (basis "employer", B01) was rewritten with none from the second bake
+ * on, so its page said the posting was gone from this board and not from the
+ * employer, and its ledger entry lost the basis section 98-r2 G3 reads.
+ */
+export function keptPostingStub(path, e, idFromPath) {
+  const out = { id: idFromPath(path), path, state: e.state === "gone" ? "gone" : "retired", seed: e.seed === true, title: e.title ?? null, company: e.company ?? null };
+  if (typeof e.basis === "string") out.basis = e.basis;
+  return out;
+}
+
+/**
+ * The basis a stub's page is written with: a seeded URL's page says only that
+ * it was never re-read; otherwise this bake's reason, or the reason the
+ * ledger entry kept (postingStubEntry), so the page and its entry agree.
+ */
+export function postingStubPageBasis(stub, entry) {
+  return stub.seed || (entry.seed && stub.state === "retired") ? "seed" : (stub.basis ?? entry.basis ?? null);
+}
+
+/**
  * The ledger entry for a posting URL that keeps a noindex page, and the
  * names that page prints: this bake's answer over the previous ledger's
  * entry. The employer is named by its own name (F1): a gone payload and an
@@ -469,6 +496,12 @@ export function postingStubEntry({ stub, prior, today, first = null, employerNam
   // (scripts/indexnow-ping.mjs pings "gone" and "retired" only, S11-155).
   if (stub.seed === true || (p.seed === true && p.state === state)) out.seed = true;
   if (typeof stub.basis === "string") out.basis = stub.basis;
+  // WHO CLOSED A GONE POSTING HOLDS WHILE IT STAYS GONE: a gone page is kept
+  // without a board read, so nothing later can know better than the bake
+  // that recorded it. A retired page is re-read every bake, and its reason
+  // is that bake's alone (a page once retired at the ceiling may be retired
+  // for its markup next), so its earlier reason is never carried.
+  else if (state === "gone" && p.state === "gone" && typeof p.basis === "string") out.basis = p.basis;
   // The twin a duplicate canonicalises to rides in the ledger (SEO-039): the
   // carry dropped it, and every carried duplicate entry read duplicateOf null.
   if (state === "retired" && typeof stub.duplicateOf === "string" && stub.duplicateOf.startsWith("/")) out.duplicateOf = stub.duplicateOf;

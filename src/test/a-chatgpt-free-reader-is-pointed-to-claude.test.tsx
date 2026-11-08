@@ -156,3 +156,42 @@ describe("the homepage's AI strip says the same", () => {
     expect(bake).toContain('hpLinks(hp(H.ai.chatgptFree, {}, "home.ai.chatgptFree"), { claude: "/agents#claude" })');
   });
 });
+
+describe("the hero and the descriptions promise nothing the ChatGPT tile contradicts (the fix round of 2026-11-08)", () => {
+  // The hero said "Connect Resume Booster to Claude or ChatGPT for free" and
+  // the descriptions "from Claude or ChatGPT, free" and "Search free", on the
+  // page whose ChatGPT tile quotes OpenAI saying ChatGPT Free cannot add the
+  // server. The homepage's AI strip already said it honestly: free on our
+  // side, and in ChatGPT the plan must allow custom connectors.
+  const homeLede = (l: string) => (JSON.parse(readFileSync(resolve(ROOT, `src/i18n/shards/home/${l}.json`), "utf8")) as { home: { ai: { lede: string } } }).home.ai.lede;
+  /** The homepage lede's "free on our side" clause and its last sentence (the ChatGPT plan line), per language. */
+  const framing = (l: string) => {
+    const sentences = homeLede(l).split(/(?<=[.।])\s+/).filter(Boolean);
+    const plan = sentences[sentences.length - 1];
+    const free = sentences[sentences.length - 2].split(",")[0];
+    return { free, plan };
+  };
+  it("every language's hero says free on our side and carries the homepage's ChatGPT plan line", () => {
+    for (const l of LOCALES) {
+      const a = (JSON.parse(readFileSync(resolve(ROOT, `src/i18n/locales/${l}.json`), "utf8")) as { agentConnect: Record<string, string> }).agentConnect;
+      const { free, plan } = framing(l);
+      for (const k of ["heroSubReach", "heroSubNoCount"]) {
+        expect(a[k].toLowerCase(), `${l} ${k} lacks "${free}"`).toContain(free.toLowerCase());
+        expect(a[k], `${l} ${k} lacks the ChatGPT plan line`).toContain(plan);
+        expect(a[k], `${l} ${k} names a paid plan`).not.toMatch(/\bPlus\b|\bGo\b|\bPro\b|\bBusiness\b/);
+      }
+      expect(a.heroSubReach).toContain("{{n}}");
+    }
+    expect((JSON.parse(readFileSync(resolve(ROOT, "src/i18n/locales/en.json"), "utf8")) as { agentConnect: Record<string, string> }).agentConnect.heroSubReach)
+      .not.toMatch(/ChatGPT for free/);
+  });
+  it("React's description and the bake's say free on our side, never a bare free", async () => {
+    const page = readFileSync(resolve(ROOT, "src/pages/AgentConnect.tsx"), "utf8");
+    const desc = /description=\{`([^`]*)`\}\s*path="\/agents"/.exec(page)?.[1] ?? "";
+    expect(desc).toMatch(/from Claude or ChatGPT, free on our side, and apply yourself/);
+    const baked = await bakeAgents();
+    expect(baked.description).toMatch(/free on our side/);
+    expect(baked.description).not.toMatch(/Search free|, free\.$/);
+    expect(baked.description.length).toBeLessThanOrEqual(160);
+  });
+});

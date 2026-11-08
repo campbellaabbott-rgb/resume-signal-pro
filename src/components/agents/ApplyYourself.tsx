@@ -61,7 +61,7 @@ export function ApplyYourself() {
           every figure off the mirror the first-call guard pins to the
           server's ANON_ALLOWANCE.forms. */}
       <p className="text-sm text-muted-foreground mb-4" data-forms-allowance>
-        {t("agentConnect.applyAllowance", "Reading an application form draws on a free allowance of its own, apart from searching: Claude's users share {{claude}} form reads a day ({{claudePerMinute}} a minute); from ChatGPT, {{perPerson}} a day for each person, within {{chatgpt}} a day for all of ChatGPT; from any other app, {{perConnection}} a day per internet connection.", formsAllowanceIn(lang))}
+        {t("agentConnect.applyAllowance", "Reading an application form draws on a free allowance of its own, apart from searching: claude.ai and Claude's apps share {{claude}} form reads a day ({{claudePerMinute}} a minute); from ChatGPT, {{perPerson}} a day for each person ChatGPT's call names, within {{chatgpt}} a day for all of ChatGPT; from Claude Code or any other app, {{perConnection}} a day per internet connection.", formsAllowanceIn(lang))}
       </p>
       <p className="text-sm font-medium text-foreground mb-5 flex items-center gap-2" data-we-never-submit>
         <ShieldCheck className="w-4 h-4 text-success shrink-0" aria-hidden /> {t("agentConnect.applyNever", "Resume Booster never submits anything for you.")}

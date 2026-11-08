@@ -181,6 +181,16 @@ export default function JobPosting() {
       setState("budget");
     };
     (async () => {
+      // CLOSED AT THE EMPLOYER, AS THE BAKE RECORDED IT (B01). The bake asked
+      // the employer's own system, found the posting closed and wrote this
+      // address's "no longer listed" page; the board still serves its stored
+      // row, which would render the posting live, with its Apply link, over
+      // that page. The closure is the answer, so no board read is spent.
+      const closedPath = postingPagePath(id);
+      if (closedPath && bakedHeadFor(closedPath)?.postingClosed === "employer") {
+        if (seq.current === mine) setState("gone");
+        return;
+      }
       const standing = boardBudgetRefusal();
       if (standing) { refusedWith(standing); return; }
       // One quiet retry: a refresh slice hitting the function's resource
@@ -282,6 +292,7 @@ export default function JobPosting() {
     return p ? bakedHeadFor(p) : null;
   }, [id]);
   const bakeRetired = !!bakedHere && !bakedHere.indexable;
+  const closedAtEmployer = bakedHere?.postingClosed === "employer";
   const bakeLd = useMemo(
     () => (live && job && dated && !bakeRetired ? postingJsonLd(job, description, { site: SITE }) : null),
     [live, job, dated, bakeRetired, description],
@@ -465,7 +476,9 @@ export default function JobPosting() {
                 {t("jobPostingPage.goneTitle", "This posting is no longer live")}
               </h1>
               <p className="mb-4 text-sm text-muted-foreground">
-                {state === "unlisted"
+                {closedAtEmployer
+                  ? t("jobPostingPage.employerClosedBody", "When this page was built, the employer's own hiring system answered that it no longer serves this posting.")
+                  : state === "unlisted"
                   ? t("jobPostingPage.unlistedBody", "This board no longer lists this posting. That says nothing about the employer — it may still be open on their own site.")
                   : t("jobPostingPage.goneBody", {
                     defaultValue:

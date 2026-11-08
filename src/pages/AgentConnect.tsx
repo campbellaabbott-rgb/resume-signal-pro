@@ -75,8 +75,8 @@ import {
   MCP_TOOLS, MCP_PAGE_HOSTS, MCP_PAGE_HOST_IDS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_TIER_BADGE, MCP_KEYED_READ_BADGE, MCP_FIT_ALLOWANCE,
   MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES,
   MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_WITHHELD_NOTE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_TROUBLESHOOTING,
-  MCP_SIGN_IN_META_KEY, MCP_ADD_TO_CLAUDE_LIVE, MCP_CONNECTOR_NAME, troubleRowsFor, stepSegments, hostTakesKey, curlInitialize, SIGN_IN_UNKNOWN, andList,
-  type McpHost, type McpHostId, type McpStep, type McpMoreHost, type SignInFact, type TroubleRow,
+  MCP_SIGN_IN_META_KEY, MCP_ADD_TO_CLAUDE_LIVE, MCP_CONNECTOR_NAME, troubleRowsFor, troubleFix, stepSegments, hostTakesKey, curlInitialize, SIGN_IN_UNKNOWN, andList,
+  type McpHost, type McpHostId, type McpStep, type McpMoreHost, type SignInFact, type TroubleRow, type TroubleAudience,
 } from "@/config/mcp-tools";
 import { MCP_URL, runServerTest, describeTest, readSignInFromServer } from "@/lib/mcp-test";
 import { rememberedHostChoice, rememberHostName } from "@/lib/agent-handoff";
@@ -499,8 +499,8 @@ export function TestServer({ fact, onFact, hostId }: { fact: SignInFact; onFact:
   );
 }
 
-/** The troubleshooting table for a state: rows keyed to the server's own strings. */
-export function TroubleTable({ rows }: { rows: readonly TroubleRow[] }) {
+/** The troubleshooting table for a state: rows keyed to the server's own strings, each fix for its reader's app. */
+export function TroubleTable({ rows, audience = "all" }: { rows: readonly TroubleRow[]; audience?: TroubleAudience }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm text-left">
@@ -516,7 +516,7 @@ export function TroubleTable({ rows }: { rows: readonly TroubleRow[] }) {
             <tr key={r.id} data-trouble={r.id} className="border-b border-border align-top">
               <td className="py-2 pr-3 text-foreground"><StepText text={r.see} /></td>
               <td className="py-2 pr-3 text-muted-foreground"><StepText text={r.why} /></td>
-              <td className="py-2 text-muted-foreground"><StepText text={r.fix} /></td>
+              <td className="py-2 text-muted-foreground"><StepText text={troubleFix(r, audience)} /></td>
             </tr>
           ))}
         </tbody>
@@ -567,12 +567,15 @@ export default function AgentConnect() {
   const hostsWithHeader = MCP_PAGE_HOSTS.filter((h) => h.header);
   const hostsWithSignIn = MCP_PAGE_HOSTS.filter((h) => !h.header && h.oauth);
   const troubleRows = troubleRowsFor(fact.state);
+  // A chat tile's reader reads the chat edition of each fix (CJ-08); a Claude
+  // Code reader, and a reader who has picked no app, read the keyed one too.
+  const troubleAudience: TroubleAudience = MCP_PAGE_HOSTS.some((h) => h.id === picked && !h.header) ? "chat" : "all";
 
   return (
     <>
       <SEO
         title="Connect Claude or ChatGPT — Search Jobs and Apply Yourself"
-        description={`Search ${countClause} from Claude or ChatGPT, free, and apply yourself on the employer's own site with your AI's help.`}
+        description={`Search ${countClause} from Claude or ChatGPT, free on our side, and apply yourself on the employer's own site with your AI's help.`}
         path="/agents"
         preferBakedHead
       />
@@ -593,8 +596,8 @@ export default function AgentConnect() {
               </h1>
               <p className="text-xl text-muted-foreground" data-agents-hero-sub>
                 {reach
-                  ? t("agentConnect.heroSubReach", "Connect Resume Booster to Claude or ChatGPT for free. Search {{n}} live postings from employers' own hiring systems from your AI, read them in full, and apply on the employer's own site with your AI's help.", { n: fmtCount(reach.searchable, { lng }) })
-                  : t("agentConnect.heroSubNoCount", "Connect Resume Booster to Claude or ChatGPT for free. Search live postings from employers' own hiring systems, read them in full, and apply on the employer's own site with your AI's help.")}
+                  ? t("agentConnect.heroSubReach", "Connect Resume Booster to Claude or ChatGPT, free on our side. Search {{n}} live postings from employers' own hiring systems from your AI, read them in full, and apply on the employer's own site with your AI's help. In ChatGPT, your plan must allow custom connectors.", { n: fmtCount(reach.searchable, { lng }) })
+                  : t("agentConnect.heroSubNoCount", "Connect Resume Booster to Claude or ChatGPT, free on our side. Search live postings from employers' own hiring systems, read them in full, and apply on the employer's own site with your AI's help. In ChatGPT, your plan must allow custom connectors.")}
               </p>
               {reach && stamp && vendor.openTotal !== null && (
                 <p className="text-sm text-muted-foreground mt-3" data-agents-reach="">
@@ -659,7 +662,7 @@ export default function AgentConnect() {
                 <p className="text-sm text-muted-foreground mt-3 mb-3">
                   Each row quotes what the server or your app actually says. {MCP_TROUBLESHOOTING.length - troubleRows.length > 0 ? "Rows for the other sign-in state are hidden." : ""}
                 </p>
-                <TroubleTable rows={troubleRows} />
+                <TroubleTable rows={troubleRows} audience={troubleAudience} />
               </details>
             </div>
           </div>

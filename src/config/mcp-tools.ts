@@ -98,7 +98,10 @@ export const MCP_ANON_CAPS = {
  * THE FORMS ALLOWANCE BY WHERE THE CALL COMES FROM (APPLY-1107-12). The
  * crawler copy of /agents gave the form reader one per-address figure, which
  * is a connection's figure outside both chat platforms: every Claude user
- * shares one pool, and ChatGPT counts each person it names. Every figure
+ * shares one pool, and ChatGPT counts each person it names. Claude Code runs
+ * on the person's own machine, so the server counts it per connection (the
+ * "other" partition), and the sentence names it there, not with claude.ai
+ * and Claude's apps (the fix round of 2026-11-08). Every figure
  * is MCP_ANON_CAPS.forms, which the first-call guard pins to the server's
  * ANON_ALLOWANCE.forms; the page interpolates the same values into its
  * translated sentence (agentConnect.applyAllowance).
@@ -119,7 +122,7 @@ export const formsAllowanceIn = (locale: string): Record<keyof typeof MCP_FORMS_
 const FA = formsAllowanceIn("en-US");
 /** The English sentence: the bake, llms-full and the server-facing copy read this. */
 export const MCP_FORMS_ALLOWANCE =
-  `Reading an application form draws on a free allowance of its own, apart from searching: Claude's users share ${FA.claude} form reads a day (${FA.claudePerMinute} a minute); from ChatGPT, ${FA.perPerson} a day for each person, within ${FA.chatgpt} a day for all of ChatGPT; from any other app, ${FA.perConnection} a day per internet connection.`;
+  `Reading an application form draws on a free allowance of its own, apart from searching: claude.ai and Claude's apps share ${FA.claude} form reads a day (${FA.claudePerMinute} a minute); from ChatGPT, ${FA.perPerson} a day for each person ChatGPT's call names, within ${FA.chatgpt} a day for all of ChatGPT; from Claude Code or any other app, ${FA.perConnection} a day per internet connection.`;
 
 /** Fit scorings a day on a confirmed free key, and with a paid plan: _shared/fit-allowance.ts, mirrored and pinned. */
 export const MCP_FIT_FREE_PER_DAY = 25;
@@ -596,7 +599,11 @@ export interface McpHost {
   /**
    * Where a phone user adds the connector: once, in the phone's browser at
    * `site`, never in the app; it then appears in the `app` app
-   * (agentConnect.phoneNote). The chat apps' phone apps have no add dialog.
+   * (agentConnect.phoneNote). Set only where the vendor says the phone app
+   * then has it: Anthropic says Claude's mobile apps use servers "already
+   * added via claude.ai". ChatGPT carries none: custom MCP is on ChatGPT
+   * web, and whether a plugin then works in the ChatGPT app is unconfirmed
+   * (owner action 2 of the connect audit, 2026-11-07).
    */
   phone?: { site: string; app: string };
   /**
@@ -800,7 +807,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
     docs: ["https://developers.openai.com/apps-sdk/deploy/connect-chatgpt", "https://developers.openai.com/apps-sdk/build/auth"],
     checked: MCP_STEPS_CHECKED,
     planRule: MCP_CHATGPT_PLAN_RULE,
-    phone: { site: "chatgpt.com", app: "ChatGPT" },
+    // No phone note: see `phone` on McpHost.
     // OpenAI's documented flow and nothing more (connect spec D1): no
     // developer-mode step, no tool count to check against. The plan rule
     // above the steps is OpenAI's own table, quoted (MCP_CHATGPT_PLAN_RULE).
@@ -1146,7 +1153,17 @@ export interface TroubleRow {
   /** What the person sees; {{n}} placeholders are filled from the mirrors. */
   see: string;
   why: string;
+  /** The fix as a chat tile's reader (Claude, ChatGPT) reads it. */
   fix: string;
+  /**
+   * The fix in Claude Code, which carries a key, scoped to it ("In Claude
+   * Code, …"). A chat tile's reader never sees it (CJ-08); a Claude Code
+   * reader, a reader who has picked no app and the crawler copy see it after
+   * `fix` (troubleFix). The table is one list for the whole page, so a row
+   * every reader sees needs it wherever its chat edition is wrong in Claude
+   * Code.
+   */
+  keyedFix?: string;
   source: { kind: "server"; pin: string; file: "index.ts" | "oauth.ts"; since?: string } | { kind: "vendor"; doc: string } | { kind: "symptom" };
   when?: SignInState;
 }
@@ -1156,9 +1173,11 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
     id: "sign-in-off",
     see: "\"Sign-in through this server is not switched on yet, so this tool needs a key.\"",
     why: "The tool needs your account; sign-in from chat apps is off today.",
-    // The chat edition (CJ-08): what a chat seeker needs works already; the
-    // key and Claude Code lines are the Claude Code tile's alone.
-    fix: "Everything you need to search, read postings in full and apply yourself works with no sign-in. Scoring a CV comes with sign-in, which is not on yet; the job board at /jobs scores a CV against a posting free today.",
+    // The chat edition (CJ-08): what a chat seeker needs works already. The
+    // key opens the tool in Claude Code today, so that edition rides in
+    // keyedFix, and the chat one says whose scoring waits for sign-in.
+    fix: "Everything you need to search, read postings in full and apply yourself works with no sign-in. In Claude and ChatGPT, scoring a CV comes with sign-in, which is not on yet; the job board at /jobs scores a CV against a posting free today.",
+    keyedFix: "In Claude Code, a free key from /data-api opens it today.",
     source: { kind: "server", pin: "Sign-in through this server is not switched on yet, so this tool needs a key.", file: "index.ts", since: "2026-09-04.7" },
     when: "off",
   },
@@ -1191,9 +1210,10 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
     id: "allowance-spent",
     see: "\"The unkeyed allowance is spent…\"",
     why: "Today's free calls are used up: yours, or — from Claude, whose servers carry every user — the allowance all Claude users share.",
-    // Seen from every app, so it names no key and no app (CJ-08): the Claude
-    // Code tile's own key block says what a free key gives.
+    // Seen from every app: the chat edition names no key (CJ-08), and the
+    // free key the server's own refusal offers is Claude Code's edition.
     fix: "It resets at midnight UTC; meanwhile every posting is on the board at /jobs.",
+    keyedFix: "In Claude Code, a free key from /data-api lifts the allowance today.",
     source: { kind: "server", pin: "The unkeyed allowance is spent", file: "index.ts" },
   },
   {
@@ -1275,6 +1295,12 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
     when: "on",
   },
 ];
+
+/** Who reads the table: a chat tile's reader, or anyone else (a Claude Code reader, a reader who picked no app, the crawler copy). */
+export type TroubleAudience = "chat" | "all";
+/** A row's fix for its reader: the chat edition alone for a chat tile's reader, and the keyed edition after it for anyone else. */
+export const troubleFix = (r: TroubleRow, audience: TroubleAudience): string =>
+  audience === "chat" || !r.keyedFix ? r.fix : `${r.fix} ${r.keyedFix}`;
 
 /** The rows to show for a state: unconditional rows plus the ones for that state (unknown shows the off rows — closed toward the in-band answer). */
 export const troubleRowsFor = (state: SignInState) =>

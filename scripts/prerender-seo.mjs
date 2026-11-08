@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
   PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
-  bakeLanders, D7_TRUSTED_COMPANY_TOKENS, employerBoardsOf, employerPageOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, freshPoolOrder, postingFreshNameReason, postingPoolWalksOn, postingRowEligible, postingStubEntry, postingStubPage,
+  bakeLanders, D7_TRUSTED_COMPANY_TOKENS, employerBoardsOf, employerPageOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, freshPoolOrder, postingFreshNameReason, postingPoolWalksOn, postingRowEligible, postingStubEntry, postingStubPage, keptPostingStub, postingStubPageBasis,
   LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, LLMS_TXT_COMPANIES, companiesLlmsLine, readCompanyIntel, llmsTxtCompaniesCount, duplicateSkeletons, landerBreakers, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
 } from "./prerender-pages.mjs";
 // The once-published pages, the ceiling, the dates and the duplicate groups
@@ -49,7 +49,7 @@ import { legalBodyFromTsx, legalText } from "./prerender-legal.mjs";
 import { routeChunkPrefix, preloadClosure, fallbackPreloadHtml, fontHeadProblems, modulepreloadTag } from "./prerender-preload.mjs";
 // The employer's own answer for each posting, GET only (B01, B06).
 import { EMPLOYER_READ_BUDGET_MS, applyEmployerStatements, distrustImplausibleClosures, employerReadLine, readEmployers, summarizeEmployerReads } from "./employer-reads.mjs";
-import { EMPLOYER_STATED_META, employerStatedOf } from "./employer-statements.mjs";
+import { EMPLOYER_STATED_META, POSTING_CLOSED_META, employerStatedOf, postingClosedOf } from "./employer-statements.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 // A BAKE CAN BE POINTED AWAY FROM THE CHECKOUT. PRERENDER_OUT names a
@@ -111,7 +111,7 @@ export const setContent = (html, prefix, value) => putVerbatim(html, new RegExp(
 // sets the meta robots tag for pages that exist only to serve their own URL
 // (an auth wall, say) and should never be indexed at all.
 export const composeHtml = (
-  { path, title, description, content, jsonLd = [], hreflang = null, lang = null, isFallback = false, canonical = null, robots = null, employerStated = null },
+  { path, title, description, content, jsonLd = [], hreflang = null, lang = null, isFallback = false, canonical = null, robots = null, employerStated = null, postingClosed = null },
   { template, D, esc, shell, preloadFor, publicHref, onTruncated },
 ) => {
   // SERP snippets truncate ~160 chars; clamp at a word boundary so no page
@@ -177,6 +177,9 @@ export const composeHtml = (
   // lines and its markup.
   const stated = employerStatedOf(employerStated);
   if (stated) headExtra += `<meta name="${EMPLOYER_STATED_META}" content="${esc(JSON.stringify(stated))}" />\n`;
+  // A POSTING ITS EMPLOYER CLOSED (B01): the board still serves the row, and
+  // the page that hydrates over this stub reads the closure from here.
+  if (postingClosedOf(postingClosed)) headExtra += `<meta name="${POSTING_CLOSED_META}" content="employer" />\n`;
   // THE ORGANIZATION, ON EVERY PAGE (SEO-011a): '#org' appeared nowhere in
   // the bake. Everything below that means us points at it by @id. No
   // legalName, address, contactPoint or sameAs until the owner supplies them.
@@ -396,7 +399,7 @@ export { TEMP_RESUME_HOURS, REPORT_CACHE_DAYS, AI_CACHE_MAX_HOURS, SHARED_ANALYS
 export { MCP_PRIVACY_ROWS } from "../src/config/mcp-privacy";
 export { BOARD_SOURCE_LIST, SERVING_SOURCE_LIST, SERVING_SOURCES, DORMANT_SOURCES, servingSourceSummary } from "../src/config/ats-vendors";
 export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_TIER_BADGE, MCP_FIT_ALLOWANCE, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../src/config/mcp-tools";
-export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_WITHHELD_NOTE, MCP_INSTALL_REPO_URL, MCP_REGISTRY_ENTRY_URL, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, stepSegments, curlInitialize, andList } from "../src/config/mcp-tools";
+export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, troubleFix, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_WITHHELD_NOTE, MCP_INSTALL_REPO_URL, MCP_REGISTRY_ENTRY_URL, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, stepSegments, curlInitialize, andList } from "../src/config/mcp-tools";
 export { MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT } from "../src/config/mcp-tools";
 export { MCP_FORMS_ALLOWANCE, MCP_CONNECTOR_NAME } from "../src/config/mcp-tools";
 export { applyYourselfBakeHtml } from "../src/components/agents/apply-yourself-copy";
@@ -994,7 +997,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       // number it could not source.
       const median = g ? num(g.median_days_open) : null;
       const answerStock = openN && gAt
-        ? `Measured ${gAt}, this board holds ${openN} open roles, each a posting the employer's own feed still serves, and no dated posting older than 30 days${median !== null ? `; their median age is ${median} days by the date the employer itself put on them${coverage !== null ? ` (${coverage}% state one)` : ""}` : ""}.`
+        ? `Measured ${gAt}, this board holds ${openN} open roles, postings the employer's feed served at our last read of it, and no dated posting older than 30 days${median !== null ? `; their median age is ${median} days by the date the employer itself put on them${coverage !== null ? ` (${coverage}% state one)` : ""}` : ""}.`
         : "";
       const answerAudit = audit
         ? ` In the daily re-check on ${aAt}, ${a.accuracyPct}% of ${fmt(aDecided)} sampled postings that could be decided were still live at the employer's own source${ciText ? ` (${ciText}; ${weighting})` : ` (${weighting})`}.`
@@ -2617,7 +2620,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
         path: s.path, id: s.id, state: s.state, since: s.state === "gone" ? e.since : null,
         // As the posting's own page printed them (postingText, B07/F08).
         title: typeof e.title === "string" ? D.postingText(e.title) : e.title, company: typeof e.company === "string" ? D.postingText(e.company) : e.company, windowDays: D.BOARD_FRESH_WINDOW_DAYS, duplicateOf: s.duplicateOf ?? null,
-        basis: s.seed || (e.seed && s.state === "retired") ? "seed" : (s.basis ?? null), ceiling: POSTING_PAGE_CEILING, esc,
+        basis: postingStubPageBasis(s, e), ceiling: POSTING_PAGE_CEILING, esc,
         companyLink: e.token ? companyLinkHtml(e.token, e.company || "this employer") : "",
       }));
       postingLedger[s.path] = e;
@@ -2628,7 +2631,9 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       if (keptPostingPagesWritten) return;
       keptPostingPagesWritten = true;
       for (const [path, e] of carryBase.stubs) {
-        writeStub({ id: D.postingIdFromPath(path), path, state: e.state === "gone" ? "gone" : "retired", seed: e.seed === true, title: e.title ?? null, company: e.company ?? null });
+        // The entry's basis rides with it (keptPostingStub): an employer-closed
+        // page keeps saying the employer closed it.
+        writeStub(keptPostingStub(path, e, D.postingIdFromPath));
       }
       for (const [path, e] of carryBase.tombstones) {
         writeTombstone(path, null);
@@ -4103,7 +4108,8 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       const IDE_HOST = /\b(?:Cursor|VS Code|Visual Studio Code|Cline|Windsurf|Zed|Gemini CLI|Codex CLI)\b|More…/;
       const seekerHosts = D.MCP_HOSTS.filter((x) => x.page);
       const keptTrouble = D.MCP_TROUBLESHOOTING
-        .map((r) => ({ ...r, see: scrubRetired(r.see), why: scrubRetired(r.why), fix: scrubRetired(r.fix) }))
+        // Every reader's fix (troubleFix "all"): the crawler copy is no one app's.
+        .map((r) => ({ ...r, see: scrubRetired(r.see), why: scrubRetired(r.why), fix: scrubRetired(D.troubleFix(r, "all")) }))
         .filter((r) => r.see && r.why && r.fix && !IDE_HOST.test(`${r.see} ${r.why} ${r.fix}`));
       // The joiner the mirror exports: commas and one final "and", and
       // semicolons when an item carries its own "and" — never "and … and".
@@ -4177,9 +4183,11 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
         // Inside the snippet budget with its date (OBS-2, SEO-026); spelled
         // inline, because the guard runs this block alone.
         description: [
-          `Connect Claude, ChatGPT or Claude Code to ${countClause} from employers' own hiring systems. Search free; apply yourself on the employer's site.`,
-          `Connect Claude, ChatGPT or Claude Code to ${countClause} from employers' own hiring systems, free.`,
-        ].find((d) => d.length <= 160) ?? `Connect Claude, ChatGPT or Claude Code to the live job board, free.`,
+          // FREE ON OUR SIDE, as the homepage says it: ChatGPT Free cannot
+          // add the server (the ChatGPT tile quotes OpenAI), so no bare "free".
+          `Connect Claude, ChatGPT or Claude Code to ${countClause} from employers' own hiring systems, free on our side; apply yourself on the employer's site.`,
+          `Connect Claude, ChatGPT or Claude Code to ${countClause} from employers' own hiring systems, free on our side.`,
+        ].find((d) => d.length <= 160) ?? `Connect Claude, ChatGPT or Claude Code to the live job board, free on our side.`,
         jsonLd: [
           breadcrumbLd([{ name: "Home", path: "/" }, { name: "Connect your agent", path: "/agents" }]),
           // THE MCP SERVER AS SOFTWARE (SEO-011a): /agents carried only a

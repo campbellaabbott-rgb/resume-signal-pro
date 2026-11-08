@@ -143,7 +143,12 @@ describe("1. the posting prompt", () => {
     expect(p).toMatch(/call apply_myself with job id/);
     expect(p).toMatch(/format "markdown" if you cannot open a browser/);
     expect(p).toMatch(/ask me every question it marks you, your_details or your_documents, and any question about me whatever its mark/);
-    expect(p).toMatch(/draft only the ones it marks draft_from_your_cv, from the CV I give you or keep in this project/);
+    // THE LIVE TOOL'S RULE 3 (agent-mcp on main: "only from the CV given in
+    // this chat", and /agents step 1: give it in the chat). A CV kept in the
+    // project is owner decision (5), and it moves with that server's deploy,
+    // in the same frontend publish as the page's rule-3 mirror.
+    expect(p).toMatch(/draft only the ones it marks draft_from_your_cv, from the CV I give you in this chat;/);
+    expect(p).not.toMatch(/in this project|memory/);
     expect(p).toMatch(/show me every draft before it goes into the form, and stop before Submit\. I press Submit myself\./);
     expect(p).not.toMatch(/check_apply_support|request_application|send it|sent for me|submit it for me/i);
     expect(p).not.toMatch(/rb_live_/);

@@ -11,6 +11,10 @@ export interface EmployerStated {
 
 export const EMPLOYER_STATED_META: string;
 
+export const POSTING_CLOSED_META: string;
+
+export function postingClosedOf(v: unknown): "employer" | null;
+
 export function employerStatedOf(v: unknown): EmployerStated | null;
 
 export function applyEmployerStatements<R extends object>(

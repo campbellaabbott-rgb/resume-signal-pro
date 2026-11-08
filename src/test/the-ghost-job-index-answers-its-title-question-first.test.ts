@@ -83,6 +83,12 @@ describe("the answer sentence", () => {
   it("calls no takedown a fill or a hire", () => {
     expect(ghost.answer).not.toMatch(/\bfill|\bhire/i);
   });
+
+  it("claims of each open role only what our last read saw, since the re-check beside it finds only a share still live", () => {
+    const stock = ghost.answer!.slice(0, ghost.answer!.indexOf(" In the daily re-check"));
+    expect(stock).toContain("770,989 open roles, postings the employer's feed served at our last read of it,");
+    expect(stock).not.toMatch(/\beach\b|still serves/);
+  });
 });
 
 describe("the baked page", () => {

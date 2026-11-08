@@ -24,6 +24,18 @@
 /** The meta the bake writes the applied statements into, on a live posting page. */
 export const EMPLOYER_STATED_META = "x-rb-employer-stated";
 
+/**
+ * THE META A CLOSED POSTING'S PAGE CARRIES (B01): content "employer" on the
+ * noindex page the bake writes when the employer's own system answered that
+ * it no longer serves the posting. The board still serves its stored row, so
+ * the posting page reads this from its head and shows the posting as gone
+ * rather than rendering it live over the bake's "no longer listed" page.
+ */
+export const POSTING_CLOSED_META = "x-rb-posting-closed";
+
+/** "employer" when a head's closure meta says the employer closed the posting, otherwise null. */
+export const postingClosedOf = (v) => (v === "employer" ? "employer" : null);
+
 const day = (v) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v.trim()) ? v.trim().slice(0, 10) : null);
 const text = (v, max = 80) => (typeof v === "string" && v.trim() && v.trim().length <= max ? v.trim() : null);
 
