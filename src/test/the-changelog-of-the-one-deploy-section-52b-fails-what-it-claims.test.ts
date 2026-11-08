@@ -208,7 +208,16 @@ describe("section 52b on a healthy deploy, after the publish", () => {
     const { lines, calls } = run();
     expect(fails(lines), show(lines)).toEqual([]);
     expect(has(lines, "PASS", /^the US English changelog chunk \(en-CHLG0001\.js\) carries this deploy's entries/), show(lines)).toBe(true);
-    for (const t of TITLES) expect(has(lines, "PASS", new RegExp(`^/changelog serves crawlers "${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"$`)), t).toBe(true);
+    // Newer batches (6 and 8 November) push the last of the seventeen past the newest 30 the page lists.
+    const listed = new Set(ENTRIES.slice(0, 30).map((e) => e.id));
+    expect(THIS_DEPLOY.some((e) => listed.has(e.id)), "none of the seventeen is left on the healthy page, so no title is read as served").toBe(true);
+    for (const e of THIS_DEPLOY) {
+      const t = EN[e.id].title, q = t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const want = listed.has(e.id)
+        ? new RegExp(`^/changelog serves crawlers "${q}"$`)
+        : new RegExp(`^"${q}" is past the newest 30 entries the crawler page lists, and the US English changelog strings carry it$`);
+      expect(has(lines, "PASS", want), `${t}${show(lines)}`).toBe(true);
+    }
     expect(has(lines, "PASS", new RegExp(`^/changelog dates this deploy's entries ${PUBLISHED_DAY} \\(the deploy was recorded ${PUBLISHED_DAY}\\)$`)), show(lines)).toBe(true);
     expect(has(lines, "PASS", /^\/changelog's description names the newest entry/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /^the crawler \/pricing prints no not-on-sale note and no purchases-open-soon line/), show(lines)).toBe(true);

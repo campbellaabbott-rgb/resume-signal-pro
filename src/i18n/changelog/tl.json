@@ -1511,6 +1511,42 @@
     "theFreeReportsNumbersNowAgree": {
       "title": "Magkatugma na ang mga numero at label ng libreng report",
       "description": "Iisang numero na lang ang ipinapakita ng projected score ng report sa lahat ng bahagi, at hindi ito lumalampas sa 95. Magkatugma na sa bawat score ang kulay, label, banner at share card. Hindi na sinasabi ng card tungkol sa kung paano binabasa ng mga hiring system ang resume mo na pasado ang layout mo kapag hindi nito ito nasuri: “Hindi nasuri” ang sinasabi nito. Kung hindi na-save ang feedback mo o ang sagot mo tungkol sa isang aplikasyon, sinasabi iyon ng report at hindi ito nagpapasalamat. Tinatanggihan bago ang scan ang resume na higit sa 50,000 character, at sinasabi ng mensahe ang haba nito. Kapag walang rewrite ang report na mailalapat ng builder, sinasabi nito iyon, at hindi binabago ng builder ang mga bullet mo. Kung itatago mo ang draft mo sa builder, nailalapat ang mga pag-aayos ng report sa mga bullet na mayroon na ang draft mo, sinasabi ng page kung ilan ang nailapat, at nananatili sa report mo ang iba. Napupunta na sa tamang bullet ang mga rewrite para sa mga resume sa wikang Hindi at Russian. Sa telepono, hindi na lumalampas sa screen ang score card. Nananatiling nakikita ang section menu ng report sa ilalim ng header ng site. Hindi ka na binibigyan ng seksyong “Mga Keyword sa Industriya at Role” ng mga keyword ng ibang trabaho dahil sa ilang letra sa pamagat mo. Maaari pa rin itong gawin ng seksyong “Mga Personalized na Tip”. Lumalabas na sa wika mo ang listahan ng mga natuklasan, ang card tungkol sa mga hiring system at ang linya ng projected score, pati ang mga heading, button at label ng Resume Builder. Nasa Ingles pa rin ang ibang bahagi ng report, gaya ng mga label ng industriya."
+    },
+    "ourFontsComeFromOurOwnSite": {
+      "title": "Mula na sa sarili naming site ang mga font namin",
+      "description": "Hindi na kinukuha ng mga page namin ang mga font nila mula sa Google. Mula na sa sarili naming site ang mga font, kaya walang hinihingi sa mga font server ng Google kapag nagbukas ka ng page."
+    },
+    "aSharedLinkCanNoLongerDeleteAPaidAnalysis": {
+      "title": "Hindi na kayang burahin ng ibinahaging link ang isang bayad na analysis",
+      "description": "Dati, kahit sino na may share link ng isang bayad na analysis ay kayang burahin ito. Ngayon, nabubuksan pa rin ng share link ang analysis pero hindi na nito ito kayang burahin. Para mabura ito, kailangan na rin ang mismong pagbili ng analysis, kaya gumagana lang ito mula sa sariling purchase link ng bumili (ang page na bumukas pagkatapos ng bayad niya o ang order sa account niya) o sa pagsulat sa amin mula sa address na ginamit niya sa pagbayad. Sinasabi ito ng ibinahaging page."
+    },
+    "aPurchaseLinkThatDoesNotOpenSaysWhy": {
+      "title": "Kadalasan nang sinasabi ng purchase link na hindi bumubukas kung bakit",
+      "description": "Kapag hindi bumukas ang link sa isang pagbili sa product page (mga tool at scan pack na binili nang isa-isa, at mga tool na kasama sa Pro plan), kadalasan nang sinasabi ng page kung bakit. Maaaring sabihin nitong hindi pa kumpleto ang bayad, na-refund ang pagbili, o masyadong maraming pagsusuri ang nanggaling sa koneksyon mo sa nakaraang oras. O maaaring sabihin nitong hindi namin nahanap ang pagbili, marahil dahil naputol o nag-expire na ang link. Ang link na walang purchase reference ay humihiling na i-paste mo ang link mula sa purchase email mo, o ang reference mismo. Kung hindi sumagot sa tamang oras ang payment provider, sinasabi ng page na ligtas ang pagbili mo at nag-aalok ito ng “Subukan Ulit”. Nasa lahat ng siyam na wika ito. Walang nagbago sa page ng Full Analysis."
+    },
+    "draftsForAJobReopenWithoutBeingWrittenAgain": {
+      "title": "Muling bumubukas ang mga draft para sa isang trabaho nang hindi isinusulat ulit",
+      "description": "Sa window na “Ihanda ang aplikasyon mo” ng job board, muling bumubukas nang hindi isinusulat ulit ang cover letter, na-tailor na resume o set ng mga sagot sa aplikasyon na na-draft mo na para sa isang trabaho, kaya hindi na nagagamit sa ikalawang pagkakataon ang pang-araw-araw mong writing allowance kapag binuksan mo ulit ang cover letter o na-tailor na resume. Gumagana ito habang nakabukas ang page, para sa huling 20 trabahong pinaghandaan mo, basta't hindi nagbago ang resume mo, ang posting at ang wika mo; kapag nag-reload ka o nagbukas ng bagong tab, magsisimula ulit ito sa simula. Sumusulat ng bago ang “I-tailor ulit” at “I-draft ulit”. Kapag abala para sa lahat ang taga-sulat ng cover letter o resume, sinasabi na nito iyon at sinasabing hindi iyon ang sarili mong limit."
+    },
+    "theInterviewCoachKeepsEachAnswerApart": {
+      "title": "Hiwalay na ang bawat sagot sa Interview Coach, at kailangan ng totoong trabaho para mag-tailor",
+      "description": "Sa Interview Coach ng libreng report, may sarili nang sagot ang bawat tanong. Dati, lumalabas sa mga box ng ibang tanong ang sagot na tinype mo para sa isang tanong at maaari itong maipadala bilang sagot nila, at binubura ng “Subukan Ulit” sa isang tanong ang lahat ng sagot. Nag-aalok na lang din ang report ng na-tailor na resume kapag may job title o posting itong mapag-tailor-an. Dati, maaari itong mag-imbento ng job title mula sa industriya mo."
+    },
+    "searchAndReportEmailsInYourLanguage": {
+      "title": "Dumarating na sa wikang ginamit mo ang mga email ng paghahanap at report",
+      "description": "Dumarating na sa wikang ginamit mo sa site ang mga email para sa mga naka-save mong paghahanap, ang email ng libreng report at ang mga email ng fix plan pagkatapos nito. Para sa mga email ng fix plan, iyon ang wika ng page kung saan mo pinindot ang button na nagsimula sa mga ito. Dati, nasa Ingles silang lahat. Ang paghahanap na na-save bago ang update na ito ay patuloy na nagpapadala ng mga email sa Ingles hanggang buksan mo ito mula sa mga naka-save mong paghahanap, i-on o i-off ang email nito, baguhin ang alert threshold nito, o i-on ulit ang mga alert nito mula sa job board. Nananatili ang mga natuklasan ng scan mo sa wikang ginamit ng scan sa pagsulat ng mga ito."
+    },
+    "yourAccountSaysWhichSearchEmailsComeDaily": {
+      "title": "Sinasabi ng account page mo kung aling mga email ng paghahanap ang dumarating araw-araw",
+      "description": "Sinasabi na ngayon ng account page mo, sa tabi ng bawat naka-save na paghahanap na inililista nito (ang 20 pinakabago), kung araw-araw o lingguhan kang ini-email ng paghahanap na iyon: araw-araw ang mga alert at sinusubaybayang kumpanya, lingguhan ang ibang paghahanap. Dati, lingguhan ang tawag nito sa lahat. Sinasabi na ngayon ng page na nararating mo mula sa confirmation email ng market pulse kung ano ang ipinapadala ng pulse: ang mga pangunahing keyword para sa larangan mo mula sa aming piniling keyword guide, hindi bilang ng mga posting ngayong buwan."
+    },
+    "theOneClickApplyFilterIsGone": {
+      "title": "Wala na sa Tuklasin ang filter na “One-click na pag-apply”",
+      "description": "Mga trabaho lang sa apat na hiring system ang saklaw ng bilang ng filter, kahit lumalabas na noon ang bawat trabaho kapag pinili ito. Ang mga naka-save na paghahanap na may ganitong filter pa ay bumibilang at nag-e-email na ngayon ng mga bagong trabaho mula sa buong board; kapag binuksan ang isa sa mga ito, lumalabas na noon ang bawat trabaho."
+    },
+    "theBoardChecksEveryMinuteForAStoppedRefresh": {
+      "title": "Sinusuri ng job board bawat minuto kung huminto ang refresh nito",
+      "description": "Sinusuri na ngayon ng job board bawat minuto kung huminto ang refresh ng mga listing nito, at humihiling ito ng restart kapag ilang minuto na itong tahimik. Hindi pa namin ito nakitang mag-restart ng refresh na huminto."
     }
   }
 }
