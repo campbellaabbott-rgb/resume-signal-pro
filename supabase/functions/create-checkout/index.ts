@@ -51,7 +51,11 @@ import { REHEARSAL_UNCONFIGURED, rehearsalKeyOf } from "./owner-rehearsal.ts";
 // true in the body and an sk_test_ test key (owner-rehearsal.ts). Without
 // the owner's key the body's testMode is ignored and every session is live.
 // 2026-11-03.1 (S9-001, fix/audit-rest-abuse): _shared/checkout-buyer.ts refuses a connected app's token whatever role it names; the access-token hook gives it role mcp_client, which the old check passed to the auth server as a buyer.
-const FN_BUILD = "create-checkout.2026-11-03.1";
+// 2026-11-10.1 (hotfix lane pro, sweep S14): no change of its own; the
+// _shared/pro.ts it bundles refreshes a cache row that names a Stripe
+// customer by that customer instead of clearing it when an address
+// search finds nothing, and gained the by-customer and by-account readers.
+const FN_BUILD = "create-checkout.2026-11-10.1";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

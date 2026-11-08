@@ -25,7 +25,7 @@ import {
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 // The Pro cache, written when a Pro payment lands and on every subscription
 // change -- nothing wrote it before, so a new subscriber read as inactive.
-import { checkProByEmail, PRO_PRODUCT_NAME } from "../_shared/pro.ts";
+import { checkProByEmail, followCustomerEmail, PRO_PRODUCT_NAME, refreshCustomerRows } from "../_shared/pro.ts";
 // The mail a new subscriber is owed: terms, cancellation, the trial's end.
 import { noticeMail, sendLegalNotice, WITHDRAWAL_CANCEL_COMMENT, WITHDRAWAL_DAYS, type NoticeFacts, type NoticeKind } from "../_shared/subscription-notice.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
@@ -80,7 +80,14 @@ import { commissionCentsFor } from "../_shared/affiliate-commission.ts";
 // mail). And the affiliate whose referral this webhook records
 // is mailed the commission actually recorded, when it is above zero and the
 // affiliate is active, as /affiliates promises.
-const FN_BUILD = "stripe-webhook.2026-11-03.1";
+// 2026-11-10.1 (hotfix lane pro, sweep S14: M-S14-002): customer.updated is
+// handled by customer id: a billing email changed in Stripe's portal moves
+// the rows bound to an account to the new address and drops no entitlement;
+// every subscription, invoice and refund event also refreshes each Pro row
+// that names its customer, whatever address the row is kept under; and
+// _shared/pro.ts no longer nulls a row's customer when an address search
+// finds nothing.
+const FN_BUILD = "stripe-webhook.2026-11-10.1";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // HOW LONG A MAKER HOLDS AN ORDER (20261011144000, CP-019). The lease
@@ -536,10 +543,10 @@ async function refreshProEntitlement(
   customerRef: string | { id?: string } | null,
   eventType: string,
 ): Promise<void> {
+  const customerId = refId(customerRef);
   try {
     let email = knownEmail ?? "";
     if (!email) {
-      const customerId = typeof customerRef === "string" ? customerRef : customerRef?.id;
       if (!customerId) return;
       const customer = await stripe.customers.retrieve(customerId);
       if ((customer as { deleted?: boolean }).deleted) {
@@ -550,11 +557,28 @@ async function refreshProEntitlement(
       }
       email = (customer as Stripe.Customer).email ?? "";
     }
-    if (!email) return;
-    const refreshed = await checkProByEmail(stripe, supabase, email);
-    logStep("Pro entitlement refreshed", { eventType, active: refreshed.active, status: refreshed.status });
+    if (email) {
+      const refreshed = await checkProByEmail(stripe, supabase, email);
+      logStep("Pro entitlement refreshed", { eventType, active: refreshed.active, status: refreshed.status });
+    }
   } catch (err) {
     logStep("Pro entitlement refresh failed (check-subscription will repair)", { eventType, error: String(err) });
+  }
+  // EVERY ROW THAT NAMES THIS CUSTOMER (sweep S14, M-S14-002). The address
+  // refresh above reaches only the row under the customer's CURRENT address.
+  // A member whose billing email changed in Stripe's portal, or whose sign-in
+  // email changed on the site, keeps a row under the old one, bound to their
+  // account; a renewal, a declined payment, a cancellation or a refund now
+  // reaches that row too, read from Stripe by the customer id.
+  if (customerId) {
+    try {
+      const byCustomer = await refreshCustomerRows(stripe, supabase, customerId);
+      if (byCustomer.rows > 0) {
+        logStep("Pro entitlement refreshed by customer", { eventType, customerId, rows: byCustomer.rows, status: byCustomer.plan?.status ?? null });
+      }
+    } catch (err) {
+      logStep("Pro refresh by customer failed (check-subscription will repair)", { eventType, error: String(err).slice(0, 200) });
+    }
   }
 }
 
@@ -2019,6 +2043,27 @@ serve(async (req) => {
             logStep("Retired agent plan not ended; Stripe will redeliver", { sub: sub.id, error: processingError });
           }
         }
+        break;
+      }
+
+      // A CUSTOMER'S BILLING EMAIL CHANGED IN STRIPE (sweep S14, M-S14-002),
+      // when the endpoint carries the event. Keyed by the customer id, never
+      // the address: the rows bound to an account follow the customer to its
+      // new address (_shared/pro.ts followCustomerEmail), and every row that
+      // names the customer is refreshed from Stripe by that id. Nothing here
+      // lowers an entitlement because an address changed, and nothing answers
+      // 500: a row left behind is still read by its customer.
+      case "customer.updated": {
+        const customer = event.data.object as { id?: string; email?: string | null; deleted?: boolean };
+        const previous = (event.data as { previous_attributes?: Record<string, unknown> }).previous_attributes ?? {};
+        // Any other change to a customer (its card, its balance) changes no plan.
+        if (!customer.id || customer.deleted || !Object.prototype.hasOwnProperty.call(previous, "email")) {
+          logStep("Customer updated: no address change", { customer: customer.id ?? null });
+          break;
+        }
+        const followed = await followCustomerEmail(supabase, customer.id, customer.email ?? null);
+        logStep("Customer email changed: Pro rows followed it", { customer: customer.id, ...followed });
+        await refreshProEntitlement(stripe, supabase, customer.email ?? null, customer.id, event.type);
         break;
       }
 

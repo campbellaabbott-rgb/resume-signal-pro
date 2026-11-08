@@ -71,7 +71,11 @@ import { checkoutLanguageOf } from "../_shared/checkout-policy.ts";
 // Pro member's included analysis, or a sale the webhook has not reached)
 // records that language in metadata.language, where send-analysis-email
 // looks next. It had neither, so a Pro member's mail was always English.
-const FN_BUILD = "analyze-resume.2026-11-03.1";
+// 2026-11-10.1 (hotfix lane pro, sweep S14): no change of its own; the
+// _shared/pro.ts it bundles refreshes a cache row that names a Stripe
+// customer by that customer instead of clearing it when an address
+// search finds nothing, and gained the by-customer and by-account readers.
+const FN_BUILD = "analyze-resume.2026-11-10.1";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

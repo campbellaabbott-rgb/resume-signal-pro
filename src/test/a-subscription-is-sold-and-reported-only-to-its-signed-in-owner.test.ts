@@ -201,7 +201,8 @@ describe("check-subscription answers only about the caller", () => {
 
   it("says a plan that owes money needs a card, and over its live-check allowance serves the last answer marked stale", async () => {
     const old = new Date(Date.now() - 2 * 3600_000).toISOString();
-    db.rows("pro_subscribers").push({ email: "owner@example.com", status: "past_due", current_period_end: null, updated_at: old });
+    // The plan is the caller's own (S14: an address's plan is described only to the account it is bound to).
+    db.rows("pro_subscribers").push({ email: "owner@example.com", status: "past_due", current_period_end: null, updated_at: old, user_id: OWNER_ID });
     rateAllowed = false;
     const body = await (await post("check-subscription", {}, "jwt-owner")).json();
     expect(body).toMatchObject({ active: false, status: "past_due", needsPaymentUpdate: true, stale: true });
@@ -248,7 +249,10 @@ describe("check-subscription remembers 'not subscribed' for a signed-in caller (
   it("but a stale row Stripe no longer backs is still downgraded, and served from then on", async () => {
     db.rows("pro_subscribers").push({ email: "owner@example.com", status: "active", stripe_customer_id: "cus_gone", current_period_end: null, updated_at: new Date(Date.now() - 2 * 3600_000).toISOString() });
     expect((await (await post("check-subscription", {}, "jwt-owner")).json()).active).toBe(false);
-    expect(db.rows("pro_subscribers")[0]).toMatchObject({ status: "inactive", stripe_customer_id: null });
+    // Asked of Stripe by the customer it names, which holds nothing now; the
+    // customer itself is kept (S14: a billing email changed in Stripe's
+    // portal looks the same to an address search, and must not lose it).
+    expect(db.rows("pro_subscribers")[0]).toMatchObject({ status: "inactive", stripe_customer_id: "cus_gone" });
     expect(Date.now() - new Date(String(db.rows("pro_subscribers")[0].updated_at)).getTime()).toBeLessThan(60_000);
   });
 

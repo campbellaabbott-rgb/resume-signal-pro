@@ -38,17 +38,28 @@
 // behind it refused. `linkPending` says the address holds a live plan this
 // account cannot use yet (bought before plans named their account, and the
 // mailbox not proven). If the account's plan cannot be read, the address
-// answer is served as before: this function only displays.
+// answer is served only when the address's plan is bound to this account.
+//
+// WHICH PLAN IS DESCRIBED (sweep S14, M-S14-006 and C-S14-004; the rule is
+// _shared/pro-answer.ts). The address's status, period, cancellation and
+// failed payment are said only when the address's plan is this account's
+// own. Otherwise the account's own rows are described, so a member whose
+// address changed is shown their plan's renewal, end date or failed payment
+// rather than "Go Pro", and an account on someone else's address learns
+// only that a plan there is not linked to it. On a live check, the rows the
+// account is bound to are asked of Stripe by the customers they name (an
+// address that changed no longer finds them).
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { checkProByEmail, PRO_ENTITLEMENT_RPC, proRowIsLive, proStandingFrom, type ProRow } from "../_shared/pro.ts";
+import { checkProByEmail, isStripeCustomerId, PRO_ENTITLEMENT_RPC, proRowIsLive, proStandingFrom, refreshCustomerRows, type ProRow } from "../_shared/pro.ts";
 import { isOwingStatus } from "../_shared/subscription-standing.ts";
 import { signedInUser } from "../_shared/signed-in-email.ts";
 import { buyerEmailOf } from "../_shared/buyer-email.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { cacheCancelFlag, cancelFlagFrom, recordingSubscriptions } from "../_shared/pro-cancel.ts";
+import { accountAnswer, addressOwnerOf, type AddressOwner, type PlanRow } from "../_shared/pro-answer.ts";
 
 // Provable from outside without an account: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -63,23 +74,13 @@ import { cacheCancelFlag, cancelFlagFrom, recordingSubscriptions } from "../_sha
 // sign-ups are auto-confirmed, so anyone can sign up as a stranger's address
 // (D8).
 // 2026-11-03.1 (S9-001, fix/audit-rest-abuse): _shared/signed-in-email.ts reads only a website session, so a connected app's token is an anonymous request and never reads the person's plan.
-const FN_BUILD = "check-subscription.2026-11-03.1";
-
-/**
- * Which plan a signed-in account's rows rest on: a live Pro row, else a live
- * agent row, else a row that owes money (Pro first), else none. The agent
- * plan is retired (wave 4), so a page shows such an account a retired-plan
- * card instead of selling or renewing Pro to it.
- */
-export function planTierOf(rows: ReadonlyArray<ProRow & { tier?: string | null }>, now: number = Date.now()): "pro" | "agent" | null {
-  const live = rows.filter((r) => proRowIsLive(r, now));
-  if (live.some((r) => r.tier === "pro")) return "pro";
-  if (live.some((r) => r.tier === "agent")) return "agent";
-  const owing = rows.filter((r) => isOwingStatus(String(r.status ?? "")));
-  if (owing.some((r) => r.tier === "pro")) return "pro";
-  if (owing.some((r) => r.tier === "agent")) return "agent";
-  return null;
-}
+// 2026-11-10.1 (hotfix lane pro, sweep S14: M-S14-002, M-S14-006, C-S14-004):
+// an address's plan is described only to the account it is bound to; a
+// member whose address changed is described their own plan (renewal, end
+// date, failed payment) from the rows bound to the account, and on a live
+// check those rows are asked of Stripe by customer; _shared/pro.ts no longer
+// nulls a row's customer when the address search finds nothing.
+const FN_BUILD = "check-subscription.2026-11-10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -114,38 +115,51 @@ serve(async (req) => {
     const signedIn = caller?.email ?? null;
     let email = signedIn;
 
-    // The address answer, turned into the ACCOUNT's for a signed-in caller.
-    // `liveRow` is a plan Stripe just answered for, bound to THIS caller: it
-    // counts even if writing it to the cache failed a moment ago.
-    const answer = async (addressAnswer: Record<string, unknown>, status = 200, liveRow: ProRow | null = null): Promise<Response> => {
+    // The account's own Pro rows (bound to it), as stored: what they name and
+    // whether a live one is set to end. null when they cannot be read.
+    type BoundRow = { status: string | null; current_period_end: string | null; cancel_at_period_end?: boolean | null; stripe_customer_id: string | null };
+    const boundRows = async (userId: string): Promise<BoundRow[] | null> => {
+      const read = (cols: string) =>
+        supabase.from("pro_subscribers").select(cols).eq("user_id", userId).limit(20) as unknown as Promise<{ data: BoundRow[] | null; error: { code?: string } | null }>;
+      try {
+        let { data, error } = await read("status, current_period_end, cancel_at_period_end, stripe_customer_id");
+        // A database without the column yet (20261011150000 not applied).
+        if (error && (error.code === "42703" || error.code === "PGRST204")) ({ data, error } = await read("status, current_period_end, stripe_customer_id"));
+        return error || !Array.isArray(data) ? null : data;
+      } catch (_) {
+        return null;
+      }
+    };
+
+    // The address answer, turned into the ACCOUNT's for a signed-in caller
+    // (_shared/pro-answer.ts). `liveRow` is a plan Stripe just answered for,
+    // bound to THIS caller: it counts even if writing it to the cache failed
+    // a moment ago. `owner` is whose plan the address answer rests on.
+    const answer = async (
+      addressAnswer: Record<string, unknown>,
+      status = 200,
+      liveRow: ProRow | null = null,
+      owner: AddressOwner = "unbound",
+    ): Promise<Response> => {
       if (!caller || status !== 200) return json(addressAnswer, status);
-      let rows: unknown[] = [];
+      let rows: PlanRow[] = [];
       try {
         const { data, error } = await supabase.rpc(PRO_ENTITLEMENT_RPC, { p_user_id: caller.id });
-        if (error) return json(addressAnswer, status);
-        rows = Array.isArray(data) ? data : [];
+        if (error) return json(accountAnswer({ address: addressAnswer, owner, rows: [], rowsUnread: true }).body, status);
+        rows = Array.isArray(data) ? data as PlanRow[] : [];
       } catch (_) {
-        return json(addressAnswer, status);
+        return json(accountAnswer({ address: addressAnswer, owner, rows: [], rowsUnread: true }).body, status);
       }
-      const all = (liveRow ? [...rows, liveRow] : rows) as Array<ProRow & { tier?: string | null }>;
-      const standing = proStandingFrom(all);
-      // The address's live plan is not this account's: a stranger's until it
-      // is linked, so only "there is one to link" is said.
-      if (addressAnswer.active === true && !standing.pro) {
-        return json({
-          active: false, trialing: standing.trialing, consumablesIncluded: standing.consumables,
-          planTier: planTierOf(all), linkPending: true,
-        }, status);
+      const all: PlanRow[] = liveRow ? [...rows, { tier: "pro", bound: true, ...liveRow }] : rows;
+      const told = accountAnswer({ address: addressAnswer, owner, rows: all });
+      // The account's own live Pro plan, described from its rows: whether it
+      // is set to end is on the bound row (pro_entitlement_rows does not say).
+      if (told.basis === "account" && told.plan?.tier === "pro" && told.plan.bound !== false && proRowIsLive(told.plan)) {
+        const own = await boundRows(caller.id);
+        const ends = !!own?.some((r) => r.status === told.plan?.status && r.cancel_at_period_end === true && proRowIsLive(r));
+        if (ends) return json(accountAnswer({ address: addressAnswer, owner, rows: all, ownEnds: true }).body, status);
       }
-      return json({
-        ...addressAnswer,
-        active: standing.pro,
-        trialing: standing.trialing,
-        consumablesIncluded: standing.consumables,
-        planTier: planTierOf(all),
-        ...(addressAnswer.active === true && !standing.pro ? { linkPending: true } : {}),
-        ...(standing.pro && standing.status && addressAnswer.active !== true ? { status: standing.status } : {}),
-      }, status);
+      return json(told.body, status);
     };
     const heldSession = typeof body.sessionId === "string" && /^cs_[A-Za-z0-9_]{8,250}$/.test(body.sessionId)
       ? body.sessionId : null;
@@ -194,17 +208,20 @@ serve(async (req) => {
     // failed: checkProByEmail downgrades only the row seen, and "not
     // subscribed" is written only where there was none.
     let seenUpdatedAt: string | null | undefined;
+    // The account the address's row is bound to, as read (S14: whose plan it is).
+    let seenUserId: string | null = null;
     try {
-      type CacheRow = { status: string; current_period_end: string | null; updated_at: string; cancel_at_period_end?: boolean | null };
+      type CacheRow = { status: string; current_period_end: string | null; updated_at: string; cancel_at_period_end?: boolean | null; user_id?: string | null };
       const read = (cols: string) =>
         supabase.from("pro_subscribers").select(cols).eq("email", who).maybeSingle() as unknown as Promise<{ data: CacheRow | null; error: { code?: string; message?: string } | null }>;
-      let { data: row, error: readError } = await read("status, current_period_end, updated_at, cancel_at_period_end");
+      let { data: row, error: readError } = await read("status, current_period_end, updated_at, cancel_at_period_end, user_id");
       // A database without the column yet (20261011150000 not applied).
       if (readError && (readError.code === "42703" || readError.code === "PGRST204")) {
-        ({ data: row, error: readError } = await read("status, current_period_end, updated_at"));
+        ({ data: row, error: readError } = await read("status, current_period_end, updated_at, user_id"));
       }
       if (readError) throw readError;
       seenUpdatedAt = row ? String(row.updated_at) : null;
+      seenUserId = typeof row?.user_id === "string" && row.user_id ? row.user_id : null;
       if (row) {
         // The one rule's live test (one grace), over the address's row.
         const live = proStandingFrom([row]).pro;
@@ -221,11 +238,14 @@ serve(async (req) => {
         // answer, never a not-live row written before they paid; a caller
         // back from the billing portal likewise.
         const notLiveFor = heldSession ? 0 : NOT_LIVE_CACHE_MS;
-        if (!fresh && age < (live ? LIVE_CACHE_MS : notLiveFor)) return await answer(cachedAnswer);
+        if (!fresh && age < (live ? LIVE_CACHE_MS : notLiveFor)) {
+          return await answer(cachedAnswer, 200, null, caller ? addressOwnerOf(caller.id, null, seenUserId) : "unbound");
+        }
       }
     } catch (_) {
       // Fall through to the live check; the row as read is unknown.
       seenUpdatedAt = undefined;
+      seenUserId = null;
     }
 
     // A session id in the body is not a pass: an invented cs_... string from a
@@ -234,7 +254,7 @@ serve(async (req) => {
       // Over the live-check allowance: the last known answer, said to be old,
       // rather than a "not subscribed" that may be false.
       return cachedAnswer
-        ? await answer({ ...cachedAnswer, stale: true })
+        ? await answer({ ...cachedAnswer, stale: true }, 200, null, caller ? addressOwnerOf(caller.id, null, seenUserId) : "unbound")
         : json({ active: false, status: "rate_limited" }, 429);
     }
     // CANCELLED IN THE PORTAL, STILL LIVE TO ITS END (S12-076): read from the
@@ -259,14 +279,26 @@ serve(async (req) => {
         });
       } catch (_) { /* best-effort; the next view looks again */ }
     }
-    const boundToCaller = !!caller?.id && status.boundUserId === caller.id;
+    const owner: AddressOwner = caller ? addressOwnerOf(caller.id, status.boundUserId, seenUserId) : "unbound";
+    if (caller && !(owner === "caller" && status.active)) {
+      // THE ACCOUNT'S OWN PLAN, ASKED OF STRIPE BY ITS CUSTOMER (S14). The
+      // address no longer finds a plan whose billing email changed in
+      // Stripe's portal, or one bought before a sign-in email change; the
+      // rows bound to this account name its customer. Each is refreshed (and
+      // its cancel flag with it) before the account's rows are read, unless
+      // the address already answered with this account's own live plan.
+      const own = await boundRows(caller.id);
+      const customers = [...new Set((own ?? []).map((r) => r.stripe_customer_id).filter(isStripeCustomerId))]
+        .filter((c) => c !== status.stripeCustomerId).slice(0, 3);
+      for (const c of customers) await refreshCustomerRows(recorder.stripe, supabase, c);
+    }
     return await answer({
       active: status.active,
       status: status.status,
       currentPeriodEnd: status.currentPeriodEnd,
       cancelAtPeriodEnd: status.active && ends === true,
       needsPaymentUpdate: isOwingStatus(status.status),
-    }, 200, boundToCaller ? { tier: "pro", status: status.status, current_period_end: status.currentPeriodEnd } : null);
+    }, 200, owner === "caller" && status.stripeCustomerId ? { tier: "pro", status: status.status, current_period_end: status.currentPeriodEnd } : null, owner);
   } catch (error) {
     console.error("[CHECK-SUBSCRIPTION] Error:", error);
     return json({ active: false, error: "Could not check the subscription just now." }, 500);

@@ -1,0 +1,232 @@
+{
+  "about": "One Pro member's Stripe events, in the shapes Stripe sends at API version 2025-12-15.clover (the version every function pins): the first purchase, a billing email changed in Stripe's customer portal, and the next renewal declined. Written field for field from Stripe's documented event and object shapes, not captured from the live account (the lane may not touch Stripe). Every unix time is as of recordedAt; a test moves them all by (now - recordedAt), so periods stay in the future. Read by supabase/functions/check-subscription/billing_email_change_test.ts (Deno) and src/test/a-pro-member-who-changes-their-billing-email-in-stripe-keeps-pro-the-portal-and-no-second-plan.test.ts (vitest).",
+  "recordedAt": 1794139200,
+  "member": {
+    "userId": "00000000-0000-4000-8000-0000000014a1",
+    "signInEmail": "member@example.com",
+    "newBillingEmail": "billing@example.net",
+    "customerId": "cus_TmemberPro01",
+    "subscriptionId": "sub_1SQmemberPro01"
+  },
+  "subscriptionAfterPurchase": {
+    "id": "sub_1SQmemberPro01",
+    "object": "subscription",
+    "customer": "cus_TmemberPro01",
+    "status": "active",
+    "cancel_at_period_end": false,
+    "cancel_at": null,
+    "canceled_at": null,
+    "collection_method": "charge_automatically",
+    "created": 1792411200,
+    "start_date": 1792411200,
+    "billing_cycle_anchor": 1792411200,
+    "livemode": true,
+    "metadata": {
+      "product_type": "pro_subscription",
+      "user_id": "00000000-0000-4000-8000-0000000014a1"
+    },
+    "items": {
+      "object": "list",
+      "data": [
+        {
+          "id": "si_TmemberPro01",
+          "object": "subscription_item",
+          "current_period_start": 1792411200,
+          "current_period_end": 1795003200,
+          "quantity": 1,
+          "price": {
+            "id": "price_1SQproMonthly4500",
+            "object": "price",
+            "currency": "usd",
+            "unit_amount": 4500,
+            "recurring": { "interval": "month", "interval_count": 1 },
+            "product": "prod_TresumeBoosterPro"
+          }
+        }
+      ],
+      "has_more": false
+    }
+  },
+  "events": {
+    "checkout.session.completed": {
+      "id": "evt_1SQmemberProBought01",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1792411200,
+      "livemode": true,
+      "pending_webhooks": 1,
+      "request": { "id": null, "idempotency_key": null },
+      "type": "checkout.session.completed",
+      "data": {
+        "object": {
+          "id": "cs_live_a1memberProFirstPurchase01",
+          "object": "checkout.session",
+          "mode": "subscription",
+          "status": "complete",
+          "payment_status": "paid",
+          "amount_total": 4500,
+          "currency": "usd",
+          "customer": "cus_TmemberPro01",
+          "customer_email": "member@example.com",
+          "customer_details": { "email": "member@example.com", "name": "Pro Member", "address": { "country": "US" } },
+          "client_reference_id": "00000000-0000-4000-8000-0000000014a1",
+          "subscription": "sub_1SQmemberPro01",
+          "livemode": true,
+          "created": 1792411100,
+          "metadata": {
+            "product_type": "pro_subscription",
+            "customer_email": "member@example.com",
+            "user_id": "00000000-0000-4000-8000-0000000014a1"
+          }
+        }
+      }
+    },
+    "customer.updated": {
+      "id": "evt_1SQmemberEmailChanged01",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1794135600,
+      "livemode": true,
+      "pending_webhooks": 1,
+      "request": { "id": "req_portalEmailChange01", "idempotency_key": "6a1f0c2e-portal-email-change" },
+      "type": "customer.updated",
+      "data": {
+        "object": {
+          "id": "cus_TmemberPro01",
+          "object": "customer",
+          "email": "billing@example.net",
+          "name": "Pro Member",
+          "balance": 0,
+          "created": 1792411100,
+          "currency": "usd",
+          "delinquent": false,
+          "description": null,
+          "invoice_prefix": "A1B2C3D4",
+          "invoice_settings": { "custom_fields": null, "default_payment_method": "pm_1SQmemberCard01", "footer": null, "rendering_options": null },
+          "livemode": true,
+          "metadata": {},
+          "phone": null,
+          "preferred_locales": ["en"],
+          "shipping": null,
+          "tax_exempt": "none"
+        },
+        "previous_attributes": { "email": "member@example.com" }
+      }
+    },
+    "invoice.payment_failed": {
+      "id": "evt_1SQmemberRenewalDeclined01",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1795003500,
+      "livemode": true,
+      "pending_webhooks": 1,
+      "request": { "id": null, "idempotency_key": null },
+      "type": "invoice.payment_failed",
+      "data": {
+        "object": {
+          "id": "in_1SQmemberRenewal01",
+          "object": "invoice",
+          "customer": "cus_TmemberPro01",
+          "customer_email": "billing@example.net",
+          "billing_reason": "subscription_cycle",
+          "collection_method": "charge_automatically",
+          "status": "open",
+          "attempted": true,
+          "attempt_count": 1,
+          "next_payment_attempt": 1795262400,
+          "amount_due": 4500,
+          "amount_paid": 0,
+          "amount_remaining": 4500,
+          "currency": "usd",
+          "livemode": true,
+          "period_start": 1792411200,
+          "period_end": 1795003200,
+          "parent": {
+            "type": "subscription_details",
+            "quote_details": null,
+            "subscription_details": {
+              "subscription": "sub_1SQmemberPro01",
+              "metadata": { "product_type": "pro_subscription", "user_id": "00000000-0000-4000-8000-0000000014a1" }
+            }
+          },
+          "lines": {
+            "object": "list",
+            "data": [
+              {
+                "id": "il_1SQmemberRenewal01",
+                "object": "line_item",
+                "amount": 4500,
+                "currency": "usd",
+                "period": { "start": 1795003200, "end": 1797681600 },
+                "pricing": {
+                  "type": "price_details",
+                  "price_details": { "price": "price_1SQproMonthly4500", "product": "prod_TresumeBoosterPro" },
+                  "unit_amount_decimal": "4500"
+                },
+                "quantity": 1
+              }
+            ],
+            "has_more": false
+          }
+        }
+      }
+    },
+    "customer.subscription.updated": {
+      "id": "evt_1SQmemberNowPastDue01",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1795003520,
+      "livemode": true,
+      "pending_webhooks": 1,
+      "request": { "id": null, "idempotency_key": null },
+      "type": "customer.subscription.updated",
+      "data": {
+        "object": {
+          "id": "sub_1SQmemberPro01",
+          "object": "subscription",
+          "customer": "cus_TmemberPro01",
+          "status": "past_due",
+          "cancel_at_period_end": false,
+          "cancel_at": null,
+          "canceled_at": null,
+          "collection_method": "charge_automatically",
+          "created": 1792411200,
+          "start_date": 1792411200,
+          "billing_cycle_anchor": 1792411200,
+          "latest_invoice": "in_1SQmemberRenewal01",
+          "livemode": true,
+          "metadata": {
+            "product_type": "pro_subscription",
+            "user_id": "00000000-0000-4000-8000-0000000014a1"
+          },
+          "items": {
+            "object": "list",
+            "data": [
+              {
+                "id": "si_TmemberPro01",
+                "object": "subscription_item",
+                "current_period_start": 1795003200,
+                "current_period_end": 1797681600,
+                "quantity": 1,
+                "price": {
+                  "id": "price_1SQproMonthly4500",
+                  "object": "price",
+                  "currency": "usd",
+                  "unit_amount": 4500,
+                  "recurring": { "interval": "month", "interval_count": 1 },
+                  "product": "prod_TresumeBoosterPro"
+                }
+              }
+            ],
+            "has_more": false
+          }
+        },
+        "previous_attributes": {
+          "status": "active",
+          "latest_invoice": "in_1SQmemberPrevious01",
+          "items": { "data": [{ "id": "si_TmemberPro01", "current_period_start": 1792411200, "current_period_end": 1795003200 }] }
+        }
+      }
+    }
+  }
+}
