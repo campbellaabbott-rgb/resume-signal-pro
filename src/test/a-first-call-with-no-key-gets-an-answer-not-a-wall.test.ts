@@ -353,7 +353,7 @@ describe("the keyless branch is counted in its own table and nowhere else", () =
   });
 
   it("a refusal is in band, by edition, with a Retry-After, never a challenge", () => {
-    expect(UNKEYED).toMatch(/if \(!d\.allowed\) \{[\s\S]*?spentRefusal\(d, m, edition, keylessTwin\(toolName, args\), MINT_URL, FREE_KEY_DAILY_QUOTA\)[\s\S]*?toolErr\(message, fix\)[\s\S]*?"Retry-After": String\(minute \? secondsLeftInMinute\(\) : secondsToMidnightUtc\(\)\)/);
+    expect(UNKEYED).toMatch(/if \(!d\.allowed\) \{[\s\S]*?spentRefusal\(d, m, edition, keylessTwin\(toolName, args\), MINT_URL, FREE_KEY_DAILY_QUOTA, Date\.now\(\), keylessClientOf\(req\.headers\.get\("user-agent"\)\)\)[\s\S]*?toolErr\(message, fix\)[\s\S]*?"Retry-After": String\(minute \? secondsLeftInMinute\(\) : secondsToMidnightUtc\(\)\)/);
     expect(UNKEYED).not.toMatch(/unauthorized\(/);
     // The status, the header and the metadata path are spelled in the OAuth
     // module and nowhere in the dispatcher: one builder, reached by name.

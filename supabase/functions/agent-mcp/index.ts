@@ -100,7 +100,8 @@ import { applyMyselfAnswer, applyMyselfMarkdown, type ApplyPosting } from "./app
 // The first search answers the question as asked: a place moved out of the
 // query (spec D2 §2.3). An employer name is resolved by job-board itself, one
 // rule for every spelling (sweep S12-080).
-import { readQuery, type QueryReading } from "./query-place.ts";
+import { placeHint, placeInQuery, readLocationArg, readQuery, type QueryReading } from "./query-place.ts";
+import { parseJobId } from "./job-link.ts";
 // OpenAI's published ChatGPT egress as last read, for when the live list
 // cannot be (sweep S12-085).
 import { BUNDLED_CHATGPT_EGRESS_V4 } from "./chatgpt-egress.ts";
@@ -117,6 +118,7 @@ import {
   lookupBucket,
   refundsFor,
   secondsLeftInMinute,
+  keylessClientOf,
   spentRefusal,
   utcDay,
   type AllowanceBucket,
@@ -341,7 +343,8 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
 // 2026-10-11.38 (recheck 3, 2026-10-26): a name is held only when its one exact match has under 10 open roles, never because the catalogue labels the board an agency's, and a held name is one the board carries; recheckedAt and get_job say the stamp is when the board last read the employer's feed, which may not have included the posting.
 // 2026-11-02.1 (board-stream round, 2026-11-01): a country word inside another place is not that country (S13-041, query-place.ts countryOf over _shared/work-countries.ts countryMentions); the location argument still goes to the board as typed (S9-002's country and remote reading measured and declined: it lost rows main found, n1461); the keyless page cap holds whatever credential failed (S13-103, answerUnkeyed); check_jobs_open's basis says open is get_job's row test only when the board's exists answer names that test (S13-076), and the weaker sentence otherwise.
 // 2026-11-03.1 (audit-rest held items, 2026-11-04): no per-person hash in the log, and a ChatGPT call's failure logs no error text (S13-104); a claimed 50% alert is given back unless notify-owner mailed it (S13-040); agentReadyOnly reaches the board as its vendor list (S13-118).
-const FN_BUILD = "agent-mcp.2026-11-03.1";
+// 2026-11-08.1 (connect W1 and W3, 2026-11-08): a search is read as people type it: a trailing place with no "in" ("registered nurse jobs Austin TX"), a city before its country kept as the city ("near Manchester UK", and a location argument "London, UK" as London in GB), places after en, à, au, em, bei, nahe, cerca de and près de, "posted this week" as maxAgeDays, "jobs at Humana" as an employer the board resolves (re-run as typed when it resolves none), and visa-sponsorship words taken out of the query with a note that the board cannot filter on sponsorship (query-place.ts, a 3,282-case corpus never worse than main); every job tool reads the board's posting-page link, a ?job= link and a Greenhouse, Lever or Ashby link as the id (job-link.ts), and check_jobs_open lists what is not a job id in unknown, never in closed; an exhausted search never claims the keyless page limit, a page of description-only matches says so, withheld rows name why and where to see them, a ZIP or a misspelt place gets a hint; get_jobs hands back at most 15,000 characters of description, requirements first, and none by default for more than 3 ids; the ChatGPT search title carries the place and the employer's date; the guide lists only the prompts and resources the caller is offered, and says whose date postedAt is; a keyless Claude Code call refused for the minute is told so.
+const FN_BUILD = "agent-mcp.2026-11-08.1";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -363,6 +366,8 @@ const SITE_JOB_URL_TRACKED = (id: string, tool = "search", edition: Edition = "o
     : `${SITE_JOB_URL(id)}&utm_source=mcp&utm_medium=connector&utm_content=${edition === "claude" ? "claude" : "other"}${tool === "search" ? "" : `&utm_campaign=${encodeURIComponent(tool)}`}`;
 /** The board on the site: the keyless twin every refusal names. */
 const SITE_JOBS_URL = "https://resumebooster.work/jobs";
+/** What a job argument takes, said once for every job tool (connect W1, CJ-04). */
+const JOB_ID_ARG = "A job id, or its resumebooster.work/jobs?job=<id> or /jobs/posting/ link.";
 
 // ── The keyless tier ────────────────────────────────────────────────────────
 //
@@ -439,7 +444,14 @@ const GET_JOBS_CONCURRENCY = 5;
  * cards. Ten descriptions of 8,000 each is a page no model reads whole; past
  * this the longest are cut further and the answer says truncatedForSize.
  */
-const GET_JOBS_TEXT_BUDGET = 40_000;
+const GET_JOBS_TEXT_BUDGET = 15_000;
+/**
+ * More ids than this and get_jobs answers with cards only unless the caller
+ * asks for descriptions (connect W3, BR-11): ten descriptions were 47,343
+ * characters of text in one answer, over the 10,000-token warning Claude Code
+ * prints for a tool result.
+ */
+const GET_JOBS_DESCRIPTIONS_BY_DEFAULT = 3;
 /** Anthropic's outbound range for MCP tool calls (platform.claude.com/docs/en/api/ip-addresses, read 2026-10-11). */
 const CLAUDE_EGRESS_V4: readonly string[] = ["160.79.104.0/21"];
 /** OpenAI's published ChatGPT-connector egress, read at most every six hours per isolate. */
@@ -900,7 +912,7 @@ function disclosures(r: Record<string, unknown>): Record<string, unknown> {
       // (S8-077). filterCoverage is the live share each applied filter can
       // see, dated by filterCoverageAt (S8-079): the figure the descriptions
       // used to hand-type.
-      "relatedTotal", "relatedCapped", "filterCoverage", "filterCoverageAt",
+      "relatedTotal", "relatedCapped", "relatedUnavailable", "filterCoverage", "filterCoverageAt",
       // salaryStatedOnly is ROW-SELECTING, not cosmetic: a pay-sorted search
       // drops the ~76% of the board carrying no annualised figure in approximate
       // dollars (100 - 23.7, live 2026-09-27T03:29:32Z — the old ~87% here
@@ -946,7 +958,7 @@ function disclosures(r: Record<string, unknown>): Record<string, unknown> {
  */
 const SEARCH_PROPERTIES = {
   query: { type: "string", description: "Job titles or skills, never CV text; the place goes in location. Exclude with a minus: 'engineer -senior'." },
-  location: { type: "string", description: "City, state or metro: 'texas', 'NYC', 'berlin'." },
+  location: { type: "string", description: "City, state or metro by name: 'texas', 'NYC', 'Austin, TX'. Not a ZIP or postal code." },
   country: { type: "string", description: "ISO-2 codes, comma list, max 5." },
   remote: { type: "boolean" },
   workMode: { type: "string", description: "Comma list: remote, hybrid, onsite." },
@@ -1000,7 +1012,7 @@ const JOB_CARD_SCHEMA = {
     matchScope: { type: "string", enum: ["title", "description"] },
     postedAt: { type: "string", description: "The employer's own date; absent when the feed carries none, never the date we first saw it." },
     applyUrl: { type: "string", description: "The employer's own page for the posting." },
-    siteUrl: { type: "string", description: "The posting's page on resumebooster.work." },
+    siteUrl: { type: "string", description: "Opens the posting on resumebooster.work in a browser." },
     applyForm: { type: "boolean", description: "Present and true when apply_myself can read this employer's application form." },
     agency: { type: "boolean", description: "Present and true for a staffing or recruiting agency's posting." },
     recheckedAt: { type: "string", description: "When the board last read this employer's feed; a large board is read in windows, so that read may not have included this posting." },
@@ -1334,7 +1346,7 @@ const TOOLS = [
     annotations: READS_THE_BOARD,
     inputSchema: {
       type: "object",
-      properties: { id: { type: "string", description: "The job id, e.g. 'greenhouse:acme:12345'." } },
+      properties: { id: { type: "string", description: JOB_ID_ARG } },
       required: ["id"],
     },
     outputSchema: {
@@ -1358,14 +1370,13 @@ const TOOLS = [
     title: "Read several jobs",
     description:
       `Full detail for up to ${GET_JOBS_MAX} job ids in one call: the shortlist form of get_job. Ids that closed, aged out or were ` +
-      "never on this board come back in `unavailable` with the reason, so one dead id never costs the others. " +
-      "Set includeDescription=false for cards and freshness only.",
+      "never on this board come back in `unavailable` with the reason, so one dead id never costs the others.",
     annotations: READS_THE_BOARD,
     inputSchema: {
       type: "object",
       properties: {
-        ids: { type: "array", items: { type: "string" }, maxItems: GET_JOBS_MAX, description: `Job ids from search_jobs, up to ${GET_JOBS_MAX}.` },
-        includeDescription: { type: "boolean", description: `Default true. Each description is cut at 8,000 characters and the whole answer at ${GET_JOBS_TEXT_BUDGET.toLocaleString("en-US")}.` },
+        ids: { type: "array", items: { type: "string" }, maxItems: GET_JOBS_MAX, description: `Job ids or job links, up to ${GET_JOBS_MAX}.` },
+        includeDescription: { type: "boolean", description: `Default true for up to ${GET_JOBS_DESCRIPTIONS_BY_DEFAULT} ids, else false. All share ${GET_JOBS_TEXT_BUDGET.toLocaleString("en-US")} characters, requirements first.` },
       },
       required: ["ids"],
     },
@@ -1379,7 +1390,7 @@ const TOOLS = [
             type: "object",
             properties: {
               id: { type: "string" },
-              reason: { type: "string", enum: ["closed", "agedOut", "notFound", "restricted", "error"] },
+              reason: { type: "string", enum: ["closed", "agedOut", "notFound", "restricted", "error", "notAJobId"] },
             },
             required: ["id", "reason"],
             additionalProperties: true,
@@ -1406,7 +1417,7 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        ids: { type: "array", items: { type: "string" }, maxItems: CHECK_JOBS_OPEN_MAX, description: "Job ids from search_jobs; ids past the cap are named in notChecked." },
+        ids: { type: "array", items: { type: "string" }, maxItems: CHECK_JOBS_OPEN_MAX, description: "Job ids or job links; past the cap named in notChecked, not a job in unknown." },
       },
       required: ["ids"],
     },
@@ -1419,6 +1430,7 @@ const TOOLS = [
         openCount: { type: "integer" },
         closedCount: { type: "integer" },
         notChecked: { type: "array", items: { type: "string" } },
+        unknown: { type: "array", items: { type: "string" }, description: "Entries that name no job on this board; not checked, and not closed." },
         basis: { type: "string", description: "What 'open' means in this answer." },
       },
       required: ["open", "basis"],
@@ -1433,7 +1445,7 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        id: { type: "string", description: "The job id from search_jobs or a resumebooster.work/jobs?job=<id> link." },
+        id: { type: "string", description: JOB_ID_ARG },
         format: { type: "string", enum: ["json", "markdown"], description: "json (default) for the questions as data; markdown for a packet the person can work from." },
       },
       required: ["id"],
@@ -1747,7 +1759,7 @@ const TOOLS = [
     description:
       "An ALIAS of search_jobs in the fixed shape ChatGPT's deep-research and company-knowledge connectors call: " +
       "one query string in, {results:[{id,title,url}]} out. Every result's id is the job id fetch and every other tool take; " +
-      "url is the posting's page on resumebooster.work, where the employer's apply link is. " +
+      "title adds employer, place and the employer's posting date; url opens the posting on resumebooster.work in a browser. " +
       `Same board, same ranking and the same ${ANON_SEARCH_LIMIT}-row page as a keyless search_jobs; the disclosures ride beside the results. ` +
       "Any other client should call search_jobs, which takes every filter.",
     annotations: READS_THE_BOARD,
@@ -1765,8 +1777,8 @@ const TOOLS = [
             type: "object",
             properties: {
               id: { type: "string", description: "The job id — pass it to fetch, get_job, check_jobs_open." },
-              title: { type: "string", description: "Title and employer, one line." },
-              url: { type: "string", description: "The posting's page on resumebooster.work." },
+              title: { type: "string", description: "Title, employer, place and the employer's posting date, one line." },
+              url: { type: "string", description: "Opens the posting on resumebooster.work in a browser." },
             },
             required: ["id", "title", "url"],
             additionalProperties: true,
@@ -1790,7 +1802,7 @@ const TOOLS = [
     annotations: READS_THE_BOARD,
     inputSchema: {
       type: "object",
-      properties: { id: { type: "string", description: "A job id from search." } },
+      properties: { id: { type: "string", description: JOB_ID_ARG } },
       required: ["id"],
     },
     outputSchema: {
@@ -2003,7 +2015,7 @@ const contentsOf = (uri: string, mimeType: string, data: unknown) => ({
  * The guide, as markdown, from the same constants the tools and the
  * instructions read: no tier, cap, count or name in it is typed.
  */
-function guideText(edition: Edition): string {
+function guideText(edition: Edition, keyed: boolean): string {
   const by = (names: readonly string[]) => names.map((n) => `\`${n}\``).join(", ");
   const A = ANON_ALLOWANCE;
   const n = (x: number) => x.toLocaleString("en-US");
@@ -2035,7 +2047,7 @@ function guideText(edition: Edition): string {
     `1. \`${tool("search_jobs")}\`, with the place in \`location\`, not in \`query\`. Send job titles and places, never CV text.`,
     `2. Read postings with \`${tool("get_job")}\` or \`${tool("get_jobs")}\`; re-check a shortlist with \`${tool("check_jobs_open")}\` before acting on it.`,
     `3. To apply, \`${tool("apply_myself")}\` with the job id: the employer's own form where its hiring system publishes one, every question marked with who should answer it. The marks are read from the words and can be wrong, so the person reads every answer before they send. We never submit anything; the person does.`,
-    `4. A resumebooster.work/jobs?job=<id> link's id is the argument to every job tool.`,
+    `4. A resumebooster.work/jobs?job=<id> link's id is the argument to every job tool. A resumebooster.work/jobs/posting/ page, or the employer's own Greenhouse, Lever or Ashby link, is read as its id too.`,
     ``,
     `## Helping someone apply`,
     ``,
@@ -2045,6 +2057,10 @@ function guideText(edition: Edition): string {
     ``,
     `- \`countUnavailable\` means the board refuses to guess a total; \`ignoredFilters\` names any filter it could not apply, so the results answer a wider question than was asked.`,
     `- \`countCapped\` means \`total\` is where the board stopped counting: say "at least" that many, never "exactly".`,
+    `- \`total\` counts postings whose TITLE matches; \`relatedTotal\` counts those that only mention the words in their description, and rows past the title matches are those (\`matchScope: "description"\`; \`matchNote\` when a whole page is). Say which you mean.`,
+    `- \`postedAt\` is the date the employer's own hiring system gives for the posting, not when this board first saw it; it is absent when the feed states none, which does not make a posting old.`,
+    `- \`locationInterpreted\` says what was read out of the query into a filter (a place, remote, a date window, an employer) and \`from\` the words as typed; \`sponsorshipNote\` means this board cannot filter by visa sponsorship, so never say a posting sponsors unless its own text does.`,
+    `- \`withheld\` counts postings on the page this server may not hand on (SmartRecruiters, USAJOBS); \`withheldNote\` gives the site search where they open. \`locationHint\` means a place was not read: places go by name, never a ZIP code.`,
     `- \`unknownCompanies\` names an employer this board does not carry under that name, and \`companiesUnresolved\` a name that matched no single employer, or only a board with under 10 open roles, which we carry, with candidates to ask about before you use one: neither is an employer with no openings.`,
     `- Pay and seniority arrive parsed (\`salaryMinAnnual\`, \`salaryMaxAnnual\`, \`experienceBand\`, \`minYears\`) and are ABSENT when the posting states none: absence is not zero.`,
     `- \`applyForm: true\` on a card means \`${tool("apply_myself")}\` can read that employer's form for you.`,
@@ -2059,7 +2075,7 @@ function guideText(edition: Edition): string {
     ``,
     `- "The unkeyed allowance is spent" names whose allowance it was and when it resets; the board on ${SITE_JOBS_URL} needs nothing meanwhile.`,
     `- "Too many keyless calls this minute": wait the seconds it names; nothing was counted.`,
-    `- "That is not a job id from this board.": use the id from a search card, e.g. greenhouse:acme:12345.`,
+    `- "That is not a job id from this board.": use the id from a search card, e.g. greenhouse:acme:12345, or the posting's resumebooster.work link. \`${tool("check_jobs_open")}\` lists such entries in \`unknown\`, never as closed.`,
     `- "unknown tool" or "method not found": call tools/list for the names; the methods are ${SUPPORTED_METHODS.join(", ")}.`,
     `- "${RETIRED_SENTENCE}": the tool belonged to the apply agent; \`${tool("apply_myself")}\` is how to apply now.`,
     ...(chat ? [] : [
@@ -2076,7 +2092,10 @@ function guideText(edition: Edition): string {
     ``,
     `## Prompts and resources`,
     ``,
-    `Prompts: ${PROMPTS.filter((p) => !p.keyed || !chat).map((p) => `\`${p.name}\``).join(", ")}. Resources: ${RESOURCES.filter((r) => !r.keyed || !chat).map((r) => `\`${r.uri}\``).join(", ")}. Listing and reading either is free; this document is free to read at any time.`,
+    // The caller's own lists, under the predicate prompts/list and
+    // resources/list apply to the credential (connect W3, BR-18): a keyless
+    // guide named a prompt and a resource no keyless listing offers.
+    `Prompts: ${PROMPTS.filter((p) => !p.keyed || keyed).map((p) => `\`${p.name}\``).join(", ")}. Resources: ${RESOURCES.filter((r) => !r.keyed || keyed).map((r) => `\`${r.uri}\``).join(", ")}. Listing and reading either is free; this document is free to read at any time.`,
   ].join("\n");
 }
 
@@ -2283,7 +2302,7 @@ async function answerRead(client: SupabaseClient, read: MeteredRead, d: Decision
       const r = read.resource;
       if (r.uri === GUIDE_URI) {
         await probeSignIn();
-        return contentsOf(r.uri, r.mimeType, guideText(ctx.edition));
+        return contentsOf(r.uri, r.mimeType, guideText(ctx.edition, true));
       }
       if (r.uri === BOARD_STATS_URI) return contentsOf(r.uri, r.mimeType, await runBoardStats());
       if (r.uri === MY_KEY_URI) return contentsOf(r.uri, r.mimeType, await runKeyStatus(client, d, ctx));
@@ -2320,33 +2339,51 @@ const COMPANIES_PER_CALL = 50;
 
 /**
  * A job id as sent, or the argument error that says what an id looks like —
- * raised before a keyless call is counted. A pasted resumebooster.work/jobs
- * link is read for its ?job= id, which is the same id.
+ * raised before a keyless call is counted. A pasted link is read for the id
+ * it names (job-link.ts): a resumebooster.work/jobs?job=<id> link, the
+ * board's /jobs/posting/ page, or an employer's Greenhouse, Lever or Ashby
+ * link (connect W1, CJ-04).
  */
 function jobIdArg(v: unknown, toolName: string): string {
-  let id = String(v ?? "").trim();
-  if (/^https?:\/\//i.test(id)) {
-    try {
-      const fromLink = new URL(id).searchParams.get("job");
-      if (fromLink) id = fromLink.trim();
-    } catch { /* not a link after all: judged as an id below */ }
-  }
-  if (!id) throw new ToolArgumentError(`${toolName} needs an id.`, "Pass the id of a search result, e.g. greenhouse:acme:12345.");
-  const parts = id.split(":");
-  if (parts.length < 3 || !parts[0] || !parts[1] || !parts.slice(2).join(":") || id.length > 400) {
+  const sent = String(v ?? "").trim();
+  if (!sent) throw new ToolArgumentError(`${toolName} needs an id.`, "Pass the id of a search result, e.g. greenhouse:acme:12345.");
+  const id = parseJobId(sent);
+  if (!id) {
     throw new ToolArgumentError(
       "That is not a job id from this board.",
-      "Use the id from a search card, e.g. greenhouse:acme:12345 (the id in a resumebooster.work/jobs?job=<id> link is the same one).",
+      "Use the id from a search card, e.g. greenhouse:acme:12345, or the posting's link: a resumebooster.work/jobs?job=<id> link or a resumebooster.work/jobs/posting/ page names the same id.",
     );
   }
   return id;
 }
 
-/** A list of job ids, de-duplicated in order, or the argument error. Never capped here: each runner names what it did not read. */
+/** A list of job ids or links, de-duplicated in order, or the argument error. Never capped here: each runner names what it did not read. */
 function idsArg(v: unknown, cap: number): string[] {
   const ids = [...new Set((Array.isArray(v) ? v : [v]).map((x) => String(x ?? "").trim()).filter(Boolean))];
   if (!ids.length) throw new ToolArgumentError(`ids is required — an array of job ids from search_jobs (up to ${cap}).`, "Send {ids: [...]}.");
   return ids;
+}
+
+/**
+ * Each entry of an ids list read through the one job reader: the board id it
+ * names, keyed by what was sent, and what names no job (connect W1, BR-03:
+ * a pasted ?job= link and a made-up id both came back "closed").
+ */
+function readIds(sent: readonly string[]): { ids: string[]; asSent: Map<string, string>; unknown: string[] } {
+  const asSent = new Map<string, string>();
+  const unknown: string[] = [];
+  const ids: string[] = [];
+  for (const x of sent) {
+    const id = parseJobId(x);
+    if (!id) {
+      unknown.push(x);
+      continue;
+    }
+    if (!asSent.has(id)) ids.push(id);
+    if (x !== id) asSent.set(id, x);
+    else if (!asSent.has(id)) asSent.set(id, id);
+  }
+  return { ids, asSent, unknown };
 }
 
 /** The board `list` body for a tool's args — one mapping, shared by search and debug. */
@@ -2520,19 +2557,75 @@ async function servableSearchBody(args: Record<string, unknown>): Promise<Record
  * and names what it did (companiesResolved, companiesUnresolved,
  * companiesNotLookedUp, unknownCompanies); disclosures() forwards all four.
  */
-function searchAsMeant(input: Record<string, unknown>): { args: Record<string, unknown>; reading: QueryReading | null } {
+function searchAsMeant(input: Record<string, unknown>, opts: { employer?: boolean } = {}): { args: Record<string, unknown>; reading: QueryReading | null } {
   let args = { ...input };
   let reading: QueryReading | null = null;
   const set = (v: unknown) => v !== undefined && v !== null && v !== "";
   if (typeof args.query === "string" && args.query.trim()) {
-    const r = readQuery(args.query, { location: set(args.location), country: set(args.country), remote: args.remote === true });
+    const r = readQuery(args.query, {
+      location: set(args.location),
+      country: set(args.country),
+      remote: args.remote === true,
+      maxAgeDays: set(args.maxAgeDays) || set(args.postedAfter),
+      companies: opts.employer === false || companyTokens(args.companies).length > 0,
+    });
     if (r.from) {
       reading = r;
-      args = { ...args, query: r.query, ...(r.location ? { location: r.location } : {}), ...(r.country ? { country: r.country } : {}), ...(r.remote ? { remote: true } : {}) };
+      args = {
+        ...args,
+        query: r.query,
+        ...(r.location ? { location: r.location } : {}),
+        ...(r.country ? { country: r.country } : {}),
+        ...(r.remote ? { remote: true } : {}),
+        ...(r.maxAgeDays ? { maxAgeDays: r.maxAgeDays } : {}),
+        ...(r.companies ? { companies: r.companies } : {}),
+      };
+    }
+  }
+  // A LOCATION ARGUMENT "City, <country>" (connect W1, BR-02): "London, UK"
+  // as typed matched only rows holding those words (27 software jobs against
+  // 271 for London in GB). Read as the city and the country, and said back;
+  // anything else goes to the board as typed. The measured cost (n1461): a
+  // row listing several cities under another country's code is not found.
+  if (typeof input.location === "string" && input.location.trim()) {
+    const split = readLocationArg(input.location, { country: set(input.country) ? String(input.country) : null });
+    if (split) {
+      args = { ...args, location: split.location, ...(split.country ? { country: split.country } : {}) };
+      reading = {
+        ...(reading ?? { query: String(args.query ?? "") }),
+        location: split.location,
+        ...(split.country ? { country: split.country } : {}),
+        locationSent: input.location.trim(),
+        note: [reading?.note, split.note].filter(Boolean).join(" "),
+      };
     }
   }
   return { args, reading };
 }
+
+/** Said beside a search whose query held visa-sponsorship words (connect W1, BR-01). */
+const SPONSORSHIP_NOTE =
+  "This board cannot filter by visa sponsorship, so those words were left out of the search: in a description they matched employers saying they do NOT sponsor. " +
+  "Each posting's own wording is in get_job; say a posting sponsors only when its text says so.";
+
+/** True when the board read no employer from a name the query named after "at". */
+function employerUnread(r: Record<string, unknown>, asked: readonly string[]): boolean {
+  const some = (v: unknown) => (Array.isArray(v) ? v.length > 0 : !!v);
+  return some(r.unknownCompanies) || some(r.companiesUnresolved) || some(r.companiesNotLookedUp) || unboundScope(asked, r) !== null;
+}
+
+/** The site's own search for these arguments: where a withheld posting opens. */
+function siteSearchUrl(args: Record<string, unknown>): string {
+  const q = new URLSearchParams();
+  if (typeof args.query === "string" && args.query.trim()) q.set("q", args.query.trim());
+  if (typeof args.location === "string" && args.location.trim()) q.set("location", args.location.trim());
+  if (typeof args.country === "string" && args.country.trim()) q.set("country", args.country.trim());
+  if (args.remote === true) q.set("remote", "1");
+  const s = q.toString();
+  return s ? `${SITE_JOBS_URL}?${s}` : SITE_JOBS_URL;
+}
+/** A withheld source by the name people know it by. */
+const SOURCE_NAMES: Readonly<Record<string, string>> = { smartrecruiters: "SmartRecruiters", usajobs: "USAJOBS" };
 
 /** The board's own notes on an employer scope: present whenever it read one by name. */
 const SCOPE_NOTES = ["companiesResolved", "companiesUnresolved", "companiesNotLookedUp", "unknownCompanies"] as const;
@@ -2556,9 +2649,21 @@ function unboundScope(asked: readonly string[], r: Record<string, unknown>): Rec
   };
 }
 
-async function runSearchJobs(input: Record<string, unknown>, ctx: Ctx = KEYED_CTX): Promise<unknown> {
-  const { args, reading } = searchAsMeant(input);
+/**
+ * `employerNotes` is set only on the re-run below: the board's words about an
+ * employer name it did not resolve, carried onto the answer searched as typed.
+ */
+async function runSearchJobs(input: Record<string, unknown>, ctx: Ctx = KEYED_CTX, employerNotes: Record<string, unknown> | null = null): Promise<unknown> {
+  const { args, reading } = searchAsMeant(input, employerNotes ? { employer: false } : {});
   const r = await board(await servableSearchBody(args), ctx);
+  // "jobs at <Name>" that the board resolved to no employer is searched again
+  // as typed (connect W1, BR-09), inside the same counted call, and the
+  // board's own words about the name ride along.
+  if (!employerNotes && reading?.companies && employerUnread(r, companyTokens(args.companies))) {
+    const notes: Record<string, unknown> = Object.fromEntries(SCOPE_NOTES.filter((k) => r[k] !== undefined && r[k] !== null).map((k) => [k, r[k]]));
+    notes.employerNote = `${reading.companies.map((n) => JSON.stringify(n)).join(", ")} matched no single employer this board carries, so the query was searched as typed.`;
+    return await runSearchJobs(input, ctx, notes);
+  }
   const unbound = unboundScope(companyTokens(args.companies), r);
   if (unbound) return { ...unbound, ...(reading ? { locationInterpreted: reading } : {}) };
   // How many rows the board answered, before the redistribution filter: a
@@ -2568,10 +2673,23 @@ async function runSearchJobs(input: Record<string, unknown>, ctx: Ctx = KEYED_CT
   const offset = Math.max(0, Number(args.offset ?? 0) || 0);
   const out: Record<string, unknown> = { jobs: jobs.map((j) => compactJob(j, ctx)), ...disclosures(r) };
   if (reading) out.locationInterpreted = reading;
+  if (employerNotes) Object.assign(out, employerNotes);
+  if (reading?.sponsorship) out.sponsorshipNote = SPONSORSHIP_NOTE;
   // The board's `total` beside them still counts what it counted, so rows
-  // dropped on the way out are NAMED (the reason is in board_stats, the
-  // instructions and the guide; a card budget has no room for it per page).
-  if (answered > jobs.length) out.withheld = answered - jobs.length;
+  // dropped on the way out are NAMED, with where they open (connect W3, BR-12).
+  if (answered > jobs.length) {
+    const n = answered - jobs.length;
+    out.withheld = n;
+    const from = [...new Set(((r.jobs as Array<Record<string, unknown>> | undefined) ?? []).map((j) => String(j.source ?? "")).filter(isNoRedistributionSource))]
+      .map((src) => SOURCE_NAMES[src] ?? src);
+    out.withheldNote = `${n} more posting${n === 1 ? " is" : "s are"} on this page only on resumebooster.work${from.length ? ` (${from.join(", ")}, which this server may not hand on)` : ""}: ${siteSearchUrl(args)}`;
+  }
+  // A page of description-only matches says so (connect W1, BR-05): total 0
+  // beside ten rows read as "no such jobs", and forty "marketing" rows were
+  // drywallers.
+  if (jobs.length && jobs.every((j) => j.matchScope === "description")) {
+    out.matchNote = "No posting's title matches these words: every row here only mentions them in its description, so it may be a different kind of role. total counts title matches; relatedTotal counts these.";
+  }
   // A count the board gave and the page has already passed is a floor, not
   // the number: say so rather than print a total smaller than what was paged.
   const total = typeof r.total === "number" ? r.total : null;
@@ -2579,10 +2697,23 @@ async function runSearchJobs(input: Record<string, unknown>, ctx: Ctx = KEYED_CT
   // A keyless caller pages no deeper than ANON_ALLOWANCE.maxOffset: the next
   // page is withheld by name, never by silence (an empty page reads as "no
   // more jobs").
-  if (ctx.keyless && typeof out.nextOffset === "number" && out.nextOffset > ANON_ALLOWANCE.maxOffset) {
+  // An exhausted search has no next page (connect W1, BR-04): the board's
+  // nextOffset beside hasMore:false named none, and read as a page limit.
+  if (r.hasMore === false) delete out.nextOffset;
+  if (ctx.keyless && r.hasMore !== false && typeof out.nextOffset === "number" && out.nextOffset > ANON_ALLOWANCE.maxOffset) {
     delete out.nextOffset;
     out.pageLimitReached = true;
     out.pageLimitNote = `A keyless search pages to offset ${ANON_ALLOWANCE.maxOffset}. Narrow it with a place, a filter or newer postings to see the rest.`;
+  }
+  // Nothing found for a ZIP or a misspelt place: a hint, never a bare 0 (connect W3, BR-10).
+  if (!jobs.length && offset === 0) {
+    const typed = typeof input.location === "string" && input.location.trim() ? input.location : placeInQuery(String(args.query ?? ""));
+    const hint = typed ? placeHint(typed) : null;
+    if (hint) {
+      out.locationUnrecognised = true;
+      out.locationHint = hint.hint;
+      if (hint.didYouMean) out.locationDidYouMean = hint.didYouMean;
+    }
   }
   return out;
 }
@@ -2709,12 +2840,15 @@ async function runGetJob(args: Record<string, unknown>, ctx: Ctx = KEYED_CTX): P
 
 
 async function runGetJobs(args: Record<string, unknown>, ctx: Ctx = KEYED_CTX): Promise<unknown> {
-  const asked = idsArg(args.ids, GET_JOBS_MAX);
+  const sent = idsArg(args.ids, GET_JOBS_MAX);
+  const { ids: read, unknown } = readIds(sent);
+  const asked = read;
   const ids = asked.slice(0, GET_JOBS_MAX);
   const notFetched = asked.slice(GET_JOBS_MAX);
-  const includeDescription = args.includeDescription !== false;
+  // Descriptions by default only for a short list (connect W3, BR-11); asked for, they still come, within the budget.
+  const includeDescription = args.includeDescription === true || (args.includeDescription !== false && ids.length <= GET_JOBS_DESCRIPTIONS_BY_DEFAULT);
   const jobs: Array<Record<string, unknown>> = [];
-  const unavailable: Array<Record<string, unknown>> = [];
+  const unavailable: Array<Record<string, unknown>> = unknown.map((x) => ({ id: x, reason: "notAJobId", note: "Not a job id or a job link from this board." }));
 
   for (let i = 0; i < ids.length; i += GET_JOBS_CONCURRENCY) {
     const wave = await Promise.all(ids.slice(i, i + GET_JOBS_CONCURRENCY).map(async (id) => {
@@ -2754,17 +2888,31 @@ async function runGetJobs(args: Record<string, unknown>, ctx: Ctx = KEYED_CTX): 
   // equal share and the answer says so.
   const truncatedForSize = fitDescriptions(jobs, GET_JOBS_TEXT_BUDGET);
   return {
-    requested: asked.length,
+    requested: sent.length,
     returned: jobs.length,
     jobs,
     unavailable,
     ...(truncatedForSize ? { truncatedForSize: true } : {}),
+    ...(!includeDescription && jobs.length ? { descriptionsOmitted: `Cards only for ${ids.length} ids: get_job reads one whole description, or send includeDescription:true for all of them within ${GET_JOBS_TEXT_BUDGET.toLocaleString("en-US")} characters.` } : {}),
     // NAMED, NOT DROPPED. A silently truncated id list is a shortlist the
     // agent believes it verified.
     ...(notFetched.length
       ? { notFetched, note: `Only the first ${GET_JOBS_MAX} ids were read — send the rest in another call.` }
       : {}),
   };
+}
+
+/**
+ * A description about to be cut leads with what the person must have
+ * (connect W3, BR-11): the requirements or qualifications section when one is
+ * headed as such, then the rest from the top. Unchanged when none is found.
+ */
+const REQUIREMENTS_HEADING = /(?:^|\n)[ \t]*(?:#+\s*|[*•-]\s*)?(?:basic |minimum |required |preferred |key )?(?:requirements|qualifications|what you(?:'|’)ll need|what you need|what we(?:'|’)re looking for|who you are|about you|you have|must haves?|skills (?:and|&) experience|your profile|ihr profil|dein profil|requisitos|profil recherché)\b[^\n]{0,40}(?:\n|:)/i;
+function requirementsFirst(text: string): string {
+  const m = REQUIREMENTS_HEADING.exec(text);
+  if (!m || m.index < 200) return text;
+  const at = m.index + (m[0].startsWith("\n") ? 1 : 0);
+  return `${text.slice(at).trim()}\n\n${text.slice(0, at).trim()}`;
 }
 
 /**
@@ -2781,7 +2929,7 @@ function fitDescriptions(cards: Array<Record<string, unknown>>, budget: number):
   for (const [len, i] of order) {
     const share = Math.floor(left / open);
     if (len > share) {
-      cards[i].description = `${String(cards[i].description).slice(0, Math.max(0, share - 80))}\n[cut to fit — call get_job with this id for the whole description]`;
+      cards[i].description = `${requirementsFirst(String(cards[i].description)).slice(0, Math.max(0, share - 80))}\n[cut to fit — call get_job with this id for the whole description]`;
       left -= share;
     } else {
       left -= len;
@@ -2826,7 +2974,10 @@ const OPEN_BASIS_ROW =
   "freshness cap, can still read open here while get_job declines to serve it. get_job on a single id is the closer look.";
 async function runCheckJobsOpen(args: Record<string, unknown>, ctx: Ctx = KEYED_CTX): Promise<unknown> {
   const cap = ctx.keyless ? ANON_ALLOWANCE.checkJobsOpenIds : CHECK_JOBS_OPEN_MAX;
-  const sent = idsArg(args.ids, cap);
+  // Every entry through the one job reader (connect W1, BR-03): a pasted link
+  // is checked as the id it names and answered under what was sent; what names
+  // no job is listed as unknown, never as closed.
+  const { ids: sent, asSent, unknown } = readIds(idsArg(args.ids, cap));
   // HELD OUT OF THE CHECK, AND NAMED. A liveness answer is thinner than a row,
   // but a caller holding federal ids from the website could walk them here and
   // rebuild a live/dead federal feed one boolean at a time — which is the thing
@@ -2843,14 +2994,20 @@ async function runCheckJobsOpen(args: Record<string, unknown>, ctx: Ctx = KEYED_
   const r = ids.length ? await board({ action: "exists", ids }, ctx) : {} as Record<string, unknown>;
   const raw = (r.open && typeof r.open === "object" ? r.open : {}) as Record<string, unknown>;
   const open: Record<string, boolean> = {};
-  for (const id of ids) open[id] = raw[id] === true;
-  const closed = ids.filter((id) => !open[id]);
+  const named = (id: string) => asSent.get(id) ?? id;
+  for (const id of ids) open[named(id)] = raw[id] === true;
+  const closed = ids.filter((id) => raw[id] !== true).map(named);
+  // Each pasted link and the id it was read as, so the caller can match them up.
+  const linkIds = Object.fromEntries(ids.filter((id) => named(id) !== id).map((id) => [named(id), id]));
   return {
     open,
     closed,
     checked: ids.length,
     openCount: ids.length - closed.length,
     closedCount: closed.length,
+    ...(closed.length ? { closedNote: "Not open on the board now: closed, past the board's 30-day window, or never carried." } : {}),
+    ...(Object.keys(linkIds).length ? { readAs: linkIds } : {}),
+    ...(unknown.length ? { unknown, unknownNote: "Not a job id or a job link from this board, so not checked: use the id from a search card or a resumebooster.work job link." } : {}),
     ...(notChecked.length ? { notChecked, note: `Only the first ${cap} ids were checked — send the rest in another call${ctx.keyless ? `, or use a key for ${CHECK_JOBS_OPEN_MAX} at once` : ""}.` } : {}),
     ...(restricted.length ? { restricted, restrictedNote: NO_REDISTRIBUTION_REASON } : {}),
     basis: r.rowTest === "served" ? OPEN_BASIS_SERVED : OPEN_BASIS_ROW,
@@ -2919,9 +3076,37 @@ async function runFitResume(args: Record<string, unknown>, apiKeyId: string): Pr
 // two calls, through the same anon-key POST, and nothing here holds a second
 // reader. Only the SHAPE is ChatGPT's.
 
-/** One line for a research listing: the title and the employer. */
-const aliasTitle = (card: Record<string, unknown>): string =>
-  [card.title, card.company].filter((x) => typeof x === "string" && x).join(" — ") || String(card.id ?? "");
+/** The longest title a research listing gets (connect W3, BR-14). */
+const ALIAS_TITLE_MAX = 120;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** "posted Nov 4" from the employer's own date (postedAt), with the year when it is not this one; null when the feed states none. */
+function postedLabel(v: unknown, now: number = Date.now()): string | null {
+  const t = typeof v === "string" ? Date.parse(v) : NaN;
+  if (!Number.isFinite(t)) return null;
+  const d = new Date(t);
+  const y = d.getUTCFullYear();
+  return `posted ${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}${y !== new Date(now).getUTCFullYear() ? `, ${y}` : ""}`;
+}
+const cut = (s: string, n: number) => (s.length <= n ? s : `${s.slice(0, Math.max(1, n - 1)).trimEnd()}…`);
+/**
+ * One line for a research listing: the title, the employer, the place and
+ * the employer's posting date, at most ALIAS_TITLE_MAX characters. ChatGPT's
+ * search shape is fixed at {id, title, url}, so the line is the only place a
+ * result can say where and when without a fetch per row.
+ */
+function aliasTitle(card: Record<string, unknown>, now: number = Date.now()): string {
+  const str = (v: unknown) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim() : "");
+  const title = str(card.title);
+  const company = str(card.company);
+  const place = str(card.location).split(/\s*[;|]\s*/)[0];
+  const date = postedLabel(card.postedAt, now) ?? "";
+  const line = (t: string, p: string) => [t, company, p, date].filter(Boolean).join(" — ");
+  let out = line(title, place);
+  if (out.length > ALIAS_TITLE_MAX) out = line(title, cut(place, 32));
+  if (out.length > ALIAS_TITLE_MAX) out = line(cut(title, Math.max(20, title.length - (out.length - ALIAS_TITLE_MAX))), cut(place, 32));
+  if (out.length > ALIAS_TITLE_MAX) out = cut(out, ALIAS_TITLE_MAX);
+  return out || String(card.id ?? "");
+}
 /** The employer's own apply page when the board holds one, else the posting's page on the site. */
 const aliasUrl = (card: Record<string, unknown>, ctx: Ctx = KEYED_CTX): string => SITE_JOB_URL_TRACKED(String(card.id ?? ""), "research", ctx.edition);
 
@@ -4224,7 +4409,7 @@ function boardStatsAllowed(bucket: string, perMinute: number, now: number = Date
 
 /** What a refused call can do instead with nothing: the posting's page, or the board. */
 function keylessTwin(toolName: string, args: Record<string, unknown>): string {
-  const id = typeof args.id === "string" ? args.id.trim() : "";
+  const id = typeof args.id === "string" ? parseJobId(args.id) ?? "" : "";
   if (id && /^[^:]+:[^:]+:.+/.test(id) && (toolName === "fetch" || toolName === "get_job" || toolName === "apply_myself")) {
     return `the posting's page, ${SITE_JOB_URL(id)},`;
   }
@@ -4375,7 +4560,7 @@ async function answerUnkeyed(
     if (!d.allowed) {
       const minute = d.refused_by === "minute" || d.refused_by === "overall_minute";
       countCall(client, partition, "keyless", toolName, minute ? "refused_minute" : "refused_day");
-      const [message, fix] = spentRefusal(d, m, edition, keylessTwin(toolName, args), MINT_URL, FREE_KEY_DAILY_QUOTA);
+      const [message, fix] = spentRefusal(d, m, edition, keylessTwin(toolName, args), MINT_URL, FREE_KEY_DAILY_QUOTA, Date.now(), keylessClientOf(req.headers.get("user-agent")));
       return {
         rpc: rpcResult(rpcId, toolErr(message, fix)),
         headers: { "Retry-After": String(minute ? secondsLeftInMinute() : secondsToMidnightUtc()) },
@@ -4478,7 +4663,7 @@ function instructionsFor(edition: Edition): string {
     `Live job search over employers' own hiring feeds. Start with ${tool("search_jobs")}: put the place in location, not in query, and send job titles and places, never CV text. ` +
     `${tool("fetch")} or ${tool("get_jobs")} read postings; ${tool("check_jobs_open")} re-checks a shortlist; ` +
     `${tool("apply_myself")} reads the employer's application form where its hiring system publishes one (${formVendorsFor(edition).map((v) => VENDOR_NAMES[v] ?? v).join(", ")}) and otherwise returns the apply link; we never submit anything. ` +
-    `A resumebooster.work/jobs?job=<id> link's id is the argument to every job tool. ` +
+    `A resumebooster.work/jobs?job=<id> link's id is the argument to every job tool. A resumebooster.work/jobs/posting/ page is read as its id too. ` +
     `Without a key these tools share a daily allowance; each answer says what is left and that it resets at midnight UTC. ` +
     `SmartRecruiters and USAJOBS postings are not served here. ` +
     `This board watches postings come down and can say which employers take roles down and leave them down: ${tool("employer_hiring_record")} and ${tool("employer_growth")} carry that record per employer board, every unknown named as unknown. ` +
@@ -4740,7 +4925,7 @@ Deno.serve(async (req) => {
     try {
       if (read.resource.uri === GUIDE_URI) {
         await probeSignIn();
-        return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition))));
+        return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition, !!bearer))));
       }
     } catch (e) {
       return readFailed(id, read, e, {});
