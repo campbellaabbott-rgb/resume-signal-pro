@@ -5,10 +5,45 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { buyerEmailOf } from "../_shared/buyer-email.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
+import { maskEmail } from "../_shared/mailbox-proof.ts";
+import { networkBucket } from "../_shared/network-bucket.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-scan-pack-purchase.2026-10-09.2";
+// 2026-11-10.1 (hotfix H3, M-S14-007 / C-S14-003): an id that cannot be a
+// Checkout session never reaches Stripe; a purchase already credited and
+// recorded is answered from our own rows; every Stripe read is counted per
+// caller network under this function's name, and a count that cannot be
+// taken refuses; the buyer's address is masked in every reply. With the
+// integration's review: a pack our records know (a claim not yet recorded,
+// or a session create-scan-pack-checkout minted) has its Stripe reads counted
+// by the purchase, so invented ids from the buyer's network no longer lock
+// the buyer out; and the session's metadata, which carries the buyer's
+// address, is no longer written to the log.
+const FN_BUILD = "verify-scan-pack-purchase.2026-11-10.1";
+
+/** A Stripe Checkout session id, as the other paid doors accept one. */
+const CHECKOUT_SESSION = /^cs_[A-Za-z0-9_]{1,250}$/;
+/** Stripe reads per caller network per hour, for an id our records do not know: a buyer's page asks once per visit. */
+const STRIPE_READS_PER_NETWORK_PER_HOUR = 20;
+/** The bucket name, and the hourly allowance, of a purchase our records know (its id alone spends it). */
+const STRIPE_READ_PURCHASE_COUNTER = "verify-scan-pack-purchase:purchase";
+const STRIPE_READS_PER_PURCHASE_PER_HOUR = 20;
+/** A known purchase's own bucket: 32 hex of a keyed hash of its session id (rate_limits takes 45 characters). */
+async function purchaseBucket(secret: string, id: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${secret}:${STRIPE_READ_PURCHASE_COUNTER}:${id}`));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+}
+/**
+ * How scan_credit_session_grants keys a purchase: the SHA-256 of its session
+ * id, as _shared/scan-credits.ts sessionHash computes it (that module is not
+ * bundled here, so its importers keep their own build).
+ */
+async function sessionHash(id: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(id));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+const NOT_FOUND = "We couldn't find that purchase. If you just paid, wait a moment and refresh; otherwise the link may have expired.";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,7 +84,104 @@ serve(async (req) => {
       );
     }
 
+    // NOTHING THAT CANNOT BE A CHECKOUT SESSION IS SENT TO STRIPE (H3). Any
+    // string used to be read with the live key, spending the account's read
+    // limit the checkouts and the webhook share.
+    if (!CHECKOUT_SESSION.test(sessionId)) {
+      logStep("Not a Checkout session id; refused before any Stripe read");
+      return new Response(
+        JSON.stringify({ error: NOT_FOUND }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     logStep("Verifying session", { sessionId });
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // OUR OWN ROWS FIRST (H3). A pack already credited (the claim names a
+    // scan product) whose purchase is recorded is answered from the record:
+    // a reload of the success page reads Stripe no more. Anything else, or a
+    // lookup that fails, goes on to the counted Stripe read below.
+    const { data: claim, error: claimLookupError } = await supabase
+      .from('used_stripe_sessions')
+      .select('product_type')
+      .eq('session_id', sessionId)
+      .maybeSingle();
+    if (!claimLookupError && claim?.product_type) {
+      if (claim.product_type !== 'scan_credits' && claim.product_type !== 'scan_pack') {
+        logStep("Session claimed for another product", { productType: claim.product_type });
+        return new Response(
+          JSON.stringify({ error: "Invalid session type", verified: false }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const { data: grant, error: grantError } = await supabase
+        .from('scan_credit_session_grants')
+        .select('credits_bought')
+        .eq('session_hash', await sessionHash(sessionId))
+        .maybeSingle();
+      const bought = Number(grant?.credits_bought);
+      if (!grantError && Number.isInteger(bought) && bought > 0) {
+        logStep("Already credited; answered from the record", { credits: bought });
+        return new Response(
+          JSON.stringify({ verified: true, alreadyCredited: true, creditsAdded: bought }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
+      }
+    }
+
+    // EVERY STRIPE READ IS COUNTED BEFORE IT IS MADE (H3), under this
+    // function's own name. A count that cannot be taken is a refusal.
+    //
+    // A PURCHASE WE KNOW IS COUNTED BY THE PURCHASE (review of M-S14-050):
+    // a pack the webhook claimed but has not recorded yet, or a session
+    // create-scan-pack-checkout minted (checkout_starts), has its own
+    // allowance, which only its id can spend. Counted per network, invented
+    // ids from anyone on the buyer's network locked the buyer out of the
+    // credits they paid for. An id our records do not know still shares its
+    // network's allowance (a keyed hash of the IPv4 /24 or IPv6 /48).
+    let knownPurchase = !claimLookupError && (claim?.product_type === 'scan_credits' || claim?.product_type === 'scan_pack');
+    if (!knownPurchase) {
+      try {
+        const { data: start, error: startError } = await supabase
+          .from('checkout_starts')
+          .select('product_type')
+          .eq('stripe_session_id', sessionId)
+          .maybeSingle();
+        knownPurchase = !startError && start?.product_type === 'scan_pack';
+      } catch {
+        knownPurchase = false;
+      }
+    }
+    const { data: readAllowed, error: readCountError } = await supabase.rpc('check_rate_limit', knownPurchase
+      ? {
+        p_ip: await purchaseBucket(supabaseServiceKey ?? "", sessionId),
+        p_function: STRIPE_READ_PURCHASE_COUNTER,
+        p_max_requests: STRIPE_READS_PER_PURCHASE_PER_HOUR,
+        p_window_minutes: 60,
+      }
+      : {
+        p_ip: await networkBucket(req.headers, supabaseServiceKey ?? "", "verify-scan-pack-purchase"),
+        p_function: 'verify-scan-pack-purchase',
+        p_max_requests: STRIPE_READS_PER_NETWORK_PER_HOUR,
+        p_window_minutes: 60,
+      });
+    if (readCountError) {
+      console.error("[VERIFY-SCAN-PACK-PURCHASE] The Stripe read could not be counted; not reading blind:", readCountError.message);
+      return new Response(
+        JSON.stringify({ error: "Payment service temporarily unavailable" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (readAllowed !== true) {
+      return new Response(
+        JSON.stringify({ error: "Too many requests. Please try again later.", code: "rate_limited_stripe_reads" }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "3600" } }
+      );
+    }
 
     // Initialize Stripe
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
@@ -73,14 +205,18 @@ serve(async (req) => {
     } catch (e) {
       logStep("Session retrieve failed", { message: e instanceof Error ? e.message : String(e) });
       return new Response(
-        JSON.stringify({ error: "We couldn't find that purchase. If you just paid, wait a moment and refresh; otherwise the link may have expired." }),
+        JSON.stringify({ error: NOT_FOUND }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
+    // Only what this function reads: the session's metadata carries the
+    // buyer's whole address (create-scan-pack-checkout writes customer_email
+    // there), and the log is not where an address belongs (review of C-S14-049).
     logStep("Session retrieved", {
       status: session.payment_status,
-      metadata: session.metadata
+      product_type: session.metadata?.product_type ?? null,
+      credits: session.metadata?.credits ?? null,
     });
 
     // Verify payment completed: 'paid', or a $0 session a 100%-off code
@@ -112,11 +248,6 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    // Initialize Supabase
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Atomically claim this session via the PRIMARY KEY on session_id, rather
     // than a separate SELECT-then-INSERT. This function, stripe-webhook, and
@@ -165,7 +296,9 @@ serve(async (req) => {
           JSON.stringify({
             verified: true,
             alreadyCredited: true,
-            email: customerEmail,
+            // Masked (M-S14-007): whoever holds the success link is shown
+            // which address was credited, never the address itself.
+            email: maskEmail(customerEmail),
             creditsAdded: creditsToAdd
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
@@ -203,12 +336,12 @@ serve(async (req) => {
       );
     }
 
-    logStep("Credits added successfully", { email: customerEmail, credits: creditsToAdd });
+    logStep("Credits added successfully", { email: maskEmail(customerEmail), credits: creditsToAdd });
 
     return new Response(
       JSON.stringify({
         verified: true,
-        email: customerEmail,
+        email: maskEmail(customerEmail),
         creditsAdded: creditsToAdd
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }

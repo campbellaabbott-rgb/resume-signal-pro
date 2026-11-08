@@ -53,14 +53,14 @@ describe("the cancel flag is cached and answered (S12-076)", () => {
   });
 
   it("a cached row that says so is answered from the cache", async () => {
-    world.db.rows("pro_subscribers").push({ email: "member@example.com", status: "active", current_period_end: new Date(periodEnd * 1000).toISOString(), cancel_at_period_end: true, updated_at: new Date().toISOString() });
+    world.db.rows("pro_subscribers").push({ email: "member@example.com", status: "active", current_period_end: new Date(periodEnd * 1000).toISOString(), cancel_at_period_end: true, updated_at: new Date().toISOString(), user_id: MEMBER.id });
     const body = await (await check()).json();
     expect(body).toMatchObject({ cached: true, cancelAtPeriodEnd: true });
     expect(world.stripe.touched).toEqual([]);
   });
 
   it("back from the portal (fresh), the cache is skipped once and Stripe is asked", async () => {
-    world.db.rows("pro_subscribers").push({ email: "member@example.com", status: "active", current_period_end: new Date(periodEnd * 1000).toISOString(), cancel_at_period_end: false, updated_at: new Date().toISOString() });
+    world.db.rows("pro_subscribers").push({ email: "member@example.com", status: "active", current_period_end: new Date(periodEnd * 1000).toISOString(), cancel_at_period_end: false, updated_at: new Date().toISOString(), user_id: MEMBER.id });
     world.stripe.customers["member@example.com"] = [{ id: "cus_m" }];
     world.stripe.subs.cus_m = [{ id: "sub_m", status: "active", cancel_at_period_end: true, current_period_end: periodEnd, items: { data: [{ price: { unit_amount: 4500 } }] } }];
     const body = await (await check({ fresh: true })).json();
@@ -71,7 +71,7 @@ describe("the cancel flag is cached and answered (S12-076)", () => {
   });
 
   it("a plan resumed in the portal reads Renews again, and the row says so", async () => {
-    world.db.rows("pro_subscribers").push({ email: "member@example.com", status: "active", current_period_end: new Date(periodEnd * 1000).toISOString(), cancel_at_period_end: true, updated_at: new Date().toISOString() });
+    world.db.rows("pro_subscribers").push({ email: "member@example.com", status: "active", current_period_end: new Date(periodEnd * 1000).toISOString(), cancel_at_period_end: true, updated_at: new Date().toISOString(), user_id: MEMBER.id });
     world.stripe.customers["member@example.com"] = [{ id: "cus_m" }];
     world.stripe.subs.cus_m = [{ id: "sub_m", status: "active", cancel_at_period_end: false, current_period_end: periodEnd, items: { data: [{ price: { unit_amount: 4500 } }] } }];
     const body = await (await check({ fresh: true })).json();

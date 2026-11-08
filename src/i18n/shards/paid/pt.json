@@ -1,0 +1,14 @@
+{
+  "paidAnalysis": {
+    "recovery": {
+      "postingTitle": "A vaga para a qual você comprou esta análise",
+      "postingNote": "Sua compra foi feita com uma vaga. Cole o anúncio aqui e a análise será comparada com ele. Você pode deixar este campo vazio.",
+      "postingPlaceholder": "Cole o anúncio da vaga (opcional)"
+    },
+    "clipped": {
+      "posting": "O anúncio da vaga tinha mais de {{max}} caracteres, então esta análise leu os primeiros {{max}}.",
+      "linkedIn": "Seu texto do LinkedIn tinha mais de {{max}} caracteres, então esta análise leu os primeiros {{max}}."
+    },
+    "inProgress": "Sua análise já está sendo feita. Esta página vai mostrá-la assim que ficar pronta."
+  }
+}

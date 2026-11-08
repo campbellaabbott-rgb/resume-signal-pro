@@ -18,7 +18,7 @@
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EdgeHandler } from "./helpers/edge-harness";
-import { chatReply, loadWriter, post, WritingWorld } from "./helpers/writing-harness";
+import { chatReply, FREE_USER, loadWriter, post, tokenFor, WritingWorld } from "./helpers/writing-harness";
 import { ANSWER_CAP, ANSWER_CHUNK, groundAnswers } from "../../supabase/functions/generate-application-answers/answers";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 180_000 });
@@ -51,6 +51,8 @@ describe("groundAnswers", () => {
 const QUESTIONS = Array.from({ length: 15 }, (_, i) => ({ label: `Describe a time you improved a billing process (part ${i + 1}).`, required: true, type: "textarea" }));
 
 const handlers = new Map<string, EdgeHandler>();
+/** The screening answers answer a signed-in website session (S14, M-S14-009): a free account, as the board's Prepare sends. */
+const SIGNED_IN = tokenFor(FREE_USER);
 let world: WritingWorld;
 beforeAll(async () => {
   new WritingWorld().install();
@@ -75,7 +77,7 @@ describe("generate-application-answers, run as shipped", () => {
 
   it("a 15-question form gets 15 answers, drafted in chunks", async () => {
     world.reply = answerEverything();
-    const r = await post(handlers.get("generate-application-answers")!, "generate-application-answers", body, "anon");
+    const r = await post(handlers.get("generate-application-answers")!, "generate-application-answers", body, SIGNED_IN);
     expect(r.status, JSON.stringify(r.body)).toBe(200);
     expect((r.body.answers as unknown[]).length).toBe(15);
     expect(world.ai.length).toBe(Math.ceil(15 / ANSWER_CHUNK));
@@ -86,14 +88,14 @@ describe("generate-application-answers, run as shipped", () => {
   it("past the cap, the extra questions are named back, not dropped", async () => {
     world.reply = answerEverything();
     const many = Array.from({ length: ANSWER_CAP + 3 }, (_, i) => ({ label: `Tell us about project ${i + 1}.`, type: "textarea" }));
-    const r = await post(handlers.get("generate-application-answers")!, "generate-application-answers", { ...body, questions: many }, "anon");
+    const r = await post(handlers.get("generate-application-answers")!, "generate-application-answers", { ...body, questions: many }, SIGNED_IN);
     expect((r.body.answers as unknown[]).length).toBe(ANSWER_CAP);
     expect(r.body.undrafted).toEqual([`Tell us about project ${ANSWER_CAP + 1}.`, `Tell us about project ${ANSWER_CAP + 2}.`, `Tell us about project ${ANSWER_CAP + 3}.`]);
   });
 
   it("an answer the model marks supported but which invents a PhD comes back marked for the person", async () => {
     world.reply = answerEverything({ text: "With my PhD, I built billing services in Go at Initech." });
-    const r = await post(handlers.get("generate-application-answers")!, "generate-application-answers", { ...body, questions: QUESTIONS.slice(0, 2) }, "anon");
+    const r = await post(handlers.get("generate-application-answers")!, "generate-application-answers", { ...body, questions: QUESTIONS.slice(0, 2) }, SIGNED_IN);
     const answers = r.body.answers as Array<{ supported: boolean; note: string }>;
     expect(answers.every((a) => a.supported === false)).toBe(true);
     expect(answers[0].note).toMatch(/PhD/);
@@ -101,14 +103,14 @@ describe("generate-application-answers, run as shipped", () => {
 
   it("a reply that is not the JSON asked for is a 502, never 200 with no answers", async () => {
     world.reply = () => chatReply("Sorry, I can't help with that.");
-    const r = await post(handlers.get("generate-application-answers")!, "generate-application-answers", { ...body, questions: QUESTIONS.slice(0, 2) }, "anon");
+    const r = await post(handlers.get("generate-application-answers")!, "generate-application-answers", { ...body, questions: QUESTIONS.slice(0, 2) }, SIGNED_IN);
     expect(r.status).toBe(502);
     expect(r.body.code).toBe("draft_failed");
   });
 
   it("the model's echo of a question comes back as the label asked, verbatim", async () => {
     world.reply = () => chatReply(JSON.stringify({ answers: [{ question: "1. describe a time you improved a billing process (PART 1).", answer: "Built billing services in Go at Initech.", supported: true, note: "" }] }));
-    const r = await post(handlers.get("generate-application-answers")!, "generate-application-answers", { ...body, questions: QUESTIONS.slice(0, 1) }, "anon");
+    const r = await post(handlers.get("generate-application-answers")!, "generate-application-answers", { ...body, questions: QUESTIONS.slice(0, 1) }, SIGNED_IN);
     expect((r.body.answers as Array<{ question: string }>).map((a) => a.question)).toEqual([QUESTIONS[0].label]);
   });
 
@@ -116,7 +118,7 @@ describe("generate-application-answers, run as shipped", () => {
     let n = 0;
     const good = answerEverything();
     world.reply = (call) => (n++ === 0 ? good(call) : new Response("{}", { status: 500 }));
-    const r = await post(handlers.get("generate-application-answers")!, "generate-application-answers", body, "anon");
+    const r = await post(handlers.get("generate-application-answers")!, "generate-application-answers", body, SIGNED_IN);
     expect(r.status).toBe(200);
     expect((r.body.answers as unknown[]).length).toBe(ANSWER_CHUNK);
     expect((r.body.undrafted as string[]).length).toBe(15 - ANSWER_CHUNK);
@@ -126,7 +128,7 @@ describe("generate-application-answers, run as shipped", () => {
 
   it("a busy model is answered with a code and a Retry-After the page can word", async () => {
     world.reply = () => new Response(JSON.stringify({ error: "busy" }), { status: 429 });
-    const r = await post(handlers.get("generate-application-answers")!, "generate-application-answers", { ...body, questions: QUESTIONS.slice(0, 2) }, "anon");
+    const r = await post(handlers.get("generate-application-answers")!, "generate-application-answers", { ...body, questions: QUESTIONS.slice(0, 2) }, SIGNED_IN);
     expect(r.status).toBe(429);
     expect(r.body.code).toBe("model_busy");
     expect(r.headers.get("retry-after")).toBe("60");
@@ -135,7 +137,7 @@ describe("generate-application-answers, run as shipped", () => {
   it("answers follow a German posting's language, notes the reader's, and the posting is fenced", async () => {
     world.reply = answerEverything();
     const de = "Wir suchen eine erfahrene Entwicklerin für unser Team. Deine Aufgaben: Du betreust unsere Abrechnung und arbeitest eng mit dem Finanzteam zusammen. Wir bieten dir eine unbefristete Stelle. Das bringst du mit: Erfahrung mit Go und Postgres.";
-    await post(handlers.get("generate-application-answers")!, "generate-application-answers", { ...body, jobDescription: de, questions: [{ label: "Warum möchten Sie bei uns arbeiten?" }], language: "fr" }, "anon");
+    await post(handlers.get("generate-application-answers")!, "generate-application-answers", { ...body, jobDescription: de, questions: [{ label: "Warum möchten Sie bei uns arbeiten?" }], language: "fr" }, SIGNED_IN);
     const prompt = world.prompts();
     expect(prompt).toContain("written in German");
     expect(prompt).toMatch(/Write each "note" in French/);

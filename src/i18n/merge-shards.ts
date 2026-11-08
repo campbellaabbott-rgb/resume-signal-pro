@@ -26,6 +26,8 @@ export const SHARD_ROOT_KEYS: Readonly<Record<string, string>> = {
   company: "companyProfile",
   home: "home",
   pricing: "pricingPlans",
+  // The paid analysis's recovery and notices (hotfix 2026-11-10).
+  paid: "paidAnalysis",
 };
 
 export interface Shard {

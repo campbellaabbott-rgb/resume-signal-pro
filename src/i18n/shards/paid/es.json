@@ -1,0 +1,14 @@
+{
+  "paidAnalysis": {
+    "recovery": {
+      "postingTitle": "La oferta de empleo para la que compraste este análisis",
+      "postingNote": "Tu compra se hizo con una oferta de empleo. Pégala aquí y el análisis se medirá con ella. Puedes dejar este campo vacío.",
+      "postingPlaceholder": "Pega la oferta de empleo (opcional)"
+    },
+    "clipped": {
+      "posting": "La oferta de empleo tenía más de {{max}} caracteres, así que este análisis leyó los primeros {{max}}.",
+      "linkedIn": "Tu texto de LinkedIn tenía más de {{max}} caracteres, así que este análisis leyó los primeros {{max}}."
+    },
+    "inProgress": "Tu análisis ya se está preparando. Esta página lo mostrará en cuanto esté listo."
+  }
+}

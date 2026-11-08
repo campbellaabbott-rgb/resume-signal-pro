@@ -31,7 +31,7 @@ import {
   scanCreditBalance,
   scanCreditGrantsBought,
 } from "../_shared/scan-credits.ts";
-import { provenMailbox } from "../_shared/mailbox-proof.ts";
+import { maskEmail, provenMailbox } from "../_shared/mailbox-proof.ts";
 import { websiteSessionOf, type WebsiteAuth } from "../_shared/website-session.ts";
 
 // Provable from outside: every response, the CORS preflight included, carries
@@ -41,7 +41,9 @@ import { websiteSessionOf, type WebsiteAuth } from "../_shared/website-session.t
 // 2026-10-14.22 (wave 4, after R1): a purchase another account claimed shows
 // nothing here (S12-154), a pack whose address is only in customer_details is
 // recorded (S12-103), and the caller is a website session or nobody (CP-C).
-const FN_BUILD = "scan-credits.2026-10-14.22";
+// 2026-11-10.1 (hotfix H3, C-S14-049): the address a held purchase was made
+// with is shown masked; only a signed-in account sees its own address whole.
+const FN_BUILD = "scan-credits.2026-11-10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -130,11 +132,13 @@ Deno.serve(async (req) => {
     ]);
     if (credits === null) return json({ error: "Could not read credits right now." }, 503);
 
-    // The address shown beside the balance: the account's own, or the one the
-    // held purchases were made with when there is exactly one. Both are the
-    // caller's own: the session id is the proof of the purchase.
+    // The address shown beside the balance: the account's own, or, masked,
+    // the one the held purchases were made with when there is exactly one.
+    // A held session id is a link that travels (a shared browser, a forwarded
+    // success page), so it shows which address was credited, never the
+    // address itself (C-S14-049).
     const purchaseEmails = [...new Set(grants.map((g) => g.email))];
-    const email = accountEmail ?? (purchaseEmails.length === 1 ? purchaseEmails[0] : null);
+    const email = accountEmail ?? (purchaseEmails.length === 1 ? maskEmail(purchaseEmails[0]) : null);
     return json({
       credits,
       signedIn: !!userId,

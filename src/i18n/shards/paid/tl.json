@@ -1,0 +1,14 @@
+{
+  "paidAnalysis": {
+    "recovery": {
+      "postingTitle": "Ang job posting na pinagbilhan mo ng analysis na ito",
+      "postingNote": "Ginawa ang pagbili mo kasama ang isang job posting. I-paste ito rito at susukatin ang analysis laban dito. Puwede mo itong iwanang blangko.",
+      "postingPlaceholder": "I-paste ang job posting (opsyonal)"
+    },
+    "clipped": {
+      "posting": "Mas mahaba sa {{max}} character ang job posting, kaya ang unang {{max}} lang ang binasa ng analysis na ito.",
+      "linkedIn": "Mas mahaba sa {{max}} character ang LinkedIn text mo, kaya ang unang {{max}} lang ang binasa ng analysis na ito."
+    },
+    "inProgress": "Ginagawa na ang analysis mo. Ipapakita ito ng page na ito sa sandaling handa na."
+  }
+}

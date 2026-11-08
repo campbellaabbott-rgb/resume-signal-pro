@@ -15,7 +15,12 @@ import { createGatewayDeltaReader } from "../_shared/ai-fallback.ts";
 // unchanged. Rebuilt so the deployed bundle matches the repo's ai-fallback.ts.
 // Nothing else in this bundle changed since main's f8d72a9b, the build the
 // 2026-10-31 deploy put live (docs/deploy-ledger.json, verifiedDeploys).
-const FN_BUILD = "generate-cover-letter-stream.2026-11-03.1";
+// 2026-11-10.1 (S14 hotfix, lane spend, M-S14-057): _shared/paid-session.ts
+// refuses a claim that names no product unless it may be an older buyer's
+// (no address beside it, written before 2026-08-27 18:00 UTC, not test
+// mode); migration 20261110140000 names the rest from the order, content,
+// checkout and grant records. Nothing else in this bundle changed.
+const FN_BUILD = "generate-cover-letter-stream.2026-11-10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

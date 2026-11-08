@@ -87,7 +87,8 @@ describe("the request budget counts only what it gates", () => {
   it("finds the enforcers in source (the derivation itself must work)", () => {
     // If this ever returns [] the two assertions below pass vacuously and the
     // suite would go green on a file it never read.
-    expect(enforcers.length).toBeGreaterThanOrEqual(6);
+    // Five since the 2026-11-10 hotfix: analyze-resume left the set (below).
+    expect(enforcers.length).toBeGreaterThanOrEqual(5);
     expect(enforcers).toContain("parse-pdf");
     expect(enforcers).toContain("create-checkout");
   });
@@ -160,8 +161,13 @@ describe("a 429 says which limit fired", () => {
     expect(body).not.toMatch(/firecrawl\.dev/i);
   });
 
-  it("analyze-resume labels the budget refusal (it enforces but never writes)", () => {
-    expect(src("analyze-resume")).toContain("rate_limited_budget");
+  it("analyze-resume no longer refuses a paying buyer on the shared budget (M-S14-050)", () => {
+    // It refused 429 before the payment was looked at, so two heavy users
+    // behind one address locked a buyer out of what they had just paid for.
+    // A purchase is analysed once, one run at a time, and every Stripe read
+    // is counted under analyze-resume's own name (check_rate_limit).
+    expect(enforcers).not.toContain("analyze-resume");
+    expect(src("analyze-resume")).toContain("check_rate_limit");
   });
 
   it("free-keyword-scan labels the budget refusal", () => {

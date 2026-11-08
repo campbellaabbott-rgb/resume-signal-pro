@@ -307,7 +307,8 @@ export default function FreelanceBoost() {
   const runImport = async (text: string) => {
     setImporting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("import-freelance-profile", { body: { profileText: text } });
+      // The purchase this link holds: the importer runs only for a Freelance Boost buyer.
+      const { data, error } = await supabase.functions.invoke("import-freelance-profile", { body: { profileText: text, sessionId } });
       if (error || !data?.success) throw new Error(data?.error || error?.message || "Import failed");
       if (!data.data.projects.length) {
         toast({ title: "Nothing importable found", description: "The text didn't contain recognizable projects — the manual form below works just as well.", variant: "destructive" });
@@ -486,7 +487,11 @@ export default function FreelanceBoost() {
           {!result && !generating && (sessionId || boughtHere) && (
             <>
               {/* Profile import — paste-your-own-data, deliberately not a fake
-                  "Connect Upwork" integration (no platform offers profile APIs) */}
+                  "Connect Upwork" integration (no platform offers profile APIs).
+                  The importer reads the purchase this link holds (M-S14-058),
+                  so it is offered only beside one; a browser that bought here
+                  without the link fills the cards in by hand. */}
+              {sessionId && (
               <div className="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-6">
                 <div className="flex items-center justify-between gap-2">
                   <div>
@@ -523,6 +528,7 @@ export default function FreelanceBoost() {
                   </div>
                 )}
               </div>
+              )}
 
               <div className="rounded-2xl border border-border bg-card p-5 mb-6">
                 <h2 className="font-semibold text-foreground mb-3">1. Your target</h2>

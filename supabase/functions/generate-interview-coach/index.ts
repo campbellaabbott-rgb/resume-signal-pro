@@ -52,7 +52,12 @@ import {
 // unchanged. Request body, reply shape, the 429 answer and the use given
 // back on failure are unchanged. Nothing of main's past f8d72a9b rides
 // along.
-const FN_BUILD = "generate-interview-coach.2026-11-03.1";
+// 2026-11-10.1 (S14 hotfix, lane spend, M-S14-057): _shared/paid-session.ts
+// refuses a claim that names no product unless it may be an older buyer's
+// (no address beside it, written before 2026-08-27 18:00 UTC, not test
+// mode); migration 20261110140000 names the rest from the order, content,
+// checkout and grant records. Nothing else in this bundle changed.
+const FN_BUILD = "generate-interview-coach.2026-11-10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -451,7 +451,7 @@ describe("test-ai-fallback: mode \"all\" answers inside the platform's limit wha
 
   it("every model hangs: all four are asked at once, and the report comes back in about 40 s, each model failed", async () => {
     gateway.plan = () => "hang";
-    const { result: r, at } = await drive(gateway, () => post(handler, "test-ai-fallback", { mode: "all" }, "anon"));
+    const { result: r, at } = await drive(gateway, () => post(handler, "test-ai-fallback", { mode: "all" }, "service"));
     expect(new Set(gateway.seen.map((s) => s.model)).size).toBe(4);
     for (const s of gateway.seen) expect(s.at, s.model).toBe(0);
     expect(at).toBeLessThanOrEqual(45_000);
@@ -461,7 +461,7 @@ describe("test-ai-fallback: mode \"all\" answers inside the platform's limit wha
 
   it("one model writes text: it alone passes, the others are reported failed, all inside about 40 s", async () => {
     gateway.plan = (s) => (s.model === "google/gemini-2.5-flash" ? { after: 3_000, reply: chat("AI fallback test successful") } : "hang");
-    const { result: r, at } = await drive(gateway, () => post(handler, "test-ai-fallback", { mode: "all" }, "anon"));
+    const { result: r, at } = await drive(gateway, () => post(handler, "test-ai-fallback", { mode: "all" }, "service"));
     expect(at).toBeLessThanOrEqual(45_000);
     const results = r.body.results as Array<{ model: string; success: boolean }>;
     expect(results.filter((x) => x.success).map((x) => x.model)).toEqual(["google/gemini-2.5-flash"]);

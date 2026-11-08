@@ -75,7 +75,18 @@ import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting
 // could be the person's name or email.
 // Nothing else in this function changed, and nothing of main's past
 // f8d72a9b, the build the 2026-10-31 deploy put live, rides along.
-const FN_BUILD = "generate-apply-package.2026-11-03.1";
+// 2026-11-10.1 (S14 hotfix, two lanes; no change to its own code). Lane pro:
+// the _shared/pro.ts it bundles refreshes a cache row that names a Stripe
+// customer by that customer instead of clearing it when an address search
+// finds nothing, and gained the by-customer and by-account readers. Lane
+// spend (M-S14-057): _shared/paid-session.ts refuses a claim that names no
+// product unless it may be an older buyer's (no address beside it, written
+// before 2026-08-27 18:00 UTC, not test mode); migration 20261110140000
+// names the rest from the order, content, checkout and grant records.
+// 2026-11-10.2 (fix/hotfix-2026-11-10, the integration): both lanes' changes
+// above together. hotfix/pro and hotfix/spend each stamped 2026-11-10.1 on
+// code of its own, so the merged code takes the next sequence (DEPLOY-LEDGER §3).
+const FN_BUILD = "generate-apply-package.2026-11-10.2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

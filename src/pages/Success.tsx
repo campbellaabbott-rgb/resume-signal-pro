@@ -51,6 +51,8 @@ import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { usePersonalization } from "@/hooks/use-personalization";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
+import { buildAnalysisPdf, type PdfLike } from "@/lib/analysis-pdf";
+import { invokePaidAnalysis, readSessionOnlyAnswer, type Ask } from "@/lib/paid-analysis-run";
 import { PRODUCTS } from "@/config/products";
 import { PRIVACY_EMAIL, SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention";
 import { forgetStashedSessionFor, forgetStashedShare, stashShareFor, stashedSessionIdFor, stashedShareFor } from "@/lib/auth-fragment";
@@ -108,6 +110,16 @@ const Success = () => {
   // The résumé the buyer pasted on this page, kept while its analysis can be
   // asked again in place: a reload starts over with no résumé in this tab.
   const pastedResume = useRef<string | null>(null);
+  // And the posting pasted with it, when the page asked for one.
+  const pastedPosting = useRef<string | undefined>(undefined);
+  // The purchase was bought against a posting this page no longer holds
+  // (C-S14-010): the résumé box asks for the posting too.
+  const [askPosting, setAskPosting] = useState(false);
+  // analyze-resume, asked again while another request for this purchase is
+  // making the analysis (src/lib/paid-analysis-run.ts). Each ask is written
+  // out in full below, with the page's language first in its body.
+  const askAnalysis = (ask: Ask) =>
+    invokePaidAnalysis(ask, { onWaiting: () => toast({ title: t('paidAnalysis.inProgress') }) });
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -167,32 +179,43 @@ const Success = () => {
   /**
    * The analysis this purchase already received, asked of analyze-resume by
    * the session alone (it answers a redeemed session from its saved copy).
-   * True when one was shown.
+   * "shown" when one was shown; "stored" when none exists yet and the
+   * purchase's stored résumé is still kept, so the analysis is asked from
+   * that copy; "needsResume" otherwise, with askPosting set when the checkout
+   * was made with a posting (C-S14-010).
    */
-  const showDeliveredAnalysis = async (stripeSessionId: string): Promise<boolean> => {
+  const showDeliveredAnalysis = async (stripeSessionId: string): Promise<"shown" | "stored" | "needsResume"> => {
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("analyze-resume", { body: { resumeText: "", sessionId: stripeSessionId, language: i18n.language } });
-      if (fnError || !data || data.error || !data.alreadyDelivered) return false;
-      const { shareId: savedShareId, emailSent: _emailSent, alreadyDelivered: _delivered, ...analysisResult } = data;
-      setAnalysisData(analysisResult);
-      setShareId(savedShareId);
+      const answer = await readSessionOnlyAnswer(
+        await askAnalysis(() => supabase.functions.invoke("analyze-resume", { body: { language: i18n.language, resumeText: "", sessionId: stripeSessionId } })),
+      );
+      if (answer.kind === "stored") return "stored";
+      if (answer.kind === "needsResume") {
+        setAskPosting(answer.askPosting);
+        return "needsResume";
+      }
+      const { shareId: savedShareId, emailSent: _emailSent, alreadyDelivered: _delivered, ...analysisResult } = answer.data;
+      setAnalysisData(analysisResult as AnalysisData);
+      setShareId(typeof savedShareId === "string" ? savedShareId : null);
       setNeedsResume(false);
       rememberShareInUrl(savedShareId);
-      return true;
+      return "shown";
     } catch {
-      return false;
+      return "needsResume";
     }
   };
 
   useEffect(() => {
-    const runAnalysis = async (resumeText: string, linkedInText?: string, jobDescriptionText?: string, stripeSessionId?: string) => {
+    const runAnalysis = async (resumeText: string, linkedInText?: string, jobDescriptionText?: string, stripeSessionId?: string, fromStored = false) => {
       try {
-        console.log("Starting AI analysis...", linkedInText ? "(with LinkedIn)" : "", jobDescriptionText ? "(with Job Description)" : "");
+        console.log("Starting AI analysis...", linkedInText ? "(with LinkedIn)" : "", jobDescriptionText ? "(with Job Description)" : "", fromStored ? "(from the copy stored at checkout)" : "");
         setCurrentStep(3);
 
-        const { data, error: fnError } = await supabase.functions.invoke("analyze-resume", {
-          body: { resumeText, linkedInText, jobDescriptionText, sessionId: stripeSessionId, language: i18n.language },
-        });
+        // fromStored: this tab holds no résumé, and analyze-resume reads the
+        // one the purchase was bought against (C-S14-010).
+        const { data, error: fnError } = await askAnalysis(() => fromStored
+          ? supabase.functions.invoke("analyze-resume", { body: { language: i18n.language, resumeText: "", sessionId: stripeSessionId, fromStored: true } })
+          : supabase.functions.invoke("analyze-resume", { body: { language: i18n.language, resumeText, linkedInText, jobDescriptionText, sessionId: stripeSessionId } }));
 
         if (fnError) {
           console.error("Function error:", fnError);
@@ -210,8 +233,9 @@ const Success = () => {
         setEmailSent(wasEmailSent || false);
         rememberShareInUrl(newShareId);
 
-        // Save personalization profile for future content generation
-        updateFromAnalysis(analysisResult, resumeText, linkedInText, jobDescriptionText, stripeSessionId);
+        // Save personalization profile for future content generation (only
+        // from a résumé this tab holds).
+        if (resumeText) updateFromAnalysis(analysisResult, resumeText, linkedInText, jobDescriptionText, stripeSessionId);
 
         // Track A/B test conversion (paid analysis completed). At the price
         // the catalogue sells it for: this recorded 25 -- the analysis's
@@ -289,20 +313,26 @@ const Success = () => {
         return;
       }
 
-      // Prefer session-scoped temp session ID, fallback to legacy key
-      const tempSessionId =
-        getResumeData(`tempSessionId:${sessionId}`) ||
-        getResumeData("tempSessionId");
+      // ONLY THIS PURCHASE'S OWN POINTER (review of C-S14-010). The key that
+      // named no purchase was kept for a day like the rest, so an abandoned
+      // checkout's résumé and posting on this browser were analysed for a
+      // different purchase opened here (the emailed link, another device's
+      // payment), and that purchase's own stored copy went unread. Without
+      // this purchase's pointer the page asks by the session alone below.
+      const tempSessionId = getResumeData(`tempSessionId:${sessionId}`);
 
       if (!tempSessionId) {
         // No résumé in this tab: an analysis this purchase already received
-        // is shown, never a request to regenerate it (S11-016); only a
-        // purchase with none asks for the résumé.
-        if (await showDeliveredAnalysis(sessionId)) {
-          setIsLoading(false);
+        // is shown, never a request to regenerate it (S11-016); a purchase
+        // with none is made from the copy stored at checkout while it is kept
+        // (C-S14-010), and only then asks for the résumé.
+        const answer = await showDeliveredAnalysis(sessionId);
+        if (answer === "stored") {
+          setNeedsResume(false);
+          await runAnalysis("", undefined, undefined, sessionId, true);
           return;
         }
-        setNeedsResume(true);
+        if (answer === "needsResume") setNeedsResume(true);
         setIsLoading(false);
         return;
       }
@@ -321,12 +351,15 @@ const Success = () => {
         }
 
         if (!tempData || tempData.length === 0 || !(tempData[0] as any).resume_text) {
-          // Data expired or not found: the delivered analysis first (S11-016).
-          if (await showDeliveredAnalysis(sessionId)) {
-            setIsLoading(false);
+          // Data expired or not found: the delivered analysis first (S11-016),
+          // then the copy the checkout recorded (C-S14-010).
+          const answer = await showDeliveredAnalysis(sessionId);
+          if (answer === "stored") {
+            setNeedsResume(false);
+            await runAnalysis("", undefined, undefined, sessionId, true);
             return;
           }
-          setNeedsResume(true);
+          if (answer === "needsResume") setNeedsResume(true);
           setIsLoading(false);
           return;
         }
@@ -351,24 +384,25 @@ const Success = () => {
 
   /**
    * The résumé the buyer pasted, sent straight to the analysis (they already
-   * paid; it is not stored locally). A timeout keeps the text, so Try again
-   * asks again in place; any other failure lets it go, and Try again reloads
-   * to ask for the résumé again.
+   * paid; it is not stored locally), with the posting when the page asked for
+   * one. A timeout keeps the text, so Try again asks again in place; any other
+   * failure lets it go, and Try again reloads to ask for the résumé again.
    */
-  const analyzePastedResume = (text: string) => {
+  const analyzePastedResume = (text: string, posting?: string) => {
     pastedResume.current = text;
+    pastedPosting.current = posting;
     setNeedsResume(false);
     setIsLoading(true);
     setCurrentStep(2);
     setError(null);
 
-    void supabase.functions
-      .invoke("analyze-resume", { body: { resumeText: text, sessionId, language: i18n.language } })
+    void askAnalysis(() => supabase.functions.invoke("analyze-resume", { body: { language: i18n.language, resumeText: text, sessionId, ...(posting ? { jobDescriptionText: posting } : {}) } }))
       .then(async ({ data, error: fnError }) => {
         if (fnError) throw await analysisFailure(fnError, t('success.error.timedOut'));
         if (data?.error) throw new Error(data.error);
 
         pastedResume.current = null;
+        pastedPosting.current = undefined;
         const { shareId: newShareId, ...analysisResult } = data;
         setAnalysisData(analysisResult);
         setShareId(newShareId);
@@ -381,7 +415,10 @@ const Success = () => {
       })
       .catch((err) => {
         console.error("Analysis error:", err);
-        if (!(err instanceof AnalysisTimedOut)) pastedResume.current = null;
+        if (!(err instanceof AnalysisTimedOut)) {
+          pastedResume.current = null;
+          pastedPosting.current = undefined;
+        }
         setError(err instanceof Error ? err.message : t('success.error.analyzeFailed', 'Failed to analyze resume'));
         toast({
           title: t('success.toast.analysisFailed', 'Analysis failed'),
@@ -403,101 +440,14 @@ const Success = () => {
         import("jspdf"),
       ]);
 
-      console.log("[PDF] Generating resume analysis PDF with smart page breaks...");
-
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
+      // Section by section, each once, drawn as the finished page: no card
+      // caught mid-fade, the quantification card included, and a tall section
+      // cut into page-sized slices (src/lib/analysis-pdf.ts; H2, S10-061).
+      console.log("[PDF] Generating resume analysis PDF section by section...");
+      const pdf = await buildAnalysisPdf(analysisRef.current, {
+        html2canvas: (el, opts) => html2canvas(el, opts as Parameters<typeof html2canvas>[1]),
+        makePdf: () => new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" }) as unknown as PdfLike,
       });
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const margin = 10; // 10mm margins
-      const usableHeight = pdfHeight - (margin * 2);
-      const usableWidth = pdfWidth - (margin * 2);
-
-      // Find all major sections to render separately
-      const sections = analysisRef.current.querySelectorAll('[id]');
-      const sectionElements: HTMLElement[] = [];
-      
-      // If we have identifiable sections, use them; otherwise fall back to children
-      if (sections.length > 0) {
-        sections.forEach(el => {
-          if (el instanceof HTMLElement && el.offsetHeight > 0) {
-            sectionElements.push(el);
-          }
-        });
-      }
-
-      // Fallback: if no sections found, use direct children of the container
-      if (sectionElements.length === 0) {
-        const children = analysisRef.current.children;
-        for (let i = 0; i < children.length; i++) {
-          const child = children[i];
-          if (child instanceof HTMLElement && child.offsetHeight > 0) {
-            sectionElements.push(child);
-          }
-        }
-      }
-
-      // If still no sections, capture the whole thing
-      if (sectionElements.length === 0) {
-        sectionElements.push(analysisRef.current);
-      }
-
-      let currentY = margin;
-      let isFirstPage = true;
-
-      for (let i = 0; i < sectionElements.length; i++) {
-        const section = sectionElements[i];
-        
-        const canvas = await html2canvas(section, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: "#0a0a0f",
-        });
-
-        const imgData = canvas.toDataURL("image/jpeg", 0.92);
-        const imgWidth = usableWidth;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-        // Check if we need a new page
-        if (!isFirstPage && currentY + imgHeight > pdfHeight - margin) {
-          pdf.addPage();
-          currentY = margin;
-        }
-
-        // If section is taller than a page, we need to split it
-        if (imgHeight > usableHeight) {
-          // For very tall sections, split across pages
-          const scaledHeight = canvas.height * (usableWidth / canvas.width);
-          let heightLeft = scaledHeight;
-          let sourceY = 0;
-          
-          while (heightLeft > 0) {
-            const sliceHeight = Math.min(usableHeight, heightLeft);
-            
-            if (sourceY > 0) {
-              pdf.addPage();
-              currentY = margin;
-            }
-            
-            pdf.addImage(imgData, "JPEG", margin, currentY, imgWidth, scaledHeight, undefined, 'FAST', 0);
-            
-            heightLeft -= sliceHeight;
-            sourceY += sliceHeight;
-            currentY = margin + sliceHeight;
-          }
-        } else {
-          // Section fits on current page or new page
-          pdf.addImage(imgData, "JPEG", margin, currentY, imgWidth, imgHeight);
-          currentY += imgHeight + 5; // 5mm gap between sections
-        }
-
-        isFirstPage = false;
-      }
 
       // Use jsPDF's native save method for reliable direct downloads
       pdf.save("resume-analysis.pdf");
@@ -688,6 +638,7 @@ const Success = () => {
                 <div className="animate-fade-in">
                   <ResumeRecovery
                     disabled={isLoading}
+                    askPosting={askPosting}
                     onResumeTextReady={analyzePastedResume}
                   />
                 </div>
@@ -710,7 +661,7 @@ const Success = () => {
                       <Button
                         size="lg"
                         className="gap-2"
-                        onClick={() => (pastedResume.current ? analyzePastedResume(pastedResume.current) : window.location.reload())}
+                        onClick={() => (pastedResume.current ? analyzePastedResume(pastedResume.current, pastedPosting.current) : window.location.reload())}
                       >
                         <RefreshCw className="w-4 h-4" />
                         {t('productSuccess.tryAgain')}
