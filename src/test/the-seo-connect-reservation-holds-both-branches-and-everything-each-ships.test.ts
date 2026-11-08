@@ -27,7 +27,7 @@ describe("the seo-connect reservation", () => {
     expect(r.branches).toEqual(expect.arrayContaining(["fix/seo-connect-fe", "fix/connect-mcp"]));
   });
   it("lists every verify section either branch added", () => {
-    expect(r.verifySections).toEqual(expect.arrayContaining(["98-seo-r2.sh", "98-seo-speed.sh", "99zzzz-ca3-apply.sh"]));
+    expect(r.verifySections).toEqual(expect.arrayContaining(["98-seo-r2.sh", "98-seo-speed.sh", "99zzzz-ca3-apply.sh", "99zzzz-ca3-search.sh"]));
   });
   it("names the two functions the connect track builds, and no fe function", () => {
     expect(r.fnBuildDate).toMatch(/agent-mcp at 2026-11-08\.1/);
