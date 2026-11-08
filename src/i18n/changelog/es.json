@@ -1511,6 +1511,42 @@
     "theFreeReportsNumbersNowAgree": {
       "title": "Las cifras y etiquetas del informe gratuito ahora coinciden",
       "description": "La puntuación proyectada del informe ahora muestra el mismo número en todas partes y nunca pasa de 95. El color, la etiqueta, el banner y la tarjeta para compartir ahora coinciden en cualquier puntuación. La tarjeta sobre cómo leen tu currículum los sistemas de contratación ya no dice que tu diseño pasa cuando no pudo comprobarlo: dice «Sin revisar». Si tu comentario o tu respuesta sobre una solicitud no se pudo guardar, el informe lo dice y no te da las gracias. Un currículum de más de 50.000 caracteres se rechaza antes del análisis, y el mensaje indica su longitud. Cuando un informe no tiene ninguna reescritura que el creador pueda aplicar, lo dice, y el creador deja tus viñetas sin cambios. Si conservas tu borrador en el creador, las correcciones del informe se aplican a las viñetas que tu borrador ya tiene, la página dice cuántas se aplicaron y el resto sigue en tu informe. Las reescrituras para currículums en hindi y ruso ahora llegan a la viñeta correcta. En el teléfono, la tarjeta de puntuación ya no se sale de la pantalla. El menú de secciones del informe sigue visible bajo el encabezado del sitio. La sección «Palabras clave de industria y rol» ya no te da las palabras clave de otro trabajo por unas letras sueltas de tu título. La sección «Consejos personalizados» todavía puede hacerlo. La lista de resultados, la tarjeta sobre los sistemas de contratación y la línea de la puntuación proyectada ahora aparecen en tu idioma, igual que los títulos, botones y etiquetas del Creador de currículum. Otras partes del informe, como las etiquetas de industria, siguen en inglés."
+    },
+    "ourFontsComeFromOurOwnSite": {
+      "title": "Nuestras fuentes tipográficas ahora vienen de nuestro propio sitio",
+      "description": "Nuestras páginas ya no cargan sus fuentes tipográficas desde Google. Las fuentes ahora vienen de nuestro propio sitio, así que al abrir una página no se pide nada a los servidores de fuentes de Google."
+    },
+    "aSharedLinkCanNoLongerDeleteAPaidAnalysis": {
+      "title": "Un enlace compartido ya no puede borrar un análisis de pago",
+      "description": "Antes, cualquiera que tuviera el enlace compartido de un análisis de pago podía borrarlo. Ahora el enlace compartido sigue abriendo el análisis, pero no puede borrarlo. Para borrarlo también hace falta la compra con la que se adquirió el análisis, así que solo funciona desde el propio enlace de compra de quien lo compró (la página que abrió su pago, el enlace de su correo de compra o el pedido en su cuenta) o escribiéndonos desde la dirección con la que pagó. La página compartida lo dice."
+    },
+    "aPurchaseLinkThatDoesNotOpenSaysWhy": {
+      "title": "Un enlace de compra que no se abre ahora suele decir por qué",
+      "description": "Cuando un enlace a una compra en la página de producto no se abre (herramientas y paquetes de análisis comprados uno a uno, y herramientas que incluye un plan Pro), la página ahora suele decir por qué. Puede decir que el pago no se ha completado, que la compra se reembolsó o que desde tu conexión se hicieron demasiadas comprobaciones en la última hora. O puede decir que no encontramos la compra, quizá porque el enlace está cortado o ha caducado. Un enlace sin referencia de compra te pide pegar el enlace de tu correo de compra, o la propia referencia. Si el proveedor de pagos no responde a tiempo, la página dice que tu compra está a salvo y ofrece «Intentar de nuevo». Esto está en los nueve idiomas. La página del Análisis Completo no cambia."
+    },
+    "draftsForAJobReopenWithoutBeingWrittenAgain": {
+      "title": "Los borradores para un empleo se vuelven a abrir sin escribirse de nuevo",
+      "description": "En la ventana «Prepara tu postulación» del tablón de empleo, una carta de presentación, un currículum adaptado o un conjunto de respuestas de solicitud que ya redactaste para un empleo ahora se vuelve a abrir sin escribirse de nuevo, así que volver a abrir una carta de presentación o un currículum adaptado no gasta tu cupo diario de redacción por segunda vez. Funciona mientras la página siga abierta, para tus 20 empleos más recientes, siempre que tu currículum, la oferta y tu idioma no cambien; recargar o abrir una pestaña nueva empieza de cero. «Adaptarlo de nuevo» y «Redactar de nuevo» escriben uno nuevo. Cuando el redactor de cartas o de currículums está ocupado para todos, ahora lo dice y dice que no es tu propio límite."
+    },
+    "theInterviewCoachKeepsEachAnswerApart": {
+      "title": "El Coach de entrevistas guarda cada respuesta por separado, y adaptar exige un empleo real",
+      "description": "En el Coach de entrevistas del informe gratuito, cada pregunta ahora guarda su propia respuesta. Antes, una respuesta escrita para una pregunta aparecía en los cuadros de las demás y podía enviarse como su respuesta, e «Intentar de nuevo» en una pregunta las borraba todas. El informe además solo ofrece un currículum adaptado cuando tiene un puesto o una oferta a la que adaptarlo. Antes podía inventarse un puesto a partir de tu sector."
+    },
+    "searchAndReportEmailsInYourLanguage": {
+      "title": "Los correos de búsquedas y del informe llegan en el idioma que usabas",
+      "description": "Los correos de tus búsquedas guardadas, el correo del informe gratuito y los correos del plan de arreglos que le siguen ahora llegan en el idioma que usabas en el sitio. En los correos del plan de arreglos, es el idioma de la página donde pulsaste el botón que los inició. Antes llegaban todos en inglés. Una búsqueda guardada antes de esta actualización sigue enviando correos en inglés hasta que la abras desde tus búsquedas guardadas, actives o desactives su correo, cambies su umbral de alerta o vuelvas a activar sus alertas desde el tablón de empleo. Los hallazgos de tu propio análisis siguen en el idioma en que el análisis los escribió."
+    },
+    "yourAccountSaysWhichSearchEmailsComeDaily": {
+      "title": "Tu página de cuenta dice qué correos de búsqueda llegan a diario",
+      "description": "Tu página de cuenta ahora dice, junto a cada búsqueda guardada que muestra (las 20 más recientes), si esa búsqueda te escribe a diario o cada semana: las alertas y empresas seguidas a diario, las demás búsquedas cada semana. Antes las llamaba todas semanales. La página a la que llegas desde el correo de confirmación del pulso del mercado ahora dice lo que envía el pulso: las palabras clave principales de tu sector según nuestra guía seleccionada de palabras clave, no un recuento de las ofertas de este mes."
+    },
+    "theOneClickApplyFilterIsGone": {
+      "title": "El filtro «Postulación en un clic» ya no está en Explorar",
+      "description": "El recuento del filtro solo cubría empleos de cuatro sistemas de contratación, aunque desde el 31 de octubre el tablón que abría ya listaba todos los empleos. Las búsquedas guardadas que aún llevaban esa restricción ahora cuentan y envían por correo los empleos nuevos de todo el tablón; al abrir una, se ve todo el tablón desde el 31 de octubre."
+    },
+    "theBoardChecksEveryMinuteForAStoppedRefresh": {
+      "title": "El tablón de empleo comprueba cada minuto si su actualización se ha detenido",
+      "description": "El tablón de empleo ahora comprueba cada minuto si la actualización de sus ofertas se ha detenido, y pide reiniciarla cuando lleva unos minutos sin actividad. Todavía no lo hemos visto reiniciar una actualización detenida."
     }
   }
 }

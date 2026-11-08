@@ -1511,6 +1511,42 @@
     "theFreeReportsNumbersNowAgree": {
       "title": "Os números e rótulos do relatório gratuito agora combinam",
       "description": "A pontuação projetada do relatório agora mostra o mesmo número em todos os lugares e nunca passa de 95. A cor, o rótulo, o banner e o cartão de compartilhamento agora combinam em qualquer pontuação. O cartão sobre como os sistemas de contratação leem seu currículo não diz mais que seu layout passa quando não conseguiu verificar: ele diz “Não verificado”. Se seu comentário ou sua resposta sobre uma candidatura não pôde ser salvo, o relatório diz isso e não agradece. Um currículo com mais de 50.000 caracteres é recusado antes da análise, e a mensagem informa o tamanho. Quando um relatório não tem nenhuma reescrita que o criador possa aplicar, ele diz isso, e o criador deixa seus tópicos sem alteração. Se você mantiver seu rascunho no criador, as correções do relatório são aplicadas aos tópicos que seu rascunho já tem, a página diz quantas foram aplicadas, e o resto continua no seu relatório. Reescritas de currículos em hindi e russo agora chegam ao tópico certo. No celular, o cartão de pontuação não sai mais da tela. O menu de seções do relatório fica visível abaixo do cabeçalho do site. A seção “Palavras-chave de Indústria e Função” não dá mais as palavras-chave de outro trabalho por causa de letras soltas no seu título. A seção “Dicas Personalizadas” ainda pode fazer isso. A lista de resultados, o cartão sobre os sistemas de contratação e a linha da pontuação projetada agora aparecem no seu idioma, assim como os títulos, botões e rótulos do Criador de currículo. Outras partes do relatório, como os rótulos de setor, continuam em inglês."
+    },
+    "ourFontsComeFromOurOwnSite": {
+      "title": "Nossas fontes agora vêm do nosso próprio site",
+      "description": "Nossas páginas não carregam mais as fontes a partir do Google. As fontes agora vêm do nosso próprio site, então abrir uma página não pede nada aos servidores de fontes do Google."
+    },
+    "aSharedLinkCanNoLongerDeleteAPaidAnalysis": {
+      "title": "Um link compartilhado não consegue mais excluir uma análise paga",
+      "description": "Antes, qualquer pessoa com o link compartilhado de uma análise paga podia excluí-la. Agora o link compartilhado continua abrindo a análise, mas não consegue excluí-la. Para excluir, também é preciso a compra com que a análise foi paga, então isso só funciona pelo próprio link de compra de quem comprou (a página aberta depois do pagamento, o link no e-mail de compra ou o pedido na conta) ou escrevendo para nós do endereço usado no pagamento. A página compartilhada diz isso."
+    },
+    "aPurchaseLinkThatDoesNotOpenSaysWhy": {
+      "title": "Um link de compra que não abre agora costuma dizer por quê",
+      "description": "Quando um link para uma compra na página do produto não abre (ferramentas e pacotes de análises comprados avulsos, e ferramentas incluídas em um plano Pro), a página agora costuma dizer por quê. Ela pode dizer que o pagamento não foi concluído, que a compra foi reembolsada ou que vieram verificações demais da sua conexão na última hora. Ou pode dizer que não encontramos a compra, talvez porque o link foi cortado ou expirou. Um link sem referência de compra pede que você cole o link do seu e-mail de compra, ou a própria referência. Se o provedor de pagamento não responder a tempo, a página diz que sua compra está segura e oferece “Tentar novamente”. Isso está nos nove idiomas. A página da Análise Completa não mudou."
+    },
+    "draftsForAJobReopenWithoutBeingWrittenAgain": {
+      "title": "Rascunhos para uma vaga voltam a abrir sem ser escritos de novo",
+      "description": "Na janela “Prepare a sua candidatura” do quadro de vagas, uma carta de apresentação, um currículo adaptado ou um conjunto de respostas de candidatura que você já redigiu para uma vaga agora volta a abrir sem ser escrito de novo, então reabrir uma carta de apresentação ou um currículo adaptado não gasta sua cota diária de escrita uma segunda vez. Isso funciona enquanto a página continuar aberta, para suas 20 vagas mais recentes, desde que seu currículo, a vaga e seu idioma não mudem; recarregar a página ou abrir uma nova aba começa do zero. “Adaptar de novo” e “Redigir novamente” escrevem um novo. Quando o redator de cartas ou de currículos está ocupado para todos, ele agora diz isso e diz que não é o seu próprio limite."
+    },
+    "theInterviewCoachKeepsEachAnswerApart": {
+      "title": "O Coach de Entrevista guarda cada resposta separada, e adaptar exige uma vaga real",
+      "description": "No Coach de Entrevista do relatório gratuito, cada pergunta agora guarda a própria resposta. Antes, uma resposta digitada para uma pergunta aparecia nas caixas das outras perguntas e podia ser enviada como resposta delas, e “Tentar novamente” em uma pergunta apagava todas. O relatório também só oferece um currículo adaptado quando tem um cargo ou uma vaga para adaptar. Antes, ele podia inventar um cargo a partir do seu setor."
+    },
+    "searchAndReportEmailsInYourLanguage": {
+      "title": "E-mails de buscas e do relatório chegam no idioma que você usava",
+      "description": "Os e-mails das suas buscas salvas, o e-mail do relatório gratuito e os e-mails do plano de ajustes que vêm depois dele agora chegam no idioma que você usava no site. Nos e-mails do plano de ajustes, é o idioma da página onde você apertou o botão que os iniciou. Antes, todos chegavam em inglês. Uma busca salva antes desta atualização continua enviando e-mails em inglês até você abri-la nas suas buscas salvas, ligar ou desligar o e-mail dela, mudar o limite de alerta dela ou ativar de novo os alertas dela pelo quadro de vagas. Os resultados da sua própria análise continuam no idioma em que a análise os escreveu."
+    },
+    "yourAccountSaysWhichSearchEmailsComeDaily": {
+      "title": "Sua página da conta diz quais e-mails de busca chegam todo dia",
+      "description": "Sua página da conta agora diz, ao lado de cada busca salva que lista (as 20 mais novas), se essa busca envia e-mail diariamente ou semanalmente: alertas e empresas acompanhadas diariamente, as outras buscas semanalmente. Antes, ela chamava todas de semanais. A página aonde você chega pelo e-mail de confirmação do pulso do mercado agora diz o que o pulso envia: as principais palavras-chave da sua área, do nosso guia selecionado de palavras-chave, não uma contagem das vagas deste mês."
+    },
+    "theOneClickApplyFilterIsGone": {
+      "title": "O filtro “Candidatura num clique” saiu do Explorar",
+      "description": "A contagem do filtro cobria só vagas de quatro sistemas de contratação, embora desde 31 de outubro o quadro que ele abria já listasse todas as vagas. Buscas salvas que ainda tinham essa restrição agora contam e enviam por e-mail vagas novas do quadro inteiro; abrir uma delas mostra o quadro inteiro desde 31 de outubro."
+    },
+    "theBoardChecksEveryMinuteForAStoppedRefresh": {
+      "title": "O quadro de vagas verifica a cada minuto se a atualização parou",
+      "description": "O quadro de vagas agora verifica a cada minuto se a atualização das vagas parou, e pede um reinício quando ela fica alguns minutos parada. Ainda não o vimos reiniciar uma atualização parada."
     }
   }
 }

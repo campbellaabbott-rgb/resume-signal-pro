@@ -1511,6 +1511,42 @@
     "theFreeReportsNumbersNowAgree": {
       "title": "Les chiffres et les libellés du rapport gratuit concordent désormais",
       "description": "Le score projeté du rapport affiche désormais le même nombre partout et ne dépasse jamais 95. La couleur, le libellé, la bannière et la carte de partage concordent désormais à chaque score. La carte sur la façon dont les systèmes de recrutement lisent votre CV ne dit plus que votre mise en page passe quand elle n'a pas pu le vérifier : elle dit « Non vérifié ». Si votre avis ou votre réponse sur une candidature n'a pas pu être enregistré, le rapport le dit et ne vous remercie pas. Un CV de plus de 50 000 caractères est refusé avant l'analyse, et le message indique sa longueur. Quand un rapport n'a aucune réécriture que le créateur peut appliquer, il le dit, et le créateur laisse vos puces inchangées. Si vous gardez votre brouillon dans le créateur, les corrections du rapport sont appliquées aux puces que votre brouillon contient déjà, la page indique combien l'ont été, et le reste demeure dans votre rapport. Les réécritures pour les CV en hindi et en russe arrivent désormais sur la bonne puce. Sur téléphone, la carte de score ne dépasse plus de l'écran. Le menu des sections du rapport reste visible sous l'en-tête du site. La section « Mots-clés du secteur et du poste » ne vous donne plus les mots-clés d'un autre métier à cause de quelques lettres de votre titre. La section « Conseils personnalisés » peut encore le faire. La liste des constats, la carte sur les systèmes de recrutement et la ligne du score projeté s'affichent désormais dans votre langue, tout comme les titres, les boutons et les libellés du Créateur de CV. D'autres parties du rapport, comme les libellés de secteur, restent en anglais."
+    },
+    "ourFontsComeFromOurOwnSite": {
+      "title": "Nos polices viennent désormais de notre propre site",
+      "description": "Nos pages ne chargent plus leurs polices depuis Google. Les polices viennent désormais de notre propre site : ouvrir une page ne demande donc rien aux serveurs de polices de Google."
+    },
+    "aSharedLinkCanNoLongerDeleteAPaidAnalysis": {
+      "title": "Un lien partagé ne peut plus supprimer une analyse payante",
+      "description": "Avant, toute personne ayant le lien de partage d'une analyse payante pouvait la supprimer. Désormais, le lien de partage ouvre toujours l'analyse, mais ne peut pas la supprimer. La suppression demande aussi l'achat avec lequel l'analyse a été achetée : elle ne fonctionne donc que depuis le propre lien d'achat de l'acheteur (la page ouverte après son paiement, le lien de son e-mail d'achat ou la commande dans son compte) ou en nous écrivant depuis l'adresse utilisée pour payer. La page partagée le dit."
+    },
+    "aPurchaseLinkThatDoesNotOpenSaysWhy": {
+      "title": "Un lien d'achat qui ne s'ouvre pas dit désormais le plus souvent pourquoi",
+      "description": "Quand un lien vers un achat sur la page produit ne s'ouvre pas (outils et packs d'analyses achetés à l'unité, et outils inclus dans une formule Pro), la page dit désormais le plus souvent pourquoi. Elle peut dire que le paiement n'est pas finalisé, que l'achat a été remboursé ou que trop de vérifications sont venues de votre connexion au cours de la dernière heure. Ou elle peut dire que nous n'avons pas trouvé l'achat, peut-être parce que le lien est tronqué ou a expiré. Un lien sans référence d'achat vous demande de coller le lien de votre e-mail d'achat, ou la référence elle-même. Si le prestataire de paiement ne répond pas à temps, la page dit que votre achat est en sécurité et propose « Réessayer ». C'est le cas dans les neuf langues. La page de l'Analyse Complète ne change pas."
+    },
+    "draftsForAJobReopenWithoutBeingWrittenAgain": {
+      "title": "Les brouillons pour une offre se rouvrent sans être réécrits",
+      "description": "Dans la fenêtre « Préparez votre candidature » du tableau d'offres, une lettre de motivation, un CV adapté ou un ensemble de réponses de candidature que vous avez déjà rédigé pour une offre se rouvre désormais sans être réécrit : rouvrir une lettre de motivation ou un CV adapté ne consomme donc pas une seconde fois votre quota quotidien de rédaction. Cela fonctionne tant que la page reste ouverte, pour vos 20 offres les plus récentes, et tant que votre CV, l'offre et votre langue ne changent pas ; un rechargement ou un nouvel onglet repart de zéro. « L'adapter à nouveau » et « Rédiger à nouveau » en rédigent un nouveau. Quand le rédacteur de lettres ou de CV est occupé pour tout le monde, il le dit désormais et précise que ce n'est pas votre propre limite."
+    },
+    "theInterviewCoachKeepsEachAnswerApart": {
+      "title": "Le Coach d'entretien garde chaque réponse à part, et l'adaptation demande un vrai poste",
+      "description": "Dans le Coach d'entretien du rapport gratuit, chaque question garde désormais sa propre réponse. Avant, une réponse tapée pour une question apparaissait dans les champs des autres questions et pouvait être envoyée comme leur réponse, et « Réessayer » sur une question les effaçait toutes. Le rapport ne propose en outre un CV adapté que lorsqu'il a un intitulé de poste ou une offre auxquels l'adapter. Avant, il pouvait inventer un intitulé de poste à partir de votre secteur."
+    },
+    "searchAndReportEmailsInYourLanguage": {
+      "title": "Les e-mails de recherche et de rapport arrivent dans la langue que vous utilisiez",
+      "description": "Les e-mails de vos recherches enregistrées, l'e-mail du rapport gratuit et les e-mails du plan de correction qui le suivent arrivent désormais dans la langue que vous utilisiez sur le site. Pour les e-mails du plan de correction, c'est la langue de la page où vous avez appuyé sur le bouton qui les a lancés. Avant, ils étaient tous en anglais. Une recherche enregistrée avant cette mise à jour continue d'envoyer des e-mails en anglais jusqu'à ce que vous l'ouvriez depuis vos recherches enregistrées, activiez ou désactiviez son e-mail, changiez son seuil d'alerte ou réactiviez ses alertes depuis le tableau d'offres. Les constats de votre scan restent dans la langue dans laquelle le scan les a rédigés."
+    },
+    "yourAccountSaysWhichSearchEmailsComeDaily": {
+      "title": "Votre page de compte dit quels e-mails de recherche arrivent chaque jour",
+      "description": "Votre page de compte indique désormais, à côté de chaque recherche enregistrée qu'elle liste (les 20 plus récentes), si cette recherche vous écrit chaque jour ou chaque semaine : les alertes et les entreprises suivies chaque jour, les autres recherches chaque semaine. Avant, elle les disait toutes hebdomadaires. La page à laquelle mène l'e-mail de confirmation du pouls du marché dit désormais ce que le pouls envoie : les mots-clés essentiels de votre domaine, tirés de notre guide de mots-clés sélectionnés, et non un décompte des offres de ce mois."
+    },
+    "theOneClickApplyFilterIsGone": {
+      "title": "Le filtre « Candidature en un clic » a disparu d'Explorer",
+      "description": "Le décompte du filtre ne couvrait que les offres de quatre systèmes de recrutement, alors que depuis le 31 octobre le tableau qu'il ouvrait listait déjà toutes les offres. Les recherches enregistrées qui portaient encore cette restriction comptent et envoient désormais par e-mail les nouvelles offres de tout le tableau ; en ouvrir une affiche tout le tableau depuis le 31 octobre."
+    },
+    "theBoardChecksEveryMinuteForAStoppedRefresh": {
+      "title": "Le tableau d'offres vérifie chaque minute si son actualisation s'est arrêtée",
+      "description": "Le tableau d'offres vérifie désormais chaque minute si l'actualisation de ses offres s'est arrêtée, et demande un redémarrage dès qu'elle est restée silencieuse quelques minutes. Nous ne l'avons pas encore vu redémarrer une actualisation arrêtée."
     }
   }
 }

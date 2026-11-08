@@ -1511,6 +1511,42 @@
     "theFreeReportsNumbersNowAgree": {
       "title": "Zahlen und Beschriftungen im kostenlosen Bericht stimmen jetzt überein",
       "description": "Die prognostizierte Punktzahl im Bericht zeigt jetzt überall dieselbe Zahl und liegt nie über 95. Farbe, Beschriftung, Banner und Teilen-Karte der Punktzahl stimmen jetzt bei jeder Punktzahl überein. Die Karte dazu, wie Bewerbungssysteme deinen Lebenslauf lesen, sagt nicht mehr, dass dein Layout besteht, wenn sie das nicht prüfen konnte: Sie sagt „Nicht geprüft“. Wenn dein Feedback oder deine Antwort zu einer Bewerbung nicht gespeichert werden konnte, sagt der Bericht das und bedankt sich nicht. Ein Lebenslauf mit mehr als 50.000 Zeichen wird vor dem Scan abgelehnt, und die Meldung nennt seine Länge. Wenn ein Bericht keine Umformulierung hat, die der Builder übernehmen kann, sagt er das, und der Builder lässt deine Aufzählungspunkte unverändert. Wenn du deinen Entwurf im Builder behältst, werden die Korrekturen aus dem Bericht auf die Aufzählungspunkte angewendet, die dein Entwurf schon hat, die Seite sagt, wie viele gegriffen haben, und der Rest bleibt in deinem Bericht. Umformulierungen für Lebensläufe auf Hindi und Russisch landen jetzt beim richtigen Aufzählungspunkt. Auf dem Handy läuft die Punktekarte nicht mehr über den Bildschirmrand hinaus. Das Abschnittsmenü des Berichts bleibt unter der Kopfzeile der Website sichtbar. Der Abschnitt „Branchen- & Rollen-Keywords“ gibt dir nicht mehr die Keywords eines anderen Berufs, nur weil einzelne Buchstaben in deinem Titel passen. Der Abschnitt „Personalisierte Tipps“ kann das noch tun. Die Ergebnisliste, die Karte zu den Bewerbungssystemen und die Zeile mit der prognostizierten Punktzahl erscheinen jetzt in deiner Sprache, ebenso die Überschriften, Schaltflächen und Beschriftungen des Lebenslauf-Builders. Andere Teile des Berichts, etwa die Branchenbezeichnungen, sind noch auf Englisch."
+    },
+    "ourFontsComeFromOurOwnSite": {
+      "title": "Unsere Schriften kommen jetzt von unserer eigenen Website",
+      "description": "Unsere Seiten laden ihre Schriften nicht mehr von Google. Die Schriften kommen jetzt von unserer eigenen Website, sodass beim Öffnen einer Seite nichts bei den Schriftservern von Google angefragt wird."
+    },
+    "aSharedLinkCanNoLongerDeleteAPaidAnalysis": {
+      "title": "Ein geteilter Link kann eine bezahlte Analyse nicht mehr löschen",
+      "description": "Bisher konnte jeder, der den geteilten Link zu einer bezahlten Analyse hatte, sie löschen. Jetzt öffnet der geteilte Link die Analyse weiterhin, kann sie aber nicht löschen. Zum Löschen braucht es auch den Kauf, mit dem die Analyse gekauft wurde; es geht also nur über den eigenen Kauflink des Käufers (die Seite, die sich nach der Zahlung geöffnet hat, den Link in der Kauf-E-Mail oder die Bestellung im Konto) oder per Nachricht an uns von der Adresse, mit der bezahlt wurde. Die geteilte Seite sagt das."
+    },
+    "aPurchaseLinkThatDoesNotOpenSaysWhy": {
+      "title": "Ein Kauflink, der sich nicht öffnet, sagt jetzt meist, warum",
+      "description": "Wenn sich ein Link zu einem Kauf auf der Produktseite nicht öffnet (einzeln gekaufte Tools und Scan-Pakete sowie Tools, die ein Pro-Tarif enthält), sagt die Seite jetzt meist, warum. Sie kann sagen, dass die Zahlung noch nicht abgeschlossen ist, dass der Kauf erstattet wurde oder dass in der letzten Stunde zu viele Abfragen von deiner Verbindung kamen. Oder sie sagt, dass wir den Kauf nicht finden konnten, vielleicht weil der Link abgeschnitten oder abgelaufen ist. Ein Link ohne Kaufreferenz bittet dich, den Link aus deiner Kauf-E-Mail oder die Referenz selbst einzufügen. Wenn der Zahlungsanbieter nicht rechtzeitig antwortet, sagt die Seite, dass dein Kauf sicher ist, und bietet „Erneut versuchen“ an. Das gibt es in allen neun Sprachen. Die Seite der Vollanalyse ist unverändert."
+    },
+    "draftsForAJobReopenWithoutBeingWrittenAgain": {
+      "title": "Entwürfe für eine Stelle öffnen sich wieder, ohne neu geschrieben zu werden",
+      "description": "Im Fenster „Bereite deine Bewerbung vor“ des Job-Boards öffnet sich ein Anschreiben, ein zugeschnittener Lebenslauf oder ein Satz Bewerbungsantworten, den du für eine Stelle schon entworfen hast, jetzt wieder, ohne neu geschrieben zu werden. Ein erneut geöffnetes Anschreiben oder ein zugeschnittener Lebenslauf verbraucht dein tägliches Schreibkontingent also kein zweites Mal. Das gilt, solange die Seite offen bleibt, für deine 20 zuletzt genutzten Stellen und solange dein Lebenslauf, die Anzeige und deine Sprache gleich bleiben; ein Neuladen oder ein neuer Tab beginnt von vorn. „Erneut zuschneiden“ und „Neu entwerfen“ schreiben einen neuen Entwurf. Wenn der Anschreiben- oder Lebenslauf-Schreiber für alle ausgelastet ist, sagt er das jetzt und sagt, dass es nicht dein eigenes Limit ist."
+    },
+    "theInterviewCoachKeepsEachAnswerApart": {
+      "title": "Der Interview-Coach hält jede Antwort getrennt, und Zuschneiden braucht eine echte Stelle",
+      "description": "Im Interview-Coach des kostenlosen Berichts behält jetzt jede Frage ihre eigene Antwort. Bisher erschien eine Antwort, die du für eine Frage getippt hattest, in den Feldern der anderen Fragen und konnte als deren Antwort gesendet werden, und „Erneut versuchen“ bei einer Frage leerte alle. Der Bericht bietet außerdem einen zugeschnittenen Lebenslauf nur noch an, wenn er einen Jobtitel oder eine Anzeige hat, auf die er zuschneiden kann. Bisher konnte er aus deiner Branche einen Jobtitel erfinden."
+    },
+    "searchAndReportEmailsInYourLanguage": {
+      "title": "Such- und Berichts-E-Mails kommen in der Sprache, die du genutzt hast",
+      "description": "E-Mails zu deinen gespeicherten Suchen, die E-Mail mit dem kostenlosen Bericht und die Fix-Plan-E-Mails danach kommen jetzt in der Sprache, die du auf der Website genutzt hast. Bei den Fix-Plan-E-Mails ist das die Sprache der Seite, auf der du den Knopf gedrückt hast, der sie gestartet hat. Bisher kamen sie alle auf Englisch. Eine Suche, die vor diesem Update gespeichert wurde, verschickt weiter englische E-Mails, bis du sie aus deinen gespeicherten Suchen öffnest, ihre E-Mail ein- oder ausschaltest, ihre Benachrichtigungsschwelle änderst oder auf dem Job-Board wieder Benachrichtigungen für sie einschaltest. Die Ergebnisse deines Scans selbst bleiben in der Sprache, in der der Scan sie geschrieben hat."
+    },
+    "yourAccountSaysWhichSearchEmailsComeDaily": {
+      "title": "Deine Kontoseite sagt, welche Such-E-Mails täglich kommen",
+      "description": "Deine Kontoseite sagt jetzt neben jeder gespeicherten Suche, die sie auflistet (die 20 neuesten), ob diese Suche dir täglich oder wöchentlich mailt: Alerts und beobachtete Unternehmen täglich, andere Suchen wöchentlich. Bisher nannte sie jede wöchentlich. Die Seite, zu der du über die Bestätigungs-E-Mail des Markt-Pulses kommst, sagt jetzt, was der Puls schickt: die zentralen Keywords für deinen Bereich aus unserem kuratierten Keyword-Leitfaden, keine Zählung der Stellenanzeigen dieses Monats."
+    },
+    "theOneClickApplyFilterIsGone": {
+      "title": "Der Filter „Bewerbung mit einem Klick“ ist aus Entdecken verschwunden",
+      "description": "Die Zahl, die der Filter zeigte, umfasste nur Stellen auf vier Bewerbungssystemen, obwohl das Board, das er öffnete, seit dem 31. Oktober schon jede Stelle listete. Gespeicherte Suchen, die diese Einschränkung noch trugen, zählen und mailen neue Stellen jetzt aus dem ganzen Board; beim Öffnen zeigt eine solche Suche schon seit dem 31. Oktober das ganze Board."
+    },
+    "theBoardChecksEveryMinuteForAStoppedRefresh": {
+      "title": "Das Job-Board prüft jede Minute, ob seine Aktualisierung steht",
+      "description": "Das Job-Board prüft jetzt jede Minute, ob die Aktualisierung seiner Stellen angehalten hat, und fordert einen Neustart an, sobald sie einige Minuten still war. Dass es eine angehaltene Aktualisierung neu gestartet hat, haben wir noch nicht gesehen."
     }
   }
 }

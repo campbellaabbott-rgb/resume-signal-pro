@@ -16,6 +16,12 @@
  * only when the page really lists 30 entries that are all at least as new, so a
  * stale bake and a lost title still FAIL. Section 52c judges the seven themselves.
  * Sections run here in bash against a fake curl, as section 52b's test does.
+ *
+ * NEWER ENTRIES SIT ABOVE THESE (the changelog of 6 and 8 November). The seven
+ * are found by their first key, not by being the newest, and the page they
+ * published is rebuilt from that key: the cases that need some of section 52's
+ * titles still listed read that page, and the tree's own newest 30, where later
+ * batches have pushed all twelve off, is judged as the healthy case it is.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -43,12 +49,16 @@ const NAMES = "searchResultsCarryTheEmployersNewNames";
 const SEARCH = "searchesThatReadWhatYouTyped";
 const EN = shard("en");
 const texts = () => LOCALES.flatMap((l) => IDS.map((id) => ({ where: `${l} ${id}`, l, id, text: `${shard(l)[id].title} ${shard(l)[id].description}` })));
+/** Where the seven start in changelog.ts: newer batches sit above them. */
+const AT = changelog.findIndex((e) => e.id === IDS[0]);
 
 describe("the seven entries", () => {
-  it("sit on top of the changelog, in this order, dated the day the functions went live", () => {
-    expect(changelog.slice(0, 7).map((e) => e.id)).toEqual(IDS);
-    for (const e of changelog.slice(0, 7)) expect(e.date, e.id).toBe("2026-11-02");
-    expect(changelog[7].date <= "2026-11-02").toBe(true);
+  it("sit together in this order, dated the day the functions went live, with only newer entries above them", () => {
+    expect(AT, `${IDS[0]} is missing from changelog.ts`).toBeGreaterThanOrEqual(0);
+    expect(changelog.slice(AT, AT + 7).map((e) => e.id)).toEqual(IDS);
+    for (const e of changelog.slice(AT, AT + 7)) expect(e.date, e.id).toBe("2026-11-02");
+    for (const e of changelog.slice(0, AT)) expect(e.date > "2026-11-02", `${e.id} (${e.date}) sits above the 2 November entries but is not newer`).toBe(true);
+    expect(changelog[AT + 7].date <= "2026-11-02").toBe(true);
   });
 
   it("carry text in all nine languages, with no placeholder, and no translation is the English copied", () => {
@@ -432,7 +442,9 @@ const rowsOf = (from: number, to: number) => changelog.slice(from, to).map((e) =
 const HEALTHY = crawler(rowsOf(0, 30));
 const chunkOf = (entries: Record<string, unknown>) => `const e=${JSON.stringify({ changelogEntries: entries })};export{e as default};`;
 const PUBLISHED = chunkOf(TREE_EN);
-const UNPUBLISHED = chunkOf(Object.fromEntries(Object.entries(TREE_EN).filter(([k]) => !IDS.includes(k))));
+/** The strings before the publish: neither the seven nor anything newer than them. */
+const NOT_YET = new Set(changelog.slice(0, AT + IDS.length).map((e) => e.id));
+const UNPUBLISHED = chunkOf(Object.fromEntries(Object.entries(TREE_EN).filter(([k]) => !NOT_YET.has(k))));
 const ENTRY = `const lazy=[()=>import("./rb-en_all-ALL00001.js"),()=>import("./en-CHLG0001.js"),()=>import("./en-GB-GBCL0001.js")];export{lazy as a};`;
 
 const dirs: string[] = [];
@@ -484,16 +496,28 @@ describe("section 52 once these entries push its titles past the newest 30", () 
   });
 
   it("the healthy site prints no FAIL: the titles still listed pass as listed, the rest as past the newest 30", () => {
-    const { lines, calls } = run(S52);
+    // The page this batch published, when the seven were the newest entries.
+    const published = crawler(rowsOf(AT, AT + 30));
+    const { lines, calls } = run(S52, { changelog: published });
     expect(fails(lines), show(lines)).toEqual([]);
-    const on = S52_TITLES.filter((t) => HEALTHY.includes(t.title));
-    const past = S52_TITLES.filter((t) => !HEALTHY.includes(t.title));
+    const on = S52_TITLES.filter((t) => published.includes(t.title));
+    const past = S52_TITLES.filter((t) => !published.includes(t.title));
     expect(on.length, "some titles must still be on the page").toBeGreaterThan(0);
     expect(past.length, "this batch must push some off, or this case proves nothing").toBeGreaterThan(0);
     for (const t of on) expect(lines, show(lines)).toContain(`PASS  /changelog serves crawlers "${t.title}"`);
     for (const t of past) expect(lines, show(lines)).toContain(`PASS  "${t.title}" is past the newest 30 entries the crawler page lists, and the English changelog strings the browser loads carry it`);
     expect(calls.some((c) => c.includes("en-GB-")), "the section read the British chunk").toBe(false);
     for (const c of calls) expect(c, c).toMatch(/^GET /);
+  });
+
+  it("the tree's own newest 30, with later batches on top, prints no FAIL either", () => {
+    const { lines } = run(S52);
+    expect(fails(lines), show(lines)).toEqual([]);
+    for (const t of S52_TITLES) {
+      expect(lines, show(lines)).toContain(HEALTHY.includes(t.title)
+        ? `PASS  /changelog serves crawlers "${t.title}"`
+        : `PASS  "${t.title}" is past the newest 30 entries the crawler page lists, and the English changelog strings the browser loads carry it`);
+    }
   });
 
   it("a bake from before these titles FAILs each one: thirty older entries pushed nothing off", () => {
@@ -505,7 +529,7 @@ describe("section 52 once these entries push its titles past the newest 30", () 
 
   it("a title lost from the middle of the page FAILs: entries older than it are still listed", () => {
     const lost = "What a company page says when it lists no roles";
-    const { lines } = run(S52, { changelog: crawler(rowsOf(0, 31).filter((r) => r.title !== lost)) });
+    const { lines } = run(S52, { changelog: crawler(rowsOf(AT, AT + 31).filter((r) => r.title !== lost)) });
     expect(lines, show(lines)).toContain(`FAIL  the English changelog strings the browser loads carry "${lost}", but the crawler copy of /changelog does not (the prerender did not rebuild)`);
   });
 
@@ -535,7 +559,7 @@ describe("section 52c judges the seven entries", () => {
   });
 
   it("before the publish every line is INFO, and only GETs are sent", () => {
-    const { lines, calls } = run(S52C, { changelog: crawler(rowsOf(7, 37)), chunk: UNPUBLISHED });
+    const { lines, calls } = run(S52C, { changelog: crawler(rowsOf(AT + 7, AT + 37)), chunk: UNPUBLISHED });
     expect(fails(lines), show(lines)).toEqual([]);
     expect(lines.some((l) => /^INFO .*does not carry the 2 November entries yet/.test(l)), show(lines)).toBe(true);
     expect(lines.filter((l) => l.startsWith("PASS")), show(lines)).toEqual([]);
