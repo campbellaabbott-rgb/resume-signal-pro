@@ -38,7 +38,11 @@ import { BOOST_MAX_TOKENS, decideStructure, readBoostReply, type BoostReply } fr
 // from about five minutes to 125 seconds, inside the platform's 150. Body,
 // models, reply and the 402/429/502 answers are unchanged. Nothing of main's
 // past f8d72a9b, the build the 2026-10-31 deploy put live, rides along.
-const FN_BUILD = "generate-freelance-boost.2026-11-03.1";
+// 2026-11-10.1 (hotfix lane pro, sweep S14): no change of its own; the
+// _shared/pro.ts it bundles refreshes a cache row that names a Stripe
+// customer by that customer instead of clearing it when an address
+// search finds nothing, and gained the by-customer and by-account readers.
+const FN_BUILD = "generate-freelance-boost.2026-11-10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

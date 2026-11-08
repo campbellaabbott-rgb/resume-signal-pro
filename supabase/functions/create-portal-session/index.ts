@@ -13,6 +13,7 @@ import { checkProByEmail } from "../_shared/pro.ts";
 import { provenMailbox } from "../_shared/mailbox-proof.ts";
 import { checkoutOrigin } from "../_shared/checkout-policy.ts";
 import { refusedCallerBody, websiteTokenRefusal } from "../_shared/checkout-buyer.ts";
+import { portalCustomerOf } from "../_shared/pro-answer.ts";
 
 // Provable from outside without an account: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -27,7 +28,13 @@ import { refusedCallerBody, websiteTokenRefusal } from "../_shared/checkout-buye
 // another audience, is refused with a 401 and never opens the billing
 // portal (critical-path CP-D, S9-001).
 // 2026-11-03.1 (S9-001, fix/audit-rest-abuse): _shared/checkout-buyer.ts refuses a connected app's token whatever role it names, so one the access-token hook gave role mcp_client never opens the billing portal.
-const FN_BUILD = "create-portal-session.2026-11-03.1";
+// 2026-11-10.1 (hotfix lane pro, sweep S14: M-S14-002): the customer a row
+// bound to this account names is read before the Stripe lookup refreshes
+// anything, and preferred whenever the address holds no live or owing plan,
+// so a member whose billing email changed in Stripe's portal still reaches
+// billing; a plan found only through the customer its row names is opened
+// for the account it is bound to, never on a proof of the old mailbox.
+const FN_BUILD = "create-portal-session.2026-11-10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -116,20 +123,22 @@ serve(async (req) => {
       });
     }
 
-    const status = await checkProByEmail(stripe, supabase, email);
+    const uid = data?.user?.id ?? "";
     // THE ACCOUNT'S OWN PLAN, WHEN ITS ADDRESS CHANGED (S12-053). Stripe is
     // searched by the account's CURRENT address, so after an address change a
     // subscriber's plan was not found and the portal answered 404 while the
     // plan kept charging. A cache row bound to this account names its
     // customer; that binding is the same proof the check below accepts.
-    if (!status.stripeCustomerId) {
-      const boundCustomer = await boundCustomerOf(supabase, data?.user?.id ?? "");
-      if (boundCustomer) {
-        status.stripeCustomerId = boundCustomer;
-        status.boundUserId = data?.user?.id ?? null;
-      }
-    }
-    if (!status.stripeCustomerId) {
+    // READ BEFORE THE LOOKUP REFRESHES ANYTHING (S14, M-S14-002): the lookup
+    // used to null the row's customer when the address search found nothing
+    // (a billing email changed in Stripe's portal), so this read then found
+    // no customer and the member was told "No subscription found".
+    const boundCustomer = await boundCustomerOf(supabase, uid);
+    const found = await checkProByEmail(stripe, supabase, email);
+    // The address's own live or owing plan is opened as before; otherwise the
+    // plan this account is bound to; otherwise whatever the lookup found.
+    const { customerId, viaBinding, mailboxCounts } = portalCustomerOf(found, boundCustomer);
+    if (!customerId) {
       return new Response(JSON.stringify({ error: "No subscription found for this account" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -151,14 +160,18 @@ serve(async (req) => {
     // a subscriber was offered "Manage subscription" and then refused. A Pro
     // or agent row bound to THIS account whose stripe_customer_id is the
     // customer the portal would open is the proof the plan gates accept.
-    const uid = data?.user?.id ?? "";
-    const bound = !!uid && (status.boundUserId === uid || await rowBindsCustomer(supabase, uid, status.stripeCustomerId));
-    const proven = bound || !!(await provenMailbox(data?.user, jwt, {
+    //
+    // A PLAN THE ADDRESS DID NOT FIND IS NOT OPENED ON A PROOF OF THE ADDRESS
+    // (S14): a customer found only because the address's cache row names it
+    // no longer carries that address in Stripe, so only the binding counts.
+    const foundIt = found.stripeCustomerId === customerId;
+    const bound = !!uid && (viaBinding || (foundIt && found.boundUserId === uid) || await rowBindsCustomer(supabase, uid, customerId));
+    const proven = bound || (mailboxCounts && !!(await provenMailbox(data?.user, jwt, {
       db: supabase,
       confirmedSince: Deno.env.get("EMAIL_CONFIRMED_SINCE") ?? null,
       supabaseUrl: Deno.env.get("SUPABASE_URL") ?? "",
       anonKey: Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-    }));
+    })));
     if (!proven) {
       const loginUrl = Deno.env.get("STRIPE_PORTAL_LOGIN_URL") ?? "";
       if (/^https:\/\/billing\.stripe\.com\//.test(loginUrl)) {
@@ -175,7 +188,7 @@ serve(async (req) => {
     // Only our own hosts get the subscriber back (S8-060).
     const origin = checkoutOrigin(req.headers.get("origin"), (k) => Deno.env.get(k));
     const portal = await stripe.billingPortal.sessions.create({
-      customer: status.stripeCustomerId,
+      customer: customerId,
       // The marker tells the Pro card to ask Stripe again (check-subscription
       // fresh), so a cancel made in the portal shows at once (S12-076).
       return_url: `${origin}/account?portal=return`,
