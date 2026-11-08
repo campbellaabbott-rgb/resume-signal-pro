@@ -30,7 +30,7 @@ import { AGENT_PRODUCTS_ON_SALE, APPLY_AGENT_ON } from "../../supabase/functions
 import { CHECKOUT_LANGUAGES } from "../../supabase/functions/_shared/checkout-policy";
 import * as retired from "../../supabase/functions/_shared/apply-agent-retired";
 import { FORM_READER_VENDORS, PUBLIC_API_FORM_VENDORS } from "../../supabase/functions/_shared/application-form";
-import { MCP_FORM_VENDORS, MCP_FORM_VENDORS_ON_CHATGPT, formVendorPhrase } from "../config/mcp-tools";
+import { MCP_FORM_VENDORS, MCP_FORM_VENDORS_AFTER_DEPLOY, MCP_FORM_VENDORS_ON_CHATGPT, formVendorPhrase } from "../config/mcp-tools";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -260,7 +260,10 @@ describe("the retired line and llms.txt say what ChatGPT reads", () => {
 
   it("the names come from one list each, held equal to the server's and the page's", () => {
     expect(mirrors.RETIRED_FORM_VENDORS).toEqual(MCP_FORM_VENDORS.map((v) => v.label));
-    expect([...(mirrors.RETIRED_FORM_VENDORS ?? [])].map((v) => v.toLowerCase()).sort()).toEqual([...FORM_READER_VENDORS].sort());
+    // The retired line names the forms read before agent-mcp 2026-11-08.1; the
+    // five connect W5 adds join it (and the page) after that deploy verifies,
+    // so the line understates and never overstates meanwhile.
+    expect([...(mirrors.RETIRED_FORM_VENDORS ?? []), ...MCP_FORM_VENDORS_AFTER_DEPLOY.map((v) => v.label)].map((v) => v.toLowerCase()).sort()).toEqual([...FORM_READER_VENDORS].sort());
     expect(mirrors.RETIRED_FORM_VENDORS_ON_CHATGPT).toEqual(MCP_FORM_VENDORS.filter((v) => MCP_FORM_VENDORS_ON_CHATGPT.includes(v.key)).map((v) => v.label));
     expect([...(mirrors.RETIRED_FORM_VENDORS_ON_CHATGPT ?? [])].map((v) => v.toLowerCase()).sort()).toEqual([...PUBLIC_API_FORM_VENDORS].sort());
   });

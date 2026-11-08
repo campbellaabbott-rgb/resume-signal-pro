@@ -47,6 +47,24 @@ export const MCP_FORM_VENDORS: ReadonlyArray<{ key: string; label: string }> = [
 ];
 
 /**
+ * The form vendors the server reads from agent-mcp 2026-11-08.1 on (connect
+ * W5, owner decision 2026-11-07: Claude, Claude Code, keys and /v1; ChatGPT
+ * stays Greenhouse and Recruitee). Rendered NOWHERE yet: merging publishes
+ * the frontend before the functions deploy, and until that deploy the server
+ * reads only MCP_FORM_VENDORS. Once the deploy verifies, the next frontend
+ * publish moves these into MCP_FORM_VENDORS (with the /agents phrase,
+ * llms.txt and the retired line). Meanwhile a guard holds the two lists,
+ * together, equal to the server's FORM_READER_VENDORS.
+ */
+export const MCP_FORM_VENDORS_AFTER_DEPLOY: ReadonlyArray<{ key: string; label: string }> = [
+  { key: "paylocity", label: "Paylocity" },
+  { key: "workable", label: "Workable" },
+  { key: "teamtailor", label: "Teamtailor" },
+  { key: "lever", label: "Lever" },
+  { key: "bamboohr", label: "BambooHR" },
+];
+
+/**
  * The form vendors read inside ChatGPT: only the two with published public
  * APIs (owner decision R2; the server's PUBLIC_API_FORM_VENDORS, pinned by
  * the first-call guard).

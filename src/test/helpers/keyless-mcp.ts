@@ -36,6 +36,8 @@ export interface KeylessMcp {
   /** What job-board does with a call. */
   board: (body: Record<string, unknown>) => Response | Promise<Response>;
   call: (args: Record<string, unknown>, o?: { name?: string; meta?: Record<string, unknown>; address?: string; ua?: string }) => Promise<{ isError: boolean; text: string }>;
+  /** Any JSON-RPC method, answered by the shipped handler: the parsed response body. */
+  rpc: (method: string, params?: Record<string, unknown>, headers?: Record<string, string>) => Promise<Record<string, unknown>>;
 }
 
 export async function bootKeylessMcp(): Promise<KeylessMcp> {
@@ -47,6 +49,7 @@ export async function bootKeylessMcp(): Promise<KeylessMcp> {
     notifyOwner: () => new Response(JSON.stringify({ success: true, kind: "allowance" }), { status: 200 }),
     board: () => new Response(JSON.stringify({ jobs: [], total: 0, hasMore: false }), { status: 200 }),
     call: async () => ({ isError: false, text: "" }),
+    rpc: async () => ({}),
   };
   g.fetch = async (url: string, init: { body?: string } = {}) => {
     const u = String(url);
@@ -103,6 +106,14 @@ export async function bootKeylessMcp(): Promise<KeylessMcp> {
     }));
     const body = await res.json() as { result?: { isError?: boolean; content?: Array<{ text: string }> } };
     return { isError: body.result?.isError === true, text: body.result?.content?.[0]?.text ?? JSON.stringify(body) };
+  };
+  m.rpc = async (method, params = {}, headers = {}) => {
+    const res = await handler(new Request("https://harness.supabase.co/functions/v1/agent-mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json, text/event-stream", "x-forwarded-for": "203.0.113.7", ...headers },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    }));
+    return await res.json() as Record<string, unknown>;
   };
   return m;
 }

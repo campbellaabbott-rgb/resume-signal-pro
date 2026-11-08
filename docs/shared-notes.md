@@ -23,6 +23,14 @@ order. Both files parse to identical TypeScript token streams. The
 tally test fails on a pointer whose section is missing, on a section that names
 another file, and on a section nothing points to.
 
+Sections s34 to the last are the runs moved out of `supabase/functions/_shared/form-readers-extra.ts`,
+`supabase/functions/_shared/self-apply.ts` and `supabase/functions/_shared/application-form.ts` on
+2026-11-08 (connect W4 and W5): the five new form readers put job-board's upload tally over its
+4,450,000-byte ceiling, and these three files are read only by agent-mcp and public-api. Every
+multi-line run and every one-line comment of 120 bytes or more moved; shorter one-line comments stayed.
+Each file, printed by the TypeScript printer with comments removed, is identical before and after the
+move. The pointer keeps the run's first words.
+
 Number new sections after the highest one here; never reuse a number.
 
 ## s1
@@ -518,4 +526,610 @@ _shared/website-session.ts does (R1) and refuses a token that carries
 client_id or the hook's role mcp_client, and a signed-in token that names
 another audience, before the auth server is asked. The publishable key and
 anything that is not a signed-in user's token are judged exactly as before.
+```
+
+## s34
+
+`supabase/functions/_shared/form-readers-extra.ts`, MORE OF THE EMPLOYER'S FORM, READ WHERE ... Above: `import type { FormDocument, FormQuestion } from "./application-form.ts";`
+
+```text
+MORE OF THE EMPLOYER'S FORM, READ WHERE THE EMPLOYER PUBLISHED IT
+(connect-apply-2026-11-07, waves W4 and W5).
+
+application-form.ts reads five hiring systems' forms. This module holds the
+parsing for everything added since, so that vendor-questions.ts, which
+job-board imports, never changes for it:
+
+  W4  what the Breezy and Pinpoint pages already carried and the readers
+      dropped: Breezy's field config (is a CV or cover letter required),
+      Pinpoint's equality-monitoring block and its required processing
+      consent, and the Pinpoint host for a posting on the employer's own
+      domain (APPLY-1107-08, APPLY-1107-10);
+  W5  five more systems whose form a plain GET returns (APPLY-1107-01):
+        paylocity   recruiting.paylocity.com/Recruiting/Jobs/Apply/{id}: window.pageData
+        workable    apply.workable.com/api/v1/jobs/{shortcode}/form: JSON sections
+        teamtailor  {token}.teamtailor.com/jobs/{id}/applications/new: server-rendered form
+        lever       jobs.lever.co/{token}/{id}/apply: cards[...][baseTemplate] JSON
+        bamboohr    {token}.bamboohr.com/careers/{id}/detail: formFields JSON
+      Each recorded live on 2026-11-08 (src/test/fixtures/forms/).
+
+A PAYLOCITY SCREEN NEVER SAYS WHICH ANSWER PASSES. The screener payload
+carries isCorrect, isGraded and targetScore beside each answer. The parser
+reads each answer's title and nothing else, and a question the employer
+set to reject automatically carries only `screens: true`: that it screens is
+the person's information (owner decision 2026-11-07, APPLY-1107-01 (i)); the
+passing answer never leaves this file (rule 8: never suggest an answer
+chosen to get past a screen).
+
+Pure: strings in, plain objects out. The fetching, the host pinning and the
+cache live in application-form.ts.
+```
+
+## s35
+
+`supabase/functions/_shared/form-readers-extra.ts`, At most this many options are listed; a ... Above: `const MAX_OPTIONS = 50;`
+
+```text
+At most this many options are listed; a longer list (a country or state list) is a lookup, not a choice to weigh.
+```
+
+## s36
+
+`supabase/functions/_shared/form-readers-extra.ts`, Breezy's apply page carries the ... Above: `export function parseBreezyFormConfig(html: string): PageExtras {`
+
+```text
+Breezy's apply page carries the position's `application_form` settings
+("resume":"required", "cover_letter":"hidden", "work_history":"optional"):
+whether the CV and the cover letter are asked for, and which history
+sections the form shows. A setting of hidden or off is not on the form.
+```
+
+## s37
+
+`supabase/functions/_shared/form-readers-extra.ts`, Pinpoint's apply page renders its ... Above: `export function parsePinpointExtras(html: string): PageExtras {`
+
+```text
+Pinpoint's apply page renders its equality-monitoring questions as
+External::Jobs::Equalitymonitoring components (voluntary, never the AI's)
+and a processing consent as application[process_information]. Named in
+alsoOnForm so the person meets neither cold; the AI ticks neither.
+```
+
+## s38
+
+`supabase/functions/_shared/form-readers-extra.ts`, A Pinpoint posting on the employer's ... Above: `export function pinpointVendorPostingUrl(token: string, applyUrl: string): string | null {`
+
+```text
+A Pinpoint posting on the employer's own domain (careers.eastwestrail.co.uk)
+is served by Pinpoint at the tenant's own subdomain under the same path
+(APPLY-1107-08). The fetch stays on pinpointhq.com: the token must be one
+DNS label and the path a posting's, or there is no URL.
+```
+
+## s39
+
+`supabase/functions/_shared/form-readers-extra.ts`, Sections that repeat per entry (a job ... Above: `const PAYLOCITY_REPEATING = new Set(["workHistory", "educationHistory", "references"]);`
+
+```text
+Sections that repeat per entry (a job, a school, a reference): named with their fields, never listed as single questions.
+```
+
+## s40
+
+`supabase/functions/_shared/form-readers-extra.ts`, A Paylocity Apply page: the custom ... Above: `export function parsePaylocityForm(html: string): ParsedForm | null {`
+
+```text
+A Paylocity Apply page: the custom application's included sections and
+fields, then the screener. The repeating sections (work history,
+education, references) are named with their fields in alsoOnForm, so the
+person knows a reason for leaving is asked. A screening question set to
+reject automatically carries `screens: true` and never which answer passes.
+A page with no pageData (Paylocity's "Job Not Found") is no form.
+```
+
+## s41
+
+`supabase/functions/_shared/form-readers-extra.ts`, Workable's form endpoint: sections of ... Above: `export function parseWorkableForm(body: unknown): ParsedForm | null {`
+
+```text
+Workable's form endpoint: sections of fields. A field of type file is a
+document, a group (education, experience) repeats per entry and is named
+with its fields, a boolean is Yes or No, and a multiple-choice field lists
+its options' values.
+```
+
+## s42
+
+`supabase/functions/_shared/form-readers-extra.ts`, Teamtailor's /applications/new page ... Above: `export function parseTeamtailorForm(html: string): ParsedForm | null {`
+
+```text
+Teamtailor's /applications/new page server-renders each screening question
+as a block marked data-question-mandatory, its answer named
+candidate[answers_attributes][n][text|choice|boolean|...], then the
+locations, the person's details, the CV upload (its required flag on the
+upload element), a cover-letter box and the privacy statement accepted by
+submitting.
+```
+
+## s43
+
+`supabase/functions/_shared/form-readers-extra.ts`, The question's own words come before ... Above: `const head = block.slice(0, answer.index);`
+
+```text
+The question's own words come before its first answer control, and its
+options before the fieldset closes: the last block runs on into the
+locations and the person's details, whose labels are not this question's.
+```
+
+## s44
+
+`supabase/functions/_shared/form-readers-extra.ts`, Lever's /apply page carries each custom ... Above: `export function parseLeverForm(html: string): ParsedForm | null {`
+
+```text
+Lever's /apply page carries each custom question card as JSON in a hidden
+input named cards[uuid][baseTemplate]; the CV upload, the voluntary EEO
+survey and any consent sit around them in plain markup.
+```
+
+## s45
+
+`supabase/functions/_shared/form-readers-extra.ts`, BambooHR's /careers/{id}/detail JSON ... Above: `export function parseBambooForm(body: unknown): ParsedForm | null {`
+
+```text
+BambooHR's /careers/{id}/detail JSON: the standard fields the employer
+switched on (formFields), its own questions (customQuestions), and the
+voluntary EEO block when configured. A posting whose status is not Open is
+no form.
+```
+
+## s46
+
+`supabase/functions/_shared/self-apply.ts`, WHO ANSWERS EACH QUESTION WHEN A PERSON ... Above: `import {`
+
+```text
+WHO ANSWERS EACH QUESTION WHEN A PERSON APPLIES WITH THEIR OWN AI.
+
+apply_myself (agent-mcp) hands the employer's real form to the person's AI.
+This module decides, per question, who may write the answer -- and the rule
+is DEFAULT-DENY, because the classifier's own default is `draftable`: every
+label no rule catches lands there, and an adversarial review on 2026-10-11
+ran it over the corpus and found "Have you ever been terminated from a job?",
+"Why are you leaving your current role?", "Please list two professional
+references" and "explain any gaps" all marked draftable. Handing those to an
+AI as "draft this from the CV" invites an invented employment history in
+the person's name.
+
+So the AI drafts ONLY when all of these hold:
+  - the classifier calls the question draftable;
+  - the control is free text (a select, radio, checkbox, yes/no, date,
+    number, a question with options, or a type nobody recognises is the
+    person's to choose -- a model picking an option is a model stating a
+    fact);
+  - and the question is about WORK DONE (asksAboutWorkDone: a résumé prompt
+    naming the work, asking nothing of the person's own status), or it is
+    one of a short list of motivation questions (why this role or employer,
+    cover-letter text, "anything else you'd like us to know") that asks
+    nothing of the person's status either;
+  - and it is ONE ask: no word about leaving a job anywhere in it, and every
+    sentence after the first a plain instruction ("Tell us in a few
+    sentences.") rather than a second question or anything factual. The
+    review of 9fe3bc0d found a motivation opening carrying "When could you
+    start?", "Have you previously applied to us?" and "interested in
+    leaving", and work-done prompts carrying a second ask, all drafted whole;
+  - and the employer's hint under the label, read as part of the question,
+    asks for nothing factual either (hintIsPlain, sweep S12-082).
+Everything else goes to the person: identity fields to "your_details",
+attachments to "your_documents", demographic questions (voluntary, never
+drafted), consents (the AI never ticks one), factual questions with their
+topic named, and every other draftable question with cvMayHelp so the
+person knows the CV may help them write it.
+
+The vendor's control type is read too (connect W4, APPLY-1107-07 and -11):
+a written or chosen answer whose label names a CV ("not listed on your
+resume?") is the person's to write, never a file to attach; a yes/no
+question that mentions email or a phone is the person's choice, never
+their contact details; and a consent, an SMS or marketing opt-in or a
+data-retention consent carries topic "consent" and never cvMayHelp, as a
+"how did you hear about us" question never does. Held to 563 real labels
+with their control types (src/test/fixtures/form-labels-2026-11.json),
+never worse than main on any.
+
+This is guidance the server gives the AI, written into each question; the
+person checks everything and presses submit. Nothing here sends anything.
+
+Pure: no I/O, no clock. Imported by agent-mcp; replayed over the real-label
+corpus by src/test/a-question-about-your-history-is-never-drafted-from-a-cv.
+```
+
+## s47
+
+`supabase/functions/_shared/self-apply.ts`, The motivation questions the AI may draft. Above: `export const MOTIVATION =`
+
+```text
+The motivation questions the AI may draft. Opening phrases only, so a
+sentence that merely mentions the role later on is not one.
+```
+
+## s48
+
+`supabase/functions/_shared/self-apply.ts`, The opening a motivation question ... Above: `const MOTIVATION_OPENING = /^\s*(?:(?:briefly|in\s+your\s+own\s+words)[,:]?\s+)?(?:please\s+)?(?:(?:tell|share\s+with...`
+
+```text
+The opening a motivation question shares with a status question ("why are you ..."), removed before OWN_STATUS reads the rest.
+```
+
+## s49
+
+`supabase/functions/_shared/self-apply.ts`, True when every sentence after the ... Above: `export function laterSentencesArePlain(label: string, motive = false): boolean {`
+
+```text
+True when every sentence after the first is plain: nothing the classifier
+keeps from a model, and every clause of it work (workClause; for a
+motivation question, motivation too). Fix 4: default-deny, clause by
+clause, so a fact in new words ("Include your results and your union
+membership.") is the person's; a later question is plain only as a
+follow-up about the work just told.
+```
+
+## s50
+
+`supabase/functions/_shared/self-apply.ts`, A second motivation question in a ... Above: `if (motive && MOTIVATION.test(s)) return isMotivationQuestion(s);`
+
+```text
+A second motivation question in a motivation label ("Why ALO? Why do you think you'd be a great fit?") is the same ask.
+```
+
+## s51
+
+`supabase/functions/_shared/self-apply.ts`, THE EMPLOYER'S HINT IS PART OF THE ... Above: `export function hintIsPlain(hint: string | undefined): boolean {`
+
+```text
+THE EMPLOYER'S HINT IS PART OF THE QUESTION (sweep S12-082). A form's note
+under a label ("Include your salary expectations and whether you need
+sponsorship") was never read: the label alone decided, and the packet then
+printed the hint under "Questions your AI may draft". A question is drafted
+only when its hint, every sentence of it, is a plain instruction or a
+question about the work: nothing a factual list keeps from a model, no
+factual topic, nothing about the person's own status, no word about leaving.
+Fix 3: the whole hint is read against every fact list at once
+(mentionsPersonFact), and a sentence offering a document ("Add a cover
+letter or anything else you'd like to share") is still plain. Fix 4: every
+other sentence must be a format instruction or work or motivation clause by
+clause (recheck 3: "Please also list any disciplinary actions.", "Include
+a manager who can vouch for your work.").
+```
+
+## s52
+
+`supabase/functions/_shared/self-apply.ts`, True when the label is one of the ... Above: `export function isMotivationQuestion(label: string): boolean {`
+
+```text
+True when the label is one of the motivation questions and asks nothing of
+the person's status, and no fact either: "Why do you want to work here, and
+how soon you could start" carries a second, factual ask (review of wave 4
+round 2), nor a later clause naming a topic (recheck). Fix 3: the whole
+label is read against every fact list at once, whatever joins its parts.
+Fix 4: every later clause must be work or motivation (workClause), so "...
+and bring the clients you manage today" is the person's; "Why Stripe?" and
+"What makes you a great fit?" are motivation questions.
+```
+
+## s53
+
+`supabase/functions/_shared/self-apply.ts`, A control the vendor named and that ... Above: `export function isKnownNonFileControl(type: string, options?: string[]): boolean {`
+
+```text
+A control the vendor named and that takes no file (APPLY-1107-07): a FILE
+word in its label ("companies not listed on your resume?") names a topic,
+not an upload. An unnamed or unrecognised type keeps the label's reading.
+```
+
+## s54
+
+`supabase/functions/_shared/self-apply.ts`, A consent in words the classifier's ... Above: `const OPT_IN =`
+
+```text
+A consent in words the classifier's consent lists do not carry
+(APPLY-1107-11): permission to text the person, a marketing or newsletter
+opt-in, a talent-pool or future-vacancies opt-in, and agreeing that the
+employer keeps the person's data. Only the person decides any of them.
+```
+
+## s55
+
+`supabase/functions/_shared/self-apply.ts`, A line break inside the label is a ... Above: `const type = String(q.type ?? "");`
+
+```text
+A line break inside the label is a sentence break for every test (recheck 3: "Describe your experience\nUnion member? Y/N").
+```
+
+## s56
+
+`supabase/functions/_shared/self-apply.ts`, The employer's hint is read with the ... Above: `const plainHint = hintIsPlain(q.hint);`
+
+```text
+The employer's hint is read with the label (S12-082): one that asks for
+a fact keeps the question with the person, and says what it is about.
+```
+
+## s57
+
+`supabase/functions/_shared/self-apply.ts`, "Do you understand you are required to ... Above: `if (isYesNoControl(type, q.options)) return { ...base, answeredBy: "you" };`
+
+```text
+"Do you understand you are required to check your email daily?" on a
+yes/no control is the person's choice, not their contact details.
+```
+
+## s58
+
+`supabase/functions/_shared/self-apply.ts`, A text box that wants the cover letter ... Above: `if (free && COVER_LETTER.test(label) && isMotivationQuestion(asked)) return { ...base, answeredBy: "you", cvMayHelp: ...`
+
+```text
+A text box that wants the cover letter itself is the person's, with
+the CV offered as help: the answers panel leaves every question the
+classifier files this way to the person, as origin/main does, and the
+two surfaces answer one question one way (wave 4 recheck of the
+descope). An upload slot is the person's document.
+```
+
+## s59
+
+`supabase/functions/_shared/self-apply.ts`, A label naming the résumé on a control ... Above: `if ((q.options && q.options.length) || CHOICE_TYPE.test(type)) return { ...base, answeredBy: "you" };`
+
+```text
+A label naming the résumé on a control with options ("I affirm that my
+application, resume ... are accurate": I agree) is the person's own
+declaration, which the AI never ticks; only an upload slot is a document.
+```
+
+## s60
+
+`supabase/functions/_shared/self-apply.ts`, A text box or other named control whose ... Above: `if (isKnownNonFileControl(type, q.options)) return free ? { ...base, answeredBy: "you", cvMayHelp: true, ...hintExtra...`
+
+```text
+A text box or other named control whose words name a CV or an upload
+("What companies have you worked for that are not listed on your
+resume?") is a question the person writes, never a file (APPLY-1107-07).
+```
+
+## s61
+
+`supabase/functions/_shared/self-apply.ts`, A sponsorship or country word in a ... Above: `return { ...base, answeredBy: "you", cvMayHelp: true, ...hintExtras, ...(sense ? { sponsorshipSense: sense } : {}), ....`
+
+```text
+A sponsorship or country word in a question the classifier let through
+is still the person's: say what it is about.
+```
+
+## s62
+
+`supabase/functions/_shared/self-apply.ts`, What the person sees of it: a challenge ... Above: `captcha: "visible" | "invisible" | "none" | null;`
+
+```text
+What the person sees of it: a challenge they solve, an invisible check with no puzzle, none, or null where unmeasured.
+```
+
+## s63
+
+`supabase/functions/_shared/self-apply.ts`, Where the vendor table ... Above: `const MEASURED_ROUTES = new Map<string, Measured>([`
+
+```text
+Where the vendor table (apply-automation.ts FACTS, which also drives the
+sendable list and job-board's status, so it is not edited here) is silent
+or wrong about what a PERSON meets, measured with plain GETs. A Map, never
+an object index (the prototype lesson recorded in apply-automation.ts).
+
+What each entry rests on:
+  icims       ?mode=apply lands on a candidate login before the form on 4 of
+              4 tenants (H-E-B, URBN, Prime Healthcare, UHS), 2026-11-07.
+  ukg         OpportunityApply redirects to signin-us.ultipro.com before the
+              form, 2026-11-07; whether a CAPTCHA follows the sign-in is not
+              measured.
+  paylocity   the Apply page loads with no login and no CAPTCHA script on 6
+              of 6 postings (2026-11-07) and 4 of 4 (2026-11-08).
+  greenhouse  94% load invisible reCAPTCHA Enterprise: silent scoring, never
+              a puzzle (FACTS' own note).
+```
+
+## s64
+
+`supabase/functions/_shared/self-apply.ts`, The route a person meets on this hiring ... Above: `export function selfApplyRoute(vendor: string): SelfApplyRoute {`
+
+```text
+The route a person meets on this hiring system: the measured exceptions
+above, else the vendor table. A system nobody measured answers null, never
+"no account, no CAPTCHA" (S12-174). One function for the connector and /v1.
+```
+
+## s65
+
+`supabase/functions/_shared/self-apply.ts`, A sentence of equal-opportunity, legal ... Above: `export const BOILERPLATE_SENTENCE = new RegExp(`
+
+```text
+A sentence of equal-opportunity, legal, benefits or recruiting-process
+boilerplate. Terms the dictionary finds ONLY in such sentences are not what
+the job asks for: handed to the drafting AI as "terms the posting uses",
+an EEO paragraph read as a requirement (a Workday posting printed "veteran,
+color"; a Twilio one "ordinance"). Whole sentences are judged, never words,
+so a recruiter's "recruiting" or a paint lab's "color" in the duties stays.
+```
+
+## s66
+
+`supabase/functions/_shared/self-apply.ts`, The skills and subject terms a posting ... Above: `export function postingTermsOf(text: string, max = 30): string[] {`
+
+```text
+The skills and subject terms a posting uses (the fit scorer's dictionary,
+with no CV beside it, so every recognised term is "missing"), read from its
+text without the boilerplate. Not the form's questions.
+```
+
+## s67
+
+`supabase/functions/_shared/application-form.ts`, AN EMPLOYER'S REAL APPLICATION FORM ... Above: `import { cleanQuestionLabel } from "./application-questions.ts";`
+
+```text
+AN EMPLOYER'S REAL APPLICATION FORM, READ FROM WHERE THE EMPLOYER PUBLISHED IT.
+
+The apply_myself tool (agent-mcp) hands a person's own AI the form the
+employer will actually show them, so the AI can ask the person every factual
+question and draft only the open-ended ones. Ten hiring systems publish the
+form somewhere a server can read it:
+
+  greenhouse  the public board API, ?questions=true (an EU tenant on its own host)
+  recruitee   the public offers API: open_questions plus the document config
+  ashby       the public GraphQL the hosted job page itself calls
+  breezy      the /apply page, which server-renders the questionnaire as JSON,
+              and the position's field config (is a CV asked for)
+  pinpoint    the /applications/new page, one react-on-rails script per
+              question, on the tenant's pinpointhq.com host even when the
+              posting lives on the employer's own domain
+  paylocity, workable, teamtailor, lever, bamboohr  (connect W5, 2026-11-08):
+              parsed in form-readers-extra.ts, each fetch pinned to the
+              vendor's own host
+
+Every other system (Workday, Oracle, iCIMS, UKG and the rest, whose form
+sits behind an employer account or is built in the browser) has no reader,
+and the answer says so rather than guessing a form.
+
+WHAT THIS MODULE IS NOT ALLOWED TO DO.
+  - Import job-board's files. Its source list alone is megabytes; a posting's
+    vendor, tenant and apply URL come from the posting row the caller read
+    (job_board_postings), never from a list of sources.
+  - Fetch a host the posting does not name. The Recruitee tenant becomes a
+    subdomain and the Breezy and Pinpoint apply pages are the posting's own
+    URL, so each is checked against the vendor's domain first: a row whose
+    tenant or URL does not look like the vendor's is read as no form, never
+    fetched.
+  - Invent. A payload that does not parse, or parses to nothing, is "no form
+    could be read" -- never an empty form, which would tell a person the
+    employer asks nothing. A Breezy or Pinpoint apply page that answered
+    but carried no screening questions is still no form, marked pageRead:
+    the page was there, it showed nothing beyond the person's details and
+    CV (or nothing this reader could parse), which is not the same as a
+    hiring system that publishes no form at all.
+
+Reads go through a 24-hour cache (application_form_cache, 20261011100000)
+when the caller hands one in: a fresh row is the answer, a stale or missing
+one is read from the vendor and written back, a vendor that answered "no
+such form" is cached the same way, and a transient failure (timeout,
+network, 429, 5xx) is never cached.
+
+Pure apart from the injected fetch and cache, so the Node suite runs every
+reader against recorded payloads and Deno imports it unchanged.
+```
+
+## s68
+
+`supabase/functions/_shared/application-form.ts`, The employer set this question to ... Above: `screens?: true;`
+
+```text
+The employer set this question to screen applications on its answer
+(Paylocity's auto-reject). Never which answer passes: the reader does not
+read that (form-readers-extra.ts).
+```
+
+## s69
+
+`supabase/functions/_shared/application-form.ts`, A question whose every field is hidden ... Above: `if (fields.length && fields.every((f) => isHiddenType(String(f?.type ?? "")))) return null;`
+
+```text
+A question whose every field is hidden is filled by the page, never by
+the person: a location question's Latitude and Longitude arrive marked
+required (sweep S12-173, read live on an xAI posting).
+```
+
+## s70
+
+`supabase/functions/_shared/application-form.ts`, Greenhouse lists a data_compliance ... Above: `for (const c of Array.isArray(gh.data_compliance) ? gh.data_compliance : []) {`
+
+```text
+Greenhouse lists a data_compliance entry on every posting, with flags
+that say whether the form asks for anything (sweep S12-173: "GDPR" was
+claimed on every form). Named only when one of them asks.
+```
+
+## s71
+
+`supabase/functions/_shared/application-form.ts`, A form with no custom questions is ... Above: `return finish(questions, docs) ?? { questions: [], documents: [], alsoOnForm: [] };`
+
+```text
+A form with no custom questions is still a real form, and its document
+list still says what to attach.
+```
+
+## s72
+
+`supabase/functions/_shared/application-form.ts`, A posting's Pinpoint page: its own URL ... Above: `function pinpointPostingUrl(p: PostingRef, posting: string): string | null {`
+
+```text
+A posting's Pinpoint page: its own URL on pinpointhq.com, or the tenant's pinpointhq.com host under the same path (APPLY-1107-08).
+```
+
+## s73
+
+`supabase/functions/_shared/application-form.ts`, What the page says beside its ... Above: `const extras = vendor === "breezy" ? parseBreezyFormConfig(html) : parsePinpointExtras(html);`
+
+```text
+What the page says beside its questions: Breezy's CV and cover-letter
+settings, Pinpoint's equality monitoring and processing consent (APPLY-1107-10).
+```
+
+## s74
+
+`supabase/functions/_shared/application-form.ts`, Nothing found is equally consistent ... Above: `const form = raw.length`
+
+```text
+Nothing found is equally consistent with a changed page: no form read,
+but a page that was read.
+```
+
+## s75
+
+`supabase/functions/_shared/application-form.ts`, Each fetch is pinned to the vendor's ... Above: `/** A fetch that follows no redirect: a 3xx is returned to the caller, never followed. */`
+
+```text
+Each fetch is pinned to the vendor's own host and built from the posting
+row's token and id, each checked before it becomes part of a URL. None
+follows a redirect, except Teamtailor's one hop to the employer's own
+career domain, taken only when that domain is the one the posting's own
+apply URL names.
+```
+
+## s76
+
+`supabase/functions/_shared/application-form.ts`, The registrable part of a hostname: its ... Above: `function siteOf(hostname: string): string {`
+
+```text
+The registrable part of a hostname: its last two labels, three under a two-letter country's second level (co.uk, com.au).
+```
+
+## s77
+
+`supabase/functions/_shared/application-form.ts`, The board's Teamtailor ids are the job ... Above: `const num = /^(\d{1,12})(?:-[^/?#\s]*)?$/.exec(ext)?.[1];`
+
+```text
+The board's Teamtailor ids are the job number, alone or with its URL slug
+("8611780", "8638251-senior-sap-utilities-konsult"); the form lives at the number.
+```
+
+## s78
+
+`supabase/functions/_shared/application-form.ts`, A tenant on its own career domain ... Above: `const to = (() => { try { return new URL(first.headers.get("location") ?? "", 'https://${p.token}.teamtailor.com'); }...`
+
+```text
+A tenant on its own career domain answers with one redirect there. It is
+followed only to the same path on https, on the site the posting's own
+apply URL names (two sources agreeing), and never a second time.
+```
+
+## s79
+
+`supabase/functions/_shared/application-form.ts`, The posting's application form, or the ... Above: `export async function readApplicationForm(p: PostingRef, o: ReadOptions): Promise<FormRead> {`
+
+```text
+The posting's application form, or the reason there is none. Never throws:
+a fault of the vendor's is `unreachable`, and a fault of the cache is read
+past (the vendor is asked) or written past (the answer is still returned).
 ```
