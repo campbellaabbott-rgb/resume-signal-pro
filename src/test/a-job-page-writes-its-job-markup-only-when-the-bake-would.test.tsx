@@ -463,7 +463,10 @@ describe("the bake decides every posting through bakePostingPage, with what its 
   it("the posting loop takes each row's page, name and markup from bakePostingPage", () => {
     expect(BAKE).toMatch(/d\.page = bakePostingPage\(d\.job, d\.description, \{ D, SITE, carried: d\.carried \}\);/);
     expect(BAKE).toMatch(/const \{ path, rawJob, job, ld, nameRefused, nameOnly, mismatchOnly, live, nm \} = page;/);
-    expect(BAKE).toMatch(/const postingName = \(job\) => D\.postingNameVerdict\(job\);/);
+    // A new page's name is judged by postingFreshNameReason (SEO B02), which
+    // asks the same D.postingNameVerdict before it asks whether anyone wrote it.
+    expect(BAKE).toMatch(/const freshNameReason = \(job\) => postingFreshNameReason\(job, D\);/);
+    expect(readFileSync(resolve(__dirname, "../../scripts/prerender-posting-rule.mjs"), "utf8")).toMatch(/export const postingFreshNameReason = \(j, D\) => \{\s*const named = D\.postingNameVerdict\(j\);/);
     expect(BAKE).toMatch(/const describedEnough = \(text\) => D\.postingDescribedEnough\(text\);/);
   });
 });

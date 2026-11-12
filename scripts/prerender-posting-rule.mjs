@@ -37,3 +37,20 @@ export const postingRowEligible = (j, D) => !!(j
   && j.country
   && (j.workMode === "remote" || j.location)
   && D.isPostingLive(j));
+
+/**
+ * Why a row rule 1 admits still gets no NEW page for the name it would print,
+ * or null when it may (SEO/GEO audit 2026-11-07, B02). Two reasons: the name
+ * gate refuses the name (D.postingNameVerdict: logo text, a web address, a
+ * colour caption, a tenant code), or nobody ever wrote it, because it is the
+ * board's own code as the catalogue was handed it (D.isUnreviewedTenantName:
+ * "Atd", "Starfish", "Creatoriq", "Harmattan Ai"). Asked only of a posting
+ * the bake would give a NEW page: a carried page keeps its page under D7, and
+ * an override is what names it.
+ */
+export const postingFreshNameReason = (j, D) => {
+  const named = D.postingNameVerdict(j);
+  if (named.reason) return named.reason;
+  const token = j.token ?? D.postingPathParts(j.id)?.token ?? null;
+  return D.isUnreviewedTenantName(token, named.name) ? "unreviewed tenant name" : null;
+};

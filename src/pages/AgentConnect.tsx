@@ -66,13 +66,17 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
+import { useBoardVendorCounts } from "@/hooks/useBoardVendorCounts";
+import { aiReach } from "@/lib/home/board-figures";
+import { andList as langList, utcStamp } from "@/lib/home/stamps";
+import { count as fmtCount } from "@/lib/format";
+import { TaggedText } from "@/components/home/TaggedText";
 import {
   MCP_TOOLS, MCP_PAGE_HOSTS, MCP_PAGE_HOST_IDS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_TIER_BADGE, MCP_KEYED_READ_BADGE, MCP_FIT_ALLOWANCE,
   MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES,
   MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_WITHHELD_NOTE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_TROUBLESHOOTING,
-  MCP_SIGN_IN_META_KEY, MCP_ADD_TO_CLAUDE_LIVE, troubleRowsFor, stepSegments, hostTakesKey, curlInitialize, SIGN_IN_UNKNOWN, andList,
-  type McpHost, type McpHostId, type McpStep, type McpMoreHost, type SignInFact, type TroubleRow,
+  MCP_SIGN_IN_META_KEY, MCP_ADD_TO_CLAUDE_LIVE, MCP_CONNECTOR_NAME, troubleRowsFor, troubleFix, stepSegments, hostTakesKey, curlInitialize, SIGN_IN_UNKNOWN, andList,
+  type McpHost, type McpHostId, type McpStep, type McpMoreHost, type SignInFact, type TroubleRow, type TroubleAudience,
 } from "@/config/mcp-tools";
 import { MCP_URL, runServerTest, describeTest, readSignInFromServer } from "@/lib/mcp-test";
 import { rememberedHostChoice, rememberHostName } from "@/lib/agent-handoff";
@@ -301,6 +305,7 @@ export function HostPanel({ host, url, fact, keyValue, onKey, addToClaude = MCP_
           ))}
         </p>
       )}
+      <HostNotes host={host} />
       <StepList steps={host.steps(ctx)} />
       {fallback && (
         <details className="mt-4" data-manual-steps>
@@ -326,6 +331,51 @@ export function HostPanel({ host, url, fact, keyValue, onKey, addToClaude = MCP_
         </div>
       )}
     </section>
+  );
+}
+
+/** A date the vendor's page was read, as the reader's language writes it. */
+const readOn = (day: string, lng: string) =>
+  new Date(`${day}T12:00:00Z`).toLocaleDateString(lng || "en", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+
+/**
+ * What a panel says before its steps, each from the host's own field:
+ *   - the vendor's plan rule, quoted with its link and the day it was read,
+ *     and the way in for a reader that plan shuts out (CJ-01: ChatGPT Free
+ *     cannot create the plugin, Claude's free plan can add one connector);
+ *   - where a phone user adds it: once in the phone's browser, after which
+ *     the app has it (CJ-03: neither chat app can add one in its phone app);
+ *   - for Claude Code, that a connector added in Claude is already there
+ *     (PLT-1107-11).
+ * The bake prints the same three from the main locale bundle.
+ */
+export function HostNotes({ host }: { host: McpHost }) {
+  const { t, i18n } = useTranslation();
+  const lng = i18n.language || "en";
+  return (
+    <>
+      {host.planRule && (
+        <p className="text-sm text-muted-foreground mb-3" data-plan-rule={host.id}>
+          <TaggedText
+            text={t("agentConnect.chatgptPlanRule", "<rule>OpenAI's pricing page</rule>, read {{date}}, says “{{quote}}”: adding this server creates a plugin, which ChatGPT Free cannot do. <claude>On ChatGPT Free? Use Claude's free plan</claude>, which can add one custom connector.", { date: readOn(host.planRule.read, lng), quote: host.planRule.quote })}
+            tags={{
+              rule: (inner, k) => <a key={k} href={host.planRule!.url} className="text-primary hover:underline">{inner}</a>,
+              claude: (inner, k) => <a key={k} href="#claude" className="text-primary font-medium hover:underline">{inner}</a>,
+            }}
+          />
+        </p>
+      )}
+      {host.phone && (
+        <p className="text-sm text-muted-foreground mb-3" data-phone-note={host.id}>
+          {t("agentConnect.phoneNote", "On a phone? Add it once in your phone's browser at {{site}}, not in the app; it then appears in the {{app}} app.", { site: host.phone.site, app: host.phone.app })}
+        </p>
+      )}
+      {host.fromClaude && (
+        <p className="text-sm text-muted-foreground mb-3" data-from-claude="">
+          {t("agentConnect.claudeConnectorCarriesOver", "Already added {{name}} in Claude? If you sign in to Claude Code with the same claude.ai account, it is already here: type /mcp and look for it. The steps below are for any other sign-in.", { name: MCP_CONNECTOR_NAME })}
+        </p>
+      )}
+    </>
   );
 }
 
@@ -449,8 +499,8 @@ export function TestServer({ fact, onFact, hostId }: { fact: SignInFact; onFact:
   );
 }
 
-/** The troubleshooting table for a state: rows keyed to the server's own strings. */
-export function TroubleTable({ rows }: { rows: readonly TroubleRow[] }) {
+/** The troubleshooting table for a state: rows keyed to the server's own strings, each fix for its reader's app. */
+export function TroubleTable({ rows, audience = "all" }: { rows: readonly TroubleRow[]; audience?: TroubleAudience }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm text-left">
@@ -466,7 +516,7 @@ export function TroubleTable({ rows }: { rows: readonly TroubleRow[] }) {
             <tr key={r.id} data-trouble={r.id} className="border-b border-border align-top">
               <td className="py-2 pr-3 text-foreground"><StepText text={r.see} /></td>
               <td className="py-2 pr-3 text-muted-foreground"><StepText text={r.why} /></td>
-              <td className="py-2 text-muted-foreground"><StepText text={r.fix} /></td>
+              <td className="py-2 text-muted-foreground"><StepText text={troubleFix(r, audience)} /></td>
             </tr>
           ))}
         </tbody>
@@ -491,27 +541,43 @@ const HONESTY_RULES: readonly string[] = [
 
 export default function AgentConnect() {
   const { t, i18n } = useTranslation();
-  // THE POSTING COUNT IS READ, NOT TYPED. The same hook and the same floor
-  // the homepage head uses; null until the board answers, and then every
-  // sentence below has a variant that needs no number at all.
-  const totals = useBoardTotals();
-  const floor = totals ? roundedFloor(totals.jobs) : null;
-  const countClause = floor !== null ? `${floor.toLocaleString("en-US")}+ live postings` : "the live postings";
+  // THE POSTING COUNT IS WHAT THE AI CAN REACH (CJ-11, GEO-1107-03). The
+  // hero once floored the whole board ("1,020,000+") while the connector
+  // never hands on the withheld systems' postings. The figure is the
+  // homepage's: the same read (get_board_vendor_counts), the same
+  // subtraction (aiReach), exact and dated, never rounded up; until the read
+  // answers, every sentence below has a variant with no number at all.
+  const lng = i18n.language || "en";
+  const vendor = useBoardVendorCounts();
+  const reach = aiReach(vendor.counts, vendor.openTotal);
+  const stamp = utcStamp(vendor.asOf, lng);
+  const countClause = reach ? `${reach.searchable.toLocaleString("en-US")} live postings` : "live postings";
   const { fact, probe, set } = useSignInFact();
   const [picked, setPicked] = useState<McpHostId | null>(initialHostId);
+  // A link to another tile (the ChatGPT panel's "use Claude's free plan")
+  // changes only the fragment: the page follows it to that tile.
+  useEffect(() => {
+    const onHash = () => { const id = hostFromHash(); if (id) setPicked(id); };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
   // The developer disclosure names the page's apps only (R7b: seeker pages
   // name Claude, ChatGPT and Claude Code; every other app's setup lives on
   // the install repo, linked by the GitHub line).
   const hostsWithHeader = MCP_PAGE_HOSTS.filter((h) => h.header);
   const hostsWithSignIn = MCP_PAGE_HOSTS.filter((h) => !h.header && h.oauth);
   const troubleRows = troubleRowsFor(fact.state);
+  // A chat tile's reader reads the chat edition of each fix (CJ-08); a Claude
+  // Code reader, and a reader who has picked no app, read the keyed one too.
+  const troubleAudience: TroubleAudience = MCP_PAGE_HOSTS.some((h) => h.id === picked && !h.header) ? "chat" : "all";
 
   return (
     <>
       <SEO
         title="Connect Claude or ChatGPT — Search Jobs and Apply Yourself"
-        description={`Search ${countClause} from Claude or ChatGPT, free, and apply yourself on the employer's own site with your AI's help.`}
+        description={`Search ${countClause} from Claude or ChatGPT, free on our side, and apply yourself on the employer's own site with your AI's help.`}
         path="/agents"
+        preferBakedHead
       />
       <Header />
 
@@ -529,10 +595,24 @@ export default function AgentConnect() {
                 {t("agentConnect.heroTitle", "Search jobs and apply yourself, with your own AI")}
               </h1>
               <p className="text-xl text-muted-foreground" data-agents-hero-sub>
-                {floor !== null
-                  ? t("agentConnect.heroSubCount", "Connect Resume Booster to Claude or ChatGPT for free. Search {{n}}+ live postings from employers' own hiring systems, read them in full, and apply on the employer's own site with your AI's help.", { n: floor.toLocaleString(i18n.language || "en") })
-                  : t("agentConnect.heroSubNoCount", "Connect Resume Booster to Claude or ChatGPT for free. Search live postings from employers' own hiring systems, read them in full, and apply on the employer's own site with your AI's help.")}
+                {reach
+                  ? t("agentConnect.heroSubReach", "Connect Resume Booster to Claude or ChatGPT, free on our side. Search {{n}} live postings from employers' own hiring systems from your AI, read them in full, and apply on the employer's own site with your AI's help. In ChatGPT, your plan must allow custom connectors.", { n: fmtCount(reach.searchable, { lng }) })
+                  : t("agentConnect.heroSubNoCount", "Connect Resume Booster to Claude or ChatGPT, free on our side. Search live postings from employers' own hiring systems, read them in full, and apply on the employer's own site with your AI's help. In ChatGPT, your plan must allow custom connectors.")}
               </p>
+              {reach && stamp && vendor.openTotal !== null && (
+                <p className="text-sm text-muted-foreground mt-3" data-agents-reach="">
+                  <time dateTime={stamp.iso}>
+                    {t("agentConnect.reachLine", "Your AI searches {{searchable}} of the {{total}} open postings: {{names}} postings ({{withheld}}) stay on this website. Counted {{date}}, {{time}} UTC.", {
+                      date: stamp.date,
+                      time: stamp.time,
+                      searchable: fmtCount(reach.searchable, { lng }),
+                      total: fmtCount(vendor.openTotal, { lng }),
+                      names: langList(reach.names, lng),
+                      withheld: fmtCount(reach.withheld, { lng }),
+                    })}
+                  </time>
+                </p>
+              )}
             </div>
           </div>
         </section>
@@ -582,7 +662,7 @@ export default function AgentConnect() {
                 <p className="text-sm text-muted-foreground mt-3 mb-3">
                   Each row quotes what the server or your app actually says. {MCP_TROUBLESHOOTING.length - troubleRows.length > 0 ? "Rows for the other sign-in state are hidden." : ""}
                 </p>
-                <TroubleTable rows={troubleRows} />
+                <TroubleTable rows={troubleRows} audience={troubleAudience} />
               </details>
             </div>
           </div>

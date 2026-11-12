@@ -2193,6 +2193,7 @@ export default function Explore() {
             had its end cut off in every result snippet (OBS-2). */
           t("explore.seoDescription5", "Every field on the board with a live count, the roles inside each, and remote, pay, experience and country filters that say how much of the field they can see.")}
         path="/explore"
+        preferBakedHead
       />
       <Header />
       {/* id="main-content" AND tabIndex={-1}: THE SKIP LINK HAD NO TARGET HERE.

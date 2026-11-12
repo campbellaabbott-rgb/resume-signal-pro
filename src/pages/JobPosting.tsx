@@ -65,6 +65,7 @@ import {
   postingPageDescription,
   postingPagePath,
   postingPageTitle,
+  postingWithEmployerStatements,
   type PostingRow,
 } from "@/components/jobs/posting-page";
 import { possessive } from "@/lib/company-display";
@@ -180,6 +181,16 @@ export default function JobPosting() {
       setState("budget");
     };
     (async () => {
+      // CLOSED AT THE EMPLOYER, AS THE BAKE RECORDED IT (B01). The bake asked
+      // the employer's own system, found the posting closed and wrote this
+      // address's "no longer listed" page; the board still serves its stored
+      // row, which would render the posting live, with its Apply link, over
+      // that page. The closure is the answer, so no board read is spent.
+      const closedPath = postingPagePath(id);
+      if (closedPath && bakedHeadFor(closedPath)?.postingClosed === "employer") {
+        if (seq.current === mine) setState("gone");
+        return;
+      }
       const standing = boardBudgetRefusal();
       if (standing) { refusedWith(standing); return; }
       // One quiet retry: a refresh slice hitting the function's resource
@@ -206,7 +217,15 @@ export default function JobPosting() {
         setState(httpStatusOf(res.error) === 404 ? "unlisted" : "failed");
         return;
       }
-      const row = data.job ?? null;
+      // WHAT THE EMPLOYER STATED AT THE BAKE STAYS (B06): the bake wrote the
+      // employer's own end date, time type, remote field, original date and
+      // address into this page and its markup, and the board's row has none
+      // of them. The statements the bake wrote into the head of this very
+      // address are applied to the row before anything is printed or marked up.
+      const bakedPath = postingPagePath(id);
+      const baked = bakedPath ? bakedHeadFor(bakedPath) : null;
+      const stated = baked?.indexable ? baked.employerStated : null;
+      const row = data.job && stated ? postingWithEmployerStatements(data.job, stated) : data.job ?? null;
       setJob(row);
       setDescription(typeof data.description === "string" ? data.description : null);
       // A row we cannot find, and a row that is no longer live, are the same
@@ -273,6 +292,7 @@ export default function JobPosting() {
     return p ? bakedHeadFor(p) : null;
   }, [id]);
   const bakeRetired = !!bakedHere && !bakedHere.indexable;
+  const closedAtEmployer = bakedHere?.postingClosed === "employer";
   const bakeLd = useMemo(
     () => (live && job && dated && !bakeRetired ? postingJsonLd(job, description, { site: SITE }) : null),
     [live, job, dated, bakeRetired, description],
@@ -456,7 +476,9 @@ export default function JobPosting() {
                 {t("jobPostingPage.goneTitle", "This posting is no longer live")}
               </h1>
               <p className="mb-4 text-sm text-muted-foreground">
-                {state === "unlisted"
+                {closedAtEmployer
+                  ? t("jobPostingPage.employerClosedBody", "When this page was built, the employer's own hiring system answered that it no longer serves this posting.")
+                  : state === "unlisted"
                   ? t("jobPostingPage.unlistedBody", "This board no longer lists this posting. That says nothing about the employer — it may still be open on their own site.")
                   : t("jobPostingPage.goneBody", {
                     defaultValue:

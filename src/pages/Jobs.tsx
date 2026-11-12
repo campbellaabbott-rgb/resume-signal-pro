@@ -95,7 +95,12 @@ import { postingSource } from "@/lib/employer-key";
 import { collidedBoards, isCollidedToken } from "@/lib/board-collisions";
 import { BoardCollisionNotice } from "@/components/jobs/BoardCollisionNotice";
 import { SimilarCompanies } from "@/components/jobs/SimilarCompanies";
-import { TailoredResumeModal, type TailoredResumeContent } from "@/components/TailoredResumeModal";
+import type { TailoredResumeContent } from "@/components/TailoredResumeModal";
+import { Suspense, lazy } from "react";
+// Loaded on the first press that drafts one (PERF-03): a company page, a field
+// lander and /jobs no longer download the dialog to paint and hydrate, as the
+// scanner (Index.tsx) already does.
+const TailoredResumeModal = lazy(() => import("@/components/TailoredResumeModal").then((m) => ({ default: m.TailoredResumeModal })));
 import { supabase } from "@/integrations/supabase/client";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { heldBoardPass } from "@/lib/board-pass";
@@ -114,7 +119,8 @@ import { accentFor } from "@/lib/category-accent";
 import { JobsCommandPalette, ShortcutsOverlay, useGlobalPaletteKeys, type PaletteAction } from "@/components/JobsCommandPalette";
 import { isBoardCategory } from "@/lib/job-board-categories";
 import { honourPendingSkipLink } from "@/lib/skip-link";
-import { agentPrompt, agentDeepLink, toSearchJobsArgs, searchPrompt, copyText, rememberedHostName, rememberHostName, type HandoffJob, type SearchSort } from "@/lib/agent-handoff";
+import { agentPrompt, agentDeepLink, toSearchJobsArgs, searchPrompt, copyText, rememberedHostName, rememberHostName, setupPath, type HandoffJob, type SearchSort } from "@/lib/agent-handoff";
+import { SaveFromLinkPrompt, saveRequestFrom } from "@/components/jobs/SaveFromLinkPrompt";
 import { MCP_CHOOSER_HOSTS } from "@/config/mcp-tools";
 
 // user_applications gained board columns after the last typegen — untyped
@@ -2322,11 +2328,19 @@ export function handOffJobToAgent(
   t: (key: string, fallback: string) => string,
 ): void {
   track("agent_handoff_job", { host, id: job.id, sendable: job.sendable });
-  void copyText(agentPrompt(job)).then((ok) => toast({
-    title: ok
-      ? t("jobsPage.agentPromptCopied", "Prompt copied — paste it to your agent. It names this posting and our MCP server.")
-      : t("jobsPage.agentPromptFailed", "Couldn't copy the prompt"),
-  }));
+  // CJ-05: a person who has not added the connector yet is one link from
+  // the tile for the app they use. The toaster mounts outside the router,
+  // so the link is a plain anchor, not a router Link.
+  void copyText(agentPrompt(job)).then((ok) => toast(ok
+    ? {
+        title: t("jobsPage.agentPromptCopied", "Prompt copied — paste it to your agent. It names this posting and our MCP server."),
+        description: (
+          <a href={setupPath(host)} className="underline underline-offset-2">
+            {t("jobsPage.agentNotConnected", "Not connected yet? Set it up")}
+          </a>
+        ),
+      }
+    : { title: t("jobsPage.agentPromptFailed", "Couldn't copy the prompt") }));
 }
 
 function JobAgentHandoff({ job, compact, track }: {
@@ -2346,7 +2360,7 @@ function JobAgentHandoff({ job, compact, track }: {
       className={compact
         ? "inline-flex items-center gap-1 text-muted-foreground hover:text-foreground whitespace-nowrap"
         : "inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"}
-      title={t("jobsPage.openInAgentTip", "Copy a one-line prompt for your own AI agent: it names this posting's id and our MCP server, and asks the agent to read the posting and say whether it can apply.")}
+      title={t("jobsPage.openInAgentTip", "Copy a prompt for your own AI: it names this posting and our MCP server, and asks your AI to read the employer's application form, ask you what only you can answer, show you every draft and stop before Submit. You submit it yourself.")}
     >
       <Bot className={compact ? "w-3 h-3 shrink-0" : "w-3.5 h-3.5"} />
       {t("jobsPage.openInAgent", "Open in your agent")}
@@ -2376,6 +2390,9 @@ function JobAgentHandoff({ job, compact, track }: {
           {t("jobsPage.agentOpenThere", "Open there (prefilled, not sent)")}
         </a>
       )}
+      <Link to={setupPath(host)} className="text-muted-foreground hover:text-foreground underline underline-offset-2">
+        {t("jobsPage.agentNotConnected", "Not connected yet? Set it up")}
+      </Link>
     </span>
   );
 }
@@ -3372,6 +3389,10 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   const [listResync, setListResync] = useState(0);
   const { session } = useAuth();
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  // A save link (/jobs?job=<id>&save=1) asks once, on that posting, and never
+  // saves on load: read before the board rewrites its address, held until
+  // answered (SaveFromLinkPrompt).
+  const [saveAsk, setSaveAsk] = useState<string | null>(() => saveRequestFrom(window.location.search));
   // Postings the user has ALREADY APPLIED to (tracker status beyond saved) —
   // rendered as a quiet check on cards/compare so no one re-reads a job they
   // already acted on without knowing it.
@@ -7750,6 +7771,15 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       ? t("jobsPage.shareCopied", "Link copied — anyone can open this posting")
       : t("jobsPage.shareFailed", "Couldn't copy the link") }));
   }, [t]);
+  // What a hand-off carries besides the id: the employer's own link, title and
+  // name, so a prompt pasted where the connector is not added still helps.
+  const handoffJobOf = (job: BoardJob): HandoffJob => ({
+    id: job.id,
+    sendable: isSendableVendor(job.id),
+    applyUrl: cleanApplyUrl(job.applyUrl),
+    title: job.title,
+    company: listingEmployer(job),
+  });
   // Everything about a posting that is housekeeping, in its ⋯ menu.
   const postingMenu = (job: BoardJob): PostingMenuActions => ({
     onReport: (_j, reason) => { void reportJob(job, reason); },
@@ -7758,7 +7788,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     onCompare: () => toggleCompare(job.id),
     compared: compareIds.includes(job.id),
     onCopyLink: () => copyPostingLink(job),
-    aiHandoff: () => handOffJobToAgent({ id: job.id, sendable: isSendableVendor(job.id) }, rememberedHostName(), trackBoard, t),
+    aiHandoff: () => handOffJobToAgent(handoffJobOf(job), rememberedHostName(), trackBoard, t),
   });
   // The board's Apply re-checks the posting (verifyJob) on the click, so the
   // pane, the sheet and the card's siblings may say so; the posting page's
@@ -7821,7 +7851,19 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
               {t("jobsPage.prepAnswers", "Prep answers")}
             </Button>
           ) : undefined,
-          agentHandoff: <JobAgentHandoff job={{ id: detailJob.id, sendable: isSendableVendor(detailJob.id) }} track={trackBoard} />,
+          agentHandoff: (
+            <>
+              {saveAsk === detailJob.id && !savedIds.has(detailJob.id) && (
+                <SaveFromLinkPrompt
+                  jobId={detailJob.id}
+                  signedIn={!!session}
+                  onSave={() => { setSaveAsk(null); void saveJob(detailJob); }}
+                  onDismiss={() => setSaveAsk(null)}
+                />
+              )}
+              <JobAgentHandoff job={handoffJobOf(detailJob)} track={trackBoard} />
+            </>
+          ),
           howApplying: howApplyingFor(detailJob),
           fit: (
             <>
@@ -12421,12 +12463,16 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
         </DialogContent>
       </Dialog>
 
-      <TailoredResumeModal
-        isOpen={tailoredOpen}
-        onClose={() => setTailoredOpen(false)}
-        content={tailoredContent}
-        isLoading={tailoredLoading}
-      />
+      {(tailoredOpen || tailoredContent) && (
+        <Suspense fallback={null}>
+          <TailoredResumeModal
+            isOpen={tailoredOpen}
+            onClose={() => setTailoredOpen(false)}
+            content={tailoredContent}
+            isLoading={tailoredLoading}
+          />
+        </Suspense>
+      )}
 
       <Dialog open={coverOpen} onOpenChange={(o) => { if (!o) setCoverOpen(false); }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">

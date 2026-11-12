@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_TOOL_NAMES,
-  MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_FORM_VENDORS, MCP_FORM_VENDORS_ON_CHATGPT,
+  MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_FORM_VENDORS, MCP_FORM_VENDORS_AFTER_DEPLOY, MCP_FORM_VENDORS_ON_CHATGPT,
   MCP_FIT_FREE_PER_DAY, MCP_FIT_FULL_PER_DAY,
   MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_MORE_HOSTS, MCP_INSTALL_REPO_URL,
 } from "../config/mcp-tools";
@@ -239,7 +239,10 @@ describe("the caps are named constants, mirrored, and the only numbers the keyle
   });
 
   it("the page's form vendors, its ChatGPT subset and its fit figures are the server's", () => {
-    expect(MCP_FORM_VENDORS.map((v) => v.key).sort()).toEqual([...FORM_READER_VENDORS].sort());
+    // Connect W5: the mirror shows what the server read before the 2026-11-08.1
+    // deploy, and the after-deploy list the five it adds (rendered by the next
+    // frontend publish); together they are the server's readers.
+    expect([...MCP_FORM_VENDORS, ...MCP_FORM_VENDORS_AFTER_DEPLOY].map((v) => v.key).sort()).toEqual([...FORM_READER_VENDORS].sort());
     expect([...MCP_FORM_VENDORS_ON_CHATGPT].sort()).toEqual([...PUBLIC_API_FORM_VENDORS].sort());
     expect([MCP_FIT_FREE_PER_DAY, MCP_FIT_FULL_PER_DAY]).toEqual([FIT_FREE_PER_DAY, FIT_FULL_PER_DAY]);
   });
@@ -353,7 +356,7 @@ describe("the keyless branch is counted in its own table and nowhere else", () =
   });
 
   it("a refusal is in band, by edition, with a Retry-After, never a challenge", () => {
-    expect(UNKEYED).toMatch(/if \(!d\.allowed\) \{[\s\S]*?spentRefusal\(d, m, edition, keylessTwin\(toolName, args\), MINT_URL, FREE_KEY_DAILY_QUOTA\)[\s\S]*?toolErr\(message, fix\)[\s\S]*?"Retry-After": String\(minute \? secondsLeftInMinute\(\) : secondsToMidnightUtc\(\)\)/);
+    expect(UNKEYED).toMatch(/if \(!d\.allowed\) \{[\s\S]*?spentRefusal\(d, m, edition, keylessTwin\(toolName, args\), MINT_URL, FREE_KEY_DAILY_QUOTA, Date\.now\(\), keylessClientOf\(req\.headers\.get\("user-agent"\)\)\)[\s\S]*?toolErr\(message, fix\)[\s\S]*?"Retry-After": String\(minute \? secondsLeftInMinute\(\) : secondsToMidnightUtc\(\)\)/);
     expect(UNKEYED).not.toMatch(/unauthorized\(/);
     // The status, the header and the metadata path are spelled in the OAuth
     // module and nowhere in the dispatcher: one builder, reached by name.

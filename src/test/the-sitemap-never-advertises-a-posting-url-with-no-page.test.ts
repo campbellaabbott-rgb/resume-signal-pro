@@ -218,7 +218,9 @@ describe("the posting budget is a ceiling on new pages, not the cap its name sug
   it("the bake computes its budget through the one rule this file checks", () => {
     const GEN = codeOf(readFileSync(resolve(ROOT, "scripts/prerender-seo.mjs"), "utf8"));
     expect(GEN).toMatch(/const freshBudget = postingFreshBudget\(\{ carriedLive, cap: POSTING_PAGE_CAP, reserve: POSTING_FRESH_RESERVE, ceiling: POSTING_PAGE_CEILING \}\);/);
-    expect(GEN).toMatch(/if \(fresh\.length >= freshBudget\) break;/);
+    // The new pages are picked in freshPoolOrder's order (B04), never more than the budget.
+    expect(GEN).toMatch(/const want = freshBudget - freshFound\.length;/);
+    expect(GEN).toMatch(/while \(freshAt < freshOrder\.length && picked\.length < want\)/);
     expect(GEN, "a live ledger entry no longer says whether it was carried").toMatch(/postingLedger\[path\] = \{ state: "live", since: TODAY, first, carried,/);
   });
 

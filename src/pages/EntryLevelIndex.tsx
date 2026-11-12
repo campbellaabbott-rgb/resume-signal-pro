@@ -20,6 +20,8 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
+// The name the board's pages print for each board, as the baked table prints it (B02).
+import { employerName } from "@/lib/company-display";
 import { isBoardCategory } from "@/lib/job-board-categories";
 import { HBarList } from "@/components/DataViz";
 import { HowWeMeasure } from "@/components/HowWeMeasure";
@@ -124,6 +126,7 @@ export default function EntryLevelIndex() {
         title="The Entry-Level Index — who's actually hiring entry-level right now?"
         description={`A live ranking of companies with real entry-level openings — junior, graduate, and early-career roles counted from companies' official job boards, refreshed all day: ${t("boardSource.tailNoOld")}.`}
         path="/entry-level-index"
+        preferBakedHead
       />
       <Header />
       <main className="max-w-4xl mx-auto px-4 py-10">
@@ -206,7 +209,7 @@ export default function EntryLevelIndex() {
                   className={`flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors ${i > 0 ? "border-t border-border/60" : ""}`}
                 >
                   <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>
-                  <span className="flex-1 text-sm font-medium text-foreground truncate">{c.company}</span>
+                  <span className="flex-1 text-sm font-medium text-foreground truncate">{employerName(c.company_token, c.company)}</span>
                   <span className="text-[11px] text-success font-semibold shrink-0">
                     {c.open_roles > 0 ? `${Math.round((100 * c.entry_roles) / c.open_roles)}% early-career` : "—"}
                   </span>

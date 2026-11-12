@@ -1,24 +1,4 @@
-// WHO MAY SCORE A RESUME FOR FREE, ON BOTH DOORS (owner decision 2026-10-11,
-// MCP economics decision 2).
-//
-// The free allowance (FIT_FREE_PER_DAY, _shared/fit-allowance.ts) is for a key
-// whose email address was confirmed (it came through api-key-request's emailed
-// link) or whose account has proven its mailbox. A key that is neither is
-// refused and told where a confirmed one comes from; a paid tier or a paid
-// plan scores under job-fit's own per-key ceiling; a read that failed is
-// "unknown", refused, never opened.
-//
-// THIS WAS TWO RULES. POST /v1/fit (w4/api) read api_key_fit_allowance and
-// refused an unconfirmed key, while fit_resume in agent-mcp (w4/mcp) gave the
-// 25 to every live key: an agent key minted for an unproven password account
-// scored on the connector and was refused on /v1. The wave-4 integration moved
-// the rule here, out of public-api/fit-allowance.ts (which re-exports it), so
-// both doors read the same SQL reader (20261011110000, endpoints '/v1/fit' and
-// '/mcp/fit_resume') through the same decision. The reader counts the two
-// doors together: 25 a key a day in all, never 25 on each.
-//
-// Pure apart from the import-free fit-allowance.ts, so the Node suite walks it
-// by value and Deno imports it unchanged.
+// WHO MAY SCORE A RESUME ... docs/shared-notes.md#s80
 
 import { FIT_FREE_PER_DAY, fitAllowed, fitFreeLeft, fitStanding } from "./fit-allowance.ts";
 
@@ -54,12 +34,7 @@ export function fitStandingFrom(data: unknown, failed: boolean): FitKeyStanding 
   };
 }
 
-/**
- * The decision. `standing` is undefined when it could not be read (refused as
- * unknown, never opened), null when the key has no standing row (refused as
- * unconfirmed). `paid` is the door's own tier test; `plan` is something on the
- * key's account that opens the full allowance.
- */
+// The decision. `standing` is undefined ... docs/shared-notes.md#s81
 export function fitGate(o: { paid: boolean; plan: boolean; standing: FitKeyStanding | null | undefined }): FitGate {
   if (o.paid) return { open: true, basis: "paid", limit: null, used: null, left: null };
   if (o.plan) return { open: true, basis: "plan", limit: null, used: null, left: null };

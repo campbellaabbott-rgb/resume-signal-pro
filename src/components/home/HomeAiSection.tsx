@@ -7,6 +7,7 @@ import { count as fmtCount, date as fmtDate } from "@/lib/format";
 import { aiReach } from "@/lib/home/board-figures";
 import { WRAP_CHIP } from "@/lib/home/wrap-chip";
 import { andList, utcStamp } from "@/lib/home/stamps";
+import { TaggedText } from "@/components/home/TaggedText";
 
 /**
  * 4.4 "USE IT FROM YOUR AI". Seeker-facing copy names Claude, ChatGPT and
@@ -69,6 +70,15 @@ export function HomeAiSection({ counts, openTotal, asOf }: { counts: Record<stri
             <Link to="/agents#chatgpt" className={buttonClass}>{t("home.ai.chatgpt")}</Link>
             <Link to="/agents#claude-code" className="link inline-flex items-center text-sm">{t("home.ai.claudeCode")}</Link>
           </div>
+          {/* CJ-01: ChatGPT Free cannot create the plugin this server is
+              added as (OpenAI's pricing table, quoted on /agents#chatgpt);
+              Claude's free plan can add one connector. */}
+          <p className="mt-3 text-sm text-muted-foreground" data-home-chatgpt-free="">
+            <TaggedText
+              text={t("home.ai.chatgptFree")}
+              tags={{ claude: (inner, k) => <Link key={k} to="/agents#claude" className="link">{inner}</Link> }}
+            />
+          </p>
           {/* Reserved: two lines on a phone, so the line landing moves nothing. */}
           <p className="mt-3 min-h-[3.375rem] text-meta text-muted-foreground sm:min-h-[2.25rem]" data-home-reach="">
             {reach && stamp && openTotal !== null ? (

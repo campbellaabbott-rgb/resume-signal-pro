@@ -14,7 +14,7 @@
 // esbuild, which knows no alias. The name table lives beside this file: no
 // edge function reads it, and every file in supabase/functions/_shared counts
 // toward every function's upload.
-import { boardDisplayName, employerDisplayName, employerNameOverride } from "./employer-names";
+import { boardDisplayName, employerDisplayName, employerNameOverride, isSystemCodeName } from "./employer-names";
 
 /** False for a site named by its publisher, whose postings state no hirer (employer-names.ts). */
 export { boardNamesItsHirer } from "./employer-names";
@@ -113,10 +113,24 @@ export function possessive(name: string): string {
 const REAL_TENANT_NAMES = new Set([
   "abbott", "accenture", "adobe", "alcon", "allstate", "aptiv", "arrow", "babilou", "barclays", "baxter",
   "benchmark", "boeing", "bunnings", "cox", "ecolab", "entegris", "extendicare", "ferguson",
-  "ferrovial", "freudenberg", "geisinger", "greystar", "humana", "kyndryl", "labcorp", "manulife",
+  "ferrovial", "freudenberg", "geisinger", "greystar", "humana",
+  // intel~wd1~External, read 2026-11-08: its sidebar "Intel's official careers
+  // website", its postings' hiringOrganization "100 Intel Corporation".
+  "intel",
+  "kyndryl", "labcorp", "manulife",
   "marmon", "mars", "michaels", "micron", "moog", "nike", "novartis", "parsons", "puma",
   "regeneron", "saks", "salesforce", "sandvik", "santander", "skechers", "stryker", "swarovski",
   "target", "uline", "unilever", "wegmans", "whataburger", "xylem",
+  // Read 2026-11-08 from each site's CXS sidebar and one posting, when the
+  // newest-posting pool showed these one-word names among the ones a fresh
+  // page would skip (SEO/GEO audit 2026-11-07, B02): agiliti~wd5~Operations
+  // "Agiliti helps hospitals", brightli~wd5~BrightliTalent "Brightli is on a
+  // mission", chevron~wd5~ExternalCareerSite_Private "Chevron Corporation is
+  // one of the world's leading integrated energy companies", flowserve~wd1~
+  // applied hiringOrganization "Flowserve PTE LTD", gartner~wd5~EXT "At
+  // Gartner, we guide the leaders", momentive~wd1~MC "Join the Momentive
+  // Talent Community", zoom~wd5~Zoom "Zoom's Enterprise Security team".
+  "agiliti", "brightli", "chevron", "flowserve", "gartner", "momentive", "zoom",
 ]);
 
 /**
@@ -160,6 +174,41 @@ export function isCodeShapedName(token: string | null | undefined, name: string 
   if (!slug || REAL_TENANT_NAMES.has(slug) || n.toLowerCase() !== slug) return false;
   if (REVIEWED_TENANT_CODES.has(slug)) return true;
   return !/[aeiouy]/.test(slug) && n !== n.toUpperCase();
+}
+
+const titleWord = (w: string) => (w ? w[0].toUpperCase() + w.slice(1) : w);
+
+/**
+ * True when nobody ever wrote the name a page would print for a board: it is
+ * the board's own code, as the catalogue was handed it (SEO/GEO audit
+ * 2026-11-07, SD-02 and B02). Two shapes:
+ *   - a compound token (tenant~dc~site, Workday and Oracle) whose name folds
+ *     to its tenant code ("Atd" for atd~wd1~American_Tire_Distributors,
+ *     "Starfish" for Torch Technologies' tenant), with no override and not a
+ *     REAL_TENANT_NAMES name read on the employer's own site;
+ *   - a single-segment board whose name is its token title-cased and nothing
+ *     more ("Harmattan Ai" for harmattan-ai, "Creatoriq" for creatoriq).
+ *
+ * The bake asks this ONLY of a posting it would give a NEW page
+ * (postingFreshNameReason in scripts/prerender-posting-rule.mjs): measured
+ * 2026-11-07, 224 of the 500 sitemap posting pages came from employers with
+ * no company page and no override, and four of those named the wrong company
+ * ("Starfish", "Stars", "Aaregional", "Djeholdings"). Company pages and carried
+ * posting pages are not judged by it (S11-013: Intel, Mastercard and Medtronic
+ * are tokens like these, and lost their pages to the last rule that judged
+ * every page this way); an override names them instead.
+ */
+export function isUnreviewedTenantName(token: string | null | undefined, name: string | null | undefined): boolean {
+  const t = String(token ?? "").trim();
+  const n = String(name ?? "").trim();
+  if (!t || !n) return false;
+  if (employerNameOverride(t) !== null) return false;
+  if (t.includes("~")) {
+    const slug = t.split("~")[0].toLowerCase();
+    if (!slug || REAL_TENANT_NAMES.has(slug)) return false;
+    return isSystemCodeName(t, n);
+  }
+  return n === t.toLowerCase().split(/[-_.]+/).filter(Boolean).map(titleWord).join(" ");
 }
 
 // Feeds occasionally double-escape HTML ("Bob's Auto &amp; Towing") — the

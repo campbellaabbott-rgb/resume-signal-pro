@@ -166,6 +166,11 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
+    // A web font is always its own file (B12): index.html's faces name
+    // src/assets/fonts, and the two under Vite's 4 KB inlining line would
+    // otherwise ride every baked page's head as base64. As files they get a
+    // hashed /assets/ address and the year-long immutable cache.
+    assetsInlineLimit: (file: string) => (/\.woff2$/i.test(file) ? false : undefined),
     rollupOptions: {
       output: {
         // Vite's own pattern, except that a chunk named after a virtual module

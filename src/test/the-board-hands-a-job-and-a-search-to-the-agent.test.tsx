@@ -49,6 +49,7 @@ import { MemoryRouter } from "react-router-dom";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { choosePostingMenuItem } from "./helpers/posting-menu";
+import type { ReactElement } from "react";
 
 const invoke = vi.fn();
 const rpc = vi.fn();
@@ -59,16 +60,21 @@ vi.mock("@/integrations/supabase/client", () => ({
     rpc: (...a: unknown[]) => rpc(...a),
   },
 }));
-vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: null, session: null }) }));
+// Signed out unless a case signs in (the save link's prompt differs by it).
+const auth = vi.hoisted(() => ({ value: { user: null, session: null } as { user: unknown; session: unknown } }));
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => auth.value }));
 // The toast is judged by what the page asked it to say: the <Toaster/> that
 // paints it lives in App, not on this page.
 const toastSpy = vi.fn();
 vi.mock("@/hooks/use-toast", () => ({ toast: (...a: unknown[]) => toastSpy(...a), useToast: () => ({ toast: toastSpy, toasts: [] }) }));
 
+/** Every row the page asked the tracker to insert (the save link must add none on load). */
+const inserted: Array<Record<string, unknown>> = [];
 function stubTable() {
   const th: Record<string, unknown> = {};
   const self = () => th;
-  for (const k of ["select", "order", "eq", "not", "update", "insert", "in"]) th[k] = self;
+  for (const k of ["select", "order", "eq", "not", "update", "in"]) th[k] = self;
+  th.insert = (row: Record<string, unknown>) => { inserted.push(row); return th; };
   th.limit = async () => ({ data: [] });
   th.maybeSingle = async () => ({ data: null });
   th.then = (ok: (v: unknown) => void) => Promise.resolve({ data: [], error: null }).then(ok);
@@ -76,6 +82,7 @@ function stubTable() {
 }
 
 import Jobs, { boardFilterBody, type BoardFilterState } from "../pages/Jobs";
+import { saveRequestFrom } from "../components/jobs/SaveFromLinkPrompt";
 import { Header } from "../components/Header";
 import { MCP_URL, RATE_COPY } from "../pages/AgentConnect";
 import { FREE_KEY_RATE_PER_MIN } from "../config/free-key-limits";
@@ -84,7 +91,7 @@ import { PASS } from "../config/products";
 import { changelog } from "../data/changelog";
 import {
   agentPrompt, agentDeepLink, DEEP_LINK_HOST_NAMES, HOST_STORAGE_KEY, SEARCH_ARG_DROPS, SEARCH_ARG_RENAMES,
-  searchPrompt, toSearchJobsArgs, tool,
+  searchPrompt, setupPath, toSearchJobsArgs, tool,
 } from "../lib/agent-handoff";
 
 vi.setConfig({ testTimeout: 30_000 });
@@ -124,20 +131,43 @@ const FULL_STATE: BoardFilterState = {
 
 describe("1. the posting prompt", () => {
   const JOB = { id: "greenhouse:acme:1", sendable: false };
-  it("carries the id verbatim, the MCP URL, an unkeyed tool first, asks for the employer's apply link, and never a key", () => {
+  it("calls apply_myself on the posting's id with the MCP URL, keeps the drafting rules, stops before Submit, and never carries a key", () => {
     const p = agentPrompt(JOB);
     expect(p).toContain(`job id "${JOB.id}"`);
     expect(p).toContain(MCP_URL);
-    // The first call answers with no key (the wall was a prompt whose first
-    // tool needed one). Since the apply pivot (owner decision 2026-10-11) the
-    // prompt then asks for the employer's apply link and says the person
-    // applies: no keyed check, no apply tool, nothing to be sent.
-    expect(p).toMatch(/call fetch with job id/);
-    expect(p).toMatch(/employer's apply link/);
-    expect(p).toMatch(/I will apply myself, on the employer's site/);
-    expect(p).not.toMatch(/check_apply_support|request_application|send it|sent for me/);
+    // CJ-05 / APPLY-1107-02: the hand-off walks the employer's real form
+    // through apply_myself (unkeyed, its own forms allowance) instead of
+    // fetching the posting and guessing what it asks. The rules ride in the
+    // sentence: the person answers what is theirs, only CV-draftable
+    // questions are drafted, every draft is shown first, nothing is sent.
+    expect(p).toMatch(/call apply_myself with job id/);
+    expect(p).toMatch(/format "markdown" if you cannot open a browser/);
+    expect(p).toMatch(/ask me every question it marks you, your_details or your_documents, and any question about me whatever its mark/);
+    // THE LIVE TOOL'S RULE 3 (agent-mcp on main: "only from the CV given in
+    // this chat", and /agents step 1: give it in the chat). A CV kept in the
+    // project is owner decision (5), and it moves with that server's deploy,
+    // in the same frontend publish as the page's rule-3 mirror.
+    expect(p).toMatch(/draft only the ones it marks draft_from_your_cv, from the CV I give you in this chat;/);
+    expect(p).not.toMatch(/in this project|memory/);
+    expect(p).toMatch(/show me every draft before it goes into the form, and stop before Submit\. I press Submit myself\./);
+    expect(p).not.toMatch(/check_apply_support|request_application|send it|sent for me|submit it for me/i);
     expect(p).not.toMatch(/rb_live_/);
     expect(p.length).toBeLessThan(14_000); // the claude:// prefill cap
+  });
+  it("works where the connector is not added: it says where to add it and hands the employer's own link, or the board's page for the posting", () => {
+    const withLink = agentPrompt({ ...JOB, applyUrl: "https://boards.greenhouse.io/acme/jobs/1", title: "Staff Engineer", company: "Acme" });
+    expect(withLink).toMatch(/If that server is not connected here, tell me I can add it free at https:\/\/resumebooster\.work\/agents/);
+    expect(withLink).toContain(`open the employer's apply link for "Staff Engineer" at Acme (https://boards.greenhouse.io/acme/jobs/1)`);
+    const noLink = agentPrompt(JOB);
+    expect(noLink).toContain(`open this posting on the board (https://resumebooster.work/jobs?job=${encodeURIComponent(JOB.id)})`);
+    // The search prompt offers the same walk for any result picked, and the same setup line.
+    const sp = searchPrompt({ query: "x" });
+    expect(sp).toMatch(/for any I pick, offer apply_myself to walk me through the employer's form, and I submit it myself/);
+    expect(sp).toMatch(/add it free at https:\/\/resumebooster\.work\/agents/);
+  });
+  it("the setup link for a host is that host's tile on /agents, and the page itself for a name with no tile", () => {
+    for (const h of MCP_PAGE_HOSTS) expect(setupPath(h.name)).toBe(`/agents#${h.id}`);
+    expect(setupPath("Cursor")).toBe("/agents");
   });
   it("a posting the retired apply agent could send gets the same prompt: no apply tool, nothing sent", () => {
     const p = agentPrompt({ ...JOB, sendable: true });
@@ -145,8 +175,12 @@ describe("1. the posting prompt", () => {
     expect(p).not.toMatch(/request_application/);
   });
   it("every tool a prompt names is one the mirror registers, and tool() refuses one it does not", () => {
+    // apply_myself's own answeredBy values (you, your_details,
+    // your_documents, draft_from_your_cv) are words the prompt quotes from
+    // its answer, not tools; every other snake_case word must be a tool.
+    const ANSWERED_BY = ["your_details", "your_documents", "draft_from_your_cv"];
     for (const p of [agentPrompt(JOB), agentPrompt({ ...JOB, sendable: true }), searchPrompt({ query: "x" }, { activelyHiring: true })]) {
-      const named = [...p.matchAll(/\b([a-z]+_[a-z_]+|fetch)\b/g)].map((m) => m[1]);
+      const named = [...p.matchAll(/\b([a-z]+_[a-z_]+|fetch)\b/g)].map((m) => m[1]).filter((n) => !ANSWERED_BY.includes(n));
       expect(named.length).toBeGreaterThan(0);
       for (const n of named) expect(MCP_TOOL_NAMES, `${n} is not a registered tool`).toContain(n);
     }
@@ -360,7 +394,9 @@ describe("2. the hand-offs on /jobs, judged by the request body", () => {
     // breezy was a sendable vendor; since the apply pivot the prompt is the
     // same for every posting: no apply tool, and the person applies.
     expect(copied).not.toMatch(/request_application/);
-    expect(copied).toMatch(/I will apply myself/);
+    expect(copied).toMatch(/call apply_myself with job id "breezy:acme:1"/);
+    // The row's own employer link travels for an app with no connector.
+    expect(copied).toContain(`open the employer's apply link for "Staff Engineer" at Acme (https://x/1)`);
     await waitFor(() => expect(tracked(fetchSpy).length).toBe(before + 1), SLOW);
     const ev = tracked(fetchSpy).at(-1)!;
     expect(ev.testName).toBe("job_board");
@@ -369,7 +405,17 @@ describe("2. the hand-offs on /jobs, judged by the request body", () => {
     expect(String(ev.visitorId)).toMatch(/^[0-9a-f-]{36}$/);
     expect(ev.metadata).toEqual({ host: MCP_HOSTS[0].name, id: "breezy:acme:1", sendable: true });
     await waitFor(() => expect(toastSpy).toHaveBeenCalledTimes(1), SLOW);
-    expect(toastSpy.mock.calls[0][0]).toEqual({ title: "Prompt copied — paste it to your agent. It names this posting and our MCP server." });
+    const t = toastSpy.mock.calls[0][0] as { title: string; description: ReactElement<{ href: string; children: string }> };
+    expect(t.title).toBe("Prompt copied — paste it to your agent. It names this posting and our MCP server.");
+    // CJ-05: anyone not connected yet is one link from their app's tile. A
+    // plain anchor: the toaster mounts outside the router.
+    expect(t.description.type).toBe("a");
+    expect(t.description.props.href).toBe(`/agents#${MCP_HOSTS[0].id}`);
+    expect(t.description.props.children).toBe("Not connected yet? Set it up");
+    // The full control carries the same link, for the host picked in it.
+    const setup = screen.getAllByRole("link", { name: "Not connected yet? Set it up" });
+    expect(setup.length).toBeGreaterThan(0);
+    for (const a of setup) expect(a.getAttribute("href")).toBe(`/agents#${MCP_HOSTS[0].id}`);
   });
 
   it("the chooser is the host mirror; picking a deep-link host renders a claude:// link that decodes to the prompt and fires agent_deeplink_job {host, id}", async () => {
@@ -508,6 +554,51 @@ describe("2. the hand-offs on /jobs, judged by the request body", () => {
       expect(src, `${v} is not sent anywhere`).toContain(`"${v}"`);
       expect(v.length).toBeLessThanOrEqual(30);
     }
+  });
+});
+
+describe("2. the save link asks, and never saves on load (APPLY-1107-03)", () => {
+  beforeEach(() => {
+    try { localStorage.clear(); sessionStorage.clear(); } catch { /* blocked */ }
+    allowAnalytics();
+    invoke.mockReset(); rpc.mockReset(); toastSpy.mockReset();
+    inserted.length = 0;
+  });
+  afterEach(() => { auth.value = { user: null, session: null }; vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+  const ask = () => screen.queryAllByRole("group", { name: "Save this posting to your tracker?" });
+
+  it("signed out: the posting opens with the question and a sign-in link that returns to the same question; nothing is written", async () => {
+    hookFetch();
+    mount("/jobs?job=breezy%3Aacme%3A1&save=1"); await settled();
+    await waitFor(() => expect(ask().length).toBeGreaterThan(0), SLOW);
+    const signIn = within(ask()[0]).getByRole("link", { name: "Sign in to save it" });
+    expect(signIn.getAttribute("href")).toBe(`/auth?next=${encodeURIComponent("/jobs?job=breezy%3Aacme%3A1&save=1")}`);
+    expect(saveRequestFrom("?job=breezy%3Aacme%3A1&save=1")).toBe("breezy:acme:1");
+    expect(inserted).toEqual([]);
+    // Not now puts the question away.
+    fireEvent.click(within(ask()[0]).getByRole("button", { name: "Not now" }));
+    await waitFor(() => expect(ask()).toEqual([]), SLOW);
+  });
+
+  it("signed in: nothing is saved on load; Save writes one 'saved' row for that posting and the question goes", async () => {
+    hookFetch();
+    auth.value = { user: { id: "u1" }, session: { user: { id: "u1" } } };
+    mount("/jobs?job=breezy%3Aacme%3A1&save=1"); await settled();
+    await waitFor(() => expect(ask().length).toBeGreaterThan(0), SLOW);
+    expect(inserted, "a save link wrote to the tracker on load").toEqual([]);
+    fireEvent.click(within(ask()[0]).getByRole("button", { name: "Save to my tracker" }));
+    await waitFor(() => expect(inserted.length).toBe(1), SLOW);
+    expect(inserted[0]).toMatchObject({ job_id: "breezy:acme:1", status: "saved", user_id: "u1" });
+    await waitFor(() => expect(ask()).toEqual([]), SLOW);
+  });
+
+  it("a posting link without save=1 asks nothing", async () => {
+    hookFetch();
+    mount("/jobs?job=breezy%3Aacme%3A1"); await settled();
+    await panelOpen();
+    expect(ask()).toEqual([]);
+    expect(saveRequestFrom("?job=breezy%3Aacme%3A1")).toBeNull();
+    expect(saveRequestFrom("?save=1")).toBeNull();
   });
 });
 

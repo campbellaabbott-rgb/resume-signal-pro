@@ -1511,6 +1511,42 @@
     "theFreeReportsNumbersNowAgree": {
       "title": "The free report's numbers and labels now agree",
       "description": "The report's projected score now shows one number everywhere, and it never goes above 95. The score's color, label, banner and share card now agree at every score. The card on how hiring systems read your résumé no longer says your layout passes when it could not check it: it says “Not checked”. If your feedback or your answer about an application could not be saved, the report says so and does not thank you. A résumé over 50,000 characters is refused before the scan, and the message names its length. When a report has no rewrite the builder can apply, it says so, and the builder leaves your bullets unchanged. If you keep your draft in the builder, the report's fixes are applied to the bullets your draft already has, the page says how many landed, and the rest stay in your report. Rewrites for Hindi and Russian résumés now land on the right bullet. On a phone, the score card no longer runs off the screen. The report's section menu stays visible under the site header. The “Industry & Role Keywords” section no longer gives you another job's keywords because of stray letters in your title. The “Personalized Tips” section can still do this. The findings list, the card on hiring systems and the projected-score line now appear in your language, and so do the Resume Builder's headings, buttons and labels. Other parts of the report, such as industry labels, are still in English."
+    },
+    "ourFontsComeFromOurOwnSite": {
+      "title": "Our fonts now come from our own site",
+      "description": "Our pages no longer load their fonts from Google. The fonts now come from our own site, so opening a page sends no request to Google's font servers."
+    },
+    "aSharedLinkCanNoLongerDeleteAPaidAnalysis": {
+      "title": "A shared link can no longer delete a paid analysis",
+      "description": "Before, anyone who had the share link to a paid analysis could delete it. Now the share link can still open the analysis but cannot delete it. Deleting also needs the original purchase, so it works only from the buyer's own purchase link (the page their payment opened or the order in their account) or by writing to us from the address they paid with. The shared page says so."
+    },
+    "aPurchaseLinkThatDoesNotOpenSaysWhy": {
+      "title": "A purchase link that doesn't open now usually says why",
+      "description": "When a link to a purchase on the product page doesn't open (tools and scan packs bought one at a time, and tools a Pro plan includes), the page now usually says why. It may say the payment hasn't completed, the purchase was refunded, or too many checks came from your connection in the last hour. Or it may say we couldn't find the purchase, perhaps because the link was cut short or has expired. A link with no purchase reference asks you to paste the link from your purchase email, or the reference itself. If the payment provider doesn't answer in time, the page says your purchase is safe and offers “Try Again”. This is in all nine languages. The Full Analysis page is unchanged."
+    },
+    "draftsForAJobReopenWithoutBeingWrittenAgain": {
+      "title": "Drafts for a job reopen without being written again",
+      "description": "In the job board's “Prepare your application” window, a cover letter, tailored résumé or set of application answers you already drafted for a job now opens again without being written again, so reopening a cover letter or tailored résumé doesn't use your daily writing allowance a second time. This works while the page stays open, for the last 20 jobs you prepared for, as long as your résumé, the posting and your language are unchanged; a reload or a new tab starts fresh. “Tailor it again” and “Draft again” write a new one. When the cover-letter or résumé writer is busy for everyone, it now says so and says it isn't your own limit."
+    },
+    "theInterviewCoachKeepsEachAnswerApart": {
+      "title": "The Interview Coach keeps each answer apart, and tailoring needs a real job",
+      "description": "In the free report's Interview Coach, each question now keeps its own answer. Before, an answer typed for one question showed in the other questions' boxes and could be sent as their answer, and “Try Again” on one question cleared them all. The report also offers a tailored résumé only when it has a job title or posting to tailor to. Before, it could make up a job title from your industry."
+    },
+    "searchAndReportEmailsInYourLanguage": {
+      "title": "Search and report emails come in the language you used",
+      "description": "Emails for your saved searches, the free report email and the fix-plan emails after it now come in the language you were using on the site. For the fix-plan emails, that is the language of the page where you pressed the button that started them. Before, they were all in English. A search saved before this update keeps sending English emails until you open it from your saved searches, switch its email on or off, change its alert threshold, or turn alerts on for it again from the job board. Your scan's own findings stay in the language the scan wrote them in."
+    },
+    "yourAccountSaysWhichSearchEmailsComeDaily": {
+      "title": "Your account page says which search emails come daily",
+      "description": "Your account page now says, beside each saved search it lists (the 20 newest), whether that search emails you daily or weekly: alerts and company watches daily, other searches weekly. Before, it called every one weekly. The page you reach from the market pulse confirmation email now says what the pulse sends: the core keywords for your field from our curated keyword guide, not a count of this month's postings."
+    },
+    "theOneClickApplyFilterIsGone": {
+      "title": "The One-click apply filter is gone from Explore",
+      "description": "The filter's count covered only jobs on four hiring systems, though choosing it already showed every job. Saved searches that still had this filter on now count and email new jobs from the whole board; opening one already showed every job."
+    },
+    "theBoardChecksEveryMinuteForAStoppedRefresh": {
+      "title": "The job board checks every minute for a stopped refresh",
+      "description": "The job board now checks every minute whether its listings refresh has stopped, and asks for a restart once it has been quiet for a few minutes. We have not yet seen it restart a stopped refresh."
     }
   }
 }

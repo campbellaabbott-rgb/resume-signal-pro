@@ -15,7 +15,7 @@
  * entry; src/pages/JobPosting.tsx imports it directly.
  */
 
-import { boardNamesItsHirer, employerName, possessive } from "../../lib/company-display";
+import { boardNamesItsHirer, decodeNameEntities, employerName, possessive } from "../../lib/company-display";
 
 // The bake's own name gate and its rule for which rows get a page, read here
 // so the job markup the app writes is the markup the bake writes (see
@@ -24,6 +24,10 @@ import { boardNamesItsHirer, employerName, possessive } from "../../lib/company-
 import { bakeEmployerName, type BakeEmployerName } from "../../../scripts/prerender-names.mjs";
 import { postingRowEligible } from "../../../scripts/prerender-posting-rule.mjs";
 import { isCodeShapedName } from "../../lib/company-display";
+// The owner's STOP switch for Google for Jobs (B01): read by postingJsonLd below.
+import { JOB_POSTING_MARKUP } from "../../config/seo-switches";
+// What a posting's employer states, applied by the bake and again here (B06).
+import { applyEmployerStatements } from "../../../scripts/employer-statements.mjs";
 
 /**
  * THE BOARD'S OWN SERVING WINDOW, MIRRORED — and the mirror is the point.
@@ -288,7 +292,9 @@ export function postingLanguage(description: string | null | undefined): string 
  * built tree shipped 15 posting URLs across 6 titles (five Target stores under
  * one "Guest Advocate (Cashier), General Merchandise, Inbound (Stoc…"), which
  * is what Search Console reports as "Duplicate without user-selected
- * canonical". Distinctness is postingPageTitle's job now, by construction, and
+ * canonical". Distinctness is the title builders' job now: postingPageTitle
+ * keeps the employer and the town, and postingPageTitleAvoiding, which the
+ * bake runs with every title it has written, separates what still repeats. It
  * is asserted directly rather than inferred from this function.
  */
 export function postingIdentity(job: PostingRow): string {
@@ -324,7 +330,7 @@ export function postingRequisitionIdentity(job: Pick<PostingRow, "id">): string 
 }
 
 /** A title or a name as one line: an employer's double space is not part of the job. */
-export const postingText = (s: string | null | undefined): string => String(s ?? "").replace(/\s+/g, " ").trim();
+export const postingText = (s: string | null | undefined): string => decodeNameEntities(String(s ?? "")).replace(/\s+/g, " ").trim();
 
 /** UTC calendar day of an ISO stamp. */
 const day = (iso: string): string => iso.slice(0, 10);
@@ -491,16 +497,31 @@ const CA_POSTAL = /^[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d$/;
 const STREETISH =
   /(?:^\d)|\b(?:st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|way|pkwy|parkway|hwy|highway|suite|ste|floor|fl|unit|rte|route|bldg|building|campus|center|centre|hospital|plaza|tower)\b\.?/i;
 
-/** A facility, not a town ("Shenzhen Office", "Las Vegas Service Center"): never the locality, never a street either. */
-const FACILITY = /\b(?:office|headquarters?|hq|plant|warehouse|factory|depot)\b/i;
+/**
+ * A facility, not a town ("Shenzhen Office", "Las Vegas Service Center"): never the locality, never a street either.
+ * "office" is read inside a word too: "Kantharyar OfficeTower" is a building.
+ */
+const FACILITY = /office|\b(?:headquarters?|hq|plant|warehouse|factory|depot)\b/i;
+
+/**
+ * A STORE OR A SITE, NOT A TOWN (B07, SD-03). The 2026-11-07 audit read
+ * "West Edmonton Mall", "Woodfield Mall Location", "Toronto II", "Sungai
+ * Pikan Plasma", "Grand Z Casino Hotel" and "River Stone Chophouse" as the
+ * addressLocality of live JobPostings. A place carrying one of these words is
+ * a store, a site or a venue; a numbered second store ("Toronto II") is too.
+ */
+const SITE_WORD = /\b(?:mall|plaza|plasma|casino|hotel|resort|chophouse|restaurant|stores?|outlets?|shopping|locations?|campus|airport|cemetery|club|clinic|court)\b|\s(?:II|III|IV)$/i;
 
 /**
  * Words that name no town, whatever column they arrive in. The work-mode words
  * are here because Workday writes them into the location string ("Remote - US",
  * "Hybrid - Chicago"), and a leading one changes what the rest of the string
- * is: "Remote - Poland" names a country, not a town in it.
+ * is: "Remote - Poland" names a country, not a town in it. A continent, a
+ * region of a country and a placeholder are not towns either (B07: "Gabon,
+ * Africa", "New England - MA", "HK, HKSAR" and "United States Of America, New
+ * Mexico, Other" each read one into the town slot).
  */
-const NOT_A_TOWN = /^(?:remote|hybrid|onsite|on-site|office|various|multiple|flexible|anywhere|home|work from home|wfh|virtual|field|nationwide|n\/a|tbd)$/i;
+const NOT_A_TOWN =/^(?:remote|hybrid|onsite|on-site|office|various|multiple|flexible|anywhere|home|work from home|wfh|virtual|field|nationwide|n\/a|tbd|apac|emea|latam|amer|americas|europe|asia|asia pacific|africa|oceania|middle east|mena|benelux|dach|nordics|caribbean|(?:north|south|central|latin) america|new england|midwest|pacific northwest|(?:east|west|gulf) coast|bay area|tri-?state(?: area)?|global|international|worldwide|other|others|unknown|sar|hksar|macao sar|macau sar)$/i;
 
 /** A country written where a town should be. Three letters is the shortest town we will publish. */
 const NOT_A_TOWN_BUT_A_COUNTRY = /^(?:usa|u\.?s\.?a?\.?|uk|u\.?k\.?|eu)$/i;
@@ -667,17 +688,44 @@ function namesACountryInside(s: string): boolean {
  * WHY A STRING IS NOT A TOWN WE WOULD PUBLISH, or null when nothing says so.
  * The producer (isLocality) and the bake's markup guard read the same rules:
  * a site code, a bracket or a list separator, the word "only", a work-mode
- * word, punctuation at either end ("USA-" from "USA-REMOTE"), or a country's
- * name inside it ("Movie Park Germany").
+ * word, punctuation at either end ("USA-" from "USA-REMOTE"), a store or site
+ * word, or a country's name inside it ("Movie Park Germany").
+ *
+ * Read with the address it sits in, two towns carry a country's name and are
+ * still towns (B07): a city-state's one town ("Singapore" in SG), and a US or
+ * Canadian town beside its state or province ("Lebanon" in PA, "Peru" in IL).
  */
-export function localityProblem(locality: string): string | null {
+export function localityProblem(locality: string, address?: { addressCountry?: unknown; addressRegion?: unknown } | null): string | null {
   const s = String(locality ?? "").trim();
   if (NOT_IN_A_TOWN.test(s)) return "a site code, a bracket or a list separator";
   if (/\bonly\b/i.test(s)) return "the word only";
   if (WORK_MODE_WORD.test(s)) return "a work-mode word";
   if (trimEdges(s) !== s) return "punctuation at one end";
-  if (namesACountryInside(s)) return "a country's name";
+  if (SITE_WORD.test(s)) return "a store or site word";
+  if (namesACountryInside(s)) {
+    const own = String(address?.addressCountry ?? "").trim().toUpperCase();
+    if (own && CITY_STATES[own] === s) return null;
+    if (own && address?.addressRegion && countryNamedTown(s, own)) return null;
+    return "a country's name";
+  }
   return null;
+}
+
+/**
+ * THE EMPLOYER'S NAME WRITTEN BEFORE ITS SITE (B07): "Darwill McCook" for
+ * Darwill, Inc., "Eberhard Strongsville" for Eberhard Manufacturing, "Lady
+ * Nomada Central Park" for Lady Nomada/Perdida. The place opens with the
+ * employer's first word and goes on past it, so it names a site and not a town.
+ * An employer named after its town ("Kansas City Southern" in "Kansas City")
+ * starts with the whole place, and a first word that opens town names ("New",
+ * "Fort", "Saint") is never read this way.
+ */
+function employerBeforeItsSite(place: string, employer: string): boolean {
+  const core = employer.split(/[/,(]/)[0].replace(/\s+/g, " ").trim().toLowerCase();
+  const first = core.split(" ")[0] ?? "";
+  if (first.length < 4 || TOWN_PREFIX.test(first)) return false;
+  const p = place.replace(/\s+/g, " ").trim().toLowerCase();
+  return p.startsWith(`${first} `) && !core.startsWith(p);
 }
 
 /** Is this segment a town name we are willing to publish as one? */
@@ -685,11 +733,20 @@ function isLocality(segment: string, country = "", employer = ""): boolean {
   const s = segment.trim();
   if (s.length < 3 || s.length > 60) return false;
   if (NOT_A_TOWN.test(s) || NOT_A_TOWN_BUT_A_COUNTRY.test(s)) return false;
+  // A code, not a town: "SGP" (Singapore,SGP), "ANN", "WFM" (B07).
+  if (/^[A-Z]{2,3}$/.test(s)) return false;
   // The row's own country code is not a town in it. A live remote posting
   // shipped addressLocality "US" from a location string that was just "US".
   if (country && s.toUpperCase() === country.toUpperCase()) return false;
   if (/\d/.test(s)) return false;
   if (/\s-\s|--/.test(s)) return false;
+  // HALF A NAME (B07): "Korea, Republic of" left "Republic of", and "Taiwan,
+  // East District" a district of no one town.
+  if (/\s(?:of|the|and|or)$/i.test(s)) return false;
+  if (/^(?:central|north|south|east|west|northern|southern|eastern|western)\s+(?:district|region|area|province|zone)$/i.test(s)) return false;
+  // A district or a province is no town ("Tel Aviv District", "Cairo
+  // Governorate Desert"): the town, when written, is beside it.
+  if (/\sdistrict$|\b(?:governorate|prefecture|oblast|voivodeship)\b/i.test(s)) return false;
   // THE 2026-10-18 BAKE'S ELEVEN (SEO-003): "Bangalore ONLY)", "Utah | Hybrid",
   // "FXE_APAC/VNM/VNHANHQ/Hanoi Rep Office", "Remote Worker France",
   // "PARSIPPANY (NJPAR)", "Houston (Corporate Office)", "Ottawa (Kanata)",
@@ -705,6 +762,7 @@ function isLocality(segment: string, country = "", employer = ""): boolean {
   if (countryCodeOfName(s)) return false;
   const emp = employer.trim().toLowerCase();
   if (emp.length >= 3 && s.toLowerCase().includes(emp)) return false;
+  if (employerBeforeItsSite(s, employer)) return false;
   return !STREETISH.test(s);
 }
 
@@ -716,7 +774,7 @@ const placeOfSegment = (segment: string): string => trimEdges(segment
   .trim());
 
 /** Words that are neither a work mode nor a place: what is left of "Remote Worker France" once both are out. */
-const PLACE_NOISE = new Set("worker workers based anywhere any location locations from in the of only nationwide countrywide country wide home office field various multiple flexible tbd n/a and or within".split(" "));
+const PLACE_NOISE = new Set("worker workers based anywhere any location locations from in the of only nationwide countrywide country wide home office field various multiple flexible tbd n/a and or within fully first".split(" "));
 
 /**
  * WHETHER A REMOTE ROW'S LOCATION NAMES A PLACE BELOW ITS COUNTRY. "Remote -
@@ -818,14 +876,120 @@ export function postingCountryMismatch(job: Pick<PostingRow, "location" | "count
 }
 
 /**
+ * THE CITY-STATES (B07, SD-03): a row filed under one of these is in its one
+ * city, whatever the location string calls the district or the site
+ * ("Singapore", "Fab 10A, Singapore", "Singapore,SGP" were country-only).
+ */
+const CITY_STATES: Readonly<Record<string, string>> = { SG: "Singapore", HK: "Hong Kong", MO: "Macau", MC: "Monaco", GI: "Gibraltar", VA: "Vatican City" };
+
+/** Does this whole segment name the row's own country (or the one governing it, or one it governs)? */
+function namesOwnCountry(segment: string, country: string): boolean {
+  const s = trimEdges(placeOfSegment(segment));
+  if (!s) return false;
+  if (s.toUpperCase() === country) return true;
+  const code = countryCodeOfName(s);
+  return code !== null && sameJurisdiction(country, code);
+}
+
+/** The words that may open a hyphenated town ("Saint-Denis", "Port-au-Prince"): such a first part is never a town alone. */
+const TOWN_PREFIX = /^(?:saint|sainte|st|ste|san|santa|são|sao|port|fort|mont|le|la|les|el|los|las|new|north|south|east|west|lake|mount|mt|bad|ville)$/i;
+/** Words that name a part of a country, never a town ("Central Mexico"). */
+const NOT_A_TOWN_WORD = /^(?:central|north|south|east|west|northern|southern|eastern|western|greater|metro|rural|upper|lower|inner|outer|coastal|mainland|region|area|district|province|state|county|island|islands|sar|the|great|latin|republic|united|federal|democratic|islamic|kingdom)$/i;
+
+/** A US ZIP or Canadian postal code at the end of a segment ("TX 75163"). */
+const TRAILING_POSTAL = /\s+(?:\d{5}(?:-\d{4})?|[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d)$/;
+
+/**
+ * WHETHER A PLACE GIVES POSITIVE EVIDENCE OF THE ROW'S OWN COUNTRY: it names
+ * the country, or one of its US states or Canadian provinces, by name or by
+ * code ("Denver, Colorado", "Lebanon IN", "Remote USA", "London, United
+ * Kingdom"). A place that names nothing ("East Coast") gives none.
+ */
+function placeIsInOwnCountry(place: string, country: string): boolean {
+  // A postal code after the state is not part of it ("Trinidad, TX 75163").
+  const segs = place.split(/,|\s[-–]\s|\s*[-–]\s*/).map((x) => placeOfSegment(x.trim().replace(TRAILING_POSTAL, ""))).filter(Boolean);
+  if (segs.some((x) => namesOwnCountry(x, country) || !!subdivisionOf(x, country))) return true;
+  const words = placeOfSegment(place).split(/\s+/).map(trimEdges).filter(Boolean);
+  const last = words[words.length - 1] ?? "";
+  if (/^[A-Z]{2}$/.test(last) && subdivisionOf(last, country)) return true;
+  for (let i = 0; i < words.length; i++) {
+    for (let n = 1; n <= 4 && i + n <= words.length; n++) if (namesOwnCountry(words.slice(i, i + n).join(" "), country)) return true;
+  }
+  return false;
+}
+
+/**
+ * ONE PLACE OUT OF A LIST (B07). "Munich, Germany; London, United Kingdom" on
+ * a GB row was read as a town in its first segment, Munich, filed in the UK;
+ * "Toronto, Canada; Denver, Colorado" on a US row named no town at all. A list
+ * is read as the first place in it that names the row's own country or one of
+ * its subdivisions, the place the employer listed first of those in the row's
+ * country; none leaves the country alone. A string with no list mark is itself.
+ */
+function onePlaceOf(raw: string, country: string): string | null {
+  const places = raw.split(PLACE_LIST).map((x) => x.trim()).filter(Boolean);
+  if (places.length <= 1) return raw;
+  return places.find((x) => placeIsInOwnCountry(x, country)) ?? null;
+}
+
+/**
+ * A TOWN THAT SHARES A COUNTRY'S NAME, beside one of the row's own states
+ * ("Lebanon, PA", "Peru, NY", "Holland, MI", "South Jordan UT"). Read only
+ * where a US state or a Canadian province anchors the place, and only as the
+ * country's whole name or a town word beside it: "China Chilcano DC" is a
+ * restaurant, and stays unread.
+ */
+function countryNamedTown(segment: string, country: string): boolean {
+  if (country !== "US" && country !== "CA") return false;
+  const s = segment.trim();
+  if (s.length < 3 || /\d/.test(s) || NOT_IN_A_TOWN.test(s) || WORK_MODE_WORD.test(s) || SITE_WORD.test(s) || NOT_A_TOWN.test(s) || trimEdges(s) !== s) return false;
+  if (namesOwnCountry(s, country)) return false;
+  if (countryCodeOfName(s)) return true;
+  const words = s.split(/\s+/);
+  return words.length === 2 && TOWN_WORD_BESIDE_A_COUNTRY.test(words[0]) && !!countryCodeOfName(words[1]);
+}
+
+/** Why a region read off a label is not one we would publish, or null ("Peru;", "Israel-Caesarea", "Fully"). */
+function regionProblem(region: string): string | null {
+  if (/[;·•|]/.test(region) || NOT_IN_A_TOWN.test(region)) return "a list mark or a bracket";
+  if (namesACountryInside(region.replace(/[-–]/g, " "))) return "a country's name";
+  if (NOT_A_TOWN.test(region) || PLACE_NOISE.has(region.toLowerCase())) return "not a place";
+  return localityProblem(region);
+}
+
+/** A trailing bracket holding an address line or a number ("(1361 Heather Street)", "(10178)"): a note, not the place. */
+const STREET_NOTE = /\s*\((?=[^)]*\d)[^)]*\)\s*$/;
+
+/**
  * The posting's place as separate postal properties, or null when the row
  * states no country (in which case it gets no markup at all upstream).
+ *
+ * THE SHAPES THE 2026-11-07 AUDIT READ AS A COUNTRY ALONE (B07, SD-03), each
+ * read now, with refusal still the default: "India, Hyderabad" (the country
+ * first), "Shanghai China" (one town word and the country), "Mumbai-
+ * Maharashtra-India" (town, region, country), "SD, Watertown" and "US, CA,
+ * Santa Clara" (the state first), "Harrisburg-Pennsylvania" (town and
+ * state), a city-state ("Singapore"), a list of places with one in the row's
+ * country, and a store or site written before its town ("Store 1357-Citadel
+ * Mall-ANN-Charleston, SC"). A store or site word is never a town (SITE_WORD),
+ * and a region read off a label must name a place (regionProblem).
  */
 export function postingPostalAddress(job: PostingRow): Record<string, unknown> | null {
   const country = (job.country ?? "").trim().toUpperCase();
   if (!country) return null;
+  // Entities decoded once, and the zero-width marks some feeds leave in.
+  const whole = decodeNameEntities(String(job.location ?? "")).replace(/[\u200b-\u200d\ufeff]/g, "").trim();
+  const one = whole ? onePlaceOf(whole, country) : "";
+  const address = postalAddressOf(one === null ? "" : one.replace(STREET_NOTE, "").trim() || one, country, job);
+  if (!address.addressLocality && CITY_STATES[country] && one !== null && whole) {
+    address.addressLocality = CITY_STATES[country];
+    delete address.addressRegion;
+  }
+  return address;
+}
+
+function postalAddressOf(raw: string, country: string, job: PostingRow): Record<string, unknown> {
   const address: Record<string, unknown> = { "@type": "PostalAddress", addressCountry: country };
-  const raw = (job.location ?? "").trim();
   if (!raw) return address;
   // The employer's own name is never its town (SEO-003): read once, compared
   // inside isLocality.
@@ -850,14 +1014,60 @@ export function postingPostalAddress(job: PostingRow): Record<string, unknown> |
   // and anything else that reads as a town is the town.
   const remoteLabel = (seg: string): { region: string | null; locality: string | null } | null => {
     if (!WORK_MODE_WORD.test(seg)) return null;
-    const words = placeOfSegment(seg).split(" ").map(trimEdges)
+    // "Location-Basel" is Basel (B07: Agilent's "Location-Ahmedabad" was a region).
+    const words = placeOfSegment(seg).split(" ").map((w) => trimEdges(trimEdges(w).replace(/^locations?[-:]+/i, "")))
       .filter((w) => w && !PLACE_NOISE.has(w.toLowerCase()) && !countryCodeOfName(w) && w.toUpperCase() !== country);
     const rest = words.join(" ");
     if (!rest || countryCodeOfName(rest) || rest.length < 3 || rest.length > 40 || /\d/.test(rest) || NOT_IN_A_TOWN.test(rest) || /\bonly\b/i.test(rest)) return null;
     const code = subdivisionOf(rest, country);
     if (code) return { region: code, locality: null };
     if (country === "US" || country === "CA") return town(rest) ? { region: null, locality: rest } : null;
-    return { region: rest, locality: null };
+    // A REGION MUST NAME A PLACE (B07): "Peru;", "Israel-Caesarea", "Fully"
+    // and "· Krakow ·" were addressRegion on live JobPostings.
+    return regionProblem(rest) ? null : { region: rest, locality: null };
+  };
+
+  // A TOWN WRITTEN FIRST, before its region or its country (B07): "Mumbai-
+  // Maharashtra-India", "Vancouver-British Columbia-Canada", "Fresno-CA-US",
+  // and before its state alone: "Harrisburg-Pennsylvania". A first part that
+  // opens a hyphenated town ("Saint-Denis") or a lower-case joining word
+  // ("Aix-en-Provence", "Stratford-upon-Avon") is never read this way.
+  const townFirst = (parts: string[], at: number): string | null => {
+    const n = parts.length;
+    const lastIsOwn = namesOwnCountry(parts[n - 1], country);
+    const shapeOk = (lastIsOwn && (n === 3 || n === 4) && (at === -1 || (at > 0 && at < n - 1))) || (n === 2 && at === 1);
+    if (!shapeOk || TOWN_PREFIX.test(parts[0])) return null;
+    if (parts.slice(1).some((x) => !/^[\p{Lu}\d]/u.test(x))) return null;
+    // "Neuquen Argentina-Neuquen-Argentina": the country written into the town too.
+    const words = parts[0].split(/\s+/);
+    const first = words.length > 1 && namesOwnCountry(words[words.length - 1], country) ? words.slice(0, -1).join(" ") : parts[0];
+    return town(first) || countryNamedTown(first, country) ? first.trim() : null;
+  };
+
+  // A TOWN BEFORE ITS STATE OR ITS COUNTRY, WITH NO MARK BETWEEN (B07):
+  // "Kansas City MO", "South Jordan UT", "USA VA Arlington", "Shanghai
+  // China", "Harrogate United Kingdom". Beside a country only a single word
+  // is read as its town: "Four Seasons Seychelles" is a hotel.
+  const townBeside = (s: string): { region: string | null; locality: string | null } | null => {
+    const st = /^(.+?)\s+([A-Z]{2})$/.exec(s);
+    if (st && sub(st[2]) && (town(st[1]) || countryNamedTown(st[1], country))) return { region: sub(st[2]), locality: st[1].trim() };
+    const us = /^(?:USA?|U\.S\.A?\.?|United States)\s+([A-Z]{2})\s+(.+)$/.exec(s);
+    if (us && sub(us[1]) && (town(us[2]) || countryNamedTown(us[2], country))) return { region: sub(us[1]), locality: us[2].trim() };
+    if (CITY_STATES[country]) return null;
+    const words = placeOfSegment(s).split(/\s+/).map(trimEdges).filter(Boolean);
+    for (let k = Math.min(4, words.length - 1); k >= 1; k--) {
+      if (!namesOwnCountry(words.slice(-k).join(" "), country)) continue;
+      const rest = words.slice(0, -k);
+      // A state before the country is the region ("Indiana US (Remote)").
+      const state = sub(rest.join(" "));
+      if (state) return { region: state, locality: null };
+      // A US town is written beside its state, never beside the country
+      // alone: "IRIS United States of America" is a site code.
+      if (country === "US") return null;
+      if (rest.length === 1 && !NOT_A_TOWN_WORD.test(rest[0]) && !TOWN_PREFIX.test(rest[0]) && town(rest[0])) return { region: null, locality: rest[0] };
+      return null;
+    }
+    return null;
   };
 
   // DASH FORM first, and only when the string has no comma at all.
@@ -882,9 +1092,12 @@ export function postingPostalAddress(job: PostingRow): Record<string, unknown> |
       if (readable) {
         for (let i = parts.length - 1; i >= 1; i--) {
           if (i === at) continue;
-          if (town(parts[i])) { locality = parts[i]; break; }
+          // Beside one of the row's own states, a town may share a country's
+          // name ("USA - New York - Malta", "PA - Lebanon"): B07.
+          if (town(parts[i]) || (region !== null && countryNamedTown(parts[i], country))) { locality = parts[i]; break; }
         }
       }
+      if (!locality) locality = townFirst(parts, at);
       if (region || locality) return put(region, locality, null, null);
       // The label is read off the SPACED dashes only, so a hyphenated region
       // stays whole ("Germany - Rheinland-Pfalz Remote" is Rheinland-Pfalz).
@@ -900,6 +1113,9 @@ export function postingPostalAddress(job: PostingRow): Record<string, unknown> |
     // A lone subdivision is the region, never the town: "Utah | Hybrid" is UT.
     const sole = sub(raw);
     if (sole) return put(sole, null, null, null);
+    // "Kansas City MO" is Kansas City in Missouri, not a town of that name (B07, SD-03).
+    const beside = townBeside(raw);
+    if (beside) return put(beside.region, beside.locality, null, null);
     if (town(raw)) return put(null, raw, null, null);
     const r = remoteLabel(raw);
     return r ? put(r.region, r.locality, null, null) : address;
@@ -911,6 +1127,11 @@ export function postingPostalAddress(job: PostingRow): Record<string, unknown> |
   const segs = raw.split(",").map((s) => s.trim()).filter(Boolean);
   let postal: string | null = null;
   let region: string | null = null;
+  // The country written last comes off first, so a state and postal code
+  // before it are read ("Adventureland, ..., Altoona, IA 50009, United States
+  // of America" is Altoona, IA, not Adventureland): B07.
+  // A territory that is also a subdivision ("Puerto Rico" on a US row) stays: it is the region.
+  while (segs.length > 1 && namesOwnCountry(segs[segs.length - 1], country) && !sub(segs[segs.length - 1])) segs.pop();
 
   // "OH 44241-5266" and "NY 11234-5208" arrive as one segment.
   const last = segs[segs.length - 1] ?? "";
@@ -924,21 +1145,37 @@ export function postingPostalAddress(job: PostingRow): Record<string, unknown> |
     segs.pop();
   }
 
+  // What follows the subdivision: the town when the state is written first
+  // ("SD, Watertown", "US, CA, Santa Clara").
+  let after: string[] = [];
   if (!region) {
     // The subdivision is the LAST segment that names one, so a trailing
     // country name ("Remote, Arizona, United States of America") is skipped
     // over rather than mistaken for a town.
     for (let i = segs.length - 1; i >= 0; i--) {
       const code = sub(segs[i]);
-      if (code) { region = code; segs.length = i; break; }
+      if (code) { region = code; after = segs.slice(i + 1); segs.length = i; break; }
     }
   }
 
   let locality: string | null = null;
   if (region) {
     const candidate = segs[segs.length - 1] ?? "";
-    if (town(candidate)) { locality = candidate.trim(); segs.pop(); }
-    else segs.length = 0; // a street or a facility name, not a town: say nothing
+    if (town(candidate) || countryNamedTown(candidate, country)) { locality = candidate.trim(); segs.pop(); }
+    else {
+      // A STORE OR A SITE WRITTEN BEFORE ITS TOWN (B07): "Store 1357-Citadel
+      // Mall-ANN-Charleston, SC", "Carolina Premium Outlets - Smithfield, NC".
+      const dashed = candidate.split(/\s*[-–]\s*/).map((x) => x.trim()).filter(Boolean);
+      // Never the second half of a hyphenated town ("St-Jean, QC" is not Jean).
+      const tail = dashed.length >= 2 && !TOWN_PREFIX.test(dashed[dashed.length - 2]) ? dashed[dashed.length - 1] : "";
+      // THE STATE WRITTEN FIRST (B07): only the country or a continent before
+      // it, and the town right after it (an address line may follow).
+      const before = segs.every((x) => namesOwnCountry(x, country) || /^(?:north america|americas|latin america|europe|emea|apac|asia)$/i.test(placeOfSegment(x)));
+      const rest = after.filter((x) => !namesOwnCountry(x, country) && !US_ZIP.test(x) && !CA_POSTAL.test(x));
+      if (tail && (town(tail) || countryNamedTown(tail, country))) locality = tail;
+      else if (before && rest.length >= 1 && (rest.length === 1 || STREETISH.test(rest.slice(1).join(", "))) && (town(rest[0]) || countryNamedTown(rest[0], country))) locality = rest[0].trim();
+      segs.length = 0; // a street or a facility name, not a town: say nothing more
+    }
   } else {
     // No subdivision (every country but US and CA, and US strings that name
     // none). A "<postal code> <town>" segment names the town outright, the
@@ -951,7 +1188,16 @@ export function postingPostalAddress(job: PostingRow): Record<string, unknown> |
         if (m && town(m[2])) return put(null, m[2].trim(), null, m[1]);
       }
     }
+    // THE COUNTRY FIRST (B07): "India, Hyderabad", "Spain, Lugo", and with a
+    // state code between: "Brazil, MA, São Luis".
+    if (segs.length >= 2 && !CITY_STATES[country] && namesOwnCountry(segs[0], country)) {
+      const rest = segs.slice(1);
+      const t = rest[rest.length - 1];
+      if ((rest.length === 1 || (rest.length === 2 && /^[A-Z]{2,3}$/.test(rest[0]))) && town(t)) return put(null, t.trim(), null, postal);
+    }
     const candidate = segs[0] ?? "";
+    const beside = segs.length === 1 ? townBeside(candidate) : null;
+    if (beside) return put(beside.region, beside.locality, null, postal);
     if (town(candidate)) locality = candidate.trim();
     else {
       const r = remoteLabel(candidate);
@@ -989,6 +1235,19 @@ const LD_EMPLOYMENT_TYPE: Record<string, string> = {
 /** The schema type for a stated employment type, read case- and spacing-blind, or undefined. */
 export const ldEmploymentType = (stated: string | null | undefined): string | undefined =>
   stated ? LD_EMPLOYMENT_TYPE[String(stated).toLowerCase().replace(/\s+/g, " ").trim()] : undefined;
+
+/**
+ * THE ROW WITH WHAT ITS EMPLOYER STATED WHEN ITS PAGE WAS BAKED (B06). The
+ * bake read the posting at its employer and put the employer's own end date,
+ * time type, fully remote field, original date and address into the row it
+ * printed and marked up; the board's row has none of them. The posting page
+ * applies the statements the bake wrote into its head (bakedHead's
+ * employerStated) with the bake's own function, so hydrating puts back nothing
+ * the bake corrected. A time type ldEmploymentType cannot name is left out.
+ */
+export function postingWithEmployerStatements(row: PostingRow, stated: unknown): PostingRow {
+  return applyEmployerStatements(row, stated, { employmentTypeOf: ldEmploymentType });
+}
 
 /** The shortest description, in display paragraphs, a posting page is written for. */
 export const POSTING_MIN_DESCRIPTION = 100;
@@ -1075,8 +1334,25 @@ export function postingMarkupGate(
  * growth decision 1, SEO-016): Google's reference says only the employer may
  * provide baseSalary, and the board's figure is our reading of the employer's
  * text, annualised. The employer's own words stay on the visible page.
+ *
+ * THE OWNER'S STOP SWITCH IS READ HERE, AND ONLY HERE (B01). While
+ * JOB_POSTING_MARKUP is false this answers null for every row, so the bake,
+ * the React posting page and the board's detail pane all stop writing job
+ * markup at once. postingJsonLdShape answers what the markup WOULD be, for the
+ * bake's own decision whether a row keeps a live page: the switch takes the
+ * markup off a page, never the page.
  */
 export function postingJsonLd(
+  row: PostingRow,
+  description: string | null | undefined,
+  opts: { site: string; now?: Date; ignoreCountryMismatch?: boolean; ignoreNameGate?: boolean } = { site: "" },
+): Record<string, unknown> | null {
+  if (!JOB_POSTING_MARKUP) return null;
+  return postingJsonLdShape(row, description, opts);
+}
+
+/** The job markup a row would carry with the stop switch on: never written by itself (postingJsonLd is). */
+export function postingJsonLdShape(
   row: PostingRow,
   description: string | null | undefined,
   // `ignoreCountryMismatch` lets the bake ask whether the country is the ONLY
@@ -1196,44 +1472,83 @@ const TITLE_SEP = " — ";
 /** `s`, cut at a word boundary to `n` characters with an ellipsis if it had to be cut. */
 function clip(s: string, n: number): string {
   if (s.length <= n) return s;
-  const cut = s.slice(0, n - 1).replace(/\s+\S*$/, "");
+  // A word the cut lands right after is kept whole, and no dash or comma is
+  // left hanging before the ellipsis ("Registered Nurse -…").
+  const head = s.slice(0, n - 1);
+  const cut = (/\s/.test(s[n - 1] ?? "") ? head : head.replace(/\s+\S*$/, "")).replace(/[\s,;:&/–—-]+$/, "");
   return `${cut.length >= 8 ? cut : s.slice(0, n - 1)}…`;
 }
 
 /**
- * THE PAGE <title>, AND IT HAS TO BE DIFFERENT FROM EVERY OTHER PAGE'S.
+ * A KEY NO TITLE ENDS IN (B07, TITLE-08): a UUID ("cfd7da23-3740-411c-b862-
+ * faf1ccabb418") or a run of twelve digits or more (SmartRecruiters'
+ * "744000157670719"). Eight live titles ended in one on 2026-11-08; it tells a
+ * searcher nothing and reads as a broken page.
+ */
+const UNREADABLE_KEY = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\d{12,}/i;
+
+/** The requisition key a title may carry, or "" when it is unreadable. */
+function readableKey(job: PostingRow): string {
+  const key = postingPathParts(job.id)?.key ?? "";
+  return key && !UNREADABLE_KEY.test(key) && key.length <= 24 ? key : "";
+}
+
+/** The last resort when even the place and the date repeat: a short reference cut from the key ("#cfd7da23", "#670719"). */
+function shortReference(job: PostingRow): string {
+  const key = postingPathParts(job.id)?.key ?? "";
+  if (!key) return "";
+  const uuid = /[0-9a-f]{8}(?=-[0-9a-f]{4}-)/i.exec(key);
+  if (uuid) return `#${uuid[0].toLowerCase()}`;
+  const digits = /\d{12,}/.exec(key);
+  if (digits) return `#${digits[0].slice(-6)}`;
+  return `#${key.slice(-10)}`;
+}
+
+/** The town and its region as the markup reads them ("Long Beach, CA"), or "" when no town is read. */
+function shortPlace(job: PostingRow): string {
+  const a = postingPostalAddress(job);
+  const town = typeof a?.addressLocality === "string" ? a.addressLocality : "";
+  if (!town) return "";
+  return typeof a?.addressRegion === "string" && a.addressRegion ? `${town}, ${a.addressRegion}` : town;
+}
+
+/** The day the employer states it posted the job ("2026-10-31"), or "". */
+function statedDay(job: PostingRow): string {
+  const m = /^\d{4}-\d{2}-\d{2}/.exec(String(job.postedAt ?? ""));
+  return m ? m[0] : "";
+}
+
+/** `title` cut to the room `tail` leaves, or null when that leaves the job title under TITLE_MIN_ROOM. */
+function titleWith(title: string, tail: string): string | null {
+  if (!tail) return null;
+  if (title.length + TITLE_SEP.length + tail.length <= TITLE_BUDGET) return `${title}${TITLE_SEP}${tail}`;
+  const room = TITLE_BUDGET - tail.length - TITLE_SEP.length;
+  return room >= TITLE_MIN_ROOM ? `${clip(title, room)}${TITLE_SEP}${tail}` : null;
+}
+
+/**
+ * THE PAGE <title>: THE JOB, ITS EMPLOYER, AND WHERE IT FITS THE PLACE.
  *
- * This used to drop the place first and then the employer to make the budget
- * fit, which for long ATS titles erased the only token distinguishing two
- * different jobs. The built tree shipped 15 posting URLs across 6 titles — five
- * Target stores all reading "Guest Advocate (Cashier), General Merchandise,
- * Inbound (Stoc…" while their own markup gave addresses in Long Beach CA and
- * Auburn AL, and two Fresenius nursing roles in Newark NJ and Tulsa OK sharing
- * "Outpatient Licensed Practical Nurse - LPN LVN". Search Console reports that
- * as "Duplicate without user-selected canonical", which is the thing this whole
- * page family exists to stop.
+ * THE EMPLOYER STAYS (B07, TITLE-08). The title used to drop the employer
+ * before the place whenever the two did not fit beside a whole job title, so
+ * 130 of 463 live posting titles on 2026-11-08 named no employer, the one
+ * thing a searcher scanning a results page reads first, and the thing the
+ * page's own JobPosting names as hiringOrganization. Now:
  *
- * THE RULE, IN TWO HALVES, AND EACH HALF IS DISTINCT FOR ITS OWN REASON.
+ * 1. WHILE THE WHOLE JOB TITLE FITS, the tail is the employer and the place,
+ *    else the employer alone. The place alone is the tail only when there is
+ *    no employer to print, or one too long to fit even beside a cut title.
+ * 2. ONCE THE TITLE HAS TO BE CUT, the employer still rides, with the town
+ *    beside it where that fits ("Target, Long Beach, CA"): the job title is
+ *    cut, never below TITLE_MIN_ROOM characters, to keep it. With no employer
+ *    to print, the town, and then a readable requisition key, take its place.
  *
- * 1. WHILE THE WHOLE JOB TITLE FITS, it keeps the most informative tail that
- *    fits beside it: the employer and the place, else the place, else the
- *    employer. With the whole title present, two pages sharing a rendered
- *    title share company, title and place — which is one posting identity, and
- *    the bake gives one page per identity.
- * 2. ONCE THE TITLE HAS TO BE CUT, the tail becomes the employer's own
- *    requisition key. A cut title beside a shared place is not distinguishable
- *    — two Ferring postings in this bake, "Packaging & Visual Inspection
- *    Operator II – 2nd Shift" and "…Operator II", are different jobs whose
- *    titles differ only past the cut, and both sat at the same Parsippany
- *    address. The key is unique per URL by construction, so no group of cut
- *    titles can collapse. The employer rides in front of it where it fits,
- *    because "Target R0000474088" reads better than a bare requisition number
- *    and narrows the one case the key alone does not cover: two vendors' ids
- *    whose last segment happens to match.
- *
- * The place is what is lost in half 2, and that is the trade taken knowingly:
- * the meta description still carries it, and a SERP line that names the place
- * of a job you cannot tell from four others is worth less than one you can.
+ * DISTINCTNESS. Two pages of one employer whose titles differ only past the
+ * cut and whose towns match (two Ferring operator roles at one Parsippany
+ * address) render one title here. postingPageTitleAvoiding, which the bake
+ * runs with every title it has written, separates them by the employer's
+ * stated date and only then by a reference cut from the key; a title never
+ * ends in a UUID or a twelve-digit key (UNREADABLE_KEY).
  */
 export function postingPageTitle(job: PostingRow): string {
   // One line: "Quality  (QA) Technician" shipped its employer's double space
@@ -1241,51 +1556,57 @@ export function postingPageTitle(job: PostingRow): string {
   const title = postingText(job.title);
   const company = job.company ? postingEmployer(job) : "";
   const place = postingText(job.location);
-  const key = postingPathParts(job.id)?.key ?? "";
-  for (const tail of [place && company ? `${company}, ${place}` : "", place, company]) {
+  const companyFits = !!company && TITLE_MIN_ROOM + TITLE_SEP.length + company.length <= TITLE_BUDGET;
+  for (const tail of [place && company ? `${company}, ${place}` : "", company, companyFits ? "" : place]) {
     if (!tail) continue;
     if (title.length + TITLE_SEP.length + tail.length <= TITLE_BUDGET) return `${title}${TITLE_SEP}${tail}`;
   }
-  if (!key) return clip(title, TITLE_BUDGET);
-  for (const tail of [company ? `${company} ${key}` : "", key]) {
-    if (!tail) continue;
-    const room = TITLE_BUDGET - tail.length - TITLE_SEP.length;
-    if (room >= TITLE_MIN_ROOM) return `${clip(title, room)}${TITLE_SEP}${tail}`;
+  const town = shortPlace(job);
+  const key = readableKey(job);
+  const tails = companyFits
+    ? [town ? `${company}, ${town}` : "", company]
+    : [town, key, shortReference(job)];
+  for (const tail of tails) {
+    const t = titleWith(title, tail);
+    if (t) return t;
   }
-  // A requisition key long enough to leave no readable title at all. It still
-  // goes on, at the cost of a few characters over the budget: an overlong
-  // title costs a truncated SERP line, two identical titles cost the page its
-  // own identity.
-  return `${clip(title, TITLE_MIN_ROOM)}${TITLE_SEP}${key}`;
+  // Nothing fits beside a readable title: the job title alone, cut to the budget.
+  return clip(title, TITLE_BUDGET);
 }
 
 /**
  * THE TITLE, DIFFERENT FROM EVERY TITLE THE BAKE HAS ALREADY GIVEN A POSTING.
  *
- * postingPageTitle's first half keeps the place and drops the employer when
- * both do not fit beside a whole job title, so two employers' identical
- * titles in one city ("Registered Nurse - ICU Night Shift — Boston, MA")
- * render one title for two different jobs, and a sitemap carrying both is
- * the duplicate Search Console reports. The bake passes the titles it has
- * already written; a taken title gets the employer's requisition key as its
- * tail (with the employer in front where it fits), and in the last resort
- * the key in brackets, which is unique per URL by construction.
+ * Two postings can render one title from postingPageTitle: the same job at
+ * one employer in one town whose titles differ only past the cut, or a cut
+ * title at an employer with no town to read. The bake passes the titles it
+ * has already written, and a taken title is made unique by what the employer
+ * states first: the town, then the day it says it posted the job, then a
+ * readable requisition key, and only then a short reference cut from the key
+ * ("#cfd7da23"), never the whole UUID or a twelve-digit id (B07, TITLE-08).
+ * The employer stays in front of each wherever it fits.
  */
 export function postingPageTitleAvoiding(job: PostingRow, taken: ReadonlySet<string>): string {
   const first = postingPageTitle(job);
   if (!taken.has(first)) return first;
   const title = postingText(job.title);
   const company = job.company ? postingEmployer(job) : "";
-  const key = postingPathParts(job.id)?.key ?? "";
-  if (!key) return first;
-  for (const tail of [company ? `${company} ${key}` : "", key]) {
-    if (!tail) continue;
-    const room = TITLE_BUDGET - tail.length - TITLE_SEP.length;
-    if (room < TITLE_MIN_ROOM) continue;
-    const candidate = `${clip(title, room)}${TITLE_SEP}${tail}`;
-    if (!taken.has(candidate)) return candidate;
+  const town = shortPlace(job);
+  const day = statedDay(job);
+  const key = readableKey(job);
+  const ref = shortReference(job);
+  const marks = [town, day ? `posted ${day}` : "", town && day ? `${town}, posted ${day}` : "", key, ref, town && ref ? `${town} ${ref}` : "", day && ref ? `posted ${day} ${ref}` : ""].filter(Boolean);
+  const tails = [...(company ? marks.map((m) => (m.startsWith("#") || m === key ? `${company} ${m}` : `${company}, ${m}`)) : []), ...marks];
+  for (const tail of tails) {
+    const t = titleWith(title, tail);
+    if (t && !taken.has(t)) return t;
   }
-  return `${first} (${key})`;
+  // Past every readable mark: over the budget by a few characters, unique.
+  for (const mark of [ref, key, day].filter(Boolean)) {
+    const t = `${first} (${mark})`;
+    if (!taken.has(t)) return t;
+  }
+  return `${first} (${postingPathParts(job.id)?.key ?? ""})`;
 }
 
 /** A search result's snippet is cut at about this length. */

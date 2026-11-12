@@ -1,8 +1,8 @@
 {
   "home": {
     "seo": {
-      "title": "Empleos en vivo, directos de los sistemas de las empresas",
-      "description": "Busca empleos en vivo leídos de los propios sistemas de selección de los empleadores y de USAJOBS, y postúlate en el sitio del empleador. Gratis, y buscar no requiere cuenta."
+      "title": "Resume Booster — empleos en vivo, directos de las empresas",
+      "description": "Resume Booster es una bolsa de empleo gratuita con ofertas en vivo de los sistemas de los empleadores y USAJOBS. Postúlate en su sitio; buscar no pide cuenta."
     },
     "hero": {
       "title": "Empleos en vivo, directos de los propios sistemas de selección de los empleadores.",
@@ -37,7 +37,10 @@
       "total_many": "{{formatted}} ofertas abiertas en total",
       "total_other": "{{formatted}} ofertas abiertas en total",
       "seeAll": "Ver todas las ofertas",
-      "applyNote": "Te postulas en el sitio del propio empleador."
+      "applyNote": "Te postulas en el sitio del propio empleador.",
+      "bakedNote": "Publicadas en los últimos {{days}} días según la fecha del propio empleador, cada una con su propia página aquí; comprobadas con el tablón el {{date}}.",
+      "bakedPosted": "publicada el {{date}}, según el empleador",
+      "dataLead": "Las mediciones propias del tablón, cada una fechada por sus datos:"
     },
     "rail": {
       "title": "El tablón hoy",
@@ -118,6 +121,7 @@
       "claude": "Configurar en Claude",
       "chatgpt": "Configurar en ChatGPT",
       "claudeCode": "Configurar Claude Code",
+      "chatgptFree": "¿Usas ChatGPT Free? <claude>Usa el plan gratuito de Claude</claude>, que puede añadir un conector personalizado; ChatGPT Free no puede.",
       "reach": "Tu IA busca en {{searchable}} de las {{total}} ofertas abiertas: las ofertas de {{names}} ({{withheld}}) se quedan en este sitio. Contadas el {{date}}, {{time}} UTC.",
       "figureLabel": "Ilustración de una búsqueda desde Claude",
       "figureChip": "Ilustración",

@@ -30,6 +30,7 @@ import { describe, expect, it, vi } from "vitest";
 import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { BAKED_FOOTER_LINKS } from "@/lib/site-links";
 
 // The same per-test budget as the eleven mount guards (helpers/mount-budget.ts),
 // though this file earns it differently: it mounts nothing and waits for
@@ -595,8 +596,12 @@ describe("Explore is reachable without a wide viewport", () => {
     // /explore is prerendered and sitemapped at priority 0.8 daily, but no
     // served page linked to it, so non-JS crawlers saw a sitemap-only orphan —
     // the condition Footer.tsx's own comment warns about.
+    // Since B04 the shell renders the list in src/lib/site-links.ts, the one
+    // the app's footer renders, and that list starts with /explore.
     const shell = SHELL.slice(SHELL.indexOf("const shell ="), SHELL.indexOf("</footer>"));
-    expect(shell).toMatch(/href="\/explore"/);
+    expect(shell).toContain("${SHELL_FOOTER_NAV}");
+    expect(SHELL).toMatch(/const SHELL_FOOTER_NAV = D\.BAKED_FOOTER_LINKS\.map/);
+    expect(BAKED_FOOTER_LINKS[0].to).toBe("/explore");
   });
 });
 

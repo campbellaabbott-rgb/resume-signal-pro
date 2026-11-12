@@ -373,7 +373,8 @@ export const carrySitemaps = ({ ledgerSource, liveSitemap, committedSitemap }) =
 /**
  * The noindex page a posting URL keeps once the posting has no live page
  * here. Three states, each saying only what the bake knows: "gone" (the board
- * answered that it no longer serves it), "retired" (still on the board, but
+ * answered that it no longer serves it, or, with basis "employer", the
+ * employer's own hiring system did: B01), "retired" (still on the board, but
  * no longer carrying everything a page of its own must state, or another
  * page already carries the same requisition) and "unchecked" (the board did
  * not answer when this was built). Never the homepage, never indexed.
@@ -411,7 +412,12 @@ export function postingStubPage({ path, id, state, since, title, company, compan
         : basis === "expiring"
           ? `${what} is still on the live board, but the date its employer put on it leaves it only a few days in the board's window, so this site gave its page to a newer posting and this page states nothing more about it. ${boardLink("Open it on the live board")}.`
           : `${what} is still on the live board, but no longer carries everything a page of its own must state, so this page states nothing more about it. ${boardLink("Open it on the live board")}.`;
-  const lead = state === "gone"
+  // CLOSED AT THE EMPLOYER (B01): the bake asked the employer's own system
+  // and it answered that it no longer serves the posting, so this page says
+  // that, and only that.
+  const lead = state === "gone" && basis === "employer"
+    ? `${what} is no longer listed. When this page was built${since ? ` (${esc(since)})` : ""}, the employer's own hiring system answered that it no longer serves this posting, so this page states nothing more about it.`
+    : state === "gone"
     ? `${what} is no longer listed on this board${since ? ` (recorded ${esc(since)})` : ""}. That is a statement about this board, not about the employer: the posting may have been taken down, or the date the employer put on it passed the board's ${windowDays}-day window.`
     : state === "retired"
       ? retiredLead
@@ -420,9 +426,19 @@ export function postingStubPage({ path, id, state, since, title, company, compan
     path,
     ...(twin ? { canonical: twin } : {}),
     robots: twin ? null : "noindex, follow",
+    // The closure rides in the head (POSTING_CLOSED_META), so the React page
+    // that hydrates over this one shows the posting gone, though the board
+    // still serves its stored row.
+    ...(state === "gone" && basis === "employer" ? { postingClosed: "employer" } : {}),
     title: t ? `${head} — ${t}` : head,
     // Built up to the snippet budget (OBS-2): a long title drops the employer, then itself.
-    description: state === "gone"
+    description: state === "gone" && basis === "employer"
+      ? [
+        `${t ? `${t}${c ? ` at ${c}` : ""}` : "This posting"} is no longer listed by its employer. Browse the live openings instead.`,
+        `${t ?? "This posting"} is no longer listed by its employer.`,
+        "This posting is no longer listed by its employer. Browse the live openings instead.",
+      ].find((d) => d.length <= 160)
+      : state === "gone"
       ? [
         `${t ? `${t}${c ? ` at ${c}` : ""}` : "This posting"} is no longer listed on this board. Browse the live openings instead.`,
         `${t ?? "This posting"} is no longer listed on this board.`,
@@ -436,6 +452,29 @@ export function postingStubPage({ path, id, state, since, title, company, compan
             <p>${companyLink ? `${companyLink} · ` : ""}<a href="/jobs">Search the live board</a></p>
           `,
   };
+}
+
+/**
+ * The stub a kept ledger entry is rewritten from at a later bake, with no
+ * board read: a gone or seeded page inside its window (postingCarryBase's
+ * stubs). It carries the entry's basis: a posting the employer's own system
+ * closed (basis "employer", B01) was rewritten with none from the second bake
+ * on, so its page said the posting was gone from this board and not from the
+ * employer, and its ledger entry lost the basis section 98-r2 G3 reads.
+ */
+export function keptPostingStub(path, e, idFromPath) {
+  const out = { id: idFromPath(path), path, state: e.state === "gone" ? "gone" : "retired", seed: e.seed === true, title: e.title ?? null, company: e.company ?? null };
+  if (typeof e.basis === "string") out.basis = e.basis;
+  return out;
+}
+
+/**
+ * The basis a stub's page is written with: a seeded URL's page says only that
+ * it was never re-read; otherwise this bake's reason, or the reason the
+ * ledger entry kept (postingStubEntry), so the page and its entry agree.
+ */
+export function postingStubPageBasis(stub, entry) {
+  return stub.seed || (entry.seed && stub.state === "retired") ? "seed" : (stub.basis ?? entry.basis ?? null);
 }
 
 /**
@@ -457,6 +496,12 @@ export function postingStubEntry({ stub, prior, today, first = null, employerNam
   // (scripts/indexnow-ping.mjs pings "gone" and "retired" only, S11-155).
   if (stub.seed === true || (p.seed === true && p.state === state)) out.seed = true;
   if (typeof stub.basis === "string") out.basis = stub.basis;
+  // WHO CLOSED A GONE POSTING HOLDS WHILE IT STAYS GONE: a gone page is kept
+  // without a board read, so nothing later can know better than the bake
+  // that recorded it. A retired page is re-read every bake, and its reason
+  // is that bake's alone (a page once retired at the ceiling may be retired
+  // for its markup next), so its earlier reason is never carried.
+  else if (state === "gone" && p.state === "gone" && typeof p.basis === "string") out.basis = p.basis;
   // The twin a duplicate canonicalises to rides in the ledger (SEO-039): the
   // carry dropped it, and every carried duplicate entry read duplicateOf null.
   if (state === "retired" && typeof stub.duplicateOf === "string" && stub.duplicateOf.startsWith("/")) out.duplicateOf = stub.duplicateOf;
@@ -673,6 +718,78 @@ export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null, 
  * inside postingJsonLd (scripts/prerender-posting-rule.mjs).
  */
 export { postingRowEligible } from "./prerender-posting-rule.mjs";
+export { postingFreshNameReason } from "./prerender-posting-rule.mjs";
+
+/**
+ * WHETHER THE POSTING POOL'S WALK READS ANOTHER PAGE OF THE NEWEST LIST (B02).
+ *
+ * The walk reads up to `pages` list pages and stops at `rowCap` rows, as it
+ * always has. Past that it reads on, to `maxPages` at most, only while the rows
+ * a new page may come from (`selectable`: rule 1 and postingFreshNameReason
+ * both pass) are fewer than the new pages it may write, and only while the
+ * bake's board reads left exceed that number, so the details of the postings
+ * it chooses can still be read. A walk with no new pages to write reads none.
+ */
+export function postingPoolWalksOn({ page, rows, selectable, freshBudget, budgetLeft, pages, maxPages, rowCap }) {
+  if (!(freshBudget > 0)) return false;
+  if (page < pages && rows < rowCap) return true;
+  return page < maxPages && selectable < freshBudget && budgetLeft > freshBudget;
+}
+
+/**
+ * THE ORDER THE NEW-PAGE BUDGET TAKES ITS CANDIDATES IN (B04: LINK-07, F09).
+ *
+ * The budget went to the newest rows of the board, and only 71 of 491 live
+ * company pages shared a token with a posting page (2026-11-06): a company
+ * page listed its own openings as plain text because none of them had a page.
+ * Now the employers with a company page this bake writes come first, one
+ * candidate per employer per round, up to `perEmployer` each, and an employer
+ * with no carried posting page before one that has some. Each employer's
+ * candidates are its rows in the newest pool first, then its company page's
+ * cached openings (`cached`, ids only: their rows are read and judged after
+ * the detail read). Every other pool row follows, in the pool's own order.
+ * Nothing is added past the budget and no cap moves: this is only an order.
+ * Pure; a row or id appears once.
+ */
+export function freshPoolOrder({ pool, pageTokens, hasPage, carriedTokens = new Set(), cached = () => [], perEmployer = 3 }) {
+  const rows = Array.isArray(pool) ? pool.filter((r) => r && typeof r.id === "string") : [];
+  const tokenOf = (r) => (typeof r.token === "string" && r.token ? r.token : null);
+  const inPool = new Set(rows.map((r) => r.id));
+  const poolByToken = new Map();
+  for (const r of rows) {
+    const t = tokenOf(r);
+    if (!t) continue;
+    if (!poolByToken.has(t)) poolByToken.set(t, []);
+    poolByToken.get(t).push(r);
+  }
+  const tokens = [];
+  const seenTokens = new Set();
+  for (const t of [...(pageTokens ?? []), ...poolByToken.keys()]) {
+    if (typeof t !== "string" || !t || seenTokens.has(t) || !hasPage(t)) continue;
+    seenTokens.add(t);
+    tokens.push(t);
+  }
+  // No carried posting page first; the order within each half is kept.
+  const ordered = [...tokens.filter((t) => !carriedTokens.has(t)), ...tokens.filter((t) => carriedTokens.has(t))];
+  const queue = new Map(ordered.map((t) => {
+    const own = poolByToken.get(t) ?? [];
+    const fromCache = (cached(t) ?? [])
+      .filter((c) => c && typeof c.id === "string" && !inPool.has(c.id))
+      .map((c) => ({ id: c.id, token: t, cached: true }));
+    const ids = new Set();
+    return [t, [...own, ...fromCache].filter((c) => (ids.has(c.id) ? false : (ids.add(c.id), true))).slice(0, perEmployer)];
+  }));
+  const out = [];
+  const taken = new Set();
+  for (let round = 0; round < perEmployer; round++) {
+    for (const t of ordered) {
+      const c = queue.get(t)[round];
+      if (c && !taken.has(c.id)) { taken.add(c.id); out.push(c); }
+    }
+  }
+  for (const r of rows) if (!taken.has(r.id)) { taken.add(r.id); out.push(r); }
+  return out;
+}
 
 /**
  * HOW MANY NEW POSTING PAGES ONE BAKE MAY ADD (rule 3 of the bake's posting
@@ -750,17 +867,21 @@ export const FINGERPRINT_VERSION = 2;
  * whose text moved without its stated date moving still says it changed.
  * `fp` is this bake's fingerprint (version FINGERPRINT_VERSION); `legacyFp`
  * the old algorithm's, compared only against a ledger entry written before the
- * version existed, so the switch itself re-dates nothing.
+ * version existed, so the switch itself re-dates nothing. With `exact`, a
+ * stated date is the lastmod itself (a data page's measurement day).
  */
-export function pageDates({ fp, legacyFp, prior, today, stated = null }) {
+export function pageDates({ fp, legacyFp, prior, today, stated = null, exact = false }) {
   const p = prior && typeof prior === "object" ? prior : null;
   const same = !!p && (p.fpv === FINGERPRINT_VERSION ? p.fp === fp : p.fp === legacyFp);
   const priorChanged = p && typeof p.changed === "string" ? p.changed : p && typeof p.lastmod === "string" ? p.lastmod : null;
   const changed = same && priorChanged && priorChanged <= today ? priorChanged : today;
   const st = typeof stated === "string" && /^\d{4}-\d{2}-\d{2}/.test(stated) ? (stated.slice(0, 10) > today ? today : stated.slice(0, 10)) : null;
   // A stated page the ledger has never seen takes its stated date: the build
-  // day is not the day a guide changed.
-  const lastmod = st ? (!p ? st : (st > changed ? st : changed)) : changed;
+  // day is not the day a guide changed. An EXACT stated date (B09, DATE-09) is
+  // the day the page's figures were measured, the date its Dataset markup
+  // states: the sitemap says that day and no other, whatever the count-blind
+  // fingerprint did.
+  const lastmod = st ? (exact || !p ? st : (st > changed ? st : changed)) : changed;
   return { lastmod, changed: st && !p ? st : changed, fp, fpv: FINGERPRINT_VERSION };
 }
 
@@ -889,7 +1010,7 @@ export function nextOpeningsCache({ prior, reads, tokens, today, maxAgeDays = LA
  * young enough to print: a posting page or two with no listing read says
  * nothing about how many roles the employer lists.
  */
-export function landerOpenings({ postings = [], cached = null, today, maxAgeDays = LANDER_OPENINGS_MAX_AGE_DAYS, limit = LANDER_OPENINGS_SHOWN, pageFor = () => null }) {
+export function landerOpenings({ postings = [], cached = null, today, maxAgeDays = LANDER_OPENINGS_MAX_AGE_DAYS, limit = LANDER_OPENINGS_SHOWN, pageFor = () => null, text = (s) => s }) {
   const e = youngEntry(cached, today, maxAgeDays);
   const out = [];
   const ids = new Set();
@@ -908,7 +1029,10 @@ export function landerOpenings({ postings = [], cached = null, today, maxAgeDays
     if (ids.has(r.id)) continue;
     ids.add(r.id);
     const page = pageFor(r.id);
-    out.push({ href: typeof page === "string" && page.startsWith("/jobs/posting/") ? page : null, title: r.title, place: r.place ?? "" });
+    // A listed row's title as the posting's own page prints it (`text` is
+    // postingText): a feed that sent "KI &amp; Automatisierung" is printed with
+    // one ampersand, not escaped a second time (B07, F08).
+    out.push({ href: typeof page === "string" && page.startsWith("/jobs/posting/") ? page : null, title: text(r.title), place: text(r.place ?? "") });
   }
   return { openings: out, at: e ? e.at : null, answered: !!e };
 }

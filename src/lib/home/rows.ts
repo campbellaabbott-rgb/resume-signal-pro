@@ -120,3 +120,55 @@ export function applyFeedReadGate(
 export function withoutFeedRead(rows: readonly ListingJob[]): ListingJob[] {
   return rows.map((job) => ({ ...job, recheckedAt: null }));
 }
+
+/** A posting page the bake wrote, as the homepage's crawler copy reads it (B04, F07). */
+export interface BakedStripCandidate {
+  id: string;
+  /** The page's own path on this site. */
+  path: string;
+  title: string;
+  /** The employer's name as the posting page prints it. */
+  company: string;
+  place?: string | null;
+  token?: string | null;
+  source?: string | null;
+  postedAt?: string | null;
+  agency?: boolean | null;
+  missingSince?: string | null;
+}
+
+/** One row of the crawler copy's "On the board now" strip. */
+export interface BakedStripRow {
+  path: string;
+  title: string;
+  company: string;
+  place: string;
+  /** The employer's stated day, as the board prints it (listingAge). */
+  day: string;
+}
+
+/**
+ * THE HOMEPAGE'S CRAWLER STRIP (B04, F07): the posting pages the bake wrote,
+ * kept by the homepage's own rule (selectHomeRows: the employer's fixed date
+ * inside the window, not gone, not an agency, one per employer), each linking
+ * its own page with the day the employer stated. The crawler copy printed
+ * the strip's heading over no rows at all; with no row it now prints none.
+ * Pure: the same pages and the same clock keep the same rows.
+ */
+export function homeStripRows(
+  candidates: readonly BakedStripCandidate[] | null | undefined,
+  opts: { max?: number; now?: Date } = {},
+): BakedStripRow[] {
+  const now = opts.now ?? new Date();
+  const byId = new Map((candidates ?? []).filter((c) => c && typeof c.path === "string" && c.path.startsWith("/") && typeof c.company === "string" && c.company.trim()).map((c) => [c.id, c]));
+  const jobs: ListingJob[] = [...byId.values()].map((c) => ({
+    id: c.id, title: c.title, company: c.company, token: c.token ?? null, source: c.source ?? null,
+    postedAt: c.postedAt ?? null, agency: c.agency ?? null, missingSince: c.missingSince ?? null,
+  }));
+  return selectHomeRows(jobs, { max: opts.max, now }).flatMap((j) => {
+    const c = byId.get(j.id);
+    const age = listingAge(j, now);
+    if (!c || age.kind !== "dated") return [];
+    return [{ path: c.path, title: c.title, company: c.company, place: typeof c.place === "string" ? c.place : "", day: age.day }];
+  });
+}

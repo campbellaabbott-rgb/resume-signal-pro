@@ -61,7 +61,8 @@ describe("the Pay Transparency Index when its cache cannot be read", () => {
   it("positive control: a read that answers prints the figures and no unread sentence", async () => {
     mount(() => Promise.resolve({ data: { pay: PAY, coverage: COVERAGE, computed_at: "2026-10-08T01:37:00Z" }, error: null }));
     await waitFor(() => expect(body()).toContain("Engineering & IT"));
-    expect(body()).toContain("greenhouse");
+    // The system column prints the vendor's own name, not its key (SEO B02).
+    expect([...document.querySelectorAll("td")].map((td) => td.textContent)).toContain("Greenhouse");
     expect(body()).not.toContain(UNREAD);
   });
 });

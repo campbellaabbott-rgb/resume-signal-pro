@@ -154,7 +154,7 @@ describe("S11-154: F2a judges the previous publish's URLs or says it cannot; S3 
 
   it("without a saved sitemap F2a prints INFO 'cannot judge' and no F2a PASS", () => {
     const lines = runSection("76-wave3-seo-content.sh", { routes: site76() });
-    expect(has(lines, "INFO", /F2a cannot judge the previous publish's posting URLs: no saved sitemap at .*last-sitemap\.xml\. Save the live sitemap there BEFORE each publish/), show(lines)).toBe(true);
+    expect(has(lines, "INFO", /F2a cannot judge the previous publish's posting URLs: no saved sitemap at .*last-sitemap\.xml yet\. verify-deploy\.sh saves the live sitemap and ledger at the end of every run/), show(lines)).toBe(true);
     expect(lines.some((l) => l.startsWith("PASS") && /\(F2a\)/.test(l)), show(lines)).toBe(false);
   });
 

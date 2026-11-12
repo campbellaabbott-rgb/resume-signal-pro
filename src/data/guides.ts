@@ -26,6 +26,13 @@ export interface Guide {
    *  fully answer the title's question standing alone. */
   tldr: string;
   updated: string; // ISO date, bump when content materially changes
+  /**
+   * The day the guide was first published (SEO/GEO audit 2026-11-07, SD-09):
+   * its Article's datePublished. The guide's first commit, read once from
+   * the repository's history and written here, so nothing reads git at build
+   * or test time. Never later than `updated`, and never changed afterwards.
+   */
+  published: string;
   minutes: number;
   sections: GuideSection[];
   faqs?: Array<{ q: string; a: string }>;
@@ -55,6 +62,13 @@ export const GUIDES_INDEX_TITLE = "Resume & ATS Guides, and Applying With Your O
 export const GUIDES_INDEX_DESCRIPTION =
   "How ATS systems work, why resumes get rejected, how to fix yours and how to apply with your own AI, grounded in what the product does.";
 
+/**
+ * THE IMAGE A GUIDE'S ARTICLE NAMES (SD-09): the site's share card, which
+ * every guide page already carries as og:image and the research Article
+ * already names. Google's Article guidance asks for an image; a guide had none.
+ */
+export const GUIDE_ARTICLE_IMAGE_PATH = "/og-image.png";
+
 export const GUIDE_GROUNDING_DEFAULT =
   "Grounded in the checks our scanner runs on every resume";
 export function guideGrounding(g: Pick<Guide, "grounding">): string {
@@ -71,6 +85,7 @@ export const GUIDES: Record<string, Guide> = {
     tldr:
       "Resumes fail at four stages before an interview: parsing (the ATS extracts your text badly), search (recruiter keyword queries never return you), the six-second human skim, and red flags in the close read. Most 'rejections' are really invisibility at the first two stages — so fix parsing and searchable keywords before polishing bullets.",
     updated: "2026-07-06",
+    published: "2026-07-06",
     minutes: 7,
     sections: [
       {
@@ -142,6 +157,7 @@ export const GUIDES: Record<string, Guide> = {
     tldr:
       "Mostly no: major ATS platforms (Workday, Greenhouse, Lever, iCIMS) do not auto-reject resumes over formatting or a score. Hard knockouts come only from explicit application questions like work authorization. The real risk is quieter — parsing failures make you unsearchable in the recruiter's database, so you're never seen rather than rejected.",
     updated: "2026-07-06",
+    published: "2026-07-06",
     minutes: 5,
     sections: [
       {
@@ -200,6 +216,7 @@ export const GUIDES: Record<string, Guide> = {
     tldr:
       "Take keywords from three sources, in order: the exact wording of your target job posting; the U.S. Department of Labor's O*NET skill data for your occupation when you have no posting; and the recognized, searchable form of your job titles. Use each term once, attached to evidence — keyword stuffing fails with humans and increasingly with software.",
     updated: "2026-07-06",
+    published: "2026-07-06",
     minutes: 6,
     sections: [
       {
@@ -263,6 +280,7 @@ export const GUIDES: Record<string, Guide> = {
     tldr:
       "A career-change resume fails because every title and keyword points at the old field. Fix it three ways: re-label transferable work in the target field's vocabulary (bridge keywords), name the transition explicitly in a summary line, and add a projects section that carries target-field evidence. Keep the standard reverse-chronological format — functional resumes parse badly and recruiters distrust them.",
     updated: "2026-10-24",
+    published: "2026-07-06",
     minutes: 6,
     sections: [
       {
@@ -318,6 +336,7 @@ export const GUIDES: Record<string, Guide> = {
     tldr:
       "One format survives every major ATS: single column, standard section headers (Experience, Education, Skills), conventional round bullets, common fonts, consistent MM/YYYY dates, and a text-layer PDF (or DOCX if the posting asks). What breaks parsing: two-column layouts, tables, text in headers/footers or images, and decorative bullet glyphs.",
     updated: "2026-07-06",
+    published: "2026-07-06",
     minutes: 5,
     sections: [
       {
@@ -366,10 +385,11 @@ export const GUIDES: Record<string, Guide> = {
     title: "How to Put Freelance Work on Your Resume (Upwork, Fiverr, Gigs)",
     h1: "How to put freelance work on your resume",
     description:
-      "The structure decision (one consolidated role vs. a projects section), the bullet formula that translates gigs into employer language, and what to do when a project has no metrics.",
+      "One consolidated role or a projects section, the bullet formula that turns gigs into employer language, and what to do when a project has no metrics.",
     tldr:
       "Freelance work belongs on your resume as real experience, structured by one decision: continuous freelancing with a coherent focus becomes ONE consolidated role ('Independent UX Consultant, 2021–present') with project bullets under it; scattered or part-time projects become a 'Selected Projects' section. Write every bullet as verb + deliverable + scope + outcome, translate platform language into employer language ('made websites' → 'designed and shipped responsive marketing sites'), and never paste platform stats like Job Success % — recruiters don't hire profiles, they hire experience.",
-    updated: "2026-10-25",
+    updated: "2026-11-08",
+    published: "2026-07-07",
     minutes: 6,
     sections: [
       {
@@ -438,6 +458,7 @@ export const GUIDES: Record<string, Guide> = {
     tldr:
       "Fractional roles belong under ONE umbrella entry — 'Fractional CFO — concurrent engagements, 2022–present' — with each engagement as a scope line beneath it ('PE-backed healthcare services company, ~$40M revenue: owned FP&A and board reporting'), never as separate look-alike jobs, which reads as instability in a six-second skim. Lead every line with executive scope (P&L, budget, headcount, stage), keep client names out unless you have permission, and when applying to a full-time role, frame the portfolio as continuity of leadership at breadth — not as a collection of short stints.",
     updated: "2026-10-25",
+    published: "2026-07-07",
     minutes: 6,
     sections: [
       {
@@ -504,6 +525,7 @@ export const GUIDES: Record<string, Guide> = {
     tldr:
       "A resume score is a model's estimate built from proxies (parseability, keyword coverage, structure), not a measurement of hiring odds — two reasonable tools will disagree on the same resume by several points. Use scores for prioritization: below ~50 usually means a structural or parsing problem to fix first; above ~80 means stop polishing and start applying. Trust only scores that come with an itemized explanation.",
     updated: "2026-10-10",
+    published: "2026-07-06",
     minutes: 5,
     sections: [
       {
@@ -567,6 +589,7 @@ export const GUIDES: Record<string, Guide> = {
     tldr:
       "We switched our Apply Agent off and stopped selling the products built around it: Resume Booster does not send applications for anyone. To apply, connect Claude, ChatGPT or Claude Code at resumebooster.work/agents. Your AI reads the posting and, where the employer's hiring system publishes it, the application form; Resume Booster tells it to ask you the questions that look like they are about you and to draft open answers about your work from your CV. That check reads the question's words and can miss a question about you, even a plainly worded one, so you read every answer before you send and press submit on the employer's own site.",
     updated: "2026-10-25",
+    published: "2026-08-05",
     minutes: 5,
     grounding: "Describes what changed, and the apply-yourself flow the connector serves today",
     sections: [

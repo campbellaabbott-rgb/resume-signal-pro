@@ -78,13 +78,18 @@ describe("the sticky bar and the help button", () => {
   it("the help button moves above the bar while the bar shows, and back when it is dismissed", () => {
     render(<MemoryRouter><StickyBottomCTA /><FloatingHelpButton /></MemoryRouter>);
     const help = () => screen.getByRole("button", { name: /get help/i }).parentElement as HTMLElement;
+    // It rests at bottom-6 and rises by a transform (PERF-05): bottom-28's
+    // 7rem less bottom-6's 1.5rem is the 5.5rem it rises above the bar.
+    const lifted = () => /\+ 5\.5rem\)\)\)$/.test(help().style.transform);
     expect(help().className).toMatch(/\bbottom-6\b/);
+    expect(lifted()).toBe(false);
     act(() => {
       Object.defineProperty(window, "scrollY", { value: 900, configurable: true });
       window.dispatchEvent(new Event("scroll"));
     });
-    expect(help().className).toMatch(/\bbottom-28\b/);
-    fireEvent.click(screen.getByRole("button", { name: /dismiss/i }));
+    expect(lifted()).toBe(true);
     expect(help().className).toMatch(/\bbottom-6\b/);
+    fireEvent.click(screen.getByRole("button", { name: /dismiss/i }));
+    expect(lifted()).toBe(false);
   });
 });

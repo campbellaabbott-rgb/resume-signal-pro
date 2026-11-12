@@ -11,3 +11,12 @@ export interface PostingRuleModules {
 }
 
 export function postingRowEligible(job: unknown, D: PostingRuleModules): boolean;
+
+/** What postingFreshNameReason reads, beside rule 1's modules. */
+export interface PostingFreshNameModules {
+  postingPathParts: (id: string) => { token: string } | null;
+  postingNameVerdict: (job: { id: string; token?: string | null; company?: string | null }) => { name: string; reason: string | null };
+  isUnreviewedTenantName: (token: string | null | undefined, name: string | null | undefined) => boolean;
+}
+
+export function postingFreshNameReason(job: { id: string; token?: string | null; company?: string | null }, D: PostingFreshNameModules): string | null;

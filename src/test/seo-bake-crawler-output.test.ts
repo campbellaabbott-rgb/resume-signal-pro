@@ -13,9 +13,12 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdir
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { crawlerText, jsonLdBlocks } from "../../scripts/prerender-retired.mjs";
-import { OFF_PAGE_HOST_NAMES, bannedSourcePhrasesIn } from "../../scripts/prerender-copy.mjs";
+import { OFF_PAGE_HOST_NAMES, bannedSourcePhrasesIn, bracketsBalanced } from "../../scripts/prerender-copy.mjs";
 import { AFFILIATE_PRO_FIRST_MONTH_CENTS, formatUsd } from "@/config/affiliate-commission";
 import { mcpServerUrl, publicApiBase } from "@/config/public-endpoints";
+import { GUIDES } from "@/data/guides";
+import { MCP_REGISTRY_ENTRY_URL } from "@/config/mcp-tools";
+import { APP_FOOTER_LINKS, DATA_PAGE_LINKS } from "@/lib/site-links";
 
 // Several reads below walk a few thousand written files; on a loaded machine
 // that outruns the 5-second default, which would report a timeout, not a defect.
@@ -44,6 +47,11 @@ const meta = (html: string, re: RegExp) => (re.exec(html) || [])[1] ?? null;
 const robotsOf = (h: string) => meta(h, /<meta name="robots" content="([^"]*)"/);
 const canonOf = (h: string) => meta(h, /<link rel="canonical" href="([^"]*)"/);
 const descOf = (h: string) => meta(h, /<meta name="description" content="([^"]*)"/);
+const lastmodOf = (path: string) => {
+  const xml = readFileSync(join(DIST, "sitemap.xml"), "utf8");
+  const m = new RegExp(`<loc>${SITE}${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/?</loc>\\s*<lastmod>([^<]+)</lastmod>`).exec(xml);
+  return m ? m[1].slice(0, 10) : null;
+};
 const sitemapPaths = () => [...readFileSync(join(DIST, "sitemap.xml"), "utf8").matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].replace(SITE, "").replace(/\/$/, "") || "/");
 
 beforeAll(() => {
@@ -101,6 +109,9 @@ describe("SEO-011a: one Organization on every page, and everything that means us
     const sw = (jsonLdBlocks(page("/agents")) as Array<Record<string, unknown>>).find((b) => b["@type"] === "SoftwareApplication");
     expect(sw).toBeTruthy();
     expect(sw!.sameAs).toEqual(expect.arrayContaining(["https://github.com/campbellaabbott-rgb/resumebooster-mcp"]));
+    // GEO-1107-07: the registry's own page for the server, never a search over the registry.
+    expect(sw!.sameAs).toEqual(expect.arrayContaining([MCP_REGISTRY_ENTRY_URL]));
+    expect(JSON.stringify(sw!.sameAs)).not.toMatch(/\?search=/);
     expect(sw!.publisher).toEqual({ "@id": `${SITE}/#org` });
   });
   it("/about is a page of its own, linked from the footer and listed in the sitemap and llms.txt", () => {
@@ -223,6 +234,22 @@ describe("SEO-034: a page in another language says so, and links its own scan pa
     const es = page("/es/industrias/healthcare");
     expect(es).toContain('href="/es/revisar-curriculum" class="inline-flex');
     expect((jsonLdBlocks(es) as Array<Record<string, unknown>>).some((b) => b["@type"] === "BreadcrumbList")).toBe(true);
+  });
+});
+
+describe("SD-09: every guide's Article states when it was first published, and its image", () => {
+  it("writes each guide's committed first-publish date, its last change and the share card the page carries", () => {
+    for (const g of Object.values(GUIDES)) {
+      const html = page(`/guides/${g.slug}`);
+      const art = (jsonLdBlocks(html) as Array<Record<string, unknown>>).find((b) => b["@type"] === "Article")!;
+      expect(art, g.slug).toBeTruthy();
+      expect(art.datePublished, g.slug).toBe(g.published);
+      // B09 (DATE-09): the day the sitemap prints for this page, never earlier than the guide's own stated date.
+      expect(art.dateModified, g.slug).toBe(lastmodOf(`/guides/${g.slug}`));
+      expect(String(art.dateModified) >= g.updated, g.slug).toBe(true);
+      expect(art.image, g.slug).toBe(`${SITE}/og-image.png`);
+      expect(meta(html, /<meta property="og:image" content="([^"]*)"/), g.slug).toBe(`${SITE}/og-image.png`);
+    }
   });
 });
 
@@ -387,5 +414,143 @@ describe("the round's review: what the bake writes now", () => {
   });
   it("logs the D7 ceiling line", () => {
     expect(LOG).toMatch(/D7 at the ceiling: \d+ board\(s\) indexable today kept near the cut/);
+  });
+});
+
+// ---- The copy-links round (2026-11-08): B03, B04, B09, GEO-1107-04..07, read off a real bake ----
+
+describe("B04: a crawler that runs no script reaches the guides, the data pages and the legal pages from any page", () => {
+  const navHrefs = (h: string, tag: "header" | "footer") => {
+    const part = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`).exec(h)?.[1] ?? "";
+    return [...part.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
+  };
+  it("every page's baked footer carries every link the app's footer carries, and its header /guides", () => {
+    for (const p of ["/pricing", "/guides/what-resume-score-means", "/ghost-job-index", "/jobs/company/dominos", "/about"]) {
+      const h = page(p);
+      const footer = navHrefs(h, "footer");
+      for (const l of APP_FOOTER_LINKS) expect(footer, `${p} footer ${l.to}`).toContain(l.to);
+      for (const extra of ["/guides", "/privacy", "/terms", "/data-api", "/builder", "/research/ats-score-benchmarks", ...DATA_PAGE_LINKS.map((l) => l.to)]) expect(footer, `${p} footer ${extra}`).toContain(extra);
+      expect(navHrefs(h, "header"), `${p} header`).toContain("/guides");
+    }
+  });
+  it("every standalone sitemap page has 2 inbound links from outside its family, every company page 1", () => {
+    const familyOf = (p: string) => {
+      if (p === "/") return "/";
+      const seg = p.replace(/^\/|\/$/g, "").split("/");
+      return seg.length > 1 && ["jobs", "es", "fr", "pt", "de", "nl", "hi", "tl"].includes(seg[0]) ? seg.slice(0, 2).join("/") : seg[0];
+    };
+    const paths = sitemapPaths();
+    const size = new Map<string, number>();
+    for (const p of paths) size.set(familyOf(p), (size.get(familyOf(p)) ?? 0) + 1);
+    const inbound = new Map<string, Set<string>>();
+    for (const p of paths) {
+      let h = "";
+      try { h = page(p); } catch { continue; }
+      for (const m of h.matchAll(/href="(\/[^"#?]*)/g)) {
+        const t = m[1].replace(/\/$/, "") || "/";
+        if (familyOf(t) === familyOf(p)) continue;
+        if (!inbound.has(t)) inbound.set(t, new Set());
+        inbound.get(t)!.add(p);
+      }
+    }
+    const short = paths.filter((p) => p !== "/").flatMap((p) => {
+      const need = /^\/jobs\/(?:company|posting)\//.test(p) ? 1 : size.get(familyOf(p)) === 1 ? 2 : 0;
+      const n = inbound.get(p)?.size ?? 0;
+      return n < need ? [`${p} (${n} of ${need})`] : [];
+    });
+    expect(short).toEqual([]);
+    expect(inbound.get("/agent")?.size ?? 0).toBeGreaterThanOrEqual(2);
+  });
+  it("/agents and /jobs link /agent, the page on applying with your own AI", () => {
+    expect(page("/agents")).toMatch(/<a href="\/agent"/);
+    expect(page("/jobs")).toMatch(/<a href="\/agent"/);
+  });
+});
+
+describe("B04 (F07): the homepage prints its strip's heading only over rows, and links the data pages", () => {
+  it("an offline bake writes no posting page, so the homepage prints no heading and says why in the log", () => {
+    const home = page("/");
+    expect(home).not.toContain("On the board now");
+    expect(home).not.toContain("data-home-strip");
+    expect(LOG).toMatch(/"\/" strip: 0 posting page\(s\) of 0 written — no row qualifies, so the crawler copy prints no heading/);
+  });
+  it("links all four data pages under a line that says each is dated by its data", () => {
+    const home = page("/");
+    expect(crawlerText(home)).toContain("The board's own measurements, each dated by its data:");
+    for (const l of DATA_PAGE_LINKS) expect(home, l.to).toContain(`href="${l.to}"`);
+  });
+});
+
+describe("B03: the homepage and every page's Organization say what Resume Booster is", () => {
+  it("the homepage's title and description lead with the name", () => {
+    const home = page("/");
+    expect(titleOf(home)).toBe("Resume Booster — Live Jobs Straight From Employers");
+    expect(descOf(home)).toMatch(/^Resume Booster is a free job board/);
+  });
+  it("the #org node carries a description and a disambiguating description, and still no sameAs", () => {
+    const org = (jsonLdBlocks(page("/pricing")) as Array<Record<string, unknown>>).find((b) => b["@type"] === "Organization" && b["@id"] === `${SITE}/#org`)!;
+    expect(String(org.description)).toMatch(/^Resume Booster is a free job board/);
+    expect(String(org.disambiguatingDescription)).toMatch(/not affiliated with any employer/);
+    expect(org).not.toHaveProperty("sameAs");
+  });
+});
+
+describe("B09 / GEO-1107-04 / GEO-1107-05: what the data pages say and when they say it changed", () => {
+  it("/hiring-trends says a takedown is recorded on the next read, never the moment it happens", () => {
+    const t = crawlerText(page("/hiring-trends"));
+    expect(t).toContain("We record a takedown when the next read of that company's feed finds the posting gone");
+    expect(t).not.toMatch(/the moment/i);
+  });
+  it("/ghost-job-index carries the brand in its title and H1", () => {
+    const h = page("/ghost-job-index");
+    expect(titleOf(h)).toBe("Resume Booster Ghost Job Index: how many postings are real?");
+    expect(h).toMatch(/<h1[^>]*>Resume Booster Ghost Job Index<\/h1>/);
+    // Offline the figures are unread, so there is no answer sentence to print.
+    expect(h).not.toContain("data-answer");
+  });
+  it("every sitemap page's lastmod is the day its own Article or Dataset says it changed", () => {
+    const off: string[] = [];
+    let dated = 0;
+    for (const p of sitemapPaths()) {
+      let h = "";
+      try { h = page(p); } catch { continue; }
+      for (const b of jsonLdBlocks(h) as Array<Record<string, unknown>>) {
+        if ((b["@type"] === "Article" || b["@type"] === "Dataset") && typeof b.dateModified === "string") {
+          dated++;
+          if (b.dateModified.slice(0, 10) !== lastmodOf(p)) off.push(`${p}: ${b.dateModified} vs ${lastmodOf(p)}`);
+        }
+      }
+    }
+    expect(dated).toBeGreaterThanOrEqual(Object.keys(GUIDES).length);
+    expect(off).toEqual([]);
+  });
+  it("every sitemap page's description is 70 characters or more, ends a sentence and closes its brackets", () => {
+    const bad: string[] = [];
+    for (const p of sitemapPaths()) {
+      let h = "";
+      try { h = page(p); } catch { continue; }
+      const d = (descOf(h) ?? "").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+      if (d.length < 70 || !/[.!?…]["'”’)\]]*$/.test(d) || !bracketsBalanced(d)) bad.push(`${p} (${d.length}): ${d}`);
+    }
+    expect(bad).toEqual([]);
+    expect(descOf(page("/guides/freelance-work-on-resume"))).not.toMatch(/vs\.$/);
+  });
+  it("the stray address search engines hold gets a noindex page of its own, not the homepage, and no sitemap entry", () => {
+    const stray = "/jobs/company/0ebd29d1-d85b-444e-b36b-430da3d7bc58";
+    const h = page(stray);
+    expect(robotsOf(h)).toMatch(/^noindex/);
+    expect(titleOf(h)).not.toBe(titleOf(page("/")));
+    expect(sitemapPaths()).not.toContain(stray);
+  });
+});
+
+describe("GEO-1107-06: both llms files state the prices and limits", () => {
+  it("each carries the dated block once, with ChatGPT's per-person figure", () => {
+    for (const f of ["llms.txt", "llms-full.txt"]) {
+      const t = readFileSync(join(DIST, f), "utf8");
+      expect(t.match(/^## Prices and limits \(as of \d{4}-\d{2}-\d{2}\)$/gm), f).toHaveLength(1);
+      expect(t, f).toContain("from ChatGPT, 200 calls a day for each person ChatGPT's call names");
+    }
+    expect(readFileSync(join(DIST, "llms-full.txt"), "utf8")).toContain("from ChatGPT each person has their own 200");
   });
 });

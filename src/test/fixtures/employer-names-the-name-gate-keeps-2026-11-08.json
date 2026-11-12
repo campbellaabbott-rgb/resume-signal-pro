@@ -1,0 +1,1907 @@
+{
+ "read": "2026-11-08",
+ "source": "supabase/functions/job-board/sources.ts (every catalogue board, read through src/test/helpers/catalog.ts), the stored name as the bake is handed it",
+ "why": "Real employer names whose shape sits nearest the name gate: a domain, a slash between words, a name ending in Global, two colour words, Signature, the word Logos, a Text word. Junk of the same shapes (logo files, URLs, labels) was left out by hand; the gate refuses or should refuse those.",
+ "names": [
+  {
+   "name": "Context.dev",
+   "board": "ashby:context",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "GenScript/ProBio",
+   "board": "greenhouse:genscript",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Lingo.dev",
+   "board": "ashby:lingodotdev",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "PlayStation Global",
+   "board": "greenhouse:sonyinteractiveentertainmentglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Post.fm",
+   "board": "ashby:post",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Uare.ai",
+   "board": "greenhouse:uareai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "People.ai",
+   "board": "lever:people-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Remote.com",
+   "board": "greenhouse:remotecom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Gong.io",
+   "board": "greenhouse:gongio",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Alarm.com",
+   "board": "greenhouse:alarmcom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Impact.com",
+   "board": "greenhouse:impact",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ID.me",
+   "board": "greenhouse:idme",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Apollo.io",
+   "board": "greenhouse:apolloio",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Forge Global",
+   "board": "greenhouse:forgeglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Blockchain.com",
+   "board": "greenhouse:blockchain",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Forma.ai",
+   "board": "greenhouse:formaaiinc",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Customer.io",
+   "board": "greenhouse:customerio",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "FGS Global",
+   "board": "greenhouse:fgsglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "FSAStore.com",
+   "board": "greenhouse:fsastorecom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Arena.im",
+   "board": "greenhouse:arenaim",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Builder.io",
+   "board": "greenhouse:builder",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Anno.ai",
+   "board": "greenhouse:annoai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Files.com",
+   "board": "greenhouse:filescom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "INGENIOUS.BUILD",
+   "board": "greenhouse:ingenious",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Circle.so",
+   "board": "greenhouse:circleso",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "VISASQ/COLEMAN",
+   "board": "greenhouse:colemanresearch",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Copper.co",
+   "board": "greenhouse:copperco",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Ampeco Global",
+   "board": "lever:ampeco-global",
+   "why": "ends in Global"
+  },
+  {
+   "name": "METRO/MAKRO",
+   "board": "smartrecruiters:METROMAKRO",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Cermati.com",
+   "board": "smartrecruiters:Cermaticom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Reitmans (Canada) Ltée/Ltd",
+   "board": "smartrecruiters:ReitmansCanadaLteLtd",
+   "why": "a slash between words"
+  },
+  {
+   "name": "RE/SPEC Inc.",
+   "board": "smartrecruiters:RESPECInc",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Beta.SoftSystems",
+   "board": "smartrecruiters:BetaSoftSystems3",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "lastminute.com",
+   "board": "smartrecruiters:lastminutecom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "PhillyTech.Co",
+   "board": "smartrecruiters:PhillyTechCo",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "PuertoRicoNurses.Com",
+   "board": "smartrecruiters:PuertoRicoNursesCom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "XceedSearch.com",
+   "board": "smartrecruiters:XceedSearchcom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Dashlabs.ai",
+   "board": "smartrecruiters:Dashlabsai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Carrevolutis.com",
+   "board": "smartrecruiters:Carrevolutiscom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "jetfuel.agency",
+   "board": "smartrecruiters:Jetfuelagency",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Supermart.ng",
+   "board": "smartrecruiters:Supermartng",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Kata.ai",
+   "board": "smartrecruiters:Kataai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Eli Global",
+   "board": "smartrecruiters:eliglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Frontline.Live",
+   "board": "smartrecruiters:frontlinelive",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Alium.Finance",
+   "board": "smartrecruiters:AliumFinance",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "SellAnyCar.com",
+   "board": "smartrecruiters:SellAnyCarcom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Yuxi Global",
+   "board": "smartrecruiters:YuxiGlobal1",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Zeta Global",
+   "board": "greenhouse:zetaglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "VML/WPPEnterprise Solutions",
+   "board": "greenhouse:vmlenterprisesolutions",
+   "why": "a slash between words"
+  },
+  {
+   "name": "takealot.com",
+   "board": "greenhouse:takealotcom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ON.energy",
+   "board": "greenhouse:onenergy",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "AutoTrader.ca",
+   "board": "greenhouse:autotradercanada",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "UMI Stone/Opustone",
+   "board": "greenhouse:umistone",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Otter.ai",
+   "board": "greenhouse:otterai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "TTC Global",
+   "board": "greenhouse:ttcglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "SupplyHouse.com",
+   "board": "greenhouse:supplyhouse",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Tomorrow.io",
+   "board": "greenhouse:tomorrow",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Honeycomb.io",
+   "board": "greenhouse:honeycomb",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Nucleus Global",
+   "board": "greenhouse:nucleus",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Observe.AI",
+   "board": "greenhouse:observeai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Kiva.org",
+   "board": "greenhouse:kivaorg",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Placer.ai",
+   "board": "greenhouse:placerlabs",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Nuts.com",
+   "board": "greenhouse:nutscom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Platform.sh",
+   "board": "greenhouse:platformsh",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "saas.group",
+   "board": "greenhouse:saasgroup",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Bolt.new",
+   "board": "greenhouse:stackblitz",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "You.com",
+   "board": "greenhouse:youcom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Clockwork.io",
+   "board": "greenhouse:clockworksystems",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Pilot.com",
+   "board": "greenhouse:pilothq",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Study.com",
+   "board": "greenhouse:studycareers",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "tires-easy.com",
+   "board": "greenhouse:tireseasycom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "1stdibs.com",
+   "board": "greenhouse:1stdibscom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Funded.club",
+   "board": "greenhouse:fundedclub",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "LeasingMarkt.de",
+   "board": "greenhouse:leasingmarkt",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Placements.io",
+   "board": "greenhouse:placementsio",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Proton.ai",
+   "board": "greenhouse:protonai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Zesty.ai",
+   "board": "greenhouse:zestyai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Altamira.ai",
+   "board": "greenhouse:altamiratechnologies",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Nansen.ai",
+   "board": "greenhouse:nansen",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "One Acre Fund - Global",
+   "board": "greenhouse:oneacrefundglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "RTINGS.com",
+   "board": "greenhouse:rtingscom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Crypto.com",
+   "board": "lever:crypto",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Life.Church",
+   "board": "lever:life",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "nahc.io",
+   "board": "lever:nahc",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Black & White Zebra",
+   "board": "lever:Black-White-Zebra",
+   "why": "two colour words"
+  },
+  {
+   "name": "Kogan.com",
+   "board": "lever:kogan",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "KlearNow.ai",
+   "board": "lever:klearnow",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "fun.xyz",
+   "board": "lever:funxyz",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "nexos.ai",
+   "board": "lever:Nexos",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ConverseNow.ai",
+   "board": "lever:ConverseNow",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Apex.AI",
+   "board": "lever:apex-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Logz.io",
+   "board": "lever:logz",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "rePurpose Global",
+   "board": "lever:repurposeglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Robust.ai",
+   "board": "lever:robust-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Healthcare.com",
+   "board": "lever:healthcare",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Base.com",
+   "board": "workable:base-com",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Asso.subsea",
+   "board": "workable:assogroup",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Arabic.AI",
+   "board": "workable:arabicai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Alfadocs.com",
+   "board": "workable:alfadocs",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Bezos.ai",
+   "board": "workable:bezos",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ALL.SPACE",
+   "board": "workable:allspace",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "BFL/B2F",
+   "board": "workable:black-futures-lab",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Owner.com",
+   "board": "ashby:owner",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "TENEX.AI",
+   "board": "ashby:tenex",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Jerry.ai",
+   "board": "ashby:Jerry.ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Logos Space",
+   "board": "ashby:logos-space",
+   "why": "the word logo"
+  },
+  {
+   "name": "QED.ai",
+   "board": "ashby:qed-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "incident.io",
+   "board": "ashby:incident",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "lemon.markets",
+   "board": "ashby:lemon-markets",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Viz.ai",
+   "board": "ashby:Viz.ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Ambient.ai",
+   "board": "ashby:ambient.ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Ether.fi",
+   "board": "ashby:ether.fi",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Harrison.ai",
+   "board": "ashby:harrison.ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Kontakt.io",
+   "board": "ashby:kontakt",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "FAR.AI",
+   "board": "ashby:far.ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Scan.com",
+   "board": "ashby:scan-com",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Turn/River",
+   "board": "ashby:turn-river",
+   "why": "a slash between words"
+  },
+  {
+   "name": "WA.Technology",
+   "board": "ashby:WA.Technology",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Nexxa.AI",
+   "board": "ashby:nexxa",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ProRata.ai",
+   "board": "ashby:prorata",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Acquird.io",
+   "board": "ashby:acquird",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "i3D.net",
+   "board": "ashby:i3d",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Mend.io",
+   "board": "ashby:mend-io",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Kiwi.com",
+   "board": "ashby:kiwi-com",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Shade.inc",
+   "board": "ashby:shade-inc",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Spector.ai",
+   "board": "ashby:spector-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Tavrn.ai",
+   "board": "ashby:tavrn",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Root Global",
+   "board": "ashby:rootglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Sema4.ai",
+   "board": "ashby:sema4.ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "SGNL.ai",
+   "board": "ashby:sgnlai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Tycho.AI",
+   "board": "ashby:tycho-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Vic.ai",
+   "board": "ashby:vic.ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Euphoric Global",
+   "board": "ashby:euphoric",
+   "why": "ends in Global"
+  },
+  {
+   "name": "hive.co",
+   "board": "ashby:Hive.co",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "molecule.xyz",
+   "board": "ashby:molecule",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Palup.ai",
+   "board": "ashby:palup",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "SalesAPE.ai",
+   "board": "ashby:salesape-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Tribe.xyz",
+   "board": "ashby:tribe-xyz",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Trigger.dev",
+   "board": "ashby:triggerdev",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Checkout.com",
+   "board": "ashby:checkout.com",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Glintt Global",
+   "board": "ashby:glinttglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Jinba.io",
+   "board": "ashby:carnot-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Teton.ai",
+   "board": "ashby:teton",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Centuro Global",
+   "board": "ashby:centuro-global-careers",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Credo.AI",
+   "board": "ashby:credo.ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Change.org",
+   "board": "ashby:change",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Neo.Tax",
+   "board": "ashby:neo-tax",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Tray.ai",
+   "board": "ashby:tray-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "APEXX Global",
+   "board": "ashby:APEXX",
+   "why": "ends in Global"
+  },
+  {
+   "name": "uPacjenta.pl",
+   "board": "bamboohr:upacjenta",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Staff Zone/Select People",
+   "board": "bamboohr:staffzone",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Living Word/Maranatha Christian Academy",
+   "board": "bamboohr:lwcc",
+   "why": "a slash between words"
+  },
+  {
+   "name": "OSC Global",
+   "board": "bamboohr:oscglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Giotto.ai",
+   "board": "bamboohr:giottoai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "trophi.ai",
+   "board": "bamboohr:trophiai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Launch Global",
+   "board": "bamboohr:launchglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Sistema.bio",
+   "board": "bamboohr:sistemaaccount",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Bacon Farmer Workman/Marcum Engineering",
+   "board": "bamboohr:bfweng",
+   "why": "a slash between words"
+  },
+  {
+   "name": "BioBridge Global",
+   "board": "bamboohr:biobridgeglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Oracle Law Global",
+   "board": "bamboohr:oraclelawglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "PracticeLink/MountainPlex",
+   "board": "bamboohr:practicelink",
+   "why": "a slash between words"
+  },
+  {
+   "name": "kept.pro",
+   "board": "bamboohr:keptpro",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "CEX.IO",
+   "board": "bamboohr:cexio",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Jack.org",
+   "board": "bamboohr:jackorg",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Telecel Global",
+   "board": "bamboohr:telecelglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "AND Global",
+   "board": "bamboohr:andglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "ES Global",
+   "board": "bamboohr:esglobalsolutions",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Tototheo Global",
+   "board": "bamboohr:tototheo",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Vespa.ai",
+   "board": "bamboohr:vespaai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Wavo.me",
+   "board": "bamboohr:wavo",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Sonder.io",
+   "board": "greenhouse:sonderaustralia",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Blip Global",
+   "board": "greenhouse:blip-global",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Talon.One",
+   "board": "greenhouse:talonone",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "energytec.ai",
+   "board": "greenhouse:etec",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Medical Informatics Engineering/Enterprise Health",
+   "board": "greenhouse:medicalinformaticsengineering",
+   "why": "a slash between words"
+  },
+  {
+   "name": "AJ Boggs/ProPower",
+   "board": "greenhouse:ajboggs",
+   "why": "a slash between words"
+  },
+  {
+   "name": "WATI.io",
+   "board": "workable:wati-dot-i-o",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Viva.com",
+   "board": "workable:viva",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "UN/COMMON",
+   "board": "workable:uncommonagency",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Water.org",
+   "board": "workable:waterorg",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "YourHero/Douleutaras",
+   "board": "workable:yourhero-douleutaras",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Machineyard.com.ng",
+   "board": "smartrecruiters:Machineyardcomng",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "atlantic.vc",
+   "board": "recruitee:jobsatlanticlabsfoodlabs",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Better Collective A/S",
+   "board": "recruitee:bettercollective",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Fietsenwinkel.nl",
+   "board": "recruitee:fietsenwinkelnl",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "OGC Global",
+   "board": "recruitee:ogcglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Doktor.se",
+   "board": "teamtailor:doktor",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "GML A/S",
+   "board": "teamtailor:gmlhr",
+   "why": "a slash between words"
+  },
+  {
+   "name": "swan.io",
+   "board": "teamtailor:swanio",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Bloq.it",
+   "board": "teamtailor:bloqit",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "CDP Global",
+   "board": "teamtailor:cdpworldwide",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Ketju.fi",
+   "board": "teamtailor:ketju",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Mendo.ai",
+   "board": "teamtailor:mendoai-1730204279",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Anzet A/S",
+   "board": "teamtailor:anzet",
+   "why": "a slash between words"
+  },
+  {
+   "name": "one.com",
+   "board": "teamtailor:onecomglobal",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "bunny.net",
+   "board": "teamtailor:bunnynet",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Great Northern A/S",
+   "board": "teamtailor:greatnorthernas",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Logan A/C & Heat Services",
+   "board": "breezy:logan-a-c-heat-services-b29ac6f9712d",
+   "why": "a slash between words"
+  },
+  {
+   "name": "IIX Global",
+   "board": "breezy:iix-global",
+   "why": "ends in Global"
+  },
+  {
+   "name": "AVTECH Global",
+   "board": "breezy:aviation-technology-associates-llc",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Netrix Global",
+   "board": "breezy:netrix-global",
+   "why": "ends in Global"
+  },
+  {
+   "name": "JUMBO Consulting Group A/S",
+   "board": "breezy:jumbo-consulting-group-a-s",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Compose.ly",
+   "board": "breezy:compose-ly",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "MOI Global",
+   "board": "breezy:moi-global",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Level.works",
+   "board": "greenhouse:levelworks",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Latitude Global",
+   "board": "ashby:latitude-global",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Job Bridge Global",
+   "board": "workable:job-bridge-global-1",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Talent-360.me",
+   "board": "workable:talent3600",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Dev.Pro",
+   "board": "workable:devpro",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "M/I Homes",
+   "board": "workable:mi-homes",
+   "why": "a slash between words"
+  },
+  {
+   "name": "FlowX.AI",
+   "board": "workable:flowxai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Node.Digital",
+   "board": "workable:node",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "IO Global",
+   "board": "workable:io-global",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Fluentbe.com",
+   "board": "workable:fluentbe",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ONETRACK.AI",
+   "board": "workable:onetrack",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Fiscal.ai",
+   "board": "workable:fiscal-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "More.com",
+   "board": "workable:more-com",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Portainer.io",
+   "board": "workable:portainer",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Lumenier/GetFPV",
+   "board": "workable:getfpv",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Lelivrescolaire.fr",
+   "board": "workable:lelivrescolaire",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ViskoTeepak Global",
+   "board": "teamtailor:viskoteepakglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Pump.co",
+   "board": "greenhouse:pumpcareers",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Just Global",
+   "board": "greenhouse:just-global",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Revenue.io",
+   "board": "greenhouse:ringdna",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "T.E.S",
+   "board": "recruitee:tes",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "DLE.energy",
+   "board": "recruitee:dle",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Frits.com",
+   "board": "recruitee:ikbenfrits",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Tropos.io",
+   "board": "recruitee:tropos",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Vis a/d Schelde",
+   "board": "recruitee:visaandeschelde",
+   "why": "a slash between words"
+  },
+  {
+   "name": "OCA Global",
+   "board": "teamtailor:ocaglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Bold.One",
+   "board": "teamtailor:careercommercecore",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "AAF/Dinair",
+   "board": "teamtailor:aafdinair",
+   "why": "a slash between words"
+  },
+  {
+   "name": "sa.global",
+   "board": "breezy:sa-global",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Respond.io",
+   "board": "breezy:respond-io",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Hummingbot.io",
+   "board": "smartrecruiters:Hummingbotio",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Visit.org",
+   "board": "workable:visit",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "webook.com",
+   "board": "workable:webook",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Infatica.io",
+   "board": "workable:infatica-dot-i-o",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Passion.io",
+   "board": "workable:passionio",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Robotec.ai",
+   "board": "workable:robotec-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "RFI Global",
+   "board": "workable:rfiglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Telementum Global",
+   "board": "workable:telementum",
+   "why": "ends in Global"
+  },
+  {
+   "name": "V4C.ai",
+   "board": "workable:v4c",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Chuffed.org",
+   "board": "workable:chuffed",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "WeAssist.io",
+   "board": "breezy:weassist-io",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "tawk.to",
+   "board": "breezy:tawk-to",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "T.Capital",
+   "board": "breezy:t-capital",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Romanspage Global",
+   "board": "smartrecruiters:RomanspageGlobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Showroomprive.com",
+   "board": "smartrecruiters:ShowroomPriv",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Freelancer.com",
+   "board": "workable:freelancer",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Green.Earth",
+   "board": "workable:greenearth",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Deeproute.ai",
+   "board": "workable:deeproute-dot-a-i",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "steuerberaten.de",
+   "board": "recruitee:steuerberatende",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Trackman A/S",
+   "board": "recruitee:trackman",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Winparts.nl",
+   "board": "recruitee:winparts",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "CMB.TECH",
+   "board": "recruitee:cmbtech",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Print.com",
+   "board": "teamtailor:printcombv",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Doktor.De",
+   "board": "teamtailor:doktorde",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "GlobeSearch A/S",
+   "board": "teamtailor:globesearchas-1745424407",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Visma e-conomic A/S",
+   "board": "teamtailor:vismaeconomic",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Tails.com",
+   "board": "teamtailor:tailscom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Vaccin.nu",
+   "board": "teamtailor:vaccinationsgruppenab",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "F.initiatives",
+   "board": "teamtailor:figroupfrance",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "B/SPOKE Studios",
+   "board": "breezy:b-spoke-studios",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Hubble.Build",
+   "board": "breezy:hubble",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Blue Cross & Blue Shield of Rhode Island",
+   "board": "workday:bcbsri~wd1~bcbsricareers",
+   "why": "two colour words"
+  },
+  {
+   "name": "Insight Global",
+   "board": "icims:careers.insightglobal.com",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Hitta.se",
+   "board": "teamtailor:hittase",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Synoptik Danmark A/S",
+   "board": "teamtailor:synoptikgroupdenmark-smarteyes",
+   "why": "a slash between words"
+  },
+  {
+   "name": "St.Amant",
+   "board": "breezy:st-amant",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Signature Aviation",
+   "board": "breezy:signatureaviation",
+   "why": "signature or email"
+  },
+  {
+   "name": "Permutable.AI",
+   "board": "breezy:permutableai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "X/Celerant",
+   "board": "breezy:x-celerant-consulting",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Conifers.ai",
+   "board": "greenhouse:conifersaicareers",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "primer.ai",
+   "board": "greenhouse:primerai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Uptalent.io",
+   "board": "workable:uptalent-dot-i-o",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Newcode.ai",
+   "board": "workable:newcode",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Nasoft.eg",
+   "board": "workable:nasoft-eg",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Tryzens Global",
+   "board": "workable:tryzensglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "McLane Global",
+   "board": "workable:mclane-global",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Clearwaters.IT",
+   "board": "workable:clearwaters-dot-i-t",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "TherapyNotes.com",
+   "board": "workable:therapynotes",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "CM.com",
+   "board": "recruitee:cmcom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Ambitious.Africa",
+   "board": "teamtailor:ambitiousafrica",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "44.01",
+   "board": "personio:4401",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ane.energy",
+   "board": "personio:ane",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "B+D/Agentur",
+   "board": "personio:agenturennetz",
+   "why": "a slash between words"
+  },
+  {
+   "name": "comparis.ch",
+   "board": "personio:comparis-ch",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "dksr.city",
+   "board": "personio:dksr-city",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Waiter.com",
+   "board": "breezy:waiter-com",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ICA.ai",
+   "board": "breezy:international-consulting-associates-inc",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "1234S.org",
+   "board": "breezy:1234s",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Architect.io",
+   "board": "breezy:architect-io",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "blended.io",
+   "board": "breezy:blended",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Cal.com",
+   "board": "breezy:cal-com",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Tutor.com",
+   "board": "greenhouse:tutor_com",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "FWD.us",
+   "board": "greenhouse:fwdus",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Pinewood.AI",
+   "board": "workable:pinewoodaicareers",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Rocket.net",
+   "board": "workable:rocket-dot-n-et",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Loyalty Key A/S",
+   "board": "recruitee:loyaltykey",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Graphon.AI",
+   "board": "greenhouse:graphonai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Venice.ai",
+   "board": "greenhouse:veniceai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "IP Global",
+   "board": "oracle:iazbqy~ocs~CX_1",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Centrus Global",
+   "board": "oracle:eese~us8~CX_1",
+   "why": "ends in Global"
+  },
+  {
+   "name": "TWE Global",
+   "board": "oracle:ebpm~us2~CX_1",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Hoya Global",
+   "board": "oracle:fa-esta-saasfaprod1~ocs~CX_1",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Abt Global",
+   "board": "oracle:egpy~us2~CX_1",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Scott Bader Global",
+   "board": "oracle:fa-eqzr-saasfaprod1~ocs~CX_1",
+   "why": "ends in Global"
+  },
+  {
+   "name": "WPT Global",
+   "board": "workable:wpt-global",
+   "why": "ends in Global"
+  },
+  {
+   "name": "WebProps.org",
+   "board": "workable:webprops",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Ford Global",
+   "board": "oracle:efds~em5~CX_1",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Synlab Global",
+   "board": "oracle:fa-eugp-saasfaprod1~ocs~CX_1",
+   "why": "ends in Global"
+  },
+  {
+   "name": "HealthPartners/GHI",
+   "board": "oracle:fa-etnv-saasfaprod1~ocs~CX_4003",
+   "why": "a slash between words"
+  },
+  {
+   "name": "T.EN",
+   "board": "oracle:hcxg~em2~CX_1",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Novotech Global",
+   "board": "oracle:fa-euzi-saasfaprod1~ocs~CX_1",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Cantor Fitzgerald/BGC",
+   "board": "oracle:hdow~us6~CX_1003",
+   "why": "a slash between words"
+  },
+  {
+   "name": "ELCA Global",
+   "board": "oracle:iaaras~ocs~CX_4",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Arcor Global",
+   "board": "oracle:emqm~us6~CX_2001",
+   "why": "ends in Global"
+  },
+  {
+   "name": "R+L Global",
+   "board": "oracle:erhk~us2~CX_4",
+   "why": "ends in Global"
+  },
+  {
+   "name": "KFC Global",
+   "board": "oracle:eczd~us2~CX_13001",
+   "why": "ends in Global"
+  },
+  {
+   "name": "AM/NS India",
+   "board": "oracle:emfg~em4~CX_5001",
+   "why": "a slash between words"
+  },
+  {
+   "name": "CDS Global",
+   "board": "oracle:eevd~us6~CX_8",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Viki.ai",
+   "board": "oracle:iabqiz~ocs~CX_1001",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Martin/Martin, Inc.",
+   "board": "paylocity:8a5ab9e1-9406-45b2-b796-ac8606d08a6b",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Umpqua/Seven Feathers Companies",
+   "board": "paylocity:ea17ede4-817b-4ed5-b477-644b7b625b05",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Signature Health Inc",
+   "board": "paylocity:c2797ccd-a4ec-4303-9c5d-306fdddd655a",
+   "why": "signature or email"
+  },
+  {
+   "name": "SPCP/Southeast Medical Group",
+   "board": "paylocity:f854ba87-4240-4926-8124-73027b42ff68",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Skyhop Global",
+   "board": "paylocity:b76e161c-263f-46a2-b965-797718568dc8",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Take Ten Tire/Thompson Tire/Direct Discount Tire",
+   "board": "paylocity:1567a571-f83a-42d1-8964-4da7ffcab7ed",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Valpak/Clipp",
+   "board": "paylocity:a8e341a9-af81-4b6a-9e52-24653010363d",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Solutions by Text",
+   "board": "greenhouse:solutionsbytext",
+   "why": "a Text word"
+  },
+  {
+   "name": "R.A.D",
+   "board": "workable:r-dot-a-d-global",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "YAP Global",
+   "board": "workable:yap-global",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Lady Nomada/Perdida",
+   "board": "paylocity:3d6402aa-0ba0-4b6b-87d3-7c65bc8d81ea",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Catholic Charities Steuben/Livingston",
+   "board": "paylocity:6b6aad2c-8183-4414-aa03-0c8654c57d13",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Harbor's Edge/Fort Norfolk Retirement Community",
+   "board": "paylocity:b2ff8541-a558-4ab4-8fd6-ff26cf77cf64",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Green Lawn Fertilizing/Green Pest Solutions",
+   "board": "paylocity:170ddebf-dcde-47ad-bca2-96fc1517e6b8",
+   "why": "two colour words"
+  },
+  {
+   "name": "otelier.io",
+   "board": "paylocity:e08e6f7c-5a53-481d-a947-58eaf4a4d67b",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "PAA/CABS",
+   "board": "paylocity:739acac3-ee9f-4861-859a-0b77ba17eb20",
+   "why": "a slash between words"
+  },
+  {
+   "name": "mhp.si",
+   "board": "paylocity:45f8277f-ae4a-499a-8a31-bdb08af8243b",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Catholic Charities Chemung/Schuyler",
+   "board": "paylocity:428596d0-e177-4d23-9343-57c13afb2899",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Silver Strike Casino, Silver Springs, NV",
+   "board": "paylocity:a61228d8-d21c-456e-8262-ab9143ec455c",
+   "why": "two colour words"
+  },
+  {
+   "name": "Auslandsjob.de",
+   "board": "teamtailor:auslandsjob",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "group.one",
+   "board": "teamtailor:groupone",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Eldorado.gg",
+   "board": "teamtailor:eldorado",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "J.Lindeberg",
+   "board": "teamtailor:jlindeberg",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "TimeLog A/S",
+   "board": "teamtailor:timelog",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Protein.com",
+   "board": "teamtailor:protein",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "S&P Global",
+   "board": "icims:careers.spglobal.com",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Booking.com",
+   "board": "icims:jobs.booking.com",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Bigbear.ai",
+   "board": "icims:careers.bigbear.ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "CommTech Global",
+   "board": "paylocity:8e62a923-156c-495f-98d5-1ff8dc76ccaf",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Pay.UK",
+   "board": "greenhouse:eu~payuk",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "i.AI",
+   "board": "greenhouse:eu~iai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "home.pl",
+   "board": "greenhouse:eu~homepl",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Bash.com",
+   "board": "greenhouse:eu~bashdotcom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Signature Kettle Crafted",
+   "board": "adp:14069f88-cca0-4a6d-adbb-46e6e147df95",
+   "why": "signature or email"
+  },
+  {
+   "name": "Vista Global",
+   "board": "icims:talent.vistaglobal.com",
+   "why": "ends in Global"
+  },
+  {
+   "name": "CC.Talent",
+   "board": "recruitee:cctalent",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "HealthCareersInSask.ca",
+   "board": "oracle:emqk~ca3~CX_1",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Intertek Global",
+   "board": "oracle:hcog~em2~CX_2001",
+   "why": "ends in Global"
+  },
+  {
+   "name": "IVIRMA Global",
+   "board": "adp:8802c141-7774-4099-8662-5e95ce71ab54",
+   "why": "ends in Global"
+  },
+  {
+   "name": "J.McLaughlin",
+   "board": "adp:0f2ff4a2-0d91-4097-8a21-ebff0d0b4ce2",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "CarParts.com",
+   "board": "adp:ad933d4d-2649-4054-8cc2-d704d60ff765",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "TAPCO/Logix ITS",
+   "board": "adp:24984e29-b711-4b52-9a1a-9896ad0c0fd4",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Bravida Medical (Bioderm/Argentum & WCR)",
+   "board": "adp:35654c86-2f7f-4ade-a8a6-b0825054e526",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Allied Global",
+   "board": "recruitee:alliedglobal",
+   "why": "ends in Global"
+  },
+  {
+   "name": "Asap.be",
+   "board": "recruitee:asap",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "S.L",
+   "board": "adp:c428e01e-ab06-46f3-a22d-06cf14a3da8b",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Mohawk Global",
+   "board": "adp:73343f6b-c53c-4c0b-9832-909915b29539",
+   "why": "ends in Global"
+  },
+  {
+   "name": "TBI/GovStrive",
+   "board": "adp:67f4b500-3fc2-4e65-9a1c-e4d5ddb6b474",
+   "why": "a slash between words"
+  },
+  {
+   "name": "5.11",
+   "board": "ukg:recruiting~INC1000INC~400c565e-2f19-4ff7-a2ba-acf5b7c367c3",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "i-Health/Revo",
+   "board": "ukg:recruiting~TWI1001TWICO~944757aa-dcee-4cdf-bfde-5d25199d3468",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Morton/Windsor",
+   "board": "ukg:recruiting2~MOR1010MORTN~ec858bb9-ab0e-4f8d-82c3-fc21b3758af3",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Wallwork/Valley Imports",
+   "board": "ukg:recruiting~WWW1001WWWAL~281a9ef1-5752-4585-a043-3d2bc26f2dce",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Rockline Industries/Iatric",
+   "board": "ukg:recruiting2~ROC1009RLIND~b676a82a-4f0f-4d70-b729-7e56d45165a4",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Cliff Drysdale/PBI",
+   "board": "ukg:recruiting2~TRO1001TROO~89e3e2d0-ec6f-45e5-8f61-1563089a6ba9",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Northeast OB/GYN",
+   "board": "ukg:recruiting2~CON1057CWH~2bd7669a-2091-4dbf-88a7-93de6e84ee1c",
+   "why": "a slash between words"
+  },
+  {
+   "name": "RE/MAX Holdings, Inc.",
+   "board": "ukg:recruiting~REM1005REMAX~033cd003-989e-7efb-8d20-95f88d095aa3",
+   "why": "a slash between words"
+  },
+  {
+   "name": "Panorama Global",
+   "board": "jazzhr:panoramaglobal",
+   "why": "ends in Global"
+  }
+ ]
+}

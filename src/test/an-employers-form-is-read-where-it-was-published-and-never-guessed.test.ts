@@ -55,8 +55,12 @@ const ref = (id: string, applyUrl: string | null = null): PostingRef => {
 };
 
 describe("which vendors are read, and where", () => {
-  it("the readers are exactly the vendors the automation table says publish their questions", () => {
-    expect([...FORM_READER_VENDORS].sort()).toEqual(realQuestionVendors());
+  it("the readers are the vendors the automation table says publish their questions, and the five connect W5 reads beside them", () => {
+    // realQuestions stays false for the five (job-board has no question branch
+    // for them, and the flag gates its harvest), so the table is a subset.
+    const table = realQuestionVendors();
+    expect(table.every((v) => FORM_READER_VENDORS.includes(v))).toBe(true);
+    expect(FORM_READER_VENDORS.filter((v) => !table.includes(v)).sort()).toEqual(["bamboohr", "lever", "paylocity", "teamtailor", "workable"]);
     expect([...PUBLIC_API_FORM_VENDORS].sort()).toEqual(["greenhouse", "recruitee"]);
   });
 
@@ -247,7 +251,10 @@ describe("an apply page read with no questions on it is not 'no published form'"
     expect(a.form.documents).toEqual([{ name: "Resume / CV", required: false }]);
     expect(a.form.questions).toEqual([]);
     const plain = applyMyselfAnswer(posting, { kind: "absent", vendor: "breezy", readAt: "2026-10-12T10:00:00.000Z", cached: false }, []);
-    expect(plain.form.note).toMatch(/does not publish/);
+    // Connect W4 (APPLY-1107-06): a posting whose form could not be read says
+    // that, never that the employer withholds its form.
+    expect(plain.form.note).toMatch(/could not read a form for this posting/);
+    expect(plain.form.note).not.toMatch(/does not publish/);
   });
 
   it("/v1 says the same, with its own reason", async () => {

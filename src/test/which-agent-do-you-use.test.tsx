@@ -84,8 +84,9 @@ import {
   MCP_SIGN_IN_META_KEY, MCP_TROUBLESHOOTING, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_TEST_QUERY,
   MCP_TOOL_NAMES, MCP_KEY_ENV, MCP_SERVER_INFO_NAME, readSignInFact, troubleRowsFor, type McpStep, type SignInState,
 } from "../config/mcp-tools";
-import { MCP_URL, runServerTest, describeTest, readSignInFromServer } from "../lib/mcp-test";
+import { MCP_URL, runServerTest, describeTest, readSignInFromServer, signInLine } from "../lib/mcp-test";
 import { agentPrompt, searchPrompt } from "../lib/agent-handoff";
+import { bakeAgents } from "./helpers/agents-bake";
 import AgentConnect from "../pages/AgentConnect";
 
 vi.setConfig({ testTimeout: 30_000 });
@@ -175,8 +176,13 @@ describe("G3: the sign-in fact's key is spelled once per runtime, and the page b
     expect(on).toMatch(/switched on/);
     expect(off).toMatch(/not available yet/);
     for (const n of MCP_ANON_TOOL_NAMES) expect(off).toContain(n);
-    // "connect from …": the key-carrying TILES, never a host the page sends to GitHub.
-    for (const h of MCP_PAGE_HOSTS.filter((x) => x.header)) expect(off).toContain(h.name);
+    // CJ-08: the off clause says what works is enough, and sends no chat
+    // reader to another app for a key (it once ended "connect from Claude
+    // Code with a free key").
+    const offClause = signInLine("off", null);
+    expect(offClause).toMatch(/not needed to search, read postings in full or apply yourself/);
+    expect(offClause).not.toMatch(/\bkey\b/);
+    for (const h of MCP_PAGE_HOSTS.filter((x) => x.header)) expect(offClause, `the off clause sends the reader to ${h.name}`).not.toContain(h.name);
     for (const h of MCP_OFF_PAGE_HOSTS) expect(off, `${h.name} is not a tile`).not.toContain(h.name);
     expect(unknown).toMatch(/could not be checked just now \(the server's last check was 2026-09-16T22:41:03Z\)/);
     // The numbers in the sentence are the responses', never typed.
@@ -468,11 +474,25 @@ describe("G8: the tiles are the owner's three with one GitHub line under them; t
       }
     }
   });
-  it("the chat hosts' off sentence sends the person to a TILE that carries a key, never to a host the page sends to GitHub", () => {
-    for (const h of MCP_HOSTS.filter((x) => !x.header)) {
+  it("the chat tiles' off sentence says what works there is enough and names no key and no other app (CJ-08)", () => {
+    // It once ended "To use every tool today, connect from Claude Code with a
+    // free key (pick that app above)": a chat seeker told to install a
+    // terminal app for three tools that searching, reading and applying never
+    // need. The key and Claude Code lines live on the Claude Code tile only.
+    const chat = MCP_PAGE_HOSTS.filter((x) => !x.header);
+    expect(chat.map((h) => h.id)).toEqual(["claude", "chatgpt"]);
+    for (const h of chat) {
       const off = h.signIn("off");
-      for (const k of MCP_PAGE_HOSTS.filter((x) => x.header)) expect(off, `${h.id} off`).toContain(k.name);
+      for (const n of MCP_ANON_TOOL_NAMES) expect(off, `${h.id} off lacks ${n}`).toContain(n);
+      expect(off).toMatch(/everything you need to search, read postings in full and apply yourself/);
+      expect(off, `${h.id} off names a key`).not.toMatch(/\bkey\b/);
+      for (const k of MCP_PAGE_HOSTS.filter((x) => x.header)) expect(off, `${h.id} off sends the reader to ${k.name}`).not.toContain(k.name);
       for (const o of MCP_OFF_PAGE_HOSTS) expect(off, `${h.id} off names ${o.name}, which is not a tile`).not.toContain(o.name);
+    }
+    // The chat-facing troubleshooting rows say the same.
+    for (const id of ["sign-in-off", "allowance-spent"]) {
+      const row = MCP_TROUBLESHOOTING.find((r) => r.id === id)!;
+      expect(row.fix, `${id} names a key or Claude Code`).not.toMatch(/\bkey\b|Claude Code/);
     }
   });
   it("no host's first step names the jargon a newcomer should never meet — walked over steps, not grepped over the file", () => {
@@ -497,38 +517,13 @@ describe("G8: the tiles are the owner's three with one GitHub line under them; t
       if (h.id !== "more") expect(h.docs.length, `${h.id} names no document`).toBeGreaterThan(0);
     }
   });
-  /** The /agents block of the prerender, executed against the real mirrors (or a mutated copy of them). */
-  const bake = async (mutate: (D: Record<string, unknown>) => Record<string, unknown> = (D) => D) => {
-    const BAKE = read("scripts/prerender-seo.mjs");
-    const start = BAKE.indexOf("      const envText3 = ");
-    const end = BAKE.indexOf('      write({\n        path: "/mcp",');
-    expect(start).toBeGreaterThan(-1);
-    expect(end).toBeGreaterThan(start);
-    const block = BAKE.slice(start, end);
-    // The block reads the MCP mirror and the one apply-yourself line the
-    // crawler copy says (scripts/prerender-retired.mjs); it reads neither the
-    // plan nor the pass, which are retired (the apply pivot, 2026-10-11).
-    const { APPLY_YOURSELF_LINE } = await import("../../scripts/prerender-retired.mjs");
-    const D = mutate({ ...(await import("../config/mcp-tools")) });
-    const written: Array<{ path: string; content: string; title: string; description: string; robots?: string }> = [];
-    const fn = new Function(
-      "D", "write", "readFileSync", "join", "root", "process", "BOARD_TOTAL", "plusClaim", "breadcrumbLd", "breadcrumbNav", "FREE_KEY_RATE_SENTENCE", "APPLY_YOURSELF_LINE",
-      // The SEO round (2026-10-18): the block reads the bake's one MCP address,
-      // the site's origin for the MCP server's own node, and the board
-      // snapshot's date phrase.
-      "SITE", "MCP_URL", "BOARD_AS_OF",
-      `${block}; return true;`,
-    );
-    fn(
-      D,
-      (p: { path: string; content: string; title: string; description: string }) => written.push(p),
-      () => "", (...xs: string[]) => xs.join("/"), ROOT, { env: { VITE_SUPABASE_URL: "https://example.invalid" } },
-      123456, (n: number) => `${n}+`, () => ({}), () => "", "the rate sentence", APPLY_YOURSELF_LINE,
-      "https://resumebooster.work", "https://example.invalid/functions/v1/agent-mcp", "as of 2026-10-18",
-    );
-    expect(written.map((w) => w.path)).toEqual(["/agents"]);
-    return written[0].content;
-  };
+  /**
+   * The /agents block of the prerender, executed against the real mirrors (or
+   * a mutated copy of them) and a stated board read — the shared harness, so
+   * every guard that reads the baked page hands the block the same names.
+   */
+  const bake = async (mutate: (D: Record<string, unknown>) => Record<string, unknown> = (D) => D) =>
+    (await bakeAgents({ mutate })).content;
   /** The tiles a baked page carries: the anchors of its "Which agent" grid, in order. */
   const bakedTiles = (html: string) => [...html.slice(html.indexOf("Which agent do you use?")).matchAll(/<a href="#([a-z-]+)" class="block p-3/g)].map((m) => m[1]);
   const plainStep = (h: { steps: (c: { url: string }) => McpStep[] }) =>
@@ -791,9 +786,9 @@ describe("G9: the switchboard's clicks, judged by the request body", () => {
 
 describe("G10: the hand-off prompts' first tool answers with no key", () => {
   const firstTool = (p: string) => [...p.matchAll(/\b([a-z]+_[a-z_]+|fetch|search)\b/g)].map((m) => m[1]).find((n) => MCP_TOOL_NAMES.includes(n))!;
-  it("a job hands over fetch first, a search search_jobs first, and neither names a tool that needs a key", () => {
-    // Since the apply pivot the prompts ask for the employer's apply link and
-    // say the person applies; they name no keyed check and no apply tool.
+  it("a job hands over apply_myself first, a search search_jobs first, and neither names a tool that needs a key", () => {
+    // The posting prompt walks the employer's own form through apply_myself
+    // (CJ-05), which answers with no key; the person applies themselves.
     const named = (p: string) => [...p.matchAll(/\b([a-z]+_[a-z_]+|fetch|search)\b/g)].map((m) => m[1]).filter((n) => MCP_TOOL_NAMES.includes(n));
     for (const p of [agentPrompt({ id: "greenhouse:acme:1", sendable: false }), agentPrompt({ id: "greenhouse:acme:1", sendable: true })]) {
       expect(MCP_ANON_TOOL_NAMES).toContain(firstTool(p));
@@ -807,7 +802,7 @@ describe("G10: the hand-off prompts' first tool answers with no key", () => {
   // get_job answers with no key since wave 4 (owner decision 2026-10-11), so
   // the broken copy opens with a tool that still needs one.
   it("teeth: a prompt that opens with a keyed tool (key_status) fails the property", () => {
-    const broken = agentPrompt({ id: "x", sendable: false }).replace("call fetch with", "call key_status with");
+    const broken = agentPrompt({ id: "x", sendable: false }).replace("call apply_myself with", "call key_status with");
     expect(firstTool(broken)).toBe("key_status");
     expect(MCP_ANON_TOOL_NAMES).not.toContain(firstTool(broken));
   });

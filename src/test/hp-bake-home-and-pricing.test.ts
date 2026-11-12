@@ -214,7 +214,7 @@ describe('the crawler\'s "/" is the board-first homepage', () => {
   });
 
   it("/resume-checker preloads the scanner's own chunk", () => {
-    expect(page(OUT, "/resume-checker")).toContain('<link rel="modulepreload" href="/assets/Index-gh78.js">');
+    expect(page(OUT, "/resume-checker")).toContain('<link rel="modulepreload" href="/assets/Index-gh78.js" fetchpriority="low">');
   });
 
   it("the baked header's links wrap, so a 320 px phone scrolls no page sideways", () => {
@@ -284,7 +284,7 @@ describe('the crawler\'s "/pricing" is the new pricing page', () => {
     expect(blocks.find((b) => b["@type"] === "SoftwareApplication")).toEqual(pricingJsonLd(resolveSaleGates()));
     expect(blocks.some((b) => b["@type"] === "BreadcrumbList")).toBe(true);
     expect(routeChunkPrefix("/pricing")).toBe("PricingPage");
-    expect(html).toContain('<link rel="modulepreload" href="/assets/PricingPage-ef56.js">');
+    expect(html).toContain('<link rel="modulepreload" href="/assets/PricingPage-ef56.js" fetchpriority="low">');
   });
 
   it("the plan cards carry no id a fresh /pricing#pro could anchor to: React's cards own them", () => {

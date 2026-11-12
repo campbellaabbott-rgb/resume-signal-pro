@@ -126,6 +126,59 @@ describe("section 98 judges what it says it judges", () => {
   });
 });
 
+describe("P1 holds every sampled locality to a town (B07, SEO/GEO audit 2026-11-07 SD-03)", () => {
+  // The grpr page carries the locality under test; the alation page is the fixed one.
+  const GRPR = "/jobs/posting/workday/grpr~wd3~parques_reunidos/JR108112";
+  const withLocality = (address: Record<string, string>) => [
+    ...site(true).filter((r) => r.match !== `^${esc(SITE + GRPR)}$`),
+    route(GRPR, `<html><head>${ORG}<script type="application/ld+json">${JSON.stringify({ "@type": "JobPosting", datePosted: "2026-10-20", validThrough: "2026-11-19T23:59:59+00:00", jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", ...address } } })}</script></head><body></body></html>`),
+  ];
+
+  it("FAILs a store or a site given as the town, and a country's name with no state beside it", () => {
+    const mall = runSection(withLocality({ addressCountry: "CA", addressRegion: "AB", addressLocality: "West Edmonton Mall" }));
+    expect(has(mall, "FAIL", /P1 .*locality "West Edmonton Mall" \(a store or site word\)/), show(mall)).toBe(true);
+    const bare = runSection(withLocality({ addressCountry: "US", addressLocality: "Lebanon" }));
+    expect(has(bare, "FAIL", /P1 .*locality "Lebanon" \(a country.s name\)/), show(bare)).toBe(true);
+  });
+
+  it("PASSes a town beside its state that shares a country's name, and a city-state's one town", () => {
+    for (const address of [{ addressCountry: "US", addressRegion: "PA", addressLocality: "Lebanon" }, { addressCountry: "SG", addressLocality: "Singapore" }]) {
+      const lines = runSection(withLocality(address));
+      expect(has(lines, "PASS", /P1 2 of 2 sampled posting pages carry job markup: no baseSalary, every locality a town/), show(lines)).toBe(true);
+    }
+  });
+});
+
+describe("P1 passes a TELECOMMUTE that stands on the employer's own remote statement, and fails one that does not (the fix round of 2026-11-08)", () => {
+  // B06 writes TELECOMMUTE when the employer's own system states a fully
+  // remote posting, and the bake writes that statement into the page's head.
+  // P1 used to FAIL every TELECOMMUTE, on the premise that no vendor remote
+  // flag reached the page.
+  const GRPR = "/jobs/posting/workday/grpr~wd3~parques_reunidos/JR108112";
+  const STATED = "x-rb-employer-stated";
+  const remotePage = (stated: Record<string, unknown> | null) => {
+    const meta = stated ? `<meta name="${STATED}" content="${JSON.stringify(stated).replace(/&/g, "&amp;").replace(/"/g, "&quot;")}" />` : "";
+    const ld = { "@type": "JobPosting", datePosted: "2026-10-20", validThrough: "2026-11-19T23:59:59+00:00", jobLocationType: "TELECOMMUTE", applicantLocationRequirements: { "@type": "Country", name: "DE" } };
+    return [
+      ...site(true).filter((r) => r.match !== `^${esc(SITE + GRPR)}$`),
+      route(GRPR, `<html><head>${meta}${ORG}<script type="application/ld+json">${JSON.stringify(ld)}</script></head><body></body></html>`),
+    ];
+  };
+
+  it("PASSes a TELECOMMUTE page whose head says the employer stated it remote", () => {
+    const lines = runSection(remotePage({ remote: true, employmentType: "Full time" }));
+    expect(has(lines, "FAIL", /P1 /), show(lines)).toBe(false);
+    expect(has(lines, "PASS", /P1 1 of 2 marked-up sampled pages say TELECOMMUTE, each beside its employer.s own remote statement/), show(lines)).toBe(true);
+  });
+
+  it("FAILs a TELECOMMUTE page with no statement, or with a statement that does not say remote", () => {
+    for (const stated of [null, { employmentType: "Full time" }]) {
+      const lines = runSection(remotePage(stated));
+      expect(has(lines, "FAIL", /P1 TELECOMMUTE with no remote statement from the employer.s own system in the head: .*JR108112/), show(lines)).toBe(true);
+    }
+  });
+});
+
 describe("P3 reads the homepage's preload script as the switch-over writes it (land/all, 2026-10-31)", () => {
   // The "/"-only script picks the scanner's chunks for a scanner address of
   // "/" and the homepage's otherwise; the section read only a script that

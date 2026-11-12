@@ -1,14 +1,4 @@
-// The decision to actually send an application in the candidate's name.
-//
-// Everything else in the agent can be retried, edited or ignored. This cannot:
-// once a packet is released and the hands submit it, a real employer has a real
-// application from a real person, and there is no unsend. So this file is
-// deliberately paranoid, deliberately pure, and deliberately dull to read.
-//
-// It returns a REASON on every refusal rather than a bare false, because "the
-// agent did nothing last night" must always be answerable. A silent no is
-// indistinguishable from a broken cron, which is the same trap as an alarm that
-// only records failures.
+// The decision to actually send ... docs/shared-notes.md#s102
 import { automationFor, isSendableVendor } from "./apply-automation.ts";
 
 export type ReleaseInput = {
@@ -28,19 +18,7 @@ export type ReleaseInput = {
   minFitPct: number;
   /** True when the tracker already has an application to this posting. */
   duplicate: boolean;
-  /**
-   * Has a worker checked in recently enough to be trusted to send?
-   *
-   * The worker is a separate service — it needs a real browser, which edge
-   * functions do not have — so it can be down while everything here is up. If it
-   * is, releasing a packet moves it into a state that says "on its way" and
-   * nothing ever collects it.
-   *
-   * That is the worst failure this product can have now that it is sold: a
-   * subscriber pays, watches a queue that looks like it is about to act, and
-   * nothing is applied for. A refusal with a reason is recoverable; a promise
-   * that quietly does nothing is not.
-   */
+  // Has a worker checked in ... docs/shared-notes.md#s103
   senderOnline: boolean;
   /** On-ramp: hold this many auto releases for approval first. Undefined = 0. */
   holdFirstN?: number;
@@ -63,52 +41,24 @@ export type ReleaseRefusal =
   | "fit-below-floor"
   | "fit-unknown"
   | "sender-offline"
-  // NB FOR ANYONE EDITING THIS UNION: src/test/agent-visibility parses the
-  // region as TEXT — it slices at the first semicolon and regexes for quoted
-  // lowercase words. So a comment in here must contain NEITHER a semicolon nor
-  // a quoted word, or it truncates the list or invents a code. Both happened
-  // while adding the two below, and the drift guard caught both.
-  //
-  // The on-ramp. Not a fault and not a misconfiguration — it means the packet is
-  // good and the candidate is going to watch it go. In the union so every
-  // consumer switching on a refusal must decide how to present it, instead of
-  // falling through to a generic blocked state that reads as a problem.
+  // NB FOR ANYONE EDITING THIS ... docs/shared-notes.md#s104
   | "held-for-review"
-  // Written by agent_cancel_pending rather than decideRelease. It lives here so
-  // there is ONE closed vocabulary for why something was not sent. A code that
-  // exists only in the database renders to a candidate as a raw slug.
+  // Written by agent_cancel_pending rather t ... docs/shared-notes.md#s105
   | "cancelled-by-you";
 
-/**
- * The refusals a PERSON may override with "Approve and send"
- * (agent_packet_decide, 20261009124100, holds the same list; a test pins
- * them equal). The moment ones (the candidate's say-so, the on-ramp, the
- * sender, the day's cap), and the fit floor with an unknown fit: OWNER
- * DECISION 2026-10-11, the floor guards only unattended sends (S11-042).
- */
+// The refusals a PERSON may ... docs/shared-notes.md#s106
 export const APPROVABLE_REFUSALS: ReadonlySet<ReleaseRefusal> = new Set<ReleaseRefusal>([
   "review-mode", "held-for-review", "sender-offline", "daily-cap", "fit-below-floor", "fit-unknown",
 ]);
 
-/**
- * The refusal a WAITING packet stores once it is decided again. The reason a
- * candidate reads is today's: a packet stored "sender-offline" that the sender
- * is back for but that still has gaps is "not-ready", not "queued for when the
- * sender is back", and "daily-cap" for a vendor taken off the auto list is not
- * "goes out tomorrow" (review of S11-042, register 1.09). The one exception is
- * a packet waiting for a person ("review-mode", "held-for-review") that an
- * unattended-only rule now refuses ("vendor-not-allowed"): the person's own
- * approval is what that rule does not govern, so it keeps the code its Approve
- * button reads. "not-ready" is never masked.
- */
+// The refusal a WAITING packet ... docs/shared-notes.md#s107
 export function refusalToStore(previous: string, next: ReleaseRefusal): string {
   if (next === "vendor-not-allowed" && (previous === "review-mode" || previous === "held-for-review")) return previous;
   return next;
 }
 
 export function decideRelease(i: ReleaseInput): ReleaseDecision {
-  // Order matters only for which reason a candidate sees first; each check is
-  // independently sufficient to refuse.
+  // Order matters only for which ... docs/shared-notes.md#s108
 
   if (i.alreadySubmitted) {
     return { release: false, code: "already-submitted", reason: "already sent — never resend" };
@@ -121,14 +71,7 @@ export function decideRelease(i: ReleaseInput): ReleaseDecision {
     };
   }
 
-  // Checked third, straight after the two "never send twice" rules, because
-  // when the sender is down this is the only true explanation and every reason
-  // below it would be a misleading one. A candidate told "fit is under your
-  // floor" would go and lower their floor; the fit was never the problem.
-  //
-  // Deliberately refuses rather than releasing optimistically. A packet left
-  // unreleased is picked up on the next run at no cost. A packet released to
-  // nobody looks sent and is not.
+  // Checked third, straight after the ... docs/shared-notes.md#s109
   if (!i.senderOnline) {
     return {
       release: false,
@@ -151,10 +94,7 @@ export function decideRelease(i: ReleaseInput): ReleaseDecision {
   if (!i.allowedSources.map((s) => String(s).toLowerCase()).includes(src)) {
     return { release: false, code: "vendor-not-allowed", reason: `you have not enabled auto-apply for ${src || "this source"}` };
   }
-  // Belt and braces against the allow-list drifting from the measurement: even
-  // if a candidate (or a migration default) lists a vendor, it is only released
-  // unattended when the MEASURED tier says no human step is needed. The list can
-  // narrow the measurement; it can never widen it.
+  // Belt and braces against the ... docs/shared-notes.md#s110
   if (automationFor(src).tier !== "auto") {
     return {
       release: false,
@@ -162,11 +102,7 @@ export function decideRelease(i: ReleaseInput): ReleaseDecision {
       reason: `${src} needs a step only you can do`,
     };
   }
-  // NO CAPTCHA IS NOT AN ADAPTER. The tier above answers "is there a CAPTCHA
-  // in the way"; whether the worker can reach a submit on this vendor at all
-  // is SENDABLE_VENDORS (the mirror of the worker's adapters). Oracle is
-  // `auto` above and has no submit path, so releasing it handed the worker a
-  // packet it could only refuse — a release that read as "on its way".
+  // NO CAPTCHA IS NOT AN ... docs/shared-notes.md#s111
   if (!isSendableVendor(src)) {
     return {
       release: false,
@@ -175,9 +111,7 @@ export function decideRelease(i: ReleaseInput): ReleaseDecision {
     };
   }
 
-  // An unknown fit is not a low fit, and it is not a high one either. Sending on
-  // "we could not tell" is how an agent ends up applying to things its owner
-  // would be embarrassed by.
+  // An unknown fit is not ... docs/shared-notes.md#s112
   if (i.fitPct === null || !Number.isFinite(i.fitPct)) {
     return { release: false, code: "fit-unknown", reason: "could not score the fit, so not sending unattended" };
   }
@@ -189,18 +123,7 @@ export function decideRelease(i: ReleaseInput): ReleaseDecision {
     };
   }
 
-  // THE ON-RAMP. The first few auto-mode releases are held for approval even
-  // though everything else passed — the packet is good, and that is exactly why
-  // it is a fair one to show somebody before it goes out unattended.
-  //
-  // Placed AFTER the substantive checks on purpose: a candidate on their first
-  // day should be shown a packet that would really have been sent, not one that
-  // would have been refused for fit or vendor anyway. Otherwise the on-ramp
-  // teaches them about the wrong thing.
-  //
-  // Fails OPEN on missing values, like every other guard here: a mandate row
-  // written before this column existed has holdFirstN undefined, and reading
-  // that as "hold everything" would silently stop a working agent.
+  // THE ON-RAMP. The first few ... docs/shared-notes.md#s113
   const hold = Number(i.holdFirstN ?? 0);
   if (hold > 0 && Number(i.autoReleasedCount ?? 0) < hold) {
     return {
@@ -210,8 +133,7 @@ export function decideRelease(i: ReleaseInput): ReleaseDecision {
     };
   }
 
-  // Checked last so the reason a candidate sees is about THIS job where possible,
-  // and only about the cap when the job itself was otherwise sendable.
+  // Checked last so the reason ... docs/shared-notes.md#s114
   if (i.sentToday >= i.dailyCap) {
     return {
       release: false,
@@ -232,9 +154,7 @@ export function decideBatch(
   let sent = sentToday;
   return items.map((it) => {
     const d = decideRelease({ ...it, sentToday: sent, dailyCap });
-    // Count the release against the cap IMMEDIATELY. Deciding a whole batch
-    // against the same starting count is how a cap of 5 sends 30 — every item
-    // sees "0 sent today" and every item passes.
+    // Count the release against the ... docs/shared-notes.md#s115
     if (d.release) sent += 1;
     return d;
   });

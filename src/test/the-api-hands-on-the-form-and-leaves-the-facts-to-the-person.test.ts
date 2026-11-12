@@ -128,7 +128,7 @@ describe("GET /v1/jobs/{id}/application, as shipped", () => {
     expect(d.description, "the posting body stays on /v1/jobs/{id}").toBeUndefined();
     expect(d.form).toMatchObject({ source: "employer-published", vendor: "greenhouse" });
     expect(d.form.alsoOnForm).toContain("Voluntary self-identification (EEO) questions");
-    expect(d.route).toEqual({ submitter: "you", needsEmployerAccount: false, captchaLikely: true, attachFilesYourself: true });
+    expect(d.route).toEqual({ submitter: "you", needsEmployerAccount: false, captchaLikely: true, captcha: "invisible", attachFilesYourself: true });
     expect(d.postingTerms.length).toBeGreaterThan(0);
     expect(d.postingTerms.length).toBeLessThanOrEqual(30);
     expect(Object.keys(body.answeredByMeans).sort()).toEqual(["draft_from_your_cv", "you", "your_details", "your_documents"]);
@@ -224,10 +224,10 @@ describe("the /v1 index describes the form route as it behaves", () => {
 
   it("R2: /v1 reads every reader's forms, not only the public-API two", () => {
     expect([...V1_FORM_VENDORS].sort()).toEqual([...FORM_READER_VENDORS].sort());
-    expect(V1_FORM_VENDORS.length).toBe(5);
+    expect(V1_FORM_VENDORS.length).toBe(10);
   });
 
   it("the route never claims a vendor it never measured", () => {
-    expect(routeFor("someunmeasuredats")).toEqual({ submitter: "you", needsEmployerAccount: null, captchaLikely: null, attachFilesYourself: true });
+    expect(routeFor("someunmeasuredats")).toEqual({ submitter: "you", needsEmployerAccount: null, captchaLikely: null, captcha: null, attachFilesYourself: true });
   });
 });

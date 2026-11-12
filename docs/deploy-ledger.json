@@ -49,13 +49,7 @@
     "_note": "A rollback on purpose (S12-161): \"<fn>\": { \"from\": \"<the live build main rolls back>\", \"why\": \"...\" }. A function whose live build is exactly `from` is deployed at main's build by the next message, and section 49 FAILs it until production answers main's. Any other function live ahead of main stays exit 8: a build nobody declared is never rolled back by a pasted message. Remove the entry once section 49 passes it."
   },
   "_holdUntilVerifiedNote": "Each hold names releaseWhen (S12-032): the functions and builds the ledger reads from the preflight; when every one is live the hold is RELEASABLE, the message says so instead of 'Do NOT apply in this session', and section 49 FAILs until it is released. `until` keeps what only the owner can check. A hold with no releaseWhen the ledger can read stops the message (exit 6).",
-  "holdUntilVerified": [
-    {
-      "stamp": "20261011103000",
-      "releaseWhen": ["fn:job-board@2026-09-09.93", "fn:agent-mcp@2026-10-11.3"],
-      "until": "verify sections 82 and 86 pass with job-board 2026-09-09.93 or later (this deploy's .96) and agent-mcp 2026-10-11.3 or later (this deploy's .38) serving; it schedules the connector's 30-day search prune, which deletes rows for good"
-    }
-  ],
+  "holdUntilVerified": [],
   "_datedAtDeployNote": "Text that names the day a change goes live (land/all final recheck, 2026-10-31): while whenDeploying's function answers an earlier build, the constant must read the day a --message is made (UTC), or the message is refused (exit 9) and a --draft says to set it on the merge day. Once the function answers that build or later the date is history and is not checked. The Privacy page's AI table says searches from CONNECTOR_SEARCH_LOG_CHANGED on keep no record of the postings shown and ChatGPT's are not kept, which is true from the day job-board .93 or later (the one deploy's .96) serves; the live .92 writes the postings shown for every search and ignores ChatGPT's no-log flag. PRIVACY_LAST_UPDATED dates the same new text.",
   "datedAtDeploy": [
     { "file": "src/config/mcp-privacy.ts", "constant": "CONNECTOR_SEARCH_LOG_CHANGED", "whenDeploying": "fn:job-board@2026-09-09.93", "why": "the Privacy page says connector searches from that day on keep no record of the postings shown and ChatGPT's are not kept" },
@@ -146,7 +140,7 @@
     },
     "20261011103000": {
       "after": "fn:job-board@2026-09-09.93",
-      "why": "wave 4, HELD until wave 4 verifies (holdUntilVerified): it schedules the nightly 30-day prune of the connector's searches (owner decision 2026-10-11), an irreversible delete of raw rows that is the retention the Privacy draft states only beside job-board .93's write side (an mcp search event keeps its words and no shown ids; a ChatGPT search with the reader proof writes nothing). Release it once section 86 passes"
+      "why": "wave 4, held until wave 4 verified (holdUntilVerified), released 2026-11-08: job-board answers job-board.2026-09-09.101 and agent-mcp agent-mcp.2026-11-03.1, and verify sections 82 and 86 passed in full on aa2e45cb (22 and 7 PASS, no FAIL). It schedules the nightly 30-day prune of the connector's searches (owner decision 2026-10-11), an irreversible delete of raw rows that is the retention the Privacy draft states only beside job-board .93's write side (an mcp search event keeps its words and no shown ids; a ChatGPT search with the reader proof writes nothing). Its hold also named agent-mcp 2026-10-11.3 or later (the connector that sets the no-log flag); an after-rule names one function, so the ledger checks only the job-board half"
     },
     "20261011141000": {
       "before": ["fn:scan-credits", "fn:free-keyword-scan", "fn:get-account-data"],
@@ -246,6 +240,10 @@
     },
     "20261107100000": {
       "why": "S13-114's dead-chain restart without the vault (the upkeep hotfix; the coverage refresh upkeep also ran has no caller until job-board .102): a minute job that posts the keyless {\"action\":\"refresh\"} every job-board build answers, so step 1 waits for nothing; it never kicks while a pulse is fresh, and admitSlice settles a race with the :x4/:x9 crons. It replaces 20261103221000 (neverApply), whose own rule claimed only its cron ran the watchdog."
+    },
+    "20261108100000": {
+      "why": "SEO B05: 59 company_name_overrides rows (Workday tenant slugs, and exact career-site tokens where a tenant hosts several employers) with their evidence, then the re-arm 20261030100000 used (job_board_meta name_sync_version and name_sync_progress removed), in one file, so the names exist before the lane walks. job-board .101 already serves NAME_SYNC_VERSION 6 and renames a board's stored rows at its next pass-end; no function deploys with it, so it waits for nothing.",
+      "note": "Safe to re-run: both inserts are ON CONFLICT DO UPDATE, and a second re-arm walks the boards once more and renames nothing."
     },
     "20261110120000": {
       "why": "S14 hotfix, lane paid (M-S14-005): creates analysis_run_leases, one row per purchase being analysed (RLS on, revoked from PUBLIC, anon and authenticated; SELECT, INSERT and DELETE for service_role only; a CHECK so a key must be a purchase). analyze-resume 2026-11-10.1 claims a lease before the model call, answers a second run 409 analysis_in_progress and frees the lease when the run ends; older builds never read the table, and the new build runs without a lease, as today, while the table is missing, so either order delivers every analysis. One run per purchase, and a poll that spends no Stripe read, hold only once it exists: step 1, waiting for nothing. Self-verifying, safe to re-run."
@@ -404,8 +402,17 @@
       "status": "the hotfix of the S14 merge (two read-only sweeps, Mac 2026-11-07 and cloud 2026-11-08, merged and routed 2026-11-08: s14-merged-2026-11-08, plan H1-H6 and the critic's hotfix gaps), built in four lanes from main aa2e45cb (hotfix/pro, hotfix/paid, hotfix/spend, hotfix/privacy) and merged on fix/hotfix-2026-11-10. FIXED: pro (H1) M-S14-002, M-S14-006 and C-S14-004: a Pro member who changes their billing email in Stripe keeps Pro, opens billing and is sold no second plan (rows refreshed by customer, a customer.updated case in stripe-webhook, the portal reading the bound customer first, the checkout guard over the account), and check-subscription describes an address's plan only to its own account; with the integration's review, an unbound row (one pro_entitlement_rows hands to whoever proves its address) whose customer has left that address is no longer kept live by the customer, by a live check or a webhook: it is downgraded as main did, its customer kept, and only rows bound to an account (or that the plan's own buyer binds) follow their customer; and a member with two bound plans opens billing on the live or owing one, never on the row written last; paid (H2-H4 and the critic's gaps) M-S14-004 and M-S14-085 (the Full Analysis PDF draws every card once at full opacity, quantification included), M-S14-007, C-S14-003, M-S14-050 and C-S14-049 (analyze-resume and verify-scan-pack-purchase read Stripe only for a purchase-shaped id, answer a delivered or recorded purchase from our rows, count each Stripe read and fail closed, prove payment before any per-address budget, and mask the buyer's address; scan-credits masks it too), M-S14-005 and C-S14-005 (one run per purchase at a time, and the page waits through a run in progress), C-S14-012 (a long posting or LinkedIn text is clipped and the report says so, never refused after payment) and C-S14-010 (the page's pointer lives 24 hours like the copy, and the checkout records what it was bought against); with the integration's review, the success page reads only its own purchase's pointer and the $5 press keeps none that names no purchase, so an abandoned checkout's résumé on a browser is never analysed for another purchase opened there; a purchase our records know (a payment claim, or the start create-checkout or create-scan-pack-checkout recorded) has its Stripe reads counted by the purchase (analyze-resume:purchase 30 an hour, verify-scan-pack-purchase:purchase 20) and an unknown id per network as before, so strangers on a buyer's network cannot lock the buyer out; and verify-scan-pack-purchase no longer logs the session's metadata, which carries the buyer's address; spend (H5) M-S14-009, M-S14-058 and M-S14-056 (generate-application-answers asks for a website session or our servers, import-freelance-profile for a freelance purchase, test-ai-fallback for the admin key or the service role) and M-S14-057 (an unnamed claim opens a paid generator only when it may be an older buyer's); privacy (H6, H7) M-S14-021 and the consent half of C-S14-009 (an affiliate link stores and logs nothing until analytics are allowed), M-S14-001 (the consent banner gives way to the phone posting sheet), M-S14-064 (the backup scanner's cache key keeps CJK letters, v8) and M-S14-040 (a pruned layoff filing is counted once). DEFERRED to the bug round: M-S14-075 and the rest of C-S14-009 (a keyed address hash in track_affiliate_click, affiliate_clicks retention, the Privacy page entry, clearing affiliate_ref on 'No thanks'), and M-S14-003 (the free scan's US norms; the cost wave owns free-keyword-scan). OWNER, in Stripe: add customer.updated to the stripe-webhook endpoint's events (without it nobody loses Pro, but the stored address is not moved); optionally switch off the customer portal's email change until section 99zzzzzz-hotfix-pro's B lines pass. OWNER, after the deploy: read job_board_meta 'paid_session_names' firstRun.unnamedStillOpen, the old unnamed claims still let through. DEADLINE: 20261110160000 applies before 04:20 UTC on 2026-12-01. The merge publishes the success page, Index, FreelanceBoost, HealthCheck, the affiliate hook and index.css first, each working against today's live functions and database; every new function accepts what today's pages send. Sales unchanged: no price, product, seller or term changed, create-checkout's resume record is bounded at 2 s, and analyze-resume is no longer a shared-budget enforcer (rate-budget-scope's floor is 5). Deploys before seo-connect and the cost wave.",
       "deployOrder": 4.15
     },
+    "seo-connect": {
+      "branches": ["fix/seo-connect-fe", "fix/connect-mcp"],
+      "migrations": "20261108* (20261108100000 on fix/seo-connect-fe; none taken by fix/connect-mcp)",
+      "jobBoard": "none: job-board stays 2026-09-09.101 (SEO B13, PERF-06 and connect W6 ride job-board .102 later)",
+      "fnBuildDate": "2026-11-08 (agent-mcp at 2026-11-08.1 and public-api at 2026-11-08.1 on fix/connect-mcp: public-api shares the form readers and the measured route from connect W4 and W5; agent-runner and apply-agent at 2026-11-08.1 on fix/seo-connect-fe, comment-only: their _shared modules moved long comments to docs/shared-notes.md so the job-board upload tally stays under its line with the form readers added); the fe track changes no other edge function",
+      "verifySections": ["98-seo-r2.sh", "98-seo-speed.sh", "99zzzz-ca3-apply.sh", "99zzzz-ca3-search.sh"],
+      "status": "the SEO/GEO audit of 2026-11-07 (build items B01-B13 less B13) and the connect/browse/apply audit of 2026-11-07 (waves W0-W6 less W6), under the owner's decisions of 2026-11-07. The fe track (fix/seo-connect-fe) is frontend, bake and scripts only: IndexNow sends only on INDEXNOW_SEND=1 (B11), the verifier keeps the previous publish's sitemap (B10), the bake retires a posting its employer closed and a daily GET-only check measures the closed share against the owner's STOP rule ('twice' = two consecutive daily checks over 5%) with a committed switch in src/config/seo-switches.ts (B01), employer-stated end date, time type, remote type, original date and address read at bake (B06), the locality reader, titles that keep the employer and entities decoded once (B07), guide Articles with datePublished and image (SD-09), a name gate that refuses a web address and a logo or colour caption, no NEW posting page named by a name nobody wrote, and pay and entry-level tables that print display names (B02), and the fe track's one migration, 20261108100000: 59 Workday boards named by their employers' own words, with evidence, and job-board's name-sync lane re-armed to rename their stored rows (B05). Speed (fe track, step perf): the fonts are built into hashed /assets/*.woff2 files with the immutable cache and public/fonts keeps its copies one more publish (B12), no font is preloaded and every route-chunk hint asks at fetchpriority low (PERF-01), the help button rises above the analytics banner by a transform (PERF-05), the board loads its tailored-resume dialog on first use (PERF-03, the quick split; the lander split and the entry's toaster and Supabase client are deferred with their measurements), and scripts/google-indexing-notify.mjs lists the posting pages a publish added and retired for Google's Indexing API, dry run unless --send and INDEXING_SEND=1 with the key in ~/.config/resumebooster/ (B08). The fe track's fix round of 2026-11-08: a page its employer closed keeps basis employer at every later bake and stays closed when it hydrates (the x-rb-posting-closed meta), the by-field rows of the Ghost Job Index name a takedown in all nine locales, the /agents hero and description say 'free on our side', the ChatGPT tile makes no phone claim, the two troubleshooting rows every reader sees carry a Claude Code key fix, and verify 98 P1, 5v and 5w read the employer's remote statement, the STOP switch with the ledger, and the board's per-source facet. Its verify sections are 98-seo-r2.sh and 98-seo-speed.sh (the font head, the font file's cache, the hints' priority); 99zzzz-audit-rest-account.sh F1 and F2 read the hashed face. The connect track (fix/connect-mcp): connect W1 and W3 from connect-apply-2026-11-07 (workflow-result.json plan.waves), agent-mcp only on fix/connect-mcp: the query reader lifts a trailing place with no preposition (a city and state code only when the board's city table knows the city: title words before a state code stay whole, as main sends them), a city with its country, places after the board's other languages' prepositions, date words and 'jobs at <Name>', and takes visa-sponsorship words out of the query with a note, searching nothing when only those words were typed (a 3,299-case corpus, never worse than main); every job tool reads the board's posting-page link, and an employer's EU-region Greenhouse or Lever link as its eu~ id; check_jobs_open lists non-ids as unknown; an exhausted search claims no page limit; withheld rows, an empty ZIP or typo search and a page of description matches say so; get_jobs answers within 15,000 characters; the ChatGPT search title carries place and date; the guide lists the caller's own prompts and resources. Deferred to the job-board round: the board-side halves of BR-02, BR-05, BR-07 and BR-10, BR-12's servableHere, BR-03's never-held split, and BR-01's ingest classifier. Then connect W4 and W5 on fix/connect-mcp (agent-mcp and public-api): apply_myself and /v1's application route read Paylocity, Workable, Teamtailor, Lever and BambooHR forms (ChatGPT stays Greenhouse and Recruitee; a Paylocity answer key is never read, and a screening question says the employer screens on it), a Pinpoint posting on the employer's own domain, Breezy's CV settings and Pinpoint's equality block and consent; a written question that mentions a CV is not a file and consents are marked consent (563 labels, never worse than main); route.captcha, with iCIMS and UKG account-first and Paylocity neither; a note per reason when no form is read; postingTerms without boilerplate sentences (1,833 postings) and postingExcerpt; the apply prompts end with an in-chat application log and the packet links the free tracker; rule 3 lets a CV the person keeps in the conversation's project or memory be used once they confirm the file. The /agents vendor phrase, llms.txt, the MCP_FORM_VENDORS mirror, the retired line's vendor list, the page's rule 3 wording and the board's hand-off prompt (src/lib/agent-handoff.ts, which says 'the CV I give you in this chat' until then) follow in the first frontend publish after the deploy verifies (MCP_FORM_VENDORS_AFTER_DEPLOY holds the five meanwhile). Deferred: W9's tracker tools. Its verify sections are 99zzzz-ca3-apply.sh and 99zzzz-ca3-search.sh.",
+      "deployOrder": 4.2
+    },
     "next": {
-      "migrations": "20261015* and later, one day per workstream; taken: 2026-10-15 (oracle-regionless's function day), 20261016* (resume-match's, on rm/integration), 20261017* (the disk-plan migration on main), 20261025* (oracle-regionless's, for trust/pages), 20261026* and 2026-10-26 (trust-round-3's), 2026-10-27 (land/all's function day: sales stay on, the owner's 2026-10-27 override of wave 4's seller gate and marketing pause; no migration), 2026-10-31 (land/all's second function day: the territory refusal removed by the owner's 2026-10-27 'keep selling as today', create-checkout, create-subscription-checkout and create-product-checkout at 2026-10-31.1; home-pricing stamps free-keyword-scan and free-keyword-scan-stream 2026-10-31.1 too, different functions, so hp/switch-over's merge must stamp the three checkouts above 2026-10-31.1; no migration), 20261030* (fix/name-sync-rerun's: the name-sync re-arm after the one deploy, 2026-10-31; no function), 2026-10-28 (fix/full-analysis-timeout's function day: S13-001 and the paid-writer round, 23 functions at 2026-10-28.1; no migration), 20261101* and 2026-11-01 (fix/free-scan-wave's: 6 functions at 2026-11-01.1, three migrations), 20261102* and 2026-11-02 (board-stream's: 20261102100000 and 20261102164000; agent-mcp, public-api, employer-profiles and send-search-digest at 2026-11-02.1), 20261103* and 2026-11-03 (audit-rest's: 60 functions at 2026-11-03.1, job-board .101, fourteen migrations 20261103100000-20261103240000), 20261107* (upkeep-hotfix's; no function), 20261110* and 2026-11-10 (hotfix-2026-11-10's: 26 functions, 23 at 2026-11-10.1 and three at 2026-11-10.2, three migrations 20261110120000, 20261110140000 and 20261110160000; a branch that merges after it, the cost wave's 2026-11-09 included, stamps any of those 26 above the build it carries here: 2026-11-10.2, or 2026-11-10.3 for analyze-resume, create-checkout and generate-apply-package)",
+      "migrations": "20261015* and later, one day per workstream; taken: 2026-10-15 (oracle-regionless's function day), 20261016* (resume-match's, on rm/integration), 20261017* (the disk-plan migration on main), 20261025* (oracle-regionless's, for trust/pages), 20261026* and 2026-10-26 (trust-round-3's), 2026-10-27 (land/all's function day: sales stay on, the owner's 2026-10-27 override of wave 4's seller gate and marketing pause; no migration), 2026-10-31 (land/all's second function day: the territory refusal removed by the owner's 2026-10-27 'keep selling as today', create-checkout, create-subscription-checkout and create-product-checkout at 2026-10-31.1; home-pricing stamps free-keyword-scan and free-keyword-scan-stream 2026-10-31.1 too, different functions, so hp/switch-over's merge must stamp the three checkouts above 2026-10-31.1; no migration), 20261030* (fix/name-sync-rerun's: the name-sync re-arm after the one deploy, 2026-10-31; no function), 2026-10-28 (fix/full-analysis-timeout's function day: S13-001 and the paid-writer round, 23 functions at 2026-10-28.1; no migration), 20261101* and 2026-11-01 (fix/free-scan-wave's: 6 functions at 2026-11-01.1, three migrations), 20261102* and 2026-11-02 (board-stream's: 20261102100000 and 20261102164000; agent-mcp, public-api, employer-profiles and send-search-digest at 2026-11-02.1), 20261103* and 2026-11-03 (audit-rest's: 60 functions at 2026-11-03.1, job-board .101, fourteen migrations 20261103100000-20261103240000), 20261107* (upkeep-hotfix's; no function), 20261108* and 2026-11-08 (seo-connect's: 20261108100000 on fix/seo-connect-fe; agent-mcp and public-api at 2026-11-08.1 on fix/connect-mcp), 20261110* and 2026-11-10 (hotfix-2026-11-10's: 26 functions, 23 at 2026-11-10.1 and three at 2026-11-10.2, three migrations 20261110120000, 20261110140000 and 20261110160000; a branch that merges after it, the cost wave's 2026-11-09 included, stamps any of those 26 above the build it carries here: 2026-11-10.2, or 2026-11-10.3 for analyze-resume, create-checkout and generate-apply-package)",
       "jobBoard": "2026-09-09.102+"
     }
   },
@@ -1107,7 +1114,113 @@
         "warm-up": "warm-up.2026-10-09.2",
         "withdraw-subscription": "withdraw-subscription.2026-11-03.1"
       }
+    },
+    {
+      "commit": "aa2e45cb",
+      "date": "2026-11-08",
+      "note": "generated by node scripts/deploy-ledger.mjs --record-deploy: 99 functions answering main's build; add it only after verify-deploy passed",
+      "functions": {
+        "account-order": "account-order.2026-10-14.31",
+        "account-settings": "account-settings.2026-10-14.25",
+        "admin-ops": "admin-ops.2026-10-08.2",
+        "admin-regenerate-delivery": "admin-regenerate-delivery.2026-11-03.1",
+        "affiliate-payout-request": "affiliate-payout-request.2026-10-08.1",
+        "agent-access": "agent-access.2026-11-03.1",
+        "agent-connect": "agent-connect.2026-11-03.1",
+        "agent-mcp": "agent-mcp.2026-11-03.1",
+        "agent-pass-status": "agent-pass-status.2026-11-03.1",
+        "agent-runner": "agent-runner.2026-10-11.14",
+        "analyze-linkedin-profile": "analyze-linkedin-profile.2026-11-03.1",
+        "analyze-resume": "analyze-resume.2026-11-03.1",
+        "api-key-request": "api-key-request.2026-11-03.1",
+        "application-fit": "application-fit.2026-11-03.1",
+        "apply-agent": "apply-agent.2026-10-11.33",
+        "apply-broker": "apply-broker.2026-10-11.14",
+        "auth-email-hook": "auth-email-hook.2026-10-14.1",
+        "auth-signed-in": "auth-signed-in.2026-10-14.1",
+        "check-alerts": "check-alerts.2026-10-11.28",
+        "check-error-spikes": "check-error-spikes.2026-10-08.1",
+        "check-subscription": "check-subscription.2026-11-03.1",
+        "company-claim": "company-claim.2026-11-03.1",
+        "create-agent-checkout": "create-agent-checkout.2026-11-03.1",
+        "create-checkout": "create-checkout.2026-11-03.1",
+        "create-pass-checkout": "create-pass-checkout.2026-11-03.1",
+        "create-portal-session": "create-portal-session.2026-11-03.1",
+        "create-product-checkout": "create-product-checkout.2026-11-03.1",
+        "create-scan-pack-checkout": "create-scan-pack-checkout.2026-10-27.1",
+        "create-subscription-checkout": "create-subscription-checkout.2026-11-03.1",
+        "create-test-checkout": "create-test-checkout.2026-10-11.23",
+        "create-test-coupon": "create-test-coupon.2026-11-03.1",
+        "delete-account": "delete-account.2026-10-14.25",
+        "employer-profiles": "employer-profiles.2026-11-02.1",
+        "fetch-job-posting": "fetch-job-posting.2026-10-28.1",
+        "free-keyword-scan": "free-keyword-scan.2026-11-03.1",
+        "free-keyword-scan-stream": "free-keyword-scan-stream.2026-11-03.1",
+        "generate-application-answers": "generate-application-answers.2026-11-03.1",
+        "generate-apply-package": "generate-apply-package.2026-11-03.1",
+        "generate-ats-defense": "generate-ats-defense.2026-11-03.1",
+        "generate-career-path": "generate-career-path.2026-11-03.1",
+        "generate-career-snapshot": "generate-career-snapshot.2026-11-03.1",
+        "generate-cohort-report": "generate-cohort-report.2026-10-09.2",
+        "generate-cover-letter": "generate-cover-letter.2026-11-03.1",
+        "generate-cover-letter-stream": "generate-cover-letter-stream.2026-11-03.1",
+        "generate-elevator-pitch": "generate-elevator-pitch.2026-11-03.1",
+        "generate-freelance-boost": "generate-freelance-boost.2026-11-03.1",
+        "generate-graduate-gameplan": "generate-graduate-gameplan.2026-11-03.1",
+        "generate-interview-coach": "generate-interview-coach.2026-11-03.1",
+        "generate-keyword-fix": "generate-keyword-fix.2026-11-03.1",
+        "generate-premium-package": "generate-premium-package.2026-11-03.1",
+        "generate-premium-package-stream": "generate-premium-package-stream.2026-11-03.1",
+        "generate-product-preview": "generate-product-preview.2026-11-03.1",
+        "generate-recruiter-view": "generate-recruiter-view.2026-11-03.1",
+        "generate-resume-roast": "generate-resume-roast.2026-11-03.1",
+        "generate-summary": "generate-summary.2026-11-03.1",
+        "generate-tailored-resume": "generate-tailored-resume.2026-11-03.1",
+        "generate-tailored-resume-stream": "generate-tailored-resume-stream.2026-10-10.1",
+        "get-account-data": "get-account-data.2026-10-14.30",
+        "get-analytics": "get-analytics.2026-11-03.1",
+        "get-error-telemetry": "get-error-telemetry.2026-10-08.1",
+        "health-check": "health-check.2026-10-09.2",
+        "import-freelance-profile": "import-freelance-profile.2026-11-03.1",
+        "industry-corrections-digest": "industry-corrections-digest.2026-11-01.1",
+        "job-board": "job-board.2026-09-09.101",
+        "job-fit": "job-fit.2026-11-03.1",
+        "layoff-filings": "layoff-filings.2026-10-26.1",
+        "mail-watch": "mail-watch.2026-11-03.1",
+        "nl-search": "nl-search.2026-11-03.1",
+        "notify-owner": "notify-owner.2026-11-03.1",
+        "parse-docx": "parse-docx.2026-11-01.1",
+        "parse-pdf": "parse-pdf.2026-10-11.26",
+        "parse-resume-structured": "parse-resume-structured.2026-11-03.1",
+        "parse-spreadsheet": "parse-spreadsheet.2026-11-03.1",
+        "process-email-queue": "process-email-queue.2026-10-14.2",
+        "public-api": "public-api.2026-11-03.1",
+        "reconcile-stripe": "reconcile-stripe.2026-11-03.1",
+        "recover-purchase": "recover-purchase.2026-10-09.2",
+        "resend-webhook": "resend-webhook.2026-10-14.1",
+        "retry-failed-deliveries": "retry-failed-deliveries.2026-10-11.22",
+        "save-lead": "save-lead.2026-11-03.1",
+        "scan-credits": "scan-credits.2026-10-14.22",
+        "scan-heartbeat": "scan-heartbeat.2026-11-03.1",
+        "scheduled-health-probe": "scheduled-health-probe.2026-10-09.2",
+        "scrape-linkedin": "scrape-linkedin.2026-10-11.24",
+        "send-affiliate-commission-email": "send-affiliate-commission-email.2026-10-09.2",
+        "send-agent-digest": "send-agent-digest.2026-10-27.1",
+        "send-analysis-email": "send-analysis-email.2026-11-03.1",
+        "send-market-pulse": "send-market-pulse.2026-11-03.1",
+        "send-product-email": "send-product-email.2026-10-31.1",
+        "send-scan-report": "send-scan-report.2026-11-03.1",
+        "send-search-digest": "send-search-digest.2026-11-03.1",
+        "shortlist-evaluate": "shortlist-evaluate.2026-11-03.1",
+        "stripe-webhook": "stripe-webhook.2026-11-03.1",
+        "test-ai-fallback": "test-ai-fallback.2026-11-03.1",
+        "track-ab-event": "track-ab-event.2026-10-09.2",
+        "verify-product-purchase": "verify-product-purchase.2026-11-03.1",
+        "verify-scan-pack-purchase": "verify-scan-pack-purchase.2026-10-09.2",
+        "warm-up": "warm-up.2026-10-09.2",
+        "withdraw-subscription": "withdraw-subscription.2026-11-03.1"
+      }
     }
   ],
-  "_holdNote": "20261008125000 and 20261008128000 were released 2026-10-11 after wave 2 step 1 verified (their conditions: job-board .91, send-search-digest, industry-corrections-digest and check-error-spikes serving; /email/unsubscribe live). 20261009100300, 20261009112000 and 20261009160100 were released 2026-10-11 after wave 3 verified (job-board .92 with sliceStats.buildSince 2026-10-11T20:48:26Z; shortlist-evaluate 2026-10-10.62 with the Shortlist page deciding through shortlist_decide; layoff-filings 2026-10-09.3 serving and the old build no longer running). Their conditions stay in migrationOrder as after-rules. 20261012111000 was released 2026-10-25 after company profiles phase 1 step 1 verified (employer-profiles answering employer-profiles.2026-10-12.2 and section 80 passing: get_employer_perks answers anon in shape, the perk tables and the audit status refuse it); its condition stays in migrationOrder as an after-rule. 20261011103000 (wave 4) is held: it schedules the connector's 30-day search prune, released by a later message, never in the deploy session (the message says so even once the builds it waits for serve), after verify sections 82 and 86 pass with job-board .93 or later (the one deploy's .96) and agent-mcp .3 or later (.38) serving."
+  "_holdNote": "20261008125000 and 20261008128000 were released 2026-10-11 after wave 2 step 1 verified (their conditions: job-board .91, send-search-digest, industry-corrections-digest and check-error-spikes serving; /email/unsubscribe live). 20261009100300, 20261009112000 and 20261009160100 were released 2026-10-11 after wave 3 verified (job-board .92 with sliceStats.buildSince 2026-10-11T20:48:26Z; shortlist-evaluate 2026-10-10.62 with the Shortlist page deciding through shortlist_decide; layoff-filings 2026-10-09.3 serving and the old build no longer running). Their conditions stay in migrationOrder as after-rules. 20261012111000 was released 2026-10-25 after company profiles phase 1 step 1 verified (employer-profiles answering employer-profiles.2026-10-12.2 and section 80 passing: get_employer_perks answers anon in shape, the perk tables and the audit status refuse it); its condition stays in migrationOrder as an after-rule. 20261011103000 (wave 4) was released 2026-11-08, after the upkeep deploy (main aa2e45cb) verified: job-board answering job-board.2026-09-09.101 and agent-mcp agent-mcp.2026-11-03.1, both at or past its conditions (.93 and 2026-10-11.3), with verify sections 82 and 86 passing in full. It schedules the connector's 30-day search prune, which deletes rows for good; its job-board condition stays in migrationOrder as an after-rule."
 }
