@@ -9,12 +9,15 @@
 //     which postings were shown from CONNECTOR_SEARCH_LOG_CHANGED on (job-board
 //     .93 and later write none for connector searches; .93 and .95 never
 //     served, so the first such build live is the one deploy's .96), kept for
-//     30 days by the connector prune (20261011103000, running since its
-//     apply of 2026-11-15; see MCP_SEARCH_PRUNE_LIVE); NOT
-//     written from ChatGPT from that day on (job-board .93 and later honour the
-//     no-log flag agent-mcp sets on the ChatGPT surface, only with the reader
-//     proof). Searches logged before that day, by the live .92, name the
-//     postings shown and include ChatGPT's, and the page says so;
+//     the demand log's general 180 days until the connector prune
+//     (20261011103000, applied 2026-11-15) has run, and for 30 days once it
+//     has and the page says so (MCP_SEARCH_PRUNE_LIVE, MCP_SEARCH_PRUNE_RUN);
+//     NOT written from ChatGPT from that day on (job-board .93 and later honour
+//     the no-log flag agent-mcp sets on the ChatGPT surface, only with the
+//     reader proof). Searches logged before that day, by the live .92, name
+//     the postings shown and include ChatGPT's; both wordings of the row say
+//     so, the 30-day one with the day the last of them is deleted
+//     (EARLIER_SEARCHES_GONE_BY);
 //   - the caller's address and ChatGPT's per-person id: only ever a hashed
 //     allowance bucket, the address buckets kept 7 days and ChatGPT's dropped
 //     when their day ends (mcp_anon_rate);
@@ -28,18 +31,32 @@
 // pins the rows the page must carry.
 
 /**
- * Whether the connector's 30-day search prune runs. Its migration
- * (20261011103000) was held in docs/deploy-ledger.json holdUntilVerified,
- * released on 2026-11-08 into the seo-connect deploy message, and applied by
- * Lovable on 2026-11-15 (drizzle 0221). That day, read live, get_cron_health
- * listed search-demand-mcp-retention as active, nightly at 03:47 UTC, so this
- * is true from the frontend publish of the 5ef5e1a7 closeout
- * (docs/wave4/README.md, owner steps). Before it, connector searches followed
- * the demand log's general 180-day prune, which the false branch below still
- * words. src/test/the-privacy-page-says-what-each-ai-surface-receives-and-keeps.test.tsx
- * fails while it is true and the ledger holds the migration again.
+ * Whether the Privacy page says the connector's 30-day search prune keeps
+ * connector searches. Its migration (20261011103000) was held in
+ * docs/deploy-ledger.json holdUntilVerified, released on 2026-11-08 into the
+ * seo-connect deploy message, and applied by Lovable on 2026-11-15 (drizzle
+ * 0221). Read live that day, get_cron_health listed
+ * search-demand-mcp-retention active at 47 3 * * * with no run yet: its first
+ * run is 2026-11-16 03:47 UTC, so until then nothing deletes a connector
+ * search before the demand log's general 180 days, and the page says so. Set
+ * this true only in a frontend publish after get_cron_health shows a run of
+ * that job that succeeded, recorded in MCP_SEARCH_PRUNE_RUN, with
+ * PRIVACY_LAST_UPDATED moved to the publish day (docs/wave4/README.md, owner
+ * steps). src/test/the-privacy-page-says-what-each-ai-surface-receives-and-keeps.test.tsx
+ * fails while it is true without that record, or while the ledger holds the
+ * migration again.
  */
-export const MCP_SEARCH_PRUNE_LIVE: boolean = true;
+export const MCP_SEARCH_PRUNE_LIVE: boolean = false;
+
+/** The day the connector prune's migration applied (drizzle 0221). */
+export const CONNECTOR_PRUNE_APPLIED = "2026-11-15";
+
+/**
+ * The read that lets MCP_SEARCH_PRUNE_LIVE be true: search-demand-mcp-retention
+ * as anon get_cron_health answered it (ch_runs, ch_last_start, ch_last_status)
+ * and when, or null until a run is read. Fill it from that read, never by hand.
+ */
+export const MCP_SEARCH_PRUNE_RUN: { readAt: string; runs: number; lastStart: string; lastStatus: string } | null = null;
 
 /**
  * The day connector searches stop naming the postings shown and ChatGPT's stop
@@ -59,10 +76,24 @@ export function writtenDay(iso: string): string {
   return `${MONTHS[m - 1]} ${d}, ${y}`;
 }
 
+/**
+ * The day the last search logged before CONNECTOR_SEARCH_LOG_CHANGED is gone
+ * once the connector prune runs: it deletes a row on the 31st day after the
+ * day it was written (at < today - 30, nightly at 03:47 UTC), so the last of
+ * them, made on the day of the change before the new build served, goes on the
+ * run 31 days after that day.
+ */
+export const EARLIER_SEARCHES_GONE_BY = "2026-12-01";
+
 const SINCE = writtenDay(CONNECTOR_SEARCH_LOG_CHANGED);
-const SEARCH_KEPT = MCP_SEARCH_PRUNE_LIVE
-  ? `From Claude and other connections: the search words and filters, kept for 30 days; searches made from ${SINCE} on keep no record of which postings were shown. From ChatGPT: searches made from ${SINCE} on are not kept.`
-  : `From Claude and other connections: the search words and filters, kept for up to 180 days, like the site's own search log; searches made from ${SINCE} on keep no record of which postings were shown, and earlier ones still do. From ChatGPT: searches made from ${SINCE} on are not kept; earlier ones are kept like the site's own search log.`;
+const GONE_BY = writtenDay(EARLIER_SEARCHES_GONE_BY);
+/** The search row's "kept" cell, in the wording for a prune that has run (true) or not yet (false). */
+export function searchKept(pruneHasRun: boolean): string {
+  return pruneHasRun
+    ? `From Claude and other connections: the search words and filters, kept for 30 days; searches made from ${SINCE} on keep no record of which postings were shown, and earlier ones still do until they are deleted at 30 days old, the last by ${GONE_BY}. From ChatGPT: searches made from ${SINCE} on are not kept; earlier ones are deleted at 30 days old, the last by ${GONE_BY}.`
+    : `From Claude and other connections: the search words and filters, kept for up to 180 days, like the site's own search log; searches made from ${SINCE} on keep no record of which postings were shown, and earlier ones still do. From ChatGPT: searches made from ${SINCE} on are not kept; earlier ones are kept like the site's own search log.`;
+}
+const SEARCH_KEPT = searchKept(MCP_SEARCH_PRUNE_LIVE);
 
 export interface McpPrivacyRow {
   id: "search" | "job-ids" | "address" | "chatgpt-id" | "usage" | "cv" | "chat";
