@@ -154,6 +154,14 @@ describe("D6: a shared name is not always a shared employer", () => {
     for (const n of ["Alliance", "Denver", "Emerson"]) expect(r.log).toContain(`"${n}" is a generic name`);
   });
 
+  it("never merges a second Global: the census name rule holds the word before the collision is judged", () => {
+    const r = runMerge("merge-all", { lever: [hit("globalhq", "Global", 900)] }, { counts: { global: 1 }, args: ["--apply"] });
+    expect(r.status, r.log).toBe(0);
+    expect(r.log).toMatch(/"labelName":1/);
+    expect(r.after).not.toContain("globalhq");
+    expect(r.after, "the carried board stands").toContain('{ name: "Global", source: "lever", token: "global" }');
+  });
+
   it("does not hold a short real name: Visa, Thales and Amgen are judged by size", () => {
     const r = runMerge("merge-all", { workday: [hit("visa~wd5~Jobs", "Visa", 3), hit("amgen~wd1~Careers", "Amgen", 3)] }, { counts: { visa: 30, amgen: 30 } });
     expect(r.log).not.toMatch(/generic name/);
