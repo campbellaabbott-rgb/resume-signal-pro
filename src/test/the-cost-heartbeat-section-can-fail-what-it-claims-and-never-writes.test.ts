@@ -108,7 +108,7 @@ type Over = {
 function routes(o: Over = {}, deployed = true): Route[] {
   const builds = {
     "scan-heartbeat": deployed ? "scan-heartbeat.2026-11-09.1" : "scan-heartbeat.2026-11-03.1",
-    "free-keyword-scan": deployed ? "free-keyword-scan.2026-11-09.1" : "free-keyword-scan.2026-11-03.1",
+    "free-keyword-scan": deployed ? "free-keyword-scan.2026-11-09.2" : "free-keyword-scan.2026-11-03.1",
     "free-keyword-scan-stream": deployed ? "free-keyword-scan-stream.2026-11-10.2" : "free-keyword-scan-stream.2026-11-03.1",
     ...o.builds,
   };
@@ -175,7 +175,7 @@ describe("each regression prints FAIL", () => {
 
   it("C1: a scanner on the new build whose preflight lost the max-age, or answers another value", () => {
     const { lines } = run(routes({ maxAge: { "free-keyword-scan": null } }));
-    expect(has(lines, "FAIL", /^FAIL {2}C1 free-keyword-scan serves free-keyword-scan\.2026-11-09\.1 but .*'none'/), show(lines)).toBe(true);
+    expect(has(lines, "FAIL", /^FAIL {2}C1 free-keyword-scan serves free-keyword-scan\.2026-11-09\.2 but .*'none'/), show(lines)).toBe(true);
     expect(has(run(routes({ maxAge: { "free-keyword-scan-stream": "5" } })).lines, "FAIL", /^FAIL {2}C1 free-keyword-scan-stream serves .*'5'/)).toBe(true);
     // A build older than this lane's is not judged on the header it never carried.
     expect(has(run(routes({ builds: { "free-keyword-scan-stream": "free-keyword-scan-stream.2026-11-10.1" }, maxAge: { "free-keyword-scan-stream": null } })).lines, "INFO", /^INFO {2}C1 free-keyword-scan-stream /)).toBe(true);

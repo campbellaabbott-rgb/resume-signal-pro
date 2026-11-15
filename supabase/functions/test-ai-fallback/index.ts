@@ -36,12 +36,15 @@ import { SCAN_MODEL_CHAIN } from "../_shared/scan-models.ts";
 // owner's admin key (x-admin-key, or adminKey in the body) or the service
 // role; anyone else is answered 401 before anything is counted or spent.
 // Nothing else in this bundle changed.
-// 2026-11-10.2 (cost audit 2026-11-08, lane ai): this file is unchanged. The shared
+// 2026-11-10.2 (cost audit 2026-11-08, lane ai): this lane changes no line of this file. The shared
 // model-call helper it imports (_shared/ai-fallback.ts) now logs one usage
 // line per reply it reads, token counts and the model id only, so the build
 // moves with it.
 // 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "test-ai-fallback.2026-11-10.2";
+// 2026-11-10.3 (fix/cost-wave, the integration): both lanes' changes above together.
+// cost/ai and cost/ci-edge each stamped 2026-11-10.2 on code of its own, so the merged code
+// takes the next sequence (DEPLOY-LEDGER §3).
+const FN_BUILD = "test-ai-fallback.2026-11-10.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

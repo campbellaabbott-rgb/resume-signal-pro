@@ -3,7 +3,7 @@
 // Node, not jsdom: the handlers are bundled with esbuild (helpers/edge-harness.ts).
 /**
  * A BROWSER ASKS THE SCANNERS' PREFLIGHT ONCE IN TWO HOURS (cost audit
- * 2026-11-08, Do first #10; free-keyword-scan 2026-11-09.1,
+ * 2026-11-08, Do first #10; free-keyword-scan 2026-11-09.2,
  * free-keyword-scan-stream 2026-11-10.2).
  *
  * No function set Access-Control-Max-Age, so a browser cached each preflight

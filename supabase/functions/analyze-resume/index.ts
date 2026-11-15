@@ -123,11 +123,14 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 // buyer's network no longer lock the buyer out; an unknown id is counted per
 // network as above; and an unbound Pro row whose customer left its address
 // is no longer kept live by that customer (_shared/pro.ts).
-// 2026-11-10.3 (cost audit 2026-11-08, lane ai): this file is unchanged. The shared
+// 2026-11-10.3 (cost audit 2026-11-08, lane ai): this lane changes no line of this file. The shared
 // model-call helper it imports (_shared/ai-fallback.ts) gained the free-tool
 // chain and a numbers-only usage line, so the build moves with it.
 // 2026-11-10.3 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "analyze-resume.2026-11-10.3";
+// 2026-11-10.4 (fix/cost-wave, the integration): both lanes' changes above together.
+// cost/ai and cost/ci-edge each stamped 2026-11-10.3 on code of its own, so the merged code
+// takes the next sequence (DEPLOY-LEDGER §3).
+const FN_BUILD = "analyze-resume.2026-11-10.4";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };

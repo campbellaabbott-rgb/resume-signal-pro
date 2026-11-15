@@ -3,7 +3,8 @@
 # cost/heartbeat): Do first #1 (the heartbeat's full scan once an hour), #10
 # (the scanners' preflight cached for two hours), #11 (token counts printed)
 # and #13 (the scan hover warms the scanner the click calls). Three functions:
-# scan-heartbeat and free-keyword-scan at 2026-11-09.1, free-keyword-scan-stream
+# scan-heartbeat at 2026-11-09.1, free-keyword-scan at 2026-11-09.2 (the
+# integration's, over the ai lane's same-day stamp), free-keyword-scan-stream
 # at 2026-11-10.2; one frontend file published by the merge itself
 # (src/hooks/use-scan-prefetch.ts); no migration.
 #
@@ -54,7 +55,7 @@ rm -f /tmp/vd_ch_home.html /tmp/vd_ch_entry.js /tmp/vd_ch_chunk.js /tmp/vd_ch_ho
 
 # B1 + C1.
 VDCH_HB_NEW=unknown
-for VDCH_SPEC in scan-heartbeat:2026-11-09:1 free-keyword-scan:2026-11-09:1 free-keyword-scan-stream:2026-11-10:2; do
+for VDCH_SPEC in scan-heartbeat:2026-11-09:1 free-keyword-scan:2026-11-09:2 free-keyword-scan-stream:2026-11-10:2; do
   VDCH_FN=${VDCH_SPEC%%:*}; VDCH_REST=${VDCH_SPEC#*:}; VDCH_D=${VDCH_REST%%:*}; VDCH_N=${VDCH_REST#*:}
   curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$VDCH_FN" -H "Origin: $SITE" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: authorization,apikey,content-type" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' > "/tmp/vd_ch_opt_$VDCH_FN.txt"
   VDCH_H=$(grep -i '^x-fn-build:' "/tmp/vd_ch_opt_$VDCH_FN.txt" | head -1 | sed -E 's/^[^:]+: *//')

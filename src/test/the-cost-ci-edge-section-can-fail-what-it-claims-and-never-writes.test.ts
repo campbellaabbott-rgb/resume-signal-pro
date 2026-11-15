@@ -146,7 +146,7 @@ describe("the cost ci-edge section", () => {
           : fn === "analyze-resume" ? { build: "analyze-resume.2026-11-10.2" }
             : deployed(fn)));
     expect(fails(lines), out).toEqual([
-      "FAIL  B analyze-resume preflight x-fn-build = analyze-resume.2026-11-10.2 while others serve their cost-wave build: a partial deploy (want analyze-resume.2026-11-10.3 or later)",
+      "FAIL  B analyze-resume preflight x-fn-build = analyze-resume.2026-11-10.2 while others serve their cost-wave build: a partial deploy (want analyze-resume.2026-11-10.4 or later)",
       "FAIL  B check-subscription preflight carries no x-fn-build while others serve their cost-wave build (want check-subscription.2026-11-10.2 or later)",
       "FAIL  B parse-pdf preflight x-fn-build = parse-pdf.2026-10-11.26 while others serve their cost-wave build: a partial deploy (want parse-pdf.2026-11-09.1 or later)",
     ]);

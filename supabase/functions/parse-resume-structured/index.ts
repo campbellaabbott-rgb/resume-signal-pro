@@ -17,11 +17,14 @@ import { callAIWithModelFallback, describeError, describeReply } from "../_share
 // text around it, which could be the person's name or email. Nothing else in
 // this function changed, and nothing of main's past f8d72a9b, the build the
 // 2026-10-31 deploy put live, rides along.
-// 2026-11-09.1 (cost audit 2026-11-08, lane ai): this file is unchanged. The shared
+// 2026-11-09.1 (cost audit 2026-11-08, lane ai): this lane changes no line of this file. The shared
 // model-call helper it imports (_shared/ai-fallback.ts) gained the free-tool
 // chain and a numbers-only usage line, so the build moves with it.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "parse-resume-structured.2026-11-09.1";
+// 2026-11-09.2 (fix/cost-wave, the integration): both lanes' changes above together.
+// cost/ai and cost/ci-edge each stamped 2026-11-09.1 on code of its own, so the merged code
+// takes the next sequence (DEPLOY-LEDGER §3).
+const FN_BUILD = "parse-resume-structured.2026-11-09.2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

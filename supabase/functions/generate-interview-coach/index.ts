@@ -57,12 +57,15 @@ import {
 // (no address beside it, written before 2026-08-27 18:00 UTC, not test
 // mode); migration 20261110140000 names the rest from the order, content,
 // checkout and grant records. Nothing else in this bundle changed.
-// 2026-11-10.2 (cost audit 2026-11-08, lane ai): this file is unchanged. The shared
+// 2026-11-10.2 (cost audit 2026-11-08, lane ai): this lane changes no line of this file. The shared
 // model-call helper it imports (_shared/ai-fallback.ts) now logs one usage
 // line per reply it reads, token counts and the model id only, so the build
 // moves with it.
 // 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "generate-interview-coach.2026-11-10.2";
+// 2026-11-10.3 (fix/cost-wave, the integration): both lanes' changes above together.
+// cost/ai and cost/ci-edge each stamped 2026-11-10.2 on code of its own, so the merged code
+// takes the next sequence (DEPLOY-LEDGER §3).
+const FN_BUILD = "generate-interview-coach.2026-11-10.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

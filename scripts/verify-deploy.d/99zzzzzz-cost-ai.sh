@@ -29,18 +29,20 @@
 # retired endpoint would spend a model call, so neither is ever asked.
 echo "INFO  == 99zzzzzz. cost audit, lane ai: retired endpoints, the owner's warm-up, the search parse's eight seconds, the free tools' chain, the usage line =="
 
-# fn|day|n: this lane's build of each function.
+# fn|day|n: the cost wave's build of each function: this lane's, or the
+# integration's next sequence where another lane stamped the same build on
+# code of its own (fix/cost-wave; DEPLOY-LEDGER §3).
 VDCA_WANT="warm-up|2026-11-09|1 nl-search|2026-11-09|1 generate-product-preview|2026-11-09|1
 generate-application-answers|2026-11-10|2 import-freelance-profile|2026-11-10|2
 generate-summary|2026-11-09|1 generate-resume-roast|2026-11-09|1 generate-recruiter-view|2026-11-09|1
 generate-elevator-pitch|2026-11-09|1 analyze-linkedin-profile|2026-11-09|1
 generate-cover-letter-stream|2026-11-10|2 generate-premium-package-stream|2026-11-10|2
-admin-regenerate-delivery|2026-11-09|1 analyze-resume|2026-11-10|3 free-keyword-scan|2026-11-09|1
-generate-apply-package|2026-11-10|3 generate-ats-defense|2026-11-10|2 generate-career-path|2026-11-10|2
-generate-career-snapshot|2026-11-10|2 generate-cover-letter|2026-11-09|1 generate-freelance-boost|2026-11-10|2
-generate-graduate-gameplan|2026-11-10|2 generate-interview-coach|2026-11-10|2 generate-keyword-fix|2026-11-10|2
-generate-premium-package|2026-11-10|2 generate-tailored-resume|2026-11-09|1 parse-resume-structured|2026-11-09|1
-test-ai-fallback|2026-11-10|2"
+admin-regenerate-delivery|2026-11-09|1 analyze-resume|2026-11-10|4 free-keyword-scan|2026-11-09|2
+generate-apply-package|2026-11-10|4 generate-ats-defense|2026-11-10|3 generate-career-path|2026-11-10|3
+generate-career-snapshot|2026-11-10|3 generate-cover-letter|2026-11-09|2 generate-freelance-boost|2026-11-10|3
+generate-graduate-gameplan|2026-11-10|3 generate-interview-coach|2026-11-10|3 generate-keyword-fix|2026-11-10|3
+generate-premium-package|2026-11-10|3 generate-tailored-resume|2026-11-09|2 parse-resume-structured|2026-11-09|2
+test-ai-fallback|2026-11-10|3"
 VDCA_RETIRED="generate-summary generate-resume-roast generate-recruiter-view generate-elevator-pitch analyze-linkedin-profile generate-cover-letter-stream generate-premium-package-stream"
 
 vdca_hdr() { # $1 fn, $2 header name -> its value from the saved preflight

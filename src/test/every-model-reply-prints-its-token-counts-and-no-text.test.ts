@@ -3,7 +3,7 @@
 // Node, not jsdom: the handlers are bundled with esbuild (helpers/edge-harness.ts).
 /**
  * EVERY MODEL REPLY PRINTS ITS TOKEN COUNTS, AND NO TEXT (cost audit
- * 2026-11-08, Do first #11; free-keyword-scan 2026-11-09.1,
+ * 2026-11-08, Do first #11; free-keyword-scan 2026-11-09.2,
  * free-keyword-scan-stream 2026-11-10.2, scan-heartbeat 2026-11-09.1).
  *
  * No function read the gateway's usage object, so every model cost the audit

@@ -547,7 +547,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // read as written, version floors and street numbers are not metrics, apostrophe
 // years and a Portuguese "o momento" are dates, and federal agencies,
 // foundations and postdocs are transitions while a marine engineer is not.
-// 2026-11-09.1 (cost audit 2026-11-08, lane ai): this file is unchanged. The shared
+// 2026-11-09.1 (cost audit 2026-11-08, lane ai): this lane changes no line of this file. The shared
 // model-call helper that _shared/scan-models.ts imports gained the free-tool
 // chain and a numbers-only usage line, so the build moves with it.
 // 2026-11-09.1 (cost audit 2026-11-08, heartbeat lane; Do first #1, #10, #11):
@@ -557,7 +557,10 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // and the completed metric carries them; browsers may cache the preflight for
 // two hours (Access-Control-Max-Age). The off-hour run writes no scan_metrics
 // row, so the heartbeat's rows stay the model chain's latency.
-const FN_BUILD = "free-keyword-scan.2026-11-09.1";
+// 2026-11-09.2 (fix/cost-wave, the integration): both lanes' changes above together.
+// cost/ai and cost/heartbeat each stamped 2026-11-09.1 on code of its own, so the merged code
+// takes the next sequence (DEPLOY-LEDGER §3).
+const FN_BUILD = "free-keyword-scan.2026-11-09.2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

@@ -2,7 +2,7 @@
 /**
  * THE HEARTBEAT PAYS FOR A FULL SCAN ONCE AN HOUR AND STILL WATCHES EVERY TEN
  * MINUTES (cost audit 2026-11-08, Do first #1; owner decision 2026-11-08;
- * scan-heartbeat 2026-11-09.1, free-keyword-scan 2026-11-09.1).
+ * scan-heartbeat 2026-11-09.1, free-keyword-scan 2026-11-09.2).
  *
  * WHAT WAS WRONG. Every ten-minute run made a full uncached scan (two model
  * calls, each carrying the whole scan prompt), a model probe, four filtered

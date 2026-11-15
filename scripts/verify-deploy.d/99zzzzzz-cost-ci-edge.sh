@@ -28,19 +28,22 @@
 # READ-ONLY. Fifty-five OPTIONS preflights. Nothing is posted.
 echo "== 99zzzzzz. cost wave ci-edge: builds, and every preflight cacheable for two hours =="
 
-# function:date:sequence, the build each one ships in this lane.
+# function:date:sequence, the build each one ships in the cost wave: this
+# lane's, or the integration's next sequence where the ai lane stamped the
+# same build on code of its own, and agent-mcp's over the connect round's
+# 2026-11-08.1 code (fix/cost-wave; DEPLOY-LEDGER §3).
 VDCE_WANT="account-order:2026-11-09:1 account-settings:2026-11-09:1 admin-ops:2026-11-09:1 affiliate-payout-request:2026-11-09:1
-agent-access:2026-11-09:1 agent-mcp:2026-11-09:1 agent-pass-status:2026-11-09:1 analyze-resume:2026-11-10:3 api-key-request:2026-11-09:1
+agent-access:2026-11-09:1 agent-mcp:2026-11-09:2 agent-pass-status:2026-11-09:1 analyze-resume:2026-11-10:4 api-key-request:2026-11-09:1
 application-fit:2026-11-09:1 auth-signed-in:2026-11-09:1 check-subscription:2026-11-10:2 company-claim:2026-11-09:1
 create-agent-checkout:2026-11-10:2 create-checkout:2026-11-10:3 create-portal-session:2026-11-10:2 create-product-checkout:2026-11-10:2
 create-scan-pack-checkout:2026-11-09:1 create-subscription-checkout:2026-11-10:2 create-test-checkout:2026-11-09:1 delete-account:2026-11-09:1
-fetch-job-posting:2026-11-09:1 generate-apply-package:2026-11-10:3 generate-ats-defense:2026-11-10:2 generate-career-path:2026-11-10:2
-generate-career-snapshot:2026-11-10:2 generate-cover-letter:2026-11-09:1 generate-freelance-boost:2026-11-10:2 generate-graduate-gameplan:2026-11-10:2
-generate-interview-coach:2026-11-10:2 generate-keyword-fix:2026-11-10:2 generate-premium-package:2026-11-10:2 generate-tailored-resume:2026-11-09:1
+fetch-job-posting:2026-11-09:1 generate-apply-package:2026-11-10:4 generate-ats-defense:2026-11-10:3 generate-career-path:2026-11-10:3
+generate-career-snapshot:2026-11-10:3 generate-cover-letter:2026-11-09:2 generate-freelance-boost:2026-11-10:3 generate-graduate-gameplan:2026-11-10:3
+generate-interview-coach:2026-11-10:3 generate-keyword-fix:2026-11-10:3 generate-premium-package:2026-11-10:3 generate-tailored-resume:2026-11-09:2
 get-account-data:2026-11-09:1 get-analytics:2026-11-09:1 get-error-telemetry:2026-11-09:1 health-check:2026-11-09:1 job-fit:2026-11-09:1
-parse-docx:2026-11-09:1 parse-pdf:2026-11-09:1 parse-resume-structured:2026-11-09:1 parse-spreadsheet:2026-11-09:1 recover-purchase:2026-11-09:1
+parse-docx:2026-11-09:1 parse-pdf:2026-11-09:1 parse-resume-structured:2026-11-09:2 parse-spreadsheet:2026-11-09:1 recover-purchase:2026-11-09:1
 save-lead:2026-11-09:1 scan-credits:2026-11-10:2 send-agent-digest:2026-11-09:1 send-market-pulse:2026-11-09:1 send-scan-report:2026-11-09:1
-send-search-digest:2026-11-09:1 shortlist-evaluate:2026-11-09:1 test-ai-fallback:2026-11-10:2 track-ab-event:2026-11-09:1
+send-search-digest:2026-11-09:1 shortlist-evaluate:2026-11-09:1 test-ai-fallback:2026-11-10:3 track-ab-event:2026-11-09:1
 verify-product-purchase:2026-11-10:2 verify-scan-pack-purchase:2026-11-10:2 withdraw-subscription:2026-11-09:1"
 VDCE_NEW=""
 VDCE_OLD=""
