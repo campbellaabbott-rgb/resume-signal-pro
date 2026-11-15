@@ -1,6 +1,16 @@
 # DRAFT FOR COUNSEL: Terms of Service, section 4, and the clauses it touches
 
 > **DRAFT FOR COUNSEL. This is not legal advice, and it is not approved or live.**
+>
+> **RE-SCOPED 2026-11-15 — READ
+> `docs/legal/terms-section-4-refresh-2026-11-15.md` FIRST.** This draft was
+> prepared four days before the apply pivot of 2026-10-11 retired the Agent
+> plan, the Agent Pass and the Apply Assistant (switches `false` in
+> `_shared/apply-agent-switch.ts`; their checkouts answer 410). **Sections 4.4
+> and 4.5 describe products nobody can buy**, 4.3 covers one live plan and one
+> retired one, and **7 of the 11 owner questions in section 8 are moot or
+> already answered by the code.** The refresh memo gives the section-by-section
+> verdict and the four questions that remain.
 > Prepared 2026-10-07 from the code at `origin/main` `acd64c4c` for register
 > item L4-07 (with the date fix from 2.33 / L1-09). The live page,
 > `src/pages/Terms.tsx`, is **unchanged**. Nothing here applies until counsel
@@ -128,6 +138,10 @@ Measured on `acd64c4c`:
 
 ### 4.3 Subscription plans: Pro and the Apply Agent plan
 
+> **NARROW TO PRO (refresh 2026-11-15).** Pro is live at $45/month. Every
+> Apply-Agent-plan sentence below describes a checkout that answers 410.
+
+
 > **(a) Plans.** We offer two monthly plans: **Pro**, at US$45 a month, and
 > the **Apply Agent plan** (also called the Morning Queue), at US$99 a month.
 > The Apply Agent plan includes everything in Pro. What each plan includes is
@@ -204,6 +218,10 @@ Measured on `acd64c4c`:
 
 ### 4.4 The Apply Agent plan's free trial
 
+> **CUT (refresh 2026-11-15).** The plan is not on sale, so this trial
+> cannot be entered. Q-O1 and Q-O11 go with this section.
+
+
 > **(a) Length and conversion.** The Apply Agent plan starts with a free trial
 > of 7 days. We collect a payment method when you start the trial. Unless you
 > cancel before the trial ends, it becomes the paid plan automatically when
@@ -274,6 +292,11 @@ Measured on `acd64c4c`:
     unchanged.
 
 ### 4.5 The Agent Pass
+
+> **CUT AS PURCHASE TERMS (refresh 2026-11-15).** Not purchasable. Replace
+> with one short clause for EXISTING pass holders, who keep what they bought.
+> Q-O2 narrows to that clause; Q-O4 goes with this section.
+
 
 > **(a) What it is.** The Agent Pass is a one-time purchase (US$29). For six
 > hours, an AI agent you connect (such as Claude, ChatGPT or Claude Code) can
