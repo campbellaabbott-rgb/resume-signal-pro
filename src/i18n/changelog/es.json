@@ -1550,7 +1550,7 @@
     },
     "aJobPageSaysWhenItsEmployerClosedThePosting": {
       "title": "La página de un empleo indica cuándo el empleador cerró la oferta",
-      "description": "Cuando el propio sistema de contratación del empleador ha respondido que ya no ofrece una oferta, la página de esa oferta en nuestro sitio ahora lo indica, da el día en que se creó la página y no dice nada más sobre el puesto. Antes solo decía que la oferta ya no figuraba en nuestro portal. Una oferta que solo ha salido de nuestro portal sigue diciendo eso, que es una afirmación sobre nuestro portal, no sobre el empleador."
+      "description": "Cuando el propio sistema de contratación del empleador ha respondido que ya no publica una oferta, la página de esa oferta en nuestro sitio ahora lo indica y no dice nada más sobre el puesto. La copia de la página que leen los buscadores también da el día en que se creó. La página de una oferta que solo ha salido de nuestro portal sigue diciendo que ya no figura aquí, lo que es una afirmación sobre nuestro portal, no sobre el empleador."
     },
     "companyPagesUseTheNameTheEmployerUses": {
       "title": "Las páginas de empresa usan el nombre que usa el empleador",
@@ -1558,7 +1558,7 @@
     },
     "theConnectPageSaysMoreAboutClaudeAndChatGpt": {
       "title": "La página «Conecta tu agente» explica más sobre Claude y ChatGPT",
-      "description": "Ahora indica cuántas de las ofertas abiertas del portal puede buscar tu IA, cuáles se quedan solo en este sitio y cuándo se contaron. Para ChatGPT, cita lo que dice la página de precios sobre el plan Free, con el día en que la leímos, y remite a quienes usan Free al plan gratuito de Claude, que permite añadir un conector personalizado. Para Claude, indica que añadas el conector una vez en el navegador de tu teléfono, no en la app, y que después la app ya lo tiene, y que un conector ya añadido en Claude está en Claude Code cuando inicias sesión con la misma cuenta."
+      "description": "Ahora indica cuántas de las ofertas abiertas del portal puede buscar tu IA, cuáles se quedan solo en este sitio y cuándo se contaron. Para ChatGPT, cita lo que dice la página de precios de ChatGPT sobre el plan Free, con el día en que la leímos, y remite a quienes usan Free al plan gratuito de Claude, que permite añadir solo un conector personalizado. Para Claude, indica que añadas el conector una vez en el navegador de tu teléfono, no en la app, y que después la app ya lo tiene, y que un conector ya añadido en Claude está en Claude Code cuando inicias sesión con la misma cuenta."
     },
     "theGhostJobIndexNoLongerCallsATakedownFilled": {
       "title": "El Índice de empleos fantasma ya no llama «cubierto» a un puesto retirado",

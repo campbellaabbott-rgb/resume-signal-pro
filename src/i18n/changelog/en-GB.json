@@ -1550,7 +1550,7 @@
     },
     "aJobPageSaysWhenItsEmployerClosedThePosting": {
       "title": "A job page says when the employer has closed the posting",
-      "description": "When the employer's own hiring system has answered that it no longer serves a posting, the posting's page on our site now says so, gives the day the page was built, and states nothing more about the job. Before, it said only that the posting was no longer listed on our board. A posting that has only left our board still says that, which is a statement about our board, not about the employer."
+      "description": "When the employer's own hiring system has answered that it no longer serves a posting, the posting's page on our site now says so and states nothing more about the job. The copy of the page that search engines read also gives the day it was built. The page of a posting that has only left our board still says it is no longer listed here, which is a statement about our board, not about the employer."
     },
     "companyPagesUseTheNameTheEmployerUses": {
       "title": "Company pages use the name the employer uses",
@@ -1558,7 +1558,7 @@
     },
     "theConnectPageSaysMoreAboutClaudeAndChatGpt": {
       "title": "The “Connect your agent” page says more about Claude and ChatGPT",
-      "description": "It now says how many of the board's open postings your AI can search, which ones stay on this website, and when they were counted. For ChatGPT, it quotes what the pricing page says about the Free plan, with the day we read it, and points Free users to Claude's free plan, which can add one custom connector. For Claude, it says to add the connector once in your phone's browser, not in the app, after which the app has it, and that a connector already added in Claude is there in Claude Code when you sign in with the same account."
+      "description": "It now says how many of the board's open postings your AI can search, which ones stay on this website, and when they were counted. For ChatGPT, it quotes what ChatGPT's pricing page says about the Free plan, with the day we read it, and points Free users to Claude's free plan, which can add one custom connector. For Claude, it says to add the connector once in your phone's browser, not in the app, after which the app has it, and that a connector already added in Claude is there in Claude Code when you sign in with the same account."
     },
     "theGhostJobIndexNoLongerCallsATakedownFilled": {
       "title": "The Ghost Job Index no longer calls a role taken down “filled”",

@@ -21,6 +21,17 @@
 # THE NEWEST ENTRY. After the publish, the page description's "Latest (<date>)"
 # must be 2026-11-15 or later.
 #
+# THE DESCRIPTIONS. A title can stay while its description is reworded into a
+# claim nobody read. After the publish the US chunk must carry, for each entry,
+# the words that hold the limit its live read set (one string each, found once
+# in the whole US shard, so the match is that entry's).
+#
+# THE OTHER EIGHT LANGUAGES. The owner's rule ships every entry in all nine.
+# After the publish, each language's changelog chunk (the <lang>-<hash>.js the
+# entry names that carries workdayCompanyPagesLostTheirFacts, found the way the
+# US one is) must carry all six keys. These chunks are read only after the
+# publish, and never in place of the US one.
+#
 # Read-only: crawler GETs of /changelog and the home page, and GETs of the entry
 # script and its chunks. Nothing is sent, bought or written.
 echo "== 52e. changelog of 15 November on the crawler copy of /changelog =="
@@ -71,3 +82,40 @@ if [ "$VD52E_PUB" != 1 ]; then echo "INFO  the date of the newest entry the page
 elif [ -z "$VD52E_LATEST" ]; then echo "FAIL  /changelog's description names no newest entry (the bake fell back to its no-entries sentence, or its markup moved)"
 elif [ "$VD52E_LATEST" \< "2026-11-15" ]; then echo "FAIL  /changelog's description names an entry of $VD52E_LATEST as the newest, older than this batch's 2026-11-15 (the prerender did not rebuild)"
 else echo "PASS  /changelog's description names an entry of $VD52E_LATEST as the newest, no older than this batch's 2026-11-15"; fi
+
+while IFS='|' read -r K M; do
+  [ -n "$M" ] || continue
+  if [ "$VD52E_PUB" != 1 ]; then echo "INFO  the description of $K is judged after the publish"
+  elif printf '%s' "$VD52E_US" | grep -qF "$M"; then echo "PASS  the US English changelog strings describe $K with \"$M\""
+  else echo "FAIL  the US English changelog strings carry no \"$M\" for $K: its description is not the one read live on 15 November"; fi
+done <<'VD52E_MUST'
+aJobPageSaysWhenItsEmployerClosedThePosting|The copy of the page that search engines read also gives the day it was built.
+companyPagesUseTheNameTheEmployerUses|in the page title and heading
+theConnectPageSaysMoreAboutClaudeAndChatGpt|which can add one custom connector
+theGhostJobIndexNoLongerCallsATakedownFilled|That heading and its explanation now come in the language you use on the site.
+thePayTransparencyIndexNamesEachHiringSystem|such as iCIMS, UKG Pro Recruiting or ADP Workforce Now, instead of a short code
+theFooterLinksOurDataPages|next to the Pay Transparency Index it already linked
+VD52E_MUST
+
+VD52E_KEYS="aJobPageSaysWhenItsEmployerClosedThePosting companyPagesUseTheNameTheEmployerUses theConnectPageSaysMoreAboutClaudeAndChatGpt theGhostJobIndexNoLongerCallsATakedownFilled thePayTransparencyIndexNamesEachHiringSystem theFooterLinksOurDataPages"
+if [ "$VD52E_PUB" != 1 ]; then
+  echo "INFO  the other eight languages' changelog strings are judged after the publish"
+else
+  VD52E_ENTRY=$(curl -s -m 60 "$SITE$VD52E_MAIN")
+  for L in en-GB de es fr hi nl pt tl; do
+    VD52E_LC=""
+    VD52E_LCH=""
+    for CH in $(printf '%s' "$VD52E_ENTRY" | grep -oE "\"\\./$L-[A-Za-z0-9_-]+\\.js\"" | tr -d '"' | sed 's|^\./||' | sort -u); do
+      VD52E_TRY=$(curl -s -m 30 "$SITE/assets/$CH")
+      printf '%s' "$VD52E_TRY" | grep -q "workdayCompanyPagesLostTheirFacts" || continue
+      VD52E_LC=$VD52E_TRY
+      VD52E_LCH=$CH
+      break
+    done
+    if [ -z "$VD52E_LC" ]; then echo "FAIL  no $L changelog chunk the served entry names carries workdayCompanyPagesLostTheirFacts: the 15 November entries cannot be shown in $L"; continue; fi
+    VD52E_MISS=""
+    for K in $VD52E_KEYS; do printf '%s' "$VD52E_LC" | grep -q "$K" || VD52E_MISS="$VD52E_MISS $K"; done
+    if [ -z "$VD52E_MISS" ]; then echo "PASS  the $L changelog strings ($VD52E_LCH) carry all six 15 November entries"
+    else echo "FAIL  the $L changelog strings ($VD52E_LCH) lack$VD52E_MISS: the publish did not ship the 15 November entries in $L"; fi
+  done
+fi

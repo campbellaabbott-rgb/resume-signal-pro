@@ -10,15 +10,19 @@
  * the footer, the Ghost Job Index and the connect page in all nine languages.
  * Where the read covered less than a first wording said, the entry says only
  * what held. Those limits are held here:
- *   - the closed-posting entry gives no count and promises nothing about
- *     every closed posting;
+ *   - the closed-posting entry gives no count, promises nothing about every
+ *     closed posting, says nothing of what those pages showed before (no live
+ *     read can show that now), and gives the day only for the copy search
+ *     engines read: the page a visitor is left with names no day;
  *   - the company-name entry is about company pages only (the read did not
  *     cover search suggestions or stored listings, which can still carry the
  *     short code), gives no count, and names only employers the site's own
  *     name list carries;
  *   - the connect-page entry gives no number and names no hiring system (the
- *     count and the list of systems that stay on the website both move), and
- *     names no AI host but Claude, ChatGPT and Claude Code;
+ *     count and the list of systems that stay on the website both move),
+ *     names no AI host but Claude, ChatGPT and Claude Code, says the pricing
+ *     page it quotes is ChatGPT's, and keeps Claude's free plan to one custom
+ *     connector in every language;
  *   - the Ghost Job Index entry claims its takedown heading and explanation in
  *     each language, not the whole page, and quotes that heading as each
  *     language shows it;
@@ -28,7 +32,10 @@
  *   - the footer entry names the four links the browser's footer gained, by
  *     the label each language shows, and none of the crawler-only links.
  * In every language: no digit, no internal name, Portuguese that is
- * Brazilian, Hindi in Devanagari.
+ * Brazilian, Hindi in Devanagari. British English is the US text itself (none
+ * of the six says résumé), each other language carries its own words for the
+ * limits above, and every translation is pinned by a hash of its reviewed
+ * text, so a reworded one fails until it is read again.
  *
  * Section 52e of the verifier judges the six on the crawler copy of
  * /changelog once the frontend publish carries them. It runs here in bash
@@ -39,6 +46,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSyn
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { changelog } from "../data/changelog";
 import { systemLabel } from "../lib/listing/apply-url";
 import { employerName } from "../lib/company-display";
@@ -114,14 +122,18 @@ describe("each English description carries the limit the live read set, and not 
     [CLOSED]: {
       must: [
         "When the employer's own hiring system has answered that it no longer serves a posting",
-        "gives the day the page was built, and states nothing more about the job",
-        "Before, it said only that the posting was no longer listed on our board.",
+        "the posting's page on our site now says so and states nothing more about the job",
+        "The copy of the page that search engines read also gives the day it was built.",
         "which is a statement about our board, not about the employer",
       ],
       mustNot: [
         ["a count of closed postings", /\d/],
         ["a promise about every closed posting", /every (?:closed )?posting|all (?:closed )?postings|always/i],
         ["a reason the employer's answer does not give", /filled|hired|a hire/i],
+        // These pages kept a live page until this bake asked the employer, so
+        // they never said "no longer listed"; what they showed before is not
+        // something a live read can show now.
+        ["what these pages showed before the change", /\bbefore\b|\bused to\b|\bpreviously\b/i],
       ],
     },
     [NAMES]: {
@@ -134,7 +146,7 @@ describe("each English description carries the limit the live read set, and not 
     [CONNECT]: {
       must: [
         "how many of the board's open postings your AI can search, which ones stay on this website, and when they were counted",
-        "it quotes what the pricing page says about the Free plan, with the day we read it",
+        "it quotes what ChatGPT's pricing page says about the Free plan, with the day we read it",
         "Claude's free plan, which can add one custom connector",
         "once in your phone's browser, not in the app",
         "is there in Claude Code when you sign in with the same account",
@@ -180,6 +192,125 @@ describe("each English description carries the limit the live read set, and not 
     for (const l of ["en", "en-GB"] as const) {
       for (const [why, re] of mustNot) expect(textOf(l, id), `${l}: ${why}`).not.toMatch(re);
     }
+  });
+
+  it("British English is the US text itself, word for word (none of the six says résumé)", () => {
+    for (const id of IDS) expect(SHARDS["en-GB"][id], id).toEqual(EN[id]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THE SAME LIMITS IN EACH LANGUAGE'S OWN WORDS. The English limits above read
+// only English, so a translation reworded into the claim English refuses (a
+// takedown "filled", any number of connectors, every employer's real name)
+// passed while its English stayed right. Each language carries the words its
+// own text uses for the limit, and the words it would use to break it.
+type Other = Exclude<Locale, "en" | "en-GB">;
+const OTHERS = LOCALES.filter((l): l is Other => l !== "en" && l !== "en-GB");
+const LOCAL: Record<string, Record<Other, { must?: string[]; mustNot: RegExp }>> = {
+  // a reason the employer's answer does not give, or what the pages showed before
+  [CLOSED]: {
+    de: { mustNot: /besetzt|eingestellt|Einstellung|\bVorher\b|\bbisher\b|\bfrüher\b/i },
+    es: { mustNot: /cubiert|contratad|\bAntes\b|anteriormente/i },
+    fr: { mustNot: /pourvu|embauch|\bAuparavant\b|\bavant\b/i },
+    hi: { mustNot: /भर|पहले/ },
+    nl: { mustNot: /vervuld|aangenomen|aanname|\bEerder\b|\bvoorheen\b|\bvroeger\b/i },
+    pt: { mustNot: /preenchid|contratad|\bAntes\b|anteriormente/i },
+    tl: { mustNot: /napunan|na-hire|pag-hire|\bDati\b/i },
+  },
+  // one custom connector on Claude's free plan, and the pricing page is ChatGPT's
+  [CONNECT]: {
+    de: { must: ["nur einen eigenen Connector", "Preisseite von ChatGPT"], mustNot: /beliebig|unbegrenzt|mehrere/i },
+    es: { must: ["solo un conector personalizado", "página de precios de ChatGPT"], mustNot: /cualquier número|ilimitad|varios conectores/i },
+    fr: { must: ["un seul connecteur personnalisé", "page des tarifs de ChatGPT"], mustNot: /illimit|plusieurs connecteurs|autant de/i },
+    hi: { must: ["एक कस्टम कनेक्टर", "ChatGPT का प्राइसिंग पेज"], mustNot: /असीमित|कितने भी|कई कस्टम/ },
+    nl: { must: ["één eigen connector", "prijspagina van ChatGPT"], mustNot: /onbeperkt|meerdere|zoveel/i },
+    pt: { must: ["apenas um conector personalizado", "página de preços do ChatGPT"], mustNot: /ilimitad|vários conectores|quantos quiser/i },
+    tl: { must: ["isang custom connector", "pricing page ng ChatGPT"], mustNot: /walang limitasyon|kahit ilan/i },
+  },
+  // the hiring-system column only: no employer names claimed
+  [PAY]: {
+    de: { mustNot: /Arbeitgeber/i },
+    es: { mustNot: /empleador/i },
+    fr: { mustNot: /employeur/i },
+    hi: { mustNot: /नियोक्ता/ },
+    nl: { mustNot: /werkgever/i },
+    pt: { mustNot: /empregador/i },
+    tl: { mustNot: /employer/i },
+  },
+  // its takedown heading and explanation, not the whole page
+  [GHOST]: {
+    de: { mustNot: /ganze Seite|gesamte Seite/i },
+    es: { mustNot: /toda la página|página entera/i },
+    fr: { mustNot: /toute la page|page entière/i },
+    hi: { mustNot: /पूरा पेज|पूरे पेज/ },
+    nl: { mustNot: /hele pagina|volledige pagina/i },
+    pt: { mustNot: /toda a página|página inteira/i },
+    tl: { mustNot: /buong pahina/i },
+  },
+  // company pages only: not search suggestions or listings
+  [NAMES]: {
+    de: { mustNot: /Such|Vorschl|überall|jede Seite/i },
+    es: { mustNot: /búsqueda|sugerencia|en todo el sitio|todas las páginas/i },
+    fr: { mustNot: /recherche|suggestion|partout|toutes les pages/i },
+    hi: { mustNot: /खोज|सुझाव|हर पेज/ },
+    nl: { mustNot: /zoek|suggest|overal|elke pagina/i },
+    pt: { mustNot: /busca|sugest|em todo o site|todas as páginas/i },
+    tl: { mustNot: /paghahanap|search|mungkahi|lahat ng pahina/i },
+  },
+};
+
+/** The word each language uses for the day, and for the copy search engines read. */
+const DAY: Record<Locale, [RegExp, string]> = {
+  en: [/\bday\b/i, "search engines read"], "en-GB": [/\bday\b/i, "search engines read"],
+  de: [/\bTag\b/, "Suchmaschinen lesen"], es: [/\bdía\b/, "leen los buscadores"], fr: [/\bjour\b/, "lisent les moteurs de recherche"],
+  hi: [/दिन/, "सर्च इंजन पढ़ते हैं"], nl: [/\bdag\b/, "zoekmachines lezen"], pt: [/\bdia\b/, "os buscadores leem"], tl: [/\baraw\b/, "binabasa ng mga search engine"],
+};
+
+describe("each translation carries the same limits in its own words", () => {
+  it.each(Object.keys(LOCAL))("%s", (id) => {
+    for (const l of OTHERS) {
+      const { must = [], mustNot } = LOCAL[id][l];
+      for (const m of must) expect(SHARDS[l][id].description, `${l}: ${m}`).toContain(m);
+      expect(textOf(l, id), `${l}: ${mustNot}`).not.toMatch(mustNot);
+    }
+  });
+
+  it("the closed-posting entry gives the day only for the copy search engines read, in every language", () => {
+    // The page a visitor is left with says "When this page was built, ..."
+    // and names no day: the app replaces the baked copy once its route
+    // commits. Only the crawler copy writes "(2026-11-15)".
+    for (const l of LOCALES) {
+      const [day, crawler] = DAY[l];
+      const sentences = SHARDS[l][CLOSED].description.split(/(?<=[.।:])\s+/);
+      const withDay = sentences.filter((x) => day.test(x));
+      expect(withDay.length, `${l}: one sentence names the day`).toBe(1);
+      expect(withDay[0], `${l}: the sentence that names the day is about the copy search engines read`).toContain(crawler);
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EVERY TRANSLATION AS REVIEWED. The first 12 hex digits of SHA-256 over
+// "<title>\n<description>", per language, in the order of IDS. A change to any
+// of them fails here until the new text is read against what production showed
+// on 15 November and its hash is written in.
+const REVIEWED: Record<Locale, string[]> = {
+  en: ["792098c67644", "e8a61fe6f832", "32fe7d1d6884", "976802109e30", "ea009c54c090", "33e0de88f381"],
+  "en-GB": ["792098c67644", "e8a61fe6f832", "32fe7d1d6884", "976802109e30", "ea009c54c090", "33e0de88f381"],
+  de: ["ba884902f1a6", "ea6411253ce4", "c5a0c302a0b7", "889857918e02", "2ffa7b365b86", "109b3c40738b"],
+  es: ["d57cc520169b", "b3867195d26f", "554bd3632bb7", "6dadb9957e4f", "cfd3e632cabe", "752d6277af08"],
+  fr: ["c01bf723300e", "343e79770bad", "dbeb8eee5ee7", "962355432149", "d38434069100", "b00efdbc2468"],
+  hi: ["3d35f0d76634", "b7e2094b0dd0", "355633d46c1e", "2ad6c4bbd4da", "b0114bb7ac73", "690fe970e706"],
+  nl: ["d8a2c066a63f", "1740870718bd", "c733df0f0412", "cd1ef99dfdc5", "ab5a26078681", "ac41ba148a58"],
+  pt: ["fcea55a782f8", "3f6a509c470b", "8e1b5af59377", "7d5c7c0a1f5b", "c70facbee3c2", "3dce19fe5b61"],
+  tl: ["9b1317d61845", "e8447af0546b", "ba93e1a40e21", "5eb84790b5e7", "1ecce6aa7b23", "ddae1d397634"],
+};
+const hash = (t: Text) => createHash("sha256").update(`${t.title}\n${t.description}`).digest("hex").slice(0, 12);
+
+describe("every translation is the text that was reviewed", () => {
+  it.each(LOCALES)("%s", (l) => {
+    expect(IDS.map((id) => hash(SHARDS[l][id])), `${l}: a reworded entry must be read again against the live read, then its hash updated`).toEqual(REVIEWED[l]);
   });
 });
 
@@ -304,13 +435,17 @@ const PUBLISHED = chunkOf(EN);
 /** The strings before the publish: neither the six nor anything newer than them. */
 const NOT_YET = new Set(changelog.slice(0, AT + IDS.length).map((e) => e.id));
 const UNPUBLISHED = chunkOf(Object.fromEntries(Object.entries(EN).filter(([k]) => !NOT_YET.has(k))));
-const ENTRY = `const lazy=[()=>import("./rb-en_all-ALL00001.js"),()=>import("./en-CHLG0001.js"),()=>import("./en-GB-GBCL0001.js")];export{lazy as a};`;
+/** The other eight languages: each has its changelog chunk and, as the live entry does, another chunk of its name without it. */
+const LANGS = ["en-GB", "de", "es", "fr", "hi", "nl", "pt", "tl"] as const;
+const clChunk = (l: string) => `${l}-${l.replace("-", "").toUpperCase()}CL0001.js`;
+const otherChunk = (l: string) => `${l}-${l.replace("-", "").toUpperCase()}MN0001.js`;
+const ENTRY = `const lazy=[()=>import("./rb-en_all-ALL00001.js"),()=>import("./en-CHLG0001.js"),${LANGS.map((l) => `()=>import("./${otherChunk(l)}"),()=>import("./${clChunk(l)}")`).join(",")}];export{lazy as a};`;
 const filler = (n: number, date: string, what: string) => Array.from({ length: n }, (_, i) => ({ date, title: `${what} ${i}` }));
 
 const dirs: string[] = [];
 afterAll(() => { for (const d of dirs) { try { rmSync(d, { recursive: true, force: true }); } catch { /* best effort */ } } });
 
-function run(section: string, over: { changelog?: string; chunk?: string } = {}): { lines: string[]; calls: string[] } {
+function run(section: string, over: { changelog?: string; chunk?: string; langs?: Partial<Record<string, string>> } = {}): { lines: string[]; calls: string[] } {
   const dir = mkdtempSync(join(tmpdir(), "vd-52e-"));
   dirs.push(dir);
   mkdirSync(join(dir, "bin"));
@@ -322,8 +457,12 @@ function run(section: string, over: { changelog?: string; chunk?: string } = {})
     { match: "^GET https://site\\.test/assets/index-ENTRY001\\.js$", body: ENTRY },
     { match: "^GET https://site\\.test/assets/rb-en_all-ALL00001\\.js$", body: `const s={header:{jobs:"Jobs"}};` },
     { match: "^GET https://site\\.test/assets/en-CHLG0001\\.js$", body: over.chunk ?? PUBLISHED },
-    // The British chunk carries every key too; the section must never read it.
-    { match: "^GET https://site\\.test/assets/en-GB-GBCL0001\\.js$", body: PUBLISHED },
+    // The British chunk carries every key too; the section never reads it in
+    // place of the US one, and reads it at all only after the publish.
+    ...LANGS.flatMap((l) => [
+      { match: `^GET https://site\\.test/assets/${clChunk(l).replace(/\./g, "\\.")}$`, body: over.langs?.[l] ?? chunkOf(SHARDS[l]) },
+      { match: `^GET https://site\\.test/assets/${otherChunk(l).replace(/\./g, "\\.")}$`, body: `const s={header:{jobs:"x"}};export{s as default};` },
+    ]),
   ]));
   writeFileSync(join(dir, "calls.log"), "");
   const text = readFileSync(resolve(ROOT, "scripts/verify-deploy.d", section), "utf8");
@@ -342,6 +481,9 @@ const fails = (lines: string[]) => lines.filter((l) => l.startsWith("FAIL"));
 const show = (lines: string[]) => `\n${lines.join("\n")}`;
 
 const S52E = "52e-changelog-nov-15.sh";
+/** The string section 52e requires in each entry's US description, as its VD52E_MUST list names it. */
+const MUSTS = (/<<'VD52E_MUST'\n([\s\S]*?)\nVD52E_MUST/.exec(readFileSync(resolve(ROOT, "scripts/verify-deploy.d", S52E), "utf8"))?.[1].split("\n") ?? [])
+  .map((x) => ({ id: x.split("|")[0], must: x.split("|").slice(1).join("|") }));
 const TITLES = ENTRIES.map((e) => ({ date: e.date, title: EN[e.id].title }));
 const onPage = (t: { date: string; title: string }) => `PASS  /changelog serves crawlers "${t.title}", dated ${t.date}`;
 const pastPage = (t: { title: string }) => `PASS  "${t.title}" is past the newest 30 entries the crawler page lists, and the US English changelog strings carry it`;
@@ -353,21 +495,55 @@ describe("section 52e judges the six entries on the crawler page", () => {
     expect(listed).toEqual(TITLES.map((t) => `${t.date}|${t.title}`));
   });
 
-  it("before the publish every line is INFO, and only GETs are sent, never to the British chunk", () => {
+  it("lists one string per entry that holds the limit its live read set, each in that entry's description and found once in the whole US shard", () => {
+    const listed = /<<'VD52E_MUST'\n([\s\S]*?)\nVD52E_MUST/.exec(readFileSync(resolve(ROOT, "scripts/verify-deploy.d", S52E), "utf8"))?.[1].split("\n") ?? [];
+    expect(listed.map((x) => x.split("|")[0])).toEqual(IDS);
+    const whole = readFileSync(resolve(ROOT, "src/i18n/changelog/en.json"), "utf8");
+    for (const [id, m] of listed.map((x) => x.split("|"))) {
+      expect(EN[id].description, id).toContain(m);
+      expect(whole.split(m).length - 1, `${m} is found once in the US shard`).toBe(1);
+      expect(m, `${m} holds no quote mark the bundle might escape`).not.toMatch(/['"\u2018\u2019\u201c\u201d]/);
+    }
+    expect(MUSTS.find((x) => x.id === CONNECT)?.must, "the connect line pins the one-connector limit").toMatch(/one custom connector/);
+  });
+
+  it("before the publish every line is INFO, and only GETs are sent, never to the British chunk or another language's", () => {
     const { lines, calls } = run(S52E, { changelog: BEFORE_PAGE, chunk: UNPUBLISHED });
     expect(fails(lines), show(lines)).toEqual([]);
     expect(lines.some((l) => /^INFO .*does not carry the 15 November entries yet/.test(l)), show(lines)).toBe(true);
     expect(lines.filter((l) => l.startsWith("PASS")), show(lines)).toEqual([]);
+    expect(lines, show(lines)).toContain("INFO  the other eight languages' changelog strings are judged after the publish");
     for (const c of calls) expect(c, c).toMatch(/^GET /);
     expect(calls.some((c) => c.includes("en-GB-"))).toBe(false);
+    for (const l of LANGS) expect(calls.some((c) => c.includes(`/assets/${l}-`)), l).toBe(false);
   });
 
-  it("after the publish each title passes on the crawler page with its date, and the page describes an entry of 15 November as newest", () => {
+  it("after the publish each title passes on the crawler page with its date, each description and each language passes, and the page describes an entry of 15 November as newest", () => {
     const { lines } = run(S52E);
     expect(fails(lines), show(lines)).toEqual([]);
     for (const t of TITLES) expect(lines, show(lines)).toContain(onPage(t));
+    for (const { id, must } of MUSTS) expect(lines, show(lines)).toContain(`PASS  the US English changelog strings describe ${id} with "${must}"`);
+    for (const l of LANGS) expect(lines, show(lines)).toContain(`PASS  the ${l} changelog strings (${clChunk(l)}) carry all six 15 November entries`);
     expect(lines, show(lines)).toContain(`PASS  /changelog's description names an entry of 2026-11-15 as the newest, no older than this batch's 2026-11-15`);
     for (const l of lines) expect(l, l).toMatch(/^(PASS|FAIL|INFO|==) /);
+  });
+
+  it("a description reworded under the same title FAILs, though its title passes", () => {
+    const connect = MUSTS.find((x) => x.id === CONNECT)!;
+    const reworded = { ...EN, [CONNECT]: { ...EN[CONNECT], description: EN[CONNECT].description.replace(connect.must, "which can add any number of custom connectors") } };
+    const { lines } = run(S52E, { chunk: chunkOf(reworded) });
+    expect(fails(lines), show(lines)).toEqual([`FAIL  the US English changelog strings carry no "${connect.must}" for ${CONNECT}: its description is not the one read live on 15 November`]);
+    expect(lines, show(lines)).toContain(onPage(TITLES[2]));
+  });
+
+  it("a language whose chunk lacks an entry FAILs, and so does a language the entry names no changelog chunk for", () => {
+    const de = chunkOf(Object.fromEntries(Object.entries(SHARDS.de).filter(([k]) => k !== CONNECT && k !== FOOTER)));
+    const { lines } = run(S52E, { langs: { de, nl: `const s={header:{jobs:"x"}};export{s as default};` } });
+    expect(fails(lines), show(lines)).toEqual([
+      `FAIL  the de changelog strings (${clChunk("de")}) lack ${CONNECT} ${FOOTER}: the publish did not ship the 15 November entries in de`,
+      "FAIL  no nl changelog chunk the served entry names carries workdayCompanyPagesLostTheirFacts: the 15 November entries cannot be shown in nl",
+    ]);
+    for (const l of LANGS.filter((x) => x !== "de" && x !== "nl")) expect(lines, show(lines)).toContain(`PASS  the ${l} changelog strings (${clChunk(l)}) carry all six 15 November entries`);
   });
 
   it("a wrong date FAILs", () => {

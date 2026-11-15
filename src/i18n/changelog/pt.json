@@ -1550,7 +1550,7 @@
     },
     "aJobPageSaysWhenItsEmployerClosedThePosting": {
       "title": "A página de uma vaga diz quando o empregador encerrou o anúncio",
-      "description": "Quando o próprio sistema de recrutamento do empregador respondeu que não oferece mais uma vaga, a página dessa vaga no nosso site agora diz isso, informa o dia em que a página foi gerada e não diz mais nada sobre a vaga. Antes, ela dizia apenas que a vaga não estava mais listada no nosso quadro. Uma vaga que apenas saiu do nosso quadro continua dizendo isso, o que é uma afirmação sobre o nosso quadro, não sobre o empregador."
+      "description": "Quando o próprio sistema de recrutamento do empregador respondeu que deixou de publicar uma vaga, a página dessa vaga no nosso site agora diz isso e não diz mais nada sobre ela. A versão da página que os buscadores leem também informa o dia em que ela foi gerada. A página de uma vaga que apenas saiu do nosso quadro continua dizendo que ela não está mais listada aqui, o que é uma afirmação sobre o nosso quadro, não sobre o empregador."
     },
     "companyPagesUseTheNameTheEmployerUses": {
       "title": "As páginas de empresa usam o nome que o próprio empregador usa",
@@ -1558,7 +1558,7 @@
     },
     "theConnectPageSaysMoreAboutClaudeAndChatGpt": {
       "title": "A página “Conecte seu agente” diz mais sobre o Claude e o ChatGPT",
-      "description": "Agora ela diz quantas das vagas abertas do quadro a sua IA consegue buscar, quais ficam só neste site e quando foram contadas. Para o ChatGPT, ela cita o que a página de preços diz sobre o plano Free, com o dia em que a lemos, e indica a quem usa o Free o plano gratuito do Claude, que permite adicionar um conector personalizado. Para o Claude, ela diz para você adicionar o conector uma vez no navegador do celular, não no app, e que depois o app já o tem, e que um conector já adicionado no Claude aparece no Claude Code quando você entra com a mesma conta."
+      "description": "Agora ela diz quantas das vagas abertas do quadro a sua IA consegue buscar, quais ficam só neste site e quando foram contadas. Para o ChatGPT, ela cita o que a página de preços do ChatGPT diz sobre o plano Free, com o dia em que a lemos, e indica a quem usa o Free o plano gratuito do Claude, que permite adicionar apenas um conector personalizado. Para o Claude, ela diz para você adicionar o conector uma vez no navegador do celular, não no app, e que depois o app já o tem, e que um conector já adicionado no Claude aparece no Claude Code quando você entra com a mesma conta."
     },
     "theGhostJobIndexNoLongerCallsATakedownFilled": {
       "title": "O Índice de vagas fantasmas não chama mais de “preenchida” uma vaga retirada",

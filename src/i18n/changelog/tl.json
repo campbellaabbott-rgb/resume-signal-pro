@@ -1550,7 +1550,7 @@
     },
     "aJobPageSaysWhenItsEmployerClosedThePosting": {
       "title": "Sinasabi ng pahina ng trabaho kapag isinara na ng employer ang posting",
-      "description": "Kapag sumagot na ang sariling hiring system ng employer na hindi na nito inihahain ang isang posting, sinasabi na ito ng pahina ng posting na iyon sa aming site, kasama ang araw na ginawa ang pahina, at wala na itong ibang sinasabi tungkol sa trabaho. Dati, sinasabi lang nito na hindi na nakalista ang posting sa aming board. Ang posting na umalis lang sa aming board ay ganoon pa rin ang sinasabi, na tungkol sa aming board at hindi tungkol sa employer."
+      "description": "Kapag sumagot na ang sariling hiring system ng employer na hindi na nito inihahain ang isang posting, sinasabi na ito ng pahina ng posting na iyon sa aming site, at wala na itong ibang sinasabi tungkol sa trabaho. Ibinibigay rin ng kopya ng pahina na binabasa ng mga search engine ang araw na ginawa ito. Ang pahina ng posting na umalis lang sa aming board ay sinasabi pa ring hindi na ito nakalista rito, na tungkol sa aming board at hindi tungkol sa employer."
     },
     "companyPagesUseTheNameTheEmployerUses": {
       "title": "Ginagamit ng mga pahina ng kumpanya ang pangalang ginagamit ng employer",
@@ -1558,7 +1558,7 @@
     },
     "theConnectPageSaysMoreAboutClaudeAndChatGpt": {
       "title": "Mas marami nang sinasabi ang pahinang “Ikonekta ang iyong agent” tungkol sa Claude at ChatGPT",
-      "description": "Sinasabi na nito kung ilan sa mga bukas na posting ng board ang kayang hanapin ng iyong AI, alin ang nananatili lang sa website na ito, at kung kailan binilang ang mga ito. Para sa ChatGPT, sinisipi nito ang sinasabi ng pricing page tungkol sa Free plan, kasama ang araw na binasa namin ito, at itinuturo ang mga gumagamit ng Free sa libreng plan ng Claude, na puwedeng magdagdag ng isang custom connector. Para sa Claude, sinasabi nitong idagdag ang connector nang isang beses sa browser ng iyong telepono, hindi sa app, at pagkatapos ay nasa app na ito, at na ang connector na naidagdag na sa Claude ay nasa Claude Code kapag nag-sign in ka gamit ang parehong account."
+      "description": "Sinasabi na nito kung ilan sa mga bukas na posting ng board ang kayang hanapin ng iyong AI, alin ang nananatili lang sa website na ito, at kung kailan binilang ang mga ito. Para sa ChatGPT, sinisipi nito ang sinasabi ng pricing page ng ChatGPT tungkol sa Free plan, kasama ang araw na binasa namin ito, at itinuturo ang mga gumagamit ng Free sa libreng plan ng Claude, na puwedeng magdagdag ng isang custom connector. Para sa Claude, sinasabi nitong idagdag ang connector nang isang beses sa browser ng iyong telepono, hindi sa app, at pagkatapos ay nasa app na ito, at na ang connector na naidagdag na sa Claude ay nasa Claude Code kapag nag-sign in ka gamit ang parehong account."
     },
     "theGhostJobIndexNoLongerCallsATakedownFilled": {
       "title": "Hindi na tinatawag ng Index ng mga ghost job na “napunan” ang tinanggal na posisyon",

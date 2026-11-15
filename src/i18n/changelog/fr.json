@@ -1550,7 +1550,7 @@
     },
     "aJobPageSaysWhenItsEmployerClosedThePosting": {
       "title": "La page d'une offre indique quand l'employeur l'a fermée",
-      "description": "Quand le propre système de recrutement de l'employeur a répondu qu'il ne diffuse plus une offre, la page de cette offre sur notre site l'indique désormais, donne le jour où la page a été construite et n'en dit pas plus sur le poste. Auparavant, elle disait seulement que l'offre n'était plus listée sur notre tableau d'offres. Une offre qui a seulement quitté notre tableau le dit toujours : c'est un constat sur notre tableau, pas sur l'employeur."
+      "description": "Quand le propre système de recrutement de l'employeur a répondu qu'une offre n'y est plus diffusée, la page de cette offre sur notre site l'indique désormais et n'en dit pas plus sur le poste. La version de la page que lisent les moteurs de recherche donne aussi le jour où elle a été construite. La page d'une offre qui a seulement quitté notre tableau dit toujours qu'elle n'est plus listée sur notre tableau : c'est un constat sur notre tableau, pas sur l'employeur."
     },
     "companyPagesUseTheNameTheEmployerUses": {
       "title": "Les pages entreprise utilisent le nom que l'employeur se donne",
@@ -1558,7 +1558,7 @@
     },
     "theConnectPageSaysMoreAboutClaudeAndChatGpt": {
       "title": "La page « Connecter votre agent » en dit plus sur Claude et ChatGPT",
-      "description": "Elle indique désormais combien d'offres ouvertes du tableau votre IA peut rechercher, lesquelles restent sur ce site et quand elles ont été comptées. Pour ChatGPT, elle cite ce que dit la page des tarifs sur l'offre Free, avec le jour où nous l'avons lue, et oriente les utilisateurs de Free vers l'offre gratuite de Claude, qui permet d'ajouter un connecteur personnalisé. Pour Claude, elle indique d'ajouter le connecteur une fois dans le navigateur de votre téléphone, pas dans l'application, qui l'a ensuite, et qu'un connecteur déjà ajouté dans Claude est présent dans Claude Code si vous vous connectez avec le même compte."
+      "description": "Elle indique désormais combien d'offres ouvertes du tableau votre IA peut rechercher, lesquelles restent sur ce site et quand elles ont été comptées. Pour ChatGPT, elle cite ce que dit la page des tarifs de ChatGPT sur l'offre Free, avec le jour où nous l'avons lue, et oriente les utilisateurs de Free vers l'offre gratuite de Claude, qui permet d'ajouter un seul connecteur personnalisé. Pour Claude, elle indique d'ajouter le connecteur une fois dans le navigateur de votre téléphone, pas dans l'application, qui l'a ensuite, et qu'un connecteur déjà ajouté dans Claude est présent dans Claude Code si vous vous connectez avec le même compte."
     },
     "theGhostJobIndexNoLongerCallsATakedownFilled": {
       "title": "L'Indice des offres fantômes ne dit plus qu'un poste retiré a été « pourvu »",

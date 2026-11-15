@@ -1550,7 +1550,7 @@
     },
     "aJobPageSaysWhenItsEmployerClosedThePosting": {
       "title": "Eine Stellenseite sagt, wenn der Arbeitgeber die Anzeige geschlossen hat",
-      "description": "Wenn das eigene Bewerbungssystem des Arbeitgebers geantwortet hat, dass es eine Anzeige nicht mehr ausliefert, sagt die Seite dieser Anzeige bei uns das jetzt, nennt den Tag, an dem die Seite erstellt wurde, und sagt sonst nichts mehr über die Stelle. Vorher stand dort nur, dass die Anzeige auf unserer Jobbörse nicht mehr gelistet ist. Eine Anzeige, die nur unsere Jobbörse verlassen hat, sagt das weiterhin: Das ist eine Aussage über unsere Jobbörse, nicht über den Arbeitgeber."
+      "description": "Wenn das eigene Bewerbungssystem des Arbeitgebers geantwortet hat, dass es eine Anzeige nicht mehr ausliefert, sagt die Seite dieser Anzeige bei uns das jetzt und sagt sonst nichts mehr über die Stelle. Die Fassung der Seite, die Suchmaschinen lesen, nennt außerdem den Tag, an dem sie erstellt wurde. Die Seite einer Anzeige, die nur unsere Jobbörse verlassen hat, sagt weiterhin, dass sie hier nicht mehr gelistet ist: Das ist eine Aussage über unsere Jobbörse, nicht über den Arbeitgeber."
     },
     "companyPagesUseTheNameTheEmployerUses": {
       "title": "Unternehmensseiten verwenden den Namen, den der Arbeitgeber selbst nutzt",
@@ -1558,7 +1558,7 @@
     },
     "theConnectPageSaysMoreAboutClaudeAndChatGpt": {
       "title": "Die Seite „Deinen Agenten verbinden“ sagt mehr über Claude und ChatGPT",
-      "description": "Sie sagt jetzt, wie viele der offenen Anzeigen unserer Jobbörse deine KI durchsuchen kann, welche nur auf dieser Website bleiben und wann sie gezählt wurden. Für ChatGPT zitiert sie, was die Preisseite über den Free-Tarif sagt, mit dem Tag, an dem wir sie gelesen haben, und verweist Nutzer des Free-Tarifs auf den kostenlosen Tarif von Claude, mit dem sich ein eigener Connector hinzufügen lässt. Für Claude sagt sie, dass du den Connector einmal im Browser deines Smartphones hinzufügst, nicht in der App, und die App ihn danach hat, und dass ein bereits in Claude hinzugefügter Connector in Claude Code da ist, wenn du dich mit demselben Konto anmeldest."
+      "description": "Sie sagt jetzt, wie viele der offenen Anzeigen unserer Jobbörse deine KI durchsuchen kann, welche nur auf dieser Website bleiben und wann sie gezählt wurden. Für ChatGPT zitiert sie, was die Preisseite von ChatGPT über den Free-Tarif sagt, mit dem Tag, an dem wir sie gelesen haben, und verweist Nutzer des Free-Tarifs auf den kostenlosen Tarif von Claude, mit dem du nur einen eigenen Connector hinzufügen kannst. Für Claude sagt sie, dass du den Connector einmal im Browser deines Smartphones hinzufügst, nicht in der App, und die App ihn danach hat, und dass ein bereits in Claude hinzugefügter Connector in Claude Code da ist, wenn du dich mit demselben Konto anmeldest."
     },
     "theGhostJobIndexNoLongerCallsATakedownFilled": {
       "title": "Der Ghost-Job-Index nennt eine entfernte Stelle nicht mehr „besetzt“",

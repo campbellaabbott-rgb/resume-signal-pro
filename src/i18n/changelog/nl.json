@@ -1550,7 +1550,7 @@
     },
     "aJobPageSaysWhenItsEmployerClosedThePosting": {
       "title": "Een vacaturepagina zegt wanneer de werkgever de vacature heeft gesloten",
-      "description": "Als het eigen wervingssysteem van de werkgever heeft geantwoord dat het een vacature niet meer aanbiedt, zegt de pagina van die vacature op onze site dat nu, met de dag waarop de pagina is gemaakt, en zegt verder niets over de functie. Eerder stond er alleen dat de vacature niet meer op ons vacaturebord stond. Een vacature die alleen van ons bord is verdwenen, zegt dat nog steeds: dat gaat over ons bord, niet over de werkgever."
+      "description": "Als het eigen wervingssysteem van de werkgever heeft geantwoord dat het een vacature niet meer aanbiedt, zegt de pagina van die vacature op onze site dat nu en zegt verder niets over de functie. De versie van de pagina die zoekmachines lezen, noemt ook de dag waarop de pagina is gemaakt. De pagina van een vacature die alleen van ons bord is verdwenen, zegt nog steeds dat ze hier niet meer staat: dat gaat over ons bord, niet over de werkgever."
     },
     "companyPagesUseTheNameTheEmployerUses": {
       "title": "Bedrijfspagina's gebruiken de naam die de werkgever zelf gebruikt",
@@ -1558,7 +1558,7 @@
     },
     "theConnectPageSaysMoreAboutClaudeAndChatGpt": {
       "title": "De pagina ‘Verbind je agent’ zegt meer over Claude en ChatGPT",
-      "description": "Ze zegt nu hoeveel van de open vacatures op ons bord je AI kan doorzoeken, welke alleen op deze website blijven en wanneer ze zijn geteld. Voor ChatGPT citeert ze wat de prijspagina over het Free-abonnement zegt, met de dag waarop we die lazen, en verwijst ze gebruikers van Free naar het gratis abonnement van Claude, waarmee je één eigen connector kunt toevoegen. Voor Claude zegt ze dat je de connector één keer toevoegt in de browser van je telefoon, niet in de app, waarna de app hem heeft, en dat een connector die je al in Claude hebt toegevoegd in Claude Code staat als je inlogt met hetzelfde account."
+      "description": "Ze zegt nu hoeveel van de open vacatures op ons bord je AI kan doorzoeken, welke alleen op deze website blijven en wanneer ze zijn geteld. Voor ChatGPT citeert ze wat de prijspagina van ChatGPT over het Free-abonnement zegt, met de dag waarop we die lazen, en verwijst ze gebruikers van Free naar het gratis abonnement van Claude, waarmee je één eigen connector kunt toevoegen. Voor Claude zegt ze dat je de connector één keer toevoegt in de browser van je telefoon, niet in de app, waarna de app hem heeft, en dat een connector die je al in Claude hebt toegevoegd in Claude Code staat als je inlogt met hetzelfde account."
     },
     "theGhostJobIndexNoLongerCallsATakedownFilled": {
       "title": "De Spookvacature-index noemt een weggehaalde vacature niet meer ‘vervuld’",
