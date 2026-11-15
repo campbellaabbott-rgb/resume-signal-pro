@@ -86,11 +86,12 @@ const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talents?|headhunt|person
 // verifier read from a company-name field (its nameFrom says so) is screened
 // as it stands (the review, 2026-10-26).
 const AGENCY_NAME = /\b(staffing|recruit(ing|ment|er)?s?|headhunt|personnel|manpower|employment\s+(agency|services)|placements?\b|temp\s|outsourc|bpo\b|int[eé]rim|travail\s+temporaire|trabajo\s+temporal)\b|\b(uitzend|zeitarbeit|personaldienst|jobandtalent)/i;
-// Corporate-only policy: public-sector entities never enter the catalog
-// (mobile audit 2026-07-18 found City of Baltimore et al. had slipped in
-// through census waves — 22 boards curated out, these patterns keep the
-// door shut). Word-boundary specific to avoid nuking "Gibson County Coal
-// LLC"-style private names: require the GOVERNMENTAL phrase, not the word.
+// Public-sector names. These once kept government employers out (mobile audit
+// 2026-07-18: City of Baltimore et al., 22 boards curated out); since the
+// 2026-08-31 charter public employers are carried and this gate refuses no
+// board. It stays defined for the tooling that reads it. Word-boundary
+// specific so "Gibson County Coal LLC" is not a government: it needs the
+// GOVERNMENTAL phrase, not the word.
 const GOV_BLOCK = /\b(city of|county of|state of|commonwealth of|government of|unified school|school district|public schools|public library|court of appeals|county commissioners|conservation district|health district|sheriff|police department|fire department|township of|municipality)\b/i;
 const JUNK_NAME = /\b(demo|test|sample|sandbox|placeholder)\b/i;
 const TOKEN_BLOCK = /(demo|test|sample|sandbox|staging|-dev\d*\b)/i;
@@ -199,6 +200,14 @@ const carriersByName = nameIndex(catalogue);
 // never reaches a submit, so a collision sent to an Oracle carrier bought the
 // agent no reach at all.
 const DRIVABLE = new Set(["breezy", "teamtailor", "personio", "pinpoint"]);
+
+// OD2 (2026-11-08): NO NEW SMARTRECRUITERS BOARD MERGES WHILE THIS IS SET. A
+// new company's /v1/companies/ list is disallowed by its robots.txt for every
+// agent but LinkedInBot, and the owner's decision allows reading only the
+// boards we already carry. verify-all no longer probes new SR candidates
+// without --allow-sr; this holds any that arrive here anyway, printed, never
+// appended. The date is the decision's: clear it only on the owner's word.
+const SR_MERGE_HELD = "2026-11-08";
 console.log(`catalog: ${existingTokens.size} tokens, ${carriersByName.size} names`);
 
 // NUMERIC ENTITIES COME IN TWO SPELLINGS AND ONLY ONE WAS HANDLED.
@@ -245,6 +254,7 @@ async function overlapWithCarriers(b, carrierBoards) {
   return o.share > OVERLAP_HOLD_SHARE ? { hold: `${said}: one employer's postings on two vendors is for a person to read` } : { said };
 }
 const collisionHeld = [];
+const srHeld = [];
 
 const keep = {};
 const dropped = { blockedName: 0, blockedToken: 0, dupe: 0, nameCollision: 0 };
@@ -256,6 +266,7 @@ for (const vendor of VENDORS) {
     let name = decodeEntities(String(b.name ?? "")).trim();
     const tokenKey = `${vendor}:${b.token.toLowerCase()}`;
     const nameKey = nameKeyOf(name);
+    if (vendor === "smartrecruiters" && SR_MERGE_HELD) { srHeld.push(`${b.token} "${name}"`); continue; }
     if (TOKEN_BLOCK.test(b.token)) { dropped.blockedToken++; continue; }
     if (MILL_BLOCK.has(tokenKey)) { dropped.confirmedMill = (dropped.confirmedMill ?? 0) + 1; continue; }
     // Content fingerprint, small pinpoint boards only (sandboxes measured
@@ -347,11 +358,13 @@ const totals = Object.entries(keep).filter(([, l]) => l.length)
   .map(([v, list]) => `${v}=${list.length} boards/${list.reduce((s, x) => s + x.count, 0)}p`);
 console.log("Post-filter:", totals.join(", "));
 if (collisionHeld.length) dropped.collisionHeld = collisionHeld.length;
+if (srHeld.length) dropped.smartrecruitersHeld = srHeld.length;
 console.log("Dropped:", JSON.stringify(dropped));
 if (collisionHeld.length) {
   console.log(`Held for review, name collisions (D6): ${collisionHeld.length}`);
   for (const h of collisionHeld) console.log(`  ${h}`);
 }
+if (srHeld.length) console.log(`Held, smartrecruiters (OD2, SR_MERGE_HELD ${SR_MERGE_HELD}): ${srHeld.length} not merged: ${srHeld.slice(0, 10).join("; ")}${srHeld.length > 10 ? " ..." : ""}`);
 console.log(`Mill-screen worklist (>=100 postings): ${millWorklist.length} boards`);
 fs.writeFileSync("round3-mill-worklist.json", JSON.stringify(millWorklist, null, 1));
 

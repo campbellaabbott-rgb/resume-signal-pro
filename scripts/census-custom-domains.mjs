@@ -43,7 +43,8 @@
 //
 // DISCOVERY ONLY. A CNAME proves where a hostname points, and a feed proves
 // jobs exist today. Neither proves the board belongs in the catalog — the
-// corporate-only rule and the merge quality gates still apply.
+// census name rule and the merge gates still apply (agencies carry with a
+// disclosure flag and public employers carry, since 2026-08-31).
 //
 //   node scripts/census-custom-domains.mjs top-1m.csv .co.uk 4000 out.json
 
@@ -149,7 +150,7 @@ async function main() {
   writeFileSync(outPath, JSON.stringify(verified, null, 1));
   console.log(`\n  -> ${outPath}`);
   console.log("  NOT catalog-ready: each still needs token-first dedupe and the");
-  console.log("  corporate-only rule applied by the census-merge protocol.");
+  console.log("  census-merge protocol's name rule and merge gates (agencies are carried and disclosed).");
 }
 
 main();

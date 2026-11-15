@@ -206,3 +206,70 @@ describe("no script reads the catalogue by regex but the named few", () => {
     expect(parsed).toEqual(bundle.map((r) => [r[0], r[1], r[2]]));
   });
 });
+
+// ── OD8 and OD2 (2026-11-08) ────────────────────────────────────────────────
+
+const SCRATCH_CATALOGUE = [
+  "export const JOB_SOURCES = [",
+  '  { name: "Visa", source: "smartrecruiters", token: "visa" },',
+  "];",
+  "",
+].join("\n");
+
+describe("OD8: the SmartRecruiters role-mix rule is retired", () => {
+  const verify = strip(readFileSync(resolve(ROOT, "scripts/verify-all.mjs"), "utf8"));
+
+  it("verify-all carries no professional or retail word list and no role-mix gate", () => {
+    expect(verify).not.toMatch(/\broleMixOk\b/);
+    expect(verify).not.toMatch(/\bconst (PRO|RETAIL)\b/);
+  });
+
+  it("the SmartRecruiters verifier still requires the posting floor every vendor meets", () => {
+    const sr = /smartrecruiters: async \(t\) => \{[\s\S]*?\n {2}\},/.exec(verify)?.[0] ?? "";
+    expect(sr, "the SR verifier was not found").not.toBe("");
+    expect(sr).toMatch(/total < MIN_POSTINGS\) return null/);
+  });
+
+  it("no census script still prints the corporate-only rule, which the 2026-08-31 charter retired", () => {
+    for (const f of ["census-custom-domains.mjs", "census-drivable-yield.mjs", "resolve-teamtailor-tokens.mjs", "merge-all.mjs", "verify-all.mjs"]) {
+      const text = readFileSync(resolve(ROOT, "scripts", f), "utf8");
+      expect(text, f).not.toMatch(/corporate-only/i);
+    }
+  });
+});
+
+describe("OD2: no new SmartRecruiters board is read or merged", () => {
+  it("verify-all holds SmartRecruiters candidates unprobed without --allow-sr", () => {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), "od2-verify-")));
+    try {
+      writeFileSync(join(dir, "census.json"), JSON.stringify({ smartrecruiters: ["acmewidgets"], greenhouse: [] }));
+      const r = spawnSync(process.execPath, [resolve(ROOT, "scripts/verify-all.mjs"), "census.json", "out.json"], { cwd: dir, encoding: "utf8" });
+      expect(r.status, r.stderr).toBe(0);
+      expect(r.stdout).toContain("smartrecruiters: 1 candidates HELD, not probed");
+      expect(JSON.parse(readFileSync(join(dir, "out.json"), "utf8")).smartrecruiters).toEqual([]);
+      expect(readFileSync(resolve(ROOT, "scripts/verify-all.mjs"), "utf8")).toMatch(/vendor === "smartrecruiters" && !ALLOW_SR/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("merge-all --apply appends no SmartRecruiters row while SR_MERGE_HELD is set, and says so", () => {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), "od2-merge-")));
+    try {
+      mkdirSync(join(dir, "supabase/functions/job-board"), { recursive: true });
+      writeFileSync(join(dir, "supabase/functions/job-board/sources.ts"), SCRATCH_CATALOGUE);
+      writeFileSync(join(dir, "verified.json"), JSON.stringify({
+        smartrecruiters: [{ token: "acmewidgets", name: "Acme Widgets", count: 12 }],
+        lever: [{ token: "betafoods", name: "Beta Foods", count: 12 }],
+      }));
+      const r = spawnSync(process.execPath, [resolve(ROOT, "scripts/merge-all.mjs"), "verified.json", "--apply"], { cwd: dir, encoding: "utf8" });
+      expect(r.status, r.stderr).toBe(0);
+      expect(r.stdout).toMatch(/Held, smartrecruiters \(OD2, SR_MERGE_HELD 2026-11-08\): 1 not merged/);
+      const after = readFileSync(join(dir, "supabase/functions/job-board/sources.ts"), "utf8");
+      expect(after).not.toContain("acmewidgets");
+      expect(after, "the other vendors still merge").toContain('{ name: "Beta Foods", source: "lever", token: "betafoods" }');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

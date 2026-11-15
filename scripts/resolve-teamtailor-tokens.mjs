@@ -155,7 +155,7 @@ async function main() {
   writeFileSync(outPath, JSON.stringify(out, null, 1));
   console.log(`\n  -> ${outPath}`);
   console.log("  Resolved rows are ordinary sources.ts entries: {source:'teamtailor', token}.");
-  console.log("  Still subject to token-first dedupe and the corporate-only rule.");
+  console.log("  Still subject to token-first dedupe and the census-merge protocol's name rule and gates.");
 }
 
 main();
