@@ -6,6 +6,7 @@ import { getOnetExpectation } from "./onet-expectations.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
 import { detectResumeLanguage, formatLanguageForPrompt, languageNoticeOf } from "./resume-language.ts";
+import { calculateRuleBasedAtsScore, ruleBasedAtsParts } from "./rule-score.ts";
 import { applyScoreProjection, buildScoreProjection, fixPlanOf } from './score-projection.ts';
 import { groundedIn, normalizeForGrounding } from "./grounding.ts";
 import { hasMetric } from "./bullet-metrics.ts";
@@ -560,7 +561,19 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // 2026-11-09.2 (fix/cost-wave, the integration): both lanes' changes above together.
 // cost/ai and cost/heartbeat each stamped 2026-11-09.1 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "free-keyword-scan.2026-11-09.2";
+// 2026-11-15.1 (hotfix NB-1, bug audit 2026-11-15): the rule-based score the
+// AI's reading is held to moved into rule-score.ts and reads a résumé in
+// Spanish, French, German, Portuguese, Dutch, Italian, Hindi or Tagalog in its
+// own language: its own section words count, and the keyword share the
+// English lists cannot read is what an English CV of the field typically
+// reaches, never less than what they do read. The same nurse's CV scored 62 in
+// English, 37 in Spanish and 33 in German, holding the Spanish and German
+// headlines about 25 points under the English one; it now scores 62, 62 and
+// 58. English, unidentified and unsupported languages score exactly as before,
+// and the clamp and the score band read the rule score as they did. Each scan
+// prints its rule score's parts (numbers only) so the unread share can be
+// checked against real English scans.
+const FN_BUILD = "free-keyword-scan.2026-11-15.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1076,66 +1089,6 @@ const INDUSTRY_ATS_BENCHMARKS: Record<string, number> = {
   administrative: 60, library: 63, clergy: 60, mining: 62,
   maritime: 63, landscaping: 57, janitorial: 55,
 };
-
-/**
- * Rule-based ATS score (0–90). Measures quantification, industry keyword coverage,
- * resume length, and section structure — all things an actual ATS would care about.
- * Used to clamp the AI's score within ±12 points, preventing wild outliers.
- * Seniority-adjusted: executives get relaxed length/quant penalties.
- */
-function calculateRuleBasedAtsScore(
-  resumeText: string,
-  industry: string,
-  seniority?: SeniorityDetection,
-): number {
-  const lines = resumeText.split('\n').map(l => l.trim()).filter(Boolean);
-  const bullets = lines.filter(l =>
-    l.startsWith('•') || l.startsWith('-') || l.startsWith('*') ||
-    /^[•‣◦⁃∙]/.test(l) || (l.length > 30 && l.length < 300)
-  );
-
-  const level = seniority?.level ?? 'mid';
-
-  // Quantification: % of bullets containing a number.
-  // Executives rely more on narrative scope than bullet metrics — relax the weight.
-  const bulletsWithMetrics = bullets.filter(b => /\d/.test(b)).length;
-  const rawQuantPct = bullets.length > 0 ? (bulletsWithMetrics / Math.max(bullets.length, 1)) * 100 : 40;
-  // Executives with any metrics get a floor boost; entry-level get a floor so sparse resumes aren't crushed.
-  const quantScore =
-    level === 'executive' ? Math.max(rawQuantPct, 45)
-    : level === 'entry' ? Math.max(rawQuantPct, 30)
-    : rawQuantPct;
-
-  // Industry keyword coverage
-  const kwList = INDUSTRY_KEYWORDS[industry];
-  // Whole tokens only (S13-004): "or" is not in "for", "icu" not in "curriculum".
-  const primaryHits = kwList ? kwList.primary.filter(kw => resumeHasTerm(resumeText, kw)).length : 0;
-  const primaryTotal = kwList ? Math.max(kwList.primary.length, 1) : 1;
-  const keywordCoverage = (primaryHits / primaryTotal) * 100;
-
-  // Length: optimal depends on seniority
-  const wordCount = resumeText.split(/\s+/).filter(Boolean).length;
-  const lengthScore =
-    level === 'executive'
-      // Executives can have 2-3 page resumes (600-1500 words) — don't penalize
-      ? (wordCount < 200 ? 40 : wordCount < 400 ? 65 : wordCount < 1800 ? 85 : 70)
-    : level === 'entry'
-      // Entry: 1 page ideal (300-500 words)
-      ? (wordCount < 100 ? 25 : wordCount < 250 ? 55 : wordCount < 700 ? 85 : 65)
-    : (wordCount < 150 ? 30 : wordCount < 300 ? 55 : wordCount < 1100 ? 85 : 65);
-
-  // Section structure
-  const hasExperience = /\b(experience|employment|work history|career)\b/i.test(resumeText);
-  const hasEducation = /\b(education|degree|university|college|bachelor|master|phd)\b/i.test(resumeText);
-  const hasSkills = /\b(skills|technologies|technical|competencies|tools)\b/i.test(resumeText);
-  // Executives don't always have a skills section — relax that penalty
-  const structureScore = level === 'executive'
-    ? (hasExperience ? 55 : 0) + (hasEducation ? 45 : 0)
-    : (hasExperience ? 40 : 0) + (hasEducation ? 30 : 0) + (hasSkills ? 30 : 0);
-
-  const raw = quantScore * 0.30 + keywordCoverage * 0.35 + lengthScore * 0.15 + structureScore * 0.20;
-  return Math.round(Math.max(20, Math.min(90, raw)));
-}
 
 // Retry helper for AI API calls with exponential backoff
 const MAX_AI_RETRIES = 2;
@@ -2513,7 +2466,7 @@ ${resumeForPrompt}
     const buildRuleBasedFallbackAnalysis = () => {
       usedRuleBasedFallback = true;
       const fallbackIndustry = industryDetection.industry !== 'general' ? industryDetection.industry : 'general';
-      const fallbackScore = calculateRuleBasedAtsScore(resumeText, fallbackIndustry, seniorityDetection);
+      const fallbackScore = calculateRuleBasedAtsScore(resumeText, fallbackIndustry, seniorityDetection, resumeLanguage.language);
       const lower = resumeText.toLowerCase();
       const hasSections = {
         hasContact: /@|phone|\(\d{3}\)/.test(lower),
@@ -3445,8 +3398,12 @@ ${resumeForPrompt}
     }
 
     // Rule-based ATS score — clamp AI's number within ±12 of the server-computed value
-    // to prevent flattering hallucinations or implausibly low scores.
-    const ruleBasedAts = calculateRuleBasedAtsScore(resumeText, finalIndustry, seniorityDetection);
+    // to prevent flattering hallucinations or implausibly low scores. A résumé
+    // in a supported language other than English is read in its own language
+    // (rule-score.ts, register NB-1); the line below prints numbers only.
+    const ruleParts = ruleBasedAtsParts(resumeText, finalIndustry, seniorityDetection, resumeLanguage.language);
+    const ruleBasedAts = ruleParts.score;
+    console.log(`[FREE-KEYWORD-SCAN] Rule score: ${ruleBasedAts} (read in ${ruleParts.readIn === 'own-language' ? ruleParts.language : 'en'}; keyword hits ${ruleParts.primaryHits}/${ruleParts.primaryTotal}, structure ${ruleParts.structureScore}, length ${ruleParts.lengthScore})`);
     const aiAts = typeof analysis.atsScoreEstimate === 'number' ? analysis.atsScoreEstimate : ruleBasedAts;
     analysis.atsScoreEstimate = Math.max(ruleBasedAts - 12, Math.min(ruleBasedAts + 12, aiAts));
 
