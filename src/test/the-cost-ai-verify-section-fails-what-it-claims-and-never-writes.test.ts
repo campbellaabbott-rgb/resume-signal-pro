@@ -117,7 +117,7 @@ const RETIRED_ANSWERS: Route[] = RETIRED.map((fn) => ({
   match: `^POST https://p\\.supabase\\.co/functions/v1/${fnRe(fn)} `, status: 410,
   body: JSON.stringify({ error: "This endpoint has been retired.", code: "retired" }),
 }));
-const WARM_REFUSAL: Route = { match: "^POST https://p\\.supabase\\.co/functions/v1/warm\\-up \\{\\}$", status: 401, body: JSON.stringify({ success: false, error: "Unauthorized: the full warm-up needs the admin key. Name one function as target to warm it alone.", code: "admin_key_required" }) };
+const WARM_REFUSAL: Route = { match: "^POST https://p\\.supabase\\.co/functions/v1/warm\\-up \\{\\}$", status: 200, body: JSON.stringify({ success: false, error: "Unauthorized: the full warm-up needs the admin key, so nothing was warmed. Name one function as target to warm it alone.", code: "admin_key_required" }) };
 const WARM_UNKNOWN: Route = { match: "^POST https://p\\.supabase\\.co/functions/v1/warm\\-up .*\"target\"", status: 400, body: JSON.stringify({ success: false, error: "Unknown warm-up target.", code: "unknown_target" }) };
 
 const good = (over: Route[] = [], build: (fn: string) => string | null = NEW, o: { allow?: string; noAge?: string } = {}): Route[] =>
@@ -153,7 +153,7 @@ describe("section 99zzzzzz (cost audit, lane ai)", () => {
     const pass = passes(lines);
     expect(pass.filter((l) => /preflight x-fn-build/.test(l))).toHaveLength(FNS.length);
     for (const fn of RETIRED) expect(pass.some((l) => l.startsWith(`PASS  ${fn} answers 410 retired`)), `${fn}\n${out}`).toBe(true);
-    expect(pass.some((l) => /^PASS  warm-up answers 401 admin_key_required/.test(l)), out).toBe(true);
+    expect(pass.some((l) => /^PASS  warm-up answers 200 admin_key_required/.test(l)), out).toBe(true);
     expect(pass.some((l) => /^PASS  warm-up answers 400 unknown_target/.test(l)), out).toBe(true);
     expect(pass.some((l) => /^PASS  warm-up preflight allows x-admin-key/.test(l)), out).toBe(true);
     for (const fn of MAX_AGE) expect(pass.some((l) => l.startsWith(`PASS  ${fn} preflight carries Access-Control-Max-Age 7200`)), fn).toBe(true);
@@ -191,6 +191,20 @@ describe("section 99zzzzzz (cost audit, lane ai)", () => {
     ]);
   });
 
+  it("a keyless full warm-up refused with a 401, or answered success true beside its code, is a FAIL: the monitors count a 401 as a refused cron call", () => {
+    const body = JSON.parse(WARM_REFUSAL.body as string);
+    for (const [status, b, why] of [[401, body, /HTTP 401/], [200, { ...body, success: true }, /success true/]] as const) {
+      const { lines, out } = run(good([{ match: WARM_REFUSAL.match, status, body: JSON.stringify(b) }]));
+      expect(fails(lines), out).toEqual([expect.stringMatching(new RegExp("^FAIL  warm-up does not answer as a full warm-up .*" + why.source))]);
+    }
+  });
+
+  it("the stale health-page line is gone: the page sends the key in the body", () => {
+    const { lines } = theGoodRun();
+    expect(lines.some((l) => /adminAuthHeaders|integrator item/.test(l))).toBe(false);
+    expect(lines.some((l) => /^INFO  the \/health-check page's Warm Up button sends the stored admin key as the body's adminKey/.test(l))).toBe(true);
+  });
+
   it("a warm-up that warmed for a stranger, or for a name off its list, is a FAIL", () => {
     const warmed = JSON.stringify({ success: true, summary: { warm: 16 }, results: [] });
     const { lines, out } = run(good([
@@ -198,7 +212,7 @@ describe("section 99zzzzzz (cost audit, lane ai)", () => {
       { match: "^POST https://p\\.supabase\\.co/functions/v1/warm\\-up .*\"target\"", status: 200, body: warmed },
     ]));
     expect(fails(lines), out).toEqual([
-      expect.stringMatching(/^FAIL  warm-up does not answer as a full warm-up .*HTTP 200.*it carries results/),
+      expect.stringMatching(/^FAIL  warm-up does not answer as a full warm-up .*success true.*it carries results/),
       expect.stringMatching(/^FAIL  warm-up does not answer as a target off the list .*HTTP 200/),
     ]);
   });

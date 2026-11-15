@@ -7,7 +7,7 @@ import { validateTailoredResume, type TailoredResumeShape } from "../_shared/res
 import { roleGuidance } from "../_shared/application-questions.ts";
 import { APPLY_KIT_PRODUCT_TYPES } from "../_shared/apply-kit.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
-import { CHAIN_DEADLINE_MS, callAIWithModelFallback, describeError, describeReply } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, callAIWithModelFallback, describeError, describeReply, logAiUsage } from "../_shared/ai-fallback.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { accountProStanding } from "../_shared/pro.ts";
@@ -540,6 +540,7 @@ Prepare the tailored application package.`;
     }
 
     const data = await response.json();
+    logAiUsage("generate-apply-package", modelUsed, data);
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall || toolCall.function.name !== "submit_apply_package") {
       // Its shape, never its words: the reply carries the person's résumé (S13-064).
@@ -572,7 +573,7 @@ Prepare the tailored application package.`;
     if (!grounding.ok) {
       console.warn("[GENERATE-APPLY-PACKAGE] grounding rejected draft:", grounding.issues.slice(0, 6));
       try {
-        const { response: r2 } = await callAIWithFallback(
+        const { response: r2, modelUsed: model2 } = await callAIWithFallback(
           LOVABLE_API_KEY,
           {
             messages: [
@@ -588,6 +589,7 @@ Prepare the tailored application package.`;
         );
         if (r2.ok) {
           const d2 = await r2.json();
+          logAiUsage("generate-apply-package.regenerate", model2, d2);
           const tc2 = d2.choices?.[0]?.message?.tool_calls?.[0];
           if (tc2?.function?.arguments) {
             const res2 = JSON.parse(tc2.function.arguments);

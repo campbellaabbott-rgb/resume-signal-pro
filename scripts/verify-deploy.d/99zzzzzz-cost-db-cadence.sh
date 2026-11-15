@@ -8,7 +8,7 @@
 # row, the stats rollup rows (a table the anon key reads by policy) and the
 # prerendered Ghost Job Index:
 #   STEP 1, applied before the functions (20261109100000, 110000, 120000,
-#   130000, 131000):
+#   131000, and 190000 last in the step):
 #   - board-recency-ladder is no longer scheduled (audit #3);
 #   - refresh-explore-role-rows is no longer scheduled, and the explore row
 #     the new writer produces carries none of field_curves, chip_coverage,
@@ -85,7 +85,7 @@ const s2=[];
 if(J[T.rollup]&&J[T.rollup].ch_schedule===NEW.rollup)s2.push(T.rollup+" on "+NEW.rollup);
 if(J[T.ghost]&&J[T.ghost].ch_schedule===NEW.ghost)s2.push(T.ghost+" on "+NEW.ghost);
 const step1=s1.length>0,step2=s2.length>0;
-out("INFO  step 1 (before the functions: 20261109100000, 110000, 120000, 130000, 131000) "+(step1?"applied: "+s1.join("; "):"not applied: no mark of it in cron health")+". Step 2 (after the functions: 121000, 122000) "+(step2?"applied: "+s2.join("; "):"not applied"));
+out("INFO  step 1 (before the functions: 20261109100000, 110000, 120000, 131000, 190000) "+(step1?"applied: "+s1.join("; "):"not applied: no mark of it in cron health")+". Step 2 (after the functions: 121000, 122000) "+(step2?"applied: "+s2.join("; "):"not applied"));
 if(step2&&!step1)out("FAIL  step 2 shows in cron health ("+s2.join("; ")+") with no mark of step 1: the after-functions files went in first, or step 1 did not take");
 out("INFO  runs in the last 24h: "+[T.ladder,T.role,T.facets,T.rollup,T.ghost].map((n)=>n+" "+(J[n]?J[n].ch_runs+" (longest "+J[n].ch_max_seconds+" s)":"-")).join(", "));
 
@@ -103,10 +103,11 @@ gone(T.role,"20261109110000","no page reads the role rows it rebuilt every six h
 {const p=J[T.purge],h=J[T.hourly];
   if(!p)out("INFO  "+T.purge+" is not scheduled, so 20261109131000 had no purge to rewrite");
   else if(!h)out("INFO  "+T.hourly+" is not scheduled, so the nightly purge keeps its report-cache delete as the only one ("+desc(p)+")");
+  else if(h.ch_active===false)out("INFO  "+T.hourly+" is switched off, so the nightly purge keeps its report-cache delete as the only one that runs, and 20261109131000 leaves it as it found it ("+desc(p)+")");
   else if(!step1)out("INFO  before 20261109131000: "+T.purge+" ("+desc(p)+") repeats the report-cache delete "+T.hourly+" ("+h.ch_schedule+") already runs; the deploy removes it and puts a 2min timeout in the command");
   else if(p.ch_timeout&&p.ch_active)out("PASS  "+T.purge+" sets its own timeout ("+p.ch_timeout+"), the mark that 20261109131000 rewrote it without the report-cache delete "+T.hourly+" runs every hour");
   else out("FAIL  "+T.purge+": "+desc(p)+". Step 1 shows, and 20261109131000 leaves the purge active with a timeout in its command")}
-if(!droppers.length)out(step1?"INFO  no one-shot index dropper or watcher is left scheduled (20261109130000). Which indexes went cannot be read with this key; the migration self-check refuses a dropper aimed at a kept twin":"INFO  before 20261109130000: no one-shot index dropper is scheduled; the deploy arms one per duplicate and a watcher that retires them");
+if(!droppers.length)out(step1?"INFO  no one-shot index dropper or watcher is left scheduled (20261109190000). Which indexes went cannot be read with this key; the migration self-check refuses a dropper aimed at a kept twin":"INFO  before 20261109190000: no one-shot index dropper is scheduled; the deploy arms one per duplicate and a watcher that retires them");
 for(const n of droppers){const r=J[n];const runs=Number(r.ch_runs)||0,failed=Number(r.ch_failed)||0;
   if(runs>=15)out("FAIL  "+n+" is still scheduled after "+runs+" runs (last "+(r.ch_last_status||"none")+"): the watcher has not retired it, so it runs every minute for nothing");
   else if(failed>=3)out("FAIL  "+n+" failed "+failed+" of "+runs+" runs (last "+(r.ch_last_status||"none")+")");

@@ -141,6 +141,13 @@ describe("section 99zzzzzz (cost audit, db-heavy)", () => {
     expect(p.some((l) => /^PASS {2}V1 the vendor wall answers the facets row's own pass: 3 vendors, openTotal 362,483/.test(l)), out).toBe(true);
   });
 
+  it("the owner is handed the measurement the unscheduled aggregates writer waits for, and no claim that a row is being read", () => {
+    const { lines, out } = run(routes());
+    expect(lines.some((l) => /^INFO {2}OWNER, the measurement 20261109170000 waits for: SELECT calls.* FROM pg_stat_statements .*get_country_facet.*get_salary_benchmarks/.test(l)), out).toBe(true);
+    expect(lines.some((l) => /^INFO {2}L1 answered in .*schedules no writer, so each counts the board live/.test(l)), out).toBe(true);
+    expect(out).not.toMatch(/:14 run|hourly row/);
+  });
+
   it("a queue the client roles can read FAILs, whether it shows rows or an empty answer", () => {
     for (const body of ["[]", JSON.stringify([{ id: "greenhouse:acme:1", queued_at: AS_OF }])]) {
       const { lines, out } = run(routes({ queue: { status: 200, body } }));

@@ -81,7 +81,7 @@ import { accountAnswer, addressOwnerOf, type AddressOwner, type PlanRow } from "
 // check those rows are asked of Stripe by customer; _shared/pro.ts no longer
 // nulls a row's customer when the address search finds nothing.
 // 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-// Also (Worth doing, small sequential hops): a signed-in caller's plan rows are asked for alongside the address's cache row, and the two answers that write nothing first (a fresh cache row, the over-allowance stale answer) use that read; a live check still reads them again after its writes.
+// Also (Worth doing, small sequential hops): a signed-in caller's plan rows are asked for alongside the address's cache row, and the two answers that write nothing first (a fresh cache row, the over-allowance stale answer) use that read; a live check still reads them again after its writes. Review 2026-11-15, same unshipped build: a request with fresh: true goes live before anything is read, so it no longer starts the early read; a row found too old still costs the live check that one extra read, the stated trade.
 const FN_BUILD = "check-subscription.2026-11-10.2";
 
 const corsHeaders = {
@@ -218,7 +218,13 @@ serve(async (req) => {
     // The account's plan rows, asked for together with the cache row: the
     // cached and the over-allowance answers below write nothing before they
     // describe the account, so they use this read instead of a second hop.
-    const earlyEntitlement = caller ? readEntitlement(caller.id) : undefined;
+    // A caller asking for the live answer (fresh) is known to go live, and a
+    // live check reads the rows again after its writes, so it is not started
+    // there (review 2026-11-15). A row found too old is known only once it
+    // is read: that check reads the rows twice, one RPC on a live check (at
+    // most LIVE_CHECKS_PER_HOUR an address) for a round trip off every cached
+    // view.
+    const earlyEntitlement = caller && !fresh ? readEntitlement(caller.id) : undefined;
     let cachedAnswer: Record<string, unknown> | null = null;
     // The row's updated_at as read, null for no row, undefined when the read
     // failed: checkProByEmail downgrades only the row seen, and "not

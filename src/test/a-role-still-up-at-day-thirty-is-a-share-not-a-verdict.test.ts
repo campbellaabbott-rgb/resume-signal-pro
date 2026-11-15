@@ -456,7 +456,10 @@ describe("still advertised at day 30 is published as a share, gated, and never p
     it("is written by the live refresh, in the same statement as the counts, and pruned", () => {
       expect(refresh.file).toBe(VERDICT_FILE);
       expect(refresh.code).toMatch(/INSERT INTO public\.job_board_board_observability AS o \(company_token, bucket, lap_w0, as_of\)/);
-      expect(refresh.code).toMatch(/FROM classed x\s+ON CONFLICT \(company_token\) DO UPDATE/);
+      // Only a board that is new or moved is offered to the upsert (cost wave
+      // review, 2026-11-15): ON CONFLICT locks every conflicting row before
+      // its WHERE is read, so an unchanged board must not reach it.
+      expect(refresh.code).toMatch(/FROM classed x\s+LEFT JOIN public\.job_board_board_observability cur ON cur\.company_token = x\.company_token\s+WHERE cur\.company_token IS NULL\s+OR \(cur\.bucket, cur\.lap_w0\) IS DISTINCT FROM \(x\.bucket, x\.lap_w0\)\s+ON CONFLICT \(company_token\) DO UPDATE/);
       // The write and the counts read ONE classification: the INSERT is a CTE
       // of the SELECT ... INTO payload, not a second pass.
       const write = refresh.code.indexOf("INSERT INTO public.job_board_board_observability");

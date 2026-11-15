@@ -36,6 +36,7 @@ import { describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { FACETS_STALE_MIN } from "../../supabase/functions/scan-heartbeat/watch";
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -51,7 +52,7 @@ const EXPLORE = file("20261109110000");
 const FACETS = file("20261109120000");
 const ROLLUP = file("20261109121000");
 const GHOST = file("20261109122000");
-const INDEXES = file("20261109130000");
+const INDEXES = file("20261109190000");
 const PURGE = file("20261109131000");
 
 /** pg_cron's catalogue and the four calls these files make, as pg_cron 1.6 shapes them. */
@@ -308,7 +309,8 @@ describe("the facets job rebuilds only a row nobody wrote in forty minutes", () 
     // The schedule and the gate, read from the job as written, simulated
     // minute by minute over a day: once with the board pass quiet (the most
     // cron runs), then with pass-end writes every P minutes at every offset.
-    // scan-heartbeat degrades job_board_facets_cache past 60 minutes.
+    // The row stays under an hour, and scan-heartbeat (FACETS_STALE_MIN)
+    // degrades job_board_facets_cache only after two more missed rebuilds.
     const sched = /cron\.alter_job\(v_id, schedule => '([^']+)'/.exec(FACETS)?.[1] ?? "";
     const gate = Number(/interval ''(\d+) minutes''/.exec(FACETS)?.[1]);
     const ticks = sched.split(" ")[0].split(",").map(Number);
@@ -327,6 +329,7 @@ describe("the facets job rebuilds only a row nobody wrote in forty minutes", () 
     const quiet = day(null, 0);
     expect(quiet.runs).toBeLessThanOrEqual(32);
     expect(quiet.worst).toBeLessThan(60);
+    expect(quiet.worst + 2 * 15, "two missed rebuild ticks stay inside the heartbeat's bound").toBeLessThan(FACETS_STALE_MIN);
     for (const every of [11, 25, 38, 52, 70, 95, 140]) {
       for (let o = 0; o < every; o++) {
         const d = day(every, o);
@@ -415,6 +418,12 @@ describe("the nightly purge stops repeating the hourly report-cache delete", () 
   it("without the hourly job the nightly delete is the only one, and is kept", async () => {
     const db = await boot(JOBS.filter(([n]) => n !== "scan-report-cache-retention"));
     await db.exec(PURGE);
+    expect(await purge(db)).toBe(PURGE_UPPER);
+  });
+
+  it("an hourly job switched off purges nothing, so the nightly delete is the only one that runs, and is kept", async () => {
+    const db = await boot(JOBS.map(([n, s, c, a]) => (n === "scan-report-cache-retention" ? [n, s, c, false] : [n, s, c, a])));
+    await applyTwice(db, PURGE);
     expect(await purge(db)).toBe(PURGE_UPPER);
   });
 });

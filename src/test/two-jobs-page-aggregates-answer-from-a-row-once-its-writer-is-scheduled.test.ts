@@ -1,13 +1,15 @@
 // @vitest-environment node
 /**
- * THE JOBS PAGE AGGREGATES ARE READ FROM AN HOURLY ROW
+ * TWO JOBS PAGE AGGREGATES ANSWER FROM A ROW, ONCE ITS WRITER IS SCHEDULED
  * (cost audit 2026-11-08, "Live aggregates on /jobs"; migration 20261109170000).
  *
- * /jobs called get_country_facet(), get_salary_benchmarks() and
- * get_takedowns_today() on every render, each an aggregate over the whole
- * board. Now an hourly writer stores their answers in one
- * job_board_stats_rollup row and each reader answers from it while it is
- * under two hours old -- else runs exactly what it ran before.
+ * /jobs calls get_country_facet() and get_salary_benchmarks() on every
+ * render by a person, each an aggregate over the whole board. A writer
+ * stores their answers in one job_board_stats_rollup row and each reader
+ * answers from it while it is under two hours old -- else runs exactly what
+ * it ran before. The file schedules no writer (the saving needs more than 24
+ * calls a day per reader, which nobody has read), and get_takedowns_today()
+ * is left as it was: a cheap count the Data API holds a feed walk against.
  *
  * Two pglite databases get the same board. One holds the definitions the
  * migration replaces (20260729183822, 20260811160307 made DEFINER by
@@ -25,7 +27,7 @@ vi.setConfig({ hookTimeout: 120_000, testTimeout: 60_000 });
 
 const MIG = resolve(__dirname, "../../supabase/migrations");
 const read = (f: string) => readFileSync(resolve(MIG, f), "utf8");
-const NEW = read("20261109170000_the_jobs_page_aggregates_are_read_from_an_hourly_row.sql");
+const NEW = read("20261109170000_two_jobs_page_aggregates_answer_from_a_row_once_its_writer_is_scheduled.sql");
 
 /** `CREATE OR REPLACE FUNCTION public.<fn>(` up to its closing `$$;`. */
 function definitionIn(sql: string, fn: string): string {
@@ -157,7 +159,7 @@ describe("the answers do not change", () => {
   let now: PGlite;
   beforeAll(async () => { [was, now] = await Promise.all([boot({ withNew: false }), boot({ withNew: true })]); });
 
-  it("before the first hourly run every reader answers exactly what the function it replaces answered, in the same order", async () => {
+  it("before the writer's first run every reader answers exactly what the function it replaces answered, in the same order", async () => {
     expect(await row(now)).toBeUndefined();
     const a = await answer(now);
     expect(a).toEqual(await answer(was));
@@ -167,10 +169,10 @@ describe("the answers do not change", () => {
     expect(a.takedowns).toBe(8);
   });
 
-  it("the hourly run stores the live answers, and every reader then returns them, in order", async () => {
+  it("a run of the writer stores the live answers of the two readers, and they then return them, in order", async () => {
     await refresh(now);
     const r = await row(now);
-    expect(r?.v).toMatchObject({ takedowns_today: 8 });
+    expect(Object.keys(r?.v ?? {}).sort()).toEqual(["as_of", "country_facet", "salary_benchmarks"]);
     expect(await answer(now)).toEqual(await answer(was));
     expect(await answer(now, "anon"), "the page's own role reads the same answer").toEqual(await answer(was, "anon"));
   });
@@ -184,9 +186,18 @@ describe("the answers do not change", () => {
     expect(moved.takedowns).toBe(11);
     const cached = await answer(now);
     expect(cached.countries, "the cached facet does not know IT yet").not.toContain("IT=25");
-    expect(cached.takedowns).toBe(8);
+    expect(cached.benchmarks).not.toEqual(moved.benchmarks);
     await refresh(now);
     expect(await answer(now)).toEqual(moved);
+  });
+
+  it("the takedown count stays live beside a fresh row: a feed walk ending now can never count more than it", async () => {
+    await refresh(now);
+    await was.exec("INSERT INTO public.job_board_closures (posting_id, closed_at, absence_basis) VALUES ('late1', now(), 'full_read'), ('late2', now(), 'lap')");
+    await now.exec("INSERT INTO public.job_board_closures (posting_id, closed_at, absence_basis) VALUES ('late1', now(), 'full_read'), ('late2', now(), 'lap')");
+    expect((await answer(now)).takedowns).toBe((await answer(was)).takedowns);
+    expect((await answer(now)).takedowns).toBe(13);
+    expect(NEW, "the file does not re-issue the takedown counter").not.toMatch(/FUNCTION public\.get_takedowns_today/);
   });
 });
 
@@ -204,18 +215,19 @@ describe("a row that cannot be trusted is never answered", () => {
     await now.exec("UPDATE public.job_board_stats_rollup SET computed_at = now() - interval '2 hours 1 second' WHERE k = 'jobs_live_aggregates'");
     expect(await answer(now)).toEqual(await answer(was));
     await now.exec("UPDATE public.job_board_stats_rollup SET computed_at = now() - interval '1 hour 59 minutes' WHERE k = 'jobs_live_aggregates'");
-    expect((await answer(now)).takedowns, "just under two hours old, it is still answered").toBe(8);
+    expect((await answer(now)).countries, "just under two hours old, it is still answered").not.toContain("IT=25");
   });
 
   it("a key that is missing or of the wrong shape: that reader counts live, the others keep the row", async () => {
     await now.exec(`UPDATE public.job_board_stats_rollup
-                       SET v = v - 'country_facet' || jsonb_build_object('takedowns_today', '8'), computed_at = now()
+                       SET v = v - 'country_facet', computed_at = now()
                      WHERE k = 'jobs_live_aggregates'`);
     const a = await answer(now);
     const live = await answer(was);
     expect(a.countries).toEqual(live.countries);
-    expect(a.takedowns, "a string where a number belongs is not a count").toBe(live.takedowns);
     expect(a.benchmarks, "the benchmarks key is intact, so it is answered").not.toEqual(live.benchmarks);
+    await now.exec(`UPDATE public.job_board_stats_rollup SET v = v || '{"country_facet": "US"}'::jsonb WHERE k = 'jobs_live_aggregates'`);
+    expect((await answer(now)).countries, "a string where an array belongs is not a facet").toEqual(live.countries);
     await now.exec(`UPDATE public.job_board_stats_rollup SET v = v || '{"salary_benchmarks": {}}'::jsonb WHERE k = 'jobs_live_aggregates'`);
     expect((await answer(now)).benchmarks).toEqual(live.benchmarks);
   });
@@ -229,15 +241,15 @@ describe("a row that cannot be trusted is never answered", () => {
 describe("the writer computes live, never from its own row", () => {
   const SENTINEL = `
     INSERT INTO public.job_board_stats_rollup (k, v, computed_at) VALUES ('jobs_live_aggregates',
-      '{"country_facet": [{"country": "ZZ", "n": 1}], "salary_benchmarks": [], "takedowns_today": 999}'::jsonb, now());`;
+      '{"country_facet": [{"country": "ZZ", "n": 1}], "salary_benchmarks": []}'::jsonb, now());`;
 
   it("a fresh row of wrong answers is replaced by the live ones", async () => {
     const [was, now] = await Promise.all([boot({ withNew: false }), boot({ withNew: true })]);
     await now.exec(SENTINEL);
-    expect((await answer(now)).takedowns).toBe(999);
+    expect((await answer(now)).countries).toEqual(["ZZ=1"]);
     await refresh(now);
     expect(await answer(now)).toEqual(await answer(was));
-    expect((await row(now))?.v).toMatchObject({ takedowns_today: 8 });
+    expect((await row(now))?.v.country_facet).toEqual([{ country: "US", n: 40 }, { country: "CA", n: 31 }, { country: "GB", n: 30 }, { country: "JP", n: 14 }, { country: "DE", n: 12 }]);
   });
 
   it("teeth: a writer without the switch copies the row it is meant to replace", async () => {
@@ -248,14 +260,14 @@ describe("the writer computes live, never from its own row", () => {
     await now.exec(writer.replace(line, ""));
     await now.exec(SENTINEL);
     await refresh(now);
-    expect((await row(now))?.v).toMatchObject({ takedowns_today: 999 });
+    expect((await row(now))?.v.country_facet).toEqual([{ country: "ZZ", n: 1 }]);
   });
 
   it("the switch ends with the writer's transaction: a reader in the next one answers the new row", async () => {
     const now = await boot({ withNew: true });
     await refresh(now);
-    await now.exec("UPDATE public.job_board_stats_rollup SET v = jsonb_set(v, '{takedowns_today}', '77') WHERE k = 'jobs_live_aggregates'");
-    expect((await answer(now)).takedowns).toBe(77);
+    await now.exec(`UPDATE public.job_board_stats_rollup SET v = jsonb_set(v, '{country_facet}', '[{"country": "QQ", "n": 77}]') WHERE k = 'jobs_live_aggregates'`);
+    expect((await answer(now)).countries).toEqual(["QQ=77"]);
   });
 });
 
@@ -265,11 +277,10 @@ describe("what the row buys", () => {
       .rows.map((r) => r["QUERY PLAN"]);
   const scans = (lines: string[], table: string) => lines.filter((l) => l.includes(`Seq Scan on ${table}`));
 
-  it("with the row fresh, no reader executes its scan of the board or the closure log", async () => {
+  it("with the row fresh, neither reader executes its scan of the board", async () => {
     const db = await boot({ withNew: true });
     await refresh(db);
-    for (const [fn, table] of [["get_country_facet", "job_board_postings"], ["get_salary_benchmarks", "job_board_postings"],
-      ["get_takedowns_today", "job_board_closures"]]) {
+    for (const [fn, table] of [["get_country_facet", "job_board_postings"], ["get_salary_benchmarks", "job_board_postings"]]) {
       const s = scans(await plan(db, fn), table);
       expect(s.length, `${fn} has no scan of ${table} in its plan at all`).toBeGreaterThan(0);
       for (const l of s) expect(l, `${fn}: ${l.trim()}`).toMatch(/never executed/);
@@ -278,15 +289,14 @@ describe("what the row buys", () => {
 
   it("teeth: with no row, the same plans execute that scan", async () => {
     const db = await boot({ withNew: true });
-    for (const [fn, table] of [["get_country_facet", "job_board_postings"], ["get_salary_benchmarks", "job_board_postings"],
-      ["get_takedowns_today", "job_board_closures"]]) {
+    for (const [fn, table] of [["get_country_facet", "job_board_postings"], ["get_salary_benchmarks", "job_board_postings"]]) {
       const s = scans(await plan(db, fn), table);
       expect(s.some((l) => !/never executed/.test(l)), `${fn} did not scan ${table}`).toBe(true);
     }
   });
 });
 
-describe("grants, schedule and re-apply", () => {
+describe("grants, the offered schedule and re-apply", () => {
   it("the page's roles call the readers and never the writer", async () => {
     const db = await boot({ withNew: true });
     for (const role of ["anon", "authenticated"]) {
@@ -297,38 +307,55 @@ describe("grants, schedule and re-apply", () => {
     }
   });
 
-  it("the writer is scheduled at :14 with its own three-minute timeout in the command", async () => {
+  it("the file schedules no writer: every call counts live until the owner schedules it", async () => {
     const db = await boot({ withNew: true });
-    const j = (await db.query<{ schedule: string; command: string }>(
-      "SELECT schedule, command FROM cron.job WHERE jobname = 'refresh-jobs-live-aggregates'")).rows;
-    expect(j).toEqual([{ schedule: "14 * * * *", command: "SET statement_timeout = '3min'; SELECT public.refresh_jobs_live_aggregates();" }]);
+    expect((await db.query("SELECT 1 FROM cron.job")).rows).toEqual([]);
+    expect(await row(db)).toBeUndefined();
+  });
+
+  /** The command the file's notice hands the owner. */
+  const OFFERED = /cron\.schedule\(''refresh-jobs-live-aggregates'', ''([^']+)'', \$c\$(.*?)\$c\$\)/.exec(NEW);
+
+  it("the command it offers the owner sets its own three-minute timeout, as the writer's header does", async () => {
+    expect(OFFERED, "the notice names the command").toBeTruthy();
+    expect(OFFERED![2].replace(/''/g, "'")).toBe("SET statement_timeout = '3min'; SELECT public.refresh_jobs_live_aggregates();");
     expect(definitionIn(NEW, "refresh_jobs_live_aggregates")).toContain("SET statement_timeout = '3min'");
   });
 
-  it("no other job pinned to named minutes runs at :14", () => {
+  it("the minute it offers is one no job pinned to named minutes runs at, once every wave migration has applied", () => {
+    const minute = Number(OFFERED![1].split(/\s+/)[0]);
+    expect(OFFERED![1]).toBe(`${minute} * * * *`);
     const live = new Map<string, string>();
     for (const f of readdirSync(MIG).filter((x) => x.endsWith(".sql")).sort()) {
-      for (const m of read(f).matchAll(/cron\.schedule\(\s*'([^']+)'\s*,\s*'([^']+)'/g)) live.set(m[1], m[2]);
+      const sql = read(f);
+      for (const m of sql.matchAll(/cron\.schedule\(\s*'([^']+)'\s*,\s*'([^']+)'/g)) live.set(m[1], m[2]);
+      for (const m of sql.matchAll(/cron\.unschedule\(\s*'([^']+)'\s*\)/g)) live.delete(m[1]);
     }
-    const at14 = [...live].filter(([name, schedule]) => {
-      const [minute, hour] = schedule.split(/\s+/);
-      if (name === "refresh-jobs-live-aggregates" || hour !== "*" || /^\*(\/\d+)?$/.test(minute)) return false;
-      return minute.split(",").some((p) => {
+    // What the wave unschedules, and moves by cron.alter_job, as it leaves them.
+    live.delete("board-recency-ladder");
+    live.delete("refresh-explore-role-rows");
+    live.set("refresh-board-facets", "2,17,32,47 * * * *");
+    live.set("refresh-ghost-stats", "15 * * * *");
+    const clash = [...live].filter(([name, schedule]) => {
+      const [m, hour] = schedule.split(/\s+/);
+      if (name === "refresh-jobs-live-aggregates" || hour !== "*" || /^\*(\/\d+)?$/.test(m)) return false;
+      return m.split(",").some((p) => {
         const [range, step] = p.split("/");
         const [a, b] = range.includes("-") ? range.split("-").map(Number) : [Number(range), step ? 59 : Number(range)];
-        for (let x = a; x <= b; x += step ? Number(step) : 1) if (x === 14) return true;
+        for (let x = a; x <= b; x += step ? Number(step) : 1) if (x === minute) return true;
         return false;
       });
     });
-    expect(at14).toEqual([]);
+    expect(clash).toEqual([]);
   });
 
-  it("re-applying keeps one job and the row, and a database without pg_cron applies cleanly", async () => {
+  it("re-applying keeps the row and a job the owner scheduled, and a database without pg_cron applies cleanly", async () => {
     const db = await boot({ withNew: true });
+    await db.query("SELECT cron.schedule('refresh-jobs-live-aggregates', '52 * * * *', $1)", ["SET statement_timeout = '3min'; SELECT public.refresh_jobs_live_aggregates();"]);
     await refresh(db);
     const before = await row(db);
     await db.exec(NEW);
-    expect((await db.query("SELECT 1 FROM cron.job WHERE jobname = 'refresh-jobs-live-aggregates'")).rows).toHaveLength(1);
+    expect((await db.query("SELECT schedule FROM cron.job WHERE jobname = 'refresh-jobs-live-aggregates'")).rows).toEqual([{ schedule: "52 * * * *" }]);
     expect(await row(db)).toEqual(before);
     const bare = await boot({ withNew: true, cron: false });
     expect(await answer(bare)).toEqual(await answer(await boot({ withNew: false, cron: false })));

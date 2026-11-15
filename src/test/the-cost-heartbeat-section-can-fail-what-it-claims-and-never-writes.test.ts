@@ -13,14 +13,18 @@
  * writing its row off the hour (L1), and its full scans once an hour (L2).
  * Run here against a fake curl:
  *   - production as it was on 2026-11-08 (every build 2026-11-03.1, no
- *     max-age, the hover warming the stream, six heartbeat scans an hour)
+ *     max-age, the hover warming the stream, twelve heartbeat scans in two
+ *     hours)
  *     prints INFO and no FAIL;
  *   - a good deploy prints PASS for every claim and no FAIL;
  *   - each regression prints FAIL: no build header, a new build whose
  *     preflight lost the max-age, a hover that warms both scanners or
  *     neither, a bundle that names no hover chunk, a checkout hook that no
- *     longer warms or opens checkout, a heartbeat older than 30 minutes, and
- *     no heartbeat scan in an hour on the new build;
+ *     longer warms or opens checkout, a heartbeat older than 30 minutes, no
+ *     heartbeat scan in two hours on the new build, four or more once
+ *     COST_HB_DEPLOYED_AT says the paste settled (review 2026-11-15: without
+ *     an anchor that count read INFO for ever), and an anchor that is not a
+ *     time, is in the future, or names a paste the builds do not show;
  *   - every request is a GET or an OPTIONS, and the key is never printed.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
@@ -69,7 +73,7 @@ afterAll(() => { for (const d of dirs) { try { rmSync(d, { recursive: true, forc
 const NOW = "2026-11-10T10:23:00Z";
 const at = (iso: string) => new Date(iso).toISOString();
 
-function run(routes: Route[], now = NOW): { lines: string[]; calls: string[]; out: string } {
+function run(routes: Route[], now = NOW, extra: NodeJS.ProcessEnv = {}): { lines: string[]; calls: string[]; out: string } {
   const dir = mkdtempSync(join(tmpdir(), "vdch-"));
   dirs.push(dir);
   mkdirSync(join(dir, "bin"));
@@ -83,7 +87,8 @@ function run(routes: Route[], now = NOW): { lines: string[]; calls: string[]; ou
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     PATH: `${join(dir, "bin")}:${dirname(process.execPath)}:${process.env.PATH ?? ""}`,
-    VD_ROUTES: join(dir, "routes.json"), VD_CALLS: join(dir, "calls.log"), VDCH_NOW: now,
+    VD_ROUTES: join(dir, "routes.json"), VD_CALLS: join(dir, "calls.log"), VDCH_NOW: now, COST_HB_DEPLOYED_AT: "",
+    ...extra,
     NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --require ${join(dir, "nofetch.cjs")}`.trim(),
   };
   let out = "";
@@ -115,7 +120,8 @@ function routes(o: Over = {}, deployed = true): Route[] {
   const maxAge = { "free-keyword-scan": deployed ? "7200" : null, "free-keyword-scan-stream": deployed ? "7200" : null, ...o.maxAge };
   // An off-hour row: the :20 run's, written three minutes before NOW.
   const lastBeat = o.lastBeat === undefined ? at("2026-11-10T10:20:31Z") : o.lastBeat;
-  const beatScans = o.beatScans === undefined ? (deployed ? 1 : 6) : o.beatScans;
+  // Two hours of heartbeat scan rows: two hourly scans, or twelve when every run is full.
+  const beatScans = o.beatScans === undefined ? (deployed ? 2 : 12) : o.beatScans;
   const preflight = (fn: keyof typeof builds): Route => {
     const headers: Record<string, string> = { "access-control-allow-origin": "*" };
     if (builds[fn]) headers["x-fn-build"] = builds[fn] as string;
@@ -131,7 +137,7 @@ function routes(o: Over = {}, deployed = true): Route[] {
     { match: `^GET ${S}/assets/Index-Page\\.js$`, body: o.hover ?? (deployed ? NEW_HOVER : OLD_HOVER) },
     { match: `^GET ${S}/assets/use-product-checkout-C9\\.js$`, body: o.checkout ?? CHECKOUT },
     { match: `^GET ${P}/rest/v1/rpc/get_scan_health_status$`, body: JSON.stringify([{ status: "degraded", last_heartbeat_status: "degraded", last_heartbeat_time: lastBeat, issues: [] }]) },
-    { match: `^GET ${P}/rest/v1/rpc/get_scan_success_rate\\?p_scan_type=heartbeat&p_hours_back=1$`, body: beatScans === null ? "<html>Bad gateway</html>" : JSON.stringify([{ total_scans: beatScans, completed_scans: beatScans, p50_duration_ms: 27000 }]) },
+    { match: `^GET ${P}/rest/v1/rpc/get_scan_success_rate\\?p_scan_type=heartbeat&p_hours_back=2$`, body: beatScans === null ? "<html>Bad gateway</html>" : JSON.stringify([{ total_scans: beatScans, completed_scans: beatScans, p50_duration_ms: 27000 }]) },
   ];
 }
 const has = (lines: string[], verdict: string, re: RegExp) => lines.some((l) => l.startsWith(verdict) && re.test(l));
@@ -210,9 +216,45 @@ describe("each regression prints FAIL", () => {
     expect(has(hourly, "INFO", /^INFO {2}L1 the newest heartbeat row .* is the hourly run/), show(hourly)).toBe(true);
   });
 
-  it("L2: no heartbeat scan in an hour on the new build; an hour that straddles the paste is only INFO", () => {
-    expect(has(run(routes({ beatScans: 0 })).lines, "FAIL", /^FAIL {2}L2 the heartbeat wrote no scan row in the last hour on the new build/)).toBe(true);
-    expect(has(run(routes({ beatScans: 4 })).lines, "INFO", /^INFO {2}L2 .*straddles the paste/)).toBe(true);
+  it("L2: no heartbeat scan in two hours on the new build; four or more with no anchor is only INFO", () => {
+    expect(has(run(routes({ beatScans: 0 })).lines, "FAIL", /^FAIL {2}L2 the heartbeat wrote no scan row in the last two hours on the new build/)).toBe(true);
+    const unanchored = run(routes({ beatScans: 12 })).lines;
+    expect(has(unanchored, "INFO", /^INFO {2}L2 .*set COST_HB_DEPLOYED_AT/), show(unanchored)).toBe(true);
+    expect(fails(unanchored), show(unanchored)).toEqual([]);
     expect(has(run(routes({ beatScans: null })).lines, "INFO", /^INFO {2}L2 .*unreadable/)).toBe(true);
+  });
+
+  it("L2 reads two hours, so the seconds at the top of the hour between one hourly row leaving and the next arriving still hold a row (review 2026-11-15)", () => {
+    // 10:00:10: the 08:00 row has left a two-hour window, the 09:00 row is in it, the 10:00 scan is still running.
+    const top = run(routes({ beatScans: 1, lastBeat: at("2026-11-10T09:50:31Z") }), "2026-11-10T10:00:10Z");
+    expect(top.calls.some((c) => c.includes("p_scan_type=heartbeat&p_hours_back=2")), show(top.calls)).toBe(true);
+    expect(has(top.lines, "PASS", /^PASS {2}L2 the heartbeat wrote 1 scan row\(s\) in the last two hours/), show(top.lines)).toBe(true);
+    expect(has(run(routes({ beatScans: 3 })).lines, "PASS", /^PASS {2}L2 /)).toBe(true);
+  });
+
+  it("L2 FAILs four or more full scans in two hours once the anchor says the paste settled and both builds serve (review 2026-11-15)", () => {
+    // The paste landed at 07:40; the window 08:23-10:23 opened 43 minutes later.
+    const off = run(routes({ beatScans: 12 }), NOW, { COST_HB_DEPLOYED_AT: "2026-11-10T07:40Z" }).lines;
+    expect(has(off, "FAIL", /^FAIL {2}L2 the heartbeat wrote 12 scan rows in the two hours from 2026-11-10T08:23Z, all after the paste/), show(off)).toBe(true);
+    expect(has(run(routes({ beatScans: 4 }), NOW, { COST_HB_DEPLOYED_AT: "2026-11-10T07:40Z" }).lines, "FAIL", /^FAIL {2}L2 the heartbeat wrote 4 scan rows/)).toBe(true);
+    // Settled and hourly: PASS, and the anchor itself is no FAIL.
+    const good = run(routes(), NOW, { COST_HB_DEPLOYED_AT: "2026-11-10T07:40Z" }).lines;
+    expect(fails(good), show(good)).toEqual([]);
+  });
+
+  it("L2 keeps four or more as INFO while the window straddles the paste", () => {
+    // The paste landed at 08:20; the window opened at 08:23, three minutes later, inside the ten.
+    const straddle = run(routes({ beatScans: 7 }), NOW, { COST_HB_DEPLOYED_AT: "2026-11-10T08:20Z" }).lines;
+    expect(has(straddle, "INFO", /^INFO {2}L2 .*the window opened before the paste settled/), show(straddle)).toBe(true);
+    expect(fails(straddle), show(straddle)).toEqual([]);
+  });
+
+  it("L2 FAILs an anchor that is not a time, is in the future, or is set while a build is older", () => {
+    expect(has(run(routes(), NOW, { COST_HB_DEPLOYED_AT: "yesterday" }).lines, "FAIL", /^FAIL {2}L2 COST_HB_DEPLOYED_AT=yesterday is not a UTC time/)).toBe(true);
+    expect(has(run(routes(), NOW, { COST_HB_DEPLOYED_AT: "2026-11-10T11:00Z" }).lines, "FAIL", /^FAIL {2}L2 COST_HB_DEPLOYED_AT=.* is in the future/)).toBe(true);
+    const oldScanner = run(routes({ builds: { "free-keyword-scan": "free-keyword-scan.2026-11-03.1" } }), NOW, { COST_HB_DEPLOYED_AT: "2026-11-10T07:40Z" }).lines;
+    expect(has(oldScanner, "FAIL", /^FAIL {2}L2 COST_HB_DEPLOYED_AT=.* says the paste landed, but free-keyword-scan does not serve 2026-11-09\.2/), show(oldScanner)).toBe(true);
+    const oldBeat = run(routes({}, false), NOW, { COST_HB_DEPLOYED_AT: "2026-11-10T07:40Z" }).lines;
+    expect(has(oldBeat, "FAIL", /^FAIL {2}L2 COST_HB_DEPLOYED_AT=.* but scan-heartbeat does not serve 2026-11-09\.1/), show(oldBeat)).toBe(true);
   });
 });

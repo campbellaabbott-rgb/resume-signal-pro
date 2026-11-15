@@ -14,7 +14,10 @@
  * changing bucket, leaving and joining the window and the closure log
  * growing, the PUBLISHED NUMBERS (the cached closure_population payload) and
  * the verdict table (company_token, bucket, lap_w0) are identical -- and only
- * the new function leaves unchanged rows untouched (same xmin).
+ * the new function leaves unchanged rows untouched (same xmin), and does not
+ * even lock them: ON CONFLICT DO UPDATE locks the conflicting row before its
+ * WHERE is read, which stamps xmax and dirties the page with no new version,
+ * so the pass leaves unchanged boards out of the INSERT's source instead.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
@@ -86,7 +89,7 @@ const NEXT = `
 `;
 
 type Row = { company_token: string; bucket: string; lap_w0: string | null };
-type Stamped = Row & { xmin: string; as_of: string };
+type Stamped = Row & { xmin: string; xmax: string; as_of: string };
 
 async function boot(withNew: boolean): Promise<PGlite> {
   const db = new PGlite();
@@ -103,7 +106,7 @@ const verdicts = async (db: PGlite) =>
   (await db.query<Row>("SELECT company_token, bucket, lap_w0::text AS lap_w0 FROM public.job_board_board_observability ORDER BY company_token")).rows;
 const stamped = async (db: PGlite) =>
   new Map((await db.query<Stamped>(
-    "SELECT company_token, bucket, lap_w0::text AS lap_w0, xmin::text AS xmin, as_of::text AS as_of FROM public.job_board_board_observability",
+    "SELECT company_token, bucket, lap_w0::text AS lap_w0, xmin::text AS xmin, xmax::text AS xmax, as_of::text AS as_of FROM public.job_board_board_observability",
   )).rows.map((r) => [r.company_token, r]));
 
 let was: PGlite;
@@ -164,6 +167,12 @@ describe("only the boards whose verdict moved are written", () => {
     for (const t of unchanged) {
       expect(afterNow.get(t)?.xmin, `${t} was rewritten`).toBe(beforeNow.get(t)?.xmin);
       expect(afterNow.get(t)?.as_of, `${t} was re-stamped`).toBe(beforeNow.get(t)?.as_of);
+    }
+  });
+
+  it("an unchanged row is not even locked by the pass: no transaction stamps its xmax", () => {
+    for (const t of unchanged) {
+      expect(afterNow.get(t)?.xmax, `${t} was locked by the upsert though its verdict held`).toBe("0");
     }
   });
 

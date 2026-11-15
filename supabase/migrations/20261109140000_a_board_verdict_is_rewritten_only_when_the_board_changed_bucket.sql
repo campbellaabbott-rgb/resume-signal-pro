@@ -9,9 +9,14 @@
 -- lap_w0 the row already held, each leaving a dead tuple behind.
 --
 -- WHAT CHANGES, AND ONLY THIS:
---   1. The upsert writes a row only where the verdict moved:
---      ON CONFLICT ... DO UPDATE ... WHERE (bucket, lap_w0) IS DISTINCT FROM
---      the new pair. An unchanged board keeps its row untouched.
+--   1. The upsert writes a row only where the verdict moved. Its source
+--      leaves out every board whose stored (bucket, lap_w0) already equals
+--      the new pair, so an unchanged board's row is neither rewritten nor
+--      locked: ON CONFLICT DO UPDATE locks the conflicting row BEFORE its
+--      WHERE is read, so a WHERE alone would still stamp xmax on all 44,000
+--      rows and dirty their pages. The ON CONFLICT ... WHERE (bucket, lap_w0)
+--      IS DISTINCT FROM the new pair stays, for a row another pass wrote
+--      between the read and the insert.
 --   2. A board that left the seven-day window is deleted by name -- it is not
 --      in this pass's classification -- in the SAME statement as the upsert
 --      (a second data-modifying CTE), instead of by an as_of older than the
@@ -112,12 +117,15 @@ BEGIN
   -- THE PER-BOARD VERDICT, KEPT -- and now written only where it moved. Same
   -- CTE, same pass, same statement as the counts below; a data-modifying WITH
   -- runs exactly once whether or not the outer query reads it. An existing
-  -- row whose bucket and lap_w0 already match is left as it is: no new row
-  -- version, no dead tuple.
+  -- row whose bucket and lap_w0 already match never reaches the INSERT, so
+  -- it is left as it is: no new row version, no dead tuple and no row lock.
   written AS (
     INSERT INTO public.job_board_board_observability AS o (company_token, bucket, lap_w0, as_of)
     SELECT x.company_token, x.bucket, x.lap_w0, v_as_of
     FROM classed x
+    LEFT JOIN public.job_board_board_observability cur ON cur.company_token = x.company_token
+    WHERE cur.company_token IS NULL
+       OR (cur.bucket, cur.lap_w0) IS DISTINCT FROM (x.bucket, x.lap_w0)
     ON CONFLICT (company_token) DO UPDATE
       SET bucket = EXCLUDED.bucket,
           lap_w0 = EXCLUDED.lap_w0,
@@ -232,6 +240,9 @@ BEGIN
   SELECT p.prosrc, p.proconfig INTO src, cfg FROM pg_proc p WHERE p.oid = f;
   IF position('IS DISTINCT FROM (EXCLUDED.bucket, EXCLUDED.lap_w0)' IN src) = 0 THEN
     RAISE EXCEPTION 'refresh_closure_population still rewrites every verdict';
+  END IF;
+  IF position('(cur.bucket, cur.lap_w0) IS DISTINCT FROM (x.bucket, x.lap_w0)' IN src) = 0 THEN
+    RAISE EXCEPTION 'refresh_closure_population still hands every unchanged verdict to the upsert, which locks each row';
   END IF;
   IF position('o.as_of < v_as_of' IN src) > 0 THEN
     RAISE EXCEPTION 'refresh_closure_population still deletes by an old stamp, which would now delete unchanged boards';

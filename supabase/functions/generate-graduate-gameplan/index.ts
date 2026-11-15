@@ -5,7 +5,7 @@ import { assertPaidSession } from "../_shared/paid-session.ts";
 import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
-import { callAIWithModelFallback, chainFrom, UnusableModelOutput } from "../_shared/ai-fallback.ts";
+import { callAIWithModelFallback, chainFrom, logAiUsage, UnusableModelOutput } from "../_shared/ai-fallback.ts";
 import { parseReportJson, shapeGamePlan } from "../_shared/career-report-shape.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 
@@ -313,6 +313,7 @@ Create a comprehensive, actionable Graduate Game Plan that gives this new grad/e
       const rateLimitResponse = await checkAiGatewayResponse(call.response, corsHeaders);
       if (rateLimitResponse) return rateLimitResponse;
       const result = await call.response.json().catch(() => null);
+      logAiUsage("generate-graduate-gameplan", call.modelUsed, result);
       const parsed = parseReportJson(result?.choices?.[0]?.message?.content);
       const shaped = parsed ? shapeGamePlan(parsed) : null;
       problems = shaped ? shaped.problems : ["the reply is not JSON"];

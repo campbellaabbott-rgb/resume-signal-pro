@@ -215,7 +215,7 @@ describe("section 99zzzzzz (cost audit, db-cadence)", () => {
     for (const re of [
       /before 20261109100000: board-recency-ladder runs/, /before 20261109110000: refresh-explore-role-rows runs/,
       /before 20261109120000: refresh-board-facets runs/, /before 20261109131000: scan-cache-and-telemetry-purge/,
-      /before 20261109130000: no one-shot index dropper/, /before 20261109121000: job-board-stats-rollup runs/,
+      /before 20261109190000: no one-shot index dropper/, /before 20261109121000: job-board-stats-rollup runs/,
       /before 20261109122000: refresh-ghost-stats runs/, /before 20261109122000: the ghost row/,
       /before 20261109121000: the coverage rows/, /before 20261109110000: the explore row .* carries field_curves, chip_coverage, role_rows, 8 denominators/,
     ]) expect(has(lines, "INFO", re), `${re} missing\n${out}`).toBe(true);
@@ -300,6 +300,12 @@ describe("each claim broken is a FAIL", () => {
     const { lines, out } = run(after({ cron: cron(AFTER(), { "scan-cache-and-telemetry-purge": { ch_timeout: null }, "scan-report-cache-retention": null }) }), THREE_HOURS_AGO());
     expect(fails(lines), out).toEqual([]);
     expect(has(lines, "INFO", /scan-report-cache-retention is not scheduled, so the nightly purge keeps its report-cache delete/), out).toBe(true);
+  });
+
+  it("an hourly delete that is switched off leaves the nightly purge as 20261109131000 found it, and that is no FAIL (review 2026-11-15)", () => {
+    const { lines, out } = run(after({ cron: cron(AFTER(), { "scan-cache-and-telemetry-purge": { ch_timeout: null }, "scan-report-cache-retention": { ch_active: false } }) }), THREE_HOURS_AGO());
+    expect(fails(lines), out).toEqual([]);
+    expect(has(lines, "INFO", /scan-report-cache-retention is switched off, so the nightly purge keeps its report-cache delete/), out).toBe(true);
   });
 
   it("a one-shot dropper the watcher never retired, or one that keeps failing; a young one is INFO and marks step 1", () => {

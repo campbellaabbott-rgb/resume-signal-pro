@@ -11,8 +11,11 @@
  * push to main and on every pull request event: 76 of 127 CI runs in thirty
  * days were pull requests. The owner kept the live bake on main pushes and on
  * the pull requests that change the bake's own code, and nowhere else. A pull
- * request that changes nothing the bake runs or reads is judged by the same
- * job once it reaches main.
+ * request that changes nothing the bake runs or reads meets this job only
+ * once it reaches main, and merging into main publishes the frontend: so the
+ * guards on built output that read no live data run in the test job's "The
+ * guards on the offline build" step on every pull request (review
+ * 2026-11-15), and what waits for main is the live-data guards alone.
  *
  * WHAT COUNTS AS THE BAKE'S CODE, computed from the tree, never typed out, so
  * a new import of the bake is in scope the day it is written:
@@ -158,7 +161,7 @@ export function bakeVerdict(changedText, root = ROOT) {
   const hits = bakeTouches(changed, bakeInputs(root));
   return hits.length
     ? { live: true, why: `the bake's code changed: ${hits.slice(0, 12).join(", ")}${hits.length > 12 ? ` and ${hits.length - 12} more` : ""}` }
-    : { live: false, why: `none of the ${changed.length} changed path(s) is the bake's code: the live bake runs on main after the merge` };
+    : { live: false, why: `none of the ${changed.length} changed path(s) is the bake's code: the live bake runs on main after the merge has published the frontend, and the guards that need no live data ran on this pull request's offline build` };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

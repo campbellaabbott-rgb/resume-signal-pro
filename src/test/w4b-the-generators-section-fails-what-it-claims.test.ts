@@ -75,12 +75,15 @@ const has = (lines: string[], s: "PASS" | "FAIL" | "INFO", re: RegExp) => lines.
 const fails = (lines: string[]) => lines.filter((l) => l.startsWith("FAIL"));
 const show = (lines: string[]) => `\n${lines.join("\n")}`;
 
+/** The seven endpoints the cost wave retired to a bare 410: they carry no gate, and 99zzzzzz-cost-ai.sh judges them. */
+const RETIRED = ["analyze-linkedin-profile", "generate-cover-letter-stream", "generate-elevator-pitch", "generate-premium-package-stream",
+  "generate-recruiter-view", "generate-resume-roast", "generate-summary"];
 const ROUND = [
   "generate-cover-letter", "generate-tailored-resume", "generate-interview-coach", "generate-application-answers", "generate-apply-package",
   "generate-freelance-boost", "generate-career-path", "scrape-linkedin", "free-keyword-scan-stream",
-  "analyze-linkedin-profile", "application-fit", "generate-ats-defense", "generate-career-snapshot", "generate-cover-letter-stream", "generate-elevator-pitch",
-  "generate-graduate-gameplan", "generate-keyword-fix", "generate-premium-package", "generate-premium-package-stream", "generate-product-preview",
-  "generate-recruiter-view", "generate-resume-roast", "generate-summary", "import-freelance-profile", "job-fit", "nl-search", "parse-resume-structured",
+  "application-fit", "generate-ats-defense", "generate-career-snapshot",
+  "generate-graduate-gameplan", "generate-keyword-fix", "generate-premium-package", "generate-product-preview",
+  "import-freelance-profile", "job-fit", "nl-search", "parse-resume-structured",
   "shortlist-evaluate", "test-ai-fallback",
 ];
 const buildOf = (fn: string) => {
@@ -196,5 +199,35 @@ describe("section 92, generators", () => {
     const { lines } = run(routes);
     expect(has(lines, "FAIL", /take_writing_tools is CALLABLE as anon/), show(lines)).toBe(true);
     expect(has(lines, "FAIL", /writing_tool_uses is readable by anon/), show(lines)).toBe(true);
+  });
+});
+
+describe("the spend-gate line names only bundles that carry the gate (cost wave review, 2026-11-15)", () => {
+  // The loop that PASSes "the spend gate that counts a proven account by
+  // name" on a build floor: a name on it whose code no longer imports the gate
+  // (the seven endpoints the cost wave retired to a bare 410) would PASS a
+  // property its bundle does not have.
+  const sectionLines = SECTION.split("\n");
+  const say = sectionLines.findIndex((l) => /vd92g_say[^\n]*the spend gate that counts a proven account by name/.test(l));
+  const head = say < 0 ? -1 : sectionLines.slice(0, say).map((l, i) => [l, i] as const).filter(([l]) => /^for VD92G_FN in /.test(l)).pop()?.[1] ?? -1;
+  const names = head < 0 ? [] : /^for VD92G_FN in ([a-z0-9 -]+); do$/.exec(sectionLines[head])![1].trim().split(/\s+/);
+  const importsGate = (fn: string) =>
+    /from\s+["']\.\.\/_shared\/model-spend-gate\.ts["']/.test(readFileSync(resolve(ROOT, "supabase/functions", fn, "index.ts"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1"));
+
+  it("cut the loop from the section (an empty cut would judge nothing)", () => {
+    expect(names.length).toBeGreaterThan(5);
+  });
+
+  it("every function on that line imports the model spend gate", () => {
+    expect(names.filter((fn) => !importsGate(fn))).toEqual([]);
+  });
+
+  it("the run prints no spend-gate PASS for a retired endpoint", () => {
+    const { lines } = run(goodRoutes());
+    const gate = lines.filter((l) => l.includes("the spend gate that counts a proven account by name"));
+    expect(gate.length, show(lines)).toBe(names.length);
+    for (const fn of RETIRED) {
+      expect(gate.some((l) => l.includes(` ${fn} `) || l.includes(`${fn} preflight`)), `${fn}${show(gate)}`).toBe(false);
+    }
   });
 });

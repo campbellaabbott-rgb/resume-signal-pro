@@ -11,9 +11,11 @@
 #     once any of the 28 does, every one left behind is a FAIL;
 #   - each of the seven retired endpoints answers 410 code "retired", and
 #     nothing else, once its retired build serves;
-#   - warm-up answers a full warm-up asked with the publishable key 401
-#     admin_key_required, a target off its list 400 unknown_target, and its
-#     preflight allows the x-admin-key header;
+#   - warm-up answers a full warm-up asked with the publishable key 200,
+#     success false, admin_key_required, with nothing warmed (not 401: the
+#     keyless warm-up cron would leave a refusal in pg_net every ten minutes,
+#     which scan-heartbeat and mail-watch R9 count), a target off its list
+#     400 unknown_target, and its preflight allows the x-admin-key header;
 #   - the preflights of warm-up, nl-search, the product preview, the
 #     screening answers and the profile importer carry
 #     Access-Control-Max-Age 7200 through the platform's gateway.
@@ -24,7 +26,7 @@
 # READ-ONLY. Preflights run no function logic. A function is POSTed only once
 # its preflight shows this lane's build, which answers each of these requests
 # before it counts, reads, writes or invokes anything: a retired endpoint
-# reads nothing at all, and the warm-up refuses before its first invocation.
+# reads nothing at all, and the warm-up answers before its first invocation.
 # An older warm-up would invoke every function on its list, and an older
 # retired endpoint would spend a model call, so neither is ever asked.
 echo "INFO  == 99zzzzzz. cost audit, lane ai: retired endpoints, the owner's warm-up, the search parse's eight seconds, the free tools' chain, the usage line =="
@@ -107,6 +109,7 @@ let s="";process.stdin.on("data",(d)=>s+=d).on("end",()=>{
   if(!j||typeof j!=="object"||Array.isArray(j))why.push("no JSON body");
   else{
     if(j.code!==wantCode)why.push("code "+JSON.stringify(j.code));
+    if(want==="200"&&j.success!==false)why.push("success "+JSON.stringify(j.success));
     for(const k of Object.keys(j))if(!["error","code","success"].includes(k))why.push("it carries "+k);
   }
   if(why.length)console.log("FAIL  "+fn+" does not answer as "+claim+": "+why.join("; ")+" -- "+raw.slice(0,200));
@@ -117,7 +120,7 @@ let s="";process.stdin.on("data",(d)=>s+=d).on("end",()=>{
 for VDCA_FN in $VDCA_RETIRED; do
   vdca_answers "$VDCA_FN" '{}' 410 retired "retired, nothing read or called"
 done
-vdca_answers warm-up '{}' 401 admin_key_required "a full warm-up asked with the publishable key, refused before any invocation"
+vdca_answers warm-up '{}' 200 admin_key_required "a full warm-up asked with the publishable key, nothing warmed, and no refusal status for the monitors to count"
 vdca_answers warm-up '{"target":"verifier-probe-not-a-function"}' 400 unknown_target "a target off the list warms nothing"
 
 case "$VDCA_NEW" in
@@ -141,6 +144,6 @@ for VDCA_FN in warm-up nl-search generate-product-preview generate-application-a
 done
 
 echo "INFO  nl-search's eight seconds (504 timedOut, the model request stopped), its chain (today's model, then gpt-5-mini) and its bounded memory (no count, no model call on a repeat) are proved in src/test/the-board-search-parse-answers-inside-eight-seconds-and-once-per-sentence.test.ts: a live probe would spend a model call"
-echo "INFO  the free tools' chain (flash, then gpt-5-mini, never pro, after the spend gate) is proved in src/test/a-free-tool-falls-back-to-flash-then-gpt-5-mini-never-to-pro.test.ts; the usage line's content in src/test/the-ai-usage-line-carries-numbers-and-identifiers-only.test.ts. In the function logs, search [AI-USAGE] for the first measured token counts"
-echo "INFO  OWNER STEP: the scheduled job warm-up-edge-functions (every 10 minutes, created outside the migrations) is answered 401 once this build serves, unless its command sends the service-role key or the x-email-cron key; in the SQL editor, SELECT jobname, schedule, active FROM cron.job WHERE jobname = 'warm-up-edge-functions', then unschedule it or give it a key. The scan button's warm of one named function needs neither"
-echo "INFO  the /health-check page's warm-up button is answered 401 until the page sends the stored admin key, as its health-check call already does (src/pages/HealthCheck.tsx fetchWarmUpStatus: headers adminAuthHeaders(), which this preflight now allows): an integrator item, not this lane's file"
+echo "INFO  the free tools' chain (flash, then gpt-5-mini, never pro, after the spend gate) is proved in src/test/a-free-tool-falls-back-to-flash-then-gpt-5-mini-never-to-pro.test.ts; the usage line's content in src/test/the-ai-usage-line-carries-numbers-and-identifiers-only.test.ts. In the function logs, search [AI-USAGE] for the first measured token counts (every function that parses a model reply itself prints one, src/test/every-function-that-reads-a-model-reply-itself-prints-its-usage-line.test.ts); a backup-scanner analysis line that ends usage=absent carries no counts, because its streamed request asks for none"
+echo "INFO  OWNER STEP: the scheduled job warm-up-edge-functions (every 10 minutes, created outside the migrations) warms nothing once this build serves, unless its command sends the service-role key or the x-email-cron key: it is answered 200 with success false (so pg_net records no refusal and neither scan-heartbeat nor mail-watch R9 turns red), and still costs 144 warm-up invocations a day. In the SQL editor, SELECT jobname, schedule, active FROM cron.job WHERE jobname = 'warm-up-edge-functions', then unschedule it (the audit measured at most ~90 ms of warming gain) or give it a key to keep warming. The scan button's warm of one named function needs neither"
+echo "INFO  the /health-check page's Warm Up button sends the stored admin key as the body's adminKey from this merge on (src/test/the-health-pages-warm-up-hands-the-owners-key-in-the-body.test.tsx); without a stored key this build answers success false and the page shows no warm-up"

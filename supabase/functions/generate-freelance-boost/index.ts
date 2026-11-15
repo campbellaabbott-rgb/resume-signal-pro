@@ -15,7 +15,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { CHAIN_DEADLINE_MS, callAIWithModelFallback } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, callAIWithModelFallback, logAiUsage } from "../_shared/ai-fallback.ts";
 import { clipField, clipText, modelSpendGate, purchaseSpendGate } from "../_shared/model-spend-gate.ts";
 import { proGrantRefusal } from "../_shared/pro.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
@@ -281,7 +281,7 @@ ${p.repeatOrReferral ? `Repeat/referral: ${p.repeatOrReferral}` : ""}`).join("\n
         statuses.push(504);
         break;
       }
-      const { response: aiRes } = await callAIWithModelFallback(apiKey, {
+      const { response: aiRes, modelUsed } = await callAIWithModelFallback(apiKey, {
         messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
         temperature: 0.5,
         maxTokens: BOOST_MAX_TOKENS,
@@ -289,11 +289,12 @@ ${p.repeatOrReferral ? `Repeat/referral: ${p.repeatOrReferral}` : ""}`).join("\n
         models: [model],
         context: "FREELANCE-BOOST",
         deadlineMs: index === 0 ? Math.max(BOOST_MIN_MODEL_MS, left - BOOST_NEXT_MODEL_WINDOW_MS) : left,
-      }).catch(() => ({ response: new Response(null, { status: 504 }) }));
+      }).catch(() => ({ response: new Response(null, { status: 504 }), modelUsed: model }));
       statuses.push(aiRes.status);
       if (aiRes.status === 402) break; // credits are account-wide: no model will answer
       if (!aiRes.ok) continue;
       const aiJson = await aiRes.json().catch(() => null);
+      logAiUsage("generate-freelance-boost", modelUsed, aiJson);
       const read = readBoostReply(aiJson?.choices?.[0]?.message?.content, { transitionPro: isTransitionPro, posting: body.jobPosting });
       if (read.ok) { out = read.out; break; }
       console.warn(`[FREELANCE-BOOST] ${model} reply unusable: ${read.reason}`);

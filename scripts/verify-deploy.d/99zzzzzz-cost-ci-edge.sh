@@ -5,8 +5,10 @@
 # answers its CORS preflight with Access-Control-Max-Age 7200, so a browser
 # asks once per two hours per function instead of before every call more than
 # five seconds after the last; check-subscription also reads a signed-in
-# caller's plan rows beside the cache row, and get-account-data its bound
-# one-offs beside the mailbox proof.
+# caller's plan rows beside the cache row (not for a fresh: true request,
+# which goes live; a row found too old costs its live check one more read, a
+# stated trade), and get-account-data its bound one-offs beside the mailbox
+# proof.
 #
 # Named 99zzzzzz so it sorts after 99zzzzz-free-scan-wave-recheck.sh.
 #
@@ -77,6 +79,7 @@ for VDCE_P in $VDCE_AGE_BAD; do
 done
 if [ -z "$VDCE_NEW" ]; then echo "INFO  M not judged: no function serves its cost-wave ci-edge build yet"; fi
 
-echo "INFO  F1 the frontend publish: a crawler or driven browser on /jobs is sent the list and none of the country, takedown, benchmark, curve, growth or layoff reads (src/test/a-crawler-on-the-board-is-sent-the-list-and-none-of-the-decoration.test.tsx); no request here can tell a crawler's render from a person's"
+echo "INFO  F1 the frontend publish: a scraper or driven browser on /jobs is sent the list and none of the country, takedown, benchmark, curve, growth or layoff reads, while Googlebot, Google's inspection tool, bingbot and Applebot, which index what the page draws, are sent all of them (src/test/a-crawler-on-the-board-is-sent-the-list-and-none-of-the-decoration.test.tsx); no request here can tell a crawler's render from a person's"
 echo "INFO  F2 the frontend publish: /jobs prints the homepage's freshness answer when the visitor came from / under a minute ago, instead of asking again (same test)"
-echo "INFO  F3 CI, from the merge on: the required test job bakes offline and fails when no dist/pricing/index.html is written; built-output bakes live on every push to main and on a pull request only when it changes the bake (src/test/the-required-build-bakes-offline-and-a-pull-request-bakes-live-only-when-it-changes-the-bake.test.ts)"
+echo "INFO  F3 CI, from the merge on: the required test job bakes offline and fails when no dist/pricing/index.html is written; the same job then runs the guards on built output that read no live data (the entry budget, the chunk preloads, the fonts, the stylesheet order, the skip link) against that offline dist on every pull request, since merging into main publishes the frontend; built-output bakes live on every push to main and on a pull request only when it changes the bake (src/test/the-required-build-bakes-offline-and-a-pull-request-bakes-live-only-when-it-changes-the-bake.test.ts)"
+echo "INFO  F4 check-subscription's plan rows for a signed-in caller are read beside the cache row: a cached view makes one read and no extra round trip; a fresh: true request reads them once, after its live check; a cached row found too old makes its live check read them twice, one RPC (at most 30 an hour an address) traded for the round trip off every cached view (src/test/a-signed-in-check-and-the-account-page-ask-their-independent-reads-together.test.ts)"

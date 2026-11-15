@@ -1,21 +1,28 @@
 /**
- * A CRAWLER ON THE BOARD IS SENT THE LIST AND NONE OF THE DECORATION, AND A
- * VISIT FROM THE HOMEPAGE IS NOT ASKED TWICE HOW FRESH THE BOARD IS (cost
- * audit 2026-11-08, lane ci-edge: "Skip decorative RPCs for crawlers on /jobs"
- * and dedupe-cached-row-reads).
+ * A CRAWLER ON THE BOARD IS SENT THE LIST AND NONE OF THE DECORATION, A SEARCH
+ * ENGINE IS SENT WHAT A PERSON IS, AND A VISIT FROM THE HOMEPAGE IS NOT ASKED
+ * TWICE HOW FRESH THE BOARD IS (cost audit 2026-11-08, lane ci-edge: "Skip
+ * decorative RPCs for crawlers on /jobs" and dedupe-cached-row-reads).
  *
- * WHAT WAS WRONG. Every render of /jobs, a crawler's included, asked for the
- * country counts, the takedown ticker, the salary benchmarks, and for every
- * employer on the page its fill curve, its growth row and its layoff filing:
- * seven reads a person looks at and a crawler indexes nothing from (the baked
- * HTML is cut by scripts/prerender-seo.mjs, which never imports the page). And
- * a visitor who clicked from / to /jobs paid get_freshness_stats twice for a
- * rollup the server caches.
+ * WHAT WAS WRONG. Every render of /jobs, a scraper's or a driven browser's
+ * included, asked for the country counts, the takedown ticker, the salary
+ * benchmarks, and for every employer on the page its fill curve, its growth
+ * row and its layoff filing: seven reads a person looks at. And a visitor who
+ * clicked from / to /jobs paid get_freshness_stats twice for a rollup the
+ * server caches.
+ *
+ * REVIEW 2026-11-15. The lane skipped those reads for Googlebot too, on the
+ * claim that a crawler indexes only the list and the baked HTML. Googlebot,
+ * bingbot and Applebot run the page's JavaScript, and main.tsx mounts beside
+ * the baked page and removes it once the route commits, so a search engine
+ * indexes what React draws: the skip took the field pages' advertised-pay
+ * line, the takedown count and the employer badges out of the index.
  *
  * WHAT HOLDS NOW, on the real page with the client mocked:
- *   - a crawler gets the list call and none of those six reads;
+ *   - a headless scraper gets the list call and none of those six reads;
  *   - a person gets all six, as before (so the first point is not vacuous);
- *   - a crawler with "Actively hiring" on still gets the curves and the growth
+ *   - Googlebot, Google's inspection tool, bingbot and Applebot get all six;
+ *   - a scraper with "Actively hiring" on still gets the curves and the growth
  *     rows that filter partitions on;
  *   - the homepage's freshness answer, under a minute old, is printed by the
  *     board without asking again; with none kept, or a failed one, it asks.
@@ -56,7 +63,13 @@ const DECORATION = [
   "get_country_facet", "get_takedowns_today", "get_salary_benchmarks",
   "get_company_fill_curve", "get_company_growth", "get_employer_layoff_filings",
 ] as const;
-const GOOGLEBOT = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)";
+const SCRAPER = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/120.0.0.0 Safari/537.36";
+const SEARCH_RENDERERS = {
+  googlebot: "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.71 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+  inspection: "Mozilla/5.0 (compatible; Google-InspectionTool/1.0;)",
+  bingbot: "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm) Chrome/116.0.1938.76 Safari/537.36",
+  applebot: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Safari/605.1.15 (Applebot/0.1; +http://www.apple.com/go/applebot)",
+};
 const FRESH = [{ boards: 900, p50_min: 37, p95_min: 120, computed_at: new Date().toISOString() }];
 
 const DAY = 86_400_000;
@@ -74,9 +87,9 @@ const lists = () => invoke.mock.calls.filter(([fn, o]) => fn === "job-board" && 
 const card = (token: string) => document.querySelector(`[data-job-id="greenhouse:${token}:1"]`);
 
 let realUa: PropertyDescriptor | undefined;
-function asCrawler() {
+function asCrawler(ua = SCRAPER) {
   realUa = Object.getOwnPropertyDescriptor(window.navigator, "userAgent");
-  Object.defineProperty(window.navigator, "userAgent", { value: GOOGLEBOT, configurable: true });
+  Object.defineProperty(window.navigator, "userAgent", { value: ua, configurable: true });
 }
 
 beforeEach(() => {
@@ -143,6 +156,16 @@ describe("a crawler on /jobs", () => {
       for (const fn of DECORATION) expect(called(), fn).toContain(fn);
     }, SLOW);
   });
+
+  for (const [name, ua] of Object.entries(SEARCH_RENDERERS)) {
+    it(`except a search engine's renderer (${name}), which indexes what the page draws and is sent all six (review 2026-11-15)`, async () => {
+      asCrawler(ua);
+      await mountBoard();
+      await waitFor(() => {
+        for (const fn of DECORATION) expect(called(), fn).toContain(fn);
+      }, SLOW);
+    });
+  }
 
   it("with Actively hiring on, is still sent the curves and growth rows the filter partitions on, and nothing else", async () => {
     asCrawler();

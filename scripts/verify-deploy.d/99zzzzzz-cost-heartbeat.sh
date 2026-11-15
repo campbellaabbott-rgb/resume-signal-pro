@@ -32,9 +32,17 @@
 #       minute 10 or later (an off-hour run; the hourly run writes by :03).
 #       Over 30 minutes is a FAIL (the dead-man check-alerts mails about).
 #   L2  on the new build the heartbeat's full scans run once an hour: the last
-#       hour holds one or two heartbeat scan rows (it held six when every run
-#       was full; the off-hour runs write none), and none at all is a FAIL.
-#       Three to six is INFO (an hour that straddles the paste).
+#       TWO hours hold one to three heartbeat scan rows (twelve when every run
+#       was full; the off-hour runs write none). Two hours, not one: a scan
+#       row is written when the scan ends, so a one-hour window is empty for
+#       the seconds between the last hour's row leaving it and this hour's
+#       arriving (review 2026-11-15). None at all is a FAIL. Four or more is
+#       a FAIL once the saving must show: COST_HB_DEPLOYED_AT (UTC, the moment
+#       the paste carrying scan-heartbeat 2026-11-09.1 and free-keyword-scan
+#       2026-11-09.2 landed) is set, both serve those builds or later, and the
+#       window opened ten minutes or more after it. Unset, or the window
+#       straddling the paste, four or more is INFO. An anchor that is not a
+#       time, is in the future, or is set while either build is older, FAILs.
 #
 # NOT PROVABLE FROM OUTSIDE, so proved in the suite: the off-hour run makes no
 # model call and the field means nothing without the heartbeat's secret
@@ -55,6 +63,7 @@ rm -f /tmp/vd_ch_home.html /tmp/vd_ch_entry.js /tmp/vd_ch_chunk.js /tmp/vd_ch_ho
 
 # B1 + C1.
 VDCH_HB_NEW=unknown
+VDCH_FKS_NEW=unknown
 for VDCH_SPEC in scan-heartbeat:2026-11-09:1 free-keyword-scan:2026-11-09:2 free-keyword-scan-stream:2026-11-10:2; do
   VDCH_FN=${VDCH_SPEC%%:*}; VDCH_REST=${VDCH_SPEC#*:}; VDCH_D=${VDCH_REST%%:*}; VDCH_N=${VDCH_REST#*:}
   curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$VDCH_FN" -H "Origin: $SITE" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: authorization,apikey,content-type" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' > "/tmp/vd_ch_opt_$VDCH_FN.txt"
@@ -65,6 +74,7 @@ for VDCH_SPEC in scan-heartbeat:2026-11-09:1 free-keyword-scan:2026-11-09:2 free
   elif build_ge "$VDCH_FN" "$VDCH_H" "$VDCH_D" "$VDCH_N"; then VDCH_ISNEW=yes; echo "PASS  B1 $VDCH_FN x-fn-build = $VDCH_H ($VDCH_D.$VDCH_N or later)"
   else echo "INFO  B1 $VDCH_FN x-fn-build = $VDCH_H: the paste with $VDCH_D.$VDCH_N has not landed (section 49 lists the gap)"; fi
   [ "$VDCH_FN" = scan-heartbeat ] && { [ -z "$VDCH_H" ] && VDCH_HB_NEW=unknown || VDCH_HB_NEW=$VDCH_ISNEW; }
+  [ "$VDCH_FN" = free-keyword-scan ] && { [ -z "$VDCH_H" ] && VDCH_FKS_NEW=unknown || VDCH_FKS_NEW=$VDCH_ISNEW; }
   [ "$VDCH_FN" = scan-heartbeat ] && continue
   if [ "$VDCH_AGE" = 7200 ]; then echo "PASS  C1 $VDCH_FN preflight answers Access-Control-Max-Age 7200: a browser asks it once in two hours, not before every scan more than five seconds after the last"
   elif [ "$VDCH_ISNEW" = yes ]; then echo "FAIL  C1 $VDCH_FN serves $VDCH_H but its preflight answers Access-Control-Max-Age '${VDCH_AGE:-none}' (want 7200): the gateway strips it, or the build lost it, so every scan still pays a preflight"
@@ -104,9 +114,9 @@ else echo "FAIL  H2 the published checkout hook ($VDCH_COUTN) no longer both war
 # L1 + L2.
 # GETs: PostgREST runs a GET in a read-only transaction, so neither reader can write.
 curl -s -m 60 "$B/rest/v1/rpc/get_scan_health_status" -H "apikey: $K" -H "Authorization: Bearer $K" > /tmp/vd_ch_health.json
-curl -s -m 60 "$B/rest/v1/rpc/get_scan_success_rate?p_scan_type=heartbeat&p_hours_back=1" -H "apikey: $K" -H "Authorization: Bearer $K" > /tmp/vd_ch_rate.json
+curl -s -m 60 "$B/rest/v1/rpc/get_scan_success_rate?p_scan_type=heartbeat&p_hours_back=2" -H "apikey: $K" -H "Authorization: Bearer $K" > /tmp/vd_ch_rate.json
 # VDCH_NOW (an ISO time) pins the clock for the section's own test.
-VDCH_HB_NEW=$VDCH_HB_NEW VDCH_NOW="${VDCH_NOW:-}" node -e '
+VDCH_HB_NEW=$VDCH_HB_NEW VDCH_FKS_NEW=$VDCH_FKS_NEW VDCH_ANCHOR="${COST_HB_DEPLOYED_AT:-}" VDCH_NOW="${VDCH_NOW:-}" node -e '
 const fs=require("fs");const read=(p)=>{try{return JSON.parse(fs.readFileSync(p,"utf8"))}catch{return null}};
 const isNew=process.env.VDCH_HB_NEW==="yes";
 const now=process.env.VDCH_NOW?Date.parse(process.env.VDCH_NOW):Date.now();
@@ -123,10 +133,21 @@ else{
   else console.log("INFO  L1 the newest heartbeat row ("+age+" min ago, at "+at+") is the hourly run; an off-hour row is judged on a run after :20");
 }
 const s=read("/tmp/vd_ch_rate.json");const q=Array.isArray(s)?s[0]:null;
+const scanNew=process.env.VDCH_FKS_NEW==="yes";
+const given=process.env.VDCH_ANCHOR||"";
+let anchor=null,anchorBad=null;
+if(given){const t=Date.parse(given);
+  if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(given)||!Number.isFinite(t))anchorBad="COST_HB_DEPLOYED_AT="+given+" is not a UTC time (want e.g. 2026-11-20T14:05Z)";
+  else if(t>now)anchorBad="COST_HB_DEPLOYED_AT="+given+" is in the future";
+  else if(!isNew||!scanNew)anchorBad="COST_HB_DEPLOYED_AT="+given+" says the paste landed, but "+(!isNew?"scan-heartbeat does not serve 2026-11-09.1":"free-keyword-scan does not serve 2026-11-09.2")+" or later";
+  else anchor=t;}
+if(anchorBad)console.log("FAIL  L2 "+anchorBad);
 if(!q||typeof q!=="object"||q.total_scans==null)console.log("INFO  L2 get_scan_success_rate for the heartbeat is unreadable, so the hourly cadence is not judged: "+JSON.stringify(s).slice(0,120));
 else{const n=Number(q.total_scans);
-  if(!isNew)console.log("INFO  L2 the heartbeat wrote "+n+" scan row(s) in the last hour on the old build (six when every run is full)");
-  else if(n===0)console.log("FAIL  L2 the heartbeat wrote no scan row in the last hour on the new build: its hourly full scan did not run, or did not reach the scanner");
-  else if(n<=2)console.log("PASS  L2 the heartbeat wrote "+n+" scan row(s) in the last hour: its full scan runs hourly, where every run was full before (six an hour)");
-  else console.log("INFO  L2 the heartbeat wrote "+n+" scan rows in the last hour: an hour that straddles the paste, or off-hour runs still scanning; one or two is the settled count");}
+  const settled=anchor!==null&&now-2*3600e3>=anchor+10*60e3;
+  if(!isNew)console.log("INFO  L2 the heartbeat wrote "+n+" scan row(s) in the last two hours on the old build (twelve when every run is full)");
+  else if(n===0)console.log("FAIL  L2 the heartbeat wrote no scan row in the last two hours on the new build: its hourly full scan did not run, or did not reach the scanner");
+  else if(n<=3)console.log("PASS  L2 the heartbeat wrote "+n+" scan row(s) in the last two hours: its full scan runs hourly, where every run was full before (twelve in two hours)");
+  else if(settled)console.log("FAIL  L2 the heartbeat wrote "+n+" scan rows in the two hours from "+new Date(now-2*3600e3).toISOString().slice(0,16)+"Z, all after the paste (COST_HB_DEPLOYED_AT "+given+"): off-hour runs are still full scans, so the hourly saving is not happening (a caller that is not the cron reaches it, or the scanner ignores the off-hour flag)");
+  else console.log("INFO  L2 the heartbeat wrote "+n+" scan rows in the last two hours: "+(anchor===null?"set COST_HB_DEPLOYED_AT to judge it (four or more then FAILs)":"the window opened before the paste settled ("+given+" plus ten minutes)")+"; one to three is the settled count");}
 '

@@ -138,6 +138,9 @@ const STREAM_SSE = [
   "data: [DONE]",
   "",
 ].join("\n\n");
+/** The same stream with no usage chunk: what a gateway sends a request that did not ask for one. */
+const STREAM_SSE_NO_USAGE = STREAM_SSE.split("\n\n").filter((c) => !c.includes('"usage"')).join("\n\n");
+let streamBody = STREAM_SSE;
 
 beforeAll(async () => {
   const g = globalThis as Record<string, unknown>;
@@ -147,7 +150,7 @@ beforeAll(async () => {
     const u = String(url);
     if (!u.includes("ai.gateway.lovable.dev")) return new Response("{}", { status: 200 });
     const req = JSON.parse(init?.body ?? "{}") as { stream?: boolean; tools?: Array<{ function: { parameters: { properties: Record<string, unknown> } } }> };
-    if (req.stream) return new Response(STREAM_SSE, { status: 200, headers: { "content-type": "text/event-stream" } });
+    if (req.stream) return new Response(streamBody, { status: 200, headers: { "content-type": "text/event-stream" } });
     if (!req.tools) {
       // The backup scanner's industry check: a plain completion.
       return new Response(JSON.stringify({ choices: [{ message: { content: "finance" }, finish_reason: "stop" }], usage: { prompt_tokens: 808, completion_tokens: 109, completion_tokens_details: { reasoning_tokens: 101 } } }), { status: 200 });
@@ -171,6 +174,7 @@ beforeEach(() => {
   rpcs = [];
   pending = [];
   logs = [];
+  streamBody = STREAM_SSE;
   (globalThis as Record<string, unknown>).__usageScanClient = scanClient();
   const db = new FakeDb();
   for (const n of ["check_global_rate_limit", "check_rate_limit"]) db.rpcs[n] = () => ({ data: true, error: null });
@@ -233,5 +237,21 @@ describe("the backup scanner (free-keyword-scan-stream)", () => {
       "[AI-USAGE] context=free-keyword-scan-stream.industry model=google/gemini-2.5-flash prompt_tokens=808 completion_tokens=109 cached_tokens=- reasoning_tokens=101 finish_reason=stop",
     ]);
     for (const l of lines) expect(l).not.toMatch(RESUME_WORDS);
+  });
+
+  it("a stream that carried no usage chunk ends its line with usage=absent, so its dashes are not read as a measurement (review 2026-11-15)", async () => {
+    expect(STREAM_SSE_NO_USAGE).not.toContain("prompt_tokens");
+    streamBody = STREAM_SSE_NO_USAGE;
+    const res = await streamHandler(new Request("https://harness.supabase.co/functions/v1/free-keyword-scan-stream", {
+      method: "POST", headers: { "content-type": "application/json", authorization: "Bearer anon_harness", "cf-connecting-ip": "198.51.100.45" },
+      body: JSON.stringify({ resumeText: RESUME, targetCountry: "US", language: "en" }),
+    }));
+    await res.text();
+    const analysis = usageLines().filter((l) => l.includes("context=free-keyword-scan-stream.analysis"));
+    expect(analysis).toEqual([
+      "[AI-USAGE] context=free-keyword-scan-stream.analysis model=google/gemini-2.5-flash prompt_tokens=- completion_tokens=- cached_tokens=- reasoning_tokens=- finish_reason=tool_calls usage=absent",
+    ]);
+    // The industry check is a plain reply that carries its counts: no marker.
+    expect(usageLines().filter((l) => l.includes("usage=absent"))).toHaveLength(1);
   });
 });

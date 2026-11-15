@@ -83,7 +83,7 @@ const STUBS: Record<string, string> = {
   "https://deno.land/std@0.168.0/crypto/mod.ts": "export const crypto = globalThis.crypto;",
   "_shared/supabase-client.ts": "export const getServiceClient = () => globalThis.__fakeSupabase;",
   "_shared/ai-fallback.ts":
-    "export const chainFrom = (m) => [m]; export const callAIWithModelFallback = (key, opts) => globalThis.__fakeAI(opts);",
+    "export const chainFrom = (m) => [m]; export const callAIWithModelFallback = (key, opts) => globalThis.__fakeAI(opts); export const logAiUsage = () => {};",
 };
 
 export type Harness = {

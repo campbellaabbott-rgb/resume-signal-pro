@@ -1,6 +1,6 @@
 // deploy-stamp: 2026-10-09T13:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
+import { callAIWithModelFallback, chainFrom, logAiUsage } from "../_shared/ai-fallback.ts";
 import {
   ANALYSIS_BUDGET_MS,
   ANALYSIS_TOOL_NAME,
@@ -436,7 +436,9 @@ async function askPart(apiKey: string, part: AnalysisPart, systemPrompt: string,
       throw new PartAnswer(answer(500, ERROR_MESSAGES.INTERNAL));
     }
 
-    const reply = readToolReply(await response.json().catch(() => null));
+    const raw = await response.json().catch(() => null);
+    logAiUsage(`analyze-resume.${part.label}`, modelUsed, raw);
+    const reply = readToolReply(raw);
     if (reply && usablePart(part, reply)) {
       console.log(`[ANALYZE-RESUME] (${part.label}) answered by ${modelUsed} in ${Date.now() - startedAt}ms`);
       return reply;

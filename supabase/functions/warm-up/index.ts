@@ -6,10 +6,13 @@ import { keyMatches } from "../_shared/admin-key.ts";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
 
 // The build every response names (x-fn-build); see _shared/fn-build.ts.
-// 2026-11-09.1 (cost audit 2026-11-08, lane ai): the full warm-up (every
-// function below, from one request) answers only the owner's key, our own
-// servers' key or the cron key; anyone else is answered 401 before anything
-// is invoked. A warm-up of one named function is unchanged and needs no key.
+// 2026-11-09.1 (cost audit 2026-11-08, lane ai; review 2026-11-15): the full
+// warm-up (every function below, from one request) runs only for the owner's
+// key, our own servers' key or the cron key; anyone else is answered 200
+// with success false and code admin_key_required before anything is invoked,
+// not 401, so the keyless warm-up cron created outside the migrations is not
+// counted as a refused cron call by scan-heartbeat and mail-watch. A warm-up
+// of one named function is unchanged and needs no key.
 // The seven model endpoints nothing called are retired, so the two of them
 // listed here are no longer warmed. Browsers keep the preflight two hours.
 const FN_BUILD = "warm-up.2026-11-09.1";
@@ -20,11 +23,10 @@ const FN_BUILD = "warm-up.2026-11-09.1";
  * TWO MODES. A request naming one listed function (`{ target }`) warms that
  * one: the scan button's hover sends it, with the publishable key. A request
  * naming none warms the whole list, one invocation per function from one
- * request, so it is for the owner (the /health-check button, once it sends
- * the stored key as x-admin-key, as that page's health-check call does, or
- * in the body, as its AI diagnostic call does), our own servers and a
- * scheduled warm-up that sends the cron key; a stranger's request is refused
- * before anything runs.
+ * request, so it is for the owner (the /health-check button sends the stored
+ * key as the body's adminKey; x-admin-key works too), our own servers and a
+ * scheduled warm-up that sends the cron key; anyone else's request warms
+ * nothing and is told so in a 200 answer.
  */
 
 const corsHeaders = {
@@ -171,14 +173,19 @@ serve(stamped(FN_BUILD, async (req) => {
     // x-admin-key, or as the body's adminKey, which a page published before
     // this build can send without a preflight that refuses the header), the
     // service-role key, or the vault-held cron key; anyone else is answered
-    // 401 here, before any function is invoked.
+    // here, before any function is invoked. With a 200 and success false,
+    // not a 401: the warm-up-edge-functions cron (created outside the
+    // migrations, its command unreadable) calls with no key, and pg_net keeps
+    // every 401 it gets, which cron_http_answers, scan-heartbeat and
+    // mail-watch R9 count as a refused cron call, so a 401 would turn both
+    // monitors red every ten minutes until the owner acted.
     if (target === null) {
       const presented = req.headers.get('x-admin-key') || (typeof body.adminKey === 'string' ? body.adminKey : '');
       const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
       const allowed = keyMatches(presented, Deno.env.get("ADMIN_API_KEY") ?? "")
         || await isScheduledCaller(req.headers, createClient(supabaseUrl, serviceKey), serviceKey);
       if (!allowed) {
-        return json({ success: false, error: 'Unauthorized: the full warm-up needs the admin key. Name one function as target to warm it alone.', code: 'admin_key_required' }, 401);
+        return json({ success: false, error: 'Unauthorized: the full warm-up needs the admin key, so nothing was warmed. Name one function as target to warm it alone.', code: 'admin_key_required' }, 200);
       }
     }
 

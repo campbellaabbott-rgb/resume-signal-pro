@@ -17,6 +17,7 @@ import { modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { requireWebsiteSession } from "../_shared/website-session.ts";
 import { fenceUntrusted, plantedInstructions, PLANTED_INSTRUCTIONS_FLAG } from "../_shared/planted-instructions.ts";
 import { SHORTLIST_ATTESTATION_TEXT, SHORTLIST_ATTESTATION_VERSION } from "../_shared/shortlist-attestation.ts";
+import { logAiUsage } from "../_shared/ai-fallback.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -247,6 +248,7 @@ Return via the submit_evaluation tool.`;
       });
     }
     const aiJson = await aiRes.json();
+    logAiUsage("shortlist-evaluate", MODEL_ID, aiJson);
     let evaluation: Record<string, unknown> | null = null;
     try {
       evaluation = JSON.parse(aiJson.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments ?? "null");

@@ -1585,8 +1585,14 @@ const keys=[...new Set(rows.flatMap((r)=>Object.keys(r)))];
 ok(rows.length>0&&keys.every((k)=>want.includes(k)),"get_cron_health answers anon with ch_* aggregates only: "+rows.length+" jobs (never a command or a message)");
 const set=rows.filter((r)=>r.ch_timeout);info(set.length+" jobs set their own timeout in the command: "+set.map((r)=>r.ch_jobname+"="+r.ch_timeout).join(", "));
 for(const j of ["refresh-stats-cache","refresh-explore-cache"]){const r=rows.find((x)=>x.ch_jobname===j);ok(!!r&&!!r.ch_timeout,j+" sets its timeout in the command ("+(r?r.ch_timeout:"no such job")+")")}
-const killed=rows.filter((r)=>!r.ch_timeout&&Number(r.ch_timeouts)>0&&r.ch_active!==false);
+// A ONE-SHOT is a single DROP or CREATE INDEX CONCURRENTLY, which refuses a
+// SET in front of it, so it has no timeout of its own by design; the session
+// cap cancelling one is the retry its watcher expects (20261109190000,
+// 20261109141000). Reported, not judged, until the watcher unschedules it.
+const oneShot=(r)=>/^oneshot-/.test(String(r.ch_jobname));
+const killed=rows.filter((r)=>!r.ch_timeout&&Number(r.ch_timeouts)>0&&r.ch_active!==false&&!oneShot(r));
 ok(killed.length===0,"no active job without a timeout of its own was cancelled by a statement timeout in 24h"+(killed.length?": "+killed.map((r)=>r.ch_jobname+" ("+r.ch_timeouts+" cancels, longest "+r.ch_max_seconds+"s)").join(", "):""));
+for(const r of rows.filter((x)=>oneShot(x)&&Number(x.ch_timeouts)>0))info(r.ch_jobname+" (a one-shot index job, retried until its watcher unschedules it) was cancelled "+r.ch_timeouts+" time(s) in 24h by the session two-minute cap, last run "+r.ch_last_status+" at "+r.ch_last_start+": while it is listed it is waiting behind older transactions");
 for(const r of rows.filter((x)=>x.ch_timeout&&Number(x.ch_timeouts)>0))info(r.ch_jobname+": "+r.ch_timeouts+" statement-timeout cancels in 24h, last run "+r.ch_last_status+" in "+r.ch_last_seconds+"s at "+r.ch_last_start+" (cancels before the apply are expected; a cancel after it at ~"+r.ch_timeout+" means the header itself is too short)");
 const slow=rows.filter((r)=>Number(r.ch_max_seconds)>=110).sort((a,b)=>Number(b.ch_max_seconds)-Number(a.ch_max_seconds));
 for(const r of slow.slice(0,12))info("long runs: "+r.ch_jobname+" longest "+r.ch_max_seconds+"s, last "+r.ch_last_status+" "+r.ch_last_seconds+"s, timeout "+(r.ch_timeout||"none (session two minutes)"));

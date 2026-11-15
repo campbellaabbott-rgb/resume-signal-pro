@@ -20,14 +20,17 @@
 -- WHY 40 MINUTES ON QUARTER TICKS, AND NOT ONE TICK AN HOUR. The audit asked
 -- for ':52 hourly, gated at 45 minutes'. That lets the row reach about 105
 -- minutes old (a pass-end write at :08 holds the :52 tick off, and the next
--- tick is an hour later), and scan-heartbeat degrades the
+-- tick is an hour later), and scan-heartbeat degraded the
 -- job_board_facets_cache check past 60 minutes -- a simulation over a day of
 -- pass ends put that at about 18 false 'degraded' readings a day. On quarter
 -- ticks a 40-minute gate skips at most two ticks in a row, so the row is never
 -- older than about 55 minutes, and the cron runs at most every 45 minutes when
 -- the pass is quiet: 32 runs a day at most instead of 96, fewer whenever the
--- pass end has written the row. If the heartbeat's bound is ever raised to
--- two hours, the hourly form can follow.
+-- pass end has written the row. scan-heartbeat 2026-11-09.1 judges the row
+-- against 90 minutes (FACETS_STALE_MIN), so two missed rebuilds still read
+-- healthy; until that build serves, its 60-minute bound has about five
+-- minutes to spare. If the bound is ever raised to two hours, the hourly form
+-- can follow.
 --
 -- THE FIFTEEN-MINUTE PROSE THIS SUPERSEDES lives only in applied migrations
 -- and is not edited (applied files are never changed): 20260801000000's

@@ -13,7 +13,11 @@
  *     adminKey (which a page needs no new preflight for);
  *   - our own servers (the service-role key);
  *   - the cron key (x-email-cron, checked by the database);
- * and anyone else gets 401 admin_key_required before a single invocation.
+ * and anyone else is answered before a single invocation: 200, success false,
+ * code admin_key_required. Not 401: the keyless warm-up cron created outside
+ * the migrations would leave a 401 in pg_net every ten minutes, and
+ * cron_http_answers, scan-heartbeat and mail-watch R9 count each as a refused
+ * cron call.
  * The scan button's hover warm of one named function is unchanged and needs
  * no key; a name that is not on the list warms nothing (400), where it used
  * to fall through to the whole list.
@@ -64,12 +68,12 @@ const post = async (body: unknown, headers: Record<string, string> = {}) => {
   return { status: res.status, body: await res.json() as Record<string, unknown> };
 };
 
-describe("the full warm-up refuses a stranger before anything is invoked", () => {
+describe("the full warm-up warms nothing for a stranger, and says so without a refusal status", () => {
   for (const [what, body] of [["an empty body", {}], ["no body at all", undefined], ["a wrong admin key", { adminKey: "guess" }], ["an empty target", { target: "" }]] as const) {
-    it(`${what}, with the publishable key: 401 admin_key_required and no invocation`, async () => {
+    it(`${what}, with the publishable key: answered 200, success false, admin_key_required, and nothing invoked`, async () => {
       const r = await post(body);
-      expect(r.status).toBe(401);
-      expect(r.body.code).toBe("admin_key_required");
+      expect(r.status, "a 401 or 403 is a refused cron call to the monitors").toBe(200);
+      expect(r.body).toEqual({ success: false, code: "admin_key_required", error: expect.stringMatching(/nothing was warmed/) });
       expect(world.invoked).toEqual([]);
     });
   }
@@ -77,7 +81,8 @@ describe("the full warm-up refuses a stranger before anything is invoked", () =>
   it("a short or wrong cron key is refused too", async () => {
     for (const k of ["short", `${CRON_KEY}x`]) {
       const r = await post({}, { "x-email-cron": k });
-      expect(r.status, k).toBe(401);
+      expect(r.status, k).toBe(200);
+      expect(r.body.success, k).toBe(false);
     }
     expect(world.invoked).toEqual([]);
   });

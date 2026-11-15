@@ -36,6 +36,14 @@
 -- duplicate is dropped, the watcher unschedules that dropper rather than drop
 -- the last index on the column.
 --
+-- ARMED LAST IN STEP 1. While a dropper waits for older transactions, its
+-- DROP INDEX CONCURRENTLY holds SHARE UPDATE EXCLUSIVE on the table, and a
+-- CREATE TRIGGER or ALTER TABLE on that table queues behind it. So this file
+-- carries the stamp that sorts after every wave migration that takes such a
+-- lock on job_board_postings, temp_resume_storage or ai_response_cache
+-- (20261109150000's trigger on job_board_postings among them, which first
+-- carried this file at 20261109130000 and would have timed out behind it).
+--
 -- Safe to re-run: an index already gone schedules nothing, a dropper already
 -- scheduled is not scheduled again, and every name is IF EXISTS. Where pg_cron
 -- is not installed, the notice prints the four statements to run by hand.

@@ -20,7 +20,13 @@
  *     passing for a required check) only on a pull request that changes
  *     nothing the bake runs or reads; a push, a bake change, or a bake-scope
  *     that could not answer all run the live bake;
- *   - no workflow-level path filter can leave a check unreported.
+ *   - no workflow-level path filter can leave a check unreported;
+ *   - (review 2026-11-15) merging into main publishes the frontend, so a guard
+ *     that waits for main's push judges a page that is already live: the
+ *     guards on built output that read no live data (the entry's budget, the
+ *     route chunks a baked page preloads, the fonts, the stylesheet order, the
+ *     skip link) run in the test job, on every pull request, against its
+ *     offline dist, with RB_REQUIRE_DIST=1.
  */
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
@@ -186,5 +192,48 @@ describe("the bake's inputs are computed from the tree", () => {
     writeFileSync(join(dir, "scripts/prerender-seo.mjs"), 'const t = readFileSync(join(root, "src/pages/Gone.tsx"), "utf8");\n');
     expect(bakeVerdict("src/pages/Gone.tsx\n", dir)).toMatchObject({ live: true });
     expect(bakeVerdict("src/pages/Other.tsx\n", dir)).toMatchObject({ live: false });
+  });
+});
+
+describe("the test job judges its offline build with the guards that need no live data (review 2026-11-15)", () => {
+  const steps = wf.jobs.test.steps ?? [];
+  const at = steps.findIndex((s) => s.name === "The guards on the offline build");
+  const guards = steps[at];
+  const files = (guards?.run ?? "").split(/\s+/).filter((a) => a.startsWith("src/test/"));
+
+  it("a step after the production build runs them with RB_REQUIRE_DIST=1, only when that build passed", () => {
+    expect(at, "no 'The guards on the offline build' step in the test job").toBeGreaterThan(steps.findIndex((s) => s.name === "Production build"));
+    expect(build!.id, "the Production build step needs an id the guards' condition can name").toBe("build");
+    expect(guards!.env?.RB_REQUIRE_DIST).toBe("1");
+    expect(guards!.if).toMatch(/steps\.build\.outcome == 'success'/);
+  });
+
+  it("they include the entry budget, the chunk preloads and the fonts the review named, and each is a guard on dist/", () => {
+    for (const f of ["seo-speed-the-entry-carries-only-the-strings-it-renders", "a-prerendered-page-names-the-chunks-it-needs", "seo-speed-fonts-never-block-the-first-paint"]) {
+      expect(files, f).toContain(`src/test/${f}.test.ts`);
+    }
+    const guardsOnDist = new Set(distGuards(ROOT).map((p: string) => p.slice(ROOT.length + 1).split("\\").join("/")));
+    for (const f of files) expect(guardsOnDist.has(f), `${f} does not skip through skipWithoutDist, so it judges no dist/`).toBe(true);
+  });
+
+  it("they leave the guards that read live postings to built-output, whose offline copy has none", () => {
+    for (const f of ["sitemap-prerender-parity", "a-posting-is-addressable-as-its-own-page", "the-sitemap-never-advertises-a-posting-url-with-no-page"]) {
+      expect(files.some((x) => x.includes(f)), f).toBe(false);
+    }
+  });
+
+  it("run, the step hands vitest exactly those files with the build required", () => {
+    const { dir, env } = scratch({ npx: '#!/bin/bash\nprintf \'%s\\n\' "RB_REQUIRE_DIST=$RB_REQUIRE_DIST" "$@" > argv\n' });
+    execFileSync("bash", ["-e", "-c", guards!.run!], { cwd: dir, env: { ...env, ...guards!.env }, encoding: "utf8", stdio: "pipe" });
+    const argv = readFileSync(join(dir, "argv"), "utf8").split("\n").filter(Boolean);
+    expect(argv.slice(0, 3)).toEqual(["RB_REQUIRE_DIST=1", "vitest", "run"]);
+    expect(argv.slice(3)).toEqual(files);
+  }, SPAWN_BUDGET);
+
+  it("the workflow no longer says a pull request is judged after it merges without saying that merge has published it", () => {
+    const text = readFileSync(resolve(ROOT, ".github/workflows/ci.yml"), "utf8");
+    expect(text).not.toMatch(/judged by this job after it merges, on main's push\./);
+    // The workflow's comments wrap, so the sentence is read across a line's "#".
+    expect(text.replace(/\n\s*#\s*/g, " ")).toMatch(/merging into main publishes the frontend/i);
   });
 });

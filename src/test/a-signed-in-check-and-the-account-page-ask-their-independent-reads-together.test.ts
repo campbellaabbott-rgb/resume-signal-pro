@@ -18,6 +18,15 @@
  * ones the sequential code gave; a plan check that writes before it answers
  * (a live check) still reads the plan rows again after its writes; a request
  * refused at the door reads nothing.
+ *
+ * REVIEW 2026-11-15. The early read went out for every signed-in caller and
+ * was thrown away on every live check, one more RPC than main made. A caller
+ * that asks for the live answer (fresh: true, back from the billing portal)
+ * is known to go live before anything is read, so it no longer starts the
+ * early read. A caller whose cached row turns out too old cannot be known
+ * until the row is read: that check still reads the plan rows twice, the
+ * stated trade of one RPC on a live check (at most 30 an hour per address)
+ * for one round trip off every cached view.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
@@ -113,9 +122,9 @@ beforeEach(() => {
   };
 });
 
-const check = (over: Record<string, string> = {}) =>
+const check = (over: Record<string, string> = {}, body: Record<string, unknown> = {}) =>
   cs(new Request("https://harness.supabase.co/functions/v1/check-subscription", {
-    method: "POST", headers: { authorization: "Bearer jwt-member", "content-type": "application/json", ...over }, body: "{}",
+    method: "POST", headers: { authorization: "Bearer jwt-member", "content-type": "application/json", ...over }, body: JSON.stringify(body),
   }));
 const proRow = (updatedMsAgo: number) => ({
   email: USER.email, user_id: USER.id, stripe_customer_id: "cus_hop1", status: "active",
@@ -157,6 +166,25 @@ describe("check-subscription, signed in", () => {
     expect(inserted, "the live check wrote nothing, so this proves nothing").toBeGreaterThan(0);
     expect(entitlementAt.length).toBe(2);
     expect(entitlementAt[1], "the answer used plan rows read before the live check's writes").toBeGreaterThanOrEqual(db.writes.length);
+  });
+
+  it("a caller that asks for the live answer (fresh) reads the plan rows once, after the live check's writes (review 2026-11-15)", async () => {
+    // A cached row young enough to answer, which fresh skips: the live check runs.
+    db.rows("pro_subscribers").push(proRow(60_000));
+    const res = await check({}, { fresh: true });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.cached, "fresh was answered from the cache row").toBeUndefined();
+    expect(entitlementAt, "the early read went out for a check known to go live").toHaveLength(1);
+    expect(entitlementAt[0], "the one read came before the live check's writes").toBeGreaterThan(0);
+  });
+
+  it("a cached row found too old reads the plan rows twice, the stated trade for the cached views' round trip", async () => {
+    db.rows("pro_subscribers").push(proRow(2 * 3600_000));
+    const res = await check();
+    expect(res.status).toBe(200);
+    expect((await res.json()).cached).toBeUndefined();
+    expect(entitlementAt).toHaveLength(2);
   });
 
   it("a plan-rows read that fails still answers with the rows unread, and a signed-out caller reads nothing", async () => {

@@ -116,12 +116,28 @@ jobs:
       # never blocks Lovable's publish). Offline the bake is deterministic, so
       # here a missing dist/pricing/index.html fails the step by name.
       - name: Production build
+        id: build
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         env:
           PRERENDER_OFFLINE: "1"
         run: |
           npm run build
           test -f dist/pricing/index.html || { echo "::error::the offline bake wrote no dist/pricing/index.html (the vite.config.ts post-condition): the bake did not run, and this dist is SPA-only"; exit 1; }
+      # THE GUARDS ON THE OFFLINE BUILD (review 2026-11-15). Merging into main
+      # publishes the frontend by itself, so a guard that waits for main's
+      # push judges a page that is already live. These judge the shape of the
+      # app build and read no live data: the entry and its static chunks
+      # under budget, the route chunks each baked page preloads, the fonts,
+      # the stylesheet ahead of the route chunks, the skip link. So they run
+      # here, on every pull request, against the offline dist above, at zero
+      # production reads. The guards on live data (the sitemap's parity and
+      # the posting pages, which an offline bake has none of) stay in
+      # built-output.
+      - name: The guards on the offline build
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        env:
+          RB_REQUIRE_DIST: "1"
+        run: npx vitest run src/test/seo-speed-the-entry-carries-only-the-strings-it-renders.test.ts src/test/a-prerendered-page-names-the-chunks-it-needs.test.ts src/test/seo-speed-fonts-never-block-the-first-paint.test.ts src/test/a-baked-page-fetches-its-route-chunks-behind-the-stylesheet.test.ts src/test/the-footnote-must-name-the-maths-it-describes.test.ts
 
       # THE APPLY DRIVER, PAST THE CLICK. Everything above compares selectors
       # and field names against recordings; none of it presses submit, waits for
@@ -189,7 +205,11 @@ jobs:
   # 2026-11-08). Each run is a live bake against production; 76 of 127 runs
   # in thirty days were pull requests. bake-scope (below) answers whether a
   # pull request changes anything the bake runs or reads. A pull request that
-  # does not is judged by this job after it merges, on main's push. The
+  # does not meets this job only on main's push, and merging into main
+  # publishes the frontend, so that judgement comes after the page is live:
+  # the guards on built output that need no live data run in the test job's
+  # "The guards on the offline build" on every pull request instead, and only
+  # the live-data guards wait for main here. The
   # condition is on the JOB, never a workflow-level paths filter: a job its
   # `if` skips reports "skipped", which GitHub counts as passing for a
   # required check, so no check is ever left waiting (main had no branch

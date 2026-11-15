@@ -8,14 +8,16 @@
 #   - P1  the four functions this lane wrote or rewrote that no page calls
 #         refuse the publishable key by name (42501): get_embed_batch, the
 #         perk extractor's version and its work gate (20261109160000), and
-#         the hourly writer of the /jobs aggregates (20261109170000);
+#         the writer of the /jobs aggregates (20261109170000, which leaves it
+#         unscheduled until the owner has read the readers' calls);
 #   - L1  the three /jobs readers still answer the publishable key, each on
 #         its own rules: the country picker at most 40 countries, largest
 #         first, each with at least 10 open postings; the salary benchmarks
 #         one row per category, each over at least 30 postings with a
-#         median, the unnamed category last; the takedown ticker a whole number. When the
-#         hourly row is fresh these answers come from it, so a row written
-#         in the wrong order or shape FAILs here;
+#         median, the unnamed category last; the takedown ticker a whole number, always
+#         counted live. Once the owner schedules the writer and its row is
+#         fresh, the country and salary answers come from it, so a row
+#         written in the wrong order or shape FAILs here;
 #   - V1  the vendor wall (get_board_vendor_counts, now read from the small
 #         facets_head row, 20261109175000) answers the same open total, as_of
 #         and per-vendor counts as the big facets row (get_job_board_facets).
@@ -28,7 +30,7 @@
 # Not provable from outside, so proved in the suite and named in the INFO
 # lines at the end: the closure verdicts written only on change (20261109140000), the
 # closure index's one-shot build (20261109141000), the description trigger, the perk gate in
-# the cron command, and whether the readers are answering the hourly row.
+# the cron command, and whether the readers are answering a cached row.
 #
 # READ-ONLY. Every request is a GET with the publishable key: PostgREST runs
 # a GET in a read-only transaction, the readers only read, and a probe of a
@@ -103,7 +105,7 @@ const sc=st(process.env.VDCH_LC),ss=st(process.env.VDCH_LS),stt=st(process.env.V
   else console.log("PASS  L1 get_takedowns_today answers a whole number: "+n.toLocaleString("en-US"));
 }
 const secs=[sc.secs,ss.secs,stt.secs].map((x)=>Number.isFinite(x)?x.toFixed(2)+"s":"?");
-console.log("INFO  L1 answered in "+secs.join(" / ")+" (country / salary / takedowns, network included). Once the hourly row is fresh each is a read of one row; before it, or while it is over two hours old, each counts the board live as before 20261109170000");
+console.log("INFO  L1 answered in "+secs.join(" / ")+" (country / salary / takedowns, network included). 20261109170000 schedules no writer, so each counts the board live as before it; once the owner schedules refresh_jobs_live_aggregates, country and salary are a read of one row while it is under two hours old, and takedowns stays live");
 '
 
 # ---- V1: the vendor wall against the big facets row ----
@@ -132,4 +134,5 @@ else{
 '
 
 echo "INFO  Not readable with the publishable key; in the SQL editor: (closure verdicts) SELECT count(*) FILTER (WHERE as_of > now() - interval '35 minutes') AS rewritten_last_pass, count(*) FROM public.job_board_board_observability -- after 20261109140000 the first number is the boards that changed bucket, not every board; (closure index) SELECT i.indisvalid FROM pg_index i WHERE i.indexrelid = to_regclass('public.job_board_closures_absence_basis_idx') -- true once built, and SELECT jobname FROM cron.job WHERE jobname LIKE 'oneshot-closures-absence-basis-idx%' is empty once the watcher has seen it (three failed builds also empty it, with no index: run the CREATE INDEX CONCURRENTLY by hand)"
-echo "INFO  In the SQL editor: (re-embed queue) SELECT count(*), min(queued_at) FROM public.job_board_embed_requeue -- drains as the embed sweep stores text embeddings; (perk gate) SELECT command FROM cron.job WHERE jobname = 'employer-perks-sweep' names public.employer_perk_sweep_due() once 20261109161000 applied; (/jobs row) SELECT computed_at, jsonb_array_length(v -> 'country_facet'), v -> 'takedowns_today' FROM public.job_board_stats_rollup WHERE k = 'jobs_live_aggregates' -- under an hour old after the first :14 run"
+echo "INFO  In the SQL editor: (re-embed queue) SELECT count(*), min(queued_at) FROM public.job_board_embed_requeue -- drains as the embed sweep stores text embeddings; (perk gate) SELECT command FROM cron.job WHERE jobname = 'employer-perks-sweep' names public.employer_perk_sweep_due() once 20261109161000 applied"
+echo "INFO  OWNER, the measurement 20261109170000 waits for: SELECT calls, round(mean_exec_time) AS ms, left(query, 80) FROM pg_stat_statements WHERE query ILIKE '%get_country_facet%' OR query ILIKE '%get_salary_benchmarks%' -- read twice a day apart; if each reader gains more than 24 calls a day, scheduling the writer saves work (the migration's notice prints the cron.schedule, at :52 with its own 3min timeout), else leave it unscheduled and every call counts live as today"

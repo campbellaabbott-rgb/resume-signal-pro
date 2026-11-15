@@ -5,7 +5,7 @@ import { assertPaidSession } from "../_shared/paid-session.ts";
 import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
-import { callAIWithModelFallback, chainFrom, UnusableModelOutput } from "../_shared/ai-fallback.ts";
+import { callAIWithModelFallback, chainFrom, logAiUsage, UnusableModelOutput } from "../_shared/ai-fallback.ts";
 import { parseReportJson, shapeCareerSnapshot } from "../_shared/career-report-shape.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 
@@ -269,6 +269,7 @@ Analyze this resume from a senior recruiter's perspective and generate the Caree
       const rateLimitResponse = await checkAiGatewayResponse(call.response, corsHeaders);
       if (rateLimitResponse) return rateLimitResponse;
       const result = await call.response.json().catch(() => null);
+      logAiUsage("generate-career-snapshot", call.modelUsed, result);
       const parsed = parseReportJson(result?.choices?.[0]?.message?.content);
       const shaped = parsed ? shapeCareerSnapshot(parsed) : null;
       problems = shaped ? shaped.problems : ["the reply is not JSON"];

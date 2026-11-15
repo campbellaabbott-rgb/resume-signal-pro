@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { CHAIN_DEADLINE_MS, callAIWithModelFallback, chainRanOutOfTime, describeError } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, callAIWithModelFallback, chainRanOutOfTime, describeError, logAiUsage } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
@@ -573,8 +573,9 @@ Analyze this resume for ATS compatibility and provide a complete ATS Defense rep
     // and the whole call ends inside 125 s of the request. The body is the
     // one this function always sent: model, messages, tools, tool_choice.
     let response: Response;
+    let modelUsed = "";
     try {
-      ({ response } = await callAIWithModelFallback(LOVABLE_API_KEY, {
+      ({ response, modelUsed } = await callAIWithModelFallback(LOVABLE_API_KEY, {
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage }
@@ -619,6 +620,7 @@ Analyze this resume for ATS compatibility and provide a complete ATS Defense rep
     }
 
     const data = await response.json();
+    logAiUsage("generate-ats-defense", modelUsed, data);
     console.log("[ATS-DEFENSE] AI response received");
 
     // Extract analysis from tool call

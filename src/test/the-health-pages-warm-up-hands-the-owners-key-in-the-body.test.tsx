@@ -2,9 +2,10 @@
  * THE HEALTH PAGE'S WARM UP BUTTON HANDS THE OWNER'S KEY, IN THE BODY (cost
  * audit 2026-11-08, Do first #13, the frontend half of the ai lane's warm-up).
  *
- * From warm-up 2026-11-09.1 on, a warm-up that names no target answers only
- * the owner's admin key or our own servers: anyone else gets 401 and nothing
- * is invoked. The /health-check Warm Up button is that mode's one browser
+ * From warm-up 2026-11-09.1 on, a warm-up that names no target runs only for
+ * the owner's admin key or our own servers: anyone else gets 200 with success
+ * false (admin_key_required) and nothing is invoked, which the page shows as
+ * no warm-up, as it shows an error. The /health-check Warm Up button is that mode's one browser
  * caller, so it must send the stored owner key, and in the body: this page
  * publishes before the function, and the build serving until then lists no
  * x-admin-key in its preflight, so a browser sending that header would be
@@ -62,6 +63,21 @@ describe("the health page's Warm Up button", () => {
     expect(opts?.body).toEqual({ adminKey: OWNER_KEY });
     expect(opts?.headers?.["x-admin-key"], "a header the serving build's preflight does not allow").toBeUndefined();
     expect(await screen.findByText(/Last warm-up:/, undefined, SLOW)).toBeTruthy();
+  });
+
+  it("a warm-up that answers 200 with success false (no key, warm-up 2026-11-09.1) is shown as no warm-up, as an error is, and the page keeps rendering", async () => {
+    invoke.mockImplementation(async (fn: string) => {
+      if (fn === "warm-up") return { data: { success: false, error: "Unauthorized: the full warm-up needs the admin key.", code: "admin_key_required" }, error: null };
+      if (fn === "admin-ops") return { data: { data: null }, error: null };
+      return { data: null, error: Object.assign(new Error("HTTP 500"), { context: { status: 500 } }) };
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    render(<MemoryRouter><HealthCheck /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: /warm up/i }, SLOW));
+    await waitFor(() => expect(warmUpCalls().length).toBe(1), SLOW);
+    await waitFor(() => expect(screen.getByRole("button", { name: /warm up/i }).hasAttribute("disabled")).toBe(false), SLOW);
+    expect(screen.getByText(/to ping edge functions and reduce cold start latency/)).toBeTruthy();
+    expect(screen.queryByText(/Last warm-up:/)).toBeNull();
   });
 
   it("without a stored key it sends no adminKey at all, never an empty one", async () => {

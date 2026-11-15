@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
-import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
+import { callAIWithModelFallback, chainFrom, logAiUsage } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
@@ -143,7 +143,7 @@ Provide a comprehensive keyword analysis with actionable suggestions.`;
 
     logStep("Calling AI API");
 
-    const { response } = await callAIWithModelFallback(apiKey, {
+    const { response, modelUsed } = await callAIWithModelFallback(apiKey, {
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
@@ -158,6 +158,7 @@ Provide a comprehensive keyword analysis with actionable suggestions.`;
     if (rateLimitResponse) return rateLimitResponse;
 
     const aiResponse = await response.json();
+    logAiUsage("generate-keyword-fix", modelUsed, aiResponse);
     logStep("AI response received");
 
     const content = aiResponse.choices?.[0]?.message?.content;

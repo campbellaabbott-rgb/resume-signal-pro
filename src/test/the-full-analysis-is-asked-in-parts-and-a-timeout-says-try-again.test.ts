@@ -38,7 +38,8 @@ const POSTING = "Senior Financial Analyst. We need FP&A, variance analysis, fore
 const CHAIN_STUB = {
   "_shared/ai-fallback.ts": `const TAIL = ${JSON.stringify([PRO, FLASH, MINI])};
 export const chainFrom = (m) => [m, ...TAIL.filter((x) => x !== m)];
-export const callAIWithModelFallback = (key, opts) => globalThis.__fakeAI(opts);`,
+export const callAIWithModelFallback = (key, opts) => globalThis.__fakeAI(opts);
+export const logAiUsage = () => {};`,
 };
 
 type Schema = { type: string; properties?: Record<string, Schema>; items?: Schema; required?: string[]; enum?: string[] };

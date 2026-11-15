@@ -23,7 +23,9 @@
 -- were written (upper and lower case): the report-cache delete is cut out by
 -- pattern, whatever its case, and nothing else in the command is retyped. It
 -- runs only when the job exists AND the hourly job that makes the delete
--- redundant exists; otherwise nothing changes, with a notice.
+-- redundant exists and is active (one switched off during an incident purges
+-- nothing, and the nightly copy is then the only purge); otherwise nothing
+-- changes, with a notice.
 --
 -- Safe to re-run: a command already rewritten has no report-cache delete left
 -- to cut and already starts with its timeout, so a second run changes nothing.
@@ -45,8 +47,9 @@ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM cron.job j
                   WHERE j.jobname = 'scan-report-cache-retention'
+                    AND j.active
                     AND j.command ~* 'delete[[:space:]]+from[[:space:]]+public\.scan_report_cache') THEN
-    RAISE NOTICE 'the hourly scan-report-cache-retention job is not here, so the nightly report-cache delete is the only one and is kept';
+    RAISE NOTICE 'the hourly scan-report-cache-retention job is not here, or is switched off, so the nightly report-cache delete is the only one that runs and is kept';
     RETURN;
   END IF;
 
@@ -75,6 +78,7 @@ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM cron.job j
                   WHERE j.jobname = 'scan-report-cache-retention'
+                    AND j.active
                     AND j.command ~* 'delete[[:space:]]+from[[:space:]]+public\.scan_report_cache') THEN
     RETURN;
   END IF;

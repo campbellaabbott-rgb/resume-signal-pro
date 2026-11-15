@@ -11,7 +11,7 @@ import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 // every heartbeat run since the check shipped. See _shared/search-caller.ts.
 import { searchCallerHeader } from "../_shared/search-caller.ts";
 import { boardTailChecks, dbFailureCheck } from "./board-tail.ts";
-import { AI_PROBE_MS, aiProbeAbortedText, aiProbeCheck, ceilingRefusalCheck, cronAnswersCheck, CRON_ERROR_WINDOW_MIN, CRON_REFUSAL_WINDOW_MIN, E2E_ABORT_MS, e2eAbortedText, HEARTBEAT_PING_ENV, HOURLY, isAbort, isFullRun, mailWatchCheck, NO_MODEL_FIELD, noModelScanCheck, pingDeadMan, RUN_BUDGET_MS, runBudgetText, SCAN_PATH_CHECK } from "./watch.ts";
+import { AI_PROBE_MS, aiProbeAbortedText, aiProbeCheck, ceilingRefusalCheck, cronAnswersCheck, CRON_ERROR_WINDOW_MIN, CRON_REFUSAL_WINDOW_MIN, E2E_ABORT_MS, e2eAbortedText, FACETS_STALE_MIN, HEARTBEAT_PING_ENV, HOURLY, HOURLY_VERDICT_KEY, carriedFailures, carriedText, hourlyVerdictOf, isAbort, isFullRun, worse, mailWatchCheck, NO_MODEL_FIELD, noModelScanCheck, pingDeadMan, RUN_BUDGET_MS, runBudgetText, SCAN_PATH_CHECK } from "./watch.ts";
 import { aiUsageLine } from "./ai-usage.ts";
 import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 
@@ -68,6 +68,8 @@ interface HealthCheckResult {
   passed: boolean;
   responseTimeMs?: number;
   error?: string;
+  /** The status a failed hourly check gave the run, when it is not 'degraded' (watch.ts hourlyVerdictOf). */
+  severity?: 'degraded' | 'unhealthy' | 'down';
 }
 
 // Analytics RPCs that aggregate over the whole ~570k-row postings table are slow
@@ -130,7 +132,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-11-09.1"; // 11-09.1 (cost audit 2026-11-08, heartbeat lane; owner decision 2026-11-08): the full end-to-end scan, the four filter-contract probes, vendor-health, get_storage_footprint and get_stale_board_count run on the first run of each UTC hour (and on every run started by hand); the other five runs skip them as 'runs hourly' and ask free-keyword-scan for its rule-based report with no model call (scan_path); the AI probe passes on any reply that holds a choice, so a thinking model that spent its 100 tokens thinking no longer reads as degraded, and it prints an [AI-USAGE] line; the 10-minute cron, the healthchecks.io ping and job-board status run every time.  11-03.1 (audit-rest money, S13-069): the run keeps its own clock: the AI probe gives up at 30 s, the end-to-end scan starts with the checks, the checks get 115 s in all (what is left is a failed run_budget check), and the alert is decided before the row is written, so a slow gateway or database can no longer take the run past the isolate's cut with no row and no alert.  10-11.30: free scans the hourly ceiling refused in the last hour are counted, and more than ten fail scan_ceiling_refused (S12-142's alarm).  10-11.29: the apply worker's offline alarm is read only while the apply agent is switched on (S12-171): with the agent retired, an active mandate left behind rang "worker offline" every six hours.  10-11.28: the cron check reads cron_http_answers and fails on repeated 5xx (S12-157); the end-to-end scan waits past the scanner's own clock and an abort on ours is degraded (S12-159); each run pings its own healthchecks.io check (HC_HEARTBEAT_PING_URL), and a mail-watch whose run stamp is 45 minutes old fails mail_watch_alive (S12-065).  10-09.7: carries both .6 and .3 (wave-3 fix round integration).  10-09.6: fails job_board_refresh_head (3h), job_board_filter_audit (12h) and job_board_pass_end (a pass-end tail that started and never finished, S11-001) and job_board_db_failures (S11-023).  10-09.3: a partial e2e report, a refused (429) e2e scan and a visitor fallback rate of half or more fail their checks (S11-028).  10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
+const BUILD_VERSION = "2026-11-09.1"; // 11-09.1 (cost audit 2026-11-08, heartbeat lane; owner decision 2026-11-08; review 2026-11-15): a full run stores its failed hourly checks (job_board_meta heartbeat_hourly_verdict) and the off-hour runs of the next 70 minutes report them again as failed, marked carried, at the severity they gave the run, so an hourly-only failure no longer reads healthy five runs in six, mails a false recovery and resets the alert cooldown; the facets cache is judged against 90 minutes (its rebuild is gated at 40); the full end-to-end scan, the four filter-contract probes, vendor-health, get_storage_footprint and get_stale_board_count run on the first run of each UTC hour (and on every run started by hand); the other five runs skip them as 'runs hourly' and ask free-keyword-scan for its rule-based report with no model call (scan_path); the AI probe passes on any reply that holds a choice, so a thinking model that spent its 100 tokens thinking no longer reads as degraded, and it prints an [AI-USAGE] line; the 10-minute cron, the healthchecks.io ping and job-board status run every time.  11-03.1 (audit-rest money, S13-069): the run keeps its own clock: the AI probe gives up at 30 s, the end-to-end scan starts with the checks, the checks get 115 s in all (what is left is a failed run_budget check), and the alert is decided before the row is written, so a slow gateway or database can no longer take the run past the isolate's cut with no row and no alert.  10-11.30: free scans the hourly ceiling refused in the last hour are counted, and more than ten fail scan_ceiling_refused (S12-142's alarm).  10-11.29: the apply worker's offline alarm is read only while the apply agent is switched on (S12-171): with the agent retired, an active mandate left behind rang "worker offline" every six hours.  10-11.28: the cron check reads cron_http_answers and fails on repeated 5xx (S12-157); the end-to-end scan waits past the scanner's own clock and an abort on ours is degraded (S12-159); each run pings its own healthchecks.io check (HC_HEARTBEAT_PING_URL), and a mail-watch whose run stamp is 45 minutes old fails mail_watch_alive (S12-065).  10-09.7: carries both .6 and .3 (wave-3 fix round integration).  10-09.6: fails job_board_refresh_head (3h), job_board_filter_audit (12h) and job_board_pass_end (a pass-end tail that started and never finished, S11-001) and job_board_db_failures (S11-023).  10-09.3: a partial e2e report, a refused (429) e2e scan and a visitor fallback rate of half or more fail their checks (S11-028).  10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -320,6 +322,16 @@ serve(async (req) => {
   // the two whole-table storage reads) and say so with a skip.
   const byCron = !byOwner && !isServiceRoleCaller(req.headers, supabaseServiceKey);
   const fullRun = isFullRun(new Date(startTime), byCron);
+
+  // WHAT THE HOUR FOUND (watch.ts carriedFailures). An off-hour run reads the
+  // last full run's failed hourly checks beside its own checks, so a skipped
+  // check that was failing still fails the run.
+  let verdictTimer: ReturnType<typeof setTimeout> | undefined;
+  const hourVerdictP: Promise<unknown> | null = fullRun ? null : Promise.race([
+    Promise.resolve(supabase.from('job_board_meta').select('v').eq('k', HOURLY_VERDICT_KEY).maybeSingle())
+      .then((r) => (r as { data?: { v?: unknown } | null })?.data?.v ?? null, () => null),
+    new Promise<null>((res) => { verdictTimer = setTimeout(() => res(null), 5_000); }),
+  ]).finally(() => clearTimeout(verdictTimer));
 
   // THE CHECKS RUN ON A BUDGET (S13-069; watch.ts RUN_BUDGET_MS). The check
   // phase below keeps its verdict in names of its own that shadow the run's
@@ -1139,10 +1151,13 @@ serve(async (req) => {
       }
 
       // Same skip/degrade contract as transparency_cache, bounds scaled to
-      // each cron: facets runs every 15 minutes (60-min bound = four missed
-      // ticks), explore hourly (the shared 240-min bound).
+      // each cron. Facets: the cron ticks every 15 minutes but rebuilds only
+      // a row older than 40 (20261109120000), so a healthy row reaches about
+      // 55 minutes; the 90-min bound tolerates two missed rebuilds, as the
+      // old 60 tolerated three missed ticks. Explore hourly (the shared
+      // 240-min bound).
       for (const [checkName, prom, boundMin, cadence] of [
-        ['job_board_facets_cache', facetsCacheP, 60, '15-min cron'],
+        ['job_board_facets_cache', facetsCacheP, FACETS_STALE_MIN, 'gated 40-min rebuild'],
         ['job_board_explore_cache', exploreCacheP, SC_STALL_DEGRADE_MIN, 'hourly cron'],
       ] as const) {
         try {
@@ -1596,6 +1611,7 @@ serve(async (req) => {
             error: violations.length
               ? `filters returned rows that violate them — ${violations.join(' | ')}`
               : undefined,
+            ...(violations.length ? { severity: 'unhealthy' as const } : {}),
           });
           // Partial coverage still counts as a real check on what it did read,
           // but say which probes never ran rather than implying full coverage.
@@ -1951,7 +1967,7 @@ serve(async (req) => {
         errorMessage = errorMessage || 'E2E scan: 429, the report path was not verified';
       } else if (!scanResp.ok) {
         const bodyText = (await scanResp.text()).substring(0, 200);
-        checks.push({ name: 'e2e_scan', passed: false, responseTimeMs: e2eTime, error: `HTTP ${scanResp.status}: ${bodyText}` });
+        checks.push({ name: 'e2e_scan', passed: false, responseTimeMs: e2eTime, error: `HTTP ${scanResp.status}: ${bodyText}`, severity: 'down' });
         overallStatus = 'down';
         errorMessage = errorMessage || `E2E scan: HTTP ${scanResp.status}`;
       } else {
@@ -1995,6 +2011,7 @@ serve(async (req) => {
         passed: false,
         responseTimeMs: elapsed,
         error: aborted ? e2eAbortedText(elapsed) : e instanceof Error ? e.message : 'Unknown error',
+        ...(aborted ? {} : { severity: 'down' as const }),
       });
       if (aborted) {
         overallStatus = overallStatus === 'down' ? 'down' : 'degraded';
@@ -2063,6 +2080,28 @@ serve(async (req) => {
       checks.push({ name: 'run_budget', passed: false, responseTimeMs: Date.now() - startTime, error: runBudgetText(checks.length) });
       if (overallStatus === 'healthy') overallStatus = 'degraded';
       errorMessage = errorMessage || `Heartbeat: the checks ran past the ${Math.round(RUN_BUDGET_MS / 1000)} s budget`;
+    }
+
+    // THE HOUR'S VERDICT, KEPT AND CARRIED (watch.ts carriedFailures). A full
+    // run stores which hourly checks failed and how badly; an off-hour run
+    // reports each again, marked carried, so its status, row, ping and alert
+    // state say what the hour found instead of a false recovery.
+    if (fullRun) {
+      const verdict = hourlyVerdictOf(new Date(startTime), checks);
+      EdgeRuntime.waitUntil(Promise.resolve(supabase.from('job_board_meta').upsert(
+        { k: HOURLY_VERDICT_KEY, v: verdict, updated_at: new Date().toISOString() }, { onConflict: 'k' },
+      )).then(() => {}, (e) => console.error('[SCAN-HEARTBEAT] the hourly verdict was not stored:', e)));
+    } else if (hourVerdictP) {
+      const carried = carriedFailures(await hourVerdictP, new Date());
+      if (carried) {
+        const names = new Set(carried.failed.map((f) => f.name));
+        for (let i = skipped.length - 1; i >= 0; i--) if (names.has(skipped[i].name) && skipped[i].reason === HOURLY) skipped.splice(i, 1);
+        for (const f of carried.failed) {
+          checks.push({ name: f.name, passed: false, error: carriedText(carried.from, f.error), severity: f.severity });
+          overallStatus = worse(overallStatus, f.severity);
+        }
+        errorMessage = errorMessage || `Heartbeat: ${[...names].join(', ')} failed at the ${carried.from} full run`;
+      }
     }
 
     // Calculate total response time and adjust status based on latency

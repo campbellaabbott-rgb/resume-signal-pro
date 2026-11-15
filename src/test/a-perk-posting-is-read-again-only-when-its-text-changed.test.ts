@@ -7,8 +7,11 @@
  * employer_perk_sweep_take found a changed posting by an md5 over every
  * serving posting's title AND description -- a full read of a million
  * descriptions a day. It now reads what can change a posting's text: a title
- * change the ingest logged, a description arriving after a read made without
- * one, the row inserted again. The every-minute cron kick asks
+ * that is not the one the read saw (the store keeps an md5 of the title read,
+ * apostrophes folded, and whether the read had a description), a description
+ * arriving after a read made without one, the row inserted again. A row
+ * stored before 20261109160000 holds neither, and falls back to the title
+ * changes the ingest logged and to the title-only hash. The every-minute cron kick asks
  * employer_perk_sweep_due() first, which reads the extractor version from
  * employer_perk_extractor_version(), a copy of EXTRACTOR_VERSION held equal
  * here.
@@ -138,14 +141,23 @@ describe("the take reads again exactly the postings whose text changed", () => {
     await requeue(db);
     expect((await take(db)).map((r) => r.posting_id)).toEqual(["greenhouse:acme:1"]);
     await sweep(db);
-    // The read came within fifteen minutes of the change's stamp, so the next
-    // walk reads it once more -- the margin's whole cost -- and then never again.
-    expect(await nextWalk(db)).toEqual(["greenhouse:acme:1"]);
+    // The read kept the title it saw, so the log row stamped within fifteen
+    // minutes of it costs no second read.
     expect(await nextWalk(db)).toEqual([]);
     await later(db);
   });
 
-  it("a change stamped up to fifteen minutes BEFORE the read still counts: the ingest stamps its pass start, not its write", async () => {
+  it("a title change the log never saw is read again: the read kept the title it saw", async () => {
+    await db.exec("UPDATE public.job_board_postings SET title = 'Principal Engineer 0' WHERE id = 'greenhouse:acme:0'");
+    await requeue(db);
+    expect((await take(db)).map((r) => r.posting_id)).toEqual(["greenhouse:acme:0"]);
+    await sweep(db);
+    expect(await nextWalk(db)).toEqual([]);
+    await later(db);
+  });
+
+  it("a row stored before this file reads the log: a change stamped up to fifteen minutes BEFORE the read counts, since the ingest stamps its pass start", async () => {
+    await db.exec("UPDATE public.employer_perk_postings SET read_title_md5 = NULL, read_had_description = NULL WHERE posting_id IN ('greenhouse:acme:2', 'greenhouse:acme:0')");
     const at2 = await readAt(db, "greenhouse:acme:2");
     const at0 = await readAt(db, "greenhouse:acme:0");
     await db.query(`INSERT INTO public.job_board_field_changes (posting_id, company_token, source, field, observed_at) VALUES
@@ -182,8 +194,44 @@ describe("the take reads again exactly the postings whose text changed", () => {
     await later(db);
   });
 
+  it("a title-only read is read again when its description arrives, though its title was folded since without a log row", async () => {
+    await db.exec(`INSERT INTO public.job_board_postings (id, source, company_token, company, title, description, country, last_seen)
+                   VALUES ('greenhouse:acme:6', 'greenhouse', 'acme', 'Acme', 'Engineer’s Aide', NULL, 'US', now() - interval '2 days')`);
+    await requeue(db);
+    expect((await take(db)).map((r) => r.posting_id)).toEqual(["greenhouse:acme:6"]);
+    await sweep(db);
+    await later(db);
+    await db.exec("UPDATE public.job_board_postings SET title = 'Engineer''s Aide', description = 'Dental plan.' WHERE id = 'greenhouse:acme:6'");
+    await requeue(db);
+    expect((await take(db)).map((r) => r.posting_id)).toEqual(["greenhouse:acme:6"]);
+    await sweep(db);
+    expect(await nextWalk(db)).toEqual([]);
+    await later(db);
+  });
+
+  it("a posting whose text moved between the take and the store is read again on the next walk", async () => {
+    await db.exec("UPDATE public.job_board_postings SET title = 'Engineer 2 (Payments)' WHERE id = 'greenhouse:acme:2'");
+    await requeue(db);
+    const rows = await take(db);
+    expect(rows.map((r) => r.posting_id)).toEqual(["greenhouse:acme:2"]);
+    await db.exec("UPDATE public.job_board_postings SET title = 'Engineer 2 (Payments, EU)' WHERE id = 'greenhouse:acme:2'");
+    for (const b of boardsOf(rows, 200)) {
+      const enc = await encodeBoard(b);
+      await db.query("SELECT public.employer_perk_store($1, $2::jsonb, $3::jsonb, $4, $5, $6::smallint)",
+        [b.token, JSON.stringify(enc.rows), JSON.stringify(enc.lines), b.rows[b.rows.length - 1].posting_id, b.done, EXTRACTOR_VERSION]);
+    }
+    expect(await nextWalk(db), "the read was of a title the posting no longer carries").toEqual(["greenhouse:acme:2"]);
+    expect(await nextWalk(db)).toEqual([]);
+    await later(db);
+  });
+
   it("an apostrophe-only title fold, which the ingest patches without a log row, is not read again -- and cannot change a count", async () => {
-    await db.exec("UPDATE public.job_board_postings SET title = 'Engineer 4 ’s team' WHERE id = 'greenhouse:acme:4'");
+    await db.exec(`UPDATE public.job_board_postings SET title = 'Engineer 4 ’s team' WHERE id = 'greenhouse:acme:4';
+                   INSERT INTO public.job_board_field_changes (posting_id, company_token, source, field, old_value, new_value)
+                   VALUES ('greenhouse:acme:4', 'acme', 'greenhouse', 'title', 'Engineer 4', 'Engineer 4 ’s team');`);
+    expect(await nextWalk(db), "the logged change is read").toEqual(["greenhouse:acme:4"]);
+    await later(db);
+    await db.exec("UPDATE public.job_board_postings SET title = 'Engineer 4 ''s team' WHERE id = 'greenhouse:acme:4'");
     await requeue(db);
     expect(await take(db)).toEqual([]);
     // What a count is made of: readable, english, franchise and the three masks.

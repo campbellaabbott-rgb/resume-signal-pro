@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { modelSpendGate } from "../_shared/model-spend-gate.ts";
-import { callAIWithModelFallback, describeError, describeReply } from "../_shared/ai-fallback.ts";
+import { callAIWithModelFallback, describeError, describeReply, logAiUsage } from "../_shared/ai-fallback.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -208,6 +208,7 @@ serve(async (req) => {
     }
 
     const data = await response.json();
+    logAiUsage("parse-resume-structured", modelUsed, data);
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall || toolCall.function.name !== "submit_structured_resume") {
       // Its shape, never its words: the reply carries the person's résumé (S13-064).

@@ -102,7 +102,7 @@ import { Suspense, lazy } from "react";
 // scanner (Index.tsx) already does.
 const TailoredResumeModal = lazy(() => import("@/components/TailoredResumeModal").then((m) => ({ default: m.TailoredResumeModal })));
 import { supabase } from "@/integrations/supabase/client";
-import { isAutomatedAgent } from "@/lib/home/automation";
+import { isAutomatedAgent, isSearchRenderer } from "@/lib/home/automation";
 import { boardStripFreshnessData } from "@/lib/home/use-board-freshness";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { heldBoardPass } from "@/lib/board-pass";
@@ -2468,15 +2468,19 @@ export default function Jobs() {
 
 function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMemo }) {
   const { t, i18n } = useTranslation();
-  // A CRAWLER OR A DRIVEN BROWSER IS NOT SHOWN THE DECORATION (cost audit
+  // A SCRAPER OR A DRIVEN BROWSER IS NOT SHOWN THE DECORATION (cost audit
   // 2026-11-08). The employer badges (fill curve, growth, layoff filings), the
   // country counts, the salary benchmarks and the takedown ticker are reads a
-  // person looks at; a crawler indexes the list and the baked page, and it
-  // used to spend the same seven RPCs per render. It still gets the list call,
-  // every filter, and each fallback a failed read would give a person; the
-  // one exception is the "Actively hiring" filter, which partitions on the
-  // curves and the growth rows, so a crawler with it on still asks for them.
-  const [crawlerVisit] = useState(() => isAutomatedAgent());
+  // person looks at, and a scraper used to spend the same seven RPCs per
+  // render. It still gets the list call, every filter, and each fallback a
+  // failed read would give a person; the one exception is the "Actively
+  // hiring" filter, which partitions on the curves and the growth rows, so a
+  // scraper with it on still asks for them. A SEARCH ENGINE IS A PERSON HERE
+  // (review 2026-11-15): Googlebot, bingbot and Applebot run this page and
+  // index what it draws (the baked HTML is removed once the route commits),
+  // so the advertised-pay line, the takedown count and the badges they see
+  // are the ones a person sees.
+  const [crawlerVisit] = useState(() => isAutomatedAgent() && !isSearchRenderer());
   // SEO-010: an employer link goes to its written company page, or to the
   // live board filtered to the board when the bake wrote none.
   const companyHref = useCompanyBoardHref();
