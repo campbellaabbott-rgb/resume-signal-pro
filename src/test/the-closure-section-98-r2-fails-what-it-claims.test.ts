@@ -186,3 +186,81 @@ describe("section 98-r2 G1 names a vendor whose pages are never checked", () => 
     expect(has(bad, "PASS", /G1 every vendor checked/), show(bad)).toBe(false);
   });
 });
+
+/**
+ * G7 FAILS JOB MARKUP ON A POSTING ONLY THE EMPLOYER'S OWN PEOPLE MAY APPLY
+ * FOR (SEO check 2026-11-15, F02). The live Coupang Internal page carried a
+ * JobPosting naming "Coupang Internal" whose description said the posting was
+ * exclusively for internal employees. Unfixed, the sitemap names that page
+ * and a public board's posting whose text says it is intended for current
+ * employees, both marked up; fixed, the bake has retired both to noindex stubs
+ * outside the sitemap, and the one page left is open to everyone.
+ */
+function internalSite(fixed: boolean): Route[] {
+  const coupang = "/jobs/posting/greenhouse/coupanginternal/8287892";
+  const vf = "/jobs/posting/greenhouse/acmefoods/5550001";
+  const ok = "/jobs/posting/greenhouse/acme/3001";
+  const paths = fixed ? [ok] : [coupang, vf, ok];
+  const block = (path: string, org: string, title: string, description: string) => `<script type="application/ld+json" id="posting-jsonld">${JSON.stringify({ "@context": "https://schema.org", "@type": "JobPosting", url: `${SITE}${path}`, title, description, hiringOrganization: { "@type": "Organization", name: org } })}</script>`;
+  const ledger = { postings: Object.fromEntries([coupang, vf, ok].map((p) => [p, { state: paths.includes(p) ? "live" : "retired" }])) };
+  return [
+    { match: `^${esc(`${SITE}/sitemap.xml`)}$`, body: `<urlset>${paths.map((p) => `<url><loc>${SITE}${p}</loc></url>`).join("")}</urlset>`, type: "application/xml" },
+    { match: `^${esc(`${SITE}/prerender-ledger.json`)}$`, body: JSON.stringify(ledger), type: "application/json" },
+    { match: `^${esc(`${SITE}${coupang}`)}$`, body: page(block(coupang, "Coupang Internal", "Principal, Real Estate [L6-II]", "This posting is exclusively for internal employees. To apply, please complete the attached Internal Transfer Request Form and submit it via your Coupang email address.")) },
+    { match: `^${esc(`${SITE}${vf}`)}$`, body: page(block(vf, "Acme Foods", "Farm Operations Supervisor", "**Internal Job Posting** This posting is intended for current Acme Foods employees. If you are not an employee, please visit our careers page.")) },
+    { match: `^${esc(`${SITE}${ok}`)}$`, body: page(block(ok, "Acme", "Account Manager", "Internal candidates are only asked to join on video. This position is open to internal and external candidates.")) },
+    { match: "^https://boards-api\\.greenhouse\\.io/v1/boards/[a-z]+/jobs/\\d+$", body: "{}", type: "application/json" },
+  ];
+}
+
+describe("section 98-r2 G7 fails job markup on a posting only the employer's own people may apply for", () => {
+  const bad = runSection(internalSite(false));
+  const good = runSection(internalSite(true));
+
+  it("FAILs an internal board's page and a public board's page whose text says it, judged by the bake's own rule", () => {
+    expect(has(bad, "FAIL", new RegExp(`G7 1 of 3 JobPostings on sitemap posting pages are open to everyone: .*${esc("/jobs/posting/greenhouse/coupanginternal/8287892")} \\(an internal board: "Coupang Internal"\\)`)), show(bad)).toBe(true);
+    expect(has(bad, "FAIL", new RegExp(`G7 .*${esc("/jobs/posting/greenhouse/acmefoods/5550001")} \\(its text says "This posting is intended for current Acme Foods employees"\\)`)), show(bad)).toBe(true);
+  });
+
+  it("PASSes when the only marked-up page is open to everyone, whatever it says to internal candidates", () => {
+    expect(has(good, "PASS", /G7 1 of 1 JobPostings on sitemap posting pages are open to everyone/), show(good)).toBe(true);
+    expect(good.filter((l) => /^FAIL\s+G7/.test(l)), show(good)).toEqual([]);
+  });
+});
+
+/**
+ * G8 FAILS JOB MARKUP ON A PAID-SURVEY PANEL AD (SEO check 2026-11-15, F03).
+ * Unfixed, the sitemap names a posting page from the usasurveyjob feed and a
+ * public board's page whose text is the same ad, both marked up; fixed, both
+ * are gone and the one page left is a job that speaks of surveys as work.
+ */
+function surveySite(fixed: boolean): Route[] {
+  const feed = "/jobs/posting/lever/usasurveyjob/d60f2773-5722-438d-be70-ddfa533facf8";
+  const elsewhere = "/jobs/posting/greenhouse/acmepanel/7770001";
+  const ok = "/jobs/posting/greenhouse/acme/3002";
+  const paths = fixed ? [ok] : [feed, elsewhere, ok];
+  const block = (path: string, org: string, title: string, description: string) => `<script type="application/ld+json" id="posting-jsonld">${JSON.stringify({ "@context": "https://schema.org", "@type": "JobPosting", url: `${SITE}${path}`, title, description, hiringOrganization: { "@type": "Organization", name: org } })}</script>`;
+  const ledger = { postings: Object.fromEntries([feed, elsewhere, ok].map((p) => [p, { state: paths.includes(p) ? "live" : "retired" }])) };
+  return [
+    { match: `^${esc(`${SITE}/sitemap.xml`)}$`, body: `<urlset>${paths.map((p) => `<url><loc>${SITE}${p}</loc></url>`).join("")}</urlset>`, type: "application/xml" },
+    { match: `^${esc(`${SITE}/prerender-ledger.json`)}$`, body: JSON.stringify(ledger), type: "application/json" },
+    { match: `^${esc(`${SITE}${feed}`)}$`, body: page(block(feed, "Usasurveyjob", "Client Support Representative - Remote Data Entry Clerk", "We provide you the chance to make additional income at home. You will be performing different jobs such as data entry and evaluations.")) },
+    { match: `^${esc(`${SITE}${elsewhere}`)}$`, body: page(block(elsewhere, "Acme Panel", "Work at Home Data Entry Agent - Part Time", "Earn money at Home by Participating in Surveys - Data Entry - Customer Service Rep - Part Time. Earn by taking polls.")) },
+    { match: `^${esc(`${SITE}${ok}`)}$`, body: page(block(ok, "Acme", "Market Research Analyst", "Design customer surveys, run focus groups and report what the polls show to the product team.")) },
+    { match: "^https://boards-api\\.greenhouse\\.io/v1/boards/[a-z]+/jobs/\\d+$", body: "{}", type: "application/json" },
+  ];
+}
+
+describe("section 98-r2 G8 fails job markup on a paid-survey panel ad", () => {
+  const bad = runSection(surveySite(false));
+  const good = runSection(surveySite(true));
+
+  it("FAILs a page from the held feed and the same ad on another board, judged by the bake's own rule", () => {
+    expect(has(bad, "FAIL", new RegExp(`G8 1 of 3 JobPostings on sitemap posting pages are jobs, not paid-survey panel ads; .*${esc("/jobs/posting/lever/usasurveyjob/d60f2773-5722-438d-be70-ddfa533facf8")} \\(a board held as a paid-survey ad feed\\)`)), show(bad)).toBe(true);
+    expect(has(bad, "FAIL", new RegExp(`G8 .*${esc("/jobs/posting/greenhouse/acmepanel/7770001")} \\(its text says "Earn money at Home by Participating in Surveys"\\)`)), show(bad)).toBe(true);
+  });
+
+  it("PASSes a job that speaks of surveys, focus groups and polls as work", () => {
+    expect(has(good, "PASS", /G8 1 of 1 JobPostings on sitemap posting pages are jobs, not paid-survey panel ads/), show(good)).toBe(true);
+  });
+});

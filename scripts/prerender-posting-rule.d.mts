@@ -20,3 +20,15 @@ export interface PostingFreshNameModules {
 }
 
 export function postingFreshNameReason(job: { id: string; token?: string | null; company?: string | null }, D: PostingFreshNameModules): string | null;
+
+/** The kind of board only an employer's own people may apply through ("an internal board", "a referral board", ...), or null (F02). */
+export function internalBoardReason(token: string | null | undefined, name: string | null | undefined): string | null;
+
+/** The words in a posting's own text that say only the employer's own people may apply, or null (F02). */
+export function internalOnlyTextReason(text: string | null | undefined): string | null;
+
+/** The boards held as paid-survey ad feeds until the owner's mill-screen decision (F03). */
+export const PAID_SURVEY_AD_BOARDS: ReadonlySet<string>;
+
+/** The words in a posting's own text that make it a paid-survey panel ad, or null (F03). */
+export function paidSurveyAdReason(text: string | null | undefined): string | null;

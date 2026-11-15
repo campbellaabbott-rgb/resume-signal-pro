@@ -22,7 +22,7 @@ import { boardNamesItsHirer, decodeNameEntities, employerName, possessive } from
 // postingMarkupGate below). Both modules are plain JavaScript with no imports
 // of their own, which is how plain node runs them for the bake.
 import { bakeEmployerName, type BakeEmployerName } from "../../../scripts/prerender-names.mjs";
-import { postingRowEligible } from "../../../scripts/prerender-posting-rule.mjs";
+import { internalOnlyTextReason, paidSurveyAdReason, postingRowEligible } from "../../../scripts/prerender-posting-rule.mjs";
 import { isCodeShapedName } from "../../lib/company-display";
 // The owner's STOP switch for Google for Jobs (B01): read by postingJsonLd below.
 import { JOB_POSTING_MARKUP } from "../../config/seo-switches";
@@ -1309,6 +1309,17 @@ export function postingNameVerdict(job: Pick<PostingRow, "id" | "token" | "compa
  * whether the name is the ONLY thing in the way (a carried page then keeps
  * its page with no markup, D7); it skips the name rules (the gate and the
  * tenant-code clause of rule 1) and is never used to emit markup.
+ *
+ * A POSTING ONLY THE EMPLOYER'S OWN PEOPLE MAY APPLY FOR (SEO check
+ * 2026-11-15, F02) gets none, on any board: rule 1 refuses a board that is
+ * internal, referral-only, employees-only or by invitation, and here the
+ * posting's own title and description are read for words that say so ("This
+ * posting is exclusively for internal employees"). Nor does A PAID-SURVEY
+ * PANEL AD (F03): rule 1 holds the feed the check found, and its words ("Earn
+ * money at Home by Participating in Surveys") are read here on any board.
+ * None of these questions has an ignore switch, so the bake's D7 asks (a
+ * refused name, a country) answer null for such a row too, and its carried
+ * page becomes a noindex stub.
  */
 export function postingMarkupGate(
   job: PostingRow,
@@ -1325,6 +1336,8 @@ export function postingMarkupGate(
   };
   if (!postingRowEligible(job, rule)) return null;
   if (!postingDescribedEnough(description)) return null;
+  const ownText = `${job.title ?? ""}\n${jdText(String(description))}`;
+  if (internalOnlyTextReason(ownText) || paidSurveyAdReason(ownText)) return null;
   const named = postingNameVerdict(job);
   if (named.reason && !opts.ignoreNameGate) return null;
   return named.repaired ? { ...job, company: named.name } : job;

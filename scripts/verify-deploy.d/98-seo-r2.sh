@@ -30,10 +30,21 @@
 #       own name in the title and the H1. A page not served is INFO.
 #   G6  (B02) /pay-transparency's system column prints the vendor's name,
 #       never a raw key ("ukg", "workday"; src/config/ats-vendors.ts).
+#   G7  (SEO check 2026-11-15, F02) no JobPosting on a sitemap posting page is
+#       for the employer's own people only: its board (the token in the path,
+#       its hiringOrganization) is not an internal, referral, employees-only or
+#       invitation-only board, and its own title and description do not say
+#       only internal or current employees may apply, judged by
+#       scripts/prerender-posting-rule.mjs itself (internalBoardReason,
+#       internalOnlyTextReason).
+#   G8  (SEO check 2026-11-15, F03) no JobPosting on a sitemap posting page is
+#       a paid-survey panel ad: its board is not a feed the rule holds
+#       (PAID_SURVEY_AD_BOARDS: usasurveyjob) and its title and description do
+#       not recruit survey takers (paidSurveyAdReason), judged by the same file.
 #
 # Read-only: GETs of the site's sitemap, ledger and posting pages, and GETs of
 # the employers' own endpoints. Nothing is sent or written.
-echo "== 98-r2. the SEO round of 2026-11-07: closed-but-baked share, the STOP switch, employer-closed stubs, employer names, system names =="
+echo "== 98-r2. the SEO round of 2026-11-07: closed-but-baked share, the STOP switch, employer-closed stubs, employer names, system names, internal-only postings, survey ads =="
 
 VD98R2_SWITCH=$(/usr/bin/grep -Eo '^export const JOB_POSTING_MARKUP = (true|false);' src/config/seo-switches.ts 2>/dev/null | /usr/bin/grep -Eo '(true|false)' || echo "")
 
@@ -97,6 +108,8 @@ try { ledger = JSON.parse((await get("/prerender-ledger.json")).body).postings ?
 const paths = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].trim().replace(/^https?:\/\/[^/]+/, "")).filter((p) => p.startsWith("/jobs/posting/"));
 /** [path, hiringOrganization.name] of every JobPosting the G2 walk read, for G4. */
 const orgNames = [];
+/** Every JobPosting the G2 walk read, with the text G7 judges. */
+const marked = [];
 if (SWITCH !== "true" && SWITCH !== "false") out("FAIL", "G2 src/config/seo-switches.ts names no JOB_POSTING_MARKUP = true|false line");
 else if (!paths.length) out("FAIL", "G2 the sitemap names no posting page");
 else {
@@ -107,6 +120,7 @@ else {
       const blocks = jobBlocks(r.body);
       const n = blocks.length;
       for (const b of blocks) if (typeof b?.hiringOrganization?.name === "string") orgNames.push([p, b.hiringOrganization.name]);
+      for (const b of blocks) marked.push({ path: p, org: typeof b?.hiringOrganization?.name === "string" ? b.hiringOrganization.name : "", text: `${b?.title ?? ""}\n${b?.description ?? ""}` });
       const kept = !!ledger[p]?.markupWithheld && ledger[p].markupWithheld !== "switch";
       const want = SWITCH === "true" ? (kept ? 0 : 1) : 0;
       if (r.status !== 200 || n !== want) wrong.push(`${p} (HTTP ${r.status}, ${n} JobPosting, want ${want})`);
@@ -134,6 +148,41 @@ else {
   else {
     const bad = orgNames.map(([p, n]) => [p, n, n.includes("://") ? "web address" : gate(n)]).filter(([, , why]) => why);
     out(bad.length ? "FAIL" : "PASS", `G4 ${orgNames.length - bad.length} of ${orgNames.length} JobPosting employer names on sitemap posting pages are names, not a web address or a logo or colour caption${bad.length ? `; e.g. ${bad.slice(0, 3).map(([p, n, why]) => `${p} "${n}" (${why})`).join("; ")}` : ""}`);
+  }
+}
+// G7 (F02): no job markup on a posting open only to people the employer already employs.
+{
+  let rule = null;
+  try { rule = await import(`${process.cwd()}/scripts/prerender-posting-rule.mjs`); } catch { rule = null; }
+  if (typeof rule?.internalBoardReason !== "function" || typeof rule?.internalOnlyTextReason !== "function") out("FAIL", "G7 scripts/prerender-posting-rule.mjs could not be loaded from the working directory");
+  else if (!marked.length) out("INFO", "G7 no sitemap posting page served a JobPosting (nothing to judge)");
+  else {
+    const tokenOf = (p) => { try { return decodeURIComponent(p.split("/")[4] ?? ""); } catch { return p.split("/")[4] ?? ""; } };
+    const bad = [];
+    for (const m of marked) {
+      const board = rule.internalBoardReason(tokenOf(m.path), m.org);
+      const says = board ? null : rule.internalOnlyTextReason(m.text);
+      if (board) bad.push(`${m.path} (${board}: "${m.org}")`);
+      else if (says) bad.push(`${m.path} (its text says "${says}")`);
+    }
+    out(bad.length ? "FAIL" : "PASS", `G7 ${marked.length - bad.length} of ${marked.length} JobPostings on sitemap posting pages are open to everyone: no internal, referral, employees-only or invitation-only board, and no text saying only the employer\u0027s own people may apply${bad.length ? `; e.g. ${bad.slice(0, 3).join("; ")}` : ""}`);
+  }
+}
+// G8 (F03): no job markup on a paid-survey panel ad.
+{
+  let rule = null;
+  try { rule = await import(`${process.cwd()}/scripts/prerender-posting-rule.mjs`); } catch { rule = null; }
+  if (!(rule?.PAID_SURVEY_AD_BOARDS instanceof Set) || typeof rule?.paidSurveyAdReason !== "function") out("FAIL", "G8 scripts/prerender-posting-rule.mjs could not be loaded from the working directory");
+  else if (!marked.length) out("INFO", "G8 no sitemap posting page served a JobPosting (nothing to judge)");
+  else {
+    const bad = [];
+    for (const m of marked) {
+      const token = m.path.split("/")[4] ?? "";
+      const says = rule.PAID_SURVEY_AD_BOARDS.has(token) ? null : rule.paidSurveyAdReason(m.text);
+      if (rule.PAID_SURVEY_AD_BOARDS.has(token)) bad.push(`${m.path} (a board held as a paid-survey ad feed)`);
+      else if (says) bad.push(`${m.path} (its text says "${says}")`);
+    }
+    out(bad.length ? "FAIL" : "PASS", `G8 ${marked.length - bad.length} of ${marked.length} JobPostings on sitemap posting pages are jobs, not paid-survey panel ads${bad.length ? `; e.g. ${bad.slice(0, 3).join("; ")}` : ""}`);
   }
 }
 // G5: company pages the audit read under a tenant code, as served.
