@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { MCP_ANON_CAPS, MCP_ANON_TOOL_NAMES, MCP_FREE_KEY_DAILY_QUOTA, MCP_TOOLS } from "../config/mcp-tools";
+import { findInstallRepo, installRepoSkipReason } from "./helpers/install-repo";
 
 /**
  * THE INSTALL FILES POINT AT THIS SERVER.
@@ -15,13 +16,17 @@ import { MCP_ANON_CAPS, MCP_ANON_TOOL_NAMES, MCP_FREE_KEY_DAILY_QUOTA, MCP_TOOLS
  * (PLAN item 6 "First step": a vitest that the remote URL equals MCP_URL —
  * the URL, never the version).
  *
- * The sibling is found beside this checkout (or at RESUMEBOOSTER_MCP_DIR).
- * When it is absent the file skips with a reason: a missing sibling is not
- * drift, and the other repo's CI checks this one out to run the reverse.
+ * The checkout is found at RESUMEBOOSTER_MCP_DIR, beside this checkout, or in
+ * ~/Documents/GitHub (an agent's worktree is never beside it, and looking only
+ * there skipped this file on every agent run). When none holds it the file
+ * skips and says where it looked: a missing checkout is not drift, and the
+ * other repo's CI checks this one out to run the reverse.
  */
 const ROOT = resolve(__dirname, "../..");
-const SIBLING = process.env.RESUMEBOOSTER_MCP_DIR ?? resolve(ROOT, "..", "resumebooster-mcp");
-const present = existsSync(resolve(SIBLING, "mcp.config.json"));
+const FOUND = findInstallRepo({ root: ROOT, env: process.env.RESUMEBOOSTER_MCP_DIR });
+const SIBLING = FOUND.dir ?? "";
+const present = FOUND.dir !== null;
+if (!present) console.warn(installRepoSkipReason(FOUND, "the install files"));
 const readJson = (rel: string) => JSON.parse(readFileSync(resolve(SIBLING, rel), "utf8"));
 
 const mcpUrl = (): string => {
@@ -31,7 +36,29 @@ const mcpUrl = (): string => {
   return `${base}/functions/v1/agent-mcp`;
 };
 
-describe.skipIf(!present)(`the distribution repo beside this one (${SIBLING}) mirrors this server`, () => {
+describe("the install repository's checkout is found from an agent's worktree", () => {
+  const home = "/Users/someone";
+  const worktree = `${home}/Documents/GitHub/resume-signal-pro/.claude/worktrees/some-branch`;
+  const clone = `${home}/Documents/GitHub/resumebooster-mcp`;
+  const only = (dir: string) => (p: string) => p === resolve(dir, "mcp.config.json");
+  it("a worktree finds the clone in ~/Documents/GitHub, where nothing sits beside the worktree", () => {
+    expect(findInstallRepo({ root: worktree, home, exists: only(clone) }).dir).toBe(clone);
+  });
+  it("the environment variable wins over both", () => {
+    const elsewhere = "/srv/resumebooster-mcp";
+    expect(findInstallRepo({ root: worktree, env: elsewhere, home, exists: (p) => p.startsWith(elsewhere) || only(clone)(p) }).dir).toBe(elsewhere);
+  });
+  it("finding none names every place it looked", () => {
+    const s = findInstallRepo({ root: worktree, home, exists: () => false });
+    expect(s.dir).toBeNull();
+    const why = installRepoSkipReason(s, "the install files");
+    expect(why).toContain(resolve(worktree, "..", "resumebooster-mcp"));
+    expect(why).toContain(clone);
+    expect(why).toMatch(/^SKIPPED: .*RESUMEBOOSTER_MCP_DIR/);
+  });
+});
+
+describe.skipIf(!present)(`the distribution repo (${SIBLING || "not found"}) mirrors this server`, () => {
   it("every install file's URL is this project's agent-mcp (the URL, never the version)", () => {
     const url = mcpUrl();
     const c = readJson("mcp.config.json");

@@ -1115,10 +1115,12 @@ describe("Ghost Job Index age stats use the company's date, not our discovery ti
     // (3) …and the methodology entry must explain WHY the bound exists, or the
     //     number reads as a fact about hiring speed rather than about this
     //     board. The term was renamed with the statistic it describes.
-    const method = page.slice(page.indexOf('term: "How often roles are actually filled"'));
-    expect(method, "the methodology term was renamed again — re-anchor it").not.toBe("");
+    //     Since GEO-1107-04 the entry is the main locale's words (a takedown
+    //     is never called a fill), so the page holds its keys and en.json its text.
+    expect(page, "the methodology term was renamed again — re-anchor it").toContain('term: t("ghostIndex.fillTerm"), method: t("ghostIndex.fillMethod")');
+    const method = (JSON.parse(readFileSync(resolve(__dirname, "../i18n/locales/en.json"), "utf8")) as { ghostIndex: { fillMethod: string } }).ghostIndex.fillMethod;
     expect(method.slice(0, 1800)).toMatch(/drops any posting older than 30 days|structural/);
-    const methodEntry = method.slice(0, method.indexOf("\n"));
+    const methodEntry = method;
     expect(methodEntry, "the fill entry's no-median clause must name R(30), not the share still up")
       .toMatch(/fewer than half of a field's roles had been taken down for good by day 30/);
     expect(methodEntry).not.toMatch(/more than half of a field's roles were still up/);

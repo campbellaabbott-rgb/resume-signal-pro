@@ -124,6 +124,7 @@ export default function Companies() {
         title={t("companyProfile.directory.seoTitle", "Companies Hiring Now — Jobs Read From Each Hiring System")}
         description={t("companyProfile.directory.seoDescription", "Each board read from the hiring system that published it: mostly employers' own, with staffing agencies and the federal listing site labeled.")}
         path="/companies"
+        preferBakedHead
       />
       <Header />
       <main className="min-h-screen pt-24 pb-20">

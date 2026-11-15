@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { MCP_TOOLS, MCP_HOSTS, MCP_FORM_VENDORS } from "../config/mcp-tools";
+import { MCP_TOOLS, MCP_HOSTS, MCP_FORM_VENDORS, MCP_FORM_VENDORS_AFTER_DEPLOY } from "../config/mcp-tools";
+import { FORM_READER_VENDORS } from "../../supabase/functions/_shared/application-form";
 import { SENDABLE_VENDOR_KEYS, SENDABLE_VENDOR_LABELS } from "../config/sendable-vendors";
 
 /**
@@ -193,9 +194,11 @@ describe("the page says six and the server says eleven", () => {
     expect(literal.exec(TOOLS_SRC)?.[0], "a tool description spells a corpus count").toBeUndefined();
     for (const t of MCP_TOOLS) expect(literal.exec(t.body)?.[0], `${t.name} mirror body spells a count`).toBeUndefined();
     // The page states the figure the way the homepage does — from the live
-    // board, with count-free copy when the read fails.
-    expect(PAGE).toMatch(/useBoardTotals\(\)/);
-    expect(PAGE).toMatch(/roundedFloor\(/);
+    // board, with count-free copy when the read fails. Since CJ-11 that is the
+    // homepage's own reach: the postings the AI can search, the withheld
+    // systems subtracted (the-agents-count-is-never-above-what-the-ai-can-reach).
+    expect(PAGE).toMatch(/useBoardVendorCounts\(\)/);
+    expect(PAGE).toMatch(/aiReach\(vendor\.counts, vendor\.openTotal\)/);
   });
 
   it("the sendable-vendor mirror equals the Deno list the apply pipeline obeys", () => {
@@ -220,6 +223,12 @@ describe("the page says six and the server says eleven", () => {
     const deno = [...APPLY.matchAll(/\n\s*([a-z0-9_]+):\s*\{[^}]*\}/g)].filter((m) => realQ.test(m[0])).map((m) => m[1]).sort();
     expect(deno.length, "no real-question vendor parsed from apply-automation.ts").toBeGreaterThan(2);
     expect(MCP_FORM_VENDORS.map((v) => v.key).sort()).toEqual(deno);
+    // Connect W5: the server reads five more forms than the vendor table
+    // flags (realQuestions stays false for them: job-board has no question
+    // branch for them). Page and table still agree; the five wait in the
+    // unrendered after-deploy list, and with the mirror they are the readers.
+    expect([...MCP_FORM_VENDORS, ...MCP_FORM_VENDORS_AFTER_DEPLOY].map((v) => v.key).sort()).toEqual([...FORM_READER_VENDORS].sort());
+    for (const v of MCP_FORM_VENDORS_AFTER_DEPLOY) expect(PAGE, `${v.label} is rendered before its reader deploys`).not.toMatch(new RegExp(`\\b${v.label}\\b`));
     for (const src of [PAGE, APPLY_SECTION]) {
       const spelledName = [...MCP_FORM_VENDORS.map((v) => v.label), ...SENDABLE_VENDOR_LABELS].filter((label) => new RegExp(`\\b${label}\\b`).test(src));
       expect(spelledName, "vendor names spelled on the page instead of rendered from the mirror").toEqual([]);

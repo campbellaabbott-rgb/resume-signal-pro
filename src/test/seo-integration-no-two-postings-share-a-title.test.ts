@@ -3,12 +3,14 @@
  *
  * The CI parity test (sitemap-prerender-parity: "gives no two sitemap URLs
  * the same <title>") found two live postings under one title after the
- * 2026-10-18 publish. postingPageTitle keeps the place and drops the employer
- * when both do not fit beside a whole job title, so two employers' identical
- * titles in one city render one title. The bake now remembers every posting
- * title it writes and gives a later page that would repeat one its
- * requisition key (postingPageTitleAvoiding), and the React posting page keeps
- * the baked title on a load of its own indexable file.
+ * 2026-10-18 publish: postingPageTitle then kept the place and dropped the
+ * employer when both did not fit beside a whole job title, so two employers'
+ * identical titles in one city rendered one title. It keeps the employer now
+ * (B07, TITLE-08), so those two differ by construction; the bake still
+ * remembers every posting title it writes and gives a later page that would
+ * repeat one its town, its stated date or a short reference
+ * (postingPageTitleAvoiding), and the React posting page keeps the baked
+ * title on a load of its own indexable file.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -30,18 +32,21 @@ describe("postingPageTitleAvoiding", () => {
   const a = row({});
   const b = row({ id: "greenhouse:massgeneral:77001", company: "Massachusetts General Hospital" });
 
-  it("two employers' identical titles in one city render one title from postingPageTitle (the defect)", () => {
-    expect(postingPageTitle(a)).toBe(postingPageTitle(b));
-    expect(postingPageTitle(a)).toBe("Registered Nurse - Intensive Care Unit — Boston, MA");
+  it("two employers' identical titles in one city render two titles, each naming its employer", () => {
+    expect(postingPageTitle(a)).toBe("Registered Nurse - Intensive… — Beth Israel Deaconess Medical Center");
+    expect(postingPageTitle(b)).toBe("Registered Nurse - Intensive Care… — Massachusetts General Hospital");
   });
 
-  it("the second page takes its requisition key and the first keeps its title", () => {
+  it("a second posting of one employer's job in one town takes its town, and the first keeps its title", () => {
+    const a2 = row({ id: "greenhouse:bethisraeldeaconess:4012399" });
     const taken = new Set<string>();
     const ta = postingPageTitleAvoiding(a, taken); taken.add(ta);
-    const tb = postingPageTitleAvoiding(b, taken); taken.add(tb);
+    const tb = postingPageTitleAvoiding(a2, taken); taken.add(tb);
     expect(ta).toBe(postingPageTitle(a));
     expect(tb).not.toBe(ta);
-    expect(tb).toContain("77001");
+    // The employer's name is too long to fit beside the town and a readable
+    // title, so the whole title and the town carry it.
+    expect(tb).toBe("Registered Nurse - Intensive Care Unit — Boston, MA");
     expect(tb.length).toBeLessThanOrEqual(68);
   });
 

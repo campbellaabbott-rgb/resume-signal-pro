@@ -1511,6 +1511,42 @@
     "theFreeReportsNumbersNowAgree": {
       "title": "Cijfers en labels in het gratis rapport komen nu overeen",
       "description": "De verwachte score in het rapport toont nu overal hetzelfde getal en komt nooit boven de 95. De kleur, het label, de banner en de deelkaart komen nu bij elke score overeen. De kaart over hoe wervingssystemen je cv lezen, zegt niet meer dat je opmaak slaagt als die dat niet kon controleren: hij zegt “Niet gecontroleerd”. Als je feedback of je antwoord over een sollicitatie niet kon worden opgeslagen, zegt het rapport dat en bedankt het je niet. Een cv van meer dan 50.000 tekens wordt voor de scan geweigerd, en de melding noemt de lengte. Als een rapport geen herschrijving heeft die de bouwer kan toepassen, zegt het dat, en laat de bouwer je opsommingspunten ongewijzigd. Als je je concept in de bouwer houdt, worden de verbeteringen uit het rapport toegepast op de opsommingspunten die je concept al heeft, de pagina zegt hoeveel er zijn toegepast, en de rest blijft in je rapport. Herschrijvingen voor cv's in het Hindi en Russisch komen nu bij het juiste opsommingspunt terecht. Op een telefoon loopt de scorekaart niet meer van het scherm af. Het sectiemenu van het rapport blijft zichtbaar onder de kop van de site. De sectie “Branche- en functiezoekwoorden” geeft je niet meer de zoekwoorden van een ander beroep door losse letters in je titel. De sectie “Gepersonaliseerde tips” kan dat nog wel doen. De lijst met bevindingen, de kaart over wervingssystemen en de regel met de verwachte score verschijnen nu in jouw taal, net als de koppen, knoppen en labels van de Cv-bouwer. Andere delen van het rapport, zoals de branchelabels, zijn nog in het Engels."
+    },
+    "ourFontsComeFromOurOwnSite": {
+      "title": "Onze lettertypen komen nu van onze eigen site",
+      "description": "Onze pagina's laden hun lettertypen niet meer bij Google. De lettertypen komen nu van onze eigen site, dus als je een pagina opent, wordt er niets opgevraagd bij de lettertypeservers van Google."
+    },
+    "aSharedLinkCanNoLongerDeleteAPaidAnalysis": {
+      "title": "Een gedeelde link kan een betaalde analyse niet meer verwijderen",
+      "description": "Eerder kon iedereen met de gedeelde link naar een betaalde analyse die analyse verwijderen. Nu opent de gedeelde link de analyse nog steeds, maar kan hij hem niet verwijderen. Voor verwijderen is ook de oorspronkelijke aankoop nodig, dus het werkt alleen via de eigen aankooplink van de koper (de pagina die na de betaling openging of de bestelling in het account) of door ons te schrijven vanaf het adres waarmee is betaald. Dat staat ook op de gedeelde pagina."
+    },
+    "aPurchaseLinkThatDoesNotOpenSaysWhy": {
+      "title": "Een aankooplink die niet opent, zegt nu meestal waarom",
+      "description": "Als een link naar een aankoop op de productpagina niet opent (tools en scanpakketten die los zijn gekocht, en tools die bij een Pro-abonnement horen), zegt de pagina nu meestal waarom. Ze kan zeggen dat de betaling nog niet is afgerond, dat de aankoop is terugbetaald of dat er in het afgelopen uur te veel controles van je verbinding kwamen. Of ze zegt dat we de aankoop niet konden vinden, misschien omdat de link is afgekapt of verlopen. Een link zonder aankoopreferentie vraagt je de link uit je aankoopmail te plakken, of de referentie zelf. Als de betaalprovider niet op tijd antwoordt, zegt de pagina dat je aankoop veilig is en biedt ze “Opnieuw proberen” aan. Dit staat in alle negen talen. De pagina van de Volledige Analyse is niet veranderd."
+    },
+    "draftsForAJobReopenWithoutBeingWrittenAgain": {
+      "title": "Concepten voor een vacature gaan weer open zonder opnieuw te worden geschreven",
+      "description": "In het venster “Bereid je sollicitatie voor” van het vacaturebord gaat een sollicitatiebrief, aangepast cv of set sollicitatieantwoorden die je al voor een vacature hebt opgesteld, nu weer open zonder opnieuw te worden geschreven. Een sollicitatiebrief of aangepast cv opnieuw openen kost je dagelijkse schrijftegoed dus geen tweede keer. Dit werkt zolang de pagina open blijft, voor de laatste 20 vacatures waarvoor je een sollicitatie hebt voorbereid, en zolang je cv, de vacature en je taal niet veranderen; herladen of een nieuw tabblad begint opnieuw. “Opnieuw aanpassen” en “Opnieuw opstellen” schrijven een nieuwe. Als de brief- of cv-schrijver voor iedereen overbelast is, meldt hij dat nu en zegt hij erbij dat het niet je eigen limiet is."
+    },
+    "theInterviewCoachKeepsEachAnswerApart": {
+      "title": "De Interviewcoach houdt elk antwoord apart, en aanpassen vraagt een echte vacature",
+      "description": "In de Interviewcoach van het gratis rapport houdt elke vraag nu haar eigen antwoord. Eerder verscheen een antwoord dat je voor één vraag typte in de vakken van de andere vragen en kon het als hun antwoord worden verstuurd, en wiste “Opnieuw proberen” bij één vraag ze allemaal. Het rapport biedt ook alleen nog een aangepast cv aan als het een functietitel of vacature heeft om op aan te passen. Eerder kon het een functietitel verzinnen op basis van je branche."
+    },
+    "searchAndReportEmailsInYourLanguage": {
+      "title": "Zoek- en rapportmails komen in de taal die je gebruikte",
+      "description": "Mails voor je opgeslagen zoekopdrachten, de mail met het gratis rapport en de fix-plan-mails daarna komen nu in de taal die je op de site gebruikte. Voor de fix-plan-mails is dat de taal van de pagina waar je op de knop drukte die ze startte. Eerder waren ze allemaal in het Engels. Een zoekopdracht die vóór deze update is opgeslagen, blijft Engelse mails sturen tot je hem opent vanuit je opgeslagen zoekopdrachten, de mail ervan aan- of uitzet, de meldingsdrempel ervan wijzigt of er op het vacaturebord opnieuw meldingen voor aanzet. De bevindingen van je scan zelf blijven in de taal waarin de scan ze schreef."
+    },
+    "yourAccountSaysWhichSearchEmailsComeDaily": {
+      "title": "Je accountpagina zegt welke zoekmails dagelijks komen",
+      "description": "Je accountpagina zegt nu naast elke opgeslagen zoekopdracht die ze toont (de 20 nieuwste) of die zoekopdracht je dagelijks of wekelijks mailt: alerts en gevolgde bedrijven dagelijks, andere zoekopdrachten wekelijks. Eerder noemde ze ze allemaal wekelijks. De pagina waar je via de bevestigingsmail van de marktpuls komt, zegt nu wat de puls stuurt: de belangrijkste trefwoorden voor jouw vakgebied uit onze samengestelde trefwoordengids, geen telling van de vacatures van deze maand."
+    },
+    "theOneClickApplyFilterIsGone": {
+      "title": "Het filter “Solliciteren met één klik” is weg uit Ontdek",
+      "description": "De telling van het filter omvatte alleen vacatures op vier wervingssystemen, terwijl je na het kiezen ervan al elke vacature zag. Opgeslagen zoekopdrachten die dit filter nog aan hadden, tellen en mailen nu nieuwe vacatures van het hele bord; zo'n zoekopdracht openen toonde al elke vacature."
+    },
+    "theBoardChecksEveryMinuteForAStoppedRefresh": {
+      "title": "Het vacaturebord controleert elke minuut of zijn verversing is gestopt",
+      "description": "Het vacaturebord controleert nu elke minuut of het verversen van zijn vacatures is gestopt, en vraagt om een herstart zodra het een paar minuten stil is gebleven. We hebben het nog geen gestopte verversing zien herstarten."
     }
   }
 }

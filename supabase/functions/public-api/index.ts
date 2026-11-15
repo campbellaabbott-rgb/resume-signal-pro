@@ -384,7 +384,8 @@ const LIST_FILTERS = [
 // 2026-10-11.37 (recheck 3, 2026-10-26): no rule change. The field notes say last_verified_at (and last_seen) is when the board last read the employer's feed, not proof the read listed the posting: a large board is read in windows.
 // 2026-11-02.1 (board-stream round, 2026-11-01): a city typed in its own language binds the English name it adds to its country (S13-006; _shared/location-terms.ts and _shared/location-match.ts): the /v1 location or() refuses a US-placed row for "Vienna@Austria" unless it names Austria, and the explain trace shows "Vienna" with outsideUsUnlessNaming.
 // 2026-11-03.1 (audit-rest held items, 2026-11-04): no rule change. engine=ranked sends agent_ready_only to the board as its vendor list, because the board reads no such flag since job-board .101 (S13-118).
-const FN_BUILD = "public-api.2026-11-03.1";
+// 2026-11-08.1 (connect W4 and W5, 2026-11-08): GET /v1/jobs/{id}/application reads ten hiring systems' forms (Paylocity, Workable, Teamtailor, Lever and BambooHR added; _shared/form-readers-extra.ts, host-pinned GETs, a Paylocity answer key never read) and a Pinpoint posting on the employer's own domain from its pinpointhq.com page; a Breezy page's CV and cover-letter settings and a Pinpoint page's equality block and consent are listed; a written question that mentions a CV is not a file, and a consent is marked consent and never cvMayHelp (a 563-label corpus, never worse than main); route carries captcha (visible, invisible or none) with iCIMS and UKG measured as account-first and Paylocity as neither; a form not read says why it was not read; postingTerms leave out equal-opportunity, benefits and legal sentences (a 1,833-posting corpus).
+const FN_BUILD = "public-api.2026-11-08.1";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

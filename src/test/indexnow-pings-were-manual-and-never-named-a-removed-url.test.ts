@@ -9,8 +9,9 @@ import { changedUrls, submit, INDEXNOW_KEY } from "../../scripts/indexnow-ping.m
  * hand (`npm run indexnow`), with every URL in the sitemap at once, and never
  * with a URL that had been removed, so Bing (which feeds ChatGPT search and
  * Copilot) learned of a change only at its next crawl. The post-publish
- * verifier now submits what the live publish changed, and the posting URLs
- * it retired, on every clean pass.
+ * verifier now names what the live publish changed, and the posting URLs it
+ * retired, on every run, and submits them on a clean pass given the owner's
+ * go-ahead (INDEXNOW_SEND=1, since 2026-11-07).
  */
 
 const SITE = "https://resumebooster.work";
@@ -68,16 +69,18 @@ describe("a publish tells IndexNow what it changed and what it removed", () => {
       if (url.endsWith(".txt")) return new Response(INDEXNOW_KEY, { status: 200 });
       return new Response("", { status: 202 });
     }) as unknown as typeof fetch;
-    const r = await submit([`${SITE}/`], { fetchImpl: fake });
+    const r = await submit([`${SITE}/`], { fetchImpl: fake, env: { INDEXNOW_SEND: "1" } });
     expect(r).toMatchObject({ submitted: 1, status: 202, ok: true });
     expect(calls).toEqual([`${SITE}/${INDEXNOW_KEY}.txt`, "https://www.bing.com/indexnow"]);
-    const down = await submit([`${SITE}/`], { fetchImpl: (async () => { throw new Error("offline"); }) as unknown as typeof fetch });
+    const down = await submit([`${SITE}/`], { fetchImpl: (async () => { throw new Error("offline"); }) as unknown as typeof fetch, env: { INDEXNOW_SEND: "1" } });
     expect(down.submitted).toBe(0);
   });
 
-  it("the post-publish verifier runs it on a clean pass", () => {
+  // Since the SEO/GEO audit of 2026-11-07 (IDX-05) the verifier lists these
+  // on every run and sends them only on a clean pass with the owner's
+  // go-ahead: indexnow-is-sent-only-on-a-go-ahead.test.ts holds that rule.
+  it("the post-publish verifier lists them through the go-ahead gate, told whether the pass was clean", () => {
     const smoke = codeOf(readFileSync(resolve(__dirname, "../../scripts/post-publish-smoke.mjs"), "utf8"));
-    expect(smoke).toMatch(/if \(results\.every\(\(r\) => r\.ok\) && !process\.env\.NO_INDEXNOW\)/);
-    expect(smoke).toMatch(/await submitChanged\(\)/);
+    expect(smoke).toMatch(/await afterPublishPing\(\{ env: process\.env, clean: results\.every\(\(r\) => r\.ok\) \}\)/);
   });
 });

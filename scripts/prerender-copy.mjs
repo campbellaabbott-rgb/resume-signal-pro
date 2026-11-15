@@ -48,6 +48,11 @@ export const BANNED_SOURCE_PHRASES = [
   // said both until the round's review).
   ["a blanket 'every posting comes from the company's own hiring system'", /\bevery posting comes from the company's own hiring system\b/i],
   ["a board-wide 'each read from the employer's own hiring system'", /\beach read from the employer's own hiring system\b/i],
+  // B09 (CLAIM-11): a takedown is logged when a LATER READ of the feed finds
+  // the posting gone, hours or days after the employer took it down; no
+  // sentence may say it is recorded at the instant it happens.
+  ["an instant takedown record", /\bthe moment (?:a|an|the) (?:company|employer)s? (?:takes|took|removes|pulls)\b/i],
+  ["a takedown read as an instant", /\bthe moment (?:a|an|the) (?:posting|role|job) (?:comes|came|goes|went) down\b/i],
 ];
 
 /** Every banned source phrase one text carries, as [claim, matched text]. */
@@ -82,6 +87,17 @@ export const OFF_PAGE_HOST_NAMES = /\b(?:Cursor(?! pagination)|VS Code|Visual St
 export const ORG_ID = (site) => `${site}/#org`;
 export const WEBSITE_ID = (site) => `${site}/#website`;
 
+/**
+ * B03 (GEO-04): what the Organization IS, in one sentence, and which of the
+ * things called "Resume Booster" it is. On 2026-11-07 five web searches for
+ * this site returned none of its pages and showed resumebooster.io and
+ * ResumeBoostAI instead, and nothing the site served said which one it was.
+ * The second sentence is the one /about already publishes (about.lead).
+ * Neither names a person, a company or an address (SEO-045 stands).
+ */
+export const ORG_DESCRIPTION = "Resume Booster is a free job board of live jobs read from employers' own hiring systems and USAJOBS, with a free resume checker; you apply on the employer's own site.";
+export const ORG_DISAMBIGUATION = "The job board and free resume scanner at resumebooster.work: an independent site, not affiliated with any employer or hiring system it reads, and not the same product as resumebooster.io or ResumeBoostAI.";
+
 /** The one Organization node. Nothing beyond what is true and public. */
 export const orgNode = (site) => ({
   "@context": "https://schema.org",
@@ -91,6 +107,8 @@ export const orgNode = (site) => ({
   alternateName: "resumebooster.work",
   url: `${site}/`,
   logo: `${site}/icons/icon-512.png`,
+  description: ORG_DESCRIPTION,
+  disambiguatingDescription: ORG_DISAMBIGUATION,
 });
 
 /** A reference to the Organization, with its name inline for a reader that does not resolve @id (Article author and publisher). */
@@ -145,4 +163,78 @@ export function wilsonPct(k, n, z = 1.96) {
   const lo = Math.max(0, mid - half);
   const hi = Math.min(1, mid + half);
   return [Math.floor(lo * 1000) / 10, Math.ceil(hi * 1000) / 10];
+}
+
+// ---- A description kept whole to its last sentence that fits (B09) ----
+//
+// The bake keeps a description another module owns to its last whole
+// sentence under the snippet budget, and it used to find sentences with
+// /[^.!?]+[.!?]+/: every "vs." and "e.g." was a sentence end, so a guide
+// whose description ran past 160 characters went out as a fragment ending
+// "Resume vs." or one with a bracket it never closed (DESC-10, 2026-11-07).
+// A period ends a sentence here only where the word before it is not an
+// abbreviation and not a lone initial, and any end needs the next sentence to
+// begin like one (a capital, a digit, an opening quote or bracket); "etc."
+// ends one only before a capital. A cut that leaves a bracket open is never
+// returned. The old pattern also skipped text it could not match, so "the
+// U.S. Department" became "S. Department": every cut here is a prefix.
+
+/** Words a period after which never ends a sentence (lower-cased, inner periods kept). */
+const NEVER_ENDS = new Set([
+  "vs", "v", "e.g", "i.e", "cf", "viz", "u.s", "u.k", "u.s.a", "e.u", "inc", "ltd", "llc", "co", "corp", "st", "mt", "ft",
+  "dr", "mr", "mrs", "ms", "jr", "sr", "prof", "no", "nos", "approx", "a.m", "p.m", "ph.d", "m.d", "b.a", "b.s", "m.s", "m.a",
+  "al", "fig", "dept", "est", "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec",
+]);
+/** Words a period after which ends a sentence only when a capital follows. */
+const ENDS_BEFORE_CAPITAL = new Set(["etc"]);
+
+/** The offsets just past each sentence end in `text` (its closing quotes and brackets included). */
+export function sentenceEnds(text) {
+  const t = String(text ?? "");
+  const ends = [];
+  const re = /([.!?]+)(["'”’)\]]*)(?=\s|$)/g;
+  let m;
+  while ((m = re.exec(t))) {
+    const end = m.index + m[0].length;
+    const next = t.slice(end).trimStart().charAt(0);
+    if (m[1] === ".") {
+      const word = (/([A-Za-z][A-Za-z.]*)$/.exec(t.slice(0, m.index)) || [])[1] || "";
+      const w = word.toLowerCase();
+      if (NEVER_ENDS.has(w)) continue;
+      if (/^[A-Z]$/.test(word)) continue;
+      if (ENDS_BEFORE_CAPITAL.has(w) && !/[A-Z0-9"“(\[]/.test(next)) continue;
+    }
+    // The next sentence must begin like one: a capital, a digit, a currency
+    // sign, an opening quote or bracket ("the US?” — and ..." goes on).
+    if (next && !/[\p{Lu}0-9"'\u201c\u2018(\[{$\u20ac\u00a3\u20b9]/u.test(next)) continue;
+    ends.push(end);
+  }
+  return ends;
+}
+
+/** Every bracket opened in `s` is closed in it, in order. */
+export function bracketsBalanced(s) {
+  const stack = [];
+  for (const c of String(s ?? "")) {
+    if (c === "(" || c === "[") stack.push(c);
+    else if (c === ")" || c === "]") { if (stack.pop() !== (c === ")" ? "(" : "[")) return false; }
+  }
+  return stack.length === 0;
+}
+
+/**
+ * `text` itself when it fits `max`; else its longest run of whole sentences
+ * that fits and closes every bracket it opens; else `text` unchanged, which
+ * the clamp then logs for the description's owner.
+ */
+export function fitSentence(text, max = 160) {
+  const t = String(text ?? "");
+  if (t.length <= max) return t;
+  let best = "";
+  for (const end of sentenceEnds(t)) {
+    const cut = t.slice(0, end).trim();
+    if (cut.length > max) break;
+    if (bracketsBalanced(cut)) best = cut;
+  }
+  return best || t;
 }

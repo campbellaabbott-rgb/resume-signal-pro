@@ -1,0 +1,164 @@
+<!DOCTYPE html><html ng-app="PortalApp" prefix="og: http://ogp.me/ns#" lang="en" xml:lang="en"><head><base href="/"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="initial-scale=1.0,width=device-width,user-scalable=0, minimal-ui"><link rel="icon" sizes="192x192" href="//assets-cdn.breezy.hr/favicon_192.png"><link rel="icon" sizes="128x128" href="//assets-cdn.breezy.hr/favicon_128.png"><link rel="apple-touch-icon" sizes="128x128" href="//assets-cdn.breezy.hr/favicon_128.png"><link rel="apple-touch-icon-precomposed" sizes="128x128" href="//assets-cdn.breezy.hr/favicon_128.png"><link rel="shortcut icon" type="image/x-icon" href="//assets-cdn.breezy.hr/favicon.ico"><script type="text/javascript" src="https://assets-cdn.breezy.hr/breezy-portal/javascripts/v3/polyglot.min.js?v=2bq-1us5ftb"></script><script id="translateScript" type="text/javascript" src="https://assets-cdn.breezy.hr/breezy-portal/javascripts/v3/translate.breezy.js?v=bgo3-1tuacbm"></script><link rel="stylesheet" href="//fonts.googleapis.com/css?family=Nunito:300,400,600,700,800"><link rel="stylesheet" href="https://assets-cdn.breezy.hr/breezy-hr/dependencies/fontawesome/v6.4.2-pro/css/all.css"><link rel="stylesheet" href="https://assets-cdn.breezy.hr/breezy-portal/dependencies/20170112/bootstrap.css"><link rel="stylesheet" href="https://assets-cdn.breezy.hr/breezy-portal/dependencies/20170112/animate.css"><link rel="stylesheet" href="https://assets-cdn.breezy.hr/breezy-portal/stylesheets/v3/index.css?v=2gvj-fxn2oc"><link rel="stylesheet" href="//fonts.googleapis.com/css?family=Kameron"><link rel="stylesheet" href="//fonts.googleapis.com/css?family=Droid+Sans"><link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lora"><script src="https://assets-cdn.breezy.hr/breezy-portal/dependencies/20170112/jquery-1.11.1.min.js"></script><script>var heroBackgroundImage;
+
+$(function() {
+	heroBackgroundImage = $('#heroBackgroundImage');
+	if (heroBackgroundImage) {
+		$(window).scroll(onScroll);
+	}
+});
+
+function onScroll() {
+	if (document.body.scrollTop > 50) {
+		heroBackgroundImage.addClass('frosted');
+	} else {
+		heroBackgroundImage.removeClass('frosted');
+	}
+};</script><script src="https://assets-cdn.breezy.hr/breezy-portal/dependencies/20170112/async.js"></script><script src="https://assets-cdn.breezy.hr/breezy-portal/dependencies/20170112/marked.js"></script><link rel="stylesheet" href="https://assets-cdn.breezy.hr/breezy-portal/vue/css/chunk-vendors.css?v=uwu-1hp381f"><link rel="stylesheet" href="https://assets-cdn.breezy.hr/breezy-portal/vue/css/app.css?v=4gir-w85to"><link rel="stylesheet" href="https://assets-cdn.breezy.hr/breezy-portal/vue/css/about.css?v=8c-qpgqky"><script src="https://assets-cdn.breezy.hr/breezy-portal/vue/js/chunk-vendors.js?v=16w11-15yf6e0"></script><script src="https://assets-cdn.breezy.hr/breezy-portal/vue/js/app.js?v=tt1e-1cus2o"></script><script src="https://d2wy8f7a9ursnm.cloudfront.net/v8.10.0/bugsnag.min.js"></script><script>(function () {
+	// custom_js is rendered raw into these pages, so an error is only reported
+	// when its first frame with a source file is a script we load. Inline
+	// template code goes unreported.
+	var SCRIPTS_WE_LOAD = [
+		'https://assets-cdn.breezy.hr/breezy-portal/',
+		'https://assets-cdn.breezy.hr/breezy-portal-dev/',
+		'https://angular-ui.github.io/',
+		'https://assets-cdn.ziggeo.com/',
+		'https://maps.googleapis.com/',
+		'https://cdn.traitify.com/',
+		'https://platform-api.sharethis.com/'
+	];
+	function firstSourceFile(frames) {
+		for (var i = 0; i < frames.length; i++) {
+			var file = frames[i].file;
+			if (file && !/^(\[native code\]|native|<anonymous>)$/.test(file)) return file;
+		}
+		return '';
+	}
+	function isScriptWeLoad(file) {
+		return SCRIPTS_WE_LOAD.some(function (prefix) { return file.indexOf(prefix) === 0; });
+	}
+	// Key redaction matches on key names, so a credential inside a URL is
+	// never reached. Drop the query and fragment from the page URL and from
+	// breadcrumb metadata: request breadcrumbs record the target under 'url',
+	// navigation breadcrumbs record pathname + search + hash under 'to' and
+	// 'from'. Apply, consent, offer and scheduling links carry tokens.
+	var URL_KEYS = ['url', 'to', 'from'];
+	function stripQueryAndHash(value) {
+		if (typeof value !== 'string') return value;
+		var cut = value.search(/[?#]/);
+		return cut === -1 ? value : value.slice(0, cut);
+	}
+	Bugsnag.start(Object.assign({"apiKey":"99292fb1000f243cb5699a59b65a1f37","appType":"browser","appVersion":"v2026-11-06.0","releaseStage":"production","enabledReleaseStages":["production","development"]}, {
+		redactedKeys: [
+			/password/i, /cookie/i, /authoriz/i, /csrf/i, /token/i,
+			/secret/i, /(^|[-_])key$/i, /api_?key/i, /otp/i, /^code$/i
+		],
+		onError: function (event) {
+			var frames = event.errors[0] && event.errors[0].stacktrace || [];
+			if (!isScriptWeLoad(firstSourceFile(frames))) return false;
+			if (event.request) {
+				event.request.url = stripQueryAndHash(event.request.url);
+				if (event.request.referer) {
+					event.request.referer = stripQueryAndHash(event.request.referer);
+				}
+			}
+			var crumbs = event.breadcrumbs || [];
+			for (var i = 0; i < crumbs.length; i++) {
+				var meta = crumbs[i] && crumbs[i].metadata;
+				if (!meta) continue;
+				for (var k = 0; k < URL_KEYS.length; k++) {
+					if (meta[URL_KEYS[k]]) {
+						meta[URL_KEYS[k]] = stripQueryAndHash(meta[URL_KEYS[k]]);
+					}
+				}
+			}
+		}
+	}));
+})();</script><script src="https://assets-cdn.breezy.hr/breezy-portal/dependencies/20170112/tooltip.js"></script><script>$(function () {
+	$('[data-toggle="tooltip"]').tooltip()
+})</script><script src="https://maps.googleapis.com/maps/api/js?libraries=places&amp;sensor=false&amp;key=AIzaSyBjwqyBTVwGAjK-JBjxUilSmVIix87N51o&amp;callback=Function.prototype"></script><title>Retail Store Support Specialist – Temecula, CA</title><meta name="description" content="Experienced Retail Reset Merchandiser
+Join Strategic Retail Solutions (SRS)
+Strategic Retail Solutions (SRS) is hiring experienced retail merchandisers to support retail resets, remodels, fixture installations, merchandising projects, and store support for many of the nation's leading retailers and consumer brands.
+If you enjoy working independently, take pride in delivering quality work, and thrive in a fast-paced retail environment, we'd love to hear from you.
+What You'll Do
+Execute retail resets, remodels, store sets, and merchandising projectsRead and implement planogramsBuild fixtures, install displays, and stock merchandiseSet products to client specifications while maintaining high merchandising standardsCapture project photos and complete reporting using our mobile appWork independently while meeting project deadlinesRepresent Strategic Retail Solutions professionally in retail locations
+Qualifications
+Retail merchandising, reset, remodel, or installation experience preferredExperience reading and executing planogramsComfortable lifting up to 50 pounds and moving or assembling fixturesReliable transportationSmartphone with internet accessStrong attention to detail and ability to work independentlyDependable, professional, and able to meet deadlines
+Experience With These Companies Is a Plus
+Candidates with experience working for companies such as the following are encouraged to apply:
+Premium Retail ServicesAcostaCrossmarkSPARSAS Retail ServicesWinston RetailApollo Retail SpecialistsDrivelineBDS Connected SolutionsRMSIActionLinkMarketSourceSurvey MerchandiserRetail OdysseyAdvantage Solutions...or other retail merchandising and reset companies
+Why Join Strategic Retail Solutions?
+Flexible scheduling based on project availabilityOngoing retail merchandising and reset opportunitiesCompetitive project-based payWeekly payOpportunities to work with nationally recognized retailers and consumer brandsAssignments available in markets across the United States
+Where We Are Hiring
+We are actively recruiting experienced merchandisers nationwide. During the application process, simply let us know the cities, counties, or regions where you're interested in working, and we'll match you with available opportunities in your area.
+Apply Today
+If you have retail merchandising, reset, remodel, fixture installation, or retail execution experience and are looking for flexible project-based work, we'd love to hear from you.
+Apply today and tell us where you'd like to work—we're hiring throughout the United States."><meta name="twitter:card" content="Experienced Retail Reset Merchandiser
+Join Strategic Retail Solutions (SRS)
+Strategic Retail Solutions (SRS) is hiring experienced retail merchandisers to support retail resets, remodels, fixture installations, merchandising projects, and store support for many of the nation's leading retailers and consumer brands.
+If you enjoy working independently, take pride in delivering quality work, and thrive in a fast-paced retail environment, we'd love to hear from you.
+What You'll Do
+Execute retail resets, remodels, store sets, and merchandising projectsRead and implement planogramsBuild fixtures, install displays, and stock merchandiseSet products to client specifications while maintaining high merchandising standardsCapture project photos and complete reporting using our mobile appWork independently while meeting project deadlinesRepresent Strategic Retail Solutions professionally in retail locations
+Qualifications
+Retail merchandising, reset, remodel, or installation experience preferredExperience reading and executing planogramsComfortable lifting up to 50 pounds and moving or assembling fixturesReliable transportationSmartphone with internet accessStrong attention to detail and ability to work independentlyDependable, professional, and able to meet deadlines
+Experience With These Companies Is a Plus
+Candidates with experience working for companies such as the following are encouraged to apply:
+Premium Retail ServicesAcostaCrossmarkSPARSAS Retail ServicesWinston RetailApollo Retail SpecialistsDrivelineBDS Connected SolutionsRMSIActionLinkMarketSourceSurvey MerchandiserRetail OdysseyAdvantage Solutions...or other retail merchandising and reset companies
+Why Join Strategic Retail Solutions?
+Flexible scheduling based on project availabilityOngoing retail merchandising and reset opportunitiesCompetitive project-based payWeekly payOpportunities to work with nationally recognized retailers and consumer brandsAssignments available in markets across the United States
+Where We Are Hiring
+We are actively recruiting experienced merchandisers nationwide. During the application process, simply let us know the cities, counties, or regions where you're interested in working, and we'll match you with available opportunities in your area.
+Apply Today
+If you have retail merchandising, reset, remodel, fixture installation, or retail execution experience and are looking for flexible project-based work, we'd love to hear from you.
+Apply today and tell us where you'd like to work—we're hiring throughout the United States."><meta property="og:url" content="https://srs-merchandising.breezy.hr/p/fb71083e7019-retail-store-support-specialist-temecula-ca"><meta name="twitter:site" content="@Breezy_HR"><meta name="twitter:creator" content="@Breezy_HR"><link rel="stylesheet" href="https://assets-cdn.ziggeo.com/v1-r43/ziggeo.css"><script src="https://assets-cdn.ziggeo.com/v1-r43/ziggeo.js"></script><script>var ziggeoApp = new ZiggeoApi.V2.Application({
+	token:"037484c4dfff0ad949a9dd76d6564a3c",
+	webrtc_streaming_if_necessary: true,
+	webrtc_on_mobile: true,
+	debug: true
+});
+
+// V1 stuff
+//ZiggeoApi.token = "037484c4dfff0ad949a9dd76d6564a3c";
+//ZiggeoApi.Config.webrtc = true
+//ZiggeoApi.Config.webrtc_streaming_if_necessary = true
+//ZiggeoApi.Config.webrtc_on_mobile = true
+
+//-ZiggeoApi.Config.webrtc_streaming = true</script><script>// INDEED OAUTH FLOW
+var popup;
+var breezyUrl="https://app.breezy.hr"
+var positionId="fb71083e7019"
+
+function popupParams () {
+	var height = 600;
+	var width = 500;
+	var left = (window.screen.width / 2) - ((width / 2) + 10);
+	var top = (window.screen.height / 2) - ((height / 2) + 50);
+
+	var params = 'status=no,height=' + height + ',width=' + width + ',resizable=yes,left=' + left + ',top=' + top + ',screenX=' + left + ',screenY=' + top + ',toolbar=no,menubar=no,scrollbars=no,location=no,directories=no';
+
+	return params;
+}
+function oAuthListener (msg) {
+	if (msg.data.token) {
+		window.location.href = window.location.href + '?token=' + msg.data.token;
+		popup.close()
+	} else {
+		popup.close()
+	}
+	window.removeEventListener('message', oAuthListener)
+}
+function openPopup (e) {
+	e.preventDefault();
+
+	window.addEventListener('message', oAuthListener)
+
+	var params = popupParams();
+	popup = window.open(
+		breezyUrl + '/api/apply/indeed?position_id=' + positionId,
+		'IndeedPopup',
+		params
+	);
+}
+</script><link rel="stylesheet" href="https://assets-cdn.breezy.hr/breezy-portal/react/assets/portal-MfLRA_AA.css"><style>.ng-hide{display:none!important}</style></head><body class="breezy-portal-bold"><div id="react-root"></div><script id="portal-data" type="application/json">{"pageId":"apply","view":"v3/bold/apply","family":"v3","variant":null,"language":null,"engine":"react","engineSource":"default","config":{"assetUrl":"https://assets-cdn.breezy.hr/breezy-portal","breezyUrl":"https://app.breezy.hr","prodUrl":"https://breezy.hr/","apiUrl":"app.breezy.hr","hostedDomain":"breezy.hr","assetVersion":"20170112"},"data":{"company":{"features":{"custom_domain":true,"multiple_locations":true},"friendly_id":"srs-merchandising","name":"SRS Merchandising","settings":{"ats":{}}},"companyForClient":{"name":"SRS Merchandising","friendly_id":"srs-merchandising","description":null,"logo_url":null,"url":"http://srsmerchandising.com","isMultipleLocationsEnabled":false,"initial":"SM","features":{"multiple_locations":true},"policies":{},"salary_terms":[{"id":"yearly","name":"Yearly"},{"id":"monthly","name":"Monthly"},{"id":"biweekly","name":"Biweekly"},{"id":"weekly","name":"Weekly"},{"id":"daily","name":"Daily"},{"id":"hourly","name":"Hourly"}]},"formToken":"1794118747973.06bfdc54b9cbea9afe531b60634d86c6504795d73e0eb056a1ebfc0e96d52edc","isTeamPortal":false,"portal":{"appearance":{"apply":{"indeed":true,"linkedin":true},"primary_color":"rgb(20,142,185)"},"friendly_id":"srs-merchandising","layout":{"type":"bold"},"position":{"_id":"fb71083e7019","application_form":{"address":"optional","cover_letter":"optional","education":"optional","phone_number":"required","preferred_location":"required","resume":"optional","salary":"hidden","summary":"optional","work_history":"required"},"department":"Retail Operations","friendly_id":"fb71083e7019-retail-store-support-specialist-temecula-ca","location":{"country":{"name":"United States","id":"US"},"state":{"id":"CA","name":"California"},"city":"Temecula","primary":true,"is_remote":false,"name":"Temecula, CA"},"name":"Retail Store Support Specialist – Temecula, CA","state":"published","type":{"id":"partTime","name":"Part-Time"}}},"position":{"_id":"fb71083e7019","name":"Retail Store Support Specialist – Temecula, CA","friendly_id":"fb71083e7019-retail-store-support-specialist-temecula-ca","state":"published","type":{"id":"partTime","name":"Part-Time"},"location":{"country":{"name":"United States","id":"US"},"state":{"id":"CA","name":"California"},"city":"Temecula","primary":true,"is_remote":false,"name":"Temecula, CA"},"locations":[{"country":{"name":"United States","id":"US"},"state":{"id":"CA","name":"California"},"city":"Temecula","primary":true,"is_remote":false,"name":"Temecula, CA","id":"da22d879dd47"}],"department":"Retail Operations","category":null,"description":"\u003cp>\u003cstrong>Experienced Retail Reset Merchandiser\u003c/strong>\u003c/p>\n\u003ch3>Join Strategic Retail Solutions (SRS)\u003c/h3>\n\u003cp>Strategic Retail Solutions (SRS) is hiring experienced retail merchandisers to support retail resets, remodels, fixture installations, merchandising projects, and store support for many of the nation's leading retailers and consumer brands.\u003c/p>\n\u003cp>If you enjoy working independently, take pride in delivering quality work, and thrive in a fast-paced retail environment, we'd love to hear from you.\u003c/p>\n\u003ch3>What You'll Do\u003c/h3>\n\u003cul>\u003cli>Execute retail resets, remodels, store sets, and merchandising projects\u003c/li>\u003cli>Read and implement planograms\u003c/li>\u003cli>Build fixtures, install displays, and stock merchandise\u003c/li>\u003cli>Set products to client specifications while maintaining high merchandising standards\u003c/li>\u003cli>Capture project photos and complete reporting using our mobile app\u003c/li>\u003cli>Work independently while meeting project deadlines\u003c/li>\u003cli>Represent Strategic Retail Solutions professionally in retail locations\u003c/li>\u003c/ul>\n\u003ch3>Qualifications\u003c/h3>\n\u003cul>\u003cli>Retail merchandising, reset, remodel, or installation experience preferred\u003c/li>\u003cli>Experience reading and executing planograms\u003c/li>\u003cli>Comfortable lifting up to 50 pounds and moving or assembling fixtures\u003c/li>\u003cli>Reliable transportation\u003c/li>\u003cli>Smartphone with internet access\u003c/li>\u003cli>Strong attention to detail and ability to work independently\u003c/li>\u003cli>Dependable, professional, and able to meet deadlines\u003c/li>\u003c/ul>\n\u003ch3>Experience With These Companies Is a Plus\u003c/h3>\n\u003cp>Candidates with experience working for companies such as the following are encouraged to apply:\u003c/p>\n\u003cul>\u003cli>Premium Retail Services\u003c/li>\u003cli>Acosta\u003c/li>\u003cli>Crossmark\u003c/li>\u003cli>SPAR\u003c/li>\u003cli>SAS Retail Services\u003c/li>\u003cli>Winston Retail\u003c/li>\u003cli>Apollo Retail Specialists\u003c/li>\u003cli>Driveline\u003c/li>\u003cli>BDS Connected Solutions\u003c/li>\u003cli>RMSI\u003c/li>\u003cli>ActionLink\u003c/li>\u003cli>MarketSource\u003c/li>\u003cli>Survey Merchandiser\u003c/li>\u003cli>Retail Odyssey\u003c/li>\u003cli>Advantage Solutions\u003c/li>\u003cli>...or other retail merchandising and reset companies\u003c/li>\u003c/ul>\n\u003ch3>Why Join Strategic Retail Solutions?\u003c/h3>\n\u003cul>\u003cli>Flexible scheduling based on project availability\u003c/li>\u003cli>Ongoing retail merchandising and reset opportunities\u003c/li>\u003cli>Competitive project-based pay\u003c/li>\u003cli>Weekly pay\u003c/li>\u003cli>Opportunities to work with nationally recognized retailers and consumer brands\u003c/li>\u003cli>Assignments available in markets across the United States\u003c/li>\u003c/ul>\n\u003ch3>Where We Are Hiring\u003c/h3>\n\u003cp>We are actively recruiting experienced merchandisers nationwide. During the application process, simply let us know the cities, counties, or regions where you're interested in working, and we'll match you with available opportunities in your area.\u003c/p>\n\u003ch3>Apply Today\u003c/h3>\n\u003cp>If you have retail merchandising, reset, remodel, fixture installation, or retail execution experience and are looking for flexible project-based work, we'd love to hear from you.\u003c/p>\n\u003cp>Apply today and tell us where you'd like to work—we're hiring throughout the United States.\u003c/p>","salary_range":{"min":"15","max":"18","currency":{"name":"US Dollar","symbol":"$","symbolNative":"$","decimalDigits":2,"rounding":0,"code":"USD","namePlural":"US dollars"},"period":{"id":"biweekly","name":"Biweekly"},"display":"$15 – $18 / biweekly","display_amount":"$15 – $18 / ","period_token":"%LABEL_SALARY_PER_BIWEEKLY%"},"candidate_type":"all","experience":null,"application_form":{"name":"required","headline":"optional","summary":"optional","profile_photo":"optional","address":"optional","salary":"hidden","email_address":"required","phone_number":"required","resume":"optional","work_history":"required","education":"optional","cover_letter":"optional","preferred_location":"required","questionnaire_in_experience":true},"first_publish_date":"2026-11-07T17:50:35.983Z","last_publish_date":"2026-11-07T17:50:35.983Z","company":{"name":"SRS Merchandising","friendly_id":"srs-merchandising","description":null,"logo_url":null,"url":"http://srsmerchandising.com","isMultipleLocationsEnabled":false,"initial":"SM","features":{"multiple_locations":true},"policies":{},"salary_terms":[{"id":"yearly","name":"Yearly"},{"id":"monthly","name":"Monthly"},{"id":"biweekly","name":"Biweekly"},{"id":"weekly","name":"Weekly"},{"id":"daily","name":"Daily"},{"id":"hourly","name":"Hourly"}]}},"questionnaireVersion":2,"questions":[{"_id":1752170558482,"questions":[{"text":"Which city or area are you applying to work in?  Enter one city or area only. Example: Houston, TX; Tulsa, OK; Lincoln, NE. Do not enter \"any,\" \"all,\" or \"statewide.\"","type":{"id":"paragraph","name":"Paragraph"},"required":false,"_id":"1782249561873","questionnaire_id":"2951641d64f4"},{"text":"How far do you live from the area you are applying to work in?","type":{"id":"multiplechoice","name":"Multiple Choice"},"required":true,"options":[{"text":"I live and work in the area."},{"text":"I live less than 30 miles from the area."},{"text":"I live 30–60 miles from the area."},{"text":"I live more than 60 miles from the area."}],"_id":"1782249561874","questionnaire_id":"2951641d64f4"},{"text":"How many years of professional merchandising experience do you have?","options":[{"text":"Less than 1 year"},{"text":"1–2 years"},{"text":"3–5 years"},{"text":"6–10 years"},{"text":"More than 10 years"}],"type":{"id":"multiplechoice","name":"Multiple Choice"},"required":true,"_id":"46954e0d688c","questionnaire_id":"2951641d64f4"},{"text":"Please confirm your phone number for calls and texts:","body":"\u003cp>\u003cspan style=\"\">Please confirm your phone number for calls and texts:\u003c/span>\u003c/p>","type":{"id":"paragraph","name":"Paragraph"},"required":false,"_id":"1782248710006","questionnaire_id":"2951641d64f4"},{"text":"Please confirm the email address you check daily:","body":"\u003cp>\u003cspan style=\"\">Email address you check daily: \u003c/span>\u003c/p>\u003cp>\u003cbr>\u003c/p>","required":false,"type":{"id":"paragraph","name":"Paragraph"},"_id":"8aaa275eee0d","questionnaire_id":"2951641d64f4"},{"body":"","text":"What merchandising or vendor companies have you worked for in the past, or are you currently working for, that are not listed on your resume?","type":{"id":"paragraph","name":"Paragraph"},"required":true,"_id":"60d5277c79d5","questionnaire_id":"2951641d64f4"},{"text":"What types of resets have you completed? (Select all that apply)","options":[{"text":"Simple shelf resets"},{"text":"Full aisle resets"},{"text":"Seasonal resets"},{"text":"End cap resets"},{"text":"Pegboard resets"},{"text":"Fixture installations or removals"},{"text":"Full store remodels"},{"text":"None of the above"}],"type":{"id":"checkboxes","name":"Checkboxes"},"_id":"b9032d6ad90c","questionnaire_id":"2951641d64f4"},{"text":"Do you own an updated Android smartphone or iPhone that can run apps and access the internet reliably?","options":[{"text":"Yes, Android"},{"text":"Yes, iPhone"},{"text":"No"}],"type":{"id":"multiplechoice","name":"Multiple Choice"},"_id":"87238e492c55","questionnaire_id":"2951641d64f4"},{"text":"Do you have reliable internet access on your smartphone?","options":[{"text":"Yes"},{"text":"Sometimes"},{"text":"No"}],"type":{"id":"multiplechoice","name":"Multiple Choice"},"_id":"2b4398c4c976","questionnaire_id":"2951641d64f4"},{"text":"Are you comfortable installing and using third-party apps, browsers like Google Chrome, and other tools for work?","options":[{"text":"Yes"},{"text":"Somewhat"},{"text":"No"}],"type":{"id":"multiplechoice","name":"Multiple Choice"},"_id":"cdcd077b0e09","questionnaire_id":"2951641d64f4"},{"text":"Do you have access to a computer or laptop and a printer in addition to your smartphone?","options":[{"text":"Yes"},{"text":"No"}],"type":{"id":"multiplechoice","name":"Multiple Choice"},"_id":"047fc9a75f53","questionnaire_id":"2951641d64f4"},{"text":"Some projects require submitting 50–100+ photos and detailed surveys from your phone.  Are you comfortable taking and uploading 50–100+ clear, high-quality photos while in-store, and enabling location permissions if required?","options":[{"text":"Yes"},{"text":"No"}],"type":{"id":"multiplechoice","name":"Multiple Choice"},"_id":"607e2881d605","questionnaire_id":"2951641d64f4"},{"text":"All projects are time sensitive and have specific service schedules that vary by project. Do you understand you will need to plan ahead, manage your time independently, and complete each project by its deadline?","options":[{"text":"Yes"},{"text":"No"}],"type":{"id":"multiplechoice","name":"Multiple Choice"},"_id":"1fd1f424d955","questionnaire_id":"2951641d64f4"},{"text":"Do you understand you are required to learn new tools and apps and follow new client instructions as needed?","options":[{"text":"Yes"},{"text":"No"}],"type":{"id":"multiplechoice","name":"Multiple Choice"},"_id":"8b7e0234f2ff","questionnaire_id":"2951641d64f4"},{"text":"Do you have reliable personal transportation, without relying primarily on public transportation or rideshare services, that allows you to travel independently to multiple retail locations as needed?","options":[{"text":"Yes","enabledActions":[]},{"text":"No","enabledActions":[]}],"type":{"id":"multiplechoice","name":"Multiple Choice"},"required":true,"_id":"db28dda293ca","questionnaire_id":"2951641d64f4"},{"text":"Are you at least 18 years old and do you have a current, valid driver's license?","type":{"id":"multiplechoice","name":"Multiple Choice"},"required":true,"options":[{"text":"Yes","enabledActions":[]},{"text":"No","enabledActions":[]}],"_id":"1793473884883","questionnaire_id":"2951641d64f4"},{"text":"Do you understand you are required to check your email daily and log in to our system regularly during the week to check assignments, updates, and complete all work independently and on time?","options":[{"text":"Yes"},{"text":"No"}],"type":{"id":"multiplechoice","name":"Multiple Choice"},"_id":"781dadc5f5df","questionnaire_id":"2951641d64f4"},{"text":"Physical Requirements:  Please confirm which apply to you (check all that apply):","options":[{"text":"I am able to stand for extended periods","enabledActions":[]},{"text":"I am able to bend, squat, kneel, and reach up and down","enabledActions":[]},{"text":"I have a full range of motion to safely complete merchandising tasks","enabledActions":[]},{"text":"I am able to lift and carry boxes up to 10 pounds","enabledActions":[]},{"text":"I am able to move light fixtures on wheels when needed","enabledActions":[]}],"type":{"id":"checkboxes","name":"Checkboxes"},"_id":"cfa08bb74e53","required":false,"questionnaire_id":"2951641d64f4"},{"text":"I understand this is not full-time work and not part-time work.","body":"\u003cp>This is project-based work (sometimes called gig work). All merchandisers are on an as-needed basis. Nobody is ever promised work and projects are only offered when available in my area. There will be times when no work is available. It costs me nothing to stay active in the system while waiting for new projects. Many merchandisers work for multiple companies to stay busy.\u003c/p>","options":[{"text":"I fully understand and agree. Count me in!"},{"text":"This is not what I thought it was. Count me out."}],"type":{"id":"multiplechoice","name":"Multiple Choice"},"_id":"1f00a28ee9a6","questionnaire_id":"2951641d64f4"},{"text":"20.\tBased on where you live and will be working, what type of position are you applying for?","options":[{"text":"W-2 Employee (Texas and California only)","enabledActions":[]},{"text":"1099 Independent Contractor (all other states)","enabledActions":[]},{"text":"I'm not sure"}],"type":{"id":"multiplechoice","name":"Multiple Choice"},"_id":"c62291ccab7e","required":false,"questionnaire_id":"2951641d64f4"},{"text":"Which statement best describes your reason for applying?","options":[{"text":"I am actively seeking project work and ready to begin accepting assignments.","enabledActions":[]},{"text":"I am actively seeking project work but may not be available immediately.","enabledActions":[]},{"text":"I am exploring opportunities for future consideration."},{"text":"I am applying to satisfy a requirement for a program, agency, or benefit."}],"type":{"id":"multiplechoice","name":"Multiple Choice"},"_id":"39b92a07deff","required":false,"questionnaire_id":"2951641d64f4"}]}],"referralToken":null,"referralUser":null,"showPreferredLocation":true,"showSmsConsent":"true","template":{"body":"\u003cp>I&#39;ve read the Privacy Notice below and consent the processing of my data as part of my job application.\u003c/p>\n","subject":"Recruitment Privacy Notice"}}}</script><script src="https://assets-cdn.breezy.hr/breezy-portal/react/assets/portal-BqvnkdLZ.js"></script><script>(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+ga('create', 'UA-176681-19', 'auto');
+ga('send', 'pageview');</script></body></html>

@@ -15,13 +15,12 @@
  * action 1), because Claude's authentication choice cannot be changed after a
  * connector is added. Pinned here, by behaviour: the exact link, no key in it
  * ever, the admin variant, the flag's default, the flag gating every surface
- * that would print it, and the first question naming a tool that answers with
- * no key and handing the place over as its own argument.
+ * that would print it, and the first question being the one both chat
+ * tiles ask.
  */
 import { describe, expect, it } from "vitest";
 import {
   claudeInstallLink, claudeAdminInstallLink, MCP_ADD_TO_CLAUDE_LIVE, MCP_CONNECTOR_NAME, MCP_HOSTS, MCP_EXAMPLE_QUESTION,
-  MCP_ANON_TOOL_NAMES, MCP_TEST_QUERY,
 } from "../config/mcp-tools";
 import { MCP_URL } from "../lib/mcp-test";
 import { installLinkFor } from "../lib/agent-handoff";
@@ -89,16 +88,8 @@ describe("the flag", () => {
 });
 
 describe("the first question every page suggests", () => {
-  it("names a tool that answers with no key, and hands the place over as its own argument", () => {
-    expect(MCP_EXAMPLE_QUESTION).toMatch(/call search_jobs/);
-    expect(MCP_ANON_TOOL_NAMES).toContain("search_jobs");
-    expect(MCP_EXAMPLE_QUESTION).toContain(`query "${MCP_TEST_QUERY}"`);
-    expect(MCP_EXAMPLE_QUESTION).toContain('location "Texas"');
-    // "nurse jobs in Texas" in the query found 107 of the 1,584 the location
-    // filter finds (connect spec §1): the place never rides in the query.
-    expect(MCP_EXAMPLE_QUESTION).not.toMatch(/\bin Texas\b/);
-  });
-
+  // Its wording (plain words, the place read by the server) is pinned by
+  // the-example-question-is-plain-words-and-its-place-is-read.test.ts.
   it("is what the Claude and ChatGPT steps both ask", () => {
     for (const id of ["claude", "chatgpt"]) {
       const h = MCP_HOSTS.find((x) => x.id === id)!;

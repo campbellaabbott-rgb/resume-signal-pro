@@ -1,52 +1,23 @@
-/**
- * AN EMPLOYER'S REAL APPLICATION FORM, READ FROM WHERE THE EMPLOYER PUBLISHED IT.
- *
- * The apply_myself tool (agent-mcp) hands a person's own AI the form the
- * employer will actually show them, so the AI can ask the person every factual
- * question and draft only the open-ended ones. Five hiring systems publish the
- * form somewhere a server can read it:
- *
- *   greenhouse  the public board API, ?questions=true (an EU tenant on its own host)
- *   recruitee   the public offers API: open_questions plus the document config
- *   ashby       the public GraphQL the hosted job page itself calls
- *   breezy      the /apply page, which server-renders the questionnaire as JSON
- *   pinpoint    the /applications/new page, one react-on-rails script per question
- *
- * Every other system (about nine postings in ten) has no reader, and the
- * answer says so rather than guessing a form.
- *
- * WHAT THIS MODULE IS NOT ALLOWED TO DO.
- *   - Import job-board's files. Its source list alone is megabytes; a posting's
- *     vendor, tenant and apply URL come from the posting row the caller read
- *     (job_board_postings), never from a list of sources.
- *   - Fetch a host the posting does not name. The Recruitee tenant becomes a
- *     subdomain and the Breezy and Pinpoint apply pages are the posting's own
- *     URL, so each is checked against the vendor's domain first: a row whose
- *     tenant or URL does not look like the vendor's is read as no form, never
- *     fetched.
- *   - Invent. A payload that does not parse, or parses to nothing, is "no form
- *     could be read" -- never an empty form, which would tell a person the
- *     employer asks nothing. A Breezy or Pinpoint apply page that answered
- *     but carried no screening questions is still no form, marked pageRead:
- *     the page was there, it showed nothing beyond the person's details and
- *     CV (or nothing this reader could parse), which is not the same as a
- *     hiring system that publishes no form at all.
- *
- * Reads go through a 24-hour cache (application_form_cache, 20261011100000)
- * when the caller hands one in: a fresh row is the answer, a stale or missing
- * one is read from the vendor and written back, a vendor that answered "no
- * such form" is cached the same way, and a transient failure (timeout,
- * network, 429, 5xx) is never cached.
- *
- * Pure apart from the injected fetch and cache, so the Node suite runs every
- * reader against recorded payloads and Deno imports it unchanged.
- */
+/** AN EMPLOYER'S REAL APPLICATION FORM ... docs/shared-notes.md#s67 */
 import { cleanQuestionLabel } from "./application-questions.ts";
 import { greenhouseApi } from "./greenhouse-api.ts";
 import { breezyApplyUrl, optionsOf, parseBreezyQuestions, parsePinpointQuestions, pinpointApplyUrl } from "./vendor-questions.ts";
+import {
+  HOST_LABEL,
+  parseBambooForm,
+  parseBreezyFormConfig,
+  parseLeverForm,
+  parsePaylocityForm,
+  parsePinpointExtras,
+  parseTeamtailorForm,
+  parseWorkableForm,
+  pinpointVendorPostingUrl,
+  type PageExtras,
+  type ParsedForm,
+} from "./form-readers-extra.ts";
 
 /** The hiring systems this module can read a form from. */
-export const FORM_READER_VENDORS: readonly string[] = ["ashby", "breezy", "greenhouse", "pinpoint", "recruitee"];
+export const FORM_READER_VENDORS: readonly string[] = ["ashby", "bamboohr", "breezy", "greenhouse", "lever", "paylocity", "pinpoint", "recruitee", "teamtailor", "workable"];
 /** The ones read through a published public API: the only ones read for the ChatGPT surface (owner decision R2). */
 export const PUBLIC_API_FORM_VENDORS: readonly string[] = ["greenhouse", "recruitee"];
 
@@ -62,6 +33,8 @@ export type FormQuestion = {
   type: string;
   options?: string[];
   hint?: string;
+  /** The employer set this question to ... docs/shared-notes.md#s68 */
+  screens?: true;
 };
 export type FormDocument = { name: string; required: boolean };
 export type VendorForm = {
@@ -73,7 +46,11 @@ export type VendorForm = {
 
 export type FormRead =
   | { kind: "read"; vendor: string; readAt: string; cached: boolean; form: VendorForm }
-  | { kind: "absent"; vendor: string; readAt: string; cached: boolean; pageRead?: true }
+  | {
+    kind: "absent"; vendor: string; readAt: string; cached: boolean; pageRead?: true;
+    /** What an apply page with no questions still showed: the CV it asks for, an equality block, a consent. */
+    documents?: FormDocument[]; alsoOnForm?: string[];
+  }
   | { kind: "no-reader"; vendor: string }
   | { kind: "withheld"; vendor: string }
   | { kind: "unreachable"; vendor: string };
@@ -84,7 +61,7 @@ export type PostingRef = { id: string; source: string; token: string; applyUrl: 
 export type FormCacheRow = { vendor: string; ok: boolean; form: unknown; read_at: string };
 export type FormCache = {
   get(postingId: string): Promise<FormCacheRow | null>;
-  put(postingId: string, vendor: string, ok: boolean, form: VendorForm | { pageRead: true } | Record<string, never>): Promise<void>;
+  put(postingId: string, vendor: string, ok: boolean, form: VendorForm | ({ pageRead: true } & Partial<PageExtras>) | Record<string, never>): Promise<void>;
 };
 
 export type ReadOptions = {
@@ -143,8 +120,6 @@ function finish(questions: FormQuestion[], extraDocs: FormDocument[] = [], alsoO
   return { questions: qs, documents, alsoOnForm };
 }
 
-// ── the five readers ───────────────────────────────────────────────────────
-
 async function readGreenhouse(o: ReadOptions, p: PostingRef, ext: string): Promise<VendorForm | null> {
   const api = greenhouseApi(p.token);
   const res = await get(o, `https://${api.host}/v1/boards/${encodeURIComponent(api.token)}/jobs/${encodeURIComponent(ext)}?questions=true`);
@@ -158,9 +133,7 @@ async function readGreenhouse(o: ReadOptions, p: PostingRef, ext: string): Promi
     const label = strip(q?.label);
     if (!label) return null;
     const fields = Array.isArray(q?.fields) ? q.fields : [];
-    // A question whose every field is hidden is filled by the page, never by
-    // the person: a location question's Latitude and Longitude arrive marked
-    // required (sweep S12-173, read live on an xAI posting).
+    // A question whose every field is hidden ... docs/shared-notes.md#s69
     if (fields.length && fields.every((f) => isHiddenType(String(f?.type ?? "")))) return null;
     const type = String(fields[0]?.type ?? "");
     const options = fields.map((f) => optionsOf(f?.values)).find(Boolean);
@@ -173,9 +146,7 @@ async function readGreenhouse(o: ReadOptions, p: PostingRef, ext: string): Promi
     const t = String((c as { type?: unknown })?.type ?? "").toLowerCase();
     also.push(t === "eeoc" ? "Voluntary self-identification (EEO) questions" : `Compliance questions${t ? ` (${t})` : ""}`);
   }
-  // Greenhouse lists a data_compliance entry on every posting, with flags
-  // that say whether the form asks for anything (sweep S12-173: "GDPR" was
-  // claimed on every form). Named only when one of them asks.
+  // Greenhouse lists a data_compliance ... docs/shared-notes.md#s70
   for (const c of Array.isArray(gh.data_compliance) ? gh.data_compliance : []) {
     const flags = (c ?? {}) as Record<string, unknown>;
     if (!DATA_CONSENT_FLAGS.some((f) => flags[f] === true)) continue;
@@ -241,10 +212,10 @@ async function readRecruitee(o: ReadOptions, p: PostingRef, ext: string): Promis
     const v = String(offer[key] ?? "off");
     if (v === "required" || v === "optional") docs.push({ name, required: v === "required" });
   }
-  // A form with no custom questions is still a real form, and its document
-  // list still says what to attach.
+  // A form with no custom questions is ... docs/shared-notes.md#s71
   return finish(questions, docs) ?? { questions: [], documents: [], alsoOnForm: [] };
 }
+
 
 /** The apply page is the posting's own URL, and only on the vendor's own domain. */
 function onVendorDomain(url: string, domain: string): boolean {
@@ -256,28 +227,130 @@ function onVendorDomain(url: string, domain: string): boolean {
   }
 }
 
-/** An apply page that answered but carried no question this reader found. */
-const PAGE_WITHOUT_QUESTIONS = Symbol("page without questions");
+/** An apply page that answered but carried no question this reader found, with what it did show. */
+type PageWithoutQuestions = { pageRead: true; extras: PageExtras };
 
-async function readHtmlForm(o: ReadOptions, p: PostingRef, vendor: "breezy" | "pinpoint"): Promise<VendorForm | null | typeof PAGE_WITHOUT_QUESTIONS> {
+/** A posting's Pinpoint page: its own URL ... docs/shared-notes.md#s72 */
+function pinpointPostingUrl(p: PostingRef, posting: string): string | null {
+  if (onVendorDomain(posting, "pinpointhq.com")) return posting;
+  return pinpointVendorPostingUrl(p.token, posting);
+}
+
+async function readHtmlForm(o: ReadOptions, p: PostingRef, vendor: "breezy" | "pinpoint"): Promise<VendorForm | null | PageWithoutQuestions> {
   const posting = String(p.applyUrl ?? "");
-  const domain = vendor === "breezy" ? "breezy.hr" : "pinpointhq.com";
-  if (!posting || !onVendorDomain(posting, domain)) return null;
-  const url = vendor === "breezy" ? breezyApplyUrl(posting) : pinpointApplyUrl(posting);
+  const page = vendor === "breezy"
+    ? (posting && onVendorDomain(posting, "breezy.hr") ? posting : null)
+    : (posting ? pinpointPostingUrl(p, posting) : null);
+  if (!page) return null;
+  const url = vendor === "breezy" ? breezyApplyUrl(page) : pinpointApplyUrl(page);
   const res = await get(o, url);
   if (!res) return null;
   let html = "";
   try { html = await res.text(); } catch { return null; }
   const raw = vendor === "breezy" ? parseBreezyQuestions(html) : parsePinpointQuestions(html);
-  // Nothing found is equally consistent with a changed page: no form read,
-  // but a page that was read.
-  return finish(raw.map((q) => ({
-    label: strip(q.label),
-    required: q.required,
-    type: q.type,
-    ...(q.options ? { options: q.options } : {}),
-    ...(q.hint ? { hint: strip(q.hint) } : {}),
-  }))) ?? PAGE_WITHOUT_QUESTIONS;
+  // What the page says beside its ... docs/shared-notes.md#s73
+  const extras = vendor === "breezy" ? parseBreezyFormConfig(html) : parsePinpointExtras(html);
+  // Nothing found is equally consistent ... docs/shared-notes.md#s74
+  const form = raw.length
+    ? finish(raw.map((q) => ({
+      label: strip(q.label),
+      required: q.required,
+      type: q.type,
+      ...(q.options ? { options: q.options } : {}),
+      ...(q.hint ? { hint: strip(q.hint) } : {}),
+    })), extras.documents, extras.alsoOnForm)
+    : null;
+  return form ?? { pageRead: true, extras };
+}
+
+// Each fetch is pinned to the vendor's ... docs/shared-notes.md#s75
+
+/** A fetch that follows no redirect: a 3xx is returned to the caller, never followed. */
+async function getPinned(o: ReadOptions, url: string): Promise<Response | null> {
+  let res: Response;
+  try {
+    res = await o.fetch(url, { redirect: "manual", signal: AbortSignal.timeout(o.timeoutMs ?? DEFAULT_TIMEOUT_MS) });
+  } catch {
+    throw new Transient("fetch failed");
+  }
+  if (res.status === 429 || res.status >= 500) throw new Transient(`vendor answered ${res.status}`);
+  return res;
+}
+
+async function textOfPinned(o: ReadOptions, url: string): Promise<string | null> {
+  const res = await getPinned(o, url);
+  if (!res || res.status !== 200) return null;
+  try { return await res.text(); } catch { return null; }
+}
+
+/** The parsed form, its labels and hints cleaned as every reader's are. */
+function cleaned(f: ParsedForm | null): VendorForm | null {
+  if (!f) return null;
+  const questions = f.questions.map(({ hint, ...q }) => {
+    const h = hint ? strip(hint) : "";
+    return { ...q, label: strip(q.label), ...(h ? { hint: h } : {}) };
+  });
+  return finish(questions, f.documents.map((d) => ({ name: strip(d.name) || d.name, required: d.required })), f.alsoOnForm.map((a) => strip(a)).filter(Boolean));
+}
+
+const DIGITS = /^\d{1,12}$/;
+
+async function readPaylocity(o: ReadOptions, ext: string): Promise<VendorForm | null> {
+  if (!DIGITS.test(ext)) return null;
+  const html = await textOfPinned(o, `https://recruiting.paylocity.com/Recruiting/Jobs/Apply/${ext}`);
+  return html ? cleaned(parsePaylocityForm(html)) : null;
+}
+
+async function readWorkable(o: ReadOptions, ext: string): Promise<VendorForm | null> {
+  if (!/^[A-Z0-9]{4,16}$/i.test(ext)) return null;
+  const res = await getPinned(o, `https://apply.workable.com/api/v1/jobs/${encodeURIComponent(ext)}/form`);
+  if (!res || res.status !== 200) return null;
+  return cleaned(parseWorkableForm(await jsonOf(res)));
+}
+
+async function readBamboo(o: ReadOptions, p: PostingRef, ext: string): Promise<VendorForm | null> {
+  if (!HOST_LABEL.test(p.token) || !DIGITS.test(ext)) return null;
+  const res = await getPinned(o, `https://${p.token.toLowerCase()}.bamboohr.com/careers/${ext}/detail`);
+  if (!res || res.status !== 200) return null;
+  return cleaned(parseBambooForm(await jsonOf(res)));
+}
+
+async function readLever(o: ReadOptions, p: PostingRef, ext: string): Promise<VendorForm | null> {
+  if (!HOST_LABEL.test(p.token) || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ext)) return null;
+  // Lever's EU tenants live on jobs.eu.lever.co; the posting's own URL says which.
+  const host = /^https:\/\/jobs\.eu\.lever\.co\//i.test(String(p.applyUrl ?? "")) ? "jobs.eu.lever.co" : "jobs.lever.co";
+  const html = await textOfPinned(o, `https://${host}/${encodeURIComponent(p.token)}/${ext}/apply`);
+  return html ? cleaned(parseLeverForm(html)) : null;
+}
+
+/** The registrable part of a hostname: its ... docs/shared-notes.md#s76 */
+function siteOf(hostname: string): string {
+  const labels = hostname.toLowerCase().split(".").filter(Boolean);
+  const n = labels.length >= 3 && /^[a-z]{2}$/.test(labels.at(-1)!) && /^(?:co|com|org|net|ac|gov|edu|ne|or)$/.test(labels.at(-2)!) ? 3 : 2;
+  return labels.slice(-n).join(".");
+}
+
+async function readTeamtailor(o: ReadOptions, p: PostingRef, ext: string): Promise<VendorForm | null> {
+  // The board's Teamtailor ids are the job ... docs/shared-notes.md#s77
+  const num = /^(\d{1,12})(?:-[^/?#\s]*)?$/.exec(ext)?.[1];
+  if (!HOST_LABEL.test(p.token) || !num) return null;
+  const path = `/jobs/${num}/applications/new`;
+  const first = await getPinned(o, `https://${p.token.toLowerCase()}.teamtailor.com${path}`);
+  if (!first) return null;
+  let res: Response | null = first;
+  if (first.status >= 300 && first.status < 400) {
+    // A tenant on its own career domain ... docs/shared-notes.md#s78
+    const to = (() => { try { return new URL(first.headers.get("location") ?? "", `https://${p.token}.teamtailor.com`); } catch { return null; } })();
+    const own = (() => { try { return new URL(String(p.applyUrl ?? "")); } catch { return null; } })();
+    const sameSite = !!to && !!own && to.protocol === "https:" && own.protocol === "https:" &&
+      to.pathname.replace(/\/+$/, "") === path && !to.username && !to.password && (to.port === "" || to.port === "443") &&
+      (to.hostname.endsWith(".teamtailor.com") || siteOf(to.hostname) === siteOf(own.hostname));
+    res = sameSite ? await getPinned(o, to!.toString()) : null;
+  }
+  if (!res || res.status !== 200) return null;
+  let html = "";
+  try { html = await res.text(); } catch { return null; }
+  return cleaned(parseTeamtailorForm(html));
 }
 
 /** The form a cached row holds, when it holds one in the shape this module writes. */
@@ -289,11 +362,15 @@ function formOfRow(row: FormCacheRow): VendorForm | null {
   return { questions, documents: f.documents, alsoOnForm: Array.isArray(f.alsoOnForm) ? f.alsoOnForm : [] };
 }
 
-/**
- * The posting's application form, or the reason there is none. Never throws:
- * a fault of the vendor's is `unreachable`, and a fault of the cache is read
- * past (the vendor is asked) or written past (the answer is still returned).
- */
+/** What a cached page-read row still says the page showed. */
+function extrasOfRow(form: unknown): Partial<PageExtras> {
+  const f = (form ?? {}) as { documents?: unknown; alsoOnForm?: unknown };
+  const docs = Array.isArray(f.documents) ? (f.documents as FormDocument[]).filter((d) => d && typeof d.name === "string") : [];
+  const also = Array.isArray(f.alsoOnForm) ? (f.alsoOnForm as unknown[]).filter((x): x is string => typeof x === "string") : [];
+  return { ...(docs.length ? { documents: docs } : {}), ...(also.length ? { alsoOnForm: also } : {}) };
+}
+
+/** The posting's application form, or the ... docs/shared-notes.md#s79 */
 export async function readApplicationForm(p: PostingRef, o: ReadOptions): Promise<FormRead> {
   const vendor = p.source;
   if (!FORM_READER_VENDORS.includes(vendor)) return { kind: "no-reader", vendor };
@@ -311,7 +388,7 @@ export async function readApplicationForm(p: PostingRef, o: ReadOptions): Promis
         if (row.ok && form) return { kind: "read", vendor, readAt: row.read_at, cached: true, form };
         if (!row.ok) {
           const pageRead = (row.form as { pageRead?: unknown } | null)?.pageRead === true;
-          return { kind: "absent", vendor, readAt: row.read_at, cached: true, ...(pageRead ? { pageRead: true as const } : {}) };
+          return { kind: "absent", vendor, readAt: row.read_at, cached: true, ...(pageRead ? { pageRead: true as const, ...extrasOfRow(row.form) } : {}) };
         }
       }
     } catch {
@@ -320,22 +397,31 @@ export async function readApplicationForm(p: PostingRef, o: ReadOptions): Promis
   }
 
   let form: VendorForm | null;
-  let pageRead = false;
+  let page: PageWithoutQuestions | null = null;
   try {
     const got = vendor === "greenhouse" ? await readGreenhouse(o, p, ext)
       : vendor === "ashby" ? await readAshby(o, p, ext)
       : vendor === "recruitee" ? await readRecruitee(o, p, ext)
+      : vendor === "paylocity" ? await readPaylocity(o, ext)
+      : vendor === "workable" ? await readWorkable(o, ext)
+      : vendor === "teamtailor" ? await readTeamtailor(o, p, ext)
+      : vendor === "lever" ? await readLever(o, p, ext)
+      : vendor === "bamboohr" ? await readBamboo(o, p, ext)
       : await readHtmlForm(o, p, vendor as "breezy" | "pinpoint");
-    pageRead = got === PAGE_WITHOUT_QUESTIONS;
-    form = got === PAGE_WITHOUT_QUESTIONS ? null : got;
+    page = got && "pageRead" in got ? got : null;
+    form = got && !("pageRead" in got) ? got : null;
   } catch (e) {
     if (e instanceof Transient) return { kind: "unreachable", vendor };
     return { kind: "unreachable", vendor };
   }
   const readAt = new Date(now()).toISOString();
+  const seen = page ? {
+    ...(page.extras.documents.length ? { documents: page.extras.documents } : {}),
+    ...(page.extras.alsoOnForm.length ? { alsoOnForm: page.extras.alsoOnForm } : {}),
+  } : {};
   if (o.cache) {
-    try { await o.cache.put(p.id, vendor, !!form, form ?? (pageRead ? { pageRead: true } : {})); } catch { /* the answer stands without the cache */ }
+    try { await o.cache.put(p.id, vendor, !!form, form ?? (page ? { pageRead: true, ...seen } : {})); } catch { /* the answer stands without the cache */ }
   }
   if (form) return { kind: "read", vendor, readAt, cached: false, form };
-  return { kind: "absent", vendor, readAt, cached: false, ...(pageRead ? { pageRead: true as const } : {}) };
+  return { kind: "absent", vendor, readAt, cached: false, ...(page ? { pageRead: true as const, ...seen } : {}) };
 }

@@ -28,6 +28,24 @@ export function routeChunkPrefix(path) {
 }
 
 /**
+ * ONE ROUTE-CHUNK HINT, AT LOW PRIORITY (PERF-01, SEO/GEO audit 2026-11-07).
+ *
+ * Every baked page paints from its own HTML and one render-blocking
+ * stylesheet; no preloaded script feeds that paint (the LCP element is baked
+ * text on every page type measured). At the default priority the twelve hints
+ * a company, field, posting, /jobs or /pricing page writes shared the line
+ * with that stylesheet: on the phone lab profile (4x CPU, 150 ms, 1.6 Mbps)
+ * the stylesheet finished 1,290-1,360 ms in and LCP followed it; with the
+ * hints at low priority and no font preload (index.html) it finished at
+ * 1,150-1,190 and LCP came 200-250 ms sooner on company, field and posting
+ * pages (Domino's 1,576-1,656 ms to 1,328-1,384). The hint still starts the
+ * chunk before the entry asks for it, so hydration keeps its one round trip.
+ * The attribute comes after href, so a reader that matches the tag up to its
+ * href still reads it.
+ */
+export const modulepreloadTag = (file) => `<link rel="modulepreload" href="/assets/${file}" fetchpriority="low">`;
+
+/**
  * THE HEAD OF THE ROOT index.html, WHICH IS ALSO THE SPA FALLBACK.
  *
  * Lovable serves dist/index.html for every address the bake did not write:
@@ -39,7 +57,7 @@ export function routeChunkPrefix(path) {
  * against 2,696 ms without them (the round's review, 2026-10-24).
  */
 export function fallbackPreloadHtml(files, { always = [], scanner = null } = {}) {
-  const head = always.map((f) => `<link rel="modulepreload" href="/assets/${f}">`).join("");
+  const head = always.map(modulepreloadTag).join("");
   const ok = (list) => (list ?? []).filter((f) => !always.includes(f) && /^[\w.-]+\.js$/.test(f));
   const rest = ok(files);
   // A scanner address of "/" (src/lib/scanner-address.ts scannerAddressScript)
@@ -47,7 +65,7 @@ export function fallbackPreloadHtml(files, { always = [], scanner = null } = {})
   // the scanner's chunks, never the homepage's (review round 2026-10-26).
   const scannerFiles = scanner && scanner.predicate ? ok(scanner.files) : [];
   if (!rest.length && !scannerFiles.length) return head;
-  const add = 'function(f){var l=document.createElement("link");l.rel="modulepreload";l.href="/assets/"+f;document.head.appendChild(l);}';
+  const add = 'function(f){var l=document.createElement("link");l.rel="modulepreload";l.fetchPriority="low";l.href="/assets/"+f;document.head.appendChild(l);}';
   const pick = scanner && scanner.predicate ? `(${scanner.predicate}?${JSON.stringify(scannerFiles)}:${JSON.stringify(rest)})` : JSON.stringify(rest);
   return `${head}<script data-home-preload="1">if(location.pathname==="/"){${pick}.forEach(${add});}</script>`;
 }
@@ -83,4 +101,33 @@ export function preloadClosure(chunk, { readChunk, entry = null, skip = [], cap 
     for (const dep of staticImportsOf(code)) if (!seen.has(dep)) queue.push(dep);
   }
   return out;
+}
+
+/**
+ * WHAT A HEAD'S FONTS ASK FOR, CHECKED AGAINST THE BUILD (B12, PERF-01).
+ *
+ * The build writes each face's hashed /assets/ address into index.html's
+ * inline style, and every page the bake writes copies that head. A face that
+ * names anything else (the old /fonts/ copies, which carry no cache header, or
+ * a source path the build did not rewrite) or a file the build did not emit
+ * would cost every page its font; a font preload competes with the one
+ * render-blocking stylesheet. Pure: the caller hands it the head and the
+ * names in dist/assets. Returns the problems, empty when there are none.
+ */
+export function fontHeadProblems(html, assetFiles = []) {
+  const head = (/<head[^>]*>([\s\S]*?)<\/head>/i.exec(String(html ?? ""))?.[1] ?? "").replace(/<!--[\s\S]*?-->/g, "");
+  const files = new Set(assetFiles);
+  const problems = [];
+  const css = [...head.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]).join("\n");
+  const faces = [...css.matchAll(/@font-face\s*\{([^}]*)\}/g)].map((m) => (/url\(\s*["']?([^"')]+)["']?\s*\)/.exec(m[1]) || [])[1] || "");
+  if (!faces.length) problems.push("the head declares no @font-face");
+  for (const src of faces) {
+    const m = /^\/assets\/([\w.-]+\.woff2)$/.exec(src);
+    if (!m) problems.push(`a face names ${src || "no file"}, not a hashed /assets/*.woff2`);
+    else if (!files.has(m[1])) problems.push(`a face names /assets/${m[1]}, which the build did not emit`);
+  }
+  for (const tag of head.match(/<link\b[^>]*>/gi) || []) {
+    if (/\brel=["']?preload\b/i.test(tag) && /\bas=["']?font\b/i.test(tag)) problems.push(`the head preloads a font (${(/href=["']?([^"'\s>]+)/.exec(tag) || [])[1] || "?"}), which competes with the stylesheet`);
+  }
+  return problems;
 }

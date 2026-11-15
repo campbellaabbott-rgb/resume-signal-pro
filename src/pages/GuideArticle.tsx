@@ -10,7 +10,7 @@ import { SEO } from "@/components/seo/SEO";
 import { PageJsonLd } from "@/components/seo/PageJsonLd";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { GUIDES, guideGrounding } from "@/data/guides";
+import { GUIDES, GUIDE_ARTICLE_IMAGE_PATH, guideGrounding } from "@/data/guides";
 
 export default function GuideArticle() {
   const { slug } = useParams();
@@ -24,7 +24,10 @@ export default function GuideArticle() {
         "@type": "Article",
         headline: g.h1,
         description: g.description,
+        // The same dates and image the bake writes (SD-09).
+        datePublished: g.published,
         dateModified: g.updated,
+        image: `https://resumebooster.work${GUIDE_ARTICLE_IMAGE_PATH}`,
         author: { "@type": "Organization", name: "Resume Booster", url: "https://resumebooster.work" },
         publisher: { "@type": "Organization", name: "Resume Booster" },
         mainEntityOfPage: `https://resumebooster.work/guides/${g.slug}`,

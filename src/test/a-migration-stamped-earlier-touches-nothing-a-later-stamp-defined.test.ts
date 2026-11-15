@@ -60,11 +60,15 @@ describe("the late-stamp rule", () => {
     const files = readdirSync(dir).filter((f) => /^\d{14}_.+\.sql$/.test(f));
     // The one deploy (f8d72a9b, 2026-10-31) applied wave 4's 20261011 files
     // but the ones the ledger holds or never applies; those are what is still
-    // pending among them. A later file that redefines an applied 20261011
-    // object (20261103100000's record_affiliate_conversion) restores nothing.
-    const ledger = JSON.parse(readFileSync(resolve(__dirname, "../../docs/deploy-ledger.json"), "utf8")) as { holdUntilVerified: Array<{ stamp: string }>; neverApply: string[] };
+    // pending among them, with any the ledger released that no staged-runner
+    // stub or behaviour proof names yet (the 30-day prune, released
+    // 2026-11-08). A later file that redefines an applied 20261011 object
+    // (20261103100000's record_affiliate_conversion) restores nothing.
+    const ledger = JSON.parse(readFileSync(resolve(__dirname, "../../docs/deploy-ledger.json"), "utf8")) as { holdUntilVerified: Array<{ stamp: string }>; neverApply: string[]; appliedByBehaviour?: Record<string, unknown>; appliedOutsideDrizzle?: string[] };
     const notApplied = new Set([...ledger.holdUntilVerified.map((h) => h.stamp), ...ledger.neverApply]);
-    const pending = files.filter((f) => f.startsWith("20261011") && notApplied.has(f.slice(0, 14)));
+    const staged = new Set(readdirSync(resolve(__dirname, "../../drizzle/migrations")).map((f) => /^\d{4}_(\d{14})_/.exec(f)?.[1]).filter(Boolean));
+    const applied = new Set([...staged, ...Object.keys(ledger.appliedByBehaviour ?? {}), ...(ledger.appliedOutsideDrizzle ?? [])]);
+    const pending = files.filter((f) => f.startsWith("20261011") && (notApplied.has(f.slice(0, 14)) || !applied.has(f.slice(0, 14))));
     expect(pending, "no 20261011 file is held: re-anchor this check on the ledger").not.toEqual([]);
     const later = files.filter((f) => f.slice(0, 14) > "20261011999999");
     expect(lateStampViolations(pending, later, (f) => readFileSync(resolve(dir, f), "utf8"))).toEqual([]);

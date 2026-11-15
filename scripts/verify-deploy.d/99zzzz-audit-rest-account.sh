@@ -16,9 +16,13 @@
 #       the asking page's language, the monthly pulse in the stored one);
 #   A2  get-analytics serves 2026-11-03.1 or later (pages newest first and
 #       reads the whole range, says where a run that ran out of time stopped);
-#   F1  the homepage names no Google font host, and its faces point at /fonts/;
-#   F2  /fonts/inter-latin.woff2 is served as a woff2 file (a site that
-#       answers the path with its HTML fallback would print every face blank);
+#   F1  the homepage names no Google font host, and its latin face is on
+#       this site: /fonts/inter-latin.woff2, or since B12 (SEO/GEO audit
+#       2026-11-07) the hashed /assets/inter-latin-<hash>.woff2 the build
+#       emits;
+#   F2  the latin face the homepage names is served as a woff2 file (a site
+#       that answers the path with its HTML fallback would print every face
+#       blank);
 #   D1  market_pulse_subscribers.locale exists (a GET that names the column:
 #       42703 means migration 20261103191000 has not run), and anon reads no
 #       row of the table;
@@ -56,11 +60,12 @@ done
 VDARA_HOME=$(curl -s -m 30 -A "${UA:-verify-deploy}" "$SITE/")
 if [ -z "$VDARA_HOME" ]; then echo "FAIL  the homepage answered nothing: the font head cannot be read"
 elif printf '%s' "$VDARA_HOME" | grep -qE 'fonts\.(gstatic|googleapis)\.com'; then echo "FAIL  the homepage still names Google's font host: a visit asks it for files before any consent (S12-011)"
-elif printf '%s' "$VDARA_HOME" | grep -qF 'url(/fonts/inter-latin.woff2)'; then echo "PASS  the homepage names no Google font host and its faces point at /fonts/ on this site (S12-011)"
-else echo "FAIL  the homepage names no Google font host but declares no face at /fonts/inter-latin.woff2: the font head moved, or the frontend publish has not happened (S12-011)"; fi
-VDARA_MAGIC=$(curl -s -m 30 -A "${UA:-verify-deploy}" "$SITE/fonts/inter-latin.woff2" | head -c 4)
-if [ "$VDARA_MAGIC" = "wOF2" ]; then echo "PASS  /fonts/inter-latin.woff2 is served as a woff2 file (S12-011)"
-else echo "FAIL  /fonts/inter-latin.woff2 did not answer a woff2 file (first bytes: $(printf '%s' "$VDARA_MAGIC" | od -An -c | tr -s ' ' | head -c 40)): the faces would fall back (S12-011)"; fi
+elif VDARA_FACE=$(printf '%s' "$VDARA_HOME" | grep -oE 'url\((/fonts/inter-latin\.woff2|/assets/inter-latin-[A-Za-z0-9_-]{8}\.woff2)\)' | head -1 | sed -E 's/^url\((.*)\)$/\1/') && [ -n "$VDARA_FACE" ]; then echo "PASS  the homepage names no Google font host and its latin face is on this site, at $VDARA_FACE (S12-011)"
+else echo "FAIL  the homepage names no Google font host but declares no latin face on this site (/fonts/inter-latin.woff2 or a hashed /assets/inter-latin-*.woff2): the font head moved, or the frontend publish has not happened (S12-011)"; fi
+VDARA_FACE=${VDARA_FACE:-/fonts/inter-latin.woff2}
+VDARA_MAGIC=$(curl -s -m 30 -A "${UA:-verify-deploy}" "$SITE$VDARA_FACE" | head -c 4)
+if [ "$VDARA_MAGIC" = "wOF2" ]; then echo "PASS  $VDARA_FACE is served as a woff2 file (S12-011)"
+else echo "FAIL  $VDARA_FACE did not answer a woff2 file (first bytes: $(printf '%s' "$VDARA_MAGIC" | od -An -c | tr -s ' ' | head -c 40)): the faces would fall back (S12-011)"; fi
 
 # D1: the pulse's locale column, by naming it. PostgREST resolves the column
 # before it checks a grant, so a missing column answers 42703 whatever anon

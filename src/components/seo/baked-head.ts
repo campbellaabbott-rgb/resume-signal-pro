@@ -20,6 +20,7 @@
  * canonical, and an unowned canonical is what this requires.
  */
 import { ownedByReact } from "@/lib/prerendered-head";
+import { EMPLOYER_STATED_META, POSTING_CLOSED_META, employerStatedOf, postingClosedOf, type EmployerStated } from "../../../scripts/employer-statements.mjs";
 
 export interface BakedHead {
   /** The decoded path the bake wrote this head for, without a trailing slash. */
@@ -40,6 +41,20 @@ export interface BakedHead {
    * (no decoding), or null when it wrote none: a duplicate's names its twin.
    */
   canonicalPath: string | null;
+  /**
+   * What the posting's employer stated, as the bake applied it to the row
+   * (B06): its end date, time type, remote field, original date and address.
+   * The posting page applies the same statements to the row the board returns
+   * (scripts/employer-statements.mjs). Null on every other page.
+   */
+  employerStated: EmployerStated | null;
+  /**
+   * "employer" when the bake found the posting closed at the employer's own
+   * system and wrote its "no longer listed" page (B01); null on every other
+   * page. The board still serves its stored row, so the posting page shows
+   * the posting gone when this says so.
+   */
+  postingClosed: "employer" | null;
 }
 
 const trim = (p: string) => (p.length > 1 ? p.replace(/\/+$/, "") : p);
@@ -86,6 +101,11 @@ function readBakedHead(): BakedHead | null {
     .filter((n) => !ownedByReact(n))
     .flatMap((n) => ldTypesOf(n.textContent));
   const robots = [...document.head.querySelectorAll('meta[name="robots"]')].find((n) => !ownedByReact(n))?.getAttribute("content") ?? "";
+  let employerStated: EmployerStated | null = null;
+  try {
+    employerStated = employerStatedOf(JSON.parse(document.head.querySelector(`meta[name="${EMPLOYER_STATED_META}"]`)?.getAttribute("content") ?? "null"));
+  } catch { employerStated = null; }
+  const postingClosed = postingClosedOf(document.head.querySelector(`meta[name="${POSTING_CLOSED_META}"]`)?.getAttribute("content") ?? null);
   let canonicalPath: string | null = null;
   let canonicalAsWritten: string | null = null;
   try {
@@ -100,6 +120,8 @@ function readBakedHead(): BakedHead | null {
     ldTypes,
     indexable: !/noindex/i.test(robots) && (own === "/" || canonicalPath === own),
     canonicalPath: canonicalAsWritten,
+    employerStated,
+    postingClosed,
   };
 }
 

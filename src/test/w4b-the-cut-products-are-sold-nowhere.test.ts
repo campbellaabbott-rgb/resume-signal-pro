@@ -223,7 +223,8 @@ describe("no crawler or AI host is offered a cut product", () => {
  * that exact hunk because wave 4 is what stops the sale.
  */
 describe("the shared chrome links no cut product", () => {
-  const footer = codeOf(readFileSync(resolve(__dirname, "../components/Footer.tsx"), "utf8"));
+  // The footer's lists live in src/lib/site-links.ts since B04 (one list for the app and the bake).
+  const footer = ["../components/Footer.tsx", "../lib/site-links.ts"].map((f) => codeOf(readFileSync(resolve(__dirname, f), "utf8"))).join("\n");
   const linksCut = (src: string) => Object.values(CUT_PRODUCTS).filter((c) => new RegExp(`fallback: "${c.name}"|to: "/${c.name.toLowerCase().replace(/\s+/g, "-")}"`).test(src)).map((c) => c.name);
   it("the footer's resources name and link none of them", () => {
     expect(linksCut(footer)).toEqual([]);

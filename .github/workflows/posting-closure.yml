@@ -1,0 +1,142 @@
+# THE DAILY CLOSED-BUT-BAKED CHECK (SEO/GEO audit 2026-11-07, B01; owner
+# decision 2026-11-07, option A). Cloned from board-health.yml.
+#
+# The owner kept JobPosting markup on the posting pages on two conditions: a
+# daily check of how many live posting pages are for postings their employer
+# has already closed, and a STOP rule. This is the check. It runs
+# scripts/posting-closure-check.mjs, which reads the live sitemap and ledger
+# and asks each posting's employer system about it with GET requests only.
+#
+# THE RULE: "twice" is two consecutive daily checks whose closed share is over
+# 5% (counting only postings with a definite employer answer; a run with more
+# than 20% unknown answers is not judged). When it fires (exit 3) this opens
+# or comments on a `posting-closure` issue and fails the run: the remedy is to
+# set JOB_POSTING_MARKUP to false in src/config/seo-switches.ts and publish.
+# A run that cannot judge (exit 4) or cannot read the site (exit 2) does the
+# same, so a silent check is never mistaken for a clean one.
+#
+# ONE RUN PER UTC DATE, THREE SLOTS A DAY. GitHub drops most scheduled runs
+# (board-health gets about 5 of its 48 slots), so the cron asks three times a
+# day at off-peak minutes; the first run of a date measures, and a later slot
+# the same date re-reads that verdict instead of measuring again (unless the
+# first was not judged). The history of daily records survives between runs
+# in the Actions cache (a new key per run, restored by prefix), and each run's
+# record is uploaded as an artifact.
+#
+# THE OUTSIDE CHECK: when the repository secret POSTING_CLOSURE_PING_URL holds
+# a healthchecks.io URL, every run pings it (/fail when the rule fired or the
+# check could not judge), so a schedule GitHub stopped running is noticed.
+#
+# Nothing here writes to any employer or to the site: every request is a GET.
+name: posting-closure
+on:
+  schedule:
+    - cron: "41 2,10,18 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: posting-closure
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # The daily records so far: the newest cache this check saved.
+      - name: Restore the daily records
+        uses: actions/cache/restore@v4
+        with:
+          path: .posting-closure
+          key: posting-closure-history-${{ github.run_id }}
+          restore-keys: |
+            posting-closure-history-
+
+      - name: Measure the closed share and apply the rule
+        id: check
+        run: |
+          set -u
+          mkdir -p .posting-closure
+          set +e
+          node scripts/posting-closure-check.mjs --history .posting-closure/history.json --out .posting-closure/latest.json
+          CODE=$?
+          set -e
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          case "$CODE" in
+            0) echo "failed=" >> "$GITHUB_OUTPUT";;
+            3) echo "failed=fired" >> "$GITHUB_OUTPUT"; echo "note=the STOP rule fired: two consecutive daily checks over 5% closed at the employer. Set JOB_POSTING_MARKUP to false in src/config/seo-switches.ts and publish." >> "$GITHUB_OUTPUT";;
+            4) echo "failed=unjudged" >> "$GITHUB_OUTPUT"; echo "note=the check could not judge today (more than 20% of employer answers unknown, or nothing to check)" >> "$GITHUB_OUTPUT";;
+            *) echo "failed=unreadable" >> "$GITHUB_OUTPUT"; echo "note=the check could not read the live sitemap or ledger (exit $CODE)" >> "$GITHUB_OUTPUT";;
+          esac
+
+      - name: Keep the daily records
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .posting-closure
+          key: posting-closure-history-${{ github.run_id }}
+
+      - name: Upload this run's record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: posting-closure-${{ github.run_id }}
+          path: .posting-closure/
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Tell the outside check this run happened
+        if: always()
+        env:
+          PING_URL: ${{ secrets.POSTING_CLOSURE_PING_URL }}
+          FAILED: ${{ steps.check.outputs.failed }}
+          CHECK_OUTCOME: ${{ steps.check.outcome }}
+        run: |
+          set -u
+          case "${PING_URL:-}" in
+            https://*) ;;
+            *) echo "::notice title=Posting closure::POSTING_CLOSURE_PING_URL is not set, so nothing outside GitHub notices when this schedule is skipped"; exit 0;;
+          esac
+          URL="${PING_URL%/}"
+          if [ -n "${FAILED:-}" ] || [ "${CHECK_OUTCOME:-}" != "success" ]; then URL="$URL/fail"; fi
+          curl -fsS -m 10 --retry 2 -o /dev/null "$URL" || echo "::warning title=Posting closure::the outside check did not answer"
+
+      - name: Raise or update the alarm
+        if: steps.check.outputs.failed != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOTE: ${{ steps.check.outputs.note }}
+        run: |
+          set -u
+          gh label create posting-closure --repo "$GITHUB_REPOSITORY" --color B60205 \
+            --description "Opened by the daily posting-closure check" --force >/dev/null 2>&1 || true
+          EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --label posting-closure --state open --json number --jq '.[0].number' || echo "")
+          STAMP="$(date -u +'%Y-%m-%d %H:%M UTC')"
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "$GITHUB_REPOSITORY" --body "$STAMP — $NOTE"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "Posting closure: the daily check needs attention" \
+              --label posting-closure \
+              --body "$STAMP — $NOTE
+
+          This issue was opened by .github/workflows/posting-closure.yml, which asks each live posting page's employer system (GET only) whether it still serves the posting. The record of each run is an artifact of that run. Close this once it is dealt with; the check comments here instead of opening duplicates while it stays open."
+          fi
+
+      - name: Fail the run while the check needs attention
+        if: steps.check.outputs.failed != ''
+        env:
+          NOTE: ${{ steps.check.outputs.note }}
+        run: |
+          echo "::error title=Posting closure::$NOTE"
+          exit 1

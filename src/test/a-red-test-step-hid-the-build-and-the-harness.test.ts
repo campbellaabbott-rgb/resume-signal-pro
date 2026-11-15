@@ -176,11 +176,12 @@ describe("the guards on built output run, after a build, instead of skipping", (
     chmodSync(join(dir, "bin", "npx"), 0o755);
     execFileSync("bash", ["-e", "-c", steps[guard].run!], { cwd: ROOT, env: { PATH: `${join(dir, "bin")}:${process.env.PATH}` }, stdio: "pipe" });
     const picked = readFileSync(join(dir, "argv"), "utf8").split("\n").filter((a) => a.startsWith("src/test/")).map((a) => a.replace("src/test/", "")).sort();
-    // Independently: every test file that skips on the presence of something under dist/.
+    // Independently: every test file that skips on the presence of something under dist/,
+    // whether it spells the path as a literal or builds it with resolve(ROOT, "dist").
     const T = resolve(ROOT, "src/test");
     const readsDist = readdirSync(T)
       .filter((f) => /\.test\.tsx?$/.test(f))
-      .filter((f) => { const s = readFileSync(join(T, f), "utf8"); return /skipIf\(/.test(s) && /["'/]dist\//.test(s); })
+      .filter((f) => { const s = readFileSync(join(T, f), "utf8"); return /skipIf\(/.test(s) && /["'/]dist\/|resolve\(ROOT, ["']dist["']\)/.test(s); })
       .sort();
     expect(readsDist.length, "the independent scan found no dist/ guard: it is broken, not the workflow").toBeGreaterThanOrEqual(5);
     expect(picked).toEqual(readsDist);

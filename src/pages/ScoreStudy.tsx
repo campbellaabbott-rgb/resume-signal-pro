@@ -115,6 +115,7 @@ export default function ScoreStudy() {
         title="What's a Good ATS Score? Live Benchmarks From Real Scans"
         description="Real ATS score benchmarks, updated live from our scan corpus: overall median and quartiles, per-industry distributions, and experience-level medians — not folklore thresholds."
         path="/research/ats-score-benchmarks"
+        preferBakedHead
       />
       <PageJsonLd blocks={jsonLd} />
       <Header />

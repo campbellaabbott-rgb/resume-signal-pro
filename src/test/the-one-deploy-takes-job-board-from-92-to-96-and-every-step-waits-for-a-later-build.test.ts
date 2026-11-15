@@ -33,6 +33,7 @@ import { resolve } from "node:path";
 import * as L from "../../scripts/deploy-ledger.mjs";
 import { nameSyncQueue } from "../../supabase/functions/job-board/name-sync";
 import { codeOf, sqlCodeOf } from "./helpers/strip-comments";
+import { withWave4PruneHeld } from "./helpers/released-holds";
 
 vi.setConfig({ hookTimeout: 120_000, testTimeout: 60_000 });
 
@@ -123,11 +124,13 @@ describe("the ledger's order for one message, with .93 and .95 never served", ()
   });
 
   it("wave 4's hold stays held in this message, and is releasable once .96 and agent-mcp .38 serve", () => {
-    const now = L.holdStates(HELD, policy, rowsWith(LIVE));
+    // The prune was released 2026-11-08; the one deploy's message read its hold as it stood.
+    const held = withWave4PruneHeld(policy);
+    const now = L.holdStates(HELD, held, rowsWith(LIVE));
     expect(now.errors).toEqual([]);
     expect(now.holds).toHaveLength(1);
     expect(now.holds[0].releasable).toBe(false);
-    const later = L.holdStates(HELD, policy, rowsWith({ ...LIVE, "job-board": repoBuild("job-board")!, "agent-mcp": repoBuild("agent-mcp")! }));
+    const later = L.holdStates(HELD, held, rowsWith({ ...LIVE, "job-board": repoBuild("job-board")!, "agent-mcp": repoBuild("agent-mcp")! }));
     expect(later.holds[0].releasable).toBe(true);
     expect(later.holds[0].conditions.map((c: { met: boolean }) => c.met)).toEqual([true, true]);
   });

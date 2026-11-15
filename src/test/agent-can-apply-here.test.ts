@@ -33,7 +33,10 @@ describe("both surfaces ask the shared predicate", () => {
 
   it("asks it about the posting id, which is where the vendor lives", () => {
     expect(jobs).toMatch(/isSendableVendor\(job\.id\)/);
-    expect(jobs).toMatch(/isSendableVendor\(detailJob\.id\)/);
+    // The card and the detail pane hand the same posting through one builder,
+    // which asks the predicate about the posting's own id.
+    expect(jobs).toMatch(/const handoffJobOf = \(job: BoardJob\): HandoffJob => \(\{[\s\S]{0,80}sendable: isSendableVendor\(job\.id\)/);
+    expect(jobs).toMatch(/<JobAgentHandoff job=\{handoffJobOf\(detailJob\)\}/);
     expect(account).toMatch(/isSendableVendor\(a\.job_id\)/);
   });
 

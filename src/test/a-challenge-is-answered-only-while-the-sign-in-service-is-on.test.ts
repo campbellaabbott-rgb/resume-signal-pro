@@ -421,7 +421,9 @@ describe("initialize carries the fact and one sentence for it, under the truncat
     expect(guide).toMatch(/signInGuideSection\(cachedSignIn\(\)\?\.state \?\? "unknown", ANON_TOOLS\.length, \{ notOn: SIGN_IN_NOT_ON, unkeyedTools: listed, mintUrl: MINT_URL, chat \}\)/);
     expect(guide).toMatch(/## If something refuses/);
     // Both guide reads warm the cache before the synchronous render.
-    const reads = [...MCP.matchAll(/guideText\((?:ctx\.)?edition\)\)/g)];
+    // The second argument is whether the caller is offered the keyed prompt
+    // and resource (connect W3, BR-18): true after a key check, !!bearer before.
+    const reads = [...MCP.matchAll(/guideText\((?:ctx\.)?edition, (?:true|!!bearer)\)\)/g)];
     expect(reads.length).toBe(2);
     for (const site of reads) {
       const before = MCP.slice(Math.max(0, site.index! - 160), site.index!);
@@ -635,11 +637,11 @@ describe("teeth: each property fails on a copy that reintroduces the old behavio
   });
 
   it("a guide read that renders before probing is caught", () => {
-    const warmed = "await probeSignIn();\n        return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition))));";
+    const warmed = "await probeSignIn();\n        return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition, !!bearer))));";
     expect(MCP).toContain(warmed);
-    const cold = MCP.replace(warmed, "return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition))));");
+    const cold = MCP.replace(warmed, "return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition, !!bearer))));");
     expect(cold).not.toBe(MCP);
-    const site = cold.indexOf("contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition))");
+    const site = cold.indexOf("contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition, !!bearer))");
     expect(cold.slice(Math.max(0, site - 160), site)).not.toMatch(/await probeSignIn\(\);/);
   });
 });

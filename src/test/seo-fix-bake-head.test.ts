@@ -36,7 +36,7 @@ describe("the SPA fallback's static head preloads only what every page runs", ()
   const html = fallbackPreloadHtml(files, { always: ["Footer-f9.js"] });
 
   it("names Footer in the static head and no homepage chunk", () => {
-    const hints = [...html.matchAll(/<link rel="modulepreload" href="\/assets\/([^"]+)">/g)].map((m) => m[1]);
+    const hints = [...html.matchAll(/<link rel="modulepreload" href="\/assets\/([^"]+)"[^>]*>/g)].map((m) => m[1]);
     expect(hints).toEqual(["Footer-f9.js"]);
   });
   it("adds the homepage's chunks on '/' only", () => {

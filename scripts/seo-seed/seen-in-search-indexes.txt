@@ -1,0 +1,9 @@
+# Addresses on this site that a search index listed and that served the homepage copy, one path a line.
+# Hand-kept (scripts/prerender-seed-history.mjs does not write this file): each line is an address
+# a domain-filtered web search returned on the day named beside it, fetched as Googlebot, which served
+# the 34,586-byte homepage with a canonical of "/". The bake (scripts/prerender-seo.mjs) reads company
+# and posting paths from here exactly as it reads the published lists, so each gets a noindex page of
+# its own instead of an indexable copy of the homepage (B09, SEO report 2026-11-07, DESC-10).
+# Never fetched by the bake; never pinged.
+# 2026-11-07: listed by WebSearch; 200, homepage copy, index,follow, canonical "/".
+/jobs/company/0ebd29d1-d85b-444e-b36b-430da3d7bc58

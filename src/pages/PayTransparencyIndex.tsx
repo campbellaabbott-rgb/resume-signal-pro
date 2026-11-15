@@ -27,6 +27,11 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
+// Each employer cell prints the name the board's pages print (its override,
+// then the stored name), and each system cell the vendor's own name: the
+// baked table and this one say the same thing (SEO/GEO audit 2026-11-07, B02).
+import { employerName } from "@/lib/company-display";
+import { systemLabel } from "@/lib/listing/apply-url";
 import { foldToBoardCategories } from "@/lib/board-category-labels";
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
@@ -92,6 +97,7 @@ export default function PayTransparencyIndex() {
         title="Pay Transparency Index — who actually states salaries?"
         description="A live ranking of fields, hiring systems, and large employers by the share of job postings that state pay — counted from companies' own posting text and ATS fields. No estimates, no modeled ranges."
         path="/pay-transparency"
+        preferBakedHead
       />
       <Header />
       <main className="min-h-screen pt-20">
@@ -177,7 +183,7 @@ export default function PayTransparencyIndex() {
                   to={companyHref(c.company_token)}
                   className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 hover:border-primary/50 transition-colors"
                 >
-                  <span className="text-sm font-semibold truncate">{c.company}</span>
+                  <span className="text-sm font-semibold truncate">{employerName(c.company_token, c.company)}</span>
                   <span className="text-sm tabular-nums text-primary shrink-0">{c.pay_pct}% <span className="text-muted-foreground text-[11px]">of {c.total}</span></span>
                 </Link>
               ))}
@@ -205,7 +211,7 @@ export default function PayTransparencyIndex() {
                 <tbody>
                   {(cov?.by_source ?? []).map((r) => (
                     <tr key={r.source} className="border-b border-border/50">
-                      <td className="py-2 pr-4 capitalize">{r.source}</td>
+                      <td className="py-2 pr-4">{systemLabel(r.source) ?? r.source}</td>
                       <td className="py-2 pr-4 text-right tabular-nums">{fmt(r.total)}</td>
                       <td className="py-2 pr-4 text-right tabular-nums">{r.pay_pct}%</td>
                       <td className="py-2 text-right tabular-nums">{r.mode_pct}%</td>

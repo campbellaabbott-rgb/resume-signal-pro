@@ -6,7 +6,7 @@
 
 import { describe, it, expect } from "vitest";
 import { redactForScoring } from "../../supabase/functions/_shared/redaction";
-import { computeImpactAnalysis } from "../../supabase/functions/_shared/impact-ratio";
+import { computeImpactAnalysis } from "@/lib/impact-ratio";
 
 describe("proxy redaction", () => {
   const resume = `Maria Gonzalez

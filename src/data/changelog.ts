@@ -23,6 +23,15 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "theBoardChecksEveryMinuteForAStoppedRefresh", date: "2026-11-08", tags: ["improved"] },
+  { id: "ourFontsComeFromOurOwnSite", date: "2026-11-06", tags: ["improved"] },
+  { id: "aSharedLinkCanNoLongerDeleteAPaidAnalysis", date: "2026-11-06", tags: ["fixed"] },
+  { id: "aPurchaseLinkThatDoesNotOpenSaysWhy", date: "2026-11-06", tags: ["improved"] },
+  { id: "draftsForAJobReopenWithoutBeingWrittenAgain", date: "2026-11-06", tags: ["improved"] },
+  { id: "theInterviewCoachKeepsEachAnswerApart", date: "2026-11-06", tags: ["fixed"] },
+  { id: "searchAndReportEmailsInYourLanguage", date: "2026-11-06", tags: ["improved"] },
+  { id: "yourAccountSaysWhichSearchEmailsComeDaily", date: "2026-11-06", tags: ["fixed"] },
+  { id: "theOneClickApplyFilterIsGone", date: "2026-11-06", tags: ["fixed"] },
   { id: "truistGeicoAndNordstromJoinTheBoard", date: "2026-11-02", tags: ["new"] },
   { id: "takenDownJobsLeaveOurBiggestBoards", date: "2026-11-02", tags: ["fixed"] },
   { id: "searchesThatReadWhatYouTyped", date: "2026-11-02", tags: ["fixed"] },

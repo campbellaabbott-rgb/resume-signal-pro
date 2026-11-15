@@ -1,0 +1,8181 @@
+{
+"about": "Every question the real form readers (supabase/functions/_shared/application-form.ts) returned over recorded employer forms, deduplicated by label, control type, options and hint: the connect-apply-2026-11-07 lens's 74 reads (Greenhouse board API, Recruitee offers API, Breezy apply pages) and its recorded Breezy, Pinpoint, Paylocity, Workable, Teamtailor, Lever and BambooHR pages, plus this build's own GETs of 2026-11-08 (raw payloads in ~/.config/resumebooster/seo-connect-build/corpora/forms-2026-11-08/). `main` is origin/main's whoAnswers on the row, recorded from a snapshot of main's _shared directory, so the test needs no git history.",
+"measured": {
+"rows": 563,
+"byVendor": {
+"greenhouse": 205,
+"recruitee": 79,
+"breezy": 113,
+"pinpoint": 4,
+"workable": 49,
+"lever": 30,
+"bamboohr": 31,
+"paylocity": 32,
+"teamtailor": 20
+},
+"recordedAt": "2026-11-08"
+},
+"rows": [
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:townofsnowmassvillagecolorado:5476175008",
+"label": "First Name",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:townofsnowmassvillagecolorado:5476175008",
+"label": "Last Name",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:townofsnowmassvillagecolorado:5476175008",
+"label": "Email",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:townofsnowmassvillagecolorado:5476175008",
+"label": "Phone",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:townofsnowmassvillagecolorado:5476175008",
+"label": "Resume/CV",
+"type": "input_file",
+"required": true,
+"main": {
+"answeredBy": "your_documents"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:townofsnowmassvillagecolorado:5476175008",
+"label": "Cover Letter",
+"type": "input_file",
+"required": false,
+"main": {
+"answeredBy": "your_documents"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:townofsnowmassvillagecolorado:5476175008",
+"label": "Are you legally authorized to work in the US?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:townofsnowmassvillagecolorado:5476175008",
+"label": "Will you now or in the future require visa sponsorship from the Town of Snowmass Village to continue to be legally authorized in the United States?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:townofsnowmassvillagecolorado:5476175008",
+"label": "Are you a current employee at the Town of Snowmass Village?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:townofsnowmassvillagecolorado:5476175008",
+"label": "Do you have any relatives working here?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "relations"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:townofsnowmassvillagecolorado:5476175008",
+"label": "If you answered 'yes' to the previous question, please provide the name(s) of any relatives who work here, the department they work in, and their relationship to you.",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"topic": "relations"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:townofsnowmassvillagecolorado:5476175008",
+"label": "When did you first hear about this opportunity?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Town of Snowmass Village Careers Page",
+"Newspaper",
+"Job Fair",
+"Linkedin",
+"Indeed",
+"Friend",
+"Other job board"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:townofsnowmassvillagecolorado:5476175008",
+"label": "What is your compensation expectations? Please type numbers only.",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:townofsnowmassvillagecolorado:5476175008",
+"label": "If offered this position, when would you be able to start? What is your timeline?",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "start_date"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:townofsnowmassvillagecolorado:5476175008",
+"label": "Are you comfortable with the commute to the Town of Snowmass Village or able to relocate to the area?",
+"type": "multi_value_multi_select",
+"required": true,
+"options": [
+"Yes, I currently live in the Roaring Fork Valley",
+"I would need my employer to assist me with housing",
+"I do not currently live in the Roaring Fork Valley, however I am trying to secure housing in the area"
+],
+"hint": "Please select all options that apply to you",
+"main": {
+"answeredBy": "you",
+"topic": "relocation"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:townofsnowmassvillagecolorado:5476175008",
+"label": "If you were referred to this position by a Town employee, please enter their name below",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:townofsnowmassvillagecolorado:5476175008",
+"label": "By clicking Yes, I hereby certify that every statement I have made in this application is accurate and complete to the best of my knowledge. I understand that any false or incomplete answer may be grounds for not employing me or dismissing me after I begin work. I understand that I will have to produce documentation verifying identity and employment eligibility in the U.S. I understand that I may be required to verify any and all information given on this application.I understand the Town of Sno",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:divergent:5475101008",
+"label": "LinkedIn Profile",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:divergent:5475101008",
+"label": "Website",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:divergent:5475101008",
+"label": "This position requires access to information and technology that is subject to US export controls. Are you any of the following “protected individuals” as defined in the Immigration and Naturalization Act, 8 USC 1324b(a)(3)?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"US citizen or national",
+"US permanent resident (i.e., \"green card holder\")",
+"Person admitted as a refugee to the US under 8 USC 1157",
+"Person admitted as an asylee to the US under 8 USC 1158",
+"None of the above"
+],
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:divergent:5475101008",
+"label": "Have you worked for the U.S. Department of Defense (DoD) within the past two (2) years in a role that may be subject to post-government employment restrictions (Sec. 847 30-day letter)? If you have not worked for the DoD in the past two (2) years, please select “No.” Otherwise, please review the information below before selecting your response.",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"hint": "A &ldquo;Yes&rdquo; response applies only if you meet one or more of the following: Left DoD service within two years, served as a General Officer or Flag Officer, and were personally and substantially* involved with acquisitions** valued in excess of $10 million. Left DoD service within two years, served in an Executive Schedule or Senior Executive Service (SES) position, and were personally and substantially* involved with acquisitions** valued in excess of $10 million. Left DoD service within",
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:purestorage:8325960",
+"label": "Have you previously worked for Everpure (formerly Pure Storage)?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"No",
+"Yes",
+"Current Contractor",
+"Former Contractor"
+],
+"main": {
+"answeredBy": "you",
+"topic": "employment_history"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:purestorage:8325960",
+"label": "Who is your current (or most recent) employer?",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:purestorage:8325960",
+"label": "What is your current (or most recent) title?",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:purestorage:8325960",
+"label": "How did you hear about this job?",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:purestorage:8325960",
+"label": "Personal Information Policy",
+"type": "multi_value_multi_select",
+"required": true,
+"options": [
+"Acknowledge/Confirm"
+],
+"hint": "Wonder how or why Pure collects or uses any information you provide? Check out our Applicant & Candidate Personal Information Protection Notice.",
+"main": {
+"answeredBy": "you",
+"topic": "start_date",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:purestorage:8325960",
+"label": "Does the deemed export rule affect your employment by Everpure ?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"hint": "US export law restricts Everpure from employing citizens of sanctioned nations (such as Syria, Cuba, Iran, and North Korea FULL LIST) who do not hold a second nationality or permanent residence in a non-sanctioned nation. Does this rule affect your employment by Everpure?",
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:purestorage:8325960",
+"label": "Are you authorized to work in the country you are applying to work in?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:purestorage:8325960",
+"label": "Will you now or in the future require sponsorship for employment visa status?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:purestorage:8325960",
+"label": "Location",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:spacex:8932877002",
+"label": "Preferred First Name",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:spacex:8932877002",
+"label": "Portfolio or Cover Letter",
+"type": "input_file",
+"required": false,
+"hint": "Attach additional content you'd like us to review with your application. Please combine multiple attachments into a single .zip file.",
+"main": {
+"answeredBy": "your_documents"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:spacex:8932877002",
+"label": "How did you hear about this job?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Campus - SpaceX event (indicate below)",
+"Careers site",
+"Event (indicate below)",
+"Friend or family (non-employee)",
+"Glassdoor",
+"I am a current SpaceX employee",
+"Indeed",
+"LinkedIn",
+"News/Media",
+"Other (indicate below)",
+"Referred by SpaceX employee (name below)",
+"Contacted by SpaceX recruiter (name below)",
+"X/Twitter"
+],
+"hint": "If event or other, please specify below.",
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:spacex:8932877002",
+"label": "Please specify",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:spacex:8932877002",
+"label": "GPA (Undergraduate)",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Not applicable/Do not recall",
+"4.0 out of 4.0",
+"3.9 out of 4.0",
+"3.8 out of 4.0",
+"3.7 out of 4.0",
+"3.6 out of 4.0",
+"3.5 out of 4.0",
+"3.4 out of 4.0",
+"3.3 out of 4.0",
+"3.2 out of 4.0",
+"3.1 out of 4.0",
+"3.0 out of 4.0",
+"Below 3.0 out of 4.0"
+],
+"hint": "Please convert your GPA to a 4.0 scale. Select \"Not applicable/Do not recall\" if you do not have or do not remember your undergraduate GPA.",
+"main": {
+"answeredBy": "you",
+"topic": "education_results"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:spacex:8932877002",
+"label": "GPA (Graduate)",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Other/Not Applicable",
+"4.0 out of 4.0",
+"3.9 out of 4.0",
+"3.8 out of 4.0",
+"3.7 out of 4.0",
+"3.6 out of 4.0",
+"3.5 out of 4.0",
+"3.4 out of 4.0",
+"3.3 out of 4.0",
+"3.2 out of 4.0",
+"3.1 out of 4.0",
+"3.0 out of 4.0",
+"Below 3.0 out of 4.0"
+],
+"hint": "Please convert your GPA to a 4.0 scale. Select \"Not applicable/Do not recall\" if you do not have or do not remember your graduate GPA.",
+"main": {
+"answeredBy": "you",
+"topic": "education_results"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:spacex:8932877002",
+"label": "GPA (Doctorate)",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Not applicable/Do not recall",
+"4.0 out of 4.0",
+"3.9 out of 4.0",
+"3.8 out of 4.0",
+"3.7 out of 4.0",
+"3.6 out of 4.0",
+"3.5 out of 4.0",
+"3.4 out of 4.0",
+"3.3 out of 4.0",
+"3.2 out of 4.0",
+"3.1 out of 4.0",
+"3.0 out of 4.0",
+"Below 3.0 out of 4.0"
+],
+"hint": "Please convert your GPA to a 4.0 scale. Select \"Not applicable/Do not recall\" if you do not have or do not remember your doctorate GPA.",
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:spacex:8932877002",
+"label": "SAT Score",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Did not take/Do not recall",
+"1600 out of 1600",
+"1590 out of 1600",
+"1580 out of 1600",
+"1570 out of 1600",
+"1560 out of 1600",
+"1550 out of 1600",
+"1540 out of 1600",
+"1530 out of 1600",
+"1520 out of 1600",
+"1510 out of 1600",
+"1500 out of 1600",
+"1490 out of 1600",
+"1480 out of 1600",
+"1470 out of 1600",
+"1460 out of 1600",
+"1450 out of 1600",
+"1440 out of 1600",
+"1430 out of 1600",
+"1420 out of 1600",
+"1410 out of 1600",
+"1400 out of 1600",
+"1390 out of 1600",
+"1380 out of 1600",
+"1370 out of 1600",
+"1360 out of 1600",
+"1350 out of 1600",
+"1340 out of 1600",
+"1330 out of 1600",
+"1320 out of 1600",
+"1310 out of 1600",
+"1300 out of 1600",
+"1290 out of 1600",
+"1280 out of 1600",
+"1270 out of 1600",
+"1260 out of 1600",
+"1250 out of 1600",
+"1240 out of 1600",
+"1230 out of 1600",
+"1220 out of 1600",
+"1210 out of 1600",
+"1200 out of 1600",
+"1190 out of 1600",
+"1180 out of 1600",
+"1170 out of 1600",
+"1160 out of 1600",
+"1150 out of 1600",
+"1140 out of 1600",
+"1130 out of 1600",
+"1120 out of 1600",
+"1110 out of 1600",
+"1100 out of 1600",
+"1090 out of 1600",
+"1080 out of 1600",
+"1070 out of 1600",
+"1060 out of 1600",
+"1050 out of 1600",
+"1040 out of 1600",
+"1030 out of 1600",
+"1020 out of 1600",
+"1010 out of 1600",
+"1000 out of 1600",
+"Below 1000 out of 1600",
+"-------------------",
+"2400 out of 2400",
+"2390 out of 2400",
+"2380 out of 2400",
+"2370 out of 2400",
+"2360 out of 2400",
+"2350 out of 2400",
+"2340 out of 2400",
+"2330 out of 2400",
+"2320 out of 2400",
+"2310 out of 2400",
+"2300 out of 2400",
+"2290 out of 2400",
+"2280 out of 2400",
+"2270 out of 2400",
+"2260 out of 2400",
+"2250 out of 2400",
+"2240 out of 2400",
+"2230 out of 2400",
+"2220 out of 2400",
+"2210 out of 2400",
+"2200 out of 2400",
+"2190 out of 2400",
+"2180 out of 2400",
+"2170 out of 2400",
+"2160 out of 2400",
+"2150 out of 2400",
+"2140 out of 2400",
+"2130 out of 2400",
+"2120 out of 2400",
+"2110 out of 2400",
+"2100 out of 2400",
+"2090 out of 2400",
+"2080 out of 2400",
+"2070 out of 2400",
+"2060 out of 2400",
+"2050 out of 2400"
+],
+"hint": "Please indicate your test score on the 1600 or 2400 scale. Select \"Did not take\" if you have not taken the SAT.",
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:spacex:8932877002",
+"label": "ACT Score",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Did not take/Do not recall",
+"36 out of 36",
+"35 out of 36",
+"34 out of 36",
+"33 out of 36",
+"32 out of 36",
+"31 out of 36",
+"30 out of 36",
+"29 out of 36",
+"28 out of 36",
+"27 out of 36",
+"26 out of 36",
+"25 out of 36",
+"24 out of 36",
+"23 out of 36",
+"22 out of 36",
+"21 out of 36",
+"20 out of 36",
+"Below 20 out of 36"
+],
+"hint": "Select \"Did not take\" if you have not taken the ACT.",
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:spacex:8932877002",
+"label": "GRE Score",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Did not take/Do not recall",
+"Other - did not take",
+"340 out of 340",
+"339 out of 340",
+"338 out of 340",
+"337 out of 340",
+"336 out of 340",
+"335 out of 340",
+"334 out of 340",
+"333 out of 340",
+"332 out of 340",
+"331 out of 340",
+"330 out of 340",
+"329 out of 340",
+"328 out of 340",
+"327 out of 340",
+"326 out of 340",
+"325 out of 340",
+"324 out of 340",
+"323 out of 340",
+"322 out of 340",
+"321 out of 340",
+"320 out of 340",
+"319 out of 340",
+"318 out of 340",
+"317 out of 340",
+"316 out of 340",
+"315 out of 340",
+"314 out of 340",
+"313 out of 340",
+"312 out of 340",
+"311 out of 340",
+"310 out of 340",
+"309 out of 340",
+"308 out of 340",
+"307 out of 340",
+"306 out of 340",
+"305 out of 340",
+"304 out of 340",
+"303 out of 340",
+"302 out of 340",
+"301 out of 340",
+"300 out of 340",
+"299 out of 340",
+"298 out of 340",
+"297 out of 340",
+"296 out of 340",
+"295 out of 340",
+"294 out of 340",
+"293 out of 340",
+"292 out of 340",
+"291 out of 340",
+"290 out of 340",
+"289 out of 340",
+"288 out of 340",
+"287 out of 340",
+"286 out of 340",
+"285 out of 340",
+"284 out of 340",
+"283 out of 340",
+"282 out of 340",
+"281 out of 340",
+"280 out of 340",
+"279 out of 340",
+"278 out of 340",
+"277 out of 340",
+"276 out of 340",
+"275 out of 340",
+"274 out of 340",
+"273 out of 340",
+"272 out of 340",
+"271 out of 340",
+"270 out of 340",
+"269 out of 340",
+"268 out of 340",
+"267 out of 340",
+"266 out of 340",
+"265 out of 340",
+"264 out of 340",
+"263 out of 340",
+"262 out of 340",
+"261 out of 340",
+"260 out of 340",
+"259 out of 340",
+"258 out of 340",
+"257 out of 340",
+"256 out of 340",
+"255 out of 340",
+"254 out of 340",
+"253 out of 340",
+"252 out of 340",
+"251 out of 340",
+"250 out of 340",
+"Below 250 out of 340",
+"-----------------",
+"1600 out of 1600",
+"1590 out of 1600",
+"1580 out of 1600",
+"1570 out of 1600",
+"1560 out of 1600"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:spacex:8932877002",
+"label": "Active Security Clearance(s)",
+"type": "multi_value_multi_select",
+"required": true,
+"options": [
+"Top Secret SCI with Polygraph",
+"Top Secret SCI/SAP",
+"Top Secret",
+"DOE Level Q",
+"Secret",
+"Expired Clearance",
+"Never held a clearance",
+"Do not wish to disclose"
+],
+"main": {
+"answeredBy": "you",
+"topic": "background_check"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:spacex:8932877002",
+"label": "SpaceX & SpaceXAI Employment History",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"I have never worked for SpaceX, SpaceXAI, xAI, X, or Twitter",
+"I am a former SpaceX, SpaceXAI, xAI, X, or Twitter employee",
+"I am a current or former SpaceX, SpaceXAI, xAI, X, or Twitter Intern",
+"I am a current SpaceX employee",
+"I am a current SpaceXAI employee",
+"I am currently working or have worked at a SpaceX, SpaceXAI, xAI, X, or Twitter facility for another employer (i.e. contracted by a third-party employer)"
+],
+"hint": "This includes internships and full-time employment.",
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:spacex:8932877002",
+"label": "Can you perform all of the essential functions of this role with or without reasonable accommodations?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "health"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:spacex:8932877002",
+"label": "Are you legally authorized to work in the United States?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"I am authorized to work in the United States for any employer",
+"I am authorized to work in the United States for my present employer only",
+"I require sponsorship to work in the United States",
+"I am not authorized to work in the United States",
+"My status to work in the United States is unknown"
+],
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:spacex:8932877002",
+"label": "Citizenship Status",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"(a) U.S. citizen or national of the United States",
+"(b) U.S. lawful permanent resident",
+"(c) Refugee under 8 U.S.C. 1157",
+"(d) Asylee under 8 U.S.C. 1158",
+"(e) Authorized to work in the United States under the Deferred Action for Childhood Arrivals (DACA) program",
+"(f) Other (please explain)"
+],
+"hint": "To conform to U.S. Government space technology export regulations, including the International Traffic in Arms Regulations (ITAR) you must be a U.S. citizen, lawful permanent resident of the U.S., protected individual as defined by 8 U.S.C. 1324b(a)(3), or eligible to obtain the required authorizations from the U.S. Department of State. Learn more about ITAR here.",
+"main": {
+"answeredBy": "you",
+"voluntary": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:spacex:8932877002",
+"label": "If (f) Other, please explain:",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:horacemannagents:6252130004",
+"label": "Have you ever been affiliated with Horace Mann or Horace Mann Investors, Inc.?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:horacemannagents:6252130004",
+"label": "Have you ever been employed, appointed or affiliated with BCG Securities?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:horacemannagents:6252130004",
+"label": "Have you ever been employed, appointed or affiliated with National Teachers Associates (NTA) Life Insurance Company?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:horacemannagents:6252130004",
+"label": "Which Insurance/Financial Licenses do you currently hold?",
+"type": "multi_value_multi_select",
+"required": true,
+"options": [
+"None",
+"Life",
+"Health",
+"Property & Casualty",
+"Variable",
+"Series 6",
+"Series 7",
+"Series 63",
+"Series 65",
+"Series 66",
+"Series 24"
+],
+"main": {
+"answeredBy": "you",
+"topic": "licence"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:nuro:8360671",
+"label": "Are you authorized to work in the country in which you are applying?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:nuro:8360671",
+"label": "Do you now, or will you in the future, require sponsorship for employment in the country which you are applying?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:nuro:8360671",
+"label": "This position is hybrid and requires 4 days a week in office, including Thursdays in our Mountain View, CA headquarters and the remaining 3 days in either Mountain View or our San Francisco, CA office. Are you able to meet this requirement?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "on_site"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:septerna:5476274008",
+"label": "Preferred Name",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:septerna:5476274008",
+"label": "What are your pronouns?",
+"type": "textarea",
+"required": false,
+"main": {
+"answeredBy": "you",
+"voluntary": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:septerna:5476274008",
+"label": "What is your Salary Expectation for this role?",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:gitlab:8928552002",
+"label": "What's the name you'd prefer us to use throughout the interview process?",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:gitlab:8928552002",
+"label": "Please choose the country in which you are located.",
+"type": "multi_value_single_select",
+"required": false,
+"options": [
+"Afghanistan",
+"Albania",
+"Algeria",
+"Andorra",
+"Angola",
+"Antigua and Barbuda",
+"Argentina",
+"Armenia",
+"Australia",
+"Austria",
+"Azerbaijan",
+"Bahamas",
+"Bahrain",
+"Bangladesh",
+"Barbados",
+"Belarus",
+"Belgium",
+"Belize",
+"Benin",
+"Bhutan",
+"Bolivia",
+"Bosnia and Herzegovina",
+"Botswana",
+"Brazil",
+"Brunei",
+"Bulgaria",
+"Burkina Faso",
+"Burundi",
+"Cabo Verde",
+"Cambodia",
+"Cameroon",
+"Canada",
+"Central African Republic",
+"Chad",
+"Chile",
+"China",
+"Colombia",
+"Comoros",
+"Crimea",
+"Democratic Republic of the Congo",
+"Republic of the Congo",
+"Costa Rica",
+"Cote d'Ivoire",
+"Croatia",
+"Cuba",
+"Cyprus",
+"Czech Republic",
+"Denmark",
+"Djibouti",
+"Dominica",
+"Dominican Republic",
+"Ecuador",
+"Egypt",
+"El Salvador",
+"Equatorial Guinea",
+"Eritrea",
+"Estonia",
+"Eswatini",
+"Ethiopia",
+"Fiji",
+"Finland",
+"France",
+"Gabon",
+"Gambia",
+"Georgia",
+"Germany",
+"Ghana",
+"Greece",
+"Grenada",
+"Guatemala",
+"Guinea",
+"Guinea-Bissau",
+"Guyana",
+"Haiti",
+"Honduras",
+"Hungary",
+"Iceland",
+"India",
+"Indonesia",
+"Iran",
+"Iraq",
+"Ireland",
+"Israel",
+"Italy",
+"Jamaica",
+"Japan",
+"Jordan",
+"Kazakhstan",
+"Kenya",
+"Kiribati",
+"Kosovo",
+"Kuwait",
+"Kyrgyzstan",
+"Laos",
+"Latvia",
+"Lebanon",
+"Lesotho",
+"Liberia",
+"Libya",
+"Liechtenstein"
+],
+"main": {
+"answeredBy": "you",
+"topic": "location"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:gitlab:8928552002",
+"label": "Are you subject to any employment agreements and/or post-employment restrictions with your current employer or a past employer?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:gitlab:8928552002",
+"label": "It is important to us to create an accessible and inclusive interview experience. Please let us know if there are any adjustments we can make to assist you during the hiring and interview process.",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"topic": "other"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:gitlab:8928552002",
+"label": "Will you now or in the future require sponsorship for a visa to remain in your current location?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"No",
+"Yes, Netherlands Highly Skilled Migrant Visa",
+"Yes, Ireland Highly Skilled Worker Visa",
+"Yes, EU Blue Card",
+"Yes, USMCA Professional (TN) Visa (USA)",
+"Yes, F-1 Visa OPT (USA)",
+"Yes, but not one of the visas listed here"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:gitlab:8928552002",
+"label": "Have you previously worked at or consulted for GitLab?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "employment_history"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:gitlab:8928552002",
+"label": "What is your current country of residence?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Afghanistan",
+"Albania",
+"Algeria",
+"Andorra",
+"Angola",
+"Antigua and Barbuda",
+"Argentina",
+"Armenia",
+"Australia",
+"Austria",
+"Azerbaijan",
+"Bahamas",
+"Bahrain",
+"Bangladesh",
+"Barbados",
+"Belarus",
+"Belgium",
+"Belize",
+"Benin",
+"Bhutan",
+"Bolivia",
+"Bosnia and Herzegovina",
+"Botswana",
+"Brazil",
+"Brunei",
+"Bulgaria",
+"Burkina Faso",
+"Burundi",
+"Cabo Verde",
+"Cambodia",
+"Cameroon",
+"Canada",
+"Central African Republic",
+"Chad",
+"Chile",
+"China",
+"Colombia",
+"Comoros",
+"Crimea",
+"Democratic Republic of the Congo",
+"Republic of the Congo",
+"Costa Rica",
+"Cote d'Ivoire",
+"Croatia",
+"Cuba",
+"Cyprus",
+"Czech Republic",
+"Denmark",
+"Djibouti",
+"Dominica",
+"Dominican Republic",
+"Ecuador",
+"Egypt",
+"El Salvador",
+"Equatorial Guinea",
+"Eritrea",
+"Estonia",
+"Eswatini",
+"Ethiopia",
+"Fiji",
+"Finland",
+"France",
+"Gabon",
+"Gambia",
+"Georgia",
+"Germany",
+"Ghana",
+"Greece",
+"Grenada",
+"Guatemala",
+"Guinea",
+"Guinea-Bissau",
+"Guyana",
+"Haiti",
+"Honduras",
+"Hungary",
+"Iceland",
+"India",
+"Indonesia",
+"Iran",
+"Iraq",
+"Ireland",
+"Israel",
+"Italy",
+"Jamaica",
+"Japan",
+"Jordan",
+"Kazakhstan",
+"Kenya",
+"Kiribati",
+"Kosovo",
+"Kuwait",
+"Kyrgyzstan",
+"Laos",
+"Latvia",
+"Lebanon",
+"Lesotho",
+"Liberia",
+"Libya",
+"Liechtenstein"
+],
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:gitlab:8928552002",
+"label": "Where are you currently located?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Pacific time zone (for example CA, OR, WA, NV)",
+"Mountain time zone (for example AZ, CO, UT, ID, MT, NM, WY)",
+"Central time zone",
+"Eastern time zone",
+"Outside the United States"
+],
+"main": {
+"answeredBy": "you",
+"topic": "location"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:gitlab:8928552002",
+"label": "Are you currently based in the United States?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "location"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:gitlab:8928552002",
+"label": "What best describes the company where you most recently supported executives?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Software, SaaS, or other technology company",
+"Financial services or fintech",
+"Another industry"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:gitlab:8928552002",
+"label": "Which of these tools and processes have you used regularly in the last three years? Select all that apply.",
+"type": "multi_value_multi_select",
+"required": true,
+"options": [
+"Google Workspace",
+"Zoom",
+"Slack",
+"Navan",
+"Another travel and expense system (for example Concur or Expensify)",
+"Purchase order processes",
+"None of these"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:gitlab:8928552002",
+"label": "Which of these have you owned end to end? Select all that apply.",
+"type": "multi_value_multi_select",
+"required": true,
+"options": [
+"Calendar management across multiple time zones",
+"International travel, including visas",
+"Expense reporting and reconciliation for an executive",
+"Planning an off-site or large meeting",
+"Supporting three or more leaders at the same time",
+"Supporting a finance team or an Office of the CFO",
+"None of these"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:gitlab:8928552002",
+"label": "This role is classified as non-exempt (hourly), which means you track your hours and your manager approves your timesheet. Are you comfortable with that?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:gitlab:8928552002",
+"label": "How have you used AI to save time in your executive support work, and how do you protect confidential information when you do?",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:bitgo:8934163002",
+"label": "Website or Portfolio",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:bitgo:8934163002",
+"label": "This role is onsite (Monday - Friday) in our NYC office. Are you willing to work onsite from 40 Wall Street in NY, NY full time?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "on_site"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:bitgo:8934163002",
+"label": "Please describe your depth and breadth with respect to designing mobile apps. (Bullet points encouraged.)",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:elastic:8346174",
+"label": "Professional Profile (LinkedIn, Github, Website, etc)",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:elastic:8346174",
+"label": "Will you require Elastic's sponsorship to continue or extend your work authorization status?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:elastic:8346174",
+"label": "In what countries do you have the unrestricted right to work?",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:elastic:8346174",
+"label": "Gender Pronouns (She/Her/Hers, He/Him/His, They/Them/Theirs, etc.)",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"voluntary": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:elastic:8346174",
+"label": "By selecting 'I acknowledge' and submitting this application, you confirm that you have read Elastic's Candidate Privacy Statement and understand how your data will be processed to evaluate your candidacy. In jurisdictions where consent is legally required, your submission constitutes express consent to the processing of your personal data for recruitment purposes.",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"I acknowledge"
+],
+"hint": "Candidate Privacy Statement",
+"main": {
+"answeredBy": "you"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:elastic:8346174",
+"label": "How should we communicate with you?",
+"type": "multi_value_multi_select",
+"required": true,
+"options": [
+"Email",
+"Phone Call",
+"Text Message",
+"WhatsApp"
+],
+"hint": "Select all that apply.",
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:phdata:8128194",
+"label": "What is your current location?",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:phdata:8128194",
+"label": "What is your current compensation?",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:phdata:8128194",
+"label": "What is your expectation for the compensation?",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:phdata:8128194",
+"label": "What is your notice period?",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "start_date"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:effectiveschoolsolutions:4752420005",
+"label": "Do you have a valid Bachelor's Degree in psychology or a related field?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:effectiveschoolsolutions:4752420005",
+"label": "How many years of experience do you have working with children and adolescents, and in what settings?",
+"type": "textarea",
+"required": true,
+"main": {
+"answeredBy": "draft_from_your_cv"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:effectiveschoolsolutions:4752420005",
+"label": "Effective School Solutions uses text messaging to help move you through the interview process quickly. We text to share application updates, schedule interviews, and be more available to support you during the process. Select YES, if we can text you. You can opt-out at any time by replying STOP.",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:northwestadministratorsinc:8933719002",
+"label": "Do you have experience in medical claims processing? If yes, please elaborate.",
+"type": "textarea",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:northwestadministratorsinc:8933719002",
+"label": "Do you have experience with the appeals process for medical/dental claims? If yes, please elaborate.",
+"type": "textarea",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:northwestadministratorsinc:8933719002",
+"label": "How did you hear about this position?",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:northwestadministratorsinc:8933719002",
+"label": "Do you have any relatives currently employed at NWA? (If yes, please provide the employee's name and your relation below).",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "relations"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:northwestadministratorsinc:8933719002",
+"label": "NWA employee's name:",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:northwestadministratorsinc:8933719002",
+"label": "Your relationship to the NWA employee:",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:northwestadministratorsinc:8933719002",
+"label": "Are you able to work a hybrid schedule with 3 days per week in either the Seattle, Mountlake Terrace or Federal Way office?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "on_site"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:anthropic:5474559008",
+"label": "(Optional) Personal Preferences",
+"type": "input_text",
+"required": false,
+"hint": "How do you pronounce your name?",
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:anthropic:5474559008",
+"label": "Are you open to working in-person in one of our offices 25% of the time?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:anthropic:5474559008",
+"label": "When is the earliest you would want to start working with us?",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"topic": "start_date"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:anthropic:5474559008",
+"label": "Do you have any deadlines or timeline considerations we should be aware of?",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:anthropic:5474559008",
+"label": "AI Policy for Application",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"hint": "We believe that AI will have a transformative impact on the world, and we're seeking exceptional candidates who collaborate thoughtfully with Claude to realize this vision. At the same time, we want to understand your unique skills, expertise, and perspective through our hiring process. We invite you to review our AI partnership guidelines for candidates and confirm your understanding by selecting &ldquo;Yes.&rdquo;",
+"main": {
+"answeredBy": "you",
+"topic": "salary",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:anthropic:5474559008",
+"label": "Why Anthropic?",
+"type": "textarea",
+"required": true,
+"hint": "Why do you want to work at Anthropic? (We value this response highly - great answers are often 200-400 words.)",
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:anthropic:5474559008",
+"label": "Do you require visa sponsorship?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:anthropic:5474559008",
+"label": "Will you now or will you in the future require employment visa sponsorship to work in the country in which the job you're applying for is located?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:anthropic:5474559008",
+"label": "Additional Information",
+"type": "textarea",
+"required": false,
+"hint": "Add a cover letter or anything else you want to share.",
+"main": {
+"answeredBy": "draft_from_your_cv"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:anthropic:5474559008",
+"label": "LinkedIn Profile",
+"type": "input_text",
+"required": false,
+"hint": "Please ensure to provide either your LinkedIn profile or Resume, we require at least one of the two.",
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:anthropic:5474559008",
+"label": "Are you open to relocation for this role?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "relocation"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:anthropic:5474559008",
+"label": "What is the address from which you plan on working? If you would need to relocate, please type \"relocating\".",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"topic": "relocation"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:anthropic:5474559008",
+"label": "Have you ever interviewed at Anthropic before?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:anthropic:5474559008",
+"label": "Please read the arbitration agreement below",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"I will read the arbitration agreement below."
+],
+"hint": "Agreement to Arbitrate I understand and agree that both Anthropic and I waive our respective rights to trial by jury in connection with any claims covered by this agreement to arbitrate. Instead, any disputes arising out of or related to my application for employment with Anthropic shall be settled by final and binding arbitration pursuant to the Federal Arbitration Act. I understand and agree that Anthropic's employees/agents, Anthropic's clients, and their employees/agents are third-party bene",
+"main": {
+"answeredBy": "you"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:anthropic:5474559008",
+"label": "Agreement to Arbitrate",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"I understand and agree to the terms of the Agreement to Arbitrate set forth above."
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:neweratech:8934021002",
+"label": "Are you legally authorized to work in the United States?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:neweratech:8934021002",
+"label": "Will you now or in the future require sponsorship for employment visa status (e.g., H-1B, TN, OPT/STEM extension)?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:neweratech:8934021002",
+"label": "You must reside in the Continental United States. What time zone do you reside in?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Eastern Time Zone",
+"Central Time Zone",
+"Mountain Time Zone",
+"Pacific Time Zone",
+"None of the above"
+],
+"main": {
+"answeredBy": "you",
+"topic": "location"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:neweratech:8934021002",
+"label": "How many years of experience do you have Managed Services, IT Services, Technical Sales, Services Consulting, Customer Success or Service Delivery Leadership?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"No experience",
+"1- 4 years of experience",
+"5-9 years of experience",
+"10+ years of experience"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:neweratech:8934021002",
+"label": "This role does require domestic travel to client locations, industry and corporate events. The travel expectation is 20 - 25% travel. Does this work for you?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:neweratech:8934021002",
+"label": "This is a sales role that comes with a base pay plus commissions. The expected OTE for this role is $300,000 - $350,000. Does this work for you?",
+"type": "multi_value_single_select",
+"required": false,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:vast:4728063006",
+"label": "ITAR Compliance",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"U.S. person. This ITAR/EAR status includes U.S. citizens, U.S. nationals, lawful permanent residents (green card holders), and asylees and refugees with such status granted, not pending.",
+"Foreign person. This ITAR/EAR status includes anyone who is not a U.S. person (see above)."
+],
+"hint": "The person hired will have access to information and items subject to U.S. export controls, and therefore, must either be a &ldquo;U.S. person&rdquo; as defined by 22 C.F.R. &sect; 120.62 or otherwise be considered for deemed export licensing. To assist Vast in assessing its export compliance obligations in relation to your application, please identify which ITAR/EAR status applies to you:",
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:vast:4728063006",
+"label": "Are you currently working at Vast as a contractor?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:vast:4728063006",
+"label": "Have you ever been employed by Vast?",
+"type": "multi_value_single_select",
+"required": false,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "employment_history"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:vast:4728063006",
+"label": "How did you hear about Vast?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Vast Careers Page",
+"LinkedIn",
+"Indeed",
+"Via Job Search",
+"Friend/know someone at the company",
+"Vast Alumni Network",
+"University Career Fairs",
+"Industry Event or Conference",
+"News Coverage of Vast",
+"Social Media",
+"Other"
+],
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:vast:4728063006",
+"label": "If other, please specify",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:nerostechnologies:5287919007",
+"label": "Website/Portfolio",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:nerostechnologies:5287919007",
+"label": "What is your timeline for starting a new role?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Immediately",
+"Approx. 2 weeks",
+"More than one month",
+"Flexible, will discuss on a call"
+],
+"main": {
+"answeredBy": "you",
+"topic": "other"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:nerostechnologies:5287919007",
+"label": "Are you currently located in Torrance or willing to relocate/commute?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "relocation"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:nerostechnologies:5287919007",
+"label": "Export Compliance: The person hired will have access to information and items controlled by the International Traffic in Arms Regulation (ITAR), and, therefore, must be a \"U.S. Person\" or otherwise eligible to receive an export license. As defined in the ITAR, a “U.S. Person” includes U.S. citizens, noncitizen U.S. nationals, lawful permanent residents (i.e., Green Card holders), and certain other classes of individuals (e.g., asylees/refugees). Please consult with a knowledgeable advisor if you",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"I am currently a \"U.S. Person\"",
+"I will soon become a \"U.S. Person\" (requires explanation if selected)",
+"I am not a \"U.S. Person,\" but I am eligible for licensing (requires explanation if selected)"
+],
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:nerostechnologies:5287919007",
+"label": "What are your base salary expectations? Please keep in mind Neros Technologies offers a total compensation package of a base annual salary and equity stock options",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:nerostechnologies:5287919007",
+"label": "Any additional information you would like to share:",
+"type": "textarea",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:nerostechnologies:5287919007",
+"label": "How did you hear about Neros?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"LinkedIn",
+"Other Job Board",
+"Search Engine",
+"Social Media",
+"Referral",
+"News/Media Outlet",
+"Recruiter Outreach",
+"Event"
+],
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:terrapowerllc:4485484009",
+"label": "Available for:",
+"type": "multi_value_multi_select",
+"required": true,
+"options": [
+"Full Time",
+"Part Time",
+"Temporary",
+"Seasonal",
+"Summer",
+"Intern"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:terrapowerllc:4485484009",
+"label": "Until such time as current restrictions are adjusted, TerraPower may be unable to hire applicants whose status is other than one of the five status options listed. Please advise your current status.",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"US Citizen",
+"US National",
+"Asylee",
+"Refugee",
+"Lawful Permanent Resident",
+"None of the Above"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:terrapowerllc:4485484009",
+"label": "Have you ever been denied access to a Nuclear Power Facility?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:terrapowerllc:4485484009",
+"label": "Do you now have, or have you ever had, NRC enforcement action, or pending enforcement action, against you?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:terrapowerllc:4485484009",
+"label": "What is your availability to start a new position?",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "start_date"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:terrapowerllc:4485484009",
+"label": "Please list your current city and state of residence",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:terrapowerllc:4485484009",
+"label": "Are you willing to move or commute to the location required for this position?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "commute"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:terrapowerllc:4485484009",
+"label": "Are you physically able to perform the functions of the job for which you are applying?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"Yes, with accommodations",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "health"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:terrapowerllc:4485484009",
+"label": "What is your base salary requirement?",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:terrapowerllc:4485484009",
+"label": "What is your total compensation requirement (base + bonus/incentives)?",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:terrapowerllc:4485484009",
+"label": "Where did you initially hear about this position?",
+"type": "multi_value_single_select",
+"required": false,
+"options": [
+"TerraPower Careers Page",
+"Indeed",
+"LinkedIn",
+"Glassdoor",
+"Employee Referral",
+"Recruiter Outreach",
+"Job Fair / Hiring Event",
+"University Career Center",
+"Staffing Agency",
+"Industry Job Board",
+"Other"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:terrapowerllc:4485484009",
+"label": "As part of our interview process, documentation (including proof of citizenship and NDA signature) will be required as a condition of employment for any and/or all of the above questions answered.",
+"type": "multi_value_multi_select",
+"required": true,
+"options": [
+"I acknowledge"
+],
+"main": {
+"answeredBy": "you",
+"voluntary": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:terrapowerllc:4485484009",
+"label": "Do you have hands-on GMP experience performing Environmental Monitoring (EM) in classified cleanrooms (Grade A/B/C/D)? If \"Yes\", describe the EM activities you performed (e.g., active air sampling, passive plates, contact plates, personnel monitoring, compressed gas sampling), and your responsibilities for EM data review or trend analysis.",
+"type": "textarea",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:terrapowerllc:4485484009",
+"label": "Have you performed core microbiological product quality testing such as sterility, bioburden, endotoxin, and growth promotion? List the specific assays you have executed, the methods/instruments used (e.g., isolators, LAL systems, automated methods), and your level of independence (executed, reviewed, or qualified the method).",
+"type": "textarea",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:terrapowerllc:4485484009",
+"label": "Have you supported microbiology method qualification or validation (e.g., sterility method suitability, bioburden validation, EM method qualification)? Describe your role in any microbiology-related method qualifications or equipment validations, including the documentation you authored or reviewed.",
+"type": "textarea",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:terrapowerllc:4485484009",
+"label": "Have you supported or contributed to contamination control programs (e.g., EM program management, risk assessments, aseptic support, CCS elements)? Describe your direct responsibilities related to contamination control or aseptic operations",
+"type": "textarea",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:terrapowerllc:4485484009",
+"label": "Are you currently under any Right to Represent agreements with a Staffing Agency?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No",
+"Current TerraPower Contractor"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:quantumspacellc:4485466009",
+"label": "Are you currently living in the United States?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "other"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:quantumspacellc:4485466009",
+"label": "What is your street address?",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:quantumspacellc:4485466009",
+"label": "What is your City, State and Zip Code?",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:quantumspacellc:4485466009",
+"label": "This position requires working on-site at our Tulsa, OK office. Are you currently located near the office, or would you be willing to relocate?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "relocation"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:quantumspacellc:4485466009",
+"label": "For the sole purpose of determining eligibility to access export-controlled information and technology under U.S. export control laws, which of the following best describes your status?",
+"type": "multi_value_single_select",
+"required": false,
+"options": [
+"U.S. citizen or national of the United States",
+"U.S. lawful permanent resident",
+"Refugee under 8 U.S.C. 1157",
+"Asylee under 8 U.S.C. 1158",
+"Authorized to work in the United States under the Deferred Action For Childhood Arrivals (DACA Program)",
+"Other (please explain)"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:quantumspacellc:4485466009",
+"label": "Desired Pay",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:quantumspacellc:4485466009",
+"label": "Please select your current security clearance status:",
+"type": "multi_value_multi_select",
+"required": true,
+"options": [
+"Top Secret SCI with Polygraph",
+"Top Secret SCI",
+"Top Secret",
+"Secret",
+"Confidential",
+"Other",
+"Expired Clearance",
+"Not Applicable"
+],
+"main": {
+"answeredBy": "you",
+"topic": "background_check"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:quantumspacellc:4485466009",
+"label": "By selecting YES, I consent to receive recruiting SMS messages from PerfectServe at the phone number provided on my job application.",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:quantumspacellc:4485466009",
+"label": "Were you referred by a Quantum Space employee? If so, please provide their full name. If not, enter \"N/A.\"",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:snapmobileinc:4728075006",
+"label": "LinkedIn Profile",
+"type": "textarea",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:snapmobileinc:4728075006",
+"label": "Do you currently live within 25 miles of the location to which you are applying?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "other"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:snapmobileinc:4728075006",
+"label": "This role requires driving as part of the core job responsibilities. Are there any factors, such as those related to your driver’s license, motor vehicle record, or insurance that could prevent you from fulfilling this requirement?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "licence"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:snapmobileinc:4728075006",
+"label": "How did you hear about Snap! Mobile?",
+"type": "textarea",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:snapmobileinc:4728075006",
+"label": "Are you eligible to work in the United States indefinitely without any visa sponsorship?* Mark No: Candidates on F1, OPT, or H1 visas that will require sponsorship now or in the future.",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:snapmobileinc:4728075006",
+"label": "Street Address",
+"type": "textarea",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:snapmobileinc:4728075006",
+"label": "City",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:snapmobileinc:4728075006",
+"label": "State",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:snapmobileinc:4728075006",
+"label": "Zip Code",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:snapmobileinc:4728075006",
+"label": "Is there anything else you would like to share regarding your candidacy for this position?",
+"type": "textarea",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:xai:5288061007",
+"label": "Full Legal Name",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:xai:5288061007",
+"label": "Full Legal Name in Native Language (e.g. Chinese Characters, Cyrillic, Farsi etc)",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:xai:5288061007",
+"label": "Current Company",
+"type": "input_text",
+"required": false,
+"hint": "If you are currently employed in the field, please tell us the name of your employer.",
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:xai:5288061007",
+"label": "Current title",
+"type": "input_text",
+"required": false,
+"hint": "If you are currently employed in the field, please tell us your role including your seniority level (e.g. Software Engineer II).",
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:xai:5288061007",
+"label": "LinkedIn Profile",
+"type": "input_text",
+"required": false,
+"hint": "If you have a public LinkedIn profile, please provide its URL.",
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:xai:5288061007",
+"label": "GitHub Profile",
+"type": "input_text",
+"required": false,
+"hint": "If you have a public GitHub profile, please provide its URL.",
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:xai:5288061007",
+"label": "Github",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:xai:5288061007",
+"label": "X Profile",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:xai:5288061007",
+"label": "Your Location",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:xai:5288061007",
+"label": "Please select if you are a (i) U.S. citizen or national, (ii) U.S. lawful, permanent resident (aka green card holder), (iii) Refugee under 8 U.S.C. § 1157, or (iv) Asylee under 8 U.S.C. § 1158, or (v) eligible to obtain the required authorizations from the U.S. Department of State.",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"U.S. citizen or national",
+"U.S. lawful, permanent resident (aka green card holder),",
+"Refugee under 8 U.S.C. § 1157",
+"Asylee under 8 U.S.C. § 1158",
+"Eligible to obtain the required authorizations from the U.S. Department of State",
+"None of the above"
+],
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:xai:5288061007",
+"label": "If working in the US, will you now, or in the future, require sponsorship for employment visa status (e.g., H-1B visa) to legally work in the US?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:xai:5288061007",
+"label": "Please indicate your SpaceXSI employment history.",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"I have never worked for SpaceXSI, SpaceX, SpaceXAI, xAI, X, or Twitter",
+"I am a current or former SpaceXSI, SpaceX, SpaceXAI, xAI, X, or Twitter Intern",
+"I am a current SpaceX employee",
+"I am a current SpaceXAI employee",
+"I am a current SpaceXSI employee",
+"I am a former SpaceXSI, SpaceX, SpaceXAI, xAI, X, or Twitter employee",
+"I am currently working or have worked at a SpaceXSI, SpaceX, SpaceXAI, xAI, X, or Twitter facility for another employer (i.e. contracted by a third-party employer)"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:xai:5288061007",
+"label": "What exceptional work have you done?",
+"type": "textarea",
+"required": true,
+"hint": "In 100 words or less, tell us about a piece of work you are most proud of.",
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:xai:5288061007",
+"label": "How did you hear about us?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Company careers page / website",
+"LinkedIn",
+"Indeed",
+"Glassdoor",
+"Google search (or other search engine)",
+"Employee referral",
+"Friend, family, or personal network",
+"Recruiter or staffing agency",
+"X (Twitter)",
+"Other social media",
+"University / school (career services, professor, Handshake, etc.)",
+"Job fair, conference, or event",
+"Previously employed with the company",
+"Other"
+],
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:xai:5288061007",
+"label": "Are you located in the US?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "location"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:xai:5288061007",
+"label": "If you are not currently residing near one of our office locations, are you willing to relocate to support full-time on-site work (5 days per week) in our office?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No",
+"I currently live near an office location"
+],
+"main": {
+"answeredBy": "you",
+"topic": "relocation"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:capco:8266697",
+"label": "How Many Years of Experience you have in Project Management?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"0-6 Years",
+"6-7 Years",
+"7-8 Years",
+"8-9 Years",
+"9-10 Years",
+"10-13 Years",
+"13 Years and Above"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:capco:8266697",
+"label": "How many years of experience you have in Banking/Financial Services Domain?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"No/Limited Experience",
+"Less than 3 Years",
+"3 to 5 Years",
+"5 to 6 Years",
+"6 to 8 Years",
+"Above 8 Years"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:capco:8266697",
+"label": "What is your total years of experience",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"0-6 Years",
+"6-8 Years",
+"8-10 Years",
+"10-12 Years",
+"12-14 Years",
+"Over 14 Years"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:capco:8266697",
+"label": "How Many years of exp you have in Global Banking?",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:capco:8266697",
+"label": "What is your Current CTC in LPA ?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Less than 20 LPA",
+"20 - 25 LPA",
+"25-30 LPA",
+"30-32 LPA",
+"33-40 LPA",
+"40 LPA +"
+],
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:capco:8266697",
+"label": "What is your Expected CTC in LPA ?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Less than 20 LPA",
+"20 - 25 LPA",
+"25-28 LPA",
+"28-30 LPA",
+"30-32 LPA (Negotiable)",
+"30-32 LPA (Non Negotiable)",
+"33-40 LPA",
+"40 LPA +"
+],
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:capco:8266697",
+"label": "What is your official Notice Period?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"60 Days - 90 Days - Non Negotiable",
+"45 Days - Non Negotiable",
+"≤30 Days - Non Negotiable",
+"60 Days - 90 Days - Negotiable",
+"45 Days - Negotiable",
+"≤30 Days - Negotiable",
+"<15 Days",
+"Currently not working",
+"Currently serving Notice Period"
+],
+"main": {
+"answeredBy": "you",
+"topic": "start_date"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:capco:8266697",
+"label": "Do you have any offer in hand ?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:capco:8266697",
+"label": "are you willing to relocate for the below work locations?",
+"type": "multi_value_multi_select",
+"required": true,
+"options": [
+"Electronic City - Bangalore",
+"Pune - Hinjewadi",
+"Mumbai",
+"Chennai",
+"Gurugram",
+"Hyderabad"
+],
+"main": {
+"answeredBy": "you",
+"topic": "relocation"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:capco:8266697",
+"label": "Capco Job Candidate Privacy Notice Acknowledgement",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Acknowledge"
+],
+"hint": "Capco Job Candidate Privacy Notice Acknowledgement I acknowledge that the information I provide will be processed and used for the purposes described in Capco's Job Candidate Privacy Notice.",
+"main": {
+"answeredBy": "you"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:figma:6245293004",
+"label": "Pronouns",
+"type": "multi_value_single_select",
+"required": false,
+"options": [
+"she/her/hers",
+"he/him/his",
+"they/them/theirs",
+"self-describe"
+],
+"hint": "If you'd like to, please let us know your pronouns.",
+"main": {
+"answeredBy": "you",
+"voluntary": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:figma:6245293004",
+"label": "Other Website",
+"type": "input_text",
+"required": false,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:figma:6245293004",
+"label": "Why do you want to join Figma?",
+"type": "textarea",
+"required": true,
+"hint": "Please share 3-4 sentences on why you want to join Figma",
+"main": {
+"answeredBy": "draft_from_your_cv"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:figma:6245293004",
+"label": "Additional Information",
+"type": "textarea",
+"required": false,
+"hint": "Add a cover letter or anything else you'd like to share",
+"main": {
+"answeredBy": "draft_from_your_cv"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:figma:6245293004",
+"label": "From where do you intend to work?",
+"type": "input_text",
+"required": true,
+"hint": "Please list city and state. (ie: San Francisco, CA)",
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:figma:6245293004",
+"label": "Are you authorized to work in the country for which you applied?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:figma:6245293004",
+"label": "Have you ever worked for Figma before, as an employee or a contractor/consultant?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "employment_history"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:philliesbaseballoperations:8197714003",
+"label": "We may consider candidates for other locations in addition to Reading based on several factors including selected candidate experience, future opening availability, and other organizational factors. Please select which of the following affiliate locations you would be interested in if other opportunities arise:",
+"type": "multi_value_multi_select",
+"required": true,
+"options": [
+"Reading, PA",
+"Lakewood, NJ",
+"Clearwater, FL",
+"Dominican Republic"
+],
+"hint": "You may select multiple if you are open to more than one location. Non-local candidates will be eligible for in-season housing.",
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:blackbirdhealth:5475082008",
+"label": "Do you have direct experience managing local outreach, business development, client management, or healthcare liaison activities within pediatric practices, healthcare systems, or school districts?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes (3+ years of healthcare, sales, or community territory outreach experience)",
+"Partial (1–2 years of general outreach or sales experience outside healthcare/education)",
+"No (No direct territory outreach, sales, or business development experience)"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:blackbirdhealth:5475082008",
+"label": "This position requires up to 75% of work time spent in the field traveling across the Pittsburgh, Pennsylvania market to visit partner offices, schools, and healthcare providers. Do you have a valid driver's license, reliable transportation, and the ability to meet this travel requirement?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes (Able and willing to meet 75% field travel with valid license and transportation)",
+"Partial (Able to travel with specific scheduling accommodations)",
+"No (Unable to meet field travel or transportation requirements)"
+],
+"main": {
+"answeredBy": "you",
+"topic": "travel"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:blackbirdhealth:5475082008",
+"label": "Which best describes your experience using Customer Relationship Management software (such as HubSpot or Salesforce) to track account activity, pipeline velocity, and referral metrics?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Advanced: I regularly build workflows, track sales or referral pipelines, and analyze account data in a Customer Relationship Management tool.",
+"Intermediate: I consistently log activities, contacts, and account notes in a Customer Relationship Management tool.",
+"Basic/None: I have limited or no formal experience using a Customer Relationship Management tool."
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:blackbirdhealth:5475082008",
+"label": "Which partner group in Pittsburgh, Pennsylvania do you have the most direct experience engaging?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Pediatricians & Primary Care Physicians",
+"K-12 School Districts & Guidance Counselors",
+"Outpatient Therapists & Community Health Organizations",
+"Other Healthcare / Community Stakeholders"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:blackbirdhealth:5475082008",
+"label": "Imagine you are assigned a new geographic territory in Pittsburgh, Pennsylvania with low initial brand awareness for Blackbird Health. Walk us through how you would prioritize your first 60 days across target pediatric practices and school systems to establish high-trust referral partnerships.",
+"type": "textarea",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:blackbirdhealth:5475082008",
+"label": "Describe a time when a key partner or account stopped referring or engaging with your organization. How did you identify the underlying cause, and what specific steps did you take to re-engage them?",
+"type": "textarea",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:blackbirdhealth:5475082008",
+"label": "If you were referred for this role, please let us know who to thank for introducing you to Blackbird Health.",
+"type": "input_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:blackbirdhealth:5475082008",
+"label": "Are you authorized to work in the United States of America?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "greenhouse",
+"posting": "greenhouse:blackbirdhealth:5475082008",
+"label": "Will you now or in the future require sponsorship for employment visa status (e.g., H-1B visa status)?",
+"type": "multi_value_single_select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:hudsonmanpower:2819095",
+"label": "Are you currently authorized to work in the U.S. on W2 without requiring sponsorship?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:hudsonmanpower:2819095",
+"label": "Are you currently local to Cincinnati, OH, and available to work onsite?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "start_date"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:hudsonmanpower:2819095",
+"label": "Can you attend an in-person interview if required?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:hudsonmanpower:2819095",
+"label": "Are you comfortable with $33/hour on W2?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:hudsonmanpower:2819095",
+"label": "Do you have 5+ years of professional Java development experience?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:hudsonmanpower:2819095",
+"label": "Do you have hands-on experience with Java 8 or later and Spring Boot/Spring Framework?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:hudsonmanpower:2819095",
+"label": "Do you have hands-on experience in both front-end and back-end development?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:hudsonmanpower:2819095",
+"label": "Do you have experience with JavaScript or TypeScript?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:fundamentalhospitality:2819238",
+"label": "Do you currently require, or will you require in the future, sponsorship under the UK Skilled Worker visa route?",
+"type": "boolean",
+"required": false,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:webqam:2818287",
+"label": "Avez-vous une expérience de la solution Shopify ?",
+"type": "string",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:webqam:2818287",
+"label": "Avez-vous une bonne connaissance du secteur Sport Business ?",
+"type": "string",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:spectrumam:2819266",
+"label": "You full Address including city state and zip.",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:spectrumam:2819266",
+"label": "How did you hear about this position?",
+"type": "multi_choice",
+"required": true,
+"options": [
+"Indeed",
+"Linked In",
+"Monster",
+"Zip Recruiter",
+"Facebook",
+"HandShake",
+"Simply Hired",
+"Career Builder",
+"GlassDoor",
+"Snagajob",
+"Google",
+"Our Website",
+"Other"
+],
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:spectrumam:2819266",
+"label": "Did a board member or a current employee refer you? If yes, please list the name or names.",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:spectrumam:2819266",
+"label": "What is your understanding of homeowners Associations and why do you want to work in our industry? What do you know about our company?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:spectrumam:2819266",
+"label": "The Compliance Driver is responsible for driving to the communities we manage on a regular basis and making notations of non-compliant homeowners. This will be about 90% of your work week. Is this acceptable to you?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:spectrumam:2819266",
+"label": "Based on the job description, what skills can you bring to this role?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:spectrumam:2819266",
+"label": "What is your current rate of pay?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:spectrumam:2819266",
+"label": "This position pays $17.00 per hour. Is that acceptable to you?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:spectrumam:2819266",
+"label": "What inspired you to apply to this position?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:spectrumam:2819266",
+"label": "Because this role requires you to drive for Spectrum at times, we ask that you have valid auto insurance coverage that meets minimum requirements. Employees are to obtain insurance to cover the operation of their private vehicles while on company business. The policy is to follow applicable state law and to have policy limits of at least $100,000.00 for each accident and $50,000.00 per person for bodily injury. Proof of your auto policy limits will be required at the time of hire. Is this accept",
+"type": "string",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:spectrumam:2819266",
+"label": "ATTENTION: After submitting your application, you will be receiving a NEXT STEP with Spectrum AM e-mail. If you do not see it in your inbox, please check your SPAM mail within 24 hours of submitting your application. Please reach out to lestrada@SpectrumAM.com if you do not receive an email with the next steps. In order to successful complete your application, this step must be completed!",
+"type": "infobox",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:spectrumam:2819266",
+"label": "Do you consent to receive text (SMS) messages from Spectrum Association Management related to your interest in the role you applied for? We will only send you text messages to the number provided on your application with your consent. Once you opt in, Message frequency varies and data rates may apply. Reply HELP for help and STOP to cancel in future text messages",
+"type": "multi_choice",
+"required": true,
+"options": [
+"I consent",
+"I do NOT consent"
+],
+"main": {
+"answeredBy": "you"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:spectrumam:2819266",
+"label": "If the vehicle provided for this role is not available to drive due to repairs or maintenance, you will need to be able to drive your personal vehicle during the whole time of the repairs/maintenance. Mileage reimbursement will be provided for the usage of your personal vehicle. Is this acceptable to you?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:adstronauts:2819071",
+"label": "Bitte füge dein Anschreiben entweder als Datei oder als Text in eines der unterstehenden Felder ein ⬇️",
+"type": "infobox",
+"required": false,
+"main": {
+"answeredBy": "your_documents"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:adstronauts:2819071",
+"label": "Anschreiben (falls als Datei vorhanden)",
+"type": "file",
+"required": false,
+"main": {
+"answeredBy": "your_documents"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:adstronauts:2819071",
+"label": "Anschreiben (falls als Text vorhanden)",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "your_documents"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:hostaway:2819179",
+"label": "Do you have experience in a customer or partner facing role within a B2B SaaS environment?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:hostaway:2819179",
+"label": "Are you based in the Philippines?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "location"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:hostaway:2819179",
+"label": "Please provide the URL to your Linkedin profile",
+"type": "string",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:hostaway:2819179",
+"label": "How did you hear about this job?",
+"type": "string",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:hostaway:2819179",
+"label": "What is your annual OTE salary expectation?",
+"type": "salary",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:newlawbusinessmodel:2808068",
+"label": "Do you live in California? (this role is not eligible for CA hire)",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "other"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:newlawbusinessmodel:2808068",
+"label": "Are you authorized to work in the United States?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:newlawbusinessmodel:2808068",
+"label": "Do you currently reside physically in the United States?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "health"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:newlawbusinessmodel:2808068",
+"label": "How many years of experience do you have in Product Operations, Technical Operations, Business Systems or a comparable role supporting digital products or services?",
+"type": "number",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:newlawbusinessmodel:2808068",
+"label": "Have you independently configured and maintained a CRM, LMS or other product delivery platform, including workflows, automations, access permissions or customer entitlements? Which one(s)?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:newlawbusinessmodel:2808068",
+"label": "In your own words, how does data inform the development of products?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:newlawbusinessmodel:2808068",
+"label": "Describe a time when something went wrong with a product launch, migration, or systems implementation you personally led. What was the issue, how did you identify and address it, and what was the ultimate outcome?",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:newlawbusinessmodel:2808068",
+"label": "Which of NewLaw’s products are you most excited to work on? Why?",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:newlawbusinessmodel:2808068",
+"label": "Tell us how we align. Why are you a perfect match for the high-performance, heart-centered culture we’re building?",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:jobsger:2819164",
+"label": "Möchten Sie Ihrer Bewerbung weitere Dateien (z.B. Zeugnisse) hinzufügen?",
+"type": "file",
+"required": false,
+"main": {
+"answeredBy": "your_documents"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:jobsger:2819164",
+"label": "Wie sind Sie auf uns aufmerksam geworden?",
+"type": "multi_choice",
+"required": true,
+"options": [
+"Empfehlung von Freunden/Familie",
+"Messebesuch",
+"LinkedIn",
+"Indeed",
+"Stepstone",
+"Web-Suche",
+"Sonstiges"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:jobsger:2819164",
+"label": "ggf. Details zur Quelle",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:jobsger:2819164",
+"label": "Wann ist Ihr frühestmöglicher Eintrittstermin?",
+"type": "date",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:jobsger:2819164",
+"label": "Wie hoch ist Ihr jährlicher Gehaltswunsch (brutto)?",
+"type": "number",
+"required": false,
+"main": {
+"answeredBy": "you",
+"topic": "other"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:ferryscanner:2818922",
+"label": "Είσαι φοιτητής στον τομέα του Τουρισμού ή Διοίκησης Επιχειρήσεων;",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:ferryscanner:2818922",
+"label": "Αναζητάς εταιρεία για την υποχρεωτική 5μηνη ή 6μηνη πρακτική άσκηση;",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:ferryscanner:2818922",
+"label": "Για ποια σχολή/πανεπιστήμιο θα κάνεις την υποχρεωτική πρακτική άσκηση; (Γράψε το όνομα του πανεπιστημίου/ΙΕΚ/σχολής)",
+"type": "string",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:ferryscanner:2818922",
+"label": "Θα κάνεις την πρακτική σου άσκηση ως φοιτητής/φοιτήτρια:",
+"type": "single_choice",
+"required": true,
+"options": [
+"Πανεπιστημίου",
+"ΤΕΙ",
+"ΙΕΚ"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:ferryscanner:2818922",
+"label": "Πόσους μήνες θα διαρκεί η πρακτική σου άσκηση;",
+"type": "string",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:ferryscanner:2818922",
+"label": "Γνωρίζεις αν έχει ανακοινωθεί το πρόγραμμα ΕΣΠΑ στη σχολή σου; Αν ναι, πότε λήγουν οι αιτήσεις;",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:ferryscanner:2818922",
+"label": "Μπορείς να κάνεις την πρακτική σου με πρόγραμμα ΟΑΕΔ;",
+"type": "string",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:ferryscanner:2818922",
+"label": "Σε τι επίπεδο είναι τα αγγλικά σου; Νιώθεις άνετα να τα χρησιμοποιείς σε καθημερινή βάση (γραπτά και προφορικά);",
+"type": "string",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:ferryscanner:2818922",
+"label": "Μένεις Αθήνα; (Το γραφείο μας βρίσκεται στην Αθήνα και η πρακτική γίνεται διά ζώσης).",
+"type": "string",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:hiring:2819267",
+"label": "Nivel nativo em Portugues?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:hiring:2819267",
+"label": "Você teria a possibilidade de trabalhar no turno da noite?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:boulangerieange:2819124",
+"label": "Disposez vous d'un moyen de locomotion ?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:boulangerieange:2819124",
+"label": "Etes vous d'accord de tourner sur les horaires (matin/après-midi/journée) ?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:boulangerieange:2819124",
+"label": "A partir de quand êtes vous disponible pour la prise de poste ?",
+"type": "date",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:liebscherbracht:2819113",
+"label": "Wann könntest du frühestens bei uns starten?",
+"type": "date",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:liebscherbracht:2819113",
+"label": "Wie hoch ist deine Gehaltsvorstellung (Jahresbrutto, Vollzeit mit 40 Stunden/Woche)?",
+"type": "salary",
+"required": false,
+"main": {
+"answeredBy": "you",
+"topic": "other"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:liebscherbracht:2819113",
+"label": "Sprichst du Deutsch auf C1-Niveau oder besser?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:liebscherbracht:2819113",
+"label": "Bei uns arbeitest du dienstags bis donnerstags im Office in Bad Homburg, montags und freitags im Homeoffice. Passt das für dich?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:liebscherbracht:2819113",
+"label": "Wie bist du auf uns aufmerksam geworden?",
+"type": "single_choice",
+"required": false,
+"options": [
+"LinkedIn",
+"XING",
+"Indeed",
+"StepStone",
+"Google",
+"Über eine/n Bekannte/n",
+"Sonstiges"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:liebscherbracht:2819113",
+"label": "Sag uns gerne in ein paar Worten, warum du genau für uns arbeiten möchtest🙂 (optional)",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:jobsdeerns:2799746",
+"label": "Qual o seu nível de inglês?",
+"type": "single_choice",
+"required": true,
+"options": [
+"Básico",
+"Intermediário",
+"Avançado"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:jobsdeerns:2799746",
+"label": "Hoje você faz coordenação de projetos de engenharia? tem interface com o cliente e a equipe? Conte um pouco:",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:globalwindservice:2817879",
+"label": "Do you have experience within the Wind Industry?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:globalwindservice:2817879",
+"label": "What is your salary expectation?",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:globalwindservice:2817879",
+"label": "What is your current availability? (notice period)",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"topic": "start_date"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:globalwindservice:2817879",
+"label": "Do you have driver's license?",
+"type": "string",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "licence"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:globalwindservice:2817879",
+"label": "Do you have a valid passport?",
+"type": "string",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "other"
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:globalwindservice:2817879",
+"label": "Any other relevant information?",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:volkerrail:2819137",
+"label": "Hoe ben je op deze vacature terecht gekomen?",
+"type": "single_choice",
+"required": true,
+"options": [
+"Indeed",
+"LinkedIn",
+"Werkenbij website",
+"Via iemand die voor VolkerWessels werkt",
+"Google",
+"Facebook",
+"Instagram",
+"Een evenement van VolkerWessels",
+"Overig"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:volkerrail:2819137",
+"label": "Indien je bent aangedragen door iemand die hier werkt, noteer hieronder zijn/haar naam.",
+"type": "string",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:volkerrail:2819137",
+"label": "Ben je woonachtig in Nederland?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:volkerrail:2819137",
+"label": "Ik heb de privacyverklaring van VolkerWessels gelezen en begrijp hoe mijn persoonsgegevens worden verwerkt.",
+"type": "legal",
+"required": true,
+"main": {
+"answeredBy": "you"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:bitdeer:973b5919d162-senior-accountant-financial-reporting",
+"label": "Elaborate if there is any type of certification or licenses you would like the team to take note of (e.g. Professional Engineer)",
+"type": "paragraph",
+"required": false,
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:bitdeer:973b5919d162-senior-accountant-financial-reporting",
+"label": "Kindly declare: do you or your relatives have any conflict of interests with Bitdeer?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes - there is potential conflict of interest",
+"No - there is no conflict of interest"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:bitdeer:973b5919d162-senior-accountant-financial-reporting",
+"label": "Will you now or in the future require sponsorship for employment visa status (e.g. H-1B visa, Employment Pass)?",
+"type": "dropdown",
+"required": true,
+"options": [
+"Yes - I will require sponsorship of an employment visa",
+"No - I will not require sponsorship of an employment visa"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:meron-financial-agency:560bba5e6827-remote-mortgage-protection-sales-rep-entry-level",
+"label": "This is a 1099, commission-only role. Are you comfortable with that?",
+"type": "dropdown",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:meron-financial-agency:560bba5e6827-remote-mortgage-protection-sales-rep-entry-level",
+"label": "Are you willing to obtain a state life insurance license if you don't have one already?",
+"type": "dropdown",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "licence"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:meron-financial-agency:560bba5e6827-remote-mortgage-protection-sales-rep-entry-level",
+"label": "What hours are you willing to commit to?",
+"type": "dropdown",
+"required": true,
+"options": [
+"Full time - 40 hrs/week"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:zeno-power:a1977d12048d-nuclear-supply-chain-specialist",
+"label": "Are you a US Person?",
+"type": "dropdown",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:zeno-power:a1977d12048d-nuclear-supply-chain-specialist",
+"label": "Are you a current citizen of Russia, Syria, Iran, or North Korea?",
+"type": "dropdown",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:zeno-power:a1977d12048d-nuclear-supply-chain-specialist",
+"label": "Are you fully vaccinated against COVID-19?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "health"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:zeno-power:a1977d12048d-nuclear-supply-chain-specialist",
+"label": "What is your preferred name?",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:zeno-power:a1977d12048d-nuclear-supply-chain-specialist",
+"label": "What are your preferred pronouns?",
+"type": "dropdown",
+"required": true,
+"options": [
+"She / Her / Hers",
+"He / Him / His",
+"They / Them / Theirs",
+"She / They",
+"He / They",
+"They / She",
+"They / He",
+"Use preferred name only (no pronouns)",
+"Prefer to self-describe"
+],
+"main": {
+"answeredBy": "you",
+"voluntary": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:zeno-power:a1977d12048d-nuclear-supply-chain-specialist",
+"label": "Which time zone are you located in?",
+"type": "dropdown",
+"required": true,
+"options": [
+"EST (UTC-4) Eastern Standard Time",
+"CST (UTC-5) Central  Standard  Time",
+"MST (UTC -6) Mountain  Standard Time",
+"PST (UTC-7) Pacific  Standard Time",
+"AKST (UTC-8) Alaska  Standard  Time",
+"HST (UTC-10) Hawaii Standard Time",
+"Other"
+],
+"main": {
+"answeredBy": "you",
+"topic": "location"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:zeno-power:a1977d12048d-nuclear-supply-chain-specialist",
+"label": "What are your salary expectations for this role? Please note that final compensation is determined by various factors such as years of relevant work experience, skills, qualifications, certifications, and other business considerations.",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:zeno-power:a1977d12048d-nuclear-supply-chain-specialist",
+"label": "Are you willing to relocate to the D.C. area for this position, if necessary, within 3-months of starting?",
+"type": "dropdown",
+"required": true,
+"options": [
+"Not applicable.  I do not require relocation.",
+"Yes.  I require relocation and am willing to move to the D.C. area within 3-months of accepting a position at Zeno Power.",
+"No.  I am not willing to relocate to the D.C. area within 3-months of accepting a position at Zeno Power."
+],
+"main": {
+"answeredBy": "you",
+"topic": "relocation"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:zeno-power:a1977d12048d-nuclear-supply-chain-specialist",
+"label": "If offered this position, how soon are you available to start?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "start_date"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:zeno-power:a1977d12048d-nuclear-supply-chain-specialist",
+"label": "Where did you hear about this position (Zeno Website, LinkedIn, Indeed, referral, etc.)?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:zeno-power:a1977d12048d-nuclear-supply-chain-specialist",
+"label": "Where could we potentially source an isotope supply?",
+"type": "paragraph",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:zeno-power:a1977d12048d-nuclear-supply-chain-specialist",
+"label": "How would you describe the current state of the back end of the nuclear fuel cycle?",
+"type": "paragraph",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:zeno-power:a1977d12048d-nuclear-supply-chain-specialist",
+"label": "Tell me about a time when you led engagement with external stakeholders. What challenges or issues did you encounter, and how did you navigate them to achieve a successful outcome?",
+"type": "paragraph",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:lastro:39fbb120a124-sales-enablement-analyst",
+"label": "CPF",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:lastro:39fbb120a124-sales-enablement-analyst",
+"label": "Cidade",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:lastro:39fbb120a124-sales-enablement-analyst",
+"label": "Você foi indicado por alguém da empresa?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Sim",
+"Não"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:lastro:39fbb120a124-sales-enablement-analyst",
+"label": "Caso tenha sido indicado, informe o e-mail de quem te indicou",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "Which city or area are you applying to work in? Enter one city or area only. Example: Houston, TX; Tulsa, OK; Lincoln, NE. Do not enter \"any,\" \"all,\" or \"statewide.\"",
+"type": "paragraph",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "How far do you live from the area you are applying to work in?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"I live and work in the area.",
+"I live less than 30 miles from the area.",
+"I live 30–60 miles from the area.",
+"I live more than 60 miles from the area."
+],
+"main": {
+"answeredBy": "you",
+"topic": "other"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "How many years of professional merchandising experience do you have?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Less than 1 year",
+"1–2 years",
+"3–5 years",
+"6–10 years",
+"More than 10 years"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "Please confirm your phone number for calls and texts:",
+"type": "paragraph",
+"required": false,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "Please confirm the email address you check daily:",
+"type": "paragraph",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "What merchandising or vendor companies have you worked for in the past, or are you currently working for, that are not listed on your resume?",
+"type": "paragraph",
+"required": true,
+"main": {
+"answeredBy": "your_documents"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "What types of resets have you completed? (Select all that apply)",
+"type": "checkboxes",
+"required": false,
+"options": [
+"Simple shelf resets",
+"Full aisle resets",
+"Seasonal resets",
+"End cap resets",
+"Pegboard resets",
+"Fixture installations or removals",
+"Full store remodels",
+"None of the above"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "Do you own an updated Android smartphone or iPhone that can run apps and access the internet reliably?",
+"type": "multiplechoice",
+"required": false,
+"options": [
+"Yes, Android",
+"Yes, iPhone",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "Do you have reliable internet access on your smartphone?",
+"type": "multiplechoice",
+"required": false,
+"options": [
+"Yes",
+"Sometimes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "Are you comfortable installing and using third-party apps, browsers like Google Chrome, and other tools for work?",
+"type": "multiplechoice",
+"required": false,
+"options": [
+"Yes",
+"Somewhat",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "Do you have access to a computer or laptop and a printer in addition to your smartphone?",
+"type": "multiplechoice",
+"required": false,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "Some projects require submitting 50–100+ photos and detailed surveys from your phone. Are you comfortable taking and uploading 50–100+ clear, high-quality photos while in-store, and enabling location permissions if required?",
+"type": "multiplechoice",
+"required": false,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "All projects are time sensitive and have specific service schedules that vary by project. Do you understand you will need to plan ahead, manage your time independently, and complete each project by its deadline?",
+"type": "multiplechoice",
+"required": false,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "Do you understand you are required to learn new tools and apps and follow new client instructions as needed?",
+"type": "multiplechoice",
+"required": false,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "Do you have reliable personal transportation, without relying primarily on public transportation or rideshare services, that allows you to travel independently to multiple retail locations as needed?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "Are you at least 18 years old and do you have a current, valid driver's license?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "age"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "Do you understand you are required to check your email daily and log in to our system regularly during the week to check assignments, updates, and complete all work independently and on time?",
+"type": "multiplechoice",
+"required": false,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "Physical Requirements: Please confirm which apply to you (check all that apply):",
+"type": "checkboxes",
+"required": false,
+"options": [
+"I am able to stand for extended periods",
+"I am able to bend, squat, kneel, and reach up and down",
+"I have a full range of motion to safely complete merchandising tasks",
+"I am able to lift and carry boxes up to 10 pounds",
+"I am able to move light fixtures on wheels when needed"
+],
+"main": {
+"answeredBy": "you",
+"topic": "health"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "I understand this is not full-time work and not part-time work.",
+"type": "multiplechoice",
+"required": false,
+"options": [
+"I fully understand and agree. Count me in!",
+"This is not what I thought it was. Count me out."
+],
+"main": {
+"answeredBy": "you"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "20. Based on where you live and will be working, what type of position are you applying for?",
+"type": "multiplechoice",
+"required": false,
+"options": [
+"W-2 Employee (Texas and California only)",
+"1099 Independent Contractor (all other states)",
+"I'm not sure"
+],
+"main": {
+"answeredBy": "you",
+"topic": "location"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:srs-merchandising:c3d578a0aaf9-retail-store-support-specialist-williamsport-pa",
+"label": "Which statement best describes your reason for applying?",
+"type": "multiplechoice",
+"required": false,
+"options": [
+"I am actively seeking project work and ready to begin accepting assignments.",
+"I am actively seeking project work but may not be available immediately.",
+"I am exploring opportunities for future consideration.",
+"I am applying to satisfy a requirement for a program, agency, or benefit."
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:mcguire-hester:ac000737336e-construction-laborer-underground-pipelines",
+"label": "Have you ever been employed by McGuire & Hester?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "employment_history"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:mcguire-hester:ac000737336e-construction-laborer-underground-pipelines",
+"label": "Do you have any family members who are employed by McGuire & Hester?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "employment_history"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:mcguire-hester:ac000737336e-construction-laborer-underground-pipelines",
+"label": "Were you referred by a current employee?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:mcguire-hester:ac000737336e-construction-laborer-underground-pipelines",
+"label": "If you answered yes to the previous question please provide their name. If no please put N/A.",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:mcguire-hester:ac000737336e-construction-laborer-underground-pipelines",
+"label": "Can you perform the essential functions of this job, with or without reasonable accommodations?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "health"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:mcguire-hester:ac000737336e-construction-laborer-underground-pipelines",
+"label": "If you answered no above please explain, if yes please put N/A.",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:mcguire-hester:ac000737336e-construction-laborer-underground-pipelines",
+"label": "Are you 18 years of age or older?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "age"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:mcguire-hester:ac000737336e-construction-laborer-underground-pipelines",
+"label": "If hired, would you have reliable means of transportation to and from work?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:mcguire-hester:ac000737336e-construction-laborer-underground-pipelines",
+"label": "Do you have a valid driver’s license?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "licence"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:mcguire-hester:ac000737336e-construction-laborer-underground-pipelines",
+"label": "What Union are you a member of?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Carpenters",
+"Cement Masons",
+"Operating Engineers",
+"Laborers",
+"Currently NOT in a Union"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:st-amant:a817fb6ae05e-physiotherapist",
+"label": "How did you hear about the position vacancy?",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:st-amant:a817fb6ae05e-physiotherapist",
+"label": "St.Amant is on a journey of reconciliation and is committed to building an inclusive and diverse workforce. Individuals from employment equity groups are encouraged to self-declare as part of their application process. This voluntary self-declaration questionnaire helps us understand where we are making progress towards our goals and where additional supports may be needed. If you would prefer not to self-declare, you can tell us that in the questionnaire and select \"prefer not to disclose\". Thi",
+"type": "checkboxes",
+"required": false,
+"options": [
+"No - I do not identify as an individual from an employment equity group",
+"Indigenous (First Nation, Inuit and/or Metis)",
+"Person of colour",
+"2SLGTBQIA+",
+"Person with a disability",
+"I prefer not to disclose"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:st-amant:a817fb6ae05e-physiotherapist",
+"label": "Have you ever been investigated for neglect or abuse of a vulnerable person?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:st-amant:a817fb6ae05e-physiotherapist",
+"label": "If you were the successful applicant, you would be required to provide a satisfactory criminal record check with vulnerable sector search, child and adult registry checks and a prior contact check. Do you have any concerns with this?",
+"type": "multiplechoice",
+"required": false,
+"options": [
+"No - I am able to provide the above mentioned checks",
+"Yes - I have concerns about submitting the checks"
+],
+"main": {
+"answeredBy": "you",
+"topic": "criminal_history"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:st-amant:a817fb6ae05e-physiotherapist",
+"label": "In order to maintain the health and safety of all staff and people supported at St.Amant, we will require new hires to complete a series of Occupational Health Checks. This includes the requirement to confirm immunization or immunity of specific comm",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes - I have 2 doses of COVID-19 vaccines and are able to provide proof",
+"No - I am not COVID-19 Vaccinated"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:st-amant:a817fb6ae05e-physiotherapist",
+"label": "Have you ever worked at St.Amant?",
+"type": "multiplechoice",
+"required": false,
+"options": [
+"No",
+"Yes - I worked at St.Amant in the past",
+"Yes - I was a volunteer"
+],
+"main": {
+"answeredBy": "you",
+"topic": "employment_history"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:st-amant:a817fb6ae05e-physiotherapist",
+"label": "Have you ever volunteered at St.Amant?",
+"type": "multiplechoice",
+"required": false,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:st-amant:a817fb6ae05e-physiotherapist",
+"label": "Do you speak English and French bilingually?",
+"type": "multiplechoice",
+"required": false,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:st-amant:a817fb6ae05e-physiotherapist",
+"label": "Are you able to provide proof of educational requirements as per the job posting?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:st-amant:a817fb6ae05e-physiotherapist",
+"label": "Do you require a work or study permit to work in Canada? If yes, please indicate the expiration date.",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:st-amant:a817fb6ae05e-physiotherapist",
+"label": "How many years of experience in Music therapy do you have?",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "draft_from_your_cv"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:the-sequoia-project:93dee14773ed-senior-advisor-interoperability-policy",
+"label": "Tell us why you are interested in advancing The Sequoia Project’s mission by serving as the principal subject-matter expert on health IT and interoperability policy.",
+"type": "paragraph",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:ymca-of-central-texas:7392f65be44b-academy-basketball-coach",
+"label": "Which sport(s) do you have experience with?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Archery",
+"Baseball/Softball",
+"Basketball",
+"Flag Football",
+"Pickleball",
+"Soccer",
+"Volleyball",
+"Other"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:ymca-of-central-texas:7392f65be44b-academy-basketball-coach",
+"label": "What days/times are you available to work?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "start_date"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:ymca-of-central-texas:7392f65be44b-academy-basketball-coach",
+"label": "Do you have any Officiating/Referring Credential or Certification?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:oil-changers:3b7ed4e09f33-oil-changers-lube-technician-619",
+"label": "Are you over 18 years old?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "age"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:oil-changers:3b7ed4e09f33-oil-changers-lube-technician-619",
+"label": "Are you authorized to work in the US?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:oil-changers:3b7ed4e09f33-oil-changers-lube-technician-619",
+"label": "If extended an offer, are you willing to undergo a background check?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "background_check"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:oil-changers:3b7ed4e09f33-oil-changers-lube-technician-619",
+"label": "Are you ok with working in the elements? (Heat, Cold, Winds, ect)",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:oil-changers:3b7ed4e09f33-oil-changers-lube-technician-619",
+"label": "How many years of customer service experience do you have?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Under 1 year",
+"1 year",
+"2 years",
+"3 or more years"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:oil-changers:3b7ed4e09f33-oil-changers-lube-technician-619",
+"label": "Do you have reliable transportation?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:oil-changers:3b7ed4e09f33-oil-changers-lube-technician-619",
+"label": "Have you ever worked in a fast-paced work environment?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:oil-changers:3b7ed4e09f33-oil-changers-lube-technician-619",
+"label": "If extended an offer, are you willing to undergo a drug screening?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "background_check"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:raftelis:18a5c104acfa-administrative-assistant",
+"label": "Do you now or will you require sponsorship for employment (e.g. H-1B visa status)?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:raftelis:18a5c104acfa-administrative-assistant",
+"label": "Are you willing to work onsite in our office in Charlotte, NC Monday-Friday?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "on_site"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:raftelis:18a5c104acfa-administrative-assistant",
+"label": "The salary range for this position is $63k-$84k. Does this align with your salary expectations?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:raftelis:18a5c104acfa-administrative-assistant",
+"label": "Highest level of education completed:",
+"type": "dropdown",
+"required": true,
+"options": [
+"High school diploma or equivalent",
+"Some college / Associate degree",
+"Bachelor's degree",
+"Master's degree or higher",
+"Other / Equivalent professional experience"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:raftelis:18a5c104acfa-administrative-assistant",
+"label": "How did you hear about this position?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Career fair/University job board",
+"LinkedIn",
+"Current Employee",
+"Other job board site (Monster, Indeed, etc.)",
+"Other"
+],
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:raftelis:18a5c104acfa-administrative-assistant",
+"label": "If you selected 'Current Employee' as your answer, please provide the employee's name.",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:people-solutions-center:ca80c0146c94-lawn-care-technician-pesticide-applicator-year-round-full-time-at-weed-man",
+"label": "U.S. Work Authorization",
+"type": "dropdown",
+"required": true,
+"options": [
+"I am legally authorized to work in the United States and do NOT require sponsorship either now or at any point in the future.",
+"I am legally authorized to work in the United States, but I will require sponsorship either now or at some point in the future.",
+"I am NOT legally authorized to work in the United States."
+],
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:people-solutions-center:ca80c0146c94-lawn-care-technician-pesticide-applicator-year-round-full-time-at-weed-man",
+"label": "Age and Education Requirement",
+"type": "dropdown",
+"required": true,
+"options": [
+"Yes, I am at least 18 years of age and have a high school diploma or GED.",
+"No, I am at least 18 years of age, but I do NOT have a high school diploma or GED.",
+"No, I have not yet reached 18 years of age."
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:people-solutions-center:ca80c0146c94-lawn-care-technician-pesticide-applicator-year-round-full-time-at-weed-man",
+"label": "MA Driver's License",
+"type": "dropdown",
+"required": true,
+"options": [
+"I have an active Massachusetts driver's license.",
+"I have an active out of state driver's license, but I'm in process of obtaining a Massachusetts license.",
+"I have an out of state driver's license, but do NOT plan on switching it to Massachusetts.",
+"I do NOT have an active driver's license in any state."
+],
+"main": {
+"answeredBy": "you",
+"topic": "licence"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:people-solutions-center:ca80c0146c94-lawn-care-technician-pesticide-applicator-year-round-full-time-at-weed-man",
+"label": "Driving Eligibility",
+"type": "dropdown",
+"required": true,
+"options": [
+"Yes- I've been a licensed driver for at least 2 years and my driving record is clean.",
+"No- I've been a licensed driver for less than 2 years.",
+"Not sure- I’ve been licensed for at least 2 years, but I'm not sure if my driving record will qualify.",
+"No- My driving record will not qualify."
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:people-solutions-center:ca80c0146c94-lawn-care-technician-pesticide-applicator-year-round-full-time-at-weed-man",
+"label": "Commute",
+"type": "dropdown",
+"required": true,
+"options": [
+"Yes, I currently live within a 50-minute commute to Spencer, MA.",
+"No, I do not live within a 50-minute commute to Spencer, MA.",
+"No, I do not live within a 50-minute commute to Spencer, MA, but I am planning to relocate within this commute range."
+],
+"main": {
+"answeredBy": "you",
+"topic": "commute"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:revamp-engineering-inc:852408ad4aff-project-engineer-ii-epc-services",
+"label": "Are you currently authorized to work in the United States or Canada for any employer?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:revamp-engineering-inc:852408ad4aff-project-engineer-ii-epc-services",
+"label": "Will you now or in the future require employer-based visa sponsorship (e.g., H-1B, etc.) to continue working in the U.S. or Canada for any employer?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes, I will require employer-based visa sponsorship now or in the future",
+"No, I will not require employer-based visa sponsorship now or in the future."
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:revamp-engineering-inc:852408ad4aff-project-engineer-ii-epc-services",
+"label": "This role may be performed remotely but must be performed while physically located in the United States or Canada. Are you able to perform the role from the United States or Canada?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:revamp-engineering-inc:852408ad4aff-project-engineer-ii-epc-services",
+"label": "This role requires travel up to 15% of the time, including overnight trips, and driving to project sites. You’ll need a valid driver’s license and must be eligible to rent a vehicle. Are you able to meet these requirements?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "travel"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:revamp-engineering-inc:852408ad4aff-project-engineer-ii-epc-services",
+"label": "How many years of project management experience do you have in engineering consulting, EPC construction, renewable energy, complex land development, or a similar technical environment?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Entry Level (no experience)",
+"0 - 1 years (including internships, co-ops, etc.)",
+"2 - 5 years",
+"5 - 10 years",
+"10+ years"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:revamp-engineering-inc:852408ad4aff-project-engineer-ii-epc-services",
+"label": "What are your base salary expectations for this role? Please give a number or range in USD (or CAD, if you’re based in Canada).",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:revamp-engineering-inc:852408ad4aff-project-engineer-ii-epc-services",
+"label": "If selected, when would you be available to start?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "start_date"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:revamp-engineering-inc:852408ad4aff-project-engineer-ii-epc-services",
+"label": "Think of the most recent scope change or change order you handled as PM. In 2–3 sentences, tell us what triggered it, roughly how it affected fee or schedule, and how you resolved it with the client.",
+"type": "paragraph",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:revamp-engineering-inc:852408ad4aff-project-engineer-ii-epc-services",
+"label": "Attestation - By completing and submitting this application, I confirm that all information provided in this form is truthful, accurate, and my own. I understand that any misrepresentation, fabrication, or material omission...",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes, I confirm"
+],
+"main": {
+"answeredBy": "you"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:revamp-engineering-inc:852408ad4aff-project-engineer-ii-epc-services",
+"label": "If this application is being completed by an AI Agent on behalf of the candidate, please disclose the details, including the AI model used, below:",
+"type": "paragraph",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:chess-wizards:37cf47bd0d03-chess-instructor-fall",
+"label": "Why are you interested in this position?",
+"type": "paragraph",
+"required": true,
+"main": {
+"answeredBy": "draft_from_your_cv"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:chess-wizards:37cf47bd0d03-chess-instructor-fall",
+"label": "How would you rate your chess knowledge?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Beginner",
+"Intermediate",
+"Advanced"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:chess-wizards:37cf47bd0d03-chess-instructor-fall",
+"label": "Please describe your chess experience, including any competitive play, teaching, or coaching you have done.",
+"type": "paragraph",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:chess-wizards:37cf47bd0d03-chess-instructor-fall",
+"label": "Why do you feel you are qualified to teach chess to elementary-age students?",
+"type": "paragraph",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:chess-wizards:37cf47bd0d03-chess-instructor-fall",
+"label": "Are you comfortable independently leading a class of 10–15 elementary-age students?",
+"type": "paragraph",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:chess-wizards:37cf47bd0d03-chess-instructor-fall",
+"label": "Please describe your relevant experience working with children (educational, recreational, mentoring, etc.).",
+"type": "paragraph",
+"required": true,
+"main": {
+"answeredBy": "draft_from_your_cv"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:chess-wizards:37cf47bd0d03-chess-instructor-fall",
+"label": "What days and times between 2:00 PM and 5:00 PM on weekdays are you available? Please be as specific as possible.",
+"type": "paragraph",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "schedule"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:chess-wizards:37cf47bd0d03-chess-instructor-fall",
+"label": "If offered this position, what zip code will you be departing from?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:chess-wizards:37cf47bd0d03-chess-instructor-fall",
+"label": "What transportation will you use?",
+"type": "checkboxes",
+"required": true,
+"options": [
+"My own personal vehicle (car)",
+"Public transportation (bus, train, etc.)",
+"Bicycle"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:chess-wizards:37cf47bd0d03-chess-instructor-fall",
+"label": "Please note that you will be required to carry a bag containing all necessary materials provided by us. Are you comfortable with this requirement?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:chess-wizards:37cf47bd0d03-chess-instructor-fall",
+"label": "Were you referred by a Chess Wizards employee? If so, please share their name.",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:chess-wizards:37cf47bd0d03-chess-instructor-fall",
+"label": "How did you hear about our Chess Wizards After-School Program?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:truepoint-communications:77771503d12b-spring-public-relations-intern",
+"label": "If you have a portfolio you'd like to share, please attach the link here.",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "your_documents"
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:trueline:149f92db4792-tax-professional",
+"label": "Will you now or at any point in the future require sponsorship to work in the United States?",
+"type": "multiplechoice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "pinpoint",
+"posting": "pinpoint:eastwestrail:612221",
+"label": "Are you eligible to work in the UK?",
+"type": "long_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "pinpoint",
+"posting": "pinpoint:eastwestrail:612221",
+"label": "Are you able to commute to Milton Keynes?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "commute"
+}
+},
+{
+"vendor": "pinpoint",
+"posting": "pinpoint:eastwestrail:612221",
+"label": "Do you require Sponsorship in the UK?",
+"type": "long_text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "pinpoint",
+"posting": "pinpoint:eastwestrail:612221",
+"label": "Why have you applied for this role?",
+"type": "long_text",
+"required": true,
+"main": {
+"answeredBy": "draft_from_your_cv"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "First name",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Last name",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Email",
+"type": "email",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Headline",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Phone",
+"type": "phone",
+"required": true,
+"hint": "The hiring team may use this number to contact you about this job.",
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Address",
+"type": "text",
+"required": true,
+"hint": "Include your city, region, and country, so that employers can easily manage your application.",
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Summary",
+"type": "paragraph",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Cover letter",
+"type": "paragraph",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Have you previously been or are you now, employed by AC Disaster Consulting?",
+"type": "multiple",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Are you related to an AC Disaster Consulting Employee?",
+"type": "multiple",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Have you worked for a different emergency management firm before? If so, please list the company and the date you were last employed by them.",
+"type": "paragraph",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Please list the soonest date you could be prepared to travel/deploy.",
+"type": "date",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "travel"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Do you have experience working in an emergency operations center (EOC)?",
+"type": "multiple",
+"required": false,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Are you legally eligible to work in the United States?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Will you now or in the future require sponsorship for employment visa status (for example, H-1B visa status)?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Are you willing and able to perform the essential functions of the job, with or without accommodation?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "health"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Are you at least 18 years of age?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "age"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Are you willing and able to travel/deploy for extended periods of time if necessary?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "travel"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Have you reviewed the pay rate/range for this position and found it acceptable?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Are you proficient in Microsoft Office 365, particularly Excel?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Do you have 3-5+ years customer service experience?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Do you have 3+ years knowledge and/or exposure in one or more Emergency Management Disciplines?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Do you have a bachelor’s degree in emergency management, public safety, or a related field, or do you have professional experience beyond the minimum requirements, in a related field?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Do you have 3-5+ years' intermediate to advanced-level knowledge/experience in various emergency management functions including but not limited to recovery, response & logistics, planning & mitigation, debris management, or engineering?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Do you have 1-3 years of FEMA Public Assistance Experience?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Do you have 3-5+ years project management experience?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Do you have business development experience?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Please list any applicable certifications that you have (Project Managment, CEM etc.).",
+"type": "paragraph",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Please share your favorite DR (disaster recovery) effort where you were directly involved and why it's your favorite. (Please do not respond \"see resume\" or leave blank, or your application will be considered incomplete.)",
+"type": "paragraph",
+"required": true,
+"main": {
+"answeredBy": "your_documents"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Please share your most recent role directly related to working in Public Assistance Compliance. (Please do not respond \"see resume\" or leave blank, or your application will be considered incomplete.)",
+"type": "paragraph",
+"required": true,
+"main": {
+"answeredBy": "your_documents"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:acdisaster:C6A04F38AA",
+"label": "Please share your favorite thing about working helping clients navigate the FEMA Public Assistance process. (Please do not respond \"see resume\" or leave blank, or your application will be considered incomplete.)",
+"type": "paragraph",
+"required": true,
+"main": {
+"answeredBy": "your_documents"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:action-day-schools:FD35469C35",
+"label": "How many years of experience do you have teaching music to elementary school students?",
+"type": "multiple",
+"required": true,
+"options": [
+"Under 1 yr.",
+"1-4 yrs.",
+"5-9 yrs.",
+"10+ yrs."
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:action-day-schools:FD35469C35",
+"label": "Do you have a Bachelor's degree in Music Education, Music, Education, or a related field?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:action-day-schools:FD35469C35",
+"label": "Are you available to work 10:30am -3:30pm, Monday-Friday?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "start_date"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:action-day-schools:FD35469C35",
+"label": "When are you available to start a new position?",
+"type": "date",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "start_date"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:action-day-schools:FD35469C35",
+"label": "This position requires an in-person interview. Do you live in the United states and are you available for an in-person interview in the the San Jose, Bay Area?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "other"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:action-day-schools:FD35469C35",
+"label": "Have you ever been the subject of a credible complaint, investigation, or disciplinary action involving misconduct with a student or minor?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:action-day-schools:FD35469C35",
+"label": "If you answered YES to the question above, please explain:",
+"type": "paragraph",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:action-day-schools:FD35469C35",
+"label": "How did you hear about Action Day Schools?",
+"type": "multiple",
+"required": true,
+"options": [
+"Action Day Schools website",
+"Job seeker sites/boards",
+"Referred by a friend or colleague",
+"Previously employed",
+"Other"
+],
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:action-day-schools:FD35469C35",
+"label": "If referred by a current Action Day employee, please include their name here:",
+"type": "paragraph",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:aptihealth:A208B30E77",
+"label": "What states are you currently licensed in?",
+"type": "multiple",
+"required": true,
+"options": [
+"NY",
+"Other*"
+],
+"main": {
+"answeredBy": "you",
+"topic": "licence"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:aptihealth:A208B30E77",
+"label": "If you answered Other, please list the additional states:",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:aptihealth:A208B30E77",
+"label": "Where did you hear about us?",
+"type": "multiple",
+"required": true,
+"options": [
+"LinkedIn",
+"Indeed.com",
+"Social Media Ad",
+"Google Search",
+"National Association of Social Workers",
+"Current Employee Referral",
+"Other"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:aptihealth:A208B30E77",
+"label": "If you answered Other or Referral, please list:",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:aptihealth:A208B30E77",
+"label": "Conflict of Interest Disclosure: To maintain ethical and professional boundaries, aptihealth does not employ individuals who are current clients or who have received services from this agency within the past two (2) years. Have you received behavioral health or related services from aptihealth within the past two (2) years?",
+"type": "multiple",
+"required": false,
+"options": [
+"No",
+"Yes (If yes, your response will be reviewed by Human Resources solely for the purpose of determining eligibility consistent with agency policy. This information will not be used to assess qualifications or shared beyond what is necessary for compliance review.)"
+],
+"main": {
+"answeredBy": "you",
+"topic": "health"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:aptihealth:A208B30E77",
+"label": "What are your hourly compensation expectations in USD?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:archimed:269814B11E",
+"label": "Are you open to more than 65% travel?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:lens-wk:ABCDEF1234",
+"label": "Do you speak Estonian fluently?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "workable",
+"posting": "workable:lens-wk:ABCDEF1234",
+"label": "Do you have an EU nationality or a Valid Portuguese Working permit?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"voluntary": true
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:cfsenergy:c7cedda0-0650-4d31-8f36-a279ef6cba12",
+"label": "If offered a position at CFS, will you be able to start within 3 weeks?",
+"type": "multiple-choice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "start_date"
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:cfsenergy:c7cedda0-0650-4d31-8f36-a279ef6cba12",
+"label": "Optional: Additional information may be added in reference to a start date.",
+"type": "textarea",
+"required": false,
+"main": {
+"answeredBy": "you",
+"topic": "start_date"
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:cfsenergy:c7cedda0-0650-4d31-8f36-a279ef6cba12",
+"label": "The following question is asked for the purpose of ensuring compliance with U.S. Export Control Laws. Are you one of the following: a U.S. citizen, a U.S. national, a lawful permanent resident of the U.S. (e.g. green card holder), or a protected individual as defined by 8 U.S.C. 1324b(a)(3) (e.g., a refugee or asylee)?*",
+"type": "multiple-choice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:cfsenergy:c7cedda0-0650-4d31-8f36-a279ef6cba12",
+"label": "If you answered “No” to the above, please provide the country or countries of which you are a current citizen or national, and if applicable, where you are currently granted lawful permanent resident status. If you answered “Yes,” please enter N/A*",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:cfsenergy:c7cedda0-0650-4d31-8f36-a279ef6cba12",
+"label": "Are you currently located or willing to relocate to Massachusetts?",
+"type": "multiple-choice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "relocation"
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:cfsenergy:c7cedda0-0650-4d31-8f36-a279ef6cba12",
+"label": "Optional: Additional information may be added in reference to relocation",
+"type": "textarea",
+"required": false,
+"main": {
+"answeredBy": "you",
+"topic": "relocation"
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:provectus:92ccf747-e1a2-48b8-b0b5-9f8503480dc5",
+"label": "What areas of ML do you have experience with?",
+"type": "textarea",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:provectus:92ccf747-e1a2-48b8-b0b5-9f8503480dc5",
+"label": "Do you have production experience with GenAI?",
+"type": "dropdown",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:provectus:92ccf747-e1a2-48b8-b0b5-9f8503480dc5",
+"label": "Do you have hands-on experience working with AWS? Please briefly list the services that you used",
+"type": "textarea",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:provectus:92ccf747-e1a2-48b8-b0b5-9f8503480dc5",
+"label": "Please provide your region",
+"type": "multiple-select",
+"required": true,
+"options": [
+"US",
+"Canada",
+"Costa Rica",
+"Colombia",
+"European (Poland, Serbia, and other European counties)",
+"Ukraine",
+"Armenia",
+"Georgia",
+"Asia, other regions"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:provectus:92ccf747-e1a2-48b8-b0b5-9f8503480dc5",
+"label": "What is the Minimum amount you would be comfortable with for a B2B contract, in Gross Monthly USD?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:provectus:92ccf747-e1a2-48b8-b0b5-9f8503480dc5",
+"label": "What is the Maximum amount you would be comfortable with for a B2B contract, in Gross Monthly USD?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:provectus:92ccf747-e1a2-48b8-b0b5-9f8503480dc5",
+"label": "What is your seniority level for this role?",
+"type": "dropdown",
+"required": true,
+"options": [
+"Trainee",
+"Junior",
+"Middle",
+"Senior",
+"Lead",
+"Architect",
+"Staff, Principal",
+"Head, Director and higher"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:provectus:92ccf747-e1a2-48b8-b0b5-9f8503480dc5",
+"label": "Your conversational English level",
+"type": "dropdown",
+"required": true,
+"options": [
+"Basic",
+"Pre-Intermediate",
+"Intermediate",
+"Upper-intermediate",
+"Advanced"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:provectus:92ccf747-e1a2-48b8-b0b5-9f8503480dc5",
+"label": "What is your country?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:provectus:92ccf747-e1a2-48b8-b0b5-9f8503480dc5",
+"label": "What is your city of residence?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:provectus:92ccf747-e1a2-48b8-b0b5-9f8503480dc5",
+"label": "What is your current notice period?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "start_date"
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:provectus:92ccf747-e1a2-48b8-b0b5-9f8503480dc5",
+"label": "Could you please let us know if you are comfortable with working through B2B contract?",
+"type": "dropdown",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:provectus:92ccf747-e1a2-48b8-b0b5-9f8503480dc5",
+"label": "Do you have hands-on Python experience building production-grade systems — not scripts, notebooks, or tooling only?",
+"type": "multiple-select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:provectus:92ccf747-e1a2-48b8-b0b5-9f8503480dc5",
+"label": "Have you used AWS Bedrock, Google Vertex AI, or Azure OpenAI Service in a production system — not just experimented locally or in sandbox?",
+"type": "multiple-select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:provectus:92ccf747-e1a2-48b8-b0b5-9f8503480dc5",
+"label": "Have you personally owned the end-to-end architecture of a production AI system, including making and defending trade-off decisions on latency, scalability, and cost?",
+"type": "multiple-select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:provectus:92ccf747-e1a2-48b8-b0b5-9f8503480dc5",
+"label": "Have you shipped an AI agent or agentic workflow to a production environment with real users — not a POC, prototype, or internal demo?",
+"type": "multiple-select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:provectus:92ccf747-e1a2-48b8-b0b5-9f8503480dc5",
+"label": "Have you worked with Model Context Protocol (MCP) — either building MCP servers or integrating them into agentic systems in production?",
+"type": "multiple-select",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:provectus:92ccf747-e1a2-48b8-b0b5-9f8503480dc5",
+"label": "How many years of production experince in ML do you have?",
+"type": "multiple-select",
+"required": true,
+"options": [
+"0-1",
+"1-2",
+"2-5",
+"5+"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:capstan-medical:61b724da-32c1-4e1f-9435-b30f64dddc3e",
+"label": "Will you now or in the future require employer sponsorship to work in the United States?",
+"type": "multiple-choice",
+"required": false,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:capstan-medical:61b724da-32c1-4e1f-9435-b30f64dddc3e",
+"label": "Are you able to commute to our Santa Cruz office without having to relocate?",
+"type": "multiple-choice",
+"required": false,
+"options": [
+"Yes",
+"No - I would need to relocate in order to work in Santa Cruz office"
+],
+"main": {
+"answeredBy": "you",
+"topic": "relocation"
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:capstan-medical:61b724da-32c1-4e1f-9435-b30f64dddc3e",
+"label": "Are you currently enrolled in, or actively pursuing, a Bachelor’s, Master’s, or Doctoral degree?",
+"type": "multiple-choice",
+"required": false,
+"options": [
+"Yes - I'm attending our pursuing higher education currently",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:lensa:00000000-0000-0000-0000-000000000001",
+"label": "Why Prolific Machines? In a few sentences, tell us why you are interested in this role and what about Prolific Machines resonates with you.",
+"type": "textarea",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:lensa:00000000-0000-0000-0000-000000000001",
+"label": "Will you now or in the future require visa sponsorship to work in the United States?",
+"type": "multiple-choice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "lever",
+"posting": "lever:lensa:00000000-0000-0000-0000-000000000001",
+"label": "Do you require relocation assistance to work in the SF Bay Area?",
+"type": "multiple-choice",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "relocation"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "First Name",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "Last Name",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "Phone",
+"type": "phone",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "Address",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "City",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "State",
+"type": "select",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "ZIP",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "Country",
+"type": "select",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "LinkedIn URL",
+"type": "",
+"required": false,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "Date Available",
+"type": "date",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "Desired Pay",
+"type": "",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "Referred by (Name)",
+"type": "",
+"required": false,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "Highest Education Obtained",
+"type": "select",
+"required": true,
+"options": [
+"GED or Equivalent",
+"High School",
+"Some College",
+"College - Associates",
+"College - Bachelor of Arts",
+"College - Bachelor of Fine Arts",
+"College - Bachelor of Science",
+"College - Master of Arts",
+"College - Master of Fine Arts",
+"College - Master of Science",
+"College - Master of Business Administration",
+"College - Doctorate",
+"Medical Doctor",
+"Other"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "College/University",
+"type": "",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "References",
+"type": "",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "references"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "Are you currently authorized to work in the United States for this Company on a full-time basis?",
+"type": "yes_no",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "Will you now or in the future require sponsorship for employment eligibility?",
+"type": "yes_no",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "sponsorship"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "Are you at least 18 years old? (If no, hire is subject to verification of minimum legal working age.)",
+"type": "yes_no",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "age"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "Have you ever worked for Alston Construction or Panattoni Construction?",
+"type": "yes_no",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "employment_history"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "Are you related to or aquainted with anyone working for Alston Construction?",
+"type": "yes_no",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "How often are you able and willing to travel?",
+"type": "multi",
+"required": true,
+"options": [
+"Up to 100%",
+"Up to 75%",
+"Up to 50%",
+"Up to 25%",
+"Up to 10%",
+"None"
+],
+"main": {
+"answeredBy": "you",
+"topic": "travel"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "Are you able and willing to work overtime?",
+"type": "yes_no",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "schedule"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "Are you able and willing to work a flexible schedule, including nights and weekends?",
+"type": "yes_no",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "schedule"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "Do you have a current valid, unrestricted driver's license?",
+"type": "multi",
+"required": true,
+"options": [
+"Yes",
+"No",
+"N/A, no driving will be required for this position."
+],
+"main": {
+"answeredBy": "you",
+"topic": "licence"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "I hereby certify that the facts contained in this application and my attached resume are true and complete. I understand that any omission or misstatement of material fact on this application or on any document used to secure employment shall be grounds for rejection of this application or for immediate discharge if I am employed, regardless of the time elapsed before discovery.",
+"type": "checkbox",
+"required": true,
+"main": {
+"answeredBy": "you"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "I understand that completion of this application is a preliminary step to employment. It does not obligate the Company to interview or offer employment to me and it does not obligate me to accept employment. I understand that nothing contained in the application, or conveyed during any interview which may be granted, or during my employment, if hired, is intended to create an employment contract between me and the Company. In addition, I understand and agree that if I am employed, my employment ",
+"type": "checkbox",
+"required": true,
+"main": {
+"answeredBy": "you"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "I acknowledge that if an offer of employment is made, Alston Construction will run a background check (including criminal check and driving record) after an offer of employment has been accepted. All offers are contingent upon satisfactory results of that background check, as well as a satisfactory pre-employment drug test result.",
+"type": "checkbox",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "criminal_history"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "(Please check to acknowledge) FOR MASSACHUSETTS AND MARYLAND APPLICANTS: AN EMPLOYER MAY NOT REQUIRE OR DEMAND, AS A CONDITION OF EMPLOYMENT, PROSPECTIVE EMPLOYMENT OR CONTINUED EMPLOYMENT, THAT AN INDIVIDUAL SUBMIT TO OR TAKE A LIE DETECTOR OR SIMILAR TEST. Please note that Alston Construction does not, under any circumstances, administer lie detector tests.",
+"type": "checkbox",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:alstonco:1410",
+"label": "Do you a minimum of 7 years of progressive experience in MEP or electrical construction in mission critical projects?",
+"type": "yes_no",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:awcc:93",
+"label": "Website, Blog or Portfolio",
+"type": "",
+"required": false,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "bamboohr",
+"posting": "bamboohr:designworks:213",
+"label": "State",
+"type": "select",
+"required": true,
+"options": [
+"AB",
+"BC",
+"MB",
+"NB",
+"NL",
+"NS",
+"NT",
+"NU",
+"ON",
+"PE",
+"QC",
+"SK",
+"YT"
+],
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Name",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Email address",
+"type": "email",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Mobile Number",
+"type": "phone",
+"required": true,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "We may use SMS during the hiring process. Do you give us permission to text you?",
+"type": "boolean",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Have you applied for a job with us before?",
+"type": "",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Country (accept residents outside of US)",
+"type": "",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Address line 2",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "State",
+"type": "",
+"required": false,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Zip code",
+"type": "text",
+"required": false,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Date available to work?",
+"type": "date",
+"required": false,
+"main": {
+"answeredBy": "you",
+"topic": "start_date"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Desired salary",
+"type": "",
+"required": false,
+"main": {
+"answeredBy": "you",
+"topic": "salary"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "How did you hear about us?",
+"type": "select",
+"required": false,
+"options": [
+"Online Job Board",
+"Company Website",
+"Friend or Family Member",
+"Current Employee"
+],
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Referred by",
+"type": "",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Skills",
+"type": "",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Have you worked with us before? (If yes, what position, dates)",
+"type": "",
+"required": false,
+"main": {
+"answeredBy": "you",
+"topic": "other"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Are you 21 years or older ?",
+"type": "multi",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"screens": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "This position is on-site in Naples, FL. Are you able to commute to this location on a regular basis?",
+"type": "multi",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"screens": true,
+"main": {
+"answeredBy": "you",
+"topic": "on_site"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Are you Legally authorized to work in the United Stated ?",
+"type": "multi",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"screens": true,
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Employment Desired?",
+"type": "multi",
+"required": false,
+"options": [
+"Full- Time",
+"Part- Time"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Do you have reliable transportation to and from work ?",
+"type": "multi",
+"required": false,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Are you able to perform the essential functions of the job witch you are applying, with or without a reasonable accommodations ?",
+"type": "multi",
+"required": false,
+"options": [
+"Yes",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"topic": "health"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Please Indicate Which Days and Hours you are able to work. If no preference, please indicate. (required )",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "references"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Please list your three most recent employers, including the company name, job title, and dates of employment.",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:c3b88991-c035-4553-a749-c4ed739f2faa:4344747",
+"label": "Are you authorized to work in the United States?",
+"type": "",
+"required": false,
+"main": {
+"answeredBy": "you",
+"topic": "work_authorisation"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:x:4650114",
+"label": "Home phone number",
+"type": "phone",
+"required": false,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:x:4650114",
+"label": "How did you hear about us?",
+"type": "select",
+"required": false,
+"options": [
+"Indeed",
+"LinkedIn",
+"Company Website",
+"Friend or Family Member",
+"Current Employee",
+"Other"
+],
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:x:4392221",
+"label": "LinkedIn profile URL",
+"type": "",
+"required": false,
+"main": {
+"answeredBy": "your_details"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:x:4392221",
+"label": "How did you hear about us?",
+"type": "select",
+"required": true,
+"options": [
+"Indeed",
+"LinkedIn",
+"Zip Recruiter",
+"Another Online Job Board",
+"Company Website",
+"Social Media",
+"Job Fair / Community Event / Job Flyer",
+"Friend or Family Member",
+"Current Employee",
+"Other"
+],
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:x:4392221",
+"label": "Are you at least 18 years old?",
+"type": "multi",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"screens": true,
+"main": {
+"answeredBy": "you",
+"topic": "age"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:x:4392221",
+"label": "Are you available to work every other weekend?",
+"type": "multi",
+"required": true,
+"options": [
+"Yes",
+"No"
+],
+"screens": true,
+"main": {
+"answeredBy": "you",
+"topic": "start_date"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:x:4392221",
+"label": "Do you have any friends or relatives currently employed by The Residence at Boyertown or Weathervane Senior Living? If yes, please provide their name and your relationship to them.",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"topic": "employment_history"
+}
+},
+{
+"vendor": "paylocity",
+"posting": "paylocity:x:4650094",
+"label": "How did you hear about us?",
+"type": "select",
+"required": false,
+"options": [
+"Online Job Board",
+"Company Website",
+"Friend or Family Member",
+"Current Employee",
+"Other"
+],
+"main": {
+"answeredBy": "you",
+"topic": "referral_source"
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:providentmexico:8685261",
+"label": "¿Cómo te enteraste de nuestra vacante?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:providentmexico:8685261",
+"label": "¿Has sido empleado de Provident/Creditea?",
+"type": "radio",
+"required": true,
+"options": [
+"si",
+"no"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:providentmexico:8685261",
+"label": "¿Haz tenido que coordinar a un equipo de trabajo?",
+"type": "boolean",
+"required": true,
+"options": [
+"Sí",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:providentmexico:8685261",
+"label": "¿Tienes experiencia ofreciendo préstamos?",
+"type": "boolean",
+"required": true,
+"options": [
+"Sí",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:providentmexico:8685261",
+"label": "¿Tu lugar de residencia se encuentra en la ciudad de la vacante?",
+"type": "boolean",
+"required": true,
+"options": [
+"Sí",
+"No"
+],
+"hint": "Para participar en esta vacante es importante tener residencia y conocimiento comercial de la ciudad.",
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:providentmexico:8685261",
+"label": "Ubicaciones",
+"type": "checkbox",
+"required": true,
+"options": [
+"México Sucursal Cuautla Morelos",
+"México IR Yautepec"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:providentmexico:8685261",
+"label": "Carta de motivación",
+"type": "textarea",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:alehop:8684858",
+"label": "¿Tienes disponibilidad para trabajar los fines de semana y festivos?",
+"type": "boolean",
+"required": true,
+"options": [
+"Sí",
+"No"
+],
+"hint": "Nuestras tiendas están abiertas de lunes a domingo.",
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:alehop:8684858",
+"label": "¿Tienes disponibilidad de incorporación inmediata?",
+"type": "boolean",
+"required": true,
+"options": [
+"Sí",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:alehop:8684858",
+"label": "¿Tienes disponibilidad para trabajar a turnos rotativos?",
+"type": "boolean",
+"required": true,
+"options": [
+"Sí",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:alehop:8684858",
+"label": "¿Cuánto tiempo de experiencia laboral tienes en tiendas/retail/atencion al cliente?",
+"type": "radio",
+"required": true,
+"options": [
+"Más de 4 años.",
+"Entre 2 y 4 años de experiencia.",
+"Entre 1 y 2 años de experiencia.",
+"Menos de 1 año.",
+"No tengo experiencia laboral."
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:alehop:8684858",
+"label": "¿Dispones de vehículo propio?",
+"type": "boolean",
+"required": true,
+"options": [
+"Sí",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:alehop:8684858",
+"label": "¿En qué localidad resides?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:alehop:8684858",
+"label": "¿Cuánto tardas desde tu residencia a nuestra ubicación?",
+"type": "radio",
+"required": true,
+"options": [
+"Menos de 10 minutos",
+"De 10 a 20 minutos",
+"De 20 a 30 minutos",
+"De 30 a 40 minutos",
+"Más de 40 minutos"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:alehop:8684858",
+"label": "¿Cuál es tu nivel de inglés?",
+"type": "radio",
+"required": true,
+"options": [
+"A2",
+"B1",
+"B2",
+"C1",
+"C2"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:alehop:8684858",
+"label": "¿Eres mayor de edad?",
+"type": "boolean",
+"required": true,
+"options": [
+"Sí",
+"No"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:alehop:8684858",
+"label": "Ubicaciones",
+"type": "checkbox",
+"required": true,
+"options": [
+"ALE-HOP Tenerife Playa las Vistas",
+"ALE-HOP Tenerife Paseo Andrade Fumero",
+"ALE-HOP Tenerife Parque Santiago IV"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:coinpoker:8684964",
+"label": "How many years of experience do you have managing affiliate or partnership programmes in iGaming, online poker, or related industries?",
+"type": "number",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:coinpoker:8684964",
+"label": "Which commercial models (e.g., CPA, Revenue Share, Hybrid, Flat Fees) do you have direct experience negotiating and managing, and in what context?",
+"type": "textarea",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "teamtailor",
+"posting": "teamtailor:coinpoker:8684964",
+"label": "Cover letter",
+"type": "textarea",
+"required": false,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "recruitee",
+"posting": "recruitee:werkenbijxonar:2819341",
+"label": "De door jouw aangereikte gegevens worden gebruikt voor interne werving & selectie binnen XONAR. Om ervoor te zorgen dat jouw sollicitatieprocedure goed verloopt worden jouw gegevens de gehele sollicitatieprocedure bewaart. Tevens willen wij graag jouw gegevens bewaren indien je niet geselecteerd bent voor de functie (tot 400 dagen). Klik ja indien je hier mee akkoord gaat.",
+"type": "single_choice",
+"required": true,
+"options": [
+"No",
+"Yes"
+],
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+},
+{
+"vendor": "breezy",
+"posting": "breezy:everstar:0157326f0ef8-rozrobnik-bpla",
+"label": "Як ви дізналися про нашу вакансію?",
+"type": "text",
+"required": true,
+"main": {
+"answeredBy": "you",
+"cvMayHelp": true
+}
+}
+]
+}

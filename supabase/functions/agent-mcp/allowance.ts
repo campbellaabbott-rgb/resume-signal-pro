@@ -308,6 +308,13 @@ export function secondsLeftInMinute(now: number = Date.now()): number {
   return Math.max(1, 60 - new Date(now).getUTCSeconds());
 }
 
+/** The keyless client, read from its user agent for the words of a refusal only. */
+export type KeylessClient = "claude-code" | "unknown";
+/** Claude Code names itself in its user agent ("claude-code/…", "claude-cli/…"); anything else is unknown. */
+export function keylessClientOf(userAgent: string | null | undefined): KeylessClient {
+  return /\bclaude-(?:code|cli)\b/i.test(String(userAgent ?? "")) ? "claude-code" : "unknown";
+}
+
 /**
  * What a spent allowance says, as [message, fix]. The message keeps the
  * phrase "The unkeyed allowance is spent" for a day refusal (verify-deploy
@@ -323,18 +330,24 @@ export function spentRefusal(
   mintUrl: string,
   keyDailyQuota: number,
   now: number = Date.now(),
+  client: KeylessClient = "unknown",
 ): [string, string] {
   const hours = hoursUntilReset(now);
   if (d.refused_by === "minute" || d.refused_by === "overall_minute") {
     const secs = secondsLeftInMinute(now);
     const forms = isFormsBucket(b);
-    const from = b.partition === "claude" ? "from Claude" : b.partition === "chatgpt" ? "from ChatGPT" : "from outside Claude and ChatGPT";
+    // Claude Code calls from the person's own connection, so it counts in the
+    // share outside the two platforms' networks; told so in those words, not
+    // "outside Claude" (connect W3, APPLY-1107-09). Wording only: the client
+    // is read from the user agent, which counts nothing.
+    const codeHere = b.partition === "other" && client === "claude-code";
+    const from = b.partition === "claude" ? "from Claude" : b.partition === "chatgpt" ? "from ChatGPT" : codeHere ? "from Claude Code on your own connection" : "from outside Claude and ChatGPT";
     const whose = d.refused_by === "minute"
       ? (forms ? `for reading application forms ${from}` : from)
       : (forms ? "for reading application forms, across every keyless caller" : "across every keyless caller");
     return [
       `Too many keyless calls this minute ${whose} (${d.minute_used} of ${d.minute_cap}). Nothing was counted for this call.`,
-      `Try again in ${secs} seconds. Meanwhile ${twin} needs nothing.`,
+      `Try again in ${secs} seconds. Meanwhile ${twin} needs nothing.${codeHere && d.refused_by === "minute" ? ` A free key (${mintUrl}) lifts this.` : ""}`,
     ];
   }
   const forms = isFormsBucket(b);

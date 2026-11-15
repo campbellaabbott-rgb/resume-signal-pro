@@ -1,0 +1,24 @@
+{
+ "categories": {
+  "commitment": "Full-time",
+  "department": "SKILLED TRADES",
+  "location": "Harrisburg-Pennsylvania",
+  "team": "Electrician",
+  "allLocations": [
+   "Harrisburg-Pennsylvania"
+  ]
+ },
+ "createdAt": 1792263393930,
+ "id": "a02cac51-7ee4-4e6e-8d5c-6acfa515ae25",
+ "salaryRange": {
+  "min": 58000,
+  "max": 78000,
+  "currency": "USD",
+  "interval": "per-year-salary"
+ },
+ "text": "Electrician Instructor",
+ "country": "US",
+ "workplaceType": "onsite",
+ "hostedUrl": "https://jobs.lever.co/americaatwork/a02cac51-7ee4-4e6e-8d5c-6acfa515ae25",
+ "applyUrl": "https://jobs.lever.co/americaatwork/a02cac51-7ee4-4e6e-8d5c-6acfa515ae25/apply"
+}

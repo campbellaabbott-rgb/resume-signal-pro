@@ -1,8 +1,8 @@
 {
   "home": {
     "seo": {
-      "title": "Offres en direct, tirées des systèmes des employeurs",
-      "description": "Cherchez des offres en direct lues dans les propres systèmes de recrutement des employeurs et sur USAJOBS, puis postulez sur le site de l'employeur. Gratuit, et la recherche ne demande aucun compte."
+      "title": "Resume Booster — offres en direct, venues des employeurs",
+      "description": "Resume Booster est un site d'emploi gratuit : offres en direct lues dans les systèmes des employeurs et sur USAJOBS. Postulez chez l'employeur, sans compte."
     },
     "hero": {
       "title": "Des offres en direct, tirées des propres systèmes de recrutement des employeurs.",
@@ -37,7 +37,10 @@
       "total_many": "{{formatted}} offres ouvertes au total",
       "total_other": "{{formatted}} offres ouvertes au total",
       "seeAll": "Voir toutes les offres",
-      "applyNote": "Vous postulez sur le site de l'employeur."
+      "applyNote": "Vous postulez sur le site de l'employeur.",
+      "bakedNote": "Publiées ces {{days}} derniers jours selon la date de l'employeur, chacune avec sa propre page ici ; contrôlées sur le tableau le {{date}}.",
+      "bakedPosted": "publiée le {{date}}, selon l'employeur",
+      "dataLead": "Les mesures propres du tableau, chacune datée par ses données :"
     },
     "rail": {
       "title": "Le tableau aujourd'hui",
@@ -118,6 +121,7 @@
       "claude": "Configurer dans Claude",
       "chatgpt": "Configurer dans ChatGPT",
       "claudeCode": "Configurer Claude Code",
+      "chatgptFree": "Vous êtes sur ChatGPT Free ? <claude>Utilisez l'offre gratuite de Claude</claude>, qui peut ajouter un connecteur personnalisé ; ChatGPT Free ne le peut pas.",
       "reach": "Votre IA cherche parmi {{searchable}} des {{total}} offres ouvertes : les offres de {{names}} ({{withheld}}) restent sur ce site. Comptées le {{date}}, {{time}} UTC.",
       "figureLabel": "Illustration d'une recherche depuis Claude",
       "figureChip": "Illustration",

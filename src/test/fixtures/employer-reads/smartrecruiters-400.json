@@ -1,0 +1,6 @@
+{
+ "id": "63a37861-d585-4f16-b982-8dc66ead8f84",
+ "httpCode": 400,
+ "code": "ILLEGAL_ARGUMENT",
+ "message": "[MDC: ppa-b6acdc92-c0cc-4d33-a762-5c3a653754bc] Response code: 400. Reason: Provided companyIdentifier (HMGroup) does not match companyIdentifier (PilotCompany) from publication."
+}

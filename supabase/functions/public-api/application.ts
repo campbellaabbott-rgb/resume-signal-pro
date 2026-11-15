@@ -8,7 +8,7 @@
 // recognised terms. The reading and the who-answers rule are NOT this file's:
 //
 //   - _shared/application-form.ts reads the form where the hiring system
-//     publishes it (five systems), through the 24-hour application_form_cache,
+//     publishes it (ten systems), through the 24-hour application_form_cache,
 //     and fails closed: a payload that does not parse is "no form read", never
 //     an empty form;
 //   - _shared/self-apply.ts decides who answers each question, DEFAULT-DENY:
@@ -20,8 +20,10 @@
 // What this file adds is the /v1 shape around them, and nothing that decides.
 // It never fills or submits anything: route.submitter is always "you".
 //
-// R2: /v1 reads all five systems' forms (the ChatGPT surface alone is limited
-// to the public-API two), so V1_FORM_VENDORS is the shared reader list itself.
+// R2: /v1 reads every system's form the shared reader reads (the ChatGPT
+// surface alone is limited to the public-API two), so V1_FORM_VENDORS is the
+// shared reader list itself. Connect W5 (owner decision 2026-11-07) added
+// Paylocity, Workable, Teamtailor, Lever and BambooHR to it.
 
 import {
   FORM_READER_VENDORS,
@@ -32,17 +34,18 @@ import {
   type PostingRef,
   type VendorForm,
 } from "../_shared/application-form.ts";
-import { whoAnswersEach, type SelfApplyQuestion } from "../_shared/self-apply.ts";
-import { automationFor } from "../_shared/apply-automation.ts";
-import { computeFit } from "../_shared/fit-score.ts";
+import { postingTermsOf as termsOf, selfApplyRoute, whoAnswersEach, type SelfApplyQuestion, type SelfApplyRoute } from "../_shared/self-apply.ts";
 
 /** The hiring systems whose forms /v1 reads: every reader (owner decision R2). */
 export const V1_FORM_VENDORS: readonly string[] = FORM_READER_VENDORS;
 
 /** The vendors in prose, for the description and the not-published note. */
 const VENDOR_PROSE = (() => {
-  const names: Record<string, string> = { ashby: "Ashby", breezy: "Breezy", greenhouse: "Greenhouse", pinpoint: "Pinpoint", recruitee: "Recruitee" };
-  const list = [...V1_FORM_VENDORS].sort().map((v) => names[v] ?? v);
+  const names = new Map([
+    ["ashby", "Ashby"], ["bamboohr", "BambooHR"], ["breezy", "Breezy"], ["greenhouse", "Greenhouse"], ["lever", "Lever"],
+    ["paylocity", "Paylocity"], ["pinpoint", "Pinpoint"], ["recruitee", "Recruitee"], ["teamtailor", "Teamtailor"], ["workable", "Workable"],
+  ]);
+  const list = [...V1_FORM_VENDORS].sort().map((v) => names.get(v) ?? v);
   return list.length > 1 ? `${list.slice(0, -1).join(", ")} or ${list[list.length - 1]}` : list.join("");
 })();
 
@@ -88,6 +91,9 @@ export type V1Form = {
 /** At most this many posting terms, as the MCP twin prints. */
 export const POSTING_TERMS_MAX = 30;
 
+/** Said wherever postingTerms stand in for a form nobody read. */
+const TERMS_NOTE = "postingTerms are skills and terms the posting uses, not the form's questions.";
+
 /**
  * The form block for a read, or null when the hiring system did not answer
  * (the caller answers 503: an unread form is never served as a form that asks
@@ -105,14 +111,17 @@ export function formBlock(read: FormRead): V1Form | null {
         alsoOnForm: read.form.alsoOnForm,
       };
     case "absent":
-      // A Breezy or Pinpoint apply page that answered with no question the
-      // reader found: the page exists, so the note says it was read.
+      // An apply page that answered with no question the reader found: the
+      // page exists, so the note says it was read, with what it did show (a
+      // Breezy CV setting, a Pinpoint equality block or consent).
       if (read.pageRead) {
         return {
           source: "not-published",
           vendor: read.vendor,
           readAt: read.readAt,
-          questions: [], documents: [{ name: "Resume / CV", required: false }], alsoOnForm: [],
+          questions: [],
+          documents: read.documents?.length ? read.documents.map((d) => ({ ...d })) : [{ name: "Resume / CV", required: false }],
+          alsoOnForm: read.alsoOnForm ? [...read.alsoOnForm] : [],
           reason: "no-questions-found",
           note: "The employer's application page was read and found no questions beyond the person's details and CV, or they could not be read. Check the form at apply_url before applying; the person attaches their CV there.",
         };
@@ -123,7 +132,7 @@ export function formBlock(read: FormRead): V1Form | null {
         readAt: read.readAt,
         questions: [], documents: [], alsoOnForm: [],
         reason: "no-form-read",
-        note: "The employer's hiring system published no form we could read for this posting. Apply at apply_url; the person fills in the employer's form.",
+        note: `No form could be read for this posting from the employer's hiring system (it may have closed or moved). Apply at apply_url; the person fills in the employer's form. ${TERMS_NOTE}`,
       };
     case "no-reader":
       return {
@@ -132,7 +141,9 @@ export function formBlock(read: FormRead): V1Form | null {
         readAt: null,
         questions: [], documents: [], alsoOnForm: [],
         reason: "no-reader",
-        note: `Forms are read only where the hiring system publishes them (${VENDOR_PROSE}). Apply at apply_url; the person fills in the employer's form.`,
+        note: selfApplyRoute(read.vendor).needsEmployerAccount === true
+          ? `This hiring system asks the person to sign in or make an account with the employer before its form opens, so the form is not read in advance. Apply at apply_url. ${TERMS_NOTE}`
+          : `This hiring system's form is not read yet: forms are read for ${VENDOR_PROSE}. Apply at apply_url; the person fills in the employer's form. ${TERMS_NOTE}`,
       };
     case "withheld":
       return {
@@ -149,37 +160,24 @@ export function formBlock(read: FormRead): V1Form | null {
 }
 
 /**
- * How the person submits, from the measured per-vendor facts
- * (_shared/apply-automation.ts). null where the vendor was never measured:
- * an unmeasured system is not claimed to be free of either obstacle.
+ * How the person submits: the measured route the connector also prints
+ * (_shared/self-apply.ts selfApplyRoute). null where the vendor was never
+ * measured: an unmeasured system is not claimed to be free of either obstacle.
  */
-export function routeFor(source: string): {
-  submitter: "you";
-  needsEmployerAccount: boolean | null;
-  captchaLikely: boolean | null;
-  attachFilesYourself: true;
-} {
-  const f = automationFor(source);
-  const unknown = f.tier === "unknown";
-  return {
-    submitter: "you",
-    // Workday is tiered "auto" (no CAPTCHA seen) while its note records the
-    // per-tenant candidate account, which is the obstacle a person meets.
-    needsEmployerAccount: f.tier === "signup" || /\baccount needed\b/i.test(f.note) ? true : unknown ? null : false,
-    captchaLikely: f.tier === "click" ? true : unknown ? null : false,
-    attachFilesYourself: true,
-  };
+export function routeFor(source: string): SelfApplyRoute {
+  return selfApplyRoute(source);
 }
 
 /**
- * The posting's recognised terms: the same dictionary walk the fit scorer
- * makes over a posting (computeFit with no résumé leaves every posting term
- * unmatched), so a client can show what the posting asks for.
+ * The posting's recognised terms: the fit scorer's dictionary walked over the
+ * posting with its equal-opportunity, benefits and legal sentences taken out
+ * (CJ-12), so a client can show what the posting asks for and never "veteran,
+ * color" from an EEO paragraph.
  */
 export function postingTermsOf(description: unknown): string[] {
   const text = typeof description === "string" ? description : "";
   if (!text.trim()) return [];
-  return computeFit(text, "").missing.slice(0, POSTING_TERMS_MAX);
+  return termsOf(text, POSTING_TERMS_MAX);
 }
 
 /** The posting reference the shared reader takes, from a job_board_postings row. */

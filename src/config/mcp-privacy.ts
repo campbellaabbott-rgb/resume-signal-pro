@@ -29,14 +29,16 @@
 
 /**
  * Whether the connector's 30-day search prune runs. Its migration
- * (20261011103000) is held in docs/deploy-ledger.json holdUntilVerified and
- * goes out in the second deploy message, after the frontend that carries this
- * table is published; until then connector searches follow the demand log's
- * general 180-day prune, and searches logged before CONNECTOR_SEARCH_LOG_CHANGED
- * still name the postings shown. The owner sets this true in the frontend publish that
- * follows the release (docs/wave4/README.md, owner steps), and
+ * (20261011103000) was held in docs/deploy-ledger.json holdUntilVerified and
+ * was released on 2026-11-08 into the seo-connect deploy message; until it
+ * applies, connector searches follow the demand log's general 180-day prune,
+ * and searches logged before CONNECTOR_SEARCH_LOG_CHANGED still name the
+ * postings shown. Set this true only in a frontend publish after
+ * get_cron_health lists search-demand-mcp-retention as active
+ * (docs/wave4/README.md, owner steps): merging publishes the frontend before
+ * Lovable applies the migration, and
  * src/test/the-privacy-page-says-what-each-ai-surface-receives-and-keeps.test.tsx
- * fails while it is true and the migration is still held.
+ * fails only while it is true and the migration is still held.
  */
 export const MCP_SEARCH_PRUNE_LIVE: boolean = false;
 

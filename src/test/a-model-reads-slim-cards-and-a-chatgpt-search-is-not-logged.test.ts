@@ -5,14 +5,15 @@
  * Wave 4 (spec D2 §2.1, economics decision 6):
  *   - a model pays for every byte it is handed: a ten-row keyless page is 8 KB
  *     or less, compact JSON, no resource_link blocks, fields a posting does
- *     not state are absent, and get_jobs cuts its descriptions to 40,000
- *     characters in all, saying truncatedForSize;
+ *     not state are absent, and get_jobs cuts its descriptions to 15,000
+ *     characters in all (40,000 until connect W3), saying truncatedForSize;
  *   - a keyless caller pages to offset 200, and the next page is withheld by
  *     name (pageLimitReached), never by an empty page; a count the page has
  *     already passed is reported as a floor (totalAtLeast);
  *   - ChatGPT searches ask the board not to log them (the no-log flag job-board
  *     .93 honours beside the reader proof); nobody else's do;
- *   - the research alias says what its url is: the posting's page on the site.
+ *   - the research alias says what its url is: the posting on the site,
+ *     opened in a browser.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
@@ -101,11 +102,11 @@ describe("slim cards for a model", () => {
     }
   });
 
-  it("get_jobs cuts ten descriptions to 40,000 characters in all and says so", async () => {
+  it("get_jobs cuts ten descriptions to 15,000 characters in all and says so", async () => {
     const ids = Array.from({ length: 10 }, (_, i) => `greenhouse:acme${i}:${100000 + i}`);
-    const r = await call("get_jobs", { ids }, { authorization: "Bearer rb_live_x" });
+    const r = await call("get_jobs", { ids, includeDescription: true }, { authorization: "Bearer rb_live_x" });
     const cards = r.sc.jobs as Array<{ description: string }>;
-    expect(cards.reduce((n, c) => n + c.description.length, 0)).toBeLessThanOrEqual(40_000);
+    expect(cards.reduce((n, c) => n + c.description.length, 0)).toBeLessThanOrEqual(15_000);
     expect(r.sc.truncatedForSize).toBe(true);
   });
 });
@@ -145,10 +146,12 @@ describe("a ChatGPT search is not logged; everyone else's is", () => {
 });
 
 describe("the research alias says what its url is", () => {
-  it("the description and the url agree: the posting's page on the site", async () => {
+  it("the description and the url agree: the posting on the site, opened in a browser", async () => {
+    // Since connect W3 (BR-13) the url is described as what it does for a
+    // person: an AI fetcher reading it gets the board's page, not the posting.
     const res = await handler(new Request(URL_, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) }));
     const tool = ((await res.json()) as { result: { tools: Array<{ name: string; description: string }> } }).result.tools.find((t) => t.name === "search")!;
-    expect(tool.description).toMatch(/url is the posting's page on resumebooster\.work/);
+    expect(tool.description).toMatch(/url opens the posting on resumebooster\.work in a browser/);
     expect(tool.description).not.toMatch(/employer's own apply page when the board holds one/);
     const r = await call("search", { query: "nurse" });
     for (const x of r.sc.results as Array<{ url: string }>) expect(x.url.startsWith("https://resumebooster.work/jobs?job=")).toBe(true);

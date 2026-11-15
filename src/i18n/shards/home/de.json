@@ -1,8 +1,8 @@
 {
   "home": {
     "seo": {
-      "title": "Aktuelle Jobs direkt aus den Systemen der Arbeitgeber",
-      "description": "Durchsuche aktuelle Stellen aus den eigenen Bewerbungssystemen der Arbeitgeber und von USAJOBS und bewirb dich auf der Website des Arbeitgebers. Kostenlos, und die Suche braucht kein Konto."
+      "title": "Resume Booster — aktuelle Jobs direkt von Arbeitgebern",
+      "description": "Resume Booster ist eine kostenlose Jobbörse mit aktuellen Stellen aus den Systemen der Arbeitgeber und USAJOBS. Bewerbung beim Arbeitgeber, Suche ohne Konto."
     },
     "hero": {
       "title": "Aktuelle Jobs, direkt aus den Bewerbungssystemen der Arbeitgeber.",
@@ -35,7 +35,10 @@
       "total_one": "{{formatted}} offene Stellenanzeige insgesamt",
       "total_other": "{{formatted}} offene Stellenanzeigen insgesamt",
       "seeAll": "Alle Stellenanzeigen ansehen",
-      "applyNote": "Du bewirbst dich auf der Website des Arbeitgebers."
+      "applyNote": "Du bewirbst dich auf der Website des Arbeitgebers.",
+      "bakedNote": "In den letzten {{days}} Tagen ausgeschrieben, nach dem eigenen Datum des Arbeitgebers, jede mit einer eigenen Seite hier; am {{date}} mit dem Board abgeglichen.",
+      "bakedPosted": "ausgeschrieben am {{date}}, laut Arbeitgeber",
+      "dataLead": "Die eigenen Messungen des Boards, jeweils nach ihren Daten datiert:"
     },
     "rail": {
       "title": "Das Board heute",
@@ -115,6 +118,7 @@
       "claude": "In Claude einrichten",
       "chatgpt": "In ChatGPT einrichten",
       "claudeCode": "Claude Code einrichten",
+      "chatgptFree": "Du nutzt ChatGPT Free? <claude>Nimm den kostenlosen Tarif von Claude</claude>: Er kann einen eigenen Connector hinzufügen, ChatGPT Free nicht.",
       "reach": "Deine KI durchsucht {{searchable}} der {{total}} offenen Stellenanzeigen: Anzeigen von {{names}} ({{withheld}}) bleiben auf dieser Website. Gezählt am {{date}}, {{time}} UTC.",
       "figureLabel": "Illustration einer Suche aus Claude",
       "figureChip": "Illustration",

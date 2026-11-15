@@ -26,6 +26,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import * as L from "../../scripts/deploy-ledger.mjs";
 import { codeOf } from "./helpers/strip-comments";
+import { withWave4PruneHeld } from "./helpers/released-holds";
 
 const ROOT = resolve(__dirname, "../..");
 const MIG_DIR = resolve(ROOT, "supabase/migrations");
@@ -163,7 +164,8 @@ describe("the three stub-less files the one deploy applied are read applied, and
     const pending = L.behaviourApplied([...stubless, ...names], POLICY, CRON_2026_10_31).pending;
     const phases = L.migrationPhases(pending, POLICY, live);
     expect(phases.errors).toEqual([]);
-    const holds = L.holdStates([fileOf("20261011103000")], POLICY, live);
+    // The prune was released 2026-11-08; this message is the one of 2026-10-31, while it was held.
+    const holds = L.holdStates([fileOf("20261011103000")], withWave4PruneHeld(POLICY), live);
     const msg: string[] = L.lovableMessage({ head: "abc12345", draftOf: "fix/name-sync-rerun", phases, hold: [fileOf("20261011103000")], holds: holds.holds, toDeploy: [] });
     const step = msg.findIndex((l) => /^1\. Apply these 3 migrations, in this order/.test(l));
     expect(step, msg.join("\n")).toBeGreaterThan(0);

@@ -1,0 +1,66 @@
+{
+ "absolute_url": "https://job-boards.greenhouse.io/altentechnologyusa/jobs/5268072007",
+ "data_compliance": [
+  {
+   "type": "gdpr",
+   "requires_consent": false,
+   "requires_processing_consent": false,
+   "requires_retention_consent": false,
+   "retention_period": null,
+   "demographic_data_consent_applies": false
+  }
+ ],
+ "internal_job_id": 4694950007,
+ "location": {
+  "name": "Foster City, California, United States"
+ },
+ "metadata": [
+  {
+   "id": 5128788007,
+   "name": "Employment Type",
+   "value": "Full-time",
+   "value_type": "single_select"
+  },
+  {
+   "id": 5677209007,
+   "name": "Workplace Type",
+   "value": "Onsite",
+   "value_type": "single_select"
+  },
+  {
+   "id": 9215904007,
+   "name": "Seniority Level",
+   "value": null,
+   "value_type": "single_select"
+  }
+ ],
+ "id": 5268072007,
+ "updated_at": "2026-10-30T15:20:07-04:00",
+ "requisition_id": "2842",
+ "title": "Trim Validation Engineer",
+ "company_name": "ALTEN Technology USA",
+ "first_published": "2026-10-17T14:38:40-04:00",
+ "language": "en",
+ "application_deadline": null,
+ "content": "(trimmed)",
+ "departments": [
+  {
+   "id": 4028530007,
+   "name": "Automotive",
+   "child_ids": [],
+   "parent_id": 4028528007
+  }
+ ],
+ "offices": [
+  {
+   "id": 4028910007,
+   "name": "Irvine, CA",
+   "location": "Irvine, California, United States",
+   "child_ids": [],
+   "parent_id": 4025955007
+  }
+ ],
+ "ai_disclaimer": "<p>We use Greenhouse’s AI-powered Talent Matching tool to compare your application against our job requirements.</p>",
+ "include_ai_disclaimer": true,
+ "ai_opt_out_request_url": "http://app7.greenhouse.io/ai_opt_out_request/job_post/5268072007/ai_opt_out"
+}

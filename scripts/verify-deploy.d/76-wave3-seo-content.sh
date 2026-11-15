@@ -5,12 +5,14 @@
 # Read-only: GETs of public pages, the sitemap, the ledger, llms files and a
 # static image. Nothing is sent or written. Pre-deploy the new claims FAIL by
 # design; nothing here may crash.
-# F2a judges the URLs the PREVIOUS publish named, so save the live sitemap
-# BEFORE each publish:
-#   curl -s https://resumebooster.work/sitemap.xml > ~/.config/resumebooster/seo/last-sitemap.xml
-# and the F2a line checks every posting URL it named, eight at a time. Without
-# that file (or with one saved after the publish, identical to the live
-# sitemap) F2a prints INFO "cannot judge" and only the live sitemap's own
+# F2a judges the URLs the PREVIOUS publish named, eight at a time. Their list
+# is the sitemap saved in ~/.config/resumebooster/seo/, which verify-deploy.sh
+# keeps by itself since B10 (SEO/GEO audit 2026-11-07, F10): its last step
+# saves the live sitemap and ledger at the end of every run that reaches its
+# end and rotates the pair before it to prev-* (scripts/seo-previous-
+# publish.mjs). F2a reads the newest saved sitemap that is not the live one.
+# With none, F2a prints INFO "cannot judge" on a machine that never saved one
+# and FAIL once saves.log says one was saved, and only the live sitemap's own
 # posting URLs are checked (S11-154: a sitemap the new bake wrote cannot show
 # what became of the old one's URLs).
 # L9-11 FAILs llms-full.txt on the retired pass's own copy, its names and 83
@@ -31,8 +33,8 @@
 echo "== 76. wave 3 seo-content: names, published URLs, company pages, data pages, claims =="
 
 REPO_ROOT76="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SITE="$SITE" UA="$UA" LAST_SITEMAP="$HOME/.config/resumebooster/seo/last-sitemap.xml" REPO_ROOT="$REPO_ROOT76" node -e '
-const { SITE, UA, LAST_SITEMAP, REPO_ROOT } = process.env;
+SITE="$SITE" UA="$UA" SEO_DIR="$HOME/.config/resumebooster/seo" REPO_ROOT="$REPO_ROOT76" node -e '
+const { SITE, UA, SEO_DIR, REPO_ROOT } = process.env;
 const fs = require("fs");
 const crypto = require("crypto");
 const out = (s, m) => console.log(`${s.padEnd(5)} ${m}`);
@@ -139,29 +141,40 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   else if (s3dates.size > 1) out("PASS", `${dated.length} non-guide sitemap URLs carry ${s3dates.size} distinct lastmod dates, each its page\x27s ledger date (S3: was one publish date on all)`);
   else out("INFO", `S3 not judged: all ${dated.length} non-guide pages the ledger dates carry ${[...s3dates][0]}${[...s3dates][0] === ledger.builtAt ? ", this bake\x27s date (a first bake with a ledger, or every page changed)" : ""}; a later bake that carries unchanged pages forward can show lastmod by content`);
   // F2a: what became of the URLs the PREVIOUS publish named. The live sitemap
-  // is the new bake\x27s own, so it cannot answer that (S11-154).
-  let prevRaw = "";
-  try { prevRaw = fs.readFileSync(LAST_SITEMAP, "utf8"); } catch {}
+  // is the new bake\x27s own, so it cannot answer that (S11-154). The saved
+  // copy is picked by the module that saves it, so the file names and the
+  // pick (the newest saved sitemap that is not the live one) cannot drift.
+  const PP = await import(`${REPO_ROOT}/scripts/seo-previous-publish.mjs`).catch(() => null);
+  const LAST_SITEMAP = PP ? PP.pairPaths(SEO_DIR).sitemap : `${SEO_DIR}/last-sitemap.xml`;
+  const pick = PP ? PP.previousSitemap({ dir: SEO_DIR, liveSitemapXml: sm.body }) : { raw: "", from: "", reason: "unread", everSaved: false };
+  const prevRaw = pick.raw;
   const prevPostings = [...prevRaw.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].trim()).filter((u) => u.includes("/jobs/posting/"));
-  const prevIsLive = prevRaw && md5(prevRaw) === md5(sm.body);
-  const judgePrev = prevPostings.length > 0 && !prevIsLive;
-  if (!judgePrev) out("INFO", `F2a cannot judge the previous publish\x27s posting URLs: ${!prevRaw ? `no saved sitemap at ${LAST_SITEMAP}` : prevIsLive ? "the saved sitemap is this publish\x27s own (saved after it)" : "the saved sitemap names no posting URL"}. Save the live sitemap there BEFORE each publish: curl -s ${SITE}/sitemap.xml > ${LAST_SITEMAP}`);
+  const judgePrev = prevPostings.length > 0;
+  if (!judgePrev) {
+    const why = !PP ? "this checkout cannot read scripts/seo-previous-publish.mjs"
+      : pick.reason === "missing" ? `no saved sitemap at ${LAST_SITEMAP}, although saves.log says this machine saved one`
+        : pick.reason === "none" ? `no saved sitemap at ${LAST_SITEMAP} yet`
+          : pick.reason === "own" ? "the saved sitemap is this publish\x27s own and no earlier one is kept"
+            : "the saved sitemap names no posting URL";
+    out(!PP || pick.reason === "missing" ? "FAIL" : "INFO", `F2a cannot judge the previous publish\x27s posting URLs: ${why}. verify-deploy.sh saves the live sitemap and ledger at the end of every run that reaches its end, so the next publish is judged against this one (by hand: curl -s ${SITE}/sitemap.xml > ${LAST_SITEMAP})`);
+  }
   const basis = judgePrev ? "the previous publish\x27s sitemap" : "the live sitemap\x27s own";
   const sample = judgePrev ? prevPostings : locs.filter((u) => u.includes("/jobs/posting/"));
   let homeCopies = 0, stubs = 0, live = 0, failed = 0;
+  const carryBad = [];
   for (let i = 0; i < sample.length; i += 8) {
     await Promise.all(sample.slice(i, i + 8).map(async (u) => {
       const r = await get(u, 20000);
-      if (r.status !== 200) { failed++; return; }
-      if (isHomeCopy(r.body)) homeCopies++;
+      if (r.status !== 200) { failed++; carryBad.push(`${pathOf(u)} answered ${r.status}`); return; }
+      if (isHomeCopy(r.body)) { homeCopies++; carryBad.push(`${pathOf(u)} serves the homepage copy`); }
       else if (/noindex/.test(robotsOf(r.body))) stubs++;
       else live++;
     }));
   }
-  const claim = judgePrev ? "F2a" : "the new bake\x27s URLs; F2a itself not judged";
+  const claim = !judgePrev ? "the new bake\x27s URLs; F2a itself not judged" : pick.from && pick.from !== LAST_SITEMAP ? "F2a, read from prev-sitemap.xml: an earlier run saved this publish" : "F2a";
   if (!sample.length) out("INFO", `no posting URL to check (${basis} sitemap names none)`);
   else if (homeCopies === 0 && failed === 0) out("PASS", `${sample.length} posting URLs from ${basis}: ${live} live pages, ${stubs} noindex "no longer listed" pages, 0 homepage copies (${claim})`);
-  else out("FAIL", `${sample.length} posting URLs from ${basis}: ${homeCopies} homepage copies, ${failed} non-200 (${live} live, ${stubs} noindex) (${claim}; F2a was 364 of 371)`);
+  else out("FAIL", `${sample.length} posting URLs from ${basis}: ${homeCopies} homepage copies, ${failed} non-200 (${live} live, ${stubs} noindex) (${claim}; F2a was 364 of 371): ${carryBad.sort().slice(0, 8).join("; ")}${carryBad.length > 8 ? `; and ${carryBad.length - 8} more` : ""}`);
   // F2b / F2c: the company links on a few posting pages
   const postPages = locs.filter((u) => u.includes("/jobs/posting/")).slice(0, 8);
   const hrefs = new Set();

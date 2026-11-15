@@ -33,7 +33,8 @@ describe("the footer", () => {
   });
 
   it("its source names neither the address nor the product", () => {
-    const code = readFileSync(resolve(ROOT, "src/components/Footer.tsx"), "utf8");
+    // The footer's lists live in src/lib/site-links.ts since B04.
+    const code = ["src/components/Footer.tsx", "src/lib/site-links.ts"].map((f) => readFileSync(resolve(ROOT, f), "utf8")).join("\n");
     expect(code).not.toMatch(/\/freelance-boost|Freelance Boost|footer\.links\.freelanceBoost/);
   });
 

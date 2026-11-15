@@ -6,7 +6,15 @@
 //   node scripts/indexnow-ping.mjs                    every <loc> in public/sitemap.xml
 //   node scripts/indexnow-ping.mjs --changed          only what the LIVE publish changed
 //   node scripts/indexnow-ping.mjs --urls <file>      every path or URL listed in <file>
-//   add --dry-run to any of them                      print the list and the counts; send nothing
+//
+// EACH OF THEM IS A DRY RUN unless INDEXNOW_SEND=1 is set: it prints the list
+// and the counts and sends nothing. A send tells Bing, Yandex, Seznam and
+// Naver about this site, and the owner decided (2026-11-07) that every send
+// needs a fresh go-ahead, so a run that does not say go never sends, whoever
+// runs it. INDEXNOW_SEND=1 is that go-ahead, given for one command:
+//   INDEXNOW_SEND=1 node scripts/indexnow-ping.mjs --changed
+// --dry-run still forces a dry run, and NO_INDEXNOW=1 still silences the
+// post-publish verifier's step altogether.
 //
 // --changed (SEO report 2026-10-08, S3) reads the live sitemap and the ledger
 // the bake serves beside it (/prerender-ledger.json): the pages whose
@@ -15,14 +23,16 @@
 // wrong, and a sitemap date blind to counts can miss it), and the posting URLs
 // that publish retired (a "no longer listed" or "no longer has a page" page,
 // noindex), so a search engine learns of a removal as fast as of an addition.
-// The post-publish verifier runs it on every clean pass
-// (scripts/post-publish-smoke.mjs).
+// The post-publish verifier lists them on every run
+// (scripts/post-publish-smoke.mjs, afterPublishPing below) and sends them
+// only on a clean pass with INDEXNOW_SEND=1.
 //
 // --urls (SEO-012) is the one-time resubmission of the URLs this site
 // published before the ledger existed (scripts/seo-seed/), which indexes still
-// hold with retired titles. IT IS A SUBMISSION: run it only with the owner's
-// go-ahead, after the deploy shows the stubs live. Its dry run is committed
-// beside the seed (scripts/seo-seed/indexnow-historical-urls.txt).
+// hold with retired titles. IT IS A SUBMISSION: it sends only with the
+// owner's go-ahead (INDEXNOW_SEND=1), after the deploy shows the stubs live.
+// Its dry run is committed beside the seed
+// (scripts/seo-seed/indexnow-historical-urls.txt).
 //
 // The key file (public/<key>.txt) proves domain ownership; both it and the
 // pinged pages must be LIVE in production first, so this runs after a
@@ -46,6 +56,19 @@ const SITE = `https://${INDEXNOW_HOST}`;
 const REMOVED_STATES = new Set(["gone", "retired"]);
 /** Posting states whose page states nothing checked: never pinged for a title change either. */
 const UNCHECKED_STATES = new Set(["unchecked", "seeded"]);
+
+/**
+ * Whether this run may send: only when INDEXNOW_SEND is exactly "1" (the
+ * owner's go-ahead, 2026-11-07) and NO_INDEXNOW is not set. Anything else,
+ * "true" and "yes" included, is no go-ahead. Pure over the env it is handed.
+ */
+export function indexNowSendAllowed(env = process.env) {
+  const e = env ?? {};
+  return e.INDEXNOW_SEND === "1" && !e.NO_INDEXNOW;
+}
+
+/** Why a run sent nothing, said the same way by every caller. */
+export const SEND_NEEDS = "sending needs INDEXNOW_SEND=1, the owner's go-ahead";
 
 /** The address a path is served at: a dotted last segment needs its trailing slash or the host 404s it. */
 export const urlOfPath = (path) => `${SITE}${/\.[^/]*$/.test(path) ? `${path}/` : path}`;
@@ -131,11 +154,15 @@ export function dryRunReport(urls, { label = "" } = {}) {
 /**
  * Submit a URL list. Returns { submitted, status } or { submitted: 0, reason }.
  * Never throws: a failed ping must not fail the verifier that called it.
- * With `dryRun`, sends nothing at all and says so.
+ * With `dryRun`, sends nothing at all and says so. WITHOUT THE GO-AHEAD IN
+ * `env` (indexNowSendAllowed) it is a dry run too, whatever the caller asked:
+ * the rule sits here, at the one place a send happens, so no caller can
+ * forget it (`held` says the go-ahead was what was missing).
  */
-export async function submit(urls, { fetchImpl = fetch, dryRun = false } = {}) {
+export async function submit(urls, { fetchImpl = fetch, dryRun = false, env = process.env } = {}) {
   if (!urls.length) return { submitted: 0, reason: "nothing changed" };
   if (dryRun) return { submitted: 0, reason: `dry run — ${urls.length} URL(s) listed, none sent`, dryRun: true, urls };
+  if (!indexNowSendAllowed(env)) return { submitted: 0, reason: `dry run — ${urls.length} URL(s) listed, none sent (${SEND_NEEDS})`, dryRun: true, held: true, urls };
   const keyUrl = `${SITE}/${INDEXNOW_KEY}.txt`;
   try {
     const keyResp = await fetchImpl(keyUrl, { signal: AbortSignal.timeout(10000) });
@@ -158,7 +185,7 @@ export async function submit(urls, { fetchImpl = fetch, dryRun = false } = {}) {
 }
 
 /** --changed: what the live publish changed, read from the live site. */
-export async function submitChanged({ fetchImpl = fetch, dryRun = false } = {}) {
+export async function submitChanged({ fetchImpl = fetch, dryRun = false, env = process.env } = {}) {
   const get = async (url) => {
     try {
       const r = await fetchImpl(url, { signal: AbortSignal.timeout(15000) });
@@ -170,7 +197,34 @@ export async function submitChanged({ fetchImpl = fetch, dryRun = false } = {}) 
   let ledger = null;
   try { ledger = ledgerText ? JSON.parse(ledgerText) : null; } catch { ledger = null; }
   if (!sitemapXml || !ledger) return { submitted: 0, reason: `live ${!sitemapXml ? "sitemap" : "ledger"} unreadable` };
-  return submit(changedUrls({ sitemapXml, ledger }), { fetchImpl, dryRun });
+  return submit(changedUrls({ sitemapXml, ledger }), { fetchImpl, dryRun, env });
+}
+
+/**
+ * THE POST-PUBLISH VERIFIER'S STEP (scripts/post-publish-smoke.mjs section 9).
+ * It used to send on every clean pass unless NO_INDEXNOW was set, so the
+ * routine `npm run verify:deploy` told Bing about some 960 URLs with nobody
+ * having said go (SEO/GEO audit 2026-11-07, IDX-05). Now it lists what the
+ * live publish changed and sends only on a clean pass with INDEXNOW_SEND=1;
+ * NO_INDEXNOW=1 skips even the list.
+ *
+ * Returns { status: "PASS" | "FAIL" | "INFO", line, report }: `report` is the
+ * dry-run list to print (empty when nothing was listed or a send happened),
+ * and only a send that was answered with an error is a FAIL.
+ */
+export async function afterPublishPing({ env = process.env, clean = true, fetchImpl = fetch } = {}) {
+  const e = env ?? {};
+  if (e.NO_INDEXNOW) return { status: "INFO", line: "IndexNow: skipped, nothing listed or sent (NO_INDEXNOW is set)", report: "" };
+  const send = clean && indexNowSendAllowed(e);
+  const r = await submitChanged({ fetchImpl, dryRun: !send, env: e });
+  if (r.dryRun) {
+    const why = indexNowSendAllowed(e) ? "the pass was not clean, and a broken publish is not one to advertise" : SEND_NEEDS;
+    return { status: "INFO", line: `IndexNow dry run: ${r.urls.length} URL(s), nothing sent (${why})`, report: dryRunReport(r.urls, { label: "what this publish changed" }) };
+  }
+  if (r.submitted) {
+    return { status: r.ok ? "PASS" : "FAIL", line: `IndexNow told what this publish changed: ${r.submitted} URL(s), HTTP ${r.status}${r.ok ? " (accepted)" : " (UNEXPECTED: check the key and the URLs)"}`, report: "" };
+  }
+  return { status: "INFO", line: `${send ? "IndexNow" : "IndexNow dry run"}: nothing listed or sent (${r.reason})`, report: "" };
 }
 
 const isMain = (() => {
@@ -180,7 +234,10 @@ const isMain = (() => {
 if (isMain) {
   const root = join(dirname(fileURLToPath(import.meta.url)), "..");
   const args = process.argv.slice(2);
-  const dryRun = args.includes("--dry-run");
+  // A dry run when asked for one, or when the go-ahead is missing (submit
+  // would hold the send anyway; deciding here also prints the list).
+  const held = !args.includes("--dry-run") && !indexNowSendAllowed(process.env);
+  const dryRun = args.includes("--dry-run") || held;
   const listAt = args.indexOf("--urls");
   let result;
   if (listAt >= 0) {
@@ -199,6 +256,6 @@ if (isMain) {
   }
   console.log(result.submitted
     ? `Submitted ${result.submitted} URLs to IndexNow — HTTP ${result.status} ${result.ok ? "(accepted)" : "(UNEXPECTED — check key/URLs)"}`
-    : `IndexNow: nothing submitted (${result.reason})`);
+    : `IndexNow: nothing submitted (${result.reason}${held && result.dryRun ? `; ${SEND_NEEDS}` : ""})`);
   process.exit(result.submitted && !result.ok ? 1 : 0);
 }

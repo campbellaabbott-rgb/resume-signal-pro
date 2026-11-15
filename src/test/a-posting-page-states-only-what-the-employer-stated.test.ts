@@ -409,10 +409,11 @@ describe("the head copy fits the space a search result gives it", () => {
   it("keeps the employer and the place whole whenever the whole job title fits", () => {
     // The readable half of the rule: nothing is cut while nothing needs to be.
     expect(postingPageTitle(complete())).toBe("Staff Nurse — Acme Health, Leeds");
-    // The employer is the first thing dropped, because the place is what
-    // distinguishes two postings of the same job at the same employer.
+    // The place is the first thing dropped (B07, TITLE-08): the employer is
+    // what a searcher reads first and what the page's markup names, and the
+    // bake keeps two postings apart by their town or date when they repeat.
     const wideCompany = complete({ company: "The Church of Jesus Christ of Latter-day Saints", location: "Salt Lake City, Utah" });
-    expect(postingPageTitle(wideCompany)).toBe("Staff Nurse — Salt Lake City, Utah");
+    expect(postingPageTitle(wideCompany)).toBe("Staff Nurse — The Church of Jesus Christ of Latter-day Saints");
   });
 
   it("never hands the bake a description the snippet clamp would cut", () => {

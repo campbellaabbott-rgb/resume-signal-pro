@@ -15,8 +15,10 @@
 #       the smaller favicon) are deployed: that is the point of the line.
 #   P1  (SEO-003, SEO-004, SEO-016, SEO-035) posting pages the sitemap names:
 #       no baseSalary, no locality carrying a site code, a bracket, "only", a
-#       work-mode word, a dash at either end or a country's name, no
-#       TELECOMMUTE (the board carries no vendor flag yet: INFO once it does),
+#       work-mode word, a dash at either end or a country's name,
+#       TELECOMMUTE only on a page whose head carries the employer's own
+#       remote statement (the x-rb-employer-stated meta with remote true, which
+#       the bake writes from the hiring system's remote field since B06),
 #       validThrough never more than 30 days past the datePosted it states.
 #   P2  (OBS-1) no two sitemap posting pages share a title.
 #   P3  (SEO-023) a posting page preloads JobPosting-*.js and not Jobs-*.js;
@@ -73,15 +75,25 @@ const COUNTRY_NAMES = (() => {
   try { const dn = new Intl.DisplayNames(["en"], { type: "region" }); for (let a = 65; a < 91; a++) for (let b = 65; b < 91; b++) { const c = String.fromCharCode(a, b); let n; try { n = dn.of(c); } catch { n = undefined; } if (n && n !== c) names.add(n.toLowerCase().replace(/\s*\(.*\)\s*$/, "")); } } catch {}
   return names;
 })();
-const localityProblem = (s) => {
+// THE LOCALITY IS A TOWN (B07): a store or a site ("West Edmonton Mall",
+// "Toronto II") is not one. A country\x27s name is, in two places: a
+// city-state\x27s one town, and a US or Canadian town beside its state ("Lebanon"
+// in PA).
+const CITY_STATES = { SG: "Singapore", HK: "Hong Kong", MO: "Macau", MC: "Monaco", GI: "Gibraltar", VA: "Vatican City" };
+const TOWN_WORD = /^(?:city|town|west|east|north|south|new|port|fort|lake|mount|mt|saint|st)$/;
+const localityProblem = (s, a = {}) => {
   const t = String(s).trim();
   if (/[/_()|]|\bonly\b|\b(?:remote|hybrid|on-?site)\b/i.test(t)) return "a site code, a bracket, only or a work mode";
   if (/^[-\u2013_/,.:]|[-\u2013_/,.:]$/.test(t)) return "a dash or a mark at one end";
+  if (/\b(?:mall|plaza|plasma|casino|hotel|resort|chophouse|restaurant|stores?|outlets?|shopping|locations?|campus|airport|cemetery|club|clinic|court)\b|\s(?:II|III|IV)$/i.test(t)) return "a store or site word";
+  const own = String((a && a.addressCountry) || "").toUpperCase();
+  if (CITY_STATES[own] === t) return null;
   const w = t.toLowerCase().split(/\s+/).map((x) => x.replace(/^[-\u2013_/,.:]+|[-\u2013_/,.:]+$/g, "")).filter(Boolean);
+  if (a && a.addressRegion && (own === "US" || own === "CA") && (COUNTRY_NAMES.has(w.join(" ")) || (w.length === 2 && TOWN_WORD.test(w[0]) && COUNTRY_NAMES.has(w[1])))) return null;
   for (let i = 0; i < w.length; i++) for (let n = 1; n <= 4 && i + n <= w.length; n++) {
     if (!COUNTRY_NAMES.has(w.slice(i, i + n).join(" "))) continue;
     const rest = [...w.slice(0, i), ...w.slice(i + n)];
-    if (rest.length === 1 && /^(?:city|town|west|east|north|south|new|port|fort|lake|mount|mt|saint|st)$/.test(rest[0])) continue;
+    if (rest.length === 1 && TOWN_WORD.test(rest[0])) continue;
     return "a country\x27s name";
   }
   return null;
@@ -137,7 +149,13 @@ const pick = (arr, n) => (arr.length <= n ? arr : Array.from({ length: n }, (_, 
   const sample = pick(postings, 40);
   const docs = new Map();
   for (let i = 0; i < sample.length; i += 8) await Promise.all(sample.slice(i, i + 8).map(async (p) => docs.set(p, await get(urlOf(p)))));
-  const bad = [], info = [];
+  const bad = [], info = [], stated = [];
+  // The statements the bake applied, as it wrote them into the head (B06).
+  const statedOf = (h) => {
+    const m = /<meta\s+name="x-rb-employer-stated"\s+content="([^"]*)"/i.exec(String(h));
+    if (!m) return null;
+    try { return JSON.parse(m[1].replace(/&quot;/g, "\"").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")); } catch { return null; }
+  };
   let read = 0;
   for (const p of sample) {
     const d = docs.get(p);
@@ -147,9 +165,13 @@ const pick = (arr, n) => (arr.length <= n ? arr : Array.from({ length: n }, (_, 
     read++;
     if ("baseSalary" in jp) bad.push(`${p}: baseSalary`);
     const a = (jp.jobLocation && jp.jobLocation.address) || {};
-    const why = typeof a.addressLocality === "string" ? localityProblem(a.addressLocality) : null;
+    const why = typeof a.addressLocality === "string" ? localityProblem(a.addressLocality, a) : null;
     if (why) bad.push(`${p}: locality "${a.addressLocality}" (${why})`);
-    if (jp.jobLocationType === "TELECOMMUTE") info.push(`${p}: TELECOMMUTE${a.addressLocality || a.addressRegion ? ` beside ${a.addressLocality || a.addressRegion}` : ""}`);
+    if (jp.jobLocationType === "TELECOMMUTE") {
+      const st = statedOf(d.body);
+      if (st && st.remote === true) stated.push(p);
+      else info.push(`${p}: TELECOMMUTE${a.addressLocality || a.addressRegion ? ` beside ${a.addressLocality || a.addressRegion}` : ""}, head states ${st ? Object.keys(st).join("/") || "nothing" : "no employer statement"}`);
+    }
     // The markup\x27s own window: validThrough is counted from the day its
     // datePosted states (an employer\x27s "tomorrow" is the bake\x27s day in both).
     const dp = Date.parse(String(jp.datePosted).slice(0, 10)), vt = Date.parse(String(jp.validThrough).slice(0, 10));
@@ -157,9 +179,9 @@ const pick = (arr, n) => (arr.length <= n ? arr : Array.from({ length: n }, (_, 
   }
   if (!sample.length) out("INFO", "P1 the sitemap names no posting page");
   else if (bad.length) out("FAIL", `P1 ${bad.length} posting page(s): ${bad.slice(0, 10).join("; ")}`);
-  else out(read ? "PASS" : "INFO", `P1 ${read} of ${sample.length} sampled posting pages carry job markup: no baseSalary, no junk locality, no window over 30 days`);
-  if (info.length) out("FAIL", `P1 TELECOMMUTE while the board carries no vendor remote flag (SEO-003): ${info.slice(0, 6).join("; ")} — INFO once the board returns workModeSource`);
-  else if (read) out("PASS", "P1 no sampled page says TELECOMMUTE (only the hiring system\x27s own remote field may, and the board carries none yet)");
+  else out(read ? "PASS" : "INFO", `P1 ${read} of ${sample.length} sampled posting pages carry job markup: no baseSalary, every locality a town (no store or site word, no mark at an end, no country\x27s name but a city-state\x27s or a town beside its state), no window over 30 days`);
+  if (info.length) out("FAIL", `P1 TELECOMMUTE with no remote statement from the employer\x27s own system in the head: ${info.slice(0, 6).join("; ")} (SEO-003: only the hiring system\x27s own remote field may say it)`);
+  else if (read) out("PASS", `P1 ${stated.length} of ${read} marked-up sampled pages say TELECOMMUTE, each beside its employer\x27s own remote statement in the head (x-rb-employer-stated remote true); no other page says it`);
   // P2 over every sitemap posting title.
   const titles = new Map();
   const all = postings.slice(0, 600);

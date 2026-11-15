@@ -47,6 +47,24 @@ export const MCP_FORM_VENDORS: ReadonlyArray<{ key: string; label: string }> = [
 ];
 
 /**
+ * The form vendors the server reads from agent-mcp 2026-11-08.1 on (connect
+ * W5, owner decision 2026-11-07: Claude, Claude Code, keys and /v1; ChatGPT
+ * stays Greenhouse and Recruitee). Rendered NOWHERE yet: merging publishes
+ * the frontend before the functions deploy, and until that deploy the server
+ * reads only MCP_FORM_VENDORS. Once the deploy verifies, the next frontend
+ * publish moves these into MCP_FORM_VENDORS (with the /agents phrase,
+ * llms.txt and the retired line). Meanwhile a guard holds the two lists,
+ * together, equal to the server's FORM_READER_VENDORS.
+ */
+export const MCP_FORM_VENDORS_AFTER_DEPLOY: ReadonlyArray<{ key: string; label: string }> = [
+  { key: "paylocity", label: "Paylocity" },
+  { key: "workable", label: "Workable" },
+  { key: "teamtailor", label: "Teamtailor" },
+  { key: "lever", label: "Lever" },
+  { key: "bamboohr", label: "BambooHR" },
+];
+
+/**
  * The form vendors read inside ChatGPT: only the two with published public
  * APIs (owner decision R2; the server's PUBLIC_API_FORM_VENDORS, pinned by
  * the first-call guard).
@@ -93,6 +111,36 @@ export const MCP_ANON_CAPS = {
   hostPoolPerDay: 10_000,
   globalPerDay: 20_000,
 } as const;
+
+/**
+ * THE FORMS ALLOWANCE BY WHERE THE CALL COMES FROM (APPLY-1107-12). The
+ * crawler copy of /agents gave the form reader one per-address figure, which
+ * is a connection's figure outside both chat platforms: every Claude user
+ * shares one pool, and ChatGPT counts each person it names. Claude Code runs
+ * on the person's own machine, so the server counts it per connection (the
+ * "other" partition), and the sentence names it there, not with claude.ai
+ * and Claude's apps (the fix round of 2026-11-08). Every figure
+ * is MCP_ANON_CAPS.forms, which the first-call guard pins to the server's
+ * ANON_ALLOWANCE.forms; the page interpolates the same values into its
+ * translated sentence (agentConnect.applyAllowance).
+ */
+export const MCP_FORMS_ALLOWANCE_VALUES = {
+  claude: MCP_ANON_CAPS.forms.shares.claude,
+  claudePerMinute: MCP_ANON_CAPS.forms.perMinute.claude,
+  perPerson: MCP_ANON_CAPS.forms.perBucket,
+  chatgpt: MCP_ANON_CAPS.forms.shares.chatgpt,
+  perConnection: MCP_ANON_CAPS.forms.perBucket,
+} as const;
+/** The values written as `locale` writes numbers, for the translated sentence. */
+export const formsAllowanceIn = (locale: string): Record<keyof typeof MCP_FORMS_ALLOWANCE_VALUES, string> => {
+  const f = (n: number) => n.toLocaleString(locale || "en-US");
+  const v = MCP_FORMS_ALLOWANCE_VALUES;
+  return { claude: f(v.claude), claudePerMinute: f(v.claudePerMinute), perPerson: f(v.perPerson), chatgpt: f(v.chatgpt), perConnection: f(v.perConnection) };
+};
+const FA = formsAllowanceIn("en-US");
+/** The English sentence: the bake, llms-full and the server-facing copy read this. */
+export const MCP_FORMS_ALLOWANCE =
+  `Reading an application form draws on a free allowance of its own, apart from searching: claude.ai and Claude's apps share ${FA.claude} form reads a day (${FA.claudePerMinute} a minute); from ChatGPT, ${FA.perPerson} a day for each person ChatGPT's call names, within ${FA.chatgpt} a day for all of ChatGPT; from Claude Code or any other app, ${FA.perConnection} a day per internet connection.`;
 
 /** Fit scorings a day on a confirmed free key, and with a paid plan: _shared/fit-allowance.ts, mirrored and pinned. */
 export const MCP_FIT_FREE_PER_DAY = 25;
@@ -287,6 +335,15 @@ export const MCP_MINT_PATH = "/data-api";
 export const MCP_TEST_QUERY = "nurse";
 /** The public install repository (mirrors this file's hosts by id). */
 export const MCP_INSTALL_REPO_URL = "https://github.com/campbellaabbott-rgb/resumebooster-mcp";
+/** The server's name in the official MCP registry. */
+export const MCP_REGISTRY_SERVER_NAME = "work.resumebooster/jobs";
+/**
+ * The registry's own page for this server: its latest version's entry, the
+ * name's slash encoded as the registry's API spells it (GEO-1107-07; it
+ * answered 200 on 2026-11-07). The software's sameAs names this, never a
+ * search over the registry.
+ */
+export const MCP_REGISTRY_ENTRY_URL = `https://registry.modelcontextprotocol.io/v0/servers/${encodeURIComponent(MCP_REGISTRY_SERVER_NAME)}/versions/latest`;
 /**
  * The one sentence printed wherever the address is pasted. The Supabase URL
  * is the canonical and ONLY address: a redirect drops the Authorization
@@ -369,14 +426,42 @@ export function formVendorPhrase(lang: string, only?: readonly string[]): string
 }
 
 /**
- * The first question every page suggests. It names a tool that answers with
- * no key (search_jobs) and hands the place over as its own argument: "nurse
- * jobs in Texas" in the query found 107 of the 1,584 the location filter
- * finds (connect spec §1), so no example may put the place in the query
- * until the server splits it out itself.
+ * The first question every page suggests, in the words a person types (CJ-09,
+ * 2026-11-07). It named search_jobs and its arguments while the server read a
+ * place inside the query as words of the title; agent-mcp now moves a
+ * trailing "in <known place>" to the location itself (query-place.ts), so a
+ * plain sentence finds what the arguments found. The guard reads the place
+ * out of this sentence with the server's own reader and fails if it is not
+ * interpreted, and fails on any tool or argument name in it.
  */
 export const MCP_EXAMPLE_QUESTION =
-  `Using ${MCP_CONNECTOR_NAME}, call search_jobs with query "${MCP_TEST_QUERY}" and location "Texas", and show me the first ten.`;
+  `Find ${MCP_TEST_QUERY} jobs in Texas with ${MCP_CONNECTOR_NAME} and show me ten.`;
+
+/**
+ * OPENAI'S OWN PLAN RULE, quoted with its link and the day it was read (owner
+ * decision 2026-11-07, connect item 2). chatgpt.com/pricing's plan table says
+ * ChatGPT Free cannot create a plugin, which is what adding this server makes;
+ * the page quotes the table and sends ChatGPT Free users to Claude's free
+ * plan, which can add one custom connector. The same quote, link and day as
+ * the install repository's chatgptPlanRule. Plus and Go wording waits for the
+ * owner's ChatGPT check (connect owner action 2): nothing here names them.
+ */
+export const MCP_CHATGPT_PLAN_RULE = {
+  url: "https://chatgpt.com/pricing",
+  read: "2026-11-08",
+  quote: "Plan: Free, Feature: Create & share Plugins, No",
+} as const;
+
+/**
+ * The day Claude's connector steps were read against Anthropic's help article
+ * (support.claude.com 11175166: "+ Add", "Add custom connector", "Continue",
+ * the detected authentication settings, "Continue", "Add"). Its own date,
+ * because MCP_STEPS_CHECKED stays where it is until the owner's check of the
+ * dialog itself (connect owner action 1).
+ */
+export const MCP_CLAUDE_STEPS_CHECKED = "2026-11-08";
+/** The help article the Claude steps' labels are quoted from. */
+export const MCP_CLAUDE_HELP_URL = "https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp";
 
 /**
  * THE ONE-CLICK CONNECT. Claude documents an install link that opens its
@@ -522,6 +607,30 @@ export interface McpHost {
    * already is the manual route and this is not shown.
    */
   fallbackSteps?: (ctx: McpCtx) => McpStep[];
+  /**
+   * A plan rule the host's vendor publishes, quoted before the steps with its
+   * link and the day it was read (ChatGPT: MCP_CHATGPT_PLAN_RULE). The page
+   * and the bake print it from the main locale bundle's
+   * agentConnect.chatgptPlanRule, with a link to the Claude tile.
+   */
+  planRule?: { url: string; read: string; quote: string };
+  /**
+   * Where a phone user adds the connector: once, in the phone's browser at
+   * `site`, never in the app; it then appears in the `app` app
+   * (agentConnect.phoneNote). Set only where the vendor says the phone app
+   * then has it: Anthropic says Claude's mobile apps use servers "already
+   * added via claude.ai". ChatGPT carries none: custom MCP is on ChatGPT
+   * web, and whether a plugin then works in the ChatGPT app is unconfirmed
+   * (owner action 2 of the connect audit, 2026-11-07).
+   */
+  phone?: { site: string; app: string };
+  /**
+   * Claude Code signed in with a claude.ai account already has every
+   * connector added in claude.ai (code.claude.com/docs/en/mcp, "Use MCP
+   * servers from claude.ai"): the panel says so before the steps
+   * (agentConnect.claudeConnectorCarriesOver).
+   */
+  fromClaude?: boolean;
   /** The sign-in sentence for this host, by the server's fact. */
   signIn: (state: SignInState) => string;
   /** How you know it worked — judged by the server's own answer, never a pixel. */
@@ -577,12 +686,26 @@ const ASK_KEY = "call key_status";
 
 const anonNames = () => MCP_ANON_TOOL_NAMES.join(", ");
 const keyOnlyNames = () => MCP_KEY_ONLY_READ_TOOLS.map((t) => t.name).join(", ");
-/** The key-carrying hosts a person can pick ABOVE on the page — the tiles that carry a header, never a host the page sends to GitHub. */
-const headerHostNames = () => MCP_HOSTS.filter((h) => h.page && h.header).map((h) => h.name);
 
-/** The chat hosts' `off` sentence, one wording with the host's name in it. */
-const chatOff = (host: string) =>
-  `Sign-in from ${host} is not switched on yet. From ${host}, these tools work with no sign-in: ${anonNames()} (search shows ${MCP_ANON_CAPS.searchRows} results). A tool that needs your account answers in words that sign-in is off — no card appears. To use every tool today, connect from ${andList(headerHostNames())} with a free key (pick that app above).`;
+/**
+ * Where a chat user scores a CV today. The board's own fit check is free on
+ * /jobs; inside a chat app fit_resume waits for sign-in (Claude) or is never
+ * offered (ChatGPT: the server's NOT_ON_CHATGPT).
+ */
+const CV_SCORING_CLAUDE = "Scoring a CV against the board comes with sign-in, which is not on yet; the job board at /jobs scores a CV against a posting free today.";
+const CV_SCORING_CHATGPT = "Scoring a CV is not offered inside ChatGPT; the job board at /jobs scores a CV against a posting free.";
+
+/**
+ * The chat hosts' `off` sentence: what works from that app, said as enough —
+ * because it is (CJ-08, 2026-11-07). It once ended "to use every tool today,
+ * connect from Claude Code with a free key", pushing a chat seeker to install
+ * a terminal app and request an emailed key for three tools (key_status,
+ * debug_search, fit_resume) that searching, reading and applying never need.
+ * The key and Claude Code lines live on the Claude Code tile only; the guard
+ * fails a chat sentence that names either.
+ */
+const chatOff = (host: string, scoring: string) =>
+  `Sign-in from ${host} is not switched on yet, and you do not need it: from ${host}, ${anonNames()} work with no sign-in (search shows ${MCP_ANON_CAPS.searchRows} results), which is everything you need to search, read postings in full and apply yourself. ${scoring}`;
 const UNKNOWN_LINE = "We could not check sign-in just now; press **Test the server** below in a minute.";
 const cliOff = "Without a key, a tool that needs your account answers in words that sign-in is off; add a free key (below) to use it.";
 const cliUnknown = `${UNKNOWN_LINE} The free-key steps below work in every state.`;
@@ -595,28 +718,38 @@ const addressStep = (ctx: McpCtx, into: string): McpStep => ({
 });
 
 /**
- * Claude's authentication sentence, ONE spelling for both routes: the owner's
- * check (connect spec, owner action 1) reads the dialog this sentence
- * describes, and whatever it finds is changed here once. Claude cannot change
- * the choice after the connector is added, which is why it says not to pick
- * No sign-in.
+ * Claude's authentication step, ONE spelling for both routes, in the labels
+ * of Claude's help article (MCP_CLAUDE_HELP_URL): after **Continue**, Claude
+ * shows the authentication settings it detected; the person keeps them and
+ * presses **Continue** again. It once told everyone to pick "Sign in when
+ * needed" + "Register automatically" while also saying "leave the detected
+ * ones" — two instructions that part whenever No sign-in is what Claude
+ * detects, which it is while the server never asks for a sign-in. Until the
+ * server's sign-in ships, the detected setting is the one that works; the
+ * owner's check of the dialog (connect owner action 1) changes this once.
  */
 const CLAUDE_AUTH_STEP: McpStep = {
-  text: "If Claude asks about **Authentication**, choose **Sign in when needed**. If it asks about **OAuth client**, choose **Register automatically**. (Claude may already show these as \"Detected\" — leave them. Do not choose **No sign-in**: Claude cannot change that later, so the tools that need your account would stay off until you remove the connector and add it again.)",
-  note: "**Sign in when needed** means search works at once, and Claude asks you to sign in only when a tool needs your account. **Register automatically** is the only OAuth-client choice this server supports; **Use Claude's published identity** does not work here even though Claude marks it recommended.",
+  text: "Claude shows the authentication settings it detected. Keep them as they are and click **Continue**.",
+  note: "Searching, reading postings and applying yourself need no sign-in, so there is nothing to change. Claude cannot change a connector's authentication after it is added, so when this server's sign-in is switched on, you may need to remove the connector and add it again to use the tools that need your account.",
 };
 const CLAUDE_SWITCH_ON_STEP: McpStep = {
   text: `In a chat, click **+**, open **Connectors**, and switch **${MCP_CONNECTOR_NAME}** on.`,
   note: "Claude asks before each tool's first use; allow the read tools — none of them acts on your account.",
 };
-const CLAUDE_ASK_STEP: McpStep = { text: "Ask Claude:", copy: MCP_EXAMPLE_QUESTION, copyLabel: "the first question" };
+const CLAUDE_ASK_STEP: McpStep = {
+  text: "Ask Claude:",
+  copy: MCP_EXAMPLE_QUESTION,
+  copyLabel: "the first question",
+  note: `Or click **+**, then **${MCP_CONNECTOR_NAME}**, then **Browse jobs**: the ready-made prompt the server lists asks you what and where.`,
+};
 
 /** The manual route: the connector dialog by hand. What every surface without the one-click link carries. */
 const claudeManualSteps = (ctx: McpCtx): McpStep[] => [
   { text: "In Claude, open **Customize**, then **Connectors**." },
-  { text: "Click **Add custom connector**.", note: "On the Free plan you can add one custom connector. On a Team or Enterprise plan there is no such button: an owner adds the connector under **Organization settings > Connectors** (**Add**, then **Custom**; if it asks for the connector type, **Web**), and you then find it under **Customize > Connectors** with the \"Custom\" label and click **Connect**." },
-  { text: "If it asks for a **Name**, type:", copy: MCP_CONNECTOR_NAME, copyLabel: "the connector name" },
-  addressStep(ctx, "**MCP server URL**"),
+  { text: "Click **+ Add**, then **Add custom connector**.", note: "On the Free plan you can add one custom connector. On a Team or Enterprise plan there is no such button: an owner adds the connector under **Organization settings > Connectors** (**Add**, then **Custom**; if it asks for the connector type, **Web**), and you then find it under **Customize > Connectors** with the \"Custom\" label and click **Connect**." },
+  { text: "Enter the name:", copy: MCP_CONNECTOR_NAME, copyLabel: "the connector name" },
+  addressStep(ctx, "the server URL field"),
+  { text: "Click **Continue**." },
   CLAUDE_AUTH_STEP,
   { text: "Click **Add**." },
   CLAUDE_SWITCH_ON_STEP,
@@ -626,7 +759,7 @@ const claudeManualSteps = (ctx: McpCtx): McpStep[] => [
 /** The one-click route: the documented install link opens the dialog filled in; the person checks and confirms. */
 const claudeOneClickSteps = (ctx: McpCtx): McpStep[] => [
   { text: "Click **Add to Claude** above. Claude opens its connector dialog with the name and the address filled in; sign in to Claude first if it asks." },
-  { text: `Check that the name is **${MCP_CONNECTOR_NAME}** and the address is this one:`, copy: ctx.url, copyLabel: "the server address", note: MCP_SERVER_ADDRESS_NOTE },
+  { text: `Check that the name is **${MCP_CONNECTOR_NAME}** and the address is this one, then click **Continue**:`, copy: ctx.url, copyLabel: "the server address", note: MCP_SERVER_ADDRESS_NOTE },
   CLAUDE_AUTH_STEP,
   { text: "Click **Add**.", note: "On the Free plan you can add one custom connector. On a Team or Enterprise plan, an Owner adds it for everyone with the organization link under the button." },
   CLAUDE_SWITCH_ON_STEP,
@@ -658,9 +791,10 @@ export const MCP_HOSTS: readonly McpHost[] = [
     small: "claude.ai, Claude Desktop, Claude on your phone",
     header: false,
     oauth: true,
-    how: "paste the address as a custom connector and choose Sign in when needed — while the server's sign-in is on, the first tool that needs your account shows a Connect card that signs you in through OAuth; the dialog has no field for a key (a static header is an org-admin beta), and with No sign-in only the unkeyed tools answer",
-    docs: ["https://claude.com/docs/connectors/custom/remote-mcp", "https://claude.com/docs/connectors/building/directory-vs-custom"],
-    checked: MCP_STEPS_CHECKED,
+    how: "paste the address as a custom connector and keep the authentication settings Claude detects; the dialog has no field for a key (a static header is an org-admin beta). The unkeyed tools answer with no sign-in. Claude cannot change a connector's authentication after it is added, so once the server's sign-in is switched on, a connector added before then may need adding again before you can sign in to the tools that need your account",
+    docs: [MCP_CLAUDE_HELP_URL, "https://claude.com/docs/connectors/custom/remote-mcp", "https://claude.com/docs/connectors/building/directory-vs-custom"],
+    checked: MCP_CLAUDE_STEPS_CHECKED,
+    phone: { site: "claude.ai", app: "Claude" },
     // One-click when the flag is live and the page says so; the manual route
     // otherwise, and always for a surface that hands no flag in.
     steps: (ctx) => (ctx.addToClaude ? claudeOneClickSteps(ctx) : claudeManualSteps(ctx)),
@@ -674,7 +808,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
     signIn: (s) =>
       s === "on"
         ? `The first time Claude needs your account — to open a posting in full or to check a shortlist — a **Connect** card appears in the chat. Click it, sign in to ${MCP_CONNECTOR_NAME}, press **Allow**, and Claude continues where it stopped.`
-        : s === "off" ? chatOff("Claude") : UNKNOWN_LINE,
+        : s === "off" ? chatOff("Claude", CV_SCORING_CLAUDE) : UNKNOWN_LINE,
     verify: `Under **+ → Connectors**, ${MCP_CONNECTOR_NAME} is on. Ask the first question: ${MCP_ANON_CAPS.searchRows} results with ids come back, and the answer's note begins "keyless:" and says how many free lookups are left today.`,
   },
   {
@@ -684,17 +818,25 @@ export const MCP_HOSTS: readonly McpHost[] = [
     small: "chatgpt.com",
     header: false,
     oauth: true,
-    how: "add the address as a custom MCP server under chatgpt.com/plugins with No authentication; there is no field for an API key — while the server's sign-in is on, a tool that needs your account shows ChatGPT's own OAuth sign-in and you press Allow on the consent page",
+    // PLT-1107-09: OpenAI documents linking only through per-tool
+    // securitySchemes and says nothing of a plugin created with No
+    // authentication signing in later, so nothing here promises it.
+    how: "add the address as a custom MCP server under chatgpt.com/plugins with No authentication; there is no field for an API key. The unkeyed tools answer with no sign-in. OpenAI does not document whether a plugin created with No authentication can sign in later, so once the server's sign-in is switched on, ChatGPT may need the plugin added again to reach the tools that need your account",
     docs: ["https://developers.openai.com/apps-sdk/deploy/connect-chatgpt", "https://developers.openai.com/apps-sdk/build/auth"],
     checked: MCP_STEPS_CHECKED,
-    // OpenAI's documented flow and nothing more (connect spec D1): no plan
-    // list, no developer-mode step, no tool count to check against.
+    planRule: MCP_CHATGPT_PLAN_RULE,
+    // No phone note: see `phone` on McpHost.
+    // OpenAI's documented flow and nothing more (connect spec D1): no
+    // developer-mode step, no tool count to check against. The plan rule
+    // above the steps is OpenAI's own table, quoted (MCP_CHATGPT_PLAN_RULE).
     steps: (ctx) => [
       { text: "Go to this page and click **+**:", copy: "https://chatgpt.com/plugins", copyLabel: "the ChatGPT plugins link" },
       { text: "Choose **Add custom MCP server**.", note: "If it is not there, your account or workspace does not allow custom servers yet." },
       { text: "Type the name:", copy: MCP_CONNECTOR_NAME, copyLabel: "the connector name" },
       {
-        text: "Paste this address as the server address, exactly as it is — do not add `/mcp` at the end:",
+        // CJ-10: the server answers at the address with or without a /mcp
+        // path after it, so OpenAI's own steps (which add one) work too.
+        text: "Paste this address as the server address; it works with or without `/mcp` at the end:",
         copy: ctx.url,
         copyLabel: "the server address",
         note: MCP_SERVER_ADDRESS_NOTE,
@@ -705,8 +847,8 @@ export const MCP_HOSTS: readonly McpHost[] = [
     ],
     signIn: (s) =>
       s === "on"
-        ? `When a tool needs your account, ChatGPT shows its sign-in for ${MCP_CONNECTOR_NAME}; sign in and press **Allow**.`
-        : s === "off" ? chatOff("ChatGPT") : UNKNOWN_LINE,
+        ? `When a tool needs your account, ChatGPT may show its sign-in for ${MCP_CONNECTOR_NAME}; sign in and press **Allow**. If it does not, ChatGPT may need the plugin removed and added again.`
+        : s === "off" ? chatOff("ChatGPT", CV_SCORING_CHATGPT) : UNKNOWN_LINE,
     verify: `Ask the first question: ${MCP_ANON_CAPS.searchRows} results with ids come back.`,
   },
   {
@@ -717,6 +859,9 @@ export const MCP_HOSTS: readonly McpHost[] = [
     oauth: false,
     how: "the --header flag on claude mcp add, with the key in a shell variable",
     docs: ["https://code.claude.com/docs/en/mcp"],
+    // PLT-1107-11: signed in with a claude.ai account, Claude Code already
+    // has every connector added in claude.ai; the panel says so first.
+    fromClaude: true,
     steps: (ctx) => [
       { text: "Copy this line and run it in your terminal:", copy: claudeCodeAdd(ctx.url), copyLabel: "the add command", note: `\`--scope user\` makes it available in every folder, not just this one. ${MCP_SERVER_ADDRESS_NOTE}` },
       { text: `Start \`claude\` and type \`/mcp\` — \`${MCP_SERVER_KEY}\` is listed as connected.` },
@@ -1026,7 +1171,17 @@ export interface TroubleRow {
   /** What the person sees; {{n}} placeholders are filled from the mirrors. */
   see: string;
   why: string;
+  /** The fix as a chat tile's reader (Claude, ChatGPT) reads it. */
   fix: string;
+  /**
+   * The fix in Claude Code, which carries a key, scoped to it ("In Claude
+   * Code, …"). A chat tile's reader never sees it (CJ-08); a Claude Code
+   * reader, a reader who has picked no app and the crawler copy see it after
+   * `fix` (troubleFix). The table is one list for the whole page, so a row
+   * every reader sees needs it wherever its chat edition is wrong in Claude
+   * Code.
+   */
+  keyedFix?: string;
   source: { kind: "server"; pin: string; file: "index.ts" | "oauth.ts"; since?: string } | { kind: "vendor"; doc: string } | { kind: "symptom" };
   when?: SignInState;
 }
@@ -1036,7 +1191,11 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
     id: "sign-in-off",
     see: "\"Sign-in through this server is not switched on yet, so this tool needs a key.\"",
     why: "The tool needs your account; sign-in from chat apps is off today.",
-    fix: `Search, board statistics and full postings still work with no key. To use every tool, connect from ${andList(headerHostNames())} with a free key (${MCP_MINT_PATH}).`,
+    // The chat edition (CJ-08): what a chat seeker needs works already. The
+    // key opens the tool in Claude Code today, so that edition rides in
+    // keyedFix, and the chat one says whose scoring waits for sign-in.
+    fix: "Everything you need to search, read postings in full and apply yourself works with no sign-in. In Claude and ChatGPT, scoring a CV comes with sign-in, which is not on yet; the job board at /jobs scores a CV against a posting free today.",
+    keyedFix: "In Claude Code, a free key from /data-api opens it today.",
     source: { kind: "server", pin: "Sign-in through this server is not switched on yet, so this tool needs a key.", file: "index.ts", since: "2026-09-04.7" },
     when: "off",
   },
@@ -1051,8 +1210,10 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
   {
     id: "claude-unreachable",
     see: "Claude: \"Couldn't reach the MCP server\" or \"Authorization with the MCP server failed\"",
-    why: "The address was mistyped, `/mcp` was added to it, or (while sign-in is on) the sign-in could not finish.",
-    fix: "Check the address is exactly `…/functions/v1/agent-mcp`; press **Test the server** on this page; if the test says sign-in is on and the card still fails, remove the connector and add it again with **Sign in when needed** + **Register automatically**.",
+    // A /mcp after the address is not a cause (CJ-10): the server answers
+    // with or without it.
+    why: "The address was mistyped, or (while sign-in is on) the sign-in could not finish.",
+    fix: "Check the address ends in `…/functions/v1/agent-mcp` (a `/mcp` after it works too); press **Test the server** on this page; if the test says sign-in is on and the card still fails, remove the connector and add it again, keeping the settings Claude detects.",
     source: { kind: "vendor", doc: "https://claude.com/docs/connectors/building/troubleshooting" },
   },
   {
@@ -1067,7 +1228,10 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
     id: "allowance-spent",
     see: "\"The unkeyed allowance is spent…\"",
     why: "Today's free calls are used up: yours, or — from Claude, whose servers carry every user — the allowance all Claude users share.",
-    fix: `It resets at midnight UTC; meanwhile every posting is on the board at /jobs. In Claude Code, a free key from ${MCP_MINT_PATH} gives ${MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day.`,
+    // Seen from every app: the chat edition names no key (CJ-08), and the
+    // free key the server's own refusal offers is Claude Code's edition.
+    fix: "It resets at midnight UTC; meanwhile every posting is on the board at /jobs.",
+    keyedFix: "In Claude Code, a free key from /data-api lifts the allowance today.",
     source: { kind: "server", pin: "The unkeyed allowance is spent", file: "index.ts" },
   },
   {
@@ -1129,8 +1293,8 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
   {
     id: "zero-tools",
     see: "Another app: server listed, zero tools",
-    why: "The wrong transport (SSE instead of Streamable HTTP) or `/mcp` appended to the address.",
-    fix: "The address ends in `/agent-mcp` exactly and the transport is Streamable HTTP; the install repo on GitHub has each app's own block.",
+    why: "The wrong transport (SSE instead of Streamable HTTP).",
+    fix: "The address ends in `/agent-mcp` (a `/mcp` after it works too) and the transport is Streamable HTTP; the install repo on GitHub has each app's own block.",
     source: { kind: "vendor", doc: "https://code.visualstudio.com/docs/agents/reference/mcp-configuration" },
   },
   {
@@ -1149,6 +1313,12 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
     when: "on",
   },
 ];
+
+/** Who reads the table: a chat tile's reader, or anyone else (a Claude Code reader, a reader who picked no app, the crawler copy). */
+export type TroubleAudience = "chat" | "all";
+/** A row's fix for its reader: the chat edition alone for a chat tile's reader, and the keyed edition after it for anyone else. */
+export const troubleFix = (r: TroubleRow, audience: TroubleAudience): string =>
+  audience === "chat" || !r.keyedFix ? r.fix : `${r.fix} ${r.keyedFix}`;
 
 /** The rows to show for a state: unconditional rows plus the ones for that state (unknown shows the off rows — closed toward the in-band answer). */
 export const troubleRowsFor = (state: SignInState) =>

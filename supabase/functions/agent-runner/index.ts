@@ -55,7 +55,8 @@ import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 // nightly cron is unscheduled by name in 20261011130000. The code below is
 // kept, dormant, with its tests.
 // 2026-10-11.14: apply-agent-switch.ts gained the Apply Assistant's own switch (APPLY_ASSISTANT_ON_SALE); nothing this function does changed.
-const BUILD_VERSION = "2026-10-11.14";
+// 2026-11-08.1: _shared/mandate-reach.ts and run-stamp.ts moved their long comments to docs/shared-notes.md (the job-board upload tally counts all of _shared); the code is byte-identical and the function stays switched off.
+const BUILD_VERSION = "2026-11-08.1";
 // Provable from outside with no key: the preflight carries it.
 const FN_BUILD = `agent-runner.${BUILD_VERSION}`;
 

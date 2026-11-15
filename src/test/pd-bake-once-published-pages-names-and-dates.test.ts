@@ -265,7 +265,7 @@ describe("SEO-025: a sitemap date moves when what a page says moves, not when a 
 
   it("the bake dates every page through pageDates and writes the version into the ledger", () => {
     const bake = readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8");
-    expect(bake).toMatch(/pageDates\(\{ fp: fp\.fp, legacyFp: fp\.legacyFp, prior: priorPages\[path\], today: TODAY, stated: fp\.stated \}\)/);
+    expect(bake).toMatch(/pageDates\(\{ fp: fp\.fp, legacyFp: fp\.legacyFp, prior: priorPages\[path\], today: TODAY, stated: fp\.stated, exact: fp\.exact \}\)/);
     expect(bake).toMatch(/\{ fp: d\.fp, fpv: d\.fpv, lastmod: d\.lastmod, changed: d\.changed \}/);
   });
 });
