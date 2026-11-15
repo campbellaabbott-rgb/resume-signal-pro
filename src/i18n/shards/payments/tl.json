@@ -1,0 +1,10 @@
+{
+  "payments": {
+    "pro": {
+      "pausedUntilPaid": "Naka-pause ang mga tool ng Pro hanggang pumasok ang bayad na ito. Sakop ng bayad ang buong buwan mula sa petsa ng renewal mo, kasama ang mga araw na naka-pause ang mga tool."
+    },
+    "perks": {
+      "fullAnalysisCap": "Hanggang 10 Full Analysis bawat araw at 60 bawat buwan"
+    }
+  }
+}

@@ -32,10 +32,15 @@ export const PRO_SUMMARY: ProPerk = {
   text: "Everything in a free account, plus the writing tools, the $5 Full Analysis included and no daily cap on scans",
 };
 
+/** The included grants a member may mint (pro_grants_cap, 20261112111000; S14X-079). */
+export const PRO_GRANTS_PER_DAY = 10;
+export const PRO_GRANTS_PER_MONTH = 60;
+
 export const PRO_PERK_ITEMS: readonly ProPerk[] = Object.freeze([
   { key: "proPlan.perks.everythingFree", text: "Everything in a free account, plus the writing tools" },
   { key: "proPlan.perks.writingToolsPackages", text: "A tailored résumé, cover letter and interview prep for your jobs: up to 5 packages a day and 60 a month" },
   { key: "proPlan.perks.fullAnalysisIncluded", text: "The $5 Full Analysis included" },
+  { key: "payments.perks.fullAnalysisCap", text: `Up to ${PRO_GRANTS_PER_DAY} Full Analyses a day and ${PRO_GRANTS_PER_MONTH} a month` },
   { key: "proPlan.perks.noDailyScanCap", text: "No daily cap on scans" },
   { key: "proPlan.perks.cancel", text: "Cancel anytime from your account" },
 ]);

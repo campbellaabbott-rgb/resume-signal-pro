@@ -145,6 +145,7 @@
       "writingFree": "{{perDay}} von jedem am Tag",
       "writingPro": "{{perDay}} von jedem am Tag, {{perMonth}} im Monat",
       "faEach": "je {{price}}",
+      "faProCapped": "Inklusive: {{perDay}} am Tag, {{perMonth}} im Monat",
       "faNotOnSale": "Noch nicht im Verkauf",
       "sharedAllowance": "Gemeinsames Tageskontingent",
       "codeSearch": "Gemeinsames Kontingent oder {{perDay}} am Tag mit einem kostenlosen Schlüssel",

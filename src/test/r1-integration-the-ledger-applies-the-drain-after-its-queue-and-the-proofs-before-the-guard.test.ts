@@ -31,7 +31,8 @@ const FN_DIR = resolve(ROOT, "supabase/functions");
 const POLICY = JSON.parse(readFileSync(resolve(ROOT, "docs/deploy-ledger.json"), "utf8"));
 const R1_MIGRATIONS = readdirSync(MIG).filter((f) => /^20261014\d{6}_.*\.sql$/.test(f)).sort();
 const R1_FUNCTIONS = ["auth-email-hook", "process-email-queue", "resend-webhook", "auth-signed-in", "verify-product-purchase"];
-// Their code is main's, but each imports _shared/mailbox-proof.ts, which R1 changed (added exports).
+// Their code is main's, but each imports _shared/mailbox-proof.ts, which R1 changed (added exports),
+// directly or through _shared/account-proof.ts (create-portal-session since S14X-229).
 const R1_RELABELLED = ["create-portal-session", "delete-account", "free-keyword-scan", "get-account-data", "scan-credits"];
 
 type Row = { fn: string; want: string | null; have: string | null; state: string };
@@ -144,8 +145,9 @@ describe("the critical-path reservation", () => {
   });
 
   it("every function R1 changed carries a build of R1's day or later, and sends it", () => {
+    expect(codeOf(readFileSync(join(FN_DIR, "_shared/account-proof.ts"), "utf8"))).toMatch(/from ["']\.\/mailbox-proof\.ts["']/);
     for (const fn of R1_RELABELLED) {
-      expect(codeOf(readFileSync(join(FN_DIR, fn, "index.ts"), "utf8")), `${fn} no longer imports mailbox-proof.ts: drop it from R1_RELABELLED`).toMatch(/from ["']\.\.\/_shared\/mailbox-proof\.ts["']/);
+      expect(codeOf(readFileSync(join(FN_DIR, fn, "index.ts"), "utf8")), `${fn} no longer imports mailbox-proof.ts: drop it from R1_RELABELLED`).toMatch(/from ["']\.\.\/_shared\/(mailbox|account)-proof\.ts["']/);
     }
     for (const fn of [...R1_FUNCTIONS, ...R1_RELABELLED]) {
       const src = readFileSync(join(FN_DIR, fn, "index.ts"), "utf8");

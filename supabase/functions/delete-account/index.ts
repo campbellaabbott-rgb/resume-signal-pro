@@ -70,6 +70,21 @@ const json = (body: unknown, status = 200) =>
 /** The storage bucket the apply agent's CV uploads go to, under {user id}/. */
 const RESUME_BUCKET = "resumes";
 
+/**
+ * EVERY CHECKOUT THIS ACCOUNT STARTED IN THE LAST DAY IS EXPIRED (S14X-076),
+ * while checkout_buyers still names it: a Pro page left open in another tab
+ * would otherwise sell a plan to an account that no longer exists. Stripe
+ * refuses one that is no longer open, which is ignored. Best-effort.
+ */
+// deno-lint-ignore no-explicit-any
+async function expireOpenCheckouts(stripe: Stripe, db: { from: (t: string) => any }, userId: string): Promise<void> {
+  try {
+    const { data } = await db.from("checkout_buyers").select("stripe_session_id")
+      .eq("user_id", userId).gt("created_at", new Date(Date.now() - 86_400_000).toISOString()).limit(20);
+    await Promise.allSettled((Array.isArray(data) ? data : []).map((r: { stripe_session_id: string }) => stripe.checkout.sessions.expire(r.stripe_session_id)));
+  } catch (_) { /* never a reason to keep an account its owner asked us to delete */ }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -121,6 +136,9 @@ Deno.serve(async (req) => {
       console.error("[DELETE-ACCOUNT] Stripe read:", e instanceof Error ? e.message : e);
       return json({ error: "We couldn't read your subscription, so nothing was changed. Please try again in a minute.", code: "billing_unreadable" }, 503);
     }
+
+    // 1b. Its open checkouts, so no page left open sells it another plan.
+    await expireOpenCheckouts(stripe, admin, user.id);
 
     // 2. The plans: cancelled at once, before anything else goes (see THE ORDER).
     const cancelled: string[] = [];
