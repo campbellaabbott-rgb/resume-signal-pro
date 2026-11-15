@@ -55,8 +55,12 @@
 #   CAP-8       no slice record of this build has streamed > 1 (either phase:
 #               a hot board has no other read).
 #   XR-1        passEnd.steps.sweep.statedClosed > 0 and usajobs closed_90d > 0
-#               within 7 days. Stored rows are never rewritten, so only rows
-#               first read by .102 carry closes_at. No usajobs.gov sampling.
+#               within 7 days. A row gains closes_at when .102's read reaches
+#               it: inserted with one, or, stored, corrected through
+#               apply_posting_corrections, unlogged (20261111100000 teaches it
+#               the key). The read reaches at most 10,000 of ~18,500, so this
+#               line proves closures happen, not that each is exact. No
+#               usajobs.gov sampling.
 #   BB-10       the newest 20 carry no postedAt later than now + 5 min. Judged
 #               16:00-24:00Z (VDBC_HOUR overrides), from 24 h after buildSince
 #               (a tomorrow stored by .101 is in the past by then).
@@ -322,7 +326,7 @@ for(const t of held){const tag="D12 held "+t;if(!lo){wait(tag);continue}
   if(u)say("INFO","XR-1 usajobs open","open_roles "+u.open_roles+" (18,503 on 2026-11-14)");
   const s="passEnd.steps.sweep.statedClosed "+sc+" (sweep done "+(sw.doneAt||null)+"), usajobs closed_90d "+(u?closed:"unreadable: "+peek("/tmp/vd_bc_hh.json"));
   if(sc>0&&closed>0)say("PASS",tag,s);
-  else say(ageH>=168?"FAIL":"INFO",tag,s+(ageH>=168?" (want both above 0 within 7 days of this build)":"; judged 7 days after buildSince (rows first read by this build carry closes_at; stored rows are never rewritten)"));}}
+  else say(ageH>=168?"FAIL":"INFO",tag,s+(ageH>=168?" (want both above 0 within 7 days of this build)":"; judged 7 days after buildSince (a row gains closes_at when a read by this build reaches it, a stored one as an unlogged correction)"));}}
 
 // BB-10.
 {const tag="BB-10";const hour=E.VDBC_HOUR!==""&&E.VDBC_HOUR!==undefined?Number(E.VDBC_HOUR):new Date(now).getUTCHours();const L=rows(read("/tmp/vd_bc_newest.json"));
