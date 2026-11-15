@@ -101,7 +101,7 @@ async function rotation(rows: Row[], o: { fills?: (id: string) => boolean; durin
       asked.set(id, (asked.get(id) ?? 0) + 1);
       return { text: o.fills?.(id) ? "A description long enough to store." : null };
     },
-    placeWrite: () => ({}), parseSalaryStructured: () => null, extractSalary: () => null, STORED_DESC_CAP: 50_000,
+    placeWrite: () => ({}), payUnderPlace: () => ({}), parseSalaryStructured: () => null, extractSalary: () => null, STORED_DESC_CAP: 50_000,
     detectExperience: () => ({ band: null }), detectWorkMode: () => null, fetchBoard: async () => null, listPayloadDescriptions: () => new Map(),
     Deno: { env: { get: () => "http://board" } }, discardBody: () => {}, chainKey: async () => "k",
     fetch: async (_u: string, init: { body: string }) => { next = JSON.parse(init.body); return {}; },

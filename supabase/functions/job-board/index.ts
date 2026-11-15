@@ -5946,6 +5946,13 @@ function placeWrite(
   return patch;
 }
 
+// VF-BMS: a sweep that moves the country re-reads the stored pay under it (callers use it only where no other pay is written).
+function payUnderPlace(row: { salary?: string | null; country: string | null; title?: string | null }, place: Record<string, unknown>): Record<string, unknown> {
+  const c = place.country as string | undefined;
+  const p = c && c !== row.country && row.salary ? parseSalaryStructured(row.salary, c, { title: row.title ?? null, description: null }) : null;
+  return p ? { salary_min_annual: p.annualMin, salary_max_annual: p.annualMax, salary_period: p.period, salary_currency: p.currency } : {};
+}
+
 // Rationale: docs/job-board-index-notes.md#n1187-function-isodateonly-v-unknown-string-nu
 function isoDateOnly(v: unknown): string | null {
   if (typeof v !== "string" || !v.trim()) return null;
@@ -8302,7 +8309,7 @@ async function handleRequest(req: Request): Promise<Response> {
             const placePatch = placeWrite(row, vCountry, vLocation, additionalSites);
             if (!text) {
               // Rationale: docs/job-board-index-notes.md#n247-salv
-              const salv: Record<string, unknown> = { ...placePatch };
+              const salv: Record<string, unknown> = { ...placePatch, ...payUnderPlace(row, placePatch) };
               if (wmVendor && row.work_mode === null) { salv.work_mode = wmVendor; salv.remote = wmVendor === "remote"; }
               if (postedAt && (row.source === "workday" || !row.posted_at)) salv.posted_at = postedAt;
               // Rationale: docs/job-board-index-notes.md#n248-vendorpay-row-salary
@@ -8335,7 +8342,7 @@ async function handleRequest(req: Request): Promise<Response> {
             // Rationale: docs/job-board-index-notes.md#n799-const-exp-detectexperience-row-title-cle
             const exp = detectExperience(row.title ?? "", clean);
             // Rationale: docs/job-board-index-notes.md#n252-wm
-            const wm = wmVendor ?? (row.work_mode ? null : detectWorkMode(row.location, row.title));
+            const wm = wmVendor ?? (row.work_mode ? null : detectWorkMode((placePatch.location as string | undefined) ?? row.location, row.title));
             // Rationale: docs/job-board-index-notes.md#n800-const-betterdate-postedat-row-source-wor
             const betterDate = postedAt && (row.source === "workday" || !row.posted_at) ? postedAt : null;
             const { error } = await client.from("job_board_postings")
@@ -8352,7 +8359,7 @@ async function handleRequest(req: Request): Promise<Response> {
                   salary_max_annual: statedParse?.annualMax ?? null,
                   salary_period: statedParse?.period ?? null,
                   salary_currency: statedParse?.currency ?? null,
-                } : {}),
+                } : payUnderPlace(row, placePatch)),
               })
               .eq("id", row.id)
               .is("description", null); // never clobber a description a reader already stored
@@ -8422,7 +8429,7 @@ async function handleRequest(req: Request): Promise<Response> {
       // Rationale: docs/job-board-index-notes.md#n804-let-sel-client
       let sel = client
         .from("job_board_postings")
-        .select("id, company_token, apply_url, posted_at, work_mode, location, country")
+        .select("id, company_token, apply_url, posted_at, work_mode, location, country, salary, title")
         .eq("source", sVendor)
         .not("description", "is", null)
         .is("work_mode", null)
@@ -8436,6 +8443,7 @@ async function handleRequest(req: Request): Promise<Response> {
       const sQueue = [...(sRows ?? [])] as Array<{
         id: string; company_token: string; apply_url: string | null;
         posted_at: string | null; work_mode: string | null; location: string | null; country: string | null;
+        salary: string | null; title: string | null;
       }>;
       const sPending = [...sQueue];
       let sFilled = 0;
@@ -8459,7 +8467,8 @@ async function handleRequest(req: Request): Promise<Response> {
             // Rationale: docs/job-board-index-notes.md#n807-if-postedat-row-posted_at-patch-posted_a
             if (postedAt && !row.posted_at) patch.posted_at = postedAt;
             // Rationale: docs/job-board-index-notes.md#n259-object-assign-patch-placewrite-row-vcountry-v
-            Object.assign(patch, placeWrite(row, vCountry, vLocation, additionalSites));
+            const place = placeWrite(row, vCountry, vLocation, additionalSites);
+            Object.assign(patch, place, payUnderPlace(row, place));
             if (!Object.keys(patch).length) continue;
             // Rationale: docs/job-board-index-notes.md#n260-upd
             const upd = client.from("job_board_postings").update(patch).eq("id", row.id);
