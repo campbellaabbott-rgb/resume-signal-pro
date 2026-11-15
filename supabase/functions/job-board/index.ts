@@ -62,6 +62,7 @@ import {
   workdayDetailPlace,
   isPlacelessLocation,
   listMayRewriteMode,
+  unescapeEntities,
 } from "./normalize.ts";
 import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
 import { computeFit, resumeRoleTerms, scanResume } from "../_shared/fit-score.ts";
@@ -3894,6 +3895,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             // Ingest folding a stored curly apostrophe is our reading changing,
             // not the employer editing the posting (S11-021): patched, unlogged.
             if (sameButApostrophes(oldV, newV)) return;
+            // S14X-216: so is a value that differs only by HTML entities ('R&amp;D' read as 'R&D').
+            if (typeof oldV === "string" && typeof newV === "string" && unescapeEntities(oldV) === unescapeEntities(newV)) return;
             if (changeLog.length >= FIELD_CHANGES_PER_VISIT) {
               // Rationale: docs/job-board-index-notes.md#n609-if-changecapat-changecapat-corrections-l
               if (changeCapAt < 0) { changeCapAt = corrections.length; changeCapLogAt = logMark; }
