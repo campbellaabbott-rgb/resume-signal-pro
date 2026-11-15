@@ -166,7 +166,10 @@ describe("the corpus slice: real posting text, labelled", () => {
 
 describe("one presence test everywhere", () => {
   const root = resolve(__dirname, "../../supabase/functions");
-  const primary = readFileSync(resolve(root, "free-keyword-scan/index.ts"), "utf8");
+  // The rule-based ATS score moved into its own module (register NB-1): the
+  // primary is index.ts and the file the rule score now lives in.
+  const primary = readFileSync(resolve(root, "free-keyword-scan/index.ts"), "utf8")
+    + readFileSync(resolve(root, "free-keyword-scan/rule-score.ts"), "utf8");
   const stream = readFileSync(resolve(root, "free-keyword-scan-stream/index.ts"), "utf8");
   it("the primary's gap filter, verified-absent list and rule scores read resumeHasTerm, never includes()", () => {
     expect(primary).not.toMatch(/normalizedResumeText\.includes|resumeLowerForGaps\.includes|primary\.filter\([^)]*lower\.includes/);
