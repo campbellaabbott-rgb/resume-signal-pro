@@ -40,7 +40,7 @@ VD52E_MAIN=$(curl -s -m 30 "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -
 VD52E_US=""
 VD52E_CH=""
 for CH in $(bash scripts/verify-us-english.sh "$SITE$VD52E_MAIN"); do
-  VD52E_TRY=$(curl -s -m 30 "$SITE/assets/$VD52E_CH")
+  VD52E_TRY=$(curl -s -m 30 "$SITE/assets/$CH")
   printf '%s' "$VD52E_TRY" | grep -q "workdayCompanyPagesLostTheirFacts" || continue
   VD52E_US=$VD52E_TRY
   VD52E_CH=$CH
@@ -105,11 +105,11 @@ else
   for VD52E_L in en-GB de es fr hi nl pt tl; do
     VD52E_LC=""
     VD52E_LCH=""
-    for VD52E_CH in $(printf '%s' "$VD52E_ENTRY" | grep -oE "\"\\./$VD52E_L-[A-Za-z0-9_-]+\\.js\"" | tr -d '"' | sed 's|^\./||' | sort -u); do
-      VD52E_TRY=$(curl -s -m 30 "$SITE/assets/$VD52E_CH")
+    for VD52E_LCX in $(printf '%s' "$VD52E_ENTRY" | grep -oE "\"\\./$VD52E_L-[A-Za-z0-9_-]+\\.js\"" | tr -d '"' | sed 's|^\./||' | sort -u); do
+      VD52E_TRY=$(curl -s -m 30 "$SITE/assets/$VD52E_LCX")
       printf '%s' "$VD52E_TRY" | grep -q "workdayCompanyPagesLostTheirFacts" || continue
       VD52E_LC=$VD52E_TRY
-      VD52E_LCH=$VD52E_CH
+      VD52E_LCH=$VD52E_LCX
       break
     done
     if [ -z "$VD52E_LC" ]; then echo "FAIL  no $VD52E_L changelog chunk the served entry names carries workdayCompanyPagesLostTheirFacts: the 15 November entries cannot be shown in $VD52E_L"; continue; fi
