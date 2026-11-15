@@ -407,7 +407,8 @@ export function projectBatch(byVendor, { status = null, lapMin = null, linesByte
 export function projectionLines(p) {
   const out = [];
   for (const [v, x] of Object.entries(p.vendors)) out.push(`  ${v.padEnd(16)} ${String(x.boards).padStart(5)} boards, fetched per lap ${x.fetched}, in-window rows ${x.inWindowRows}`);
-  out.push(`  lap: +${p.lapGrowthMin.toFixed(1)} min on a ${p.lapMin}-minute lap (${(100 * p.lapGrowthShare).toFixed(1)}%; from ${p.lapSource}; refused above ${100 * LAP_GROWTH_LIMIT}% without --tranche-ok)`);
+  out.push(`  ${"all".padEnd(16)} ${String(p.boards).padStart(5)} boards, fetched per lap ${p.fetched}, in-window rows ${p.inWindowRows}`);
+  out.push(`  lap: +${p.lapGrowthMin.toFixed(p.lapGrowthMin < 1 ? 3 : 1)} min on a ${p.lapMin}-minute lap (${(100 * p.lapGrowthShare).toFixed(1)}%; from ${p.lapSource}; refused above ${100 * LAP_GROWTH_LIMIT}% without --tranche-ok)`);
   out.push(p.room === null
     ? `  room: status not read (pass --status <file> or --status live), so the ${ROOM_FACTOR}x room guard for ${p.inWindowRows} in-window rows is unjudged`
     : `  room: ${p.room} under the ${CORPUS_TARGET} target against ${ROOM_FACTOR} x ${p.inWindowRows} = ${Math.round(p.roomNeeded)} needed: ${p.roomOk ? "fits" : "DOES NOT FIT"}`);

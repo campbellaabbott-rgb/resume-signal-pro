@@ -12,6 +12,7 @@
 //
 // Usage: node scripts/merge-all.mjs <verified.json> [more.json…] [--apply]
 //          [--carrier-counts <token-to-served.json>] [--carrier-postings <rows.json>]
+//          [--status <status.json>|live] [--lap-min <minutes>] [--tranche-ok]
 //
 // --carrier-counts and --carrier-postings answer D6's two reads from a file
 // instead of production (a token absent from the file is unread, so held).
@@ -19,14 +20,14 @@
 import fs from "node:fs";
 import { LABEL_NAMED_VENDORS, agencyScreenText, censusNameReason } from "./census-names.mjs";
 import {
-  CWD_SOURCES, MIN_IN_WINDOW, OVERLAP_HOLD_SHARE, boardKey, collisionIdentity, inWindowOf, keySet, nameIndex,
-  nameKey as nameKeyOf, overlapShare, readCarrierRows, readCatalogue, readServedCounts, runGeneratedChecks,
-  sizeVerdict, windowGate,
+  CWD_SOURCES, LAP_GROWTH_LIMIT, MIN_IN_WINDOW, OVERLAP_HOLD_SHARE, ROOM_FACTOR, boardKey, collisionIdentity,
+  inWindowOf, keySet, nameIndex, nameKey as nameKeyOf, overlapShare, projectBatch, projectionLines,
+  readBoardStatus, readCarrierRows, readCatalogue, readServedCounts, runGeneratedChecks, sizeVerdict, windowGate,
 } from "./catalogue-reader.mjs";
 
 const args = process.argv.slice(2);
 const APPLY = args.includes("--apply");
-const VALUE_FLAGS = new Set(["--carrier-counts", "--carrier-postings"]);
+const VALUE_FLAGS = new Set(["--carrier-counts", "--carrier-postings", "--status", "--lap-min"]);
 const flagValue = (f) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : undefined; };
 const files = args.filter((a, i) => !a.startsWith("--") && !VALUE_FLAGS.has(args[i - 1]));
 const SOURCES = CWD_SOURCES;
@@ -378,7 +379,56 @@ if (srHeld.length) console.log(`Held, smartrecruiters (OD2, SR_MERGE_HELD ${SR_M
 console.log(`Mill-screen worklist (>=100 postings): ${millWorklist.length} boards`);
 fs.writeFileSync("round3-mill-worklist.json", JSON.stringify(millWorklist, null, 1));
 
+// The lines a merge appends, and the banner above them. Built for the dry
+// run's projection too, so bytes per posting is measured, not guessed.
+const esc = (s) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+const banner = `  // ── Census round 3 + Rippling (merged ${new Date().toISOString().slice(0, 10)}): all vendors, official-API verified ≥3 postings, mill-screened ──\n`;
+function entryLines(agencyEvidence) {
+  const lines = [];
+  let taggedAgencies = 0;
+  for (const vendor of VENDORS) {
+    for (const b of keep[vendor]) {
+      // AGENCY DISCLOSURE rides the entry from the moment it merges: a staffing
+      // name, or phrase evidence the mill screen carried through the cleared
+      // file, stamps the flag that ingest copies onto every posting row. This
+      // merge never emits a pages override, so the flag is the last field —
+      // when a board later gains one, the override goes BEFORE the flag, the
+      // one suffix order every catalog parser tolerates.
+      const isAgency = AGENCY_NAME.test(agencyScreenText(vendor, b.name, { nameFrom: b.nameFrom })) || agencyEvidence.has(`${vendor}:${b.token}`);
+      if (isAgency) taggedAgencies++;
+      lines.push(`  { name: "${esc(b.name)}", source: "${vendor}", token: "${esc(b.token)}"${isAgency ? ", agency: true" : ""} },`);
+    }
+  }
+  return { lines, taggedAgencies };
+}
+
+// CAP-6 / CAP-11: WHAT THIS BATCH WOULD COST, printed before anything is
+// written. Fetched volume per lap, lap growth (10,000 boards cost about 80
+// minutes), in-window rows against the room under the corpus target, and the
+// catalogue bytes per projected posting. --apply is refused when the lap
+// would grow more than 10% (unless --tranche-ok), or when status was read and
+// the room does not hold 1.5x the batch's rows (no flag overrides that: merge
+// a smaller tranche). Status comes from --status <file> or --status live (a
+// job-board status read at the probe budget); unread, the room is printed as
+// unjudged.
+const TRANCHE_OK = args.includes("--tranche-ok");
+const statusArg = flagValue("--status");
+const status = statusArg === "live" ? await readBoardStatus() : statusArg ? readJson(statusArg) : null;
+if (statusArg && !status) console.log("status: --status live could not be read, so the room guard is unjudged");
+function project(agencyEvidence) {
+  const { lines } = entryLines(agencyEvidence);
+  const linesBytes = Buffer.byteLength(banner + lines.join("\n") + "\n", "utf8");
+  const p = projectBatch(keep, { status, lapMin: flagValue("--lap-min"), linesBytes });
+  console.log("Projection (CAP-6, CAP-11):");
+  for (const l of projectionLines(p)) console.log(l);
+  const refusals = [];
+  if (p.lapGrowthShare > LAP_GROWTH_LIMIT && !TRANCHE_OK) refusals.push(`the lap grows ${(100 * p.lapGrowthShare).toFixed(1)}% (> ${100 * LAP_GROWTH_LIMIT}%): pass --tranche-ok to accept it`);
+  if (p.roomOk === false) refusals.push(`the room under the corpus target (${p.room}) does not hold ${ROOM_FACTOR} x ${p.inWindowRows} in-window rows: merge a smaller tranche`);
+  return refusals;
+}
+
 if (!APPLY) {
+  for (const r of project(new Set())) console.log(`--apply would be refused: ${r}`);
   console.log("\nDry run only. Run mill-screen-all.mjs, then re-run with --apply.");
   process.exit(0);
 }
@@ -404,25 +454,14 @@ if (cleared) {
   }
 }
 
-const esc = (s) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-const lines = [];
-let taggedAgencies = 0;
-for (const vendor of VENDORS) {
-  for (const b of keep[vendor]) {
-    // AGENCY DISCLOSURE rides the entry from the moment it merges: a staffing
-    // name, or phrase evidence the mill screen carried through the cleared
-    // file, stamps the flag that ingest copies onto every posting row. This
-    // merge never emits a pages override, so the flag is the last field —
-    // when a board later gains one, the override goes BEFORE the flag, the
-    // one suffix order every catalog parser tolerates.
-    const isAgency = AGENCY_NAME.test(agencyScreenText(vendor, b.name, { nameFrom: b.nameFrom })) || agencyEvidence.has(`${vendor}:${b.token}`);
-    if (isAgency) taggedAgencies++;
-    lines.push(`  { name: "${esc(b.name)}", source: "${vendor}", token: "${esc(b.token)}"${isAgency ? ", agency: true" : ""} },`);
-  }
+const refusals = project(agencyEvidence);
+if (refusals.length) {
+  for (const r of refusals) console.error(`REFUSING to apply: ${r}`);
+  process.exit(1);
 }
+const { lines, taggedAgencies } = entryLines(agencyEvidence);
 const marker = src.lastIndexOf("];");
 if (marker === -1) { console.error("sources.ts: JOB_SOURCES closing not found"); process.exit(1); }
-const banner = `  // ── Census round 3 + Rippling (merged ${new Date().toISOString().slice(0, 10)}): all vendors, official-API verified ≥3 postings, mill-screened ──\n`;
 const next = src.slice(0, marker) + banner + lines.join("\n") + "\n" + src.slice(marker);
 fs.writeFileSync(SOURCES, next);
 console.log(`\nAPPLIED: ${lines.length} boards appended to sources.ts (${taggedAgencies} carry the agency disclosure flag)`);

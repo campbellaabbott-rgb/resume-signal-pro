@@ -28,34 +28,40 @@
 //   * the window gate merge-all applies: at least 3 postings dated within 30
 //     days where the input states a date basis, else the posting count;
 //   * every request to one Oracle host waits 1.1 s after the last;
-//   * TRANCHE CAP: --cap <postings> (default 85,000) fills by descending
-//     posting count. The corpus governor stands at 750k with the board at
-//     ~695k — merging all 142k resolved postings would run the governor into
-//     silent evictions (the one delete path with no lifecycle trace). A
-//     tranche sized to headroom, then the next tranche after the ceiling
-//     decision, is the honest sequence.
+//   * THE TRANCHE IS SIZED BY THE ROOM GUARD (CAP-6/CAP-11, 2026-11-08), not
+//     the fixed 85,000 it once was (sized for a 750k governor). The room is
+//     the corpus target less status.totalPostings, and a tranche's in-window
+//     rows may fill a 1.5th of it: past that the governor evicts silently,
+//     the one delete path with no lifecycle trace. Status comes from
+//     --status <file> or --status live; --apply refuses without it unless an
+//     explicit --cap <rows> stands in. The projection merge-all prints is
+//     printed here too, and --apply is refused above 10% lap growth unless
+//     --tranche-ok.
 //
 // The catalogue is read by importing it (scripts/catalogue-reader.mjs), from
 // the working directory's sources.ts, the file this merge appends to.
 //
-// Usage: node scripts/merge-oracle.mjs <oracle-names.json> [--cap 85000] [--apply]
+// Usage: node scripts/merge-oracle.mjs <oracle-names.json> [--apply] [--status <status.json>|live]
+//          [--cap <rows>] [--lap-min <minutes>] [--tranche-ok]
 //          [--carrier-counts <token-to-served.json>] [--carrier-postings <rows.json>]
 //          [--req-ids <token-to-ids.json>]
 import { readFileSync, writeFileSync } from "node:fs";
 import { oracleHost as hostOf } from "./oracle-host.mjs";
 import { censusNameReason } from "./census-names.mjs";
 import {
-  CWD_SOURCES, MIN_IN_WINDOW, OVERLAP_HOLD_SHARE, boardKey, collisionIdentity, inWindowOf, keySet, nameIndex,
-  nameKey, overlapShare, readCarrierRows, readCatalogue, readServedCounts, runGeneratedChecks, sizeVerdict,
+  CORPUS_TARGET, CWD_SOURCES, LAP_GROWTH_LIMIT, MIN_IN_WINDOW, OVERLAP_HOLD_SHARE, ROOM_FACTOR, boardKey,
+  collisionIdentity, inWindowOf, keySet, nameIndex, nameKey, overlapShare, projectBatch, projectionLines,
+  readBoardStatus, readCarrierRows, readCatalogue, readServedCounts, runGeneratedChecks, sizeVerdict,
   tenantSet, windowGate,
 } from "./catalogue-reader.mjs";
 
 const args = process.argv.slice(2);
 const APPLY = args.includes("--apply");
 const flagValue = (f) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : undefined; };
-const capIdx = args.indexOf("--cap");
-const CAP = capIdx >= 0 ? Number(args[capIdx + 1]) : 85_000;
-const VALUE_FLAGS = new Set(["--cap", "--carrier-counts", "--carrier-postings", "--req-ids"]);
+const capArg = flagValue("--cap");
+const CAP = capArg === undefined ? null : Number(capArg);
+const TRANCHE_OK = args.includes("--tranche-ok");
+const VALUE_FLAGS = new Set(["--cap", "--carrier-counts", "--carrier-postings", "--req-ids", "--status", "--lap-min"]);
 const NAMES_PATH = args.find((a, i) => a.endsWith(".json") && !VALUE_FLAGS.has(args[i - 1]));
 const SOURCES = CWD_SOURCES;
 
@@ -91,6 +97,19 @@ const cleanName = (raw) => String(raw)
 const { resolved } = JSON.parse(readFileSync(NAMES_PATH, "utf8"));
 const catalog = readFileSync(SOURCES, "utf8");
 const catalogue = await readCatalogue(SOURCES);
+
+// The room guard sizes the tranche: a 1.5th of the room under the corpus
+// target, in in-window rows; an explicit --cap may lower it, never raise it.
+const statusArg = flagValue("--status");
+const status = statusArg === "live" ? await readBoardStatus() : statusArg ? JSON.parse(readFileSync(statusArg, "utf8")) : null;
+const room = Number.isFinite(Number(status?.totalPostings)) ? CORPUS_TARGET - Number(status.totalPostings) : null;
+const roomBudget = room === null ? null : Math.max(0, Math.floor(room / ROOM_FACTOR));
+if (APPLY && roomBudget === null && CAP === null) {
+  console.error(`REFUSING to apply: the room under the corpus target was not read${statusArg ? ` (--status ${statusArg} gave no totalPostings)` : ""}. Pass --status <file>|live, or an explicit --cap <rows>.`);
+  process.exit(1);
+}
+const BUDGET = Math.min(roomBudget ?? Infinity, CAP ?? Infinity);
+console.log(`tranche budget: ${Number.isFinite(BUDGET) ? `${BUDGET} in-window rows` : "unbounded (dry run, room unread)"} (${roomBudget === null ? "room unread" : `room ${room} under ${CORPUS_TARGET} / ${ROOM_FACTOR} = ${roomBudget}`}${CAP === null ? "" : `, --cap ${CAP}`})`);
 const existingTokens = keySet(catalogue);
 const carriersByName = nameIndex(catalogue);
 
@@ -230,7 +249,7 @@ const MILL_REVIEWED_CLEAR = new Set([
 const dropped = { blockedName: [], labelName: [], blockedGov: [], blockedToken: [], dupe: [], underThree: [], subSiteMirror: [], subSiteHeld: [], nameCollision: [], collisionHeld: [], collisionAdmittedForSize: [], mill: [], millUnreadable: [] };
 let undatedPassed = 0;
 const kept = [];
-let budget = CAP;
+let budget = BUDGET;
 for (const b of resolved) {
   let name = cleanName(b.name);
   if (!name) continue;
@@ -266,7 +285,7 @@ for (const b of resolved) {
   if (collision.drop) { dropped.nameCollision.push(`${name} (${b.token}): ${collision.drop}`); continue; }
   if (collision.forSize) dropped.collisionAdmittedForSize.push(`${name} (${b.token})`);
   name = collision.name;
-  if (b.count > budget) continue; // tranche full for a board this size; smaller ones may still fit
+  if (inWindowOf(b) > budget) continue; // tranche full for a board this size; smaller ones may still fit
   try {
     const m = await millSample(b.token);
     if (m.read === 0) { dropped.millUnreadable.push(`${name} (${b.token})`); continue; }
@@ -274,21 +293,32 @@ for (const b of resolved) {
     // screen below still holds boards whose text cannot be read at all.
     if (false && b.count >= 100 && m.hits >= 2 && !MILL_REVIEWED_CLEAR.has(b.token)) { dropped.mill.push(`${name} (${b.token}) ${m.hits}/${m.read}`); continue; }
   } catch { dropped.millUnreadable.push(`${name} (${b.token})`); continue; }
-  kept.push({ name, token: b.token, count: b.count });
-  budget -= b.count;
+  kept.push({ name, token: b.token, count: b.count, inWindow30: b.inWindow30, dateBasis: b.dateBasis });
+  budget -= inWindowOf(b);
 }
 
 const postings = kept.reduce((n, b) => n + b.count, 0);
-console.log(`kept ${kept.length} boards / ${postings.toLocaleString()} postings (cap ${CAP.toLocaleString()}, budget left ${budget.toLocaleString()})`);
+console.log(`kept ${kept.length} boards / ${postings.toLocaleString()} postings (budget left ${Number.isFinite(budget) ? budget.toLocaleString() : "unbounded"})`);
 const listed = ["mill", "blockedGov", "collisionHeld", "nameCollision", "collisionAdmittedForSize", "subSiteMirror", "subSiteHeld"];
 const heldKinds = new Set(["collisionHeld", "subSiteHeld"]);
 for (const [k, v] of Object.entries(dropped)) if (v.length) console.log(`${k === "collisionAdmittedForSize" ? "admitted" : heldKinds.has(k) ? "held for review" : "dropped"} ${k}: ${v.length}${listed.includes(k) ? " — " + v.slice(0, heldKinds.has(k) ? 50 : 6).join("; ") : ""}`);
 console.log(`window gate: >=${MIN_IN_WINDOW} postings dated within 30 days; ${undatedPassed} kept boards state no date and were judged by posting count`);
 
-if (!APPLY) { console.log("\nDry run. Re-run with --apply to append to sources.ts."); process.exit(0); }
-
-const banner = `\n  // ── Oracle census (merged 2026-08-28): names resolved from each tenant's own recruitingCESites branding, mill-screened on real posting text, tranche-capped to governor headroom ──\n`;
+const banner = `\n  // ── Oracle census (merged ${new Date().toISOString().slice(0, 10)}): names resolved from each tenant's own recruitingCESites branding, mill-screened on real posting text, tranche sized by the room guard ──\n`;
 const entries = kept.map((b) => `  { name: ${JSON.stringify(b.name)}, source: "oracle", token: ${JSON.stringify(b.token)} },`).join("\n");
+const projection = projectBatch({ oracle: kept }, { status, lapMin: flagValue("--lap-min"), linesBytes: Buffer.byteLength(banner + entries + "\n", "utf8") });
+console.log("projection (CAP-6, CAP-11):");
+for (const l of projectionLines(projection)) console.log(l);
+const refusals = [];
+if (projection.lapGrowthShare > LAP_GROWTH_LIMIT && !TRANCHE_OK) refusals.push(`the lap grows ${(100 * projection.lapGrowthShare).toFixed(1)}% (> ${100 * LAP_GROWTH_LIMIT}%): pass --tranche-ok to accept it`);
+if (projection.roomOk === false) refusals.push(`the room under the corpus target (${projection.room}) does not hold ${ROOM_FACTOR} x ${projection.inWindowRows} in-window rows`);
+
+if (!APPLY) {
+  for (const r of refusals) console.log(`--apply would be refused: ${r}`);
+  console.log("\nDry run. Re-run with --apply to append to sources.ts.");
+  process.exit(0);
+}
+if (refusals.length) { for (const r of refusals) console.error(`REFUSING to apply: ${r}`); process.exit(1); }
 const closeIdx = catalog.lastIndexOf("];");
 writeFileSync(SOURCES, catalog.slice(0, closeIdx) + banner + entries + "\n" + catalog.slice(closeIdx));
 console.log(`\nAPPLIED: ${kept.length} oracle boards appended to sources.ts — bump BUILD_VERSION in the same commit.`);

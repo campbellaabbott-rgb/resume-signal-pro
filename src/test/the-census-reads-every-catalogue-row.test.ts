@@ -380,3 +380,61 @@ describe("both --apply paths run the generated-module checks", () => {
     }
   });
 });
+
+// ── CAP-6 / CAP-11: what a batch would cost (2026-11-08) ───────────────────
+
+describe("a merge prints what its batch would cost before it writes", () => {
+  const BATCH = {
+    lever: [{ token: "alphaone", name: "Alpha One", count: 300, inWindow30: 40, dateBasis: "createdAt" }],
+    workday: [{ token: "beta~wd1~Careers", name: "Beta Two", count: 900, inWindow30: 120, dateBasis: "postedOn, first page only" }],
+  };
+  const CLEARED = [{ vendor: "lever", token: "alphaone" }, { vendor: "workday", token: "beta~wd1~Careers" }];
+
+  it("prints fetched volume, lap growth, the room guard and bytes per posting", () => {
+    const r = scratchRun("merge-all.mjs", SCRATCH_CATALOGUE, BATCH, ["--status", "st.json"], { "st.json": { totalPostings: 1_000_000 } });
+    expect(r.status, r.log).toBe(0);
+    expect(r.log).toContain("lever                1 boards, fetched per lap 250, in-window rows 40");
+    expect(r.log).toContain("workday              1 boards, fetched per lap 500, in-window rows 120");
+    expect(r.log).toContain("all                  2 boards, fetched per lap 750, in-window rows 160");
+    expect(r.log).toMatch(/lap: \+0\.016 min on a 357-minute lap \(0\.0%; from section 90's reference lap/);
+    expect(r.log).toContain("room: 150000 under the 1150000 target against 1.5 x 160 = 240 needed: fits");
+    expect(r.log).toMatch(/catalogue bytes: \d+ \(\d+\.\d\d per projected posting\)/);
+  });
+
+  it("--apply is refused above 10% lap growth unless --tranche-ok", () => {
+    const refused = scratchRun("merge-all.mjs", SCRATCH_CATALOGUE, BATCH, ["--apply", "--lap-min", "0.1"], { "round3-mill-cleared.json": CLEARED });
+    expect(refused.status).toBe(1);
+    expect(refused.log).toContain("REFUSING to apply: the lap grows 16.0% (> 10%): pass --tranche-ok to accept it");
+    expect(refused.after).not.toContain("alphaone");
+    const accepted = scratchRun("merge-all.mjs", SCRATCH_CATALOGUE, BATCH, ["--apply", "--lap-min", "0.1", "--tranche-ok"], { "round3-mill-cleared.json": CLEARED });
+    expect(accepted.status, accepted.log).toBe(0);
+    expect(accepted.after).toContain('token: "alphaone"');
+  });
+
+  it("--apply is refused when the room does not hold 1.5x the batch's in-window rows, whatever the flags", () => {
+    const r = scratchRun("merge-all.mjs", SCRATCH_CATALOGUE, BATCH, ["--apply", "--tranche-ok", "--status", "st.json"], { "st.json": { totalPostings: 1_149_900 }, "round3-mill-cleared.json": CLEARED });
+    expect(r.status).toBe(1);
+    expect(r.log).toContain("REFUSING to apply: the room under the corpus target (100) does not hold 1.5 x 160 in-window rows");
+    expect(r.after).not.toContain("alphaone");
+  });
+
+  it("merge-oracle sizes its tranche by the room guard, and refuses --apply with neither a room read nor a cap", () => {
+    const resolved = { resolved: [{ name: "Gamma Three", token: "gggg~us2~CX_1", count: 100 }] };
+    const sized = scratchRun("merge-oracle.mjs", SCRATCH_CATALOGUE, resolved, ["--status", "st.json"], { "st.json": { totalPostings: 1_149_940 } });
+    expect(sized.status, sized.log).toBe(0);
+    expect(sized.log).toContain("tranche budget: 40 in-window rows (room 60 under 1150000 / 1.5 = 40)");
+    expect(sized.log).toContain("kept 0 boards");
+    const refused = scratchRun("merge-oracle.mjs", SCRATCH_CATALOGUE, resolved, ["--apply"]);
+    expect(refused.status).toBe(1);
+    expect(refused.log).toContain("REFUSING to apply: the room under the corpus target was not read");
+    expect(strip(readFileSync(resolve(ROOT, "scripts/merge-oracle.mjs"), "utf8"))).not.toMatch(/85_000|85000/);
+  });
+
+  it("the corpus target the guard reads is job-board's own", () => {
+    const index = readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8");
+    const live = /const CORPUS_TARGET = ([\d_]+);/.exec(index)?.[1];
+    expect(live, "CORPUS_TARGET not found in index.ts").toBeTruthy();
+    const mine = /export const CORPUS_TARGET = ([\d_]+);/.exec(readFileSync(READER, "utf8"))?.[1];
+    expect(Number(mine?.replace(/_/g, ""))).toBe(Number(live!.replace(/_/g, "")));
+  });
+});
