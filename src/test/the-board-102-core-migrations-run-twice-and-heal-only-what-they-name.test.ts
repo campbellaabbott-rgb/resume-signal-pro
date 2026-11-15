@@ -122,4 +122,11 @@ describe("20261111110000 reads a bare-dollar pay under a US place as USD, and no
   it("does not write the description, so the description-embed trigger has nothing to fire on", () => {
     expect(HEAL).not.toMatch(/SET[^;]*\bdescription\b\s*=/i);
   });
+
+  it("reads the posting table three times, not four: the count and the top tokens share one pass, under the five minutes the earlier heals set", () => {
+    const code = HEAL.split("\n").filter((l) => !/^\s*--/.test(l)).join("\n");
+    expect(code.match(/FROM public\.job_board_postings/g)).toHaveLength(2);
+    expect(code.match(/UPDATE public\.job_board_postings/g)).toHaveLength(2);
+    expect(code).toMatch(/^SET LOCAL statement_timeout = '5min';$/m);
+  });
 });

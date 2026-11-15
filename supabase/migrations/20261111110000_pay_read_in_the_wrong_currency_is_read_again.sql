@@ -28,7 +28,14 @@
 -- ORDER: after fn:job-board@2026-09-09.102, so no sweep running the old code
 -- writes a new row of this class behind it.
 --
+-- No index leads with salary_currency, so each read below is a pass over the
+-- posting table: the count and the top tokens share one pass, the UPDATE is a
+-- second and the self-check a third, under the five minutes the earlier heals
+-- of this table set (20261026110000).
+--
 -- Re-runnable: a second run matches zero rows and changes nothing.
+
+SET LOCAL statement_timeout = '5min';
 
 DO $$
 DECLARE
@@ -36,20 +43,17 @@ DECLARE
   top text;
   plain_rank boolean;
 BEGIN
-  SELECT count(*) INTO n
-    FROM public.job_board_postings
-   WHERE country = 'US' AND salary_currency = 'CAD'
-     AND ltrim(salary) LIKE '$%'
-     AND lower(salary) !~ '(cad|c\$|ca\$|can\$|canad)';
-  SELECT string_agg(company_token || ' ' || c, ', ' ORDER BY c DESC, company_token) INTO top
-    FROM (SELECT company_token, count(*) AS c
-            FROM public.job_board_postings
-           WHERE country = 'US' AND salary_currency = 'CAD'
-             AND ltrim(salary) LIKE '$%'
-             AND lower(salary) !~ '(cad|c\$|ca\$|can\$|canad)'
-           GROUP BY company_token
-           ORDER BY count(*) DESC, company_token
-           LIMIT 10) t;
+  WITH per_token AS MATERIALIZED (
+    SELECT company_token, count(*) AS c
+      FROM public.job_board_postings
+     WHERE country = 'US' AND salary_currency = 'CAD'
+       AND ltrim(salary) LIKE '$%'
+       AND lower(salary) !~ '(cad|c\$|ca\$|can\$|canad)'
+     GROUP BY company_token)
+  SELECT COALESCE((SELECT sum(c) FROM per_token), 0)::bigint,
+         (SELECT string_agg(company_token || ' ' || c, ', ' ORDER BY c DESC, company_token)
+            FROM (SELECT company_token, c FROM per_token ORDER BY c DESC, company_token LIMIT 10) t)
+    INTO n, top;
   RAISE NOTICE '20261111110000: % row(s) read in CAD under a US place; top tokens: %', n, COALESCE(top, 'none');
   IF n > 5000 THEN
     RAISE EXCEPTION '20261111110000: % rows match, more than the 5,000 this heal was written for; nothing was changed', n;
