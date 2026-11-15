@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261110160000_a_pruned_filing_is_counted_once_in_the_column_its_status_names'));
