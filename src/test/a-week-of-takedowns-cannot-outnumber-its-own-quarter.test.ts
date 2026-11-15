@@ -143,6 +143,7 @@ const SCHEMA = `
     event_id bigserial PRIMARY KEY, posting_id text NOT NULL, company_token text NOT NULL,
     posted_at timestamptz, first_seen timestamptz, closed_at timestamptz NOT NULL,
     superseded boolean NOT NULL DEFAULT false, suspect boolean, absence_basis text);
+  CREATE TABLE public.job_board_stats_rollup (k text PRIMARY KEY, v jsonb NOT NULL, computed_at timestamptz NOT NULL DEFAULT now());
 `;
 const boot = async (): Promise<PGlite> => {
   const db = new PGlite();
@@ -200,7 +201,11 @@ describe("the lifted sources are the ones this file claims to be testing", () =>
     expect(PRE_TRENDS, "no pre-fix weekly series to prove the teeth against").toBeTruthy();
     expect(PRE_TRENDS.file < NEWEST_TRENDS.file).toBe(true);
     expect(PRE_TODAY, "no pre-fix takedown counter to prove the teeth against").toBeTruthy();
-    expect(NEWEST_TODAY.file, "the counter and the series are fixed in one migration").toBe(NEWEST_TRENDS.file);
+    // The counter and the series were fixed in one migration; 20261109170000
+    // re-issues the counter with that body as its live arm, behind an hourly row.
+    expect(TODAY.some((d) => d.file === NEWEST_TRENDS.file), "the counter and the series are fixed in one migration").toBe(true);
+    expect(NEWEST_TODAY.file >= NEWEST_TRENDS.file).toBe(true);
+    expect(NEWEST_TODAY.sql).toMatch(/AND NOT COALESCE\(suspect, false\)/);
     expect(CLOSED_90D, "closed_90d not found in refresh_ghost_stats").toMatch(/^\(SELECT count\(\*\) FROM public\.job_board_closures/);
     expect(CLOSED_90D).toMatch(/NOT COALESCE\(suspect, false\)/);
     expect(OBSERVED_DAYS, "observed_days not found in refresh_ghost_stats").toMatch(/^\(SELECT GREATEST/);
