@@ -736,7 +736,7 @@ async function enrolDynamicLight(client: SupabaseClient, board: Pick<JobSource, 
 
 // startOffset is honoured only by the paginating vendors; every other branch
 // fetches a whole feed and ignores it.
-const listUrl = (s: JobSource, startOffset = 0) =>
+const listUrl = (s: JobSource, startOffset = 0, details = !isLight(s)) =>
   s.source === "greenhouse"
     // content=true costs a bigger payload but delivers every description in
     // ONE call — fit-ranking coverage for GH boards, plus real departments.
@@ -749,7 +749,7 @@ const listUrl = (s: JobSource, startOffset = 0) =>
           ? `https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=100${startOffset ? `&offset=${startOffset}` : ""}`
           : s.source === "workable"
             // Rationale: docs/job-board-index-notes.md#n492-https-apply-workable-com-api-v1
-            ? `https://apply.workable.com/api/v1/widget/accounts/${s.token}?details=${isLight(s) ? "false" : "true"}`
+            ? `https://apply.workable.com/api/v1/widget/accounts/${s.token}?details=${details}`
             : s.source === "recruitee"
               ? `https://${s.token}.recruitee.com/api/offers/`
               : s.source === "breezy"
@@ -757,7 +757,10 @@ const listUrl = (s: JobSource, startOffset = 0) =>
                 : s.source === "teamtailor"
                   // Rationale: docs/job-board-index-notes.md#n493-https-s-host-s-token-teamtailor
                   ? `https://${s.host ?? `${s.token}.teamtailor.com`}/jobs.rss`
-                  : `https://${s.token}.bamboohr.com/careers/list`;
+                  : s.source === "pinpoint"
+                    // Rationale: docs/job-board-index-notes.md#n036-pinpointhost
+                    ? `https://${s.token.includes(".") ? s.token : `${s.token}.pinpointhq.com`}/postings.json`
+                    : `https://${s.token}.bamboohr.com/careers/list`;
 
 // Rationale: docs/job-board-index-notes.md#n022-sr-page
 const SR_PAGE = 100;
@@ -1601,7 +1604,7 @@ async function readOversizeBoard(s: JobSource, deadlineAt: number, freshCutoffMs
     const { raw, stats } = await streamSlim(res.body, spec, {
       freshCutoffMs,
       maxBytes: SLIM_RETAINED_BYTES,
-      maxElementBytes: SLIM_ELEMENT_BYTES,
+      maxElementBytes: spec.maxElementBytes ?? SLIM_ELEMENT_BYTES,
       descKeepChars: 2 * STORED_DESC_CAP,
       descCeiling: SLIM_DESC_CEILING,
       deadlineAt,
@@ -1609,6 +1612,8 @@ async function readOversizeBoard(s: JobSource, deadlineAt: number, freshCutoffMs
     const jobs = s.source === "lever" ? normalizeLever(raw as never, s.name, s.token)
       : s.source === "ashby" ? normalizeAshby(raw as never, s.name, s.token)
       : s.source === "greenhouse" ? normalizeGreenhouse(raw as never, s.name, s.token)
+      : s.source === "recruitee" ? normalizeRecruitee(raw as never, s.name, s.token)
+      : s.source === "pinpoint" ? normalizePinpoint((raw as { data: never }).data, s.name, s.token)
       : null;
     if (!jobs) throw new Error(`no normaliser for ${s.source}`);
     console.warn(`[JOB-BOARD] streamed ${s.source}:${s.token}: ${(stats.bytes / 1e6).toFixed(1)}MB read, ${(stats.slimBytes / 1e6).toFixed(1)}MB kept, ${stats.descDropped} description(s) dropped`);
@@ -1617,6 +1622,18 @@ async function readOversizeBoard(s: JobSource, deadlineAt: number, freshCutoffMs
     console.warn(`[JOB-BOARD] streamed read of ${s.source}:${s.token} failed, stays deferred:`, String((e as Error)?.message ?? e).slice(0, 120));
     return null;
   }
+}
+
+/** D7: held until a mill screen and an owner call (OD1: nogigiddy; weekday-1 unscreened; hire-resolve names itself an agency). */
+const WORKABLE_OVERSIZE_HELD: ReadonlySet<string> = new Set(["nogigiddy", "weekday-1", "hire-resolve-the-top-recruitment-agency"]);
+/** A Workable list with details=false (listUrl's third argument). Not light mode: the board stays out of DYNAMIC_LIGHT (n017). */
+async function readWorkableBare(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unknown } | null> {
+  try {
+    const res = await fetchWithTimeout(listUrl(s, 0, false));
+    if (!res.ok) { discardBody(res); return null; }
+    const raw = await res.json();
+    return { jobs: normalizeWorkable(raw, s.name, s.token), raw };
+  } catch { return null; }
 }
 
 // Rationale: docs/job-board-index-notes.md#n521-async-function-fetchboard
@@ -1652,9 +1669,7 @@ async function fetchBoard(
       return { jobs: normalizeRippling(items as never, s.name, s.token), raw, windowed, feedTotal, nextOffset, feedEnded, endOffset };
     }
     if (s.source === "pinpoint") {
-      // Rationale: docs/job-board-index-notes.md#n036-pinpointhost
-      const pinpointHost = s.token.includes(".") ? s.token : `${s.token}.pinpointhq.com`;
-      const res = await fetchWithTimeout(`https://${pinpointHost}/postings.json`);
+      const res = await fetchWithTimeout(listUrl(s));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = await res.json();
       const data = Array.isArray((body as { data?: unknown[] }).data) ? (body as { data: unknown[] }).data : [];
@@ -2502,6 +2517,8 @@ function firstSliceOf(pv: { build?: unknown; buildSince?: unknown }, sliceWallSt
 let sliceBudgetNote: { fetched: number; skipped: number; hit: boolean; lastUpsertError: string | null; heapStopped: boolean; wallStopped: boolean; sizeStopped: boolean; boardBudget: number } | null = null;
 // This slice's light re-reads (n081), added to the row's running totals by the recorder.
 let sliceLightReread: LightRereadStats | null = null;
+// This slice's streamed reads (CAP-8) and the boards a vendor refused for load (BB-09), whose items none normalised (S14X-063b) or whose later SmartRecruiters page threw (S14X-121).
+let sliceReads = { streamed: 0, rateLimited: [] as string[], rawNoRows: [] as string[], srPartial: [] as string[] };
 // This slice's boards whose feed read but whose rows our database would not read or store (S11-023).
 let sliceDbFailNote: { boards: number; alarm: number } | null = null;
 // Rationale: docs/job-board-index-notes.md#n547-let-currenthop
@@ -2579,6 +2596,10 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
         // Boards our own database failed this slice, and how many have failed DB_FAIL_ALARM_VISITS running (S11-023).
         ...(sliceDbFailNote ? { dbFailed: sliceDbFailNote } : {}),
         ...(sliceLightReread ? { lightReread: addLightReread((pv as { lightReread?: unknown }).lightReread, sliceLightReread, new Date().toISOString()) } : {}),
+        streamed: sliceReads.streamed,
+        rateLimited: sliceReads.rateLimited.slice(0, 50),
+        rawNoRows: sliceReads.rawNoRows.slice(0, 50),
+        srPartial: sliceReads.srPartial.slice(0, 50),
       },
       updated_at: new Date().toISOString(),
     }, { onConflict: "k" });
@@ -2634,6 +2655,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   sliceCursorNote = null;
   sliceLightReread = null;
   sliceDbFailNote = null;
+  sliceReads = { streamed: 0, rateLimited: [], rawNoRows: [], srPartial: [] };
   const { hotList: HOT_LIST, coldList: COLD_LIST } = await tierLists(client);
   await loadDynamicLight(client); // auto-enrolled giant boards fetch without content
   // Rationale: docs/job-board-index-notes.md#n551-await-loadoversizeboards-client
@@ -3161,10 +3183,20 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           done: lightRereadDone, stats: lightStats,
         }));
         // Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read, #n424-greenhouse-streamed-light-read
-        if (!r && failReason.startsWith("oversize") && SLIM_SPECS[s.source] && (s.source !== "greenhouse" || (lightOversize && isLight(s))) && Date.now() - sliceWallStart + STREAM_READ_BUDGET_MS <= SLICE_WALL_BUDGET_MS && (memStamp().heapMb ?? 0) < HEAP_SOFT_LIMIT_MB) {
+        // CAP-8: one streamed read a slice, cold phase only, and only while the heap holds two elements plus the retained budget.
+        if (!r && failReason.startsWith("oversize") && SLIM_SPECS[s.source] && (s.source !== "greenhouse" || (lightOversize && isLight(s))) && !inHotPhase && sliceReads.streamed < 1 && Date.now() - sliceWallStart + STREAM_READ_BUDGET_MS <= SLICE_WALL_BUDGET_MS && (memStamp().heapMb ?? 0) + 2 * ((SLIM_SPECS[s.source].maxElementBytes ?? SLIM_ELEMENT_BYTES) + SLIM_RETAINED_BYTES) / 1e6 < HEAP_SOFT_LIMIT_MB) {
+          sliceReads.streamed++;
           inFlightReserve += reserve;
           try { r = await readOversizeBoard(s, Date.now() + STREAM_READ_BUDGET_MS, freshCutoffMs); }
           finally { inFlightReserve -= reserve; }
+        }
+        // D7: a Workable board too big with its details is read without them; fillWorkableDetails brings the text back a posting at a time.
+        let bareRead = false;
+        if (!r && failReason.startsWith("oversize") && s.source === "workable" && !WORKABLE_OVERSIZE_HELD.has(s.token)) {
+          inFlightReserve += reserve;
+          try { r = await readWorkableBare(s); }
+          finally { inFlightReserve -= reserve; }
+          bareRead = !!r;
         }
         if (r) fetchedInSlice += r.jobs.length;
         // Rationale: docs/job-board-index-notes.md#n079-boardsdone
@@ -3332,7 +3364,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         }
         const descs = new Map<string, string>();
         // Rationale: docs/job-board-index-notes.md#n580-let-descsdeferred-false
-        let descsDeferred = false;
+        let descsDeferred = bareRead;
         if (s.source === "lever") {
           for (const j of (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; lists?: unknown; additionalPlain?: string }>) {
             const text = leverText(j);
@@ -3357,8 +3389,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             }
           }
         } else if (s.source === "recruitee") {
-          for (const o of ((r.raw as { offers?: Array<{ id: string | number; description?: string; requirements?: string }> }).offers ?? [])) {
-            const text = htmlToText([o.description, o.requirements].filter(Boolean).join("\n").slice(0, RAW_HTML_CAP)).trim();
+          for (const o of ((r.raw as { offers?: Array<{ id: string | number; description?: string; requirements?: string; descriptionPlain?: string }> }).offers ?? [])) {
+            // A streamed board (D12) carries its text built already.
+            const text = o.descriptionPlain ?? htmlToText([o.description, o.requirements].filter(Boolean).join("\n").slice(0, RAW_HTML_CAP)).trim();
             if (text) descs.set(`recruitee:${s.token}:${o.id}`, text.slice(0, STORED_DESC_CAP));
           }
         } else if (s.source === "workable" && !isLight(s)) {
@@ -5620,7 +5653,7 @@ function listPayloadDescriptions(s: JobSource, raw: unknown): Map<string, string
       const html = [p.description, p.key_responsibilities, p.skills_knowledge_expertise]
         .filter((x): x is string => typeof x === "string" && x.length > 0)
         .join("\n");
-      const text = html ? htmlToText(html.slice(0, RAW_HTML_CAP)).trim() : "";
+      const text = typeof p.descriptionPlain === "string" ? p.descriptionPlain : html ? htmlToText(html.slice(0, RAW_HTML_CAP)).trim() : "";
       if (ext && text) out.set(`pinpoint:${s.token}:${ext}`, text.slice(0, STORED_DESC_CAP));
     }
   }
@@ -5645,6 +5678,29 @@ async function readBoardForDetail(src: JobSource): Promise<Awaited<ReturnType<ty
     DETAIL_BOARD_REFUSED.set(key, Date.now());
   }
   return r;
+}
+
+const WORKABLE_DETAIL_PER_HOP = 60;
+const WORKABLE_DETAIL_GAP_MS = 1_100;
+/** D7: null-description rows of a Workable board too big to read whole, one detail read at a time on one host, never two in flight, until the deadline. */
+async function fillWorkableDetails<R>(
+  rows: readonly R[],
+  read: (row: R) => Promise<string | null>,
+  write: (row: R, text: string) => Promise<boolean>,
+  clock: { now: () => number; sleep: (ms: number) => Promise<unknown> },
+  deadlineAt: number,
+): Promise<{ asked: number; filled: number }> {
+  let asked = 0, filled = 0, last = -Infinity;
+  for (const row of rows.slice(0, WORKABLE_DETAIL_PER_HOP)) {
+    const wait = Math.max(0, last + WORKABLE_DETAIL_GAP_MS - clock.now());
+    if (clock.now() + wait >= deadlineAt) break;
+    if (wait > 0) await clock.sleep(wait);
+    last = clock.now();
+    asked++;
+    const text = await read(row).catch(() => null);
+    if (text && await write(row, text).catch(() => false)) filled++;
+  }
+  return { asked, filled };
 }
 
 // Rationale: docs/job-board-index-notes.md#n1184-async-function-fetchvendordetail
@@ -5685,12 +5741,13 @@ async function fetchVendorDetail(
       text = htmlToText(html).slice(0, DESC_CAP) || null;
     }
   } else if (src.source === "workable") {
-    const res = await fetchWithTimeout(`https://apply.workable.com/api/v1/widget/accounts/${src.token}?details=true`);
+    // D7: the one posting (about 5 KB), never the account's whole details=true widget.
+    const res = await fetchWithTimeout(`https://apply.workable.com/api/v2/accounts/${src.token}/jobs/${encodeURIComponent(externalId)}`);
     if (res.ok) {
-      const j = await res.json();
-      const job = (j.jobs ?? []).find((x: { shortcode: string }) => x.shortcode === externalId);
-      if (job?.description) text = htmlToText(String(job.description)).slice(0, DESC_CAP) || null;
-    }
+      const j = await res.json().catch(() => null) as Record<string, unknown> | null;
+      const html = [j?.description, j?.requirements, j?.benefits].filter((x) => typeof x === "string" && x).join("\n");
+      text = html ? htmlToText(html).slice(0, DESC_CAP) || null : null;
+    } else discardBody(res);
   } else if (src.source === "oracle") {
     // Per-requisition detail carries the full posting: description +
     // qualifications + responsibilities as separate HTML fields.
@@ -8152,16 +8209,12 @@ async function handleRequest(req: Request): Promise<Response> {
           .is("description", null)
           .limit(DESC_SWEEP_PER_HOP);
         let filled = 0;
+        let stay = false;
         if ((nullRows ?? []).length > 0) {
           try {
-            const r = await fetchBoard(b);
-            if (r) {
-              const map = listPayloadDescriptions(b, r.raw);
-              for (const row of nullRows ?? []) {
-                const text = map.get(String(row.id));
-                if (!text) continue;
+            const fill = async (row: { id: string; country?: string | null; title?: string | null }, text: string): Promise<boolean> => {
                 const clean = text.replace(/\u0000/g, "").slice(0, STORED_DESC_CAP);
-                if (!clean) continue;
+                if (!clean) return false;
                 const minedSalary = extractSalary(clean);
                 const minedParse = minedSalary ? parseSalaryStructured(minedSalary, (row as { country?: string | null }).country ?? undefined, { title: (row as { title?: string | null }).title ?? null, description: clean }) : null;
                 const { error } = await client.from("job_board_postings")
@@ -8177,13 +8230,27 @@ async function handleRequest(req: Request): Promise<Response> {
                   })
                   .eq("id", row.id)
                   .is("description", null);
-                if (!error) filled++;
+                return !error;
+            };
+            // D7: a Workable board too big to read whole is filled a posting at a time, and the lane stays on it while that fills.
+            const whole = !(b.source === "workable" && (await loadOversizeBoards(client), OVERSIZE_BOARDS.has(boardKeyOf(b))));
+            const r = whole ? await readBoardForDetail(b) : null;
+            if (r) {
+              const map = listPayloadDescriptions(b, r.raw);
+              for (const row of nullRows ?? []) {
+                const text = map.get(String(row.id));
+                if (text && await fill(row, text)) filled++;
               }
+            } else if (b.source === "workable" && (!whole || DETAIL_BOARD_REFUSED.has(`workable:${b.token}`))) {
+              const own = (nullRows ?? []).filter((x) => String(x.id).startsWith("workable:"));
+              const f = await fillWorkableDetails(own, async (row) => (await fetchVendorDetail(b, row.id, row.id.split(":").slice(2).join(":"))).text, fill, { now: Date.now, sleep: (ms) => new Promise((res) => setTimeout(res, ms)) }, Date.now() + SLICE_WALL_BUDGET_MS - 20_000);
+              filled = f.filled;
+              stay = f.filled > 0 && own.length > f.asked;
             }
           } catch { /* transient — rows stay null and are retried next sweep */ }
         }
-        // Always advance: a board whose feed is down must not stall the lane.
-        bi += 1;
+        // Always advance, unless the Workable filler is still filling: a board whose feed is down must not stall the lane.
+        if (!stay) bi += 1;
         const bUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
         waitUntil(chainKey().then((key) => fetch(bUrl, {
           method: "POST",
