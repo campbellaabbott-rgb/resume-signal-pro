@@ -197,4 +197,7 @@ if(rows){const d=rows.date_coverage,e=rows.desc_coverage;
       else if(found.every((p)=>p===want))out("PASS  /ghost-job-index says \""+want+"\" for the "+label+", and "+T[key]+" runs on "+r.ch_schedule);
       else if(step2)out("FAIL  /ghost-job-index says \""+found.join("\", \"")+"\" for the "+label+", but "+T[key]+" runs on "+r.ch_schedule+" (\""+want+"\"): the published cadence went false with this deploy (DATA_PAGE_CADENCE in scripts/prerender-seo.mjs)");
       else out("INFO  /ghost-job-index already says \""+found.join("\", \"")+"\" for the "+label+" while "+T[key]+" still runs on "+r.ch_schedule+": the frontend publishes at merge, before 20261109121000 and 122000 apply")}}}
+
+// ---- the paid API says the same cadence ----
+out("INFO  /v1/stats (keyed, not read here) says its rollup is recomputed every 30 minutes from public-api 2026-11-09.1 on, which section 49 holds to main\u0027s build; the sentence is held to the newest schedule of job-board-stats-rollup by src/test/a-data-page-that-serves-no-number-is-an-empty-page.test.ts");
 '

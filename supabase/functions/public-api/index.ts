@@ -385,7 +385,8 @@ const LIST_FILTERS = [
 // 2026-11-02.1 (board-stream round, 2026-11-01): a city typed in its own language binds the English name it adds to its country (S13-006; _shared/location-terms.ts and _shared/location-match.ts): the /v1 location or() refuses a US-placed row for "Vienna@Austria" unless it names Austria, and the explain trace shows "Vienna" with outsideUsUnlessNaming.
 // 2026-11-03.1 (audit-rest held items, 2026-11-04): no rule change. engine=ranked sends agent_ready_only to the board as its vendor list, because the board reads no such flag since job-board .101 (S13-118).
 // 2026-11-08.1 (connect W4 and W5, 2026-11-08): GET /v1/jobs/{id}/application reads ten hiring systems' forms (Paylocity, Workable, Teamtailor, Lever and BambooHR added; _shared/form-readers-extra.ts, host-pinned GETs, a Paylocity answer key never read) and a Pinpoint posting on the employer's own domain from its pinpointhq.com page; a Breezy page's CV and cover-letter settings and a Pinpoint page's equality block and consent are listed; a written question that mentions a CV is not a file, and a consent is marked consent and never cvMayHelp (a 563-label corpus, never worse than main); route carries captcha (visible, invisible or none) with iCIMS and UKG measured as account-first and Paylocity as neither; a form not read says why it was not read; postingTerms leave out equal-opportunity, benefits and legal sentences (a 1,833-posting corpus).
-const FN_BUILD = "public-api.2026-11-08.1";
+// 2026-11-09.1 (cost wave, the integration; cost audit 2026-11-08 Do first #6): the /v1/stats basis says the rollup behind feedFreshness and bySource is recomputed every 30 minutes, the schedule migration 20261109121000 gives job-board-stats-rollup, which applies after this build.
+const FN_BUILD = "public-api.2026-11-09.1";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -2266,7 +2267,7 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
   const [metaRes, cacheRes, rollupRes] = await Promise.all([
     client.from("job_board_meta").select("k, v, updated_at").in("k", ["refresh", "vendor_breaker"]),
     client.rpc("get_stats_cache"),
-    // One row per key, world-readable, written by the 15-minute rollup cron.
+    // One row per key, world-readable, written by the 30-minute rollup cron.
     client.from("job_board_stats_rollup").select("k, v, computed_at").in("k", ["freshness", "date_coverage", "desc_coverage"]),
   ]);
   const metaRows = (metaRes.data ?? []) as Array<{ k: string; v: unknown; updated_at?: string }>;
@@ -2581,6 +2582,6 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
       },
     },
     asOf: v.coverage?.openAt ?? v.refreshedAt ?? data?.updated_at ?? null,
-    basis: "livePostings is an exact count of postings /v1/jobs can return (live, inside the 30-day window), recounted every ~15 minutes. trackedPostings includes postings the employer has since withdrawn. feedFreshness and bySource come from a rollup recomputed every 15 minutes and each carries its own asOf — the per-source totals stand on a wider population than livePostings, named in bySource.population.",
+    basis: "livePostings is an exact count of postings /v1/jobs can return (live, inside the 30-day window), recounted every ~15 minutes. trackedPostings includes postings the employer has since withdrawn. feedFreshness and bySource come from a rollup recomputed every 30 minutes and each carries its own asOf — the per-source totals stand on a wider population than livePostings, named in bySource.population.",
   }, 200, headers);
 }

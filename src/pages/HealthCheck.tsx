@@ -552,7 +552,15 @@ function HealthCheckContent() {
   const fetchWarmUpStatus = async () => {
     setWarmUpLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('warm-up');
+      // The full warm-up is the owner's from warm-up 2026-11-09.1 on (cost
+      // audit 2026-11-08, Do first #13): without the key it answers 401 and
+      // invokes nothing. The key rides in the body, as the diagnostic's does:
+      // this page publishes before the function, and the build serving until
+      // then allows no x-admin-key in its preflight, so a browser sending that
+      // header would be stopped before the request left. That build ignores
+      // the body's key and warms everything as before.
+      const adminKey = getStoredAdminKey();
+      const { data, error } = await supabase.functions.invoke('warm-up', adminKey ? { body: { adminKey } } : undefined);
       if (error) throw error;
       setWarmUpStatus(data as WarmUpStatus);
     } catch (e) {
