@@ -48,10 +48,15 @@ describe("the .101 notes and the ledger's audit-rest entry", () => {
     expect(SECTION).toMatch(/The pages write it, on every write to the row/);
   });
 
-  it("name the same day the dated constant reads", () => {
+  it("name the day the dated constant read at that merge, which it has not moved back from", () => {
+    // A later publish that changes the policy's words moves the constant on
+    // (the 15 November closeout did), so the note states the day of its own
+    // merge and no longer a day the constant "reads now".
     const day = /PRIVACY_LAST_UPDATED = "(\d{4}-\d{2}-\d{2})"/.exec(read("src/config/seller.ts"))?.[1];
     expect(day).toBeTruthy();
-    expect(SECTION).toContain(`it reads ${day} now`);
+    expect(SECTION).toContain("it read 2026-11-06 at that merge");
+    expect(SECTION).not.toMatch(/it reads \d{4}-\d{2}-\d{2} now/);
+    expect(day! >= "2026-11-06", `the constant reads ${day}, earlier than the merge the note names`).toBe(true);
   });
 
   it("keep the first-match rule the digest has, and drop the sentence it replaced", () => {

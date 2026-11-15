@@ -9,8 +9,8 @@
 //     which postings were shown from CONNECTOR_SEARCH_LOG_CHANGED on (job-board
 //     .93 and later write none for connector searches; .93 and .95 never
 //     served, so the first such build live is the one deploy's .96), kept for
-//     30 days once the connector prune (20261011103000) runs and, until then,
-//     for the demand log's general 180 days (see MCP_SEARCH_PRUNE_LIVE); NOT
+//     30 days by the connector prune (20261011103000, running since its
+//     apply of 2026-11-15; see MCP_SEARCH_PRUNE_LIVE); NOT
 //     written from ChatGPT from that day on (job-board .93 and later honour the
 //     no-log flag agent-mcp sets on the ChatGPT surface, only with the reader
 //     proof). Searches logged before that day, by the live .92, name the
@@ -29,18 +29,17 @@
 
 /**
  * Whether the connector's 30-day search prune runs. Its migration
- * (20261011103000) was held in docs/deploy-ledger.json holdUntilVerified and
- * was released on 2026-11-08 into the seo-connect deploy message; until it
- * applies, connector searches follow the demand log's general 180-day prune,
- * and searches logged before CONNECTOR_SEARCH_LOG_CHANGED still name the
- * postings shown. Set this true only in a frontend publish after
- * get_cron_health lists search-demand-mcp-retention as active
- * (docs/wave4/README.md, owner steps): merging publishes the frontend before
- * Lovable applies the migration, and
- * src/test/the-privacy-page-says-what-each-ai-surface-receives-and-keeps.test.tsx
- * fails only while it is true and the migration is still held.
+ * (20261011103000) was held in docs/deploy-ledger.json holdUntilVerified,
+ * released on 2026-11-08 into the seo-connect deploy message, and applied by
+ * Lovable on 2026-11-15 (drizzle 0221). That day, read live, get_cron_health
+ * listed search-demand-mcp-retention as active, nightly at 03:47 UTC, so this
+ * is true from the frontend publish of the 5ef5e1a7 closeout
+ * (docs/wave4/README.md, owner steps). Before it, connector searches followed
+ * the demand log's general 180-day prune, which the false branch below still
+ * words. src/test/the-privacy-page-says-what-each-ai-surface-receives-and-keeps.test.tsx
+ * fails while it is true and the ledger holds the migration again.
  */
-export const MCP_SEARCH_PRUNE_LIVE: boolean = false;
+export const MCP_SEARCH_PRUNE_LIVE: boolean = true;
 
 /**
  * The day connector searches stop naming the postings shown and ChatGPT's stop

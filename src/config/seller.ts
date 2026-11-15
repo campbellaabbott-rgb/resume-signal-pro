@@ -58,4 +58,7 @@ export const TERMS_LAST_UPDATED: string = TERMS_VERSION;
 // is that deploy's day too: set at the merge into main, and the ledger refuses
 // a deploy message otherwise (docs/deploy-ledger.json datedAtDeploy). Audit-rest's
 // publish moves it again: the page stops naming Google Fonts as a processor.
-export const PRIVACY_LAST_UPDATED = "2026-11-06";
+// The 5ef5e1a7 closeout moves it to 2026-11-15: the AI table's search row now
+// says connector searches are kept for 30 days, where it said up to 180, once
+// the prune that applied that day was read live as an active nightly job.
+export const PRIVACY_LAST_UPDATED = "2026-11-15";
