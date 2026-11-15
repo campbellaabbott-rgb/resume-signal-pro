@@ -40,10 +40,12 @@ import { SCAN_MODEL_CHAIN } from "../_shared/scan-models.ts";
 // model-call helper it imports (_shared/ai-fallback.ts) now logs one usage
 // line per reply it reads, token counts and the model id only, so the build
 // moves with it.
+// 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
 const FN_BUILD = "test-ai-fallback.2026-11-10.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-admin-key",
   "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,

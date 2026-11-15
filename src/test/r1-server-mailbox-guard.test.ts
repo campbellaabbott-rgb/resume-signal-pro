@@ -694,7 +694,7 @@ describe("the shipped auth-signed-in handler", () => {
     const ours = await call("OPTIONS", { origin: "https://resumebooster.work" });
     expect(ours.status).toBe(200);
     expect(buildIsAtLeast(ours.headers.get("x-fn-build"), "auth-signed-in", "2026-10-14", 1)).toBe(true);
-    expect(ours.headers.get("x-fn-build")).toBe("auth-signed-in.2026-10-14.1");
+    expect(ours.headers.get("x-fn-build")).toBe("auth-signed-in.2026-11-09.1");
     expect(ours.headers.get("access-control-expose-headers")).toMatch(/x-fn-build/);
     expect(ours.headers.get("access-control-allow-origin")).toBe("https://resumebooster.work");
     const preview = await call("OPTIONS", { origin: "https://id-preview--0b9d1a4e-1111-4222-8333-944445555666.lovable.app" });
@@ -720,7 +720,7 @@ describe("the shipped auth-signed-in handler", () => {
       const r = await call("POST", headers);
       expect(r.status, reason).toBe(401);
       expect(await r.json()).toMatchObject({ reason });
-      expect(r.headers.get("x-fn-build")).toBe("auth-signed-in.2026-10-14.1");
+      expect(r.headers.get("x-fn-build")).toBe("auth-signed-in.2026-11-09.1");
     }
     expect(tokensSeen, "the claims are refused before the auth server is asked").toEqual([]);
     gotrue.sessions.get(sessionId)!.active = false;

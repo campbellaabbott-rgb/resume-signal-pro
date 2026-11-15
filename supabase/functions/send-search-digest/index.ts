@@ -49,10 +49,12 @@ import { DIGEST_COPY, formatCount, storedLanguage, type MailLanguage } from "./c
 // whether a match was ever mailed, not on the claim's stamp (S13-083); an old
 // agent-ready search is no longer narrowed to the sendable vendors (S13-118);
 // the mail speaks the language kept on the saved search (S13-102).
-const FN_BUILD = "send-search-digest.2026-11-03.1";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "send-search-digest.2026-11-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "x-fn-build": FN_BUILD,
 };

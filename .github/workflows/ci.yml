@@ -102,9 +102,26 @@ jobs:
       - name: Tests (includes golden detection corpus)
         if: ${{ !cancelled() && steps.deps.outcome == 'success' && steps.worker-deps.outcome == 'success' }}
         run: npx vitest run
+      # OFFLINE (cost audit 2026-11-08, Do first #8). vite.config.ts runs the
+      # prerender bake after every build, and it read LIVE production here
+      # too: about 1,100-1,200 production reads a run, up to 721 of them
+      # job-board calls and 372-492 get_company_intel RPCs, and 174 s on the
+      # required path, for a dist/ no later step of this job reads. Offline
+      # the bake reads nothing from the network and writes its pages from the
+      # committed snapshots, so this step stays a property of the commit: the
+      # app compiles and the bake runs. Judging live data is built-output's
+      # job, below.
+      #
+      # vite's post-condition only LOGS a dist with no prerendered pages (it
+      # never blocks Lovable's publish). Offline the bake is deterministic, so
+      # here a missing dist/pricing/index.html fails the step by name.
       - name: Production build
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
-        run: npm run build
+        env:
+          PRERENDER_OFFLINE: "1"
+        run: |
+          npm run build
+          test -f dist/pricing/index.html || { echo "::error::the offline bake wrote no dist/pricing/index.html (the vite.config.ts post-condition): the bake did not run, and this dist is SPA-only"; exit 1; }
 
       # THE APPLY DRIVER, PAST THE CLICK. Everything above compares selectors
       # and field names against recordings; none of it presses submit, waits for
@@ -167,7 +184,20 @@ jobs:
   # these suites judge moves with production between two runs of one commit.
   # They are a finding about the site, not a property of the commit, and stay
   # out of the `test` job that branch protection should require.
+  #
+  # ON MAIN, AND ON PULL REQUESTS THAT CHANGE THE BAKE (owner decision
+  # 2026-11-08). Each run is a live bake against production; 76 of 127 runs
+  # in thirty days were pull requests. bake-scope (below) answers whether a
+  # pull request changes anything the bake runs or reads. A pull request that
+  # does not is judged by this job after it merges, on main's push. The
+  # condition is on the JOB, never a workflow-level paths filter: a job its
+  # `if` skips reports "skipped", which GitHub counts as passing for a
+  # required check, so no check is ever left waiting (main had no branch
+  # protection and no rulesets on 2026-11-08; this holds if it gains them).
+  # Anything bake-scope cannot answer (it failed, no output) runs the bake.
   built-output:
+    needs: bake-scope
+    if: ${{ !cancelled() && needs.bake-scope.outputs.live != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -188,3 +218,37 @@ jobs:
           [ -n "$FILES" ] || { echo "::error::no suite skips through skipWithoutDist"; exit 1; }
           echo "$FILES"
           npx vitest run $FILES
+
+  # DOES THIS CHANGE TOUCH THE BAKE? built-output's question (see above).
+  # A push to main always answers yes. A pull request is diffed as GitHub
+  # merges it: the checkout is the merge commit, fetched two deep, so HEAD^1
+  # is the base branch's tip and the diff is exactly what the pull request
+  # changes. scripts/bake-scope.mjs computes the bake's inputs from the tree
+  # (its imports, the files it reads, the guards on dist/) and prints
+  # live=true or live=false. Every failure on the way answers live=true, and
+  # the step itself never fails.
+  bake-scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      live: ${{ steps.scope.outputs.live }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Does this change touch the bake's code?
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "not a pull request ($EVENT): the live bake runs"
+            echo "live=true" >> "$GITHUB_OUTPUT"
+          elif CHANGED=$(git diff --name-only HEAD^1 HEAD) && OUT=$(printf '%s\n' "$CHANGED" | node scripts/bake-scope.mjs) && [ "$OUT" = "live=false" ]; then
+            echo "live=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "live=true" >> "$GITHUB_OUTPUT"
+          fi

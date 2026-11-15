@@ -111,7 +111,7 @@ describe("S12-053 / S12-097: the plan is found by the account", () => {
     expect(state.cancelled, "the plan kept charging a deleted account").toEqual(["sub_legacy"]);
     expect(state.deleted).toEqual([USER_ID]);
     expect(r.json).toMatchObject({ success: true, subscriptionsCancelled: 1, keysRevoked: 2, kept: ["payment_records"] });
-    expect(r.build).toBe("delete-account.2026-10-14.25");
+    expect(r.build).toBe("delete-account.2026-11-09.1");
   });
 
   it("a plan that names the account is found by its metadata on a customer under another address", async () => {

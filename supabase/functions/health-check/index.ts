@@ -8,10 +8,12 @@ import { isProbeOperator } from "../_shared/probe-caller.ts";
 // was fine; the AI check counted only a 5xx, so a 401 (bad key) or a 402
 // (credits exhausted) read healthy. Stripe now passes only on a 200 from its
 // balance endpoint; a missing key or a 401/402/403 from either is an error.
-const FN_BUILD = "health-check.2026-10-09.2";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "health-check.2026-11-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-admin-key, x-email-cron",
   "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,

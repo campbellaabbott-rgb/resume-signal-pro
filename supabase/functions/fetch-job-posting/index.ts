@@ -19,7 +19,8 @@ import { runtimeResolver } from "./net-guard.ts";
 // content); character references in an attribute value are decoded before it is read; an end tag closes only an element
 // in scope, as a browser's does; and a hidden formatting element a paragraph's end closes keeps hiding the text after it
 // until its own end tag or the end of its table cell, as a browser rebuilds it.
-const FN_BUILD = "fetch-job-posting.2026-10-28.1";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "fetch-job-posting.2026-11-09.1";
 
 const fetchImpl = (url: string, init: RequestInit) => fetch(url, init);
 const resolve = runtimeResolver(fetchImpl);

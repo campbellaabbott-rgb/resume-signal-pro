@@ -68,10 +68,13 @@ import { requireWebsiteSession } from "../_shared/website-session.ts";
 // 2026-10-14.30 (wave 4 round 2 fixes): a plan is not an order (Pro and the
 // agent plan leave the orders list), and an order's price carries the currency
 // the buyer paid in, or no price.
-const FN_BUILD = "get-account-data.2026-10-14.30";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+// Also (Worth doing, small sequential hops): the checkout_buyers read starts with the mailbox proof, right after the session is accepted, instead of after the proof and the proof row.
+const FN_BUILD = "get-account-data.2026-11-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,
@@ -194,6 +197,13 @@ Deno.serve(async (req) => {
       supabaseUrl: url,
       anonKey: Deno.env.get("SUPABASE_ANON_KEY") ?? "",
     };
+    // A one-off bought while signed in: its session is bound to this account.
+    // It depends on the account alone, so it is asked for now, alongside the
+    // mailbox proof below, instead of after it; it is judged where it was.
+    const boundRead = Promise.resolve(service.from("checkout_buyers").select("stripe_session_id").eq("user_id", user.id).limit(100));
+    // A request that fails before the judgement below still answers 500 from
+    // the catch at the bottom; this only keeps that early rejection handled.
+    boundRead.catch(() => {});
     let provenEmail = await accountProvenEmail(user, session.jwt, proofEnv);
 
     // The guard as a backstop (see the header): a fresh mailbox sign-in the
@@ -230,8 +240,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // A one-off bought while signed in: its session is bound to this account.
-    const boundRes = await service.from("checkout_buyers").select("stripe_session_id").eq("user_id", user.id).limit(100);
+    const boundRes = await boundRead;
     if (boundRes.error && !missingTable(boundRes.error)) throw new Error(`checkout_buyers: ${String(boundRes.error.message ?? "").slice(0, 120)}`);
     const boundSessions = ((boundRes.data ?? []) as Array<{ stripe_session_id?: unknown }>)
       .map((r) => r.stripe_session_id).filter((v): v is string => typeof v === "string" && !!v);

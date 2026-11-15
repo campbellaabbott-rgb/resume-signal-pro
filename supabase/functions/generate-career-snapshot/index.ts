@@ -28,10 +28,12 @@ import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 // 2026-11-10.2 (cost audit 2026-11-08, lane ai): this file is unchanged. The shared
 // model-call helper it imports (_shared/ai-fallback.ts) gained the free-tool
 // chain and a numbers-only usage line, so the build moves with it.
+// 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
 const FN_BUILD = "generate-career-snapshot.2026-11-10.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "x-fn-build": FN_BUILD,
 };

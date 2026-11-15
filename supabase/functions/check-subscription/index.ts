@@ -80,10 +80,13 @@ import { accountAnswer, addressOwnerOf, type AddressOwner, type PlanRow } from "
 // date, failed payment) from the rows bound to the account, and on a live
 // check those rows are asked of Stripe by customer; _shared/pro.ts no longer
 // nulls a row's customer when the address search finds nothing.
-const FN_BUILD = "check-subscription.2026-11-10.1";
+// 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+// Also (Worth doing, small sequential hops): a signed-in caller's plan rows are asked for alongside the address's cache row, and the two answers that write nothing first (a fresh cache row, the over-allowance stale answer) use that read; a live check still reads them again after its writes.
+const FN_BUILD = "check-subscription.2026-11-10.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,
@@ -131,25 +134,34 @@ serve(async (req) => {
       }
     };
 
+    // The account's plan rows (PRO_ENTITLEMENT_RPC). Never rejects: a call
+    // that throws is a read that failed, which answer() treats as unread.
+    type EntitlementRead = { data: unknown; error: unknown };
+    const readEntitlement = async (userId: string): Promise<EntitlementRead> => {
+      try {
+        const { data, error } = await supabase.rpc(PRO_ENTITLEMENT_RPC, { p_user_id: userId });
+        return { data, error };
+      } catch (e) {
+        return { data: null, error: e ?? new Error("the plan rows could not be read") };
+      }
+    };
     // The address answer, turned into the ACCOUNT's for a signed-in caller
     // (_shared/pro-answer.ts). `liveRow` is a plan Stripe just answered for,
     // bound to THIS caller: it counts even if writing it to the cache failed
     // a moment ago. `owner` is whose plan the address answer rests on.
+    // `early` is the plan-rows read already started, for an answer nothing was
+    // written before; without it the rows are read now.
     const answer = async (
       addressAnswer: Record<string, unknown>,
       status = 200,
       liveRow: ProRow | null = null,
       owner: AddressOwner = "unbound",
+      early?: Promise<EntitlementRead>,
     ): Promise<Response> => {
       if (!caller || status !== 200) return json(addressAnswer, status);
-      let rows: PlanRow[] = [];
-      try {
-        const { data, error } = await supabase.rpc(PRO_ENTITLEMENT_RPC, { p_user_id: caller.id });
-        if (error) return json(accountAnswer({ address: addressAnswer, owner, rows: [], rowsUnread: true }).body, status);
-        rows = Array.isArray(data) ? data as PlanRow[] : [];
-      } catch (_) {
-        return json(accountAnswer({ address: addressAnswer, owner, rows: [], rowsUnread: true }).body, status);
-      }
+      const { data, error } = await (early ?? readEntitlement(caller.id));
+      if (error) return json(accountAnswer({ address: addressAnswer, owner, rows: [], rowsUnread: true }).body, status);
+      const rows: PlanRow[] = Array.isArray(data) ? data as PlanRow[] : [];
       const all: PlanRow[] = liveRow ? [...rows, { tier: "pro", bound: true, ...liveRow }] : rows;
       const told = accountAnswer({ address: addressAnswer, owner, rows: all });
       // The account's own live Pro plan, described from its rows: whether it
@@ -203,6 +215,10 @@ serve(async (req) => {
 
     // Cache-first. This endpoint fires on every /pricing, /account and /jobs
     // view for a signed-in visitor.
+    // The account's plan rows, asked for together with the cache row: the
+    // cached and the over-allowance answers below write nothing before they
+    // describe the account, so they use this read instead of a second hop.
+    const earlyEntitlement = caller ? readEntitlement(caller.id) : undefined;
     let cachedAnswer: Record<string, unknown> | null = null;
     // The row's updated_at as read, null for no row, undefined when the read
     // failed: checkProByEmail downgrades only the row seen, and "not
@@ -239,7 +255,7 @@ serve(async (req) => {
         // back from the billing portal likewise.
         const notLiveFor = heldSession ? 0 : NOT_LIVE_CACHE_MS;
         if (!fresh && age < (live ? LIVE_CACHE_MS : notLiveFor)) {
-          return await answer(cachedAnswer, 200, null, caller ? addressOwnerOf(caller.id, null, seenUserId) : "unbound");
+          return await answer(cachedAnswer, 200, null, caller ? addressOwnerOf(caller.id, null, seenUserId) : "unbound", earlyEntitlement);
         }
       }
     } catch (_) {
@@ -254,7 +270,7 @@ serve(async (req) => {
       // Over the live-check allowance: the last known answer, said to be old,
       // rather than a "not subscribed" that may be false.
       return cachedAnswer
-        ? await answer({ ...cachedAnswer, stale: true }, 200, null, caller ? addressOwnerOf(caller.id, null, seenUserId) : "unbound")
+        ? await answer({ ...cachedAnswer, stale: true }, 200, null, caller ? addressOwnerOf(caller.id, null, seenUserId) : "unbound", earlyEntitlement)
         : json({ active: false, status: "rate_limited" }, 429);
     }
     // CANCELLED IN THE PORTAL, STILL LIVE TO ITS END (S12-076): read from the

@@ -12,7 +12,8 @@ import { headerFooterLines, withHeaderFooter, type ZipLike } from "./header-foot
 // included, carries this in x-fn-build. 2026-11-01.1: Word's own bullets
 // (w:numPr resolving to a bullet format) keep a bullet mark in the text
 // (register S13-037).
-const FN_BUILD = "parse-docx.2026-11-01.1";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "parse-docx.2026-11-09.1";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -64,6 +65,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "x-fn-build": FN_BUILD,
 };

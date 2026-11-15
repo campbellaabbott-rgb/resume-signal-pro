@@ -14,7 +14,8 @@ import { CORRECTION_MENU_INDUSTRIES } from "../_shared/correction-menu-industrie
 // 2026-11-03.1 (S13-067): the owner's lead alert has a daily count per address
 // and an hourly ceiling; the country lookup waits for validation and the limit;
 // the limit counts a network, not an address.
-const FN_BUILD = "save-lead.2026-11-03.1";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "save-lead.2026-11-09.1";
 
 /**
  * WHAT A CALLER WROTE NEVER BECOMES MARKUP IN THE OWNER'S MAIL (S8-100). The
@@ -181,6 +182,7 @@ async function sendLeadNotificationEmail(
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Max-Age': '7200',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Expose-Headers': 'x-fn-build',
   'x-fn-build': FN_BUILD,

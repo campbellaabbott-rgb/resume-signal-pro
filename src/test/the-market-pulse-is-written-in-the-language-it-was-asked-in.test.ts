@@ -23,6 +23,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
+import { buildIsAtLeast } from "./helpers/fn-build";
 import { PULSE_COPY, industryLabel, mailLanguageOf, storedLanguage, type MailLanguage } from "../../supabase/functions/send-market-pulse/copy.ts";
 import { KEYWORD_FREQUENCY } from "../../supabase/functions/_shared/market-intelligence.ts";
 
@@ -107,7 +108,9 @@ describe("send-market-pulse", () => {
   });
 
   it("is stamped with this round's build", () => {
-    expect(code).toMatch(/const FN_BUILD = "send-market-pulse\.2026-11-03\.1"/);
+    // This round's build or a later one: an exact pin fails the day the function is rebuilt for anything else.
+    const stamp = /const FN_BUILD = "([^"]+)"/.exec(code)?.[1];
+    expect(buildIsAtLeast(stamp, "send-market-pulse", "2026-11-03", 1), String(stamp)).toBe(true);
   });
 });
 

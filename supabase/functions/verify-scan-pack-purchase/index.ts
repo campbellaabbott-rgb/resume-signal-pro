@@ -20,7 +20,8 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 // by the purchase, so invented ids from the buyer's network no longer lock
 // the buyer out; and the session's metadata, which carries the buyer's
 // address, is no longer written to the log.
-const FN_BUILD = "verify-scan-pack-purchase.2026-11-10.1";
+// 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "verify-scan-pack-purchase.2026-11-10.2";
 
 /** A Stripe Checkout session id, as the other paid doors accept one. */
 const CHECKOUT_SESSION = /^cs_[A-Za-z0-9_]{1,250}$/;
@@ -47,6 +48,7 @@ const NOT_FOUND = "We couldn't find that purchase. If you just paid, wait a mome
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "x-fn-build": FN_BUILD,
 };

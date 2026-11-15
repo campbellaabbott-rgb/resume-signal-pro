@@ -85,13 +85,15 @@ import { proStripeDescription } from "../_shared/pro-perks.ts";
 // changed in Stripe's portal, or whose sign-in email changed here, is pointed
 // to the plan they have instead of sold a second one. Who a new plan is
 // billed to is unchanged, and a customer that cannot be read refuses nothing.
-const FN_BUILD = "create-subscription-checkout.2026-11-10.1";
+// 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "create-subscription-checkout.2026-11-10.2";
 
 /** What Stripe's page and receipts say Pro is: the Pro card's own items (_shared/pro-perks.ts), as sentences. */
 export const PRO_STRIPE_DESCRIPTION = proStripeDescription();
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,
