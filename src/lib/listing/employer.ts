@@ -13,12 +13,35 @@
  * override and the entity decode as before, plus "X | X" collapsed to one and
  * a trailing "career website" taken off. The token comes from the row, or from
  * the posting id when a row arrives without one, as postingEmployer read it.
+ *
+ * THE BAKE'S NAME GATE IS ASKED FIRST (SEO check 2026-11-15, F11). The baked
+ * posting page judges its employer's name with scripts/prerender-names.mjs
+ * (postingNameVerdict): a trailing career-site label comes off ("Inova
+ * Military" is Inova), and a text that is nobody's name (a logo caption such
+ * as "Group withMVSB wtag", a web address) is not printed, so the page says
+ * "the employer". The card, the pane and the hydrated posting page printed
+ * the refused text all the same, so a reader saw "VHB Email Signature" a
+ * moment after the crawler's copy had refused it. Here the same verdict is
+ * asked: a text the gate refuses AS TEXT (REFUSALS_OF_THE_TEXT) is the empty
+ * string (every surface already prints no employer line, no link and no
+ * possessive for one), and a repaired name is the one printed.
+ *
+ * A name the gate refuses for any other reason is printed as it was before
+ * (review of 2026-11-15): "Abercrombie" spelled by its board's tenant code, a
+ * generic word or label. Those keep a posting out of the job markup
+ * (postingMarkupGate), but blanking them on the board took the employer and
+ * its company link off 9,104 open roles' cards, panes, sheets and AI
+ * hand-offs.
  */
-import { displayEmployer } from "@/lib/display-name";
-import { postingPathParts } from "@/components/jobs/posting-page";
+import { displayEmployer, cleanBoardLabel } from "@/lib/display-name";
+import { postingNameVerdict, postingPathParts } from "@/components/jobs/posting-page";
+import { REFUSALS_OF_THE_TEXT } from "../../../scripts/prerender-names.mjs";
 import type { ListingJob } from "./types";
 
 export function listingEmployer(job: Pick<ListingJob, "id" | "token" | "company">): string {
   const token = job.token ?? postingPathParts(job.id)?.token ?? null;
+  const verdict = postingNameVerdict({ id: job.id, token, company: job.company ?? null });
+  if (verdict.reason && REFUSALS_OF_THE_TEXT.has(verdict.reason)) return "";
+  if (verdict.repaired) return cleanBoardLabel(verdict.name);
   return displayEmployer(token, job.company ?? null).text;
 }

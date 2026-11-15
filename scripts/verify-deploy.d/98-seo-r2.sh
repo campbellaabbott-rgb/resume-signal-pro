@@ -11,7 +11,14 @@
 #       system (GET only, scripts/posting-closure-check.mjs) and the closed
 #       share is printed with its 95% interval. FAIL over 5% (the owner's
 #       line: two consecutive daily checks over it fire the STOP rule); INFO
-#       when more than 20% of the answers are unknown (not judged).
+#       when more than 20% of the answers are unknown (not judged). PER
+#       VENDOR (SEO check 2026-11-15, F01): every vendor over 20% unknown is
+#       named, and FAILs (two unknown pages or more, in a judged run) unless
+#       the reader reads it for its statements only (STATED_ONLY_VENDORS in
+#       scripts/employer-reads.mjs), which is named as not checked. A vendor
+#       read once per board (BOARD_LIST_VENDORS: Ashby, Breezy, Recruitee)
+#       FAILs only when its unknown pages come from two boards or more: one
+#       failed list GET makes a whole board unknown (review of 2026-11-15).
 #   G2  (B01) the STOP switch as served: with JOB_POSTING_MARKUP true in
 #       src/config/seo-switches.ts every sitemap posting page serves exactly
 #       one JobPosting (a page the ledger says D7 keeps without markup serves
@@ -26,10 +33,21 @@
 #       own name in the title and the H1. A page not served is INFO.
 #   G6  (B02) /pay-transparency's system column prints the vendor's name,
 #       never a raw key ("ukg", "workday"; src/config/ats-vendors.ts).
+#   G7  (SEO check 2026-11-15, F02) no JobPosting on a sitemap posting page is
+#       for the employer's own people only: its board (the token in the path,
+#       its hiringOrganization) is not an internal, referral, employees-only or
+#       invitation-only board, and its own title and description do not say
+#       only internal or current employees may apply, judged by
+#       scripts/prerender-posting-rule.mjs itself (internalBoardReason,
+#       internalOnlyTextReason).
+#   G8  (SEO check 2026-11-15, F03) no JobPosting on a sitemap posting page is
+#       a paid-survey panel ad: its board is not a feed the rule holds
+#       (PAID_SURVEY_AD_BOARDS: usasurveyjob) and its title and description do
+#       not recruit survey takers (paidSurveyAdReason), judged by the same file.
 #
 # Read-only: GETs of the site's sitemap, ledger and posting pages, and GETs of
 # the employers' own endpoints. Nothing is sent or written.
-echo "== 98-r2. the SEO round of 2026-11-07: closed-but-baked share, the STOP switch, employer-closed stubs, employer names, system names =="
+echo "== 98-r2. the SEO round of 2026-11-07: closed-but-baked share, the STOP switch, employer-closed stubs, employer names, system names, internal-only postings, survey ads =="
 
 VD98R2_SWITCH=$(/usr/bin/grep -Eo '^export const JOB_POSTING_MARKUP = (true|false);' src/config/seo-switches.ts 2>/dev/null | /usr/bin/grep -Eo '(true|false)' || echo "")
 
@@ -58,9 +76,41 @@ const jobBlocks = (h) => [...String(h).matchAll(/<script type="application\/ld\+
   } else {
     const pct = (x) => (x === null || x === undefined ? "n/a" : `${(x * 100).toFixed(1)}%`);
     const head = `G1 ${rec.date}: ${rec.checked} live posting pages asked of their employers: ${rec.open} open, ${rec.closed} closed, ${rec.unknown} unknown; closed share ${pct(rec.closedShare)} (95% CI ${pct(rec.wilson95[0])}-${pct(rec.wilson95[1])}), unknown ${pct(rec.unknownShare)}`;
-    if (rec.unknownShare === null || rec.unknownShare > 0.2) out("INFO", `${head} — NOT JUDGED (over 20% unknown)`);
+    const judgedRun = !(rec.unknownShare === null || rec.unknownShare > 0.2);
+    if (!judgedRun) out("INFO", `${head} — NOT JUDGED (over 20% unknown)`);
     else out(rec.closedShare > 0.05 ? "FAIL" : "PASS", `${head} — the owner line is 5%; twice in a row fires the STOP rule`);
     for (const p of (rec.closedPaths ?? []).slice(0, 12)) out("INFO", `G1   closed at the employer: ${p}`);
+    // PER VENDOR (SEO check 2026-11-15, F01): the overall share hid four
+    // vendors that were never asked (72 pages, 100% unknown, under an overall
+    // 15-16%). A vendor over 20% unknown is named. It FAILs when the reader
+    // claims to check it (two pages or more, in a judged run); a vendor the
+    // reader reads for its statements only is named as not checked (INFO).
+    let statedOnly = [];
+    let boardVendors = [];
+    try {
+      const reads = await import(`${process.cwd()}/scripts/employer-reads.mjs`);
+      statedOnly = [...(reads.STATED_ONLY_VENDORS ?? [])];
+      boardVendors = [...(reads.BOARD_LIST_VENDORS ?? [])];
+    } catch { statedOnly = []; boardVendors = []; }
+    const vendors = Object.entries(rec.byVendor ?? {})
+      .map(([v, c]) => [v, c.unknown ?? 0, (c.open ?? 0) + (c.closed ?? 0) + (c.unknown ?? 0)])
+      .filter(([, , n]) => n > 0)
+      .sort((a, b) => b[1] / b[2] - a[1] / a[2] || a[0].localeCompare(b[0]));
+    const overShare = vendors.filter(([, u, n]) => u / n > 0.2);
+    for (const [v, u, n] of overShare) {
+      const share = pct(u / n);
+      // A vendor read once per board is judged by its unknown boards: one
+      // failed list GET is every page of one board (review of 2026-11-15).
+      const boards = rec.unknownBoards?.[v];
+      const perBoard = boardVendors.includes(v) && typeof boards === "number";
+      const from = typeof boards === "number" ? `, from ${boards} board${boards === 1 ? "" : "s"}` : "";
+      if (statedOnly.includes(v)) out("INFO", `G1 ${v}: ${u} of ${n} live posting pages NOT CHECKED at the employer (${share} unknown): the reader reads ${v} for what it states only, so a closure there is never seen`);
+      else out(judgedRun && (perBoard ? boards >= 2 : u >= 2) ? "FAIL" : "INFO", `G1 ${v}: ${u} of ${n} live posting pages unknown at the employer (${share}, over 20%)${from}: their closures are not being seen${perBoard ? " (read once per board: a FAIL needs two boards)" : ""}`);
+    }
+    const checked = vendors.filter(([v, u, n]) => !statedOnly.includes(v) && u / n <= 0.2);
+    if (judgedRun && !overShare.some(([v]) => !statedOnly.includes(v))) {
+      out("PASS", `G1 every vendor checked at the employer is at most 20% unknown (${checked.map(([v, u, n]) => `${v} ${u} of ${n}`).join(", ")})`);
+    }
   }
 }
 
@@ -71,6 +121,8 @@ try { ledger = JSON.parse((await get("/prerender-ledger.json")).body).postings ?
 const paths = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].trim().replace(/^https?:\/\/[^/]+/, "")).filter((p) => p.startsWith("/jobs/posting/"));
 /** [path, hiringOrganization.name] of every JobPosting the G2 walk read, for G4. */
 const orgNames = [];
+/** Every JobPosting the G2 walk read, with the text G7 judges. */
+const marked = [];
 if (SWITCH !== "true" && SWITCH !== "false") out("FAIL", "G2 src/config/seo-switches.ts names no JOB_POSTING_MARKUP = true|false line");
 else if (!paths.length) out("FAIL", "G2 the sitemap names no posting page");
 else {
@@ -81,6 +133,7 @@ else {
       const blocks = jobBlocks(r.body);
       const n = blocks.length;
       for (const b of blocks) if (typeof b?.hiringOrganization?.name === "string") orgNames.push([p, b.hiringOrganization.name]);
+      for (const b of blocks) marked.push({ path: p, org: typeof b?.hiringOrganization?.name === "string" ? b.hiringOrganization.name : "", text: `${b?.title ?? ""}\n${b?.description ?? ""}` });
       const kept = !!ledger[p]?.markupWithheld && ledger[p].markupWithheld !== "switch";
       const want = SWITCH === "true" ? (kept ? 0 : 1) : 0;
       if (r.status !== 200 || n !== want) wrong.push(`${p} (HTTP ${r.status}, ${n} JobPosting, want ${want})`);
@@ -108,6 +161,41 @@ else {
   else {
     const bad = orgNames.map(([p, n]) => [p, n, n.includes("://") ? "web address" : gate(n)]).filter(([, , why]) => why);
     out(bad.length ? "FAIL" : "PASS", `G4 ${orgNames.length - bad.length} of ${orgNames.length} JobPosting employer names on sitemap posting pages are names, not a web address or a logo or colour caption${bad.length ? `; e.g. ${bad.slice(0, 3).map(([p, n, why]) => `${p} "${n}" (${why})`).join("; ")}` : ""}`);
+  }
+}
+// G7 (F02): no job markup on a posting open only to people the employer already employs.
+{
+  let rule = null;
+  try { rule = await import(`${process.cwd()}/scripts/prerender-posting-rule.mjs`); } catch { rule = null; }
+  if (typeof rule?.internalBoardReason !== "function" || typeof rule?.internalOnlyTextReason !== "function") out("FAIL", "G7 scripts/prerender-posting-rule.mjs could not be loaded from the working directory");
+  else if (!marked.length) out("INFO", "G7 no sitemap posting page served a JobPosting (nothing to judge)");
+  else {
+    const tokenOf = (p) => { try { return decodeURIComponent(p.split("/")[4] ?? ""); } catch { return p.split("/")[4] ?? ""; } };
+    const bad = [];
+    for (const m of marked) {
+      const board = rule.internalBoardReason(tokenOf(m.path), m.org);
+      const says = board ? null : rule.internalOnlyTextReason(m.text);
+      if (board) bad.push(`${m.path} (${board}: "${m.org}")`);
+      else if (says) bad.push(`${m.path} (its text says "${says}")`);
+    }
+    out(bad.length ? "FAIL" : "PASS", `G7 ${marked.length - bad.length} of ${marked.length} JobPostings on sitemap posting pages are open to everyone: no internal, referral, employees-only or invitation-only board, and no text saying only the employer\u0027s own people may apply${bad.length ? `; e.g. ${bad.slice(0, 3).join("; ")}` : ""}`);
+  }
+}
+// G8 (F03): no job markup on a paid-survey panel ad.
+{
+  let rule = null;
+  try { rule = await import(`${process.cwd()}/scripts/prerender-posting-rule.mjs`); } catch { rule = null; }
+  if (!(rule?.PAID_SURVEY_AD_BOARDS instanceof Set) || typeof rule?.paidSurveyAdReason !== "function") out("FAIL", "G8 scripts/prerender-posting-rule.mjs could not be loaded from the working directory");
+  else if (!marked.length) out("INFO", "G8 no sitemap posting page served a JobPosting (nothing to judge)");
+  else {
+    const bad = [];
+    for (const m of marked) {
+      const token = m.path.split("/")[4] ?? "";
+      const says = rule.PAID_SURVEY_AD_BOARDS.has(token) ? null : rule.paidSurveyAdReason(m.text);
+      if (rule.PAID_SURVEY_AD_BOARDS.has(token)) bad.push(`${m.path} (a board held as a paid-survey ad feed)`);
+      else if (says) bad.push(`${m.path} (its text says "${says}")`);
+    }
+    out(bad.length ? "FAIL" : "PASS", `G8 ${marked.length - bad.length} of ${marked.length} JobPostings on sitemap posting pages are jobs, not paid-survey panel ads${bad.length ? `; e.g. ${bad.slice(0, 3).join("; ")}` : ""}`);
   }
 }
 // G5: company pages the audit read under a tenant code, as served.

@@ -1,0 +1,19 @@
+{
+ "items": [
+  {
+   "Keyword": "687069",
+   "SiteNumber": "CX_14001",
+   "TotalJobsCount": 1,
+   "requisitionList": [
+    {
+     "Id": "687069",
+     "Title": "Clinical Technician 1 – Acute Care Unit"
+    }
+   ]
+  }
+ ],
+ "count": 1,
+ "hasMore": false,
+ "limit": 200,
+ "offset": 0
+}

@@ -13,7 +13,13 @@ export interface BakeEmployerName {
   reason: string | null;
 }
 
-export function repairEmployerName(name: unknown): { name: string; repaired: boolean };
+/** Boards whose name ends in a career site's audience label ("Inova Military"), measured against the catalogue. */
+export const AUDIENCE_LABEL_SITES: ReadonlySet<string>;
+
+/** Refusals that judge the text itself (a caption, a file name, an address): such a text is no name on any surface. */
+export const REFUSALS_OF_THE_TEXT: ReadonlySet<string>;
+
+export function repairEmployerName(name: unknown, opts?: { token?: string | null }): { name: string; repaired: boolean };
 
 export function unpublishableNameReason(name: unknown, opts?: { codeShaped?: boolean }): string | null;
 

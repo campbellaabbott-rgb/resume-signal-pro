@@ -186,9 +186,12 @@ describe("SEO-006: names are repaired first and refused narrowly", () => {
     expect(unpublishableNameReason("All")).toBe("generic word");
     expect(unpublishableNameReason("Only External Postings")).toBe("generic label");
     // The false positives the first draft of the rule had (195 + 72 in the catalogue).
-    for (const real of ["Booking.com", "Crypto.com", "Alarm.com", "Checkout.com", "Abt Global", "FGS Global", "Forge Global", "HealthCareersInSask.ca", "Logo Brands", "Black & Veatch", "Banner Health"]) {
+    for (const real of ["Booking.com", "Crypto.com", "Alarm.com", "Checkout.com", "Abt Global", "FGS Global", "Forge Global", "Logo Brands", "Black & Veatch", "Banner Health"]) {
       expect(unpublishableNameReason(real), real).toBeNull();
     }
+    // A careers site's own address is the one domain-shaped name refused (SEO
+    // check 2026-11-15, F04): it named a company page and posting 107235.
+    expect(unpublishableNameReason("HealthCareersInSask.ca")).toBe("careers site address");
   });
 
   it("judges a stored label as a whole before repairing it, so a label never becomes a name", () => {

@@ -16,7 +16,8 @@
 // THE MEASURE: closedShare = closed / (open + closed), so only postings with a
 // definite employer answer count; a run where more than 20% of the answers are
 // unknown is NOT JUDGED (exit 4). The record, {date, checked, open, closed,
-// unknown, closedShare, unknownShare, wilson95, byVendor, closedPaths}, is
+// unknown, closedShare, unknownShare, wilson95, byVendor, unknownBoards,
+// closedPaths}, is
 // printed and, with --history, kept beside the previous ones, one per UTC date.
 //
 // THE RULE, AS THE OWNER MADE IT EXACT: the STOP rule fires on two
@@ -35,7 +36,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { idFromPostingPath, readEmployers, summarizeEmployerReads, wilson95 } from "./employer-reads.mjs";
+import { idFromPostingPath, idParts, readEmployers, summarizeEmployerReads, wilson95 } from "./employer-reads.mjs";
 
 /** The owner's line: a closed share over this is "over". */
 export const STOP_SHARE = 0.05;
@@ -64,8 +65,27 @@ export function closureRecord(date, answers) {
     unknownShare: s.checked ? round(s.unknown / s.checked) : null,
     wilson95: [round(lo), round(hi)],
     byVendor: s.byVendor,
+    unknownBoards: unknownBoardsByVendor(list),
     closedPaths: list.filter((r) => r.state === "closed").map((r) => r.path).sort(),
   };
+}
+
+/**
+ * HOW MANY BOARDS EACH VENDOR'S UNKNOWN ANSWERS COME FROM (a board is the
+ * token in the posting's path). A vendor read once per board (Breezy,
+ * Recruitee, Ashby) loses every page of a board to one failed GET, so section
+ * 98-r2 G1 judges those vendors by this count, not by their pages.
+ */
+export function unknownBoardsByVendor(list) {
+  const boards = new Map();
+  for (const r of list) {
+    if (r.state !== "unknown") continue;
+    const token = idParts(idFromPostingPath(r.path))?.token ?? r.path;
+    const set = boards.get(r.vendor) ?? new Set();
+    set.add(token);
+    boards.set(r.vendor, set);
+  }
+  return Object.fromEntries([...boards].map(([v, set]) => [v, set.size]));
 }
 
 /** Whether a record was judged: something checked, and no more than 20% unknown. */

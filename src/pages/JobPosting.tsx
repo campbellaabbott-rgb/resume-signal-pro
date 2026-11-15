@@ -388,9 +388,14 @@ export default function JobPosting() {
   // failure or under a budget refusal read "This posting is no longer live" as
   // the title of a live posting. Until there is an answer the page renders no
   // head of its own and the baked one stands.
-  const seoTitle = live && shown ? postingPageTitle(shown) : t("jobPostingPage.goneTitle", "This posting is no longer live");
-  const seoDescription = live && shown
-    ? postingPageDescription(shown)
+  // The head names the employer as the bake's head does (SEO check
+  // 2026-11-15, F11): by the name the page prints, so a name the bake's gate
+  // refused is not in the title or the snippet (both say no employer, as the
+  // baked file does), and a repaired one is printed repaired.
+  const headRow = shown ? { ...shown, company } : null;
+  const seoTitle = live && headRow ? postingPageTitle(headRow) : t("jobPostingPage.goneTitle", "This posting is no longer live");
+  const seoDescription = live && headRow
+    ? postingPageDescription(headRow)
     : state === "unlisted"
       ? t(
           "jobPostingPage.unlistedMeta",

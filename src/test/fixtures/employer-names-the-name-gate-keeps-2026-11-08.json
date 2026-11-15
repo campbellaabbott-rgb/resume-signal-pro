@@ -1799,11 +1799,6 @@
    "why": "domain-shaped"
   },
   {
-   "name": "HealthCareersInSask.ca",
-   "board": "oracle:emqk~ca3~CX_1",
-   "why": "domain-shaped"
-  },
-  {
    "name": "Intertek Global",
    "board": "oracle:hcog~em2~CX_2001",
    "why": "ends in Global"
