@@ -8876,7 +8876,7 @@ async function handleRequest(req: Request): Promise<Response> {
     if (action === "exists") {
       // Rationale: docs/job-board-index-notes.md#n826-const-asked-array-isarray-body-ids
       const asked = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string").slice(0, 200) : [];
-      if (asked.length === 0) return json({ open: {}, rowTest: "served" });
+      if (asked.length === 0) return json({ open: {}, rowTest: "served", unknown: [] });
       const openMap: Record<string, boolean> = {};
       for (const id of asked) openMap[id] = false;
       // S12-123: no posting id is longer than EXISTS_ID_MAX; a longer one is
@@ -8892,8 +8892,24 @@ async function handleRequest(req: Request): Promise<Response> {
         if (error) throw error;
         for (const r of data ?? []) if (!pastFence(r, cutoffMs)) openMap[r.id as string] = true;
       }
+      // BR-03: an id with neither a row nor an exit is unknown (exits prune at
+      // 90 days, so not "never held"); null when a read failed.
+      let unknownIds: string[] | null = asked.filter((id) => !openMap[id]);
+      const held = async (t: string, c: string, toks?: string[]) => {
+        if (!unknownIds) return;
+        const q = unknownIds.filter((id) => id.length <= EXISTS_ID_MAX);
+        if (!q.length) return;
+        let r = client.from(t).select(c).in(c, q);
+        if (toks) r = r.in("company_token", toks);
+        const { data, error } = await r;
+        if (error) { unknownIds = null; return; }
+        const got = new Set(((data ?? []) as unknown as Record<string, unknown>[]).map((x) => x[c]));
+        unknownIds = unknownIds.filter((id) => !got.has(id));
+      };
+      await held("job_board_postings", "id");
+      await held("job_board_exits", "posting_id", [...new Set(ids.map((id) => id.split(":")[1] ?? ""))]);
       // The answer names its test; check_jobs_open's basis follows it (n1464).
-      return json({ open: openMap, rowTest: "served" });
+      return json({ open: openMap, rowTest: "served", unknown: unknownIds });
     }
 
     if (action === "semantic-search") {

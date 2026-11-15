@@ -24,7 +24,7 @@ const block = (start: string, end: string) => {
   expect(z).toBeGreaterThan(a);
   return FN.slice(a, z + end.length);
 };
-const EXISTS = block('    if (action === "exists") {', "return json({ open: openMap, rowTest: \"served\" });\n    }\n");
+const EXISTS = block('    if (action === "exists") {', "return json({ open: openMap, rowTest: \"served\", unknown: unknownIds });\n    }\n");
 const DETAIL = block('    if (action === "detail") {', "const stored = (jobRow?.description");
 /** Any top-level helper the block calls, lifted beside it (none on main). */
 const helpers = [...FN.matchAll(/\nfunction (\w+)\(/g)].map((m) => m[1]).filter((n) => new RegExp(`\\b${n}\\(`).test(EXISTS))
