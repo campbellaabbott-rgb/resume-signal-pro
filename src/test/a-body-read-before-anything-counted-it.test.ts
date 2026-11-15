@@ -136,7 +136,9 @@ describe("a body read before anything counted it", () => {
     const i = CODE.indexOf("async function fetchWithTimeout(");
     const body = CODE.slice(i, CODE.indexOf("\n}", i));
     expect(body, "fetchWithTimeout not found").not.toBe("");
-    expect(body).toMatch(/return boundBody\(await once\(\), limit\);/);
+    expect(body).toMatch(/const again = await once\(\);\s*if \(again\.status !== 503 \|\| !busy\(again\)\) return boundBody\(again, limit\);/);
+    // BB-09: a second 503-with-Retry-After is released and answered as a bodyless 429.
+    expect(body).toMatch(/discardBody\(again\);\s*return Object\.defineProperty\(new Response\(null, \{ status: 429, headers: again\.headers \}\)/);
     expect(body).toMatch(/return boundBody\(res, limit\);/);
     expect(body, "the 429 body is never read — release it instead of leaving it hanging")
       .toMatch(/discardBody\(res\);/);

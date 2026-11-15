@@ -55,8 +55,8 @@ import { join, resolve } from "node:path";
 import { transformSync } from "esbuild";
 import { codeOf } from "./helpers/strip-comments";
 import { JOB_SOURCES } from "../../supabase/functions/job-board/sources";
-import { htmlToText, isDatedBefore, leverText, normalizeAshby, normalizeGreenhouse, normalizeLever, sanePostedAt } from "../../supabase/functions/job-board/normalize";
-import { beforeDeadline, jsonArrayElements, SLIM_SPECS, streamSlim } from "../../supabase/functions/job-board/slim-stream";
+import { htmlToText, isDatedBefore, leverText, normalizeAshby, normalizeGreenhouse, normalizeLever, normalizePinpoint, normalizeRecruitee, sanePostedAt } from "../../supabase/functions/job-board/normalize";
+import { beforeDeadline, jsonArrayElements, SLIM_SPECS, STREAM_HEAP_BUDGET_BYTES, streamSlim } from "../../supabase/functions/job-board/slim-stream";
 import { withWorkdayLanguage } from "../../supabase/functions/job-board/request-headers";
 import population from "./fixtures/oversize-light-population-2026-10-01.json";
 import leverFixture from "./fixtures/oversize-lever-palantir-2026-10-01.json";
@@ -366,6 +366,33 @@ describe("(c) the normalisers see the same postings, and the stored text is the 
     expect(Object.keys(slim.compensation).sort(), "the ashby compensation cut keeps what normalizeAshby reads").toEqual([...new Set(sub)].sort());
   });
 
+  it("D12: the recruitee and pinpoint allowlists keep every field their normalisers read, pinpointSalary's included", () => {
+    const bodyOf = (head: string) => {
+      const i = NORMALIZE.indexOf(head);
+      expect(i, `${head} not found`).toBeGreaterThan(0);
+      // The output-row filter reads the normaliser's own rows, not the feed.
+      return NORMALIZE.slice(i, NORMALIZE.indexOf("\n}\n", i)).replace(/\}\)\s*\.filter\(\(j\) => [^\n]*\);$/, "});");
+    };
+    for (const [vendor, heads, v, helpers] of [
+      ["recruitee", ["export function normalizeRecruitee("], "o", []],
+      ["pinpoint", ["export function normalizePinpoint(", "function pinpointSalary("], "j", ["pinpointSalary(j)"]],
+    ] as const) {
+      const body = heads.map(bodyOf).join("\n");
+      const read = new Set([...body.matchAll(new RegExp(`\\b${v}\\.(\\w+)`, "g"))].map((m) => m[1]));
+      expect(read.size, `${vendor}: the field derivation found nothing`).toBeGreaterThan(5);
+      expect([...read].filter((f) => !SLIM_SPECS[vendor].keep.includes(f)), `${vendor}: read by the normaliser, dropped by the stream`).toEqual([]);
+      let rest = body;
+      for (const h of helpers) rest = rest.split(h).join("");
+      const bare = [...rest.matchAll(new RegExp(`\\b${v}\\b(?!\\s*(?:\\.|\\?\\.))`, "g"))]
+        .filter((m) => !/^\(\w\)\s*=>/.test(rest.slice(m.index! - 1, m.index! + 8)) && !/^\w: Pinpoint/.test(rest.slice(m.index!, m.index! + 12)) && rest.slice(m.index! - 1, m.index! + 2) !== "/o/");
+      expect(bare.map((m) => rest.slice(m.index! - 20, m.index! + 20)), `${vendor}: the posting is handed somewhere the derivation cannot see`).toEqual([]);
+    }
+    const job = { department: { name: "Ops" }, requisition_id: "x".repeat(50) };
+    const row = { job };
+    SLIM_SPECS.pinpoint.reduce!(row);
+    expect(row.job, "the pinpoint job object is cut to the department normalizePinpoint reads").toEqual({ department: { name: "Ops" } });
+  });
+
   // Synthetic rows beside the captured ones: an undated lever posting (an
   // undated posting is kept by the ingest and so needs its text), one with no
   // URL (dropped by the normaliser), one whose text is past the keep cap; an
@@ -437,7 +464,12 @@ describe("(d) retention is bounded and the newest descriptions survive", () => {
     });
   };
 
-  it("budgets from source: retained plus one element fits the per-response bound; the read fits the slice clock", () => {
+  it("budgets from source: retained plus the largest element any spec admits fits the stream's heap budget; the read fits the slice clock", () => {
+    const largest = Math.max(...Object.values(SLIM_SPECS).map((sp) => sp.maxElementBytes ?? num("SLIM_ELEMENT_BYTES")));
+    expect(largest, "recruitee's 6.18 MB offer is admitted").toBe(8_000_000);
+    expect(num("SLIM_RETAINED_BYTES") + largest).toBeLessThanOrEqual(STREAM_HEAP_BUDGET_BYTES);
+    expect(STREAM_HEAP_BUDGET_BYTES).toBe(12_000_000);
+    // MAX_RESPONSE_BYTES stays the whole-body cap; the default element still fits it.
     expect(num("SLIM_RETAINED_BYTES") + num("SLIM_ELEMENT_BYTES")).toBeLessThanOrEqual(num("MAX_RESPONSE_BYTES"));
     expect(num("SLIM_DESC_CEILING")).toBeLessThanOrEqual(num("SLIM_RETAINED_BYTES"));
     expect(num("STREAM_READ_BUDGET_MS")).toBeLessThan(num("SLICE_WALL_BUDGET_MS"));
@@ -590,15 +622,17 @@ describe("(e) the retry is a separate statement that never writes the failure ve
     const body = CODE.slice(i, CODE.indexOf("\n}\n", i));
     expect(body).toMatch(/await beforeDeadline\(fetchWithTimeout\(listUrl\(s\), undefined, STREAM_WIRE_BYTES, STREAM_READ_BUDGET_MS\), deadlineAt, discardBody\)/);
     expect(body).toMatch(/streamSlim\(res\.body, spec, \{/);
-    for (const opt of ["freshCutoffMs,", "maxBytes: SLIM_RETAINED_BYTES,", "maxElementBytes: SLIM_ELEMENT_BYTES,", "descKeepChars: 2 * STORED_DESC_CAP,", "descCeiling: SLIM_DESC_CEILING,", "deadlineAt,"]) {
+    for (const opt of ["freshCutoffMs,", "maxBytes: SLIM_RETAINED_BYTES,", "maxElementBytes: spec.maxElementBytes ?? SLIM_ELEMENT_BYTES,", "descKeepChars: 2 * STORED_DESC_CAP,", "descCeiling: SLIM_DESC_CEILING,", "deadlineAt,"]) {
       expect(body, `streamSlim must be called with ${opt}`).toContain(opt);
     }
     expect(body, "a non-JSON or failed response is released and refused").toMatch(/discardBody\(res\);/);
     expect(body).toMatch(/s\.source === "lever" \? normalizeLever\(/);
     expect(body).toMatch(/s\.source === "ashby" \? normalizeAshby\(/);
+    expect(body).toMatch(/s\.source === "recruitee" \? normalizeRecruitee\(/);
+    expect(body).toMatch(/s\.source === "pinpoint" \? normalizePinpoint\(\(raw as \{ data: never \}\)\.data, /);
     expect(body, "every failure becomes null, which the oversize branch defers").toMatch(/\} catch \(e\) \{[\s\S]*return null;\s*\}$/);
     expect(body).not.toMatch(/failReason|onFail/);
-    expect(Object.keys(SLIM_SPECS).sort(), "a vendor with a spec needs a normaliser branch above; (f) runs each").toEqual(["ashby", "greenhouse", "lever"]);
+    expect(Object.keys(SLIM_SPECS).sort(), "a vendor with a spec needs a normaliser branch above; (f) runs each").toEqual(["ashby", "greenhouse", "lever", "pinpoint", "recruitee"]);
   });
 });
 
@@ -640,8 +674,8 @@ describe("(f) readOversizeBoard and the worker's retry, executed — not spelled
     const warned: string[] = [];
     const urls: string[] = [];
     const listUrl = (s: Board) => { urls.push(`${s.source}:${s.token}`); return `https://feed.test/${s.source}/${s.token}`; };
-    const read = new Function("fetch", "listUrl", "beforeDeadline", "SLIM_SPECS", "streamSlim", "normalizeLever", "normalizeAshby", "normalizeGreenhouse", "console", "withWorkdayLanguage", `${toJs(ts)}\nreturn readOversizeBoard;`)(
-      fetchStub, listUrl, beforeDeadline, SLIM_SPECS, streamSlim, normalizeLever, normalizeAshby, normalizeGreenhouse,
+    const read = new Function("fetch", "listUrl", "beforeDeadline", "SLIM_SPECS", "streamSlim", "normalizeLever", "normalizeAshby", "normalizeGreenhouse", "normalizeRecruitee", "normalizePinpoint", "console", "withWorkdayLanguage", `${toJs(ts)}\nreturn readOversizeBoard;`)(
+      fetchStub, listUrl, beforeDeadline, SLIM_SPECS, streamSlim, normalizeLever, normalizeAshby, normalizeGreenhouse, normalizeRecruitee, normalizePinpoint,
       { warn: (...a: unknown[]) => warned.push(a.map(String).join(" ")), log: () => {}, error: () => {} },
       withWorkdayLanguage,
     ) as (s: Board, deadlineAt: number, freshCutoffMs: number) => Promise<Read>;
@@ -805,17 +839,20 @@ describe("(f) readOversizeBoard and the worker's retry, executed — not spelled
     return seg.slice(i);
   })();
   const WALL = num("SLICE_WALL_BUDGET_MS"), BUDGET = num("STREAM_READ_BUDGET_MS"), HEAP = num("HEAP_SOFT_LIMIT_MB");
-  const runRetry = async (o: { r?: unknown; failReason: string; source: string; elapsedMs?: number; heapMb?: number | null; result?: Read; light?: boolean; lightOversize?: boolean }) => {
+  const runRetry = async (o: { r?: unknown; failReason: string; source: string; elapsedMs?: number; heapMb?: number | null; result?: Read; light?: boolean; lightOversize?: boolean; hot?: boolean; streamedBefore?: number }) => {
     const calls: Array<{ reserveDuring: number; args: unknown[] }> = [];
     const fn = new Function(`${toJs(`async function __retry(env) {
       let r = env.r, failReason = env.failReason, inFlightReserve = env.inFlightReserve;
-      const { s, reserve, sliceWallStart, freshCutoffMs, SLIM_SPECS, STREAM_READ_BUDGET_MS, SLICE_WALL_BUDGET_MS, HEAP_SOFT_LIMIT_MB, memStamp, isLight, lightOversize } = env;
+      const { s, reserve, sliceWallStart, freshCutoffMs, SLIM_SPECS, STREAM_READ_BUDGET_MS, SLICE_WALL_BUDGET_MS, HEAP_SOFT_LIMIT_MB, memStamp, isLight, lightOversize, inHotPhase, sliceReads, SLIM_ELEMENT_BYTES, SLIM_RETAINED_BYTES, WORKABLE_OVERSIZE_HELD, readWorkableBare } = env;
       const readOversizeBoard = (...a) => env.read(inFlightReserve, a);
       ${retryBlock}
-      return { r, failReason, inFlightReserve };
-    }`)}\nreturn __retry;`)() as (env: unknown) => Promise<{ r: unknown; failReason: string; inFlightReserve: number }>;
+      return { r, failReason, inFlightReserve, streamed: sliceReads.streamed };
+    }`)}\nreturn __retry;`)() as (env: unknown) => Promise<{ r: unknown; failReason: string; inFlightReserve: number; streamed: number }>;
     const s = { source: o.source, token: "tok", name: "Name" };
     const out = await fn({
+      inHotPhase: o.hot === true, sliceReads: { streamed: o.streamedBefore ?? 0 },
+      SLIM_ELEMENT_BYTES: num("SLIM_ELEMENT_BYTES"), SLIM_RETAINED_BYTES: num("SLIM_RETAINED_BYTES"),
+      WORKABLE_OVERSIZE_HELD: new Set<string>(), readWorkableBare: async () => null,
       r: o.r ?? null, failReason: o.failReason, inFlightReserve: 7, reserve: 40, s,
       sliceWallStart: Date.now() - (o.elapsedMs ?? 1000), freshCutoffMs: 123_456,
       SLIM_SPECS, STREAM_READ_BUDGET_MS: BUDGET, SLICE_WALL_BUDGET_MS: WALL, HEAP_SOFT_LIMIT_MB: HEAP,
@@ -864,8 +901,148 @@ describe("(f) readOversizeBoard and the worker's retry, executed — not spelled
     await none({ failReason: "oversize 6.2MB", source: "lever", elapsedMs: WALL - BUDGET + 2000 }, "too close to the wall for a full read");
     expect((await runRetry({ failReason: "oversize 6.2MB", source: "lever", elapsedMs: WALL - BUDGET - 2000 })).calls.length, "a read that fits the slice clock runs").toBe(1);
     await none({ failReason: "oversize 6.2MB", source: "lever", heapMb: HEAP }, "the heap gate that stops new boards stops this too");
-    expect((await runRetry({ failReason: "oversize 6.2MB", source: "lever", heapMb: HEAP - 1 })).calls.length).toBe(1);
+    await none({ failReason: "oversize 6.2MB", source: "lever", heapMb: HEAP - 8 }, "CAP-8: two elements plus the retained budget (8 MB for lever) must fit under the soft limit");
+    expect((await runRetry({ failReason: "oversize 6.2MB", source: "lever", heapMb: HEAP - 9 })).calls.length).toBe(1);
     expect((await runRetry({ failReason: "oversize 6.2MB", source: "lever", heapMb: null })).calls.length, "an unreadable heap does not block it").toBe(1);
+  });
+});
+
+describe("(f2) CAP-8: one streamed read a slice, in the cold phase, after a heap preflight sized by the vendor", () => {
+  const RAWI = readFileSync(`${FN}/index.ts`, "utf8");
+  const HEAP = num("HEAP_SOFT_LIMIT_MB");
+  const a = CODE.indexOf("r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors.get(s.token) ?? 0);");
+  const block = CODE.slice(a, CODE.indexOf("if (r) fetchedInSlice += r.jobs.length;", a));
+  const retry = block.slice(block.indexOf("if (!r && "));
+  const run = async (o: { source: string; hot?: boolean; streamedBefore?: number; heapMb?: number; light?: boolean }) => {
+    const calls: unknown[] = [];
+    const fn = new Function(`${transformSync(`async function __retry(env) {
+      let r = null, failReason = "oversize 9.9MB", inFlightReserve = 0;
+      const { s, reserve, sliceWallStart, freshCutoffMs, SLIM_SPECS, STREAM_READ_BUDGET_MS, SLICE_WALL_BUDGET_MS, HEAP_SOFT_LIMIT_MB, memStamp, isLight, lightOversize, inHotPhase, sliceReads, SLIM_ELEMENT_BYTES, SLIM_RETAINED_BYTES, WORKABLE_OVERSIZE_HELD, readWorkableBare } = env;
+      const readOversizeBoard = async (...a) => { env.calls.push(a); return { jobs: [], raw: [] }; };
+      ${retry}
+      return { r, streamed: sliceReads.streamed };
+    }`, { loader: "ts" }).code}\nreturn __retry;`)() as (env: unknown) => Promise<{ r: unknown; streamed: number }>;
+    const out = await fn({
+      s: { source: o.source, token: "tok", name: "N" }, reserve: 1, sliceWallStart: Date.now(), freshCutoffMs: 0, SLIM_SPECS,
+      STREAM_READ_BUDGET_MS: num("STREAM_READ_BUDGET_MS"), SLICE_WALL_BUDGET_MS: num("SLICE_WALL_BUDGET_MS"), HEAP_SOFT_LIMIT_MB: HEAP,
+      memStamp: () => ({ heapMb: o.heapMb ?? 40 }), isLight: () => o.light === true, lightOversize: o.light === true,
+      inHotPhase: o.hot === true, sliceReads: { streamed: o.streamedBefore ?? 0 },
+      SLIM_ELEMENT_BYTES: num("SLIM_ELEMENT_BYTES"), SLIM_RETAINED_BYTES: num("SLIM_RETAINED_BYTES"),
+      WORKABLE_OVERSIZE_HELD: new Set<string>(), readWorkableBare: async () => null, calls,
+    });
+    return { ...out, calls: calls.length };
+  };
+
+  it("the first oversize board of a cold slice streams and is counted; the second waits for the next slice", async () => {
+    const first = await run({ source: "recruitee" });
+    expect(first.calls).toBe(1);
+    expect(first.streamed).toBe(1);
+    const second = await run({ source: "lever", streamedBefore: 1 });
+    expect(second.calls, "a second stream in one slice").toBe(0);
+    expect(second.streamed).toBe(1);
+  });
+
+  it("a hot-phase slice never streams", async () => {
+    for (const source of ["lever", "ashby", "recruitee", "pinpoint"]) expect((await run({ source, hot: true })).calls, source).toBe(0);
+  });
+
+  it("the preflight is sized by the vendor's element bound: recruitee's 8 MB asks for 22 MB of headroom, lever's 1 MB for 8", async () => {
+    expect((await run({ source: "recruitee", heapMb: HEAP - 23 })).calls).toBe(1);
+    expect((await run({ source: "recruitee", heapMb: HEAP - 22 })).calls, "22 MB short of the soft limit is not enough for recruitee").toBe(0);
+    expect((await run({ source: "pinpoint", heapMb: HEAP - 9 })).calls).toBe(1);
+    expect((await run({ source: "pinpoint", heapMb: HEAP - 8 })).calls).toBe(0);
+  });
+
+  it("the slice record carries the count beside the phase it already records", () => {
+    const i = RAWI.indexOf("async function recordSliceStats(");
+    const body = RAWI.slice(i, RAWI.indexOf("\n}\n", i));
+    expect(body).toContain("lastPhase: phase,");
+    expect(body).toContain("streamed: sliceReads.streamed,");
+    const reset = RAWI.indexOf("sliceReads = { streamed: 0, rateLimited: [], rawNoRows: [], srPartial: [] };");
+    expect(reset, "runRefresh resets the count every slice").toBeGreaterThan(RAWI.indexOf("async function runRefresh("));
+  });
+});
+
+describe("(f3) D12: the dark Recruitee and Pinpoint boards are read a posting at a time", () => {
+  const RAWI = readFileSync(`${FN}/index.ts`, "utf8");
+  const SLIM_SRC = readFileSync(`${FN}/slim-stream.ts`, "utf8");
+  const RAW_HTML_CAP = num("RAW_HTML_CAP");
+  const day = 86_400_000;
+  const offer = (k: number, o: Record<string, unknown> = {}) => ({
+    id: 1000 + k, slug: `role-${k}`, title: `Role ${k}`, department: "Ops", city: "Tallinn", country: "Estonia", location: "",
+    remote: k % 2 === 0, hybrid: false, on_site: k % 2 === 1, careers_url: `https://x.recruitee.com/o/role-${k}`,
+    published_at: new Date(CAPTURED - (k + 1) * day).toISOString(), created_at: new Date(CAPTURED - 40 * day).toISOString(),
+    employment_type_code: "fulltime", salary: k % 3 === 0 ? { min: "40000", max: "50000", currency: "EUR", period: "year" } : null,
+    description: `<p>Duties ${k} &amp; more</p>`, requirements: `<ul><li>Need ${k}</li></ul>`,
+    translations: { en: { description: "t".repeat(4000) } }, open_questions: [{ body: "q".repeat(2000) }],
+    ...o,
+  });
+  // livezoku's single offer was 6.18 MB on 2026-11-08: one posting past the default element bound.
+  const big = offer(99, { published_at: new Date(CAPTURED - day).toISOString(), description: "<p>" + "z".repeat(6_180_000) + "</p>" });
+  const recruitee = { offers: [offer(0), offer(1, { published_at: null }), offer(2, { published_at: new Date(CAPTURED - 45 * day).toISOString() }), offer(3), big, offer(4, { slug: null, careers_url: null })] };
+  const wholeText = (o: { description?: string; requirements?: string }) => htmlToText([o.description, o.requirements].filter(Boolean).join("\n").slice(0, RAW_HTML_CAP)).trim();
+
+  it("slim-stream's HTML cap is index.ts's RAW_HTML_CAP", () => {
+    expect(Number(SLIM_SRC.match(/^const HTML_CAP = ([0-9_]+);/m)![1].replace(/_/g, ""))).toBe(RAW_HTML_CAP);
+  });
+
+  it("the index harvests read descriptionPlain first, and the whole-body expression is the one copied here", () => {
+    expect(CODE).toContain('const text = o.descriptionPlain ?? htmlToText([o.description, o.requirements].filter(Boolean).join("\\n").slice(0, RAW_HTML_CAP)).trim();');
+    expect(CODE).toContain('const text = typeof p.descriptionPlain === "string" ? p.descriptionPlain : html ? htmlToText(html.slice(0, RAW_HTML_CAP)).trim() : "";');
+  });
+
+  it("recruitee: a 6.2 MB offer streams under the vendor's element bound and is refused under the default one", async () => {
+    const bytes = enc.encode(JSON.stringify(recruitee));
+    expect(bytes.length).toBeGreaterThan(num("MAX_RESPONSE_BYTES"));
+    await expect(streamSlim(streamOf(bytes, 65_536), SLIM_SPECS.recruitee, opts())).rejects.toThrow(/OVERSIZE_BODY element/);
+    const { raw } = await streamSlim(streamOf(bytes, 65_536), SLIM_SPECS.recruitee, opts({ maxElementBytes: SLIM_SPECS.recruitee.maxElementBytes }));
+    const whole = JSON.parse(JSON.stringify(recruitee));
+    expect(normalizeRecruitee(raw as never, "Co", "tok")).toEqual(normalizeRecruitee(whole, "Co", "tok"));
+    // deno-lint-ignore no-explicit-any
+    const rows = (raw as { offers: any[] }).offers;
+    for (const [k, o] of whole.offers.entries()) {
+      const posted = sanePostedAt(o.published_at ?? o.created_at);
+      if (isDatedBefore(posted, CUTOFF)) { expect(rows[k].descriptionPlain, `${o.id} is aged`).toBeUndefined(); continue; }
+      expect((rows[k].descriptionPlain ?? "").slice(0, STORED_DESC_CAP), `${o.id}: stored text differs`).toBe(wholeText(o).slice(0, STORED_DESC_CAP));
+    }
+    expect(rows[1].descriptionPlain, "published_at missing falls back to created_at (40 days: aged)").toBeUndefined();
+    expect(JSON.stringify(rows).length, "the translations and questions are not retained").toBeLessThan(200_000);
+  }, 30_000);
+
+  const pin = (k: number, o: Record<string, unknown> = {}) => ({
+    id: 500 + k, title: `Analyst ${k}`, url: `https://trilongroup.pinpointhq.com/en/postings/${500 + k}`, workplace_type: k % 2 ? "remote" : "onsite",
+    employment_type_text: "Full Time", compensation_visible: k % 2 === 0, compensation_minimum: 50000, compensation_maximum: 70000,
+    compensation_currency: "GBP", compensation_frequency: "year", location: { name: "London", city: "London", province: "England", country: "United Kingdom" },
+    job: { department: { name: "Finance" }, division: { name: "x".repeat(3000) } },
+    description: `<p>Analyse ${k}</p>`, key_responsibilities: "<li>Report</li>", skills_knowledge_expertise: "<li>Excel</li>", benefits: "b".repeat(5000),
+    ...o,
+  });
+  const pinpoint = { data: Array.from({ length: 40 }, (_, k) => pin(k)) };
+
+  it("pinpoint: rows carry no date, the normaliser output is the whole-body one, and the text is the harvest's", async () => {
+    const bytes = enc.encode(JSON.stringify(pinpoint));
+    const { raw } = await streamSlim(streamOf(bytes, 4096), SLIM_SPECS.pinpoint, opts());
+    const whole = JSON.parse(JSON.stringify(pinpoint));
+    const N = normalizePinpoint((raw as { data: never }).data, "Co", "trilongroup");
+    expect(N).toEqual(normalizePinpoint(whole.data, "Co", "trilongroup"));
+    expect(N.every((j) => j.postedAt === null), "Pinpoint states no date: every row takes the date-not-stated path").toBe(true);
+    // deno-lint-ignore no-explicit-any
+    for (const [k, p] of (whole.data as any[]).entries()) {
+      const h = [p.description, p.key_responsibilities, p.skills_knowledge_expertise].join("\n");
+      expect((raw as { data: Array<{ descriptionPlain?: string }> }).data[k].descriptionPlain).toBe(htmlToText(h.slice(0, RAW_HTML_CAP)).trim());
+    }
+  });
+
+  it("pinpoint's list URL is its postings.json, never the BambooHR fallback it fell through to", () => {
+    const i = RAWI.indexOf("\nconst listUrl = ");
+    const ts = RAWI.slice(i + 1, RAWI.indexOf(";\n", i) + 2);
+    const listUrl = new Function("isLight", `${transformSync(ts, { loader: "ts" }).code}\nreturn listUrl;`)(() => false) as (s: { source: string; token: string; host?: string }, o?: number, d?: boolean) => string;
+    expect(listUrl({ source: "pinpoint", token: "trilongroup" })).toBe("https://trilongroup.pinpointhq.com/postings.json");
+    expect(listUrl({ source: "pinpoint", token: "careers.example.com" })).toBe("https://careers.example.com/postings.json");
+    expect(listUrl({ source: "bamboohr", token: "acme" })).toBe("https://acme.bamboohr.com/careers/list");
+    expect(listUrl({ source: "workable", token: "acme" })).toBe("https://apply.workable.com/api/v1/widget/accounts/acme?details=true");
+    expect(listUrl({ source: "workable", token: "acme" }, 0, false), "D7's details=false branch").toBe("https://apply.workable.com/api/v1/widget/accounts/acme?details=false");
+    expect(CODE, "fetchBoard reads pinpoint through the same URL").toMatch(/if \(s\.source === "pinpoint"\) \{\s*const res = await fetchWithTimeout\(listUrl\(s\)\);/);
   });
 });
 

@@ -72,3 +72,131 @@ describe("the USAJOBS hub", () => {
     expect(container.textContent).toContain("No reliable hiring signal yet");
   });
 });
+
+// ── XR-1, the index half: the agency's stated close date closes the row ──────
+// index.ts cannot be imported (Deno.serve at load), so the parts are cut from
+// its raw text and transpiled with TypeScript (esbuild refuses jsdom).
+import { readFileSync as readSrc } from "node:fs";
+import { resolve as resolvePath } from "node:path";
+import ts from "typescript";
+
+const INDEX = readSrc(resolvePath(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
+const jsOf = (src: string) => ts.transpileModule(src, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+const topFn = (head: string) => {
+  const i = INDEX.indexOf(`\n${head}`);
+  if (i < 0) throw new Error(`${head} moved in index.ts: re-anchor this test`);
+  return INDEX.slice(i + 1, INDEX.indexOf("\n}\n", i) + 2);
+};
+const topConst = (name: string) => {
+  const m = INDEX.match(new RegExp(`^const ${name} = [\\s\\S]*?;\\n`, "m"));
+  if (!m) throw new Error(`const ${name} moved in index.ts`);
+  return m[0];
+};
+
+type Q = { table: string; ops: Array<[string, unknown[]]> };
+/** A PostgREST-shaped stub: every chain records its calls and resolves through `answer`. */
+const stubClient = (answer: (q: Q) => { data?: unknown; error?: unknown }) => {
+  const asked: Q[] = [];
+  const from = (table: string) => {
+    const q: Q = { table, ops: [] };
+    asked.push(q);
+    const chain: Record<string, unknown> = {};
+    for (const m of ["select", "eq", "lt", "in", "limit", "insert", "delete", "upsert"]) chain[m] = (...a: unknown[]) => { q.ops.push([m, a]); return chain; };
+    chain.then = (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) => Promise.resolve({ data: null, error: null, ...answer(q) }).then(res, rej);
+    return chain;
+  };
+  return { client: { from }, asked };
+};
+
+describe("XR-1: a USAJOBS announcement closes on the date its agency states", () => {
+  const closer = () => {
+    const exits: Array<Record<string, unknown>[]> = [];
+    const pending: Promise<unknown>[] = [];
+    const src = [topConst("STATED_CLOSE_MAX"), topConst("statedClosed"), topFn("async function closeStatedClosed("), topFn("async function closeVanishedChunk(")].join("\n");
+    const make = new Function(
+      "LIFECYCLE_SELECT", "tenureDays", "exitReasonFor", "lifecycleFacets", "insertExits", "normalizeCloseTitle", "settleInsertError", "CLOSURE_OPTIONAL_COLS", "waitUntil", "dropTombstones", "console",
+      `${jsOf(src)}\nreturn { closeStatedClosed, statedClosed };`,
+    );
+    const fns = make(
+      "id, source, company_token, company, title, category, first_seen, posted_at",
+      () => ({ days: 12, basis: "posted" }), () => "aged_out", () => ({}),
+      async (_c: unknown, rows: Record<string, unknown>[]) => { exits.push(rows); return { error: null }; },
+      (t: string) => t.toLowerCase(), async (_c: unknown, _t: string, err: unknown) => err ?? null, [],
+      (p: Promise<unknown>) => { pending.push(p); return p; }, () => {}, { warn: () => {}, log: () => {} },
+    ) as { closeStatedClosed: (c: unknown) => Promise<number>; statedClosed: (j: { source: string; closesAt?: string | null }, now: number) => boolean };
+    return { ...fns, exits, pending };
+  };
+  const past = new Date(Date.now() - 86_400_000).toISOString();
+  const rows = [
+    { id: "usajobs:usajobs:1", source: "usajobs", company_token: "usajobs", company: "Department of the Interior", title: "Park Ranger", category: "other", first_seen: "2026-10-01T00:00:00Z", posted_at: "2026-09-01T00:00:00Z" },
+    { id: "usajobs:usajobs:2", source: "usajobs", company_token: "usajobs", company: "Department of Veterans Affairs", title: "Nurse", category: "healthcare", first_seen: "2026-10-02T00:00:00Z", posted_at: "2026-10-02T00:00:00Z" },
+  ];
+
+  it("a stored row past closes_at closes through the feed-removal path: a closure, an exit 'removed' marked stated_close, and the row gone", async () => {
+    const c = closer();
+    const { client, asked } = stubClient((q) => {
+      if (q.table === "job_board_postings" && q.ops[0]?.[1][0] === "id, company_token") return { data: rows.map((r) => ({ id: r.id, company_token: r.company_token })) };
+      if (q.table === "job_board_postings" && q.ops[0]?.[0] === "select") return { data: rows };
+      return {};
+    });
+    expect(await c.closeStatedClosed(client)).toBe(2);
+    await Promise.all(c.pending);
+    const pick = asked.find((q) => q.ops[0]?.[1][0] === "id, company_token")!;
+    expect(pick.ops.slice(1).map(([m, a]) => [m, a[0]])).toEqual([["eq", "source"], ["lt", "closes_at"], ["limit", 1_000]]);
+    const closures = asked.find((q) => q.table === "job_board_closures")!.ops[0][1][0] as Array<Record<string, unknown>>;
+    expect(closures.map((r) => [r.posting_id, r.absence_basis])).toEqual([[rows[0].id, "stated_close"], [rows[1].id, "stated_close"]]);
+    expect(c.exits.flat().map((r) => [r.posting_id, r.exit_reason, r.exit_basis])).toEqual([[rows[0].id, "removed", "stated_close"], [rows[1].id, "removed", "stated_close"]]);
+    const del = asked.find((q) => q.ops[0]?.[0] === "delete")!;
+    expect(del.ops[1]).toEqual(["in", ["id", rows.map((r) => r.id)]]);
+  });
+
+  it("an announcement posted long ago still closes as removed, not aged out: the stated date is the evidence", async () => {
+    const c = closer();
+    const old = [{ ...rows[0], posted_at: "2025-01-01T00:00:00Z" }];
+    const { client } = stubClient((q) => {
+      if (q.ops[0]?.[1][0] === "id, company_token") return { data: [{ id: old[0].id, company_token: "usajobs" }] };
+      if (q.table === "job_board_postings" && q.ops[0]?.[0] === "select") return { data: old };
+      return {};
+    });
+    expect(await c.closeStatedClosed(client)).toBe(1);
+    await Promise.all(c.pending);
+    expect(c.exits.flat().map((r) => r.exit_reason)).toEqual(["removed"]);
+  });
+
+  it("before 20261111100000 the column is absent: the read errors and nothing is closed", async () => {
+    const c = closer();
+    const { client, asked } = stubClient(() => ({ error: { message: 'column job_board_postings.closes_at does not exist' } }));
+    expect(await c.closeStatedClosed(client)).toBe(0);
+    expect(asked.map((q) => q.table)).toEqual(["job_board_postings"]);
+  });
+
+  it("an announcement already past its close date is not stored at ingest; one still open, another vendor or no date is", () => {
+    const { statedClosed } = closer();
+    const now = Date.parse("2026-11-15T12:00:00Z");
+    expect(statedClosed({ source: "usajobs", closesAt: "2026-11-15T00:00:00Z" }, now)).toBe(true);
+    expect(statedClosed({ source: "usajobs", closesAt: "2026-11-21T00:00:00Z" }, now)).toBe(false);
+    expect(statedClosed({ source: "usajobs", closesAt: null }, now)).toBe(false);
+    expect(statedClosed({ source: "usajobs" }, now)).toBe(false);
+    expect(statedClosed({ source: "greenhouse", closesAt: "2026-11-01T00:00:00Z" }, now)).toBe(false);
+    expect(INDEX).toMatch(/if \(isDatedBefore\(posted, freshCutoffMs\)\) \{ agedOutIds\.add\(j\.id\); continue; \}\n(?:\s*\/\/[^\n]*\n)*\s*if \(statedClosed\(j, Date\.now\(\)\)\) continue;/);
+    expect(INDEX).toMatch(/\.\.\.\(j\.closesAt \? \{ closes_at: j\.closesAt \} : \{\}\),/);
+  });
+
+  it("an insert that names a missing closes_at is retried without the key, the way the agency fallback works", async () => {
+    const a = INDEX.indexOf('if (error?.message?.includes("closes_at")) {');
+    expect(a, "the closes_at fallback is gone").toBeGreaterThan(0);
+    const block = INDEX.slice(a, INDEX.indexOf("\n          }\n", a) + 12);
+    const sent: Array<Record<string, unknown>[]> = [];
+    const client = { from: () => ({ upsert: async (r: Record<string, unknown>[]) => { sent.push(r); return { error: r.some((x) => "closes_at" in x) ? { message: "Could not find the 'closes_at' column" } : null }; } }) };
+    const newRows = [{ id: "usajobs:usajobs:1", closes_at: "2026-11-21T00:00:00Z", title: "Ranger" }, { id: "usajobs:usajobs:2", title: "Nurse" }];
+    const run = new Function("client", "newRows", `return (async () => { let i = 0; let { error } = await client.from().upsert(newRows); ${jsOf(block)}; return error; })();`);
+    expect(await run(client, newRows)).toBeNull();
+    expect(sent[1], "the retry carries every row, none naming closes_at").toEqual([{ id: "usajobs:usajobs:1", title: "Ranger" }, { id: "usajobs:usajobs:2", title: "Nurse" }]);
+    expect(INDEX, "the exit's optional columns include exit_basis, so a database without it still takes the exit").toMatch(/"salary_min_annual", "salary_max_annual", "salary_period", "salary_currency",\n\s*"exit_basis",\n\] as const;/);
+  });
+
+  it("the sweep step reports how many it closed on their stated date", () => {
+    expect(INDEX).toMatch(/const onDate = await closeStatedClosed\(client\);/);
+    expect(INDEX).toMatch(/statedClosed: \(\(begun\.prior as \{ statedClosed\?: number \}\)\.statedClosed \?\? 0\) \+ \(r\.statedClosed \?\? 0\)/);
+  });
+});

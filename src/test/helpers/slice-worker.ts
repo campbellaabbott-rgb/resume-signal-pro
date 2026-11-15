@@ -52,6 +52,13 @@ const compile = (ts: string, params: string[]) => {
   return new Function(...params, `${js}\nreturn __run;`);
 };
 
+/** WORKABLE_OVERSIZE_HELD as index.ts spells it (D7). */
+export const workableHeld = (): Set<string> => {
+  const m = RAW().match(/^const WORKABLE_OVERSIZE_HELD: ReadonlySet<string> = new Set\(\[([^\]]*)\]\);/m);
+  if (!m) throw new Error("const WORKABLE_OVERSIZE_HELD not found at the top level of index.ts");
+  return new Set([...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]));
+};
+
 /** Live values of index.ts's own constants, read off the source. */
 export const constOf = (name: string): number => {
   const m = RAW().match(new RegExp(`^const ${name} = ([0-9_]+);`, "m"));
@@ -179,6 +186,14 @@ export interface VisitEnv {
   slimSpecs?: Record<string, unknown>;
   /** What the streamed read (readOversizeBoard) answers, told whether the board is light when it starts. */
   stream?: (call: { light: boolean }) => Read;
+  /** The slice is in its hot phase (CAP-8: no streamed read then). */
+  hot?: boolean;
+  /** Streamed reads this slice has already made (CAP-8: one at most). */
+  streamedBefore?: number;
+  /** The heap the preflight reads (default 40 MB). */
+  heapMb?: number;
+  /** What the Workable details=false read (readWorkableBare, D7) answers. */
+  bare?: () => Read;
 }
 export interface VisitOut {
   r: Read;
@@ -186,6 +201,12 @@ export interface VisitOut {
   fetchCalls: Array<{ light: boolean; startOffset: number; reserveDuring: number }>;
   /** Each streamed read: whether the board was light (so its list URL the light one) and the reservation during it. */
   streamCalls: Array<{ light: boolean; reserveDuring: number }>;
+  /** Each Workable details=false read (D7) and the reservation during it. */
+  bareCalls: Array<{ token: string; reserveDuring: number }>;
+  /** The slice's streamed-read count after the visit (CAP-8). */
+  streamed: number;
+  /** Boards the vendor refused for load this visit (BB-09). */
+  rateLimited: string[];
   enrolCalls: number;
   light: boolean;
   fetchedInSlice: number;
@@ -214,7 +235,8 @@ export async function runVisit(env: VisitEnv): Promise<VisitOut> {
     "lightRereadDone", "lightStats", "SLIM_SPECS", "sliceWallStart", "STREAM_READ_BUDGET_MS", "SLICE_WALL_BUDGET_MS", "memStamp",
     "HEAP_SOFT_LIMIT_MB", "readOversizeBoard", "freshCutoffMs", "breadcrumb", "deepLane", "deepTokens", "oversized", "noteOversize",
     "OVERSIZE_BOARDS", "SHARED_TOKENS", "budgetSkipped", "failed", "waitUntil", "boardFailures", "boardKeyOf", "cursorAfterFailure",
-    "deepCursors", "baseTokens",
+    "deepCursors", "baseTokens", "inHotPhase", "sliceReads", "SLIM_ELEMENT_BYTES", "SLIM_RETAINED_BYTES", "WORKABLE_OVERSIZE_HELD",
+    "readWorkableBare",
   ];
   const run = compile(`async function __run() {
     let r = env.r, failReason = env.failReason, inFlightReserve = env.inFlightReserve, fetchedInSlice = 0, boardsDone = 0;
@@ -230,6 +252,8 @@ export async function runVisit(env: VisitEnv): Promise<VisitOut> {
   const lightSet = new Set<string>(env.lightAtStart ? [key] : []);
   const fetchCalls: VisitOut["fetchCalls"] = [];
   const streamCalls: VisitOut["streamCalls"] = [];
+  const bareCalls: VisitOut["bareCalls"] = [];
+  const sliceReads = { streamed: env.streamedBefore ?? 0, rateLimited: [] as string[], rawNoRows: [] as string[], srPartial: [] as string[] };
   let enrolCalls = 0;
   const gateAsked: unknown[] = [];
   const registry = new Map<string, OversizeEntry>();
@@ -266,7 +290,7 @@ export async function runVisit(env: VisitEnv): Promise<VisitOut> {
     sliceWallStart: Date.now() - 1_000,
     STREAM_READ_BUDGET_MS: constOf("STREAM_READ_BUDGET_MS"),
     SLICE_WALL_BUDGET_MS: constOf("SLICE_WALL_BUDGET_MS"),
-    memStamp: () => ({ heapMb: 40 }),
+    memStamp: () => ({ heapMb: env.heapMb ?? 40 }),
     HEAP_SOFT_LIMIT_MB: constOf("HEAP_SOFT_LIMIT_MB"),
     readOversizeBoard: async (b: Board) => {
       const light = lightSet.has(`${b.source}:${b.token}`);
@@ -289,9 +313,18 @@ export async function runVisit(env: VisitEnv): Promise<VisitOut> {
     cursorAfterFailure,
     deepCursors: new Map<string, number>(),
     baseTokens: new Set(env.base ? [s.token] : []),
+    inHotPhase: env.hot ?? false,
+    sliceReads,
+    SLIM_ELEMENT_BYTES: constOf("SLIM_ELEMENT_BYTES"),
+    SLIM_RETAINED_BYTES: constOf("SLIM_RETAINED_BYTES"),
+    WORKABLE_OVERSIZE_HELD: workableHeld(),
+    readWorkableBare: async (b: Board) => {
+      bareCalls.push({ token: b.token, reserveDuring: inner.reserveNow!() });
+      return env.bare ? env.bare() : null;
+    },
   };
   const out = await (run(...names.map((n) => scope[n])) as () => Promise<{ r: Read; failReason: string; inFlightReserve: number; fetchedInSlice: number; boardsDone: number; baseAttempted: number }>)();
-  return { ...out, fetchCalls, streamCalls, enrolCalls, light: lightSet.has(key), deferred, oversized, failed, registry, gateAsked, stats };
+  return { ...out, fetchCalls, streamCalls, bareCalls, streamed: sliceReads.streamed, rateLimited: sliceReads.rateLimited, enrolCalls, light: lightSet.has(key), deferred, oversized, failed, registry, gateAsked, stats };
 }
 
 // ── lanes ───────────────────────────────────────────────────────────────────

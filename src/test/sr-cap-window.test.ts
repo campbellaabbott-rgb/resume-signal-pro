@@ -106,7 +106,9 @@ describe("truncation is reported, not inferred", () => {
     // The page loop breaks on a bad response rather than throwing; feedTotal is
     // still the real advertised number, so feedTotal > content.length holds and
     // closures stay suppressed.
-    // (.89 releases the refused body before breaking; the break is the property.)
-    expect(fetcher).toMatch(/if \(!res\.ok\) \{ discardBody\(res\); break; \}/);
+    // (.89 releases the refused body before breaking; the break is the property.
+    // .102, S14X-121: a page that throws ends the walk the same way.)
+    expect(fetcher).toMatch(/try \{ if \(res\?\.ok\) page = await res\.json\(\); \} catch/);
+    expect(fetcher).toMatch(/if \(!page\) \{ discardBody\(res\); sliceReads\.srPartial\.push\(boardKeyOf\(s\)\); break; \}/);
   });
 });

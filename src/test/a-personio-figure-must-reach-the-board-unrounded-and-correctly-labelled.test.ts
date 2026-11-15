@@ -300,7 +300,7 @@ describe("a Personio figure reaches the board unrounded and correctly labelled",
     // And the correction path has to ask it, or the log fills with fiction.
     const CODE = codeOf(readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8"));
     expect(CODE).toContain("const sameMoney = statesTheSameMoney(nextPay, curPay, payCountry);");
-    expect(CODE).toContain('if (sameMoney || firstVendorRead || ourRewrite) patch.salary = nextPay;\n          else put("salary", row.salary, prev.salary, false);');
+    expect(CODE).toContain('if (sameMoney || firstVendorRead) patch.salary = nextPay;\n          else put("salary", row.salary, prev.salary, false);');
   });
 
   it("does not record the FIRST figure a newly-read vendor field gives us as an employer edit either", () => {

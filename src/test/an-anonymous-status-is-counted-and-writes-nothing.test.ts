@@ -13,8 +13,8 @@
  * WHAT HOLDS NOW. An anonymous status answered from the memo costs no database.
  * One that must compute is counted by the same meter as a list, refused like
  * one, and only reports: the watchdog's verdict is published with readOnly
- * true, and nothing is written or sent. The upkeep action answers only the
- * scheduler's key or the service role and does both jobs. A credentialed
+ * true, and nothing is written or sent. The upkeep action that once did both
+ * jobs is gone (board .102): nothing ever posted it. A credentialed
  * status keeps its fresh answer, because the deploy checks read it.
  *
  * WHAT RESTARTS A DEAD CHAIN NOW (the upkeep hotfix, 2026-11-07). The
@@ -150,109 +150,35 @@ describe("our own credentialed status", () => {
   });
 });
 
-describe("the upkeep action", () => {
-  it("refuses anyone without the scheduler's key: no read past the key, no write, no kick", async () => {
+describe("the upkeep action is gone (board .102, UPK-DROP): nothing posted it, and status keeps no copy", () => {
+  it("an upkeep post, even with the scheduler's key, checks no key, writes nothing and kicks nothing", async () => {
     deadChain();
-    schedulerKey(false);
-    for (const headers of [browser, { ...browser, "x-email-cron": "short" }, { ...browser, "x-email-cron": CRON_KEY }, { ...browser, "x-rb-budget": "probe" }]) {
-      const r = await board.post({ action: "upkeep" }, headers);
-      expect(r, JSON.stringify(Object.keys(headers))).toEqual({ error: "upkeep is the scheduler's action" });
-    }
+    schedulerKey(true);
+    for (const headers of [cron, browser, service]) await board.post({ action: "upkeep" }, headers);
     expect(writes()).toEqual([]);
     expect(refreshKicks()).toEqual([]);
-    expect(board.db.queries.filter((q) => q.rpc !== "email_cron_key_matches")).toEqual([]);
-  });
-
-  it("is never counted: it costs the meter nothing and a refusal is not the meter's", async () => {
-    schedulerKey(true);
-    await board.post({ action: "upkeep" }, cron);
-    await board.post({ action: "upkeep" }, browser);
-    expect(board.db.rpcArgs("job_board_anon_check")).toEqual([]);
+    expect(board.db.rpcArgs("email_cron_key_matches")).toEqual([]);
     expect(METERED_ACTIONS.has("upkeep")).toBe(false);
   });
 
-  it("with the scheduler's key kicks a dead chain, and says it did", async () => {
-    deadChain();
-    schedulerKey(true);
-    const r = await board.post({ action: "upkeep" }, cron);
-    expect(r).toMatchObject({ watchdog: "rekick", kicked: true });
-    expect(refreshKicks()).toHaveLength(1);
-    expect(JSON.parse(refreshKicks()[0].body)).toEqual({ action: "refresh" });
-  });
-
-  it("the service role is the scheduler's only other caller, and the key is checked by the vault's own function", async () => {
+  it("the scheduler's key check itself is unchanged for the functions that still use it", async () => {
     const LONG = "s".repeat(40);
     const rpc = vi.fn(async () => ({ data: false, error: null }));
     expect(await isScheduledCaller(new Headers({ authorization: `Bearer ${LONG}` }), { rpc }, LONG)).toBe(true);
     expect(rpc).not.toHaveBeenCalled();
     expect(await isScheduledCaller(new Headers({ "x-email-cron": CRON_KEY }), { rpc }, LONG)).toBe(false);
     expect(rpc).toHaveBeenCalledWith("email_cron_key_matches", { p_key: CRON_KEY });
-    expect(await isScheduledCaller(new Headers({ authorization: `Bearer ${ANON}` }), { rpc }, LONG)).toBe(false);
   });
 
-  it("leaves a chain that is alive alone", async () => {
-    schedulerKey(true);
-    board.answer((q): Answer | undefined => (hasWatchdogRead(q)
-      ? { data: [{ k: "slice_stats", v: { workAt: iso(0), at: iso(0), coldEmaMs: 60_000 }, updated_at: iso(0) }], error: null }
-      : undefined));
-    const r = await board.post({ action: "upkeep" }, cron);
-    expect(r).toMatchObject({ kicked: false });
-    expect(r.watchdog).not.toBe("rekick");
-    expect(refreshKicks()).toEqual([]);
-  });
-
-  const coverage = (rows: unknown, storedMinutesAgo: number | null) => {
-    schedulerKey(true);
-    board.answer((q): Answer | undefined => (q.rpc === "get_date_coverage" ? { data: rows, error: null } : undefined));
-    board.answer((q): Answer | undefined => (q.table === "job_board_meta" && eqs(q, "k", "date_coverage_cache") && q.mode === "maybe" && !isWrite(q)
-      ? { data: storedMinutesAgo === null ? null : { updated_at: iso(storedMinutesAgo) }, error: null }
-      : undefined));
-  };
-  const coverageWrites = () => board.db.on("job_board_meta", "upsert").filter((q) => (q.calls.find(([m]) => m === "upsert")?.[1][0] as { k?: string }).k === "date_coverage_cache");
-
-  it("stores the date coverage when the stored copy is missing", async () => {
-    coverage([{ computed_at: "x" }], null);
-    expect(await board.post({ action: "upkeep" }, cron)).toMatchObject({ coverageStored: true });
-    expect(coverageWrites()).toHaveLength(1);
-  });
-
-  it("stores the date coverage when the stored copy is past fifteen minutes", async () => {
-    coverage([{ computed_at: "x" }], 16);
-    expect(await board.post({ action: "upkeep" }, cron)).toMatchObject({ coverageStored: true });
-    expect(coverageWrites()).toHaveLength(1);
-  });
-
-  it("does not rewrite a copy younger than fifteen minutes", async () => {
-    coverage([{ computed_at: "x" }], 14);
-    expect(await board.post({ action: "upkeep" }, cron)).toMatchObject({ coverageStored: false });
-    expect(coverageWrites()).toEqual([]);
-  });
-
-  it("keeps the last good copy when the read answers nothing, or an empty list", async () => {
-    coverage(null, 60);
-    expect(await board.post({ action: "upkeep" }, cron)).toMatchObject({ coverageStored: false });
-    board.reset();
-    coverage([], 60);
-    expect(await board.post({ action: "upkeep" }, cron)).toMatchObject({ coverageStored: false });
-    expect(coverageWrites()).toEqual([]);
-  });
-
-  it("stamps when it ran, and status publishes the stamp with its age", async () => {
-    schedulerKey(true);
-    await board.post({ action: "upkeep" }, cron);
-    const stamps = board.db.on("job_board_meta", "upsert").map((q) => q.calls.find(([m]) => m === "upsert")?.[1][0] as { k?: string; v?: Record<string, unknown> }).filter((u) => u.k === "board_upkeep");
-    expect(stamps).toHaveLength(1);
-    expect(stamps[0].v).toMatchObject({ kicked: false, coverageStored: false });
-
-    board.reset();
-    board.answer((q): Answer | undefined => (q.table === "job_board_meta" && eqs(q, "k", "board_upkeep") ? { data: { v: { at: iso(7), watchdog: "within_window", kicked: false, coverageStored: false }, updated_at: iso(7) }, error: null } : undefined));
+  it("status has no boardUpkeep key and never reads a coverage copy: the rollup's own computed_at, or unavailable", async () => {
+    board.answer((q): Answer | undefined => (q.rpc === "get_date_coverage" ? { data: [{ source: "greenhouse", total: 10, dated: 9, computed_at: iso(12) }], error: null } : undefined));
     const r = await board.post({ action: "status" }, service);
-    expect(r.boardUpkeep).toMatchObject({ watchdog: "within_window", kicked: false, ageMin: 7 });
-  });
-
-  it("status says null, not a stale zero, before the job has ever run", async () => {
-    const r = await board.post({ action: "status" }, service);
-    expect(r.boardUpkeep).toBeNull();
+    expect("boardUpkeep" in r).toBe(false);
+    expect(r).toMatchObject({ dateCoverageSource: "rollup", dateCoverageAgeMin: 12 });
+    expect(board.db.queries.filter((q) => q.table === "job_board_meta" && (eqs(q, "k", "date_coverage_cache") || eqs(q, "k", "board_upkeep")))).toEqual([]);
+    board.reset();
+    board.answer((q): Answer | undefined => (q.rpc === "get_date_coverage" ? { data: null, error: { message: "timeout" } } : undefined));
+    expect(await board.post({ action: "status" }, service)).toMatchObject({ dateCoverageSource: "unavailable", dateCoverageAgeMin: null });
   });
 });
 

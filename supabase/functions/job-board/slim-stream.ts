@@ -20,7 +20,16 @@ export interface SlimSpec {
   postedAt: (j: J) => string | null;
   /** The description text index.ts builds for this vendor, before its own cap. */
   text: (j: J) => string;
+  /** One posting's bound when this vendor's single postings run past SLIM_ELEMENT_BYTES (D12). */
+  maxElementBytes?: number;
 }
+
+/** SLIM_RETAINED_BYTES plus the largest element any spec admits must fit here (D12). */
+export const STREAM_HEAP_BUDGET_BYTES = 12_000_000;
+// index.ts's RAW_HTML_CAP: the whole-body harvest slices the same HTML before htmlToText.
+const HTML_CAP = 24_000;
+const html = (j: J, keys: readonly string[]): string =>
+  htmlToText(keys.map((k) => j[k]).filter((x) => typeof x === "string" && x).join("\n").slice(0, HTML_CAP)).trim();
 
 const pick = (j: J, keys: readonly string[]): J => {
   const o: J = {};
@@ -52,6 +61,25 @@ export const SLIM_SPECS: Record<string, SlimSpec> = {
     keep: ["id", "title", "location", "departments", "absolute_url", "first_published", "updated_at", "requisition_id", "internal_job_id", "company_name", "language"],
     postedAt: (j) => (typeof j.first_published === "string" ? j.first_published : null),
     text: () => "",
+  },
+  // D12: one livezoku offer is 6.18 MB, riedmair's 4.39 MB.
+  recruitee: {
+    arrayKey: "offers",
+    keep: ["id", "slug", "title", "department", "city", "country", "location", "remote", "hybrid", "on_site", "careers_url", "published_at", "created_at", "employment_type_code", "salary"],
+    postedAt: (j) => safeIso(j.published_at ?? j.created_at),
+    text: (j) => html(j, ["description", "requirements"]),
+    maxElementBytes: 8_000_000,
+  },
+  // No date in the payload: every row takes the date-not-stated path.
+  pinpoint: {
+    arrayKey: "data",
+    keep: ["id", "title", "url", "workplace_type", "employment_type_text", "compensation_visible", "compensation_minimum", "compensation_maximum", "compensation_currency", "compensation_frequency", "location", "job"],
+    reduce: (o) => {
+      const d = o.job;
+      if (d && typeof d === "object") o.job = pick(d as J, ["department"]);
+    },
+    postedAt: () => null,
+    text: (j) => html(j, ["description", "key_responsibilities", "skills_knowledge_expertise"]),
   },
 };
 

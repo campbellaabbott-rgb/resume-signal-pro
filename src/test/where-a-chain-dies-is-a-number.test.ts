@@ -17,11 +17,10 @@ const RAW = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/
 const CODE = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 
 describe("where a chain dies is a number", () => {
-  it("the hop is captured at runRefresh entry", () => {
+  it("the hop is captured as soon as the slice is admitted, and not before (UPK-3: a refused kick relabelled the running hop 0)", () => {
     expect(CODE).toMatch(/let currentHop = 0;/);
-    // .47 added the ramped board budget as a fourth parameter; the hop is
-    // still captured first, which is what this guard is about.
-    expect(CODE).toMatch(/chainHop = 0, boardBudget = MIN_BOARDS_PER_SLICE\): Promise<\{ ok: boolean; detail: string \}> \{\s*currentHop = chainHop;/);
+    expect(CODE).toMatch(/return \{ ok: true, detail: "skipped — a slice was admitted moments ago" \};\s*\}\s*\}\s*currentHop = chainHop;/);
+    expect((CODE.match(/currentHop = chainHop;/g) ?? []).length).toBe(1);
   });
 
   it("heap and rss are read from the runtime, in megabytes", () => {
