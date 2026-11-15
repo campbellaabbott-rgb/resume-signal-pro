@@ -525,6 +525,8 @@ const boardByKey = (key: string): JobSource | undefined => {
 };
 /** Every catalogued board's key, once: the stale lane's 'uncatalogued' test (n428). */
 const CATALOGUE_KEYS: ReadonlySet<string> = new Set(JOB_SOURCES.map(boardKeyOf));
+/** Retired vendor:token boards whose token another vendor still carries, so the token-keyed orphan prune never reaches them (board .102). */
+const RETIRED_TWIN_KEYS: readonly string[] = ["pinpoint:helsing", "greenhouse:wayve", "greenhouse:clickhouse", "lever:swordhealth", "greenhouse:lovable", "greenhouse:kalshi", "greenhouse:webflow", "greenhouse:worldlabs"];
 /** One cold hop's stale-lane run, as persisted under meta k = "stale_lane" beside `tries`, and as status reads it. */
 interface StaleLaneRun {
   at: string;
@@ -4665,7 +4667,13 @@ async function passEndServe(client: SupabaseClient, ctx: PassEndCtx, sliceWallSt
       console.log(`[JOB-BOARD] orphan-pruned ${orphanTokens.length} removed board(s), ${orphanLogged} postings logged as untracked: ${orphanTokens.slice(0, 8).join(", ")}`);
       companies = companies.filter((c) => !orphanTokens.includes((c as { token?: string }).token ?? ""));
     }
-    await breadcrumb(client, "pass-end-pruned", { orphans: orphanTokens.length, elapsedMs: Date.now() - sliceWallStart });
+    // A retired twin leaves by its own vendor and token; a key the catalogue carries again is never touched.
+    let twinsLogged = 0;
+    for (const k of RETIRED_TWIN_KEYS) {
+      const [src, tk] = [k.slice(0, k.indexOf(":")), k.slice(k.indexOf(":") + 1)];
+      if (!JOB_SOURCES.some((s) => s.source === src && s.token === tk)) twinsLogged += (await pruneWholeBoard(client, tk, "untracked", src)).logged;
+    }
+    await breadcrumb(client, "pass-end-pruned", { orphans: orphanTokens.length, twinsLogged, elapsedMs: Date.now() - sliceWallStart });
   }
 
   // Rationale: docs/job-board-index-notes.md#n149-coverage
