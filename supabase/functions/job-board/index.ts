@@ -783,9 +783,11 @@ async function fetchSmartRecruiters(s: JobSource, startOffset = 0): Promise<{ co
   // CAPPED_VISIT_VENDOR; this used to run to SR_CAP), srEnded false, so it resumes.
   for (let offset = SR_PAGE; !srEnded && offset < total && content.length < MAX_POSTINGS_PER_VISIT; offset += SR_PAGE) {
     const want = Math.min(SR_PAGE, MAX_POSTINGS_PER_VISIT - content.length);
-    const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=${want}&offset=${startOffset + content.length}`);
-    if (!res.ok) { discardBody(res); break; } // partial page set: windowed below, so nothing is pruned on it
-    const page = await res.json();
+    // S14X-121: a later page refused, timed out or broken keeps page one; windowed below, so nothing is pruned on it.
+    const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=${want}&offset=${startOffset + content.length}`).catch(() => null);
+    let page: { content?: unknown[] } | null = null;
+    try { if (res?.ok) page = await res.json(); } catch { /* broke mid-read */ }
+    if (!page) { discardBody(res); sliceReads.srPartial.push(boardKeyOf(s)); break; }
     const batch = (page.content ?? []) as unknown[];
     content.push(...batch);
     // RECORD the ending; a short page is the only end-of-feed observation.
@@ -3325,6 +3327,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           const rec = deepLaps[lapKey];
           if (rec && rec.f !== 1) { rec.f = 1; deepCursorsDirty = true; }
         };
+        // S14X-063(b): items that all failed to normalise are drift, not an empty board (Ashby and ADP drop unlisted ones by design).
+        const unread = r.jobs.length === 0 && s.source !== "ashby" && s.source !== "adp" && rawItemCount(s.source, r.raw) > 0;
         // Rationale: docs/job-board-index-notes.md#n087-s-source-workday-r-jobs-length
         if (s.source === "workday" && r.jobs.length > 0) {
           const tenant = s.token.split("~")[0];
@@ -3379,6 +3383,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             quarantineSkipped.add(s.token); // excluded from failure streaks below
             continue;
           }
+        }
+        if (unread) {
+          sliceReads.rawNoRows.push(boardKeyOf(s));
+          failLap();
+          budgetSkipped.push(s.token);
+          continue;
         }
         const descs = new Map<string, string>();
         // Rationale: docs/job-board-index-notes.md#n580-let-descsdeferred-false
