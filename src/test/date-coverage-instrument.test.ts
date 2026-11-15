@@ -71,38 +71,25 @@ describe("the date-coverage deadline exceeds the query's measured cost", () => {
 });
 
 describe("an unavailable measurement says so", () => {
-  it("reports whether the numbers are from the rollup, cached, or missing", () => {
-    // Three states that used to share one value. The first was called "live"
-    // while the RPC computed on demand; it now reads a 15-minute rollup, and
-    // calling that "live" would be the same false-freshness move this block was
-    // written to stop.
-    expect(board).toMatch(/dateCoverageSource:/);
-    expect(board).toMatch(/"rollup"/);
-    expect(board).toMatch(/"cache"/);
-    expect(board).toMatch(/"unavailable"/);
+  it("reports whether the numbers are from the rollup or missing; no copy is kept since board .102 (UPK-DROP)", () => {
+    // The rollup is a 15-minute table, never called "live"; a timeout says
+    // unavailable rather than serving a copy nothing refreshed (its only
+    // writer, the upkeep action, had no caller).
+    expect(board).toMatch(/dateCoverageSource: Array\.isArray\(\(dateCov as \{ data\?: unknown \}\)\.data\) \? "rollup" : "unavailable",/);
+    expect(board).not.toMatch(/"cache"/);
+    expect(board).not.toMatch(/date_coverage_cache/);
   });
 
-  it("puts an age on the numbers, including the non-cached path", () => {
-    // A number with no age beside it cannot be told from a fresh one — and a
-    // hardcoded 0 is worse than no age, because it asserts freshness that the
-    // 15-minute refresh cannot deliver.
-    expect(board).toMatch(/dateCoverageAgeMin:/);
-    expect(board).toMatch(/ageMin\(\(\(\(dateCov as \{ data: Array<\{ computed_at\?: string \}> \}\)\.data\)\[0\]\?\.computed_at\) \?\? null\)/);
+  it("puts the rollup's own age on the numbers, and null when there are none", () => {
+    // A number with no age beside it cannot be told from a fresh one, and a
+    // hardcoded 0 asserts a freshness the rollup cannot deliver.
+    expect(board).toMatch(/dateCoverageAgeMin: Array\.isArray\(\(dateCov as \{ data\?: unknown \}\)\.data\)\n\s+\? ageMin\(\(\(\(dateCov as \{ data: Array<\{ computed_at\?: string \}> \}\)\.data\)\[0\]\?\.computed_at\) \?\? null\)\n\s+: null,/);
   });
 
-  it("serves the last good copy instead of nothing", () => {
-    expect(board).toMatch(/dcCache\.data\?\.v as unknown\[\]/);
-  });
-
-  it("the cache is written only by the upkeep action, never by a status read (S13-114); no schedule calls upkeep, so status's fallback copy reports its own growing age", () => {
-    const upkeep = board.slice(board.indexOf("async function boardUpkeep("), board.indexOf("async function maybeKickMaintenance("));
-    expect(upkeep).toMatch(/k: "date_coverage_cache"/);
+  it("no status read writes a coverage row, and nothing serves one", () => {
     const status = board.slice(board.indexOf('if (action === "status") {'), board.indexOf('if (action === "vendor-health") {'));
-    expect(status).not.toMatch(/date_coverage_cache"[^\n]*upsert|upsert\(\{ k: "date_coverage_cache"/);
-    // The copy's age is its own row's: with no caller it grows, and a status
-    // read never stamps it fresh.
-    expect(status).toMatch(/select\("v, updated_at"\)\.eq\("k", "date_coverage_cache"\)/);
-    expect(status).toMatch(/dateCoverageAgeMin: Array\.isArray\(\(dateCov as \{ data\?: unknown \}\)\.data\)\n\s+\? ageMin\([^\n]*computed_at[^\n]*\)\n\s+: ageMin\(dcCache\.data\?\.updated_at \?\? null\),/);
+    expect(status).not.toMatch(/upsert\(\{ k: "date_coverage/);
+    expect(board).not.toMatch(/dcCache/);
   });
 });
 
@@ -130,9 +117,8 @@ describe("the auto-submittable share is computed, not asserted", () => {
   it("status derives it from live per-vendor totals", () => {
     expect(board).toMatch(/sendable: \(\(\) => \{/);
     expect(board).toMatch(/SENDABLE_VENDORS/);
-    // Falls back to the cache, so it does not vanish when the query is slow —
-    // the same failure the deadline fix above was written for.
-    expect(board).toMatch(/dcCache\.data\?\.v as Array/);
+    // With no rollup answer it is null, never a copy nothing refreshed (UPK-DROP).
+    expect(board).toMatch(/\? \(dateCov as \{ data: Array<\{ source: string; total: number \}> \}\)\.data\n\s+: null;/);
   });
 
   it("no source file still asserts a hardcoded board share", () => {

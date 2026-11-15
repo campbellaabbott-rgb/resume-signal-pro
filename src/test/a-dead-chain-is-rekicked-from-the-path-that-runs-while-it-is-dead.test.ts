@@ -307,11 +307,10 @@ describe("the wiring in index.ts", () => {
     expect(MK.slice(call, gap)).not.toMatch(/\breturn\b/);
   });
 
-  it("evaluated from status for the report; upkeep can act on it; the database's minute kick restarts a dead chain", () => {
+  it("evaluated from status for the report; the database's minute kick restarts a dead chain (the upkeep route that never ran is gone, .102)", () => {
     const STATUS = IDX.slice(IDX.indexOf('if (action === "status") {'), IDX.indexOf('if (action === "vendor-health") {'));
     expect(STATUS).toMatch(/const chainWatchdog = await maybeRekickDeadChain\(client, \{ readOnly: !statusFresh \}\);/);
-    const UPKEEP = IDX.slice(IDX.indexOf("async function boardUpkeep("), IDX.indexOf("async function maybeKickMaintenance("));
-    expect(UPKEEP).toMatch(/const watchdog = await maybeRekickDeadChain\(client\);/);
+    expect(IDX).not.toMatch(/async function boardUpkeep\(|action === "upkeep"/);
     expect(STATUS).toMatch(/\n\s+chainWatchdog,\n/);
     // The verdict's fields and the last kick both reach the payload.
     expect(FN).toMatch(/const report = \{ at: new Date\(now\)\.toISOString\(\), \.\.\.verdict, kicked: false, lastKick, /);

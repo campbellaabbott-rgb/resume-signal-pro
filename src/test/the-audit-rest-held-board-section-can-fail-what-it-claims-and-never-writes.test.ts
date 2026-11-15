@@ -65,7 +65,8 @@ process.stdout.write(out);
 const dirs: string[] = [];
 afterAll(() => { for (const d of dirs) { try { rmSync(d, { recursive: true, force: true }); } catch { /* best effort */ } } });
 
-function run(routes: Route[]): { lines: string[]; calls: string[]; out: string } {
+/** The checkout index.ts the section reads for U1: a build string, and whether it still has the upkeep route. */
+function run(routes: Route[], index: { build: string; route: boolean } = { build: "2026-09-09.101", route: true }): { lines: string[]; calls: string[]; out: string } {
   const dir = mkdtempSync(join(tmpdir(), "vdheld-"));
   dirs.push(dir);
   mkdirSync(join(dir, "bin"));
@@ -75,12 +76,13 @@ function run(routes: Route[]): { lines: string[]; calls: string[]; out: string }
   chmodSync(join(dir, "bin", "sleep"), 0o755);
   writeFileSync(join(dir, "routes.json"), JSON.stringify(routes));
   writeFileSync(join(dir, "calls.log"), "");
+  writeFileSync(join(dir, "index.ts"), `const BUILD_VERSION = "${index.build}";\n${index.route ? 'if (action === "upkeep") {}\n' : ""}`);
   const prelude = `set -u\nK=${KEY}; B=https://p.supabase.co; SITE=https://site.test; UA=ua\n${BUILD_GE}\n${R_FN}\n`;
   writeFileSync(join(dir, "run.sh"), prelude + SECTION.split("/tmp/").join(`${dir}/`));
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     PATH: `${join(dir, "bin")}:${dirname(process.execPath)}:${process.env.PATH ?? ""}`,
-    VD_ROUTES: join(dir, "routes.json"), VD_CALLS: join(dir, "calls.log"),
+    VD_ROUTES: join(dir, "routes.json"), VD_CALLS: join(dir, "calls.log"), VDHB_INDEX: join(dir, "index.ts"),
   };
   let out = "";
   try { out = execFileSync("bash", [join(dir, "run.sh")], { cwd: ROOT, env, encoding: "utf8", timeout: 55_000, stdio: ["ignore", "pipe", "pipe"] }); }
@@ -94,7 +96,6 @@ const FN = (fn: string) => `https://p\\.supabase\\.co/functions/v1/${fn}`;
 const preflight = (fn: string, build: string | null): Route => ({ match: `^OPTIONS ${FN(fn)}$`, headers: build ? { "x-fn-build": build } : {} });
 const JOBS = Array.from({ length: 25 }, (_, i) => ({ source: i % 2 ? "greenhouse" : "lever" }));
 const list = (o: Record<string, unknown>): Route => ({ match: `^POST ${FN("job-board")} .*"sendableOnly":true`, body: JSON.stringify(o) });
-const upkeep = (status: number, error: string): Route => ({ match: `^POST ${FN("job-board")} .*"upkeep"`, status, body: JSON.stringify({ error }) });
 const status = (o: Record<string, unknown>, headers: Record<string, string> = {}): Route => ({ match: `^POST ${FN("job-board")} .*"status"`, headers, body: JSON.stringify({ catalogSize: 800_000, ...o }) });
 const hourly = (a: number, b: number): Route => ({
   match: "^POST https://p\\.supabase\\.co/rest/v1/rpc/get_board_anon_hourly",
@@ -106,14 +107,12 @@ const LONG_SERVED = () => new Date(Date.now() - 60 * 60_000).toISOString();
 const GOOD_STATUS = () => ({
   chainWatchdog: { decision: "within_window", kicked: false, readOnly: true, pulseAgeMs: 40_000, thresholdMs: 202_000 },
   ingestPaused: false,
-  boardUpkeep: null,
   sliceStats: { build: "2026-09-09.101", buildSince: LONG_SERVED() },
 });
 const builds = (): Route[] => [preflight("job-board", "job-board.2026-09-09.101"), preflight("agent-mcp", "agent-mcp.2026-11-03.1"), preflight("public-api", "public-api.2026-11-03.1")];
 const good = (): Route[] => [
   ...builds(),
   list({ jobs: JOBS, ignoredFilters: ["sendableOnly"] }),
-  upkeep(403, "upkeep is the scheduler's action"),
   status(GOOD_STATUS()),
   hourly(10, 11),
   cron([JOB]),
@@ -125,7 +124,7 @@ describe("the held board section", () => {
   it("a good deploy passes every claim and fails none, and a live chain is INFO, not a PASS the kick earned", () => {
     const { lines, out } = run(good());
     expect(fails(lines), out).toEqual([]);
-    expect(lines.filter((l) => l.startsWith("PASS")).length, out).toBe(8);
+    expect(lines.filter((l) => l.startsWith("PASS")).length, out).toBe(7);
     expect(lines, out).toContain("INFO  the chain is alive: its freshest pulse is 40 s old, inside the watchdog's threshold of 202 s, so the dead-chain kick had nothing to do (decision within_window); C1 is the line that proves the deploy");
   });
 
@@ -138,7 +137,6 @@ describe("the held board section", () => {
     const { lines, out } = run([
       preflight("job-board", "job-board.2026-09-09.100"), preflight("agent-mcp", "agent-mcp.2026-11-02.1"), preflight("public-api", "public-api.2026-11-02.1"),
       list({ jobs: JOBS.map(() => ({ source: "breezy" })) }),
-      upkeep(400, "Unknown action"),
       status({ chainWatchdog: { decision: "within_window", kicked: false }, sliceStats: { build: "2026-09-09.100", buildSince: LONG_SERVED() } }),
       hourly(10, 10),
       cron([{ ch_jobname: "job-board-refresh", ch_active: true }]),
@@ -146,16 +144,15 @@ describe("the held board section", () => {
     const F = fails(lines);
     for (const claim of [
       /job-board x-fn-build = job-board\.2026-09-09\.100, older/, /agent-mcp x-fn-build .* older/, /public-api x-fn-build .* older/,
-      /retired flag has it named/, /0 of 25 rows/, /upkeep answered 400/, /readOnly/, /probe count grew by 0/, /no cron job is named job-board-dead-chain-kick/,
+      /retired flag has it named/, /0 of 25 rows/, /readOnly/, /probe count grew by 0/, /no cron job is named job-board-dead-chain-kick/,
     ]) expect(F.some((l) => claim.test(l)), `${claim}\n${out}`).toBe(true);
-    expect(F, out).toHaveLength(9);
+    expect(F, out).toHaveLength(8);
   });
 
   it("the build live before this round, with its chain alive, gets no bare PASS for the chain's pulse", () => {
     const before = (pulseAgeMs: number) => run([
       preflight("job-board", "job-board.2026-09-09.100"), preflight("agent-mcp", "agent-mcp.2026-11-02.1"), preflight("public-api", "public-api.2026-11-02.1"),
       list({ jobs: JOBS.map(() => ({ source: "breezy" })) }),
-      upkeep(400, "Unknown action"),
       status({ chainWatchdog: { decision: "within_window", kicked: false, pulseAgeMs, thresholdMs: 202_000 }, ingestPaused: false, sliceStats: { build: "2026-09-09.100", buildSince: LONG_SERVED() } }),
       hourly(10, 10),
       cron([{ ch_jobname: "job-board-refresh", ch_active: true }]),
@@ -163,7 +160,7 @@ describe("the held board section", () => {
     const alive = before(40_000);
     expect(alive.lines.filter((l) => /chain/.test(l) && l.startsWith("PASS")), alive.out).toEqual([]);
     expect(alive.lines.some((l) => /^INFO {2}the chain is alive: its freshest pulse is 40 s old/.test(l)), alive.out).toBe(true);
-    expect(fails(alive.lines), alive.out).toHaveLength(9);
+    expect(fails(alive.lines), alive.out).toHaveLength(8);
     // A read that lands past the threshold and inside the bound passes before this deploy too, so it says so.
     const late = before(300_000);
     expect(late.lines.filter((l) => /freshest pulse/.test(l)), late.out).toEqual([
@@ -184,9 +181,27 @@ describe("the held board section", () => {
     expect(few.lines.some((l) => /^INFO .*only 3 rows/.test(l))).toBe(true);
   });
 
-  it("an upkeep the publishable key can run fails", () => {
-    const { lines } = run(goodWith({ match: `^POST ${FN("job-board")} .*"upkeep"`, body: JSON.stringify({ at: "x", kicked: true }) }));
-    expect(fails(lines)).toEqual([expect.stringMatching(/a 200 means anyone can run it/)]);
+  it("U1, rewritten for .102: no upkeep request is sent; on .102 an upkeep route in the served build's source, or a boardUpkeep key in status, fails", () => {
+    const at102 = (index: { build: string; route: boolean }, st: Record<string, unknown> = {}) =>
+      run(goodWith(preflight("job-board", "job-board.2026-09-09.102"), status({ ...GOOD_STATUS(), ...st })), index);
+    const clean = at102({ build: "2026-09-09.102", route: false }, { boardUpkeep: undefined });
+    expect(fails(clean.lines), clean.out).toEqual([]);
+    expect(clean.lines, clean.out).toContain("PASS  the served build's index.ts (2026-09-09.102) has no upkeep route");
+    expect(clean.lines, clean.out).toContain("PASS  status on job-board.2026-09-09.102 has no boardUpkeep key");
+    const route = at102({ build: "2026-09-09.102", route: true }, { boardUpkeep: undefined });
+    expect(fails(route.lines), route.out).toEqual(["FAIL  the served build's index.ts (2026-09-09.102) has an upkeep route"]);
+    const key = at102({ build: "2026-09-09.102", route: false }, { boardUpkeep: null });
+    expect(fails(key.lines), key.out).toEqual(["FAIL  status on job-board.2026-09-09.102 has a boardUpkeep key (null)"]);
+    const other = at102({ build: "2026-09-09.103", route: true }, { boardUpkeep: undefined });
+    expect(fails(other.lines), other.out).toEqual([]);
+    expect(other.lines.some((l) => /^INFO {2}production serves job-board\.2026-09-09\.102 and this checkout is 2026-09-09\.103/.test(l)), other.out).toBe(true);
+    // Before .102 both are INFO, whatever status carries.
+    for (const boardUpkeep of [null, { ageMin: 900 }]) {
+      const before = run(goodWith(status({ ...GOOD_STATUS(), boardUpkeep })));
+      expect(fails(before.lines), before.out).toEqual([]);
+      expect(before.lines.some((l) => /^INFO {2}job-board serves job-board\.2026-09-09\.101, before 2026-09-09\.102: the upkeep route and status\.boardUpkeep \(present\) are judged once \.102 serves$/.test(l)), before.out).toBe(true);
+    }
+    for (const r of [clean, route, key, other]) expect(r.calls.some((c) => /"upkeep"/.test(c)), "no upkeep request").toBe(false);
   });
 
   it("a status that kicked for an anonymous caller fails", () => {
@@ -231,7 +246,7 @@ describe("the held board section", () => {
     expect(passed.some((l) => /^PASS {2}job-board-dead-chain-kick is scheduled \* \* \* \* \*, active true, 60 run\(s\) in the last hour, the last succeeded$/.test(l)), passed.join("\n")).toBe(true);
   });
 
-  it("a chain silent past the kick's bound fails, one inside it passes as a regression guard, a live one, a paused ingest and a fresh unpause are INFO, and boardUpkeep is only INFO", () => {
+  it("a chain silent past the kick's bound fails, one inside it passes as a regression guard, a live one, a paused ingest and a fresh unpause are INFO", () => {
     const at = (pulseAgeMs: number, over: Record<string, unknown> = {}) => run(goodWith(status({ ...GOOD_STATUS(), chainWatchdog: { decision: "chain_alive", kicked: false, readOnly: true, pulseAgeMs, thresholdMs: 202_000 }, ...over })));
     // The bound is the watchdog's threshold plus 120 s: 322 s here.
     const past = at(360_000);
@@ -257,17 +272,6 @@ describe("the held board section", () => {
     const noPulse = run(goodWith(status({ ...GOOD_STATUS(), chainWatchdog: { decision: "no_pulse", kicked: false, readOnly: true, pulseAgeMs: null, thresholdMs: 202_000 } })));
     expect(fails(noPulse.lines), noPulse.out).toEqual([]);
     expect(noPulse.lines.some((l) => /^INFO {2}status reports no chainWatchdog pulseAgeMs and thresholdMs/.test(l)), noPulse.out).toBe(true);
-    // Upkeep has no scheduled caller by decision: never run, run long ago, or not published, it is INFO.
-    for (const boardUpkeep of [null, { ageMin: 900, watchdog: "within_window", kicked: false }]) {
-      const r = run(goodWith(status({ ...GOOD_STATUS(), boardUpkeep })));
-      expect(fails(r.lines), r.out).toEqual([]);
-      expect(r.lines.some((l) => /^INFO {2}upkeep has no scheduled caller by decision \(20261103221000 neverApply\); boardUpkeep (null|last ran 900 min ago)$/.test(l)), r.out).toBe(true);
-    }
-    const unpublished: Record<string, unknown> = { ...GOOD_STATUS() };
-    delete unpublished.boardUpkeep;
-    const r = run(goodWith(status(unpublished)));
-    expect(fails(r.lines), r.out).toEqual([]);
-    expect(r.lines.some((l) => /boardUpkeep not in the status read$/.test(l)), r.out).toBe(true);
   });
 
   it("only reads: the POSTs are job-board with the probe header and two anon aggregates, and the key is never printed", () => {

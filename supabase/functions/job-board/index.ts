@@ -98,7 +98,6 @@ import { beforeDeadline, SLIM_SPECS, streamSlim } from "./slim-stream.ts";
 import { withWorkdayLanguage } from "./request-headers.ts";
 import { ANON_OFFSET_CEILING, anonBudgetGate, anonBudgetStatus, budgetEcho, callerAddress, exemptKind, METERED_ACTIONS, offsetCeiling, pageCeiling } from "./anon-budget.ts";
 import { boardPassAction } from "./board-pass.ts";
-import { isScheduledCaller } from "../_shared/email-cron.ts";
 import {
   addressAllowance, admitDemand, CLICK_PER_ADDRESS_HOUR, DEMAND_QUEUE_KEY, demandLaneStatus, FIT_PER_ADDRESS_HOUR, incidentRows, readDemand,
   REPORT_PER_ADDRESS_HOUR, stampDemandServed, summariseIncidents, takeDemand, VERIFY_PER_ADDRESS_HOUR, writeIncidents,
@@ -5341,34 +5340,6 @@ async function maybeRekickDeadChain(client: SupabaseClient, opts: { inHop?: bool
   }
 }
 
-/**
- * THE SCHEDULER'S WATCH (S13-114). status used to run the watchdog and write
- * the coverage copy for whoever asked, so an anonymous read could stamp a row
- * and kick a refresh. Both now run here, on pg_cron's clock (migration
- * 20261103221000): the kick decided and throttled exactly as before, and the
- * last good coverage stored at most once per COVERAGE_COPY_EVERY_MS.
- */
-const BOARD_UPKEEP_KEY = "board_upkeep";
-const COVERAGE_COPY_EVERY_MS = 15 * 60_000;
-async function boardUpkeep(client: SupabaseClient): Promise<Record<string, unknown>> {
-  const watchdog = await maybeRekickDeadChain(client);
-  const [coverage, stored] = await Promise.all([
-    withDeadline(client.rpc("get_date_coverage"), 2_500),
-    client.from("job_board_meta").select("updated_at").eq("k", "date_coverage_cache").maybeSingle(),
-  ]);
-  const storedAgeMs = Date.now() - Date.parse(String((stored.data as { updated_at?: string } | null)?.updated_at ?? ""));
-  const rows = (coverage as { data?: unknown }).data;
-  const now = new Date().toISOString();
-  let coverageStored = false;
-  if (Array.isArray(rows) && rows.length && !(storedAgeMs < COVERAGE_COPY_EVERY_MS)) {
-    const { error } = await client.from("job_board_meta").upsert({ k: "date_coverage_cache", v: rows, updated_at: now }, { onConflict: "k" });
-    coverageStored = !error;
-  }
-  const v = { at: now, watchdog: watchdog?.decision ?? null, kicked: watchdog?.kicked === true, coverageStored };
-  await client.from("job_board_meta").upsert({ k: BOARD_UPKEEP_KEY, v, updated_at: now }, { onConflict: "k" });
-  return v;
-}
-
 async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
   try {
     // Rationale: docs/job-board-index-notes.md#n663-await-mayberekickdeadchain-client-inhop
@@ -6572,14 +6543,6 @@ async function handleRequest(req: Request): Promise<Response> {
       return json({ swept: slice.length, cursor: wrapped ? 0 : cursor, of: list.length, wrapped, persisted: !persistErr });
     }
 
-    // S13-114: the watchdog and the coverage copy, on the scheduler's clock. No other caller reaches them through here.
-    if (action === "upkeep") {
-      if (!(await isScheduledCaller(req.headers, client, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""))) {
-        return json({ error: "upkeep is the scheduler's action" }, 403);
-      }
-      return json(await boardUpkeep(client));
-    }
-
     if (action === "status") {
       // Rationale: docs/job-board-index-notes.md#n202-try
       try {
@@ -6593,10 +6556,7 @@ async function handleRequest(req: Request): Promise<Response> {
       const passEndRead = Promise.resolve(
         client.from("job_board_meta").select("v").eq("k", "pass_end").maybeSingle(),
       ).catch(() => null);
-      const upkeepRead = Promise.resolve(
-        client.from("job_board_meta").select("v, updated_at").eq("k", BOARD_UPKEEP_KEY).maybeSingle(),
-      ).catch(() => null);
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop, oracleRepair, staleMeta, freshRow] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop, oracleRepair, staleMeta, freshRow] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -6613,9 +6573,6 @@ async function handleRequest(req: Request): Promise<Response> {
         client.from("job_board_meta").select("v, updated_at").eq("k", "board_flow_cache").maybeSingle(),
         // Rationale: docs/job-board-index-notes.md#n709-client-from-job_board_meta-select-v-upda
         client.from("job_board_meta").select("v, updated_at").eq("k", "ingest_paused").maybeSingle(),
-        // Last good coverage, so a timeout serves stale numbers with their age
-        // attached instead of nothing at all.
-        client.from("job_board_meta").select("v, updated_at").eq("k", "date_coverage_cache").maybeSingle(),
         client.from("job_board_meta").select("v").eq("k", "bootstrap").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "desc_sweep").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "structured_sweep").maybeSingle(),
@@ -6660,7 +6617,6 @@ async function handleRequest(req: Request): Promise<Response> {
       const anonBudgetRow = await anonBudgetRead;
       const demandRow = await demandRead;
       const passEndRow = await passEndRead;
-      const upkeepRow = (await upkeepRead)?.data ?? null;
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
       const rfV = { total: (refreshMeta.data as { total?: unknown } | null)?.total as number | undefined };
@@ -6757,7 +6713,7 @@ async function handleRequest(req: Request): Promise<Response> {
         sendable: (() => {
           const cov = Array.isArray((dateCov as { data?: unknown }).data)
             ? (dateCov as { data: Array<{ source: string; total: number }> }).data
-            : ((dcCache.data?.v as Array<{ source: string; total: number }> | undefined) ?? null);
+            : null;
           if (!cov) return null;
           const set = new Set(SENDABLE_VENDORS);
           let send = 0, all = 0;
@@ -7008,7 +6964,6 @@ async function handleRequest(req: Request): Promise<Response> {
         })(),
         // Rationale: docs/job-board-index-notes.md#n739-chainwatchdog
         chainWatchdog,
-        boardUpkeep: upkeepRow ? { ...(upkeepRow.v as Record<string, unknown>), ageMin: ageMin(upkeepRow.updated_at) } : null,
         quarantinedVendors: (((breaker.data?.v ?? {}) as { quarantined?: string[] }).quarantined ?? []),
         // Rationale: docs/job-board-index-notes.md#n221-boardflow
         boardFlow: (() => {
@@ -7025,12 +6980,11 @@ async function handleRequest(req: Request): Promise<Response> {
         ingestPausedAgeMin: ageMin(
           (ingestPaused as { data?: { updated_at?: string } } | null)?.data?.updated_at ?? null,
         ),
-        dateCoverageSource: Array.isArray((dateCov as { data?: unknown }).data)
-          ? "rollup"
-          : (dcCache.data?.v ? "cache" : "unavailable"),
+        // UPK-DROP: the rollup's own computed_at, or nothing; no copy is kept.
+        dateCoverageSource: Array.isArray((dateCov as { data?: unknown }).data) ? "rollup" : "unavailable",
         dateCoverageAgeMin: Array.isArray((dateCov as { data?: unknown }).data)
           ? ageMin((((dateCov as { data: Array<{ computed_at?: string }> }).data)[0]?.computed_at) ?? null)
-          : ageMin(dcCache.data?.updated_at ?? null),
+          : null,
         // The last thing a slice said before it stopped saying anything.
         sliceTrace: ((traceRow as { data?: { v?: unknown } } | null)?.data?.v ?? null) as Record<string, unknown> | null,
         // The pass-end tail's receipt (S11-001): a startedAt with no later doneAt
@@ -7054,8 +7008,7 @@ async function handleRequest(req: Request): Promise<Response> {
               total: Number(r.total),
               datedPct: Math.round(100 * Number(r.dated) / Math.max(Number(r.total), 1)),
             }))
-          // Rationale: docs/job-board-index-notes.md#n742-dccache-data-v-as-unknown-undefined
-          : ((dcCache.data?.v as unknown[] | undefined) ?? null),
+          : null,
         at: new Date().toISOString(),
       });
       statusMemo = { at: Date.now(), text: statusText };
