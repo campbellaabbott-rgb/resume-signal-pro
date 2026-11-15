@@ -252,16 +252,42 @@ export function jdParagraphs(description: string): string[] {
  * answers only when one language leads the next by at least two to one with
  * enough hits to mean it; a mixed or short text answers null and the page
  * keeps the site's language rather than a guess.
+ *
+ * A LEAD MUST BE SPREAD OVER SEVERAL WORDS (SEO check 2026-11-15, F28). A
+ * Czech JYSK posting (744000157667379) was served lang="pt": Czech was on no
+ * list, its prepositions are spelled like two of Portuguese's words, and one
+ * of them 13 times was a lead of 15 to nothing. Norwegian, Swedish and Danish
+ * postings read as French the same way, Polish and Slovak ones as
+ * Portuguese. So a lead now counts only when at least LANG_MIN_DISTINCT
+ * different words of the leader's list were seen, and Czech, Slovak, Polish,
+ * Danish, Norwegian and Swedish have lists of their own, of words the other
+ * lists do not share (a word two close languages share would split their
+ * count and leave both unread). French's list lost "et" and "du", which are
+ * also everyday Danish and Norwegian words ("a" and "you"); every French case
+ * in the corpus is still read as French without them.
+ * Measured on 461 labelled real postings in 21 languages
+ * (src/test/fixtures/posting-language-corpus-2026-11-15.json): the old rule
+ * named a wrong language on 24 of them, this rule on none, and it is never
+ * worse on any case. A language with no list (Finnish, Hungarian, Romanian,
+ * Croatian, Slovenian...) answers null.
  */
 const LANG_MARKERS: Record<string, string[]> = {
   en: ["the", "and", "with", "you", "our", "will", "your", "this", "that", "are", "for", "have", "from", "we"],
   es: ["el", "los", "las", "para", "con", "por", "una", "del", "nuestro", "nuestra", "experiencia", "que", "y", "trabajo"],
-  fr: ["les", "des", "et", "pour", "avec", "une", "vous", "nous", "du", "est", "dans", "sur", "au", "votre"],
+  fr: ["les", "des", "pour", "avec", "une", "vous", "nous", "est", "dans", "sur", "au", "votre"],
   de: ["der", "die", "das", "und", "mit", "für", "ist", "wir", "sie", "ein", "eine", "von", "zu", "den", "bei", "oder"],
   pt: ["os", "com", "uma", "do", "da", "dos", "das", "você", "na", "no", "em", "não", "seu", "sua"],
   nl: ["het", "een", "en", "van", "voor", "met", "je", "wij", "zijn", "op", "te", "ons", "als", "bij"],
   it: ["il", "di", "per", "con", "una", "che", "della", "nel", "sono", "gli", "nostro", "nostra"],
+  cs: ["jsou", "které", "který", "která", "kteří", "nebo", "jsme", "také", "při", "jako", "pro", "této", "jste", "práce", "zkušenosti", "nabízíme", "hledáme", "společnosti", "můžete", "ve"],
+  sk: ["sú", "ktoré", "ktorý", "ktorá", "ktorí", "alebo", "sme", "tiež", "pri", "ako", "pre", "tejto", "ste", "práca", "skúsenosti", "ponúkame", "hľadáme", "spoločnosti", "môžete", "vo", "sa", "aj"],
+  pl: ["jest", "się", "nie", "oraz", "dla", "są", "który", "która", "które", "lub", "przez", "będzie", "pracy", "doświadczenie", "oferujemy", "wymagania", "naszego", "naszej", "jesteś"],
+  da: ["af", "vores", "efter", "søger", "blive", "jeres", "meget", "gerne", "arbejde", "virksomhed", "medarbejdere", "mulighed", "ansøgning", "nogle", "hvad"],
+  no: ["våre", "etter", "søker", "dere", "mye", "gjerne", "arbeid", "bedrift", "medarbeidere", "mulighet", "søknad", "noen", "hva", "meg", "deg", "seg", "jobbe"],
+  sv: ["och", "att", "är", "för", "inte", "också", "erfarenhet", "söker", "vill", "ska", "från", "när", "inom", "våra", "arbeta", "arbetar", "tjänst", "möjlighet", "ansökan", "vad", "några", "mycket", "hur"],
 };
+/** The fewest different words of the leading language's list a lead must be made of. */
+const LANG_MIN_DISTINCT = 5;
 export function postingLanguage(description: string | null | undefined): string | null {
   const text = jdText(String(description ?? ""));
   // CHINESE, JAPANESE AND KOREAN ARE READ BY SCRIPT, not by function words: an
@@ -280,10 +306,16 @@ export function postingLanguage(description: string | null | undefined): string 
   const words = text.toLowerCase().match(/[\p{L}]+/gu)?.slice(0, 3000) ?? [];
   if (words.length < 40) return null;
   const sets = Object.entries(LANG_MARKERS).map(([lang, ws]) => [lang, new Set(ws)] as const);
-  const score = sets.map(([lang, set]) => [lang, words.filter((w) => set.has(w)).length] as const).sort((a, b) => b[1] - a[1]);
+  const score = sets
+    .map(([lang, set]) => {
+      const hits = words.filter((w) => set.has(w));
+      return [lang, hits.length, new Set(hits).size] as const;
+    })
+    .sort((a, b) => b[1] - a[1]);
   const [top, second] = score;
   if (!top || top[1] < 12) return null;
   if (second && top[1] < second[1] * 2) return null;
+  if (top[2] < LANG_MIN_DISTINCT) return null;
   return top[0];
 }
 
