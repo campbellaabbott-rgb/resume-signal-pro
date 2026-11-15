@@ -438,3 +438,36 @@ describe("a merge prints what its batch would cost before it writes", () => {
     expect(Number(mine?.replace(/_/g, ""))).toBe(Number(live!.replace(/_/g, "")));
   });
 });
+
+// ── the repeated-title flag (2026-11-08): printed for review, excludes nothing ─
+
+describe("the repeated-title flag is printed for a person and excludes nothing", () => {
+  const flagOf = (sample: unknown) => {
+    const code = `const { repeatedTitleFlag } = await import(${JSON.stringify(pathToFileURL(READER).href)}); console.log(JSON.stringify(repeatedTitleFlag(${JSON.stringify(sample)})));`;
+    const r = spawnSync(process.execPath, ["--input-type=module", "-e", code], { cwd: tmpdir(), encoding: "utf8" });
+    return JSON.parse(r.stdout) as string | null;
+  };
+  const titles = ["Nurse", "Welder", "Driver", "Chef", "Cleaner", "Porter"];
+
+  it("flags six distinct titles across sixty postings (the EUTALENTS shape)", () => {
+    expect(flagOf(Array.from({ length: 60 }, (_, i) => ({ t: titles[i % 6] })))).toBe("6 distinct titles in 60 sampled");
+  });
+  it("flags one title posted in five cities, and one posted in two stated languages", () => {
+    expect(flagOf(["Leeds", "York", "Hull", "Bath", "Kent"].map((c) => ({ t: "Care Assistant", c })))).toBe('"care assistant" in 5 cities');
+    expect(flagOf([{ t: "Nurse", l: "en" }, { t: "Nurse", l: "de" }, { t: "Chef", l: "en" }])).toBe('"nurse" in 2 languages');
+  });
+  it("leaves an ordinary board alone, and an empty sample unjudged", () => {
+    expect(flagOf(Array.from({ length: 20 }, (_, i) => ({ t: `Role ${i}`, c: ["Paris", "Lyon", "Nice"][i % 3] })))).toBeNull();
+    expect(flagOf(Array.from({ length: 4 }, () => ({ t: "Nurse", c: "Leeds" })))).toBeNull();
+    expect(flagOf([])).toBeNull();
+  });
+
+  it("merge-all prints the flag and still merges the board", () => {
+    const sample = Array.from({ length: 60 }, (_, i) => ({ t: titles[i % 6], c: "Madrid" }));
+    const r = scratchRun("merge-all.mjs", SCRATCH_CATALOGUE, { lever: [{ token: "eutalents", name: "Eutalents", count: 60, inWindow30: 60, dateBasis: "createdAt", sample }] }, ["--apply"]);
+    expect(r.status, r.log).toBe(0);
+    expect(r.log).toContain('Repeated-title flag (printed for review, excludes nothing): 1 kept boards');
+    expect(r.log).toContain('lever:eutalents "Eutalents" (60p): 6 distinct titles in 60 sampled');
+    expect(r.after).toContain('token: "eutalents"');
+  });
+});

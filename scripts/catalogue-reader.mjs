@@ -331,7 +331,7 @@ export function runGeneratedChecks(written, { log = console.log, exec = execFile
  * ONE ADVERT POSTED IN MANY PLACES IS NOT MANY OPENINGS (EUTALENTS: 6 distinct
  * titles in its first 60 served rows). From a hit's sample of up to 100
  * { t, c, l }: a title repeated across 5 or more cities, or 2 or more stated
- * languages, or distinct titles under a tenth of the sample. It FLAGS for a
+ * languages, or distinct titles at most a tenth of the sample. It FLAGS for a
  * person and excludes nothing: a rule that excluded would first need a
  * labelled corpus of at least 300 boards.
  */
@@ -351,7 +351,7 @@ export function repeatedTitleFlag(sample) {
     if (v.cities.size >= 5) why.push(`"${t}" in ${v.cities.size} cities`);
     if (v.langs.size >= 2) why.push(`"${t}" in ${v.langs.size} languages`);
   }
-  if (rows.length >= 10 && byTitle.size / rows.length < 0.1) why.push(`${byTitle.size} distinct titles in ${rows.length} sampled`);
+  if (rows.length >= 10 && byTitle.size / rows.length <= 0.1) why.push(`${byTitle.size} distinct titles in ${rows.length} sampled`);
   return why.length ? why.slice(0, 3).join("; ") : null;
 }
 

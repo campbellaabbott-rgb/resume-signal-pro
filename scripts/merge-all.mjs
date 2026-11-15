@@ -22,7 +22,8 @@ import { LABEL_NAMED_VENDORS, agencyScreenText, censusNameReason } from "./censu
 import {
   CWD_SOURCES, LAP_GROWTH_LIMIT, MIN_IN_WINDOW, OVERLAP_HOLD_SHARE, ROOM_FACTOR, boardKey, collisionIdentity,
   inWindowOf, keySet, nameIndex, nameKey as nameKeyOf, overlapShare, projectBatch, projectionLines,
-  readBoardStatus, readCarrierRows, readCatalogue, readServedCounts, runGeneratedChecks, sizeVerdict, windowGate,
+  readBoardStatus, readCarrierRows, readCatalogue, readServedCounts, repeatedTitleFlag, runGeneratedChecks,
+  sizeVerdict, windowGate,
 } from "./catalogue-reader.mjs";
 
 const args = process.argv.slice(2);
@@ -378,6 +379,19 @@ console.log(`Window gate: >=${MIN_IN_WINDOW} postings dated within 30 days; ${un
 if (srHeld.length) console.log(`Held, smartrecruiters (OD2, SR_MERGE_HELD ${SR_MERGE_HELD}): ${srHeld.length} not merged: ${srHeld.slice(0, 10).join("; ")}${srHeld.length > 10 ? " ..." : ""}`);
 console.log(`Mill-screen worklist (>=100 postings): ${millWorklist.length} boards`);
 fs.writeFileSync("round3-mill-worklist.json", JSON.stringify(millWorklist, null, 1));
+
+// THE REPEATED-TITLE FLAG (2026-11-08) is for a person to read and excludes
+// nothing: one advert posted across many cities or languages is not many
+// openings (EUTALENTS: 6 distinct titles in its first 60 served rows), but a
+// rule that excluded would first need a labelled corpus of 300 boards or more.
+// It reads each hit's sample (verify-all's up to 100 { title, city, language }).
+const repeated = [];
+for (const vendor of VENDORS) for (const b of keep[vendor]) {
+  const why = repeatedTitleFlag(b.sample);
+  if (why) repeated.push(`${vendor}:${b.token} "${b.name}" (${b.count}p): ${why}`);
+}
+console.log(`Repeated-title flag (printed for review, excludes nothing): ${repeated.length} kept boards`);
+for (const r of repeated) console.log(`  ${r}`);
 
 // The lines a merge appends, and the banner above them. Built for the dry
 // run's projection too, so bytes per posting is measured, not guessed.
