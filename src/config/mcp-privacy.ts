@@ -85,12 +85,32 @@ export function writtenDay(iso: string): string {
  */
 export const EARLIER_SEARCHES_GONE_BY = "2026-12-01";
 
+/**
+ * NB-39. The day connector searches began to name the connection that made
+ * them: job-board's caller column arrived with the 2026-09-06 deploy, with no
+ * backfill, so a search logged before this day has no caller. The 30-day
+ * prune deletes only rows that name a connection, so those searches cannot be
+ * told apart from the site's own and are kept like them, for 180 days. The
+ * owner chose to say so (option 1) rather than delete every unnamed row of
+ * that week, which would take the site's own searches with them.
+ */
+export const CONNECTOR_CALLER_RECORDED_FROM = "2026-09-07";
+
+/**
+ * The day the last unnamed connector search is gone under the site's 180
+ * days: the demand log's prune deletes a row made on day D on the run of day
+ * D+181, so the last of them, made on 2026-09-06, goes on 2027-03-06; the page
+ * names the day after, one run of margin.
+ */
+export const UNNAMED_SEARCHES_GONE_BY = "2027-03-07";
+
 const SINCE = writtenDay(CONNECTOR_SEARCH_LOG_CHANGED);
 const GONE_BY = writtenDay(EARLIER_SEARCHES_GONE_BY);
+const UNNAMED = `Searches made through any connection before ${writtenDay(CONNECTOR_CALLER_RECORDED_FROM)} were logged without naming it, so they cannot be told apart from the site's own and are kept like them, for up to 180 days, the last by ${writtenDay(UNNAMED_SEARCHES_GONE_BY)}.`;
 /** The search row's "kept" cell, in the wording for a prune that has run (true) or not yet (false). */
 export function searchKept(pruneHasRun: boolean): string {
   return pruneHasRun
-    ? `From Claude and other connections: the search words and filters, kept for 30 days; searches made from ${SINCE} on keep no record of which postings were shown, and earlier ones still do until they are deleted at 30 days old, the last by ${GONE_BY}. From ChatGPT: searches made from ${SINCE} on are not kept; earlier ones are deleted at 30 days old, the last by ${GONE_BY}.`
+    ? `From Claude and other connections: the search words and filters, kept for 30 days; searches made from ${SINCE} on keep no record of which postings were shown, and earlier ones still do until they are deleted at 30 days old, the last by ${GONE_BY}. From ChatGPT: searches made from ${SINCE} on are not kept; earlier ones are deleted at 30 days old, the last by ${GONE_BY}. ${UNNAMED}`
     : `From Claude and other connections: the search words and filters, kept for up to 180 days, like the site's own search log; searches made from ${SINCE} on keep no record of which postings were shown, and earlier ones still do. From ChatGPT: searches made from ${SINCE} on are not kept; earlier ones are kept like the site's own search log.`;
 }
 const SEARCH_KEPT = searchKept(MCP_SEARCH_PRUNE_LIVE);
