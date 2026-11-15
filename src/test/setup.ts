@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { afterAll, afterEach } from "vitest";
+import { afterAll, afterEach, vi } from "vitest";
 
 // The Claude Code harness passes --localstorage-file without a valid path,
 // which causes jsdom to replace window.localStorage with a broken stub that
@@ -54,6 +54,15 @@ const cleanupStrayTestPdfs = strayPdfSweeper(".");
 
 afterEach(cleanupStrayTestPdfs);
 afterAll(cleanupStrayTestPdfs);
+
+// A Radix focus scope dispatches its unmount event from a setTimeout(0). After
+// a file's last test, testing-library's cleanup unmounts the dialog and the file
+// can end, and jsdom close, before that timer runs: on a loaded machine it then
+// fires on a closed window and Vitest fails the run on an uncaught "parameter 1
+// is not of type 'Event'" with every test green (pre-push 2026-11-15). One
+// macrotask after the last cleanup lets it run while the window is open. Under
+// fake timers that tick would never come, and neither would Radix's.
+afterAll(() => (vi.isFakeTimers() ? undefined : new Promise<void>((resolve) => setTimeout(resolve, 0))));
 
 // ---------------------------------------------------------------------------
 // Keep marketing components off the network.
