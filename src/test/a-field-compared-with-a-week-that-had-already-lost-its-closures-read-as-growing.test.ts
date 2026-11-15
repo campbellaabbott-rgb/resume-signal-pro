@@ -16,6 +16,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { definitionAt, migFile } from "./helpers/fixed-clock-sql";
 
 vi.setConfig({ hookTimeout: 120_000, testTimeout: 60_000 });
@@ -62,7 +63,7 @@ beforeAll(async () => {
   db = new PGlite();
   await db.exec(`
     SET TIME ZONE 'UTC';
-    CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+    ${SUPABASE_DEFAULTS}
     CREATE TABLE public.showcase_excluded (company_token text PRIMARY KEY);
     CREATE TABLE public.job_board_postings (
       id text PRIMARY KEY, company_token text NOT NULL, category text NOT NULL DEFAULT 'other',

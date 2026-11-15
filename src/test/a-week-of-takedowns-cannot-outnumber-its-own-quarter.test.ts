@@ -42,6 +42,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import {
   CLOSURE_RECORD_WINDOW_DAYS,
   CLOSURE_WEEK_PLAUSIBILITY,
@@ -134,7 +135,7 @@ const mutant = (sql: string, from: string | RegExp, to: string): { sql: string; 
 const APPLIED = "the mutation did not apply -- the teeth would be testing the fixed body";
 
 const SCHEMA = `
-  CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+  ${SUPABASE_DEFAULTS}
   CREATE TABLE public.showcase_excluded (company_token text PRIMARY KEY);
   CREATE TABLE public.job_board_postings (
     id text PRIMARY KEY, company_token text NOT NULL, posted_at timestamptz,

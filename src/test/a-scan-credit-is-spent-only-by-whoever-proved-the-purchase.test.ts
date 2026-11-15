@@ -30,6 +30,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { anonCan, authenticatedCan, migrationReplay } from "./helpers/function-acl";
@@ -106,7 +107,7 @@ const balanceOf = async (email: string) =>
 beforeAll(async () => {
   pg = new PGlite();
   // service_role bypasses row level security on Supabase; so it does here.
-  await pg.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;");
+  await pg.exec(SUPABASE_DEFAULTS);
   // As production holds them before this file: the 2025-12-18 table and the
   // three functions, every one open to anon and authenticated directly.
   await pg.exec(`

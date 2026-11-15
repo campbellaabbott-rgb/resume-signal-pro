@@ -14,6 +14,7 @@
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { CATALOG } from "./helpers/catalog";
@@ -65,7 +66,7 @@ const key = async (source: string, token: string) => (await db.query<{ k: string
 
 beforeAll(async () => {
   db = new PGlite();
-  await db.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;");
+  await db.exec(SUPABASE_DEFAULTS);
   await db.exec(mig("20261012100000_"));
   await db.exec("CREATE TABLE cat (i int PRIMARY KEY, source text NOT NULL, token text NOT NULL)");
   const sources = CATALOG.map((e) => e.source);

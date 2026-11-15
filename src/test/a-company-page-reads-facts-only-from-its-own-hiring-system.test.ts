@@ -18,6 +18,7 @@
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { CATALOG } from "./helpers/catalog";
@@ -31,7 +32,7 @@ const mig = (prefix: string) => readFileSync(resolve(MIGRATIONS, files.find((f) 
 const FIX = mig("20261012101000_");
 
 const STAND_INS = `
-  CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+  ${SUPABASE_DEFAULTS}
   CREATE TABLE public.job_board_postings (
     id text PRIMARY KEY, source text NOT NULL, company_token text NOT NULL, company text NOT NULL DEFAULT '',
     category text, country text, salary_currency text, salary_min_annual numeric, missing_since timestamptz,

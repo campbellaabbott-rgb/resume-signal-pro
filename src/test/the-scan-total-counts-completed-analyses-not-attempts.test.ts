@@ -12,6 +12,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { definitionOf, migFile } from "./helpers/fixed-clock-sql";
 
 vi.setConfig({ hookTimeout: 120_000, testTimeout: 60_000 });
@@ -27,7 +28,7 @@ let now: Totals;
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(`
-    CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+    ${SUPABASE_DEFAULTS}
     CREATE TABLE public.scan_metrics (
       id bigserial PRIMARY KEY, scan_type text, status text, response_score integer, ip_country text,
       metadata jsonb NOT NULL DEFAULT '{}'::jsonb, created_at timestamptz NOT NULL DEFAULT now());

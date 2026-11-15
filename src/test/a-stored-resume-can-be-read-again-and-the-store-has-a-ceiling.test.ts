@@ -25,6 +25,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { splitStatements } from "./helpers/function-acl";
@@ -77,7 +78,7 @@ const LEFTOVER_TWO_ARGUMENT_STORE = `
 
 beforeAll(async () => {
   pg = new PGlite();
-  await pg.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;");
+  await pg.exec(SUPABASE_DEFAULTS);
   await pg.exec(`
     CREATE TABLE public.temp_resume_storage (
       session_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -221,7 +222,7 @@ describe("production's leftover two-argument store", () => {
   it("TEETH: with the short calls the first apply made, the file stops on the ambiguity", async () => {
     const twin = new PGlite();
     try {
-      await twin.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;");
+      await twin.exec(SUPABASE_DEFAULTS);
       await twin.exec(`CREATE TABLE public.temp_resume_storage (session_id uuid PRIMARY KEY DEFAULT gen_random_uuid(), resume_text text NOT NULL,
         linkedin_text text, job_description_text text, created_at timestamptz NOT NULL DEFAULT now(),
         expires_at timestamptz NOT NULL DEFAULT (now() + interval '24 hours'));`);
@@ -238,7 +239,7 @@ describe("production's leftover two-argument store", () => {
   it("an overload a client could still call is refused by the closing check", async () => {
     const twin = new PGlite();
     try {
-      await twin.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;");
+      await twin.exec(SUPABASE_DEFAULTS);
       await twin.exec(`CREATE TABLE public.temp_resume_storage (session_id uuid PRIMARY KEY DEFAULT gen_random_uuid(), resume_text text NOT NULL,
         linkedin_text text, job_description_text text, created_at timestamptz NOT NULL DEFAULT now(),
         expires_at timestamptz NOT NULL DEFAULT (now() + interval '24 hours'));`);
@@ -255,7 +256,7 @@ describe("the file needs the census it builds on", () => {
   it("refuses to apply without request_client_address and client_write_allowed", async () => {
     const bare = new PGlite();
     try {
-      await bare.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;");
+      await bare.exec(SUPABASE_DEFAULTS);
       await bare.exec(`CREATE TABLE public.temp_resume_storage (session_id uuid PRIMARY KEY DEFAULT gen_random_uuid(), resume_text text NOT NULL,
         linkedin_text text, job_description_text text, created_at timestamptz NOT NULL DEFAULT now(),
         expires_at timestamptz NOT NULL DEFAULT (now() + interval '24 hours'));`);

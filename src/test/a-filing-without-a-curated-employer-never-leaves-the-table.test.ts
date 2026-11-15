@@ -45,6 +45,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -82,7 +83,7 @@ const mig = (prefix: string) => {
 
 /** The board tables lane A's functions read, as stand-ins with the columns the SQL touches. */
 const BOARD_STAND_INS = `
-  CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+  ${SUPABASE_DEFAULTS}
   CREATE TABLE public.job_board_postings (
     id text PRIMARY KEY, source text, company_token text, category text NOT NULL DEFAULT 'other',
     posted_at timestamptz, effective_posted timestamptz, first_seen timestamptz NOT NULL DEFAULT now(),
