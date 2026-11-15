@@ -303,9 +303,18 @@ describe("our reading changed: the first fill is unlogged for a dated window (n1
     for (const e of ENTRIES) expect(line, e).toContain(`"${e}"`);
     expect(line).toContain(`Remove after ${REMOVE_AFTER} (n1426)`);
   });
-  it(`the entries are removed by ${REMOVE_AFTER}`, () => {
+  // The date alone turned every branch red on the first day past it, whatever
+  // that branch shipped (the pay rewrite's case did exactly that from
+  // 2026-11-10). Keeping the entries past the window only spares a few false
+  // "employer edit" lines; dropping them early is the harmful direction. So
+  // the builds already cut with them may carry them; the first build after
+  // .102 may not. A list, not a compare: as strings ".99" sorts after ".102".
+  const BUILDS_THAT_MAY_CARRY = ["2026-09-09.101", "2026-09-09.102"];
+  it(`the entries are removed by ${REMOVE_AFTER}, in the first job-board build after .102`, () => {
     const today = new Date().toISOString().slice(0, 10);
     const present = ENTRIES.some((e) => codeOf(line).includes(`"${e}"`));
-    expect(today <= REMOVE_AFTER || !present, `remove the n1426 entries from OUR_READING_CHANGED in job-board/index.ts: the window closed ${REMOVE_AFTER}`).toBe(true);
+    const build = /const BUILD_VERSION = "([^"]+)"/.exec(RAW)?.[1];
+    expect(build, "job-board/index.ts names no BUILD_VERSION").toBeTruthy();
+    expect(today <= REMOVE_AFTER || !present || BUILDS_THAT_MAY_CARRY.includes(build!), `remove the n1426 entries from OUR_READING_CHANGED in job-board ${build}: the window closed ${REMOVE_AFTER}, and only ${BUILDS_THAT_MAY_CARRY.join(" and ")} may carry them`).toBe(true);
   });
 });
