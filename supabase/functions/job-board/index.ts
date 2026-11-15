@@ -127,8 +127,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-rb-pass",
   "Access-Control-Max-Age": "7200",
 };
+// BR-04: a page with nothing after it names no next offset (the key stays, null).
+const lastPage = (b: unknown) => (b && typeof b === "object" && (b as { hasMore?: unknown }).hasMore === false && "nextOffset" in b ? { ...b, nextOffset: null } : b);
 const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  new Response(JSON.stringify(lastPage(body)), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
 // Rationale: docs/job-board-index-notes.md#n001-sitemap-days
 // RETAINED WITH NO READER, ON PURPOSE. Its one consumer — the live sitemap

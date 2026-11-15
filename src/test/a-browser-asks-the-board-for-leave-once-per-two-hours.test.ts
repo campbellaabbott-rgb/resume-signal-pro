@@ -26,6 +26,6 @@ describe("a browser asks the board for leave once per two hours", () => {
   });
 
   it("every JSON answer carries the same headers, so a cached leave covers the call it precedes", () => {
-    expect(RAW).toMatch(/new Response\(JSON\.stringify\(body\), \{ status, headers: \{ \.\.\.corsHeaders, "Content-Type": "application\/json" \} \}\)/);
+    expect(RAW).toMatch(/new Response\(JSON\.stringify\(lastPage\(body\)\), \{ status, headers: \{ \.\.\.corsHeaders, "Content-Type": "application\/json" \} \}\)/);
   });
 });
