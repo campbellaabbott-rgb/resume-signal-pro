@@ -1547,6 +1547,30 @@
     "theBoardChecksEveryMinuteForAStoppedRefresh": {
       "title": "Sinusuri ng job board bawat minuto kung huminto ang refresh nito",
       "description": "Sinusuri na ngayon ng job board bawat minuto kung huminto ang refresh ng mga listing nito, at humihiling ito ng restart kapag ilang minuto na itong tahimik. Hindi pa namin ito nakitang mag-restart ng refresh na huminto."
+    },
+    "aJobPageSaysWhenItsEmployerClosedThePosting": {
+      "title": "Sinasabi ng pahina ng trabaho kapag isinara na ng employer ang posting",
+      "description": "Kapag sumagot na ang sariling hiring system ng employer na hindi na nito inihahain ang isang posting, sinasabi na ito ng pahina ng posting na iyon sa aming site, kasama ang araw na ginawa ang pahina, at wala na itong ibang sinasabi tungkol sa trabaho. Dati, sinasabi lang nito na hindi na nakalista ang posting sa aming board. Ang posting na umalis lang sa aming board ay ganoon pa rin ang sinasabi, na tungkol sa aming board at hindi tungkol sa employer."
+    },
+    "companyPagesUseTheNameTheEmployerUses": {
+      "title": "Ginagamit ng mga pahina ng kumpanya ang pangalang ginagamit ng employer",
+      "description": "Ang ilang pahina ng kumpanya ay tumatawag sa employer gamit ang maikling code na ginagamit ng hiring system nito, gaya ng “papajohns”. Ngayon ay ginagamit na nila ang sariling pangalan ng employer, gaya ng Papa John's, United Health Services, SS&C Technologies o HUB International, sa pamagat at heading ng pahina."
+    },
+    "theConnectPageSaysMoreAboutClaudeAndChatGpt": {
+      "title": "Mas marami nang sinasabi ang pahinang “Ikonekta ang iyong agent” tungkol sa Claude at ChatGPT",
+      "description": "Sinasabi na nito kung ilan sa mga bukas na posting ng board ang kayang hanapin ng iyong AI, alin ang nananatili lang sa website na ito, at kung kailan binilang ang mga ito. Para sa ChatGPT, sinisipi nito ang sinasabi ng pricing page tungkol sa Free plan, kasama ang araw na binasa namin ito, at itinuturo ang mga gumagamit ng Free sa libreng plan ng Claude, na puwedeng magdagdag ng isang custom connector. Para sa Claude, sinasabi nitong idagdag ang connector nang isang beses sa browser ng iyong telepono, hindi sa app, at pagkatapos ay nasa app na ito, at na ang connector na naidagdag na sa Claude ay nasa Claude Code kapag nag-sign in ka gamit ang parehong account."
+    },
+    "theGhostJobIndexNoLongerCallsATakedownFilled": {
+      "title": "Hindi na tinatawag ng Index ng mga ghost job na “napunan” ang tinanggal na posisyon",
+      "description": "Binibilang ng mga numero nito ang mga posisyong tinanggal ng employer at hindi muling ipinaskil sa parehong pamagat. Dati, tinatawag ng pahina na napunan ang mga posisyong iyon. Ngayon ay nasa ilalim na sila ng “Gaano kadalas tinatanggal ang mga posisyon at hindi muling ipinapaskil” at sinasabi ng pahina na hindi kailanman tinatawag na pag-hire ang pagtanggal, dahil pare-pareho ang hitsura sa feed ng employer ng isang pag-hire, isang binawing posisyon at isang kinanselang posisyon. Lumalabas na ngayon ang heading na iyon at ang paliwanag nito sa wikang ginagamit mo sa site."
+    },
+    "thePayTransparencyIndexNamesEachHiringSystem": {
+      "title": "Tamang pangalan na ang gamit ng Pay Transparency Index para sa bawat hiring system",
+      "description": "Ibinibigay na ngayon ng talaan nito ng mga hiring system ang pangalang ginagamit ng gumawa ng bawat isa, gaya ng iCIMS, UKG Pro Recruiting o ADP Workforce Now, sa halip na isang maikling code. Ganoon din ang mga pangalan sa kopya ng pahina na binabasa ng mga search engine."
+    },
+    "theFooterLinksOurDataPages": {
+      "title": "Naka-link na sa footer ang aming mga data page at ATS benchmark",
+      "description": "Naka-link na rin sa footer ang “Index ng mga ghost job”, “Lingguhang trend ng pag-hire”, “Index ng mga entry-level na trabaho” at “Mga benchmark ng ATS score”, katabi ng “Pay Transparency Index” na naka-link na dati."
     }
   }
 }

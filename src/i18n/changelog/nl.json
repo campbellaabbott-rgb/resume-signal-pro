@@ -1547,6 +1547,30 @@
     "theBoardChecksEveryMinuteForAStoppedRefresh": {
       "title": "Het vacaturebord controleert elke minuut of zijn verversing is gestopt",
       "description": "Het vacaturebord controleert nu elke minuut of het verversen van zijn vacatures is gestopt, en vraagt om een herstart zodra het een paar minuten stil is gebleven. We hebben het nog geen gestopte verversing zien herstarten."
+    },
+    "aJobPageSaysWhenItsEmployerClosedThePosting": {
+      "title": "Een vacaturepagina zegt wanneer de werkgever de vacature heeft gesloten",
+      "description": "Als het eigen wervingssysteem van de werkgever heeft geantwoord dat het een vacature niet meer aanbiedt, zegt de pagina van die vacature op onze site dat nu, met de dag waarop de pagina is gemaakt, en zegt verder niets over de functie. Eerder stond er alleen dat de vacature niet meer op ons vacaturebord stond. Een vacature die alleen van ons bord is verdwenen, zegt dat nog steeds: dat gaat over ons bord, niet over de werkgever."
+    },
+    "companyPagesUseTheNameTheEmployerUses": {
+      "title": "Bedrijfspagina's gebruiken de naam die de werkgever zelf gebruikt",
+      "description": "Sommige bedrijfspagina's noemden de werkgever bij de korte code waaronder zijn wervingssysteem hem opslaat, zoals ‘papajohns’. Nu gebruiken ze de eigen naam van de werkgever, zoals Papa John's, United Health Services, SS&C Technologies of HUB International, in de paginatitel en de kop."
+    },
+    "theConnectPageSaysMoreAboutClaudeAndChatGpt": {
+      "title": "De pagina ‘Verbind je agent’ zegt meer over Claude en ChatGPT",
+      "description": "Ze zegt nu hoeveel van de open vacatures op ons bord je AI kan doorzoeken, welke alleen op deze website blijven en wanneer ze zijn geteld. Voor ChatGPT citeert ze wat de prijspagina over het Free-abonnement zegt, met de dag waarop we die lazen, en verwijst ze gebruikers van Free naar het gratis abonnement van Claude, waarmee je één eigen connector kunt toevoegen. Voor Claude zegt ze dat je de connector één keer toevoegt in de browser van je telefoon, niet in de app, waarna de app hem heeft, en dat een connector die je al in Claude hebt toegevoegd in Claude Code staat als je inlogt met hetzelfde account."
+    },
+    "theGhostJobIndexNoLongerCallsATakedownFilled": {
+      "title": "De Spookvacature-index noemt een weggehaalde vacature niet meer ‘vervuld’",
+      "description": "De cijfers tellen vacatures die een werkgever heeft weggehaald en niet opnieuw onder dezelfde titel heeft geplaatst. De pagina noemde die vacatures eerder vervuld. Nu staan ze onder ‘Hoe vaak vacatures worden weggehaald en niet opnieuw geplaatst’ en zegt de pagina dat een verwijdering nooit een aanname wordt genoemd, omdat een aanname, een ingetrokken vacature en een geannuleerde vacature er in de feed van een werkgever hetzelfde uitzien. Die kop en de uitleg verschijnen nu in de taal die je op de site gebruikt."
+    },
+    "thePayTransparencyIndexNamesEachHiringSystem": {
+      "title": "De Salaristransparantie-index noemt elk wervingssysteem bij zijn echte naam",
+      "description": "De tabel met wervingssystemen geeft elk systeem nu de naam die de maker zelf gebruikt, zoals iCIMS, UKG Pro Recruiting of ADP Workforce Now, in plaats van een korte code. De versie van de pagina die zoekmachines lezen, gebruikt dezelfde namen."
+    },
+    "theFooterLinksOurDataPages": {
+      "title": "De footer linkt naar onze datapagina's en ATS-benchmarks",
+      "description": "De footer linkt nu ook naar ‘Spookvacature-index’, ‘Wekelijkse wervingstrends’, ‘Starters-index’ en ‘ATS-scorebenchmarks’, naast de ‘Salaristransparantie-index’ waar hij al naar linkte."
     }
   }
 }

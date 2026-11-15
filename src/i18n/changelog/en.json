@@ -1547,6 +1547,30 @@
     "theBoardChecksEveryMinuteForAStoppedRefresh": {
       "title": "The job board checks every minute for a stopped refresh",
       "description": "The job board now checks every minute whether its listings refresh has stopped, and asks for a restart once it has been quiet for a few minutes. We have not yet seen it restart a stopped refresh."
+    },
+    "aJobPageSaysWhenItsEmployerClosedThePosting": {
+      "title": "A job page says when the employer has closed the posting",
+      "description": "When the employer's own hiring system has answered that it no longer serves a posting, the posting's page on our site now says so, gives the day the page was built, and states nothing more about the job. Before, it said only that the posting was no longer listed on our board. A posting that has only left our board still says that, which is a statement about our board, not about the employer."
+    },
+    "companyPagesUseTheNameTheEmployerUses": {
+      "title": "Company pages use the name the employer uses",
+      "description": "Some company pages named the employer by the short code its hiring system files it under, such as “papajohns”. They now use the employer's own name, such as Papa John's, United Health Services, SS&C Technologies or HUB International, in the page title and heading."
+    },
+    "theConnectPageSaysMoreAboutClaudeAndChatGpt": {
+      "title": "The “Connect your agent” page says more about Claude and ChatGPT",
+      "description": "It now says how many of the board's open postings your AI can search, which ones stay on this website, and when they were counted. For ChatGPT, it quotes what the pricing page says about the Free plan, with the day we read it, and points Free users to Claude's free plan, which can add one custom connector. For Claude, it says to add the connector once in your phone's browser, not in the app, after which the app has it, and that a connector already added in Claude is there in Claude Code when you sign in with the same account."
+    },
+    "theGhostJobIndexNoLongerCallsATakedownFilled": {
+      "title": "The Ghost Job Index no longer calls a role taken down “filled”",
+      "description": "Its figures count roles an employer took down and did not put back up under the same title. The page used to call those roles filled. It now heads them “How often roles are taken down and not re-listed” and says a takedown is never called a hire, because a hire, a withdrawn role and a cancelled one look the same from an employer's feed. That heading and its explanation now come in the language you use on the site."
+    },
+    "thePayTransparencyIndexNamesEachHiringSystem": {
+      "title": "The Pay Transparency Index names each hiring system properly",
+      "description": "Its table of hiring systems now gives each one the name its maker uses, such as iCIMS, UKG Pro Recruiting or ADP Workforce Now, instead of a short code. The copy of the page that search engines read uses the same names."
+    },
+    "theFooterLinksOurDataPages": {
+      "title": "The footer links our data pages and ATS benchmarks",
+      "description": "The footer now also links the Ghost Job Index, Weekly Hiring Trends, the Entry-Level Index and ATS score benchmarks, next to the Pay Transparency Index it already linked."
     }
   }
 }
