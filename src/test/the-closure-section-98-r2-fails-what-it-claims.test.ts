@@ -242,7 +242,7 @@ describe("section 98-r2 G1 judges a vendor read once per board by its boards", (
  */
 function internalSite(fixed: boolean): Route[] {
   const coupang = "/jobs/posting/greenhouse/coupanginternal/8287892";
-  const vf = "/jobs/posting/greenhouse/acmefoods/5550001";
+  const vf = "/jobs/posting/greenhouse/acme55/5550001";
   const ok = "/jobs/posting/greenhouse/acme/3001";
   const paths = fixed ? [ok] : [coupang, vf, ok];
   const block = (path: string, org: string, title: string, description: string) => `<script type="application/ld+json" id="posting-jsonld">${JSON.stringify({ "@context": "https://schema.org", "@type": "JobPosting", url: `${SITE}${path}`, title, description, hiringOrganization: { "@type": "Organization", name: org } })}</script>`;
@@ -263,7 +263,7 @@ describe("section 98-r2 G7 fails job markup on a posting only the employer's own
 
   it("FAILs an internal board's page and a public board's page whose text says it, judged by the bake's own rule", () => {
     expect(has(bad, "FAIL", new RegExp(`G7 1 of 3 JobPostings on sitemap posting pages are open to everyone: .*${esc("/jobs/posting/greenhouse/coupanginternal/8287892")} \\(an internal board: "Coupang Internal"\\)`)), show(bad)).toBe(true);
-    expect(has(bad, "FAIL", new RegExp(`G7 .*${esc("/jobs/posting/greenhouse/acmefoods/5550001")} \\(its text says "This posting is intended for current Acme Foods employees"\\)`)), show(bad)).toBe(true);
+    expect(has(bad, "FAIL", new RegExp(`G7 .*${esc("/jobs/posting/greenhouse/acme55/5550001")} \\(its text says "This posting is intended for current Acme Foods employees"\\)`)), show(bad)).toBe(true);
   });
 
   it("PASSes when the only marked-up page is open to everyone, whatever it says to internal candidates", () => {
@@ -280,7 +280,7 @@ describe("section 98-r2 G7 fails job markup on a posting only the employer's own
  */
 function surveySite(fixed: boolean): Route[] {
   const feed = "/jobs/posting/lever/usasurveyjob/d60f2773-5722-438d-be70-ddfa533facf8";
-  const elsewhere = "/jobs/posting/greenhouse/acmepanel/7770001";
+  const elsewhere = "/jobs/posting/greenhouse/acme77/7770001";
   const ok = "/jobs/posting/greenhouse/acme/3002";
   const paths = fixed ? [ok] : [feed, elsewhere, ok];
   const block = (path: string, org: string, title: string, description: string) => `<script type="application/ld+json" id="posting-jsonld">${JSON.stringify({ "@context": "https://schema.org", "@type": "JobPosting", url: `${SITE}${path}`, title, description, hiringOrganization: { "@type": "Organization", name: org } })}</script>`;
@@ -301,7 +301,7 @@ describe("section 98-r2 G8 fails job markup on a paid-survey panel ad", () => {
 
   it("FAILs a page from the held feed and the same ad on another board, judged by the bake's own rule", () => {
     expect(has(bad, "FAIL", new RegExp(`G8 1 of 3 JobPostings on sitemap posting pages are jobs, not paid-survey panel ads; .*${esc("/jobs/posting/lever/usasurveyjob/d60f2773-5722-438d-be70-ddfa533facf8")} \\(a board held as a paid-survey ad feed\\)`)), show(bad)).toBe(true);
-    expect(has(bad, "FAIL", new RegExp(`G8 .*${esc("/jobs/posting/greenhouse/acmepanel/7770001")} \\(its text says "Earn money at Home by Participating in Surveys"\\)`)), show(bad)).toBe(true);
+    expect(has(bad, "FAIL", new RegExp(`G8 .*${esc("/jobs/posting/greenhouse/acme77/7770001")} \\(its text says "Earn money at Home by Participating in Surveys"\\)`)), show(bad)).toBe(true);
   });
 
   it("PASSes a job that speaks of surveys, focus groups and polls as work", () => {

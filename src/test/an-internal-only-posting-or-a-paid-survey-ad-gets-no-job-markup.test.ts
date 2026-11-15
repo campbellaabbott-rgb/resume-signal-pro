@@ -76,13 +76,13 @@ const coupang = (over: Partial<PostingRow> = {}): PostingRow => ({
 });
 /** A public board's row: the positive control, and the board the text cases run on. */
 const open = (over: Partial<PostingRow> = {}): PostingRow => coupang({
-  id: "greenhouse:acmefoods:5550001",
+  id: "greenhouse:acme55:5550001",
   title: "Farm Operations Supervisor",
   company: "Acme Foods",
-  token: "acmefoods",
+  token: "acme55",
   location: "Springfield, MO",
   country: "US",
-  applyUrl: "https://job-boards.greenhouse.io/acmefoods/jobs/5550001",
+  applyUrl: "https://job-boards.greenhouse.io/acme55/jobs/5550001",
   ...over,
 });
 const vitalFarms = FIX.internalOnly.find((p) => p.id.startsWith("greenhouse:vitalfarmsinternalcrew:"))!;
