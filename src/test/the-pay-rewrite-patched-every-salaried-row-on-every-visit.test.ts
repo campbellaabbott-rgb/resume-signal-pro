@@ -67,10 +67,17 @@ describe("the one-shot rewrite has an enforced end", () => {
   // The day after which the set must be gone (one cold rotation after the
   // wave-3 deploy; the same day as the USAJOBS reading's own window, n444).
   const REMOVE_AFTER = "2026-11-09";
-  it(`the set is removed by ${REMOVE_AFTER}`, () => {
+  // The removal is job-board code, so it can land only in a job-board build:
+  // .101 was serving when the day passed, and the first build after it must
+  // drop the set. A date alone turned every branch red on 2026-11-10, job-board
+  // or not, with no build able to ship before it.
+  const LAST_BUILD_WITH_SET = "2026-09-09.101";
+  it(`the set is removed by ${REMOVE_AFTER}, in the first job-board build after .101`, () => {
     const today = new Date().toISOString().slice(0, 10);
     const present = /\bOUR_PAY_REWRITE\b/.test(codeOf(SRC));
-    expect(today <= REMOVE_AFTER || !present, `remove the Lever/Recruitee pay rewrite from job-board/index.ts: its window closed ${REMOVE_AFTER}`).toBe(true);
+    const build = /const BUILD_VERSION = "([^"]+)"/.exec(SRC)?.[1];
+    expect(build, "job-board/index.ts names no BUILD_VERSION").toBeTruthy();
+    expect(today <= REMOVE_AFTER || !present || build === LAST_BUILD_WITH_SET, `remove the Lever/Recruitee pay rewrite from job-board/index.ts in job-board ${build}: its window closed ${REMOVE_AFTER}, and ${LAST_BUILD_WITH_SET} is the last build that may carry it`).toBe(true);
   });
   it("the code names the same day beside the set", () => {
     expect(SRC).toMatch(new RegExp(`Remove after ${REMOVE_AFTER}[^\\n]*\\n[^\\n]*\\n\\s*const OUR_PAY_REWRITE`));
