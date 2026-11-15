@@ -15,8 +15,10 @@
  *   - the preview's cap is re-measured from its fields, with at most 10%
  *     headroom, and those fields are the JSON its prompt asks for;
  *   - a preview reply cut off at its cap, empty, not JSON or with no body goes
- *     to the next model; when none writes one, the person is told to try
- *     again in words, not in model names;
+ *     to the next model (gpt-5-mini since the cost audit of 2026-11-08: a
+ *     free teaser's chain is flash then gpt-5-mini, never pro); when none
+ *     writes one, the person is told to try again in words, not in model
+ *     names;
  *   - the diagnostic passes a chain only when a model wrote text, says which
  *     model did, and sizes its cap for the thinking production allows.
  */
@@ -107,7 +109,7 @@ describe("generate-product-preview, run as shipped", () => {
       world.reply = (c) => (c.model === "google/gemini-2.5-flash" ? reply() : chatReply(JSON.stringify(PREVIEW)));
       const r = await ask();
       expect(r.status, JSON.stringify(r.body).slice(0, 200)).toBe(200);
-      expect(modelsAsked()).toEqual(["google/gemini-2.5-flash", "google/gemini-2.5-pro"]);
+      expect(modelsAsked()).toEqual(["google/gemini-2.5-flash", "openai/gpt-5-mini"]);
       expect((r.body.preview as { body: string }).body).toBe(PREVIEW.body);
     });
   }
@@ -116,7 +118,7 @@ describe("generate-product-preview, run as shipped", () => {
     world.reply = () => cutOff('{"heading":"');
     const r = await ask();
     expect(r.status).toBe(500);
-    expect(modelsAsked()).toEqual(["google/gemini-2.5-flash", "google/gemini-2.5-pro", "openai/gpt-5-mini"]);
+    expect(modelsAsked()).toEqual(["google/gemini-2.5-flash", "openai/gpt-5-mini"]);
     expect(String(r.body.error)).toMatch(/try again/i);
     expect(String(r.body.error)).not.toMatch(/gemini|gpt|finish_reason|token/i);
   });

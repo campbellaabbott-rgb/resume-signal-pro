@@ -60,7 +60,11 @@ import { refundWriting, writingChain, writingGate, type WritingPass } from "../_
 // the use given back.
 // Nothing of main's past f8d72a9b, the build the 2026-10-31 deploy put live,
 // rides along.
-const FN_BUILD = "generate-cover-letter.2026-11-03.1";
+// 2026-11-09.1 (cost audit 2026-11-08, lane ai): this file is unchanged. The shared
+// model-call helper it imports (_shared/ai-fallback.ts) now logs one usage
+// line per reply it reads, token counts and the model id only, so the build
+// moves with it.
+const FN_BUILD = "generate-cover-letter.2026-11-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

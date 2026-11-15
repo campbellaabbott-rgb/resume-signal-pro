@@ -1,265 +1,42 @@
-// deploy-stamp: 2026-10-04T13:00Z
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { resolveLanguageName } from "../_shared/language-instruction.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { checkInputLimits } from "../_shared/input-limits.ts";
-import { assertPaidSession } from "../_shared/paid-session.ts";
-import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
-import { createGatewayDeltaReader } from "../_shared/ai-fallback.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+/**
+ * RETIRED. Answers every request with 410 and calls nothing.
+ *
+ * This was a streaming twin of generate-premium-package: a model endpoint on
+ * the project's key, behind a purchase check, for a product no longer sold.
+ * Nothing calls it: no page, component, script, worker, other function,
+ * migration's cron job, delivery path or install-repo tool names it (cost
+ * audit 2026-11-08, lane ai), and the warm-up does not list it.
+ * Every delivery of a bought package (the webhook, the success page, the retry
+ * sweep) calls generate-premium-package.
+ *
+ * An endpoint nobody calls is safest when it does nothing at all, so it no
+ * longer reads the body, touches the database or reaches the model, as
+ * generate-tailored-resume-stream does. The previous implementation is in git
+ * history if a caller ever needs it.
+ */
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): this bundle imports only
-// createGatewayDeltaReader from _shared/ai-fallback.ts, so the chain change (a
-// timed-out model is not asked again) does not reach it: its behaviour is
-// unchanged. Rebuilt so the deployed bundle matches the repo's ai-fallback.ts.
-// Nothing else in this bundle changed since main's f8d72a9b, the build the
-// 2026-10-31 deploy put live (docs/deploy-ledger.json, verifiedDeploys).
-// 2026-11-10.1 (S14 hotfix, lane spend, M-S14-057): _shared/paid-session.ts
-// refuses a claim that names no product unless it may be an older buyer's
-// (no address beside it, written before 2026-08-27 18:00 UTC, not test
-// mode); migration 20261110140000 names the rest from the order, content,
-// checkout and grant records. Nothing else in this bundle changed.
-const FN_BUILD = "generate-premium-package-stream.2026-11-10.1";
+// 2026-11-10.2 (cost audit 2026-11-08, lane ai): retired; answers 410.
+const FN_BUILD = "generate-premium-package-stream.2026-11-10.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "x-fn-build": FN_BUILD,
-  "Content-Type": "text/event-stream",
-  "Cache-Control": "no-cache",
-  "Connection": "keep-alive",
 };
 
-// This endpoint is public (verify_jwt=false) and streams an expensive LLM call:
-// the per-address limit below caps burst abuse; assertPaidSession verifies the
-// actual purchase (used_stripe_sessions membership, written only by the
-// payment-validating functions).
-
-const logStep = (step: string, details?: Record<string, unknown>) => {
-  console.log(`[PREMIUM-PACKAGE-STREAM] ${step}`, details ? JSON.stringify(details) : '');
-};
-
-// NOTE: Auto-fix and validation are applied client-side after streaming completes
-// See src/lib/content-autofix.ts for the client-side implementation
-
-serve(async (req) => {
+serve((req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-
-  const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-  try {
-    const { resumeText, jobDescription, jobTitle: rawJobTitle, jobCompany: rawJobCompany, language, sessionId } = await req.json();
-    // Short fields reach the prompt cut to a line (defect sweep 1.64).
-    const jobTitle = clipField(rawJobTitle, 200);
-    const jobCompany = clipField(rawJobCompany, 200);
-
-    if (!resumeText) {
-      return new Response(
-        JSON.stringify({ error: "Resume text is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const limitError = checkInputLimits({ resumeText, jobDescription });
-    if (limitError) return new Response(JSON.stringify({ error: limitError }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
-    // Paid content: confirm the caller actually purchased (see paid-session.ts).
-    // Gated on WHAT was bought, not merely that something was. Without the
-    // product list a $2 scan-pack session opened every paid generator forever.
-    const paidError = await assertPaidSession(supabase, sessionId, ["premium_package"]);
-    if (paidError) return new Response(JSON.stringify({ error: paidError, retryable: true }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
-    // COUNTED ONLY NOW, when the call is about to reach the model. A warm-up
-    // ping, an unpaid stranger and a malformed body are refused above without
-    // spending a slot -- warm-up posts from our own egress address, and anyone
-    // can make it -- and one purchase spends a daily allowance of its own, so
-    // a single session cannot feed an address pool. See _shared/model-spend-gate.ts.
-    const refused = await modelSpendGate(supabase, req, "generate-premium-package-stream", { perAddress: 20 }, corsHeaders, { session: sessionId });
-    if (refused) return refused;
-
-    logStep("Starting streaming premium package generation", { 
-      jobTitle,
-      jobCompany,
-      resumeLength: resumeText?.length,
-    });
-
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) {
-      throw new Error("LOVABLE_API_KEY not configured");
-    }
-
-    const systemPrompt = `You are an elite ATS resume optimization specialist and professional cover letter writer. Your task is to ENHANCE the provided resume while preserving 100% of the original content, then write a compelling cover letter. Respond in ${resolveLanguageName(language) ?? "the resume's"} language.
-
-## ⚠️ CRITICAL DATA ACCURACY RULES - ABSOLUTE REQUIREMENTS ⚠️
-These rules MUST be followed perfectly. Violations are unacceptable:
-
-### NUMBERS & METRICS:
-- COPY ALL NUMBERS EXACTLY, character-for-character (including punctuation)
-- Preserve decimal points: "3.5x" must stay "3.5x" (never "35x")
-- Preserve "x" multipliers: "1.5x" must stay "1.5x" (never "15x")
-- Preserve years fully: "2024" must stay "2024" (never "202" or "202.")
-- Dollar amounts: "$100M+" must stay "$100M+" (never "$M+")
-- Prefix symbols must remain: "$150,000" must include "$"; ">50%" must include the number
-- Proper spacing between words and numbers (e.g., "for 8" not "for8", "top 3" not "top3")
-
-### COMPANY & PRODUCT NAMES:
-- "GitHub" NOT "Git"
-- "LinkedIn" NOT "Linked"
-- "Fortune 500" NOT "Fortune"
-- "GitHub Copilot" NOT "GitHub Cop" or "GitHub Cop (OpenAI)"
-- "GitHub Actions" NOT "Git Actions"
-- "Codespaces" NOT "Codes)"
-- "LinkedIn Sales Navigator" NOT "Linked Sales Navigator"
-- "CI/CD" NOT "/CD" or "including/CD"
-- "Carnegie Mellon" NOT "Carnegie Mellonator"
-
-### TEXT QUALITY:
-- NEVER truncate words or drop letters/spaces
-- NEVER introduce random commas/punctuation at the start of lines
-- Section headers must be separated with clear newlines (no run-together headers)
-- Every bullet point must be a complete, grammatical sentence fragment
-
-### FACTS & CONTENT:
-- DO NOT invent new achievements, numbers, tools, locations, titles, or claims
-- Only enhance wording and add ATS-friendly keywords that fit the existing facts
-
-### CONTACT LINE — COPY ONLY, NEVER ADD:
-- The contact header may contain ONLY items present in the original resume
-- NEVER invent or add a LinkedIn URL, portfolio, website, phone, or email that isn't in the original
-- If the original has no LinkedIn, the rewrite has no LinkedIn — same for every contact field
-
-### NO PLACEHOLDERS — SEND-READY:
-- NEVER output bracketed fill-ins like [Hiring Manager Name], [Company Name], or [mention a specific...] anywhere in the resume or the letter
-- Hiring manager unknown → "Dear Hiring Manager,". Company unknown → write about "your team" and the role's challenges; never gesture at facts you don't have
-
-## OUTPUT FORMAT
-You will output content in TWO sections, clearly marked:
-
-===RESUME_START===
-[Write the complete enhanced resume here]
-===RESUME_END===
-
-===COVER_LETTER_START===
-[Write a compelling, professional cover letter (300-400 words)]
-===COVER_LETTER_END===
-
-## RESUME RULES:
-- Include EVERY job, education, project from the original
-- Output must be AS LONG OR LONGER than input
-- PRESERVE ALL original data exactly - numbers, names, titles
-
-## COVER LETTER RULES - CRITICAL:
-- Write COMPLETE, COHERENT sentences with proper grammar
-- Use SPECIFIC details from the resume (real titles, real companies, real achievements)
-- Proofread: no missing words, no garbled text, no incomplete thoughts`;
-
-
-    const userPrompt = `ENHANCE this resume for the target position and write a matching cover letter.
-
-ORIGINAL RESUME:
-${resumeText}
-
-TARGET JOB TITLE: ${jobTitle || 'Not specified'}
-TARGET COMPANY: ${jobCompany || 'Not specified'}
-
-${jobDescription ? `JOB DESCRIPTION:\n${jobDescription}` : ''}
-
-Provide the enhanced resume first, then the cover letter. Use the exact markers (===RESUME_START===, etc.) so the output can be parsed.`;
-
-    logStep("Starting streaming API call");
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-5",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        max_completion_tokens: 12000,
-        stream: true,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      logStep("AI API error", { status: response.status, error: errorText });
-
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "AI service is temporarily busy. Please try again.", retryable: true }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI service credits depleted.", retryable: false }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      throw new Error(`AI API error: ${response.status}`);
-    }
-
-    logStep("Streaming response back to client");
-
-    // Stream the response directly to the client (SSE), line-buffered across
-    // network reads. A complete line that does not parse is dropped, never put
-    // back: re-queueing it spun the newline loop forever (register L5-19).
-    const encoder = new TextEncoder();
-
-    const stream = new ReadableStream({
-      async start(controller) {
-        const reader = response.body?.getReader();
-        if (!reader) {
-          controller.close();
-          return;
-        }
-
-        const enqueueEvent = (event: Record<string, unknown>) => {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
-        };
-        const deltas = createGatewayDeltaReader({
-          onContent: (content) => enqueueEvent({ type: "content", content }),
-          onDone: () => enqueueEvent({ type: "done" }),
-          onBadLine: (line) => logStep("Dropped an unparseable stream line", { length: line.length }),
-        });
-
-        try {
-          enqueueEvent({ type: "start", message: "Generation started" });
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            deltas.push(value);
-          }
-          deltas.flush();
-
-          enqueueEvent({ type: "complete" });
-        } catch (error) {
-          logStep("Stream error", { error: String(error) });
-          enqueueEvent({ type: "error", message: String(error) });
-        } finally {
-          controller.close();
-        }
-      }
-    });
-
-    return new Response(stream, { headers: corsHeaders });
-
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("[PREMIUM-PACKAGE-STREAM] Error:", errorMessage);
-    
-    return new Response(
-      JSON.stringify({ error: "Failed to generate premium package", details: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
+  return new Response(
+    JSON.stringify({
+      error: "This endpoint has been retired. Use generate-premium-package.",
+      code: "retired",
+    }),
+    { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
 });

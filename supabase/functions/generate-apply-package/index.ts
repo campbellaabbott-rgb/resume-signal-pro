@@ -86,7 +86,10 @@ import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting
 // 2026-11-10.2 (fix/hotfix-2026-11-10, the integration): both lanes' changes
 // above together. hotfix/pro and hotfix/spend each stamped 2026-11-10.1 on
 // code of its own, so the merged code takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "generate-apply-package.2026-11-10.2";
+// 2026-11-10.3 (cost audit 2026-11-08, lane ai): this file is unchanged. The shared
+// model-call helper it imports (_shared/ai-fallback.ts) gained the free-tool
+// chain and a numbers-only usage line, so the build moves with it.
+const FN_BUILD = "generate-apply-package.2026-11-10.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

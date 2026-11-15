@@ -68,6 +68,79 @@ export function chainFrom(primary: string): string[] {
   return [primary, ...tail.filter((m) => m !== primary)];
 }
 
+/**
+ * A FREE TOOL'S CHAIN: its primary, then flash, then gpt-5-mini (cost audit
+ * 2026-11-08). chainFrom puts the quality model second, which a paid delivery
+ * wants and a free teaser does not: on a free tool whose flash primary failed,
+ * the next ask was the dearest model at its slowest (a 55 s timeout, then a
+ * 45-95 s tail). The primary is never changed; only what follows a failure.
+ */
+export const FREE_CHAIN_TAIL: readonly string[] = ['google/gemini-2.5-flash', 'openai/gpt-5-mini'];
+export function freeChainFrom(primary: string): string[] {
+  return [primary, ...FREE_CHAIN_TAIL.filter((m) => m !== primary)];
+}
+
+/** A token count from a reply's usage block: a whole number, or "-" when the gateway did not say. */
+const usageCount = (v: unknown): string =>
+  typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < 1e12 ? String(v) : '-';
+/**
+ * An identifier for the usage line: letters, digits and . _ : / - only, so no
+ * sentence can ride in it. Labels and model ids are code constants; should a
+ * caller ever put request data into one, an e-mail address blanks the whole
+ * field, and an account id or a network address is cut out of it.
+ */
+const usageIdent = (v: unknown, max: number): string => {
+  const raw = String(v ?? '');
+  if (raw.includes('@')) return '-';
+  const s = raw
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '_')
+    .replace(/\d{1,3}(?:\.\d{1,3}){3}/g, '_')
+    .replace(/[0-9a-f]*:[0-9a-f]*:[0-9a-f:]*/gi, '_')
+    .replace(/[^A-Za-z0-9._:/-]+/g, '_')
+    .slice(0, max);
+  return s === '' ? '-' : s;
+};
+
+type UsageBlock = {
+  prompt_tokens?: unknown; completion_tokens?: unknown; input_tokens?: unknown; output_tokens?: unknown;
+  cached_tokens?: unknown; reasoning_tokens?: unknown;
+  prompt_tokens_details?: { cached_tokens?: unknown } | null;
+  completion_tokens_details?: { reasoning_tokens?: unknown } | null;
+};
+
+/**
+ * THE USAGE LINE (cost audit 2026-11-08, Do first #11). One line per parsed
+ * gateway reply, so a function's spend is read from its logs instead of
+ * estimated from its prompt's bytes:
+ *
+ *   [AI-USAGE] context=<chain> model=<id> prompt_tokens=<n> completion_tokens=<n> cached_tokens=<n> reasoning_tokens=<n> finish_reason=<value>
+ *
+ * Numbers and identifiers only (the S13-064 rule): never a word of the
+ * prompt or the reply, never an address or an account. A count the gateway
+ * did not report prints "-", which is itself the finding for cached and
+ * reasoning tokens.
+ */
+export function aiUsageLine(context: string, model: string, data: unknown): string {
+  const reply = data && typeof data === 'object' ? data as { usage?: UsageBlock | null; choices?: Array<{ finish_reason?: unknown }> } : null;
+  const u: UsageBlock = reply?.usage && typeof reply.usage === 'object' ? reply.usage : {};
+  const finish = Array.isArray(reply?.choices) ? reply!.choices[0]?.finish_reason : undefined;
+  return [
+    '[AI-USAGE]',
+    `context=${usageIdent(context, 64)}`,
+    `model=${usageIdent(model, 80)}`,
+    `prompt_tokens=${usageCount(u.prompt_tokens ?? u.input_tokens)}`,
+    `completion_tokens=${usageCount(u.completion_tokens ?? u.output_tokens)}`,
+    `cached_tokens=${usageCount(u.prompt_tokens_details?.cached_tokens ?? u.cached_tokens)}`,
+    `reasoning_tokens=${usageCount(u.completion_tokens_details?.reasoning_tokens ?? u.reasoning_tokens)}`,
+    `finish_reason=${typeof finish === 'string' && /^[a-z_]{1,30}$/.test(finish) ? finish : '-'}`,
+  ].join(' ');
+}
+
+/** Writes aiUsageLine to the function's log. */
+export function logAiUsage(context: string, model: string, data: unknown): void {
+  console.log(aiUsageLine(context, model, data));
+}
+
 export async function callAIWithModelFallback(
   apiKey: string,
   options: FallbackAIOptions,
@@ -293,6 +366,8 @@ export async function callAIForUsableReply<T>(
     });
     if (!response.ok) return { ok: false, response, modelUsed };
     const data = await response.json().catch(() => null);
+    // Every reply that was paid for is counted, the refused ones included.
+    logAiUsage(context, modelUsed, data);
     const cutOff = replyWasCutOff(data);
     let value: T | null | undefined = null;
     if (!cutOff) {

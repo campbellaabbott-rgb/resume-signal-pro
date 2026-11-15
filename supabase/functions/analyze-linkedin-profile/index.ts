@@ -1,198 +1,44 @@
-// deploy-stamp: 2026-10-04T13:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
-import { coerceLinkedInAnalysis } from "./coerce.ts";
+
+/**
+ * RETIRED. Answers every request with 410 and calls nothing.
+ *
+ * This was the free LinkedIn insights: a model endpoint on the project's key,
+ * free, 100 an hour site-wide, on the dearest Gemini model first.
+ * Nothing calls it: no mounted page (a component that named it is imported
+ * nowhere), script, worker, other function, migration's cron job, delivery
+ * path or install-repo tool names it, and the warm-up does not list it (cost
+ * audit 2026-11-08, lane ai).
+ * coerce.ts stays beside it only because that unimported component
+ * (src/components/LinkedInInsights.tsx) imports its shape.
+ * The LinkedIn insights are no longer offered (S12-049, 2026-10-12).
+ *
+ * An endpoint nobody calls is safest when it does nothing at all, so it no
+ * longer reads the body, touches the database or reaches the model, as
+ * generate-tailored-resume-stream does. The previous implementation is in git
+ * history if a caller ever needs it.
+ */
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "analyze-linkedin-profile.2026-11-03.1";
+// 2026-11-09.1 (cost audit 2026-11-08, lane ai): retired; answers 410.
+const FN_BUILD = "analyze-linkedin-profile.2026-11-09.1";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'x-fn-build': FN_BUILD,
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 
-// A pro-first chain on a free tool: the tightest address allowance of the
-// generators, plus a function-wide ceiling (see _shared/model-spend-gate.ts).
-const LINKEDIN_LIMITS = { perAddress: 10, globalPerHour: 100 };
-
-// The output cap. The JSON report is ~1,500 tokens; the rest is headroom for
-// the reasoning pro and gpt-5 spend against the same cap. Unset, a model could
-// run to its own ceiling on the project's key.
-const MAX_OUTPUT_TOKENS = 6000;
-
-const MODEL_FALLBACK_ORDER = [
-  'google/gemini-2.5-pro',
-  'openai/gpt-5',
-  'openai/gpt-5-mini',
-];
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-async function callAI(apiKey: string, messages: Array<{ role: string; content: string }>) {
-  let lastError: Error | null = null;
-  for (const model of MODEL_FALLBACK_ORDER) {
-    for (let attempt = 0; attempt <= 1; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 50000);
-        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model, messages, response_format: { type: "json_object" },
-            // OpenAI's gpt-5 family names the cap max_completion_tokens.
-            ...(model.startsWith("openai/") ? { max_completion_tokens: MAX_OUTPUT_TOKENS } : { max_tokens: MAX_OUTPUT_TOKENS }),
-          }),
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-        if (response.ok) return { response, model };
-        if (response.status === 429 || response.status === 402) return { response, model };
-        if (response.status >= 400 && response.status < 500) break;
-        if (attempt < 1) { await sleep(1000); continue; }
-        break;
-      } catch (e) {
-        lastError = e instanceof Error ? e : new Error(String(e));
-        if (attempt < 1) { await sleep(1000); continue; }
-        break;
-      }
-    }
+serve((req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
   }
-  throw lastError || new Error('All AI models failed');
-}
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
-
-  let body: Record<string, unknown>;
-  try {
-    const parsed = await req.json();
-    body = parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : {};
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid request body' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-  }
-
-  // Both documents are cut to 8,000 characters where the prompt reads them;
-  // the two short fields are bounded here (defect sweep 1.64).
-  const resumeText = typeof body.resumeText === "string" ? body.resumeText : "";
-  const linkedinText = typeof body.linkedinText === "string" ? body.linkedinText : "";
-  const industry = clipField(body.industry, 120);
-  const resumeAtsScore = typeof body.resumeAtsScore === "number" && Number.isFinite(body.resumeAtsScore)
-    ? Math.round(body.resumeAtsScore)
-    : clipField(body.resumeAtsScore, 10);
-
-  if (!resumeText || !linkedinText) {
-    return new Response(JSON.stringify({ error: 'resumeText and linkedinText are required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-  }
-
-  const apiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!apiKey) return new Response(JSON.stringify({ error: 'AI service not configured' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-
-  const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-  const refused = await modelSpendGate(supabase, req, "analyze-linkedin-profile", LINKEDIN_LIMITS, corsHeaders);
-  if (refused) return refused;
-
-  const systemPrompt = `You are an expert career coach who analyzes LinkedIn profiles alongside resumes to give candidates a complete picture of their professional presence.
-
-You will receive a resume and a LinkedIn profile export. Your job is to:
-1. Analyze the LinkedIn profile quality on its own merits
-2. Identify inconsistencies between the two (title mismatches, date gaps, missing roles)
-3. Find resume content that should be added to LinkedIn
-4. Give LinkedIn-specific optimization advice (headline, About section, skills)
-
-Return a JSON object with EXACTLY this structure:
-{
-  "linkedinScore": <number 0-100>,
-  "linkedinGrade": <"A"|"B"|"C"|"D"|"F">,
-  "headline": {
-    "current": <string — the actual headline from LinkedIn or "Not found">,
-    "score": <number 0-100>,
-    "issues": [<string>],
-    "suggestion": <string — a specific improved headline, max 220 chars>
-  },
-  "about": {
-    "wordCount": <number>,
-    "score": <number 0-100>,
-    "issues": [<string>],
-    "suggestion": <string — a specific improved first 2-3 sentences of the About section>
-  },
-  "consistencyIssues": [
-    {
-      "type": <"title_mismatch"|"date_mismatch"|"missing_role"|"missing_from_linkedin"|"missing_from_resume">,
-      "description": <string — specific and actionable>,
-      "severity": <"high"|"medium"|"low">
-    }
-  ],
-  "missingFromLinkedIn": [<string — specific resume bullets or achievements not reflected on LinkedIn, max 4>],
-  "linkedinTips": [<string — specific, actionable LinkedIn optimization tips, 3-5 items>],
-  "profileCompleteness": {
-    "score": <number 0-100>,
-    "missing": [<string — e.g. "Profile photo", "Custom URL", "Featured section", "Skills section"]
-  }
-}`;
-
-  const userPrompt = `Analyze this resume and LinkedIn profile together.
-
-DETECTED INDUSTRY: ${industry || 'general'}
-RESUME ATS SCORE: ${resumeAtsScore || 'unknown'}
-
-<resume>
-${resumeText.substring(0, 8000)}
-</resume>
-
-<linkedin_profile>
-${linkedinText.substring(0, 8000)}
-</linkedin_profile>
-
-Identify:
-1. Inconsistencies between the two (job titles, dates, companies, achievements)
-2. Strong resume bullets that should appear on LinkedIn but don't
-3. LinkedIn-specific weaknesses (weak headline, missing About, skills gaps)
-4. A specific improved headline and About section opening
-
-Return valid JSON only.`;
-
-  try {
-    console.log("[ANALYZE-LINKEDIN] Starting analysis");
-    const { response, model } = await callAI(apiKey, [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ]);
-
-    if (!response.ok) {
-      const status = response.status;
-      if (status === 429) return new Response(JSON.stringify({ error: "AI service busy. Please try again shortly.", retryable: true }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      return new Response(JSON.stringify({ error: "AI analysis failed" }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-
-    const data = await response.json();
-    const raw = data.choices?.[0]?.message?.content;
-    if (!raw) return new Response(JSON.stringify({ error: "Empty AI response" }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-
-    let parsedAnalysis: unknown;
-    try {
-      parsedAnalysis = JSON.parse(raw);
-    } catch {
-      const match = raw.match(/\{[\s\S]*\}/);
-      if (!match) return new Response(JSON.stringify({ error: "Invalid AI response format" }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      try {
-        parsedAnalysis = JSON.parse(match[0]);
-      } catch {
-        return new Response(JSON.stringify({ error: "Invalid AI response format", retryable: true }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
-    }
-    // In the documented shape, every field present (register L5-17).
-    const analysis = coerceLinkedInAnalysis(parsedAnalysis);
-
-    console.log("[ANALYZE-LINKEDIN] Analysis complete, model:", model);
-    return new Response(JSON.stringify({ success: true, ...analysis, modelUsed: model }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    console.error("[ANALYZE-LINKEDIN] Error:", msg);
-    return new Response(JSON.stringify({ error: msg }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-  }
+  return new Response(
+    JSON.stringify({
+      error: "This endpoint has been retired.",
+      code: "retired",
+    }),
+    { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
 });

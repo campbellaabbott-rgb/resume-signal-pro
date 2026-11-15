@@ -36,7 +36,11 @@ import { SCAN_MODEL_CHAIN } from "../_shared/scan-models.ts";
 // owner's admin key (x-admin-key, or adminKey in the body) or the service
 // role; anyone else is answered 401 before anything is counted or spent.
 // Nothing else in this bundle changed.
-const FN_BUILD = "test-ai-fallback.2026-11-10.1";
+// 2026-11-10.2 (cost audit 2026-11-08, lane ai): this file is unchanged. The shared
+// model-call helper it imports (_shared/ai-fallback.ts) now logs one usage
+// line per reply it reads, token counts and the model id only, so the build
+// moves with it.
+const FN_BUILD = "test-ai-fallback.2026-11-10.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -242,7 +242,7 @@ export const CLOSED_BY_CENSUS: Array<{ sig: string; why: string; served: string 
   { sig: "public.get_stalest_boards(integer,integer,text[])", why: "names the boards our crawl is behind on", served: "job-board with the service key" },
   { sig: "public.board_serving_count()", why: "internal count", served: "get_board_flow and record_board_pool_sample run it as owner" },
   // caches and writers that only edge functions with the service key call
-  { sig: "public.get_cached_response(text,text)", why: "reads (and bumps) any cached AI response by key", served: "analyze-resume, generate-summary, free-keyword-scan-stream, scan-heartbeat with the service key" },
+  { sig: "public.get_cached_response(text,text)", why: "reads (and bumps) any cached AI response by key", served: "analyze-resume, free-keyword-scan-stream, scan-heartbeat with the service key" },
   { sig: "public.store_cached_response(text,text,jsonb,integer)", why: "anyone could poison the AI response cache", served: "the same edge functions with the service key" },
   { sig: "public.cleanup_expired_cache()", why: "anonymous maintenance writes", served: "nobody calls it with a client key" },
   { sig: "public.log_industry_detection(integer,text,text,text,text,text,text,integer,text[],text,text,text,text,boolean,boolean,jsonb,integer,text[],integer,boolean)", why: "anonymous writes into classifier telemetry", served: "free-keyword-scan(-stream) with the service key" },

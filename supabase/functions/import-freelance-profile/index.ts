@@ -13,7 +13,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
+import { callAIWithModelFallback, freeChainFrom, logAiUsage } from "../_shared/ai-fallback.ts";
 import { modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
 import { proGrantRefusal } from "../_shared/pro-standing.ts";
@@ -35,11 +35,18 @@ import { proGrantRefusal } from "../_shared/pro-standing.ts";
 // then the address's ten a day and the purchase's own ten, no function-wide
 // ceiling. Carries the paid-session.ts that refuses an unnamed claim unless
 // it may be an older buyer's.
-const FN_BUILD = "import-freelance-profile.2026-11-10.1";
+// 2026-11-10.2 (cost audit 2026-11-08, lane ai): the extraction's chain is
+// flash, then gpt-5-mini (_shared/ai-fallback.ts freeChainFrom), never the
+// dearest model after a failed flash; flash still answers first, after the
+// purchase check and the spend gate. The reply's usage is logged (numbers
+// only), and browsers keep the preflight two hours.
+const FN_BUILD = "import-freelance-profile.2026-11-10.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  // One preflight per browser per two hours, not one before every import.
+  "Access-Control-Max-Age": "7200",
   "x-fn-build": FN_BUILD,
 };
 
@@ -132,7 +139,7 @@ serve(async (req) => {
   "sourceGuess": "upwork | fiverr | linkedin | portfolio | unknown"
 }`;
 
-    const { response: aiRes } = await callAIWithModelFallback(apiKey, {
+    const { response: aiRes, modelUsed } = await callAIWithModelFallback(apiKey, {
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `<profile>\n${text}\n</profile>` },
@@ -140,11 +147,12 @@ serve(async (req) => {
       temperature: 0.2,
       maxTokens: 2000,
       jsonResponse: true,
-      models: chainFrom("google/gemini-2.5-flash"),
+      models: freeChainFrom("google/gemini-2.5-flash"),
       context: "IMPORT-FREELANCE",
     });
     if (!aiRes.ok) throw new Error(`AI gateway ${aiRes.status}`);
     const aiJson = await aiRes.json();
+    logAiUsage("IMPORT-FREELANCE", modelUsed, aiJson);
     const content = aiJson.choices?.[0]?.message?.content;
     let out;
     try { out = JSON.parse(content); } catch { out = JSON.parse(content?.match(/\{[\s\S]*\}/)?.[0] ?? "{}"); }
