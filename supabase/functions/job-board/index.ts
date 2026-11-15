@@ -125,6 +125,7 @@ const SEMANTIC_PROBE_ROWS = 10;
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-rb-pass",
+  "Access-Control-Max-Age": "7200",
 };
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -139,7 +140,7 @@ const json = (body: unknown, status = 200) =>
 // a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.101"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.102"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // Rationale: docs/job-board-index-notes.md#n483-const-name_sync_version
@@ -3850,16 +3851,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         const DERIVED_NOT_EMPLOYER_EDITS = new Set(["region_code", "country"]);
         // Rationale: docs/job-board-index-notes.md#n108-vendor-field-first-read
         const VENDOR_FIELD_FIRST_READ = new Set(["personio:salary"]);
-        // .92 changed how these federal fields are read (S8-023, S8-083): the patches land, unlogged. Remove after 2026-11-09 (n444).
-        const OUR_READING_CHANGED = new Set(["usajobs:country", "usajobs:work_mode", "usajobs:remote", "usajobs:salary",
+        const OUR_READING_CHANGED = new Set([
           // Remove after 2026-11-30 (n1426).
           "lever:employment_type", "bamboohr:employment_type", "recruitee:employment_type", "breezy:employment_type", "personio:employment_type", "breezy:salary", "lever:salary"]);
-        // ONE-SHOT, REMOVE AFTER ONE COLD ROTATION (wave 3, L7-04/L7-05): the Lever and
-        // Recruitee pay text is re-formatted (exact figures, the stated period), so the
-        // first rewrite of a stored figure is our correction, not an employer edit.
-        // Remove after 2026-11-09: a dated test fails from that day while this set exists
-        // (S11-136), since an employer's real pay edit on these vendors goes unlogged.
-        const OUR_PAY_REWRITE = new Set(["lever", "recruitee"]);
         const FIELD_CHANGES_PER_VISIT = 500;
         const VALUE_CAP = 1_000; // salary strings and titles both fit generously
         const changeLog: Array<Record<string, unknown>> = [];
@@ -3936,10 +3930,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           const sameMoney = statesTheSameMoney(nextPay, curPay, payCountry);
           // Rationale: docs/job-board-index-notes.md#n610-const-firstvendorread-curpay-null-nextpa
           const firstVendorRead = curPay === null && nextPay !== null && VENDOR_FIELD_FIRST_READ.has(`${s.source}:salary`);
-          // Only a CHANGED text is a rewrite: the same string patched every salaried
-          // Lever and Recruitee row on every visit (S11-136).
-          const ourRewrite = curPay !== null && nextPay !== null && curPay !== nextPay && OUR_PAY_REWRITE.has(s.source);
-          if (sameMoney || firstVendorRead || ourRewrite) patch.salary = nextPay;
+          if (sameMoney || firstVendorRead) patch.salary = nextPay;
           else put("salary", row.salary, prev.salary, false);
           // Rationale: docs/job-board-index-notes.md#n113-patch-salary-undefined
           const reparse = payToReparse(patch, row.salary, prev.salary);
