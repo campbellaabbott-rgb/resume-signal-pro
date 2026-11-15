@@ -18,6 +18,15 @@ import { TRADING_NAME } from "@/config/seller";
 import { ShareableScoreCard, SHARE_SITE } from "@/components/ShareableScoreCard";
 import { ShareScoreCard } from "@/components/ReportInsightCards";
 import { codeOf } from "./helpers/strip-comments";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
+
+// The LinkedIn click awaits the card's image (html2canvas) before it opens the
+// share window. On 2026-11-15 a loaded machine took over a second for that, and
+// waitFor's default one-second budget failed the push gate with "expected +0 to
+// be 1", a sentence that reads like a broken button. The suite's one policy
+// (helpers/mount-budget.ts) gives the wait 15 s inside a 30 s case, so a late
+// image still passes and a share that never opens still fails by name.
+vi.setConfig(MOUNT_TEST_BUDGET);
 
 vi.mock("@/lib/track-transport", () => ({ postTrackEvent: () => {} }));
 afterEach(async () => { cleanup(); vi.restoreAllMocks(); await i18n.changeLanguage("en"); });
@@ -44,7 +53,7 @@ describe("the score card", () => {
     vi.stubGlobal("open", (url: string) => { opened.push(url); return null; });
     render(card);
     fireEvent.click(screen.getByRole("button", { name: /linkedin/i }));
-    await vi.waitFor(() => expect(opened.length).toBe(1));
+    await vi.waitFor(() => expect(opened.length).toBe(1), SLOW);
     expect(decodeURIComponent(opened[0])).toContain("https://resumebooster.work/resume-checker");
     vi.unstubAllGlobals();
     expect(codeOf(readFileSync(resolve(ROOT, "src/components/ShareableScoreCard.tsx"), "utf8"))).not.toMatch(OTHER_DOMAIN);
