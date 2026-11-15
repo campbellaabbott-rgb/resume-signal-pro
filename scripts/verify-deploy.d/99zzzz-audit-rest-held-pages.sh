@@ -13,6 +13,11 @@
 #       the line reads the right chunk (S13-124);
 #   P2  the published board chunk carries the controls that open a letter or a
 #       tailored résumé already drafted and ask for another (S12-052).
+# The list is the repo's importers of the gate. The seven model endpoints the
+# cost wave retired (lane ai, 2026-11-09.1) answer 410, bundle no gate and so
+# left it; section 99zzzzzz-cost-ai checks each of them answers 410 and calls
+# nothing. Live before that deploy they serve 2026-11-03.1, and after it a
+# build that bundles no gate, so this line has nothing left to say of them.
 # Every line FAILs on the build c4a29736 serves: the functions there are older,
 # its homepage chunk carries the invented job, its board chunk has no such key.
 #
@@ -31,12 +36,12 @@ vdhp_build() { # $1 fn -> the x-fn-build its preflight answers
   curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$1" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//'
 }
 
-for VDHP_FN in analyze-linkedin-profile application-fit free-keyword-scan free-keyword-scan-stream \
+for VDHP_FN in application-fit free-keyword-scan free-keyword-scan-stream \
   generate-application-answers generate-apply-package generate-ats-defense generate-career-path \
-  generate-career-snapshot generate-cover-letter generate-cover-letter-stream generate-elevator-pitch \
+  generate-career-snapshot generate-cover-letter \
   generate-freelance-boost generate-graduate-gameplan generate-interview-coach generate-keyword-fix \
-  generate-premium-package generate-premium-package-stream generate-product-preview generate-recruiter-view \
-  generate-resume-roast generate-summary generate-tailored-resume import-freelance-profile job-fit nl-search \
+  generate-premium-package generate-product-preview \
+  generate-tailored-resume import-freelance-profile job-fit nl-search \
   parse-resume-structured shortlist-evaluate test-ai-fallback; do
   VDHP_H=$(vdhp_build "$VDHP_FN")
   if [ -z "$VDHP_H" ]; then echo "FAIL  $VDHP_FN preflight carries no x-fn-build (not deployed, or its preflight does not answer)"

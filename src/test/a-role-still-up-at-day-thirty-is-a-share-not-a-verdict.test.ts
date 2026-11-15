@@ -58,6 +58,8 @@ const PRIOR = "20260909200000_a_closed_at_that_is_known_to_be_late.sql";
 const COMPANY_FILE = "20260909217000_a_role_still_up_at_day_thirty_is_a_share_not_a_verdict.sql";
 const CATEGORY_FILE = "20260909217500_a_field_is_only_as_open_as_the_boards_we_can_read.sql";
 const TABLE_FILE = "20260909217800_the_bucket_we_computed_and_threw_away.sql";
+/** The live refresh since the cost audit of 2026-11-08: a verdict is rewritten only when it moved. */
+const VERDICT_FILE = "20261109140000_a_board_verdict_is_rewritten_only_when_the_board_changed_bucket.sql";
 // MOVED, NOT DROPPED -- the rule this repo applies whenever a re-issue lands.
 // Both curves were re-issued on 2026-09-25 to give sufficient_30 the positive
 // control it never had: its four terms all pass VACUOUSLY on a cohort with no
@@ -452,16 +454,22 @@ describe("still advertised at day 30 is published as a share, gated, and never p
     };
 
     it("is written by the live refresh, in the same statement as the counts, and pruned", () => {
-      expect(refresh.file).toBe(TABLE_FILE);
+      expect(refresh.file).toBe(VERDICT_FILE);
       expect(refresh.code).toMatch(/INSERT INTO public\.job_board_board_observability AS o \(company_token, bucket, lap_w0, as_of\)/);
-      expect(refresh.code).toMatch(/FROM classed x\s+ON CONFLICT \(company_token\) DO UPDATE/);
+      // Only a board that is new or moved is offered to the upsert (cost wave
+      // review, 2026-11-15): ON CONFLICT locks every conflicting row before
+      // its WHERE is read, so an unchanged board must not reach it.
+      expect(refresh.code).toMatch(/FROM classed x\s+LEFT JOIN public\.job_board_board_observability cur ON cur\.company_token = x\.company_token\s+WHERE cur\.company_token IS NULL\s+OR \(cur\.bucket, cur\.lap_w0\) IS DISTINCT FROM \(x\.bucket, x\.lap_w0\)\s+ON CONFLICT \(company_token\) DO UPDATE/);
       // The write and the counts read ONE classification: the INSERT is a CTE
       // of the SELECT ... INTO payload, not a second pass.
       const write = refresh.code.indexOf("INSERT INTO public.job_board_board_observability");
       const into = refresh.code.indexOf("INTO payload");
       expect(write).toBeGreaterThan(0);
       expect(write).toBeLessThan(into);
-      expect(refresh.code).toMatch(/DELETE FROM public\.job_board_board_observability o\s+WHERE o\.as_of < v_as_of/);
+      // Written only where the verdict moved, and a board that left the window
+      // is deleted by name in the same statement (as_of no longer marks a pass).
+      expect(refresh.code).toMatch(/WHERE \(o\.bucket, o\.lap_w0\) IS DISTINCT FROM \(EXCLUDED\.bucket, EXCLUDED\.lap_w0\)/);
+      expect(refresh.code).toMatch(/DELETE FROM public\.job_board_board_observability o\s+WHERE NOT EXISTS \(SELECT 1 FROM classed x WHERE x\.company_token = o\.company_token\)/);
       // The five buckets it writes are the five the readers gate on.
       for (const b of ["full_read", "lap_proven", "lap_pending", "unprovable", "unobserved"]) {
         expect(refresh.code).toMatch(new RegExp(`'${b}'`));

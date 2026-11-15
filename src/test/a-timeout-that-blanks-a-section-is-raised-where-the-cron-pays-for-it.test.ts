@@ -23,9 +23,10 @@
 //     that line. The comparison has teeth: the previous re-issue (20260909217500
 //     to 20260925163842) changed the body and fails it, and one moved token in
 //     the new file fails it;
-//   * the other cron that calls the curve, refresh_explore_cache, still covers
-//     the sum of its callees' headers -- derived from the source, as
-//     explore-claims does, not quoted;
+//   * refresh_explore_cache, which called the curve until 20261109110000,
+//     no longer does, and still covers the sum of its callees' headers --
+//     derived from the source, as explore-claims does, not quoted; the stats
+//     cache is the cron that calls the curve now;
 //   * EXECUTED in pglite: the same fixture answers the same rows before and
 //     after, and only pg_proc.proconfig moves.
 //
@@ -209,15 +210,25 @@ describe("the other cron that calls it still fits", () => {
     return m ? secs(m[1]) : 0;
   };
 
-  it("refresh_explore_cache's outer ceiling covers the sum of its callees with the curve at five minutes", () => {
+  // RE-AIMED 2026-11-09 (cost audit, db-cadence lane). 20261109110000 took
+  // the curve out of the explore refresh: nothing on /explore read it, and the
+  // hourly stats cache computes the same rows at (90, 300). So the explore
+  // refresh must NOT call it now, its outer ceiling must still cover what it
+  // does call, and the curve keeps its five-minute header for the stats cache
+  // that does (its window against the explore run is checked in
+  // the-field-curve-the-page-waited-a-minute-for-joins-the-hourly-cache).
+  it("refresh_explore_cache no longer calls the curve, its outer ceiling covers what it does call, and the stats cache calls the curve at five minutes", () => {
     const sql = sqlCodeOf(latestWith("CREATE OR REPLACE FUNCTION public.refresh_explore_cache"));
     const start = sql.indexOf("FUNCTION public.refresh_explore_cache");
     const body = sql.slice(start, sql.indexOf("$$;", start));
     const called = [...new Set([...body.matchAll(/public\.(get_[a-z_]+)\s*\(/g)].map((m) => m[1]))];
-    expect(called, "the explore refresh no longer calls the curve -- this budget is moot, and the header's claim is stale").toContain(FN);
+    expect(called, "the explore refresh calls the curve again -- a second hourly pass for a key no page reads").not.toContain(FN);
+    expect(called.length, "no callees found -- the regex broke").toBeGreaterThan(0);
+    const stats = sqlCodeOf(latestWith("CREATE OR REPLACE FUNCTION public.refresh_stats_cache"));
+    expect(stats, "no cron computes the curve any more").toContain(`public.${FN}(90, 300)`);
+    expect(timeoutOf(FN)).toBe(300);
     const inner = called.map((fn) => [fn, timeoutOf(fn)] as const);
     for (const [fn, t] of inner) expect(t, `${fn} has no header, so it is unbounded inside the refresh`).toBeGreaterThan(0);
-    expect(inner.find(([fn]) => fn === FN)![1]).toBe(300);
     const sum = inner.reduce((a, [, t]) => a + t, 0);
     const outer = timeoutOf("refresh_explore_cache");
     expect(outer, `inner ceilings total ${sum}s against ${outer}s: ${inner.map(([f, t]) => `${f}=${t}s`).join(", ")}`).toBeGreaterThanOrEqual(sum);

@@ -162,6 +162,6 @@ describe("FA-2: the customer's mail says only what the reply wrote", () => {
 
   it("the preflight names this build", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/admin-regenerate-delivery", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toBe("admin-regenerate-delivery.2026-11-03.1");
+    expect(res.headers.get("x-fn-build")).toBe("admin-regenerate-delivery.2026-11-09.1");
   });
 });

@@ -8,7 +8,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
-import { THINKING_TOKENS, UnusableModelOutput, callAIForUsableReply, chainFrom } from "../_shared/ai-fallback.ts";
+import { THINKING_TOKENS, UnusableModelOutput, callAIForUsableReply, freeChainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { PREVIEW_FORMAT, PREVIEW_OUTPUT_TOKENS, readPreviewReply } from "./preview-reply.ts";
@@ -25,11 +25,18 @@ import { PREVIEW_FORMAT, PREVIEW_OUTPUT_TOKENS, readPreviewReply } from "./previ
 // one the person is told to try again in words. Request, reply shape, the
 // 429/402 answers and the prompt's text are unchanged. Nothing of main's past
 // f8d72a9b, the build the 2026-10-31 deploy put live, rides along.
-const FN_BUILD = "generate-product-preview.2026-11-03.1";
+// 2026-11-09.1 (cost audit 2026-11-08, lane ai): a free teaser's chain is
+// flash, then gpt-5-mini (_shared/ai-fallback.ts freeChainFrom): the model
+// asked after a failed flash is no longer the dearest and slowest one. Flash
+// still answers first, behind the same spend gate. Every reply's usage is
+// logged (numbers only), and browsers keep the preflight two hours.
+const FN_BUILD = "generate-product-preview.2026-11-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  // One preflight per browser per two hours, not one before every preview.
+  "Access-Control-Max-Age": "7200",
   "x-fn-build": FN_BUILD,
 };
 
@@ -195,7 +202,7 @@ Produce the single preview slice described in your instructions.`;
       temperature: 0.6,
       maxTokens: PREVIEW_OUTPUT_TOKENS + THINKING_TOKENS,
       jsonResponse: true,
-      models: chainFrom("google/gemini-2.5-flash"), // flash primary keeps the teaser cheap
+      models: freeChainFrom("google/gemini-2.5-flash"), // flash primary keeps the teaser cheap, and so does what follows it
       context: "PRODUCT-PREVIEW",
       read: readPreviewReply,
     });

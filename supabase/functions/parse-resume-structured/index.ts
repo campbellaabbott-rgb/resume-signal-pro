@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { modelSpendGate } from "../_shared/model-spend-gate.ts";
-import { callAIWithModelFallback, describeError, describeReply } from "../_shared/ai-fallback.ts";
+import { callAIWithModelFallback, describeError, describeReply, logAiUsage } from "../_shared/ai-fallback.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -17,10 +17,18 @@ import { callAIWithModelFallback, describeError, describeReply } from "../_share
 // text around it, which could be the person's name or email. Nothing else in
 // this function changed, and nothing of main's past f8d72a9b, the build the
 // 2026-10-31 deploy put live, rides along.
-const FN_BUILD = "parse-resume-structured.2026-11-03.1";
+// 2026-11-09.1 (cost audit 2026-11-08, lane ai): this lane changes no line of this file. The shared
+// model-call helper it imports (_shared/ai-fallback.ts) gained the free-tool
+// chain and a numbers-only usage line, so the build moves with it.
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+// 2026-11-09.2 (fix/cost-wave, the integration): both lanes' changes above together.
+// cost/ai and cost/ci-edge each stamped 2026-11-09.1 on code of its own, so the merged code
+// takes the next sequence (DEPLOY-LEDGER §3).
+const FN_BUILD = "parse-resume-structured.2026-11-09.2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Max-Age': '7200',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'x-fn-build': FN_BUILD,
 };
@@ -200,6 +208,7 @@ serve(async (req) => {
     }
 
     const data = await response.json();
+    logAiUsage("parse-resume-structured", modelUsed, data);
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall || toolCall.function.name !== "submit_structured_resume") {
       // Its shape, never its words: the reply carries the person's résumé (S13-064).

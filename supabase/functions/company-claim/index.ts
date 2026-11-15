@@ -68,10 +68,12 @@ import { CLAIM_COPY, mailLanguageOf, storedLanguage } from "./copy.ts";
 // browser's Accept-Language, else English; ./copy.ts), and that language is
 // kept on the claim (company_claims.locale, 20261103195000) for the
 // "verified" notice the owner's decision sends later.
-const FN_BUILD = "company-claim.2026-11-03.1";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "company-claim.2026-11-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-admin-key",
   "x-fn-build": FN_BUILD,
 };

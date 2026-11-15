@@ -1547,6 +1547,30 @@
     "theBoardChecksEveryMinuteForAStoppedRefresh": {
       "title": "O quadro de vagas verifica a cada minuto se a atualização parou",
       "description": "O quadro de vagas agora verifica a cada minuto se a atualização das vagas parou, e pede um reinício quando ela fica alguns minutos parada. Ainda não o vimos reiniciar uma atualização parada."
+    },
+    "aJobPageSaysWhenItsEmployerClosedThePosting": {
+      "title": "A página de uma vaga diz quando o empregador encerrou o anúncio",
+      "description": "Quando o próprio sistema de recrutamento do empregador respondeu que deixou de publicar uma vaga, a página dessa vaga no nosso site agora diz isso e não diz mais nada sobre ela. A versão da página que os buscadores leem também informa o dia em que ela foi gerada. A página de uma vaga que apenas saiu do nosso quadro continua dizendo que ela não está mais listada aqui, o que é uma afirmação sobre o nosso quadro, não sobre o empregador."
+    },
+    "companyPagesUseTheNameTheEmployerUses": {
+      "title": "As páginas de empresa usam o nome que o próprio empregador usa",
+      "description": "Algumas páginas de empresa chamavam o empregador pelo código curto com que o sistema de recrutamento dele o registra, como “papajohns”. Agora elas usam o nome do próprio empregador, como Papa John's, United Health Services, SS&C Technologies ou HUB International, no título e no cabeçalho da página."
+    },
+    "theConnectPageSaysMoreAboutClaudeAndChatGpt": {
+      "title": "A página “Conecte seu agente” diz mais sobre o Claude e o ChatGPT",
+      "description": "Agora ela diz quantas das vagas abertas do quadro a sua IA consegue buscar, quais ficam só neste site e quando foram contadas. Para o ChatGPT, ela cita o que a página de preços do ChatGPT diz sobre o plano Free, com o dia em que a lemos, e indica a quem usa o Free o plano gratuito do Claude, que permite adicionar apenas um conector personalizado. Para o Claude, ela diz para você adicionar o conector uma vez no navegador do celular, não no app, e que depois o app já o tem, e que um conector já adicionado no Claude aparece no Claude Code quando você entra com a mesma conta."
+    },
+    "theGhostJobIndexNoLongerCallsATakedownFilled": {
+      "title": "O Índice de vagas fantasmas não chama mais de “preenchida” uma vaga retirada",
+      "description": "Os números contam as vagas que um empregador retirou e não republicou com o mesmo título. Antes, a página chamava essas vagas de preenchidas. Agora ela as apresenta como “Com que frequência as vagas são retiradas e não republicadas” e diz que uma retirada nunca é chamada de contratação, porque, no feed de um empregador, uma contratação, uma vaga suspensa e uma vaga cancelada parecem iguais. Esse título e a explicação agora aparecem no idioma que você usa no site."
+    },
+    "thePayTransparencyIndexNamesEachHiringSystem": {
+      "title": "O Índice de transparência salarial dá o nome certo a cada sistema de recrutamento",
+      "description": "A tabela de sistemas de recrutamento agora dá a cada um o nome que o fabricante usa, como iCIMS, UKG Pro Recruiting ou ADP Workforce Now, em vez de um código curto. A versão da página que os buscadores leem usa os mesmos nomes."
+    },
+    "theFooterLinksOurDataPages": {
+      "title": "O rodapé leva às nossas páginas de dados e às referências de ATS",
+      "description": "O rodapé agora também tem links para “Índice de vagas fantasmas”, “Tendências semanais de contratação”, “Índice de vagas de nível inicial” e “Referências de pontuação ATS”, ao lado do “Índice de transparência salarial”, que já estava lá."
     }
   }
 }

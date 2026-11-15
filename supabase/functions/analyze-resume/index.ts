@@ -1,6 +1,6 @@
 // deploy-stamp: 2026-10-09T13:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
+import { callAIWithModelFallback, chainFrom, logAiUsage } from "../_shared/ai-fallback.ts";
 import {
   ANALYSIS_BUDGET_MS,
   ANALYSIS_TOOL_NAME,
@@ -123,7 +123,14 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 // buyer's network no longer lock the buyer out; an unknown id is counted per
 // network as above; and an unbound Pro row whose customer left its address
 // is no longer kept live by that customer (_shared/pro.ts).
-const FN_BUILD = "analyze-resume.2026-11-10.2";
+// 2026-11-10.3 (cost audit 2026-11-08, lane ai): this lane changes no line of this file. The shared
+// model-call helper it imports (_shared/ai-fallback.ts) gained the free-tool
+// chain and a numbers-only usage line, so the build moves with it.
+// 2026-11-10.3 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+// 2026-11-10.4 (fix/cost-wave, the integration): both lanes' changes above together.
+// cost/ai and cost/ci-edge each stamped 2026-11-10.3 on code of its own, so the merged code
+// takes the next sequence (DEPLOY-LEDGER §3).
+const FN_BUILD = "analyze-resume.2026-11-10.4";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -217,6 +224,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Max-Age': '7200',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'x-fn-build': FN_BUILD,
 };
@@ -428,7 +436,9 @@ async function askPart(apiKey: string, part: AnalysisPart, systemPrompt: string,
       throw new PartAnswer(answer(500, ERROR_MESSAGES.INTERNAL));
     }
 
-    const reply = readToolReply(await response.json().catch(() => null));
+    const raw = await response.json().catch(() => null);
+    logAiUsage(`analyze-resume.${part.label}`, modelUsed, raw);
+    const reply = readToolReply(raw);
     if (reply && usablePart(part, reply)) {
       console.log(`[ANALYZE-RESUME] (${part.label}) answered by ${modelUsed} in ${Date.now() - startedAt}ms`);
       return reply;

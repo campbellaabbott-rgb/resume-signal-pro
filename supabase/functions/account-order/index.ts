@@ -32,10 +32,12 @@ import { requireWebsiteSession } from "../_shared/website-session.ts";
 // RECEIPTS_PER_HOUR times an hour per account, counted before Stripe is asked
 // (the account's Stripe reads share one limit with the checkouts).
 // 2026-10-14.31 (recheck 3, 2026-10-26): "Email it again" sends the order's own language (the delivery's metadata.language) to send-product-email.
-const FN_BUILD = "account-order.2026-10-14.31";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "account-order.2026-11-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,

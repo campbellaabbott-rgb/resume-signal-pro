@@ -17,7 +17,7 @@
 //       every non-Greenhouse posting where the real form isn't exposed.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { CHAIN_DEADLINE_MS, callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, callAIWithModelFallback, freeChainFrom, logAiUsage } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
@@ -103,12 +103,19 @@ import { websiteSessionOf, type WebsiteAuth } from "../_shared/website-session.t
 // path asks for a website session, or our own servers' key, before the
 // spend gate; anyone else is answered 401 sign_in_required, uncounted.
 // Nothing else in this bundle changed.
-const FN_BUILD = "generate-application-answers.2026-11-10.1";
+// 2026-11-10.2 (cost audit 2026-11-08, lane ai): the answers' and the cover
+// note's chain is flash, then gpt-5-mini (_shared/ai-fallback.ts
+// freeChainFrom), never the dearest model after a failed flash; flash still
+// answers first, behind the same sign-in check and spend gate. Every reply's
+// usage is logged (numbers only), and browsers keep the preflight two hours.
+const FN_BUILD = "generate-application-answers.2026-11-10.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Expose-Headers": "x-fn-build, retry-after",
+  // One preflight per browser per two hours, not one before every draft.
+  "Access-Control-Max-Age": "7200",
   "x-fn-build": FN_BUILD,
 };
 const json = (b: unknown, status = 200) =>
@@ -208,10 +215,11 @@ serve(async (req) => {
       let lastIssues: string[] = [];
       for (let attempt = 0; attempt < 2; attempt++) {
         let response: Response;
+        let modelUsed: string;
         try {
-          ({ response } = await callAIWithModelFallback(apiKeyCN, {
+          ({ response, modelUsed } = await callAIWithModelFallback(apiKeyCN, {
             messages, temperature: 0.4, maxTokens: 900,
-            models: chainFrom("google/gemini-2.5-flash"),
+            models: freeChainFrom("google/gemini-2.5-flash"),
             context: "COVER-NOTE",
             deadlineMs: deadlineAt - Date.now(),
           }));
@@ -233,6 +241,7 @@ serve(async (req) => {
           return json({ error: "Couldn't draft a cover note right now.", code: "draft_failed", retryable: true }, 502);
         }
         const r = await response.json();
+        logAiUsage("COVER-NOTE", modelUsed, r);
         const draft = String(r?.choices?.[0]?.message?.content ?? "")
           .replace(/^```[a-z]*\n?|```$/g, "").trim();
 
@@ -352,8 +361,9 @@ ${inferred ? "" : `\nQUESTIONS TO ANSWER (draft each, grounded strictly in the r
       // named back as undrafted instead of taking the answers the other
       // chunks wrote down with it as a 500.
       let response: Response;
+      let modelUsed: string;
       try {
-        ({ response } = await callAIWithModelFallback(apiKey, {
+        ({ response, modelUsed } = await callAIWithModelFallback(apiKey, {
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt(batch) },
@@ -361,7 +371,7 @@ ${inferred ? "" : `\nQUESTIONS TO ANSWER (draft each, grounded strictly in the r
           temperature: 0.3,
           maxTokens: inferred ? 3500 : 4000,
           jsonResponse: true,
-          models: chainFrom("google/gemini-2.5-flash"),
+          models: freeChainFrom("google/gemini-2.5-flash"),
           context: "APPLICATION-ANSWERS",
           deadlineMs: deadlineAt - Date.now(),
         }));
@@ -371,6 +381,7 @@ ${inferred ? "" : `\nQUESTIONS TO ANSWER (draft each, grounded strictly in the r
       }
       if (!response.ok) return { batch, status: response.status, answers: null as unknown[] | null };
       const result = await response.json();
+      logAiUsage("APPLICATION-ANSWERS", modelUsed, result);
       const content: string = result?.choices?.[0]?.message?.content ?? "";
       let parsed: { answers?: unknown } = {};
       try { parsed = JSON.parse(content); }

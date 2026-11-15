@@ -835,11 +835,15 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
     return { state: "published", closed, flagged, ceiling };
   }
 
+  // Each sentence is the schedule the newest migration gives its job, read
+  // by a test from cron.schedule and cron.alter_job alike: the cost wave
+  // (20261109121000, 20261109122000) moved the rollup to every 30 minutes and
+  // the ghost stats to once an hour, at :15, before the hourly cache copies them.
   const DATA_PAGE_CADENCE = {
-    "refresh-ghost-stats": "recomputed twice an hour",
+    "refresh-ghost-stats": "recomputed once an hour",
     "refresh-stats-cache": "recomputed once an hour",
     "transparency-cache-hourly": "recomputed once an hour",
-    "job-board-stats-rollup": "recomputed every 15 minutes",
+    "job-board-stats-rollup": "recomputed every 30 minutes",
   };
 
   /**

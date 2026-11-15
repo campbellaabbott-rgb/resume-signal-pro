@@ -15,7 +15,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { CHAIN_DEADLINE_MS, callAIWithModelFallback } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, callAIWithModelFallback, logAiUsage } from "../_shared/ai-fallback.ts";
 import { clipField, clipText, modelSpendGate, purchaseSpendGate } from "../_shared/model-spend-gate.ts";
 import { proGrantRefusal } from "../_shared/pro.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
@@ -42,10 +42,18 @@ import { BOOST_MAX_TOKENS, decideStructure, readBoostReply, type BoostReply } fr
 // _shared/pro.ts it bundles refreshes a cache row that names a Stripe
 // customer by that customer instead of clearing it when an address
 // search finds nothing, and gained the by-customer and by-account readers.
-const FN_BUILD = "generate-freelance-boost.2026-11-10.1";
+// 2026-11-10.2 (cost audit 2026-11-08, lane ai): this lane changes no line of this file. The shared
+// model-call helper it imports (_shared/ai-fallback.ts) gained the free-tool
+// chain and a numbers-only usage line, so the build moves with it.
+// 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+// 2026-11-10.3 (fix/cost-wave, the integration): both lanes' changes above together.
+// cost/ai and cost/ci-edge each stamped 2026-11-10.2 on code of its own, so the merged code
+// takes the next sequence (DEPLOY-LEDGER §3).
+const FN_BUILD = "generate-freelance-boost.2026-11-10.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "x-fn-build": FN_BUILD,
 };
@@ -273,7 +281,7 @@ ${p.repeatOrReferral ? `Repeat/referral: ${p.repeatOrReferral}` : ""}`).join("\n
         statuses.push(504);
         break;
       }
-      const { response: aiRes } = await callAIWithModelFallback(apiKey, {
+      const { response: aiRes, modelUsed } = await callAIWithModelFallback(apiKey, {
         messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
         temperature: 0.5,
         maxTokens: BOOST_MAX_TOKENS,
@@ -281,11 +289,12 @@ ${p.repeatOrReferral ? `Repeat/referral: ${p.repeatOrReferral}` : ""}`).join("\n
         models: [model],
         context: "FREELANCE-BOOST",
         deadlineMs: index === 0 ? Math.max(BOOST_MIN_MODEL_MS, left - BOOST_NEXT_MODEL_WINDOW_MS) : left,
-      }).catch(() => ({ response: new Response(null, { status: 504 }) }));
+      }).catch(() => ({ response: new Response(null, { status: 504 }), modelUsed: model }));
       statuses.push(aiRes.status);
       if (aiRes.status === 402) break; // credits are account-wide: no model will answer
       if (!aiRes.ok) continue;
       const aiJson = await aiRes.json().catch(() => null);
+      logAiUsage("generate-freelance-boost", modelUsed, aiJson);
       const read = readBoostReply(aiJson?.choices?.[0]?.message?.content, { transitionPro: isTransitionPro, posting: body.jobPosting });
       if (read.ok) { out = read.out; break; }
       console.warn(`[FREELANCE-BOOST] ${model} reply unusable: ${read.reason}`);

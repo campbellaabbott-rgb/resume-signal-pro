@@ -48,10 +48,12 @@ const FN_NAME = "agent-pass-status";
 // 2026-10-11.14: apply-agent-switch.ts gained the Apply Assistant's own switch (APPLY_ASSISTANT_ON_SALE); nothing this function does changed.
 // 2026-10-11.15 (recheck 3, 2026-10-26): while the agent products are off sale, a success-page repair of a paid session grants nothing and answers a terminal "retired", as stripe-webhook does.
 // 2026-11-03.1 (S9-001, fix/audit-rest-abuse): a connected app's token is refused with the signed-out answer before the auth server is asked.
-const FN_BUILD = `${FN_NAME}.2026-11-03.1`;
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = `${FN_NAME}.2026-11-09.1`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "x-fn-build": FN_BUILD,

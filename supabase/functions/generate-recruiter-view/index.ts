@@ -1,23 +1,26 @@
-// deploy-stamp: 2026-10-04T13:00Z
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
-import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { checkInputLimits } from "../_shared/input-limits.ts";
-import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+/**
+ * RETIRED. Answers every request with 410 and calls nothing.
+ *
+ * This was the free report's recruiter view: a model endpoint on the project's
+ * key, free, 200 an hour site-wide.
+ * Nothing calls it: no mounted page (a component that named it is imported
+ * nowhere), script, worker, other function, migration's cron job, delivery
+ * path or install-repo tool names it, and the warm-up does not list it (cost
+ * audit 2026-11-08, lane ai).
+ * The free report no longer mounts it (owner decision 2026-10-12).
+ *
+ * An endpoint nobody calls is safest when it does nothing at all, so it no
+ * longer reads the body, touches the database or reaches the model, as
+ * generate-tailored-resume-stream does. The previous implementation is in git
+ * history if a caller ever needs it.
+ */
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): _shared/ai-fallback.ts no
-// longer asks a model that timed out again: this function's chain moves to the
-// next model, which keeps at least 40 s of the 125 s budget when the first
-// model times out (what else the module gained, the optional caller signal,
-// the walk that refuses a cut-off or empty reply, the completion-token
-// option, the reply describer and the error describer, rides in the bundle
-// unused here).
-// Nothing else in this bundle changed since main's f8d72a9b, the build the
-// 2026-10-31 deploy put live (docs/deploy-ledger.json, verifiedDeploys).
-const FN_BUILD = "generate-recruiter-view.2026-11-03.1";
+// 2026-11-09.1 (cost audit 2026-11-08, lane ai): retired; answers 410.
+const FN_BUILD = "generate-recruiter-view.2026-11-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,155 +28,15 @@ const corsHeaders = {
   "x-fn-build": FN_BUILD,
 };
 
-// Public (verify_jwt=false) LLM endpoint: an address allowance plus a
-// function-wide ceiling (see _shared/model-spend-gate.ts).
-const RECRUITER_VIEW_LIMITS = { perAddress: 20, globalPerHour: 200 };
-
-serve(async (req) => {
+serve((req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-
-  try {
-    const body = await req.json();
-    const resumeText = typeof body?.resumeText === "string" ? body.resumeText : undefined;
-    const jobTitle = clipField(body?.jobTitle, 200);
-    const industry = clipField(body?.industry, 120);
-
-    const limitError = checkInputLimits({ resumeText });
-    if (limitError) return new Response(JSON.stringify({ error: limitError }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
-    if (!resumeText) {
-      return new Response(
-        JSON.stringify({ error: "Resume text is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-    const refused = await modelSpendGate(supabase, req, "generate-recruiter-view", RECRUITER_VIEW_LIMITS, corsHeaders);
-    if (refused) return refused;
-
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
-
-    const systemPrompt = `You are an expert ATS (Applicant Tracking System) simulator and senior recruiter with 15+ years of hiring experience. Your task is to show the candidate EXACTLY what happens when their resume enters a company's hiring pipeline.
-
-## OUTPUT FORMAT (JSON)
-Return a valid JSON object with this structure:
-
-{
-  "atsParsedFields": {
-    "name": "Extracted name or null",
-    "email": "Extracted email or null",
-    "phone": "Extracted phone or null",
-    "location": "Extracted location or null",
-    "currentTitle": "Extracted current title or null",
-    "yearsExperience": "Estimated years or null",
-    "education": "Highest degree + school or null",
-    "skills": ["skill1", "skill2", "...up to 15"],
-    "parseErrors": ["Any fields the ATS would fail to extract or misread"],
-    "parseScore": 85
-  },
-  "recruiterHeatmap": [
-    {
-      "section": "Section name (e.g., 'Name/Title Header', 'Most Recent Role', 'Skills Section')",
-      "viewOrder": 1,
-      "timeSpent": "2-3 seconds",
-      "attention": "high" | "medium" | "low" | "skipped",
-      "recruiterThought": "What the recruiter thinks when they see this section"
-    }
-  ],
-  "candidateRanking": {
-    "estimatedRank": "Top 15%",
-    "competitivePosition": "Above Average",
-    "strengthSignals": ["Signal that makes recruiter want to interview"],
-    "weaknessSignals": ["Signal that makes recruiter hesitate"],
-    "dealBreakers": ["Any instant rejection triggers (empty array if none)"]
-  },
-  "recruiterNotes": {
-    "firstImpression": "What the recruiter thinks in the first 6 seconds",
-    "wouldInterview": true | false,
-    "interviewProbability": "65%",
-    "reasoningChain": [
-      "Step 1 of recruiter's decision process",
-      "Step 2...",
-      "Step 3... final verdict"
-    ],
-    "internalNotes": "The candid notes a recruiter would write in their ATS about this candidate"
-  },
-  "screeningDecision": {
-    "decision": "ADVANCE" | "MAYBE" | "REJECT",
-    "confidence": "High" | "Medium" | "Low",
-    "keyFactors": ["Factor 1", "Factor 2", "Factor 3"],
-    "improvementToAdvance": "What one change would most improve their chances"
-  }
-}
-
-## ANALYSIS RULES
-- Be brutally honest but constructive
-- Simulate a real 6-second recruiter scan
-- The heatmap should reflect actual eye-tracking research (F-pattern, top-third focus)
-- Parse errors should reflect real ATS failures (tables, headers, special characters)
-- Ranking should be realistic for the industry/role level
-- Recruiter notes should sound like real internal hiring notes`;
-
-    const userPrompt = `Simulate the complete recruiter pipeline for this resume:
-
-${resumeText}
-
-${industry ? `Industry: ${industry}` : ''}
-${jobTitle ? `Target Role: ${jobTitle}` : ''}
-
-Show exactly what happens from ATS parsing → recruiter scan → screening decision.`;
-
-    const { response } = await callAIWithModelFallback(apiKey, {
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      temperature: 0.7,
-      maxTokens: 4000,
-      jsonResponse: true,
-      models: chainFrom("google/gemini-2.5-flash"),
-      context: "RECRUITER-VIEW",
-    });
-
-    const rateLimitResponse = await checkAiGatewayResponse(response, corsHeaders);
-    if (rateLimitResponse) return rateLimitResponse;
-
-    const result = await response.json();
-    const content = result.choices?.[0]?.message?.content;
-
-    if (!content) throw new Error("No content returned from AI");
-
-    let recruiterView;
-    try {
-      recruiterView = JSON.parse(content);
-    } catch {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        recruiterView = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("Failed to parse AI response as JSON");
-      }
-    }
-
-    if (!recruiterView.atsParsedFields || !recruiterView.recruiterHeatmap || !recruiterView.screeningDecision) {
-      throw new Error("Response missing required fields");
-    }
-
-    return new Response(
-      JSON.stringify({ success: true, data: recruiterView }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("[RECRUITER-VIEW] Error:", errorMessage);
-    return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
+  return new Response(
+    JSON.stringify({
+      error: "This endpoint has been retired.",
+      code: "retired",
+    }),
+    { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
 });

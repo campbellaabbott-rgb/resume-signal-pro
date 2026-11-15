@@ -43,11 +43,13 @@ import { buyerCountryOf, inWithdrawalTerritory, serviceStartRequested, withdrawa
 // _shared/subscription-notice.ts, which it bundles, now renders a legal notice
 // once and resends exactly that body (S12-102).
 // 2026-11-03.1 (S9-001, fix/audit-rest-abuse): a connected app's token is refused with the signed-out answer before the auth server is asked.
-const FN_BUILD = "withdraw-subscription.2026-11-03.1";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "withdraw-subscription.2026-11-09.1";
 const PRO_PRODUCT_NAME = "Resume Booster Pro";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,

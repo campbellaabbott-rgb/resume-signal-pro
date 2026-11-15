@@ -25,18 +25,31 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { SYSTEM_PROMPT, TOOL_PARAMETERS, validateParse } from "./parse.ts";
 import { modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { UnusableModelOutput, callAIForUsableReply, chainRanOutOfTime } from "../_shared/ai-fallback.ts";
+import { ParseMemo, normaliseQuery } from "./memo.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
 // 2026-10-09.6 (S11-026): pay figures are read in the currency the user named and converted to the dollars the board compares; one above $2M or in a currency the board cannot rank is dropped and named, never clamped.
 // 2026-10-09.7 (wave-3 fix round integration): carries .6 above and the parsers-scan group's model-spend-gate change (S11-083's proven-caller rule), which that group stamped .2.
-const FN_BUILD = "nl-search.2026-11-03.1";
+// 2026-11-09.1 (cost audit 2026-11-08, lane ai): the parse is asked through
+// the shared chain inside eight seconds, today's model first and gpt-5-mini
+// only when it fails; past eight seconds the page gets the answer it already
+// shows for a failed parse (its own filters) at once, not after the
+// platform's 150 s. A sentence asked twice is parsed once per isolate
+// (memo.ts). Browsers keep the preflight for two hours. The usage line of
+// every reply is logged (numbers only).
+const FN_BUILD = "nl-search.2026-11-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  // One preflight per browser per two hours, not one before every search.
+  "Access-Control-Max-Age": "7200",
   "x-fn-build": FN_BUILD,
 };
+const json = (b: unknown, status = 200) =>
+  new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
 // One model call per typed query on the public board: an address allowance
 // plus a function-wide ceiling (see _shared/model-spend-gate.ts).
@@ -44,58 +57,103 @@ const NL_SEARCH_LIMITS = { perAddress: 40, globalPerHour: 600 };
 // The tool call is a handful of filters (~200 tokens); the rest is headroom
 // for the model's thinking, which counts against the same cap.
 const MAX_OUTPUT_TOKENS = 2000;
+// The model the parse has always used comes first. The second is asked only
+// when the first fails (a refusal, a server error, a reply with no tool
+// call), so a retired preview model no longer takes the feature down.
+const NL_MODELS = ["google/gemini-3-flash-preview", "openai/gpt-5-mini"];
+// The reader is waiting on the board for this, and the page already has an
+// answer for a parse that does not come: its own filters. Eight seconds,
+// then that answer.
+const NL_PARSE_BUDGET_MS = 8_000;
+
+const memo = new ParseMemo<string>();
+
+/** The tool call's arguments, {} when they do not parse (as before), or null when the reply made no tool call. */
+function readToolArguments(data: unknown): Record<string, unknown> | null {
+  const toolCall = (data as { choices?: Array<{ message?: { tool_calls?: Array<{ function?: { arguments?: unknown } }> } }> } | null)
+    ?.choices?.[0]?.message?.tool_calls?.[0];
+  if (!toolCall) return null;
+  try {
+    const args = JSON.parse(String(toolCall.function?.arguments ?? ""));
+    return args && typeof args === "object" && !Array.isArray(args) ? args as Record<string, unknown> : {};
+  } catch {
+    return {};
+  }
+}
+
+/** No parse inside the budget: the page shows its "try the filters below" note, as for any failed parse. */
+const tooSlow = () => json({ error: "Parse unavailable", timedOut: true }, 504);
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) return new Response(JSON.stringify({ error: "AI service not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!LOVABLE_API_KEY) return json({ error: "AI service not configured" }, 500);
 
     const { query } = await req.json();
     const raw = String(query ?? "").trim().slice(0, 300);
-    if (raw.length < 3) return new Response(JSON.stringify({ error: "Query too short" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (raw.length < 3) return json({ error: "Query too short" }, 400);
+
+    // A sentence this isolate already parsed costs no model call, so it
+    // spends nothing from the gate either.
+    const memoKey = normaliseQuery(raw);
+    const kept = memo.get(memoKey);
+    if (kept !== undefined) {
+      return new Response(kept, { headers: { ...corsHeaders, "Content-Type": "application/json", "x-nl-memo": "hit" } });
+    }
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
     const refused = await modelSpendGate(supabase, req, "nl-search", NL_SEARCH_LIMITS, corsHeaders);
     if (refused) return refused;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: raw },
-        ],
-        max_tokens: MAX_OUTPUT_TOKENS,
-        tools: [{
-          type: "function",
-          function: {
-            name: "apply_search",
-            description: "Apply the parsed job search",
-            parameters: TOOL_PARAMETERS,
-          },
-        }],
-        tool_choice: { type: "function", function: { name: "apply_search" } },
-      }),
+    const stop = AbortSignal.timeout(NL_PARSE_BUDGET_MS);
+    const outOfTime = new Promise<"out of time">((done) => stop.addEventListener("abort", () => done("out of time"), { once: true }));
+    const asked = callAIForUsableReply(LOVABLE_API_KEY, {
+      models: NL_MODELS,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: raw },
+      ],
+      maxTokens: MAX_OUTPUT_TOKENS,
+      tools: [{
+        type: "function",
+        function: {
+          name: "apply_search",
+          description: "Apply the parsed job search",
+          parameters: TOOL_PARAMETERS,
+        },
+      }],
+      toolChoice: { type: "function", function: { name: "apply_search" } },
+      context: "NL-SEARCH",
+      deadlineMs: NL_PARSE_BUDGET_MS,
+      signal: stop,
+      read: readToolArguments,
     });
+    // A chain still reading a reply when the budget ends is left to finish
+    // on its own; its outcome is no longer anyone's answer.
+    asked.catch(() => undefined);
 
-    if (!response.ok) {
-      const errText = await response.text().catch(() => "");
-      console.error("[NL-SEARCH] gateway error:", response.status, errText.slice(0, 300));
-      const status = response.status === 429 ? 429 : 502;
+    let reply: Awaited<typeof asked>;
+    try {
+      const first = await Promise.race([asked, outOfTime]);
+      if (first === "out of time") return tooSlow();
+      reply = first;
+    } catch (e) {
+      if (e instanceof UnusableModelOutput) return json({ error: "No parse" }, 502);
+      if (stop.aborted || chainRanOutOfTime(e) || (e instanceof Error && e.name === "ChainStopped")) return tooSlow();
+      throw e;
+    }
+
+    if (!reply.ok) {
+      const errText = await reply.response.text().catch(() => "");
+      console.error("[NL-SEARCH] gateway error:", reply.response.status, errText.slice(0, 300));
+      const status = reply.response.status === 429 ? 429 : 502;
       // Surface the gateway status so failures are diagnosable from the client
       // (the detail is a status code + short reason, never sensitive).
-      return new Response(JSON.stringify({ error: "Parse unavailable", gatewayStatus: response.status, detail: errText.slice(0, 200) }), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return json({ error: "Parse unavailable", gatewayStatus: reply.response.status, detail: errText.slice(0, 200) }, status);
     }
-    const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) return new Response(JSON.stringify({ error: "No parse" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
-    let parsed: Record<string, unknown> = {};
-    try { parsed = JSON.parse(toolCall.function.arguments); } catch { parsed = {}; }
+    const parsed = reply.value;
 
     // Validate/sanitize against the real vocabulary — the client trusts only
     // what we return, so anything off-contract is dropped here, not there.
@@ -107,8 +165,10 @@ serve(async (req) => {
     // language); `applied` is what makes them checkable.
     const { filters, applied, dropped, interpreted, notMapped } = validateParse(parsed);
 
-    return new Response(JSON.stringify({ filters, applied, dropped, interpreted, notMapped }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const answer = JSON.stringify({ filters, applied, dropped, interpreted, notMapped });
+    memo.set(memoKey, answer);
+    return new Response(answer, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
-    return new Response(JSON.stringify({ error: "Parse failed", detail: String(e).slice(0, 200) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return json({ error: "Parse failed", detail: String(e).slice(0, 200) }, 500);
   }
 });

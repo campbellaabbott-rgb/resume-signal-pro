@@ -97,7 +97,7 @@ describe("receipt", () => {
   it("answers Stripe's receipt URL and sends nothing", async () => {
     const r = await ask({ action: "receipt", sessionId: MINE });
     expect(r.status).toBe(200);
-    expect(r.build).toBe("account-order.2026-10-14.31");
+    expect(r.build).toBe("account-order.2026-11-09.1");
     expect(r.json.url).toBe(`https://pay.stripe.com/receipts/${MINE}`);
     expect(mailed).toEqual([]);
   });

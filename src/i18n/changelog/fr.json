@@ -1547,6 +1547,30 @@
     "theBoardChecksEveryMinuteForAStoppedRefresh": {
       "title": "Le tableau d'offres vérifie chaque minute si son actualisation s'est arrêtée",
       "description": "Le tableau d'offres vérifie désormais chaque minute si l'actualisation de ses offres s'est arrêtée, et demande un redémarrage dès qu'elle est restée silencieuse quelques minutes. Nous ne l'avons pas encore vu redémarrer une actualisation arrêtée."
+    },
+    "aJobPageSaysWhenItsEmployerClosedThePosting": {
+      "title": "La page d'une offre indique quand l'employeur l'a fermée",
+      "description": "Quand le propre système de recrutement de l'employeur a répondu qu'une offre n'y est plus diffusée, la page de cette offre sur notre site l'indique désormais et n'en dit pas plus sur le poste. La version de la page que lisent les moteurs de recherche donne aussi le jour où elle a été construite. La page d'une offre qui a seulement quitté notre tableau dit toujours qu'elle n'est plus listée sur notre tableau : c'est un constat sur notre tableau, pas sur l'employeur."
+    },
+    "companyPagesUseTheNameTheEmployerUses": {
+      "title": "Les pages entreprise utilisent le nom que l'employeur se donne",
+      "description": "Certaines pages entreprise désignaient l'employeur par le code court sous lequel son système de recrutement le classe, comme « papajohns ». Elles utilisent désormais le nom de l'employeur lui-même, comme Papa John's, United Health Services, SS&C Technologies ou HUB International, dans le titre et l'en-tête de la page."
+    },
+    "theConnectPageSaysMoreAboutClaudeAndChatGpt": {
+      "title": "La page « Connecter votre agent » en dit plus sur Claude et ChatGPT",
+      "description": "Elle indique désormais combien d'offres ouvertes du tableau votre IA peut rechercher, lesquelles restent sur ce site et quand elles ont été comptées. Pour ChatGPT, elle cite ce que dit la page des tarifs de ChatGPT sur l'offre Free, avec le jour où nous l'avons lue, et oriente les utilisateurs de Free vers l'offre gratuite de Claude, qui permet d'ajouter un seul connecteur personnalisé. Pour Claude, elle indique d'ajouter le connecteur une fois dans le navigateur de votre téléphone, pas dans l'application, qui l'a ensuite, et qu'un connecteur déjà ajouté dans Claude est présent dans Claude Code si vous vous connectez avec le même compte."
+    },
+    "theGhostJobIndexNoLongerCallsATakedownFilled": {
+      "title": "L'Indice des offres fantômes ne dit plus qu'un poste retiré a été « pourvu »",
+      "description": "Ses chiffres comptent les postes qu'un employeur a retirés sans les republier sous le même intitulé. La page disait auparavant que ces postes étaient pourvus. Elle les présente désormais sous « À quelle fréquence les offres sont retirées sans être republiées » et précise qu'un retrait n'est jamais appelé une embauche, car une embauche, une offre abandonnée et un poste annulé se ressemblent dans le flux d'un employeur. Ce titre et son explication s'affichent maintenant dans la langue que vous utilisez sur le site."
+    },
+    "thePayTransparencyIndexNamesEachHiringSystem": {
+      "title": "L'Indice de transparence salariale nomme correctement chaque système de recrutement",
+      "description": "Son tableau des systèmes de recrutement donne désormais à chacun le nom qu'utilise son éditeur, comme iCIMS, UKG Pro Recruiting ou ADP Workforce Now, au lieu d'un code court. La version de la page que lisent les moteurs de recherche utilise les mêmes noms."
+    },
+    "theFooterLinksOurDataPages": {
+      "title": "Le pied de page renvoie à nos pages de données et aux repères ATS",
+      "description": "Le pied de page renvoie désormais aussi à « Indice des offres fantômes », « Tendances hebdomadaires du recrutement », « Indice des postes débutants » et « Repères de score ATS », à côté de l'« Indice de transparence salariale » qu'il proposait déjà."
     }
   }
 }

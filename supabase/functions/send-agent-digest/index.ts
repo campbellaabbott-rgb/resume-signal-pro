@@ -63,10 +63,12 @@ import { oneClickHeaders, oneClickUrl, redirectToConfirm, unsubscribeParams, uns
 // postal address.
 // 2026-10-27.1 (sales stay on, owner 2026-10-27): it does not, as on main,
 // and no response carries a marketing-state header.
-const FN_BUILD = "send-agent-digest.2026-10-27.1";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "send-agent-digest.2026-11-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "x-fn-build": FN_BUILD,
 };

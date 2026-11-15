@@ -22,6 +22,7 @@ import { meterFetch, type Rpc } from "./budget.ts";
 
 export const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-rb-budget",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };

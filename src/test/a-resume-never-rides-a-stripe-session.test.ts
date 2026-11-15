@@ -514,8 +514,9 @@ describe("the numbers the page prints are the numbers the code enforces", () => 
   // Every writer to ai_response_cache, found in source rather than listed by
   // hand, so a new caller cannot appear without this guard (and the /trust
   // row it fills) knowing. The paid analysis is not one of them.
+  // generate-summary wrote here until it was retired (2026-11-09.1: nothing
+  // called it, and it answers 410); its rows expire on the same 24-hour clock.
   const AI_CACHE_WRITERS: Record<string, string> = {
-    "generate-summary": "the AI summary at the top of a free report",
     "free-keyword-scan-stream": "the backup scanner's free report",
   };
   const fnDirs = () => readdirSync(resolve(ROOT, "supabase/functions"), { withFileTypes: true })

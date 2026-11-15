@@ -7,7 +7,7 @@ import { validateTailoredResume, type TailoredResumeShape } from "../_shared/res
 import { roleGuidance } from "../_shared/application-questions.ts";
 import { APPLY_KIT_PRODUCT_TYPES } from "../_shared/apply-kit.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
-import { CHAIN_DEADLINE_MS, callAIWithModelFallback, describeError, describeReply } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, callAIWithModelFallback, describeError, describeReply, logAiUsage } from "../_shared/ai-fallback.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { accountProStanding } from "../_shared/pro.ts";
@@ -86,10 +86,18 @@ import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting
 // 2026-11-10.2 (fix/hotfix-2026-11-10, the integration): both lanes' changes
 // above together. hotfix/pro and hotfix/spend each stamped 2026-11-10.1 on
 // code of its own, so the merged code takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "generate-apply-package.2026-11-10.2";
+// 2026-11-10.3 (cost audit 2026-11-08, lane ai): this lane changes no line of this file. The shared
+// model-call helper it imports (_shared/ai-fallback.ts) gained the free-tool
+// chain and a numbers-only usage line, so the build moves with it.
+// 2026-11-10.3 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+// 2026-11-10.4 (fix/cost-wave, the integration): both lanes' changes above together.
+// cost/ai and cost/ci-edge each stamped 2026-11-10.3 on code of its own, so the merged code
+// takes the next sequence (DEPLOY-LEDGER §3).
+const FN_BUILD = "generate-apply-package.2026-11-10.4";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Max-Age': '7200',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'x-fn-build': FN_BUILD,
 };
@@ -532,6 +540,7 @@ Prepare the tailored application package.`;
     }
 
     const data = await response.json();
+    logAiUsage("generate-apply-package", modelUsed, data);
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall || toolCall.function.name !== "submit_apply_package") {
       // Its shape, never its words: the reply carries the person's résumé (S13-064).
@@ -564,7 +573,7 @@ Prepare the tailored application package.`;
     if (!grounding.ok) {
       console.warn("[GENERATE-APPLY-PACKAGE] grounding rejected draft:", grounding.issues.slice(0, 6));
       try {
-        const { response: r2 } = await callAIWithFallback(
+        const { response: r2, modelUsed: model2 } = await callAIWithFallback(
           LOVABLE_API_KEY,
           {
             messages: [
@@ -580,6 +589,7 @@ Prepare the tailored application package.`;
         );
         if (r2.ok) {
           const d2 = await r2.json();
+          logAiUsage("generate-apply-package.regenerate", model2, d2);
           const tc2 = d2.choices?.[0]?.message?.tool_calls?.[0];
           if (tc2?.function?.arguments) {
             const res2 = JSON.parse(tc2.function.arguments);

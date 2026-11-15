@@ -60,6 +60,18 @@ const newestFacetMigration = () => {
   expect(hits.length, "no migration defines refresh_job_board_facets").toBeGreaterThan(0);
   return readFileSync(resolve(MIGRATIONS, hits[hits.length - 1]), "utf8");
 };
+/** The NEWEST migration that redefines the facet READER, whose cold-cache
+ *  answer is the subject of the NULL test below. It sat in the builder's file
+ *  until 20261109175000 re-issued the builder alone. */
+const newestReaderMigration = () => {
+  const hits = readdirSync(MIGRATIONS)
+    .filter((f) => f.endsWith(".sql"))
+    .filter((f) => readFileSync(resolve(MIGRATIONS, f), "utf8")
+      .includes("CREATE OR REPLACE FUNCTION public.get_job_board_facets()"))
+    .sort();
+  expect(hits.length, "no migration defines get_job_board_facets").toBeGreaterThan(0);
+  return readFileSync(resolve(MIGRATIONS, hits[hits.length - 1]), "utf8");
+};
 
 const JOB_BOARD = read("supabase/functions/job-board/index.ts");
 const PUBLIC_API = read("supabase/functions/public-api/index.ts");
@@ -119,7 +131,7 @@ describe("the prune's input stays unfiltered", () => {
     // 0 would read as "no board is hiring" and {} as "every employer has zero
     // open roles". Both are claims; an instrument that has measured nothing
     // must say nothing. Consumers key on absence to fall silent.
-    const sql = sqlCode(MIG);
+    const sql = sqlCode(newestReaderMigration());
     const cold = sql.slice(sql.indexOf("'cached', false"), sql.indexOf("'cached', false") + 400);
     const coldBlock = sql.slice(sql.lastIndexOf("RETURN jsonb_build_object", sql.indexOf("'cached', false")), sql.indexOf("'cached', false"));
     expect(cold.length).toBeGreaterThan(0);

@@ -26,6 +26,14 @@ interface UseScanPrefetchOptions {
 const BACKGROUND_SCAN_TTL_MS = 3 * 60 * 1000; // 3 minutes (reduced from 5)
 const DEBOUNCE_MS = 2000; // Wait 2s after last change before background scan
 
+/**
+ * One warm-up is worth this long. It warms the server, not this résumé, and
+ * the hook never recorded a warm-up (its résumé guard reads a hash only the
+ * switched-off background scan writes), so every hover after the last one
+ * finished posted again.
+ */
+export const SCAN_WARM_TTL_MS = 2 * 60 * 1000;
+
 // Generate SHA-256 hash for robust cache keys (synchronous fallback version for quick checks)
 function getSimpleHash(text: string): string {
   const normalized = text.replace(/\s+/g, ' ').trim().toLowerCase().substring(0, 3000);
@@ -71,7 +79,9 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
   const lastResumeHashRef = useRef<string>('');
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isScanningRef = useRef(false);
-  
+  // When the hover last posted a warm-up (SCAN_WARM_TTL_MS).
+  const warmedAtRef = useRef(0);
+
   // Get background scan result if available
   const getBackgroundScanResult = useCallback((text: string): any | null => {
     if (!backgroundScanCache.current || !text) return null;
@@ -275,18 +285,30 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
     
     warmupAbortRef.current?.abort();
     warmupAbortRef.current = new AbortController();
-    
+    const warmDue = Date.now() - warmedAtRef.current >= SCAN_WARM_TTL_MS;
+    if (warmDue) warmedAtRef.current = Date.now();
+
     try {
       const [validationResult] = await Promise.all([
         Promise.resolve(validateResumeBeforeSend(resumeText)),
-        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/warm-up`, {
+        !warmDue ? Promise.resolve(null) : fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/warm-up`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
             'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           },
-          body: JSON.stringify({ target: 'free-keyword-scan-stream' }),
+          // THE HOVER WARMS THE SCANNER THE CLICK CALLS (cost audit
+          // 2026-11-08, Do first #13). It warmed the streaming fork, which the
+          // page asks only when the primary has failed (src/lib/scan-fallback.ts),
+          // so every hover paid three invocations to warm a function no scan
+          // used. The click calls the primary first; that is the one warmed now.
+          // Measured from outside on 2026-11-08 (OPTIONS, the gateway's upstream
+          // time): a cold primary answers in 108-215 ms, a warm one in about
+          // 5 ms, so a warm isolate saves the click 100-200 ms. The name is
+          // written here, not in a constant, so the published chunk carries it
+          // where the deploy check reads it (99zzzzzz-cost-heartbeat).
+          body: JSON.stringify({ target: 'free-keyword-scan' }),
           signal: warmupAbortRef.current?.signal,
         }).catch(err => {
           console.log('[ScanPrefetch] Warmup request failed (non-critical):', err.message);

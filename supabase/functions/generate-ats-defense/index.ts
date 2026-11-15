@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { CHAIN_DEADLINE_MS, callAIWithModelFallback, chainRanOutOfTime, describeError } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, callAIWithModelFallback, chainRanOutOfTime, describeError, logAiUsage } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
@@ -29,7 +29,14 @@ import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 // (no address beside it, written before 2026-08-27 18:00 UTC, not test
 // mode); migration 20261110140000 names the rest from the order, content,
 // checkout and grant records. Nothing else in this bundle changed.
-const FN_BUILD = "generate-ats-defense.2026-11-10.1";
+// 2026-11-10.2 (cost audit 2026-11-08, lane ai): this lane changes no line of this file. The shared
+// model-call helper it imports (_shared/ai-fallback.ts) gained the free-tool
+// chain and a numbers-only usage line, so the build moves with it.
+// 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+// 2026-11-10.3 (fix/cost-wave, the integration): both lanes' changes above together.
+// cost/ai and cost/ci-edge each stamped 2026-11-10.2 on code of its own, so the merged code
+// takes the next sequence (DEPLOY-LEDGER §3).
+const FN_BUILD = "generate-ats-defense.2026-11-10.3";
 /** Reports one purchase may generate in a day (regenerations included). */
 const ATS_DEFENSE_PER_PURCHASE_DAY = 10;
 
@@ -42,6 +49,7 @@ const ATS_DEFENSE_PRODUCT_NAME = 'ATS Defense Complete';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Max-Age': '7200',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'x-fn-build': FN_BUILD,
 };
@@ -565,8 +573,9 @@ Analyze this resume for ATS compatibility and provide a complete ATS Defense rep
     // and the whole call ends inside 125 s of the request. The body is the
     // one this function always sent: model, messages, tools, tool_choice.
     let response: Response;
+    let modelUsed = "";
     try {
-      ({ response } = await callAIWithModelFallback(LOVABLE_API_KEY, {
+      ({ response, modelUsed } = await callAIWithModelFallback(LOVABLE_API_KEY, {
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage }
@@ -611,6 +620,7 @@ Analyze this resume for ATS compatibility and provide a complete ATS Defense rep
     }
 
     const data = await response.json();
+    logAiUsage("generate-ats-defense", modelUsed, data);
     console.log("[ATS-DEFENSE] AI response received");
 
     // Extract analysis from tool call

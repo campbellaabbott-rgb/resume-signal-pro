@@ -32,6 +32,42 @@ export function parseFreshness(data: unknown): BoardFreshness | null {
   return { boards: Math.round(boards), p50Min: p50, p95Min: p95, computedAt: at };
 }
 
+/**
+ * ONE READ FOR A VISIT THAT GOES FROM / TO /jobs (cost audit 2026-11-08,
+ * dedupe-cached-row-reads). The homepage rail and the board's activity strip
+ * both print get_freshness_stats, a rollup cached server-side; the board used
+ * to ask again the moment the visitor clicked through. The homepage's answer
+ * is kept here, as the RPC returned it, and the board uses it while it is
+ * younger than FRESHNESS_HANDOFF_MS; older, absent or failed, the board asks
+ * itself, exactly as before. The homepage always asks: only the board reads
+ * what is kept.
+ */
+export const FRESHNESS_HANDOFF_MS = 60_000;
+let handedOff: { at: number; data: unknown } | null = null;
+
+/** The kept answer's data when it is young enough, else undefined (never a failed answer). */
+export function keptFreshnessData(now = Date.now()): unknown {
+  return handedOff && now - handedOff.at >= 0 && now - handedOff.at < FRESHNESS_HANDOFF_MS ? handedOff.data : undefined;
+}
+
+/** For tests that mount the homepage more than once. */
+export function forgetKeptFreshness(): void {
+  handedOff = null;
+}
+
+/**
+ * The board strip's read: the homepage's answer when it is young enough,
+ * otherwise get_freshness_stats asked now. Resolves to the RPC's data, or
+ * null when the call failed (the strip then prints no figure, as before).
+ */
+export async function boardStripFreshnessData(): Promise<unknown> {
+  const kept = keptFreshnessData();
+  if (kept !== undefined) return kept;
+  const sb = supabase as unknown as { rpc: (fn: string) => PromiseLike<{ data: unknown; error: unknown } | undefined> };
+  const res = await Promise.resolve(sb.rpc("get_freshness_stats"));
+  return res && !res.error ? res.data : null;
+}
+
 export function useBoardFreshness(): BoardFreshness | null {
   const [state, setState] = useState<BoardFreshness | null>(null);
   useEffect(() => {
@@ -39,6 +75,9 @@ export function useBoardFreshness(): BoardFreshness | null {
     const sb = supabase as unknown as { rpc: (fn: string) => PromiseLike<{ data: unknown; error: unknown }> };
     Promise.resolve(sb.rpc("get_freshness_stats"))
       .then(({ data, error }) => {
+        // Kept for the board even when this page has gone: the visit that
+        // clicked through to /jobs is the one the board would ask again for.
+        if (!error && data != null) handedOff = { at: Date.now(), data };
         if (alive && !error) setState(parseFreshness(data));
       })
       .catch(() => { /* the rail prints no read figure */ });

@@ -36,6 +36,50 @@ export interface BoardVendorCounts {
   ready: boolean;
 }
 
+type Reply = { data: unknown; error: { code?: string } | null };
+
+/**
+ * ONE READ FOR EVERY WALL MOUNTED AT ONCE. /resume-checker mounts AtsCoverage
+ * twice (the strip and the full wall), and each mount used to send its own
+ * get_board_vendor_counts. A read already in flight is shared by every mount
+ * that starts while it is pending; it is forgotten the moment it settles, so a
+ * later mount (a new page, a remount) asks again and never sees an old answer.
+ * A read still pending after SHARE_MS is forgotten too, so one that never
+ * answers cannot hold every later wall at "names only".
+ */
+const SHARE_MS = 5_000;
+let inFlight: Promise<Reply> | null = null;
+
+function readVendorCounts(): Promise<Reply> {
+  if (inFlight) return inFlight;
+  const read = (async (): Promise<Reply> => {
+    // Cast: types.ts is generated and types this RPC as `Json`.
+    const sb = supabase as unknown as {
+      rpc: (fn: string) => Promise<Reply>;
+    };
+    // SLIM READ FIRST. get_job_board_facets returns 1.6MB, of which this
+    // hook reads ~600 bytes (sourcesFacet/openTotal/as_of) — and the wall
+    // mounts twice per landing, so the wide read cost ~3.2MB per visitor.
+    // get_board_vendor_counts is the same cached row minus companiesFacet.
+    // The wide RPC stays as the fallback for the deploy window where the
+    // frontend ships before the migration applies (PGRST202 = function
+    // not found) — degraded to yesterday's cost, never to a blank wall.
+    let { data, error } = await sb.rpc("get_board_vendor_counts");
+    if (error?.code === "PGRST202") {
+      ({ data, error } = await sb.rpc("get_job_board_facets"));
+    }
+    return { data, error };
+  })();
+  inFlight = read;
+  const forget = () => {
+    clearTimeout(timer);
+    if (inFlight === read) inFlight = null;
+  };
+  const timer = setTimeout(forget, SHARE_MS);
+  read.then(forget, forget);
+  return read;
+}
+
 export function useBoardVendorCounts(): BoardVendorCounts {
   const [state, setState] = useState<BoardVendorCounts>({
     counts: {},
@@ -48,21 +92,7 @@ export function useBoardVendorCounts(): BoardVendorCounts {
     let alive = true;
     (async () => {
       try {
-        // Cast: types.ts is generated and types this RPC as `Json`.
-        const sb = supabase as unknown as {
-          rpc: (fn: string) => Promise<{ data: unknown; error: { code?: string } | null }>;
-        };
-        // SLIM READ FIRST. get_job_board_facets returns 1.6MB, of which this
-        // hook reads ~600 bytes (sourcesFacet/openTotal/as_of) — and the wall
-        // mounts twice per landing, so the wide read cost ~3.2MB per visitor.
-        // get_board_vendor_counts is the same cached row minus companiesFacet.
-        // The wide RPC stays as the fallback for the deploy window where the
-        // frontend ships before the migration applies (PGRST202 = function
-        // not found) — degraded to yesterday's cost, never to a blank wall.
-        let { data, error } = await sb.rpc("get_board_vendor_counts");
-        if (error?.code === "PGRST202") {
-          ({ data, error } = await sb.rpc("get_job_board_facets"));
-        }
+        const { data, error } = await readVendorCounts();
         if (!alive || error || !data || typeof data !== "object") return;
 
         // One parser for this hook and the crawler bake (src/lib/home/vendor-counts.ts).

@@ -178,6 +178,38 @@ function phraseFor(expr: string): string {
   return n === 1 ? "recomputed once an hour" : n === 2 ? "recomputed twice an hour" : `recomputed ${n} times an hour`;
 }
 
+/**
+ * The schedule the newest migration gives a pg_cron job, over the migration
+ * files in filename order: the last `cron.schedule('<job>', '<expr>'`, or the
+ * last `cron.alter_job(<id>, schedule => '<expr>'` inside a DO block that
+ * looks the job up by name (`jobname = '<job>'`), whichever comes later.
+ * Re-timing a job in place keeps its id, active flag and command, so the cost
+ * wave moved two jobs with alter_job and no schedule call; a reader of
+ * cron.schedule alone kept answering the old expression.
+ *
+ * AT MODULE SCOPE for the same reason as phraseFor: the check and its teeth
+ * run one implementation. Comment-stripped: migrations explain their own
+ * schedules in prose, and a scanner that read the prose would take the
+ * explanation for the schedule.
+ */
+export function newestScheduleOf(job: string, sqls: string[]): string | null {
+  const name = job.replace(/[-]/g, "\\-");
+  let found: string | null = null;
+  for (const raw of sqls) {
+    const sql = raw.replace(/^\s*--[^\n]*$/gm, " ");
+    const hits: Array<[number, string]> = [];
+    for (const m of sql.matchAll(new RegExp(`cron\\.schedule\\(\\s*'${name}'\\s*,\\s*'([^']+)'`, "g"))) hits.push([m.index ?? 0, m[1]]);
+    for (const m of sql.matchAll(/cron\.alter_job\(\s*[^,()]+,\s*schedule\s*=>\s*'([^']+)'/g)) {
+      const at = m.index ?? 0;
+      const block = sql.slice(Math.max(0, sql.lastIndexOf("DO $$", at)), at);
+      if (new RegExp(`jobname\\s*=\\s*'${name}'`).test(block)) hits.push([at, m[1]]);
+    }
+    hits.sort((x, y) => x[0] - y[0]);
+    if (hits.length) found = hits[hits.length - 1][1];
+  }
+  return found;
+}
+
 const PAGES: Array<[keyof Built, string]> = [
   ["ghost", "/ghost-job-index"],
   ["entry", "/entry-level-index"],
@@ -329,23 +361,14 @@ describe("a data page that serves no number is an empty page -- has teeth", () =
     // subscriptions" incident. The expected phrase is DERIVED from the cron
     // expression rather than restated, so re-timing a job fails here.
     const files = readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort();
-    // Comment-stripped: migrations here explain their own schedules in prose,
-    // and a scanner that read the prose would take the explanation for the
-    // schedule. This repo has shipped that false positive seven times.
-    const code = (sql: string) => sql.replace(/^\s*--[^\n]*$/gm, " ");
+    const sqls = files.map((f) => readFileSync(resolve(MIGRATIONS, f), "utf8"));
 
     expect(Object.keys(cadence).length, "no cadence claims to check").toBeGreaterThan(0);
     for (const [job, claim] of Object.entries(cadence)) {
-      // The LAST migration that schedules this job name wins, exactly as
-      // effective-definition-wins reasons about function bodies: a later file
-      // re-schedules and the earlier one is history.
-      let found: string | null = null;
-      for (const f of files) {
-        const sql = code(readFileSync(resolve(MIGRATIONS, f), "utf8"));
-        const re = new RegExp(`cron\\.schedule\\(\\s*'${job}'\\s*,\\s*'([^']+)'`);
-        const m = re.exec(sql);
-        if (m) found = m[1];
-      }
+      // The LAST migration that schedules or re-times this job name wins,
+      // exactly as effective-definition-wins reasons about function bodies: a
+      // later file re-schedules and the earlier one is history.
+      const found = newestScheduleOf(job, sqls);
       expect(found, `no migration schedules ${job} -- the page claims a cadence for a job that is not there`).toBeTruthy();
       expect(phraseFor(found!), `${job} runs on "${found}" and the pages publish "${claim}"`).toBe(claim);
     }
@@ -357,8 +380,40 @@ describe("a data page that serves no number is an empty page -- has teeth", () =
     // The hourly cache moved to :07 and :37 and nobody touched the copy.
     expect(phraseFor("7,37 * * * *")).toBe("recomputed twice an hour");
     expect(phraseFor("7,37 * * * *")).not.toBe(cadence["refresh-stats-cache"]);
-    // ...and the rollup slowed to half-hourly.
-    expect(phraseFor("*/30 * * * *")).not.toBe(cadence["job-board-stats-rollup"]);
+    // ...and the rollup slowed to hourly.
+    expect(phraseFor("0 * * * *")).not.toBe(cadence["job-board-stats-rollup"]);
+  });
+
+  it("a job re-timed in place by alter_job is read at its new schedule, and a schedule in a comment is not", () => {
+    const scheduled = "SELECT cron.schedule('job-board-stats-rollup', '*/15 * * * *', $c$SELECT 1$c$);";
+    const altered = `DO $$
+DECLARE v_id bigint;
+BEGIN
+  SELECT j.jobid INTO v_id FROM cron.job j WHERE j.jobname = 'job-board-stats-rollup';
+  PERFORM cron.alter_job(v_id, schedule => '*/30 * * * *', command => 'SELECT 1');
+END $$;`;
+    const another = altered.replace("jobname = 'job-board-stats-rollup'", "jobname = 'refresh-ghost-stats'").replace("'*/30 * * * *'", "'15 * * * *'");
+    expect(newestScheduleOf("job-board-stats-rollup", [scheduled])).toBe("*/15 * * * *");
+    expect(newestScheduleOf("job-board-stats-rollup", [scheduled, altered])).toBe("*/30 * * * *");
+    // another job's alter_job moves nothing, and a later file's schedule wins again
+    expect(newestScheduleOf("job-board-stats-rollup", [scheduled, another])).toBe("*/15 * * * *");
+    expect(newestScheduleOf("job-board-stats-rollup", [altered, scheduled])).toBe("*/15 * * * *");
+    // prose is not a schedule
+    expect(newestScheduleOf("job-board-stats-rollup", [scheduled, "-- cron.alter_job(v_id, schedule => '0 * * * *') once jobname = 'job-board-stats-rollup'"])).toBe("*/15 * * * *");
+    expect(newestScheduleOf("refresh-ghost-stats", [another])).toBe("15 * * * *");
+  });
+
+  it("the API's stats basis says how often the rollup it reads is recomputed", () => {
+    // THE SAME CLAIM IN A THIRD RUNTIME. /v1/stats tells a paying customer
+    // that feedFreshness and bySource come from "a rollup recomputed every N
+    // minutes"; the job is job-board-stats-rollup, re-timed by migration.
+    const api = readFileSync(resolve(ROOT, "supabase/functions/public-api/index.ts"), "utf8");
+    const basis = /basis:\s*"([^"]*from a rollup recomputed[^"]*)"/.exec(api)?.[1] ?? "";
+    expect(basis, "the /v1/stats basis no longer names the rollup's cadence -- re-anchor this guard").not.toBe("");
+    const sqls = readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort().map((f) => readFileSync(resolve(MIGRATIONS, f), "utf8"));
+    const expr = newestScheduleOf("job-board-stats-rollup", sqls);
+    expect(expr).toBeTruthy();
+    expect(basis, `the rollup runs on "${expr}"`).toContain(`a rollup ${phraseFor(expr!)}`);
   });
 
   it("the four pages actually render what the builder returns", () => {

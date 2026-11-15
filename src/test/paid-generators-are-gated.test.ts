@@ -113,12 +113,17 @@ describe("every caller hands the generator its proof of purchase", () => {
   });
 });
 
-describe("the streaming twins stay gated", () => {
-  // These were the ones fixed in July. If a refactor ever drops the gate here,
-  // the same hole reopens on the fallback path.
+describe("the streaming twins are retired, so no fallback path can reopen the hole", () => {
+  // The cover-letter and Premium Package twins were gated in July. Nothing
+  // called either since (cost audit 2026-11-08), so since 2026-11-10.2 each
+  // answers 410 and reaches neither the model nor the database: there is no
+  // gate left to drop. every-public-model-call-is-counted-before-it-is-made
+  // runs the shipped handlers.
   for (const ep of ["generate-cover-letter-stream", "generate-premium-package-stream"]) {
-    it(`${ep} still calls assertPaidSession`, () => {
-      expect(F(`${ep}/index.ts`)).toContain("assertPaidSession");
+    it(`${ep} is retired and reaches no model`, () => {
+      const src = F(`${ep}/index.ts`);
+      expect(src).not.toMatch(/ai\.gateway\.lovable\.dev|createClient|req\.json/);
+      expect(src).toMatch(/status:\s*410/);
     });
   }
 

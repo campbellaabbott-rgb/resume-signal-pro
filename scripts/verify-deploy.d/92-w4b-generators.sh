@@ -68,7 +68,9 @@ VD92G_H=$(vd92g_build free-keyword-scan); VD92G_V=old
 if [ -n "$VD92G_H" ] && build_ge free-keyword-scan "$VD92G_H" "2026-10-14" "29"; then VD92G_V=ok; fi
 vd92g_say free-keyword-scan "$VD92G_H" "$VD92G_V" "2026-10-14.29" "the network share, sealed-sentence scrub, per-account day and the claimed-credit rule"
 # Every other importer of the model spend gate: their bundles carry the gate that counts a proven account by name (S12-146).
-for VD92G_FN in analyze-linkedin-profile application-fit generate-ats-defense generate-career-snapshot generate-cover-letter-stream generate-elevator-pitch generate-graduate-gameplan generate-keyword-fix generate-premium-package generate-premium-package-stream generate-product-preview generate-recruiter-view generate-resume-roast generate-summary import-freelance-profile job-fit nl-search parse-resume-structured shortlist-evaluate test-ai-fallback; do
+# The seven endpoints the cost wave retired to a bare 410 import no gate, so they
+# are off this line; 99zzzzzz-cost-ai.sh judges their 410.
+for VD92G_FN in application-fit generate-ats-defense generate-career-snapshot generate-graduate-gameplan generate-keyword-fix generate-premium-package generate-product-preview import-freelance-profile job-fit nl-search parse-resume-structured shortlist-evaluate test-ai-fallback; do
   VD92G_H=$(vd92g_build "$VD92G_FN"); VD92G_V=old
   if [ -n "$VD92G_H" ] && build_ge "$VD92G_FN" "$VD92G_H" "2026-10-11" "24"; then VD92G_V=ok; fi
   vd92g_say "$VD92G_FN" "$VD92G_H" "$VD92G_V" "2026-10-11.24" "the spend gate that counts a proven account by name"

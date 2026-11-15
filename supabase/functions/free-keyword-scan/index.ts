@@ -32,6 +32,7 @@ import { functionCeiling } from "../_shared/model-spend-gate.ts";
 import { buildScoreAudit, reportIdFor } from "./report-meta.ts";
 import { websiteSessionOf } from "../_shared/website-session.ts";
 import { attachMailCopy } from "./seal-safe.ts";
+import { aiUsageLine, aiUsageOf } from "./ai-usage.ts";
 import {
   detectCountryFromResume,
   effectiveCountryOf,
@@ -66,6 +67,16 @@ interface ScanMetricContext {
   visitorId: string | null;
   inputLength: number;
   aiModel: string;
+  /**
+   * Write no row (the heartbeat's off-hour run, heartbeatNoModel). Its report
+   * is built in a second or two with no model call, and the heartbeat's rows
+   * in scan_metrics are read as the model chain's latency (verify section 92
+   * reads their p50 over the hour: 25-30 s when the model answers, 1-2 s when
+   * it fails fast). Five rule-based rows an hour beside one full scan would
+   * make that p50 a fallback's and read as an outage. The run is recorded in
+   * heartbeat_results (scan_path, full_run false) instead.
+   */
+  noRow?: boolean;
 }
 
 // Log scan metric to database (non-blocking)
@@ -80,6 +91,7 @@ function logScanMetric(
     metadata?: Record<string, unknown>;
   }
 ): void {
+  if (ctx.noRow) return;
   const durationMs = Date.now() - ctx.startTime;
   
   EdgeRuntime.waitUntil(
@@ -535,12 +547,29 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // read as written, version floors and street numbers are not metrics, apostrophe
 // years and a Portuguese "o momento" are dates, and federal agencies,
 // foundations and postdocs are transitions while a marine engineer is not.
-const FN_BUILD = "free-keyword-scan.2026-11-03.1";
+// 2026-11-09.1 (cost audit 2026-11-08, lane ai): this lane changes no line of this file. The shared
+// model-call helper that _shared/scan-models.ts imports gained the free-tool
+// chain and a numbers-only usage line, so the build moves with it.
+// 2026-11-09.1 (cost audit 2026-11-08, heartbeat lane; Do first #1, #10, #11):
+// the heartbeat's off-hour run asks for no model call (heartbeatNoModel, read
+// only with the heartbeat's own secret) and gets the rule-based report; every
+// model reply this function parses prints one [AI-USAGE] line of token counts
+// and the completed metric carries them; browsers may cache the preflight for
+// two hours (Access-Control-Max-Age). The off-hour run writes no scan_metrics
+// row, so the heartbeat's rows stay the model chain's latency.
+// 2026-11-09.2 (fix/cost-wave, the integration): both lanes' changes above together.
+// cost/ai and cost/heartbeat each stamped 2026-11-09.1 on code of its own, so the merged code
+// takes the next sequence (DEPLOY-LEDGER §3).
+const FN_BUILD = "free-keyword-scan.2026-11-09.2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Expose-Headers': 'x-fn-build',
+  // A browser asks again only after two hours (Chrome's ceiling), not after
+  // its five-second default: each preflight was a round trip and an
+  // invocation of this function (cost audit 2026-11-08, Do first #10).
+  'Access-Control-Max-Age': '7200',
   'x-fn-build': FN_BUILD,
 };
 
@@ -1340,6 +1369,16 @@ serve(async (req) => {
     const isOwnProbe = isHeartbeatProbe || isSyntheticScan;
     // The heartbeat's row stays 'heartbeat' even when it also says synthetic.
     metricScanType = isHeartbeatProbe ? 'heartbeat' : isSyntheticScan ? 'synthetic' : 'free';
+    // THE HEARTBEAT'S OFF-HOUR RUN CALLS NO MODEL (cost audit 2026-11-08, Do
+    // first #1; owner decision 2026-11-08). Its full scan, both model calls,
+    // runs once per UTC hour; the other five runs of the hour ask for the
+    // rule-based report, which proves this function boots, reads the request
+    // and builds a report without spending a model call. Read ONLY with the
+    // heartbeat's own secret: from anyone else the field means nothing and the
+    // scan runs as it always does, so no visitor can ask for a report the
+    // model did not write. The answer says it was honoured, so the heartbeat
+    // can tell a scanner that ran its model anyway.
+    const heartbeatNoModel = isHeartbeatProbe && body.heartbeatNoModel === true;
     // Optional per-scan context the user stated or confirmed — beats inference.
     const userContext: {
       situation?: string; targetRole?: string;
@@ -1481,7 +1520,8 @@ serve(async (req) => {
       ipCountry: country || null,
       visitorId: clientIp,
       inputLength: resumeText.length,
-      aiModel: MODEL_FALLBACK_ORDER[0]
+      aiModel: MODEL_FALLBACK_ORDER[0],
+      noRow: heartbeatNoModel,
     };
 
     // Check global rate limit result
@@ -3055,7 +3095,7 @@ ${resumeForPrompt}
       schema: ReturnType<typeof buildToolSchema>,
       roleNote: string,
       label: string,
-    ): Promise<{ analysis: Record<string, unknown> | null; response: Response | null; model: string }> => {
+    ): Promise<{ analysis: Record<string, unknown> | null; response: Response | null; model: string; usage: ReturnType<typeof aiUsageOf> | null }> => {
       let resp: Response | null = null;
       let model = MODEL_FALLBACK_ORDER[0];
       for (const modelId of MODEL_FALLBACK_ORDER) {
@@ -3098,9 +3138,13 @@ ${resumeForPrompt}
         }
       }
       let parsed: Record<string, unknown> | null = null;
+      let usage: ReturnType<typeof aiUsageOf> | null = null;
       if (resp?.ok) {
         try {
           const aiResult = await resp.json();
+          // Token counts only, never the reply (Do first #11).
+          usage = aiUsageOf(aiResult);
+          console.log(aiUsageLine(`free-keyword-scan.${label}`, model, aiResult));
           const toolCalls = aiResult.choices?.[0]?.message?.tool_calls;
           if (toolCalls && toolCalls.length > 0) {
             parsed = JSON.parse(toolCalls[0].function.arguments);
@@ -3109,7 +3153,7 @@ ${resumeForPrompt}
           console.error(`[FREE-KEYWORD-SCAN] (${label}) Failed to parse tool call:`, e);
         }
       }
-      return { analysis: parsed, response: resp, model };
+      return { analysis: parsed, response: resp, model, usage };
     };
 
     const CORE_NOTE = `\n\n**CALL SCOPE:** This call produces the CORE report fields only — exactly the fields in the provided schema. A parallel call handles the deep-dive fields (recruiter panel, triggered questions, bullet grading); do not attempt to include them.`;
@@ -3127,7 +3171,8 @@ ${resumeForPrompt}
     let loadShedded = false;
     // THE FUNCTION-WIDE HOUR was read before the day's slot (hourCeiling,
     // above): a scan past it calls no model and takes no concurrency slot.
-    if (hourCeiling) {
+    // Nor does the heartbeat's off-hour run (heartbeatNoModel, above).
+    if (hourCeiling || heartbeatNoModel) {
       loadShedded = true;
     } else try {
       const { data: slot, error: slotErr } = await supabase.rpc('acquire_scan_slot', { p_max: MAX_CONCURRENT_AI_SCANS, p_ttl_seconds: 180 });
@@ -3139,7 +3184,9 @@ ${resumeForPrompt}
     let coreRes: TimedCall | null = null;
     let enrichRes: TimedCall | null = null;
 
-    if (loadShedded) {
+    if (heartbeatNoModel) {
+      console.log('[FREE-KEYWORD-SCAN] HEARTBEAT, OFF THE HOUR: no model call, serving the rule-based report');
+    } else if (loadShedded) {
       console.log(`[FREE-KEYWORD-SCAN] LOAD-SHED: ${MAX_CONCURRENT_AI_SCANS} AI scans already in flight — serving instant rule-based report`);
     } else {
       // Per-call timing so we can tell whether parallelism is real. If the
@@ -3189,7 +3236,8 @@ ${resumeForPrompt}
 
     if (!analysis) {
       if (!aiResponse) {
-        console.error("[FREE-KEYWORD-SCAN] All AI models failed — serving rule-based fallback report");
+        // The heartbeat's off-hour run asked for this report: not a failure.
+        if (!heartbeatNoModel) console.error("[FREE-KEYWORD-SCAN] All AI models failed — serving rule-based fallback report");
         analysis = buildRuleBasedFallbackAnalysis();
       } else if (!aiResponse.ok) {
         let errorBody = '';
@@ -4318,6 +4366,9 @@ ${resumeForPrompt}
     // Why it is partial: the page says "our AI reviewer was unavailable" only
     // when it was, never for a reply the model did write.
     responseData.partialReason = usedRuleBasedFallback ? 'rule_based' : thinAnalysis ? 'thin' : undefined;
+    // Only on the heartbeat's off-hour run: it reads this to know its request
+    // was honoured (no model call), never on a visitor's report.
+    if (heartbeatNoModel) responseData.heartbeatNoModel = true;
 
     // Parse-quality gate — bad extraction is the biggest silent accuracy
     // killer: a mangled PDF produces a confidently wrong report. Shared with
@@ -4551,6 +4602,9 @@ ${resumeForPrompt}
         usedFallback: usedRuleBasedFallback,
         // A scan the hourly ceiling refused is recorded as such (S12-142).
         ceilingRefused: hourCeiling ? hourCeiling.code : null,
+        // Each model call's token counts, numbers only (Do first #11): a
+        // week of these is what the audit's model-cost items wait on.
+        aiUsage: coreRes || enrichRes ? { core: coreRes?.usage ?? null, enrich: enrichRes?.usage ?? null } : null,
       }
     });
     
@@ -4558,7 +4612,8 @@ ${resumeForPrompt}
 
     // Owner notification for each completed scan (fire and forget).
     // Disable by setting NOTIFY_SCANS=false in function secrets. Never for our
-    // own probes: the heartbeat now runs an uncached scan every 10 minutes.
+    // own probes: the heartbeat posts an uncached scan every 10 minutes (the
+    // full one hourly, the rule-based report the other five runs).
     // notify-owner answers only the service role or the cron key since
     // 2026-10-08 (register L10-13), so the call carries the service key.
     if ((Deno.env.get('NOTIFY_SCANS') ?? 'true') !== 'false' && !isOwnProbe) {

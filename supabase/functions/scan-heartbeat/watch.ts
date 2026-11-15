@@ -162,3 +162,136 @@ export async function pingDeadMan(
     return "failed";
   }
 }
+
+/**
+ * THE HOURLY TIER (cost audit 2026-11-08, Do first #1; owner decision
+ * 2026-11-08). Every run was a full uncached scan (two model calls carrying
+ * the whole scan prompt), four filtered board reads, the vendor canary and two
+ * whole-table storage reads, 144 times a day: about 98% of the free scanner's
+ * model calls were this monitor. The 10-minute cron stays, and so do the
+ * healthchecks.io ping, job-board status and every cheap check; the costly
+ * ones run on the first run of each UTC hour (minute 0-9: the ten-minute
+ * cron's :00 run). A run the owner or our own service role starts by hand is
+ * always a full run: someone asked for the whole answer.
+ */
+export const FULL_RUN_MINUTES = 10;
+export function isFullRun(now: Date, byCron: boolean): boolean {
+  return !byCron || now.getUTCMinutes() < FULL_RUN_MINUTES;
+}
+/** The reason every check the off-hour run leaves out is skipped with. */
+export const HOURLY = "runs hourly";
+
+/**
+ * The facets row's age bound. Its cron ticks every 15 minutes but rebuilds
+ * only a row older than 40 (20261109120000), so a healthy row reaches about
+ * 55 minutes; 90 tolerates two missed rebuilds, where the old 60-minute bound
+ * on an every-15-minutes rebuild tolerated three missed ticks.
+ */
+export const FACETS_STALE_MIN = 90;
+
+/**
+ * WHAT THE HOUR FOUND, KEPT FOR THE OFF-HOUR RUNS (review 2026-11-15). An
+ * off-hour run skips the five hourly checks, and a skip never moves the
+ * status, so while one of them was failing the next run read 'healthy',
+ * mailed "Heartbeat recovered", stamped the alert state healthy (which reset
+ * the four-hour cooldown, so the :00 run's alert was never sent again), and
+ * flipped heartbeat_results and the healthchecks.io ping back to green five
+ * runs in six. Now the full run stores its failed hourly checks with the
+ * severity each gave the run, and an off-hour run that finds a verdict from
+ * the last CARRY_MS reports them again as failed, marked carried, at that
+ * severity: the alert state, the row and the ping read what the hour found
+ * until the next full run looks again.
+ */
+export const HOURLY_CHECKS = ["e2e_scan", "job_board_storage", "job_board_verification_ceiling", "job_board_filter_contract", "job_board_vendors"] as const;
+export const HOURLY_VERDICT_KEY = "heartbeat_hourly_verdict";
+/** An hour between full runs, and the ten minutes a full run may start late. */
+export const CARRY_MS = 70 * 60_000;
+export type Severity = "degraded" | "unhealthy" | "down";
+export type HourlyFailure = { name: string; error: string; severity: Severity };
+export type HourlyVerdict = { at: string; failed: HourlyFailure[] };
+const RANK: Record<string, number> = { healthy: 0, degraded: 1, unhealthy: 2, down: 3 };
+/** The worse of two run statuses (healthy < degraded < unhealthy < down). */
+export function worse(a: string, b: string): string {
+  return (RANK[b] ?? 0) > (RANK[a] ?? 0) ? b : a;
+}
+/** The full run's verdict on the hourly checks: each failed one, with the severity it gave the run. */
+export function hourlyVerdictOf(
+  at: Date,
+  checks: Array<{ name: string; passed: boolean; error?: string; severity?: Severity }>,
+): HourlyVerdict {
+  const hourly = new Set<string>(HOURLY_CHECKS);
+  return {
+    at: at.toISOString(),
+    failed: checks
+      .filter((c) => hourly.has(c.name) && !c.passed)
+      .map((c) => ({ name: c.name, error: String(c.error ?? "failed"), severity: c.severity ?? (c.name === "job_board_filter_contract" ? "unhealthy" : "degraded") })),
+  };
+}
+/** The failed checks an off-hour run carries from a stored verdict, or none when it is missing, malformed or older than CARRY_MS. */
+export function carriedFailures(v: unknown, now: Date): { from: string; failed: HourlyFailure[] } | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as { at?: unknown; failed?: unknown };
+  const at = typeof o.at === "string" ? Date.parse(o.at) : NaN;
+  if (!Number.isFinite(at) || now.getTime() - at > CARRY_MS || at > now.getTime() + 60_000 || !Array.isArray(o.failed)) return null;
+  const hourly = new Set<string>(HOURLY_CHECKS);
+  const failed = o.failed.filter((f): f is HourlyFailure =>
+    !!f && typeof f === "object" && hourly.has((f as HourlyFailure).name) && typeof (f as HourlyFailure).error === "string"
+    && ["degraded", "unhealthy", "down"].includes((f as HourlyFailure).severity));
+  if (!failed.length) return null;
+  return { from: new Date(at).toISOString().slice(11, 16) + " UTC", failed };
+}
+/** The error a carried check is reported with. */
+export function carriedText(from: string, error: string): string {
+  return `carried from the ${from} full run (hourly check, not re-run): ${error}`;
+}
+
+/**
+ * THE AI PROBE'S VERDICT. It failed on a reply with no text, and its model
+ * thinks before it answers: with a 100-token cap the thinking can spend the
+ * whole budget and the reply comes back empty (finish_reason length), which
+ * read as 'degraded' about a gateway and a model that had both answered. A
+ * reply that holds a choice is an answer, whatever its text; one with no
+ * choice at all is not.
+ */
+export function aiProbeCheck(reply: unknown): { passed: boolean; error?: string } {
+  const choices = reply && typeof reply === "object" ? (reply as { choices?: unknown }).choices : undefined;
+  const first = Array.isArray(choices) ? choices[0] : undefined;
+  return first && typeof first === "object"
+    ? { passed: true }
+    : { passed: false, error: "the AI gateway answered 200 with no choice in the reply" };
+}
+
+/**
+ * THE OFF-HOUR SCAN (owner decision 2026-11-08: no scan model call on the
+ * other five runs of the hour). The heartbeat still posts its résumé to
+ * free-keyword-scan, with NO_MODEL_FIELD set and its secret, and the scanner
+ * answers the rule-based report without calling a model. That proves the
+ * function boots, reads the request and builds a report every ten minutes;
+ * the model path itself is proved by the AI probe every run and by the full
+ * scan every hour. Judged here: a refusal, an error, a cached or malformed
+ * report, or a report that does not say the request was honoured (a scanner
+ * that ran its model anyway: an older build, or a secret that differs between
+ * the two functions) each fail scan_path.
+ */
+export const NO_MODEL_FIELD = "heartbeatNoModel";
+export const SCAN_PATH_CHECK = "scan_path";
+export function noModelScanCheck(
+  status: number,
+  report: unknown,
+  errorText = "",
+): { passed: boolean; error?: string; severity?: "down" | "degraded" } {
+  if (status === 429) {
+    return { passed: false, severity: "degraded", error: "rate-limited: the scan path was not exercised this run (is HEARTBEAT_SECRET set on both functions?)" };
+  }
+  if (status < 200 || status > 299) return { passed: false, severity: "down", error: `HTTP ${status}: ${clip(errorText, 200)}` };
+  const r = report && typeof report === "object" ? (report as Record<string, unknown>) : {};
+  if (r.cachedReport === true) return { passed: false, severity: "degraded", error: "served from the 7-day report cache: the scan path was not exercised" };
+  const meta = r.reportMeta && typeof r.reportMeta === "object" ? (r.reportMeta as { reportId?: unknown }) : {};
+  if (typeof r.atsScoreEstimate !== "number" || !meta.reportId) {
+    return { passed: false, severity: "degraded", error: "the rule-based report is missing atsScoreEstimate/reportMeta" };
+  }
+  if (r[NO_MODEL_FIELD] !== true) {
+    return { passed: false, severity: "degraded", error: "free-keyword-scan did not say it skipped its model, so it may have run a full scan off the hour (an older build, or HEARTBEAT_SECRET differs between the two functions)" };
+  }
+  return { passed: true };
+}

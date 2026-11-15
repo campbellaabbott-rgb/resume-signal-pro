@@ -552,9 +552,23 @@ function HealthCheckContent() {
   const fetchWarmUpStatus = async () => {
     setWarmUpLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('warm-up');
+      // The full warm-up is the owner's from warm-up 2026-11-09.1 on (cost
+      // audit 2026-11-08, Do first #13): without the key it answers 200 with
+      // success false (admin_key_required) and invokes nothing, so a cron
+      // calling it keyless is not counted as refused. The key rides in the
+      // body, as the diagnostic's does: this page publishes before the
+      // function, and the build serving until then allows no x-admin-key in
+      // its preflight, so a browser sending that header would be stopped
+      // before the request left. That build ignores the body's key and warms
+      // everything as before.
+      const adminKey = getStoredAdminKey();
+      const { data, error } = await supabase.functions.invoke('warm-up', adminKey ? { body: { adminKey } } : undefined);
       if (error) throw error;
-      setWarmUpStatus(data as WarmUpStatus);
+      const answer = data as Partial<WarmUpStatus> & { success?: unknown; code?: unknown } | null;
+      if (!answer || answer.success === false || !answer.summary || !Array.isArray(answer.results)) {
+        throw new Error(`warm-up warmed nothing${answer && typeof answer.code === 'string' ? ` (${answer.code})` : ''}`);
+      }
+      setWarmUpStatus(answer as WarmUpStatus);
     } catch (e) {
       console.error('Failed to fetch warm-up status:', e);
       setWarmUpStatus(null);

@@ -17,6 +17,7 @@ import { modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { requireWebsiteSession } from "../_shared/website-session.ts";
 import { fenceUntrusted, plantedInstructions, PLANTED_INSTRUCTIONS_FLAG } from "../_shared/planted-instructions.ts";
 import { SHORTLIST_ATTESTATION_TEXT, SHORTLIST_ATTESTATION_VERSION } from "../_shared/shortlist-attestation.ts";
+import { logAiUsage } from "../_shared/ai-fallback.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -30,10 +31,12 @@ import { SHORTLIST_ATTESTATION_TEXT, SHORTLIST_ATTESTATION_VERSION } from "../_s
 // 2026-11-03.1 (S13-073, fix/audit-rest-abuse): the body's extra blocklist is
 // read as literal phrases (caller-blocklist.ts), never compiled as a caller's
 // regular expression.
-const FN_BUILD = "shortlist-evaluate.2026-11-03.1";
+// 2026-11-09.2 (cost wave review 2026-11-15: the usage line beside the reply it parses, over the ci-edge lane's 2026-11-09.1). 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "shortlist-evaluate.2026-11-09.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,
@@ -245,6 +248,7 @@ Return via the submit_evaluation tool.`;
       });
     }
     const aiJson = await aiRes.json();
+    logAiUsage("shortlist-evaluate", MODEL_ID, aiJson);
     let evaluation: Record<string, unknown> | null = null;
     try {
       evaluation = JSON.parse(aiJson.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments ?? "null");

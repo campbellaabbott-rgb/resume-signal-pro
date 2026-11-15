@@ -2,19 +2,41 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { stamped } from "../_shared/fn-build.ts";
+import { keyMatches } from "../_shared/admin-key.ts";
+import { isScheduledCaller } from "../_shared/email-cron.ts";
 
 // The build every response names (x-fn-build); see _shared/fn-build.ts.
-const FN_BUILD = "warm-up.2026-10-09.2";
+// 2026-11-09.2 (cost audit 2026-11-08, lane ai; review 2026-11-15; .2 because the review changed the lane tip's 2026-11-09.1 code): the full
+// warm-up (every function below, from one request) runs only for the owner's
+// key, our own servers' key or the cron key; anyone else is answered 200
+// with success false and code admin_key_required before anything is invoked,
+// not 401, so the keyless warm-up cron created outside the migrations is not
+// counted as a refused cron call by scan-heartbeat and mail-watch. A warm-up
+// of one named function is unchanged and needs no key.
+// The seven model endpoints nothing called are retired, so the two of them
+// listed here are no longer warmed. Browsers keep the preflight two hours.
+const FN_BUILD = "warm-up.2026-11-09.2";
 
 /**
  * Warm-up function that pings critical edge functions to prevent cold starts.
- * Should be called every 5 minutes via cron to keep functions warm.
+ *
+ * TWO MODES. A request naming one listed function (`{ target }`) warms that
+ * one: the scan button's hover sends it, with the publishable key. A request
+ * naming none warms the whole list, one invocation per function from one
+ * request, so it is for the owner (the /health-check button sends the stored
+ * key as the body's adminKey; x-admin-key works too), our own servers and a
+ * scheduled warm-up that sends the cron key; anyone else's request warms
+ * nothing and is told so in a 200 answer.
  */
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-key',
+  // One preflight per browser per two hours, not one before every hover.
+  'Access-Control-Max-Age': '7200',
 };
+const json = (b: unknown, status = 200) =>
+  new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
 // Functions to keep warm (ordered by priority)
 // EXCLUDED: parse-pdf, parse-docx, parse-spreadsheet - they require FormData uploads
@@ -33,12 +55,11 @@ const FUNCTIONS_TO_WARM = [
   'stripe-webhook',
   // AI generation functions (high cold-start impact)
   'generate-cover-letter',
-  'generate-cover-letter-stream',
   'generate-tailored-resume',
-  // generate-tailored-resume-stream is retired (it answers 410 and calls
-  // nothing), so there is nothing to keep warm.
+  // generate-tailored-resume-stream, generate-cover-letter-stream and
+  // generate-summary are retired (each answers 410 and calls nothing), so
+  // there is nothing to keep warm.
   'generate-ats-defense',
-  'generate-summary',
   'generate-keyword-fix',
   // Verification functions
   'verify-product-purchase',
@@ -124,13 +145,20 @@ serve(stamped(FN_BUILD, async (req) => {
   
   try {
     // Check if this is a targeted warmup (single function) or full warmup
-    let body: { target?: string } = {};
+    let body: { target?: unknown; adminKey?: unknown } = {};
     try {
-      body = await req.json();
+      const read = await req.json();
+      if (read && typeof read === 'object' && !Array.isArray(read)) body = read;
     } catch {
-      // No body is fine - do full warmup
+      // No body: the full warm-up, if the caller may ask for it.
     }
-    
+    const target = typeof body.target === 'string' && body.target !== '' ? body.target : null;
+    if (target !== null && !FUNCTIONS_TO_WARM.includes(target)) {
+      // A name off the list warms nothing; it used to fall through to the
+      // whole list.
+      return json({ success: false, error: 'Unknown warm-up target.', code: 'unknown_target' }, 400);
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
@@ -138,20 +166,43 @@ serve(stamped(FN_BUILD, async (req) => {
       throw new Error("Missing Supabase configuration");
     }
 
+    // THE FULL WARM-UP IS NOT A STRANGER'S (cost audit 2026-11-08, Do first
+    // #13). One request with no target invoked every function in the list,
+    // so any caller with the publishable key turned one request into
+    // seventeen and more. It now answers the owner's ADMIN_API_KEY (as
+    // x-admin-key, or as the body's adminKey, which a page published before
+    // this build can send without a preflight that refuses the header), the
+    // service-role key, or the vault-held cron key; anyone else is answered
+    // here, before any function is invoked. With a 200 and success false,
+    // not a 401: the warm-up-edge-functions cron (created outside the
+    // migrations, its command unreadable) calls with no key, and pg_net keeps
+    // every 401 it gets, which cron_http_answers, scan-heartbeat and
+    // mail-watch R9 count as a refused cron call, so a 401 would turn both
+    // monitors red every ten minutes until the owner acted.
+    if (target === null) {
+      const presented = req.headers.get('x-admin-key') || (typeof body.adminKey === 'string' ? body.adminKey : '');
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+      const allowed = keyMatches(presented, Deno.env.get("ADMIN_API_KEY") ?? "")
+        || await isScheduledCaller(req.headers, createClient(supabaseUrl, serviceKey), serviceKey);
+      if (!allowed) {
+        return json({ success: false, error: 'Unauthorized: the full warm-up needs the admin key, so nothing was warmed. Name one function as target to warm it alone.', code: 'admin_key_required' }, 200);
+      }
+    }
+
     // Use anon key for function invocation (same as client would)
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
     // If a target function is specified, only warm that one (fast path for prefetch)
-    if (body.target && FUNCTIONS_TO_WARM.includes(body.target)) {
-      console.log(`[WARM-UP] Quick warm for: ${body.target}`);
-      const result = await warmFunction(supabase, body.target);
+    if (target !== null) {
+      console.log(`[WARM-UP] Quick warm for: ${target}`);
+      const result = await warmFunction(supabase, target);
       const duration = Date.now() - startTime;
       
       return new Response(
         JSON.stringify({
           success: true,
           mode: 'targeted',
-          target: body.target,
+          target,
           duration_ms: duration,
           result,
         }),

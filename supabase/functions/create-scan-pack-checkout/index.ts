@@ -14,10 +14,12 @@ import { cutCheckoutAnswer, SCAN_PACKS_ON_SALE } from "../_shared/product-cuts.t
 // before the limiter or Stripe. Credits already bought stay spendable.
 // 2026-10-11.24 (recheck 3, 2026-10-26): _shared/product-cuts.ts gained the closed form of the reports line and reads the seller gate; a scan pack's sentence is unchanged.
 // 2026-10-27.1 (sales stay on, owner 2026-10-27): _shared/product-cuts.ts lost that closed form and no longer reads a seller gate; a scan pack's sentence is unchanged.
-const FN_BUILD = "create-scan-pack-checkout.2026-10-27.1";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "create-scan-pack-checkout.2026-11-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "x-fn-build": FN_BUILD,
 };

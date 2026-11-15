@@ -398,7 +398,17 @@ const SERVE_COUNT_CAP = 10_000;
  *  below: the sentence that carries the shares carries their staleness in its
  *  own words (explore.chipsCoverageCarried), because the writer copies the
  *  previous grid forward whole, so its `at` is already the old scan's and the
- *  stamp on screen stays true by construction. */
+ *  stamp on screen stays true by construction.
+ *
+ *  FROM 20261109110000 THE WRITER STOPS PRODUCING FOUR OF THESE — the field
+ *  curves, the chip coverage, the role rows (whose six-hourly cron is
+ *  unscheduled in the same file) and the denominators behind totals — because
+ *  nothing on this page read them. Their names STAY in this set: the frontend
+ *  publishes before the migration is pasted, the row production serves until
+ *  the next hourly run can still name any of them stale, and a part this page
+ *  does not render must never raise the banner whichever writer wrote the row.
+ *  the-explore-page-renders-the-same-from-the-slimmer-cache.test.tsx mounts
+ *  this page from both rows and requires the same render. */
 const UNRENDERED_CACHE_PARTS = new Set([
   "trending", "newest", "segments", "reposters",
   "hiring", "relisting", "entry", "transparent", "salary",

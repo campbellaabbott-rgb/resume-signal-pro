@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
-import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
+import { callAIWithModelFallback, chainFrom, logAiUsage } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
@@ -24,10 +24,18 @@ import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate
 // (no address beside it, written before 2026-08-27 18:00 UTC, not test
 // mode); migration 20261110140000 names the rest from the order, content,
 // checkout and grant records. Nothing else in this bundle changed.
-const FN_BUILD = "generate-keyword-fix.2026-11-10.1";
+// 2026-11-10.2 (cost audit 2026-11-08, lane ai): this lane changes no line of this file. The shared
+// model-call helper it imports (_shared/ai-fallback.ts) gained the free-tool
+// chain and a numbers-only usage line, so the build moves with it.
+// 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+// 2026-11-10.3 (fix/cost-wave, the integration): both lanes' changes above together.
+// cost/ai and cost/ci-edge each stamped 2026-11-10.2 on code of its own, so the merged code
+// takes the next sequence (DEPLOY-LEDGER §3).
+const FN_BUILD = "generate-keyword-fix.2026-11-10.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "x-fn-build": FN_BUILD,
 };
@@ -135,7 +143,7 @@ Provide a comprehensive keyword analysis with actionable suggestions.`;
 
     logStep("Calling AI API");
 
-    const { response } = await callAIWithModelFallback(apiKey, {
+    const { response, modelUsed } = await callAIWithModelFallback(apiKey, {
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
@@ -150,6 +158,7 @@ Provide a comprehensive keyword analysis with actionable suggestions.`;
     if (rateLimitResponse) return rateLimitResponse;
 
     const aiResponse = await response.json();
+    logAiUsage("generate-keyword-fix", modelUsed, aiResponse);
     logStep("AI response received");
 
     const content = aiResponse.choices?.[0]?.message?.content;

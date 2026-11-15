@@ -48,6 +48,16 @@
  * about. The last describe block below feeds one such row per claim, and the
  * commit names the mutant each one was shown red against.
  *
+ * AND SINCE 2026-11-09 THE STATS PART IS THE FIELD CHECK. By 2026-11-08 the
+ * stats cache carried the same rows with a stamp of its own (read-only,
+ * 16:29Z: 18 fields), and 20261109110000 retires the explore copy, which no
+ * page read. So the base fixture below is the cache as it stands after that
+ * file: field rows in the stats part, none in the explore part. An explore
+ * part that lacks them is INFO, never the FAIL it was while the explore copy
+ * was the only one; a run where NEITHER cache carries rows is the FAIL; and
+ * an explore part that still carries them (today's row, until the first :07
+ * run on the new writer) is judged exactly as before.
+ *
  * WHAT THE FIELD LINES MAY CLAIM. A stamp after the apply proves when the
  * rows were computed, not which definition computed them, and gate_share_30
  * drifts too far between hourly reads of the old pool to tell the floor from
@@ -115,9 +125,25 @@ const NAMED_ROWS: Row[] = [
   { ...BOARD, company_token: "AbbVie", still_open_30: 0.29 },
 ];
 
-/** Field rows as get_category_fill_curve publishes them, keyed by category the way the explore cache stores them. */
+/** Field rows as get_category_fill_curve publishes them, keyed by category the way the explore cache stored them. */
 const fieldCurves = (over: Record<string, Row> = {}) =>
   Object.fromEntries(FIELDS.map((f) => [f, { gate_share_30: 0.2, still_open_30: 0.34, sufficient_30: true, dated_cohort_n_30: 10_000, ...over[f] }]));
+/** The same rows as the stats cache's fill_curve carries them: an array, each row naming its category. */
+const fieldRows = (over: Record<string, Row> = {}) =>
+  Object.entries(fieldCurves(over)).map(([category, r]) => ({ category, ...r }));
+/** Section 4's meta beside a present fill_curve part, stamped `minutesAgo`. */
+const statsMetaOf = (rows: number, minutesAgo = 10, over: Row = {}): Row => ({
+  cache_ms: 300, cache_keys: ["computed_at", "fill_curve", "ghost_stats", "stale_parts"], present: true, rows,
+  own_stamp: iso(minutesAgo), computed_at: iso(minutesAgo), root_computed_at: iso(minutesAgo + 2), carried: false, stale_parts: [],
+  error: null, variant: { p_days: 90, p_min_n: 300 }, ...over,
+});
+/** The stats arm carrying these field rows. */
+const stats = (over: Record<string, Row> = {}, minutesAgo = 10) => ({ statsMeta: statsMetaOf(FIELDS.length, minutesAgo), statsRows: fieldRows(over) });
+/** Section 4's meta when get_stats_cache answers without a fill_curve part. */
+const STATS_ABSENT: Row = {
+  cache_ms: 300, cache_keys: ["computed_at", "ghost_stats", "stale_parts"], present: false, rows: null,
+  own_stamp: null, computed_at: iso(20), root_computed_at: iso(20), carried: false, stale_parts: [], error: null, variant: null,
+};
 
 type ChunkMode = "rows" | "timeout" | "html";
 interface Fixture {
@@ -137,20 +163,22 @@ interface Fixture {
   journal?: unknown;
 }
 
+/** The caches as they stand after 20261109110000: field rows in the stats part, none in the explore part. */
 const base = (): Fixture => ({
   facets: { companies: TOKENS.map((token) => ({ token, open: 10 })) },
   largest: "rows",
-  explore: { computed_at: iso(10), stale_parts: [], field_curves: fieldCurves(), field_grid: {} },
-  statsMeta: {
-    cache_ms: 300, cache_keys: ["computed_at", "ghost_stats", "stale_parts"], present: false, rows: null,
-    own_stamp: null, computed_at: iso(20), root_computed_at: iso(20), carried: false, stale_parts: [], error: null, variant: null,
-  },
+  explore: { computed_at: iso(10), stale_parts: [], field_grid: {}, repost_index: {} },
+  ...stats(),
   layoff: [
     { lp_arm: "filed", lp_reason: "uncontrolled", lp_computed_at: iso(600) },
     { lp_arm: "control", lp_reason: "uncontrolled", lp_computed_at: iso(600) },
   ],
   applied: iso(30),
 });
+
+/** Today's explore row, before the first :07 run on the new writer: it still carries field_curves. */
+const legacyExplore = (over: Record<string, Row> = {}, extra: Row = {}): Row =>
+  ({ computed_at: iso(10), stale_parts: [], field_curves: fieldCurves(over), field_grid: {}, ...extra });
 
 const dirs: string[] = [];
 afterAll(() => {
@@ -248,22 +276,48 @@ describe("the largest boards: read in chunks, and a read that errs is a FAIL", (
   });
 });
 
-describe("the field rows: read from the explore cache, and dated against the apply", () => {
-  it("reads get_explore_cache at all -- the cache production has", () => {
+describe("the field rows: read from the stats cache, and dated against the apply", () => {
+  const SC = "stats cache fill_curve \\(18 fields\\)";
+  it("reads get_explore_cache at all -- its legacy copy is judged while a row still carries it", () => {
     const { calls } = run(base());
     expect(calls.some((c) => c.fn === "get_explore_cache")).toBe(true);
   });
 
   it("rows stamped after the apply pass as DATED, and nothing about the gate share passes", () => {
     const { lines } = run(base());
-    expect(has(lines, "PASS", /explore cache field_curves \(18 fields\) computed_at=\S+ is dated at or after the apply .*a stamp says when, not which definition/), show(lines)).toBe(true);
+    expect(has(lines, "PASS", new RegExp(`${SC} computed_at=\\S+ is dated at or after the apply .*a stamp says when, not which definition`)), show(lines)).toBe(true);
     expect(lines.some((l) => /computed by the re-issued definition/.test(l)), "a timestamp is not a definition").toBe(false);
-    expect(has(lines, "INFO", /explore cache field_curves \(18 fields\): gate_share_30 pooled over 180000 dated roles = 0\.2000 .* consistent with the floor, NOT proof of it/), show(lines)).toBe(true);
-    expect(has(lines, "INFO", /explore cache field_curves \(18 fields\): corroboration only, drift-limited -- gate_share_30 below its highest pre-fix reading on 18 of 18/), show(lines)).toBe(true);
-    expect(has(lines, "PASS", /explore cache field_curves \(18 fields\): no field with nothing admitted carries a figure/), show(lines)).toBe(true);
+    expect(has(lines, "INFO", new RegExp(`${SC}: gate_share_30 pooled over 180000 dated roles = 0\\.2000 .* consistent with the floor, NOT proof of it`)), show(lines)).toBe(true);
+    expect(has(lines, "INFO", new RegExp(`${SC}: corroboration only, drift-limited -- gate_share_30 below its highest pre-fix reading on 18 of 18`)), show(lines)).toBe(true);
+    expect(has(lines, "PASS", new RegExp(`${SC}: no field with nothing admitted carries a figure`)), show(lines)).toBe(true);
     expect(lines.some((l) => l.startsWith("PASS") && /gate_share_30/.test(l)), "the gate share is drift-limited: it may corroborate, never pass").toBe(false);
     expect(has(lines, "INFO", /20261002121843 has no anon-readable proof of its own.*pg_get_functiondef/), show(lines)).toBe(true);
     expect(lines.filter((l) => l.startsWith("FAIL")), show(lines)).toEqual([]);
+  });
+
+  it("an explore row without field_curves is INFO naming the retirement, never a FAIL, once the stats part carries the rows", () => {
+    // Before 2026-11-09 a row written after the apply with no field_curves key
+    // was a FAIL ("something else replaced the row"); the new writer never
+    // writes the key, so that FAIL would fire on every run after the paste.
+    const { lines } = run({ ...base(), applied: iso(50), explore: { computed_at: iso(10), stale_parts: [], field_grid: {}, repost_index: {} } });
+    expect(has(lines, "INFO", /explore cache carries no field_curves .*retired by 20261109110000/), show(lines)).toBe(true);
+    expect(lines.filter((l) => l.startsWith("FAIL")), show(lines)).toEqual([]);
+  });
+
+  it("today's row -- both caches carrying the rows -- judges both, and both pass as dated", () => {
+    const { lines } = run({ ...base(), explore: legacyExplore() });
+    expect(has(lines, "PASS", /explore cache field_curves \(18 fields\) computed_at=\S+ is dated at or after the apply/), show(lines)).toBe(true);
+    expect(has(lines, "PASS", new RegExp(`${SC} computed_at=\\S+ is dated at or after the apply`)), show(lines)).toBe(true);
+    expect(lines.filter((l) => l.startsWith("FAIL")), show(lines)).toEqual([]);
+  });
+
+  it("neither cache carrying the rows is a FAIL: no field row was judged", () => {
+    const { lines } = run({ ...base(), statsMeta: STATS_ABSENT, statsRows: null });
+    expect(has(lines, "FAIL", /neither cache carries the field rows/), show(lines)).toBe(true);
+    // The explore copy alone still counts while it exists.
+    const legacyOnly = run({ ...base(), statsMeta: STATS_ABSENT, statsRows: null, explore: legacyExplore() });
+    expect(has(legacyOnly.lines, "INFO", /stats cache carries no fill_curve part .*the explore rows above are the only field rows judged/), show(legacyOnly.lines)).toBe(true);
+    expect(legacyOnly.lines.filter((l) => l.startsWith("FAIL")), show(legacyOnly.lines)).toEqual([]);
   });
 
   it("rows stamped before the apply are a FAIL, and nothing about them is graded", () => {
@@ -273,12 +327,11 @@ describe("the field rows: read from the explore cache, and dated against the app
     expect(has(lines, "INFO", /gate_share_30 below its highest pre-fix reading .* not graded/), show(lines)).toBe(true);
     expect(has(lines, "INFO", /gate_share_30 pooled over .* not graded/), show(lines)).toBe(true);
     expect(has(lines, "INFO", /no field with nothing admitted carries a figure.* not graded/), show(lines)).toBe(true);
-    expect(lines.some((l) => l.startsWith("PASS") && /explore cache/.test(l)), "rows the floor may not have computed pass nothing").toBe(false);
+    expect(lines.some((l) => l.startsWith("PASS") && /stats cache/.test(l)), "rows the floor may not have computed pass nothing").toBe(false);
   });
 
   it("undated rows that break the figure/verdict pairing are reported as INFO, not graded either way", () => {
-    const fx = base();
-    const { lines } = run({ ...fx, applied: iso(5), explore: { ...(fx.explore as Row), field_curves: fieldCurves({ legal: { gate_share_30: 0, still_open_30: 0.96, sufficient_30: false } }) } });
+    const { lines } = run({ ...base(), applied: iso(5), ...stats({ legal: { gate_share_30: 0, still_open_30: 0.96, sufficient_30: false } }) });
     expect(has(lines, "INFO", /a figure with nothing admitted: legal.* not graded/), show(lines)).toBe(true);
     expect(lines.some((l) => /no field with nothing admitted/.test(l) && !l.startsWith("INFO")), show(lines)).toBe(false);
   });
@@ -287,7 +340,7 @@ describe("the field rows: read from the explore cache, and dated against the app
     // EMPTY, not unset: unset reads the staged runner's journal (below).
     const { lines } = run({ ...base(), applied: "" });
     expect(has(lines, "FAIL", /cannot be dated against the apply: set DAY30_APPLIED_AT/), show(lines)).toBe(true);
-    expect(lines.some((l) => l.startsWith("PASS") && /explore cache field_curves .*(after the apply|below its highest)/.test(l)), show(lines)).toBe(false);
+    expect(lines.some((l) => l.startsWith("PASS") && /stats cache fill_curve .*(after the apply|below its highest)/.test(l)), show(lines)).toBe(false);
   });
 
   /**
@@ -306,7 +359,7 @@ describe("the field rows: read from the explore cache, and dated against the app
     const { lines } = run({ ...base(), applied: undefined, journal: journalOf([62, 61, 60]) });
     const at = new Date(Math.ceil((NOW - 60 * 60_000) / 1000) * 1000).toISOString();
     expect(has(lines, "INFO", new RegExp(`DAY30_APPLIED_AT = ${at.replace(/[.]/g, "\\.")}, read from the staged runner's journal`)), show(lines)).toBe(true);
-    expect(has(lines, "PASS", /explore cache field_curves \(18 fields\) computed_at=\S+ is dated at or after the apply/), show(lines)).toBe(true);
+    expect(has(lines, "PASS", new RegExp(`${SC} computed_at=\\S+ is dated at or after the apply`)), show(lines)).toBe(true);
     expect(lines.some((l) => /cannot be dated against the apply/.test(l)), show(lines)).toBe(false);
     // The latest of the three, not the first: rows computed between the first
     // and the last apply may have come from the old definition.
@@ -328,7 +381,7 @@ describe("the field rows: read from the explore cache, and dated against the app
   });
 
   it("a field that kept its pre-fix gate share is named as corroboration, never failed on one field's drift", () => {
-    const { lines } = run({ ...base(), explore: { ...(base().explore as Row), field_curves: fieldCurves({ finance: { gate_share_30: 0.71 } }) } });
+    const { lines } = run({ ...base(), ...stats({ finance: { gate_share_30: 0.71 } }) });
     expect(has(lines, "INFO", /corroboration only, drift-limited .*HELD on finance 0\.71 >= 0\.\d+/), show(lines)).toBe(true);
     expect(lines.some((l) => l.startsWith("FAIL") && /HELD on/.test(l)), show(lines)).toBe(false);
   });
@@ -337,41 +390,45 @@ describe("the field rows: read from the explore cache, and dated against the app
     const m = /const POOLED_HI=([0-9.]+);/.exec(SECTION);
     expect(m, "no POOLED_HI in section 7h").toBeTruthy();
     const hi = Number(m![1]);
-    const at = run({ ...base(), explore: { ...(base().explore as Row), field_curves: fieldCurves(Object.fromEntries(FIELDS.map((f) => [f, { gate_share_30: hi }]))) } });
-    expect(has(at.lines, "FAIL", /gate_share_30 pooled over 180000 dated roles = .* at or above every reading of the old pool/), show(at.lines)).toBe(true);
+    const atHi = Object.fromEntries(FIELDS.map((f) => [f, { gate_share_30: hi }]));
+    const at = run({ ...base(), ...stats(atHi) });
+    expect(has(at.lines, "FAIL", /stats cache fill_curve .*gate_share_30 pooled over 180000 dated roles = .* at or above every reading of the old pool/), show(at.lines)).toBe(true);
     // Weighted by each field's own cohort, not by field count: one huge field
     // at the old level outweighs seventeen small ones that fell.
-    const heavy = run({ ...base(), explore: { ...(base().explore as Row), field_curves: fieldCurves({ healthcare: { gate_share_30: 0.9, dated_cohort_n_30: 2_000_000 } }) } });
+    const heavy = run({ ...base(), ...stats({ healthcare: { gate_share_30: 0.9, dated_cohort_n_30: 2_000_000 } }) });
     expect(has(heavy.lines, "FAIL", /gate_share_30 pooled over 2170000 dated roles = 0\.8452/), show(heavy.lines)).toBe(true);
-    const undated = run({ ...base(), applied: "", explore: { ...(base().explore as Row), field_curves: fieldCurves(Object.fromEntries(FIELDS.map((f) => [f, { gate_share_30: hi }]))) } });
+    const undated = run({ ...base(), applied: "", ...stats(atHi) });
     expect(has(undated.lines, "INFO", /gate_share_30 pooled over .* not graded/), show(undated.lines)).toBe(true);
+    // The legacy explore copy is held to the same bar while it exists.
+    const legacy = run({ ...base(), explore: legacyExplore(atHi) });
+    expect(has(legacy.lines, "FAIL", /explore cache field_curves .*gate_share_30 pooled over 180000 dated roles = .* at or above every reading of the old pool/), show(legacy.lines)).toBe(true);
   });
 
   it("rows with no dated_cohort_n_30 cannot be pooled, and on dated rows that is a FAIL", () => {
     const noDen = Object.fromEntries(FIELDS.map((f) => [f, { dated_cohort_n_30: null }]));
-    const { lines } = run({ ...base(), explore: { ...(base().explore as Row), field_curves: fieldCurves(noDen) } });
+    const { lines } = run({ ...base(), ...stats(noDen) });
     expect(has(lines, "FAIL", /no field publishes dated_cohort_n_30, so gate_share_30 cannot be pooled/), show(lines)).toBe(true);
   });
 
   it("a field the floor emptied that still carries a figure is a FAIL", () => {
-    const { lines } = run({ ...base(), explore: { ...(base().explore as Row), field_curves: fieldCurves({ legal: { gate_share_30: 0, still_open_30: 0.96, sufficient_30: false } }) } });
+    const { lines } = run({ ...base(), ...stats({ legal: { gate_share_30: 0, still_open_30: 0.96, sufficient_30: false } }) });
     expect(has(lines, "FAIL", /a figure with nothing admitted: legal/), show(lines)).toBe(true);
   });
 
-  it("a part carried from an earlier run is a FAIL, never dated by the run that failed to compute it", () => {
-    const { lines } = run({ ...base(), explore: { ...(base().explore as Row), stale_parts: ["field_curves"] } });
-    expect(has(lines, "FAIL", /carried forward from an earlier run/), show(lines)).toBe(true);
-    expect(lines.some((l) => l.startsWith("PASS") && /at or after the apply|below its highest/.test(l)), show(lines)).toBe(false);
+  it("an explore part carried from an earlier run is a FAIL, never dated by the run that failed to compute it", () => {
+    const { lines } = run({ ...base(), explore: legacyExplore({}, { stale_parts: ["field_curves"] }) });
+    expect(has(lines, "FAIL", /explore cache field_curves .*carried forward from an earlier run/), show(lines)).toBe(true);
+    expect(lines.some((l) => l.startsWith("PASS") && /explore cache.*(at or after the apply|below its highest)/.test(l)), show(lines)).toBe(false);
   });
 
-  it("an empty part -- the run failed with nothing to carry -- is a FAIL", () => {
+  it("an empty explore part -- the run failed with nothing to carry -- is a FAIL", () => {
     const { lines } = run({ ...base(), explore: { computed_at: iso(10), stale_parts: ["field_curves"], field_curves: {} } });
     expect(has(lines, "FAIL", /field_curves is empty and stale_parts names it/), show(lines)).toBe(true);
   });
 
-  it("the withheld part is informational only while the next :07 run is due, and a FAIL once the cache has stopped", () => {
+  it("an explore row that lacks the part is informational while the cache runs, and a FAIL once the cache has stopped", () => {
     const pending = run({ ...base(), applied: iso(5), explore: { computed_at: iso(40), stale_parts: [], field_grid: {} } });
-    expect(has(pending.lines, "INFO", /field_curves withheld at apply/), show(pending.lines)).toBe(true);
+    expect(has(pending.lines, "INFO", /explore cache carries no field_curves/), show(pending.lines)).toBe(true);
     expect(pending.lines.some((l) => l.startsWith("FAIL") && /explore cache/.test(l)), show(pending.lines)).toBe(false);
 
     const stopped = run({ ...base(), applied: iso(200), explore: { computed_at: iso(240), stale_parts: [], field_grid: {} } });
@@ -379,9 +436,6 @@ describe("the field rows: read from the explore cache, and dated against the app
     // it runs, so on a loaded machine (load average 45-100 during a 2026-10-03
     // gate) the stamp is a minute or more older by then: 241, not 240.
     expect(has(stopped.lines, "FAIL", /explore cache last ran 24\d min ago/), show(stopped.lines)).toBe(true);
-
-    const rewritten = run({ ...base(), applied: iso(50), explore: { computed_at: iso(10), stale_parts: [], field_grid: {} } });
-    expect(has(rewritten.lines, "FAIL", /a run that began after the apply wrote no field_curves key/), show(rewritten.lines)).toBe(true);
   });
 
   it("an explore-cache read that errs or times out is a FAIL with what came back", () => {
@@ -391,19 +445,17 @@ describe("the field rows: read from the explore cache, and dated against the app
     expect(has(nothing.lines, "FAIL", /get_explore_cache answered no JSON/), show(nothing.lines)).toBe(true);
   });
 
-  it("the stats-cache arm is informational while its part does not exist, judged like the explore arm when it does, and a FAIL when its read errs", () => {
-    const absent = run(base());
+  it("the stats arm is judged on its own stamp, its absence beside explore rows is INFO, and a read that errs is a FAIL", () => {
+    const absent = run({ ...base(), statsMeta: STATS_ABSENT, statsRows: null, explore: legacyExplore() });
     expect(has(absent.lines, "INFO", /stats cache carries no fill_curve part/), show(absent.lines)).toBe(true);
 
-    const rows = FIELDS.map((category) => ({ category, gate_share_30: 0.2, still_open_30: 0.34, sufficient_30: true }));
-    const live = run({
-      ...base(),
-      statsMeta: { ...(base().statsMeta as Row), cache_keys: ["computed_at", "fill_curve", "stale_parts"], present: true, rows: 18, own_stamp: iso(70), computed_at: iso(70) },
-      statsRows: rows,
-    });
-    expect(has(live.lines, "FAIL", /stats cache fill_curve \(18 fields\) computed_at=\S+ is BEFORE the apply/), show(live.lines)).toBe(true);
+    const early = run({ ...base(), ...stats({}, 70) });
+    expect(has(early.lines, "FAIL", new RegExp(`${SC} computed_at=\\S+ is BEFORE the apply`)), show(early.lines)).toBe(true);
 
-    const errored = run({ ...base(), statsMeta: { ...(base().statsMeta as Row), cache_keys: ["code", "details", "hint", "message"] } });
+    const empty = run({ ...base(), statsMeta: statsMetaOf(0), statsRows: [] });
+    expect(has(empty.lines, "FAIL", /stats cache fill_curve is present but carries no rows/), show(empty.lines)).toBe(true);
+
+    const errored = run({ ...base(), statsMeta: { ...STATS_ABSENT, cache_keys: ["code", "details", "hint", "message"] } });
     expect(has(errored.lines, "FAIL", /get_stats_cache errored or answered nothing/), show(errored.lines)).toBe(true);
   });
 
@@ -492,11 +544,13 @@ describe("every claim 7h makes is fed a row that breaks it", () => {
   }
 
   it("a sufficient field with no figure, or with nothing admitted, is a FAIL on dated rows", () => {
-    const fx = base();
-    const noFigure = run({ ...fx, explore: { ...(fx.explore as Row), field_curves: fieldCurves({ legal: { still_open_30: null } }) } });
+    const noFigure = run({ ...base(), ...stats({ legal: { still_open_30: null } }) });
     expect(has(noFigure.lines, "FAIL", /sufficient with no figure: legal/), show(noFigure.lines)).toBe(true);
-    const nothingAdmitted = run({ ...fx, explore: { ...(fx.explore as Row), field_curves: fieldCurves({ design: { gate_share_30: 0 } }) } });
+    const nothingAdmitted = run({ ...base(), ...stats({ design: { gate_share_30: 0 } }) });
     expect(has(nothingAdmitted.lines, "FAIL", /sufficient with no figure: design/), show(nothingAdmitted.lines)).toBe(true);
+    // The legacy explore copy fails the same way while it exists.
+    const legacy = run({ ...base(), explore: legacyExplore({ legal: { still_open_30: null } }) });
+    expect(has(legacy.lines, "FAIL", /explore cache field_curves .*sufficient with no figure: legal/), show(legacy.lines)).toBe(true);
   });
 
   const named = (token: string, over: Row) => NAMED_ROWS.map((r) => (r.company_token === token ? { ...r, ...over } : r));
@@ -562,11 +616,10 @@ describe("every claim 7h makes is fed a row that breaks it", () => {
   });
 
   it("a stats part carried forward from an earlier run is a FAIL, not dated by the run that failed to compute it", () => {
-    const rows = FIELDS.map((category) => ({ category, gate_share_30: 0.2, still_open_30: 0.34, sufficient_30: true, dated_cohort_n_30: 10_000 }));
     const { lines } = run({
       ...base(),
-      statsMeta: { ...(base().statsMeta as Row), cache_keys: ["computed_at", "fill_curve", "stale_parts"], present: true, rows: 18, own_stamp: null, computed_at: iso(10), carried: true, stale_parts: ["fill_curve"] },
-      statsRows: rows,
+      statsMeta: statsMetaOf(18, 10, { own_stamp: null, carried: true, stale_parts: ["fill_curve"] }),
+      statsRows: fieldRows(),
     });
     expect(has(lines, "FAIL", /stats cache fill_curve \(18 fields\): carried forward from an earlier run/), show(lines)).toBe(true);
     expect(lines.some((l) => l.startsWith("PASS") && /stats cache fill_curve .*dated at or after the apply/.test(l)), show(lines)).toBe(false);

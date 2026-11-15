@@ -36,10 +36,12 @@ import { boundCustomerOfRows, portalCustomerOf, type BoundRow } from "../_shared
 // for the account it is bound to, never on a proof of the old mailbox; and a
 // member with two bound plans is sent to the live or owing one, never to the
 // one whose row was written last.
-const FN_BUILD = "create-portal-session.2026-11-10.1";
+// 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "create-portal-session.2026-11-10.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,

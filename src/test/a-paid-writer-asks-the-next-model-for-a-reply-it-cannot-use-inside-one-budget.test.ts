@@ -420,7 +420,8 @@ describe("generate-application-answers: the cover note's repair has only what is
   });
 
   it("a slow draft the gate refuses, then a repair whose models all hang: no note (the caller sends the candidate's own), inside the deadline", async () => {
-    gateway.plan = (s) => (turns(s) === 2 && s.model === "google/gemini-2.5-pro" ? chat("Hi.") : "hang");
+    // The note's chain is flash then gpt-5-mini (freeChainFrom, cost audit 2026-11-08): flash hangs, gpt-5-mini drafts.
+    gateway.plan = (s) => (turns(s) === 2 && s.model === "openai/gpt-5-mini" ? chat("Hi.") : "hang");
     const { result: r, at } = await drive(gateway, () =>
       post(handler, "generate-application-answers", {
         mode: "cover-note", resumeText: RESUME, jobDescription: POSTING, jobTitle: "Engineer", jobCompany: "Globex",

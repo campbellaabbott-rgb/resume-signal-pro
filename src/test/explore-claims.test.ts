@@ -303,10 +303,17 @@ describe("the page does not fire a query that cannot finish", () => {
     const refreshFile = latestWith("CREATE OR REPLACE FUNCTION public.refresh_explore_cache");
     const refresh = refreshFile.slice(refreshFile.indexOf("AS $$"), refreshFile.indexOf("$$;"))
       .replace(/^\s*--.*$/gm, "");
-    expect(refresh, "nothing writes the key the page reads").toMatch(/'field_curves', field_curves_v/);
-    expect(refresh).toMatch(/public\.get_category_fill_curve\(90, 300\)/);
+    // AND SINCE 20261109110000 THE CRON STOPS WRITING THE CURVE TOO. Nothing
+    // on this page reads it, and the hourly stats cache computes the same rows
+    // at the same (90, 300) with a stamp of its own -- the copy the data pages
+    // and the day-30 verifier read. A second hourly pass over the closure
+    // record for a key with no reader is the trending-and-newest failure in
+    // its cron form.
+    expect(refresh, "the explore cron is paying for the field curve again").not.toMatch(/get_category_fill_curve/);
+    expect(refresh, "a key with no reader is being written again").not.toMatch(/'field_curves'/);
     expect(refresh).toMatch(/'field_grid', field_grid_v/);
-    expect(refreshFile).toMatch(/'field_curves', field_curves_v/);
+    const statsRefresh = latestWith("CREATE OR REPLACE FUNCTION public.refresh_stats_cache").replace(/^\s*--.*$/gm, "");
+    expect(statsRefresh, "no cache computes the field curve at all").toMatch(/FROM public\.get_category_fill_curve\(90, 300\) x/);
     // AND THE PAYLOAD THAT LOST ITS READER GOES WITH ITS SECTION.
     // get_explore_cache has exactly one consumer, so a key /explore does not
     // read is a key nothing reads — leaving the scan behind the deleted
@@ -327,7 +334,7 @@ describe("the page does not fire a query that cannot finish", () => {
     const fn = latestWith("CREATE OR REPLACE FUNCTION public.refresh_explore_cache");
     expect(fn).toMatch(/field_grid_v jsonb := '\{\}'::jsonb;/);
     expect(fn).toMatch(/RAISE WARNING 'explore cache: field grid unavailable/);
-    expect(fn).toMatch(/RAISE WARNING 'explore cache: field curves unavailable/);
+    expect(fn).toMatch(/RAISE WARNING 'explore cache: repost index unavailable/);
   });
 });
 
@@ -365,9 +372,13 @@ describe("the cron call is shaped for what the function actually returns", () =>
     // BOTH DIRECTIONS, because this ship added one of each.
     // get_explore_field_grid RETURNS jsonb and is assigned; get_category_fill_curve
     // RETURNS TABLE and must be read in FROM, or its rows never materialise.
+    // The set-returning half now lives in the stats cache, the one cron that
+    // still computes the curve (20261109110000 took it out of this one).
     expect(SQL).not.toMatch(/FROM\s+public\.get_explore_field_grid/);
     expect(SQL).toMatch(/field_grid_v := COALESCE\(public\.get_explore_field_grid\(\), '\{\}'::jsonb\);/);
-    expect(SQL).toMatch(/FROM public\.get_category_fill_curve\(90, 300\) c/);
+    const STATS = latestWith("CREATE OR REPLACE FUNCTION public.refresh_stats_cache").replace(/^\s*--.*$/gm, "");
+    expect(STATS).toMatch(/FROM public\.get_category_fill_curve\(90, 300\) x/);
+    expect(STATS).not.toMatch(/:= public\.get_category_fill_curve\(/);
   });
 
   it("still returns scalar jsonb — the premise the call shape depends on", () => {
@@ -385,19 +396,19 @@ describe("the cron call is shaped for what the function actually returns", () =>
 
 describe("empty and failed are recorded as different things", () => {
   const fn = latestWith("CREATE OR REPLACE FUNCTION public.refresh_explore_cache");
+  const stats = latestWith("CREATE OR REPLACE FUNCTION public.refresh_stats_cache");
 
   it("the cache says WHY a collection is empty, rather than publishing the emptiness", () => {
-    // `[]` meant both "nobody clears the bar" and "the query died" and looked
-    // identical, which is why one failure survived weeks unnoticed. The
-    // mechanism is now stale_parts plus carry-forward, and the field curves are
-    // the sharp case: at FIELD grain this estimator passes comfortably —
-    // eighteen rows, n_at_risk in the ten thousands — so an empty result is our
-    // scan not answering, never a finding about the board. Publishing `{}`
-    // would put "no closure record we can read for this field yet" under every
-    // one of eighteen tiles on the strength of our own outage.
-    expect(fn).toMatch(/IF field_curves_v = '\{\}'::jsonb THEN/);
-    expect(fn).toMatch(/stale := stale \|\| 'field_curves'::text;/);
-    expect(fn).toMatch(/field_curves_v := COALESCE\(prev -> 'field_curves', '\{\}'::jsonb\);/);
+    // RE-AIMED 2026-11-09. The field curves left this writer (20261109110000);
+    // the cache that still carries them is the stats cache, and the property
+    // moved with them: an empty curve is named stale and the previous rows are
+    // kept, never published as an empty field table. The explore writer's own
+    // case is the field grid, carried forward and named.
+    expect(stats).toMatch(/stale := stale \|\| 'fill_curve'::text;/);
+    expect(stats).toMatch(/'reason', 'empty'/);
+    expect(stats).toMatch(/payload := payload \|\| jsonb_build_object\('fill_curve', prev -> 'fill_curve'\);/);
+    expect(fn).toMatch(/stale := stale \|\| 'field_grid'::text;/);
+    expect(fn).toMatch(/field_grid_v := COALESCE\(prev -> 'field_grid', '\{\}'::jsonb\);/);
   });
 });
 
@@ -1457,7 +1468,7 @@ describe("the employer lookup covers the whole board, honestly", () => {
     // The MATCH still touches one job_board_meta row and no table besides, so
     // the typeahead's ranking cost is unchanged; the postings count runs only
     // for the at-most-eight merged names that survive the LIMIT, keyed on
-    // job_board_postings_company_token_idx. The property is the BOUND, not the
+    // job_board_postings_company_idx. The property is the BOUND, not the
     // absence — asserting the absence is what would have kept the check answer
     // permanently unable to state its own numbers.
     expect(body).toMatch(/FROM public\.job_board_meta m/);
@@ -2228,8 +2239,11 @@ describe("every answer states the pool it was drawn from, and zero is silence", 
     // QUERY_CANCELED. A handler without the explicit arm does not catch the
     // one error these blocks exist to survive; the caches died whole on
     // timeouts for two days while visibly "wrapped".
+    // Three blocks since 20261109110000 (field grid, repost index, the fields
+    // projection): the curve, chip coverage, role rows and denominators left
+    // the writer with their readers.
     const qc = REFRESH.match(/WHEN QUERY_CANCELED THEN/g) ?? [];
-    expect(qc.length, "a block cannot catch the timeout it exists to survive").toBeGreaterThanOrEqual(5);
+    expect(qc.length, "a block cannot catch the timeout it exists to survive").toBeGreaterThanOrEqual(3);
     const wo = REFRESH.match(/WHEN OTHERS THEN/g) ?? [];
     expect(wo.length, "the OTHERS arm went missing").toBeGreaterThanOrEqual(qc.length);
   });
@@ -2480,11 +2494,11 @@ describe("the refresh budget covers the scans it runs", () => {
     expect(outer, "refresh_explore_cache has no statement_timeout at all").toBeGreaterThan(0);
 
     const called = [...new Set([...body.matchAll(/public\.(get_[a-z_]+)\s*\(/g)].map((m) => m[1]))];
-    // FOUR, NOT SIX. Three blocks whose sections were deleted went with them
-    // (transparent 240s, salary 180s, ageout_basis 20s), which is most of why
-    // the sum below fell from 730s to 335s. The floor is only here so a broken
-    // regex cannot make the sum vacuously zero.
-    expect(called.length, "no callees found — the regex broke").toBeGreaterThanOrEqual(4);
+    // TWO SINCE 20261109110000 (the field grid and the repost index): the
+    // curve, chip coverage and denominators left with their readers, after
+    // transparent, salary and ageout_basis left with theirs. The floor is
+    // only here so a broken regex cannot make the sum vacuously zero.
+    expect(called.length, "no callees found — the regex broke").toBeGreaterThanOrEqual(2);
 
     const inner = called.map((fn) => [fn, timeoutOf(fn)] as const);
     for (const [fn, t] of inner) {

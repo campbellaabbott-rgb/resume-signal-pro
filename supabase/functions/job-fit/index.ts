@@ -34,12 +34,14 @@ import { spendAddressKey } from "../_shared/model-spend-gate.ts";
 // 2026-10-09.1: a reader's allowance is keyed on the platform's address, hourly (S8-062).
 // 2026-10-09.1 (wave3/board-data-ingest): the fit score is capped at 100 (_shared/fit-score.ts, L8-13).
 // Provable from outside: every response, the preflight included, carries it.
-const FN_BUILD = "job-fit.2026-11-03.1";
+// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "job-fit.2026-11-09.1";
 
 // x-rb-bucket is deliberately NOT in Allow-Headers: a browser cannot send it,
 // and a server caller does not preflight.
 const cors = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Expose-Headers": "x-fn-build",

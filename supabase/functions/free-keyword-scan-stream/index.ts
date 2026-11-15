@@ -21,6 +21,7 @@ import { evaluateCountryStandards } from "./country-standards.ts";
 import { websiteSessionOf } from "../_shared/website-session.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
 import { detectResumeLanguage, languageNoticeOf } from "./resume-language.ts";
+import { aiUsageLine } from "./ai-usage.ts";
 const serve = Deno.serve;
 
 // Declare EdgeRuntime for background tasks
@@ -6460,7 +6461,14 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // keyed on the whole text, whitespace collapsed and lowercased, as the
 // primary's is; the old key deleted every letter outside A-Z, so two people's
 // Chinese or Japanese résumés shared one cached report. Key version v8.
-const FN_BUILD = "free-keyword-scan-stream.2026-11-10.1";
+// 2026-11-10.3 (cost wave review 2026-11-15, over the heartbeat lane's 2026-11-10.2).
+// 2026-11-10.2 (cost audit 2026-11-08, heartbeat lane; Do first #10, #11; the
+// hotfix's day, as main carries 2026-11-10.1): browsers may cache the
+// preflight for two hours (Access-Control-Max-Age), and the industry check's
+// reply and the streamed analysis each print one [AI-USAGE] line of token
+// counts (ai-usage.ts, the primary's copy byte for byte). A stream that
+// carried no usage chunk prints its counts as '-', the owner's one format.
+const FN_BUILD = "free-keyword-scan-stream.2026-11-10.3";
 
 /** The primary's report id formula (free-keyword-scan/report-meta.ts reportIdFor): this report's cache key and its score. */
 async function streamReportId(cacheKey: string, score: unknown): Promise<string> {
@@ -6471,6 +6479,9 @@ async function streamReportId(cacheKey: string, score: unknown): Promise<string>
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  // A browser asks again only after two hours (Chrome's ceiling), not after
+  // its five-second default (cost audit 2026-11-08, Do first #10).
+  'Access-Control-Max-Age': '7200',
   'x-fn-build': FN_BUILD,
 };
 
@@ -7796,6 +7807,8 @@ What is the PRIMARY industry of this candidate's own experience? Reply with only
 
         if (verifyResponse.ok) {
           const verifyData = await verifyResponse.json();
+          // Token counts only, never the reply (cost audit 2026-11-08, Do first #11).
+          console.log(aiUsageLine('free-keyword-scan-stream.industry', 'google/gemini-2.5-flash', verifyData));
           const verifyChoice = verifyData.choices?.[0];
           const verifyContent = typeof verifyChoice?.message?.content === 'string' ? verifyChoice.message.content : '';
           // A reply cut off at the cap, or an empty one, is no answer: the
@@ -8269,6 +8282,10 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       let buffer = '';
       let toolCallArgs = '';
       let progressSent = 3; // Track which progress stages we've sent
+      // The stream's token counts arrive, when the gateway sends them, on a
+      // chunk of their own near the end; the finish reason on the last choice.
+      let streamUsage: unknown = null;
+      let streamFinish: unknown = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -8286,7 +8303,9 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
           try {
             const parsed = JSON.parse(line.slice(6));
             const delta = parsed.choices?.[0]?.delta;
-            
+            if (parsed.usage) streamUsage = parsed.usage;
+            if (parsed.choices?.[0]?.finish_reason) streamFinish = parsed.choices[0].finish_reason;
+
             // Accumulate tool call arguments
             if (delta?.tool_calls?.[0]?.function?.arguments) {
               toolCallArgs += delta.tool_calls[0].function.arguments;
@@ -8306,6 +8325,14 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
           }
         }
       }
+      // Token counts only, never the reply (cost audit 2026-11-08, Do first #11).
+      // The request asks for no usage chunk: on OpenAI's streaming rule one
+      // comes only when the request names it, and whether this gateway takes
+      // that option is unmeasured, while an option it refused would cost the
+      // backup scanner its reply. So a stream that carried no counts prints
+      // '-' for each, in the owner's seven-field line, and a '-' is absent,
+      // never a zero.
+      console.log(aiUsageLine('free-keyword-scan-stream.analysis', modelUsed, { usage: streamUsage, choices: [{ finish_reason: streamFinish }] }));
 
       // Parse final result with auto-repair for common JSON issues
       let analysis: any = null;
