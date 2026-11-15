@@ -1,0 +1,886 @@
+{
+ "read": "2026-11-15",
+ "source": "Job titles read on the board: the 2,213 place-word titles and 463 live posting pages of the 2026-11-08 corpora, the 2,722 postings of src/test/fixtures/posting-selection-screen-2026-11-15.json, and the posting ledger and /jobs list read by the SEO check of 2026-11-15 (7,838 job titles).",
+ "shoutedWhy": "Every title in it with no lower-case letter, and the markup title the rule gives it, each read by hand.",
+ "shouted": [
+  {
+   "title": "- APP HEME ONC",
+   "markup": "- APP Heme ONC"
+  },
+  {
+   "title": "3D",
+   "markup": "3D"
+  },
+  {
+   "title": "AIRCRAFT MECHANIC",
+   "markup": "Aircraft Mechanic"
+  },
+  {
+   "title": "ANALISTA DE CATEGORIA SR",
+   "markup": "Analista de Categoria Sr"
+  },
+  {
+   "title": "ARQUITECTO OFICINA TECNICA",
+   "markup": "Arquitecto Oficina Tecnica"
+  },
+  {
+   "title": "ASISTENTE DE OFICINA TECNICA",
+   "markup": "Asistente de Oficina Tecnica"
+  },
+  {
+   "title": "ASISTENTE DE SEGURIDAD INDUSTRIAL",
+   "markup": "Asistente de Seguridad Industrial"
+  },
+  {
+   "title": "ASSISTANT NURSE EXECUTIVE (PRIMARY CARE CLINIC)",
+   "markup": "Assistant Nurse Executive (Primary Care Clinic)"
+  },
+  {
+   "title": "ASSISTANT STORE MANAGER - SEVILLA NERVIÓN TEEN",
+   "markup": "Assistant Store Manager - Sevilla Nervión Teen"
+  },
+  {
+   "title": "ATENDENTE CALL CENTER (36096-36373-36405-36425)",
+   "markup": "Atendente Call Center (36096-36373-36405-36425)"
+  },
+  {
+   "title": "AUSBILDUNG BEI BMW ALS AUTOMOBILKAUFLEUTE (M/W/D) - BEGINN 2027",
+   "markup": "Ausbildung bei BMW als Automobilkaufleute (M/W/D) - Beginn 2027"
+  },
+  {
+   "title": "AUSTIN PRELOAD SEASONAL OPS PART TIME SUPERVISOR (AUSTIN, TX)",
+   "markup": "Austin Preload Seasonal Ops Part Time Supervisor (Austin, TX)"
+  },
+  {
+   "title": "AUXILIAR DE CALIDAD",
+   "markup": "Auxiliar de Calidad"
+  },
+  {
+   "title": "AUXILIAR DE PRODUÇÃO - PAES FUNCIONAIS - IND 60",
+   "markup": "Auxiliar de Produção - Paes Funcionais - IND 60"
+  },
+  {
+   "title": "BAKERY/LEAD CAKE DECORATOR",
+   "markup": "Bakery/Lead Cake Decorator"
+  },
+  {
+   "title": "BANCO DE TALENTOS (OPORTUNIDADES DE ESTÁGIO) | FINANCE",
+   "markup": "Banco de Talentos (Oportunidades de Estágio) | Finance"
+  },
+  {
+   "title": "BECA WORKDAY - HRIS | MADRID",
+   "markup": "Beca Workday - HRIS | Madrid"
+  },
+  {
+   "title": "BEER-WINE-LIQR/CLERK",
+   "markup": "Beer-Wine-Liqr/Clerk"
+  },
+  {
+   "title": "BF DÖNEMSEL / SATIŞ DANIŞMANI / KORU FLORYA",
+   "markup": "BF Dönemsel / Satış Danışmanı / KORU Florya"
+  },
+  {
+   "title": "BRANDING SPECIALIST I",
+   "markup": "Branding Specialist I"
+  },
+  {
+   "title": "BUDGET ANALYST",
+   "markup": "Budget Analyst"
+  },
+  {
+   "title": "BUSINESS ANALYST III | COMMERCIAL PLANNING IP SP | INTERPAG",
+   "markup": "Business Analyst III | Commercial Planning IP SP | Interpag"
+  },
+  {
+   "title": "BUSINESS DEVELOPMENT MANAGER",
+   "markup": "Business Development Manager"
+  },
+  {
+   "title": "CARGO HANDLER",
+   "markup": "Cargo Handler"
+  },
+  {
+   "title": "CITY PROJECTS MANAGER",
+   "markup": "City Projects Manager"
+  },
+  {
+   "title": "CNA",
+   "markup": "CNA"
+  },
+  {
+   "title": "CODING SPECIALIST SR - BREAST & GEN SURGERY",
+   "markup": "Coding Specialist Sr - Breast & Gen Surgery"
+  },
+  {
+   "title": "COLLECTION ANALYST III | UNSECURED DEBT COLLECTION",
+   "markup": "Collection Analyst III | Unsecured Debt Collection"
+  },
+  {
+   "title": "COMMERCIAL ANALYST III - SHOPPING BUSINESS MKP",
+   "markup": "Commercial Analyst III - Shopping Business MKP"
+  },
+  {
+   "title": "COMMERCIAL SEDENTAIRE H/F",
+   "markup": "Commercial Sedentaire H/F"
+  },
+  {
+   "title": "COMMERCIAL SPONSORSHIP COORDINATOR",
+   "markup": "Commercial Sponsorship Coordinator"
+  },
+  {
+   "title": "CONTADOR FREELANCE COSTA RICA",
+   "markup": "Contador Freelance Costa Rica"
+  },
+  {
+   "title": "CONTADOR FREELANCE PERÚ",
+   "markup": "Contador Freelance Perú"
+  },
+  {
+   "title": "CONTENT & CRM ANALYST JUNIOR",
+   "markup": "Content & CRM Analyst Junior"
+  },
+  {
+   "title": "CONTROLADOR PRODUCAO - CÉLULA DE RELATO",
+   "markup": "Controlador Producao - Célula de Relato"
+  },
+  {
+   "title": "COOK",
+   "markup": "Cook"
+  },
+  {
+   "title": "COURSE ATTENDANT",
+   "markup": "Course Attendant"
+  },
+  {
+   "title": "CRA I",
+   "markup": "CRA I"
+  },
+  {
+   "title": "CREATIVE SERVICES PRODUCER - WBBJ",
+   "markup": "Creative Services Producer - WBBJ"
+  },
+  {
+   "title": "CRNP NEO-NATAL",
+   "markup": "CRNP Neo-Natal"
+  },
+  {
+   "title": "DATA ENGINEER",
+   "markup": "Data Engineer"
+  },
+  {
+   "title": "DENVER DELIVERY REP & PRODUCTION ASSISTANT",
+   "markup": "Denver Delivery Rep & Production Assistant"
+  },
+  {
+   "title": "DEPARTMENT MANAGER",
+   "markup": "Department Manager"
+  },
+  {
+   "title": "DIGITAL APPLICATIONS STRATEGIST",
+   "markup": "Digital Applications Strategist"
+  },
+  {
+   "title": "DIGITAL CONTENT ANCHOR - WSAZ",
+   "markup": "Digital Content Anchor - WSAZ"
+  },
+  {
+   "title": "DIGITAL MEDIA EDITOR/VIDEOGRAPHER  - KTIV",
+   "markup": "Digital Media Editor/Videographer  - KTIV"
+  },
+  {
+   "title": "DIRECTOR ESTRUCTURACIÓN CRÉDITO I PER",
+   "markup": "Director Estructuración Crédito I PER"
+  },
+  {
+   "title": "DRUG-GEN MDSE/CLERK",
+   "markup": "Drug-Gen Mdse/Clerk"
+  },
+  {
+   "title": "EA - CPE",
+   "markup": "EA - CPE"
+  },
+  {
+   "title": "EARLY MORNING /WEEKENDS STOCK",
+   "markup": "Early Morning /Weekends Stock"
+  },
+  {
+   "title": "EM APP CAB FT WFEP",
+   "markup": "EM APP CAB FT WFEP"
+  },
+  {
+   "title": "ENFERMERA/O",
+   "markup": "Enfermera/o"
+  },
+  {
+   "title": "ENFERMERO",
+   "markup": "Enfermero"
+  },
+  {
+   "title": "ESPECIALISTA EM GOVERNANÇA",
+   "markup": "Especialista em Governança"
+  },
+  {
+   "title": "ESPECIALISTA SOPORTE CLÍNICO I",
+   "markup": "Especialista Soporte Clínico I"
+  },
+  {
+   "title": "ESTÁGIO EM GASTRONOMIA",
+   "markup": "Estágio em Gastronomia"
+  },
+  {
+   "title": "FLOOR MANAGER - MADRID SERRANO",
+   "markup": "Floor Manager - Madrid Serrano"
+  },
+  {
+   "title": "FLORAL/CLERK",
+   "markup": "Floral/Clerk"
+  },
+  {
+   "title": "GENERAL MANAGER",
+   "markup": "General Manager"
+  },
+  {
+   "title": "GENERAL MANAGER - WBRC",
+   "markup": "General Manager - WBRC"
+  },
+  {
+   "title": "GRAY MEDIA TRAINING PROGRAM SPRING '27 - KBTX",
+   "markup": "Gray Media Training Program Spring '27 - KBTX"
+  },
+  {
+   "title": "GU",
+   "markup": "GU"
+  },
+  {
+   "title": "HEILERZIEHUNGSPFLEGER EINSATZ PFLEGE (M/W/D) IN AUERBACH – WOHNPFLEGE FÜR MENSCHEN MIT GEISTIGER BEHINDERUNG",
+   "markup": "Heilerziehungspfleger Einsatz Pflege (M/W/D) in Auerbach – Wohnpflege für Menschen mit Geistiger Behinderung"
+  },
+  {
+   "title": "HOUSEKEEPER- 2ND SHIFT- SQUARE AT LATROBE",
+   "markup": "Housekeeper- 2nd Shift- Square at Latrobe"
+  },
+  {
+   "title": "HSE ENGINEER",
+   "markup": "HSE Engineer"
+  },
+  {
+   "title": "HUC ED",
+   "markup": "HUC ED"
+  },
+  {
+   "title": "HUMAN RESOURCES SPECIALIST (RECRUITMENT & PLACEMENT)",
+   "markup": "Human Resources Specialist (Recruitment & Placement)"
+  },
+  {
+   "title": "INFIRMIER(E) CONSEIL H/F - CDD - BORDEAUX",
+   "markup": "Infirmier(e) Conseil H/F - CDD - Bordeaux"
+  },
+  {
+   "title": "INGENIERO(A) DE SSOMA",
+   "markup": "Ingeniero(a) de SSOMA"
+  },
+  {
+   "title": "INTERN - STRATEGY & M&A",
+   "markup": "Intern - Strategy & M&A"
+  },
+  {
+   "title": "JANITORIAL CLEANER METRO 14",
+   "markup": "Janitorial Cleaner Metro 14"
+  },
+  {
+   "title": "JANITORIAL CLEANER UF MVR",
+   "markup": "Janitorial Cleaner UF MVR"
+  },
+  {
+   "title": "JUNIOR RECRUITER – TIROCINIO EXTRACURRICULARE",
+   "markup": "Junior Recruiter – Tirocinio Extracurriculare"
+  },
+  {
+   "title": "JUNIOR SOUS CHEF TRAINING PROGRAM ($20-$22 +/HR): HARVEST RESTAURANT GROUP,  JUMP START YOUR CAREER TODAY!",
+   "markup": "Junior Sous Chef Training Program ($20-$22 +/HR): Harvest Restaurant Group,  Jump Start Your Career Today!"
+  },
+  {
+   "title": "LEAD CLINICAL NURSE (EMERGENCY DEPARTMENT)",
+   "markup": "Lead Clinical Nurse (Emergency Department)"
+  },
+  {
+   "title": "LOCAL CLASS A DRIVERS NEEDED",
+   "markup": "Local Class A Drivers Needed"
+  },
+  {
+   "title": "LPN / LVN",
+   "markup": "LPN / LVN"
+  },
+  {
+   "title": "LVN / LPT",
+   "markup": "LVN / LPT"
+  },
+  {
+   "title": "LVN/LPN",
+   "markup": "LVN/LPN"
+  },
+  {
+   "title": "MA / LPN- ENT",
+   "markup": "MA / LPN- ENT"
+  },
+  {
+   "title": "MACHINE OPERATOR: AMHERST, VIRGINIA",
+   "markup": "Machine Operator: Amherst, Virginia"
+  },
+  {
+   "title": "MANAGER DE MAINTENANCE",
+   "markup": "Manager de Maintenance"
+  },
+  {
+   "title": "MANAGER IN TRAINING",
+   "markup": "Manager in Training"
+  },
+  {
+   "title": "MANCHESTER SITES - £1150++ PER WEEK | MULTI-DROP COURIERS WANTED | OWN VAN",
+   "markup": "Manchester Sites - £1150++ PER Week | Multi-Drop Couriers Wanted | Own Van"
+  },
+  {
+   "title": "MEDICAL ASSISTANT",
+   "markup": "Medical Assistant"
+  },
+  {
+   "title": "MEDICAL ASSISTANT - FAMILY MEDICINE",
+   "markup": "Medical Assistant - Family Medicine"
+  },
+  {
+   "title": "MEDICAL ASSISTANT - INTERNAL MEDICINE, DIAGNOSTIC ASSOCIATES",
+   "markup": "Medical Assistant - Internal Medicine, Diagnostic Associates"
+  },
+  {
+   "title": "MEXICO MILITARY SUPPORT ENGAGEMENT ANALYST",
+   "markup": "Mexico Military Support Engagement Analyst"
+  },
+  {
+   "title": "MFG PEE PH PR TECH",
+   "markup": "Mfg PEE PH PR Tech"
+  },
+  {
+   "title": "MGR - NURSING",
+   "markup": "Mgr - Nursing"
+  },
+  {
+   "title": "MLS/MLT",
+   "markup": "MLS/MLT"
+  },
+  {
+   "title": "MMJ/ REPORTER - WMTV",
+   "markup": "MMJ/ Reporter - WMTV"
+  },
+  {
+   "title": "MRI TECH",
+   "markup": "MRI Tech"
+  },
+  {
+   "title": "MULTIFUNCTIONAL SALES ASSOCIATE",
+   "markup": "Multifunctional Sales Associate"
+  },
+  {
+   "title": "MULTIMEDIA SALES MANAGER (DIGITAL SPECIALIST) - WLIO",
+   "markup": "Multimedia Sales Manager (Digital Specialist) - WLIO"
+  },
+  {
+   "title": "NEWS REPORTER/MMJ - WBRC",
+   "markup": "News Reporter/MMJ - WBRC"
+  },
+  {
+   "title": "NEWSCAST PRODUCER - WLFI",
+   "markup": "Newscast Producer - WLFI"
+  },
+  {
+   "title": "NIGHT TEAM MANAGER",
+   "markup": "Night Team Manager"
+  },
+  {
+   "title": "NURSING ASSISTANT - 3S - GERIATRIC PSYCHIATRY",
+   "markup": "Nursing Assistant - 3S - Geriatric Psychiatry"
+  },
+  {
+   "title": "NURSING ASSISTANT 3S GERIATRIC PSYCHIATRY - CASUAL",
+   "markup": "Nursing Assistant 3S Geriatric Psychiatry - Casual"
+  },
+  {
+   "title": "OFERTA DE EMPLEO – MARINEROS DE PUENTE",
+   "markup": "Oferta de Empleo – Marineros de Puente"
+  },
+  {
+   "title": "PASTURE RIDER",
+   "markup": "Pasture Rider"
+  },
+  {
+   "title": "PATIENT SERVICES ASSOCIATE - ORTHOPEDICS",
+   "markup": "Patient Services Associate - Orthopedics"
+  },
+  {
+   "title": "PHYSICAL THERAPIST (DAYS)",
+   "markup": "Physical Therapist (Days)"
+  },
+  {
+   "title": "PM",
+   "markup": "PM"
+  },
+  {
+   "title": "PMO IT/DATA H/F",
+   "markup": "PMO IT/Data H/F"
+  },
+  {
+   "title": "POSTE HANDLER 25H CDD",
+   "markup": "Poste Handler 25H CDD"
+  },
+  {
+   "title": "POSTE HANDLER 25HH CDD",
+   "markup": "Poste Handler 25HH CDD"
+  },
+  {
+   "title": "PRODEJNÍ ASISTENT V PRODEJNĚ JYSK OLOMOUC",
+   "markup": "Prodejní Asistent v Prodejně JYSK Olomouc"
+  },
+  {
+   "title": "PRODUCT CL SENIOR ASSOCIATE",
+   "markup": "Product CL Senior Associate"
+  },
+  {
+   "title": "PRODUCT LOCAL CM SALES SENIOR ANALYST",
+   "markup": "Product Local CM Sales Senior Analyst"
+  },
+  {
+   "title": "PRODUCTION ASSISTANT (F/T) - WAND",
+   "markup": "Production Assistant (F/T) - WAND"
+  },
+  {
+   "title": "QUANTITATIVE ANALYST - ETF ADVISORY - PARIS",
+   "markup": "Quantitative Analyst - ETF Advisory - Paris"
+  },
+  {
+   "title": "REGISTERED NURSE EXPERIENCED NICU (NIGHTS)",
+   "markup": "Registered Nurse Experienced NICU (Nights)"
+  },
+  {
+   "title": "REGISTERED NURSE, RN - EMERGENCY DEPARTMENT",
+   "markup": "Registered Nurse, RN - Emergency Department"
+  },
+  {
+   "title": "REGISTERED NURSE- HOME CARE",
+   "markup": "Registered Nurse- Home Care"
+  },
+  {
+   "title": "RETAIL ASSISTANT - NIGHT SHIFT",
+   "markup": "Retail Assistant - Night Shift"
+  },
+  {
+   "title": "RN",
+   "markup": "RN"
+  },
+  {
+   "title": "RN / LPN - PRN",
+   "markup": "RN / LPN - PRN"
+  },
+  {
+   "title": "RN IMCU PRN",
+   "markup": "RN IMCU PRN"
+  },
+  {
+   "title": "RN MI3",
+   "markup": "RN MI3"
+  },
+  {
+   "title": "RN, WEEKEND - CARDIOVASCULAR SERVICES PCU 2DE",
+   "markup": "RN, Weekend - Cardiovascular Services PCU 2DE"
+  },
+  {
+   "title": "RNC",
+   "markup": "RNC"
+  },
+  {
+   "title": "SALES ASSISTANT",
+   "markup": "Sales Assistant"
+  },
+  {
+   "title": "SBM/BM-LC-上海",
+   "markup": "SBM/BM-LC-上海"
+  },
+  {
+   "title": "SENIOR CREATIVE VIDEO PRODUCER - WAND",
+   "markup": "Senior Creative Video Producer - WAND"
+  },
+  {
+   "title": "SR ANALYST DECISION ANALYTICS",
+   "markup": "Sr Analyst Decision Analytics"
+  },
+  {
+   "title": "STAFF ENGINEER, GLOBAL FACILITIES ENGINEERING - GAS",
+   "markup": "Staff Engineer, Global Facilities Engineering - Gas"
+  },
+  {
+   "title": "STARBUCKS/BARISTA",
+   "markup": "Starbucks/Barista"
+  },
+  {
+   "title": "SUPERVISOR/A DE SEGURIDAD Y SALUD EN EL TRABAJO",
+   "markup": "Supervisor/a de Seguridad y Salud en el Trabajo"
+  },
+  {
+   "title": "TEAM MANAGER",
+   "markup": "Team Manager"
+  },
+  {
+   "title": "TECH/DRIVER (CHESTER COUNTY)",
+   "markup": "Tech/Driver (Chester County)"
+  },
+  {
+   "title": "TECH/DRIVER (DELAWARE COUNTY)",
+   "markup": "Tech/Driver (Delaware County)"
+  },
+  {
+   "title": "TRADING FLOW FICC MULTIPRODUCT EXECUTIVE DIRECTOR",
+   "markup": "Trading Flow FICC Multiproduct Executive Director"
+  },
+  {
+   "title": "USINEUR TOURNEUR F/H",
+   "markup": "Usineur Tourneur F/H"
+  },
+  {
+   "title": "VISITADOR MEDICO",
+   "markup": "Visitador Medico"
+  },
+  {
+   "title": "VISUAL MERCHANDISING MANAGER",
+   "markup": "Visual Merchandising Manager"
+  },
+  {
+   "title": "X-RAY CLERK",
+   "markup": "X-Ray Clerk"
+  },
+  {
+   "title": "[BANCO DE TALENTOS] OPORTUNIDADES DE ESTÁGIO | INTER",
+   "markup": "[Banco de Talentos] Oportunidades de Estágio | Inter"
+  },
+  {
+   "title": "医学信息沟通专员-II&GE-北京",
+   "markup": "医学信息沟通专员-II&GE-北京"
+  },
+  {
+   "title": "医学信息沟通专员-II&GE-嘉兴",
+   "markup": "医学信息沟通专员-II&GE-嘉兴"
+  },
+  {
+   "title": "电机机械设计工程师（标准设计平台）_EM",
+   "markup": "电机机械设计工程师（标准设计平台）_EM"
+  }
+ ],
+ "mixedWhy": "Every 25th title that has a lower-case letter: the employer's own casing, which the rule leaves as it came.",
+ "mixed": [
+  "# Retail Sales Ambassador - Sportswear Ready to Wear, Baybrook - Full Time",
+  "2027 Future Talent Program – Engineering – Co-op",
+  "AI Editorial Senior Program Manager– AEM",
+  "AU Accountant (001-1454)",
+  "Academic (Level C-E) in Communication/Network Engineering",
+  "Account Executive - Phoenix, AZ",
+  "Account Manager - Central Texas",
+  "Account Specialist ASO, Brazil",
+  "Addetto CNC",
+  "Administrative Support - Spokane Downtown #303",
+  "Advisor-IT Risk and Compliance",
+  "Airflow Modeler – Data Center Design",
+  "Analista de Negócios Sênior | Consignado",
+  "Analyst, Sponsor Finance",
+  "Application Manager",
+  "Area Manager - (Houston, TX)",
+  "Asesor de ventas - Boutique Galerias, Gdl",
+  "Assistant Club Manager",
+  "Assistant Manager I",
+  "Assistant Restaurant Manager",
+  "Assistente de Projetos (2 vagas) (Home Based) - [Open to internal and external applicants]",
+  "Associate Director -  SH & Environmental Regulated Operations",
+  "Associate Materials Engineer",
+  "Associate Veterinarian (In-Home, Full-Time)",
+  "Assurance Supervisor 2, Review & Compilation",
+  "Austin-Clinical Research Coordinator I",
+  "Automotive General Service Technician - Store 691",
+  "Auxiliaire Petite Enfance H/F CDD",
+  "BCS Business Card Consultant - Washington",
+  "Bakery InStore Clerk Part Time Day Greenlight Requisition",
+  "Bartender (Part-Time)",
+  "Behavioral Health Navigator (20 hours, Days)",
+  "Bilingual Personal Banker Rutherfordton",
+  "Brake & Alignment Technician - St. Helens #229",
+  "Brazil Operations Finance Controller",
+  "Business Development Associate",
+  "Business Office Representative",
+  "C++ Quant Developer",
+  "CNA  6am-2pm",
+  "CS - EUV F22 System Lead – Kaohsiung",
+  "California Wastewater Practice Lead",
+  "Canada, opportunités d'emploi CDI Infirmiers, Aides Soignants Foyers Soins Réseau de Vie Confort FT",
+  "Care Giver - Memory Care (FT / AM & PM)",
+  "Case Manager (CM), Rehabilitation",
+  "Casual Team Member - Cotton On Body Randwick",
+  "Certified Critical Care Tech - Pool",
+  "Certified Nursing Assistant, Med-Surg (Full-Time, Night Shift)",
+  "Chargé administratif - moyens généraux F/H",
+  "Chicago Technology Consulting Intern - 2027",
+  "City Compliance Officer",
+  "Civil Project Engineer",
+  "Client Success Manager",
+  "Clinical Lab Scientist II, Blood Bank Compatibility Tests - Per Diem - Evening",
+  "Clinical Specialist - Women & Men's Health (Bank)",
+  "Collaborateur-trice au service interne à 60-80% pour l'Agence Principale de Pully",
+  "Commercial Finance Director",
+  "Communications Manager - Product Divisions",
+  "Comptable clients F/H",
+  "Construction Planning Supervisor",
+  "Consumer Advocacy Representative",
+  "Convenience Store Associate",
+  "Coordinator, Office Services",
+  "Country Manager Mexico",
+  "Courtesy Clerk/Grocery Bagger",
+  "Curbside Lead Plus 1",
+  "Customer Project Manager",
+  "Customer Service Lead Representitive - Cigna Healthcare",
+  "Customer Services Assistant",
+  "DATACOM Traveling Remote Pilot Operator",
+  "Data Analytics Manager",
+  "Dean, College of Nursing",
+  "Delivery Performance Program Manager  - Global Delivery Operations - Services Supply Chain",
+  "Department Manager I, Produce",
+  "Deskside Support / Field Services in Ottawa",
+  "Diesel Technician",
+  "Director Culinary Operations",
+  "Director of Revenue Strategy | St. Anthony Hotel, A Luxury Collection Hotel",
+  "Director, Genius Enterprise Sales Operations",
+  "Director, Technical Services - US Livestock",
+  "District Sales Manager, Florida",
+  "Driver/Dispatcher",
+  "Développeur Web (H/F)",
+  "EHS Intern",
+  "Early Morning Cashier",
+  "Electrical Engineering - 12 Month Placement Scheme",
+  "Electronics Technician 1 - Honolulu, HI",
+  "Emerging Middle Market Relationship Manager, Vice President",
+  "Engagement Manager  (London)",
+  "Engineering Specialist, Piping",
+  "Enterprise Solutions Engineer, Brazil",
+  "Environmental Services Associate (Relief) Evening - Jefferson Abington",
+  "Especialista de Dados | Engenharia de Plataforma de Dados",
+  "Estágio em TI",
+  "Executive Director, Product Development Team Leader, Clinical Research, Hematology - Lymphoma",
+  "Experienced LO Propulsion Integration Engineer",
+  "FILIALLEITER / STORE MANAGER (M/W/D) - Bentwisch",
+  "Facilities Engineer",
+  "Fence Driver - ROS",
+  "Field Operator",
+  "Field Technician II (Denver)",
+  "Financial Associate (Full Time) - Travel/Floater",
+  "Finish Line Macy's Store Management - Westfarms, Farmington, CT",
+  "Float Patient Care Technician - CCHT required",
+  "Food Runner",
+  "Forklift Operator 3rd Shift (Fri-Sun)",
+  "French Tutor Toronto",
+  "Full Time Assistant Manager - Arrowhead Towne Center",
+  "Fullstack Entwickler Java*",
+  "General Construction-Superintendent",
+  "General Merchandise Team Leader",
+  "Germany Patriot Finance, Principal Specialist (P3) *HYBRID*",
+  "Global Medical Affairs Leader (GMAL), GU/GYN – Expert Engagement",
+  "Groundskeeper (Dallas Region)",
+  "Gym Coordinator",
+  "HR Project Manager",
+  "Hair Stylist - Sarasota Square",
+  "Head of HR - Business Units & CEO Office",
+  "Healthcare Professionals: Feedback on Day-to-Day Digital Workflows",
+  "Home Health Physical Therapist (PRN)",
+  "Host - Beauty & Essex New York",
+  "Housekeeping Aide",
+  "Human Resources Specialist (Recent Graduate)",
+  "IT Cybersecurity Specialist (Recent Graduates)",
+  "In Room Dining Server",
+  "India Tax Accountant",
+  "Infirmier Diplômé d'Etat (H/F)",
+  "Informatore Medico Scientifico  (f/m)",
+  "Inpatient Pharmacist",
+  "Instructional Designer-Quality",
+  "Intern - Project Engineering",
+  "International Expansion - Germany",
+  "Investment Advisor - Brazil",
+  "Jersey Mike's Crew Member Washington Dulles International Airport VA",
+  "Just Got Your VIC Security License? Apply today!",
+  "Konsultant_ka Sprzedaży (40h)",
+  "Lab PAA/Phlebotomist| Clinical Lab Support | PRN | Variable",
+  "Lead Assistant Manager",
+  "Lead Full Stack Software Engineer",
+  "Lead Software Engineer - .Net, React with AI",
+  "Leader - Strategic Deals",
+  "Legal Engineer, Mexico",
+  "License Owner, Phoenix",
+  "Licensed Therapist I (Adult Eating Disorders/OCD Program)",
+  "Linen Runner",
+  "Logistics Manager (f/m/diverse)",
+  "Luxury Fashion Manager - Jared Jewelers - Mall at Millenia",
+  "Maintenance Coordinator UK",
+  "Maintenance Technician - Reserve at Creekside",
+  "Manager - Deal Analytics",
+  "Manager – HR, India",
+  "Manager, Pricing",
+  "Manufacturing Associate I - Tier 3 (1st 5x8)",
+  "Marine Service Tech",
+  "Master Level Auto Painter $6000 Bonus",
+  "Math Instructor (FT) Remote - KS",
+  "Mechanical AIT Operator",
+  "Med/Surg Registered Nurse - 4 West",
+  "Medical Assistant Ambulatory Float",
+  "Medical Laboratory Scientist I",
+  "Medication Technician",
+  "Merchandiser/Cashier",
+  "Microbiology Lab Supervisor- Casa Grande, AZ",
+  "Monitoring & Operations Junior Analyst",
+  "National People & Culture Advisor",
+  "New Business Account Executive",
+  "Nuclear Site Manager",
+  "Nurse Tech MS",
+  "OR Service Assistant - Neuro/Spine",
+  "Office Manager",
+  "Onsite - Patient Services Coordinator",
+  "Operations Coordinator - Industrial",
+  "Operations Worker",
+  "Orthopédagogue au primaire",
+  "Overnight Stocking Part Time",
+  "PSC Registration Representative",
+  "Painter - Hilton Chicago",
+  "Part Time FRAMER",
+  "Part-Time Cleaner",
+  "Partnerships Manager, Academy at Penn",
+  "Patient Access Specialist - PRN",
+  "Patient Care Technician - Cardiac / Med Surg Unit",
+  "Patient Family Advocate- High School Student",
+  "Payroll Administrator",
+  "Per diem SLP",
+  "Personal Banker Hinesville GA",
+  "Pflegerische Standortleitung",
+  "Pharmacy Technician Specialist I",
+  "Phoenix Technology Audit & Advisory Senior Consultant",
+  "Physical Therapist Assistant - Broadlands Family Practice Brambleton",
+  "Pilot",
+  "Pleater Operator - 2nd Shift",
+  "Post Award Associate II",
+  "Post-doctoral Associate",
+  "Preventive Maintenance Technician",
+  "Principal Engineer, Software",
+  "Principal Test Engineer",
+  "Procurement Director I",
+  "Product Manager -  Cardiac & Interventional Procedure Solutions",
+  "Production Manager - Boston",
+  "Program Manager - Channel Product Operations",
+  "Project Manager - Brazil",
+  "Projektleiter Sicherheitstechnik (m/w/d) Großprojekte",
+  "Psychiatrist in South Carolina",
+  "Quality & Food Safety Associate Scientist (F/H/X)",
+  "Qualitätsmanagementbeauftragter & Umweltmanagementbeauftragter (m/w/d) (als Elternzeitvertretung)",
+  "RN (Full Time)- Acute Care Unit, AHN Grove City",
+  "RN Critical Care",
+  "RN, Psychiatric Acute, Part-time, Evening shift",
+  "Radiology Nurse II",
+  "Receptie Supervisor Guest Relations",
+  "Region Engineer",
+  "Regional Account Manager - Territory Germany North",
+  "Regional Sales Manager - Boston",
+  "Registered Nurse (RN) - Med/Surg",
+  "Registered Nurse - Emergency",
+  "Registered Nurse III - IMG  - 10 Hour Days",
+  "Registered Nurse, RN - Medical Surgical",
+  "Relationship Banker - Birmingham, AL",
+  "Relief Security Officer",
+  "Renal Medicine – Physician Assistant or Nurse Practitioner, Worcester, MA",
+  "Research Fellow (Optical Microscopy / Coherence Tomography)",
+  "Respiratory Therapist - Float Pool",
+  "Restaurant Shift Leader - Unit 195",
+  "Retail Freight Associate",
+  "Retail Sales Associate - Part-time",
+  "Return to Work Associate",
+  "Rounding Registered Nurse, Heart & Vascular (Riverside)",
+  "SENIOR MEDICAL REPRESENTATIVE – HEMATOLOGY Târgu Mureș",
+  "Sales",
+  "Sales Associate - Silver Sands Outlet Mall",
+  "Sales Development Rep",
+  "Sales Intern - Manchester (Placement)",
+  "Sales Manager | Holiday Inn Express & Suites Pokhara",
+  "Sales Stylist - Stage",
+  "Scaffold Helper (Baytown, TX)  Austin Industrial",
+  "Scientific Instrumentation Engineer",
+  "Seasonal Associate",
+  "Seasonal Meta Sales Specialist",
+  "Seasonal Service Team Member",
+  "Security Officer-Full Time, Evenings/Overnights",
+  "Senior Analyst - Retail media",
+  "Senior Associate, Financial Services - Hedge Funds",
+  "Senior Claims Advocate - Financial Services Group",
+  "Senior D365 F&O Developer",
+  "Senior Director II, One Samsung Retail Execution Leader",
+  "Senior Engineer, Security Systems",
+  "Senior Flight Test Engineer, Omen",
+  "Senior Janitorial Manager",
+  "Senior Manager, Model & AI Governance",
+  "Senior Merchant, Direct - Converse",
+  "Senior Payments Legal & Regulatory Counsel BHFS",
+  "Senior Product Manager (H/F/X) - Ops Squad - CDI - Marseille / Paris / Remote",
+  "Senior Relationship Manager - Phoenix",
+  "Senior Software Engineer - IN B",
+  "Senior System Software Engineer, NPI Data Center",
+  "Sequence Engineer - Manufacturing",
+  "Service Engineer - New England",
+  "Serviceadviseur",
+  "Shipping Clerk – Manufacturing",
+  "SoC Validation Engineer – Power Management",
+  "Software Engineer 2",
+  "Software/Web Developer (SharePoint) – TS/SCI required",
+  "Spain Inland Agent Multicarrier",
+  "Specialist-HIM-M",
+  "Sponsor Dedicated Site Activation Specialist I - Sofia",
+  "Spécialiste en services financiers principal - Sainte-Julie",
+  "Sr Mechanical Plant Engineer",
+  "Sr. Associate - F&A - AP 5B",
+  "Sr. Manager, Digital Design",
+  "Sr. System Design Mechanical Engineer",
+  "Staff Product Manager, Developer Ecosystem",
+  "Stagiaire Marketing Produit",
+  "Store Accounting Coordinator",
+  "Store Manager - Peoples Jewellers - Champlain Place",
+  "Storeperson",
+  "Superviseur entretien et usine",
+  "Supervisor(a) SPCI | Faena Minera Candelaria | Copiapó | Turno 7x7",
+  "Supply Chain Invoice Associate",
+  "Switchboard Operator",
+  "T-Ads Lead Customer Education Manager",
+  "Talent Sourcer (Temp Position)",
+  "Tax Senior Associate, Pass Through Consulting",
+  "Team Manager - Syracuse, NY",
+  "Teammate Golf",
+  "Technical Sales Specialist - Northern England",
+  "Technicien.ne Mise à disposition Produit (Jour)",
+  "Teller - Float",
+  "Temporary Cashier",
+  "Territory Manager (Virginia)",
+  "Territory Sales Supervisor",
+  "Thrifty Outlet",
+  "Tier II Desktop Supervisor",
+  "Tow and Storage Negotiation Specialist",
+  "Trimble Operator- Georgia",
+  "UK Information Security Officer",
+  "UX Staff Validation Engineer",
+  "Urban Farmer - Holbrook (New York)",
+  "VP, Talent Partnerships - EM&A",
+  "Vehicle Lot Operations Specialist II (Manheim)",
+  "Veterinarian - Boston - Watertown",
+  "Virginia Certified Police Officer- ROCKBRIDGE",
+  "Wafer Fab Technician",
+  "Warehouse Shipping Operator",
+  "Water Fitness Instructor I",
+  "Werkstudent EHS (m/w/d)",
+  "Workplace Experience Support Specialist Senior",
+  "commis au pieces",
+  "📢 Apply Today! Toyota Music Factory Security Career Fair! – Irving, Texas"
+ ]
+}

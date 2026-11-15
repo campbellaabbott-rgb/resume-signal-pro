@@ -39,6 +39,24 @@ const TRAILING_LABELS = [
   /\s*[-–—|:]?\s*\(?\s*opt\.?\s*\d+\s*\)?$/i,
 ];
 
+/**
+ * The audience a career site is for, appended to its employer's name: "Inova
+ * Military" is the site Inova (the same Oracle tenant's main site is "Inova")
+ * runs for service members, and "Cummins Veterans" one of Cummins' sites (SEO
+ * check 2026-11-15, F04). Taken off like the labels above, but only after a
+ * name: a name that ends "for Veterans" or "of Veterans" is an organisation
+ * named after the people it serves ("Clear Path For Veterans"), and keeps it.
+ */
+const TRAILING_AUDIENCE = /^(.*\S)[\s\-–—|:(]+(?:military|veterans)\)?$/i;
+const ENDS_IN_A_JOINER = /(?:^|\s)(?:for|of|and|to|with|at|in|by|the|our|your|&|\+)$/i;
+
+function withoutAudience(name) {
+  const m = TRAILING_AUDIENCE.exec(name);
+  if (!m) return name;
+  const head = m[1].replace(/[\s,;:|–—-]+$/, "").trim();
+  return head && !ENDS_IN_A_JOINER.test(head) ? head : name;
+}
+
 /** Words that are nobody's name on their own: a board titled only this names no employer. */
 const GENERIC_NAMES = new Set([
   "all", "aerospace", "careers", "career", "jobs", "job", "external", "internal", "global", "corporate",
@@ -53,27 +71,58 @@ const GENERIC_NAMES = new Set([
  * boards named by their logo file (SEO/GEO audit 2026-11-07, B02): "VHB Email
  * Signature" was a Google for Jobs hiringOrganization while its own postings
  * name Villas of Holly Brook. One alone stays a name ("Signature Healthcare").
+ *
+ * The second group joined from the logo captions the SEO check of 2026-11-15
+ * (F04) read on live pages and the ADP and UKG boards beside them in the
+ * catalogue: a logo's master file ("TRAILBORN MASTER MONOGRAM ORANGE", "AIP
+ * Master Dark", "VHBG Full Master low res2"), its fonts and print colours
+ * ("Denali Full Font AI Blue", "CAMlogo13 PMS"), and its variants ("Level Data
+ * Full Navy", "CAA Lockup Full Light Background"). Each is an ordinary word in
+ * a real name (Master Electronics, Monogram Health, Full Sail, Light & Wonder,
+ * Brand Industrial Services), so each counts once and never refuses alone.
  */
-const IMAGE_WORDS = /\b(?:logo|logos|wordmark|wht|blk|background|horizontal|vertical|stacked|reversed|transparent|colou?r|rgb|hex|banner|icon|header|footer|midnight|email|signature)\b/g;
+const IMAGE_WORDS = new Set([
+  "logo", "logos", "wht", "blk", "background", "horizontal", "vertical", "stacked", "reversed", "transparent",
+  "colour", "color", "rgb", "hex", "banner", "icon", "header", "footer", "midnight", "email", "signature",
+  "monogram", "master", "full", "font", "pms", "res", "light", "dark", "brand", "alone",
+]);
 
 /**
  * A logo file's variant words, which no employer's name carries, so one is
  * enough: "AVITA Health Systems unstacked", "Group withMVSB wtag" (with
  * tagline), "Klipboard No Strapline Full (1)". Each was a live ADP board name.
+ * "Tagline" ("KDV Tagline", "Oceana English SideTagline 2Blue", "(no
+ * tagline)"), "lockup" and "wordmark" ("Loomis Chaffee Wordmark15 RED") are
+ * the same kind: none of the 45,103 catalogue and live names carrying one is
+ * an employer's name (corpus of 2026-11-15).
  */
-const LOGO_VARIANT_WORDS = /\b(?:unstacked|wtag|strapline)\b/i;
+const LOGO_VARIANT_WORDS = new Set(["unstacked", "wtag", "strapline", "tagline", "lockup", "wordmark"]);
 
-/** A file copy's suffix ("Full (1)", "transparent (3)"): counts as one image word. */
-const COPY_SUFFIX = /\(\d{1,2}\)$/;
+/** A file copy's suffix ("Full (1)", "transparent (3)", "OC Red (002)"): counts as one image word. */
+const COPY_SUFFIX = /\s*\(\d{1,3}\)$/;
 
 /**
  * A name that is a web address, not a name: a scheme ("https://www.deag.de/
  * navi-bottom/investors/karriere.html?t=1" was a Personio board's company
  * name and so its markup's hiringOrganization), a leading "www.", or a domain
- * followed by a path. A bare domain stays a name: Booking.com, Alarm.com and
- * HealthCareersInSask.ca are how those employers or sites write themselves.
+ * followed by a path. A bare domain stays a name: Booking.com, Alarm.com,
+ * Otter.ai and Change.org are how those employers write themselves (221 of
+ * the 223 domain-shaped names in the catalogue and the live list on
+ * 2026-11-15), unless its own words say it is a careers site.
  */
 const WEB_ADDRESS = /:\/\/|^www\.|^[a-z0-9-]+(?:\.[a-z0-9-]+)+\/\S/i;
+
+/**
+ * A careers site's address used as a name: a bare domain whose own name says
+ * careers or jobs. "HealthCareersInSask.ca" (an Oracle site's name, so a live
+ * posting's hiringOrganization, SEO check 2026-11-15 F04) is a recruiting
+ * site, not the employer behind it; the one domain-shaped name in the corpus
+ * carrying either word.
+ */
+const CAREERS_SITE_ADDRESS = /^[a-z0-9-]*(?:careers?|jobs)[a-z0-9-]*(?:\.[a-z0-9-]+)*\.[a-z]{2,24}$/i;
+
+/** An email address is not a name ("info@bodymasters.de", a Recruitee board's company field). */
+const EMAIL_ADDRESS = /^[^\s@]+@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,24}$/i;
 
 /** Colour words, as a logo caption lists its palette. */
 const COLOUR_WORDS = new Set([
@@ -81,6 +130,22 @@ const COLOUR_WORDS = new Set([
   "maroon", "teal", "orange", "purple", "yellow", "pink", "cyan", "magenta", "violet", "brown", "beige",
   "cream", "ivory", "turquoise", "aqua", "lime", "olive", "plum", "bronze", "copper", "charcoal",
 ]);
+
+/**
+ * A name's words as a caption reads them: split at every character that is
+ * not a letter, a digit or "&", at each lower-to-upper step and between
+ * letters and digits, so "SideTagline 2Blue" reads side, tagline, 2, blue and
+ * "Brand_Blue" reads brand, blue. The case of each word is kept. No
+ * lookbehind: the app's bundle runs this module in browsers too.
+ */
+function captionWords(n) {
+  return n
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/([A-Za-z])([0-9])/g, "$1 $2")
+    .replace(/([0-9])([A-Za-z])/g, "$1 $2")
+    .split(/[^A-Za-z0-9&]+/)
+    .filter(Boolean);
+}
 
 /**
  * A logo caption that names its colours: two or more colour words beside a
@@ -98,6 +163,33 @@ function isColourCaption(n) {
 }
 
 /**
+ * A logo caption that ends in the colour of the file (SEO check 2026-11-15,
+ * F04: "MEI Maroon" on two live postings, "TRAILBORN MASTER MONOGRAM ORANGE"
+ * a live hiringOrganization). A name may end in a colour ("Florida Blue",
+ * "Molton Brown", "Berkshire Grey", "CD PROJEKT RED", "Blades of Green"), so a
+ * trailing colour is a caption only in a shape no name in the corpus takes:
+ *   - written in lower case after a capitalised word ("WeatherTech red",
+ *     "INDI green", "CIPLOGO ALONE blue");
+ *   - after nothing but an initialism ("MEI Maroon", "DEKRA Green", "AMHA
+ *     Gold", "A&A Red");
+ *   - the second of two different colours ("Cambrian Yellow Navy", "OC Aqua
+ *     Navy", "JCSU LettersOnly Gold Blue"); a name said twice is one name
+ *     ("Copper | Copper", a Pinpoint board of the CRM company Copper).
+ * Anywhere else it counts as one image word: "KemperSports Logo Green" and
+ * "Level Data Full Navy" are refused by the count, "Sentinel Blue" is not.
+ */
+function trailingColour(words) {
+  const last = words[words.length - 1];
+  if (!last || words.length < 2 || !COLOUR_WORDS.has(last.toLowerCase())) return null;
+  const rest = words.slice(0, -1);
+  if (last === last.toLowerCase() && rest.some((w) => /[A-Z]/.test(w))) return "caption";
+  if (rest.length === 1 && /^[A-Z&]{2,5}$/.test(rest[0]) && /[A-Z]{2}|[A-Z]&[A-Z]/.test(rest[0])) return "caption";
+  const before = rest[rest.length - 1].toLowerCase();
+  if (COLOUR_WORDS.has(before) && before !== last.toLowerCase()) return "caption";
+  return "image word";
+}
+
+/**
  * The name with any trailing career-site label taken off. Never empties a
  * name: a name that is nothing but a label stays as it was (and the gate
  * below refuses it). Returns the name to print and whether it changed.
@@ -111,6 +203,7 @@ export function repairEmployerName(name) {
       const next = out.replace(re, "").replace(/[\s,;:|–—-]+$/, "").trim();
       if (next && next !== out) out = next;
     }
+    out = withoutAudience(out);
     if (out === before) break;
   }
   return { name: out || raw, repaired: !!out && out !== raw };
@@ -128,12 +221,25 @@ export function unpublishableNameReason(name, { codeShaped = false } = {}) {
   if (codeShaped) return "tenant code";
   if (/\.(?:png|jpe?g|gif|svg|webp|bmp|tiff?|pdf|eps)\b/i.test(n)) return "file name";
   if (/\bcmyk\b|\bscreenshot at\b/i.test(n)) return "logo or image text";
+  // An image file's print and screen sizes: a Pantone number ("CornerstoneBankLogo
+  // PMS195"), a retina or pixel suffix ("PUREHomeRiver Logo@2x", "Hori
+  // FC@3600px") and a resolution ("Zeigler Auto Group high res"). A property
+  // system is a name ("Vital PMS"), a number after it is a swatch, and
+  // "Experienced Hires" is a hiring label, not a resolution.
+  if (/pms\s?\d{2,4}\b|@\d{1,4}(?:x|px)\b|\b(?:hi[\s-]|high[\s-]?|low[\s-]?)res\b/i.test(n)) return "logo or image text";
   // "Logo" alone is a word some employers carry ("Logo Brands"), so it counts
   // only beside a second word that describes an image file, never by itself.
-  const imageWords = (n.toLowerCase().match(IMAGE_WORDS) || []).length + (COPY_SUFFIX.test(n) ? 1 : 0);
-  if (imageWords >= 2 || LOGO_VARIANT_WORDS.test(n)) return "logo or image text";
+  const copy = COPY_SUFFIX.test(n);
+  const words = captionWords(n.replace(COPY_SUFFIX, ""));
+  if (words.some((w) => LOGO_VARIANT_WORDS.has(w.toLowerCase()))) return "logo or image text";
+  const colour = trailingColour(words);
+  if (colour === "caption") return "colour caption";
+  const imageWords = words.filter((w) => IMAGE_WORDS.has(w.toLowerCase())).length + (copy ? 1 : 0) + (colour ? 1 : 0);
+  if (imageWords >= 2) return colour ? "colour caption" : "logo or image text";
   if (/^(?:https?:\/\/)?(?:careers?|jobs?|apply|recruiting|talent|hiring|work)\.[a-z0-9-]+(?:\.[a-z0-9-]+)+\/?$/i.test(n)) return "careers subdomain";
   if (WEB_ADDRESS.test(n)) return "web address";
+  if (EMAIL_ADDRESS.test(n)) return "email address";
+  if (CAREERS_SITE_ADDRESS.test(n)) return "careers site address";
   if (isColourCaption(n)) return "colour caption";
   if (/^(?:only\s+)?(?:external|internal)\s+(?:postings?|jobs?|careers?|candidates?)$/i.test(n)) return "generic label";
   if (GENERIC_NAMES.has(n.toLowerCase())) return "generic word";

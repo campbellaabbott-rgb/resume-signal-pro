@@ -26,6 +26,8 @@ import { internalOnlyTextReason, paidSurveyAdReason, postingRowEligible } from "
 import { isCodeShapedName } from "../../lib/company-display";
 // The owner's STOP switch for Google for Jobs (B01): read by postingJsonLd below.
 import { JOB_POSTING_MARKUP } from "../../config/seo-switches";
+// Relative, as above: the bake bundles this module with esbuild, which knows no alias.
+import { titleFromCapitals } from "../../lib/seo/display-case";
 // What a posting's employer states, applied by the bake and again here (B06).
 import { applyEmployerStatements } from "../../../scripts/employer-statements.mjs";
 
@@ -1429,7 +1431,11 @@ export function postingJsonLdShape(
   const ld: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "JobPosting",
-    title: postingText(job.title),
+    // A title its employer typed in capitals is marked up in title case, its
+    // initialisms kept ("MFG PEE PH PR TECH" is "Mfg PEE PH PR Tech"): Google's
+    // content policy for job postings asks for no all caps (SEO check
+    // 2026-11-15, F12). Any other title is the employer's own casing.
+    title: titleFromCapitals(postingText(job.title)),
     // THE WHOLE DESCRIPTION, BECAUSE THAT IS WHAT THE PROPERTY IS FOR. This was
     // cut at 4,000 characters, which fired on 300 of the 399 pages the bake
     // wrote — their visible text ran to a median 7,273 characters and a maximum

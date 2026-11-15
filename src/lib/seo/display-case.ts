@@ -213,3 +213,127 @@ export function inSentence(name: string): string {
     })
     .join("");
 }
+
+/**
+ * A JOB TITLE ITS EMPLOYER TYPED IN CAPITALS, IN TITLE CASE (SEO check
+ * 2026-11-15, F12). Job markup carried titles such as "MFG PEE PH PR TECH",
+ * "REGISTERED NURSE- HOME CARE" and "PRODEJNÍ ASISTENT V PRODEJNĚ JYSK
+ * OLOMOUC", and Google's content policy for job postings asks for no all
+ * caps. Only a title with no lower-case letter at all is touched; any other
+ * title is the employer's own casing and is returned as it came.
+ *
+ * Capitals are evidence of nothing in such a title, so each word is judged
+ * by what it is, from 142 shouted titles and the 7,688 titles beside them on
+ * the board (corpora of 2026-11-08 and 2026-11-15):
+ *   - a word of five letters or more is a word ("Registered Nurse"), unless it
+ *     is on the reviewed acronym lists above;
+ *   - a word of four letters or fewer stays in capitals unless it is a plain
+ *     word the board's own mixed-case titles write as one (SHOUTED_PLAIN):
+ *     short words in a shouted title are mostly initialisms and call signs
+ *     ("MRI", "NICU", "WAND", "KTIV", "PEE"), so the safe default is to leave
+ *     them, never to print "Mri";
+ *   - a vowelless word is an initialism ("MFG" is printed "Mfg" only because
+ *     it is on the short forms below, "PH" stays);
+ *   - a letter run touching a digit is a code ("25HH", "MI3", "3D"), except an
+ *     ordinal ending ("2nd");
+ *   - a single letter stays ("CLASS A", "H/F"), except a gendered ending on
+ *     the word before it ("ENFERMERA/O" is "Enfermera/o");
+ *   - little words after the first are lower case in the languages the board
+ *     carries ("Manager in Training", "Auxiliar de Calidad", "Especialista em
+ *     Governança"); "OR" is the operating room and stays.
+ */
+const SHOUTED_PLAIN = new Set<string>([
+  // Read capitalised at least three times as often as in capitals in the board's mixed-case titles.
+  "time", "part", "lead", "full", "care", "team", "data", "tech", "days", "day", "tax", "city", "unit", "area", "diem", "post",
+  "mall", "tier", "risk", "food", "york", "lab", "week", "head", "rep", "near", "test", "site", "cook", "visa", "west", "bank",
+  "non", "vice", "sign", "aide", "med", "park", "chef", "line", "real", "pool", "room", "shop", "surg", "auto", "key", "desk",
+  "san", "case", "hour", "fire", "cost", "crew", "only", "host", "java", "work", "vaga", "road", "gas", "mid", "meat", "call",
+  "end", "club", "fine", "open", "east", "oil", "air", "your", "deli", "must", "ops", "fee", "tire", "high", "loss", "grad",
+  "cash", "town", "core", "cell", "year", "cast", "loan", "math", "car", "term", "pre", "hill", "life", "run", "pay", "free",
+  "web", "due", "all", "lane", "hrs", "prep", "main", "yard", "fund", "sous", "wash", "eye", "mass", "lake", "fort", "role",
+  "load", "body", "bell", "back", "flex", "bar", "dock", "bus", "sun", "lift", "ads", "spec", "hair", "corp", "talk", "prod",
+  "wear", "deal", "paid", "spa", "são", "van", "inn", "fuel", "art", "live", "bulk", "self", "kids", "oak", "rail", "two",
+  "user", "mail", "lean", "plan", "pain", "low", "card", "help", "bay", "long", "will", "base", "task", "duty", "tele", "peer",
+  "ramp", "next", "pest", "flow", "golf", "lot", "safe", "gold", "fair", "temp", "ear", "epic", "wine", "zone", "mile", "die",
+  "paes", "beer", "face", "mech", "grid", "job", "trim", "taco", "hire", "stay", "edge", "blue", "old", "wall", "men", "tag",
+  "meal", "join", "hall", "demo", "late", "hand", "path", "down", "seed", "bid", "half", "deep", "king", "tow", "tool", "pump",
+  "law", "more", "age", "off", "peds", "rock", "mens", "pick", "nail",
+  // Read in the 142 shouted titles themselves.
+  "beca", "cake", "debt", "drop", "drug", "gen", "gray", "heme", "home", "jump", "neo", "news", "own", "perú", "pro", "ray",
+  "rica", "teen",
+]);
+
+/** Short forms of plain words, printed as the board's mixed-case titles print them. */
+const SHOUTED_SHORT_FORMS: Record<string, string> = {
+  sr: "Sr", jr: "Jr", mgr: "Mgr", asst: "Asst", mfg: "Mfg", dept: "Dept", mgmt: "Mgmt", mktg: "Mktg", acct: "Acct", svc: "Svc",
+  svcs: "Svcs", whse: "Whse", mdse: "Mdse", liqr: "Liqr", hwy: "Hwy", st: "St", ave: "Ave", ltd: "Ltd", inc: "Inc",
+};
+
+/** Initialisms of five letters or more that a shouted title carries and the lists above do not. */
+const SHOUTED_LONG_ACRONYMS = new Set<string>(["ssoma", "scada", "cissp", "navsea", "navair", "usace"]);
+
+/** Little words written in lower case after a title's first word, in the board's languages. */
+const SHOUTED_MINOR = new Set<string>([
+  "an", "and", "as", "at", "by", "for", "in", "of", "on", "the", "to", "with",
+  "de", "del", "y", "el", "los", "las", "con", "para", "por", "en",
+  "em", "da", "do", "das", "dos", "na", "no", "nas", "nos", "com",
+  "des", "du", "et", "au", "aux", "le", "les",
+  "bei", "als", "mit", "für", "im", "und", "zur", "zum", "von", "ve",
+]);
+
+const ROMAN = /^(?:ii|iii|iv|vi|vii|viii|ix|xi|xii)$/;
+const VOWEL = /[aeiouy]/;
+const plainLetters = (w: string) => w.normalize("NFD").replace(/\p{M}/gu, "");
+/** Letters only Turkish writes (its dotless i lower-cases differently), and only Czech. */
+const TURKISH = /[ŞĞİ]/;
+const CZECH = /[ĚŠČŘŽŮŤĎŇ]/;
+/** Czech one-letter prepositions and conjunctions ("PRODEJNÍ ASISTENT V PRODEJNĚ" is "v prodejně"). */
+const CZECH_MINOR = new Set(["v", "s", "z", "k", "u", "o", "a", "i"]);
+
+export function titleFromCapitals(raw: string | null | undefined): string {
+  const s = String(raw ?? "");
+  // Only a title with no lower-case letter, and at least one letter that has a case.
+  if (s !== s.toUpperCase() || s === s.toLowerCase()) return s;
+  const locale = TURKISH.test(s) ? "tr" : undefined;
+  const czech = CZECH.test(s);
+  let previousEnd = -1;
+  let previousLength = 0;
+  let previousCased = false;
+  return s.replace(/\p{L}[\p{L}\p{M}]*(?:['’]\p{L}[\p{L}\p{M}]*)*/gu, (word: string, offset: number) => {
+    const gap = previousEnd < 0 ? "" : s.slice(previousEnd, offset);
+    // A little word is one between two cased words with only spaces around it:
+    // after a dash, a bar, a bracket or a word with no case it starts a part.
+    const inside = previousEnd >= 0 && previousCased && /^[),.]?\s+$/.test(gap);
+    const before = s[offset - 1] ?? "";
+    const after = s[offset + word.length] ?? "";
+    const runBefore = previousLength;
+    previousEnd = offset + word.length;
+    previousLength = word.length;
+    previousCased = word !== word.toLowerCase();
+    const lower = word.toLocaleLowerCase(locale);
+    // A letter run touching a digit is a code, except an ordinal ending.
+    if (/\d/.test(before) || /\d/.test(after)) return /\d/.test(before) && /^(?:st|nd|rd|th)$/.test(lower) ? lower : word;
+    if (word.length === 1) {
+      // "ENFERMERA/O", "INGENIERO(A)": the gendered ending of the word before it.
+      if ((before === "/" || before === "(") && gap === before && runBefore >= 3) return lower;
+      if (inside && (lower === "y" || (czech && CZECH_MINOR.has(lower)))) return lower;
+      return word;
+    }
+    if (SPECIAL[lower]) return SPECIAL[lower];
+    const acronym = acronymForm(lower, true);
+    if (acronym) return acronym;
+    if (ROMAN.test(lower) || SHOUTED_LONG_ACRONYMS.has(lower)) return word;
+    if (inside && SHOUTED_MINOR.has(lower)) return lower;
+    if (SHOUTED_SHORT_FORMS[lower]) return SHOUTED_SHORT_FORMS[lower];
+    const chars = [...lower];
+    const upper = (c: string) => c.toLocaleUpperCase(locale);
+    // A little word of three letters or more that starts a part is a word ("-
+    // The Ritz"); a two-letter one there is as likely an initialism ("EM APP").
+    if (SHOUTED_MINOR.has(lower) && chars.length >= 3) return `${upper(chars[0])}${chars.slice(1).join("")}`;
+    if (!VOWEL.test(plainLetters(lower))) return word;
+    if (plainLetters(lower).length <= 4 && !SHOUTED_PLAIN.has(lower)) return word;
+    // "O'REILLY" is O'Reilly; "SPRING'S" is Spring's.
+    if (chars.length > 2 && /['’]/.test(chars[1])) return `${upper(chars[0])}${chars[1]}${upper(chars[2])}${chars.slice(3).join("")}`;
+    return `${upper(chars[0])}${chars.slice(1).join("")}`;
+  });
+}

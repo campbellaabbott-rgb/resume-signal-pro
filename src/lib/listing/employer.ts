@@ -13,12 +13,26 @@
  * override and the entity decode as before, plus "X | X" collapsed to one and
  * a trailing "career website" taken off. The token comes from the row, or from
  * the posting id when a row arrives without one, as postingEmployer read it.
+ *
+ * THE BAKE'S NAME GATE DECIDES FIRST (SEO check 2026-11-15, F11). The baked
+ * posting page judges its employer's name with scripts/prerender-names.mjs
+ * (postingNameVerdict): a trailing career-site label comes off ("Inova
+ * Military" is Inova), and a name that is nobody's (a logo caption such as
+ * "Group withMVSB wtag", a web address, a tenant code) is not printed, so the
+ * page says "the employer". The card, the pane and the hydrated posting page
+ * printed the refused name all the same, so a reader saw "VHB Email
+ * Signature" a moment after the crawler's copy had refused it. Here the same
+ * verdict is asked: a refused name is the empty string (every surface already
+ * prints no employer line, no link and no possessive for one), a repaired
+ * name is the one printed.
  */
-import { displayEmployer } from "@/lib/display-name";
-import { postingPathParts } from "@/components/jobs/posting-page";
+import { cleanBoardLabel } from "@/lib/display-name";
+import { postingNameVerdict, postingPathParts } from "@/components/jobs/posting-page";
 import type { ListingJob } from "./types";
 
 export function listingEmployer(job: Pick<ListingJob, "id" | "token" | "company">): string {
   const token = job.token ?? postingPathParts(job.id)?.token ?? null;
-  return displayEmployer(token, job.company ?? null).text;
+  const verdict = postingNameVerdict({ id: job.id, token, company: job.company ?? null });
+  if (verdict.reason) return "";
+  return cleanBoardLabel(verdict.name);
 }
