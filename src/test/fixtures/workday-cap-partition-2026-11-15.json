@@ -1,0 +1,301 @@
+{
+ "measuredAt": "2026-11-15",
+ "how": "POST {tenant}.{dc}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/jobs, body {limit,offset,searchText:\"\",appliedFacets:{}} — the shipped fetchWorkday request. Boards are every Workday token the live board serves with >= 2000 open postings.",
+ "cap": {
+  "resultCap": 2000,
+  "wrapsToPageZero": true,
+  "note": "offset 2000 and 2020 both answer page 0 with total 2000 (tmobile~wd1~External, jll~wd1~jllcareers). total is stated only at offset 0 (n413), and on 13 of 23 boards that stated total is itself capped at 2000."
+ },
+ "orderingPremise": {
+  "claim": "the CXS list is date-ordered newest-first, so what the cap hides is older than the floor",
+  "verdict": "UNVALIDATED, and partly contradicted",
+  "inPageOrCrossPageInversions": 5,
+  "ofBoardsWalked": 10,
+  "examples": [
+   "sanford~wd5~SanfordHealth: a 30+ day row sits on page 0 beside a 1-day row",
+   "genpt~wd1~Careers: a 30+ day row on page 0 beside a 2-day row",
+   "massgeneralbrigham~wd1~MGBExternal: page 0 reaches 17 days, the page behind it is 5",
+   "hcmportal~wd5~Search (UPS): in-page drop 4 -> 3",
+   "nvidia~wd5~NVIDIAExternalCareerSite: in-page drop 1 -> 0"
+  ],
+  "whyItCannotBeSettled": "the rows that would validate it are exactly the rows the cap hides"
+ },
+ "facetPartition": {
+  "verdict": "WORKS",
+  "evidence": {
+   "token": "accenture~wd103~AccentureCareers",
+   "unfacetedStatedTotal": 2000,
+   "timeTypeFacetSum": 40427,
+   "slice": {
+    "facet": "jobFamilyGroup",
+    "value": "Consulting",
+    "id": "bb69a804fb1201f53c8f0eed1301e875",
+    "statedTotal": 1928,
+    "offset1900ReturnsRows": true,
+    "offset1940WrapsToPageZero": true
+   },
+   "sliceOverCapNeedingSubPartition": {
+    "value": "Software Engineering",
+    "count": 19478
+   }
+  }
+ },
+ "boards": [
+  {
+   "token": "dollartree~wd5~dollartreeus",
+   "name": "Dollar Tree",
+   "stored": 17320,
+   "statedTotal": 18652,
+   "trueSize": 18652,
+   "hidden": 1332,
+   "capFloorLabel": "Posted 8 Days Ago",
+   "capFloorPastFence": false
+  },
+  {
+   "token": "accenture~wd103~AccentureCareers",
+   "name": "Accenture",
+   "stored": 15749,
+   "statedTotal": 2000,
+   "trueSize": 40427,
+   "hidden": 24678,
+   "capFloorLabel": "Posted 4 Days Ago",
+   "capFloorPastFence": false
+  },
+  {
+   "token": "cvshealth~wd1~CVS_Health_Careers",
+   "name": "CVS Health",
+   "stored": 14590,
+   "statedTotal": 18048,
+   "trueSize": 18048,
+   "hidden": 3458,
+   "capFloorLabel": "Posted 4 Days Ago",
+   "capFloorPastFence": false
+  },
+  {
+   "token": "circlek~wd3~CircleKStoreJobs",
+   "name": "Circle K",
+   "stored": 8728,
+   "statedTotal": 2000,
+   "trueSize": 8728,
+   "hidden": 0,
+   "capFloorLabel": "Posted 2 Days Ago",
+   "capFloorPastFence": false
+  },
+  {
+   "token": "trinityhealth~wd1~Jobs",
+   "name": "Trinity Health",
+   "stored": 4542,
+   "statedTotal": 2000,
+   "trueSize": 6714,
+   "hidden": 2172,
+   "capFloorLabel": "Posted 13 Days Ago",
+   "capFloorPastFence": false
+  },
+  {
+   "token": "jll~wd1~jllcareers",
+   "name": "JLL",
+   "stored": 3931,
+   "statedTotal": 2000,
+   "trueSize": 3931,
+   "hidden": 0,
+   "capFloorLabel": "Posted 19 Days Ago",
+   "capFloorPastFence": false
+  },
+  {
+   "token": "myview~wd3~paradox_careers",
+   "name": "Loblaw Companies",
+   "stored": 3776,
+   "statedTotal": 15158,
+   "trueSize": 15158,
+   "hidden": 11382,
+   "capFloorLabel": "Posted 12 Days Ago",
+   "capFloorPastFence": false
+  },
+  {
+   "token": "advanceauto~wd5~AdvanceExternalCareers",
+   "name": "Advance Auto Parts",
+   "stored": 3564,
+   "statedTotal": 2000,
+   "trueSize": 16110,
+   "hidden": 12546,
+   "capFloorLabel": "Posted 19 Days Ago",
+   "capFloorPastFence": false
+  },
+  {
+   "token": "oreillyauto~wd1~oreilly",
+   "name": "O'Reilly Auto Parts",
+   "stored": 3527,
+   "statedTotal": 19206,
+   "trueSize": 19206,
+   "hidden": 15679,
+   "capFloorLabel": "Posted 16 Days Ago",
+   "capFloorPastFence": false
+  },
+  {
+   "token": "freseniusmedicalcare~wd3~fme",
+   "name": "Fresenius Medical Care",
+   "stored": 3071,
+   "statedTotal": 2000,
+   "trueSize": 3577,
+   "hidden": 506,
+   "capFloorLabel": "Posted 23 Days Ago",
+   "capFloorPastFence": false
+  },
+  {
+   "token": "globalhr~wd5~REC_RTX_Ext_Gateway",
+   "name": "RTX",
+   "stored": 2606,
+   "statedTotal": 4573,
+   "trueSize": 4573,
+   "hidden": 1967,
+   "capFloorLabel": "Posted 20 Days Ago",
+   "capFloorPastFence": false
+  },
+  {
+   "token": "uhaul~wd1~UhaulJobs",
+   "name": "U-Haul",
+   "stored": 2601,
+   "statedTotal": 2000,
+   "trueSize": 2816,
+   "hidden": 215,
+   "capFloorLabel": "Posted 30+ Days Ago",
+   "capFloorPastFence": true
+  },
+  {
+   "token": "hcmportal~wd5~Search",
+   "name": "UPS",
+   "stored": 2509,
+   "statedTotal": 1993,
+   "trueSize": 2509,
+   "hidden": 0,
+   "capFloorLabel": "Posted 30+ Days Ago",
+   "capFloorPastFence": true
+  },
+  {
+   "token": "pacs~wd108~pacs",
+   "name": "PACS",
+   "stored": 2465,
+   "statedTotal": 2000,
+   "trueSize": 2465,
+   "hidden": 0,
+   "capFloorLabel": "Posted 30 Days Ago",
+   "capFloorPastFence": false
+  },
+  {
+   "token": "abb~wd3~external_career_page",
+   "name": "ABB",
+   "stored": 2439,
+   "statedTotal": 2000,
+   "trueSize": 2439,
+   "hidden": 0,
+   "capFloorLabel": "Posted 30+ Days Ago",
+   "capFloorPastFence": true
+  },
+  {
+   "token": "massgeneralbrigham~wd1~MGBExternal",
+   "name": "Mass General Brigham",
+   "stored": 2208,
+   "statedTotal": 2000,
+   "trueSize": 2341,
+   "hidden": 133,
+   "capFloorLabel": "Posted 30+ Days Ago",
+   "capFloorPastFence": true
+  },
+  {
+   "token": "nvidia~wd5~NVIDIAExternalCareerSite",
+   "name": "NVIDIA",
+   "stored": 2142,
+   "statedTotal": 2000,
+   "trueSize": 2695,
+   "hidden": 553,
+   "capFloorLabel": "Posted 30+ Days Ago",
+   "capFloorPastFence": true
+  },
+  {
+   "token": "michaels~wd5~External",
+   "name": "Michaels",
+   "stored": 2128,
+   "statedTotal": 2000,
+   "trueSize": 4233,
+   "hidden": 2105,
+   "capFloorLabel": "Posted 30+ Days Ago",
+   "capFloorPastFence": true
+  },
+  {
+   "token": "ngc~wd1~Northrop_Grumman_External_Site",
+   "name": "Northrop Grumman",
+   "stored": 2066,
+   "statedTotal": 3712,
+   "trueSize": 3712,
+   "hidden": 1646,
+   "capFloorLabel": "Posted 30 Days Ago",
+   "capFloorPastFence": false
+  },
+  {
+   "token": "knitwellgroup~wd1~US_Retail_Jobs",
+   "name": "KnitWell Group",
+   "stored": 2062,
+   "statedTotal": 2000,
+   "trueSize": 3593,
+   "hidden": 1531,
+   "capFloorLabel": "Posted 30+ Days Ago",
+   "capFloorPastFence": true
+  },
+  {
+   "token": "sanford~wd5~SanfordHealth",
+   "name": "Sanford Health",
+   "stored": 2045,
+   "statedTotal": 2000,
+   "trueSize": 3846,
+   "hidden": 1801,
+   "capFloorLabel": "Posted 30+ Days Ago",
+   "capFloorPastFence": true
+  },
+  {
+   "token": "genpt~wd1~Careers",
+   "name": "Genuine Parts Company",
+   "stored": 2040,
+   "statedTotal": 2000,
+   "trueSize": 2689,
+   "hidden": 649,
+   "capFloorLabel": "Posted 30+ Days Ago",
+   "capFloorPastFence": true
+  },
+  {
+   "token": "ag~wd3~Airbus",
+   "name": "Airbus",
+   "stored": 2039,
+   "statedTotal": 2000,
+   "trueSize": 2039,
+   "hidden": 0,
+   "capFloorLabel": "Posted 30+ Days Ago",
+   "capFloorPastFence": true
+  }
+ ],
+ "totals": {
+  "boards": 23,
+  "capFloorPastFence": 10,
+  "capFloorInsideFence": 13,
+  "hiddenPostings": 82353
+ },
+ "behaviouralFixtures": [
+  {
+   "id": "W5-FX-shrinking-tenant",
+   "given": "a lap opened at t0=2509 on a board that can reach its end; at the wrap visit the offset-0 page states 1993 and the walk read 1993 rows",
+   "expect": "the lap PROVES and the absent rows close",
+   "why": "a genuine shrink must not block closure forever — hcmportal~wd5~Search is the live instance (stored 2509, stated total read 1993 in the same hour its facet total read 2509)"
+  },
+  {
+   "id": "W5-FX-broken-read",
+   "given": "the same lap opened at t0=2509; at the wrap visit the offset-0 page states 10 and the walk read 10 rows",
+   "expect": "the lap NEVER proves and nothing closes",
+   "why": "lapSeen >= totalRef - tailSlack is satisfied by a broken read, so min(t0,current) alone would close 2499 live rows. This is the pair the shrinking rule must separate."
+  },
+  {
+   "id": "W5-FX-capped-wrap",
+   "given": "a Workday walk that wrapped at offset 2000 with a stated total of 2000 and a floor of \"Posted 30+ Days Ago\"",
+   "expect": "the lap NEVER proves on the floor alone",
+   "why": "the ordering premise above is unvalidated; only a partitioned slice that reached its own end may prove"
+  }
+ ]
+}
