@@ -6643,7 +6643,7 @@ async function handleRequest(req: Request): Promise<Response> {
       const demandRow = await demandRead;
       const passEndRow = await passEndRead;
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
-      const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
+      const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number; wrapMin?: number };
       const rfV = { total: (refreshMeta.data as { total?: unknown } | null)?.total as number | undefined };
       const dormant = ((bf.data?.v ?? {}) as { dormant?: Record<string, number> }).dormant ?? {};
       const hotTokens = ((hotMeta.data?.v ?? {}) as { tokens?: unknown[] }).tokens;
@@ -6939,6 +6939,9 @@ async function handleRequest(req: Request): Promise<Response> {
         })(),
         lastSliceAgeMin: ageMin(prog.data?.updated_at),
         lastRotationAgeMin: ageMin(rotV.completedAt ?? rot.data?.updated_at ?? null),
+        // The last cold wrap's own length, as the wrap stamped it (null when it could not).
+        lastWrapMin: typeof rotV.wrapMin === "number" ? rotV.wrapMin : null,
+        lastWrapAt: rotV.completedAt ?? null,
         recentFailures: Array.isArray(pgV.failedAcc) ? pgV.failedAcc.slice(-10) : [],
         // The sample above is capped at 120 and these ten are its tail; this
         // is the population it was drawn from.
