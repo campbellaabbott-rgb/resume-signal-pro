@@ -1940,6 +1940,7 @@ const EXIT_OPTIONAL_COLS = [
   "origin_basis", "title", "company", "department", "country", "region_code",
   "work_mode", "employment_type", "experience_band", "min_years",
   "salary_min_annual", "salary_max_annual", "salary_period", "salary_currency",
+  "exit_basis",
 ] as const;
 
 // Rationale: docs/job-board-index-notes.md#n1160-const-closure_optional_cols
@@ -2118,9 +2119,11 @@ async function closeVanishedChunk(
     lapBackfillUntil: string;
     missingSinceById: ReadonlyMap<string, string | null | undefined>;
     startIso: string;
+    /** XR-1: the evidence is the close date the employer stated, not a read of the feed. */
+    basis?: "stated_close";
   },
 ): Promise<string[]> {
-  const { closedAt, agedOutIds, freshCutoffMs, liveTitles, recentSuperseded, batchSuspect, absentInPass, removableBefore, lapMode, lapBackfillUntil, missingSinceById, startIso } = ctx;
+  const { closedAt, agedOutIds, freshCutoffMs, liveTitles, recentSuperseded, batchSuspect, absentInPass, removableBefore, lapMode, lapBackfillUntil, missingSinceById, startIso, basis } = ctx;
   const keep = new Set<string>();
   const agedIds = new Set<string>(agedOutIds);
   try {
@@ -2198,9 +2201,9 @@ async function closeVanishedChunk(
         batch_removed: absentInPass,
         batch_live_before: removableBefore,
         // Rationale: docs/job-board-index-notes.md#n538-absence_basis-lapmode
-        absence_basis: lapMode
+        absence_basis: basis ?? (lapMode
           ? (lapBackfillUntil && (missingSinceById.get(String(r.id)) ?? startIso) <= lapBackfillUntil ? "lap_backfill" : "lap")
-          : "full_read",
+          : "full_read"),
         ...lifecycleFacets(r),
       }));
       // Rationale: docs/job-board-index-notes.md#n126-const-error-rawclerr-await-client-from-j
@@ -2228,6 +2231,7 @@ async function closeVanishedChunk(
           origin_basis: t.basis,
           exited_at: closedAt,
           ...lifecycleFacets(r),
+          ...(basis ? { exit_basis: basis } : {}),
         };
       };
       // Only beside a closure that landed: a kept row comes back next
@@ -3443,6 +3447,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           const salaryText = (clean(j.salary?.slice(0, 200) ?? null) || null) ?? (lightDescs ? null : extractSalary(descs.get(j.id) ?? null));
           // Rationale: docs/job-board-index-notes.md#n588-if-isdatedbefore-posted-freshcutoffms-ag
           if (isDatedBefore(posted, freshCutoffMs)) { agedOutIds.add(j.id); continue; }
+          // XR-1: an announcement past the close date its agency states is not stored.
+          if (statedClosed(j, Date.now())) continue;
           // Experience band from the best text we have this pass (title + the
           // fetched description where the vendor provides one). null → "unspecified".
           const exp = detectExperience(j.title ?? "", lightDescs ? null : (descs.get(j.id) ?? null), j.level);
@@ -3487,6 +3493,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             // Light boards omit the column so previously stored descriptions
             // survive the upsert instead of being nulled.
             ...(lightDescs ? {} : { description: clean(descs.get(j.id) ?? null) }),
+            ...(j.closesAt ? { closes_at: j.closesAt } : {}),
             last_seen: startIso, // set at INSERT only — semantically first_seen; rows are never rewritten
           });
         }
@@ -4067,6 +4074,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             const stripped = newRows.slice(i, i + 250).map((r) => { const { req_key: _k, ...rest } = r as Record<string, unknown>; return rest; });
             ({ error } = await client.from("job_board_postings").upsert(stripped, { onConflict: "id" }));
           }
+          // XR-1: deployed before 20261111100000 added the column.
+          if (error?.message?.includes("closes_at")) {
+            const stripped = newRows.slice(i, i + 250).map((r) => { const { closes_at: _z, ...rest } = r as Record<string, unknown>; return rest; });
+            ({ error } = await client.from("job_board_postings").upsert(stripped, { onConflict: "id" }));
+          }
           if (error) {
             boardOk = false;
             lastUpsertError = `${s.token}: ${error.message}`;
@@ -4471,7 +4483,7 @@ async function runPassEndStep(client: SupabaseClient, step: PassEndStep, started
   const begun = await passEndReceipt(client, startedAt, step, { startedAt: new Date(t0).toISOString() });
   if (begun.superseded) return { ok: false, step, detail: "not run: a newer pass owns the tail" };
   await breadcrumb(client, `pass-end-${step}`, {});
-  let r: { ok: boolean; detail: string; swept?: number; stop?: string };
+  let r: { ok: boolean; detail: string; swept?: number; stop?: string; statedClosed?: number };
   try {
     r = step === "serve" ? await passEndServe(client, ctx, t0)
       : step === "kicks" ? await passEndKicks(client)
@@ -4479,7 +4491,8 @@ async function runPassEndStep(client: SupabaseClient, step: PassEndStep, started
       : step === "sweep" ? await (async () => {
         await loadOversizeBoards(client);
         const sw = await freshnessSweep(client, ctx.freshCutoffMs, t0);
-        return { ok: !/error|unread/.test(sw.stop), detail: `dropped ${sw.swept} (stopped: ${sw.stop})`, swept: sw.swept, stop: sw.stop };
+        const onDate = await closeStatedClosed(client);
+        return { ok: !/error|unread/.test(sw.stop), detail: `dropped ${sw.swept} (stopped: ${sw.stop}); ${onDate} closed on their stated date`, swept: sw.swept, stop: sw.stop, statedClosed: onDate };
       })()
       : step === "capacity" ? await passEndCapacity(client)
       : await passEndNames(client, t0);
@@ -4491,7 +4504,7 @@ async function runPassEndStep(client: SupabaseClient, step: PassEndStep, started
   const doneAt = new Date().toISOString();
   await passEndReceipt(
     client, startedAt, step,
-    { doneAt, ms: Date.now() - t0, ok: r.ok, detail: r.detail.slice(0, 200), ...(hops !== undefined ? { hops, ...(step === "sweep" ? { dropped: (begun.prior.dropped ?? 0) + (r.swept ?? 0) } : {}) } : {}) },
+    { doneAt, ms: Date.now() - t0, ok: r.ok, detail: r.detail.slice(0, 200), ...(hops !== undefined ? { hops, ...(step === "sweep" ? { dropped: (begun.prior.dropped ?? 0) + (r.swept ?? 0), statedClosed: ((begun.prior as { statedClosed?: number }).statedClosed ?? 0) + (r.statedClosed ?? 0) } : {}) } : {}) },
     next ? { next, nextKickedAt: doneAt } : { next: null, refreshedAt: ctx.refreshedAt, doneAt, ms: Date.now() - Date.parse(startedAt) },
   );
   console.log(`[JOB-BOARD] pass-end ${step}: ${r.detail}${next ? ` -> ${next}` : " (tail finished)"}`);
@@ -4935,6 +4948,31 @@ async function passEndHygiene(client: SupabaseClient): Promise<{ ok: boolean; de
     if (e1 || e2) console.warn("[JOB-BOARD] date-hygiene error:", (e1 ?? e2)?.message);
   }
   return { ok: true, detail: "dates checked" };
+}
+
+/** XR-1: a USAJOBS row whose agency's stated close date has passed. */
+const statedClosed = (j: { source: string; closesAt?: string | null }, now: number): boolean =>
+  j.source === "usajobs" && !!j.closesAt && Date.parse(j.closesAt) <= now;
+const STATED_CLOSE_MAX = 1_000;
+/** XR-1, in the sweep step: stored USAJOBS rows past closes_at close through the feed-removal path, capped. No vendor request. */
+async function closeStatedClosed(client: SupabaseClient): Promise<number> {
+  const now = new Date().toISOString();
+  const { data, error } = await client.from("job_board_postings").select("id, company_token")
+    .eq("source", "usajobs").lt("closes_at", now).limit(STATED_CLOSE_MAX);
+  if (error || !data?.length) return 0; // before 20261111100000 the column is absent: nothing to close
+  const byToken = new Map<string, string[]>();
+  for (const r of data as Array<{ id: string; company_token: string }>) byToken.set(r.company_token, [...(byToken.get(r.company_token) ?? []), r.id]);
+  let closed = 0;
+  for (const [token, ids] of byToken) {
+    for (let i = 0; i < ids.length; i += 200) {
+      closed += (await closeVanishedChunk(client, { source: "usajobs", token }, ids.slice(i, i + 200), {
+        closedAt: now, agedOutIds: new Set(), freshCutoffMs: 0, liveTitles: new Set(), recentSuperseded: new Set(),
+        batchSuspect: false, absentInPass: ids.length, removableBefore: ids.length, lapMode: false, lapBackfillUntil: "",
+        missingSinceById: new Map(), startIso: now, basis: "stated_close",
+      })).length;
+    }
+  }
+  return closed;
 }
 
 // Rationale: docs/job-board-index-notes.md#n1479-async-function-freshnesssweep-client-sup
