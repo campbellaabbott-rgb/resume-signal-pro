@@ -12,6 +12,7 @@
 //   node census-workday-cluster.mjs verify <cands.json> <out.json> [maxProbe]
 
 import fs from "node:fs";
+import { REPO_SOURCES, readCatalogue, tokensOf } from "./catalogue-reader.mjs";
 import { execFileSync } from "node:child_process";
 
 const MODE = process.argv[2];
@@ -81,10 +82,8 @@ if (MODE === "enumerate") {
 } else if (MODE === "verify") {
   const [, , , CANDS, OUT, MAXP] = process.argv;
   const all = JSON.parse(fs.readFileSync(CANDS, "utf8"));
-  const srcText = fs.readFileSync(new URL("../supabase/functions/job-board/sources.ts", import.meta.url), "utf8");
-  const existing = new Set([
-    ...[...srcText.matchAll(/source:\s*"workday",\s*token:\s*"([^"]+)"/g)].map((m) => m[1].toLowerCase()),
-  ]);
+  // Every carried workday token, by importing the catalogue (packed rows included).
+  const existing = tokensOf(await readCatalogue(REPO_SOURCES), "workday");
   const verified = [];
   try { for (const b of (JSON.parse(fs.readFileSync(OUT, "utf8")).workday ?? [])) verified.push(b); } catch { /* first */ }
   const done = new Set(verified.map((v) => v.token.toLowerCase()));

@@ -60,6 +60,7 @@
 // Usage: node scripts/census-pinpoint.mjs [output.json]
 
 import fs from "node:fs";
+import { CWD_SOURCES, readCatalogue, tokensOf } from "./catalogue-reader.mjs";
 
 const OUT = process.argv[2] || "pinpoint-census.json";
 const CDX = "https://index.commoncrawl.org";
@@ -148,22 +149,19 @@ for (const idx of indexes) {
 // What is genuinely NEW is the number that matters — 87 of these are already
 // carried, and reporting the raw count as a discovery would overstate the yield
 // by whatever we already had.
-const existing = new Set();
+// Read by importing the catalogue (scripts/catalogue-reader.mjs): every
+// entry, packed or not. The object-literal regex this replaced saw none of the
+// packed pinpoint boards.
+let existing = new Set();
 try {
-  const src = fs.readFileSync("supabase/functions/job-board/sources.ts", "utf8");
-  const re = /\{[^{}]*\}/g;
-  let m;
-  while ((m = re.exec(src))) {
-    const b = m[0];
-    if (/source:\s*"pinpoint"/.test(b)) {
-      const t = /token:\s*"([^"]+)"/.exec(b);
-      if (t) existing.add(t[1]);
-    }
-  }
-} catch { /* no sources file in this checkout — everything counts as new */ }
+  existing = tokensOf(await readCatalogue(CWD_SOURCES), "pinpoint");
+} catch (e) {
+  if (e?.code !== "ENOENT") throw e;
+  /* no sources file in this checkout — everything counts as new */
+}
 
 const all = [...merged].sort();
-const fresh = all.filter((t) => !existing.has(t));
+const fresh = all.filter((t) => !existing.has(t.toLowerCase()));
 fs.writeFileSync(OUT, JSON.stringify({ pinpoint: all, new: fresh, alreadyCarried: [...existing].sort() }, null, 1));
 
 console.log(`\n  ${all.length} candidate tokens discovered`);

@@ -9,6 +9,7 @@
 // Usage: node scripts/census-workday.mjs <verified-out.json> [skipIndexes]
 
 import fs from "node:fs";
+import { REPO_SOURCES, readCatalogue, tokensOf } from "./catalogue-reader.mjs";
 
 const OUT = process.argv[2] || "workday-verified.json";
 const SKIP = Number(process.argv[3]) || 0;
@@ -88,11 +89,8 @@ for (const idx of indexes) {
 console.log(`census: ${candidates.size} candidate tenant/site combos`);
 
 // dedupe against catalog
-const srcText = fs.readFileSync(new URL("../supabase/functions/job-board/sources.ts", import.meta.url), "utf8");
-const existing = new Set([
-  ...[...srcText.matchAll(/source:\s*"workday",\s*token:\s*"([^"]+)"/g)].map((m) => m[1].toLowerCase()),
-  ...[...srcText.matchAll(/s\("(?:[^"\\]|\\.)*",\s*"workday",\s*"([^"]+)"/g)].map((m) => m[1].toLowerCase()),
-]);
+// Every carried workday token, by importing the catalogue (packed rows included).
+const existing = tokensOf(await readCatalogue(REPO_SOURCES), "workday");
 
 const prettify = (t) => t.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 60);
 // Accumulate across slices: seed from any existing output so foreground runs add up.

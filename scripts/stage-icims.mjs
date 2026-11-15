@@ -35,14 +35,16 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { REPO_SOURCES, readCatalogue } from "./catalogue-reader.mjs";
 
 const inFile = process.argv[2];
 if (!inFile) { console.error("usage: node scripts/stage-icims.mjs <icims-netnew.json> [out.json]"); process.exit(1); }
 const outFile = process.argv[3] ?? path.join(path.dirname(inFile), "icims-staged.json");
 const candidates = JSON.parse(fs.readFileSync(inFile, "utf8"));
 
-const SOURCES = new URL("../supabase/functions/job-board/sources.ts", import.meta.url).pathname;
-const src = fs.readFileSync(SOURCES, "utf8");
+// The catalogue by import, at a path (a URL's pathname spells a space %20,
+// and every worktree path here holds one).
+const catalogue = await readCatalogue(REPO_SOURCES);
 
 // ── screens copied verbatim from merge-all.mjs (see header) ────────────────
 const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talents?|headhunt|personnel|manpower|workforce|employment\s+(agency|services)|placements?\b|temp\s|outsourc|bpo\b|int[eé]rim|travail\s+temporaire|trabajo\s+temporal|demo|test|sample|sandbox|placeholder)\b|\b(uitzend|zeitarbeit|personaldienst|jobandtalent)/i;
@@ -74,10 +76,8 @@ const decodeEntities = (s) => s
   .replace(/&lt;/g, "<").replace(/&gt;/g, ">");
 // ── end verbatim copies ────────────────────────────────────────────────────
 
-// Carried icims boards, from sources.ts. Both this vendor's entries are the
-// object-literal format; the legacy s() helper predates the vendor.
-const carried = [...src.matchAll(/\{\s*name:\s*"((?:[^"\\]|\\.)*)",\s*source:\s*"icims",\s*token:\s*"([^"]+)"/g)]
-  .map((m) => ({ name: m[1], token: m[2] }));
+// Carried icims boards, every entry whatever its form.
+const carried = catalogue.filter((e) => e.source === "icims").map((e) => ({ name: e.name, token: e.token }));
 const carriedTokens = new Set(carried.map((c) => c.token.toLowerCase()));
 console.log(`carried icims boards parsed from sources.ts: ${carried.length}`);
 

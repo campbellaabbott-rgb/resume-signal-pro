@@ -11,9 +11,14 @@
 //     one policy, two files, and any future edit must land in both;
 //   * staffing-mill screen for boards >= 100 postings: samples real
 //     ShortDescriptionStr text from the tenant's own list API;
-//   * name-collision guard vs the existing catalog: SKIPPED conservatively
-//     (listed for review) — oracle is drivable, but claiming an existing
-//     employer's name from a second vendor needs eyes, not a rule;
+//   * name collisions vs the existing catalogue: judged by D6, the rule
+//     merge-all applies (scripts/catalogue-reader.mjs holds it, so the two
+//     merges cannot judge one collision two ways). A board that names itself
+//     apart in its own data (distinctName) merges under that name, a generic
+//     name is held, and a presumed-same employer is admitted only for size:
+//     its count at least twice what the carriers serve, every carrier's count
+//     printed, an unread count held, an overlap above 30% held. Oracle buys
+//     no reach (its adapter never reaches a submit), so size is its one way in;
 //   * TRANCHE CAP: --cap <postings> (default 85,000) fills by descending
 //     posting count. The corpus governor stands at 750k with the board at
 //     ~695k — merging all 142k resolved postings would run the governor into
@@ -21,17 +26,27 @@
 //     tranche sized to headroom, then the next tranche after the ceiling
 //     decision, is the honest sequence.
 //
+// The catalogue is read by importing it (scripts/catalogue-reader.mjs), from
+// the working directory's sources.ts, the file this merge appends to.
+//
 // Usage: node scripts/merge-oracle.mjs <oracle-names.json> [--cap 85000] [--apply]
+//          [--carrier-counts <token-to-served.json>] [--carrier-postings <rows.json>]
 import { readFileSync, writeFileSync } from "node:fs";
 import { oracleHost as hostOf } from "./oracle-host.mjs";
 import { censusNameReason } from "./census-names.mjs";
+import {
+  CWD_SOURCES, OVERLAP_HOLD_SHARE, boardKey, collisionIdentity, inWindowOf, keySet, nameIndex,
+  nameKey, overlapShare, readCarrierRows, readCatalogue, readServedCounts, sizeVerdict,
+} from "./catalogue-reader.mjs";
 
 const args = process.argv.slice(2);
 const APPLY = args.includes("--apply");
+const flagValue = (f) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : undefined; };
 const capIdx = args.indexOf("--cap");
 const CAP = capIdx >= 0 ? Number(args[capIdx + 1]) : 85_000;
-const NAMES_PATH = args.find((a) => a.endsWith(".json"));
-const SOURCES = "supabase/functions/job-board/sources.ts";
+const VALUE_FLAGS = new Set(["--cap", "--carrier-counts", "--carrier-postings"]);
+const NAMES_PATH = args.find((a, i) => a.endsWith(".json") && !VALUE_FLAGS.has(args[i - 1]));
+const SOURCES = CWD_SOURCES;
 
 const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talents?|headhunt|personnel|manpower|workforce|employment\s+(agency|services)|placements?\b|temp\s|outsourc|bpo\b|int[eé]rim|travail\s+temporaire|trabajo\s+temporal|demo|test|sample|sandbox|placeholder)\b|\b(uitzend|zeitarbeit|personaldienst|jobandtalent)/i;
 const GOV_BLOCK = /\b(city of|county of|state of|commonwealth of|government of|unified school|school district|public schools|public library|court of appeals|county commissioners|conservation district|health district|sheriff|police department|fire department|township of|municipality)\b/i;
@@ -64,11 +79,49 @@ const cleanName = (raw) => String(raw)
 
 const { resolved } = JSON.parse(readFileSync(NAMES_PATH, "utf8"));
 const catalog = readFileSync(SOURCES, "utf8");
-const existingTokens = new Set([...catalog.matchAll(/token: "([^"]+)"/g)].map((m) => m[1].toLowerCase()));
-const existingNames = new Set(
-  [...catalog.matchAll(/name: "([^"]+)"/g)].map((m) => m[1].toLowerCase())
-    .concat([...catalog.matchAll(/s\("([^"]+)"/g)].map((m) => m[1].toLowerCase())),
-);
+const catalogue = await readCatalogue(SOURCES);
+const existingTokens = keySet(catalogue);
+const carriersByName = nameIndex(catalogue);
+
+// D6's reads (see merge-all): what each carrier of a colliding name serves,
+// and its served postings for the overlap check. Unread holds.
+const readJson = (f) => JSON.parse(readFileSync(f, "utf8"));
+const countsFile = flagValue("--carrier-counts");
+const postingsFile = flagValue("--carrier-postings");
+const served = countsFile
+  ? new Map(Object.entries(readJson(countsFile)).map(([t, n]) => [t.toLowerCase(), Number(n)]))
+  : await readServedCounts(resolved.flatMap((b) => carriersByName.get(nameKey(cleanName(b.name))) ?? []).map((c) => c.token));
+const carrierPostings = postingsFile ? new Map(Object.entries(readJson(postingsFile)).map(([k, rows]) => [k.toLowerCase(), rows])) : null;
+async function overlapWithCarriers(b, carrierBoards) {
+  if (!Array.isArray(b.sample) || !b.sample.length) return { hold: "no sample of its own postings to compare" };
+  const rows = [];
+  for (const c of carrierBoards) {
+    const r = carrierPostings ? carrierPostings.get(boardKey(c.source, c.token)) : await readCarrierRows(c);
+    if (!Array.isArray(r)) return { hold: `${c.source}:${c.token}'s served postings unread` };
+    rows.push(...r);
+  }
+  const o = overlapShare(b.sample, rows);
+  const said = `${Math.round(100 * o.share)}% of ${o.n} sampled postings already served (by ${o.by})`;
+  return o.share > OVERLAP_HOLD_SHARE ? { hold: `${said}: one employer's postings on two vendors is for a person to read` } : { said };
+}
+/** D6 for one oracle board: { name } to merge under, or { hold } / { drop } with the reason. */
+async function judgeCollision(b, name) {
+  const carrierBoards = carriersByName.get(nameKey(name));
+  if (!carrierBoards) return { name };
+  const id = collisionIdentity({ name, distinctName: b.distinctName, nameTaken: (n) => carriersByName.has(nameKey(n)) });
+  if (id.hold) return { hold: id.hold };
+  if (id.different) {
+    console.log(`collision: "${name}" (${b.token}) names itself "${id.name}" in its own data: merged under that name`);
+    return { name: id.name };
+  }
+  const size = sizeVerdict({ inWindow: inWindowOf(b), carriers: carrierBoards, served });
+  const overlap = size.admit ? await overlapWithCarriers(b, carrierBoards) : null;
+  const verdict = size.hold || overlap?.hold ? "held" : size.admit ? `admitted for size (${overlap.said})` : "dropped";
+  console.log(`collision: "${name}" (oracle:${b.token}) in-window ${inWindowOf(b)} against ${size.shown}: ${verdict}`);
+  if (size.hold || overlap?.hold) return { hold: size.hold ?? overlap.hold };
+  if (!size.admit) return { drop: size.drop };
+  return { name, forSize: true };
+}
 
 const jget = async (url) => {
   const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" }, signal: AbortSignal.timeout(20_000) });
@@ -115,11 +168,11 @@ const MILL_REVIEWED_CLEAR = new Set([
   "fa-evuf-saasfaprod1~ocs~CX_1", // Startek — BPO; hires its own agents
 ]);
 
-const dropped = { blockedName: [], labelName: [], blockedGov: [], blockedToken: [], dupe: [], nameCollision: [], mill: [], millUnreadable: [] };
+const dropped = { blockedName: [], labelName: [], blockedGov: [], blockedToken: [], dupe: [], nameCollision: [], collisionHeld: [], collisionAdmittedForSize: [], mill: [], millUnreadable: [] };
 const kept = [];
 let budget = CAP;
 for (const b of resolved) {
-  const name = cleanName(b.name);
+  let name = cleanName(b.name);
   if (!name) continue;
   // cleanName takes "Jobs" off the end, so a site label such as "All Jobs"
   // arrives here as a generic word; the census rule holds it, and any other
@@ -131,7 +184,7 @@ for (const b of resolved) {
   // the "active" site — measured afterwards, CX_1 and the branded site serve
   // the SAME requisitions once expand is passed. The reachability half of the
   // mill sample below still proves each token serves rows before it ships.
-  if (existingTokens.has(b.token.toLowerCase())) { dropped.dupe.push(b.token); continue; }
+  if (existingTokens.has(boardKey("oracle", b.token))) { dropped.dupe.push(b.token); continue; }
   if (TOKEN_BLOCK.test(b.token)) { dropped.blockedToken.push(b.token); continue; }
   // CHARTER CHANGE 2026-08-31: staffing/talent names carry now (operator
   // decision); only junk names (demo/test/sample) still block.
@@ -139,7 +192,11 @@ for (const b of resolved) {
   // Gov boards carry now (same charter change). DOMAIN_NAME stays: a bare
   // hostname is a naming failure, not an employer category.
   if (DOMAIN_NAME.test(name)) { dropped.blockedGov.push(`${name} (${b.token})`); continue; }
-  if (existingNames.has(name.toLowerCase())) { dropped.nameCollision.push(`${name} (${b.token})`); continue; }
+  const collision = await judgeCollision(b, name);
+  if (collision.hold) { dropped.collisionHeld.push(`${name} (${b.token}): ${collision.hold}`); continue; }
+  if (collision.drop) { dropped.nameCollision.push(`${name} (${b.token}): ${collision.drop}`); continue; }
+  if (collision.forSize) dropped.collisionAdmittedForSize.push(`${name} (${b.token})`);
+  name = collision.name;
   if (b.count > budget) continue; // tranche full for a board this size; smaller ones may still fit
   try {
     const m = await millSample(b.token);
@@ -154,7 +211,7 @@ for (const b of resolved) {
 
 const postings = kept.reduce((n, b) => n + b.count, 0);
 console.log(`kept ${kept.length} boards / ${postings.toLocaleString()} postings (cap ${CAP.toLocaleString()}, budget left ${budget.toLocaleString()})`);
-for (const [k, v] of Object.entries(dropped)) if (v.length) console.log(`dropped ${k}: ${v.length}${k === "mill" || k === "blockedGov" ? " — " + v.slice(0, 6).join("; ") : ""}`);
+for (const [k, v] of Object.entries(dropped)) if (v.length) console.log(`${k === "collisionAdmittedForSize" ? "admitted" : k === "collisionHeld" ? "held for review" : "dropped"} ${k}: ${v.length}${["mill", "blockedGov", "collisionHeld", "nameCollision", "collisionAdmittedForSize"].includes(k) ? " — " + v.slice(0, k === "collisionHeld" ? 50 : 6).join("; ") : ""}`);
 
 if (!APPLY) { console.log("\nDry run. Re-run with --apply to append to sources.ts."); process.exit(0); }
 

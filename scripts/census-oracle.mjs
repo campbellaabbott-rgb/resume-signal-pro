@@ -25,6 +25,7 @@
 
 import fs from "node:fs";
 import { ORACLE_HOST_RE } from "./oracle-host.mjs";
+import { REPO_SOURCES, readCatalogue, tenantSet } from "./catalogue-reader.mjs";
 
 const OUT = process.argv[2] || "oracle-verified.json";
 const PROBE_CAP = Number(process.env.OC_PROBE_CAP) || 0;
@@ -61,12 +62,10 @@ async function fetchTextRetry(url, tries = 6) {
 // domain-match can return it. Its token carries an empty region.
 const REGIONS = (process.env.OC_REGIONS || "us2,us6,ca2,ap1,em2,eu1,uk1,ap2,us3,sa1,none").split(",");
 const domainOf = (region) => (region === "none" ? "fa.oraclecloud.com" : `fa.${region}.oraclecloud.com`);
-// Carried tenant~region pairs: object-literal entries, and packed records
-// (`Name\v0\vtoken`, vendor index 0 being oracle in sources.ts's V list).
-const SOURCES_TEXT = fs.readFileSync(new URL("../supabase/functions/job-board/sources.ts", import.meta.url), "utf8");
+// Carried tenant~region pairs, by importing the catalogue: a regex that knew
+// the packed form had to hard-code oracle's place in the vendor index.
 const carried = new Set(
-  [...SOURCES_TEXT.matchAll(/source: "oracle", token: "([^"]+)"/g), ...SOURCES_TEXT.matchAll(/\\v0\\v([^"\\]+)/g)]
-    .map((m) => m[1].split("~").slice(0, 2).join("~").toLowerCase()),
+  [...tenantSet(await readCatalogue(REPO_SOURCES))].filter((k) => k.startsWith("oracle:")).map((k) => k.slice("oracle:".length)),
 );
 
 const hosts = new Map(); // tenant~region -> host
