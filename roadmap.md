@@ -1,8 +1,9 @@
-# Deployment checklist 1c0c217d
-- [x] Synced checkout is exactly 1c0c217dd390776b106d79e50ebfbd334bc3dda4.
-- [x] Re-ran deploy ledger using a /tmp copy with Git fetch disabled (sync-managed refs); zero toDeploy/unreachable/liveAhead/late. Five existing same-build source-change warnings; no code changed. User-applied secret migrations remain absent from the repo ledger; not retried.
-- [ ] Apply 20261103120000 and 20261103221000 in order: live readback on November 6 confirmed both missing. First migration retry refused with "Agent access to secrets is not allowed." Requires owner SQL execution; stopped before the second migration.
-- [x] Applied ten migrations individually in order as 0210–0219, each cmp-identical to its repo file; self-checks passed. Readback: four expected columns, 51 connector policies, zero retired-filter rows, completed-only scan total.
-- [x] Deployed all 61 functions; every OPTIONS x-fn-build matched, including job-board.2026-09-09.101 (stripe-webhook returns HTTP 405 with the correct header).
-- [x] Frontend HTTP 200 serves full commit 1c0c217dd390776b106d79e50ebfbd334bc3dda4; no republish needed.
-- [x] Keep 20261011103000 held and docs/deploy-ledger.json untouched; never apply 20260928003117.
+# Deployment checklist 1e81bb81
+- [x] Checkout matches 1e81bb81c7affe26fb01d3e7774cdaf95bdc9f5d.
+- [ ] Apply twelve pre-deploy migrations: first two applied byte-identical as 0226–0227; third (20261109120000) refused for missing sub-hourly cron review marker. STOPPED; unchanged retry requires resolution of this platform requirement.
+- [ ] Deploy all 72 listed functions and verify every OPTIONS x-fn-build.
+- [ ] Apply 20261109121000 after public-api build verification.
+- [x] Live frontend HTML already serves exact commit 1e81bb81c7affe26fb01d3e7774cdaf95bdc9f5d; no publish performed.
+- [ ] Apply 20261109122000 after frontend verification.
+- [ ] Run read-only db-heavy verification; leave owner-only aggregate writer unscheduled.
+- [x] Never-apply files and existing function sources untouched; stopped before any deployments or later migrations.
