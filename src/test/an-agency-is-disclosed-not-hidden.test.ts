@@ -89,6 +89,13 @@ describe("the catalog carries the flag", () => {
       "teamtailor:jobandtalent",
       "lever:jobandtalent",
       "teamtailor:multitempo",
+      // OD1 (2026-11-08): six boards labelled, each once a packed row that could carry no flag.
+      "workable:pavago",
+      "workable:hire-overseas",
+      "smartrecruiters:jobmobz1",
+      "recruitee:sterkinmatches",
+      "recruitee:deintraumjobwartet",
+      "lever:americaatwork",
     ]) {
       const e = byKey.get(key);
       expect(e, `${key} left the catalog entirely`).toBeTruthy();
@@ -208,7 +215,7 @@ describe("trust round 3: an employer's own board is not labelled an agency, and 
       expect(byKey.get(k)!.agency, `${k} is a staffing company's board`).toBe(true);
       expect(conv.has(k), `${k} is not in RELEASED_CONVICTIONS`).toBe(true);
     }
-    expect(JOB_SOURCES.filter((s) => (s as { agency?: boolean }).agency === true).length).toBe(134);
+    expect(JOB_SOURCES.filter((s) => (s as { agency?: boolean }).agency === true).length).toBe(140);
   });
 
   it("every TrueBlue site that lists requisitions is labelled, so the label holds wherever the dedupe stores one", () => {

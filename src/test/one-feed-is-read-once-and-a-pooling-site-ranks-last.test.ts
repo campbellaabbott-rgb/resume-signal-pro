@@ -40,7 +40,7 @@ describe("iCIMS: each feed is read once, one brand or one hirer a board", () => 
   it("the Exelon pair reads one brand each, in place, with its name and place kept", () => {
     expect(entry("careers.delmarva.com")).toMatchObject({ source: "icims", name: "Exelon", brand: "Exelon" });
     expect(entry("careers.comed.com")).toMatchObject({ source: "icims", name: "ComEd", brand: "ComEd" });
-    expect([at("careers.delmarva.com"), at("careers.comed.com")]).toEqual([28141, 38775]);
+    expect([at("careers.delmarva.com"), at("careers.comed.com")]).toEqual([28124, 38753]); // .102 retired 17 and 22 boards ahead of these places
   });
 
   it("the Chick-fil-A and YNV pairs keep one hiring organization each, as the feed spells it", () => {
@@ -56,16 +56,16 @@ describe("iCIMS: each feed is read once, one brand or one hirer a board", () => 
   it("the four duplicate hosts are gone and their places hold the Exelon brand boards, each reading its brand as the feed spells it", () => {
     for (const t of ["careers.bpas.com", "careers.keysight.com", "careers.goldennugget.com", "talent.lla.com"]) expect(at(t), t).toBe(-1);
     const placed: Array<[number, string, string, string]> = [
-      [38669, "careers.bge.com", "Baltimore Gas and Electric Company", "Baltimore Gas and Electric Company"],
-      [38698, "careers.peco.com", "PECO", "PECO"],
+      [38648, "careers.bge.com", "Baltimore Gas and Electric Company", "Baltimore Gas and Electric Company"],
+      [38677, "careers.peco.com", "PECO", "PECO"],
       // "Pepco" is also PEPCO Germany GmbH's board (personio pepco, the discount retailer), and the bake keys a page on
       // the lowercased name, so the utility prints the legal name its own careers site files it under (tags3, read
       // 2026-10-26 on careers.pepco.com) while the feed is still asked for brand PEPCO.
-      [38760, "careers.pepco.com", "Potomac Electric Power Co", "PEPCO"],
-      [41040, "careers.atlanticcityelectric.com", "Atlantic City Electric", "Atlantic City Electric"],
+      [38738, "careers.pepco.com", "Potomac Electric Power Co", "PEPCO"],
+      [41017, "careers.atlanticcityelectric.com", "Atlantic City Electric", "Atlantic City Electric"],
     ];
     for (const [i, t, n, b] of placed) expect(JOB_SOURCES[i], t).toMatchObject({ source: "icims", token: t, name: n, brand: b });
-    expect(JOB_SOURCES.length).toBe(44_523);
+    expect(JOB_SOURCES.length).toBe(44_499); // .102: 25 boards retired, Convergint appended
   });
 
   it("no Exelon brand board shares its printed name with another employer's board", () => {

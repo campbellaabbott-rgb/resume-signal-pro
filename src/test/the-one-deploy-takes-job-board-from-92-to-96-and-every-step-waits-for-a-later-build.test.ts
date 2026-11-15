@@ -74,7 +74,8 @@ describe("the repository's builds are the ones the one deploy ships", () => {
   it("job-board .96 and layoff-filings 2026-10-26.1, over the live .92 and 2026-10-09.3", () => {
     // .96 or later: fix/pd-job-board carries .98 (2026-10-31), the same deploy's rules.
     expect(L.buildAtLeast(repoBuild("job-board"), "job-board.2026-09-09.96")).toBe(true);
-    expect(repoBuild("layoff-filings")).toBe("layoff-filings.2026-10-26.1");
+    // 2026-10-26.1 or later: board .102 rebuilds layoff-filings as 2026-11-11.1 for its catalogue copy.
+    expect(L.buildAtLeast(repoBuild("layoff-filings"), "layoff-filings.2026-10-26.1")).toBe(true);
     const rows = rowsWith(LIVE);
     expect(rows.find((r) => r.fn === "job-board")?.state).toBe("deploy");
     expect(rows.find((r) => r.fn === "layoff-filings")?.state).toBe("deploy");
