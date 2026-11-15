@@ -14,7 +14,7 @@ import { INDUSTRY_KEYWORDS } from "../../supabase/functions/free-keyword-scan/in
 import { ONET_EXPECTATIONS } from "../../supabase/functions/free-keyword-scan/onet-expectations";
 import { INDUSTRY_TO_CATEGORY } from "@/lib/job-board-categories";
 import { SUB_INDUSTRY_TAXONOMY } from "../../supabase/functions/free-keyword-scan/industry-detection";
-import { rolesForIndustry } from "@/data/roles";
+import { indexableRolesForIndustry } from "@/data/roles";
 import { PageJsonLd } from "@/components/seo/PageJsonLd";
 // Letter case by what a word is, not by its length (SEO-019, S13-089): an
 // acronym is upper-case ("HR", "ICU", "SOPs"), a plain word is not ("wind").
@@ -197,11 +197,13 @@ export default function IndustryKeywords() {
             </section>
           )}
 
-          {rolesForIndustry(slug).length > 0 && (
+          {/* Only the roles that stand as their own page: a short spelling of
+              another's title defers to it and is not linked (F06). */}
+          {indexableRolesForIndustry(slug).length > 0 && (
             <section className="mb-8">
               <h2 className="text-xl font-bold mb-2">Role-specific keyword guides</h2>
               <div className="flex flex-wrap gap-1.5">
-                {rolesForIndustry(slug).map((r) => (
+                {indexableRolesForIndustry(slug).map((r) => (
                   <Link key={r.slug} to={`/roles/${r.slug}`} className="px-3 py-1.5 rounded-full border border-primary/40 text-primary text-sm hover:bg-primary/10 transition-colors">
                     {r.title} resume keywords →
                   </Link>
