@@ -143,3 +143,46 @@ describe("section 98-r2 judges what it says it judges", () => {
     expect(show(bad) + show(good)).not.toMatch(/not a GET/);
   });
 });
+
+/**
+ * G1 JUDGES THE UNKNOWN SHARE PER VENDOR (SEO check 2026-11-15, F01). The
+ * overall unknown share was the only one compared to 20%, so a vendor whose
+ * every page was unknown passed whenever the others were many: Oracle, ADP,
+ * Breezy and Recruitee were 100% unknown (72 pages) under an overall 15-16%.
+ * Here eleven Greenhouse pages are open at the employer, and two more pages
+ * belong to a vendor the reader does not read (unfixed) or to UKG, which it
+ * reads for its statements only (fixed): 2 of 13 unknown overall either way.
+ */
+function vendorSite(fixed: boolean): Route[] {
+  const gh = Array.from({ length: 11 }, (_, i) => `/jobs/posting/greenhouse/acme/${2001 + i}`);
+  const other = fixed
+    ? ["/jobs/posting/ukg/recruiting~ACM1000ACME~0b1e/aa11", "/jobs/posting/ukg/recruiting~ACM1000ACME~0b1e/aa12"]
+    : ["/jobs/posting/jazzhr/acme/job_1", "/jobs/posting/jazzhr/acme/job_2"];
+  const paths = [...gh, ...other];
+  const ledger = { postings: Object.fromEntries(paths.map((p) => [p, { state: "live", applyUrl: p.includes("/greenhouse/") ? `https://job-boards.greenhouse.io/acme/jobs/${p.split("/").pop()}` : null }])) };
+  return [
+    { match: `^${esc(`${SITE}/sitemap.xml`)}$`, body: `<urlset>${paths.map((p) => `<url><loc>${SITE}${p}</loc></url>`).join("")}</urlset>`, type: "application/xml" },
+    { match: `^${esc(`${SITE}/prerender-ledger.json`)}$`, body: JSON.stringify(ledger), type: "application/json" },
+    { match: "^https://boards-api\\.greenhouse\\.io/v1/boards/acme/jobs/\\d+$", body: "{}", type: "application/json" },
+  ];
+}
+
+describe("section 98-r2 G1 names a vendor whose pages are never checked", () => {
+  const bad = runSection(vendorSite(false));
+  const good = runSection(vendorSite(true));
+
+  it("FAILs a vendor whose pages are all unknown, though the overall unknown share is under 20%", () => {
+    expect(has(bad, "PASS", /G1 .*11 open, 0 closed, 2 unknown; closed share 0\.0%/), show(bad)).toBe(true);
+    expect(has(bad, "FAIL", /G1 jazzhr: 2 of 2 live posting pages unknown at the employer \(100\.0%, over 20%\)/), show(bad)).toBe(true);
+  });
+
+  it("names a vendor read for its statements only as not checked, without failing the section on it", () => {
+    expect(has(good, "INFO", /G1 ukg: 2 of 2 live posting pages NOT CHECKED at the employer/), show(good)).toBe(true);
+    expect(good.filter((l) => l.startsWith("FAIL") && /^FAIL\s+G1/.test(l)), show(good)).toEqual([]);
+  });
+
+  it("PASSes the per-vendor judgement when every vendor the reader checks is at most 20% unknown", () => {
+    expect(has(good, "PASS", /G1 every vendor checked at the employer is at most 20% unknown \(greenhouse 0 of 11\)/), show(good)).toBe(true);
+    expect(has(bad, "PASS", /G1 every vendor checked/), show(bad)).toBe(false);
+  });
+});

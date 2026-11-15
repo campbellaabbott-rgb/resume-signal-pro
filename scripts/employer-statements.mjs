@@ -4,9 +4,10 @@
 // The bake reads each posting at its employer (scripts/employer-reads.mjs) and
 // the answer carries what the employer's own system states that the board's
 // stored row does not: an end date, a time type, a fully remote posting, the
-// original posting date and a structured address. applyEmployerStatements puts
-// those into the PostingRow fields the page already reads (employerValidThrough,
-// employmentType, workMode/remote/workModeSource, postedAt, location), so the
+// original posting date, a structured address and the country it files the
+// posting under. applyEmployerStatements puts those into the PostingRow fields
+// the page already reads (employerValidThrough, employmentType,
+// workMode/remote/workModeSource, postedAt, location, employerCountry), so the
 // page's visible lines and its JobPosting both say them.
 //
 // THE BAKED PAGE HANDS THEM ON. React re-reads the posting from the board on
@@ -68,6 +69,8 @@ export function employerStatedOf(v) {
     }
     if (address.addressLocality) out.address = address;
   }
+  // A two-letter code, never a name: the page compares it with the row's.
+  if (typeof v.country === "string" && /^[A-Z]{2}$/.test(v.country.trim())) out.country = v.country.trim();
   return Object.keys(out).length ? out : null;
 }
 
@@ -105,5 +108,11 @@ export function applyEmployerStatements(row, stated, { employmentTypeOf = () => 
   if (a && a.addressLocality && a.addressRegion && String(a.addressCountry ?? "").toUpperCase() === String(out.country ?? "").toUpperCase()) {
     out.location = `${a.addressLocality}, ${a.addressRegion}${a.postalCode ? ` ${a.postalCode}` : ""}`;
   }
+  // THE EMPLOYER'S COUNTRY IS KEPT BESIDE THE ROW'S, NEVER WRITTEN OVER IT
+  // (F08). The row's location was read under the row's country, so swapping
+  // the country alone would hang a town of one country on another; the page
+  // withholds the markup when the two disagree (posting-page.ts
+  // postingCountryMismatch), as it does for a location naming another country.
+  if (s.country) out.employerCountry = s.country;
   return out;
 }

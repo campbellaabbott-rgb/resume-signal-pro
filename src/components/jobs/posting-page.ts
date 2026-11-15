@@ -122,6 +122,14 @@ export interface PostingRow {
    * hand-off); when it is, the markup's expiry never runs past it.
    */
   employerValidThrough?: string | null;
+  /**
+   * THE COUNTRY THE EMPLOYER'S OWN SYSTEM FILES THE POSTING UNDER (F08), as a
+   * two-letter code, when the bake's employer read states one (Workday's
+   * requisition location, Oracle's primary location). Kept beside `country`,
+   * never over it: postingCountryMismatch withholds the markup when they
+   * disagree.
+   */
+  employerCountry?: string | null;
 }
 
 /**
@@ -850,10 +858,18 @@ export function postingRemoteBasis(job: PostingRow): "vendor" | "place-free" | n
  * Without a list of every town, "Biloxi, MS, Algeria" (a vendor's default
  * country after a Mississippi town) reads the same as "Lagos, LA, Nigeria"
  * and is still withheld; docs/seo-round/README.md counts these.
+ *
+ * THE EMPLOYER'S OWN SYSTEM IS ASKED FIRST (F08). The board read UPS's
+ * "AR - BUENOS AIRES (ARBUO)" as Arkansas, US, and Workday's own answer
+ * files it under Argentina: a row whose employer's country (employerCountry,
+ * from the bake's employer read) is another jurisdiction than its own is a
+ * mismatch, whatever its location string says.
  */
-export function postingCountryMismatch(job: Pick<PostingRow, "location" | "country"> & Partial<Pick<PostingRow, "company">>): boolean {
+export function postingCountryMismatch(job: Pick<PostingRow, "location" | "country"> & Partial<Pick<PostingRow, "company" | "employerCountry">>): boolean {
   const own = String(job.country ?? "").trim().toUpperCase();
   if (!own) return false;
+  const stated = String(job.employerCountry ?? "").trim().toUpperCase();
+  if (/^[A-Z]{2}$/.test(stated) && !sameJurisdiction(own, stated)) return true;
   const places = String(job.location ?? "").split(PLACE_LIST)
     .map((p) => p.split(/,|\s[-–]\s/).map((s) => placeOfSegment(s)).filter(Boolean))
     .filter((segs) => segs.length > 0);

@@ -11,7 +11,11 @@
 #       system (GET only, scripts/posting-closure-check.mjs) and the closed
 #       share is printed with its 95% interval. FAIL over 5% (the owner's
 #       line: two consecutive daily checks over it fire the STOP rule); INFO
-#       when more than 20% of the answers are unknown (not judged).
+#       when more than 20% of the answers are unknown (not judged). PER
+#       VENDOR (SEO check 2026-11-15, F01): every vendor over 20% unknown is
+#       named, and FAILs (two unknown pages or more, in a judged run) unless
+#       the reader reads it for its statements only (STATED_ONLY_VENDORS in
+#       scripts/employer-reads.mjs), which is named as not checked.
 #   G2  (B01) the STOP switch as served: with JOB_POSTING_MARKUP true in
 #       src/config/seo-switches.ts every sitemap posting page serves exactly
 #       one JobPosting (a page the ledger says D7 keeps without markup serves
@@ -58,9 +62,31 @@ const jobBlocks = (h) => [...String(h).matchAll(/<script type="application\/ld\+
   } else {
     const pct = (x) => (x === null || x === undefined ? "n/a" : `${(x * 100).toFixed(1)}%`);
     const head = `G1 ${rec.date}: ${rec.checked} live posting pages asked of their employers: ${rec.open} open, ${rec.closed} closed, ${rec.unknown} unknown; closed share ${pct(rec.closedShare)} (95% CI ${pct(rec.wilson95[0])}-${pct(rec.wilson95[1])}), unknown ${pct(rec.unknownShare)}`;
-    if (rec.unknownShare === null || rec.unknownShare > 0.2) out("INFO", `${head} — NOT JUDGED (over 20% unknown)`);
+    const judgedRun = !(rec.unknownShare === null || rec.unknownShare > 0.2);
+    if (!judgedRun) out("INFO", `${head} — NOT JUDGED (over 20% unknown)`);
     else out(rec.closedShare > 0.05 ? "FAIL" : "PASS", `${head} — the owner line is 5%; twice in a row fires the STOP rule`);
     for (const p of (rec.closedPaths ?? []).slice(0, 12)) out("INFO", `G1   closed at the employer: ${p}`);
+    // PER VENDOR (SEO check 2026-11-15, F01): the overall share hid four
+    // vendors that were never asked (72 pages, 100% unknown, under an overall
+    // 15-16%). A vendor over 20% unknown is named. It FAILs when the reader
+    // claims to check it (two pages or more, in a judged run); a vendor the
+    // reader reads for its statements only is named as not checked (INFO).
+    let statedOnly = [];
+    try { statedOnly = [...((await import(`${process.cwd()}/scripts/employer-reads.mjs`)).STATED_ONLY_VENDORS ?? [])]; } catch { statedOnly = []; }
+    const vendors = Object.entries(rec.byVendor ?? {})
+      .map(([v, c]) => [v, c.unknown ?? 0, (c.open ?? 0) + (c.closed ?? 0) + (c.unknown ?? 0)])
+      .filter(([, , n]) => n > 0)
+      .sort((a, b) => b[1] / b[2] - a[1] / a[2] || a[0].localeCompare(b[0]));
+    const overShare = vendors.filter(([, u, n]) => u / n > 0.2);
+    for (const [v, u, n] of overShare) {
+      const share = pct(u / n);
+      if (statedOnly.includes(v)) out("INFO", `G1 ${v}: ${u} of ${n} live posting pages NOT CHECKED at the employer (${share} unknown): the reader reads ${v} for what it states only, so a closure there is never seen`);
+      else out(judgedRun && u >= 2 ? "FAIL" : "INFO", `G1 ${v}: ${u} of ${n} live posting pages unknown at the employer (${share}, over 20%): their closures are not being seen`);
+    }
+    const checked = vendors.filter(([v, u, n]) => !statedOnly.includes(v) && u / n <= 0.2);
+    if (judgedRun && !overShare.some(([v]) => !statedOnly.includes(v))) {
+      out("PASS", `G1 every vendor checked at the employer is at most 20% unknown (${checked.map(([v, u, n]) => `${v} ${u} of ${n}`).join(", ")})`);
+    }
   }
 }
 

@@ -97,7 +97,7 @@ describe("the bake reads what the employer states and the markup says it", () =>
   it("Workday's recorded answer for Allstate R35646: its posting date, Full time and Fully Remote", () => {
     const v = verdictOn(ALLSTATE, { status: 200, body: rec("workday-allstate-200.json") });
     expect(v.state).toBe("open");
-    expect(v.stated).toEqual({ postedAt: "2026-11-06", employmentType: "Full time", remote: true });
+    expect(v.stated).toEqual({ postedAt: "2026-11-06", employmentType: "Full time", remote: true, country: "US" });
     const job = postingWithEmployerStatements(row(), v.stated);
     expect(job).toMatchObject({ postedAt: "2026-11-06", employmentType: "Full time", workMode: "remote", remote: true, workModeSource: "vendor" });
     const ld = postingJsonLd(job, DESC, { site: SITE, now: new Date("2026-11-08T12:00:00Z") })!;
@@ -158,7 +158,7 @@ describe("the bake reads what the employer states and the markup says it", () =>
     const fetchImpl = async (url: string) => ({ status: 200, url, text: async () => rec("workday-allstate-200.json") });
     const live = row({ postedAt: ago(1), location: "US - Remote" });
     const { keep } = await askEmployersAbout([{ job: live, description: DESC, carried: true }], { D, deadline: Date.now() + 30_000, readOpts: { fetchImpl } });
-    expect(keep[0].stated).toEqual({ postedAt: "2026-11-06", employmentType: "Full time", remote: true });
+    expect(keep[0].stated).toEqual({ postedAt: "2026-11-06", employmentType: "Full time", remote: true, country: "US" });
     const page = bakePostingPage(keep[0].job, DESC, { D, SITE, carried: true });
     expect(page.ld).toMatchObject({ employmentType: "FULL_TIME", jobLocationType: "TELECOMMUTE" });
   });
