@@ -5,17 +5,21 @@ import { boardKey, keySource, keyToken } from "./dormancy.ts";
 export interface OversizeEntry { source: string; mb: number; at: string }
 type Board = { source: string; token: string };
 
-/** Refill `reg` from the persisted boards record; a key an older build wrote by bare token takes its stored source. */
-export function loadOversizeEntries(reg: Map<string, OversizeEntry>, boards: unknown, shared: ReadonlySet<string>): void {
+/** Refill `reg` from the persisted boards record; a key an older build wrote by bare token takes its stored source.
+ *  A board the catalogue no longer carries is dropped (board .102); returns how many were. */
+export function loadOversizeEntries(reg: Map<string, OversizeEntry>, boards: unknown, shared: ReadonlySet<string>, catalogued?: ReadonlySet<string>): number {
   reg.clear();
-  if (!boards || typeof boards !== "object") return;
+  let dropped = 0;
+  if (!boards || typeof boards !== "object") return 0;
   for (const [k, e] of Object.entries(boards as Record<string, { source?: unknown; mb?: unknown; at?: unknown } | null>)) {
     if (!e || typeof e !== "object") continue;
     const src = keySource(k) ?? String(e.source ?? "");
     const key = src ? boardKey(src, keyToken(k), shared) : k;
+    if (catalogued && !catalogued.has(key)) { dropped++; continue; }
     reg.delete(key);
     reg.set(key, { source: src, mb: Number(e.mb) || 0, at: String(e.at ?? "") });
   }
+  return dropped;
 }
 
 /** Record an over-bound visit, newest last; true when the row needs writing (new board, size moved, or stamp 12h old). */

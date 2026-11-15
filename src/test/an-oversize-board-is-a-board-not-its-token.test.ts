@@ -210,7 +210,8 @@ async function loadShipped(reg: Map<string, OversizeEntry>, boards: unknown): Pr
   const client = { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { v: { boards } }, error: null }) }) }) }) };
   const load = run<(c: unknown) => Promise<void>>(
     `${metaRead}\n${FN.includes("async function readMetaRow(") ? lifted("readMetaRow") : ""}\n${lifted("loadOversizeBoards")}\nreturn loadOversizeBoards;`,
-    { ...MODULE, OVERSIZE_BOARDS: reg, SHARED_TOKENS: SHIPPED_SHARED, console: { warn: () => {}, log: () => {} } },
+    // CATALOGUE_KEYS unbound to a set: board .102's catalogue prune has its own test.
+    { ...MODULE, OVERSIZE_BOARDS: reg, SHARED_TOKENS: SHIPPED_SHARED, CATALOGUE_KEYS: undefined, console: { warn: () => {}, log: () => {} } },
   );
   await load(client);
 }

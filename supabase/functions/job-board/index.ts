@@ -679,7 +679,7 @@ async function loadOversizeBoards(client: SupabaseClient): Promise<void> {
     console.warn(`[JOB-BOARD] oversize registry unread (${row.why}): previous registry kept, not persisted, and the freshness sweep skipped this slice`);
     return;
   }
-  loadOversizeEntries(OVERSIZE_BOARDS, (row.v as { boards?: unknown } | null)?.boards, SHARED_TOKENS);
+  if (loadOversizeEntries(OVERSIZE_BOARDS, (row.v as { boards?: unknown } | null)?.boards, SHARED_TOKENS, CATALOGUE_KEYS)) await persistOversizeBoards(client);
 }
 async function persistOversizeBoards(client: SupabaseClient): Promise<void> {
   if (!META_READ.oversize) return;
