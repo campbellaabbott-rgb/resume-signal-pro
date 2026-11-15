@@ -56,7 +56,7 @@ export default function Privacy() {
               <h3 className="text-xl font-medium mb-3 text-foreground">{t('privacy.sections.infoAuto')}</h3>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                 <li><strong className="text-foreground">Device Information:</strong> Browser type, operating system, device identifiers</li>
-                <li><strong className="text-foreground">Usage Data:</strong> Pages visited, time spent, features used, click patterns</li>
+                <li><strong className="text-foreground">Usage Data:</strong> Pages visited, time spent, features used, click patterns, and the searches run on the job board with the results opened from them (no account, address or visitor id is stored with a search)</li>
                 <li><strong className="text-foreground">Log Data:</strong> IP address, access times, referring URLs, error logs</li>
                 <li><strong className="text-foreground">Cookies and Browser Storage:</strong> What keeps you signed in and remembers your settings, and, only if you allow it, an analytics visitor id (see the Cookies section)</li>
               </ul>
@@ -99,9 +99,9 @@ export default function Privacy() {
                     <li>Stripe (payment processing)</li>
                     <li>Lovable (hosting, and the AI gateway our analysis runs through); its cloud runs on Supabase (database, sign-in and server functions)</li>
                     <li>Google and OpenAI, whose AI models analyze resume text, reached through Lovable's AI gateway</li>
-                    <li>Lovable Emails, which sends sign-in emails through Mailgun from the EU</li>
+                    <li data-signin-mail>Lovable Emails, which sends sign-in emails through Mailgun from the EU; a sign-in email it cannot send goes through Resend, from the United States, instead</li>
                     <li>Resend (receipts, reports and our other email, from the United States)</li>
-                    <li data-ipinfo>ipinfo (the country of the IP address a free scan comes from, to set its limits)</li>
+                    <li data-ipinfo>ipinfo (the country of the IP address a free scan, or a request to email you a scan report, comes from: to set the free scan's limits, and to refuse a report email from a region we do not serve)</li>
                     <li data-fonts>No font host: the site's fonts are served from this site itself, so loading a page asks Google, or anyone else, for no font</li>
                   </ul>
                 </li>
@@ -126,7 +126,8 @@ export default function Privacy() {
                 <li><strong className="text-foreground">Payment Records:</strong> The Stripe reference, amount, date and the address on the receipt, retained as required by tax and financial regulations (typically 7 years), including after an account is deleted</li>
                 <li><strong className="text-foreground">Email Address and Mail:</strong> The monthly market pulse keeps your address until you unsubscribe. We keep a record of each email we send (the address, the time and whether it was delivered) to show delivery and to honour unsubscribes, and a do-not-mail note after you unsubscribe or delete your account, so that no mail already queued reaches you</li>
                 <li><strong className="text-foreground">Log Data:</strong> Retained for up to 90 days for security and debugging purposes</li>
-                <li><strong className="text-foreground">In Your Browser:</strong> The resume text a tab carries between pages is in that tab's session storage until you close it. A resume you build on the site, your recent scan history and recent reports are in this browser's local storage until it is cleared; the Clear Browser Data button on a paid results page clears them, as does clearing this site's data in your browser.</li>
+                <li data-search-retention><strong className="text-foreground">Job Board Searches:</strong> The words, place and filters of a search on the job board, and which results were opened from it, are kept for 180 days with no account, address or visitor id attached, then only as daily totals.</li>
+                <li><strong className="text-foreground">In Your Browser:</strong> The resume text a tab carries between pages is in that tab's session storage until you close it. A resume you build on the site, your recent scan history and recent reports are in this browser's local storage until it is cleared; the Clear Browser Data button on a paid results page clears them, as does clearing this site's data in your browser. Signing out on this device clears them too, apart from anything you choose to keep on this device.</li>
               </ul>
             </section>
 
@@ -248,7 +249,7 @@ export default function Privacy() {
                 <li><strong className="text-foreground">Stripe:</strong> <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">stripe.com/privacy</a></li>
                 <li><strong className="text-foreground">Resend:</strong> <a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">resend.com/legal/privacy-policy</a></li>
                 <li><strong className="text-foreground">Supabase:</strong> <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">supabase.com/privacy</a></li>
-                <li><strong className="text-foreground">Google (AI models and fonts):</strong> <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">policies.google.com/privacy</a></li>
+                <li><strong className="text-foreground">Google (AI models, reached through Lovable's AI gateway):</strong> <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">policies.google.com/privacy</a></li>
                 <li><strong className="text-foreground">OpenAI:</strong> <a href="https://openai.com/policies/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">openai.com/policies/privacy-policy</a></li>
                 <li><strong className="text-foreground">Lovable, Mailgun and ipinfo:</strong> each publishes its own privacy policy on its website</li>
               </ul>

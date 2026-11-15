@@ -44,6 +44,43 @@ describe("ipinfo is disclosed for what it is asked: a free scan's country", () =
   });
 });
 
+// S14X-181 (privacy-retention): save-lead asks ipinfo.io for the country of
+// a request to email a scan report (its region refusal), and the line named
+// the free scan only. And a sign-in email Lovable cannot send goes out through
+// Resend, which the processors list must say.
+describe("ipinfo is named for the report email too, and sign-in mail for its fallback", () => {
+  it("the ipinfo line names the emailed report beside the free scan, and still no purchase", () => {
+    const line = /<li data-ipinfo>([^<]+)<\/li>/.exec(privacy)?.[1] ?? "";
+    expect(line).toMatch(/email you a scan report/);
+    expect(line).toMatch(/refuse a report email from a region we do not serve/);
+  });
+
+  it("the path: save-lead asks ipinfo.io before it saves a report request, and process-email-queue falls back to Resend for sign-in mail", () => {
+    const lead = codeOf(read("supabase/functions/save-lead/index.ts"));
+    expect(lead).toMatch(/https:\/\/ipinfo\.io\//);
+    expect(lead.indexOf("isBlockedCountry(req")).toBeGreaterThan(-1);
+    expect(lead.indexOf("isBlockedCountry(req")).toBeLessThan(lead.indexOf("save_free_scan_lead"));
+    const queue = codeOf(read("supabase/functions/process-email-queue/index.ts"));
+    expect(queue).toMatch(/async function sendAuthThroughResend\(/);
+    expect(queue.split("sendAuthThroughResend(").length).toBeGreaterThan(2);
+    expect(/<li data-signin-mail>([^<]+)<\/li>/.exec(privacy)?.[1] ?? "").toMatch(/goes through Resend/);
+  });
+});
+
+// S14X-097 (the Privacy half): the sentence holds only while a deliberate
+// sign-out still clears what this browser keeps.
+describe("signing out clears this browser's copies, as the page says", () => {
+  it("signOut reaches clearPersonalBrowserData, which reaches clearLocalResumeCopies", () => {
+    const auth = codeOf(read("src/contexts/AuthContext.tsx"));
+    const body = auth.slice(auth.indexOf("const signOut = async"), auth.indexOf("const signOutEverywhere"));
+    expect(body).toMatch(/clearPersonalBrowserData\(\)/);
+    const clear = auth.slice(auth.indexOf("export function clearPersonalBrowserData"), auth.indexOf("export function clearPersonalBrowserData") + 400);
+    expect(clear).toMatch(/clearLocalResumeCopies\(\)/);
+    expect(read("src/lib/local-resume-copies.ts")).toMatch(/builderDraft/);
+    expect(privacy).toMatch(/Signing out on this device clears them too/);
+  });
+});
+
 describe("the cookie paragraph speaks for our own analytics only", () => {
   it("it no longer says nothing at all is sent before the choice, and still names the host's counter", () => {
     expect(privacy).not.toMatch(/Until you choose, nothing is stored or sent for analytics/);
