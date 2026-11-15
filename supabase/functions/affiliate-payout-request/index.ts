@@ -123,14 +123,15 @@ Deno.serve(async (req) => {
       return json({ status: "unproven_address", error: "Confirm your email address first: the dashboard mails you a link." }, 403);
     }
 
-    let { data: approved, error: cErr } = await admin
-      .from("affiliate_conversions").select("id, commission_amount, review_flags")
-      .eq("affiliate_id", affiliate.id).eq("status", "approved");
-    if (cErr && missingColumn(cErr)) {
-      ({ data: approved, error: cErr } = await admin
-        .from("affiliate_conversions").select("id, commission_amount")
-        .eq("affiliate_id", affiliate.id).eq("status", "approved"));
-    }
+    type ApprovedRow = { id: string; commission_amount: number | string; review_flags?: unknown };
+    const approvedRows = async (columns: string) => {
+      const { data, error } = await admin.from("affiliate_conversions").select(columns)
+        .eq("affiliate_id", affiliate.id).eq("status", "approved");
+      return { rows: data as unknown as ApprovedRow[] | null, error };
+    };
+    let { rows: approved, error: cErr } = await approvedRows("id, commission_amount, review_flags");
+    // Before 20261112122000 there are no review flags: every approved row is payable, as on main.
+    if (cErr && missingColumn(cErr)) ({ rows: approved, error: cErr } = await approvedRows("id, commission_amount"));
     if (cErr || !Array.isArray(approved)) return json({ error: "Please try again in a moment." }, 503);
     // A conversion held for review is not payable until the review clears it.
     const payable = approved.filter((c: { review_flags?: unknown }) => !Array.isArray(c.review_flags) || c.review_flags.length === 0);

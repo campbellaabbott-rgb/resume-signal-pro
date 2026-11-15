@@ -638,6 +638,29 @@ describe("every anonymous writer on the list is bounded, and the budget is keyed
    */
   const REDEFINED_AFTER_CENSUS: Record<string, string> = {
     "public.record_scan_feedback(text,boolean,text,integer,boolean,integer,text)": "20261101150000_a_feedback_vote_the_budget_skipped_is_never_thanked.sql",
+    // Bug round 2026-11-08, lane affiliate: the click stores a keyed address
+    // hash (S14X-021) and the sign-in readers compare token hashes (S14X-093).
+    "public.track_affiliate_click(text,text,text,text)": "20261112121000_an_affiliate_click_keeps_a_keyed_address_hash_for_ninety_days.sql",
+    "public.login_affiliate(text,text)": "20261112120000_an_affiliate_signs_in_with_a_hashed_session_and_a_proven_address.sql",
+    "public.register_affiliate(text,text)": "20261112120000_an_affiliate_signs_in_with_a_hashed_session_and_a_proven_address.sql",
+  };
+
+  /**
+   * A re-definition that changes the budget itself, each with the budget it
+   * spends now, letter for letter, and why. Without an entry here the census's
+   * own budget is the only one a re-definition may spend.
+   *   login_affiliate (S14X-092): the census charged every attempt to the
+   *   email, so a stranger's 20 wrong guesses locked the affiliate out for an
+   *   hour. The address budget stays; only failures are charged to the email
+   *   (10 an hour per address and email, 200 an hour per email).
+   *   register_affiliate (S14X-092): 3 an address and 50 in all a day let one
+   *   network close sign-up for everyone. Now 10 a day per /24 or /48 network
+   *   under 1000 in all, safe because an unproven address earns nothing
+   *   payable and cannot request a payout (S14X-115).
+   */
+  const REBUDGETED_AFTER_CENSUS: Record<string, string[]> = {
+    "public.login_affiliate(text,text)": ["client_write_allowed('affiliate-login',20,1000,60)", "client_write_allowed(v_fail_scope,10,200,60)"],
+    "public.register_affiliate(text,text)": ["client_write_allowed('affiliate-register-net:'||coalesce(v_net,'no-address')", "client_write_allowed('affiliate-register',10,1000,1440)"],
   };
   const censusBody = (sig: string): string => {
     const name = sig.slice("public.".length, sig.indexOf("("));
@@ -655,7 +678,7 @@ describe("every anonymous writer on the list is bounded, and the budget is keyed
       if (UNBUDGETED[a.sig] || a.since) continue; // a writer opened after the census: the next test
       if (!/\bclient_write_allowed\s*\(/.test(f.body)) bad.push(`${a.sig} (${f.file}) writes with no budget`);
       if (f.file === REDEFINED_AFTER_CENSUS[a.sig]) {
-        const was = budgetCalls(censusBody(a.sig));
+        const was = REBUDGETED_AFTER_CENSUS[a.sig] ?? budgetCalls(censusBody(a.sig));
         if (was.length === 0 || JSON.stringify(budgetCalls(f.body)) !== JSON.stringify(was)) {
           bad.push(`${a.sig}: ${f.file} spends ${JSON.stringify(budgetCalls(f.body))}, not the census's ${JSON.stringify(was)}`);
         }

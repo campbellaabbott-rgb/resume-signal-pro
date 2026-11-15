@@ -1,0 +1,95 @@
+{
+  "affiliateProgram": {
+    "updates": {
+      "click_one": "New click on your affiliate link!",
+      "click_other": "{{count}} new clicks on your affiliate link!",
+      "earned": "You earned {{amount}}!",
+      "earnedDescription": "New conversion from your referral. A commission is paid once approved."
+    },
+    "cookieLine": "30-day cookie • Paid on request once approved",
+    "tiles": {
+      "clicks": "Clicks",
+      "conversions": "Conversions",
+      "rate": "{{rate}}% rate",
+      "commission": "{{amount}} in commission",
+      "allTime": "All time",
+      "payable": "Payable now",
+      "awaitingApproval": "Awaiting approval",
+      "awaitingCount_one": "{{count}} commission, payable once approved",
+      "awaitingCount_other": "{{count}} commissions, payable once approved",
+      "totalPaid": "Total paid",
+      "range": {
+        "d7": "Last 7 days",
+        "d30": "Last 30 days",
+        "d90": "Last 90 days",
+        "d365": "Last year"
+      }
+    },
+    "revenue": {
+      "description": "Sales from your referrals, each currency on its own line",
+      "unknownCurrency": "{{amount}} (currency not recorded)",
+      "none": "No sales in this period"
+    },
+    "conversions": {
+      "heldForReview": "Held for review"
+    },
+    "payout": {
+      "timing": "We email you to arrange payment once we have reviewed the request",
+      "notNotified": "Your request is recorded, but the note telling us about it did not send. It is still in our records, so we will see it when we review payouts.",
+      "awaitingNote": "{{amount}} more is awaiting approval and becomes payable once approved.",
+      "openSince": "Requested {{date}} for {{amount}}"
+    },
+    "history": {
+      "requested": "Requested",
+      "paid": "Paid",
+      "rejected": "Declined",
+      "requestedOn": "Requested {{date}}",
+      "paidOn": "Paid {{date}}",
+      "rejectedOn": "Declined {{date}}",
+      "paidToDate": "Paid to date"
+    },
+    "howItWorks": {
+      "getPaid": "A commission waits for approval before it can be paid. When your approved commissions reach the minimum, request a payout from the Payouts tab and we email you to arrange payment. We also email you when a referral earns a commission."
+    },
+    "auth": {
+      "forgot": "Forgot password?",
+      "resetTitle": "Reset your password",
+      "resetIntro": "Enter the address you signed up with. If an affiliate account uses it, we email a link that works once within 30 minutes.",
+      "sendLink": "Email me a link",
+      "resetSent": "If an affiliate account uses that address, a link is on its way. It works once within 30 minutes.",
+      "backToSignIn": "Back to sign in",
+      "newPasswordTitle": "Choose a new password",
+      "newPasswordIntro": "Saving it signs out every device that was signed in.",
+      "newPassword": "New password (min 8 characters)",
+      "savePassword": "Save the new password",
+      "passwordChanged": "Password changed and every device signed out. Sign in with the new password.",
+      "linkExpired": "This link has expired or was already used. Ask for a new one.",
+      "weakPassword": "Choose a password of 8 to 200 characters.",
+      "addressConfirmed": "Your email address is confirmed.",
+      "emailChanged": "Your email address is changed. Sign in with the new address next time.",
+      "emailTaken": "Another affiliate account already uses that address.",
+      "failed": "Something went wrong. Please try again."
+    },
+    "confirm": {
+      "bannerTitle": "Confirm your email address to be paid",
+      "bannerBody": "Commissions are held for review and payouts cannot be requested until you prove this address is yours.",
+      "send": "Send the confirmation link",
+      "sent": "We sent a confirmation link to {{email}}. It works once within 30 minutes."
+    },
+    "account": {
+      "title": "Your account",
+      "description": "Sign out on every device, take a copy of your data, change your address or close the account.",
+      "signOutEverywhere": "Sign out everywhere",
+      "signedOutEverywhere": "Every device is signed out, this one included.",
+      "export": "Download my data",
+      "exported": "Your data is downloaded.",
+      "newEmail": "New email address",
+      "sendChangeLink": "Send a link to the new address",
+      "changeSent": "We sent a link to {{email}}. The change happens when you open it.",
+      "eraseTitle": "Close the account",
+      "eraseWarning": "This removes your address, password, sessions and click history, and cannot be undone. Type ERASE to confirm.",
+      "eraseButton": "Close the account for good",
+      "erased": "Your affiliate account is closed."
+    }
+  }
+}
