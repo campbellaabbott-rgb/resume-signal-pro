@@ -205,6 +205,8 @@ export interface VisitOut {
   bareCalls: Array<{ token: string; reserveDuring: number }>;
   /** The slice's streamed-read count after the visit (CAP-8). */
   streamed: number;
+  /** Boards the vendor refused for load this visit (BB-09). */
+  rateLimited: string[];
   enrolCalls: number;
   light: boolean;
   fetchedInSlice: number;
@@ -322,7 +324,7 @@ export async function runVisit(env: VisitEnv): Promise<VisitOut> {
     },
   };
   const out = await (run(...names.map((n) => scope[n])) as () => Promise<{ r: Read; failReason: string; inFlightReserve: number; fetchedInSlice: number; boardsDone: number; baseAttempted: number }>)();
-  return { ...out, fetchCalls, streamCalls, bareCalls, streamed: sliceReads.streamed, enrolCalls, light: lightSet.has(key), deferred, oversized, failed, registry, gateAsked, stats };
+  return { ...out, fetchCalls, streamCalls, bareCalls, streamed: sliceReads.streamed, rateLimited: sliceReads.rateLimited, enrolCalls, light: lightSet.has(key), deferred, oversized, failed, registry, gateAsked, stats };
 }
 
 // ── lanes ───────────────────────────────────────────────────────────────────

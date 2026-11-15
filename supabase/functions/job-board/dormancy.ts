@@ -11,6 +11,8 @@ export interface BoardFailureState {
   firstFailedAt?: Record<string, number>;
   /** board key -> consecutive visits whose rows our database would not read or store (foldDbFailures, S11-023). */
   dbStreaks?: Record<string, number>;
+  /** board key -> epoch ms first deferred by a vendor's 429 (foldDeferrals, BB-09). */
+  deferredAt?: Record<string, number>;
 }
 
 // Rationale: docs/job-board-index-notes.md#n1308-const-own-rec-record-string-number
@@ -222,6 +224,24 @@ export function foldDbFailures(
   for (const k of new Set(dbFailed)) out[k] = (own(out, k) ?? 0) + 1;
   const entries = Object.entries(out);
   return entries.length > cap ? Object.fromEntries(entries.sort((a, b) => b[1] - a[1]).slice(0, cap)) : out;
+}
+
+/** BB-09: a board the vendor refused for load is deferred, not failed, until it has been deferred this long. */
+export const DEFERRAL_FAILING_MS = 7 * 86_400_000;
+/** First-deferred times by board key: a refused board keeps its first time, a board that read leaves; past DEFERRAL_FAILING_MS it is `failing`. */
+export function foldDeferrals(
+  prev: Record<string, number> | null | undefined,
+  deferred: readonly string[],
+  read: readonly string[],
+  now: number,
+  cap: number,
+): { deferredAt: Record<string, number>; failing: string[] } {
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(prev ?? {})) if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
+  for (const k of read) delete out[k];
+  for (const k of deferred) out[k] = own(out, k) ?? now;
+  const kept = Object.entries(out).sort((a, b) => a[1] - b[1]).slice(0, cap);
+  return { deferredAt: Object.fromEntries(kept), failing: kept.filter(([k, at]) => deferred.includes(k) && now - at >= DEFERRAL_FAILING_MS).map(([k]) => k) };
 }
 
 /** The boards whose stores have failed DB_FAIL_ALARM_VISITS visits running, longest run first. */

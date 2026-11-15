@@ -93,6 +93,8 @@ async function visits(n: number) {
       updateBoardFailures: dormancy.updateBoardFailures,
       rearmIncompletePrunes: dormancy.rearmIncompletePrunes,
       foldDbFailures: dormancy.foldDbFailures,
+      foldDeferrals: dormancy.foldDeferrals,
+      sliceReads: { streamed: 0, rateLimited: [], rawNoRows: [], srPartial: [] },
       dbFailingBoards: dormancy.dbFailingBoards,
       DB_FAIL_ALARM_VISITS: dormancy.DB_FAIL_ALARM_VISITS,
       DEAD_BOARD_THRESHOLD: constNum("DEAD_BOARD_THRESHOLD"),

@@ -76,7 +76,7 @@ import {
   backlogFromCoverage,
 } from "../_shared/posted-backfill.ts";
 import { extractSalary, parseSalaryStructured } from "../_shared/salary-extract.ts";
-import { boardKey, classifyDormancy, DB_FAIL_ALARM_VISITS, dbFailingBoards, dropBareSharedKeys, foldDbFailures, keySource, keyToken, rearmIncompletePrunes, selectRetries, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
+import { boardKey, classifyDormancy, DB_FAIL_ALARM_VISITS, dbFailingBoards, dropBareSharedKeys, foldDbFailures, foldDeferrals, keySource, keyToken, rearmIncompletePrunes, selectRetries, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
 import { STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, keysOf, readStaleTries, selectStaleLane, staleExclusion, unresolvedTokens, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict } from "./stale-lane.ts";
 import { tokenMapFromRecord, tokenMapToRecord } from "./token-map.ts";
 import { decideRekick } from "./chain-watchdog.ts";
@@ -1021,14 +1021,19 @@ async function fetchWithTimeout(url: string, init?: RequestInit, limit = MAX_RES
   const once = () => withWorkdayLanguage(url, init?.headers, send, discardBody, init?.body);
   const res = await once();
   // Rationale: docs/job-board-index-notes.md#n500-if-res-status
-  if (res.status === 429) {
+  // BB-09: a 503 that names a Retry-After is the same refusal for load.
+  const busy = (x: Response) => x.status === 429 || (x.status === 503 && x.headers.has("retry-after"));
+  if (busy(res)) {
     const ra = Number(res.headers.get("retry-after"));
     const waitMs = Number.isFinite(ra) && ra > 0 ? Math.min(ra * 1000, 4000) : 1500;
     // The 429's own body is never read. Release it rather than leave the
     // connection hanging while we sleep out the Retry-After.
     discardBody(res);
     await new Promise((r) => setTimeout(r, waitMs));
-    return boundBody(await once(), limit);
+    const again = await once();
+    if (again.status !== 503 || !busy(again)) return boundBody(again, limit);
+    discardBody(again);
+    return Object.defineProperty(new Response(null, { status: 429, headers: again.headers }), "url", { value: again.url });
   }
   return boundBody(res, limit);
 }
@@ -2640,7 +2645,6 @@ async function admitSlice(
 }
 
 async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, boardBudget = MIN_BOARDS_PER_SLICE): Promise<{ ok: boolean; detail: string }> {
-  currentHop = chainHop;
   // Checked at the ENTRY too, not only at the hop: pausing must also stop a
   // fresh chain started by pg_cron, a manual refresh, or any other trigger.
   // `force` does NOT override this — force exists to bypass the slice lock, and
@@ -3084,6 +3088,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       return { ok: true, detail: "skipped — a slice was admitted moments ago" };
     }
   }
+  // UPK-3: a kick the pause or the lock refused never relabels the running hop.
+  currentHop = chainHop;
   // The demand board this admitted slice took starts its cooldown and counts
   // against the hour, in the row only the refresh writes.
   if (demandTaken.length) await stampDemandServed(client, demandTaken, Date.now()).catch(() => {});
@@ -3215,6 +3221,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             const mb = Number(failReason.match(/([\d.]+)MB/)?.[1]) || 0;
             // Rationale: docs/job-board-index-notes.md#n573-if-noteoversize-oversize_boards-s-mb-sha
             if (noteOversize(OVERSIZE_BOARDS, s, mb, SHARED_TOKENS)) oversizeDirty = true;
+            budgetSkipped.push(s.token);
+            continue;
+          }
+          // BB-09: refused for load is a deferral, never a failure; foldDeferrals fails it after DEFERRAL_FAILING_MS.
+          if (failReason === "HTTP 429") {
+            sliceReads.rateLimited.push(boardKeyOf(s));
             budgetSkipped.push(s.token);
             continue;
           }
@@ -4300,9 +4312,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     // BY BOARD KEY (n417): on a shared token the twin that read no longer
     // clears the failing twin's streak. The deferral sets stay token-keyed.
     const okKeySet = new Set(okKeys);
-    const failedTokens = [...new Set(slice
+    const deferral = foldDeferrals(bfV.deferredAt, sliceReads.rateLimited, okKeys, Date.now(), DORMANT_CAP);
+    const failedTokens = [...new Set([...slice
       .filter((s) => !skipTokens.has(boardKeyOf(s)) && !quarantineSkipped.has(s.token) && !budgetSkippedSet.has(s.token) && !okKeySet.has(boardKeyOf(s)))
-      .map(boardKeyOf))];
+      .map(boardKeyOf), ...deferral.failing])];
     // A board whose rows we could not read or store, visit after visit, is our
     // bug, not the employer's: counted, named, and never pruned for it.
     const sliceDbStreaks = foldDbFailures(bfV.dbStreaks, dbFailedKeys, okKeys, DORMANT_CAP);
@@ -4311,7 +4324,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     if (dbAlarm.length > 0) {
       console.error(`[JOB-BOARD] DB FAILURES: ${dbAlarm.length} board(s) whose feed reads but whose rows our database would not read or store for ${DB_FAIL_ALARM_VISITS}+ visits running: ${dbAlarm.slice(0, 8).map((b) => `${b.key} x${b.visits}`).join(", ")}${lastUpsertError ? ` — last: ${String(lastUpsertError).slice(0, 160)}` : ""}`);
     }
-    if (okKeys.length > 0 || failedTokens.length > 0 || recheckTokens.size > 0 || dbFailedKeys.length > 0) {
+    if (okKeys.length > 0 || failedTokens.length > 0 || recheckTokens.size > 0 || dbFailedKeys.length > 0 || sliceReads.rateLimited.length > 0) {
       const folded = updateBoardFailures({
         okTokens: okKeys,
         // Our database failing is not the vendor failing (S11-023): these
@@ -4341,7 +4354,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       // A prune the exit log broke is retried, not left dormant (n416).
       const { streaks, dormant, failedAt, firstFailedAt } = rearmIncompletePrunes(folded, pruneUnfinished, boardFailures, DEAD_BOARD_THRESHOLD, Date.now());
       await client.from("job_board_meta").upsert(
-        { k: "board_failures", v: { streaks, dormant, failedAt, firstFailedAt, dbStreaks: sliceDbStreaks, ...(retryLane ? { lastRetryLane: retryLane } : {}) }, updated_at: new Date().toISOString() },
+        { k: "board_failures", v: { streaks, dormant, failedAt, firstFailedAt, dbStreaks: sliceDbStreaks, deferredAt: deferral.deferredAt, ...(retryLane ? { lastRetryLane: retryLane } : {}) }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
       if (deepCursorsDirty || deepLane) {
@@ -5974,9 +5987,10 @@ function isoDateOnly(v: unknown): string | null {
   if (typeof v !== "string" || !v.trim()) return null;
   const t = Date.parse(v.length <= 10 ? `${v}T00:00:00Z` : v);
   if (!Number.isFinite(t)) return null;
-  // Not in the future, not absurdly old.
-  if (t > Date.now() + 86_400_000 || t < Date.now() - 400 * 86_400_000) return null;
-  return new Date(t).toISOString();
+  // Not in the future, not absurdly old; a feed's "tomorrow" (a zone ahead of ours) is today (BB-10).
+  const now = Date.now();
+  if (t > now + 86_400_000 || t < now - 400 * 86_400_000) return null;
+  return new Date(Math.min(t, now)).toISOString();
 }
 
 // ── list: SQL reads + SWR background refresh ───────────────────────────────

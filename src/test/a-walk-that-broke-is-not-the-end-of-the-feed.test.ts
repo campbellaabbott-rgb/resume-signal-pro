@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -371,5 +372,80 @@ describe("light mode is keyed by board, so a shared token's greenhouse board can
     const bf = CODE.slice(CODE.indexOf('if (action === "backfill-desc") {'));
     expect(bf.slice(0, 6000)).toMatch(/\.eq\("company_token", s\.token\)\s*\.eq\("source", s\.source\)\s*\.is\("description", null\)/);
     expect(bf.slice(0, 6000)).toMatch(/\.eq\("company_token", b\.token\)\.eq\("source", b\.source\)\.is\("description", null\)/);
+  });
+});
+
+describe("BB-09: a vendor that refuses for load defers the board; it does not fail it", () => {
+  type Answer = { status: number; ra?: string };
+  const shipped = (answers: Answer[]) => {
+    const asked: string[] = [];
+    const discarded: number[] = [];
+    const fetchWithTimeout = build<(url: string) => Promise<Response>>("fetchWithTimeout", {
+      fetch: async (url: string) => {
+        asked.push(url);
+        const a = answers[Math.min(asked.length - 1, answers.length - 1)];
+        return new Response(a.status === 200 ? "[]" : "busy", { status: a.status, headers: a.ra ? { "retry-after": a.ra } : {} });
+      },
+      withWorkdayLanguage: (_u: string, _h: unknown, send: (l: Record<string, string>) => Promise<Response>) => send({}),
+      bodyDeadline: (r: Response) => r, boundBody: (r: Response) => r,
+      discardBody: (r: Response) => { discarded.push(r.status); },
+      setTimeout: (f: () => void) => { f(); return 0; }, clearTimeout: () => {},
+      MAX_RESPONSE_BYTES: 4_000_000, FETCH_TIMEOUT_MS: 15_000,
+    });
+    return { fetchWithTimeout, asked, discarded };
+  };
+
+  it("a 429 answered twice comes back a 429, after one wait", async () => {
+    const x = shipped([{ status: 429, ra: "1" }]);
+    expect((await x.fetchWithTimeout("https://feed.test/a")).status).toBe(429);
+    expect(x.asked).toHaveLength(2);
+  });
+
+  it("a 503 that names a Retry-After is the same refusal: asked again once, and a second one reads as a 429", async () => {
+    const x = shipped([{ status: 503, ra: "2" }]);
+    const r = await x.fetchWithTimeout("https://feed.test/b");
+    expect(r.status).toBe(429);
+    expect(x.asked).toHaveLength(2);
+    expect(x.discarded, "both refused bodies are released").toEqual([503, 503]);
+    const ok = shipped([{ status: 503, ra: "2" }, { status: 200 }]);
+    expect((await ok.fetchWithTimeout("https://feed.test/c")).status).toBe(200);
+  });
+
+  it("a 503 with no Retry-After is an outage, not a deferral: asked once and answered as it came", async () => {
+    const x = shipped([{ status: 503 }]);
+    expect((await x.fetchWithTimeout("https://feed.test/d")).status).toBe(503);
+    expect(x.asked).toHaveLength(1);
+  });
+
+  it("the worker defers a board refused for load, names it rateLimited, and leaves it out of the failures", async () => {
+    const { runVisit } = await import("./helpers/slice-worker");
+    const x = await runVisit({ board: { source: "greenhouse", token: "busyco" }, failReason: "HTTP 429" });
+    expect(x.deferred).toEqual(["busyco"]);
+    expect(x.rateLimited).toEqual(["busyco"]);
+    expect(x.failed, "a deferral never reaches the failure streak").toEqual([]);
+    const outage = await runVisit({ board: { source: "greenhouse", token: "downco" }, failReason: "HTTP 503" });
+    expect(outage.failed.length, "an outage still fails").toBe(1);
+    expect(outage.rateLimited).toEqual([]);
+  });
+
+  it("a board deferred for seven days is failing; one deferred less, or that read since, is not", async () => {
+    const { foldDeferrals, DEFERRAL_FAILING_MS } = await import("../../supabase/functions/job-board/dormancy");
+    const now = Date.parse("2026-11-15T00:00:00Z");
+    const day = 86_400_000;
+    expect(DEFERRAL_FAILING_MS).toBe(7 * day);
+    const first = foldDeferrals({}, ["a"], [], now, 100);
+    expect(first).toEqual({ deferredAt: { a: now }, failing: [] });
+    const eight = foldDeferrals({ a: now - 8 * day, b: now - 8 * day, c: now - 2 * day }, ["a", "c"], ["b"], now, 100);
+    expect(eight.failing, "8 days deferred and refused again: failing").toEqual(["a"]);
+    expect(eight.deferredAt, "b read, so it leaves; a keeps its first time").toEqual({ a: now - 8 * day, c: now - 2 * day });
+    const idle = foldDeferrals({ a: now - 8 * day }, [], [], now, 100);
+    expect(idle.failing, "not refused this slice: not judged this slice").toEqual([]);
+  });
+
+  it("the fold feeds the failure streak and is stored with it", () => {
+    expect(CODE).toMatch(/const deferral = foldDeferrals\(bfV\.deferredAt, sliceReads\.rateLimited, okKeys, Date\.now\(\), DORMANT_CAP\);/);
+    expect(CODE).toMatch(/\.map\(boardKeyOf\), \.\.\.deferral\.failing\]\)\];/);
+    expect(CODE).toMatch(/dbStreaks: sliceDbStreaks, deferredAt: deferral\.deferredAt,/);
+    expect(CODE).toMatch(/rateLimited: sliceReads\.rateLimited\.slice\(0, 50\),/);
   });
 });

@@ -262,10 +262,10 @@ describe("(c) the job's threshold is the watchdog's; its 'continued' rule and th
     expect(await posts(db, command, []), "no pulse at all").toBe(0);
   });
 
-  it("does not apply the watchdog's 'continued' rule: a chain that died between hops is kicked where the watchdog reads it alive", async () => {
+  it("does not apply the watchdog's 'continued' rule: a chain that died between hops is kicked, and since HB-1 the watchdog reads a stamp that old as dead too", async () => {
     const { db, command } = await applied();
     const rows: Row[] = [...pulses(400), ["chain_kick", { outcome: "continued", fromHop: 16 }, 399]];
-    expect(watchdog(rows, SLICE_LOCK_MS, { outcome: "continued", ago: 399 }).decision).toBe("chain_alive");
+    expect(watchdog(rows, SLICE_LOCK_MS, { outcome: "continued", ago: 399 }).decision).toBe("rekick");
     expect(await posts(db, command, rows)).toBe(1);
   });
 });

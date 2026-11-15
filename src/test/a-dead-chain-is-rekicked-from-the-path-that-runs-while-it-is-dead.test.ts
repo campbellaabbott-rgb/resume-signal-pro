@@ -64,12 +64,13 @@ const base = (over: Partial<RekickInput> = {}): RekickInput => ({
 const OUTCOMES = ["kicked", "declined", "http_error", "threw", "paused", null, undefined, 42];
 
 describe("decideRekick — the never-fires, as behaviour", () => {
-  it("NEVER fires on a 'continued' stamp nothing has superseded, however old the pulse", () => {
-    for (const ageMs of [0, LOCK, 10 * 60_000, 60 * 60_000, 24 * 3_600_000, 30 * 86_400_000]) {
+  it("a 'continued' stamp nothing has superseded proves the chain alive while the stamp is inside the threshold", () => {
+    const threshold = 2 * 28_876 + LOCK;
+    for (const stampAge of [0, LOCK, threshold]) {
       // The stamp is newer than every pulse: the last hop returned to a live parent and nothing started since.
-      const all = iso(ageMs);
-      const v = decideRekick(base({ workAt: all, sliceAt: all, traceAt: all, progressAt: all, chainOutcome: "continued", chainAt: iso(Math.max(0, ageMs - 1_000)) }));
-      expect(v.decision, `age ${ageMs}`).toBe("chain_alive");
+      const all = iso(stampAge + 1_000);
+      const v = decideRekick(base({ workAt: all, sliceAt: all, traceAt: all, progressAt: all, chainOutcome: "continued", chainAt: iso(stampAge) }));
+      expect(v.decision, `stamp age ${stampAge}`).toBe("chain_alive");
       expect(v.stampSuperseded).toBe(false);
     }
     // 'continued' beats every other input while unsuperseded: no EMA, no watchdog stamp, a garbage EMA.
@@ -94,7 +95,7 @@ describe("decideRekick — the never-fires, as behaviour", () => {
     expect(dead.decision).toBe("rekick");
     expect(dead.stampSuperseded).toBe(true);
     // Supersession is strictly "a pulse AFTER the stamp": the same instant is not after.
-    const same = iso(threshold + 1);
+    const same = iso(threshold);
     expect(decideRekick(base({ chainOutcome: "continued", chainAt: same, workAt: same, sliceAt: same, traceAt: same, progressAt: same })).decision).toBe("chain_alive");
   });
 
@@ -184,8 +185,48 @@ describe("decideRekick — the never-fires, as behaviour", () => {
   });
 });
 
+describe("HB-1: a 'continued' stamp older than the threshold proves nothing", () => {
+  const threshold = 2 * 28_876 + LOCK;
+  it("a stamp a second after the last pulse, now a threshold and a millisecond old, is a dead chain: rekick, not chain_alive", () => {
+    const pulse = iso(threshold + 1 + 1_000);
+    const v = decideRekick(base({ workAt: pulse, sliceAt: pulse, traceAt: pulse, progressAt: pulse, chainOutcome: "continued", chainAt: iso(threshold + 1) }));
+    expect(v.stampSuperseded).toBe(false);
+    expect(v.decision).toBe("rekick");
+    for (const ageMs of [10 * 60_000, 60 * 60_000, 24 * 3_600_000, 30 * 86_400_000]) {
+      const old = iso(ageMs + 1_000);
+      expect(decideRekick(base({ workAt: old, sliceAt: old, traceAt: old, progressAt: old, chainOutcome: "continued", chainAt: iso(ageMs) })).decision, `stamp ${ageMs} ms old`).toBe("rekick");
+    }
+  });
+  it("its own throttle still holds: a watchdog stamp inside the lock answers throttled", () => {
+    const pulse = iso(threshold + 2_000);
+    expect(decideRekick(base({ workAt: pulse, sliceAt: pulse, traceAt: pulse, progressAt: pulse, chainOutcome: "continued", chainAt: iso(threshold + 1), watchdogAt: iso(LOCK - 1) })).decision).toBe("throttled");
+  });
+});
+
+describe("UPK-3: the hop label moves only with a slice that was admitted", () => {
+  const RF = IDX.slice(IDX.indexOf("async function runRefresh("), IDX.indexOf("\n}\n", IDX.indexOf("async function runRefresh(")));
+  it("runRefresh labels the hop after the pause check and the slice lock, so a refused kick leaves the running hop's label alone", () => {
+    const sets = [...RF.matchAll(/currentHop = chainHop;/g)].map((m) => m.index!);
+    expect(sets, "one assignment").toHaveLength(1);
+    expect(sets[0]).toBeGreaterThan(RF.indexOf("await admitSlice("));
+    expect(sets[0]).toBeGreaterThan(RF.indexOf("isIngestPaused("));
+    const refused = RF.indexOf('return { ok: true, detail: "skipped — a slice was admitted moments ago" };');
+    expect(refused).toBeGreaterThan(-1);
+    expect(sets[0]).toBeGreaterThan(refused);
+  });
+  it("the watchdog's hop-0 stamp is written only past every skip: no verdict, read-only, in-hop and paused all return first", () => {
+    const FN = IDX.slice(IDX.indexOf("async function maybeRekickDeadChain("), IDX.indexOf("\n}\n", IDX.indexOf("async function maybeRekickDeadChain(")));
+    const stamp = FN.indexOf("hop: 0");
+    expect(stamp).toBeGreaterThan(-1);
+    for (const skip of ['if (verdict.decision !== "rekick") return report;', "if (opts.readOnly) return report;", 'return { ...report, decision: "in_hop" };', 'if (await isIngestPaused(client)) return { ...report, decision: "paused" };']) {
+      expect(FN.indexOf(skip), skip).toBeGreaterThan(-1);
+      expect(FN.indexOf(skip), skip).toBeLessThan(stamp);
+    }
+  });
+});
+
 describe("the wiring in index.ts", () => {
-  const FN = IDX.slice(IDX.indexOf("async function maybeRekickDeadChain("), IDX.indexOf("const BOARD_UPKEEP_KEY"));
+  const FN = IDX.slice(IDX.indexOf("async function maybeRekickDeadChain("), IDX.indexOf("\n}\n", IDX.indexOf("async function maybeRekickDeadChain(")));
 
   it("exists, reads its FIVE rows in one query, and hands every pulse, the stamp time and SLICE_LOCK_MS to the decision", () => {
     expect(FN.length).toBeGreaterThan(500);
