@@ -19,8 +19,9 @@
 import fs from "node:fs";
 import { LABEL_NAMED_VENDORS, agencyScreenText, censusNameReason } from "./census-names.mjs";
 import {
-  CWD_SOURCES, OVERLAP_HOLD_SHARE, boardKey, collisionIdentity, inWindowOf, keySet, nameIndex,
-  nameKey as nameKeyOf, overlapShare, readCarrierRows, readCatalogue, readServedCounts, sizeVerdict,
+  CWD_SOURCES, MIN_IN_WINDOW, OVERLAP_HOLD_SHARE, boardKey, collisionIdentity, inWindowOf, keySet, nameIndex,
+  nameKey as nameKeyOf, overlapShare, readCarrierRows, readCatalogue, readServedCounts, runGeneratedChecks,
+  sizeVerdict, windowGate,
 } from "./catalogue-reader.mjs";
 
 const args = process.argv.slice(2);
@@ -255,6 +256,7 @@ async function overlapWithCarriers(b, carrierBoards) {
 }
 const collisionHeld = [];
 const srHeld = [];
+let undatedPassed = 0;
 
 const keep = {};
 const dropped = { blockedName: 0, blockedToken: 0, dupe: 0, nameCollision: 0 };
@@ -290,6 +292,13 @@ for (const vendor of VENDORS) {
       dropped.headingOnlyName = (dropped.headingOnlyName ?? 0) + 1; continue;
     }
     if (seen.has(tokenKey) || existingTokens.has(tokenKey)) { dropped.dupe++; continue; }
+    // AT LEAST 3 POSTINGS DATED WITHIN 30 DAYS (2026-11-08). A posting count
+    // says a board exists; the in-window count says it is hiring now, by the
+    // date field ingest itself reads. A vendor that states no date is judged
+    // by its count and tallied apart, so the share judged blind is visible.
+    const gate = windowGate(b);
+    if (!gate.pass) { dropped[gate.dated ? "underThreeInWindow" : "underThreePostings"] = (dropped[gate.dated ? "underThreeInWindow" : "underThreePostings"] ?? 0) + 1; continue; }
+    if (!gate.dated) undatedPassed++;
     // COLLISION, BUT NOT ALL COLLISIONS ARE EQUAL.
     //
     // The guard exists so one employer does not appear twice. That is right for
@@ -364,6 +373,7 @@ if (collisionHeld.length) {
   console.log(`Held for review, name collisions (D6): ${collisionHeld.length}`);
   for (const h of collisionHeld) console.log(`  ${h}`);
 }
+console.log(`Window gate: >=${MIN_IN_WINDOW} postings dated within 30 days; ${undatedPassed} kept boards state no date and were judged by posting count`);
 if (srHeld.length) console.log(`Held, smartrecruiters (OD2, SR_MERGE_HELD ${SR_MERGE_HELD}): ${srHeld.length} not merged: ${srHeld.slice(0, 10).join("; ")}${srHeld.length > 10 ? " ..." : ""}`);
 console.log(`Mill-screen worklist (>=100 postings): ${millWorklist.length} boards`);
 fs.writeFileSync("round3-mill-worklist.json", JSON.stringify(millWorklist, null, 1));
@@ -416,3 +426,8 @@ const banner = `  // ── Census round 3 + Rippling (merged ${new Date().toISO
 const next = src.slice(0, marker) + banner + lines.join("\n") + "\n" + src.slice(marker);
 fs.writeFileSync(SOURCES, next);
 console.log(`\nAPPLIED: ${lines.length} boards appended to sources.ts (${taggedAgencies} carry the agency disclosure flag)`);
+// The generated modules that read the catalogue must be regenerated in the
+// same commit as the merge, or the board ships a collision table and a
+// multi-site list that describe the catalogue before it.
+const checks = runGeneratedChecks(SOURCES);
+if (checks.stale.length) { console.error(`STALE after the merge: ${checks.stale.join(", ")}. Regenerate before committing.`); process.exit(1); }

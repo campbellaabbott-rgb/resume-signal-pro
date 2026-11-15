@@ -96,9 +96,14 @@ if (MODE === "enumerate") {
     const body = curlGet(`https://${tenant}.${dc}.myworkdayjobs.com/wday/cxs/${tenant}/${site}/jobs`, "POST", JSON.stringify({ limit: 20, offset: 0, searchText: "", appliedFacets: {} }));
     if (body) {
       try {
-        const items = JSON.parse(body).jobPostings ?? [];
+        const parsed = JSON.parse(body);
+        const items = parsed.jobPostings ?? [];
+        // fresh is a page estimate (20 newest rows, a floor); the size is the
+        // response's total. Gate: at least 3 fresh, as census-workday does.
         const fresh = items.filter((j) => { const s = String(j.postedOn ?? "").toLowerCase(); if (/30\+\s*days/.test(s)) return false; const m = s.match(/posted\s+(\d+)\s+days?\s+ago/); return !(m && Number(m[1]) > 30); });
-        if (items.length >= 3) verified.push({ token: tok, name: prettify(tenant), count: items.length, fresh: fresh.length });
+        const total = Number(parsed.total);
+        const count = Number.isFinite(total) && total >= items.length ? total : items.length;
+        if (fresh.length >= 3) verified.push({ token: tok, name: prettify(tenant), count, inWindow30: fresh.length, dateBasis: "postedOn, first page only", fresh: fresh.length });
       } catch { /* not json */ }
     }
     if (++n % 100 === 0) { console.log(`  ${n}/${queue.length}, ${verified.length} verified`); fs.writeFileSync(OUT, JSON.stringify({ workday: verified.sort((a, b) => b.count - a.count) }, null, 1)); }

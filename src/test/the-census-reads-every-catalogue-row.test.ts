@@ -273,3 +273,110 @@ describe("OD2: no new SmartRecruiters board is read or merged", () => {
     }
   });
 });
+
+// ── the merge gates (2026-11-08) ────────────────────────────────────────────
+
+/** One script run in a scratch checkout holding `catalogue`; returns its log and the catalogue it left. */
+function scratchRun(script: string, catalogue: string, input: unknown, args: string[] = [], files: Record<string, unknown> = {}) {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), "census-gate-")));
+  try {
+    mkdirSync(join(dir, "supabase/functions/job-board"), { recursive: true });
+    writeFileSync(join(dir, "supabase/functions/job-board/sources.ts"), catalogue);
+    writeFileSync(join(dir, "in.json"), JSON.stringify(input));
+    for (const [name, body] of Object.entries(files)) writeFileSync(join(dir, name), JSON.stringify(body));
+    const r = spawnSync(process.execPath, [resolve(ROOT, "scripts", script), "in.json", ...args], {
+      cwd: dir, encoding: "utf8", env: { ...process.env, VITE_SUPABASE_URL: "", VITE_SUPABASE_PUBLISHABLE_KEY: "" },
+    });
+    return { status: r.status, log: r.stdout + r.stderr, after: readFileSync(join(dir, "supabase/functions/job-board/sources.ts"), "utf8"), dir };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+describe("a board merges only with at least 3 postings dated within 30 days", () => {
+  it("merge-all judges a dated hit by its in-window count and an undated one by its count, tallied apart", () => {
+    const r = scratchRun("merge-all.mjs", SCRATCH_CATALOGUE, {
+      lever: [
+        { token: "stalecorp", name: "Stale Corp", count: 50, inWindow30: 2, dateBasis: "createdAt" },
+        { token: "livecorp", name: "Live Corp", count: 50, inWindow30: 3, dateBasis: "createdAt" },
+      ],
+      bamboohr: [
+        { token: "quietco", name: "Quiet Co", count: 5, inWindow30: null, dateBasis: "none" },
+        { token: "tinyco", name: "Tiny Co", count: 2, inWindow30: null, dateBasis: "none" },
+      ],
+    }, ["--apply"]);
+    expect(r.status, r.log).toBe(0);
+    expect(r.log).toMatch(/"underThreeInWindow":1/);
+    expect(r.log).toMatch(/"underThreePostings":1/);
+    expect(r.log).toContain("1 kept boards state no date and were judged by posting count");
+    expect(r.after).toContain('token: "livecorp"');
+    expect(r.after).toContain('token: "quietco"');
+    expect(r.after).not.toContain("stalecorp");
+    expect(r.after).not.toContain("tinyco");
+  });
+
+  it("census-workday and its cluster twin read the size from the response's total and gate on fresh postings", () => {
+    for (const f of ["census-workday.mjs", "census-workday-cluster.mjs"]) {
+      const code = strip(readFileSync(resolve(ROOT, "scripts", f), "utf8"));
+      expect(code, f).toMatch(/const total = Number\((body|parsed)\.total\);/);
+      expect(code, f).toMatch(/if \(fresh\.length >= (MIN_POSTINGS|3)\) verified\.push\(\{ token: tok, name: prettify\(tenant\), count, inWindow30: fresh\.length, dateBasis: "postedOn, first page only"/);
+      expect(code, f).not.toMatch(/items\.length >= (MIN_POSTINGS|3)\) verified\.push/);
+    }
+  });
+});
+
+describe("merge-oracle admits a new site of a carried tenant only when it lists requisitions the carried site does not", () => {
+  const ORACLE = [
+    "export const JOB_SOURCES = [",
+    '  { name: "Acme Group", source: "oracle", token: "abcd~us2~CX_1" },',
+    "];",
+    "",
+  ].join("\n");
+
+  it("drops a mirror, holds an unread list, and passes a site with its own requisitions to the collision rule", () => {
+    const r = scratchRun("merge-oracle.mjs", ORACLE, { resolved: [
+      { name: "Acme Outlet", token: "abcd~us2~CX_2", count: 40 },
+      { name: "Acme Pro", token: "abcd~us2~CX_3", count: 40 },
+      { name: "Acme Labs", token: "abcd~us2~CX_4", count: 40 },
+    ] }, ["--req-ids", "ids.json", "--cap", "0"], { "ids.json": { "abcd~us2~CX_1": [1, 2, 3], "abcd~us2~CX_2": [1, 2], "abcd~us2~CX_3": [1, 9] } });
+    expect(r.status, r.log).toBe(0);
+    expect(r.log).toContain("dropped subSiteMirror: 1 — Acme Outlet (abcd~us2~CX_2): all 2 of its requisitions are listed by abcd~us2~CX_1");
+    expect(r.log).toContain("held for review subSiteHeld: 1 — Acme Labs (abcd~us2~CX_4): its requisition ids could not be read in full");
+    expect(r.log).toContain("sub-site: Acme Pro (abcd~us2~CX_3): 1 of its 2 requisitions are not listed by abcd~us2~CX_1");
+  });
+
+  it("dedupes the vendor-qualified token, and every Oracle host waits 1.1 s between requests", () => {
+    const code = strip(readFileSync(resolve(ROOT, "scripts/merge-oracle.mjs"), "utf8"));
+    expect(code).toMatch(/existingTokens\.has\(boardKey\("oracle", b\.token\)\)/);
+    expect(code).toMatch(/\(lastRequestAt\.get\(host\) \?\? 0\) \+ 1100 - Date\.now\(\)/);
+  });
+});
+
+describe("both --apply paths run the generated-module checks", () => {
+  const reader = pathToFileURL(READER).href;
+  const run = (code: string) => spawnSync(process.execPath, ["--input-type=module", "-e", code], { cwd: tmpdir(), encoding: "utf8", timeout: ROUTE_BUDGET_MS - 5_000 });
+
+  it("on this checkout's catalogue, both modules are checked", () => {
+    const r = run(`const { REPO_SOURCES, runGeneratedChecks } = await import(${JSON.stringify(reader)}); const x = runGeneratedChecks(REPO_SOURCES); console.log(JSON.stringify(x));`);
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain("src/lib/board-collisions.ts matches the catalogue");
+    expect(r.stdout).toContain("src/lib/company/workday-multi-site-tenants.ts matches the catalogue");
+    expect(r.stdout).toContain('{"ran":true,"stale":[]}');
+  }, ROUTE_BUDGET_MS);
+
+  it("a stale module is named with the command that regenerates it", () => {
+    const r = run(`const { REPO_SOURCES, runGeneratedChecks } = await import(${JSON.stringify(reader)}); const exec = () => { const e = new Error("exit 1"); e.stdout = "stale: 2 rows differ"; throw e; }; console.log(JSON.stringify(runGeneratedChecks(REPO_SOURCES, { exec })));`);
+    expect(r.stdout).toContain("scripts/board-collisions.ts --check FAILED: stale: 2 rows differ");
+    expect(r.stdout).toContain("regenerate: npx tsx scripts/workday-multi-site-tenants.ts");
+    expect(r.stdout).toContain('"stale":["scripts/board-collisions.ts","scripts/workday-multi-site-tenants.ts"]');
+  });
+
+  it("a scratch catalogue says the checks were skipped, and both merges call them after writing", () => {
+    const r = scratchRun("merge-all.mjs", SCRATCH_CATALOGUE, { lever: [{ token: "livecorp", name: "Live Corp", count: 9 }] }, ["--apply"]);
+    expect(r.log).toMatch(/generated-module checks skipped: .* is not this checkout's catalogue/);
+    for (const f of ["merge-all.mjs", "merge-oracle.mjs"]) {
+      const code = strip(readFileSync(resolve(ROOT, "scripts", f), "utf8"));
+      expect(code, f).toMatch(/writeFileSync\(SOURCES, [\s\S]*?const checks = runGeneratedChecks\(SOURCES\);\nif \(checks\.stale\.length\) \{[^\n]*process\.exit\(1\); \}/);
+    }
+  });
+});

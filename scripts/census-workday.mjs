@@ -116,13 +116,19 @@ await Promise.all(Array.from({ length: 10 }, async () => {
         const body = await res.json();
         const items = Array.isArray(body.jobPostings) ? body.jobPostings : [];
         // Count fresh (≤30d) postings by the relative age, matching ingest.
+        // It is a PAGE ESTIMATE: 20 rows of the newest postings, so a floor.
         const fresh = items.filter((j) => {
           const s = String(j.postedOn ?? "").toLowerCase();
           if (/30\+\s*days/.test(s)) return false;
           const m = s.match(/posted\s+(\d+)\s+days?\s+ago/);
           return !(m && Number(m[1]) > 30);
         });
-        if (items.length >= MIN_POSTINGS) verified.push({ token: tok, name: prettify(tenant), count: items.length, fresh: fresh.length });
+        // The board's size is the response's total, never the page length
+        // (every board read as at most 20). It merges only with at least 3
+        // fresh postings: merge-all's window gate, applied where it is read.
+        const total = Number(body.total);
+        const count = Number.isFinite(total) && total >= items.length ? total : items.length;
+        if (fresh.length >= MIN_POSTINGS) verified.push({ token: tok, name: prettify(tenant), count, inWindow30: fresh.length, dateBasis: "postedOn, first page only", fresh: fresh.length });
       }
     } catch { /* dead tenant — skip */ }
     done++;

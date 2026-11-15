@@ -19,6 +19,15 @@
 //     its count at least twice what the carriers serve, every carrier's count
 //     printed, an unread count held, an overlap above 30% held. Oracle buys
 //     no reach (its adapter never reaches a submit), so size is its one way in;
+//   * A NEW SITE OF A CARRIED TENANT IS A SUB-SITE, and it merges only when
+//     its requisition ids are not a subset of the carried sites' ids. Ingest
+//     stores each requisition once, under the best-ranked site, so a mirror
+//     site costs a fetch every lap and adds no row. An id list that cannot be
+//     read in full holds the site (--req-ids <token-to-ids.json> answers the
+//     read from a file);
+//   * the window gate merge-all applies: at least 3 postings dated within 30
+//     days where the input states a date basis, else the posting count;
+//   * every request to one Oracle host waits 1.1 s after the last;
 //   * TRANCHE CAP: --cap <postings> (default 85,000) fills by descending
 //     posting count. The corpus governor stands at 750k with the board at
 //     ~695k — merging all 142k resolved postings would run the governor into
@@ -31,12 +40,14 @@
 //
 // Usage: node scripts/merge-oracle.mjs <oracle-names.json> [--cap 85000] [--apply]
 //          [--carrier-counts <token-to-served.json>] [--carrier-postings <rows.json>]
+//          [--req-ids <token-to-ids.json>]
 import { readFileSync, writeFileSync } from "node:fs";
 import { oracleHost as hostOf } from "./oracle-host.mjs";
 import { censusNameReason } from "./census-names.mjs";
 import {
-  CWD_SOURCES, OVERLAP_HOLD_SHARE, boardKey, collisionIdentity, inWindowOf, keySet, nameIndex,
-  nameKey, overlapShare, readCarrierRows, readCatalogue, readServedCounts, sizeVerdict,
+  CWD_SOURCES, MIN_IN_WINDOW, OVERLAP_HOLD_SHARE, boardKey, collisionIdentity, inWindowOf, keySet, nameIndex,
+  nameKey, overlapShare, readCarrierRows, readCatalogue, readServedCounts, runGeneratedChecks, sizeVerdict,
+  tenantSet, windowGate,
 } from "./catalogue-reader.mjs";
 
 const args = process.argv.slice(2);
@@ -44,7 +55,7 @@ const APPLY = args.includes("--apply");
 const flagValue = (f) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : undefined; };
 const capIdx = args.indexOf("--cap");
 const CAP = capIdx >= 0 ? Number(args[capIdx + 1]) : 85_000;
-const VALUE_FLAGS = new Set(["--cap", "--carrier-counts", "--carrier-postings"]);
+const VALUE_FLAGS = new Set(["--cap", "--carrier-counts", "--carrier-postings", "--req-ids"]);
 const NAMES_PATH = args.find((a, i) => a.endsWith(".json") && !VALUE_FLAGS.has(args[i - 1]));
 const SOURCES = CWD_SOURCES;
 
@@ -123,7 +134,12 @@ async function judgeCollision(b, name) {
   return { name, forSize: true };
 }
 
+const lastRequestAt = new Map();
 const jget = async (url) => {
+  const host = new URL(url).host;
+  const wait = (lastRequestAt.get(host) ?? 0) + 1100 - Date.now();
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  lastRequestAt.set(host, Date.now());
   const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" }, signal: AbortSignal.timeout(20_000) });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
@@ -158,6 +174,49 @@ async function millSample(token) {
   return { read, hits };
 }
 
+// ── sub-sites: a new site of a tenant we carry ──────────────────────────────
+const carriedTenants = tenantSet(catalogue);
+const tenantOf = (token) => token.toLowerCase().split("~").slice(0, 2).join("~");
+const reqIdsFile = flagValue("--req-ids");
+const reqIdsGiven = reqIdsFile ? new Map(Object.entries(readJson(reqIdsFile)).map(([t, ids]) => [t.toLowerCase(), ids])) : null;
+/** The most ids a live read pages through for one site before it calls the read incomplete. */
+const REQ_ID_READ_CAP = 5_000;
+/** Every requisition id one site lists, or null when the list cannot be read in full. */
+async function reqIdsOf(token) {
+  if (reqIdsGiven) { const ids = reqIdsGiven.get(token.toLowerCase()); return Array.isArray(ids) ? ids.map(String) : null; }
+  const [, , site] = token.split("~");
+  const ids = [];
+  try {
+    for (let offset = 0; offset < REQ_ID_READ_CAP; offset += 200) {
+      const finder = `findReqs;siteNumber=${site},limit=200,offset=${offset},sortBy=POSTING_DATES_DESC`;
+      const list = await jget(`https://${hostOf(token)}/hcmRestApi/resources/latest/recruitingCEJobRequisitions?onlyData=true&expand=requisitionList&finder=${encodeURIComponent(finder)}`);
+      const item = list.items?.[0] ?? {};
+      const page = item.requisitionList ?? [];
+      for (const r of page) if (r?.Id != null) ids.push(String(r.Id));
+      const total = Number(item.TotalJobsCount);
+      if (!page.length || (Number.isFinite(total) && ids.length >= total)) return ids;
+    }
+  } catch { return null; }
+  return null; // past the cap: not read in full
+}
+/** { admit, said } | { mirror } | { hold } for a site whose tenant is carried. */
+async function judgeSubSite(b) {
+  const tr = tenantOf(b.token);
+  const carriedSites = catalogue.filter((e) => e.source === "oracle" && tenantOf(e.token) === tr);
+  const mine = await reqIdsOf(b.token);
+  if (!mine) return { hold: "its requisition ids could not be read in full" };
+  const theirs = new Set();
+  for (const c of carriedSites) {
+    const ids = await reqIdsOf(c.token);
+    if (!ids) return { hold: `the carried site ${c.token}'s requisition ids could not be read in full` };
+    for (const id of ids) theirs.add(id);
+  }
+  const extra = mine.filter((id) => !theirs.has(id)).length;
+  const against = carriedSites.map((c) => c.token).join(", ");
+  if (extra === 0) return { mirror: `all ${mine.length} of its requisitions are listed by ${against}` };
+  return { admit: true, said: `${extra} of its ${mine.length} requisitions are not listed by ${against}` };
+}
+
 // REVIEWED, in the mill screen's own "printed for review" tradition: boards
 // whose text tripped "our client" but whose employer verifiably hires its own
 // staff. BNY is a custody bank describing client service; Startek is a BPO
@@ -168,7 +227,8 @@ const MILL_REVIEWED_CLEAR = new Set([
   "fa-evuf-saasfaprod1~ocs~CX_1", // Startek — BPO; hires its own agents
 ]);
 
-const dropped = { blockedName: [], labelName: [], blockedGov: [], blockedToken: [], dupe: [], nameCollision: [], collisionHeld: [], collisionAdmittedForSize: [], mill: [], millUnreadable: [] };
+const dropped = { blockedName: [], labelName: [], blockedGov: [], blockedToken: [], dupe: [], underThree: [], subSiteMirror: [], subSiteHeld: [], nameCollision: [], collisionHeld: [], collisionAdmittedForSize: [], mill: [], millUnreadable: [] };
+let undatedPassed = 0;
 const kept = [];
 let budget = CAP;
 for (const b of resolved) {
@@ -192,6 +252,15 @@ for (const b of resolved) {
   // Gov boards carry now (same charter change). DOMAIN_NAME stays: a bare
   // hostname is a naming failure, not an employer category.
   if (DOMAIN_NAME.test(name)) { dropped.blockedGov.push(`${name} (${b.token})`); continue; }
+  const gate = windowGate(b);
+  if (!gate.pass) { dropped.underThree.push(`${name} (${b.token})`); continue; }
+  if (!gate.dated) undatedPassed++;
+  if (carriedTenants.has(`oracle:${tenantOf(b.token)}`)) {
+    const sub = await judgeSubSite(b);
+    if (sub.hold) { dropped.subSiteHeld.push(`${name} (${b.token}): ${sub.hold}`); continue; }
+    if (sub.mirror) { dropped.subSiteMirror.push(`${name} (${b.token}): ${sub.mirror}`); continue; }
+    console.log(`sub-site: ${name} (${b.token}): ${sub.said}: admitted to the collision rule`);
+  }
   const collision = await judgeCollision(b, name);
   if (collision.hold) { dropped.collisionHeld.push(`${name} (${b.token}): ${collision.hold}`); continue; }
   if (collision.drop) { dropped.nameCollision.push(`${name} (${b.token}): ${collision.drop}`); continue; }
@@ -211,7 +280,10 @@ for (const b of resolved) {
 
 const postings = kept.reduce((n, b) => n + b.count, 0);
 console.log(`kept ${kept.length} boards / ${postings.toLocaleString()} postings (cap ${CAP.toLocaleString()}, budget left ${budget.toLocaleString()})`);
-for (const [k, v] of Object.entries(dropped)) if (v.length) console.log(`${k === "collisionAdmittedForSize" ? "admitted" : k === "collisionHeld" ? "held for review" : "dropped"} ${k}: ${v.length}${["mill", "blockedGov", "collisionHeld", "nameCollision", "collisionAdmittedForSize"].includes(k) ? " — " + v.slice(0, k === "collisionHeld" ? 50 : 6).join("; ") : ""}`);
+const listed = ["mill", "blockedGov", "collisionHeld", "nameCollision", "collisionAdmittedForSize", "subSiteMirror", "subSiteHeld"];
+const heldKinds = new Set(["collisionHeld", "subSiteHeld"]);
+for (const [k, v] of Object.entries(dropped)) if (v.length) console.log(`${k === "collisionAdmittedForSize" ? "admitted" : heldKinds.has(k) ? "held for review" : "dropped"} ${k}: ${v.length}${listed.includes(k) ? " — " + v.slice(0, heldKinds.has(k) ? 50 : 6).join("; ") : ""}`);
+console.log(`window gate: >=${MIN_IN_WINDOW} postings dated within 30 days; ${undatedPassed} kept boards state no date and were judged by posting count`);
 
 if (!APPLY) { console.log("\nDry run. Re-run with --apply to append to sources.ts."); process.exit(0); }
 
@@ -220,3 +292,5 @@ const entries = kept.map((b) => `  { name: ${JSON.stringify(b.name)}, source: "o
 const closeIdx = catalog.lastIndexOf("];");
 writeFileSync(SOURCES, catalog.slice(0, closeIdx) + banner + entries + "\n" + catalog.slice(closeIdx));
 console.log(`\nAPPLIED: ${kept.length} oracle boards appended to sources.ts — bump BUILD_VERSION in the same commit.`);
+const checks = runGeneratedChecks(SOURCES);
+if (checks.stale.length) { console.error(`STALE after the merge: ${checks.stale.join(", ")}. Regenerate before committing.`); process.exit(1); }

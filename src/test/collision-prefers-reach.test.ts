@@ -155,7 +155,7 @@ describe("D6: a shared name is not always a shared employer", () => {
   });
 
   it("does not hold a short real name: Visa, Thales and Amgen are judged by size", () => {
-    const r = runMerge("merge-all", { workday: [hit("visa~wd5~Jobs", "Visa", 1), hit("amgen~wd1~Careers", "Amgen", 1)] }, { counts: { visa: 30, amgen: 30 } });
+    const r = runMerge("merge-all", { workday: [hit("visa~wd5~Jobs", "Visa", 3), hit("amgen~wd1~Careers", "Amgen", 3)] }, { counts: { visa: 30, amgen: 30 } });
     expect(r.log).not.toMatch(/generic name/);
     expect(r.log).toMatch(/"nameCollision":2/);
   });

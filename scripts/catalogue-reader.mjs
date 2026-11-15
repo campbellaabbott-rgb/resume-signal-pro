@@ -28,6 +28,7 @@
  *
  *   node scripts/catalogue-reader.mjs [sources.ts] [--count]
  */
+import { execFileSync } from "node:child_process";
 import { readFileSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -276,6 +277,52 @@ export function sizeVerdict({ inWindow, carriers, served }) {
   const total = sizes.reduce((s, c) => s + c.served, 0);
   if (Number.isFinite(inWindow) && inWindow >= COLLISION_SIZE_FACTOR * total) return { admit: true, total, shown };
   return { drop: `in-window ${inWindow} < ${COLLISION_SIZE_FACTOR} x ${total} served`, total, shown };
+}
+
+// ── the merge gates every --apply path shares ───────────────────────────────
+
+/** A board merges only with at least this many postings dated within 30 days. */
+export const MIN_IN_WINDOW = 3;
+
+/**
+ * The window gate: { pass, dated }. A hit that states a date basis is judged
+ * by its in-window count (a first-page count is a floor, and a floor under 3
+ * fails: the safe side is not merging a board we could not show is current).
+ * A vendor that states no date (dateBasis "none") or an older hit without the
+ * fields falls back to its posting count, and the merge tallies those apart.
+ */
+export function windowGate(b) {
+  const dated = !!b?.dateBasis && b.dateBasis !== "none" && Number.isFinite(Number(b?.inWindow30)) && b.inWindow30 !== null;
+  const n = dated ? Number(b.inWindow30) : Number(b?.count);
+  return { pass: Number.isFinite(n) && n >= MIN_IN_WINDOW, dated };
+}
+
+/** The generated modules a catalogue change can make stale; each script's --check exits 1 when it is. */
+export const GENERATED_CHECKS = ["scripts/board-collisions.ts", "scripts/workday-multi-site-tenants.ts"];
+
+/**
+ * After an --apply wrote a catalogue: run both generated-module checks, when
+ * it is this checkout's catalogue (a scratch copy has no modules to check, and
+ * says so). Returns { ran, stale: [script] }; a stale module prints the
+ * command that regenerates it.
+ */
+export function runGeneratedChecks(written, { log = console.log, exec = execFileSync } = {}) {
+  const file = resolve(written);
+  if (file !== REPO_SOURCES) {
+    log(`generated-module checks skipped: ${file} is not this checkout's catalogue (${REPO_SOURCES})`);
+    return { ran: false, stale: [] };
+  }
+  const stale = [];
+  for (const script of GENERATED_CHECKS) {
+    try {
+      log(String(exec("npx", ["tsx", script, "--check"], { cwd: REPO_ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })).trim());
+    } catch (e) {
+      stale.push(script);
+      log(`${script} --check FAILED: ${String(e?.stdout || e?.stderr || e?.message || e).trim()}`);
+      log(`  regenerate: npx tsx ${script}   (then commit the module with the catalogue)`);
+    }
+  }
+  return { ran: true, stale };
 }
 
 // ── the repeated-title flag (review only) ───────────────────────────────────
