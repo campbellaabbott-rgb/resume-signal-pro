@@ -367,4 +367,289 @@ Certified Public Accountant (CPA), Illinois
   },
 };
 
-export const CV_SETS: Record<string, CvSet> = { nurse: NURSE, engineer: ENGINEER, accountant: ACCOUNTANT };
+// The sets below were written by a reviewer of the NB-1 fix, independently of
+// the three above, as a check on them (2026-11-15).
+
+export const SALESPERSON: CvSet = {
+  industry: "sales",
+  texts: {
+    en: `James Carter
+james.carter@example.com | +1 312 555 0187 | Chicago, IL
+Summary
+Account executive with six years of B2B software sales experience. Consistently exceeded quota and built a strong pipeline through outbound prospecting.
+Experience
+Senior Account Executive, Brightline Software, Chicago 2020 - Present
+- Closed $2.4M in new business in 2023, 135 percent of annual quota
+- Built a pipeline of 80 enterprise prospects through cold calling and LinkedIn outreach
+- Shortened the average sales cycle from 90 to 60 days by running discovery calls with buyers
+Account Executive, Northwind Systems, Chicago 2017 - 2020
+- Managed 45 mid-market accounts and grew renewal revenue by 22 percent
+- Ran 15 product demos per month and converted 30 percent to closed deals
+- Trained 6 new sales development representatives on negotiation and CRM hygiene
+Skills
+Salesforce, HubSpot, negotiation, account management, forecasting, outbound prospecting, contract negotiation, presentations
+Education
+Bachelor of Business Administration, University of Illinois Chicago, 2017
+`,
+    es: `Javier Martín
+javier.martin@example.com | +34 655 123 456 | Barcelona, España
+Resumen profesional
+Ejecutivo de cuentas con seis años de experiencia en ventas de software B2B. Superé la cuota de forma constante y construí una sólida cartera de clientes mediante prospección activa.
+Experiencia laboral
+Ejecutivo de cuentas sénior, Brightline Software, Barcelona 2020 - actualidad
+- Cerré 2,4 M€ en nuevo negocio en 2023, el 135 por ciento de la cuota anual
+- Creé una cartera de 80 clientes potenciales corporativos mediante llamadas en frío y LinkedIn
+- Reduje el ciclo de venta medio de 90 a 60 días con reuniones de descubrimiento con los compradores
+Ejecutivo de cuentas, Northwind Systems, Barcelona 2017 - 2020
+- Gestioné 45 cuentas del mercado medio y aumenté los ingresos por renovaciones un 22 por ciento
+- Realicé 15 demostraciones de producto al mes y convertí el 30 por ciento en ventas cerradas
+- Formé a 6 nuevos representantes de desarrollo de ventas en negociación y uso del CRM
+Habilidades
+Salesforce, HubSpot, negociación, gestión de cuentas, previsión de ventas, prospección, negociación de contratos, presentaciones
+Formación académica
+Grado en Administración y Dirección de Empresas, Universidad de Barcelona, 2017
+`,
+    de: `Jonas Weber
+jonas.weber@example.com | +49 160 9876543 | München
+Profil
+Account Executive mit sechs Jahren Erfahrung im B2B-Softwarevertrieb. Vertriebsziele regelmäßig übertroffen und eine starke Pipeline durch aktive Neukundenakquise aufgebaut.
+Berufserfahrung
+Senior Account Executive, Brightline Software, München 2020 - heute
+- 2,4 Mio. EUR Neugeschäft im Jahr 2023 abgeschlossen, 135 Prozent des Jahresziels
+- Pipeline von 80 Großkunden durch Kaltakquise und LinkedIn aufgebaut
+- Durchschnittlichen Verkaufszyklus durch Bedarfsanalysen mit Einkäufern von 90 auf 60 Tage verkürzt
+Account Executive, Northwind Systems, München 2017 - 2020
+- 45 Kunden im Mittelstand betreut und Umsatz aus Vertragsverlängerungen um 22 Prozent gesteigert
+- 15 Produktdemos pro Monat durchgeführt, davon 30 Prozent zum Abschluss gebracht
+- 6 neue Vertriebsmitarbeiter in Verhandlungsführung und CRM-Pflege eingearbeitet
+Kenntnisse
+Salesforce, HubSpot, Verhandlungsführung, Kundenbetreuung, Umsatzprognosen, Neukundenakquise, Vertragsverhandlungen, Präsentationen
+Ausbildung
+Bachelor Betriebswirtschaftslehre, Ludwig-Maximilians-Universität München, 2017
+`,
+    fr: `Julien Moreau
+julien.moreau@example.com | +33 6 12 34 56 78 | Lyon
+Profil
+Chargé d'affaires avec six ans d'expérience dans la vente de logiciels B2B. Objectifs commerciaux dépassés chaque année et portefeuille solide construit grâce à la prospection.
+Expérience professionnelle
+Chargé d'affaires senior, Brightline Software, Lyon 2020 - aujourd'hui
+- Signé 2,4 M€ de nouveau chiffre d'affaires en 2023, soit 135 pour cent de l'objectif annuel
+- Constitué un portefeuille de 80 grands comptes par prospection téléphonique et LinkedIn
+- Réduit le cycle de vente moyen de 90 à 60 jours grâce à des rendez-vous de découverte avec les acheteurs
+Chargé d'affaires, Northwind Systems, Lyon 2017 - 2020
+- Géré 45 comptes du mid-market et augmenté le chiffre d'affaires des renouvellements de 22 pour cent
+- Mené 15 démonstrations produit par mois avec un taux de conversion de 30 pour cent
+- Formé 6 nouveaux commerciaux à la négociation et à l'utilisation du CRM
+Compétences
+Salesforce, HubSpot, négociation, gestion de comptes, prévisions des ventes, prospection, négociation de contrats, présentations
+Formation
+Licence en gestion des entreprises, Université Lumière Lyon 2, 2017
+`,
+  },
+};
+
+export const TEACHER: CvSet = {
+  industry: "education",
+  texts: {
+    en: `Emily Brooks
+emily.brooks@example.com | +1 503 555 0110 | Portland, OR
+Summary
+Primary school teacher with nine years of classroom experience. Focused on differentiated instruction, literacy and assessment that helps every student make progress.
+Experience
+Grade 4 Teacher, Lincoln Elementary School, Portland 2018 - Present
+- Taught a class of 28 students and raised reading scores by 18 percent in two years
+- Designed weekly lesson plans aligned to state standards for math, reading and science
+- Mentored 3 student teachers and led the grade-level planning team
+Grade 2 Teacher, Riverside Elementary, Portland 2015 - 2018
+- Introduced small-group reading instruction that moved 70 percent of students to grade level
+- Met with 25 families each term to review progress and set learning goals
+- Ran an after-school science club for 40 children
+Skills
+Lesson planning, classroom management, differentiated instruction, literacy, assessment, Google Classroom, parent communication
+Education
+Master of Education, Portland State University, 2015
+Bachelor of Arts in English, University of Oregon, 2013
+`,
+    es: `Lucía Fernández
+lucia.fernandez@example.com | +34 699 876 543 | Sevilla, España
+Resumen profesional
+Maestra de educación primaria con nueve años de experiencia en el aula. Centrada en la atención a la diversidad, la lectoescritura y una evaluación que ayuda a cada alumno a progresar.
+Experiencia laboral
+Maestra de 4º curso, CEIP Lincoln, Sevilla 2018 - actualidad
+- Impartí clase a un grupo de 28 alumnos y mejoré los resultados de lectura un 18 por ciento en dos años
+- Diseñé la planificación semanal de clases según el currículo oficial de matemáticas, lengua y ciencias
+- Tutoricé a 3 docentes en prácticas y coordiné el equipo de ciclo
+Maestra de 2º curso, CEIP Riverside, Sevilla 2015 - 2018
+- Introduje la lectura en grupos reducidos y el 70 por ciento de los alumnos alcanzó el nivel del curso
+- Me reuní con 25 familias cada trimestre para revisar el progreso y fijar objetivos de aprendizaje
+- Dirigí un club de ciencias extraescolar para 40 niños
+Habilidades
+Planificación de clases, gestión del aula, atención a la diversidad, lectoescritura, evaluación, Google Classroom, comunicación con familias
+Formación académica
+Máster en Educación, Universidad de Sevilla, 2015
+Grado en Filología Inglesa, Universidad de Granada, 2013
+`,
+    de: `Laura Becker
+laura.becker@example.com | +49 171 2345678 | Hamburg
+Profil
+Grundschullehrerin mit neun Jahren Unterrichtserfahrung. Schwerpunkte sind Binnendifferenzierung, Lese- und Schreibförderung und eine Leistungsbeurteilung, die jedem Kind Fortschritte ermöglicht.
+Berufserfahrung
+Klassenlehrerin 4. Klasse, Lincoln-Grundschule, Hamburg 2018 - heute
+- Unterricht einer Klasse mit 28 Schülern, Leseleistungen in zwei Jahren um 18 Prozent verbessert
+- Wöchentliche Unterrichtsplanung nach dem Bildungsplan für Mathematik, Deutsch und Sachunterricht
+- 3 Referendare betreut und das Jahrgangsteam geleitet
+Klassenlehrerin 2. Klasse, Grundschule am Fluss, Hamburg 2015 - 2018
+- Leseförderung in Kleingruppen eingeführt, 70 Prozent der Kinder erreichten das Klassenziel
+- Jedes Halbjahr Gespräche mit 25 Familien zu Lernfortschritt und Lernzielen geführt
+- Naturwissenschafts-AG am Nachmittag für 40 Kinder geleitet
+Kenntnisse
+Unterrichtsplanung, Klassenführung, Binnendifferenzierung, Leseförderung, Leistungsbeurteilung, Google Classroom, Elternarbeit
+Ausbildung
+Master Lehramt Grundschule, Universität Hamburg, 2015
+Bachelor Anglistik, Universität Bremen, 2013
+`,
+    fr: `Camille Laurent
+camille.laurent@example.com | +33 6 98 76 54 32 | Nantes
+Profil
+Professeure des écoles avec neuf ans d'expérience en classe. Attachée à la pédagogie différenciée, à l'apprentissage de la lecture et à une évaluation qui aide chaque élève à progresser.
+Expérience professionnelle
+Professeure de CM1, École élémentaire Lincoln, Nantes 2018 - aujourd'hui
+- Enseigné à une classe de 28 élèves et amélioré les résultats en lecture de 18 pour cent en deux ans
+- Conçu des séquences hebdomadaires conformes aux programmes officiels en mathématiques, français et sciences
+- Accompagné 3 enseignants stagiaires et coordonné l'équipe de cycle
+Professeure de CE1, École Riverside, Nantes 2015 - 2018
+- Mis en place la lecture en petits groupes : 70 pour cent des élèves ont atteint le niveau attendu
+- Rencontré 25 familles chaque trimestre pour faire le point sur les progrès et fixer des objectifs
+- Animé un club de sciences périscolaire pour 40 enfants
+Compétences
+Préparation de séquences, gestion de classe, pédagogie différenciée, lecture, évaluation, Google Classroom, relations avec les familles
+Formation
+Master MEEF premier degré, Université de Nantes, 2015
+Licence d'anglais, Université de Rennes 2, 2013
+`,
+  },
+};
+
+/**
+ * A THIN CV: 50 words, no metric, none of the 27 retail terms in English. The
+ * unread keyword share is an assumption about a typical CV, so it credits a
+ * translation of this one with terms the English never names; the test pins
+ * by how much. Not in CV_SETS, which holds CVs of typical strength.
+ */
+export const CASHIER: CvSet = {
+  industry: "retail",
+  texts: {
+    en: `Sam Lee
+sam.lee@example.com | Denver, CO
+Experience
+Cashier, Corner Market, Denver 2023 - Present
+- Served people at the till and kept the shelves full
+- Helped with opening and closing the shop each day
+Education
+High school diploma, Denver East High School, 2023
+Skills
+Friendly, punctual, teamwork, cash handling
+`,
+    es: `Sergio León
+sergio.leon@example.com | Valencia, España
+Experiencia
+Cajero, Supermercado La Esquina, Valencia 2023 - actualidad
+- Atendí a las personas en caja y mantuve los estantes llenos
+- Ayudé con la apertura y el cierre de la tienda cada día
+Formación
+Bachillerato, IES Valencia, 2023
+Habilidades
+Amable, puntual, trabajo en equipo, manejo de caja
+`,
+    de: `Leon Wagner
+leon.wagner@example.com | Köln
+Berufserfahrung
+Kassierer, Markt an der Ecke, Köln 2023 - heute
+- Kunden an der Kasse bedient und die Regale aufgefüllt
+- Beim Öffnen und Schließen des Ladens jeden Tag geholfen
+Ausbildung
+Abitur, Gymnasium Köln-Ost, 2023
+Kenntnisse
+Freundlich, pünktlich, Teamarbeit, Umgang mit Bargeld und für den Kassenabschluss verantwortlich
+`,
+    fr: `Hugo Petit
+hugo.petit@example.com | Lille
+Expérience
+Caissier, Supérette du Coin, Lille 2023 - aujourd'hui
+- Accueil des clients en caisse et mise en rayon pour garder les étagères pleines
+- Aide à l'ouverture et à la fermeture du magasin chaque jour avec l'équipe
+Formation
+Baccalauréat, Lycée Faidherbe, Lille, 2023
+Compétences
+Aimable, ponctuel, travail en équipe, gestion de la caisse
+`,
+  },
+};
+
+export const CV_SETS: Record<string, CvSet> = { nurse: NURSE, engineer: ENGINEER, accountant: ACCOUNTANT, salesperson: SALESPERSON, teacher: TEACHER };
+
+/**
+ * ENGLISH CVS THE LANGUAGE DETECTOR CAN TAKE FOR ANOTHER LANGUAGE. The first
+ * three name US and Mexican places (Los Angeles, Las Vegas, Las Cruces,
+ * Ciudad Juárez), whose "los", "las" and "ciudad" are words on the detector's
+ * Spanish list: it names each of them Spanish at high confidence. The last has
+ * no English section word but "Diploma", "driving licence", "techniques" and
+ * "formation", which are section words in French, Italian and Dutch.
+ */
+export const ENGLISH_THAT_READS_AS_ANOTHER_LANGUAGE: Record<string, string> = {
+  "sales manager in Los Angeles and Ciudad de México": `Ana Torres
+Regional Sales Manager | Los Angeles, CA
+Account Manager, Grupo Bimbo, Ciudad de México 2018-2023
+Sales Rep, PepsiCo, Las Vegas 2014-2018
+Universidad de las Américas Puebla, B.A. Marketing
+Exceeded quota 4 years running; grew territory 35%
+`,
+  "nurse in Los Angeles, schooled in Ciudad Juárez": `Rosa Delgado, RN
+Los Angeles, CA | rosa.delgado@example.com
+Charge Nurse, Cedars-Sinai, Los Angeles 2018-2024
+- Led 12 nurses on a 24-bed med-surg unit; cut falls 30%
+Staff Nurse, University Medical Center, Las Vegas 2014-2018
+- Cared for 5 patients per shift; trained 10 new grads
+Nursing degree, Universidad Autónoma de Ciudad Juárez, 2013
+BLS, ACLS, PALS
+`,
+  "plant manager in El Paso and Ciudad Juárez": `Ricardo Alvarez
+Operations Manager | El Paso, TX | ricardo.alvarez@example.com
+Plant Manager, Foxconn, Ciudad Juárez 2019-2024
+- Ran 3 shifts, 450 operators, 98% on-time delivery
+Production Supervisor, Delphi, Ciudad Juárez 2015-2019
+- Cut scrap 22%, launched 4 lines
+Logistics Coordinator, Union Pacific, Los Angeles 2012-2015
+Warehouse Lead, Amazon, Las Cruces 2010-2012
+B.S. Industrial Engineering, New Mexico State University, Las Cruces
+Lean Six Sigma Green Belt, OSHA 30
+Bilingual: English / Spanish
+`,
+  "line cook in Las Vegas": `Luis Ortega
+Line Cook
+Las Vegas, NV | luis.ortega@example.com
+Bellagio, Las Vegas — Line Cook, 2020-2024
+Caesars Palace, Las Vegas — Prep Cook, 2018-2020
+Los Angeles Trade-Technical College — Culinary Arts, 2017
+In-N-Out, Los Angeles — Crew, 2015-2017
+Cuisine: grill, sauté, fry station, prep, plating
+Certs: ServSafe Food Handler; Las Vegas SNHD Food Handler Card
+Languages: English, Spanish
+Ciudad natal: Los Angeles
+`,
+  "care assistant with no English section word": `Tom Riley
+tom.riley@example.com | Manchester
+Profile
+Care assistant who supports older people at home with personal care, meals and medication prompts.
+Roles
+Care Assistant, HomeCare North, Manchester 2020 - 2024
+- Supported 9 clients a day with personal care and safe moving and handling techniques
+- Kept daily care notes and reported changes to the district nurse
+Care Assistant, Brookside Residential Home, Salford 2018 - 2020
+- Helped residents with meals, washing and dressing
+- Took part in the formation of a new dementia support group
+Qualifications
+Diploma in Health and Social Care, Level 3
+Full UK driving licence
+`,
+};

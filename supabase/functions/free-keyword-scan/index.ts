@@ -6,7 +6,7 @@ import { getOnetExpectation } from "./onet-expectations.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
 import { detectResumeLanguage, formatLanguageForPrompt, languageNoticeOf } from "./resume-language.ts";
-import { calculateRuleBasedAtsScore, ruleBasedAtsParts } from "./rule-score.ts";
+import { calculateRuleBasedAtsScore, readsResumeInOwnLanguage, ruleBasedAtsParts } from "./rule-score.ts";
 import { applyScoreProjection, buildScoreProjection, fixPlanOf } from './score-projection.ts';
 import { groundedIn, normalizeForGrounding } from "./grounding.ts";
 import { hasMetric } from "./bullet-metrics.ts";
@@ -564,15 +564,22 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // 2026-11-15.1 (hotfix NB-1, bug audit 2026-11-15): the rule-based score the
 // AI's reading is held to moved into rule-score.ts and reads a résumé in
 // Spanish, French, German, Portuguese, Dutch, Italian, Hindi or Tagalog in its
-// own language: its own section words count, and the keyword share the
-// English lists cannot read is what an English CV of the field typically
-// reaches, never less than what they do read. The same nurse's CV scored 62 in
-// English, 37 in Spanish and 33 in German, holding the Spanish and German
-// headlines about 25 points under the English one; it now scores 62, 62 and
-// 58. English, unidentified and unsupported languages score exactly as before,
-// and the clamp and the score band read the rule score as they did. Each scan
-// prints its rule score's parts (numbers only) so the unread share can be
-// checked against real English scans.
+// own language when the résumé carries that language's own section words in
+// two of its three sections: those words count, length is read in
+// English-sized words, and the keyword share the English lists cannot read is
+// what an English CV of its length typically reaches, never less than what
+// they do read. The same nurse's CV scored 62 in English, 37 in Spanish and 33
+// in German, holding the Spanish and German headlines about 25 points under
+// the English one; it now scores 62 in all three. English, unidentified and
+// unsupported languages, a supported language without its own section words
+// (an English CV naming Los Angeles and Ciudad Juárez is detected as Spanish),
+// and an unclassified ('general') field's keyword share score exactly as
+// before; the clamp and the score band read the rule score as they did. The
+// report cache keys a résumé read in its own language apart, so a report
+// cached before this build is not replayed to it; every other key stays as it
+// was, as its score does, so the engine version is not bumped and English
+// reports keep their week of cache. Each scan prints its rule score's parts
+// (numbers and codes only).
 const FN_BUILD = "free-keyword-scan.2026-11-15.1";
 
 const corsHeaders = {
@@ -1580,7 +1587,12 @@ serve(async (req) => {
       // country: with no confident location in the résumé, the request's IP
       // country decides the standards, so it is part of the key (S8-070).
       const keyCountry = effectiveCountryOf(validTargetCountry, detectCountryFromResume(resumeText), country || null);
-      const raw = `${resumeHash}|${jdPart}|${ctxPart}|${keyCountry}|${REPORT_ENGINE_VERSION}`;
+      // A résumé the rule score reads in its own language (register NB-1,
+      // 2026-11-15) gets a rule score at or above the one its cached report
+      // was held to, mostly far above it, so its key changes; no other
+      // résumé's score moved, and its key stays as it was.
+      const ownLanguageKey = readsResumeInOwnLanguage(resumeText, detectResumeLanguage(resumeText).language) ? '|nb1-own-language' : '';
+      const raw = `${resumeHash}|${jdPart}|${ctxPart}|${keyCountry}|${REPORT_ENGINE_VERSION}${ownLanguageKey}`;
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
       return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
     })();
@@ -3399,11 +3411,14 @@ ${resumeForPrompt}
 
     // Rule-based ATS score — clamp AI's number within ±12 of the server-computed value
     // to prevent flattering hallucinations or implausibly low scores. A résumé
-    // in a supported language other than English is read in its own language
-    // (rule-score.ts, register NB-1); the line below prints numbers only.
+    // in a supported language other than English, with that language's own
+    // section words, is read in its own language (rule-score.ts, register
+    // NB-1). The line below prints numbers and codes only: the detected
+    // language and the reading are separate, so only lines with language en
+    // describe English résumés.
     const ruleParts = ruleBasedAtsParts(resumeText, finalIndustry, seniorityDetection, resumeLanguage.language);
     const ruleBasedAts = ruleParts.score;
-    console.log(`[FREE-KEYWORD-SCAN] Rule score: ${ruleBasedAts} (read in ${ruleParts.readIn === 'own-language' ? ruleParts.language : 'en'}; keyword hits ${ruleParts.primaryHits}/${ruleParts.primaryTotal}, structure ${ruleParts.structureScore}, length ${ruleParts.lengthScore})`);
+    console.log(`[FREE-KEYWORD-SCAN] Rule score: ${ruleBasedAts} (language ${ruleParts.language}, read ${ruleParts.readIn}, own-language sections ${ruleParts.ownSections}/3; keyword hits ${ruleParts.primaryHits}/${ruleParts.primaryTotal}, structure ${ruleParts.structureScore}, length ${ruleParts.lengthScore} at ${Math.round(ruleParts.lengthWords)} words)`);
     const aiAts = typeof analysis.atsScoreEstimate === 'number' ? analysis.atsScoreEstimate : ruleBasedAts;
     analysis.atsScoreEstimate = Math.max(ruleBasedAts - 12, Math.min(ruleBasedAts + 12, aiAts));
 
