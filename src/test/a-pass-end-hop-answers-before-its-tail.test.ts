@@ -195,6 +195,7 @@ function world(opts: { aged?: number; now?: () => number } = {}) {
     maybeKickMaintenance: async () => { events.push("maintenance"); },
     recordSliceStats: async () => { events.push("slice-stats"); },
     pruneWholeBoard: async () => ({ logged: 0, complete: true }),
+    closeStatedClosed: async () => 0, // board .102 (XR-1); its own test runs it
     insertExits: async (_c: unknown, rows: unknown[]) => { events.push(`exits:${rows.length}`); return { error: null }; },
     heldOversize: () => false,
     tenureDays: () => ({ days: 70, basis: "posted_at" }),

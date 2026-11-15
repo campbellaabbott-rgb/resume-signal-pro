@@ -210,11 +210,11 @@ describe("20261025110000, written for .95, under .96 (the one deploy)", () => {
   });
 });
 
-describe("the name-sync lane at version 6 needs no version 5", () => {
+describe("the name-sync lane at version 7 needs no version 5 or 6", () => {
   const index = codeOf(readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8"));
 
-  it("version 6, and the lane runs whenever the stored version is any other", () => {
-    expect(index).toMatch(/const NAME_SYNC_VERSION = 6;/);
+  it("version 7, and the lane runs whenever the stored version is any other", () => {
+    expect(index).toMatch(/const NAME_SYNC_VERSION = 7;/);
     expect(index).toMatch(/\?\.version !== NAME_SYNC_VERSION\)/);
   });
 

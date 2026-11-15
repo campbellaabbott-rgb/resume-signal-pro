@@ -144,7 +144,8 @@ describe("a rename actually reaches stored rows", () => {
    *
    *  Mutation-tested: renaming a board and leaving the version at 2 must fail. */
   // 6 and 102 since trust round 3 (2026-09-09.96): 64 catalogue renames.
-  const PINNED = { nameSyncVersion: 6, tokenCount: 102 };
+  // 7 and 106 since board .102: creatoriq, harmattan-ai, deag and americaatwork.
+  const PINNED = { nameSyncVersion: 7, tokenCount: 106 };
 
   /** The lane's own block: from its version read to its last log line. It sat
    *  before the salary kick until S11-001 moved the kicks ahead of the slow

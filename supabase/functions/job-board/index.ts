@@ -147,7 +147,7 @@ const BUILD_VERSION = "2026-09-09.102"; // per-version deploy notes: docs/job-bo
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // Rationale: docs/job-board-index-notes.md#n483-const-name_sync_version
-const NAME_SYNC_VERSION = 6;
+const NAME_SYNC_VERSION = 7;
 // Rationale: docs/job-board-index-notes.md#n484-boards-whose-catalog-display-name-was
 
 // Rationale: docs/job-board-index-notes.md#n1135-const-renamed_tokens-readonly-string
@@ -258,6 +258,10 @@ const RENAMED_TOKENS: readonly string[] = [
   "ferric-recruiting",
   "meundies-recruiting",
   "lylaw-recruitment",
+  "creatoriq",
+  "harmattan-ai",
+  "deag-deutsche-entertainment-ag",
+  "americaatwork",
 ];
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
