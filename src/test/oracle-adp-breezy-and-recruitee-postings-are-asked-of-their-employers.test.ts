@@ -62,6 +62,7 @@ const ROWS = {
   dell: { id: "oracle:iawmqy~ocs~CX_1:299933", applyUrl: "https://iawmqy.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/299933" },
   inova: { id: "oracle:elar~us2~CX_14001:687069", applyUrl: "https://elar.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_14001/job/687069" },
   jpmc: { id: "oracle:jpmc~~CX_1001:210741860", applyUrl: "https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/job/210741860" },
+  suffolk: { id: "oracle:eoce~em3~CX_3001:25308", applyUrl: "https://eoce.fa.em3.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_3001/job/25308" },
   adpOpen: { id: "adp:07372372-77a5-45e9-8573-f67327c3c3ec:9207315772373_1", applyUrl: "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=07372372-77a5-45e9-8573-f67327c3c3ec&ccId=19000101_000001&lang=en_US&jobId=574113" },
   adpGone: { id: "adp:6f977557-f6eb-4f25-922c-96f9b3a3ee19:9201318551534_1", applyUrl: null },
   adpCareerCenter: { id: "adp:2d93ec5f-f224-4220-aca4-a8bc7295609e~2478480903_6918:9201873830880_5", applyUrl: null },
@@ -73,11 +74,17 @@ const ROWS = {
 };
 
 const oracleUrl = (host: string, key: string, site: string) => `https://${host}/${ORACLE_DETAILS}${encodeURIComponent(`ById;Id="${key}",siteNumber=${site}`)}`;
+/** The tenant's public list of one career site, searched for the requisition's id (the board's own list finder). */
+const oracleSiteUrl = (host: string, key: string, site: string) => `https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitions?onlyData=true&expand=requisitionList&finder=${encodeURIComponent(`findReqs;siteNumber=${site},keyword=${key},limit=25`)}`;
 const TABLE: Record<string, Answer> = {
   [oracleUrl("eluq.fa.us2.oraclecloud.com", "216822", "CX_1")]: { status: 200, body: rec("oracle-kroger-216822-empty.json") },
   [oracleUrl("edmn.fa.us2.oraclecloud.com", "91598", "CX_1")]: { status: 200, body: rec("oracle-caesars-91598-empty.json") },
   [oracleUrl("iawmqy.fa.ocs.oraclecloud.com", "299933", "CX_1")]: { status: 200, body: rec("oracle-dell-299933-200.json") },
+  [oracleSiteUrl("iawmqy.fa.ocs.oraclecloud.com", "299933", "CX_1")]: { status: 200, body: rec("oracle-dell-299933-site-CX_1.json") },
   [oracleUrl("elar.fa.us2.oraclecloud.com", "687069", "CX_14001")]: { status: 200, body: rec("oracle-inova-687069-200.json") },
+  [oracleSiteUrl("elar.fa.us2.oraclecloud.com", "687069", "CX_14001")]: { status: 200, body: rec("oracle-inova-687069-site-CX_14001.json") },
+  [oracleUrl("eoce.fa.em3.oraclecloud.com", "25308", "CX_3001")]: { status: 200, body: rec("oracle-eoce-25308-byid-CX_3001-internal-only.json") },
+  [oracleSiteUrl("eoce.fa.em3.oraclecloud.com", "25308", "CX_3001")]: { status: 200, body: rec("oracle-eoce-25308-site-CX_3001-empty.json") },
   [`${ADP_DETAIL}9207315772373_1?cid=07372372-77a5-45e9-8573-f67327c3c3ec&ccId=19000101_000001&lang=en_US&locale=en_US`]: { status: 200, body: rec("adp-07372372-9207315772373_1-200.json") },
   [`${ADP_DETAIL}9201318551534_1?cid=6f977557-f6eb-4f25-922c-96f9b3a3ee19&ccId=19000101_000001&lang=en_US&locale=en_US`]: { status: 200, body: rec("adp-6f977557-9201318551534_1-200-empty.json") },
   "https://almentor.breezy.hr/json": { status: 200, body: rec("breezy-almentor-list.json") },
@@ -169,6 +176,64 @@ describe("Oracle: the requisition is asked of the tenant's own recruiting API", 
   });
 });
 
+/**
+ * AN OPEN ORACLE ANSWER IS CONFIRMED ON THE ROW'S OWN SITE (review of
+ * 2026-11-15). The ById finder ignores its siteNumber, so it also answers for
+ * a requisition posted only on an internal site: Suffolk County Council's
+ * 25308 ("Intelligence Officer", RequisitionType "SCC Internal") comes back
+ * under the external site CX_3001, dated to run to 18 November, while
+ * CX_3001's own list does not hold it and the internal site CX_4001's does.
+ * Read as open, a requisition moved from the public site to an internal one
+ * would keep its job markup with no way for the public to apply. So an open
+ * answer is asked again of the row's own site's list (the finder the board
+ * reads, searched for the id), and needs the exact id there; listed nowhere
+ * on that site it is unknown, never closed, because a search index can lag
+ * a new posting. All 36 live Oracle pages read on 2026-11-15 were listed on
+ * their own site.
+ */
+describe("Oracle: an open requisition must be listed on the row's own site", () => {
+  it("plans the site's own list read beside the ById finder", () => {
+    expect((employerReadPlan(ROWS.kroger) as { siteUrl?: string }).siteUrl).toBe(
+      "https://eluq.fa.us2.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitions?onlyData=true&expand=requisitionList&finder=findReqs%3BsiteNumber%3DCX_1%2Ckeyword%3D216822%2Climit%3D25",
+    );
+  });
+
+  it("Suffolk 25308, found by ById under the external site but listed only on the internal one, is unknown, not open and not closed", async () => {
+    const { out, f } = await read([ROWS.suffolk]);
+    const r = out.get(ROWS.suffolk.id)!;
+    expect(r.state).toBe("unknown");
+    expect(r.why).toBe("not listed on this site");
+    // What the requisition states is still the employer's own word (its end,
+    // 23:30 UTC on the 18th, leaves the 17th as the last whole day).
+    expect(r.stated).toMatchObject({ employerValidThrough: "2026-11-17", employmentType: "Full time", country: "GB" });
+    expect(f.asked).toContain(oracleSiteUrl("eoce.fa.em3.oraclecloud.com", "25308", "CX_3001"));
+    expect(new Set(f.methods)).toEqual(new Set(["GET"]));
+    // The internal site's own list is where it is posted (the recorded answer).
+    const internal = JSON.parse(rec("oracle-eoce-25308-site-CX_4001.json"));
+    expect(internal.items[0].requisitionList.map((x: { Id: string }) => x.Id)).toEqual(["25308"]);
+  });
+
+  it("an answer for the requisition that was never checked on its site is not open", () => {
+    const v = employerVerdict(employerReadPlan(ROWS.suffolk), { status: 200, url: "", body: rec("oracle-eoce-25308-byid-CX_3001-internal-only.json") }, ROWS.suffolk);
+    expect(v.state).toBe("unknown");
+  });
+
+  it("a site list that cannot be read, or names other requisitions only, leaves the answer unknown", async () => {
+    const refused = { ...TABLE, [oracleSiteUrl("iawmqy.fa.ocs.oraclecloud.com", "299933", "CX_1")]: { status: 503, body: "" } };
+    expect((await read([ROWS.dell], refused)).out.get(ROWS.dell.id)!.state).toBe("unknown");
+    const other = JSON.parse(rec("oracle-dell-299933-site-CX_1.json"));
+    other.items[0].requisitionList[0].Id = "299934";
+    const elsewhere = { ...TABLE, [oracleSiteUrl("iawmqy.fa.ocs.oraclecloud.com", "299933", "CX_1")]: { status: 200, body: JSON.stringify(other) } };
+    expect((await read([ROWS.dell], elsewhere)).out.get(ROWS.dell.id)!.state).toBe("unknown");
+  });
+
+  it("a requisition the finder does not find is still closed, and its site is not asked", async () => {
+    const { out, f } = await read([ROWS.kroger]);
+    expect(out.get(ROWS.kroger.id)!.state).toBe("closed");
+    expect(f.asked.some((u) => u.includes("recruitingCEJobRequisitions?"))).toBe(false);
+  });
+});
+
 describe("ADP: the requisition is asked of Workforce Now's public career-center endpoint", () => {
   it("reads the board's own detail address, with the career center the token names or the default one", () => {
     expect(employerReadPlan(ROWS.adpOpen).url).toBe(`${ADP_DETAIL}9207315772373_1?cid=07372372-77a5-45e9-8573-f67327c3c3ec&ccId=19000101_000001&lang=en_US&locale=en_US`);
@@ -215,6 +280,52 @@ describe("Breezy and Recruitee: one read of the employer's whole list per board"
     expect((await read([ROWS.breezyGone], { "https://almentor.breezy.hr/json": { status: 403, body: "" } })).out.get(ROWS.breezyGone.id)!.state).toBe("unknown");
     // A board name that is not a bare subdomain is never asked.
     expect(employerReadPlan({ id: "breezy:evil.example/x:1", applyUrl: null }).url).toBeNull();
+  });
+});
+
+/**
+ * A RENAMED KEY FIELD IS NOT A CLOSURE (review of 2026-11-15). In a whole
+ * list, an id missing from a non-empty list reads closed, so if Breezy renamed
+ * id/friendly_id or Recruitee offers[].id, every posting would be "missing
+ * from the board". The implausibility guard needs eight definite answers per
+ * vendor, and live today Breezy has 7 and Recruitee 3, so the bake would have
+ * retired every page of that vendor while the employer still served them all.
+ * Likewise ADP's closed answer is read only from the fingerprint measured on
+ * the empty requisition (no itemID, no requisitionTitle, no postDate, no
+ * location), not from a missing itemID alone.
+ */
+describe("a list or a requisition whose key field was renamed says nothing about a posting", () => {
+  it("a Breezy list whose entries carry the id under another name: unknown, for the open and the gone alike", async () => {
+    const renamed = JSON.parse(rec("breezy-almentor-list.json")).map((x: Record<string, unknown>) => {
+      const { id, friendly_id: fid, ...rest } = x;
+      return { ...rest, _id: id, slug_id: fid };
+    });
+    const { out } = await read([ROWS.breezyOpen, ROWS.breezyGone], { "https://almentor.breezy.hr/json": { status: 200, body: JSON.stringify(renamed) } });
+    expect(out.get(ROWS.breezyOpen.id)).toMatchObject({ state: "unknown", why: "list entries carry no id" });
+    expect(out.get(ROWS.breezyGone.id)).toMatchObject({ state: "unknown", why: "list entries carry no id" });
+  });
+
+  it("a Recruitee list whose offers carry the id under another name: unknown", async () => {
+    const j = JSON.parse(rec("recruitee-rwg-offers.json"));
+    j.offers = j.offers.map((o: Record<string, unknown>) => {
+      const { id, ...rest } = o;
+      return { ...rest, offer_id: id };
+    });
+    const { out } = await read([ROWS.recruiteeOpen, ROWS.recruiteeGone], { "https://rwg.recruitee.com/api/offers/": { status: 200, body: JSON.stringify(j) } });
+    expect(out.get(ROWS.recruiteeOpen.id)!.state).toBe("unknown");
+    expect(out.get(ROWS.recruiteeGone.id)!.state).toBe("unknown");
+  });
+
+  it("an ADP answer with a title but no itemID and no location is unknown; the measured empty requisition is still closed", () => {
+    const plan = employerReadPlan(ROWS.adpOpen);
+    const j = JSON.parse(rec("adp-07372372-9207315772373_1-200.json"));
+    delete j.itemID;
+    j.requisitionLocations = [];
+    expect(employerVerdict(plan, { status: 200, url: "", body: JSON.stringify(j) }, ROWS.adpOpen).state).toBe("unknown");
+    const gone = employerReadPlan(ROWS.adpGone);
+    expect(employerVerdict(gone, { status: 200, url: "", body: rec("adp-6f977557-9201318551534_1-200-empty.json") }, ROWS.adpGone).state).toBe("closed");
+    const dated = { ...JSON.parse(rec("adp-6f977557-9201318551534_1-200-empty.json")), postDate: "2026-11-01T00:00:00Z" };
+    expect(employerVerdict(gone, { status: 200, url: "", body: JSON.stringify(dated) }, ROWS.adpGone).state).toBe("unknown");
   });
 });
 

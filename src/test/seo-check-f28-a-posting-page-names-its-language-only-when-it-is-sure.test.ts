@@ -24,7 +24,7 @@
  *
  * CORPUS FIRST: the reader is a heuristic that has failed a recheck before
  * (SEO-034 served every page lang="en"; then an all-Chinese page), so the fix
- * is judged on src/test/fixtures/posting-language-corpus-2026-11-15.json: 461
+ * is judged on src/test/fixtures/posting-language-corpus-2026-11-15.json: 463
  * real postings, labelled, in 21 languages (our own sitemap's posting pages,
  * and public SmartRecruiters postings for JYSK and BoschGroup in 17 countries),
  * with the old rule's answer on each. The fix may never be worse than the old
@@ -81,6 +81,27 @@ describe("a lead made of one or two shared words is no lead", () => {
     expect(wrongBefore.length).toBeGreaterThan(0);
     for (const c of wrongBefore) expect([null, "pl"], c.id).toContain(postingLanguage(c.text));
   });
+});
+
+/**
+ * A RUNNER-UP MADE OF ONE OR TWO WORDS DOES NOT BLOCK A LEAD EITHER (review of
+ * 2026-11-15). The five-word floor applied only to the leader, so a French
+ * posting whose Dutch count was two words French also writes ("en", 16 times
+ * in Groupe MIRADOR's "Analyste en planification financière") was refused for
+ * a lead under two to one, and fell back to the site's English: 25 French
+ * postings the old rule read as French answered null, several written in
+ * French alone. The leader is compared only with a runner-up that reaches the
+ * same floor.
+ */
+describe("a runner-up made of one or two shared words does not block a lead", () => {
+  it.each(["lever:gorh:733aee27-ff1c-4015-8ecc-cb740f2186c8", "lever:gorh:507f0229-bfaf-465c-b982-900f5c0d9850"])(
+    "Groupe MIRADOR's French posting %s is read as French",
+    (id) => {
+      const c = byId(id);
+      expect(c.truth).toBe("fr");
+      expect(postingLanguage(c.text)).toBe("fr");
+    },
+  );
 });
 
 describe("the labelled corpus", () => {

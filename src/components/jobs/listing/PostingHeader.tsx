@@ -8,12 +8,14 @@
  * numeric entities, then folds a doubled leading phrase), so a row that
  * reaches the pane without the board's normalizeRow still prints "R&D
  * Engineer – Batteries", never the escaped ampersand and dash it arrived with.
+ * On the posting page a title typed in capitals is printed in title case.
  */
 import type { MouseEvent } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { listingTitle } from "@/lib/listing/text";
+import { titleFromCapitals } from "@/lib/seo/display-case";
 import { useCompanyProfileLink } from "@/lib/seo/lander-manifest";
 import { countryToName, displayLocation } from "@/lib/listing/location";
 import { listingEmployer } from "@/lib/listing/employer";
@@ -35,7 +37,12 @@ export interface PostingHeaderProps {
 
 export function PostingHeader({ job, level = 2, sticky = true, hideEmployer, menu, onClose, back, onEmployerClick }: PostingHeaderProps) {
   const { t, i18n } = useTranslation();
-  const title = listingTitle(job.title) || t("jobPostingPage.genericHeading", "Job posting");
+  // On the posting page (level 1) a title its employer typed in capitals is
+  // printed in title case, as the page's <title> and its job markup print it
+  // (postingTitleText in posting-page.ts; SEO check 2026-11-15, F12): Google
+  // asks for no all caps, and for markup that says what the page shows.
+  const cleaned = listingTitle(job.title);
+  const title = (level === 1 ? titleFromCapitals(cleaned) : cleaned) || t("jobPostingPage.genericHeading", "Job posting");
   const employer = listingEmployer(job);
   const loc = displayLocation(job.location);
   const country = countryToName(loc.text, job.country, i18n.language || "en");

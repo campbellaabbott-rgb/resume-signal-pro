@@ -59,13 +59,19 @@ export default function RoleKeywords() {
   // that defers to another (F06).
   const siblingRoles = siblingRolePages(role);
   // A short spelling of another role's title ("vet tech") prints that page's
-  // text word for word, so it names that page as canonical.
-  const canonicalPath = role.canonicalSlug ? `/roles/${role.canonicalSlug}` : undefined;
+  // text word for word (role.canonicalSlug names the full-name page), but this
+  // page still names ITSELF as canonical, as its baked file does. Google asks
+  // that script never set a canonical other than the one in the served HTML,
+  // and the bake's /roles pages (scripts/prerender-seo.mjs, owned by another
+  // stream) do not name the full-name page yet. The two change in one publish:
+  // src/test/a-short-role-name-was-a-second-page-of-the-same-text.test.tsx
+  // reads the bake's roles section and fails while this page and that file
+  // disagree.
   const relatedTitles = [...new Set(data.titles)].filter((t) => t.toLowerCase() !== role.title.toLowerCase()).slice(0, 10);
 
   return (
     <div className="min-h-screen bg-background">
-      <SEO title={head.title} description={head.description} path={`/roles/${role.slug}`} canonicalPath={canonicalPath} />
+      <SEO title={head.title} description={head.description} path={`/roles/${role.slug}`} />
       <PageJsonLd blocks={[structured]} />
       <Header />
       <main className="pt-20 pb-20">

@@ -41,20 +41,28 @@ const TRAILING_LABELS = [
 
 /**
  * The audience a career site is for, appended to its employer's name: "Inova
- * Military" is the site Inova (the same Oracle tenant's main site is "Inova")
- * runs for service members, and "Cummins Veterans" one of Cummins' sites (SEO
- * check 2026-11-15, F04). Taken off like the labels above, but only after a
- * name: a name that ends "for Veterans" or "of Veterans" is an organisation
- * named after the people it serves ("Clear Path For Veterans"), and keeps it.
+ * Military" is the site Inova runs for service members (SEO check 2026-11-15,
+ * F04). Taken off like the labels above, but ONLY ON A BOARD MEASURED TO CARRY
+ * IT AS A LABEL (review of 2026-11-15): taken off every name, it cut real
+ * names short ("Disabled American Veterans", "Paralyzed Veterans", "Texas
+ * Military"), and Google asks hiringOrganization for the company's name. A
+ * board is listed here only when its tenant's other board in the catalogue is
+ * named exactly what is left: Inova's elar~us2~CX_14001 beside elar~us2~CX_1,
+ * "Inova". The test that holds this list
+ * (src/test/a-logo-caption-a-careers-address-or-a-site-audience-never-names-an-employer.test.ts)
+ * reads the catalogue and fails when a board meets that rule and is missing,
+ * or is listed and does not. Cummins' veterans site is not on it: none of
+ * that tenant's sites is named "Cummins" alone.
  */
+export const AUDIENCE_LABEL_SITES = new Set(["elar~us2~CX_14001"]);
 const TRAILING_AUDIENCE = /^(.*\S)[\s\-–—|:(]+(?:military|veterans)\)?$/i;
-const ENDS_IN_A_JOINER = /(?:^|\s)(?:for|of|and|to|with|at|in|by|the|our|your|&|\+)$/i;
 
-function withoutAudience(name) {
+function withoutAudience(name, token) {
+  if (!AUDIENCE_LABEL_SITES.has(String(token ?? ""))) return name;
   const m = TRAILING_AUDIENCE.exec(name);
   if (!m) return name;
   const head = m[1].replace(/[\s,;:|–—-]+$/, "").trim();
-  return head && !ENDS_IN_A_JOINER.test(head) ? head : name;
+  return head || name;
 }
 
 /** Words that are nobody's name on their own: a board titled only this names no employer. */
@@ -190,11 +198,12 @@ function trailingColour(words) {
 }
 
 /**
- * The name with any trailing career-site label taken off. Never empties a
- * name: a name that is nothing but a label stays as it was (and the gate
- * below refuses it). Returns the name to print and whether it changed.
+ * The name with any trailing career-site label taken off, and on a board
+ * listed in AUDIENCE_LABEL_SITES (`token`) its audience label too. Never
+ * empties a name: a name that is nothing but a label stays as it was (and the
+ * gate below refuses it). Returns the name to print and whether it changed.
  */
-export function repairEmployerName(name) {
+export function repairEmployerName(name, { token = null } = {}) {
   const raw = String(name ?? "").replace(/\s+/g, " ").trim();
   let out = raw;
   for (let pass = 0; pass < 3; pass++) {
@@ -203,11 +212,25 @@ export function repairEmployerName(name) {
       const next = out.replace(re, "").replace(/[\s,;:|–—-]+$/, "").trim();
       if (next && next !== out) out = next;
     }
-    out = withoutAudience(out);
+    out = withoutAudience(out, token);
     if (out === before) break;
   }
   return { name: out || raw, repaired: !!out && out !== raw };
 }
+
+/**
+ * THE REFUSALS THAT JUDGE THE TEXT ITSELF: a logo or colour caption, a file
+ * name, a web, email or careers-site address. Such a text is no name on any
+ * surface, so the board prints no employer for it (src/lib/listing/employer.ts).
+ * The gate's other refusals say only that the name may not stand in job
+ * markup: a name its board's tenant code spells ("Abercrombie" on
+ * abercrombie~wd108~anf), a generic word or label. The board printed those
+ * before the gate was asked, and still does (review of 2026-11-15: blanking
+ * them took the employer off 9,104 open roles).
+ */
+export const REFUSALS_OF_THE_TEXT = new Set([
+  "logo or image text", "colour caption", "file name", "web address", "email address", "careers site address", "careers subdomain",
+]);
 
 /**
  * Why a (repaired) name cannot be printed as an employer's, or null when it
@@ -252,7 +275,7 @@ export function unpublishableNameReason(name, { codeShaped = false } = {}) {
  */
 export function bakeEmployerName(token, stored, { boardName, isCodeShapedName }) {
   const shown = boardName(token, stored);
-  const fixed = repairEmployerName(shown);
+  const fixed = repairEmployerName(shown, { token });
   // Judged before the repair too: "Only External Postings" is a label as a
   // whole, and taking a label off its end must not turn it into a name, so
   // such a name is printed as stored and refused.

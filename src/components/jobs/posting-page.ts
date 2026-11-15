@@ -263,9 +263,12 @@ export function jdParagraphs(description: string): string[] {
  * Danish, Norwegian and Swedish have lists of their own, of words the other
  * lists do not share (a word two close languages share would split their
  * count and leave both unread). French's list lost "et" and "du", which are
- * also everyday Danish and Norwegian words ("a" and "you"); every French case
- * in the corpus is still read as French without them.
- * Measured on 461 labelled real postings in 21 languages
+ * also everyday Danish and Norwegian words ("a" and "you"). The same floor
+ * holds for the runner-up the lead is compared with: a rival made of one or
+ * two shared words ("en" on the Dutch list, a French preposition) does not
+ * block a lead, which left French-only postings unread (review of
+ * 2026-11-15, Groupe MIRADOR).
+ * Measured on 463 labelled real postings in 21 languages
  * (src/test/fixtures/posting-language-corpus-2026-11-15.json): the old rule
  * named a wrong language on 24 of them, this rule on none, and it is never
  * worse on any case. A language with no list (Finnish, Hungarian, Romanian,
@@ -312,10 +315,14 @@ export function postingLanguage(description: string | null | undefined): string 
       return [lang, hits.length, new Set(hits).size] as const;
     })
     .sort((a, b) => b[1] - a[1]);
-  const [top, second] = score;
+  const [top] = score;
   if (!top || top[1] < 12) return null;
-  if (second && top[1] < second[1] * 2) return null;
   if (top[2] < LANG_MIN_DISTINCT) return null;
+  // The runner-up must stand on the same floor to block a lead: one or two
+  // words another list shares are no rival ("en", French's preposition, on
+  // the Dutch list; review of 2026-11-15).
+  const second = score.slice(1).find((x) => x[2] >= LANG_MIN_DISTINCT);
+  if (second && top[1] < second[1] * 2) return null;
   return top[0];
 }
 
@@ -373,6 +380,17 @@ export function postingRequisitionIdentity(job: Pick<PostingRow, "id">): string 
 
 /** A title or a name as one line: an employer's double space is not part of the job. */
 export const postingText = (s: string | null | undefined): string => decodeNameEntities(String(s ?? "")).replace(/\s+/g, " ").trim();
+
+/**
+ * A posting's job title as the page, its head and its markup print it: the
+ * employer's text on one line, and a title its employer typed in capitals in
+ * title case with its initialisms kept ("MFG PEE PH PR TECH" is "Mfg PEE PH PR
+ * Tech"). Google's content policy for job postings asks for no all caps, and
+ * the markup must say what the page shows, so the markup, the <title>, the
+ * meta description and the page heading all print it (SEO check 2026-11-15,
+ * F12). Any other title is the employer's own casing.
+ */
+export const postingTitleText = (s: string | null | undefined): string => titleFromCapitals(postingText(s));
 
 /** UTC calendar day of an ISO stamp. */
 const day = (iso: string): string => iso.slice(0, 10);
@@ -1463,11 +1481,9 @@ export function postingJsonLdShape(
   const ld: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "JobPosting",
-    // A title its employer typed in capitals is marked up in title case, its
-    // initialisms kept ("MFG PEE PH PR TECH" is "Mfg PEE PH PR Tech"): Google's
-    // content policy for job postings asks for no all caps (SEO check
-    // 2026-11-15, F12). Any other title is the employer's own casing.
-    title: titleFromCapitals(postingText(job.title)),
+    // A title its employer typed in capitals is marked up in title case, as
+    // the page prints it (postingTitleText, F12).
+    title: postingTitleText(job.title),
     // THE WHOLE DESCRIPTION, BECAUSE THAT IS WHAT THE PROPERTY IS FOR. This was
     // cut at 4,000 characters, which fired on 300 of the 399 pages the bake
     // wrote — their visible text ran to a median 7,273 characters and a maximum
@@ -1620,7 +1636,7 @@ function titleWith(title: string, tail: string): string | null {
 export function postingPageTitle(job: PostingRow): string {
   // One line: "Quality  (QA) Technician" shipped its employer's double space
   // into two identical sitemap titles (OBS-1).
-  const title = postingText(job.title);
+  const title = postingTitleText(job.title);
   const company = job.company ? postingEmployer(job) : "";
   const place = postingText(job.location);
   const companyFits = !!company && TITLE_MIN_ROOM + TITLE_SEP.length + company.length <= TITLE_BUDGET;
@@ -1656,7 +1672,7 @@ export function postingPageTitle(job: PostingRow): string {
 export function postingPageTitleAvoiding(job: PostingRow, taken: ReadonlySet<string>): string {
   const first = postingPageTitle(job);
   if (!taken.has(first)) return first;
-  const title = postingText(job.title);
+  const title = postingTitleText(job.title);
   const company = job.company ? postingEmployer(job) : "";
   const town = shortPlace(job);
   const day = statedDay(job);
@@ -1702,7 +1718,7 @@ function servedLength(s: string): number {
  * only if the whole thing still does.
  */
 export function postingPageDescription(job: PostingRow): string {
-  const title = postingText(job.title);
+  const title = postingTitleText(job.title);
   const company = job.company ? postingEmployer(job) : "";
   const place = postingText(job.location);
   // NO NAME, NO "at ,": a page whose employer name the bake will not print

@@ -76,18 +76,32 @@ const RESTRICTED_TO_OWN = new RegExp(String.raw`\bthis\s+(?:job\s+)?(?:posting|p
 const OWN_PEOPLE_ONLY = new RegExp(String.raw`\b(?:internal|current|existing)\s+${NAMED}${WHO}\s+only\b`, "giu");
 // What comes right before a notice addressed to internal applicants.
 const NOTICE_TO = /\b(?:notice|note|instructions?|information|message|reminder)\s+(?:for|to)\s+$/i;
+// "INTERNAL ONLY" AS A LABEL, NOT AS AN ADJECTIVE (review of 2026-11-15). A
+// label closes what it stands in: a bracket ("( Internal Only)"), a title or a
+// line, a clause before its punctuation ("INTERNAL ONLY:"), bold marks. Read
+// anywhere, it caught a public Axon posting that owns "the internal-only
+// Release Notes Hub" (1 of 77,170 public postings read from the Greenhouse,
+// Lever and Ashby APIs on 2026-11-15): there a noun follows it. Read on the
+// text with its line breaks kept, so the end of the title counts as an end.
+const STANDING_LABEL = /\binternal[\s-]+only\b(?=[^\S\n]*(?:[)\]:;,.!?|*–—-]|\n|$))/iu;
 const LABELS = [
-  /\binternal[\s-]+only\b/iu,
   /\bthis\s+is\s+an\s+internal\s+(?:job\s+)?(?:posting|position|vacancy|opening|requisition)\b/iu,
   /\b(?:processo\s+seletivo\s+interno|vagas?\s+internas?)\b/iu,
 ];
 export function internalOnlyTextReason(text) {
-  const t = String(text ?? "").replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;|\u00a0/g, " ").replace(/\s+/g, " ");
+  const lined = String(text ?? "")
+    .replace(/<(?:br|\/p|\/div|\/li|\/h\d)\b[^>]*>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;|&#160;|\u00a0/g, " ")
+    .replace(/[^\S\n]+/g, " ");
+  const t = lined.replace(/\s+/g, " ");
   const restricted = RESTRICTED_TO_OWN.exec(t);
   if (restricted) return restricted[0];
   for (const m of t.matchAll(OWN_PEOPLE_ONLY)) {
     if (!NOTICE_TO.test(t.slice(Math.max(0, m.index - 40), m.index))) return m[0];
   }
+  const label = STANDING_LABEL.exec(lined);
+  if (label) return label[0];
   for (const re of LABELS) {
     const m = re.exec(t);
     if (m) return m[0];

@@ -15,7 +15,10 @@
 #       VENDOR (SEO check 2026-11-15, F01): every vendor over 20% unknown is
 #       named, and FAILs (two unknown pages or more, in a judged run) unless
 #       the reader reads it for its statements only (STATED_ONLY_VENDORS in
-#       scripts/employer-reads.mjs), which is named as not checked.
+#       scripts/employer-reads.mjs), which is named as not checked. A vendor
+#       read once per board (BOARD_LIST_VENDORS: Ashby, Breezy, Recruitee)
+#       FAILs only when its unknown pages come from two boards or more: one
+#       failed list GET makes a whole board unknown (review of 2026-11-15).
 #   G2  (B01) the STOP switch as served: with JOB_POSTING_MARKUP true in
 #       src/config/seo-switches.ts every sitemap posting page serves exactly
 #       one JobPosting (a page the ledger says D7 keeps without markup serves
@@ -83,7 +86,12 @@ const jobBlocks = (h) => [...String(h).matchAll(/<script type="application\/ld\+
     // claims to check it (two pages or more, in a judged run); a vendor the
     // reader reads for its statements only is named as not checked (INFO).
     let statedOnly = [];
-    try { statedOnly = [...((await import(`${process.cwd()}/scripts/employer-reads.mjs`)).STATED_ONLY_VENDORS ?? [])]; } catch { statedOnly = []; }
+    let boardVendors = [];
+    try {
+      const reads = await import(`${process.cwd()}/scripts/employer-reads.mjs`);
+      statedOnly = [...(reads.STATED_ONLY_VENDORS ?? [])];
+      boardVendors = [...(reads.BOARD_LIST_VENDORS ?? [])];
+    } catch { statedOnly = []; boardVendors = []; }
     const vendors = Object.entries(rec.byVendor ?? {})
       .map(([v, c]) => [v, c.unknown ?? 0, (c.open ?? 0) + (c.closed ?? 0) + (c.unknown ?? 0)])
       .filter(([, , n]) => n > 0)
@@ -91,8 +99,13 @@ const jobBlocks = (h) => [...String(h).matchAll(/<script type="application\/ld\+
     const overShare = vendors.filter(([, u, n]) => u / n > 0.2);
     for (const [v, u, n] of overShare) {
       const share = pct(u / n);
+      // A vendor read once per board is judged by its unknown boards: one
+      // failed list GET is every page of one board (review of 2026-11-15).
+      const boards = rec.unknownBoards?.[v];
+      const perBoard = boardVendors.includes(v) && typeof boards === "number";
+      const from = typeof boards === "number" ? `, from ${boards} board${boards === 1 ? "" : "s"}` : "";
       if (statedOnly.includes(v)) out("INFO", `G1 ${v}: ${u} of ${n} live posting pages NOT CHECKED at the employer (${share} unknown): the reader reads ${v} for what it states only, so a closure there is never seen`);
-      else out(judgedRun && u >= 2 ? "FAIL" : "INFO", `G1 ${v}: ${u} of ${n} live posting pages unknown at the employer (${share}, over 20%): their closures are not being seen`);
+      else out(judgedRun && (perBoard ? boards >= 2 : u >= 2) ? "FAIL" : "INFO", `G1 ${v}: ${u} of ${n} live posting pages unknown at the employer (${share}, over 20%)${from}: their closures are not being seen${perBoard ? " (read once per board: a FAIL needs two boards)" : ""}`);
     }
     const checked = vendors.filter(([v, u, n]) => !statedOnly.includes(v) && u / n <= 0.2);
     if (judgedRun && !overShare.some(([v]) => !statedOnly.includes(v))) {

@@ -41,6 +41,10 @@ import { PostingDetail } from "@/components/jobs/listing/PostingDetail";
 import { PostingSheet } from "@/components/jobs/listing/PostingSheet";
 import { listingEmployer } from "@/lib/listing/employer";
 import type { ListingJob } from "@/lib/listing/types";
+import { postingMarkupGate, postingNameVerdict } from "@/components/jobs/posting-page";
+import { displayEmployer } from "@/lib/display-name";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const at = (daysAgo: number) => new Date(Date.now() - daysAgo * 86_400_000).toISOString();
 
@@ -145,5 +149,59 @@ describe("a site's audience label comes off the employer's name on every surface
     await waitFor(() => expect(document.title).toContain("Inova"));
     expect(document.title).not.toMatch(/Military/);
     expect(document.body.textContent).not.toMatch(/Military/);
+  });
+});
+
+/**
+ * ONLY A REFUSAL OF THE TEXT ITSELF BLANKS THE BOARD'S NAME (review of
+ * 2026-11-15). The gate also refuses a name for reasons that say nothing about
+ * whether a reader can use it: a name its board's tenant code spells
+ * ("Abercrombie" on abercrombie~wd108~anf, 372 open roles), a generic word or
+ * label. Those keep a posting out of the job markup, and the bake gives such a
+ * row no page, but the board printed them on main: blanking them took the
+ * employer, and the link to its company page, off 9,104 open roles' cards,
+ * panes, sheets and AI hand-offs (168 names over 45,103 real pairs, 66 of them
+ * refused only as a tenant code). Only a logo or colour caption, a file name,
+ * a web, email or careers-site address is no name at all.
+ */
+const ABERCROMBIE = {
+  id: "workday:abercrombie~wd108~anf:R1", title: "Store Manager", company: "Abercrombie",
+  token: "abercrombie~wd108~anf", source: "workday", location: "Columbus, OH", country: "US", workMode: null,
+  postedAt: at(2), missingSince: null, recheckedAt: new Date(Date.now() - 600_000).toISOString(),
+  applyUrl: "https://abercrombie.wd108.myworkdayjobs.com/en-US/anf/job/Columbus-OH/Store-Manager_R1",
+  salary: null, agency: false,
+} satisfies ListingJob;
+
+describe("a name the gate refuses for its board, not for its text, is printed as main printed it", () => {
+  it("the seam: a tenant code or a generic word keeps its name; a caption or an address does not", () => {
+    // The gate still refuses it, so it is never a hiringOrganization.
+    expect(postingNameVerdict(ABERCROMBIE).reason).toBe("tenant code");
+    expect(postingMarkupGate(ABERCROMBIE, DESC)).toBeNull();
+    expect(listingEmployer(ABERCROMBIE)).toBe("Abercrombie");
+    // An Ashby board the catalogue names "Jobs" (turnkey): a generic word, printed as main printed it.
+    const generic = { id: "ashby:turnkey:1", token: "turnkey", company: "Jobs" };
+    expect(postingNameVerdict(generic).reason).toBe("generic word");
+    expect(listingEmployer(generic)).toBe(displayEmployer(generic.token, generic.company).text);
+    expect(listingEmployer(generic)).not.toBe("");
+    expect(listingEmployer(CAPTION)).toBe("");
+    expect(listingEmployer({ id: "oracle:emqk~ca3~CX_1:107235", token: "emqk~ca3~CX_1", company: "HealthCareersInSask.ca" })).toBe("");
+    expect(listingEmployer({ id: "recruitee:bodymasters:1", token: "bodymasters", company: "info@bodymasters.de" })).toBe("");
+  });
+
+  it("the card prints it, with its link", () => {
+    render(<MemoryRouter><ul><JobCard job={ABERCROMBIE} ctx={{ surface: "board", density: "comfortable", hideEmployer: false, selected: false }} href="/x" /></ul></MemoryRouter>);
+    expect(screen.getByRole("link", { name: "Abercrombie" })).toBeTruthy();
+  });
+
+  it("the pane prints it in its header, with its link", () => {
+    render(<MemoryRouter><PostingDetail job={ABERCROMBIE} surface="board" description={{ text: DESC, state: "loaded" }} onClose={() => {}} /></MemoryRouter>);
+    const header = document.querySelector("[data-posting-header]") as HTMLElement;
+    expect(within(header).getByRole("link", { name: "Abercrombie" })).toBeTruthy();
+  });
+
+  it("the AI hand-off carries the name the card prints", () => {
+    const jobs = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
+    expect(jobs).toMatch(/const handoffJobOf = \(job: BoardJob\): HandoffJob => \(\{[^}]*company: listingEmployer\(job\),/);
+    expect(listingEmployer(ABERCROMBIE)).toBe("Abercrombie");
   });
 });

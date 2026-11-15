@@ -32,6 +32,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import * as names from "../../scripts/prerender-names.mjs";
 import { repairEmployerName, unpublishableNameReason } from "../../scripts/prerender-names.mjs";
 import { postingMarkupGate, postingNameVerdict } from "@/components/jobs/posting-page";
 import { CATALOG } from "./helpers/catalog";
@@ -80,8 +81,8 @@ describe("the report's names, on the boards that carry them", () => {
 });
 
 describe("every name that moved, judged as the bake judges it (45,103 pairs, read 2026-11-15)", () => {
-  it("holds the 67 that moved, the report's four among them", () => {
-    expect(FIXTURE.moved).toHaveLength(67);
+  it("holds the 66 that moved, the report's four among them", () => {
+    expect(FIXTURE.moved).toHaveLength(66);
     expect(FIXTURE.moved.filter((m) => m.why.includes("F04")).map((m) => m.name).sort()).toEqual(
       ["HealthCareersInSask.ca", "Inova Military", "MEI Maroon", "MEI Maroon", "TRAILBORN MASTER MONOGRAM ORANGE"],
     );
@@ -120,10 +121,59 @@ describe("the real names nearest the widened rules stay as they are", () => {
     "Ducera Partners - Experienced Hires",
     // An audience word the name is built on.
     "Clear Path For Veterans", "IntelliDyne Jobs for Veterans",
+    // An organisation named after the people it serves (review of 2026-11-15):
+    // the label comes off only on a board measured to carry it as a label.
+    "Disabled American Veterans", "Paralyzed Veterans", "Texas Military", "Vietnam Veterans",
     // An @ inside a name, not an email address.
     "Bistro @ Bluewater", "Connect@home GmbH",
   ])("%s is printed as it is", (name) => {
     expect(unpublishableNameReason(name)).toBeNull();
     expect(repairEmployerName(name).name).toBe(name);
+  });
+});
+
+/**
+ * A SITE'S AUDIENCE LABEL COMES OFF ONLY WHERE IT WAS MEASURED (review of
+ * 2026-11-15). The repair took a final "Military" or "Veterans" off any name on
+ * any board, so "Disabled American Veterans" printed as "Disabled American"
+ * and "Texas Military" as "Texas": a name cut short is not the name of the
+ * company Google asks hiringOrganization for. It now comes off only on a board
+ * whose tenant's other board carries exactly the name left, which is the
+ * evidence that the word is the site's label and not the employer's own:
+ * Inova's elar~us2~CX_14001 ("Inova Military") beside elar~us2~CX_1
+ * ("Inova"). Cummins' veterans site keeps its name: none of the tenant's ten
+ * sites is named "Cummins" alone.
+ */
+describe("a site's audience label comes off only on the boards that carry it as one", () => {
+  const LABEL = /^(.*\S)[\s\-–—|:(]+(?:military|veterans)\)?$/i;
+  const tenantOf = (b: { source: string; token: string }) => `${b.source}:${String(b.token).split("~")[0].toLowerCase()}`;
+  const sites = (names as unknown as { AUDIENCE_LABEL_SITES?: ReadonlySet<string> }).AUDIENCE_LABEL_SITES;
+
+  it("is exactly the catalogue's boards whose tenant has another board named by the rest of the name", () => {
+    const byTenant = new Map<string, Set<string>>();
+    for (const b of CATALOG) {
+      const key = tenantOf(b);
+      byTenant.set(key, (byTenant.get(key) ?? new Set()).add(`${b.token}\u0000${b.name}`));
+    }
+    const measured = CATALOG.filter((b) => {
+      const m = LABEL.exec(String(b.name ?? "").trim());
+      if (!m) return false;
+      const rest = m[1].trim();
+      return [...(byTenant.get(tenantOf(b)) ?? [])].some((e) => {
+        const [token, name] = e.split("\u0000");
+        return token !== b.token && name === rest;
+      });
+    }).map((b) => b.token).sort();
+    expect(measured).toEqual(["elar~us2~CX_14001"]);
+    expect([...(sites ?? [])].sort()).toEqual(measured);
+  });
+
+  it("repairs Inova's military site and no other name ending in an audience word", () => {
+    expect(verdict("oracle:elar~us2~CX_14001", "Inova Military")).toMatchObject({ name: "Inova", repaired: true, reason: null });
+    expect(verdict("oracle:fa-espx-saasfaprod1~ocs~CX_1007", "Cummins Veterans")).toMatchObject({ name: "Cummins Veterans", repaired: false, reason: null });
+    for (const name of ["Disabled American Veterans", "Paralyzed Veterans", "Texas Military", "Vietnam Veterans", "Inova Military"]) {
+      expect(repairEmployerName(name).name, name).toBe(name);
+      expect(verdict("greenhouse:audiencecheck", name), name).toMatchObject({ name, repaired: false, reason: null });
+    }
   });
 });

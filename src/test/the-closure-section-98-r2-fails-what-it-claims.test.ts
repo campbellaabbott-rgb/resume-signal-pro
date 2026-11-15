@@ -188,6 +188,50 @@ describe("section 98-r2 G1 names a vendor whose pages are never checked", () => 
 });
 
 /**
+ * G1 COUNTS A VENDOR READ ONCE PER BOARD BY ITS BOARDS (review of
+ * 2026-11-15). Breezy, Recruitee and Ashby are read with one list request per
+ * board, so one failed GET makes every page of that board unknown: live,
+ * Breezy has 7 pages, 4 of them on almentor, and one failed almentor read was
+ * 4 of 7 unknown, a FAIL. For those vendors a FAIL needs unknown pages from
+ * two boards or more. Here 30 Greenhouse pages are open, and 7 Breezy pages
+ * sit on two boards: in the first site the 4-page board's list fails (one
+ * board), in the second both boards' lists fail.
+ */
+function boardVendorSite(failing: 1 | 2): Route[] {
+  const gh = Array.from({ length: 30 }, (_, i) => `/jobs/posting/greenhouse/acme/${4001 + i}`);
+  const big = ["aaa001-store-lead", "aaa002-cashier", "aaa003-barista", "aaa004-shift-lead"].map((k) => `/jobs/posting/breezy/bigboard/${k}`);
+  const small = ["bbb001-analyst", "bbb002-engineer", "bbb003-designer"].map((k) => `/jobs/posting/breezy/smallboard/${k}`);
+  const paths = [...gh, ...big, ...small];
+  const ledger = { postings: Object.fromEntries(paths.map((p) => [p, { state: "live", applyUrl: p.includes("/greenhouse/") ? `https://job-boards.greenhouse.io/acme/jobs/${p.split("/").pop()}` : null }])) };
+  const list = (keys: string[]) => JSON.stringify(keys.map((k) => ({ id: k.split("-")[0], friendly_id: k, name: k })));
+  return [
+    { match: `^${esc(`${SITE}/sitemap.xml`)}$`, body: `<urlset>${paths.map((p) => `<url><loc>${SITE}${p}</loc></url>`).join("")}</urlset>`, type: "application/xml" },
+    { match: `^${esc(`${SITE}/prerender-ledger.json`)}$`, body: JSON.stringify(ledger), type: "application/json" },
+    { match: "^https://boards-api\\.greenhouse\\.io/v1/boards/acme/jobs/\\d+$", body: "{}", type: "application/json" },
+    { match: "^https://bigboard\\.breezy\\.hr/json$", status: 403, body: "" },
+    failing === 2
+      ? { match: "^https://smallboard\\.breezy\\.hr/json$", status: 403, body: "" }
+      : { match: "^https://smallboard\\.breezy\\.hr/json$", body: list(small.map((p) => p.split("/").pop()!)), type: "application/json" },
+  ];
+}
+
+describe("section 98-r2 G1 judges a vendor read once per board by its boards", () => {
+  const oneBoard = runSection(boardVendorSite(1));
+  const twoBoards = runSection(boardVendorSite(2));
+
+  it("one failed board read on a 4-page board is INFO, not a FAIL", () => {
+    expect(has(oneBoard, "PASS", /G1 .*33 open, 0 closed, 4 unknown/), show(oneBoard)).toBe(true);
+    expect(has(oneBoard, "INFO", /G1 breezy: 4 of 7 live posting pages unknown at the employer \(57\.1%, over 20%\), from 1 board/), show(oneBoard)).toBe(true);
+    expect(oneBoard.filter((l) => /^FAIL\s+G1/.test(l)), show(oneBoard)).toEqual([]);
+  });
+
+  it("failed reads on two boards are a FAIL", () => {
+    expect(has(twoBoards, "PASS", /G1 .*30 open, 0 closed, 7 unknown/), show(twoBoards)).toBe(true);
+    expect(has(twoBoards, "FAIL", /G1 breezy: 7 of 7 live posting pages unknown at the employer \(100\.0%, over 20%\), from 2 boards/), show(twoBoards)).toBe(true);
+  });
+});
+
+/**
  * G7 FAILS JOB MARKUP ON A POSTING ONLY THE EMPLOYER'S OWN PEOPLE MAY APPLY
  * FOR (SEO check 2026-11-15, F02). The live Coupang Internal page carried a
  * JobPosting naming "Coupang Internal" whose description said the posting was

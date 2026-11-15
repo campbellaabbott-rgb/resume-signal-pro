@@ -135,8 +135,9 @@ describe("the corpus: a posting's own words", () => {
     expect(internalOnlyTextReason(textOf(vitalFarms))).toBe("This posting is intended for current Vital Farms employees");
   });
 
-  it("catches none of 330 real public postings, the 208 live marked-up pages among them", () => {
-    expect(FIX.public.length).toBeGreaterThanOrEqual(330);
+  it("catches none of 331 real public postings, the 208 live marked-up pages and Axon's internal-only hub among them", () => {
+    expect(FIX.public.length).toBeGreaterThanOrEqual(331);
+    expect(FIX.public.map((p) => p.id)).toContain("greenhouse:axon:8010898003");
     expect(FIX.public.filter((p) => p.from?.startsWith("live page")).length).toBe(208);
     const caught = FIX.public.map((p) => [p.id, internalOnlyTextReason(textOf(p))]).filter(([, why]) => why);
     expect(caught).toEqual([]);
@@ -159,6 +160,47 @@ describe("the corpus: a posting's own words", () => {
     expect(internalOnlyTextReason("This position is open to internal and external candidates.")).toBeNull();
     expect(internalOnlyTextReason("This position is open to current employees and external applicants.")).toBeNull();
     expect(internalOnlyTextReason("This position is open to current employees only.")).toBe("This position is open to current employees");
+  });
+});
+
+/**
+ * "INTERNAL ONLY" IS A LABEL ONLY WHERE IT STANDS AS ONE (review of
+ * 2026-11-15). The pattern read the phrase anywhere, so a public Greenhouse
+ * posting (Axon 8010898003, "Senior Manager, R&D Product Enablement") that
+ * owns "the internal-only Release Notes Hub" lost its job markup, and with no
+ * ignore switch a carried page would be retired to a noindex stub: 1 false
+ * positive in 77,170 public postings read from the Greenhouse, Lever and Ashby
+ * APIs. As a label it closes a title, a bracket or a clause; as an adjective
+ * a noun follows it.
+ */
+describe("'internal only' is read as a label, never as an adjective", () => {
+  const axon = () => FIX.public.find((p) => p.id === "greenhouse:axon:8010898003")!;
+
+  it("Axon's public posting, which owns an internal-only hub, keeps its markup", () => {
+    expect(axon().description).toContain("the internal-only Release Notes Hub");
+    expect(internalOnlyTextReason(textOf(axon()))).toBeNull();
+    const row = open({ id: "greenhouse:axon:8010898003", token: "axon", company: "Axon", title: axon().title, applyUrl: "https://job-boards.greenhouse.io/axon/jobs/8010898003" });
+    expect(postingJsonLdShape(row, axon().description, { site: SITE })).not.toBeNull();
+  });
+
+  it.each([
+    "the internal-only Release Notes Hub",
+    "Maintain internal only dashboards for the finance team.",
+    "Publish internal-only builds to the test fleet",
+  ])("reads %s as an adjective", (text) => {
+    expect(internalOnlyTextReason(text)).toBeNull();
+  });
+
+  it.each([
+    ["Distribution Trainer ( Internal Only) \n Department:", "Internal Only"],
+    ["Store Manager - Internal Only\nJoin our store team", "Internal Only"],
+    ["INTERNAL ONLY: Barista, Seattle", "INTERNAL ONLY"],
+    ["Shift Lead [Internal-Only]", "Internal-Only"],
+    ["**Internal Only** Shift Lead", "Internal Only"],
+    ["This vacancy is internal only.", "internal only"],
+    ["Warehouse Lead - Internal only", "Internal only"],
+  ])("reads %s as a label", (text, words) => {
+    expect(internalOnlyTextReason(text)).toBe(words);
   });
 });
 

@@ -20,6 +20,9 @@
 //            Breezy or Recruitee board's whole list, Paylocity's own
 //            "JobNotFound" page, an Oracle requisition finder that finds
 //            nothing, ADP's empty requisition);
+//            an Oracle requisition the finder does return is open only when
+//            the row's own career site lists it (the finder ignores the
+//            site, and answers for an internal-only posting too);
 //   unknown  anything else: a network error, a timeout, a refusal, a 5xx, a
 //            vendor this module does not read, a Workday 404 (our applyUrl's
 //            slug is sometimes wrong, so a 404 there proves nothing).
@@ -68,6 +71,12 @@ export const EMPLOYER_READ_USER_AGENT = "Mozilla/5.0 (compatible; resumebooster-
 export const READ_VENDORS = Object.freeze(["workday", "greenhouse", "lever", "smartrecruiters", "ashby", "icims", "paylocity", "teamtailor", "personio", "oracle", "adp", "breezy", "recruitee"]);
 /** Vendors read only for what the employer states (their answer never says closed). */
 export const STATED_ONLY_VENDORS = Object.freeze(["ukg"]);
+/**
+ * Vendors read with one list request per board (employerReadPlan kind
+ * "board"): one failed GET makes every page of that board unknown, so the
+ * daily check's per-vendor judgement counts their unknown BOARDS (98-r2 G1).
+ */
+export const BOARD_LIST_VENDORS = Object.freeze(["ashby", "breezy", "recruitee"]);
 
 /** The three parts of a board id ("workday:tenant~wd5~Site:R123"), or null. */
 export function idParts(id) {
@@ -162,7 +171,17 @@ export function employerReadPlan(row) {
       if (!tenant || !HOST_LABEL.test(tenant) || !/^[A-Za-z0-9]*$/.test(region) || !/^[A-Za-z0-9_]+$/.test(site)) return { vendor: source, url: null, why: "not an Oracle tenant~region~site token" };
       if (!SLUG.test(key)) return { vendor: source, url: null, why: "not an Oracle requisition id" };
       const host = `${tenant}.fa.${region ? `${region}.` : ""}oraclecloud.com`;
-      return { vendor: source, kind: "oracle", url: `https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?onlyData=true&finder=${enc(`ById;Id="${key}",siteNumber=${site}`)}`, accept: "application/json" };
+      // THE SITE'S OWN LIST, searched for the id (review of 2026-11-15): the
+      // ById finder ignores siteNumber, so it answers for a requisition
+      // posted only on an internal site too. An open answer stands only when
+      // the row's own site lists the requisition (employerVerdict, "oracle").
+      return {
+        vendor: source,
+        kind: "oracle",
+        url: `https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?onlyData=true&finder=${enc(`ById;Id="${key}",siteNumber=${site}`)}`,
+        siteUrl: `https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitions?onlyData=true&expand=requisitionList&finder=${enc(`findReqs;siteNumber=${site},keyword=${key},limit=25`)}`,
+        accept: "application/json",
+      };
     }
     case "adp": {
       // cid or cid~ccId, read at the detail address the board's description
@@ -379,11 +398,34 @@ function pageStated(vendor, node) {
 }
 
 /**
+ * WHETHER AN ORACLE SITE'S OWN LIST NAMES THE REQUISITION: true, false (the
+ * list was read and does not hold it), or the reason it could not be read.
+ * `siteRes` is the answer to plan.siteUrl, or undefined when it was not asked.
+ */
+function oracleSiteLists(siteRes, key) {
+  if (!siteRes) return "its own site's list was not read";
+  if (siteRes.error) return `its own site's list did not answer (${siteRes.error})`;
+  if (siteRes.status !== 200) return `its own site's list answered HTTP ${siteRes.status}`;
+  const list = parseJson(String(siteRes.body ?? ""))?.items?.[0]?.requisitionList;
+  if (!Array.isArray(list)) return "its own site's list is not one";
+  return list.some((x) => String(x?.Id ?? "") === key);
+}
+
+/** The requisition an Oracle ById answer carries for this key, or null: the read that earns a second GET of the row's own site. */
+function oracleRequisitionIn(res, key) {
+  if (!res || res.error || res.status !== 200) return null;
+  const items = parseJson(String(res.body ?? ""))?.items;
+  return Array.isArray(items) ? items.find((x) => String(x?.Id ?? "") === key) ?? null : null;
+}
+
+/**
  * THE VERDICT ON ONE ANSWER. `res` is { status, url, body } (url: the final
  * address after redirects), or { error } when the request never answered.
- * Returns { state, why, stated }.
+ * `siteRes` is the same for an Oracle row's own site list (plan.siteUrl),
+ * asked only when the ById finder returned the requisition. Returns
+ * { state, why, stated }.
  */
-export function employerVerdict(plan, res, row) {
+export function employerVerdict(plan, res, row, siteRes) {
   const unknown = (why) => ({ state: "unknown", why, stated: {} });
   if (!plan?.url) return unknown(plan?.why ?? "nothing to read");
   if (!res || res.error) return unknown(`no answer (${res?.error ?? "network"})`);
@@ -416,6 +458,12 @@ export function employerVerdict(plan, res, row) {
       // that answered with no jobs at all is far likelier a hiccup than every
       // one of its postings closing at once.
       if (!jobs || jobs.length === 0) return unknown("board listed nothing");
+      // A LIST WHOSE ENTRIES CARRY NO ID WE READ says nothing about one
+      // posting either (review of 2026-11-15): a vendor that renamed its key
+      // field would otherwise make every posting "missing from the board",
+      // under the implausibility guard's eight-answer floor (Breezy has 7 live
+      // pages, Recruitee 3).
+      if (!jobs.some((x) => entryKeys(plan.vendor, x).length > 0)) return unknown("list entries carry no id");
       const job = jobs.find((x) => entryKeys(plan.vendor, x).includes(key));
       if (!job) return { state: "closed", why: "missing from the board", stated: {} };
       return { state: "open", why: "listed", stated: plan.vendor === "ashby" ? ashbyStated(job) : {} };
@@ -426,22 +474,38 @@ export function employerVerdict(plan, res, row) {
       if (!Array.isArray(items)) return unknown("200 without an items list");
       // THE FINDER FINDS NOTHING FOR A REQUISITION THE EMPLOYER NO LONGER
       // POSTS (Kroger 216822, Caesars 91598, Chili's 15571; measured
-      // 2026-11-15), and the site number does not narrow it: an open
-      // requisition read under another site still comes back.
+      // 2026-11-15). The site number does not narrow it: an open requisition
+      // read under another site still comes back. So an empty answer is
+      // posted on no site at all, and a non-empty one proves only that the
+      // requisition is posted on SOME site, which may be an internal one.
       if (items.length === 0) return { state: "closed", why: "the requisition finder found nothing", stated: {} };
       const item = items.find((x) => String(x?.Id ?? "") === key);
-      return item ? { state: "open", why: "200 with its requisition", stated: oracleStated(item) } : unknown("200 naming another requisition");
+      if (!item) return unknown("200 naming another requisition");
+      // A REQUISITION THE FINDER RETURNS IS POSTED ON SOME SITE, NOT
+      // NECESSARILY THIS ONE (review of 2026-11-15): Suffolk's 25308 comes
+      // back under its external site while only the internal site lists it.
+      // So "open" needs the row's own site's list to name the id. Listed
+      // nowhere on that site it is unknown, never closed (a search index can
+      // lag a new posting); what the requisition states stays the employer's
+      // word either way.
+      const stated = oracleStated(item);
+      const listed = oracleSiteLists(siteRes, key);
+      if (listed === true) return { state: "open", why: "200 with its requisition, listed on its site", stated };
+      return { state: "unknown", why: listed === false ? "not listed on this site" : listed, stated };
     }
     case "adp": {
       if (status !== 200) return unknown(`HTTP ${status}`);
       const j = parseJson(body);
       if (!j || typeof j !== "object" || Array.isArray(j)) return unknown("200 that is not JSON");
       if (String(j.itemID ?? "") === key) return { state: "open", why: "200 with its requisition", stated: {} };
-      // THE EMPTY REQUISITION: no itemID and no location, the answer for each
-      // of the seven postings the board had seen go (measured 2026-11-15).
-      // Another client id answers the same, but the client id is the board's
-      // own token, the one the board read the posting from.
-      if (j.itemID === undefined && Array.isArray(j.requisitionLocations) && j.requisitionLocations.length === 0) return { state: "closed", why: "ADP served an empty requisition", stated: {} };
+      // THE EMPTY REQUISITION: no itemID, no title, no posting date and no
+      // location, the answer for each of the seven postings the board had seen
+      // go (measured 2026-11-15); an open answer carries all of them. Read
+      // from that whole fingerprint, so a renamed itemID on an open answer
+      // is not a closure (review of 2026-11-15). Another client id answers
+      // the same, but the client id is the board's own token, the one the
+      // board read the posting from.
+      if (j.itemID === undefined && j.requisitionTitle === undefined && j.postDate === undefined && Array.isArray(j.requisitionLocations) && j.requisitionLocations.length === 0) return { state: "closed", why: "ADP served an empty requisition", stated: {} };
       return unknown("200 naming another requisition");
     }
     case "page": {
@@ -538,7 +602,14 @@ export async function readEmployers(rows, opts = {}) {
     } else {
       res = await employerGet(plan.url, { fetchImpl, timeoutMs: left, accept: plan.accept, retryDelayMs });
     }
-    const v = employerVerdict(plan, res, row);
+    // An Oracle requisition the finder returned is asked of the row's own site.
+    let siteRes;
+    if (plan.siteUrl && oracleRequisitionIn(res, idParts(row.id)?.key ?? "")) {
+      siteRes = now() >= until
+        ? { error: "budget" }
+        : await employerGet(plan.siteUrl, { fetchImpl, timeoutMs: Math.max(1, Math.min(timeoutMs, until - now())), accept: plan.accept, retryDelayMs });
+    }
+    const v = employerVerdict(plan, res, row, siteRes);
     out.set(row.id, { id: row.id, vendor: plan.vendor, ...v });
   };
   const worker = async () => {

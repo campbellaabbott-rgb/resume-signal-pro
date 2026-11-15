@@ -290,50 +290,123 @@ const CZECH = /[ĚŠČŘŽŮŤĎŇ]/;
 /** Czech one-letter prepositions and conjunctions ("PRODEJNÍ ASISTENT V PRODEJNĚ" is "v prodejně"). */
 const CZECH_MINOR = new Set(["v", "s", "z", "k", "u", "o", "a", "i"]);
 
+/**
+ * Endings a French, Spanish or Portuguese title writes onto a word for its
+ * other gender or its plural, in brackets or after a slash, with no space
+ * ("ADMINISTRATIF(VE)", "VENDEUR(EUSE)", "CONSEILLER/ÈRE", "TECHNICIEN(NE)").
+ * One letter ("INFIRMIER(E)", "ENFERMERA/O") is read the same way below.
+ */
+const GENDER_ENDINGS = new Set<string>([
+  "ne", "nne", "ve", "le", "lle", "se", "te", "re", "fe", "ère", "ière", "euse", "rice", "trice", "as", "es", "os",
+]);
+/** Prepositions after which "la" is the article ("À LA DIRECTION", "DE LA CALIDAD"); "SALES REP LA" keeps Los Angeles. */
+const ARTICLE_AFTER = new Set<string>(["à", "de"]);
+/** A word whose first letter is a capital and whose others are not: what a plain word comes out as. */
+const TITLE_CASED = /^\p{Lu}[\p{Ll}\p{M}'’]+$/u;
+
 export function titleFromCapitals(raw: string | null | undefined): string {
   const s = String(raw ?? "");
   // Only a title with no lower-case letter, and at least one letter that has a case.
   if (s !== s.toUpperCase() || s === s.toLowerCase()) return s;
   const locale = TURKISH.test(s) ? "tr" : undefined;
   const czech = CZECH.test(s);
+  const upper = (c: string) => c.toLocaleUpperCase(locale);
+  const titled = (lower: string) => {
+    const chars = [...lower];
+    // "O'REILLY" is O'Reilly.
+    if (chars.length > 2 && /['’]/.test(chars[1])) return `${upper(chars[0])}${chars[1]}${upper(chars[2])}${chars.slice(3).join("")}`;
+    return `${upper(chars[0])}${chars.slice(1).join("")}`;
+  };
+  type Word = { start: number; end: number; lower: string; out: string; kept: boolean };
+  const words: Word[] = [];
+
+  // One word, judged by what it is. `kept` marks a short word left in
+  // capitals only because nothing says it is a word (the default below).
+  const judge = (word: string, lower: string, at: { inside: boolean; before: string; after: string; gap: string; runBefore: number; previous: string }): { out: string; kept: boolean } => {
+    const { inside, before, after, gap, runBefore, previous } = at;
+    // A letter run touching a digit is a code, except an ordinal ending.
+    if (/\d/.test(before) || /\d/.test(after)) return { out: /\d/.test(before) && /^(?:st|nd|rd|th)$/.test(lower) ? lower : word, kept: false };
+    // An ending for the other gender, written onto the word before it with no
+    // space: "ENFERMERA/O", "INGENIERO(A)", "ADMINISTRATIF(VE)".
+    const attached = (before === "/" || before === "(") && gap === before && runBefore >= 3;
+    if (attached && (word.length === 1 || (GENDER_ENDINGS.has(lower) && (before === "/" || after === ")")))) return { out: lower, kept: false };
+    if (word.length === 1) {
+      if (inside && (lower === "y" || lower === "à" || (czech && CZECH_MINOR.has(lower)))) return { out: lower, kept: false };
+      return { out: word, kept: false };
+    }
+    if (SPECIAL[lower]) return { out: SPECIAL[lower], kept: false };
+    const acronym = acronymForm(lower, true);
+    if (acronym) return { out: acronym, kept: false };
+    if (ROMAN.test(lower) || SHOUTED_LONG_ACRONYMS.has(lower)) return { out: word, kept: false };
+    if (inside && SHOUTED_MINOR.has(lower)) return { out: lower, kept: false };
+    if (inside && lower === "la" && ARTICLE_AFTER.has(previous)) return { out: lower, kept: false };
+    if (SHOUTED_SHORT_FORMS[lower]) return { out: SHOUTED_SHORT_FORMS[lower], kept: false };
+    // A little word of three letters or more that starts a part is a word ("-
+    // The Ritz"); a two-letter one there is as likely an initialism ("EM APP").
+    if (SHOUTED_MINOR.has(lower) && [...lower].length >= 3) return { out: titled(lower), kept: false };
+    if (!VOWEL.test(plainLetters(lower))) return { out: word, kept: false };
+    if (plainLetters(lower).length <= 4 && !SHOUTED_PLAIN.has(lower)) return { out: word, kept: true };
+    return { out: titled(lower), kept: false };
+  };
+
   let previousEnd = -1;
   let previousLength = 0;
   let previousCased = false;
-  return s.replace(/\p{L}[\p{L}\p{M}]*(?:['’]\p{L}[\p{L}\p{M}]*)*/gu, (word: string, offset: number) => {
+  let previousLower = "";
+  const re = /\p{L}[\p{L}\p{M}]*(?:['’]\p{L}[\p{L}\p{M}]*)*/gu;
+  for (let m = re.exec(s); m; m = re.exec(s)) {
+    const word = m[0];
+    const offset = m.index;
     const gap = previousEnd < 0 ? "" : s.slice(previousEnd, offset);
     // A little word is one between two cased words with only spaces around it:
     // after a dash, a bar, a bracket or a word with no case it starts a part.
     const inside = previousEnd >= 0 && previousCased && /^[),.]?\s+$/.test(gap);
-    const before = s[offset - 1] ?? "";
-    const after = s[offset + word.length] ?? "";
-    const runBefore = previousLength;
+    const at = { inside, before: s[offset - 1] ?? "", after: s[offset + word.length] ?? "", gap, runBefore: previousLength, previous: previousLower };
+    const lower = word.toLocaleLowerCase(locale);
     previousEnd = offset + word.length;
     previousLength = word.length;
     previousCased = word !== word.toLowerCase();
-    const lower = word.toLocaleLowerCase(locale);
-    // A letter run touching a digit is a code, except an ordinal ending.
-    if (/\d/.test(before) || /\d/.test(after)) return /\d/.test(before) && /^(?:st|nd|rd|th)$/.test(lower) ? lower : word;
-    if (word.length === 1) {
-      // "ENFERMERA/O", "INGENIERO(A)": the gendered ending of the word before it.
-      if ((before === "/" || before === "(") && gap === before && runBefore >= 3) return lower;
-      if (inside && (lower === "y" || (czech && CZECH_MINOR.has(lower)))) return lower;
-      return word;
+    previousLower = lower;
+    // "PCA'S" is PCA's and "SPRING'S" is Spring's: the stem is judged on its
+    // own and the possessive or plural 's follows it in lower case.
+    const own = /^(.+)(['’])s$/u.exec(lower);
+    if (own && [...own[1]].length >= 2) {
+      const stem = word.slice(0, word.length - 2);
+      const judged = judge(stem, own[1], { ...at, after: own[2] });
+      words.push({ start: offset, end: previousEnd, lower, out: `${judged.out}${own[2]}s`, kept: false });
+      continue;
     }
-    if (SPECIAL[lower]) return SPECIAL[lower];
-    const acronym = acronymForm(lower, true);
-    if (acronym) return acronym;
-    if (ROMAN.test(lower) || SHOUTED_LONG_ACRONYMS.has(lower)) return word;
-    if (inside && SHOUTED_MINOR.has(lower)) return lower;
-    if (SHOUTED_SHORT_FORMS[lower]) return SHOUTED_SHORT_FORMS[lower];
-    const chars = [...lower];
-    const upper = (c: string) => c.toLocaleUpperCase(locale);
-    // A little word of three letters or more that starts a part is a word ("-
-    // The Ritz"); a two-letter one there is as likely an initialism ("EM APP").
-    if (SHOUTED_MINOR.has(lower) && chars.length >= 3) return `${upper(chars[0])}${chars.slice(1).join("")}`;
-    if (!VOWEL.test(plainLetters(lower))) return word;
-    if (plainLetters(lower).length <= 4 && !SHOUTED_PLAIN.has(lower)) return word;
-    // "O'REILLY" is O'Reilly; "SPRING'S" is Spring's.
-    if (chars.length > 2 && /['’]/.test(chars[1])) return `${upper(chars[0])}${chars[1]}${upper(chars[2])}${chars.slice(3).join("")}`;
-    return `${upper(chars[0])}${chars.slice(1).join("")}`;
-  });
+    const judged = judge(word, lower, at);
+    words.push({ start: offset, end: previousEnd, lower, ...judged });
+  }
+
+  // A hyphen joins parts of one word: a short part left in capitals only by
+  // default is a word when the part it is joined to came out as one
+  // ("LIVE-IN", "IN-HOME", "FOLLOW-UP", "CO-MANAGER"), and "CO-" before a
+  // hyphen is the prefix. An initialism keeps its capitals ("PA-C",
+  // "NON-CDL", "IT-SUPPORT"): only a part that reached the default changes.
+  const joined = (a: Word, b: Word) => s.slice(a.end, b.start) === "-";
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (let i = 0; i < words.length; i++) {
+      const w = words[i];
+      if (!w.kept) continue;
+      const prev = i > 0 && joined(words[i - 1], w) ? words[i - 1] : null;
+      const next = i + 1 < words.length && joined(w, words[i + 1]) ? words[i + 1] : null;
+      const word = (x: Word | null) => !!x && TITLE_CASED.test(x.out);
+      if (word(prev) || word(next) || (next && w.lower === "co")) {
+        w.out = titled(w.lower);
+        w.kept = false;
+        changed = true;
+      }
+    }
+  }
+
+  let out = "";
+  let from = 0;
+  for (const w of words) {
+    out += s.slice(from, w.start) + w.out;
+    from = w.end;
+  }
+  return out + s.slice(from);
 }

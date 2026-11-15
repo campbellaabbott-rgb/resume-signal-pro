@@ -37,18 +37,32 @@ const nameWords = (t: string) =>
 const nameLetters = (t: string) => t.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 /**
+ * What is left when a word's start is cut off and the rest is an ordinary
+ * ending: the start is then another word, not the same word written shorter.
+ * "Product Manager" and "Production Manager" are two roles (product
+ * management and manufacturing), as are "Account Manager" and "Accounting
+ * Manager" (review of 2026-11-15). A plural is the same word ("contract
+ * manager", "contracts manager"), so "s" and "es" are not on the list.
+ */
+const ORDINARY_ENDINGS = new Set([
+  "ed", "er", "ers", "or", "ors", "ing", "ings", "ion", "ions", "ation", "ations", "al", "als", "ally", "ant", "ants",
+  "ent", "ents", "ist", "ists", "ive", "ives", "ity", "ivity", "ment", "ments", "ance", "ence", "ic", "ics", "ical", "y",
+  "ly", "ship",
+]);
+
+/**
  * True when `short`, word by word, is `long` written shorter: each word is the
  * same word, the start of it (three letters or more: "vet" for "veterinary",
- * "lab" for "laboratory"), or the initials of a run of its words ("rn" for
- * "registered nurse", "ml" for "machine learning"), with at least one word
- * actually shortened.
+ * "lab" for "laboratory", never a word whose rest is an ordinary ending), or
+ * the initials of a run of its words ("rn" for "registered nurse", "ml" for
+ * "machine learning"), with at least one word actually shortened.
  */
 function shortens(short: string[], long: string[], i = 0, j = 0, cut = false): boolean {
   if (i === short.length) return j === long.length && cut;
   const w = short[i];
   if (j < long.length) {
     if (w === long[j] && shortens(short, long, i + 1, j + 1, cut)) return true;
-    if (w.length >= 3 && w.length < long[j].length && long[j].startsWith(w) && shortens(short, long, i + 1, j + 1, true)) return true;
+    if (w.length >= 3 && w.length < long[j].length && long[j].startsWith(w) && !ORDINARY_ENDINGS.has(long[j].slice(w.length)) && shortens(short, long, i + 1, j + 1, true)) return true;
   }
   if (w.length >= 2 && j + w.length <= long.length) {
     const initials = long.slice(j, j + w.length).map((x) => x[0]).join("");

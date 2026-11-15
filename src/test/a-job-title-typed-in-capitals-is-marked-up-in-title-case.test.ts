@@ -23,6 +23,7 @@ import { postingJsonLd } from "@/components/jobs/posting-page";
 
 const FIXTURE = JSON.parse(readFileSync(resolve(__dirname, "fixtures/shouted-job-titles-2026-11-15.json"), "utf8")) as {
   shouted: Array<{ title: string; markup: string }>;
+  review: Array<{ title: string; markup: string }>;
   mixed: string[];
 };
 
@@ -61,6 +62,48 @@ describe("the report's titles and the rule's edges", () => {
 
   it.each(["Registered Nurse - ICU", "RN", "", "2027 Future Talent Program – Engineering – Co-op", "研发工程师"])("%s is left as it is", (title) => {
     expect(titleFromCapitals(title)).toBe(title);
+  });
+});
+
+/**
+ * THE REVIEW OF 2026-11-15 read 86 shouted titles in 77,357 public postings
+ * and found about 12 mis-cased: an initialism before 's printed "Pca's", a
+ * short part of a hyphenated word kept its capitals ("Live-IN", "IN-Home"),
+ * an ending for the other gender kept its capitals ("Administratif(VE)"), and
+ * French and Spanish articles were read as initialisms ("À LA Direction").
+ * Each is a rule here, not a spelling, and all 142 hand-read board titles
+ * above still come out as read.
+ */
+describe("the review's shouted titles", () => {
+  it.each(FIXTURE.review.map((r) => [r.title, r.markup]))("%s is %s", (title, markup) => {
+    expect(titleFromCapitals(title)).toBe(markup);
+  });
+
+  it("keeps an initialism joined by a hyphen, and Los Angeles, in capitals", () => {
+    expect(titleFromCapitals("PA-C")).toBe("PA-C");
+    expect(titleFromCapitals("NON-CDL DRIVER")).toBe("Non-CDL Driver");
+    expect(titleFromCapitals("IT-SUPPORT ANALYST")).toBe("IT-Support Analyst");
+    expect(titleFromCapitals("SALES REP LA")).toBe("Sales Rep LA");
+    expect(titleFromCapitals("CNA IN LA")).toBe("CNA in LA");
+  });
+
+  /*
+   * What the rule still leaves: a short word nothing marks as a word stays in
+   * capitals ("DE VIE", "DE ARTE", "SANTA FE", "NEW HAVEN"), and "AI" is the
+   * initialism. The review proposed the opposite default (capitals only for a
+   * vowelless word or a listed one); run over the 142 hand-read titles above it
+   * breaks 28 of them ("Mri Tech", "Nicu", "Wand", "Etf Advisory", "Huc Ed"),
+   * and the board's mixed-case titles write "AI" 15 times as the initialism
+   * and never as the Italian "ai". These are pinned so a change to them is a
+   * decision.
+   */
+  it.each([
+    ["AUXILIAIRE DE VIE H/F", "Auxiliaire de VIE H/F"],
+    ["DIRETOR DE ARTE JUNIOR", "Diretor de ARTE Junior"],
+    ["PLAZA SANTA FE", "Plaza Santa FE"],
+    ["CAMERIERA AI PIANI", "Cameriera AI Piani"],
+  ])("%s stays %s: a short word is not guessed into a word", (title, markup) => {
+    expect(titleFromCapitals(title)).toBe(markup);
   });
 });
 

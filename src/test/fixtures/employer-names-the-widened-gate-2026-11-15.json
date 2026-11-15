@@ -1,19 +1,13 @@
 {
  "read": "2026-11-15",
  "source": "Every (token, name) pair in the catalogue (supabase/functions/job-board/sources.ts read through src/test/helpers/catalog.ts, 44,523 boards) and in the live company list (the anon get_job_board_facets read, 31,184 boards): 45,103 pairs, each judged by bakeEmployerName with the app's employerName and isCodeShapedName, main (1e81bb81) against this rule.",
- "result": "Main refused 103 names and this rule refuses 168. The 65 that moved from printable to refused are logo captions, a careers site's address and an email address; 2 more print the employer's name in front of a career site's audience label. No name main refused is printable now, and no other name changed.",
+ "result": "Main refused 103 names and this rule refuses 168. The 65 that moved from printable to refused are logo captions, a careers site's address and an email address; 1 more prints the employer's name in front of a career site's audience label (Inova Military, the one board whose tenant's other board carries exactly the name left). No name main refused is printable now, and no other name changed.",
  "moved": [
   {
    "name": "info@bodymasters.de",
    "board": "recruitee:bodymasters",
    "refused": "email address",
    "why": "a Recruitee board whose company field is its contact address"
-  },
-  {
-   "name": "Cummins Veterans",
-   "board": "oracle:fa-espx-saasfaprod1~ocs~CX_1007",
-   "printed": "Cummins",
-   "why": "a career site's audience label after its employer's name; the same tenant's main site prints the name in front of it"
   },
   {
    "name": "Inova Military",
@@ -408,6 +402,11 @@
  ],
  "keptWhy": "Real employer names whose shape sits nearest the widened rules: a trailing colour word, two colour words, one of the new image words (monogram, master, full, font, pms, res, light, dark, brand, alone), a bare domain, an @, an audience word at the end. Names of the same shapes that are not a name either (logo captions main and this rule both print, site labels) were left out by hand.",
  "kept": [
+  {
+   "name": "Cummins Veterans",
+   "board": "oracle:fa-espx-saasfaprod1~ocs~CX_1007",
+   "why": "a site's audience label after its employer's name, but no other board on the tenant is named exactly what is left (its sites are Cummins Technicians, Cummins DEI, Cummins Talent Acquisition...), so it is printed as stored, as main printed it (review of 2026-11-15)"
+  },
   {
    "name": "Context.dev",
    "board": "ashby:context",
