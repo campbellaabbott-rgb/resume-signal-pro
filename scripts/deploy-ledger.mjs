@@ -727,29 +727,49 @@ function stubRecord() {
 }
 
 /**
+ * The repo file a staged-runner stub names, or null (the 5ef5e1a7 closeout,
+ * 2026-11-15). Lovable stages a migration under a name and its stub runs
+ * public._mig_exec on the row of that name. Until 2026-11-10 the name was the
+ * file name with its .sql; the stubs of 2026-11-15 (drizzle 0221-0225) name
+ * the stamp and title WITHOUT it, and the ledger, comparing names with repo
+ * file names, listed all five as not applied although each had applied. The
+ * name matches a file with or without the suffix, but only the WHOLE name:
+ * the stamp and the title. A stage named by its stamp and another title
+ * (20260909212000_fixed, the runner's edited copy of a failing file) names
+ * no file. Pure.
+ */
+export function stagedFile(stageName, repo) {
+  const name = String(stageName ?? "");
+  const file = name.endsWith(".sql") ? name : `${name}.sql`;
+  return (repo ?? []).includes(file) ? file : null;
+}
+
+/**
  * The repo's migrations against the staged-runner record: pending, held,
  * never applied by decision, applied, and the stubs that ran another text
- * than their file (retypedStubs). Reads the working tree only; no git, no
+ * than their file (retypedStubs). Reads the working tree only (or the two
+ * directories `dirs` names, which a test points at a fixture); no git, no
  * network.
  */
-export function migrations(policy) {
-  const repo = readdirSync(MIG_DIR).filter((f) => /^\d{14}_.+\.sql$/.test(f)).sort();
+export function migrations(policy, dirs = {}) {
+  const migDir = dirs.migrations ?? MIG_DIR, drizzleDir = dirs.drizzle ?? DRIZZLE_DIR;
+  const repo = readdirSync(migDir).filter((f) => /^\d{14}_.+\.sql$/.test(f)).sort();
   const lovableAuthored = (f) => /^\d{14}_[0-9a-f]{8}-[0-9a-f]{4}-/.test(f);
   const applied = new Set();
   const byTitle = new Map(repo.map((f) => [f.replace(/^\d{14}_/, ""), f]));
   const baseline = policy.drizzleBaseline;
   const pairs = [];
-  for (const d of readdirSync(DRIZZLE_DIR).filter((f) => f.endsWith(".sql")).sort()) {
-    const src = readFileSync(join(DRIZZLE_DIR, d), "utf8");
+  for (const d of readdirSync(drizzleDir).filter((f) => f.endsWith(".sql")).sort()) {
+    const src = readFileSync(join(drizzleDir, d), "utf8");
     const staged = /_mig_stage WHERE name = '([^']+)'/.exec(src);
-    if (staged) { applied.add(staged[1]); continue; }
+    if (staged) { applied.add(stagedFile(staged[1], repo) ?? staged[1]); continue; }
     const stamped = /^\d{4}_(\d{14}_.+\.sql)$/.exec(d);
     const title = d.replace(/^\d{4}_/, "");
     const file = stamped && repo.includes(stamped[1]) ? stamped[1] : byTitle.get(title);
     if (!file) continue;
     applied.add(file);
     // Before the baseline every file counts as applied whatever its stub says.
-    if (file >= baseline) pairs.push({ file, stub: d, repoSql: readFileSync(join(MIG_DIR, file), "utf8"), stubSql: src });
+    if (file >= baseline) pairs.push({ file, stub: d, repoSql: readFileSync(join(migDir, file), "utf8"), stubSql: src });
   }
   const pending = repo.filter((f) => f >= baseline && !lovableAuthored(f) && !applied.has(f)
     && !policy.neverApply.some((n) => f.startsWith(n)) && !policy.appliedOutsideDrizzle.some((n) => f.startsWith(n)));

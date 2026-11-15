@@ -66,6 +66,10 @@ closes the gap. Policy lives in `docs/deploy-ledger.json`:
   stays exit 8 (S12-161: a revert on main read "live-ahead" and no message
   could deploy it).
 - `drizzleBaseline`: the staged-runner record is complete from this stamp on.
+  A stub that runs SQL staged under a name applies the repo file of that
+  whole name, with or without its `.sql` (the stubs of 2026-11-15, drizzle
+  0221-0225, drop the suffix); a stage named by a file's stamp and another
+  title applies nothing.
 - `migrationOrder`: per migration stamp, `after` is `fn:<name>@<YYYY-MM-DD.N>`
   (apply once that function answers that build or later),
   `slice:job-board@<YYYY-MM-DD.N>` (apply once the job-board status action's

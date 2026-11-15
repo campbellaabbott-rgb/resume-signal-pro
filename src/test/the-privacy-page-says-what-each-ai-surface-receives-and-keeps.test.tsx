@@ -35,7 +35,10 @@ vi.mock("@/integrations/supabase/client", () => ({
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: null, session: null }) }));
 
 import Privacy from "../pages/Privacy";
-import { CONNECTOR_SEARCH_LOG_CHANGED, MCP_PRIVACY_ROWS, MCP_SEARCH_PRUNE_LIVE, writtenDay } from "@/config/mcp-privacy";
+import {
+  CONNECTOR_PRUNE_APPLIED, CONNECTOR_SEARCH_LOG_CHANGED, EARLIER_SEARCHES_GONE_BY, MCP_PRIVACY_ROWS, MCP_SEARCH_PRUNE_LIVE,
+  MCP_SEARCH_PRUNE_RUN, searchKept, writtenDay,
+} from "@/config/mcp-privacy";
 import { PRIVACY_LAST_UPDATED } from "@/config/seller";
 
 afterEach(cleanup);
@@ -59,11 +62,10 @@ describe("the MCP section of the Privacy page", () => {
     expect(claude).toBe("Received");
     expect(chatgpt).toBe("Received");
     const day = writtenDay(CONNECTOR_SEARCH_LOG_CHANGED);
-    if (MCP_SEARCH_PRUNE_LIVE) {
-      expect(kept).toMatch(/kept for 30 days/);
-    } else {
-      // The review of 9fe3bc0d: the 30-day prune is held for the second
-      // deploy message, so until it runs the page must not claim 30 days.
+    expect(kept, "the row renders the wording its flag picks").toBe(searchKept(MCP_SEARCH_PRUNE_LIVE));
+    if (!MCP_SEARCH_PRUNE_LIVE) {
+      // The review of 9fe3bc0d: until the 30-day prune has run, the page must
+      // not claim 30 days.
       expect(kept).not.toMatch(/30 days/);
       expect(kept).toMatch(/kept for up to 180 days/);
       // Searches logged before the deploy still name the postings shown, and
@@ -73,6 +75,41 @@ describe("the MCP section of the Privacy page", () => {
       expect(kept).toContain(`From ChatGPT: searches made from ${day} on are not kept; earlier ones are kept like the site's own search log.`);
     }
     expect(kept).toContain(`From ChatGPT: searches made from ${day} on are not kept`);
+  });
+
+  // THE REVIEW OF THE 5ef5e1a7 CLOSEOUT (2026-11-15). The closeout set the
+  // flag the day the prune applied, while get_cron_health read its job active
+  // with no run yet, and the 30-day wording it switched to dropped the
+  // searches logged before the log changed: those name the postings shown,
+  // include ChatGPT's, and outlive the prune's first run by two weeks, since
+  // it deletes only rows 30 days old. Both wordings are judged here, whichever
+  // the flag picks, so the 30-day one is right before anyone sets the flag.
+  it("the 30-day wording names the earlier searches and the day the last of them is deleted, and says nothing of 180 days", () => {
+    const day = writtenDay(CONNECTOR_SEARCH_LOG_CHANGED);
+    const last = writtenDay(EARLIER_SEARCHES_GONE_BY);
+    const changed = new Date(`${CONNECTOR_SEARCH_LOG_CHANGED}T00:00:00Z`).getTime();
+    expect(EARLIER_SEARCHES_GONE_BY, "31 days after the log changed: the nightly prune deletes a row on the 31st day after the day it was made").toBe(new Date(changed + 31 * 86_400_000).toISOString().slice(0, 10));
+    const live = searchKept(true);
+    expect(live).toMatch(/^From Claude and other connections: the search words and filters, kept for 30 days;/);
+    expect(live).not.toMatch(/180/);
+    if (new Date().toISOString().slice(0, 10) < EARLIER_SEARCHES_GONE_BY) {
+      expect(live).toContain(`searches made from ${day} on keep no record of which postings were shown, and earlier ones still do until they are deleted at 30 days old, the last by ${last}.`);
+      expect(live).toContain(`From ChatGPT: searches made from ${day} on are not kept; earlier ones are deleted at 30 days old, the last by ${last}.`);
+    }
+  });
+
+  it("claims 30 days only once a run of the prune that succeeded is recorded from get_cron_health, and the page's date is no earlier than that read", () => {
+    if (!MCP_SEARCH_PRUNE_LIVE) {
+      expect(searchKept(false)).toMatch(/kept for up to 180 days/);
+      return;
+    }
+    expect(MCP_SEARCH_PRUNE_RUN, "the page may say 30 days only after get_cron_health shows search-demand-mcp-retention with a succeeded run: record that read in MCP_SEARCH_PRUNE_RUN").not.toBeNull();
+    const r = MCP_SEARCH_PRUNE_RUN!;
+    expect(r.runs, "ch_runs").toBeGreaterThanOrEqual(1);
+    expect(r.lastStatus, "ch_last_status").toBe("succeeded");
+    expect(r.lastStart.slice(0, 10) >= CONNECTOR_PRUNE_APPLIED, `ch_last_start ${r.lastStart} is a run of the prune that applied ${CONNECTOR_PRUNE_APPLIED}`).toBe(true);
+    expect(r.readAt >= r.lastStart, "the read follows the run it saw").toBe(true);
+    expect(PRIVACY_LAST_UPDATED >= r.readAt.slice(0, 10), `the page's Last updated (${PRIVACY_LAST_UPDATED}) is no earlier than the read that let it say 30 days`).toBe(true);
   });
 
   // THE FINAL RECHECK OF LAND/ALL (2026-10-31). The cell said "searches made

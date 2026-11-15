@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261110120000_a_full_analysis_is_made_by_one_run_at_a_time'));

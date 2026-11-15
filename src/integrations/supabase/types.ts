@@ -999,6 +999,27 @@ export type Database = {
         }
         Relationships: []
       }
+      analysis_run_leases: {
+        Row: {
+          created_at: string
+          expires_at: string
+          holder: string
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          holder: string
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          holder?: string
+          session_id?: string
+        }
+        Relationships: []
+      }
       api_key_agent_mints: {
         Row: {
           created_at: string
@@ -3671,27 +3692,39 @@ export type Database = {
       }
       layoff_filing_rollup: {
         Row: {
+          amendment_n: number | null
           filings: number
           month: string
+          non_workforce_n: number | null
+          rescinded_n: number | null
           rolled_at: string
           source: string
           state: string
+          superseded_n: number | null
           workers_sum: number | null
         }
         Insert: {
+          amendment_n?: number | null
           filings?: number
           month: string
+          non_workforce_n?: number | null
+          rescinded_n?: number | null
           rolled_at?: string
           source: string
           state?: string
+          superseded_n?: number | null
           workers_sum?: number | null
         }
         Update: {
+          amendment_n?: number | null
           filings?: number
           month?: string
+          non_workforce_n?: number | null
+          rescinded_n?: number | null
           rolled_at?: string
           source?: string
           state?: string
+          superseded_n?: number | null
           workers_sum?: number | null
         }
         Relationships: []
@@ -7977,6 +8010,13 @@ export type Database = {
         Args: { p_keep_days?: number }
         Returns: {
           clicks_pruned: number
+          events_pruned: number
+          rows_rolled: number
+        }[]
+      }
+      roll_up_and_prune_search_demand_for_caller: {
+        Args: { p_caller: string; p_keep_days?: number }
+        Returns: {
           events_pruned: number
           rows_rolled: number
         }[]
