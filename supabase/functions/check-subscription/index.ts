@@ -80,9 +80,9 @@ import { accountAnswer, addressOwnerOf, type AddressOwner, type PlanRow } from "
 // date, failed payment) from the rows bound to the account, and on a live
 // check those rows are asked of Stripe by customer; _shared/pro.ts no longer
 // nulls a row's customer when the address search finds nothing.
-// 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+// 2026-11-10.3 (cost wave review 2026-11-15: no early plan-rows read on a live check, over the ci-edge lane's 2026-11-10.2). 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
 // Also (Worth doing, small sequential hops): a signed-in caller's plan rows are asked for alongside the address's cache row, and the two answers that write nothing first (a fresh cache row, the over-allowance stale answer) use that read; a live check still reads them again after its writes. Review 2026-11-15, same unshipped build: a request with fresh: true goes live before anything is read, so it no longer starts the early read; a row found too old still costs the live check that one extra read, the stated trade.
-const FN_BUILD = "check-subscription.2026-11-10.2";
+const FN_BUILD = "check-subscription.2026-11-10.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

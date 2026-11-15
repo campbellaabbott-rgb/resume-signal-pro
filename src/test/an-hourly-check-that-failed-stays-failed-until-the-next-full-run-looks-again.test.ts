@@ -1,7 +1,7 @@
 // @vitest-environment node
 /**
  * AN HOURLY CHECK THAT FAILED STAYS FAILED UNTIL THE NEXT FULL RUN LOOKS AGAIN
- * (cost wave review, 2026-11-15; scan-heartbeat 2026-11-09.1).
+ * (cost wave review, 2026-11-15; scan-heartbeat 2026-11-09.2).
  *
  * WHAT WAS WRONG. The heartbeat runs five checks only on the cron's first run
  * of each UTC hour (the full scan, the filter contract, vendor-health and the

@@ -31,8 +31,8 @@ import { logAiUsage } from "../_shared/ai-fallback.ts";
 // 2026-11-03.1 (S13-073, fix/audit-rest-abuse): the body's extra blocklist is
 // read as literal phrases (caller-blocklist.ts), never compiled as a caller's
 // regular expression.
-// 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "shortlist-evaluate.2026-11-09.1";
+// 2026-11-09.2 (cost wave review 2026-11-15: the usage line beside the reply it parses, over the ci-edge lane's 2026-11-09.1). 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
+const FN_BUILD = "shortlist-evaluate.2026-11-09.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

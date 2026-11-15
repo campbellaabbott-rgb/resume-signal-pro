@@ -6,7 +6,7 @@ import { keyMatches } from "../_shared/admin-key.ts";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
 
 // The build every response names (x-fn-build); see _shared/fn-build.ts.
-// 2026-11-09.1 (cost audit 2026-11-08, lane ai; review 2026-11-15): the full
+// 2026-11-09.2 (cost audit 2026-11-08, lane ai; review 2026-11-15; .2 because the review changed the lane tip's 2026-11-09.1 code): the full
 // warm-up (every function below, from one request) runs only for the owner's
 // key, our own servers' key or the cron key; anyone else is answered 200
 // with success false and code admin_key_required before anything is invoked,
@@ -15,7 +15,7 @@ import { isScheduledCaller } from "../_shared/email-cron.ts";
 // of one named function is unchanged and needs no key.
 // The seven model endpoints nothing called are retired, so the two of them
 // listed here are no longer warmed. Browsers keep the preflight two hours.
-const FN_BUILD = "warm-up.2026-11-09.1";
+const FN_BUILD = "warm-up.2026-11-09.2";
 
 /**
  * Warm-up function that pings critical edge functions to prevent cold starts.

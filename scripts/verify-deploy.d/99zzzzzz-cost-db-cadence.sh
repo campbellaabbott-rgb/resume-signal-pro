@@ -28,9 +28,15 @@
 #     more than an hour and a run old (#7);
 #   - the Ghost Job Index states the cadence those two schedules have.
 # BEFORE THE DEPLOY every claim is an INFO line naming today's value and the
-# one the deploy brings. A step counts as applied once any of its marks shows
-# in cron health. From then on, each claim of that step that does not hold is
-# a FAIL, and step 2 seen without step 1 is a FAIL.
+# one the deploy brings. Step 1 counts as applied once any of its marks shows
+# in cron health; from then on each of its claims that does not hold is a
+# FAIL. Step 2's two files apply at different points of the paste (121000 at
+# paste step 3, after public-api; 122000 at paste step 5, after the
+# frontend), so each of its claims is judged against its own job's schedule:
+# a verifier run between those steps sees the rollup moved and the ghost job
+# not yet, and that is INFO. 122000 seen without 121000 is a FAIL (121000
+# did not take), step 2 seen without step 1 is a FAIL, and with
+# COST_DB_APPLIED_AT set a job still on its old schedule is a FAIL.
 # DATED, NOT TRUSTED FOR BEING PRESENT. A row proves new code only when it was
 # written after the change. COST_DB_APPLIED_AT (UTC, the moment the LAST of
 # the seven files finished applying) dates rows when it is set, either in the
@@ -85,7 +91,10 @@ const s2=[];
 if(J[T.rollup]&&J[T.rollup].ch_schedule===NEW.rollup)s2.push(T.rollup+" on "+NEW.rollup);
 if(J[T.ghost]&&J[T.ghost].ch_schedule===NEW.ghost)s2.push(T.ghost+" on "+NEW.ghost);
 const step1=s1.length>0,step2=s2.length>0;
-out("INFO  step 1 (before the functions: 20261109100000, 110000, 120000, 131000, 190000) "+(step1?"applied: "+s1.join("; "):"not applied: no mark of it in cron health")+". Step 2 (after the functions: 121000, 122000) "+(step2?"applied: "+s2.join("; "):"not applied"));
+// Each step-2 file is judged by its own job (121000 at paste step 3, 122000 at step 5).
+const M={rollup:!!J[T.rollup]&&J[T.rollup].ch_schedule===NEW.rollup,ghost:!!J[T.ghost]&&J[T.ghost].ch_schedule===NEW.ghost};
+const asserted=(()=>{const t=Date.parse(process.env.VDCD_APPLIED||"");return Number.isFinite(t)&&t<=now})();
+out("INFO  step 1 (before the functions: 20261109100000, 110000, 120000, 131000, 190000) "+(step1?"applied: "+s1.join("; "):"not applied: no mark of it in cron health")+". Step 2 (after the functions: 121000 at paste step 3, 122000 at paste step 5) "+(step2?"applied so far: "+s2.join("; "):"not applied"));
 if(step2&&!step1)out("FAIL  step 2 shows in cron health ("+s2.join("; ")+") with no mark of step 1: the after-functions files went in first, or step 1 did not take");
 out("INFO  runs in the last 24h: "+[T.ladder,T.role,T.facets,T.rollup,T.ghost].map((n)=>n+" "+(J[n]?J[n].ch_runs+" (longest "+J[n].ch_max_seconds+" s)":"-")).join(", "));
 
@@ -114,12 +123,16 @@ for(const n of droppers){const r=J[n];const runs=Number(r.ch_runs)||0,failed=Num
   else out("INFO  "+n+" is still working ("+runs+" runs, "+failed+" failed, last "+(r.ch_last_status||"none")+"); the watcher retires it once its index is gone")}
 
 // ---- step 2 schedules ----
-const moved=(key,mig,why)=>{const r=J[T[key]];
-  if(!step2)out("INFO  before "+mig+": "+T[key]+" runs ("+desc(r)+"); the after-functions step moves it to "+NEW[key]+", and "+why);
-  else if(r&&r.ch_schedule===NEW[key]&&r.ch_timeout&&r.ch_active)out("PASS  "+T[key]+" runs on "+NEW[key]+" with its timeout ("+r.ch_timeout+") in the command ("+mig+")");
-  else out("FAIL  "+T[key]+": "+desc(r)+". Step 2 shows ("+s2.join("; ")+"), and "+mig+" leaves it on "+NEW[key]+", active, with a timeout in the command")};
-moved("rollup","20261109121000","each run then reads the postings once for both coverage rows, where it read them twice");
-moved("ghost","20261109122000","the :27 stats cache copied only the :05 run, never the :35 one");
+const moved=(key,mig,at,why)=>{const r=J[T[key]];
+  if(M[key]){
+    if(r.ch_timeout&&r.ch_active)out("PASS  "+T[key]+" runs on "+NEW[key]+" with its timeout ("+r.ch_timeout+") in the command ("+mig+")");
+    else out("FAIL  "+T[key]+": "+desc(r)+". "+mig+" leaves it on "+NEW[key]+", active, with a timeout in the command");
+    return}
+  if(key==="rollup"&&M.ghost)out("FAIL  "+T[key]+": "+desc(r)+". 20261109122000 shows ("+T.ghost+" on "+NEW.ghost+") and applies after it, so "+mig+", which leaves it on "+NEW[key]+", did not take");
+  else if(asserted)out("FAIL  "+T[key]+": "+desc(r)+". COST_DB_APPLIED_AT says the lane applied, and "+mig+" leaves it on "+NEW[key]+", active, with a timeout in the command");
+  else out("INFO  before "+mig+": "+T[key]+" runs ("+desc(r)+"); the after-functions step moves it to "+NEW[key]+" at "+at+", and "+why)};
+moved("rollup","20261109121000","paste step 3","each run then reads the postings once for both coverage rows, where it read them twice");
+moved("ghost","20261109122000","paste step 5","the :27 stats cache copied only the :05 run, never the :35 one");
 
 // ---- the anchor that dates rows ----
 const rs=rd("/tmp/vd_cdc_rollup.json");const rj=parse(rs);let rows=null;
@@ -131,17 +144,17 @@ const given=process.env.VDCD_APPLIED||"";let anchor=null,anchorWhy="";
 if(given){const t=Date.parse(given);
   if(!Number.isFinite(t))out("FAIL  COST_DB_APPLIED_AT="+given+" is not a date");
   else if(t>now)out("FAIL  COST_DB_APPLIED_AT="+given+" is in the future");
-  else if(!step1||!step2)out("FAIL  COST_DB_APPLIED_AT="+given+" says the lane applied, but cron health shows step "+(!step1?"1":"2")+" not applied");
+  else if(!step1||!M.rollup||!M.ghost)out("FAIL  COST_DB_APPLIED_AT="+given+" says the lane applied, but cron health shows step "+(!step1?"1":"2")+" not applied");
   else{anchor=t;anchorWhy="COST_DB_APPLIED_AT "+given}}
 const g=rows?rows.ghost_stats:null;
-if(anchor===null&&step1&&step2&&g&&g.computed_at&&minOf(g.computed_at)===15){anchor=Date.parse(g.computed_at);anchorWhy="the ghost row stamped "+g.computed_at+", a minute only the new schedule runs"}
+if(anchor===null&&step1&&M.rollup&&M.ghost&&g&&g.computed_at&&minOf(g.computed_at)===15){anchor=Date.parse(g.computed_at);anchorWhy="the ghost row stamped "+g.computed_at+", a minute only the new schedule runs"}
 const undated="cannot be dated against the change (set COST_DB_APPLIED_AT, or re-run once the ghost row falls on :15)";
 
 // ---- the ghost row ----
 if(rows){
-  if(!g||!g.computed_at)out((step2?"FAIL":"INFO")+"  the stats rollup carries no ghost_stats row");
+  if(!g||!g.computed_at)out((M.ghost?"FAIL":"INFO")+"  the stats rollup carries no ghost_stats row");
   else{const m=minOf(g.computed_at),a=ageMin(g.computed_at),after=anchor!==null&&Date.parse(g.computed_at)>anchor+60000;
-    if(!step2)out("INFO  before 20261109122000: the ghost row was written at "+hhmm(g.computed_at)+" ("+Math.round(a)+" min ago) on the :05/:35 schedule; the :27 stats cache copies only the :05 run");
+    if(!M.ghost)out("INFO  before 20261109122000: the ghost row was written at "+hhmm(g.computed_at)+" ("+Math.round(a)+" min ago) on the :05/:35 schedule; the :27 stats cache copies only the :05 run");
     else if(a>65)out("FAIL  the ghost row was written "+Math.round(a)+" min ago ("+g.computed_at+"): no :15 run has written it for over an hour since the schedule moved");
     else if(m===15)out("PASS  the ghost row was written at "+hhmm(g.computed_at)+", "+Math.round(a)+" min ago: the hourly :15 run, twelve minutes before the :27 stats cache copies it");
     else if(after)out("FAIL  the ghost row was written at "+hhmm(g.computed_at)+", after the change ("+anchorWhy+"), on a minute the :15 schedule never runs: another job still runs the old one");
@@ -149,13 +162,13 @@ if(rows){
 
 // ---- the coverage rows ----
 if(rows){const d=rows.date_coverage,e=rows.desc_coverage;
-  if(!d||!e||!Array.isArray(d.v)||!Array.isArray(e.v))out((step2?"FAIL":"INFO")+"  the stats rollup lacks a coverage row (date_coverage "+(d?"present":"absent")+", desc_coverage "+(e?"present":"absent")+")");
+  if(!d||!e||!Array.isArray(d.v)||!Array.isArray(e.v))out((M.rollup?"FAIL":"INFO")+"  the stats rollup lacks a coverage row (date_coverage "+(d?"present":"absent")+", desc_coverage "+(e?"present":"absent")+")");
   else{const at=d.computed_at,a=ageMin(at),m=minOf(at);
     const td=Object.fromEntries(d.v.map((r)=>[String(r.source),Number(r.total)])),te=Object.fromEntries(e.v.map((r)=>[String(r.source),Number(r.total)]));
     const keys=[...new Set([...Object.keys(td),...Object.keys(te)])];
     const off=keys.filter((k)=>td[k]!==te[k]);
     const same=Date.parse(d.computed_at)===Date.parse(e.computed_at);
-    if(!step2)out("INFO  before 20261109121000: the coverage rows were written at "+hhmm(at)+" ("+Math.round(a)+" min ago) by two passes over the postings, and agree on "+(keys.length-off.length)+" of "+keys.length+" source totals");
+    if(!M.rollup)out("INFO  before 20261109121000: the coverage rows were written at "+hhmm(at)+" ("+Math.round(a)+" min ago) by two passes over the postings, and agree on "+(keys.length-off.length)+" of "+keys.length+" source totals");
     else{
       if(a>33)out("FAIL  the coverage rows were written "+Math.round(a)+" min ago ("+at+"): on */30 no row is older than one interval and a run, so the rollup has stopped");
       const after=anchor!==null&&Date.parse(at)>anchor;
@@ -196,8 +209,8 @@ if(rows){const d=rows.date_coverage,e=rows.desc_coverage;
       const want=phraseFor(r.ch_schedule),found=said[key];
       if(!found.length)out("INFO  /ghost-job-index states no cadence for the "+label+" (a build that could not read them prints no figures)");
       else if(found.every((p)=>p===want))out("PASS  /ghost-job-index says \""+want+"\" for the "+label+", and "+T[key]+" runs on "+r.ch_schedule);
-      else if(step2)out("FAIL  /ghost-job-index says \""+found.join("\", \"")+"\" for the "+label+", but "+T[key]+" runs on "+r.ch_schedule+" (\""+want+"\"): the published cadence went false with this deploy (DATA_PAGE_CADENCE in scripts/prerender-seo.mjs)");
-      else out("INFO  /ghost-job-index already says \""+found.join("\", \"")+"\" for the "+label+" while "+T[key]+" still runs on "+r.ch_schedule+": the frontend publishes at merge, before 20261109121000 and 122000 apply")}}}
+      else if(M[key])out("FAIL  /ghost-job-index says \""+found.join("\", \"")+"\" for the "+label+", but "+T[key]+" runs on "+r.ch_schedule+" (\""+want+"\"): the published cadence went false with this deploy (DATA_PAGE_CADENCE in scripts/prerender-seo.mjs)");
+      else out("INFO  /ghost-job-index already says \""+found.join("\", \"")+"\" for the "+label+" while "+T[key]+" still runs on "+r.ch_schedule+": the frontend publishes at merge, before "+(key==="ghost"?"20261109122000 applies at paste step 5":"20261109121000 applies at paste step 3"))}}}
 
 // ---- the paid API says the same cadence ----
 out("INFO  /v1/stats (keyed, not read here) says its rollup is recomputed every 30 minutes from public-api 2026-11-09.1 on, which section 49 holds to main\u0027s build; the sentence is held to the newest schedule of job-board-stats-rollup by src/test/a-data-page-that-serves-no-number-is-an-empty-page.test.ts");

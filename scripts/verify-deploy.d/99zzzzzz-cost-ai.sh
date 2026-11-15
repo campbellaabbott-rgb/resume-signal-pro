@@ -34,7 +34,7 @@ echo "INFO  == 99zzzzzz. cost audit, lane ai: retired endpoints, the owner's war
 # fn|day|n: the cost wave's build of each function: this lane's, or the
 # integration's next sequence where another lane stamped the same build on
 # code of its own (fix/cost-wave; DEPLOY-LEDGER §3).
-VDCA_WANT="warm-up|2026-11-09|1 nl-search|2026-11-09|1 generate-product-preview|2026-11-09|1
+VDCA_WANT="warm-up|2026-11-09|2 nl-search|2026-11-09|1 generate-product-preview|2026-11-09|1
 generate-application-answers|2026-11-10|2 import-freelance-profile|2026-11-10|2
 generate-summary|2026-11-09|1 generate-resume-roast|2026-11-09|1 generate-recruiter-view|2026-11-09|1
 generate-elevator-pitch|2026-11-09|1 analyze-linkedin-profile|2026-11-09|1
@@ -144,6 +144,6 @@ for VDCA_FN in warm-up nl-search generate-product-preview generate-application-a
 done
 
 echo "INFO  nl-search's eight seconds (504 timedOut, the model request stopped), its chain (today's model, then gpt-5-mini) and its bounded memory (no count, no model call on a repeat) are proved in src/test/the-board-search-parse-answers-inside-eight-seconds-and-once-per-sentence.test.ts: a live probe would spend a model call"
-echo "INFO  the free tools' chain (flash, then gpt-5-mini, never pro, after the spend gate) is proved in src/test/a-free-tool-falls-back-to-flash-then-gpt-5-mini-never-to-pro.test.ts; the usage line's content in src/test/the-ai-usage-line-carries-numbers-and-identifiers-only.test.ts. In the function logs, search [AI-USAGE] for the first measured token counts (every function that parses a model reply itself prints one, src/test/every-function-that-reads-a-model-reply-itself-prints-its-usage-line.test.ts); a backup-scanner analysis line that ends usage=absent carries no counts, because its streamed request asks for none"
+echo "INFO  the free tools' chain (flash, then gpt-5-mini, never pro, after the spend gate) is proved in src/test/a-free-tool-falls-back-to-flash-then-gpt-5-mini-never-to-pro.test.ts; the usage line's content in src/test/the-ai-usage-line-carries-numbers-and-identifiers-only.test.ts. In the function logs, search [AI-USAGE] for the first measured token counts (every function that parses a model reply itself prints one, src/test/every-function-that-reads-a-model-reply-itself-prints-its-usage-line.test.ts); a backup-scanner analysis line whose counts are all '-' carries none, because its streamed request asks for none"
 echo "INFO  OWNER STEP: the scheduled job warm-up-edge-functions (every 10 minutes, created outside the migrations) warms nothing once this build serves, unless its command sends the service-role key or the x-email-cron key: it is answered 200 with success false (so pg_net records no refusal and neither scan-heartbeat nor mail-watch R9 turns red), and still costs 144 warm-up invocations a day. In the SQL editor, SELECT jobname, schedule, active FROM cron.job WHERE jobname = 'warm-up-edge-functions', then unschedule it (the audit measured at most ~90 ms of warming gain) or give it a key to keep warming. The scan button's warm of one named function needs neither"
 echo "INFO  the /health-check page's Warm Up button sends the stored admin key as the body's adminKey from this merge on (src/test/the-health-pages-warm-up-hands-the-owners-key-in-the-body.test.tsx); without a stored key this build answers success false and the page shows no warm-up"

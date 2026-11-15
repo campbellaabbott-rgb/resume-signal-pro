@@ -83,7 +83,7 @@ function run(routes: Route[]): { lines: string[]; calls: string[]; out: string }
 
 /** The cost wave's build of every function the section asks for, as the code carries it (the integration's where two lanes stamped one build). */
 const LANE: Record<string, string> = {
-  "warm-up": "2026-11-09.1", "nl-search": "2026-11-09.1", "generate-product-preview": "2026-11-09.1",
+  "warm-up": "2026-11-09.2", "nl-search": "2026-11-09.1", "generate-product-preview": "2026-11-09.1",
   "generate-application-answers": "2026-11-10.2", "import-freelance-profile": "2026-11-10.2",
   "generate-summary": "2026-11-09.1", "generate-resume-roast": "2026-11-09.1", "generate-recruiter-view": "2026-11-09.1",
   "generate-elevator-pitch": "2026-11-09.1", "analyze-linkedin-profile": "2026-11-09.1",

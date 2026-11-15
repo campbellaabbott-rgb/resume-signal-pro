@@ -112,9 +112,9 @@ type Over = {
 };
 function routes(o: Over = {}, deployed = true): Route[] {
   const builds = {
-    "scan-heartbeat": deployed ? "scan-heartbeat.2026-11-09.1" : "scan-heartbeat.2026-11-03.1",
+    "scan-heartbeat": deployed ? "scan-heartbeat.2026-11-09.2" : "scan-heartbeat.2026-11-03.1",
     "free-keyword-scan": deployed ? "free-keyword-scan.2026-11-09.2" : "free-keyword-scan.2026-11-03.1",
-    "free-keyword-scan-stream": deployed ? "free-keyword-scan-stream.2026-11-10.2" : "free-keyword-scan-stream.2026-11-03.1",
+    "free-keyword-scan-stream": deployed ? "free-keyword-scan-stream.2026-11-10.3" : "free-keyword-scan-stream.2026-11-03.1",
     ...o.builds,
   };
   const maxAge = { "free-keyword-scan": deployed ? "7200" : null, "free-keyword-scan-stream": deployed ? "7200" : null, ...o.maxAge };

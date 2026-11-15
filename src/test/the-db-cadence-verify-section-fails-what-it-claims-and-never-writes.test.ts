@@ -321,10 +321,30 @@ describe("each claim broken is a FAIL", () => {
   });
 
   it("a schedule step 2 moves that did not move, or lost its timeout, and step 2 without step 1", () => {
-    failsWith(after({ cron: cron(AFTER(), { "job-board-stats-rollup": { ch_schedule: "*/15 * * * *" } }) }), /^FAIL  job-board-stats-rollup: \*\/15 \* \* \* \*, timeout 4min.* leaves it on \*\/30/);
-    failsWith(after({ cron: cron(AFTER(), { "refresh-ghost-stats": { ch_schedule: "5,35 * * * *" } }) }), /^FAIL  refresh-ghost-stats: 5,35 \* \* \* \*, timeout 15min.* leaves it on 15 \* \* \* \*/);
+    // 122000 (paste step 5) shows, so 121000 (paste step 3) had to apply before it.
+    failsWith(after({ cron: cron(AFTER(), { "job-board-stats-rollup": { ch_schedule: "*/15 * * * *" } }) }), /^FAIL  job-board-stats-rollup: \*\/15 \* \* \* \*, timeout 4min.* 20261109122000 shows .* so 20261109121000, which leaves it on \*\/30 \* \* \* \*, did not take/);
+    // The ghost job alone on its old schedule is judged only when COST_DB_APPLIED_AT says the paste finished.
+    failsWith(after({ cron: cron(AFTER(), { "refresh-ghost-stats": { ch_schedule: "5,35 * * * *" } }) }), /^FAIL  refresh-ghost-stats: 5,35 \* \* \* \*, timeout 15min.* COST_DB_APPLIED_AT says the lane applied, and 20261109122000 leaves it on 15 \* \* \* \*/, THREE_HOURS_AGO());
     failsWith(after({ cron: cron(AFTER(), { "job-board-stats-rollup": { ch_timeout: null } }) }), /^FAIL  job-board-stats-rollup: \*\/30 \* \* \* \*, timeout none/);
     failsWith(before({ cron: cron(BEFORE, STEP2_PATCH) }), /^FAIL  step 2 shows in cron health .* with no mark of step 1/);
+  });
+
+  it("between paste steps 3 and 5 (121000 applied, 122000 not yet) every ghost claim is INFO and the rollup claims are judged (review 2026-11-15)", () => {
+    const mid = cron(BEFORE, { ...STEP1_PATCH, "job-board-stats-rollup": STEP2_PATCH["job-board-stats-rollup"] });
+    const { lines, out } = run(routes({
+      cron: mid, explore: [newRow(lastAt(7))],
+      rollup: rollupRows({ ghostAt: lastAt(5), covAt: lastHalfHour() }),
+      page: PAGE_NEW,
+    }));
+    expect(fails(lines), out).toEqual([]);
+    expect(has(lines, "PASS", /^PASS  job-board-stats-rollup runs on \*\/30 \* \* \* \* with its timeout \(4min\) in the command \(20261109121000\)/), out).toBe(true);
+    expect(has(lines, "PASS", /^PASS  \/ghost-job-index says "recomputed every 30 minutes" for the feed freshness figures/), out).toBe(true);
+    expect(has(lines, "INFO", /^INFO  before 20261109122000: refresh-ghost-stats runs \(5,35 .*\); the after-functions step moves it to 15 \* \* \* \* at paste step 5/), out).toBe(true);
+    expect(has(lines, "INFO", /^INFO  before 20261109122000: the ghost row was written at \d\d:05 UTC/), out).toBe(true);
+    expect(has(lines, "INFO", /^INFO  \/ghost-job-index already says "recomputed once an hour" for the ghost index figures while refresh-ghost-stats still runs on 5,35 .* before 20261109122000 applies at paste step 5/), out).toBe(true);
+    // The same moment with the rollup's sentence still the old one is a FAIL: its own file has applied.
+    failsWith(routes({ cron: mid, explore: [newRow(lastAt(7))], rollup: rollupRows({ ghostAt: lastAt(5), covAt: lastHalfHour() }), page: page("recomputed once an hour", "recomputed every 15 minutes") }),
+      /^FAIL  \/ghost-job-index says "recomputed every 15 minutes" for the feed freshness figures, but job-board-stats-rollup runs on \*\/30/);
   });
 
   it("an explore row from the new writer that lost a part the page reads, or kept a denominator", () => {

@@ -239,7 +239,7 @@ describe("the backup scanner (free-keyword-scan-stream)", () => {
     for (const l of lines) expect(l).not.toMatch(RESUME_WORDS);
   });
 
-  it("a stream that carried no usage chunk ends its line with usage=absent, so its dashes are not read as a measurement (review 2026-11-15)", async () => {
+  it("a stream that carried no usage chunk still prints the one seven-field line, its counts '-', with nothing appended (owner's format)", async () => {
     expect(STREAM_SSE_NO_USAGE).not.toContain("prompt_tokens");
     streamBody = STREAM_SSE_NO_USAGE;
     const res = await streamHandler(new Request("https://harness.supabase.co/functions/v1/free-keyword-scan-stream", {
@@ -249,9 +249,9 @@ describe("the backup scanner (free-keyword-scan-stream)", () => {
     await res.text();
     const analysis = usageLines().filter((l) => l.includes("context=free-keyword-scan-stream.analysis"));
     expect(analysis).toEqual([
-      "[AI-USAGE] context=free-keyword-scan-stream.analysis model=google/gemini-2.5-flash prompt_tokens=- completion_tokens=- cached_tokens=- reasoning_tokens=- finish_reason=tool_calls usage=absent",
+      "[AI-USAGE] context=free-keyword-scan-stream.analysis model=google/gemini-2.5-flash prompt_tokens=- completion_tokens=- cached_tokens=- reasoning_tokens=- finish_reason=tool_calls",
     ]);
-    // The industry check is a plain reply that carries its counts: no marker.
-    expect(usageLines().filter((l) => l.includes("usage=absent"))).toHaveLength(1);
+    // Every line, counted or not, is exactly the seven fields.
+    for (const l of usageLines()) expect(l.split(" ").slice(1).map((w) => w.split("=")[0])).toEqual(["context", "model", "prompt_tokens", "completion_tokens", "cached_tokens", "reasoning_tokens", "finish_reason"]);
   });
 });

@@ -38,7 +38,7 @@
 #       the seconds between the last hour's row leaving it and this hour's
 #       arriving (review 2026-11-15). None at all is a FAIL. Four or more is
 #       a FAIL once the saving must show: COST_HB_DEPLOYED_AT (UTC, the moment
-#       the paste carrying scan-heartbeat 2026-11-09.1 and free-keyword-scan
+#       the paste carrying scan-heartbeat 2026-11-09.2 and free-keyword-scan
 #       2026-11-09.2 landed) is set, both serve those builds or later, and the
 #       window opened ten minutes or more after it. Unset, or the window
 #       straddling the paste, four or more is INFO. An anchor that is not a
@@ -64,7 +64,7 @@ rm -f /tmp/vd_ch_home.html /tmp/vd_ch_entry.js /tmp/vd_ch_chunk.js /tmp/vd_ch_ho
 # B1 + C1.
 VDCH_HB_NEW=unknown
 VDCH_FKS_NEW=unknown
-for VDCH_SPEC in scan-heartbeat:2026-11-09:1 free-keyword-scan:2026-11-09:2 free-keyword-scan-stream:2026-11-10:2; do
+for VDCH_SPEC in scan-heartbeat:2026-11-09:2 free-keyword-scan:2026-11-09:2 free-keyword-scan-stream:2026-11-10:3; do
   VDCH_FN=${VDCH_SPEC%%:*}; VDCH_REST=${VDCH_SPEC#*:}; VDCH_D=${VDCH_REST%%:*}; VDCH_N=${VDCH_REST#*:}
   curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$VDCH_FN" -H "Origin: $SITE" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: authorization,apikey,content-type" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' > "/tmp/vd_ch_opt_$VDCH_FN.txt"
   VDCH_H=$(grep -i '^x-fn-build:' "/tmp/vd_ch_opt_$VDCH_FN.txt" | head -1 | sed -E 's/^[^:]+: *//')

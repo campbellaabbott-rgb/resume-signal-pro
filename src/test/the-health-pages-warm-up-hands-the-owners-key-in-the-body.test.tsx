@@ -65,7 +65,7 @@ describe("the health page's Warm Up button", () => {
     expect(await screen.findByText(/Last warm-up:/, undefined, SLOW)).toBeTruthy();
   });
 
-  it("a warm-up that answers 200 with success false (no key, warm-up 2026-11-09.1) is shown as no warm-up, as an error is, and the page keeps rendering", async () => {
+  it("a warm-up that answers 200 with success false (no key, warm-up 2026-11-09.2) is shown as no warm-up, as an error is, and the page keeps rendering", async () => {
     invoke.mockImplementation(async (fn: string) => {
       if (fn === "warm-up") return { data: { success: false, error: "Unauthorized: the full warm-up needs the admin key.", code: "admin_key_required" }, error: null };
       if (fn === "admin-ops") return { data: { data: null }, error: null };

@@ -6461,14 +6461,14 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // keyed on the whole text, whitespace collapsed and lowercased, as the
 // primary's is; the old key deleted every letter outside A-Z, so two people's
 // Chinese or Japanese résumés shared one cached report. Key version v8.
+// 2026-11-10.3 (cost wave review 2026-11-15, over the heartbeat lane's 2026-11-10.2).
 // 2026-11-10.2 (cost audit 2026-11-08, heartbeat lane; Do first #10, #11; the
 // hotfix's day, as main carries 2026-11-10.1): browsers may cache the
 // preflight for two hours (Access-Control-Max-Age), and the industry check's
 // reply and the streamed analysis each print one [AI-USAGE] line of token
-// counts (ai-usage.ts, the primary's copy byte for byte). Review 2026-11-15,
-// same unshipped build: a stream that carried no usage chunk ends its line
-// with usage=absent, since the request does not ask for one.
-const FN_BUILD = "free-keyword-scan-stream.2026-11-10.2";
+// counts (ai-usage.ts, the primary's copy byte for byte). A stream that
+// carried no usage chunk prints its counts as '-', the owner's one format.
+const FN_BUILD = "free-keyword-scan-stream.2026-11-10.3";
 
 /** The primary's report id formula (free-keyword-scan/report-meta.ts reportIdFor): this report's cache key and its score. */
 async function streamReportId(cacheKey: string, score: unknown): Promise<string> {
@@ -8329,11 +8329,10 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       // The request asks for no usage chunk: on OpenAI's streaming rule one
       // comes only when the request names it, and whether this gateway takes
       // that option is unmeasured, while an option it refused would cost the
-      // backup scanner its reply. So a stream that carried no counts says so
-      // at the end of its line (review 2026-11-15), and its dashes are never
-      // read as a measurement of zero spend.
-      console.log(aiUsageLine('free-keyword-scan-stream.analysis', modelUsed, { usage: streamUsage, choices: [{ finish_reason: streamFinish }] })
-        + (streamUsage && typeof streamUsage === 'object' ? '' : ' usage=absent'));
+      // backup scanner its reply. So a stream that carried no counts prints
+      // '-' for each, in the owner's seven-field line, and a '-' is absent,
+      // never a zero.
+      console.log(aiUsageLine('free-keyword-scan-stream.analysis', modelUsed, { usage: streamUsage, choices: [{ finish_reason: streamFinish }] }));
 
       // Parse final result with auto-repair for common JSON issues
       let analysis: any = null;
