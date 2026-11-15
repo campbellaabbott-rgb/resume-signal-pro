@@ -38,6 +38,8 @@ export interface JobPosting {
   employmentTypeText?: string | null;
   /** The level the employer picked in its ATS (Personio), n1421. */
   level?: StatedLevel | null;
+  /** ISO date the employer states the posting closes; absent when it states none. */
+  closesAt?: string | null;
 }
 
 export type EmploymentType = "full_time" | "part_time" | "contract" | "temporary" | "internship";
@@ -114,7 +116,7 @@ export function isDatedBefore(sanitizedPostedAt: string | null, cutoffMs: number
 }
 
 // Rationale: docs/job-board-index-notes.md#n967-const-unescapeentities-s-string
-const unescapeEntities = (s: string) =>
+export const unescapeEntities = (s: string) =>
   s
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
@@ -1530,6 +1532,12 @@ export function xmlValue(block: string, tag: string): string | null {
   if (!m) return null;
   const v = m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").trim();
   return v || null;
+}
+
+/** xmlValue decoded once, for titles and departments; description HTML stays on xmlValue, as htmlToText decodes it. */
+export function xmlText(block: string, tag: string): string | null {
+  const v = xmlValue(block, tag);
+  return v === null ? null : unescapeEntities(v).trim() || null;
 }
 
 // Rationale: docs/job-board-index-notes.md#n1423-a-personio-posting-in-another-language
