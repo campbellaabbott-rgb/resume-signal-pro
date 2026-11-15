@@ -83,11 +83,11 @@ elif [ -z "$VD52E_LATEST" ]; then echo "FAIL  /changelog's description names no 
 elif [ "$VD52E_LATEST" \< "2026-11-15" ]; then echo "FAIL  /changelog's description names an entry of $VD52E_LATEST as the newest, older than this batch's 2026-11-15 (the prerender did not rebuild)"
 else echo "PASS  /changelog's description names an entry of $VD52E_LATEST as the newest, no older than this batch's 2026-11-15"; fi
 
-while IFS='|' read -r K M; do
-  [ -n "$M" ] || continue
-  if [ "$VD52E_PUB" != 1 ]; then echo "INFO  the description of $K is judged after the publish"
-  elif printf '%s' "$VD52E_US" | grep -qF "$M"; then echo "PASS  the US English changelog strings describe $K with \"$M\""
-  else echo "FAIL  the US English changelog strings carry no \"$M\" for $K: its description is not the one read live on 15 November"; fi
+while IFS='|' read -r VD52E_K VD52E_M; do
+  [ -n "$VD52E_M" ] || continue
+  if [ "$VD52E_PUB" != 1 ]; then echo "INFO  the description of $VD52E_K is judged after the publish"
+  elif printf '%s' "$VD52E_US" | grep -qF "$VD52E_M"; then echo "PASS  the US English changelog strings describe $VD52E_K with \"$VD52E_M\""
+  else echo "FAIL  the US English changelog strings carry no \"$VD52E_M\" for $VD52E_K: its description is not the one read live on 15 November"; fi
 done <<'VD52E_MUST'
 aJobPageSaysWhenItsEmployerClosedThePosting|The copy of the page that search engines read also gives the day it was built.
 companyPagesUseTheNameTheEmployerUses|in the page title and heading
@@ -102,20 +102,20 @@ if [ "$VD52E_PUB" != 1 ]; then
   echo "INFO  the other eight languages' changelog strings are judged after the publish"
 else
   VD52E_ENTRY=$(curl -s -m 60 "$SITE$VD52E_MAIN")
-  for L in en-GB de es fr hi nl pt tl; do
+  for VD52E_L in en-GB de es fr hi nl pt tl; do
     VD52E_LC=""
     VD52E_LCH=""
-    for CH in $(printf '%s' "$VD52E_ENTRY" | grep -oE "\"\\./$L-[A-Za-z0-9_-]+\\.js\"" | tr -d '"' | sed 's|^\./||' | sort -u); do
-      VD52E_TRY=$(curl -s -m 30 "$SITE/assets/$CH")
+    for VD52E_LCX in $(printf '%s' "$VD52E_ENTRY" | grep -oE "\"\\./$VD52E_L-[A-Za-z0-9_-]+\\.js\"" | tr -d '"' | sed 's|^\./||' | sort -u); do
+      VD52E_TRY=$(curl -s -m 30 "$SITE/assets/$VD52E_LCX")
       printf '%s' "$VD52E_TRY" | grep -q "workdayCompanyPagesLostTheirFacts" || continue
       VD52E_LC=$VD52E_TRY
-      VD52E_LCH=$CH
+      VD52E_LCH=$VD52E_LCX
       break
     done
-    if [ -z "$VD52E_LC" ]; then echo "FAIL  no $L changelog chunk the served entry names carries workdayCompanyPagesLostTheirFacts: the 15 November entries cannot be shown in $L"; continue; fi
+    if [ -z "$VD52E_LC" ]; then echo "FAIL  no $VD52E_L changelog chunk the served entry names carries workdayCompanyPagesLostTheirFacts: the 15 November entries cannot be shown in $VD52E_L"; continue; fi
     VD52E_MISS=""
-    for K in $VD52E_KEYS; do printf '%s' "$VD52E_LC" | grep -q "$K" || VD52E_MISS="$VD52E_MISS $K"; done
-    if [ -z "$VD52E_MISS" ]; then echo "PASS  the $L changelog strings ($VD52E_LCH) carry all six 15 November entries"
-    else echo "FAIL  the $L changelog strings ($VD52E_LCH) lack$VD52E_MISS: the publish did not ship the 15 November entries in $L"; fi
+    for VD52E_K in $VD52E_KEYS; do printf '%s' "$VD52E_LC" | grep -q "$VD52E_K" || VD52E_MISS="$VD52E_MISS $VD52E_K"; done
+    if [ -z "$VD52E_MISS" ]; then echo "PASS  the $VD52E_L changelog strings ($VD52E_LCH) carry all six 15 November entries"
+    else echo "FAIL  the $VD52E_L changelog strings ($VD52E_LCH) lack$VD52E_MISS: the publish did not ship the 15 November entries in $VD52E_L"; fi
   done
 fi
