@@ -1,12 +1,4 @@
-/**
- * THE ANONYMOUS BOARD BUDGET: how many data-bearing reads one address may make
- * in a UTC day. Pure apart from the rpc it is handed, so vitest imports it.
- * Why, the numbers and the owner's one-statement levers:
- * docs/job-board-deploy-notes.md (2026-09-09.85, .87 for the network and the
- * pass). The counter is job_board_anon_check (migrations 20261002140000 and
- * 20261003180000), its own tables, never the request budget shared with upload
- * and checkout.
- */
+// Rationale: docs/job-board-index-notes.md#n1570-import-board_reader_header-boardreaderke
 import { BOARD_READER_HEADER, boardReaderKey } from "../_shared/board-reader-key.ts";
 import { inChina } from "./geo-cn.ts";
 import { type PassState, passStateOf, readBoardPass } from "./board-pass.ts";
@@ -15,28 +7,13 @@ import { type PassState, passStateOf, readBoardPass } from "./board-pass.ts";
 export const BUDGETED_ACTIONS: ReadonlySet<string> = new Set([
   "list", "detail", "facets", "company-suggest", "exists", "semantic-search", "application-questions", "verify",
 ]);
-/**
- * Everything the meter counts: those, and status (S13-114), whose every
- * computed answer is about forty reads. status hands out no posting and our own
- * heartbeat reads it with the publishable key, so no pass is asked for it: it
- * is refused only by the address cap or a listed network or country.
- */
+// Rationale: docs/job-board-index-notes.md#n1571-export-const-metered_actions-readonlyset
 export const METERED_ACTIONS: ReadonlySet<string> = new Set([...BUDGETED_ACTIONS, "status"]);
 
-/**
- * ONE ROW PER ADDRESS PER UTC DAY, whatever the caller declares: the kind only
- * picks which of these caps that row is judged against, so a declared kind
- * lifts an address to the LARGEST cap at most and never adds caps together.
- */
+// Rationale: docs/job-board-index-notes.md#n1572-export-const-address_daily_cap-_000
 /** Jobs.tsx mounted under vitest: an extreme human day is ~6,400 counted calls. */
 export const ADDRESS_DAILY_CAP = 10_000;
-/**
- * x-rb-budget: build. 20 bakes of at most 721 calls from one address (its list
- * pages are 60 rows since .88): twice the busiest UTC day of pushes to main
- * since the frontend began publishing from main (10), and about half the
- * measured harvest (~29,000 a day), so the public header cannot buy a
- * harvester's day.
- */
+// Rationale: docs/job-board-index-notes.md#n1573-export-const-build_daily_cap-_000
 export const BUILD_DAILY_CAP = 15_000;
 /** x-rb-budget: probe. A label at the browser's cap: lower would refuse our own verify run on the owner's address after a heavy browsing day. */
 export const PROBE_DAILY_CAP = ADDRESS_DAILY_CAP;
@@ -123,12 +100,7 @@ const publicV4 = ([a, b]: number[]): boolean =>
     || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254)
     || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168));
 
-/**
- * The address as one bucket: IPv4 as itself (an IPv4-mapped IPv6 address
- * included), IPv6 cut to its /64 because one host rotates freely inside it.
- * null for anything that is not a public address -- a gateway or internal hop
- * must never become a shared bucket that gets enforced.
- */
+// Rationale: docs/job-board-index-notes.md#n1574-export-function-addresskey-raw-string-st
 export function addressKey(raw: string): string | null {
   let s = raw.trim().toLowerCase();
   const bracketed = /^\[([^\]]+)\](?::\d+)?$/.exec(s);
@@ -148,11 +120,7 @@ export function addressKey(raw: string): string | null {
   return `${w.slice(0, 4).map((x) => x.toString(16)).join(":")}::/64`;
 }
 
-/**
- * The network a normalised address key sits in: IPv4 "a.b.c.d" is
- * "a.b.c.0/24", an IPv6 key "h0:h1:h2:h3::/64" is "h0:h1:h2::/48". null for
- * anything else, so a non-public address is never a network.
- */
+// Rationale: docs/job-board-index-notes.md#n1575-export-function-networkof-key-string-nul
 export function networkOf(key: string | null): string | null {
   if (!key) return null;
   const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}$/.exec(key);
@@ -163,13 +131,7 @@ export function networkOf(key: string | null): string | null {
 
 export type CountrySource = "cf" | "registry" | "none";
 
-/**
- * cf-ipcountry when it is a real two-letter code (Tor's T1 and XX are not).
- * Without one -- and on Supabase's edge it never arrives -- CN when the
- * address key sits in a mainland block (geo-cn.ts), else XX. So without the
- * header, XX means "not in a block we hold as mainland China, or no public
- * address" -- never proof that a caller is outside China.
- */
+// Rationale: docs/job-board-index-notes.md#n1576-export-function-countryof-h-headers-key
 export function countryOf(h: Headers, key: string | null = null): { country: string; source: CountrySource } {
   const c = (h.get("cf-ipcountry") ?? "").trim().toUpperCase();
   if (/^[A-Z]{2}$/.test(c) && c !== "XX") return { country: c, source: "cf" };
@@ -192,44 +154,20 @@ export async function exemptKind(h: Headers, serviceKey: string): Promise<"servi
   return offered && sameSecret(offered, await boardReaderKey(serviceKey)) ? "reader" : null;
 }
 
-/**
- * THE MOST ROWS ONE CALL MAY CARRY (.88). The page's own size: /jobs asks for
- * 60 (Jobs.tsx PAGE), and nothing a person can do there asks for more, so
- * limit=1000 from a crafted client is answered with 60 rows, not the 200 every
- * caller used to get. Only a SECRET lifts it -- the service key, or our
- * servers' reader proof derived from it (the public API, MCP and the digest
- * page 200 at a time). Our tooling's x-rb-budget header lifts nothing here:
- * its value is in this public repository, and a ceiling any reader can claim
- * is not a ceiling. The bake and the probes page 60 at a time like the page.
- */
+// Rationale: docs/job-board-index-notes.md#n1577-export-const-browser_page_rows
 export const BROWSER_PAGE_ROWS = 60;
 export const SERVER_PAGE_ROWS = 200;
 export async function pageCeiling(h: Headers, serviceKey: string): Promise<number> {
   return (await exemptKind(h, serviceKey)) ? SERVER_PAGE_ROWS : BROWSER_PAGE_ROWS;
 }
 
-/**
- * S12-122: THE DEEPEST OFFSET A CALLER WITHOUT A SECRET MAY ASK FOR. A raw
- * OFFSET makes the database read and throw away every row before it:
- * country=US at offset 400,000 spent 5,664 ms in page_query, a cheap lever
- * for anyone. Past this the page is refused (400 offset_too_deep), and a
- * browse pages on by nextCursor; our servers and the service key are not
- * capped. 10,000 is also where every count stops.
- */
+// Rationale: docs/job-board-index-notes.md#n1578-export-const-anon_offset_ceiling-_000
 export const ANON_OFFSET_CEILING = 10_000;
 export async function offsetCeiling(h: Headers, serviceKey: string): Promise<number> {
   return (await exemptKind(h, serviceKey)) ? Number.POSITIVE_INFINITY : ANON_OFFSET_CEILING;
 }
 
-/**
- * In order: the service key (exempt), our servers' reader proof (exempt), then
- * a counted address. A declared api/mcp/digest caller WITHOUT the proof is
- * still counted at the address cap; its kind only makes a deploy skew visible.
- * passSecret is TURNSTILE_SECRET_KEY: without it every pass state is
- * 'unconfigured', which nothing refuses. Under requirePass the counter asks
- * unproven_* for a pass too (a declaration is not a proof) and puts passless
- * build/probe in one shared row per kind (migration 20261003180000).
- */
+// Rationale: docs/job-board-index-notes.md#n1579-export-async-function-classifycaller-h-h
 export async function classifyCaller(h: Headers, serviceKey: string, passSecret = ""): Promise<Caller> {
   const exempt = await exemptKind(h, serviceKey);
   if (exempt) return { exempt: true, kind: exempt };
@@ -247,10 +185,7 @@ export async function classifyCaller(h: Headers, serviceKey: string, passSecret 
   return { ...base, kind: DECLARED.get(declared) ?? "address" };
 }
 
-/**
- * A keyed hash of the address, never the address (all of IPv4 hashes in an
- * afternoon). The same bucket for every kind: one address, one day row.
- */
+// Rationale: docs/job-board-index-notes.md#n1580-export-async-function-bucketfor-c-counte
 export async function bucketFor(c: CountedCaller, serviceKey: string): Promise<string> {
   if (c.kind === "unknown_address" || !c.key) return "unknown";
   return `ip:${(await sha256Hex(`${serviceKey}:board-anon:${c.key}`)).slice(0, 16)}`;
@@ -269,11 +204,7 @@ const REFUSAL_MESSAGE: Record<Exclude<RefusalCode, "address">, string> = {
   pass: `Your browser needs to finish a quick check before the job board can load. Reload the page; if this keeps happening, write to ${BOARD_BUDGET_CONTACT}.`,
 };
 
-/**
- * The refusal: 429, never cached, with the reset time and a person to write to.
- * A pass refusal has no reset to wait for -- a fresh pass lifts it at once -- so
- * it carries resetAt null and Retry-After 1.
- */
+// Rationale: docs/job-board-index-notes.md#n1581-export-function-budgetrefusal
 export function budgetRefusal(
   r: { code: RefusalCode; limit: number; used: number },
   cors: Record<string, string>,
@@ -304,16 +235,7 @@ export type AnonCheckRpc = (
   signal: AbortSignal,
 ) => PromiseLike<{ data: unknown; error: { code?: string; message?: string } | null }>;
 
-/**
- * null = serve the request; a Response = the refusal. Runs before dispatch, so
- * a refused call does no other database work. FAILS OPEN on everything -- an
- * error, an unapplied migration, the deadline, an unreadable row: the meter
- * must never take the board down. Only an explicit is_allowed false refuses.
- * Before migration 20261003180000 the counter has no p_net/p_pass/p_pass_id
- * (PGRST202): the call is repeated with the seven arguments it does have,
- * inside the same deadline, so the rules already live keep refusing across a
- * deploy skew.
- */
+// Rationale: docs/job-board-index-notes.md#n1582-export-async-function-anonbudgetgate
 export async function anonBudgetGate(
   req: Request,
   action: string,
@@ -342,8 +264,7 @@ export async function anonBudgetGate(
     }
     const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null | undefined;
     if (!row || row.is_allowed !== false) return null;
-    // A listed network or country refuses whatever pass the call carries; the
-    // counter sets pass_rule only when the pass is what refuses it.
+    // Rationale: docs/job-board-index-notes.md#n1583-return-budgetrefusal
     return budgetRefusal({
       code: row.network_rule === true ? "network" : row.pass_rule === true ? "pass" : row.country_rule === true ? "country" : "address",
       limit: Number(row.cap_today) || 0,
@@ -379,8 +300,7 @@ export function anonBudgetStatus(v: unknown, opts: { passConfigured?: boolean } 
     countriesListed: listed(o.countries),
     countryCap: typeof o.countryCap === "number" ? o.countryCap : null,
     networksListed: listed(o.blockedNetworks),
-    // configured: TURNSTILE_SECRET_KEY is set on this function; required: the row's requirePass;
-    // cap: the row's passCap (reads per pass per UTC day), null = the counter's default of 600.
+    // Rationale: docs/job-board-index-notes.md#n1584-pass-configured-opts-passconfigured-true
     pass: { configured: opts.passConfigured === true, required: o.requirePass === true, cap: typeof o.passCap === "number" ? o.passCap : null },
     overrides: Object.fromEntries(["addressCap", "buildCap", "probeCap"].filter((k) => typeof o[k] === "number").map((k) => [k, o[k]])),
     defaults: { address: ADDRESS_DAILY_CAP, build: BUILD_DAILY_CAP, probe: PROBE_DAILY_CAP },

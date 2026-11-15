@@ -1,55 +1,14 @@
-/**
- * ONE RETRIEVER PER SEARCH, CHOSEN BEFORE ANY SQL IS ISSUED.
- *
- * A nine-agent design review measured this board's search paths under load and
- * ranked three architectures. All three judges rejected multi-arm fusion for the
- * same reason: withDeadline is Promise.race and cannot cancel SQL, so fanning
- * out multiplies UNCANCELLABLE load on a database whose entire incident history
- * is timeouts — and losing one arm silently rewrites 65-70% of the top 20, which
- * is incoherence rather than an error. What they converged on instead is a
- * router: decide the class up front, use exactly one retriever, and re-rank its
- * window in memory.
- *
- * Deciding the class UP FRONT is also what fixes the shipped tier's fatal flaw.
- * That tier only ran when the primary path returned ZERO rows, so the queries
- * that return a full page of WRONG answers — the larger class — could never
- * reach it. A pre-SQL router has no such gate.
- *
- * Everything here is a PURE FUNCTION of the query string, which is why this file
- * exists at all: the edge function cannot be imported by the test runner, so
- * logic left inside it can only be checked by matching source text. A review
- * found two of my guards passing while the code they described had been deleted.
- * These are imported and executed by the tests.
- */
+// Rationale: docs/job-board-index-notes.md#n1507-export-const-foldname-s-string-string
 
-/** Fold to letters and digits: "AT&T" -> "att", "Domino's" -> "dominos".
- *
- *  Diacritics TRANSLITERATE (NFD, strip the combining marks), never delete:
- *  the old fold removed the accented letter wholesale, so "L'Oréal" became
- *  "loral" — a string that matches neither the typed name nor anything the
- *  board stores, which silently unreached every accented employer. */
+// Rationale: docs/job-board-index-notes.md#n1508-export-const-foldname-s-string-string
 export const foldName = (s: string): string =>
   s.normalize("NFD").replace(/\p{M}+/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 
-/** The employer typeahead's fold: letters and digits of EVERY script, final
- *  sigma read as sigma. foldName keeps a-z0-9 for the router; here it folded a
- *  Korean, Greek or Thai name or query to nothing (n435). */
+// Rationale: docs/job-board-index-notes.md#n1509-export-const-foldtypeahead-s-string-stri
 export const foldTypeahead = (s: string): string =>
   s.normalize("NFD").replace(/\p{M}+/gu, "").toLowerCase().replace(/ς/g, "σ").replace(/[^\p{L}\p{N}]+/gu, "");
 
-/**
- * Occupations and ordinary words that must NEVER resolve to an employer.
- *
- * Several are real companies on this board — Target, Shell, Oracle, Apple. They
- * are excluded anyway: someone typing "shell" almost certainly means the
- * industry or the word, and routing them to one employer hides every other
- * company's jobs behind a filter they never set and cannot see. "shell assessed
- * internship program" is a real query from this board's own miss log.
- *
- * The cost of the guard is that those employers are unreachable by name; the
- * cost of omitting it is that a common word silently collapses the board. The
- * first is a missing feature, the second is a wrong answer.
- */
+// Rationale: docs/job-board-index-notes.md#n1510-export-const-occupation_guard-readonlyse
 export const OCCUPATION_GUARD: ReadonlySet<string> = new Set([
   "sales", "nurse", "nursing", "driver", "chef", "intern", "internship", "it",
   "hr", "manager", "engineer", "engineering", "developer", "analyst", "teacher",
@@ -61,22 +20,13 @@ export const OCCUPATION_GUARD: ReadonlySet<string> = new Set([
   "horizon", "unity", "spark", "match", "monster", "indeed", "visa", "discover",
   "guardian", "liberty", "progressive", "cardinal", "sage", "stripe", "square",
   "orange", "gap", "boots", "sky", "three", "giant", "remote", "hybrid",
-  // Place names + common words from the 2026-08-21 alias regeneration. Each of
-  // these IS a real alias key — pickRoute("wisconsin") collapsed the whole
-  // board to the University of Wisconsin, "flex" to Flextronics, "mars" to the
-  // candy company — and the rule is the same one the block above paid for: a
-  // common word must never silently collapse the board to one employer. The
-  // regeneration will keep minting keys like these; anything a person types as
-  // a place, an acronym or an English word belongs here, not in the aliases.
+  // Rationale: docs/job-board-index-notes.md#n1511-ace-arrow-benchmark-card-continental-fle
   "ace", "arrow", "benchmark", "card", "continental", "flex", "infuse", "ing",
   "intuitive", "mars", "nov", "republic", "rochester", "sec", "wisconsin",
   "wood",
 ]);
 
-/** English stopwords the 'english' tsvector discards, so a query containing one
- *  cannot be served by the stored english index at all. q="IT" retrieves
- *  nothing there; q="it manager" degenerates to "manager" and returns 92,919
- *  rows of which 99.2% do not contain the typed words. */
+// Rationale: docs/job-board-index-notes.md#n1512-export-const-english_stopwords-readonlys
 export const ENGLISH_STOPWORDS: ReadonlySet<string> = new Set([
   "a", "an", "the", "and", "or", "but", "if", "then", "else", "when", "at", "by",
   "for", "with", "about", "into", "to", "from", "up", "down", "in", "out", "on",
@@ -88,18 +38,7 @@ export const ENGLISH_STOPWORDS: ReadonlySet<string> = new Set([
 /** R3's token test: a stopword, or three letters or digits or fewer. */
 export const isLiteralToken = (t: string): boolean => ENGLISH_STOPWORDS.has(t) || foldName(t).length <= 3;
 
-/**
- * S12-018: WORDS THE ENGLISH STEMMER MERGES WITH A DIFFERENT JOB. "accountant"
- * stems to "account", "mechanic" to "mechan" (= "mechanical"), "operator" to
- * "oper" (= "operations"). The stemmed tiers matched both, so filtered pages
- * and totals filled with the other job: accountant + Denver served 160 of 180
- * rows without the word (Account Executive), GB mechanic 148 of 169
- * (Mechanical Engineer), US generator 120 of 180 ("Demand Generation"),
- * organizer 167, animator 148, installer 70, administrator 48 ("Administrative
- * Assistant"), university 32 ("Universal Banker"), live 2026-10-12. Such a word
- * takes the SIMPLE route and is matched unstemmed on the title in its singular
- * and plural, so the list and its count read the same predicate.
- */
+// Rationale: docs/job-board-index-notes.md#n1513-export-const-stem_collisions-readonly-re
 export const STEM_COLLISIONS: Readonly<Record<string, readonly string[]>> = (() => {
   const pairs: string[][] = [
     ["accountant", "accountants"], ["mechanic", "mechanics"], ["operator", "operators"],
@@ -123,15 +62,7 @@ export type TitleFilter = {
   orCompanyTokens?: string[];
 };
 
-/**
- * The SIMPLE route's title match, token by token (S11-004, n481). Each short
- * or stop token is matched literally (simple config on the title), OR'ed with
- * its own alias phrases; every other token is matched by english stem, on
- * title_tsv (indexed) and on the title alone (which decides), so "QA
- * engineers" finds "QA Engineer". `safeQ` is ftsSafe output. null keeps the
- * whole-query simple match: websearch syntax (a quote, " or ", a leading "-"),
- * or no token that needs a stem.
- */
+// Rationale: docs/job-board-index-notes.md#n1514-export-function-simpleroutefilters
 export function simpleRouteFilters(
   safeQ: string,
   aliases: Readonly<Record<string, readonly string[]>>,
@@ -154,9 +85,7 @@ export function simpleRouteFilters(
     const forms = isStemCollision(t) ? STEM_COLLISIONS[t].filter((f) => f !== t) : [];
     return [t, ...forms, ...alts(t)].join(" or ");
   };
-  // S12-014: "cvs pharmacist" matched "cvs" in titles only (1 row, against 1,453
-  // CVS Health pharmacists): a literal token that is an employer's key also
-  // matches that employer's boards.
+  // Rationale: docs/job-board-index-notes.md#n1515-const-boardsof-t-string-employers-foldna
   const boardsOf = (t: string) => (employers && foldName(t).length > 2 && !OCCUPATION_GUARD.has(foldName(t)) && Object.prototype.hasOwnProperty.call(employers, foldName(t)) ? employers[foldName(t)].tokens : []);
   const filters: TitleFilter[] = literal.map((t) => {
     const tokens = boardsOf(t);
@@ -179,13 +108,7 @@ export function singularReading(q: string): string {
 
 export type Route = "BROWSE" | "EMPLOYER" | "SYMBOL" | "SIMPLE" | "RANKED";
 
-/**
- * Which RETRIEVER a route uses. Deliberately not one-to-one with the route: a
- * SYMBOL query is a distinct class worth naming in the response and the
- * telemetry, but it is served by the ranked retriever because every literal
- * matcher measured too slow under concurrency and the ranked window already
- * contains the rows the scorer needs.
- */
+// Rationale: docs/job-board-index-notes.md#n1516-export-const-retriever_for-readonly-reco
 export const RETRIEVER_FOR: Readonly<Record<Route, "browse" | "company" | "simple" | "ranked">> = {
   BROWSE: "browse",
   EMPLOYER: "company",
@@ -196,8 +119,7 @@ export const RETRIEVER_FOR: Readonly<Record<Route, "browse" | "company" | "simpl
 
 export interface RouteDecision {
   route: Route;
-  /** Why, verbatim, for the response and for telemetry. A route nobody can
-   *  explain is a route nobody can debug. */
+  // Rationale: docs/job-board-index-notes.md#n1517-reason-string
   reason: string;
   /** EMPLOYER only: the company_token values to filter on. */
   tokens?: string[];
@@ -205,28 +127,12 @@ export interface RouteDecision {
   matchedName?: string;
 }
 
-/**
- * Pick the single retriever for a query.
- *
- * ORDER MATTERS AND IS NOT THE ORDER THE DESIGN PROPOSED. The original put the
- * stopword rule before the two-token rule, which sent "sales rep", "hr manager"
- * and "it manager" down the unranked path — the keyword-stuffing defect walking
- * straight back in through the side door. Symbols and employers are decided
- * first because they are unambiguous; the stopword rule only claims a query no
- * other rule wanted.
- */
+// Rationale: docs/job-board-index-notes.md#n1518-type-aliases-readonly-record-string-toke
 type Aliases = Readonly<Record<string, { tokens: string[]; name: string }>>;
 const own = (o: object, k: string): boolean => Object.prototype.hasOwnProperty.call(o, k);
 const fillerKeyMemo = new WeakMap<object, Map<string, { tokens: string[]; name: string }>>();
 
-/**
- * Alias keys with the query parser's filler words folded out of the name
- * ("Bank of America" -> "bankamerica"): the router sees the query after "of"
- * is dropped, so a name holding one never matched its own key (S8-090, n447).
- * Only names that keep two or more words (so "Destination Careers" never
- * claims "destination"), never a key the table already holds, and never a key
- * two names would share.
- */
+// Rationale: docs/job-board-index-notes.md#n1519-export-function-fillerfoldedaliases-alia
 export function fillerFoldedAliases(aliases: Aliases, filler: ReadonlySet<string>): ReadonlyMap<string, { tokens: string[]; name: string }> {
   const memo = fillerKeyMemo.get(aliases);
   if (memo) return memo;
@@ -246,25 +152,7 @@ export function fillerFoldedAliases(aliases: Aliases, filler: ReadonlySet<string
   return out;
 }
 
-/**
- * S12-014: EMPLOYER KEYS FROM THE BOARD'S OWN EMPLOYER LIST. The alias table
- * was generated once (2026-08-21, employers with 250+ postings, keyed on the
- * folded display name), so "cvs" found 21 titles against 15,828 CVS Health
- * postings, and "UPS", "3M" and "P&G", whose names arrived later by override,
- * fell to the title-only SIMPLE route. These keys are read from the live
- * employer list (company-suggest's), for an employer with at least
- * BRAND_MIN_OPEN open postings:
- *   - its whole folded name, when that name has two words or more, four
- *     characters or fewer, or a digit or ampersand ("UPS", "3M", "P&G",
- *     "The Home Depot");
- *   - its name without a leading "The" and a trailing corporate word
- *     ("CVS Health" gives "cvs"; "The Kroger Co." gives nothing: one word of
- *     six letters is too likely a word someone searches for as a job), under
- *     the same shape rule.
- * Never a key the table already holds (the table wins), never one two
- * different employers would share, never a word in `refuse` (the occupation
- * guard, stopwords, role abbreviations, places).
- */
+// Rationale: docs/job-board-index-notes.md#n1520-export-const-brand_min_open
 export const BRAND_MIN_OPEN = 100;
 const CORPORATE_TAIL = /\s+(?:health|healthcare|health\s+system|co\.?|company|companies|inc\.?|incorporated|corp\.?|corporation|group|holdings?|llc|ltd\.?|limited|plc|stores?|international|industries|brands|enterprises)$/i;
 const keyShapeOk = (name: string, key: string): boolean =>
@@ -320,12 +208,7 @@ export function pickRoute(
   const alnum = foldName(raw);
   const tokens = raw.toLowerCase().split(/\s+/).filter(Boolean);
 
-  // R1 — the WHOLE query is a known employer name. Whole-query only: a prefix
-  // match ("medical assistant" -> a company called Medical) hijacked 7.8% of
-  // real job titles when it was tried, measured by replaying the board's own
-  // titles as queries.
-  // Two characters only when the typed name carries a digit or an ampersand
-  // ("3M", "P&G", S12-014): "hr" and "it" never reach here.
+  // Rationale: docs/job-board-index-notes.md#n1521-if-alnum-length-alnum-length-test
   if ((alnum.length >= 3 || (alnum.length === 2 && /[0-9&]/.test(raw))) && !OCCUPATION_GUARD.has(alnum)) {
     // Own keys only: aliases["constructor"] was Object's constructor, and the route threw (n447).
     const hit = own(aliases, alnum) ? aliases[alnum] : filler ? fillerFoldedAliases(aliases, filler).get(alnum) : undefined;
@@ -334,34 +217,12 @@ export function pickRoute(
     }
   }
 
-  // R2 — symbols. The parser strips "++" and "#" under EVERY configuration, so
-  // wfts(simple).c++ and wfts(simple).c# are byte-identical at 1,437 rows of
-  // which ~71% contain neither string.
-  //
-  // THIS ROUTE DELIBERATELY HAS NO RETRIEVER OF ITS OWN. Three literal matchers
-  // were measured UNDER CONCURRENCY 4, which is the only measurement that
-  // counts here — everything looks fine at one request at a time, and that is
-  // exactly how a sequential scan reached production this morning:
-  //     title=ilike.'c++%'   (prefix)    0.25-0.43s   but only 60 rows
-  //     title=ilike.'%c++%'  (contains)  1.9-2.7s     311 rows
-  //     title=imatch '\yc\+\+'          3.1-3.5s     311 rows
-  // The regex is 0.35s SERIALLY and 3.5s at four callers. Prefix is the only
-  // safe one and it costs 80% of the recall.
-  //
-  // None of them is needed. The ranked window ALREADY holds the answers: of the
-  // 200 rows search_jobs returns for "c++", 38 contain the literal string, and
-  // 25 do for "c#". The scorer's +90 literal-substring rule floats them to the
-  // top for free. So a symbol query takes the ranked retriever and is separated
-  // by SCORING, not by a second query. The label is kept because it belongs in
-  // the disclosure and the telemetry.
+  // Rationale: docs/job-board-index-notes.md#n1522-if-test-raw
   if (/[+#]/.test(raw)) {
     return { route: "SYMBOL", reason: "symbol query — ranked retrieval, separated by literal scoring" };
   }
 
-  // R3 — anything the english index cannot see. A stopword or a one-to-three
-  // character token is absent from the stored english tsvector, so that path is
-  // either blind (q="IT" -> 0 rows) or answering a different question
-  // (q="it manager" -> 92,919 rows for "manager").
+  // Rationale: docs/job-board-index-notes.md#n1523-if-tokens-some-isliteraltoken
   if (tokens.some(isLiteralToken)) {
     return { route: "SIMPLE", reason: "query contains a token the english index discards" };
   }
@@ -370,30 +231,11 @@ export function pickRoute(
     return { route: "SIMPLE", reason: "query contains a word the english stemmer merges with another (accountant/account)" };
   }
 
-  // R4 — everything else keeps the path it has always had. GENERIC was proposed
-  // as a fifth route and all three judges rejected it: it selects candidates by
-  // recency, which silently converts the board to a date sort for every head
-  // term. The scorer fixes those on the RANKED path instead, without changing
-  // what is retrieved.
+  // Rationale: docs/job-board-index-notes.md#n1524-return-route-ranked-reason-default
   return { route: "RANKED", reason: "default" };
 }
 
-/**
- * Whole-word occurrences of `term` in `text`. Exported so the tests execute
- * the real counter rather than a copy of it.
- *
- * THE REWIND IS LOAD-BEARING: each match consumes its trailing boundary
- * character, which is the LEADING boundary of an adjacent occurrence, so
- * without stepping back one the 4x-"Sales" titles the repetition penalty
- * exists for count as 2, not 4. But rewinding by one re-finds the SAME match
- * forever when the whole match is a single character with empty boundaries on
- * both sides — foldName("c++") is "c", a retrieved title "C" matches at
- * [0,1), the rewind put the cursor back to 0, and scoreTitle("C", "c++")
- * never returned. One one-letter title in the window hung the entire search.
- * Forward progress is now guaranteed: the cursor never lands at or behind the
- * start of the match it just counted, which changes no count on any input the
- * old loop could finish.
- */
+// Rationale: docs/job-board-index-notes.md#n1525-export-const-wordcount-text-string-term
 export const wordCount = (text: string, term: string): number => {
   if (!term) return 0;
   const re = new RegExp(`(^|[^a-z0-9])${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`, "gi");
@@ -407,28 +249,8 @@ export const wordCount = (text: string, term: string): number => {
   return n;
 };
 
-/**
- * Score one title against the query. Higher is better.
- *
- * THIS IS THE PIECE THAT FIXES q="sales", AND IT IS NOT A RETRIEVAL PROBLEM.
- * All 959 postings titled exactly "Sales Associate" are already inside both the
- * english and the simple candidate sets — verified by intersection, 959/959 in
- * each. They never reach the top 100 because ts_rank's default normalization
- * applies NO document-length penalty, so a title repeating "sales" four times
- * outranks the exact match. Measured on the live board: the top 100 for
- * q="sales" have a median title length of 53 characters and a median of 2
- * occurrences; the control q="welder" has median length 14.5 and 31 exact-title
- * hits in its top 100.
- *
- * Pure, deterministic, and about 4ms for 600 rows — unmeasurable against ~1,050ms
- * of fixed edge overhead.
- */
-/**
- * `text` begins with `prefix` and the prefix ends at a word boundary: "nurse"
- * starts "Nurse Practitioner" and "Nurse", never "Nursery Housekeeper"; "java"
- * never "JavaScript Developer". A prefix that itself ends on a non-word
- * character ("c++") needs no boundary after it.
- */
+// Rationale: docs/job-board-index-notes.md#n1526-export-function-startswithword-text-stri
+// Rationale: docs/job-board-index-notes.md#n1527-export-function-startswithword-text-stri
 export function startsWithWord(text: string, prefix: string): boolean {
   if (!prefix || !text.startsWith(prefix)) return false;
   const next = text.charAt(prefix.length);
@@ -444,23 +266,13 @@ export function ringWordPattern(prefix: string): string {
 export function scoreTitle(title: string, query: string, ageDays?: number): number {
   const t = String(title ?? "");
   const tl = t.toLowerCase();
-  // Double quotes are the tsquery parser's phrase syntax, which the query now
-  // carries through to search_jobs; no title contains them, so left in place
-  // they would only deny a quoted phrase the prefix and adjacency bonuses it
-  // is the strongest possible claim to. Only the quote is removed — c++ and
-  // c# below still read the raw string.
+  // Rationale: docs/job-board-index-notes.md#n1528-const-qraw-string-query-replace-g
   const qRaw = String(query ?? "").replace(/"/g, "").trim();
-  // Split on NON-ALPHANUMERICS — the SAME split the titles get below. The old
-  // whitespace-split-then-foldName fused punctuated queries into tokens no
-  // title tokenization can produce: "k-8 teacher" carried a token "k8" that
-  // matched nothing, so "Teacher, K-8" scored BELOW "Math Teacher"; "c++/c#"
-  // became "cc" and lost to "CEO". qRaw stays untouched on purpose — the
-  // literal-substring rule below is the entire c++/c# signal and reads it raw.
+  // Rationale: docs/job-board-index-notes.md#n1529-const-qtokens-qraw-tolowercase-split-a
   const qTokens = qRaw.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   if (qTokens.length === 0) return 0;
 
-  // Coverage is the floor everything else modifies: a title missing half the
-  // query cannot be rescued by being short or fresh.
+  // Rationale: docs/job-board-index-notes.md#n1530-const-present-qtokens-filter-tok-wordcou
   const present = qTokens.filter((tok) => wordCount(tl, tok) > 0).length;
   let score = (100 * present) / qTokens.length;
 
@@ -471,8 +283,7 @@ export function scoreTitle(title: string, query: string, ageDays?: number): numb
 
   if (qTokens.length > 1 && tl.includes(qRaw.toLowerCase())) score += 25; // adjacency
 
-  // The ONLY thing that separates c++ from c#: the parser destroys both, so a
-  // literal check is the entire signal.
+  // Rationale: docs/job-board-index-notes.md#n1531-if-a-z0-s-i-test
   if (/[^a-z0-9\s]/i.test(qRaw) && tl.includes(qRaw.toLowerCase())) score += 90;
 
   // The ts_rank knob that is not reachable through PostgREST.
@@ -490,56 +301,9 @@ export function scoreTitle(title: string, query: string, ageDays?: number): numb
   return score;
 }
 
-/**
- * Re-rank a window by score, then cap any one employer at `perCompany` rows.
- *
- * Demoted, never dropped: one employer with 142 of the 1,000 intern postings
- * should not own page one, but its jobs are still real and still wanted further
- * down. Dropping them would be a different lie from the one being fixed.
- */
-/**
- * SCORE AGAINST THE BEST READING OF THE QUERY, NOT ONLY THE TYPED ONE.
- *
- * `query` widened to a list because alias expansion and re-ranking were working
- * against each other: expandQuery widens retrieval so "pm" also finds "Product
- * Manager", and then this function scored every one of those rows against the
- * literal string "pm" — which they do not contain. The alias rows landed at the
- * bottom of the very window they were fetched into, so page one stayed full of
- * whatever literally spelled "pm", and the expansion bought nothing a searcher
- * could see. That is the whole set the alias table was written for: pm, pa, ta,
- * np, ba, ai, rn.
- *
- * Math.max over the readings, so a row scores as well as its BEST
- * interpretation — never worse than today, because the typed query is always
- * one of the readings.
- *
- * Still a single string at every existing call site: the extra readings are
- * optional and callers that pass none behave exactly as before.
- */
-/**
- * THE QUERY MATCHED A PERKS LIST, NOT THE JOB.
- *
- * Measured 2026-09-01 on live results for q="Costco": positions 7, 9 and 10
- * were a plumbing dispatcher, a CNC machinist and a project manager, and the
- * board was right that each description contains the word —
- *
- *   "Company Paid Gym Membership, [[Costco]] Membership & Chiropractic Care"
- *   "[[Costco]] membership option"
- *   "[[Costco]] Membership Reimbursement"
- *
- * — every one of them an employer brand appearing in a benefits enumeration.
- * Position 8 matched the same single word and was genuinely relevant
- * ("regular travel to [[Costco]] Wholesale stores"), which is why the rule
- * reads the CONTEXT of the match rather than counting occurrences: a mention
- * is not noise because it is brief, it is noise because of the list it sits
- * in. Perks lists are where brand names go to be irrelevant, and this pattern
- * generalises past one warehouse club — a gift card, a free coffee and a gym
- * discount all name a company that is not hiring.
- *
- * Reads ts_headline's own marked snippet, so it sees exactly the text the
- * match was made on. A row with no snippet, or whose marked context is
- * anything else, is NOT boilerplate — the default is to keep.
- */
+// Rationale: docs/job-board-index-notes.md#n1532-const-perk_context
+// Rationale: docs/job-board-index-notes.md#n1533-const-perk_context
+// Rationale: docs/job-board-index-notes.md#n1534-const-perk_context
 const PERK_CONTEXT =
   /\b(membership|reimbursement|discount(s|ed)?|perk|benefit(s)?|allowance|stipend|401\s?k|insurance|pto|gym|wellness|voucher|gift\s?card)\b/i;
 
@@ -547,15 +311,10 @@ export function isPerkListMatch(snippet: unknown): boolean {
   const text = String(snippet ?? "");
   const marks = [...text.matchAll(/\[\[(.+?)\]\]/g)];
   if (marks.length === 0) return false;
-  // EVERY marked occurrence has to be perks context. One mention in the body
-  // of the role is enough to keep the row, however many perks lists follow it.
+  // Rationale: docs/job-board-index-notes.md#n1535-return-marks-every-m
   return marks.every((m) => {
     const at = m.index ?? 0;
-    // Scoped to the LINE the match sits on, not a character window. Perks are
-    // written one per line ("Costco Membership Reimbursement"), and a fixed
-    // window bleeds into whatever section follows — on a short snippet that
-    // meant a match in the body of the role inherited the benefits list below
-    // it and was buried for its neighbour's words.
+    // Rationale: docs/job-board-index-notes.md#n1536-const-from-text-lastindexof-n-at
     const from = text.lastIndexOf("\n", at) + 1;
     const toRaw = text.indexOf("\n", at);
     const line = text.slice(from, toRaw === -1 ? text.length : toRaw);
@@ -576,62 +335,20 @@ export function rerankWindow<T extends { title?: unknown; company?: unknown; tok
     r,
     i,
     s: Math.max(...queries.map((q) => scoreTitle(String(r.title ?? ""), q))),
-    // THE EMPLOYER'S OWN JOBS, WHEN THE TITLE SAYS NOTHING EITHER WAY.
-    //
-    // Measured 2026-09-01 by scoring served results: q="Costco" put a
-    // plumbing dispatcher and a substitute teacher in the top ten — rows the
-    // description tier had legitimately matched, tied at a title score of
-    // zero and then ordered by nothing. Meanwhile an actual Costco job
-    // titled "Cashier" scores zero too, because the query names the employer
-    // and not the work.
-    //
-    // Deliberately a TIEBREAK, never a boost: it is read only when the title
-    // scores are equal, so it cannot reorder a query the title already
-    // separates. That is what keeps it away from occupation searches, which
-    // measured ~1.00 precision@5 and had nothing to gain here — "nurse" must
-    // not start preferring a company called Nurse Staffing over nursing
-    // jobs, and under a tiebreak it cannot.
+    // Rationale: docs/job-board-index-notes.md#n1537-c-math-max-queries-map-q
     c: Math.max(...queries.map((q) => scoreTitle(String(r.company ?? ""), q))),
   })).map((x) => ({
     ...x,
-    // RELEVANCE CLASS, because a tiebreak below scoreTitle would never fire.
-    //
-    // scoreTitle PENALISES LENGTH, so two irrelevant rows are almost never
-    // equal: measured against q="Costco", "Dispatcher" scores 0 while "Brand
-    // Ambassador" scores -15.2, and a key placed after it is unreachable in
-    // practice. Ordering by class first is what makes the two facts below
-    // actually decide anything.
-    //
-    //   0 — the title carries the query. Untouched: this is the signal that
-    //       measured ~1.00 precision@5 and nothing here may reorder it.
-    //   1 — no title signal, but the COMPANY carries the query. The
-    //       employer's own job for an employer-named search ("Cashier" at
-    //       Costco Wholesale), which used to tie with pure noise at zero.
-    //   2 — no signal either way.
-    //   3 — no signal AND the only match sits in a perks list. Last, because
-    //       "Costco Membership Reimbursement" in a benefits enumeration tells
-    //       a searcher nothing about the job.
+    // Rationale: docs/job-board-index-notes.md#n1538-cls-x-s-x-c-isperklistmatch
     cls: x.s > 0 ? 0 : x.c > 0 ? 1 : isPerkListMatch(x.r.snippet) ? 3 : 2,
   }));
-  // Index breaks ties so the order is total and identical on every call —
-  // pagination over an unstable ordering is how page two repeated page one.
+  // Rationale: docs/job-board-index-notes.md#n1539-scored-sort-a-b-a-cls
   scored.sort((a, b) => (a.cls - b.cls) || (b.s - a.s) || (b.c - a.c) || (a.i - b.i));
   const seen = new Map<string, number>();
   const keep: typeof scored = [];
   const demoted: typeof scored = [];
   for (const x of scored) {
-    // THE CAP EXISTS FOR TOPICAL SEARCHES, AND CLASS 1 IS NOT ONE.
-    //
-    // Two-per-company stops one hospital owning a search for "nurse". But
-    // class-1 rows are, by construction, all the SAME employer — the one the
-    // query names — so the cap demoted all but two of exactly the rows the
-    // class was added to surface, and buried them under the noise class 3
-    // exists to bury. A person typing "Costco" is asking to be flooded with
-    // Costco.
-    //
-    // Safe because class 1 is only REACHED when title matches run out: a
-    // topical query like "nurse" has thousands of class-0 rows ahead of it, so
-    // a company that merely has the word in its name never reaches the page.
+    // Rationale: docs/job-board-index-notes.md#n1540-if-x-cls-keep-push-x
     if (x.cls === 1) { keep.push(x); continue; }
     const key = String(x.r.company ?? x.r.token ?? "").toLowerCase();
     const n = (seen.get(key) ?? 0) + 1;
@@ -671,9 +388,7 @@ export function rerankWindow<T extends { title?: unknown; company?: unknown; tok
  * than to silently ignore them", as the note above queryTerms puts it.
  */
 
-/** Stopword-grade words that must never become an exclusion. A "not" followed
- *  by one of these is part of a phrase ("not for profit"), and excluding a
- *  stopword strikes half the board by coincidence of grammar. */
+// Rationale: docs/job-board-index-notes.md#n1541-const-exclusion_stopwords-readonlyset-st
 const EXCLUSION_STOPWORDS: ReadonlySet<string> = new Set([
   "for", "the", "a", "an", "of", "in", "at", "to", "on",
 ]);
@@ -692,8 +407,7 @@ export function splitExclusions(raw: string): { positive: string; excluded: stri
   for (let i = 0; i < words.length; i++) {
     const w = words[i];
     if (pendingNot !== null) {
-      // "not" marks exactly this one token — never the whole remainder — and
-      // a stopword-grade token vetoes the operator reading entirely.
+      // Rationale: docs/job-board-index-notes.md#n1542-if-exclusion_stopwords-has-w-tolowercase
       if (EXCLUSION_STOPWORDS.has(w.toLowerCase())) positive.push(pendingNot, w);
       // "not requiring night shifts": the verb is not the thing excluded (n1410).
       else if (NOT_LEAD_VERB.test(w) && i + 1 < words.length && !EXCLUSION_STOPWORDS.has(words[i + 1].toLowerCase()) && !/^not$/i.test(words[i + 1])) continue;
@@ -706,8 +420,7 @@ export function splitExclusions(raw: string): { positive: string; excluded: stri
     positive.push(w);
   }
   const cleanExcluded = [...new Set(excluded.map((e) => e.replace(/^"|"$/g, "").split(" ").map((x) => x.replace(/[^a-z0-9+#.]/gi, "")).filter(Boolean).join(" ").toLowerCase()).filter((e) => e.length >= 2))];
-  // Nothing left to search means the exclusion has eaten the query. Run what
-  // they typed instead of returning the entire board.
+  // Rationale: docs/job-board-index-notes.md#n1543-if-positive-length-cleanexcluded-length
   if (!positive.length || !cleanExcluded.length) return { positive: text, excluded: [] };
   return { positive: positive.join(" "), excluded: cleanExcluded };
 }
@@ -715,8 +428,7 @@ export function splitExclusions(raw: string): { positive: string; excluded: stri
 /** normalize.ts's negated-remote pattern, copied because this file imports nothing; a test pins the copy (n1411). */
 export const NEGATED_REMOTE_IN_TITLE = new RegExp("\\b(?:non|not|no)[-\\s]?remote\\b|\\bnot\\s+(?:a\\s+|an\\s+|fully\\s+)?remote\\b|\\bnot\\s+(?:eligible|available|open|considered)\\s+(?:for|to)\\s+remote\\b|\\bremote\\s*[:=(–—-]\\s*(?:no|none)\\s*(?=$|[).|,;·/])|\\b(?:remote|wfh|work\\s+from\\s+home|home\\s?office)\\s*[:=–—-]?\\s*(?:not\\s+(?:available|offered|permitted|an\\s+option)|unavailable)\\b|\\b(?:non|not|no)[-\\s]?(?:wfh|work\\s+from\\s+home|home\\s?office)\\b|\\bno\\s+remote\\s+(?:work|option|options|opportunit(?:y|ies))\\b|\\b(?:keine|kein|nicht)\\s+(?:im\\s+)?home\\s?office\\b|\\b(?:non|sans|aucun)[-\\s]?t[ée]l[ée]travail\\b|\\bpas\\s+de\\s+t[ée]l[ée]travail\\b|\\bt[ée]l[ée]travail\\s*[:=(–—-]\\s*non\\s*(?=$|[).|,;·/])|\\b(?:no|n[ãa]o)[-\\s]?remoto\\b|\\b(?:sin|no)\\s+teletrabajo\\b|\\b(?:geen|niet)\\s+thuiswerken\\b", "gi");
 
-/** Does a title contain any excluded term? Word-ish match, so "manager" does
- *  not strike out "management-adjacent" by coincidence of substring. */
+// Rationale: docs/job-board-index-notes.md#n1544-export-function-titleexcluded-title-stri
 export function titleExcluded(title: string, excluded: readonly string[]): boolean {
   if (!excluded.length) return false;
   const raw = String(title ?? "").toLowerCase();

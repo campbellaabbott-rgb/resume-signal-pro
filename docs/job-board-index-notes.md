@@ -1099,6 +1099,13 @@ values already match the current parse. A row with a currency and the wrong
 amount IS reachable — which is why the comma-decimal rows, almost all of
 which hold a currency beside a null or wrong annual, are repaired by a bump.
 
+The version history that stood beside the constant (moved here for upload room, board .102):
+
+- v10 (2026-10-09, wave 3 board-data-ingest, docs/wave3/board-data-ingest.md): NT$/AR$/CL$/COL$/RD$/$U and a bare $ in TW/AR/CL/CO/DO/UY are not USD; a figure in millions is no wage; "up to X" alone is no floor; "$17/hr - $38/hr" is a range.
+- v9 (2026-09-27): A COMMA IS A DECIMAL POINT IN MOST OF EUROPE and the money pattern read it as a thousands group, so the figure split in half: P_RANGE is two money patterns with a dash between them, and on "€14,61 — €14,61" (ouihelp's own greenhouse pay footer) the grouped alternative could not match a 2-digit group, the plain one matched the bare "14", no separator followed, and the engine restarted INSIDE the number — taking the decimal tail 61 as the low end and the next figure's 14 as the high end. A €14.61/hour rate was read as a range from 61 down to 14. Where the halves descended, annualisation refused and the columns stored NULL (643 of 684 rows); where they ascended, the WRONG pair annualised cleanly — smartrecruiters/Securitas "€ 18,10 – € 19,51" stored 20,800-39,520 and workday/Assurant "$ 19,08 - $ 30,53" stored a floor of 16,640 against a true 39,686, 58% low, in the column salary_rank_usd is generated from (41 rows). Worst single shape: smartrecruiters/Flink "€15,96 - €17,14 per hour" read min 96 WITH a stated period and annualised to 199,680 — a €33k job published as a €200k one at the top of the pay sort. THE TAIL LENGTH DECIDES, NOT THE SEPARATOR AND NOT THE LOCALE: no thousands group has two digits, while three genuinely is ambiguous, so the v8 rule below and parseMoney's European reading are untouched (1,715 dot-3 rows in the census, zero changed) and the fix is unconditional — 29 of the 74 shape-carrying rows found by the country census have country NULL, so a locale-gated rule would have missed most of the population. Lookaheads refuse a tail followed by another separator (ashby/Oscilar's Indian lakh grouping "₹66,21,800") or by a period and a digit. MEASURED LIVE 2026-09-27 with the anon key: 684 rows carry the shape on NINE boards (greenhouse ouihelp 550 / joya 114, smartrecruiters Securitas 8 / Flink 5, workday Ia 2 / Assurant 2 / Enzazaden 1, oracle CareOne 1 / IHG 1), found by censusing every servable posting placed in any of the 64 comma-decimal countries the board holds (80,006 rows, cluster fold off) and then walking each discovered board to its exact countOnly total; an independent 60,000-row offset sample of the whole board found one further board and nothing else. Re-parsing 178,591 real stored salary strings with the old reader and the new one: 683 rows change, 638 NULL to a value, 45 a wrong value to a right one, ZERO a value to NULL. Boards, not one board, and never a token condition — the same lesson as v8.
+- v8 (2026-09-26): a 3-decimal HOURLY rate was read as a thousands group — Saskatchewan Health Authority's own field says "RequisitionType": "Hourly" beside "Pay Band 12 $23.170 to $24.840", and the board stored $23.17/hr as a $23,170 ANNUAL salary (under SK minimum wage, ~29% of real pay). Measured live over 176,575 rows: 1,404 rows on FIVE boards / two vendors — oracle HealthCareersInSask.ca 1,294, oracle DPS 96, workday Scarborough Health Network 11, workday Richmond University Medical Center 2, oracle Northwell 1 — of which 1,323 hold a wrong stored annual and 81 stored NULL. Every salary floor, ceiling and the pay sort read salary_rank_usd off salary_min_annual, so all of them filtered and sorted at ~half their true pay. See readsDotThreeAsRate: the European thousands reading ('€45.000' = 45,000) is deliberately kept, so the re-read is conditioned on the posting's locale, not the separator.
+- v7 (2026-08-25): day rates (x260) + a part-time/casual guard that REFUSES to annualise a load-dependent rate — {"q":"teacher","salaryFloor":90000} was serving 14 hourly part-timers out of 15, incl. $44/hr read as 91,520 and a $160/day substitute read as 332,800
+
 ## n044-the-completion-stamp-expires-without-this-th
 
 Above: `// The completion stamp EXPIRES. Without this the sweep is strictly one-shot:`
@@ -23624,3 +23631,865 @@ of saying it is not hiring. A scope that mixes carried and uncarried tokens
 is served as before: its rows are real.
 
 Pure, so vitest walks it against the real catalogue.
+
+## n1507-export-const-foldname-s-string-string
+
+In `supabase/functions/job-board/search-routing.ts`, above: `export const foldName = (s: string): string =>`
+
+ONE RETRIEVER PER SEARCH, CHOSEN BEFORE ANY SQL IS ISSUED.
+
+A nine-agent design review measured this board's search paths under load and
+ranked three architectures. All three judges rejected multi-arm fusion for the
+same reason: withDeadline is Promise.race and cannot cancel SQL, so fanning
+out multiplies UNCANCELLABLE load on a database whose entire incident history
+is timeouts — and losing one arm silently rewrites 65-70% of the top 20, which
+is incoherence rather than an error. What they converged on instead is a
+router: decide the class up front, use exactly one retriever, and re-rank its
+window in memory.
+
+Deciding the class UP FRONT is also what fixes the shipped tier's fatal flaw.
+That tier only ran when the primary path returned ZERO rows, so the queries
+that return a full page of WRONG answers — the larger class — could never
+reach it. A pre-SQL router has no such gate.
+
+Everything here is a PURE FUNCTION of the query string, which is why this file
+exists at all: the edge function cannot be imported by the test runner, so
+logic left inside it can only be checked by matching source text. A review
+found two of my guards passing while the code they described had been deleted.
+These are imported and executed by the tests.
+
+## n1508-export-const-foldname-s-string-string
+
+In `supabase/functions/job-board/search-routing.ts`, above: `export const foldName = (s: string): string =>`
+
+Fold to letters and digits: "AT&T" -> "att", "Domino's" -> "dominos".
+
+ Diacritics TRANSLITERATE (NFD, strip the combining marks), never delete:
+ the old fold removed the accented letter wholesale, so "L'Oréal" became
+ "loral" — a string that matches neither the typed name nor anything the
+ board stores, which silently unreached every accented employer.
+
+## n1509-export-const-foldtypeahead-s-string-stri
+
+In `supabase/functions/job-board/search-routing.ts`, above: `export const foldTypeahead = (s: string): string =>`
+
+The employer typeahead's fold: letters and digits of EVERY script, final
+ sigma read as sigma. foldName keeps a-z0-9 for the router; here it folded a
+ Korean, Greek or Thai name or query to nothing (n435).
+
+## n1510-export-const-occupation_guard-readonlyse
+
+In `supabase/functions/job-board/search-routing.ts`, above: `export const OCCUPATION_GUARD: ReadonlySet<string> = new Set([`
+
+Occupations and ordinary words that must NEVER resolve to an employer.
+
+Several are real companies on this board — Target, Shell, Oracle, Apple. They
+are excluded anyway: someone typing "shell" almost certainly means the
+industry or the word, and routing them to one employer hides every other
+company's jobs behind a filter they never set and cannot see. "shell assessed
+internship program" is a real query from this board's own miss log.
+
+The cost of the guard is that those employers are unreachable by name; the
+cost of omitting it is that a common word silently collapses the board. The
+first is a missing feature, the second is a wrong answer.
+
+## n1511-ace-arrow-benchmark-card-continental-fle
+
+In `supabase/functions/job-board/search-routing.ts`, above: `"ace", "arrow", "benchmark", "card", "continental", "flex", "infuse", "ing",`
+
+Place names + common words from the 2026-08-21 alias regeneration. Each of
+these IS a real alias key — pickRoute("wisconsin") collapsed the whole
+board to the University of Wisconsin, "flex" to Flextronics, "mars" to the
+candy company — and the rule is the same one the block above paid for: a
+common word must never silently collapse the board to one employer. The
+regeneration will keep minting keys like these; anything a person types as
+a place, an acronym or an English word belongs here, not in the aliases.
+
+## n1512-export-const-english_stopwords-readonlys
+
+In `supabase/functions/job-board/search-routing.ts`, above: `export const ENGLISH_STOPWORDS: ReadonlySet<string> = new Set([`
+
+English stopwords the 'english' tsvector discards, so a query containing one
+ cannot be served by the stored english index at all. q="IT" retrieves
+ nothing there; q="it manager" degenerates to "manager" and returns 92,919
+ rows of which 99.2% do not contain the typed words.
+
+## n1513-export-const-stem_collisions-readonly-re
+
+In `supabase/functions/job-board/search-routing.ts`, above: `export const STEM_COLLISIONS: Readonly<Record<string, readonly string[]>> = (() => {`
+
+S12-018: WORDS THE ENGLISH STEMMER MERGES WITH A DIFFERENT JOB. "accountant"
+stems to "account", "mechanic" to "mechan" (= "mechanical"), "operator" to
+"oper" (= "operations"). The stemmed tiers matched both, so filtered pages
+and totals filled with the other job: accountant + Denver served 160 of 180
+rows without the word (Account Executive), GB mechanic 148 of 169
+(Mechanical Engineer), US generator 120 of 180 ("Demand Generation"),
+organizer 167, animator 148, installer 70, administrator 48 ("Administrative
+Assistant"), university 32 ("Universal Banker"), live 2026-10-12. Such a word
+takes the SIMPLE route and is matched unstemmed on the title in its singular
+and plural, so the list and its count read the same predicate.
+
+## n1514-export-function-simpleroutefilters
+
+In `supabase/functions/job-board/search-routing.ts`, above: `export function simpleRouteFilters(`
+
+The SIMPLE route's title match, token by token (S11-004, n481). Each short
+or stop token is matched literally (simple config on the title), OR'ed with
+its own alias phrases; every other token is matched by english stem, on
+title_tsv (indexed) and on the title alone (which decides), so "QA
+engineers" finds "QA Engineer". `safeQ` is ftsSafe output. null keeps the
+whole-query simple match: websearch syntax (a quote, " or ", a leading "-"),
+or no token that needs a stem.
+
+## n1515-const-boardsof-t-string-employers-foldna
+
+In `supabase/functions/job-board/search-routing.ts`, above: `const boardsOf = (t: string) => (employers && foldName(t).length > 2 && !OCCUPATION_GUARD.has(foldName(t)) && Object.prototype.hasOwnPropert`
+
+S12-014: "cvs pharmacist" matched "cvs" in titles only (1 row, against 1,453
+CVS Health pharmacists): a literal token that is an employer's key also
+matches that employer's boards.
+
+## n1516-export-const-retriever_for-readonly-reco
+
+In `supabase/functions/job-board/search-routing.ts`, above: `export const RETRIEVER_FOR: Readonly<Record<Route, "browse" | "company" | "simple" | "ranked">> = {`
+
+Which RETRIEVER a route uses. Deliberately not one-to-one with the route: a
+SYMBOL query is a distinct class worth naming in the response and the
+telemetry, but it is served by the ranked retriever because every literal
+matcher measured too slow under concurrency and the ranked window already
+contains the rows the scorer needs.
+
+## n1517-reason-string
+
+In `supabase/functions/job-board/search-routing.ts`, above: `reason: string;`
+
+Why, verbatim, for the response and for telemetry. A route nobody can
+ explain is a route nobody can debug.
+
+## n1518-type-aliases-readonly-record-string-toke
+
+In `supabase/functions/job-board/search-routing.ts`, above: `type Aliases = Readonly<Record<string, { tokens: string[]; name: string }>>;`
+
+Pick the single retriever for a query.
+
+ORDER MATTERS AND IS NOT THE ORDER THE DESIGN PROPOSED. The original put the
+stopword rule before the two-token rule, which sent "sales rep", "hr manager"
+and "it manager" down the unranked path — the keyword-stuffing defect walking
+straight back in through the side door. Symbols and employers are decided
+first because they are unambiguous; the stopword rule only claims a query no
+other rule wanted.
+
+## n1519-export-function-fillerfoldedaliases-alia
+
+In `supabase/functions/job-board/search-routing.ts`, above: `export function fillerFoldedAliases(aliases: Aliases, filler: ReadonlySet<string>): ReadonlyMap<string, { tokens: string[]; name: string }> `
+
+Alias keys with the query parser's filler words folded out of the name
+("Bank of America" -> "bankamerica"): the router sees the query after "of"
+is dropped, so a name holding one never matched its own key (S8-090, n447).
+Only names that keep two or more words (so "Destination Careers" never
+claims "destination"), never a key the table already holds, and never a key
+two names would share.
+
+## n1520-export-const-brand_min_open
+
+In `supabase/functions/job-board/search-routing.ts`, above: `export const BRAND_MIN_OPEN = 100;`
+
+S12-014: EMPLOYER KEYS FROM THE BOARD'S OWN EMPLOYER LIST. The alias table
+was generated once (2026-08-21, employers with 250+ postings, keyed on the
+folded display name), so "cvs" found 21 titles against 15,828 CVS Health
+postings, and "UPS", "3M" and "P&G", whose names arrived later by override,
+fell to the title-only SIMPLE route. These keys are read from the live
+employer list (company-suggest's), for an employer with at least
+BRAND_MIN_OPEN open postings:
+  - its whole folded name, when that name has two words or more, four
+    characters or fewer, or a digit or ampersand ("UPS", "3M", "P&G",
+    "The Home Depot");
+  - its name without a leading "The" and a trailing corporate word
+    ("CVS Health" gives "cvs"; "The Kroger Co." gives nothing: one word of
+    six letters is too likely a word someone searches for as a job), under
+    the same shape rule.
+Never a key the table already holds (the table wins), never one two
+different employers would share, never a word in `refuse` (the occupation
+guard, stopwords, role abbreviations, places).
+
+## n1521-if-alnum-length-alnum-length-test
+
+In `supabase/functions/job-board/search-routing.ts`, above: `if ((alnum.length >= 3 || (alnum.length === 2 && /[0-9&]/.test(raw))) && !OCCUPATION_GUARD.has(alnum)) {`
+
+R1 — the WHOLE query is a known employer name. Whole-query only: a prefix
+match ("medical assistant" -> a company called Medical) hijacked 7.8% of
+real job titles when it was tried, measured by replaying the board's own
+titles as queries.
+Two characters only when the typed name carries a digit or an ampersand
+("3M", "P&G", S12-014): "hr" and "it" never reach here.
+
+## n1522-if-test-raw
+
+In `supabase/functions/job-board/search-routing.ts`, above: `if (/[+#]/.test(raw)) {`
+
+R2 — symbols. The parser strips "++" and "#" under EVERY configuration, so
+wfts(simple).c++ and wfts(simple).c# are byte-identical at 1,437 rows of
+which ~71% contain neither string.
+
+THIS ROUTE DELIBERATELY HAS NO RETRIEVER OF ITS OWN. Three literal matchers
+were measured UNDER CONCURRENCY 4, which is the only measurement that
+counts here — everything looks fine at one request at a time, and that is
+exactly how a sequential scan reached production this morning:
+    title=ilike.'c++%'   (prefix)    0.25-0.43s   but only 60 rows
+    title=ilike.'%c++%'  (contains)  1.9-2.7s     311 rows
+    title=imatch '\yc\+\+'          3.1-3.5s     311 rows
+The regex is 0.35s SERIALLY and 3.5s at four callers. Prefix is the only
+safe one and it costs 80% of the recall.
+
+None of them is needed. The ranked window ALREADY holds the answers: of the
+200 rows search_jobs returns for "c++", 38 contain the literal string, and
+25 do for "c#". The scorer's +90 literal-substring rule floats them to the
+top for free. So a symbol query takes the ranked retriever and is separated
+by SCORING, not by a second query. The label is kept because it belongs in
+the disclosure and the telemetry.
+
+## n1523-if-tokens-some-isliteraltoken
+
+In `supabase/functions/job-board/search-routing.ts`, above: `if (tokens.some(isLiteralToken)) {`
+
+R3 — anything the english index cannot see. A stopword or a one-to-three
+character token is absent from the stored english tsvector, so that path is
+either blind (q="IT" -> 0 rows) or answering a different question
+(q="it manager" -> 92,919 rows for "manager").
+
+## n1524-return-route-ranked-reason-default
+
+In `supabase/functions/job-board/search-routing.ts`, above: `return { route: "RANKED", reason: "default" };`
+
+R4 — everything else keeps the path it has always had. GENERIC was proposed
+as a fifth route and all three judges rejected it: it selects candidates by
+recency, which silently converts the board to a date sort for every head
+term. The scorer fixes those on the RANKED path instead, without changing
+what is retrieved.
+
+## n1525-export-const-wordcount-text-string-term
+
+In `supabase/functions/job-board/search-routing.ts`, above: `export const wordCount = (text: string, term: string): number => {`
+
+Whole-word occurrences of `term` in `text`. Exported so the tests execute
+the real counter rather than a copy of it.
+
+THE REWIND IS LOAD-BEARING: each match consumes its trailing boundary
+character, which is the LEADING boundary of an adjacent occurrence, so
+without stepping back one the 4x-"Sales" titles the repetition penalty
+exists for count as 2, not 4. But rewinding by one re-finds the SAME match
+forever when the whole match is a single character with empty boundaries on
+both sides — foldName("c++") is "c", a retrieved title "C" matches at
+[0,1), the rewind put the cursor back to 0, and scoreTitle("C", "c++")
+never returned. One one-letter title in the window hung the entire search.
+Forward progress is now guaranteed: the cursor never lands at or behind the
+start of the match it just counted, which changes no count on any input the
+old loop could finish.
+
+## n1526-export-function-startswithword-text-stri
+
+In `supabase/functions/job-board/search-routing.ts`, above: `export function startsWithWord(text: string, prefix: string): boolean {`
+
+Score one title against the query. Higher is better.
+
+THIS IS THE PIECE THAT FIXES q="sales", AND IT IS NOT A RETRIEVAL PROBLEM.
+All 959 postings titled exactly "Sales Associate" are already inside both the
+english and the simple candidate sets — verified by intersection, 959/959 in
+each. They never reach the top 100 because ts_rank's default normalization
+applies NO document-length penalty, so a title repeating "sales" four times
+outranks the exact match. Measured on the live board: the top 100 for
+q="sales" have a median title length of 53 characters and a median of 2
+occurrences; the control q="welder" has median length 14.5 and 31 exact-title
+hits in its top 100.
+
+Pure, deterministic, and about 4ms for 600 rows — unmeasurable against ~1,050ms
+of fixed edge overhead.
+
+## n1527-export-function-startswithword-text-stri
+
+In `supabase/functions/job-board/search-routing.ts`, above: `export function startsWithWord(text: string, prefix: string): boolean {`
+
+`text` begins with `prefix` and the prefix ends at a word boundary: "nurse"
+starts "Nurse Practitioner" and "Nurse", never "Nursery Housekeeper"; "java"
+never "JavaScript Developer". A prefix that itself ends on a non-word
+character ("c++") needs no boundary after it.
+
+## n1528-const-qraw-string-query-replace-g
+
+In `supabase/functions/job-board/search-routing.ts`, above: `const qRaw = String(query ?? "").replace(/"/g, "").trim();`
+
+Double quotes are the tsquery parser's phrase syntax, which the query now
+carries through to search_jobs; no title contains them, so left in place
+they would only deny a quoted phrase the prefix and adjacency bonuses it
+is the strongest possible claim to. Only the quote is removed — c++ and
+c# below still read the raw string.
+
+## n1529-const-qtokens-qraw-tolowercase-split-a
+
+In `supabase/functions/job-board/search-routing.ts`, above: `const qTokens = qRaw.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);`
+
+Split on NON-ALPHANUMERICS — the SAME split the titles get below. The old
+whitespace-split-then-foldName fused punctuated queries into tokens no
+title tokenization can produce: "k-8 teacher" carried a token "k8" that
+matched nothing, so "Teacher, K-8" scored BELOW "Math Teacher"; "c++/c#"
+became "cc" and lost to "CEO". qRaw stays untouched on purpose — the
+literal-substring rule below is the entire c++/c# signal and reads it raw.
+
+## n1530-const-present-qtokens-filter-tok-wordcou
+
+In `supabase/functions/job-board/search-routing.ts`, above: `const present = qTokens.filter((tok) => wordCount(tl, tok) > 0).length;`
+
+Coverage is the floor everything else modifies: a title missing half the
+query cannot be rescued by being short or fresh.
+
+## n1531-if-a-z0-s-i-test
+
+In `supabase/functions/job-board/search-routing.ts`, above: `if (/[^a-z0-9\s]/i.test(qRaw) && tl.includes(qRaw.toLowerCase())) score += 90;`
+
+The ONLY thing that separates c++ from c#: the parser destroys both, so a
+literal check is the entire signal.
+
+## n1532-const-perk_context
+
+In `supabase/functions/job-board/search-routing.ts`, above: `const PERK_CONTEXT =`
+
+Re-rank a window by score, then cap any one employer at `perCompany` rows.
+
+Demoted, never dropped: one employer with 142 of the 1,000 intern postings
+should not own page one, but its jobs are still real and still wanted further
+down. Dropping them would be a different lie from the one being fixed.
+
+## n1533-const-perk_context
+
+In `supabase/functions/job-board/search-routing.ts`, above: `const PERK_CONTEXT =`
+
+SCORE AGAINST THE BEST READING OF THE QUERY, NOT ONLY THE TYPED ONE.
+
+`query` widened to a list because alias expansion and re-ranking were working
+against each other: expandQuery widens retrieval so "pm" also finds "Product
+Manager", and then this function scored every one of those rows against the
+literal string "pm" — which they do not contain. The alias rows landed at the
+bottom of the very window they were fetched into, so page one stayed full of
+whatever literally spelled "pm", and the expansion bought nothing a searcher
+could see. That is the whole set the alias table was written for: pm, pa, ta,
+np, ba, ai, rn.
+
+Math.max over the readings, so a row scores as well as its BEST
+interpretation — never worse than today, because the typed query is always
+one of the readings.
+
+Still a single string at every existing call site: the extra readings are
+optional and callers that pass none behave exactly as before.
+
+## n1534-const-perk_context
+
+In `supabase/functions/job-board/search-routing.ts`, above: `const PERK_CONTEXT =`
+
+THE QUERY MATCHED A PERKS LIST, NOT THE JOB.
+
+Measured 2026-09-01 on live results for q="Costco": positions 7, 9 and 10
+were a plumbing dispatcher, a CNC machinist and a project manager, and the
+board was right that each description contains the word —
+
+  "Company Paid Gym Membership, [[Costco]] Membership & Chiropractic Care"
+  "[[Costco]] membership option"
+  "[[Costco]] Membership Reimbursement"
+
+— every one of them an employer brand appearing in a benefits enumeration.
+Position 8 matched the same single word and was genuinely relevant
+("regular travel to [[Costco]] Wholesale stores"), which is why the rule
+reads the CONTEXT of the match rather than counting occurrences: a mention
+is not noise because it is brief, it is noise because of the list it sits
+in. Perks lists are where brand names go to be irrelevant, and this pattern
+generalises past one warehouse club — a gift card, a free coffee and a gym
+discount all name a company that is not hiring.
+
+Reads ts_headline's own marked snippet, so it sees exactly the text the
+match was made on. A row with no snippet, or whose marked context is
+anything else, is NOT boilerplate — the default is to keep.
+
+## n1535-return-marks-every-m
+
+In `supabase/functions/job-board/search-routing.ts`, above: `return marks.every((m) => {`
+
+EVERY marked occurrence has to be perks context. One mention in the body
+of the role is enough to keep the row, however many perks lists follow it.
+
+## n1536-const-from-text-lastindexof-n-at
+
+In `supabase/functions/job-board/search-routing.ts`, above: `const from = text.lastIndexOf("\n", at) + 1;`
+
+Scoped to the LINE the match sits on, not a character window. Perks are
+written one per line ("Costco Membership Reimbursement"), and a fixed
+window bleeds into whatever section follows — on a short snippet that
+meant a match in the body of the role inherited the benefits list below
+it and was buried for its neighbour's words.
+
+## n1537-c-math-max-queries-map-q
+
+In `supabase/functions/job-board/search-routing.ts`, above: `c: Math.max(...queries.map((q) => scoreTitle(String(r.company ?? ""), q))),`
+
+THE EMPLOYER'S OWN JOBS, WHEN THE TITLE SAYS NOTHING EITHER WAY.
+
+Measured 2026-09-01 by scoring served results: q="Costco" put a
+plumbing dispatcher and a substitute teacher in the top ten — rows the
+description tier had legitimately matched, tied at a title score of
+zero and then ordered by nothing. Meanwhile an actual Costco job
+titled "Cashier" scores zero too, because the query names the employer
+and not the work.
+
+Deliberately a TIEBREAK, never a boost: it is read only when the title
+scores are equal, so it cannot reorder a query the title already
+separates. That is what keeps it away from occupation searches, which
+measured ~1.00 precision@5 and had nothing to gain here — "nurse" must
+not start preferring a company called Nurse Staffing over nursing
+jobs, and under a tiebreak it cannot.
+
+## n1538-cls-x-s-x-c-isperklistmatch
+
+In `supabase/functions/job-board/search-routing.ts`, above: `cls: x.s > 0 ? 0 : x.c > 0 ? 1 : isPerkListMatch(x.r.snippet) ? 3 : 2,`
+
+RELEVANCE CLASS, because a tiebreak below scoreTitle would never fire.
+
+scoreTitle PENALISES LENGTH, so two irrelevant rows are almost never
+equal: measured against q="Costco", "Dispatcher" scores 0 while "Brand
+Ambassador" scores -15.2, and a key placed after it is unreachable in
+practice. Ordering by class first is what makes the two facts below
+actually decide anything.
+
+  0 — the title carries the query. Untouched: this is the signal that
+      measured ~1.00 precision@5 and nothing here may reorder it.
+  1 — no title signal, but the COMPANY carries the query. The
+      employer's own job for an employer-named search ("Cashier" at
+      Costco Wholesale), which used to tie with pure noise at zero.
+  2 — no signal either way.
+  3 — no signal AND the only match sits in a perks list. Last, because
+      "Costco Membership Reimbursement" in a benefits enumeration tells
+      a searcher nothing about the job.
+
+## n1539-scored-sort-a-b-a-cls
+
+In `supabase/functions/job-board/search-routing.ts`, above: `scored.sort((a, b) => (a.cls - b.cls) || (b.s - a.s) || (b.c - a.c) || (a.i - b.i));`
+
+Index breaks ties so the order is total and identical on every call —
+pagination over an unstable ordering is how page two repeated page one.
+
+## n1540-if-x-cls-keep-push-x
+
+In `supabase/functions/job-board/search-routing.ts`, above: `if (x.cls === 1) { keep.push(x); continue; }`
+
+THE CAP EXISTS FOR TOPICAL SEARCHES, AND CLASS 1 IS NOT ONE.
+
+Two-per-company stops one hospital owning a search for "nurse". But
+class-1 rows are, by construction, all the SAME employer — the one the
+query names — so the cap demoted all but two of exactly the rows the
+class was added to surface, and buried them under the noise class 3
+exists to bury. A person typing "Costco" is asking to be flooded with
+Costco.
+
+Safe because class 1 is only REACHED when title matches run out: a
+topical query like "nurse" has thousands of class-0 rows ahead of it, so
+a company that merely has the word in its name never reaches the page.
+
+## n1541-const-exclusion_stopwords-readonlyset-st
+
+In `supabase/functions/job-board/search-routing.ts`, above: `const EXCLUSION_STOPWORDS: ReadonlySet<string> = new Set([`
+
+Stopword-grade words that must never become an exclusion. A "not" followed
+ by one of these is part of a phrase ("not for profit"), and excluding a
+ stopword strikes half the board by coincidence of grammar.
+
+## n1542-if-exclusion_stopwords-has-w-tolowercase
+
+In `supabase/functions/job-board/search-routing.ts`, above: `if (EXCLUSION_STOPWORDS.has(w.toLowerCase())) positive.push(pendingNot, w);`
+
+"not" marks exactly this one token — never the whole remainder — and
+a stopword-grade token vetoes the operator reading entirely.
+
+## n1543-if-positive-length-cleanexcluded-length
+
+In `supabase/functions/job-board/search-routing.ts`, above: `if (!positive.length || !cleanExcluded.length) return { positive: text, excluded: [] };`
+
+Nothing left to search means the exclusion has eaten the query. Run what
+they typed instead of returning the entire board.
+
+## n1544-export-function-titleexcluded-title-stri
+
+In `supabase/functions/job-board/search-routing.ts`, above: `export function titleExcluded(title: string, excluded: readonly string[]): boolean {`
+
+Does a title contain any excluded term? Word-ish match, so "manager" does
+ not strike out "management-adjacent" by coincidence of substring.
+
+## n1545-export-const-prototype_names-readonly-st
+
+In `supabase/functions/job-board/stale-lane.ts`, above: `export const PROTOTYPE_NAMES: readonly string[] = Object.getOwnPropertyNames(Object.prototype);`
+
+Every property name of Object.prototype, own and accessor alike — the
+twelve tokens a token-keyed Record misreads. Computed, not listed, so an
+engine that grows the prototype grows the exclusion with it.
+
+## n1546-export-interface-stalecontext
+
+In `supabase/functions/job-board/stale-lane.ts`, above: `export interface StaleContext {`
+
+Everything classification needs, as Sets and Maps. Never Records: a Record
+keyed by token is the trap this module exists to name.
+
+## n1547-export-function-keysof-rec-unknown-set
+
+In `supabase/functions/job-board/stale-lane.ts`, above: `export function keysOf(rec: unknown): Set<string> {`
+
+Own keys of a meta Record, unchanged, as a Set. Since .91 the lane reads its
+rows by board key (bare token, or source:token on a shared token, n428), the
+same keys board_failures holds, so a failing twin no longer marks the other.
+
+## n1548-export-function-selectstalelane
+
+In `supabase/functions/job-board/stale-lane.ts`, above: `export function selectStaleLane(`
+
+The tokens the lane fetches this hop: 'unexplained' verdicts only, oldest
+stamp first, minus anything already in the slice, capped at perSlice.
+Every other class is either another lane's, or nobody's to fetch.
+
+## n1549-export-experience_bands-from-_shared-boa
+
+In `supabase/functions/job-board/experience.ts`, above: `export { EXPERIENCE_BANDS } from "../_shared/board-domains.ts";`
+
+Experience-level detection for job postings.
+
+Honest by construction, in priority order:
+  1. If the posting TEXT states a year requirement ("5+ years of experience",
+     "3–5 years"), we cite it — minYears is a real number pulled from the text.
+  2. Otherwise we classify seniority from the TITLE (Senior/Staff/Director/
+     Intern…) — the same kind of inference the board already makes for `category`.
+  3. If neither gives a signal, the band is null ("unspecified"): the posting is
+     simply excluded from experience-filtered results, never assigned a made-up
+     level.
+Pure — no I/O — so it is unit-testable and runs at both ingestion and backfill.
+
+## n1550-export-function-bandfromyears-minyears-n
+
+In `supabase/functions/job-board/experience.ts`, above: `export function bandFromYears(minYears: number): ExperienceBand {`
+
+minYears → band. Round, non-overlapping boundaries that match how postings
+actually phrase requirements: 0–2 entry, 3–5 mid, 6–9 senior, 10+ expert.
+(So a "8 years" ask lands in senior, which is how the market reads it, and
+10+/principal-level lands in expert.)
+
+## n1551-const-wish_words-preferred-preferably-a
+
+In `supabase/functions/job-board/experience.ts`, above: `const WISH_WORDS = "preferred|preferably|a plus|nice[- ]to[- ]have|desired|desirable|ideally|is an asset|an advantage";`
+
+S12-126: a figure that is not a requirement. "Graduate of an MA school or
+5+ years of experience" offers the years as one way in (a Humana medical
+assistant was filed mid); "5 years preferred", "a plus" and a "Preferred
+Qualifications" heading are wishes; "2 or 3 years" stays a requirement. The
+wish must be on the years themselves: "(luxury retail preferred)" names
+something else, so a required minimum binds (merge recheck 2026-10-25,
+measured on 1,354 live descriptions: docs/wave4/README.md).
+Recheck 3 (2026-10-26): an adverb on a setting ("preferably in SaaS",
+"ideally within a hospital") names the setting, as the same words after a
+comma always did; a participle on one ("desired in a clinical setting")
+yields to a required heading or a Required/Minimum line; a wish may follow a
+short phrase ("experience in related field preferred"); and "not required"
+never binds.
+
+## n1552-if-preferably-ideally-test-first-return
+
+In `supabase/functions/job-board/experience.ts`, above: `if (!/^(?:preferably|ideally)$/.test(first[1])) return !binding;`
+
+"preferably in X" names X, as ", preferably in X" does: read on below.
+"desired in X" may still be a wish on the years: a required heading or line binds it.
+
+## n1553-export-function-parseminyears-text-strin
+
+In `supabase/functions/job-board/experience.ts`, above: `export function parseMinYears(text: string): number | null {`
+
+Pull the binding minimum-years requirement from posting text. Only counts year
+figures tied to an experience/work context (so "founded 10 years ago" or
+"401k after 1 year" don't register), and takes the MAX of the stated lower
+bounds — the highest floor is the requirement a candidate must clear (e.g.
+"2 years Python, 8 years leadership" ⇒ 8). Absurd values are ignored as noise.
+
+## n1554-const-forward-d-d-s-s
+
+In `supabase/functions/job-board/experience.ts`, above: `const forward = /(?<!\d)(\d{1,2})\s*\+?\s*(?:or\s+more\s+)?(?:-\s*\d{1,2}\s*)?years?\b((?:(?!\d{1,2}\s*\+?\s*(?:-\s*\d{1,2}\s*)?years?\b)[^.`
+
+"<n>[+ | -m] year(s) … (experience|work|industry|professional)", allowing a
+short intervening noun phrase ("8 years of LEADERSHIP experience") but never
+crossing a sentence boundary (so "founded 10 years ago. …experience" can't tie).
+(?<!\d): the number starts where the digits start -- "135 years" was read
+as 35 (L7-09). The gap (group 2) may hold "Python 3" or "Office 365" but
+never another "<n> years", so "2 years Python, 8 years leadership
+experience" binds only the 8. "to work" ("able to work weekends") is an
+availability, not experience.
+S12-126: "<n> or more years" is the same floor as "<n>+ years".
+
+## n1555-if-b-of-s-age-old
+
+In `supabase/functions/job-board/experience.ts`, above: `if (/\b(?:of\s+age|old|older)\b/.test(gap) || /^\s*-?\s*(?:of\s+age|old\b|or\s+older)/.test(after) || /\b(?:age|aged)\s*(?:of\s*)?$/.test(be`
+
+A MINIMUM AGE IS NOT EXPERIENCE (L8-15): "18 years or older and able
+to work", "at least 18 years of age".
+
+## n1556-if-b-for-over-nearly-almost
+
+In `supabase/functions/job-board/experience.ts`, above: `if (/\b(?:for|over|nearly|almost)\s+(?:more\s+than\s+|over\s+|nearly\s+|almost\s+)?$/.test(before) && !/^\s*of\b/.test(gap)) {`
+
+THE COMPANY'S YEARS ARE NOT THE CANDIDATE'S (L7-09): "for over 15
+years, Acme has been ...". Only a company clause; "over 10 years of
+experience" is a requirement.
+
+## n1557-if-number-isfinite-n-n-n
+
+In `supabase/functions/job-board/experience.ts`, above: `if (Number.isFinite(n) && n >= 0 && n <= 20) nums.push(n);`
+
+A requirement above 20 years is a company-age or boilerplate sentence,
+never a hiring bar on this board.
+
+## n1558-const-staff_tech-software-data-machine-l
+
+In `supabase/functions/job-board/experience.ts`, above: `const STAFF_TECH = "software|data|machine learning|ml|ai|product|security|application|applications|site reliability|reliability|platform|bac`
+
+Seniority from the title alone, when no explicit years are stated. Returns null
+for titles with no seniority signal — honest "unspecified" rather than a guess.
+L7-08. Bare "staff", "lead" and "partner" fit tech titles and law firms; on
+this board they are mostly hourly and entry roles (Staff Accountant, Staff
+Nurse, Kitchen Staff, Shift Lead, Lead Cashier, Care Partner), which the
+senior and expert filters filled with while the entry filter lost them.
+"staff" is senior only as the engineering rung; "lead" is not a rung beside
+a shift, a team, a crew or a store-floor job; "partner" is expert only as
+a firm's partner.
+The tech modifiers a Staff rung carries. S11-137: the list lacked iOS,
+Android, database, application, engineering and more, and the nouns lacked
+manager, so Staff iOS Engineer, Staff Database Engineer, Staff Product
+Manager and Staff Engineering Manager went from senior to unspecified. A
+manager is a rung only behind at least one of these words: a bare "Staff
+Manager" may run a staffing desk.
+
+## n1559-const-clientele-bsenior-s-living-cent
+
+In `supabase/functions/job-board/experience.ts`, above: `const CLIENTELE = /\bsenior\s+(?:living|cent(?:er|re)s?|housing|citizens?|residences?|apartments?|day\s+(?:program|services))\b|\bsenior\s+c`
+
+S12-036: "senior" naming who is served, not the rung. "Housekeeper - Senior
+Living", "Senior Living Cook", "Nurse Aide | Senior Care", "Cook - Senior
+Community Services" were filed senior (55 of 60 live "senior living" rows on
+2026-10-12 were entry and hourly jobs). A UK "Senior Carer" or "Senior Care
+Assistant/Worker" stays a rung, and so does a Senior Community Manager,
+Support Worker or Associate anywhere in a title; "senior care" before a role
+noun, and "senior community/services" at the start of a title, are the
+job's rank.
+
+## n1560-export-work_modes-from-_shared-board-dom
+
+In `supabase/functions/job-board/filters.ts`, above: `export { WORK_MODES } from "../_shared/board-domains.ts";`
+
+Defined in ../_shared/board-domains.ts so public-api's bundle can read the
+same list; re-exported here because this file is the board's filter contract.
+
+## n1561-export-const-employment_types-full_time
+
+In `supabase/functions/job-board/filters.ts`, above: `export const EMPLOYMENT_TYPES = ["full_time", "part_time", "contract", "temporary", "internship"] as const;`
+
+Closed domain, matching the column CHECK — values come from vendors'
+ structured fields only (nine of sixteen carry one, measured 2026-08-28).
+
+## n1562-const-_vendorsarekinds-readonly-jobsourc
+
+In `supabase/functions/job-board/filters.ts`, above: `const _vendorsAreKinds: readonly JobSourceKind[] = BOARD_VENDORS;`
+
+Extras are still caught here, where JobSourceKind lives: a vendor in the
+shared list that sources.ts does not know fails this assignment.
+
+## n1563-const-countrysent-array-isarray-body-cou
+
+In `supabase/functions/job-board/filters.ts`, above: `const countrySent = (Array.isArray(body.country) ? body.country : String(body.country ?? "").split(","))`
+
+ISO-3166 alpha-2, with "UK" read as GB: "XX" or "UK" matched no row and
+answered 0 jobs with nothing named (L8-10). An unknown code is dropped and named.
+
+## n1564-if-sent-body-employmenttype-etvalid-leng
+
+In `supabase/functions/job-board/filters.ts`, above: `if (sent(body.employmentType) && etValid.length !== new Set(etAsked).size) ignored.push("employmentType");`
+
+Deduped comparison, same reason as workMode: "contract,contract" must not
+report the filter as ignored.
+
+## n1565-if-sent-body-salaryceiling-salaryceiling
+
+In `supabase/functions/job-board/filters.ts`, above: `if (sent(body.salaryCeiling) && salaryCeiling === null && ceilN !== 0) ignored.push("salaryCeiling");`
+
+0 is the off position here for the same reason it is for salaryFloor and
+maxAgeDays — a control at rest must not hang a warning on the page.
+
+## n1566-const-paraw-body-postedafter
+
+In `supabase/functions/job-board/filters.ts`, above: `const paRaw = body.postedAfter;`
+
+One instant, in one spelling, for the database AND the sensor (.88): see
+canonicalInstant. The caller's own string is never bound.
+
+## n1567-if-cutoff-null
+
+In `supabase/functions/job-board/filters.ts`, above: `if (cutoff !== null) {`
+
+Undated rows are EXCLUDED by the maxAgeDays predicate at the database, so
+a row with no postedAt reaching us under that filter is itself the defect.
+
+## n1568-aoffset-math-min-off-ca
+
+In `supabase/functions/job-board/filters.ts`, above: `aOffset: Math.min(off, ca),`
+
+Past the end of A, aLimit is 0 and the offset is irrelevant — clamped so
+it can never be a negative range.
+
+## n1569-boffset-math-max-off-ca
+
+In `supabase/functions/job-board/filters.ts`, above: `bOffset: Math.max(0, off - ca),`
+
+B starts where A ran out. On pages entirely inside A this is 0 and
+bLimit is 0, so B is never queried at all.
+
+## n1570-import-board_reader_header-boardreaderke
+
+In `supabase/functions/job-board/anon-budget.ts`, above: `import { BOARD_READER_HEADER, boardReaderKey } from "../_shared/board-reader-key.ts";`
+
+THE ANONYMOUS BOARD BUDGET: how many data-bearing reads one address may make
+in a UTC day. Pure apart from the rpc it is handed, so vitest imports it.
+Why, the numbers and the owner's one-statement levers:
+docs/job-board-deploy-notes.md (2026-09-09.85, .87 for the network and the
+pass). The counter is job_board_anon_check (migrations 20261002140000 and
+20261003180000), its own tables, never the request budget shared with upload
+and checkout.
+
+## n1571-export-const-metered_actions-readonlyset
+
+In `supabase/functions/job-board/anon-budget.ts`, above: `export const METERED_ACTIONS: ReadonlySet<string> = new Set([...BUDGETED_ACTIONS, "status"]);`
+
+Everything the meter counts: those, and status (S13-114), whose every
+computed answer is about forty reads. status hands out no posting and our own
+heartbeat reads it with the publishable key, so no pass is asked for it: it
+is refused only by the address cap or a listed network or country.
+
+## n1572-export-const-address_daily_cap-_000
+
+In `supabase/functions/job-board/anon-budget.ts`, above: `export const ADDRESS_DAILY_CAP = 10_000;`
+
+ONE ROW PER ADDRESS PER UTC DAY, whatever the caller declares: the kind only
+picks which of these caps that row is judged against, so a declared kind
+lifts an address to the LARGEST cap at most and never adds caps together.
+
+## n1573-export-const-build_daily_cap-_000
+
+In `supabase/functions/job-board/anon-budget.ts`, above: `export const BUILD_DAILY_CAP = 15_000;`
+
+x-rb-budget: build. 20 bakes of at most 721 calls from one address (its list
+pages are 60 rows since .88): twice the busiest UTC day of pushes to main
+since the frontend began publishing from main (10), and about half the
+measured harvest (~29,000 a day), so the public header cannot buy a
+harvester's day.
+
+## n1574-export-function-addresskey-raw-string-st
+
+In `supabase/functions/job-board/anon-budget.ts`, above: `export function addressKey(raw: string): string | null {`
+
+The address as one bucket: IPv4 as itself (an IPv4-mapped IPv6 address
+included), IPv6 cut to its /64 because one host rotates freely inside it.
+null for anything that is not a public address -- a gateway or internal hop
+must never become a shared bucket that gets enforced.
+
+## n1575-export-function-networkof-key-string-nul
+
+In `supabase/functions/job-board/anon-budget.ts`, above: `export function networkOf(key: string | null): string | null {`
+
+The network a normalised address key sits in: IPv4 "a.b.c.d" is
+"a.b.c.0/24", an IPv6 key "h0:h1:h2:h3::/64" is "h0:h1:h2::/48". null for
+anything else, so a non-public address is never a network.
+
+## n1576-export-function-countryof-h-headers-key
+
+In `supabase/functions/job-board/anon-budget.ts`, above: `export function countryOf(h: Headers, key: string | null = null): { country: string; source: CountrySource } {`
+
+cf-ipcountry when it is a real two-letter code (Tor's T1 and XX are not).
+Without one -- and on Supabase's edge it never arrives -- CN when the
+address key sits in a mainland block (geo-cn.ts), else XX. So without the
+header, XX means "not in a block we hold as mainland China, or no public
+address" -- never proof that a caller is outside China.
+
+## n1577-export-const-browser_page_rows
+
+In `supabase/functions/job-board/anon-budget.ts`, above: `export const BROWSER_PAGE_ROWS = 60;`
+
+THE MOST ROWS ONE CALL MAY CARRY (.88). The page's own size: /jobs asks for
+60 (Jobs.tsx PAGE), and nothing a person can do there asks for more, so
+limit=1000 from a crafted client is answered with 60 rows, not the 200 every
+caller used to get. Only a SECRET lifts it -- the service key, or our
+servers' reader proof derived from it (the public API, MCP and the digest
+page 200 at a time). Our tooling's x-rb-budget header lifts nothing here:
+its value is in this public repository, and a ceiling any reader can claim
+is not a ceiling. The bake and the probes page 60 at a time like the page.
+
+## n1578-export-const-anon_offset_ceiling-_000
+
+In `supabase/functions/job-board/anon-budget.ts`, above: `export const ANON_OFFSET_CEILING = 10_000;`
+
+S12-122: THE DEEPEST OFFSET A CALLER WITHOUT A SECRET MAY ASK FOR. A raw
+OFFSET makes the database read and throw away every row before it:
+country=US at offset 400,000 spent 5,664 ms in page_query, a cheap lever
+for anyone. Past this the page is refused (400 offset_too_deep), and a
+browse pages on by nextCursor; our servers and the service key are not
+capped. 10,000 is also where every count stops.
+
+## n1579-export-async-function-classifycaller-h-h
+
+In `supabase/functions/job-board/anon-budget.ts`, above: `export async function classifyCaller(h: Headers, serviceKey: string, passSecret = ""): Promise<Caller> {`
+
+In order: the service key (exempt), our servers' reader proof (exempt), then
+a counted address. A declared api/mcp/digest caller WITHOUT the proof is
+still counted at the address cap; its kind only makes a deploy skew visible.
+passSecret is TURNSTILE_SECRET_KEY: without it every pass state is
+'unconfigured', which nothing refuses. Under requirePass the counter asks
+unproven_* for a pass too (a declaration is not a proof) and puts passless
+build/probe in one shared row per kind (migration 20261003180000).
+
+## n1580-export-async-function-bucketfor-c-counte
+
+In `supabase/functions/job-board/anon-budget.ts`, above: `export async function bucketFor(c: CountedCaller, serviceKey: string): Promise<string> {`
+
+A keyed hash of the address, never the address (all of IPv4 hashes in an
+afternoon). The same bucket for every kind: one address, one day row.
+
+## n1581-export-function-budgetrefusal
+
+In `supabase/functions/job-board/anon-budget.ts`, above: `export function budgetRefusal(`
+
+The refusal: 429, never cached, with the reset time and a person to write to.
+A pass refusal has no reset to wait for -- a fresh pass lifts it at once -- so
+it carries resetAt null and Retry-After 1.
+
+## n1582-export-async-function-anonbudgetgate
+
+In `supabase/functions/job-board/anon-budget.ts`, above: `export async function anonBudgetGate(`
+
+null = serve the request; a Response = the refusal. Runs before dispatch, so
+a refused call does no other database work. FAILS OPEN on everything -- an
+error, an unapplied migration, the deadline, an unreadable row: the meter
+must never take the board down. Only an explicit is_allowed false refuses.
+Before migration 20261003180000 the counter has no p_net/p_pass/p_pass_id
+(PGRST202): the call is repeated with the seven arguments it does have,
+inside the same deadline, so the rules already live keep refusing across a
+deploy skew.
+
+## n1583-return-budgetrefusal
+
+In `supabase/functions/job-board/anon-budget.ts`, above: `return budgetRefusal({`
+
+A listed network or country refuses whatever pass the call carries; the
+counter sets pass_rule only when the pass is what refuses it.
+
+## n1584-pass-configured-opts-passconfigured-true
+
+In `supabase/functions/job-board/anon-budget.ts`, above: `pass: { configured: opts.passConfigured === true, required: o.requirePass === true, cap: typeof o.passCap === "number" ? o.passCap : null },`
+
+configured: TURNSTILE_SECRET_KEY is set on this function; required: the row's requirePass;
+cap: the row's passCap (reads per pass per UTC day), null = the counter's default of 600.
