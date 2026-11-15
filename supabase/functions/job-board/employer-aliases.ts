@@ -432,7 +432,6 @@ export const EMPLOYER_ALIASES: Readonly<Record<string, { name: string; tokens: s
   saintlukes: { name: "Saintlukes", tokens: ["saintlukes~wd1~saintlukeshealthcareers"] },
   asml: { name: "ASML", tokens: ["asml~wd3~asmlext1"] },
   wakemed: { name: "WakeMed", tokens: ["jobs.wakemed.org"] },
-  mindrift: { name: "Mindrift", tokens: ["toloka-ai"] },
   onelineage: { name: "Onelineage", tokens: ["onelineage~wd1~External"] },
   texasamuniversitysystem: { name: "Texas A&M University System", tokens: ["tamus~wd1~System-wide_External"] },
   vanguard: { name: "Vanguard", tokens: ["vanguard~wd5~vanguard_external"] },
@@ -526,6 +525,6 @@ export const EMPLOYER_ALIASES: Readonly<Record<string, { name: string; tokens: s
   destinationpet: { name: "Destinationpet", tokens: ["destinationpet~wd5~DPEC"] },
   prysmiangroup: { name: "Prysmiangroup", tokens: ["prysmiangroup~wd3~Careers"] },
   tuftsmedicine: { name: "Tuftsmedicine", tokens: ["tuftsmedicine~wd1~Jobs"] },
-  lbg: { name: "Lbg", tokens: ["lbg~wd3~broadbean_external", "lbg~wd3~lbg_Careers"] },
+  lbg: { name: "Lbg", tokens: ["lbg~wd3~lbg_Careers"] },
   cornell: { name: "Cornell", tokens: ["cornell~wd1~CornellCareerPage", "cornell~wd1~cornellpositions"] },
   jpmorgan: { name: "JPMorgan Chase", tokens: ["jpmc~~CX_1001"] },};
