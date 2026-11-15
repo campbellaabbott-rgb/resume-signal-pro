@@ -24,6 +24,7 @@ import { resolve } from "node:path";
 import { HOT_TOKENS, JOB_SOURCES } from "../../supabase/functions/job-board/sources";
 import { EMPLOYER_ALIASES } from "../../supabase/functions/job-board/employer-aliases";
 import { codeOf } from "./helpers/strip-comments";
+import { isUnreviewedTenantName } from "../../src/lib/company-display";
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -162,6 +163,16 @@ describe("the D13 repoints are rewritten in place", () => {
     expect(name("workday:postman~wd108~careers")).toBe("Postman");
     expect(name("ashby:black-forest-labs")).toBe("Black Forest Labs");
   });
+
+  it("no repoint makes the bake refuse new posting pages for a name it accepted under the old token", () => {
+    const token = (k: string) => k.slice(k.indexOf(":") + 1);
+    for (const [old, now] of REPOINTS) {
+      const name = JOB_SOURCES[KEYS.indexOf(now)]?.name;
+      if (!isUnreviewedTenantName(token(old), name)) expect(isUnreviewedTenantName(token(now), name), `${now} "${name}"`).toBe(false);
+    }
+    // Black Forest Labs, read 2026-11-15 on its Ashby board: "Black Forest Labs builds visual intelligence".
+    expect(isUnreviewedTenantName("black-forest-labs", "Black Forest Labs")).toBe(false);
+  });
 });
 
 describe("the hot list and the one new board", () => {
@@ -175,6 +186,8 @@ describe("the hot list and the one new board", () => {
 
   it("Convergint's Workday site is the last entry, so no board's position moves for it", () => {
     expect(JOB_SOURCES[JOB_SOURCES.length - 1]).toEqual({ name: "Convergint", source: "workday", token: "convergint~wd501~Gbl" });
+    // The name it prints is its tenant code title-cased, and it is the employer's own (read on its site): a posting page may name it.
+    expect(isUnreviewedTenantName("convergint~wd501~Gbl", "Convergint")).toBe(false);
     // The UKG board stays catalogued and unlabelled (an-agency-is-disclosed-not-hidden's round 3).
     const ukg = JOB_SOURCES.find((s) => s.source === "ukg" && s.token === "recruiting2~CON1074CVTG~1831b61a-1945-44fa-afd8-624795c9b30d") as { agency?: boolean } | undefined;
     expect(ukg).toBeTruthy();
@@ -200,6 +213,7 @@ describe("the high-water migration follows the catalogue", () => {
     const db = new PGlite();
     try {
       await db.exec(`CREATE TABLE public.job_board_meta (k text PRIMARY KEY, v jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now())`);
+      await db.exec(`INSERT INTO public.job_board_meta (k, v) VALUES ('slice_stats', '{"build": "2026-09-09.102", "buildSince": "2026-11-16T00:00:00Z"}')`);
       await db.exec(raw); // no row: a notice, nothing written
       expect(await mark(db)).toBeNull();
       await db.exec(`INSERT INTO public.job_board_meta (k, v) VALUES ('catalog_highwater', '{"size": 44523, "at": "2026-11-15T00:00:00Z"}')`);
@@ -216,5 +230,29 @@ describe("the high-water migration follows the catalogue", () => {
       const selfCheck = /DO \$\$[\s\S]*?\$\$;/.exec(raw.slice(raw.lastIndexOf("-- SELF-CHECK")))?.[0] ?? "";
       await expect(db.exec(selfCheck)).rejects.toThrow(/self-check 20261111120000: the catalogue high-water is 44523/);
     } finally { await db.close(); }
-  });
+  }, 30_000);
+
+  it("refuses, and lowers nothing, until a slice of .102 or later has written slice_stats", async () => {
+    const raw = read(`supabase/migrations/${FILE}`);
+    const db = new PGlite();
+    const mark = async () => (await db.query<{ n: number }>(`SELECT (v->>'size')::int AS n FROM public.job_board_meta WHERE k = 'catalog_highwater'`)).rows[0].n;
+    try {
+      await db.exec(`CREATE TABLE public.job_board_meta (k text PRIMARY KEY, v jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now());
+        INSERT INTO public.job_board_meta (k, v) VALUES ('catalog_highwater', '{"size": 44523}')`);
+      // No slice record at all, then .101's: an OPTIONS answer of .102 can come while .101's last hop still runs.
+      await expect(db.exec(raw)).rejects.toThrow(/20261111120000: job_board_meta\.slice_stats names build \(none\), not job-board 2026-09-09\.102 or later/);
+      expect(await mark()).toBe(44523);
+      for (const build of ["2026-09-09.101", "2026-09-09.99", "garbage"]) {
+        await db.exec(`INSERT INTO public.job_board_meta (k, v) VALUES ('slice_stats', '{"build": "${build}"}') ON CONFLICT (k) DO UPDATE SET v = EXCLUDED.v`);
+        await expect(db.exec(raw), build).rejects.toThrow(new RegExp(`names build ${build.replace(/\./g, "\\.")}, not job-board 2026-09-09\\.102`));
+        expect(await mark()).toBe(44523);
+      }
+      for (const build of ["2026-09-09.102", "2026-09-09.1000", "2026-12-01.1"]) {
+        await db.exec(`UPDATE public.job_board_meta SET v = '{"size": 44523}' WHERE k = 'catalog_highwater'`);
+        await db.exec(`UPDATE public.job_board_meta SET v = '{"build": "${build}"}' WHERE k = 'slice_stats'`);
+        await db.exec(raw);
+        expect(await mark(), build).toBe(JOB_SOURCES.length);
+      }
+    } finally { await db.close(); }
+  }, 30_000);
 });

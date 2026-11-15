@@ -105,6 +105,20 @@ describe("exists names what it never held", () => {
     }
   });
 
+  it("the exit read names at most five tokens: job_board_exits has no posting_id index, so six or more answer unknown null and read no exit", async () => {
+    const five = ["a", "b", "c", "d", "e"].map((t) => `greenhouse:${t}:1`);
+    const r5 = await run(TABLES, five);
+    expect(r5.unknown).toEqual(five);
+    expect(r5.reads.find((x) => x.table === "job_board_exits")?.ins[1]).toEqual(["company_token", ["a", "b", "c", "d", "e"]]);
+    const six = [...five, "greenhouse:f:1"];
+    const r6 = await run(TABLES, six);
+    expect(r6.unknown, "past five tokens the answer does not guess").toBeNull();
+    expect(r6.reads.map((x) => x.table), "and the exit log is not read").toEqual(["job_board_postings", "job_board_postings"]);
+    // Many ids of one employer are one token.
+    const one = Array.from({ length: 40 }, (_, i) => `greenhouse:acme:x${i}`);
+    expect((await run(TABLES, one)).unknown).toEqual(one);
+  });
+
   it("an empty ask answers an empty unknown list", async () => {
     expect((await run(TABLES, [])).unknown).toEqual([]);
   });

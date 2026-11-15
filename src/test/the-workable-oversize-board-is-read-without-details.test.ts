@@ -6,15 +6,21 @@
  * stores the rows with their text deferred, and the description sweep fills
  * that text one posting at a time from Workable's per-job endpoint: at most
  * WORKABLE_DETAIL_PER_HOP a hop, never two in flight, at least 1,100 ms apart,
- * stopping 20 s before the hop's wall. Three tokens are held dark until a
- * mill screen and an owner call.
+ * stopping 20 s and one fetch's timeout before the wall of the hop it started
+ * in. Three tokens are held dark until a mill screen and an owner call.
+ *
+ * The details=false read is a whole-body read of up to MAX_RESPONSE_BYTES, so
+ * it runs under CAP-8's clock and a heap preflight sized for two such bodies;
+ * a board those refuse waits for a cold slice like a stream board. A board
+ * read bare stays in the registry marked bare, so the sweep goes straight to
+ * the filler instead of downloading the whole feed again on a fresh isolate.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { transformSync } from "esbuild";
 import { codeOf } from "./helpers/strip-comments";
-import { runVisit, workableHeld } from "./helpers/slice-worker";
+import { constOf, runVisit, workableHeld } from "./helpers/slice-worker";
 import { normalizeWorkable } from "../../supabase/functions/job-board/normalize";
 import { BOARD_DESC_SOURCES, DETAIL_DESC_SOURCES } from "../../supabase/functions/job-board/descriptions";
 
@@ -37,6 +43,7 @@ const BOARD = { source: "workable", token: "acme-gigs" };
 const feed = (n: number) => ({ jobs: Array.from({ length: n }, (_, k) => ({ shortcode: `S${k}`, title: `Role ${k}`, url: `https://apply.workable.com/acme-gigs/j/S${k}/`, city: "Austin", country: "United States", created_at: "2026-11-01" })) });
 
 describe("the oversize retry reads a Workable board without its details", () => {
+  const go1 = (o: { bareBefore?: number }) => runVisit({ board: BOARD, failReason: "oversize 9.1MB", bare: () => ({ jobs: [1], raw: feed(1) }), ...o });
   it("an oversize Workable board outside the held set is read again with details=false, under the board's reservation, and lands", async () => {
     const x = await runVisit({ board: BOARD, failReason: "oversize 9.1MB", bare: () => ({ jobs: [1, 2, 3], raw: feed(3) }), inFlightReserve: 7, reserve: 40 });
     expect(x.bareCalls).toEqual([{ token: "acme-gigs", reserveDuring: 47 }]);
@@ -62,6 +69,30 @@ describe("the oversize retry reads a Workable board without its details", () => 
       const x = await runVisit({ board, failReason, bare: () => ({ jobs: [1], raw: feed(1) }) });
       expect(x.bareCalls, `${board.source} ${failReason}`).toEqual([]);
     }
+  });
+
+  it("runs only inside the slice clock and a heap that holds two whole bodies; refused there, the board waits for a cold slice", async () => {
+    const WALL = constOf("SLICE_WALL_BUDGET_MS"), BUDGET = constOf("STREAM_READ_BUDGET_MS"), HEAP = constOf("HEAP_SOFT_LIMIT_MB");
+    const twoBodies = 2 * constOf("MAX_RESPONSE_BYTES") / 1e6;
+    const go = (o: { elapsedMs?: number; heapMb?: number }) => runVisit({ board: BOARD, failReason: "oversize 9.1MB", bare: () => ({ jobs: [1], raw: feed(1) }), ...o });
+    expect((await go({ elapsedMs: WALL - BUDGET - 2_000 })).bareCalls.length, "a read that fits the slice clock runs").toBe(1);
+    const late = await go({ elapsedMs: WALL - BUDGET + 2_000 });
+    expect(late.bareCalls, "too close to the wall").toEqual([]);
+    expect(late.registry.get("acme-gigs")).toMatchObject({ source: "workable", wait: true });
+    expect((await go({ heapMb: HEAP - twoBodies - 1 })).bareCalls.length).toBe(1);
+    const full = await go({ heapMb: HEAP - twoBodies });
+    expect(full.bareCalls, "two whole bodies must fit under the soft limit").toEqual([]);
+    expect(full.registry.get("acme-gigs")?.wait).toBe(true);
+  });
+
+  it("reads one board bare a slice; a second oversize Workable board in the same slice waits for the next slice", async () => {
+    const first = await go1({});
+    expect(first.bareCalls.length).toBe(1);
+    expect(first.bare, "the read is counted against the slice").toBe(1);
+    const second = await go1({ bareBefore: 1 });
+    expect(second.bareCalls, "a slice that already read one board bare reads no other").toEqual([]);
+    expect(second.registry.get("acme-gigs")).toMatchObject({ source: "workable", wait: true });
+    expect(second.bare).toBe(1);
   });
 
   it("a bare read that also fails leaves the board to the oversize branch it reached before", async () => {
@@ -158,7 +189,9 @@ describe("the description sweep fills a Workable board too big to read whole, on
   it("the board lane reads a registered Workable board a posting at a time and stays on it while that fills; workable is not a detail-sweep vendor", () => {
     expect(CODE).toMatch(/const whole = !\(b\.source === "workable" && \(await loadOversizeBoards\(client\), OVERSIZE_BOARDS\.has\(boardKeyOf\(b\)\)\)\);/);
     expect(CODE).toMatch(/const r = whole \? await readBoardForDetail\(b\) : null;/);
-    expect(CODE).toMatch(/const f = await fillWorkableDetails\(own, async \(row\) => \(await fetchVendorDetail\(b, row\.id, row\.id\.split\(":"\)\.slice\(2\)\.join\(":"\)\)\)\.text, fill, \{ now: Date\.now, sleep: [^}]*\}, Date\.now\(\) \+ SLICE_WALL_BUDGET_MS - 20_000\);/);
+    // The deadline runs from the hop's start, not the filler's, and leaves one fetch's timeout for the read in flight.
+    expect(CODE).toMatch(/if \(action === "desc-sweep"\) \{\s*const sweepStart = Date\.now\(\);/);
+    expect(CODE).toMatch(/const f = await fillWorkableDetails\(own, async \(row\) => \(await fetchVendorDetail\(b, row\.id, row\.id\.split\(":"\)\.slice\(2\)\.join\(":"\)\)\)\.text, fill, \{ now: Date\.now, sleep: [^}]*\}, sweepStart \+ SLICE_WALL_BUDGET_MS - 20_000 - FETCH_TIMEOUT_MS\);/);
     expect(CODE).toMatch(/stay = f\.filled > 0 && own\.length > f\.asked;/);
     expect(CODE).toMatch(/if \(!stay\) bi \+= 1;/);
     expect(DETAIL_DESC_SOURCES as readonly string[], "the description mutual-exclusion guard holds").not.toContain("workable");

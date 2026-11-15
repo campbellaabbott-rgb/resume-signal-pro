@@ -12,8 +12,14 @@
 # THE CLOCK. Every line is INFO until job-board's preflight answers
 # job-board.2026-09-09.102 or later; before that no board read is made. Times
 # run from status.sliceStats.buildSince, and only when sliceStats.build is the
-# build the preflight answers. A row is "re-read" when its lastSeen is after
-# buildSince: the build that serves it has read it. A board line is INFO until
+# build the preflight answers. A row is "re-read" when its recheckedAt (the
+# board's job_board_verifications.verified_at, which list rows carry) or its
+# lastSeen (the insert time) is after buildSince: the build that serves it has
+# read its board, or inserted it. A stored row is re-read through recheckedAt
+# alone, since lastSeen never moves after insert, and recheckedAt counts only
+# off the capped-visit vendors (workday, oracle, icims, smartrecruiters,
+# rippling, usajobs, teamtailor): their visit reads 250 postings and stamps
+# the whole board, so it does not say this row was read. A board line is INFO until
 # its rows include one re-read, or until 48 h after buildSince. Status reports
 # no country backfill key, so the backfill is judged by behaviour: a row with
 # no country is INFO until 48 h after buildSince, then judged.
@@ -113,7 +119,8 @@ const serving=String(E.VDBN_H||"").replace(/^job-board\./,"");const ours=!!ss&&s
 const since=ours?Date.parse(ss.buildSince||""):NaN;const ageH=Number.isFinite(since)?(Date.now()-since)/3600000:null;
 const clock=!ss?"status carries no sliceStats":!ours?"sliceStats.build is "+ss.build+", not the serving "+serving+": no slice of this build has run yet":ageH===null?"status states no sliceStats.buildSince":"the first slice of this build was "+ageH.toFixed(1)+" h ago";
 const late=ageH!==null&&ageH>=48;
-const fresh=(r)=>Number.isFinite(since)&&Date.parse(r.lastSeen||"")>since;
+const CAPPED=new Set(["workday","oracle","icims","smartrecruiters","rippling","usajobs","teamtailor"]);
+const fresh=(r)=>Number.isFinite(since)&&((!CAPPED.has(String(r.source))&&Date.parse(r.recheckedAt||"")>since)||Date.parse(r.lastSeen||"")>since);
 const freshNew=(r)=>fresh(r)&&Date.parse(r.postedAt||"")>since;
 const CODED=new Set(["lever","workable","breezy","icims","oracle","rippling","paylocity","adp","ukg","usajobs"]);
 const CODED17=new Set([...CODED,"smartrecruiters","workday"]);

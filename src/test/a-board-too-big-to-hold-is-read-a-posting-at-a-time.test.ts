@@ -594,7 +594,8 @@ describe("(e) the retry is a separate statement that never writes the failure ve
   const between = CODE.slice(fetchAt, countAt);
   const retryAt = between.indexOf("if (!r && ");
   const retry = between.slice(retryAt);
-  const condition = retry.slice(0, retry.indexOf(") {\n"));
+  // The gate: the vendor test, then CAP-8's clock, count and heap test, up to the count it takes.
+  const condition = retry.slice(0, retry.indexOf("sliceReads.streamed++"));
 
   it("sits after the pinned fetch and before the landed-postings count", () => {
     expect(fetchAt, "the pinned worker fetch call is gone").toBeGreaterThan(0);
@@ -843,16 +844,17 @@ describe("(f) readOversizeBoard and the worker's retry, executed — not spelled
     const calls: Array<{ reserveDuring: number; args: unknown[] }> = [];
     const fn = new Function(`${toJs(`async function __retry(env) {
       let r = env.r, failReason = env.failReason, inFlightReserve = env.inFlightReserve;
-      const { s, reserve, sliceWallStart, freshCutoffMs, SLIM_SPECS, STREAM_READ_BUDGET_MS, SLICE_WALL_BUDGET_MS, HEAP_SOFT_LIMIT_MB, memStamp, isLight, lightOversize, inHotPhase, sliceReads, SLIM_ELEMENT_BYTES, SLIM_RETAINED_BYTES, WORKABLE_OVERSIZE_HELD, readWorkableBare } = env;
+      const { s, reserve, sliceWallStart, freshCutoffMs, SLIM_SPECS, STREAM_READ_BUDGET_MS, SLICE_WALL_BUDGET_MS, HEAP_SOFT_LIMIT_MB, memStamp, isLight, lightOversize, inHotPhase, sliceReads, SLIM_ELEMENT_BYTES, SLIM_RETAINED_BYTES, WORKABLE_OVERSIZE_HELD, readWorkableBare, MAX_RESPONSE_BYTES } = env;
+      let waits = false;
       const readOversizeBoard = (...a) => env.read(inFlightReserve, a);
       ${retryBlock}
-      return { r, failReason, inFlightReserve, streamed: sliceReads.streamed };
-    }`)}\nreturn __retry;`)() as (env: unknown) => Promise<{ r: unknown; failReason: string; inFlightReserve: number; streamed: number }>;
+      return { r, failReason, inFlightReserve, streamed: sliceReads.streamed, waits };
+    }`)}\nreturn __retry;`)() as (env: unknown) => Promise<{ r: unknown; failReason: string; inFlightReserve: number; streamed: number; waits: boolean }>;
     const s = { source: o.source, token: "tok", name: "Name" };
     const out = await fn({
       inHotPhase: o.hot === true, sliceReads: { streamed: o.streamedBefore ?? 0 },
       SLIM_ELEMENT_BYTES: num("SLIM_ELEMENT_BYTES"), SLIM_RETAINED_BYTES: num("SLIM_RETAINED_BYTES"),
-      WORKABLE_OVERSIZE_HELD: new Set<string>(), readWorkableBare: async () => null,
+      WORKABLE_OVERSIZE_HELD: new Set<string>(), readWorkableBare: async () => null, MAX_RESPONSE_BYTES: num("MAX_RESPONSE_BYTES"),
       r: o.r ?? null, failReason: o.failReason, inFlightReserve: 7, reserve: 40, s,
       sliceWallStart: Date.now() - (o.elapsedMs ?? 1000), freshCutoffMs: 123_456,
       SLIM_SPECS, STREAM_READ_BUDGET_MS: BUDGET, SLICE_WALL_BUDGET_MS: WALL, HEAP_SOFT_LIMIT_MB: HEAP,
@@ -907,7 +909,7 @@ describe("(f) readOversizeBoard and the worker's retry, executed — not spelled
   });
 });
 
-describe("(f2) CAP-8: one streamed read a slice, in the cold phase, after a heap preflight sized by the vendor", () => {
+describe("(f2) CAP-8: one streamed read a slice, in either phase, after a heap preflight sized by the vendor; a refused board waits", () => {
   const RAWI = readFileSync(`${FN}/index.ts`, "utf8");
   const HEAP = num("HEAP_SOFT_LIMIT_MB");
   const a = CODE.indexOf("r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors.get(s.token) ?? 0);");
@@ -917,18 +919,19 @@ describe("(f2) CAP-8: one streamed read a slice, in the cold phase, after a heap
     const calls: unknown[] = [];
     const fn = new Function(`${transformSync(`async function __retry(env) {
       let r = null, failReason = "oversize 9.9MB", inFlightReserve = 0;
-      const { s, reserve, sliceWallStart, freshCutoffMs, SLIM_SPECS, STREAM_READ_BUDGET_MS, SLICE_WALL_BUDGET_MS, HEAP_SOFT_LIMIT_MB, memStamp, isLight, lightOversize, inHotPhase, sliceReads, SLIM_ELEMENT_BYTES, SLIM_RETAINED_BYTES, WORKABLE_OVERSIZE_HELD, readWorkableBare } = env;
+      const { s, reserve, sliceWallStart, freshCutoffMs, SLIM_SPECS, STREAM_READ_BUDGET_MS, SLICE_WALL_BUDGET_MS, HEAP_SOFT_LIMIT_MB, memStamp, isLight, lightOversize, inHotPhase, sliceReads, SLIM_ELEMENT_BYTES, SLIM_RETAINED_BYTES, WORKABLE_OVERSIZE_HELD, readWorkableBare, MAX_RESPONSE_BYTES } = env;
+      let waits = false;
       const readOversizeBoard = async (...a) => { env.calls.push(a); return { jobs: [], raw: [] }; };
       ${retry}
-      return { r, streamed: sliceReads.streamed };
-    }`, { loader: "ts" }).code}\nreturn __retry;`)() as (env: unknown) => Promise<{ r: unknown; streamed: number }>;
+      return { r, streamed: sliceReads.streamed, waits };
+    }`, { loader: "ts" }).code}\nreturn __retry;`)() as (env: unknown) => Promise<{ r: unknown; streamed: number; waits: boolean }>;
     const out = await fn({
       s: { source: o.source, token: "tok", name: "N" }, reserve: 1, sliceWallStart: Date.now(), freshCutoffMs: 0, SLIM_SPECS,
       STREAM_READ_BUDGET_MS: num("STREAM_READ_BUDGET_MS"), SLICE_WALL_BUDGET_MS: num("SLICE_WALL_BUDGET_MS"), HEAP_SOFT_LIMIT_MB: HEAP,
       memStamp: () => ({ heapMb: o.heapMb ?? 40 }), isLight: () => o.light === true, lightOversize: o.light === true,
       inHotPhase: o.hot === true, sliceReads: { streamed: o.streamedBefore ?? 0 },
       SLIM_ELEMENT_BYTES: num("SLIM_ELEMENT_BYTES"), SLIM_RETAINED_BYTES: num("SLIM_RETAINED_BYTES"),
-      WORKABLE_OVERSIZE_HELD: new Set<string>(), readWorkableBare: async () => null, calls,
+      WORKABLE_OVERSIZE_HELD: new Set<string>(), readWorkableBare: async () => null, MAX_RESPONSE_BYTES: num("MAX_RESPONSE_BYTES"), calls,
     });
     return { ...out, calls: calls.length };
   };
@@ -940,10 +943,24 @@ describe("(f2) CAP-8: one streamed read a slice, in the cold phase, after a heap
     const second = await run({ source: "lever", streamedBefore: 1 });
     expect(second.calls, "a second stream in one slice").toBe(0);
     expect(second.streamed).toBe(1);
+    expect(second.waits, "refused for want of the slice's stream, it waits for a cold slice's").toBe(true);
+    expect(first.waits).toBe(false);
   });
 
-  it("a hot-phase slice never streams", async () => {
-    for (const source of ["lever", "ashby", "recruitee", "pinpoint"]) expect((await run({ source, hot: true })).calls, source).toBe(0);
+  it("a hot-phase slice streams its one board too: a hot-tier board is visited only in the hot phase, so it has no other read", async () => {
+    for (const source of ["lever", "ashby", "recruitee", "pinpoint"]) {
+      const hot = await run({ source, hot: true });
+      expect(hot.calls, source).toBe(1);
+      expect(hot.streamed, source).toBe(1);
+    }
+    const second = await run({ source: "ashby", hot: true, streamedBefore: 1 });
+    expect(second.calls, "still one a slice").toBe(0);
+    expect(second.waits).toBe(true);
+  });
+
+  it("a board the heap refuses waits too, and a vendor with no stream does not", async () => {
+    expect((await run({ source: "recruitee", heapMb: HEAP - 22 })).waits).toBe(true);
+    expect((await run({ source: "greenhouse" })).waits, "a greenhouse board that is not light has no stream to wait for").toBe(false);
   });
 
   it("the preflight is sized by the vendor's element bound: recruitee's 8 MB asks for 22 MB of headroom, lever's 1 MB for 8", async () => {
@@ -958,8 +975,9 @@ describe("(f2) CAP-8: one streamed read a slice, in the cold phase, after a heap
     const body = RAWI.slice(i, RAWI.indexOf("\n}\n", i));
     expect(body).toContain("lastPhase: phase,");
     expect(body).toContain("streamed: sliceReads.streamed,");
-    const reset = RAWI.indexOf("sliceReads = { streamed: 0, rateLimited: [], rawNoRows: [], srPartial: [] };");
-    expect(reset, "runRefresh resets the count every slice").toBeGreaterThan(RAWI.indexOf("async function runRefresh("));
+    // The Workable bare read (D7) has its own count beside the stream's, reset with it.
+    const reset = RAWI.indexOf("sliceReads = { streamed: 0, bare: 0, rateLimited: [], rawNoRows: [], srPartial: [] };");
+    expect(reset, "runRefresh resets both counts every slice").toBeGreaterThan(RAWI.indexOf("async function runRefresh("));
   });
 });
 

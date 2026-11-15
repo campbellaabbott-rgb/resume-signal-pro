@@ -415,7 +415,7 @@ describe("a body read before anything counted it", () => {
     };
     const reg = new Map<string, { source: string; mb: number; at: string }>();
     const recordStmts = block.slice(0, block.indexOf("budgetSkipped.push(s.token);")).split("\n").filter((l) => l.includes("OVERSIZE_BOARDS")).join("\n");
-    runWith(`let oversizeDirty = false;\n${recordStmts}`, { OVERSIZE_BOARDS: reg, s: { source: "greenhouse", token: "pulse" }, mb: 20.6 });
+    runWith(`let oversizeDirty = false;\n${recordStmts}`, { OVERSIZE_BOARDS: reg, s: { source: "greenhouse", token: "pulse" }, mb: 20.6, waits: false });
     expect(
       [...reg.keys()],
       "an oversize board must be recorded where it survives the next slice, under its own board's key (pulse is greenhouse AND ashby)",

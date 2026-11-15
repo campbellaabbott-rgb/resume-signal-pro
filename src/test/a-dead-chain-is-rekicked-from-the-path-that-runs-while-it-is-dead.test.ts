@@ -311,6 +311,11 @@ describe("the wiring in index.ts", () => {
     const STATUS = IDX.slice(IDX.indexOf('if (action === "status") {'), IDX.indexOf('if (action === "vendor-health") {'));
     expect(STATUS).toMatch(/const chainWatchdog = await maybeRekickDeadChain\(client, \{ readOnly: !statusFresh \}\);/);
     expect(IDX).not.toMatch(/async function boardUpkeep\(|action === "upkeep"/);
+    // The comment over that call names who acts in this build: the route is gone, so it cannot say the upkeep acts.
+    const RAW = readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8");
+    const above = RAW.slice(0, RAW.indexOf("const chainWatchdog = await maybeRekickDeadChain(")).split("\n").slice(-2)[0];
+    expect(above).toMatch(/^\s*\/\/ S13-114: .*20261107100000/);
+    expect(above).not.toMatch(/upkeep/i);
     expect(STATUS).toMatch(/\n\s+chainWatchdog,\n/);
     // The verdict's fields and the last kick both reach the payload.
     expect(FN).toMatch(/const report = \{ at: new Date\(now\)\.toISOString\(\), \.\.\.verdict, kicked: false, lastKick, /);

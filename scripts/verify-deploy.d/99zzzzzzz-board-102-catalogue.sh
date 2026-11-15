@@ -36,13 +36,19 @@
 #       both;
 #   B2  layoff-filings serves 2026-11-11.1 or later; INFO before, FAIL once
 #       job-board .102 serves;
-#   H   status: catalogSize == catalogHighwater == 44,499 and
-#       orphanPruneBlocked false. INFO before .102 and until 20261111120000
-#       behaves as applied; FAIL 24 h after .102's first slice if the mark is
-#       still above the catalogue (it applied while .101 served and was raised
-#       back, or never applied), or at once if .102 carries another size;
+#   H   status: catalogSize == catalogHighwater and orphanPruneBlocked
+#       false, and while exactly .102 serves, the size is 44,499. INFO before
+#       .102 and until 20261111120000 behaves as applied; FAIL 24 h after
+#       .102's first slice if the mark is still above the catalogue (it applied
+#       while .101 served and was raised back, or never applied), or at once if
+#       .102 carries another size. A later build may change the catalogue, so
+#       on one the 44,499 is not asked, and a size off the mark is INFO;
 #   R1  the serving catalogue carries none of the 24 retired tokens that no
-#       other vendor carries (a list scoped to them answers unknownCompanies);
+#       other vendor carries. The board looks up 5 names a call
+#       (NAMES_PER_CALL), so the tokens go 5 to a list call, and a token is
+#       uncarried when any of unknownCompanies, companiesUnresolved[].asked,
+#       companiesResolved[].asked or companiesNotLookedUp names it: all four
+#       name only tokens the catalogue lacks;
 #   R2  those 24 tokens serve 0 open rows after the prune's clock (today
 #       teamtailor eutalents 3,269 and smartrecruiters JobsForHumanity 143);
 #   R3  pinpoint:helsing serves 0 rows, by its vendor. It served 0 before the
@@ -88,7 +94,12 @@ VD102C_TOKS=""
 for VD102C_K in $VD102C_GONE; do VD102C_TOKS="$VD102C_TOKS${VD102C_TOKS:+,}\"${VD102C_K#*:}\""; done
 
 J '{"action":"status"}' > /tmp/vd_102c_status.json
-J "{\"action\":\"list\",\"companies\":[$VD102C_TOKS],\"countOnly\":true}" > /tmp/vd_102c_gone.json
+VD102C_I=0; VD102C_B=""; VD102C_N=0
+for VD102C_K in $VD102C_GONE; do
+  VD102C_B="$VD102C_B${VD102C_B:+,}\"${VD102C_K#*:}\""; VD102C_N=$((VD102C_N + 1))
+  if [ "$VD102C_N" -eq 5 ]; then J "{\"action\":\"list\",\"companies\":[$VD102C_B],\"countOnly\":true}" > "/tmp/vd_102c_gone_$VD102C_I.json"; VD102C_I=$((VD102C_I + 1)); VD102C_B=""; VD102C_N=0; fi
+done
+[ -n "$VD102C_B" ] && J "{\"action\":\"list\",\"companies\":[$VD102C_B],\"countOnly\":true}" > "/tmp/vd_102c_gone_$VD102C_I.json"
 J '{"action":"list","companies":["helsing"],"vendor":["pinpoint"],"countOnly":true}' > /tmp/vd_102c_helsing.json
 R get_company_fill_curve "{\"p_tokens\":[$VD102C_TOKS]}" > /tmp/vd_102c_curve.json
 VD102C_I=0
@@ -122,7 +133,9 @@ const CATALOGUE=44499,LIVE=E.VD102C_LIVE==="1",LFL=E.VD102C_LFL==="1",now=Date.n
 const GONE=words(E.VD102C_GONE),KEPT=words(E.VD102C_KEPT),LAB=words(E.VD102C_LABELLED),SERVED=words(E.VD102C_SERVED);
 const LCC="oracle:fa-esms-saasfaukgovprod1~ocs~CX_1";
 // A count answer: {total} read from rows, or the uncarried answer (the tokens in unknownCompanies, read from no row).
-const notCarried=(j)=>new Set([...(Array.isArray(j&&j.unknownCompanies)?j.unknownCompanies:[]),...(Array.isArray(j&&j.companiesUnresolved)?j.companiesUnresolved.map((u)=>u&&u.asked):[])]);
+// A name the catalogue lacks is looked up (resolved or unresolved) or, past the fifth, not looked up: every one is uncarried.
+const arr=(x)=>(Array.isArray(x)?x:[]);
+const notCarried=(j)=>new Set([...arr(j&&j.unknownCompanies),...arr(j&&j.companiesNotLookedUp),...arr(j&&j.companiesUnresolved).map((u)=>u&&u.asked),...arr(j&&j.companiesResolved).map((u)=>u&&u.asked)].filter((x)=>typeof x==="string"));
 const count=(f)=>{const j=json(f);if(!j||typeof j!=="object"||typeof j.total!=="number")return null;return {total:j.total,uncarried:notCarried(j),jobs:Array.isArray(j.jobs)?j.jobs:null}};
 
 // B1, B2
@@ -154,9 +167,10 @@ else{
   const size=st.catalogSize,mark=typeof st.catalogHighwater==="number"?st.catalogHighwater:null,blocked=st.orphanPruneBlocked;
   const said="catalogSize "+size+", catalogHighwater "+mark+", orphanPruneBlocked "+blocked;
   if(!LIVE)out("INFO","H "+said+" on "+(st.version||jb)+": .102 carries "+CATALOGUE+" boards, and 20261111120000 moves the mark to it after .102 serves");
-  else if(size!==CATALOGUE)out("FAIL","H the serving bundle carries "+size+" boards, not the "+CATALOGUE+" of .102 ("+said+")");
+  else if(serving==="2026-09-09.102"&&size!==CATALOGUE)out("FAIL","H the serving bundle carries "+size+" boards, not the "+CATALOGUE+" of .102 ("+said+")");
+  else if(serving!=="2026-09-09.102"&&mark!==null&&!(blocked===false&&mark===size))out("INFO","H "+said+" on "+serving+", a build after .102: its catalogue may differ, so the mark is section 49\x27s to judge");
   else if(mark===null)out("INFO","H "+said+": no high-water row, so nothing blocks the prune and the next pass end writes one");
-  else if(blocked===false&&mark===CATALOGUE){out("PASS","H "+said+": the prune runs at the next pass end");migratedSeen=true;}
+  else if(blocked===false&&mark===size){out("PASS","H "+said+": the prune runs at the next pass end");migratedSeen=true;}
   else if(blocked===false)out("INFO","H "+said+": the mark is below the catalogue, and the next pass end raises it to "+size);
   else if(due24)out("FAIL","H "+said+" "+ageH.toFixed(1)+" h after .102 first sliced: the prune is blocked, so every retired board keeps serving to its 30-day age-out. 20261111120000 has not applied, or applied while .101 served and its pass end raised the mark back: apply it again");
   else out("INFO","H "+said+": 20261111120000 has not applied yet (it runs after .102 serves; "+waitWhy()+")");
@@ -170,11 +184,12 @@ const pruned=LIVE&&Number.isFinite(migAt)&&!!pe&&pe.build===serving&&Number.isFi
 const pruneWhy=!LIVE?"not .102 yet":!Number.isFinite(migAt)?"20261111120000 has not been seen applied yet (H)":"no pass-end serve step of "+serving+" has finished since "+new Date(migAt).toISOString()+(Number.isFinite(atEnv)?" (VD102C_MIGRATED_AT)":" (first seen applied)")+"; the last finished "+(serve&&serve.doneAt?serve.doneAt+" on "+(pe&&pe.build):"never");
 const pruneSaid=pruned?"after the pass-end serve step of "+serve.doneAt+" ("+String(serve.detail||"").slice(0,80)+")":"";
 
-// R1
-const G=count("/tmp/vd_102c_gone.json");
-if(!G)out("FAIL","R1 the list scoped to the 24 retired tokens is unreadable: "+peek("/tmp/vd_102c_gone.json"));
+// R1: five calls of at most five tokens, read together.
+const GF=fs.readdirSync("/tmp/").filter((f)=>/^vd_102c_gone_\d+\.json$/.test(f)).sort().map((f)=>"/tmp/"+f);
+const GP=GF.map(count),G=GP.length&&GP.every(Boolean)?{total:GP.reduce((n,g)=>n+g.total,0),uncarried:new Set(GP.flatMap((g)=>[...g.uncarried]))}:null;
+if(!G)out("FAIL","R1 a list scoped to the retired tokens is unreadable ("+GF.length+" call(s)): "+peek(GF[GP.findIndex((g)=>!g)]||"/tmp/vd_102c_gone_0.json"));
 else{const carried=GONE.filter((k)=>!G.uncarried.has(tok(k)));
-  if(!carried.length)out(LIVE?"PASS":"INFO","R1 the serving catalogue carries none of the 24 retired tokens: a list scoped to them answers each in unknownCompanies"+(LIVE?"":" (before .102, which should not happen)"));
+  if(!carried.length)out(LIVE?"PASS":"INFO","R1 the serving catalogue carries none of the 24 retired tokens: lists scoped to them, five a call, name each as a board the catalogue lacks"+(LIVE?"":" (before .102, which should not happen)"));
   else if(LIVE)out("FAIL","R1 the serving catalogue still carries "+carried.length+" retired key(s): "+carried.slice(0,6).join(", ")+(carried.length>6?" ...":""));
   else out("INFO","R1 "+(st&&st.version||jb)+" still carries "+carried.length+" of the 24 retired tokens, which serve "+G.total+" row(s) today; .102 drops them");}
 

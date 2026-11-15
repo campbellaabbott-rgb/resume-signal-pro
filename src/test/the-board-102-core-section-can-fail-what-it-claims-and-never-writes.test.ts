@@ -15,6 +15,11 @@
  *   - a good .102 deploy prints PASS for every claim and no FAIL;
  *   - each claim fails alone when only its own fix is missing, and a line
  *     that waits on time (7 days, 24 h, 16-24Z) is INFO until then;
+ *   - the lap bar is built from the build that served just before .102 only:
+ *     the sampler's status.jsonl (a wrap is two samples under 360 min apart
+ *     whose rotation start moved) and section 90's ledger, never a .100 lap;
+ *   - the cold cursor is judged by its rate across the status reads, beside
+ *     the slice count, against the sampler's pre-.102 rate;
  *   - the feeds are read only after robots.txt allows them, 1.1 s apart, and
  *     a disallowed feed is INFO, not read;
  *   - every POST is job-board with the probe header or one of two anon read
@@ -93,6 +98,8 @@ type Opts = {
   state?: unknown;
   laps?: unknown;
   catalog?: string[] | null;
+  baseline?: unknown[]; // the lap sampler's status.jsonl lines
+  clockStepS?: number; // each status read's clock (date +%s) moves this far
 };
 
 function run(routes: Route[], opts: Opts = {}): { lines: string[]; calls: string[]; out: string; state: unknown; dir: string } {
@@ -108,6 +115,11 @@ function run(routes: Route[], opts: Opts = {}): { lines: string[]; calls: string
   const statePath = join(dir, "state", "board-102-core.json");
   if (opts.state !== undefined) { mkdirSync(dirname(statePath), { recursive: true }); writeFileSync(statePath, JSON.stringify(opts.state)); }
   writeFileSync(join(dir, "laps.json"), JSON.stringify(opts.laps ?? LAPS));
+  writeFileSync(join(dir, "status.jsonl"), (opts.baseline ?? []).map((x) => JSON.stringify(x)).join("\n"));
+  if (opts.clockStepS) {
+    writeFileSync(join(dir, "bin", "date"), `#!/bin/sh\nif [ "$1" = "+%s" ]; then n=$(cat "${dir}/clock" 2>/dev/null || echo 0); echo $(( ${Math.floor(NOW / 1000) - 3600} + n * ${opts.clockStepS} )); echo $((n + 1)) > "${dir}/clock"; else exec /bin/date "$@"; fi\n`);
+    chmodSync(join(dir, "bin", "date"), 0o755);
+  }
   const catalog = opts.catalog === undefined ? CATALOG : opts.catalog;
   if (catalog) writeFileSync(join(dir, "catalog.json"), JSON.stringify(catalog));
   const prelude = `set -u\nK=${KEY}; B=https://p.supabase.co; SITE=https://site.test; UA=ua\n${BUILD_GE}\n${J_FN}\n${R_FN}\n`;
@@ -116,7 +128,7 @@ function run(routes: Route[], opts: Opts = {}): { lines: string[]; calls: string
     ...process.env,
     PATH: `${join(dir, "bin")}:${dirname(process.execPath)}:${process.env.PATH ?? ""}`,
     VD_ROUTES: join(dir, "routes.json"), VD_CALLS: join(dir, "calls.log"),
-    VDBC_STATE: statePath, VDBC_LAPS: join(dir, "laps.json"), VDBC_TALLY: "4420000", VDBC_READS: "2", VDBC_HOUR: "18",
+    VDBC_STATE: statePath, VDBC_LAPS: join(dir, "laps.json"), VDBC_BASELINE: join(dir, "status.jsonl"), VDBC_TALLY: "4420000", VDBC_READS: "2", VDBC_HOUR: "18",
     ...(catalog ? { VDBC_CATALOG: join(dir, "catalog.json") } : {}),
     ...opts.env,
   };
@@ -144,7 +156,7 @@ const preflight = (build: string | null, maxAge: string | null = "7200"): Route 
 
 const CATALOG = [
   ...Array.from({ length: 1200 }, (_, i) => `filler-${i}`),
-  ...BOARDS.map(([, t]) => t), ...HELD, "usasurveyjob", "workable:afg", "greenhouse:afg",
+  ...BOARDS.map(([, t]) => t), ...HELD, "usasurveyjob", "workable:afg", "greenhouse:afg", "bjakcareer", "gopuff",
 ];
 const LAPS = { wraps: [
   { endedAt: "2026-11-08T23:10:00Z", wrapMin: 459, build: "2026-09-09.101" },
@@ -188,11 +200,11 @@ const feedBody = (vendor: string, n: number) =>
 const host = (vendor: string, t: string) => vendor === "recruitee" ? `${t}.recruitee.com` : vendor === "pinpoint" ? `${t}.pinpointhq.com` : "apply.workable.com";
 const feedPath = (vendor: string, t: string) => vendor === "recruitee" ? "/api/offers/" : vendor === "pinpoint" ? "/postings.json" : `/api/v1/widget/accounts/${t}?details=false`;
 
-type Over = { count?: Record<string, number>; feed?: Record<string, number>; robots?: string; held?: Record<string, number> };
+type Over = { count?: Record<string, number>; feed?: Record<string, number>; robots?: string; held?: Record<string, number>; rowsAre?: Record<string, unknown> };
 const boardRoutes = (o: Over = {}): Route[] => [
   ...BOARDS.flatMap(([v, t]) => [
     list(`"companies":\\["${esc(t)}"\\],"vendor":\\["${v}"\\],"countOnly":true`, { total: o.count?.[t] ?? 100 }),
-    list(`"companies":\\["${esc(t)}"\\],"vendor":\\["${v}"\\],"limit":60`, { jobs: rows(`${v}:${t}`, 3), hasMore: true, nextOffset: 60 }),
+    list(`"companies":\\["${esc(t)}"\\],"vendor":\\["${v}"\\],"limit":60`, { jobs: rows(`${v}:${t}`, 3, o.rowsAre), hasMore: true, nextOffset: 60 }),
     { match: `^GET https://${esc(host(v, t))}/robots\\.txt$`, body: o.robots ?? "User-agent: *\nDisallow: /admin\n" },
     { match: `^GET https://${esc(host(v, t) + feedPath(v, t))}$`, body: JSON.stringify(feedBody(v, o.feed?.[t] ?? 100)) },
   ]),
@@ -289,6 +301,19 @@ describe("the board .102 core section", () => {
     expect(fails(none.lines), none.out).toEqual([expect.stringMatching(/^FAIL {2}D12 registry: status carries no oversizeBoards list/)]);
   });
 
+  it("D12 registry fails on a board of any stream vendor still oversize, and on one waiting 2 h for a stream; a bare Workable board and the W4 Lever board stay", () => {
+    const late = iso(8 * DAY - 13 * H);
+    const dark = ok(good(status(STATUS({ oversizeBoards: [reg("bjakcareer", "ashby", late), reg("gopuff", "lever", late), reg("usasurveyjob", "lever", late)] }))));
+    expect(fails(dark.lines), dark.out).toEqual([expect.stringMatching(/^FAIL {2}D12 registry: 2 board\(s\) .*\[\["bjakcareer","ashby".*\["gopuff","lever"/)]);
+    const waiting = (at: string) => ok(good(status(STATUS({ oversizeBoards: [{ ...reg("vdkgroep", "recruitee", at), wait: true }, { ...reg("cxg", "workable", late), bare: true }] }))));
+    const short = waiting(iso(H));
+    expect(fails(short.lines), short.out).toEqual([]);
+    expect(tagged(short.lines, "D12 registry count"), short.out).toEqual([expect.stringMatching(/"vdkgroep wait","cxg bare"/)]);
+    // A wait's at is its first refusal: one first refused before buildSince + 12 h and still waiting is starved.
+    expect(fails(waiting(iso(3 * H)).lines)).toEqual([expect.stringMatching(/^FAIL {2}D12 registry: 1 board\(s\) .*\[\["vdkgroep","recruitee"/)]);
+    expect(fails(waiting(iso(7 * DAY)).lines)).toEqual([expect.stringMatching(/^FAIL {2}D12 registry: 1 board\(s\) .*\[\["vdkgroep","recruitee"/)]);
+  });
+
   it("the catalogue is read from this checkout's sources.ts when none is given", () => {
     const { lines, out } = ok(good(status(STATUS({ oversizeBoards: [reg("usasurveyjob", "lever"), reg("retired-nowhere-token", "lever")] }))), { catalog: null });
     expect(fails(lines), out).toEqual([expect.stringMatching(/^FAIL {2}D12 registry: 1 key\(s\) name a board the catalogue does not carry .*"retired-nowhere-token"/)]);
@@ -308,9 +333,22 @@ describe("the board .102 core section", () => {
     expect(robots.calls.filter((c) => /^curl\tGET /.test(c) && !/robots\.txt/.test(c)), robots.out).toEqual([]);
   });
 
-  it("a held Workable board that serves rows fails", () => {
+  it("a board whose rows were all stored before the deploy is judged once this build has read it: recheckedAt, not lastSeen, says so", () => {
+    const stored = { lastSeen: iso(200 * H), recheckedAt: iso(H), source: "recruitee" };
+    const off = ok(good(...boardRoutes({ count: { transperfect: 84 }, rowsAre: stored })));
+    expect(fails(off.lines), off.out).toEqual([expect.stringMatching(/^FAIL {2}D12\/D7 recruitee:transperfect: 84 served against 100 in-window on the feed \(84%.*3 of the first 3 rows read after buildSince/)]);
+    const unread = ok(good(...boardRoutes({ count: { transperfect: 84 }, rowsAre: { ...stored, recheckedAt: iso(200 * H) } })));
+    expect(fails(unread.lines), unread.out).toEqual([]);
+    expect(tagged(unread.lines, "D12/D7 recruitee:transperfect"), unread.out).toEqual([expect.stringMatching(/^INFO {2}D12\/D7 recruitee:transperfect: 84 served, none read after buildSince yet/)]);
+    expect(unread.calls.filter((c) => /^curl\tGET .*\/api\/offers\//.test(c)), unread.out).toEqual([]);
+  });
+
+  it("a held Workable board that serves rows fails on .102, and is INFO on a later build that spec section 7 lets serve it", () => {
     const { lines, out } = ok(good(...boardRoutes({ held: { "weekday-1": 3 } })));
     expect(fails(lines), out).toEqual(["FAIL  D12 held weekday-1: 3 row(s) served (a held board stays dark until the mill screen and an owner call)"]);
+    const later = ok(good(preflight("job-board.2026-09-09.103"), status(STATUS({ version: "2026-09-09.103", sliceStats: ss({ build: "2026-09-09.103" }) })), ...boardRoutes({ held: { "weekday-1": 3 } })));
+    expect(fails(later.lines).filter((l) => /D12 held/.test(l)), later.out).toEqual([]);
+    expect(tagged(later.lines, "D12 held weekday-1"), later.out).toEqual([expect.stringMatching(/^INFO {2}D12 held weekday-1: 3 row\(s\) served .*on 2026-09-09\.103, a later build may serve it under spec section 7/)]);
   });
 
   it("a Pinpoint row dated at its insert fails; one dated later by the backfill does not", () => {
@@ -329,15 +367,17 @@ describe("the board .102 core section", () => {
     expect(verdict(young.lines, "D7 descriptions"), young.out).toEqual(["INFO"]);
   });
 
-  it("CAP-8 fails on two streamed reads in a slice, a streamed read in the hot phase, or a record with no count", () => {
+  it("CAP-8 fails on two streamed reads in a slice of either phase, or a record with no count; one streamed read in the hot phase passes", () => {
     for (const [o, want] of [
-      [{ streamed: 2 }, /broke the envelope/], [{ streamed: 1, lastPhase: "hot" }, /broke the envelope/], [{ streamed: undefined }, /broke the envelope/],
+      [{ streamed: 2 }, /broke the envelope/], [{ streamed: 2, lastPhase: "hot" }, /broke the envelope/], [{ streamed: undefined }, /broke the envelope/],
     ] as const) {
       const { lines, out } = ok(good(status(STATUS({ sliceStats: ss(o) }))));
       expect(fails(lines), out).toEqual([expect.stringMatching(new RegExp("^FAIL {2}CAP-8: 1 slice record\\(s\\) of this build " + want.source))]);
     }
-    const hotZero = ok(good(status(STATUS({ sliceStats: ss({ streamed: 0, lastPhase: "hot" }) }))));
-    expect(fails(hotZero.lines), hotZero.out).toEqual([]);
+    // A hot-tier board has no other read: its one stream comes in the hot phase.
+    const hotOne = ok(good(status(STATUS({ sliceStats: ss({ streamed: 1, lastPhase: "hot" }) }))));
+    expect(fails(hotOne.lines), hotOne.out).toEqual([]);
+    expect(verdict(hotOne.lines, "CAP-8"), hotOne.out).toEqual(["PASS"]);
   });
 
   it("XR-1 fails with no stated close 7 days after the build and is INFO before", () => {
@@ -478,12 +518,70 @@ describe("the board .102 core section", () => {
     const missing = ok(good(status(noWrap)));
     expect(fails(missing.lines), missing.out).toEqual(["FAIL  lastWrapMin: status carries no lastWrapMin"]);
     const slow = ok(good(status(STATUS({ lastWrapMin: 518 }))));
-    expect(fails(slow.lines), slow.out).toEqual([expect.stringMatching(/^FAIL {2}Lap: the last wrap on this build took 518 min \(bar 517 = 1\.1 x the longest of \[459,470,460\]\)/)]);
+    expect(fails(slow.lines), slow.out).toEqual([expect.stringMatching(/^FAIL {2}Lap: the last wrap on this build took 518 min \(bar 517 = 1\.1 x the longest of \[459,470,460\] on 2026-09-09\.101\)/)]);
     const atBar = ok(good(status(STATUS({ lastWrapMin: 517 }))));
     expect(fails(atBar.lines), atBar.out).toEqual([]);
     const few = ok(good(status(STATUS({ lastWrapMin: 900 }))), { laps: { wraps: LAPS.wraps.slice(0, 2) } });
     expect(fails(few.lines), few.out).toEqual([]);
     expect(verdict(few.lines, "Lap"), few.out).toEqual(["INFO"]);
+  });
+
+  // The ledger as it stands: two .100 wraps, and one .101 wrap section 90 might add.
+  const MIXED = { wraps: [
+    { endedAt: "2026-11-05T10:00:00Z", wrapMin: 612, build: "2026-09-09.100" },
+    { endedAt: "2026-11-05T20:00:00Z", wrapMin: 597, build: "2026-09-09.100" },
+    { endedAt: "2026-11-09T14:07:00Z", wrapMin: 455, build: "2026-09-09.101" },
+  ] };
+  /** Sampler lines on .101: a rotation starts at each given minute; one sample 15 min after each start and one halfway to the next keep every gap under 360 min. */
+  const sampler = (starts: number[]) => {
+    const t0 = Date.parse("2026-11-08T12:00:00Z");
+    const line = (m: number, age: number) => ({ sampledAt: new Date(t0 + m * 60_000).toISOString(), status: { version: "2026-09-09.101", lastRotationAgeMin: age, coldBoards: 44_523, cursor: { cold: 0 }, sliceStats: { lastPhase: "hot" } } });
+    return starts.flatMap((m, i) => [line(m + 15, 15), ...(i + 1 < starts.length ? [line(Math.round((m + starts[i + 1]) / 2), Math.round((starts[i + 1] - m) / 2))] : [])]);
+  };
+
+  it("the lap bar never mixes builds: two .100 wraps and one .101 is not a baseline, and the sampler's .101 laps are", () => {
+    const mixed = ok(good(status(STATUS({ lastWrapMin: 640 }))), { laps: MIXED });
+    expect(fails(mixed.lines), mixed.out).toEqual([]);
+    expect(tagged(mixed.lines, "Lap"), mixed.out).toEqual([expect.stringMatching(/^INFO {2}Lap: fewer than 3 baseline laps on 2026-09-09\.101 \(\[455\]/)]);
+    // Laps of 460, 440, 455 and 542 min: the last three set the bar, 1.1 x 542 = 596.
+    const lines = sampler([0, 460, 900, 1355, 1897]);
+    const fromSampler = (w: number) => ok(good(status(STATUS({ lastWrapMin: w }))), { laps: MIXED, baseline: lines });
+    const slow = fromSampler(600);
+    expect(fails(slow.lines), slow.out).toEqual([expect.stringMatching(/^FAIL {2}Lap: the last wrap on this build took 600 min \(bar 596 = 1\.1 x the longest of \[455,455,542\] on 2026-09-09\.101\)/)]);
+    const fine = fromSampler(590);
+    expect(fails(fine.lines), fine.out).toEqual([]);
+    expect(verdict(fine.lines, "Lap"), fine.out).toEqual(["PASS"]);
+    // The sampler alone, with no ledger: the same three laps' bar.
+    const alone = ok(good(status(STATUS({ lastWrapMin: 600 }))), { laps: { wraps: [] }, baseline: lines });
+    expect(fails(alone.lines), alone.out).toEqual([expect.stringMatching(/^FAIL {2}Lap: .*600 min \(bar 596 = 1\.1 x the longest of \[440,455,542\] on 2026-09-09\.101\)/)]);
+  });
+
+  it("the stale reads are a record with the sampler's count beside them, never a check", () => {
+    const cw = (stale: boolean) => ({ chainWatchdog: { pulseAgeMs: stale ? 300_000 : 20_000, thresholdMs: 200_000 } });
+    const samp = sampler([0, 460, 900, 1355, 1897]).map((x, i) => ({ ...x, status: { ...x.status, ...cw(i < 2) } }));
+    const r = ok(good(status(STATUS(cw(true)), STATUS(cw(true)))), { baseline: samp });
+    expect(fails(r.lines), r.out).toEqual([]);
+    expect(tagged(r.lines, "Stale-read record"), r.out).toEqual([expect.stringMatching(/^INFO {2}Stale-read record: 2 of 2 read\(s\) of this build were stale .*the sampler saw 2 of 9 on 2026-09-09\.101\. A record, not a check/)]);
+    expect(r.lines.filter((l) => /death proxy/.test(l)), r.out).toEqual([]);
+  });
+
+  it("the cold cursor fails when the slices run and it stands still, or moves at under half the sampler's pre-.102 rate", () => {
+    // The sampler on .101: 100 boards a minute, cold samples 10 min apart for 2 h.
+    const base = Array.from({ length: 13 }, (_, i) => ({ sampledAt: new Date(NOW - 3 * DAY + i * 600_000).toISOString(), status: { version: "2026-09-09.101", coldBoards: 44_523, cursor: { cold: 1000 + i * 1000 }, sliceStats: { lastPhase: "cold" } } }));
+    const reads = (cold: number[], slices: number[]) => status(...cold.map((c, i) => STATUS({ coldBoards: 44_499, cursor: { cold: c }, sliceStats: ss({ at: iso(60_000 - i * 1000), slices: slices[i], cursorStep: { to: c } }) })));
+    const go = (cold: number[], slices = [1000, 1003, 1006]) => ok(good(reads(cold, slices)), { baseline: base, clockStepS: 300, env: { VDBC_READS: "3" } });
+    const stalled = go([5000, 5000, 5000]);
+    expect(fails(stalled.lines), stalled.out).toEqual([expect.stringMatching(/^FAIL {2}Cursor: the cold cursor moved 0 boards in 10\.0 min of cold reads .*: the slices ran and the cursor did not move/)]);
+    const slow = go([5000, 5200, 5400]);
+    expect(fails(slow.lines), slow.out).toEqual([expect.stringMatching(/^FAIL {2}Cursor: the cold cursor moved 400 boards in 10\.0 min of cold reads = 40\/min.*baseline 100\/min over 120 min of cold samples on 2026-09-09\.101: under half the pre-\.102 rate/)]);
+    const fine = go([5000, 5450, 5900]);
+    expect(fails(fine.lines), fine.out).toEqual([]);
+    expect(verdict(fine.lines, "Cursor"), fine.out).toEqual(["PASS"]);
+    // The catalogue's retirements shift positions; a wrap past the end is a move, not a stall.
+    const wrapped = go([44_000, 400, 900]);
+    expect(fails(wrapped.lines), wrapped.out).toEqual([]);
+    const young = ok(good(reads([5000, 5000], [1000, 1003])), { baseline: base });
+    expect(verdict(young.lines, "Cursor"), young.out).toEqual(["INFO"]);
   });
 
   it("a status that is not JSON fails and says what came back", () => {

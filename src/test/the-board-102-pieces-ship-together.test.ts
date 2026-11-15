@@ -16,7 +16,8 @@
  * 3. The four renamed boards are named in the catalogue AND re-run by the name-sync lane,
  *    or the stored rows keep the old names while the catalogue prints the new ones.
  * 4. The ledger puts the closes_at columns before the function that writes them, and the
- *    high-water clamp and the pay heal after the build that needs them.
+ *    high-water clamp and the pay heal after a slice of the build that needs them: an
+ *    OPTIONS answer of .102 comes minutes before .101's last hop has finished.
  * 5. Every retired twin key is gone from the catalogue while its token is still carried
  *    under another vendor. Otherwise the arm either prunes a board still served, or the
  *    token-keyed orphan prune already reaches it and the arm is dead.
@@ -60,7 +61,7 @@ describe("the board-102 lanes ship as one build", () => {
   it("2. the Workable retry without details ships only with the three gig boards retired", () => {
     const retry =
       /async function readWorkableBare\([\s\S]*?listUrl\(s,\s*0,\s*false\)/.test(CODE) &&
-      /failReason\.startsWith\("oversize"\)\s*&&\s*s\.source\s*===\s*"workable"[\s\S]{0,300}?readWorkableBare\(s\)/.test(CODE) &&
+      /failReason\.startsWith\("oversize"\)\s*&&\s*s\.source\s*===\s*"workable"[\s\S]{0,450}?readWorkableBare\(s\)/.test(CODE) &&
       /s\.source\s*===\s*"workable"[\s\S]{0,200}?\?details=\$\{details\}/.test(CODE);
     const gigStillCatalogued = ["workable:toloka-ai", "workable:clients-blackbox-inc", "workable:huzzle"].filter((k) => KEYS.has(k));
     expect(
@@ -86,7 +87,7 @@ describe("the board-102 lanes ship as one build", () => {
     }
   });
 
-  it("4. the ledger applies the closes_at columns and the four names' evidence before job-board, and the pay heal and the high-water clamp after .102 answers", () => {
+  it("4. the ledger applies the closes_at columns and the four names' evidence before job-board, and the pay heal and the high-water clamp after a slice of .102, not an OPTIONS answer", () => {
     const stamps = { closesAt: "20261111100000", names: "20261111130000", heal: "20261111110000", highWater: "20261111120000" };
     const files = Object.fromEntries(Object.entries(stamps).map(([k, s]) => [k, fileOf(s)]));
     expect(Object.values(files).filter((f) => !f), "a board-102 migration file is missing").toEqual([]);
@@ -100,7 +101,7 @@ describe("the board-102 lanes ship as one build", () => {
     const stepOf = (f: string | null) => {
       const hit = (["pre", "afterFunctions", "afterFrontend"] as const).find((k) => (phases[k] as Array<{ file: string }>).some((m) => m.file === f));
       const note = hit ? (phases[hit] as Array<{ file: string; note: string }>).find((m) => m.file === f)!.note : "";
-      return { step: hit ?? "none", waits: /before job-board/.test(note) ? "before job-board" : /once job-board answers job-board\.2026-09-09\.102 or later/.test(note) ? "after job-board .102" : "nothing" };
+      return { step: hit ?? "none", waits: /before job-board/.test(note) ? "before job-board" : /once the job-board status action's sliceStats\.build reads 2026-09-09\.102 or later/.test(note) ? "after a slice of job-board .102" : /once job-board answers/.test(note) ? "after an OPTIONS answer" : "nothing" };
     };
     expect({
       closesAt: stepOf(files.closesAt),
@@ -110,8 +111,8 @@ describe("the board-102 lanes ship as one build", () => {
     }).toEqual({
       closesAt: { step: "pre", waits: "before job-board" },
       names: { step: "pre", waits: "before job-board" },
-      heal: { step: "afterFunctions", waits: "after job-board .102" },
-      highWater: { step: "afterFunctions", waits: "after job-board .102" },
+      heal: { step: "afterFunctions", waits: "after a slice of job-board .102" },
+      highWater: { step: "afterFunctions", waits: "after a slice of job-board .102" },
     });
   });
 
@@ -123,5 +124,23 @@ describe("the board-102 lanes ship as one build", () => {
       .map((k) => ({ key: k, stillCatalogued: KEYS.has(k), tokenCarried: TOKENS.has(tokenOf(k)) }))
       .filter((t) => t.stillCatalogued || !t.tokenCarried);
     expect(wrong, "a twin key the catalogue still carries would be pruned while served; one whose token left is already the orphan prune's").toEqual([]);
+  });
+
+  it("6. the message reads the oneshot pre-check first, a stopped heal never strands the clamp, and the board's shared files name board-102, not a finished wave", () => {
+    const ledger = JSON.parse(read("docs/deploy-ledger.json"));
+    const order = ledger.migrationOrder as Record<string, { note?: string }>;
+    expect(order["20261111100000"].note).toMatch(/^before applying it, run get_cron_health: while it lists a oneshot-drop-\* job/);
+    expect(order["20261111110000"].note).toMatch(/apply 20261111120000 anyway/);
+    // The bug round's named overlap (spec-102 section 8) is reported against board-102, the workstream that holds these files now.
+    const paths = ["supabase/functions/job-board/index.ts", "supabase/functions/job-board/sources.ts", "supabase/functions/job-board/normalize.ts",
+      "supabase/functions/job-board/slim-stream.ts", "supabase/functions/layoff-filings/index.ts", "supabase/functions/layoff-filings/board-sources.ts",
+      "fn:job-board", "fn:layoff-filings"];
+    expect(Object.fromEntries(paths.map((p) => [p, L.sharedOwner(ledger.sharedFiles, p)]))).toEqual(Object.fromEntries(paths.map((p) => [p, "board-102"])));
+    const r = L.overlapReport([
+      { ref: "board/102-integration", files: ["supabase/functions/layoff-filings/index.ts"], functions: ["layoff-filings"] },
+      { ref: "bugs/next", files: ["supabase/functions/layoff-filings/index.ts"], functions: ["layoff-filings"] },
+    ], ledger);
+    expect(r.files.map((f: { path: string; owner: string }) => [f.path, f.owner])).toEqual([["supabase/functions/layoff-filings/index.ts", "board-102"]]);
+    expect(r.functions.map((f: { fn: string; owner: string }) => [f.fn, f.owner])).toEqual([["layoff-filings", "board-102"]]);
   });
 });

@@ -62,6 +62,7 @@ import {
   workdayDetailPlace,
   isPlacelessLocation,
   listMayRewriteMode,
+  namesATrade,
   unescapeEntities,
 } from "./normalize.ts";
 import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
@@ -107,7 +108,7 @@ import { splitTombstoned, type Tombstone } from "./tombstone.ts";
 import { laneRows, stampKeyOfJob, stampPlan, stampRows } from "./verification-stamp.ts";
 import { ANCHOR, isStateCodeAlias, locationBranch, partMatchesTerm } from "./location-match.ts";
 import { belowCapFloor, capLapCovers, cursorAfterFailure, emptyFirstPage, emptyInsideLapTotal, lapTotal, ORACLE_RESULT_CAP, resumeAt, stampFeedTotal, workdayWindowed } from "./read-window.ts";
-import { clearOversize, heldOversize, loadOversizeEntries, noteOversize, oversizeStatusRows } from "./oversize-registry.ts";
+import { clearOversize, heldOversize, loadOversizeEntries, nextWaiting, noteOversize, oversizeStatusRows, unreadKeys, type OversizeEntry } from "./oversize-registry.ts";
 import { startGate } from "./start-gate.ts";
 import { addLightReread, lightReread, lightRereadStats, type LightRereadStats } from "./light-reread.ts";
 import { selectDeepLane } from "./deep-lane.ts";
@@ -672,7 +673,7 @@ async function loadDynamicLight(client: SupabaseClient): Promise<void> {
 }
 
 // Rationale: docs/job-board-index-notes.md#n020-oversize-boards
-const OVERSIZE_BOARDS = new Map<string, { source: string; mb: number; at: string }>();
+const OVERSIZE_BOARDS = new Map<string, OversizeEntry>();
 const OVERSIZE_CAP = 200;
 async function loadOversizeBoards(client: SupabaseClient): Promise<void> {
   const row = await readMetaRow(client, "oversize_boards");
@@ -2538,7 +2539,7 @@ let sliceBudgetNote: { fetched: number; skipped: number; hit: boolean; lastUpser
 // This slice's light re-reads (n081), added to the row's running totals by the recorder.
 let sliceLightReread: LightRereadStats | null = null;
 // This slice's streamed reads (CAP-8) and the boards a vendor refused for load (BB-09), whose items none normalised (S14X-063b) or whose later SmartRecruiters page threw (S14X-121).
-let sliceReads = { streamed: 0, rateLimited: [] as string[], rawNoRows: [] as string[], srPartial: [] as string[] };
+let sliceReads = { streamed: 0, bare: 0, rateLimited: [] as string[], rawNoRows: [] as string[], srPartial: [] as string[] };
 // This slice's boards whose feed read but whose rows our database would not read or store (S11-023).
 let sliceDbFailNote: { boards: number; alarm: number } | null = null;
 // Rationale: docs/job-board-index-notes.md#n547-let-currenthop
@@ -2674,7 +2675,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   sliceCursorNote = null;
   sliceLightReread = null;
   sliceDbFailNote = null;
-  sliceReads = { streamed: 0, rateLimited: [], rawNoRows: [], srPartial: [] };
+  sliceReads = { streamed: 0, bare: 0, rateLimited: [], rawNoRows: [], srPartial: [] };
   const { hotList: HOT_LIST, coldList: COLD_LIST } = await tierLists(client);
   await loadDynamicLight(client); // auto-enrolled giant boards fetch without content
   // Rationale: docs/job-board-index-notes.md#n551-await-loadoversizeboards-client
@@ -2997,7 +2998,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       // By board key since .91 (n428): a shared token's bare entry names no board.
       for (const k of [...staleTries.keys()]) if (SHARED_TOKENS.has(k)) staleTries.delete(k);
       // Rationale: docs/job-board-index-notes.md#n072-staleexclude
-      const staleExclude = staleExclusion({ oversize: OVERSIZE_BOARDS.keys(), tries: staleTries });
+      const staleExclude = staleExclusion({ oversize: unreadKeys(OVERSIZE_BOARDS), tries: staleTries });
       const askStale = (exclude: readonly string[] | null) => withDeadline(
         client.rpc("get_stalest_boards", { p_limit: STALE_RPC_LIMIT, p_min_age_hours: STALE_LANE_MIN_AGE_H, ...(exclude ? { p_exclude: exclude } : {}) })
           .abortSignal(AbortSignal.timeout(STALE_RPC_DEADLINE_MS + 500))
@@ -3025,7 +3026,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         const verdicts: StaleVerdict[] = classifyStale(laneRows(rows, SHARED_TOKENS), {
           catalogued: CATALOGUE_KEYS,
           quarantinedVendors,
-          oversize: new Set(OVERSIZE_BOARDS.keys()),
+          oversize: new Set(unreadKeys(OVERSIZE_BOARDS)),
           dormant: keysOf(boardFailures.dormant),
           failing: new Set([...keysOf(boardFailures.failedAt), ...keysOf(boardFailures.streaks)]),
           tries: staleTries,
@@ -3060,8 +3061,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       staleBoards = [];
     }
   }
+  // A cold slice's one stream goes first to the board a slice refused longest ago for want of it, wherever the cursor is.
+  const waitKey = inHotPhase ? null : nextWaiting(OVERSIZE_BOARDS, new Set([...demandBoards, ...bootstrapBoards, ...retryBoards, ...staleBoards, ...deepBoards, ...baseSlice].map(boardKeyOf)));
+  const waitBoards = waitKey ? [boardByKey(waitKey)].filter((s): s is JobSource => !!s) : [];
   // Base LAST: a base board the budget defers heads the next slice (the cursor counts only base boards started); n426.
-  const slice = [...demandBoards, ...bootstrapBoards, ...retryBoards, ...staleBoards, ...deepBoards, ...baseSlice];
+  const slice = [...waitBoards, ...demandBoards, ...bootstrapBoards, ...retryBoards, ...staleBoards, ...deepBoards, ...baseSlice];
   const startIso = new Date().toISOString();
   const freshCutoffMs = Date.now() - FRESH_WINDOW_DAYS * 86_400_000; // roles older than this are dropped
 
@@ -3204,20 +3208,28 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           done: lightRereadDone, stats: lightStats,
         }));
         // Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read, #n424-greenhouse-streamed-light-read
-        // CAP-8: one streamed read a slice, cold phase only, and only while the heap holds two elements plus the retained budget.
-        if (!r && failReason.startsWith("oversize") && SLIM_SPECS[s.source] && (s.source !== "greenhouse" || (lightOversize && isLight(s))) && !inHotPhase && sliceReads.streamed < 1 && Date.now() - sliceWallStart + STREAM_READ_BUDGET_MS <= SLICE_WALL_BUDGET_MS && (memStamp().heapMb ?? 0) + 2 * ((SLIM_SPECS[s.source].maxElementBytes ?? SLIM_ELEMENT_BYTES) + SLIM_RETAINED_BYTES) / 1e6 < HEAP_SOFT_LIMIT_MB) {
-          sliceReads.streamed++;
-          inFlightReserve += reserve;
-          try { r = await readOversizeBoard(s, Date.now() + STREAM_READ_BUDGET_MS, freshCutoffMs); }
-          finally { inFlightReserve -= reserve; }
+        // CAP-8: one streamed read a slice, in either phase (a hot board has no other read), and only while the heap holds two
+        // elements plus the retained budget. A board this refuses waits in the registry for a cold slice's stream (nextWaiting).
+        let waits = false;
+        if (!r && failReason.startsWith("oversize") && SLIM_SPECS[s.source] && (s.source !== "greenhouse" || (lightOversize && isLight(s)))) {
+          if (sliceReads.streamed < 1 && Date.now() - sliceWallStart + STREAM_READ_BUDGET_MS <= SLICE_WALL_BUDGET_MS && (memStamp().heapMb ?? 0) + 2 * ((SLIM_SPECS[s.source].maxElementBytes ?? SLIM_ELEMENT_BYTES) + SLIM_RETAINED_BYTES) / 1e6 < HEAP_SOFT_LIMIT_MB) {
+            sliceReads.streamed++;
+            inFlightReserve += reserve;
+            try { r = await readOversizeBoard(s, Date.now() + STREAM_READ_BUDGET_MS, freshCutoffMs); }
+            finally { inFlightReserve -= reserve; }
+          } else waits = true;
         }
-        // D7: a Workable board too big with its details is read without them; fillWorkableDetails brings the text back a posting at a time.
+        // D7: a Workable board too big with its details is read without them, one a slice, under CAP-8's clock and a heap that
+        // holds two whole bodies (or it waits, as above); fillWorkableDetails brings the text back a posting at a time.
         let bareRead = false;
         if (!r && failReason.startsWith("oversize") && s.source === "workable" && !WORKABLE_OVERSIZE_HELD.has(s.token)) {
-          inFlightReserve += reserve;
-          try { r = await readWorkableBare(s); }
-          finally { inFlightReserve -= reserve; }
-          bareRead = !!r;
+          if (sliceReads.bare < 1 && Date.now() - sliceWallStart + STREAM_READ_BUDGET_MS <= SLICE_WALL_BUDGET_MS && (memStamp().heapMb ?? 0) + 2 * MAX_RESPONSE_BYTES / 1e6 < HEAP_SOFT_LIMIT_MB) {
+            sliceReads.bare++;
+            inFlightReserve += reserve;
+            try { r = await readWorkableBare(s); }
+            finally { inFlightReserve -= reserve; }
+            bareRead = !!r;
+          } else waits = true;
         }
         if (r) fetchedInSlice += r.jobs.length;
         // Rationale: docs/job-board-index-notes.md#n079-boardsdone
@@ -3231,7 +3243,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             oversized.push(s.token);
             const mb = Number(failReason.match(/([\d.]+)MB/)?.[1]) || 0;
             // Rationale: docs/job-board-index-notes.md#n573-if-noteoversize-oversize_boards-s-mb-sha
-            if (noteOversize(OVERSIZE_BOARDS, s, mb, SHARED_TOKENS)) oversizeDirty = true;
+            if (noteOversize(OVERSIZE_BOARDS, s, mb, SHARED_TOKENS, undefined, waits ? "wait" : undefined)) oversizeDirty = true;
             budgetSkipped.push(s.token);
             continue;
           }
@@ -3539,6 +3551,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           apply_url?: string | null; work_mode?: string | null; remote?: boolean | null;
           salary?: string | null; agency?: boolean | null; employment_type?: string | null;
           region_code?: string | null; first_seen?: string | null; posted_at?: string | null;
+          department?: string | null; closes_at?: string | null;
           /** Which lap last SERVED this row. See deepLaps. Absent/NULL = never, or not read this visit. */
           lap_epoch?: number | null;
         };
@@ -3549,14 +3562,18 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         let regionColUnknown = false;
         // Rationale: docs/job-board-index-notes.md#n093-lapcolunknown
         let lapColUnknown = false;
+        // XR-1: a USAJOBS row's stored close date, so a read can move it.
+        let closesCol = s.source === "usajobs" ? ",closes_at" : "";
         for (let from = 0; ; from += 1000) {
           // Rationale: docs/job-board-index-notes.md#n094-res
           let res = await client
             .from("job_board_postings")
-            .select("id,lap_epoch,missing_since,title,location,country,region_code,apply_url,work_mode,employment_type,remote,salary,agency,first_seen,posted_at")
+            .select(`id,lap_epoch,missing_since,title,location,country,region_code,apply_url,work_mode,employment_type,remote,salary,agency,first_seen,posted_at,department${closesCol}`)
             .eq("company_token", s.token)
             .order("id")
             .range(from, from + 999);
+          // Before 20261111100000 the column is absent: the same page again without it.
+          if (closesCol && res.error?.message?.includes("closes_at")) { closesCol = ""; from -= 1000; continue; }
           // The lap column's own deploy window, FIRST because its fallback is
           // the exact select the other three already know how to degrade.
           if (res.error?.message?.includes("lap_epoch")) {
@@ -3605,7 +3622,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             lastUpsertError = `${s.token}: ${readErr.message}`;
             break;
           }
-          existingRows.push(...((page ?? []) as Array<ExistingRow>).map((r) => ({
+          existingRows.push(...((page ?? []) as unknown as Array<ExistingRow>).map((r) => ({
             id: r.id, missing_since: r.missing_since ?? null,
             title: r.title ?? null, location: r.location ?? null, country: r.country ?? null,
             apply_url: r.apply_url ?? null, work_mode: r.work_mode ?? null,
@@ -3616,6 +3633,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             // Rationale: docs/job-board-index-notes.md#n597-first_seen-r-as-first_seen-string-null
             first_seen: (r as { first_seen?: string | null }).first_seen ?? null,
             posted_at: r.posted_at ?? null, // the cap floor reads it (n1430)
+            department: r.department ?? null, closes_at: r.closes_at ?? null, // the heal and XR-1 patch compare them
             // Rationale: docs/job-board-index-notes.md#n598-lap_epoch-r-as-lap_epoch-number-null
             lap_epoch: (r as { lap_epoch?: number | null }).lap_epoch ?? null,
           })));
@@ -3901,6 +3919,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             // Ingest folding a stored curly apostrophe is our reading changing,
             // not the employer editing the posting (S11-021): patched, unlogged.
             if (sameButApostrophes(oldV, newV)) return;
+            // BR-08: a trade term ("Remote Sensing") read as no mode, title and place unchanged: our reading, patched unlogged.
+            if ((field === "remote" || field === "work_mode") && row.title === prev.title && row.location === prev.location && namesATrade(`${row.title} ${row.location}`)) return;
             // S14X-216: so is a value that differs only by HTML entities ('R&amp;D' read as 'R&D').
             if (typeof oldV === "string" && typeof newV === "string" && unescapeEntities(oldV) === unescapeEntities(newV)) return;
             if (changeLog.length >= FIELD_CHANGES_PER_VISIT) {
@@ -3985,6 +4005,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           if (typeof row.agency === "boolean" && typeof prev.agency === "boolean" && row.agency !== prev.agency) {
             patch.agency = row.agency;
           }
+          // XR-1: the stated close date is our reading of the feed, so an extension moves it, unlogged.
+          if (closesCol && row.closes_at && Date.parse(String(row.closes_at)) !== Date.parse(String(prev.closes_at))) patch.closes_at = row.closes_at;
+          // S14X-216: a department stored before the decode heals, unlogged.
+          if (typeof prev.department === "string" && row.department !== prev.department && unescapeEntities(prev.department) === row.department) patch.department = row.department;
           if (Object.keys(patch).length) corrections.push({ id, ...patch });
           // Keep the marks index-aligned with the array above: one entry per
           // queued patch, holding the log length at that moment.
@@ -4194,7 +4218,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         }
         okKeys.push(boardKeyOf(s));
         // Rationale: docs/job-board-index-notes.md#n623-if-clearoversize-oversize_boards-s-share
-        if (clearOversize(OVERSIZE_BOARDS, s, SHARED_TOKENS)) oversizeDirty = true;
+        // D7: a board read without its details stays registered, marked bare, so the description sweep goes straight to the filler.
+        if (bareRead ? noteOversize(OVERSIZE_BOARDS, s, Number(failReason.match(/([\d.]+)MB/)?.[1]) || 0, SHARED_TOKENS, undefined, "bare") : clearOversize(OVERSIZE_BOARDS, s, SHARED_TOKENS)) oversizeDirty = true;
         // Rationale: docs/job-board-index-notes.md#n624-try
         try {
           // Rationale: docs/job-board-index-notes.md#n625-const-stamptotal-stampfeedtotal-r-feedto
@@ -4401,7 +4426,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     // Rationale: docs/job-board-index-notes.md#n138-stalelane
     if (staleLane) {
       try {
-        const attempted = staleBoards.filter((s) => !budgetSkippedSet.has(s.token)).map(boardKeyOf);
+        // A 429 deferral and a feed that normalised nothing were tried: they count toward STALE_TRIES_MAX.
+        const tried = new Set([...sliceReads.rateLimited, ...sliceReads.rawNoRows]);
+        const attempted = staleBoards.filter((s) => !budgetSkippedSet.has(s.token) || tried.has(boardKeyOf(s))).map(boardKeyOf);
         const resolved = attempted.filter((k) => okKeySet.has(k)).length;
         const nextTries = bumpStaleTries(staleTries, attempted, okKeySet);
         staleLane.fetched = attempted.length;
@@ -4987,17 +5014,22 @@ const STATED_CLOSE_MAX = 1_000;
 /** XR-1, in the sweep step: stored USAJOBS rows past closes_at close through the feed-removal path, capped. No vendor request. */
 async function closeStatedClosed(client: SupabaseClient): Promise<number> {
   const now = new Date().toISOString();
+  // Only a date a board read has passed since: that read could move an extended date, so a stored date never closes a row alone.
+  const { data: v } = await client.from("job_board_verifications").select("verified_at").eq("company_token", "usajobs").maybeSingle();
+  if (!v?.verified_at) return 0;
   const { data, error } = await client.from("job_board_postings").select("id, company_token")
-    .eq("source", "usajobs").lt("closes_at", now).limit(STATED_CLOSE_MAX);
+    .eq("source", "usajobs").lt("closes_at", v.verified_at).limit(STATED_CLOSE_MAX);
   if (error || !data?.length) return 0; // before 20261111100000 the column is absent: nothing to close
   const byToken = new Map<string, string[]>();
   for (const r of data as Array<{ id: string; company_token: string }>) byToken.set(r.company_token, [...(byToken.get(r.company_token) ?? []), r.id]);
   let closed = 0;
   for (const [token, ids] of byToken) {
+    // The batch is measured against the board's live rows, not itself: a stated close is not a vanished board.
+    const { count } = await client.from("job_board_postings").select("id", { count: "exact", head: true }).eq("company_token", token);
     for (let i = 0; i < ids.length; i += 200) {
       closed += (await closeVanishedChunk(client, { source: "usajobs", token }, ids.slice(i, i + 200), {
         closedAt: now, agedOutIds: new Set(), freshCutoffMs: 0, liveTitles: new Set(), recentSuperseded: new Set(),
-        batchSuspect: false, absentInPass: ids.length, removableBefore: ids.length, lapMode: false, lapBackfillUntil: "",
+        batchSuspect: false, absentInPass: ids.length, removableBefore: count ?? ids.length, lapMode: false, lapBackfillUntil: "",
         missingSinceById: new Map(), startIso: now, basis: "stated_close",
       })).length;
     }
@@ -6652,7 +6684,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
       // Rationale: docs/job-board-index-notes.md#n722-const-pbbacklognow-await-undatedbacklog
       const pbBacklogNow = await undatedBacklog(client);
-      // S13-114: every caller reads the verdict; only a credential may act on it. The scheduler's upkeep is what acts.
+      // S13-114: every caller reads the verdict; only a credential may act on it. The minute kick (20261107100000) restarts a dead chain.
       const chainWatchdog = await maybeRekickDeadChain(client, { readOnly: !statusFresh });
       // Serialised once, here, so the memo holds the exact bytes this caller gets.
       const statusText = JSON.stringify({
@@ -8207,6 +8239,7 @@ async function handleRequest(req: Request): Promise<Response> {
     }
 
     if (action === "desc-sweep") {
+      const sweepStart = Date.now();
       // Rationale: docs/job-board-index-notes.md#n245-typeof-body-chainkey-string-bod
       if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
         return json({ error: "desc-sweep is a maintenance action" }, 403);
@@ -8276,7 +8309,7 @@ async function handleRequest(req: Request): Promise<Response> {
               }
             } else if (b.source === "workable" && (!whole || DETAIL_BOARD_REFUSED.has(`workable:${b.token}`))) {
               const own = (nullRows ?? []).filter((x) => String(x.id).startsWith("workable:"));
-              const f = await fillWorkableDetails(own, async (row) => (await fetchVendorDetail(b, row.id, row.id.split(":").slice(2).join(":"))).text, fill, { now: Date.now, sleep: (ms) => new Promise((res) => setTimeout(res, ms)) }, Date.now() + SLICE_WALL_BUDGET_MS - 20_000);
+              const f = await fillWorkableDetails(own, async (row) => (await fetchVendorDetail(b, row.id, row.id.split(":").slice(2).join(":"))).text, fill, { now: Date.now, sleep: (ms) => new Promise((res) => setTimeout(res, ms)) }, sweepStart + SLICE_WALL_BUDGET_MS - 20_000 - FETCH_TIMEOUT_MS);
               filled = f.filled;
               stay = f.filled > 0 && own.length > f.asked;
             }
@@ -8944,7 +8977,9 @@ async function handleRequest(req: Request): Promise<Response> {
         unknownIds = unknownIds.filter((id) => !got.has(id));
       };
       await held("job_board_postings", "id");
-      await held("job_board_exits", "posting_id", [...new Set(ids.map((id) => id.split(":")[1] ?? ""))]);
+      // job_board_exits has no posting_id index: the exit read names at most 5 tokens, and more answers unknown null.
+      const toks = [...new Set((unknownIds ?? []).map((id) => id.split(":")[1] ?? ""))];
+      if (toks.length > 5) unknownIds = null; else await held("job_board_exits", "posting_id", toks);
       // The answer names its test; check_jobs_open's basis follows it (n1464).
       return json({ open: openMap, rowTest: "served", unknown: unknownIds });
     }

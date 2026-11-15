@@ -110,6 +110,11 @@ export function safeIso(value: unknown): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+/** XR-1: USAJOBS closes at 11:59 p.m. Eastern on the date it states with no zone; read as the end of that day at UTC-5, never early. */
+export function easternClose(value: unknown): string | null {
+  return typeof value === "string" && /^\d{4}-\d\d-\d\d(?:T[\d:.]*)?$/.test(value) ? safeIso(`${value.slice(0, 10)}T23:59:59-05:00`) : safeIso(value);
+}
+
 // Rationale: docs/job-board-index-notes.md#n966-export-function-isdatedbefore-sanitizedp
 export function isDatedBefore(sanitizedPostedAt: string | null, cutoffMs: number): boolean {
   return sanitizedPostedAt !== null && Date.parse(sanitizedPostedAt) < cutoffMs;
@@ -194,6 +199,8 @@ const P_REMOTE = /\bremote\b|\bwork from home\b|\bwfh\b|\bt[ée]l[ée]travail\b|
 const P_ONSITE = /\bon-?site\b|\bin-?office\b|\bvor ort\b|\bpresencial\b|\bsur site\b/i;
 // A trade, not a mode ("Remote Sensing"): each term hand-labelled in fixtures/work-mode-corpus-2026-11-11.json.
 const P_TRADE = /\b(?:remote(?:ly)?(?:\s+|-)(?:sens\w*|pilot\w*|operated|operations?\s+(?:cent|contr)\w*|monitoring|access|sites?|services)|hybrid(?:\s+|-)(?:cloud|infrastructure|vehicles?|drivers?|riders?))\b/gi;
+/** BR-08: text naming a trade term, whose mode changed only by this reading (index.ts logs no employer edit for it). */
+export const namesATrade = (s: string) => s.search(P_TRADE) >= 0;
 export function detectWorkMode(...parts: Array<string | null | undefined>): "remote" | "hybrid" | "onsite" | null {
   const joined = parts.filter(Boolean).join(" · ");
   if (!joined) return null;
@@ -279,12 +286,14 @@ export function vendorWorkMode(v: string | null | undefined): "remote" | "hybrid
   return VENDOR_MODE.get(v.toLowerCase().replace(/[\s-]+/g, "_")) ?? null;
 }
 
-// Ahead of the comma-state rule ("Lagos, LA, Nigeria"). Jordan and Lebanon are US towns: last segment only.
+const P_US_STATE_NAME = /\b(?:alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming)\b/i;
+const P_STREET_WORD = /\b(?:road|rd|street|st|avenue|ave|suite|blvd|drive|dr|lane|ln|way|parkway|pkwy|highway|hwy|court|ct|place|pl)\b/i;
+// Ahead of the comma-state rule ("Lagos, LA, Nigeria"), and never a name a street word follows.
+// Jordan and Lebanon are US towns: last segment only, and never with a US state's name in the text.
 const COUNTRY_NAMES_17: ReadonlyArray<readonly [RegExp, string]> = [
   ...("nigeria NG;ghana GH;bangladesh BD;ethiopia ET;uganda UG;tanzania TZ;rwanda RW;senegal SN;ivory coast|c[oô]te d['’]ivoire CI;" +
-    "cameroon CM;algeria DZ;sri lanka LK;nepal NP;kazakhstan KZ;qatar QA").split(";").map((e) => [new RegExp(`\\b(?:${e.slice(0, -3)})\\b`, "i"), e.slice(-2)] as const),
-  [/^[^,]{3}.*,\s*jordan\s*$/i, "JO"],
-  [/^[^,]{3}.*,\s*lebanon\s*$/i, "LB"],
+    "cameroon CM;algeria DZ;sri lanka LK;nepal NP;kazakhstan KZ;qatar QA").split(";").map((e) => [new RegExp(`\\b(?:${e.slice(0, -3)})\\b(?!\\s+${P_STREET_WORD.source})`, "i"), e.slice(-2)] as const),
+  ...(["jordan JO", "lebanon LB"]).map((e) => [new RegExp(`^(?!.*${P_US_STATE_NAME.source})[^,]{3}.*,\\s*${e.slice(0, -3)}\\s*$`, "i"), e.slice(-2)] as const),
 ];
 // Rationale: docs/job-board-index-notes.md#n975-const-country_patterns-readonlyarray-rea
 const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
@@ -340,7 +349,8 @@ const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   // Ahead of China ("Hong Kong SAR, China").
   [/\btaiwan\b/i, "TW"],
   [/\bhong kong\b/i, "HK"],
-  [/\bmaca[uo]\b/i, "MO"],
+  // Not Macau beside a Brazilian state's code ("Macau, RN").
+  [/\bmaca[uo]\b(?!\s*[,/-]\s*(?:AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b|.*\b(?:rio grande do norte|bra[sz]il)\b)/i, "MO"],
   // Rationale: docs/job-board-index-notes.md#n979-bchina-b-i-cn
   [/\bchina\b/i, "CN"],
   [/\bpakistan\b/i, "PK"],
@@ -423,7 +433,6 @@ function leadingCodeItsOwnCountry(s: string): string | null {
 function leadingStatedState(s: string): string | null {
   return P_US_PREFIXED_STATE.exec(s)?.[1] ?? leadingPunctuatedState(s);
 }
-const P_US_STATE_NAME = /\b(?:alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming)\b/i;
 const P_CA_PROV_NAME = /\b(?:ontario|quebec|british columbia|alberta|manitoba|saskatchewan|nova scotia|new brunswick|newfoundland)\b/i;
 
 // Rationale: docs/job-board-index-notes.md#n983-export-const-country_map_version
@@ -765,7 +774,7 @@ export function cityCountry(location: string): string | null {
   return null;
 }
 
-// "Road ... Vienna VA 22182" with no comma: US after a street word, with the ZIP's USPS prefix in that state.
+// "Road ... Vienna VA 22182" with no comma: US after a street word in the same segment, with the ZIP's USPS prefix in that state.
 const ZIP3 = new Map(("AL350-369 AK995-999 AZ850-865 AR716-729 CA900-961 CO800-816 CT060-069 DE197-199 DC200,202-205,569 " +
   "FL320-349 GA300-319,398-399 HI967-968 ID832-838 IL600-629 IN460-479 IA500-528 KS660-679 KY400-427 LA700-714 ME039-049 " +
   "MD206-219 MA010-027,055 MI480-499 MN550-567 MS386-397 MO630-658 MT590-599 NE680-693 NV889-898 NH030-038 NJ070-089 " +
@@ -773,11 +782,10 @@ const ZIP3 = new Map(("AL350-369 AK995-999 AZ850-865 AR716-729 CA900-961 CO800-8
   "SD570-577 TN370-385 TX733,750-799,885 UT840-847 VT050-054,056-059 VA201,220-246 WA980-994 WV247-268 WI530-549 WY820-831")
   .split(" ").map((e) => [e.slice(0, 2), e.slice(2).split(",").map((r) => r.split("-").map(Number))] as const));
 const P_STATE_ZIP = /\b([A-Z]{2})\s+(\d{5})(?:-\d{4})?(?![\d-])/g;
-const P_STREET_WORD = /\b(?:road|rd|street|st|avenue|ave|suite|blvd|drive|dr|lane|ln|way|parkway|pkwy|highway|hwy|court|ct|place|pl)\b/i;
 function usStreetAddress(s: string): boolean {
   for (const m of s.matchAll(P_STATE_ZIP)) {
     const p = Number(m[2].slice(0, 3));
-    if (P_STREET_WORD.test(s.slice(0, m.index)) && ZIP3.get(m[1])?.some(([a, b = a]) => p >= a && p <= b)) return true;
+    if (P_STREET_WORD.test(s.slice(0, m.index).split(",").pop()!) && ZIP3.get(m[1])?.some(([a, b = a]) => p >= a && p <= b)) return true;
   }
   return false;
 }
@@ -1783,14 +1791,18 @@ function icimsSalary(d: IcimsJobData): string | null {
   return null;
 }
 
+/** A country's ISO 3166-2 subdivision codes (Mexico's: the usual BC, NL) that are also a US state or Canadian province code. */
+const OWN_SUBDIVISIONS: Record<string, string> = { AU: "NT WA", BR: "AL MA MS MT PA PE SC", CH: "AR NE", CN: "HI NM SC", CO: "DC", ES: "AB AL AR CA CO CT GA MA NC OR RI VA", IN: "AR GA LA MN NL SK TN", IT: "AL AR CA CO CT MB ME MI MN MO MS MT NU OR PA PE RI TN VA VT", MX: "BC NL", NG: "AB AK DE LA ON RI", NL: "FL NB NH UT", ZA: "NC" };
 // Rationale: docs/job-board-index-notes.md#n1243-export-function-icimscountry-feedcode-un
 export function icimsCountry(feedCode: unknown, location: string | null | undefined): string | null {
   const code = /^[A-Za-z]{2}$/.test(String(feedCode ?? "")) ? String(feedCode).toUpperCase() : null;
   if (code === null) return detectCountry(location);
   const first = String(location ?? "").split(";")[0].slice(0, 300);
   if (statedCountry(first) === code) return code; // the place names the code's own country (n1425)
-  // A non-US/CA code stands when the city is its own ("Chennai, TN" with IN), not FR at "KCMO, MO".
-  if (code !== "US" && code !== "CA" && cityCountry(first) === code && !COUNTRY_PATTERNS.some(([re, c]) => (c === "US" || c === "CA") && re.test(first))) return code;
+  // A non-US/CA code stands on a bare code that is its own subdivision ("Chennai, TN" with IN), never on a state or
+  // province in words, nor FR at "Paris, TX" or GB at "London, ON" (S14X-120).
+  const sub = (P_US_STATE_CODE.exec(first) ?? P_CA_PROV_CODE.exec(first))?.[1];
+  if (sub && OWN_SUBDIVISIONS[code]?.includes(sub) && !P_US_STATE_NAME.test(first) && !P_CA_PROV_NAME.test(first) && !COUNTRY_PATTERNS.some(([re, c]) => (c === "US" || c === "CA") && re.test(first))) return code;
   const notOwn = (m: RegExpExecArray | null) => !!m?.[1] && m[1] !== code;
   const us = notOwn(P_US_STATE_CODE.exec(first)) || P_US_STATE_NAME.test(first) || notOwn(P_US_STATE_CODE_LEADING.exec(first));
   const ca = notOwn(P_CA_PROV_CODE.exec(first)) || P_CA_PROV_NAME.test(first);
@@ -2636,8 +2648,8 @@ export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: 
         // PositionSchedule Name: "Full-time"/"Part-time"/"Intermittent" etc.
         employmentType: normalizeEmploymentType(String(d.PositionSchedule?.[0]?.Name ?? "")),
         country,
-        // PositionEndDate when no ApplicationCloseDate.
-        closesAt: safeIso(d.ApplicationCloseDate) ?? safeIso(d.PositionEndDate),
+        // PositionEndDate when no ApplicationCloseDate. Both are zoneless Eastern wall time.
+        closesAt: easternClose(d.ApplicationCloseDate) ?? easternClose(d.PositionEndDate),
         applyUrl: safeUrl(String(d.ApplyURI?.[0] ?? d.PositionURI ?? "")),
       };
     })

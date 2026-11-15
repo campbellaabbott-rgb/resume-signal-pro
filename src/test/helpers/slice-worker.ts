@@ -18,6 +18,8 @@
  *   runLaneTakes, runDeepLane, runCompose — the lane sizes at a shed level,
  *               the deep lane's selection block, and the composed slice, so a
  *               test can run a whole slice through runGate (n426).
+ *   runWaitLane — the oversize board a cold slice streams first (CAP-8's
+ *               waiting board, from the registry) and the slice it heads.
  *
  * A miss throws: the code moved, and the harness must be re-pointed on
  * purpose rather than pass on nothing.
@@ -27,7 +29,7 @@ import { resolve } from "node:path";
 import { transformSync } from "esbuild";
 import { startGate } from "../../../supabase/functions/job-board/start-gate";
 import { lightReread, lightRereadStats, type LightRereadStats } from "../../../supabase/functions/job-board/light-reread";
-import { noteOversize, type OversizeEntry } from "../../../supabase/functions/job-board/oversize-registry";
+import { nextWaiting, noteOversize, type OversizeEntry } from "../../../supabase/functions/job-board/oversize-registry";
 import { cursorAfterFailure } from "../../../supabase/functions/job-board/read-window";
 import { selectDeepLane } from "../../../supabase/functions/job-board/deep-lane";
 import { STALE_PER_SLICE } from "../../../supabase/functions/job-board/stale-lane";
@@ -190,8 +192,14 @@ export interface VisitEnv {
   hot?: boolean;
   /** Streamed reads this slice has already made (CAP-8: one at most). */
   streamedBefore?: number;
+  /** Workable details=false reads this slice has already made (D7: one at most). */
+  bareBefore?: number;
   /** The heap the preflight reads (default 40 MB). */
   heapMb?: number;
+  /** How long the slice has run when the visit starts (default 1 s): CAP-8's and D7's clock. */
+  elapsedMs?: number;
+  /** The registry before the visit (default empty). */
+  registry?: Map<string, OversizeEntry>;
   /** What the Workable details=false read (readWorkableBare, D7) answers. */
   bare?: () => Read;
 }
@@ -205,6 +213,8 @@ export interface VisitOut {
   bareCalls: Array<{ token: string; reserveDuring: number }>;
   /** The slice's streamed-read count after the visit (CAP-8). */
   streamed: number;
+  /** The slice's details=false read count after the visit (D7). */
+  bare: number;
   /** Boards the vendor refused for load this visit (BB-09). */
   rateLimited: string[];
   enrolCalls: number;
@@ -236,7 +246,7 @@ export async function runVisit(env: VisitEnv): Promise<VisitOut> {
     "HEAP_SOFT_LIMIT_MB", "readOversizeBoard", "freshCutoffMs", "breadcrumb", "deepLane", "deepTokens", "oversized", "noteOversize",
     "OVERSIZE_BOARDS", "SHARED_TOKENS", "budgetSkipped", "failed", "waitUntil", "boardFailures", "boardKeyOf", "cursorAfterFailure",
     "deepCursors", "baseTokens", "inHotPhase", "sliceReads", "SLIM_ELEMENT_BYTES", "SLIM_RETAINED_BYTES", "WORKABLE_OVERSIZE_HELD",
-    "readWorkableBare",
+    "readWorkableBare", "MAX_RESPONSE_BYTES",
   ];
   const run = compile(`async function __run() {
     let r = env.r, failReason = env.failReason, inFlightReserve = env.inFlightReserve, fetchedInSlice = 0, boardsDone = 0;
@@ -253,10 +263,10 @@ export async function runVisit(env: VisitEnv): Promise<VisitOut> {
   const fetchCalls: VisitOut["fetchCalls"] = [];
   const streamCalls: VisitOut["streamCalls"] = [];
   const bareCalls: VisitOut["bareCalls"] = [];
-  const sliceReads = { streamed: env.streamedBefore ?? 0, rateLimited: [] as string[], rawNoRows: [] as string[], srPartial: [] as string[] };
+  const sliceReads = { streamed: env.streamedBefore ?? 0, bare: env.bareBefore ?? 0, rateLimited: [] as string[], rawNoRows: [] as string[], srPartial: [] as string[] };
   let enrolCalls = 0;
   const gateAsked: unknown[] = [];
-  const registry = new Map<string, OversizeEntry>();
+  const registry = env.registry ?? new Map<string, OversizeEntry>();
   const deferred: string[] = [], oversized: string[] = [], failed: string[] = [];
   const stats = env.stats ?? lightRereadStats();
   const inner: { r: Read; failReason: string; inFlightReserve: number; baseAttempted: number; reserveNow?: () => number } = {
@@ -287,7 +297,7 @@ export async function runVisit(env: VisitEnv): Promise<VisitOut> {
     lightRereadDone: env.done ?? new Set<string>(),
     lightStats: stats,
     SLIM_SPECS: env.slimSpecs ?? {},
-    sliceWallStart: Date.now() - 1_000,
+    sliceWallStart: Date.now() - (env.elapsedMs ?? 1_000),
     STREAM_READ_BUDGET_MS: constOf("STREAM_READ_BUDGET_MS"),
     SLICE_WALL_BUDGET_MS: constOf("SLICE_WALL_BUDGET_MS"),
     memStamp: () => ({ heapMb: env.heapMb ?? 40 }),
@@ -322,9 +332,10 @@ export async function runVisit(env: VisitEnv): Promise<VisitOut> {
       bareCalls.push({ token: b.token, reserveDuring: inner.reserveNow!() });
       return env.bare ? env.bare() : null;
     },
+    MAX_RESPONSE_BYTES: constOf("MAX_RESPONSE_BYTES"),
   };
   const out = await (run(...names.map((n) => scope[n])) as () => Promise<{ r: Read; failReason: string; inFlightReserve: number; fetchedInSlice: number; boardsDone: number; baseAttempted: number }>)();
-  return { ...out, fetchCalls, streamCalls, bareCalls, streamed: sliceReads.streamed, rateLimited: sliceReads.rateLimited, enrolCalls, light: lightSet.has(key), deferred, oversized, failed, registry, gateAsked, stats };
+  return { ...out, fetchCalls, streamCalls, bareCalls, streamed: sliceReads.streamed, bare: sliceReads.bare, rateLimited: sliceReads.rateLimited, enrolCalls, light: lightSet.has(key), deferred, oversized, failed, registry, gateAsked, stats };
 }
 
 // ── lanes ───────────────────────────────────────────────────────────────────
@@ -397,12 +408,34 @@ function runDeepLaneWith(run: ReturnType<typeof compile>, names: string[], env: 
   return (run(...names.map((n) => scope[n])) as () => DeepLaneOut)();
 }
 
-export interface Lanes<T> { demand: T[]; bootstrap: T[]; retry: T[]; stale: T[]; deep: T[]; base: T[] }
+export interface Lanes<T> { demand: T[]; bootstrap: T[]; retry: T[]; stale: T[]; deep: T[]; base: T[]; wait?: T[] }
 
-/** The shipped slice composition over the given lanes. */
+/** The shipped slice composition over the given lanes (the waiting oversize board, if any, first). */
 export function runCompose<T>(lanes: Lanes<T>): T[] {
   const stmt = between(RAW(), "const slice = [", "];", "the slice composition", true);
-  const names = ["demandBoards", "bootstrapBoards", "retryBoards", "staleBoards", "deepBoards", "baseSlice"];
+  const names = ["waitBoards", "demandBoards", "bootstrapBoards", "retryBoards", "staleBoards", "deepBoards", "baseSlice"];
   const run = compile(`function __run() {\n    ${stmt}\n    return slice;\n  }`, names);
-  return (run(lanes.demand, lanes.bootstrap, lanes.retry, lanes.stale, lanes.deep, lanes.base) as () => T[])();
+  return (run(lanes.wait ?? [], lanes.demand, lanes.bootstrap, lanes.retry, lanes.stale, lanes.deep, lanes.base) as () => T[])();
+}
+
+export interface WaitLaneEnv<T extends Board> {
+  inHotPhase: boolean;
+  registry: Map<string, OversizeEntry>;
+  catalogue: T[];
+  lanes: Lanes<T>;
+}
+
+/** The shipped wait lane: the board a cold slice streams first, from the registry, and the slice it composes. */
+export function runWaitLane<T extends Board>(env: WaitLaneEnv<T>): { waitKey: string | null; slice: T[] } {
+  const span = between(RAW(), "const waitKey = ", "const startIso = ", "the wait lane and the slice composition");
+  const names = ["inHotPhase", "nextWaiting", "OVERSIZE_BOARDS", "demandBoards", "bootstrapBoards", "retryBoards", "staleBoards", "deepBoards", "baseSlice", "boardKeyOf", "boardByKey"];
+  const run = compile(`function __run() {\n    ${span}\n    return { waitKey, slice };\n  }`, names);
+  const byKey = new Map(env.catalogue.map((b) => [b.token, b]));
+  const scope: Record<string, unknown> = {
+    inHotPhase: env.inHotPhase, nextWaiting, OVERSIZE_BOARDS: env.registry,
+    demandBoards: env.lanes.demand, bootstrapBoards: env.lanes.bootstrap, retryBoards: env.lanes.retry, staleBoards: env.lanes.stale,
+    deepBoards: env.lanes.deep, baseSlice: env.lanes.base,
+    boardKeyOf: (b: Board) => b.token, boardByKey: (k: string) => byKey.get(k),
+  };
+  return (run(...names.map((n) => scope[n])) as () => { waitKey: string | null; slice: T[] })();
 }

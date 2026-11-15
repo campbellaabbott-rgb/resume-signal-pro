@@ -8,8 +8,13 @@
  * is built in the core lane, which needs a field on the posting to carry the
  * date from the normaliser to the row. normalizeUsajobs now reads the agency's
  * ApplicationCloseDate into it, falling back to PositionEndDate. The API writes
- * both without a zone ("2026-11-24T23:59:59.9970"), so each check below compares
- * with the same runtime's own parse and holds in any time zone.
+ * both without a zone ("2026-11-24T23:59:59.9970"): an announcement closes at
+ * 11:59 p.m. Eastern on that date. Read with the runtime's own parse, the edge's
+ * UTC clock made it 4-5 hours early, and the sweep closed announcements on
+ * their last evening. Now the date is read as the end of that day at UTC-5,
+ * which is the close in winter and an hour after it in summer: never early.
+ * Every expected value below is a literal instant, so the checks hold in any
+ * time zone the suite runs in.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -56,23 +61,30 @@ describe("normalizeUsajobs reads the close date the agency states", () => {
   // The API's own shape: a local date-time with no zone, four fraction digits.
   const zoneless = (ms: number) => new Date(ms).toISOString().slice(0, 19) + ".9970";
 
-  it("an ApplicationCloseDate of yesterday sets closesAt, and it is in the past", () => {
-    const yesterday = zoneless(Date.now() - 86_400_000);
-    const row = read({ ApplicationCloseDate: yesterday });
-    expect(row.closesAt).toBe(new Date(yesterday).toISOString());
+  it("a zoneless close date is the end of that day in Eastern time, whatever zone reads it", () => {
+    expect(read({ ApplicationCloseDate: "2026-11-20T23:59:59.9970" }).closesAt, "11:59 p.m. EST").toBe("2026-11-21T04:59:59.000Z");
+    expect(read({ ApplicationCloseDate: "2026-07-01T23:59:59.9970" }).closesAt, "an hour after 11:59 p.m. EDT: late, never early").toBe("2026-07-02T04:59:59.000Z");
+    expect(read({ ApplicationCloseDate: "2026-11-20" }).closesAt, "a bare date").toBe("2026-11-21T04:59:59.000Z");
+    expect(read({ ApplicationCloseDate: "2026-11-20T23:59:59Z" }).closesAt, "a date that states its zone is read as stated").toBe("2026-11-20T23:59:59.000Z");
+  });
+
+  it("an ApplicationCloseDate two days ago sets closesAt, and it is in the past", () => {
+    const before = zoneless(Date.now() - 2 * 86_400_000);
+    const row = read({ ApplicationCloseDate: before });
+    expect(row.closesAt).toBe(new Date(`${before.slice(0, 10)}T23:59:59-05:00`).toISOString());
     expect(Date.parse(row.closesAt!)).toBeLessThan(Date.now());
   });
 
   it("the stated close date wins over the position's end date", () => {
     const close = "2026-11-24T23:59:59.9970", end = "2027-11-24T23:59:59.9970";
-    expect(read({ ApplicationCloseDate: close, PositionEndDate: end }).closesAt).toBe(new Date(close).toISOString());
+    expect(read({ ApplicationCloseDate: close, PositionEndDate: end }).closesAt).toBe("2026-11-25T04:59:59.000Z");
   });
 
   it("PositionEndDate stands in when the announcement names no close date, or one that does not parse", () => {
     const end = "2026-12-01T23:59:59.9970";
-    expect(read({ PositionEndDate: end }).closesAt).toBe(new Date(end).toISOString());
-    expect(read({ ApplicationCloseDate: "not a date", PositionEndDate: end }).closesAt).toBe(new Date(end).toISOString());
-    expect(read({ ApplicationCloseDate: "" , PositionEndDate: end }).closesAt).toBe(new Date(end).toISOString());
+    expect(read({ PositionEndDate: end }).closesAt).toBe("2026-12-02T04:59:59.000Z");
+    expect(read({ ApplicationCloseDate: "not a date", PositionEndDate: end }).closesAt).toBe("2026-12-02T04:59:59.000Z");
+    expect(read({ ApplicationCloseDate: "" , PositionEndDate: end }).closesAt).toBe("2026-12-02T04:59:59.000Z");
   });
 
   it("an announcement that states neither carries closesAt null, and the rest of the row is unchanged", () => {

@@ -19,6 +19,8 @@ const COLUMNS = readFileSync(`${MIG}/20261111100000_a_usajobs_announcement_close
 const HEAL = readFileSync(`${MIG}/20261111110000_pay_read_in_the_wrong_currency_is_read_again.sql`, "utf8");
 
 let db: PGlite;
+// A PGlite start and a 5,000-row seed come close to the 5 s default under a loaded full-suite run: each heavy case says its own budget.
+const HEAVY = 30_000;
 
 const setup = async (rank: "generated" | "plain") => {
   db = new PGlite();
@@ -38,7 +40,7 @@ const setup = async (rank: "generated" | "plain") => {
 const run = (sql: string) => db.exec(sql);
 
 describe("20261111100000 adds the two columns once, and checks itself", () => {
-  beforeEach(() => setup("generated"));
+  beforeEach(() => setup("generated"), HEAVY);
 
   it("adds closes_at timestamptz and exit_basis text, and a second run changes nothing", async () => {
     await run(COLUMNS);
@@ -49,12 +51,12 @@ describe("20261111100000 adds the two columns once, and checks itself", () => {
       { table_name: "job_board_exits", column_name: "exit_basis", data_type: "text" },
       { table_name: "job_board_postings", column_name: "closes_at", data_type: "timestamp with time zone" },
     ]);
-  });
+  }, HEAVY);
 
   it("the self-check fails a column of the wrong type instead of passing it", async () => {
     await db.exec("ALTER TABLE public.job_board_postings ADD COLUMN closes_at date");
     await expect(run(COLUMNS)).rejects.toThrow(/closes_at is missing or not timestamptz/);
-  });
+  }, HEAVY);
 
   it("adds no index and no constraint, and names nothing it must not", async () => {
     await run(COLUMNS);
@@ -64,6 +66,16 @@ describe("20261111100000 adds the two columns once, and checks itself", () => {
     expect(COLUMNS).toMatch(/IF tries >= 10 THEN/);
     expect(COLUMNS.toLowerCase()).not.toMatch(/vault|secret|decrypted/);
     expect(HEAL.toLowerCase()).not.toMatch(/vault|secret|decrypted/);
+  }, HEAVY);
+
+  it("takes both locks in one block, the exit table first and the posting table last, so a wait for one never holds the other", () => {
+    const code = COLUMNS.split("\n").filter((l) => !/^\s*--/.test(l)).join("\n");
+    const alters = [...code.matchAll(/ALTER TABLE public\.(\w+) ADD COLUMN/g)].map((m) => m[1]);
+    expect(alters).toEqual(["job_board_exits", "job_board_postings"]);
+    // One DO block holds both ALTERs, inside the one BEGIN ... EXCEPTION WHEN lock_not_available that releases them together.
+    const block = /BEGIN\s+SET LOCAL lock_timeout = '2s';([\s\S]*?)EXCEPTION WHEN lock_not_available THEN/.exec(code)?.[1] ?? "";
+    expect([...block.matchAll(/ALTER TABLE public\.(\w+)/g)].map((m) => m[1])).toEqual(["job_board_exits", "job_board_postings"]);
+    expect(code.match(/EXCEPTION WHEN lock_not_available/g)).toHaveLength(1);
   });
 });
 
@@ -100,7 +112,7 @@ describe("20261111110000 reads a bare-dollar pay under a US place as USD, and no
       const before = JSON.stringify(c);
       await run(HEAL);
       expect(JSON.stringify(await currencies()), "a second run changes nothing").toBe(before);
-    });
+    }, HEAVY);
   }
 
   it("refuses above 5,000 matching rows and changes none of them", async () => {
@@ -109,7 +121,7 @@ describe("20261111110000 reads a bare-dollar pay under a US place as USD, and no
     await expect(run(HEAL)).rejects.toThrow(/more than the 5,000 this heal was written for/);
     const { rows } = await db.query<{ n: number }>("SELECT count(*)::int AS n FROM public.job_board_postings WHERE salary_currency = 'CAD'");
     expect(rows[0].n, "every row is still CAD").toBe(5_000 + 7);
-  });
+  }, HEAVY);
 
   it("at exactly 5,000 it heals", async () => {
     await setup("generated");
@@ -117,7 +129,7 @@ describe("20261111110000 reads a bare-dollar pay under a US place as USD, and no
     await run(HEAL);
     const { rows } = await db.query<{ n: number }>("SELECT count(*)::int AS n FROM public.job_board_postings WHERE company_token = 'mass' AND salary_currency = 'USD'");
     expect(rows[0].n).toBe(4_998);
-  });
+  }, HEAVY);
 
   it("does not write the description, so the description-embed trigger has nothing to fire on", () => {
     expect(HEAL).not.toMatch(/SET[^;]*\bdescription\b\s*=/i);

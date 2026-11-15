@@ -18,8 +18,11 @@
 # checkout is over the upload cap (an over-cap upload leaves the old build
 # serving). Times run from status.sliceStats.buildSince, and only when
 # sliceStats.build is the build the preflight answers ("a slice of this build
-# has run"). A per-board line is INFO until that board serves a row whose
-# lastSeen (the insert time) is after buildSince. Lines that wait on a
+# has run"). A per-board line is INFO until that board serves a row this
+# build read: its recheckedAt (the board's verified_at, which a list row
+# carries while the row is not missing) or its lastSeen (the insert time) is
+# after buildSince; recheckedAt only off the capped-visit vendors, whose visit
+# reads 250 postings, not the posting the row is. Lines that wait on a
 # migration or a pass are INFO until it can have happened, then judged.
 #
 # THE CLAIMS, one tagged line each:
@@ -27,21 +30,30 @@
 #               4,450,000 (VDBC_TALLY overrides the measurement).
 #   build       the preflight answers x-fn-build .102 or later.
 #   PERF-06     the preflight answers Access-Control-Max-Age 7200.
-#   D12 registry  status.oversizeBoards: no Recruitee or Pinpoint key, and no
-#               Workable key outside the held three, read oversize later than
-#               buildSince + 12 h; no key the catalogue lacks (the catalogue is
-#               this checkout's sources.ts through tsx; VDBC_CATALOG names a
-#               JSON file of keys instead). The count is INFO (expected 4).
+#   D12 registry  status.oversizeBoards: no key of a vendor .102 can read
+#               (Lever, Ashby, Greenhouse, Recruitee and Pinpoint through the
+#               stream; Workable outside the held three without details) read
+#               oversize later than buildSince + 12 h. A Workable key marked
+#               bare was read without details and stays registered on purpose;
+#               a key marked wait (its at is its first refusal) FAILs once it
+#               has waited 2 h for a cold slice's stream, from buildSince + 12 h.
+#               lever:usasurveyjob is INFO: spec-102 sends the stream bound it
+#               trips to W4. No
+#               key the catalogue lacks (the catalogue is this checkout's
+#               sources.ts through tsx; VDBC_CATALOG names a JSON file of keys
+#               instead). The count is INFO.
 #   D12/D7 <vendor>:<token>  countOnly is within 15% of the feed's own
 #               in-window count (30 days; undated items count), read by one GET
 #               of the feed after robots.txt allows it, at least
 #               VDBC_HOST_GAP_S (1.1 s) between requests to one host.
-#   D12 held <token>  the three held Workable boards serve no row.
+#   D12 held <token>  the three held Workable boards serve no row while .102
+#               serves (INFO on a later build: spec section 7 sends them to .103).
 #   D12 Pinpoint dates  no trilongroup row carries a date stamped at insert.
 #               The posted backfill dates Pinpoint rows from the posting page's
 #               own datePosted, so a dated row is INFO, never FAIL by itself.
 #   D7 descriptions  descCoverage workable at least 95% within 7 days.
-#   CAP-8       no slice record of this build has streamed > 1, or > 0 hot.
+#   CAP-8       no slice record of this build has streamed > 1 (either phase:
+#               a hot board has no other read).
 #   XR-1        passEnd.steps.sweep.statedClosed > 0 and usajobs closed_90d > 0
 #               within 7 days. Stored rows are never rewritten, so only rows
 #               first read by .102 carry closes_at. No usajobs.gov sampling.
@@ -79,8 +91,23 @@
 #               eight retired source:token boards is served.
 #   lastWrapMin status carries lastWrapMin and lastWrapAt.
 #   Lap         the last wrap that began after buildSince is within 1.1 x the
-#               longest of the last 3 pre-.102 laps in VDBC_LAPS (section 90's
-#               cold-wraps ledger), or VDBC_LAP_BAR. INFO with fewer than 3.
+#               longest of the last 3 laps on the build that served just before
+#               .102 (never an older one), read from the lap sampler
+#               (VDBC_BASELINE, status.jsonl: a wrap is two samples under 360
+#               min apart whose rotation start moved) and from section 90's
+#               cold-wraps ledger (VDBC_LAPS), or VDBC_LAP_BAR. INFO with fewer
+#               than 3.
+#   Cursor      over the status reads of this build, the cold cursor
+#               (cursor.cold, as cursorStep.to records it) moves while the slice
+#               count does, at no less than half the sampler's pre-.102 rate.
+#               The catalogue's retirements shift every position after the
+#               first change (on the fallback hot list, index 7; no kept board
+#               moves more than 128 places), so the rate, not the place, is
+#               compared. INFO with under 5 minutes of cold reads.
+#   Stale-read record  INFO only: how many reads of this build, and of the
+#               sampler's samples on the build before it, found the chain
+#               stamp older than thresholdMs. Not a check: one chain death
+#               spans several reads 90 s apart.
 #
 # READ-ONLY. One OPTIONS preflight; job-board status, list and exists reads,
 # sent with x-rb-budget: probe and noLog; two anon read RPCs
@@ -179,7 +206,7 @@ process.stdout.write(JSON.stringify({action:"exists",ids:[fake,...saved,...(open
 const fs=require("fs");const serving=String(process.env.VDBC_H||"").replace(/^job-board\./,"");let since=NaN;
 for(let i=Number(process.env.VDBC_N)-1;i>=0;i--){let s;try{s=JSON.parse(fs.readFileSync("/tmp/vd_bc_st_"+i+".json","utf8")).sliceStats}catch{continue}if(s&&s.build===serving){since=Date.parse(s.buildSince||"");break}}
 for(const p of String(process.env.VDBC_BOARDS).split(" ")){let j;try{j=JSON.parse(fs.readFileSync("/tmp/vd_bc_l_"+p.slice(p.indexOf(":")+1)+".json","utf8"))}catch{continue}
-  if(Number.isFinite(since)&&Array.isArray(j.jobs)&&j.jobs.some((r)=>r&&Date.parse(r.lastSeen||"")>since))console.log(p)}'); do
+  if(Number.isFinite(since)&&Array.isArray(j.jobs)&&j.jobs.some((r)=>r&&(Date.parse(r.recheckedAt||"")>since||Date.parse(r.lastSeen||"")>since)))console.log(p)}'); do
     VDBC_T=${VDBC_P#*:}
     case "${VDBC_P%%:*}" in
       recruitee) VDBC_HOST="$VDBC_T.recruitee.com"; VDBC_PATH="/api/offers/";;
@@ -209,7 +236,8 @@ process.exit(best&&best.k==="disallow"?1:0)' "/tmp/vd_bc_robots_$VDBC_HOST.txt" 
   done
 
   VDBC_H="$VDBC_H" VDBC_N="$VDBC_N" VDBC_STATE="$VDBC_STATE" VDBC_BOARDS="$VDBC_BOARDS" VDBC_HELD="$VDBC_HELD" VDBC_NAMED="$VDBC_NAMED" VDBC_TWINS="$VDBC_TWINS" \
-  VDBC_HOUR="${VDBC_HOUR:-}" VDBC_LAPS="${VDBC_LAPS:-$HOME/.config/resumebooster/verify-state/cold-wraps.json}" VDBC_LAP_BAR="${VDBC_LAP_BAR:-}" node -e '
+  VDBC_HOUR="${VDBC_HOUR:-}" VDBC_LAPS="${VDBC_LAPS:-$HOME/.config/resumebooster/verify-state/cold-wraps.json}" VDBC_LAP_BAR="${VDBC_LAP_BAR:-}" \
+  VDBC_BASELINE="${VDBC_BASELINE:-$HOME/.config/resumebooster/jobs-data-2026-11-07/plan/baseline/status.jsonl}" node -e '
 const fs=require("fs");const E=process.env;const H=3600000;const now=Date.now();
 const read=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
 const peek=(f)=>{try{return fs.readFileSync(f,"utf8").slice(0,160).replace(/\s+/g," ")}catch{return "(no answer)"}};
@@ -227,7 +255,8 @@ say("INFO","clock",clock+"; "+reads.length+" status read(s), "+ours.length+" fro
 const wait=(tag)=>say("INFO",tag,"waits for a slice of this build ("+clock+")");
 const rows=(x)=>(x&&Array.isArray(x.jobs)?x.jobs.filter((r)=>r&&typeof r==="object"):null);
 const total=(x)=>(x&&typeof x.total==="number"?x.total:null);
-const fresh=(r)=>Number.isFinite(since)&&Date.parse(r.lastSeen||"")>since;
+const CAPPED=new Set(["workday","oracle","icims","smartrecruiters","rippling","usajobs","teamtailor"]);
+const fresh=(r)=>Number.isFinite(since)&&((!CAPPED.has(String(r.source))&&Date.parse(r.recheckedAt||"")>since)||Date.parse(r.lastSeen||"")>since);
 let state={};try{state=JSON.parse(fs.readFileSync(E.VDBC_STATE,"utf8"))||{}}catch{}
 const held=new Set(String(E.VDBC_HELD).split(" "));
 
@@ -236,15 +265,18 @@ if(!lo)wait("D12 registry");else{
   const reg=lo.st.oversizeBoards;const cat=read("/tmp/vd_bc_catalog.json");const keys=Array.isArray(cat)&&cat.length>1000?new Set(cat):null;
   if(!Array.isArray(reg))say("FAIL","D12 registry","status carries no oversizeBoards list: "+String(JSON.stringify(reg)).slice(0,120));
   else{
-    const late=reg.filter((e)=>Date.parse(e.at||"")>since+12*H&&(e.source==="recruitee"||e.source==="pinpoint"||(e.source==="workable"&&!held.has(e.token))));
+    const STREAMS=new Set(["lever","ashby","greenhouse","recruitee","pinpoint"]);
+    const W4=new Set(["usasurveyjob"]);const at=(e)=>Date.parse(e.at||"");
     // A bare key an older build wrote for a token now shared is read as its own vendor:token.
     const lost=keys?reg.filter((e)=>!keys.has(e.key)&&(String(e.key).includes(":")||!keys.has(e.source+":"+e.key))):[];
+    // An uncatalogued key is a miss of the prune, named once below, not a board the build failed to read.
+    const late=reg.filter((e)=>!lost.includes(e)&&!e.bare&&!W4.has(e.token)&&(e.wait?now-at(e)>=2*H&&now-since>12*H:at(e)>since+12*H)&&(STREAMS.has(e.source)||(e.source==="workable"&&!held.has(e.token))));
     const fmt=(a)=>JSON.stringify(a.slice(0,5).map((e)=>[e.key,e.source,e.mb,e.at]));
     if(late.length||lost.length)say("FAIL","D12 registry",(late.length?late.length+" board(s) the stream or a details-free read should now read were still oversize 12 h after buildSince: "+fmt(late):"")+(late.length&&lost.length?"; ":"")+(lost.length?lost.length+" key(s) name a board the catalogue does not carry (the registry prune keeps only catalogued boards): "+fmt(lost):""));
-    else if(!reg.length)say("INFO","D12 registry","the registry is empty (expected the three held Workable boards and usasurveyjob)");
+    else if(!reg.length)say("INFO","D12 registry","the registry is empty (expected at least the three held Workable boards)");
     else if(!keys)say("INFO","D12 registry","no key read oversize past buildSince + 12 h"+(ageH<12?" (the 12 h have not passed)":"")+"; the catalogue could not be read here (tsx), so uncatalogued keys are not judged");
-    else say("PASS","D12 registry",reg.length+" key(s), every one catalogued, none a Recruitee, Pinpoint or non-held Workable board read oversize past buildSince + 12 h"+(ageH<12?" (the 12 h have not passed: the catalogue half is judged)":""));
-    say("INFO","D12 registry count",reg.length+" (expected 4: nogigiddy, weekday-1, hire-resolve-the-top-recruitment-agency, usasurveyjob): "+JSON.stringify(reg.map((e)=>e.key)));
+    else say("PASS","D12 registry",reg.length+" key(s), every one catalogued, none a board the stream or a details-free read reads still oversize past buildSince + 12 h"+(ageH<12?" (the 12 h have not passed: the catalogue half is judged)":""));
+    say("INFO","D12 registry count",reg.length+" (expected: the three held Workable boards, the Workable boards read without details (bare), and any board waiting for a cold slice\x27s stream): "+JSON.stringify(reg.map((e)=>e.key+(e.bare?" bare":e.wait?" wait":""))));
   }
 }
 
@@ -259,18 +291,18 @@ for(const p of String(E.VDBC_BOARDS).split(" ")){const v=p.slice(0,p.indexOf(":"
   const n=total(read("/tmp/vd_bc_n_"+t+".json"));const L=rows(read("/tmp/vd_bc_l_"+t+".json"));
   if(n===null||!L){say("FAIL",tag,"the board count or list is unreadable: "+peek(n===null?"/tmp/vd_bc_n_"+t+".json":"/tmp/vd_bc_l_"+t+".json"));continue}
   const re=L.filter(fresh).length;
-  if(!re){say("INFO",tag,n+" served, none first read after buildSince yet ("+clock+")");continue}
+  if(!re){say("INFO",tag,n+" served, none read after buildSince yet ("+clock+")");continue}
   if(fs.existsSync("/tmp/vd_bc_feed_"+t+".robots")){say("INFO",tag,n+" served; the feed was not read: robots.txt disallows "+peek("/tmp/vd_bc_feed_"+t+".robots"));continue}
   const f=feedCount(v,read("/tmp/vd_bc_feed_"+t+".json"));
   if(f===null){say("INFO",tag,n+" served; the feed did not answer a list (the vendor, not this build): "+peek("/tmp/vd_bc_feed_"+t+".json"));continue}
   if(!f){say("INFO",tag,n+" served; the feed lists nothing in the 30-day window, so there is nothing to compare");continue}
   const ok=Math.abs(n-f)<=0.15*f;
-  say(ok?"PASS":"FAIL",tag,n+" served against "+f+" in-window on the feed ("+(f?Math.round(100*n/f):0)+"%, want 85-115%; "+re+" of the first "+L.length+" rows first read after buildSince)");
+  say(ok?"PASS":"FAIL",tag,n+" served against "+f+" in-window on the feed ("+(f?Math.round(100*n/f):0)+"%, want 85-115%; "+re+" of the first "+L.length+" rows read after buildSince)");
 }
 for(const t of held){const tag="D12 held "+t;if(!lo){wait(tag);continue}
   const n=total(read("/tmp/vd_bc_h_"+t+".json"));
   if(n===null)say("FAIL",tag,"the count is unreadable: "+peek("/tmp/vd_bc_h_"+t+".json"));
-  else say(n>0?"FAIL":"PASS",tag,n+" row(s) served (a held board stays dark until the mill screen and an owner call)");}
+  else say(n>0?(serving==="2026-09-09.102"?"FAIL":"INFO"):"PASS",tag,n+" row(s) served (a held board stays dark until the mill screen and an owner call"+(n>0&&serving!=="2026-09-09.102"?"; on "+serving+", a later build may serve it under spec section 7":"")+")");}
 {const tag="D12 Pinpoint dates";if(!lo)wait(tag);else{const L=rows(read("/tmp/vd_bc_l_trilongroup.json"));
   if(!L)say("FAIL",tag,"the trilongroup list is unreadable: "+peek("/tmp/vd_bc_l_trilongroup.json"));
   else{const dated=L.filter((r)=>r.postedAt);const stamped=dated.filter((r)=>Math.abs(Date.parse(r.postedAt)-Date.parse(r.lastSeen||""))<5*60000);
@@ -304,8 +336,8 @@ for(const t of held){const tag="D12 held "+t;if(!lo){wait(tag);continue}
 // A slice record of this build: stampSliceWork stamps build first, so the record is ours once its at follows buildSince.
 const oursRec=ours.filter((r)=>Date.parse(r.ss.at||"")>Date.parse(r.ss.buildSince||""));
 const recs=[...new Map(oursRec.map((r)=>[String(r.ss.at),r.ss])).values()];
-{const tag="CAP-8";if(!recs.length)wait(tag);else{const bad=recs.filter((s)=>num(s.streamed)===null||s.streamed>1||(s.lastPhase==="hot"&&s.streamed>0));
-  say(bad.length?"FAIL":"PASS",tag,bad.length?bad.length+" slice record(s) of this build broke the envelope (want streamed 0 or 1, and 0 hot): "+JSON.stringify(bad.slice(0,3).map((s)=>[s.at,s.lastPhase,s.streamed])):recs.length+" slice record(s) of this build, streamed "+JSON.stringify(recs.map((s)=>s.streamed))+" (at most 1, cold only)");}}
+{const tag="CAP-8";if(!recs.length)wait(tag);else{const bad=recs.filter((s)=>num(s.streamed)===null||s.streamed>1);
+  say(bad.length?"FAIL":"PASS",tag,bad.length?bad.length+" slice record(s) of this build broke the envelope (want streamed 0 or 1): "+JSON.stringify(bad.slice(0,3).map((s)=>[s.at,s.lastPhase,s.streamed])):recs.length+" slice record(s) of this build, streamed "+JSON.stringify(recs.map((s)=>s.lastPhase+" "+s.streamed))+" (at most 1 a slice, either phase)");}}
 {const tag="BB-09";if(!recs.length)wait(tag);else{
   const noKey=recs.filter((s)=>!Array.isArray(s.rateLimited));const new429=[];
   const sv=reads.filter((r)=>r.st.version===serving);
@@ -412,16 +444,44 @@ say("INFO","NEW-PAYREWRITE","no live surface of its own: proved by its test, bui
   else if(!("lastWrapMin" in S)||!("lastWrapAt" in S))say("FAIL",tag,"status carries no "+(!("lastWrapMin" in S)?"lastWrapMin":"lastWrapAt"));
   else say("PASS",tag,"status carries lastWrapMin "+S.lastWrapMin+" and lastWrapAt "+S.lastWrapAt);}
 
+// The lap sampler (status.jsonl), and the build that served just before .102: the only build a baseline is read from.
+const SAMP=String((()=>{try{return fs.readFileSync(E.VDBC_BASELINE,"utf8")}catch{return ""}})()).split("\n").map((l)=>{try{return JSON.parse(l)}catch{return null}}).filter((x)=>x&&x.status&&typeof x.status==="object"&&Number.isFinite(Date.parse(x.sampledAt))).map((x)=>({t:Date.parse(x.sampledAt),st:x.status,ss:x.status.sliceStats&&typeof x.status.sliceStats==="object"?x.status.sliceStats:null}));
+const bv=(b)=>{const m=/^(\d{4}-\d\d-\d\d)\.(\d+)$/.exec(String(b||""));return m?[m[1],Number(m[2])]:null};
+const pre=(b)=>{const v=bv(b);return !!v&&(v[0]<"2026-09-09"||(v[0]==="2026-09-09"&&v[1]<102))};
+const LAPS=read(E.VDBC_LAPS);const LEDGER=LAPS&&Array.isArray(LAPS.wraps)?LAPS.wraps.filter((w)=>w&&typeof w==="object"):[];
+const lastPre=[...SAMP.map((x)=>x.st.version),...LEDGER.map((w)=>w.build)].filter(pre).sort((a,b)=>{const x=bv(a),y=bv(b);return x[0]<y[0]?-1:x[0]>y[0]?1:x[1]-y[1]}).pop()||null;
+
+// Cursor (spec risk 5): the cold cursor moves with the slice count, at no less than half the pre-.102 rate.
+{const tag="Cursor";const rate=(xs)=>{let d=0,m=0;for(let i=1;i<xs.length;i++){const a=xs[i-1],b=xs[i];const mm=(b.t-a.t)/60000;
+    if(!(mm>0&&mm<=15)||!a.ss||!b.ss||a.ss.lastPhase!=="cold"||b.ss.lastPhase!=="cold")continue;
+    const ca=num((a.st.cursor||{}).cold),cb=num((b.st.cursor||{}).cold),n=num(b.st.coldBoards);if(ca===null||cb===null||!n)continue;
+    let x=cb-ca;if(x<0)x+=n;if(x>n/2)continue;d+=x;m+=mm}return {d,m,r:m>0?d/m:null}};
+  const base=rate(SAMP.filter((x)=>x.st.version===lastPre)),post=rate(ours);
+  const sl=ours.map((r)=>num(r.ss.slices)).filter((x)=>x!==null);const dSl=sl.length>1?sl[sl.length-1]-sl[0]:0;
+  const tos=[...new Set(ours.map((r)=>(r.ss.cursorStep||{}).to).filter((x)=>typeof x==="number"))];
+  const bTxt=base.m>=60?(base.r).toFixed(0)+"/min over "+Math.round(base.m)+" min of cold samples on "+lastPre:"no usable baseline ("+Math.round(base.m)+" min of cold samples on "+lastPre+" in "+E.VDBC_BASELINE+")";
+  const s="the cold cursor moved "+post.d+" boards in "+post.m.toFixed(1)+" min of cold reads"+(post.r!==null?" = "+post.r.toFixed(0)+"/min":"")+"; slices +"+dSl+", cursorStep.to "+JSON.stringify(tos.slice(-6))+"; baseline "+bTxt;
+  if(!lo)wait(tag);
+  else if(post.m<5)say("INFO",tag,s+" (under 5 min of cold reads: the hot phase parks the cursor; VDBC_READS adds reads)");
+  else if(dSl>1&&post.d===0)say("FAIL",tag,s+": the slices ran and the cursor did not move (judge liveness by both)");
+  else if(base.m>=60&&post.r<0.5*base.r)say("FAIL",tag,s+": under half the pre-.102 rate");
+  else say(base.m>=60?"PASS":"INFO",tag,s+(base.m>=60?" (at least half the pre-.102 rate)":""));}
+
 // Lap.
-{const tag="Lap";const L=read(E.VDBC_LAPS);const pre=(b)=>{const m=/^(\d{4}-\d\d-\d\d)\.(\d+)$/.exec(String(b||""));return !!m&&(m[1]<"2026-09-09"||(m[1]==="2026-09-09"&&Number(m[2])<102))};
-  const base=(L&&Array.isArray(L.wraps)?L.wraps:[]).filter((w)=>w&&pre(w.build)&&num(Number(w.wrapMin))).sort((a,b)=>Date.parse(a.endedAt)-Date.parse(b.endedAt)).slice(-3).map((w)=>Number(w.wrapMin));
+{const tag="Lap";
+  const derived=[];const samp=SAMP.filter((x)=>x.st.version===lastPre);
+  for(let i=1;i<samp.length;i++){const a=samp[i-1],b=samp[i];const aa=num(a.st.lastRotationAgeMin),ba=num(b.st.lastRotationAgeMin);if(aa===null||ba===null||b.t-a.t>=360*60000)continue;
+    const sa=a.t-aa*60000,sb=b.t-ba*60000;if(sb-sa>60*60000)derived.push({endedAt:new Date(sb).toISOString(),wrapMin:Math.round((sb-sa)/60000)})}
+  const all=[...derived,...LEDGER.filter((w)=>w.build===lastPre&&num(Number(w.wrapMin))).map((w)=>({endedAt:w.endedAt,wrapMin:Number(w.wrapMin)}))].filter((w)=>Number.isFinite(Date.parse(w.endedAt))).sort((a,b)=>Date.parse(a.endedAt)-Date.parse(b.endedAt));
+  const uniq=all.filter((w,i)=>!all.slice(0,i).some((v)=>Math.abs(Date.parse(v.endedAt)-Date.parse(w.endedAt))<15*60000));
+  const base=uniq.slice(-3).map((w)=>w.wrapMin);
   const bar=num(Number(E.VDBC_LAP_BAR))||(base.length>=3?Math.round(1.1*Math.max(...base)):null);
   const w=num(S.lastWrapMin),at=Date.parse(S.lastWrapAt||"");const on=w!==null&&Number.isFinite(at)&&Number.isFinite(since)&&at-w*60000>=since;
-  const stale=ours.filter((r)=>{const cw=r.st.chainWatchdog||{};return num(cw.pulseAgeMs)!==null&&cw.pulseAgeMs>cw.thresholdMs}).length;
-  if(!bar)say("INFO",tag,"fewer than 3 baseline laps ("+JSON.stringify(base)+" in "+E.VDBC_LAPS+"; VDBC_LAP_BAR sets the bar), so the lap is not judged; last wrap "+w+" min");
+  const isStale=(r)=>{const cw=r.st.chainWatchdog||{};return num(cw.pulseAgeMs)!==null&&cw.pulseAgeMs>cw.thresholdMs};const stale=ours.filter(isStale).length;
+  if(!bar)say("INFO",tag,"fewer than 3 baseline laps on "+lastPre+" ("+JSON.stringify(base)+" from "+E.VDBC_BASELINE+" and "+E.VDBC_LAPS+"; VDBC_LAP_BAR sets the bar), so the lap is not judged; last wrap "+w+" min");
   else if(!lo||!on)say("INFO",tag,"no wrap that began after buildSince yet (last wrap "+w+" min, at "+(S.lastWrapAt||null)+"); bar "+bar+" min");
-  else say(w<=bar?"PASS":"FAIL",tag,"the last wrap on this build took "+w+" min (bar "+bar+" = 1.1 x the longest of "+(E.VDBC_LAP_BAR?"the bar given":JSON.stringify(base))+")");
-  say("INFO","Lap death proxy",stale+" of "+ours.length+" read(s) of this build were stale (pulseAgeMs > thresholdMs); the owner OD5 log read decides the 1.5x rule");}
+  else say(w<=bar?"PASS":"FAIL",tag,"the last wrap on this build took "+w+" min (bar "+bar+" = 1.1 x the longest of "+(E.VDBC_LAP_BAR?"the bar given":JSON.stringify(base)+" on "+lastPre)+")");
+  say("INFO","Stale-read record",stale+" of "+ours.length+" read(s) of this build were stale (pulseAgeMs > thresholdMs); the sampler saw "+samp.filter(isStale).length+" of "+samp.length+" on "+lastPre+". A record, not a check: one chain death spans several reads 90 s apart, so a share of reads cannot judge one; the owner OD5 log read decides the 1.5x rule");}
 
 try{fs.mkdirSync(require("path").dirname(E.VDBC_STATE),{recursive:true});fs.writeFileSync(E.VDBC_STATE,JSON.stringify(state,null,1)+"\n")}catch{}
 '

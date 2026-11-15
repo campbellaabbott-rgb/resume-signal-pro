@@ -22,11 +22,16 @@
 -- src/test/the-od1-charter-and-the-dedupe-leave-the-catalogue.test.ts pins to
 -- JOB_SOURCES.length exactly.
 --
--- ORDER: AFTER job-board 2026-09-09.102 serves (docs/deploy-ledger.json
--- migrationOrder). Applied while .101 still serves, the next pass end of the
--- 44,523-board bundle raises the mark straight back, and .102 then starts
--- blocked. Applied after, a bundle larger than the mark is, by the guard's own
--- rule, never treated as stale, so a later and larger catalogue raises it
+-- ORDER: AFTER job-board 2026-09-09.102 serves and has sliced
+-- (docs/deploy-ledger.json migrationOrder, a slice: rule). Applied while .101
+-- still serves, the next pass end of the 44,523-board bundle raises the mark
+-- straight back, and .102 then starts blocked. An OPTIONS answer of .102 comes
+-- minutes before .101's last hop has finished, so the file refuses (REFUSAL,
+-- below) unless job_board_meta.slice_stats names 2026-09-09.102 or later: the
+-- job-board status action's sliceStats.build, which .102's first slice
+-- writes. If it refuses, wait for that slice and apply this same file again,
+-- unedited. Applied after, a bundle larger than the mark is, by the guard's
+-- own rule, never treated as stale, so a later and larger catalogue raises it
 -- again by itself.
 --
 -- IDEMPOTENT: LEAST() lowers and never raises, so a second run is a no-op. The
@@ -39,6 +44,20 @@
 
 SET LOCAL lock_timeout = '10s';
 SET LOCAL statement_timeout = '1min';
+
+-- REFUSAL. Raises, and so changes nothing, until a slice of .102 or later has
+-- written job_board_meta.slice_stats; no row at all refuses too.
+DO $$
+DECLARE
+  v_build text;
+BEGIN
+  SELECT m.v ->> 'build' INTO v_build FROM public.job_board_meta m WHERE m.k = 'slice_stats';
+  IF NOT coalesce(CASE WHEN v_build ~ '^\d{4}-\d{2}-\d{2}\.\d{1,6}$' THEN
+         split_part(v_build, '.', 1) > '2026-09-09'
+         OR (split_part(v_build, '.', 1) = '2026-09-09' AND split_part(v_build, '.', 2)::int >= 102) END, false) THEN
+    RAISE EXCEPTION '20261111120000: job_board_meta.slice_stats names build %, not job-board 2026-09-09.102 or later (applied while .101 still slices, its next pass end raises the mark straight back). Wait until the job-board status action''s sliceStats.build reads 2026-09-09.102 (the first slice after the deploy writes it), then apply the same file again, unedited', coalesce(v_build, '(none)');
+  END IF;
+END $$;
 
 UPDATE public.job_board_meta
 SET v = jsonb_set(v, '{size}', to_jsonb(LEAST((v->>'size')::int, 44499))),

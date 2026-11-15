@@ -22,9 +22,12 @@ import {
  *   state's. "Palermo PA 90121" and the other eight named negatives are not.
  * - Hong Kong, Macau and Taiwan are read ahead of China ("Hong Kong SAR, China" is HK).
  * - S14X-120: an iCIMS, Lever, Breezy or Workable code that is not US or CA stands against a
- *   bare two-letter code that is also a US state when the place's city is in the code's
- *   country ("Chennai, TN" with IN stays IN). A city we do not know reads as before:
- *   Smoothie King's FR at "KCMO, MO" is Kansas City (n1425).
+ *   bare two-letter code that is also a US state or Canadian province only when that code is
+ *   one of the code's country's own ISO 3166-2 subdivisions ("Chennai, TN" with IN stays IN,
+ *   Tamil Nadu), and never against a state or province written out. Any other code reads as
+ *   on main: GB at "London, ON" is Canada, FR at "Paris, TX" and Smoothie King's FR at
+ *   "KCMO, MO" are the US (n1425). No raw-feed row of the 7,908 in board-stream-2026-11-01's
+ *   Lever, Breezy, Workable and iCIMS captures has this shape, so the cases below are named.
  *
  * The corpus (fixtures/country-corpus-2026-11-11.json) carries every location string the
  * rule moves, plus SmartRecruiters and vendor-coded rows, each labelled by the vendor's own
@@ -72,6 +75,34 @@ describe("the seventeen names", () => {
     }
     for (const s of ["PA, Lebanon", "Lebanon", "Jordan"]) expect(["LB", "JO"], s).not.toContain(detectCountry(s));
   });
+
+  // Board .102 review F15: shapes the corpus lacked, now named negatives in it too.
+  it("a US state written out ahead of Lebanon or Jordan is still the US town", () => {
+    for (const s of ["Tennessee, Lebanon", "Pennsylvania, Lebanon", "Ohio, Lebanon", "New Hampshire, Lebanon", "Minnesota, Jordan"]) {
+      expect(detectCountry(s), s).toBe("US");
+    }
+    // The controls: the countries themselves still read.
+    expect([detectCountry("Beirut, Lebanon"), detectCountry("Amman, Jordan")]).toEqual(["LB", "JO"]);
+  });
+
+  it("a street named for one of the seventeen is a street, not the country", () => {
+    expect(detectCountry("Ghana Road, Lagos")).toBe("NG");
+    expect(detectCountry("Ghana Street, Abuja")).toBe("NG");
+    expect(detectCountry("Tanzania St, Austin TX 78701")).not.toBe("TZ");
+    expect(detectCountry("Dar es Salaam, Tanzania"), "the control").toBe("TZ");
+  });
+
+  it("Brazil's Macau beside its state code RN is not Macao", () => {
+    for (const s of ["Macau, RN", "Macau - RN", "Macau/RN"]) expect(detectCountry(s), s).not.toBe("MO");
+    expect(detectCountry("Macau"), "the control").toBe("MO");
+  });
+
+  it("Brazil's Macau with its state or its country written out is not Macao", () => {
+    for (const s of ["Macau, Rio Grande do Norte", "Macau, Rio Grande do Norte, Brasil", "Macau, Brazil", "Macau - RN, Brasil", "Macau, Brasil"]) {
+      expect(detectCountry(s), s).not.toBe("MO");
+    }
+    expect(detectCountry("Macau, Macao SAR, China"), "the control").toBe("MO");
+  });
 });
 
 describe("a US street address with no comma (Wien)", () => {
@@ -88,10 +119,26 @@ describe("a US street address with no comma (Wien)", () => {
     expect(detectCountry(s)).not.toBe("US");
   });
 
+  it("a street word beside a foreign postal code that happens to fit a state's ZIP prefixes is not US", () => {
+    // Board .102 review F15: 38122 is a Tennessee ZIP and a Trento CAP; 61000 an Illinois ZIP and a Tel Aviv code.
+    expect(detectCountry("1 Park Lane, Trento TN 38122")).not.toBe("US");
+    expect(detectCountry("Main St, Tel Aviv IL 61000")).not.toBe("US");
+    expect(detectCountry("1919 Gallows Road Suite 700 Vienna VA 22182"), "the control").toBe("US");
+  });
+
   it("a street word with a ZIP outside the state's USPS prefixes is not enough", () => {
     expect(detectCountry("Via Roma 1, Palermo PA 90121")).not.toBe("US"); // no street word in English
-    expect(detectCountry("1 Main Street, Palermo PA 90121")).not.toBe("US"); // 901 is Tennessee's, not Pennsylvania's
-    expect(detectCountry("1 Main Street, Pittsburgh PA 15222")).toBe("US");
+    expect(detectCountry("1 Main Street Palermo PA 90121")).not.toBe("US"); // 901 is Tennessee's, not Pennsylvania's
+    expect(detectCountry("1 Main Street Pittsburgh PA 15222")).toBe("US");
+  });
+
+  it("a street word in another comma segment is not evidence for the state and ZIP that follow: unread, as main read it", () => {
+    // Board .102 review F15. "1 Park Lane, Trento TN 38122" has the same shape as a US
+    // address with a comma, and no rule without a city list tells them apart; the safe
+    // default is no country. fix/cost-wave read all three null.
+    for (const s of ["1 Main Street, Pittsburgh PA 15222", "1 Park Lane, Trento TN 38122", "Main St, Tel Aviv IL 61000"]) {
+      expect(detectCountry(s), s).toBeNull();
+    }
   });
 });
 
@@ -105,16 +152,32 @@ describe("Hong Kong, Macau and Taiwan are read ahead of China (S14X-249)", () =>
   });
 });
 
-describe("a vendor's own code that is not US or CA stands against a bare state-like code (S14X-120)", () => {
+describe("a vendor's own code that is not US or CA stands against a bare code that is one of its own subdivisions (S14X-120)", () => {
   it.each([
-    ["IN", "Chennai, TN", "IN"], ["MX", "Tijuana, BC", "MX"], ["PH", "Manila, MN", "PH"], ["GB", "London, ON", "GB"],
+    ["IN", "Chennai, TN", "IN"], ["MX", "Tijuana, BC", "MX"], ["MX", "Mexicali, BC", "MX"], ["MX", "Monterrey, NL", "MX"],
+    ["ES", "Barcelona, CT", "ES"], ["IT", "Milano, MI", "IT"], ["IT", "Palermo, PA", "IT"], ["BR", "Florianópolis, SC", "BR"],
+    ["AU", "Darwin, NT", "AU"], ["AU", "Perth, WA", "AU"], ["NG", "Lagos, LA", "NG"], ["NL", "Utrecht, UT", "NL"],
   ])("code %s at %s is %s, by both readers", (code, place, want) => {
+    expect(icimsCountry(code, place)).toBe(want);
+    expect(vendorCountry(code, place)).toBe(want);
+  });
+
+  // Named negatives: a city with a famous namesake, beside a state or province that is no subdivision of the code's
+  // country, or written out. The label is the place's own country; the reading is main's.
+  it.each([
+    ["GB", "London, Ontario", "CA"], ["GB", "London, ON", "CA"], ["GB", "Cambridge, Massachusetts", "US"], ["GB", "Cambridge, MA", "US"],
+    ["GB", "Manchester, New Hampshire", "US"], ["AT", "Vienna, VA", "US"], ["AT", "Vienna, Virginia", "US"], ["EG", "Alexandria, Virginia", "US"],
+    ["EG", "Alexandria, VA", "US"], ["IE", "Dublin, OH", "US"], ["IE", "Dublin, Ohio", "US"], ["FR", "Paris, TX", "US"], ["FR", "Paris, Texas", "US"],
+    ["GR", "Athens, GA", "US"], ["DE", "Berlin, Connecticut", "US"], ["GB", "Birmingham, Alabama", "US"],
+    ["IN", "Tennessee, TN", "US"], ["IT", "Milano, Michigan", "US"], ["AU", "Perth, Ontario", "CA"], ["PH", "Manila, MN", "US"],
+  ])("code %s at %s is %s: a namesake does not carry the code", (code, place, want) => {
     expect(icimsCountry(code, place)).toBe(want);
     expect(vendorCountry(code, place)).toBe(want);
   });
 
   it("the US or Canada named in words, or a state written out, still wins", () => {
     expect(icimsCountry("IN", "Austin, TX, United States")).toBe("US");
+    expect(icimsCountry("IN", "Chennai, TN, United States")).toBe("US");
     expect(icimsCountry("IN", "Austin, Texas")).toBe("US");
     expect(icimsCountry("PR", "FLORIDA, Florida")).toBe("US");
     expect(icimsCountry("GB", "Toronto, Ontario")).toBe("CA");

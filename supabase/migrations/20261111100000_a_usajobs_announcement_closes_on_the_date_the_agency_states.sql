@@ -15,8 +15,12 @@
 --   job_board_exits.exit_basis    text         'stated_close' on an exit the
 --                                              stated date closed; NULL otherwise
 -- No default, no index and no CHECK, so neither ALTER rewrites or scans a row.
--- Each ALTER waits at most two seconds for its lock and is retried up to ten
--- times, so it never queues behind a long reader of the posting table.
+-- Both ALTERs run in ONE block, the exit table first and the posting table
+-- last, each waiting at most two seconds for its lock. A timeout on either
+-- rolls the block back, which releases both locks before the one-second wait,
+-- and the block is tried up to ten times. So the posting table's lock is held
+-- only from its grant to the commit, never across a wait for the exit
+-- table's, and the ALTER never queues behind a long reader of either.
 --
 -- ORDER: before fn:job-board. A .102 that runs first still stores its rows:
 -- an insert that names a missing closes_at is retried without it, and the
@@ -31,38 +35,19 @@ DECLARE
 BEGIN
   LOOP
     EXIT WHEN EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_schema = 'public' AND table_name = 'job_board_exits' AND column_name = 'exit_basis')
+          AND EXISTS (SELECT 1 FROM information_schema.columns
                        WHERE table_schema = 'public' AND table_name = 'job_board_postings' AND column_name = 'closes_at');
     tries := tries + 1;
     BEGIN
       SET LOCAL lock_timeout = '2s';
+      ALTER TABLE public.job_board_exits ADD COLUMN IF NOT EXISTS exit_basis text;
       ALTER TABLE public.job_board_postings ADD COLUMN IF NOT EXISTS closes_at timestamptz;
     EXCEPTION WHEN lock_not_available THEN
       IF tries >= 10 THEN
-        RAISE EXCEPTION 'could not take the lock on job_board_postings in ten two-second tries; nothing was changed, apply again';
+        RAISE EXCEPTION 'could not take the locks on job_board_exits and job_board_postings in ten two-second tries; nothing was changed, apply again';
       END IF;
-      RAISE NOTICE 'job_board_postings is busy (try %), waiting a second', tries;
-      PERFORM pg_sleep(1);
-    END;
-  END LOOP;
-  SET LOCAL lock_timeout TO DEFAULT;
-END $$;
-
-DO $$
-DECLARE
-  tries int := 0;
-BEGIN
-  LOOP
-    EXIT WHEN EXISTS (SELECT 1 FROM information_schema.columns
-                       WHERE table_schema = 'public' AND table_name = 'job_board_exits' AND column_name = 'exit_basis');
-    tries := tries + 1;
-    BEGIN
-      SET LOCAL lock_timeout = '2s';
-      ALTER TABLE public.job_board_exits ADD COLUMN IF NOT EXISTS exit_basis text;
-    EXCEPTION WHEN lock_not_available THEN
-      IF tries >= 10 THEN
-        RAISE EXCEPTION 'could not take the lock on job_board_exits in ten two-second tries; nothing was changed, apply again';
-      END IF;
-      RAISE NOTICE 'job_board_exits is busy (try %), waiting a second', tries;
+      RAISE NOTICE 'job_board_exits or job_board_postings is busy (try %), both locks released, waiting a second', tries;
       PERFORM pg_sleep(1);
     END;
   END LOOP;

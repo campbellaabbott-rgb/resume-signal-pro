@@ -106,6 +106,8 @@ const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 type Row = Record<string, unknown>;
 const READ = iso(H); // read by this build: after a buildSince 72 h or 3 h ago
 const OLD = iso(200 * H); // read before it
+// A row stored before the deploy whose board this build read: production never moves lastSeen (the insert) after it.
+const STORED = { lastSeen: OLD, recheckedAt: READ };
 const VA = "1919 Gallows Road Suite 700 Vienna VA 22182; 218 West Water Street Suite 400 Charlottesville VA 22902";
 const WS_ID = "greenhouse:world4822stri986des:5459919008";
 
@@ -131,7 +133,7 @@ function routes(o: Over = {}): Route[] {
   const status = o.statusBody ?? JSON.stringify({ sliceStats: { build: o.sliceBuild ?? build.replace(/^job-board\./, ""), buildSince: o.buildSince ?? iso(72 * H) } });
   const place = o.place ?? Array.from({ length: 8 }, (_, i) => ({ id: `smartrecruiters:ThePlace1:${i}`, source: "smartrecruiters", location: i < 2 ? (i ? "Benin City, ED, Nigeria" : "Yenegwe, BY, Nigeria") : "Lagos, LA, Nigeria", country: "NG", lastSeen: READ }));
   const wien = o.wien ?? [0, 1, 2].map((i) => ({ id: `workday:w:${i}`, source: "workday", location: "Wien, Austria", country: "AT", lastSeen: READ }));
-  const ws = o.worldstrides ?? [{ id: WS_ID, source: "greenhouse", location: VA, country: "US", lastSeen: READ }, { id: "greenhouse:world4822stri986des:2", source: "greenhouse", location: "Remote", country: null, lastSeen: READ }];
+  const ws = o.worldstrides ?? [{ id: WS_ID, source: "greenhouse", location: VA, country: "US", ...STORED }, { id: "greenhouse:world4822stri986des:2", source: "greenhouse", location: "Remote", country: null, lastSeen: READ }];
   const hk = o.hk ?? [
     ...[0, 1, 2].map((i) => ({ id: `greenhouse:hk:${i}`, source: "greenhouse", location: "Hong Kong SAR, China", country: "HK", lastSeen: READ })),
     { id: "workday:jll:1", source: "workday", location: "Hong Kong, SAR, China", country: "HK", lastSeen: READ },
@@ -139,8 +141,8 @@ function routes(o: Over = {}): Route[] {
   ];
   const tradeRows = o.trade ?? [0, 1, 2, 3, 4, 5].map((i) => trade(i));
   const ent = {
-    teamtailor: o.ent?.teamtailor ?? [{ id: "teamtailor:acme:1", title: "Sales & Marketing Lead", department: "R&D", lastSeen: READ }],
-    personio: o.ent?.personio ?? [{ id: "personio:acme:1", title: "Pricing & Contracting Lead", department: "Commercial", lastSeen: READ }],
+    teamtailor: o.ent?.teamtailor ?? [{ id: "teamtailor:acme:1", source: "teamtailor", title: "Sales & Marketing Lead", department: "R&D", lastSeen: READ }],
+    personio: o.ent?.personio ?? [{ id: "personio:acme:1", source: "personio", title: "Pricing & Contracting Lead", department: "Commercial", lastSeen: READ }],
   };
   const r: Route[] = [
     { match: `^OPTIONS ${FB}$`, headers: build ? { "x-fn-build": build } : {} },
@@ -155,7 +157,7 @@ function routes(o: Over = {}): Route[] {
     { match: `^POST ${FB}\t.*"location":"Hong Kong"`, body: list([]) },
     ...[...new Set(PICKS.map(([t, , , c]) => `${t}|${c}`))].map((k) => {
       const [t, c] = k.split("|");
-      const rows = PICKS.filter((p) => p[0] === t && p[3] === c).map(([, id, code]) => ({ id, source: "breezy", location: `${c}, XX`, country: code, lastSeen: READ, ...(o.s120?.(id, code) ?? {}) }));
+      const rows = PICKS.filter((p) => p[0] === t && p[3] === c).map(([, id, code]) => ({ id, source: "breezy", location: `${c}, XX`, country: code, ...STORED, ...(o.s120?.(id, code) ?? {}) }));
       return { match: `^POST ${FB}\t.*"companies":\\["${esc(t)}"\\],"vendor":\\["breezy"\\],"location":"${esc(c)}"`, body: o.s120Body ?? list(rows) };
     }),
     { match: `^POST ${FB}\t.*"vendor":\\["teamtailor"\\],"limit":60,"offset":0,`, body: list(ent.teamtailor) },
@@ -320,16 +322,43 @@ describe("99zzzzzzz fails each claim when it is false", () => {
     const first = PICKS[0][1];
     const { lines } = run(routes({ s120: (id) => (id === first ? { country: "US" } : {}) }));
     expect(line(lines, /S14X-120/)).toMatch(new RegExp(`^FAIL .*${esc(first)}`));
-    expect(line(run(routes({ s120: () => ({ lastSeen: OLD }) })).lines, /S14X-120/)).toMatch(/^INFO .*none read by this build/);
+    expect(line(run(routes({ s120: () => ({ recheckedAt: OLD }) })).lines, /S14X-120/)).toMatch(/^INFO .*none read by this build/);
     expect(line(run(routes({ s120Body: "upstream error" })).lines, /S14X-120/)).toMatch(/^FAIL .*unreadable/);
   });
 
   it("E1: a literal &amp; on a row the build read; none to judge is INFO", () => {
-    const tt = (title: string, lastSeen: string, department: string | null = null) => [{ id: "teamtailor:incluso:8744038", title, department, lastSeen }];
+    const tt = (title: string, lastSeen: string, department: string | null = null) => [{ id: "teamtailor:incluso:8744038", source: "teamtailor", title, department, lastSeen }];
     expect(line(run(routes({ ent: { teamtailor: tt("Hands-on Marketing Project Manager", READ, "Sales, Marketing &amp; Communication") } })).lines, /S14X-216/)).toMatch(/^FAIL .*Communication/);
     expect(line(run(routes({ ent: { teamtailor: tt("Q&amp;A Lead", READ) } })).lines, /S14X-216/)).toMatch(/^FAIL/);
     expect(line(run(routes({ ent: { teamtailor: tt("Q&amp;A Lead", OLD) } })).lines, /S14X-216/)).toMatch(/^PASS .*1 read before it still do/);
     expect(line(run(routes({ ent: { teamtailor: tt("Engineer", READ), personio: [] } })).lines, /S14X-216/)).toMatch(/^INFO .*carries an ampersand/);
+  });
+
+  it("a stored row is read by this build when its board was: lastSeen (the insert) before buildSince, recheckedAt after it", () => {
+    const first = PICKS[0][1];
+    expect(line(run(routes({})).lines, /S14X-120/)).toMatch(/^PASS/);
+    expect(line(run(routes({ s120: (id) => (id === first ? { country: "US" } : {}) })).lines, /S14X-120/)).toMatch(new RegExp(`^FAIL .*${esc(first)}`));
+    const hk = [{ id: "ashby:hkco:1", source: "ashby", location: "Hong Kong SAR, China", country: "CN", ...STORED }];
+    expect(line(run(routes({ hk })).lines, /S14X-249/)).toMatch(/^FAIL .*hkco/);
+    expect(line(run(routes({ ent: { teamtailor: [], personio: [{ id: "personio:acme:2", source: "personio", title: "Q&amp;A Lead", department: null, ...STORED }] } })).lines, /S14X-216/)).toMatch(/^FAIL/);
+    expect(line(run(routes({ worldstrides: [{ id: WS_ID, source: "greenhouse", location: VA, country: null, ...STORED }] })).lines, /WorldStrides/)).toMatch(/^FAIL/);
+    // A board read before buildSince is not this build's reading.
+    expect(line(run(routes({ s120: () => ({ recheckedAt: OLD }) })).lines, /S14X-120/)).toMatch(/^INFO .*none read by this build/);
+  });
+
+  it("a capped vendor's visit reads 250 postings and stamps the whole board, so its recheckedAt does not say a stored row was read", () => {
+    const jll = [{ id: "workday:jll~wd1~jllcareers:REQ548675-1", source: "workday", location: "Hong Kong, SAR, China", country: "CN", ...STORED }];
+    expect(line(run(routes({ hk: jll })).lines, /S14X-249/)).toMatch(/^INFO .*none of 1 Hong Kong rows was read/);
+    expect(line(run(routes({ hk: jll.map((r) => ({ ...r, lastSeen: READ })) })).lines, /S14X-249/)).toMatch(/^FAIL .*jll/);
+    const tt = [{ id: "teamtailor:incluso:8744038", source: "teamtailor", title: "Q&amp;A Lead", department: null, ...STORED }];
+    expect(line(run(routes({ ent: { teamtailor: tt } })).lines, /S14X-216/)).toMatch(/^PASS .*1 read before it still do/);
+    // The capped list the sections hold is the one the worker caps.
+    const idx = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
+    const capped = JSON.parse(`[${/const CAPPED_VISIT_VENDORS = new Set\(\[([^\]]*)\]\)/.exec(idx)![1]}]`);
+    for (const f of ["99zzzzzzz-board-102-normalize.sh", "99zzzzzzz-board-102-core.sh"]) {
+      const sec = readFileSync(resolve(__dirname, "../../scripts/verify-deploy.d", f), "utf8");
+      expect(JSON.parse(`[${/const CAPPED=new Set\(\[([^\]]*)\]\)/.exec(sec)![1]}]`), f).toEqual(capped);
+    }
   });
 
   it("R1: a new Remote Sensing posting filed remote on the trade alone, over 5%", () => {

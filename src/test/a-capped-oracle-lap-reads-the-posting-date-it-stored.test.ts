@@ -23,9 +23,9 @@ import * as readWindow from "../../supabase/functions/job-board/read-window";
 const FN = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
 
 function lifted() {
-  const sel = /\.select\("(id,lap_epoch,missing_since,[a-z_,]+)"\)/.exec(FN);
+  const sel = /\.select\(`(id,lap_epoch,missing_since,[a-z_,]+)\$\{closesCol\}`\)/.exec(FN);
   expect(sel, "the existing-rows select moved").not.toBeNull();
-  const at = FN.indexOf("existingRows.push(...((page ?? []) as Array<ExistingRow>).map(");
+  const at = FN.indexOf("existingRows.push(...((page ?? []) as unknown as Array<ExistingRow>).map(");
   expect(at, "the existing-rows mapping moved").toBeGreaterThan(-1);
   const from = FN.indexOf("(r) => ({", at);
   const to = FN.indexOf("})));", from);
@@ -38,7 +38,11 @@ function lifted() {
     const names = Object.keys(scope);
     return new Function(...names, `${transformSync(line![1], { loader: "ts" }).code}\nreturn vanishedAll;`)(...names.map((n) => scope[n])) as string[];
   };
-  return { columns: sel![1].split(","), mapper, absent };
+  // A USAJOBS read adds closes_at (closesCol, XR-1); the mapper must carry it too, or the
+  // patch compares every stored date with undefined and rewrites each row on every read.
+  const closesCol = /let closesCol = s\.source === "usajobs" \? ",([a-z_]+)" : "";/.exec(FN);
+  expect(closesCol, "the USAJOBS close column moved").not.toBeNull();
+  return { columns: [...sel![1].split(","), closesCol![1]], mapper, absent };
 }
 
 describe("the existing-rows mapping carries what the cap rule reads", () => {
