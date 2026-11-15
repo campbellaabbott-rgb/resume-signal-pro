@@ -28,6 +28,21 @@ export const SHARD_ROOT_KEYS: Readonly<Record<string, string>> = {
   pricing: "pricingPlans",
   // The paid analysis's recovery and notices (hotfix 2026-11-10).
   paid: "paidAnalysis",
+  // The bug round of 2026-11-08: one directory per lane that adds strings,
+  // registered before any lane writes one. The Account page's root is
+  // "accountView" because "accountPage" is already a key of every main locale.
+  payments: "payments",
+  affiliate: "affiliateProgram",
+  "writing-tools": "writingTools",
+  account: "accountView",
+  "layoff-filings": "layoffFilings",
+  mail: "mailPrefs",
+  "free-scan-page": "freeScanPage",
+  "board-ui": "boardUi",
+  builder: "builderPage",
+  "ingest-parsers": "ingestParsers",
+  "past-buyers": "pastBuyers",
+  "site-shell": "siteShell",
 };
 
 export interface Shard {
