@@ -471,3 +471,52 @@ describe("the repeated-title flag is printed for a person and excludes nothing",
     expect(r.after).toContain('token: "eutalents"');
   });
 });
+
+// ── the mill screen reads a third party's site on its terms (2026-11-08) ────
+
+describe("the mill screen reads robots.txt first, paces each host, and sends no POST unasked", () => {
+  const SCREEN = resolve(ROOT, "scripts/mill-screen-all.mjs");
+  const robots = (text: string, paths: string[], agent?: string) => {
+    const code = `const { parseRobots, robotsAllow } = await import(${JSON.stringify(pathToFileURL(SCREEN).href)}); const p = parseRobots(${JSON.stringify(text)}${agent ? `, ${JSON.stringify(agent)}` : ""}); console.log(JSON.stringify(${JSON.stringify(paths)}.map((x) => robotsAllow(p, x))));`;
+    const r = spawnSync(process.execPath, ["--input-type=module", "-e", code], { cwd: tmpdir(), encoding: "utf8" });
+    expect(r.status, r.stderr).toBe(0);
+    return JSON.parse(r.stdout) as boolean[];
+  };
+
+  it("the longest matching rule wins, Allow on a tie, with * and a trailing $", () => {
+    const text = "User-agent: *\nDisallow: /api/\nAllow: /api/v1/widget/\nDisallow: /*.pdf$\n";
+    expect(robots(text, ["/api/v1/widget/accounts/cxg?details=false", "/api/v2/jobs", "/jobs/a.pdf", "/jobs/a.pdfx", "/"])).toEqual([true, false, false, true, true]);
+  });
+  it("a group naming this agent overrides the * group, and an empty Disallow allows everything", () => {
+    expect(robots("User-agent: resumebooster\nDisallow: /\n\nUser-agent: *\nAllow: /\n", ["/jobs"])).toEqual([false]);
+    expect(robots("User-agent: LinkedInBot\nAllow: /\n\nUser-agent: *\nDisallow: /companies/\n", ["/companies/acme/postings", "/jobs"])).toEqual([false, true]);
+    expect(robots("User-agent: *\nDisallow:\n", ["/anything"])).toEqual([true]);
+  });
+
+  it("every GET asks robots.txt, then waits its host's 1.1 s slot; a POST is refused without --allow-post", () => {
+    const code = strip(readFileSync(SCREEN, "utf8"));
+    expect(code).toMatch(/export const HOST_SPACING_MS = 1100;/);
+    const get = /async function get\(url, asText = false\) \{[\s\S]*?\n\}/.exec(code)?.[0] ?? "";
+    expect(get).toMatch(/const robots = await robotsFor\(u\);\s*if \(!robotsAllow\(robots\.parsed, u\.pathname \+ u\.search\)\) \{[^\n]*return null; \}\s*await paced\(u\.host\);\s*try \{\s*const res = await fetch\(url/);
+    const post = /async function postJson\(url, body\) \{[\s\S]*?\n\}/.exec(code)?.[0] ?? "";
+    expect(post).toMatch(/if \(!ALLOW_POST\) \{ refusedReads\.push\([^\n]*return null; \}[\s\S]*await paced\(u\.host\);[\s\S]*await fetch\(url/);
+    expect(code).toMatch(/robotsFor\(u\) \{[\s\S]*?await paced\(u\.host\);[\s\S]*?\/robots\.txt/);
+  });
+
+  it("a board it cannot read HOLDs, and --out records every verdict with the flag", () => {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), "mill-out-")));
+    try {
+      writeFileSync(join(dir, "work.json"), JSON.stringify([{ vendor: "nosuchvendor", token: "acme", name: "Acme", count: 120 }]));
+      const r = spawnSync(process.execPath, [SCREEN, "work.json", "--out", "verdicts.json"], { cwd: dir, encoding: "utf8" });
+      expect(r.status, r.stderr).toBe(0);
+      expect(r.stdout).toMatch(/^HOLD {4}nosuchvendor:acme "Acme" \(120p\) — only 0 postings readable; NOT cleared/m);
+      const v = JSON.parse(readFileSync(join(dir, "verdicts.json"), "utf8"));
+      expect(v.hostSpacingMs).toBe(1100);
+      expect(v.postsAllowed).toBe(false);
+      expect(v.boards).toEqual([expect.objectContaining({ vendor: "nosuchvendor", token: "acme", verdict: "HOLD", sampled: 0, repeatedTitle: null })]);
+      expect(JSON.parse(readFileSync(join(dir, "round3-mill-cleared.json"), "utf8"))).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
