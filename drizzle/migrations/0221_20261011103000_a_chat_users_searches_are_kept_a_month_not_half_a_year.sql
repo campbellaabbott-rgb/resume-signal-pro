@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261011103000_a_chat_users_searches_are_kept_a_month_not_half_a_year'));

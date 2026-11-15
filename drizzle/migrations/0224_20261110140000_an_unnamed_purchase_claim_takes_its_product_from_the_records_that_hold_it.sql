@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261110140000_an_unnamed_purchase_claim_takes_its_product_from_the_records_that_hold_it'));
