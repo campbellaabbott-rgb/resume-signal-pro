@@ -322,7 +322,7 @@ export function HostPanel({ host, url, fact, keyValue, onKey, addToClaude = MCP_
       <p className="text-sm text-muted-foreground mt-4" data-sign-in={fact.state}><StepText text={host.signIn(fact.state)} /></p>
       <p className="text-sm mt-3"><span className="font-medium text-foreground">How you know it worked:</span> <StepText text={host.verify} className="text-muted-foreground" /></p>
       <p className="text-xs text-muted-foreground mt-2"><StepText text={MCP_NEEDS_ACCOUNT_LINE} /></p>
-      <p className="text-xs text-muted-foreground mt-2">{MCP_ADDRESS_GLOSS}</p>
+      <p className="text-xs text-muted-foreground mt-2" data-allowance>{host.allowance ?? MCP_ADDRESS_GLOSS}</p>
       {host.keyed && (
         <div className="mt-5 pt-4 border-t border-border">
           <h4 className="font-medium text-sm mb-1">{host.keyed.title}</h4>
@@ -689,7 +689,8 @@ export default function AgentConnect() {
                       share {MCP_ANON_CAPS.shares.chatgpt.toLocaleString("en-US")} ({MCP_ANON_CAPS.chatgptPerPerson} for each
                       person when ChatGPT's call names them, {MCP_ANON_CAPS.chatgptNoSubject.toLocaleString("en-US")} shared by calls
                       that name nobody); every other caller has {MCP_ANON_CAPS.otherPerConnection} per internet connection (an IPv4
-                      address or an IPv6 /64); {MCP_ANON_CAPS.overallPerDay.toLocaleString("en-US")} a day in all, and at
+                      address or an IPv6 /64), within {MCP_ANON_CAPS.shares.other.toLocaleString("en-US")} a day and{" "}
+                      {MCP_ANON_CAPS.perMinute.other} a minute shared by all of them; {MCP_ANON_CAPS.overallPerDay.toLocaleString("en-US")} a day in all, and at
                       most {MCP_ANON_CAPS.perMinute.overall} a minute across every keyless caller. Reading an application form
                       draws on a separate pool of {MCP_ANON_CAPS.forms.overall.toLocaleString("en-US")} a day. A keyless search
                       returns {MCP_ANON_CAPS.searchRows} rows a page, to offset {MCP_ANON_CAPS.maxOffset}; board_stats is never

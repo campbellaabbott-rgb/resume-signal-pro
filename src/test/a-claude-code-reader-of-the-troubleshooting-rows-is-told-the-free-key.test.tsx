@@ -40,7 +40,9 @@ function stubTable() {
 }
 
 import AgentConnect from "../pages/AgentConnect";
-import { MCP_TROUBLESHOOTING, troubleFix } from "../config/mcp-tools";
+import { MCP_HOSTS, MCP_KEY_ADDS, MCP_MORE_HOSTS, MCP_NEVER_LISTED, MCP_TROUBLESHOOTING, troubleFix } from "../config/mcp-tools";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 vi.setConfig({ testTimeout: 30_000 });
 const SLOW = { timeout: 4000 } as const;
@@ -89,5 +91,57 @@ describe("the page and the bake print the fix for the reader's app", () => {
   it("the crawler copy carries both", async () => {
     const text = bakedText((await bakeAgents()).content);
     for (const id of KEY_ROWS) expect(text).toContain(row(id).keyedFix!);
+  });
+});
+
+/**
+ * S14X-260 (2026-11-16): the keyed steps a Claude Code reader follows after
+ * the keyless ones added the same name again, which Claude Code refuses
+ * ("MCP server resumebooster already exists in user config", rc 1, on 2.1.42
+ * and 2.1.319); each keyed title promised debug_search, which the server
+ * lists to nobody, and never named fit_resume; and the spent-quota row said
+ * the unkeyed tools still answer, while the server refuses a recognised
+ * over-quota key on every tool.
+ */
+describe("the keyed steps work after the keyless ones, and promise only what a key is shown", () => {
+  const URL = "https://example.invalid/functions/v1/agent-mcp";
+  const texts = (steps: Array<{ text: string; copy?: string }>) => steps.map((x) => `${x.text} ${x.copy ?? ""}`);
+  const NEVER = (() => {
+    const src = readFileSync(resolve(__dirname, "../../supabase/functions/agent-mcp/index.ts"), "utf8");
+    const m = /const NEVER_LISTED: readonly string\[\] = \[([^\]]*)\]/.exec(src);
+    if (!m) throw new Error("agent-mcp NEVER_LISTED is no longer a literal array");
+    return [...m[1].matchAll(/"([a-z_]+)"/g)].map((x) => x[1]);
+  })();
+
+  it("Claude Code removes the keyless entry before the keyed add", () => {
+    const steps = texts(MCP_HOSTS.find((h) => h.id === "claude-code")!.keyed!.steps({ url: URL, key: "" }));
+    const remove = steps.findIndex((x) => x.includes("claude mcp remove resumebooster -s user"));
+    const add = steps.findIndex((x) => x.includes("claude mcp add") && x.includes("Authorization: Bearer"));
+    expect(remove, "no remove step").toBeGreaterThanOrEqual(0);
+    expect(remove).toBeLessThan(add);
+  });
+
+  it("Gemini CLI removes it with its own documented line, in the scope it was added in", () => {
+    const steps = texts(MCP_MORE_HOSTS.find((h) => h.id === "gemini-cli")!.keyed!.steps({ url: URL, key: "" }));
+    const remove = steps.findIndex((x) => x.includes("gemini mcp remove --scope user resumebooster"));
+    expect(remove, "no remove step").toBeGreaterThanOrEqual(0);
+    expect(remove).toBeLessThan(steps.findIndex((x) => x.includes("gemini mcp add")));
+  });
+
+  it("no keyed title names a tool the server never lists, and each names fit_resume", () => {
+    expect(MCP_NEVER_LISTED).toEqual(NEVER);
+    expect(MCP_KEY_ADDS).toContain("fit_resume");
+    const titles = [...MCP_HOSTS, ...MCP_MORE_HOSTS].map((h) => h.keyed?.title).filter((t): t is string => !!t && /^With a free key \(optional/.test(t));
+    expect(titles.length).toBeGreaterThanOrEqual(4);
+    for (const t of titles) {
+      for (const n of NEVER) expect(t, t).not.toContain(n);
+      expect(t, t).toContain("fit_resume");
+    }
+  });
+
+  it("the spent-quota row never says the unkeyed tools still answer", () => {
+    const fix = MCP_TROUBLESHOOTING.find((r) => r.id === "quota-used")!.fix;
+    expect(fix).not.toMatch(/unkeyed tools still answer/);
+    expect(fix).toMatch(/Remove the key/);
   });
 });

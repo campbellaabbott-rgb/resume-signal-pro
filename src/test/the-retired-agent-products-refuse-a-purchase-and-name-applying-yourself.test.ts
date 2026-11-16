@@ -259,11 +259,17 @@ describe("the retired line and llms.txt say what ChatGPT reads", () => {
   const mirrors = retired as unknown as { RETIRED_FORM_VENDORS?: readonly string[]; RETIRED_FORM_VENDORS_ON_CHATGPT?: readonly string[] };
 
   it("the names come from one list each, held equal to the server's and the page's", () => {
-    expect(mirrors.RETIRED_FORM_VENDORS).toEqual(MCP_FORM_VENDORS.map((v) => v.label));
-    // The retired line names the forms read before agent-mcp 2026-11-08.1; the
-    // five connect W5 adds join it (and the page) after that deploy verifies,
-    // so the line understates and never overstates meanwhile.
-    expect([...(mirrors.RETIRED_FORM_VENDORS ?? []), ...MCP_FORM_VENDORS_AFTER_DEPLOY.map((v) => v.label)].map((v) => v.toLowerCase()).sort()).toEqual([...FORM_READER_VENDORS].sort());
+    // The retired line (_shared/apply-agent-retired.ts, served by the three
+    // checkout functions) names the five forms read before agent-mcp
+    // 2026-11-08.1. The page's mirror names all ten since that build went
+    // live (SEO-F15); the line joins it when a round restamps those
+    // checkouts, and until then it understates and never overstates: each
+    // name it gives is a reader the page names, in the page's order.
+    const retiredNames = [...(mirrors.RETIRED_FORM_VENDORS ?? [])];
+    expect(retiredNames.length).toBeGreaterThan(0);
+    expect(MCP_FORM_VENDORS.map((v) => v.label).slice(0, retiredNames.length)).toEqual(retiredNames);
+    for (const n of retiredNames) expect([...FORM_READER_VENDORS], n).toContain(n.toLowerCase());
+    expect(MCP_FORM_VENDORS_AFTER_DEPLOY).toEqual([]);
     expect(mirrors.RETIRED_FORM_VENDORS_ON_CHATGPT).toEqual(MCP_FORM_VENDORS.filter((v) => MCP_FORM_VENDORS_ON_CHATGPT.includes(v.key)).map((v) => v.label));
     expect([...(mirrors.RETIRED_FORM_VENDORS_ON_CHATGPT ?? [])].map((v) => v.toLowerCase()).sort()).toEqual([...PUBLIC_API_FORM_VENDORS].sort());
   });

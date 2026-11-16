@@ -3188,8 +3188,8 @@ async function runFitResume(args: Record<string, unknown>, apiKeyId: string, ctx
   }
   const limit = Math.max(1, Math.min(20, Number(args.limit ?? 20) || 20));
   // A title read out of the CV is not written to the board's search log
-  // (GP-NOLOG-1): the CV is never stored, and neither is what we read from
-  // it. A title the caller typed is searched as any other search is.
+  // (GP-NOLOG-1): nothing taken from the CV goes into any log. A title the
+  // caller typed is searched as any other search is.
   const r = await board(await servableSearchBody({ ...args, query, limit }), typed ? ctx : { ...ctx, noLog: true });
   // An employer scope the board could not apply is never scored as the whole board (S12-080).
   const unbound = unboundScope(companyTokens(args.companies), r);
