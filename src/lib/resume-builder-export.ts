@@ -1,6 +1,13 @@
 import type { BuilderResume } from "@/types/resume-builder";
-import { unsupportedPdfCharacters } from "@/lib/pdf-text-support";
-import { detectPostingLanguage, type PostingLanguage } from "../../supabase/functions/_shared/posting-language";
+import { sanitizeExportText, unsupportedPdfCharacters } from "@/lib/pdf-text-support";
+import { educationEntryHasContent, experienceEntryHasContent } from "@/lib/builder-import";
+import { resumeSectionLabels, type SectionLabels } from "@/lib/resume-section-labels";
+
+// The headings live in their own module so the page's preview reads the same
+// ones without importing this file (S14X-187); re-exported for the callers
+// and tests that have always found them here.
+export { resumeSectionLabels };
+export type { SectionLabels };
 
 /**
  * WHY AN EXPORT IS REFUSED (S12-006, S12-030).
@@ -21,7 +28,55 @@ export class ResumeExportError extends Error {
   }
 }
 
-/** Every text a résumé export draws. */
+const text = (v: unknown): string => sanitizeExportText(typeof v === "string" ? v : "");
+/** A field printed on one line: a pasted line break is a space. */
+const oneLine = (v: unknown): string => text(v).replace(/[ \t]*(?:\r\n|\r|\n)+[ \t]*/g, " ");
+/** A field that may hold lines (the summary, a bullet, a school's details): breaks are "\n". */
+const lines = (v: unknown): string => text(v).replace(/\r\n|\r/g, "\n");
+const blank = (s: string) => !s.trim();
+
+/**
+ * THE RÉSUMÉ AN EXPORT DRAWS (S14X-034, S14X-035).
+ *
+ * Every string passes through sanitizeExportText (pdf-text-support): a pasted
+ * soft line break is a line break, the invisible format characters are gone,
+ * ligatures and Unicode hyphens are their letters. Before, each one alone
+ * made the PDF refuse the résumé and save a Word file instead, and U+000B
+ * went into that Word file raw, which Word then refused to open.
+ *
+ * An entry with nothing in it is left out, and so is a blank skill or
+ * certification: a new résumé starts with one blank job and one blank
+ * school, and the exports printed EXPERIENCE over nothing.
+ */
+export function exportableResume(resume: BuilderResume): BuilderResume {
+  const c = resume.contact ?? ({} as BuilderResume["contact"]);
+  return {
+    contact: {
+      fullName: oneLine(c.fullName), title: oneLine(c.title), email: oneLine(c.email), phone: oneLine(c.phone),
+      location: oneLine(c.location), linkedIn: oneLine(c.linkedIn), website: oneLine(c.website),
+    },
+    summary: lines(resume.summary),
+    experience: (resume.experience ?? [])
+      .map((e) => ({
+        ...e,
+        company: oneLine(e.company), title: oneLine(e.title), location: oneLine(e.location),
+        startDate: oneLine(e.startDate), endDate: oneLine(e.endDate),
+        bullets: (e.bullets ?? []).map(lines).filter((b) => !blank(b)),
+      }))
+      .filter(experienceEntryHasContent),
+    education: (resume.education ?? [])
+      .map((e) => ({
+        ...e,
+        school: oneLine(e.school), degree: oneLine(e.degree), field: oneLine(e.field),
+        startDate: oneLine(e.startDate), endDate: oneLine(e.endDate), details: lines(e.details),
+      }))
+      .filter(educationEntryHasContent),
+    skills: (resume.skills ?? []).map(oneLine).filter((s) => !blank(s)),
+    certifications: (resume.certifications ?? []).map(oneLine).filter((s) => !blank(s)),
+  };
+}
+
+/** Every text an export of this (already exportable) résumé draws. */
 function resumeTexts(resume: BuilderResume): string[] {
   const c = resume.contact;
   return [
@@ -34,33 +89,15 @@ function resumeTexts(resume: BuilderResume): string[] {
   ].filter((s): s is string => typeof s === "string" && s.length > 0);
 }
 
-/** The characters in this résumé the PDF's built-in fonts cannot draw (empty when it can draw them all). */
-export function resumePdfUnsupported(resume: BuilderResume): string[] {
-  return unsupportedPdfCharacters(resumeTexts(resume).join("\n"));
-}
-
-/** The section headings an export prints, in the résumé's own language. */
-export type SectionLabels = { summary: string; experience: string; education: string; skills: string; certifications: string };
-
-const SECTION_LABELS: Record<PostingLanguage, SectionLabels> = {
-  en: { summary: "Summary", experience: "Experience", education: "Education", skills: "Skills", certifications: "Certifications" },
-  de: { summary: "Profil", experience: "Berufserfahrung", education: "Ausbildung", skills: "Kenntnisse", certifications: "Zertifizierungen" },
-  nl: { summary: "Profiel", experience: "Werkervaring", education: "Opleiding", skills: "Vaardigheden", certifications: "Certificeringen" },
-  fr: { summary: "Profil", experience: "Expérience professionnelle", education: "Formation", skills: "Compétences", certifications: "Certifications" },
-  es: { summary: "Perfil", experience: "Experiencia profesional", education: "Formación", skills: "Habilidades", certifications: "Certificaciones" },
-  pt: { summary: "Perfil", experience: "Experiência profissional", education: "Formação", skills: "Competências", certifications: "Certificações" },
-  it: { summary: "Profilo", experience: "Esperienza professionale", education: "Istruzione", skills: "Competenze", certifications: "Certificazioni" },
-};
-
 /**
- * The headings for a résumé, by the language its own sentences are written in
- * (S12-030: a German résumé exported under "EXPERIENCE"). English when the
- * language is not clear.
+ * The characters in this résumé the PDF's built-in fonts cannot draw (empty
+ * when it can draw them all), read after sanitizing, and counting the
+ * headings the PDF would print over it.
  */
-export function resumeSectionLabels(resume: BuilderResume): SectionLabels {
-  const prose = [resume.summary, resume.contact.title, ...resume.experience.flatMap((e) => [e.title, ...e.bullets]), ...resume.education.map((e) => e.details)]
-    .filter(Boolean).join("\n");
-  return SECTION_LABELS[detectPostingLanguage(prose) ?? "en"];
+export function resumePdfUnsupported(resume: BuilderResume, options: ResumeExportOptions = {}): string[] {
+  const r = exportableResume(resume);
+  const labels = resumeSectionLabels(r, { uiLanguage: options.uiLanguage });
+  return unsupportedPdfCharacters([...resumeTexts(r), ...Object.values(labels)].join("\n"));
 }
 
 // jspdf and docx are dynamically imported inside each export function rather than
@@ -81,6 +118,11 @@ export type ResumeTemplate = "modern" | "classic" | "compact";
 
 export interface ResumeExportOptions {
   template?: ResumeTemplate;
+  /**
+   * The reader's interface language. The headings follow the résumé's own
+   * language; this is used only when that is not clear (resume-section-labels).
+   */
+  uiLanguage?: string;
 }
 
 interface TemplateSpec {
@@ -121,15 +163,16 @@ function formatDateRange(startDate: string, endDate: string): string {
 
 // Builds the jsPDF document (no save) — kept separate from the download so the
 // exact rendering can be unit-tested / rendered headless.
-export async function buildResumePdf(resume: BuilderResume, options: ResumeExportOptions = {}) {
+export async function buildResumePdf(input: BuilderResume, options: ResumeExportOptions = {}) {
   // Resolve the constructor from whichever slot the bundler/runtime exposes —
   // vite gives it on .default, Node ESM interop gives it on .jsPDF. Picking
   // the one that's actually a function works in both without surprises.
   // Refused before anything is drawn (see ResumeExportError).
-  if (!resume.contact.fullName?.trim()) throw new ResumeExportError("missing_name");
-  const unsupported = resumePdfUnsupported(resume);
+  const resume = exportableResume(input);
+  if (!resume.contact.fullName.trim()) throw new ResumeExportError("missing_name");
+  const unsupported = resumePdfUnsupported(resume, options);
   if (unsupported.length > 0) throw new ResumeExportError("unsupported_characters", unsupported);
-  const labels = resumeSectionLabels(resume);
+  const labels = resumeSectionLabels(resume, { uiLanguage: options.uiLanguage });
 
   const jsPDFModule = await import("jspdf");
   const jsPDF = (typeof jsPDFModule.default === "function" ? jsPDFModule.default : jsPDFModule.jsPDF) as typeof jsPDFModule.jsPDF;
@@ -164,34 +207,50 @@ export async function buildResumePdf(resume: BuilderResume, options: ResumeExpor
 
   // Inline list (skills, certs, contact) fitted by hand so the " • " separator
   // only ever sits BETWEEN two items on a line — never dangling at a wrap
-  // boundary the way join()+splitTextToSize leaves it.
+  // boundary the way join()+splitTextToSize leaves it. An item wider than the
+  // text column is wrapped on lines of its own (S14X-186): it used to be drawn
+  // whole, past the right edge of the page.
   const addInlineList = (items: string[], fontSize: number, lineHeight: number, sep = "  •  ") => {
     const parts = items.filter(Boolean);
     if (parts.length === 0) return;
     pdf.setFontSize(fontSize);
     pdf.setFont(F, "normal");
     let line = "";
+    const flush = () => {
+      if (!line) return;
+      ensureSpace(lineHeight);
+      pdf.text(line, margin, y);
+      y += lineHeight;
+      line = "";
+    };
     for (const item of parts) {
+      if (pdf.getTextWidth(item) > contentWidth) {
+        flush();
+        for (const piece of pdf.splitTextToSize(item, contentWidth) as string[]) {
+          ensureSpace(lineHeight);
+          pdf.text(piece, margin, y);
+          y += lineHeight;
+        }
+        continue;
+      }
       const candidate = line ? line + sep + item : item;
       if (line && pdf.getTextWidth(candidate) > contentWidth) {
-        ensureSpace(lineHeight);
-        pdf.text(line, margin, y);
-        y += lineHeight;
+        flush();
         line = item;
       } else {
         line = candidate;
       }
     }
-    if (line) {
-      ensureSpace(lineHeight);
-      pdf.text(line, margin, y);
-      y += lineHeight;
-    }
+    flush();
   };
 
-  const addSectionHeading = (text: string) => {
+  // A heading keeps room for the first thing printed under it (S14X-287):
+  // reserving room for itself only, it could be the last line on a page with
+  // its first job on the next. HEADING_BLOCK is the heading and its rule.
+  const HEADING_BLOCK = 6.5;
+  const addSectionHeading = (text: string, keepWith: number) => {
     y += 2;
-    ensureSpace(8);
+    ensureSpace(HEADING_BLOCK + keepWith);
     pdf.setFontSize(spec.heading);
     pdf.setFont(F, "bold");
     pdf.setTextColor(...spec.accentRGB);
@@ -268,17 +327,21 @@ export async function buildResumePdf(resume: BuilderResume, options: ResumeExpor
   }
   y += 2;
 
-  if (resume.summary) {
-    addSectionHeading(labels.summary);
+  // The room each section's first entry asks for before it starts.
+  const JOB_BLOCK = 16;
+  const SCHOOL_BLOCK = 11;
+
+  if (resume.summary.trim()) {
+    addSectionHeading(labels.summary, spec.lh);
     addWrappedText(resume.summary, spec.body, spec.lh);
   }
 
   if (resume.experience.length > 0) {
-    addSectionHeading(labels.experience);
+    addSectionHeading(labels.experience, JOB_BLOCK);
     for (const entry of resume.experience) {
       // Keep-together: never orphan a job title at the bottom of a page —
       // require room for title + company + first bullet before starting.
-      ensureSpace(16);
+      ensureSpace(JOB_BLOCK);
       // No English placeholder title over a résumé in another language: an
       // entry with no title is headed by its company.
       const headed = entry.title || entry.company;
@@ -311,7 +374,7 @@ export async function buildResumePdf(resume: BuilderResume, options: ResumeExpor
   }
 
   if (resume.education.length > 0) {
-    addSectionHeading(labels.education);
+    addSectionHeading(labels.education, SCHOOL_BLOCK);
     for (const entry of resume.education) {
       ensureSpace(6);
       const degreeLine = [entry.degree, entry.field].filter(Boolean).join(", ");
@@ -330,12 +393,12 @@ export async function buildResumePdf(resume: BuilderResume, options: ResumeExpor
   }
 
   if (resume.skills.length > 0) {
-    addSectionHeading(labels.skills);
+    addSectionHeading(labels.skills, spec.lh);
     addInlineList(resume.skills, spec.body - 0.5, spec.lh - 0.2);
   }
 
   if (resume.certifications.length > 0) {
-    addSectionHeading(labels.certifications);
+    addSectionHeading(labels.certifications, spec.lh);
     addInlineList(resume.certifications, spec.body - 0.5, spec.lh - 0.2);
   }
 
@@ -351,14 +414,15 @@ export type ResumeExportResult = { format: "pdf" } | { format: "docx"; unsupport
  * A résumé with no name is refused (ResumeExportError "missing_name").
  */
 export async function exportResumeBuilderPDF(resume: BuilderResume, options: ResumeExportOptions = {}): Promise<ResumeExportResult> {
-  if (!resume.contact.fullName?.trim()) throw new ResumeExportError("missing_name");
-  const unsupported = resumePdfUnsupported(resume);
+  const name = exportableResume(resume).contact.fullName;
+  if (!name.trim()) throw new ResumeExportError("missing_name");
+  const unsupported = resumePdfUnsupported(resume, options);
   if (unsupported.length > 0) {
     await exportResumeBuilderDocx(resume, options);
     return { format: "docx", unsupported };
   }
   const pdf = await buildResumePdf(resume, options);
-  pdf.save(`${sanitizeFilename(resume.contact.fullName)}.pdf`);
+  pdf.save(`${sanitizeFilename(name)}.pdf`);
   return { format: "pdf" };
 }
 
@@ -372,11 +436,12 @@ export const DOCX_PAGE = Object.freeze({ width: 11906, height: 16838, margin: 14
 /** The right tab stop: the text width of DOCX_PAGE, in twips. */
 export const DOCX_RIGHT_TAB = DOCX_PAGE.width - 2 * DOCX_PAGE.margin;
 
-export async function buildResumeDocxDocument(resume: BuilderResume, options: ResumeExportOptions = {}) {
-  if (!resume.contact.fullName?.trim()) throw new ResumeExportError("missing_name");
+export async function buildResumeDocxDocument(input: BuilderResume, options: ResumeExportOptions = {}) {
+  const resume = exportableResume(input);
+  if (!resume.contact.fullName.trim()) throw new ResumeExportError("missing_name");
   const { Document, Paragraph, TextRun, BorderStyle, TabStopType } = await import("docx");
   const spec = TEMPLATES[options.template ?? "modern"];
-  const labels = resumeSectionLabels(resume);
+  const labels = resumeSectionLabels(resume, { uiLanguage: options.uiLanguage });
   const fullName = resume.contact.fullName.trim();
 
   // Typography constants (docx sizes are half-points). One consistent scale —
@@ -392,8 +457,14 @@ export async function buildResumeDocxDocument(resume: BuilderResume, options: Re
   // Right tab at the right margin of the page the section declares.
   const RIGHT_TAB = DOCX_RIGHT_TAB;
 
-  const run = (text: string, opts: { bold?: boolean; italics?: boolean; size?: number; color?: string } = {}) =>
+  type RunStyle = { bold?: boolean; italics?: boolean; size?: number; color?: string };
+  const run = (text: string, opts: RunStyle = {}) =>
     new TextRun({ text, font: FONT, size: opts.size ?? BODY_SIZE, bold: opts.bold, italics: opts.italics, color: opts.color });
+  // A line break in the text is a Word break (S14X-187: C-S14-139). Written
+  // raw into one run, Word showed it as a space and the lines ran together.
+  const runs = (text: string, opts: RunStyle = {}) =>
+    text.split(/\r\n|\r|\n/).map((line, i) =>
+      new TextRun({ text: line, font: FONT, size: opts.size ?? BODY_SIZE, bold: opts.bold, italics: opts.italics, color: opts.color, ...(i > 0 ? { break: 1 } : {}) }));
 
   const children: InstanceType<typeof Paragraph>[] = [];
 
@@ -413,6 +484,8 @@ export async function buildResumeDocxDocument(resume: BuilderResume, options: Re
   const addHeading = (text: string) => {
     children.push(new Paragraph({
       children: [run(text.toUpperCase(), { bold: true, size: HEADING_SIZE, color: spec.accentHex })],
+      // Never the last line of a page with its section on the next (S14X-287).
+      keepNext: true,
       spacing: { before: 240, after: 100 },
       border: { bottom: { color: spec.accentHex, style: BorderStyle.SINGLE, size: 4, space: 2 } },
     }));
@@ -425,12 +498,13 @@ export async function buildResumeDocxDocument(resume: BuilderResume, options: Re
         ...(dateRange ? [new TextRun({ text: "\t", font: FONT }), run(dateRange, { size: META_SIZE, color: "595959" })] : []),
       ],
       tabStops: [{ type: TabStopType.RIGHT, position: RIGHT_TAB }],
+      keepNext: true,
       spacing: { before: 120, after: 20 },
     });
 
-  if (resume.summary) {
+  if (resume.summary.trim()) {
     addHeading(labels.summary);
-    children.push(new Paragraph({ children: [run(resume.summary)], spacing: { after: 60 } }));
+    children.push(new Paragraph({ children: runs(resume.summary), spacing: { after: 60 } }));
   }
 
   if (resume.experience.length > 0) {
@@ -443,7 +517,7 @@ export async function buildResumeDocxDocument(resume: BuilderResume, options: Re
       }
       for (const bullet of entry.bullets) {
         if (!bullet.trim()) continue;
-        children.push(new Paragraph({ children: [run(bullet)], bullet: { level: 0 }, spacing: { after: 30 } }));
+        children.push(new Paragraph({ children: runs(bullet), bullet: { level: 0 }, spacing: { after: 30 } }));
       }
     }
   }
@@ -457,7 +531,7 @@ export async function buildResumeDocxDocument(resume: BuilderResume, options: Re
         children.push(new Paragraph({ children: [run(entry.school, { italics: true, size: META_SIZE + 2 })], spacing: { after: 40 } }));
       }
       if (entry.details) {
-        children.push(new Paragraph({ children: [run(entry.details, { size: META_SIZE + 2 })], spacing: { after: 40 } }));
+        children.push(new Paragraph({ children: runs(entry.details, { size: META_SIZE + 2 }), spacing: { after: 40 } }));
       }
     }
   }
@@ -498,7 +572,7 @@ export async function exportResumeBuilderDocx(resume: BuilderResume, options: Re
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${sanitizeFilename(resume.contact.fullName)}.docx`;
+  link.download = `${sanitizeFilename(exportableResume(resume).contact.fullName)}.docx`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
