@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useABTest } from "@/hooks/use-ab-test";
 import { 
-  Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, ListChecks, Award,
+  Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Loader2, ListChecks, Award,
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
   TrendingUp, RefreshCw, Share2, Star, MessageSquare, Lightbulb, Copy, Rocket,
@@ -35,7 +35,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { getVisitorId } from '@/lib/track-transport';
 import { useToast } from "@/hooks/use-toast";
 import { useScanHistory, generateChecklist } from "@/hooks/use-scan-history";
-import { emailSchema } from "@/lib/security-validation";
 import { InteractiveChecklist } from "./InteractiveChecklist";
 import { ShareableScoreCard } from "./ShareableScoreCard";
 import { ResumeXRay } from "./ResumeXRay";
@@ -823,11 +822,8 @@ export function FreeKeywordResults({
   const diagnosticLayout = true;
   // Strip decorative emoji from headings in the diagnostic variant
   const tone = (s: string) => diagnosticLayout ? s.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\s*/gu, '').trim() : s;
-  const [email, setEmail] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
   const { toast } = useToast();
-  const { addScanEntry, setUserEmail, isReturningUser, getLatestScan, getPreviousScan } = useScanHistory();
+  const { addScanEntry, isReturningUser, getLatestScan, getPreviousScan } = useScanHistory();
   const [hasRecordedScan, setHasRecordedScan] = useState(false);
   const [correctedIndustry, setCorrectedIndustry] = useState<string | null>(null);
   const [scanTimestamp] = useState(() => Date.now());
@@ -1373,85 +1369,6 @@ export function FreeKeywordResults({
     if (contactItemsPresent === 3) return "bg-success/10 border-success/20";
     if (contactItemsPresent >= 2) return "bg-warning/10 border-warning/20";
     return "bg-destructive/10 border-destructive/20";
-  };
-
-  const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-
-    // Check honeypot - if filled, silently ignore (it's a bot)
-    const honeypotValue = (e.target as HTMLFormElement).querySelector<HTMLInputElement>('[name="website"]')?.value;
-    if (honeypotValue) {
-      setIsSubscribed(true); // Fake success
-      return;
-    }
-
-    if (!emailSchema.safeParse(email).success) {
-      toast({
-        title: t('freeResults.toast.invalidEmail'),
-        description: t('freeResults.toast.invalidEmailDescription'),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('save-lead', {
-        body: { 
-          email, 
-          industry: effectiveIndustry, 
-          atsScore: atsScoreEstimate,
-          honeypot: honeypotValue || ''
-        }
-      });
-
-      if (error) {
-        // Parse error response
-        const errorBody = error?.context?.body;
-        if (errorBody) {
-          try {
-            const parsed = typeof errorBody === 'string' ? JSON.parse(errorBody) : errorBody;
-            toast({
-              title: t('freeResults.toast.couldntSaveEmail'),
-              description: parsed.error || t('freeResults.toast.tryAgain'),
-              variant: "destructive",
-            });
-            return;
-          } catch {
-            // Fall through to generic error
-          }
-        }
-        throw error;
-      }
-
-      if (data?.error) {
-        toast({
-          title: t('freeResults.toast.couldntSaveEmail'),
-          description: data.error,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setIsSubscribed(true);
-      // Also save email to scan history for returning user tracking
-      setUserEmail(email);
-      toast({
-        title: t('freeResults.toast.onTheList'),
-        description: t('freeResults.toast.onTheListDescription'),
-      });
-    } catch (error: unknown) {
-      console.error("Email capture error:", error);
-      toast({
-        title: t('freeResults.toast.somethingWrong'),
-        description: t('freeResults.toast.tryAgain'),
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const getReadabilityColor = (verdict: string) => {
@@ -4291,52 +4208,9 @@ export function FreeKeywordResults({
       {/* Missing Keywords - Priority sorted with impact indicators */}
       <KeywordsSection keywords={keywords} industry={effectiveIndustry} />
 
-      {/* Email Capture */}
-      <div className="rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 p-5 mb-5">
-        <div className="flex items-center gap-2 mb-2">
-          <Mail className="w-4 h-4 text-primary" />
-          <h4 className="font-semibold">{t('freeScan.emailCapture.title')}</h4>
-        </div>
-        <p className="text-sm text-muted-foreground mb-4">
-          {t('freeResults.emailCapture.joinMessage')}
-        </p>
-        
-        {isSubscribed ? (
-          <div className="flex items-center gap-2 p-3 rounded-xl bg-success/10 border border-success/20">
-            <CheckCircle2 className="w-4 h-4 text-success" />
-            <span className="text-sm text-success font-medium">{t('freeScan.emailCapture.subscribed')}</span>
-          </div>
-        ) : (
-          <form onSubmit={handleEmailSubmit} className="flex gap-2">
-            {/* Honeypot field - hidden from users, bots will fill it */}
-            <input
-              type="text"
-              name="website"
-              tabIndex={-1}
-              autoComplete="off"
-              className="absolute -left-[9999px] opacity-0 h-0 w-0"
-              aria-hidden="true"
-            />
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={t('freeScan.emailCapture.placeholder')}
-              className="flex-1 h-10 px-4 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 text-sm transition-all"
-              disabled={isSubmitting}
-            />
-            <Button 
-              type="submit" 
-              variant="outline"
-              disabled={isSubmitting || !email.trim()}
-              className="h-10 px-4 border-primary/30 hover:bg-primary/10"
-            >
-              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : t('freeScan.emailCapture.button')}
-            </Button>
-          </form>
-        )}
-        <p className="text-xs text-muted-foreground mt-2">{t('freeResults.emailCapture.noSpam')}</p>
-      </div>
+      {/* The weekly-tips box that posted an address to save-lead is gone
+          (S14X-101, the owner's answer 'remove'): the report's own mail box
+          (EmailReportCapture) is the one place an address is asked for. */}
 
       {/* Job Comparison CTA - show when jobs are uploaded (FREE feature) */}
       {uploadedJobs.length > 0 && (
