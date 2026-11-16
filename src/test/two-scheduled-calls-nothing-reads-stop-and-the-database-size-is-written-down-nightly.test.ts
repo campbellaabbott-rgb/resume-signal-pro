@@ -187,7 +187,7 @@ describe("20261115110000: the database size is written down once a night", () =>
              EXISTS (SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee = 0) AS pub
         FROM pg_proc p WHERE p.oid = 'public.stamp_storage_sizes()'::regprocedure`)).rows;
     expect(p.definer).toBe(false);
-    expect(p.cfg).toEqual(expect.arrayContaining(["statement_timeout=60s"]));
+    expect(p.cfg).toEqual(expect.arrayContaining(["statement_timeout=60s", "lock_timeout=10s"]));
     expect(p.cfg.some((c) => c.startsWith("search_path="))).toBe(true);
     expect({ anon: p.anon, auth: p.auth, svc: p.svc, pub: p.pub }).toEqual({ anon: false, auth: false, svc: true, pub: false });
   });
@@ -196,6 +196,23 @@ describe("20261115110000: the database size is written down once a night", () =>
     const pg = await boot(false);
     await apply(pg, SIZES);
     expect((await ring(pg)).entries).toHaveLength(1);
+  });
+
+  it("only warns when the first entry is cancelled, as a statement or lock timeout would, and still schedules the job", async () => {
+    // OTHERS never matches query_canceled; a trigger raising it on the ring's
+    // write stands in for a timeout firing while the sizes are read.
+    const pg = await boot();
+    await pg.exec(`
+      CREATE FUNCTION public.t_cancel() RETURNS trigger LANGUAGE plpgsql AS $t$
+      BEGIN
+        IF NEW.k = 'storage_size_ring' THEN RAISE EXCEPTION 'canceling statement due to statement timeout' USING ERRCODE = 'query_canceled'; END IF;
+        RETURN NEW;
+      END $t$;
+      CREATE TRIGGER t_cancel BEFORE INSERT ON public.job_board_meta FOR EACH ROW EXECUTE FUNCTION public.t_cancel();`);
+    await expect(apply(pg, SIZES)).resolves.toBeUndefined();
+    expect(await ring(pg)).toBeUndefined();
+    const jobs = (await pg.query<{ n: number }>(`SELECT count(*)::int AS n FROM cron.job WHERE jobname = 'storage-size-stamp'`)).rows;
+    expect(jobs).toEqual([{ n: 1 }]);
   });
 });
 

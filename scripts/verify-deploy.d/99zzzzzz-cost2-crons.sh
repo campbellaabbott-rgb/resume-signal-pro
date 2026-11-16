@@ -13,7 +13,11 @@
 # pair counts as applied once storage-size-stamp shows in cron health
 # (20261115110000 applies after 20261115100000, so from then on either old job
 # still listed is a FAIL), or once COST2_APPLIED_AT (UTC, when the second file
-# finished applying) is set, in the environment or on the line below.
+# finished applying, e.g. 2026-11-20T17:05Z; a value with no zone is read as
+# UTC, and one that is no date or lies in the future is a FAIL) is set, in the
+# environment or on the line below. Without it, a scheduled stamp job that has
+# not run in 24h is an INFO asking for it: only a date can tell a job whose
+# first night is still ahead from one pg_cron never starts.
 # Not provable from outside, so proved in the suite: the ring keeps the last
 # 60 nights newest first, the function runs as its caller and no client role
 # may call it, and the removal can run twice.
@@ -40,15 +44,19 @@ if(!Array.isArray(cj)){out("FAIL  get_cron_health answered "+(cj===undefined?"no
 if(!cj.length){out("FAIL  get_cron_health answered no jobs at all, so no schedule of this wave can be read");process.exit(0)}
 const J=Object.fromEntries(cj.map((r)=>[r.ch_jobname,r]));
 const desc=(r)=>r.ch_schedule+(r.ch_active?"":" PAUSED")+", timeout "+(r.ch_timeout||"none")+", "+r.ch_runs+" runs in 24h";
-const at=Date.parse(process.env.VDC2_APPLIED||"");
+const given=(process.env.VDC2_APPLIED||"").trim();
+const zoned=/(Z|[+-]\d\d:?\d\d|UTC|GMT)$/i.test(given);
+const at=Date.parse(given&&/\d:\d\d/.test(given)&&!zoned?given.replace(" ","T")+"Z":given);
+if(given&&!Number.isFinite(at))out("FAIL  COST2_APPLIED_AT="+given+" is not a date");
+else if(given&&at>now)out("FAIL  COST2_APPLIED_AT="+given+" is in the future (a value without a zone is read as UTC)");
 const asserted=Number.isFinite(at)&&at<=now;
 const applied=!!J[ST]||asserted;
 const why=J[ST]?ST+" shows in cron health":"COST2_APPLIED_AT says the files applied";
 
 for(const n of GONE){const r=J[n];
-  if(!r)out(applied?"PASS  "+n+" is no longer scheduled (20261115100000): nothing read what it posted":"INFO  "+n+" is not scheduled today; 20261115100000 removes it by name if it is");
+  if(!r)out(applied?"PASS  "+n+" is no longer scheduled (20261115100000)":"INFO  "+n+" is not scheduled today; 20261115100000 removes it by name if it is");
   else if(applied)out("FAIL  "+n+" is still scheduled ("+desc(r)+") though "+why+": 20261115100000 did not take");
-  else out("INFO  before 20261115100000: "+n+" runs ("+desc(r)+"); the deploy unschedules it, since nothing reads what it posts")}
+  else out("INFO  before 20261115100000: "+n+" runs ("+desc(r)+"); the deploy unschedules it by name")}
 
 {const r=J[ST];
   if(!r){
@@ -58,6 +66,7 @@ for(const n of GONE){const r=J[n];
   else if(Number(r.ch_failed)>0)out("FAIL  "+ST+" failed "+r.ch_failed+" of "+r.ch_runs+" runs in 24h (last "+(r.ch_last_status||"none")+")");
   else if(!Number(r.ch_runs)){
     if(asserted&&now-at>25*3600e3)out("FAIL  "+ST+" has not run in the last 24h though COST2_APPLIED_AT is more than 25 hours ago");
-    else out("PASS  "+ST+" runs on "+AT+" with timeout "+TO+" (20261115110000); no run in the last 24h yet, and the file wrote the first entry as it applied")}
+    else if(asserted)out("PASS  "+ST+" runs on "+AT+" with timeout "+TO+" (20261115110000); no run in the last 24h yet, and its first night is due within 25 hours of COST2_APPLIED_AT");
+    else out("INFO  "+ST+" is scheduled on "+AT+" with timeout "+TO+", active, with no run in the last 24h: set COST2_APPLIED_AT to the UTC time 20261115110000 finished applying, so a job that never starts is a FAIL")}
   else out("PASS  "+ST+" runs on "+AT+" with timeout "+TO+" (20261115110000); last run "+(r.ch_last_status||"none")+" in "+r.ch_last_seconds+" s")}
 '

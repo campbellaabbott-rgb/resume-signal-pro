@@ -22,8 +22,13 @@
 -- only the service role may call it by hand. A daily job at 11:11 UTC, clear
 -- of the 02:30-06:41 snapshot window and of the hourly :27 stats cache, calls
 -- it with SET statement_timeout = '60s' in the command, since a function's
--- own SET never times a cron run. The first entry is written as this file
--- applies; a failure there only warns, and the night's job takes the next.
+-- own SET never times a cron run. The function sets lock_timeout = '10s'
+-- (read at each lock wait, so a function's own SET does bound it): sizing a
+-- table takes a brief share lock on it and its indexes, and a table held by
+-- someone's DDL makes the call fail in ten seconds instead of waiting. The
+-- first entry is written as this file applies; a failure there, a lock
+-- timeout or a cancel included, only warns, and the night's job takes the
+-- next.
 --
 -- READ IT in the SQL editor:
 --   SELECT e->>'at' AS at, pg_size_pretty((e->>'db_bytes')::bigint) AS db
@@ -39,6 +44,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SET search_path = public, pg_temp
 SET statement_timeout = '60s'
+SET lock_timeout = '10s'
 AS $fn$
 DECLARE
   v_entry jsonb;
@@ -92,7 +98,8 @@ END $$;
 DO $$
 BEGIN
   PERFORM public.stamp_storage_sizes();
-EXCEPTION WHEN OTHERS THEN
+EXCEPTION WHEN OTHERS OR query_canceled THEN
+  -- OTHERS never matches query_canceled, so a timeout's cancel is named too.
   RAISE WARNING 'first storage size entry not written (non-fatal; the nightly job takes the next): %', SQLERRM;
 END $$;
 
@@ -112,8 +119,9 @@ BEGIN
   IF (SELECT p.prosecdef FROM pg_proc p WHERE p.oid = v_fn) THEN
     RAISE EXCEPTION 'self-check: stamp_storage_sizes() must run as its caller';
   END IF;
-  IF NOT ('statement_timeout=60s' = ANY (v_cfg)) OR NOT EXISTS (SELECT 1 FROM unnest(v_cfg) c WHERE c LIKE 'search_path=%') THEN
-    RAISE EXCEPTION 'self-check: stamp_storage_sizes() lost its search_path or timeout: %', v_cfg;
+  IF NOT ('statement_timeout=60s' = ANY (v_cfg)) OR NOT ('lock_timeout=10s' = ANY (v_cfg))
+     OR NOT EXISTS (SELECT 1 FROM unnest(v_cfg) c WHERE c LIKE 'search_path=%') THEN
+    RAISE EXCEPTION 'self-check: stamp_storage_sizes() lost its search_path or a timeout: %', v_cfg;
   END IF;
   IF has_function_privilege('anon', v_fn, 'EXECUTE') OR has_function_privilege('authenticated', v_fn, 'EXECUTE') THEN
     RAISE EXCEPTION 'self-check: a client role may call stamp_storage_sizes()';

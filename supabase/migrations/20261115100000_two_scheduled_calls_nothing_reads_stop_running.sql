@@ -20,13 +20,18 @@
 -- posts to scheduled-health-probe. Keyless, it answers from the database and
 -- nobody reads the answer; with a key it adds a Stripe balance call, an
 -- empty-message AI gateway call and a heartbeat row, and raises no alert.
--- scan-heartbeat already probes the database, the AI gateway and Stripe and
--- is the job mail-watch watches; 20260706050000 meant this probe to stay a
--- manual diagnostic, never a schedule. Its past heartbeat rows are kept.
+-- Those rows have one reader: the Services tab of the owner's /health-check
+-- history card, whose Database, AI Gateway and Stripe lines come only from
+-- them, so if the job was keyed those lines stop (the card now says it has
+-- no per-service latency rather than drawing 0 ms). scan-heartbeat already
+-- probes the database, the AI gateway and Stripe and is the job mail-watch
+-- watches; 20260706050000 meant this probe to stay a manual diagnostic,
+-- never a schedule. Its past heartbeat rows are kept.
 --
--- SAVES 432 edge invocations a day (2,736 if either carried a key, since a
--- keyed warm-up fans out to 16 functions) and 432 pg_cron wake-ups a day.
--- Both functions stay deployed, callable by hand as before.
+-- SAVES 432 edge invocations a day (2,736 if the warm-up carried a key, since
+-- a keyed warm-up fans out to 16 functions; a keyed probe adds 288 Stripe and
+-- 288 AI gateway calls a day, not edge invocations) and 432 pg_cron wake-ups
+-- a day. Both functions stay deployed, callable by hand as before.
 --
 -- UNDO: one cron.schedule call per job, in a new migration or the SQL editor.
 -- The NOTICE below prints each job's id, name and schedule before it goes, but
@@ -52,7 +57,7 @@ BEGIN
      WHERE j.jobname IN ('warm-up-edge-functions', 'scheduled-health-probe-every-5min')
      ORDER BY j.jobid
   LOOP
-    RAISE NOTICE 'unscheduling pg_cron job % (%), schedule %, active %: its posts are read by nothing',
+    RAISE NOTICE 'unscheduling pg_cron job % (%), schedule %, active %: removed by name, cost wave 2',
       r.jobid, r.jobname, r.schedule, r.active;
     PERFORM cron.unschedule(r.jobid);
   END LOOP;
