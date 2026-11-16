@@ -396,7 +396,7 @@ export { TOOL_LANDINGS } from "../src/data/tool-landings";
 export { SCAN_RESULTS_WITHIN_SECONDS } from "../src/config/scan-timing";
 export { COMPETITORS } from "../src/data/competitors";
 export { VENDORS } from "../src/data/ats-vendors";
-export { ES_INDUSTRIES, isSpanish } from "../src/data/es-industries";
+export { ES_INDUSTRIES, isSpanish, esIndustryTerms, capitalizeFirst } from "../src/data/es-industries";
 export { SCREENER_NOTES } from "../src/data/screener-notes";
 export { GUIDES, GUIDES_INDEX_DESCRIPTION, GUIDES_INDEX_TITLE, GUIDES_INTRO, GUIDE_ARTICLE_IMAGE_PATH, guideGrounding } from "../src/data/guides";
 export { buildIndustryFaqs } from "../src/data/industry-faqs";
@@ -760,6 +760,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
   let transparencyCache = null;
   let freshnessRow = null;
   let auditRow = null;
+  let cronRows = null;
   try {
     const envText4 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
     const grab4 = (k) => OFFLINE ? undefined : process.env[k] || (envText4.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
@@ -791,6 +792,12 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       // cached blob the React page reads.
       const au4 = await rpc4("get_audit_result", 10000);
       if (isObj(au4)) auditRow = au4;
+      // THE SCHEDULES THE CADENCE WORDS DESCRIBE, read from pg_cron itself
+      // (NB-32): the migrations that re-time a job can sit unapplied while the
+      // code that describes them ships, so the words follow the schedule the
+      // database runs, and DATA_PAGE_CADENCE only when this read fails.
+      const cr4 = await rpc4("get_cron_health", 10000);
+      if (Array.isArray(cr4)) cronRows = cr4;
     }
   } catch { /* offline build -- the four data pages ship their count-free copy */ }
   console.log(`[prerender-seo] data-page figures: stats_cache ${statsCache ? "read" : "UNREAD"}, transparency_cache ${transparencyCache ? "read" : "UNREAD"}, freshness ${freshnessRow ? "read" : "UNREAD"}, audit ${auditRow ? "read" : "UNREAD"}`);
@@ -879,7 +886,24 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
    * is not a number.
    */
   function dataPageFigures(P) {
-    const C = DATA_PAGE_CADENCE;
+    // THE WORDS FOLLOW THE SCHEDULE THE DATABASE RUNS (NB-32): a job's live
+    // pg_cron expression, when the build read one and it is an hourly-or-
+    // faster pattern these words can say; otherwise the constant above.
+    const cadencePhrase = (expr) => {
+      const f = String(expr ?? "").trim().split(/\s+/);
+      if (f.length !== 5 || f.slice(1).some((x) => x !== "*")) return null;
+      const step = /^\*\/(\d+)$/.exec(f[0]);
+      if (step) return `recomputed every ${step[1]} minutes`;
+      if (!/^\d+(,\d+)*$/.test(f[0])) return null;
+      const n = f[0].split(",").length;
+      return n === 1 ? "recomputed once an hour" : n === 2 ? "recomputed twice an hour" : `recomputed ${n} times an hour`;
+    };
+    const C = { ...DATA_PAGE_CADENCE };
+    for (const r of Array.isArray(P.cron) ? P.cron : []) {
+      const job = r && typeof r.ch_jobname === "string" ? r.ch_jobname : null;
+      const live = job && job in C && r.ch_active !== false ? cadencePhrase(r.ch_schedule) : null;
+      if (live) C[job] = live;
+    }
     const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
     const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
     const fmt = (v) => (num(v) === null ? null : Number(v).toLocaleString("en-US"));
@@ -944,6 +968,16 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       if (!g && !f) return unread();
       const openN = g ? fmt(g.total_open) : null;
       const gAt = g ? asOf(g.computed_at) : null;
+      // THE GHOST FIGURES ARE DATED BY THEIR OWN PART, AND SAY WHEN THEY WERE
+      // CARRIED (S14X-160): the cache names 'ghost_stats' when it copied the
+      // part from an earlier run, and the part itself (from 20261112194000)
+      // names the pieces its writer could not recompute.
+      const gParts = g && Array.isArray(g.stale_parts) ? g.stale_parts.map((x) => String(x)) : [];
+      const gCarried = Boolean(g) && ((Array.isArray(P.stats?.stale_parts) && P.stats.stale_parts.includes("ghost_stats")) || gParts.length > 0);
+      const PART_WORDS = { counts: "the open-role counts", median_days_open: "the median age", closures: "the closure figures" };
+      const gCarriedNote = gCarried
+        ? ` Carried forward: the latest recomputation could not finish ${gParts.length ? gParts.map((x) => esc(PART_WORDS[x] ?? x)).join(", ") : "these figures"}, so ${gParts.length ? "those are" : "they are"} from an earlier run${gAt ? `, no newer than ${gAt}` : ""}.`
+        : "";
       const span = g ? num(g.observed_days) : null;
       const coverage = g ? num(g.posted_coverage_pct) : null;
       const stock = group("What the board holds right now", [
@@ -955,7 +989,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
         // decimal.
         { value: g && num(g.median_days_open) !== null ? `${g.median_days_open} days` : null,
           label: `median age of an open posting, by the date the employer itself put on it${coverage !== null ? ` — ${coverage}% of postings state one and the rest are excluded from this median, never estimated` : ""}` },
-      ], `Counted over the postings the board serves. ${gAt ? `Measured ${gAt}` : "Measured when this page was last built"}, ${C["refresh-ghost-stats"]}; the live page re-reads it when it opens in a browser.`);
+      ], `Counted over the postings the board serves. ${gAt ? `Measured ${gAt}` : "Measured when this page was last built"}, ${C["refresh-ghost-stats"]}; the live page re-reads it when it opens in a browser.${gCarriedNote}`);
       // THE CLOSURE COUNT CARRIES THE DEPTH OF THE RECORD BESIDE IT, always.
       // A closure total from a young log reads as a rate to anyone who does
       // not know how long the log is -- the right-censoring trap that put a
@@ -977,11 +1011,13 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
         // showcase_excluded, which this total keeps -- so each of its weeks is
         // a part of this total, drawn on a narrower filter, not the same one.
         { value: g ? fmt(g.closed_90d) : null, label: `closure events logged in the last 90 days${span !== null ? `, from a record ${span} days deep` : ""} — takedowns, with re-listings, batches later flagged as collection faults and the takedowns a big board's first lap backfilled all excluded. A posting coming down is never called a hire: a hire, a withdrawal, a cancelled requisition and a retitle are indistinguishable from a feed` },
-      ], `${gAt ? `Measured ${gAt}` : "Measured when this page was last built"}, ${C["refresh-ghost-stats"]}.`);
+      ], `${gAt ? `Measured ${gAt}` : "Measured when this page was last built"}, ${C["refresh-ghost-stats"]}.${gCarriedNote}`);
       const fresh = group("How far behind the re-check rotation is", [
         { value: f && num(f.p50_min) !== null ? `${Math.round(f.p50_min)} minutes` : null, label: "since the median company feed was last re-read" },
         { value: f && num(f.p95_min) !== null ? `${(f.p95_min / 60).toFixed(1)} hours` : null, label: "covers 95% of feeds — the rest are older, and this is a measurement rather than a promise" },
-        { value: f ? fmt(f.boards) : null, label: "company feeds in the rotation" },
+        // WHAT THE DENOMINATOR COUNTS (S14X-194): the rollup's boards are the
+        // ones holding a live posting, the home rail's words, not every feed.
+        { value: f ? fmt(f.boards) : null, label: "job boards we read that hold a live posting" },
       ], `Measured from each feed's own last verification stamp${f && asOf(f.computed_at) ? ` ${asOf(f.computed_at)}` : ""}, ${C["job-board-stats-rollup"]}.`);
       // THE DAILY RE-CHECK, DATED, from the audit blob and nowhere else
       // (S2: llms.txt sent answer engines here for this number and the page
@@ -1009,10 +1045,17 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       const aCi = aLive !== null && aDecided !== null ? wilson(aLive, aDecided) : null;
       const ciText = aCi ? `95% interval ${aCi[0]}–${aCi[1]}%` : null;
       const weighting = "drawn evenly across hiring systems, so the largest boards, where most takedowns happen, are under-sampled";
+      // THE RUN'S AGE WHEN IT IS NO LONGER DAILY (SEO-F07): the re-check is
+      // scheduled once a day, and when the newest run on record is more than
+      // 36 hours older than this build the page says how old it is instead of
+      // saying it runs daily. P.now is the build's clock; with none, no age.
+      const aAgeH = a && aAt && num(P.now) !== null ? (P.now - new Date(a.at).getTime()) / 3_600_000 : null;
+      const aStale = aAgeH !== null && aAgeH > 36;
+      const aAge = aStale ? (aAgeH >= 48 ? `${Math.floor(aAgeH / 24)} days` : `${Math.round(aAgeH)} hours`) : null;
       const audit = a && num(a.accuracyPct) !== null && num(a.sampled) !== null && aDecided !== null && aAt
         ? group("The daily re-check", [
             { value: `${a.accuracyPct}%`, label: `of ${fmt(aDecided)} sampled postings that could be decided were still live at the employer's own source${ciText ? ` (${ciText})` : ""} — ${fmt(a.sampled)} sampled on ${aAt}, ${weighting}` },
-          ], `Daily re-check: ${a.accuracyPct}% of ${fmt(aDecided)} decided sample postings still live at the source (n = ${fmt(aDecided)}${ciText ? `, ${ciText}` : ""}, ${aAt}), ${weighting}. A probe that could not be decided leaves the denominator rather than counting as a pass. Run once a day; the live page shows the latest run.`)
+          ], `Daily re-check: ${a.accuracyPct}% of ${fmt(aDecided)} decided sample postings still live at the source (n = ${fmt(aDecided)}${ciText ? `, ${ciText}` : ""}, ${aAt}), ${weighting}. A probe that could not be decided leaves the denominator rather than counting as a pass. ${aStale ? `The re-check is scheduled once a day, but this is the latest run on record, ${aAge} older than this page's build.` : "Run once a day; the live page shows the latest run."}`)
         : "";
       const html = stock + audit + lifecycle + fresh;
       if (!html) return unread();
@@ -1026,7 +1069,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
         ? `Measured ${gAt}, this board holds ${openN} open roles, postings the employer's feed served at our last read of it, and no dated posting older than 30 days${median !== null ? `; their median age is ${median} days by the date the employer itself put on them${coverage !== null ? ` (${coverage}% state one)` : ""}` : ""}.`
         : "";
       const answerAudit = audit
-        ? ` In the daily re-check on ${aAt}, ${a.accuracyPct}% of ${fmt(aDecided)} sampled postings that could be decided were still live at the employer's own source${ciText ? ` (${ciText}; ${weighting})` : ` (${weighting})`}.`
+        ? ` In ${aStale ? `the latest re-check on record, ${aAt}` : `the daily re-check on ${aAt}`}, ${a.accuracyPct}% of ${fmt(aDecided)} sampled postings that could be decided were still live at the employer's own source${ciText ? ` (${ciText}; ${weighting})` : ` (${weighting})`}.`
         : "";
       const answer = answerStock ? `${answerStock}${answerAudit}` : null;
       return {
@@ -1214,7 +1257,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       const openNow = num(P.openTotal);
       const awaitingPct = tableTotal && openNow && tableTotal >= openNow ? Math.round((1000 * (tableTotal - openNow)) / tableTotal) / 10 : null;
       const population = `Counted across the postings the board currently carries, plus ${awaitingPct !== null ? `about ${awaitingPct < 1 ? "1" : Math.round(awaitingPct)}%` : "the few"} awaiting removal${awaitingPct !== null ? ` (${fmt(tableTotal)} rows in the table against ${fmt(openNow)} open)` : ""}; the table keeps no postings that have come down.`;
-      const basis = `A posting states pay when its own description text or its system's structured compensation field carries a figure or a range, in the employer's words; nothing is estimated, modelled or converted. ${population} ${at ? `Measured ${at}` : "Measured when this page was last built"}, ${C["transparency-cache-hourly"]}.`;
+      const basis = `A posting states pay when its own description text or its system's structured compensation field carries a figure or a range, in the employer's words; nothing is estimated, modelled or converted. ${population} ${at ? `Measured ${at}` : "Measured when this page was last built"}, ${C["transparency-cache-hourly"]}.${Array.isArray(t?.stale_parts) && t.stale_parts.length ? ` This refresh could not recompute every part; these carry the previous run's value: ${t.stale_parts.map((x) => esc(String(x))).join(", ")}.` : ""}`;
       const o = isObj(p?.overall) ? p.overall : null;
       const co = isObj(cov?.overall) ? cov.overall : null;
       const head = group("How much of the corpus states pay", [
@@ -1828,15 +1871,16 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
   for (const [slug, name] of Object.entries(D.ES_INDUSTRIES)) {
     const data = D.INDUSTRY_KEYWORDS[slug];
     if (!data) continue;
-    const esKeywords = uniq(data.primary.filter(D.isSpanish)).slice(0, 20);
-    const esTitles = uniq(data.titles.filter(D.isSpanish)).slice(0, 14);
-    const enKeywords = uniq(data.primary.filter((t) => !D.isSpanish(t))).slice(0, 14);
+    // The page's own model (S14X-214): every Spanish term and title the
+    // engine knows, the English list with every Spanish term left out.
+    const { esKeywords, esTitles, enKeywords } = D.esIndustryTerms(slug, data);
     write({
       path: `/es/industrias/${slug}`,
       lang: "es",
       hreflang: { en: `/industries/${slug}`, es: `/es/industrias/${slug}` },
       title: `Palabras Clave para Currículum de ${name} — Qué Buscan los ATS`.length > 68 ? `Palabras Clave para CV de ${name} — Guía ATS` : `Palabras Clave para Currículum de ${name} — Qué Buscan los ATS`,
-      description: listDesc(esKeywords.slice(0, 5), " y más: ", `las palabras clave, títulos y certificaciones que nuestro escáner busca en ${name.toLowerCase()}. Escaneo gratis.`),
+      // A snippet opens with a capital (SEO-F16).
+      description: listDesc(esKeywords.slice(0, 5).map((k, i) => (i === 0 ? D.capitalizeFirst(k) : k)), " y más: ", `las palabras clave, títulos y certificaciones que nuestro escáner busca en ${name.toLowerCase()}. Escaneo gratis.`),
       // The Spanish pages carried no breadcrumb markup while the English
       // twins did (SEO-034).
       jsonLd: [breadcrumbLd([{ name: "Inicio", path: "/" }, { name: "Industrias", path: "/industries" }, { name, path: `/es/industrias/${slug}` }])],
@@ -3126,6 +3170,9 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
   // employer page only where this bake writes one.
   const DATA_FIGURES = dataPageFigures({
     stats: statsCache, transparency: transparencyCache, freshness: freshnessRow, audit: auditRow,
+    // The live cron schedules the cadence words follow (NB-32), and the
+    // build's clock the re-check's age is measured against (SEO-F07).
+    cron: cronRows, now: Date.now(),
     // The board's open count, for the pay page's population sentence (S13-088).
     openTotal: BOARD_TOTAL,
     companyHref: (token, query) => {
@@ -3872,7 +3919,8 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
           <ul>
             <li><code>GET /v1/jobs</code> — live postings, newest first; every result is still open in the employer's own feed and dated within the last 30 days. Filters for country, category, company, work mode, source system, experience band, department, pay basis and floor, posting date; paginate with <code>cursor=</code>, never a deep offset. <code>explain=1</code> names every filter that bound; <code>engine=ranked</code> (paid) swaps the title match for the site's full relevance engine.</li>
             <li><code>GET /v1/jobs/{id}</code> — one posting with its description; a 404 once the employer withdraws it, never a stale 200.</li>
-            <li><code>GET /v1/changes</code> — what opened and what closed since a timestamp, and for each close whether the role genuinely came down or was re-listed under a new id. Opened reaches back 30 days on any key; closed reaches back 72 hours on a free key and 180 days on a paid one, and leaves out batches our own collector flagged as a possible failed read unless you ask for them with <code>include_suspect=true</code>. Closures written before the collector began assessing its batches were never assessed: they carry <code>suspectBatch: null</code> and no walk filters them.</li>
+            <li><code>GET /v1/jobs/{id}/application</code> — the employer's own application form for a live posting, when its hiring system publishes one: each question with who should answer it (the person, by default), cached for 24 hours. It never fills or submits anything; the person answers and presses submit on the employer's own site. Metered as one call.</li>
+            <li><code>GET /v1/changes</code> — what opened and what closed since a timestamp, and for each close whether the role genuinely came down or was re-listed under a new id. Opened reaches back 30 days on any key; closed reaches back 72 hours on a free key and 180 days on a paid one, and leaves out batches our own collector flagged as a possible failed read unless you ask for them with <code>include_suspect=true</code>. Closures written before the collector began assessing its batches were never assessed: they carry <code>suspectBatch: null</code> and no walk filters them. Each list reads only up to a settled horizon (<code>page.opened.settledThrough</code>, <code>page.closed.settledThrough</code>), because a closure's row can be written minutes after the time it is stamped with; every page carries <code>page.opened.resumeCursor</code> and <code>page.closed.resumeCursor</code>, and a reader resumes by sending them back as <code>opened_cursor</code> and <code>closed_cursor</code>, never by moving <code>since</code>.</li>
             <li><code>GET /v1/companies</code> — employers ranked by open postings, from the same cached facet the board renders, with the as-of stamp and its basis.</li>
             <li><code>GET /v1/stats</code> — headline counts, the closure log, feed freshness (p50/p95/max minutes since each feed was last re-read) and per-system coverage, each figure with its own as-of and basis.</li>
             <li><code>GET /v1/usage</code> — your own consumption for the last 30 days and what is left of today's limits.</li>
@@ -4977,7 +5025,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
     lines.push(`- Pay Transparency Index: ${SITE}/pay-transparency — the share of postings that state pay, by field, hiring system and large job board (one row per board, so an employer running several counts once per board), counted from the postings' own text and ATS fields; never estimated or modelled, and placement cannot be bought.`);
     lines.push(companiesLlmsLine({ site: SITE, count: COMPANY_PAGE_COUNT }));
     lines.push(`- About: ${SITE}/about — what resumebooster.work is, what the board is, and how its counts are made and dated.`);
-    lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API over the live board at ${API_BASE}/v1 (every path below is relative to ${API_BASE}; the addresses under ${SITE}/v1 are pages that point here), with free self-serve keys (${FREE_KEY_RATE_SENTENCE}): GET /v1/jobs, /v1/jobs/{id}, /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (${D.MCP_FIT_ALLOWANCE}, counted together with fit_resume on the MCP server). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
+    lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API over the live board at ${API_BASE}/v1 (every path below is relative to ${API_BASE}; the addresses under ${SITE}/v1 are pages that point here), with free self-serve keys (${FREE_KEY_RATE_SENTENCE}): GET /v1/jobs, /v1/jobs/{id}, /v1/jobs/{id}/application (the employer's own application form for a live posting, read and never filled or submitted), /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (${D.MCP_FIT_ALLOWANCE}, counted together with fit_resume on the MCP server). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
     lines.push(`- MCP server for AI agents: ${SITE}/agents (listed in the official MCP registry as ${MCP_REGISTRY_NAME}) — search and read tools (${LLMS_TOOLS.map((t) => t.name).join(", ")}) over the same board.${LLMS_REACH_LINE ? ` ${LLMS_REACH_LINE}` : ""} ${D.MCP_FORMS_ALLOWANCE} MCP server address (Streamable HTTP): ${MCP_URL} — registry name ${MCP_REGISTRY_NAME}. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per network address — an office or a home connection counts as one; from ChatGPT each person has their own ${D.MCP_ANON_CAPS.chatgptPerPerson}, and Claude's users share ${D.MCP_ANON_CAPS.hostPoolPerDay} a day first — ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, and ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} ${D.MCP_PAID_TOOLS.length === 1 ? "gives" : "give"} ${D.MCP_FIT_ALLOWANCE}. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.page && x.header).map((x) => x.name))}, and any other app that can send a header, with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => x.page && !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; the page's own steps are at ${SITE}/agents#<host> for ${D.MCP_PAGE_HOSTS.map((x) => x.id).join(", ")}; setup for every other app is in the install repository's README at ${D.MCP_INSTALL_REPO_URL}. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}`);
     lines.push("");
     if (insights?.overall?.n) {
@@ -5068,6 +5116,13 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       // from a live read only; the pattern takes what it wrote last time.
       if (LLMS_REACH_LINE) sub(/Your AI searches [\d,]+ of the [\d,]+ open postings: [^.]+\. Counted [^.]+ UTC\./, LLMS_REACH_LINE);
       sub(/API address: \S+/, `API address: ${API_BASE}/v1`);
+      // THE RE-CHECK'S AGE (SEO-F07): the file says a sample is re-checked
+      // daily; when the newest run on record is more than 36 hours older than
+      // this build, the sentence names that run's date instead of "daily".
+      const llmsAuditAt = auditRow && typeof auditRow.at === "string" ? new Date(auditRow.at) : null;
+      if (llmsAuditAt && Number.isFinite(llmsAuditAt.getTime()) && (Date.now() - llmsAuditAt.getTime()) / 3_600_000 > 36) {
+        sub(/a daily sample of postings re-checked against the employers' own systems/, `a sample of postings re-checked against the employers' own systems, scheduled daily (the latest run on record is from ${llmsAuditAt.toISOString().slice(0, 10)})`);
+      }
       // THE GUIDE AND COMPARISON LISTS, GENERATED (SEO-027) from the same
       // modules the pages render, filtered to the pages this bake made
       // indexable: the hand-written list left out /vs/chatgpt and listed
