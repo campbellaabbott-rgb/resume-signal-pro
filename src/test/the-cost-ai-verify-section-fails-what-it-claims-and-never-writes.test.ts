@@ -247,6 +247,8 @@ describe("section 99zzzzzz (cost audit, lane ai)", () => {
   it("names the owner step for the scheduled warm-up and where the unprovable claims are proved", () => {
     const { lines } = theGoodRun();
     expect(lines.some((l) => /^INFO  OWNER STEP: the scheduled job warm-up-edge-functions/.test(l))).toBe(true);
+    // Cost wave 2 removes the job; the owner step names the file and the section that judges it.
+    expect(lines.some((l) => /^INFO  OWNER STEP: .*20261115100000 unschedules it .*99zzzzzz-cost2-crons/.test(l))).toBe(true);
     expect(lines.some((l) => /^INFO  nl-search's eight seconds .*the-board-search-parse-answers-inside-eight-seconds/.test(l))).toBe(true);
     expect(lines.some((l) => /^INFO  the free tools' chain .*a-free-tool-falls-back/.test(l))).toBe(true);
   });

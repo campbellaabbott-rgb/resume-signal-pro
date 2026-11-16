@@ -29,9 +29,10 @@ interface HourlyStats {
   totalChecks: number;
   passedChecks: number;
   failedChecks: number;
-  dbLatency: number;
-  aiLatency: number;
-  stripeLatency: number;
+  // null for an hour with no reading of that service: drawn as a gap, never as 0 ms.
+  dbLatency: number | null;
+  aiLatency: number | null;
+  stripeLatency: number | null;
 }
 
 export function HealthHistoryChart() {
@@ -123,9 +124,9 @@ export function HealthHistoryChart() {
           totalChecks: total,
           passedChecks: passed,
           failedChecks: total - passed,
-          dbLatency: dbLatencies.length > 0 ? Math.round(dbLatencies.reduce((a, b) => a + b, 0) / dbLatencies.length) : 0,
-          aiLatency: aiLatencies.length > 0 ? Math.round(aiLatencies.reduce((a, b) => a + b, 0) / aiLatencies.length) : 0,
-          stripeLatency: stripeLatencies.length > 0 ? Math.round(stripeLatencies.reduce((a, b) => a + b, 0) / stripeLatencies.length) : 0,
+          dbLatency: dbLatencies.length > 0 ? Math.round(dbLatencies.reduce((a, b) => a + b, 0) / dbLatencies.length) : null,
+          aiLatency: aiLatencies.length > 0 ? Math.round(aiLatencies.reduce((a, b) => a + b, 0) / aiLatencies.length) : null,
+          stripeLatency: stripeLatencies.length > 0 ? Math.round(stripeLatencies.reduce((a, b) => a + b, 0) / stripeLatencies.length) : null,
         });
       });
       
@@ -324,7 +325,13 @@ export function HealthHistoryChart() {
 
           <TabsContent value="services" className="mt-0">
             <div className="h-48">
-              {hourlyStats.length > 0 ? (
+              {/* Only keyed scheduled-health-probe rows carry per-service latency
+                  (metadata.probes); scan-heartbeat's rows do not. Cost wave 2
+                  (20261115100000) unscheduled the probe, so with no such row the
+                  tab says so instead of drawing three flat lines at 0 ms. Each
+                  reading is a dot: an hour between two gaps would otherwise
+                  draw nothing at all. */}
+              {hourlyStats.some((s) => s.dbLatency !== null || s.aiLatency !== null || s.stripeLatency !== null) ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={hourlyStats}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
@@ -358,7 +365,7 @@ export function HealthHistoryChart() {
                       name="Database"
                       stroke="#3b82f6" 
                       strokeWidth={2}
-                      dot={false}
+                      dot={{ r: 2 }}
                     />
                     <Line 
                       type="monotone" 
@@ -366,7 +373,7 @@ export function HealthHistoryChart() {
                       name="AI Gateway"
                       stroke="#a855f7" 
                       strokeWidth={2}
-                      dot={false}
+                      dot={{ r: 2 }}
                     />
                     <Line 
                       type="monotone" 
@@ -374,14 +381,14 @@ export function HealthHistoryChart() {
                       name="Stripe"
                       stroke="#22c55e" 
                       strokeWidth={2}
-                      dot={false}
+                      dot={{ r: 2 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-full text-muted-foreground">
                   <AlertTriangle className="h-4 w-4 mr-2" />
-                  No service data available
+                  No per-service latency recorded in the last 24 hours
                 </div>
               )}
             </div>
