@@ -7,6 +7,8 @@
     "stoppedBounce": "Los correos a esta dirección rebotaron, así que dejamos de enviarle: no le llegan las alertas de búsquedas guardadas, los informes de análisis ni el pulso del mercado.",
     "stoppedComplaint": "Esta dirección marcó uno de nuestros correos como spam, así que dejamos de enviarle: no le llegan las alertas de búsquedas guardadas, los informes de análisis ni el pulso del mercado.",
     "cadenceAria": "Con qué frecuencia te escribimos sobre {{name}}",
-    "newHeadlineCapped": "{{n}} empleos nuevos coinciden con tus búsquedas desde tu última visita"
+    "newHeadlineCapped": "{{n}} empleos nuevos coinciden con tus búsquedas desde tu última visita",
+    "fixPlanWithdrawnTitle": "Correos del plan de arreglos",
+    "fixPlanWithdrawn": "Ya no enviamos los correos del plan de arreglos, así que este enlace no inicia nada y no te llegará ningún correo por él."
   }
 }

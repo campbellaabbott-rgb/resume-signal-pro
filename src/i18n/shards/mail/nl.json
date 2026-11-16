@@ -7,6 +7,8 @@
     "stoppedBounce": "E-mails naar dit adres kwamen onbestelbaar terug, dus we sturen er niets meer heen: meldingen voor opgeslagen zoekopdrachten, scanrapporten en de marktpuls komen niet aan.",
     "stoppedComplaint": "Dit adres heeft een van onze e-mails als spam gemarkeerd, dus we sturen er niets meer heen: meldingen voor opgeslagen zoekopdrachten, scanrapporten en de marktpuls komen niet aan.",
     "cadenceAria": "Hoe vaak we je mailen over {{name}}",
-    "newHeadlineCapped": "{{n}} nieuwe vacatures passen bij je zoekopdrachten sinds je laatste bezoek"
+    "newHeadlineCapped": "{{n}} nieuwe vacatures passen bij je zoekopdrachten sinds je laatste bezoek",
+    "fixPlanWithdrawnTitle": "Fix-plan-mails",
+    "fixPlanWithdrawn": "We versturen de fix-plan-mails niet meer, dus deze link start niets en er volgen geen e-mails uit."
   }
 }
