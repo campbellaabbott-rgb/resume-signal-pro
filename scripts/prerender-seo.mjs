@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
   PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
-  bakeLanders, D7_TRUSTED_COMPANY_TOKENS, employerBoardsOf, employerPageOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, freshPoolOrder, postingFreshNameReason, postingPoolWalksOn, postingRowEligible, postingStubEntry, postingStubPage, keptPostingStub, postingStubPageBasis,
+  bakeLanders, D7_TRUSTED_COMPANY_TOKENS, employerBoardsOf, employerPageOf, pooledMembersOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, freshPoolOrder, postingFreshNameReason, postingPoolWalksOn, postingRowEligible, postingStubEntry, postingStubPage, keptPostingStub, postingStubPageBasis,
   LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, LLMS_TXT_COMPANIES, companiesLlmsLine, readCompanyIntel, llmsTxtCompaniesCount, duplicateSkeletons, landerBreakers, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
 } from "./prerender-pages.mjs";
 // The once-published pages, the ceiling, the dates and the duplicate groups
@@ -240,6 +240,52 @@ export const composeHtml = (
 };
 
 /**
+ * AN /ats/:vendor DESCRIPTION (B09, DESC-10; SEO-F16). Whole sentences: a
+ * slice at 155 ended all four mid-word. An answer whose whole sentences that
+ * fit say too little (Greenhouse's first is 40 characters) gives way to the
+ * page's own one-line summary. The answer's opening word is the reply to the
+ * page's question, which a search result does not show, so a description
+ * that opened "Yes." or "Unreliably." read as a non sequitur: it is dropped,
+ * and the sentence after it opens the description.
+ */
+export function atsGuideDescription(data) {
+  const answer = String(data?.behaviors?.[0]?.a ?? "");
+  const rest = answer.replace(/^[A-Z][a-z]+(?:\s+not)?(?:\.\s+|\s+[—–-]\s+)/, "");
+  const body = rest === answer ? answer : rest.charAt(0).toUpperCase() + rest.slice(1);
+  const first = fitSentence(body);
+  return first.length >= 70 && first.length <= 160
+    ? first
+    : `How ${data.name} reads a resume: the ${data.behaviors.length} parsing behaviors our free scan checks every file against, each answered plainly.`;
+}
+
+/**
+ * ONE LINE OF /jobs' LIST OF POSTING PAGES (SEO-F11): the title, the employer
+ * as the posting's own page prints it, and the place. The list printed the
+ * raw row's name, so seven lines carried names the name gate refused ("Group
+ * withMVSB wtag", an email-signature file name) while the pages they linked
+ * said "The employer" (2026-11-15). A refused name is "the employer" here too.
+ * `page` is bakePostingPage's answer for the row, `esc` the bake's escaper.
+ */
+export function postingIndexLine(page, job, { D, esc }) {
+  const employer = page && page.nameRefused ? "the employer" : D.postingEmployer(job);
+  return `<li><a href="${D.postingPagePath(job.id)}">${esc(D.postingText(job.title))}</a> — ${esc(employer)}${job.location ? `, ${esc(D.postingText(job.location))}` : ""}</li>`;
+}
+
+/**
+ * THE COUNTRY THE EMPLOYER'S OWN PAGE STATES (SEO-F08), as a two-letter code,
+ * or null when it states none the bake can read. `stated` is the row's
+ * employer statements (employerStatedOf): its address's addressCountry, a code
+ * or a name (D.countryCodeOfName reads a name).
+ */
+export function employerStatedCountry(stated, D) {
+  const v = stated && typeof stated === "object" && stated.address && typeof stated.address === "object" ? stated.address.addressCountry : null;
+  const s = typeof v === "string" ? v.trim() : "";
+  if (!s) return null;
+  if (/^[A-Za-z]{2}$/.test(s)) return s.toUpperCase();
+  return (D && typeof D.countryCodeOfName === "function" ? D.countryCodeOfName(s) : null) ?? null;
+}
+
+/**
  * ONE POSTING ROW AS THE BAKE WRITES IT: whether it keeps a live page, the row
  * its page prints, and the job markup the page carries. `row` is the board's
  * detail row, `D` the bake's bundle of the app's own modules and `carried`
@@ -294,6 +340,23 @@ export function bakePostingPage(row, description, { D, SITE, carried }) {
   }
   const nm = nameRefused ? "the employer" : D.postingEmployer(job);
   return { path, named, nameRefused, rawJob, job, ld, live: true, nameOnly, mismatchOnly, switchedOff, nm };
+}
+
+/**
+ * THE EMPLOYER'S OWN COUNTRY OUTRANKS A GUESS FROM THE LOCATION (SEO-F08).
+ * "AR - BUENOS AIRES (ARBUO)" read as Arkansas, so a Buenos Aires posting was
+ * marked up as US while its employer's own page said Argentina. `page` is
+ * bakePostingPage's answer for the row and `stated` the row's employer
+ * statements. When the employer's page states a country and the row says
+ * another, the markup is withheld as a location naming another country's is
+ * (SEO-035): a carried page keeps its page with no markup (D7) and goes on the
+ * dry run, a new one gets no page. Any other page is returned as it came.
+ */
+export function withEmployerCountry(page, stated, { D, carried }) {
+  const statedCountry = employerStatedCountry(stated, D);
+  const rowCountry = String(page?.rawJob?.country ?? "").trim().toUpperCase();
+  if (!page || !page.path || !page.live || !statedCountry || !rowCountry || statedCountry === rowCountry) return page;
+  return { ...page, ld: null, switchedOff: false, mismatchOnly: true, statedCountry, live: !!carried };
 }
 
 /**
@@ -411,6 +474,7 @@ export { ALL_BOARD_SOURCES } from "../src/config/ats-vendors";
 export { publicApiBase, mcpServerUrl } from "../src/config/public-endpoints";
 export { cvFill, cvStandardsFaqs } from "../src/lib/cv-country-phrase";
 export { collidedBoards } from "../src/lib/board-collisions";
+export { countryCodeOfName } from "../src/components/jobs/posting-page";
 export { localityProblem, postingRemoteBasis, postingRequisitionIdentity, postingText, postingLanguage, postingCountryMismatch, postingValidThrough, remoteLocationNamesAPlace } from "../src/components/jobs/posting-page";
 export { changelog } from "../src/data/changelog";
 export { SCAN_ATS_SYSTEMS, SCORE_AI_BAND, SCORE_AUDIT_PARTS } from "../src/config/score-method";
@@ -1851,13 +1915,10 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       // these descriptions mid-word ("... A", "... reduce ho"). An answer
       // whose whole sentences that fit say too little (Greenhouse's first is
       // 40 characters) gives way to the page's own one-line summary.
-      description: (() => {
-        const first = fitSentence(data.behaviors[0].a);
-        return first.length >= 70 && first.length <= 160
-          ? first
-          : `How ${data.name} reads a resume: the ${data.behaviors.length} parsing behaviors our free scan checks every file against, each answered plainly.`;
-      })(),
-      jsonLd: [faqLd(data.behaviors)],
+      description: atsGuideDescription(data),
+      // BREADCRUMBS IN THE MARKUP TOO (SEO-F18): the visible trail's middle
+      // step has no page, so the markup names the two that do.
+      jsonLd: [faqLd(data.behaviors), breadcrumbLd([{ name: "Home", path: "/" }, { name: data.name, path: `/ats/${vendor}` }])],
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "ATS guides" }, { name: data.name }])}
         <h1 class="text-3xl font-bold mb-3">${esc(data.headline)}</h1>
@@ -2048,6 +2109,8 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           publisher: orgRef(SITE),
           mainEntityOfPage: `${SITE}/research/ats-score-benchmarks`,
         },
+        // SEO-F18: the page's place in the site, as every other guide states it.
+        breadcrumbLd([{ name: "Home", path: "/" }, { name: "ATS score benchmarks", path: "/research/ats-score-benchmarks" }]),
         {
           "@context": "https://schema.org",
           "@type": "Dataset",
@@ -2382,7 +2445,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           hreflang: D.hreflangCluster(iso),
           title: D.cvFill(t.title, vars, locale),
           description: D.cvFill(t.metaDescription, vars, locale),
-          jsonLd: [faqLd(faqs)],
+          // SEO-F18: the translated pages carried no BreadcrumbList while the
+          // English ones did; the trail is the English one's, ending here.
+          jsonLd: [faqLd(faqs), breadcrumbLd([{ name: "Home", path: "/" }, { name: "CV Standards", path: "/cv-standards" }, { name, path: `/${cfg.pathBase}/${slug}` }])],
           content: `
             <h1 class="text-3xl font-bold mb-3">${esc(D.cvFill(t.h1, vars, locale))}</h1>
             <p class="text-muted-foreground mb-8">${esc(D.cvFill(t.intro, vars, locale))}</p>
@@ -2452,6 +2517,15 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     // out loud, because section 99zz FAILs it live.
     if (pinnedMissing.length) console.warn(`[prerender-seo] D7: ${pinnedMissing.length} pinned company page(s) not chosen (under the minimum open roles or not carried): ${pinnedMissing.join(", ")}`);
   }
+  // THE BOARDS AN EMPLOYER RUNS BELOW THE CUT (RC-S12-021, pooledMembersOf):
+  // no page of their own, so nothing below writes, counts or indexes them as
+  // pages; their openings are summed on their employer's page (pooledOpen)
+  // and /landers.json maps them there.
+  const POOLED_MEMBERS = pooledMembersOf(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], LANDERS, {
+    openOf: openRolesOf, displayName: (c) => bakeEmployerName(c.token, c.name, NAME_PARTS).name,
+  });
+  const memberByToken = new Map(POOLED_MEMBERS.map((c) => [c.token, c]));
+  console.log(`[prerender-seo] pooled members: ${POOLED_MEMBERS.length} board(s) below the cut pooled into their employer's page${POOLED_MEMBERS.length ? ` (${POOLED_MEMBERS.slice(0, 30).map((c) => `${c.token} -> ${c.employerPrimary}`).join(", ")})` : ""}`);
   const NAME_GATE = new Map(LANDERS.map((c) => [c.token, bakeEmployerName(c.token, c.stored, NAME_PARTS)]));
   // WHAT EACH BOARD IS, as the live page says it (prerender-pages.mjs
   // companyLanderPage `kind`): the USAJOBS listing site, a staffing agency's
@@ -2475,6 +2549,10 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   const landerByToken = new Map(LANDERS.map((c) => [c.token, c]));
   /** The indexable employer page for a board token, when this bake writes one. */
   const landerFor = (token) => {
+    // A pooled member (RC-S12-021) links the page its employer's own board
+    // links; employerPrimary is always a chosen board, never a member.
+    const member = typeof token === "string" ? memberByToken.get(token) : null;
+    if (member) return landerFor(member.employerPrimary);
     const c = typeof token === "string" ? landerByToken.get(token) : null;
     if (!c) return null;
     // A board whose page canonicalises to ANOTHER employer that shares its
@@ -2490,9 +2568,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   // (src/lib/seo/lander-manifest.ts) and links /jobs?company=<token> for any
   // board the file does not name, so a crawler that runs scripts is never
   // sent to an address that serves the homepage's copy.
-  const landersManifest = Object.fromEntries(LANDERS.map((c) => [c.token, landerFor(c.token)?.href ?? null]));
+  const landersManifest = Object.fromEntries([...LANDERS, ...POOLED_MEMBERS].map((c) => [c.token, landerFor(c.token)?.href ?? null]));
   writeFileSync(join(dist, "landers.json"), JSON.stringify(landersManifest));
-  console.log(`[prerender-seo] /landers.json written: ${Object.values(landersManifest).filter(Boolean).length} of ${LANDERS.length} chosen boards name a page`);
+  console.log(`[prerender-seo] /landers.json written: ${Object.values(landersManifest).filter(Boolean).length} of ${LANDERS.length} chosen boards and ${POOLED_MEMBERS.length} pooled member(s) name a page`);
   /** The href a data-page table or a posting uses for an employer board. */
   const companyHrefFor = (token) => landerFor(token)?.href ?? `/jobs?company=${encodeURIComponent(String(token ?? ""))}`;
   const companyLinkHtml = (token, name) => {
@@ -2971,6 +3049,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       // returned: the name, the page and the markup.
       for (const d of detailed) {
         d.page = bakePostingPage(d.job, d.description, { D, SITE, carried: d.carried });
+        d.page = withEmployerCountry(d.page, d.stated, { D, carried: d.carried });
         const { named } = d.page;
         if (named.reason) {
           nameGateDryRun.push({ path: D.postingPagePath(d.job.id), kind: "posting", token: d.job.token ?? null, name: named.name, shown: named.shown, reason: named.reason, would: "be marked noindex (its job markup is already withheld and its head names no employer)" });
@@ -3000,7 +3079,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           stubs.push({ id: job.id, path, state: "retired", title: job.title, company: job.company });
           continue;
         }
-        if (mismatchOnly) nameGateDryRun.push({ path, kind: "posting", token: job.token ?? null, name: D.postingEmployer(rawJob), shown: job.location ?? null, reason: `the location ends in another country's name than the row's (${job.country})`, would: "be marked noindex (its job markup is already withheld)" });
+        if (mismatchOnly) nameGateDryRun.push({ path, kind: "posting", token: job.token ?? null, name: D.postingEmployer(rawJob), shown: job.location ?? null, reason: page.statedCountry ? `the employer's own page states ${page.statedCountry}, the row ${job.country}` : `the location ends in another country's name than the row's (${job.country})`, would: "be marked noindex (its job markup is already withheld)" });
         if (job.salary) withPay++;
         const paras = D.jdParagraphs(description);
         const title = D.postingText(job.title);
@@ -3108,7 +3187,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           .filter((d) => postingPaths.includes(D.postingPagePath(d.job.id)))
           // Each line as the posting's own page prints it (postingText): a feed's
           // "&amp;" is one ampersand, never escaped twice (B07, F08).
-          .map((d) => `<li><a href="${D.postingPagePath(d.job.id)}">${esc(D.postingText(d.job.title))}</a> — ${esc(D.postingEmployer(d.job))}${d.job.location ? `, ${esc(D.postingText(d.job.location))}` : ""}</li>`)
+          .map((d) => postingIndexLine(d.page, d.job, { D, esc }))
           .join("\n              ");
         postingIndexSection = `
           <section>
@@ -3445,11 +3524,12 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       // this one, and the page says how many. A board that is not its
       // employer's primary keeps its own count; a sum with any board's count
       // unread is no sum, and the page states its own.
+      // Its boards include the ones below the cut (RC-S12-021: POOLED_MEMBERS).
       const pooledOpen = (c) => {
         if (c.primary !== c.token || c.sameEmployer === false) return null;
-        const boards = employerBoardsOf(LANDERS, c.token);
+        const boards = employerBoardsOf([...LANDERS, ...POOLED_MEMBERS], c.token);
         if (boards.length < 2) return null;
-        const counts = boards.map((t) => openRolesOf(landerByToken.get(t)));
+        const counts = boards.map((t) => openRolesOf(landerByToken.get(t) ?? memberByToken.get(t)));
         if (counts.some((n) => typeof n !== "number")) return null;
         return { open: counts.reduce((a, b) => a + b, 0), boards: boards.length };
       };
@@ -3696,10 +3776,14 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
             ${cs.map((c) => {
               // Same rule as the landers this index links to: the servable
               // count or no count. An A-Z row that disagreed with the page one
-              // click away is the same defect at directory scale.
+              // click away is the same defect at directory scale, and it did
+              // (SEO-F17, 2026-11-15: PwC 891 here, 2,008 on its page): the
+              // row states the page's own figure, pooled over the employer's
+              // boards when the page pools them.
               const o = openRolesOf(c);
+              const pooledRow = pooledOpen(c);
               const kind = KIND_LABEL[landerKindOf(c.token)];
-              return `<li><a href="${landerPath(c.token)}" class="text-primary hover:underline">${esc(c.name)}</a>${kind ? ` <span class="text-muted-foreground">(${kind})</span>` : ""}${typeof o === "number" ? ` <span class="text-muted-foreground">— ${fmt(o)} open roles</span>` : ""}</li>`;
+              return `<li><a href="${landerPath(c.token)}" class="text-primary hover:underline">${esc(c.name)}</a>${kind ? ` <span class="text-muted-foreground">(${kind})</span>` : ""}${typeof o === "number" ? ` <span class="text-muted-foreground">— ${fmt(pooledRow ? pooledRow.open : o)} open roles</span>` : ""}</li>`;
             }).join("\n            ")}
           </ul>`).join("\n");
         COMPANY_PAGE_COUNT = primaries.length;
