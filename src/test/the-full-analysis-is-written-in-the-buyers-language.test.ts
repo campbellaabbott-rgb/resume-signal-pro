@@ -64,6 +64,8 @@ const SPANISH_RESUME = "Responsable de ventas con más de diez años de experien
 const GERMAN_RESUME = "Verantwortlich für die Entwicklung und Umsetzung von Projekten im Unternehmen. Berufserfahrung und Kenntnisse in der Leitung; Ausbildung und Fähigkeiten über Jahre. ".repeat(6);
 const HINDI_RESUME = "सॉफ्टवेयर इंजीनियर, पांच वर्षों का अनुभव। भुगतान प्रणाली का विकास और टीम का नेतृत्व किया। ".repeat(6);
 const POLISH_RESUME = "Kierownik sprzedaży z ponad dziesięcioletnim doświadczeniem w zarządzaniu zespołem. Odpowiedzialny za rozwój firmy i zwiększenie sprzedaży; umiejętności handlowe i znajomość rynku. ".repeat(6);
+// A language neither copy of the detector has a list for (RC-S13-024 taught it Polish).
+const CZECH_RESUME = "Projektový manažer s osmiletou praxí ve vedení týmu a rozvoji obchodu. Zodpovědný za rozpočet a spolupráci se zákazníky ve společnosti. Dovednosti: analýza dat, vyjednávání, řízení rizik. Vzdělání: magisterský titul na Univerzitě Karlově v Praze, obor ekonomie a management podniku, specializace účetnictví a daně.";
 const RUSSIAN_RESUME = "Руководитель отдела продаж с опытом работы более десяти лет. Отвечал за развитие компании и рост продаж; навыки управления командой. ".repeat(6);
 
 describe("where the language comes from", () => {
@@ -99,7 +101,7 @@ describe("where the language comes from", () => {
     expect(sureLanguageOf({ language: "en", languageName: "English", confidence: "high" })).toEqual({ code: "en", name: "English" });
     // Text with too few language words: an English report, the résumé not named.
     expect(reportLanguage(undefined, "Jane Doe")).toEqual({ code: "en", name: "English", source: "resume", resume: null });
-    expect(reportLanguage(undefined, POLISH_RESUME)).toEqual({ code: "en", name: "English", source: "resume", resume: null });
+    expect(reportLanguage(undefined, CZECH_RESUME)).toEqual({ code: "en", name: "English", source: "resume", resume: null });
   });
 
   it("whatever the free scanner's detector learns to say (other branches rewrite it), what reaches the prompt is a language or nothing", () => {
@@ -167,8 +169,8 @@ describe("what stays in the résumé's own words", () => {
   });
 
   it("a résumé whose language the detector cannot name: its own language, not a guessed one", () => {
-    expect(reportLanguage("es", POLISH_RESUME).resume).toBeNull();
-    const text = reportLanguageInstruction(reportLanguage("es", POLISH_RESUME));
+    expect(reportLanguage("es", CZECH_RESUME).resume).toBeNull();
+    const text = reportLanguageInstruction(reportLanguage("es", CZECH_RESUME));
     expect(text).toMatch(/is written in the language the résumé itself is written in\b/);
     expect(text).not.toMatch(/the résumé is written in [A-Z]/);
   });
