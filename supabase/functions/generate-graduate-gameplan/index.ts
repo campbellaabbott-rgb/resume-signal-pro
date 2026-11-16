@@ -2,7 +2,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { assertPaidSession } from "../_shared/paid-session.ts";
-import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { keepPastBuyerCopy } from "../_shared/past-buyer-copy.ts";
+import { clipField, clipText, isServiceCaller, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
 import { callAIWithModelFallback, chainFrom, logAiUsage, UnusableModelOutput } from "../_shared/ai-fallback.ts";
@@ -327,6 +328,13 @@ Create a comprehensive, actionable Graduate Game Plan that gives this new grad/e
       if (i <= 0) break;
     }
     if (!graduateGamePlan) throw new UnusableModelOutput(`Graduate Game Plan reply incomplete: ${problems.slice(0, 3).join("; ")}`);
+
+    // A COPY MADE FOR A BROWSER IS KEPT (RC-S12-007): the recovery form is the
+    // only maker of a sale with no résumé bound, and its copy was never saved,
+    // recorded or mailed. Our own servers keep what they make themselves.
+    if (!isServiceCaller(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))) {
+      await keepPastBuyerCopy(supabase, { sessionId, productType: "graduate_gameplan", productName: "Graduate Game Plan", content: graduateGamePlan });
+    }
 
     return new Response(
       JSON.stringify({

@@ -18,8 +18,9 @@
  *     off at its cap) asks the next model, whose résumé is the delivery;
  *   - when no model writes a résumé, nothing is saved and nothing is mailed;
  *   - a letter that comes back as prose is still the letter;
- *   - no score block without the reply's own scores, and no model's name in
- *     the customer's mail or the saved product name.
+ *   - no score block (not even the reply's own: nothing measured it,
+ *     RC-S12-106), and no model's name in the customer's mail or the saved
+ *     product name.
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
@@ -152,12 +153,11 @@ describe("FA-2: the customer's mail says only what the reply wrote", () => {
     }
   });
 
-  it("the reply's own scores are shown", async () => {
+  it("a score the reply wrote is not shown either: nothing measured it (RC-S12-106)", async () => {
     answer = (a) => (isLetter(a) ? chat(LETTER_JSON) : chat(JSON.stringify({ ...JSON.parse(RESUME_JSON), atsScore: { before: 48, after: 81, improvement: "x" } })));
     await regenerate();
-    expect(sent[0].html).toContain("ATS Score Improvement");
-    expect(sent[0].html).toMatch(/>48%</);
-    expect(sent[0].html).toMatch(/>81%</);
+    expect(sent[0].html).not.toContain("ATS Score Improvement");
+    expect(sent[0].html).not.toMatch(/>48%<|>81%</);
   });
 
   it("the preflight names this build", async () => {

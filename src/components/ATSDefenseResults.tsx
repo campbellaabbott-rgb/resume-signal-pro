@@ -26,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import jsPDF from "jspdf";
 import { ATSParseSimulator } from "./ATSParseSimulator";
-import { simulateAtsParse } from "@/lib/ats-parse-simulator";
+import { simulateAtsParse, type AtsParseSimulationResult, type ParseCheckResult } from "@/lib/ats-parse-simulator";
 
 export interface ATSDefenseData {
   beforeScore: {
@@ -93,6 +93,58 @@ export interface ATSDefenseData {
   };
   actionPlan: Array<{ priority: number; action: string; timeEstimate: string; impact: string }>;
   redFlagsSummary: Array<{ flag: string; whyItMatters: string; howToFix: string }>;
+  /** The parse checks the generator ran on the résumé and saved with the
+      report (RC-S12-031); the résumé itself is never saved. Absent on
+      copies saved before the checks were kept. */
+  parseSimulation?: AtsParseSimulationResult;
+}
+
+/** The saved checks, when the saved copy holds a readable set; null otherwise. */
+export function savedParseSimulation(data: { parseSimulation?: unknown }): AtsParseSimulationResult | null {
+  const sim = data.parseSimulation as Partial<AtsParseSimulationResult> | undefined;
+  if (!sim || typeof sim !== "object" || !Array.isArray(sim.checks) || typeof sim.overallConfidence !== "number") return null;
+  const checks = sim.checks.filter((c): c is ParseCheckResult =>
+    !!c && typeof c === "object" && typeof c.label === "string" && typeof c.detail === "string"
+    && (c.status === "pass" || c.status === "warning" || c.status === "fail"));
+  return checks.length ? { overallConfidence: sim.overallConfidence, checks } : null;
+}
+
+const SAVED_STATUS = {
+  pass: { icon: CheckCircle2, className: "text-success", bg: "bg-success/5 border-success/20" },
+  warning: { icon: AlertTriangle, className: "text-warning", bg: "bg-warning/5 border-warning/20" },
+  fail: { icon: AlertCircle, className: "text-destructive", bg: "bg-destructive/5 border-destructive/20" },
+} as const;
+
+/** The saved checks, drawn like the live simulation, for a tab that holds no résumé. */
+function SavedParseSimulation({ simulation }: { simulation: AtsParseSimulationResult }) {
+  const { t } = useTranslation();
+  const { overallConfidence, checks } = simulation;
+  const color = overallConfidence >= 80 ? "text-success" : overallConfidence >= 50 ? "text-warning" : "text-destructive";
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5" data-rb-saved-parse-simulation>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-left">
+          <h3 className="font-bold text-foreground">{t('atsParseSimulator.title')}</h3>
+          <p className="text-xs text-muted-foreground">{t('pastBuyers.parseSimulationSaved')}</p>
+        </div>
+        <span className={cn("text-xl font-bold tabular-nums shrink-0", color)}>{overallConfidence}%</span>
+      </div>
+      <div className="mt-4 space-y-2">
+        {checks.map((check, i) => {
+          const { icon: Icon, className, bg } = SAVED_STATUS[check.status];
+          return (
+            <div key={check.id || i} className={cn("rounded-xl border p-3 flex items-start gap-2.5", bg)}>
+              <Icon className={cn("w-4 h-4 mt-0.5 shrink-0", className)} />
+              <div className="flex-1 min-w-0">
+                <p className={cn("text-sm font-semibold", className)}>{check.label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{check.detail}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 interface ATSDefenseResultsProps {
@@ -191,6 +243,8 @@ export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATS
   const { t } = useTranslation();
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const scoreImprovement = data.afterScore.overall - data.beforeScore.overall;
+  // The tab's résumé runs the checks live; without it, the saved checks.
+  const savedSimulation = resumeText ? null : savedParseSimulation(data);
 
   const generatePDF = async () => {
     setIsGeneratingPdf(true);
@@ -242,11 +296,11 @@ export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATS
 
       // ATS Parse Simulation — mechanical checks, included in the PDF since this is
       // the deliverable the customer actually keeps and references later.
-      if (resumeText) {
+      if (resumeText || savedSimulation) {
         addPageIfNeeded(30);
         addText('ATS Parse Simulation (Mechanical Checks)', margin, y, { fontSize: 14, fontStyle: 'bold' });
         y += 8;
-        const simulation = simulateAtsParse(resumeText, { multiColumnDetected });
+        const simulation = resumeText ? simulateAtsParse(resumeText, { multiColumnDetected }) : savedSimulation!;
         addText(`Overall parse confidence: ${simulation.overallConfidence}%`, margin, y, { fontSize: 10, fontStyle: 'bold' });
         y += 7;
         simulation.checks.forEach((check) => {
@@ -422,8 +476,14 @@ export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATS
       </div>
 
       {/* Mechanical ATS Parse Simulation — distinct from the AI before/after scores above */}
-      {resumeText && (
+      {resumeText ? (
         <ATSParseSimulator resumeText={resumeText} multiColumnDetected={multiColumnDetected} />
+      ) : savedSimulation ? (
+        <SavedParseSimulation simulation={savedSimulation} />
+      ) : (
+        <p className="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground" data-rb-parse-simulation-missing>
+          {t('pastBuyers.parseSimulationMissing')}
+        </p>
       )}
 
       {/* Priority Action Plan */}

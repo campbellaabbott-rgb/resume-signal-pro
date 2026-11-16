@@ -7,7 +7,7 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { buyerEmailOf } from "../_shared/buyer-email.ts";
 import { proGrantRefusal } from "../_shared/pro.ts";
-import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
+import { REFUNDED_CLAIM_PRODUCT, REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
 import { targetRolesOf } from "../_shared/target-roles.ts";
 import { hasMailboxProof, maskEmail } from "../_shared/mailbox-proof.ts";
 import { jwtClaims, requireWebsiteSession } from "../_shared/website-session.ts";
@@ -74,6 +74,46 @@ const corsHeaders = {
 const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[VERIFY-PRODUCT-PURCHASE] ${step}`, details ? JSON.stringify(details) : '');
 };
+
+/**
+ * A PRO GRANT THE NIGHTLY PURGE REMOVED STILL OPENS ITS SAVED COPY (S14X-104).
+ *
+ * 'scan-cache-and-telemetry-purge' deleted a consumed grant 90 days after it
+ * was spent, while the copy it made is kept for a year: the link in the
+ * purchase mail then answered 400 "Invalid session" for a copy that still
+ * existed. With no grant row left, the redemption's claim and an unexpired
+ * saved copy are the proof, as they are for a Stripe buyer's refresh; a
+ * refunded order or claim opens nothing. Nothing is minted: the answer is
+ * the saved copy and isFirstUse false. Null when any of it is missing or
+ * unreadable (the caller answers 400 as before).
+ */
+async function savedCopyOfPurgedGrant(
+  // deno-lint-ignore no-explicit-any
+  db: any,
+  sessionId: string,
+): Promise<{ productType: string | null; productName: string | null; email: string | null; content: unknown } | null> {
+  try {
+    const { data: claim, error: claimError } = await db.from("used_stripe_sessions")
+      .select("session_id, product_type").eq("session_id", sessionId).maybeSingle();
+    if (claimError || !claim || claim.product_type === REFUNDED_CLAIM_PRODUCT) return null;
+    const { data: refunded, error: refundError } = await db.from("product_deliveries")
+      .select("id").eq("stripe_session_id", sessionId).eq("status", "refunded");
+    if (refundError || (Array.isArray(refunded) && refunded.length > 0)) return null;
+    const { data: rows, error } = await db.rpc("get_purchased_content_by_session", { p_session_id: sessionId });
+    if (error || !Array.isArray(rows)) return null;
+    const row = rows.find((r: { generated_content?: unknown }) => r?.generated_content) as
+      { product_type?: string | null; product_name?: string | null; customer_email?: string | null; generated_content: unknown } | undefined;
+    if (!row) return null;
+    return {
+      productType: row.product_type ?? claim.product_type ?? null,
+      productName: row.product_name ?? null,
+      email: row.customer_email ?? null,
+      content: row.generated_content,
+    };
+  } catch {
+    return null;
+  }
+}
 
 /**
  * THE BUYER'S ADDRESS IS SHOWN ONLY TO WHOEVER PROVED THAT MAILBOX (R1,
@@ -271,6 +311,26 @@ serve(async (req) => {
           .eq("id", grantId)
           .not("consumed_at", "is", null)
           .maybeSingle();
+        if (!spent) {
+          const kept = await savedCopyOfPurgedGrant(supabaseGrant, sessionId);
+          if (kept) {
+            logStep("A purged grant's saved copy answered", { grantId, productType: kept.productType });
+            const shown = await callerProvedMailbox(req, supabaseGrant, kept.email);
+            return new Response(JSON.stringify({
+              success: true,
+              verified: true,
+              isFirstUse: false,
+              productType: kept.productType,
+              productName: kept.productName,
+              customerEmail: shown ? kept.email : maskEmail(kept.email),
+              customerEmailMasked: !!kept.email && !shown,
+              emailSent: false,
+              generatedContent: kept.content,
+              inProgress: false,
+              hasResumeData: false,
+            }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+        }
         const { data: claim } = spent
           ? await supabaseGrant.from("used_stripe_sessions").select("session_id").eq("session_id", sessionId).maybeSingle()
           : { data: null };
@@ -452,6 +512,9 @@ serve(async (req) => {
           product_type: productType,
           product_name: productName,
           amount_cents: session.amount_total,
+          // The currency the amount is in (S14X-227): per-currency revenue
+          // has a source on the order row. A Pro grant's synthetic session has none.
+          currency: (session as { currency?: string | null }).currency || null,
           resume_session_id: resumeSessionId || null,
           job_title: session.metadata?.job_title || null,
           job_company: session.metadata?.job_company || null,
@@ -573,6 +636,10 @@ serve(async (req) => {
     // claimed the session first (CP-021): when the webhook claimed it and its
     // own try failed, the copy this page made was never mailed by anyone.
     let generatedHere = false;
+    // A closed order (delivered, or mailed) with no saved copy (S14X-111):
+    // nothing is being made and no mail is coming, so the page is told so
+    // and offers its form, never "still being made".
+    let closedNoCopy = false;
     if (GENERATED_PRODUCT_TYPES.includes(productType ?? '') && !generatedContent) {
       try {
         const { data: priorRows } = await supabase
@@ -625,16 +692,44 @@ serve(async (req) => {
     // it between the read above and now: it is theirs, and the page waits.
     // The two products made afresh on every visit are not leased (a second
     // tab would be held for ten minutes for nothing).
+    //
+    // WHY A LEASE WAS REFUSED (S14X-111): take_delivery_lease_status says
+    // whether the order is closed (refunded, delivered, mailed) or held by
+    // another maker; every refusal used to read as "in progress". While that
+    // function is absent (PGRST202) the plain lease answers as before.
     if (generateContent && resumeSessionId && !generatedContent && !inProgress && SAVED_COPY_PRODUCT_TYPES.includes(productType ?? '')) {
-      const { data: token, error: leaseError } = await supabase.rpc('take_delivery_lease', {
+      const leaseArgs = {
         p_stripe_session_id: sessionId, p_seen_status: seenStatus ?? 'payment_received', p_minutes: LEASE_MINUTES,
         p_product_type: productType ?? 'unknown', p_email: customerEmail,
-      });
+      };
+      let token: unknown = null;
+      let refusal: string | null = null;
+      let leaseError: { message: string } | null = null;
+      const told = await supabase.rpc('take_delivery_lease_status', leaseArgs);
+      if (told.error && (told.error as { code?: string }).code === 'PGRST202') {
+        const plain = await supabase.rpc('take_delivery_lease', leaseArgs);
+        token = plain.data;
+        leaseError = plain.error;
+      } else if (told.error) {
+        leaseError = told.error;
+      } else {
+        const answer = (Array.isArray(told.data) ? told.data[0] : told.data) as { token?: unknown; refusal?: unknown } | null;
+        token = answer?.token ?? null;
+        refusal = typeof answer?.refusal === 'string' ? answer.refusal : null;
+      }
       if (leaseError) {
         logStep("The delivery lease could not be taken; generating without it", { error: leaseError.message });
+      } else if (!token && refusal === 'closed_refunded') {
+        return new Response(
+          JSON.stringify({ error: REFUNDED_PURCHASE_MESSAGE, refunded: true, code: 'refunded' }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } else if (!token && (refusal === 'closed_delivered' || refusal === 'closed_mailed')) {
+        closedNoCopy = true;
+        logStep("The order is closed and no copy is kept; the page offers its form", { sessionId, refusal });
       } else if (!token) {
         inProgress = true;
-        logStep("Another maker took this order first; not generating twice", { sessionId });
+        logStep("Another maker took this order first; not generating twice", { sessionId, refusal });
       } else {
         leaseToken = String(token);
       }
@@ -664,7 +759,7 @@ serve(async (req) => {
       return true;
     };
 
-    if (generateContent && resumeSessionId && !generatedContent && !inProgress) {
+    if (generateContent && resumeSessionId && !generatedContent && !inProgress && !closedNoCopy) {
       logStep("Content generation requested", { productType, resumeSessionId });
 
       // Log generation started (the lease above already did, when one was taken)
@@ -1117,9 +1212,11 @@ serve(async (req) => {
         inProgress,
         // A résumé is bound AND readable: the retry sweep can make the product
         // from it, so the page makes nothing of its own (review of S11-054).
-        hasResumeData: !!resumeSessionId && !resumeUnreadable && !needsJobPosting,
+        hasResumeData: !!resumeSessionId && !resumeUnreadable && !needsJobPosting && !closedNoCopy,
         // Nothing can make it until the buyer sends the posting (S12-054).
         ...(needsJobPosting ? { needsJobPosting: true } : {}),
+        // Closed (delivered or mailed) and no copy kept: nothing is coming (S14X-111).
+        ...(closedNoCopy && !generatedContent ? { closedNoCopy: true } : {}),
         // The ATS Defense roles named at checkout, for the page's own fallback (S11-074).
         ...(productType === 'ats_defense' ? { targetRoles: boughtRoles } : {}),
       }),

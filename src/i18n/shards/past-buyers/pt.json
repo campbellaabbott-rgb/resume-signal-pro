@@ -1,0 +1,9 @@
+{
+  "pastBuyers": {
+    "closedNoCopy": "Nada mais está sendo preparado para este pedido, e esta página não guarda nenhuma cópia dele. Se ele foi enviado para o seu e-mail, essa cópia continua sendo sua. Adicione seu currículo abaixo para criá-lo aqui agora.",
+    "openedInPrint": "Seu relatório usa letras que a fonte do PDF não consegue desenhar, então ele foi aberto na janela de impressão. Escolha \"Salvar como PDF\" lá para guardar uma cópia.",
+    "parseSimulationSaved": "Verificado quando este relatório foi criado. Seu currículo em si não é guardado.",
+    "parseSimulationMissing": "Este relatório foi salvo antes de as verificações de leitura serem guardadas com ele. Analise seu currículo de novo para ver como um ATS o lê.",
+    "downloadLetter": "Baixar"
+  }
+}
