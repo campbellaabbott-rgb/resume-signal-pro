@@ -108,16 +108,18 @@ describe("the market pulse is opt-in, and opting in sends a confirmation, not a 
   });
 });
 
-describe("the fix-plan box only asks too", () => {
-  it("starts unticked; ticked, the report request carries the choice and the page says a button in the mail starts it", async () => {
+// The fix-plan sequence is withdrawn (S14X-012, the owner's option B of
+// 2026-11-15): the report offers no fix-plan box, and the request carries no
+// sequence choice (the-report-mail-box-offers-no-fix-plan-sequence holds the
+// rest).
+describe("the fix-plan sequence is not offered", () => {
+  it("there is no fix-plan box, and the report request carries no sequence choice", async () => {
     render(<EmailReportCapture payload={payload} />);
-    const drip = screen.getByRole("checkbox", { name: /short email sequence/i }) as HTMLInputElement;
-    expect(drip.checked).toBe(false);
-    fireEvent.click(drip);
+    expect(screen.queryByRole("checkbox", { name: /short email sequence/i })).toBeNull();
     send();
-    await waitFor(() => expect(screen.getByText(/has a button to start the fix-plan emails/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Sent!/)).toBeInTheDocument());
     const report = invoke.mock.calls.find((c) => c[0] === "send-scan-report") as [string, { body: Record<string, unknown> }];
-    expect(report[1].body.dripOptIn).toBe(true);
+    expect(report[1].body).not.toHaveProperty("dripOptIn");
   });
 
   it("unticked, nothing about the sequence is said", async () => {

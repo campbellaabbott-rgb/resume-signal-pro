@@ -205,11 +205,15 @@ describe("the limit and the lookup", () => {
     expect(leadMails()).toEqual([]);
   });
 
-  it("an alert that goes spends one lookup on its address, the same one the geo check made", async () => {
+  // The alert names no country since S14X-101 (the owner's answer 'remove',
+  // 2026-11-15: owner alerts carry counts or a reference only), so the geo
+  // check's lookup is the only one.
+  it("an alert that goes spends no lookup of its own: the geo check's is the one, and the alert names no country", async () => {
     await post({ email: "one@corp.example.com" }, "192.0.2.83");
     expect(lookups).toHaveLength(1);
     expect(leadMails()).toHaveLength(1);
-    expect(leadMails()[0].subject).toContain("US");
+    expect(leadMails()[0].subject).not.toContain("US");
+    expect(leadMails()[0].html).not.toContain("US");
   });
 
   it("a limit the database could not answer still saves the lead, as it always has, and the doors bound the mail", async () => {
