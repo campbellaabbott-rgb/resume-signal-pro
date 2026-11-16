@@ -18,6 +18,13 @@
  *   - DUPLICATES. Every element with an id was captured, the report's own
  *     wrapper and the sections nested in the overview among them, so most of
  *     the report appeared two or three times.
+ *   - BLANK ON A PHONE (S14X-112). Every section was captured at scale 2
+ *     whatever its size, so a long one asked a phone for a canvas past what
+ *     its browser draws (iOS Safari stops near 16.7 million pixels, every
+ *     browser near 32,767 on a side): the canvas came back empty and the PDF
+ *     blank. A section is now captured at the scale its size allows, one too
+ *     tall for one canvas in page-aligned windows, and a canvas that still
+ *     comes back empty is a PdfNotDrawnOnThisDevice the page names.
  *
  * Pure apart from the default slice cropper (a canvas): html2canvas and jsPDF
  * are passed in, so the tests run the whole export with fakes.
@@ -85,6 +92,50 @@ export function pageSlices(totalPx: number, pagePx: number): Array<{ y: number; 
 
 type CanvasLike = { width: number; height: number; toDataURL: (type?: string, quality?: number) => string };
 
+/** The most pixels one capture may hold: under iOS Safari's canvas ceiling (16,777,216). */
+export const MAX_CAPTURE_PIXELS = 16_000_000;
+/** The tallest side one capture may have: under every browser's 32,767. */
+export const MAX_CAPTURE_SIDE = 32_000;
+
+/** A canvas this device's browser could not draw: nothing usable to put in the PDF. */
+export class PdfNotDrawnOnThisDevice extends Error {
+  constructor(what: string) {
+    super(`This device's browser could not draw the PDF (${what})`);
+    this.name = "PdfNotDrawnOnThisDevice";
+  }
+}
+
+/** The image of a canvas, or a PdfNotDrawnOnThisDevice for the empty one a canvas past its ceiling gives. */
+function drawn(data: string): string {
+  if (!data || data === "data:,") throw new PdfNotDrawnOnThisDevice("an empty image");
+  return data;
+}
+
+/**
+ * How a section of w x h CSS pixels is captured: the scale (2 when it fits,
+ * never below 1 unless its width alone demands it), and, when one canvas at
+ * that scale would pass MAX_CAPTURE_PIXELS or MAX_CAPTURE_SIDE, the windows
+ * (top and height, in CSS pixels) captured one canvas each. A window is a
+ * whole number of pages (`pageCss`, a page's height in the section's CSS
+ * pixels) wherever one page fits, so no page is split between two canvases.
+ * A section not laid out (0 wide or high) is captured once at 2, as before.
+ */
+export function capturePlan(w: number, h: number, pageCss: number): { scale: number; windows: Array<{ y: number; h: number }> | null } {
+  if (!(w > 0) || !(h > 0)) return { scale: 2, windows: null };
+  // Floored, so a capture sized to fit never lands a rounding over the ceiling.
+  const fitWhole = Math.floor(Math.sqrt(MAX_CAPTURE_PIXELS / (w * h)) * 1e4) / 1e4;
+  const widest = Math.min(MAX_CAPTURE_SIDE / w, Math.sqrt(MAX_CAPTURE_PIXELS / w));
+  const scale = Math.min(2, Math.max(Math.min(1, widest), fitWhole));
+  if (w * h * scale * scale <= MAX_CAPTURE_PIXELS && h * scale <= MAX_CAPTURE_SIDE) return { scale, windows: null };
+  const most = Math.floor(Math.min(MAX_CAPTURE_PIXELS / (w * scale * scale), MAX_CAPTURE_SIDE / scale));
+  const pages = pageCss > 0 ? Math.floor(most / pageCss) : 0;
+  // Whole pixels, so the windows meet exactly; the canvas's rounding sliver is folded on drawing.
+  const step = Math.max(1, pages >= 1 ? Math.floor(pages * pageCss) : most);
+  const windows: Array<{ y: number; h: number }> = [];
+  for (let y = 0; y < h; y += step) windows.push({ y, h: Math.min(step, h - y) });
+  return { scale, windows };
+}
+
 export type PdfLike = {
   internal: { pageSize: { getWidth(): number; getHeight(): number } };
   addPage(): unknown;
@@ -105,7 +156,7 @@ function cropWithCanvas(canvas: CanvasLike, y: number, h: number): string {
   slice.width = canvas.width;
   slice.height = h;
   const ctx = slice.getContext("2d");
-  if (!ctx) throw new Error("no 2d canvas to cut the page from");
+  if (!ctx) throw new PdfNotDrawnOnThisDevice("no 2d canvas to cut the page from");
   ctx.fillStyle = PDF_BACKGROUND;
   ctx.fillRect(0, 0, slice.width, h);
   ctx.drawImage(canvas as unknown as CanvasImageSource, 0, y, canvas.width, h, 0, 0, canvas.width, h);
@@ -123,17 +174,56 @@ export async function buildAnalysisPdf(root: HTMLElement, deps: PdfDeps): Promis
   const pdfHeight = pdf.internal.pageSize.getHeight();
   const usableWidth = pdfWidth - MARGIN_MM * 2;
   const usableHeight = pdfHeight - MARGIN_MM * 2;
+  const captureOptions = (scale: number, window?: { y: number; h: number }) => ({
+    scale,
+    useCORS: true,
+    logging: false,
+    backgroundColor: PDF_BACKGROUND,
+    onclone: (doc: Document) => prepareCloneForCapture(doc),
+    ...(window ? { y: window.y, height: window.h } : {}),
+  });
+  /** A capture of a laid-out section that came back empty is the device failing, never a page left out. */
+  const capture = async (section: HTMLElement, opts: Record<string, unknown>, laidOut: boolean) => {
+    const canvas = await deps.html2canvas(section, opts);
+    if ((!canvas.width || !canvas.height) && laidOut) throw new PdfNotDrawnOnThisDevice(`an empty ${canvas.width} x ${canvas.height} canvas`);
+    return canvas;
+  };
 
   let y = MARGIN_MM;
   let pageHasContent = false;
   for (const section of sectionsForPdf(root)) {
-    const canvas = await deps.html2canvas(section, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: PDF_BACKGROUND,
-      onclone: (doc: Document) => prepareCloneForCapture(doc),
-    });
+    const w = section.offsetWidth;
+    const h = section.offsetHeight;
+    const laidOut = w > 0 && h > 0;
+    const plan = capturePlan(w, h, laidOut ? (usableHeight * w) / usableWidth : 0);
+
+    if (plan.windows) {
+      // Too tall for one canvas: a fresh page, then each window's pages in
+      // order, every page drawn once.
+      if (pageHasContent) {
+        pdf.addPage();
+        y = MARGIN_MM;
+      }
+      let first = true;
+      for (const window of plan.windows) {
+        const canvas = await capture(section, captureOptions(plan.scale, window), true);
+        const pxPerMm = canvas.width / usableWidth;
+        for (const s of withoutSliver(pageSlices(canvas.height, usableHeight * pxPerMm))) {
+          if (!first) {
+            pdf.addPage();
+            y = MARGIN_MM;
+          }
+          first = false;
+          const sliceMm = s.h / pxPerMm;
+          pdf.addImage(drawn(crop(canvas, s.y, s.h)), "JPEG", MARGIN_MM, y, usableWidth, sliceMm);
+          y += sliceMm + GAP_MM;
+        }
+      }
+      pageHasContent = true;
+      continue;
+    }
+
+    const canvas = await capture(section, captureOptions(plan.scale), laidOut);
     if (!canvas.width || !canvas.height) continue;
     const pxPerMm = canvas.width / usableWidth;
     const heightMm = canvas.height / pxPerMm;
@@ -143,7 +233,7 @@ export async function buildAnalysisPdf(root: HTMLElement, deps: PdfDeps): Promis
         pdf.addPage();
         y = MARGIN_MM;
       }
-      pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", MARGIN_MM, y, usableWidth, heightMm);
+      pdf.addImage(drawn(canvas.toDataURL("image/jpeg", 0.92)), "JPEG", MARGIN_MM, y, usableWidth, heightMm);
       y += heightMm + GAP_MM;
       pageHasContent = true;
       continue;
@@ -161,10 +251,23 @@ export async function buildAnalysisPdf(root: HTMLElement, deps: PdfDeps): Promis
         y = MARGIN_MM;
       }
       const sliceMm = s.h / pxPerMm;
-      pdf.addImage(crop(canvas, s.y, s.h), "JPEG", MARGIN_MM, y, usableWidth, sliceMm);
+      pdf.addImage(drawn(crop(canvas, s.y, s.h)), "JPEG", MARGIN_MM, y, usableWidth, sliceMm);
       y += sliceMm + GAP_MM;
     });
     pageHasContent = true;
   }
   return pdf;
+}
+
+/**
+ * A window's slices with a last one only a rounding's few pixels high folded
+ * into the one before it: a window is a whole number of pages in CSS pixels,
+ * and the canvas's rounding must not add a near-empty page.
+ */
+function withoutSliver(slices: Array<{ y: number; h: number }>): Array<{ y: number; h: number }> {
+  if (slices.length < 2) return slices;
+  const last = slices[slices.length - 1];
+  if (last.h > 4) return slices;
+  const before = slices[slices.length - 2];
+  return [...slices.slice(0, -2), { y: before.y, h: before.h + last.h }];
 }

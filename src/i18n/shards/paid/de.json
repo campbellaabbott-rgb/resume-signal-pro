@@ -9,6 +9,41 @@
       "posting": "Die Stellenanzeige war länger als {{max}} Zeichen, daher hat diese Analyse die ersten {{max}} gelesen.",
       "linkedIn": "Ihr LinkedIn-Text war länger als {{max}} Zeichen, daher hat diese Analyse die ersten {{max}} gelesen."
     },
-    "inProgress": "Ihre Analyse wird bereits erstellt. Diese Seite zeigt sie, sobald sie fertig ist."
+    "inProgress": "Ihre Analyse wird bereits erstellt. Diese Seite zeigt sie, sobald sie fertig ist.",
+    "busy": "Der Analysedienst ist gerade ausgelastet, daher wurde nichts erstellt und nichts gespeichert. Ihr Kauf ist sicher und noch nicht verbraucht: Versuchen Sie es in ein paar Minuten erneut.",
+    "refused": {
+      "title": "Mit diesem Kauf lässt sich keine Analyse öffnen",
+      "refunded": "Dieser Kauf wurde erstattet und enthält daher keine Analyse mehr. Wenn Sie das nicht erwartet haben, schreiben Sie an {{email}} von der Adresse, mit der Sie bezahlt haben.",
+      "notThisProduct": "Dieser Kauf war keine vollständige Lebenslauf-Analyse und kann daher hier keine öffnen. Öffnen Sie ihn über den Link in seiner eigenen Kauf-E-Mail.",
+      "notFound": "Wir konnten diesen Kauf nicht finden. Öffnen Sie Ihre Analyse über den Link in Ihrer Kauf-E-Mail. Wenn diese Seite das weiterhin anzeigt, schreiben Sie an {{email}} von der Adresse, mit der Sie bezahlt haben.",
+      "used": "Mit diesem Kauf wurde die Analyse bereits erstellt, und jeder Kauf erstellt eine. Öffnen Sie sie über den Link in Ihrer Kauf-E-Mail oder über die Bestellung in Ihrem Konto.",
+      "grant": "Ihre Pro-Mitgliedschaft kann diese Analyse gerade nicht enthalten: Die Mitgliedschaft ist nicht aktiv, ihre Zahlung wurde erstattet, oder dieser Link stammt von vor einem Update. Melden Sie sich an und öffnen Sie die vollständige Analyse erneut über Ihr Konto."
+    },
+    "pdf": {
+      "device": "Der Browser dieses Geräts konnte das PDF nicht erstellen: Die Analyse ist größer, als er darstellen kann. Öffnen Sie diese Seite auf einem Computer, um sie zu speichern, oder speichern Sie sie über die Druckfunktion Ihres Browsers als PDF."
+    },
+    "sectionsMissing": {
+      "jobDescription": "Diese Analyse konnte Ihren Lebenslauf diesmal nicht mit der Stellenanzeige vergleichen, daher fehlt dieser Teil. Alles andere in der Analyse ist vollständig.",
+      "linkedIn": "Diese Analyse konnte Ihr LinkedIn-Profil diesmal nicht prüfen, daher fehlt dieser Teil. Alles andere in der Analyse ist vollständig."
+    },
+    "page": {
+      "emailSentTitle": "E-Mail gesendet",
+      "emailSentBody": "Eine Kopie wurde an Ihre E-Mail-Adresse gesendet",
+      "emailSentCheck": "Sehen Sie in Ihrem Posteingang nach",
+      "clearTitle": "Browserdaten löschen",
+      "clearBody": "Lokale Sitzungsdaten entfernen",
+      "cleared": "Entfernt",
+      "clearButton": "Daten entfernen",
+      "deleteTitle": "Serverdaten löschen",
+      "deleteBody": "Analyse von unseren Servern löschen",
+      "deleteButton": "Daten löschen",
+      "deleteConfirmTitle": "Ihre Analysedaten löschen?",
+      "deleteConfirmBody": "Dies kann nicht rückgängig gemacht werden. Ihre Lebenslauf-Analyse wird dauerhaft von unseren Servern gelöscht. Das schützt Ihre Privatsphäre gemäß DSGVO und CCPA.",
+      "deleteConfirmYes": "Ja, meine Daten löschen",
+      "scrollHint": "Scrollen Sie, um die Ergebnisse zu sehen",
+      "analyzeYourResume": "Lebenslauf analysieren",
+      "seoTitle": "Ihre vollständige Lebenslauf-Analyse — Resume Booster",
+      "seoDescription": "Ihre vollständige Lebenslauf-Analyse, geöffnet über Ihren Kauf oder einen Link dazu."
+    }
   }
 }

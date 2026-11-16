@@ -81,6 +81,12 @@ export interface AnalysisData {
     jobDescription?: { from: number; to: number };
     linkedIn?: { from: number; to: number };
   };
+  /**
+   * The sections asked for that the analysis went out without (S14X-041):
+   * analyze-resume leaves out a posting or LinkedIn section whose call failed,
+   * and names it here.
+   */
+  missingSections?: string[];
   jobDescriptionAlignment?: {
     matchScore: number;
     extractedKeywords: string[];
@@ -203,12 +209,52 @@ interface AnalysisResultsProps {
 const safeArray = <T,>(arr: T[] | undefined | null): T[] => arr ?? [];
 
 /**
+ * Words that say nothing about which requirement a phrase names: a
+ * requirement and a missing keyword sharing only these are not the same
+ * thing ("Experience with Python", "Experience with Terraform").
+ */
+const UNTELLING_WORDS = new Set([
+  "a", "an", "and", "the", "of", "in", "on", "for", "to", "with", "or", "as", "at", "by", "from", "plus",
+  "experience", "experienced", "years", "year", "knowledge", "skills", "skill", "ability", "abilities",
+  "strong", "proven", "excellent", "good", "solid", "working", "understanding", "familiarity",
+  "proficiency", "proficient", "using", "including", "related", "relevant",
+]);
+
+/** The words of a phrase that name something: case-folded, a plural's s dropped, the untelling ones left out. */
+function tellingWords(phrase: unknown): Set<string> {
+  const out = new Set<string>();
+  for (const raw of String(phrase ?? "").toLowerCase().split(/[^\p{L}\p{N}+#]+/u)) {
+    if (!raw || !/\p{L}/u.test(raw) || UNTELLING_WORDS.has(raw)) continue;
+    out.add(raw.length > 3 && raw.endsWith("s") && !raw.endsWith("ss") ? raw.slice(0, -1) : raw);
+  }
+  return out;
+}
+
+/**
  * The posting's requirements less those the analysis lists as missing from
- * the résumé, compared as written (trimmed, any case). Exported for the test.
+ * the résumé (S13-051), and less those that share a word that names something
+ * with anything listed as missing (RC-S13-051): the model words the two lists
+ * apart, and "Experience with OKRs and roadmaps" was shown as on the résumé
+ * above "OKRs" shown as missing. Leaving one out says less, never something
+ * false. Exported for the test.
  */
 export function keywordsNotMissing(alignment: { extractedKeywords?: string[]; missingKeywords?: string[] } | undefined): string[] {
-  const missing = new Set(safeArray(alignment?.missingKeywords).map((k) => String(k).trim().toLowerCase()));
-  return safeArray(alignment?.extractedKeywords).filter((k) => !missing.has(String(k).trim().toLowerCase()));
+  const missingList = safeArray(alignment?.missingKeywords);
+  const missing = new Set(missingList.map((k) => String(k).trim().toLowerCase()));
+  const missingWords = new Set(missingList.flatMap((k) => [...tellingWords(k)]));
+  return safeArray(alignment?.extractedKeywords).filter((k) =>
+    !missing.has(String(k).trim().toLowerCase()) && ![...tellingWords(k)].some((w) => missingWords.has(w)));
+}
+
+/**
+ * The sections the analysis went out without, as the report names them
+ * (S14X-041): missingSections, or, for an analysis stored before it, a
+ * posting it says it had with no posting section.
+ */
+export function sectionsMissingOf(data: AnalysisData): Array<"jobDescription" | "linkedIn"> {
+  const named = safeArray(data.missingSections).filter((s): s is "jobDescription" | "linkedIn" => s === "jobDescription" || s === "linkedIn");
+  if (named.length > 0) return [...new Set(named)];
+  return data.hasJobDescription === true && !data.jobDescriptionAlignment ? ["jobDescription"] : [];
 }
 
 // Resume strength score — uses the AI's own computed atsScore (job title match,
@@ -416,6 +462,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
 
   const resumeScore = calculateResumeScore(data);
   const postingKeywordsOnResume = keywordsNotMissing(data.jobDescriptionAlignment);
+  const sectionsMissing = sectionsMissingOf(data);
   
   // Build sections for navigation
   const sections = [
@@ -477,6 +524,14 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 {data.inputsClipped?.linkedIn && (
                   <p>{t('paidAnalysis.clipped.linkedIn', { max: data.inputsClipped.linkedIn.to.toLocaleString() })}</p>
                 )}
+              </div>
+            )}
+            {/* What the analysis went out without (S14X-041): on the page, in print and in the PDF. */}
+            {sectionsMissing.length > 0 && (
+              <div className="mx-auto max-w-2xl rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-left text-sm text-foreground space-y-1" data-testid="sections-missing" role="note">
+                {sectionsMissing.map((section) => (
+                  <p key={section}>{section === "jobDescription" ? t('paidAnalysis.sectionsMissing.jobDescription') : t('paidAnalysis.sectionsMissing.linkedIn')}</p>
+                ))}
               </div>
             )}
             <div className="no-print">

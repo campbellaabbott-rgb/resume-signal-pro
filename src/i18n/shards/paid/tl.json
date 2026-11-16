@@ -9,6 +9,41 @@
       "posting": "Mas mahaba sa {{max}} character ang job posting, kaya ang unang {{max}} lang ang binasa ng analysis na ito.",
       "linkedIn": "Mas mahaba sa {{max}} character ang LinkedIn text mo, kaya ang unang {{max}} lang ang binasa ng analysis na ito."
     },
-    "inProgress": "Ginagawa na ang analysis mo. Ipapakita ito ng page na ito sa sandaling handa na."
+    "inProgress": "Ginagawa na ang analysis mo. Ipapakita ito ng page na ito sa sandaling handa na.",
+    "busy": "Abala ang analysis service ngayon, kaya walang nagawa at walang na-save. Ligtas ang pagbili mo at hindi pa nagagamit: subukan ulit pagkalipas ng ilang minuto.",
+    "refused": {
+      "title": "Hindi makakapagbukas ng analysis ang pagbiling ito",
+      "refunded": "Na-refund ang pagbiling ito, kaya wala na itong kasamang analysis. Kung hindi mo ito inaasahan, sumulat sa {{email}} mula sa address na ginamit mo sa pagbayad.",
+      "notThisProduct": "Hindi para sa Full Resume Analysis ang pagbiling ito, kaya hindi ito makakapagbukas ng isa rito. Buksan ito mula sa link sa sarili nitong purchase email.",
+      "notFound": "Hindi namin mahanap ang pagbiling ito. Buksan ang analysis mo mula sa link sa purchase email mo, at kung ito pa rin ang sinasabi ng page na ito, sumulat sa {{email}} mula sa address na ginamit mo sa pagbayad.",
+      "used": "Nagawa na ng pagbiling ito ang analysis nito, at isa lang ang nagagawa ng bawat pagbili. Buksan ito mula sa link sa purchase email mo o mula sa order sa account mo.",
+      "grant": "Hindi maisasama ng Pro membership mo ang analysis na ito sa ngayon: hindi aktibo ang membership, na-refund ang bayad nito, o galing ang link na ito bago ang isang update. Mag-sign in at buksan ulit ang Full Analysis mula sa account mo."
+    },
+    "pdf": {
+      "device": "Hindi magawa ng browser ng device na ito ang PDF: mas malaki ang analysis kaysa sa kaya nitong iguhit. Buksan ang page na ito sa isang computer para i-save ito, o gamitin ang Print ng browser mo para i-save ito bilang PDF."
+    },
+    "sectionsMissing": {
+      "jobDescription": "Hindi naikumpara ng analysis ang resume mo sa job posting sa pagkakataong ito, kaya wala ang bahaging iyon. Kumpleto ang lahat ng iba pa sa analysis.",
+      "linkedIn": "Hindi nasuri ng analysis ang LinkedIn profile mo sa pagkakataong ito, kaya wala ang bahaging iyon. Kumpleto ang lahat ng iba pa sa analysis."
+    },
+    "page": {
+      "emailSentTitle": "Naipadala ang Email",
+      "emailSentBody": "Nagpadala ng kopya sa email mo",
+      "emailSentCheck": "Tingnan ang inbox mo",
+      "clearTitle": "I-clear ang Browser Data",
+      "clearBody": "Alisin ang lokal na session data",
+      "cleared": "Na-clear na",
+      "clearButton": "I-clear ang Data",
+      "deleteTitle": "Burahin ang Server Data",
+      "deleteBody": "Burahin ang analysis sa mga server namin",
+      "deleteButton": "Burahin ang Data",
+      "deleteConfirmTitle": "Burahin ang data ng analysis mo?",
+      "deleteConfirmBody": "Hindi na ito maibabalik. Permanenteng mabubura sa mga server namin ang resume analysis mo. Nakakatulong ito na protektahan ang privacy mo ayon sa GDPR at CCPA.",
+      "deleteConfirmYes": "Oo, burahin ang data ko",
+      "scrollHint": "Mag-scroll para makita ang mga resulta",
+      "analyzeYourResume": "Suriin ang Resume Mo",
+      "seoTitle": "Ang Full Resume Analysis Mo — Resume Booster",
+      "seoDescription": "Ang Full Resume Analysis mo, binuksan mula sa pagbili mo o mula sa link papunta rito."
+    }
   }
 }

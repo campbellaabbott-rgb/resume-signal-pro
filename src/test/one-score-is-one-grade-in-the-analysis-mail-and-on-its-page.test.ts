@@ -14,13 +14,23 @@
  * an 82 gets the mail's "good" line and never its top one; the colours are
  * the page's; and the industry is the label the page shows, in the mail's
  * language, from tables held equal to the locale files.
+ *
+ * AND (bug round 2026-11-12, lane full-analysis):
+ * - S14X-209: the level printed the fixed choice ("mid") under a CSS
+ *   capitalize; it is now the page's label in the mail's language
+ *   ("Mittlere Ebene"), from a table held equal to the locale files.
+ * - S14X-219: the job-match block read analysisData.jobMatch, which
+ *   analyze-resume never writes, so it never showed; it reads the analysis's
+ *   jobDescriptionAlignment.matchScore now.
+ * - S14X-041: a section the analysis could not write (the posting comparison,
+ *   the LinkedIn review) is named in the mail, not silently left out.
  */
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { ANALYSIS_MAIL_COPY } from "../../supabase/functions/send-analysis-email/copy";
-import { INDUSTRY_LABELS, MAIL_GRADE_FLOORS, industryLabel, mailGrade, mailScoreColor } from "../../supabase/functions/send-analysis-email/grade";
+import { EXPERIENCE_LABELS, INDUSTRY_LABELS, MAIL_GRADE_FLOORS, SECTION_MISSING_LINES, experienceLabel, industryLabel, mailGrade, mailScoreColor } from "../../supabase/functions/send-analysis-email/grade";
 import { ANALYSIS_ENUMS } from "@/lib/analysis-enums";
 
 const ROOT = resolve(__dirname, "../..");
@@ -114,5 +124,98 @@ describe("the industry is the page's label, in the mail's language", () => {
       }
     }
     expect(Object.keys(INDUSTRY_LABELS.en)).toEqual([...ANALYSIS_ENUMS.industry]);
+  });
+});
+
+const LANGUAGES = ["en", "en-GB", "de", "es", "fr", "hi", "nl", "pt", "tl"] as const;
+const locale = (lang: string) => JSON.parse(readFileSync(resolve(ROOT, `src/i18n/locales/${lang}.json`), "utf8")) as { analysisResults: { enum: { experienceLevel: Record<string, string> } } };
+
+describe("the level is the page's label, in the mail's language (S14X-209)", () => {
+  it("every language's level labels are the locale file's, for every choice", () => {
+    for (const lang of LANGUAGES) {
+      const file = locale(lang);
+      for (const level of ANALYSIS_ENUMS.experienceLevel) {
+        expect(experienceLabel(lang, level), `${lang} ${level}`).toBe(file.analysisResults.enum.experienceLevel[level]);
+      }
+    }
+    expect(Object.keys(EXPERIENCE_LABELS.en)).toEqual([...ANALYSIS_ENUMS.experienceLevel]);
+  });
+
+  it("a German mail for 'mid' says Mittlere Ebene, never the choice, and no CSS recases it", async () => {
+    const de = await mail({ atsScore: { score: 70 }, experienceLevel: "mid" }, "de");
+    expect(de.html).toContain(">Mittlere Ebene</strong>");
+    expect(de.html).not.toMatch(/>mid<\/strong>/i);
+    expect(de.html).not.toContain("text-transform: capitalize");
+    const es = await mail({ atsScore: { score: 70 }, experienceLevel: "Executive" }, "es");
+    expect(es.html).toContain(">ejecutivo</strong>");
+  });
+
+  it("a value that is not a choice reads as the page reads it; none is the mail's default", async () => {
+    expect(experienceLabel("en", "very_senior")).toBe("very senior");
+    expect(experienceLabel("de", " ")).toBeNull();
+    const none = await mail({ atsScore: { score: 70 } }, "nl");
+    expect(none.html).toContain(`>${esc(ANALYSIS_MAIL_COPY.nl.levelDefault)}</strong>`);
+  });
+});
+
+describe("the job match is the analysis's own score (S14X-219)", () => {
+  it("an analyze-resume-shaped analysis with a posting shows its match score and the fit line", async () => {
+    const m = await mail({ atsScore: { score: 70 }, hasJobDescription: true, jobDescriptionAlignment: { matchScore: 64, extractedKeywords: [], missingKeywords: [] } });
+    expect(m.html).toContain(esc(ANALYSIS_MAIL_COPY.en.jobMatch(64)));
+    expect(m.html).toContain(esc(ANALYSIS_MAIL_COPY.en.jobFit.weak));
+    const good = await mail({ atsScore: { score: 70 }, hasJobDescription: true, jobDescriptionAlignment: { matchScore: 81 } }, "fr");
+    expect(good.html).toContain(esc(ANALYSIS_MAIL_COPY.fr.jobMatch(81)));
+    expect(good.html).toContain(esc(ANALYSIS_MAIL_COPY.fr.jobFit.good));
+  });
+
+  it("the score is a number from 0 to 100, never markup, and no score or no posting shows no block", async () => {
+    expect((await mail({ atsScore: { score: 70 }, hasJobDescription: true, jobDescriptionAlignment: { matchScore: 140 } })).html).toContain(esc(ANALYSIS_MAIL_COPY.en.jobMatch(100)));
+    for (const data of [
+      { hasJobDescription: true, jobDescriptionAlignment: { matchScore: "<a href=x>9</a>" } },
+      { hasJobDescription: true, jobDescriptionAlignment: { matchScore: null } },
+      { hasJobDescription: false, jobDescriptionAlignment: { matchScore: 64 } },
+      { hasJobDescription: true },
+    ]) {
+      const html = (await mail({ atsScore: { score: 70 }, ...data })).html;
+      expect(html, JSON.stringify(data)).not.toContain("Job Match Score");
+      expect(html).not.toContain("<a href=x>");
+    }
+  });
+
+  it("an analysis stored with the old jobMatch shape still shows its score", async () => {
+    expect((await mail({ atsScore: { score: 70 }, hasJobDescription: true, jobMatch: { score: 77 } })).html).toContain(esc(ANALYSIS_MAIL_COPY.en.jobMatch(77)));
+  });
+});
+
+describe("a section the analysis could not write is named in the mail (S14X-041)", () => {
+  it("every mail language has both lines, each its own sentence", () => {
+    for (const lang of ["en", "de", "es", "fr", "hi", "nl", "pt", "tl"] as const) {
+      expect(SECTION_MISSING_LINES[lang].jobDescription.length, lang).toBeGreaterThan(30);
+      expect(SECTION_MISSING_LINES[lang].linkedIn.length, lang).toBeGreaterThan(30);
+      expect(SECTION_MISSING_LINES[lang].linkedIn).not.toBe(SECTION_MISSING_LINES[lang].jobDescription);
+      if (lang !== "en") expect(SECTION_MISSING_LINES[lang].jobDescription).not.toBe(SECTION_MISSING_LINES.en.jobDescription);
+    }
+  });
+
+  it("missingSections names the posting comparison or the LinkedIn review in the buyer's language", async () => {
+    const en = await mail({ atsScore: { score: 70 }, hasJobDescription: false, missingSections: ["jobDescription"] });
+    expect(en.html).toContain(esc(SECTION_MISSING_LINES.en.jobDescription));
+    expect(en.html).not.toContain(esc(SECTION_MISSING_LINES.en.linkedIn));
+    const de = await mail({ atsScore: { score: 70 }, missingSections: ["jobDescription", "linkedIn"] }, "de");
+    expect(de.html).toContain(esc(SECTION_MISSING_LINES.de.jobDescription));
+    expect(de.html).toContain(esc(SECTION_MISSING_LINES.de.linkedIn));
+  });
+
+  it("an analysis from the function before missingSections that says it had a posting but has no comparison is named too", async () => {
+    const old = await mail({ atsScore: { score: 70 }, hasJobDescription: true }, "es");
+    expect(old.html).toContain(esc(SECTION_MISSING_LINES.es.jobDescription));
+  });
+
+  it("a whole analysis names nothing missing", async () => {
+    const whole = await mail({ atsScore: { score: 70 }, hasJobDescription: true, jobDescriptionAlignment: { matchScore: 70 }, missingSections: [] });
+    expect(whole.html).not.toContain(esc(SECTION_MISSING_LINES.en.jobDescription));
+    expect(whole.html).not.toContain(esc(SECTION_MISSING_LINES.en.linkedIn));
+    const none = await mail({ atsScore: { score: 70 }, missingSections: ["<b>x</b>", 7] });
+    expect(none.html).not.toContain("<b>x</b>");
   });
 });
