@@ -8,18 +8,22 @@
  * password change asked for nothing either.
  *
  * WHAT HOLDS NOW.
- *   - Changing the password asks for the current password, or for a
- *     confirmation code mailed to the account's address (reauthenticate, then
- *     the code goes with the change). It waits for the account guard first
- *     (AuthContext.ensureGuard), so a guard clearing a pre-proof password can
- *     never land after the new one.
+ *   - Changing the password asks for the current password, or for the code in
+ *     a password-reset email to the account's address (S14X-087). The AUTH
+ *     SERVER checks that code (verifyOtp, type recovery): the old way mailed a
+ *     reauthentication code and sent it along as a nonce the server checks
+ *     only for sessions over a day old, so any text passed. The email names
+ *     the reader's language (S14X-236). Either way the change waits for the
+ *     account guard first (AuthContext.ensureGuard), so a guard clearing a
+ *     pre-proof password can never land after the new one.
  *   - Changing the address is offered only once the auth server confirms
  *     address changes (mailer_autoconfirm false, read from /auth/v1/settings):
  *     then it asks for the current password and the new address twice, and
  *     says, truthfully, that both addresses must confirm. While the server
  *     still confirms on its own it is not offered, and the card says how to
  *     get the address changed.
- *   - Sign out of this device, or everywhere.
+ *   - Sign out of this device, or everywhere, asking first when the builder
+ *     or Freelance Boost holds work kept only in this browser (S14X-097).
  *   - How the address was proven, and when (Account UX spec 6): the account
  *     read (get-account-data) says it, from the sign-in that proved it; an
  *     unproven address is said to be unproven.
@@ -27,11 +31,14 @@
  */
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 import { LogOut, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { AUTH_SUPPORT_EMAIL, MIN_PASSWORD_LENGTH } from "@/config/auth-providers";
+import { setPendingSignIn } from "@/lib/auth-fragment";
+import { useAuthStrings } from "@/i18n/auth/load";
+import { confirmRedirect, mailLanguageParam } from "@/i18n/auth/mail-language";
+import { SignOutChoice } from "@/components/auth/SignOutChoice";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -91,8 +98,8 @@ export function proofLine(
 
 export function SecurityCard({ proven, proof }: SecurityCardProps = {}) {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
-  const { user, session, signOut, signOutEverywhere, ensureGuard } = useAuth();
+  useAuthStrings();
+  const { user, session, ensureGuard } = useAuth();
   const addressChangeOn = useAddressChangeConfirmed();
 
   const [current, setCurrent] = useState("");
@@ -115,12 +122,44 @@ export function SecurityCard({ proven, proof }: SecurityCardProps = {}) {
     return !error;
   };
 
+  /** The code comes in a password-reset email, written in the reader's language; its link also works, on the sign-in page. */
   const askForCode = async () => {
     setPwMsg(null);
-    const { error } = await supabase.auth.reauthenticate();
-    if (error) { setPwMsg({ ok: false, text: t("accountSettings.codeFailed", "We couldn't ask for a confirmation code right now. Try again in a minute.") }); return; }
+    const email = user?.email ?? "";
+    let failed = !email;
+    if (email) {
+      // This browser asked: the email's link, if pressed instead, is adopted without a question.
+      setPendingSignIn("/account", undefined, email);
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/auth?mode=reset${mailLanguageParam()}` });
+        failed = !!error;
+      } catch { failed = true; }
+    }
+    if (failed) { setPwMsg({ ok: false, text: t("auth.security.codeFailed", "We couldn't ask for a code right now. Try again in a minute.") }); return; }
     setCodeAsked(true);
-    setPwMsg({ ok: true, text: t("accountSettings.codeOnItsWay", "If your address can receive mail, a confirmation code is on its way to {{email}}.", { email: user?.email ?? "" }) });
+    setPwMsg({ ok: true, text: t("auth.security.codeOnItsWay", "If your address can receive mail, a password-reset email with a 6-digit code is on its way to {{email}}. Enter the code here.", { email }) });
+  };
+
+  /**
+   * The code, checked by the auth server: a wrong one changes nothing. Its
+   * session (this account's, fresh from the mailbox) then waits for the
+   * account guard, as the reset page's does, and only a proven answer, or the
+   * auth log's unconfirmed one (nothing was cleared then, or ever will be),
+   * goes on to the change. Answers the message to show, or null to go on.
+   */
+  const proveByCode = async (email: string): Promise<Msg> => {
+    let fresh: Parameters<typeof ensureGuard>[0] = null;
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: "recovery" });
+      if (!error) fresh = data?.session ?? null;
+    } catch { /* read as a refusal */ }
+    if (!fresh) return { ok: false, text: t("auth.security.codeRefused", "That code didn't work, so your password was not changed. Check it, or ask for a new one.") };
+    const g = await ensureGuard(fresh);
+    if (g.signedOut) return { ok: false, text: t("auth.security.signedOut", "For your security every device was signed out, this one too. Reset your password from the sign-in page to finish.") };
+    if (g.state === "done" && g.proven) return null;
+    if (g.state === "failed" && g.status === 409 && g.reason === "audit_unconfirmed") return null;
+    if (g.state === "failed" && g.status !== 409) return { ok: false, text: t("auth.security.guardBlocked", "We couldn't confirm your address just now, so your password was not changed. Try again in a few minutes.") };
+    return { ok: false, text: t("auth.security.guardRefused", "We couldn't confirm your address with that code, so your password was not changed. Ask for a new code.") };
   };
 
   const changePassword = async () => {
@@ -129,14 +168,19 @@ export function SecurityCard({ proven, proof }: SecurityCardProps = {}) {
     if (!current && !code.trim()) { setPwMsg({ ok: false, text: t("accountSettings.pwNeedsProof", "Enter your current password, or ask for a confirmation code.") }); return; }
     setBusy(true);
     try {
-      // The account guard answers first: a password set before the address
-      // was proven is cleared by it, and must never clear this one.
-      await ensureGuard(session);
-      if (current && !(await passwordIsRight(current))) {
-        setPwMsg({ ok: false, text: t("accountSettings.pwWrong", "That isn't your current password.") });
-        return;
+      if (current) {
+        // The account guard answers first: a password set before the address
+        // was proven is cleared by it, and must never clear this one.
+        await ensureGuard(session);
+        if (!(await passwordIsRight(current))) {
+          setPwMsg({ ok: false, text: t("accountSettings.pwWrong", "That isn't your current password.") });
+          return;
+        }
+      } else {
+        const refused = await proveByCode(user?.email ?? "");
+        if (refused) { setPwMsg(refused); return; }
       }
-      const { error } = await supabase.auth.updateUser(code.trim() && !current ? { password: next, nonce: code.trim() } : { password: next });
+      const { error } = await supabase.auth.updateUser({ password: next });
       if (error) { setPwMsg({ ok: false, text: error.message }); return; }
       setCurrent(""); setNext(""); setCode(""); setCodeAsked(false);
       setPwMsg({ ok: true, text: t("accountSettings.pwChanged", "Password changed.") });
@@ -153,7 +197,8 @@ export function SecurityCard({ proven, proof }: SecurityCardProps = {}) {
     setBusy(true);
     try {
       if (!(await passwordIsRight(emailCurrent))) { setEmailMsg({ ok: false, text: t("accountSettings.pwWrong", "That isn't your current password.") }); return; }
-      const { error } = await supabase.auth.updateUser({ email: a });
+      // The confirmation emails name the reader's language (S14X-236).
+      const { error } = await supabase.auth.updateUser({ email: a }, { emailRedirectTo: confirmRedirect("/account") });
       if (error) { setEmailMsg({ ok: false, text: error.message }); return; }
       setEmailCurrent(""); setNewEmail(""); setNewEmail2("");
       setEmailMsg({ ok: true, text: t("accountSettings.emailConfirmBoth", "Nothing has changed yet: we've asked both your current and your new address to confirm. Your address changes once both are confirmed.") });
@@ -184,11 +229,11 @@ export function SecurityCard({ proven, proof }: SecurityCardProps = {}) {
               placeholder={t("accountSettings.pwCurrent", "Current password")} aria-label={t("accountSettings.pwCurrent", "Current password")} className={`${input} w-full`} />
             {!current && (
               codeAsked ? (
-                <input inputMode="numeric" autoComplete="off" value={code} onChange={(e) => setCode(e.target.value)}
-                  placeholder={t("accountSettings.codeField", "Confirmation code from the email")} aria-label={t("accountSettings.codeField", "Confirmation code from the email")} className={`${input} w-full`} />
+                <input inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)}
+                  placeholder={t("auth.security.codeField", "Code from the password-reset email")} aria-label={t("auth.security.codeField", "Code from the password-reset email")} className={`${input} w-full`} />
               ) : (
                 <button type="button" onClick={() => void askForCode()} className="text-[11px] text-primary hover:underline">
-                  {t("accountSettings.noPassword", "No password yet, or forgotten it? Email me a confirmation code instead")}
+                  {t("auth.security.askCode", "No password yet, or forgotten it? Email me a code instead")}
                 </button>
               )
             )}
@@ -227,14 +272,12 @@ export function SecurityCard({ proven, proof }: SecurityCardProps = {}) {
 
       <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border/60">
         <span className="text-xs text-muted-foreground mr-auto">{t("accountSettings.sessions", "Signed in as {{email}}", { email: user?.email ?? "" })}</span>
-        <button type="button" onClick={async () => { await signOut(); navigate("/"); }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground">
+        <SignOutChoice className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground">
           <LogOut className="w-3.5 h-3.5" /> {t("accountSettings.signOutHere", "Sign out of this device")}
-        </button>
-        <button type="button" onClick={async () => { await signOutEverywhere(); navigate("/"); }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground">
+        </SignOutChoice>
+        <SignOutChoice everywhere className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground">
           {t("accountSettings.signOutEverywhere", "Sign out everywhere")}
-        </button>
+        </SignOutChoice>
       </div>
     </div>
   );

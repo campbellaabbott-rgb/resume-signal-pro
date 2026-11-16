@@ -167,7 +167,7 @@ function ContinueView({ next, mode }: { next: string; mode: AuthMode }) {
 
   // Signed in (now, or by a session adopted from the URL): go where the sign-in was headed.
   useEffect(() => {
-    if (loading || !session || stashState.kind === "adopting") return;
+    if (loading || !session || stashState.kind === "adopting" || stashState.kind === "adoptRetry") return;
     const target = stashState.kind === "adopted" && stashState.next ? stashState.next : next;
     navigate(target, { replace: true });
   }, [session, loading, stashState, next, navigate]);
@@ -189,13 +189,18 @@ function ContinueView({ next, mode }: { next: string; mode: AuthMode }) {
   }, [stashState.kind, mode, clearStashOutcome]);
 
   if (stashState.kind === "adopting") return <Working text={t("auth.confirm.working", "Signing you in…")} />;
-  // The link's tokens could not be checked (the auth server unreachable): they
-  // are kept, and Try again asks once more (second recheck of R1).
-  if (stashState.kind === "unreachable") {
+  // The link's tokens could not be checked (the auth server unreachable), or
+  // the session they named could not be handed over (S14X-208): both are
+  // kept, and Try again asks once more (second recheck of R1).
+  if (stashState.kind === "unreachable" || stashState.kind === "adoptRetry") {
     return (
       <Card>
         <h1 className="text-xl font-bold text-foreground mb-2">{t("auth.confirm.title", "Finish signing in")}</h1>
-        <p role="alert" className="text-sm text-destructive mb-4">{t("auth.confirm.unreachable", "We couldn't reach the sign-in server. Check your connection and try again; the link is still valid.")}</p>
+        <p role="alert" className="text-sm text-destructive mb-4">
+          {stashState.kind === "unreachable"
+            ? t("auth.confirm.unreachable", "We couldn't reach the sign-in server. Check your connection and try again; the link is still valid.")
+            : t("auth.confirm.adoptFailed", "We verified your link but couldn't finish signing in. Check your connection and try again.")}
+        </p>
         <button type="button" onClick={retryStashedSession} className={primaryBtn}>{t("auth.confirm.retry", "Try again")}</button>
       </Card>
     );
@@ -223,6 +228,16 @@ function ContinueView({ next, mode }: { next: string; mode: AuthMode }) {
       trackAuth("signin_failure", inn.error);
       if (/email not confirmed/i.test(inn.error)) { const m = inn.error; setError((t) => explainAuthError(t, m)); setShowResend(true); return; }
       if (/invalid login credentials|invalid_credentials/i.test(inn.error)) {
+        // THE REMEMBERED ADDRESS STAYS MASKED (S14X-207): it may be the last
+        // person's on a shared computer, so a refusal neither shows it in full
+        // nor offers an account for it. The person types their own.
+        if (useRemembered) {
+          const masked = maskEmail(remembered);
+          setUseRemembered(false);
+          setEmail("");
+          setError((t) => t("auth.email.rememberedMismatch", "We couldn't sign you in as {{email}}. Type your address to try again.", { email: masked }));
+          return;
+        }
         setError((t) => t("auth.mismatch", "We couldn't sign you in with that email and password."));
         setOfferCreate(addr);
         return;
@@ -469,15 +484,18 @@ function ConfirmView({ next, onRecovery, onRecoveryExpired }: { next: string; on
   // Read once: the stash's copy (the first script moved it there), else the address's.
   const [tokenHash] = useState(() => peekStashed("token_hash") ?? params.get("token_hash"));
   const [type] = useState(() => otpType(peekStashed("type") ?? params.get("type")));
-  const [phase, setPhase] = useState<"ready" | "working" | "failed" | "unreachable" | "emailChanged" | "ask" | "cancelled">("ready");
+  const [phase, setPhase] = useState<"ready" | "working" | "failed" | "unreachable" | "adoptRetry" | "emailChanged" | "ask" | "cancelled">("ready");
   const [askEmail, setAskEmail] = useState("");
-  const held = useRef<{ probed: Probed; target: string } | null>(null);
+  const held = useRef<{ probed: Probed; target: string; banner?: boolean } | null>(null);
 
   // The session goes to the site's client only now: the person said yes, or this browser started it.
+  // A blip in that hand-over keeps the verified session for Try again: the
+  // link was good, so it is not called expired (S14X-208).
   const finish = async (p: Probed, target: string, banner: boolean) => {
     setPhase("working");
-    const ok = await adoptSession(p, { recovery: type === "recovery", banner });
-    if (!ok) { setPhase("failed"); return; }
+    const res = await adoptSession(p, { recovery: type === "recovery", banner });
+    if (res === "transient") { held.current = { probed: p, target, banner }; setPhase("adoptRetry"); return; }
+    if (res !== "ok") { setPhase("failed"); return; }
     if (type === "recovery" && RECOVERY_LIVE) { onRecovery(p.session); return; }
     if (type === "email_change") { setPhase("emailChanged"); return; }
     navigate(target, { replace: true });
@@ -548,6 +566,11 @@ function ConfirmView({ next, onRecovery, onRecoveryExpired }: { next: string; on
         <>
           <p role="alert" className="text-sm text-destructive mb-4">{t("auth.confirm.unreachable", "We couldn't reach the sign-in server. Check your connection and try again; the link is still valid.")}</p>
           <button type="button" onClick={() => void press()} className={primaryBtn}>{t("auth.confirm.retry", "Try again")}</button>
+        </>
+      ) : phase === "adoptRetry" ? (
+        <>
+          <p role="alert" className="text-sm text-destructive mb-4">{t("auth.confirm.adoptFailed", "We verified your link but couldn't finish signing in. Check your connection and try again.")}</p>
+          <button type="button" onClick={() => { const h = held.current; held.current = null; if (h) void finish(h.probed, h.target, h.banner === true); else setPhase("failed"); }} className={primaryBtn}>{t("auth.confirm.retry", "Try again")}</button>
         </>
       ) : phase === "cancelled" ? (
         <>

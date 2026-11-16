@@ -26,6 +26,7 @@
       "wrongAddress": "Maling address?"
     },
     "confirm": {
+      "adoptFailed": "Na-verify namin ang link mo pero hindi namin natapos ang pag-sign in. Tingnan ang koneksyon mo at subukan ulit.",
       "body": "Pindutin ang Magpatuloy para tapusin ang pag-sign in. Isang beses lang gumagana ang link.",
       "emailChangeBody": "Pindutin ang Magpatuloy para kumpirmahin ang bago mong email address.",
       "emailChanged": "Kumpirmado na ang pagpapalit ng email mo. Kung nakatanggap din ng link ang isa mo pang address, gamitin din iyon.",
@@ -49,6 +50,7 @@
       "label": "Email",
       "placeholder": "ikaw@halimbawa.com",
       "remembered": "Magpatuloy bilang {{email}}",
+      "rememberedMismatch": "Hindi ka namin ma-sign in bilang {{email}}. I-type ang address mo para subukan ulit.",
       "useDifferent": "Gumamit ng ibang address"
     },
     "footnote": "Itinatago ng account ang iyong mga score, credit at binili, at ang resume lang kung magse-save ka nito.",
@@ -59,6 +61,7 @@
       "onlyGoogle": "Nagsa-sign in ang account na ito gamit ang Google, kaya wala itong password na mapapalitan dito. Magpatuloy gamit ang Google para mag-sign in."
     },
     "guard": {
+      "keysRevoked": "In-off din namin ang mga API at connector key na ginawa sa account na ito bago mo napatunayan ang address ({{keys}}). Gumawa ng bago sa iyong account kung kailangan mo.",
       "passwordCleared": "Binura namin ang password na itinakda sa address na ito bago mo napatunayang sa iyo ito. Kung gusto mo, magtakda ng bago sa settings ng iyong account.",
       "passwordClearedTitle": "Binura ang luma mong password",
       "signedOut": "Binura namin ang password na itinakda sa address na ito bago mo napatunayang sa iyo ito, at dahil doon na-sign out ang bawat device, pati ito.",
@@ -94,7 +97,7 @@
       "done": "Naitakda na ang bago mong password.",
       "doneOthers": "Naitakda na ang bago mong password, at na-sign out ang lahat ng iba mo pang device.",
       "emailSupport": "Mag-email sa support",
-      "expired": "Expired na o nagamit na ang reset link na ito, kaya walang password na naitakda. Humingi ng bago.",
+      "expired": "Expired na o nagamit na ang reset link na ito. Kung nakapili ka na ng bagong password gamit ang code sa email na ito, mag-sign in gamit iyon; kung hindi, humingi ng bagong link.",
       "intro": "Ilagay ang iyong email. Kung may account ito, magpapadala kami ng link (o 6-digit na code) na magagamit mo para pumili ng bagong password.",
       "newLink": "Magpadala ng bagong reset link",
       "newPassword": "Bagong password",
@@ -118,8 +121,33 @@
       "failed": "Hindi natapos ang pag-sign in. Pakisubukan ulit."
     },
     "samePassword": "Pumili ng password na hindi mo pa nagamit dito.",
+    "security": {
+      "askCode": "Wala pang password, o nakalimutan mo? I-email na lang sa akin ang code",
+      "codeFailed": "Hindi kami nakahingi ng code ngayon. Subukan ulit pagkalipas ng isang minuto.",
+      "codeField": "Code mula sa password-reset email",
+      "codeOnItsWay": "Kung nakakatanggap ng mail ang address mo, papunta na sa {{email}} ang isang password-reset email na may 6-digit na code. Ilagay dito ang code.",
+      "codeRefused": "Hindi gumana ang code na iyon, kaya hindi nabago ang password mo. Tingnan ito, o humingi ng bago.",
+      "guardBlocked": "Hindi namin makumpirma ang address mo ngayon, kaya hindi nabago ang password mo. Subukan ulit pagkalipas ng ilang minuto.",
+      "guardRefused": "Hindi namin makumpirma ang address mo gamit ang code na iyon, kaya hindi nabago ang password mo. Humingi ng bagong code.",
+      "signedOut": "Para sa seguridad mo, na-sign out ang bawat device, pati ito. I-reset ang password mo mula sa sign-in page para matapos."
+    },
     "sendFailed": "Hindi namin iyan maipadala ngayon. Subukan ulit pagkalipas ng isang minuto, o mag-email sa {{support}}.",
     "sessionExpired": "Nag-expire ang session mo. Mag-sign in ulit para ituloy kung saan ka huminto.",
+    "signOut": {
+      "builder": "Ang résumé mo sa Resume Builder ay naka-save lang sa browser na ito, at mabubura ito kapag nag-sign out ka.",
+      "cancel": "Kanselahin",
+      "delete": "Burahin ito at mag-sign out",
+      "everywhereDone": "Na-sign out ka na sa bawat device.",
+      "freelance": "Ang mga detalye mo sa Freelance Boost ay naka-save lang sa browser na ito, at mabubura ang mga ito kapag nag-sign out ka.",
+      "keep": "Itago ito sa device na ito at mag-sign out",
+      "offlineEverywhere": "Na-sign out ka na sa device na ito, pero hindi namin naabot ang server, kaya baka naka-sign in pa ang iba mong device.",
+      "offlineHere": "Na-sign out ka na sa device na ito, pero hindi namin naabot ang server para tapusin din doon ang session.",
+      "offlineTitle": "Na-sign out sa device na ito",
+      "openBuilder": "Buksan ang Resume Builder para i-download ito",
+      "retry": "Subukan muli",
+      "signInAgain": "Hindi namin ma-sign out mula rito ang iba mong device. Mag-sign in ulit at piliin ang “Mag-sign out kahit saan”.",
+      "title": "Bago ka mag-sign out"
+    },
     "subtitle": "Subaybayan ang mga score ng iyong resume sa paglipas ng panahon, itago ang kasaysayan ng iyong mga scan, at tingnan ang iyong mga credit at binili sa iisang lugar. Libre habambuhay.",
     "title": "Mag-sign in o gumawa ng libreng account",
     "usePassword": "Gumamit na lang ng password",

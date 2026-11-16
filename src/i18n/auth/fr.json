@@ -26,6 +26,7 @@
       "wrongAddress": "Mauvaise adresse ?"
     },
     "confirm": {
+      "adoptFailed": "Nous avons vérifié votre lien, mais nous n'avons pas pu terminer la connexion. Vérifiez votre connexion et réessayez.",
       "body": "Appuyez sur Continuer pour terminer la connexion. Le lien ne fonctionne qu'une fois.",
       "emailChangeBody": "Appuyez sur Continuer pour confirmer votre nouvelle adresse e-mail.",
       "emailChanged": "Votre changement d'adresse e-mail est confirmé. Si votre autre adresse a aussi reçu un lien, utilisez-le également.",
@@ -49,6 +50,7 @@
       "label": "E-mail",
       "placeholder": "vous@exemple.com",
       "remembered": "Continuer en tant que {{email}}",
+      "rememberedMismatch": "Nous n'avons pas pu vous connecter en tant que {{email}}. Saisissez votre adresse pour réessayer.",
       "useDifferent": "Utiliser une autre adresse"
     },
     "footnote": "Un compte conserve vos scores, crédits et achats, et un CV seulement si vous en enregistrez un.",
@@ -59,6 +61,7 @@
       "onlyGoogle": "Ce compte se connecte avec Google, il n'a donc pas de mot de passe à modifier ici. Continuez avec Google pour vous connecter."
     },
     "guard": {
+      "keysRevoked": "Nous avons aussi désactivé les clés d'API et de connecteur créées sur ce compte avant que vous ne prouviez l'adresse ({{keys}}). Créez-en une nouvelle dans votre compte si vous en avez besoin.",
       "passwordCleared": "Nous avons supprimé un mot de passe défini pour cette adresse avant que vous ne prouviez qu'elle vous appartient. Si vous le souhaitez, définissez-en un nouveau dans les paramètres de votre compte.",
       "passwordClearedTitle": "Votre ancien mot de passe a été supprimé",
       "signedOut": "Nous avons supprimé un mot de passe défini pour cette adresse avant que vous ne prouviez qu'elle vous appartient, ce qui a déconnecté tous les appareils, celui-ci compris.",
@@ -94,7 +97,7 @@
       "done": "Votre nouveau mot de passe est enregistré.",
       "doneOthers": "Votre nouveau mot de passe est enregistré, et tous vos autres appareils ont été déconnectés.",
       "emailSupport": "Écrire au support",
-      "expired": "Ce lien de réinitialisation a expiré ou a déjà été utilisé, aucun mot de passe n'a donc été défini. Demandez-en un nouveau.",
+      "expired": "Ce lien de réinitialisation a expiré ou a déjà été utilisé. Si vous avez déjà choisi un nouveau mot de passe avec le code de cet e-mail, connectez-vous avec celui-ci ; sinon, demandez un nouveau lien.",
       "intro": "Saisissez votre e-mail. S'il correspond à un compte, nous vous enverrons un lien (ou un code à 6 chiffres) pour choisir un nouveau mot de passe.",
       "newLink": "Envoyer un nouveau lien de réinitialisation",
       "newPassword": "Nouveau mot de passe",
@@ -118,8 +121,33 @@
       "failed": "La connexion n'a pas abouti. Veuillez réessayer."
     },
     "samePassword": "Choisissez un mot de passe que vous n'avez pas encore utilisé ici.",
+    "security": {
+      "askCode": "Pas encore de mot de passe, ou oublié ? Recevoir plutôt un code par e-mail",
+      "codeFailed": "Nous n'avons pas pu demander de code pour le moment. Réessayez dans une minute.",
+      "codeField": "Code de l'e-mail de réinitialisation du mot de passe",
+      "codeOnItsWay": "Si votre adresse peut recevoir des e-mails, un e-mail de réinitialisation du mot de passe avec un code à 6 chiffres est en route vers {{email}}. Saisissez le code ici.",
+      "codeRefused": "Ce code n'a pas fonctionné, votre mot de passe n'a donc pas été modifié. Vérifiez-le ou demandez-en un nouveau.",
+      "guardBlocked": "Nous n'avons pas pu confirmer votre adresse pour le moment, votre mot de passe n'a donc pas été modifié. Réessayez dans quelques minutes.",
+      "guardRefused": "Nous n'avons pas pu confirmer votre adresse avec ce code, votre mot de passe n'a donc pas été modifié. Demandez un nouveau code.",
+      "signedOut": "Pour votre sécurité, tous les appareils ont été déconnectés, celui-ci compris. Réinitialisez votre mot de passe depuis la page de connexion pour terminer."
+    },
     "sendFailed": "Nous n'avons pas pu l'envoyer pour le moment. Réessayez dans une minute, ou écrivez à {{support}}.",
     "sessionExpired": "Votre session a expiré. Reconnectez-vous pour reprendre là où vous en étiez.",
+    "signOut": {
+      "builder": "Votre CV du créateur de CV n'est enregistré que dans ce navigateur, et la déconnexion le supprime.",
+      "cancel": "Annuler",
+      "delete": "Le supprimer et me déconnecter",
+      "everywhereDone": "Vous êtes déconnecté sur tous vos appareils.",
+      "freelance": "Vos informations Freelance Boost ne sont enregistrées que dans ce navigateur, et la déconnexion les supprime.",
+      "keep": "Le garder sur cet appareil et me déconnecter",
+      "offlineEverywhere": "Vous êtes déconnecté sur cet appareil, mais nous n'avons pas pu joindre le serveur : vos autres appareils sont peut-être encore connectés.",
+      "offlineHere": "Vous êtes déconnecté sur cet appareil, mais nous n'avons pas pu joindre le serveur pour y mettre fin à la session aussi.",
+      "offlineTitle": "Déconnecté sur cet appareil",
+      "openBuilder": "Ouvrir le créateur de CV pour le télécharger",
+      "retry": "Réessayer",
+      "signInAgain": "Nous n'avons pas pu déconnecter vos autres appareils d'ici. Reconnectez-vous et choisissez « Se déconnecter partout ».",
+      "title": "Avant de vous déconnecter"
+    },
     "subtitle": "Suivez l'évolution des scores de votre CV, gardez l'historique de vos analyses et retrouvez vos crédits et achats au même endroit. Gratuit pour toujours.",
     "title": "Connectez-vous ou créez votre compte gratuit",
     "usePassword": "Utiliser plutôt un mot de passe",
