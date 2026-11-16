@@ -72,10 +72,10 @@ describe("the checkout", () => {
     expect(violations(harnesses)).toEqual([]);
   });
 
-  it("the lists only shrink: thirty bare files that assert no refusal, fifteen that refuse over a bare helper, one converted elsewhere", () => {
+  it("the lists only shrink: thirty bare files that assert no refusal, fifteen that refuse over a bare helper, none converted elsewhere", () => {
     expect(BARE_WITHOUT_A_REFUSAL.length).toBeLessThanOrEqual(30);
     expect(REFUSES_OVER_A_BARE_HELPER.length).toBeLessThanOrEqual(15);
-    expect(Object.keys(CONVERTED_BY_ANOTHER_LANE)).toEqual(["src/test/the-score-benchmark-is-one-scorers-in-one-vocabulary.test.ts"]);
+    expect(Object.keys(CONVERTED_BY_ANOTHER_LANE)).toEqual([]);
     for (const list of [BARE_WITHOUT_A_REFUSAL, REFUSES_OVER_A_BARE_HELPER]) expect(new Set(list).size).toBe(list.length);
   });
 });

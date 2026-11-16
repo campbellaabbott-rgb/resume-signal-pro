@@ -10,7 +10,9 @@
 import type { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { bootMailDoorDb } from "./mail-door-db";
+import { bootMailDoorDb, rows } from "./mail-door-db";
+
+export { rows };
 
 const MIGRATIONS = resolve(__dirname, "../../../supabase/migrations");
 
@@ -26,6 +28,15 @@ export const SUPABASE_DEFAULT_GRANTS = `
   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated, service_role;
 `;
+
+/**
+ * The mail door (its stand-in tables first) with Supabase's default privileges
+ * applied before its own SQL and before anything the caller runs next, so a
+ * REVOKE the caller's migration leaves out is seen (S14X-140).
+ */
+export async function bootMailDoorDbOnDefaults(): Promise<PGlite> {
+  return bootMailDoorDb({ seed: SUPABASE_DEFAULT_GRANTS });
+}
 
 export async function bootMailListsDb(): Promise<PGlite> {
   const db = await bootMailDoorDb({ cron: true });

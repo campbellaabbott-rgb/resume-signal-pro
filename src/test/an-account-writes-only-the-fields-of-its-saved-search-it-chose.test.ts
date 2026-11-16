@@ -19,7 +19,8 @@ import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { migrationText, SUPABASE_DEFAULT_GRANTS } from "./helpers/mail-lists-db";
+import { migrationText } from "./helpers/mail-lists-db";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 
 const PREFIX = "20261112162000_";
 const OWNER = "00000000-0000-4000-8000-0000000b0002";
@@ -38,9 +39,7 @@ const refused = async (role: "anon" | "authenticated", sql: string, params: unkn
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(`
-    -- service_role bypasses row security, as Supabase's does.
-    CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
-    ${SUPABASE_DEFAULT_GRANTS}
+    ${SUPABASE_DEFAULTS}
     CREATE SCHEMA auth;
     GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
     CREATE TABLE auth.users (id uuid PRIMARY KEY);

@@ -18,7 +18,8 @@
  */
 import { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { migrationText, SUPABASE_DEFAULT_GRANTS } from "./helpers/mail-lists-db";
+import { migrationText } from "./helpers/mail-lists-db";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 
 const USER = "00000000-0000-4000-8000-00000000b014";
 let db: PGlite;
@@ -33,8 +34,7 @@ const stamp = async () => (await db.query<{ s: Date | null }>("SELECT last_prepa
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(`
-    CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
-    ${SUPABASE_DEFAULT_GRANTS}
+    ${SUPABASE_DEFAULTS}
     CREATE SCHEMA auth;
     CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.role', true), '') $$;
     CREATE TABLE public.agent_mandates (user_id uuid PRIMARY KEY, active boolean NOT NULL DEFAULT false, daily_cap integer NOT NULL DEFAULT 5);

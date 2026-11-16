@@ -22,8 +22,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import type { PGlite } from "@electric-sql/pglite";
-import { rows } from "./helpers/mail-door-db";
-import { bootMailListsDb, migrationText, MAIL_LISTS_PREFIX } from "./helpers/mail-lists-db";
+import { bootMailListsDb, migrationText, MAIL_LISTS_PREFIX, rows } from "./helpers/mail-lists-db";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { SELLER_SET_STUB } from "./helpers/seller-set";
 

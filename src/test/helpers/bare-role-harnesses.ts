@@ -160,12 +160,11 @@ export const REFUSES_OVER_A_BARE_HELPER: readonly string[] = [
 /**
  * A bare harness that asserts a refusal and is converted by another lane of
  * the same round, with the lane named. Tolerated in either state; the bug
- * round's verify section counts it without exception.
+ * round's verify section counts it without exception. Empty since the round's
+ * integration: the one entry, the score benchmark, starts from
+ * helpers/supabase-defaults.ts on the merged tree.
  */
-export const CONVERTED_BY_ANOTHER_LANE: Readonly<Record<string, string>> = {
-  "src/test/the-score-benchmark-is-one-scorers-in-one-vocabulary.test.ts":
-    "the data-pages lane of the bug round converts it to helpers/supabase-defaults.ts (its half of S14X-140)",
-};
+export const CONVERTED_BY_ANOTHER_LANE: Readonly<Record<string, string>> = {};
 
 /** What the guard refuses, one line each; empty when every rule holds. */
 export function violations(harnesses: Harness[]): string[] {

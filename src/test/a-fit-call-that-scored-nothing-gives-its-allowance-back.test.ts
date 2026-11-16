@@ -18,7 +18,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
-import { bootMailDoorDb, rows } from "./helpers/mail-door-db";
+import { bootMailDoorDbOnDefaults, rows } from "./helpers/mail-lists-db";
 import { splitStatements } from "./helpers/function-acl";
 import { ALLOWED, RecordingDb, callApi, loadPublicApi, useDb, type Fetched } from "./helpers/public-api-harness";
 import type { EdgeHandler } from "./helpers/edge-harness";
@@ -32,10 +32,6 @@ const UNSCORED_FILE = readdirSync(MIG_DIR).find((f) => f.endsWith("_a_fit_call_t
 
 // ── the SQL, in a real Postgres ─────────────────────────────────────────────
 
-const DEFAULT_GRANTS = `
-  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
-  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;
-`;
 const PROVEN_SQL = splitStatements(migration("20261005130000_"))
   .filter((s) => /^\s*(CREATE TABLE IF NOT EXISTS public\.mailbox_proof_settings|INSERT INTO public\.mailbox_proof_settings|CREATE OR REPLACE FUNCTION public\.account_mailbox_proven)/.test(s))
   .map((s) => `${s.trim()};`)
@@ -51,7 +47,7 @@ describe("api_key_fit_unscored and the allowance reader, from Supabase's default
   beforeAll(async () => {
     expect(UNSCORED_FILE, "the migration exists in the lane's range").toMatch(/^202611122\d{5}_/);
     const sql = readFileSync(resolve(MIG_DIR, UNSCORED_FILE!), "utf8");
-    db = await bootMailDoorDb({ seed: DEFAULT_GRANTS });
+    db = await bootMailDoorDbOnDefaults();
     OPEN.push(db);
     await db.exec(`
       CREATE SCHEMA IF NOT EXISTS auth;
