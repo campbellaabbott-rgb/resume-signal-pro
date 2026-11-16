@@ -57,6 +57,7 @@ import {
   LAYOFF_RELATIONS,
   LAYOFF_SOURCES,
   LAYOFF_STALE_HOURS,
+  LAYOFF_WARN_DIRECT_STATES,
 } from "@/config/layoffs";
 
 export type LayoffSource = (typeof LAYOFF_SOURCES)[number];
@@ -308,10 +309,22 @@ export function layoffReadIsStale(row: Pick<LayoffFiling, "source" | "readAt">, 
 /** The language a filing's dates print in: the page's, unless a caller names one. */
 const pageLang = (lang?: string) => lang || i18n.language || "en";
 
+/** Was this filing read through Big Local News' copy of the state's file
+ *  rather than from the agency's own (S14X-279)? Every state notice outside
+ *  LAYOFF_WARN_DIRECT_STATES is; an 8-K is read from EDGAR itself. */
+export function layoffReadViaCourier(row: Pick<LayoffFiling, "source" | "state">): boolean {
+  if (row.source !== "state_warn") return false;
+  return !(LAYOFF_WARN_DIRECT_STATES as readonly string[]).includes(String(row.state ?? "").toUpperCase());
+}
+
 function readStamp(row: LayoffFiling, t: T, lang?: string): string {
-  return layoffReadIsStale(row)
-    ? t("jobsPage.layoffReadStale", "last read {{readAt}}", { readAt: fmtDateTime(row.readAt, { lng: pageLang(lang) }) })
-    : t("jobsPage.layoffRead", "read from {{sourceName}} {{readAgo}}", { sourceName: row.sourceName, readAgo: readAgoLabel(row.readAt, t) });
+  if (layoffReadIsStale(row)) {
+    return t("jobsPage.layoffReadStale", "last read {{readAt}}", { readAt: fmtDateTime(row.readAt, { lng: pageLang(lang) }) });
+  }
+  const vars = { sourceName: row.sourceName, readAgo: readAgoLabel(row.readAt, t) };
+  return layoffReadViaCourier(row)
+    ? t("layoffFilings.readVia", "from {{sourceName}} via Big Local News, read {{readAgo}}", vars)
+    : t("jobsPage.layoffRead", "read from {{sourceName}} {{readAgo}}", vars);
 }
 
 /** The state as the agency prints it (a proper noun, English), from the
@@ -352,7 +365,13 @@ export function layoffLineText(row: LayoffFiling, t: T, lang?: string): { text: 
       visibleDate: day(row.publicDate),
       sourceName: LINK_SLOT,
     };
-    text = row.eventBasis === "warn_notice_date"
+    // A state that publishes no stamp of its own (S14X-036): the public date
+    // is the day our read first saw the notice, and the line says so instead
+    // of crediting the agency with a listing date it never published. The
+    // writer stores such a row only with a notice date.
+    text = row.publicBasis === "our_first_fetch"
+      ? t("layoffFilings.lineWarnFirstRead", "{{filer}} filed a layoff notice with {{state}} dated {{noticeDate}}: {{workers}} positions at {{site}}{{effectiveClause}}{{kindClause}} · first read by us on {{visibleDate}} · {{sourceName}} ↗", { ...common, state: layoffStateName(row.state), noticeDate: day(row.eventDate) })
+      : row.eventBasis === "warn_notice_date"
       ? t("jobsPage.layoffLineWarnNoticed", "{{filer}} filed a layoff notice with {{state}} dated {{noticeDate}}: {{workers}} positions at {{site}}{{effectiveClause}}{{kindClause}} · listed by {{agency}} on {{visibleDate}} · {{sourceName}} ↗", { ...common, state: layoffStateName(row.state), noticeDate: day(row.eventDate) })
       : t("jobsPage.layoffLineWarnReceived", "{{filer}} filed a layoff notice received by {{agency}} on {{visibleDate}}: {{workers}} positions at {{site}}{{effectiveClause}}{{kindClause}} · {{sourceName}} ↗", common);
   } else {
@@ -446,6 +465,7 @@ export function LayoffFilingChip({ row, country }: LineProps) {
   const { t } = useTranslation();
   if (!row || layoffHidesForCountry(row, country)) return null;
   const readAgo = layoffReadIsStale(row) ? fmtDateTime(row.readAt, { lng: pageLang() }) : readAgoLabel(row.readAt, t);
+  const tipVars = { filer: row.filer, eventDate: fmtDate(row.eventDate, { lng: pageLang() }), sourceName: row.sourceName, readAgo };
   return (
     <a
       href={row.sourceUrl}
@@ -456,7 +476,9 @@ export function LayoffFilingChip({ row, country }: LineProps) {
       data-layoff-filing="chip"
       data-layoff-source={row.source}
       data-layoff-event-date={row.eventDate}
-      title={t("jobsPage.layoffTip", "{{filer}} made this filing on {{eventDate}}. It is a fact about the employer on that date, not about this role. It sits beside the hiring badge on purpose: that badge is only what we watched on this board — roles taken down and left down, or more roles served — and a filing made elsewhere does not change it. Neither one says anyone was hired. Read from {{sourceName}} {{readAgo}}.", { filer: row.filer, eventDate: fmtDate(row.eventDate, { lng: pageLang() }), sourceName: row.sourceName, readAgo })}
+      title={layoffReadViaCourier(row)
+        ? t("layoffFilings.tipVia", "{{filer}} made this filing on {{eventDate}}. It is a fact about the employer on that date, not about this role. It sits beside the hiring badge on purpose: that badge is only what we watched on this board — roles taken down and left down, or more roles served — and a filing made elsewhere does not change it. Neither one says anyone was hired. From {{sourceName}} via Big Local News, read {{readAgo}}.", tipVars)
+        : t("jobsPage.layoffTip", "{{filer}} made this filing on {{eventDate}}. It is a fact about the employer on that date, not about this role. It sits beside the hiring badge on purpose: that badge is only what we watched on this board — roles taken down and left down, or more roles served — and a filing made elsewhere does not change it. Neither one says anyone was hired. Read from {{sourceName}} {{readAgo}}.", tipVars)}
     >
       <Info className="w-3 h-3 shrink-0" />
       {row.source === "state_warn"

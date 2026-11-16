@@ -1,13 +1,11 @@
-// Iowa Workforce Development. No copy of Big Local News' raw ia.csv was saved in the
-// research pass, so this map names the header spellings it is prepared to
-// accept and nothing more: a file that resolves none of the filer or
-// visible-date candidates is refused and its real header is written to
-// layoff_feed_health.note for the owner to pin. The visible date must be
-// the STATE'S stamp (received / posted); the employer's own notice date is
-// never accepted in that slot, because the basis below would then label an
-// employer date as the agency's -- a file whose only date is the notice
-// date is refused with its header, and the owner decides between pinning a
-// real stamp and an our_first_fetch basis.
+// Iowa Workforce Development. Big Local News' raw ia.csv carries the
+// employer's Notice Date and no received or posted stamp of the state's:
+// header 'Company,Address ,City,County,St,ZIP,Notice Type,Emp #,Notice
+// Date,Layoff Date,Local Workforce Area,Industry' plus some 150 empty
+// columns (saved bln-raw-ia.csv, 2026-11-15, the empty columns trimmed). So
+// the notice date dates the event and our own first read of the notice is
+// its public date, labelled as such (our_first_fetch): the employer's date
+// is never printed as the agency's (S14X-036). The count is 'Emp #'.
 import type { StateMap } from "./types.ts";
 
 export const IA: StateMap = {
@@ -15,16 +13,17 @@ export const IA: StateMap = {
   sourceName: "Iowa Workforce Development",
   sourceUrl: "https://workforce.iowa.gov/employers/business-resources/warn",
   blnRawUrl: "https://raw.githubusercontent.com/biglocalnews/warn-github-flow/transformer/data/warn-transformer/raw/ia.csv",
-  visibleBasis: "state_received",
+  visibleBasis: "our_first_fetch",
   columns: {
-    filer: ["Company", "Company Name", "Employer", "Employer Name"],
-    noticeDate: ["Notice Date", "Date of Notice", "WARN Notice Date"],
-    visible: ["Date Received", "Received Date"],
-    effective: ["Layoff Date", "Effective Date", "Date of Layoff"],
-    workers: ["Number of Employees Affected", "Employees Affected", "# of Employees", "Number Affected"],
-    kind: ["Type", "Layoff/Closure", "Closure/Layoff", "Type of Layoff"],
-    city: ["City", "Location"],
+    filer: ["Company"],
+    noticeDate: ["Notice Date"],
+    effective: ["Layoff Date"],
+    workers: ["Emp #"],
+    kind: ["Notice Type"],
+    site: ["Address"],
+    city: ["City"],
     county: ["County"],
   },
-  verifiedAgainstSample: false,
+  verifiedAgainstSample: true,
+  verifiedBy: "bln-raw-ia.csv (2026-11-15)",
 };

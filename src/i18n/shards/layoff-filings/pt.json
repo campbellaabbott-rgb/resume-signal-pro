@@ -1,0 +1,8 @@
+{
+  "layoffFilings": {
+    "readVia": "de {{sourceName}} via Big Local News, lido {{readAgo}}",
+    "tipVia": "{{filer}} fez este registro em {{eventDate}}. É um fato sobre o empregador nessa data, não sobre esta vaga. Ele fica de propósito ao lado do selo de contratação: esse selo é só o que observamos neste quadro — vagas retiradas que não voltaram, ou mais vagas publicadas — e um registro feito em outro lugar não o altera. Nenhum dos dois diz que alguém foi contratado. De {{sourceName}} via Big Local News, lido {{readAgo}}.",
+    "lineWarnFirstRead": "{{filer}} registrou um aviso de demissões junto a {{state}} com data de {{noticeDate}}: {{workers}} postos de trabalho em {{site}}{{effectiveClause}}{{kindClause}} · lido por nós pela primeira vez em {{visibleDate}} · {{sourceName}} ↗",
+    "lcaChip": "Salários LCA declarados (H-1B, H-1B1, E-3) · {{quarter}}"
+  }
+}

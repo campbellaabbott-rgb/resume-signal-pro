@@ -86,6 +86,15 @@ export const LAYOFF_FEED_STALE_DAYS = 21;
  *  the partition reader applies to computed_at before it answers 'stale'. */
 export const LAYOFF_STALE_HOURS = { edgar: 6, warn: 48 } as const;
 
+/** The states whose WARN notices layoff-filings reads from the state's own
+ *  file (its WARN_FEEDS feeds tx_twc_xlsx and fl_react_html). Every other
+ *  state's notices are read from Big Local News' copy of the state's file,
+ *  so their read stamp names that copy ("from {{sourceName}} via Big Local
+ *  News") rather than claiming a read from the agency itself (S14X-279). A
+ *  cross-runtime guard holds this equal to the WARN_FEEDS states whose feed
+ *  is not bln_raw. */
+export const LAYOFF_WARN_DIRECT_STATES = ["TX", "FL"] as const;
+
 /** The cadence words the copy renders, and the two cron schedules they
  *  describe (the scheduling migration's rows for the EDGAR Atom read and the
  *  state-notice read). The words say nothing faster than the schedules do. */

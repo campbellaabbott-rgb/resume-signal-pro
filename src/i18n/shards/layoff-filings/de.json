@@ -1,0 +1,8 @@
+{
+  "layoffFilings": {
+    "readVia": "von {{sourceName}} über Big Local News, gelesen {{readAgo}}",
+    "tipVia": "{{filer}} hat diese Meldung am {{eventDate}} eingereicht. Sie ist eine Tatsache über den Arbeitgeber an diesem Datum, nicht über diese Stelle. Sie steht mit Absicht neben dem Einstellungs-Abzeichen: Dieses Abzeichen ist nur das, was wir auf diesem Board beobachtet haben — zurückgezogene und nicht wieder eingestellte Stellen oder mehr ausgeschriebene Stellen — und eine anderswo eingereichte Meldung ändert daran nichts. Keines von beiden sagt, dass jemand eingestellt wurde. Von {{sourceName}} über Big Local News, gelesen {{readAgo}}.",
+    "lineWarnFirstRead": "{{filer}} hat bei {{state}} eine Entlassungsanzeige mit Datum {{noticeDate}} eingereicht: {{workers}} Stellen, Standort {{site}}{{effectiveClause}}{{kindClause}} · von uns zuerst gelesen am {{visibleDate}} · {{sourceName}} ↗",
+    "lcaChip": "Eingereichte LCA-Löhne (H-1B, H-1B1, E-3) · {{quarter}}"
+  }
+}

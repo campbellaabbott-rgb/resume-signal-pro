@@ -1,0 +1,8 @@
+{
+  "layoffFilings": {
+    "readVia": "van {{sourceName}} via Big Local News, gelezen {{readAgo}}",
+    "tipVia": "{{filer}} heeft deze melding ingediend op {{eventDate}}. Het is een feit over de werkgever op die datum, niet over deze vacature. Het staat met opzet naast het wervingskenmerk: dat kenmerk is alleen wat we op dit bord hebben gezien — vacatures die zijn verwijderd en weg bleven, of meer geplaatste vacatures — en een elders ingediende melding verandert daar niets aan. Geen van beide zegt dat iemand is aangenomen. Van {{sourceName}} via Big Local News, gelezen {{readAgo}}.",
+    "lineWarnFirstRead": "{{filer}} heeft bij {{state}} een ontslagmelding ingediend, gedateerd {{noticeDate}}: {{workers}} functies op {{site}}{{effectiveClause}}{{kindClause}} · voor het eerst door ons gelezen op {{visibleDate}} · {{sourceName}} ↗",
+    "lcaChip": "Ingediende LCA-lonen (H-1B, H-1B1, E-3) · {{quarter}}"
+  }
+}
