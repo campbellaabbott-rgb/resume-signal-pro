@@ -6,7 +6,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { FloatingHelpButton } from "./components/FloatingHelpButton";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { LanguageDebugBanner } from "./components/LanguageDebugBanner";
-import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ErrorBoundary, RouteErrorBoundary } from "./components/ErrorBoundary";
+import { RouteDefaultHead } from "./components/RouteDefaultHead";
 import { VisitSource } from "./components/VisitSource";
 import { SkipLinkFallback } from "./components/SkipLinkFallback";
 
@@ -109,6 +110,11 @@ const App = () => (
       <VisitSource />
       <SkipLinkFallback />
       <ScrollToTop />
+      {/* A title for the routes whose pages write none (NB-43). */}
+      <RouteDefaultHead />
+      {/* A crash inside a page stays inside the page and clears when the path
+          changes (NB-40); the root boundary above is the last resort. */}
+      <RouteErrorBoundary>
       <Suspense fallback={null}>
         <Routes>
           {/* The scanner's old addresses ("/#upload", the report emails'
@@ -212,6 +218,7 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
+      </RouteErrorBoundary>
       <FloatingHelpButton />
       <LanguageDebugBanner />
     </BrowserRouter>

@@ -9,6 +9,7 @@ import "./i18n";
 import { applyTheme, resolveTheme } from "./lib/theme";
 import { captureBakedLanderName } from "./lib/baked-lander-name";
 import { mountBesidePrerendered } from "./lib/keep-prerendered-page";
+import { reloadForNewVersion } from "./lib/new-version-reload";
 
 // The theme attribute goes on <html> before anything paints from React, so
 // no component renders once in the wrong palette. Dark for everyone unless
@@ -22,18 +23,13 @@ applyTheme(resolveTheme(window.location.search));
 captureBakedLanderName(document, window.location.pathname);
 
 // We deploy many times a day; a tab opened before a deploy can request a
-// lazy chunk whose hashed filename no longer exists, which surfaces as the
-// "Something went wrong" boundary. Vite emits vite:preloadError for exactly
-// this — reload once to pick up the new build (guard against loops).
+// lazy chunk whose hashed filename no longer exists. Vite emits
+// vite:preloadError for exactly this: reload once to pick up the new build
+// (guarded against loops). The page is marked as reloading first, so the
+// error boundaries say "Loading the new version" and file no crash
+// (NB-41, src/lib/new-version-reload.ts).
 window.addEventListener("vite:preloadError", (event) => {
-  event.preventDefault();
-  const KEY = "rb_chunk_reload_at";
-  try {
-    const last = Number(sessionStorage.getItem(KEY) ?? 0);
-    if (Date.now() - last < 30_000) return; // already tried — don't loop
-    sessionStorage.setItem(KEY, String(Date.now()));
-  } catch { /* still reload */ }
-  window.location.reload();
+  reloadForNewVersion(event);
 });
 
 // The prerendered page stays on screen until React has the page: React mounts

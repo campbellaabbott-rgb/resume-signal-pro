@@ -1,0 +1,29 @@
+{
+  "siteShell": {
+    "crashHome": "Aller à la page d'accueil",
+    "newVersion": {
+      "loading": "Chargement de la nouvelle version…",
+      "reload": "Recharger maintenant"
+    },
+    "notFound": {
+      "title": "Page introuvable",
+      "jobs": "Voir les offres d'emploi",
+      "pricing": "Voir les tarifs"
+    },
+    "titles": {
+      "account": "Votre compte",
+      "auth": "Se connecter",
+      "shortlist": "Présélection pour les employeurs",
+      "success": "Votre analyse complète",
+      "productSuccess": "Votre achat",
+      "paymentFailed": "Paiement non finalisé",
+      "affiliates": "Programme d'affiliation",
+      "affiliateRedirect": "Redirection…",
+      "agent": "Postulez avec votre propre IA",
+      "analytics": "Statistiques",
+      "errors": "Journal des erreurs",
+      "healthCheck": "État du système",
+      "scanMetrics": "Indicateurs d'analyse"
+    }
+  }
+}
