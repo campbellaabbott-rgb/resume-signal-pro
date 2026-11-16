@@ -4,9 +4,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // mammoth and the zip reader, at the versions this function deploys.
 import { JSZip, mammoth } from "./libs.ts";
 import { DamagedDocxError, readDocxBody } from "./docx-text.ts";
-import { looksGarbled, isOleCompoundFile } from "../_shared/text-validation.ts";
+import { looksGarbled, isOleCompoundFile, normalizeIntakeText } from "../_shared/text-validation.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
-import { headerFooterLines, withHeaderFooter, type ZipLike } from "./header-footer.ts";
+import { contactOnlyInHeader, headerFooterLines, withHeaderFooter, type ZipLike } from "./header-footer.ts";
 
 // Provable from outside without an upload: every response, the CORS preflight
 // included, carries this in x-fn-build. 2026-11-01.1: Word's own bullets
@@ -173,7 +173,7 @@ serve(async (req) => {
     if (arrayBuffer.byteLength === 0) {
       trackPerformance(requestStartTime, 'parse-docx', false, { reason: 'empty_file' }, clientIp);
       return new Response(
-        JSON.stringify({ success: false, error: "This file appears to be empty. Please check the file and try again." }),
+        JSON.stringify({ success: false, code: "empty_file", error: "This file appears to be empty. Please check the file and try again." }),
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -203,6 +203,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: false,
+          code: "legacy_doc_or_encrypted",
           error: "We can't read this file directly — it's either an older .doc format (Word 2003 or earlier) or a password-protected document. Please save it as an unprotected .docx (File > Save As in Word) or paste your resume text instead.",
         }),
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -226,11 +227,19 @@ serve(async (req) => {
     // are added back (register L5-07). A header that cannot be read is no
     // reason to fail an upload whose body was read.
     let text = result.body.trim();
+    // RC-S13-036: the page warns when the email and phone are only in the
+    // header or footer, which a system reading the body alone never sees.
+    let headerOnly = false;
     try {
-      text = withHeaderFooter(text, await headerFooterLines(result.zip as unknown as ZipLike)).trim();
+      const parts = await headerFooterLines(result.zip as unknown as ZipLike);
+      headerOnly = contactOnlyInHeader(text, parts);
+      text = withHeaderFooter(text, parts).trim();
     } catch (e) {
       console.warn("[PARSE-DOCX] Header/footer read skipped:", e instanceof Error ? e.message : String(e));
     }
+    // S14X-280: Word's non-breaking and optional hyphens are plain "-" and
+    // nothing, so a keyword written with one is still found.
+    text = normalizeIntakeText(text).trim();
 
     if (result.messages && result.messages.length > 0) {
       console.log("[PARSE-DOCX] Mammoth messages:", result.messages);
@@ -241,14 +250,17 @@ serve(async (req) => {
     // actionable error instead of letting near-empty text flow into analysis.
     const MIN_TEXT_LENGTH = 40;
     if (text.length < MIN_TEXT_LENGTH) {
-      trackPerformance(requestStartTime, 'parse-docx', false, { textLength: text.length, reason: 'empty_or_too_short' }, clientIp);
+      // S14X-281: a page embedded as web content (w:altChunk) that could not
+      // be read is named as such, with the way out.
+      const reason = result.altChunks.unreadable > 0 ? 'web_export' : 'empty_or_too_short';
+      trackPerformance(requestStartTime, 'parse-docx', false, { textLength: text.length, reason }, clientIp);
       console.log("[PARSE-DOCX] Extracted text too short:", text.length);
 
       EdgeRuntime.waitUntil(
         (async () => {
           await supabase.rpc('log_parse_failure', {
             p_file_type: 'docx',
-            p_error_code: 'empty_or_too_short',
+            p_error_code: reason,
             p_error_message: `Extracted only ${text.length} chars`,
             p_visitor_id: clientIp
           });
@@ -256,8 +268,13 @@ serve(async (req) => {
       );
 
       return new Response(
-        JSON.stringify({
+        JSON.stringify(reason === 'web_export' ? {
           success: false,
+          code: "web_export",
+          error: "This document was exported as web content, which we can't read directly. Open it in Word and use File > Save As > Word Document (.docx), or paste your resume text instead.",
+        } : {
+          success: false,
+          code: "empty_or_too_short",
           error: "Couldn't find readable text in this document. If your resume content is inside an image or text box, please paste your resume text directly instead.",
         }),
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -288,6 +305,8 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: false,
+          code: "garbled_text",
+          file: "docx",
           error: "We extracted text from this document, but it appears corrupted (likely a broken or embedded font). Please try saving the document again or paste your resume text directly.",
         }),
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -301,6 +320,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         text,
+        ...(headerOnly ? { contactOnlyInHeader: true } : {}),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

@@ -1,0 +1,32 @@
+{
+  "ingestParsers": {
+    "refusal": {
+      "emptyFile": "Diese Datei ist leer",
+      "emptyFileDescription": "Darin gibt es nichts zu lesen. Prüfe die Datei und lade sie erneut hoch oder füge den Text deines Lebenslaufs ein.",
+      "passwordProtected": "Dieses PDF ist passwortgeschützt",
+      "passwordProtectedDescription": "Entferne das Passwort (oder exportiere eine ungeschützte Kopie) und lade es erneut hoch oder füge den Text deines Lebenslaufs ein.",
+      "invalidPdf": "Dieses PDF lässt sich nicht öffnen",
+      "invalidPdfDescription": "Es ist vielleicht beschädigt oder eine andere Datei, die in .pdf umbenannt wurde. Exportiere es erneut, lade eine .docx-Datei hoch oder füge den Text deines Lebenslaufs ein.",
+      "tooManyPages": "Dieses PDF ist zu lang",
+      "tooManyPagesDescription": "Es hat {{pages}} Seiten, wir lesen bis zu {{max}}. Lade nur deinen Lebenslauf hoch, kein zusammengefügtes Dokument.",
+      "scannedOrEmpty": "Dieses PDF enthält keinen lesbaren Text",
+      "scannedOrEmptyDescription": "Es scheint ein eingescanntes Bild zu sein. Lade ein aus Word oder Google Docs exportiertes PDF oder eine .docx-Datei hoch oder füge den Text deines Lebenslaufs ein.",
+      "legacyDoc": "Diese Word-Datei lässt sich nicht öffnen",
+      "legacyDocDescription": "Es ist eine ältere .doc-Datei oder ein passwortgeschütztes Dokument. Speichere sie als ungeschützte .docx-Datei (Datei > Speichern unter in Word) oder füge den Text deines Lebenslaufs ein.",
+      "noText": "In diesem Dokument wurde kein Text gefunden",
+      "noTextDescription": "Wenn dein Lebenslauf in einem Bild oder Textfeld steht, füge stattdessen den Text ein.",
+      "docxGarbled": "Die Buchstaben in diesem Dokument lassen sich nicht lesen",
+      "docxGarbledDescription": "Der Text ist beschädigt, meist wegen einer fehlerhaften oder eingebetteten Schrift. Speichere das Dokument erneut oder füge den Text deines Lebenslaufs ein.",
+      "webExport": "Dieses Dokument wurde als Webinhalt gespeichert",
+      "webExportDescription": "Wir können es nicht direkt lesen. Öffne es in Word und wähle Datei > Speichern unter > Word-Dokument (.docx) oder füge den Text deines Lebenslaufs ein.",
+      "rateLimited": "Gerade zu viele Uploads",
+      "rateLimitedDescription": "Bitte warte eine Weile und versuche es erneut oder füge den Text deines Lebenslaufs ein."
+    },
+    "notice": {
+      "rtlUnreliable": "Einige Buchstaben stehen vielleicht in falscher Reihenfolge",
+      "rtlUnreliableDescription": "PDFs speichern verbundene arabische Buchstaben nicht zuverlässig, daher kann Text hier in falscher Reihenfolge stehen. Für den genauesten Scan lade eine .docx-Datei hoch oder füge den Text deines Lebenslaufs ein.",
+      "imagePagesSkipped": "Einige Seiten enthielten keinen Text",
+      "imagePagesSkippedDescription": "Seiten ohne lesbaren Text: {{pages}}. Den Rest haben wir gelesen. Gehören diese Seiten zu deinem Lebenslauf, lade eine .docx-Datei hoch oder füge den Text ein."
+    }
+  }
+}

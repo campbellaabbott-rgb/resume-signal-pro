@@ -1,0 +1,32 @@
+{
+  "ingestParsers": {
+    "refusal": {
+      "emptyFile": "This file is empty",
+      "emptyFileDescription": "There's nothing in it to read. Check the file and upload it again, or paste your resume text.",
+      "passwordProtected": "This PDF is password-protected",
+      "passwordProtectedDescription": "Remove the password (or export an unprotected copy) and upload it again, or paste your resume text.",
+      "invalidPdf": "This isn't a PDF we can open",
+      "invalidPdfDescription": "It may be damaged, or another kind of file renamed to .pdf. Export it again, upload a .docx, or paste your resume text.",
+      "tooManyPages": "This PDF is too long",
+      "tooManyPagesDescription": "It has {{pages}} pages and we read up to {{max}}. Upload just your resume, not a combined document.",
+      "scannedOrEmpty": "This PDF has no text we can read",
+      "scannedOrEmptyDescription": "It looks like a scanned image. Upload a PDF exported from Word or Google Docs, a .docx, or paste your resume text.",
+      "legacyDoc": "We can't open this Word file",
+      "legacyDocDescription": "It's an older .doc file or a password-protected document. Save it as an unprotected .docx (File > Save As in Word), or paste your resume text.",
+      "noText": "No text found in this document",
+      "noTextDescription": "If your resume is inside an image or a text box, paste your resume text instead.",
+      "docxGarbled": "This document's letters can't be read",
+      "docxGarbledDescription": "Its text came out corrupted, usually because of a broken or embedded font. Save the document again, or paste your resume text.",
+      "webExport": "This document was saved as web content",
+      "webExportDescription": "We can't read it directly. Open it in Word and use File > Save As > Word Document (.docx), or paste your resume text.",
+      "rateLimited": "Too many uploads right now",
+      "rateLimitedDescription": "Please wait a while and try again, or paste your resume text."
+    },
+    "notice": {
+      "rtlUnreliable": "Some letters may be out of order",
+      "rtlUnreliableDescription": "PDFs don't keep joined Arabic letters reliably, so parts of this text may read out of order. For the most accurate scan, upload a .docx or paste your resume text.",
+      "imagePagesSkipped": "Some pages had no text",
+      "imagePagesSkippedDescription": "Pages with no text we could read: {{pages}}. We read the rest. If those pages are part of your resume, upload a .docx or paste the text."
+    }
+  }
+}
