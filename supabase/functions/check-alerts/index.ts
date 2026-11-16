@@ -62,6 +62,15 @@ const NEVER_RAN_MINUTES = 99_999;
 /** The page the alert mail links to: ours, never a default host. */
 const HEALTH_DASHBOARD_URL = "https://resumebooster.work/health-check";
 
+/**
+ * WHO THE ALERT COMES FROM (NB-36). It went from alerts@resend.dev only:
+ * Resend's shared domain, which the account may not be allowed to send from,
+ * so every alert could be refused and nobody would hear. Our own domain
+ * first, then Resend's onboarding sender, which reaches the account's own
+ * address: mail-watch's order.
+ */
+const ALERT_SENDERS = ["Resume Booster Alerts <alerts@resumebooster.work>", "Resume Booster Alerts <onboarding@resend.dev>"];
+
 interface AlertConfig {
   name: string;
   metric: string;
@@ -250,11 +259,7 @@ serve(async (req) => {
         </tr>
       `).join('');
       
-      const { error: sendError } = await resend.emails.send({
-        from: "Resume Booster Alerts <alerts@resend.dev>",
-        to: [adminEmail],
-        subject,
-        html: `
+      const html = `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2 style="color: ${criticalAlerts.length > 0 ? '#dc2626' : '#d97706'}; margin-bottom: 20px;">
               System Alert Report
@@ -287,9 +292,16 @@ serve(async (req) => {
               This alert will not repeat for 60 minutes per metric.
             </p>
           </div>
-        `,
-      });
-      
+        `;
+      // Each sender in turn until one is accepted; the last refusal is the one said.
+      let sendError: unknown = null;
+      for (const from of ALERT_SENDERS) {
+        const { error } = await resend.emails.send({ from, to: [adminEmail], subject, html });
+        sendError = error ?? null;
+        if (!error) break;
+        console.error(`[CHECK-ALERTS] alert email refused from ${from}:`, (error as { message?: string }).message ?? error);
+      }
+
       if (sendError) {
         console.error("[CHECK-ALERTS] alert email REFUSED by Resend:", (sendError as { message?: string }).message ?? sendError);
       }
