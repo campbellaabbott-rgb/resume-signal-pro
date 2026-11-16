@@ -42,6 +42,11 @@ const SECTION = readFileSync(resolve(ROOT, "scripts/verify-deploy.d/99zzzzzzz-bu
 const BUILD_GE = /^build_ge\(\) \{[\s\S]*?^\}$/m.exec(SCRIPT)?.[0] ?? "";
 const KEY = "pk_test_SECRET_marker_bugs_site_shell";
 const INDEX_HTML = readFileSync(resolve(ROOT, "index.html"), "utf8");
+/**
+ * The fallback as it is served today: this branch's page without the owner
+ * half's script, whichever branch the test runs on.
+ */
+const FALLBACK_TODAY = INDEX_HTML.replace(/<script data-fallback-noindex>[\s\S]*?<\/script>/, "");
 
 type Route = { match: string; status?: number; headers?: Record<string, string>; body?: string };
 
@@ -132,7 +137,7 @@ const site = (published: boolean, opts: { entry?: string; fallback?: string } = 
   { match: GET("https://site.test/"), body: '<script type="module" src="/assets/index-AbC123.js"></script>' },
   { match: GET("https://site.test/assets/index-AbC123.js"), body: opts.entry ?? (published ? ENTRY_NEW : ENTRY_OLD) },
   { match: GET("https://site.test/assets/NotFound-Nf1.js"), body: published ? NF_NEW : NF_OLD },
-  { match: GET("https://site.test/rb-verify-no-baked-page-here"), body: opts.fallback ?? INDEX_HTML },
+  { match: GET("https://site.test/rb-verify-no-baked-page-here"), body: opts.fallback ?? FALLBACK_TODAY },
 ];
 
 const before = (): Route[] => [...preflights(OLD), ...helper("missing"), ...claimPage(HEAD_OLD), ...site(false)];
@@ -237,7 +242,8 @@ describe("the bug round site-shell section", () => {
   });
 
   it("SEO-F10 once decided judges the fallback shell, and a decision to keep it ships nothing", () => {
-    const FALLBACK = `${INDEX_HTML}<script data-fallback-noindex>/* noindex */</script>`;
+    const FALLBACK = `${FALLBACK_TODAY}<script data-fallback-noindex>/* noindex */</script>`;
+    expect(FALLBACK_TODAY).not.toContain("data-fallback-noindex");
     const shipped = run([...after().filter((r) => !r.match.includes("rb-verify")), ...site(true, { fallback: FALLBACK })], { "SEO-F10": "noindex on the fallback for every path except '/'" });
     expect(fails(shipped.lines), shipped.out).toEqual([]);
     expect(shipped.lines.some((l) => l.startsWith("PASS  SEO-F10 decided (noindex on the fallback for every path except '/')")), shipped.out).toBe(true);
