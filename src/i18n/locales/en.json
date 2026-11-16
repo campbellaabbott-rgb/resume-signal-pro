@@ -2768,9 +2768,9 @@
           "howLong": "Sent only to produce your report, under that provider's terms"
         },
         "email": {
-          "what": "A report you email to yourself, the paid analysis we email you, and any fix-plan emails you opt into",
-          "where": "Your inbox, sent through our email provider; scheduled fix-plan emails wait in our send queue",
-          "howLong": "The queued emails go out over 14 days; unsubscribing cancels the rest"
+          "what": "A report you email to yourself and the paid analysis we email you",
+          "where": "Your inbox, sent through our email provider",
+          "howLong": "In your inbox for as long as you keep it"
         },
         "paid": {
           "what": "A paid analysis, which quotes your resume",
@@ -5697,16 +5697,6 @@
     "home": "Back to Resume Booster"
   },
   "fixPlanConfirm": {
-    "title": "Start your fix-plan emails",
-    "body": "Four short emails over two weeks: your top fixes on day 2, the rest on day 4, a rescan reminder on day 6, and one question on day 14. Every email has an unsubscribe link.",
-    "button": "Yes, start the emails",
-    "done": "Done. The first email arrives in two days.",
-    "already": "A fix-plan sequence already started for this address this month, so nothing more was queued.",
-    "optedOut": "This address unsubscribed from our emails earlier, so nothing was queued.",
-    "invalid": "This link has expired or is not valid. Email yourself a fresh report from your next scan to get a new one.",
-    "missing": "This page needs the button from your report email.",
-    "error": "Could not start it right now. Try the button again shortly.",
-    "errorFinal": "Could not start the whole sequence, and pressing the button again will not restart it this month.",
     "home": "Back to Resume Booster"
   },
   "emailUnsubscribe": {

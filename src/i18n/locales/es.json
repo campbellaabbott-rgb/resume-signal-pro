@@ -2791,9 +2791,9 @@
           "howLong": "Se envía solo para generar tu informe, según las condiciones de ese proveedor"
         },
         "email": {
-          "what": "Un informe que te envías por correo, el análisis de pago que te enviamos y los correos del plan de mejoras que aceptes",
-          "where": "Tu bandeja de entrada, a través de nuestro proveedor de correo; los correos programados del plan esperan en nuestra cola de envío",
-          "howLong": "Los correos programados salen a lo largo de 14 días; darte de baja cancela el resto"
+          "what": "Un informe que te envías por correo y el análisis de pago que te enviamos",
+          "where": "Tu bandeja de entrada, a través de nuestro proveedor de correo",
+          "howLong": "En tu bandeja de entrada mientras los conserves"
         },
         "paid": {
           "what": "Un análisis de pago, que cita tu currículum",
@@ -5752,16 +5752,6 @@
     "home": "Volver a Resume Booster"
   },
   "fixPlanConfirm": {
-    "title": "Inicia los correos de tu plan de arreglos",
-    "body": "Cuatro correos breves en dos semanas: los arreglos clave el día 2, el resto el día 4, un recordatorio de reescaneo el día 6 y una pregunta el día 14. Cada correo incluye un enlace para darse de baja.",
-    "button": "Sí, iniciar los correos",
-    "done": "Listo. El primer correo llega en dos días.",
-    "already": "Ya se inició una secuencia del plan para esta dirección este mes, así que no se programó nada más.",
-    "optedOut": "Esta dirección se dio de baja de nuestros correos antes, así que no se programó nada.",
-    "invalid": "Este enlace caducó o no es válido. Envíate un informe nuevo desde tu próximo escaneo para obtener otro.",
-    "missing": "Esta página necesita el botón de tu correo del informe.",
-    "error": "No se pudo iniciar ahora. Vuelve a pulsar el botón en un momento.",
-    "errorFinal": "No se pudo iniciar la secuencia completa, y volver a pulsar el botón no la reiniciará este mes.",
     "home": "Volver a Resume Booster"
   },
   "emailUnsubscribe": {

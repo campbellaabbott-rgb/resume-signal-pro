@@ -2791,9 +2791,9 @@
           "howLong": "Envoyé uniquement pour produire votre rapport, selon les conditions de ce fournisseur"
         },
         "email": {
-          "what": "Un rapport que vous vous envoyez par e-mail, l'analyse payante que nous vous envoyons, et les e-mails du plan de correction auxquels vous vous inscrivez",
-          "where": "Votre boîte de réception, via notre prestataire d'e-mail ; les e-mails programmés du plan attendent dans notre file d'envoi",
-          "howLong": "Les e-mails programmés partent sur 14 jours ; vous désinscrire annule le reste"
+          "what": "Un rapport que vous vous envoyez par e-mail et l'analyse payante que nous vous envoyons",
+          "where": "Votre boîte de réception, via notre prestataire d'e-mail",
+          "howLong": "Dans votre boîte de réception, tant que vous les gardez"
         },
         "paid": {
           "what": "Une analyse payante, qui cite votre CV",
@@ -5752,16 +5752,6 @@
     "home": "Retour à Resume Booster"
   },
   "fixPlanConfirm": {
-    "title": "Lancez les e-mails de votre plan de correction",
-    "body": "Quatre courts e-mails sur deux semaines : les corrections clés au jour 2, le reste au jour 4, un rappel de re-scan au jour 6 et une question au jour 14. Chaque e-mail contient un lien de désabonnement.",
-    "button": "Oui, lancer les e-mails",
-    "done": "C'est fait. Le premier e-mail arrive dans deux jours.",
-    "already": "Une séquence du plan a déjà été lancée pour cette adresse ce mois-ci, donc rien de plus n'a été programmé.",
-    "optedOut": "Cette adresse s'est désabonnée de nos e-mails auparavant, donc rien n'a été programmé.",
-    "invalid": "Ce lien a expiré ou n'est pas valide. Envoyez-vous un nouveau rapport lors de votre prochain scan pour en obtenir un autre.",
-    "missing": "Cette page a besoin du bouton de l'e-mail de votre rapport.",
-    "error": "Impossible de lancer pour le moment. Réessayez le bouton dans un instant.",
-    "errorFinal": "Impossible de lancer toute la série, et appuyer de nouveau sur le bouton ne la relancera pas ce mois-ci.",
     "home": "Retour à Resume Booster"
   },
   "emailUnsubscribe": {

@@ -2791,9 +2791,9 @@
           "howLong": "Enviado apenas para produzir o seu relatório, nos termos desse fornecedor"
         },
         "email": {
-          "what": "Um relatório que envia para si por e-mail, a análise paga que lhe enviamos e os e-mails do plano de correções que aceitar",
-          "where": "A sua caixa de entrada, através do nosso fornecedor de e-mail; os e-mails agendados do plano aguardam na nossa fila de envio",
-          "howLong": "Os e-mails agendados saem ao longo de 14 dias; cancelar a subscrição cancela os restantes"
+          "what": "Um relatório que você envia para si mesmo por e-mail e a análise paga que enviamos para você",
+          "where": "Sua caixa de entrada, por meio do nosso provedor de e-mail",
+          "howLong": "Na sua caixa de entrada, enquanto você guardar"
         },
         "paid": {
           "what": "Uma análise paga, que cita o seu currículo",
@@ -5752,16 +5752,6 @@
     "home": "Voltar para o Resume Booster"
   },
   "fixPlanConfirm": {
-    "title": "Inicie os e-mails do seu plano de ajustes",
-    "body": "Quatro e-mails curtos em duas semanas: os ajustes principais no dia 2, o resto no dia 4, um lembrete de nova análise no dia 6 e uma pergunta no dia 14. Cada e-mail traz um link para cancelar a inscrição.",
-    "button": "Sim, iniciar os e-mails",
-    "done": "Pronto. O primeiro e-mail chega em dois dias.",
-    "already": "Uma sequência do plano já foi iniciada para este endereço este mês, então nada mais foi agendado.",
-    "optedOut": "Este endereço cancelou nossos e-mails antes, então nada foi agendado.",
-    "invalid": "Este link expirou ou não é válido. Envie para você um novo relatório na próxima análise para receber outro.",
-    "missing": "Esta página precisa do botão do e-mail do seu relatório.",
-    "error": "Não foi possível iniciar agora. Tente o botão de novo em instantes.",
-    "errorFinal": "Não foi possível iniciar a sequência completa, e tocar no botão de novo não vai reiniciá-la este mês.",
     "home": "Voltar para o Resume Booster"
   },
   "emailUnsubscribe": {
