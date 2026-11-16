@@ -1,0 +1,32 @@
+{
+  "ingestParsers": {
+    "refusal": {
+      "emptyFile": "Este arquivo está vazio",
+      "emptyFileDescription": "Não há nada nele para ler. Confira o arquivo e envie de novo, ou cole o texto do seu currículo.",
+      "passwordProtected": "Este PDF está protegido por senha",
+      "passwordProtectedDescription": "Remova a senha (ou exporte uma cópia sem proteção) e envie de novo, ou cole o texto do seu currículo.",
+      "invalidPdf": "Não conseguimos abrir este PDF",
+      "invalidPdfDescription": "Ele pode estar danificado ou ser outro tipo de arquivo renomeado para .pdf. Exporte de novo, envie um .docx ou cole o texto do seu currículo.",
+      "tooManyPages": "Este PDF é longo demais",
+      "tooManyPagesDescription": "Ele tem {{pages}} páginas e lemos até {{max}}. Envie só o seu currículo, não um documento combinado.",
+      "scannedOrEmpty": "Este PDF não tem texto que possamos ler",
+      "scannedOrEmptyDescription": "Parece uma imagem digitalizada. Envie um PDF exportado do Word ou do Google Docs, um .docx, ou cole o texto do seu currículo.",
+      "legacyDoc": "Não conseguimos abrir este arquivo do Word",
+      "legacyDocDescription": "É um arquivo .doc antigo ou um documento protegido por senha. Salve como .docx sem proteção (Arquivo > Salvar como no Word) ou cole o texto do seu currículo.",
+      "noText": "Nenhum texto encontrado neste documento",
+      "noTextDescription": "Se o seu currículo está dentro de uma imagem ou caixa de texto, cole o texto no lugar.",
+      "docxGarbled": "Não dá para ler as letras deste documento",
+      "docxGarbledDescription": "O texto saiu corrompido, geralmente por causa de uma fonte quebrada ou incorporada. Salve o documento de novo ou cole o texto do seu currículo.",
+      "webExport": "Este documento foi salvo como conteúdo da web",
+      "webExportDescription": "Não conseguimos lê-lo diretamente. Abra no Word e use Arquivo > Salvar como > Documento do Word (.docx), ou cole o texto do seu currículo.",
+      "rateLimited": "Muitos envios agora",
+      "rateLimitedDescription": "Espere um pouco e tente de novo, ou cole o texto do seu currículo."
+    },
+    "notice": {
+      "rtlUnreliable": "Algumas letras podem estar fora de ordem",
+      "rtlUnreliableDescription": "PDFs não guardam com segurança as letras árabes ligadas, então partes deste texto podem aparecer fora de ordem. Para a análise mais precisa, envie um .docx ou cole o texto do seu currículo.",
+      "imagePagesSkipped": "Algumas páginas não tinham texto",
+      "imagePagesSkippedDescription": "Páginas sem texto legível: {{pages}}. Lemos o resto. Se essas páginas fazem parte do seu currículo, envie um .docx ou cole o texto."
+    }
+  }
+}

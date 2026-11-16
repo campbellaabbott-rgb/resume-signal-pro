@@ -14,6 +14,12 @@
  * "• " run before mammoth reads it; numbered lists, numbered headings,
  * numbering removed (numId 0) and a tracked change's old bullet get nothing.
  *
+ * RC-S13-037: a list defined through a list style (Word's "Define New List
+ * Style") has numbering whose abstractNum holds no levels, only
+ * w:numStyleLink naming the style; the style names another numbering whose
+ * abstractNum carries the levels. Those bullets read as bare lines until the
+ * link was followed.
+ *
  * Corpus (~/.config/resumebooster/free-scan-wave-corpora/S13-037): 1,251
  * paragraphs. Real (every Word-saved .docx on this machine: mammoth's own test
  * documents) 15: main right on 13, the branch on 15. Producer (docx@9.7.1,
@@ -26,7 +32,7 @@ import mammoth from "mammoth";
 import JSZip from "jszip";
 import * as docx from "docx";
 import { readDocxBody, readNumberingFormats, readStyleNumbering, listBulletsAsText } from "../../supabase/functions/parse-docx/docx-text";
-import { RESUME_LINES, WORD_BULLETS, transitionalDocx, wordBulletsDocx, type ZipClass } from "../../supabase/functions/parse-docx/docx-fixtures";
+import { LIST_STYLE_BULLETS, RESUME_LINES, WORD_BULLETS, numStyleLinkBulletsDocx, transitionalDocx, wordBulletsDocx, type ZipClass } from "../../supabase/functions/parse-docx/docx-fixtures";
 import slice from "./fixtures/free-scan-wave/s13-037-list-shapes.json";
 
 const Zip = JSZip as unknown as ZipClass;
@@ -123,4 +129,28 @@ describe("the corpus slice: every list shape the rule resolves or declines", () 
       expect(listBulletsAsText(xml, numbering, styles).count).toBe(shape.bullet ? 1 : 0);
     });
   }
+});
+
+describe("bullets defined through a list style (RC-S13-037)", () => {
+  it("follow numStyleLink to the style's numbering and keep their bullets", async () => {
+    const { body, listBullets } = await readDocxBody(await numStyleLinkBulletsDocx(Zip), libs);
+    expect(lines(body)).toEqual([
+      RESUME_LINES.name,
+      WORD_BULLETS.heading,
+      RESUME_LINES.role,
+      ...LIST_STYLE_BULLETS.map((t) => `• ${t}`),
+    ]);
+    expect(listBullets).toBe(3);
+  });
+
+  it("resolves the link through the style's numId, or through the abstractNum that names the style", () => {
+    const lvls = `<w:lvl w:ilvl="0"><w:numFmt w:val="bullet"/></w:lvl>`;
+    const numbering = `<w:abstractNum w:abstractNumId="0"><w:styleLink w:val="L"/>${lvls}</w:abstractNum><w:abstractNum w:abstractNumId="1"><w:numStyleLink w:val="L"/></w:abstractNum><w:num w:numId="6"><w:abstractNumId w:val="0"/></w:num><w:num w:numId="5"><w:abstractNumId w:val="1"/></w:num>`;
+    const styles = `<w:style w:type="numbering" w:styleId="L"><w:pPr><w:numPr><w:numId w:val="6"/></w:numPr></w:pPr></w:style>`;
+    expect(readNumberingFormats(numbering, styles).get("5")?.get("0")).toBe("bullet");
+    // No styles part: the abstractNum carrying w:styleLink still answers.
+    expect(readNumberingFormats(numbering, null).get("5")?.get("0")).toBe("bullet");
+    // A link to a style nobody defines claims nothing.
+    expect(readNumberingFormats(numbering.replace(/w:val="L"\/><w:lvl/, 'w:val="M"/><w:lvl'), null).get("5")?.size ?? 0).toBe(0);
+  });
 });

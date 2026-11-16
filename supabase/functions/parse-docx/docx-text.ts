@@ -1,9 +1,10 @@
 /**
  * THE BODY TEXT OF A .DOCX, AS LINES.
  *
- * Plain TypeScript with no imports: mammoth and the zip reader are passed in,
- * so the Node suite runs it with the npm packages and the Deno tests with the
- * exact esm.sh builds parse-docx deploys (./libs.ts).
+ * Plain TypeScript whose only import is the pure ./alt-chunk.ts: mammoth and
+ * the zip reader are passed in, so the Node suite runs it with the npm
+ * packages and the Deno tests with the exact esm.sh builds parse-docx deploys
+ * (./libs.ts).
  *
  * SOFT LINE BREAKS ARE LINES (register S11-010). mammoth's raw-text converter
  * knows text, tabs and paragraphs only, so a Shift+Enter break (<w:br/>)
@@ -30,9 +31,19 @@
  * the reader refuses (an RTF or a PDF renamed .docx, a truncated download)
  * and a document mammoth cannot walk both throw DamagedDocxError, which
  * parse-docx answers with a 422 naming the file, never a 500 the browser
- * reads as an outage.
+ * reads as an outage. Every read after the zip opens (the relationships, each
+ * part, the rewritten zip) is inside that guard (S14X-124): a part whose
+ * deflated bytes are damaged threw a plain Error, which was a 500.
+ *
+ * The bug round of 2026-11-08 adds, in the same pre-pass: tracked moves read
+ * as Word shows them with changes accepted (S14X-125), a text box holding a
+ * drawing ended at its own close (S14X-126), a page embedded as w:altChunk
+ * read as lines (S14X-281), bullets defined through a list style
+ * (RC-S13-037), and the link targets the text does not show (S14X-147).
  */
-export type ZipEntry = { name: string; async(type: "string"): Promise<string> };
+import { altChunkLines } from "./alt-chunk.ts";
+
+export type ZipEntry = { name: string; async(type: "string"): Promise<string>; async(type: "uint8array"): Promise<Uint8Array> };
 export type LoadedZip = {
   file(name: string): ZipEntry | null;
   file(pattern: RegExp): ZipEntry[];
@@ -71,34 +82,90 @@ export function softBreaksAsNewlines(xml: string): { xml: string; count: number 
  * a Choice and no Fallback (some exporters and templates do) was read as
  * nothing, and a contact block placed in one lost its email address. Each such
  * block becomes text runs holding its paragraphs, one per line, where it sat.
- * One pass with indexOf; a block that has a Fallback is left as it is.
+ * A block that has a Fallback of its own is left as it is.
+ *
+ * S14X-126: a block ends at its MATCHING close, nested opens counted, and
+ * "has a Fallback" is asked of the outer block with nested blocks cut out. A
+ * sidebar box holding an icon (itself an mc:AlternateContent, with or without
+ * a Fallback) used to end at the icon's close. A nested block adds only the
+ * text it shows: its Choice's, its Fallback dropped.
  */
-export function liftChoiceOnlyTextBoxes(xml: string): { xml: string; count: number } {
-  const OPEN = "<mc:AlternateContent";
-  const CLOSE = "</mc:AlternateContent>";
+const AC_OPEN = "<mc:AlternateContent";
+const AC_CLOSE = "</mc:AlternateContent>";
+
+/** The index just past the close that matches the open at `start`, or -1. */
+function blockEnd(xml: string, start: number): number {
+  const re = /<mc:AlternateContent\b|<\/mc:AlternateContent>/g;
+  re.lastIndex = start;
+  let depth = 0;
+  for (let m = re.exec(xml); m; m = re.exec(xml)) {
+    depth += m[0][1] === "/" ? -1 : 1;
+    if (depth === 0) return m.index + m[0].length;
+  }
+  return -1;
+}
+
+/** `xml` with each top-level AlternateContent block replaced by what `f` makes of it. */
+function mapBlocks(xml: string, f: (block: string) => string): { xml: string; count: number } {
   let out = "";
   let at = 0;
   let count = 0;
   for (;;) {
-    const start = xml.indexOf(OPEN, at);
-    if (start < 0) return { xml: out + xml.slice(at), count };
-    const end = xml.indexOf(CLOSE, start);
+    const start = xml.indexOf(AC_OPEN, at);
+    const end = start < 0 ? -1 : blockEnd(xml, start);
     if (end < 0) return { xml: out + xml.slice(at), count };
-    const block = xml.slice(start, end + CLOSE.length);
-    out += xml.slice(at, start);
-    at = end + CLOSE.length;
-    if (block.includes("<mc:Fallback") || !block.includes("<w:txbxContent")) { out += block; continue; }
+    const block = xml.slice(start, end);
+    const made = f(block);
+    if (made !== block) count++;
+    out += xml.slice(at, start) + made;
+    at = end;
+  }
+}
+
+const innerOf = (block: string) => block.slice(block.indexOf(">") + 1, block.length - AC_CLOSE.length);
+const textOf = (xml: string) =>
+  (xml.match(/<w:t(?:\s[^>]*)?>[^<]*<\/w:t>/g) ?? []).map((t) => t.replace(/^<w:t(?:\s[^>]*)?>|<\/w:t>$/g, "")).join("");
+
+/** The text a nested block shows: its Choice's, nested blocks within it read the same way. */
+function shownText(block: string): string {
+  const flat = mapBlocks(innerOf(block), (b) => `<w:t>${shownText(b)}</w:t>`).xml;
+  return textOf(flat.replace(/<mc:Fallback\b[\s\S]*?<\/mc:Fallback>/g, "").replace(/<\/w:p>/g, "<w:t> </w:t>")).trim();
+}
+
+export function liftChoiceOnlyTextBoxes(xml: string): { xml: string; count: number } {
+  return mapBlocks(xml, (block) => {
+    const inner = innerOf(block);
+    if (mapBlocks(inner, () => "").xml.includes("<mc:Fallback") || !block.includes("<w:txbxContent")) return block;
+    const flat = mapBlocks(inner, (b) => `<w:t>${shownText(b)}</w:t>`).xml;
     const lines: string[] = [];
-    for (const para of block.match(/<w:p[\s>][\s\S]*?<\/w:p>/g) ?? []) {
-      const text = (para.match(/<w:t(?:\s[^>]*)?>[^<]*<\/w:t>/g) ?? []).map((t) => t.replace(/^<w:t(?:\s[^>]*)?>|<\/w:t>$/g, "")).join("");
+    for (const para of flat.match(/<w:p[\s>][\s\S]*?<\/w:p>/g) ?? []) {
+      const text = textOf(para);
       if (text.trim()) lines.push(text);
     }
-    count++;
     // The block sits inside a run (<w:r>), so run content replaces it: a text
     // element per line, a newline element between them.
     const runs = lines.map((l) => `<w:t xml:space="preserve">${l}</w:t>`).join(NEWLINE_RUN);
-    out += lines.length ? `${NEWLINE_RUN}${runs}${NEWLINE_RUN}` : "";
-  }
+    return lines.length ? `${NEWLINE_RUN}${runs}${NEWLINE_RUN}` : "";
+  });
+}
+
+/**
+ * S14X-125: TRACKED MOVES, AS WORD SHOWS THEM WITH CHANGES ACCEPTED. A move's
+ * source (w:moveFrom) is dropped, as a deletion is; its destination
+ * (w:moveTo) is unwrapped to its runs, as an insertion is. mammoth 1.12.3
+ * reads neither, so moved text was lost; 1.13.0 reads moveTo but throws under
+ * Deno (docx_test.ts), so the pin stays and this does it. The move range
+ * marks (w:moveFromRangeStart and the rest) are left; mammoth ignores them.
+ */
+const MOVE_FROM = /<w:moveFrom\b(?:[^>]*?\/>|[^>]*>[\s\S]*?<\/w:moveFrom>)/g;
+const MOVE_TO = /<w:moveTo\b[^>]*?\/?>|<\/w:moveTo>/g;
+
+export function trackedMovesAccepted(xml: string): { xml: string; count: number } {
+  let count = 0;
+  const out = xml
+    .replace(MOVE_FROM, () => { count++; return ""; })
+    .replace(MOVE_TO, (m) => { if (m[1] !== "/") count++; return ""; });
+  return { xml: out, count };
 }
 
 const attr = (tag: string, name: string): string | null => {
@@ -119,8 +186,15 @@ function levelFormat(lvlBody: string): string | null {
   return null;
 }
 
-/** numbering.xml as numId → ilvl → numFmt, level overrides applied. */
-export function readNumberingFormats(xml: string | null): Map<string, Map<string, string>> {
+/**
+ * numbering.xml as numId → ilvl → numFmt, level overrides applied.
+ *
+ * RC-S13-037: a list defined through a list style has an abstractNum with no
+ * levels, only w:numStyleLink naming the style. Its levels are those of the
+ * numbering the style names (its numPr numId, in styles.xml), else of the
+ * abstractNum that names the style in w:styleLink.
+ */
+export function readNumberingFormats(xml: string | null, stylesXml: string | null = null): Map<string, Map<string, string>> {
   const out = new Map<string, Map<string, string>>();
   if (!xml) return out;
   const levelsOf = (body: string): Map<string, string> => {
@@ -133,9 +207,32 @@ export function readNumberingFormats(xml: string | null): Map<string, Map<string
     return levels;
   };
   const abstract = new Map<string, Map<string, string>>();
+  const styleOwner = new Map<string, string>();
+  const linked = new Map<string, string>();
   for (const m of xml.matchAll(/<w:abstractNum\b([^>]*)>([\s\S]*?)<\/w:abstractNum>/g)) {
     const id = attr(m[1], "w:abstractNumId");
-    if (id !== null) abstract.set(id, levelsOf(m[2]));
+    if (id === null) continue;
+    const levels = levelsOf(m[2]);
+    abstract.set(id, levels);
+    const owns = firstTag(m[2], "w:styleLink");
+    if (owns) styleOwner.set(attr(owns, "w:val") ?? "", id);
+    const link = firstTag(m[2], "w:numStyleLink");
+    if (link && levels.size === 0) linked.set(id, attr(link, "w:val") ?? "");
+  }
+  const nums: Array<[string, string]> = [];
+  for (const m of xml.matchAll(/<w:num\b([^>]*)>([\s\S]*?)<\/w:num>/g)) {
+    const numId = attr(m[1], "w:numId");
+    const absTag = firstTag(m[2], "w:abstractNumId");
+    if (numId !== null && absTag) nums.push([numId, attr(absTag, "w:val") ?? ""]);
+  }
+  if (linked.size > 0) {
+    const styleNum = readStyleNumbering(stylesXml);
+    for (const [id, style] of linked) {
+      const viaNum = styleNum.get(style)?.numId;
+      const viaStyle = viaNum ? nums.find(([n]) => n === viaNum)?.[1] : undefined;
+      const target = viaStyle && viaStyle !== id ? viaStyle : styleOwner.get(style);
+      if (target !== undefined && target !== id) abstract.set(id, abstract.get(target) ?? new Map());
+    }
   }
   for (const m of xml.matchAll(/<w:num\b([^>]*)>([\s\S]*?)<\/w:num>/g)) {
     const numId = attr(m[1], "w:numId");
@@ -243,24 +340,39 @@ export function listBulletsAsText(
   return { xml: out + xml.slice(at), count };
 }
 
-/** A part the main document's relationships name by type (numbering, styles), else Word's usual path. */
-async function relatedPart(zip: LoadedZip, docPath: string, type: string, fallback: string): Promise<string | null> {
+type Rel = { id: string; type: string; target: string; external: boolean; path: string };
+
+const XML_ENTITY: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
+const decodeXml = (s: string) => s.replace(/&(amp|lt|gt|quot|apos);/g, (_, e: string) => XML_ENTITY[e]);
+const escapeXml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/** A zip path from a part's folder and a relative target ("../media/x" included). */
+function joinPath(dir: string, target: string): string {
+  const out: string[] = [];
+  for (const seg of (target.startsWith("/") ? target.slice(1) : dir + target).split("/")) {
+    if (seg === "..") out.pop();
+    else if (seg !== "." && seg !== "") out.push(seg);
+  }
+  return out.join("/");
+}
+
+/** The main document's relationships. */
+async function readRels(zip: LoadedZip, docPath: string): Promise<Rel[]> {
   const slash = docPath.lastIndexOf("/");
   const dir = slash >= 0 ? docPath.slice(0, slash + 1) : "";
   const rels = zip.file(`${dir}_rels/${docPath.slice(slash + 1)}.rels`);
-  let path = fallback;
-  if (rels) {
-    const xml = await rels.async("string");
-    for (const tag of xml.match(/<Relationship\b[^>]*>/g) ?? []) {
-      const t = attr(tag, "Type") ?? "";
-      const target = attr(tag, "Target") ?? "";
-      if (t.endsWith(`/${type}`) && target) {
-        path = target.startsWith("/") ? target.slice(1) : dir + target;
-        break;
-      }
-    }
-  }
-  const part = zip.file(path);
+  if (!rels) return [];
+  return ((await rels.async("string")).match(/<Relationship\b[^>]*>/g) ?? []).map((tag) => {
+    const target = decodeXml(attr(tag, "Target") ?? "");
+    const external = attr(tag, "TargetMode") === "External";
+    return { id: attr(tag, "Id") ?? "", type: attr(tag, "Type") ?? "", target, external, path: external ? "" : joinPath(dir, target) };
+  });
+}
+
+/** A part the main document's relationships name by type (numbering, styles), else Word's usual path. */
+async function relatedPart(zip: LoadedZip, rels: Rel[], type: string, fallback: string): Promise<string | null> {
+  const rel = rels.find((r) => r.type.endsWith(`/${type}`) && r.target && !r.external);
+  const part = zip.file(rel ? rel.path : fallback);
   return part ? part.async("string") : null;
 }
 
@@ -278,44 +390,148 @@ export async function mainDocumentPath(zip: LoadedZip): Promise<string> {
   return "word/document.xml";
 }
 
+/**
+ * S14X-281: each w:altChunk (an embedded web page) becomes paragraphs of the
+ * page's lines (./alt-chunk.ts). A part that is missing or reads as nothing
+ * is counted as unreadable and leaves an empty paragraph.
+ */
+async function altChunksAsParagraphs(xml: string, rels: Rel[], zip: LoadedZip): Promise<{ xml: string; read: number; unreadable: number }> {
+  let read = 0;
+  let unreadable = 0;
+  if (!xml.includes("<w:altChunk")) return { xml, read, unreadable };
+  let out = "";
+  let at = 0;
+  for (const m of xml.matchAll(/<w:altChunk\b([^>]*?)(?:\/>|>[\s\S]*?<\/w:altChunk>)/g)) {
+    const id = attr(m[1], "r:id");
+    const rel = rels.find((r) => r.id === id && !r.external && r.type.endsWith("/aFChunk"));
+    const part = rel ? zip.file(rel.path) : null;
+    let lines: string[] = [];
+    if (part) {
+      try { lines = altChunkLines(await part.async("uint8array")); } catch { lines = []; }
+    }
+    if (lines.length) read++; else unreadable++;
+    out += xml.slice(at, m.index) + (lines.length
+      ? lines.map((l) => `<w:p><w:r><w:t xml:space="preserve">${escapeXml(l)}</w:t></w:r></w:p>`).join("")
+      : "<w:p/>");
+    at = m.index + m[0].length;
+  }
+  return { xml: out + xml.slice(at), read, unreadable };
+}
+
+/**
+ * S14X-147: THE LINK TARGETS THE TEXT DOES NOT SHOW. A contact block written
+ * as links ("Email | LinkedIn") keeps its addresses only in the links:
+ * w:hyperlink relationships to external targets, and HYPERLINK fields.
+ */
+function linkTargets(xml: string, rels: Rel[]): string[] {
+  const out: string[] = [];
+  for (const m of xml.matchAll(/<w:hyperlink\b([^>]*)>/g)) {
+    const id = attr(m[1], "r:id");
+    const rel = id ? rels.find((r) => r.id === id && r.type.endsWith("/hyperlink")) : undefined;
+    if (rel) out.push(rel.target);
+  }
+  const instr = [...xml.matchAll(/<w:instrText\b[^>]*>([^<]*)<\/w:instrText>|\bw:instr="([^"]*)"/g)].map((m) => m[1] ?? m[2]).join("");
+  for (const m of decodeXml(instr).matchAll(/HYPERLINK\s+(\\l\s+)?"([^"]+)"/g)) if (!m[1]) out.push(m[2]);
+  return out;
+}
+
+/**
+ * One trailing line, "Links: a | b", of the mailto/http/https targets the
+ * text does not already show: mailto: dropped, each address once, at most ten
+ * and 1,000 characters. The same rule as parse-pdf's page-text.ts (each
+ * module stays free of imports the other runtime cannot load).
+ */
+export function linksLine(urls: string[], text: string): string {
+  const shown = text.toLowerCase();
+  const seen = new Set<string>();
+  const out: string[] = [];
+  let length = 7;
+  for (const u of urls.map((x) => x.trim())) {
+    let item = "";
+    if (/^mailto:/i.test(u)) {
+      try { item = decodeURIComponent(u.slice(7).split("?")[0]).trim(); } catch { item = ""; }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(item)) continue;
+    } else if (/^https?:\/\/[^\s]+$/i.test(u)) item = u;
+    else continue;
+    const key = item.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "");
+    if (!key || item.length > 200 || seen.has(key) || shown.includes(key)) continue;
+    if (out.length >= 10 || length + item.length + 3 > 1000) break;
+    seen.add(key);
+    out.push(item);
+    length += item.length + 3;
+  }
+  return out.length ? `Links: ${out.join(" | ")}` : "";
+}
+
+export type DocxBody = {
+  body: string;
+  zip: LoadedZip;
+  messages: unknown[];
+  softBreaks: number;
+  listBullets: number;
+  /** Embedded web pages (w:altChunk) read, and those that could not be. */
+  altChunks: { read: number; unreadable: number };
+};
+
 export async function readDocxBody(
   buffer: Uint8Array,
   libs: { mammoth: MammothLike; JSZip: ZipLoader },
-): Promise<{ body: string; zip: LoadedZip; messages: unknown[]; softBreaks: number; listBullets: number }> {
+): Promise<DocxBody> {
   let zip: LoadedZip;
   try {
     zip = await libs.JSZip.loadAsync(buffer);
   } catch (e) {
     throw new DamagedDocxError(`not a zip: ${e instanceof Error ? e.message : String(e)}`, "not_a_zip");
   }
+  try {
+    return await readOpenedDocx(zip, buffer, libs.mammoth);
+  } catch (e) {
+    if (e instanceof DamagedDocxError) throw e;
+    throw new DamagedDocxError(`unreadable document: ${e instanceof Error ? e.message : String(e)}`, "unreadable_document");
+  }
+}
 
+async function readOpenedDocx(zip: LoadedZip, buffer: Uint8Array, mammoth: MammothLike): Promise<DocxBody> {
   let input = buffer;
   let softBreaks = 0;
   let listBullets = 0;
+  const altChunks = { read: 0, unreadable: 0 };
+  let links: string[] = [];
   const path = await mainDocumentPath(zip);
   const part = zip.file(path);
   if (part) {
-    const lifted = liftChoiceOnlyTextBoxes(await part.async("string"));
+    const rels = await readRels(zip, path);
+    const alt = await altChunksAsParagraphs(await part.async("string"), rels, zip);
+    altChunks.read = alt.read;
+    altChunks.unreadable = alt.unreadable;
+    const moves = trackedMovesAccepted(alt.xml);
+    const lifted = liftChoiceOnlyTextBoxes(moves.xml);
     const rewritten = softBreaksAsNewlines(lifted.xml);
     let xml = rewritten.xml;
+    links = linkTargets(xml, rels);
     if (/<w:numPr\b|<w:pStyle\b/.test(xml)) {
-      const numbering = readNumberingFormats(await relatedPart(zip, path, "numbering", "word/numbering.xml"));
-      const styles = readStyleNumbering(numbering.size > 0 ? await relatedPart(zip, path, "styles", "word/styles.xml") : null);
-      const bulleted = listBulletsAsText(xml, numbering, styles);
+      const numberingXml = await relatedPart(zip, rels, "numbering", "word/numbering.xml");
+      const stylesXml = numberingXml ? await relatedPart(zip, rels, "styles", "word/styles.xml") : null;
+      const numbering = readNumberingFormats(numberingXml, stylesXml);
+      const bulleted = listBulletsAsText(xml, numbering, readStyleNumbering(numbering.size > 0 ? stylesXml : null));
       xml = bulleted.xml;
       listBullets = bulleted.count;
     }
-    if (rewritten.count > 0 || lifted.count > 0 || listBullets > 0) {
+    if (alt.read + alt.unreadable + moves.count + rewritten.count + lifted.count + listBullets > 0) {
       zip.file(path, xml);
       input = await zip.generateAsync({ type: "uint8array" });
       softBreaks = rewritten.count;
     }
   }
 
-  try {
-    const result = await libs.mammoth.extractRawText({ buffer: input });
-    return { body: result.value, zip, messages: result.messages ?? [], softBreaks, listBullets };
-  } catch (e) {
-    throw new DamagedDocxError(`unreadable document: ${e instanceof Error ? e.message : String(e)}`, "unreadable_document");
-  }
+  const result = await mammoth.extractRawText({ buffer: input });
+  const line = linksLine(links, result.value);
+  return {
+    body: line ? `${result.value.trimEnd()}\n\n${line}\n` : result.value,
+    zip,
+    messages: result.messages ?? [],
+    softBreaks,
+    listBullets,
+    altChunks,
+  };
 }
