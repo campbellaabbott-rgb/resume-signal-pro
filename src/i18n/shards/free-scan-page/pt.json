@@ -143,12 +143,42 @@
       "formatD": "Um ATS pode embaralhar seus dados",
       "readEasy": "Fácil de ler rapidamente",
       "readSome": "Algumas seções são difíceis de ler rapidamente",
-      "readHard": "Difícil de ler rapidamente"
+      "readHard": "Difícil de ler rapidamente",
+      "quantStrong": "Números fortes em todo o currículo",
+      "quantOlder": "Os cargos mais antigos precisam de mais números",
+      "quantAdd": "Adicione mais números, porcentagens e valores",
+      "verbsA": "Verbos de ação fortes e variados",
+      "verbsB": "Boa variedade de verbos",
+      "verbsC": "Use verbos mais fortes",
+      "verbsD": "Verbos fracos reduzem seu impacto",
+      "lengthRight": "O tamanho certo para o seu nível",
+      "lengthShort": "Adicione mais conquistas",
+      "lengthLong": "Recrutadores podem pular um currículo longo",
+      "wordsIdeal": "Faixa ideal: {{min}}-{{max}} palavras",
+      "wordsFew": "Parece enxuto demais: adicione conteúdo",
+      "wordsMany": "Denso demais: corte o excesso",
+      "sectionsAll": "Todas as seções principais estão presentes",
+      "sectionsAdd": "Adicione: {{section}}",
+      "contactAll": "Recrutadores conseguem falar com você facilmente",
+      "contactAdd": "Adicione {{item}}",
+      "impactStrong": "Mostra resultados, não tarefas",
+      "impactEarlier": "Cargos anteriores listam atribuições",
+      "impactFocus": "Foque em resultados em vez de atribuições",
+      "densityDense": "Um ATS vai encontrar suas habilidades",
+      "densityModerate": "Adicione mais termos do setor",
+      "densitySparse": "Faltam termos de busca importantes",
+      "levelDense": "Alta",
+      "levelModerate": "Moderada",
+      "levelSparse": "Baixa",
+      "learnAbout": "Saiba mais sobre {{title}}"
     },
     "keywordImpact": {
       "critical": "Obrigatório",
       "high": "Alto impacto",
-      "medium": "Útil"
+      "medium": "Útil",
+      "countCritical": "Essenciais: {{n}}",
+      "countHigh": "Alto impacto: {{n}}",
+      "showAll": "Ver todas as palavras-chave de {{industry}} (+{{n}})"
     },
     "keywordCategory": {
       "certification": "Certificação",
@@ -159,13 +189,15 @@
       "regulation": "Regulamentação"
     },
     "xray": {
-      "flagged": "Linhas sinalizadas: {{n}}",
       "legendIntro": "Seu currículo como o lemos, com anotações:",
       "legendWeak": "sublinhado vermelho: um tópico fraco (passe o mouse para ver o motivo)",
       "legendAmber": "âmbar: sem números",
       "legendGreen": "verde: um verbo de ação forte",
       "showLess": "Mostrar menos",
-      "showAll": "Mostrar todas as linhas ({{n}})"
+      "showAll": "Mostrar todas as linhas ({{n}})",
+      "flagged_one": "{{count}} linha sinalizada",
+      "flagged_many": "{{count}} linhas sinalizadas",
+      "flagged_other": "{{count}} linhas sinalizadas"
     },
     "email": {
       "invalid": "Digite um endereço de e-mail válido.",
@@ -181,7 +213,7 @@
       "score": "Pontuação ATS: {{score}}/100",
       "band": "(faixa do modelo {{low}}-{{high}})",
       "projected": "cerca de {{score}} após as correções (uma estimativa aproximada)",
-      "breakdown": "Detalhamento: palavras-chave {{keywords}}%  ·  formato {{format}}%  ·  quantificação {{quantification}}%",
+      "breakdown": "Detalhamento: palavras-chave {{keywords}}  ·  formato {{format}}  ·  quantificação {{quantification}}",
       "findings": "Achados: {{critical}} críticos  ·  {{warnings}} alertas  ·  {{passed}} aprovados",
       "fixPlan": "Seu plano de correções de {{minutes}} minutos:",
       "stepCost": "(cerca de {{minutes}} min, +{{points}} pts)",

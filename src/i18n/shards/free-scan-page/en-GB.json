@@ -143,12 +143,42 @@
       "formatD": "An ATS may scramble your details",
       "readEasy": "Easy to scan",
       "readSome": "Some sections are hard to scan",
-      "readHard": "Hard to scan"
+      "readHard": "Hard to scan",
+      "quantStrong": "Strong numbers throughout",
+      "quantOlder": "Older roles need more numbers",
+      "quantAdd": "Add more numbers, percentages and amounts",
+      "verbsA": "Strong, varied action verbs",
+      "verbsB": "Good variety of verbs",
+      "verbsC": "Use stronger verbs",
+      "verbsD": "Weak verbs blunt your impact",
+      "lengthRight": "The right length for your level",
+      "lengthShort": "Add more accomplishments",
+      "lengthLong": "Recruiters may skip a long CV",
+      "wordsIdeal": "Sweet spot: {{min}}-{{max}} words",
+      "wordsFew": "Looks thin: add content",
+      "wordsMany": "Too dense: trim it down",
+      "sectionsAll": "All key sections present",
+      "sectionsAdd": "Add: {{section}}",
+      "contactAll": "Easy for recruiters to reach you",
+      "contactAdd": "Add {{item}}",
+      "impactStrong": "Shows results, not tasks",
+      "impactEarlier": "Earlier roles list duties",
+      "impactFocus": "Focus on outcomes over duties",
+      "densityDense": "An ATS will find your skills",
+      "densityModerate": "Add more industry terms",
+      "densitySparse": "Missing key search terms",
+      "levelDense": "Dense",
+      "levelModerate": "Moderate",
+      "levelSparse": "Sparse",
+      "learnAbout": "Learn about {{title}}"
     },
     "keywordImpact": {
       "critical": "Must have",
       "high": "High impact",
-      "medium": "Helpful"
+      "medium": "Helpful",
+      "countCritical": "Must-have: {{n}}",
+      "countHigh": "High impact: {{n}}",
+      "showAll": "Show all {{industry}} keywords (+{{n}})"
     },
     "keywordCategory": {
       "certification": "Certification",
@@ -159,13 +189,14 @@
       "regulation": "Regulation"
     },
     "xray": {
-      "flagged": "Lines flagged: {{n}}",
       "legendIntro": "Your CV as we read it, annotated:",
       "legendWeak": "red underline: a weak bullet (hover for why)",
       "legendAmber": "amber: no numbers",
       "legendGreen": "green: a strong action word",
       "showLess": "Show less",
-      "showAll": "Show all lines ({{n}})"
+      "showAll": "Show all lines ({{n}})",
+      "flagged_one": "{{count}} line flagged",
+      "flagged_other": "{{count}} lines flagged"
     },
     "email": {
       "invalid": "Please enter a valid email address.",
@@ -181,7 +212,7 @@
       "score": "ATS score: {{score}}/100",
       "band": "(modelling band {{low}}-{{high}})",
       "projected": "about {{score}} after fixes (a rough guide)",
-      "breakdown": "Breakdown: keywords {{keywords}}%  ·  format {{format}}%  ·  quantification {{quantification}}%",
+      "breakdown": "Breakdown: keywords {{keywords}}  ·  format {{format}}  ·  quantification {{quantification}}",
       "findings": "Findings: {{critical}} critical  ·  {{warnings}} warnings  ·  {{passed}} passed",
       "fixPlan": "Your {{minutes}}-minute fix plan:",
       "stepCost": "(about {{minutes}} min, +{{points}} pts)",
@@ -194,7 +225,7 @@
       "preparing": "Preparing your report…"
     },
     "market": {
-      "title": "{{country}} market intelligence",
+      "title": "{{country}} Market Intelligence",
       "hotSkills": "Skills in demand (hand-compiled)",
       "risingKeywords": "Rising keywords (hand-compiled)",
       "cvNorms": "{{country}} CV norms"

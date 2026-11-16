@@ -92,86 +92,35 @@ interface RedFlag {
 
 // --- Tooltip data ---
 
-const metricTooltips: Record<string, { title: string; description: string; whyMatters: string }> = {
-  atsScore: {
-    title: "AI-ATS Score",
-    description: "Our AI simulates how modern AI-powered Applicant Tracking Systems scan your resume.",
-    whyMatters: "A low score means parsing or keyword gaps are likely keeping you out of the searches recruiters actually run."
-  },
-  format: {
-    title: "Format Grade",
-    description: "Evaluates your resume's structure, layout, and AI-ATS readability.",
-    whyMatters: "Poor formatting causes AI-ATS parsing errors, losing your key information."
-  },
-  metrics: {
-    title: "Quantification Score",
-    description: "Measures how many of your achievements include numbers, percentages, or metrics.",
-    whyMatters: "Recruiters skim, and numbers catch their eye first."
-  },
-  verbs: {
-    title: "Action Verb Grade",
-    description: "Rates the strength and variety of action verbs starting your bullet points.",
-    whyMatters: "Strong verbs like 'Spearheaded' beat weak ones like 'Helped' or 'Assisted'."
-  },
-  pages: {
-    title: "Resume Length",
-    description: "Checks if your resume length matches industry standards for your experience level.",
-    whyMatters: "Too long = skipped. Too short = lacking substance."
-  },
-  words: {
-    title: "Word Count",
-    description: "Measures if you have enough content to showcase your value.",
-    whyMatters: "The sweet spot varies by experience—too few words signals inexperience."
-  },
-  sections: {
-    title: "Section Check",
-    description: "Verifies all essential resume sections are present.",
-    whyMatters: "Missing sections are immediate red flags for recruiters."
-  },
-  contact: {
-    title: "Contact Info",
-    description: "Checks for email, phone, and LinkedIn presence.",
-    whyMatters: "Recruiters can't hire you if they can't contact you."
-  },
-  readability: {
-    title: "Readability Score",
-    description: "Measures how easy your resume is to scan quickly.",
-    whyMatters: "Recruiters skim each resume quickly, so make every word count."
-  },
-  bulletImpact: {
-    title: "Bullet Impact",
-    description: "Analyzes if your bullets focus on achievements vs. just listing responsibilities.",
-    whyMatters: "Achievement-focused bullets prove value; responsibility lists don't."
-  },
-  keywordDensity: {
-    title: "Keyword Density",
-    description: "Measures industry-relevant keyword presence for AI-ATS matching.",
-    whyMatters: "Too few keywords = no AI-ATS match. Too many = keyword stuffing penalty."
-  },
-  improvementPotential: {
-    title: "Improvement Potential",
-    description: "Estimated score increase possible with optimization.",
-    whyMatters: "Shows how much room you have to outcompete other candidates."
-  },
-};
+// The tooltips are read from freeResults.metricTooltips, which every locale
+// already carries (S14X-057); this card held an English copy of them.
+const METRIC_TOOLTIP_KEYS = new Set([
+  "atsScore", "format", "metrics", "verbs", "pages", "words", "sections",
+  "contact", "readability", "bulletImpact", "keywordDensity", "improvementPotential",
+]);
 
 // --- Inline MetricTooltip ---
 
 function MetricTip({ metricKey }: { metricKey: string }) {
+  const { t } = useTranslation();
   const [show, setShow] = useState(false);
   const isMobile = useIsMobile();
-  const tip = metricTooltips[metricKey];
-  if (!tip) return null;
+  if (!METRIC_TOOLTIP_KEYS.has(metricKey)) return null;
+  const tip = {
+    title: t(`freeResults.metricTooltips.${metricKey}.title`),
+    description: t(`freeResults.metricTooltips.${metricKey}.description`),
+    whyMatters: t(`freeResults.metricTooltips.${metricKey}.whyMatters`),
+  };
 
   if (isMobile) {
     return (
       <div className="relative inline-block">
-        <button onClick={() => setShow(!show)} className="p-1 -m-1 touch-manipulation" aria-label={`Learn about ${tip.title}`}>
+        <button onClick={() => setShow(!show)} className="p-1 -m-1 touch-manipulation" aria-label={t("freeScanPage.metric.learnAbout", { title: tip.title })}>
           <HelpCircle className="w-3 h-3 text-muted-foreground/50" />
         </button>
         {show && (
           <div className="absolute z-50 right-0 top-6 w-60 p-3 rounded-xl bg-card border border-border shadow-lg animate-fade-in">
-            <button onClick={() => setShow(false)} className="absolute top-2 right-2 p-1 text-muted-foreground" aria-label="Close">
+            <button onClick={() => setShow(false)} className="absolute top-2 right-2 p-1 text-muted-foreground" aria-label={t("common.close")}>
               <X className="w-3 h-3" />
             </button>
             <p className="font-semibold text-foreground mb-1 pr-4 text-xs">{tip.title}</p>
@@ -347,7 +296,7 @@ export function MetricCardsGrid({
       label: t('freeScan.metrics'),
       tooltipKey: "metrics",
       value: `${quantificationScore.score}%`,
-      subtext: quantificationScore.tip || (quantificationScore.verdict === "strong" ? "✓ Strong metrics throughout" : quantificationScore.score >= 50 ? "⚠ Older roles need more numbers" : "⚠ Add more $, %, # throughout"),
+      subtext: quantificationScore.tip || (quantificationScore.verdict === "strong" ? `✓ ${t("freeScanPage.metric.quantStrong")}` : quantificationScore.score >= 50 ? `⚠ ${t("freeScanPage.metric.quantOlder")}` : `⚠ ${t("freeScanPage.metric.quantAdd")}`),
       status: statusFromScore(quantificationScore.score, 60, 40),
       progress: quantificationScore.score,
     },
@@ -358,7 +307,7 @@ export function MetricCardsGrid({
       label: t('freeScan.verbs'),
       tooltipKey: "verbs",
       value: `${actionVerbGrade.grade} — ${gradeLabel(actionVerbGrade.grade)}`,
-      subtext: actionVerbGrade.grade === "A" ? "✓ Strong, powerful verbs" : actionVerbGrade.grade === "B" ? "✓ Good variety of verbs" : actionVerbGrade.grade === "C" ? "⚠ Use stronger words" : "✗ Weak verbs hurt impact",
+      subtext: actionVerbGrade.grade === "A" ? `✓ ${t("freeScanPage.metric.verbsA")}` : actionVerbGrade.grade === "B" ? `✓ ${t("freeScanPage.metric.verbsB")}` : actionVerbGrade.grade === "C" ? `⚠ ${t("freeScanPage.metric.verbsC")}` : `✗ ${t("freeScanPage.metric.verbsD")}`,
       status: statusFromGrade(actionVerbGrade.grade),
     }] : []),
   ];
@@ -369,7 +318,7 @@ export function MetricCardsGrid({
       label: t('freeScan.pages'),
       tooltipKey: "pages",
       value: `${resumeLength.currentPages} / ${resumeLength.recommendedPages}`,
-      subtext: resumeLength.verdict === "just_right" ? "✓ Perfect length for your level" : resumeLength.verdict === "too_short" ? "⚠ Add more accomplishments" : "⚠ Recruiters may skip long resumes",
+      subtext: resumeLength.verdict === "just_right" ? `✓ ${t("freeScanPage.metric.lengthRight")}` : resumeLength.verdict === "too_short" ? `⚠ ${t("freeScanPage.metric.lengthShort")}` : `⚠ ${t("freeScanPage.metric.lengthLong")}`,
       status: (resumeLength.verdict === "just_right" ? "success" : "warning") as Status,
     }] : []),
     ...(wordCount ? [{
@@ -377,7 +326,7 @@ export function MetricCardsGrid({
       label: t('freeScan.words'),
       tooltipKey: "words",
       value: `${wordCount.current}`,
-      subtext: wordCount.verdict === "ideal" ? `✓ Sweet spot: ${wordCount.idealMin}-${wordCount.idealMax}` : wordCount.verdict === "too_few" ? "⚠ Looks thin — add content" : "⚠ Too dense — trim fat",
+      subtext: wordCount.verdict === "ideal" ? `✓ ${t("freeScanPage.metric.wordsIdeal", { min: wordCount.idealMin, max: wordCount.idealMax })}` : wordCount.verdict === "too_few" ? `⚠ ${t("freeScanPage.metric.wordsFew")}` : `⚠ ${t("freeScanPage.metric.wordsMany")}`,
       status: (wordCount.verdict === "ideal" ? "success" : "warning") as Status,
     }] : []),
     {
@@ -385,7 +334,7 @@ export function MetricCardsGrid({
       label: t('freeScan.sections'),
       tooltipKey: "sections",
       value: `${sectionPresent}/5`,
-      subtext: sectionCheck.missingSections.length === 0 ? "✓ All key sections present" : `⚠ Add: ${sectionCheck.missingSections[0]}`,
+      subtext: sectionCheck.missingSections.length === 0 ? `✓ ${t("freeScanPage.metric.sectionsAll")}` : `⚠ ${t("freeScanPage.metric.sectionsAdd", { section: sectionCheck.missingSections[0] })}`,
       status: sectionPresent === 5 ? "success" : sectionPresent >= 3 ? "warning" : "destructive",
       progress: (sectionPresent / 5) * 100,
     },
@@ -394,7 +343,7 @@ export function MetricCardsGrid({
       label: t('freeScan.contact'),
       tooltipKey: "contact",
       value: `${contactPresent}/3`,
-      subtext: contactInfo.missingItems.length === 0 ? "✓ Easy for recruiters to reach you" : `⚠ Add ${contactInfo.missingItems[0]}`,
+      subtext: contactInfo.missingItems.length === 0 ? `✓ ${t("freeScanPage.metric.contactAll")}` : `⚠ ${t("freeScanPage.metric.contactAdd", { item: contactInfo.missingItems[0] })}`,
       status: contactPresent === 3 ? "success" : contactPresent >= 2 ? "warning" : "destructive",
       progress: (contactPresent / 3) * 100,
     },
@@ -415,7 +364,7 @@ export function MetricCardsGrid({
       label: t('freeScan.bulletImpact'),
       tooltipKey: "bulletImpact",
       value: `${bulletImpactScore.score}%`,
-      subtext: bulletImpactScore.tip || (bulletImpactScore.verdict === "achievement_focused" ? "✓ Shows results, not tasks" : bulletImpactScore.score >= 50 ? "⚠ Earlier roles list duties" : "⚠ Focus on outcomes over duties"),
+      subtext: bulletImpactScore.tip || (bulletImpactScore.verdict === "achievement_focused" ? `✓ ${t("freeScanPage.metric.impactStrong")}` : bulletImpactScore.score >= 50 ? `⚠ ${t("freeScanPage.metric.impactEarlier")}` : `⚠ ${t("freeScanPage.metric.impactFocus")}`),
       status: statusFromScore(bulletImpactScore.score, 60, 40),
       progress: bulletImpactScore.score,
     },
@@ -423,8 +372,8 @@ export function MetricCardsGrid({
       icon: Hash,
       label: t('freeScan.keywordDensity'),
       tooltipKey: "keywordDensity",
-      value: keywordDensity.level.charAt(0).toUpperCase() + keywordDensity.level.slice(1),
-      subtext: keywordDensity.level === "dense" ? "✓ ATS will find your skills" : keywordDensity.level === "moderate" ? "⚠ Add more industry terms" : "✗ Missing key search terms",
+      value: t(keywordDensity.level === "dense" ? "freeScanPage.metric.levelDense" : keywordDensity.level === "moderate" ? "freeScanPage.metric.levelModerate" : "freeScanPage.metric.levelSparse"),
+      subtext: keywordDensity.level === "dense" ? `✓ ${t("freeScanPage.metric.densityDense")}` : keywordDensity.level === "moderate" ? `⚠ ${t("freeScanPage.metric.densityModerate")}` : `✗ ${t("freeScanPage.metric.densitySparse")}`,
       status: densityStatus,
       progress: densityScore,
     }] : []),

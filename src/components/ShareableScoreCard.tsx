@@ -452,7 +452,7 @@ export function ShareableScoreCard({
             </div>
           </div>
           <div className="bg-muted/30 px-3 py-2 text-xs text-muted-foreground text-center border-t">
-            Preview of your downloadable score card
+            {t('shareableCard.previewLabel')}
           </div>
         </div>
       )}

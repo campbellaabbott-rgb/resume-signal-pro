@@ -143,12 +143,42 @@
       "formatD": "Een ATS kan je gegevens door elkaar halen",
       "readEasy": "Makkelijk te scannen",
       "readSome": "Sommige secties zijn lastig te scannen",
-      "readHard": "Lastig te scannen"
+      "readHard": "Lastig te scannen",
+      "quantStrong": "Overal sterke cijfers",
+      "quantOlder": "Oudere functies hebben meer cijfers nodig",
+      "quantAdd": "Voeg meer cijfers, percentages en bedragen toe",
+      "verbsA": "Sterke, gevarieerde actiewerkwoorden",
+      "verbsB": "Goede variatie in werkwoorden",
+      "verbsC": "Gebruik sterkere werkwoorden",
+      "verbsD": "Zwakke werkwoorden verzwakken je impact",
+      "lengthRight": "De juiste lengte voor je niveau",
+      "lengthShort": "Voeg meer prestaties toe",
+      "lengthLong": "Recruiters slaan een lang cv vaak over",
+      "wordsIdeal": "Ideaal: {{min}}-{{max}} woorden",
+      "wordsFew": "Oogt mager: voeg inhoud toe",
+      "wordsMany": "Te vol: kort het in",
+      "sectionsAll": "Alle belangrijke secties zijn aanwezig",
+      "sectionsAdd": "Voeg toe: {{section}}",
+      "contactAll": "Recruiters kunnen je makkelijk bereiken",
+      "contactAdd": "Voeg {{item}} toe",
+      "impactStrong": "Laat resultaten zien, geen taken",
+      "impactEarlier": "Eerdere functies noemen taken",
+      "impactFocus": "Leg de nadruk op resultaten in plaats van taken",
+      "densityDense": "Een ATS vindt je vaardigheden",
+      "densityModerate": "Voeg meer vaktermen toe",
+      "densitySparse": "Belangrijke zoektermen ontbreken",
+      "levelDense": "Hoog",
+      "levelModerate": "Gemiddeld",
+      "levelSparse": "Laag",
+      "learnAbout": "Meer over {{title}}"
     },
     "keywordImpact": {
       "critical": "Onmisbaar",
       "high": "Grote impact",
-      "medium": "Nuttig"
+      "medium": "Nuttig",
+      "countCritical": "Onmisbaar: {{n}}",
+      "countHigh": "Grote impact: {{n}}",
+      "showAll": "Alle trefwoorden voor {{industry}} tonen (+{{n}})"
     },
     "keywordCategory": {
       "certification": "Certificering",
@@ -159,13 +189,14 @@
       "regulation": "Regelgeving"
     },
     "xray": {
-      "flagged": "Gemarkeerde regels: {{n}}",
       "legendIntro": "Je cv zoals wij het lezen, met aantekeningen:",
       "legendWeak": "rode onderstreping: een zwak opsommingspunt (beweeg erover voor de reden)",
       "legendAmber": "oranje: geen cijfers",
       "legendGreen": "groen: een sterk actiewerkwoord",
       "showLess": "Minder tonen",
-      "showAll": "Alle regels tonen ({{n}})"
+      "showAll": "Alle regels tonen ({{n}})",
+      "flagged_one": "{{count}} regel gemarkeerd",
+      "flagged_other": "{{count}} regels gemarkeerd"
     },
     "email": {
       "invalid": "Vul een geldig e-mailadres in.",
@@ -181,7 +212,7 @@
       "score": "ATS-score: {{score}}/100",
       "band": "(modelbandbreedte {{low}}-{{high}})",
       "projected": "ongeveer {{score}} na de verbeteringen (een ruwe indicatie)",
-      "breakdown": "Uitsplitsing: trefwoorden {{keywords}}%  ·  opmaak {{format}}%  ·  kwantificering {{quantification}}%",
+      "breakdown": "Uitsplitsing: trefwoorden {{keywords}}  ·  opmaak {{format}}  ·  kwantificering {{quantification}}",
       "findings": "Bevindingen: {{critical}} kritiek  ·  {{warnings}} waarschuwingen  ·  {{passed}} geslaagd",
       "fixPlan": "Je verbeterplan van {{minutes}} minuten:",
       "stepCost": "(ongeveer {{minutes}} min, +{{points}} ptn)",

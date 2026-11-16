@@ -27,7 +27,7 @@
         "sections": "Mga heading ng seksyon",
         "contact": "Mga contact detail",
         "dates": "Mga petsa",
-        "encoding": "Character encoding",
+        "encoding": "Encoding ng mga character",
         "iconGlyphs": "Mga character mula sa icon font",
         "lines": "Istruktura ng mga linya",
         "layout": "Layout na may column"
@@ -105,7 +105,7 @@
     },
     "diagnostic": {
       "title": "Diagnostic report ng résumé",
-      "report": "Report",
+      "report": "Ulat",
       "date": "Petsa",
       "subject": "Paksa",
       "candidate": "Kandidato",
@@ -143,12 +143,42 @@
       "formatD": "Maaaring guluhin ng ATS ang iyong mga detalye",
       "readEasy": "Madaling basahin nang mabilis",
       "readSome": "May ilang seksyon na mahirap basahin nang mabilis",
-      "readHard": "Mahirap basahin nang mabilis"
+      "readHard": "Mahirap basahin nang mabilis",
+      "quantStrong": "Malakas ang mga numero sa kabuuan",
+      "quantOlder": "Kailangan ng mas maraming numero sa mga lumang trabaho",
+      "quantAdd": "Magdagdag ng mas maraming numero, porsiyento at halaga",
+      "verbsA": "Malalakas at iba-ibang action verb",
+      "verbsB": "Magandang iba't ibang pandiwa",
+      "verbsC": "Gumamit ng mas malalakas na pandiwa",
+      "verbsD": "Pinahihina ng mahihinang pandiwa ang iyong impact",
+      "lengthRight": "Tamang haba para sa iyong antas",
+      "lengthShort": "Magdagdag ng mas maraming nagawa",
+      "lengthLong": "Maaaring laktawan ng mga recruiter ang mahabang résumé",
+      "wordsIdeal": "Pinakamainam: {{min}}-{{max}} na salita",
+      "wordsFew": "Mukhang kulang: magdagdag ng nilalaman",
+      "wordsMany": "Masyadong siksik: paikliin",
+      "sectionsAll": "Kumpleto ang mahahalagang seksyon",
+      "sectionsAdd": "Idagdag: {{section}}",
+      "contactAll": "Madali kang makokontak ng mga recruiter",
+      "contactAdd": "Idagdag ang {{item}}",
+      "impactStrong": "Nagpapakita ng resulta, hindi lang gawain",
+      "impactEarlier": "Mga tungkulin ang nakalista sa mga naunang trabaho",
+      "impactFocus": "Ituon sa resulta sa halip na tungkulin",
+      "densityDense": "Mahahanap ng ATS ang iyong mga skill",
+      "densityModerate": "Magdagdag ng mas maraming termino ng industriya",
+      "densitySparse": "Kulang ang mahahalagang search term",
+      "levelDense": "Siksik",
+      "levelModerate": "Katamtaman",
+      "levelSparse": "Kaunti",
+      "learnAbout": "Alamin ang tungkol sa {{title}}"
     },
     "keywordImpact": {
       "critical": "Kailangang-kailangan",
       "high": "Malaking impact",
-      "medium": "Nakakatulong"
+      "medium": "Nakakatulong",
+      "countCritical": "Kailangang-kailangan: {{n}}",
+      "countHigh": "Mataas ang impact: {{n}}",
+      "showAll": "Ipakita ang lahat ng keyword para sa {{industry}} (+{{n}})"
     },
     "keywordCategory": {
       "certification": "Sertipikasyon",
@@ -159,13 +189,14 @@
       "regulation": "Regulasyon"
     },
     "xray": {
-      "flagged": "Mga linyang na-flag: {{n}}",
       "legendIntro": "Ang iyong résumé ayon sa pagbasa namin, may anotasyon:",
       "legendWeak": "pulang underline: mahinang bullet (i-hover para malaman kung bakit)",
       "legendAmber": "amber: walang numero",
       "legendGreen": "berde: malakas na action word",
       "showLess": "Ipakita nang mas kaunti",
-      "showAll": "Ipakita lahat ng linya ({{n}})"
+      "showAll": "Ipakita lahat ng linya ({{n}})",
+      "flagged_one": "{{count}} linyang na-flag",
+      "flagged_other": "{{count}} linyang na-flag"
     },
     "email": {
       "invalid": "Maglagay ng valid na email address.",
@@ -176,12 +207,12 @@
     },
     "pdf": {
       "title": "DIAGNOSTIC REPORT NG RÉSUMÉ",
-      "meta": "Report #{{id}}  ·  {{date}}  ·  Engine {{engine}}",
+      "meta": "Ulat #{{id}}  ·  {{date}}  ·  Engine {{engine}}",
       "subject": "Paksa: {{name}}  ·  Industriya: {{industry}}  ·  Mga benchmark: {{benchmarks}}",
-      "score": "ATS score: {{score}}/100",
-      "band": "(modeling band {{low}}-{{high}})",
+      "score": "Iskor sa ATS: {{score}}/100",
+      "band": "(saklaw ng modelo: {{low}}-{{high}})",
       "projected": "mga {{score}} pagkatapos ng mga ayos (magaspang na gabay)",
-      "breakdown": "Breakdown: keywords {{keywords}}%  ·  format {{format}}%  ·  quantification {{quantification}}%",
+      "breakdown": "Hati ng iskor: mga keyword {{keywords}}  ·  format {{format}}  ·  mga numero {{quantification}}",
       "findings": "Mga natuklasan: {{critical}} kritikal  ·  {{warnings}} babala  ·  {{passed}} pasado",
       "fixPlan": "Ang iyong {{minutes}}-minutong plano ng pag-aayos:",
       "stepCost": "(mga {{minutes}} min, +{{points}} pts)",
@@ -221,7 +252,7 @@
       "missing": "Wala",
       "tooShort": "Masyadong maikli",
       "words": "{{n}} salita",
-      "target": "(target {{min}}–{{max}})"
+      "target": "(layunin: {{min}}–{{max}})"
     },
     "parsePreview": {
       "title": "Preview ng pagbasa ng ATS",

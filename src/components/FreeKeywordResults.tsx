@@ -1123,7 +1123,8 @@ export function FreeKeywordResults({
     const min = typeof range?.pagesMin === "number" && range.pagesMin > 0 ? range.pagesMin : null;
     const max = typeof range?.pagesMax === "number" && min !== null && range.pagesMax >= min ? range.pagesMax : null;
     if (min !== null && max !== null) {
-      const inRange = Math.min(max, Math.max(min, recommended));
+      // The target shown is the nearest length the range allows.
+      const inRange = Math.min(max, Math.max(min, pages));
       return { currentPages: pages, recommendedPages: inRange, verdict: (pages > max ? "too_long" : pages < min ? "too_short" : "just_right") as "too_short" | "just_right" | "too_long" };
     }
     return { currentPages: pages, recommendedPages: recommended, verdict: (pages > recommended ? "too_long" : pages < recommended ? "too_short" : "just_right") as "too_short" | "just_right" | "too_long" };
@@ -1674,7 +1675,7 @@ export function FreeKeywordResults({
                   scoreBand ? t('freeScanPage.pdf.band', { low: scoreBand.low, high: scoreBand.high }) : '',
                   projectedScore ? t('freeScanPage.pdf.projected', { score: projectedScore }) : '',
                 ].filter(Boolean).join('  '), 12, true);
-                if (scoreBreakdown) add(t('freeScanPage.pdf.breakdown', { keywords: scoreBreakdown.keywords, format: scoreBreakdown.format, quantification: scoreBreakdown.quantification }), 10);
+                if (scoreBreakdown) add(t('freeScanPage.pdf.breakdown', { keywords: `${scoreBreakdown.keywords}%`, format: `${scoreBreakdown.format}%`, quantification: `${scoreBreakdown.quantification}%` }), 10);
                 gap(6);
                 {
                   const crit = findings.filter(f => f.severity === 'critical');
@@ -1693,7 +1694,7 @@ export function FreeKeywordResults({
                 if (keywordSource?.source === 'onet') add(t('freeScanPage.pdf.sourceOnet', { code: keywordSource.code ?? '', occupation: keywordSource.occupation ?? '' }), 8.5, false, grey);
                 if (keywordSource?.source === 'job_description') add(t('freeScanPage.pdf.sourcePosting'), 8.5, false, grey);
                 // What is checked (S14X-269): the rewrites and the lines they
-                // quote, not "every quoted line".
+                // quote, and nothing wider.
                 add(t('freeScanPage.pdf.footer'), 8.5, false, grey);
                 trackButtonClick('download_pdf_summary', 'verdict_hero');
                 if (lines.some(l => unsupportedPdfCharacters(l.text).length > 0)) {

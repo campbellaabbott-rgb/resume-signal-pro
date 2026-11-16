@@ -143,12 +143,42 @@
       "formatD": "Ein ATS bringt deine Angaben womöglich durcheinander",
       "readEasy": "Leicht zu überfliegen",
       "readSome": "Manche Abschnitte sind schwer zu überfliegen",
-      "readHard": "Schwer zu überfliegen"
+      "readHard": "Schwer zu überfliegen",
+      "quantStrong": "Durchgehend starke Zahlen",
+      "quantOlder": "Ältere Stationen brauchen mehr Zahlen",
+      "quantAdd": "Füge mehr Zahlen, Prozente und Beträge hinzu",
+      "verbsA": "Starke, abwechslungsreiche Verben",
+      "verbsB": "Gute Auswahl an Verben",
+      "verbsC": "Verwende stärkere Verben",
+      "verbsD": "Schwache Verben schwächen deine Wirkung",
+      "lengthRight": "Die richtige Länge für deine Erfahrungsstufe",
+      "lengthShort": "Füge mehr Erfolge hinzu",
+      "lengthLong": "Einen langen Lebenslauf überspringen Recruiter oft",
+      "wordsIdeal": "Idealbereich: {{min}}-{{max}} Wörter",
+      "wordsFew": "Wirkt dünn: ergänze Inhalte",
+      "wordsMany": "Zu dicht: kürze ihn",
+      "sectionsAll": "Alle wichtigen Abschnitte vorhanden",
+      "sectionsAdd": "Ergänze: {{section}}",
+      "contactAll": "Recruiter erreichen dich leicht",
+      "contactAdd": "Ergänze {{item}}",
+      "impactStrong": "Zeigt Ergebnisse, nicht Aufgaben",
+      "impactEarlier": "Frühere Stationen listen Aufgaben auf",
+      "impactFocus": "Setze auf Ergebnisse statt Aufgaben",
+      "densityDense": "Ein ATS findet deine Fähigkeiten",
+      "densityModerate": "Ergänze mehr Branchenbegriffe",
+      "densitySparse": "Wichtige Suchbegriffe fehlen",
+      "levelDense": "Dicht",
+      "levelModerate": "Mittel",
+      "levelSparse": "Dünn",
+      "learnAbout": "Mehr zu {{title}}"
     },
     "keywordImpact": {
       "critical": "Pflicht",
       "high": "Große Wirkung",
-      "medium": "Hilfreich"
+      "medium": "Hilfreich",
+      "countCritical": "Pflicht: {{n}}",
+      "countHigh": "Große Wirkung: {{n}}",
+      "showAll": "Alle Keywords für {{industry}} anzeigen (+{{n}})"
     },
     "keywordCategory": {
       "certification": "Zertifizierung",
@@ -159,13 +189,14 @@
       "regulation": "Vorschrift"
     },
     "xray": {
-      "flagged": "Markierte Zeilen: {{n}}",
       "legendIntro": "Dein Lebenslauf, wie wir ihn lesen, mit Anmerkungen:",
       "legendWeak": "rote Unterstreichung: ein schwacher Aufzählungspunkt (Maus darüber zeigt den Grund)",
       "legendAmber": "gelb: keine Zahlen",
       "legendGreen": "grün: ein starkes Handlungsverb",
       "showLess": "Weniger anzeigen",
-      "showAll": "Alle Zeilen anzeigen ({{n}})"
+      "showAll": "Alle Zeilen anzeigen ({{n}})",
+      "flagged_one": "{{count}} Zeile markiert",
+      "flagged_other": "{{count}} Zeilen markiert"
     },
     "email": {
       "invalid": "Bitte gib eine gültige E-Mail-Adresse ein.",
@@ -181,7 +212,7 @@
       "score": "ATS-Score: {{score}}/100",
       "band": "(Modellbereich {{low}}-{{high}})",
       "projected": "etwa {{score}} nach den Korrekturen (ein grober Richtwert)",
-      "breakdown": "Aufschlüsselung: Keywords {{keywords}} %  ·  Format {{format}} %  ·  Quantifizierung {{quantification}} %",
+      "breakdown": "Aufschlüsselung: Keywords {{keywords}}  ·  Format {{format}}  ·  Quantifizierung {{quantification}}",
       "findings": "Befunde: {{critical}} kritisch  ·  {{warnings}} Warnungen  ·  {{passed}} bestanden",
       "fixPlan": "Dein {{minutes}}-Minuten-Korrekturplan:",
       "stepCost": "(etwa {{minutes}} Min., +{{points}} Pkt.)",

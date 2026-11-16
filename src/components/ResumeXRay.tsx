@@ -94,7 +94,7 @@ export function ResumeXRay({ resumeText, weakBullets = [], unquantifiedBullets =
         <h4 className="font-semibold text-foreground text-sm">{t('freeResults.enterprise.xrayTitle', 'Resume X-Ray')}</h4>
         {flaggedCount > 0 && (
           <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-semibold">
-            {t('freeScanPage.xray.flagged', { n: flaggedCount })}
+            {t('freeScanPage.xray.flagged', { count: flaggedCount })}
           </span>
         )}
       </div>

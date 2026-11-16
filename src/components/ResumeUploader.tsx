@@ -1027,6 +1027,7 @@ export function ResumeUploader({
                     <textarea
                       value={localJobDescriptionText}
                       onChange={(e) => setLocalJobDescriptionText(e.target.value)}
+                      aria-label={t('uploader.jobDescription.title')}
                       placeholder={`${t('uploader.jobDescription.pasteHere')}\n\n${t('uploader.jobDescription.tip')}`}
                       className="w-full h-40 p-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 resize-none text-sm leading-relaxed transition-all"
                     />
@@ -1439,6 +1440,7 @@ export function ResumeUploader({
                     <textarea
                       value={localLinkedInText}
                       onChange={(e) => setLocalLinkedInText(e.target.value)}
+                      aria-label={t('uploader.linkedin.title')}
                       placeholder={t('uploader.linkedin.pasteHere')}
                       className="w-full h-32 p-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[#0A66C2]/50 focus:border-[#0A66C2]/50 resize-none text-sm leading-relaxed transition-all"
                     />
