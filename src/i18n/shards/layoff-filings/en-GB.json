@@ -1,0 +1,8 @@
+{
+  "layoffFilings": {
+    "readVia": "from {{sourceName}} via Big Local News, read {{readAgo}}",
+    "tipVia": "{{filer}} made this filing on {{eventDate}}. It is a fact about the employer on that date, not about this role. It sits beside the hiring badge on purpose: that badge is only what we watched on this board — roles taken down and left down, or more roles served — and a filing made elsewhere does not change it. Neither one says anyone was hired. From {{sourceName}} via Big Local News, read {{readAgo}}.",
+    "lineWarnFirstRead": "{{filer}} filed a layoff notice with {{state}} dated {{noticeDate}}: {{workers}} positions at {{site}}{{effectiveClause}}{{kindClause}} · first read by us on {{visibleDate}} · {{sourceName}} ↗",
+    "lcaChip": "Filed LCA wages (H-1B, H-1B1, E-3) · {{quarter}}"
+  }
+}

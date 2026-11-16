@@ -10,7 +10,13 @@ run from the repository with no network and no environment variable.
 - `bln-*.csv`, `bln-jobs.json`, `bln-runs.json` — Big Local News `warn-github-flow`
   raw per-state files and workflow status. Apache-2.0; see BLN-LICENSE.
   `bln-raw-or.csv` was fetched later, on 2026-10-10 (1,374 rows), when the
-  Oregon map was pinned to its header.
+  Oregon map was pinned to its header. `bln-raw-md.csv`, `bln-raw-va.csv`,
+  `bln-raw-az.csv`, `bln-raw-ia.csv` and `bln-raw-ma.csv` were fetched on
+  2026-11-15 (S14X-036), when those five maps were pinned to their headers;
+  the Iowa file's run of some 150 empty trailing columns was trimmed, and the
+  Virginia file's "Contact Person" cells (people's names, never read by the
+  map) were blanked with the header kept; nothing else was changed. Georgia's raw file was read the same day and not saved:
+  it carries no notice, received or posted date, so the state is not read.
 - `ca-warn_report1.xlsx`, `tx-2026.xlsx`, `il-export.xlsx`, `fl-2026.html`,
   `ny-tableau.csv`, `oh-2026.csv`, `wa-search.html` — state workforce-agency
   WARN publications, fetched directly. Public records.

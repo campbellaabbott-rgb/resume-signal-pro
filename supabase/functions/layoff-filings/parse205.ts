@@ -11,8 +11,17 @@
 // headcount when a sentence states one, the timing phrase, the decision
 // date and the cost the filing names. Where nothing is stated the fields
 // are null and the section text still ships — the sentence, not a zero.
+//
+// v3 (S14X-149, S14X-150) departs from the Python in two named places and
+// nowhere else. The workforce flag is read from a sentence that pairs a
+// cut verb with a workforce noun (or names severance, a layoff or a
+// reduction in force) and is not a denial or a buyer's offer of employment,
+// in the section cut at its forward-looking-statements heading, instead of
+// any workforce word anywhere in the section ("No employees will be
+// terminated" was printed as a reduction). The percentage's determiner also
+// takes a named owner ("2.5% of Workday's global workforce").
 
-export const PARSER_VERSION = "parse205_v2_ts";
+export const PARSER_VERSION = "parse205_v3_ts";
 
 export interface Parsed205 {
   section: "direct" | `via_${string}` | null;
@@ -121,7 +130,7 @@ const WF =
 const ACT = /reduc|eliminat|affect|impact|layoff|laid off|terminat|cut|separat|displac|RIF\b|position/i;
 const NEG = /retain|remain|hire|hiring|add|grow|attrition/i;
 const PCT = new RegExp(
-  "(?:approximately|about|roughly|up to|nearly)?\\s*(\\d{1,2}(?:\\.\\d)?)\\s*(?:%|percent)\\s+of\\s+(?:its|the Company.s|our|the|the Bank.s|the Company.s)?\\s*" + WF,
+  "(?:approximately|about|roughly|up to|nearly)?\\s*(\\d{1,2}(?:\\.\\d)?)\\s*(?:%|percent)\\s+of\\s+(?:its|our|(?:the\\s+)?[A-Z][\\w&.,' -]{0,40}?['\\u2019]s|the)?\\s*" + WF,
   "i",
 );
 const PCT2 = /(?:workforce|headcount|employees|positions)\s+by\s+(?:approximately|about|roughly|up to|nearly)?\s*(\d{1,2}(?:\.\d)?)\s*(?:%|percent)/i;
@@ -143,7 +152,42 @@ const TIME =
 const COST = new RegExp("\\$\\s?(" + NUM + "(?:\\.\\d+)?)\\s*(million|billion)", "i");
 const DATE = /On\s+((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s*\d{4})/;
 const SITES = /(?:facility|facilities|plant|office|branch|branches|operations)\s+(?:located\s+)?in\s+([A-Z][\w.]+(?:\s[A-Z][\w.]+)?,\s*[A-Z][a-z]+(?:\s[A-Z][a-z]+)?)/g;
-const WORKFORCE_WORDS = /workforce|headcount|employees|positions|reduction in force|layoff|associates|severance/i;
+// The v3 workforce reading (see the header). A sentence counts when it pairs
+// a cut verb with a workforce noun, or names severance, termination
+// benefits, a layoff or a reduction in force, and is neither a denial ("No
+// employees will be terminated", "does not result in any reduction of the
+// workforce") nor a buyer taking the staff on ("the purchaser offered
+// employment to the employees").
+const WF_NOUN = "(?:workforce|employees?|headcount|employee base|positions?|team members|associates|staff|personnel|roles|jobs|workers)";
+const CUT_VERB = new RegExp(
+  "(?:reduc|eliminat|terminat|layoff|lay off|laid off|separat|displac|\\bRIF\\b|affected\\s+(?:\\w+\\s+){0,2}?" + WF_NOUN +
+    "|" + WF_NOUN + "\\s+(?:\\w+\\s+){0,3}?(?:affected|impacted))",
+  "i",
+);
+const WF_WORD = new RegExp("\\b" + WF_NOUN + "\\b", "i");
+const CUT_ALONE = /\bseverance\b|termination benefits|reduction[-\s]in[-\s]force|\blayoffs?\b|workforce reduction/i;
+const NOT_A_CUT = [
+  new RegExp("\\b(?:no|none of the)\\s+(?:[\\w\u2019'-]+\\s+){0,3}?" + WF_NOUN + "\\b", "i"),
+  /\b(?:not|no)\s+(?:[\w\u2019'-]+\s+){0,4}?(?:result in|involve|include|expect|anticipate|affect|impact|require)\s+(?:[\w\u2019'-]+\s+){0,5}?(?:reductions?|layoffs?|terminations?|job losses|employees|headcount|workforce|severance)\b/i,
+  /\b(?:offer(?:ed|s)?\s+employment|employment\s+(?:with|by)\s+the\s+(?:buyer|purchaser|acquir\w+)|transfer(?:red)?\s+(?:\w+\s+){0,3}?to\s+the\s+(?:buyer|purchaser|acquir\w+))\b/i,
+];
+const FLS_HEADING = /\n\s*(?:Cautionary\b[^\n]{0,80}|(?:Special Note Regarding |Note Regarding |Statement Regarding )?Forward[-\s]Looking (?:Statements?|Information)[^\n]{0,40})\n/i;
+
+/** The section up to its forward-looking-statements heading (the whole section when it has none). */
+export function beforeForwardLooking(sec: string): string {
+  const m = FLS_HEADING.exec(sec + "\n");
+  return m && m.index > 0 ? sec.slice(0, m.index) : sec;
+}
+
+/** v3: does a sentence of the section (before its forward-looking statements) report a cut of the workforce? */
+export function reportsWorkforceCut(sec: string): boolean {
+  for (const x of sentences(beforeForwardLooking(sec))) {
+    if (/forward[-\s]looking/i.test(x)) continue;
+    if (NOT_A_CUT.some((r) => r.test(x))) continue;
+    if ((CUT_VERB.test(x) && WF_WORD.test(x)) || CUT_ALONE.test(x)) return true;
+  }
+  return false;
+}
 const EXCERPT_WORDS = /workforce|headcount|employees|positions|associates/i;
 
 export function sentences(s: string): string[] {
@@ -162,7 +206,7 @@ export function parse205(html: string): Parsed205 {
     excerpt: null, isWorkforce: false, sites: [],
   };
   if (!sec) return r;
-  r.isWorkforce = WORKFORCE_WORDS.test(sec);
+  r.isWorkforce = reportsWorkforceCut(sec);
   const ss = sentences(sec);
   for (const x of ss) {
     if (!ACT.test(x)) continue;

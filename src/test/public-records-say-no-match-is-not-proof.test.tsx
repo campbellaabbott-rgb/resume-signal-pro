@@ -8,7 +8,7 @@
  * these records is not proof of anything."; each filing is one compact row
  * with the filer as the source spells it, the state and count a notice
  * states, the day it was filed in the reader's language and its source link;
- * filed H-1B wages print only when the reader returns a row; the section
+ * filed LCA wages print only when the reader returns a row; the section
  * renders nothing when no record has a row; and the detail pane's sentence
  * carries localized dates too.
  */
@@ -66,13 +66,14 @@ describe("the public records section", () => {
     expect(container.textContent).not.toMatch(/no filings|no layoffs|does not sponsor|ghost|fake/i);
   });
 
-  it("filed H-1B wages print only when the reader returns a row, with the row's quarter, file and date", () => {
+  it("filed LCA wages print only when the reader returns a row, with the row's quarter, file and date", () => {
     const without = render(<MemoryRouter><PublicRecords data={{ layoffRows: [WARN], financials: null, lca: null }} companyName="Acme" showSec /></MemoryRouter>);
     expect(without.container.querySelector("[data-lca-context]")).toBeNull();
     without.unmount();
     const withRow = render(<MemoryRouter><PublicRecords data={{ layoffRows: [], financials: null, lca: LCA }} companyName="Acme" showSec /></MemoryRouter>);
     const box = withRow.container.querySelector("[data-lca-context='employer']");
-    expect(box?.textContent).toContain("Filed H-1B wages · FY2026 Q3");
+    // The chip names every visa class the file holds (S14X-184).
+    expect(box?.textContent).toContain("Filed LCA wages (H-1B, H-1B1, E-3) · FY2026 Q3");
     expect(box?.textContent).toContain("LCA_Disclosure_Data_FY2026_Q3.xlsx, published 2026-08-25");
     expect(box?.textContent).toContain("Software Developers");
   });

@@ -15,6 +15,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { ProxyDb } from "./helpers/proxy-db";
+import { PARSER_VERSION } from "../../supabase/functions/layoff-filings/parse205";
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -47,11 +48,15 @@ const subs = JSON.stringify({
     items: ["2.05", "2.05", "2.05", "2.05"], primaryDocument: ["a.htm", "b.htm", "c.htm", "d.htm"],
   }, files: [] },
 });
+// Every row carries the parser version that reads today (a row an older
+// parser read is a candidate of its own, S14X-149; that case is in
+// a-stored-filing-is-read-again-under-the-parser-that-reads-it-right).
+const V = PARSER_VERSION;
 const stored = [
-  { filing_id: `sec:${ADSH.A}`, cik: CIK, adsh: ADSH.A, filer_raw: "Acme Corp", section_text: UPDATE, parse_confidence: 1, is_workforce_event: true },
-  { filing_id: `sec:${ADSH.B}`, cik: CIK, adsh: ADSH.B, filer_raw: "Acme Corp", section_text: "(document not read)", parse_confidence: 0, is_workforce_event: null },
-  { filing_id: `sec:${ADSH.C}`, cik: CIK, adsh: ADSH.C, filer_raw: "Acme Corp", section_text: NEW_CUT, parse_confidence: 1, is_workforce_event: true },
-  { filing_id: `sec:${ADSH.D}`, cik: CIK, adsh: ADSH.D, filer_raw: "Acme Corp", section_text: UPDATE, parse_confidence: 1, is_workforce_event: true },
+  { filing_id: `sec:${ADSH.A}`, cik: CIK, adsh: ADSH.A, filer_raw: "Acme Corp", section_text: UPDATE, parse_confidence: 1, is_workforce_event: true, parser_version: V },
+  { filing_id: `sec:${ADSH.B}`, cik: CIK, adsh: ADSH.B, filer_raw: "Acme Corp", section_text: "(document not read)", parse_confidence: 0, is_workforce_event: null, parser_version: V },
+  { filing_id: `sec:${ADSH.C}`, cik: CIK, adsh: ADSH.C, filer_raw: "Acme Corp", section_text: NEW_CUT, parse_confidence: 1, is_workforce_event: true, parser_version: V },
+  { filing_id: `sec:${ADSH.D}`, cik: CIK, adsh: ADSH.D, filer_raw: "Acme Corp", section_text: UPDATE, parse_confidence: 1, is_workforce_event: true, parser_version: V },
 ];
 
 let upserted: Array<Record<string, unknown>> = [];

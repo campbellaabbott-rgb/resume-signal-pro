@@ -4,6 +4,10 @@
 // filings it never saw (the measurement). The hold-out assertions are the
 // baseline the spec quotes and nothing above it: recall is reported.
 //
+// v3 (S14X-149) reads the workforce flag from a reporting sentence instead
+// of any workforce word, so it departs from the Python on exactly the
+// documents named in V3_WORKFORCE; every other field is still pinned.
+//
 // Run: deno test --allow-read --allow-env supabase/functions/layoff-filings/
 
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
@@ -51,6 +55,15 @@ const HOLDOUT: Record<string, { filer: string; pct: number | null; headcount: nu
   "0001628280-26-049010": { filer: "Goodyear", pct: null, headcount: 1750, workforce: true },
 };
 
+/**
+ * Where v3's workforce reading departs from the Python v2 output, by
+ * document: Goodyear's plant closure (hold-out, hand label true) names the
+ * associates it affects in a sentence v2's word list missed only because v2
+ * never read sentences at all — v3 reads it as the label says.
+ */
+const V3_WORKFORCE: Record<string, boolean> = { "0001628280-26-049010": true };
+const pyWorkforce = (row: PyRow) => V3_WORKFORCE[row.adsh] ?? row.is_workforce;
+
 function parseDir(sub: string) {
   const out = new Map<string, ReturnType<typeof parse205>>();
   for (const f of sampleList(sub, ".htm")) out.set(f.slice(0, -4), parse205(sampleText(`${sub}/${f}`)));
@@ -67,7 +80,7 @@ Deno.test("the port reproduces the Python parser field for field on the 18 in-sa
     assertEquals(p.section, row.section, `${row.adsh} section`);
     assertEquals(p.pct, row.pct, `${row.adsh} pct`);
     assertEquals(p.headcount, row.headcount, `${row.adsh} headcount`);
-    assertEquals(p.isWorkforce, row.is_workforce, `${row.adsh} is_workforce`);
+    assertEquals(p.isWorkforce, pyWorkforce(row), `${row.adsh} is_workforce`);
     assertEquals(p.decisionDate, row.decision_date, `${row.adsh} decision_date`);
     assertEquals(p.cost, row.cost, `${row.adsh} cost`);
     assertEquals(norm(p.timing), norm(row.timing), `${row.adsh} timing`);
@@ -86,7 +99,7 @@ Deno.test("the port reproduces the Python parser on the 10 hold-out documents it
     assertEquals(p.section, row.section, `${row.adsh} section`);
     assertEquals(p.pct, row.pct, `${row.adsh} pct`);
     assertEquals(p.headcount, row.headcount, `${row.adsh} headcount`);
-    assertEquals(p.isWorkforce, row.is_workforce, `${row.adsh} is_workforce`);
+    assertEquals(p.isWorkforce, pyWorkforce(row), `${row.adsh} is_workforce`);
     assertEquals(norm(p.timing), norm(row.timing), `${row.adsh} timing`);
     assertEquals(norm(p.excerpt), norm(row.excerpt), `${row.adsh} excerpt`);
   }
@@ -129,8 +142,10 @@ Deno.test("hold-out hand labels: the baseline the spec quotes and nothing above 
   // ≥ 3 of 10 hold-out rows carry a number; the port reads exactly the 3 it did in Python.
   assert(numericRows >= 3, `numeric rows ${numericRows} below the 3/10 baseline`);
   assertEquals(numericRows, 3);
-  // Workforce classification 7/10: the three plant-closure filings read as non-workforce.
-  assertEquals(classified, 7);
+  // Workforce classification 8/10 under v3 (7/10 under v2): Whirlpool's and
+  // Cracker Barrel's closures still read as non-workforce; Goodyear's
+  // "associates affected" sentence is now read (V3_WORKFORCE).
+  assertEquals(classified, 8);
   console.log(`[parse205 ${PARSER_VERSION}] hold-out numeric rows ${numericRows}/10, fields ${correct}/${statedFields}, classified ${classified}/10 — reported, not targeted`);
 });
 
@@ -163,3 +178,67 @@ Deno.test("text extraction: inline XBRL header, scripts and styles are dropped; 
 function norm(s: string | null): string | null {
   return s == null ? null : s.replace(/\s+/g, " ").trim();
 }
+
+/** One Item 2.05 section, as an 8-K's primary document would carry it. */
+function item205(...paragraphs: string[]): string {
+  return `<html><body><p>Item 2.05 Costs Associated with Exit or Disposal Activities.</p>${
+    paragraphs.map((x) => `<p>${x}</p>`).join("")
+  }<p>Item 9.01 Financial Statements and Exhibits.</p></body></html>`;
+}
+
+Deno.test("S14X-149: an exit-cost section that names employees only to say none will be cut is not a workforce event", () => {
+  const p = parse205(item205(
+    "On August 1, 2026, the Board of Directors approved a plan to consolidate two distribution warehouses.",
+    "No employees will be terminated in connection with the plan.",
+    "The Company expects to incur approximately $2 million of lease exit costs.",
+  ));
+  assertEquals(p.isWorkforce, false);
+  assertEquals(parse205(item205(
+    "On August 1, 2026, the Company approved a plan to exit a leased facility.",
+    "The plan does not result in any reduction of the Company's workforce.",
+  )).isWorkforce, false);
+});
+
+Deno.test("S14X-149: employees named only in the forward-looking-statements boilerplate do not make a workforce event", () => {
+  const p = parse205(item205(
+    "On August 1, 2026, the Board approved a plan to exit a leased facility in Dayton, Ohio.",
+    "The Company expects to incur approximately $2 million of lease termination costs.",
+    "Forward-Looking Statements",
+    "This report contains forward-looking statements, including statements about the effect of the plan on our employees and customers, and actual results could differ materially.",
+  ));
+  assertEquals(p.isWorkforce, false);
+  assert(p.sectionText!.includes("Forward-Looking Statements"), "the stored section text is still the whole section");
+});
+
+Deno.test("S14X-149: a divestiture whose buyer offers the staff employment is not a workforce event", () => {
+  const p = parse205(item205(
+    "On August 1, 2026, the Company completed the sale of its widget business, as described in Item 2.01, which is incorporated herein by reference.",
+    "The purchaser offered employment to substantially all of the employees of the widget business.",
+    "The Company expects to record exit costs of approximately $3 million.",
+  ));
+  assertEquals(p.isWorkforce, false);
+});
+
+Deno.test("S14X-149: a section that reports a cut, severance or a reduction in force is still a workforce event", () => {
+  assertEquals(parse205(item205(
+    "On August 1, 2026, the Board approved a restructuring plan that will reduce the Company's workforce by approximately 120 employees.",
+  )).isWorkforce, true);
+  assertEquals(parse205(item205(
+    "On August 1, 2026, the Company committed to a plan to close its Akron plant.",
+    "The Company expects to incur approximately $4 million of severance and other one-time termination benefits.",
+  )).isWorkforce, true);
+});
+
+Deno.test("S14X-150: a percentage of a named company's workforce is read", () => {
+  const p = parse205(item205(
+    "On September 29, 2026, the Company approved a restructuring plan intended to reduce approximately 2.5% of Workday's global workforce.",
+  ));
+  assertEquals(p.pct, 2.5);
+  assertEquals(parse205(item205("On September 1, 2026, the Company approved a plan to reduce approximately 15% of its workforce.")).pct, 15);
+  assertEquals(parse205(item205("On September 1, 2026, the Company approved a plan to reduce approximately 12% of the Company's workforce.")).pct, 12);
+  assertEquals(parse205(item205("On September 1, 2026, the Company approved a plan to reduce approximately 12% of the Company\u2019s workforce.")).pct, 12);
+});
+
+Deno.test("S14X-149: a change to the classifier is a new parser version", () => {
+  assertEquals(PARSER_VERSION, "parse205_v3_ts");
+});

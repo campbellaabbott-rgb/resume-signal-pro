@@ -1,10 +1,11 @@
 // layoff-filings — the poller behind the per-employer filing line.
 //
 //   POST { action: "edgar" }                      hourly: the EDGAR latest-filings Atom channel
-//   POST { action: "edgar_audit" }                daily: full-text search completeness audit
+//   POST { action: "edgar_audit" }                daily: full-text search completeness audit, then
+//                                                 up to ten stored rows re-read (S14X-278)
 //   POST { action: "edgar_backfill", from, index } once, chunked, self-kicking
-//   POST { action: "edgar_reread", after }       once, by hand: re-reads stored 8-K rows the
-//                                                 old build got wrong (S8-026, S8-108)
+//   POST { action: "edgar_reread", after }       by hand: re-reads every stored 8-K row an older
+//                                                 build or parser got wrong (S8-026, S8-108, S14X-149)
 //   POST { action: "warn", cursor }               nightly: state WARN notices, slice-chained
 //   POST { action: "matches" }                    layoff_matches_rebuild(), the matcher log line
 //   POST { action: "partition" }                  refresh_layoff_partition(), the Ghost-Index writer
@@ -33,11 +34,11 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { Http } from "./http.ts";
 import {
-  atomPageUrl, fetchFiling, ftsUrl, keep205, parseAtom, parseFtsHits,
+  atomPageUrl, AUDIT_REREAD_MAX, auditRereadPick, fetchFiling, ftsUrl, keep205, parseAtom, parseFtsHits, rereadCandidates,
 } from "./edgar.ts";
-import { isStatusUpdate } from "./parse205.ts";
+import { PARSER_VERSION } from "./parse205.ts";
 import type { AtomEntry, FtsHit } from "./edgar.ts";
-import { addDays, todayIso } from "./normalize.ts";
+import { addDays, prunedMonthFloor, todayIso } from "./normalize.ts";
 import type { WarnRecord } from "./normalize.ts";
 import {
   BLN_RUNS_URL, buildWarnRows, extractFailuresFrom, feedVerdict, fetchBlnRaw, isStale, latestRunJobsUrl, mapTable, tableFromCsv,
@@ -160,8 +161,11 @@ async function readLog(
   v: { fetched: number; kept: number; newRows: number; ok: boolean; ms: number; note: string | null },
 ): Promise<void> {
   try {
+    // Every note names the build that wrote it, first, so the GET can say
+    // which build ran the newest chain (the read-only verifier's clock).
+    const note = [`build=${BUILD_VERSION}`, v.note].filter(Boolean).join("; ").slice(0, 500);
     const { error } = await client.from("layoff_read_log").insert({
-      kind, fetched: v.fetched, kept: v.kept, new_rows: v.newRows, ok: v.ok, ms: v.ms, note: v.note?.slice(0, 500) ?? null,
+      kind, fetched: v.fetched, kept: v.kept, new_rows: v.newRows, ok: v.ok, ms: v.ms, note,
     });
     if (error) console.warn("[layoff-filings] read log insert failed:", error.message);
   } catch (e) {
@@ -173,8 +177,19 @@ interface UpsertTally { inserted: number; updated: number; refused: number; reas
 
 async function upsertRows(client: SupabaseLike, rows: Record<string, unknown>[]): Promise<UpsertTally> {
   const t: UpsertTally = { inserted: 0, updated: 0, refused: 0, reasons: [] };
-  for (let i = 0; i < rows.length; i += UPSERT_CHUNK) {
-    const chunk = rows.slice(i, i + UPSERT_CHUNK);
+  // THE ONE WRITE CHOKE POINT REFUSES A PRUNED MONTH (S14X-158). The EDGAR
+  // backfill searches a year by FILING date while an 8-K's event_date is its
+  // report date, so a filing inside the window can name a month the monthly
+  // prune already rolled up; stored, it would be counted twice.
+  const floor = prunedMonthFloor(todayIso(new Date()), LAYOFF_RETENTION_DAYS);
+  const writable = rows.filter((r) => {
+    if (!(typeof r.event_date === "string" && r.event_date < floor)) return true;
+    t.refused += 1;
+    if (t.reasons.length < 20) t.reasons.push(`${r.filing_id ?? "?"}: event_date ${r.event_date} is before ${floor}, a month already rolled up`);
+    return false;
+  });
+  for (let i = 0; i < writable.length; i += UPSERT_CHUNK) {
+    const chunk = writable.slice(i, i + UPSERT_CHUNK);
     const { data, error } = await client.rpc("layoff_filings_upsert", { p_rows: chunk });
     if (error) throw new Error(`layoff_filings_upsert: ${error.message}`);
     const r = Array.isArray(data) ? data[0] : data;
@@ -339,6 +354,7 @@ async function runEdgarAudit(client: SupabaseLike): Promise<Response> {
   let ok = true;
   let ftsOnly = 0;
   let stoppedEarly = false;
+  const reread = { read: 0, replaced: 0, flipped: 0, unread: 0, notes: [] as string[] };
   try {
     const hits = new Map<string, FtsHit>();
     for (let page = 0; page < FTS_MAX_PAGES; page++) {
@@ -356,7 +372,23 @@ async function runEdgarAudit(client: SupabaseLike): Promise<Response> {
       http, client, missing.map((h) => ({ cik: h.cik, adsh: h.adsh, name: h.displayName ?? undefined, coCiks: h.coCiks })), readAt, deadline, "fts_only", tally,
     );
     stoppedEarly = r.stoppedEarly;
-    if (tally.newRows > 0) await rebuildMatches(client);
+    // THE DAILY SHARE OF THE RE-READ (S14X-278). edgar_reread was a hand-run
+    // action, so a placeholder, a status update or a row an older parser read
+    // stayed as stored. The audit now reads at most AUDIT_REREAD_MAX of them a
+    // day with what is left of its wall clock; a failure here is a note, never
+    // the audit's verdict (its alarm is fts_only).
+    if (!stoppedEarly) {
+      try {
+        const stored = await storedSecRows(client, addDays(today, -LAYOFF_DISPLAY_MAX_AGE_DAYS));
+        for (const row of auditRereadPick(stored, today, AUDIT_REREAD_MAX)) {
+          if (Date.now() > deadline) { stoppedEarly = true; break; }
+          await rereadOne(http, client, row, readAt, reread);
+        }
+      } catch (e) {
+        reread.notes.push(`reread_error:${(e as Error).message}`);
+      }
+    }
+    if (tally.newRows > 0 || reread.replaced > 0) await rebuildMatches(client);
   } catch (e) {
     ok = false;
     tally.notes.push(`error:${(e as Error).message}`);
@@ -366,13 +398,19 @@ async function runEdgarAudit(client: SupabaseLike): Promise<Response> {
   // Equality is not expected the other way (the index runs ~97.7 % complete).
   const line =
     `[layoff-filings] kind=edgar_fts_audit fetched=${tally.fetched} kept=${tally.kept} fts_only=${ftsOnly} new=${tally.newRows}` +
-    ` ms=${ms} ok=${ok}` + (stoppedEarly ? " stopped_early=true" : "") + (tally.notes.length ? ` notes=${JSON.stringify(tally.notes.slice(0, 8))}` : "");
+    ` reread=${reread.read} reread_replaced=${reread.replaced} ms=${ms} ok=${ok}` + (stoppedEarly ? " stopped_early=true" : "") + (tally.notes.length ? ` notes=${JSON.stringify(tally.notes.slice(0, 8))}` : "");
   (ok ? console.log : console.error)(line);
   await readLog(client, "edgar_fts_audit", {
     fetched: tally.fetched, kept: tally.kept, newRows: tally.newRows, ok, ms,
-    note: [`fts_only=${ftsOnly}`, stoppedEarly ? "stopped_early" : null, ...tally.notes.slice(0, 5)].filter(Boolean).join("; "),
+    note: [
+      `fts_only=${ftsOnly}`, `reread=${reread.read}`, `reread_replaced=${reread.replaced}`, stoppedEarly ? "stopped_early" : null,
+      ...tally.notes.slice(0, 4), ...reread.notes.slice(0, 2),
+    ].filter(Boolean).join("; "),
   });
-  return json({ ok, kind: "edgar_fts_audit", ftsOnly, ...tally, ms, version: BUILD_VERSION }, ok ? 200 : 500);
+  return json({
+    ok, kind: "edgar_fts_audit", ftsOnly, ...tally, reread: { read: reread.read, replaced: reread.replaced, flipped: reread.flipped, unread: reread.unread },
+    ms, version: BUILD_VERSION,
+  }, ok ? 200 : 500);
 }
 
 async function runEdgarBackfill(client: SupabaseLike, body: Record<string, unknown>, selfKick: (b: Record<string, unknown>) => void): Promise<Response> {
@@ -433,18 +471,33 @@ async function runEdgarBackfill(client: SupabaseLike, body: Record<string, unkno
   return json({ ok, kind: "edgar_backfill", from, index, next, ...tally, ms, version: BUILD_VERSION }, ok ? 200 : 500);
 }
 
-// ── EDGAR: one re-read of rows an older build stored wrong ─────────────────
+// ── EDGAR: the re-read of rows an older build stored wrong ─────────────────
+//
+// The candidates (edgar.ts rereadCandidates) are placeholders, status updates
+// stored as workforce events, and rows an older parser version read. The
+// daily audit reads a bounded share of them; edgar_reread reads them all.
 
-const PLACEHOLDER_SECTION = "(document not read)";
+/** Active SEC rows inside the display window, with what the candidate rule reads. */
+async function storedSecRows(client: SupabaseLike, floor: string): Promise<Array<Record<string, unknown>>> {
+  const { data, error } = await client.from("layoff_filings")
+    .select("filing_id,cik,adsh,filer_raw,section_text,parse_confidence,is_workforce_event,parser_version")
+    .eq("source", "sec_8k_205").eq("status", "active").gte("event_date", floor)
+    .order("filing_id", { ascending: true }).limit(2000);
+  if (error) throw new Error(`layoff_filings select: ${error.message}`);
+  return Array.isArray(data) ? data : [];
+}
 
-/** Stored rows worth reading again: a placeholder, or a workforce event whose own text is a status update. */
-function rereadCandidates(rows: Array<Record<string, unknown>>, after: string): Array<Record<string, unknown>> {
-  return rows
-    .filter((r) => String(r.filing_id) > after)
-    .filter((r) =>
-      (Number(r.parse_confidence) === 0 && r.section_text === PLACEHOLDER_SECTION) ||
-      (r.is_workforce_event === true && isStatusUpdate(typeof r.section_text === "string" ? r.section_text : null)))
-    .sort((a, b) => String(a.filing_id).localeCompare(String(b.filing_id)));
+interface RereadTally { read: number; replaced: number; flipped: number; unread: number; notes: string[] }
+
+/** Read one stored row's document again; the row is replaced only when the document was read. */
+async function rereadOne(http: Http, client: SupabaseLike, r: Record<string, unknown>, readAt: Date, tally: RereadTally): Promise<void> {
+  tally.read += 1;
+  const f = await fetchFiling(http, Number(r.cik), String(r.adsh), readAt, String(r.filer_raw ?? ""));
+  if (!f.row || !(Number(f.row.parse_confidence) > 0)) { tally.unread += 1; tally.notes.push(`${r.adsh}:${f.note ?? "unread"}`); return; }
+  const up = await upsertRows(client, [f.row]);
+  tally.replaced += up.inserted + up.updated;
+  if (r.is_workforce_event === true && f.row.is_workforce_event === false) tally.flipped += 1;
+  if (up.refused > 0) tally.notes.push(...up.reasons);
 }
 
 // Every ingest path skips a filing_id it holds, so a row an older build wrote
@@ -463,25 +516,14 @@ async function runEdgarReread(client: SupabaseLike, body: Record<string, unknown
   let ok = true;
   let next: Record<string, unknown> | null = null;
   try {
-    const { data, error } = await client.from("layoff_filings")
-      .select("filing_id,cik,adsh,filer_raw,section_text,parse_confidence,is_workforce_event")
-      .eq("source", "sec_8k_205").eq("status", "active").gte("event_date", floor)
-      .order("filing_id", { ascending: true }).limit(2000);
-    if (error) throw new Error(`layoff_filings select: ${error.message}`);
-    const todo = rereadCandidates(Array.isArray(data) ? data : [], after);
+    const todo = rereadCandidates(await storedSecRows(client, floor), after);
     tally.candidates = todo.length;
     for (const r of todo) {
       if (Date.now() > deadline) {
         if (tally.read > 0) next = { action: "edgar_reread", after: String(todo[tally.read - 1].filing_id) };
         break;
       }
-      tally.read += 1;
-      const f = await fetchFiling(http, Number(r.cik), String(r.adsh), readAt, String(r.filer_raw ?? ""));
-      if (!f.row || !(Number(f.row.parse_confidence) > 0)) { tally.unread += 1; tally.notes.push(`${r.adsh}:${f.note ?? "unread"}`); continue; }
-      const up = await upsertRows(client, [f.row]);
-      tally.replaced += up.inserted + up.updated;
-      if (r.is_workforce_event === true && f.row.is_workforce_event === false) tally.flipped += 1;
-      if (up.refused > 0) tally.notes.push(...up.reasons);
+      await rereadOne(http, client, r, readAt, tally);
     }
     if (tally.replaced > 0) await rebuildMatches(client);
   } catch (e) {
@@ -567,18 +609,66 @@ interface FeedOutcome {
   ok: boolean;
   /** The map did not recognise the file's header: nothing was stored and the header is in the health note. */
   refused: boolean;
+  /** A first-read state's feed waited for its writer (S14X-036): nothing was fetched. */
+  held?: boolean;
   changed: boolean;
   rows: number;
   newRows: number;
   line: string;
 }
 
-async function readOneFeed(client: SupabaseLike, http: Http, f: WarnFeed, readAt: Date): Promise<FeedOutcome> {
+/**
+ * Is the migration that keeps a first read's date and retires an edited
+ * notice applied (20261112182000)? Its retire RPC, asked with no span,
+ * retires nothing and answers; before the migration it is PGRST202.
+ */
+async function warnRetireReady(client: SupabaseLike): Promise<boolean> {
+  try {
+    const { error } = await client.rpc("layoff_warn_retire_unseen", { p_state: "", p_feed: "", p_seen: [], p_from: null, p_to: null });
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * AN EDITED NOTICE RETIRES ITS OLD READING (S14X-069). After a complete read
+ * of a whole-history feed, the feed's active rows the read did not produce,
+ * dated inside the read's span, are superseded (the writer's breaker holds a
+ * read that would retire too many). Only Big Local News' raw files hold a
+ * state's whole history: the two direct feeds read one year's file at a
+ * time, so a row absent from tonight's read may sit in the other year's file.
+ */
+async function retireUnseen(client: SupabaseLike, f: WarnFeed, rows: Record<string, unknown>[], ready: boolean): Promise<string | null> {
+  if (f.feed !== "bln_raw" || rows.length === 0) return null;
+  if (!ready) return "retire_unavailable";
+  const dates = rows.map((r) => String(r.event_date)).sort();
+  const { data, error } = await client.rpc("layoff_warn_retire_unseen", {
+    p_state: f.state, p_feed: f.feed, p_seen: rows.map((r) => String(r.filing_id)), p_from: dates[0], p_to: dates[dates.length - 1],
+  });
+  if (error) return `retire_error=${error.message}`.slice(0, 120);
+  const r = Array.isArray(data) ? data[0] : data;
+  if (r?.lr_refused) return `retire_held=${Number(r.lr_candidates ?? 0)}/${Number(r.lr_active ?? 0)}`;
+  return Number(r?.lr_retired ?? 0) > 0 ? `retired=${Number(r.lr_retired)}` : null;
+}
+
+async function readOneFeed(client: SupabaseLike, http: Http, f: WarnFeed, readAt: Date, ready: boolean): Promise<FeedOutcome> {
   const t0 = Date.now();
   const readIso = todayIso(readAt);
   const prior = await feedHealth(client, f.feed, f.state);
   const extractFailed = f.feed === "bln_raw" ? (prior?.extract_failed ?? null) : null;
   const base = `[layoff-filings] kind=warn state=${f.state} feed=${f.feed}`;
+  // A FIRST-READ STATE WAITS FOR ITS WRITER (S14X-036). Before
+  // 20261112182000 the upsert overwrites public_date on every read, so a
+  // notice dated by our first read would be re-dated every night. Until the
+  // migration answers, such a feed is held: nothing fetched, nothing stored,
+  // a note -- as before this build, when its map refused the file.
+  if (f.map.visibleBasis === "our_first_fetch" && !ready) {
+    const note = "first_fetch_held: the writer that keeps a first read's date is not applied";
+    await upsertFeedHealth(client, { feed: f.feed, state: f.state, last_attempt_at: readAt.toISOString(), note });
+    console.log(`${base} held rows=0 new=0 ms=${Date.now() - t0} ok=true note=${JSON.stringify(note)}`);
+    return { ok: true, refused: false, held: true, changed: false, rows: 0, newRows: 0, line: `${base} held` };
+  }
   const finish = async (v: {
     ok: boolean; refused?: boolean; changed: boolean; rows: number; newRows: number; superseded: number; rescinded: number;
     latest: string | null; etag: string | null; note: string | null; tag: string;
@@ -648,7 +738,7 @@ async function readOneFeed(client: SupabaseLike, http: Http, f: WarnFeed, readAt
       etag = raw.etag;
       tag = "etag=changed";
     }
-    const mapped: MapResult = mapTable(f.map, table, f.feed, sourceUrl);
+    const mapped: MapResult = mapTable(f.map, table, f.feed, sourceUrl, readAt);
     if (!mapped.ok) {
       // A file whose header the map does not recognise stores nothing; the
       // header it showed goes to the health row so the map can be pinned.
@@ -661,7 +751,9 @@ async function readOneFeed(client: SupabaseLike, http: Http, f: WarnFeed, readAt
     }
     const built = await buildWarnRows(mapped.records, readAt, LAYOFF_RETENTION_DAYS);
     const up = built.rows.length > 0 ? await upsertRows(client, built.rows) : { inserted: 0, updated: 0, refused: 0, reasons: [] };
+    const retired = await retireUnseen(client, f, built.rows, ready);
     const noteParts = [
+      retired,
       f.map.verifiedAgainstSample ? null : "map_unverified",
       built.futureDated ? `future_dated=${built.futureDated}` : null,
       built.noticeAfterStamp ? `notice_after_stamp=${built.noticeAfterStamp}` : null,
@@ -694,22 +786,23 @@ async function runWarn(client: SupabaseLike, body: Record<string, unknown>, self
   let next = cursor;
   try {
     const end = Math.min(WARN_FEEDS.length, cursor + WARN_STATES_PER_SLICE);
+    // One probe per slice: is 20261112182000 (the writer that keeps a first
+    // read's date, and the retire) applied?
+    const ready = await warnRetireReady(client);
     for (let i = cursor; i < end; i++) {
       if (Date.now() > deadline) { notes.push("wall_clock"); break; }
       const f = WARN_FEEDS[i];
-      const r = await readOneFeed(client, http, f, readAt);
+      const r = await readOneFeed(client, http, f, readAt, ready);
       attempted += 1;
       rowsMapped += r.rows;
       newRows += r.newRows;
+      if (r.held) notes.push(`held=${f.key}`);
       if (!r.ok) {
-        // A map that was never verified against a saved file and refuses
-        // the header it meets is doing what it promised: nothing stored, the
-        // header in the health note for the owner to pin. That is a note on
-        // the slice, not a failed read -- otherwise the seven unverified
-        // states would mark every nightly run ok=false from night one and
-        // the heartbeat's liveness check would fire permanently, masking a
-        // real fetch or write failure. A verified map that refuses (the
-        // state changed its header) and any fetch/write error stay failures.
+        // Every state map is now pinned to a saved file of its own (S14X-036),
+        // so a refused header is a state that changed its file: a failed
+        // read, which the heartbeat's liveness check is there to see. The
+        // verdict still names an unverified map's refusal a note, for a map
+        // added later before its sample is saved.
         const v = feedVerdict(r, f.map);
         if (v === "refused") notes.push(`refused=${f.key}`);
         else { allOk = false; notes.push(`failed=${f.key}`); }
@@ -920,11 +1013,40 @@ async function runLcaWages(client: SupabaseLike): Promise<Response> {
   }, ok ? 200 : 500);
 }
 
+/**
+ * WHAT THE READ-ONLY VERIFIER CAN JUDGE FROM OUTSIDE: when the newest
+ * complete nightly WARN chain and the newest FTS audit finished, and which
+ * build wrote each (the read log's build= prefix). A line about a notice the
+ * nightly read must store is judged only once a chain of this build has run.
+ * A timestamp, a build and two counts leave; no row, no note text, no error.
+ */
+async function lastRuns(): Promise<Record<string, unknown> | null> {
+  const client = getServiceClient();
+  if (!client) return null;
+  try {
+    const newest = async (kind: string, want: (note: string) => boolean) => {
+      const { data } = await client.from("layoff_read_log").select("read_at, note").eq("kind", kind).order("read_at", { ascending: false }).limit(30);
+      const r = (Array.isArray(data) ? data : []).find((x: { note?: unknown }) => want(String(x?.note ?? "")));
+      return r ? { at: String(r.read_at), note: String(r.note ?? "") } : null;
+    };
+    const build = (note: string) => /(?:^|; )build=([^;\s]+)/.exec(note)?.[1] ?? null;
+    const count = (note: string, k: string) => { const m = new RegExp(`(?:^|; )${k}=(\\d+)(?:;|$)`).exec(note); return m ? Number(m[1]) : null; };
+    const warn = await newest("warn", (n) => /(?:^|; )done(?:;|$)/.test(n));
+    const audit = await newest("edgar_fts_audit", () => true);
+    return {
+      warnDone: warn ? { at: warn.at, build: build(warn.note) } : null,
+      audit: audit ? { at: audit.at, build: build(audit.note), reread: count(audit.note, "reread"), rereadReplaced: count(audit.note, "reread_replaced") } : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ── the handler ────────────────────────────────────────────────────────────
 
 serve(stamped(`layoff-filings.${BUILD_VERSION}`, async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
-  if (req.method === "GET") return json({ ok: true, function: "layoff-filings", version: BUILD_VERSION, parser: "parse205_v2_ts" });
+  if (req.method === "GET") return json({ ok: true, function: "layoff-filings", version: BUILD_VERSION, parser: PARSER_VERSION, runs: await lastRuns() });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
 
   const client = getServiceClient();

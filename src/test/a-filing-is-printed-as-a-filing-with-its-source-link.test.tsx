@@ -244,7 +244,8 @@ describe("a filing is printed as a filing, with its source link -- or not at all
     const s = line.textContent ?? "";
     expect(s).toContain(`ACME LOGISTICS LLC filed a layoff notice with California dated ${D("2026-09-10")}: 120 positions at Fremont, effective ${D("2026-11-09")}`);
     expect(s).toContain(`listed by California EDD on ${D("2026-09-12")}`);
-    expect(s).toMatch(/read from California EDD \d+h ago/);
+    // California is read from Big Local News' copy of EDD's file, and the stamp says so (S14X-279).
+    expect(s).toMatch(/from California EDD via Big Local News, read \d+h ago/);
     const a = line.querySelector<HTMLAnchorElement>('a[data-layoff-source="state_warn"]');
     expect(a?.getAttribute("href")).toBe(WARN_ACME.lf_source_url);
     expect(a?.textContent).toBe("California EDD ↗");

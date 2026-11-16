@@ -32,6 +32,8 @@ export const LCA_COVERAGE_FROM = "2025-10-01";
 export const LCA_COVERAGE_TO = "2026-06-30";
 /** The date the Department published the file. Not in the file; supplied by the operator. */
 export const LCA_PUBLISHED_ON = "2026-08-07";
+/** The VISA_CLASS values the loader kept: null is every class in the LCA Programs file (H-1B, H-1B1, E-3). */
+export const LCA_VISA_CLASSES: readonly string[] | null = null;
 
 /** Applications whose decision EQUALS the certified status. The prefix test would add the withdrawn-after-certification rows. */
 export const LCA_CERTIFIED_BY_EQUALITY = 401412;

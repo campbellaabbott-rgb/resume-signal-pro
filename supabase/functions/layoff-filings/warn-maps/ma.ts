@@ -1,9 +1,8 @@
 // Massachusetts EOLWD. Big Local News' scraper writes a fixed six-column
 // header (RECEIVED, EMPLOYER, CITY/TOWN, REGION, DATE(S) OF LAYOFFS,
-// # EMPLOYEES IMPACTED) mirrored from the state's weekly report; the
-// header is taken from that scraper's source, the rows were NOT checked
-// against a saved copy of the raw file. A file whose header differs is
-// refused with the header it showed.
+// # EMPLOYEES IMPACTED) mirrored from the state's weekly report, verified
+// against the saved bln-raw-ma.csv (2026-11-15). A file whose header differs
+// is refused with the header it showed, and the night's read fails.
 import type { StateMap } from "./types.ts";
 
 export const MA: StateMap = {
@@ -20,5 +19,6 @@ export const MA: StateMap = {
     city: ["CITY/TOWN"],
     county: ["REGION"],
   },
-  verifiedAgainstSample: false,
+  verifiedAgainstSample: true,
+  verifiedBy: "bln-raw-ma.csv (2026-11-15)",
 };
