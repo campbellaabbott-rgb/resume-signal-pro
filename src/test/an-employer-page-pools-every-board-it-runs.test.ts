@@ -68,7 +68,7 @@ describe("a board below the cut", () => {
     // Acme's Workday tenant is the smaller employer under the name; its
     // below-cut board pools to Acme's own primary and inherits sameEmployer.
     const facet: Row[] = [
-      { token: "acme-big", name: "Acme", open: 900 },
+      { token: "acmecorp", name: "Acme", open: 900 },
       { token: "acme~wd1~Main", name: "Acme", open: 300 },
       { token: "filler-a", name: "Filler A", open: 800 },
       { token: "acme~wd1~Small", name: "Acme", open: 20 },
@@ -76,7 +76,7 @@ describe("a board below the cut", () => {
     const L = selectLanders(facet, { openOf, max: 3 });
     const m = pooledMembersOf(facet, L, { openOf });
     expect(m).toHaveLength(1);
-    expect(m[0]).toMatchObject({ token: "acme~wd1~Small", employerPrimary: "acme~wd1~Main", primary: "acme-big", sameEmployer: false });
+    expect(m[0]).toMatchObject({ token: "acme~wd1~Small", employerPrimary: "acme~wd1~Main", primary: "acmecorp", sameEmployer: false });
   });
 
   it("reads the same displayed name the ceiling grouped by", () => {

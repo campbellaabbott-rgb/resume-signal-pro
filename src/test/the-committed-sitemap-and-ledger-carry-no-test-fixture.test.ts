@@ -26,7 +26,7 @@ const ROOT = resolve(__dirname, "../..");
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), "utf8");
 
 /** The test-fixture token shapes, case-folded: the made-up employers src/test names. */
-const FIXTURE_TOKEN = /^(?:acme(?:\d+|corp\d*|widgets|-?sr|uk|-dev\d+|-gigs|-big)?(?:~[\w~-]+)?|levertest)$/;
+const FIXTURE_TOKEN = /^(?:acme(?:\d+|corp\d*|widgets|-?sr|uk|-dev\d+|-gigs)?(?:~[\w~-]+)?|levertest)$/;
 const isFixtureToken = (token: string) => FIXTURE_TOKEN.test(token.toLowerCase());
 
 /** The employer token of a site path: /jobs/company/<t> or /jobs/posting/<vendor>/<t>/<id>. */
