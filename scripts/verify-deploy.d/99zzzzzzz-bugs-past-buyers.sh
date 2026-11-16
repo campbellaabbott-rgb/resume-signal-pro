@@ -139,16 +139,17 @@ $(curl -s -m 30 "$SITE/assets/$VDPB_D")"
   done
   VDPB_CLOSED=$(node -e 'try{process.stdout.write(String(require(process.argv[1]).pastBuyers.closedNoCopy).slice(0,41))}catch{}' "$PWD/src/i18n/shards/past-buyers/en.json")
   VDPB_MISSING=""
-  printf '%s' "$VDPB_PSJS" | grep -qF 'rb_builder_seed' || VDPB_MISSING="$VDPB_MISSING the builder's one-shot seed (RC-S12-110);"
-  printf '%s' "$VDPB_PSJS" | grep -qE 'setItem\("rb_resume_text",[^)]{0,80}rewrittenResume' && VDPB_MISSING="$VDPB_MISSING an 'Open in builder' that leaves the scanned résumé alone (RC-S12-110: the rewrite still goes to rb_resume_text);"
-  printf '%s' "$VDPB_PSJS" | grep -qF 'product-success-recovery-file' || VDPB_MISSING="$VDPB_MISSING the labelled recovery upload (S14X-180);"
-  printf '%s' "$VDPB_PSJS" | grep -qF 'cover-letter.txt' || VDPB_MISSING="$VDPB_MISSING the letter's download (RC-S12-043);"
-  printf '%s' "$VDPB_PSJS" | grep -qF 'savedCopy' || VDPB_MISSING="$VDPB_MISSING the Coach's and the Career Path's saved copy (RC-S12-042);"
-  printf '%s' "$VDPB_PSJS" | grep -qF 'closedNoCopy' || VDPB_MISSING="$VDPB_MISSING the closed-order answer (S14X-111);"
-  printf '%s' "$VDPB_PSJS" | grep -qF 'data-rb-saved-parse-simulation' || VDPB_MISSING="$VDPB_MISSING the ATS Defense report's saved checks (RC-S12-031);"
-  printf '%s' "$VDPB_PSJS" | grep -qF 'data-rb-print' || VDPB_MISSING="$VDPB_MISSING the print path for text jsPDF cannot draw (RC-S12-029);"
-  { printf '%s' "$VDPB_PSJS" | grep -qF 'listo para postularte' && printf '%s' "$VDPB_PSJS" | grep -qF 'आवेदन करने के लिए तैयार'; } || VDPB_MISSING="$VDPB_MISSING the Spanish and Hindi ready verdicts (RC-S12-113);"
-  { [ -n "$VDPB_CLOSED" ] && printf '%s\n%s' "$VDPB_MAINJS" "$VDPB_PSJS" | grep -qF "$VDPB_CLOSED"; } || VDPB_MISSING="$VDPB_MISSING the English past-buyers strings (with the success page or in the entry);"
+  grep -qF 'rb_builder_seed' <<<"$VDPB_PSJS" || VDPB_MISSING="$VDPB_MISSING the builder's one-shot seed (RC-S12-110);"
+  grep -qE 'setItem\("rb_resume_text",[^)]{0,80}rewrittenResume' <<<"$VDPB_PSJS" && VDPB_MISSING="$VDPB_MISSING an 'Open in builder' that leaves the scanned résumé alone (RC-S12-110: the rewrite still goes to rb_resume_text);"
+  grep -qF 'product-success-recovery-file' <<<"$VDPB_PSJS" || VDPB_MISSING="$VDPB_MISSING the labelled recovery upload (S14X-180);"
+  grep -qF 'cover-letter.txt' <<<"$VDPB_PSJS" || VDPB_MISSING="$VDPB_MISSING the letter's download (RC-S12-043);"
+  grep -qF 'savedCopy' <<<"$VDPB_PSJS" || VDPB_MISSING="$VDPB_MISSING the Coach's and the Career Path's saved copy (RC-S12-042);"
+  grep -qF 'closedNoCopy' <<<"$VDPB_PSJS" || VDPB_MISSING="$VDPB_MISSING the closed-order answer (S14X-111);"
+  grep -qF 'data-rb-saved-parse-simulation' <<<"$VDPB_PSJS" || VDPB_MISSING="$VDPB_MISSING the ATS Defense report's saved checks (RC-S12-031);"
+  grep -qF 'data-rb-print' <<<"$VDPB_PSJS" || VDPB_MISSING="$VDPB_MISSING the print path for text jsPDF cannot draw (RC-S12-029);"
+  { grep -qF 'listo para postularte' <<<"$VDPB_PSJS" && grep -qF 'आवेदन करने के लिए तैयार' <<<"$VDPB_PSJS"; } || VDPB_MISSING="$VDPB_MISSING the Spanish and Hindi ready verdicts (RC-S12-113);"
+  { [ -n "$VDPB_CLOSED" ] && grep -qF "$VDPB_CLOSED" <<<"$VDPB_MAINJS
+$VDPB_PSJS"; } || VDPB_MISSING="$VDPB_MISSING the English past-buyers strings (with the success page or in the entry);"
   if [ -z "$VDPB_MISSING" ]; then echo "PASS  F the published success page ($VDPB_PS and what it imports) seeds the builder, labels its upload, downloads the letter, hands the widgets their saved copy, answers a closed order, shows saved parse checks, prints what jsPDF cannot draw and reads the Spanish and Hindi verdicts"
   elif [ "$VDPB_LIVE" = 1 ]; then echo "FAIL  F the published success page lacks${VDPB_MISSING%;} while the lane's functions serve 2026-11-12.1: the round's frontend publish has not happened"
   else echo "INFO  F the published success page lacks${VDPB_MISSING%;}: the round's frontend has not published yet"; fi
@@ -194,7 +195,7 @@ case "$VDPB_O143" in
       grep -q 'past-buyer-window\.ts' "supabase/functions/$VDPB_F/index.ts" 2>/dev/null || VDPB_WIN="$VDPB_WIN $VDPB_F;"
     done
     if [ -n "$VDPB_WIN" ]; then echo "FAIL  S14X-143 decided ($VDPB_O143), but this checkout lacks the window in:${VDPB_WIN%;}"
-    elif printf '%s' "$VDPB_PSJS" | grep -qF 'past_buyer_window_closed'; then echo "PASS  S14X-143 decided ($VDPB_O143): the nine writers read _shared/past-buyer-window.ts and the published success page answers a closed window"
+    elif grep -qF 'past_buyer_window_closed' <<<"$VDPB_PSJS"; then echo "PASS  S14X-143 decided ($VDPB_O143): the nine writers read _shared/past-buyer-window.ts and the published success page answers a closed window"
     elif [ "$VDPB_LIVE" = 1 ]; then echo "FAIL  S14X-143 decided ($VDPB_O143), but the published success page never names past_buyer_window_closed while the lane's functions serve 2026-11-12.1"
     else echo "INFO  S14X-143 decided ($VDPB_O143): the writers read the window in this checkout; the success page has not published"; fi
     for VDPB_F in generate-career-path import-freelance-profile; do
