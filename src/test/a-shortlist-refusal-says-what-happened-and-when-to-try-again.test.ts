@@ -19,6 +19,9 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { buildIsAtLeast } from "./helpers/fn-build";
+import { readFileSync, readdirSync } from "node:fs";
+import { resolve } from "node:path";
+import { sqlCodeOf } from "./helpers/strip-comments";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 180_000 });
 
@@ -112,11 +115,13 @@ describe("each refusal names itself", () => {
     expect(r.body.code).toBe("scoring_failed");
   });
 
-  it("the account cap offers no deletion the product does not have", async () => {
+  it("the account cap names the delete that rule A gives the employer, and a migration provides it", async () => {
     (globalThis as Record<string, unknown>).__slHeld = 10_000;
     const r = await evaluate();
     expect(r.status).toBe(409);
     expect(r.body.code).toBe("candidate_cap");
-    expect(String(r.body.error)).not.toMatch(/delete/i);
+    expect(String(r.body.error)).toMatch(/Delete candidates or roles you no longer need to make room\./);
+    const MIG = resolve(__dirname, "../../supabase/migrations");
+    expect(readdirSync(MIG).filter((f) => /FUNCTION public\.shortlist_delete_role\s*\(/.test(sqlCodeOf(readFileSync(resolve(MIG, f), "utf8"))))).not.toEqual([]);
   });
 });

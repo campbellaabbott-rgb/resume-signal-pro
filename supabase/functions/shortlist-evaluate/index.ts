@@ -137,8 +137,8 @@ Deno.serve(async (req) => {
     const { count: held } = await service.from("shortlist_candidates")
       .select("id", { count: "exact", head: true }).eq("owner_id", user.id);
     if (typeof held === "number" && held >= SHORTLIST_CANDIDATE_CAP) {
-      // No delete path exists for an employer yet, so the answer offers none (S14X-197).
-      return json({ error: `This account holds ${SHORTLIST_CANDIDATE_CAP.toLocaleString("en-US")} evaluations, the most one account can hold, so no more can be scored on it.`, code: "candidate_cap" }, 409);
+      // The employer deletes a candidate or a role on the page (S14X-073, rule A; 20261112211000).
+      return json({ error: `This account holds ${SHORTLIST_CANDIDATE_CAP.toLocaleString("en-US")} evaluations, the most one account can hold, so no more can be scored on it. Delete candidates or roles you no longer need to make room.`, code: "candidate_cap" }, 409);
     }
 
     // Alternative review (ADA / accommodation) before any scoring: a record

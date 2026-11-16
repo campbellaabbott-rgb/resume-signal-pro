@@ -275,6 +275,17 @@ export default function Shortlist() {
   const [noticeMsg, setNoticeMsg] = useState<string | null>(null);
   const [noticeSentOn, setNoticeSentOn] = useState("");
   const [noticeRecipients, setNoticeRecipients] = useState("");
+  /**
+   * S14X-073, rule A: the employer deletes a candidate or a role, and what is
+   * four years old is purged. True only once the deletions log answers, so the
+   * controls and the sentences about them stay hidden until 20261112211000
+   * has applied.
+   */
+  const [deleteReady, setDeleteReady] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ kind: "candidate" | "role"; id: string; label: string } | null>(null);
+  const [deleteTyped, setDeleteTyped] = useState("");
+  const [deleteMsg, setDeleteMsg] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     // Back here after signing in, query intact (/agent?welcome=1 after Stripe; L3-20).
@@ -307,6 +318,40 @@ export default function Shortlist() {
   }, []);
 
   useEffect(() => { if (session) loadRoles(); }, [session, loadRoles]);
+  useEffect(() => {
+    if (!session) return;
+    let live = true;
+    // The deletions log exists only once the delete and the purge do (it is not in the generated types).
+    const untyped = supabase as unknown as { from: (t: string) => { select: (c: string) => { limit: (n: number) => PromiseLike<{ error: unknown }> } } };
+    Promise.resolve(untyped.from("shortlist_deletions").select("id").limit(1))
+      .then(({ error: err }) => { if (live) setDeleteReady(!err); }, () => { if (live) setDeleteReady(false); });
+    return () => { live = false; };
+  }, [session]);
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || deleteTyped.trim() !== "DELETE") return;
+    setDeleting(true);
+    setDeleteMsg(null);
+    const { kind, id } = deleteTarget;
+    const { error: err } = kind === "candidate"
+      ? await supabase.rpc("shortlist_delete_candidate" as never, { p_candidate_id: id } as never)
+      : await supabase.rpc("shortlist_delete_role" as never, { p_role_id: id } as never);
+    setDeleting(false);
+    if (err) { setDeleteMsg(`Nothing was deleted: ${(err as { message?: string }).message ?? "the request failed"}`); return; }
+    setDeleteTarget(null);
+    setDeleteTyped("");
+    if (kind === "candidate") {
+      setDeleteMsg("The candidate, its evaluation and its decisions were deleted. The deletion is logged without the résumé.");
+      setExpanded(null);
+      if (activeRole) await loadCandidates(activeRole.id);
+    } else {
+      setDeleteMsg("The role, its candidates, their decisions and its notices were deleted. The deletion is logged without any résumé.");
+      setActiveRole(null);
+      setCandidates([]);
+      setNotices([]);
+      await loadRoles();
+    }
+  };
   useEffect(() => { if (activeRole) { loadCandidates(activeRole.id); loadNotices(activeRole.id); } }, [activeRole, loadCandidates, loadNotices]);
 
   // What the scorer was shown for one candidate, read when it is opened (S14X-162).
@@ -574,7 +619,11 @@ export default function Shortlist() {
             <p><span className="text-foreground font-medium">What is removed before scoring.</span> The candidate&apos;s name as read from the top of the résumé (or from the file name when the text shows it), contact details and street addresses, labelled personal fields (birth date, age, sex, family, religion, nationality, ethnicity, visa status, health) in English, German, French, Spanish, Portuguese, Dutch, Chinese and Japanese, education years, and phrases that point at age, sex, family, disability, origin, faith or group membership. The model sees one neutral [REDACTED] mark; which category was hidden is recorded only in the audit. A leave reads as a career break.</p>
             <p><span className="text-foreground font-medium">What can pass.</span> Detection is pattern-based: a name the header does not show, an unusual layout, another language, or a proxy in words the rules do not know can reach the model. Each candidate says when no name was found; open it to read exactly what the model saw.</p>
             <p><span className="text-foreground font-medium">What is stored.</span> For each candidate: the redacted text the model saw, the score, signals and flags, the job description scored, the model and prompt version, which exclusions fired, your confirmation that you may have the résumé scored, and every decision with who made it and when; for each role, the notices you log as sent. Nothing about a candidate&apos;s sex, race or other demographics is recorded.</p>
-            <p><span className="text-foreground font-medium">For how long.</span> There is no automatic deletion yet: records stay until the account is closed. To have a role&apos;s records removed sooner, write to the address in the footer.</p>
+            {deleteReady ? (
+              <p data-retention-rule-a><span className="text-foreground font-medium">For how long.</span> Until you delete the candidate, the role or your account. Anything still held four years after it was uploaded is deleted automatically. Each deletion is logged with its date and ids, never the résumé.</p>
+            ) : (
+              <p><span className="text-foreground font-medium">For how long.</span> There is no automatic deletion yet: records stay until the account is closed. To have a role&apos;s records removed sooner, write to the address in the footer.</p>
+            )}
           </div>
         </details>
 
@@ -584,6 +633,8 @@ export default function Shortlist() {
             {signInNeeded && <> <Link to={`/auth?next=${encodeURIComponent("/shortlist")}`} className="underline font-semibold" data-sign-in>Sign in again</Link></>}
           </p>
         )}
+
+        {deleteMsg && <p className="text-xs text-muted-foreground mb-4 p-3 rounded-lg bg-muted/30 border border-border/60" data-delete-msg>{deleteMsg}</p>}
 
         {/* Role selector / creator */}
         <div className="rounded-2xl border border-border bg-card p-5 mb-6">
@@ -637,7 +688,34 @@ export default function Shortlist() {
               <button onClick={() => exportAudit("json")} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors">
                 <FileDown className="w-3.5 h-3.5" /> Audit JSON
               </button>
+              {deleteReady && (
+                <button onClick={() => { setDeleteTarget({ kind: "role", id: activeRole.id, label: activeRole.title }); setDeleteTyped(""); setDeleteMsg(null); }}
+                  className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-destructive/40 text-xs text-destructive hover:bg-destructive/5 transition-colors" data-delete-role>
+                  Delete role
+                </button>
+              )}
             </div>
+            {deleteTarget && (
+              <div className="mb-4 p-3 rounded-xl border border-destructive/40 bg-destructive/5 space-y-2" data-delete-confirm>
+                <p className="text-xs text-foreground">
+                  {deleteTarget.kind === "role"
+                    ? <>Delete the role &ldquo;{deleteTarget.label}&rdquo; with all its candidates, their evaluations and decisions, and its logged notices?</>
+                    : <>Delete {deleteTarget.label}, its evaluation and its decisions?</>}
+                  {" "}This cannot be undone. Export the audit first if you need to keep a copy. A record that it was deleted, with dates and ids and no résumé, stays in your account.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input value={deleteTyped} onChange={e => setDeleteTyped(e.target.value)} aria-label="Type DELETE to confirm" placeholder="Type DELETE to confirm"
+                    className="px-3 py-1.5 rounded-lg bg-background border border-border text-xs text-foreground placeholder:text-muted-foreground" />
+                  <button onClick={confirmDelete} disabled={deleting || deleteTyped.trim() !== "DELETE"}
+                    className="px-3 py-1.5 rounded-lg bg-destructive text-white text-xs font-semibold hover:bg-destructive/90 transition-colors disabled:opacity-50" data-delete-go>
+                    {deleting ? "Deleting…" : "Delete for good"}
+                  </button>
+                  <button onClick={() => { setDeleteTarget(null); setDeleteTyped(""); }} className="px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Notices */}
             {showNotice && (
@@ -847,6 +925,12 @@ export default function Shortlist() {
                           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground transition-colors">
                           <Accessibility className="w-3.5 h-3.5" /> Alt review
                         </button>
+                        {deleteReady && (
+                          <button onClick={() => { setDeleteTarget({ kind: "candidate", id: c.id, label: "this candidate" }); setDeleteTyped(""); setDeleteMsg(null); window.scrollTo?.({ top: 0, behavior: "smooth" }); }}
+                            className="ml-auto px-3 py-1.5 rounded-lg border border-destructive/40 text-xs text-destructive hover:bg-destructive/5 transition-colors" data-delete-candidate>
+                            Delete candidate
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}
@@ -860,7 +944,9 @@ export default function Shortlist() {
         )}
 
         <p className="text-[10px] text-muted-foreground mt-8">
-          Shortlist recommends and ranks only; all employment decisions are made by humans. Notice templates and audit views are informational tooling, not legal advice — consult counsel for your jurisdiction. Records are kept until the account is closed; there is no automatic deletion yet (How Shortlist works, above).
+          Shortlist recommends and ranks only; all employment decisions are made by humans. Notice templates and audit views are informational tooling, not legal advice — consult counsel for your jurisdiction. {deleteReady
+            ? "Records are kept until you delete the candidate, the role or your account, and anything still held four years after it was uploaded is deleted (How Shortlist works, above)."
+            : "Records are kept until the account is closed; there is no automatic deletion yet (How Shortlist works, above)."}
         </p>
       </main>
       <Footer />

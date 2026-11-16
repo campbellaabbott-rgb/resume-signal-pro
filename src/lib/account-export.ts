@@ -38,6 +38,7 @@ export const OWNER_TABLES = [
   { table: "shortlist_decisions", key: "owner_id", as: "shortlistDecisions" },
   { table: "shortlist_demographics", key: "owner_id", as: "shortlistDemographics" },
   { table: "shortlist_notices", key: "owner_id", as: "shortlistNotices" },
+  { table: "shortlist_deletions", key: "owner_id", as: "shortlistDeletions" },
 ] as const;
 
 /** Rows per request: PostgREST answers at most this many, so a longer table is paged. */
