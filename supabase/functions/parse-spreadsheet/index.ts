@@ -1,15 +1,16 @@
 // deploy-stamp: 2026-07-04T18:44Z
-// SheetJS stays at the registry's last build, 0.18.5 (before the
-// prototype-pollution fix in 0.19.3 and the ReDoS fix in 0.20.2). Later builds
-// are published only at cdn.sheetjs.com, a host Deno 2 refuses to import from
-// by default, so scripts/check-functions.sh fails on it; moving up is the
-// owner's call (S13-066). Until then a workbook is bounded below.
-import * as XLSX from "https://esm.sh/xlsx@0.18.5";
+// SheetJS is the 0.20.3 ES module carried in this folder (vendor/xlsx.mjs;
+// its source URL and sha256 are in vendor/SOURCE.md), past the
+// prototype-pollution fix of 0.19.3 and the ReDoS fix of 0.20.2 (S13-066).
+// Builds after the registry's last are published only on SheetJS's own CDN,
+// which Deno 2 does not import from by default, so the file rides here. A
+// workbook is still bounded below.
+import * as XLSX from "./vendor/xlsx.mjs";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { clientAddressOr } from "../_shared/client-address.ts";
 // Quote-aware CSV rows and header matching that ignores empty headers
 // (register L5-09).
-import { findColumnIndex, parseCSV } from "./csv.ts";
+import { decodeCsvBytes, findColumnIndex, parseCSV, sheetsExportUrl } from "./csv.ts";
 // The size, time, row and per-address bounds (S13-066).
 import { MAX_ROWS, MAX_UNZIPPED_BYTES, MAX_UPLOAD_BYTES, PER_ADDRESS_PER_HOUR, SHEETS_FETCH_MS, TooLarge, declaredTooLarge, looksZipped, readBodyCapped, readCapped, zipInflationRefusal } from "./limits.ts";
 
@@ -59,12 +60,13 @@ function parseExcel(buffer: ArrayBuffer): string[][] {
   console.log(`[parse-spreadsheet] Reading sheet: ${firstSheetName}`);
   const worksheet = workbook.Sheets[firstSheetName];
   
-  // Convert to array of arrays (rows)
-  const rows: string[][] = XLSX.utils.sheet_to_json(worksheet, { 
+  // Convert to array of arrays (rows). header: 1 with raw: false gives rows
+  // of strings; the vendored module carries no types, so that is stated.
+  const rows = XLSX.utils.sheet_to_json(worksheet, { 
     header: 1,
     defval: '',
     raw: false // Convert all values to strings
-  });
+  }) as string[][];
   
   console.log(`[parse-spreadsheet] Parsed ${rows.length} rows from Excel`);
   return rows;
@@ -237,8 +239,9 @@ Deno.serve(async (req) => {
           );
         }
       } else {
-        // Read CSV as text
-        const fileContent = await file.text();
+        // A CSV's bytes, decoded by their encoding: Excel writes
+        // windows-1252 or UTF-16, not only UTF-8 (M-S14-123).
+        const fileContent = decodeCsvBytes(new Uint8Array(await file.arrayBuffer()));
         if (!fileContent || fileContent.trim().length === 0) {
           return new Response(
             JSON.stringify({ success: false, error: 'Empty file content' }),
@@ -256,9 +259,10 @@ Deno.serve(async (req) => {
         const sheetsUrl = body.googleSheetsUrl;
         console.log("[parse-spreadsheet] Processing Google Sheets URL:", sheetsUrl);
         
-        // Extract the spreadsheet ID from various URL formats
-        const sheetIdMatch = sheetsUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-        if (!sheetIdMatch) {
+        // The CSV export of the tab the link names, or of its published
+        // copy (C-S14-134); null when the link names no sheet.
+        const exportUrl = typeof sheetsUrl === 'string' ? sheetsExportUrl(sheetsUrl) : null;
+        if (!exportUrl) {
           return new Response(
             JSON.stringify({ 
               success: false, 
@@ -269,11 +273,7 @@ Deno.serve(async (req) => {
           );
         }
         
-        const sheetId = sheetIdMatch[1];
-        console.log("[parse-spreadsheet] Extracted sheet ID:", sheetId);
-        
         // Fetch the sheet as CSV (works for publicly shared sheets)
-        const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
         console.log("[parse-spreadsheet] Fetching from:", exportUrl);
         
         try {

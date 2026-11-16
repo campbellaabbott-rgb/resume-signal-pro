@@ -50,6 +50,40 @@ export function parseCSV(content: string): string[][] {
 }
 
 /**
+ * A CSV FILE'S BYTES AS TEXT (M-S14-123). Excel's "CSV" on Windows writes
+ * windows-1252 and its "Unicode Text" writes UTF-16 with a byte-order mark;
+ * reading every upload as UTF-8 turned "Ingénieur" into "Ing�nieur". A
+ * UTF-16 mark is honoured and a UTF-8 one dropped; bytes that are not valid
+ * UTF-8 are windows-1252. Valid UTF-8 reads exactly as before.
+ */
+export function decodeCsvBytes(bytes: Uint8Array): string {
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder("utf-16le").decode(bytes.subarray(2));
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder("utf-16be").decode(bytes.subarray(2));
+  const body = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf ? bytes.subarray(3) : bytes;
+  try {
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(body);
+  } catch {
+    return new TextDecoder("windows-1252").decode(body);
+  }
+}
+
+/**
+ * THE CSV EXPORT OF A GOOGLE SHEETS LINK (C-S14-134). The tab a link names
+ * (#gid= or ?gid=) is the tab exported, and a "Publish to the web" link
+ * (/spreadsheets/d/e/<id>/...) reads its published copy: taking its "e" as
+ * the sheet id asked for a sheet that does not exist. Always a
+ * docs.google.com URL; null when the link names no sheet.
+ */
+export function sheetsExportUrl(link: string): string | null {
+  const gid = /[#?&]gid=(\d+)/.exec(link)?.[1];
+  const tab = gid ? `&gid=${gid}` : "";
+  const published = /\/spreadsheets\/d\/e\/([A-Za-z0-9_-]+)/.exec(link)?.[1];
+  if (published) return `https://docs.google.com/spreadsheets/d/e/${published}/pub?output=csv${tab}`;
+  const id = /\/spreadsheets\/d\/([A-Za-z0-9_-]+)/.exec(link)?.[1];
+  return id ? `https://docs.google.com/spreadsheets/d/${id}/export?format=csv${tab}` : null;
+}
+
+/**
  * The first column whose header matches one of the names, in name order. A
  * header contains the name ("Job Title" for "title"), or a header of three or
  * more characters is contained in it ("desc" in "description"). An empty

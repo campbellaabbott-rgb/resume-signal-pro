@@ -24,9 +24,10 @@
  *     caught too;
  *   - an ordinary CSV still becomes jobs.
  *
- * STILL OPEN, FOR THE OWNER: the parser is still SheetJS 0.18.5. Later builds
- * are published only on SheetJS's own CDN, which Deno 2 does not import from
- * by default, so scripts/check-functions.sh fails on that import.
+ * The parser itself moved to SheetJS 0.20.3, carried in the function's own
+ * folder (the-spreadsheet-import-runs-a-patched-sheetjs.test.ts). Here it is
+ * stubbed at whatever specifier index.ts imports it from, so these bounds are
+ * measured on the handler, not on SheetJS.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
@@ -98,8 +99,8 @@ beforeAll(async () => {
   const stubs: Record<string, string> = {
     "https://esm.sh/@supabase/supabase-js@2.45.0": "export const createClient = () => globalThis.__ssDb;",
   };
-  // The workbook parser is stubbed to record how it is asked: SheetJS itself
-  // is not installed in this repository.
+  // The workbook parser is stubbed to record how it is asked, at the
+  // specifier index.ts imports it from.
   stubs[XLSX_URL] = `export const read = (buf, opts) => { globalThis.__ssXlsx.push(opts); return { SheetNames: ["S"], Sheets: { S: {} } }; };
     export const utils = { sheet_to_json: () => [["Title", "Company", "Description"], ["Engineer", "Acme", "Pipelines"]] };`;
   handler = await loadEdgeHandler("parse-spreadsheet", stubs);
