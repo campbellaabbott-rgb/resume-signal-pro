@@ -1131,7 +1131,8 @@
       "fontUnreadable": "Hindi mabasa ang mga titik ng PDF na ito",
       "fontUnreadableDescription": "Hindi tumutugma sa tunay na mga karakter ang font nito. Mag-upload na lang ng .docx o i-paste ang teksto ng iyong resume.",
       "unreadCharacters": "May ilang karakter na hindi nabasa",
-      "unreadCharactersDescription": "Nilaktawan namin ang {{count}} karakter na hindi pinangalanan ng PDF na ito. Para sa pinakatumpak na scan, mag-upload ng .docx o i-paste ang teksto ng iyong resume.",
+      "unreadCharactersDescription_one": "Nilaktawan namin ang {{count}} karakter na hindi pinangalanan ng PDF na ito. Para sa pinakatumpak na scan, mag-upload ng .docx o i-paste ang teksto ng iyong resume.",
+      "unreadCharactersDescription_other": "Nilaktawan namin ang {{count}} karakter na hindi pinangalanan ng PDF na ito. Para sa pinakatumpak na scan, mag-upload ng .docx o i-paste ang teksto ng iyong resume.",
       "checkoutRefusedTitle": "Hindi masimulan ang checkout",
       "resumeTooLong": "Masyadong mahaba ang resume para i-scan",
       "resumeTooLongDescription": "May {{length}} na character ang resume na ito; hanggang {{max}} lang ang binabasa ng libreng scan. Paikliin ito (unahin ang mga lumang trabaho at mahahabang listahan) at i-scan muli."
@@ -1428,7 +1429,8 @@
       "subtitle": "Mga nae-edit na seksyon, live preview, i-export sa PDF o Word"
     },
     "actionBanner": {
-      "issuesFound": "{{count}} mga isyu ang natuklasan — ayusin ngayon",
+      "issuesFound_one": "{{count}} isyu ang natuklasan — ayusin ngayon",
+      "issuesFound_other": "{{count}} isyu ang natuklasan — ayusin ngayon",
       "keyImprovements": "Mga pangunahing pagpapabuti na available",
       "withRole": "Mga {{industry}}-specific na pag-aayos para sa iyong {{role}} resume",
       "withoutRole": "Mga pag-aayos na tukoy sa industriya na may muling isinulat na mga bullet",
@@ -1556,7 +1558,8 @@
       "careerBrand": "• Pagtatasa ng personal na brand: kasalukuyang vs. ideal na posisyon",
       "careerDescWithRole": "Gabay sa negosasyon ng suweldo, mga landas ng susunod na papel, at mga punto ng pakikipag-usap sa interview para sa iyong {{role}} background",
       "careerDescDefault": "Gabay sa negosasyon ng suweldo, mga landas ng susunod na papel, at mga punto ng pakikipag-usap sa interview para sa {{industry}}",
-      "kwDescWithStats": "{{count}} nawawalang keyword na natuklasan na tukoy sa {{industry}} na hinahanap ng mga ATS system",
+      "kwDescWithStats_one": "{{count}} nawawalang keyword na natuklasan na tukoy sa {{industry}} na hinahanap ng mga ATS system",
+      "kwDescWithStats_other": "{{count}} nawawalang keyword na natuklasan na tukoy sa {{industry}} na hinahanap ng mga ATS system",
       "kwDescGood": "Malakas na keyword coverage para sa {{industry}} — kumuha ng mga tip sa phrasing at placement para gawing mas epektibo ang mga ito",
       "kwDescDefault": "Mga nawawalang keyword na tukoy sa {{industry}} na hinahanap ng mga ATS system"
     },
@@ -1630,7 +1633,8 @@
       "openBoardFallbackLive": "Buksan ang live na job board — {{n}}+ bakanteng live ngayon, nakaayos ayon sa iyong resume",
       "openBoardFallbackPlain": "Buksan ang live na job board — mga live na bakante, nakaayos ayon sa iyong resume",
       "openBoardNoteLive": "{{n}}+ bakanteng live ngayon · mag-save ng search, bantayan ang mga kumpanya, subaybayan ang mga application",
-      "openBoardNotePlain": "Mga live na bakante · mag-save ng search, bantayan ang mga kumpanya, subaybayan ang mga application"
+      "openBoardNotePlain": "Mga live na bakante · mag-save ng search, bantayan ang mga kumpanya, subaybayan ang mga application",
+      "openBoard": "Buksan ang naka-rank mong board — bawat bakante ay sinukat laban sa resume na ito"
     },
     "nextSteps": {
       "eyebrow": "Susunod na hakbang",
@@ -2756,7 +2760,7 @@
         "browserLocal": {
           "what": "Ang resume na ginagawa mo sa site (sa builder o sa Freelance Boost), ang kasaysayan ng mga huli mong scan (pangalan, tungkulin at score), at ang mga huli mong report",
           "where": "Ang local storage ng browser na ito, sa device mo",
-          "howLong": "Hanggang ma-clear ito: kini-clear lahat ng button na pang-clear ng browser data sa isang bayad na results page, pati ang pag-clear ng data ng site na ito sa browser mo"
+          "howLong": "Hanggang ma-clear ito: kini-clear ito ng pag-sign out sa device na ito (kung dito lang naka-save ang resume na ginawa mo o ang mga detalye mo sa Freelance Boost, tatanungin ka muna at puwede mo itong itago), pati ng button na “I-clear ang Browser Data” sa isang bayad na results page at ng pag-clear ng data ng site na ito sa browser mo"
         },
         "ai": {
           "what": "Ang text ng resume mo, habang isinusulat ang report",
@@ -2786,7 +2790,7 @@
         "agent": {
           "what": "Ang CV na ibinigay mo sa apply agent: ang file at ang text nito",
           "where": "Pribadong storage na ikaw lang at ang agent ang makakabasa",
-          "howLong": "Naka-off ang apply agent at hindi nito ipinapadala ito kaninuman. Ang CV na ibinigay mo rito dati ay itinatago hanggang burahin mo ang account mo o hilingin mong burahin ito: binubura ng pagbura sa account mo ang text; mag-email sa {{email}} para ipabura ang file."
+          "howLong": "Naka-off ang apply agent at hindi nito ipinapadala ito kaninuman. Ang CV na ibinigay mo rito dati ay itinatago hanggang burahin mo ang account mo, na bumubura sa text at sa file; para ipabura ang mga ito nang hindi binubura ang account mo, mag-email sa {{email}}."
         },
         "payment": {
           "what": "Ang bayad mo",
@@ -3353,7 +3357,8 @@
     "gapsByCategory": "Mga Agwat ayon sa Kategorya",
     "gapCount_one": "({{count}} agwat)",
     "gapCount_other": "({{count}} agwat)",
-    "topActions": "Nangungunang {{count}} Aksyon para Mapabuti ang Iyong Match",
+    "topActions_one": "Nangungunang {{count}} Aksyon para Mapabuti ang Iyong Match",
+    "topActions_other": "Nangungunang {{count}} Aksyon para Mapabuti ang Iyong Match",
     "addSkill": "Idagdag ang \"{{skill}}\"",
     "copySuggestion": "Kopyahin ang mungkahi",
     "technical": "Mga Teknikal na Kasanayan",
@@ -3857,7 +3862,6 @@
     "matchStrong": "Malakas na tugma",
     "matchPossible": "Posibleng tugma",
     "matchStretch": "Mahirap abutin",
-    "matchCoverage": "{{pct}}% ng mga kinilalang keyword sa posting na ito ay nasa resume mo na",
     "allCountries": "Lahat ng bansa",
     "countryTip": "Bansa mula sa location text ng bawat posting — ang hindi namin matukoy ay hindi kasama habang naka-on ito, hindi hinuhulaan.",
     "freshHint": "Binibilang lang ang mga petsa ng posting na sinabi ng kompanya",
@@ -3957,7 +3961,7 @@
     "fitTermsSearched": "Ang “{{role}}” ay mula sa resume mo — alisin para makita lahat.",
     "fitTermsAvailable": "Mula sa resume mo:",
     "dropFailed": "Hindi mabasa ang file na iyon. Kaya ng buong scan ang mas mahirap na format.",
-    "dropRateLimited": "Too many scans from this network for now — try again in an hour, or sign in.",
+    "dropRateLimited": "Masyadong maraming scan mula sa network na ito sa ngayon — subukan muli pagkalipas ng isang oras, o mag-sign in.",
     "dropTooShort": "Kulang ang nabasang teksto sa file — subukan ang buong scanner.",
     "dropTooLarge": "Lampas 10 MB ang file — mag-export ng mas magaan na kopya at subukang muli.",
     "nlHintTip": "Naiintindihan ang sahod, remote, petsa, larangan, at 'mga kumpanyang totoong kumukuha' — ginagawang tunay na filter ang pangungusap mo.",
@@ -4156,7 +4160,8 @@
     "discWorkMode2": "{{shown}} sa mga employer na ito ang nagsasabi kung saan gagawin ang trabaho. May {{hidden}} pang trabaho na tumutugma sa lahat ng iba pero walang nakasaad na paraan — wala silang sinabi, o dalawang magkaibang bagay ang sinabi nila at tumanggi kaming pumili. Kaya itinatago sila ng filter na ito.",
     "discShowAll": "Ipakita rin ang mga iyon",
     "discCategory": "Bukod pa rito, {{hidden}} trabaho sa buong board ang may pamagat na hindi sinasabi ang larangan, kaya walang filter ng larangan ang makakaabot sa kanila.",
-    "fuzzyExtraLine": "Iilan lang ang eksaktong tugma para sa “{{q}}” — {{count}} malapit na tugmang titulo ang kasama sa ibaba, may label.",
+    "fuzzyExtraLine_one": "Iilan lang ang eksaktong tugma para sa “{{q}}” — {{count}} malapit na tugmang titulo ang kasama sa ibaba, may label.",
+    "fuzzyExtraLine_other": "Iilan lang ang eksaktong tugma para sa “{{q}}” — {{count}} malapit na tugmang titulo ang kasama sa ibaba, may label.",
     "closeMatchChip": "malapit na tugma",
     "zeroAlertHint": "May mga bagong posting araw-araw. Makatanggap ng email kapag may lumabas na tugmang trabaho sa paghahanap na ito:",
     "zeroAlertCta": "Abisuhan ako kapag mayroon na",
@@ -4279,8 +4284,10 @@
     "skillUnlockPlain": "ay wala sa {{n}} sa mga posting na ito.",
     "skillUnlockCta": "Meron ka nito? Idagdag ito nang tapat sa resume mo →",
     "updating": "ina-update…",
-    "hiddenCount": "{{count}} nakatago",
-    "hiddenByViews": "{{count}} itinago ng {{views}}",
+    "hiddenCount_one": "{{count}} nakatago",
+    "hiddenCount_other": "{{count}} nakatago",
+    "hiddenByViews_one": "{{count}} itinago ng {{views}}",
+    "hiddenByViews_other": "{{count}} itinago ng {{views}}",
     "restoreHidden": "ibalik",
     "benchmarkTip": "Median ng mga annualized na lower bound na inilalathala mismo ng mga kumpanya (naka-annualize ang hourly at monthly rates), kinalkula sa dominanteng nakasaad na currency lang ng field na ito — hindi kailanman kino-convert, hindi hinahalo. Live mula sa board na ito — hindi survey o pagtatantya.",
     "benchmarkLine": "Naka-anunsyong sahod sa field na ito: median floor {{symbol}}{{median}} ({{currency}}) — mula sa {{n}} posting dito na nagsasaad ng sahod",
@@ -4429,7 +4436,8 @@
     "a11yLoading": "Nilo-load ang mga trabaho…",
     "a11yError": "Hindi ma-load ang mga trabaho. Subukan ulit.",
     "a11yNoResults": "Walang trabahong tumutugma sa mga filter na ito.",
-    "a11yResults": "{{count}} trabaho ang ipinapakita.",
+    "a11yResults_one": "{{count}} trabaho ang ipinapakita.",
+    "a11yResults_other": "{{count}} trabaho ang ipinapakita.",
     "experienceFieldLabel": "Antas ng karanasan",
     "salaryFieldLabel": "Pinakamababang nakasaad na sahod",
     "companyFieldLabel": "Employer",
@@ -4660,7 +4668,8 @@
     "laneAll": "Lahat",
     "advanceTip": "Isulong sa {{stage}}",
     "statusLabel": "Status ng aplikasyon",
-    "tracked": "{{count}} naka-track",
+    "tracked_one": "{{count}} naka-track",
+    "tracked_other": "{{count}} naka-track",
     "tracker": "Application tracker",
     "scoreHistory": "Kasaysayan ng score",
     "targetScore": "Target na score",
@@ -4772,7 +4781,7 @@
     "acPrepAll_other": "Ihanda ang {{count}} iniangkop na aplikasyon",
     "acGoPro_one": "Mag-Pro para ihanda ang {{count}} naka-save na trabaho",
     "acGoPro_other": "Mag-Pro para ihanda ang {{count}} naka-save na trabaho",
-    "acFitTitle": "{{pct}}% ng mga nakikilalang keyword ng posting ay nasa resume mo",
+    "acFitTitle": "Keyword fit score na {{pct}} sa 100: kung gaano nagtutugma ang mga nakilalang keyword ng anunsyong ito at ang resume mo. Hindi ito ang bahagi ng mga keyword ng anunsyo na mayroon ka na.",
     "acApply": "Mag-apply",
     "acToggleKit": "Ipakita/itago ang kit",
     "acKitUnreadable": "Hindi mabasa ang kit na ito — muling buuin mula sa tracker row sa ibaba.",
@@ -4954,7 +4963,9 @@
     "acLimitHours": "Naabot ang limitasyon sa paggawa — naka-save ang mga naihanda na. Subukan ang natitira pagkalipas ng mga {{hours}} oras.",
     "acLimitMinutes": "Naabot ang limitasyon sa paggawa — naka-save ang mga naihanda na. Subukan ang natitira pagkalipas ng mga {{minutes}} minuto.",
     "acAiUnavailable": "Hindi makatanggap ng request ang AI service ngayon. Naka-save ang naihanda na; subukan ang iba mamaya.",
-    "acSavedNoLetter": "Mga naiangkop na résumé na na-save: {{count}}. Hindi naisulat ang mga cover letter nila ngayon; patakbuhin muli ang prep para maidagdag ang mga ito."
+    "acSavedNoLetter": "Mga naiangkop na résumé na na-save: {{count}}. Hindi naisulat ang mga cover letter nila ngayon; patakbuhin muli ang prep para maidagdag ang mga ito.",
+    "notifAgentEmail": "Morning shortlist email ng Apply Agent",
+    "notifAgentPaused": "(naka-pause ang mandato — walang ipinapadala)"
   },
   "applyAgent": {
     "badge": "Ang iyong AI apply agent",
@@ -5136,7 +5147,55 @@
     "searchLimitHit": "Hanggang 10 aktibong search lang. I-pause ang isa para makapagdagdag.",
     "searchLastRun": "Huling takbo: {{scanned}} na-scan, {{picked}} naka-queue.",
     "passFunds": "Ang iyong Agent Pass ang nagpopondo sa agent na ito: {{left}} aplikasyon pa ang natitira. I-on ang agent sa ibaba, at makakahiling ng aplikasyon ang naka-connect mong AI.",
-    "trackerFull": "Itinabi, pero puno na ang iyong tracker (2,000 entry). Mag-alis ng mga lumang entry para makadagdag pa."
+    "trackerFull": "Itinabi, pero puno na ang iyong tracker (2,000 entry). Mag-alis ng mga lumang entry para makadagdag pa.",
+    "countryAny": "Mga bansa — kahit alin (nag-a-apply ang agent saanman tumutugma ang mga role at lugar mo)",
+    "countryPicked": "Mga bansang puwedeng pag-applyan ng agent",
+    "countryNote": "Binabasa ang bansa ng bawat posting, hindi ang pananalita nito — kaya kapag pinili mo ang Germany, makikita ang mga role na “Berlin” lang ang sinasabi. Iwanang naka-off lahat para maghanap kahit saan.",
+    "needResumeHere": "Idagdag muna ang CV mo — i-upload o i-paste ito sa ibaba lang, at makakapagsimula na ang agent.",
+    "keptTracked": "Itinago — idinagdag sa tracker mo sa ibaba.",
+    "cvTooShort": "Mukhang masyadong maikli iyan para itugma — pakiupload ang buong CV, o i-paste ang text.",
+    "cvSaveError": "Hindi ito ma-save — pakisubukang muli.",
+    "cvSaved": "Na-save ang CV — susukatin ng agent ang bawat posting laban dito.",
+    "cvParseFailed": "Hindi mabasa ang file na iyan — i-paste na lang ang text at gagana ito.",
+    "sumSalary": "{{n}}+",
+    "sumRemote": "remote lang",
+    "sumAge": "na-post sa loob ng {{n}}d",
+    "sumUncat": "+ walang kategorya",
+    "sumDaily": "{{n}}/umaga",
+    "fromCvTitle": "Mula sa CV mo",
+    "fromCvUseAll": "Gamitin ang mga ito",
+    "fromCvRoles": "Mga role:",
+    "fromCvEvidence": "Binasa mula sa: {{line}}",
+    "fromCvAlso": "Madalas ding bagay:",
+    "fromCvAdjacentTip": "Isang role na kaugnay ng karera mo — mungkahi namin, hindi sinasabi ng CV mo",
+    "fromCvPlaces": "Mga lugar:",
+    "fromCvNote": "Mga mungkahi lang — walang tatakbo hangga't hindi mo ina-activate. Sadya naming inaalis ang salitang pang-seniority (“Senior”): iba-iba ang pamagat ng mga posting sa iisang trabaho, at nahahanap ng mas maikling termino ang lahat ng iyon.",
+    "startFromCv": "Simulan ang agent gamit ang mga ito",
+    "fewerOptions": "Mas kaunting opsyon",
+    "moreOptions": "Higit pang opsyon",
+    "advancedActive": "Inilalapat din:",
+    "fieldMaxAge": "Na-post sa loob ng",
+    "ageAny": "Kahit gaano katagal",
+    "age1": "24 oras",
+    "age3": "3 araw",
+    "age7": "7 araw",
+    "age14": "14 araw",
+    "age30": "30 araw",
+    "ageNote": "Batay sa petsang inilalagay ng bawat employer sa sarili nitong feed. Hindi isinasama ang mga posting na walang petsa — hindi kami kailanman nanghuhula ng edad.",
+    "fieldUncategorised": "Hanapin din ang mga posting na walang kategorya — mga isang-kapat ng board, kung saan hindi mabasa ang larangan ng role mula sa pamagat nito.",
+    "uncategorisedNoTerms": "Kapag walang job title sa itaas, lubos nitong pinalalawak ang paghahanap. Magdagdag ng mga title at halos wala itong gastos sa iyo.",
+    "needResumeTitle": "Idagdag ang CV mo para magsimula",
+    "needResumeWhy": "Sinusukat ng agent ang bawat posting laban dito, at binabasa nito ang mga role at lokasyon mo mula rito — ito lang ang hindi namin kayang alamin para sa iyo.",
+    "cvReading": "Binabasa…",
+    "cvUpload": "I-upload ang CV",
+    "cvPasteHide": "Itago ang paste box",
+    "cvPaste": "o i-paste ang text",
+    "cvPastePlaceholder": "I-paste dito ang text ng CV mo…",
+    "cvPasteSave": "I-save ang CV",
+    "cvPasteCount": "{{n}} karakter — 100 ang kailangan",
+    "statusAwaiting": "Aktibo — naghihintay ng subscription",
+    "summaryAge": "na-post sa loob ng {{d}}d",
+    "summaryUncat": "+ walang kategorya"
   },
   "applyProfile": {
     "authorized": "May pahintulot ka bang magtrabaho kung saan ka nag-a-apply?",
@@ -5328,7 +5387,12 @@
     "heading": "Ginawa para sa mga sistemang talagang ginagamit ng mga employer",
     "sub": "Direktang binabasa namin ang mga trabaho mula sa {{count}} applicant tracking system — hindi kinuha sa search engine.",
     "readTitle": "Binasa mismo mula sa sariling system ng employer",
-    "readBlurb": "Bawat posting sa board ay galing sa isa sa mga system na ito, at sa sariling site ng employer ka mag-a-apply. Hindi kami kailanman nagsusumite ng application para sa iyo."
+    "readBlurb": "Bawat posting sa board ay galing sa isa sa mga system na ito, at sa sariling site ng employer ka mag-a-apply. Hindi kami kailanman nagsusumite ng application para sa iyo.",
+    "asOf": "Live na bilang ng mga bukas na role ngayon, sinukat noong {{time}}.",
+    "stripHeading": "Bawat trabaho rito ay direktang galing sa mga sistemang ito",
+    "stripSub": "Direktang binasa mula sa lahat ng {{count}} — hindi kailanman kinuha sa search engine.",
+    "eyebrow": "Saan galing ang aming mga trabaho",
+    "subCounted": "{{total}} bukas na role, direktang binasa mula sa {{count}} applicant tracking system sa ibaba — hindi kinuha sa search engine."
   },
   "pendingQ": {
     "title": "Mga tanong na hindi nasagot ng agent",
@@ -5656,7 +5720,9 @@
     "missing": "Kailangan ng pahinang ito ang unsubscribe link mula sa isa sa aming mga email.",
     "error": "Hindi ito natigil ngayon. Subukan muli ang button maya-maya.",
     "home": "Bumalik sa Resume Booster",
-    "agentDigest": "Itigil ang mga email ng shortlist tuwing umaga. Patuloy na tatakbo ang iyong agent, at mananatili sa iyong account ang mga pinili nito."
+    "agentDigest": "Itigil ang mga email ng shortlist tuwing umaga. Itinigil na ang apply agent at wala itong inaaplayan; pinahihinto nito ang anumang email nito na naka-iskedyul pa sa address na ito.",
+    "metaTitle": "Mag-unsubscribe | Resume Booster",
+    "metaDescription": "Itigil ang mga email mula sa Resume Booster."
   },
   "purchaseTerms": {
     "finalSale": "Final ang lahat ng benta.",
@@ -6175,5 +6241,183 @@
       "minor_one": "{{count}} maliit",
       "minor_other": "{{count}} maliit"
     }
+  },
+  "edgeErrors": {
+    "rateLimited": {
+      "title": "Naabot na ang limit",
+      "description": "Masyado kang maraming request. Maghintay ng ilang minuto at subukan ulit."
+    },
+    "aiUnavailable": {
+      "title": "Abala ang AI service",
+      "description": "Pansamantalang hindi available ang aming AI service. Subukan ulit maya-maya."
+    },
+    "serviceUnavailable": {
+      "title": "Hindi available ang serbisyo",
+      "description": "Pansamantalang hindi available ang serbisyo. Subukan ulit sa lalong madaling panahon."
+    },
+    "paymentRequired": {
+      "title": "Kailangan ng bayad",
+      "description": "Kumpletuhin ang bayad para magamit ang feature na ito."
+    },
+    "sessionUsed": {
+      "title": "Expired na ang session",
+      "description": "Nagamit na ang purchase session na ito. Makipag-ugnayan sa support kung kailangan mo ng tulong."
+    },
+    "invalidInput": {
+      "title": "Hindi wastong input",
+      "description": "Pakisuri ang iyong input at subukan ulit."
+    },
+    "aiTimeout": {
+      "title": "Nag-time out ang AI",
+      "description": "Mas natagalan ang AI kaysa inaasahan. Kadalasan gumagana ito sa muling pagsubok—i-click ang button sa ibaba para subukan ulit."
+    },
+    "aiBusy": {
+      "title": "Abala ang AI",
+      "description": "Maraming gumagamit ng aming AI service ngayon. Maghintay sandali at subukan ulit."
+    },
+    "aiOutage": {
+      "title": "Abala ang AI service",
+      "description": "Hindi makatanggap ng request ang aming AI service ngayon. Problema ito sa panig namin, hindi sa bayad mo. Subukan ulit pagkalipas ng ilang minuto."
+    },
+    "busyShort": {
+      "title": "Abala ngayon",
+      "description": "Problema ito sa panig namin, hindi limit na naabot mo. Subukan ulit pagkalipas ng ilang minuto."
+    },
+    "busyLong": {
+      "title": "Masyadong maraming request sa ngayon",
+      "description": "Masyadong maraming request ang natanggap ng tool na ito sa ngayon. Subukan ulit mamaya."
+    },
+    "status400": {
+      "title": "Hindi wastong request",
+      "description": "Nagkaproblema sa iyong request. Pakisuri ang iyong input at subukan ulit."
+    },
+    "status401": {
+      "title": "Kailangang mag-authenticate",
+      "description": "I-verify ang iyong binili o mag-log in para magpatuloy."
+    },
+    "status403": {
+      "title": "Tinanggihan ang access",
+      "description": "Wala kang pahintulot na buksan ito."
+    },
+    "status404": {
+      "title": "Hindi nahanap",
+      "description": "Hindi nahanap ang hinihinging resource."
+    },
+    "status409": {
+      "title": "Naproseso na",
+      "description": "Naproseso na ang request na ito."
+    },
+    "status422": {
+      "title": "Hindi ito maproseso",
+      "description": "Hindi namin maproseso ang ipinadala. Kung file ito, subukan ang .docx o i-paste ang text ng resume mo."
+    },
+    "status429": {
+      "title": "Masyadong maraming request",
+      "description": "Naabot mo na ang limit kada oras. Subukan ulit mamaya, o i-paste na lang ang text ng resume mo."
+    },
+    "status500": {
+      "title": "Error sa server",
+      "description": "May nagkamali sa panig namin. Subukan ulit."
+    },
+    "status502": {
+      "title": "Hindi available ang serbisyo",
+      "description": "Pansamantalang hindi available ang aming serbisyo. Subukan ulit maya-maya."
+    },
+    "status503": {
+      "title": "Abala ang serbisyo",
+      "description": "Abala ang aming AI service sa ngayon. Subukan ulit pagkalipas ng ilang sandali."
+    },
+    "status504": {
+      "title": "Nag-time out ang sagot ng AI",
+      "description": "Mas natagalan bago sumagot ang AI kaysa inaasahan. Kadalasan gumagana ito sa muling pagsubok—pakisubukan ulit."
+    },
+    "unknown": {
+      "title": "May nagkamali",
+      "description": "Nagkaroon ng hindi inaasahang error. Subukan ulit."
+    },
+    "network": {
+      "title": "Error sa koneksyon",
+      "description": "Hindi makakonekta sa server. Pakisuri ang iyong internet connection at subukan ulit."
+    },
+    "relay": {
+      "title": "Error sa serbisyo",
+      "description": "Nagkaproblema sa pagkonekta sa aming serbisyo. Subukan ulit."
+    },
+    "non2xx": {
+      "title": "Hindi natuloy ang request",
+      "description": "Hindi makumpleto ang request. Subukan ulit."
+    },
+    "plain": {
+      "title": "Error"
+    }
+  },
+  "agentControls": {
+    "saveError": "Hindi ito ma-save — pakisubukang muli.",
+    "blocklist": {
+      "title": "Huwag kailanman mag-apply sa mga employer na ito",
+      "help": "Idagdag muna ang kasalukuyan mong employer. Lalaktawan ng agent ang bawat posting mula sa mga kumpanyang ito, at nakikilala nito ang pangalan kahit paano man ito naka-capitalize.",
+      "placeholder": "Pangalan ng kumpanya",
+      "remove": "Alisin ang {{name}}"
+    },
+    "add": "Idagdag",
+    "pause": {
+      "title": "I-pause, may petsa kung kailan ito babalik",
+      "active": "Naka-pause hanggang {{when}}. Kusa itong magpapatuloy — wala kang kailangang tandaan.",
+      "help": "Magbabakasyon ka ba, o may interview ka na sa ibang lugar? I-pause ito at kusa itong mag-o-on muli.",
+      "resumeNow": "Ipagpatuloy ngayon",
+      "1w": "1 linggo",
+      "2w": "2 linggo",
+      "1m": "1 buwan"
+    },
+    "cooldown": {
+      "title": "Mga araw sa pagitan ng mga aplikasyon sa iisang employer",
+      "help": "Pinipigilan nito ang ilang aplikasyon na mapunta sa mesa ng iisang recruiter sa loob ng isang linggo. Pinapatay ito ng 0."
+    }
+  },
+  "agentNight": {
+    "title": "Mula kahapon",
+    "sent": "na-apply-an",
+    "waiting": "naghihintay sa iyo",
+    "unconfirmed": "naipadala pero hindi pa kumpirmado",
+    "skipped": "nilaktawan",
+    "ourFault": "Kasalanan namin:"
+  },
+  "agent": {
+    "reach": {
+      "title": "Kung saan puwedeng mag-apply ang agent para sa iyo",
+      "body": "Awtomatiko itong nagsusumite sa {{drivable}} sa {{total}} na posting sa board ({{pct}}%). May bot protection ang application form ng iba, kaya inihahanda ng agent ang lahat at ikaw ang pipindot ng submit.",
+      "vendors": "Awtomatikong nagsusumite sa: {{vendors}}. Binilang mula sa live na board, hindi tantya.",
+      "vendorsCount": "Awtomatikong nagsusumite sa {{n}} application system. Binilang mula sa live na board, hindi tantya."
+    }
+  },
+  "agentSetup": {
+    "profile": {
+      "title": "I-upload ang CV mo",
+      "why": "Iyan na ang buong setup. Binabasa namin ang pangalan at contact details mo mismo mula rito, at nagtatanong lang kami tungkol sa iba kapag talagang kailangan ito ng isang form."
+    },
+    "exclusions": {
+      "title": "Opsyonal: pangalanan ang mga employer na lalaktawan",
+      "why": "Higit sa lahat, ang kasalukuyan mong employer. Sulit ang sandali ngayon — ito lang ang hindi na mababawi pagkatapos."
+    },
+    "mandate": {
+      "title": "Sabihin dito kung ano ang hinahanap mo",
+      "why": "Mga job title, lokasyon at ilan bawat araw. Magsimula sa isa bawat araw hanggang makita mo ang gawa nito."
+    },
+    "title": "Dalawang bagay bago ito makapagsimula",
+    "progress": "{{done}} sa {{total}}",
+    "continue": "Magpatuloy",
+    "howItWorks": "Ano ang mangyayari pagkatapos nito →"
+  },
+  "receipt": {
+    "title": "Ang isinumite namin para sa iyo",
+    "noRecord": "Isinumite ang aplikasyong ito bago kami nagsimulang mag-ingat ng record bawat field, kaya hindi namin maipapakita ang eksaktong pananalita.",
+    "changedAtSend": "na-update sa oras ng pagpapadala (inihanda: “{{was}}”)",
+    "evidence": "Ang kumpirmasyon ng employer",
+    "noEvidence": "Tinanggap ito ng form pero walang ibinalik na confirmation text na nakuha namin.",
+    "via": "Isinumite sa pamamagitan ng {{via}}."
+  },
+  "morningQueue": {
+    "qPlaceholder": "Product Manager, Program Manager",
+    "locPlaceholder": "Manila, Cebu, Remote"
   }
 }
