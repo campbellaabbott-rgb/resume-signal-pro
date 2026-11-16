@@ -120,10 +120,21 @@ describe("the actively hiring list", () => {
     expect(contract).toMatch(/stay\s+on the board, labelled/);
   });
 
+  // Called as anon, not read from the catalogue: the roles come from
+  // helpers/seen-again-fixture.ts, which creates them holding nothing, and
+  // the harness guard (helpers/bare-role-harnesses.ts) refuses a privilege
+  // read over such a helper. A call that returns the list proves the
+  // publishable key can still make it.
   it("is still one definition that anon can call", async () => {
-    const r = await db.query<{ n: number; anon: boolean }>(`
-      SELECT (SELECT count(*)::int FROM pg_proc WHERE proname = 'get_actively_hiring_companies') AS n,
-             has_function_privilege('anon', 'public.get_actively_hiring_companies(integer)', 'EXECUTE') AS anon`);
-    expect(r.rows[0]).toEqual({ n: 1, anon: true });
+    const n = (await db.query<{ n: number }>(
+      `SELECT count(*)::int AS n FROM pg_proc WHERE proname = 'get_actively_hiring_companies'`)).rows[0].n;
+    expect(n).toBe(1);
+    await db.exec("SET ROLE anon");
+    try {
+      const rows = (await db.query<Row>(`SELECT company_token FROM public.get_actively_hiring_companies(20)`)).rows;
+      expect(rows.map((r) => r.company_token)).toEqual(["calm-employer"]);
+    } finally {
+      await db.exec("RESET ROLE");
+    }
   });
 });
