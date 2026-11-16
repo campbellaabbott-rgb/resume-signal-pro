@@ -17,6 +17,16 @@
  * A value that is not one of the choices reads as the page reads it, its
  * underscores as spaces; none at all is the mail's own default.
  *
+ * The level is the same (S14X-209): the mail printed the fixed choice ("mid")
+ * under a CSS capitalize, so a German buyer read "Mid"; it is the page's
+ * label now (analysisResults.enum.experienceLevel, "Mittlere Ebene"), held
+ * equal to the locale files by the same test.
+ *
+ * And a section the analysis could not write (S14X-041) is named in the
+ * mail: the posting comparison or the LinkedIn review, each one line in the
+ * mail's language and tone (German, Spanish and Dutch informal, French and
+ * Hindi formal, as ./copy.ts is).
+ *
  * Import-free, so the Node tests import it.
  */
 export type MailGrade = "high" | "mid" | "low";
@@ -35,9 +45,15 @@ export function mailScoreColor(score: number): string {
 }
 
 type IndustryLabels = Readonly<Record<string, string>>;
+type MailTable = "en" | "de" | "es" | "fr" | "hi" | "nl" | "pt" | "tl";
+
+/** A mail language's table: en-GB reads en's (the locale files agree), anything else English. */
+function tableOf<T>(tables: Readonly<Record<MailTable, T>>, language: string): T {
+  return tables[(language === "en-GB" ? "en" : language) as MailTable] ?? tables.en;
+}
 
 /** The page's labels, per mail language (en-GB reads en's: the locale files agree). */
-export const INDUSTRY_LABELS: Readonly<Record<"en" | "de" | "es" | "fr" | "hi" | "nl" | "pt" | "tl", IndustryLabels>> = {
+export const INDUSTRY_LABELS: Readonly<Record<MailTable, IndustryLabels>> = {
   en: {
     technology: "Technology",
     data_engineering: "Data Engineering",
@@ -216,10 +232,96 @@ export const INDUSTRY_LABELS: Readonly<Record<"en" | "de" | "es" | "fr" | "hi" |
   },
 };
 
+/** A fixed choice as the page names it, or as the page reads a value that is not one; null when there is none. */
+function choiceLabel(table: IndustryLabels, value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const key = value.trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : value.trim().replace(/_/g, " ");
+}
+
 /** The industry as the page names it in this language, or null when the analysis names none. */
 export function industryLabel(language: string, industry: unknown): string | null {
-  if (typeof industry !== "string" || !industry.trim()) return null;
-  const key = industry.trim().toLowerCase();
-  const table = INDUSTRY_LABELS[(language === "en-GB" ? "en" : language) as keyof typeof INDUSTRY_LABELS] ?? INDUSTRY_LABELS.en;
-  return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : industry.trim().replace(/_/g, " ");
+  return choiceLabel(tableOf(INDUSTRY_LABELS, language), industry);
+}
+
+/** The page's level labels (analysisResults.enum.experienceLevel), per mail language. */
+export const EXPERIENCE_LABELS: Readonly<Record<MailTable, IndustryLabels>> = {
+  en: { entry: "Entry", mid: "Mid", senior: "Senior", executive: "Executive" },
+  de: { entry: "Einstieg", mid: "Mittlere Ebene", senior: "Senior", executive: "Führungsebene" },
+  es: { entry: "inicial", mid: "intermedio", senior: "sénior", executive: "ejecutivo" },
+  fr: { entry: "débutant", mid: "intermédiaire", senior: "senior", executive: "dirigeant" },
+  hi: { entry: "प्रारंभिक", mid: "मध्य", senior: "वरिष्ठ", executive: "कार्यकारी" },
+  nl: { entry: "Starter", mid: "Medior", senior: "Senior", executive: "Directie" },
+  pt: { entry: "inicial", mid: "pleno", senior: "sênior", executive: "executivo" },
+  tl: { entry: "Baguhan", mid: "Gitna", senior: "Senior", executive: "Ehekutibo" },
+};
+
+/** The level as the page names it in this language, or null when the analysis names none. */
+export function experienceLabel(language: string, level: unknown): string | null {
+  return choiceLabel(tableOf(EXPERIENCE_LABELS, language), level);
+}
+
+/** The sections an analysis can go out without: the posting comparison and the LinkedIn review. */
+export type MissingSection = "jobDescription" | "linkedIn";
+
+/** One line per section the analysis could not write, per mail language. */
+export const SECTION_MISSING_LINES: Readonly<Record<MailTable, Readonly<Record<MissingSection, string>>>> = {
+  en: {
+    jobDescription: "The comparison with your job posting could not be written this time, so this analysis does not include it.",
+    linkedIn: "The review of your LinkedIn profile could not be written this time, so this analysis does not include it.",
+  },
+  de: {
+    jobDescription: "Der Abgleich mit deiner Stellenanzeige konnte diesmal nicht erstellt werden, deshalb fehlt er in dieser Analyse.",
+    linkedIn: "Die Auswertung deines LinkedIn-Profils konnte diesmal nicht erstellt werden, deshalb fehlt sie in dieser Analyse.",
+  },
+  es: {
+    jobDescription: "Esta vez no se pudo redactar la comparación con tu oferta de empleo, así que este análisis no la incluye.",
+    linkedIn: "Esta vez no se pudo redactar la revisión de tu perfil de LinkedIn, así que este análisis no la incluye.",
+  },
+  fr: {
+    jobDescription: "La comparaison avec votre offre d'emploi n'a pas pu être rédigée cette fois-ci : cette analyse ne la contient donc pas.",
+    linkedIn: "L'examen de votre profil LinkedIn n'a pas pu être rédigé cette fois-ci : cette analyse ne le contient donc pas.",
+  },
+  hi: {
+    jobDescription: "इस बार आपकी जॉब पोस्टिंग से तुलना तैयार नहीं हो सकी, इसलिए यह विश्लेषण उसके बिना है।",
+    linkedIn: "इस बार आपकी LinkedIn प्रोफ़ाइल की समीक्षा तैयार नहीं हो सकी, इसलिए यह विश्लेषण उसके बिना है।",
+  },
+  nl: {
+    jobDescription: "De vergelijking met je vacature kon deze keer niet worden geschreven, dus deze analyse bevat die niet.",
+    linkedIn: "De beoordeling van je LinkedIn-profiel kon deze keer niet worden geschreven, dus deze analyse bevat die niet.",
+  },
+  pt: {
+    jobDescription: "Desta vez não foi possível escrever a comparação com a sua vaga, então esta análise não a inclui.",
+    linkedIn: "Desta vez não foi possível escrever a avaliação do seu perfil do LinkedIn, então esta análise não a inclui.",
+  },
+  tl: {
+    jobDescription: "Hindi nagawa ngayon ang paghahambing sa iyong job posting, kaya wala ito sa pagsusuring ito.",
+    linkedIn: "Hindi nagawa ngayon ang pagrepaso sa iyong LinkedIn profile, kaya wala ito sa pagsusuring ito.",
+  },
+};
+
+/**
+ * The sections an analysis says it went out without: its missingSections
+ * (analyze-resume from this round), or, for an analysis from the function
+ * before it, a posting it says it had (hasJobDescription) with no comparison.
+ */
+export function missingSectionsOf(analysis: { missingSections?: unknown; hasJobDescription?: unknown; jobDescriptionAlignment?: unknown }): MissingSection[] {
+  const named = Array.isArray(analysis?.missingSections) ? analysis.missingSections : [];
+  const out = (["jobDescription", "linkedIn"] as const).filter((s) => named.includes(s));
+  if (!out.includes("jobDescription") && analysis?.hasJobDescription === true && !analysis.jobDescriptionAlignment) out.unshift("jobDescription");
+  return out;
+}
+
+/** The section lines for a mail language. */
+export function sectionMissingLines(language: string, missing: readonly MissingSection[]): string[] {
+  const table = tableOf(SECTION_MISSING_LINES, language);
+  return missing.map((s) => table[s]);
+}
+
+/** The posting match score, 0-100, from the analysis's jobDescriptionAlignment (or an old stored jobMatch); null when there is none. */
+export function jobMatchScoreOf(analysis: { jobDescriptionAlignment?: { matchScore?: unknown } | null; jobMatch?: { score?: unknown } | null }): number | null {
+  const read = (v: unknown) => (typeof v === "number" ? v : typeof v === "string" && v.trim() ? Number(v) : NaN);
+  let raw = read(analysis?.jobDescriptionAlignment?.matchScore);
+  if (!Number.isFinite(raw)) raw = read(analysis?.jobMatch?.score);
+  return Number.isFinite(raw) ? Math.min(100, Math.max(0, Math.round(raw))) : null;
 }
