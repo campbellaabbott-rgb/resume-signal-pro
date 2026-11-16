@@ -22,6 +22,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 
 // A PGLITE TEST IS NOT A 5-SECOND TEST. A case here starts or queries a
 // Postgres in pglite; under load the staged-runner case ran 5.06 seconds and
@@ -50,9 +51,11 @@ const CRON = `
   $$;
 `;
 
-// The tables as the production migrations define them.
+// The tables as the production migrations define them, on the client roles as
+// Supabase makes them: a refusal below holds only because the migration
+// revoked, never because the role was created holding nothing (S14X-140).
 const TABLES = `
-  CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+  ${SUPABASE_DEFAULTS}
   CREATE TABLE public.webhook_events (
     id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     created_at timestamptz NOT NULL DEFAULT now(),

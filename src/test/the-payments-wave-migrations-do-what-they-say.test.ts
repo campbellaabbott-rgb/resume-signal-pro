@@ -24,6 +24,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -33,7 +34,7 @@ const MIG = resolve(__dirname, "../../supabase/migrations");
 const DELIVERY_SQL = readFileSync(resolve(MIG, "20261005110000_a_sale_the_success_page_claims_first_leaves_a_delivery_record.sql"), "utf8");
 const RECONCILE_SQL = readFileSync(resolve(MIG, "20261005113000_the_payment_safety_net_answers_its_cron_and_nobody_else.sql"), "utf8");
 
-const ROLES = "CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;";
+const ROLES = SUPABASE_DEFAULTS;
 
 const DELIVERIES = `
   CREATE TABLE public.product_deliveries (

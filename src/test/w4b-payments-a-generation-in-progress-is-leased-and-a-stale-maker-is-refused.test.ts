@@ -16,6 +16,7 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { liveDefinitionOf } from "./helpers/live-sql";
@@ -44,7 +45,7 @@ const fail = async (id: unknown, error: string, token: string | null) => (await 
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(`
-    CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+    ${SUPABASE_DEFAULTS}
     CREATE TABLE public.product_deliveries (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(), created_at timestamptz NOT NULL DEFAULT now(),
       stripe_session_id text NOT NULL, customer_email text, product_type text NOT NULL, product_name text, amount_cents integer,
