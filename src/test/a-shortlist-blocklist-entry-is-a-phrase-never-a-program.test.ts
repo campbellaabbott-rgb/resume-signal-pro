@@ -1,26 +1,28 @@
 // @vitest-environment node
 /**
- * A SHORTLIST BLOCKLIST ENTRY IS A PHRASE, NEVER A PROGRAM (S13-073).
+ * A SHORTLIST BLOCKLIST ENTRY IS A PHRASE, NEVER A PROGRAM (S13-073), AND NO
+ * REQUEST CARRIES ONE AT ALL (RC-S13-073).
  *
- * WHAT WAS WRONG. shortlist-evaluate handed the body's redactionConfig to
- * _shared/redaction.ts as it came, and the redactor compiled each of up to 20
- * entries with new RegExp and ran it over the whole resume (up to 40,000
- * characters), before any metering or model call. The only check was that the
- * pattern compiled, so a signed-in caller could send a catastrophic-backtracking
- * pattern and spend the isolate's CPU in String.replace. No page sends the
- * field.
+ * WHAT WAS WRONG. shortlist-evaluate read an extra blocklist from the request
+ * body and the redactor applied its entries one after another. S13-073 made
+ * each entry a literal phrase, but every entry still ran over the marks the
+ * earlier ones had written: three entries spelling "e" turned each "e" into
+ * a mark spelled with E's, the next entry matched those, and the text the
+ * scorer read grew several times over. No page offered the field; only a
+ * direct call could send it.
  *
- * WHAT HOLDS NOW, running the shipped handler with the network faked: each
- * entry is a literal phrase (escaped, trimmed, at most PHRASE_MAX characters,
- * at most ENTRIES_MAX entries, the feature name reduced to [a-z0-9_]). A
- * phrase is still redacted wherever it appears, in any case; regular
- * expression syntax in an entry matches only itself; twenty backtracking
- * patterns over a resume built to trigger them cost nothing.
+ * WHAT HOLDS NOW, running the shipped handler with the network faked: the
+ * request body's blocklist changes nothing the scorer is shown (the baseline
+ * is the same for every caller), and the redactor's own extra list, for a
+ * caller inside the codebase, runs as ONE pass over whole words, so no entry
+ * can match another's mark and the text cannot grow with the entry count.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { buildIsAtLeast } from "./helpers/fn-build";
-import { ENTRIES_MAX, PHRASE_MAX, callerBlocklist, literalPattern } from "../../supabase/functions/shortlist-evaluate/caller-blocklist";
+import { redactForScoring } from "../../supabase/functions/_shared/redaction";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 180_000 });
 
@@ -90,66 +92,60 @@ const evaluate = async (resumeText: string, redactionConfig: unknown) => {
   return { status: res.status, build: res.headers.get("x-fn-build"), body: await res.json() as Record<string, unknown> };
 };
 
-describe("the handler reads each entry as the phrase it spells", () => {
-  it("a phrase is redacted wherever it appears, in any case, and nothing else is", async () => {
-    const r = await evaluate(`${RESUME}\nSpeaks Spanish at home. Volunteer coach, speaks spanish AT HOME too.`, {
-      extraBlocklist: [{ feature: "home language", pattern: "speaks spanish at home" }],
-    });
-    expect(r.status).toBe(200);
-    expect(buildIsAtLeast(r.build, "shortlist-evaluate", "2026-11-03"), String(r.build)).toBe(true);
-    expect(prompts[0]).not.toMatch(/speaks spanish at home/i);
-    expect(prompts[0].match(/\[REDACTED-HOME_LANGUAGE\]/g)).toHaveLength(2);
-    expect(prompts[0]).toContain("Built Airflow pipelines");
+describe("a request's blocklist changes nothing the scorer is shown", () => {
+  it("the same resume reads the same to the scorer with and without a blocklist in the request", async () => {
+    const text = `${RESUME}\nSpeaks Spanish at home. Volunteer coach.`;
+    const plain = await evaluate(text, undefined);
+    const withList = await evaluate(text, { extraBlocklist: [{ feature: "home language", pattern: "speaks spanish at home" }, { feature: "e", pattern: "e" }] });
+    expect(plain.status).toBe(200);
+    expect(withList.status).toBe(200);
+    expect(buildIsAtLeast(withList.build, "shortlist-evaluate", "2026-11-09", 2), String(withList.build)).toBe(true);
+    expect(prompts).toHaveLength(2);
+    expect(prompts[1]).toBe(prompts[0]);
+    expect(prompts[1]).toContain("Speaks Spanish at home");
+    const stored = db.rows("shortlist_candidates") as Array<{ exclusions_applied: Array<{ feature: string }> }>;
+    expect(stored.flatMap((r) => r.exclusions_applied.map((e) => e.feature)).filter((f) => f.startsWith("custom:"))).toEqual([]);
   });
 
-  it("regular-expression syntax in an entry matches only itself: 'a+' does not eat every run of a's", async () => {
-    const r = await evaluate(`${RESUME}\nGraded aaa on the audit, a+ on the exam.`, {
-      extraBlocklist: [{ feature: "grade", pattern: "a+" }],
-    });
-    expect(r.status).toBe(200);
-    expect(prompts[0]).toContain("Graded aaa on the audit");
-    expect(prompts[0].match(/\[REDACTED-GRADE\]/g), "the literal 'a+' is the only match").toHaveLength(1);
-    expect(prompts[0]).toContain("Snowflake");
-  });
-
-  it("twenty backtracking patterns over a resume built to trigger them cost nothing", async () => {
+  it("twenty backtracking patterns in a request cost nothing, because none is read", async () => {
     const bait = `${RESUME}\n${"a".repeat(22)}! ${"word ".repeat(18)}!`;
     const evil = ["(a+)+$", "(a|aa)+$", "(\\w+\\s?)+$", "(.*a){12}$"];
-    const extraBlocklist = Array.from({ length: ENTRIES_MAX }, (_, i) => ({ feature: `x${i}`, pattern: evil[i % evil.length] }));
+    const extraBlocklist = Array.from({ length: 20 }, (_, i) => ({ feature: `x${i}`, pattern: evil[i % evil.length] }));
     const started = performance.now();
     const r = await evaluate(bait, { extraBlocklist });
     const took = performance.now() - started;
     expect(r.status).toBe(200);
     expect(took, `${Math.round(took)} ms`).toBeLessThan(500);
-    expect(prompts[0]).not.toMatch(/\[REDACTED-X\d+\]/);
+    expect(prompts[0]).not.toMatch(/\[REDACTED/);
+  });
+
+  it("the module that read the request's list is gone", () => {
+    expect(existsSync(join(process.cwd(), "supabase/functions/shortlist-evaluate/caller-blocklist.ts"))).toBe(false);
   });
 });
 
-describe("the bounds, on their own", () => {
-  it("an entry is a literal phrase, trimmed and capped; a malformed entry is dropped", () => {
-    const cfg = callerBlocklist({
-      extraBlocklist: [
-        { feature: "Home Language!", pattern: "  speaks (\\w+) at home  " },
-        { feature: "long", pattern: "z".repeat(PHRASE_MAX + 50) },
-        { feature: "", pattern: "no name" },
-        { feature: "empty", pattern: "   " },
-        { feature: 7, pattern: "not a string feature" },
-        "not an object",
-        null,
-      ],
-    });
-    expect(cfg.extraBlocklist).toEqual([
-      { feature: "home_language", pattern: literalPattern("speaks (\\w+) at home") },
-      { feature: "long", pattern: "z".repeat(PHRASE_MAX) },
-    ]);
-    const re = new RegExp(cfg.extraBlocklist![0].pattern, "gi");
-    expect("Speaks (\\w+) at home".replace(re, "X")).toBe("X");
-    expect("speaks Spanish at home".replace(re, "X")).toBe("speaks Spanish at home");
+describe("the redactor's own extra list runs once, over whole words", () => {
+  it("three entries spelling 'e' keep the text under twice its length and leave no mark of their own", () => {
+    const base = "Jane Okafor\nEXPERIENCE\n" + "Engineered pipelines here. ".repeat(10);
+    const cfg = { extraBlocklist: [1, 2, 3].map(() => ({ feature: "eeeeeeeeeeeeeeeeeeee", pattern: "e" })) };
+    const out = redactForScoring(base, cfg).redacted;
+    expect(out.length).toBeLessThan(base.length * 2);
+    expect(out).not.toContain("[REDACTED-E");
+    expect(out).toContain("Engineered pipelines here.");
   });
 
-  it("at most ENTRIES_MAX entries are read, and anything that is not a list is no blocklist", () => {
-    const many = Array.from({ length: ENTRIES_MAX + 15 }, (_, i) => ({ feature: `f${i}`, pattern: `phrase ${i}` }));
-    expect(callerBlocklist({ extraBlocklist: many }).extraBlocklist).toHaveLength(ENTRIES_MAX);
-    for (const raw of [undefined, null, "x", 3, {}, { extraBlocklist: "x" }, { extraBlocklist: {} }]) expect(callerBlocklist(raw)).toEqual({});
+  it("an entry never matches the mark another entry wrote", () => {
+    const r = redactForScoring("Fluent in Klingon. Speaks Spanish at home. Redacted twice?", {
+      extraBlocklist: [
+        { feature: "home_language", pattern: "speaks \\w+ at home" },
+        { feature: "redacted", pattern: "redacted" },
+        { feature: "broken", pattern: "([unclosed" },
+      ],
+    });
+    expect(r.redacted).toBe("Fluent in Klingon. [REDACTED]. [REDACTED] twice?");
+    expect(r.exclusionsApplied.filter((e) => e.feature.startsWith("custom:"))).toEqual([
+      { feature: "custom:home_language", count: 1 },
+      { feature: "custom:redacted", count: 1 },
+    ]);
   });
 });

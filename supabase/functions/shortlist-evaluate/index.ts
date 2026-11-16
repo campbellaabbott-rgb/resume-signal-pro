@@ -12,7 +12,6 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { redactForScoring, type RedactionConfig } from "../_shared/redaction.ts";
-import { callerBlocklist } from "./caller-blocklist.ts";
 import { modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { requireWebsiteSession } from "../_shared/website-session.ts";
 import { fenceUntrusted, plantedInstructions, PLANTED_INSTRUCTIONS_FLAG } from "../_shared/planted-instructions.ts";
@@ -38,11 +37,13 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Expose-Headers": "x-fn-build",
+  // The page reads Retry-After from a refusal to say when to try again (S14X-197).
+  "Access-Control-Expose-Headers": "x-fn-build, retry-after",
   "x-fn-build": FN_BUILD,
 };
 
-const PROMPT_VERSION = "shortlist-v2";
+// v3: one neutral [REDACTED] mark; the category is named only in the audit (S14X-023).
+const PROMPT_VERSION = "shortlist-v3";
 const MODEL_ID = "google/gemini-2.5-flash";
 /** The evaluations one account may hold: owner_row_cap on shortlist_candidates (20261009134200). */
 const SHORTLIST_CANDIDATE_CAP = 10_000;
@@ -78,9 +79,11 @@ Deno.serve(async (req) => {
     const resumeText: string = typeof body.resumeText === "string" ? body.resumeText.slice(0, 40000) : "";
     const fileName: string | null = typeof body.fileName === "string" ? body.fileName.slice(0, 200) : null;
     const jurisdiction: string = ["NYC", "IL", "CA", "EU", "OTHER"].includes(body.jurisdiction) ? body.jurisdiction : "OTHER";
-    // An employer's extra blocklist is literal phrases, bounded (S13-073):
-    // never a caller's regular expression run over the whole resume.
-    const redactionConfig: RedactionConfig = callerBlocklist(body.redactionConfig);
+    // NO REQUEST FIELD CHANGES WHAT IS REDACTED (RC-S13-073). No page offered
+    // an employer blocklist, and a caller-supplied one could only add marks
+    // the scorer then read; the baseline is the same for every caller. The
+    // file name is read only as a hint at the candidate's name (S14X-072).
+    const redactionConfig: RedactionConfig = { nameHint: fileName ?? undefined };
     const altReview = body.altReview === true;
     const json = (o: unknown, status = 200) =>
       new Response(JSON.stringify(o), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -113,6 +116,19 @@ Deno.serve(async (req) => {
       });
       return !error;
     };
+    /**
+     * A ROW IS KEPT ONLY WITH ITS LOGGED CONFIRMATION (S14X-289). When a log
+     * line cannot be written, the candidate just stored is removed again
+     * (its decisions go with it, ON DELETE CASCADE), and the answer says
+     * whether that worked, so a retry never leaves a second, unconfirmed row.
+     */
+    const withdraw = async (candidateId: string, what: string) => {
+      const { error } = await service.from("shortlist_candidates").delete().eq("id", candidateId).eq("owner_id", user.id);
+      if (error) console.error("[SHORTLIST-EVALUATE] could not withdraw an unconfirmed candidate:", error.message);
+      return error
+        ? { error: `${what}, and the evaluation could not be removed: it is in this role's list without a logged confirmation. Do not rely on it.`, code: "attestation_log_failed", kept: true }
+        : { error: `${what}, so the evaluation was not kept. Nothing was stored; try again.`, code: "attestation_log_failed", kept: false };
+    };
 
     // ONE ACCOUNT HOLDS AT MOST SHORTLIST_CANDIDATE_CAP EVALUATIONS (S11-139).
     // The database's cap (20261009134200) applies to this writer too; asked
@@ -120,7 +136,8 @@ Deno.serve(async (req) => {
     const { count: held } = await service.from("shortlist_candidates")
       .select("id", { count: "exact", head: true }).eq("owner_id", user.id);
     if (typeof held === "number" && held >= SHORTLIST_CANDIDATE_CAP) {
-      return json({ error: `This account holds ${SHORTLIST_CANDIDATE_CAP.toLocaleString("en-US")} evaluations, the most it can. Delete roles you no longer need to evaluate more.`, code: "candidate_cap" }, 409);
+      // No delete path exists for an employer yet, so the answer offers none (S14X-197).
+      return json({ error: `This account holds ${SHORTLIST_CANDIDATE_CAP.toLocaleString("en-US")} evaluations, the most one account can hold, so no more can be scored on it.`, code: "candidate_cap" }, 409);
     }
 
     // Alternative review (ADA / accommodation) before any scoring: a record
@@ -129,26 +146,24 @@ Deno.serve(async (req) => {
       const { data: candidate, error } = await service.from("shortlist_candidates").insert({
         role_id: roleId, owner_id: user.id, file_name: fileName, jd_version: role.jd_version ?? 1, candidate_jurisdiction: jurisdiction,
       }).select().single();
-      if (error || !candidate) return json({ error: "Could not record the alternative review" }, 500);
+      if (error || !candidate) return json({ error: "The alternative review could not be recorded. Nothing was stored; try again.", code: "store_failed" }, 500);
       const { error: logErr } = await service.from("shortlist_decisions").insert({
         candidate_id: candidate.id, owner_id: user.id, actor_email: user.email ?? null, action: "alt_review_requested",
         reason: "Routed to non-automated alternative review before any scoring (ADA / accommodation path)",
       });
-      if (logErr) return json({ error: "Could not log the alternative review" }, 500);
-      if (!(await logAttestation(candidate.id))) return json({ error: "Could not log your confirmation" }, 500);
+      if (logErr) return json(await withdraw(candidate.id, "The alternative review request could not be logged"), 500);
+      if (!(await logAttestation(candidate.id))) return json(await withdraw(candidate.id, "Your confirmation could not be logged"), 500);
       return json({ success: true, candidate, altReview: true });
     }
     if (jdText.length < 30) return json({ error: "The role's job description must be at least 30 characters" }, 400);
 
     // ── Proxy-variable exclusion BEFORE scoring ─────────────────────────────
-    const { redacted, exclusionsApplied } = redactForScoring(resumeText, redactionConfig);
+    const { redacted, exclusionsApplied, nameFound } = redactForScoring(resumeText, redactionConfig);
 
     // ── Score via the AI gateway ────────────────────────────────────────────
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "Scoring engine not configured" }), {
-        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "Scoring is switched off on this site right now. Nothing was stored.", code: "scoring_not_configured" }, 503);
     }
 
     // check_rate_limit is granted to the service role only, so the count runs
@@ -160,8 +175,8 @@ Deno.serve(async (req) => {
 
 STRICT RULES:
 - Evaluate ONLY job-related qualifications: skills, experience relevance, quantified outcomes, seniority fit, required certifications.
-- The resume has protected-class proxies redacted ([REDACTED-*] and [CANDIDATE] markers). NEVER treat redaction markers as negative signals — they are neutral.
-- NEVER consider or infer: age, sex/gender, race, ethnicity, national origin, religion, disability, family status, or any [REDACTED-*] content. Employment gaps and [REDACTED-ADA] content must not lower any score.
+- The resume has protected-class proxies redacted ([REDACTED] and [CANDIDATE] markers; [YEAR] hides an education year). NEVER treat a marker as a negative signal, and never guess what it hid — they are neutral.
+- NEVER consider or infer: age, sex/gender, race, ethnicity, national origin, religion, disability, family status, or any [REDACTED] content. Employment gaps and career breaks must not lower any score.
 - Every signal you report must cite job-related evidence from the resume text.
 - Flags must be job-related only (e.g. "JD requires PMP; not present") — never protected-class adjacent.
 
@@ -243,8 +258,14 @@ Return via the submit_evaluation tool.`;
 
     if (!aiRes.ok) {
       console.error("[SHORTLIST-EVALUATE] gateway error:", aiRes.status);
-      return new Response(JSON.stringify({ error: "Scoring temporarily unavailable — try again shortly" }), {
-        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      // A scorer outage, said as one: when to try again, and that nothing was stored (S14X-197).
+      const asked = Number(aiRes.headers.get("retry-after"));
+      const retryAfter = Number.isFinite(asked) && asked > 0 && asked <= 3600 ? Math.ceil(asked) : 120;
+      return new Response(JSON.stringify({
+        error: "The scoring service is not answering right now. Nothing was stored; try again in a few minutes.",
+        code: "scoring_unavailable", gatewayStatus: aiRes.status, retryAfterSeconds: retryAfter,
+      }), {
+        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(retryAfter) },
       });
     }
     const aiJson = await aiRes.json();
@@ -254,9 +275,7 @@ Return via the submit_evaluation tool.`;
       evaluation = JSON.parse(aiJson.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments ?? "null");
     } catch { /* handled below */ }
     if (!evaluation || typeof evaluation.matchScore !== "number") {
-      return new Response(JSON.stringify({ error: "Evaluation failed — no valid output" }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "The scorer's answer could not be read. Nothing was stored; try again.", code: "scoring_failed" }, 502);
     }
     const score = Math.max(0, Math.min(100, Math.round(evaluation.matchScore as number)));
     // A steered score is flagged for a person, never silently kept or changed.
@@ -267,6 +286,9 @@ Return via the submit_evaluation tool.`;
     const parsedFields = {
       ...(evaluation.parsedFields && typeof evaluation.parsedFields === "object" ? evaluation.parsedFields as Record<string, unknown> : {}),
       ...(steered ? { scoringIntegrity: { plantedInstructions: true, matched: planted, modelSuspected: modelSaw } } : {}),
+      // Whether a name was read and masked: when not, the page says the name
+      // may have reached the scorer (S14X-072).
+      redaction: { nameDetected: nameFound },
     };
 
     // ── Persist the audit row (service role; the owner is the verified caller)
@@ -292,24 +314,18 @@ Return via the submit_evaluation tool.`;
       .select()
       .single();
 
-    if (insertErr) {
+    if (insertErr || !candidate) {
       console.error("[SHORTLIST-EVALUATE] insert failed:", insertErr);
-      return new Response(JSON.stringify({ error: "Evaluation stored failed" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "The evaluation could not be saved. Nothing was stored; try again.", code: "store_failed" }, 500);
     }
-    if (!(await logAttestation(candidate.id))) {
-      return new Response(JSON.stringify({ error: "Could not log your confirmation" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!(await logAttestation(candidate.id))) return json(await withdraw(candidate.id, "Your confirmation could not be logged"), 500);
 
     return new Response(JSON.stringify({ success: true, candidate }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("[SHORTLIST-EVALUATE] Uncaught:", e);
-    return new Response(JSON.stringify({ error: "Unexpected error" }), {
+    return new Response(JSON.stringify({ error: "Something went wrong before the evaluation was stored. Try again.", code: "unexpected" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

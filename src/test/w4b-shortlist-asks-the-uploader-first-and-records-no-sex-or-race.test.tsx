@@ -34,9 +34,11 @@ function q(table: string) {
   tablesRead.push(table);
   const data = table === "shortlist_roles" ? [ROLE] : table === "shortlist_candidates" ? [CANDIDATE] : [];
   const self: Record<string, unknown> = {};
-  for (const k of ["select", "eq", "in", "order", "limit", "insert", "upsert"]) self[k] = () => self;
+  // range(): the page reads a role in pages of 1,000 (S14X-075); maybeSingle(): one candidate's scored text (S14X-162).
+  for (const k of ["select", "eq", "in", "order", "limit", "insert", "upsert", "range"]) self[k] = () => self;
   self.then = (ok: (v: unknown) => unknown) => Promise.resolve({ data, error: null }).then(ok);
   self.single = async () => ({ data: data[0] ?? null, error: null });
+  self.maybeSingle = async () => ({ data: data[0] ?? null, error: null });
   return self;
 }
 vi.mock("@/integrations/supabase/client", () => ({

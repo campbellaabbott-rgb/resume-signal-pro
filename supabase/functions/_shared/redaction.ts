@@ -15,12 +15,14 @@
 // So no value class crosses a newline, and identity words are redacted in
 // membership or self-description phrasing, never inside an institution name.
 //
-// The blocklist is deliberately conservative. Employers can extend it per
-// account, but cannot shrink it below this baseline.
+// The scored text carries one neutral mark, [REDACTED]: the category hidden
+// is named only in the audit (S14X-023).
 
 export interface RedactionResult {
   redacted: string;
   exclusionsApplied: Array<{ feature: string; count: number }>;
+  /** false when no line read as the candidate's name, so it may have reached the model (S14X-072). */
+  nameFound: boolean;
 }
 
 type Replacer = string | ((match: string, ...rest: unknown[]) => string | null);
@@ -38,7 +40,7 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function ci(words: string[]): string {
   return "(?:" + words.map((w) =>
     [...w].map((ch) => {
-      if (ch === " ") return "\\s+";
+      if (ch === " ") return "[ \\t]+";
       const lo = ch.toLowerCase();
       const up = ch.toUpperCase();
       return lo !== up ? `[${lo}${up}]` : escapeRe(ch);
@@ -47,9 +49,11 @@ function ci(words: string[]): string {
 }
 
 const MONTHS = "(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)";
-// A calendar date or a bare year, in the shapes résumés use.
-const DATE = `(?:\\d{1,4}[./-]\\d{1,2}[./-]\\d{1,4}|\\d{1,2}(?:st|nd|rd|th)?\\s+${MONTHS}\\.?,?\\s+\\d{4}|${MONTHS}\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?,?\\s+\\d{4}|${MONTHS}\\.?,?\\s+\\d{4}|(?:19|20)\\d{2})`;
 const MONTHS_ANY = MONTHS.replace(/[a-z]/g, (c) => `[${c}${c.toUpperCase()}]`);
+// A calendar date or a bare year, in the shapes résumés use, months in any case ("March 3, 1958").
+const DATE = `(?:\\d{1,4}[./-]\\d{1,2}[./-]\\d{1,4}|\\d{1,2}(?:st|nd|rd|th)?\\s+${MONTHS_ANY}\\.?,?\\s+\\d{4}|${MONTHS_ANY}\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?,?\\s+\\d{4}|${MONTHS_ANY}\\.?,?\\s+\\d{4}|(?:19|20)\\d{2})`;
+// A birth date in the site's other languages ("15 mars 1970", "3. März 1970", "15 de marzo de 1970").
+const DATE_LOOSE = `(?:${DATE}|\\d{1,2}\\.?(?:[ \\t]+de)?[ \\t]+\\p{L}{3,10}\\.?,?(?:[ \\t]+de)?[ \\t]+(?:19|20)\\d{2})`;
 const YEAR_RE = /(?<!\d)(?:19|20)\d{2}(?!\d)|(?<![\p{L}\d])['’]\d{2}(?!\d)/gu;
 
 const US_STATES = "AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|PR|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY";
@@ -152,11 +156,18 @@ const HEADER_RULES: Rule[] = [
   { feature: "zip_code", pattern: /(?<![\p{L}\p{N}.,$€£-])\d{5}(?=[ \t]+\p{Lu}\p{Ll})|(?<=\p{Lu}\p{Ll}+[ \t]+)\d{5}(?![\p{N}])/gu, replacement: "[REDACTED-ZIP]" },
   { feature: "zip_code", pattern: /(?<![\p{L}\p{N}.,$€£-])(?!(?:19|20)\d{2})[1-9]\d{3}(?=[ \t]+\p{Lu}\p{Ll})/gu, replacement: "[REDACTED-ZIP]" },
 ];
+// Whole-line section headings in German, French, Spanish, Portuguese, Dutch,
+// Chinese, Japanese and Korean (S14X-022, S14X-105): a whole line only, so
+// "Ausbildung zum Fachinformatiker, IHK Berlin" is still a line of evidence.
+const LOCAL_EDU = /^(?:ausbildung|bildung|bildungsweg|schulbildung|studium|akademische[ \t]+ausbildung|formation(?:[ \t]+acad[ée]mique)?|[ée]ducation|[ée]tudes|formaci[óo]n(?:[ \t]+acad[ée]mica)?|educaci[óo]n|forma[çc][ãa]o(?:[ \t]+acad[êe]mica)?|educa[çc][ãa]o|opleiding(?:en)?|教育背景|教育经历|教育經歷|学歴|学历|학력)$/iu;
+const LOCAL_HEADING = /^(?:berufserfahrung|beruflicher[ \t]+werdegang|werdegang|praxiserfahrung|kenntnisse|f[äa]higkeiten|sprachen|sprachkenntnisse|interessen|hobbys|exp[ée]riences?(?:[ \t]+professionnelles?)?|comp[ée]tences|langues|centres[ \t]+d['’]int[ée]r[êe]t|experiencia(?:[ \t]+(?:laboral|profesional))?|habilidades|idiomas|experi[êe]ncia(?:[ \t]+profissional)?|compet[êe]ncias|werkervaring|vaardigheden|talen|工作经[历验]|工作經歷|项目经[历验]|实习经历|自我评价|自我介绍|专业技能|技能特长|获奖情况|求职意向|職歴|職務経歴|資格|免許・資格|自己PR|志望動機|경력|자기소개)$/iu;
+const isLocalHeading = (t: string) => LOCAL_HEADING.test(t) || LOCAL_EDU.test(t);
 // A section heading ends the header block; a contact heading does not.
 const CONTACT_HEADING = /(?<![\p{L}])(?:contact\p{L}*|kontakt|contato|personal|persönlich\p{L}*|details|address|adresse|dirección|endereço|coordonnées|información|informações|information|datos)(?![\p{L}])/iu;
 function endsHeader(line: string): boolean {
-  const t = line.trim().replace(/[:\s]+$/, "");
+  const t = line.trim().replace(/[:：\s]+$/, "");
   if (t.length === 0 || t.length > 40 || /[\d|·•,@]/.test(t) || CONTACT_HEADING.test(t)) return false;
+  if (isLocalHeading(t)) return true;
   const words = t.split(/\s+/);
   if (words.length > 4) return false;
   const last = words[words.length - 1];
@@ -184,15 +195,26 @@ const NOT_NAME = new Set(("resume résumé cv curriculum vitae profile summary c
 const CREDENTIAL = /^(?:pmp|mba|rn|bsn|msn|cpa|phd|ph\.?d\.?|md|m\.d\.|do|jd|j\.d\.|esq\.?|cfa|cissp|pe|p\.e\.|shrm-c?s?cp|phr|sphr|csm|ms|m\.s\.|ma|m\.a\.|ba|b\.a\.|bs|b\.s\.|msc|bsc|mph|msw|lcsw|np|pa-c|dds|dmd|pharmd|lpn|cna|emt|acca|cma|cisa|ccna|ceng|frcs|mrcp|jr\.?|sr\.?|ii|iii|iv|cpsm|cscp|six|sigma)$/i;
 const NAME_TOKEN = /^(?:\p{Lu}[\p{L}\p{M}'’.-]*|\p{Lu}\.)$/u;
 const CASELESS_TOKEN = /^[\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Devanagari}\p{Script=Thai}\p{Script=Bengali}\p{Script=Tamil}\p{M}]+$/u;
-const CJK_NAME = /^[\p{Script=Han}\p{Script=Hangul}\p{Script=Hiragana}\p{Script=Katakana}](?:\s?[\p{Script=Han}\p{Script=Hangul}\p{Script=Hiragana}\p{Script=Katakana}]){1,4}$/u;
+const CJK = "[\\p{Script=Han}\\p{Script=Hangul}\\p{Script=Hiragana}\\p{Script=Katakana}]";
+const CJK_NAME = new RegExp(`^${CJK}(?:[ \\t\\u3000]?${CJK}){1,3}$`, "u");
+// A CJK title, heading or labelled line reads like a name and never is one (S14X-105).
+const CJK_NOT_NAME = /^(?:(?:个人|求职)?简历|履歴書|職務経歴書|工作经[历验]|项目经[历验]|实习经历|教育(?:背景|经历)|自我评价|(?:基本|个人)信息|求职意向|专业技能|技能特长|获奖情况|联系方式|学歴|職歴|이력서|자기소개서|경력|학력|(?:国籍|性[别別]|民族|籍贯|年[龄齢]|出生|婚姻|宗教|政治面貌|生年月日|配偶者|扶養家族|住所|电话|電話|邮箱).*)$/u;
+// A job title is not a name: "软件工程师", "项目经理", "営業部長".
+const CJK_ROLE = /(?:师|師|员|員|经理|經理|主管|总监|總監|专员|助理|顾问|顧問|会计|會計|医生|醫生|护士|老师|教授|部長|課長|社長|社員)$/u;
 const HONORIFIC_PREFIX = /^(?:dr|prof|mr|mrs|ms|mx|miss|sir|dame|rev)\.?\s+/i;
 
 interface FoundName { name: string; aliases: string[] }
 
-/** The candidate's name from the header block, or null when no line reads as one. */
-function findName(text: string): FoundName | null {
-  const lines = text.split("\n").map((l) => l.trim()).filter((l) => l.length > 0).slice(0, 6);
-  const labelOf = (l: string) => l.match(/^(?:full\s+)?name\s*[:\-–]\s*(.+)$/i)?.[1];
+const labelOf = (l: string) => l.match(/^(?:(?:full\s+)?name\s*[:\-–：]|(?:姓|氏)[ \t　]*名[ \t　]*[:：]?|お?名[ \t　]*前[ \t　]*[:：]?|(?:이[ \t]*름|성[ \t]*명)[ \t]*[:：]?)[ \t　]*(.+)$/iu)?.[1];
+
+/**
+ * The candidate's name from the header block (every line of it, S14X-072), or
+ * a file name's words when the text holds them; null when nothing reads as one.
+ */
+function findName(text: string, hint?: string): FoundName | null {
+  const all = text.split("\n");
+  const head = all.slice(0, headerLineCount(text)).filter((l) => l.trim()).length;
+  const lines = all.map((l) => l.trim()).filter((l) => l.length > 0).slice(0, Math.max(6, head));
   for (let i = 0; i < lines.length; i++) {
     const found = readLine(labelOf(lines[i]) ?? lines[i], i);
     if (found) return found;
@@ -213,7 +235,22 @@ function findName(text: string): FoundName | null {
     const name = at < 0 ? null : nameFromLine(flat.slice(at), HARD_SPLIT, { cut: true, employer: true });
     if (name) return { name, aliases: [] };
   }
-  return null;
+  return hint ? hintName(text, hint) : null;
+}
+
+const HINT_JUNK = /^(?:resume|résumé|cv|curriculum|vitae|lebenslauf|curr[ií]culo|final|updated?|new|copy|draft|version|v)$/i;
+/** "Jane_Okafor_CV.pdf": two to four of its words, each written in the text, as the text writes them. */
+function hintName(text: string, hint: string): FoundName | null {
+  const words = hint.replace(/\.[a-z0-9]{2,5}$/i, "").split(/[_\-.\s]+/)
+    .filter((w) => letters(w) >= 2 && !/\d/.test(w) && !HINT_JUNK.test(w) && !NOT_NAME.has(w.toLowerCase()));
+  if (words.length < 2 || words.length > 4) return null;
+  const seen: string[] = [];
+  for (const w of words) {
+    const m = text.match(new RegExp(`(?<![\\p{L}\\p{M}])${tokenSource(w, "any")}(?![\\p{L}\\p{M}])`, "iu"));
+    if (!m) return null;
+    seen.push(m[0]);
+  }
+  return { name: seen.join(" "), aliases: [] };
 }
 
 // Separators that end a name. The first reading also splits on a tab or a
@@ -230,7 +267,16 @@ const EMPLOYER_WORD = new Set(("labs lab group systems solutions technologies te
   "agency institute university college school hospital clinic payments digital interactive games motors energy pharma " +
   "therapeutics biosciences insurance logistics robotics ai remote hybrid onsite contract freelance").split(" "));
 
+const LATIN_CJK = new RegExp(`^(\\p{Lu}[\\p{L}'’-]+(?:[ \\t]+\\p{Lu}[\\p{L}'’-]+){1,3})[ \\t]+(${CJK}(?:[ \\t\\u3000]?${CJK}){1,3})$|^(${CJK}(?:[ \\t\\u3000]?${CJK}){1,3})[ \\t]+(\\p{Lu}[\\p{L}'’-]+(?:[ \\t]+\\p{Lu}[\\p{L}'’-]+){1,3})$`, "u");
+
 function readLine(line: string, index: number): FoundName | null {
+  // "Wang Xiaoming 王小明": both forms are the name.
+  const mix = line.match(LATIN_CJK);
+  if (mix) {
+    const latin = nameFromLine(mix[1] ?? mix[4], SEG_SPLIT, { index });
+    const cjk = (mix[2] ?? mix[3]).replace(/\s+/g, "");
+    if (latin && !CJK_NOT_NAME.test(cjk) && !isLocalHeading(cjk) && !CJK_ROLE.test(cjk)) return { name: latin, aliases: [cjk] };
+  }
   const { line: plain, aliases } = liftNickname(line);
   const name = nameFromLine(plain, SEG_SPLIT, { index }) ??
     nameFromLine(plain.replace(/[ \t]+/g, " "), HARD_SPLIT, { index, cut: true });
@@ -313,7 +359,10 @@ function nameFromLine(line: string, split: RegExp, opts: { index?: number; cut?:
   while (tokens.length > 0 && isTrailingCredential(tokens[tokens.length - 1], tokens, allCaps)) tokens = tokens.slice(0, -1);
   if (tokens.length === 0) return null;
   const joined = tokens.join(" ");
-  if (CJK_NAME.test(joined)) return joined;
+  if (CJK_NAME.test(joined)) {
+    const compact = joined.replace(/\s+/g, "");
+    return CJK_NOT_NAME.test(compact) || isLocalHeading(compact) || CJK_ROLE.test(compact) ? null : joined;
+  }
   if (tokens.length === 1) return surnameFirst(tokens[0], rest, opts.index ?? 0);
   if (/\d/.test(joined)) return null;
   const core = tokens.filter((t) => !PARTICLES.has(t.toLowerCase()));
@@ -454,18 +503,22 @@ function maskTokens(text: string, tokens: Set<string>, hit: () => void): string 
 }
 
 // ── Labelled personal fields: keep the label, drop the value ───────────────
+// In every language the site serves, and Chinese and Japanese (S14X-022).
 const LABEL_FEATURES: Array<{ labels: string[]; feature: string; tag: string }> = [
-  { labels: ["gender", "sex", "gender identity", "pronouns"], feature: "gendered_terms", tag: "GENDER" },
-  { labels: ["marital status", "civil status", "marital", "spouse", "spouse's name", "spouse name", "children", "number of children", "no. of children", "dependents", "father's name", "mother's name", "father name", "mother name"], feature: "family_status", tag: "FAMILY" },
-  { labels: ["religion", "religious affiliation", "faith", "caste", "sect", "denomination"], feature: "religion", tag: "RELIGION" },
-  { labels: ["nationality", "citizenship", "country of origin", "country of citizenship", "place of birth", "birthplace", "birth place", "passport", "passport no", "passport number", "national id", "national id no", "domicile", "hometown", "native place", "mother tongue"], feature: "national_origin", tag: "ORIGIN" },
-  { labels: ["ethnicity", "race", "ethnic origin", "race/ethnicity", "ethnic group", "tribe"], feature: "race_ethnicity", tag: "ETHNICITY" },
-  { labels: ["date of birth", "birth date", "birthdate", "birthday", "d.o.b", "d.o.b.", "dob"], feature: "date_of_birth", tag: "DOB" },
-  { labels: ["age"], feature: "explicit_age", tag: "AGE" },
-  { labels: ["height", "weight", "blood group", "blood type", "physical status"], feature: "physical_characteristics", tag: "PHYSICAL" },
-  { labels: ["visa", "visa status", "visa type", "work authorization", "work authorisation", "work permit", "immigration status", "residency status", "residence permit", "right to work", "sponsorship"], feature: "citizenship_status", tag: "CITIZENSHIP" },
-  { labels: ["health status", "medical condition", "medical history", "disability", "disability status"], feature: "disability_mention", tag: "ADA" },
+  { labels: ["gender", "sex", "gender identity", "pronouns", "geschlecht", "sexe", "sexo", "género", "genero", "gênero", "geslacht", "kasarian", "性别", "性別"], feature: "gendered_terms", tag: "GENDER" },
+  { labels: ["marital status", "civil status", "marital", "spouse", "spouse's name", "spouse name", "children", "number of children", "no. of children", "dependents", "father's name", "mother's name", "father name", "mother name",
+    "familienstand", "kinder", "situation familiale", "état civil", "etat civil", "enfants", "estado civil", "hijos", "filhos", "burgerlijke staat", "kinderen", "婚姻状况", "婚姻狀況", "婚姻", "配偶者", "配偶", "扶養家族"], feature: "family_status", tag: "FAMILY" },
+  { labels: ["religion", "religious affiliation", "faith", "caste", "sect", "denomination", "konfession", "religión", "religião", "religie", "宗教", "宗教信仰"], feature: "religion", tag: "RELIGION" },
+  { labels: ["nationality", "citizenship", "country of origin", "country of citizenship", "place of birth", "birthplace", "birth place", "passport", "passport no", "passport number", "national id", "national id no", "domicile", "hometown", "native place", "mother tongue",
+    "staatsangehörigkeit", "nationalität", "geburtsort", "nationalité", "lieu de naissance", "nacionalidad", "lugar de nacimiento", "nacionalidade", "naturalidade", "local de nascimento", "nationaliteit", "geboorteplaats", "国籍", "籍贯", "籍貫", "出生地", "户籍", "本籍"], feature: "national_origin", tag: "ORIGIN" },
+  { labels: ["ethnicity", "race", "ethnic origin", "race/ethnicity", "ethnic group", "tribe", "ethnie", "etnia", "民族"], feature: "race_ethnicity", tag: "ETHNICITY" },
+  { labels: ["date of birth", "birth date", "birthdate", "birthday", "born", "d.o.b", "d.o.b.", "dob", "geburtsdatum", "geburtstag", "date de naissance", "fecha de nacimiento", "data de nascimento", "geboortedatum", "出生日期", "出生年月日", "出生年月", "生年月日"], feature: "date_of_birth", tag: "DOB" },
+  { labels: ["age", "alter", "âge", "edad", "idade", "leeftijd", "年龄", "年齡", "年齢"], feature: "explicit_age", tag: "AGE" },
+  { labels: ["height", "weight", "blood group", "blood type", "physical status", "größe", "gewicht", "身高", "体重", "血型", "身長", "血液型"], feature: "physical_characteristics", tag: "PHYSICAL" },
+  { labels: ["visa", "visa status", "visa type", "work authorization", "work authorisation", "work permit", "immigration status", "residency status", "residence permit", "right to work", "sponsorship", "aufenthaltstitel", "arbeitserlaubnis", "titre de séjour", "permiso de trabajo", "verblijfsvergunning", "werkvergunning", "在留資格"], feature: "citizenship_status", tag: "CITIZENSHIP" },
+  { labels: ["health status", "medical condition", "medical history", "disability", "disability status", "behinderung", "schwerbehinderung", "handicap", "discapacidad", "deficiência", "健康状况"], feature: "disability_mention", tag: "ADA" },
   { labels: ["veteran status", "military status", "protected veteran"], feature: "veteran_status", tag: "VETERAN" },
+  { labels: ["political affiliation", "政治面貌"], feature: "political_affiliation", tag: "POLITICAL" },
 ];
 const ALL_LABELS = LABEL_FEATURES.flatMap((f) => f.labels).sort((a, b) => b.length - a.length);
 const LABEL_ALT = ci(ALL_LABELS);
@@ -475,21 +528,25 @@ const LABELLED_FIELD = new RegExp(
   `(?<![\\p{L}])(${LABEL_ALT})(${LABEL_SEP})(${DATE}(?=\\s*(?:[|;•·,.\\n]|$|\\s))|[^\\n|;•·]{1,60}?${VALUE_END}|[^\\s|;•·]+(?:[ \\t]+[^\\s|;•·]+){0,3})`,
   "gu",
 );
-// An unlabelled birth date ("D.O.B. 15.03.1970", "born in 1970").
-const DOB_INLINE: Rule = { feature: "date_of_birth", pattern: new RegExp(`(?<![\\p{L}])(${ci(["date of birth", "birth date", "birthdate", "born on", "born in", "born", "d.o.b.", "d.o.b", "dob"])})(\\s*[:\\-–]?\\s*)${DATE}(?![\\p{N}])`, "gu"), replacement: (_m, label, sep) => `${label}${sep}[REDACTED-DOB]` };
+// A label that starts a line, then a tab, two spaces or an ideographic space ("Geburtsdatum<TAB>15.03.1970").
+const LABELLED_COLUMN = new RegExp(`(?<=^|\\n)([ \\t]*)(${LABEL_ALT})(\\t[ \\t]*|[ ]{2,}|\\u3000+)([^\\n|;•·\\t]{1,60}?)(?=[ \\t]*(?:[|;•·\\n]|$)|[ ]{2,}|\\t)`, "gu");
+// An unlabelled birth date ("D.O.B. 15.03.1970", "born in 1970", "née le 15 mars 1970").
+const DOB_INLINE: Rule = { feature: "date_of_birth", pattern: new RegExp(`(?<![\\p{L}])(${ci(["date of birth", "birth date", "birthdate", "born on", "born in", "born", "d.o.b.", "d.o.b", "dob", "geboren am", "geboren op", "geboren", "geb.", "née le", "né le", "née", "né", "nacida el", "nacido el", "nacida", "nacido", "nascida em", "nascido em", "nascida", "nascido"])}|[dD]\\.[ \\t]*[oO]\\.[ \\t]*[bB]\\.?)(\\s*[:\\-–]?\\s*)${DATE_LOOSE}(?![\\p{N}])`, "gu"), replacement: (_m, label, sep) => `${label}${sep}[REDACTED-DOB]` };
 const LABEL_LOOKUP = new Map<string, { feature: string; tag: string }>();
 for (const f of LABEL_FEATURES) for (const l of f.labels) LABEL_LOOKUP.set(l, { feature: f.feature, tag: f.tag });
 
 function redactLabelledFields(text: string, bump: (f: string, n: number) => void): string {
-  return text.replace(LABELLED_FIELD, (m, label: string, sep: string, value: string) => {
-    if (/^\[REDACTED-|^\[CANDIDATE\]/.test(value.trim())) return m;
+  const value = (m: string, label: string, sep: string, v: string, pre = "") => {
+    if (/^\[REDACTED-|^\[CANDIDATE\]/.test(v.trim())) return m;
     const hit = LABEL_LOOKUP.get(label.toLowerCase().replace(/\s+/g, " "));
     if (!hit) return m;
     // "Age: 34" only — never "Age: Bronze" style prose.
-    if (hit.tag === "AGE" && !/\d/.test(value)) return m;
+    if (hit.tag === "AGE" && !/\d/.test(v)) return m;
     bump(hit.feature, 1);
-    return `${label}${sep}[REDACTED-${hit.tag}]`;
-  });
+    return `${pre}${label}${sep}[REDACTED-${hit.tag}]`;
+  };
+  return text.replace(LABELLED_FIELD, (m, label: string, sep: string, v: string) => value(m, label, sep, v))
+    .replace(LABELLED_COLUMN, (m, pre: string, label: string, sep: string, v: string) => value(m, label, sep, v, pre));
 }
 
 // ── Education years (age proxy) ────────────────────────────────────────────
@@ -509,8 +566,9 @@ const EDU_HEADING = /(?<![\p{L}])(?:education|academic|academics|qualifications?
 const YEAR_RANGE = /(?:19|20)\d{2}\s*(?:[-–—]|to)\s*(?:(?:19|20)\d{2}|present|current|now|date|today)/iu;
 
 function isHeadingLine(line: string): boolean {
-  const t = line.trim().replace(/[:\s]+$/, "");
+  const t = line.trim().replace(/[:：\s]+$/, "");
   if (t.length === 0 || t.length > 60 || /\d/.test(t)) return false;
+  if (isLocalHeading(t)) return true;
   const words = t.split(/\s+/);
   if (words.length > 6) return false;
   const letters = t.replace(/[^\p{L}]/gu, "");
@@ -527,7 +585,7 @@ function redactEducationYears(text: string): { text: string; count: number } {
   const out = text.split("\n").map((line) => {
     const trimmed = line.trim();
     if (isHeadingLine(trimmed) && !DEGREE.test(trimmed) && !SCHOOL.test(trimmed)) {
-      inEducation = EDU_HEADING.test(trimmed);
+      inEducation = EDU_HEADING.test(trimmed) || LOCAL_EDU.test(trimmed.replace(/[:：\s]+$/, ""));
       return line;
     }
     if (inEducation) {
@@ -563,6 +621,25 @@ const ORG = ci([
   "scholars", "scholarship", "leadership program", "conference", "summit", "mentorship program", "bar association", "student union",
 ]);
 const PROPER_WORD = "\\p{Lu}[\\p{L}'’&-]*";
+// "Black Hat", "Black Belt", "Black Friday": named things, not identity (S14X-025).
+const NOT_IDENTITY_NEXT = `(?![ \\t]+${ci(["hat", "belt", "friday", "box", "swan", "book", "duck", "rock"])}(?![\\p{L}]))`;
+const IDENTITY_WORD = `${IDENTITY}${NOT_IDENTITY_NEXT}`;
+const GREEK = "(?:Alpha|Beta|Gamma|Delta|Epsilon|Zeta|Eta|Theta|Iota|Kappa|Lambda|Mu|Nu|Xi|Omicron|Pi|Rho|Sigma|Tau|Upsilon|Phi|Chi|Psi|Omega)";
+const GREEK_NAME = `${GREEK}(?:[ \\t]+${GREEK}){1,2}`;
+// Gendered role nouns read as the role (S14X-106); the case is kept.
+const NEUTRAL_ROLE: Record<string, string> = {
+  chairman: "chair", chairwoman: "chair", chairmen: "chairs", chairwomen: "chairs",
+  spokesman: "spokesperson", spokeswoman: "spokesperson", spokesmen: "spokespeople", spokeswomen: "spokespeople",
+  businessman: "businessperson", businesswoman: "businessperson", businessmen: "businesspeople", businesswomen: "businesspeople",
+  salesman: "salesperson", saleswoman: "salesperson", salesmen: "salespeople", saleswomen: "salespeople",
+  councilman: "council member", councilwoman: "council member", councilmen: "council members", councilwomen: "council members",
+  congressman: "member of Congress", congresswoman: "member of Congress", anchorman: "anchor", anchorwoman: "anchor",
+  waitress: "server", waitresses: "servers", actress: "actor", actresses: "actors", hostess: "host", hostesses: "hosts",
+  stewardess: "flight attendant", stewardesses: "flight attendants", headmistress: "head teacher", headmaster: "head teacher",
+  alumna: "alum", alumnae: "alums", alumnus: "alum",
+};
+const keepCase = (src: string, word: string) =>
+  src === src.toUpperCase() ? word.toUpperCase() : /^\p{Lu}/u.test(src) ? word[0].toUpperCase() + word.slice(1) : word;
 
 const INLINE_RULES: Rule[] = [
   // Age proxies
@@ -573,11 +650,17 @@ const INLINE_RULES: Rule[] = [
     replacement: "[REDACTED-AGE]",
   },
   { feature: "explicit_age", pattern: /(?<![\p{L}])(?:i am|i'm|i’m)\s+\d{2}(?=\s*(?:years|yrs|[,.;]|$))/giu, replacement: "[REDACTED-AGE]" },
+  // "54 Jahre alt", "âgée de 54 ans", "54 años de edad", "54 jaar oud", "54岁", "満54歳" (S14X-022)
+  { feature: "explicit_age", pattern: /(?<![\p{N}])\d{2}[ \t]+(?:jahre[ \t]+alt|jaar[ \t]+oud|años[ \t]+de[ \t]+edad|anos[ \t]+de[ \t]+idade)(?![\p{L}])|(?<![\p{L}])âgée?[ \t]+de[ \t]+\d{2}[ \t]+ans(?![\p{L}])|[満满]?(?<![\p{N}])\d{1,2}[ \t]?周?[歳岁歲]/giu, replacement: "[REDACTED-AGE]" },
+  // "Over-50 professional", "60 years young", "in my fifties" (S14X-106)
+  { feature: "explicit_age", pattern: /(?<![\p{L}])over-\d{2}s?(?![\p{N}%\p{L}])|(?<![\p{N}])\d{2}[ \t]+years?[ \t]+young(?![\p{L}])|(?<![\p{L}])in[ \t]+(?:my|her|his|their)[ \t]+(?:(?:early|late)[ \t]+|mid-?[ \t]?)?(?:twenties|thirties|forties|fifties|sixties|seventies|[2-7]0['’]?s)(?![\p{L}])/giu, replacement: "[REDACTED-AGE]" },
   {
     feature: "graduation_year",
     pattern: new RegExp(`(?<![\\p{L}])(${ci(["class of", "graduated", "graduating", "graduation date", "graduation year", "graduation", "grad year", "expected graduation", "year of passing"])})(\\s*(?:[:\\-–]\\s*)?(?:(?:in|on)\\s+)?(?:${MONTHS}\\.?,?\\s+)?)((?:19|20)\\d{2}|['’]\\d{2})(?!\\d)`, "giu"),
     replacement: (_m, label, mid) => `${label}${mid}[REDACTED-YEAR]`,
   },
+  // "Graduated from Ohio State in 1980": words between the verb and the year (S14X-106)
+  { feature: "graduation_year", pattern: /(?<![\p{L}])(graduated[ \t]+from[ \t]+(?:[\p{L}&.'’-]+[ \t]+){1,6}?in[ \t]+)((?:19|20)\d{2})(?!\d)/giu, replacement: (_m, pre) => `${pre}[REDACTED-YEAR]` },
   // Citizenship and immigration status (never inside job evidence such as CPT coding)
   {
     feature: "citizenship_status",
@@ -587,39 +670,75 @@ const INLINE_RULES: Rule[] = [
   { feature: "citizenship_status", pattern: /\b(?:STEM\s+)?(?:OPT|CPT)(?:\s+EAD)?\b|\bEAD\b/g, replacement: (m, ...rest) => immigrationContext(m, rest) },
   { feature: "national_origin", pattern: /(?<![\p{L}])national\s+of\s+(?:the\s+)?\p{Lu}\p{L}+(?:\s+\p{Lu}\p{L}+)?/gu, replacement: "[REDACTED-ORIGIN]" },
   { feature: "national_origin", pattern: /(?<![\p{L}])\p{Lu}\p{Ll}+(?:an|ese|ish|i|ic)\s+national(?=\s*(?:[,.;|)\n]|$)|\s+(?:with|seeking|currently|residing|based|living|holding|and)\b)/gu, replacement: "[REDACTED-ORIGIN]" },
+  // "Born and raised in Lagos", "grew up in Kerala", "native of Kerala" (S14X-106); never a bare "raised in" ("Raised in Series A")
+  {
+    feature: "national_origin",
+    pattern: new RegExp(`(?<![\\p{L}])(${ci(["born and raised in", "born in", "grew up in", "native of"])}[ \\t]+)\\p{Lu}[\\p{L}\\p{M}'’.-]*(?:[ \\t]+\\p{Lu}[\\p{L}\\p{M}'’.-]*){0,2}(?:,[ \\t]*\\p{Lu}[\\p{L}\\p{M}'’.-]*(?:[ \\t]+\\p{Lu}[\\p{L}\\p{M}'’.-]*){0,2})?`, "gu"),
+    replacement: (_m, pre) => `${pre}[REDACTED-ORIGIN]`,
+  },
+  // A leave is a career break: the gap stays, the reason goes (S14X-023).
+  // A leave POLICY is HR work and stays.
+  {
+    feature: "family_status",
+    pattern: /(?<![\p{L}])(?:(?:maternity|paternity|parental|adoption|family)[ \t]+leave|elternzeit|mutterschutz|karenz|cong[ée][ \t]+(?:de[ \t]+)?(?:maternit[ée]|paternit[ée]|parental)|baja[ \t]+(?:por[ \t]+)?(?:maternidad|paternidad)|licen[çc]a[- ](?:maternidade|paternidade)|zwangerschapsverlof|ouderschapsverlof|bevallingsverlof)(?![\p{L}])(?![ \t]+(?:polic(?:y|ies)|programm?e?s?|requests?|administration|claims?|compliance|laws?|act|benefits?|cases?|process(?:es|ing)?|tracking|management|reporting|reports?|dashboards?|data|records?))|产假|育儿假|育児休業|産休|育休/giu,
+    replacement: (m) => /^\p{Lu}/u.test(m) ? "Career break" : "career break",
+  },
+  { feature: "disability_mention", pattern: /(?<![\p{L}])(?:medical|disability|sick)[ \t]+leave(?![\p{L}])(?![ \t]+(?:polic(?:y|ies)|programm?e?s?|requests?|administration|claims?|compliance|laws?|act|benefits?|cases?|process(?:es|ing)?|tracking|management|reporting|reports?|dashboards?|data|records?))/giu, replacement: (m) => /^\p{Lu}/u.test(m) ? "Career break" : "career break" },
   // Disability: the term, never the surrounding job evidence (ADA)
   {
     feature: "disability_mention",
-    pattern: /(?<![\p{L}])(?:disabilit(?:y|ies)|disabled|chronic(?:ally)?\s+ill(?:ness)?|chronic\s+illness|wheelchair(?:\s+user)?|neurodivergen\p{L}*|neurodiverse|autis(?:m|tic)|asperger(?:'s|’s|s)?|adhd|dyslexi\p{L}*|dyspraxi\p{L}*|epilep\p{L}*|cerebral\s+palsy|multiple\s+sclerosis|amputee|hard[- ]of[- ]hearing|hearing[- ]impaired|visually[- ]impaired|legally\s+blind|deaf|ptsd|post[- ]traumatic\s+stress(?:\s+disorder)?|bipolar(?:\s+disorder)?|schizophreni\p{L}*|cancer\s+survivor|hiv[- ]positive|(?:medical|disability|sick)\s+leave)(?![\p{L}])/giu,
+    pattern: /(?<![\p{L}])(?:disabilit(?:y|ies)|disabled|chronic(?:ally)?\s+ill(?:ness)?|chronic\s+illness|wheelchair(?:\s+user)?|neurodivergen\p{L}*|neurodiverse|autis(?:m|tic)|asperger(?:'s|’s|s)?|adhd|dyslexi\p{L}*|dyspraxi\p{L}*|epilep\p{L}*|cerebral\s+palsy|multiple\s+sclerosis|amputee|hard[- ]of[- ]hearing|hearing[- ]impaired|visually[- ]impaired|legally\s+blind|deaf|ptsd|post[- ]traumatic\s+stress(?:\s+disorder)?|bipolar(?:\s+disorder)?|schizophreni\p{L}*|cancer\s+survivor|hiv[- ]positive)(?![\p{L}])/giu,
+    replacement: "[REDACTED-ADA]",
+  },
+  // ... and in German, French, Spanish, Portuguese, Dutch, Chinese and Japanese (S14X-022); never a bare 障害 ("システム障害対応" is IT work).
+  {
+    feature: "disability_mention",
+    pattern: /(?<![\p{L}])(?:schwerbehindert\p{L}*|schwerbehinderung|behinderung|gd[bs][ \t]*\d{2,3}|handicap(?:é|ée|és|ées|ped)?|rqth|discapacidad|discapacitad[oa]s?|minusválid[oa]s?|deficiência|gehandicapt|arbeidsbeperking)(?![\p{L}])|残疾|障害者|障碍者/giu,
     replacement: "[REDACTED-ADA]",
   },
   // Veteran status (military service itself is job evidence and stays)
   { feature: "veteran_status", pattern: /(?<![\p{L}])(?:(?:protected|disabled)\s+)?veterans?(?![\p{L}])(?!\s+(?:affairs|administration|health|hospital|day|services|benefits))/giu, replacement: "[REDACTED-VETERAN]" },
-  // Family / marital status (sex-discrimination proxies)
+  // Family / marital status (sex-discrimination proxies); a maternity ward is job evidence
   {
     feature: "family_status",
-    pattern: /(?<![\p{L}])(?:married|divorced|widowed|single\s+(?:mother|father|parent|mom|dad)|(?:mother|father|mom|dad|parent)\s+of\s+(?:one|two|three|four|five|six|\d)|stay[- ]at[- ]home\s+(?:mom|mother|dad|father|parent)|maternity(?:\s+leave)?|paternity(?:\s+leave)?|parental\s+leave|pregnan\p{L}*|children:?\s*\d|dependents:?\s*\d)(?![\p{L}])/giu,
+    pattern: /(?<![\p{L}])(?:married|divorced|widowed|single\s+(?:mother|father|parent|mom|dad)|(?:great-)?(?:grand)?(?:mother|father|mom|dad|parent)\s+of\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|\d{1,2})|stay[- ]at[- ]home\s+(?:mom|mother|dad|father|parent)|maternity(?![ \t]+(?:ward|unit|hospital|nursing|care|services|wing|clinic|nurse|leave))|paternity(?![ \t]+(?:test|testing|tests|lab|leave))|pregnan\p{L}*|children:?\s*\d|dependents:?\s*\d)(?![\p{L}])/giu,
     replacement: "[REDACTED-FAMILY]",
   },
-  // Affinity / protected-group memberships
-  { feature: "affinity_group", pattern: new RegExp(`(?<![\\p{L}])(?:${ci(["national ", "the "])})?${ORG}\\s+(?:of|for)\\s+(?:${PROPER_WORD}\\s+){0,2}?${IDENTITY}(?:\\s+${PROPER_WORD}){0,3}`, "gu"), replacement: "[REDACTED-AFFINITY]" },
-  { feature: "affinity_group", pattern: new RegExp(`(?<![\\p{L}])${IDENTITY}(?:\\s+${PROPER_WORD}){0,3}\\s+${ORG}(?![\\p{L}])`, "gu"), replacement: "[REDACTED-AFFINITY]" },
-  { feature: "affinity_group", pattern: new RegExp(`(?<![\\p{L}])${ci(["women in"])}\\s+\\p{L}+`, "gu"), replacement: "[REDACTED-AFFINITY]" },
+  // "Raising my children", "caring for my parents", "primary caregiver" (S14X-106)
+  {
+    feature: "family_status",
+    pattern: /(?<![\p{L}])(?:(?:raising|raised|caring[ \t]+for|cared[ \t]+for|care[ \t]+for|looking[ \t]+after|looked[ \t]+after)[ \t]+(?:my|our)[ \t]+(?:\p{L}+[ \t]+){0,2}?(?:children|kids|child|sons?|daughters?|twins|toddlers?|baby|newborn|family|parents?|mother|father|mum|mom|dad|grandchildren|husband|wife|spouse)|primary[ \t]+caregiver(?:[ \t]+(?:for|to)[ \t]+(?:my|our)[ \t]+\p{L}+)?|caregiver[ \t]+(?:for|to)[ \t]+(?:my|our)[ \t]+\p{L}+)(?![\p{L}])/giu,
+    replacement: "[REDACTED-FAMILY]",
+  },
+  // Affinity / protected-group memberships; no rule reads past the line it starts on (S14X-024)
+  { feature: "affinity_group", pattern: new RegExp(`(?<![\\p{L}])(?:${ci(["national ", "the "])})?${ORG}[ \\t]+(?:of|for)[ \\t]+(?:${PROPER_WORD}[ \\t]+){0,2}?${IDENTITY_WORD}(?:[ \\t]+${PROPER_WORD}){0,3}`, "gu"), replacement: "[REDACTED-AFFINITY]" },
+  { feature: "affinity_group", pattern: new RegExp(`(?<![\\p{L}])${IDENTITY_WORD}(?:[ \\t]+${PROPER_WORD}){0,3}[ \\t]+${ORG}(?![\\p{L}])`, "gu"), replacement: "[REDACTED-AFFINITY]" },
+  { feature: "affinity_group", pattern: new RegExp(`(?<![\\p{L}])${ci(["women in"])}[ \\t]+\\p{L}+`, "gu"), replacement: "[REDACTED-AFFINITY]" },
   {
     feature: "affinity_group",
     pattern: /(?<![\p{L}])(?:NSBE|SHPE|AISES|SACNAS|NAAAP|ALPFA|MAES|SASE|NSHMBA|Prospanica|oSTEM|Out in Tech|Lesbians Who Tech|Hillel|Chabad|NPHC|HBCU|NAACP|UnidosUS|LULAC|Urban League|Girls Who Code|Black Girls Code|Grace Hopper Celebration|AnitaB\.org|Society of Women Engineers|Alpha Phi Alpha|Alpha Kappa Alpha|Kappa Alpha Psi|Omega Psi Phi|Delta Sigma Theta|Phi Beta Sigma|Zeta Phi Beta|Sigma Gamma Rho|Iota Phi Theta|Lambda Theta Alpha|Lambda Theta Phi|Sigma Lambda Beta|Sigma Lambda Gamma|Divine Nine|Jack and Jill of America|Women Who Code)(?![\p{L}])/gu,
     replacement: "[REDACTED-AFFINITY]",
   },
+  // Sororities and fraternities: "Kappa Kappa Gamma sorority", "Sigma Chi Fraternity", "Panhellenic" (S14X-106).
+  // Greek letters alone stay: "Phi Beta Kappa" and "Tau Beta Pi" are academic honours.
+  {
+    feature: "affinity_group",
+    pattern: new RegExp(`(?<![\\p{L}])(?:${GREEK_NAME}[ \\t]+${ci(["sorority", "fraternity"])}|${ci(["sorority", "fraternity"])}[ \\t]*[:,–-]?[ \\t]*${GREEK_NAME}|${ci(["panhellenic council", "panhellenic association", "panhellenic", "interfraternity council", "sororities", "sorority", "fraternities", "fraternity"])})(?![\\p{L}])`, "gu"),
+    replacement: "[REDACTED-AFFINITY]",
+  },
   // Religion: membership or self-description, never an institution's name
   {
     feature: "religion",
-    pattern: new RegExp(`(?<![\\p{L}])${ci(["member", "congregant", "parishioner", "deacon", "elder", "usher", "choir member", "choir director", "choir", "worship leader", "youth group", "youth pastor", "youth minister", "youth leader", "sunday school teacher", "sunday school", "altar server", "lector", "bible study leader", "bible study", "volunteer"])}(?:,|\\s+${ci(["at", "of", "with", "for", "in"])})?(?:\\s+${ci(["the", "my", "our", "a", "local"])})?(?:\\s+${PROPER_WORD}){0,4}\\s+(?:Church|Mosque|Masjid|Synagogue|Temple|Parish|Gurdwara|Congregation|Chapel|Cathedral|Ministries|Mandir|Shul|Kingdom Hall)(?![\\p{L}])(?!\\s+(?:University|College|School|Hospital|Health|Medical|Bank|Street|St\\b|Avenue|Road))`, "gu"),
+    pattern: new RegExp(`(?<![\\p{L}])${ci(["member", "congregant", "parishioner", "deacon", "elder", "usher", "choir member", "choir director", "choir", "worship leader", "youth group", "youth pastor", "youth minister", "youth leader", "sunday school teacher", "sunday school", "altar server", "lector", "bible study leader", "bible study", "volunteer"])}(?:,|[ \\t]+${ci(["at", "of", "with", "for", "in"])})?(?:[ \\t]+${ci(["the", "my", "our", "a", "local"])})?(?:[ \\t]+${PROPER_WORD}){0,4}[ \\t]+(?:Church|Mosque|Masjid|Synagogue|Temple|Parish|Gurdwara|Congregation|Chapel|Cathedral|Ministries|Mandir|Shul|Kingdom Hall)(?![\\p{L}])(?![ \\t]+(?:University|College|School|Hospital|Health|Medical|Bank|Street|St\\b|Avenue|Road))`, "gu"),
     replacement: "[REDACTED-RELIGION]",
   },
-  { feature: "religion", pattern: /(?<![\p{L}])(?:devout|practicing|practising|observant|born-again|committed|proud)\s+(?:christian|catholic|muslim|jew|jewish|hindu|buddhist|sikh|mormon|evangelical)(?![\p{L}])|(?<![\p{L}])of\s+the\s+(?:christian|muslim|jewish|hindu|buddhist|sikh|catholic)\s+faith(?![\p{L}])/giu, replacement: "[REDACTED-RELIGION]" },
-  { feature: "religion", pattern: /(?<![\p{L}])(?:LDS(?:\s+(?:mission|missionary|church))?|Latter[- ]day\s+Saints?|Mormon(?:\s+mission)?|mission\s+trip|missions\s+trip|church\s+(?:choir|youth\s+group|volunteer))(?![\p{L}])/giu, replacement: "[REDACTED-RELIGION]" },
-  // Race / ethnicity self-identification ("Hispanic market" is job evidence and stays)
-  { feature: "identity_self_description", pattern: new RegExp(`(?<![\\p{L}])(?:${ci(["i am a", "i am an", "i am", "i'm a", "i'm an", "proud", "as a", "as an"])})\\s+${IDENTITY}(?:\\s+(?:${ci(["woman", "man", "female", "male", "professional", "candidate", "engineer", "leader", "immigrant"])}))?(?![\\p{L}])`, "gu"), replacement: "[REDACTED-IDENTITY]" },
+  { feature: "religion", pattern: /(?<![\p{L}])(?:devout|practicing|practising|observant|born-again|committed|proud)[ \t]+(?:christian|catholic|muslim|jew|jewish|hindu|buddhist|sikh|mormon|evangelical)(?![\p{L}])|(?<![\p{L}])of[ \t]+the[ \t]+(?:christian|muslim|jewish|hindu|buddhist|sikh|catholic)[ \t]+faith(?![\p{L}])/giu, replacement: "[REDACTED-RELIGION]" },
+  { feature: "religion", pattern: /(?<![\p{L}])(?:LDS(?:[ \t]+(?:mission|missionary|church))?|Latter[- ]day[ \t]+Saints?|Mormon(?:[ \t]+mission)?|mission[ \t]+trip|missions[ \t]+trip|church[ \t]+(?:choir|youth[ \t]+group|volunteer))(?![\p{L}])/giu, replacement: "[REDACTED-RELIGION]" },
+  // Race / ethnicity self-identification ("Hispanic market" is job evidence and stays).
+  // "I am a / proud" + identity; "as a / as an" + identity only before a person noun or the clause's end,
+  // so "worked as a Japanese interpreter" is a role (S14X-025).
+  { feature: "identity_self_description", pattern: new RegExp(`(?<![\\p{L}])(?:${ci(["i am a", "i am an", "i am", "i'm a", "i'm an", "proud"])})[ \\t]+${IDENTITY_WORD}(?:[ \\t]+(?:${ci(["woman", "man", "female", "male", "professional", "candidate", "engineer", "leader", "immigrant"])}))?(?![\\p{L}])`, "gu"), replacement: "[REDACTED-IDENTITY]" },
+  { feature: "identity_self_description", pattern: new RegExp(`(?<![\\p{L}])(?:${ci(["as a", "as an"])})[ \\t]+${IDENTITY}(?:[ \\t]+(?:${ci(["woman", "man", "female", "male", "immigrant", "person"])})(?![\\p{L}])|(?![\\p{L}])(?=[ \\t]*(?:[,.;:!?)\\n]|$)))`, "gu"), replacement: "[REDACTED-IDENTITY]" },
   // Street address (redlining proxy); city-level location stays
   {
     feature: "street_address",
@@ -628,10 +747,54 @@ const INLINE_RULES: Rule[] = [
   },
   // Photos (references in parsed text)
   { feature: "photo_reference", pattern: /(?<![\p{L}])(?:photo|photograph|headshot|profile picture)\s*[:\-]?\s*(?:attached|included|enclosed|\.(?:jpe?g|png))(?![\p{L}])/giu, replacement: "[REDACTED-PHOTO]" },
-  // Gender markers: honorifics before a name, and pronoun sets
-  { feature: "gendered_terms", pattern: /(?<![\p{L}])(?:(?:Mr|Mrs|Ms|Mx|MR|MRS|MS)\.\s*|(?:Mr|Mrs|Miss|MR|MRS|MISS)\s+)(?=\p{Lu}|\[CANDIDATE\])/gu, replacement: "[REDACTED-GENDER] " },
+  // Gender markers: honorifics before a name ("Ms Okafor" with no stop, "Frau", "Mme", "Sra.", "Mevr.": S14X-022, S14X-106), and pronoun sets.
+  // "MS Office" stays: the stop-less forms are title case, and Microsoft's products are named.
+  {
+    feature: "gendered_terms",
+    pattern: /(?<![\p{L}])(?:(?:Mr|Mrs|Ms|Mx|MR|MRS|MS|Mme|Mlle|Sra|Srta|Mevr|Dhr)\.[ \t]*|(?:Mr|Mrs|Ms|Mx|Miss|MR|MRS|MISS|Frau|Herr|Mme|Mlle|Sra|Srta|Mevr|Dhr)[ \t]+)(?=\p{Lu}|\[CANDIDATE\])(?!(?:Office|Excel|Word|Access|Project|Outlook|PowerPoint|Teams|Visio|Dynamics|SQL|Azure|Windows|Exchange|SharePoint|Edge|Paint|Publisher|Player)(?![\p{L}]))|(?<![\p{L}])(?:Sr|M)\.[ \t]*(?=\[CANDIDATE\])/gu,
+    replacement: "[REDACTED-GENDER] ",
+  },
   { feature: "gendered_terms", pattern: /(?<![\p{L}])(?:he|she|they|ze|xe)\s*\/\s*(?:him|her|them|hir|zir|xem)(?:\s*\/\s*(?:his|hers|theirs|hirs|zirs|xyrs))?(?![\p{L}])|(?<![\p{L}])pronouns\s*[:\-]\s*[\p{L}/]+/giu, replacement: "[REDACTED-GENDER]" },
+  { feature: "gendered_terms", pattern: /(?<![\p{L}])(?:eagle[ \t]+scouts?|boy[ \t]+scouts?(?:[ \t]+of[ \t]+america)?|girl[ \t]+scouts?(?:[ \t]+of[ \t]+the[ \t]+usa)?|girl[ \t]+guides?)(?![\p{L}])/giu, replacement: "[REDACTED-GENDER]" },
+  {
+    feature: "gendered_terms",
+    pattern: new RegExp(`(?<![\\p{L}])(?:${Object.keys(NEUTRAL_ROLE).sort((a, b) => b.length - a.length).join("|")})(?![\\p{L}])`, "giu"),
+    replacement: (m) => keepCase(m, NEUTRAL_ROLE[m.toLowerCase()] ?? m),
+  },
 ];
+
+// He, she, him, her, his, hers, himself, herself read as they, them, their (S14X-106).
+// Lower or title case only ("HE" is higher education; "HER2" is an assay), never
+// "Her Majesty" or a capitalised word after (a surname: "He Wei"), and never
+// Spanish "he trabajado".
+const PRONOUN = /(?<![\p{L}\p{N}'’-])(he|she|him|her|his|hers|himself|herself|He|She|Him|Her|His|Hers|Himself|Herself)(?![\p{L}\p{N}'’-])(?=([ \t]+[\p{L}'’]+)?)/gu;
+const OBJECT_NEXT = new Set("a an the this that these those and or but nor to in on at for with from by as of into onto about after before during since until when while because if so than through over under up down out off again back away well too also very more most is was".split(" "));
+const SPANISH_PARTICIPLE = /^\p{L}+(?:ad[oa]s?|id[oa]s?|cho|sto|rto|elto|ito)$/u;
+const AGREE: Record<string, string> = { is: "are", was: "were", has: "have", does: "do", "isn't": "aren't", "wasn't": "weren't", "hasn't": "haven't", "doesn't": "don't" };
+
+function neutralPronouns(text: string): { text: string; count: number } {
+  let count = 0;
+  const out = text.replace(PRONOUN, (m: string, p: string, nextRaw: string | undefined) => {
+    const next = (nextRaw ?? "").trim();
+    const lower = p.toLowerCase();
+    if (p !== lower && /^\p{Lu}/u.test(next) && next !== "I") return m;
+    if (lower === "he" && SPANISH_PARTICIPLE.test(next)) return m;
+    const nextLower = next.toLowerCase();
+    let word: string;
+    if (lower === "he" || lower === "she") word = "they\u0001";
+    else if (lower === "him") word = "them";
+    else if (lower === "her") word = next && !OBJECT_NEXT.has(nextLower) ? "their" : "them";
+    else if (lower === "his") word = next && !OBJECT_NEXT.has(nextLower) ? "their" : "theirs";
+    else if (lower === "hers") word = "theirs";
+    else word = "themself";
+    count++;
+    return p === lower ? word : word[0].toUpperCase() + word.slice(1);
+  });
+  return {
+    text: out.replace(/(they|They)\u0001([ \t]+)([\p{L}'’]+)/gu, (_m, t: string, sp: string, verb: string) => `${t}${sp}${AGREE[verb.toLowerCase()] ?? verb}`).replace(/\u0001/g, ""),
+    count,
+  };
+}
 
 const IMMIGRATION_CONTEXT = /(?<![\p{L}])(?:visa|f-?1|ead|i-20|sponsor\p{L}*|work\s+authori[sz]\p{L}*|international\s+student|stem|status|immigration|uscis|eligible\s+to\s+work)(?![\p{L}])/iu;
 function immigrationContext(m: string, rest: unknown[]): string | null {
@@ -665,8 +828,14 @@ function redactAccommodation(text: string): { text: string; count: number } {
 }
 
 export interface RedactionConfig {
-  /** Extra employer-defined blocklist patterns (feature name → regex source) */
+  /**
+   * Extra blocklist patterns (feature name → regex source) for a caller inside
+   * this codebase. No request body reaches it: shortlist-evaluate stopped
+   * reading one (RC-S13-073).
+   */
   extraBlocklist?: Array<{ feature: string; pattern: string }>;
+  /** The uploaded file's name ("Jane_Okafor_CV.pdf"): its words are the name when the text shows them and no line read as one (S14X-072). */
+  nameHint?: string;
 }
 
 function applyRule(text: string, rule: Rule, bump: (f: string, n: number) => void): string {
@@ -692,7 +861,7 @@ export function redactForScoring(rawText: string, config: RedactionConfig = {}):
 
   // 1. Find the name on the original header block, before anything moves.
   let text = rawText.normalize("NFC");
-  const found = findName(text);
+  const found = findName(text, config.nameHint);
 
   // 2. Contact details: emails, profile URLs, phones, postcodes.
   for (const rule of CONTACT_RULES) text = applyRule(text, rule, bump);
@@ -721,7 +890,8 @@ export function redactForScoring(rawText: string, config: RedactionConfig = {}):
     bump("candidate_name", masked.count);
     text = masked.text;
     for (const alias of found.aliases) {
-      const nick = maskAlias(text, alias);
+      // A Chinese or Japanese form is masked as a name is, inside any run of characters (S14X-105).
+      const nick = CJK_NAME.test(alias) ? maskName(text, alias) : maskAlias(text, alias);
       bump("candidate_name", nick.count);
       text = nick.text;
     }
@@ -741,19 +911,38 @@ export function redactForScoring(rawText: string, config: RedactionConfig = {}):
   const acc = redactAccommodation(text);
   bump("disability_mention", acc.count);
   text = acc.text;
+  const pronouns = neutralPronouns(text);
+  bump("gendered_terms", pronouns.count);
+  text = pronouns.text;
 
-  // 7. Employer-extended blocklist (validated: must compile, capped length)
-  for (const extra of (config.extraBlocklist ?? []).slice(0, 20)) {
+  // 7. An extra blocklist: each entry compiled alone (a bad one is dropped),
+  // then all of them in ONE pass over whole words, so no entry ever matches
+  // another entry's mark and the text cannot grow with the entry count.
+  const extras = (Array.isArray(config.extraBlocklist) ? config.extraBlocklist : []).slice(0, 20).flatMap((e) => {
+    if (!e || typeof e.pattern !== "string" || typeof e.feature !== "string" || !e.pattern) return [];
+    const source = e.pattern.slice(0, 200);
     try {
-      const re = new RegExp(extra.pattern.slice(0, 200), "gi");
-      let count = 0;
-      text = text.replace(re, () => { count++; return `[REDACTED-${extra.feature.toUpperCase().slice(0, 20)}]`; });
-      bump(`custom:${extra.feature}`, count);
-    } catch { /* invalid pattern — skip, never break scoring */ }
+      return [{ feature: e.feature.slice(0, 40), whole: new RegExp(`^(?:${source})$`, "iu"), source }];
+    } catch { return []; /* invalid pattern — skip, never break scoring */ }
+  });
+  if (extras.length > 0) {
+    try {
+      const any = new RegExp(`(?<![\\p{L}\\p{N}])(?:${extras.map((e) => `(?:${e.source})`).join("|")})(?![\\p{L}\\p{N}])`, "giu");
+      text = text.replace(any, (m) => {
+        if (!m) return m;
+        const hit = extras.find((e) => e.whole.test(m)) ?? extras[0];
+        bump(`custom:${hit.feature}`, 1);
+        return "[REDACTED]";
+      });
+    } catch { /* the entries do not combine — skip, never break scoring */ }
   }
+
+  // 8. One neutral mark: the category is named only in the audit (S14X-023).
+  text = text.replace(/\[REDACTED-[A-Z0-9_]+\]/g, "[REDACTED]");
 
   return {
     redacted: text,
     exclusionsApplied: Array.from(exclusions.entries()).map(([feature, count]) => ({ feature, count })),
+    nameFound: found !== null,
   };
 }
