@@ -4520,7 +4520,8 @@ async function callTool(
         giveBackFitCall(client, apiKeyId);
         throw e;
       }
-      if (!Array.isArray(scored.jobs) || scored.jobs.length === 0) giveBackFitCall(client, apiKeyId);
+      // A count of what was scored, not a row list handed on.
+      if (!(scored.jobs as unknown[] | undefined)?.length) giveBackFitCall(client, apiKeyId);
       return toolOk(gate && gate.basis === "free" ? { ...scored, fitFreeLeftToday: gate.left } : scored);
     }
     case "search": return toolOk(await runSearchAlias(args, ctx));
