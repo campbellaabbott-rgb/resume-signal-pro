@@ -42,7 +42,7 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
   const [email, setEmail] = useState(suggestedEmail ?? "");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  // OFF BY DEFAULT, like the drip below. It was pre-ticked -- and the compact
+  // OFF BY DEFAULT. It was pre-ticked -- and the compact
   // variant, which renders no box at all, sent it ticked too -- so the pulse
   // list filled with people who never chose it (defect sweep 1.59). A ticked
   // box now only ASKS: send-market-pulse mails a confirmation link to the
@@ -54,12 +54,9 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
   // gave one. The ticked box never goes unanswered.
   const [pulseOutcome, setPulseOutcome] = useState<"pending" | "not_covered" | "not_asked" | null>(null);
   const [pulseRefusal, setPulseRefusal] = useState<string | null>(null);
-  // Off by default — the drip is a commitment; defaulting it on would be the
-  // dark pattern the rest of the product refuses to be. And a ticked box only
-  // ASKS, like the pulse: the report mail carries a button that starts the
-  // sequence, and nothing is queued until the inbox's owner presses it.
-  const [dripOptIn, setDripOptIn] = useState(false);
-  const [dripAsked, setDripAsked] = useState(false);
+  // The report does not offer the fix-plan sequence (S14X-012, option B):
+  // the request carries no sequence choice, so the report mail offers no
+  // button to start one.
 
   const send = async () => {
     const trimmed = email.trim();
@@ -74,7 +71,7 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
       // The report request never carries the pulse choice: send-scan-report's
       // own write to the pulse list enrolled an address with no confirmation.
       const { data, error } = await supabase.functions.invoke("send-scan-report", {
-        body: { email: trimmed, dripOptIn, language: i18n.language, ...payload },
+        body: { email: trimmed, language: i18n.language, ...payload },
       });
       if (error || !(data as { success?: boolean })?.success) {
         // A refusal says why (an inbox's daily allowance, an address that
@@ -85,7 +82,6 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
         throw new Error(refusal || error?.message || "send failed");
       }
       localStorage.setItem("rb_last_email", trimmed);
-      setDripAsked(dripOptIn);
       if (subscribePulse) {
         // Best effort: the report already went, and a failed pulse request
         // must not turn that into an error. Success means a link was mailed
@@ -138,11 +134,6 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
           {pulseOutcome === "pending" && (
             <p className="text-xs text-muted-foreground mt-1">
               {t('freeResults.enterprise.pulseConfirmSent', "If this address isn't confirmed for the monthly market pulse yet, we've emailed it a confirmation link. The pulse starts only after that link is clicked.")}
-            </p>
-          )}
-          {dripAsked && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {t('freeResults.enterprise.dripConfirmSent', "Your report email has a button to start the fix-plan emails. Nothing more is sent until you press it.")}
             </p>
           )}
           {pulseOutcome === "not_covered" && (
@@ -239,17 +230,6 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
               for the field, which every locale already says; the fallback
               promised a reading of postings nothing makes. */}
           {t('freeResults.enterprise.pulseOptIn', 'Also send me a monthly market pulse: the core keywords for my industry from our keyword guide, with a free rescan link. Unsubscribe anytime.')}
-        </span>
-      </label>
-      <label className="flex items-start gap-2 mt-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={dripOptIn}
-          onChange={(e) => setDripOptIn(e.target.checked)}
-          className="mt-0.5 accent-primary"
-        />
-        <span className="text-xs text-muted-foreground">
-          {t('freeResults.enterprise.dripOptIn', 'Break my fix plan into a short email sequence: top fixes on day 2, the rest on day 4, a rescan reminder on day 6 — and one question on day 14: did it get you interviews? Four short emails, cancel anytime.')}
         </span>
       </label>
       <p className="text-[10px] text-muted-foreground mt-2">{t('freeResults.enterprise.emailPrivacy', 'Only the analysis results are emailed — never your resume. No spam.')}</p>
