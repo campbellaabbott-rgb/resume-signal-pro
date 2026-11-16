@@ -44,6 +44,12 @@ import { ANSWERED_BY_MEANS, APPLICATION_DESCRIPTION, APPLICATION_NOTE, FORM_UNRE
 import { fillCurveFromCache } from "./fill-curve-cache.ts";
 import { intParam as intQ, isInvalid, isoParam as isoQ, numParam as numQ, type Parsed, secondsToMidnightUtc } from "./params.ts";
 import { companyPage } from "./company-walk.ts";
+// A refusal states only the limits api_key_check read (S14X-275); the change
+// feed reads up to a settled horizon (S14X-065); the employer counts are dated
+// by the pass that counted them (S14X-274). Pure modules, run by value in Node.
+import { refusalHeaders } from "./refusal-headers.ts";
+import { CLOSED_SETTLE_MS, OPENED_SETTLE_MS, resumeCursorOf, settledThrough } from "./changes-window.ts";
+import { countedAt, countsCarried } from "./facet-stamp.ts";
 // THE CLOSED DOMAINS, IMPORTED RATHER THAN RETYPED. A hand-copied list of
 // vendors or categories is a second list, and every filter defect this board
 // has shipped was two lists disagreeing. These are the same constants the
@@ -176,12 +182,15 @@ const MAX_OFFSET = 10_000;
  *
  * The board carries a USAJOBS adapter (job-board's fetcher, keyed on the
  * vendor code below). It reads the U.S. federal government's own job API,
- * which is free and open to read — and whose terms of use permit DISPLAYING
- * the results to a person while forbidding republication of the data as a
- * standalone feed. /v1 is exactly that: a feed, sold to someone else's code,
- * which is then free to store it, resell it and mirror it. Displaying a
- * federal role on resumebooster.work is inside those terms; handing the same
- * row to an API customer is not.
+ * which is free and open to read. /v1 does not hand those rows on, by the
+ * owner's decision (OD16), and says only that.
+ *
+ * IT USED TO GIVE A REASON THE TERMS DO NOT (USAJOBS-COPY-2). This block and
+ * the reason below said the feed's terms of use forbid republishing it as a
+ * data feed. The terms, read at developer.usajobs.gov/guides/terms-of-service
+ * on 2026-11-16, say the feed's Public Data may be redistributed. Withholding
+ * is a choice this API makes, so the reason names it as one and claims no
+ * prohibition on the publisher's behalf.
  *
  * SO THE EXCLUSION IS STRUCTURAL, NOT A FILTER SOMEONE REMEMBERS TO APPLY.
  * Every path that can emit a posting row applies it: the two /v1/jobs engines,
@@ -191,10 +200,10 @@ const MAX_OFFSET = 10_000;
  * vendor-inclusion one -- drop the rows on the way back out.
  *
  * AND ASKING FOR IT BY NAME IS REFUSED, NOT SILENTLY EMPTIED. `?source=` with
- * this vendor answers HTTP 451 naming the terms of use. An empty 200 would be
+ * this vendor answers HTTP 451 with the reason below. An empty 200 would be
  * this API telling a machine there are no federal jobs, which is a false
- * statement about the world rather than a true one about our licence -- the
- * same failure mode the unknown-vendor 400 above exists to prevent.
+ * statement about the world rather than a true one about what we hand on --
+ * the same failure mode the unknown-vendor 400 above exists to prevent.
  *
  * WHY THIS READS ZERO ROWS TODAY, AND WHY THAT IS NOT A BUG. The adapter
  * skips every visit with a console warning unless the owner sets two secrets,
@@ -219,7 +228,7 @@ const NO_REDISTRIBUTION_SOURCES = ["usajobs", "smartrecruiters"] as const;
 const NO_REDISTRIBUTION_IN = `(${NO_REDISTRIBUTION_SOURCES.join(",")})`;
 /** Said in the refusal, in /v1's own index, and in /v1/stats. One wording. */
 const NO_REDISTRIBUTION_REASON =
-  "Two hiring systems are shown on resumebooster.work but not handed on by this API: the U.S. federal job feed, whose terms of use forbid redistributing it as a data feed, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. No /v1 endpoint returns their rows on any tier.";
+  "Two hiring systems are shown on resumebooster.work but are not available through this API: the U.S. federal job feed (USAJOBS), which this API does not hand on at present, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. No /v1 endpoint returns their rows on any tier.";
 const isNoRedistributionSource = (v: unknown): boolean =>
   (NO_REDISTRIBUTION_SOURCES as readonly string[]).includes(String(v ?? "").trim().toLowerCase());
 /**
@@ -247,6 +256,31 @@ async function withheldCompanyTokens(client: SupabaseClient): Promise<Set<string
   }
   withheldTokenCache = { at: Date.now(), tokens: new Set(data.map((t) => String(t))) };
   return withheldTokenCache.tokens;
+}
+
+/**
+ * The board's last count of the share of live postings a salary floor can
+ * see (S14X-276): coverage.salaryFloor from the meta row k = 'refresh', read
+ * by JSON path so the row's facets are not shipped, the way job-board reads
+ * it. Null when the row or the figure is missing; a failed read is logged.
+ */
+async function statedPayShareRead(client: SupabaseClient): Promise<{ share: number | null; at: string | null; carried: boolean } | null> {
+  try {
+    const { data, error } = await client.from("job_board_meta").select("coverage:v->coverage").eq("k", "refresh").maybeSingle();
+    if (error) {
+      console.warn("[PUBLIC-API] pay-floor share unavailable:", String(error.message ?? "").slice(0, 120));
+      return null;
+    }
+    const c = (data as { coverage?: unknown } | null)?.coverage as Record<string, unknown> | null | undefined;
+    if (!c || typeof c !== "object") return null;
+    const share = typeof c.salaryFloor === "number" && Number.isFinite(c.salaryFloor) ? c.salaryFloor : null;
+    const at = typeof c.at === "string" && c.at !== "" ? c.at : null;
+    const carried = Array.isArray(c.staleParts) && c.staleParts.includes("salaryFloor");
+    return { share, at, carried };
+  } catch (e) {
+    console.warn("[PUBLIC-API] pay-floor share read threw:", e instanceof Error ? e.message.slice(0, 120) : String(e));
+    return null;
+  }
 }
 
 // The columns /v1 promises. Listed once, explicitly, because `select("*")`
@@ -489,6 +523,12 @@ Deno.serve(async (req) => {
   // and GET /v1/fit fell through to the paid gate (measured 2026-09-03 23:07Z).
   const isFitPost = req.method === "POST" && path.replace(/\/+$/, "") === "/v1/fit";
   if (req.method !== "GET" && !isFitPost) return fail(405, "method_not_allowed", "This API is read-only; use GET (POST is accepted only on /v1/fit).");
+  // AND /v1/fit TAKES ONLY A POST, refused before the key is read (S14X-132).
+  // The router used to answer a GET with 405 after api_key_check had metered
+  // it, so the mistake spent one of the key's 25 free fit calls a day.
+  if (meteredEndpoint(path) === FIT_ENDPOINT && req.method !== "POST") {
+    return fail(405, "method_not_allowed", "POST a JSON body to /v1/fit — a résumé cannot ride a query string.", { Allow: "POST, OPTIONS" });
+  }
 
   if (path === "/" || path === "/v1" || path === "/v1/") {
     return json({
@@ -566,15 +606,11 @@ Deno.serve(async (req) => {
   if (!d || !d.is_allowed) {
     const reason = d?.deny_reason ?? "unknown_key";
     // Rate headers ride on the refusal too — that is the response a client most
-    // needs them on.
-    const headers: Record<string, string> = d
-      ? {
-          "X-RateLimit-Limit": String(d.rate_limit),
-          "X-RateLimit-Remaining": String(Math.max(0, d.rate_limit - d.rate_used)),
-          "X-Quota-Limit": String(d.quota_limit),
-          "X-Quota-Remaining": String(Math.max(0, d.quota_limit - d.quota_used)),
-        }
-      : {};
+    // needs them on. ONLY THE ONES THE CHECK READ (S14X-275): the daily pair
+    // goes out only on a daily refusal, because api_key_check answers
+    // quota_used 0 without reading the day bucket on every other denial, and
+    // a revoked key was told it had its whole quota left (./refusal-headers.ts).
+    const headers: Record<string, string> = refusalHeaders(d);
     if (reason === "rate_limited") return fail(429, "rate_limited", `Over ${d!.rate_limit} requests/minute.`, { ...headers, "Retry-After": "60" });
     // The quota is a UTC day, so the honest back-off is the time to midnight
     // UTC. "3600" told a compliant client to retry hourly for up to 22 hours,
@@ -645,6 +681,8 @@ Deno.serve(async (req) => {
     if (path === "/v1/changes") return await conditional(await changes(client, url, rateHeaders, d.key_tier));
     if (path === "/v1/companies") return await conditional(await companies(client, url, rateHeaders));
     if (path === "/v1/stats") return await conditional(await stats(client, rateHeaders));
+    // Any other method was refused above, before the key was metered; the
+    // method test here is kept as a second line and is not reached.
     if (path === "/v1/fit" || path === "/v1/fit/") {
     if (req.method !== "POST") return fail(405, "method_not_allowed", "POST a JSON body to /v1/fit — a résumé cannot ride a query string.", rateHeaders);
     return await fitResume(req, rateHeaders, d.key_tier, d.api_key_id);
@@ -659,6 +697,22 @@ Deno.serve(async (req) => {
     return fail(500, "internal_error", "The request could not be completed.", rateHeaders);
   }
 });
+
+/**
+ * ISO 3166-1 alpha-2: the 249 assigned codes, plus XK (Kosovo, in common use).
+ * A copy of job-board/filters.ts ISO_ALPHA2, held equal to it by
+ * a-country-filter-takes-only-a-country.test.ts, so this function imports no
+ * board code and the two surfaces accept the same countries.
+ */
+const V1_COUNTRY_CODES: ReadonlySet<string> = new Set(
+  ("AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ " +
+    "CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR " +
+    "GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP " +
+    "KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT " +
+    "MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW " +
+    "SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG " +
+    "UM US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW").split(" "),
+);
 
 /** Opaque to the caller by construction: base64url of the sort key it encodes.
  *  Opaque so the ordering can change later without breaking anyone who stored
@@ -676,6 +730,26 @@ function decodeCursor(raw: string): { ep: string; id: string } | null {
     if (/["\\]/.test(o.ep) || /["\\]/.test(o.id)) return null;
     return { ep: o.ep, id: o.id };
   } catch { return null; }
+}
+
+/**
+ * A TIME CURSOR CARRIES A TIMESTAMP AND A ROW KEY, AND NOTHING ELSE (NB-30).
+ *
+ * /v1/changes splices ep and id into a PostgREST or() unquoted, so a hand-made
+ * cursor whose id held a comma and a parenthesis added a branch of its own to
+ * the logic tree; decodeCursor refused only a quote and a backslash. Every
+ * time cursor is now held to what this API issues: ep is the ISO timestamp a
+ * timestamptz column serialises to, and the id is an event number (`digits`)
+ * or a posting id with none of the characters PostgREST reads as structure.
+ */
+const CURSOR_INSTANT = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}(:?\d{2})?)$/;
+function decodeTimeCursor(raw: string, id: "digits" | "posting"): { ep: string; id: string } | null {
+  const c = decodeCursor(raw);
+  if (!c || !CURSOR_INSTANT.test(c.ep)) return null;
+  // Postgres may spell the offset "+00"; Date.parse wants "+00:00".
+  if (!Number.isFinite(Date.parse(c.ep.replace(" ", "T").replace(/([+-]\d{2})$/, "$1:00")))) return null;
+  if (id === "digits" ? !/^\d{1,19}$/.test(c.id) : !/^[^,()"\\\s]{1,300}$/.test(c.id)) return null;
+  return c;
 }
 
 
@@ -1081,11 +1155,13 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
           headers);
       }
     }
-    // ISO-3166-1 alpha-2, the same shape test normalizeFilters applies. "USA"
-    // is not a country code this board stores, and binding it would answer an
-    // empty page to a request that was merely misspelt.
+    // ISO-3166-1 alpha-2, the same list normalizeFilters validates against.
+    // "USA" is not a country code this board stores, and binding it would
+    // answer an empty page to a request that was merely misspelt. NOR IS EU
+    // (NB-27): a shape test let any two letters through, so country=EU bound
+    // a filter no posting can match and answered an empty 200 about a market.
     if (f.param === "country") {
-      const malformed = asked.filter((x) => !/^[A-Z]{2}$/.test(x));
+      const malformed = asked.filter((x) => !/^[A-Z]{2}$/.test(x) || !V1_COUNTRY_CODES.has(x));
       if (malformed.length) {
         return fail(400, "invalid_value",
           `country takes ISO-3166-1 alpha-2 codes, e.g. country=US,GB. Not a code: ${malformed.map((x) => `"${x}"`).join(", ")}.`,
@@ -1119,7 +1195,7 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
   const limitCappedByInclude = wantDescription && askedLimit > MAX_LIMIT_WITH_DESCRIPTION;
   const offset = Math.max(offsetAsked ?? 0, 0);
   const cursorRaw = (p.get("cursor") ?? "").trim();
-  const cursor = cursorRaw ? decodeCursor(cursorRaw) : null;
+  const cursor = cursorRaw ? decodeTimeCursor(cursorRaw, "posting") : null;
   if (cursorRaw && !cursor) {
     return fail(400, "bad_cursor", "That cursor is not one we issued. Start from the first page and follow page.nextCursor.", headers);
   }
@@ -1363,18 +1439,28 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
   // ROW query only — never to the count (see baseQuery above).
   let rowQuery = baseQuery();
   if (cursor) {
-    rowQuery = rowQuery.or(`effective_posted.lt."${cursor.ep}",and(effective_posted.eq."${cursor.ep}",id.gt."${cursor.id}")`);
+    // THE LEADING BOUND, BESIDE THE TIE-BREAK (S14X-037). The OR alone is
+    // the right set of rows, but the planner cannot turn an OR into an index
+    // range, so a page 27 days deep filtered down from the top of the index.
+    // `effective_posted <= ep` is implied by the OR, changes no row, and gives
+    // the walk an Index Cond. The count query never sees it.
+    rowQuery = rowQuery
+      .lte("effective_posted", cursor.ep)
+      .or(`effective_posted.lt."${cursor.ep}",and(effective_posted.eq."${cursor.ep}",id.gt."${cursor.id}")`);
   }
 
   // The count is computed ONCE from the filtered-but-not-keyset query, so
   // total.value is stable for a given query across every cursor page. head:true
   // means the count query returns no rows — just the count.
-  const [rowRes, countRes] = await Promise.all([
+  const salaryFloorAsked = Number.isFinite(salaryMin) && salaryMin > 0;
+  const [rowRes, countRes, payShare] = await Promise.all([
     rowQuery
       .order("effective_posted", { ascending: false, nullsFirst: false })
       .order("id", { ascending: true })
       .range(cursor ? 0 : offset, (cursor ? 0 : offset) + limit - 1),
     raceCount(baseQuery({ count: "estimated", head: true }), COUNT_DEADLINE_MS),
+    // Read beside the page, and only under a floor: the share is stated only there.
+    salaryFloorAsked ? statedPayShareRead(client) : Promise.resolve(null),
   ]);
   const { data: rawData, error } = rowRes;
 
@@ -1493,25 +1579,31 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
       freshnessWindowDays: FRESH_WINDOW_DAYS,
       note: "Only postings still live in the employer's own feed within the last 30 days. Withdrawn postings are excluded, never re-dated.",
       // THIS BLOCK IS EMITTED UNDER A SALARY FLOOR, SO IT MUST QUOTE THE
-      // FLOOR'S OWN COLUMN. It quoted the annualised-figure share (0.201, dated
-      // 2026-08-25) beside a filter that binds the CONVERTED figure — the exact
-      // mis-citation 20260909100000 exists to forbid, because the two columns
-      // answer different questions and the wider one overstates a floor's reach.
-      // Re-measured on the field grid's board block, one scan stamped
-      // 2026-09-27T02:07:00Z: 173,826 of 733,190 servable rows carry a figure a
-      // floor can compare (23.7%), against 207,108 (28.3%) whose employer wrote
-      // any figure at all. The share below is the first of those, and the note
-      // names which of the two it is rather than saying "state pay", which reads
-      // as the second.
-      ...(Number.isFinite(salaryMin) && salaryMin > 0
+      // FLOOR'S OWN COLUMN: the share of servable postings carrying
+      // salary_rank_usd, the converted figure the floor binds, never the wider
+      // share whose employer wrote any figure at all (20260909100000).
+      //
+      // AND IT IS THE BOARD'S LAST COUNT, NOT A CONSTANT (S14X-276). This was
+      // a share measured once in September and typed in with that date in its
+      // basis; the board recounts it on every pass (coverage.salaryFloor in
+      // the meta row, get_filter_coverage over open postings) and on
+      // 2026-11-15 read about five points higher. Read beside the page, dated
+      // by the pass that counted it, marked when that pass had to carry the
+      // previous figure, and null with an "unavailable" basis when the row
+      // cannot be read: a remembered number is the failure this replaces.
+      ...(salaryFloorAsked
         ? {
-          statedPayShare: 0.237,
-          statedPayShareBasis: "salary_rank_usd IS NOT NULL, 173,826 of 733,190 servable postings, counted 2026-09-27T02:07:00Z",
+          statedPayShare: payShare?.share ?? null,
+          statedPayShareAt: payShare?.share != null ? payShare.at : null,
+          statedPayShareCarried: payShare?.share != null ? payShare.carried : false,
+          statedPayShareBasis: payShare?.share != null
+            ? "Share of the board's live postings, inside the 30-day window and including the hiring systems this API does not hand on, whose salary_rank_usd IS NOT NULL: the converted annual figure a salary floor compares. Counted by the board's refresh pass named in statedPayShareAt; when statedPayShareCarried is true that pass could not recount it and kept the previous pass's figure, which is older than statedPayShareAt."
+            : "unavailable: the board's last count of postings carrying salary_rank_usd (the converted figure a salary floor compares) could not be read for this response.",
           // No percentage typed into the sentence (S8-079): the dated share
           // above carries its own basis, and a hand-typed figure here had
           // drifted from the live coverage by a third.
           statedPayNote:
-            "A salary floor compares an annualised figure converted to approximate US dollars, which only some postings carry (statedPayShare, dated in its basis); it cannot see the rest unless include_unstated_pay=true. More postings state some pay figure, including hourly rates we do not annualise, and has_stated_pay=true selects those.",
+            "A salary floor compares an annualised figure converted to approximate US dollars, which only some postings carry (statedPayShare, dated by statedPayShareAt); it cannot see the rest unless include_unstated_pay=true. More postings state some pay figure, including hourly rates we do not annualise, and has_stated_pay=true selects those.",
         }
         : {}),
     },
@@ -1769,8 +1861,10 @@ async function changes(
   if (limitAsked instanceof Response) return limitAsked;
   const limit = Math.min(Math.max(limitAsked || DEFAULT_LIMIT, 1), MAX_LIMIT);
 
-  const openedAfter = decodeCursor(p.get("opened_cursor") ?? "");
-  const closedAfter = decodeCursor(p.get("closed_cursor") ?? "");
+  // Held to the shapes this API issues (NB-30): the keysets below splice
+  // both halves into a PostgREST or() unquoted.
+  const openedAfter = decodeTimeCursor(p.get("opened_cursor") ?? "", "posting");
+  const closedAfter = decodeTimeCursor(p.get("closed_cursor") ?? "", "digits");
   if (p.get("opened_cursor") && !openedAfter) {
     return fail(400, "bad_cursor", "opened_cursor is not a cursor this API issued.", headers);
   }
@@ -1788,6 +1882,16 @@ async function changes(
     }
   }
 
+  // THE SETTLED HORIZONS (S14X-065, ./changes-window.ts). The board stamps
+  // closed_at once per board visit and commits that visit's rows in chunks,
+  // seconds to minutes later, and a later visit can commit first; a reader
+  // whose cursor passed a stamp before its rows committed never saw them.
+  // Each list reads only up to a stamp old enough to have committed, and the
+  // response publishes both horizons.
+  const nowMs = Date.now();
+  const closedSettled = settledThrough(nowMs, CLOSED_SETTLE_MS);
+  const openedSettled = settledThrough(nowMs, OPENED_SETTLE_MS);
+
   let openedQ = client.from("job_board_postings")
     .select("id,source,company_token,company,title,location,country,category,posted_at,first_seen,apply_url")
     .is("missing_since", null)                       // fence: withdrawn by the employer
@@ -1803,9 +1907,16 @@ async function changes(
     // so a feed that excluded these from /v1/jobs and announced them here
     // would be republishing the same data one endpoint over.
     .not("source", "in", NO_REDISTRIBUTION_IN)
-    .gte("first_seen", sinceIso);
+    .gte("first_seen", sinceIso)
+    // SETTLED ONLY (S14X-065): see closedQ below. first_seen is the insert
+    // statement's own now(), so a row stamped this long ago has committed.
+    .lte("first_seen", openedSettled);
   if (openedAfter) {
-    openedQ = openedQ.or(`first_seen.gt.${openedAfter.ep},and(first_seen.eq.${openedAfter.ep},id.gt.${openedAfter.id})`);
+    // The leading bound beside the tie-break (S14X-037): implied by the OR,
+    // and the half of it the planner can seek on.
+    openedQ = openedQ
+      .gte("first_seen", openedAfter.ep)
+      .or(`first_seen.gt.${openedAfter.ep},and(first_seen.eq.${openedAfter.ep},id.gt.${openedAfter.id})`);
   }
 
   // absence_basis IS SELECTED, and that is the point of this line.
@@ -1847,14 +1958,17 @@ async function changes(
     // employer and dates. The closure LOG is ours, but the posting it
     // describes is still the vendor's data.
     .not("source", "in", NO_REDISTRIBUTION_IN)
-    .gte("closed_at", closureSinceIso);
+    .gte("closed_at", closureSinceIso)
+    .lte("closed_at", closedSettled);
   // suspect is NOT NULL DEFAULT false, so eq(false) misses no row. It also
   // keeps every row written before the collector stamped its batches
   // (20260906090000: suspect false, batch_live_before NULL). Those were never
   // assessed, and are served marked suspectBatch:null, not false.
   if (!includeSuspect) closedQ = closedQ.eq("suspect", false);
   if (closedAfter) {
-    closedQ = closedQ.or(`closed_at.gt.${closedAfter.ep},and(closed_at.eq.${closedAfter.ep},event_id.gt.${closedAfter.id})`);
+    closedQ = closedQ
+      .gte("closed_at", closedAfter.ep)
+      .or(`closed_at.gt.${closedAfter.ep},and(closed_at.eq.${closedAfter.ep},event_id.gt.${closedAfter.id})`);
   }
 
   const [openedRes, closedRes] = await Promise.all([
@@ -1875,6 +1989,13 @@ async function changes(
   const closedMore = closedRows.length === limit;
   const lastOpened = openedRows[openedRows.length - 1] as { first_seen?: string; id?: string } | undefined;
   const lastClosed = closedRows[closedRows.length - 1] as { closed_at?: string; event_id?: number } | undefined;
+  // WHERE TO RESUME, ON EVERY PAGE (S14X-065): the last row's key whether or
+  // not the list is drained, or the cursor this call was given when the page
+  // was empty. nextCursor keeps its meaning (null once hasMore is false).
+  const openedResume = resumeCursorOf(openedRows as Array<{ first_seen?: string; id?: unknown }>,
+    (r) => (r.first_seen && r.id != null ? { ep: r.first_seen, id: String(r.id) } : null), openedAfter);
+  const closedResume = resumeCursorOf(closedRows as Array<{ closed_at?: string; event_id?: unknown }>,
+    (r) => (r.closed_at && r.event_id != null ? { ep: r.closed_at, id: String(r.event_id) } : null), closedAfter);
 
   return json({
     apiVersion: API_VERSION,
@@ -1911,12 +2032,16 @@ async function changes(
         nextCursor: openedMore && lastOpened?.first_seen && lastOpened?.id
           ? encodeCursor(lastOpened.first_seen, String(lastOpened.id))
           : null,
+        resumeCursor: openedResume ? encodeCursor(openedResume.ep, openedResume.id) : null,
+        settledThrough: openedSettled,
       },
       closed: {
         hasMore: closedMore,
         nextCursor: closedMore && lastClosed?.closed_at && lastClosed?.event_id != null
           ? encodeCursor(lastClosed.closed_at, String(lastClosed.event_id))
           : null,
+        resumeCursor: closedResume ? encodeCursor(closedResume.ep, closedResume.id) : null,
+        settledThrough: closedSettled,
       },
     },
     // BOTH BOUNDS, ALWAYS, because they are no longer the same number.
@@ -1939,7 +2064,7 @@ async function changes(
     // against the site would otherwise find federal roles opening and closing
     // on the page and never here, and read that as dropped events.
     excludedSources: { sources: [...NO_REDISTRIBUTION_SOURCES], reason: NO_REDISTRIBUTION_REASON },
-    note: "opened = first seen in the employer's feed since `since`. closed = gone from it. outcome distinguishes a genuine close from a re-list under a new id. closedAtIsObservation=true means closed_at is when we could first SEE the posting was gone, not when it went (a board over the page cap backfilling its first complete pass) -- the error is always late and bounded by the freshness window; exclude those rows from any time-to-close or per-day takedown series. By default closed[] leaves out batches our collector flagged as a possible failed read of its own (one pass that removed so much of a board that the takedown may be ours, not the employer's); include_suspect=true returns them too, each marked suspectBatch:true, and suspectBatchesIncluded says which you got. suspectBatch:false means the collector assessed the batch and did not doubt it; suspectBatch:null means the closure was written before the collector began assessing its batches, so it was never assessed and neither walk filters it -- a paid walk reaching that far back can still contain a failed read of ours served as outcome closed. A default walk, with outcome relisted and closedAtIsObservation rows dropped, is counted on the same rules as our published daily takedown figure, except that the figure also counts the hiring systems in excludedSources: this feed can count lower than it by those, never higher. Both lists are ordered OLDEST FIRST and page independently: follow page.opened.nextCursor as ?opened_cursor= and page.closed.nextCursor as ?closed_cursor= until hasMore is false.",
+    note: "opened = first seen in the employer's feed since `since`. closed = gone from it. outcome distinguishes a genuine close from a re-list under a new id. closedAtIsObservation=true means closed_at is when we could first SEE the posting was gone, not when it went (a board over the page cap backfilling its first complete pass) -- the error is always late and bounded by the freshness window; exclude those rows from any time-to-close or per-day takedown series. By default closed[] leaves out batches our collector flagged as a possible failed read of its own (one pass that removed so much of a board that the takedown may be ours, not the employer's); include_suspect=true returns them too, each marked suspectBatch:true, and suspectBatchesIncluded says which you got. suspectBatch:false means the collector assessed the batch and did not doubt it; suspectBatch:null means the closure was written before the collector began assessing its batches, so it was never assessed and neither walk filters it -- a paid walk reaching that far back can still contain a failed read of ours served as outcome closed. A default walk, with outcome relisted and closedAtIsObservation rows dropped, is counted on the same rules as our published daily takedown figure, except that the figure also counts the hiring systems in excludedSources: this feed can count lower than it by those, never higher. Both lists are ordered OLDEST FIRST and page independently: follow page.opened.nextCursor as ?opened_cursor= and page.closed.nextCursor as ?closed_cursor= until hasMore is false. Each list reads only up to its settledThrough (closed[] a quarter of an hour behind now, opened[] two minutes), because a closure is stamped before it is written and a later stamp can be written first. To keep a sync going, store page.opened.resumeCursor and page.closed.resumeCursor, which every page carries, and pass them back with the same since: resume by cursor, never by moving since to the last stamp you saw, which skips rows written late under an earlier stamp.",
   }, 200, headers);
 }
 
@@ -2083,13 +2208,18 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
     excludedSources: { sources: [...NO_REDISTRIBUTION_SOURCES], reason: NO_REDISTRIBUTION_REASON, employersOmitted: withheld !== null },
     // The figure's age is published rather than implied. This facet refreshes
     // at the end of a rotation pass, so it is minutes-to-hours old by design.
-    asOf: data?.updated_at ?? null,
+    // DATED BY THE PASS THAT COUNTED IT (S14X-274, ./facet-stamp.ts), never by
+    // the row's updated_at, which the headline recount moves between passes
+    // without recounting an employer. A pass whose facet query failed carries
+    // the previous counts, and then asOf is when those were counted.
+    asOf: countedAt(data?.v as Record<string, unknown> | null | undefined),
+    countsCarried: countsCarried(data?.v as Record<string, unknown> | null | undefined),
     // A PUBLISHED NUMBER NAMES ITS DATE BASIS **AND** ITS POPULATION. The old
     // basis named only the refresh cadence, which is why a field called
     // open_postings could carry a count of every posting ever seen for that
     // token without anything on the response contradicting it.
     basis: openMap
-      ? "open_postings = postings not withdrawn and dated within the last 30 days (the same rule /v1/jobs serves), counted from the cached facet at asOf and refreshed at the end of each rotation pass"
+      ? "open_postings = postings not withdrawn and dated within the last 30 days (the same rule /v1/jobs serves), counted by the board's refresh pass at asOf and refreshed at the end of each rotation pass; when countsCarried is true that pass could not recount them and kept the counts taken at asOf"
       : "open_postings unavailable: this cached facet pass did not compute the servable per-employer count, and the unfiltered count it does hold is not what this field means",
   }, 200, headers);
 }
@@ -2114,6 +2244,33 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
  * Retry-After shape their key's own limits use.
  */
 async function fitResume(req: Request, headers: Record<string, string>, tier: string | null, apiKeyId: string | null) {
+  // THE ALLOWANCE COUNTS SCORINGS, NOT CALLS (S14X-132). api_key_check has
+  // already metered this call, and the free allowance is read back from that
+  // count, so every outcome below that scores nothing gives its call back
+  // through api_key_fit_unscored, which the allowance reader subtracts. The
+  // give-back cannot fail the call: before its migration is applied the RPC
+  // is missing, the error is logged, and the count stays what it was.
+  let scored = false;
+  try {
+    return await fitResumeScored(req, headers, tier, apiKeyId, () => { scored = true; });
+  } finally {
+    if (!scored && apiKeyId && !isPaidKeyTier(tier)) await giveFitCallBack(apiKeyId);
+  }
+}
+
+/** One give-back for a fit call that scored nothing. Logged and swallowed. */
+async function giveFitCallBack(apiKeyId: string): Promise<void> {
+  try {
+    const { error } = await db().rpc("api_key_fit_unscored", { p_key_id: apiKeyId, p_endpoint: FIT_ENDPOINT });
+    if (error) console.warn("[PUBLIC-API] fit give-back failed:", String(error.message ?? "").slice(0, 120));
+  } catch (e) {
+    console.warn("[PUBLIC-API] fit give-back threw:", e instanceof Error ? e.message.slice(0, 120) : String(e));
+  }
+}
+
+async function fitResumeScored(
+  req: Request, headers: Record<string, string>, tier: string | null, apiKeyId: string | null, markScored: () => void,
+) {
   // Judged before the body is read: a refused key learns why without first
   // sending a résumé this call would not score.
   const gate = await fitAllowance(db(), tier, apiKeyId);
@@ -2123,7 +2280,8 @@ async function fitResume(req: Request, headers: Record<string, string>, tier: st
   const resumeText = typeof body.resumeText === "string" ? body.resumeText.slice(0, 50000) : "";
   if (resumeText.trim().length < 100) return fail(400, "invalid_value", "resumeText must be at least 100 characters.", headers);
   const terms = resumeRoleTerms(resumeText, 4);
-  const q = typeof body.q === "string" && body.q.trim() ? body.q.trim().slice(0, 200) : (terms[0] ?? "");
+  const typedQ = typeof body.q === "string" && body.q.trim() ? body.q.trim().slice(0, 200) : "";
+  const q = typedQ || (terms[0] ?? "");
   if (!q) {
     return new Response(JSON.stringify({ apiVersion: API_VERSION, terms, query: null, data: [],
       note: "No occupation the scanner recognises appears in this résumé — pass q with a job title." }),
@@ -2131,6 +2289,12 @@ async function fitResume(req: Request, headers: Record<string, string>, tier: st
   }
   const limit = Math.max(1, Math.min(20, Number(body.limit ?? 20) || 20));
   const r = await board({ action: "list", limit, includeFacets: false, q,
+    // A QUERY READ OUT OF A RÉSUMÉ IS NOT LOGGED (GP-NOLOG-2). The board
+    // writes typed searches to its search log; a term taken from someone's CV
+    // is not a search they typed, and Privacy says the CV is never stored.
+    // job-board honours noLog only from a reader that proves it (x-rb-reader,
+    // which board() sends). A query the caller typed keeps today's body.
+    ...(typedQ ? {} : { noLog: true }),
     ...(typeof body.country === "string" ? { country: body.country } : {}),
     ...(body.remote === true ? { remote: true } : {}) });
   // DROPPED BEFORE SCORING, not after. This endpoint returns a job card per
@@ -2163,6 +2327,8 @@ async function fitResume(req: Request, headers: Record<string, string>, tier: st
     }
     if (!res.ok || !f?.fits) return fail(502, "scorer_unavailable", "The fit scorer did not respond. Retry shortly.", headers);
     fits = f.fits; matched = f.matched ?? {}; missing = f.missing ?? {};
+    // The scorer answered for these rows: this call is spent.
+    markScored();
   }
   return new Response(JSON.stringify({
     apiVersion: API_VERSION, terms, query: q,
@@ -2267,7 +2433,9 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
   const [metaRes, cacheRes, rollupRes] = await Promise.all([
     client.from("job_board_meta").select("k, v, updated_at").in("k", ["refresh", "vendor_breaker"]),
     client.rpc("get_stats_cache"),
-    // One row per key, world-readable, written by the 30-minute rollup cron.
+    // One row per key, world-readable, written by the job-board-stats-rollup
+    // cron. Its schedule is not typed here or in the basis (NB-32): each block
+    // carries the computed_at of the row it was read from.
     client.from("job_board_stats_rollup").select("k, v, computed_at").in("k", ["freshness", "date_coverage", "desc_coverage"]),
   ]);
   const metaRows = (metaRes.data ?? []) as Array<{ k: string; v: unknown; updated_at?: string }>;
@@ -2288,6 +2456,8 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
     companiesFacet?: unknown[];
     companiesOpenCount?: number;
     refreshedAt?: string;
+    facetsCarried?: boolean;
+    facetsCarriedAt?: string;
   };
   // `v.total` IS NOT THE LIVE COUNT, and publishing it as one overstated the
   // API by ~150,000 postings (707,247 against 556,306 servable). Its own
@@ -2301,16 +2471,24 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
   // trackedPostings is the corpus including postings since withdrawn.
   const cache = (cacheRes.data ?? null) as { ghost_stats?: Record<string, unknown>; fill_curve?: unknown; computed_at?: unknown } | null;
   const ghost = cache?.ghost_stats ?? null;
-  // WHEN THE CACHE WAS BUILT LIVES AT THE ROOT, NOT INSIDE ghost_stats.
-  // refresh_stats_cache writes `ghost_stats` as row_to_json(get_ghost_job_index_stats())
-  // — that function's RETURNS TABLE columns and nothing else — and stamps
-  // `computed_at` one level up, beside it. Reading `ghost.computed_at` is
-  // therefore undefined on every request, and `asOf` serialised as null every
-  // time: a cache that was 4.3 days stale on 2026-08-07 published with no date
-  // on it at all, which is the exact failure the surrounding basis strings
-  // exist to prevent. The website reads the root key correctly; this endpoint
-  // did not.
+  // THE CLOSURE INDEX IS DATED BY ITS OWN RUN (S14X-160). refresh_stats_cache
+  // copies ghost_stats in as row_to_json(get_ghost_job_index_stats()), and
+  // that function's columns include computed_at: when refresh_ghost_stats
+  // computed the index, on its own hourly cron (20261109122000), before the
+  // cache's run copies it. This endpoint used to date lifecycle with the
+  // cache root instead (on 2026-11-15, 03:27 for an index computed at 03:05),
+  // and a copy the cache kept from an earlier run when the arm failed (named
+  // in stale_parts) was dated as fresh. lifecycle.asOf is the part's own
+  // stamp; the root dates it only while the part has no stamp and is not
+  // named stale, and carriedForward says when the copy was kept.
   const cacheAsOf = typeof cache?.computed_at === "string" ? cache.computed_at : null;
+  const staleParts = Array.isArray((cache as { stale_parts?: unknown } | null)?.stale_parts)
+    ? ((cache as { stale_parts: unknown[] }).stale_parts)
+    : [];
+  const ghostKept = staleParts.includes("ghost_stats")
+    || (Array.isArray(ghost?.stale_parts) && (ghost!.stale_parts as unknown[]).length > 0);
+  const ghostOwnAt = typeof ghost?.computed_at === "string" && ghost.computed_at !== "" ? ghost.computed_at : null;
+  const ghostAsOf = ghostOwnAt ?? (staleParts.includes("ghost_stats") ? null : cacheAsOf);
   // FROM THE CACHE, NOT FROM A LIVE CALL. get_category_fill_curve is a windowed
   // scan over closures, exits and live postings across every category, and on
   // 2026-09-27 it began exhausting its own 60 s statement_timeout on the REST
@@ -2370,13 +2548,17 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
       // count of boards with at least one open posting, taken in the same pass
       // as livePostings, and null when that pass did not compute it.
       companies: typeof v.companiesOpenCount === "number" ? v.companiesOpenCount : null,
+      // Dated by the pass that counted it (S14X-274), the same stamp
+      // /v1/companies carries, and marked when that pass carried it.
+      companiesAsOf: typeof v.companiesOpenCount === "number" ? countedAt(v as Record<string, unknown>) : null,
+      companiesCarried: countsCarried(v as Record<string, unknown>),
       // AND IT NAMES ITS POPULATION, because the noun is not exact and the
       // inexactness is knowable: one employer can run several boards (PwC
       // ships five Workday sub-sites; 76 such employers in the top 1,500), and
       // the display-name fold that merges them happens after this count. So
       // this is a floor on employers and an exact count of boards.
       companiesBasis:
-        "Distinct company job boards with at least one open posting, under the same two rules as livePostings (not withdrawn, dated within the last 30 days), counted in the pass named by asOf. A count of BOARDS, not of employers: an employer running several boards is counted once per board, so this is a floor on the number of employers.",
+        "Distinct company job boards with at least one open posting, under the same two rules as livePostings (not withdrawn, dated within the last 30 days), counted in the pass named by companiesAsOf (companiesCarried is true when that pass kept an earlier count). A count of BOARDS, not of employers: an employer running several boards is counted once per board, so this is a floor on the number of employers.",
       freshnessWindowDays: FRESH_WINDOW_DAYS,
       // A COUNT A CALLER CANNOT WALK MUST SAY SO. Every figure on this
       // endpoint is the BOARD's — the same numbers the website publishes —
@@ -2410,8 +2592,10 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
             // count — so it remains the loosest of our closure figures by
             // exactly that much, and says so rather than leaving a caller to
             // discover it by subtraction.
+            // EVENTS, NOT ROLES (S14X-192): a posting that came down, came
+            // back and came down again is two events here.
             closuresLogged90dBasis:
-              "Roles an employer took down, over the window: same-title re-listings are excluded, and so are batches the collector flagged as a suspect feed when it wrote them. It is still looser than the per-employer and per-field fill figures, which additionally drop batches identifiable as collection failures only in hindsight (the history written before batch stamping shipped). Where the two disagree, this number is the larger. It is a count, not a rate, and not a time-to-fill.",
+              "Closure events over the window (a posting that came down more than once counts each time): same-title re-listings are excluded, and so are batches the collector flagged as a suspect feed when it wrote them. It is still looser than the per-employer and per-field fill figures, which additionally drop batches identifiable as collection failures only in hindsight (the history written before batch stamping shipped). Where the two disagree, this number is the larger. It is a count, not a rate, and not a time-to-fill.",
             medianDaysOpen: num(ghost.median_days_open),
             // A PUBLISHED FIELD IS NOT SILENTLY DROPPED — IT IS QUALIFIED.
             //
@@ -2450,7 +2634,7 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
                   horizonDays: 14,
                   windowDays: num((fillCurve.rows[0] ?? {}).window_days),
                   basis:
-                    "Aalen-Johansen cumulative incidence of a genuine fill by day 14, measured from the employer's own stated post date and from no other date. Postings still open, and postings that passed the 30-day freshness cap, are right-censored rather than excluded; same-title re-listings are a competing event, not a fill. fillRate14Lo/Hi is a 95% interval from Greenwood's formula on the event-free survival, carried across by the observed fill share — an APPROXIMATION, exact only where that share is constant over the window. relistRate14 and any churn figure are FLOORS: the collector logs at most one re-list per role title per company per 24h. sufficient is the render gate (at least 25 roles at risk at day 14, at least 5 observed fills, CI half-width at most 0.15); datedCoverage is reported separately and says what share of that field's roles carry a company-stated date, so a caller can decide what the figure speaks for. medianDaysToFill is min{t <= 30 : R(t) >= 0.5}, read off the FILL cumulative incidence and not off the event-free survival: it is the day half of a field's roles have been genuinely filled, and re-listings do not move it. It is null whenever medianCensored is true, meaning the fill incidence never reached one half inside the 30 days we can observe and no median exists inside our record — a bound, never a number. medianCensored is a finding, not an absence, on every row of this endpoint: the category estimator returns a row only where at least p_min_n observations back it. asOf is when THESE rows were computed by the hourly refresh, which can be earlier than the cache around them: when carriedForward is true the last refresh could not recompute the curve inside its budget and kept the previous rows, and asOf is that earlier run's stamp.",
+                    "Aalen-Johansen cumulative incidence of a genuine fill by day 14, measured from the employer's own stated post date and from no other date. WHICH ROLES ARE ADMITTED (since 20261012122000): the 14-day pool holds only roles on job boards read in full that have a watch floor (the date from which takedowns there are observed), posted after that floor, each entering at the later of when we first saw it and the floor, so a role already up when watching began is counted from the floor (delayed entry); nAtRisk14 counts the roles in that pool and admittedBoards14 the boards it pools. admittedBoards30 counts the boards admitted to the field's day-30 figure (shown on the site's field table, not served here): a board read in full with a watch floor that logged at least five takedowns, in any field, in the 90 days before the cohort window. A field's figure therefore speaks for the boards it admits, not for every posting in the field. Postings still open, and postings that passed the 30-day freshness cap, are right-censored rather than excluded; same-title re-listings are a competing event, not a fill. fillRate14Lo/Hi is a 95% interval from Greenwood's formula on the event-free survival, carried across by the observed fill share — an APPROXIMATION, exact only where that share is constant over the window. relistRate14 and any churn figure are FLOORS: the collector logs at most one re-list per role title per company per 24h. sufficient is the render gate (at least 25 roles at risk at day 14, at least 5 observed fills, CI half-width at most 0.15); datedCoverage is reported separately and says what share of that field's roles carry a company-stated date, so a caller can decide what the figure speaks for. medianDaysToFill is min{t <= 30 : R(t) >= 0.5}, read off the FILL cumulative incidence and not off the event-free survival: it is the day half of a field's roles have been genuinely filled, and re-listings do not move it. It is null whenever medianCensored is true, meaning the fill incidence never reached one half inside the 30 days we can observe and no median exists inside our record — a bound, never a number. medianCensored is a finding, not an absence, on every row of this endpoint: the category estimator returns a row only where at least p_min_n observations back it. asOf is when THESE rows were computed by the hourly refresh, which can be earlier than the cache around them: when carriedForward is true the last refresh could not recompute the curve inside its budget and kept the previous rows, and asOf is that earlier run's stamp.",
                   // THE PART'S OWN STAMP, NOT THE CACHE ROOT'S. A curve carried
                   // forward from an earlier run is older than the ghost_stats
                   // beside it, and dating it with the root would publish it as
@@ -2513,13 +2697,18 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
                     medianCensored: r.median_censored === true,
                     datedCoverage: num(r.dated_coverage),
                     sufficient: r.sufficient === true,
+                    // How many boards each figure pools (S14X-277): null on
+                    // a row written before the admission rule, never zero.
+                    admittedBoards14: num(r.admitted_boards_14),
+                    admittedBoards30: num(r.admitted_boards_30),
                   })),
                 }
               : null,
             observedDays: num(ghost.observed_days),
             statedPostDateCoveragePct: num(ghost.posted_coverage_pct),
             companiesTracked: num(ghost.total_companies),
-            asOf: cacheAsOf,
+            asOf: ghostAsOf,
+            carriedForward: ghostKept,
           }
         : null,
       // HOW FRESH — and it is OUR re-check cadence, not a posting's age.
@@ -2582,6 +2771,6 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
       },
     },
     asOf: v.coverage?.openAt ?? v.refreshedAt ?? data?.updated_at ?? null,
-    basis: "livePostings is an exact count of postings /v1/jobs can return (live, inside the 30-day window), recounted every ~15 minutes. trackedPostings includes postings the employer has since withdrawn. feedFreshness and bySource come from a rollup recomputed every 30 minutes and each carries its own asOf — the per-source totals stand on a wider population than livePostings, named in bySource.population.",
+    basis: "livePostings is an exact count of postings /v1/jobs can return (live, inside the 30-day window), recounted every ~15 minutes. trackedPostings includes postings the employer has since withdrawn. feedFreshness and bySource come from a rollup and each carries its own asOf — the per-source totals stand on a wider population than livePostings, named in bySource.population.",
   }, 200, headers);
 }

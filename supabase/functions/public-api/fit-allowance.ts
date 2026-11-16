@@ -17,10 +17,15 @@
 //   - a key that is neither is refused, and told where a confirmed one comes
 //     from.
 //
-// The count is api_usage's own row for (key, today, "/v1/fit"), which
-// api_key_check has already incremented for the call being judged, so `used`
-// includes it: call 25 is allowed and call 26 is refused. A malformed body
-// spends a call, exactly as it spends one of the key's daily quota.
+// The count is api_usage's calls today on both fit doors, which
+// api_key_check has already incremented for the call being judged, less the
+// calls that scored nothing, so `used` includes this call: call 25 is allowed
+// and call 26 is refused. A SCORED CALL SPENDS THE ALLOWANCE; ONE THAT SCORED
+// NOTHING DOES NOT (S14X-132): a malformed body, a résumé too short or with no
+// occupation in it, a search that found nothing, a refusal or a scorer that
+// failed each gives its call back through api_key_fit_unscored, which the
+// reader subtracts. A non-POST /v1/fit is refused before the key is metered.
+// The key's daily request quota still counts every call.
 //
 // The tier test stays in index.ts (isPaidKeyTier, the shared predicate): this
 // module takes its answer as a boolean and never reads a tier string.
