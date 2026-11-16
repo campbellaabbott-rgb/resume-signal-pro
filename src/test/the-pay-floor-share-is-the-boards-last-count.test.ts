@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * THE PAY-FLOOR SHARE IS THE BOARD'S LAST COUNT (S14X-276, C-S14-124).
+ * THE PAY-FLOOR SHARE IS THE BOARD'S LAST COUNT (S14X-276, C-S14-123).
  *
  * Every /v1/jobs response under a salary floor stated statedPayShare 0.237,
  * a constant measured once on 2026-09-27 and typed into the source with that

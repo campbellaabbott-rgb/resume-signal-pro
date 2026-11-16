@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * THE FIELD CURVE NAMES THE BOARDS IT ADMITS (S14X-277, C-S14-125).
+ * THE FIELD CURVE NAMES THE BOARDS IT ADMITS (S14X-277, C-S14-124).
  *
  * Since 20261012122000 get_category_fill_curve admits a role to the 14-day
  * pool only from a board read in full that has a watch floor, posted after

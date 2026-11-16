@@ -177,8 +177,10 @@ BEGIN
     RAISE EXCEPTION '20261112200000: api_fit_unscored must have row level security on';
   END IF;
   FOREACH v_role IN ARRAY ARRAY['anon', 'authenticated'] LOOP
-    IF has_table_privilege(v_role, v_tab, 'SELECT') OR has_table_privilege(v_role, v_tab, 'INSERT')
-       OR has_table_privilege(v_role, v_tab, 'UPDATE') OR has_table_privilege(v_role, v_tab, 'DELETE') THEN
+    IF has_table_privilege(v_role, 'public.api_fit_unscored', 'SELECT')
+       OR has_table_privilege(v_role, 'public.api_fit_unscored', 'INSERT')
+       OR has_table_privilege(v_role, 'public.api_fit_unscored', 'UPDATE')
+       OR has_table_privilege(v_role, 'public.api_fit_unscored', 'DELETE') THEN
       RAISE EXCEPTION '20261112200000: % can reach api_fit_unscored', v_role;
     END IF;
   END LOOP;
