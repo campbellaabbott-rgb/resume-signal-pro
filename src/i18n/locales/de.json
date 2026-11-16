@@ -5665,7 +5665,9 @@
     "missing": "Diese Seite braucht den Abmeldelink aus einer unserer E-Mails.",
     "error": "Das Abbestellen hat gerade nicht geklappt. Versuchen Sie es gleich noch einmal.",
     "home": "Zurück zu Resume Booster",
-    "agentDigest": "Die morgendlichen Shortlist-E-Mails beenden. Ihr Agent läuft weiter, und seine Vorschläge bleiben in Ihrem Konto."
+    "agentDigest": "Die morgendlichen Shortlist-E-Mails beenden. Der Bewerbungsagent wurde eingestellt und bewirbt sich nirgendwo; damit enden auch alle seine E-Mails, die an diese Adresse noch geplant sind.",
+    "metaTitle": "Abbestellen | Resume Booster",
+    "metaDescription": "E-Mails von Resume Booster abbestellen."
   },
   "purchaseTerms": {
     "finalSale": "Alle Käufe sind endgültig.",

@@ -5665,7 +5665,9 @@
     "missing": "Kailangan ng pahinang ito ang unsubscribe link mula sa isa sa aming mga email.",
     "error": "Hindi ito natigil ngayon. Subukan muli ang button maya-maya.",
     "home": "Bumalik sa Resume Booster",
-    "agentDigest": "Itigil ang mga email ng shortlist tuwing umaga. Patuloy na tatakbo ang iyong agent, at mananatili sa iyong account ang mga pinili nito."
+    "agentDigest": "Itigil ang mga email ng shortlist tuwing umaga. Itinigil na ang apply agent at wala itong inaaplayan; pinahihinto nito ang anumang email nito na naka-iskedyul pa sa address na ito.",
+    "metaTitle": "Mag-unsubscribe | Resume Booster",
+    "metaDescription": "Itigil ang mga email mula sa Resume Booster."
   },
   "purchaseTerms": {
     "finalSale": "Final ang lahat ng benta.",

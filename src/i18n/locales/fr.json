@@ -5720,7 +5720,9 @@
     "missing": "Cette page a besoin du lien de désabonnement de l'un de nos e-mails.",
     "error": "Impossible de vous désabonner pour le moment. Réessayez le bouton dans un instant.",
     "home": "Retour à Resume Booster",
-    "agentDigest": "Arrêter les e-mails de la sélection du matin. Votre agent continue de tourner et ses choix restent dans votre compte."
+    "agentDigest": "Arrêter les e-mails de la sélection du matin. L'agent de candidature a été retiré et ne postule nulle part ; cela arrête tous ses e-mails encore programmés vers cette adresse.",
+    "metaTitle": "Se désabonner | Resume Booster",
+    "metaDescription": "Ne plus recevoir les e-mails de Resume Booster."
   },
   "purchaseTerms": {
     "finalSale": "Toutes les ventes sont définitives.",

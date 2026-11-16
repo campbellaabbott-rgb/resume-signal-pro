@@ -5665,7 +5665,9 @@
     "missing": "This page needs the unsubscribe link from one of our emails.",
     "error": "Could not turn them off right now. Try the button again shortly.",
     "home": "Back to Resume Booster",
-    "agentDigest": "Stop the morning shortlist emails. Your agent keeps running, and its picks stay in your account."
+    "agentDigest": "Stop the morning shortlist emails. The apply agent has been retired and applies nowhere; this stops any of its emails still scheduled to this address.",
+    "metaTitle": "Unsubscribe | Resume Booster",
+    "metaDescription": "Turn off emails from Resume Booster."
   },
   "purchaseTerms": {
     "finalSale": "All sales are final.",

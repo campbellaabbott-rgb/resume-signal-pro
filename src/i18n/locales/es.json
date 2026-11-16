@@ -5720,7 +5720,9 @@
     "missing": "Esta página necesita el enlace para darse de baja de uno de nuestros correos.",
     "error": "No se pudo completar ahora. Vuelve a pulsar el botón en un momento.",
     "home": "Volver a Resume Booster",
-    "agentDigest": "Dejar de recibir los correos de la lista de la mañana. Tu agente sigue funcionando y sus selecciones siguen en tu cuenta."
+    "agentDigest": "Dejar de recibir los correos de la lista de la mañana. El agente de candidaturas se retiró y no se postula en ningún sitio; esto detiene cualquier correo suyo que aún esté programado para esta dirección.",
+    "metaTitle": "Darse de baja | Resume Booster",
+    "metaDescription": "Deja de recibir correos de Resume Booster."
   },
   "purchaseTerms": {
     "finalSale": "Todas las ventas son definitivas.",
