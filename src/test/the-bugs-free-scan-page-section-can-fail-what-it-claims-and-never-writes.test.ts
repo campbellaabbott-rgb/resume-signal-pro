@@ -61,7 +61,7 @@ process.stdout.write(out);
 const dirs: string[] = [];
 afterAll(() => { for (const d of dirs) { try { rmSync(d, { recursive: true, force: true }); } catch { /* best effort */ } } });
 
-function run(routes: Route[], ownerDecided: Record<string, string> = {}): { lines: string[]; calls: string[]; out: string } {
+function run(routes: Route[], ownerDecided: Record<string, unknown> = {}): { lines: string[]; calls: string[]; out: string } {
   const dir = mkdtempSync(join(tmpdir(), "vdbfsp-"));
   dirs.push(dir);
   mkdirSync(join(dir, "bin"));
@@ -321,6 +321,22 @@ describe("the owner lines", () => {
     expect(line(none.lines, "O3")[0], show(none.lines)).toMatch(/^INFO .*has not landed/);
     const blind = run(routes({ ...BUILT, fkr: NEW_FKR_OWNER }, { saveLead: null, notifyOwner: "notify-owner.2026-11-12.1" }), OWNERS);
     expect(verdict(blind.lines, "O3"), show(blind.lines)).toEqual(["FAIL"]);
+  });
+
+  it("an answer recorded as an object is judged by its choice, not by the words of its rule", () => {
+    const recorded = {
+      "S14X-012": { choice: "B", rule: "withdraw the drip promise" },
+      "S14X-101": { choice: "remove", rule: "remove the tips box; alerts carry counts or a reference only" },
+    };
+    const good = run(routes({ ...BUILT, fkr: NEW_FKR_OWNER }, ROUND), recorded);
+    for (const id of ["O1", "O2", "O3"]) expect(verdict(good.lines, id), `${id}\n${show(good.lines)}`).toEqual(["PASS"]);
+    const other = run(routes({ ...BUILT, fkr: NEW_FKR_OWNER }, ROUND), {
+      "S14X-012": { choice: "A", rule: "keep the drip; option B was weighed and refused" },
+      "S14X-101": { choice: "keep", rule: "do not remove the box yet" },
+    });
+    expect(line(other.lines, "O1")[0], show(other.lines)).toMatch(/^INFO .*decided "A"/);
+    expect(line(other.lines, "O2")[0], show(other.lines)).toMatch(/^INFO .*decided "keep"/);
+    expect(line(other.lines, "O3")[0], show(other.lines)).toMatch(/^INFO .*decided "keep"/);
   });
 
   it("a later build passes too (this round's build or later)", () => {

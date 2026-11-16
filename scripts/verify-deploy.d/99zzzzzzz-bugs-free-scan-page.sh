@@ -92,8 +92,10 @@ rm -f /tmp/vd_bfsp_page.html /tmp/vd_bfsp_entry.js /tmp/vd_bfsp_idx.js /tmp/vd_b
 VDFS_LEDGER="${VDFS_LEDGER:-docs/deploy-ledger.json}"
 
 # Owner answers, from the ledger the integrator writes: the decided value, or empty.
+# An answer is a string, or an object whose choice (or option) names it: the
+# plan records {choice, rule}, and the rule's words are not the answer.
 vdfs_owner() { # $1 key
-  VDFS_K="$1" node -e 'const fs=require("fs");let d=null;try{d=JSON.parse(fs.readFileSync(process.argv[1],"utf8"))}catch{}const o=d&&d.reservations&&d.reservations["bug-round"]&&d.reservations["bug-round"].ownerDecided;const v=o&&typeof o==="object"&&Object.prototype.hasOwnProperty.call(o,process.env.VDFS_K)?o[process.env.VDFS_K]:null;console.log(v===null||v===undefined?"":(typeof v==="string"?v:JSON.stringify(v)).replace(/\s+/g," ").slice(0,80)||"decided")' "$VDFS_LEDGER"
+  VDFS_K="$1" node -e 'const fs=require("fs");let d=null;try{d=JSON.parse(fs.readFileSync(process.argv[1],"utf8"))}catch{}const o=d&&d.reservations&&d.reservations["bug-round"]&&d.reservations["bug-round"].ownerDecided;const r=o&&typeof o==="object"&&Object.prototype.hasOwnProperty.call(o,process.env.VDFS_K)?o[process.env.VDFS_K]:null;const v=r&&typeof r==="object"&&typeof (r.choice??r.option)==="string"?(r.choice??r.option):r;console.log(v===null||v===undefined?"":(typeof v==="string"?v:JSON.stringify(v)).replace(/\s+/g," ").slice(0,80)||"decided")' "$VDFS_LEDGER"
 }
 vdfs_build() { # $1 function -> the x-fn-build header, or empty
   curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$1" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -ai '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//'
