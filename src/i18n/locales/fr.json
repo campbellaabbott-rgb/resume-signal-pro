@@ -6235,5 +6235,114 @@
       "minor_other": "{{count}} mineurs",
       "minor_many": "{{count}} mineurs"
     }
+  },
+  "edgeErrors": {
+    "rateLimited": {
+      "title": "Limite de requêtes atteinte",
+      "description": "Vous avez fait trop de requêtes. Attendez quelques minutes, puis réessayez."
+    },
+    "aiUnavailable": {
+      "title": "Service d'IA saturé",
+      "description": "Notre service d'IA est temporairement indisponible. Réessayez dans un instant."
+    },
+    "serviceUnavailable": {
+      "title": "Service indisponible",
+      "description": "Le service est temporairement indisponible. Réessayez sous peu."
+    },
+    "paymentRequired": {
+      "title": "Paiement requis",
+      "description": "Veuillez finaliser le paiement pour accéder à cette fonctionnalité."
+    },
+    "sessionUsed": {
+      "title": "Session expirée",
+      "description": "Cette session d'achat a déjà été utilisée. Contactez le support si vous avez besoin d'aide."
+    },
+    "invalidInput": {
+      "title": "Saisie non valide",
+      "description": "Vérifiez votre saisie et réessayez."
+    },
+    "aiTimeout": {
+      "title": "Délai de l'IA dépassé",
+      "description": "L'IA a mis plus de temps que prévu. Un nouvel essai fonctionne généralement : cliquez sur le bouton ci-dessous pour réessayer."
+    },
+    "aiBusy": {
+      "title": "IA saturée",
+      "description": "Notre service d'IA fait face à une forte demande. Patientez un instant, puis réessayez."
+    },
+    "aiOutage": {
+      "title": "Service d'IA saturé",
+      "description": "Notre service d'IA ne peut pas traiter de demandes pour le moment. Le problème vient de nous, pas de votre paiement. Réessayez dans quelques minutes."
+    },
+    "busyShort": {
+      "title": "Occupé pour le moment",
+      "description": "Le problème vient de nous, pas d'une limite que vous avez atteinte. Réessayez dans quelques minutes."
+    },
+    "busyLong": {
+      "title": "Trop de demandes pour le moment",
+      "description": "Cet outil a reçu trop de demandes pour le moment. Réessayez plus tard."
+    },
+    "status400": {
+      "title": "Requête non valide",
+      "description": "Votre requête pose un problème. Vérifiez votre saisie et réessayez."
+    },
+    "status401": {
+      "title": "Authentification requise",
+      "description": "Vérifiez votre achat ou connectez-vous pour continuer."
+    },
+    "status403": {
+      "title": "Accès refusé",
+      "description": "Vous n'avez pas l'autorisation d'accéder à cette ressource."
+    },
+    "status404": {
+      "title": "Introuvable",
+      "description": "La ressource demandée est introuvable."
+    },
+    "status409": {
+      "title": "Déjà traité",
+      "description": "Cette demande a déjà été traitée."
+    },
+    "status422": {
+      "title": "Traitement impossible",
+      "description": "Nous n'avons pas pu traiter ce qui a été envoyé. S'il s'agissait d'un fichier, essayez un .docx ou collez le texte de votre CV."
+    },
+    "status429": {
+      "title": "Trop de requêtes",
+      "description": "Vous avez atteint la limite horaire. Réessayez plus tard, ou collez plutôt le texte de votre CV."
+    },
+    "status500": {
+      "title": "Erreur du serveur",
+      "description": "Un problème est survenu de notre côté. Réessayez."
+    },
+    "status502": {
+      "title": "Service indisponible",
+      "description": "Notre service est temporairement indisponible. Réessayez dans un instant."
+    },
+    "status503": {
+      "title": "Service saturé",
+      "description": "Notre service d'IA est actuellement saturé. Réessayez dans quelques instants."
+    },
+    "status504": {
+      "title": "Délai de réponse de l'IA dépassé",
+      "description": "L'IA a mis plus de temps que prévu à répondre. Un nouvel essai fonctionne généralement : réessayez."
+    },
+    "unknown": {
+      "title": "Un problème est survenu",
+      "description": "Une erreur inattendue s'est produite. Réessayez."
+    },
+    "network": {
+      "title": "Erreur de connexion",
+      "description": "Impossible de se connecter au serveur. Vérifiez votre connexion internet et réessayez."
+    },
+    "relay": {
+      "title": "Erreur du service",
+      "description": "Un problème est survenu lors de la connexion à notre service. Réessayez."
+    },
+    "non2xx": {
+      "title": "Échec de la requête",
+      "description": "La requête n'a pas pu aboutir. Réessayez."
+    },
+    "plain": {
+      "title": "Erreur"
+    }
   }
 }

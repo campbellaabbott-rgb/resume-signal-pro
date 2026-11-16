@@ -6175,5 +6175,114 @@
       "minor_one": "{{count}} klein",
       "minor_other": "{{count}} klein"
     }
+  },
+  "edgeErrors": {
+    "rateLimited": {
+      "title": "Limiet bereikt",
+      "description": "Je hebt te veel verzoeken gedaan. Wacht een paar minuten en probeer het opnieuw."
+    },
+    "aiUnavailable": {
+      "title": "AI-dienst druk",
+      "description": "Onze AI-dienst is tijdelijk niet beschikbaar. Probeer het zo meteen opnieuw."
+    },
+    "serviceUnavailable": {
+      "title": "Dienst niet beschikbaar",
+      "description": "De dienst is tijdelijk niet beschikbaar. Probeer het binnenkort opnieuw."
+    },
+    "paymentRequired": {
+      "title": "Betaling vereist",
+      "description": "Rond de betaling af om deze functie te gebruiken."
+    },
+    "sessionUsed": {
+      "title": "Sessie verlopen",
+      "description": "Deze aankoopsessie is al gebruikt. Neem contact op met support als je hulp nodig hebt."
+    },
+    "invalidInput": {
+      "title": "Ongeldige invoer",
+      "description": "Controleer je invoer en probeer het opnieuw."
+    },
+    "aiTimeout": {
+      "title": "Time-out van de AI",
+      "description": "De AI had meer tijd nodig dan verwacht. Opnieuw proberen werkt meestal: klik op de knop hieronder om het opnieuw te proberen."
+    },
+    "aiBusy": {
+      "title": "AI druk",
+      "description": "Onze AI-dienst krijgt veel verzoeken. Wacht even en probeer het opnieuw."
+    },
+    "aiOutage": {
+      "title": "AI-dienst druk",
+      "description": "Onze AI-dienst kan nu geen verzoeken aannemen. Dat ligt aan ons, niet aan je betaling. Probeer het over een paar minuten opnieuw."
+    },
+    "busyShort": {
+      "title": "Nu even druk",
+      "description": "Dat ligt aan ons, niet aan een limiet die jij hebt bereikt. Probeer het over een paar minuten opnieuw."
+    },
+    "busyLong": {
+      "title": "Voorlopig te veel verzoeken",
+      "description": "Deze tool heeft voorlopig te veel verzoeken gekregen. Probeer het later opnieuw."
+    },
+    "status400": {
+      "title": "Ongeldig verzoek",
+      "description": "Er was een probleem met je verzoek. Controleer je invoer en probeer het opnieuw."
+    },
+    "status401": {
+      "title": "Aanmelding vereist",
+      "description": "Bevestig je aankoop of log in om verder te gaan."
+    },
+    "status403": {
+      "title": "Toegang geweigerd",
+      "description": "Je hebt geen toestemming om dit te openen."
+    },
+    "status404": {
+      "title": "Niet gevonden",
+      "description": "Wat je opvroeg, is niet gevonden."
+    },
+    "status409": {
+      "title": "Al verwerkt",
+      "description": "Dit verzoek is al verwerkt."
+    },
+    "status422": {
+      "title": "Kon niet worden verwerkt",
+      "description": "We konden niet verwerken wat er is verstuurd. Was het een bestand, probeer dan een .docx of plak de tekst van je cv."
+    },
+    "status429": {
+      "title": "Te veel verzoeken",
+      "description": "Je hebt de limiet per uur bereikt. Probeer het later opnieuw, of plak in plaats daarvan de tekst van je cv."
+    },
+    "status500": {
+      "title": "Serverfout",
+      "description": "Er ging bij ons iets mis. Probeer het opnieuw."
+    },
+    "status502": {
+      "title": "Dienst niet beschikbaar",
+      "description": "Onze dienst is tijdelijk niet beschikbaar. Probeer het zo meteen opnieuw."
+    },
+    "status503": {
+      "title": "Dienst druk",
+      "description": "Onze AI-dienst is momenteel druk. Probeer het over enkele ogenblikken opnieuw."
+    },
+    "status504": {
+      "title": "Time-out van het AI-antwoord",
+      "description": "De AI had meer tijd nodig dan verwacht om te antwoorden. Opnieuw proberen werkt meestal: probeer het opnieuw."
+    },
+    "unknown": {
+      "title": "Er ging iets mis",
+      "description": "Er is een onverwachte fout opgetreden. Probeer het opnieuw."
+    },
+    "network": {
+      "title": "Verbindingsfout",
+      "description": "Kan geen verbinding maken met de server. Controleer je internetverbinding en probeer het opnieuw."
+    },
+    "relay": {
+      "title": "Dienstfout",
+      "description": "Er was een probleem bij het verbinden met onze dienst. Probeer het opnieuw."
+    },
+    "non2xx": {
+      "title": "Verzoek mislukt",
+      "description": "Het verzoek kon niet worden voltooid. Probeer het opnieuw."
+    },
+    "plain": {
+      "title": "Fout"
+    }
   }
 }

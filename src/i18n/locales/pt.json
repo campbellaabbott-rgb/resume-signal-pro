@@ -6235,5 +6235,114 @@
       "minor_other": "{{count}} menores",
       "minor_many": "{{count}} menores"
     }
+  },
+  "edgeErrors": {
+    "rateLimited": {
+      "title": "Limite de solicitações atingido",
+      "description": "Você fez solicitações demais. Aguarde alguns minutos e tente novamente."
+    },
+    "aiUnavailable": {
+      "title": "Serviço de IA ocupado",
+      "description": "Nosso serviço de IA está temporariamente indisponível. Tente novamente em instantes."
+    },
+    "serviceUnavailable": {
+      "title": "Serviço indisponível",
+      "description": "O serviço está temporariamente indisponível. Tente novamente em breve."
+    },
+    "paymentRequired": {
+      "title": "Pagamento necessário",
+      "description": "Conclua o pagamento para acessar este recurso."
+    },
+    "sessionUsed": {
+      "title": "Sessão expirada",
+      "description": "Esta sessão de compra já foi usada. Fale com o suporte se precisar de ajuda."
+    },
+    "invalidInput": {
+      "title": "Dados inválidos",
+      "description": "Confira os dados informados e tente novamente."
+    },
+    "aiTimeout": {
+      "title": "Tempo da IA esgotado",
+      "description": "A IA demorou mais que o esperado. Uma nova tentativa costuma funcionar: clique no botão abaixo para tentar novamente."
+    },
+    "aiBusy": {
+      "title": "IA ocupada",
+      "description": "Nosso serviço de IA está com alta demanda. Aguarde um momento e tente novamente."
+    },
+    "aiOutage": {
+      "title": "Serviço de IA ocupado",
+      "description": "Nosso serviço de IA não consegue atender solicitações agora. O problema é nosso, não do seu pagamento. Tente novamente em alguns minutos."
+    },
+    "busyShort": {
+      "title": "Ocupado agora",
+      "description": "O problema é nosso, não um limite que você atingiu. Tente novamente em alguns minutos."
+    },
+    "busyLong": {
+      "title": "Solicitações demais por enquanto",
+      "description": "Esta ferramenta recebeu solicitações demais por enquanto. Tente novamente mais tarde."
+    },
+    "status400": {
+      "title": "Solicitação inválida",
+      "description": "Houve um problema com a sua solicitação. Confira os dados informados e tente novamente."
+    },
+    "status401": {
+      "title": "Autenticação necessária",
+      "description": "Confirme sua compra ou entre na sua conta para continuar."
+    },
+    "status403": {
+      "title": "Acesso negado",
+      "description": "Você não tem permissão para acessar este recurso."
+    },
+    "status404": {
+      "title": "Não encontrado",
+      "description": "O recurso solicitado não foi encontrado."
+    },
+    "status409": {
+      "title": "Já processado",
+      "description": "Esta solicitação já foi processada."
+    },
+    "status422": {
+      "title": "Não foi possível processar",
+      "description": "Não conseguimos processar o que foi enviado. Se era um arquivo, tente um .docx ou cole o texto do seu currículo."
+    },
+    "status429": {
+      "title": "Solicitações demais",
+      "description": "Você atingiu o limite por hora. Tente novamente mais tarde ou cole o texto do seu currículo."
+    },
+    "status500": {
+      "title": "Erro no servidor",
+      "description": "Algo deu errado do nosso lado. Tente novamente."
+    },
+    "status502": {
+      "title": "Serviço indisponível",
+      "description": "Nosso serviço está temporariamente indisponível. Tente novamente em instantes."
+    },
+    "status503": {
+      "title": "Serviço ocupado",
+      "description": "Nosso serviço de IA está ocupado no momento. Tente novamente em alguns instantes."
+    },
+    "status504": {
+      "title": "Tempo de resposta da IA esgotado",
+      "description": "A IA demorou mais que o esperado para responder. Uma nova tentativa costuma funcionar: tente novamente."
+    },
+    "unknown": {
+      "title": "Algo deu errado",
+      "description": "Ocorreu um erro inesperado. Tente novamente."
+    },
+    "network": {
+      "title": "Erro de conexão",
+      "description": "Não foi possível conectar ao servidor. Verifique sua conexão com a internet e tente novamente."
+    },
+    "relay": {
+      "title": "Erro no serviço",
+      "description": "Houve um problema ao conectar ao nosso serviço. Tente novamente."
+    },
+    "non2xx": {
+      "title": "Falha na solicitação",
+      "description": "Não foi possível concluir a solicitação. Tente novamente."
+    },
+    "plain": {
+      "title": "Erro"
+    }
   }
 }

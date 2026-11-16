@@ -6175,5 +6175,114 @@
       "minor_one": "{{count}} gering",
       "minor_other": "{{count}} gering"
     }
+  },
+  "edgeErrors": {
+    "rateLimited": {
+      "title": "Anfragelimit erreicht",
+      "description": "Du hast zu viele Anfragen gestellt. Bitte warte ein paar Minuten und versuche es dann erneut."
+    },
+    "aiUnavailable": {
+      "title": "KI-Dienst ausgelastet",
+      "description": "Unser KI-Dienst ist vorübergehend nicht verfügbar. Bitte versuche es gleich noch einmal."
+    },
+    "serviceUnavailable": {
+      "title": "Dienst nicht verfügbar",
+      "description": "Der Dienst ist vorübergehend nicht verfügbar. Bitte versuche es in Kürze erneut."
+    },
+    "paymentRequired": {
+      "title": "Zahlung erforderlich",
+      "description": "Bitte schließe die Zahlung ab, um diese Funktion zu nutzen."
+    },
+    "sessionUsed": {
+      "title": "Sitzung abgelaufen",
+      "description": "Diese Kaufsitzung wurde bereits verwendet. Wende dich an den Support, wenn du Hilfe brauchst."
+    },
+    "invalidInput": {
+      "title": "Ungültige Eingabe",
+      "description": "Bitte prüfe deine Eingabe und versuche es erneut."
+    },
+    "aiTimeout": {
+      "title": "KI-Zeitüberschreitung",
+      "description": "Die KI hat länger gebraucht als erwartet. Ein neuer Versuch klappt meistens – klicke unten auf die Schaltfläche, um es erneut zu versuchen."
+    },
+    "aiBusy": {
+      "title": "KI ausgelastet",
+      "description": "Unser KI-Dienst ist gerade stark gefragt. Bitte warte einen Moment und versuche es erneut."
+    },
+    "aiOutage": {
+      "title": "KI-Dienst ausgelastet",
+      "description": "Unser KI-Dienst nimmt gerade keine Anfragen an. Das liegt an uns, nicht an deiner Zahlung. Bitte versuche es in ein paar Minuten erneut."
+    },
+    "busyShort": {
+      "title": "Gerade ausgelastet",
+      "description": "Das liegt an uns, nicht an einem Limit, das du erreicht hast. Bitte versuche es in ein paar Minuten erneut."
+    },
+    "busyLong": {
+      "title": "Vorerst zu viele Anfragen",
+      "description": "Dieses Werkzeug hat vorerst zu viele Anfragen erhalten. Bitte versuche es später erneut."
+    },
+    "status400": {
+      "title": "Ungültige Anfrage",
+      "description": "Bei deiner Anfrage ist ein Problem aufgetreten. Bitte prüfe deine Eingabe und versuche es erneut."
+    },
+    "status401": {
+      "title": "Anmeldung erforderlich",
+      "description": "Bitte bestätige deinen Kauf oder melde dich an, um fortzufahren."
+    },
+    "status403": {
+      "title": "Zugriff verweigert",
+      "description": "Du hast keine Berechtigung, das zu öffnen."
+    },
+    "status404": {
+      "title": "Nicht gefunden",
+      "description": "Das Angeforderte wurde nicht gefunden."
+    },
+    "status409": {
+      "title": "Bereits verarbeitet",
+      "description": "Diese Anfrage wurde bereits verarbeitet."
+    },
+    "status422": {
+      "title": "Konnte nicht verarbeitet werden",
+      "description": "Wir konnten das Gesendete nicht verarbeiten. Falls es eine Datei war, versuche es mit einer .docx-Datei oder füge den Text deines Lebenslaufs ein."
+    },
+    "status429": {
+      "title": "Zu viele Anfragen",
+      "description": "Du hast das stündliche Limit erreicht. Bitte versuche es später erneut oder füge stattdessen den Text deines Lebenslaufs ein."
+    },
+    "status500": {
+      "title": "Serverfehler",
+      "description": "Bei uns ist etwas schiefgelaufen. Bitte versuche es erneut."
+    },
+    "status502": {
+      "title": "Dienst nicht verfügbar",
+      "description": "Unser Dienst ist vorübergehend nicht verfügbar. Bitte versuche es gleich noch einmal."
+    },
+    "status503": {
+      "title": "Dienst ausgelastet",
+      "description": "Unser KI-Dienst ist gerade ausgelastet. Bitte versuche es in ein paar Augenblicken erneut."
+    },
+    "status504": {
+      "title": "Zeitüberschreitung der KI",
+      "description": "Die KI hat länger als erwartet für die Antwort gebraucht. Ein neuer Versuch klappt meistens – bitte versuche es erneut."
+    },
+    "unknown": {
+      "title": "Etwas ist schiefgelaufen",
+      "description": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut."
+    },
+    "network": {
+      "title": "Verbindungsfehler",
+      "description": "Keine Verbindung zum Server. Bitte prüfe deine Internetverbindung und versuche es erneut."
+    },
+    "relay": {
+      "title": "Dienstfehler",
+      "description": "Bei der Verbindung zu unserem Dienst ist ein Problem aufgetreten. Bitte versuche es erneut."
+    },
+    "non2xx": {
+      "title": "Anfrage fehlgeschlagen",
+      "description": "Die Anfrage konnte nicht abgeschlossen werden. Bitte versuche es erneut."
+    },
+    "plain": {
+      "title": "Fehler"
+    }
   }
 }

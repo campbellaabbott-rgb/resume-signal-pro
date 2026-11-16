@@ -6175,5 +6175,114 @@
       "minor_one": "{{count}} maliit",
       "minor_other": "{{count}} maliit"
     }
+  },
+  "edgeErrors": {
+    "rateLimited": {
+      "title": "Naabot na ang limit",
+      "description": "Masyado kang maraming request. Maghintay ng ilang minuto at subukan ulit."
+    },
+    "aiUnavailable": {
+      "title": "Abala ang AI service",
+      "description": "Pansamantalang hindi available ang aming AI service. Subukan ulit maya-maya."
+    },
+    "serviceUnavailable": {
+      "title": "Hindi available ang serbisyo",
+      "description": "Pansamantalang hindi available ang serbisyo. Subukan ulit sa lalong madaling panahon."
+    },
+    "paymentRequired": {
+      "title": "Kailangan ng bayad",
+      "description": "Kumpletuhin ang bayad para magamit ang feature na ito."
+    },
+    "sessionUsed": {
+      "title": "Expired na ang session",
+      "description": "Nagamit na ang purchase session na ito. Makipag-ugnayan sa support kung kailangan mo ng tulong."
+    },
+    "invalidInput": {
+      "title": "Hindi wastong input",
+      "description": "Pakisuri ang iyong input at subukan ulit."
+    },
+    "aiTimeout": {
+      "title": "Nag-time out ang AI",
+      "description": "Mas natagalan ang AI kaysa inaasahan. Kadalasan gumagana ito sa muling pagsubok—i-click ang button sa ibaba para subukan ulit."
+    },
+    "aiBusy": {
+      "title": "Abala ang AI",
+      "description": "Maraming gumagamit ng aming AI service ngayon. Maghintay sandali at subukan ulit."
+    },
+    "aiOutage": {
+      "title": "Abala ang AI service",
+      "description": "Hindi makatanggap ng request ang aming AI service ngayon. Problema ito sa panig namin, hindi sa bayad mo. Subukan ulit pagkalipas ng ilang minuto."
+    },
+    "busyShort": {
+      "title": "Abala ngayon",
+      "description": "Problema ito sa panig namin, hindi limit na naabot mo. Subukan ulit pagkalipas ng ilang minuto."
+    },
+    "busyLong": {
+      "title": "Masyadong maraming request sa ngayon",
+      "description": "Masyadong maraming request ang natanggap ng tool na ito sa ngayon. Subukan ulit mamaya."
+    },
+    "status400": {
+      "title": "Hindi wastong request",
+      "description": "Nagkaproblema sa iyong request. Pakisuri ang iyong input at subukan ulit."
+    },
+    "status401": {
+      "title": "Kailangang mag-authenticate",
+      "description": "I-verify ang iyong binili o mag-log in para magpatuloy."
+    },
+    "status403": {
+      "title": "Tinanggihan ang access",
+      "description": "Wala kang pahintulot na buksan ito."
+    },
+    "status404": {
+      "title": "Hindi nahanap",
+      "description": "Hindi nahanap ang hinihinging resource."
+    },
+    "status409": {
+      "title": "Naproseso na",
+      "description": "Naproseso na ang request na ito."
+    },
+    "status422": {
+      "title": "Hindi ito maproseso",
+      "description": "Hindi namin maproseso ang ipinadala. Kung file ito, subukan ang .docx o i-paste ang text ng resume mo."
+    },
+    "status429": {
+      "title": "Masyadong maraming request",
+      "description": "Naabot mo na ang limit kada oras. Subukan ulit mamaya, o i-paste na lang ang text ng resume mo."
+    },
+    "status500": {
+      "title": "Error sa server",
+      "description": "May nagkamali sa panig namin. Subukan ulit."
+    },
+    "status502": {
+      "title": "Hindi available ang serbisyo",
+      "description": "Pansamantalang hindi available ang aming serbisyo. Subukan ulit maya-maya."
+    },
+    "status503": {
+      "title": "Abala ang serbisyo",
+      "description": "Abala ang aming AI service sa ngayon. Subukan ulit pagkalipas ng ilang sandali."
+    },
+    "status504": {
+      "title": "Nag-time out ang sagot ng AI",
+      "description": "Mas natagalan bago sumagot ang AI kaysa inaasahan. Kadalasan gumagana ito sa muling pagsubok—pakisubukan ulit."
+    },
+    "unknown": {
+      "title": "May nagkamali",
+      "description": "Nagkaroon ng hindi inaasahang error. Subukan ulit."
+    },
+    "network": {
+      "title": "Error sa koneksyon",
+      "description": "Hindi makakonekta sa server. Pakisuri ang iyong internet connection at subukan ulit."
+    },
+    "relay": {
+      "title": "Error sa serbisyo",
+      "description": "Nagkaproblema sa pagkonekta sa aming serbisyo. Subukan ulit."
+    },
+    "non2xx": {
+      "title": "Hindi natuloy ang request",
+      "description": "Hindi makumpleto ang request. Subukan ulit."
+    },
+    "plain": {
+      "title": "Error"
+    }
   }
 }

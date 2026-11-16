@@ -6175,5 +6175,114 @@
       "minor_one": "{{count}} minor",
       "minor_other": "{{count}} minor"
     }
+  },
+  "edgeErrors": {
+    "rateLimited": {
+      "title": "Rate limit reached",
+      "description": "You've made too many requests. Please wait a few minutes and try again."
+    },
+    "aiUnavailable": {
+      "title": "AI service busy",
+      "description": "Our AI service is temporarily unavailable. Please try again in a moment."
+    },
+    "serviceUnavailable": {
+      "title": "Service unavailable",
+      "description": "The service is temporarily unavailable. Please try again shortly."
+    },
+    "paymentRequired": {
+      "title": "Payment required",
+      "description": "Please complete payment to access this feature."
+    },
+    "sessionUsed": {
+      "title": "Session expired",
+      "description": "This purchase session has already been used. Please contact support if you need help."
+    },
+    "invalidInput": {
+      "title": "Invalid input",
+      "description": "Please check your input and try again."
+    },
+    "aiTimeout": {
+      "title": "AI timeout",
+      "description": "The AI took longer than expected. This usually works on a retry—click the button below to try again."
+    },
+    "aiBusy": {
+      "title": "AI busy",
+      "description": "Our AI service is handling high demand. Please wait a moment and try again."
+    },
+    "aiOutage": {
+      "title": "AI service busy",
+      "description": "Our AI service can't take requests right now. This is on our side, not a problem with your payment. Please try again in a few minutes."
+    },
+    "busyShort": {
+      "title": "Busy right now",
+      "description": "This is on our side, not a limit you reached. Please try again in a few minutes."
+    },
+    "busyLong": {
+      "title": "Too busy for now",
+      "description": "This tool has had too many requests for now. Please try again later."
+    },
+    "status400": {
+      "title": "Invalid request",
+      "description": "There was a problem with your request. Please check your input and try again."
+    },
+    "status401": {
+      "title": "Authentication required",
+      "description": "Please verify your purchase or log in to continue."
+    },
+    "status403": {
+      "title": "Access denied",
+      "description": "You don't have permission to access this resource."
+    },
+    "status404": {
+      "title": "Not found",
+      "description": "The requested resource was not found."
+    },
+    "status409": {
+      "title": "Already processed",
+      "description": "This request has already been processed."
+    },
+    "status422": {
+      "title": "Couldn't process that",
+      "description": "We couldn't process what was sent. If it was a file, try a .docx, or paste your résumé text instead."
+    },
+    "status429": {
+      "title": "Too many requests",
+      "description": "You've hit the hourly limit. Please try again later, or paste your résumé text instead."
+    },
+    "status500": {
+      "title": "Server error",
+      "description": "Something went wrong on our end. Please try again."
+    },
+    "status502": {
+      "title": "Service unavailable",
+      "description": "Our service is temporarily unavailable. Please try again in a moment."
+    },
+    "status503": {
+      "title": "Service busy",
+      "description": "Our AI service is currently busy. Please try again in a few moments."
+    },
+    "status504": {
+      "title": "AI response timeout",
+      "description": "The AI took longer than expected to respond. This usually works on a retry—please try again."
+    },
+    "unknown": {
+      "title": "Something went wrong",
+      "description": "An unexpected error occurred. Please try again."
+    },
+    "network": {
+      "title": "Connection error",
+      "description": "Unable to connect to the server. Please check your internet connection and try again."
+    },
+    "relay": {
+      "title": "Service error",
+      "description": "There was a problem connecting to our service. Please try again."
+    },
+    "non2xx": {
+      "title": "Request failed",
+      "description": "The request could not be completed. Please try again."
+    },
+    "plain": {
+      "title": "Error"
+    }
   }
 }
