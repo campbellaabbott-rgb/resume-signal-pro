@@ -1647,7 +1647,8 @@
       "openBoardFallbackLive": "Ouvrez le site d'emploi en direct — {{n}}+ offres en ligne maintenant, classées selon votre CV",
       "openBoardFallbackPlain": "Ouvrez le site d'emploi en direct — offres en ligne, classées selon votre CV",
       "openBoardNoteLive": "{{n}}+ offres en ligne maintenant · enregistrez des recherches, suivez des entreprises et vos candidatures",
-      "openBoardNotePlain": "Offres en ligne · enregistrez des recherches, suivez des entreprises et vos candidatures"
+      "openBoardNotePlain": "Offres en ligne · enregistrez des recherches, suivez des entreprises et vos candidatures",
+      "openBoard": "Ouvrez votre tableau classé — chaque offre notée par rapport à ce CV"
     },
     "nextSteps": {
       "eyebrow": "Prochaines étapes",
@@ -5017,7 +5018,9 @@
     "acPrepAll_many": "Préparer {{count}} candidatures adaptées",
     "acGoPro_many": "Passez Pro pour préparer {{count}} offres enregistrées",
     "acAiUnavailable": "Le service d'IA ne peut pas traiter de demandes pour le moment. Ce qui a été préparé est enregistré ; réessayez le reste plus tard.",
-    "acSavedNoLetter": "CV adaptés enregistrés : {{count}}. Leurs lettres de motivation n'ont pas pu être rédigées cette fois ; relancez la préparation pour les ajouter."
+    "acSavedNoLetter": "CV adaptés enregistrés : {{count}}. Leurs lettres de motivation n'ont pas pu être rédigées cette fois ; relancez la préparation pour les ajouter.",
+    "notifAgentEmail": "E-mail de sélection du matin de l'agent de candidature",
+    "notifAgentPaused": "(mandat en pause — aucun envoi)"
   },
   "applyAgent": {
     "badge": "Votre agent IA de candidature",
@@ -5199,7 +5202,55 @@
     "searchLimitHit": "Vous pouvez avoir jusqu'à 10 recherches actives. Mettez-en une en pause pour en ajouter une autre.",
     "searchLastRun": "Dernière exécution : {{scanned}} analysées, {{picked}} en file.",
     "passFunds": "Votre Agent Pass finance cet agent : il reste {{left}} candidatures. Activez l'agent ci-dessous, et votre IA connectée pourra demander des candidatures.",
-    "trackerFull": "Conservé, mais votre suivi est plein (2 000 entrées). Supprimez d'anciennes entrées pour en ajouter."
+    "trackerFull": "Conservé, mais votre suivi est plein (2 000 entrées). Supprimez d'anciennes entrées pour en ajouter.",
+    "countryAny": "Pays — tous (l'agent postule partout où vos postes et vos lieux correspondent)",
+    "countryPicked": "Pays dans lesquels l'agent peut postuler",
+    "countryNote": "Lit le pays de chaque offre, pas sa formulation — choisir l'Allemagne trouve donc les postes qui indiquent seulement « Berlin ». Laissez tout décoché pour chercher partout.",
+    "needResumeHere": "Ajoutez d'abord votre CV — téléversez-le ou collez-le juste en dessous, et l'agent pourra commencer.",
+    "keptTracked": "Conservée — ajoutée à votre suivi ci-dessous.",
+    "cvTooShort": "Cela semble trop court pour faire la comparaison — téléversez le CV complet ou collez le texte.",
+    "cvSaveError": "Impossible d'enregistrer — veuillez réessayer.",
+    "cvSaved": "CV enregistré — l'agent notera chaque offre par rapport à lui.",
+    "cvParseFailed": "Impossible de lire ce fichier — collez plutôt le texte et cela fonctionnera.",
+    "sumSalary": "{{n}}+",
+    "sumRemote": "télétravail uniquement",
+    "sumAge": "publiées depuis {{n}} j",
+    "sumUncat": "+ non classées",
+    "sumDaily": "{{n}}/matin",
+    "fromCvTitle": "D'après votre CV",
+    "fromCvUseAll": "Utiliser ceux-ci",
+    "fromCvRoles": "Postes :",
+    "fromCvEvidence": "Lu dans : {{line}}",
+    "fromCvAlso": "Souvent adapté aussi :",
+    "fromCvAdjacentTip": "Un poste voisin de votre parcours — notre suggestion, pas quelque chose que dit votre CV",
+    "fromCvPlaces": "Lieux :",
+    "fromCvNote": "Simples suggestions — rien ne tourne avant votre activation. Nous retirons exprès le mot d'ancienneté (« Senior ») : les offres intitulent le même poste d'une douzaine de façons, et le terme le plus court les trouve toutes.",
+    "startFromCv": "Démarrer l'agent avec ceux-ci",
+    "fewerOptions": "Moins d'options",
+    "moreOptions": "Plus d'options",
+    "advancedActive": "Appliqué aussi :",
+    "fieldMaxAge": "Publiée depuis moins de",
+    "ageAny": "Peu importe l'ancienneté",
+    "age1": "24 heures",
+    "age3": "3 jours",
+    "age7": "7 jours",
+    "age14": "14 jours",
+    "age30": "30 jours",
+    "ageNote": "Basé sur la date que chaque employeur indique dans son propre flux. Les offres sans date sont écartées — nous ne devinons jamais une ancienneté.",
+    "fieldUncategorised": "Chercher aussi les offres non classées — environ un quart du tableau, dont le domaine n'a pas pu être lu dans l'intitulé.",
+    "uncategorisedNoTerms": "Sans intitulés de poste ci-dessus, cela élargit beaucoup la recherche. Ajoutez des intitulés et cela ne vous coûte presque rien.",
+    "needResumeTitle": "Ajoutez votre CV pour commencer",
+    "needResumeWhy": "L'agent note chaque offre par rapport à lui et y lit vos postes et vos lieux — c'est la seule chose que nous ne pouvons pas deviner pour vous.",
+    "cvReading": "Lecture…",
+    "cvUpload": "Téléverser le CV",
+    "cvPasteHide": "Masquer la zone de collage",
+    "cvPaste": "ou collez le texte",
+    "cvPastePlaceholder": "Collez ici le texte de votre CV…",
+    "cvPasteSave": "Enregistrer le CV",
+    "cvPasteCount": "{{n}} caractères — 100 nécessaires",
+    "statusAwaiting": "Actif — en attente d'abonnement",
+    "summaryAge": "publiées depuis {{d}} j",
+    "summaryUncat": "+ non classées"
   },
   "applyProfile": {
     "authorized": "Êtes-vous autorisé à travailler là où vous postulez ?",
@@ -5391,7 +5442,12 @@
     "heading": "Conçu pour les systèmes que les employeurs utilisent vraiment",
     "sub": "Nous lisons les offres directement dans {{count}} systèmes de suivi des candidatures, sans passer par un moteur de recherche.",
     "readTitle": "Lues directement dans le propre système de l'employeur",
-    "readBlurb": "Chaque offre du tableau provient de l'un de ces systèmes, et vous postulez sur le site de l'employeur. Nous n'envoyons jamais de candidature à votre place."
+    "readBlurb": "Chaque offre du tableau provient de l'un de ces systèmes, et vous postulez sur le site de l'employeur. Nous n'envoyons jamais de candidature à votre place.",
+    "asOf": "Décomptes en direct des postes ouverts actuellement, mesurés le {{time}}.",
+    "stripHeading": "Chaque offre ici vient directement de ces systèmes",
+    "stripSub": "Lues directement dans les {{count}} — jamais récupérées sur un moteur de recherche.",
+    "eyebrow": "D'où viennent nos offres",
+    "subCounted": "{{total}} postes ouverts, lus directement dans les {{count}} systèmes de suivi des candidatures ci-dessous, sans passer par un moteur de recherche."
   },
   "pendingQ": {
     "title": "Questions sur lesquelles l'agent s'est arrêté",
@@ -6363,5 +6419,74 @@
     "plain": {
       "title": "Erreur"
     }
+  },
+  "agentControls": {
+    "saveError": "Impossible d'enregistrer — veuillez réessayer.",
+    "blocklist": {
+      "title": "Ne jamais postuler chez ces employeurs",
+      "help": "Ajoutez d'abord votre employeur actuel. L'agent ignorera toutes les offres de ces entreprises, et il reconnaît le nom quelle que soit la casse.",
+      "placeholder": "Nom de l'entreprise",
+      "remove": "Retirer {{name}}"
+    },
+    "add": "Ajouter",
+    "pause": {
+      "title": "Mettre en pause, avec une date de reprise",
+      "active": "En pause jusqu'au {{when}}. La reprise est automatique — rien à retenir.",
+      "help": "Vous partez en vacances, ou vous passez déjà des entretiens ailleurs ? Mettez-le en pause et il se réactivera tout seul.",
+      "resumeNow": "Reprendre maintenant",
+      "1w": "1 semaine",
+      "2w": "2 semaines",
+      "1m": "1 mois"
+    },
+    "cooldown": {
+      "title": "Jours entre deux candidatures chez le même employeur",
+      "help": "Évite que plusieurs candidatures arrivent sur le bureau d'un même recruteur dans la semaine. 0 le désactive."
+    }
+  },
+  "agentNight": {
+    "title": "Depuis hier",
+    "sent": "candidatures déposées",
+    "waiting": "vous attendent",
+    "unconfirmed": "envoyées mais non confirmées",
+    "skipped": "ignorées",
+    "ourFault": "De notre fait :"
+  },
+  "agent": {
+    "reach": {
+      "title": "Où l'agent peut postuler pour vous",
+      "body": "Il soumet automatiquement à {{drivable}} des {{total}} offres du tableau ({{pct}} %). Les autres protègent leur formulaire contre les robots : l'agent prépare tout et vous cliquez sur Envoyer.",
+      "vendors": "Soumission automatique sur : {{vendors}}. Compté sur le tableau en direct, pas une estimation.",
+      "vendorsCount": "Soumission automatique sur {{n}} systèmes de candidature. Compté sur le tableau en direct, pas une estimation."
+    }
+  },
+  "agentSetup": {
+    "profile": {
+      "title": "Téléversez votre CV",
+      "why": "C'est toute la configuration. Nous lisons votre nom et vos coordonnées directement dessus, et ne vous demandons le reste que lorsqu'un formulaire en a vraiment besoin."
+    },
+    "exclusions": {
+      "title": "Facultatif : nommez les employeurs à éviter",
+      "why": "Votre employeur actuel avant tout. Cela vaut un instant maintenant — c'est la seule chose qu'on ne peut pas défaire ensuite."
+    },
+    "mandate": {
+      "title": "Dites-lui ce que vous cherchez",
+      "why": "Intitulés de poste, lieu et combien par jour. Commencez par une par jour jusqu'à avoir vu son travail."
+    },
+    "title": "Deux choses avant qu'il puisse commencer",
+    "progress": "{{done}} sur {{total}}",
+    "continue": "Continuer",
+    "howItWorks": "Ce qui se passe ensuite →"
+  },
+  "receipt": {
+    "title": "Ce que nous avons soumis pour vous",
+    "noRecord": "Cette candidature a été soumise avant que nous conservions un relevé par champ, nous ne pouvons donc pas montrer la formulation exacte.",
+    "changedAtSend": "mis à jour à l'envoi (préparé : « {{was}} »)",
+    "evidence": "La confirmation de l'employeur",
+    "noEvidence": "Le formulaire l'a accepté, mais n'a renvoyé aucun texte de confirmation que nous ayons pu enregistrer.",
+    "via": "Soumis via {{via}}."
+  },
+  "morningQueue": {
+    "qPlaceholder": "Chef de produit, Chef de programme",
+    "locPlaceholder": "Paris, Lyon, Télétravail"
   }
 }

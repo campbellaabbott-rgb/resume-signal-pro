@@ -1633,7 +1633,8 @@
       "openBoardFallbackLive": "Öffne die Live-Jobbörse — {{n}}+ Stellen jetzt online, nach deinem Lebenslauf sortiert",
       "openBoardFallbackPlain": "Öffne die Live-Jobbörse — aktuelle Stellen, nach deinem Lebenslauf sortiert",
       "openBoardNoteLive": "{{n}}+ Stellen jetzt online · Suchen speichern, Unternehmen beobachten, Bewerbungen verfolgen",
-      "openBoardNotePlain": "Aktuelle Stellen · Suchen speichern, Unternehmen beobachten, Bewerbungen verfolgen"
+      "openBoardNotePlain": "Aktuelle Stellen · Suchen speichern, Unternehmen beobachten, Bewerbungen verfolgen",
+      "openBoard": "Öffne dein sortiertes Board — jede Stelle an diesem Lebenslauf bewertet"
     },
     "nextSteps": {
       "eyebrow": "Nächste Schritte",
@@ -4962,7 +4963,9 @@
     "acLimitHours": "Generierungslimit erreicht. Die bisher vorbereiteten sind gespeichert. Versuchen Sie den Rest in etwa {{hours}} Stunden.",
     "acLimitMinutes": "Generierungslimit erreicht. Die bisher vorbereiteten sind gespeichert. Versuchen Sie den Rest in etwa {{minutes}} Minuten.",
     "acAiUnavailable": "Der KI-Dienst nimmt gerade keine Anfragen an. Was bisher vorbereitet wurde, ist gespeichert; versuchen Sie den Rest später.",
-    "acSavedNoLetter": "Zugeschnittene Lebensläufe gespeichert: {{count}}. Die Anschreiben dazu konnten diesmal nicht geschrieben werden; starten Sie die Vorbereitung erneut, um sie hinzuzufügen."
+    "acSavedNoLetter": "Zugeschnittene Lebensläufe gespeichert: {{count}}. Die Anschreiben dazu konnten diesmal nicht geschrieben werden; starten Sie die Vorbereitung erneut, um sie hinzuzufügen.",
+    "notifAgentEmail": "Morgendliche Shortlist-E-Mail des Bewerbungsagenten",
+    "notifAgentPaused": "(Mandat pausiert — kein Versand)"
   },
   "applyAgent": {
     "badge": "Ihr KI-Bewerbungsagent",
@@ -5144,7 +5147,55 @@
     "searchLimitHit": "Du kannst bis zu 10 aktive Suchen haben. Pausiere eine, um eine weitere hinzuzufügen.",
     "searchLastRun": "Letzter Lauf: {{scanned}} geprüft, {{picked}} eingereiht.",
     "passFunds": "Dein Agent Pass finanziert diesen Agenten: noch {{left}} Bewerbungen. Schalte den Agenten unten ein, dann kann deine verbundene KI Bewerbungen anfordern.",
-    "trackerFull": "Behalten, aber dein Tracker ist voll (2.000 Einträge). Entferne alte Einträge, um neue hinzuzufügen."
+    "trackerFull": "Behalten, aber dein Tracker ist voll (2.000 Einträge). Entferne alte Einträge, um neue hinzuzufügen.",
+    "countryAny": "Länder — alle (der Agent bewirbt sich überall, wo deine Rollen und Orte passen)",
+    "countryPicked": "Länder, in denen der Agent sich bewerben darf",
+    "countryNote": "Liest das Land jeder Stelle, nicht ihren Wortlaut — wer Deutschland wählt, findet also auch Stellen, die nur „Berlin“ nennen. Lass alle aus, um überall zu suchen.",
+    "needResumeHere": "Füge zuerst deinen Lebenslauf hinzu — lade ihn direkt unten hoch oder füge ihn ein, dann kann der Agent starten.",
+    "keptTracked": "Behalten — unten zu deinem Tracker hinzugefügt.",
+    "cvTooShort": "Das wirkt zu kurz für einen Abgleich — bitte lade den vollständigen Lebenslauf hoch oder füge den Text ein.",
+    "cvSaveError": "Das konnte nicht gespeichert werden — bitte versuch es noch einmal.",
+    "cvSaved": "Lebenslauf gespeichert — der Agent bewertet jede Stelle daran.",
+    "cvParseFailed": "Die Datei konnte nicht gelesen werden — füge stattdessen den Text ein, dann klappt es.",
+    "sumSalary": "{{n}}+",
+    "sumRemote": "nur remote",
+    "sumAge": "in den letzten {{n}} T. veröffentlicht",
+    "sumUncat": "+ ohne Kategorie",
+    "sumDaily": "{{n}}/Morgen",
+    "fromCvTitle": "Aus deinem Lebenslauf",
+    "fromCvUseAll": "Diese verwenden",
+    "fromCvRoles": "Rollen:",
+    "fromCvEvidence": "Gelesen aus: {{line}}",
+    "fromCvAlso": "Passt oft auch:",
+    "fromCvAdjacentTip": "Eine benachbarte Rolle — unser Vorschlag, nicht etwas, das in deinem Lebenslauf steht",
+    "fromCvPlaces": "Orte:",
+    "fromCvNote": "Nur Vorschläge — nichts läuft, bevor du aktivierst. Das Senioritätswort („Senior“) lassen wir bewusst weg: Stellen benennen denselben Job auf ein Dutzend Arten, und der kürzere Begriff findet sie alle.",
+    "startFromCv": "Agent mit diesen starten",
+    "fewerOptions": "Weniger Optionen",
+    "moreOptions": "Mehr Optionen",
+    "advancedActive": "Ebenfalls aktiv:",
+    "fieldMaxAge": "Veröffentlicht innerhalb von",
+    "ageAny": "Beliebiges Alter",
+    "age1": "24 Stunden",
+    "age3": "3 Tage",
+    "age7": "7 Tage",
+    "age14": "14 Tage",
+    "age30": "30 Tage",
+    "ageNote": "Beruht auf dem Datum, das jeder Arbeitgeber in seinem eigenen Feed angibt. Stellen ohne Datum werden weggelassen — wir schätzen nie ein Alter.",
+    "fieldUncategorised": "Auch Stellen ohne Kategorie durchsuchen — etwa ein Viertel des Boards, bei dem sich das Fachgebiet nicht aus dem Titel lesen ließ.",
+    "uncategorisedNoTerms": "Ohne Jobtitel oben erweitert das die Suche stark. Füge Titel hinzu, dann kostet es dich fast nichts.",
+    "needResumeTitle": "Füge deinen Lebenslauf hinzu, um zu starten",
+    "needResumeWhy": "Der Agent bewertet jede Stelle daran und liest deine Rollen und Orte daraus — es ist das Einzige, was wir nicht für dich herausfinden können.",
+    "cvReading": "Wird gelesen…",
+    "cvUpload": "Lebenslauf hochladen",
+    "cvPasteHide": "Einfügefeld ausblenden",
+    "cvPaste": "oder den Text einfügen",
+    "cvPastePlaceholder": "Füge hier den Text deines Lebenslaufs ein…",
+    "cvPasteSave": "Lebenslauf speichern",
+    "cvPasteCount": "{{n}} Zeichen — 100 nötig",
+    "statusAwaiting": "Aktiv — wartet auf Abonnement",
+    "summaryAge": "in den letzten {{d}} T. veröffentlicht",
+    "summaryUncat": "+ ohne Kategorie"
   },
   "applyProfile": {
     "authorized": "Bist du berechtigt, dort zu arbeiten, wo du dich bewirbst?",
@@ -5336,7 +5387,12 @@
     "heading": "Gebaut für die Systeme, die Arbeitgeber wirklich nutzen",
     "sub": "Wir lesen Stellen direkt aus {{count}} Bewerbermanagement-Systemen – nicht aus einer Suchmaschine.",
     "readTitle": "Direkt aus dem eigenen System des Arbeitgebers gelesen",
-    "readBlurb": "Jede Stellenanzeige auf der Jobbörse stammt aus einem dieser Systeme, und du bewirbst dich auf der Website des Arbeitgebers. Wir senden niemals eine Bewerbung für dich ab."
+    "readBlurb": "Jede Stellenanzeige auf der Jobbörse stammt aus einem dieser Systeme, und du bewirbst dich auf der Website des Arbeitgebers. Wir senden niemals eine Bewerbung für dich ab.",
+    "asOf": "Live-Zahlen der aktuell offenen Stellen, gemessen am {{time}}.",
+    "stripHeading": "Jede Stelle hier kommt direkt aus diesen Systemen",
+    "stripSub": "Direkt aus allen {{count}} gelesen — nie aus einer Suchmaschine abgegriffen.",
+    "eyebrow": "Woher unsere Stellen kommen",
+    "subCounted": "{{total}} offene Stellen, direkt aus den {{count}} Bewerbermanagement-Systemen unten gelesen – nicht aus einer Suchmaschine."
   },
   "pendingQ": {
     "title": "Fragen, bei denen der Agent gestoppt hat",
@@ -6294,5 +6350,74 @@
     "plain": {
       "title": "Fehler"
     }
+  },
+  "agentControls": {
+    "saveError": "Das konnte nicht gespeichert werden — bitte versuch es noch einmal.",
+    "blocklist": {
+      "title": "Nie bei diesen Arbeitgebern bewerben",
+      "help": "Füge zuerst deinen aktuellen Arbeitgeber hinzu. Der Agent überspringt jede Stelle dieser Unternehmen und erkennt den Namen unabhängig von Groß- und Kleinschreibung.",
+      "placeholder": "Name des Unternehmens",
+      "remove": "{{name}} entfernen"
+    },
+    "add": "Hinzufügen",
+    "pause": {
+      "title": "Pausieren, mit einem Datum, an dem es weitergeht",
+      "active": "Pausiert bis {{when}}. Es geht von selbst weiter — du musst an nichts denken.",
+      "help": "Fährst du in den Urlaub oder hast du schon irgendwo Vorstellungsgespräche? Pausiere es, und es schaltet sich von selbst wieder ein.",
+      "resumeNow": "Jetzt fortsetzen",
+      "1w": "1 Woche",
+      "2w": "2 Wochen",
+      "1m": "1 Monat"
+    },
+    "cooldown": {
+      "title": "Tage zwischen Bewerbungen beim selben Arbeitgeber",
+      "help": "Verhindert, dass in einer Woche mehrere Bewerbungen auf dem Schreibtisch desselben Recruiters landen. 0 schaltet es aus."
+    }
+  },
+  "agentNight": {
+    "title": "Seit gestern",
+    "sent": "beworben",
+    "waiting": "warten auf dich",
+    "unconfirmed": "gesendet, aber unbestätigt",
+    "skipped": "übersprungen",
+    "ourFault": "Unser Fehler:"
+  },
+  "agent": {
+    "reach": {
+      "title": "Wo der Agent sich für dich bewerben kann",
+      "body": "Er reicht bei {{drivable}} der {{total}} Stellen auf dem Board ({{pct}} %) automatisch ein. Die übrigen schützen ihr Bewerbungsformular gegen Bots, deshalb bereitet der Agent alles vor und du klickst auf Absenden.",
+      "vendors": "Reicht automatisch ein bei: {{vendors}}. Gezählt auf dem Live-Board, keine Schätzung.",
+      "vendorsCount": "Reicht automatisch bei {{n}} Bewerbungssystemen ein. Gezählt auf dem Live-Board, keine Schätzung."
+    }
+  },
+  "agentSetup": {
+    "profile": {
+      "title": "Lade deinen Lebenslauf hoch",
+      "why": "Das ist die ganze Einrichtung. Name und Kontaktdaten lesen wir direkt daraus, und nach allem anderen fragen wir nur, wenn ein Formular es wirklich braucht."
+    },
+    "exclusions": {
+      "title": "Optional: Arbeitgeber nennen, die übersprungen werden",
+      "why": "Vor allem deinen aktuellen Arbeitgeber. Das ist jetzt einen Moment wert — es ist das Einzige, was sich hinterher nicht rückgängig machen lässt."
+    },
+    "mandate": {
+      "title": "Sag ihm, was du suchst",
+      "why": "Jobtitel, Ort und wie viele pro Tag. Fang mit einer pro Tag an, bis du seine Arbeit gesehen hast."
+    },
+    "title": "Zwei Dinge, bevor es losgehen kann",
+    "progress": "{{done}} von {{total}}",
+    "continue": "Weiter",
+    "howItWorks": "Was danach passiert →"
+  },
+  "receipt": {
+    "title": "Was wir für dich eingereicht haben",
+    "noRecord": "Diese Bewerbung wurde eingereicht, bevor wir Aufzeichnungen pro Feld geführt haben, daher können wir den genauen Wortlaut nicht zeigen.",
+    "changedAtSend": "beim Senden aktualisiert (vorbereitet: „{{was}}“)",
+    "evidence": "Die Bestätigung des Arbeitgebers",
+    "noEvidence": "Das Formular hat dies angenommen, aber keinen Bestätigungstext zurückgegeben, den wir festhalten konnten.",
+    "via": "Eingereicht über {{via}}."
+  },
+  "morningQueue": {
+    "qPlaceholder": "Produktmanager, Programmmanager",
+    "locPlaceholder": "Berlin, München, Remote"
   }
 }

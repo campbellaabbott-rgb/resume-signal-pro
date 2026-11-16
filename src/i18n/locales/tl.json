@@ -1633,7 +1633,8 @@
       "openBoardFallbackLive": "Buksan ang live na job board — {{n}}+ bakanteng live ngayon, nakaayos ayon sa iyong resume",
       "openBoardFallbackPlain": "Buksan ang live na job board — mga live na bakante, nakaayos ayon sa iyong resume",
       "openBoardNoteLive": "{{n}}+ bakanteng live ngayon · mag-save ng search, bantayan ang mga kumpanya, subaybayan ang mga application",
-      "openBoardNotePlain": "Mga live na bakante · mag-save ng search, bantayan ang mga kumpanya, subaybayan ang mga application"
+      "openBoardNotePlain": "Mga live na bakante · mag-save ng search, bantayan ang mga kumpanya, subaybayan ang mga application",
+      "openBoard": "Buksan ang naka-rank mong board — bawat bakante ay sinukat laban sa resume na ito"
     },
     "nextSteps": {
       "eyebrow": "Susunod na hakbang",
@@ -4962,7 +4963,9 @@
     "acLimitHours": "Naabot ang limitasyon sa paggawa — naka-save ang mga naihanda na. Subukan ang natitira pagkalipas ng mga {{hours}} oras.",
     "acLimitMinutes": "Naabot ang limitasyon sa paggawa — naka-save ang mga naihanda na. Subukan ang natitira pagkalipas ng mga {{minutes}} minuto.",
     "acAiUnavailable": "Hindi makatanggap ng request ang AI service ngayon. Naka-save ang naihanda na; subukan ang iba mamaya.",
-    "acSavedNoLetter": "Mga naiangkop na résumé na na-save: {{count}}. Hindi naisulat ang mga cover letter nila ngayon; patakbuhin muli ang prep para maidagdag ang mga ito."
+    "acSavedNoLetter": "Mga naiangkop na résumé na na-save: {{count}}. Hindi naisulat ang mga cover letter nila ngayon; patakbuhin muli ang prep para maidagdag ang mga ito.",
+    "notifAgentEmail": "Morning shortlist email ng Apply Agent",
+    "notifAgentPaused": "(naka-pause ang mandato — walang ipinapadala)"
   },
   "applyAgent": {
     "badge": "Ang iyong AI apply agent",
@@ -5144,7 +5147,55 @@
     "searchLimitHit": "Hanggang 10 aktibong search lang. I-pause ang isa para makapagdagdag.",
     "searchLastRun": "Huling takbo: {{scanned}} na-scan, {{picked}} naka-queue.",
     "passFunds": "Ang iyong Agent Pass ang nagpopondo sa agent na ito: {{left}} aplikasyon pa ang natitira. I-on ang agent sa ibaba, at makakahiling ng aplikasyon ang naka-connect mong AI.",
-    "trackerFull": "Itinabi, pero puno na ang iyong tracker (2,000 entry). Mag-alis ng mga lumang entry para makadagdag pa."
+    "trackerFull": "Itinabi, pero puno na ang iyong tracker (2,000 entry). Mag-alis ng mga lumang entry para makadagdag pa.",
+    "countryAny": "Mga bansa — kahit alin (nag-a-apply ang agent saanman tumutugma ang mga role at lugar mo)",
+    "countryPicked": "Mga bansang puwedeng pag-applyan ng agent",
+    "countryNote": "Binabasa ang bansa ng bawat posting, hindi ang pananalita nito — kaya kapag pinili mo ang Germany, makikita ang mga role na “Berlin” lang ang sinasabi. Iwanang naka-off lahat para maghanap kahit saan.",
+    "needResumeHere": "Idagdag muna ang CV mo — i-upload o i-paste ito sa ibaba lang, at makakapagsimula na ang agent.",
+    "keptTracked": "Itinago — idinagdag sa tracker mo sa ibaba.",
+    "cvTooShort": "Mukhang masyadong maikli iyan para itugma — pakiupload ang buong CV, o i-paste ang text.",
+    "cvSaveError": "Hindi ito ma-save — pakisubukang muli.",
+    "cvSaved": "Na-save ang CV — susukatin ng agent ang bawat posting laban dito.",
+    "cvParseFailed": "Hindi mabasa ang file na iyan — i-paste na lang ang text at gagana ito.",
+    "sumSalary": "{{n}}+",
+    "sumRemote": "remote lang",
+    "sumAge": "na-post sa loob ng {{n}}d",
+    "sumUncat": "+ walang kategorya",
+    "sumDaily": "{{n}}/umaga",
+    "fromCvTitle": "Mula sa CV mo",
+    "fromCvUseAll": "Gamitin ang mga ito",
+    "fromCvRoles": "Mga role:",
+    "fromCvEvidence": "Binasa mula sa: {{line}}",
+    "fromCvAlso": "Madalas ding bagay:",
+    "fromCvAdjacentTip": "Isang role na kaugnay ng karera mo — mungkahi namin, hindi sinasabi ng CV mo",
+    "fromCvPlaces": "Mga lugar:",
+    "fromCvNote": "Mga mungkahi lang — walang tatakbo hangga't hindi mo ina-activate. Sadya naming inaalis ang salitang pang-seniority (“Senior”): iba-iba ang pamagat ng mga posting sa iisang trabaho, at nahahanap ng mas maikling termino ang lahat ng iyon.",
+    "startFromCv": "Simulan ang agent gamit ang mga ito",
+    "fewerOptions": "Mas kaunting opsyon",
+    "moreOptions": "Higit pang opsyon",
+    "advancedActive": "Inilalapat din:",
+    "fieldMaxAge": "Na-post sa loob ng",
+    "ageAny": "Kahit gaano katagal",
+    "age1": "24 oras",
+    "age3": "3 araw",
+    "age7": "7 araw",
+    "age14": "14 araw",
+    "age30": "30 araw",
+    "ageNote": "Batay sa petsang inilalagay ng bawat employer sa sarili nitong feed. Hindi isinasama ang mga posting na walang petsa — hindi kami kailanman nanghuhula ng edad.",
+    "fieldUncategorised": "Hanapin din ang mga posting na walang kategorya — mga isang-kapat ng board, kung saan hindi mabasa ang larangan ng role mula sa pamagat nito.",
+    "uncategorisedNoTerms": "Kapag walang job title sa itaas, lubos nitong pinalalawak ang paghahanap. Magdagdag ng mga title at halos wala itong gastos sa iyo.",
+    "needResumeTitle": "Idagdag ang CV mo para magsimula",
+    "needResumeWhy": "Sinusukat ng agent ang bawat posting laban dito, at binabasa nito ang mga role at lokasyon mo mula rito — ito lang ang hindi namin kayang alamin para sa iyo.",
+    "cvReading": "Binabasa…",
+    "cvUpload": "I-upload ang CV",
+    "cvPasteHide": "Itago ang paste box",
+    "cvPaste": "o i-paste ang text",
+    "cvPastePlaceholder": "I-paste dito ang text ng CV mo…",
+    "cvPasteSave": "I-save ang CV",
+    "cvPasteCount": "{{n}} karakter — 100 ang kailangan",
+    "statusAwaiting": "Aktibo — naghihintay ng subscription",
+    "summaryAge": "na-post sa loob ng {{d}}d",
+    "summaryUncat": "+ walang kategorya"
   },
   "applyProfile": {
     "authorized": "May pahintulot ka bang magtrabaho kung saan ka nag-a-apply?",
@@ -5336,7 +5387,12 @@
     "heading": "Ginawa para sa mga sistemang talagang ginagamit ng mga employer",
     "sub": "Direktang binabasa namin ang mga trabaho mula sa {{count}} applicant tracking system — hindi kinuha sa search engine.",
     "readTitle": "Binasa mismo mula sa sariling system ng employer",
-    "readBlurb": "Bawat posting sa board ay galing sa isa sa mga system na ito, at sa sariling site ng employer ka mag-a-apply. Hindi kami kailanman nagsusumite ng application para sa iyo."
+    "readBlurb": "Bawat posting sa board ay galing sa isa sa mga system na ito, at sa sariling site ng employer ka mag-a-apply. Hindi kami kailanman nagsusumite ng application para sa iyo.",
+    "asOf": "Live na bilang ng mga bukas na role ngayon, sinukat noong {{time}}.",
+    "stripHeading": "Bawat trabaho rito ay direktang galing sa mga sistemang ito",
+    "stripSub": "Direktang binasa mula sa lahat ng {{count}} — hindi kailanman kinuha sa search engine.",
+    "eyebrow": "Saan galing ang aming mga trabaho",
+    "subCounted": "{{total}} bukas na role, direktang binasa mula sa {{count}} applicant tracking system sa ibaba — hindi kinuha sa search engine."
   },
   "pendingQ": {
     "title": "Mga tanong na hindi nasagot ng agent",
@@ -6294,5 +6350,74 @@
     "plain": {
       "title": "Error"
     }
+  },
+  "agentControls": {
+    "saveError": "Hindi ito ma-save — pakisubukang muli.",
+    "blocklist": {
+      "title": "Huwag kailanman mag-apply sa mga employer na ito",
+      "help": "Idagdag muna ang kasalukuyan mong employer. Lalaktawan ng agent ang bawat posting mula sa mga kumpanyang ito, at nakikilala nito ang pangalan kahit paano man ito naka-capitalize.",
+      "placeholder": "Pangalan ng kumpanya",
+      "remove": "Alisin ang {{name}}"
+    },
+    "add": "Idagdag",
+    "pause": {
+      "title": "I-pause, may petsa kung kailan ito babalik",
+      "active": "Naka-pause hanggang {{when}}. Kusa itong magpapatuloy — wala kang kailangang tandaan.",
+      "help": "Magbabakasyon ka ba, o may interview ka na sa ibang lugar? I-pause ito at kusa itong mag-o-on muli.",
+      "resumeNow": "Ipagpatuloy ngayon",
+      "1w": "1 linggo",
+      "2w": "2 linggo",
+      "1m": "1 buwan"
+    },
+    "cooldown": {
+      "title": "Mga araw sa pagitan ng mga aplikasyon sa iisang employer",
+      "help": "Pinipigilan nito ang ilang aplikasyon na mapunta sa mesa ng iisang recruiter sa loob ng isang linggo. Pinapatay ito ng 0."
+    }
+  },
+  "agentNight": {
+    "title": "Mula kahapon",
+    "sent": "na-apply-an",
+    "waiting": "naghihintay sa iyo",
+    "unconfirmed": "naipadala pero hindi pa kumpirmado",
+    "skipped": "nilaktawan",
+    "ourFault": "Kasalanan namin:"
+  },
+  "agent": {
+    "reach": {
+      "title": "Kung saan puwedeng mag-apply ang agent para sa iyo",
+      "body": "Awtomatiko itong nagsusumite sa {{drivable}} sa {{total}} na posting sa board ({{pct}}%). May bot protection ang application form ng iba, kaya inihahanda ng agent ang lahat at ikaw ang pipindot ng submit.",
+      "vendors": "Awtomatikong nagsusumite sa: {{vendors}}. Binilang mula sa live na board, hindi tantya.",
+      "vendorsCount": "Awtomatikong nagsusumite sa {{n}} application system. Binilang mula sa live na board, hindi tantya."
+    }
+  },
+  "agentSetup": {
+    "profile": {
+      "title": "I-upload ang CV mo",
+      "why": "Iyan na ang buong setup. Binabasa namin ang pangalan at contact details mo mismo mula rito, at nagtatanong lang kami tungkol sa iba kapag talagang kailangan ito ng isang form."
+    },
+    "exclusions": {
+      "title": "Opsyonal: pangalanan ang mga employer na lalaktawan",
+      "why": "Higit sa lahat, ang kasalukuyan mong employer. Sulit ang sandali ngayon — ito lang ang hindi na mababawi pagkatapos."
+    },
+    "mandate": {
+      "title": "Sabihin dito kung ano ang hinahanap mo",
+      "why": "Mga job title, lokasyon at ilan bawat araw. Magsimula sa isa bawat araw hanggang makita mo ang gawa nito."
+    },
+    "title": "Dalawang bagay bago ito makapagsimula",
+    "progress": "{{done}} sa {{total}}",
+    "continue": "Magpatuloy",
+    "howItWorks": "Ano ang mangyayari pagkatapos nito →"
+  },
+  "receipt": {
+    "title": "Ang isinumite namin para sa iyo",
+    "noRecord": "Isinumite ang aplikasyong ito bago kami nagsimulang mag-ingat ng record bawat field, kaya hindi namin maipapakita ang eksaktong pananalita.",
+    "changedAtSend": "na-update sa oras ng pagpapadala (inihanda: “{{was}}”)",
+    "evidence": "Ang kumpirmasyon ng employer",
+    "noEvidence": "Tinanggap ito ng form pero walang ibinalik na confirmation text na nakuha namin.",
+    "via": "Isinumite sa pamamagitan ng {{via}}."
+  },
+  "morningQueue": {
+    "qPlaceholder": "Product Manager, Program Manager",
+    "locPlaceholder": "Manila, Cebu, Remote"
   }
 }

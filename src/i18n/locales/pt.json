@@ -1647,7 +1647,8 @@
       "openBoardFallbackLive": "Abra o mural de vagas ao vivo — {{n}}+ vagas no ar agora, ordenadas pelo seu currículo",
       "openBoardFallbackPlain": "Abra o mural de vagas ao vivo — vagas no ar, ordenadas pelo seu currículo",
       "openBoardNoteLive": "{{n}}+ vagas no ar agora · salve buscas, acompanhe empresas e candidaturas",
-      "openBoardNotePlain": "Vagas no ar · salve buscas, acompanhe empresas e candidaturas"
+      "openBoardNotePlain": "Vagas no ar · salve buscas, acompanhe empresas e candidaturas",
+      "openBoard": "Abra seu quadro ordenado — cada vaga pontuada com base neste currículo"
     },
     "nextSteps": {
       "eyebrow": "Próximos passos",
@@ -5017,7 +5018,9 @@
     "acPrepAll_many": "Preparar {{count}} candidaturas adaptadas",
     "acGoPro_many": "Assine o Pro para preparar {{count}} vagas salvas",
     "acAiUnavailable": "O serviço de IA não pode atender pedidos agora. O que foi preparado até aqui está salvo; tente o restante mais tarde.",
-    "acSavedNoLetter": "Currículos adaptados salvos: {{count}}. As cartas de apresentação não puderam ser escritas desta vez; prepare de novo para adicioná-las."
+    "acSavedNoLetter": "Currículos adaptados salvos: {{count}}. As cartas de apresentação não puderam ser escritas desta vez; prepare de novo para adicioná-las.",
+    "notifAgentEmail": "E-mail da seleção da manhã do agente de candidaturas",
+    "notifAgentPaused": "(mandato pausado — sem envios)"
   },
   "applyAgent": {
     "badge": "Seu agente de IA para candidaturas",
@@ -5199,7 +5202,55 @@
     "searchLimitHit": "Você pode ter até 10 buscas ativas. Pause uma para adicionar outra.",
     "searchLastRun": "Última execução: {{scanned}} analisadas, {{picked}} na fila.",
     "passFunds": "O seu Agent Pass financia este agente: restam {{left}} candidaturas. Ative o agente abaixo e a sua IA conectada poderá pedir candidaturas.",
-    "trackerFull": "Guardado, mas o seu acompanhamento está cheio (2000 entradas). Remova entradas antigas para adicionar mais."
+    "trackerFull": "Guardado, mas o seu acompanhamento está cheio (2000 entradas). Remova entradas antigas para adicionar mais.",
+    "countryAny": "Países — qualquer um (o agente se candidata onde seus cargos e locais coincidirem)",
+    "countryPicked": "Países em que o agente pode se candidatar",
+    "countryNote": "Lê o país de cada vaga, não o texto — então escolher a Alemanha encontra cargos que só dizem “Berlim”. Deixe todos desmarcados para buscar em todo lugar.",
+    "needResumeHere": "Adicione seu currículo primeiro — envie ou cole logo abaixo, e o agente pode começar.",
+    "keptTracked": "Mantida — adicionada ao seu acompanhamento abaixo.",
+    "cvTooShort": "Parece curto demais para comparar — envie o currículo completo ou cole o texto.",
+    "cvSaveError": "Não foi possível salvar — tente novamente.",
+    "cvSaved": "Currículo salvo — o agente vai pontuar cada vaga com base nele.",
+    "cvParseFailed": "Não foi possível ler esse arquivo — cole o texto no lugar e vai funcionar.",
+    "sumSalary": "{{n}}+",
+    "sumRemote": "só remoto",
+    "sumAge": "publicadas em até {{n}} d",
+    "sumUncat": "+ sem categoria",
+    "sumDaily": "{{n}}/manhã",
+    "fromCvTitle": "Do seu currículo",
+    "fromCvUseAll": "Usar estes",
+    "fromCvRoles": "Cargos:",
+    "fromCvEvidence": "Lido de: {{line}}",
+    "fromCvAlso": "Também costuma combinar:",
+    "fromCvAdjacentTip": "Um cargo próximo da sua carreira — sugestão nossa, não algo que seu currículo diz",
+    "fromCvPlaces": "Locais:",
+    "fromCvNote": "São só sugestões — nada roda até você ativar. Tiramos de propósito a palavra de senioridade (“Senior”): as vagas dão ao mesmo cargo uma dúzia de títulos, e o termo mais curto encontra todos.",
+    "startFromCv": "Iniciar o agente com estes",
+    "fewerOptions": "Menos opções",
+    "moreOptions": "Mais opções",
+    "advancedActive": "Também aplicado:",
+    "fieldMaxAge": "Publicada nos últimos",
+    "ageAny": "Qualquer data",
+    "age1": "24 horas",
+    "age3": "3 dias",
+    "age7": "7 dias",
+    "age14": "14 dias",
+    "age30": "30 dias",
+    "ageNote": "Com base na data que cada empregador informa no próprio feed. Vagas sem data ficam de fora — nunca adivinhamos a idade de uma vaga.",
+    "fieldUncategorised": "Buscar também vagas sem categoria — cerca de um quarto do quadro, em que a área do cargo não pôde ser lida pelo título.",
+    "uncategorisedNoTerms": "Sem cargos acima, isso amplia muito a busca. Adicione cargos e quase não custa nada.",
+    "needResumeTitle": "Adicione seu currículo para começar",
+    "needResumeWhy": "O agente pontua cada vaga com base nele e lê dele seus cargos e locais — é a única coisa que não conseguimos descobrir por você.",
+    "cvReading": "Lendo…",
+    "cvUpload": "Enviar currículo",
+    "cvPasteHide": "Ocultar a caixa de texto",
+    "cvPaste": "ou cole o texto",
+    "cvPastePlaceholder": "Cole aqui o texto do seu currículo…",
+    "cvPasteSave": "Salvar currículo",
+    "cvPasteCount": "{{n}} caracteres — são necessários 100",
+    "statusAwaiting": "Ativo — aguardando assinatura",
+    "summaryAge": "publicadas em até {{d}} d",
+    "summaryUncat": "+ sem categoria"
   },
   "applyProfile": {
     "authorized": "Tens autorização para trabalhar onde te candidatas?",
@@ -5391,7 +5442,12 @@
     "heading": "Feito para os sistemas que os empregadores usam mesmo",
     "sub": "Lemos as vagas diretamente de {{count}} sistemas de gestão de candidaturas — não de um motor de busca.",
     "readTitle": "Lidas diretamente do próprio sistema do empregador",
-    "readBlurb": "Cada vaga do quadro vem de um destes sistemas, e você se candidata no site do empregador. Nunca enviamos uma candidatura por você."
+    "readBlurb": "Cada vaga do quadro vem de um destes sistemas, e você se candidata no site do empregador. Nunca enviamos uma candidatura por você.",
+    "asOf": "Contagens ao vivo das vagas abertas agora, medidas em {{time}}.",
+    "stripHeading": "Cada vaga aqui vem direto destes sistemas",
+    "stripSub": "Lidas direto de todos os {{count}} — nunca copiadas de um buscador.",
+    "eyebrow": "De onde vêm nossas vagas",
+    "subCounted": "{{total}} vagas abertas, lidas direto dos {{count}} sistemas de gestão de candidaturas abaixo — não de um motor de busca."
   },
   "pendingQ": {
     "title": "Perguntas em que o agente parou",
@@ -6363,5 +6419,74 @@
     "plain": {
       "title": "Erro"
     }
+  },
+  "agentControls": {
+    "saveError": "Não foi possível salvar — tente novamente.",
+    "blocklist": {
+      "title": "Nunca se candidatar a estes empregadores",
+      "help": "Adicione primeiro seu empregador atual. O agente vai pular todas as vagas dessas empresas e reconhece o nome independentemente de maiúsculas e minúsculas.",
+      "placeholder": "Nome da empresa",
+      "remove": "Remover {{name}}"
+    },
+    "add": "Adicionar",
+    "pause": {
+      "title": "Pausar, com uma data de retorno",
+      "active": "Pausado até {{when}}. Ele volta sozinho — não precisa lembrar de nada.",
+      "help": "Vai sair de férias ou já está fazendo entrevistas em algum lugar? Pause e ele volta a ligar sozinho.",
+      "resumeNow": "Retomar agora",
+      "1w": "1 semana",
+      "2w": "2 semanas",
+      "1m": "1 mês"
+    },
+    "cooldown": {
+      "title": "Dias entre candidaturas para o mesmo empregador",
+      "help": "Evita que várias candidaturas cheguem à mesa do mesmo recrutador em uma semana. 0 desativa."
+    }
+  },
+  "agentNight": {
+    "title": "Desde ontem",
+    "sent": "candidaturas feitas",
+    "waiting": "esperando por você",
+    "unconfirmed": "enviadas sem confirmação",
+    "skipped": "puladas",
+    "ourFault": "Falha nossa:"
+  },
+  "agent": {
+    "reach": {
+      "title": "Onde o agente pode se candidatar por você",
+      "body": "Ele envia automaticamente para {{drivable}} das {{total}} vagas do quadro ({{pct}}%). As demais protegem o formulário contra bots, então o agente prepara tudo e você clica em enviar.",
+      "vendors": "Envia automaticamente em: {{vendors}}. Contado no quadro ao vivo, não é uma estimativa.",
+      "vendorsCount": "Envia automaticamente em {{n}} sistemas de candidatura. Contado no quadro ao vivo, não é uma estimativa."
+    }
+  },
+  "agentSetup": {
+    "profile": {
+      "title": "Envie seu currículo",
+      "why": "Essa é toda a configuração. Lemos seu nome e seus dados de contato direto dele e só perguntamos sobre o resto quando um formulário realmente precisa."
+    },
+    "exclusions": {
+      "title": "Opcional: indique empregadores a evitar",
+      "why": "Principalmente seu empregador atual. Vale um momento agora — é a única coisa que não pode ser desfeita depois."
+    },
+    "mandate": {
+      "title": "Diga a ele o que você procura",
+      "why": "Cargos, local e quantas por dia. Comece com uma por dia até ver o trabalho dele."
+    },
+    "title": "Duas coisas antes de ele poder começar",
+    "progress": "{{done}} de {{total}}",
+    "continue": "Continuar",
+    "howItWorks": "O que acontece depois →"
+  },
+  "receipt": {
+    "title": "O que enviamos por você",
+    "noRecord": "Esta candidatura foi enviada antes de começarmos a guardar registros por campo, então não podemos mostrar o texto exato.",
+    "changedAtSend": "atualizado no envio (preparado: “{{was}}”)",
+    "evidence": "A confirmação do empregador",
+    "noEvidence": "O formulário aceitou, mas não devolveu nenhum texto de confirmação que pudéssemos registrar.",
+    "via": "Enviado via {{via}}."
+  },
+  "morningQueue": {
+    "qPlaceholder": "Gerente de produto, Gerente de programa",
+    "locPlaceholder": "São Paulo, Rio de Janeiro, Remoto"
   }
 }

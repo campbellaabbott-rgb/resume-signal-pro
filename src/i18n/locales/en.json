@@ -1633,7 +1633,8 @@
       "openBoardFallbackLive": "Open the live job board — {{n}}+ openings live now, ranked against your resume",
       "openBoardFallbackPlain": "Open the live job board — live openings, ranked against your resume",
       "openBoardNoteLive": "{{n}}+ openings live now · save searches, watch companies, track applications",
-      "openBoardNotePlain": "Live openings · save searches, watch companies, track applications"
+      "openBoardNotePlain": "Live openings · save searches, watch companies, track applications",
+      "openBoard": "Open your ranked board — every opening scored against this resume"
     },
     "nextSteps": {
       "eyebrow": "Next steps",
@@ -4962,7 +4963,9 @@
     "acLimitHours": "Generation limit reached — the ones prepped so far are saved. Try the rest in about {{hours}} hours.",
     "acLimitMinutes": "Generation limit reached — the ones prepped so far are saved. Try the rest in about {{minutes}} minutes.",
     "acAiUnavailable": "The AI service can't take requests right now. What was prepped so far is saved; try the rest later.",
-    "acSavedNoLetter": "Tailored résumés saved: {{count}}. Their cover letters couldn't be written this time; run prep again to add them."
+    "acSavedNoLetter": "Tailored résumés saved: {{count}}. Their cover letters couldn't be written this time; run prep again to add them.",
+    "notifAgentEmail": "Apply Agent morning shortlist email",
+    "notifAgentPaused": "(mandate paused — no sends)"
   },
   "applyAgent": {
     "badge": "Your AI apply agent",
@@ -5144,7 +5147,55 @@
     "searchLimitHit": "You can run up to 10 active searches. Pause one to add another.",
     "searchLastRun": "Last run: scanned {{scanned}}, queued {{picked}}.",
     "passFunds": "Your Agent Pass funds this agent: {{left}} applications left. Switch the agent on below, and your connected AI can request applications.",
-    "trackerFull": "Kept, but your tracker is full (2,000 entries). Remove old entries to add more."
+    "trackerFull": "Kept, but your tracker is full (2,000 entries). Remove old entries to add more.",
+    "countryAny": "Countries — any (the agent applies wherever your roles and places match)",
+    "countryPicked": "Countries the agent may apply in",
+    "countryNote": "Reads each posting's country, not its wording — so picking Germany finds roles that only say “Berlin”. Leave all off to search everywhere.",
+    "needResumeHere": "Add your CV first — upload or paste it just below, and the agent can start.",
+    "keptTracked": "Kept — added to your tracker below.",
+    "cvTooShort": "That looks too short to match against — please upload the full CV, or paste the text.",
+    "cvSaveError": "Couldn't save that — please try again.",
+    "cvSaved": "CV saved — the agent will score every posting against it.",
+    "cvParseFailed": "Couldn't read that file — paste the text instead and it will work.",
+    "sumSalary": "{{n}}+",
+    "sumRemote": "remote only",
+    "sumAge": "posted within {{n}}d",
+    "sumUncat": "+ uncategorised",
+    "sumDaily": "{{n}}/morning",
+    "fromCvTitle": "From your CV",
+    "fromCvUseAll": "Use these",
+    "fromCvRoles": "Roles:",
+    "fromCvEvidence": "Read from: {{line}}",
+    "fromCvAlso": "Often a fit too:",
+    "fromCvAdjacentTip": "A career-adjacent role — our suggestion, not something your CV says",
+    "fromCvPlaces": "Places:",
+    "fromCvNote": "Suggestions only — nothing runs until you activate. We drop the seniority word (“Senior”) on purpose: postings title the same job a dozen ways, and the shorter term finds all of them.",
+    "startFromCv": "Start the agent with these",
+    "fewerOptions": "Fewer options",
+    "moreOptions": "More options",
+    "advancedActive": "Also applying:",
+    "fieldMaxAge": "Posted within",
+    "ageAny": "Any age",
+    "age1": "24 hours",
+    "age3": "3 days",
+    "age7": "7 days",
+    "age14": "14 days",
+    "age30": "30 days",
+    "ageNote": "Based on the date each employer states on its own feed. Postings that carry no date are left out — we never guess an age.",
+    "fieldUncategorised": "Also search uncategorised postings — about a quarter of the board, where the role's field could not be read from its title.",
+    "uncategorisedNoTerms": "With no job titles above, this widens the search a lot. Add titles and it costs you almost nothing.",
+    "needResumeTitle": "Add your CV to start",
+    "needResumeWhy": "The agent scores every posting against it, and reads your roles and locations from it — it is the only thing we cannot work out for you.",
+    "cvReading": "Reading…",
+    "cvUpload": "Upload CV",
+    "cvPasteHide": "Hide paste box",
+    "cvPaste": "or paste the text",
+    "cvPastePlaceholder": "Paste your CV text here…",
+    "cvPasteSave": "Save CV",
+    "cvPasteCount": "{{n}} characters — 100 needed",
+    "statusAwaiting": "Active — awaiting subscription",
+    "summaryAge": "posted within {{d}}d",
+    "summaryUncat": "+ uncategorised"
   },
   "applyProfile": {
     "authorized": "Are you authorised to work where you're applying?",
@@ -5336,7 +5387,12 @@
     "heading": "Built for the systems employers actually use",
     "sub": "We read jobs straight from {{count}} applicant tracking systems — not scraped from a search engine.",
     "readTitle": "Read straight from the employer's own system",
-    "readBlurb": "Every posting on the board comes from one of these systems, and you apply on the employer's own site. We never submit an application for you."
+    "readBlurb": "Every posting on the board comes from one of these systems, and you apply on the employer's own site. We never submit an application for you.",
+    "asOf": "Live counts of currently open roles, measured {{time}}.",
+    "stripHeading": "Every job here comes straight from these systems",
+    "stripSub": "Read directly from all {{count}} — never scraped from a search engine.",
+    "eyebrow": "Where our jobs come from",
+    "subCounted": "{{total}} open roles, read straight from the {{count}} applicant tracking systems below — not scraped from a search engine."
   },
   "pendingQ": {
     "title": "Questions the agent stopped on",
@@ -6294,5 +6350,74 @@
     "plain": {
       "title": "Error"
     }
+  },
+  "agentControls": {
+    "saveError": "Couldn't save that — please try again.",
+    "blocklist": {
+      "title": "Never apply to these employers",
+      "help": "Add your current employer first. The agent will skip every posting from these companies, and it matches the name however it is capitalised.",
+      "placeholder": "Company name",
+      "remove": "Remove {{name}}"
+    },
+    "add": "Add",
+    "pause": {
+      "title": "Pause, with a date it comes back",
+      "active": "Paused until {{when}}. It resumes on its own — nothing to remember.",
+      "help": "Going on holiday, or interviewing somewhere already? Pause it and it switches itself back on.",
+      "resumeNow": "Resume now",
+      "1w": "1 week",
+      "2w": "2 weeks",
+      "1m": "1 month"
+    },
+    "cooldown": {
+      "title": "Days between applications to the same employer",
+      "help": "Stops several applications landing on one recruiter's desk in a week. 0 turns it off."
+    }
+  },
+  "agentNight": {
+    "title": "Since yesterday",
+    "sent": "applied",
+    "waiting": "waiting for you",
+    "unconfirmed": "sent but unconfirmed",
+    "skipped": "skipped",
+    "ourFault": "On us:"
+  },
+  "agent": {
+    "reach": {
+      "title": "Where the agent can apply for you",
+      "body": "It submits automatically to {{drivable}} of the {{total}} postings on the board ({{pct}}%). The rest put bot protection on their application form, so the agent prepares everything and you press submit.",
+      "vendors": "Auto-submits on: {{vendors}}. Counted from the live board, not an estimate.",
+      "vendorsCount": "Auto-submits on {{n}} application systems. Counted from the live board, not an estimate."
+    }
+  },
+  "agentSetup": {
+    "profile": {
+      "title": "Upload your CV",
+      "why": "That is the whole of setup. We read your name and contact details straight off it, and ask about anything else only when a form actually needs it."
+    },
+    "exclusions": {
+      "title": "Optional: name employers to skip",
+      "why": "Your current employer above all. Worth a moment now — it is the one thing that cannot be undone afterwards."
+    },
+    "mandate": {
+      "title": "Tell it what you're looking for",
+      "why": "Job titles, location and how many a day. Start with one a day until you've seen its work."
+    },
+    "title": "Two things before it can start",
+    "progress": "{{done}} of {{total}}",
+    "continue": "Continue",
+    "howItWorks": "What happens after this →"
+  },
+  "receipt": {
+    "title": "What we submitted for you",
+    "noRecord": "This application was submitted before we started keeping per-field records, so we can't show the exact wording.",
+    "changedAtSend": "updated at send time (prepared: “{{was}}”)",
+    "evidence": "The employer's confirmation",
+    "noEvidence": "The form accepted this but returned no confirmation text we could capture.",
+    "via": "Submitted via {{via}}."
+  },
+  "morningQueue": {
+    "qPlaceholder": "Product Manager, Programme Manager",
+    "locPlaceholder": "London, Manchester, Remote"
   }
 }

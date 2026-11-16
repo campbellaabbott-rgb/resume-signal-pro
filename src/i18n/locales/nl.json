@@ -1633,7 +1633,8 @@
       "openBoardFallbackLive": "Open de live vacaturebank — {{n}}+ vacatures nu online, gerangschikt op je cv",
       "openBoardFallbackPlain": "Open de live vacaturebank — live vacatures, gerangschikt op je cv",
       "openBoardNoteLive": "{{n}}+ vacatures nu online · zoekopdrachten bewaren, bedrijven volgen, sollicitaties bijhouden",
-      "openBoardNotePlain": "Live vacatures · zoekopdrachten bewaren, bedrijven volgen, sollicitaties bijhouden"
+      "openBoardNotePlain": "Live vacatures · zoekopdrachten bewaren, bedrijven volgen, sollicitaties bijhouden",
+      "openBoard": "Open je gerangschikte bord — elke vacature gescoord tegen dit cv"
     },
     "nextSteps": {
       "eyebrow": "Volgende stappen",
@@ -4962,7 +4963,9 @@
     "acLimitHours": "Generatielimiet bereikt. Wat al is voorbereid, is opgeslagen. Probeer de rest over ongeveer {{hours}} uur.",
     "acLimitMinutes": "Generatielimiet bereikt. Wat al is voorbereid, is opgeslagen. Probeer de rest over ongeveer {{minutes}} minuten.",
     "acAiUnavailable": "De AI-dienst kan nu geen verzoeken aannemen. Wat tot nu toe is voorbereid, is opgeslagen; probeer de rest later.",
-    "acSavedNoLetter": "Aangepaste cv's opgeslagen: {{count}}. De sollicitatiebrieven konden deze keer niet worden geschreven; start de voorbereiding opnieuw om ze toe te voegen."
+    "acSavedNoLetter": "Aangepaste cv's opgeslagen: {{count}}. De sollicitatiebrieven konden deze keer niet worden geschreven; start de voorbereiding opnieuw om ze toe te voegen.",
+    "notifAgentEmail": "Ochtendselectie-e-mail van de sollicitatieagent",
+    "notifAgentPaused": "(mandaat gepauzeerd — geen verzending)"
   },
   "applyAgent": {
     "badge": "Je AI-sollicitatieagent",
@@ -5144,7 +5147,55 @@
     "searchLimitHit": "Je kunt maximaal 10 actieve zoekopdrachten hebben. Pauzeer er een om een nieuwe toe te voegen.",
     "searchLastRun": "Laatste run: {{scanned}} bekeken, {{picked}} in de wachtrij.",
     "passFunds": "Je Agent Pass betaalt deze agent: nog {{left}} sollicitaties. Zet de agent hieronder aan, dan kan je gekoppelde AI sollicitaties aanvragen.",
-    "trackerFull": "Bewaard, maar je tracker is vol (2.000 items). Verwijder oude items om er meer toe te voegen."
+    "trackerFull": "Bewaard, maar je tracker is vol (2.000 items). Verwijder oude items om er meer toe te voegen.",
+    "countryAny": "Landen — alle (de agent solliciteert overal waar je functies en plaatsen overeenkomen)",
+    "countryPicked": "Landen waarin de agent mag solliciteren",
+    "countryNote": "Leest het land van elke vacature, niet de bewoording — dus wie Duitsland kiest, vindt ook functies waar alleen ‘Berlijn’ staat. Laat alles uit om overal te zoeken.",
+    "needResumeHere": "Voeg eerst je cv toe — upload of plak het hieronder, dan kan de agent beginnen.",
+    "keptTracked": "Bewaard — toegevoegd aan je tracker hieronder.",
+    "cvTooShort": "Dat lijkt te kort om mee te matchen — upload het volledige cv of plak de tekst.",
+    "cvSaveError": "Dat kon niet worden opgeslagen — probeer het opnieuw.",
+    "cvSaved": "Cv opgeslagen — de agent scoort elke vacature ertegen.",
+    "cvParseFailed": "Dat bestand kon niet worden gelezen — plak in plaats daarvan de tekst, dan werkt het.",
+    "sumSalary": "{{n}}+",
+    "sumRemote": "alleen remote",
+    "sumAge": "geplaatst binnen {{n}} d",
+    "sumUncat": "+ zonder categorie",
+    "sumDaily": "{{n}}/ochtend",
+    "fromCvTitle": "Uit je cv",
+    "fromCvUseAll": "Deze gebruiken",
+    "fromCvRoles": "Functies:",
+    "fromCvEvidence": "Gelezen uit: {{line}}",
+    "fromCvAlso": "Past vaak ook:",
+    "fromCvAdjacentTip": "Een verwante functie — onze suggestie, niet iets wat in je cv staat",
+    "fromCvPlaces": "Plaatsen:",
+    "fromCvNote": "Alleen suggesties — er draait niets tot je activeert. Het senioriteitswoord (‘Senior’) laten we bewust weg: vacatures noemen dezelfde baan op tientallen manieren, en de kortere term vindt ze allemaal.",
+    "startFromCv": "Start de agent hiermee",
+    "fewerOptions": "Minder opties",
+    "moreOptions": "Meer opties",
+    "advancedActive": "Ook actief:",
+    "fieldMaxAge": "Geplaatst binnen",
+    "ageAny": "Elke leeftijd",
+    "age1": "24 uur",
+    "age3": "3 dagen",
+    "age7": "7 dagen",
+    "age14": "14 dagen",
+    "age30": "30 dagen",
+    "ageNote": "Gebaseerd op de datum die elke werkgever in zijn eigen feed vermeldt. Vacatures zonder datum vallen weg — we raden nooit een leeftijd.",
+    "fieldUncategorised": "Zoek ook in vacatures zonder categorie — ongeveer een kwart van het bord, waar het vakgebied niet uit de titel kon worden gelezen.",
+    "uncategorisedNoTerms": "Zonder functietitels hierboven verbreedt dit de zoekopdracht flink. Voeg titels toe en het kost je bijna niets.",
+    "needResumeTitle": "Voeg je cv toe om te beginnen",
+    "needResumeWhy": "De agent scoort elke vacature ertegen en leest je functies en locaties eruit — het is het enige wat we niet voor je kunnen uitzoeken.",
+    "cvReading": "Bezig met lezen…",
+    "cvUpload": "Cv uploaden",
+    "cvPasteHide": "Plakvak verbergen",
+    "cvPaste": "of plak de tekst",
+    "cvPastePlaceholder": "Plak hier de tekst van je cv…",
+    "cvPasteSave": "Cv opslaan",
+    "cvPasteCount": "{{n}} tekens — 100 nodig",
+    "statusAwaiting": "Actief — wacht op abonnement",
+    "summaryAge": "geplaatst binnen {{d}} d",
+    "summaryUncat": "+ zonder categorie"
   },
   "applyProfile": {
     "authorized": "Mag je werken waar je solliciteert?",
@@ -5336,7 +5387,12 @@
     "heading": "Gebouwd voor de systemen die werkgevers echt gebruiken",
     "sub": "We lezen vacatures rechtstreeks uit {{count}} sollicitatiesystemen — niet geschraapt van een zoekmachine.",
     "readTitle": "Rechtstreeks uit het eigen systeem van de werkgever gelezen",
-    "readBlurb": "Elke vacature op het bord komt uit een van deze systemen, en je solliciteert op de site van de werkgever. We versturen nooit een sollicitatie namens jou."
+    "readBlurb": "Elke vacature op het bord komt uit een van deze systemen, en je solliciteert op de site van de werkgever. We versturen nooit een sollicitatie namens jou.",
+    "asOf": "Live tellingen van de nu openstaande functies, gemeten op {{time}}.",
+    "stripHeading": "Elke vacature hier komt rechtstreeks uit deze systemen",
+    "stripSub": "Rechtstreeks uit alle {{count}} gelezen — nooit van een zoekmachine geschraapt.",
+    "eyebrow": "Waar onze vacatures vandaan komen",
+    "subCounted": "{{total}} openstaande functies, rechtstreeks gelezen uit de {{count}} sollicitatiesystemen hieronder — niet geschraapt van een zoekmachine."
   },
   "pendingQ": {
     "title": "Vragen waarbij de agent is gestopt",
@@ -6294,5 +6350,74 @@
     "plain": {
       "title": "Fout"
     }
+  },
+  "agentControls": {
+    "saveError": "Dat kon niet worden opgeslagen — probeer het opnieuw.",
+    "blocklist": {
+      "title": "Nooit solliciteren bij deze werkgevers",
+      "help": "Voeg eerst je huidige werkgever toe. De agent slaat elke vacature van deze bedrijven over en herkent de naam ongeacht hoofdletters.",
+      "placeholder": "Bedrijfsnaam",
+      "remove": "{{name}} verwijderen"
+    },
+    "add": "Toevoegen",
+    "pause": {
+      "title": "Pauzeren, met een datum waarop het terugkomt",
+      "active": "Gepauzeerd tot {{when}}. Het gaat vanzelf weer verder — je hoeft niets te onthouden.",
+      "help": "Ga je op vakantie, of heb je al ergens sollicitatiegesprekken? Pauzeer hem en hij zet zichzelf weer aan.",
+      "resumeNow": "Nu hervatten",
+      "1w": "1 week",
+      "2w": "2 weken",
+      "1m": "1 maand"
+    },
+    "cooldown": {
+      "title": "Dagen tussen sollicitaties bij dezelfde werkgever",
+      "help": "Voorkomt dat er in één week meerdere sollicitaties op het bureau van één recruiter belanden. 0 zet het uit."
+    }
+  },
+  "agentNight": {
+    "title": "Sinds gisteren",
+    "sent": "gesolliciteerd",
+    "waiting": "wachten op jou",
+    "unconfirmed": "verstuurd maar onbevestigd",
+    "skipped": "overgeslagen",
+    "ourFault": "Onze fout:"
+  },
+  "agent": {
+    "reach": {
+      "title": "Waar de agent voor je kan solliciteren",
+      "body": "Hij dient automatisch in bij {{drivable}} van de {{total}} vacatures op het bord ({{pct}}%). De rest beschermt het sollicitatieformulier tegen bots, dus de agent bereidt alles voor en jij drukt op versturen.",
+      "vendors": "Dient automatisch in op: {{vendors}}. Geteld op het live bord, geen schatting.",
+      "vendorsCount": "Dient automatisch in op {{n}} sollicitatiesystemen. Geteld op het live bord, geen schatting."
+    }
+  },
+  "agentSetup": {
+    "profile": {
+      "title": "Upload je cv",
+      "why": "Dat is de hele installatie. We lezen je naam en contactgegevens er rechtstreeks uit en vragen alleen naar iets anders als een formulier het echt nodig heeft."
+    },
+    "exclusions": {
+      "title": "Optioneel: noem werkgevers om over te slaan",
+      "why": "Vooral je huidige werkgever. Nu even de moeite waard — het is het enige dat achteraf niet ongedaan kan worden."
+    },
+    "mandate": {
+      "title": "Vertel hem wat je zoekt",
+      "why": "Functietitels, locatie en hoeveel per dag. Begin met één per dag tot je zijn werk hebt gezien."
+    },
+    "title": "Twee dingen voordat hij kan beginnen",
+    "progress": "{{done}} van {{total}}",
+    "continue": "Doorgaan",
+    "howItWorks": "Wat er hierna gebeurt →"
+  },
+  "receipt": {
+    "title": "Wat we voor je hebben ingediend",
+    "noRecord": "Deze sollicitatie is ingediend voordat we per veld bijhielden wat er werd ingevuld, dus we kunnen de exacte tekst niet tonen.",
+    "changedAtSend": "bijgewerkt bij verzenden (voorbereid: ‘{{was}}’)",
+    "evidence": "De bevestiging van de werkgever",
+    "noEvidence": "Het formulier heeft dit geaccepteerd, maar gaf geen bevestigingstekst terug die we konden vastleggen.",
+    "via": "Ingediend via {{via}}."
+  },
+  "morningQueue": {
+    "qPlaceholder": "Productmanager, Programmamanager",
+    "locPlaceholder": "Amsterdam, Utrecht, Remote"
   }
 }
