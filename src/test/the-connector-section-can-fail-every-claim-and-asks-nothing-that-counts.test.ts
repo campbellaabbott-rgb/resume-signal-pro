@@ -20,6 +20,12 @@
  *     are INFO; before public-api.2026-11-12.1 the form reader's are; before
  *     the frontend publish the page's lines are INFO; the install README is
  *     INFO owner pending until ownerDecided names S14X-056;
+ *   - each owner key (OD14-REDIST-1, OD14-ASHBY-1, HO-1) is INFO owner
+ *     pending until ownerDecided names it, INFO for a choice that ships
+ *     nothing, waits for the build or publish that carries it, and then can
+ *     PASS or FAIL; a choice that withholds a form reader takes it out of
+ *     SEO-F15's list. OWNER_SHIPPED names the choices this branch's code
+ *     carries, so a good deploy of the owner branch is judged on them;
  *   - the key is never printed, no job-board or PostgREST call is made, and
  *     every agent-mcp POST is one the server never counts, unless
  *     VERIFY_KEYLESS_CALLS=1 asks for the four keyless tool calls.
@@ -75,7 +81,15 @@ process.stdout.write(out);
 const dirs: string[] = [];
 afterAll(() => { for (const d of dirs) { try { rmSync(d, { recursive: true, force: true }); } catch { /* best effort */ } } });
 
-function run(routes: Route[], o: { keylessCalls?: boolean; decided?: boolean } = {}): { lines: string[]; calls: string[]; out: string } {
+/**
+ * The owner choices this branch's code carries. Empty on the lane branch;
+ * each commit on bugs/a-connector-owner adds the key and option it builds,
+ * and a good deploy is judged with them recorded, as the integrator records
+ * them before merging that commit.
+ */
+const OWNER_SHIPPED: Record<string, string> = {};
+
+function run(routes: Route[], o: { keylessCalls?: boolean; decided?: Record<string, string> } = {}): { lines: string[]; calls: string[]; out: string } {
   const dir = mkdtempSync(join(tmpdir(), "vd99bc-"));
   dirs.push(dir);
   mkdirSync(join(dir, "bin"));
@@ -83,7 +97,7 @@ function run(routes: Route[], o: { keylessCalls?: boolean; decided?: boolean } =
   chmodSync(join(dir, "bin", "curl"), 0o755);
   writeFileSync(join(dir, "routes.json"), JSON.stringify(routes));
   writeFileSync(join(dir, "calls.log"), "");
-  writeFileSync(join(dir, "ledger.json"), JSON.stringify({ reservations: { "bug-round": { ownerDecided: o.decided ? { "S14X-056": "owner pushed the install repo" } : {} } } }));
+  writeFileSync(join(dir, "ledger.json"), JSON.stringify({ reservations: { "bug-round": { ownerDecided: o.decided ?? OWNER_SHIPPED } } }));
   const prelude = `set -u\nK=${KEY}; B=https://p.supabase.co; SITE=${SITE}; UA=Googlebot-test\n${BUILD_GE}\n${helper("J")}\n${helper("R")}\n${helper("MC")}\n`;
   writeFileSync(join(dir, "run.sh"), prelude + SECTION.split("/tmp/").join(`${dir}/`));
   const env: NodeJS.ProcessEnv = {
@@ -157,12 +171,14 @@ const quotaFix = MCP_TROUBLESHOOTING.find((r) => r.id === "quota-used")!.fix;
 const copies = (steps: Array<{ text: string; copy?: string }>) => steps.map((s) => `${s.text} ${s.copy ?? ""}`).join("\n");
 const ctx = { url: "https://x.supabase.co/functions/v1/agent-mcp", key: "" };
 const VENDOR_ARRAY = `[${MCP_FORM_VENDORS.map((v) => `{key:"${v.key}",label:"${v.label}"}`).join(",")}]`;
+const claudeSteps = [copies(claude.steps({ ...ctx, addToClaude: true })), copies(claude.fallbackSteps!(ctx))].join("\n");
 const NEW_MT = [
   VENDOR_ARRAY, MCP_ADDRESS_GLOSS, MCP_OWN_CONNECTION_GLOSS, getJob, applyMyself, claude.signIn("on"), MCP_WITHHELD_NOTE,
-  claudeCode.keyed!.title, copies(claudeCode.keyed!.steps(ctx)), copies(gemini.keyed!.steps(ctx)), quotaFix,
+  claudeCode.keyed!.title, copies(claudeCode.keyed!.steps(ctx)), copies(gemini.keyed!.steps(ctx)), quotaFix, claudeSteps,
 ].join("\n");
 const NEW_AC = `function HostPanel(e){return n("p",{className:"text-xs","data-allowance":!0,children:e.host.allowance??Ad})} import("./mcp-tools-mt1.js")`;
-const NEW_BAKE = `<html><body><h1>Connect your AI</h1><p>${getJob}</p><p>${applyMyself}</p><p>${MCP_WITHHELD_NOTE}</p><h4>${claudeCode.keyed!.title}</h4><td>${quotaFix}</td></body></html>`;
+// The prerender hands no Add-to-Claude flag in, so the bake carries Claude's manual steps.
+const NEW_BAKE = `<html><body><h1>Connect your AI</h1><p>${getJob}</p><p>${applyMyself}</p><p>${MCP_WITHHELD_NOTE}</p><ol>${copies(claude.fallbackSteps!(ctx))}</ol><h4>${claudeCode.keyed!.title}</h4><td>${quotaFix}</td></body></html>`;
 // The strings this round replaced, as the live chunk and bake carried them on 2026-11-16.
 const OLD_MT_STRINGS = [
   "With a free key (optional — opens every read tool: ${P()}; ${b.toLocaleString(\"en-US\")} calls a day)",
@@ -250,13 +266,18 @@ describe("a good deploy, sign-in off", () => {
   let r: ReturnType<typeof run>;
   beforeAll(() => { r = run(routes(OFF)); });
 
-  it("prints PASS for every claim, and INFO only for the latent sign-in line and the keyless calls not asked for", () => {
+  it("prints PASS for every claim, and INFO only for the latent sign-in line, the keyless calls not asked for and the owner keys still pending", () => {
     const v = verdicts(r.lines);
     expect(v.filter((l) => l.startsWith("FAIL")), r.out).toEqual([]);
+    const pending = (id: string) => (id in OWNER_SHIPPED ? [] : [expect.stringMatching(new RegExp(`^${esc(id)} owner pending`))]);
     expect(v.filter((l) => l.startsWith("INFO")).map((l) => l.slice(6, 40)), r.out).toEqual([
       expect.stringMatching(/^S14X-262 sign-in is off/),
+      ...pending("OD14-REDIST-1"),
+      ...pending("OD14-ASHBY-1"),
       expect.stringMatching(/^K the keyless tool calls/),
+      ...pending("HO-1"),
     ]);
+    for (const id of Object.keys(OWNER_SHIPPED)) expect(v.some((l) => l.startsWith(`PASS  ${id} decided`)), `${id}\n${r.out}`).toBe(true);
     for (const id of [...MCP_LINES, ...RIDES, "S14X-056-install"]) expect(lineOf(v, id), `${id}\n${r.out}`).toMatch(/^PASS/);
     for (const id of PAGE) expect(v.some((l) => l.startsWith(`PASS  ${id} `) && !/\(bake\)/.test(l)), `${id} (chunk)\n${r.out}`).toBe(true);
     for (const id of ["S14X-260", "S14X-261", "SEO-F15", "USAJOBS-COPY-1"]) expect(v.some((l) => l.startsWith(`PASS  ${id} (bake)`)), `${id} (bake)\n${r.out}`).toBe(true);
@@ -386,8 +407,88 @@ describe("each claim can FAIL", () => {
   });
 
   it("S14X-056-install FAILs once the owner's decision is recorded and the README still says applying is paid", () => {
-    const r = run(routes(OFF, { readme: README_PAID }), { decided: true });
+    const r = run(routes(OFF, { readme: README_PAID }), { decided: { ...OWNER_SHIPPED, "S14X-056": "owner pushed the install repo" } });
     expect(lineOf(r.lines, "S14X-056-install"), r.out).toMatch(/^FAIL/);
+  });
+});
+
+// ── The owner keys ──────────────────────────────────────────────────────
+/** The shipped answers as the "withhold" option serves them (a no-op on a branch that carries it). */
+const withRedist = (a: Answers): Partial<Answers> => ({
+  tools: edit(a.tools, (j) => {
+    for (const t of toolsOf(j)) {
+      if (t.name === "apply_myself") t.description = String(t.description).split("Breezy, ").join("");
+      if (t.name === "search_jobs") (t.inputSchema as { properties: Record<string, { description?: string }> }).properties.vendor.description = "Comma list of hiring systems (greenhouse, lever, …), max 8; not served here: usajobs, smartrecruiters, ukg, adp, breezy.";
+    }
+  }),
+  init: edit(a.init, (j) => {
+    const r = j.result as { instructions: string };
+    r.instructions = r.instructions.split("Breezy, ").join("").replace("SmartRecruiters and USAJOBS postings are not served here", "SmartRecruiters, USAJOBS, UKG, ADP and Breezy postings are not served here");
+  }),
+  guide: { ...a.guide, body: a.guide.body.replace("(SmartRecruiters, USAJOBS)", "(SmartRecruiters, USAJOBS, UKG, ADP, Breezy)") },
+});
+/** The shipped answers as the "stop" option serves them. */
+const withoutAshby = (a: Answers): Partial<Answers> => ({
+  tools: edit(a.tools, (j) => { for (const t of toolsOf(j)) if (t.name === "apply_myself") t.description = String(t.description).split("Ashby, ").join(""); }),
+  init: edit(a.init, (j) => { const r = j.result as { instructions: string }; r.instructions = r.instructions.split("Ashby, ").join(""); }),
+});
+const dropLabel = (mt: string, label: string) => mt.split(`{key:"${label.toLowerCase()}",label:"${label}"},`).join("").split(`,{key:"${label.toLowerCase()}",label:"${label}"}`).join("");
+const KEEP_STEP = "Claude shows the authentication settings it detected. Keep them as they are and click **Continue**.";
+const naming = (s: string, choice: string) => s.split("Keep them as they are").join(`Choose **${choice}**`);
+
+describe("the owner keys", () => {
+  it("OD14-REDIST-1 \"withhold\": PASS on answers that withhold UKG, ADP and Breezy, and SEO-F15 then wants no Breezy reader", () => {
+    const r = run(routes(OFF, { a: withRedist(OFF), mt: dropLabel(NEW_MT, "Breezy") }), { decided: { ...OWNER_SHIPPED, "OD14-REDIST-1": "withhold" } });
+    expect(lineOf(r.lines, "OD14-REDIST-1"), r.out).toMatch(/^PASS  OD14-REDIST-1 decided \(withhold\)/);
+    expect(lineOf(r.lines, "SEO-F15", /form readers the connector uses/), r.out).toMatch(/^PASS .* of the 9 form readers/);
+  });
+
+  it.each([
+    ["apply_myself names Breezy", (a: Answers) => ({ ...withRedist(a), tools: edit(withRedist(a).tools!, (j) => { for (const t of toolsOf(j)) if (t.name === "apply_myself") t.description = `${t.description} Breezy`; }) })],
+    ["the vendor filter withholds only two", (a: Answers) => ({ ...withRedist(a), tools: edit(withRedist(a).tools!, (j) => { for (const t of toolsOf(j)) if (t.name === "search_jobs") (t.inputSchema as { properties: Record<string, { description?: string }> }).properties.vendor.description = "usajobs and smartrecruiters are not served here."; }) })],
+    ["the guide names two", (a: Answers) => ({ ...withRedist(a), guide: { ...a.guide, body: a.guide.body.split("UKG, ADP, Breezy").join("").split("UKG").join("") } })],
+  ] as Array<[string, (a: Answers) => Partial<Answers>]>)("OD14-REDIST-1 \"withhold\" FAILs when %s", (_what, f) => {
+    const r = run(routes(OFF, { a: f(OFF), mt: dropLabel(NEW_MT, "Breezy") }), { decided: { ...OWNER_SHIPPED, "OD14-REDIST-1": "withhold" } });
+    expect(lineOf(r.lines, "OD14-REDIST-1"), r.out).toMatch(/^FAIL/);
+  });
+
+  it("SEO-F15 FAILs when the choice withholds Breezy and the page still names it", () => {
+    const r = run(routes(OFF, { a: withRedist(OFF), mt: `${NEW_MT}\n{key:"breezy",label:"Breezy"}` }), { decided: { ...OWNER_SHIPPED, "OD14-REDIST-1": "withhold" } });
+    expect(lineOf(r.lines, "SEO-F15", /form readers the connector uses/), r.out).toMatch(/^FAIL .*names Breezy/);
+  });
+
+  it("OD14-ASHBY-1 \"stop\": PASS when apply_myself names no Ashby reader, FAIL when it does", () => {
+    const decided = { ...OWNER_SHIPPED, "OD14-ASHBY-1": "stop" };
+    const good = run(routes(OFF, { a: withoutAshby(OFF), mt: dropLabel(NEW_MT, "Ashby") }), { decided });
+    expect(lineOf(good.lines, "OD14-ASHBY-1"), good.out).toMatch(/^PASS  OD14-ASHBY-1 decided \(stop\)/);
+    expect(lineOf(good.lines, "SEO-F15", /form readers the connector uses/), good.out).toMatch(/^PASS/);
+    const bad = run(routes(OFF, { a: { ...withoutAshby(OFF), tools: edit(withoutAshby(OFF).tools!, (j) => { for (const t of toolsOf(j)) if (t.name === "apply_myself") t.description = `${t.description} Ashby`; }) }, mt: dropLabel(NEW_MT, "Ashby") }), { decided });
+    expect(lineOf(bad.lines, "OD14-ASHBY-1"), bad.out).toMatch(/^FAIL/);
+  });
+
+  it("HO-1: PASS when the Claude steps name the recorded choice, FAIL while they still say keep the detected settings, on the chunk and the bake", () => {
+    const decided = { ...OWNER_SHIPPED, "HO-1": "Sign in when needed" };
+    const good = run(routes(OFF, { mt: naming(NEW_MT, "Sign in when needed"), bake: naming(NEW_BAKE, "Sign in when needed") }), { decided });
+    expect(lineOf(good.lines, "HO-1", /decided/), good.out).toMatch(/^PASS  HO-1 decided .*name "Sign in when needed"/);
+    expect(verdicts(good.lines).find((l) => l.slice(6).startsWith("HO-1 (bake)")) ?? "", good.out).toMatch(/^PASS/);
+    const bad = run(routes(OFF, { mt: `${NEW_MT}\n${KEEP_STEP}`, bake: NEW_BAKE.replace("</ol>", `${KEEP_STEP}</ol>`) }), { decided });
+    expect(lineOf(bad.lines, "HO-1", /decided/), bad.out).toMatch(/^FAIL/);
+    expect(verdicts(bad.lines).find((l) => l.slice(6).startsWith("HO-1 (bake)")) ?? "", bad.out).toMatch(/^FAIL/);
+    const other = run(routes(OFF, { mt: naming(NEW_MT, "Sign in when needed") }), { decided: { ...OWNER_SHIPPED, "HO-1": "No sign in" } });
+    expect(lineOf(other.lines, "HO-1", /decided/), other.out).toMatch(/^FAIL .*name no authentication choice \(No sign in\)/);
+  });
+
+  it("a choice that ships nothing is INFO, and so is every key before the build or publish that carries it", () => {
+    const keep = run(routes(OFF), { decided: { "OD14-REDIST-1": "keep serving", "OD14-ASHBY-1": "keep reading" } });
+    expect(lineOf(keep.lines, "OD14-REDIST-1"), keep.out).toMatch(/^INFO  OD14-REDIST-1 decided \(keep serving\)/);
+    expect(lineOf(keep.lines, "OD14-ASHBY-1"), keep.out).toMatch(/^INFO  OD14-ASHBY-1 decided \(keep reading\)/);
+    const decided = { "OD14-REDIST-1": "withhold", "OD14-ASHBY-1": "stop", "HO-1": "Sign in when needed" };
+    const early = run(routes(OFF, { am: "agent-mcp.2026-11-09.2", mt: OLD_MT, ac: OLD_AC, bake: OLD_BAKE }), { decided });
+    for (const id of ["OD14-REDIST-1", "OD14-ASHBY-1"]) expect(lineOf(early.lines, id), `${id}\n${early.out}`).toMatch(new RegExp(`^INFO  ${id} decided .*waits for agent-mcp\\.2026-11-12\\.1`));
+    expect(early.lines.some((l) => l.startsWith("INFO  HO-1 waits for the frontend publish")), early.out).toBe(true);
+    expect(early.lines.some((l) => l.startsWith("INFO  HO-1 (bake) waits for the frontend publish")), early.out).toBe(true);
+    expect(early.calls.filter((c) => c.startsWith("POST "))).toEqual([]);
+    expect(verdicts(early.lines).filter((l) => l.startsWith("FAIL")), early.out).toEqual([]);
   });
 });
 

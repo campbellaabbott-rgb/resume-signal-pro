@@ -8,7 +8,8 @@
 # and says the federal feed is withheld by our choice; the shared form reader
 # (agent-mcp and public-api) treats a cut-off body as unreachable and a
 # Greenhouse heading as a section; the /agents page gives each app its own
-# allowance line, keyed steps that work, and all ten form readers.
+# allowance line, keyed steps that work, and every form reader the connector
+# uses. Three owner options wait on bugs/a-connector-owner.
 #
 # THE CLAIMS, one line each (the key opens the line):
 #   V0   agent-mcp and public-api serve this round's 2026-11-12.1 or later
@@ -49,7 +50,16 @@
 #   S14X-056-install   the install repo's README no longer says applying is
 #        paid. The owner pushes it: INFO owner pending until
 #        docs/deploy-ledger.json reservations['bug-round'].ownerDecided names
-#        S14X-056, FAIL after that while it still says so.
+#        S14X-056, FAIL after that while it still says so;
+#   O    the owner-gated keys, each INFO owner pending until ownerDecided
+#        names it, INFO when the choice ships nothing, and judged once the
+#        build (or the frontend publish) that carries the choice is live:
+#        OD14-REDIST-1 "withhold": the listing, the guide and the
+#        instructions withhold UKG, ADP and Breezy and read no Breezy form;
+#        OD14-ASHBY-1 "stop": apply_myself names no Ashby form reader;
+#        HO-1 (the choice the owner's install-link check recorded): the
+#        Claude steps name that choice, never "keep them as they are".
+#        The SEO-F15 reader list leaves out the readers a choice withholds.
 #
 # READ-ONLY. OPTIONS preflights; agent-mcp POSTs that are never counted
 # (initialize, tools/list, prompts/get, the guide, a no-key fit_resume, and
@@ -85,6 +95,18 @@ vdbc_ride() {
   elif [ "$VDBC_AM" = 1 ] && { [ "$need" = am ] || [ "$VDBC_PA" = 1 ]; }; then echo "PASS  $id rides $builds: $what (no read-only live trigger; proven on the shipped code by src/test/$test)"
   else echo "INFO  $id waits for this round's build ($what)"; fi
 }
+
+# ── the owner's choices. ownerDecided maps key -> choice (a string, or an
+# object with a choice), written by the integrator alone; each option's code
+# is one commit on bugs/a-connector-owner. ──
+vdbc_decided() {
+  node -e 'let l={};try{l=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))}catch{}
+const d=((l.reservations||{})["bug-round"]||{}).ownerDecided||{};const v=Array.isArray(d)?(d.includes(process.argv[2])?"yes":null):d[process.argv[2]];
+process.stdout.write(v==null?"":typeof v==="object"?String(v.choice??v.option??JSON.stringify(v)):String(v))' "$VDBC_LEDGER" "$1"
+}
+VDBC_O_REDIST=$(vdbc_decided OD14-REDIST-1)
+VDBC_O_ASHBY=$(vdbc_decided OD14-ASHBY-1)
+VDBC_O_HO1=$(vdbc_decided HO-1)
 
 # ── the connector, asked only what is never counted ──
 if [ "$VDBC_AM" = 1 ]; then
@@ -185,6 +207,38 @@ vdbc_ride S14X-132/agent-mcp am "a fit_resume call that scored nothing gives its
 vdbc_ride GP-NOLOG-1 am "the search for a title read from the CV carries noLog" "a-title-read-from-the-cv-is-not-written-to-the-search-log.test.ts"
 vdbc_ride NB-28 am "a failed filing read says so without the database's words" "the-hiring-record-says-only-what-the-site-would-say.test.ts"
 
+# ── O: the connector's owner choices, read from the same unmetered answers ──
+VDBC_AM="$VDBC_AM" VDBC_O_REDIST="$VDBC_O_REDIST" VDBC_O_ASHBY="$VDBC_O_ASHBY" VDBC_P=/tmp/vd_99bc_ node -e '
+const fs=require("fs");const P=process.env.VDBC_P;const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
+const raw=(f)=>{try{return fs.readFileSync(P+f,"utf8")}catch{return ""}};
+const rd=(f)=>{try{return JSON.parse(raw(f))}catch{return null}};
+const am=process.env.VDBC_AM==="1";
+const j=rd("tools.json");const tools=j&&j.result&&Array.isArray(j.result.tools)?j.result.tools:null;
+const tool=(n)=>(tools||[]).find((t)=>t.name===n)||{};
+const amDesc=String(tool("apply_myself").description||"");
+const vend=String((((tool("search_jobs").inputSchema||{}).properties||{}).vendor||{}).description||"");
+const init=rd("init.json");const instr=String(init&&init.result&&init.result.instructions||"");
+const readers=(/publishes one \(([^)]*)\)/.exec(instr)||[])[1]||"";
+const guide=JSON.stringify(rd("guide.json")||"");
+const judge=(id,choice,yes,pending,other,f)=>{
+  if(!choice)info(id+" owner pending: "+pending);
+  else if(!yes.test(choice))info(id+" decided ("+choice+"): "+other);
+  else if(!am)info(id+" decided ("+choice+"); waits for agent-mcp.2026-11-12.1, which carries it");
+  else if(!tools)ok(false,id+" decided ("+choice+"), but the keyless listing answered no tools");
+  else f(choice);
+};
+judge("OD14-REDIST-1",process.env.VDBC_O_REDIST||"",/withh|yes/i,
+  "the connector hands UKG, ADP and Breezy postings on, as today (option \"withhold\" is a commit on bugs/a-connector-owner, with /v1\x27s OD14-REDIST-2)",
+  "the connector keeps handing UKG, ADP and Breezy on; nothing of this lane\x27s ships",
+  (c)=>{const vOk=/not served/.test(vend)&&["ukg","adp","breezy"].every((n)=>new RegExp("\\b"+n+"\\b").test(vend)),gOk=["UKG","ADP","Breezy"].every((n)=>guide.includes(n)),iOk=/UKG, ADP and Breezy postings are not served here/.test(instr),fOk=!/Breezy/.test(amDesc)&&!/Breezy/.test(readers)&&/Greenhouse/.test(amDesc);
+    ok(vOk&&gOk&&iOk&&fOk,"OD14-REDIST-1 decided ("+c+"): search_jobs\x27 vendor filter "+(vOk?"says ukg, adp and breezy are not served":"does NOT withhold ukg, adp and breezy: "+JSON.stringify(vend.slice(0,120)))+"; the guide "+(gOk?"names UKG, ADP and Breezy":"does NOT name all three")+"; the instructions "+(iOk?"say their postings are not served":"do NOT say so")+"; apply_myself "+(fOk?"names no Breezy form reader":"still names Breezy as a form reader"));});
+judge("OD14-ASHBY-1",process.env.VDBC_O_ASHBY||"",/stop|yes/i,
+  "apply_myself reads Ashby forms from jobs.ashbyhq.com/api/, as today (option \"stop\" is a commit on bugs/a-connector-owner, with /v1\x27s OD14-ASHBY-2)",
+  "apply_myself keeps reading Ashby forms; nothing of this lane\x27s ships",
+  (c)=>{const fOk=!/Ashby/.test(amDesc)&&/Greenhouse/.test(amDesc),iOk=!!readers&&!/Ashby/.test(readers);
+    ok(fOk&&iOk,"OD14-ASHBY-1 decided ("+c+"): apply_myself "+(fOk?"names no Ashby form reader":/Ashby/.test(amDesc)?"still names Ashby as a form reader":"names no reader at all")+"; the instructions\x27 reader list "+(iOk?"leaves Ashby out":readers?"still names Ashby":"is missing"));});
+'
+
 # ── K: the keyless tool calls, only when asked for ──
 if [ "$VDBC_AM" = 1 ] && [ "${VERIFY_KEYLESS_CALLS:-0}" = 1 ]; then
   MC -d '{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"search_jobs","arguments":{"query":"registered nurse","location":"United States","limit":1}}}' > /tmp/vd_99bc_k_us.json
@@ -223,34 +277,44 @@ if [ -n "$VDBC_ENTRY" ]; then
   if [ -n "$VDBC_MTN" ]; then curl -s -m 30 "$SITE/assets/$VDBC_MTN" > /tmp/vd_99bc_mt.js; fi
 fi
 curl -s -m 30 -A "$UA" "$SITE/agents" > /tmp/vd_99bc_bake.html
-VDBC_ENTRY="$VDBC_ENTRY" VDBC_ACN="${VDBC_ACN:-}" VDBC_MTN="${VDBC_MTN:-}" VDBC_P=/tmp/vd_99bc_ node -e '
+VDBC_ENTRY="$VDBC_ENTRY" VDBC_ACN="${VDBC_ACN:-}" VDBC_MTN="${VDBC_MTN:-}" VDBC_O_REDIST="$VDBC_O_REDIST" VDBC_O_ASHBY="$VDBC_O_ASHBY" VDBC_O_HO1="$VDBC_O_HO1" VDBC_P=/tmp/vd_99bc_ node -e '
 const fs=require("fs");const P=process.env.VDBC_P;const raw=(f)=>{try{return fs.readFileSync(P+f,"utf8")}catch{return ""}};
 const ac=raw("ac.js"),mt=raw("mt.js"),js=ac+"\n"+mt,bake=raw("bake.html");
 const names=(process.env.VDBC_ACN||"no AgentConnect chunk")+" + "+(process.env.VDBC_MTN||"no mcp-tools chunk");
 const has=(s,x)=>s.includes(x);
 const OLD_JS=["opens every read tool","last confirmed it open","to open a posting in full or to check a shortlist","whose terms forbid redistributing","label:\"Pinpoint\"}]","the unkeyed tools still answer"];
 const OLD_BAKE=["opens every read tool","last confirmed it open","the unkeyed tools still answer","whose terms forbid redistributing","Breezy or Pinpoint"];
-const VENDORS=["Greenhouse","Ashby","Recruitee","Breezy","Pinpoint","Paylocity","Workable","Teamtailor","Lever","BambooHR"];
+// The form readers the page names (src/config/mcp-tools.ts MCP_FORM_VENDORS), less any an owner choice withholds:
+// OD14-REDIST-1 "withhold" refuses Breezy postings before their form is read; OD14-ASHBY-1 "stop" reads no Ashby form.
+const NOT_READ=[...(/withh|yes/i.test(process.env.VDBC_O_REDIST||"")?["Breezy"]:[]),...(/stop|yes/i.test(process.env.VDBC_O_ASHBY||"")?["Ashby"]:[])];
+const VENDORS=["Greenhouse","Ashby","Recruitee","Breezy","Pinpoint","Paylocity","Workable","Teamtailor","Lever","BambooHR"].filter((v)=>!NOT_READ.includes(v));
+// HO-1: the authentication choice the owner\x27s install-link check recorded, as the Claude steps must name it.
+const HO1=process.env.VDBC_O_HO1||"";const HO1_WANT=/no sign.?in/i.test(HO1)?["No sign in"]:/when needed/i.test(HO1)?["Sign in when needed"]:["Sign in when needed","No sign in"];
+const KEEP="Keep them as they are";
 const line=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
 if(!ac){console.log("FAIL  C /agents ships no AgentConnect chunk (entry "+(process.env.VDBC_ENTRY||"none")+"): the page cannot be judged");}
-else if(OLD_JS.every((x)=>has(js,x))){for(const k of ["S14X-259","S14X-260","S14X-261","S14X-262","SEO-F15","USAJOBS-COPY-1"])console.log("INFO  "+k+" waits for the frontend publish: the live /agents chunks ("+names+") still carry every string this round replaced");}
+else if(OLD_JS.every((x)=>has(js,x))){for(const k of ["S14X-259","S14X-260","S14X-261","S14X-262","SEO-F15","USAJOBS-COPY-1"].concat(HO1?["HO-1"]:[]))console.log("INFO  "+k+" waits for the frontend publish: the live /agents chunks ("+names+") still carry every string this round replaced");}
 else{
   line(has(mt,"Your calls come from your own internet connection")&&has(ac,"data-allowance")&&has(mt,"Claude users share one allowance"),"S14X-259 the Claude Code, Cursor, VS Code and other panels say the calls come from the person\x27s own internet connection ("+(has(mt,"Your calls come from your own internet connection")?"said":"MISSING")+", rendered by "+(has(ac,"data-allowance")?"the panel\x27s own allowance line":"NO panel line")+") while Claude\x27s keeps its shared allowance ("+(has(mt,"Claude users share one allowance")?"kept":"MISSING")+") ("+names+")");
   line(!has(js,"opens every read tool")&&has(js,"With a free key (optional")&&has(js," adds ")&&has(js,"claude mcp remove ")&&has(js,"gemini mcp remove --scope user ")&&!has(js,"the unkeyed tools still answer")&&has(js,"the unkeyed tools answer again"),"S14X-260 the keyed steps: the title "+(has(js,"opens every read tool")?"still promises every read tool":"says what a key adds")+", the Claude Code and Gemini steps "+(has(js,"claude mcp remove ")&&has(js,"gemini mcp remove --scope user ")?"remove the keyless entry first":"do NOT remove the keyless entry")+", and the quota row "+(has(js,"the unkeyed tools still answer")?"still says the unkeyed tools answer while the spent key is set":has(js,"the unkeyed tools answer again")?"says to remove the key":"is MISSING"));
   line(!has(js,"last confirmed it open")&&has(js,"when the board last read the employer"),"S14X-261 get_job on /agents says "+(has(js,"last confirmed it open")?"the feed last confirmed the posting open":has(js,"when the board last read the employer")?"when the board last read the employer\x27s feed":"neither"));
   line(!has(js,"to open a posting in full or to check a shortlist")&&has(js,"to score your CV against postings or to show your key"),"S14X-262 Claude\x27s sign-in line names "+(has(js,"to open a posting in full or to check a shortlist")?"keyless work (opening a posting, checking a shortlist)":has(js,"to score your CV against postings or to show your key")?"scoring a CV and the key\x27s status, which need an account":"neither"));
   const missing=VENDORS.filter((v)=>!has(mt,"label:\""+v+"\""));
-  line(!missing.length&&!has(mt,"label:\"Pinpoint\"}]"),"SEO-F15 the page names "+(VENDORS.length-missing.length)+" of the ten form readers"+(missing.length?" (missing "+missing.join(", ")+")":"")+(has(mt,"label:\"Pinpoint\"}]")?", and its list still ends at Pinpoint":""));
+  const named=NOT_READ.filter((v)=>has(mt,"label:\""+v+"\""));
+  line(!missing.length&&!named.length&&!has(mt,"label:\"Pinpoint\"}]"),"SEO-F15 the page names "+(VENDORS.length-missing.length)+" of the "+VENDORS.length+" form readers the connector uses"+(missing.length?" (missing "+missing.join(", ")+")":"")+(named.length?", and names "+named.join(", ")+", whose form the owner\x27s choice stops it reading":"")+(has(mt,"label:\"Pinpoint\"}]")?", and its list still ends at Pinpoint":""));
+  if(HO1){const said=HO1_WANT.filter((x)=>has(mt,x));line(!has(mt,KEEP)&&said.length>0,"HO-1 decided ("+HO1+"): the Claude steps on /agents "+(has(mt,KEEP)?"still say to keep the detected authentication settings":"no longer say to keep the detected settings")+" and "+(said.length?"name "+JSON.stringify(said[0]):"name no authentication choice ("+HO1_WANT.join(" or ")+")"));}
   line(has(js,"which we choose not to redistribute for now")&&!has(js,"whose terms forbid redistributing"),"USAJOBS-COPY-1 /agents says the federal feed is withheld "+(has(js,"whose terms forbid redistributing")?"because its terms forbid it":has(js,"which we choose not to redistribute for now")?"by our own choice, for now":"with no reason"));
 }
 if(!bake.includes("<"))console.log("FAIL  C the /agents bake answered no page");
-else if(OLD_BAKE.every((x)=>has(bake,x))){for(const k of ["S14X-260","S14X-261","SEO-F15","USAJOBS-COPY-1"])console.log("INFO  "+k+" (bake) waits for the frontend publish: the /agents bake still carries every string this round replaced");}
+else if(OLD_BAKE.every((x)=>has(bake,x))){for(const k of ["S14X-260","S14X-261","SEO-F15","USAJOBS-COPY-1"].concat(HO1?["HO-1"]:[]))console.log("INFO  "+k+" (bake) waits for the frontend publish: the /agents bake still carries every string this round replaced");}
 else{
   line(!has(bake,"opens every read tool")&&!has(bake,"the unkeyed tools still answer")&&has(bake,"the unkeyed tools answer again"),"S14X-260 (bake) the keyed title and the quota row as crawlers read them: "+(has(bake,"opens every read tool")?"the title promises every read tool":"no promise of every read tool")+", "+(has(bake,"the unkeyed tools still answer")?"the old quota fix":has(bake,"the unkeyed tools answer again")?"the new quota fix":"no quota fix"));
   line(!has(bake,"last confirmed it open")&&has(bake,"when the board last read the employer"),"S14X-261 (bake) get_job as crawlers read it says "+(has(bake,"last confirmed it open")?"the feed last confirmed it open":has(bake,"when the board last read the employer")?"when the board last read the feed":"neither"));
-  line(has(bake,"Lever or BambooHR")&&!has(bake,"Breezy or Pinpoint"),"SEO-F15 (bake) apply_myself as crawlers read it names "+(has(bake,"Lever or BambooHR")?"the ten form readers":has(bake,"Breezy or Pinpoint")?"five form readers":"no reader list"));
+  line(has(bake,"Lever or BambooHR")&&!has(bake,"Breezy or Pinpoint"),"SEO-F15 (bake) apply_myself as crawlers read it names "+(has(bake,"Lever or BambooHR")?"its form readers":has(bake,"Breezy or Pinpoint")?"five form readers":"no reader list"));
+  if(HO1){const said=HO1_WANT.filter((x)=>has(bake,x));line(!has(bake,KEEP)&&said.length>0,"HO-1 (bake) decided ("+HO1+"): the Claude steps as crawlers read them "+(has(bake,KEEP)?"still say to keep the detected settings":"no longer say to keep the detected settings")+" and "+(said.length?"name "+JSON.stringify(said[0]):"name no authentication choice"));}
   line(has(bake,"which we choose not to redistribute for now")&&!has(bake,"whose terms forbid redistributing"),"USAJOBS-COPY-1 (bake) the withheld note as crawlers read it says "+(has(bake,"whose terms forbid redistributing")?"the terms forbid it":has(bake,"which we choose not to redistribute for now")?"we choose not to, for now":"nothing"));
 }
+if(!HO1)console.log("INFO  HO-1 owner pending: /agents keeps the Add to Claude button off and tells Claude users to keep the detected authentication settings, until the owner\x27s install-link check records which choice saves and searches (the one-click option is a commit on bugs/a-connector-owner)");
 '
 
 # ── S14X-056-install: the install README, which the owner pushes ──
