@@ -7,6 +7,8 @@ export interface EmployerStated {
   remote?: true;
   postedAt?: string;
   address?: { addressLocality: string; addressRegion?: string; postalCode?: string; addressCountry?: string };
+  /** The two-letter country the employer's system files the posting under. */
+  country?: string;
 }
 
 export const EMPLOYER_STATED_META: string;

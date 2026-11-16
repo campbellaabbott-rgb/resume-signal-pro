@@ -1,3 +1,16 @@
+-- SUB-HOURLY CRON REVIEW MARKER
+-- reviewed: 2026-11-16 by the project owner, who approves this schedule as written.
+-- job: refresh-board-facets (scheduled since 20260801000000).
+-- schedule: '7,22,37,52 * * * *' today -> '2,17,32,47 * * * *' after this file.
+--   Same frequency (every 15 minutes); only the minutes move.
+-- why sub-hourly: the /jobs filter counts must stay under about 55 minutes
+--   old between board passes. scan-heartbeat flags the row at 90 minutes, and
+--   one tick an hour would let it reach about 105 minutes (reasoning below).
+-- load: lower than today. A tick now rebuilds the row only when nothing has
+--   written it for 40 minutes (at most 32 rebuilds a day instead of 96); a
+--   skipped tick reads one row and stops.
+-- new standing sub-hourly jobs: none.
+--
 -- THE FACETS CRON REBUILDS ONLY A ROW THE BOARD PASS LEFT OLD (cost audit
 -- 2026-11-08, db-cadence lane, "do first" #5).
 --

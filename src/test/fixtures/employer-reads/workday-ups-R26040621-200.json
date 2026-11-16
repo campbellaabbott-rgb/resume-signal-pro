@@ -1,0 +1,28 @@
+{
+ "jobPostingInfo": {
+  "id": "4099bb58d2ae1001f1b1d2fec3f10000",
+  "title": "Export Supervisor Marken",
+  "location": "AR - BUENOS AIRES (ARBUO)",
+  "postedOn": "Posted 9 Days Ago",
+  "startDate": "2026-11-06",
+  "timeType": "Full time",
+  "jobReqId": "R26040621",
+  "jobPostingId": "Export-Supervisor-Marken_R26040621",
+  "jobPostingSiteId": "Search",
+  "country": {
+   "descriptor": "Argentina",
+   "id": "e42ad5eac46d4cc9b367ceaef42577c5"
+  },
+  "jobRequisitionLocation": {
+   "descriptor": "AR - BUENOS AIRES (ARBUO)",
+   "country": {
+    "descriptor": "Argentina",
+    "id": "e42ad5eac46d4cc9b367ceaef42577c5",
+    "alpha2Code": "AR"
+   }
+  },
+  "externalUrl": "https://hcmportal.wd5.myworkdayjobs.com/Search/job/AR---BUENOS-AIRES-ARBUO/Export-Supervisor-Marken_R26040621",
+  "endDate": "2026-11-27",
+  "jobPostingEndDateAsText": "End Date: November 27, 2026"
+ }
+}

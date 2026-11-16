@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. Every job this file schedules
+-- runs at most once an hour (reviewed 2026-11-16 by the project owner).
+--
 -- THE GHOST INDEX IS RECOMPUTED ONCE AN HOUR, BEFORE THE CACHE COPIES IT
 -- (cost audit 2026-11-08, db-cadence lane, "do first" #7).
 --
@@ -22,10 +25,10 @@
 -- '15min' in front of the call (20261004010000 put it there; a function's own
 -- SET never times a cron run), and gets it back if it ever lost it.
 --
--- PUBLISHED CADENCE. The Ghost Job Index's prerendered sentence reads
--- "recomputed twice an hour" (scripts/prerender-seo.mjs DATA_PAGE_CADENCE,
--- 'refresh-ghost-stats'); with this file it must read "recomputed once an
--- hour". That file belongs to another owner; the deploy notes carry it.
+-- PUBLISHED CADENCE. The Ghost Job Index's prerendered sentence already reads
+-- "recomputed once an hour" (scripts/prerender-seo.mjs DATA_PAGE_CADENCE,
+-- 'refresh-ghost-stats'). Until this file applies it understates the
+-- twice-an-hour runs, which review 2026-11-15 accepted.
 --
 -- Safe to re-run: the alter runs only when the job exists in cron.job, and the
 -- self-check reads it back.

@@ -1,0 +1,27 @@
+{
+ "jobPostingInfo": {
+  "id": "8e969ebe955a1000780ee48086fa0000",
+  "title": "Technical Lead for IoT Gateway as a Service",
+  "location": "Zurich",
+  "postedOn": "Posted 21 Days Ago",
+  "startDate": "2026-10-25",
+  "timeType": "Full time",
+  "jobReqId": "R-0006822",
+  "jobPostingId": "Technical-Lead-for-IoT-Gateway-as-a-Service_R-0006822",
+  "jobPostingSiteId": "SwisscomExternalCareers",
+  "country": {
+   "descriptor": "Switzerland",
+   "id": "187134fccb084a0ea9b4b95f23890dbe"
+  },
+  "jobRequisitionLocation": {
+   "descriptor": "Zür-Pfi51",
+   "country": {
+    "descriptor": "Switzerland",
+    "id": "187134fccb084a0ea9b4b95f23890dbe",
+    "alpha2Code": "CH"
+   }
+  },
+  "remoteType": "80-100%",
+  "externalUrl": "https://swisscom.wd103.myworkdayjobs.com/SwisscomExternalCareers/job/Zurich/Technical-Lead-for-IoT-Gateway-as-a-Service_R-0006822"
+ }
+}

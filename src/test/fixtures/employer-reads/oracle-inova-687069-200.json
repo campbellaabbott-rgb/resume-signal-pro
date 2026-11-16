@@ -1,0 +1,19 @@
+{
+ "items": [
+  {
+   "Id": "687069",
+   "Title": "Clinical Technician 1 – Acute Care Unit",
+   "JobSchedule": "Part time",
+   "ExternalPostedStartDate": "2026-11-15T05:52:58+00:00",
+   "ExternalPostedEndDate": "2026-11-17T05:00:00+00:00",
+   "PrimaryLocation": "Leesburg, VA, United States",
+   "PrimaryLocationCountry": "US",
+   "WorkplaceTypeCode": null,
+   "WorkplaceType": ""
+  }
+ ],
+ "count": 1,
+ "hasMore": false,
+ "limit": 499,
+ "offset": 0
+}

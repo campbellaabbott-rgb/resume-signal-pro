@@ -22,10 +22,12 @@ import { boardNamesItsHirer, decodeNameEntities, employerName, possessive } from
 // postingMarkupGate below). Both modules are plain JavaScript with no imports
 // of their own, which is how plain node runs them for the bake.
 import { bakeEmployerName, type BakeEmployerName } from "../../../scripts/prerender-names.mjs";
-import { postingRowEligible } from "../../../scripts/prerender-posting-rule.mjs";
+import { internalOnlyTextReason, paidSurveyAdReason, postingRowEligible } from "../../../scripts/prerender-posting-rule.mjs";
 import { isCodeShapedName } from "../../lib/company-display";
 // The owner's STOP switch for Google for Jobs (B01): read by postingJsonLd below.
 import { JOB_POSTING_MARKUP } from "../../config/seo-switches";
+// Relative, as above: the bake bundles this module with esbuild, which knows no alias.
+import { titleFromCapitals } from "../../lib/seo/display-case";
 // What a posting's employer states, applied by the bake and again here (B06).
 import { applyEmployerStatements } from "../../../scripts/employer-statements.mjs";
 
@@ -122,6 +124,14 @@ export interface PostingRow {
    * hand-off); when it is, the markup's expiry never runs past it.
    */
   employerValidThrough?: string | null;
+  /**
+   * THE COUNTRY THE EMPLOYER'S OWN SYSTEM FILES THE POSTING UNDER (F08), as a
+   * two-letter code, when the bake's employer read states one (Workday's
+   * requisition location, Oracle's primary location). Kept beside `country`,
+   * never over it: postingCountryMismatch withholds the markup when they
+   * disagree.
+   */
+  employerCountry?: string | null;
 }
 
 /**
@@ -242,16 +252,45 @@ export function jdParagraphs(description: string): string[] {
  * answers only when one language leads the next by at least two to one with
  * enough hits to mean it; a mixed or short text answers null and the page
  * keeps the site's language rather than a guess.
+ *
+ * A LEAD MUST BE SPREAD OVER SEVERAL WORDS (SEO check 2026-11-15, F28). A
+ * Czech JYSK posting (744000157667379) was served lang="pt": Czech was on no
+ * list, its prepositions are spelled like two of Portuguese's words, and one
+ * of them 13 times was a lead of 15 to nothing. Norwegian, Swedish and Danish
+ * postings read as French the same way, Polish and Slovak ones as
+ * Portuguese. So a lead now counts only when at least LANG_MIN_DISTINCT
+ * different words of the leader's list were seen, and Czech, Slovak, Polish,
+ * Danish, Norwegian and Swedish have lists of their own, of words the other
+ * lists do not share (a word two close languages share would split their
+ * count and leave both unread). French's list lost "et" and "du", which are
+ * also everyday Danish and Norwegian words ("a" and "you"). The same floor
+ * holds for the runner-up the lead is compared with: a rival made of one or
+ * two shared words ("en" on the Dutch list, a French preposition) does not
+ * block a lead, which left French-only postings unread (review of
+ * 2026-11-15, Groupe MIRADOR).
+ * Measured on 463 labelled real postings in 21 languages
+ * (src/test/fixtures/posting-language-corpus-2026-11-15.json): the old rule
+ * named a wrong language on 24 of them, this rule on none, and it is never
+ * worse on any case. A language with no list (Finnish, Hungarian, Romanian,
+ * Croatian, Slovenian...) answers null.
  */
 const LANG_MARKERS: Record<string, string[]> = {
   en: ["the", "and", "with", "you", "our", "will", "your", "this", "that", "are", "for", "have", "from", "we"],
   es: ["el", "los", "las", "para", "con", "por", "una", "del", "nuestro", "nuestra", "experiencia", "que", "y", "trabajo"],
-  fr: ["les", "des", "et", "pour", "avec", "une", "vous", "nous", "du", "est", "dans", "sur", "au", "votre"],
+  fr: ["les", "des", "pour", "avec", "une", "vous", "nous", "est", "dans", "sur", "au", "votre"],
   de: ["der", "die", "das", "und", "mit", "für", "ist", "wir", "sie", "ein", "eine", "von", "zu", "den", "bei", "oder"],
   pt: ["os", "com", "uma", "do", "da", "dos", "das", "você", "na", "no", "em", "não", "seu", "sua"],
   nl: ["het", "een", "en", "van", "voor", "met", "je", "wij", "zijn", "op", "te", "ons", "als", "bij"],
   it: ["il", "di", "per", "con", "una", "che", "della", "nel", "sono", "gli", "nostro", "nostra"],
+  cs: ["jsou", "které", "který", "která", "kteří", "nebo", "jsme", "také", "při", "jako", "pro", "této", "jste", "práce", "zkušenosti", "nabízíme", "hledáme", "společnosti", "můžete", "ve"],
+  sk: ["sú", "ktoré", "ktorý", "ktorá", "ktorí", "alebo", "sme", "tiež", "pri", "ako", "pre", "tejto", "ste", "práca", "skúsenosti", "ponúkame", "hľadáme", "spoločnosti", "môžete", "vo", "sa", "aj"],
+  pl: ["jest", "się", "nie", "oraz", "dla", "są", "który", "która", "które", "lub", "przez", "będzie", "pracy", "doświadczenie", "oferujemy", "wymagania", "naszego", "naszej", "jesteś"],
+  da: ["af", "vores", "efter", "søger", "blive", "jeres", "meget", "gerne", "arbejde", "virksomhed", "medarbejdere", "mulighed", "ansøgning", "nogle", "hvad"],
+  no: ["våre", "etter", "søker", "dere", "mye", "gjerne", "arbeid", "bedrift", "medarbeidere", "mulighet", "søknad", "noen", "hva", "meg", "deg", "seg", "jobbe"],
+  sv: ["och", "att", "är", "för", "inte", "också", "erfarenhet", "söker", "vill", "ska", "från", "när", "inom", "våra", "arbeta", "arbetar", "tjänst", "möjlighet", "ansökan", "vad", "några", "mycket", "hur"],
 };
+/** The fewest different words of the leading language's list a lead must be made of. */
+const LANG_MIN_DISTINCT = 5;
 export function postingLanguage(description: string | null | undefined): string | null {
   const text = jdText(String(description ?? ""));
   // CHINESE, JAPANESE AND KOREAN ARE READ BY SCRIPT, not by function words: an
@@ -270,9 +309,19 @@ export function postingLanguage(description: string | null | undefined): string 
   const words = text.toLowerCase().match(/[\p{L}]+/gu)?.slice(0, 3000) ?? [];
   if (words.length < 40) return null;
   const sets = Object.entries(LANG_MARKERS).map(([lang, ws]) => [lang, new Set(ws)] as const);
-  const score = sets.map(([lang, set]) => [lang, words.filter((w) => set.has(w)).length] as const).sort((a, b) => b[1] - a[1]);
-  const [top, second] = score;
+  const score = sets
+    .map(([lang, set]) => {
+      const hits = words.filter((w) => set.has(w));
+      return [lang, hits.length, new Set(hits).size] as const;
+    })
+    .sort((a, b) => b[1] - a[1]);
+  const [top] = score;
   if (!top || top[1] < 12) return null;
+  if (top[2] < LANG_MIN_DISTINCT) return null;
+  // The runner-up must stand on the same floor to block a lead: one or two
+  // words another list shares are no rival ("en", French's preposition, on
+  // the Dutch list; review of 2026-11-15).
+  const second = score.slice(1).find((x) => x[2] >= LANG_MIN_DISTINCT);
   if (second && top[1] < second[1] * 2) return null;
   return top[0];
 }
@@ -331,6 +380,17 @@ export function postingRequisitionIdentity(job: Pick<PostingRow, "id">): string 
 
 /** A title or a name as one line: an employer's double space is not part of the job. */
 export const postingText = (s: string | null | undefined): string => decodeNameEntities(String(s ?? "")).replace(/\s+/g, " ").trim();
+
+/**
+ * A posting's job title as the page, its head and its markup print it: the
+ * employer's text on one line, and a title its employer typed in capitals in
+ * title case with its initialisms kept ("MFG PEE PH PR TECH" is "Mfg PEE PH PR
+ * Tech"). Google's content policy for job postings asks for no all caps, and
+ * the markup must say what the page shows, so the markup, the <title>, the
+ * meta description and the page heading all print it (SEO check 2026-11-15,
+ * F12). Any other title is the employer's own casing.
+ */
+export const postingTitleText = (s: string | null | undefined): string => titleFromCapitals(postingText(s));
 
 /** UTC calendar day of an ISO stamp. */
 const day = (iso: string): string => iso.slice(0, 10);
@@ -850,10 +910,18 @@ export function postingRemoteBasis(job: PostingRow): "vendor" | "place-free" | n
  * Without a list of every town, "Biloxi, MS, Algeria" (a vendor's default
  * country after a Mississippi town) reads the same as "Lagos, LA, Nigeria"
  * and is still withheld; docs/seo-round/README.md counts these.
+ *
+ * THE EMPLOYER'S OWN SYSTEM IS ASKED FIRST (F08). The board read UPS's
+ * "AR - BUENOS AIRES (ARBUO)" as Arkansas, US, and Workday's own answer
+ * files it under Argentina: a row whose employer's country (employerCountry,
+ * from the bake's employer read) is another jurisdiction than its own is a
+ * mismatch, whatever its location string says.
  */
-export function postingCountryMismatch(job: Pick<PostingRow, "location" | "country"> & Partial<Pick<PostingRow, "company">>): boolean {
+export function postingCountryMismatch(job: Pick<PostingRow, "location" | "country"> & Partial<Pick<PostingRow, "company" | "employerCountry">>): boolean {
   const own = String(job.country ?? "").trim().toUpperCase();
   if (!own) return false;
+  const stated = String(job.employerCountry ?? "").trim().toUpperCase();
+  if (/^[A-Z]{2}$/.test(stated) && !sameJurisdiction(own, stated)) return true;
   const places = String(job.location ?? "").split(PLACE_LIST)
     .map((p) => p.split(/,|\s[-–]\s/).map((s) => placeOfSegment(s)).filter(Boolean))
     .filter((segs) => segs.length > 0);
@@ -1293,6 +1361,17 @@ export function postingNameVerdict(job: Pick<PostingRow, "id" | "token" | "compa
  * whether the name is the ONLY thing in the way (a carried page then keeps
  * its page with no markup, D7); it skips the name rules (the gate and the
  * tenant-code clause of rule 1) and is never used to emit markup.
+ *
+ * A POSTING ONLY THE EMPLOYER'S OWN PEOPLE MAY APPLY FOR (SEO check
+ * 2026-11-15, F02) gets none, on any board: rule 1 refuses a board that is
+ * internal, referral-only, employees-only or by invitation, and here the
+ * posting's own title and description are read for words that say so ("This
+ * posting is exclusively for internal employees"). Nor does A PAID-SURVEY
+ * PANEL AD (F03): rule 1 holds the feed the check found, and its words ("Earn
+ * money at Home by Participating in Surveys") are read here on any board.
+ * None of these questions has an ignore switch, so the bake's D7 asks (a
+ * refused name, a country) answer null for such a row too, and its carried
+ * page becomes a noindex stub.
  */
 export function postingMarkupGate(
   job: PostingRow,
@@ -1309,6 +1388,8 @@ export function postingMarkupGate(
   };
   if (!postingRowEligible(job, rule)) return null;
   if (!postingDescribedEnough(description)) return null;
+  const ownText = `${job.title ?? ""}\n${jdText(String(description))}`;
+  if (internalOnlyTextReason(ownText) || paidSurveyAdReason(ownText)) return null;
   const named = postingNameVerdict(job);
   if (named.reason && !opts.ignoreNameGate) return null;
   return named.repaired ? { ...job, company: named.name } : job;
@@ -1400,7 +1481,9 @@ export function postingJsonLdShape(
   const ld: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "JobPosting",
-    title: postingText(job.title),
+    // A title its employer typed in capitals is marked up in title case, as
+    // the page prints it (postingTitleText, F12).
+    title: postingTitleText(job.title),
     // THE WHOLE DESCRIPTION, BECAUSE THAT IS WHAT THE PROPERTY IS FOR. This was
     // cut at 4,000 characters, which fired on 300 of the 399 pages the bake
     // wrote — their visible text ran to a median 7,273 characters and a maximum
@@ -1553,7 +1636,7 @@ function titleWith(title: string, tail: string): string | null {
 export function postingPageTitle(job: PostingRow): string {
   // One line: "Quality  (QA) Technician" shipped its employer's double space
   // into two identical sitemap titles (OBS-1).
-  const title = postingText(job.title);
+  const title = postingTitleText(job.title);
   const company = job.company ? postingEmployer(job) : "";
   const place = postingText(job.location);
   const companyFits = !!company && TITLE_MIN_ROOM + TITLE_SEP.length + company.length <= TITLE_BUDGET;
@@ -1589,7 +1672,7 @@ export function postingPageTitle(job: PostingRow): string {
 export function postingPageTitleAvoiding(job: PostingRow, taken: ReadonlySet<string>): string {
   const first = postingPageTitle(job);
   if (!taken.has(first)) return first;
-  const title = postingText(job.title);
+  const title = postingTitleText(job.title);
   const company = job.company ? postingEmployer(job) : "";
   const town = shortPlace(job);
   const day = statedDay(job);
@@ -1635,7 +1718,7 @@ function servedLength(s: string): number {
  * only if the whole thing still does.
  */
 export function postingPageDescription(job: PostingRow): string {
-  const title = postingText(job.title);
+  const title = postingTitleText(job.title);
   const company = job.company ? postingEmployer(job) : "";
   const place = postingText(job.location);
   // NO NAME, NO "at ,": a page whose employer name the bake will not print

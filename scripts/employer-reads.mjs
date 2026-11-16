@@ -11,13 +11,18 @@
 // WD30282057).
 //
 // So the bake and the daily check (scripts/posting-closure-check.mjs) ask the
-// employer's own endpoint, one GET per posting (one per board for Ashby), and
-// read the answer as one of three states:
+// employer's own endpoint, one GET per posting (one per board for Ashby,
+// Breezy and Recruitee), and read the answer as one of three states:
 //   open     the employer's system serves the posting;
 //   closed   the employer's system says it does not, in a way that cannot be a
 //            wrong address of ours (Workday's 403 S22, a 404 or 410 from an API
-//            keyed by the posting's own id, an Ashby id missing from its whole
-//            board, Paylocity's own "JobNotFound" page);
+//            keyed by the posting's own id, an id missing from an Ashby,
+//            Breezy or Recruitee board's whole list, Paylocity's own
+//            "JobNotFound" page, an Oracle requisition finder that finds
+//            nothing, ADP's empty requisition);
+//            an Oracle requisition the finder does return is open only when
+//            the row's own career site lists it (the finder ignores the
+//            site, and answers for an internal-only posting too);
 //   unknown  anything else: a network error, a timeout, a refusal, a 5xx, a
 //            vendor this module does not read, a Workday 404 (our applyUrl's
 //            slug is sometimes wrong, so a 404 there proves nothing).
@@ -25,8 +30,19 @@
 // counted, so a build network that blocks vendor GETs shows up as a large
 // unknown share in the bake log and the ledger, never as retired pages.
 //
+// FOUR VENDORS WERE NEVER ASKED (SEO check 2026-11-15, F01): Oracle (36 live
+// pages), ADP (16), Breezy (7) and Recruitee (3), 72 of the 490 marked-up
+// pages, so two postings Oracle no longer served (Kroger 216822, Caesars
+// 91598) kept 'index, follow' and job markup. Each is read now, by the address
+// the board itself reads it at (job-board/index.ts checkLive and the ADP
+// detail fetch), measured 2026-11-15 against postings the board had already
+// seen go: Oracle's ById finder answers 200 with no items, and ADP answers 200
+// with an empty requisition (no itemID), for one the employer took down.
+//
 // THE SAME READ CARRIES WHAT THE EMPLOYER STATES (B06): Workday's endDate,
-// startDate (its own posting date), timeType and remoteType, Greenhouse's application deadline, Lever's
+// startDate (its own posting date), timeType, remoteType and the country of
+// its requisition location, Oracle's end date, schedule, remote workplace and
+// primary country, Greenhouse's application deadline, Lever's
 // commitment and workplaceType, SmartRecruiters' typeOfEmployment and remote
 // flag, Ashby's employmentType and remote fields, Paylocity's own JobPosting
 // (its original datePosted, its structured address, TELECOMMUTE) and UKG's
@@ -52,9 +68,15 @@ export const EMPLOYER_READ_BUDGET_MS = 150_000;
 export const EMPLOYER_READ_USER_AGENT = "Mozilla/5.0 (compatible; resumebooster-posting-check/1.0; +https://resumebooster.work/jobs)";
 
 /** The vendors whose answer can say open or closed. */
-export const READ_VENDORS = Object.freeze(["workday", "greenhouse", "lever", "smartrecruiters", "ashby", "icims", "paylocity", "teamtailor", "personio"]);
+export const READ_VENDORS = Object.freeze(["workday", "greenhouse", "lever", "smartrecruiters", "ashby", "icims", "paylocity", "teamtailor", "personio", "oracle", "adp", "breezy", "recruitee"]);
 /** Vendors read only for what the employer states (their answer never says closed). */
 export const STATED_ONLY_VENDORS = Object.freeze(["ukg"]);
+/**
+ * Vendors read with one list request per board (employerReadPlan kind
+ * "board"): one failed GET makes every page of that board unknown, so the
+ * daily check's per-vendor judgement counts their unknown BOARDS (98-r2 G1).
+ */
+export const BOARD_LIST_VENDORS = Object.freeze(["ashby", "breezy", "recruitee"]);
 
 /** The three parts of a board id ("workday:tenant~wd5~Site:R123"), or null. */
 export function idParts(id) {
@@ -79,13 +101,22 @@ const httpsUrl = (s) => {
   } catch { return null; }
 };
 const SLUG = /^[A-Za-z0-9._-]+$/;
+/** A name that is only ever one label of a host (a Breezy or Recruitee board, an Oracle tenant): no dot, so it can name no other host. */
+const HOST_LABEL = /^[A-Za-z0-9-]+$/;
+/** ADP's client id is a UUID; its career-center id and requisition ids are digits and underscores. */
+const ADP_CLIENT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ADP_KEY = /^[0-9_]+$/;
+/** The career center an ADP token without one is read under, as the board reads it (job-board normalize.ts adpBoardParams). */
+const ADP_DEFAULT_CAREER_CENTER = "19000101_000001";
 
 /**
  * THE ONE GET THAT ANSWERS FOR A ROW, or a reason there is none. `kind` says
  * how the answer is read: "workday" (CXS detail JSON), "api" (a JSON endpoint
  * keyed by the posting's own id), "board" (a whole board's JSON list, one read
- * per board), "page" (the employer's page and its own JobPosting markup) or
- * "ukg" (the opportunity detail page, read for its stated date only).
+ * per board: Ashby, Breezy, Recruitee), "page" (the employer's page and its
+ * own JobPosting markup), "oracle" (the tenant's requisition finder), "adp"
+ * (Workforce Now's public requisition detail) or "ukg" (the opportunity detail
+ * page, read for its stated date only).
  */
 export function employerReadPlan(row) {
   const p = idParts(row?.id);
@@ -122,6 +153,44 @@ export function employerReadPlan(row) {
       return { vendor: source, kind: "api", url: `https://api.smartrecruiters.com/v1/companies/${enc(token)}/postings/${enc(key)}`, accept: "application/json" };
     case "ashby":
       return { vendor: source, kind: "board", url: `https://api.ashbyhq.com/posting-api/job-board/${enc(token)}`, accept: "application/json" };
+    // The board's own list addresses (job-board/index.ts listUrl).
+    case "breezy":
+      if (!HOST_LABEL.test(token)) return { vendor: source, url: null, why: "not a Breezy board name" };
+      return { vendor: source, kind: "board", url: `https://${token}.breezy.hr/json`, accept: "application/json" };
+    case "recruitee":
+      if (!HOST_LABEL.test(token)) return { vendor: source, url: null, why: "not a Recruitee board name" };
+      return { vendor: source, kind: "board", url: `https://${token}.recruitee.com/api/offers/`, accept: "application/json" };
+    case "oracle": {
+      // tenant~region~site ("eluq~us2~CX_1"; a region-less host has an empty
+      // region, "jpmc~~CX_1001"), read at the host the board reads it at
+      // (job-board normalize.ts oracleHost). The requisition id goes into the
+      // finder quoted, as the report's evidence read it, so an id with a
+      // letter in it ("REQ_822358", "N134928") is read too; one that could
+      // close the quote is not read at all.
+      const [tenant, region = "", site = ""] = token.split("~");
+      if (!tenant || !HOST_LABEL.test(tenant) || !/^[A-Za-z0-9]*$/.test(region) || !/^[A-Za-z0-9_]+$/.test(site)) return { vendor: source, url: null, why: "not an Oracle tenant~region~site token" };
+      if (!SLUG.test(key)) return { vendor: source, url: null, why: "not an Oracle requisition id" };
+      const host = `${tenant}.fa.${region ? `${region}.` : ""}oraclecloud.com`;
+      // THE SITE'S OWN LIST, searched for the id (review of 2026-11-15): the
+      // ById finder ignores siteNumber, so it answers for a requisition
+      // posted only on an internal site too. An open answer stands only when
+      // the row's own site lists the requisition (employerVerdict, "oracle").
+      return {
+        vendor: source,
+        kind: "oracle",
+        url: `https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?onlyData=true&finder=${enc(`ById;Id="${key}",siteNumber=${site}`)}`,
+        siteUrl: `https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitions?onlyData=true&expand=requisitionList&finder=${enc(`findReqs;siteNumber=${site},keyword=${key},limit=25`)}`,
+        accept: "application/json",
+      };
+    }
+    case "adp": {
+      // cid or cid~ccId, read at the detail address the board's description
+      // fetch reads (job-board/index.ts).
+      const [cid, ccId = ""] = token.split("~");
+      const center = ccId || ADP_DEFAULT_CAREER_CENTER;
+      if (!ADP_CLIENT.test(cid ?? "") || !ADP_KEY.test(center) || !ADP_KEY.test(key)) return { vendor: source, url: null, why: "not an ADP client id and requisition" };
+      return { vendor: source, kind: "adp", url: `https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/${key}?cid=${cid}&ccId=${center}&lang=en_US&locale=en_US`, accept: "application/json" };
+    }
     case "paylocity":
       return { vendor: source, kind: "page", url: `https://recruiting.paylocity.com/recruiting/jobs/Details/${enc(key)}`, accept: "text/html" };
     case "icims":
@@ -175,6 +244,27 @@ const statedInstant = (v) => {
   return Number.isFinite(Date.parse(v.trim())) ? v.trim() : null;
 };
 const label = (v) => (typeof v === "string" && v.trim() ? v.trim() : null);
+/**
+ * THE LAST WHOLE DAY AN END INSTANT LEAVES, as "YYYY-MM-DD". The page writes
+ * validThrough as that day's 23:59:59 UTC, so an instant is taken back to the
+ * last UTC day that ends at or before it: Oracle's 2026-11-17T05:00:00+00:00
+ * (midnight in Virginia) is the 16th, and 2026-12-09T18:30:00+00:00 (midnight
+ * in Bengaluru) the 8th. Erring early is the safe side: a window that ends a
+ * few hours before the employer's never says a closed posting is open. A date
+ * with no time is the last day as stated.
+ */
+const statedEndDay = (v) => {
+  if (typeof v !== "string") return null;
+  const s = v.trim();
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(s)) return statedDay(s);
+  const t = Date.parse(s);
+  return Number.isFinite(t) ? new Date(t - 86_399_000).toISOString().slice(0, 10) : null;
+};
+/** A two-letter country code a vendor stated, or null. */
+const statedCountry = (v) => {
+  const s = typeof v === "string" ? v.trim().toUpperCase() : "";
+  return /^[A-Z]{2}$/.test(s) ? s : null;
+};
 
 /** What a Workday CXS detail states: the end date, the posting date, the time type and a fully remote posting. */
 function workdayStated(info) {
@@ -191,10 +281,74 @@ function workdayStated(info) {
   if (tt) out.employmentType = tt;
   // TELECOMMUTE STANDS ONLY ON THE VENDOR'S OWN FIELD (SEO-003), and only on
   // its fully remote values: "Hybrid" and "Flexible" are not work from anywhere.
+  // A percentage is a WORKLOAD, not a place (F13): Swisscom R-0006822's
+  // '80-100%' is the hours of the job, and its text offers the office or home,
+  // so only the whole value "100%" (or "100% remote") is read as remote.
   const rt = label(info?.remoteType);
-  if (rt && (/^fully\s+remote$/i.test(rt) || /100\s*%/.test(rt))) out.remote = true;
+  if (rt && /^(?:fully\s+remote|100\s*%(?:\s+remote)?)$/i.test(rt)) out.remote = true;
+  // THE COUNTRY WORKDAY FILES THE REQUISITION'S LOCATION UNDER (F08). The
+  // board read "AR - BUENOS AIRES (ARBUO)" as Arkansas, US; Workday's own
+  // answer says Argentina. The code is stated so the page can see when it
+  // disagrees with the row's country (posting-page.ts postingCountryMismatch).
+  const loc = info?.jobRequisitionLocation?.country;
+  const code = statedCountry(loc?.alpha2Code) ?? countryCodeOfDescriptor(loc?.descriptor ?? info?.country?.descriptor);
+  if (code) out.country = code;
   return out;
 }
+
+/**
+ * A COUNTRY'S CODE FROM ITS ENGLISH NAME, as the runtime names regions
+ * (Workday's country.descriptor when no alpha2Code comes with it), or null
+ * when the name is not one the runtime gives. Built once, on first use.
+ */
+let regionCodes = null;
+function countryCodeOfDescriptor(name) {
+  const key = typeof name === "string" ? name.trim().toLowerCase() : "";
+  if (!key) return null;
+  if (!regionCodes) {
+    regionCodes = new Map([["united states of america", "US"], ["korea, republic of", "KR"], ["czech republic", "CZ"]]);
+    try {
+      const names = new Intl.DisplayNames(["en"], { type: "region" });
+      for (let a = 65; a <= 90; a++) {
+        for (let b = 65; b <= 90; b++) {
+          const code = String.fromCharCode(a, b);
+          const n = names.of(code);
+          if (n && n !== code && !regionCodes.has(n.toLowerCase())) regionCodes.set(n.toLowerCase(), code);
+        }
+      }
+    } catch { /* a runtime without region names: the fixed spellings only */ }
+  }
+  return regionCodes.get(key) ?? null;
+}
+
+/**
+ * WHAT AN ORACLE REQUISITION STATES (F01, F14): its end date, its schedule
+ * ("Full time", "Part time"), a fully remote workplace and its primary
+ * country. ORA_REMOTE is Oracle's remote workplace code, but an employer
+ * names it: Dell labels it "Field" (a role run in customers' data centres),
+ * so the code counts only under a label that says remote and nothing else.
+ */
+function oracleStated(item) {
+  const out = {};
+  const end = statedEndDay(item?.ExternalPostedEndDate);
+  if (end) out.employerValidThrough = end;
+  const schedule = label(item?.JobSchedule);
+  if (schedule) out.employmentType = schedule;
+  const workplace = label(item?.WorkplaceType);
+  if (item?.WorkplaceTypeCode === "ORA_REMOTE" && workplace && /\bremote\b/i.test(workplace) && !/\b(?:hybrid|partial|partly|flex\w*|field|on-?site|office)\b/i.test(workplace)) out.remote = true;
+  const country = statedCountry(item?.PrimaryLocationCountry);
+  if (country) out.country = country;
+  return out;
+}
+
+/** The entries of a board's whole list, per vendor, or null when the answer is not one. */
+function boardEntries(vendor, j) {
+  if (vendor === "breezy") return Array.isArray(j) ? j : null;
+  if (vendor === "recruitee") return Array.isArray(j?.offers) ? j.offers : null;
+  return Array.isArray(j?.jobs) ? j.jobs : null;
+}
+/** The keys a list entry may be stored under: Breezy's board id is its friendly id, else its id (job-board normalize.ts). */
+const entryKeys = (vendor, x) => (vendor === "breezy" ? [x?.friendly_id, x?.id] : [x?.id]).filter((k) => k !== undefined && k !== null && k !== "").map(String);
 
 /** What an API answer for one posting states, per vendor. */
 function apiStated(vendor, j) {
@@ -244,11 +398,34 @@ function pageStated(vendor, node) {
 }
 
 /**
+ * WHETHER AN ORACLE SITE'S OWN LIST NAMES THE REQUISITION: true, false (the
+ * list was read and does not hold it), or the reason it could not be read.
+ * `siteRes` is the answer to plan.siteUrl, or undefined when it was not asked.
+ */
+function oracleSiteLists(siteRes, key) {
+  if (!siteRes) return "its own site's list was not read";
+  if (siteRes.error) return `its own site's list did not answer (${siteRes.error})`;
+  if (siteRes.status !== 200) return `its own site's list answered HTTP ${siteRes.status}`;
+  const list = parseJson(String(siteRes.body ?? ""))?.items?.[0]?.requisitionList;
+  if (!Array.isArray(list)) return "its own site's list is not one";
+  return list.some((x) => String(x?.Id ?? "") === key);
+}
+
+/** The requisition an Oracle ById answer carries for this key, or null: the read that earns a second GET of the row's own site. */
+function oracleRequisitionIn(res, key) {
+  if (!res || res.error || res.status !== 200) return null;
+  const items = parseJson(String(res.body ?? ""))?.items;
+  return Array.isArray(items) ? items.find((x) => String(x?.Id ?? "") === key) ?? null : null;
+}
+
+/**
  * THE VERDICT ON ONE ANSWER. `res` is { status, url, body } (url: the final
  * address after redirects), or { error } when the request never answered.
- * Returns { state, why, stated }.
+ * `siteRes` is the same for an Oracle row's own site list (plan.siteUrl),
+ * asked only when the ById finder returned the requisition. Returns
+ * { state, why, stated }.
  */
-export function employerVerdict(plan, res, row) {
+export function employerVerdict(plan, res, row, siteRes) {
   const unknown = (why) => ({ state: "unknown", why, stated: {} });
   if (!plan?.url) return unknown(plan?.why ?? "nothing to read");
   if (!res || res.error) return unknown(`no answer (${res?.error ?? "network"})`);
@@ -276,14 +453,60 @@ export function employerVerdict(plan, res, row) {
     }
     case "board": {
       if (status !== 200) return unknown(`board HTTP ${status}`);
-      const j = parseJson(body);
-      const jobs = Array.isArray(j?.jobs) ? j.jobs : null;
+      const jobs = boardEntries(plan.vendor, parseJson(body));
       // An empty or unreadable board says nothing about one posting: a board
       // that answered with no jobs at all is far likelier a hiccup than every
       // one of its postings closing at once.
       if (!jobs || jobs.length === 0) return unknown("board listed nothing");
-      const job = jobs.find((x) => String(x?.id ?? "") === key);
-      return job ? { state: "open", why: "listed", stated: ashbyStated(job) } : { state: "closed", why: "missing from the board", stated: {} };
+      // A LIST WHOSE ENTRIES CARRY NO ID WE READ says nothing about one
+      // posting either (review of 2026-11-15): a vendor that renamed its key
+      // field would otherwise make every posting "missing from the board",
+      // under the implausibility guard's eight-answer floor (Breezy has 7 live
+      // pages, Recruitee 3).
+      if (!jobs.some((x) => entryKeys(plan.vendor, x).length > 0)) return unknown("list entries carry no id");
+      const job = jobs.find((x) => entryKeys(plan.vendor, x).includes(key));
+      if (!job) return { state: "closed", why: "missing from the board", stated: {} };
+      return { state: "open", why: "listed", stated: plan.vendor === "ashby" ? ashbyStated(job) : {} };
+    }
+    case "oracle": {
+      if (status !== 200) return unknown(status === 404 ? "404 (not the requisition finder)" : `HTTP ${status}`);
+      const items = parseJson(body)?.items;
+      if (!Array.isArray(items)) return unknown("200 without an items list");
+      // THE FINDER FINDS NOTHING FOR A REQUISITION THE EMPLOYER NO LONGER
+      // POSTS (Kroger 216822, Caesars 91598, Chili's 15571; measured
+      // 2026-11-15). The site number does not narrow it: an open requisition
+      // read under another site still comes back. So an empty answer is
+      // posted on no site at all, and a non-empty one proves only that the
+      // requisition is posted on SOME site, which may be an internal one.
+      if (items.length === 0) return { state: "closed", why: "the requisition finder found nothing", stated: {} };
+      const item = items.find((x) => String(x?.Id ?? "") === key);
+      if (!item) return unknown("200 naming another requisition");
+      // A REQUISITION THE FINDER RETURNS IS POSTED ON SOME SITE, NOT
+      // NECESSARILY THIS ONE (review of 2026-11-15): Suffolk's 25308 comes
+      // back under its external site while only the internal site lists it.
+      // So "open" needs the row's own site's list to name the id. Listed
+      // nowhere on that site it is unknown, never closed (a search index can
+      // lag a new posting); what the requisition states stays the employer's
+      // word either way.
+      const stated = oracleStated(item);
+      const listed = oracleSiteLists(siteRes, key);
+      if (listed === true) return { state: "open", why: "200 with its requisition, listed on its site", stated };
+      return { state: "unknown", why: listed === false ? "not listed on this site" : listed, stated };
+    }
+    case "adp": {
+      if (status !== 200) return unknown(`HTTP ${status}`);
+      const j = parseJson(body);
+      if (!j || typeof j !== "object" || Array.isArray(j)) return unknown("200 that is not JSON");
+      if (String(j.itemID ?? "") === key) return { state: "open", why: "200 with its requisition", stated: {} };
+      // THE EMPTY REQUISITION: no itemID, no title, no posting date and no
+      // location, the answer for each of the seven postings the board had seen
+      // go (measured 2026-11-15); an open answer carries all of them. Read
+      // from that whole fingerprint, so a renamed itemID on an open answer
+      // is not a closure (review of 2026-11-15). Another client id answers
+      // the same, but the client id is the board's own token, the one the
+      // board read the posting from.
+      if (j.itemID === undefined && j.requisitionTitle === undefined && j.postDate === undefined && Array.isArray(j.requisitionLocations) && j.requisitionLocations.length === 0) return { state: "closed", why: "ADP served an empty requisition", stated: {} };
+      return unknown("200 naming another requisition");
     }
     case "page": {
       if (status === 404 || status === 410) return { state: "closed", why: String(status), stated: {} };
@@ -379,7 +602,14 @@ export async function readEmployers(rows, opts = {}) {
     } else {
       res = await employerGet(plan.url, { fetchImpl, timeoutMs: left, accept: plan.accept, retryDelayMs });
     }
-    const v = employerVerdict(plan, res, row);
+    // An Oracle requisition the finder returned is asked of the row's own site.
+    let siteRes;
+    if (plan.siteUrl && oracleRequisitionIn(res, idParts(row.id)?.key ?? "")) {
+      siteRes = now() >= until
+        ? { error: "budget" }
+        : await employerGet(plan.siteUrl, { fetchImpl, timeoutMs: Math.max(1, Math.min(timeoutMs, until - now())), accept: plan.accept, retryDelayMs });
+    }
+    const v = employerVerdict(plan, res, row, siteRes);
     out.set(row.id, { id: row.id, vendor: plan.vendor, ...v });
   };
   const worker = async () => {
@@ -392,15 +622,18 @@ export async function readEmployers(rows, opts = {}) {
   return out;
 }
 
+/** Vendors read one posting at a time under a tenant (the token's first part), whose tenant can refuse this network as a whole. */
+const TENANT_VENDORS = new Set(["workday", "oracle", "adp"]);
+
 /**
  * A CLOSED ANSWER THAT IS IMPLAUSIBLE BY ITS NUMBERS IS NOT TRUSTED. The
  * measured closed share is about 7% (2026-11-07). A vendor with at least
  * `minDefinite` definite answers of which more than `maxShare` say closed, or
- * a Workday tenant whose every read (at least three) said closed, is far more
- * likely refusing this network than closing every posting at once, and
- * retiring its pages on that would take down good pages. Those answers become
- * unknown, with the reason, so the log and the ledger show the refusal.
- * Returns a new Map.
+ * a Workday, Oracle or ADP tenant whose every read (at least three) said
+ * closed, is far more likely refusing this network than closing every posting
+ * at once, and retiring its pages on that would take down good pages. Those
+ * answers become unknown, with the reason, so the log and the ledger show the
+ * refusal. Returns a new Map.
  */
 export function distrustImplausibleClosures(results, { minDefinite = 8, maxShare = 0.5 } = {}) {
   const out = new Map(results);
@@ -411,8 +644,8 @@ export function distrustImplausibleClosures(results, { minDefinite = 8, maxShare
     const v = byVendor.get(r.vendor) ?? { open: 0, closed: 0 };
     v[r.state]++;
     byVendor.set(r.vendor, v);
-    if (r.vendor === "workday") {
-      const t = (idParts(r.id)?.token ?? "").split("~")[0].toLowerCase();
+    if (TENANT_VENDORS.has(r.vendor)) {
+      const t = `${r.vendor}:${(idParts(r.id)?.token ?? "").split("~")[0].toLowerCase()}`;
       const c = byTenant.get(t) ?? { open: 0, closed: 0 };
       c[r.state]++;
       byTenant.set(t, c);
@@ -426,10 +659,10 @@ export function distrustImplausibleClosures(results, { minDefinite = 8, maxShare
       out.set(id, { ...r, state: "unknown", why: `implausible: ${v.closed} of ${definite} ${r.vendor} answers said closed` });
       continue;
     }
-    if (r.vendor === "workday") {
-      const t = (idParts(id)?.token ?? "").split("~")[0].toLowerCase();
+    if (TENANT_VENDORS.has(r.vendor)) {
+      const t = `${r.vendor}:${(idParts(id)?.token ?? "").split("~")[0].toLowerCase()}`;
       const c = byTenant.get(t);
-      if (c && c.open === 0 && c.closed >= 3) out.set(id, { ...r, state: "unknown", why: `implausible: every one of ${c.closed} reads on this Workday tenant said closed` });
+      if (c && c.open === 0 && c.closed >= 3) out.set(id, { ...r, state: "unknown", why: `implausible: every one of ${c.closed} reads on this ${r.vendor} tenant said closed` });
     }
   }
   return out;

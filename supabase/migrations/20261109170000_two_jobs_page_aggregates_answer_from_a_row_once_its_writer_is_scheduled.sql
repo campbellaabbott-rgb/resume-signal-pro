@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file creates or changes no
+-- cron schedule (reviewed 2026-11-16 by the project owner).
+--
 -- TWO JOBS PAGE AGGREGATES ANSWER FROM A ROW, ONCE ITS WRITER IS SCHEDULED.
 --
 -- Cost audit 2026-11-08, "Live aggregates on /jobs". Every render of /jobs

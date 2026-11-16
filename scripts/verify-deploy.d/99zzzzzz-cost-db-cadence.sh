@@ -117,10 +117,20 @@ gone(T.role,"20261109110000","no page reads the role rows it rebuilt every six h
   else if(p.ch_timeout&&p.ch_active)out("PASS  "+T.purge+" sets its own timeout ("+p.ch_timeout+"), the mark that 20261109131000 rewrote it without the report-cache delete "+T.hourly+" runs every hour");
   else out("FAIL  "+T.purge+": "+desc(p)+". Step 1 shows, and 20261109131000 leaves the purge active with a timeout in its command")}
 if(!droppers.length)out(step1?"INFO  no one-shot index dropper or watcher is left scheduled (20261109190000). Which indexes went cannot be read with this key; the migration self-check refuses a dropper aimed at a kept twin":"INFO  before 20261109190000: no one-shot index dropper is scheduled; the deploy arms one per duplicate and a watcher that retires them");
-for(const n of droppers){const r=J[n];const runs=Number(r.ch_runs)||0,failed=Number(r.ch_failed)||0;
-  if(runs>=15)out("FAIL  "+n+" is still scheduled after "+runs+" runs (last "+(r.ch_last_status||"none")+"): the watcher has not retired it, so it runs every minute for nothing");
-  else if(failed>=3)out("FAIL  "+n+" failed "+failed+" of "+runs+" runs (last "+(r.ch_last_status||"none")+")");
-  else out("INFO  "+n+" is still working ("+runs+" runs, "+failed+" failed, last "+(r.ch_last_status||"none")+"); the watcher retires it once its index is gone")}
+// Each dropper runs once an hour at its own minute and the watcher at :50, so
+// one run that does not fail drops the index and the watcher retires the
+// dropper within the hour: a second such run means the watcher missed it. The
+// watcher retires itself once every dropper is gone; the deploy note asks for
+// the last status of the drops after three hours, so five passes is past that.
+const WATCH="oneshot-drop-duplicate-indexes-watch";
+for(const n of droppers){const r=J[n];const runs=Number(r.ch_runs)||0,failed=Number(r.ch_failed)||0,last=r.ch_last_status||"none";
+  if(n===WATCH){
+    if(runs>=5)out("FAIL  "+n+" is still scheduled after "+runs+" hourly passes (last "+last+"): the drops finish within three hours, so it has not retired itself");
+    else out("INFO  "+n+" is still working ("+runs+" hourly passes, last "+last+"); it retires each dropper whose index is gone, then itself");
+    continue}
+  if(failed>=3)out("FAIL  "+n+" failed "+failed+" of "+runs+" runs (last "+last+")");
+  else if(runs-failed>=2)out("FAIL  "+n+" is still scheduled after "+runs+" runs, "+(runs-failed)+" of them not failed (last "+last+"): one is enough to drop its index, so the watcher has not retired it and it runs every hour for nothing");
+  else out("INFO  "+n+" is still working ("+runs+" runs, "+failed+" failed, last "+last+"); the watcher retires it at :50 once its index is gone")}
 
 // ---- step 2 schedules ----
 const moved=(key,mig,at,why)=>{const r=J[T[key]];

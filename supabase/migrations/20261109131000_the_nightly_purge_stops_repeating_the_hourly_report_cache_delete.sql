@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file creates or changes no
+-- cron schedule (reviewed 2026-11-16 by the project owner).
+--
 -- THE NIGHTLY PURGE STOPS REPEATING THE HOURLY REPORT-CACHE DELETE (cost
 -- audit 2026-11-08, db-cadence lane, "do first" #14, second half).
 --
