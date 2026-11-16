@@ -15,6 +15,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { studyBasisLine, studyFaqs } from "@/lib/score-study";
+import { count } from "@/lib/format";
 
 interface Insights {
   as_of: string;
@@ -32,11 +33,38 @@ interface Insights {
     pct_under_50: number | null;
   } | null;
   histogram: Array<{ bucket: number; n: number }>;
+  /** Scans in score bands held back under the floor (20261112195000, S14X-193). */
+  histogram_hidden_n?: number;
+  /** The floor every published band and bucket is held to; present from 20261112195000. */
+  band_floor?: number;
   industries: Array<{ industry: string; n: number; median: number; p25: number; p75: number }>;
   experience: Array<{ level: string; n: number; median: number }>;
 }
 
 const label = (slug: string) => slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+/** The page is English: counts print as the bake prints them (S14X-255). */
+const n0 = (n: number) => count(n, { lng: "en" });
+
+/**
+ * THE 25-SCAN FLOOR COVERS EVERY BAND (S14X-193). From 20261112195000 the
+ * answer holds no band under the floor and counts what it held back; an
+ * answer from before it published every band and an 80+ share from any
+ * number of scans, so the page holds those back itself.
+ */
+const SCAN_FLOOR = 25;
+function bandsOverFloor(ins: Insights) {
+  const floor = ins.band_floor ?? SCAN_FLOOR;
+  const shown = ins.histogram.filter((h) => h.n >= floor);
+  const hidden = (ins.histogram_hidden_n ?? 0) + ins.histogram.filter((h) => h.n < floor).reduce((s, h) => s + h.n, 0);
+  const o = ins.overall;
+  const pct80 =
+    o?.pct_80_plus == null ? null
+    : ins.band_floor != null ? o.pct_80_plus
+    : Math.round((o.pct_80_plus * o.n) / 100) >= floor ? o.pct_80_plus
+    : null;
+  return { floor, shown, hidden, pct80 };
+}
 
 // The questions, and the basis they and the subline name, come from one
 // module the crawler copy reads too (S13-050): src/lib/score-study.ts.
@@ -89,7 +117,7 @@ export default function ScoreStudy() {
         "@type": "Dataset",
         name: "Resume Booster ATS score benchmarks",
         description:
-          "Aggregated ATS score distributions (median, quartiles, decile histogram) from real resume scans, by industry and experience level. Rolling 180-day window; buckets published only at n ≥ 25.",
+          "Aggregated ATS score distributions (median, quartiles, decile histogram) from real resume scans, by industry and experience level. Rolling 180-day window; every score band, industry and experience level published only at n ≥ 25.",
         creator: { "@type": "Organization", name: "Resume Booster", url: "https://resumebooster.work" },
         url: "https://resumebooster.work/research/ats-score-benchmarks",
         isAccessibleForFree: true,
@@ -108,6 +136,7 @@ export default function ScoreStudy() {
   }, [faqs]);
 
   const o = insights?.overall ?? null;
+  const bands = insights ? bandsOverFloor(insights) : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -132,7 +161,7 @@ export default function ScoreStudy() {
           <p className="text-xs text-muted-foreground mb-6">
             Computed live from our scan corpus (rolling {insights?.window_days ?? 180}-day window
             {insights ? `, as of ${insights.as_of}` : ""}) · No individual resume data — aggregates only, minimum 25
-            scans per bucket
+            scans per score band, industry and experience level
             {basisLine && <span data-study-basis className="block mt-1">{basisLine}</span>}
           </p>
 
@@ -141,11 +170,13 @@ export default function ScoreStudy() {
             <p className="text-sm text-muted-foreground leading-relaxed">
               {o ? (
                 <>
-                  Across the last {o.n.toLocaleString()} scans logged, the median resume scored{" "}
+                  Across the last {n0(o.n)} scans logged, the median resume scored{" "}
                   <strong className="text-foreground">{o.median}</strong>, with the middle half of resumes landing
                   between {o.p25} and {o.p75}.{" "}
-                  {o.pct_80_plus != null && (
-                    <>Only {o.pct_80_plus}% scored 80 or higher — so a score in the 80s is genuinely strong, not table stakes. </>
+                  {bands?.pct80 != null ? (
+                    <>Only {bands.pct80}% scored 80 or higher — so a score in the 80s is genuinely strong, not table stakes. </>
+                  ) : (
+                    <>Fewer than {SCAN_FLOOR} of them scored 80 or higher, too few to state as a share. </>
                   )}
                   There is no universal pass mark: use the distribution below to see where you actually stand.
                 </>
@@ -175,13 +206,21 @@ export default function ScoreStudy() {
               <section className="mb-10">
                 <h2 className="text-xl font-bold mb-3">How real resumes score</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  Each bar is a 10-point score band; together they show every scan logged in the current window.
+                  Each bar is a 10-point score band with at least {bands?.floor ?? SCAN_FLOOR} scans
+                  {bands && bands.hidden > 0 ? (
+                    <span data-band-floor-hidden>
+                      ; {n0(bands.hidden)} {bands.hidden === 1 ? "scan" : "scans"} in bands under that floor{" "}
+                      {bands.hidden === 1 ? "is" : "are"} held back and counted only in the overall figures.
+                    </span>
+                  ) : (
+                    <>, and together they show every scan logged in the current window.</>
+                  )}
                   If the shape surprises you, remember who runs a resume checker: mostly active job seekers who
                   suspect something is wrong — employed professionals with polished resumes are underrepresented.
                 </p>
                 <div className="h-64 rounded-2xl border border-border bg-card p-4">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={insights.histogram.map((h) => ({ ...h, name: `${h.bucket}–${h.bucket + 9}` }))}>
+                    <BarChart data={(bands?.shown ?? []).map((h) => ({ ...h, name: `${h.bucket}–${h.bucket + 9}` }))}>
                       <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                       <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                       <Tooltip formatter={(v: number) => [`${v} scans`, "Count"]} />
@@ -216,7 +255,7 @@ export default function ScoreStudy() {
                             <td className="p-3 text-right text-muted-foreground">
                               {row.p25}–{row.p75}
                             </td>
-                            <td className="p-3 text-right text-muted-foreground">{row.n.toLocaleString()}</td>
+                            <td className="p-3 text-right text-muted-foreground">{n0(row.n)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -233,7 +272,7 @@ export default function ScoreStudy() {
                       <div key={row.level} className="rounded-2xl border border-border bg-card px-5 py-4">
                         <p className="text-xs text-muted-foreground capitalize mb-1">{label(row.level)}</p>
                         <p className="text-2xl font-bold text-foreground">{row.median}</p>
-                        <p className="text-xs text-muted-foreground">median · {row.n.toLocaleString()} scans</p>
+                        <p className="text-xs text-muted-foreground">median · {n0(row.n)} scans</p>
                       </div>
                     ))}
                   </div>

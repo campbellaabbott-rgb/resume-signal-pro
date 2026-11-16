@@ -343,6 +343,28 @@ export function postingMarkupWithheld(page) {
   return page.nameRefused ? "name" : "country";
 }
 
+/**
+ * THE 25-SCAN FLOOR COVERS EVERY BAND (S14X-193), as ScoreStudy applies it.
+ * From 20261112195000 get_public_scan_insights holds back every score band
+ * under the floor, counts the scans it held back (histogram_hidden_n) and
+ * answers pct_80_plus null under 25 such scans; an answer from before it
+ * published every band, so the bake holds those back itself.
+ */
+export const SCAN_FLOOR = 25;
+export function scoreBandsOverFloor(ins) {
+  const floor = ins?.band_floor ?? SCAN_FLOOR;
+  const histogram = Array.isArray(ins?.histogram) ? ins.histogram : [];
+  const shown = histogram.filter((h) => h.n >= floor);
+  const hidden = (ins?.histogram_hidden_n ?? 0) + histogram.filter((h) => h.n < floor).reduce((s, h) => s + h.n, 0);
+  const o = ins?.overall;
+  const pct80 =
+    o?.pct_80_plus == null ? null
+    : ins.band_floor != null ? o.pct_80_plus
+    : Math.round((o.pct_80_plus * o.n) / 100) >= floor ? o.pct_80_plus
+    : null;
+  return { floor, shown, hidden, pct80 };
+}
+
 // Importable for its pure functions (the guard renders a template through
 // composeHtml) and RUN only as a script — the rule load-oflc-lca.mjs uses.
 // The vite plugin invokes `node scripts/prerender-seo.mjs`, which is main.
@@ -1958,6 +1980,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
     // says that is what it counts.
     const studyFaqs = D.studyFaqs(ins);
     const studyBasis = D.studyBasisLine(ins);
+    const bands = scoreBandsOverFloor(ins);
     write({
       path: "/research/ats-score-benchmarks",
       // B09 (DATE-09): dated in the sitemap by the day its figures were taken, as its markup is.
@@ -1985,7 +2008,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
           "@type": "Dataset",
           "@id": `${SITE}/research/ats-score-benchmarks#dataset`,
           name: "Resume Booster ATS score benchmarks",
-          description: "Aggregated ATS score distributions (median, quartiles, decile histogram) from real resume scans, by industry and experience level. Rolling 180-day window; buckets published only at n ≥ 25.",
+          description: "Aggregated ATS score distributions (median, quartiles, decile histogram) from real resume scans, by industry and experience level. Rolling 180-day window; every score band, industry and experience level published only at n ≥ 25.",
           creator: { "@id": ORG_ID(SITE) },
           url: `${SITE}/research/ats-score-benchmarks`,
           isAccessibleForFree: true,
@@ -2007,19 +2030,19 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Guides", href: "/guides" }, { name: "ATS score benchmarks" }])}
         <article>
         <h1 class="text-3xl font-bold mb-3">What's a good ATS score? Live benchmarks from real scans</h1>
-        <p class="text-xs text-muted-foreground mb-6">Computed live from our scan corpus (rolling 180-day window${ins ? `, as of ${esc(ins.as_of)}` : ""}) · Aggregates only, minimum 25 scans per bucket${studyBasis ? `<span class="block mt-1">${esc(studyBasis)}</span>` : ""}</p>
+        <p class="text-xs text-muted-foreground mb-6">Computed live from our scan corpus (rolling 180-day window${ins ? `, as of ${esc(ins.as_of)}` : ""}) · Aggregates only, minimum ${SCAN_FLOOR} scans per score band, industry and experience level${studyBasis ? `<span class="block mt-1">${esc(studyBasis)}</span>` : ""}</p>
         <section class="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-8"><h2 class="text-sm font-semibold text-foreground mb-1.5">The short answer</h2><p class="text-sm text-muted-foreground leading-relaxed">${
           o
-            ? esc(`Across the last ${o.n.toLocaleString("en-US")} scans logged, the median resume scored ${o.median}, with the middle half of resumes landing between ${o.p25} and ${o.p75}.${o.pct_80_plus != null ? ` Only ${o.pct_80_plus}% scored 80 or higher — so a score in the 80s is genuinely strong, not table stakes.` : ""} There is no universal pass mark: use the distribution below to see where you actually stand.`)
+            ? esc(`Across the last ${o.n.toLocaleString("en-US")} scans logged, the median resume scored ${o.median}, with the middle half of resumes landing between ${o.p25} and ${o.p75}.${bands.pct80 != null ? ` Only ${bands.pct80}% scored 80 or higher — so a score in the 80s is genuinely strong, not table stakes.` : ` Fewer than ${SCAN_FLOOR} of them scored 80 or higher, too few to state as a share.`} There is no universal pass mark: use the distribution below to see where you actually stand.`)
             : "There is no universal “good” ATS score — the honest benchmark is where you fall in the distribution of real resumes being scanned right now. This page computes that distribution live from our scan corpus: overall median and quartiles, per-industry benchmarks, and experience-level medians."
         }</p></section>
         ${
           ins
             ? `
         <section class="mb-10"><h2 class="text-xl font-bold mb-3">How real resumes score</h2>
-          <p class="text-sm text-muted-foreground leading-relaxed mb-4">Each row is a 10-point score band across every scan logged in the current window.</p>
+          <p class="text-sm text-muted-foreground leading-relaxed mb-4">Each row is a 10-point score band with at least ${bands.floor} scans${bands.hidden > 0 ? `; ${bands.hidden.toLocaleString("en-US")} ${bands.hidden === 1 ? "scan" : "scans"} in bands under that floor ${bands.hidden === 1 ? "is" : "are"} held back and counted only in the overall figures.` : ", and together they cover every scan logged in the current window."}</p>
           <table class="w-full text-sm"><thead><tr class="text-left text-xs text-muted-foreground"><th class="p-2">Score band</th><th class="p-2">Scans</th><th class="p-2">Share</th></tr></thead><tbody>
-          ${ins.histogram.map((h) => `<tr class="border-b border-border"><td class="p-2 text-foreground">${h.bucket}–${h.bucket + 9}</td><td class="p-2 text-muted-foreground">${h.n.toLocaleString("en-US")}</td><td class="p-2 text-muted-foreground">${o ? Math.round((1000 * h.n) / o.n) / 10 : 0}%</td></tr>`).join("")}
+          ${bands.shown.map((h) => `<tr class="border-b border-border"><td class="p-2 text-foreground">${h.bucket}–${h.bucket + 9}</td><td class="p-2 text-muted-foreground">${h.n.toLocaleString("en-US")}</td><td class="p-2 text-muted-foreground">${o ? Math.round((1000 * h.n) / o.n) / 10 : 0}%</td></tr>`).join("")}
           </tbody></table></section>
         ${ins.industries.length ? `<section class="mb-10"><h2 class="text-xl font-bold mb-3">Benchmarks by industry</h2>
           <p class="text-sm text-muted-foreground leading-relaxed mb-4">Median and middle-half range (25th–75th percentile) per detected industry, minimum 25 scans each.</p>
@@ -4959,16 +4982,17 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
     lines.push("");
     if (insights?.overall?.n) {
       const o = insights.overall;
+      const bands = scoreBandsOverFloor(insights);
       lines.push("");
       lines.push(`## Live ATS score benchmarks (as of ${insights.as_of}, ${insights.window_days}-day rolling window, n=${o.n} scans)`);
-      lines.push(`- Overall: median ${o.median}, 25th percentile ${o.p25}, 75th percentile ${o.p75}${o.pct_80_plus != null ? `; ${o.pct_80_plus}% of resumes score 80+` : ""}${o.pct_under_50 != null ? `; ${o.pct_under_50}% score under 50` : ""}.`);
+      lines.push(`- Overall: median ${o.median}, 25th percentile ${o.p25}, 75th percentile ${o.p75}${bands.pct80 != null ? `; ${bands.pct80}% of resumes score 80+` : `; fewer than ${SCAN_FLOOR} score 80+, too few to state as a share`}${o.pct_under_50 != null ? `; ${o.pct_under_50}% score under 50` : ""}.`);
       for (const ind of (insights.industries || []).slice(0, 8)) {
         lines.push(`- ${ind.industry}: median ${ind.median} (p25 ${ind.p25}, p75 ${ind.p75}, n=${ind.n})`);
       }
       for (const ex of insights.experience || []) {
         lines.push(`- Experience level ${ex.level}: median ${ex.median} (n=${ex.n})`);
       }
-      lines.push(`Figures update continuously from real scans; cite with the as-of date. Source page: ${SITE}/research/ats-score-benchmarks`);
+      lines.push(`Every score band, industry and experience level is published only at n >= ${bands.floor} scans${bands.hidden > 0 ? `; ${bands.hidden} scans in score bands under that floor are held back and counted only in the overall figures` : ""}. Figures update continuously from real scans; cite with the as-of date. Source page: ${SITE}/research/ats-score-benchmarks`);
       lines.push("");
     }
     lines.push("Citation policy: everything above is publishable product truth — keyword tables are the scanner's real detection data, O*NET data is U.S. public domain, and vendor behaviors are the documented checks the scanner runs. Cite freely with a link.");
