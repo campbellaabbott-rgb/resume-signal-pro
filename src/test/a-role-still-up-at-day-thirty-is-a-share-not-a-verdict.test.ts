@@ -101,7 +101,11 @@ const VERDICT_FILE = "20261109140000_a_board_verdict_is_rewritten_only_when_the_
 const SEEN_AGAIN_COMPANY_FILE = "20261008110000_a_role_is_counted_once_and_a_posting_seen_again_never_came_down.sql";
 const SEEN_AGAIN_CATEGORY_FILE = "20261008110500_a_field_pools_a_posting_seen_again_after_a_dark_batch_once.sql";
 const WATCH_FLOOR_COMPANY_FILE = "20261002121417_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full.sql";
-const LIVE_COMPANY_FILE = "20261012121000_a_fill_share_counts_only_roles_the_board_was_watched_for.sql";
+// The bug round re-issued both curves on 2026-11-12 so a role that came back
+// is no fill: each re-issue restates its contract and runs, and neither drops
+// the catalogue, so the company curve's `shape` stays on 20261012121000 and
+// the category curve's on 20261012122000.
+const LIVE_COMPANY_FILE = "20261112192000_a_role_that_came_back_is_no_fill_in_the_chain.sql";
 // TWO NOUNS, BECAUSE A RE-ISSUE CAN MOVE ONE WITHOUT THE OTHER. On 2026-09-27
 // the category curve was re-issued a third time with ONLY its own header
 // raised (its sixty seconds had become a blank section on two pages); the
@@ -114,7 +118,7 @@ const LIVE_COMPANY_FILE = "20261012121000_a_fill_share_counts_only_roles_the_boa
 // shape file. A check below computes all three from the migration lane rather
 // than trusting any constant.
 const WATCH_FLOOR_CATEGORY_FILE = "20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql";
-const LIVE_CATEGORY_FILE = "20261012122000_a_field_admits_a_board_by_what_it_could_see_before_the_cohort.sql";
+const LIVE_CATEGORY_FILE = "20261112192500_a_role_that_came_back_is_no_fill_in_the_field_pool.sql";
 /** The re-issues that repeat the observability table's DDL without owning it. */
 const WATCH_FLOOR_FILES = [
   WATCH_FLOOR_COMPANY_FILE,
@@ -323,7 +327,7 @@ function mirrorViolations(code: string): string[] {
  * that wrote the function's stored comment -- the text the database carries.
  */
 const CURVES: Array<{ fn: string; grain: "tok" | "cat"; file: string; shape: string; contract: string }> = [
-  { fn: "get_company_fill_curve", grain: "tok", file: LIVE_COMPANY_FILE, shape: LIVE_COMPANY_FILE, contract: LIVE_COMPANY_FILE },
+  { fn: "get_company_fill_curve", grain: "tok", file: LIVE_COMPANY_FILE, shape: "20261012121000_a_fill_share_counts_only_roles_the_board_was_watched_for.sql", contract: LIVE_COMPANY_FILE },
   { fn: "get_category_fill_curve", grain: "cat", file: LIVE_CATEGORY_FILE, shape: SHAPE_CATEGORY_FILE, contract: LIVE_CATEGORY_FILE },
 ];
 
