@@ -8,7 +8,7 @@ import { purchaseLinkFor } from "../_shared/purchase-links.ts";
 
 // Provable from outside without running a sweep: every response, the CORS
 // preflight included, carries this in x-fn-build.
-// 2026-11-12.1 (bug round of 2026-11-08, part A, full-analysis lane, S14X-220, RC-S13-110): a finished analysis whose mail was refused is resent from its stored copy, and a refused owner alarm or buyer notice is sent first on a later run.
+// 2026-11-12.1 (bug round of 2026-11-08, part A, full-analysis lane, S14X-220, RC-S13-110): a finished analysis whose mail was refused is resent from its stored copy, and a refused owner alarm or buyer notice is sent first on a later run; only a 400 or 422 from send-product-email gives a buyer's notice up at once.
 const FN_BUILD = "retry-failed-deliveries.2026-11-12.1";
 
 // HOW LONG THIS SWEEP HOLDS AN ORDER IT MAKES (20261011144000, CP-019). The
@@ -159,8 +159,10 @@ async function sendOwnerMail(subject: string, html: string): Promise<boolean> {
 /**
  * WHAT BECAME OF A NOTICE (RC-S13-110): sent; already sent, or being sent, by
  * another run (its door is taken); refused, so it is owed to a later run;
- * rejected (send-product-email answered 4xx: an address or a request it will
- * never take, so no later run tries it); or nobody to send it to.
+ * rejected (send-product-email answered 400 or 422: an address or a request
+ * it will never take, so no later run tries it); or nobody to send it to.
+ * Any other answer (a 401 or 403 from its caller check, a 404, a 429, a 5xx)
+ * is about the run, not the message, and leaves the notice refused.
  */
 type NoticeOutcome = 'sent' | 'not-first' | 'refused' | 'rejected' | 'nobody';
 type NoticeOwed = 'owner' | 'buyer' | 'both';
@@ -282,9 +284,14 @@ async function mailBuyerNeedsInput(
   try {
     await supabase.from('mail_door_counts').delete().eq('door', door).eq('bucket', bucket);
   } catch { /* the door expires on its own */ }
-  // A 4xx is an answer about the request (send-product-email refuses an
-  // address its pattern rejects with a 400): no later run would fare better.
-  return status >= 400 && status < 500 ? 'rejected' : 'refused';
+  // Only a refusal of the message itself is given up at once: send-product-
+  // email answers 400 for an address its pattern rejects, a missing product
+  // or an unknown reason (422 is read the same way), and no later run would
+  // fare better. A 401 or 403 is its service-role check refusing this caller
+  // (a key that rotated), a 404 a function not deployed, a 429 a rate limit
+  // and a 5xx an outage: each is about this run, so the notice stays owed and
+  // a later run tries it (OWED_BUYER_TRIES runs at most).
+  return status === 400 || status === 422 ? 'rejected' : 'refused';
 }
 
 const buyerAskedLine = (reason: Terminal['reason']) => `${TERMINAL_DETAIL[reason]}; they were asked for it.`;

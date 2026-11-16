@@ -17,8 +17,11 @@
  * is sent; a notice refused again stays owed. Nothing is made again.
  *
  * AND IT IS NOT OWED FOREVER. A buyer's notice the mail service refuses
- * outright (send-product-email answers 4xx: an address it will never take)
- * is given up on that run, and one refused on six runs is given up then; the
+ * outright (send-product-email answers 400 or 422: an address it will never
+ * take) is given up on that run, and one refused on six runs is given up
+ * then. Any other answer is about the run, not the message: a 401 or 403
+ * (its service-role check refusing the caller), a 404, a 429 or a 5xx leaves
+ * the notice owed (recheck of 2026-11-16: every 4xx used to give it up). The
  * owner is told once, by a mail of its own, that the buyer was not asked.
  * The read takes the orders whose owed notice was tried longest ago first
  * (notice_tried_at), so five stuck orders cannot keep a sixth's alarm unread.
@@ -219,5 +222,68 @@ describe("a buyer's notice that can never be sent", () => {
     await p.sweep();
     expect(alarms().filter((m) => m.html.includes(id)), "the sixth order's alarm waited behind five stuck orders").toHaveLength(1);
     expect(await owed(id)).toBeNull();
+  });
+});
+
+describe("an answer about the run, not the message, never gives the buyer's notice up", () => {
+  /**
+   * send-product-email answering this status to every call, as a rotated
+   * service key (401), a caller check that changed (403), a function not
+   * deployed (404) or a rate limit (429) would. The sweep calls the global
+   * fetch the harness installed, so the answer is given in front of it.
+   */
+  const answering = (status: number) => {
+    const g = globalThis as { fetch: typeof fetch };
+    const routerFetch = g.fetch;
+    g.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (/\/functions\/v1\/send-product-email(?:[?#/]|$)/.test(url)) {
+        p.routed.push("send-product-email");
+        return new Response(JSON.stringify({ error: `answered ${status} (test)` }), { status });
+      }
+      return routerFetch(input, init);
+    }) as typeof fetch;
+    return () => { g.fetch = routerFetch; };
+  };
+
+  for (const status of [401, 403, 404, 429]) {
+    it(`a ${status} leaves the notice owed, and the run after it asks the buyer once`, async () => {
+      const id = `cs_live_needsinputans${status}`;
+      await unmakeable(id);
+      const restore = answering(status);
+      try {
+        await p.sweep();
+      } finally {
+        restore();
+      }
+      expect(buyerTries(), "the buyer's notice was never tried").toBeGreaterThan(0);
+      const order = await p.order(id);
+      expect(order?.notice_given_up ?? null, `a ${status} gave the buyer's notice up`).toBeNull();
+      expect(order?.notice_owed, `a ${status} left the buyer's notice unowed`).toBe("buyer");
+      expect(unreachable(), "the owner was told the buyer could not be mailed").toHaveLength(0);
+
+      await p.sweep();
+      const asked = mailsTo(p, BUYER);
+      expect(asked, "the owed notice was not sent once send-product-email answered").toHaveLength(1);
+      expect(asked[0].html).toContain(id);
+      expect(await owed(id)).toBeNull();
+      expect(alarms()).toHaveLength(1);
+    });
+  }
+
+  it("a 422 is a refusal of the message, given up on that run like a 400", async () => {
+    const id = "cs_live_needsinputans422";
+    await unmakeable(id);
+    const restore = answering(422);
+    try {
+      await p.sweep();
+    } finally {
+      restore();
+    }
+    expect(await owed(id)).toBeNull();
+    expect(String((await p.order(id))?.notice_given_up ?? "")).toMatch(/refused/);
+    const tried = buyerTries();
+    await p.sweep();
+    expect(buyerTries(), "a later run tried a notice given up on a 422").toBe(tried);
   });
 });
