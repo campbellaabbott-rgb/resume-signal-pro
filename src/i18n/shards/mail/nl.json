@@ -1,0 +1,12 @@
+{
+  "mailPrefs": {
+    "pulseDoneNextMonth": "Je bent weer aangemeld. Je hebt de puls van deze maand al gehad, dus de volgende komt begin volgende maand.",
+    "pulseDoneLater": "Je bent weer aangemeld. Je laatste puls ging minder dan vier weken geleden uit, dus de volgende komt later deze maand.",
+    "stoppedUnsubscribe": "Dit adres heeft ons gevraagd geen e-mails meer te sturen, dus meldingen voor opgeslagen zoekopdrachten, scanrapporten en de marktpuls gaan er niet heen.",
+    "stoppedAccountDeleted": "Toen een account met dit adres werd verwijderd, is ons gevraagd geen e-mails meer te sturen, dus meldingen voor opgeslagen zoekopdrachten, scanrapporten en de marktpuls gaan er niet heen.",
+    "stoppedBounce": "E-mails naar dit adres kwamen onbestelbaar terug, dus we sturen er niets meer heen: meldingen voor opgeslagen zoekopdrachten, scanrapporten en de marktpuls komen niet aan.",
+    "stoppedComplaint": "Dit adres heeft een van onze e-mails als spam gemarkeerd, dus we sturen er niets meer heen: meldingen voor opgeslagen zoekopdrachten, scanrapporten en de marktpuls komen niet aan.",
+    "cadenceAria": "Hoe vaak we je mailen over {{name}}",
+    "newHeadlineCapped": "{{n}} nieuwe vacatures passen bij je zoekopdrachten sinds je laatste bezoek"
+  }
+}

@@ -20,12 +20,21 @@ import { forgetConfirmFragment, pulseTokenFromHash } from "@/lib/confirm-link";
 import { stashedFragment, takeStashed } from "@/lib/auth-fragment";
 
 type State = "ready" | "confirming" | "done" | "invalid" | "error" | "missing";
+/**
+ * WHEN THE NEXT PULSE GOES (S14X-238). The pulse goes at most once a calendar
+ * month, so an address that comes back after an unsubscribe may already have
+ * had this month's; the confirm answer then says when the next one goes, and
+ * the page says that instead of "within a day". A server that predates the
+ * field never sends it, and the page reads as before.
+ */
+type NextPulse = "later_this_month" | "next_month" | null;
 
 export default function MarketPulseConfirm() {
   const { t, i18n } = useTranslation();
   const [token] = useState<string | null>(() =>
     typeof window === "undefined" ? null : pulseTokenFromHash(stashedFragment(window.location.hash)));
   const [state, setState] = useState<State>(token ? "ready" : "missing");
+  const [nextPulse, setNextPulse] = useState<NextPulse>(null);
 
   useEffect(() => {
     if (state === "done" || state === "invalid") { forgetConfirmFragment(); takeStashed("fragment"); }
@@ -39,7 +48,12 @@ export default function MarketPulseConfirm() {
         // The monthly pulse is written in the language confirmed here (S13-102).
         body: { action: "confirm", token, language: i18n.language },
       });
-      if (!error && (data as { confirmed?: boolean } | null)?.confirmed) { setState("done"); return; }
+      const answer = data as { confirmed?: boolean; nextPulse?: unknown } | null;
+      if (!error && answer?.confirmed) {
+        setNextPulse(answer.nextPulse === "next_month" || answer.nextPulse === "later_this_month" ? answer.nextPulse : null);
+        setState("done");
+        return;
+      }
       const status = (error as { context?: { status?: number } } | null)?.context?.status;
       setState(status === 410 || status === 400 ? "invalid" : "error");
     } catch {
@@ -84,7 +98,13 @@ export default function MarketPulseConfirm() {
         )}
 
         {state === "done" && (
-          <p className="text-sm text-foreground">{t("pulseConfirm.done", "You're subscribed. The first pulse arrives within a day.")}</p>
+          <p className="text-sm text-foreground" data-next-pulse={nextPulse ?? "within_a_day"}>
+            {nextPulse === "next_month"
+              ? t("mailPrefs.pulseDoneNextMonth", "You're subscribed again. You already had this month's pulse, so the next one arrives early next month.")
+              : nextPulse === "later_this_month"
+                ? t("mailPrefs.pulseDoneLater", "You're subscribed again. Your last pulse went out less than four weeks ago, so the next one arrives later this month.")
+                : t("pulseConfirm.done", "You're subscribed. The first pulse arrives within a day.")}
+          </p>
         )}
         {state === "invalid" && (
           <p className="text-sm text-muted-foreground">{t("pulseConfirm.invalid", "This link has expired or was already used. Tick the box under your next scan report to get a new one.")}</p>

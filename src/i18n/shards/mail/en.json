@@ -1,0 +1,12 @@
+{
+  "mailPrefs": {
+    "pulseDoneNextMonth": "You're subscribed again. You already had this month's pulse, so the next one arrives early next month.",
+    "pulseDoneLater": "You're subscribed again. Your last pulse went out less than four weeks ago, so the next one arrives later this month.",
+    "stoppedUnsubscribe": "This address asked us to stop all our emails, so saved-search alerts, scan reports and the market pulse are not sent to it.",
+    "stoppedAccountDeleted": "When an account at this address was deleted, it asked us to stop all our emails, so saved-search alerts, scan reports and the market pulse are not sent to it.",
+    "stoppedBounce": "Mail to this address bounced, so we stopped sending to it: saved-search alerts, scan reports and the market pulse do not reach it.",
+    "stoppedComplaint": "This address marked one of our emails as spam, so we stopped sending to it: saved-search alerts, scan reports and the market pulse do not reach it.",
+    "cadenceAria": "How often to email about {{name}}",
+    "newHeadlineCapped": "{{n}} new jobs match your saved searches since your last visit"
+  }
+}
