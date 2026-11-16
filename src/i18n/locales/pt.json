@@ -5392,7 +5392,7 @@
     "confirming": "A confirmar a sua assinatura com a Stripe. Demora alguns segundos.",
     "notConfirmedYet": "Ainda não conseguimos confirmar a sua assinatura. Atualize esta página daqui a um minuto ou contacte o suporte se o seu plano não aparecer.",
     "activeMember": "É membro Pro: as ferramentas de escrita estão desbloqueadas.",
-    "badge": "Ferramentas de escrita",
+    "badge": "Pro",
     "checkoutRefusedTitle": "Não foi possível iniciar o pagamento",
     "endsOn": "Termina a {{date}}: cancelado, não será renovado",
     "goPro": "Passar a Pro — ${{price}}/mês",

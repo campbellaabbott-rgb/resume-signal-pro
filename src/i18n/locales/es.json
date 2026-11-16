@@ -5392,7 +5392,7 @@
     "confirming": "Confirmando tu suscripción con Stripe. Tarda unos segundos.",
     "notConfirmedYet": "Aún no hemos podido confirmar tu suscripción. Recarga esta página en un minuto o contacta con soporte si tu plan no aparece.",
     "activeMember": "Eres miembro Pro: las herramientas de redacción están desbloqueadas.",
-    "badge": "Herramientas de redacción",
+    "badge": "Pro",
     "checkoutRefusedTitle": "No se pudo iniciar el pago",
     "endsOn": "Termina el {{date}}: cancelado, no se renovará",
     "goPro": "Hazte Pro — ${{price}}/mes",

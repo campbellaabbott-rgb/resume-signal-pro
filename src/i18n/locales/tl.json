@@ -5337,7 +5337,7 @@
     "confirming": "Kinukumpirma ang iyong subscription sa Stripe. Ilang segundo lang ito.",
     "notConfirmedYet": "Hindi pa namin makumpirma ang iyong subscription. I-refresh ang page na ito makalipas ang isang minuto, o makipag-ugnayan sa support kung hindi lumabas ang iyong plan.",
     "activeMember": "Pro member ka: naka-unlock ang mga writing tool.",
-    "badge": "Mga writing tool",
+    "badge": "Pro",
     "checkoutRefusedTitle": "Hindi masimulan ang checkout",
     "endsOn": "Matatapos sa {{date}}: kinansela, hindi na magre-renew",
     "goPro": "Mag-Pro — ${{price}}/buwan",

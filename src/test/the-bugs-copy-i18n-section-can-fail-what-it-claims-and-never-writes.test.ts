@@ -292,13 +292,13 @@ const DECIDED = {
 /**
  * The owner halves as bugs/a-copy-i18n-owner and its partners publish them:
  * this branch's own strings where it holds the half (the Trust Shortlist and
- * email rows, the withdrawn fix-plan strings), the rest as they will read.
+ * email rows, the withdrawn fix-plan strings, the Pro badge), the rest as they
+ * will read.
  */
 function ownerBuilt(): Record<Lng, Json> {
   const out = {} as Record<Lng, Json>;
   for (const l of LNGS) {
     const b = clone(LANE[l]);
-    set(b, "proPlan.badge", "Pro");
     set(b, "jobsPage.takedownsLast24h", l.startsWith("en") ? "{{n}} postings taken down in the last 24 hours" : `{{n}} (${l})`);
     out[l] = b;
   }

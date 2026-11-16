@@ -5337,7 +5337,7 @@
     "confirming": "Ihr Abonnement wird bei Stripe bestätigt. Das dauert ein paar Sekunden.",
     "notConfirmedYet": "Wir konnten Ihr Abonnement noch nicht bestätigen. Laden Sie diese Seite in einer Minute neu, oder wenden Sie sich an den Support, falls Ihr Abo nicht erscheint.",
     "activeMember": "Sie sind Pro-Mitglied: Die Schreibwerkzeuge sind freigeschaltet.",
-    "badge": "Schreibwerkzeuge",
+    "badge": "Pro",
     "checkoutRefusedTitle": "Der Bezahlvorgang konnte nicht gestartet werden",
     "endsOn": "Endet am {{date}}: gekündigt, verlängert sich nicht",
     "goPro": "Pro holen — ${{price}}/Monat",

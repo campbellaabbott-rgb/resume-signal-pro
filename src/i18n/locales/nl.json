@@ -5337,7 +5337,7 @@
     "confirming": "Je abonnement wordt bij Stripe bevestigd. Dit duurt een paar seconden.",
     "notConfirmedYet": "We konden je abonnement nog niet bevestigen. Vernieuw deze pagina over een minuut, of neem contact op met support als je abonnement niet verschijnt.",
     "activeMember": "Je bent Pro-lid: de schrijftools zijn ontgrendeld.",
-    "badge": "Schrijftools",
+    "badge": "Pro",
     "checkoutRefusedTitle": "Afrekenen kon niet worden gestart",
     "endsOn": "Eindigt op {{date}}: opgezegd, wordt niet verlengd",
     "goPro": "Neem Pro — ${{price}}/maand",
