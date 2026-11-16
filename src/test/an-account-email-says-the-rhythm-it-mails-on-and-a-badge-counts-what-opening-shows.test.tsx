@@ -78,8 +78,10 @@ describe("the saved-searches card (S13-083, S13-118)", () => {
 describe("the emails panel (S13-083)", () => {
   it("labels each search with the rhythm it mails on, and the summary names no rhythm", async () => {
     render(<NotificationsPanel />);
-    expect(await screen.findByText("daily digest")).toBeTruthy();
-    expect(screen.getByText("weekly digest")).toBeTruthy();
+    // The label is the switch between the two rhythms now (RC-S13-083): each
+    // row's select shows the rhythm it mails on.
+    expect(await screen.findByDisplayValue("daily digest")).toBeTruthy();
+    expect(screen.getByDisplayValue("weekly digest")).toBeTruthy();
     expect(screen.getByLabelText("Daily email for Watch: Acme")).toBeTruthy();
     expect(screen.getByText("2 of 2 search emails on")).toBeTruthy();
     expect(screen.queryByText(/weekly digests on/)).toBeNull();

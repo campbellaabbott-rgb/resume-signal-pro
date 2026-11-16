@@ -1,0 +1,12 @@
+{
+  "mailPrefs": {
+    "pulseDoneNextMonth": "Naka-subscribe ka na ulit. Natanggap mo na ang pulse ngayong buwan, kaya darating ang susunod sa simula ng susunod na buwan.",
+    "pulseDoneLater": "Naka-subscribe ka na ulit. Wala pang apat na linggo mula nang ipadala ang huli mong pulse, kaya darating ang susunod sa mas huling bahagi ng buwang ito.",
+    "stoppedUnsubscribe": "Hiniling ng address na ito na ihinto namin ang lahat ng email namin, kaya hindi ipinapadala rito ang mga alert ng naka-save na search, ang mga scan report at ang market pulse.",
+    "stoppedAccountDeleted": "Nang burahin ang isang account na may ganitong address, hiniling nitong ihinto namin ang lahat ng email namin, kaya hindi ipinapadala rito ang mga alert ng naka-save na search, ang mga scan report at ang market pulse.",
+    "stoppedBounce": "Bumalik ang mga email na ipinadala sa address na ito, kaya huminto kami sa pagpapadala rito: hindi ito naaabot ng mga alert ng naka-save na search, ng mga scan report at ng market pulse.",
+    "stoppedComplaint": "Minarkahan ng address na ito bilang spam ang isa sa mga email namin, kaya huminto kami sa pagpapadala rito: hindi ito naaabot ng mga alert ng naka-save na search, ng mga scan report at ng market pulse.",
+    "cadenceAria": "Gaano kadalas kami mag-email tungkol sa {{name}}",
+    "newHeadlineCapped": "{{n}} bagong trabaho ang tumutugma sa iyong mga paghahanap mula sa huling bisita mo"
+  }
+}

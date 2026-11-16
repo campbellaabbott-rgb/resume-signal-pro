@@ -170,7 +170,9 @@ describe("the account's saved-searches card", () => {
   const moveTheFitBar = async () => {
     h.rows = [row({ digest_opt_in: true })];
     render(<MemoryRouter><SavedSearchesCard /></MemoryRouter>);
-    fireEvent.change(await screen.findByRole("combobox", {}, SLOW), { target: { value: "20" } });
+    // The fit bar is the select with the fit values; the rhythm select sits beside it (RC-S13-083).
+    const fitBar = (await screen.findAllByRole("combobox", {}, SLOW)).find((el) => el.querySelector('option[value="20"]'));
+    fireEvent.change(fitBar!, { target: { value: "20" } });
   };
   const openTheSearch = async () => {
     render(<MemoryRouter><SavedSearchesCard /></MemoryRouter>);

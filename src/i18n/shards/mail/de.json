@@ -1,0 +1,12 @@
+{
+  "mailPrefs": {
+    "pulseDoneNextMonth": "Sie sind wieder angemeldet. Den Puls für diesen Monat haben Sie schon erhalten, der nächste kommt Anfang nächsten Monats.",
+    "pulseDoneLater": "Sie sind wieder angemeldet. Ihr letzter Puls ging vor weniger als vier Wochen hinaus, der nächste kommt später in diesem Monat.",
+    "stoppedUnsubscribe": "Diese Adresse hat uns gebeten, ihr keine E-Mails mehr zu senden. Deshalb gehen Benachrichtigungen für gespeicherte Suchen, Scan-Berichte und der Marktpuls nicht an sie.",
+    "stoppedAccountDeleted": "Als ein Konto mit dieser Adresse gelöscht wurde, hat es uns gebeten, keine E-Mails mehr zu senden. Deshalb gehen Benachrichtigungen für gespeicherte Suchen, Scan-Berichte und der Marktpuls nicht an sie.",
+    "stoppedBounce": "E-Mails an diese Adresse kamen als unzustellbar zurück, deshalb senden wir ihr nichts mehr: Benachrichtigungen für gespeicherte Suchen, Scan-Berichte und der Marktpuls erreichen sie nicht.",
+    "stoppedComplaint": "Diese Adresse hat eine unserer E-Mails als Spam markiert, deshalb senden wir ihr nichts mehr: Benachrichtigungen für gespeicherte Suchen, Scan-Berichte und der Marktpuls erreichen sie nicht.",
+    "cadenceAria": "Wie oft wir Ihnen zu {{name}} schreiben",
+    "newHeadlineCapped": "{{n}} neue Stellen passen seit Ihrem letzten Besuch zu Ihren Suchen"
+  }
+}

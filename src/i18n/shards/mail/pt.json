@@ -1,0 +1,12 @@
+{
+  "mailPrefs": {
+    "pulseDoneNextMonth": "Sua inscrição foi reativada. Você já recebeu o pulso deste mês, então o próximo chega no começo do mês que vem.",
+    "pulseDoneLater": "Sua inscrição foi reativada. Seu último pulso saiu há menos de quatro semanas, então o próximo chega mais para o fim deste mês.",
+    "stoppedUnsubscribe": "Este endereço pediu que parássemos de enviar nossos e-mails, então os alertas de buscas salvas, os relatórios de análise e o pulso do mercado não são enviados para ele.",
+    "stoppedAccountDeleted": "Quando uma conta com este endereço foi excluída, ela pediu que parássemos de enviar nossos e-mails, então os alertas de buscas salvas, os relatórios de análise e o pulso do mercado não são enviados para ele.",
+    "stoppedBounce": "Os e-mails para este endereço voltaram, então paramos de enviar para ele: os alertas de buscas salvas, os relatórios de análise e o pulso do mercado não chegam até ele.",
+    "stoppedComplaint": "Este endereço marcou um dos nossos e-mails como spam, então paramos de enviar para ele: os alertas de buscas salvas, os relatórios de análise e o pulso do mercado não chegam até ele.",
+    "cadenceAria": "Com que frequência enviamos e-mails sobre {{name}}",
+    "newHeadlineCapped": "{{n}} vagas novas correspondem às suas buscas desde a última visita"
+  }
+}

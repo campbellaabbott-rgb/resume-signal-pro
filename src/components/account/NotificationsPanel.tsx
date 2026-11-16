@@ -37,6 +37,19 @@ export function NotificationsPanel() {
     return () => { cancelled = true; };
   }, []);
 
+  // THE RHYTHM CAN BE CHANGED WHERE IT IS SHOWN (RC-S13-083): the label
+  // that said "daily digest" or "weekly digest" is the switch between them,
+  // written as SavedSearchesCard writes it. A refused write puts it back.
+  const setCadence = async (id: string, value: "daily" | "weekly") => {
+    const was = rows.find((r) => r.id === id)?.digest_cadence ?? null;
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, digest_cadence: value } : r)));
+    const undo = () => setRows((prev) => prev.map((r) => (r.id === id ? { ...r, digest_cadence: was } : r)));
+    try {
+      const res = await writeWithDigestLocale(i18n.language, (lang) => table().update({ digest_cadence: value, ...lang }).eq("id", id));
+      if ((res as { error?: unknown } | null | undefined)?.error) undo();
+    } catch { undo(); }
+  };
+
   const toggle = async (id: string, next: boolean) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, digest_opt_in: next } : r)));
     // The digest is written in the language the page is read in (S13-102).
@@ -82,21 +95,30 @@ export function NotificationsPanel() {
           </label>
         )}
         {rows.map((r) => (
-          <label key={r.id} className="flex items-center gap-2.5 text-[13px] cursor-pointer">
-            <input
-              type="checkbox"
-              checked={r.digest_opt_in}
-              onChange={(e) => void toggle(r.id, e.target.checked)}
-              className="accent-[hsl(var(--primary))]"
-              aria-label={r.digest_cadence === "daily"
-                ? t("accountPage.notifToggleDaily", "Daily email for {{name}}", { name: r.name })
-                : t("accountPage.notifToggle", "Weekly email for {{name}}", { name: r.name })}
-            />
-            <span className="text-foreground truncate">{r.name}</span>
-            <span className="ml-auto text-[11px] text-muted-foreground shrink-0">
-              {r.digest_cadence === "daily" ? t("accountPage.notifDaily", "daily digest") : t("accountPage.notifWeekly", "weekly digest")}
-            </span>
-          </label>
+          <div key={r.id} className="flex items-center gap-2.5 text-[13px]">
+            <label className="flex items-center gap-2.5 min-w-0 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={r.digest_opt_in}
+                onChange={(e) => void toggle(r.id, e.target.checked)}
+                className="accent-[hsl(var(--primary))]"
+                aria-label={r.digest_cadence === "daily"
+                  ? t("accountPage.notifToggleDaily", "Daily email for {{name}}", { name: r.name })
+                  : t("accountPage.notifToggle", "Weekly email for {{name}}", { name: r.name })}
+              />
+              <span className="text-foreground truncate">{r.name}</span>
+            </label>
+            <select
+              value={r.digest_cadence === "daily" ? "daily" : "weekly"}
+              onChange={(e) => void setCadence(r.id, e.target.value === "daily" ? "daily" : "weekly")}
+              aria-label={t("mailPrefs.cadenceAria", "How often to email about {{name}}", { name: r.name })}
+              data-cadence-select
+              className="ml-auto shrink-0 text-[11px] rounded-md border border-border bg-background px-1.5 py-0.5 text-muted-foreground"
+            >
+              <option value="daily">{t("accountPage.notifDaily", "daily digest")}</option>
+              <option value="weekly">{t("accountPage.notifWeekly", "weekly digest")}</option>
+            </select>
+          </div>
         ))}
       </div>
     </div>
