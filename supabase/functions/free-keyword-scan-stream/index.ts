@@ -9067,7 +9067,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
               type: 'scan',
               score: analysis.atsScoreEstimate,
               industry: analysis.industry ?? null,
-              country: requestCountry ?? null,
+              // No country: an owner note carries counts or a reference only (S14X-101).
               authed: isAuthedUser,
             }),
           }).then(() => {}, (e) => console.warn('[FREE-KEYWORD-SCAN-STREAM] Owner notify failed:', e))

@@ -73,6 +73,10 @@ let pending: Promise<unknown>[];
 let ceilingAnswer: (a: Args) => { data: unknown; error: unknown };
 let ceilingCalls: Args[];
 let fetched: string[];
+/** Every owner-bound request a scanner made (a direct alert mail or a notify-owner note), with its body. */
+let toOwner: Array<{ url: string; body: string }>;
+/** When set, the primary's first database call inside its try throws (an unexpected failure: its 500 and its alert). */
+let breakPrimary = false;
 let streamDb: FakeDb;
 const spies: Array<ReturnType<typeof vi.spyOn>> = [];
 
@@ -91,7 +95,7 @@ let dayRow: Record<string, unknown> | null = null;
 function primaryClient() {
   const rpc = async (name: string, args: Args = {}) => {
     switch (name) {
-      case "check_global_rate_limit": return { data: true, error: null };
+      case "check_global_rate_limit": if (breakPrimary) throw new Error("database unreachable"); return { data: true, error: null };
       case "check_rate_limit": return rateLimit(args);
       case "acquire_scan_slot": return { data: "slot-1", error: null };
       default: return { data: null, error: null };
@@ -117,6 +121,7 @@ beforeAll(async () => {
   g.fetch = async (url: string, init?: { body?: string }) => {
     const u = String(url);
     fetched.push(u);
+    if (u.includes("api.resend.com") || u.includes("/functions/v1/notify-owner")) toOwner.push({ url: u, body: String(init?.body ?? "") });
     if (u.includes("ai.gateway.lovable.dev")) {
       const body = JSON.parse(init?.body ?? "{}") as { stream?: boolean };
       const args = JSON.stringify(ANALYSIS);
@@ -140,6 +145,8 @@ beforeAll(async () => {
 beforeEach(() => {
   pending = [];
   fetched = [];
+  toOwner = [];
+  breakPrimary = false;
   ceilingCalls = [];
   dayRow = null;
   ceilingAnswer = () => ({ data: true, error: null });
@@ -292,5 +299,46 @@ describe("S14X-011: a caller the day has already refused spends no one's hour", 
     } };
     await scanPrimary();
     expect(hourChecks.map((c) => c.p_ip)).toContain(GLOBAL_BUCKET);
+  });
+});
+
+describe("S14X-101: nothing a scanner sends the owner names the visitor", () => {
+  // The owner's answer (2026-11-15): owner alerts carry counts or a reference
+  // only, no subscriber email, no raw IP, no country. The primary's failure
+  // alert mailed { ip: <the visitor's address> }, and both scanners' scan
+  // notes named the visitor's country.
+  const VISITOR = HEADERS["cf-connecting-ip"];
+  const namesTheVisitor = (body: string) => body.includes(VISITOR) || /"ip"\s*:/.test(body) || /"country"\s*:/.test(body) || /Country:/.test(body);
+
+  it("the primary's failure alert names the failure and its numbers, never the address", async () => {
+    breakPrimary = true;
+    const { status } = await scanPrimary();
+    expect(status).toBe(500);
+    const alerts = toOwner.filter((m) => m.url.includes("api.resend.com"));
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].body).toContain("free-keyword-scan_error");
+    expect(alerts[0].body).toContain("database unreachable");
+    expect(namesTheVisitor(alerts[0].body)).toBe(false);
+  });
+
+  it("the primary's scan note to notify-owner carries the score and industry, not the address or the country", async () => {
+    await scanPrimary();
+    const notes = toOwner.filter((m) => m.url.includes("/functions/v1/notify-owner"));
+    expect(notes).toHaveLength(1);
+    const note = JSON.parse(notes[0].body) as Record<string, unknown>;
+    expect(note.type).toBe("scan");
+    expect(typeof note.score).toBe("number");
+    expect(namesTheVisitor(notes[0].body)).toBe(false);
+  });
+
+  it("the backup scan's note to notify-owner carries the score and industry, not the address or the country", async () => {
+    const r = await scanStream();
+    expect(r.complete?.success).toBe(true);
+    const notes = toOwner.filter((m) => m.url.includes("/functions/v1/notify-owner"));
+    expect(notes).toHaveLength(1);
+    const note = JSON.parse(notes[0].body) as Record<string, unknown>;
+    expect(note.type).toBe("scan");
+    expect(typeof note.score).toBe("number");
+    expect(namesTheVisitor(notes[0].body)).toBe(false);
   });
 });
