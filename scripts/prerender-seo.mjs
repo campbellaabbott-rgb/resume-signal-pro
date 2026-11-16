@@ -724,12 +724,12 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   })();
   const MCP_URL = D.mcpServerUrl(PROJECT_URL);
   const API_BASE = D.publicApiBase(PROJECT_URL);
-  // THE LICENSE THE PUBLISHED NUMBERS ARE OFFERED UNDER: an owner decision
-  // not yet made (SEO-044; the SEO report recommends CC BY 4.0). Empty means
-  // the markup names none, which claims nothing. Declared up here because the
-  // research page's Dataset reads it before the four data pages do.
-  // TODO(owner): set to a license URL, e.g. "https://creativecommons.org/licenses/by/4.0/".
-  const DATA_LICENSE = "";
+  // THE LICENSE THE PUBLISHED NUMBERS ARE OFFERED UNDER: Creative Commons
+  // Attribution 4.0, the owner's option for SEO-F24 (SEO-044 recommended it).
+  // It covers the aggregate figures the five data pages publish, not the
+  // postings the API serves, whose terms /data-api states. Declared up here
+  // because the research page's Dataset reads it before the four data pages do.
+  const DATA_LICENSE = "https://creativecommons.org/licenses/by/4.0/";
   /** The day /research/ats-score-benchmarks first shipped (e39dc448), its Article's datePublished. */
   const RESEARCH_PUBLISHED = "2026-07-06";
   const FREE_KEY_RATE_SENTENCE = `${D.FREE_KEY_RATE_PER_MIN} requests a minute and ${D.MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day per key`;
