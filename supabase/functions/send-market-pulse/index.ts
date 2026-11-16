@@ -31,6 +31,7 @@
 
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { KEYWORD_FREQUENCY } from "../_shared/market-intelligence.ts";
 import { sameSecret } from "../_shared/service-caller.ts";
 import { networkBucket } from "../_shared/network-bucket.ts";
@@ -87,7 +88,8 @@ const DAY_MS = 86_400_000;
  */
 const RUN_STAMP_KEY = "mail_run:market_pulse";
 
-async function stampRun(db: ReturnType<typeof createClient>, counts: { due: number; sent: number; givenBack: number; refused: number }) {
+// deno-lint-ignore no-explicit-any
+async function stampRun(db: SupabaseClient<any, any, any>, counts: { due: number; sent: number; givenBack: number; refused: number }) {
   const at = new Date().toISOString();
   try {
     const { error } = await db.from("job_board_meta").upsert({ k: RUN_STAMP_KEY, v: { at, ...counts }, updated_at: at }, { onConflict: "k" });

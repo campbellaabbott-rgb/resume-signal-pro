@@ -48,6 +48,7 @@
 //   - claimed but never reached before the clock: both stamps go back.
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ACCOUNT_SUBSCRIPTION_RPC, entitledAccounts } from "../_shared/agent-entitlement.ts";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
 import { sameSecret } from "../_shared/service-caller.ts";
@@ -88,7 +89,8 @@ const MAX_ROWS_IN_EMAIL = 6;
  */
 const RUN_STAMP_KEY = "mail_run:agent_digest";
 
-async function stampRun(db: ReturnType<typeof createClient>, counts: { due: number; sent: number; givenBack: number; refused: number }) {
+// deno-lint-ignore no-explicit-any
+async function stampRun(db: SupabaseClient<any, any, any>, counts: { due: number; sent: number; givenBack: number; refused: number }) {
   const at = new Date().toISOString();
   try {
     const { error } = await db.from("job_board_meta").upsert({ k: RUN_STAMP_KEY, v: { at, ...counts }, updated_at: at }, { onConflict: "k" });

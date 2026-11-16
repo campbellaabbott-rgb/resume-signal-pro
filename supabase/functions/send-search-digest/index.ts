@@ -29,6 +29,7 @@ import { sameSecret } from "../_shared/service-caller.ts";
 import { oneClickHeaders, oneClickUrl, redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
 import { sellerFooterHtml } from "../_shared/seller.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 import { mailSafeText } from "../_shared/mail-text.ts";
 import { DIGEST_COPY, formatCount, storedLanguage, type MailLanguage } from "./copy.ts";
@@ -192,7 +193,8 @@ function boardUrl(p: SearchParams): string {
 }
 
 /** The run's stamp for mail-watch R11; best effort, never fails the run (NB-37). */
-async function stampRun(db: ReturnType<typeof createClient>, counts: { due: number; sent: number; givenBack: number; refused: number }) {
+// deno-lint-ignore no-explicit-any
+async function stampRun(db: SupabaseClient<any, any, any>, counts: { due: number; sent: number; givenBack: number; refused: number }) {
   const at = new Date().toISOString();
   try {
     const { error } = await db.from("job_board_meta").upsert({ k: RUN_STAMP_KEY, v: { at, ...counts }, updated_at: at }, { onConflict: "k" });
