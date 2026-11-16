@@ -531,8 +531,10 @@ async function sendAlertEmail(alertType: string, subject: string, details: Recor
   }
 }
 
-// Performance tracking helper with alerting
-const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>, clientIp?: string) => {
+// Performance tracking helper with alerting. The alert names the operation
+// and its numbers, never the visitor: no address and no country reaches the
+// owner's mailbox (S14X-101, the owner's answer: counts or a reference only).
+const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>) => {
   const duration = Date.now() - startTime;
   const level = duration > VERY_SLOW_THRESHOLD ? 'CRITICAL' : duration > SLOW_REQUEST_THRESHOLD ? 'SLOW' : 'OK';
   console.log(`[PERF] ${operation} | ${duration}ms | ${level} | success=${success}${details ? ` | ${JSON.stringify(details)}` : ''}`);
@@ -549,7 +551,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
       sendAlertEmail(
         success ? `${operation}_slow` : `${operation}_error`,
         success ? `${operation} slow outlier (${duration}ms)` : `${operation} Error`,
-        { operation, duration, level, success, ip: clientIp || 'unknown', ...details }
+        { operation, duration, level, success, ...details }
       )
     );
   }
@@ -4776,7 +4778,7 @@ ${resumeForPrompt}
       }
     });
     
-    trackPerformance(requestStartTime, 'free-keyword-scan', true, { atsScore: analysis.atsScoreEstimate, industry: analysis.industry }, clientIp);
+    trackPerformance(requestStartTime, 'free-keyword-scan', true, { atsScore: analysis.atsScoreEstimate, industry: analysis.industry });
 
     // Owner notification for each completed scan (fire and forget).
     // Disable by setting NOTIFY_SCANS=false in function secrets. Never for our
@@ -4794,7 +4796,7 @@ ${resumeForPrompt}
             type: 'scan',
             score: analysis.atsScoreEstimate,
             industry: finalIndustry,
-            country: country ?? null,
+            // No country: an owner note carries counts or a reference only (S14X-101).
             authed: isAuthedUser,
           }),
         }).catch((e) => console.warn('[FREE-KEYWORD-SCAN] Owner notify failed:', e))
@@ -4883,7 +4885,7 @@ ${resumeForPrompt}
       );
     }
     
-    trackPerformance(requestStartTime, 'free-keyword-scan', false, { error: error instanceof Error ? error.message : 'Unknown' }, clientIp);
+    trackPerformance(requestStartTime, 'free-keyword-scan', false, { error: error instanceof Error ? error.message : 'Unknown' });
     console.error("[FREE-KEYWORD-SCAN] Error:", error);
     return new Response(
       JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
