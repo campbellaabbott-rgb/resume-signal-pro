@@ -9,13 +9,38 @@ interface AffiliateSession {
   sessionToken: string;
 }
 
-interface AffiliateStats {
+// The fields marked optional arrive with the bug round's affiliate
+// migrations (20261112120000, 20261112122000); until they apply the page
+// reads the dashboard as main answers it.
+export interface AffiliateStats {
   total_clicks: number;
   total_conversions: number;
   total_revenue: number;
   pending_payout: number;
   paid_out: number;
   conversion_rate: number;
+  /** Sale totals per ISO currency (lower case); 'unknown' for a sale whose currency was not recorded. */
+  revenue_by_currency?: Record<string, number>;
+  /** Commission earned and not yet payable: pending, or held for review. */
+  awaiting_approval?: number;
+  awaiting_approval_count?: number;
+}
+
+/** One of the period selector's ranges (7, 30, 90, 365 days). */
+export interface AffiliateRangeStats {
+  clicks: number;
+  conversions: number;
+  earning_conversions: number;
+  commission: number;
+  revenue_by_currency: Record<string, number>;
+}
+
+export interface AffiliatePayoutRequestRow {
+  id?: string;
+  status: 'requested' | 'paid' | 'rejected' | string;
+  amount_cents: number;
+  requested_at: string;
+  resolved_at: string | null;
 }
 
 interface AffiliateInfo {
@@ -25,21 +50,26 @@ interface AffiliateInfo {
   commission_amount: number;
   status: string;
   created_at: string;
+  email_confirmed?: boolean;
 }
 
-interface Conversion {
+export interface AffiliateConversion {
   id: string;
   product_name: string;
   sale_amount: number;
   commission_amount: number;
   status: string;
   created_at: string;
+  currency?: string | null;
+  held_for_review?: boolean;
 }
 
-interface DashboardData {
+export interface DashboardData {
   affiliate: AffiliateInfo;
   stats: AffiliateStats;
-  recent_conversions: Conversion[];
+  recent_conversions: AffiliateConversion[];
+  stats_by_range?: Record<string, AffiliateRangeStats>;
+  payout_requests?: AffiliatePayoutRequestRow[];
 }
 
 const SESSION_KEY = 'affiliate_session';
@@ -66,39 +96,6 @@ function getCookie(name: string): string | null {
 
 function deleteCookie(name: string): void {
   document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-}
-
-// Simple hash function for IP anonymization (client-side fingerprint)
-async function generateVisitorHash(): Promise<string> {
-  try {
-    const data = [
-      navigator.userAgent || '',
-      navigator.language || '',
-      (screen.width || 0) + 'x' + (screen.height || 0),
-      new Date().getTimezoneOffset().toString(),
-    ].join('|');
-    
-    // Check if crypto.subtle is available (requires HTTPS or localhost)
-    if (typeof crypto !== 'undefined' && crypto.subtle) {
-      const encoder = new TextEncoder();
-      const dataBuffer = encoder.encode(data);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-    
-    // Fallback: simple hash for non-HTTPS environments
-    let hash = 0;
-    for (let i = 0; i < data.length; i++) {
-      const char = data.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16).padStart(8, '0').slice(0, 16);
-  } catch (error) {
-    console.debug('Visitor hash generation failed:', error);
-    return 'unknown_' + Date.now().toString(36);
-  }
 }
 
 export function useAffiliateAuth() {
@@ -274,17 +271,15 @@ function recordReferral(refCode: string): void {
   }
   setCookie(REFERRAL_STORAGE_KEY, storageData, REFERRAL_EXPIRY_DAYS);
 
-  // Track the click with visitor hash (async, fire-and-forget)
+  // Log the click (fire-and-forget). No visitor hash from the page: the
+  // server keys the platform's address itself (S14X-021, 20261112121000).
   (async () => {
     try {
-      const visitorHash = await generateVisitorHash();
       await supabase.rpc('track_affiliate_click', {
         p_referral_code: refCode,
-        p_ip_hash: visitorHash,
         p_user_agent: navigator.userAgent.slice(0, 200), // Limit length
         p_referrer: document.referrer?.slice(0, 500) || null,
       });
-      console.debug('Affiliate click tracked with hash:', visitorHash.slice(0, 4) + '...');
     } catch {
       // Silently fail - don't affect user experience
       console.debug('Affiliate click tracking failed');

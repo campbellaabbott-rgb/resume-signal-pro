@@ -1,0 +1,95 @@
+{
+  "affiliateProgram": {
+    "updates": {
+      "click_one": "Neuer Klick auf Ihren Affiliate-Link!",
+      "click_other": "{{count}} neue Klicks auf Ihren Affiliate-Link!",
+      "earned": "Sie haben {{amount}} verdient!",
+      "earnedDescription": "Neue Conversion über Ihre Empfehlung. Eine Provision wird nach der Freigabe ausgezahlt."
+    },
+    "cookieLine": "30-Tage-Cookie • Auszahlung auf Anfrage nach Freigabe",
+    "tiles": {
+      "clicks": "Klicks",
+      "conversions": "Conversions",
+      "rate": "{{rate}} % Quote",
+      "commission": "{{amount}} Provision",
+      "allTime": "Gesamter Zeitraum",
+      "payable": "Jetzt auszahlbar",
+      "awaitingApproval": "Wartet auf Freigabe",
+      "awaitingCount_one": "{{count}} Provision, auszahlbar nach Freigabe",
+      "awaitingCount_other": "{{count}} Provisionen, auszahlbar nach Freigabe",
+      "totalPaid": "Insgesamt ausgezahlt",
+      "range": {
+        "d7": "Letzte 7 Tage",
+        "d30": "Letzte 30 Tage",
+        "d90": "Letzte 90 Tage",
+        "d365": "Letztes Jahr"
+      }
+    },
+    "revenue": {
+      "description": "Umsätze über Ihre Empfehlungen, jede Währung in einer eigenen Zeile",
+      "unknownCurrency": "{{amount}} (Währung nicht erfasst)",
+      "none": "Keine Umsätze in diesem Zeitraum"
+    },
+    "conversions": {
+      "heldForReview": "Zur Prüfung zurückgehalten"
+    },
+    "payout": {
+      "timing": "Wir melden uns per E-Mail, um die Zahlung abzustimmen, sobald wir die Anfrage geprüft haben",
+      "notNotified": "Ihre Anfrage ist erfasst, aber die Benachrichtigung an uns wurde nicht versendet. Sie liegt in unseren Unterlagen, sodass wir sie bei der Prüfung der Auszahlungen sehen.",
+      "awaitingNote": "Weitere {{amount}} warten auf Freigabe und werden danach auszahlbar.",
+      "openSince": "Angefragt am {{date}} über {{amount}}"
+    },
+    "history": {
+      "requested": "Angefragt",
+      "paid": "Ausgezahlt",
+      "rejected": "Abgelehnt",
+      "requestedOn": "Angefragt am {{date}}",
+      "paidOn": "Ausgezahlt am {{date}}",
+      "rejectedOn": "Abgelehnt am {{date}}",
+      "paidToDate": "Bisher ausgezahlt"
+    },
+    "howItWorks": {
+      "getPaid": "Eine Provision wartet auf Freigabe, bevor sie ausgezahlt werden kann. Sobald Ihre freigegebenen Provisionen den Mindestbetrag erreichen, fordern Sie im Tab „Payouts“ eine Auszahlung an, und wir melden uns per E-Mail, um die Zahlung abzustimmen. Wir schreiben Ihnen außerdem, wenn eine Empfehlung eine Provision einbringt."
+    },
+    "auth": {
+      "forgot": "Passwort vergessen?",
+      "resetTitle": "Passwort zurücksetzen",
+      "resetIntro": "Geben Sie die Adresse ein, mit der Sie sich registriert haben. Gehört sie zu einem Affiliate-Konto, senden wir einen Link, der einmal innerhalb von 30 Minuten funktioniert.",
+      "sendLink": "Link per E-Mail senden",
+      "resetSent": "Falls ein Affiliate-Konto diese Adresse nutzt, ist ein Link unterwegs. Er funktioniert einmal innerhalb von 30 Minuten.",
+      "backToSignIn": "Zurück zur Anmeldung",
+      "newPasswordTitle": "Neues Passwort wählen",
+      "newPasswordIntro": "Beim Speichern werden alle angemeldeten Geräte abgemeldet.",
+      "newPassword": "Neues Passwort (mind. 8 Zeichen)",
+      "savePassword": "Neues Passwort speichern",
+      "passwordChanged": "Passwort geändert und alle Geräte abgemeldet. Melden Sie sich mit dem neuen Passwort an.",
+      "linkExpired": "Dieser Link ist abgelaufen oder wurde bereits verwendet. Fordern Sie einen neuen an.",
+      "weakPassword": "Wählen Sie ein Passwort mit 8 bis 200 Zeichen.",
+      "addressConfirmed": "Ihre E-Mail-Adresse ist bestätigt.",
+      "emailChanged": "Ihre E-Mail-Adresse ist geändert. Melden Sie sich beim nächsten Mal mit der neuen Adresse an.",
+      "emailTaken": "Ein anderes Affiliate-Konto nutzt diese Adresse bereits.",
+      "failed": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+    },
+    "confirm": {
+      "bannerTitle": "Bestätigen Sie Ihre E-Mail-Adresse, um ausgezahlt zu werden",
+      "bannerBody": "Provisionen werden zur Prüfung zurückgehalten, und Auszahlungen können erst angefordert werden, wenn Sie nachweisen, dass diese Adresse Ihnen gehört.",
+      "send": "Bestätigungslink senden",
+      "sent": "Wir haben einen Bestätigungslink an {{email}} gesendet. Er funktioniert einmal innerhalb von 30 Minuten."
+    },
+    "account": {
+      "title": "Ihr Konto",
+      "description": "Melden Sie sich auf allen Geräten ab, laden Sie eine Kopie Ihrer Daten herunter, ändern Sie Ihre Adresse oder schließen Sie das Konto.",
+      "signOutEverywhere": "Überall abmelden",
+      "signedOutEverywhere": "Alle Geräte sind abgemeldet, auch dieses.",
+      "export": "Meine Daten herunterladen",
+      "exported": "Ihre Daten wurden heruntergeladen.",
+      "newEmail": "Neue E-Mail-Adresse",
+      "sendChangeLink": "Link an die neue Adresse senden",
+      "changeSent": "Wir haben einen Link an {{email}} gesendet. Die Änderung erfolgt, wenn Sie ihn öffnen.",
+      "eraseTitle": "Konto schließen",
+      "eraseWarning": "Dadurch werden Ihre Adresse, Ihr Passwort, Ihre Sitzungen und Ihr Klickverlauf entfernt; das lässt sich nicht rückgängig machen. Geben Sie zur Bestätigung ERASE ein.",
+      "eraseButton": "Konto endgültig schließen",
+      "erased": "Ihr Affiliate-Konto ist geschlossen."
+    }
+  }
+}

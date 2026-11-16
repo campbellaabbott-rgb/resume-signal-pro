@@ -61,6 +61,7 @@ const ELSEWHERE: Record<string, string> = {
   "create-pass-checkout": "retired: answers 410; the site names it only in the affiliate commission list",
   "public-api": "no page of the site calls it: /data-api and /api-address print its address for curl and agents",
   "stripe-webhook": "Stripe's servers call it; the site names it only in the circuit-breaker table",
+  "affiliate-account": "the bug round's affiliate lane: born with Max-Age 7200 on the round's build day, held by an-affiliate-resets-a-password-by-mail-and-proves-the-address.test.ts",
 };
 
 /** Function names written as a string anywhere in the site's own (non-test) code. */

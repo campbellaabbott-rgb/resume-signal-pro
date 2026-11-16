@@ -1,0 +1,97 @@
+{
+  "affiliateProgram": {
+    "updates": {
+      "click_one": "Novo clique no seu link de afiliado!",
+      "click_many": "{{count}} novos cliques no seu link de afiliado!",
+      "click_other": "{{count}} novos cliques no seu link de afiliado!",
+      "earned": "Você ganhou {{amount}}!",
+      "earnedDescription": "Nova conversão pela sua indicação. A comissão é paga depois de aprovada."
+    },
+    "cookieLine": "Cookie de 30 dias • Pago sob pedido depois de aprovado",
+    "tiles": {
+      "clicks": "Cliques",
+      "conversions": "Conversões",
+      "rate": "Taxa de {{rate}}%",
+      "commission": "{{amount}} em comissão",
+      "allTime": "Desde o início",
+      "payable": "Disponível para saque",
+      "awaitingApproval": "Aguardando aprovação",
+      "awaitingCount_one": "{{count}} comissão, paga depois de aprovada",
+      "awaitingCount_many": "{{count}} comissões, pagas depois de aprovadas",
+      "awaitingCount_other": "{{count}} comissões, pagas depois de aprovadas",
+      "totalPaid": "Total pago",
+      "range": {
+        "d7": "Últimos 7 dias",
+        "d30": "Últimos 30 dias",
+        "d90": "Últimos 90 dias",
+        "d365": "Último ano"
+      }
+    },
+    "revenue": {
+      "description": "Vendas das suas indicações, cada moeda em sua própria linha",
+      "unknownCurrency": "{{amount}} (moeda não registrada)",
+      "none": "Nenhuma venda neste período"
+    },
+    "conversions": {
+      "heldForReview": "Retida para análise"
+    },
+    "payout": {
+      "timing": "Enviamos um e-mail para combinar o pagamento depois de analisar o pedido",
+      "notNotified": "Seu pedido foi registrado, mas o aviso que nos informa sobre ele não foi enviado. Ele continua nos nossos registros, então vamos vê-lo quando analisarmos os pagamentos.",
+      "awaitingNote": "Mais {{amount}} aguardam aprovação e ficam disponíveis depois de aprovados.",
+      "openSince": "Pedido em {{date}} de {{amount}}"
+    },
+    "history": {
+      "requested": "Pedido",
+      "paid": "Pago",
+      "rejected": "Recusado",
+      "requestedOn": "Pedido em {{date}}",
+      "paidOn": "Pago em {{date}}",
+      "rejectedOn": "Recusado em {{date}}",
+      "paidToDate": "Pago até agora"
+    },
+    "howItWorks": {
+      "getPaid": "Uma comissão aguarda aprovação antes de poder ser paga. Quando suas comissões aprovadas atingirem o mínimo, peça um pagamento na aba \"Payouts\" e enviaremos um e-mail para combinar o pagamento. Também enviamos um e-mail quando uma indicação gera uma comissão."
+    },
+    "auth": {
+      "forgot": "Esqueceu a senha?",
+      "resetTitle": "Redefinir sua senha",
+      "resetIntro": "Digite o endereço que você usou no cadastro. Se uma conta de afiliado o usa, enviamos um link que funciona uma vez em até 30 minutos.",
+      "sendLink": "Me envie um link",
+      "resetSent": "Se uma conta de afiliado usa esse endereço, um link está a caminho. Ele funciona uma vez em até 30 minutos.",
+      "backToSignIn": "Voltar para o login",
+      "newPasswordTitle": "Escolha uma nova senha",
+      "newPasswordIntro": "Ao salvar, todos os dispositivos conectados são desconectados.",
+      "newPassword": "Nova senha (mín. 8 caracteres)",
+      "savePassword": "Salvar a nova senha",
+      "passwordChanged": "Senha alterada e todos os dispositivos desconectados. Entre com a nova senha.",
+      "linkExpired": "Este link expirou ou já foi usado. Peça um novo.",
+      "weakPassword": "Escolha uma senha de 8 a 200 caracteres.",
+      "addressConfirmed": "Seu endereço de e-mail está confirmado.",
+      "emailChanged": "Seu endereço de e-mail foi alterado. Da próxima vez, entre com o novo endereço.",
+      "emailTaken": "Outra conta de afiliado já usa esse endereço.",
+      "failed": "Algo deu errado. Tente novamente."
+    },
+    "confirm": {
+      "bannerTitle": "Confirme seu endereço de e-mail para receber",
+      "bannerBody": "As comissões ficam retidas para análise e não é possível pedir pagamentos até você comprovar que este endereço é seu.",
+      "send": "Enviar o link de confirmação",
+      "sent": "Enviamos um link de confirmação para {{email}}. Ele funciona uma vez em até 30 minutos."
+    },
+    "account": {
+      "title": "Sua conta",
+      "description": "Saia em todos os dispositivos, baixe uma cópia dos seus dados, altere seu endereço ou encerre a conta.",
+      "signOutEverywhere": "Sair em todos os dispositivos",
+      "signedOutEverywhere": "Todos os dispositivos foram desconectados, inclusive este.",
+      "export": "Baixar meus dados",
+      "exported": "Seus dados foram baixados.",
+      "newEmail": "Novo endereço de e-mail",
+      "sendChangeLink": "Enviar um link para o novo endereço",
+      "changeSent": "Enviamos um link para {{email}}. A alteração acontece quando você o abrir.",
+      "eraseTitle": "Encerrar a conta",
+      "eraseWarning": "Isso remove seu endereço, sua senha, suas sessões e seu histórico de cliques, e não pode ser desfeito. Digite ERASE para confirmar.",
+      "eraseButton": "Encerrar a conta de vez",
+      "erased": "Sua conta de afiliado foi encerrada."
+    }
+  }
+}
