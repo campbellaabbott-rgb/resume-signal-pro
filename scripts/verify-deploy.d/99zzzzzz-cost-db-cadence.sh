@@ -118,7 +118,7 @@ gone(T.role,"20261109110000","no page reads the role rows it rebuilt every six h
   else out("FAIL  "+T.purge+": "+desc(p)+". Step 1 shows, and 20261109131000 leaves the purge active with a timeout in its command")}
 if(!droppers.length)out(step1?"INFO  no one-shot index dropper or watcher is left scheduled (20261109190000). Which indexes went cannot be read with this key; the migration self-check refuses a dropper aimed at a kept twin":"INFO  before 20261109190000: no one-shot index dropper is scheduled; the deploy arms one per duplicate and a watcher that retires them");
 for(const n of droppers){const r=J[n];const runs=Number(r.ch_runs)||0,failed=Number(r.ch_failed)||0;
-  if(runs>=15)out("FAIL  "+n+" is still scheduled after "+runs+" runs (last "+(r.ch_last_status||"none")+"): the watcher has not retired it, so it runs every minute for nothing");
+  if(runs>=15)out("FAIL  "+n+" is still scheduled after "+runs+" runs (last "+(r.ch_last_status||"none")+"): the watcher has not retired it, so it runs every hour for nothing");
   else if(failed>=3)out("FAIL  "+n+" failed "+failed+" of "+runs+" runs (last "+(r.ch_last_status||"none")+")");
   else out("INFO  "+n+" is still working ("+runs+" runs, "+failed+" failed, last "+(r.ch_last_status||"none")+"); the watcher retires it once its index is gone")}
 

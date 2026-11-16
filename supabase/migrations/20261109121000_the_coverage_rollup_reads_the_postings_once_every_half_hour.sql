@@ -1,3 +1,13 @@
+-- SUB-HOURLY CRON REVIEW MARKER
+-- reviewed: 2026-11-16 by the project owner, who approves this schedule as written.
+-- job: job-board-stats-rollup (an existing job, altered in place).
+-- schedule: '*/15 * * * *' today -> '*/30 * * * *' after this file (half as often).
+-- why sub-hourly: the public data API (public-api 2026-11-09.1, live) already
+--   tells its users this rollup is recomputed every 30 minutes.
+-- load: lower than today. 48 runs a day instead of 96, and each run reads the
+--   live postings once instead of twice.
+-- new standing sub-hourly jobs: none.
+--
 -- THE COVERAGE ROLLUP READS THE POSTINGS ONCE, EVERY HALF HOUR (cost audit
 -- 2026-11-08, db-cadence lane, "do first" #6).
 --

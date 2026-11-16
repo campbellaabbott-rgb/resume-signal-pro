@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file creates or changes no
+-- cron schedule (reviewed 2026-11-16 by the project owner).
+--
 -- A BOARD VERDICT IS REWRITTEN ONLY WHEN THE BOARD CHANGED BUCKET.
 --
 -- Cost audit 2026-11-08, "Closure population". refresh_closure_population()
