@@ -93,7 +93,7 @@ describe("a bucket shared by every customer is nobody's allowance", () => {
 
   it("agent-mcp names its key's bucket and answers the scorer's 429 with the limit, never 'internal error'", () => {
     const fn = between(MCP, "async function runFitResume(", "async function runBoardStats(");
-    expect(fn).toMatch(/async function runFitResume\(args: Record<string, unknown>, apiKeyId: string\)/);
+    expect(fn).toMatch(/async function runFitResume\(args: Record<string, unknown>, apiKeyId: string, ctx: Ctx = KEYED_CTX\)/);
     expect(fn).toMatch(/"x-rb-bucket": `key:\$\{apiKeyId\}`/);
     expect(fn).toMatch(/Authorization: `Bearer \$\{service\}`/);
     expect(fn).not.toMatch(/Authorization: `Bearer \$\{anon\}`/);
@@ -127,8 +127,9 @@ describe("a bucket shared by every customer is nobody's allowance", () => {
     // a proven account), read through the same SQL reader, and its refusal
     // still comes before any search runs.
     expect(dispatch).toMatch(/const gate = standing\.full \? null : await fitFreeGate\(client, apiKeyId\);/);
-    expect(dispatch).toMatch(/if \(gate && !gate\.open\) return fitRefusal\(gate\);/);
-    expect(dispatch).toMatch(/await runFitResume\(args, apiKeyId\)/);
+    // S14X-132: a refused call gives its allowance back before the refusal returns.
+    expect(dispatch).toMatch(/if \(gate && !gate\.open\) \{\s*giveBackFitCall\(client, apiKeyId\);\s*return fitRefusal\(gate\);/);
+    expect(dispatch).toMatch(/await runFitResume\(args, apiKeyId, ctx\)/);
     expect(dispatch.indexOf("return fitRefusal(gate)"), "refused before scoring").toBeLessThan(dispatch.indexOf("runFitResume(args"));
     const refusal = between(MCP, "function fitRefusal(", "\n}\n");
     expect(refusal).toMatch(/`fit_resume's free daily allowance is used/);

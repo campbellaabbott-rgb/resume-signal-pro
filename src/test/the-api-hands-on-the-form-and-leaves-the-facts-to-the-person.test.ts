@@ -159,7 +159,7 @@ describe("GET /v1/jobs/{id}/application, as shipped", () => {
     expect(rpcs.find((r) => r.name === "application_form_cache_put")?.args).toMatchObject({ p_posting_id: GH_ID, p_vendor: "greenhouse", p_ok: true });
     rpcs = []; fetched = [];
     cacheRow = { vendor: "greenhouse", ok: true, read_at: new Date(Date.now() - 3600_000).toISOString(),
-      form: { questions: [{ label: "Why do you want to work at Acme?", required: false, type: "textarea" }], documents: [], alsoOnForm: [] } };
+      form: { questions: [{ label: "Why do you want to work at Acme?", required: false, type: "textarea" }], documents: [], alsoOnForm: [], sectioned: true } };
     const { status, body } = await get(formPath(GH_ID));
     expect(status).toBe(200);
     expect(fetched).toEqual([]);

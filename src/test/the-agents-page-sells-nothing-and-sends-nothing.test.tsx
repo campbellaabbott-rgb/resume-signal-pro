@@ -91,7 +91,8 @@ describe("the apply section", () => {
     mount();
     const free = document.querySelector("[data-self-apply-free]")!.textContent!;
     expect(free.startsWith(de.agentConnect.selfApplyFree.replace("{{vendors}}", formVendorPhrase("de")))).toBe(true);
-    expect(formVendorPhrase("de")).toMatch(/ oder Pinpoint$/);
+    // The last of the mirror's vendors, after the German "oder" (ten since SEO-F15).
+    expect(formVendorPhrase("de")).toMatch(/, Lever oder BambooHR$/);
     expect(document.querySelector("[data-self-apply-chatgpt]")!.textContent).toBe(
       de.agentConnect.selfApplyChatgpt.replace("{{vendors}}", formVendorPhrase("de", MCP_FORM_VENDORS_ON_CHATGPT)));
     expect(document.querySelector("[data-we-never-submit]")!.textContent!.trim()).toBe(de.agentConnect.applyNever);

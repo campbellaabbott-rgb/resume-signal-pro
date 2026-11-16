@@ -25,7 +25,8 @@ const RECORDED: Record<string, { hash: string; updated: string }> = {
   "freelance-work-on-resume": { hash: "a5df0a57dff60bd1", updated: "2026-11-08" },
   "fractional-roles-on-resume": { hash: "62407ede51011398", updated: "2026-10-25" },
   "what-resume-score-means": { hash: "3b87cd6327e2fd30", updated: "2026-10-10" },
-  "how-the-apply-agent-works": { hash: "7e56d79719e472dd", updated: "2026-10-25" },
+  // 2026-11-16 (SEO-F15): the form vendors it names grew from five to the ten the server reads.
+  "how-the-apply-agent-works": { hash: "5f5801392dbc1df2", updated: "2026-11-16" },
 };
 
 /** What a guide says: everything a reader or a crawler reads of it. */
