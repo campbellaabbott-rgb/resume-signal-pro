@@ -26,6 +26,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { buildIsAtLeast } from "./helpers/fn-build";
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -130,11 +131,15 @@ let goodRun: ReturnType<typeof run> | null = null;
 const theGoodRun = () => (goodRun ??= run(good()));
 
 describe("section 99zzzzzz (cost audit, lane ai)", () => {
-  it("names every function this lane stamped, at the build its code carries", () => {
+  it("names every function this lane stamped, and the code carries that build or a later one", () => {
     for (const fn of FNS) {
       const src = readFileSync(resolve(ROOT, "supabase/functions", fn, "index.ts"), "utf8");
-      expect(src, fn).toContain(`"${fn}.${LANE[fn]}"`);
       const [day, n] = LANE[fn].split(/\.(?=\d+$)/);
+      // A later fix stamps above this lane's build (free-keyword-scan's NB-1
+      // hotfix, 2026-11-15.1), and the section still asks for this one "or
+      // later": the pin is a floor, not a spelling (helpers/fn-build.ts).
+      const carried = new RegExp(`"(${fnRe(fn)}\\.\\d{4}-\\d{2}-\\d{2}\\.\\d+)"`).exec(src)?.[1];
+      expect(buildIsAtLeast(carried, fn, day, Number(n)), `${fn} carries ${carried}, below ${LANE[fn]}`).toBe(true);
       expect(SECTION, fn).toContain(`${fn}|${day}|${n}`);
     }
   });
