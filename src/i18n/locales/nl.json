@@ -2759,7 +2759,7 @@
         "browserLocal": {
           "what": "Een cv dat je op de site maakt (in de bouwer of in Freelance Boost), een geschiedenis van je recente scans (naam, functie en scores) en je recente rapporten",
           "where": "De lokale opslag van deze browser, op je apparaat",
-          "howLong": "Tot die wordt gewist: de knop om browsergegevens te wissen op een betaalde resultatenpagina wist alles, net als het wissen van de gegevens van deze site in je browser"
+          "howLong": "Tot die wordt gewist: uitloggen op dit apparaat wist hem (staan een cv dat je hebt gemaakt of je Freelance Boost-gegevens alleen hier, dan vragen we het eerst en kun je ze bewaren), net als de knop ‘Browsergegevens wissen’ op een betaalde resultatenpagina en het wissen van de gegevens van deze site in je browser"
         },
         "ai": {
           "what": "De tekst van je cv, terwijl een rapport wordt geschreven",
@@ -2789,7 +2789,7 @@
         "agent": {
           "what": "Het cv dat je aan de sollicitatieagent geeft: het bestand en de tekst",
           "where": "Privéopslag die alleen jij en de agent kunnen lezen",
-          "howLong": "De sollicitatieagent staat uit en stuurt het naar niemand. Een cv dat je hem eerder gaf, bewaren we tot je je account verwijdert of om wissing vraagt: je account verwijderen wist de tekst; mail {{email}} om het bestand te laten wissen."
+          "howLong": "De sollicitatieagent staat uit en stuurt het naar niemand. Een cv dat je hem eerder gaf, bewaren we tot je je account verwijdert; dat wist zowel de tekst als het bestand. Mail {{email}} om ze te laten wissen zonder je account te verwijderen."
         },
         "payment": {
           "what": "Je betaling",

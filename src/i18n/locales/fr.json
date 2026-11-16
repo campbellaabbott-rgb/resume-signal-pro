@@ -2782,7 +2782,7 @@
         "browserLocal": {
           "what": "Un CV que vous créez sur le site (dans le créateur ou dans Freelance Boost), un historique de vos derniers scans (nom, poste et scores) et vos derniers rapports",
           "where": "Le stockage local de ce navigateur, sur votre appareil",
-          "howLong": "Jusqu'à ce qu'il soit vidé : le bouton d'effacement des données du navigateur sur une page de résultats payante efface tout, tout comme l'effacement des données de ce site dans votre navigateur"
+          "howLong": "Jusqu'à ce qu'il soit vidé : la déconnexion sur cet appareil le vide (si un CV que vous avez créé ou vos informations Freelance Boost n'existent qu'ici, on vous le demande d'abord et vous pouvez les garder), tout comme le bouton « Effacer les données du navigateur » sur une page de résultats payante et l'effacement des données de ce site dans votre navigateur"
         },
         "ai": {
           "what": "Le texte de votre CV, pendant la rédaction d'un rapport",
@@ -2812,7 +2812,7 @@
         "agent": {
           "what": "Le CV confié à l'agent de candidature : le fichier et son texte",
           "where": "Un stockage privé que seuls vous et l'agent pouvez lire",
-          "howLong": "L'agent de candidature est désactivé et ne l'envoie à personne. Un CV que vous lui avez confié auparavant est conservé jusqu'à ce que vous supprimiez votre compte ou demandiez son effacement : supprimer votre compte efface le texte ; écrivez à {{email}} pour faire effacer le fichier."
+          "howLong": "L'agent de candidature est désactivé et ne l'envoie à personne. Un CV que vous lui avez confié auparavant est conservé jusqu'à ce que vous supprimiez votre compte, ce qui efface le texte et le fichier ; pour les faire effacer sans supprimer votre compte, écrivez à {{email}}."
         },
         "payment": {
           "what": "Votre paiement",

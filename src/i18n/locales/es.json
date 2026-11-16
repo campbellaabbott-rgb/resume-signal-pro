@@ -2782,7 +2782,7 @@
         "browserLocal": {
           "what": "Un currículum que creas en el sitio (en el creador o en Freelance Boost), un historial de tus escaneos recientes (nombre, puesto y puntuaciones) y tus informes recientes",
           "where": "El almacenamiento local de este navegador, en tu dispositivo",
-          "howLong": "Hasta que se borre: el botón para borrar los datos del navegador en una página de resultados de pago lo borra todo, igual que borrar los datos de este sitio en tu navegador"
+          "howLong": "Hasta que se borre: cerrar sesión en este dispositivo lo borra (si un currículum que creaste o tus datos de Freelance Boost solo están aquí, te preguntamos antes y puedes conservarlos), igual que el botón «Borrar datos del navegador» en una página de resultados de pago y borrar los datos de este sitio en tu navegador"
         },
         "ai": {
           "what": "El texto de tu currículum, mientras se redacta un informe",
@@ -2812,7 +2812,7 @@
         "agent": {
           "what": "El CV que das al agente de candidaturas: el archivo y su texto",
           "where": "Almacenamiento privado que solo tú y el agente pueden leer",
-          "howLong": "El agente de candidaturas está desactivado y no lo envía a nadie. Un CV que le diste antes se conserva hasta que elimines tu cuenta o pidas que lo borremos: eliminar tu cuenta borra el texto; escribe a {{email}} para que borremos el archivo."
+          "howLong": "El agente de candidaturas está desactivado y no lo envía a nadie. Un CV que le diste antes se conserva hasta que elimines tu cuenta, lo que borra el texto y el archivo; para que los borremos sin eliminar tu cuenta, escribe a {{email}}."
         },
         "payment": {
           "what": "Tu pago",

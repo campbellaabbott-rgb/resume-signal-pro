@@ -2759,7 +2759,7 @@
         "browserLocal": {
           "what": "Ein Lebenslauf, den du hier erstellst (im Builder oder in Freelance Boost), ein Verlauf deiner letzten Scans (Name, Rolle und Punktzahlen) und deine letzten Berichte",
           "where": "Der lokale Speicher dieses Browsers, auf deinem Gerät",
-          "howLong": "Bis er geleert wird: Die Schaltfläche zum Löschen der Browserdaten auf einer bezahlten Ergebnisseite leert alles, ebenso das Löschen der Website-Daten in deinem Browser"
+          "howLong": "Bis er geleert wird: Abmelden auf diesem Gerät leert ihn (wenn ein selbst erstellter Lebenslauf oder deine Freelance-Boost-Angaben nur hier liegen, wirst du vorher gefragt und kannst sie behalten), ebenso die Schaltfläche „Browserdaten löschen“ auf einer bezahlten Ergebnisseite und das Löschen der Website-Daten in deinem Browser"
         },
         "ai": {
           "what": "Der Text deines Lebenslaufs, während ein Bericht geschrieben wird",
@@ -2789,7 +2789,7 @@
         "agent": {
           "what": "Der Lebenslauf, den du dem Bewerbungsagenten gibst: die Datei und ihr Text",
           "where": "Privater Speicher, den nur du und der Agent lesen können",
-          "howLong": "Der Bewerbungsagent ist abgeschaltet und sendet ihn an niemanden. Ein Lebenslauf, den du ihm früher gegeben hast, bleibt gespeichert, bis du dein Konto löschst oder die Löschung verlangst: Das Löschen deines Kontos entfernt den Text; schreib an {{email}}, um die Datei löschen zu lassen."
+          "howLong": "Der Bewerbungsagent ist abgeschaltet und sendet ihn an niemanden. Ein Lebenslauf, den du ihm früher gegeben hast, bleibt gespeichert, bis du dein Konto löschst; das entfernt den Text und die Datei. Um beides löschen zu lassen, ohne dein Konto zu löschen, schreib an {{email}}."
         },
         "payment": {
           "what": "Deine Zahlung",

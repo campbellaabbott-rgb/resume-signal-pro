@@ -2759,7 +2759,7 @@
         "browserLocal": {
           "what": "Ang resume na ginagawa mo sa site (sa builder o sa Freelance Boost), ang kasaysayan ng mga huli mong scan (pangalan, tungkulin at score), at ang mga huli mong report",
           "where": "Ang local storage ng browser na ito, sa device mo",
-          "howLong": "Hanggang ma-clear ito: kini-clear lahat ng button na pang-clear ng browser data sa isang bayad na results page, pati ang pag-clear ng data ng site na ito sa browser mo"
+          "howLong": "Hanggang ma-clear ito: kini-clear ito ng pag-sign out sa device na ito (kung dito lang naka-save ang resume na ginawa mo o ang mga detalye mo sa Freelance Boost, tatanungin ka muna at puwede mo itong itago), pati ng button na “I-clear ang Browser Data” sa isang bayad na results page at ng pag-clear ng data ng site na ito sa browser mo"
         },
         "ai": {
           "what": "Ang text ng resume mo, habang isinusulat ang report",
@@ -2789,7 +2789,7 @@
         "agent": {
           "what": "Ang CV na ibinigay mo sa apply agent: ang file at ang text nito",
           "where": "Pribadong storage na ikaw lang at ang agent ang makakabasa",
-          "howLong": "Naka-off ang apply agent at hindi nito ipinapadala ito kaninuman. Ang CV na ibinigay mo rito dati ay itinatago hanggang burahin mo ang account mo o hilingin mong burahin ito: binubura ng pagbura sa account mo ang text; mag-email sa {{email}} para ipabura ang file."
+          "howLong": "Naka-off ang apply agent at hindi nito ipinapadala ito kaninuman. Ang CV na ibinigay mo rito dati ay itinatago hanggang burahin mo ang account mo, na bumubura sa text at sa file; para ipabura ang mga ito nang hindi binubura ang account mo, mag-email sa {{email}}."
         },
         "payment": {
           "what": "Ang bayad mo",

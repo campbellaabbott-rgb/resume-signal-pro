@@ -2782,7 +2782,7 @@
         "browserLocal": {
           "what": "Um currículo que cria no site (no criador ou no Freelance Boost), um histórico das suas análises recentes (nome, função e pontuações) e os seus relatórios recentes",
           "where": "O armazenamento local deste navegador, no seu dispositivo",
-          "howLong": "Até ser limpo: o botão para limpar os dados do navegador numa página de resultados paga limpa tudo, tal como limpar os dados deste site no seu navegador"
+          "howLong": "Até ser limpo: sair da conta neste dispositivo o limpa (se um currículo que você criou ou seus dados do Freelance Boost estiverem só aqui, perguntamos antes e você pode mantê-los), assim como o botão “Limpar dados do navegador” em uma página de resultados paga e limpar os dados deste site no seu navegador"
         },
         "ai": {
           "what": "O texto do seu currículo, enquanto um relatório é escrito",
@@ -2810,9 +2810,9 @@
           "howLong": "Até eliminar a sua conta"
         },
         "agent": {
-          "what": "O CV que entrega ao agente de candidaturas: o ficheiro e o seu texto",
+          "what": "O CV que você entrega ao agente de candidaturas: o arquivo e o texto dele",
           "where": "Armazenamento privado que só você e o agente podem ler",
-          "howLong": "O agente de candidaturas está desligado e não o envia a ninguém. Um CV que lhe entregou antes fica guardado até eliminar a conta ou pedir que o apaguemos: eliminar a conta apaga o texto; envie um e-mail para {{email}} para apagar o ficheiro."
+          "howLong": "O agente de candidaturas está desligado e não o envia a ninguém. Um CV que você entregou a ele antes fica guardado até você excluir sua conta, o que apaga o texto e o arquivo; para apagá-los sem excluir sua conta, envie um e-mail para {{email}}."
         },
         "payment": {
           "what": "O seu pagamento",

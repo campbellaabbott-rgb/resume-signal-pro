@@ -2759,7 +2759,7 @@
         "browserLocal": {
           "what": "A resume you build on the site (in the builder or in Freelance Boost), a history of your recent scans (name, role and scores), and your recent reports",
           "where": "This browser's local storage, on your device",
-          "howLong": "Until it is cleared: the Clear Browser Data button on a paid results page clears all of it, and so does clearing this site's data in your browser"
+          "howLong": "Until it is cleared: signing out on this device clears it (when a resume you built or your Freelance Boost details exist only here, you are asked first and can keep them), and so do the Clear Browser Data button on a paid results page and clearing this site's data in your browser"
         },
         "ai": {
           "what": "Your resume text, while a report is written",
@@ -2789,7 +2789,7 @@
         "agent": {
           "what": "The CV you give the apply agent: the file and its text",
           "where": "Private storage that only you and the agent can read",
-          "howLong": "The apply agent is switched off and sends it to no one. A CV given to it earlier is kept until you delete your account or ask for erasure: deleting your account erases the text; email {{email}} to have the file erased."
+          "howLong": "The apply agent is switched off and sends it to no one. A CV given to it earlier is kept until you delete your account, which erases both the text and the file; to have them erased without deleting your account, email {{email}}."
         },
         "payment": {
           "what": "Your payment",
