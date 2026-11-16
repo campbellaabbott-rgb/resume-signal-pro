@@ -16,7 +16,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { redactForScoring } from "../../supabase/functions/_shared/redaction";
+import { redactForScoring } from "../../supabase/functions/shortlist-evaluate/redaction";
 
 describe("the scored text names no protected category", () => {
   const r = redactForScoring("Jane Okafor\nEXPERIENCE\nMaternity leave, 2019 – 2020\nU.S. Army veteran\nRequires visa sponsorship\nI have ADHD\nMember of the Society of Women Engineers\nReligion: Hindu\nDate of birth: 03/14/1970");

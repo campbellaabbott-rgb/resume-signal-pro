@@ -22,7 +22,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { redactForScoring } from "../../supabase/functions/_shared/redaction";
+import { redactForScoring } from "../../supabase/functions/shortlist-evaluate/redaction";
 
 describe("a name anywhere in the header block, or only in the file name, is masked", () => {
   it("reads a name on line seven of the header block", () => {

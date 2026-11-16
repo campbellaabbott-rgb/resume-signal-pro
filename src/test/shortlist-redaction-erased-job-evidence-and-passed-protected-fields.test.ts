@@ -8,7 +8,7 @@
 // Education-first section went the wrong way.
 
 import { describe, it, expect } from "vitest";
-import { redactForScoring } from "../../supabase/functions/_shared/redaction";
+import { redactForScoring } from "../../supabase/functions/shortlist-evaluate/redaction";
 
 const run = (text: string) => redactForScoring(text);
 const has = (r: ReturnType<typeof run>, f: string) => r.exclusionsApplied.some((e) => e.feature === f);

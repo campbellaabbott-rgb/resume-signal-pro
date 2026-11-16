@@ -2,8 +2,10 @@
 # ── 99zzzzzzz-bugs-shortlist. THE BUG ROUND OF 2026-11-08, PART A, LANE
 # shortlist (branch bugs/a-shortlist): the employer's Shortlist page and the
 # function that scores a candidate. One function at 2026-11-12.1 (the
-# integrator's stamp): shortlist-evaluate, changed directly and through
-# _shared/redaction.ts. One migration in 20261112210000-219999: the notice log
+# integrator's stamp): shortlist-evaluate, changed directly and through its
+# redaction.ts (moved from _shared into the function's own folder at the
+# round's integration: it has no other importer, and the job-board upload
+# tally counts every _shared byte). One migration in 20261112210000-219999: the notice log
 # keeps the server's clock, an explicit sent date and the recipients
 # (S14X-163). The Shortlist page publishes with the round; it has no t()
 # strings, so there is no shard.
@@ -87,7 +89,7 @@ if printf '%s' "$VDBS_O073" | grep -qiE '^A'; then
 fi
 
 VDBS_BUILD="$VDBS_BUILD" VDBS_FN="$VDBS_FN" VDBS_EXPOSE="$VDBS_EXPOSE" VDBS_MAIN="$VDBS_MAIN" VDBS_CH="$VDBS_CH" VDBS_O073="$VDBS_O073" \
-VDBS_REDACTION="${VDBS_REDACTION:-supabase/functions/_shared/redaction.ts}" VDBS_FN_SRC="${VDBS_FN_SRC:-supabase/functions/shortlist-evaluate/index.ts}" \
+VDBS_REDACTION="${VDBS_REDACTION:-supabase/functions/shortlist-evaluate/redaction.ts}" VDBS_FN_SRC="${VDBS_FN_SRC:-supabase/functions/shortlist-evaluate/index.ts}" \
 node --input-type=module -e '
 import fs from "node:fs";
 import { resolve } from "node:path";

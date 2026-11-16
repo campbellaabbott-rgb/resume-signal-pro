@@ -22,7 +22,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { buildIsAtLeast } from "./helpers/fn-build";
-import { redactForScoring } from "../../supabase/functions/_shared/redaction";
+import { redactForScoring } from "../../supabase/functions/shortlist-evaluate/redaction";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 180_000 });
 

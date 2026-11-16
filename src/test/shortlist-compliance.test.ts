@@ -5,7 +5,7 @@
 // discrimination-liability bug for every customer.
 
 import { describe, it, expect } from "vitest";
-import { redactForScoring } from "../../supabase/functions/_shared/redaction";
+import { redactForScoring } from "../../supabase/functions/shortlist-evaluate/redaction";
 import { computeImpactAnalysis } from "@/lib/impact-ratio";
 
 describe("proxy redaction", () => {

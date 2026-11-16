@@ -14,7 +14,7 @@
  * case; the full name and the handles built from it, in any case anywhere.
  */
 import { describe, expect, it } from "vitest";
-import { redactForScoring } from "../../supabase/functions/_shared/redaction";
+import { redactForScoring } from "../../supabase/functions/shortlist-evaluate/redaction";
 
 const CASES: Array<{ name: string; evidence: string; titled: string }> = [
   { name: "John Wells", evidence: "Drilled 40 horizontal wells in the Permian basin.", titled: "Wells led the completions crew." },

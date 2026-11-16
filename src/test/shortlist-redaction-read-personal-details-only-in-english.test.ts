@@ -17,7 +17,7 @@
  * or a Japanese IT outage line ("システム障害対応") stays.
  */
 import { describe, expect, it } from "vitest";
-import { redactForScoring } from "../../supabase/functions/_shared/redaction";
+import { redactForScoring } from "../../supabase/functions/shortlist-evaluate/redaction";
 
 const run = (t: string) => redactForScoring(t);
 const has = (r: ReturnType<typeof run>, f: string) => r.exclusionsApplied.some((e) => e.feature === f);

@@ -11,7 +11,7 @@
 // - Every evaluation stores model/prompt version for reproducibility.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { redactForScoring, type RedactionConfig } from "../_shared/redaction.ts";
+import { redactForScoring, type RedactionConfig } from "./redaction.ts";
 import { modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { requireWebsiteSession } from "../_shared/website-session.ts";
 import { fenceUntrusted, plantedInstructions, PLANTED_INSTRUCTIONS_FLAG } from "../_shared/planted-instructions.ts";

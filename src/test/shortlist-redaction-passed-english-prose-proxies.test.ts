@@ -18,7 +18,7 @@
  * "Over 50 enterprise clients" alone.
  */
 import { describe, expect, it } from "vitest";
-import { redactForScoring } from "../../supabase/functions/_shared/redaction";
+import { redactForScoring } from "../../supabase/functions/shortlist-evaluate/redaction";
 import { EVIDENCE, PROXIES } from "./fixtures/shortlist-redaction-corpus";
 
 const wrap = (line: string) => `Jane Okafor\n\nEXPERIENCE\n${line}\nNext line stays too`;
