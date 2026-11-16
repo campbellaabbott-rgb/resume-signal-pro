@@ -8173,7 +8173,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       ? (landerOneEmployer && landerModel?.openRoles && landerModel.name.name
         ? { count: landerModel.openRoles, href: companyLanderPath(landerCompany!), name: landerModel.name.name, onClick: (e: React.MouseEvent<HTMLAnchorElement>) => { e.preventDefault(); closeDetail(); } }
         : null)
-      : typeof cnt === "number" && cnt >= 2 && detailJob.token
+      : typeof cnt === "number" && cnt >= 2 && detailJob.token && listingEmployer(detailJob)
         ? {
             count: { value: cnt, floor: false, asOf: null },
             href: companyHref(detailJob.token),

@@ -87,7 +87,8 @@ const ROWS = {
   personioOpen: { id: "personio:deag-deutsche-entertainment-ag:2859520", applyUrl: "https://deag-deutsche-entertainment-ag.jobs.personio.de/job/2859520" },
   personioGone: { id: "personio:deag-deutsche-entertainment-ag:2859599", applyUrl: "https://deag-deutsche-entertainment-ag.jobs.personio.de/job/2859599" },
   netDown: { id: "greenhouse:netdown:42", applyUrl: "https://job-boards.greenhouse.io/netdown/jobs/42" },
-  adp: { id: "adp:07372372-77a5-45e9-8573-f67327c3c3ec:9207315772373_1", applyUrl: "https://workforcenow.adp.com/x" },
+  // A vendor the reader does not read (ADP was one until the 2026-11-15 check, F01).
+  unread: { id: "jazzhr:acme:job_20261101", applyUrl: "https://acme.applytojob.com/apply/job_20261101" },
 };
 const TABLE: Record<string, Answer> = {
   [wd("sanford", "wd5", "SanfordHealth", "/job/SD-Watertown/Medication-Assistant--Certified--Assisted-Living_R-0278723")]: { status: 403, body: rec("workday-sanford-403-s22.json") },
@@ -182,8 +183,8 @@ describe("each vendor's recorded answer reads as open, closed or unknown", () =>
   it("a network error is unknown, and a vendor this reader does not read is unknown without a request", async () => {
     expect((await state(ROWS.netDown)).state).toBe("unknown");
     const f = recordedFetch(TABLE);
-    const r = await readEmployers([ROWS.adp], { fetchImpl: f.fetchImpl as unknown as typeof fetch });
-    expect(r.get(ROWS.adp.id)!.state).toBe("unknown");
+    const r = await readEmployers([ROWS.unread], { fetchImpl: f.fetchImpl as unknown as typeof fetch });
+    expect(r.get(ROWS.unread.id)!.state).toBe("unknown");
     expect(f.asked).toEqual([]);
   });
 

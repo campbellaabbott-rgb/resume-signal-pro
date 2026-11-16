@@ -450,6 +450,21 @@ describe("each duplicate index is dropped concurrently, only against a proven tw
     expect(j[WATCH]).toBeTruthy();
   });
 
+  it("every dropper and the watcher run once an hour at a named minute, and the two drops on temp_resume_storage never share an hour's half", async () => {
+    const db = await boot();
+    await applyTwice(db, INDEXES);
+    const j = await jobs(db);
+    const minute = (job: string): number => {
+      const m = /^(\d{1,2}) \* \* \* \*$/.exec(j[job]?.schedule ?? "");
+      expect(m, `${job} runs on ${j[job]?.schedule}, not once an hour`).not.toBeNull();
+      return Number(m![1]);
+    };
+    for (const job of [...Object.keys(DROPPERS), WATCH]) minute(job);
+    const a = minute("oneshot-drop-temp-resume-expires-idx");
+    const b = minute("oneshot-drop-temp-resume-storage-expires-idx");
+    expect(Math.abs(a - b), "half an hour apart, so never in the same half of an hour").toBe(30);
+  });
+
   it("the droppers' statements run outside a transaction, the watcher then unschedules every job, and every twin survives", async () => {
     const db = await boot();
     await db.exec(INDEXES);

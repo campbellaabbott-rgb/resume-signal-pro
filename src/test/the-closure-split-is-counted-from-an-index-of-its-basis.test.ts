@@ -73,14 +73,14 @@ const indexState = async (db: PGlite) =>
   )).rows[0]?.valid ?? null;
 
 describe("the one-shot pair", () => {
-  it("schedules a builder that is the single concurrent statement, at :44, and a watcher every five minutes", async () => {
+  it("schedules a builder that is the single concurrent statement, at :44, and a watcher once an hour at :14, so nothing in the file runs more often than hourly", async () => {
     const db = await boot();
     await db.exec(SQL);
     const j = await jobs(db);
     expect(j.get(BUILDER)?.schedule).toBe("44 * * * *");
     expect(j.get(BUILDER)?.command).toBe(
       "CREATE INDEX CONCURRENTLY IF NOT EXISTS job_board_closures_absence_basis_idx ON public.job_board_closures (absence_basis)");
-    expect(j.get(WATCHER)?.schedule).toBe("*/5 * * * *");
+    expect(j.get(WATCHER)?.schedule).toBe("14 * * * *");
   });
 
   // Every-minute and every-n-minutes kicks (a pg_net POST, a one-shot) run at

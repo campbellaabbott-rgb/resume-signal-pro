@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file creates or changes no
+-- cron schedule (reviewed 2026-11-16 by the project owner).
+--
 -- A PERK POSTING IS READ AGAIN ONLY WHEN ITS TEXT CHANGED.
 --
 -- Cost audit 2026-11-08, "Perk sweep". Once a day (the ~20-hour requeue) the

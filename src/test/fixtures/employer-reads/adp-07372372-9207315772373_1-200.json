@@ -1,0 +1,23 @@
+{
+ "itemID": "9207315772373_1",
+ "clientRequisitionID": "2011",
+ "requisitionTitle": "Customer Service Banker",
+ "requisitionLocations": [
+  {
+   "address": {
+    "cityName": "Hooksett",
+    "countrySubdivisionLevel1": {
+     "codeValue": "NH"
+    },
+    "postalCode": "03106"
+   },
+   "aliasNames": [],
+   "nameCode": {
+    "shortName": " Hooksett, NH, US"
+   }
+  }
+ ],
+ "workLevelCode": {
+  "shortName": "Full Time"
+ }
+}

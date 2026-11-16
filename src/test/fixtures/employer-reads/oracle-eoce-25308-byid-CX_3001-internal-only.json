@@ -1,0 +1,20 @@
+{
+ "items": [
+  {
+   "Id": "25308",
+   "Title": "Intelligence Officer",
+   "RequisitionType": "SCC Internal",
+   "JobSchedule": "Full time",
+   "ExternalPostedStartDate": "2026-11-04T00:00:00+00:00",
+   "ExternalPostedEndDate": "2026-11-18T23:30:00+00:00",
+   "PrimaryLocation": "Ipswich, Suffolk, United Kingdom",
+   "PrimaryLocationCountry": "GB",
+   "WorkplaceTypeCode": "ORA_HYBRID",
+   "WorkplaceType": "Hybrid"
+  }
+ ],
+ "count": 1,
+ "hasMore": false,
+ "limit": 499,
+ "offset": 0
+}

@@ -309,14 +309,20 @@ describe("each claim broken is a FAIL", () => {
   });
 
   it("a one-shot dropper the watcher never retired, or one that keeps failing; a young one is INFO and marks step 1", () => {
-    failsWith(after({ cron: cron(AFTER(), { "oneshot-drop-postings-company-token-idx": { ch_runs: 20 } }) }), /^FAIL  oneshot-drop-postings-company-token-idx is still scheduled after 20 runs/);
-    failsWith(after({ cron: cron(AFTER(), { "oneshot-drop-duplicate-indexes-watch": { ch_runs: 40 } }) }), /^FAIL  oneshot-drop-duplicate-indexes-watch is still scheduled after 40 runs/);
-    failsWith(after({ cron: cron(AFTER(), { "oneshot-drop-ai-response-cache-expires-idx": { ch_runs: 5, ch_failed: 3, ch_last_status: "failed" } }) }), /^FAIL  oneshot-drop-ai-response-cache-expires-idx failed 3 of 5 runs \(last failed\)/);
-    const young = run(after({ cron: cron(AFTER(), { "oneshot-drop-temp-resume-expires-idx": { ch_runs: 2 } }) }), THREE_HOURS_AGO());
-    expect(fails(young.lines), young.out).toEqual([]);
-    expect(has(young.lines, "INFO", /oneshot-drop-temp-resume-expires-idx is still working \(2 runs/), young.out).toBe(true);
+    // The droppers and the watcher run once an hour (20261109190000), so the counts are ones an hour can reach.
+    failsWith(after({ cron: cron(AFTER(), { "oneshot-drop-postings-company-token-idx": { ch_schedule: "26 * * * *", ch_runs: 2 } }) }), /^FAIL  oneshot-drop-postings-company-token-idx is still scheduled after 2 runs, 2 of them not failed .*the watcher has not retired it/);
+    failsWith(after({ cron: cron(AFTER(), { "oneshot-drop-duplicate-indexes-watch": { ch_schedule: "50 * * * *", ch_runs: 5 } }) }), /^FAIL  oneshot-drop-duplicate-indexes-watch is still scheduled after 5 hourly passes/);
+    failsWith(after({ cron: cron(AFTER(), { "oneshot-drop-ai-response-cache-expires-idx": { ch_schedule: "29 * * * *", ch_runs: 5, ch_failed: 3, ch_last_status: "failed" } }) }), /^FAIL  oneshot-drop-ai-response-cache-expires-idx failed 3 of 5 runs \(last failed\)/);
+    for (const p of [{ ch_runs: 1 }, { ch_runs: 2, ch_failed: 1, ch_last_status: "failed" }]) {
+      const young = run(after({ cron: cron(AFTER(), { "oneshot-drop-temp-resume-expires-idx": { ch_schedule: "28 * * * *", ...p } }) }), THREE_HOURS_AGO());
+      expect(fails(young.lines), young.out).toEqual([]);
+      expect(has(young.lines, "INFO", new RegExp(`oneshot-drop-temp-resume-expires-idx is still working \\(${p.ch_runs} runs`)), young.out).toBe(true);
+    }
+    const watching = run(after({ cron: cron(AFTER(), { "oneshot-drop-duplicate-indexes-watch": { ch_schedule: "50 * * * *", ch_runs: 4 } }) }), THREE_HOURS_AGO());
+    expect(fails(watching.lines), watching.out).toEqual([]);
+    expect(has(watching.lines, "INFO", /oneshot-drop-duplicate-indexes-watch is still working \(4 hourly passes/), watching.out).toBe(true);
     // Alone in cron health, a dropper is a mark of step 1, so the jobs step 1 retires are judged.
-    const alone = run(before({ cron: cron(BEFORE, { "oneshot-drop-temp-resume-expires-idx": { ch_runs: 2 } }) }));
+    const alone = run(before({ cron: cron(BEFORE, { "oneshot-drop-temp-resume-expires-idx": { ch_schedule: "28 * * * *", ch_runs: 1 } }) }));
     expect(has(alone.lines, "FAIL", /^FAIL  board-recency-ladder is still scheduled/), alone.out).toBe(true);
   });
 

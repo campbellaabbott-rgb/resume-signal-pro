@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
+-- (reviewed 2026-11-16 in the board .102 integration).
+--
 -- PAY READ IN THE WRONG CURRENCY IS READ AGAIN.
 --
 -- Board .102, VF-BMS. A row's pay is parsed under the country the row had

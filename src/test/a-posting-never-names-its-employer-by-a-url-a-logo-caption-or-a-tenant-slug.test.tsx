@@ -23,8 +23,12 @@
  * (~/.config/resumebooster/seo-connect-build/corpora/name-gate-catalogue-before-after-2026-11-08.json):
  * exactly fourteen moved from printable to refused, every one a URL or a logo
  * caption, and none main refused is printable now. The fixture below holds
- * the 380 real names nearest the new rules' shapes (domains, slashes, "Global",
- * two colours, "Signature", "Logos", "...Text"); none may be refused.
+ * the real names nearest the new rules' shapes (domains, slashes, "Global",
+ * two colours, "Signature", "Logos", "...Text"); none may be refused. It held
+ * 380 until the SEO check of 2026-11-15 (F04): "HealthCareersInSask.ca" is a
+ * careers site's web address, not the name of the employer behind it, and the
+ * widened gate refuses it, so it moved to the refused list of
+ * a-logo-caption-a-careers-address-or-a-site-audience-never-names-an-employer.
  */
 import { describe, expect, it, vi } from "vitest";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -71,7 +75,7 @@ describe("the name gate refuses the names seen on live markup", () => {
   });
 });
 
-describe("the name gate never refuses a real employer's name (380 real catalogue names, read 2026-11-08)", () => {
+describe("the name gate never refuses a real employer's name (379 real catalogue names, read 2026-11-08)", () => {
   const fixture = JSON.parse(readFileSync(resolve(__dirname, "fixtures/employer-names-the-name-gate-keeps-2026-11-08.json"), "utf8")) as {
     names: Array<{ name: string; board: string; why: string }>;
   };
@@ -89,7 +93,7 @@ describe("the name gate never refuses a real employer's name (380 real catalogue
   });
 
   it.each([
-    "Booking.com", "Alarm.com", "HealthCareersInSask.ca", "Logo Brands", "Abt Global", "Gold Coast Health",
+    "Booking.com", "Alarm.com", "Logo Brands", "Abt Global", "Gold Coast Health",
     "Signature Aviation", "Blue Cross Blue Shield of Arizona", "OpenText",
   ])("%s is a name", (name) => {
     expect(unpublishableNameReason(name)).toBeNull();

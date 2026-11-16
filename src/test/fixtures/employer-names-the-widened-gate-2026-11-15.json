@@ -1,0 +1,2181 @@
+{
+ "read": "2026-11-15",
+ "source": "Every (token, name) pair in the catalogue (supabase/functions/job-board/sources.ts read through src/test/helpers/catalog.ts, 44,523 boards) and in the live company list (the anon get_job_board_facets read, 31,184 boards): 45,103 pairs, each judged by bakeEmployerName with the app's employerName and isCodeShapedName, main (1e81bb81) against this rule.",
+ "result": "Main refused 103 names and this rule refuses 168. The 65 that moved from printable to refused are logo captions, a careers site's address and an email address; 1 more prints the employer's name in front of a career site's audience label (Inova Military, the one board whose tenant's other board carries exactly the name left). No name main refused is printable now, and no other name changed.",
+ "moved": [
+  {
+   "name": "info@bodymasters.de",
+   "board": "recruitee:bodymasters",
+   "refused": "email address",
+   "why": "a Recruitee board whose company field is its contact address"
+  },
+  {
+   "name": "Inova Military",
+   "board": "oracle:elar~us2~CX_14001",
+   "printed": "Inova",
+   "why": "a career site's audience label after its employer's name; the same tenant's main site prints the name in front of it (SEO check 2026-11-15, F04)"
+  },
+  {
+   "name": "MEI Maroon",
+   "board": "adp:70410376-3018-4e61-a9e7-d6794946516c~295453191_2068",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption (SEO check 2026-11-15, F04)"
+  },
+  {
+   "name": "MEI Maroon",
+   "board": "adp:70410376-3018-4e61-a9e7-d6794946516c",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption (SEO check 2026-11-15, F04)"
+  },
+  {
+   "name": "asasLOGO hi res",
+   "board": "adp:a6695e7b-aacf-462f-8241-3b471fcdb16a",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "no tag full 72p transparency (1)",
+   "board": "adp:2e09c00b-f3c4-4834-9a9c-accb10777184",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "DEKRA Green",
+   "board": "adp:bdc625b7-1795-4137-852b-f8d749a4f5a5",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "Novae PMS072 px",
+   "board": "adp:d16ba13d-474e-4326-b628-74c87f0b289a",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "Zeigler Auto Group high res",
+   "board": "adp:0fee06f8-c292-4ae0-acc1-85dd8cc72c8e",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "INDI green",
+   "board": "adp:06e8462a-bdce-4e42-b8ed-8adec4f0424c~1586553101862011_1979",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "WeatherTech red",
+   "board": "adp:2299e664-7700-4f92-9ad0-9d358e3031db",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "ZelLogoRegisteredBlue",
+   "board": "adp:143ad7a2-63a5-4e78-bb9e-f11b63c50548",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "TLRR full V (2)",
+   "board": "adp:3e345f22-fefd-4eee-b96f-a378822036d9~9206786096468_2",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "JCSU LettersOnly Gold Blue",
+   "board": "adp:0bfa83fc-36cf-46f4-adac-b27bef86285c~19000101_000003",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "The Villages green",
+   "board": "adp:ea774d00-96ec-4432-b137-9f604cbb5c8e",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "FA24 Johnnie O Navy (3)",
+   "board": "adp:24c0a965-60af-4313-917b-a1ae08fd4df7~9202004647216_2",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "RCB BFA tagline",
+   "board": "adp:1b6a47d0-b068-4d89-a03c-411cb825b110",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "lvc logowordmark blue hi res",
+   "board": "adp:c6864f58-380f-4d35-a085-a83ec5fb3f0b",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "Blumenthal Arts Full (1)",
+   "board": "adp:e607331b-bbfb-469d-abda-170924e68e72",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "AMHA Gold",
+   "board": "adp:306a45fc-3c35-4dad-b801-9a3d44340507",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "CornerstoneBankLogo PMS195",
+   "board": "adp:303b773c-c992-4eea-a1be-c747960f1391~9201442760891_2",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "VHBG Full Master low res2",
+   "board": "adp:3033f4f1-fa40-4565-84ff-c439849d9a17",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "OC Red (002)",
+   "board": "adp:7a1edbd8-73dc-48b7-8f73-48dc403576b5",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "with tagline on background",
+   "board": "adp:b29bca71-303e-44d9-ac60-4de22c83d680",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "Hyson TaglineTM Blue Digital",
+   "board": "adp:029273b7-60b7-49cd-94a1-ff4dc9650342~35766285_2",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "Level Data Full Navy",
+   "board": "adp:f1c8ff1c-5d72-47a8-bb5f-c58d2d544691~19000101_000003",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "with tagline",
+   "board": "adp:12c50d6c-1baa-481b-a7ac-bc6c1aeda42a",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "(no tagline)",
+   "board": "adp:5745ed7b-7f8d-47a9-9161-d975aa7f3314",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "A&A Red",
+   "board": "adp:70410376-3018-4e61-a9e7-d6794946516c~9200160438464_2",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "Casepoint Full (1)",
+   "board": "adp:dcda5d87-dd88-47b5-adb3-4f1ea5346711~9200777807097_2",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "DRF Brown",
+   "board": "adp:e8d8be73-93e3-49db-85a1-535422ca902a",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "CarlosRosario PMS2757",
+   "board": "adp:33b607f4-564d-4335-b098-98dd2b218da4~1434660535_1116",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "B&R w tagline 2C Focused on Your Future by",
+   "board": "adp:6b51eee7-38bc-4219-96af-b7a30186f135",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "Deque Dark (1)",
+   "board": "adp:c85239eb-ea06-47bc-b513-bb00e0a15f72",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "CEBA Blue",
+   "board": "adp:cde26da5-1032-460c-b90d-7478d9823854",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "Master Full Circle",
+   "board": "adp:e99bfd5e-3f8c-4921-b571-1b547c22a746",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "Cambrian Yellow Navy (2)",
+   "board": "adp:68a349db-2fce-4281-af07-c2262a9610d7~9200923917828_2",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "KDV Tagline",
+   "board": "adp:35996432-21dd-4059-a115-119feccca8f6",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "2013%20Ziegler%20CIA%20Logo%20Stacked",
+   "board": "adp:43c38b06-45d4-4a3e-b934-7559b88c2d3e",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "Oceana English SideTagline 2Blue",
+   "board": "adp:c636b4b1-9b8d-4e27-a0d2-6cdea1e0fdc6",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "iMDxFINALLogo LightBlue Bkgnd (5)",
+   "board": "adp:09f21302-106d-4b8d-a655-f860d79a71b3",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "CAMlogo13 PMS no tagline",
+   "board": "adp:347b7c9b-5aac-4d96-ab81-3b32a60f7052",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "HealthCareersInSask.ca",
+   "board": "oracle:emqk~ca3~CX_1",
+   "refused": "careers site address",
+   "why": "an Oracle career site named by its own web address (SEO check 2026-11-15, F04)"
+  },
+  {
+   "name": "Waseyabek Full (002)",
+   "board": "adp:5330343c-20f8-4939-818b-05c605dedc1e",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "TRAILBORN MASTER MONOGRAM ORANGE",
+   "board": "adp:b873581b-1203-4072-8b55-0d6dd9d414f5",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption (SEO check 2026-11-15, F04)"
+  },
+  {
+   "name": "4Logos (002)",
+   "board": "adp:72ef3ed5-382f-44c8-a8ca-6e4b4f3d77f1",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "Asset 1@4x (1)",
+   "board": "adp:32186ff8-408c-44a6-a407-bfefe4f2d0ad~19000101_000003",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "Denali Full Font AI Blue",
+   "board": "adp:fd0b11f1-419b-47c1-b1c8-8fa989415cd2",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "Z:DepartmentsHRAdminAdmin Tasks DutiesLogos templatesLogo vo",
+   "board": "adp:cd80a0db-72b5-4ec5-b466-835f7055da79",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "OC Aqua Navy",
+   "board": "adp:4786a4ca-9800-4db8-98cb-8bc9baad2b0d",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "mt tagline ADP",
+   "board": "adp:90e7057f-a8dc-4c2f-b2ec-2a7063ad472e~9201601661473_3",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "HH purple",
+   "board": "adp:57a8223f-7b97-4b91-9678-e93d7e6403c3",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "OBT Tagline",
+   "board": "adp:ea389e7d-8a29-4a24-a814-529f0e92ef1e",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "RKDGroupâ”¬Â« Red noTagline 300dpi",
+   "board": "adp:e5b8bcdc-4137-438b-8b6b-159581609e86",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "Loomis Chaffee Wordmark15 RED",
+   "board": "adp:57d8384d-b157-4426-919f-0f1a4ede6b7b",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "Hori FC@3600px DkGray",
+   "board": "adp:181f9452-dce1-4bf9-8dcb-14babb738d99",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "CCMCF FullColorVerticalLogo",
+   "board": "adp:80bac13c-db5d-4434-85b9-758a81665526",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "AIP Master Dark",
+   "board": "adp:cde167d2-561e-44db-8dab-df2fc7648b26",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "sterling 2c horz lowres",
+   "board": "adp:e19a6767-1f88-43f6-98d9-ce36fa9aec37",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "CIPLOGO ALONE blue",
+   "board": "adp:5c13f819-80bd-4ebb-97db-54bc5e5bac3e",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "SecondMile PrimaryLogo Stacked+Tagline",
+   "board": "adp:f775e485-753f-4955-9009-75d7fe475343~9203156725661_2",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "DC blue (002)",
+   "board": "adp:630e7ed8-14e2-40fd-904a-09eea5c0f353",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "BS NYCC Tagline",
+   "board": "adp:53cbb6b5-b4e6-4bc3-bf36-f02119d2fb1a",
+   "refused": "logo or image text",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "ICO Blue",
+   "board": "adp:9a5d9078-a7f4-44dd-ab39-0a99d4ed592e",
+   "refused": "colour caption",
+   "why": "an ADP board named by its logo file's caption"
+  },
+  {
+   "name": "KemperSports Logo Green",
+   "board": "ukg:recruiting2~KEM1000~ed983012-efe6-431a-14b3-f4e2dd981922",
+   "refused": "colour caption",
+   "why": "a UKG board named by its logo file's caption"
+  },
+  {
+   "name": "KemperSports Logo Green",
+   "board": "ukg:recruiting2~KEM1000~b7740a8c-c0ca-499b-a366-0678f2baf63d",
+   "refused": "colour caption",
+   "why": "a UKG board named by its logo file's caption"
+  }
+ ],
+ "keptWhy": "Real employer names whose shape sits nearest the widened rules: a trailing colour word, two colour words, one of the new image words (monogram, master, full, font, pms, res, light, dark, brand, alone), a bare domain, an @, an audience word at the end. Names of the same shapes that are not a name either (logo captions main and this rule both print, site labels) were left out by hand.",
+ "kept": [
+  {
+   "name": "Cummins Veterans",
+   "board": "oracle:fa-espx-saasfaprod1~ocs~CX_1007",
+   "why": "a site's audience label after its employer's name, but no other board on the tenant is named exactly what is left (its sites are Cummins Technicians, Cummins DEI, Cummins Talent Acquisition...), so it is printed as stored, as main printed it (review of 2026-11-15)"
+  },
+  {
+   "name": "Context.dev",
+   "board": "ashby:context",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Lingo.dev",
+   "board": "ashby:lingodotdev",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Post.fm",
+   "board": "ashby:post",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Uare.ai",
+   "board": "greenhouse:uareai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "People.ai",
+   "board": "lever:people-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "MasterClass",
+   "board": "greenhouse:masterclass",
+   "why": "carries master"
+  },
+  {
+   "name": "Remote.com",
+   "board": "greenhouse:remotecom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Gong.io",
+   "board": "greenhouse:gongio",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Alarm.com",
+   "board": "greenhouse:alarmcom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Impact.com",
+   "board": "greenhouse:impact",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ID.me",
+   "board": "greenhouse:idme",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Dark Wolf Solutions",
+   "board": "greenhouse:darkwolfsolutions",
+   "why": "carries dark"
+  },
+  {
+   "name": "Apollo.io",
+   "board": "greenhouse:apolloio",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Blockchain.com",
+   "board": "greenhouse:blockchain",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Forma.ai",
+   "board": "greenhouse:formaaiinc",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Customer.io",
+   "board": "greenhouse:customerio",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "HomeLight",
+   "board": "greenhouse:homelight",
+   "why": "carries light"
+  },
+  {
+   "name": "FSAStore.com",
+   "board": "greenhouse:fsastorecom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Arena.im",
+   "board": "greenhouse:arenaim",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Builder.io",
+   "board": "greenhouse:builder",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Anno.ai",
+   "board": "greenhouse:annoai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Files.com",
+   "board": "greenhouse:filescom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "INGENIOUS.BUILD",
+   "board": "greenhouse:ingenious",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Circle.so",
+   "board": "greenhouse:circleso",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Copper.co",
+   "board": "greenhouse:copperco",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Clear Path For Veterans",
+   "board": "greenhouse:clearpathforveterans",
+   "why": "ends in an audience word"
+  },
+  {
+   "name": "Cermati.com",
+   "board": "smartrecruiters:Cermaticom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Beta.SoftSystems",
+   "board": "smartrecruiters:BetaSoftSystems3",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "CD PROJEKT RED",
+   "board": "smartrecruiters:CDPROJEKTRED",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "lastminute.com",
+   "board": "smartrecruiters:lastminutecom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "PhillyTech.Co",
+   "board": "smartrecruiters:PhillyTechCo",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "PuertoRicoNurses.Com",
+   "board": "smartrecruiters:PuertoRicoNursesCom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "XceedSearch.com",
+   "board": "smartrecruiters:XceedSearchcom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Dashlabs.ai",
+   "board": "smartrecruiters:Dashlabsai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Carrevolutis.com",
+   "board": "smartrecruiters:Carrevolutiscom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "jetfuel.agency",
+   "board": "smartrecruiters:Jetfuelagency",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Supermart.ng",
+   "board": "smartrecruiters:Supermartng",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Kata.ai",
+   "board": "smartrecruiters:Kataai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Frontline.Live",
+   "board": "smartrecruiters:frontlinelive",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Alium.Finance",
+   "board": "smartrecruiters:AliumFinance",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "SellAnyCar.com",
+   "board": "smartrecruiters:SellAnyCarcom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "takealot.com",
+   "board": "greenhouse:takealotcom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ON.energy",
+   "board": "greenhouse:onenergy",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "AutoTrader.ca",
+   "board": "greenhouse:autotradercanada",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Otter.ai",
+   "board": "greenhouse:otterai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "McMaster-Carr",
+   "board": "greenhouse:mcmastercarr",
+   "why": "carries master"
+  },
+  {
+   "name": "SupplyHouse.com",
+   "board": "greenhouse:supplyhouse",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "memoryBlue",
+   "board": "greenhouse:memoryblue",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "Tomorrow.io",
+   "board": "greenhouse:tomorrow",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Honeycomb.io",
+   "board": "greenhouse:honeycomb",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Aylo Carrières",
+   "board": "greenhouse:aylofr",
+   "why": "carries res"
+  },
+  {
+   "name": "Observe.AI",
+   "board": "greenhouse:observeai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "LightForce Orthodontics",
+   "board": "greenhouse:lightforceorthodontics",
+   "why": "carries light"
+  },
+  {
+   "name": "Kiva.org",
+   "board": "greenhouse:kivaorg",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Placer.ai",
+   "board": "greenhouse:placerlabs",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "MasterControl",
+   "board": "greenhouse:mastercontrol",
+   "why": "carries master"
+  },
+  {
+   "name": "Molton Brown",
+   "board": "greenhouse:moltonbrown",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "Nuts.com",
+   "board": "greenhouse:nutscom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Platform.sh",
+   "board": "greenhouse:platformsh",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "saas.group",
+   "board": "greenhouse:saasgroup",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Bolt.new",
+   "board": "greenhouse:stackblitz",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "You.com",
+   "board": "greenhouse:youcom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ActBlue",
+   "board": "greenhouse:actblue",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "Clockwork.io",
+   "board": "greenhouse:clockworksystems",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Pilot.com",
+   "board": "greenhouse:pilothq",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Study.com",
+   "board": "greenhouse:studycareers",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "tires-easy.com",
+   "board": "greenhouse:tireseasycom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "IntelliDyne Jobs for Veterans",
+   "board": "greenhouse:veterans",
+   "why": "ends in an audience word"
+  },
+  {
+   "name": "1stdibs.com",
+   "board": "greenhouse:1stdibscom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Brand New School",
+   "board": "greenhouse:brandnewschool",
+   "why": "carries brand"
+  },
+  {
+   "name": "Funded.club",
+   "board": "greenhouse:fundedclub",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "LeasingMarkt.de",
+   "board": "greenhouse:leasingmarkt",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Placements.io",
+   "board": "greenhouse:placementsio",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Proton.ai",
+   "board": "greenhouse:protonai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Virtual Preparatory Academy of Indiana @ Madison-Grant",
+   "board": "greenhouse:vpaindianamg",
+   "why": "carries @"
+  },
+  {
+   "name": "Zesty.ai",
+   "board": "greenhouse:zestyai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Altamira.ai",
+   "board": "greenhouse:altamiratechnologies",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Nansen.ai",
+   "board": "greenhouse:nansen",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "RTINGS.com",
+   "board": "greenhouse:rtingscom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Crypto.com",
+   "board": "lever:crypto",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Life.Church",
+   "board": "lever:life",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "nahc.io",
+   "board": "lever:nahc",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Black & White Zebra",
+   "board": "lever:Black-White-Zebra",
+   "why": "two colour words"
+  },
+  {
+   "name": "Kogan.com",
+   "board": "lever:kogan",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Great Gray",
+   "board": "lever:great-gray-group",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "KlearNow.ai",
+   "board": "lever:klearnow",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "fun.xyz",
+   "board": "lever:funxyz",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "nexos.ai",
+   "board": "lever:Nexos",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ConverseNow.ai",
+   "board": "lever:ConverseNow",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Apex.AI",
+   "board": "lever:apex-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "MasterBorn",
+   "board": "lever:masterborn-2",
+   "why": "carries master"
+  },
+  {
+   "name": "Logz.io",
+   "board": "lever:logz",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Full Spectrum",
+   "board": "lever:fullspectrumsoftware",
+   "why": "carries full"
+  },
+  {
+   "name": "Robust.ai",
+   "board": "lever:robust-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Healthcare.com",
+   "board": "lever:healthcare",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Base.com",
+   "board": "workable:base-com",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Asso.subsea",
+   "board": "workable:assogroup",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Arabic.AI",
+   "board": "workable:arabicai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Alfadocs.com",
+   "board": "workable:alfadocs",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Bezos.ai",
+   "board": "workable:bezos",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ALL.SPACE",
+   "board": "workable:allspace",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Owner.com",
+   "board": "ashby:owner",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "TENEX.AI",
+   "board": "ashby:tenex",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Jerry.ai",
+   "board": "ashby:Jerry.ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "QED.ai",
+   "board": "ashby:qed-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "incident.io",
+   "board": "ashby:incident",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "lemon.markets",
+   "board": "ashby:lemon-markets",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Viz.ai",
+   "board": "ashby:Viz.ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Light",
+   "board": "ashby:light-inc",
+   "why": "carries light"
+  },
+  {
+   "name": "Ambient.ai",
+   "board": "ashby:ambient.ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Ether.fi",
+   "board": "ashby:ether.fi",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Harrison.ai",
+   "board": "ashby:harrison.ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Kontakt.io",
+   "board": "ashby:kontakt",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "FAR.AI",
+   "board": "ashby:far.ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Scan.com",
+   "board": "ashby:scan-com",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "WA.Technology",
+   "board": "ashby:WA.Technology",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Nexxa.AI",
+   "board": "ashby:nexxa",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ProRata.ai",
+   "board": "ashby:prorata",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Acquird.io",
+   "board": "ashby:acquird",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "i3D.net",
+   "board": "ashby:i3d",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Mend.io",
+   "board": "ashby:mend-io",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Monogram",
+   "board": "ashby:monogram",
+   "why": "carries monogram"
+  },
+  {
+   "name": "Kiwi.com",
+   "board": "ashby:kiwi-com",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Shade.inc",
+   "board": "ashby:shade-inc",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Spector.ai",
+   "board": "ashby:spector-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Tavrn.ai",
+   "board": "ashby:tavrn",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Sema4.ai",
+   "board": "ashby:sema4.ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "SGNL.ai",
+   "board": "ashby:sgnlai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Tycho.AI",
+   "board": "ashby:tycho-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Vic.ai",
+   "board": "ashby:vic.ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "hive.co",
+   "board": "ashby:Hive.co",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "molecule.xyz",
+   "board": "ashby:molecule",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Palup.ai",
+   "board": "ashby:palup",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ResQ",
+   "board": "ashby:resq",
+   "why": "carries res"
+  },
+  {
+   "name": "SalesAPE.ai",
+   "board": "ashby:salesape-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Tribe.xyz",
+   "board": "ashby:tribe-xyz",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Trigger.dev",
+   "board": "ashby:triggerdev",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Checkout.com",
+   "board": "ashby:checkout.com",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Jinba.io",
+   "board": "ashby:carnot-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Teton.ai",
+   "board": "ashby:teton",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Credo.AI",
+   "board": "ashby:credo.ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Change.org",
+   "board": "recruitee:change",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Neo.Tax",
+   "board": "ashby:neo-tax",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Tray.ai",
+   "board": "ashby:tray-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "uPacjenta.pl",
+   "board": "bamboohr:upacjenta",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Berkshire Grey",
+   "board": "bamboohr:berkshiregrey",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "Giotto.ai",
+   "board": "bamboohr:giottoai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "trophi.ai",
+   "board": "bamboohr:trophiai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "AutoBidMaster",
+   "board": "bamboohr:autobidmaster",
+   "why": "carries master"
+  },
+  {
+   "name": "Sistema.bio",
+   "board": "bamboohr:sistemaaccount",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "High Light Electric",
+   "board": "bamboohr:hleincusa",
+   "why": "carries light"
+  },
+  {
+   "name": "kept.pro",
+   "board": "bamboohr:keptpro",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "CEX.IO",
+   "board": "bamboohr:cexio",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Jack.org",
+   "board": "bamboohr:jackorg",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Solid Light Inc",
+   "board": "bamboohr:solidlight",
+   "why": "carries light"
+  },
+  {
+   "name": "Médecins Sans Frontières",
+   "board": "bamboohr:taipeimsf",
+   "why": "carries res"
+  },
+  {
+   "name": "Full Support Group",
+   "board": "bamboohr:fullsupportgroup",
+   "why": "carries full"
+  },
+  {
+   "name": "Marshall White",
+   "board": "bamboohr:marshallwhite",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "BrandEd",
+   "board": "bamboohr:nytedu",
+   "why": "carries brand"
+  },
+  {
+   "name": "Branding Brand",
+   "board": "bamboohr:brandingbrand",
+   "why": "carries brand"
+  },
+  {
+   "name": "Envisioning Green",
+   "board": "bamboohr:envisioninggreen",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "Light a Single Candle Foundation",
+   "board": "bamboohr:lightasinglecandle",
+   "why": "carries light"
+  },
+  {
+   "name": "Vespa.ai",
+   "board": "bamboohr:vespaai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Success Brand",
+   "board": "bamboohr:successbrand",
+   "why": "carries brand"
+  },
+  {
+   "name": "Wavo.me",
+   "board": "bamboohr:wavo",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Sonder.io",
+   "board": "greenhouse:sonderaustralia",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Van Leeuwen Ice Cream",
+   "board": "greenhouse:vanleeuwenicecream",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "Talon.One",
+   "board": "greenhouse:talonone",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "energytec.ai",
+   "board": "greenhouse:etec",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "8th Light",
+   "board": "greenhouse:8thlightrebuild",
+   "why": "carries light"
+  },
+  {
+   "name": "The Brand Agency",
+   "board": "greenhouse:thebrandagency",
+   "why": "carries brand"
+  },
+  {
+   "name": "WATI.io",
+   "board": "workable:wati-dot-i-o",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Viva.com",
+   "board": "workable:viva",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Water.org",
+   "board": "workable:waterorg",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Machineyard.com.ng",
+   "board": "smartrecruiters:Machineyardcomng",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "atlantic.vc",
+   "board": "recruitee:jobsatlanticlabsfoodlabs",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Fietsenwinkel.nl",
+   "board": "recruitee:fietsenwinkelnl",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "FULL Creative",
+   "board": "recruitee:fullcreative",
+   "why": "carries full"
+  },
+  {
+   "name": "Medecins Sans Frontières-WaCA",
+   "board": "recruitee:medecinssansfrontiereswaca",
+   "why": "carries res"
+  },
+  {
+   "name": "Médecins Sans Frontières Suisse",
+   "board": "recruitee:medecinssansfrontieressuisse",
+   "why": "carries res"
+  },
+  {
+   "name": "Doktor.se",
+   "board": "teamtailor:doktor",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "swan.io",
+   "board": "teamtailor:swanio",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Bloq.it",
+   "board": "teamtailor:bloqit",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Ketju.fi",
+   "board": "teamtailor:ketju",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Mendo.ai",
+   "board": "teamtailor:mendoai-1730204279",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "one.com",
+   "board": "teamtailor:onecomglobal",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "bunny.net",
+   "board": "teamtailor:bunnynet",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Brand Momentum",
+   "board": "breezy:brandmomentum",
+   "why": "carries brand"
+  },
+  {
+   "name": "AQUA BLUE POOLS",
+   "board": "breezy:aqua-blue-pools",
+   "why": "two colour words"
+  },
+  {
+   "name": "Compose.ly",
+   "board": "breezy:compose-ly",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Level.works",
+   "board": "greenhouse:levelworks",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "MapLight Therapeutics",
+   "board": "greenhouse:maplighttherapeutics",
+   "why": "carries light"
+  },
+  {
+   "name": "Carrières Broadsign",
+   "board": "greenhouse:broadsignfr",
+   "why": "carries res"
+  },
+  {
+   "name": "Village Green",
+   "board": "smartrecruiters:VillageGreen1",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "OceanaGold",
+   "board": "smartrecruiters:OceanaGold",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "Talent-360.me",
+   "board": "workable:talent3600",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Shadow Light Studios",
+   "board": "workable:shadow-light-studios",
+   "why": "carries light"
+  },
+  {
+   "name": "Dev.Pro",
+   "board": "workable:devpro",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Mr. Blue",
+   "board": "workable:mr-blue",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "The Normal Brand",
+   "board": "workable:the-normal-brand",
+   "why": "carries brand"
+  },
+  {
+   "name": "Museum of Ice Cream",
+   "board": "workable:museumoficecream",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "FlowX.AI",
+   "board": "workable:flowxai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Node.Digital",
+   "board": "workable:node",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "HyperLight",
+   "board": "workable:hyperlight",
+   "why": "carries light"
+  },
+  {
+   "name": "Fluentbe.com",
+   "board": "workable:fluentbe",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ONETRACK.AI",
+   "board": "workable:onetrack",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Fiscal.ai",
+   "board": "workable:fiscal-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ResPro Health",
+   "board": "workable:respro-health",
+   "why": "carries res"
+  },
+  {
+   "name": "ThoughtFull™ World",
+   "board": "workable:thoughtfull-world",
+   "why": "carries full"
+  },
+  {
+   "name": "BrandBastion",
+   "board": "workable:brandbastion",
+   "why": "carries brand"
+  },
+  {
+   "name": "Quant Master Servicer S.A.",
+   "board": "workable:qquant-master-servicer-sa",
+   "why": "carries master"
+  },
+  {
+   "name": "Elmwood Brand Consultancy",
+   "board": "workable:elmwood",
+   "why": "carries brand"
+  },
+  {
+   "name": "More.com",
+   "board": "workable:more-com",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Portainer.io",
+   "board": "workable:portainer",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Lelivrescolaire.fr",
+   "board": "workable:lelivrescolaire",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Pump.co",
+   "board": "greenhouse:pumpcareers",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Revenue.io",
+   "board": "greenhouse:ringdna",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Brand New Day",
+   "board": "recruitee:werkenbijbrandnewday",
+   "why": "carries brand"
+  },
+  {
+   "name": "DLE.energy",
+   "board": "recruitee:dle",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Frits.com",
+   "board": "recruitee:ikbenfrits",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Master English",
+   "board": "recruitee:masterenglish",
+   "why": "carries master"
+  },
+  {
+   "name": "Tropos.io",
+   "board": "recruitee:tropos",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Bold.One",
+   "board": "teamtailor:careercommercecore",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "sa.global",
+   "board": "breezy:sa-global",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Respond.io",
+   "board": "breezy:respond-io",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Sentinel Blue",
+   "board": "breezy:sentinel-blue",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "ChromePMS",
+   "board": "breezy:chromepms",
+   "why": "carries pms"
+  },
+  {
+   "name": "J.Crew",
+   "board": "workday:jcrew~wd1~JCrewCareers",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ExperiGreen",
+   "board": "greenhouse:experigreen",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "Hummingbot.io",
+   "board": "smartrecruiters:Hummingbotio",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Visit.org",
+   "board": "workable:visit",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "webook.com",
+   "board": "workable:webook",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Master-Works",
+   "board": "workable:masterworksco",
+   "why": "carries master"
+  },
+  {
+   "name": "RES Consultant Group",
+   "board": "workable:res-consultant-group",
+   "why": "carries res"
+  },
+  {
+   "name": "Infatica.io",
+   "board": "workable:infatica-dot-i-o",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Passion.io",
+   "board": "workable:passionio",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Robotec.ai",
+   "board": "workable:robotec-ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "V4C.ai",
+   "board": "workable:v4c",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Chuffed.org",
+   "board": "workable:chuffed",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "WeAssist.io",
+   "board": "breezy:weassist-io",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "tawk.to",
+   "board": "breezy:tawk-to",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "T.Capital",
+   "board": "breezy:t-capital",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Jaxen Grey",
+   "board": "rippling:jaxen-grey",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "Showroomprive.com",
+   "board": "smartrecruiters:ShowroomPriv",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Freelancer.com",
+   "board": "workable:freelancer",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Green.Earth",
+   "board": "workable:greenearth",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Deeproute.ai",
+   "board": "workable:deeproute-dot-a-i",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "steuerberaten.de",
+   "board": "recruitee:steuerberatende",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "BrandMR",
+   "board": "recruitee:brandmr",
+   "why": "carries brand"
+  },
+  {
+   "name": "Winparts.nl",
+   "board": "recruitee:winparts",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "CMB.TECH",
+   "board": "recruitee:cmbtech",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Print.com",
+   "board": "teamtailor:printcombv",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Doktor.De",
+   "board": "teamtailor:doktorde",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Tails.com",
+   "board": "teamtailor:tailscom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Vaccin.nu",
+   "board": "teamtailor:vaccinationsgruppenab",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "F.initiatives",
+   "board": "teamtailor:figroupfrance",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Giga Green",
+   "board": "personio:giga-green",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "Action Light Veranstaltungstechnik GMBH",
+   "board": "personio:action-light-veranstaltungstechnik-gmbh",
+   "why": "carries light"
+  },
+  {
+   "name": "Vital PMS",
+   "board": "personio:vital-pms",
+   "why": "carries pms"
+  },
+  {
+   "name": "Hubble.Build",
+   "board": "breezy:hubble",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Ncco Brand Fulfillment",
+   "board": "rippling:ncco-brand-fulfillment",
+   "why": "carries brand"
+  },
+  {
+   "name": "Cars.com",
+   "board": "workday:cars~wd12~cars",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "TruGreen",
+   "board": "workday:trugreen~wd1~USExternalCareers",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "Blue Cross & Blue Shield of Rhode Island",
+   "board": "workday:bcbsri~wd1~bcbsricareers",
+   "why": "two colour words"
+  },
+  {
+   "name": "Blue Light Card",
+   "board": "teamtailor:bluelightcard",
+   "why": "carries light"
+  },
+  {
+   "name": "Hitta.se",
+   "board": "teamtailor:hittase",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "St.Amant",
+   "board": "breezy:st-amant",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Permutable.AI",
+   "board": "breezy:permutableai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Conifers.ai",
+   "board": "greenhouse:conifersaicareers",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "primer.ai",
+   "board": "greenhouse:primerai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Uptalent.io",
+   "board": "workable:uptalent-dot-i-o",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Newcode.ai",
+   "board": "workable:newcode",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Nasoft.eg",
+   "board": "workable:nasoft-eg",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Clearwaters.IT",
+   "board": "workable:clearwaters-dot-i-t",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "TherapyNotes.com",
+   "board": "workable:therapynotes",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "CM.com",
+   "board": "recruitee:cmcom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Alm. Brand Group",
+   "board": "teamtailor:almbrandgroup-1679662358",
+   "why": "carries brand"
+  },
+  {
+   "name": "Ambitious.Africa",
+   "board": "teamtailor:ambitiousafrica",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ane.energy",
+   "board": "personio:ane",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Brand Leadership Circle",
+   "board": "personio:brandleadership",
+   "why": "carries brand"
+  },
+  {
+   "name": "comparis.ch",
+   "board": "personio:comparis-ch",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Connect@home GmbH",
+   "board": "personio:connect",
+   "why": "carries @"
+  },
+  {
+   "name": "dksr.city",
+   "board": "personio:dksr-city",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "@Vote",
+   "board": "breezy:vote-online",
+   "why": "carries @"
+  },
+  {
+   "name": "Waiter.com",
+   "board": "breezy:waiter-com",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "ICA.ai",
+   "board": "breezy:international-consulting-associates-inc",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "1234S.org",
+   "board": "breezy:1234s",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Alaskan Copper",
+   "board": "breezy:alaskan-copper-and-brass",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "Architect.io",
+   "board": "breezy:architect-io",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "blended.io",
+   "board": "breezy:blended",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "BrandLovers",
+   "board": "breezy:brandlovrs",
+   "why": "carries brand"
+  },
+  {
+   "name": "Cal.com",
+   "board": "breezy:cal-com",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Battle Green | Battle Green",
+   "board": "pinpoint:cannabiscareers",
+   "why": "ends in a colour word; two colour words"
+  },
+  {
+   "name": "Blue Cross | Blue Cross",
+   "board": "pinpoint:bluecross",
+   "why": "two colour words"
+  },
+  {
+   "name": "Blue Jay ABA | Blue Jay ABA",
+   "board": "pinpoint:bluejayaba",
+   "why": "two colour words"
+  },
+  {
+   "name": "Blue Mantis | Blue Mantis",
+   "board": "pinpoint:bluemantis",
+   "why": "two colour words"
+  },
+  {
+   "name": "Blue Stream Fiber | Blue Stream Fiber",
+   "board": "pinpoint:bluestreamfiber",
+   "why": "two colour words"
+  },
+  {
+   "name": "Bob's Red Mill | Bob's Red Mill",
+   "board": "pinpoint:bobsredmill",
+   "why": "two colour words"
+  },
+  {
+   "name": "Copper | Copper",
+   "board": "pinpoint:copper",
+   "why": "ends in a colour word; two colour words"
+  },
+  {
+   "name": "Green Star Exteriors | Green Star Exteriors",
+   "board": "pinpoint:greenstarexteriors",
+   "why": "two colour words"
+  },
+  {
+   "name": "GreenSource Fabrication | GreenSource Fabrication",
+   "board": "pinpoint:greensourcefab",
+   "why": "two colour words"
+  },
+  {
+   "name": "Tutor.com",
+   "board": "greenhouse:tutor_com",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "FWD.us",
+   "board": "greenhouse:fwdus",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Pinewood.AI",
+   "board": "workable:pinewoodaicareers",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Master of Malt",
+   "board": "workable:masterofmalt",
+   "why": "carries master"
+  },
+  {
+   "name": "Sundae Artisan Ice Cream",
+   "board": "workable:sundae",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "Rocket.net",
+   "board": "workable:rocket-dot-n-et",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Graphon.AI",
+   "board": "greenhouse:graphonai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Venice.ai",
+   "board": "greenhouse:veniceai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Passport Brand Design",
+   "board": "greenhouse:passportbranddesign",
+   "why": "carries brand"
+  },
+  {
+   "name": "WebProps.org",
+   "board": "workable:webprops",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "T.EN",
+   "board": "oracle:hcxg~em2~CX_1",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Florida Blue",
+   "board": "oracle:fa-etum-saasfaprod1~ocs~CX_1001",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "Delaney at the Green",
+   "board": "oracle:eexs~us2~CX_19005",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "Viki.ai",
+   "board": "oracle:iabqiz~ocs~CX_1001",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "The Master's Lawn Care",
+   "board": "paylocity:92656da3-79c0-4295-9bdf-9a5d2d59d972",
+   "why": "carries master"
+  },
+  {
+   "name": "FiberLight LLC",
+   "board": "paylocity:526dcf1e-342a-4b79-8578-cd0591e414e7",
+   "why": "carries light"
+  },
+  {
+   "name": "Green Lawn Fertilizing/Green Pest Solutions",
+   "board": "paylocity:170ddebf-dcde-47ad-bca2-96fc1517e6b8",
+   "why": "two colour words"
+  },
+  {
+   "name": "LightGrid, LLC",
+   "board": "paylocity:ed79d73a-b76e-4c3e-90e7-a70ef20b0274",
+   "why": "carries light"
+  },
+  {
+   "name": "otelier.io",
+   "board": "paylocity:e08e6f7c-5a53-481d-a947-58eaf4a4d67b",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Full Swing Golf Inc",
+   "board": "paylocity:d43c9662-09a7-407f-9a5a-b0c60d9c02b1",
+   "why": "carries full"
+  },
+  {
+   "name": "Brand Enhance Hospitality",
+   "board": "paylocity:645f7335-1b91-4b99-9cd7-5d8e0ddf2d8d",
+   "why": "carries brand"
+  },
+  {
+   "name": "NexGreen",
+   "board": "paylocity:9ba06747-f4a2-4650-8826-b7011c6e970a",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "Bug Master Exterminating Services",
+   "board": "paylocity:286dbce4-007a-4e71-86bf-5e9c1d24ad85",
+   "why": "carries master"
+  },
+  {
+   "name": "mhp.si",
+   "board": "paylocity:45f8277f-ae4a-499a-8a31-bdb08af8243b",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Silver Strike Casino, Silver Springs, NV",
+   "board": "paylocity:a61228d8-d21c-456e-8262-ab9143ec455c",
+   "why": "two colour words"
+  },
+  {
+   "name": "Auslandsjob.de",
+   "board": "teamtailor:auslandsjob",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "group.one",
+   "board": "teamtailor:groupone",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Eldorado.gg",
+   "board": "teamtailor:eldorado",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "J.Lindeberg",
+   "board": "teamtailor:jlindeberg",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Protein.com",
+   "board": "teamtailor:protein",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Booking.com",
+   "board": "icims:jobs.booking.com",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Bigbear.ai",
+   "board": "icims:careers.bigbear.ai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Master Electronics",
+   "board": "icims:careers.masterelectronics.com",
+   "why": "carries master"
+  },
+  {
+   "name": "Crisp & Green",
+   "board": "paylocity:9b064648-e37d-43f6-82f7-5452f504e9a9",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "Path Light Pro",
+   "board": "paylocity:bd3d95af-6fa5-4555-b57a-024f7bdfb46a",
+   "why": "carries light"
+  },
+  {
+   "name": "ArcherGrey",
+   "board": "paylocity:98672eb7-00a7-43b1-a9aa-942bf1fd19b6",
+   "why": "ends in a colour word"
+  },
+  {
+   "name": "Master Boat Builders, Inc.",
+   "board": "paylocity:b82748df-b74c-4615-8ba7-50604f740b3c",
+   "why": "carries master"
+  },
+  {
+   "name": "SRSNM LLC DBA ServiceMaster Clean",
+   "board": "paylocity:39d66a56-da0a-4c0e-8728-73e9c1115a54",
+   "why": "carries master"
+  },
+  {
+   "name": "Bistro @ Bluewater",
+   "board": "paylocity:bf6dff7b-6142-4314-9e07-c6cdf773c135",
+   "why": "carries @"
+  },
+  {
+   "name": "Pay.UK",
+   "board": "greenhouse:eu~payuk",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "i.AI",
+   "board": "greenhouse:eu~iai",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "home.pl",
+   "board": "greenhouse:eu~homepl",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Bash.com",
+   "board": "greenhouse:eu~bashdotcom",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "CC.Talent",
+   "board": "recruitee:cctalent",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "J.McLaughlin",
+   "board": "adp:0f2ff4a2-0d91-4097-8a21-ebff0d0b4ce2",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "CarParts.com",
+   "board": "adp:ad933d4d-2649-4054-8cc2-d704d60ff765",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Asap.be",
+   "board": "recruitee:asap",
+   "why": "domain-shaped"
+  },
+  {
+   "name": "Master Search Solutions",
+   "board": "teamtailor:mastersearchsolutions",
+   "why": "carries master"
+  },
+  {
+   "name": "Light Art Space GGMBH",
+   "board": "personio:light-art-space-ggmbh",
+   "why": "carries light"
+  },
+  {
+   "name": "Guardian Light Family Services, LLC",
+   "board": "paylocity:2d66c568-099c-4bb8-83bf-b0294694a46e",
+   "why": "carries light"
+  },
+  {
+   "name": "FirstLight Fiber",
+   "board": "adp:557111cb-2adf-49ae-987e-371b372af4c0",
+   "why": "carries light"
+  },
+  {
+   "name": "Monogram Health",
+   "board": "ukg:recruiting2~MON1026MONOH~bcaf2db0-50c8-4e2f-9d65-e8e00c882a25",
+   "why": "carries monogram"
+  },
+  {
+   "name": "Blades of Green",
+   "board": "ukg:recruiting2~SEN1005SLTC~55204aa7-f2c1-4122-928a-9909fe4c6c1e",
+   "why": "ends in a colour word"
+  }
+ ]
+}

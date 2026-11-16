@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
+-- (reviewed 2026-11-16 in the board .102 integration).
+--
 -- THE CATALOGUE HIGH-WATER FOLLOWS THE RETIREMENTS.
 --
 -- job-board 2026-09-09.102 carries 44,499 boards, 24 fewer than the 44,523 of

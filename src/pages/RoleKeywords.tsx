@@ -3,7 +3,7 @@
 // pages. Same credibility rule: every list is product truth, not blogspam.
 
 import { useMemo } from "react";
-import { useParams, Link, Navigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
@@ -12,7 +12,8 @@ import { INDUSTRY_KEYWORDS, SUB_INDUSTRY_TAXONOMY } from "../../supabase/functio
 import { ONET_EXPECTATIONS } from "../../supabase/functions/free-keyword-scan/onet-expectations";
 import { onetForRole } from "@/lib/onet-match";
 import { roleListCopy } from "@/lib/role-page-copy";
-import { ROLE_PAGES, rolesForIndustry } from "@/data/roles";
+import { ROLE_PAGES, siblingRolePages } from "@/data/roles";
+import NotFound from "./NotFound";
 import { PageJsonLd } from "@/components/seo/PageJsonLd";
 // Letter case by what a word is (SEO-019): "RN", "HR", "SOPs"; never "Rn" or "WIND".
 import { displayKeyword, industryLabel, inSentence } from "@/lib/seo/display-case";
@@ -42,7 +43,10 @@ export default function RoleKeywords() {
     });
   }, [role]);
 
-  if (!slug || !role || !data) return <Navigate to="/industries" replace />;
+  // An address with no role behind it is a not-found page, marked noindex
+  // there. It used to be sent to /industries: a "not found" that answers as a
+  // normal page, which Search Console reports as a soft 404 (F06).
+  if (!slug || !role || !data) return <NotFound />;
 
   const indName = industryLabel(role.industry);
   const copy = roleListCopy(role.title, indName);
@@ -51,7 +55,18 @@ export default function RoleKeywords() {
   const certs = [...new Set(data.certifications)].slice(0, 10);
   // L1-05, S11-152: the industry's occupation is cited only when src/lib/onet-match.ts names this role with it.
   const onet = onetForRole(role, ONET_EXPECTATIONS[role.industry]);
-  const siblingRoles = rolesForIndustry(role.industry).filter((r) => r.slug !== role.slug);
+  // Only the field's pages that stand as their own page, so no page links one
+  // that defers to another (F06).
+  const siblingRoles = siblingRolePages(role);
+  // A short spelling of another role's title ("vet tech") prints that page's
+  // text word for word (role.canonicalSlug names the full-name page), but this
+  // page still names ITSELF as canonical, as its baked file does. Google asks
+  // that script never set a canonical other than the one in the served HTML,
+  // and the bake's /roles pages (scripts/prerender-seo.mjs, owned by another
+  // stream) do not name the full-name page yet. The two change in one publish:
+  // src/test/a-short-role-name-was-a-second-page-of-the-same-text.test.tsx
+  // reads the bake's roles section and fails while this page and that file
+  // disagree.
   const relatedTitles = [...new Set(data.titles)].filter((t) => t.toLowerCase() !== role.title.toLowerCase()).slice(0, 10);
 
   return (
