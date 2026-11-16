@@ -55,6 +55,14 @@ describe("COMPLIANCE.md sells only what ships", () => {
     if (!purgeScheduled) expect(doc).not.toMatch(/\b(?:4|four) years\b/i);
   });
 
+  it("states the owner's rule A (S14X-073), and the migrations hold the delete and the purge it describes", () => {
+    expect(doc).toMatch(/S14X-073, rule A/);
+    expect(doc).toMatch(/until the employer deletes the candidate, the role or the account, and anything still held four years after it was uploaded is deleted/);
+    expect(purgeScheduled).toBe(true);
+    expect(migrations.some((m) => /FUNCTION public\.shortlist_delete_candidate\s*\(/.test(m) && /FUNCTION public\.shortlist_delete_role\s*\(/.test(m))).toBe(true);
+    expect(doc).not.toMatch(/no automatic deletion is built yet|open decision \(S14X-073\)/);
+  });
+
   it("cites only paths that exist", () => {
     const cited = [...doc.matchAll(/`([^`\s]+\.(?:ts|tsx|sql|md))`/g)].map((m) => m[1]);
     expect(cited.length).toBeGreaterThan(3);

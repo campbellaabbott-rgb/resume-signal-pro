@@ -16,12 +16,14 @@ export const shortlistFake = {
   rpcs: [] as Array<{ name: string; args: unknown }>,
   respond: ((_chain: Chain, _t: Terminal): Answer => ({ data: [], error: null })) as (chain: Chain, t: Terminal) => Answer,
   invoke: (async () => ({ data: { success: true }, error: null })) as (fn: string, body: Record<string, unknown>) => Promise<Answer>,
+  rpcAnswer: ((): Answer => ({ data: null, error: null })) as (name: string, args: unknown) => Answer,
   reset() {
     this.chains.length = 0;
     this.invoked.length = 0;
     this.rpcs.length = 0;
     this.respond = () => ({ data: [], error: null });
     this.invoke = async () => ({ data: { success: true }, error: null });
+    this.rpcAnswer = () => ({ data: null, error: null });
   },
 };
 
@@ -36,7 +38,7 @@ export const fakeSupabase = {
     self.maybeSingle = async () => shortlistFake.respond(chain, "maybe");
     return self;
   },
-  rpc: async (name: string, args: unknown) => { shortlistFake.rpcs.push({ name, args }); return { data: null, error: null }; },
+  rpc: async (name: string, args: unknown) => { shortlistFake.rpcs.push({ name, args }); return shortlistFake.rpcAnswer(name, args); },
   functions: {
     invoke: async (fn: string, opts: { body: Record<string, unknown> }) => {
       shortlistFake.invoked.push({ fn, body: opts.body });

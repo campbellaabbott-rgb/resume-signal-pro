@@ -66,7 +66,7 @@ describe("the banner says what the server said", () => {
   });
 
   it("a full account says so and offers no retry", async () => {
-    refuse(409, { error: "This account holds 10,000 evaluations, the most one account can hold, so no more can be scored on it.", code: "candidate_cap" });
+    refuse(409, { error: "This account holds 10,000 evaluations, the most one account can hold, so no more can be scored on it. Delete candidates or roles you no longer need to make room.", code: "candidate_cap" });
     const banner = await evaluate();
     expect(banner.textContent).toMatch(/holds 10,000 evaluations/);
     expect(banner.textContent).not.toMatch(/try again/i);
