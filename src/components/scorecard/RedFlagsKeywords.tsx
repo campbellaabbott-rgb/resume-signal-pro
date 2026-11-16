@@ -62,17 +62,18 @@ const severityConfig = {
   },
 };
 
+// Labels are translation keys, said in the reader's language (S14X-057).
 const impactConfig = {
   critical: {
-    label: "Must have",
+    label: "freeScanPage.keywordImpact.critical",
     badge: "bg-destructive/15 text-destructive border-destructive/20",
   },
   high: {
-    label: "High impact",
+    label: "freeScanPage.keywordImpact.high",
     badge: "bg-warning/15 text-warning border-warning/20",
   },
   medium: {
-    label: "Helpful",
+    label: "freeScanPage.keywordImpact.medium",
     badge: "bg-muted text-muted-foreground border-border",
   },
 };
@@ -259,11 +260,11 @@ export function KeywordsSection({
                   <span className="font-semibold text-foreground text-sm">{item.keyword}</span>
                   {cat && (
                     <span className={cn("text-[9px] font-medium px-1.5 py-0.5 rounded-full", cat.className)}>
-                      {cat.label}
+                      {t(`freeScanPage.keywordCategory.${item.category}`)}
                     </span>
                   )}
                   <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full border", impact.badge)}>
-                    {impact.label}
+                    {t(impact.label)}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">{item.reason}</p>

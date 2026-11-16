@@ -338,7 +338,8 @@ export function MetricCardsGrid({
       label: t('freeScan.format'),
       tooltipKey: "format",
       value: `${formatGrade} — ${gradeLabel(formatGrade)}`,
-      subtext: formatGrade === "A" ? "✓ ATS can read this well" : formatGrade === "B" ? "✓ Minor formatting tweaks needed" : formatGrade === "C" ? "⚠ May cause parsing errors" : "✗ ATS may scramble your info",
+      // In the reader's language (S14X-057).
+      subtext: formatGrade === "A" ? `✓ ${t("freeScanPage.metric.formatA")}` : formatGrade === "B" ? `✓ ${t("freeScanPage.metric.formatB")}` : formatGrade === "C" ? `⚠ ${t("freeScanPage.metric.formatC")}` : `✗ ${t("freeScanPage.metric.formatD")}`,
       status: statusFromGrade(formatGrade),
     },
     {
@@ -405,7 +406,7 @@ export function MetricCardsGrid({
       label: t('freeScan.readability'),
       tooltipKey: "readability",
       value: `${readabilityScore.score}%`,
-      subtext: readabilityScore.verdict === "easy_to_scan" ? "✓ Easy to scan" : readabilityScore.verdict === "readable" ? "⚠ Some sections hard to scan" : "✗ Hard to scan",
+      subtext: readabilityScore.verdict === "easy_to_scan" ? `✓ ${t("freeScanPage.metric.readEasy")}` : readabilityScore.verdict === "readable" ? `⚠ ${t("freeScanPage.metric.readSome")}` : `✗ ${t("freeScanPage.metric.readHard")}`,
       status: statusFromScore(readabilityScore.score, 70, 45),
       progress: readabilityScore.score,
     }] : []),

@@ -67,7 +67,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { checkoutContext, getVisitorId } from "@/lib/track-transport";
 import { consentWasRequired, purchaseTerms } from "@/lib/purchase-terms";
 import { useBackForwardRestore } from "@/hooks/use-back-forward-restore";
-import { resilientCallers, callEdgeFunctionWithRetry, scanFailureKind } from "@/lib/resilient-edge-function";
+import { resilientCallers, callEdgeFunctionWithRetry, scanFailureKind, shouldRetryScan } from "@/lib/resilient-edge-function";
+import { writingToolToast } from "@/lib/writing-refusal";
 import { parseFailureCopy, parseNoticeCopy } from "@/lib/parse-failure-copy";
 import { MAX_RESUME_LENGTH } from "@/lib/resume-validation";
 import { outcomeWasStored, type ScanOutcomeRpcAnswer } from "@/lib/scan-outcome-answer";
@@ -94,7 +95,9 @@ import { useAffiliateTracking, getStoredReferralCode } from "@/hooks/use-affilia
 import { useStreamingScan, type StreamProgress, clearAllClientScanCaches } from "@/hooks/use-streaming-scan";
 import { useScanPrefetch } from "@/hooks/use-scan-prefetch";
 import { LANGUAGE_COUNT } from "@/i18n/languages";
-import { asFallbackReport, streamFallbackDeadline } from "@/lib/scan-fallback";
+import { asFallbackReport, parseNoteFor, streamFallbackDeadline } from "@/lib/scan-fallback";
+import { scanMarketFor, scanMarketOptions } from "@/config/scan-markets";
+import { textFingerprint } from "@/lib/builder-import";
 const ScanFeedback = lazy(() =>
   import("@/components/ScanFeedback").then((m) => ({ default: m.ScanFeedback }))
 );
@@ -402,6 +405,11 @@ const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx'
 // `landing` renders this same page (real scanner included) under a head-term
 // SEO route like /resume-checker — unique title/description/FAQ per query
 // intent, one scan implementation. See src/data/tool-landings.ts.
+
+/** The report kept across a sign-in started from it (S14X-019), and for how long. */
+const PENDING_REPORT_KEY = "rb_pending_report";
+const PENDING_REPORT_MAX_MS = 30 * 60 * 1000;
+
 const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLanding } = {}) => {
   const { t, i18n } = useTranslation();
 
@@ -485,7 +493,21 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   // ISO-2 country the candidate is applying TO. Empty = auto-detect from the
   // résumé (phone/city) or IP. Set when the user is targeting a specific
   // market, so they get that market's standards instead of their residence's.
-  const [targetCountry, setTargetCountry] = useState<string>("");
+  // A country page's "Scan my CV" link names its market (?market=JP,
+  // S14X-032): preselected when it is one the scanner has standards for.
+  const [targetCountry, setTargetCountry] = useState<string>(() => {
+    try { return scanMarketFor(new URLSearchParams(window.location.search).get("market")) ?? ""; } catch { return ""; }
+  });
+  // The uploaded file's email and phone sit only in its page header, as
+  // parse-docx reports it (RC-S13-036): the report's parse check warns.
+  const [contactOnlyInHeader, setContactOnlyInHeader] = useState(false);
+  // THE RÉSUMÉ ON SCREEN, NUMBERED (NB-15). A pick, a Clear or an edited
+  // draft moves it on; a scan started for an earlier résumé drops its
+  // answer, its toasts and its history row instead of showing that report
+  // under a different résumé.
+  const resumeSeqRef = useRef(0);
+  // What a reader who signed in from the report was about to do (S14X-019).
+  const [pendingIntent, setPendingIntent] = useState<'tailor' | 'interview' | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   // THE PAGE'S RÉSUMÉ IS THE ONE THE UPLOADER SHOWS (register S11-030). Each
   // file read is numbered: an answer for a file the visitor has since
@@ -534,6 +556,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   const { toast } = useToast();
   const { currency } = useCurrency();
   const [searchParams] = useSearchParams();
+  useEffect(() => {
+    const market = scanMarketFor(searchParams.get("market"));
+    if (market) setTargetCountry(market);
+  }, [searchParams]);
 
   // Session-only stash so /jobs can rank postings against the scanned
   // resume. Never persisted server-side — same lifetime as the tab, same
@@ -883,6 +909,8 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   const handleFileSelect = async (file: File) => {
     // This read's number: a later pick or a Clear makes its answer stale.
     const seq = ++parseSeqRef.current;
+    resumeSeqRef.current++;
+    setContactOnlyInHeader(false);
     const current = () => seq === parseSeqRef.current;
     // The file that did not become the page's résumé is dropped from the uploader too.
     const failUpload = () => {
@@ -1012,10 +1040,12 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           return;
         }
 
-        const data = result.data as { success?: boolean; text?: string; error?: string };
+        const data = result.data as { success?: boolean; text?: string; error?: string; contactOnlyInHeader?: unknown };
         if (data?.success && data?.text) {
           setResumeText(data.text);
           setResumeMultiColumnDetected(undefined); // No layout data for DOCX
+          // Said by parse-docx once it reports it; absent, no warning.
+          setContactOnlyInHeader(data.contactOnlyInHeader === true);
           saveResumeToSession(data.text); // Persist to session storage
           preStoreResume(data.text); // Pre-store server-side for faster checkout
           triggerBackgroundScan(data.text, jobDescriptionText, honeypot); // Start background scan
@@ -1078,7 +1108,13 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       trackUploadStarted('pasted_text');
       trackUploadCompleted(overrideText.trim().length);
       setResumeText(overrideText.trim());
+      // The draft handler sees this text as no edit (NB-15 counts edits).
+      resumeTextRef.current = overrideText.trim();
     }
+    // The résumé this scan is for: a later pick, Clear or edit makes it stale.
+    const scanSeq = resumeSeqRef.current;
+    const stale = () => scanSeq !== resumeSeqRef.current;
+    setPendingIntent(null);
 
     // WHAT IS SCANNED IS WHAT A PURCHASE IS MADE FROM (register L13-32). This
     // used to run only when the paste box's text differed from state, which
@@ -1147,18 +1183,21 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       // below is a fallback only until it reaches feature parity.
       if (!result) {
         console.log('[FreeScan] Running enriched non-streaming scan');
+        // What the visitor told the scanner, sent to the primary and to the
+        // backup alike (S14X-118).
+        const userContext = {
+          situation: scanContext.situation || undefined,
+          targetRole: scanContext.targetRole || undefined,
+          confirmedIndustry: scanContext.confirmedIndustry || undefined,
+          confirmedExperience: scanContext.confirmedExperience || undefined,
+        };
         const scanResult = await resilientCallers.freeKeywordScan({
           resumeText: contentToAnalyze,
           jobDescriptionText: jdForScan,
           honeypot,
           skipCache,
           targetCountry: targetCountry || undefined,
-          userContext: {
-            situation: scanContext.situation || undefined,
-            targetRole: scanContext.targetRole || undefined,
-            confirmedIndustry: scanContext.confirmedIndustry || undefined,
-            confirmedExperience: scanContext.confirmedExperience || undefined,
-          },
+          userContext,
           // Purchased credits past the daily limit: the Stripe sessions this
           // browser bought them with are its proof (signed-in accounts prove
           // theirs with the session JWT). A typed email proves nothing and is
@@ -1166,6 +1205,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           creditSessions: creditSessions(),
         });
 
+        if (stale()) return;
         if (scanResult.error) {
           const failure = scanFailureKind(scanResult);
           if (failure === 'daily_limit') {
@@ -1204,6 +1244,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
             skipCache,
             targetCountry: targetCountry || undefined,
             deadlineAt: fallbackDeadline,
+            userContext,
             onProgress: (progress) => {
               console.log('[StreamingScan] Progress:', progress.stage, progress.progress + '%');
             },
@@ -1211,6 +1252,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
               console.error('[StreamingScan] Error:', error);
             },
           });
+          if (stale()) return;
           if (streamResult) {
             result = asFallbackReport(streamResult);
           } else {
@@ -1260,7 +1302,21 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         }
       }
 
-      // Handle rate limiting
+      // Answered for a résumé no longer on screen: nothing is shown (NB-15).
+      if (stale()) return;
+
+      // Handle rate limiting. THE HOURLY BUDGET IS NOT THE DAILY LIMIT
+      // (S14X-182): the backup scanner answers the shared request budget
+      // (code rate_limited_budget) and a busy analyser with rateLimited too.
+      // Those say to try again soon, with no upgrade pitch; only a spent day
+      // (daily_scan_limit, or no code from an older scanner) opens the upsell.
+      if (result?.rateLimited && (result as any).code && (result as any).code !== 'daily_scan_limit') {
+        const minutes = Math.max(1, Math.round(Number((result as any).retryAfterSeconds ?? 3600) / 60));
+        toast((result as any).code === 'rate_limited_budget'
+          ? { title: t('freeScanPage.toast.budgetTitle'), description: t('freeScanPage.toast.budgetBody', { minutes }), variant: "destructive" }
+          : { title: t('freeScanPage.toast.busyTitle'), description: t('freeScanPage.toast.busyBody'), variant: "destructive" });
+        return;
+      }
       if (result?.rateLimited) {
         trackRateLimitError('free-keyword-scan', (result as any).scansUsed, (result as any).scansLimit);
         toast({
@@ -1277,11 +1333,12 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         // (the server never caches it, and gives the credit back otherwise).
         if ((result as any).creditUsed && !(result as any).cachedReport) {
           const remaining = (result as any).creditsRemaining;
+          // In the reader's language (S14X-253).
           toast({
-            title: "Scan credit used",
+            title: t('freeScanPage.toast.creditUsedTitle'),
             description: remaining != null
-              ? `You were past today's free limit, so 1 purchased credit covered this scan — ${remaining} remaining.`
-              : "You were past today's free limit, so 1 purchased credit covered this scan.",
+              ? t('freeScanPage.toast.creditUsedRemaining', { remaining })
+              : t('freeScanPage.toast.creditUsed'),
           });
           window.dispatchEvent(new CustomEvent(CREDITS_UPDATED_EVENT));
         }
@@ -1427,19 +1484,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       }
     } catch (error: any) {
       console.error("Free scan error:", error);
-      
-      // Check if error message contains rate limit info
-      const errorMsg = error?.message?.toLowerCase() || '';
-      if (errorMsg.includes('rate') || errorMsg.includes('limit') || errorMsg.includes('429')) {
-        openRateLimitUpsell(undefined);
-        toast({
-          title: t('homepage.toast.dailyScanLimitReached'),
-          description: t('homepage.toast.tryAgain'),
-          variant: "destructive",
-        });
-        return;
-      }
-      
+      if (stale()) return;
+      // A failure whose message merely contains "rate" or "limit" is not the
+      // daily limit (S14X-182): the limits arrive as answers above, never as
+      // a thrown message, so nothing here opens the upgrade dialog.
       toast({
         title: t('homepage.toast.analysisFailed'),
         description: error?.message || t('homepage.toast.tryAgain'),
@@ -1475,6 +1523,8 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     );
 
     setIsFreeScanLoading(true);
+    // The résumé this scan is for (NB-15): a later pick, Clear or edit drops its answer.
+    const scanSeq = resumeSeqRef.current;
 
     try {
       const scanResult = await resilientCallers.freeKeywordScan({
@@ -1482,6 +1532,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         honeypot,
         creditSessions: creditSessions(),
       });
+      if (scanSeq !== resumeSeqRef.current) return;
 
       if (scanResult.error) {
         if (scanFailureKind(scanResult) === 'daily_limit') {
@@ -1518,10 +1569,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       if (data?.success) {
         if (data.creditUsed && !data.cachedReport) {
           toast({
-            title: "Scan credit used",
+            title: t('freeScanPage.toast.creditUsedTitle'),
             description: data.creditsRemaining != null
-              ? `You were past today's free limit, so 1 purchased credit covered this scan — ${data.creditsRemaining} remaining.`
-              : "You were past today's free limit, so 1 purchased credit covered this scan.",
+              ? t('freeScanPage.toast.creditUsedRemaining', { remaining: data.creditsRemaining })
+              : t('freeScanPage.toast.creditUsed'),
           });
           window.dispatchEvent(new CustomEvent(CREDITS_UPDATED_EVENT));
         }
@@ -1637,6 +1688,14 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     setShowTailoredResumeModal(true);
     setTailoredResumeContent(null);
 
+    // ONE PRESS IS ONE REQUEST, AND ITS REFUSAL IS SAID IN THE READER'S
+    // LANGUAGE (S14X-058). The caller retried a 401, 402, 429 or 5xx up to
+    // three times (each after the server had counted the day's use) and
+    // toasted its English text ("Failed to generate tailored resume",
+    // "non-2xx"). Now only a request that never got an answer is sent again
+    // (shouldRetryScan), and every failure is worded by the writing tools'
+    // own toast, as on /jobs.
+    const say = (k: string, f: string, v?: Record<string, unknown>) => t(k, f, v);
     try {
       const result = await callEdgeFunctionWithRetry('generate-tailored-resume', {
         resumeText,
@@ -1647,6 +1706,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         missingSkills: freeKeywordResult?.missingSkills,
       }, {
         maxRetries: 2,
+        shouldRetry: shouldRetryScan,
+        // One press is one request: no breaker turns a refusal into "Service
+        // experiencing issues".
+        enableCircuitBreaker: false,
         // Past the platform's 150 s, so the server's own answer is always
         // read: its model chain may write the résumé up to 125 s after the
         // request arrives, and a reply that lands after the browser gave up
@@ -1655,44 +1718,93 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         initialDelay: 2000,
       });
 
-      if (result.error) {
-        setShowTailoredResumeModal(false);
-        toast({
-          title: result.error.title,
-          description: result.error.description,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const data = result.data as { success?: boolean; error?: string };
-      if (data?.success) {
+      const data = result.data as { success?: boolean; error?: string } | null;
+      if (!result.error && data?.success) {
         setTailoredResumeContent(data);
         toast({
           title: t('homepage.toast.tailoredResumeGenerated'),
           description: t('homepage.toast.tailoredResumeGeneratedDescription'),
         });
       } else {
-        throw new Error(data?.error || "Failed to generate tailored resume");
+        setShowTailoredResumeModal(false);
+        // The answer as the writing tools' toast reads it: its status and body.
+        const answered = typeof result.httpStatus === "number"
+          ? { context: new Response(JSON.stringify(result.errorBody ?? {}), { status: result.httpStatus, headers: { "content-type": "application/json" } }) }
+          : null;
+        toast({ ...(await writingToolToast('tailor', answered, say, i18n.language)), variant: "destructive" });
       }
     } catch (error: unknown) {
       console.error("Tailored resume error:", error);
       setShowTailoredResumeModal(false);
-      const parsedError = await parseEdgeFunctionError(error);
-      toast({
-        title: parsedError.title,
-        description: parsedError.description,
-        variant: "destructive",
-      });
+      toast({ ...(await writingToolToast('tailor', null, say, i18n.language)), variant: "destructive" });
     } finally {
       setIsGeneratingTailored(false);
     }
   };
 
+  // A SIGN-IN FROM THE REPORT COMES BACK TO THE SAME REPORT (S14X-019). The
+  // report's "Sign in to tailor" and "Sign in to practise" links left for
+  // /auth and came back to an empty scanner: the report, the posting and the
+  // reason for signing in were gone, and a rescan spent another scan. Before
+  // either link leaves, the report is kept in this tab's session storage
+  // (the same lifetime as rb_resume_for_fit), tied to the résumé by its
+  // fingerprint; back with a session, within 30 minutes and on the same
+  // résumé, the report is put back and the reader's action opens.
+  const stashReportForSignIn = (intent: 'tailor' | 'interview') => {
+    if (!freeKeywordResult || !resumeText) return;
+    try {
+      sessionStorage.setItem(PENDING_REPORT_KEY, JSON.stringify({
+        v: 1,
+        savedAt: Date.now(),
+        intent,
+        result: freeKeywordResult,
+        scanContext,
+        jobDescriptionText,
+        targetCountry,
+        fingerprint: textFingerprint(resumeText),
+      }));
+    } catch { /* storage full or blocked: the link still signs in */ }
+  };
+
+  useEffect(() => {
+    if (!session?.user) return;
+    let raw: string | null = null;
+    try { raw = sessionStorage.getItem(PENDING_REPORT_KEY); } catch { return; }
+    if (!raw) return;
+    try { sessionStorage.removeItem(PENDING_REPORT_KEY); } catch { /* read once either way */ }
+    let kept: { v?: unknown; savedAt?: unknown; intent?: unknown; result?: unknown; scanContext?: unknown; jobDescriptionText?: unknown; targetCountry?: unknown; fingerprint?: unknown } | null = null;
+    try { kept = JSON.parse(raw); } catch { return; }
+    if (!kept || kept.v !== 1 || typeof kept.savedAt !== "number" || Date.now() - kept.savedAt > PENDING_REPORT_MAX_MS) return;
+    if (!kept.result || typeof kept.result !== "object") return;
+    const text = (resumeTextRef.current || getResumeFromSession().resumeText || "").trim();
+    if (!text || textFingerprint(text) !== kept.fingerprint) return;
+    if (!resumeTextRef.current) setResumeText(text);
+    if (typeof kept.jobDescriptionText === "string") setJobDescriptionText(kept.jobDescriptionText);
+    if (typeof kept.targetCountry === "string") setTargetCountry(kept.targetCountry);
+    if (kept.scanContext && typeof kept.scanContext === "object") {
+      const c = kept.scanContext as Partial<typeof scanContext>;
+      setScanContext((prev) => ({ ...prev, ...c }));
+    }
+    setFreeKeywordResult(kept.result as FreeKeywordResult);
+    setPendingIntent(kept.intent === "interview" ? "interview" : "tailor");
+    setTimeout(() => document.getElementById("free-results")?.scrollIntoView({ behavior: "smooth" }), 100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id]);
+
+  // The tailor action runs once the report and its résumé are back on screen.
+  useEffect(() => {
+    if (pendingIntent !== 'tailor' || !freeKeywordResult || !resumeText) return;
+    setPendingIntent(null);
+    void handleGenerateTailoredResume();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingIntent, freeKeywordResult, resumeText]);
+
   // Clear resume and start fresh
   const handleClearResume = useCallback(() => {
     // A read still in flight answers for a résumé that was just cleared.
     parseSeqRef.current++;
+    resumeSeqRef.current++;
+    setContactOnlyInHeader(false);
     setIsLoading(false);
     setResumeText("");
     setSelectedFile(null);
@@ -1735,6 +1847,8 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     // The same draft again is no edit (S11-031): it must not throw away the
     // report built from it, nor the caches.
     if (normalized === resumeTextRef.current.trim()) return;
+    resumeSeqRef.current++;
+    setContactOnlyInHeader(false);
     setResumeText(normalized);
     setFreeKeywordResult(null);
     // The text changed: a purchase may not be made from the stored older copy.
@@ -2155,21 +2269,23 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         {(resumeText || selectedFile) && !freeKeywordResult && (
           <section className="container max-w-2xl -mt-2 mb-6">
             <div className="rounded-2xl border border-border bg-card/60 p-4">
-              <p className="text-xs font-semibold text-foreground mb-2">Make your scan specific to you <span className="text-muted-foreground font-normal">(optional, 5 seconds)</span></p>
+              {/* In the reader's language (NB-17, NB-45, S14X-032). */}
+              <p className="text-xs font-semibold text-foreground mb-2">{t('freeScanPage.intent.heading')} <span className="text-muted-foreground font-normal">{t('freeScanPage.intent.optional')}</span></p>
               <div className="flex flex-wrap gap-1.5 mb-2.5">
                 {([
-                  { id: "actively_applying", label: "🎯 Actively applying" },
-                  { id: "exploring", label: "🧭 Exploring options" },
-                  { id: "career_change", label: "🔄 Changing careers" },
-                  { id: "first_job", label: "🌱 First job" },
-                  { id: "freelance", label: "💼 Freelancing" },
+                  { id: "actively_applying", icon: "🎯" },
+                  { id: "exploring", icon: "🧭" },
+                  { id: "career_change", icon: "🔄" },
+                  { id: "first_job", icon: "🌱" },
+                  { id: "freelance", icon: "💼" },
                 ]).map(opt => (
                   <button
                     key={opt.id}
                     onClick={() => persistScanContext({ situation: scanContext.situation === opt.id ? null : opt.id })}
+                    aria-pressed={scanContext.situation === opt.id}
                     className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${scanContext.situation === opt.id ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
                   >
-                    {opt.label}
+                    {opt.icon} {t(`freeScanPage.intent.situation.${opt.id}`)}
                   </button>
                 ))}
               </div>
@@ -2177,29 +2293,26 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 value={scanContext.targetRole}
                 onChange={(e) => setScanContext(prev => ({ ...prev, targetRole: e.target.value }))}
                 onBlur={() => persistScanContext({})}
-                placeholder="Target role (e.g. Senior Data Engineer) — sharpens keywords & benchmarks"
+                aria-label={t('freeScanPage.intent.targetRoleLabel')}
+                placeholder={t('freeScanPage.intent.targetRolePlaceholder')}
                 maxLength={80}
                 className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
               {/* Applying-in country. Overrides résumé/IP detection so someone
                   targeting a market abroad gets that market's résumé standards
-                  (photo norms, personal-data expectations, references, etc.). */}
+                  (photo norms, personal-data expectations, references, etc.).
+                  Every market the scanner has standards for, named in the
+                  reader's language (S14X-032). */}
               <select
                 value={targetCountry}
                 onChange={(e) => setTargetCountry(e.target.value)}
-                aria-label="Country you're applying in"
+                aria-label={t('freeScanPage.intent.countryLabel')}
+                data-testid="scan-market-select"
                 className="w-full mt-2 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
               >
-                <option value="">🌍 Applying in… (auto-detect country standards)</option>
-                {([
-                  ["US", "United States"], ["GB", "United Kingdom"], ["CA", "Canada"], ["AU", "Australia"],
-                  ["IE", "Ireland"], ["NZ", "New Zealand"], ["DE", "Germany"], ["FR", "France"],
-                  ["NL", "Netherlands"], ["ES", "Spain"], ["IT", "Italy"], ["CH", "Switzerland"],
-                  ["SE", "Sweden"], ["PL", "Poland"], ["AE", "United Arab Emirates"], ["SA", "Saudi Arabia"],
-                  ["IN", "India"], ["SG", "Singapore"], ["JP", "Japan"], ["HK", "Hong Kong"],
-                  ["ZA", "South Africa"], ["BR", "Brazil"], ["MX", "Mexico"], ["PH", "Philippines"],
-                ] as [string, string][]).map(([code, label]) => (
-                  <option key={code} value={code}>{label}</option>
+                <option value="">🌍 {t('freeScanPage.intent.countryAuto')}</option>
+                {scanMarketOptions(i18n.language || 'en').map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
                 ))}
               </select>
             </div>
@@ -2242,7 +2355,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
             <Suspense
               fallback={
                 <div className="container py-8 text-center text-sm text-muted-foreground animate-pulse">
-                  Preparing your report…
+                  {t('freeScanPage.report.preparing')}
                 </div>
               }
             >
@@ -2250,22 +2363,26 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
               <ResumeLanguageSuggestion detectedLanguage={freeKeywordResult.detectedLanguage} />
               {/* Signing up lands on the account page, which imports this browser's scans (S12-025). */}
               {!session && <FreeReportSignupNudge />}
-              {freeKeywordResult.parseQuality && freeKeywordResult.parseQuality.verdict !== 'good' && (
-                <div className={`rounded-xl border p-4 flex items-start gap-2 ${freeKeywordResult.parseQuality.verdict === 'poor' ? 'border-destructive/30 bg-destructive/5' : 'border-warning/30 bg-warning/5'}`}>
-                  <span className="text-sm shrink-0">{freeKeywordResult.parseQuality.verdict === 'poor' ? '🚫' : '⚠️'}</span>
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">
-                      {freeKeywordResult.parseQuality.verdict === 'poor'
-                        ? 'This resume may not have extracted correctly'
-                        : 'Extraction quality note'}
-                    </span>
-                    {' — '}{freeKeywordResult.parseQuality.issues.join('; ')}.{' '}
-                    {freeKeywordResult.parseQuality.verdict === 'poor'
-                      ? 'The scores below may be unreliable. Try uploading a DOCX instead, or paste the resume text directly.'
-                      : 'If the report looks off, try pasting the text directly.'}
-                  </p>
-                </div>
-              )}
+              {/* The parse note in the reader's language (NB-17), without the
+                  English-headings section check for a résumé the scanner read
+                  as another language (NB-6). */}
+              {(() => {
+                const note = parseNoteFor(freeKeywordResult.parseQuality, freeKeywordResult.detectedLanguage);
+                if (!note) return null;
+                const issues = note.issues.map((i) => ('text' in i ? i.text : 'n' in i ? t(`freeScanPage.parse.issue.${i.key}`, { n: i.n }) : t(`freeScanPage.parse.issue.${i.key}`))).join('; ');
+                return (
+                  <div data-parse-note={note.verdict} className={`rounded-xl border p-4 flex items-start gap-2 ${note.verdict === 'poor' ? 'border-destructive/30 bg-destructive/5' : 'border-warning/30 bg-warning/5'}`}>
+                    <span className="text-sm shrink-0">{note.verdict === 'poor' ? '🚫' : '⚠️'}</span>
+                    <p className="text-xs text-muted-foreground">
+                      <span className="font-semibold text-foreground">
+                        {note.verdict === 'poor' ? t('freeScanPage.parse.poorTitle') : t('freeScanPage.parse.fairTitle')}
+                      </span>
+                      {' '}{t('freeScanPage.parse.found', { issues })}{' '}
+                      {note.verdict === 'poor' ? t('freeScanPage.parse.poorAdvice') : t('freeScanPage.parse.fairAdvice')}
+                    </p>
+                  </div>
+                );
+              })()}
               {freeKeywordResult.partialResults && (
                 <PartialResultsNotice reason={freeKeywordResult.partialReason} hidden={freeKeywordResult.partialHidden} />
               )}
@@ -2414,6 +2531,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 hadJobDescription={!!jobDescriptionText}
                 sourceWasFile={!!selectedFile}
                 keywordSource={freeKeywordResult.keywordSource ?? undefined}
+                detectedLanguage={freeKeywordResult.detectedLanguage as never}
+                contactOnlyInHeader={contactOnlyInHeader}
+                onBeforeSignIn={stashReportForSignIn}
+                openInterviewPrep={pendingIntent === 'interview'}
                 scanSituation={scanContext.situation ?? undefined}
                 onContextConfirm={(ctx) => persistScanContext(ctx)}
               />

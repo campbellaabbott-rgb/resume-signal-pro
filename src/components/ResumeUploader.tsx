@@ -22,6 +22,7 @@ import { fullAnalysisOnSale } from "@/lib/purchases-open";
 import { looksLikeLink, scannableJobDescription } from "@/lib/job-description-input";
 import { MAX_RESUME_LENGTH } from "@/lib/resume-validation";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
+import { PAID_JOB_DESCRIPTION_CHARS, PAID_LINKEDIN_CHARS } from "@/config/paid-input-caps";
 // THE FULL ANALYSIS IS ON SALE HERE WHILE ITS SWITCH IS ON (homepage and
 // pricing spec of 2026-10-17, G2; on, as on main): fullAnalysisOnSale() is the
 // owner's switch, read at render, so a switch the owner flips takes effect on
@@ -48,7 +49,7 @@ function StepIndicator({ number, label, isComplete, isOptional, isFree }: StepIn
       )}>
         {isComplete ? <CheckCircle2 className="w-4 h-4" /> : number}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="font-semibold text-foreground">{label}</span>
         {isFree && (
           <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">{t('uploader.badges.free')}</span>
@@ -198,6 +199,24 @@ interface ResumeUploaderProps {
  * signed-in allowance. Mounted only for a signed-in visitor, so nobody else
  * pays for the plan check.
  */
+/**
+ * What the Full Analysis reads of a long posting or LinkedIn text (S14X-048):
+ * the paid run clips them at the server's caps (mirrored in
+ * src/config/paid-input-caps.ts), so the buyer is told before checkout.
+ */
+function PaidInputCapNotes({ jobDescription, linkedIn }: { jobDescription: string; linkedIn: string }) {
+  const { t, i18n } = useTranslation();
+  const posting = jobDescription.length > PAID_JOB_DESCRIPTION_CHARS;
+  const profile = linkedIn.trim().length > PAID_LINKEDIN_CHARS;
+  if (!posting && !profile) return null;
+  return (
+    <div className="space-y-1 text-xs text-muted-foreground" data-testid="paid-input-cap-notes">
+      {posting && <p>{t('freeScanPage.checkout.postingOverCap', { max: PAID_JOB_DESCRIPTION_CHARS.toLocaleString(i18n.language) })}</p>}
+      {profile && <p>{t('freeScanPage.checkout.linkedInOverCap', { max: PAID_LINKEDIN_CHARS.toLocaleString(i18n.language) })}</p>}
+    </div>
+  );
+}
+
 function SignedInScanAllowance({ seconds }: { seconds: number }) {
   const { t } = useTranslation();
   const { pro } = useProSubscription();
@@ -334,13 +353,14 @@ export function ResumeUploader({
       setSelectedFile(file);
       onFileSelect(file);
     } else {
+      // In the reader's language (S14X-253): the keys every locale has.
       toast({
-        title: "Unsupported file type",
-        description: "Please upload a PDF, DOCX, or TXT file.",
+        title: t('homepage.toast.unsupportedFileType'),
+        description: t('homepage.toast.unsupportedFileTypeDescription'),
         variant: "destructive",
       });
     }
-  }, [onFileSelect, toast]);
+  }, [onFileSelect, toast, t]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -515,6 +535,8 @@ export function ResumeUploader({
   // description (scannableJobDescription), and the servers ignore one anyway.
   type UrlFetchState = "idle" | "loading" | "unsupported" | "failed" | "limited";
   const [urlFetch, setUrlFetch] = useState<UrlFetchState>("idle");
+  /** The posting text a link read clipped (fetch-job-posting's truncated flag), or null. */
+  const [clippedPosting, setClippedPosting] = useState<string | null>(null);
   /** The link waiting to be read: the Job URL box, or a bare link pasted into the text box. */
   const pendingJobLink = (): string => {
     if (jobDescriptionMode === "url") return jobDescriptionUrl.trim();
@@ -529,7 +551,7 @@ export function ResumeUploader({
     reading.current = true;
     setUrlFetch("loading");
     const result = await resilientCallers.fetchJobPosting({ url: link }).finally(() => { reading.current = false; });
-    const data = (result.data ?? null) as { ok?: boolean; text?: string; title?: string | null; company?: string | null; url?: string; reason?: string } | null;
+    const data = (result.data ?? null) as { ok?: boolean; text?: string; title?: string | null; company?: string | null; url?: string; reason?: string; truncated?: boolean } | null;
     if (data?.ok && typeof data.text === "string" && data.text.trim()) {
       const head = [
         data.title ? `Job Title: ${data.title}` : "",
@@ -538,6 +560,9 @@ export function ResumeUploader({
       ].filter(Boolean).join("\n");
       const text = `${head}\n\nJob Description:\n${data.text.trim()}`;
       setLocalJobDescriptionText(text);
+      // A posting the reader clipped says so beside it (S14X-270), while the
+      // box still holds the text it loaded.
+      setClippedPosting(data.truncated === true ? text : null);
       setJobDescriptionUrl("");
       setJobDescriptionMode("paste");
       setShowJobDescription(true);
@@ -816,6 +841,7 @@ export function ResumeUploader({
                   <textarea
                     value={textInput}
                     onChange={(e) => setTextInput(e.target.value)}
+                    aria-label={t('freeScanPage.a11y.resumeText')}
                     placeholder={t('uploader.resume.pasteHere')}
                     className={cn(
                       "w-full h-48 p-4 rounded-2xl bg-card/50 backdrop-blur-sm border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 resize-none text-sm leading-relaxed transition-all",
@@ -825,7 +851,7 @@ export function ResumeUploader({
                     )}
                   />
                   <div className="absolute bottom-3 right-3 px-2 py-1 rounded-lg bg-card/80 border border-border text-xs text-muted-foreground">
-                    {textInput.length.toLocaleString()} {t('uploader.resume.chars')}
+                    {textInput.length.toLocaleString(i18n.language)} {t('uploader.resume.chars')}
                   </div>
                 </div>
                 
@@ -860,7 +886,7 @@ export function ResumeUploader({
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                    <span className="text-sm font-medium text-success">{t('uploader.resumeLoaded', { chars: resumeText.length.toLocaleString() })}</span>
+                    <span className="text-sm font-medium text-success">{t('uploader.resumeLoaded', { chars: resumeText.length.toLocaleString(i18n.language) })}</span>
                   </div>
                   {onClearResume && (
                     <button
@@ -1005,9 +1031,14 @@ export function ResumeUploader({
                       className="w-full h-40 p-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 resize-none text-sm leading-relaxed transition-all"
                     />
                     <div className="absolute bottom-3 right-3 px-2 py-1 rounded-lg bg-card border border-border text-xs text-muted-foreground">
-                      {localJobDescriptionText.length.toLocaleString()} {t('uploader.resume.chars')}
+                      {localJobDescriptionText.length.toLocaleString(i18n.language)} {t('uploader.resume.chars')}
                     </div>
                   </div>
+                )}
+                {jobDescriptionMode === "paste" && clippedPosting !== null && clippedPosting === localJobDescriptionText && (
+                  <p className="text-xs text-muted-foreground" data-testid="job-url-truncated" role="status">
+                    {t('freeScanPage.jobUrl.truncated')}
+                  </p>
                 )}
                 {/* A bare link pasted as the description is read, not sent. */}
                 {jobDescriptionMode === "paste" && looksLikeLink(localJobDescriptionText) && urlFetch !== "unsupported" && urlFetch !== "failed" && urlFetch !== "limited" && (
@@ -1359,7 +1390,7 @@ export function ResumeUploader({
                       <div className="flex items-center gap-2 p-3 rounded-xl bg-success/5 border border-success/20">
                         <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
                         <span className="text-sm text-success truncate max-w-[200px]">{linkedInFile.name}</span>
-                        <span className="text-sm text-success">({linkedInText.length.toLocaleString()} {t('uploader.resume.chars')})</span>
+                        <span className="text-sm text-success">({linkedInText.length.toLocaleString(i18n.language)} {t('uploader.resume.chars')})</span>
                         <button
                           onClick={() => {
                             setLinkedInFile(null);
@@ -1412,7 +1443,7 @@ export function ResumeUploader({
                       className="w-full h-32 p-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[#0A66C2]/50 focus:border-[#0A66C2]/50 resize-none text-sm leading-relaxed transition-all"
                     />
                     <div className="absolute bottom-3 right-3 px-2 py-1 rounded-lg bg-card border border-border text-xs text-muted-foreground">
-                      {localLinkedInText.length.toLocaleString()} {t('uploader.resume.chars')}
+                      {localLinkedInText.length.toLocaleString(i18n.language)} {t('uploader.resume.chars')}
                     </div>
                   </div>
                 )}
@@ -1449,19 +1480,23 @@ export function ResumeUploader({
                 {/* Primary CTA: Free Scan */}
                 {onFreeScan && (
                   <div className="space-y-3" data-scan-button="true">
+                    {/* The label wraps inside the button on a phone in every
+                        language (S14X-020): German, Spanish, French,
+                        Portuguese and Tagalog ran past a 360px screen. */}
                     <Button
                       size="xl"
+                      wrap
                       disabled={!canProceed || urlFetch === "loading"}
                       aria-busy={urlFetch === "loading"}
                       onClick={handleFreeScanClick}
                       onMouseEnter={prefetchScan}
                       onFocus={prefetchScan}
-                      className="w-full sm:w-auto sm:min-w-[340px] h-16 text-lg gap-3 border-2 border-success bg-success hover:bg-success/90 text-success-foreground font-bold shadow-[0_0_25px_rgba(34,197,94,0.4)] hover:shadow-[0_0_35px_rgba(34,197,94,0.5)] transition-all touch-manipulation active:scale-[0.98]"
+                      className="w-full sm:w-auto sm:min-w-[340px] h-auto min-h-16 py-3 px-4 sm:px-8 text-base sm:text-lg text-center justify-center gap-3 border-2 border-success bg-success hover:bg-success/90 text-success-foreground font-bold shadow-[0_0_25px_rgba(34,197,94,0.4)] hover:shadow-[0_0_35px_rgba(34,197,94,0.5)] transition-all touch-manipulation active:scale-[0.98]"
                     >
                       {/* While the posting link is read first, the button says so (S12-141). */}
                       {urlFetch === "loading" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5 fill-current" />}
                       <span>{urlFetch === "loading" ? t('uploader.jobUrlFetching') : t('uploader.getFreeAnalysis')}</span>
-                      <span className="px-2.5 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wide">{t('hero.freeBadge')}</span>
+                      <span className="hidden sm:inline-flex px-2.5 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wide">{t('hero.freeBadge')}</span>
                     </Button>
 
                     <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -1500,6 +1535,9 @@ export function ResumeUploader({
                     )}
                   </button>
                 )}
+                {/* What the analysis reads of a long posting or profile, said
+                    before checkout (S14X-048). It never stops the press. */}
+                {onFreeScan && fullAnalysisOnSale() && <PaidInputCapNotes jobDescription={jobDescriptionForPress()} linkedIn={linkedInMode === "paste" ? localLinkedInText : linkedInText} />}
 
                 {/* Fallback if no free scan available: the priced button
                     under the same switch, as above. */}
@@ -1526,6 +1564,7 @@ export function ResumeUploader({
                         </>
                       )}
                     </Button>
+                    <PaidInputCapNotes jobDescription={jobDescriptionForPress()} linkedIn={linkedInMode === "paste" ? localLinkedInText : linkedInText} />
                     
                     <div className="flex flex-col items-center gap-2">
                       <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">

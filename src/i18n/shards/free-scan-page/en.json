@@ -1,0 +1,273 @@
+{
+  "freeScanPage": {
+    "a11y": {
+      "resumeText": "Your résumé text",
+      "emailAddress": "Your email address"
+    },
+    "jobUrl": {
+      "truncated": "This posting was longer than we can read, so only its first part is in the box."
+    },
+    "checkout": {
+      "postingOverCap": "The Full Analysis reads the first {{max}} characters of this job posting. The rest is left out.",
+      "linkedInOverCap": "The Full Analysis reads the first {{max}} characters of your LinkedIn text. The rest is left out."
+    },
+    "hero": {
+      "dropzone": "Or drop your résumé here: PDF, DOCX or TXT",
+      "dropzoneActive": "Drop it here: the scan is seconds away"
+    },
+    "parseCheck": {
+      "fromYourFile": "These checks ran on the text we extracted from your file. An ATS uses its own reader, which may see some parts differently.",
+      "section": {
+        "summary": "Summary",
+        "experience": "Experience",
+        "education": "Education",
+        "skills": "Skills"
+      },
+      "label": {
+        "sections": "Section headings",
+        "contact": "Contact details",
+        "dates": "Dates",
+        "encoding": "Character encoding",
+        "iconGlyphs": "Icon-font characters",
+        "lines": "Line structure",
+        "layout": "Column layout"
+      },
+      "detail": {
+        "sectionsAll": "All {{n}} standard section headings were found ({{found}}).",
+        "sectionsNone": "No standard section headings were found. Most ATS split a résumé by headings such as Experience or Education; without them, your content may land in one block.",
+        "sectionsSome": "Found: {{found}}. No recognizable heading for: {{missing}}.",
+        "contactHeaderOnly": "Your email and phone sit only in the page header, which some ATS skip. Put them in the body of the first page too.",
+        "contactBoth": "Your email and phone number were both found in the text.",
+        "contactBothLinkedIn": "Your email, phone number and LinkedIn address were all found in the text.",
+        "contactNone": "No email or phone number was found in the text. If your file has them, they may sit in an image, a text box or a header that text extraction skips.",
+        "contactEmailOnly": "Your email was found, but no phone number in a standard format.",
+        "contactPhoneOnly": "Your phone number was found, but no email address in a standard format.",
+        "datesMany": "{{n}} different dates were found, so an ATS can likely work out your timeline and your time in each role.",
+        "datesNone": "No dates in a recognizable form (such as Jan 2020 or 2020-2023) were found. An ATS uses dates to work out your experience and any gaps.",
+        "datesOne": "Only one date was found. If you list several roles, most of them may be missing start and end dates an ATS can read.",
+        "encodingOk": "No broken characters were found in the extracted text.",
+        "encodingBroken": "Characters that failed to decode: {{n}}. A font in your PDF is probably not mapped to standard Unicode, and an ATS reading it the same way would see the same garbled text.",
+        "iconsNone": "No icon-font characters were found in the extracted text.",
+        "iconsFound": "Icon-font characters found: {{n}}. Templates often draw the phone, email and LinkedIn symbols with an icon font; an ATS sees a stray character there, not the icon.",
+        "linesNormal": "The text came out with normal line breaks (about {{chars}} characters a line).",
+        "linesLong": "The text came out with unusually long lines (about {{chars}} characters a line). A table or text box may have merged several lines; check that your bullets are not running together.",
+        "linesFlat": "The text came out with almost no line breaks (about {{chars}} characters a line), the sign of a table layout or text boxes flattened into one block. An ATS may lose your sections and bullets.",
+        "layoutSingle": "No multi-column layout was found: the text reads in one order.",
+        "layoutColumns": "A multi-column layout was found in your PDF. Text extractors read in file order, not visual order, so columns are often mixed together or read out of sequence."
+      }
+    },
+    "industry": {
+      "cybersecurity": "Cybersecurity",
+      "logistics": "Logistics",
+      "real_estate": "Real Estate",
+      "insurance": "Insurance",
+      "nonprofit": "Nonprofit",
+      "biotech": "Biotech",
+      "aviation": "Aviation",
+      "energy": "Energy",
+      "skilled_trades": "Skilled Trades",
+      "customer_success": "Customer Success",
+      "pharmacy": "Pharmacy",
+      "dental": "Dental",
+      "veterinary": "Veterinary",
+      "fitness": "Fitness",
+      "media": "Media",
+      "telecom": "Telecommunications",
+      "agriculture": "Agriculture",
+      "sports_management": "Sports Management",
+      "entertainment": "Entertainment",
+      "academia": "Academia",
+      "construction_management": "Construction Management",
+      "architecture": "Architecture",
+      "social_work": "Social Work",
+      "childcare": "Childcare",
+      "beauty": "Beauty",
+      "culinary": "Culinary",
+      "law_enforcement": "Law Enforcement",
+      "environmental": "Environmental",
+      "gaming": "Gaming",
+      "ecommerce": "E-commerce",
+      "translation": "Translation",
+      "event_planning": "Event Planning",
+      "administrative": "Administrative",
+      "library": "Library",
+      "clergy": "Clergy",
+      "mining": "Mining",
+      "maritime": "Maritime",
+      "landscaping": "Landscaping",
+      "janitorial": "Janitorial",
+      "general": "General / Other"
+    },
+    "confidence": {
+      "high": "high",
+      "medium": "medium",
+      "low": "low"
+    },
+    "diagnostic": {
+      "title": "Résumé diagnostic report",
+      "report": "Report",
+      "date": "Date",
+      "subject": "Subject",
+      "candidate": "Candidate",
+      "industry": "Industry",
+      "benchmarks": "Benchmarks",
+      "benchmarksMeasured": "measured from real scans",
+      "benchmarksEstimated": "industry estimates",
+      "engine": "Engine",
+      "footer": "Rescanning this exact document returns this report ID. Results are deterministic where marked, and every rewritten bullet is checked against the document."
+    },
+    "band": {
+      "ats": {
+        "excellent": "Excellent: job portals should read this cleanly.",
+        "good": "Good: most job portals will read this cleanly.",
+        "fair": "Fair: some portals may misread parts of it.",
+        "weak": "Weak: portals may misread or drop key parts."
+      },
+      "recruiter": {
+        "excellent": "Excellent: a recruiter sees clear, proven impact.",
+        "good": "Good: a recruiter sees solid impact; a few lines could show more.",
+        "fair": "Fair: more numbers and outcomes would help a recruiter.",
+        "weak": "Weak: a recruiter sees duties more than results."
+      }
+    },
+    "enhanced": {
+      "locatedIn": "Found in: {{places}}"
+    },
+    "share": {
+      "yourResults": "Your results"
+    },
+    "metric": {
+      "formatA": "An ATS can read this well",
+      "formatB": "Minor formatting tweaks needed",
+      "formatC": "May cause parsing errors",
+      "formatD": "An ATS may scramble your details",
+      "readEasy": "Easy to scan",
+      "readSome": "Some sections are hard to scan",
+      "readHard": "Hard to scan"
+    },
+    "keywordImpact": {
+      "critical": "Must have",
+      "high": "High impact",
+      "medium": "Helpful"
+    },
+    "keywordCategory": {
+      "certification": "Certification",
+      "tool": "Tool",
+      "skill": "Skill",
+      "methodology": "Method",
+      "metric": "Metric",
+      "regulation": "Regulation"
+    },
+    "xray": {
+      "flagged": "Lines flagged: {{n}}",
+      "legendIntro": "Your résumé as we read it, annotated:",
+      "legendWeak": "red underline: a weak bullet (hover for why)",
+      "legendAmber": "amber: no numbers",
+      "legendGreen": "green: a strong action word",
+      "showLess": "Show less",
+      "showAll": "Show all lines ({{n}})"
+    },
+    "email": {
+      "invalid": "Please enter a valid email address.",
+      "failed": "Couldn't send right now. The PDF download above works offline."
+    },
+    "pulse": {
+      "notAsked": "We couldn't send the monthly market pulse confirmation link this time. Tick the box again on your next report."
+    },
+    "pdf": {
+      "title": "RESUME DIAGNOSTIC REPORT",
+      "meta": "Report #{{id}}  ·  {{date}}  ·  Engine {{engine}}",
+      "subject": "Subject: {{name}}  ·  Industry: {{industry}}  ·  Benchmarks: {{benchmarks}}",
+      "score": "ATS score: {{score}}/100",
+      "band": "(modeling band {{low}}-{{high}})",
+      "projected": "about {{score}} after fixes (a rough guide)",
+      "breakdown": "Breakdown: keywords {{keywords}}%  ·  format {{format}}%  ·  quantification {{quantification}}%",
+      "findings": "Findings: {{critical}} critical  ·  {{warnings}} warnings  ·  {{passed}} passed",
+      "fixPlan": "Your {{minutes}}-minute fix plan:",
+      "stepCost": "(about {{minutes}} min, +{{points}} pts)",
+      "sourceOnet": "Keyword expectations sourced from O*NET {{code}} (U.S. Department of Labor: {{occupation}}).",
+      "sourcePosting": "Keywords matched against the job posting you provided.",
+      "footer": "In the full report, every rewritten bullet and the line it quotes are checked against your résumé. Full detail: resumebooster.work"
+    },
+    "report": {
+      "scoreBand": "Score {{score}} sits in a modeling band of {{low}}–{{high}}. The band spans our rule-based calculation and the AI estimate: one exact figure would claim more precision than there is.",
+      "preparing": "Preparing your report…"
+    },
+    "market": {
+      "title": "{{country}} market intelligence",
+      "hotSkills": "Skills in demand (hand-compiled)",
+      "risingKeywords": "Rising keywords (hand-compiled)",
+      "cvNorms": "{{country}} CV norms"
+    },
+    "ats": {
+      "target": "Target ATS:",
+      "detected": "We detected that this company uses {{name}}. The formatting advice above is tailored to that system."
+    },
+    "execScope": {
+      "title": "Executive scope check",
+      "signals": "{{n}}/{{total}} scope signals",
+      "intro": "At this level, recruiters screen for evidence of scope before anything else.",
+      "teamSize": "Team size",
+      "budget": "Budget or P&L ownership",
+      "impact": "Quantified business impact",
+      "board": "Board or governance exposure",
+      "strategy": "Strategic-scope language",
+      "addNext": "Add next:"
+    },
+    "sectionAudit": {
+      "title": "Section length audit",
+      "good": "Good",
+      "tooLong": "Too long",
+      "missing": "Missing",
+      "tooShort": "Too short",
+      "words": "{{n}} words",
+      "target": "(target {{min}}–{{max}})"
+    },
+    "parsePreview": {
+      "title": "ATS parse preview",
+      "subtitle": "What an ATS reads",
+      "note": "Formatting (bold, columns, icons) is stripped. If your name, title or key sections don't show clearly here, an ATS may miss them."
+    },
+    "questions": {
+      "triggeredBy": "Triggered by:",
+      "prepare": "Prepare:"
+    },
+    "toast": {
+      "creditUsedTitle": "Scan credit used",
+      "creditUsed": "You were past today's free limit, so 1 purchased credit covered this scan.",
+      "creditUsedRemaining": "You were past today's free limit, so 1 purchased credit covered this scan. Credits left: {{remaining}}.",
+      "budgetTitle": "Too many requests right now",
+      "budgetBody": "Too many scans have come from your connection this hour. Try again in about {{minutes}} min. This is not your daily limit.",
+      "busyTitle": "The analyzers are busy",
+      "busyBody": "Our analyzers are busy right now. Try again in a minute."
+    },
+    "intent": {
+      "heading": "Make your scan specific to you",
+      "optional": "(optional, 5 seconds)",
+      "situation": {
+        "actively_applying": "Actively applying",
+        "exploring": "Exploring options",
+        "career_change": "Changing careers",
+        "first_job": "First job",
+        "freelance": "Freelancing"
+      },
+      "targetRoleLabel": "Target role",
+      "targetRolePlaceholder": "Target role (e.g. Senior Data Engineer): sharpens keywords and benchmarks",
+      "countryLabel": "Country you're applying in",
+      "countryAuto": "Applying in… (auto-detect country standards)"
+    },
+    "parse": {
+      "poorTitle": "This résumé may not have been read correctly.",
+      "fairTitle": "A note on how your file was read.",
+      "found": "We found: {{issues}}.",
+      "poorAdvice": "The scores below may be unreliable. Try uploading a DOCX, or paste the text directly.",
+      "fairAdvice": "If the report looks off, try pasting the text directly.",
+      "issue": {
+        "fewWords": "only {{n}} words extracted",
+        "lowLetters": "an unusually low share of letters to symbols",
+        "garbled": "garbled characters",
+        "noSections": "no standard résumé sections"
+      }
+    }
+  }
+}

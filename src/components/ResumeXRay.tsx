@@ -94,14 +94,16 @@ export function ResumeXRay({ resumeText, weakBullets = [], unquantifiedBullets =
         <h4 className="font-semibold text-foreground text-sm">{t('freeResults.enterprise.xrayTitle', 'Resume X-Ray')}</h4>
         {flaggedCount > 0 && (
           <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-semibold">
-            {flaggedCount} line{flaggedCount !== 1 ? "s" : ""} flagged
+            {t('freeScanPage.xray.flagged', { n: flaggedCount })}
           </span>
         )}
       </div>
       <p className="text-xs text-muted-foreground mb-3">
-        Your actual resume, annotated. <span className="text-destructive">Red underline</span> = weak bullet (hover for why) ·{" "}
-        <span className="text-warning">amber</span> = no numbers ·{" "}
-        <span className="text-success">green</span> = power word.
+        {/* In the reader's language (S14X-057). */}
+        {t('freeScanPage.xray.legendIntro')}{" "}
+        <span className="text-destructive">{t('freeScanPage.xray.legendWeak')}</span> ·{" "}
+        <span className="text-warning">{t('freeScanPage.xray.legendAmber')}</span> ·{" "}
+        <span className="text-success">{t('freeScanPage.xray.legendGreen')}</span>
       </p>
 
       <div className="rounded-lg bg-muted/20 border border-border/50 p-3 font-mono text-xs leading-relaxed overflow-x-auto">
@@ -137,7 +139,7 @@ export function ResumeXRay({ resumeText, weakBullets = [], unquantifiedBullets =
           onClick={() => setExpanded(!expanded)}
           className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline"
         >
-          {expanded ? <><ChevronUp className="w-3 h-3" /> Show less</> : <><ChevronDown className="w-3 h-3" /> Show all {lines.length} lines</>}
+          {expanded ? <><ChevronUp className="w-3 h-3" /> {t('freeScanPage.xray.showLess')}</> : <><ChevronDown className="w-3 h-3" /> {t('freeScanPage.xray.showAll', { n: lines.length })}</>}
         </button>
       )}
     </div>

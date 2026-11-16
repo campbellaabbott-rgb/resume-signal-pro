@@ -216,8 +216,16 @@ export function ShareableScoreCard({
     });
   };
 
-  const displayName = candidateName || "Your";
+  // "Jane's results", or "Your results" with no name: never "Your's" (NB-16).
+  const heading = candidateName ? t('shareableCard.results', { name: candidateName }) : t('freeScanPage.share.yourResults');
   const scoreColor = getScoreColor(atsScore);
+  // THE RING IS AN SVG ARC (S14X-210). It was a CSS conic-gradient, which
+  // html2canvas 1.4.1 does not draw: the downloaded card showed a flat disc
+  // whatever the score. A track circle plus an arc of score/100 of the
+  // circumference draws the same in the preview and in the image.
+  const RING_R = 74;
+  const RING_C = 2 * Math.PI * RING_R;
+  const ringArc = (RING_C * Math.max(0, Math.min(100, atsScore))) / 100;
 
   // The actual card content that gets rendered for both capture and preview
   const CardContent = () => (
@@ -231,9 +239,9 @@ export function ShareableScoreCard({
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px", marginBottom: "4px" }}>Resume ATS Score</p>
+          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px", marginBottom: "4px" }}>{t('shareableCard.resumeScore')}</p>
           <h2 style={{ color: "#fff", fontSize: "24px", fontWeight: "bold", margin: 0 }}>
-            {displayName}&apos;s Results
+            {heading}
           </h2>
         </div>
         <div style={{ textAlign: "right" }}>
@@ -253,10 +261,23 @@ export function ShareableScoreCard({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: `conic-gradient(${scoreColor} ${atsScore * 3.6}deg, #334155 0deg)`,
             boxShadow: `0 0 40px ${scoreColor}40`
           }}
         >
+          <svg width="160" height="160" viewBox="0 0 160 160" style={{ position: "absolute", top: 0, left: 0 }} aria-hidden="true">
+            <circle cx="80" cy="80" r={RING_R} fill="none" stroke="#334155" strokeWidth="12" />
+            <circle
+              data-score-arc
+              cx="80"
+              cy="80"
+              r={RING_R}
+              fill="none"
+              stroke={scoreColor}
+              strokeWidth="12"
+              strokeDasharray={`${ringArc} ${RING_C}`}
+              transform="rotate(-90 80 80)"
+            />
+          </svg>
           <div 
             style={{ 
               position: "absolute",
@@ -272,7 +293,7 @@ export function ShareableScoreCard({
             <span style={{ fontSize: "48px", fontWeight: "bold", color: scoreColor }}>
               {atsScore}
             </span>
-            <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}>/100</span>
+            <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}>{t('shareableCard.outOf')}</span>
           </div>
         </div>
       </div>
@@ -297,21 +318,21 @@ export function ShareableScoreCard({
       {/* Stats grid */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "24px" }}>
         <div style={{ padding: "16px", borderRadius: "12px", background: "rgba(255,255,255,0.05)" }}>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", marginBottom: "4px" }}>Industry</p>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", marginBottom: "4px" }}>{t('shareableCard.industry')}</p>
           <p style={{ color: "#fff", fontWeight: "600", margin: 0 }}>{industry}</p>
         </div>
         <div style={{ padding: "16px", borderRadius: "12px", background: "rgba(255,255,255,0.05)" }}>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", marginBottom: "4px" }}>Experience</p>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", marginBottom: "4px" }}>{t('shareableCard.experience')}</p>
           <p style={{ color: "#fff", fontWeight: "600", margin: 0 }}>{experienceLevel}</p>
         </div>
         <div style={{ padding: "16px", borderRadius: "12px", background: "rgba(255,255,255,0.05)" }}>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", marginBottom: "4px" }}>Format Grade</p>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", marginBottom: "4px" }}>{t('shareableCard.formatGrade')}</p>
           <p style={{ color: "#fff", fontWeight: "600", fontSize: "18px", margin: 0 }}>{formatGrade}</p>
         </div>
         {typeof improvementPotential === "number" && improvementPotential > 0 && (
           <div style={{ padding: "16px", borderRadius: "12px", background: "rgba(255,255,255,0.05)" }}>
-            <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", marginBottom: "4px" }}>Improvement</p>
-            <p style={{ color: "#fff", fontWeight: "600", margin: 0 }}>+{improvementPotential} pts</p>
+            <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", marginBottom: "4px" }}>{t('shareableCard.improvement')}</p>
+            <p style={{ color: "#fff", fontWeight: "600", margin: 0 }}>{t('shareableCard.improvementPts', { pts: improvementPotential })}</p>
           </div>
         )}
       </div>
@@ -327,7 +348,7 @@ export function ShareableScoreCard({
           borderLeft: "3px solid #22c55e"
         }}
       >
-        <p style={{ color: "#22c55e", fontSize: "12px", fontWeight: "500", marginBottom: "4px" }}>Top Strength</p>
+        <p style={{ color: "#22c55e", fontSize: "12px", fontWeight: "500", marginBottom: "4px" }}>{t('shareableCard.topStrength')}</p>
         <p style={{ color: "#fff", margin: 0 }}>{topStrength}</p>
       </div>
       )}

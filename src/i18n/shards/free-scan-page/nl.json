@@ -1,0 +1,273 @@
+{
+  "freeScanPage": {
+    "a11y": {
+      "resumeText": "Tekst van je cv",
+      "emailAddress": "Je e-mailadres"
+    },
+    "jobUrl": {
+      "truncated": "Deze vacature was langer dan we kunnen lezen, dus alleen het eerste deel staat in het vak."
+    },
+    "checkout": {
+      "postingOverCap": "De Volledige Analyse leest de eerste {{max}} tekens van deze vacature. De rest valt weg.",
+      "linkedInOverCap": "De Volledige Analyse leest de eerste {{max}} tekens van je LinkedIn-tekst. De rest valt weg."
+    },
+    "hero": {
+      "dropzone": "Of zet je cv hier neer: PDF, DOCX of TXT",
+      "dropzoneActive": "Laat hier los: de scan is een paar seconden weg"
+    },
+    "parseCheck": {
+      "fromYourFile": "Deze controles zijn uitgevoerd op de tekst die we uit je bestand hebben gehaald. Een ATS gebruikt zijn eigen lezer, die sommige delen anders kan zien.",
+      "section": {
+        "summary": "Samenvatting",
+        "experience": "Werkervaring",
+        "education": "Opleiding",
+        "skills": "Vaardigheden"
+      },
+      "label": {
+        "sections": "Sectiekoppen",
+        "contact": "Contactgegevens",
+        "dates": "Datums",
+        "encoding": "Tekencodering",
+        "iconGlyphs": "Tekens uit icoonlettertypen",
+        "lines": "Regelstructuur",
+        "layout": "Kolomindeling"
+      },
+      "detail": {
+        "sectionsAll": "Alle {{n}} standaard sectiekoppen zijn gevonden ({{found}}).",
+        "sectionsNone": "Er zijn geen standaard sectiekoppen gevonden. De meeste ATS'en delen een cv op aan de hand van koppen zoals Werkervaring of Opleiding; zonder die koppen kan je inhoud in één blok belanden.",
+        "sectionsSome": "Gevonden: {{found}}. Geen herkenbare kop voor: {{missing}}.",
+        "contactHeaderOnly": "Je e-mailadres en telefoonnummer staan alleen in de koptekst van de pagina, die sommige ATS'en overslaan. Zet ze ook in de tekst van de eerste pagina.",
+        "contactBoth": "Je e-mailadres en telefoonnummer zijn allebei in de tekst gevonden.",
+        "contactBothLinkedIn": "Je e-mailadres, telefoonnummer en LinkedIn-adres zijn allemaal in de tekst gevonden.",
+        "contactNone": "Er is geen e-mailadres of telefoonnummer in de tekst gevonden. Als je bestand ze wel bevat, staan ze misschien in een afbeelding, een tekstvak of een koptekst die bij het uitlezen wordt overgeslagen.",
+        "contactEmailOnly": "Je e-mailadres is gevonden, maar geen telefoonnummer in een standaardnotatie.",
+        "contactPhoneOnly": "Je telefoonnummer is gevonden, maar geen e-mailadres in een standaardnotatie.",
+        "datesMany": "Er zijn {{n}} verschillende datums gevonden, dus een ATS kan waarschijnlijk je loopbaan en je tijd in elke functie reconstrueren.",
+        "datesNone": "Er zijn geen datums in een herkenbare vorm (zoals jan 2020 of 2020-2023) gevonden. Een ATS gebruikt datums om je ervaring en eventuele gaten te bepalen.",
+        "datesOne": "Er is maar één datum gevonden. Als je meerdere functies noemt, missen de meeste daarvan misschien begin- en einddatums die een ATS kan lezen.",
+        "encodingOk": "Er zijn geen kapotte tekens gevonden in de uitgelezen tekst.",
+        "encodingBroken": "Tekens die niet konden worden gedecodeerd: {{n}}. Een lettertype in je pdf is waarschijnlijk niet aan standaard-Unicode gekoppeld, en een ATS dat het op dezelfde manier leest, ziet dezelfde onleesbare tekst.",
+        "iconsNone": "Er zijn geen tekens uit icoonlettertypen gevonden in de uitgelezen tekst.",
+        "iconsFound": "Tekens uit icoonlettertypen gevonden: {{n}}. Sjablonen tekenen de symbolen voor telefoon, e-mail en LinkedIn vaak met een icoonlettertype; een ATS ziet daar een los teken, niet het icoon.",
+        "linesNormal": "De tekst kwam eruit met normale regeleinden (ongeveer {{chars}} tekens per regel).",
+        "linesLong": "De tekst kwam eruit met ongewoon lange regels (ongeveer {{chars}} tekens per regel). Een tabel of tekstvak heeft misschien meerdere regels samengevoegd; controleer of je opsommingspunten niet in elkaar overlopen.",
+        "linesFlat": "De tekst kwam eruit met bijna geen regeleinden (ongeveer {{chars}} tekens per regel), een teken van een tabelindeling of tekstvakken die tot één blok zijn platgedrukt. Een ATS kan je secties en opsommingspunten kwijtraken.",
+        "layoutSingle": "Er is geen indeling met meerdere kolommen gevonden: de tekst leest in één volgorde.",
+        "layoutColumns": "Er is een indeling met meerdere kolommen gevonden in je pdf. Tekstextractors lezen in bestandsvolgorde, niet in visuele volgorde, dus kolommen raken vaak door elkaar of worden in de verkeerde volgorde gelezen."
+      }
+    },
+    "industry": {
+      "cybersecurity": "Cyberbeveiliging",
+      "logistics": "Logistiek",
+      "real_estate": "Vastgoed",
+      "insurance": "Verzekeringen",
+      "nonprofit": "Non-profit",
+      "biotech": "Biotechnologie",
+      "aviation": "Luchtvaart",
+      "energy": "Energie",
+      "skilled_trades": "Vakmanschap en techniek",
+      "customer_success": "Klantsucces",
+      "pharmacy": "Farmacie",
+      "dental": "Tandheelkunde",
+      "veterinary": "Diergeneeskunde",
+      "fitness": "Fitness",
+      "media": "Media",
+      "telecom": "Telecommunicatie",
+      "agriculture": "Landbouw",
+      "sports_management": "Sportmanagement",
+      "entertainment": "Entertainment",
+      "academia": "Wetenschap en onderzoek",
+      "construction_management": "Bouwmanagement",
+      "architecture": "Architectuur",
+      "social_work": "Maatschappelijk werk",
+      "childcare": "Kinderopvang",
+      "beauty": "Schoonheidsverzorging",
+      "culinary": "Culinair",
+      "law_enforcement": "Politie en handhaving",
+      "environmental": "Milieu",
+      "gaming": "Gaming",
+      "ecommerce": "E-commerce",
+      "translation": "Vertaling",
+      "event_planning": "Evenementenorganisatie",
+      "administrative": "Administratie",
+      "library": "Bibliotheekwezen",
+      "clergy": "Geestelijke zorg",
+      "mining": "Mijnbouw",
+      "maritime": "Maritiem",
+      "landscaping": "Hoveniers en groenvoorziening",
+      "janitorial": "Schoonmaak",
+      "general": "Algemeen / Overig"
+    },
+    "confidence": {
+      "high": "hoog",
+      "medium": "gemiddeld",
+      "low": "laag"
+    },
+    "diagnostic": {
+      "title": "Diagnoserapport van je cv",
+      "report": "Rapport",
+      "date": "Datum",
+      "subject": "Onderwerp",
+      "candidate": "Kandidaat",
+      "industry": "Sector",
+      "benchmarks": "Benchmarks",
+      "benchmarksMeasured": "gemeten uit echte scans",
+      "benchmarksEstimated": "sectorschattingen",
+      "engine": "Engine",
+      "footer": "Als je precies dit document opnieuw scant, krijg je dit rapport-ID terug. Waar aangegeven zijn de resultaten deterministisch, en elk herschreven opsommingspunt wordt met het document vergeleken."
+    },
+    "band": {
+      "ats": {
+        "excellent": "Uitstekend: vacaturesites zouden dit probleemloos moeten lezen.",
+        "good": "Goed: de meeste vacaturesites lezen dit probleemloos.",
+        "fair": "Redelijk: sommige sites lezen delen misschien verkeerd.",
+        "weak": "Zwak: sites lezen belangrijke delen misschien verkeerd of laten ze weg."
+      },
+      "recruiter": {
+        "excellent": "Uitstekend: een recruiter ziet duidelijke, aangetoonde impact.",
+        "good": "Goed: een recruiter ziet solide impact; een paar regels kunnen meer laten zien.",
+        "fair": "Redelijk: meer cijfers en resultaten zouden een recruiter helpen.",
+        "weak": "Zwak: een recruiter ziet meer taken dan resultaten."
+      }
+    },
+    "enhanced": {
+      "locatedIn": "Gevonden in: {{places}}"
+    },
+    "share": {
+      "yourResults": "Je resultaten"
+    },
+    "metric": {
+      "formatA": "Een ATS kan dit goed lezen",
+      "formatB": "Kleine opmaakaanpassingen nodig",
+      "formatC": "Kan leesfouten veroorzaken",
+      "formatD": "Een ATS kan je gegevens door elkaar halen",
+      "readEasy": "Makkelijk te scannen",
+      "readSome": "Sommige secties zijn lastig te scannen",
+      "readHard": "Lastig te scannen"
+    },
+    "keywordImpact": {
+      "critical": "Onmisbaar",
+      "high": "Grote impact",
+      "medium": "Nuttig"
+    },
+    "keywordCategory": {
+      "certification": "Certificering",
+      "tool": "Tool",
+      "skill": "Vaardigheid",
+      "methodology": "Methode",
+      "metric": "Kengetal",
+      "regulation": "Regelgeving"
+    },
+    "xray": {
+      "flagged": "Gemarkeerde regels: {{n}}",
+      "legendIntro": "Je cv zoals wij het lezen, met aantekeningen:",
+      "legendWeak": "rode onderstreping: een zwak opsommingspunt (beweeg erover voor de reden)",
+      "legendAmber": "oranje: geen cijfers",
+      "legendGreen": "groen: een sterk actiewerkwoord",
+      "showLess": "Minder tonen",
+      "showAll": "Alle regels tonen ({{n}})"
+    },
+    "email": {
+      "invalid": "Vul een geldig e-mailadres in.",
+      "failed": "Versturen lukt nu niet. De pdf-download hierboven werkt ook offline."
+    },
+    "pulse": {
+      "notAsked": "We konden deze keer de bevestigingslink voor de maandelijkse marktpuls niet versturen. Vink het vakje opnieuw aan bij je volgende rapport."
+    },
+    "pdf": {
+      "title": "DIAGNOSERAPPORT VAN JE CV",
+      "meta": "Rapport #{{id}}  ·  {{date}}  ·  Engine {{engine}}",
+      "subject": "Onderwerp: {{name}}  ·  Sector: {{industry}}  ·  Benchmarks: {{benchmarks}}",
+      "score": "ATS-score: {{score}}/100",
+      "band": "(modelbandbreedte {{low}}-{{high}})",
+      "projected": "ongeveer {{score}} na de verbeteringen (een ruwe indicatie)",
+      "breakdown": "Uitsplitsing: trefwoorden {{keywords}}%  ·  opmaak {{format}}%  ·  kwantificering {{quantification}}%",
+      "findings": "Bevindingen: {{critical}} kritiek  ·  {{warnings}} waarschuwingen  ·  {{passed}} geslaagd",
+      "fixPlan": "Je verbeterplan van {{minutes}} minuten:",
+      "stepCost": "(ongeveer {{minutes}} min, +{{points}} ptn)",
+      "sourceOnet": "Verwachte trefwoorden afkomstig uit O*NET {{code}} (Amerikaans ministerie van Arbeid: {{occupation}}).",
+      "sourcePosting": "Trefwoorden vergeleken met de vacature die je hebt opgegeven.",
+      "footer": "In de Volledige Analyse worden elk herschreven opsommingspunt en de regel die het citeert met je cv vergeleken. Alle details: resumebooster.work"
+    },
+    "report": {
+      "scoreBand": "Score {{score}} valt in een modelbandbreedte van {{low}}–{{high}}. De bandbreedte loopt van onze regelgebaseerde berekening tot de AI-schatting: één exact getal zou meer precisie suggereren dan er is.",
+      "preparing": "Je rapport wordt voorbereid…"
+    },
+    "market": {
+      "title": "Marktinformatie: {{country}}",
+      "hotSkills": "Gevraagde vaardigheden (handmatig samengesteld)",
+      "risingKeywords": "Opkomende trefwoorden (handmatig samengesteld)",
+      "cvNorms": "Cv-normen: {{country}}"
+    },
+    "ats": {
+      "target": "Doel-ATS:",
+      "detected": "We hebben vastgesteld dat dit bedrijf {{name}} gebruikt. Het opmaakadvies hierboven is op dat systeem afgestemd."
+    },
+    "execScope": {
+      "title": "Controle van je leidinggevende reikwijdte",
+      "signals": "{{n}}/{{total}} signalen van reikwijdte",
+      "intro": "Op dit niveau zoeken recruiters eerst naar bewijs van reikwijdte.",
+      "teamSize": "Teamgrootte",
+      "budget": "Verantwoordelijkheid voor budget of winst-en-verlies",
+      "impact": "Gekwantificeerde bedrijfsimpact",
+      "board": "Contact met raad van bestuur of governance",
+      "strategy": "Taal met strategische reikwijdte",
+      "addNext": "Voeg hierna toe:"
+    },
+    "sectionAudit": {
+      "title": "Controle van de sectielengte",
+      "good": "Goed",
+      "tooLong": "Te lang",
+      "missing": "Ontbreekt",
+      "tooShort": "Te kort",
+      "words": "{{n}} woorden",
+      "target": "(doel {{min}}–{{max}})"
+    },
+    "parsePreview": {
+      "title": "ATS-leesvoorbeeld",
+      "subtitle": "Wat een ATS leest",
+      "note": "Opmaak (vet, kolommen, iconen) wordt verwijderd. Als je naam, functietitel of belangrijke secties hier niet duidelijk zichtbaar zijn, mist een ATS ze misschien."
+    },
+    "questions": {
+      "triggeredBy": "Aanleiding:",
+      "prepare": "Bereid voor:"
+    },
+    "toast": {
+      "creditUsedTitle": "Scantegoed gebruikt",
+      "creditUsed": "Je zat boven de gratis limiet van vandaag, dus 1 gekocht tegoed heeft deze scan gedekt.",
+      "creditUsedRemaining": "Je zat boven de gratis limiet van vandaag, dus 1 gekocht tegoed heeft deze scan gedekt. Resterend tegoed: {{remaining}}.",
+      "budgetTitle": "Te veel verzoeken op dit moment",
+      "budgetBody": "Er kwamen dit uur te veel scans vanaf je verbinding. Probeer het over ongeveer {{minutes}} min opnieuw. Dit is niet je daglimiet.",
+      "busyTitle": "De analyse is druk bezet",
+      "busyBody": "Onze analyse is op dit moment druk bezet. Probeer het over een minuut opnieuw."
+    },
+    "intent": {
+      "heading": "Maak je scan persoonlijk",
+      "optional": "(optioneel, 5 seconden)",
+      "situation": {
+        "actively_applying": "Actief aan het solliciteren",
+        "exploring": "Opties aan het verkennen",
+        "career_change": "Carrièreswitch",
+        "first_job": "Eerste baan",
+        "freelance": "Freelance"
+      },
+      "targetRoleLabel": "Gewenste functie",
+      "targetRolePlaceholder": "Gewenste functie (bijv. Senior Data Engineer): scherpt trefwoorden en benchmarks aan",
+      "countryLabel": "Land waar je solliciteert",
+      "countryAuto": "Solliciteren in… (landnormen automatisch herkennen)"
+    },
+    "parse": {
+      "poorTitle": "Dit cv is mogelijk niet goed gelezen.",
+      "fairTitle": "Een opmerking over hoe je bestand is gelezen.",
+      "found": "We vonden: {{issues}}.",
+      "poorAdvice": "De scores hieronder zijn mogelijk onbetrouwbaar. Upload een DOCX of plak de tekst rechtstreeks.",
+      "fairAdvice": "Als het rapport niet klopt, plak de tekst dan rechtstreeks.",
+      "issue": {
+        "fewWords": "slechts {{n}} woorden uitgelezen",
+        "lowLetters": "een ongewoon laag aandeel letters ten opzichte van symbolen",
+        "garbled": "onleesbare tekens",
+        "noSections": "geen standaard cv-secties"
+      }
+    }
+  }
+}
