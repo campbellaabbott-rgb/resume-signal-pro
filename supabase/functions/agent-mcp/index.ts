@@ -934,8 +934,18 @@ const CARD_STRUCTURED_FIELDS = [
   "experienceBand", "minYears", "department",
 ] as const;
 
+/**
+ * Shared readers this connector does not use although it hands the postings
+ * on. OD14-ASHBY-1, owner option "stop" (2026-11-16): Ashby publishes its form
+ * only under a path its robots file disallows, so an Ashby posting gets the
+ * apply link and what the posting asks for, as on a system with no reader.
+ * Mirrored on /agents by MCP_FORM_NOT_READ_HERE.
+ */
+const FORM_NOT_READ_HERE: readonly string[] = ["ashby"];
+/** The shared readers this connector uses: none for a system it does not hand on, whose postings are refused before any form is read, and none it stopped. */
+const CONNECTOR_FORM_VENDORS: readonly string[] = FORM_READER_VENDORS.filter((v) => !isNoRedistributionSource(v) && !FORM_NOT_READ_HERE.includes(v));
 /** The vendors whose application form apply_myself reads for this caller (owner decision R2: the public-API pair only inside ChatGPT). */
-const formVendorsFor = (edition: Edition): readonly string[] => edition === "chatgpt" ? PUBLIC_API_FORM_VENDORS : FORM_READER_VENDORS;
+const formVendorsFor = (edition: Edition): readonly string[] => edition === "chatgpt" ? PUBLIC_API_FORM_VENDORS : CONNECTOR_FORM_VENDORS;
 
 /**
  * THE SLIM CARD A MODEL READS — not the 40-field row the site renders.

@@ -36,11 +36,12 @@ export type McpToolTier = "read" | "paid" | "apply";
  * label for each) by src/test/the-agents-page-sells-nothing-and-sends-nothing
  * .test.tsx. Everywhere else the AI reads the posting and the person fills in
  * the employer's form. Order: the spec's (Greenhouse first, by volume).
- * Declared above the tool list, whose apply_myself sentence reads it.
+ * Declared above the tool list, whose apply_myself sentence reads it. Nor is
+ * a reader the connector stopped named (MCP_FORM_NOT_READ_HERE): Ashby left
+ * with OD14-ASHBY-1.
  */
 export const MCP_FORM_VENDORS: ReadonlyArray<{ key: string; label: string }> = [
   { key: "greenhouse", label: "Greenhouse" },
-  { key: "ashby", label: "Ashby" },
   { key: "recruitee", label: "Recruitee" },
   { key: "breezy", label: "Breezy" },
   { key: "pinpoint", label: "Pinpoint" },
@@ -62,6 +63,14 @@ export const MCP_FORM_VENDORS: ReadonlyArray<{ key: string; label: string }> = [
  * the-page-says-six fails while a vendor waits here past its build.
  */
 export const MCP_FORM_VENDORS_AFTER_DEPLOY: ReadonlyArray<{ key: string; label: string }> = [];
+
+/**
+ * Shared form readers the connector does not use although it hands their
+ * postings on: agent-mcp's FORM_NOT_READ_HERE, pinned equal by
+ * the-page-says-six. OD14-ASHBY-1 (owner option "stop", 2026-11-16): Ashby
+ * publishes its form only under a path its robots file disallows.
+ */
+export const MCP_FORM_NOT_READ_HERE: readonly string[] = ["ashby"];
 
 /**
  * The form vendors read inside ChatGPT: only the two with published public

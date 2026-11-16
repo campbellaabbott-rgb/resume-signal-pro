@@ -87,7 +87,7 @@ afterAll(() => { for (const d of dirs) { try { rmSync(d, { recursive: true, forc
  * and a good deploy is judged with them recorded, as the integrator records
  * them before merging that commit.
  */
-const OWNER_SHIPPED: Record<string, string> = {};
+const OWNER_SHIPPED: Record<string, string> = { "OD14-ASHBY-1": "stop" };
 
 function run(routes: Route[], o: { keylessCalls?: boolean; decided?: Record<string, string> } = {}): { lines: string[]; calls: string[]; out: string } {
   const dir = mkdtempSync(join(tmpdir(), "vd99bc-"));
@@ -440,7 +440,8 @@ describe("the owner keys", () => {
   it("OD14-REDIST-1 \"withhold\": PASS on answers that withhold UKG, ADP and Breezy, and SEO-F15 then wants no Breezy reader", () => {
     const r = run(routes(OFF, { a: withRedist(OFF), mt: dropLabel(NEW_MT, "Breezy") }), { decided: { ...OWNER_SHIPPED, "OD14-REDIST-1": "withhold" } });
     expect(lineOf(r.lines, "OD14-REDIST-1"), r.out).toMatch(/^PASS  OD14-REDIST-1 decided \(withhold\)/);
-    expect(lineOf(r.lines, "SEO-F15", /form readers the connector uses/), r.out).toMatch(/^PASS .* of the 9 form readers/);
+    // Nine readers less any other choice this branch carries (OD14-ASHBY-1 takes Ashby out too).
+    expect(lineOf(r.lines, "SEO-F15", /form readers the connector uses/), r.out).toMatch(new RegExp(`^PASS .* of the ${"OD14-ASHBY-1" in OWNER_SHIPPED ? 8 : 9} form readers`));
   });
 
   it.each([
