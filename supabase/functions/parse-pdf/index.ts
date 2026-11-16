@@ -55,7 +55,8 @@ async function sendAlert(alertType: string, subject: string, details: Record<str
   } catch (e) { console.error("[ALERT] Error:", e); }
 }
 
-const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>, clientIp?: string) => {
+// The owner's alert says what happened, never who sent the file: no uploader address (S14X-101).
+const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>) => {
   const duration = Date.now() - startTime;
   const level = duration > VERY_SLOW_THRESHOLD ? 'CRITICAL' : duration > SLOW_REQUEST_THRESHOLD ? 'SLOW' : 'OK';
   console.log(`[PERF] ${operation} | ${duration}ms | ${level} | success=${success}${details ? ` | ${JSON.stringify(details)}` : ''}`);
@@ -64,7 +65,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
     EdgeRuntime.waitUntil(sendAlert(
       success ? `${operation}_slow` : `${operation}_error`,
       success ? `${operation} CRITICAL (${duration}ms)` : `${operation} Error`,
-      { operation, duration, level, success, ip: clientIp || 'unknown', ...details }
+      { operation, duration, level, success, ...details }
     ));
   }
 };
@@ -173,7 +174,7 @@ serve(async (req) => {
     const arrayBuffer = await file.arrayBuffer();
 
     if (arrayBuffer.byteLength === 0) {
-      trackPerformance(requestStartTime, 'parse-pdf', false, { reason: 'empty_file' }, clientIp);
+      trackPerformance(requestStartTime, 'parse-pdf', false, { reason: 'empty_file' });
       return new Response(
         JSON.stringify({ success: false, code: "empty_file", error: "This file appears to be empty. Please check the file and try again." }),
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -209,7 +210,7 @@ serve(async (req) => {
       // looks-right-but-isn't bug this session already found once with mammoth.
       const errorName = (loadError as { name?: string })?.name;
       if (errorName === 'PasswordException') {
-        trackPerformance(requestStartTime, 'parse-pdf', false, { reason: 'password_protected' }, clientIp);
+        trackPerformance(requestStartTime, 'parse-pdf', false, { reason: 'password_protected' });
         EdgeRuntime.waitUntil(
           (async () => {
             await supabase.rpc('log_parse_failure', {
@@ -230,7 +231,7 @@ serve(async (req) => {
         );
       }
       if (errorName === 'InvalidPDFException') {
-        trackPerformance(requestStartTime, 'parse-pdf', false, { reason: 'invalid_pdf' }, clientIp);
+        trackPerformance(requestStartTime, 'parse-pdf', false, { reason: 'invalid_pdf' });
       EdgeRuntime.waitUntil(
         (async () => {
           await supabase.rpc('log_parse_failure', {
@@ -259,7 +260,7 @@ serve(async (req) => {
     // of failing fast with a clear message.
     const MAX_PAGES = 50;
     if (doc.numPages > MAX_PAGES) {
-      trackPerformance(requestStartTime, 'parse-pdf', false, { pages: doc.numPages, reason: 'too_many_pages' }, clientIp);
+      trackPerformance(requestStartTime, 'parse-pdf', false, { pages: doc.numPages, reason: 'too_many_pages' });
       return new Response(
         JSON.stringify({
           success: false,
@@ -324,7 +325,7 @@ serve(async (req) => {
     const verdict = scannedVerdict(pageLengths);
 
     if (verdict.refuse) {
-      trackPerformance(requestStartTime, 'parse-pdf', false, { pages: doc.numPages, textLength: text.length, reason: 'scanned_or_empty' }, clientIp);
+      trackPerformance(requestStartTime, 'parse-pdf', false, { pages: doc.numPages, textLength: text.length, reason: 'scanned_or_empty' });
       console.log("[PARSE-PDF] Extracted text too short relative to page count — likely a scanned/image-based PDF. Length:", text.length, "Pages:", doc.numPages);
 
       EdgeRuntime.waitUntil(
@@ -353,7 +354,7 @@ serve(async (req) => {
     // failure mode than the scanned-PDF check above. Language-agnostic — does
     // not assume English or any specific script.
     if (looksGarbled(text)) {
-      trackPerformance(requestStartTime, 'parse-pdf', false, { pages: doc.numPages, textLength: text.length, reason: 'garbled_text' }, clientIp);
+      trackPerformance(requestStartTime, 'parse-pdf', false, { pages: doc.numPages, textLength: text.length, reason: 'garbled_text' });
       console.log("[PARSE-PDF] Extracted text looks garbled (broken encoding).");
 
       EdgeRuntime.waitUntil(
@@ -379,7 +380,7 @@ serve(async (req) => {
       );
     }
 
-    trackPerformance(requestStartTime, 'parse-pdf', true, { pages: doc.numPages, textLength: text.length }, clientIp);
+    trackPerformance(requestStartTime, 'parse-pdf', true, { pages: doc.numPages, textLength: text.length });
     console.log("[PARSE-PDF] PDF parsed successfully. Text length:", text.length);
 
     const links = linksLine(linkTargets, text);
@@ -411,7 +412,7 @@ serve(async (req) => {
     // say "PDF Parser Unavailable" and refuse the visitor's NEXT, valid file
     // for 30 seconds. They are a 422 that says what is wrong with the file.
     const damaged = isDamagedPdfError(error);
-    trackPerformance(requestStartTime, 'parse-pdf', false, { error: error instanceof Error ? error.message : 'Unknown', damaged }, clientIp);
+    trackPerformance(requestStartTime, 'parse-pdf', false, { error: error instanceof Error ? error.message : 'Unknown', damaged });
     console.error("[PARSE-PDF] Error:", error);
 
     // Log parse failure to database

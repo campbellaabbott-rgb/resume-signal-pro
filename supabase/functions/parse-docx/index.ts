@@ -50,7 +50,8 @@ async function sendAlert(alertType: string, subject: string, details: Record<str
   } catch (e) { console.error("[ALERT] Error:", e); }
 }
 
-const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>, clientIp?: string) => {
+// The owner's alert says what happened, never who sent the file: no uploader address (S14X-101).
+const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>) => {
   const duration = Date.now() - startTime;
   const level = duration > VERY_SLOW_THRESHOLD ? 'CRITICAL' : duration > SLOW_REQUEST_THRESHOLD ? 'SLOW' : 'OK';
   console.log(`[PERF] ${operation} | ${duration}ms | ${level} | success=${success}${details ? ` | ${JSON.stringify(details)}` : ''}`);
@@ -59,7 +60,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
     EdgeRuntime.waitUntil(sendAlert(
       success ? `${operation}_slow` : `${operation}_error`,
       success ? `${operation} CRITICAL (${duration}ms)` : `${operation} Error`,
-      { operation, duration, level, success, ip: clientIp || 'unknown', ...details }
+      { operation, duration, level, success, ...details }
     ));
   }
 };
@@ -172,7 +173,7 @@ serve(async (req) => {
     const arrayBuffer = await file.arrayBuffer();
 
     if (arrayBuffer.byteLength === 0) {
-      trackPerformance(requestStartTime, 'parse-docx', false, { reason: 'empty_file' }, clientIp);
+      trackPerformance(requestStartTime, 'parse-docx', false, { reason: 'empty_file' });
       return new Response(
         JSON.stringify({ success: false, code: "empty_file", error: "This file appears to be empty. Please check the file and try again." }),
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -190,7 +191,7 @@ serve(async (req) => {
     // it must be the legacy format, which would be actively wrong for an
     // encrypted modern file.
     if (isOleCompoundFile(arrayBuffer)) {
-      trackPerformance(requestStartTime, 'parse-docx', false, { reason: 'legacy_doc_or_encrypted' }, clientIp);
+      trackPerformance(requestStartTime, 'parse-docx', false, { reason: 'legacy_doc_or_encrypted' });
       EdgeRuntime.waitUntil(
         (async () => {
           await supabase.rpc('log_parse_failure', {
@@ -254,7 +255,7 @@ serve(async (req) => {
       // S14X-281: a page embedded as web content (w:altChunk) that could not
       // be read is named as such, with the way out.
       const reason = result.altChunks.unreadable > 0 ? 'web_export' : 'empty_or_too_short';
-      trackPerformance(requestStartTime, 'parse-docx', false, { textLength: text.length, reason }, clientIp);
+      trackPerformance(requestStartTime, 'parse-docx', false, { textLength: text.length, reason });
       console.log("[PARSE-DOCX] Extracted text too short:", text.length);
 
       EdgeRuntime.waitUntil(
@@ -289,7 +290,7 @@ serve(async (req) => {
     // surfacing a clear, actionable error. Language-agnostic — does not assume
     // English or any specific script.
     if (looksGarbled(text)) {
-      trackPerformance(requestStartTime, 'parse-docx', false, { textLength: text.length, reason: 'garbled_text' }, clientIp);
+      trackPerformance(requestStartTime, 'parse-docx', false, { textLength: text.length, reason: 'garbled_text' });
       console.log("[PARSE-DOCX] Extracted text looks garbled (broken encoding).");
 
       EdgeRuntime.waitUntil(
@@ -314,7 +315,7 @@ serve(async (req) => {
       );
     }
 
-    trackPerformance(requestStartTime, 'parse-docx', true, { textLength: text.length }, clientIp);
+    trackPerformance(requestStartTime, 'parse-docx', true, { textLength: text.length });
     console.log("[PARSE-DOCX] DOCX parsed successfully. Text length:", text.length);
 
     return new Response(
@@ -331,7 +332,7 @@ serve(async (req) => {
     // and refuse the visitor's next, valid file as "Document Parser
     // Unavailable". It is a 422 that names the file.
     const damaged = error instanceof DamagedDocxError;
-    trackPerformance(requestStartTime, 'parse-docx', false, { error: error instanceof Error ? error.message : 'Unknown', damaged }, clientIp);
+    trackPerformance(requestStartTime, 'parse-docx', false, { error: error instanceof Error ? error.message : 'Unknown', damaged });
     console.error("[PARSE-DOCX] Error:", error);
 
     // Log parse failure to database
