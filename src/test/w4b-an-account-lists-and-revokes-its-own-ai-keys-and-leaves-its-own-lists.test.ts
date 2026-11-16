@@ -108,7 +108,8 @@ describe("pulse_off", () => {
     expect(r.json).toEqual({ unsubscribed: 1 });
     expect(db.rows("market_pulse_subscribers").find((p) => p.email === EMAIL)?.unsubscribed_at).toBeTruthy();
     expect(db.rows("market_pulse_subscribers").find((p) => p.email === "them@example.com")?.unsubscribed_at).toBeNull();
-    expect((await ask({ action: "read" })).json.mail).toEqual({ marketPulse: [{ industry: "technology", state: "off" }] });
+    // An off row names no field (S14X-102: the stop clears what the address gave).
+    expect((await ask({ action: "read" })).json.mail).toEqual({ marketPulse: [{ industry: null, state: "off" }] });
   });
 
   it("is refused while the address is unproven", async () => {

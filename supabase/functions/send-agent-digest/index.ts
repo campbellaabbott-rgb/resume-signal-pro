@@ -80,6 +80,23 @@ const CLAIM_BATCH = 500;
 // back with its cursor intact (S8-052: the isolate dies near 150 s).
 const RUN_BUDGET_MS = 100_000;
 const MAX_ROWS_IN_EMAIL = 6;
+/**
+ * THE RUN IS STAMPED (NB-37): job_board_meta mail_run:agent_digest = {at,
+ * due, sent, givenBack, refused}, read by mail-watch R11, so a digest that
+ * stops trying is seen. due is the mails composed after the run's own
+ * opt-outs, entitlement and suppressions. Counts and a time only, best effort.
+ */
+const RUN_STAMP_KEY = "mail_run:agent_digest";
+
+async function stampRun(db: ReturnType<typeof createClient>, counts: { due: number; sent: number; givenBack: number; refused: number }) {
+  const at = new Date().toISOString();
+  try {
+    const { error } = await db.from("job_board_meta").upsert({ k: RUN_STAMP_KEY, v: { at, ...counts }, updated_at: at }, { onConflict: "k" });
+    if (error) console.warn("[AGENT-DIGEST] run stamp not written:", String(error.message ?? "").slice(0, 120));
+  } catch (e) {
+    console.warn("[AGENT-DIGEST] run stamp not written:", (e as Error)?.message?.slice(0, 120));
+  }
+}
 
 /** The footer's sentence for a mandate's apply mode; null when the mode is unknown. */
 export function modeSentence(mode: { apply_mode?: unknown; auto_apply_daily_cap?: unknown } | undefined): string | null {
@@ -193,14 +210,19 @@ Deno.serve(async (req) => {
         user_id: r.ad_user_id, email: r.ad_email, email_last_sent_at: r.ad_prev_sent_at,
         attempted: "ad_prev_attempted_at" in r ? { prev: r.ad_prev_attempted_at ?? null } : undefined,
       }));
-    if (list.length === 0) return json({ ok: true, sent: 0, skipped: 0, note: "no opted-in mandates due" });
+    if (list.length === 0) {
+      await stampRun(supabase, { due: 0, sent: 0, givenBack: 0, refused: 0 });
+      return json({ ok: true, sent: 0, skipped: 0, note: "no opted-in mandates due" });
+    }
     /**
      * Hand a claim back: the cursor returns to where it was, so the window is
      * retried. A mandate this run tried keeps the claim's attempt stamp and
      * waits behind the rest; one never reached (`untouched`) gets that stamp
      * back too. The attempt stamp is written only when the claim returned it.
      */
+    let givenBack = 0;
     const giveBack = async (m: { user_id: string; email_last_sent_at: string | null; attempted?: { prev: string | null } }, untouched = false) => {
+      givenBack++;
       const patch: Record<string, string | null> = { email_last_sent_at: m.email_last_sent_at };
       if (untouched && m.attempted) patch.email_attempted_at = m.attempted.prev;
       const { error: gbErr } = await supabase.from("agent_mandates").update(patch).eq("user_id", m.user_id);
@@ -233,11 +255,11 @@ Deno.serve(async (req) => {
       for (const r of (modeRows ?? []) as Array<{ user_id: string; apply_mode?: unknown; auto_apply_daily_cap?: unknown }>) modes.set(r.user_id, r);
     }
 
-    // Global unsubscribes win over everything.
-    const { data: suppressedRows } = await supabase.from("suppressed_emails").select("email");
-    const suppressed = new Set(((suppressedRows ?? []) as Array<{ email: string }>).map((r) => r.email.toLowerCase()));
-
-    let sent = 0, skipped = 0, handedBack = 0;
+    // Global unsubscribes win over everything. THE LIST IS READ PER ADDRESS
+    // (S14X-062): it was read whole, in one request with no range and its
+    // error thrown away, so past PostgREST's 1,000 rows, or on a failed read,
+    // a suppressed address was mailed.
+    let sent = 0, skipped = 0, handedBack = 0, suppressed = 0, suppressionUnread = 0, refused = 0, due = 0;
     for (let i = 0; i < list.length; i++) {
       const m = list[i];
       if (Date.now() - startedAt >= RUN_BUDGET_MS) {
@@ -249,7 +271,14 @@ Deno.serve(async (req) => {
       if (plansUnread) { await giveBack(m); skipped++; continue; }
       // The set holds user ids; the address is only where the mail goes. A
       // mandate nobody may mail keeps the claim's stamps.
-      if (!m.email || !entitled.has(m.user_id) || suppressed.has(m.email.toLowerCase())) { skipped++; continue; }
+      if (!m.email || !entitled.has(m.user_id)) { skipped++; continue; }
+      // A hit keeps the claim's stamps; a read that failed retries the window.
+      const { data: stop, error: stopErr } = await supabase.from("suppressed_emails").select("reason").eq("email", m.email.toLowerCase()).maybeSingle();
+      if (stopErr) {
+        console.warn(`[AGENT-DIGEST] do-not-mail read failed for ${m.user_id}; claim given back:`, String(stopErr.message ?? "").slice(0, 120));
+        await giveBack(m); suppressionUnread++; skipped++; continue;
+      }
+      if (stop) { suppressed++; skipped++; continue; }
 
       // Only picks the user hasn't been told about. Still 'ready' = not yet
       // approved or dismissed in the UI, so the mail never re-surfaces a
@@ -323,6 +352,7 @@ Deno.serve(async (req) => {
   </div>
 </body></html>`;
 
+      due++;
       try {
         const { error: sendErr } = await resend.emails.send({
           from: "Resume Booster <agent@resumebooster.work>",
@@ -332,7 +362,7 @@ Deno.serve(async (req) => {
           html,
           headers: unsubHeaders,
         });
-        if (sendErr) throw new Error(String((sendErr as { message?: string }).message ?? "send refused"));
+        if (sendErr) { refused++; throw new Error(String((sendErr as { message?: string }).message ?? "send refused")); }
         // The claim's stamp is the new cursor.
         sent++;
       } catch (e) {
@@ -343,7 +373,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({ ok: true, sent, skipped, handedBack });
+    await stampRun(supabase, { due, sent, givenBack, refused });
+    return json({ ok: true, sent, skipped, handedBack, suppressed, suppressionUnread });
   } catch (e) {
     console.error("[AGENT-DIGEST] error:", (e as Error)?.message);
     return json({ error: "Agent digest temporarily unavailable" }, 500);
