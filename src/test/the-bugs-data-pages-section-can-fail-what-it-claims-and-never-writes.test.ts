@@ -57,7 +57,7 @@ process.stdout.write(out);
 const dirs: string[] = [];
 afterAll(() => { for (const d of dirs) { try { rmSync(d, { recursive: true, force: true }); } catch { /* best effort */ } } });
 
-function run(routes: Route[], ownerDecided: Record<string, string> = {}): { lines: string[]; calls: string[]; out: string } {
+function run(routes: Route[], ownerDecided: Record<string, string | { choice: string; on?: string }> = {}): { lines: string[]; calls: string[]; out: string } {
   const dir = mkdtempSync(join(tmpdir(), "vdbdp-"));
   dirs.push(dir);
   mkdirSync(join(dir, "bin"));
@@ -295,5 +295,17 @@ describe("the owner's answer decides what an owner line judges", () => {
     const { lines } = run(routes(true), { ...OWNERS, "NB-5": "label them", "SEO-F10": "indexable: bake them" });
     expect(has(lines, "INFO", /^INFO  O1 NB-5 the owner chose to label/), show(lines)).toBe(true);
     expect(has(lines, "INFO", /^INFO  O4 SEO-F10 the owner chose/), show(lines)).toBe(true);
+  });
+
+  // The ledger records an answer as {choice, on} (bugs/integration,
+  // 2026-11-16): the line reads the choice, and a key the ledger does not
+  // name stays owner pending.
+  it("an answer recorded as {choice, on} is judged by its choice, and an unnamed key stays pending", () => {
+    const { lines } = run(routes(true), { "NB-5": { choice: "exclude", on: "2026-11-16" } });
+    expect(has(lines, "PASS", /^PASS  O1 NB-5 \(exclude\) /), show(lines)).toBe(true);
+    expect(lines.join("\n")).not.toContain("[object Object]");
+    for (const c of ["O2 SEO-F24", "O3 SEO-F03", "O4 SEO-F10", "O5 RC-S12-016"]) expect(has(lines, "INFO", new RegExp(`^INFO  ${c} owner pending`)), `${c}\n${show(lines)}`).toBe(true);
+    const label = run(routes(true), { "NB-5": { choice: "label them", on: "2026-11-16" } }).lines;
+    expect(has(label, "INFO", /^INFO  O1 NB-5 the owner chose to label \(label them\)/), show(label)).toBe(true);
   });
 });

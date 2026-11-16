@@ -165,7 +165,13 @@ const say = (v, m) => console.log(v + "  " + m);
 const head = (s) => JSON.stringify(String(s).slice(0, 80));
 let ledger = null; try { ledger = JSON.parse(fs.readFileSync(process.env.VDDP_LEDGER, "utf8")); } catch {}
 const decided = (ledger && ledger.reservations && ledger.reservations["bug-round"] && ledger.reservations["bug-round"].ownerDecided) || {};
-const owner = (k) => (decided && typeof decided === "object" && Object.prototype.hasOwnProperty.call(decided, k) ? String(decided[k] ?? "") : null);
+// An answer is a string, or an object naming its choice (and the day): the
+// ledger records {choice, on}, and the choice is the answer, never the object.
+const owner = (k) => {
+  if (!(decided && typeof decided === "object" && Object.prototype.hasOwnProperty.call(decided, k))) return null;
+  const v = decided[k];
+  return v !== null && typeof v === "object" ? String(v.choice ?? v.option ?? JSON.stringify(v)) : String(v ?? "");
+};
 
 // ---- the stages ----
 const si = json("si.json");
