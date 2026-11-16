@@ -490,10 +490,20 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
       "get_company_hiring_health",
       "get_category_fill_speed",
       "get_employer_benchmarks",
-      "get_actively_hiring_companies",
     ]) {
       expect(LIVE.get(name)?.file, `${name} must resolve to the late-closed_at migration`).toBe(LATE_DATE_FIX);
     }
+    // MOVED, NOT DROPPED, get_actively_hiring_companies alone: on 2026-11-12
+    // (bug round, data-pages lane, NB-5, the owner's answer "exclude") it was
+    // re-issued from the late-closed_at body with one change, staffing and
+    // recruiting boards left out. The pin follows it, and the late-closed_at
+    // exclusion it carried is asserted on the body that runs.
+    const STAFFING_FIX = "20261112197000_the_actively_hiring_list_leaves_out_staffing_boards.sql";
+    expect(LIVE.get("get_actively_hiring_companies")?.file, "get_actively_hiring_companies must resolve to the migration that leaves out staffing boards").toBe(STAFFING_FIX);
+    expect(
+      LIVE.get("get_actively_hiring_companies")?.code,
+      "the re-issue must carry the late-closed_at fix forward",
+    ).toMatch(/absence_basis IS DISTINCT FROM 'lap_backfill'/);
     // MOVED, NOT DROPPED. get_actively_hiring_companies was re-issued again in
     // 20260907010000: removing the seven-day floor from its COUNT (correct for
     // the median, which is what that migration was about) also removed the only
