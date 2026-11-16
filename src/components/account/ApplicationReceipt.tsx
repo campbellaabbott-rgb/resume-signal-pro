@@ -23,6 +23,7 @@
  */
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { dateTime as fmtDateTime } from "@/lib/format";
 import { ChevronDown, ShieldCheck, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -69,9 +70,7 @@ export function ApplicationReceipt(p: ReceiptProps) {
 
   if (!p.submittedAt) return null;
 
-  const when = new Date(p.submittedAt).toLocaleString(undefined, {
-    dateStyle: "medium", timeStyle: "short",
-  });
+  const when = fmtDateTime(p.submittedAt);
 
   return (
     <div className="rounded-lg border border-border">

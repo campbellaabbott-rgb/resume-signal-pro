@@ -17,6 +17,7 @@
 
 import { CalendarClock, History } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { date as fmtDate } from "@/lib/format";
 import {
   calendarDaysUntil, interviewSignals, isUpcomingInterview,
   type InterviewSignal, type TrackedApplication,
@@ -30,7 +31,7 @@ interface AppRow extends TrackedApplication {
 }
 
 export function InterviewsHub({ applications }: { applications: AppRow[] }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const upcoming = applications
     .filter((a) => isUpcomingInterview(a.interview_at))
     .sort((a, b) => Date.parse(a.interview_at!) - Date.parse(b.interview_at!))
@@ -64,28 +65,28 @@ export function InterviewsHub({ applications }: { applications: AppRow[] }) {
       case "closed-after":
         return {
           tone: "text-success",
-          text: t("accountPage.ivhClosedAfter",
+          text: t("accountView.ivhClosedAfter",
             "This posting came down {{d}} days after your interview, and hasn't gone back up.",
             { d: s.days }),
         };
       case "relisted-after":
         return {
           tone: "text-warning",
-          text: t("accountPage.ivhRelistedAfter",
+          text: t("accountView.ivhRelistedAfter",
             "This posting came down after your interview — but the same role has since gone back up.",
             { d: s.days }),
         };
       case "still-open":
         return {
           tone: "text-muted-foreground",
-          text: t("accountPage.ivhStillOpen",
+          text: t("accountView.ivhStillOpen",
             "Still live on the company's own feed, {{d}} days after your interview.",
             { d: s.days }),
         };
       case "closed-before":
         return {
           tone: "text-muted-foreground",
-          text: t("accountPage.ivhClosedBefore",
+          text: t("accountView.ivhClosedBefore",
             "We recorded this posting coming down before the interview date you saved — worth checking the date.",
           ),
         };
@@ -111,7 +112,7 @@ export function InterviewsHub({ applications }: { applications: AppRow[] }) {
                   {a.company}{a.role ? <span className="text-muted-foreground"> · {a.role}</span> : null}
                 </span>
                 <span className="shrink-0 text-[11px] font-semibold text-primary">
-                  {dayLabel(a.interview_at!.slice(0, 10) + "T00:00:00")} · {new Date(a.interview_at!.slice(0, 10) + "T00:00:00").toLocaleDateString()}
+                  {dayLabel(a.interview_at!.slice(0, 10) + "T00:00:00")} · {fmtDate(a.interview_at!.slice(0, 10), { lng: i18n.language })}
                 </span>
               </li>
             ))}
@@ -124,7 +125,7 @@ export function InterviewsHub({ applications }: { applications: AppRow[] }) {
           <div className="flex items-center gap-2 mb-2">
             <History className="w-4 h-4 text-primary" />
             <h2 className="font-semibold text-foreground text-sm">
-              {t("accountPage.ivhSinceTitle", "Since your interview")}
+              {t("accountView.ivhSinceTitle", "Since your interview")}
             </h2>
           </div>
           <ul className="space-y-2">
@@ -145,7 +146,7 @@ export function InterviewsHub({ applications }: { applications: AppRow[] }) {
               enough that a reader is entitled to ask how we could possibly
               know — and because it states the limit at the same time. */}
           <p className="text-[11px] text-muted-foreground mt-2">
-            {t("accountPage.ivhSinceProvenance",
+            {t("accountView.ivhSinceProvenance",
               "From our own daily record of this exact posting on the company's careers feed. A posting coming down means the ad was withdrawn — it doesn't tell us who was hired.")}
           </p>
         </div>

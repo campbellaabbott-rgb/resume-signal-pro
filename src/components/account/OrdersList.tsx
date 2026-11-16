@@ -12,6 +12,12 @@
  * a problem opens a mail to support naming the product, the date and the
  * order's last eight characters: never the whole session id, which opens the
  * purchase for whoever holds it.
+ *
+ * Open to run (S14X-221): a Full Analysis, Freelance Boost or transition
+ * plan runs when its buyer opens it, so a paid one nobody opened yet says
+ * that, not "preparing". An Agent Pass is held on no page (S14X-223): its row
+ * has no Open link, and the passes section shows what became of it. Dates and
+ * prices print in the reader's language (S14X-255).
  */
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -19,6 +25,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { purchaseLinkFor } from "../../../supabase/functions/_shared/purchase-links";
 import { AUTH_SUPPORT_EMAIL } from "@/config/auth-providers";
+import { date as fmtDate } from "@/lib/format";
 
 export type AccountOrder = {
   id: string;
@@ -26,13 +33,14 @@ export type AccountOrder = {
   product: string;
   productType: string | null;
   date: string;
-  status: "preparing" | "ready" | "needs_resume" | "failed" | "refunded" | "included";
+  status: "preparing" | "open_to_run" | "ready" | "needs_resume" | "failed" | "refunded" | "included";
   amountCents: number | null;
   currency: string | null;
 };
 
 const STATUS_STYLE: Record<AccountOrder["status"], string> = {
   preparing: "bg-warning/10 text-warning",
+  open_to_run: "bg-primary/10 text-primary",
   ready: "bg-success/10 text-success",
   needs_resume: "bg-warning/10 text-warning",
   failed: "bg-destructive/10 text-destructive",
@@ -40,9 +48,12 @@ const STATUS_STYLE: Record<AccountOrder["status"], string> = {
   included: "bg-primary/10 text-primary",
 };
 
+/** Products no page holds: the order row links nowhere. */
+const HELD_ON_NO_PAGE = new Set(["agent_pass"]);
+
 /** The site path a purchase mail's link opens, for a router link. */
 export function orderPath(o: Pick<AccountOrder, "productType" | "sessionId">): string | null {
-  if (!o.sessionId) return null;
+  if (!o.sessionId || HELD_ON_NO_PAGE.has(o.productType ?? "")) return null;
   const href = purchaseLinkFor(o.productType, o.sessionId);
   try {
     const u = new URL(href);
@@ -86,10 +97,12 @@ export function money(cents: number | null, currency: string | null, locale?: st
 }
 
 export function OrdersList({ orders }: { orders: AccountOrder[] }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lng = i18n.language;
   const [busy, setBusy] = useState<string | null>(null);
   const statusLabel: Record<AccountOrder["status"], string> = {
     preparing: t("orders.statusPreparing", "Preparing"),
+    open_to_run: t("accountView.statusOpenToRun", "Paid: open it to run"),
     ready: t("orders.statusReady", "Ready"),
     needs_resume: t("orders.statusNeedsResume", "Needs your résumé"),
     failed: t("orders.statusFailed", "Couldn't be made"),
@@ -120,12 +133,12 @@ export function OrdersList({ orders }: { orders: AccountOrder[] }) {
     <ul className="space-y-1.5" data-orders>
       {orders.map((o) => {
         const path = orderPath(o);
-        const price = money(o.amountCents, o.currency);
+        const price = money(o.amountCents, o.currency, lng);
         return (
           <li key={o.id} className="text-xs border border-border/50 rounded-lg px-2.5 py-1.5" data-order={o.id}>
             <div className="flex items-center justify-between gap-2">
               <span className="text-foreground truncate">{o.product}</span>
-              <span className="text-muted-foreground shrink-0">{new Date(o.date).toLocaleDateString()}</span>
+              <span className="text-muted-foreground shrink-0">{fmtDate(o.date, { lng })}</span>
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${STATUS_STYLE[o.status]}`} data-status={o.status}>{statusLabel[o.status]}</span>

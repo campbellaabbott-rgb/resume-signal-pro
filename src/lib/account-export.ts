@@ -10,6 +10,14 @@
  * migrations' owner policies), all of each, a page at a time, and the CV
  * files under the account's folder: each with a signed link to the file
  * itself (CV_LINK_SECONDS), since the CV is the personal data, not its name.
+ *
+ * WHAT ONLY THE SERVER CAN READ (S14X-100). The documents made for the
+ * account's purchases, the Full Analyses they point to, its Pro grants, API
+ * keys (by prefix), key requests, mailbox proofs, writing tool uses, checkout
+ * records and the lists its address is on are service-role only, so the
+ * browser cannot read them; get-account-data's export action does
+ * (collectServerExport). When that call fails, or the function answers without
+ * them, the file says so and why, rather than leaving them out silently.
  */
 
 /** Every table with an owner read policy, the column it is keyed on, and its name in the file. */
@@ -103,4 +111,23 @@ export async function collectAccountExport(client: ExportClient, uid: string, no
     };
   });
   return out;
+}
+
+/** The server's records for the file, or why they are not in it. */
+export type ServerExport = Record<string, unknown> | { notIncluded: true; reason: string };
+type Invoke = (fn: string, opts: { body: unknown }) => PromiseLike<{ data: unknown; error: unknown }>;
+
+/** The rows only the server can read about the account (get-account-data, action "export"). */
+export async function collectServerExport(invoke: Invoke): Promise<ServerExport> {
+  try {
+    const { data, error } = await invoke("get-account-data", { body: { action: "export" } });
+    if (error) return { notIncluded: true, reason: "the server could not be asked for them; download again in a minute" };
+    const records = (data as { serverRecords?: unknown } | null)?.serverRecords;
+    if (!records || typeof records !== "object" || Array.isArray(records)) {
+      return { notIncluded: true, reason: "the server did not send them; download again later" };
+    }
+    return records as Record<string, unknown>;
+  } catch {
+    return { notIncluded: true, reason: "the server could not be reached; download again in a minute" };
+  }
 }

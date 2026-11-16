@@ -34,6 +34,11 @@ const jwt = (extra: Record<string, unknown> = {}) =>
   `${b64({ alg: "none" })}.${b64({ sub: USER_ID, role: "authenticated", aud: "authenticated", amr: [{ method: "password", timestamp: 1 }], ...extra })}.sig`;
 const SESSION = jwt();
 const SESSION_ID = "11111111-2222-4333-8444-555555555555";
+/** Pro grant ids are uuids, and the reference that opens one is pro_<id>. */
+const G_USED = "aaaaaaaa-1111-4111-8111-000000000001";
+const G_OPEN = "aaaaaaaa-1111-4111-8111-000000000002";
+const G_GONE = "aaaaaaaa-1111-4111-8111-000000000003";
+const G_THEIRS = "aaaaaaaa-1111-4111-8111-000000000004";
 /** A session whose newest sign-in is an emailed code, `ageS` seconds ago. */
 const codeJwt = (ageS: number) => jwt({ amr: [{ method: "otp", timestamp: Math.floor(Date.now() / 1000) - ageS }], session_id: SESSION_ID, email: EMAIL });
 const FRESH_CODE = codeJwt(30);
@@ -73,9 +78,11 @@ beforeEach(() => {
   db.rpcs.scan_credit_balance = (a) => ({ data: a.p_email ? 5 : 0, error: null });
   db.rows("product_deliveries").push(
     { stripe_session_id: "cs_ready", customer_email: EMAIL, product_name: "Full Resume Analysis", product_type: "full_analysis", status: "delivered", amount_cents: 500, created_at: "2026-10-01T10:00:00Z" },
-    { stripe_session_id: "cs_resume", customer_email: EMAIL, product_name: "Cover Letter", product_type: "cover_letter", status: "failed", generation_error: "No résumé linked to this purchase", amount_cents: 400, created_at: "2026-10-02T10:00:00Z" },
+    // The statuses the writers store (stripe-webhook, retry-failed-deliveries,
+    // analyze-resume), not names no writer uses (S14X-221).
+    { stripe_session_id: "cs_resume", customer_email: EMAIL, product_name: "Cover Letter", product_type: "cover_letter", status: "generation_failed", generation_error: "resume_missing: No résumé linked to this purchase", retry_count: 0, max_retries: 0, amount_cents: 400, created_at: "2026-10-02T10:00:00Z" },
     { stripe_session_id: "cs_refund", customer_email: EMAIL, product_name: "Full Resume Analysis", product_type: "full_analysis", status: "refunded", amount_cents: 500, created_at: "2026-10-03T10:00:00Z" },
-    { stripe_session_id: "cs_making", customer_email: EMAIL, product_name: "Full Resume Analysis", product_type: "full_analysis", status: "generating", amount_cents: 500, created_at: "2026-10-04T10:00:00Z" },
+    { stripe_session_id: "cs_making", customer_email: EMAIL, product_name: "Cover Letter", product_type: "cover_letter", status: "payment_received", amount_cents: 400, created_at: "2026-10-04T10:00:00Z" },
     { stripe_session_id: "cs_bound", customer_email: "typed.at.checkout@example.com", product_name: "Full Resume Analysis", product_type: "full_analysis", status: "delivered", amount_cents: 500, created_at: "2026-10-05T10:00:00Z" },
   );
   // The checkout's record of the currency the buyer paid in (the price is
@@ -120,11 +127,11 @@ describe("S12-002: a proof recorded once keeps counting", () => {
 describe("orders the account owns by id", () => {
   it("a one-off bound by checkout_buyers shows with no proof; a Pro inclusion shows as included", async () => {
     db.rows("checkout_buyers").push({ stripe_session_id: "cs_bound", user_id: USER_ID });
-    db.rows("pro_grants").push({ id: "g1", user_id: USER_ID, product_name: "Full Resume Analysis", product_type: "full_analysis", created_at: "2026-10-06T10:00:00Z", revoked_at: null });
+    db.rows("pro_grants").push({ id: G_OPEN, user_id: USER_ID, product_name: "Full Resume Analysis", product_type: "full_analysis", created_at: "2026-10-06T10:00:00Z", revoked_at: null, consumed_at: null });
     const r = await ask();
     expect(r.json.mailboxProven).toBe(false);
     const ids = (r.json.orders as Array<{ id: string; status: string }>).map((o) => `${o.id}:${o.status}`);
-    expect(ids).toEqual(["grant:g1:included", "cs_bound:ready"]);
+    expect(ids).toEqual([`pro_${G_OPEN}:included`, "cs_bound:ready"]);
   });
 
   it("a checkout_buyers table that does not exist yet reads as no rows, not as an error", async () => {
@@ -137,6 +144,95 @@ describe("orders the account owns by id", () => {
     db.faults.push({ table: "pro_grants", op: "select", error: { code: "57014", message: "statement timeout" } });
     const r = await ask();
     expect(r.status).toBe(500);
+  });
+});
+
+type Order = { id: string; sessionId: string | null; status: string; product: string };
+const orderOf = (r: { json: Record<string, any> }) => Object.fromEntries((r.json.orders as Order[]).map((o) => [o.id, o]));
+
+describe("S14X-108: a Pro inclusion is listed once, under the reference that opens it", () => {
+  beforeEach(() => {
+    db.rows("pro_grants").push(
+      { id: G_USED, user_id: USER_ID, product_name: "Full Resume Analysis", product_type: "full_analysis", created_at: "2026-10-06T10:00:00Z", revoked_at: null, consumed_at: "2026-10-06T10:05:00Z" },
+      { id: G_OPEN, user_id: USER_ID, product_name: "Full Resume Analysis", product_type: "full_analysis", created_at: "2026-10-07T10:00:00Z", revoked_at: null, consumed_at: null },
+      { id: G_GONE, user_id: USER_ID, product_name: "Full Resume Analysis", product_type: "full_analysis", created_at: "2026-10-08T10:00:00Z", revoked_at: "2026-10-09T10:00:00Z", consumed_at: null },
+      { id: G_THEIRS, user_id: "00000000-0000-4000-8000-0000000b0bbb", product_name: "Full Resume Analysis", product_type: "full_analysis", created_at: "2026-10-08T10:00:00Z", revoked_at: null, consumed_at: null },
+    );
+    // What analyze-resume writes when a grant runs: a delivered row and the
+    // saved pointer, both under pro_<grant id>.
+    db.rows("product_deliveries").push({ stripe_session_id: `pro_${G_USED}`, customer_email: EMAIL, product_name: "Full Resume Analysis", product_type: "full_analysis", status: "delivered", amount_cents: 0, created_at: "2026-10-06T10:05:00Z" });
+    db.rows("purchased_content").push({ stripe_session_id: `pro_${G_USED}`, customer_email: EMAIL, product_name: "Full Resume Analysis", product_type: "full_analysis", created_at: "2026-10-06T10:05:00Z" });
+  });
+
+  it("a used inclusion is one ready order under pro_<id>, an unused one is included with its reference, a revoked one is refunded, and no grant: twin is listed", async () => {
+    db.rows("account_mailbox_proofs").push({ id: 1, user_id: USER_ID, email: EMAIL });
+    const r = await ask();
+    const pro = (r.json.orders as Order[]).filter((o) => /^(pro_|grant:)/.test(o.id)).map((o) => `${o.id}|${o.sessionId}|${o.status}`).sort();
+    expect(pro).toEqual([
+      `pro_${G_GONE}|pro_${G_GONE}|refunded`,
+      `pro_${G_OPEN}|pro_${G_OPEN}|included`,
+      `pro_${G_USED}|pro_${G_USED}|ready`,
+    ].sort());
+  });
+
+  it("an unproven account still reads its own grant's run by the grant's reference, never another account's grant", async () => {
+    const r = await ask();
+    expect(r.json.mailboxProven).toBe(false);
+    const byId = orderOf(r);
+    expect(byId[`pro_${G_USED}`]?.status).toBe("ready");
+    expect(byId[`pro_${G_THEIRS}`]).toBeUndefined();
+    expect((r.json.orders as Order[]).filter((o) => o.id.endsWith(G_USED))).toHaveLength(1);
+  });
+});
+
+describe("S14X-221: an order's status is read from the statuses the writers store", () => {
+  beforeEach(() => {
+    db.rows("account_mailbox_proofs").push({ id: 1, user_id: USER_ID, email: EMAIL });
+    db.rows("product_deliveries").push(
+      { stripe_session_id: "cs_fa_mailfail", customer_email: EMAIL, product_name: "Full Resume Analysis", product_type: "full_analysis", status: "email_failed", amount_cents: 500, created_at: "2026-10-10T10:00:00Z" },
+      { stripe_session_id: "cs_fa_paid", customer_email: EMAIL, product_name: "Full Resume Analysis", product_type: "full_analysis", status: "payment_received", amount_cents: 500, created_at: "2026-10-10T11:00:00Z" },
+      { stripe_session_id: "cs_fb_paid", customer_email: EMAIL, product_name: "Freelance Boost", product_type: "freelance_boost", status: "payment_received", amount_cents: 900, created_at: "2026-10-10T12:00:00Z" },
+      { stripe_session_id: "cs_cl_expired", customer_email: EMAIL, product_name: "Cover Letter", product_type: "cover_letter", status: "generation_failed", generation_error: "resume_expired: the résumé was removed", retry_count: 0, max_retries: 0, amount_cents: 400, created_at: "2026-10-11T10:00:00Z" },
+      { stripe_session_id: "cs_cl_posting", customer_email: EMAIL, product_name: "Cover Letter", product_type: "cover_letter", status: "generation_failed", generation_error: "job_posting_required: no posting text", retry_count: 0, max_retries: 0, amount_cents: 400, created_at: "2026-10-11T11:00:00Z" },
+      { stripe_session_id: "cs_cl_retired", customer_email: EMAIL, product_name: "Apply Assistant", product_type: "apply_assistant", status: "generation_failed", generation_error: "undeliverable_retired: no longer sold", retry_count: 0, max_retries: 0, amount_cents: 700, created_at: "2026-10-12T10:00:00Z" },
+      { stripe_session_id: "cs_cl_spent", customer_email: EMAIL, product_name: "Cover Letter", product_type: "cover_letter", status: "generation_failed", generation_error: "gateway 502", retry_count: 8, max_retries: 8, amount_cents: 400, created_at: "2026-10-12T11:00:00Z" },
+      { stripe_session_id: "cs_cl_retry", customer_email: EMAIL, product_name: "Cover Letter", product_type: "cover_letter", status: "generation_failed", generation_error: "gateway 502", retry_count: 2, max_retries: 8, amount_cents: 400, created_at: "2026-10-12T12:00:00Z" },
+      { stripe_session_id: "cs_cl_nocap", customer_email: EMAIL, product_name: "Cover Letter", product_type: "cover_letter", status: "generation_failed", generation_error: "gateway 502", retry_count: 1, max_retries: 0, amount_cents: 400, created_at: "2026-10-12T13:00:00Z" },
+      { stripe_session_id: "cs_cl_mailfail", customer_email: EMAIL, product_name: "Cover Letter", product_type: "cover_letter", status: "email_failed", amount_cents: 400, created_at: "2026-10-13T10:00:00Z" },
+      { stripe_session_id: "cs_cl_made", customer_email: EMAIL, product_name: "Cover Letter", product_type: "cover_letter", status: "content_generated", amount_cents: 400, created_at: "2026-10-13T11:00:00Z" },
+    );
+    db.rows("purchased_content").push({ stripe_session_id: "cs_cl_mailfail", customer_email: EMAIL, product_name: "Cover Letter", product_type: "cover_letter", created_at: "2026-10-13T10:01:00Z" });
+  });
+
+  it("a paid product that runs on its own page reads open to run until it has run; a failed mail of a saved copy is still ready", async () => {
+    const byId = orderOf(await ask());
+    expect(byId.cs_fa_mailfail.status).toBe("open_to_run");
+    expect(byId.cs_fa_paid.status).toBe("open_to_run");
+    expect(byId.cs_fb_paid.status).toBe("open_to_run");
+    expect(byId.cs_cl_mailfail.status).toBe("ready");
+    expect(byId.cs_cl_made.status).toBe("ready");
+  });
+
+  it("a generation failure reads needs your résumé, couldn't be made, or preparing while a retry is still due", async () => {
+    const byId = orderOf(await ask());
+    expect(byId.cs_resume.status).toBe("needs_resume");
+    expect(byId.cs_cl_expired.status).toBe("needs_resume");
+    expect(byId.cs_cl_posting.status).toBe("needs_resume");
+    expect(byId.cs_cl_retired.status).toBe("failed");
+    expect(byId.cs_cl_spent.status).toBe("failed");
+    expect(byId.cs_cl_nocap.status).toBe("failed");
+    expect(byId.cs_cl_retry.status).toBe("preparing");
+    expect(byId.cs_making.status).toBe("preparing");
+  });
+
+  it("the older failure names keep the rule they had", async () => {
+    db.rows("product_deliveries").push(
+      { stripe_session_id: "cs_old_failed", customer_email: EMAIL, product_name: "Cover Letter", product_type: "cover_letter", status: "failed", generation_error: "No résumé linked to this purchase", amount_cents: 400, created_at: "2026-09-01T10:00:00Z" },
+      { stripe_session_id: "cs_old_expired", customer_email: EMAIL, product_name: "Cover Letter", product_type: "cover_letter", status: "expired", amount_cents: 400, created_at: "2026-09-02T10:00:00Z" },
+    );
+    const byId = orderOf(await ask());
+    expect(byId.cs_old_failed.status).toBe("needs_resume");
+    expect(byId.cs_old_expired.status).toBe("failed");
   });
 });
 

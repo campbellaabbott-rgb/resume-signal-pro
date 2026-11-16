@@ -269,12 +269,16 @@ describe("the get-account-data handler", () => {
       return { data: (args.p_email ? pools[String(args.p_email)] ?? 0 : 0) + (args.p_user_id === OWNER ? 3 : 0), error: null };
     },
     from: (table: string) => {
+      let byReference = false;
       const q: Record<string, unknown> = {
         select: () => q,
         eq: (_c: string, v: unknown) => { purchaseReads.push([table, v]); return q; },
+        // A read by a list of references (a Pro grant's run, S14X-108): the
+        // one stored row here carries no reference, so none matches.
+        in: () => { byReference = true; return q; },
         order: () => q,
         // The account's passes are read by user id (wave 3, L6-12): none here.
-        limit: () => Promise.resolve({ data: table === "agent_passes" ? [] : [{ product_name: "Premium Resume Package", created_at: "2026-09-30T10:00:00Z" }], error: null }),
+        limit: () => Promise.resolve({ data: table === "agent_passes" || byReference ? [] : [{ product_name: "Premium Resume Package", created_at: "2026-09-30T10:00:00Z" }], error: null }),
       };
       return q;
     },
@@ -303,8 +307,9 @@ describe("the get-account-data handler", () => {
     const r = await account(JWT.squatter);
     expect(r.status).toBe(200);
     expect(r.json).toMatchObject({ credits: 0, purchases: [], passes: [], mailboxProven: false });
-    // Orders by the account's own id only (its Pro grants), never the address's.
-    expect((r.json.orders as Array<{ id: string }>).every((o) => o.id.startsWith("grant:"))).toBe(true);
+    // Orders by the account's own id only (its Pro grants, each under the
+    // pro_<grant id> reference /success opens, S14X-108), never the address's.
+    expect((r.json.orders as Array<{ id: string }>).every((o) => o.id.startsWith("pro_"))).toBe(true);
     // No purchase is read by the address.
     expect(purchaseReads.filter(([t]) => t === "purchased_content" || t === "product_deliveries")).toEqual([]);
     expect(balanceArgs[0]).toMatchObject({ p_email: null, p_user_id: SQUATTER });

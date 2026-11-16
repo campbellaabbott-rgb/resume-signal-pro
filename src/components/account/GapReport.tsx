@@ -4,10 +4,15 @@
 // absent, with counts, and hands the list to the builder through the same
 // session mechanism the scan report uses. Only renders with enough scored
 // rows to be meaningful (the caller gates on that).
+//
+// The hand-off names the text it was made for (S14X-285): `fingerprint` is
+// builder-import's textFingerprint of the résumé put in the session, so the
+// builder can drop a hand-off made for a different text.
 
 import { useNavigate } from "react-router-dom";
 import { Wrench, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { textFingerprint } from "@/lib/builder-import";
 
 export function GapReport({ gaps, withFit, resumeText }: {
   gaps: Array<[string, number]>;
@@ -25,6 +30,7 @@ export function GapReport({ gaps, withFit, resumeText }: {
         rewrites: [],
         keywords: gaps.map(([k]) => k),
         reportId: null,
+        fingerprint: resumeText ? textFingerprint(resumeText) : null,
       }));
     } catch { /* builder still opens; user pastes manually */ }
     navigate("/builder");
