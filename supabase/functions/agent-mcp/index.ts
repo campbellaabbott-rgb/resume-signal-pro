@@ -4908,14 +4908,17 @@ function shapeOnly(schema: unknown, depth = 0): unknown {
  * tools; never debug_search; inside ChatGPT never fit_resume, key_status or
  * debug_search; never a retired tool. The oauth2 security schemes are shown
  * only while sign-in is switched on: until then a host that read them would
- * offer a sign-in that cannot finish. apply_myself's description names the
- * hiring systems read on this surface.
+ * offer a sign-in that cannot finish. While it is on, a caller with no
+ * credential is also shown the keyed tools it can sign in for, marked
+ * oauth2-only, so calling one raises the challenge and the host's Connect
+ * card (S14X-262). apply_myself's description names the hiring systems read
+ * on this surface.
  */
 function listedTools(hasCredential: boolean, edition: Edition, signInOn: boolean) {
   const withToken = { type: "oauth2", scopes: [OAUTH_SCOPE] };
   return TOOLS
     .filter((t) => !NEVER_LISTED.includes(t.name))
-    .filter((t) => hasCredential || ANON_TOOLS.includes(t.name))
+    .filter((t) => hasCredential || signInOn || ANON_TOOLS.includes(t.name))
     .filter((t) => edition !== "chatgpt" || !NOT_ON_CHATGPT.includes(t.name))
     .map((t) => {
       const base = { ...t, outputSchema: shapeOnly(t.outputSchema) };

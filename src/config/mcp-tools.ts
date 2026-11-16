@@ -807,7 +807,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
       : []),
     signIn: (s) =>
       s === "on"
-        ? `The first time Claude needs your account — to open a posting in full or to check a shortlist — a **Connect** card appears in the chat. Click it, sign in to ${MCP_CONNECTOR_NAME}, press **Allow**, and Claude continues where it stopped.`
+        ? `The first time Claude needs your account — to score your CV against postings or to show your key's status — a **Connect** card appears in the chat. Click it, sign in to ${MCP_CONNECTOR_NAME}, press **Allow**, and Claude continues where it stopped.`
         : s === "off" ? chatOff("Claude", CV_SCORING_CLAUDE) : UNKNOWN_LINE,
     verify: `Under **+ → Connectors**, ${MCP_CONNECTOR_NAME} is on. Ask the first question: ${MCP_ANON_CAPS.searchRows} results with ids come back, and the answer's note begins "keyless:" and says how many free lookups are left today.`,
   },

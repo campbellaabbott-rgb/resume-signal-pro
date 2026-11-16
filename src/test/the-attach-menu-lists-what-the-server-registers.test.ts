@@ -399,7 +399,8 @@ describe("listing is free, a credentialed read is metered under its own family, 
     // And a runner that throws under a read — an argument error or an
     // internal one — is answered by readFailed BEFORE any tool-shaped
     // branch of the catch can see it.
-    const catchBody = between(MCP, "  } catch (e) {\n    if (e instanceof ScorerLimited)", "\n});");
+    // The handler closes inside the browser gate (S14X-091): "}));".
+    const catchBody = between(MCP, "  } catch (e) {\n    if (e instanceof ScorerLimited)", "\n}));");
     const readAt = catchBody.indexOf("if (read) return readFailed(id, read, e, rateHeaders);");
     expect(readAt).toBeGreaterThan(-1);
     expect(readAt).toBeLessThan(catchBody.indexOf("if (e instanceof ToolArgumentError)"));
