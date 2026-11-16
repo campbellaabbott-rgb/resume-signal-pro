@@ -1809,3 +1809,57 @@ wake-sender's default body is a human-readable reason GitHub will not accept.
 So a GitHub host with `body: "default"` is misconfigured in a way that only
 shows up as a failed wake.
 ```
+
+## s122
+
+`supabase/functions/_shared/application-form.ts`, The readers, the form's shapes ... Above: `export const FORM_READER_VENDORS: readonly string[] = [`
+
+```text
+The one-line docs of this module's constants and types, moved here together
+on 2026-11-16 (bug round, connector lane) so the file grew by nothing while
+S14X-134 and S14X-264 added code. Each line names what it stood above.
+
+FORM_READER_VENDORS: The hiring systems this module can read a form from.
+PUBLIC_API_FORM_VENDORS: The ones read through a published public API: the
+  only ones read for the ChatGPT surface (owner decision R2).
+FORM_CACHE_MS: How long a read is believed.
+FormQuestion.type: The vendor's own control type.
+FormQuestion.section: The heading the employer set above this question
+  (Greenhouse: a description that is only an <h1>-<h6> heading, carried onto
+  the question after it, S14X-264). Never a hint, so it sets no topic and
+  blocks no draft. A Greenhouse cache row written before sections existed
+  (no `sectioned` mark) is read as a miss.
+VendorForm.alsoOnForm: Parts of the form outside the question list (EEO
+  self-identification, data-protection consent).
+FormRead, absent, documents and alsoOnForm: What an apply page with no
+  questions still showed: the CV it asks for, an equality block, a consent.
+PostingRef: The posting as its row states it.
+ReadOptions.vendors: The vendors this surface reads; defaults to every reader.
+Transient: A transient failure: not cached, and answered as unreachable. A
+  body cut off mid-read, or a 200 whose body is not JSON, is one too
+  (S14X-134): it was read as no form and cached for a day.
+```
+
+## s123
+
+`supabase/functions/_shared/self-apply.ts`, One question in, and who answers it ... Above: `export type SelfApplyInput = {`
+
+```text
+The field docs of SelfApplyInput and SelfApplyQuestion, moved here together on
+2026-11-16 (bug round, connector lane) so the file grew by nothing when
+`section` was added (S14X-264).
+
+SelfApplyInput.screens: The employer screens applications on this answer
+  (never which answer passes).
+SelfApplyInput.section: The heading the employer set above this question
+  (application-form.ts). Carried through and printed as a heading; never read
+  for the topic or for whether the AI may draft.
+SelfApplyQuestion.topic: For a factual question: what it asks about, so the
+  AI can say why it is asking.
+SelfApplyQuestion.aboutCountry: ISO-2 codes the label names, for a work-right
+  or location question.
+SelfApplyQuestion.voluntary: A demographic question: answering it is the
+  person's choice, and so is declining.
+SelfApplyQuestion.cvMayHelp: The person answers, and their CV may help them
+  do it.
+```

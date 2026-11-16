@@ -25,27 +25,24 @@ import { countriesIn } from "./work-countries.ts";
 
 export type AnsweredBy = "you" | "your_details" | "your_documents" | "draft_from_your_cv";
 
+/** One question in, and who answers it ... docs/shared-notes.md#s123 */
 export type SelfApplyInput = {
   label: string;
   required: boolean;
   type: string;
   options?: string[];
   hint?: string;
-  /** The employer screens applications on this answer (never which answer passes). */
   screens?: true;
+  section?: string;
 };
 
 export type SelfApplyQuestion = SelfApplyInput & {
   n: number;
   answeredBy: AnsweredBy;
-  /** For a factual question: what it asks about, so the AI can say why it is asking. */
   topic?: string;
-  /** ISO-2 codes the label names, for a work-right or location question. */
   aboutCountry?: string[];
   sponsorshipSense?: SponsorshipSense;
-  /** A demographic question: answering it is the person's choice, and so is declining. */
   voluntary?: true;
-  /** The person answers, and their CV may help them do it. */
   cvMayHelp?: true;
 };
 
@@ -187,6 +184,7 @@ function markedFor(q: SelfApplyInput, n: number, cls: QuestionClass, asked: stri
     ...(q.options && q.options.length ? { options: q.options } : {}),
     ...(q.hint ? { hint: q.hint } : {}),
     ...(q.screens ? { screens: true as const } : {}),
+    ...(q.section ? { section: q.section } : {}),
     answeredBy: "you",
   };
   const free = isFreeText(type, q.options);

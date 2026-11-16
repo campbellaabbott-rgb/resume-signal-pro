@@ -149,6 +149,8 @@ const ANSWERER: Record<SelfApplyQuestion["answeredBy"], string> = {
 
 function questionLine(q: SelfApplyQuestion): string {
   const bits = [`${q.n}. ${q.label}${q.required ? " (required)" : ""}`];
+  // A heading the employer set above the question is its section, never a note about it (S14X-264).
+  if (q.section) bits.push(`   Section: ${q.section}`);
   if (q.options?.length) bits.push(`   Options: ${q.options.join(" | ")}`);
   if (q.hint) bits.push(`   Note from the employer: ${q.hint}`);
   const extra = [

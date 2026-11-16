@@ -1570,6 +1570,7 @@ const TOOLS = [
                   type: { type: "string" },
                   options: { type: "array", items: { type: "string" } },
                   hint: { type: "string" },
+                  section: { type: "string", description: "The heading the employer set above this question: a heading, never a hint about it." },
                   answeredBy: { type: "string", enum: ["you", "your_details", "your_documents", "draft_from_your_cv"] },
                   // Also, when they apply: topic, aboutCountry, sponsorshipSense
                   // (asks, inverted, history, unread), voluntary, cvMayHelp, and

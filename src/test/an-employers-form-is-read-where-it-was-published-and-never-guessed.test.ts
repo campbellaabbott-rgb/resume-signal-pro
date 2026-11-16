@@ -173,15 +173,15 @@ describe("it fails closed, and the cache keeps faults out", () => {
     expect(puts).toEqual([{ id: "greenhouse:acme:1", vendor: "greenhouse", ok: false, form: {} }]);
   });
 
-  it("a payload that does not parse, or parses to nothing, is absent — never an empty form", async () => {
-    for (const body of ["not json", JSON.stringify({ questions: [] })]) {
-      const r = await readApplicationForm(ref("greenhouse:acme:2"), { fetch: fetchFrom(() => new Response(body, { status: 200 })).f, now: () => NOW });
-      expect(r.kind, body).toBe("absent");
-    }
+  it("a payload that parses to nothing is absent — never an empty form; one that does not parse is unreachable (S14X-134)", async () => {
+    const empty = await readApplicationForm(ref("greenhouse:acme:2"), { fetch: fetchFrom(() => new Response(JSON.stringify({ questions: [] }), { status: 200 })).f, now: () => NOW });
+    expect(empty.kind).toBe("absent");
+    const cut = await readApplicationForm(ref("greenhouse:acme:2"), { fetch: fetchFrom(() => new Response("not json", { status: 200 })).f, now: () => NOW });
+    expect(cut.kind).toBe("unreachable");
   });
 
   it("a fresh cached read answers with no fetch; a stale one is read again", async () => {
-    const form = { questions: [{ label: "Why us?", required: false, type: "textarea" }], documents: [], alsoOnForm: [] };
+    const form = { questions: [{ label: "Why us?", required: false, type: "textarea" }], documents: [], alsoOnForm: [], sectioned: true };
     const fresh = memoryCache({ "greenhouse:acme:3": { vendor: "greenhouse", ok: true, form, read_at: new Date(NOW - 3600_000).toISOString() } });
     const net = fetchFrom(() => json({ questions: [{ label: "New", required: true, fields: [{ type: "textarea" }] }] }));
     const hit = await readApplicationForm(ref("greenhouse:acme:3"), { fetch: net.f, cache: fresh.cache, now: () => NOW });
