@@ -1,0 +1,26 @@
+{
+  "boardUi": {
+    "nlLabel": "Describe con tus palabras el trabajo que buscas",
+    "nlRunAsKeywords": "Buscar estas palabras en su lugar",
+    "nlUnavailable": "La búsqueda en lenguaje natural no está disponible en este momento.",
+    "nlNothingRead": "Nada de esa frase coincidió con un filtro, así que tus filtros no cambian.",
+    "yearsFromSearch": "Pide {{n}} años o menos (de tu búsqueda)",
+    "salaryFromSearch": "{{amount}}k+ declarado (de tu búsqueda)",
+    "salaryCeilingFromSearch": "hasta {{amount}}k declarado (de tu búsqueda)",
+    "compareDescription": "Las ofertas que elegiste, comparadas según lo que la bolsa ya tiene de cada una.",
+    "recordOneBoard": "Historial de contratación de una de las {{n}} bolsas de empleo de este empleador: {{board}}",
+    "handoffWithheld": "El conector de IA no transmite ofertas de {{system}}: abre esta aquí.",
+    "handoffWithheldSearch": "El conector de IA no transmite ofertas de {{systems}}, así que el prompt las omite; siguen aquí en la bolsa.",
+    "fitRankedFilters": "Currículum cargado — tus filtros se mantienen y las ofertas que cumplen con ellos se ordenan por afinidad.",
+    "fitScoreTip": "Puntuación de afinidad por palabras clave: {{pct}} de 100. Mide cuánto se solapan las palabras clave reconocidas de esta oferta y tu currículum, y baja cuando la oferta pide más años de los que muestra tu currículum. No es la proporción de palabras clave de la oferta que ya tienes.",
+    "fitNotScoredLimit": "Sin puntuar: el cupo de puntuación de afinidad está agotado por ahora, así que esta oferta no se puntuó.",
+    "fitNotScoredFailed": "Sin puntuar: el evaluador no respondió para esta oferta. Vuelve a intentarlo desde la nota encima de la lista.",
+    "fitLimitedHour": "Se alcanzó el cupo por hora de {{limit}} puntuaciones de afinidad; se renueva una hora después de la primera llamada puntuada. Las ofertas sin puntuación aquí aún no se han puntuado.",
+    "fitLimitedDay": "Se alcanzó el cupo diario de {{limit}} puntuaciones de afinidad; se renueva 24 horas después de la primera llamada puntuada. Las ofertas sin puntuación aquí aún no se han puntuado.",
+    "fitLimitedPlain": "El cupo de puntuación de afinidad está agotado por ahora. Las ofertas sin puntuación aquí aún no se han puntuado.",
+    "unscoredTerms": "Sin puntuar — aún no podemos leer los términos de esta oferta",
+    "unscoredTermsBody": "Tenemos su descripción, pero el evaluador no reconoció en ella ninguna habilidad ni herramienta: solo lee palabras clave en inglés. Aquí no hay porcentaje; es la ausencia de una medición, no una medición baja.",
+    "unscoredTermsTip": "Sin puntuar: tenemos la descripción de esta oferta, pero el evaluador no reconoció en ella ninguna habilidad ni herramienta (solo lee palabras clave en inglés). No es una puntuación baja: no hay puntuación.",
+    "matchesNoneForRole": "No encontramos ofertas activas para {{role}} en este momento, así que estas son ofertas de tu sector: puntuadas con tu currículum, no encontradas a partir de él."
+  }
+}

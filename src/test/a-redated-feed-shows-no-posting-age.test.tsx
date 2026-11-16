@@ -19,6 +19,8 @@ import { PostingFacts } from "@/components/jobs/listing/PostingFacts";
 import { REDATING_SOURCES, isRedatingSource, listingAge } from "@/lib/listing/age";
 import type { ListingJob } from "@/lib/listing/types";
 import { date as fmtDate } from "@/lib/format";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 // Dates as the site's one formatter prints them for English readers (src/lib/format.ts: day, month, year), so the guard keeps its "reader's language" claim without pinning one calendar style.
 const D = (day: string) => fmtDate(day, { lng: "en" });
 
@@ -73,5 +75,20 @@ describe("positive control: a system that does not move its date", () => {
     facts({ ...row("greenhouse"), postedAt: null });
     expect(document.querySelector("[data-fact='posted']")?.textContent).toBe("The employer's system states no posting date");
     expect(document.body.textContent).not.toMatch(/first seen/i);
+  });
+});
+
+describe("the board's other age readers take the card's rule (S14X-252, NB-22)", () => {
+  // The compare sheet and the detail pane printed an age from the raw feed
+  // date. Both read the card's rule now; their behaviour is held by
+  // the-compare-sheet-prints-revenue-in-its-own-currency and
+  // a-re-dated-posting-opened-on-the-board-states-no-age. Here: no raw-date
+  // age reader is left in the page.
+  const code = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+  it("the compare sheet's age is cardAgeText, and the pane's is listingAge", () => {
+    expect(code).toMatch(/cardAgeText\(t, j\)/);
+    expect(code).toMatch(/const age = paneAgeDays\(detailJob\);/);
+    expect(code, "a pane age read straight off the feed date").not.toMatch(/const age = daysAgo\(detailJob\.postedAt\)/);
+    expect(code, "the compare sheet's own posted-days-ago").not.toMatch(/jobsPage\.postedDaysAgo/);
   });
 });

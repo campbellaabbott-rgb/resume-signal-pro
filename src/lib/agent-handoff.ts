@@ -30,7 +30,8 @@
 // rather than opening a prompt. The link is rendered only after the person
 // has said which agent they use, because a claude:// URL with no app behind
 // it has no documented fallback.
-import { MCP_PAGE_HOSTS, MCP_TOOL_NAMES, MCP_ADD_TO_CLAUDE_LIVE, claudeInstallLink } from "@/config/mcp-tools";
+import { MCP_PAGE_HOSTS, MCP_TOOL_NAMES, MCP_ADD_TO_CLAUDE_LIVE, MCP_WITHHELD_SOURCES, andList, claudeInstallLink } from "@/config/mcp-tools";
+import { systemLabel } from "@/lib/listing/apply-url";
 import { MCP_URL } from "@/lib/mcp-test";
 
 /**
@@ -211,10 +212,31 @@ export type SearchSort = "relevance" | "newest" | "salary";
  * are handing over — a search sent without it would disagree with the
  * control on screen (state-and-request-cannot-disagree).
  */
+/**
+ * THE SYSTEMS THE CONNECTOR DOES NOT HAND ON (S14X-054). agent-mcp refuses
+ * every row of MCP_WITHHELD_SOURCES (NO_REDISTRIBUTION_SOURCES), so a posting
+ * from one is not handed to an agent, and a search's `vendor` loses them.
+ */
+export function isWithheldSource(source: string | null | undefined): boolean {
+  return typeof source === "string" && MCP_WITHHELD_SOURCES.includes(source.trim().toLowerCase());
+}
+const vendorList = (v: unknown): string[] =>
+  (Array.isArray(v) ? v.map(String) : String(v ?? "").split(",")).map((s) => s.trim()).filter(Boolean);
+/** The withheld systems a board body's `vendor` names, by the vendor table's own spelling. */
+export function withheldVendorLabels(body: Record<string, unknown>): string[] {
+  return vendorList(body.vendor).filter(isWithheldSource).map((s) => systemLabel(s) ?? s);
+}
+
 export function toSearchJobsArgs(body: Record<string, unknown>, sort?: SearchSort): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(body)) {
     if (v === undefined || v === null || SEARCH_ARG_DROPS.includes(k)) continue;
+    if (k === "vendor") {
+      // A withheld system is left out; with nothing left, so is the key.
+      const kept = vendorList(v).filter((s) => !isWithheldSource(s));
+      if (kept.length > 0) out.vendor = kept.join(",");
+      continue;
+    }
     const name = SEARCH_ARG_RENAMES[k] ?? k;
     out[name] = Array.isArray(v) ? v.join(",") : v;
   }
@@ -228,16 +250,22 @@ export function toSearchJobsArgs(body: Record<string, unknown>, sort?: SearchSor
  * included rather than letting the agent believe the arguments are the
  * whole of what the person was looking at.
  */
-export function searchPrompt(args: Record<string, unknown>, opts: { activelyHiring?: boolean } = {}): string {
+export function searchPrompt(args: Record<string, unknown>, opts: { activelyHiring?: boolean; withheld?: readonly string[] } = {}): string {
   // The apply half of the hand-off rides here too (APPLY-1107-02): a result
   // the person picks is walked through the employer's form, never sent.
   const head =
     `Using the Resume Booster MCP server (${MCP_URL}), call ${tool("search_jobs")} with ${JSON.stringify(args)} ` +
     `and show me the top results, each with the employer's apply link; for any I pick, offer ${tool("apply_myself")} to walk me through the employer's form, and I submit it myself. ` +
     `If that server is not connected here, tell me I can add it free at ${HANDOFF_SITE}/agents.`;
-  return opts.activelyHiring
-    ? `${head} The board's "Actively hiring" filter is applied in the browser, not by ${tool("search_jobs")}, so it is not included here.`
-    : head;
+  const hiring = opts.activelyHiring
+    ? ` The board's "Actively hiring" filter is applied in the browser, not by ${tool("search_jobs")}, so it is not included here.`
+    : "";
+  // A hiring system the board filter named and the server does not hand on
+  // (S14X-054) is said, not silently dropped.
+  const withheld = opts.withheld && opts.withheld.length > 0
+    ? ` The board's filter also named ${andList(opts.withheld)}, whose postings the server does not hand on, so they are not included here; they stay on the job board.`
+    : "";
+  return `${head}${hiring}${withheld}`;
 }
 
 /**

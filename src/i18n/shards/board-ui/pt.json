@@ -1,0 +1,26 @@
+{
+  "boardUi": {
+    "nlLabel": "Descreva a vaga que você quer em linguagem simples",
+    "nlRunAsKeywords": "Buscar estas palavras em vez disso",
+    "nlUnavailable": "A busca em linguagem natural está indisponível no momento.",
+    "nlNothingRead": "Nada nessa frase correspondeu a um filtro, então seus filtros não mudaram.",
+    "yearsFromSearch": "Pede {{n}} anos ou menos (da sua busca)",
+    "salaryFromSearch": "{{amount}}k+ indicado (da sua busca)",
+    "salaryCeilingFromSearch": "até {{amount}}k indicado (da sua busca)",
+    "compareDescription": "As vagas que você escolheu, comparadas pelo que o quadro já tem de cada uma.",
+    "recordOneBoard": "Histórico de contratações de um dos {{n}} quadros de vagas deste empregador: {{board}}",
+    "handoffWithheld": "O conector de IA não repassa vagas do {{system}}: abra esta aqui mesmo.",
+    "handoffWithheldSearch": "O conector de IA não repassa vagas de {{systems}}, então o prompt as deixa de fora; elas continuam aqui no quadro.",
+    "fitRankedFilters": "Currículo carregado — seus filtros são mantidos e as vagas que correspondem a eles são ordenadas por afinidade.",
+    "fitScoreTip": "Pontuação de afinidade por palavras-chave: {{pct}} de 100. Mede quanto as palavras-chave reconhecidas desta vaga e seu currículo se sobrepõem, e cai quando a vaga pede mais anos do que seu currículo mostra. Não é a parcela das palavras-chave da vaga que você já tem.",
+    "fitNotScoredLimit": "Sem pontuação: a cota de pontuação de afinidade está esgotada por enquanto, então esta vaga não foi pontuada.",
+    "fitNotScoredFailed": "Sem pontuação: o avaliador não respondeu para esta vaga. Tente novamente pelo aviso acima da lista.",
+    "fitLimitedHour": "Cota por hora de {{limit}} pontuações de afinidade atingida; ela é renovada uma hora após a primeira chamada pontuada. As vagas sem pontuação aqui ainda não foram pontuadas.",
+    "fitLimitedDay": "Cota diária de {{limit}} pontuações de afinidade atingida; ela é renovada 24 horas após a primeira chamada pontuada. As vagas sem pontuação aqui ainda não foram pontuadas.",
+    "fitLimitedPlain": "A cota de pontuação de afinidade está esgotada por enquanto. As vagas sem pontuação aqui ainda não foram pontuadas.",
+    "unscoredTerms": "Sem pontuação — ainda não conseguimos ler os termos desta vaga",
+    "unscoredTermsBody": "Temos a descrição, mas o avaliador não reconheceu nela nenhuma habilidade nem ferramenta: ele lê apenas palavras-chave em inglês. Não há porcentagem aqui; é a ausência de uma medição, não uma medição fraca.",
+    "unscoredTermsTip": "Sem pontuação: temos a descrição desta vaga, mas o avaliador não reconheceu nela nenhuma habilidade nem ferramenta (ele lê apenas palavras-chave em inglês). Não é uma pontuação baixa — é a falta de pontuação.",
+    "matchesNoneForRole": "Não encontramos vagas abertas para {{role}} agora, então estas são vagas da sua área — pontuadas com base no seu currículo, não encontradas por ele."
+  }
+}

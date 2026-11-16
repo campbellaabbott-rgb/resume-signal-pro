@@ -1,0 +1,26 @@
+{
+  "boardUi": {
+    "nlLabel": "Ilarawan ang trabahong gusto mo sa karaniwang pananalita",
+    "nlRunAsKeywords": "Hanapin na lang ang mga salitang ito",
+    "nlUnavailable": "Hindi available ngayon ang paghahanap gamit ang karaniwang pananalita.",
+    "nlNothingRead": "Walang bahagi ng pangungusap na iyon ang tumugma sa isang filter, kaya hindi nagbago ang mga filter mo.",
+    "yearsFromSearch": "Humihingi ng {{n}} taon pababa (mula sa iyong paghahanap)",
+    "salaryFromSearch": "{{amount}}k+ nakasaad (mula sa iyong paghahanap)",
+    "salaryCeilingFromSearch": "hanggang {{amount}}k nakasaad (mula sa iyong paghahanap)",
+    "compareDescription": "Ang mga anunsyong pinili mo, pinaghambing batay sa hawak na ng board para sa bawat isa.",
+    "recordOneBoard": "Rekord ng pag-hire para sa isa sa {{n}} board ng employer na ito: {{board}}",
+    "handoffWithheld": "Hindi ipinapasa ng AI connector ang mga anunsyo mula sa {{system}}: buksan na lang ito rito.",
+    "handoffWithheldSearch": "Hindi ipinapasa ng AI connector ang mga anunsyo mula sa {{systems}}, kaya hindi sila isinama sa prompt; nananatili sila rito sa board.",
+    "fitRankedFilters": "Na-load ang resume — nananatili ang mga filter mo, at inaayos ayon sa tugma ang mga bakanteng tumutugma sa mga ito.",
+    "fitScoreTip": "Keyword fit score na {{pct}} sa 100: kung gaano nagtutugma ang mga nakilalang keyword ng anunsyong ito at ang resume mo, ibinababa kapag mas maraming taon ang hinihingi ng anunsyo kaysa sa ipinapakita ng resume mo. Hindi ito ang bahagi ng mga keyword ng anunsyo na mayroon ka na.",
+    "fitNotScoredLimit": "Walang puntos: ubos na muna ang allowance sa fit score, kaya hindi nabigyan ng puntos ang anunsyong ito.",
+    "fitNotScoredFailed": "Walang puntos: hindi sumagot ang tagapagbigay ng puntos para sa anunsyong ito. Subukan ulit mula sa paalala sa itaas ng listahan.",
+    "fitLimitedHour": "Naabot na ang allowance kada oras na {{limit}} fit score; magre-reset ito isang oras pagkatapos ng unang tawag na may puntos. Ang mga anunsyong walang puntos dito ay hindi pa nabibigyan ng puntos.",
+    "fitLimitedDay": "Naabot na ang allowance kada araw na {{limit}} fit score; magre-reset ito 24 na oras pagkatapos ng unang tawag na may puntos. Ang mga anunsyong walang puntos dito ay hindi pa nabibigyan ng puntos.",
+    "fitLimitedPlain": "Ubos na muna ang allowance sa fit score. Ang mga anunsyong walang puntos dito ay hindi pa nabibigyan ng puntos.",
+    "unscoredTerms": "Walang puntos — hindi pa namin mabasa ang mga termino ng anunsyong ito",
+    "unscoredTermsBody": "Hawak namin ang paglalarawan nito, pero walang nakilalang kasanayan o tool dito ang tagapagbigay ng puntos: Ingles na keyword lang ang nababasa nito. Walang porsiyento rito; ibig sabihin ay walang sukat, hindi mahinang sukat.",
+    "unscoredTermsTip": "Walang puntos: hawak namin ang paglalarawan ng anunsyong ito, pero walang nakilalang kasanayan o tool dito ang tagapagbigay ng puntos (Ingles na keyword lang ang nababasa nito). Hindi ito mababang puntos — wala talagang puntos.",
+    "matchesNoneForRole": "Wala kaming nahanap na bukas na trabaho para sa {{role}} ngayon, kaya ito ang mga bakante sa larangan mo — binigyan ng puntos batay sa resume mo, hindi nahanap gamit ito."
+  }
+}

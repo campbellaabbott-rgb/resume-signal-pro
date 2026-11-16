@@ -49,7 +49,13 @@ export interface CardContext {
 }
 
 /** The reader's fit: a keyword-coverage percentage, or the scorer's honest "no description to score". */
-export type JobCardFit = { kind: "score"; pct: number } | { kind: "unscored" };
+/**
+ * `reason` is job-fit's own (S14X-052): no_description when we hold no
+ * stored description, no_recognised_terms when we hold one and the scorer
+ * recognised no skill or tool in it. Absent from an older job-fit, which
+ * reads as before.
+ */
+export type JobCardFit = { kind: "score"; pct: number } | { kind: "unscored"; reason?: "no_description" | "no_recognised_terms" };
 
 export interface JobCardSlots {
   /** /jobs only: the employer's gated hiring-record chip. */
@@ -294,7 +300,7 @@ export function JobCard({
           {(tier || fit?.kind === "unscored" || applied || onCheckFit) && (
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
               {tier && fit?.kind === "score" && (
-                <span className="font-semibold text-foreground" title={t("jobsPage.matchCoverage", { defaultValue: "{{pct}}% of this posting's recognized keywords are already in your resume", pct: fit.pct })}>
+                <span className="font-semibold text-foreground" title={t("boardUi.fitScoreTip", { defaultValue: "Keyword fit score {{pct}} out of 100: how far this posting's recognised keywords and your résumé overlap, lowered when the posting asks for more years than your résumé shows. It is not the share of the posting's keywords you already have.", pct: fit.pct })}>
                   {tier === "strong" ? t("jobsPage.matchStrong", "Strong match") : tier === "possible" ? t("jobsPage.matchPossible", "Possible match") : t("jobsPage.matchStretch", "Stretch")}
                 </span>
               )}
@@ -303,7 +309,9 @@ export function JobCard({
                   that sits in the same slot for a genuinely low score. A null
                   from the scorer is no measurement, never a low one. */}
               {!tier && fit?.kind === "unscored" && (
-                <span className="rounded-md border border-dashed border-border px-2 py-0.5 text-muted-foreground" title={t("jobsPage.notScoredTip", "We hold no stored description for this posting, so there was nothing to compare your resume against. This is not a low score — it is no score.")}>
+                <span className="rounded-md border border-dashed border-border px-2 py-0.5 text-muted-foreground" title={fit.reason === "no_recognised_terms"
+                  ? t("boardUi.unscoredTermsTip", "Not scored: we hold this posting's description, but the scorer recognised no skill or tool in it (it reads English keywords only). This is not a low score — it is no score.")
+                  : t("jobsPage.notScoredTip", "We hold no stored description for this posting, so there was nothing to compare your resume against. This is not a low score — it is no score.")}>
                   {t("jobsPage.notScoredChip", "Not scored")}
                 </span>
               )}

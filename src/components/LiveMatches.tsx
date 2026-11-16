@@ -38,6 +38,21 @@ interface MatchJob {
 // Mirrors FIT_BATCH in src/pages/Jobs.tsx.
 const FIT_BATCH = 20;
 
+/** A refusal's status and JSON body, from supabase-js's error.context (a Response); nulls without one. */
+async function fitRefusal(error: unknown): Promise<{ status: number | null; body: Record<string, unknown> | null }> {
+  const ctx = (error as { context?: unknown } | null)?.context as { status?: unknown; clone?: () => unknown; json?: () => Promise<unknown> } | undefined;
+  const status = typeof ctx?.status === "number" ? ctx.status : null;
+  let body: Record<string, unknown> | null = null;
+  try {
+    const r = (typeof ctx?.clone === "function" ? ctx.clone() : ctx) as { json?: () => Promise<unknown> } | undefined;
+    if (r && typeof r.json === "function") {
+      const b = await r.json();
+      if (b && typeof b === "object" && !Array.isArray(b)) body = b as Record<string, unknown>;
+    }
+  } catch { /* not JSON */ }
+  return { status, body };
+}
+
 // job-fit refuses a résumé shorter than this, so a shorter one is a round trip
 // that can only 400. Mirrors the `resumeText.trim().length < 100` bound in
 // supabase/functions/job-fit/index.ts.
@@ -51,7 +66,10 @@ const FIT_MIN_CHARS = 100;
  * be read out of the résumé, so the rows are the industry bucket's — scored
  * against the résumé, but not found by it, and the copy says exactly that.
  */
-type Retrieval = { by: "resume"; role: string } | { by: "industry" };
+// `readRole` (S14X-296): the résumé named an occupation, and the search for
+// it found nothing, so the card widened to the field. It is not a résumé we
+// could not read a title from.
+type Retrieval = { by: "resume"; role: string } | { by: "industry"; readRole?: string };
 
 /**
  * RANKING IS NOT RETRIEVAL. Ask the résumé what it does for a living and
@@ -109,6 +127,10 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
   // same "could not be scored just now" note the board page uses — never as a
   // list of unscored rows under a "fit-ranked" heading.
   const [fitFailedCount, setFitFailedCount] = useState(0);
+  // THE ALLOWANCE, NAMED (S14X-294): job-fit's 429 carries its limit and its
+  // window. It is not "usually temporary", and pressing again inside the
+  // window is refused again, so no Try again is offered for it.
+  const [fitLimit, setFitLimit] = useState<{ limit: number | null; window: "1h" | "24h"; message: string | null } | null>(null);
   const [attempt, setAttempt] = useState(0);
   // null until the retrieval above has answered — the window in which the card
   // shows a spinner and claims nothing about any posting.
@@ -160,7 +182,7 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
         }
         // Set before the rows exist, so no row is ever on screen under a
         // heading describing a retrieval that did not produce it.
-        if (!cancelled) setRetrieval(by === "resume" && role ? { by, role } : { by: "industry" });
+        if (!cancelled) setRetrieval(by === "resume" && role ? { by, role } : role ? { by: "industry", readRole: role } : { by: "industry" });
         if (jobs.length === 0) {
           if (!cancelled) setMatches([]);
           return;
@@ -177,6 +199,7 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
         // its ids as unscored instead of unranked.
         const fits: Record<string, number | null> = {};
         let fitFailed = 0;
+        let limited: { limit: number | null; window: "1h" | "24h"; message: string | null } | null = null;
         for (let i = 0; i < jobs.length; i += FIT_BATCH) {
           const ids = jobs.slice(i, i + FIT_BATCH).map((j) => String(j.id));
           const { data, error } = await supabase.functions.invoke("job-fit", {
@@ -186,6 +209,17 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
           // report has no per-posting keyword panel to show missing/matched in.
           const payload = data as { fits?: Record<string, number | null>; missing?: Record<string, string[]>; matched?: Record<string, string[]>; code?: string } | null;
           if (error || !payload?.fits) {
+            const refusal = await fitRefusal(error);
+            if (refusal.status === 429) {
+              // The allowance: this batch and the rest are not asked for.
+              limited = {
+                limit: typeof refusal.body?.limit === "number" ? refusal.body.limit : null,
+                window: refusal.body?.window === "24h" ? "24h" : "1h",
+                message: typeof refusal.body?.message === "string" ? refusal.body.message : null,
+              };
+              fitFailed += jobs.length - i;
+              break;
+            }
             fitFailed += ids.length;
             continue;
           }
@@ -227,6 +261,7 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
         }
         if (!cancelled) {
           setFitFailedCount(fitFailed);
+          setFitLimit(limited);
           setMatches(shown);
         }
       } catch {
@@ -243,6 +278,7 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
   const retry = () => {
     setMatches(null);
     setFitFailedCount(0);
+    setFitLimit(null);
     // The retry re-runs the retrieval too, so the claim is re-earned rather
     // than carried over from the attempt that failed.
     setRetrieval(null);
@@ -302,7 +338,9 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
           ? t("freeResults.matches.subtitle", "Ranked by the same deterministic fit scoring as your report — from live company job boards, re-read through the day against each employer's own feed.")
           : retrieval.by === "resume"
             ? t("freeResults.matches.subtitleSearched", "Searched live company job boards for {{role}} — the occupation this resume names — then ranked by the same deterministic fit scoring as your report.", { role: retrieval.role })
-            : t("freeResults.matches.subtitleIndustry", "We couldn't read a job title from this resume, so these are current openings in your field — scored against your resume, not found by it. Search the board yourself to narrow them.")}
+            : retrieval.readRole
+              ? t("boardUi.matchesNoneForRole", "We found no live openings for {{role}} right now, so these are openings in your field — scored against your résumé, not found by it.", { role: retrieval.readRole })
+              : t("freeResults.matches.subtitleIndustry", "We couldn't read a job title from this resume, so these are current openings in your field — scored against your resume, not found by it. Search the board yourself to narrow them.")}
       </p>
 
       {matches === null ? (
@@ -347,7 +385,16 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
               button as the board page: the reader learns what was not scored
               and can press again, instead of reading five unranked rows as
               their matches — or concluding the product is broken. */}
-          {fitFailedCount > 0 && (
+          {fitFailedCount > 0 && fitLimit && (
+            <p className="text-[11px] text-warning mb-3" data-fit-limited="">
+              {fitLimit.limit !== null
+                ? (fitLimit.window === "24h"
+                  ? t("boardUi.fitLimitedDay", "Daily fit-scoring allowance of {{limit}} reached; it resets 24 hours after the first scored call. Postings without a score here have not been scored yet.", { limit: fitLimit.limit })
+                  : t("boardUi.fitLimitedHour", "Hourly fit-scoring allowance of {{limit}} reached; it resets an hour after the first scored call. Postings without a score here have not been scored yet.", { limit: fitLimit.limit }))
+                : (fitLimit.message ?? t("boardUi.fitLimitedPlain", "The fit-scoring allowance is used up for now. Postings without a score here have not been scored yet."))}
+            </p>
+          )}
+          {fitFailedCount > 0 && !fitLimit && (
             <p className="text-[11px] text-warning mb-3">
               {t("jobsPage.fitFailedNote", "{{n}} postings could not be scored just now — this is usually temporary.", { n: fitFailedCount })}{" "}
               <button
