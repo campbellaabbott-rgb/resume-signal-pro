@@ -149,6 +149,9 @@ describe("each one's real preflight says a browser may keep it for two hours", (
     expect(res.status).toBeLessThan(300);
     expect(res.headers.get("access-control-max-age")).toBe("7200");
     expect(res.headers.get("access-control-allow-origin")).toBeTruthy();
-    expect(res.headers.get("x-fn-build") ?? "").toMatch(new RegExp(`^${fn}\\.2026-11-(09|10)\\.\\d+$`));
+    // The cost wave's build or a later one: a later round restamps the function, never to an earlier day.
+    const stamp = new RegExp(`^${fn}\\.(\\d{4}-\\d{2}-\\d{2})\\.\\d+$`).exec(res.headers.get("x-fn-build") ?? "");
+    expect(stamp, `${fn}'s x-fn-build`).not.toBeNull();
+    expect(stamp![1] >= "2026-11-09", `${fn} answers ${stamp![0]}, a day before the cost wave`).toBe(true);
   }, 30_000);
 });

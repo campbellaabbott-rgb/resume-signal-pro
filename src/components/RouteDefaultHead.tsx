@@ -8,8 +8,8 @@ import { ownedByReact } from "@/lib/prerendered-head";
 /**
  * A TITLE FOR EVERY PAGE THAT WRITES NONE OF ITS OWN (NB-43).
  *
- * Thirteen routes render no <SEO>: sign-in, the account, the payment results,
- * the employer shortlist, the affiliate pages, the agent page and the owner's
+ * Twelve routes render no <SEO>: sign-in, the account, the payment results
+ * (the Full Analysis page, /success, writes its own), the employer shortlist, the affiliate pages, the agent page and the owner's
  * dashboards. After a client-side move to one of them the tab kept the last
  * page's title (or, loaded directly, the homepage's from the fallback shell),
  * and the private ones carried the shell's "index, follow".
@@ -41,7 +41,6 @@ export const DEFAULT_HEADS: readonly DefaultHead[] = [
   { path: "/account", key: "account", noIndex: true },
   { path: "/agent", key: "agent", noIndex: false },
   { path: "/shortlist", key: "shortlist", noIndex: true },
-  { path: "/success", key: "success", noIndex: true },
   { path: "/product-success", key: "productSuccess", noIndex: true },
   { path: "/payment-failed", key: "paymentFailed", noIndex: true },
   { path: "/affiliates", key: "affiliates", noIndex: false },

@@ -67,8 +67,8 @@ describe("a permanent skip degrades the run", () => {
 });
 
 describe("the public page dates its own figures", () => {
-  it("carries the cache's computed_at", () => {
-    expect(pageCode).toMatch(/setStatsComputedAt\(cache\?\.ghost_stats \? cachedAt : null\)/);
+  it("carries the row's own computed_at, from the cache's copy or a live read alike (S14X-160)", () => {
+    expect(pageCode).toMatch(/const stamp = ghostStatsStamp\(cache, srow\);\s*setStatsComputedAt\(stamp\.computedAt\)/);
   });
 
   it("reports null when the numbers were read live, not a fake timestamp", () => {

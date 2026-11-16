@@ -558,8 +558,13 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     // takedown, the field's day-30 pool admits by evidence from before the
     // cohort, and the 14-day interval is carried by R(14). The seven-day-floor
     // property is untouched; the pins follow the definitions that run.
-    const COMPANY_CURVE = "20261012121000_a_fill_share_counts_only_roles_the_board_was_watched_for.sql";
-    const CATEGORY_CURVE = "20261012122000_a_field_admits_a_board_by_what_it_could_see_before_the_cohort.sql";
+    // MOVED, NOT DROPPED, a ninth time, both curves together: on 2026-11-12
+    // (bug round, data-pages lane, S14X-066) each is re-issued from its live
+    // text with one change, a role that came back counted as a re-list rather
+    // than a second fill. The seven-day-floor property is untouched; the pins
+    // follow the definitions that run.
+    const COMPANY_CURVE = "20261112192000_a_role_that_came_back_is_no_fill_in_the_chain.sql";
+    const CATEGORY_CURVE = "20261112192500_a_role_that_came_back_is_no_fill_in_the_field_pool.sql";
     expect(LIVE.get("get_company_fill_curve")?.file).toBe(COMPANY_CURVE);
     expect(LIVE.get("get_category_fill_curve")?.file).toBe(CATEGORY_CURVE);
   });

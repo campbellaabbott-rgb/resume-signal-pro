@@ -225,7 +225,8 @@ describe("the cards and the detail pane of a shared token", () => {
     await waitFor(() => expect(document.querySelector("[data-employer-chip]")?.textContent).toContain("Actively hiring"), SLOW);
     expect(firstCard().textContent).not.toContain("Actively hiring");
     await openDetail();
-    await waitFor(() => expect(text()).toContain("Filed H-1B wages"), SLOW);
+    // The chip names every visa class the LCA file holds (S14X-184, layoff-filings lane).
+    await waitFor(() => expect(text()).toContain("Filed LCA wages"), SLOW);
     expect(text()).toContain("we watched 9 of its roles come off the board and stay off");
   });
 
@@ -244,7 +245,7 @@ describe("the cards and the detail pane of a shared token", () => {
     await openDetail();
     await new Promise((r) => setTimeout(r, 100));
     expect(text(), "the detail pane printed a pooled closure count").not.toMatch(STAY_OFF);
-    expect(text(), "the detail pane printed the token's H-1B filings").not.toContain("Filed H-1B wages");
+    expect(text(), "the detail pane printed the token's H-1B filings").not.toContain("Filed LCA wages");
     expect(rpc.mock.calls.some(([f, a]) => f === "get_employer_lca_wages" && (a?.p_tokens as string[] | undefined)?.includes("clear")), "the filed-wage reader was asked about a shared token").toBe(false);
   });
 });

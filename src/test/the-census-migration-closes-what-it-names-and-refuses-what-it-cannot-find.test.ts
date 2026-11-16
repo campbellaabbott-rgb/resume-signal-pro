@@ -37,7 +37,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { CLIENT_CALLABLE as ALLOWLIST, CLOSED_BY_CENSUS, CREATED_CLOSED, OWNED_ELSEWHERE } from "./helpers/client-callable-allowlist";
+import { CLOSED_BY_CENSUS, CREATED_CLOSED, OWNED_ELSEWHERE, listedAt } from "./helpers/client-callable-allowlist";
 import { parseSigRef, splitStatements } from "./helpers/function-acl";
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 120_000 });
@@ -49,9 +49,10 @@ const MIGRATION = readFileSync(resolve(DIR, FILE), "utf8");
 /**
  * The rows this file's census lists: the allowlist without the ones a later
  * census re-issue added (`since`), which 20261004110000 never named and which
- * did not exist when it applied.
+ * did not exist when it applied, and with each signature a re-issue replaced
+ * as this file named it, held by its replacement's caller.
  */
-const CLIENT_CALLABLE = ALLOWLIST.filter((a) => !a.since);
+const CLIENT_CALLABLE = listedAt("20261004110000");
 
 const REDEFINED = new Set(["public.get_delivery_health(integer)", "public.get_funnel_cohort_stats(text,integer)"]);
 

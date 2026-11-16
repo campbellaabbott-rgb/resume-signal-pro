@@ -42,7 +42,7 @@ import { join, resolve } from "node:path";
 import { anonCan, authenticatedCan, migrationReplay, arrayLiteralAt, replayMigrations, type FnState } from "./helpers/function-acl";
 import { access, tableReplay } from "./helpers/table-acl";
 import {
-  ADMIN_READERS_CREATED_CLOSED, CLIENT_CALLABLE, CLOSED_BY_CENSUS, CLOSED_TABLES, CREATED_CLOSED, OPEN_TABLES, OWNED_ELSEWHERE, UNCAPPED_TOKEN_ARRAYS,
+  ADMIN_READERS_CREATED_CLOSED, CLIENT_CALLABLE, CLOSED_BY_CENSUS, CLOSED_TABLES, CREATED_CLOSED, OPEN_TABLES, OWNED_ELSEWHERE, REPLACED_AFTER_CENSUS, UNCAPPED_TOKEN_ARRAYS,
 } from "./helpers/client-callable-allowlist";
 import { codeOf } from "./helpers/strip-comments";
 
@@ -467,8 +467,14 @@ describe("the migration carries exactly these lists and checks every one", () =>
 
   it("20261004110000 lists every row but the ones a re-issue added, and each of those names a re-issue that lists it", () => {
     const first = censusLists(code);
-    expect(first.anon).toEqual(CLIENT_CALLABLE.filter((a) => a.roles === "anon" && !a.since).map((a) => a.sig).sort());
-    expect(first.auth).toEqual(CLIENT_CALLABLE.filter((a) => a.roles === "authenticated" && !a.since).map((a) => a.sig).sort());
+    const kept = (sigs: string[]) => sigs.filter((s) => !REPLACED_AFTER_CENSUS[s]);
+    expect(kept(first.anon)).toEqual(CLIENT_CALLABLE.filter((a) => a.roles === "anon" && !a.since).map((a) => a.sig).sort());
+    expect(kept(first.auth)).toEqual(CLIENT_CALLABLE.filter((a) => a.roles === "authenticated" && !a.since).map((a) => a.sig).sort());
+    for (const [was, now] of Object.entries(REPLACED_AFTER_CENSUS)) {
+      expect([...first.anon, ...first.auth], `20261004110000 does not list ${was}`).toContain(was);
+      expect(CLIENT_CALLABLE.find((a) => a.sig === now)?.since, `${now} is not stamped since the re-issue that replaced ${was}`).toBeTruthy();
+      expect(CLIENT_CALLABLE.some((a) => a.sig === was), `${was} was replaced, yet the allowlist still names it`).toBe(false);
+    }
     for (const a of CLIENT_CALLABLE.filter((x) => x.since)) {
       const f = readdirSync(MIG_DIR).find((n) => n.startsWith(`${a.since}_`));
       expect(f, `${a.sig}: no migration ${a.since}_*.sql`).toBeTruthy();

@@ -237,7 +237,8 @@ function violations(code: string): string[] {
   // The printed date is the part's own stamp, and only that.
   const h2 = code.indexOf("Actively hiring");
   const section = code.slice(h2, code.indexOf("absent from this ranking by construction", h2));
-  if (!section.includes("`Ranking as of ${new Date(leaderboardComputedAt).toLocaleString()}`")) out.push("the section does not print the leaderboard's own computed_at");
+  // In en-US, as the bake prints it (S14X-255, data-pages lane): a bare toLocaleString followed the browser.
+  if (!section.includes("`Ranking as of ${new Date(leaderboardComputedAt).toLocaleString(EN)}`")) out.push("the section does not print the leaderboard's own computed_at");
   if (/statsComputedAt|cachedAt|cache\??\.computed_at/.test(section)) out.push("the section borrows another stamp");
   if (!/leaderboardCarried\s*\?\s*" — carried forward/.test(section)) out.push("a carried part is not disclosed beside its date");
   if (!/\{shownLeaders\.length === 0 && leadersUnavailable && \(/.test(code)) out.push("no unavailable state");
@@ -276,7 +277,7 @@ describe("the source carries every property, comment-stripped", () => {
   });
 
   it("teeth: a copy that dates the list with the tiles' stamp fails", () => {
-    const mutant = CODE.replace("`Ranking as of ${new Date(leaderboardComputedAt).toLocaleString()}`", "`Ranking as of ${new Date(statsComputedAt as string).toLocaleString()}`");
+    const mutant = CODE.replace("`Ranking as of ${new Date(leaderboardComputedAt).toLocaleString(EN)}`", "`Ranking as of ${new Date(statsComputedAt as string).toLocaleString(EN)}`");
     expect(mutant).not.toBe(CODE);
     expect(violations(mutant)).toContain("the section borrows another stamp");
   });

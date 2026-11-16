@@ -73,11 +73,14 @@ describe("signing out clears this browser's copies, as the page says", () => {
   it("signOut reaches clearPersonalBrowserData, which reaches clearLocalResumeCopies", () => {
     const auth = codeOf(read("src/contexts/AuthContext.tsx"));
     const body = auth.slice(auth.indexOf("const signOut = async"), auth.indexOf("const signOutEverywhere"));
-    expect(body).toMatch(/clearPersonalBrowserData\(\)/);
+    // The person may choose to keep their drafts here (S14X-097, the auth half);
+    // without that choice the sign-out clears everything.
+    expect(body).toMatch(/clearPersonalBrowserData\(\{ keepWork \}\)/);
+    expect(body).toMatch(/const keepWork = opts\?\.keepLocalDrafts === true;/);
     const clear = auth.slice(auth.indexOf("export function clearPersonalBrowserData"), auth.indexOf("export function clearPersonalBrowserData") + 400);
-    expect(clear).toMatch(/clearLocalResumeCopies\(\)/);
+    expect(clear).toMatch(/clearLocalResumeCopies\(\{ keepWork: opts\?\.keepWork === true \}\)/);
     expect(read("src/lib/local-resume-copies.ts")).toMatch(/builderDraft/);
-    expect(privacy).toMatch(/Signing out on this device clears them too/);
+    expect(privacy).toMatch(/Signing out on this device clears them too, apart from anything you choose to keep on this device/);
   });
 });
 

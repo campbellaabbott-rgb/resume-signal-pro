@@ -92,7 +92,9 @@ export const CLIENT_CALLABLE: AllowedFunction[] = [
   A("public.get_takedowns_today()", "src/pages/Jobs.tsx", "aggregates: one count"),
   A("public.get_today_scan_count()", "src/hooks/use-shared-data.ts", "aggregates: one count"),
   A("public.get_transparency_cache()", "src/pages/PayTransparencyIndex.tsx", "public record: the cached pay-transparency payload"),
-  A("public.get_trending_categories()", "src/pages/HiringTrends.tsx", "aggregates: per-category posting counts, last 7 vs prior 7 days"),
+  // Re-issued with a watch-window argument (p_watch_days, default 14) by the
+  // census re-issue that names it (S14X-038): the no-argument form is dropped.
+  since("20261112191000", A("public.get_trending_categories(integer)", "src/pages/HiringTrends.tsx", "aggregates: per-category posting counts, last 7 vs prior 7 days")),
   // Opened after the census, by the census re-issue that names it. The perk
   // reader of company profiles (phase 1): only keys that passed their row
   // audit in the last 45 days, thresholds re-checked, nothing on a token two
@@ -161,6 +163,32 @@ export const CLIENT_CALLABLE: AllowedFunction[] = [
   U("public.get_application_lifecycle(text[])", "src/pages/Account.tsx", "own rows: outcome, closure date and days standing for the job ids on the caller's own tracker (auth.uid()), never another user's and never posting content",
     "the caller's own day ledger in lifecycle_reads (the posting ids it was answered today, at most 1,000 distinct a day) and the deletion of rows older than two days; nothing a stranger can read (20261009131000, S8-018)"),
 ];
+
+/**
+ * A signature 20261004110000 lists that a later census re-issue dropped and
+ * replaced, each with its replacement, which CLIENT_CALLABLE stamps `since`
+ * that re-issue. A harness that applies 20261004110000 creates the old one,
+ * as the database held it then.
+ *   get_trending_categories() became get_trending_categories(integer), the
+ *   watch window as an argument (20261112191000, S14X-038).
+ */
+export const REPLACED_AFTER_CENSUS: Record<string, string> = {
+  "public.get_trending_categories()": "public.get_trending_categories(integer)",
+};
+
+/**
+ * The allowlist as a census issued at `stamp` lists it: the rows it knew (no
+ * `since`, or a `since` at or before it), with each signature a later re-issue
+ * replaced as it was then, held by its replacement's caller.
+ */
+export function listedAt(stamp: string): AllowedFunction[] {
+  const replaced = new Map(Object.entries(REPLACED_AFTER_CENSUS).map(([was, now]) => [now, was]));
+  return CLIENT_CALLABLE.flatMap((a) => {
+    if (!a.since || a.since <= stamp) return [a];
+    const was = replaced.get(a.sig);
+    return was ? [{ ...a, sig: was, since: undefined }] : [];
+  });
+}
 
 /**
  * Created by 20261004110000 already closed to clients: the budget and the
