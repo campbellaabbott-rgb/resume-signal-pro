@@ -7390,7 +7390,7 @@ export type Database = {
       get_transparency_coverage: { Args: never; Returns: Json }
       get_transparent_employers: { Args: { p_limit?: number }; Returns: Json }
       get_trending_categories: {
-        Args: never
+        Args: { p_watch_days?: number }
         Returns: {
           category: string
           last7: number
