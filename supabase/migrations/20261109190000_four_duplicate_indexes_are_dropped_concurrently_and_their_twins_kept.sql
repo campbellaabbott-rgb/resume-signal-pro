@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. Every job this file schedules
+-- runs at most once an hour (reviewed 2026-11-16 by the project owner).
+--
 -- FOUR DUPLICATE INDEXES ARE DROPPED CONCURRENTLY, AND THEIR TWINS KEPT
 -- (cost audit 2026-11-08, db-cadence lane, "do first" #14).
 --
@@ -25,8 +28,11 @@
 -- 20260909216000 and 20260909224000): ONE statement per job, with no SET in
 -- front of it, because a multi-statement command runs as one implicit
 -- transaction and CONCURRENTLY refuses it. A drop that the session's two
--- minute cap cancels leaves the index invalid, and the next minute's run
--- drops that too. One watcher unschedules each dropper once its index is
+-- minute cap cancels leaves the index invalid, and the next hour's run
+-- drops that too. Each dropper runs once an hour, at its own minute (the two
+-- on temp_resume_storage half an hour apart, so they never wait on each
+-- other), and the watcher once an hour at :50: nothing here runs more often
+-- than hourly. One watcher unschedules each dropper once its index is
 -- gone, and itself once every dropper is.
 --
 -- A DROPPER IS SCHEDULED ONLY AGAINST A PROVEN TWIN: the kept index exists on
@@ -62,11 +68,11 @@ BEGIN
 
   FOR r IN
     SELECT * FROM (VALUES
-      ('oneshot-drop-postings-company-token-idx',     'job_board_postings_company_token_idx', 'job_board_postings_company_idx'),
-      ('oneshot-drop-temp-resume-expires-idx',        'idx_temp_resume_expires',              'temp_resume_storage_expires_at_idx'),
-      ('oneshot-drop-temp-resume-storage-expires-idx','idx_temp_resume_storage_expires_at',   'temp_resume_storage_expires_at_idx'),
-      ('oneshot-drop-ai-response-cache-expires-idx',  'idx_ai_response_cache_expires_at',     'idx_ai_cache_expires')
-    ) AS t(job, dup, twin)
+      ('oneshot-drop-postings-company-token-idx',     'job_board_postings_company_token_idx', 'job_board_postings_company_idx',     '26 * * * *'),
+      ('oneshot-drop-temp-resume-expires-idx',        'idx_temp_resume_expires',              'temp_resume_storage_expires_at_idx', '28 * * * *'),
+      ('oneshot-drop-temp-resume-storage-expires-idx','idx_temp_resume_storage_expires_at',   'temp_resume_storage_expires_at_idx', '58 * * * *'),
+      ('oneshot-drop-ai-response-cache-expires-idx',  'idx_ai_response_cache_expires_at',     'idx_ai_cache_expires',               '29 * * * *')
+    ) AS t(job, dup, twin, at_minute)
   LOOP
     v_dup := to_regclass('public.' || r.dup);
     v_twin := to_regclass('public.' || r.twin);
@@ -85,14 +91,14 @@ BEGIN
       CONTINUE;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM cron.job j WHERE j.jobname = r.job) THEN
-      PERFORM cron.schedule(r.job, '* * * * *', format('DROP INDEX CONCURRENTLY IF EXISTS public.%I', r.dup));
+      PERFORM cron.schedule(r.job, r.at_minute, format('DROP INDEX CONCURRENTLY IF EXISTS public.%I', r.dup));
     END IF;
     v_scheduled := v_scheduled + 1;
   END LOOP;
 
   IF v_scheduled > 0 AND NOT EXISTS (SELECT 1 FROM cron.job j WHERE j.jobname = 'oneshot-drop-duplicate-indexes-watch') THEN
     PERFORM cron.schedule(
-      'oneshot-drop-duplicate-indexes-watch', '* * * * *',
+      'oneshot-drop-duplicate-indexes-watch', '50 * * * *',
       $job$
       DO $w$
       DECLARE

@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file creates or changes no
+-- cron schedule (reviewed 2026-11-16 by the project owner).
+--
 -- A TITLE-ONLY EMBEDDING IS REQUEUED WHEN ITS DESCRIPTION ARRIVES.
 --
 -- Cost audit 2026-11-08, "Embed re-queue". get_embed_batch's phase 2
@@ -51,7 +54,7 @@
 -- two-second lock_timeout retried five times (so it can never queue the
 -- ingest behind it for longer than that), and held only for the seed -- a
 -- primary-key join over the few thousand title-only rows -- and the
--- catalogue check. Holding it until commit is also what makes the seed
+-- catalogue check. Holding it until the transaction ends is also what makes the seed
 -- exact: no description can be written between the seed's read and the
 -- trigger becoming visible.
 --

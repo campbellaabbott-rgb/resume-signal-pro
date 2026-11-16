@@ -1,3 +1,14 @@
+-- SUB-HOURLY CRON REVIEW MARKER
+-- reviewed: 2026-11-16 by the project owner, who approves this schedule as written.
+-- job: employer-perks-sweep (every minute since 20261012111000).
+-- schedule: '* * * * *', UNCHANGED. This file changes only the job's command.
+-- why sub-hourly: the sweep works through pending boards one small batch per
+--   run, so the minute cadence sets how fast a day's perk work finishes.
+-- load: lower than today. The command now sends its request only when there
+--   is work, removing about 1,000 to 1,440 idle function calls a day; an idle
+--   minute evaluates one SQL predicate and sends nothing.
+-- new standing sub-hourly jobs: none.
+--
 -- THE PERK SWEEP IS KICKED ONLY WHEN THERE IS WORK.
 --
 -- Cost audit 2026-11-08, "Perk sweep", second half. employer-perks-sweep

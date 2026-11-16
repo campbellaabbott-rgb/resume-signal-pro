@@ -7,10 +7,11 @@
  * SHARE UPDATE EXCLUSIVE on its table for as long as it waits, and a CREATE
  * TRIGGER (SHARE ROW EXCLUSIVE), an ALTER TABLE or a plain CREATE INDEX on the
  * same table queues behind it. The droppers are armed by a migration of this
- * wave and run within the minute, so a later migration of the same paste that
- * takes one of those locks on a dropper's table can time out behind it. The
- * embed re-queue's CREATE TRIGGER on job_board_postings sorted after the
- * droppers' file and had a two-second lock budget.
+ * wave and run within the hour, each at its own minute, so a later migration
+ * of the same paste that takes one of those locks on a dropper's table can
+ * time out behind it. The embed re-queue's CREATE TRIGGER on
+ * job_board_postings sorted after the droppers' file and had a two-second
+ * lock budget.
  *
  * Read here: the wave's migration files, their comments removed. The tables a
  * dropper drops from come from the dropper file's own pairs, so a new pair is
