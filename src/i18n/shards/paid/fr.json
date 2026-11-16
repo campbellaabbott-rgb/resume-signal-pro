@@ -9,6 +9,41 @@
       "posting": "L'offre d'emploi dépassait {{max}} caractères : cette analyse en a lu les {{max}} premiers.",
       "linkedIn": "Votre texte LinkedIn dépassait {{max}} caractères : cette analyse en a lu les {{max}} premiers."
     },
-    "inProgress": "Votre analyse est déjà en cours. Cette page l'affichera dès qu'elle sera prête."
+    "inProgress": "Votre analyse est déjà en cours. Cette page l'affichera dès qu'elle sera prête.",
+    "busy": "Le service d'analyse est très sollicité en ce moment : rien n'a été créé ni enregistré. Votre achat est en sécurité et n'a pas encore été utilisé : réessayez dans quelques minutes.",
+    "refused": {
+      "title": "Cet achat ne peut pas ouvrir d'analyse",
+      "refunded": "Cet achat a été remboursé et ne comprend donc plus d'analyse. Si vous ne vous y attendiez pas, écrivez à {{email}} depuis l'adresse avec laquelle vous avez payé.",
+      "notThisProduct": "Cet achat ne concernait pas une Analyse complète de CV, il ne peut donc pas en ouvrir une ici. Ouvrez-le depuis le lien de son propre e-mail d'achat.",
+      "notFound": "Nous n'avons pas trouvé cet achat. Ouvrez votre analyse depuis le lien de votre e-mail d'achat et, si cette page affiche toujours ce message, écrivez à {{email}} depuis l'adresse avec laquelle vous avez payé.",
+      "used": "Cet achat a déjà produit son analyse, et chaque achat en produit une. Ouvrez-la depuis le lien de votre e-mail d'achat ou depuis la commande dans votre compte.",
+      "grant": "Votre abonnement Pro ne peut pas inclure cette analyse pour le moment : l'abonnement n'est pas actif, son paiement a été remboursé, ou ce lien date d'avant une mise à jour. Connectez-vous et ouvrez à nouveau l'Analyse complète depuis votre compte."
+    },
+    "pdf": {
+      "device": "Le navigateur de cet appareil n'a pas pu créer le PDF : l'analyse est plus grande que ce qu'il peut dessiner. Ouvrez cette page sur un ordinateur pour l'enregistrer, ou utilisez la fonction Imprimer de votre navigateur pour l'enregistrer en PDF."
+    },
+    "sectionsMissing": {
+      "jobDescription": "Cette fois, l'analyse n'a pas pu comparer votre CV à l'offre d'emploi : cette partie est donc absente. Tout le reste de l'analyse est complet.",
+      "linkedIn": "Cette fois, l'analyse n'a pas pu examiner votre profil LinkedIn : cette partie est donc absente. Tout le reste de l'analyse est complet."
+    },
+    "page": {
+      "emailSentTitle": "E-mail envoyé",
+      "emailSentBody": "Une copie a été envoyée à votre adresse e-mail",
+      "emailSentCheck": "Consultez votre boîte de réception",
+      "clearTitle": "Effacer les données du navigateur",
+      "clearBody": "Supprimer les données de session locales",
+      "cleared": "Effacé",
+      "clearButton": "Effacer les données",
+      "deleteTitle": "Supprimer les données du serveur",
+      "deleteBody": "Supprimer l'analyse de nos serveurs",
+      "deleteButton": "Supprimer les données",
+      "deleteConfirmTitle": "Supprimer les données de votre analyse ?",
+      "deleteConfirmBody": "Cette action est irréversible. L'analyse de votre CV sera définitivement supprimée de nos serveurs. Cela contribue à protéger votre vie privée conformément au RGPD et au CCPA.",
+      "deleteConfirmYes": "Oui, supprimer mes données",
+      "scrollHint": "Faites défiler pour voir les résultats",
+      "analyzeYourResume": "Analyser votre CV",
+      "seoTitle": "Votre Analyse complète de CV — Resume Booster",
+      "seoDescription": "Votre Analyse complète de CV, ouverte depuis votre achat ou depuis un lien vers elle."
+    }
   }
 }

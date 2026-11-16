@@ -9,6 +9,41 @@
       "posting": "La oferta de empleo tenía más de {{max}} caracteres, así que este análisis leyó los primeros {{max}}.",
       "linkedIn": "Tu texto de LinkedIn tenía más de {{max}} caracteres, así que este análisis leyó los primeros {{max}}."
     },
-    "inProgress": "Tu análisis ya se está preparando. Esta página lo mostrará en cuanto esté listo."
+    "inProgress": "Tu análisis ya se está preparando. Esta página lo mostrará en cuanto esté listo.",
+    "busy": "El servicio de análisis está ocupado en este momento, así que no se creó ni se guardó nada. Tu compra está segura y sigue sin usarse: vuelve a intentarlo en unos minutos.",
+    "refused": {
+      "title": "Esta compra no puede abrir un análisis",
+      "refunded": "Esta compra fue reembolsada, así que ya no incluye un análisis. Si no lo esperabas, escribe a {{email}} desde la dirección con la que pagaste.",
+      "notThisProduct": "Esta compra no fue de un Análisis Completo de Currículum, así que no puede abrir uno aquí. Ábrela desde el enlace de su propio correo de compra.",
+      "notFound": "No encontramos esta compra. Abre tu análisis desde el enlace de tu correo de compra y, si esta página sigue diciendo esto, escribe a {{email}} desde la dirección con la que pagaste.",
+      "used": "Esta compra ya generó su análisis, y cada compra genera uno. Ábrelo desde el enlace de tu correo de compra o desde el pedido en tu cuenta.",
+      "grant": "Tu membresía Pro no puede incluir este análisis ahora mismo: la membresía no está activa, su pago fue reembolsado o este enlace es de antes de una actualización. Inicia sesión y vuelve a abrir el Análisis Completo desde tu cuenta."
+    },
+    "pdf": {
+      "device": "El navegador de este dispositivo no pudo crear el PDF: el análisis es más grande de lo que puede dibujar. Abre esta página en un ordenador para guardarlo, o usa la opción Imprimir de tu navegador para guardarlo como PDF."
+    },
+    "sectionsMissing": {
+      "jobDescription": "Esta vez el análisis no pudo comparar tu currículum con la oferta de empleo, así que esa parte no está incluida. Todo lo demás del análisis está completo.",
+      "linkedIn": "Esta vez el análisis no pudo revisar tu perfil de LinkedIn, así que esa parte no está incluida. Todo lo demás del análisis está completo."
+    },
+    "page": {
+      "emailSentTitle": "Correo enviado",
+      "emailSentBody": "Se envió una copia a tu correo",
+      "emailSentCheck": "Revisa tu bandeja de entrada",
+      "clearTitle": "Borrar datos del navegador",
+      "clearBody": "Elimina los datos de sesión locales",
+      "cleared": "Borrado",
+      "clearButton": "Borrar datos",
+      "deleteTitle": "Eliminar datos del servidor",
+      "deleteBody": "Elimina el análisis de nuestros servidores",
+      "deleteButton": "Eliminar datos",
+      "deleteConfirmTitle": "¿Eliminar los datos de tu análisis?",
+      "deleteConfirmBody": "Esta acción no se puede deshacer. El análisis de tu currículum se eliminará de forma permanente de nuestros servidores. Esto ayuda a proteger tu privacidad según el RGPD y la CCPA.",
+      "deleteConfirmYes": "Sí, eliminar mis datos",
+      "scrollHint": "Desplázate para ver los resultados",
+      "analyzeYourResume": "Analiza tu currículum",
+      "seoTitle": "Tu Análisis Completo de Currículum — Resume Booster",
+      "seoDescription": "Tu Análisis Completo de Currículum, abierto desde tu compra o desde un enlace a él."
+    }
   }
 }

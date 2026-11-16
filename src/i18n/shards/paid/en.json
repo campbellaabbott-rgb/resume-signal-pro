@@ -9,6 +9,41 @@
       "posting": "The job posting was longer than {{max}} characters, so this analysis read its first {{max}}.",
       "linkedIn": "Your LinkedIn text was longer than {{max}} characters, so this analysis read its first {{max}}."
     },
-    "inProgress": "Your analysis is already being made. This page shows it as soon as it is ready."
+    "inProgress": "Your analysis is already being made. This page shows it as soon as it is ready.",
+    "busy": "The analysis service is busy right now, so nothing was made and nothing was saved. Your purchase is safe and still unused: try again in a few minutes.",
+    "refused": {
+      "title": "This purchase cannot open an analysis",
+      "refunded": "This purchase was refunded, so it no longer includes an analysis. If you did not expect that, write to {{email}} from the address you paid with.",
+      "notThisProduct": "This purchase was not for a Full Resume Analysis, so it cannot open one here. Open it from the link in its own purchase email.",
+      "notFound": "We could not find this purchase. Open your analysis from the link in your purchase email, and if this page still says this, write to {{email}} from the address you paid with.",
+      "used": "This purchase has already made its analysis, and each purchase makes one. Open it from the link in your purchase email or from the order in your account.",
+      "grant": "Your Pro membership cannot include this analysis right now: the membership is not active, its payment was refunded, or this link is from before an update. Sign in and open the Full Analysis again from your account."
+    },
+    "pdf": {
+      "device": "This device's browser could not draw the PDF: the analysis is larger than it can draw. Open this page on a computer to save it, or use your browser's Print to save it as a PDF."
+    },
+    "sectionsMissing": {
+      "jobDescription": "This analysis could not compare your résumé with the job posting this time, so that part is left out. Everything else in the analysis is complete.",
+      "linkedIn": "This analysis could not review your LinkedIn profile this time, so that part is left out. Everything else in the analysis is complete."
+    },
+    "page": {
+      "emailSentTitle": "Email Sent",
+      "emailSentBody": "A copy was sent to your email",
+      "emailSentCheck": "Check your inbox",
+      "clearTitle": "Clear Browser Data",
+      "clearBody": "Remove local session data",
+      "cleared": "Cleared",
+      "clearButton": "Clear Data",
+      "deleteTitle": "Delete Server Data",
+      "deleteBody": "Delete analysis from servers",
+      "deleteButton": "Delete Data",
+      "deleteConfirmTitle": "Delete your analysis data?",
+      "deleteConfirmBody": "This action cannot be undone. Your resume analysis will be permanently deleted from our servers. This helps ensure your privacy under GDPR and CCPA regulations.",
+      "deleteConfirmYes": "Yes, delete my data",
+      "scrollHint": "Scroll to view results",
+      "analyzeYourResume": "Analyze Your Resume",
+      "seoTitle": "Your Full Resume Analysis — Resume Booster",
+      "seoDescription": "Your Full Resume Analysis, opened from your purchase or from a link to it."
+    }
   }
 }

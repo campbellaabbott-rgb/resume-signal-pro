@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { SEO } from "@/components/seo/SEO";
 import { AnalysisResults, type AnalysisData } from "@/components/AnalysisResults";
 import { ResumeRecovery } from "@/components/ResumeRecovery";
 import { SmartProductRecommendations } from "@/components/SmartProductRecommendations";
@@ -51,8 +52,8 @@ import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { usePersonalization } from "@/hooks/use-personalization";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
-import { buildAnalysisPdf, type PdfLike } from "@/lib/analysis-pdf";
-import { invokePaidAnalysis, readSessionOnlyAnswer, type Ask } from "@/lib/paid-analysis-run";
+import { buildAnalysisPdf, PdfNotDrawnOnThisDevice, type PdfLike } from "@/lib/analysis-pdf";
+import { failureKindOf, invokePaidAnalysis, readSessionOnlyAnswer, type Ask, type RefusalCode } from "@/lib/paid-analysis-run";
 import { PRODUCTS } from "@/config/products";
 import { PRIVACY_EMAIL, SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention";
 import { forgetStashedSessionFor, forgetStashedShare, stashShareFor, stashedSessionIdFor, stashedShareFor } from "@/lib/auth-fragment";
@@ -66,11 +67,48 @@ import { forgetStashedSessionFor, forgetStashedShare, stashShareFor, stashedSess
  */
 class AnalysisTimedOut extends Error {}
 
-/** The error a failed analyze-resume call is shown as. */
-async function analysisFailure(fnError: unknown, timedOutText: string): Promise<Error> {
-  const parsed = await parseEdgeFunctionError(fnError, "analyze-resume");
-  return parsed.statusCode === 504 ? new AnalysisTimedOut(timedOutText) : new Error(parsed.description);
+/**
+ * A BUSY OR BRIEFLY UNREACHABLE SERVICE IS ASKED AGAIN, NOT REPORTED TO
+ * SUPPORT (S14X-110). A busy model gateway, one out of credit, Stripe or the
+ * database unreachable: analyze-resume answers 503 with retryable: true, and
+ * nothing was saved or redeemed. The buyer is told the service is busy and the
+ * purchase is safe, and Try again asks again, as for a timeout.
+ */
+class AnalysisBusy extends Error {}
+
+/**
+ * A PURCHASE analyze-resume WILL NOT ANALYSE (RC-S13-048): refunded, not a
+ * Full Analysis, not found, already used, or a Pro grant it cannot honour.
+ * Asking again cannot change it, so the page says which, and offers neither
+ * the résumé box nor Try again.
+ */
+class AnalysisRefused extends Error {
+  code: RefusalCode;
+  constructor(code: RefusalCode) {
+    super(code);
+    this.code = code;
+  }
 }
+
+/** The error a failed analyze-resume call is shown as. */
+async function analysisFailure(fnError: unknown, words: { timedOut: string; busy: string }): Promise<Error> {
+  const parsed = await parseEdgeFunctionError(fnError, "analyze-resume");
+  if (parsed.statusCode === 504) return new AnalysisTimedOut(words.timedOut);
+  const failure = await failureKindOf(fnError);
+  if (failure.kind === "refused") return new AnalysisRefused(failure.code);
+  if (failure.kind === "timedOut") return new AnalysisTimedOut(words.timedOut);
+  if (failure.kind === "retryable") return new AnalysisBusy(words.busy);
+  return new Error(parsed.description);
+}
+
+/** What the page says for each refusal. */
+const REFUSAL_WORDS: Readonly<Record<RefusalCode, string>> = {
+  purchase_refunded: "paidAnalysis.refused.refunded",
+  payment_required: "paidAnalysis.refused.notThisProduct",
+  purchase_not_found: "paidAnalysis.refused.notFound",
+  session_used: "paidAnalysis.refused.used",
+  grant_refused: "paidAnalysis.refused.grant",
+};
 
 const Success = () => {
   const { t, i18n } = useTranslation();
@@ -101,6 +139,8 @@ const Success = () => {
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [shareId, setShareId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // A purchase analyze-resume refused for good (RC-S13-048): which, and why.
+  const [refusal, setRefusal] = useState<RefusalCode | null>(null);
   const [emailSent, setEmailSent] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -182,14 +222,19 @@ const Success = () => {
    * "shown" when one was shown; "stored" when none exists yet and the
    * purchase's stored résumé is still kept, so the analysis is asked from
    * that copy; "needsResume" otherwise, with askPosting set when the checkout
-   * was made with a posting (C-S14-010).
+   * was made with a posting (C-S14-010). "refused" when the purchase can never
+   * be analysed (RC-S13-048): the page says why and asks for no résumé.
    */
-  const showDeliveredAnalysis = async (stripeSessionId: string): Promise<"shown" | "stored" | "needsResume"> => {
+  const showDeliveredAnalysis = async (stripeSessionId: string): Promise<"shown" | "stored" | "needsResume" | "refused"> => {
     try {
       const answer = await readSessionOnlyAnswer(
         await askAnalysis(() => supabase.functions.invoke("analyze-resume", { body: { language: i18n.language, resumeText: "", sessionId: stripeSessionId } })),
       );
       if (answer.kind === "stored") return "stored";
+      if (answer.kind === "refused") {
+        setRefusal(answer.code);
+        return "refused";
+      }
       if (answer.kind === "needsResume") {
         setAskPosting(answer.askPosting);
         return "needsResume";
@@ -219,7 +264,7 @@ const Success = () => {
 
         if (fnError) {
           console.error("Function error:", fnError);
-          throw await analysisFailure(fnError, t('success.error.timedOut'));
+          throw await analysisFailure(fnError, { timedOut: t('success.error.timedOut'), busy: t('paidAnalysis.busy') });
         }
 
         if (data.error) {
@@ -266,10 +311,14 @@ const Success = () => {
         });
       } catch (err) {
         console.error("Analysis error:", err);
+        if (err instanceof AnalysisRefused) {
+          setRefusal(err.code);
+          return;
+        }
         setError(err instanceof Error ? err.message : t('success.error.generic'));
         toast({
           title: t('success.toast.analysisFailed'),
-          description: err instanceof AnalysisTimedOut
+          description: err instanceof AnalysisTimedOut || err instanceof AnalysisBusy
             ? t('success.toast.analysisFailedRetryDesc')
             : t('success.toast.analysisFailedDesc'),
           variant: "destructive",
@@ -385,8 +434,9 @@ const Success = () => {
   /**
    * The résumé the buyer pasted, sent straight to the analysis (they already
    * paid; it is not stored locally), with the posting when the page asked for
-   * one. A timeout keeps the text, so Try again asks again in place; any other
-   * failure lets it go, and Try again reloads to ask for the résumé again.
+   * one. A timeout or a busy service keeps the text, so Try again asks again in
+   * place; a refusal shows why; any other failure lets it go, and Try again
+   * reloads to ask for the résumé again.
    */
   const analyzePastedResume = (text: string, posting?: string) => {
     pastedResume.current = text;
@@ -398,7 +448,7 @@ const Success = () => {
 
     void askAnalysis(() => supabase.functions.invoke("analyze-resume", { body: { language: i18n.language, resumeText: text, sessionId, ...(posting ? { jobDescriptionText: posting } : {}) } }))
       .then(async ({ data, error: fnError }) => {
-        if (fnError) throw await analysisFailure(fnError, t('success.error.timedOut'));
+        if (fnError) throw await analysisFailure(fnError, { timedOut: t('success.error.timedOut'), busy: t('paidAnalysis.busy') });
         if (data?.error) throw new Error(data.error);
 
         pastedResume.current = null;
@@ -415,7 +465,13 @@ const Success = () => {
       })
       .catch((err) => {
         console.error("Analysis error:", err);
-        if (!(err instanceof AnalysisTimedOut)) {
+        if (err instanceof AnalysisRefused) {
+          pastedResume.current = null;
+          pastedPosting.current = undefined;
+          setRefusal(err.code);
+          return;
+        }
+        if (!(err instanceof AnalysisTimedOut || err instanceof AnalysisBusy)) {
           pastedResume.current = null;
           pastedPosting.current = undefined;
         }
@@ -458,9 +514,10 @@ const Success = () => {
       });
     } catch (err) {
       console.error("PDF generation error:", err);
+      // A canvas the device could not draw (S14X-112) says so, and how to save it anyway.
       toast({
         title: t('success.toast.pdfFailed'),
-        description: t('success.toast.pdfFailedDesc'),
+        description: err instanceof PdfNotDrawnOnThisDevice ? t('paidAnalysis.pdf.device') : t('success.toast.pdfFailedDesc'),
         variant: "destructive",
       });
     } finally {
@@ -552,6 +609,8 @@ const Success = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* One buyer's page: its own title, in the page's language, and never indexed (S14X-178). */}
+      <SEO title={t('paidAnalysis.page.seoTitle')} description={t('paidAnalysis.page.seoDescription')} path="/success" noIndex />
       <Header />
       
       <main className="pt-16">
@@ -633,6 +692,23 @@ const Success = () => {
                       </div>
                     </div>
                   )}
+                </div>
+              ) : refusal ? (
+                <div className="space-y-6 animate-fade-in" data-testid="analysis-refused" role="alert">
+                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-destructive/10 border border-destructive/20">
+                    <AlertCircle className="w-10 h-10 text-destructive" />
+                  </div>
+                  <h1 className="text-3xl md:text-4xl font-bold">{t('paidAnalysis.refused.title')}</h1>
+                  <p className="text-muted-foreground text-lg max-w-md mx-auto">{t(REFUSAL_WORDS[refusal], { email: PRIVACY_EMAIL })}</p>
+                  {/* Asking again cannot change a refusal: only the way home. */}
+                  <div className="flex flex-wrap items-center justify-center gap-3">
+                    <Link to="/">
+                      <Button variant="outline" size="lg" className="gap-2">
+                        <Home className="w-4 h-4" />
+                        {t('success.error.backHome')}
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               ) : needsResume ? (
                 <div className="animate-fade-in">
@@ -754,31 +830,31 @@ const Success = () => {
                         </Button>
                       </div>
 
-                      {/* Email Sent card — only show when email was actually delivered */}
+                      {/* The mailed card: only when the mail was accepted */}
                       {emailSent && (
                         <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-success/30 space-y-3">
                           <div className="flex items-center gap-2 text-sm font-medium text-success">
                             <Mail className="w-4 h-4" />
-                            Email Sent
+                            {t('paidAnalysis.page.emailSentTitle')}
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            A copy was sent to your email
+                            {t('paidAnalysis.page.emailSentBody')}
                           </p>
                           <div className="flex items-center gap-2 text-success text-sm">
                             <CheckCircle2 className="w-4 h-4" />
-                            Check your inbox
+                            {t('paidAnalysis.page.emailSentCheck')}
                           </div>
                         </div>
                       )}
 
-                      {/* Clear Browser Data card */}
+                      {/* This browser's copies */}
                       <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-amber-500/20 space-y-3">
                         <div className="flex items-center gap-2 text-sm font-medium">
                           <Monitor className="w-4 h-4 text-amber-500" />
-                          Clear Browser Data
+                          {t('paidAnalysis.page.clearTitle')}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Remove local session data
+                          {t('paidAnalysis.page.clearBody')}
                         </p>
                         <Button
                           variant="outline"
@@ -790,25 +866,25 @@ const Success = () => {
                           {localDataCleared ? (
                             <>
                               <CheckCircle2 className="w-4 h-4" />
-                              Cleared
+                              {t('paidAnalysis.page.cleared')}
                             </>
                           ) : (
                             <>
                               <Trash2 className="w-4 h-4" />
-                              Clear Data
+                              {t('paidAnalysis.page.clearButton')}
                             </>
                           )}
                         </Button>
                       </div>
 
-                      {/* Delete Server Data card - GDPR compliance */}
+                      {/* The copy on our servers (GDPR) */}
                       <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-destructive/20 space-y-3">
                         <div className="flex items-center gap-2 text-sm font-medium">
                           <Trash2 className="w-4 h-4 text-destructive" />
-                          Delete Server Data
+                          {t('paidAnalysis.page.deleteTitle')}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Delete analysis from servers
+                          {t('paidAnalysis.page.deleteBody')}
                         </p>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
@@ -823,23 +899,23 @@ const Success = () => {
                               ) : (
                                 <Trash2 className="w-4 h-4" />
                               )}
-                              {isDeleting ? "Deleting..." : "Delete Data"}
+                              {isDeleting ? t('success.actions.deleting') : t('paidAnalysis.page.deleteButton')}
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete your analysis data?</AlertDialogTitle>
+                              <AlertDialogTitle>{t('paidAnalysis.page.deleteConfirmTitle')}</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This action cannot be undone. Your resume analysis will be permanently deleted from our servers. This helps ensure your privacy under GDPR and CCPA regulations.
+                                {t('paidAnalysis.page.deleteConfirmBody')}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogCancel>{t('success.actions.cancel')}</AlertDialogCancel>
                               <AlertDialogAction
                                 onClick={handleDeleteData}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
-                                Yes, delete my data
+                                {t('paidAnalysis.page.deleteConfirmYes')}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
@@ -877,7 +953,7 @@ const Success = () => {
                   {/* Scroll indicator */}
                   <div className="pt-6 animate-bounce">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                      <span className="text-sm">Scroll to view results</span>
+                      <span className="text-sm">{t('paidAnalysis.page.scrollHint')}</span>
                       <ArrowRight className="w-4 h-4 rotate-90" />
                     </div>
                   </div>
@@ -896,7 +972,7 @@ const Success = () => {
                   <Link to="/resume-checker">
                     <Button variant="default" size="lg" className="gap-2">
                       <Sparkles className="w-4 h-4" />
-                      Analyze Your Resume
+                      {t('paidAnalysis.page.analyzeYourResume')}
                     </Button>
                   </Link>
                 </div>
