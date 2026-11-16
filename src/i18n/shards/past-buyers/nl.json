@@ -1,0 +1,9 @@
+{
+  "pastBuyers": {
+    "closedNoCopy": "Voor deze bestelling wordt niets meer gemaakt, en deze pagina bewaart er geen kopie van. Als hij je per e-mail is gestuurd, blijft die kopie van jou. Voeg hieronder je cv toe om hem hier nu te maken.",
+    "openedInPrint": "Je rapport bevat tekens die het pdf-lettertype niet kan weergeven, dus het is geopend in het afdrukvenster. Kies daar 'Opslaan als pdf' om een kopie te bewaren.",
+    "parseSimulationSaved": "Gecontroleerd toen dit rapport werd gemaakt. Je cv zelf wordt niet bewaard.",
+    "parseSimulationMissing": "Dit rapport is opgeslagen voordat de parsecontroles erbij werden bewaard. Scan je cv opnieuw om te zien hoe een ATS het leest.",
+    "downloadLetter": "Downloaden"
+  }
+}

@@ -26,7 +26,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { exportGraduateGamePlanPDF } from '@/lib/pdf-export';
-import { hasUnsupportedPdfCharacters } from '@/lib/pdf-text-support';
 import { CardErrorBoundary } from '@/components/CardErrorBoundary';
 import { reportTone, shapeGamePlan, type GamePlanShape } from '@/lib/career-report-shape';
 import { useReportEnumLabel } from '@/hooks/use-report-enum-label';
@@ -149,21 +148,18 @@ const WeekCard = ({ weekNum, plan }: { weekNum: number; plan: WeekPlan }) => {
 };
 
 export function GraduateGamePlanResults({ data: stored }: GraduateGamePlanResultsProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const enumLabel = useReportEnumLabel();
   const data: GamePlanShape = useMemo(() => shapeGamePlan(stored).data, [stored]);
   const isReady = reportTone(data.resumeReadinessGate.verdict) === 'positive';
 
   const handleExportPDF = () => {
     try {
-      // The PDF export's standard font only supports Latin-1 + common
-      // punctuation — content in other scripts would otherwise render as
-      // blank/missing glyphs with no explanation.
-      if (hasUnsupportedPdfCharacters(JSON.stringify(data))) {
-        toast.warning(t('graduateGamePlan.toast.pdfCharWarning'));
-      }
-      exportGraduateGamePlanPDF(data);
-      toast.success(t('graduateGamePlan.toast.pdfSuccess'));
+      // Text jsPDF's font cannot draw (a Hindi or Polish report) goes to the
+      // browser's print dialog instead of a garbled PDF (RC-S12-029).
+      const { method } = exportGraduateGamePlanPDF(data, { lang: i18n?.language });
+      if (method === 'print') toast.info(t('pastBuyers.openedInPrint'));
+      else toast.success(t('graduateGamePlan.toast.pdfSuccess'));
     } catch (error) {
       toast.error(t('graduateGamePlan.toast.pdfError'));
     }

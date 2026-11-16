@@ -24,7 +24,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { exportCareerSnapshotPDF } from '@/lib/pdf-export';
-import { hasUnsupportedPdfCharacters } from '@/lib/pdf-text-support';
 import { CardErrorBoundary } from '@/components/CardErrorBoundary';
 import { reportTone, shapeCareerSnapshot, type CareerSnapshotShape, type ReportTone } from '@/lib/career-report-shape';
 import { useReportEnumLabel } from '@/hooks/use-report-enum-label';
@@ -139,7 +138,7 @@ const CopyButton = ({ text, label }: { text: string; label?: string }) => {
 };
 
 export function CareerSnapshotResults({ data: stored }: CareerSnapshotResultsProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const enumLabel = useReportEnumLabel();
   const data: CareerSnapshotShape = useMemo(() => shapeCareerSnapshot(stored).data, [stored]);
   const getOverallColor = (overall: string) => {
@@ -152,14 +151,11 @@ export function CareerSnapshotResults({ data: stored }: CareerSnapshotResultsPro
 
   const handleExportPDF = () => {
     try {
-      // The PDF export's standard font only supports Latin-1 + common
-      // punctuation — content in other scripts (e.g. a non-English resume)
-      // would otherwise render as blank/missing glyphs with no explanation.
-      if (hasUnsupportedPdfCharacters(JSON.stringify(data))) {
-        toast.warning(t('careerSnapshot.toast.pdfCharWarning'));
-      }
-      exportCareerSnapshotPDF(data);
-      toast.success(t('careerSnapshot.toast.pdfSuccess'));
+      // Text jsPDF's font cannot draw (a Hindi or Polish report) goes to the
+      // browser's print dialog instead of a garbled PDF (RC-S12-029).
+      const { method } = exportCareerSnapshotPDF(data, { lang: i18n?.language });
+      if (method === 'print') toast.info(t('pastBuyers.openedInPrint'));
+      else toast.success(t('careerSnapshot.toast.pdfSuccess'));
     } catch (error) {
       toast.error(t('careerSnapshot.toast.pdfError'));
     }
