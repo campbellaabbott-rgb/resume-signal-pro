@@ -51,6 +51,7 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 import { scanMailSealValid } from "../_shared/scan-mail-seal.ts";
 import { mailSafeText } from "../_shared/mail-text.ts";
 import { openDripLink, signDripLink, type DripPlan } from "../_shared/scan-drip-link.ts";
+import { FIX_PLAN_SEQUENCE_OFFERED } from "./sequence-offered.ts";
 import { alertOwnerOnce } from "../_shared/owner-alert.ts";
 import { redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
 import { sellerFooterHtml, sellerFooterText } from "../_shared/seller.ts";
@@ -435,6 +436,8 @@ Deno.serve(async (req) => {
     if (raw.action === "confirm-drip") {
       const plan = await openDripLink(serviceKey, raw.token);
       if (!plan) return reply({ success: false, error: "This link has expired or is not valid." }, 410);
+      // Withdrawn (S14X-012 option B, ./sequence-offered.ts): nothing is queued.
+      if (!FIX_PLAN_SEQUENCE_OFFERED) return reply({ success: true, queued: false, reason: "withdrawn" });
       const admin = createClient(Deno.env.get("SUPABASE_URL") ?? "", serviceKey);
       const net = await networkBucket(req.headers, serviceKey, "scan-report");
       const atNet = await take(admin, "send-scan-report:drip-confirm", net, 20, 60);
@@ -687,7 +690,7 @@ Deno.serve(async (req) => {
     // its page is opened and its button pressed. Sealed reports only: the
     // sequence is the fix plan's steps, and an unsealed request has none.
     let dripLink = "";
-    if (body.dripOptIn && body.sealed) {
+    if (FIX_PLAN_SEQUENCE_OFFERED && body.dripOptIn && body.sealed) {
       const token = await signDripLink(serviceKey, {
         email,
         score,

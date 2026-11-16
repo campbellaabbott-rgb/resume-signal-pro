@@ -11,8 +11,11 @@
  *   - a pulse sign-up mails its confirmation, and a confirmation link
  *     confirms with no paused flag;
  *   - the agent digest claims its batch;
- *   - the fix-plan button queues its four mails, and a sealed report mail
- *     with the box ticked carries the button;
+ *   - the fix-plan sequence, which the owner withdrew on 2026-11-15
+ *     (S14X-012, option B: nothing ever sent it), is run switched on here:
+ *     its button queues its four mails, and a sealed report mail with the box
+ *     ticked carries the button. As shipped it is off, which
+ *     a-fix-plan-sequence-nothing-sends-is-no-longer-offered proves;
  *   - no response carries a paused marketing header;
  *   - the seller line stays absent while the identity is empty: nothing is
  *     invented.
@@ -37,6 +40,8 @@ beforeAll(async () => {
   g.__fakeSupabase = db;
   g.Deno = { env: { get: (k: string) => env[k] }, serve: (fn: unknown) => { g.__edgeHandler = fn; } };
   const stubs = {
+    // The sequence is withdrawn as shipped (S14X-012, option B); its own code is run switched on here.
+    "./sequence-offered.ts": "export const FIX_PLAN_SEQUENCE_OFFERED = true;",
     "https://esm.sh/@supabase/supabase-js@2": "export const createClient = () => globalThis.__fakeSupabase;",
     "https://esm.sh/resend@2.0.0": "export class Resend { constructor() { this.emails = { send: async (m) => { globalThis.__ssoSent.push(m); return { data: { id: 'em' }, error: null }; } }; } }",
   };

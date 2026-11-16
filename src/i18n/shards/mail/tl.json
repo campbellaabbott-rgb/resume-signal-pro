@@ -7,6 +7,8 @@
     "stoppedBounce": "Bumalik ang mga email na ipinadala sa address na ito, kaya huminto kami sa pagpapadala rito: hindi ito naaabot ng mga alert ng naka-save na search, ng mga scan report at ng market pulse.",
     "stoppedComplaint": "Minarkahan ng address na ito bilang spam ang isa sa mga email namin, kaya huminto kami sa pagpapadala rito: hindi ito naaabot ng mga alert ng naka-save na search, ng mga scan report at ng market pulse.",
     "cadenceAria": "Gaano kadalas kami mag-email tungkol sa {{name}}",
-    "newHeadlineCapped": "{{n}} bagong trabaho ang tumutugma sa iyong mga paghahanap mula sa huling bisita mo"
+    "newHeadlineCapped": "{{n}} bagong trabaho ang tumutugma sa iyong mga paghahanap mula sa huling bisita mo",
+    "fixPlanWithdrawnTitle": "Mga email ng fix plan",
+    "fixPlanWithdrawn": "Hindi na namin ipinapadala ang mga email ng fix plan, kaya walang sinisimulan ang link na ito at walang email na darating mula rito."
   }
 }

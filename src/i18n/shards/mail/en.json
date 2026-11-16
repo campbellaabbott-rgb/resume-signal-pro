@@ -7,6 +7,8 @@
     "stoppedBounce": "Mail to this address bounced, so we stopped sending to it: saved-search alerts, scan reports and the market pulse do not reach it.",
     "stoppedComplaint": "This address marked one of our emails as spam, so we stopped sending to it: saved-search alerts, scan reports and the market pulse do not reach it.",
     "cadenceAria": "How often to email about {{name}}",
-    "newHeadlineCapped": "{{n}} new jobs match your saved searches since your last visit"
+    "newHeadlineCapped": "{{n}} new jobs match your saved searches since your last visit",
+    "fixPlanWithdrawnTitle": "Fix-plan emails",
+    "fixPlanWithdrawn": "We no longer send the fix-plan emails, so this link starts nothing and no emails will follow from it."
   }
 }

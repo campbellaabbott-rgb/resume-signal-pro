@@ -7,6 +7,8 @@
     "stoppedBounce": "Os e-mails para este endereço voltaram, então paramos de enviar para ele: os alertas de buscas salvas, os relatórios de análise e o pulso do mercado não chegam até ele.",
     "stoppedComplaint": "Este endereço marcou um dos nossos e-mails como spam, então paramos de enviar para ele: os alertas de buscas salvas, os relatórios de análise e o pulso do mercado não chegam até ele.",
     "cadenceAria": "Com que frequência enviamos e-mails sobre {{name}}",
-    "newHeadlineCapped": "{{n}} vagas novas correspondem às suas buscas desde a última visita"
+    "newHeadlineCapped": "{{n}} vagas novas correspondem às suas buscas desde a última visita",
+    "fixPlanWithdrawnTitle": "E-mails do plano de ajustes",
+    "fixPlanWithdrawn": "Não enviamos mais os e-mails do plano de ajustes, então este link não inicia nada e nenhum e-mail virá dele."
   }
 }

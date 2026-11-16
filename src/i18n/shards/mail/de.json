@@ -7,6 +7,8 @@
     "stoppedBounce": "E-Mails an diese Adresse kamen als unzustellbar zurück, deshalb senden wir ihr nichts mehr: Benachrichtigungen für gespeicherte Suchen, Scan-Berichte und der Marktpuls erreichen sie nicht.",
     "stoppedComplaint": "Diese Adresse hat eine unserer E-Mails als Spam markiert, deshalb senden wir ihr nichts mehr: Benachrichtigungen für gespeicherte Suchen, Scan-Berichte und der Marktpuls erreichen sie nicht.",
     "cadenceAria": "Wie oft wir Ihnen zu {{name}} schreiben",
-    "newHeadlineCapped": "{{n}} neue Stellen passen seit Ihrem letzten Besuch zu Ihren Suchen"
+    "newHeadlineCapped": "{{n}} neue Stellen passen seit Ihrem letzten Besuch zu Ihren Suchen",
+    "fixPlanWithdrawnTitle": "Fix-Plan-E-Mails",
+    "fixPlanWithdrawn": "Wir verschicken die Fix-Plan-E-Mails nicht mehr. Dieser Link startet daher nichts, und es folgen keine E-Mails daraus."
   }
 }
