@@ -48,7 +48,9 @@ describe("BreadcrumbList (SEO-F18)", () => {
   });
   it("on every translated CV page, as on the English ones", () => {
     const translated = from("// Localized pages per CV_LOCALES", "content: `");
-    expect(translated).toContain('breadcrumbLd([{ name: "Home", path: "/" }, { name: "CV Standards", path: "/cv-standards" }, { name, path: `/${cfg.pathBase}/${slug}` }])');
+    // In the page's own language, and shown as well as marked up (the
+    // review): a-translated-cv-page-shows-the-trail-it-marks-up-in-its-own-language.
+    expect(translated).toContain("breadcrumbLd(trail)");
     expect(from("path: `/cv-standards/${D.COUNTRY_SLUGS[iso]}`", "content: `")).toContain("breadcrumbLd(");
   });
 });

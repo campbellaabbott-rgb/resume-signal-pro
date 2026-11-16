@@ -132,9 +132,15 @@ const ASB_BEFORE = `async function Ce(a){try{if(a.type==="text/plain"||/\\.txt$/
 const COPY_MODULE = minified("src/lib/parse-failure-copy.ts");
 const READER_MODULE = minified("src/lib/resumeText.ts", ["@/integrations/supabase/client"]);
 const lazyMap = (langs: readonly string[]) => langs.map((l) => `"./shards/ingest-parsers/${l}.json":()=>O(()=>import("./${shardName(l)}"),__vite__mapDeps([]))`).join(",");
-const entryAfter = (langs: readonly string[] = LAZY, en = shardFile("en")) =>
-  `${ENTRY_BEFORE}const Ip=${shardChunk(en).replace(/export\s*\{[^}]*\};?\s*$/, "")};const g2=Object.assign({"./shards/ingest-parsers/en.json":Ip});const z2=Object.assign({${lazyMap(langs)}});`;
-const IDX_AFTER = `${IDX_BEFORE.replace(/const ni=.*?function ii\(t,s\)\{[^}]*\}/, "")}${COPY_MODULE}`;
+/** The English strings as a minified object literal. */
+const enLiteral = (en = shardFile("en")) => shardChunk(en).replace(/export\s*\{[^}]*\};?\s*$/, "");
+/** The entry: the eight lazy shards, and (`en`, a build from before the bug round's review) the English strings beside them. */
+const entryAfter = (langs: readonly string[] = LAZY, en: string | null = null) =>
+  `${ENTRY_BEFORE}${en === null ? "" : `const Ip=${enLiteral(en)};const g2=Object.assign({"./shards/ingest-parsers/en.json":Ip});`}const z2=Object.assign({${lazyMap(langs)}});`;
+const IDX_CODE = `${IDX_BEFORE.replace(/const ni=.*?function ii\(t,s\)\{[^}]*\}/, "")}${COPY_MODULE}`;
+/** The scanner chunk with the English strings the namespace plugin registers there (a build of this branch). */
+const idxAfter = (en: string | null = shardFile("en")) => `${IDX_CODE}${en === null ? "" : `const Ip=${enLiteral(en)};`}`;
+const IDX_AFTER = idxAfter();
 const ASB_AFTER = `${READER_MODULE}const p="parse-pdf",d="parse-docx";`;
 
 const SITE_RE = "https://site\\.test";
@@ -221,7 +227,7 @@ describe("the ingest-parsers section", () => {
       expect(pass, r.out).toContain(`PASS  B parse-pdf preflight x-fn-build = ${p} (2026-11-12.1 or later: the round's parser, carrying S14X-044 S14X-123 S14X-146 S14X-147 S14X-280 S14X-282 S14X-183)`);
       expect(pass, r.out).toContain(`PASS  B parse-docx preflight x-fn-build = ${d} (2026-11-12.1 or later: the round's parser, carrying S14X-124 S14X-125 S14X-126 S14X-281 RC-S13-037 RC-S13-036 S14X-147 S14X-280 S14X-183)`);
       expect(pass, r.out).toContain(`PASS  B parse-spreadsheet preflight x-fn-build = ${s} (2026-11-12.1 or later: the round's parser, carrying S14X-148 S14X-284 RC-S13-066)`);
-      expect(pass, r.out).toContain("PASS  S1 S14X-183 the entry carries the English ingest-parsers shard and names 8 more (de, en-GB, es, fr, hi, nl, pt, tl), each holding all 24 refusal and notice strings in the repo's own words");
+      expect(pass, r.out).toContain(`PASS  S1 S14X-183 the English ingest-parsers strings ride with the scanner (${NAMES.idx}, a chunk it imports, or the entry) and the entry names 8 more languages (de, en-GB, es, fr, hi, nl, pt, tl), each holding all 24 refusal and notice strings in the repo's own words`);
       expect(pass.filter((l) => l.startsWith(`PASS  R1 S14X-183 the scanner chunk ${NAMES.idx} maps every refusal code`)), r.out).toHaveLength(1);
       expect(pass, r.out).toContain("PASS  R2 S14X-044 S14X-282 the scanner chunk says an Arabic PDF may read out of order (rtl_unreliable) and how many pages had no text (image_pages_skipped)");
       expect(pass.filter((l) => l.startsWith(`PASS  T1 S14X-283 S14X-280 the résumé text reader ${NAMES.asb} decodes a .txt by its byte-order mark`)), r.out).toHaveLength(1);
@@ -275,17 +281,25 @@ describe("each claim can fail", () => {
 
   it("S1: a lazy shard the entry does not name fails", () => {
     const r = run(routes(AFTER, { entry: { body: entryAfter(LAZY.filter((l) => l !== "hi")) } }));
-    expect(fails(r), r.out).toEqual(["FAIL  S1 S14X-183 the entry carries the English ingest-parsers shard but names no lazy shard for hi: those readers see keys where the refusals should be"]);
+    expect(fails(r), r.out).toEqual(["FAIL  S1 S14X-183 the entry names no lazy ingest-parsers shard for hi: those readers see keys where the refusals should be"]);
   });
 
-  it("S1: a string that is not the repo's own fails, in a lazy shard or in the entry", () => {
+  it("S1: the English strings may ride with the scanner or, as a build from before the review carried them, in the entry", () => {
+    const old = run(routes(AFTER, { entry: { body: entryAfter(LAZY, shardFile("en")) }, idx: { body: idxAfter(null) } }));
+    expect(fails(old), old.out).toEqual([]);
+    expect(verdicts(old.lines, "PASS").some((l) => l.startsWith("PASS  S1 S14X-183 ")), old.out).toBe(true);
+    const nowhere = run(routes(AFTER, { idx: { body: idxAfter(null) } }));
+    expect(fails(nowhere).some((l) => l.startsWith("FAIL  S1 S14X-183 ingest-parsers strings missing from the published shards: en:")), nowhere.out).toBe(true);
+  });
+
+  it("S1: a string that is not the repo's own fails, in a lazy shard or in the English strings", () => {
     const de = JSON.parse(shardFile("de"));
     de.ingestParsers.refusal.webExport = "This document was saved as web content";
     const lazy = run(routes(AFTER, { shard_de: { body: shardChunk(JSON.stringify(de)) } }));
     expect(fails(lazy), lazy.out).toEqual(["FAIL  S1 S14X-183 ingest-parsers strings missing from the published shards: de:refusal.webExport"]);
     const en = JSON.parse(shardFile("en"));
     delete en.ingestParsers.notice.imagePagesSkippedDescription;
-    const entry = run(routes(AFTER, { entry: { body: entryAfter(LAZY, JSON.stringify(en)) } }));
+    const entry = run(routes(AFTER, { idx: { body: idxAfter(JSON.stringify(en)) } }));
     expect(fails(entry), entry.out).toEqual(["FAIL  S1 S14X-183 ingest-parsers strings missing from the published shards: en:notice.imagePagesSkippedDescription"]);
     const empty = run(routes(AFTER, { shard_tl: { status: 404, body: "" } }));
     expect(fails(empty).filter((l) => l.startsWith("FAIL  S1 S14X-183 ingest-parsers strings missing from the published shards: tl:refusal.emptyFile, tl:refusal.emptyFileDescription")), empty.out).toHaveLength(1);

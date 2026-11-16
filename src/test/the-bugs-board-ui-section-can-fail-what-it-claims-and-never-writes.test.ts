@@ -103,6 +103,7 @@ const OLD_MATCHES = 'import{x}from"./index-A1.js";t("freeResults.matches.loading
 // ... and as this branch builds them (the tells read from a vite build of it).
 const NEW_JOBS = [
   IMPORTS,
+  'import"./rb-en_ns_boardUi-BU.js";',
   't("jobsPage.compareTitle","Side by side");p.delete("company");"data-board-new-today":"board",company:se.length===1?se[0]:void 0,companies:pe,country:ce,',
   't("jobsPage.employerCtx.publicCo",{rev:Gt(r.revenue,r.currency,i.language)});"data-compare-age":"",',
   't("boardUi.fitRankedFilters");t("boardUi.handoffWithheld");t("boardUi.recordOneBoard");n.jsx(Le,{to:"/account#pipeline"});',
@@ -115,27 +116,30 @@ const NEW_JOBS = [
   'n.jsx("input",{id:"board-search","aria-label":t("filterBar.keywordLabel","Search jobs by title or keyword")});',
   'c&&De({action:"list",q:c,limit:12,includeFacets:!1,...ic}).then(m=>m);',
 ].join("");
-const NEW_CARD = 'r==="no_recognised_terms"?t("boardUi.unscoredTerms"):null;';
+const NEW_CARD = 'r==="no_resume_terms"?t("boardUi.unscoredResumeTermsTip"):r==="no_recognised_terms"?t("boardUi.unscoredTerms"):null;';
 const NEW_FACETS = 'await S({body:{action:"list",countOnly:!0,includeFacets:!1,...W(m.params??{}),newSince:m.last_seen_at}});[e.q,i?c>0?`${i} +${c} more`:i:""].filter(Boolean).join(" · ");';
 const NEW_MATCHES = `${OLD_MATCHES}t("boardUi.fitLimitedHour",{n:h});t("boardUi.matchesNoneForRole",{role:r});`;
 
 const LNGS = ["de", "en-GB", "es", "fr", "hi", "nl", "pt", "tl"];
-const SHARD_KEYS = ["nlLabel", "nlRunAsKeywords", "nlUnavailable", "nlNothingRead", "yearsFromSearch", "salaryFromSearch", "salaryCeilingFromSearch", "compareDescription", "recordOneBoard", "handoffWithheld", "handoffWithheldSearch", "fitRankedFilters", "fitScoreTip", "fitNotScoredLimit", "fitNotScoredFailed", "fitLimitedHour", "fitLimitedDay", "fitLimitedPlain", "unscoredTerms", "unscoredTermsBody", "unscoredTermsTip", "matchesNoneForRole"];
+const SHARD_KEYS = ["nlLabel", "nlRunAsKeywords", "nlUnavailable", "nlNothingRead", "yearsFromSearch", "salaryFromSearch", "salaryCeilingFromSearch", "compareDescription", "recordOneBoard", "handoffWithheld", "handoffWithheldSearch", "fitRankedFilters", "fitScoreTip", "fitNotScoredLimit", "fitNotScoredFailed", "fitLimitedHour", "fitLimitedDay", "fitLimitedPlain", "unscoredTerms", "unscoredTermsBody", "unscoredTermsTip", "unscoredResumeTerms", "unscoredResumeTermsBody", "unscoredResumeTermsTip", "matchesNoneForRole"];
 const SHARD = (lng: string, drop: string[] = []) => `const e={${SHARD_KEYS.filter((k) => !drop.includes(k)).map((k) => `${k}:"${lng} ${k}"`).join(",")}};export{e as default};`;
 const OLD_ENTRY_NAMES = '["assets/Jobs-JB.js","assets/ATSParseSimulator-AT.js","assets/ProductSuccess-PS.js"]';
 const OLD_ENTRY = `const m=${OLD_ENTRY_NAMES};const css="@media (pointer: coarse){[data-sonner-toaster]{}}";const r={"./shards/company/en.json":jN,"./shards/company/de.json":()=>O(()=>import("./de-Co1.js"),[])};`;
-const NEW_ENTRY = (lngs: string[] = LNGS, en = true, enDrop: string[] = []) =>
+/** The English strings as the namespace plugin registers them, in a chunk of their own the Jobs chunk imports. */
+const EN_CHUNK = (drop: string[] = []) => `import{a as e}from"./index-A1.js";e({boardUi:{${SHARD_KEYS.filter((k) => !drop.includes(k)).map((k) => `${k}:"en ${k}"`).join(",")}}});`;
+/** The entry: the eight lazy shards, and (`en`, a build from before the bug round's review) the English strings beside them. */
+const NEW_ENTRY = (lngs: string[] = LNGS, en = false, enDrop: string[] = []) =>
   `${OLD_ENTRY}${en ? `const CN={${SHARD_KEYS.filter((k) => !enDrop.includes(k)).map((k) => `${k}:"en ${k}"`).join(",")}};` : ""}const q={${en ? '"./shards/board-ui/en.json":kN,' : ""}${lngs.map((l) => `"./shards/board-ui/${l}.json":()=>O(()=>import("./${l}-Bu${l.replace("-", "")}.js"),[])`).join(",")}};`;
 
 type Over = Partial<{
   fj: string | null; fn: string | null;
-  home: string; entry: string; jobs: string; card: string; facets: string; names: string; matches: string; ps: string;
+  home: string; entry: string; jobs: string; card: string; facets: string; names: string; matches: string; ps: string; en: string;
   extra: Route[];
   shard: Record<string, string>;
 }>;
 
 function routes(o: Over = {}, fns = true, fe = true): Route[] {
-  const fj = o.fj === undefined ? (fns ? "job-fit.2026-11-12.1" : "job-fit.2026-11-09.1") : o.fj;
+  const fj = o.fj === undefined ? (fns ? "job-fit.2026-11-12.2" : "job-fit.2026-11-09.1") : o.fj;
   const fnl = o.fn === undefined ? (fns ? "nl-search.2026-11-12.1" : "nl-search.2026-11-09.1") : o.fn;
   return [
     ...(o.extra ?? []),
@@ -147,6 +151,7 @@ function routes(o: Over = {}, fns = true, fe = true): Route[] {
     { match: `^GET ${S}/assets/JobCard-JC\\.js$`, body: o.card ?? (fe ? NEW_CARD : OLD_CARD) },
     { match: `^GET ${S}/assets/board-facets-BF\\.js$`, body: o.facets ?? (fe ? NEW_FACETS : OLD_FACETS) },
     { match: `^GET ${S}/assets/company-display-CD\\.js$`, body: o.names ?? NAMES },
+    { match: `^GET ${S}/assets/rb-en_ns_boardUi-BU\\.js$`, body: o.en ?? EN_CHUNK() },
     { match: `^GET ${S}/assets/ATSParseSimulator-AT\\.js$`, body: o.matches ?? (fe ? NEW_MATCHES : OLD_MATCHES) },
     { match: `^GET ${S}/assets/ProductSuccess-PS\\.js$`, body: o.ps ?? 'import{a}from"./ATSParseSimulator-AT.js";import{s}from"./index-A1.js";' },
     ...LNGS.map((l) => ({ match: `^GET ${S}/assets/${l}-Bu${l.replace("-", "")}\\.js$`, body: o.shard?.[l] ?? SHARD(l) })),
@@ -156,7 +161,7 @@ function routes(o: Over = {}, fns = true, fe = true): Route[] {
 const has = (lines: string[], verdict: string, re: RegExp) => lines.some((l) => l.startsWith(verdict) && re.test(l));
 const show = (lines: string[]) => lines.join("\n");
 const fails = (lines: string[]) => lines.filter((l) => l.startsWith("FAIL"));
-const PAGE_MARKS = Array.from({ length: 25 }, (_, i) => `P${i + 1}`);
+const PAGE_MARKS = Array.from({ length: 26 }, (_, i) => `P${i + 1}`);
 const MARKS = [...PAGE_MARKS, "M1", "M2"];
 const FE_CLAIMS = [...MARKS, "N1", "N2", "N3", "S1"];
 const CLAIMS = ["F1", "F2", ...FE_CLAIMS];
@@ -196,6 +201,13 @@ describe("a good deploy", () => {
   it("prints PASS for every claim and no FAIL", () => {
     expect(fails(lines), show(lines)).toEqual([]);
     for (const c of CLAIMS) expect(has(lines, "PASS", claim("PASS", c)), `${c}\n${show(lines)}`).toBe(true);
+  });
+  it("job-fit's 2026-11-12.1, the build before the résumé reason, waits as INFO and is no PASS", () => {
+    const first = run(routes({ fj: "job-fit.2026-11-12.1" })).lines;
+    expect(fails(first), show(first)).toEqual([]);
+    expect(has(first, "INFO", /^INFO {2}F1 job-fit x-fn-build = job-fit\.2026-11-12\.1: the round's paste with 2026-11-12\.2 has not landed/), show(first)).toBe(true);
+    expect(has(first, "PASS", claim("PASS", "F1")), show(first)).toBe(false);
+    expect(has(first, "PASS", /^PASS {2}F2 nl-search x-fn-build = nl-search\.2026-11-12\.1 \(2026-11-12\.1 or later\)/), show(first)).toBe(true);
   });
   it("a later build of either function still passes", () => {
     const later = run(routes({ fj: "job-fit.2026-11-20.1", fn: "nl-search.2026-12-01.3" })).lines;
@@ -255,6 +267,7 @@ describe("each regression prints FAIL", () => {
     P23: ["jobs", "data-shortcuts-card"],
     P24: ["jobs", '"aria-label":'],
     P25: ["jobs", "includeFacets:!1,..."],
+    P26: ["card", "no_resume_terms"],
     M1: ["matches", "boardUi.fitLimited"],
     M2: ["matches", "boardUi.matchesNoneForRole"],
   };
@@ -289,10 +302,19 @@ describe("each regression prints FAIL", () => {
     expect(has(run(routes({ entry: NEW_ENTRY(LNGS.slice(1)) })).lines, "FAIL", /^FAIL {2}S1 .*names 7 non-English board-ui shards, not 8/)).toBe(true);
     const short = run(routes({ shard: { hi: SHARD("hi", ["unscoredTermsTip"]) } })).lines;
     expect(has(short, "FAIL", /^FAIL {2}S1 .*missing: hi:unscoredTermsTip$/), show(short)).toBe(true);
-    const en = run(routes({ entry: NEW_ENTRY(LNGS, true, ["matchesNoneForRole"]) })).lines;
+    const en = run(routes({ en: EN_CHUNK(["matchesNoneForRole"]) })).lines;
     expect(has(en, "FAIL", /^FAIL {2}S1 .*missing: en:matchesNoneForRole$/), show(en)).toBe(true);
-    expect(has(run(routes({ entry: NEW_ENTRY(LNGS, false) })).lines, "FAIL", /^FAIL {2}S1 .*not the English one/)).toBe(true);
+    const noEn = run(routes({ en: "export{};" })).lines;
+    expect(has(noEn, "FAIL", /^FAIL {2}S1 .*missing: en:nlLabel en:nlRunAsKeywords/), show(noEn)).toBe(true);
     expect(has(run(routes({ entry: OLD_ENTRY })).lines, "FAIL", /^FAIL {2}S1 .*published but the entry loads no board-ui shard/)).toBe(true);
+  });
+
+  it("S1: the English strings may ride with the board or, as a build from before the review carried them, in the entry", () => {
+    const withBoard = run(routes()).lines;
+    expect(has(withBoard, "PASS", /^PASS {2}S1 the English board-ui strings ride with the board \(Jobs-JB\.js or a chunk it imports\) and the entry names 8 more languages/), show(withBoard)).toBe(true);
+    const inEntry = run(routes({ entry: NEW_ENTRY(LNGS, true), en: "export{};" })).lines;
+    expect(has(inEntry, "PASS", claim("PASS", "S1")), show(inEntry)).toBe(true);
+    expect(fails(inEntry), show(inEntry)).toEqual([]);
   });
 
   it("a layout the section cannot read: no entry, no Jobs chunk, no saved-search chunk, no report matches", () => {

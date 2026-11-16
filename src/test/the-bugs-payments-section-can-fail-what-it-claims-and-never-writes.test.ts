@@ -102,15 +102,23 @@ const columns = (state: "missing" | "empty" | "refused" | "rows"): Route[] => [[
     : { body: JSON.stringify([{ [c]: "x" }]) }),
 }));
 
-const site = (published: boolean, opts: { pricing?: string; terms?: string } = {}): Route[] => [
+// `enAt`: where the English payments strings ride once published: "page", a
+// namespace chunk the PricingPage chunk imports (this branch's build), or
+// "entry" (a build from before the bug round's review).
+const PAUSED = "Pro's tools are paused until this payment goes through.";
+const site = (published: boolean, opts: { pricing?: string; terms?: string; enAt?: "page" | "entry" | "none" } = {}): Route[] => [
   { match: "^GET https://site\\.test/$", body: '<script type="module" src="/assets/index-AbC123.js"></script>' },
   {
     match: "^GET https://site\\.test/assets/index-AbC123\\.js$",
-    body: `const a=()=>import("./PricingPage-Pp1.js"),b=()=>import("./Account-Ac1.js");const s={payments:{pro:{pausedUntilPaid:"${published ? "Pro's tools are paused until this payment goes through." : ""}"}}};`,
+    body: `const a=()=>import("./PricingPage-Pp1.js"),b=()=>import("./Account-Ac1.js");${published && opts.enAt === "entry" ? `const s={payments:{pro:{pausedUntilPaid:"${PAUSED}"}}};` : ""}`,
   },
   {
     match: "^GET https://site\\.test/assets/PricingPage-Pp1\\.js$",
-    body: `import{j as e}from"./index-AbC123.js";import{B as b}from"./BuyBlock-Bb1.js";e("pricingPlans.pro.owing");`,
+    body: `import{j as e}from"./index-AbC123.js";import{B as b}from"./BuyBlock-Bb1.js";import"./rb-en_ns_payments-Pn1.js";e("pricingPlans.pro.owing");`,
+  },
+  {
+    match: "^GET https://site\\.test/assets/rb-en_ns_payments-Pn1\\.js$",
+    body: published && (opts.enAt ?? "page") === "page" ? `import{a as e}from"./index-AbC123.js";e({payments:{pro:{pausedUntilPaid:"${PAUSED}"}}});` : `import{a as e}from"./index-AbC123.js";`,
   },
   {
     match: "^GET https://site\\.test/assets/BuyBlock-Bb1\\.js$",
@@ -187,12 +195,21 @@ describe("the bug round payments section", () => {
     const { lines, out } = run([...preflights(NEW), ...columns("empty"), ...site(false)]);
     const f = fails(lines);
     expect(f, out).toHaveLength(2);
-    expect(f[0]).toBe("FAIL  F1 the published site lacks the entry's English payments shard; the Pro block's paused-until-paid line (S14X-077); the Pro block's link-pending state (S14X-114); the Pro block's ends-on date (S14X-114); the account card's paused-until-paid line (S14X-077) while the lane's functions serve 2026-11-12.1: the round's frontend publish has not happened");
+    expect(f[0]).toBe("FAIL  F1 the published site lacks the English payments strings (in the pricing page's chunks or the entry); the Pro block's paused-until-paid line (S14X-077); the Pro block's link-pending state (S14X-114); the Pro block's ends-on date (S14X-114); the account card's paused-until-paid line (S14X-077) while the lane's functions serve 2026-11-12.1: the round's frontend publish has not happened");
     expect(f[1]).toBe("FAIL  F2 /pricing as Googlebot reads it does not name the cap (row nocell noperk) while the lane's functions serve 2026-11-12.1: the round's frontend publish (which re-renders /pricing) has not happened");
     const half = run([...preflights(NEW), ...columns("empty"), ...site(true, { pricing: PRICING_NEW.replace("Up to 10 Full Analyses a day and 60 a month", "The $5 Full Analysis included") })]);
     expect(fails(half.lines), half.out).toEqual([expect.stringContaining("FAIL  F2 /pricing as Googlebot reads it does not name the cap (row cell noperk)")]);
     const noRow = run([...preflights(OLD), ...columns("missing"), ...site(false, { pricing: "<p>no table</p>" })]);
     expect(fails(noRow.lines), noRow.out).toEqual([expect.stringContaining("FAIL  F2 /pricing as Googlebot reads it has no Full Analysis row")]);
+  });
+
+  it("F1: the English strings ride with the pricing page, or in the entry as a build from before the review carried them, and nowhere is a FAIL", () => {
+    const page = run(after());
+    expect(page.lines.some((l) => l.startsWith("PASS  F1 ")), page.out).toBe(true);
+    const entry = run([...preflights(NEW), ...columns("empty"), ...site(true, { enAt: "entry" })]);
+    expect(entry.lines.some((l) => l.startsWith("PASS  F1 ")), entry.out).toBe(true);
+    const none = run([...preflights(NEW), ...columns("empty"), ...site(true, { enAt: "none" })]);
+    expect(fails(none.lines), none.out).toEqual(["FAIL  F1 the published site lacks the English payments strings (in the pricing page's chunks or the entry) while the lane's functions serve 2026-11-12.1: the round's frontend publish has not happened"]);
   });
 
   it("a bundle that names no PricingPage chunk is a FAIL even before the paste: nothing could be judged", () => {

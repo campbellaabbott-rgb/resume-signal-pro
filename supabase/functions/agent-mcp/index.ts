@@ -352,7 +352,8 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
 // 2026-11-09.2 (fix/cost-wave, the integration): the 2026-11-08.1 code above (connect W1, W3, W4 and W5) with the ci-edge lane's Max-Age; cost/ci-edge stamped 2026-11-09.1 on a copy without the connect changes, so the merged code takes the next sequence (DEPLOY-LEDGER §3).
 // 2026-11-12.1 (bug round of 2026-11-08, part A, connector lane): the keyless and own-connection allowances are named where they apply, the keyed steps remove the keyless entry first, the fit tool gives back a call that scored nothing, the job tool says when the board last read the feed, a location word is searched as typed, a form body cut off mid-read is never cached, a Greenhouse heading is the next question's section, the bundled ChatGPT egress list is OpenAI's of 2026-11-06, and the federal feed is said to be withheld by our own choice.
-const FN_BUILD = "agent-mcp.2026-11-12.1";
+// 2026-11-12.2 (the round's integration, S14X-052): fit_resume's unscored names a third reason job-fit 2026-11-12.2 sends, no_resume_terms (none of the terms the scorer reads were found in the résumé).
+const FN_BUILD = "agent-mcp.2026-11-12.2";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -1645,7 +1646,7 @@ const TOOLS = [
             properties: {
               id: { type: "string" },
               fit: { type: ["number", "null"], description: "Keyword fit 0-100; null means the posting could not be scored, not a poor match." },
-              unscored: { type: "string", description: "Beside a null fit, when the scorer says why: no_description (no stored text) or no_recognised_terms (none of the English terms it reads)." },
+              unscored: { type: "string", description: "Beside a null fit, when the scorer says why: no_description (no stored text), no_recognised_terms (none of the English terms it reads, in the posting) or no_resume_terms (none in the résumé, so no posting could be scored)." },
               matched: { type: "array", items: { type: "string" } },
               missing: { type: "array", items: { type: "string" } },
             },

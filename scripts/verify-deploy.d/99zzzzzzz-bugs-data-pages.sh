@@ -66,12 +66,14 @@
 #                 terms, under a capitalised description.
 #   B8  NB-32     the /ghost-job-index cadence words match the live schedule.
 #   B9  SEO-F17   /companies states each linked page's own count.
-#   B10 SEO-F18   BreadcrumbList on /ats, the study and a translated CV page.
+#   B10 SEO-F18   BreadcrumbList on /ats, the study and a translated CV page,
+#                 whose trail is shown and marked up in its own language.
 #   B11 SEO-F16   /ats descriptions open with no bare reply word.
 #   B12 SEO-F11   /jobs' list prints no name the gate refuses.
 #   B13 SEO-F08   a posting's markup country agrees with its employer's
 #                 stated country (INFO until the reader states one).
-#   B14 S14X-269  llms.txt's quote promise rides on the grounded engine.
+#   B14 S14X-269  llms.txt's quote promise rides on the grounded engine
+#                 (free-keyword-scan 2026-11-15.2 or later, above the hotfix).
 #   O1  NB-5      no staffing board on the actively-hiring list.
 #   O2  SEO-F24   the data pages' Dataset markup names a licence.
 #   O3  SEO-F03   /jobs/company/usasurveyjob is not indexable.
@@ -146,7 +148,9 @@ vddp_rpc get_stats_cache "" /tmp/vd_bdp_sc.json
 vddp_rpc get_cron_health "p_hours=26" /tmp/vd_bdp_cron.json
 VDDP_FKS=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/free-keyword-scan" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
 VDDP_FKS_ROUND=no
-if [ -n "$VDDP_FKS" ] && build_ge free-keyword-scan "$VDDP_FKS" 2026-11-12 1; then VDDP_FKS_ROUND=yes; fi
+# The round's free-keyword-scan is 2026-11-15.2: the NB-1 hotfix stamped
+# 2026-11-15.1 sorts above any 2026-11-12 floor and carries no grounding.
+if [ -n "$VDDP_FKS" ] && build_ge free-keyword-scan "$VDDP_FKS" 2026-11-15 2; then VDDP_FKS_ROUND=yes; fi
 
 # Every verdict, from the files above. JSON.parse is guarded throughout: a
 # gateway's HTML body prints a FAIL or an INFO that shows it.
@@ -333,7 +337,10 @@ const bakeVerdict = (good, m) => say(good ? "PASS" : BAKE ? "FAIL" : "INFO", m +
   }
   const crumbs = { "/ats/lever": Bk.lever, "/research/ats-score-benchmarks": Bk.study, "/es/normas-cv/espana": Bk.cves };
   const noCrumb = Object.entries(crumbs).filter(([, h]) => !h.includes("\"BreadcrumbList\"")).map(([p]) => p);
-  bakeVerdict(!noCrumb.length, "B10 SEO-F18 BreadcrumbList on /ats/lever, the study and /es/normas-cv/espana" + (noCrumb.length ? ": missing on " + noCrumb.join(", ") : ""));
+  // The translated page marks up the trail it shows, in Spanish: "Inicio" in the markup and in a visible nav.
+  const esShown = /"name":"Inicio"/.test(Bk.cves) && /<nav[^>]*>(?:(?!<\/nav>)[\s\S])*>Inicio<\/a>/.test(Bk.cves);
+  const esBad = !noCrumb.includes("/es/normas-cv/espana") && !esShown;
+  bakeVerdict(!noCrumb.length && !esBad, "B10 SEO-F18 BreadcrumbList on /ats/lever, the study and /es/normas-cv/espana, whose trail is shown and marked up in Spanish" + (noCrumb.length ? ": missing on " + noCrumb.join(", ") : "") + (esBad ? ": /es/normas-cv/espana marks up a trail it does not show in Spanish (no Inicio in both the markup and a visible nav)" : ""));
   const ats = [["lever", desc(Bk.lever)], ["workday", desc(Bk.workday)]];
   const lead = ats.filter(([, d]) => !d || /^(?:Yes|No|Unreliably|Often not)\b/.test(d));
   bakeVerdict(!lead.length, "B11 SEO-F16 /ats descriptions: " + ats.map(([v, d]) => v + " " + JSON.stringify((d || "").slice(0, 30))).join(", "));

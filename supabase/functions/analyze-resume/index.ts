@@ -22,6 +22,7 @@ import {
   priorRedemptionOf,
 } from "../_shared/full-analysis.ts";
 import { proGrantRefusal } from "../_shared/pro.ts";
+import { redemptionCapMessage, redemptionCapReached } from "./redemption-cap.ts";
 import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
 // A test-mode session is read with the test key, and only one (S13-043).
 import { sessionKeyFor } from "./stripe-mode.ts";
@@ -259,6 +260,8 @@ const REFUSED = {
   notFound: 'purchase_not_found',
   used: 'session_used',
   grant: 'grant_refused',
+  // S14X-079: the account opened its day's ten, or its month's sixty.
+  cap: 'grant_cap',
 } as const;
 
 /**
@@ -905,6 +908,17 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ error: grantRefusal.error, ...(grantRefusal.status === 503 ? { retryable: true } : { code: REFUSED.grant }) }),
           { status: grantRefusal.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      // THE CAP COUNTS OPENINGS, NOT ONLY MINTS (S14X-079): grants minted on
+      // earlier days and left unopened cost nothing at mint, so the day's ten
+      // and the month's sixty are counted again here, by when each was opened.
+      const cap = await redemptionCapReached(supabase, proGrant);
+      if (cap) {
+        console.warn(`[ANALYZE-RESUME] Grant ${proGrant.id} held by the ${cap} cap`);
+        return new Response(
+          JSON.stringify({ error: redemptionCapMessage(cap), code: REFUSED.cap, window: cap, fairUse: true }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
     }

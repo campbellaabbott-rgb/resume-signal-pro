@@ -82,11 +82,13 @@ export async function invokePaidAnalysis(ask: Ask, opts: PollOptions = {}): Prom
 
 /**
  * THE PURCHASES analyze-resume WILL NOT ANALYSE (RC-S13-048): refunded, not a
- * Full Analysis, not found, already used, or a Pro grant it cannot honour.
- * Asking again cannot change any of them, so the page says which and asks for
- * no résumé.
+ * Full Analysis, not found, already used, or a Pro grant it cannot honour,
+ * or one past the account's day's ten or month's sixty (grant_cap, S14X-079:
+ * read before the 429 that carries it is taken for a busy service). Asking
+ * again now cannot change any of them, so the page says which and asks for no
+ * résumé.
  */
-export const REFUSAL_CODES = ["purchase_refunded", "payment_required", "purchase_not_found", "session_used", "grant_refused"] as const;
+export const REFUSAL_CODES = ["purchase_refunded", "payment_required", "purchase_not_found", "session_used", "grant_refused", "grant_cap"] as const;
 export type RefusalCode = (typeof REFUSAL_CODES)[number];
 
 /** The HTTP status of a failed function call, or null. */

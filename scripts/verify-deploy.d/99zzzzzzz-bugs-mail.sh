@@ -17,7 +17,7 @@
 #              round published. Until then every mark is INFO; from then on a
 #              missing mark is a FAIL. A chunk that cannot be found, or is not
 #              the page it is named for, is a FAIL either way.
-#   owner      S14X-012 and D9 print INFO owner pending until
+#   owner      S14X-012, D9 and S14X-234 print INFO owner pending until
 #              docs/deploy-ledger.json reservations['bug-round'].ownerDecided
 #              names them (the integrator writes it); then each is judged.
 #
@@ -38,13 +38,19 @@
 #   S14X-252/mail-handoff  a digest prints no age for a re-dating system.
 #   RC-S13-083 the Account chunk writes digest_cadence.
 #   NB-21      the Account chunk prints the capped new-posting headline.
-#   S1         the entry carries the English mail shard and names 8 more.
+#   S1         the English mail strings ride with the account page (the Account
+#              chunk or a chunk it imports; the entry, in a build from before
+#              the bug round's review moved them) and the entry names 8 more.
 #   S14X-012-mail  (owner) option B: send-scan-report serves 2026-11-12.1 or
 #              later; option A: get_cron_health lists a transactional drain.
 #   D9         (owner) the Account chunk asks account-settings mail_resume.
-#   S14X-234-verify  _dmarc.notify.resumebooster.work says p=quarantine or
-#              p=reject, or is absent so the apex's policy applies. FAILS today
-#              ('v=DMARC1; p=none'): the owner's DNS step, not the paste's.
+#   S14X-234-verify  (owner) _dmarc.notify.resumebooster.work says
+#              p=quarantine or p=reject, or is absent so the apex's policy
+#              applies. The owner's DNS step, not the paste's: while
+#              ownerDecided does not name S14X-234 it prints INFO owner pending
+#              with what dig read ('v=DMARC1; p=none' on 2026-11-16), so no run
+#              before or after the paste is red for it; once named, PASS or
+#              FAIL.
 #
 # NOT PROVABLE FROM OUTSIDE, so proved in the suite and listed in one INFO
 # line: the run stamps (job_board_meta, which anon cannot read), the column
@@ -57,9 +63,9 @@
 # in a read-only transaction, and anon is refused before it runs), the site's
 # page, entry, two chunks and the mail shard chunks, and one DNS lookup.
 # Nothing is posted, mailed or written.
-echo "== 99zzzzzzz. bug round part A, mail: four builds, the prune job, the pulse's claim and schedules, the account page's marks, the mail shard, two owner gates, the notify DMARC =="
+echo "== 99zzzzzzz. bug round part A, mail: four builds, the prune job, the pulse's claim and schedules, the account page's marks, the mail shard, three owner gates (the notify DMARC among them) =="
 
-rm -f /tmp/vd_bm_cron.json /tmp/vd_bm_claim.txt /tmp/vd_bm_home.html /tmp/vd_bm_entry.js /tmp/vd_bm_account.js /tmp/vd_bm_pulse.js /tmp/vd_bm_shard.js
+rm -f /tmp/vd_bm_cron.json /tmp/vd_bm_claim.txt /tmp/vd_bm_home.html /tmp/vd_bm_entry.js /tmp/vd_bm_account.js /tmp/vd_bm_pulse.js /tmp/vd_bm_shard.js /tmp/vd_bm_en.js /tmp/vd_bm_cand.js
 
 vdbm_build() {
   curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$1" -H "Origin: $SITE" -H "Access-Control-Request-Method: POST" \
@@ -209,16 +215,25 @@ if [ "$VDBM_READ" = yes ]; then
   vdbm_mark NB-21 /tmp/vd_bm_account.js mailPrefs.newHeadlineCapped "the new-postings headline says when a count is capped"
   vdbm_mark S14X-238 /tmp/vd_bm_pulse.js data-next-pulse "the confirm page says when the next pulse arrives"
 
-  # S1: the English shard rides the entry; the other eight load on demand.
+  # S1: the English strings ride with the account page (the Account chunk or
+  # a chunk it imports; the entry in a build from before the review); the
+  # other eight load on demand, named by the entry.
   VDBM_KEYS="pulseDoneNextMonth pulseDoneLater stoppedUnsubscribe stoppedAccountDeleted stoppedBounce stoppedComplaint cadenceAria newHeadlineCapped"
+  cat /tmp/vd_bm_entry.js /tmp/vd_bm_account.js > /tmp/vd_bm_en.js
+  for VDBM_C in $(grep -oE '(from|import)"\./[A-Za-z0-9_-]+\.js"' /tmp/vd_bm_account.js | sed -E 's/^(from|import)"\.\/(.*)"$/\2/' | sort -u); do
+    case "$VDBM_C" in index-*) continue;; esac
+    rm -f /tmp/vd_bm_cand.js
+    curl -s -m 30 "$SITE/assets/$VDBM_C" > /tmp/vd_bm_cand.js
+    { echo; cat /tmp/vd_bm_cand.js; } >> /tmp/vd_bm_en.js
+  done
   VDBM_SH=$(grep -oE '"\./shards/mail/[A-Za-z-]+\.json":\(\)=>[A-Za-z_$]+\(\(\)=>import\("\./[A-Za-z0-9_-]+\.js"' /tmp/vd_bm_entry.js)
-  VDBM_EN=no; grep -qF '"./shards/mail/en.json":' /tmp/vd_bm_entry.js && VDBM_EN=yes
-  if [ -z "$VDBM_SH" ] && [ "$VDBM_EN" = no ]; then
+  VDBM_ENMISS=""
+  for VDBM_KEY in $VDBM_KEYS; do grep -qF "$VDBM_KEY:" /tmp/vd_bm_en.js || VDBM_ENMISS="$VDBM_ENMISS en:$VDBM_KEY"; done
+  if [ -z "$VDBM_SH" ]; then
     if [ "$VDBM_FE" = published ]; then echo "FAIL  S1 the round's account page published but the entry loads no mail shard, so its new sentences show as keys"
     else echo "INFO  S1 the entry loads no mail shard yet: not published yet"; fi
   else
     VDBM_MISS=""; VDBM_N=0
-    for VDBM_KEY in $VDBM_KEYS; do grep -qF "$VDBM_KEY:" /tmp/vd_bm_entry.js || VDBM_MISS="$VDBM_MISS en:$VDBM_KEY"; done
     while IFS= read -r VDBM_L; do
       [ -n "$VDBM_L" ] || continue
       VDBM_LNG=$(printf '%s' "$VDBM_L" | sed -E 's#.*shards/mail/([A-Za-z-]+)\.json.*#\1#')
@@ -228,10 +243,10 @@ if [ "$VDBM_READ" = yes ]; then
       VDBM_N=$((VDBM_N + 1))
       for VDBM_KEY in $VDBM_KEYS; do grep -qF "$VDBM_KEY:" /tmp/vd_bm_shard.js || VDBM_MISS="$VDBM_MISS $VDBM_LNG:$VDBM_KEY"; done
     done <<< "$VDBM_SH"
-    if [ "$VDBM_EN" = no ]; then echo "FAIL  S1 the entry names $VDBM_N lazy mail shards but not the English one it should carry"
+    if [ -n "$VDBM_ENMISS" ]; then echo "FAIL  S1 the entry names $VDBM_N lazy mail shards but neither the Account chunk ($VDBM_ACN), a chunk it imports nor the entry carries the English strings:$VDBM_ENMISS"
     elif [ "$VDBM_N" -ne 8 ]; then echo "FAIL  S1 the entry names $VDBM_N non-English mail shards, not 8"
     elif [ -n "$VDBM_MISS" ]; then echo "FAIL  S1 mail shard strings missing:$VDBM_MISS"
-    else echo "PASS  S1 the entry carries the English mail shard and names 8 more, each with all 8 of the lane's strings"; fi
+    else echo "PASS  S1 the English mail strings ride with the account page ($VDBM_ACN or a chunk it imports) and the entry names 8 more languages, each with all 8 of the lane's strings"; fi
   fi
 
   # D9 (owner): an account lifts its own stop-all.
@@ -242,15 +257,19 @@ if [ "$VDBM_READ" = yes ]; then
   else echo "INFO  D9 decided ($VDBM_OD9): the button waits for the round to publish"; fi
 fi
 
-# S14X-234-verify: the notify subdomain's own DMARC record.
+# S14X-234-verify: the notify subdomain's own DMARC record, the owner's DNS
+# step. Until ownerDecided names S14X-234 the reading is INFO owner pending.
+VDBM_O234=$(vdbm_decided S14X-234)
 if ! command -v dig >/dev/null 2>&1; then echo "INFO  S14X-234-verify this machine has no dig, so _dmarc.notify.resumebooster.work cannot be read here"
 else
   VDBM_DM=$(dig +short TXT _dmarc.notify.resumebooster.work 2>/dev/null | tr -d '"' | tr '\n' ' ')
   VDBM_APEX=$(dig +short TXT _dmarc.resumebooster.work 2>/dev/null | tr -d '"' | tr '\n' ' ')
-  if printf '%s' "$VDBM_DM" | grep -qiE 'p=(quarantine|reject)'; then echo "PASS  S14X-234-verify _dmarc.notify says ${VDBM_DM% }"
-  elif printf '%s' "$VDBM_DM" | grep -qi 'v=DMARC1'; then echo "FAIL  S14X-234-verify _dmarc.notify.resumebooster.work says '${VDBM_DM% }', which overrides the apex: mail forged from notify is delivered. The owner asks Lovable to set p=quarantine (with a report address) or remove the record"
-  elif printf '%s' "$VDBM_APEX" | grep -qiE 'p=(quarantine|reject)'; then echo "PASS  S14X-234-verify no record at _dmarc.notify, so the apex's applies: ${VDBM_APEX% }"
-  else echo "FAIL  S14X-234-verify no record at _dmarc.notify and the apex says '${VDBM_APEX% }': nothing tells a receiver to refuse mail forged from notify"; fi
+  if printf '%s' "$VDBM_DM" | grep -qiE 'p=(quarantine|reject)'; then VDBM_DMV="PASS  S14X-234-verify _dmarc.notify says ${VDBM_DM% }"
+  elif printf '%s' "$VDBM_DM" | grep -qi 'v=DMARC1'; then VDBM_DMV="FAIL  S14X-234-verify _dmarc.notify.resumebooster.work says '${VDBM_DM% }', which overrides the apex: mail forged from notify is delivered. The owner asks Lovable to set p=quarantine (with a report address) or remove the record"
+  elif printf '%s' "$VDBM_APEX" | grep -qiE 'p=(quarantine|reject)'; then VDBM_DMV="PASS  S14X-234-verify no record at _dmarc.notify, so the apex's applies: ${VDBM_APEX% }"
+  else VDBM_DMV="FAIL  S14X-234-verify no record at _dmarc.notify and the apex says '${VDBM_APEX% }': nothing tells a receiver to refuse mail forged from notify"; fi
+  if [ -n "$VDBM_O234" ]; then echo "$VDBM_DMV"
+  else echo "INFO  S14X-234-verify owner pending: ownerDecided does not name S14X-234 (the notify DMARC record is the owner's DNS step); dig reads: ${VDBM_DMV#?????  S14X-234-verify }"; fi
 fi
 
 echo "INFO  proven in the suite, never here (anon cannot read them): the run stamps mail-watch reads (job_board_meta mail_run:*), the saved-search column grants and the agent kick's clock (no read-only probe sees a column privilege or a trigger), the clip of a typed search name, the fit score read only from its owner's scan, a posting age counted in the reader's own day, and what mail-lists-prune deletes. Owner read-only SQL after the paste: SELECT pg_get_function_identity_arguments(p.oid) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND p.proname = 'market_pulse_claim_batch' -- one row, 'p_limit integer, p_now timestamp with time zone'"

@@ -34,6 +34,14 @@ describe("what the tool says a null fit means", () => {
     expect(block).toMatch(/English-only scorer/);
     expect(block).toMatch(/unscored: \{ type: "string"/);
   });
+  it("names every reason job-fit sends, the résumé one (no_resume_terms) included", () => {
+    const rows = readFileSync(resolve(ROOT, "supabase/functions/job-fit/score-rows.ts"), "utf8");
+    const union = /export type UnscoredReason = ([^;]+);/.exec(rows)?.[1] ?? "";
+    const reasons = [...union.matchAll(/"([a-z_]+)"/g)].map((m) => m[1]);
+    expect(reasons).toContain("no_resume_terms");
+    const unscored = /unscored: \{ type: "string", description: "([^"]+)" \}/.exec(block)?.[1] ?? "";
+    for (const r of reasons) expect(unscored, `fit_resume's unscored description leaves out ${r}`).toContain(r);
+  });
 });
 
 describe("a row carries job-fit's reason", () => {

@@ -13,8 +13,13 @@
  * of the test's own:
  *   - production as it is today (payout request 2026-11-09.1, no
  *     affiliate-account, no new column, the old page and hook) prints no FAIL,
- *     and the owner-gated lines say 'owner pending' while the ledger's
- *     ownerDecided is empty;
+ *     and the one owner-gated line (O1, S14X-085's approval rule) says 'owner
+ *     pending' while the ledger's ownerDecided is empty;
+ *   - the click privacy lines (M6, C1, P2, P3) judge shipped code, so they
+ *     wait for the paste and the publish, never for an owner: with
+ *     ownerDecided empty they PASS a good deploy and FAIL a broken one
+ *     (S14X-021's owner half is the privacy notice, judged by the
+ *     privacy-retention section);
  *   - a good deploy with both owner answers prints PASS for every claim;
  *   - each regression prints FAIL, the key table answering rows at any stage;
  *   - every request is a GET or an OPTIONS, and the key is never printed.
@@ -120,7 +125,7 @@ function routes(o: Over = {}, deployed = true): Route[] {
   const affiliates = { created_at: EMPTY, email_confirmed_at: deployed ? EMPTY : NOCOL("affiliates", "email_confirmed_at") };
   const conversions = { created_at: EMPTY, review_flags: deployed ? EMPTY : NOCOL("affiliate_conversions", "review_flags"), currency: deployed ? EMPTY : NOCOL("affiliate_conversions", "currency") };
   const payout = o.payout === undefined ? (deployed ? "affiliate-payout-request.2026-11-12.1" : "affiliate-payout-request.2026-11-09.1") : o.payout;
-  const account = o.account === undefined ? (deployed ? "affiliate-account.2026-11-12.1" : null) : o.account;
+  const account = o.account === undefined ? (deployed ? "affiliate-account.2026-11-12.2" : null) : o.account;
   const cron = o.cron ?? (deployed ? [OTHER_JOB, PRUNE, APPROVAL] : [OTHER_JOB]);
   return [
     { match: `^OPTIONS ${P}/functions/v1/affiliate-payout-request$`, headers: payout ? { "x-fn-build": payout } : {} },
@@ -152,8 +157,9 @@ describe("today's production, before the merge and the paste", () => {
   const { lines, out } = run(routes({}, false));
   it("prints no FAIL: what has not shipped is INFO, and the owner-gated lines wait for the ledger", () => {
     expect(fails(lines), show(lines)).toEqual([]);
-    for (const c of ["F1", "F2", "M1", "M2", "M3", "M4", "M5", "P1"]) expect(has(lines, "INFO", new RegExp(`^INFO {2}${c} `)), `${c}\n${show(lines)}`).toBe(true);
-    for (const c of ["M6", "C1", "P2", "P3", "O1"]) expect(has(lines, "INFO", new RegExp(`^INFO {2}${c} owner pending`)), `${c}\n${show(lines)}`).toBe(true);
+    for (const c of ["F1", "F2", "M1", "M2", "M3", "M4", "M5", "M6", "C1", "P1", "P2", "P3"]) expect(has(lines, "INFO", new RegExp(`^INFO {2}${c} `)), `${c}\n${show(lines)}`).toBe(true);
+    for (const c of ["M6", "C1", "P2", "P3"]) expect(has(lines, "INFO", new RegExp(`^INFO {2}${c} owner pending`)), `${c} waits for an owner though its code ships\n${show(lines)}`).toBe(false);
+    expect(has(lines, "INFO", /^INFO {2}O1 owner pending/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /^PASS {2}K1 /), show(lines)).toBe(true);
   });
   it("with the owner's answers copied in, still no FAIL before the paste", () => {
@@ -177,10 +183,11 @@ describe("a good deploy", () => {
     expect(calls.length).toBeGreaterThan(10);
     for (const c of calls) expect(c, c).toMatch(/^curl\t(GET|OPTIONS) /);
   });
-  it("without the owner's answers, the gated lines wait and the rest still pass", () => {
+  it("without the owner's answers, only O1 waits: the click privacy lines judge the shipped code and pass", () => {
     const pending = run(routes()).lines;
     expect(fails(pending), show(pending)).toEqual([]);
-    for (const c of ["M6", "C1", "P2", "P3", "O1"]) expect(has(pending, "INFO", new RegExp(`^INFO {2}${c} owner pending`)), c).toBe(true);
+    expect(has(pending, "INFO", /^INFO {2}O1 owner pending/), show(pending)).toBe(true);
+    for (const c of CLAIMS.filter((x) => x !== "O1")) expect(has(pending, "PASS", new RegExp(`^PASS {2}${c} `)), `${c}\n${show(pending)}`).toBe(true);
   });
 });
 
@@ -189,7 +196,9 @@ describe("each regression prints FAIL", () => {
     expect(has(run(routes({ payout: null }), OWNERS).lines, "FAIL", /^FAIL {2}F1 .*carries no x-fn-build/)).toBe(true);
     const lines = run(routes({ account: null }), OWNERS).lines;
     expect(has(lines, "FAIL", /^FAIL {2}F2 .*not deployed/), show(lines)).toBe(true);
-    expect(has(run(routes({ account: "affiliate-account.2026-11-10.1" }), OWNERS).lines, "FAIL", /^FAIL {2}F2 .*older than 2026-11-12\.1/)).toBe(true);
+    expect(has(run(routes({ account: "affiliate-account.2026-11-10.1" }), OWNERS).lines, "FAIL", /^FAIL {2}F2 .*older than 2026-11-12\.2/)).toBe(true);
+    const first = run(routes({ account: "affiliate-account.2026-11-12.1" }), OWNERS).lines;
+    expect(has(first, "FAIL", /^FAIL {2}F2 .*older than 2026-11-12\.2/), `the build before the change-link doors passed\n${show(first)}`).toBe(true);
   });
 
   it("M1: the column missing after the functions went live, a grant the migration revokes, rows to anon", () => {
@@ -237,6 +246,19 @@ describe("each regression prints FAIL", () => {
     expect(has(mixed, "FAIL", /^FAIL {2}P1 .*is neither page.*still draws 'Initial Payout'/), show(mixed)).toBe(true);
     expect(has(run(routes({ entry: 'const m=["assets/use-affiliate-auth-H6.js"];' }), OWNERS).lines, "FAIL", /^FAIL {2}P1 .*names no Affiliates chunk/)).toBe(true);
     expect(has(run(routes({ home: "<html></html>" }), OWNERS).lines, "FAIL", /^FAIL {2}P1 the homepage names no/)).toBe(true);
+  });
+
+  it("M6, C1, P2, P3 fail a broken paste or publish with no owner answer recorded", () => {
+    const noDays = run(routes({ days: NOTABLE("affiliate_click_days") })).lines;
+    expect(has(noDays, "FAIL", /^FAIL {2}M6 affiliate_click_days does not exist .*though the round's functions are live/), show(noDays)).toBe(true);
+    const noJob = run(routes({ cron: [OTHER_JOB, APPROVAL] })).lines;
+    expect(has(noJob, "FAIL", /^FAIL {2}C1 the affiliate-clicks-prune job is not scheduled/), show(noJob)).toBe(true);
+    const failedJob = run(routes({ cron: [OTHER_JOB, cronRow("affiliate-clicks-prune", "23 4 * * *", { ch_failed: 3, ch_last_status: "failed" })] })).lines;
+    expect(has(failedJob, "FAIL", /^FAIL {2}C1 affiliate-clicks-prune: 1 run\(s\) in 26 h, 3 failed/), show(failedJob)).toBe(true);
+    const oldHook = run(routes({ hook: OLD_HOOK })).lines;
+    expect(has(oldHook, "FAIL", /^FAIL {2}P2 .*still builds the agent\/screen\/time-zone fingerprint/), show(oldHook)).toBe(true);
+    const oldForget = run(routes({ entry: OLD_ENTRY })).lines;
+    expect(has(oldForget, "FAIL", /^FAIL {2}P3 .*does not clear the affiliate_ref cookie/), show(oldForget)).toBe(true);
   });
 
   it("P2, P3: the old hook or the old forget once the round's page is published", () => {

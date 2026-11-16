@@ -53,6 +53,9 @@
     },
     "auth": {
       "forgot": "Nakalimutan ang password?",
+      "email": "Email",
+      "password": "Password (hindi bababa sa 8 character)",
+      "pleaseWait": "Sandali lang…",
       "resetTitle": "I-reset ang password mo",
       "resetIntro": "Ilagay ang address na ginamit mo sa pag-sign up. Kung may affiliate account na gumagamit nito, mag-e-email kami ng link na gagana nang isang beses sa loob ng 30 minuto.",
       "sendLink": "I-email sa akin ang link",
@@ -88,6 +91,7 @@
       "changeSent": "Nagpadala kami ng link sa {{email}}. Mangyayari ang pagpapalit kapag binuksan mo ito.",
       "eraseTitle": "Isara ang account",
       "eraseWarning": "Tatanggalin nito ang address, password, mga session at click history mo, at hindi na ito maibabalik. I-type ang ERASE para kumpirmahin.",
+      "eraseConfirmLabel": "I-type ang ERASE para kumpirmahin",
       "eraseButton": "Isara nang tuluyan ang account",
       "erased": "Nakasara na ang affiliate account mo."
     }

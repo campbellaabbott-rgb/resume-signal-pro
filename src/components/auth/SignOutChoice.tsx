@@ -33,7 +33,15 @@ export function SignOutChoice({ everywhere = false, className, children, after =
   const [asking, setAsking] = useState<{ builder: boolean; freelance: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const firstRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => { if (asking) firstRef.current?.focus(); }, [asking]);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const wasAsking = useRef(false);
+  // The question takes focus when it opens, and gives it back to the button
+  // that opened it when it closes (WCAG 2.4.3): Cancel and Escape would
+  // otherwise leave focus on a button that no longer exists.
+  useEffect(() => {
+    if (asking) { wasAsking.current = true; firstRef.current?.focus(); return; }
+    if (wasAsking.current) { wasAsking.current = false; triggerRef.current?.focus(); }
+  }, [asking]);
 
   const leave = async (keepLocalDrafts: boolean) => {
     setBusy(true);
@@ -68,7 +76,7 @@ export function SignOutChoice({ everywhere = false, className, children, after =
 
   return (
     <>
-      <button type="button" onClick={press} disabled={busy} className={className}>{children}</button>
+      <button ref={triggerRef} type="button" onClick={press} disabled={busy} className={className}>{children}</button>
       {asking && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 px-4 backdrop-blur-sm">
           <div

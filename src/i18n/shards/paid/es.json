@@ -17,7 +17,8 @@
       "notThisProduct": "Esta compra no fue de un Análisis Completo de Currículum, así que no puede abrir uno aquí. Ábrela desde el enlace de su propio correo de compra.",
       "notFound": "No encontramos esta compra. Abre tu análisis desde el enlace de tu correo de compra y, si esta página sigue diciendo esto, escribe a {{email}} desde la dirección con la que pagaste.",
       "used": "Esta compra ya generó su análisis, y cada compra genera uno. Ábrelo desde el enlace de tu correo de compra o desde el pedido en tu cuenta.",
-      "grant": "Tu membresía Pro no puede incluir este análisis ahora mismo: la membresía no está activa, su pago fue reembolsado o este enlace es de antes de una actualización. Inicia sesión y vuelve a abrir el Análisis Completo desde tu cuenta."
+      "grant": "Tu membresía Pro no puede incluir este análisis ahora mismo: la membresía no está activa, su pago fue reembolsado o este enlace es de antes de una actualización. Inicia sesión y vuelve a abrir el Análisis Completo desde tu cuenta.",
+      "cap": "Pro incluye hasta 10 Análisis Completos al día y 60 al mes, y esta cuenta ha alcanzado uno de esos límites, así que no se ha creado ni gastado nada. Vuelve a abrirlo con el mismo enlace mañana; si has abierto 60 en los últimos 30 días, se abrirá cuando esa cifra baje."
     },
     "pdf": {
       "device": "El navegador de este dispositivo no pudo crear el PDF: el análisis es más grande de lo que puede dibujar. Abre esta página en un ordenador para guardarlo, o usa la opción Imprimir de tu navegador para guardarlo como PDF."

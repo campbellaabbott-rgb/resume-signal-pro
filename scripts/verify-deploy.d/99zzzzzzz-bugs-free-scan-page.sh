@@ -15,11 +15,15 @@
 # (/assets/Index-*.js, the one that calls the scanner); the scanner chunk
 # names the report's chunk (FreeKeywordResults-*.js); the report or the
 # scanner names the parse simulator's (ATSParseSimulator-*.js); the entry
-# names the CV standards page's (CvStandards-*.js). English shard VALUES ride
-# in the entry, and a namespace's English values can ride in a component
-# chunk as object literals, so every literal check below reads a component
-# chunk and matches the literal only where JSX or code prints it
-# (children:"…", label:"…", an array item), never a key:"value" pair.
+# names the CV standards page's (CvStandards-*.js). English VALUES ride in
+# the entry (a build before the bug round's) or in the rb-en_ns_* namespace
+# chunks the scanner, the report and the parse simulator import (this
+# round's: a shard's English loads with its page), and a namespace's English
+# values can ride in a component chunk as object literals, so every literal
+# check below reads a component chunk and matches the literal only where JSX
+# or code prints it (children:"…", label:"…", an array item), never a
+# key:"value" pair. The two "no chunk carries" sentences also read those
+# namespace chunks (never rb-en_all, the whole-file safety net).
 #
 # THE STAGE: the scanner chunk reads a freeScanPage.* key (only this lane
 # writes that root). Until it does, every claim is INFO ("not yet
@@ -88,7 +92,7 @@
 # Nothing is posted and no scan is run.
 echo "== 99zzzzzzz-bugs-free-scan-page. bug round, free-scan-page lane: the scanner and its report in the reader's language, a report kept across sign-in, every market, honest claims =="
 
-rm -f /tmp/vd_bfsp_page.html /tmp/vd_bfsp_entry.js /tmp/vd_bfsp_idx.js /tmp/vd_bfsp_fkr.js /tmp/vd_bfsp_aps.js /tmp/vd_bfsp_cvs.js
+rm -f /tmp/vd_bfsp_page.html /tmp/vd_bfsp_entry.js /tmp/vd_bfsp_idx.js /tmp/vd_bfsp_fkr.js /tmp/vd_bfsp_aps.js /tmp/vd_bfsp_cvs.js /tmp/vd_bfsp_en.js
 VDFS_LEDGER="${VDFS_LEDGER:-docs/deploy-ledger.json}"
 
 # Owner answers, from the ledger the integrator writes: the decided value, or empty.
@@ -115,6 +119,10 @@ VDFS_APS=$( { [ -f /tmp/vd_bfsp_fkr.js ] && grep -ao 'ATSParseSimulator-[A-Za-z0
 [ -n "$VDFS_APS" ] && curl -s -m 60 "$SITE/assets/$VDFS_APS" > /tmp/vd_bfsp_aps.js
 VDFS_CVS=$( { [ -f /tmp/vd_bfsp_entry.js ] && grep -ao 'CvStandards-[A-Za-z0-9_-]*\.js' /tmp/vd_bfsp_entry.js; } | head -1)
 [ -n "$VDFS_CVS" ] && curl -s -m 60 "$SITE/assets/$VDFS_CVS" > /tmp/vd_bfsp_cvs.js
+: > /tmp/vd_bfsp_en.js
+for VDFS_NS in $(cat /tmp/vd_bfsp_idx.js /tmp/vd_bfsp_fkr.js /tmp/vd_bfsp_aps.js 2>/dev/null | grep -aoE 'rb-en_ns_[A-Za-z0-9_-]+\.js' | sort -u | head -40); do
+  curl -s -m 60 "$SITE/assets/$VDFS_NS" >> /tmp/vd_bfsp_en.js; echo >> /tmp/vd_bfsp_en.js
+done
 
 # The two functions the owner's S14X-101 answer changes.
 VDFS_SLB=$(vdfs_build save-lead)
@@ -127,9 +135,9 @@ VDFS_O012="$VDFS_O012" VDFS_O101="$VDFS_O101" VDFS_SLB="$VDFS_SLB" VDFS_NOB="$VD
 const fs = require("fs");
 const rd = (p) => { try { return fs.readFileSync(p, "utf8"); } catch { return ""; } };
 const E = process.env;
-const C = { entry: rd("/tmp/vd_bfsp_entry.js"), idx: rd("/tmp/vd_bfsp_idx.js"), fkr: rd("/tmp/vd_bfsp_fkr.js"), aps: rd("/tmp/vd_bfsp_aps.js"), cvs: rd("/tmp/vd_bfsp_cvs.js") };
+const C = { entry: rd("/tmp/vd_bfsp_entry.js"), idx: rd("/tmp/vd_bfsp_idx.js"), fkr: rd("/tmp/vd_bfsp_fkr.js"), aps: rd("/tmp/vd_bfsp_aps.js"), cvs: rd("/tmp/vd_bfsp_cvs.js"), en: rd("/tmp/vd_bfsp_en.js") };
 const N = { entry: E.VDFS_N_ENTRY || "", idx: E.VDFS_N_IDX || "", fkr: E.VDFS_N_FKR || "", aps: E.VDFS_N_APS || "", cvs: E.VDFS_N_CVS || "" };
-const NAME = { entry: "entry", idx: "scanner", fkr: "report", aps: "parse simulator", cvs: "CV standards" };
+const NAME = { entry: "entry", idx: "scanner", fkr: "report", aps: "parse simulator", cvs: "CV standards", en: "English namespace" };
 const say = (v, id, m) => console.log(v + "  " + id + " " + m);
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -220,7 +228,7 @@ claim("RC-S13-019", "the report prints no backup-scanner atsNote graded on its o
   () => [!has("fkr", /\.atsNote\b/), "the report chunk still reads .atsNote"]);
 const SEVEN = /\b7 (?:free )?scans(?:\/day| a day)|Tienes 7 escaneos/;
 claim("RC-S13-094", "no chunk carries a hand-typed \x277 scans\x27 sentence (the allowance is read from one module)", ["entry", "idx", "fkr"],
-  () => { const at = ["entry", "idx", "fkr"].filter((c) => SEVEN.test(C[c])); return [at.length === 0, "the " + at.map((c) => NAME[c]).join(" and ") + " chunk still types it"]; });
+  () => { const at = ["entry", "idx", "fkr", "en"].filter((c) => SEVEN.test(C[c])); return [at.length === 0, "the " + at.map((c) => NAME[c]).join(" and ") + " chunk still types it"]; });
 claim("RC-S13-099", "the old-address router sends a scan-report mail\x27s /#pricing to /pricing#full-analysis", ["entry"],
   () => [has("entry", /scan_report[\s\S]{0,400}#full-analysis|#full-analysis[\s\S]{0,400}scan_report/), "the entry has no scan_report route to #full-analysis"]);
 claim("S14X-048", "the uploader says before checkout how much of a long posting the analysis reads", ["idx"],
@@ -239,7 +247,7 @@ claim("S14X-144", "the backup-scanner request carries the page\x27s deadline (de
   () => [has("idx", /JSON\.stringify\(\{resumeText:(?:(?!signal:)[\s\S]){0,900}?deadlineAt/), "the fork\x27s request body has no deadlineAt"]);
 const EVERY = /Every quoted line (?:in the full report )?is verified/;
 claim("S14X-269", "no chunk claims every quoted line is verified", ["entry", "idx", "fkr"],
-  () => { const at = ["entry", "idx", "fkr"].filter((c) => EVERY.test(C[c])); return [at.length === 0, "the " + at.map((c) => NAME[c]).join(" and ") + " chunk still says it"]; });
+  () => { const at = ["entry", "idx", "fkr", "en"].filter((c) => EVERY.test(C[c])); return [at.length === 0, "the " + at.map((c) => NAME[c]).join(" and ") + " chunk still says it"]; });
 claim("S14X-270", "the posting box can say a clipped link (it shows once fetch-job-posting sends truncated)", ["idx"],
   () => [has("idx", /freeScanPage\.jobUrl\.truncated/), "the scanner chunk names no freeScanPage.jobUrl.truncated"]);
 claim("S14X-028", "the length card reads the country\x27s page range when the scan sends one", ["fkr"],

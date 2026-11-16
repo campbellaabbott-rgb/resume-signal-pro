@@ -53,6 +53,9 @@
     },
     "auth": {
       "forgot": "Passwort vergessen?",
+      "email": "E-Mail",
+      "password": "Passwort (mind. 8 Zeichen)",
+      "pleaseWait": "Bitte warten…",
       "resetTitle": "Passwort zurücksetzen",
       "resetIntro": "Geben Sie die Adresse ein, mit der Sie sich registriert haben. Gehört sie zu einem Affiliate-Konto, senden wir einen Link, der einmal innerhalb von 30 Minuten funktioniert.",
       "sendLink": "Link per E-Mail senden",
@@ -88,6 +91,7 @@
       "changeSent": "Wir haben einen Link an {{email}} gesendet. Die Änderung erfolgt, wenn Sie ihn öffnen.",
       "eraseTitle": "Konto schließen",
       "eraseWarning": "Dadurch werden Ihre Adresse, Ihr Passwort, Ihre Sitzungen und Ihr Klickverlauf entfernt; das lässt sich nicht rückgängig machen. Geben Sie zur Bestätigung ERASE ein.",
+      "eraseConfirmLabel": "Zur Bestätigung ERASE eingeben",
       "eraseButton": "Konto endgültig schließen",
       "erased": "Ihr Affiliate-Konto ist geschlossen."
     }

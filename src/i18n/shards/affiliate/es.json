@@ -55,6 +55,9 @@
     },
     "auth": {
       "forgot": "¿Olvidaste tu contraseña?",
+      "email": "Correo electrónico",
+      "password": "Contraseña (mín. 8 caracteres)",
+      "pleaseWait": "Espera un momento…",
       "resetTitle": "Restablece tu contraseña",
       "resetIntro": "Escribe la dirección con la que te registraste. Si una cuenta de afiliado la usa, te enviamos un enlace que funciona una vez en un plazo de 30 minutos.",
       "sendLink": "Envíame un enlace",
@@ -90,6 +93,7 @@
       "changeSent": "Enviamos un enlace a {{email}}. El cambio se hace cuando lo abras.",
       "eraseTitle": "Cerrar la cuenta",
       "eraseWarning": "Esto elimina tu dirección, tu contraseña, tus sesiones y tu historial de clics, y no se puede deshacer. Escribe ERASE para confirmar.",
+      "eraseConfirmLabel": "Escribe ERASE para confirmar",
       "eraseButton": "Cerrar la cuenta definitivamente",
       "erased": "Tu cuenta de afiliado está cerrada."
     }

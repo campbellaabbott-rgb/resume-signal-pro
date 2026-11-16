@@ -63,9 +63,10 @@ export default function CvStandards({ locale }: CvStandardsProps) {
       <Header />
       <main className="pt-20 pb-20">
         <div className="container max-w-3xl">
+          {/* In the page's language, as the bake shows and marks it up (SEO-F18). */}
           <nav className="text-xs text-muted-foreground mb-4">
-            <Link to="/" className="hover:text-foreground">Home</Link> /{" "}
-            <Link to="/cv-standards" className="hover:text-foreground">CV Standards</Link> /{" "}
+            <Link to="/" className="hover:text-foreground">{t.breadcrumbHome}</Link> /{" "}
+            <Link to="/cv-standards" className="hover:text-foreground">{t.breadcrumbIndex}</Link> /{" "}
             <span className="text-foreground">{name}</span>
           </nav>
           <h1 className="text-3xl md:text-4xl font-bold mb-3">{cvFill(t.h1, vars, locale)}</h1>

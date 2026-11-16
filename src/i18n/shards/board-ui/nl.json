@@ -21,6 +21,9 @@
     "unscoredTerms": "Niet beoordeeld — we kunnen de termen van deze vacature nog niet lezen",
     "unscoredTermsBody": "We hebben de beschrijving, maar de beoordelaar herkende er geen vaardigheid of tool in: hij leest alleen Engelse trefwoorden. Er staat hier geen percentage; dat is het ontbreken van een meting, geen zwakke meting.",
     "unscoredTermsTip": "Niet beoordeeld: we hebben de beschrijving van deze vacature, maar de beoordelaar herkende er geen vaardigheid of tool in (hij leest alleen Engelse trefwoorden). Dit is geen lage score — het is geen score.",
+    "unscoredResumeTerms": "Niet beoordeeld — we herkenden geen vaardigheid of tool in je cv",
+    "unscoredResumeTermsBody": "De beoordelaar leest alleen Engelse trefwoorden en vond er geen in je cv, dus er was niets om met deze vacature te vergelijken. Er staat hier geen percentage; dat is het ontbreken van een meting, geen zwakke meting.",
+    "unscoredResumeTermsTip": "Niet beoordeeld: de beoordelaar herkende geen vaardigheid of tool in je cv (hij leest alleen Engelse trefwoorden), dus er was niets te vergelijken. Dit is geen lage score — het is geen score.",
     "matchesNoneForRole": "We vonden op dit moment geen openstaande vacatures voor {{role}}, dus dit zijn vacatures in je vakgebied — beoordeeld aan de hand van je cv, niet erdoor gevonden."
   }
 }

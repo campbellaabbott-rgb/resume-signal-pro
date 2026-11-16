@@ -21,6 +21,9 @@
     "unscoredTerms": "Not scored — we can't read this posting's terms yet",
     "unscoredTermsBody": "We hold its description, but the scorer recognised no skill or tool in it: it reads English keywords only. There is no percentage here; that is the absence of a measurement, not a weak one.",
     "unscoredTermsTip": "Not scored: we hold this posting's description, but the scorer recognised no skill or tool in it (it reads English keywords only). This is not a low score — it is no score.",
+    "unscoredResumeTerms": "Not scored — we recognised no skill or tool in your résumé",
+    "unscoredResumeTermsBody": "The scorer reads English keywords only, and found none in your résumé, so there was nothing to compare against this posting. There is no percentage here; that is the absence of a measurement, not a weak one.",
+    "unscoredResumeTermsTip": "Not scored: the scorer recognised no skill or tool in your résumé (it reads English keywords only), so there was nothing to compare. This is not a low score — it is no score.",
     "matchesNoneForRole": "We found no live openings for {{role}} right now, so these are openings in your field — scored against your résumé, not found by it."
   }
 }

@@ -37,7 +37,8 @@ import { unscoredReason, type UnscoredReason } from "./score-rows.ts";
 // Provable from outside: every response, the preflight included, carries it.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
 // 2026-11-12.1 (bug round of 2026-11-08, part A, board-ui lane, S14X-052): each posting left unscored carries the reason it was not scored.
-const FN_BUILD = "job-fit.2026-11-12.1";
+// 2026-11-12.2 (the round's integration, S14X-052): a résumé the scan recognised no term in scores every held description null with no_resume_terms, not 0%.
+const FN_BUILD = "job-fit.2026-11-12.2";
 
 // x-rb-bucket is deliberately NOT in Allow-Headers: a browser cannot send it,
 // and a server caller does not preflight.
@@ -165,8 +166,9 @@ Deno.serve(async (req) => {
         if (r.description && r.description.length > 150) {
           const minYears = typeof r.min_years === "number" ? r.min_years : null;
           const f = computeFit(r.description.slice(0, FIT_DESC_CHARS), resumeScan, 40, minYears);
-          fits[r.id] = f.pct;
-          const why = unscoredReason(r.description, f.pct);
+          // A résumé the scan recognised nothing in is no measurement, not a 0%.
+          const why = unscoredReason(r.description, f.pct, resumeScan.terms.length);
+          fits[r.id] = why === "no_resume_terms" ? null : f.pct;
           if (why) unscored[r.id] = why;
           if (f.missing.length > 0) missing[r.id] = f.missing.slice(0, 4);
           if (f.matched.length > 0) matched[r.id] = f.matched.slice(0, 6);

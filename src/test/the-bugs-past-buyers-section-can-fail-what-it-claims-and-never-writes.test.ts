@@ -129,16 +129,20 @@ const PS_NEW = [
 const PS_OLD = `sessionStorage.setItem("rb_resume_text",_.resume.rewrittenResume);n("div",{onClick:f});`;
 const SHAPE_NEW = `const R=["ready to apply","listo para aplicar","listo para postularte","lista para postularte","आवेदन करने के लिए तैयार"];`;
 const SHAPE_OLD = `const R=["ready to apply","listo para aplicar"];`;
-const site = (opts: { ps?: string; shape?: string; entryStrings?: boolean; noChunk?: boolean } = {}): Route[] => [
+// The English strings: `pageStrings` in the ProductSuccess chunk, as the
+// namespace plugin registers them there (this branch's build);
+// `entryStrings` in the entry (a build from before the bug round's review).
+const EN_STRINGS = `ne({pastBuyers:{closedNoCopy:${JSON.stringify(CLOSED_EN)}}});`;
+const site = (opts: { ps?: string; shape?: string; entryStrings?: boolean; pageStrings?: boolean; noChunk?: boolean } = {}): Route[] => [
   { match: "^GET https://site\\.test/$", body: '<script type="module" src="/assets/index-AbC123.js"></script>' },
   {
     match: "^GET https://site\\.test/assets/index-AbC123\\.js$",
     body: (opts.noChunk ? "const a=1;" : `const a=()=>import("./ProductSuccess-Ps1.js");`) + (opts.entryStrings ? `const s={pastBuyers:{closedNoCopy:${JSON.stringify(CLOSED_EN)}}};` : `const s={};`),
   },
-  { match: "^GET https://site\\.test/assets/ProductSuccess-Ps1\\.js$", body: `import{j as e}from"./index-AbC123.js";import{S as s}from"./ATSParseSimulator-At1.js";${opts.ps ?? PS_OLD}` },
+  { match: "^GET https://site\\.test/assets/ProductSuccess-Ps1\\.js$", body: `import{j as e}from"./index-AbC123.js";import{S as s}from"./ATSParseSimulator-At1.js";${opts.ps ?? PS_OLD}${opts.pageStrings ? EN_STRINGS : ""}` },
   { match: "^GET https://site\\.test/assets/ATSParseSimulator-At1\\.js$", body: opts.shape ?? SHAPE_OLD },
 ];
-const PUBLISHED = { ps: PS_NEW, shape: SHAPE_NEW, entryStrings: true };
+const PUBLISHED = { ps: PS_NEW, shape: SHAPE_NEW, pageStrings: true };
 
 const before = (): Route[] => [...preflights(OLD), lease("missing"), cron([OLD_PURGE, ...DIGESTS]), ...site()];
 const after = (): Route[] => [...preflights(NEW), lease("locked"), cron([NEW_PURGE, job("agent-pass-close"), ...DIGESTS]), ...site(PUBLISHED)];
@@ -249,13 +253,15 @@ describe("the bug round past-buyers section", () => {
 
   it("after the paste an unpublished page fails, naming what it lacks, and the rewrite over the scan fails", () => {
     const old = run([...preflights(NEW), lease("locked"), cron([NEW_PURGE, job("agent-pass-close")]), ...site()]);
-    expect(fails(old.lines), old.out).toEqual([expect.stringMatching(/^FAIL {2}F the published success page lacks the builder's one-shot seed \(RC-S12-110\); an 'Open in builder' that leaves the scanned résumé alone .* the entry's English past-buyers strings while the lane's functions serve 2026-11-12\.1/)]);
+    expect(fails(old.lines), old.out).toEqual([expect.stringMatching(/^FAIL {2}F the published success page lacks the builder's one-shot seed \(RC-S12-110\); an 'Open in builder' that leaves the scanned résumé alone .* the English past-buyers strings \(with the success page or in the entry\) while the lane's functions serve 2026-11-12\.1/)]);
     const noHindi = run([...preflights(NEW), lease("locked"), cron([NEW_PURGE, job("agent-pass-close")]), ...site({ ...PUBLISHED, shape: SHAPE_NEW.replace(',"आवेदन करने के लिए तैयार"', "") })]);
     expect(fails(noHindi.lines), noHindi.out).toEqual(["FAIL  F the published success page lacks the Spanish and Hindi ready verdicts (RC-S12-113) while the lane's functions serve 2026-11-12.1: the round's frontend publish has not happened"]);
     const both = run([...preflights(NEW), lease("locked"), cron([NEW_PURGE, job("agent-pass-close")]), ...site({ ...PUBLISHED, ps: PS_NEW + PS_OLD })]);
     expect(fails(both.lines), both.out).toEqual([expect.stringContaining("an 'Open in builder' that leaves the scanned résumé alone (RC-S12-110: the rewrite still goes to rb_resume_text)")]);
-    const noStrings = run([...preflights(NEW), lease("locked"), cron([NEW_PURGE, job("agent-pass-close")]), ...site({ ...PUBLISHED, entryStrings: false })]);
-    expect(fails(noStrings.lines), noStrings.out).toEqual([expect.stringContaining("lacks the entry's English past-buyers strings while")]);
+    const noStrings = run([...preflights(NEW), lease("locked"), cron([NEW_PURGE, job("agent-pass-close")]), ...site({ ...PUBLISHED, pageStrings: false })]);
+    expect(fails(noStrings.lines), noStrings.out).toEqual([expect.stringContaining("lacks the English past-buyers strings (with the success page or in the entry) while")]);
+    const inEntry = run([...preflights(NEW), lease("locked"), cron([NEW_PURGE, job("agent-pass-close")]), ...site({ ...PUBLISHED, pageStrings: false, entryStrings: true })]);
+    expect(fails(inEntry.lines), "a build from before the review, the English strings in the entry: " + inEntry.out).toEqual([]);
   });
 
   it("a bundle that names no ProductSuccess chunk is a FAIL even before the paste: nothing could be judged", () => {

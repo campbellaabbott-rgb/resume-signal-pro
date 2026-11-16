@@ -21,8 +21,10 @@
 #       it a FAIL. A row an anonymous caller can read is a FAIL either way;
 #   M2  checkout_buyers.network_key exists (RC-S13-063: the affiliate lane's
 #       column, which this lane's checkouts fill), judged as M1;
-#   F1  the published entry carries the payments strings (pausedUntilPaid),
-#       the PricingPage chunk, or a chunk it imports, the plan states the
+#   F1  the English payments strings (pausedUntilPaid) are published with
+#       the pricing page (its chunk or one it imports; the entry, in a build
+#       from before the bug round's review moved them there), and the
+#       PricingPage chunk, or a chunk it imports, the plan states the
 #       account card reads (S14X-114: link pending, ends on; S14X-077: paused
 #       until paid), and the Account chunk the paused line. Before the paste
 #       INFO, after it a FAIL;
@@ -86,9 +88,9 @@ vdbp_column() {
 vdbp_column M1 pro_grants redeem_until "20261112110000, S14X-078"
 vdbp_column M2 checkout_buyers network_key "the affiliate lane's 20261112122000, which RC-S13-063's checkouts fill"
 
-# F1: the published strings. The entry carries the English payments shard;
-# the PricingPage chunk (or one it imports) holds the Pro block; the Account
-# chunk holds the account card.
+# F1: the published strings. The English payments strings ride with the
+# pricing page (the entry, before the review); the PricingPage chunk (or one
+# it imports) holds the Pro block; the Account chunk holds the account card.
 VDBP_MAIN=$(curl -s -m 30 "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -1)
 VDBP_MAINJS=""
 [ -n "$VDBP_MAIN" ] && VDBP_MAINJS=$(curl -s -m 30 "$SITE$VDBP_MAIN")
@@ -104,7 +106,7 @@ else
 $(curl -s -m 30 "$SITE/assets/$VDBP_D")"; done
   VDBP_ACJS=$(curl -s -m 30 "$SITE/assets/$VDBP_AC")
   VDBP_MISSING=""
-  printf '%s' "$VDBP_MAINJS" | grep -qF 'tools are paused until this payment goes through' || VDBP_MISSING="$VDBP_MISSING the entry's English payments shard;"
+  printf '%s\n%s' "$VDBP_MAINJS" "$VDBP_PPJS" | grep -qF 'tools are paused until this payment goes through' || VDBP_MISSING="$VDBP_MISSING the English payments strings (in the pricing page's chunks or the entry);"
   printf '%s' "$VDBP_PPJS" | grep -qF 'payments.pro.pausedUntilPaid' || VDBP_MISSING="$VDBP_MISSING the Pro block's paused-until-paid line (S14X-077);"
   printf '%s' "$VDBP_PPJS" | grep -qF 'proPlan.linkPending' || VDBP_MISSING="$VDBP_MISSING the Pro block's link-pending state (S14X-114);"
   printf '%s' "$VDBP_PPJS" | grep -qF 'proPlan.endsOn' || VDBP_MISSING="$VDBP_MISSING the Pro block's ends-on date (S14X-114);"

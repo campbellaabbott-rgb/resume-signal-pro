@@ -118,6 +118,7 @@ describe("the purchase opened by its link (asked by the session alone)", () => {
     ["already used and its copy gone", () => answered(409, { error: "This session has already been used for analysis.", code: "session_used" }), "used"],
     ["already used (no code)", () => answered(409, { error: "This session has already been used for analysis." }), "used"],
     ["a Pro grant the plan no longer covers", () => answered(402, { error: "Subscription is not active", code: "grant_refused" }), "grant"],
+    ["a Pro grant past the day's ten openings (S14X-079)", () => answered(429, { error: "Pro includes up to 10 Full Analyses a day and 60 a month.", code: "grant_cap", window: "daily" }), "cap"],
   ] as const) {
     it(`${name}: says so, and asks for no résumé`, async () => {
       invoke.mockImplementation(async (fn: string) => (fn === "analyze-resume" ? answer() : { data: {}, error: null }));
@@ -175,10 +176,10 @@ describe("the words", () => {
     const { resolve } = await import("node:path");
     const shard = (l: string) => JSON.parse(readFileSync(resolve(__dirname, "../i18n/shards/paid", `${l}.json`), "utf8")).paidAnalysis;
     const en = shard("en").refused;
-    for (const k of ["title", "refunded", "notThisProduct", "notFound", "used", "grant"]) expect(en?.[k], `paidAnalysis.refused.${k}`).toBeTruthy();
+    for (const k of ["title", "refunded", "notThisProduct", "notFound", "used", "grant", "cap"]) expect(en?.[k], `paidAnalysis.refused.${k}`).toBeTruthy();
     for (const l of ["de", "es", "fr", "hi", "nl", "pt", "tl"]) {
       const r = shard(l).refused;
-      for (const k of ["title", "refunded", "notThisProduct", "notFound", "used", "grant"]) {
+      for (const k of ["title", "refunded", "notThisProduct", "notFound", "used", "grant", "cap"]) {
         expect(r?.[k], `${l}: paidAnalysis.refused.${k}`).toBeTruthy();
         expect(r[k], `${l} says paidAnalysis.refused.${k} in English`).not.toBe(en[k]);
       }

@@ -18,6 +18,17 @@
 -- in a write of its own and reads it with a fallback, so it keeps working
 -- before this column exists.
 --
+-- AND NOT FOREVER. Three more columns, written in the same write:
+--   notice_tries     how many times the buyer's owed notice was tried;
+--   notice_tried_at  when an owed notice was last tried: each run reads the
+--                    orders tried longest ago first, so five orders whose
+--                    buyer can never be mailed cannot keep a sixth's alarm
+--                    unread;
+--   notice_given_up  why the buyer's notice was given up (the mail service
+--                    refused the address outright, or refused it on six
+--                    runs); the owner is told once, by a mail of its own,
+--                    that the buyer was not asked.
+--
 -- product_deliveries keeps its row level security: the column is read and
 -- written by the service role only, like the rest of the row. A column on a
 -- small table; the check is added once. Safe to re-run.
@@ -25,6 +36,9 @@
 SET LOCAL statement_timeout = '2min';
 
 ALTER TABLE public.product_deliveries ADD COLUMN IF NOT EXISTS notice_owed text;
+ALTER TABLE public.product_deliveries ADD COLUMN IF NOT EXISTS notice_tries integer NOT NULL DEFAULT 0;
+ALTER TABLE public.product_deliveries ADD COLUMN IF NOT EXISTS notice_tried_at timestamptz;
+ALTER TABLE public.product_deliveries ADD COLUMN IF NOT EXISTS notice_given_up text;
 
 DO $$
 BEGIN
@@ -43,15 +57,33 @@ $$;
 COMMENT ON COLUMN public.product_deliveries.notice_owed IS
   'A notice the retry sweep owes for a spent order because the mail provider refused it: owner (the spent-order alarm), '
   'buyer (what is missing), or both; NULL when nothing is owed. Each sweep run resends it and clears it. RC-S13-110, 20261112130000.';
+COMMENT ON COLUMN public.product_deliveries.notice_tries IS
+  'How many times the retry sweep tried the buyer''s owed notice for this spent order. RC-S13-110, 20261112130000.';
+COMMENT ON COLUMN public.product_deliveries.notice_tried_at IS
+  'When the retry sweep last tried an owed notice for this order; the sweep reads the oldest first. RC-S13-110, 20261112130000.';
+COMMENT ON COLUMN public.product_deliveries.notice_given_up IS
+  'Why the retry sweep stopped owing the buyer''s notice (refused outright, or on six runs); the owner is told once. RC-S13-110, 20261112130000.';
 
--- Self-verifying: the column is here as text, its check is in force and
--- validated, and it names exactly the three values the sweep writes.
+-- Self-verifying: the columns are here with their types, the check is in
+-- force and validated, and it names exactly the three values the sweep writes.
 DO $$
 DECLARE
   v_type text;
   v_def text;
   v_valid boolean;
+  v_col record;
 BEGIN
+  FOR v_col IN SELECT * FROM (VALUES ('notice_tries', 'integer'), ('notice_tried_at', 'timestamp with time zone'), ('notice_given_up', 'text')) AS c(name, want) LOOP
+    SELECT format_type(a.atttypid, a.atttypmod) INTO v_type
+      FROM pg_attribute a
+     WHERE a.attrelid = 'public.product_deliveries'::regclass
+       AND a.attname = v_col.name
+       AND NOT a.attisdropped;
+    IF v_type IS DISTINCT FROM v_col.want THEN
+      RAISE EXCEPTION 'self-check: product_deliveries.% is missing or not % (found %)', v_col.name, v_col.want, coalesce(v_type, 'nothing');
+    END IF;
+  END LOOP;
+
   SELECT format_type(a.atttypid, a.atttypmod) INTO v_type
     FROM pg_attribute a
    WHERE a.attrelid = 'public.product_deliveries'::regclass

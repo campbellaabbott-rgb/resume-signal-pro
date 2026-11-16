@@ -108,6 +108,7 @@ const REFUSAL_WORDS: Readonly<Record<RefusalCode, string>> = {
   purchase_not_found: "paidAnalysis.refused.notFound",
   session_used: "paidAnalysis.refused.used",
   grant_refused: "paidAnalysis.refused.grant",
+  grant_cap: "paidAnalysis.refused.cap",
 };
 
 const Success = () => {

@@ -61,8 +61,10 @@
 #       language of at most 3 dates or counts (ProSubscriptionCard's,
 #       ConnectedAIsCard's and SavedSearchesCard's, other lanes' files; 18 on
 #       2026-11-15), and the agent panels chunk of none (3 on 2026-11-15).
-#   S1  S14X-254: the entry names the English account shard and eight lazy
-#       account-shard chunks, each carrying the tracker's follow-up draft,
+#   S1  S14X-254: the English account strings ride with the page (the
+#       Account chunk or a chunk it imports; the entry, in a build from before
+#       the bug round's review moved them there) and the entry names eight
+#       lazy account-shard chunks, each carrying the tracker's follow-up draft,
 #       posting, interview and agent strings.
 #
 # NOT PROVABLE FROM OUTSIDE, so proved in the suite: a posting that came down
@@ -81,7 +83,7 @@
 # account-shard chunks. Nothing is posted.
 echo "== 99zzzzzzz-bugs-account. bug round, account lane: orders say what they are, the tracker says only what it knows, the account strings exist in nine languages =="
 
-rm -f /tmp/vd_bac_home.html /tmp/vd_bac_entry.js /tmp/vd_bac_acc.js /tmp/vd_bac_agt.js /tmp/vd_bac_cand.js /tmp/vd_bac_panels.js /tmp/vd_bac_shard.js
+rm -f /tmp/vd_bac_home.html /tmp/vd_bac_entry.js /tmp/vd_bac_acc.js /tmp/vd_bac_agt.js /tmp/vd_bac_cand.js /tmp/vd_bac_panels.js /tmp/vd_bac_shard.js /tmp/vd_bac_en.js
 
 vdbac_build() { # $1 function -> the x-fn-build header, or empty
   curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$1" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//'
@@ -163,10 +165,22 @@ panels|accountView\.agentProfileRetired|Q2|S14X-199 the agent settings tab shows
   elif [ "$VDBAC_FE" = published ]; then echo "FAIL  D1 S14X-255 the Account chunk still prints $VDBAC_NA and the agent panels chunk $VDBAC_NP dates or counts in the browser's language, not the reader's (want at most 3 and 0)"
   else echo "INFO  D1 S14X-255 the Account chunk prints $VDBAC_NA and the agent panels chunk $VDBAC_NP dates or counts in the browser's language (18 and 3 on 2026-11-15): not published yet"; fi
 
-  # S1: the English shard rides the entry; the other eight load on demand.
+  # S1: the English strings ride with the page (the Account chunk or a chunk
+  # it imports; the entry in a build from before the review); the other
+  # eight load on demand, named by the entry.
+  VDBAC_KEYS="followUpDraft followUpWhen postingOpen ivOutcomeQ ivhClosedAfter ivhSinceTitle trackerLoadFailed queueRetired agentProfileRetired"
+  cat /tmp/vd_bac_entry.js /tmp/vd_bac_acc.js > /tmp/vd_bac_en.js
+  for VDBAC_C in $(grep -oE '(from|import)"\./[A-Za-z0-9_-]+\.js"' /tmp/vd_bac_acc.js | sed -E 's/^(from|import)"\.\/(.*)"$/\2/' | sort -u); do
+    case "$VDBAC_C" in index-*) continue;; esac
+    rm -f /tmp/vd_bac_cand.js
+    curl -s -m 30 "$SITE/assets/$VDBAC_C" > /tmp/vd_bac_cand.js
+    { echo; cat /tmp/vd_bac_cand.js; } >> /tmp/vd_bac_en.js
+  done
   VDBAC_SH=$(grep -oE '"\./shards/account/[A-Za-z-]+\.json":\(\)=>[A-Za-z_$]+\(\(\)=>import\("\./[A-Za-z0-9_-]+\.js"' /tmp/vd_bac_entry.js)
-  VDBAC_EN=no; grep -qF '"./shards/account/en.json":' /tmp/vd_bac_entry.js && VDBAC_EN=yes
-  if [ -z "$VDBAC_SH" ] && [ "$VDBAC_EN" = no ]; then
+  VDBAC_EN=yes; VDBAC_ENMISS=""
+  for VDBAC_KEY in $VDBAC_KEYS; do grep -qF "$VDBAC_KEY:" /tmp/vd_bac_en.js || VDBAC_ENMISS="$VDBAC_ENMISS en:$VDBAC_KEY"; done
+  [ -n "$VDBAC_ENMISS" ] && VDBAC_EN=no
+  if [ -z "$VDBAC_SH" ]; then
     if [ "$VDBAC_FE" = published ]; then echo "FAIL  S1 S14X-254 the lane's page published but the entry loads no account shard, so its strings read English in every language"
     else echo "INFO  S1 S14X-254 the entry loads no account shard yet: not published yet"; fi
   else
@@ -178,13 +192,13 @@ panels|accountView\.agentProfileRetired|Q2|S14X-199 the agent settings tab shows
       rm -f /tmp/vd_bac_shard.js
       curl -s -m 30 "$SITE/assets/$VDBAC_SF" > /tmp/vd_bac_shard.js
       VDBAC_N=$((VDBAC_N + 1))
-      for VDBAC_KEY in followUpDraft followUpWhen postingOpen ivOutcomeQ ivhClosedAfter ivhSinceTitle trackerLoadFailed queueRetired agentProfileRetired; do
+      for VDBAC_KEY in $VDBAC_KEYS; do
         grep -qF "$VDBAC_KEY" /tmp/vd_bac_shard.js || VDBAC_MISS="$VDBAC_MISS $VDBAC_LNG:$VDBAC_KEY"
       done
     done <<< "$VDBAC_SH"
-    if [ "$VDBAC_EN" = no ]; then echo "FAIL  S1 S14X-254 the entry names $VDBAC_N lazy account shards but not the English one it should carry"
+    if [ "$VDBAC_EN" = no ]; then echo "FAIL  S1 S14X-254 the entry names $VDBAC_N lazy account shards but neither the Account chunk ($VDBAC_ACCN), a chunk it imports nor the entry carries the English strings:$VDBAC_ENMISS"
     elif [ "$VDBAC_N" -ne 8 ]; then echo "FAIL  S1 S14X-254 the entry names $VDBAC_N non-English account shards, not 8"
     elif [ -n "$VDBAC_MISS" ]; then echo "FAIL  S1 S14X-254 account shard strings missing:$VDBAC_MISS"
-    else echo "PASS  S1 S14X-254 the entry carries the English account shard and names 8 more, each with the follow-up draft, posting, interview and agent strings"; fi
+    else echo "PASS  S1 S14X-254 the English account strings ride with the page ($VDBAC_ACCN or a chunk it imports) and the entry names 8 more languages, each with the follow-up draft, posting, interview and agent strings"; fi
   fi
 fi

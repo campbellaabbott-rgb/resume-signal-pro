@@ -28,8 +28,10 @@
 #   F   the published ProductSuccess chunk, with the chunks it imports, holds
 #       the builder seed, the labelled upload, the letter's file, the saved
 #       copy prop, the closed answer, the saved parse checks, the print path
-#       and the Spanish and Hindi ready verdicts, and the entry the English
-#       past-buyers strings. Before the paste INFO, after it a FAIL;
+#       and the Spanish and Hindi ready verdicts, and that chunk, one it
+#       imports or the entry (a build from before the bug round's review
+#       moved them to the page) the English past-buyers strings. Before the
+#       paste INFO, after it a FAIL;
 #   R   the checked-out repo: the five recovery-form writers keep their copy,
 #       the re-delivery runs the figure and contact checks and asks for no
 #       inferred figure, the ATS Defense generator's simulator is the page's
@@ -146,7 +148,7 @@ $(curl -s -m 30 "$SITE/assets/$VDPB_D")"
   printf '%s' "$VDPB_PSJS" | grep -qF 'data-rb-saved-parse-simulation' || VDPB_MISSING="$VDPB_MISSING the ATS Defense report's saved checks (RC-S12-031);"
   printf '%s' "$VDPB_PSJS" | grep -qF 'data-rb-print' || VDPB_MISSING="$VDPB_MISSING the print path for text jsPDF cannot draw (RC-S12-029);"
   { printf '%s' "$VDPB_PSJS" | grep -qF 'listo para postularte' && printf '%s' "$VDPB_PSJS" | grep -qF 'आवेदन करने के लिए तैयार'; } || VDPB_MISSING="$VDPB_MISSING the Spanish and Hindi ready verdicts (RC-S12-113);"
-  { [ -n "$VDPB_CLOSED" ] && printf '%s' "$VDPB_MAINJS" | grep -qF "$VDPB_CLOSED"; } || VDPB_MISSING="$VDPB_MISSING the entry's English past-buyers strings;"
+  { [ -n "$VDPB_CLOSED" ] && printf '%s\n%s' "$VDPB_MAINJS" "$VDPB_PSJS" | grep -qF "$VDPB_CLOSED"; } || VDPB_MISSING="$VDPB_MISSING the English past-buyers strings (with the success page or in the entry);"
   if [ -z "$VDPB_MISSING" ]; then echo "PASS  F the published success page ($VDPB_PS and what it imports) seeds the builder, labels its upload, downloads the letter, hands the widgets their saved copy, answers a closed order, shows saved parse checks, prints what jsPDF cannot draw and reads the Spanish and Hindi verdicts"
   elif [ "$VDPB_LIVE" = 1 ]; then echo "FAIL  F the published success page lacks${VDPB_MISSING%;} while the lane's functions serve 2026-11-12.1: the round's frontend publish has not happened"
   else echo "INFO  F the published success page lacks${VDPB_MISSING%;}: the round's frontend has not published yet"; fi

@@ -59,7 +59,9 @@
 #   E2  S14X-187: a line break in the Word file is a Word break (break:1).
 #   E3  S14X-034: the exporter's text pass maps the ligatures a pasted PDF
 #       carries (the "ffl" entry of its table) before the PDF check.
-#   S1  the entry carries the English builder shard and names eight lazy
+#   S1  the English builder strings ride with the page (the ResumeBuilder
+#       chunk or a chunk it imports; the entry, in a build from before the bug
+#       round's review moved them) and the entry names eight lazy
 #       builder-shard chunks, each with the import, other-tab, storage and
 #       editor strings.
 #
@@ -80,7 +82,7 @@
 # the eight builder-shard chunks. Nothing is posted.
 echo "== 99zzzzzzz-bugs-builder. bug round, builder lane: an import says what went wrong and what it left out, the exports draw what the preview shows, the builder strings exist in nine languages =="
 
-rm -f /tmp/vd_bb_home.html /tmp/vd_bb_entry.js /tmp/vd_bb_page.js /tmp/vd_bb_cand.js /tmp/vd_bb_preview.js /tmp/vd_bb_exp.js /tmp/vd_bb_shard.js
+rm -f /tmp/vd_bb_home.html /tmp/vd_bb_entry.js /tmp/vd_bb_page.js /tmp/vd_bb_cand.js /tmp/vd_bb_preview.js /tmp/vd_bb_exp.js /tmp/vd_bb_shard.js /tmp/vd_bb_en.js
 
 # F1: the function's build. The page falls back without it, so an older
 # build is INFO, never a FAIL.
@@ -189,10 +191,21 @@ exp|:"ffl"|E3|S14X-034 the export text pass maps the ligatures a pasted PDF carr
   elif [ "$VDBB_FE" = published ]; then echo "FAIL  N2 S14X-187 the preview still heads a résumé in the interface language: it asks for $VDBB_OLD ($VDBB_PREVN)"
   else echo "INFO  N2 S14X-187 the preview asks for $VDBB_OLD: not published yet ($VDBB_PREVN)"; fi
 
-  # S1: the English shard rides the entry; the other eight load on demand.
+  # S1: the English strings ride with the page (the ResumeBuilder chunk or a
+  # chunk it imports; the entry in a build from before the review); the
+  # other eight load on demand, named by the entry.
+  VDBB_KEYS="importFailed importTruncated importLatest otherTab storageBlocked moveUp removeEntry removeBullet bullet importedNoneMatchedDescription_other"
+  cat /tmp/vd_bb_entry.js /tmp/vd_bb_page.js > /tmp/vd_bb_en.js
+  for VDBB_C in $(grep -oE '(from|import)"\./[A-Za-z0-9_-]+\.js"' /tmp/vd_bb_page.js | sed -E 's/^(from|import)"\.\/(.*)"$/\2/' | sort -u); do
+    case "$VDBB_C" in index-*) continue;; esac
+    rm -f /tmp/vd_bb_cand.js
+    curl -s -m 30 "$SITE/assets/$VDBB_C" > /tmp/vd_bb_cand.js
+    { echo; cat /tmp/vd_bb_cand.js; } >> /tmp/vd_bb_en.js
+  done
   VDBB_SH=$(grep -oE '"\./shards/builder/[A-Za-z-]+\.json":\(\)=>[A-Za-z_$]+\(\(\)=>import\("\./[A-Za-z0-9_-]+\.js"' /tmp/vd_bb_entry.js)
-  VDBB_EN=no; grep -qF '"./shards/builder/en.json":' /tmp/vd_bb_entry.js && VDBB_EN=yes
-  if [ -z "$VDBB_SH" ] && [ "$VDBB_EN" = no ]; then
+  VDBB_ENMISS=""
+  for VDBB_KEY in $VDBB_KEYS; do grep -qF "$VDBB_KEY:" /tmp/vd_bb_en.js || VDBB_ENMISS="$VDBB_ENMISS en:$VDBB_KEY"; done
+  if [ -z "$VDBB_SH" ]; then
     if [ "$VDBB_FE" = published ]; then echo "FAIL  S1 the lane's page published but the entry loads no builder shard, so its new strings show as keys"
     else echo "INFO  S1 the entry loads no builder shard yet: not published yet"; fi
   else
@@ -204,13 +217,13 @@ exp|:"ffl"|E3|S14X-034 the export text pass maps the ligatures a pasted PDF carr
       rm -f /tmp/vd_bb_shard.js
       curl -s -m 30 "$SITE/assets/$VDBB_SF" > /tmp/vd_bb_shard.js
       VDBB_N=$((VDBB_N + 1))
-      for VDBB_KEY in importFailed importTruncated importLatest otherTab storageBlocked moveUp removeEntry removeBullet bullet importedNoneMatchedDescription_other; do
+      for VDBB_KEY in $VDBB_KEYS; do
         grep -qF "$VDBB_KEY" /tmp/vd_bb_shard.js || VDBB_MISS="$VDBB_MISS $VDBB_LNG:$VDBB_KEY"
       done
     done <<< "$VDBB_SH"
-    if [ "$VDBB_EN" = no ]; then echo "FAIL  S1 the entry names $VDBB_N lazy builder shards but not the English one it should carry"
+    if [ -n "$VDBB_ENMISS" ]; then echo "FAIL  S1 the entry names $VDBB_N lazy builder shards but neither the ResumeBuilder chunk ($VDBB_PAGEN), a chunk it imports nor the entry carries the English strings:$VDBB_ENMISS"
     elif [ "$VDBB_N" -ne 8 ]; then echo "FAIL  S1 the entry names $VDBB_N non-English builder shards, not 8"
     elif [ -n "$VDBB_MISS" ]; then echo "FAIL  S1 builder shard strings missing:$VDBB_MISS"
-    else echo "PASS  S1 the entry carries the English builder shard and names 8 more, each with the import, other-tab, storage and editor strings"; fi
+    else echo "PASS  S1 the English builder strings ride with the page ($VDBB_PAGEN or a chunk it imports) and the entry names 8 more languages, each with the import, other-tab, storage and editor strings"; fi
   fi
 fi

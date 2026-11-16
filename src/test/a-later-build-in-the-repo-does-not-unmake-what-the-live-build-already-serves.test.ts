@@ -47,6 +47,8 @@ const row = (fn: string, want: string, have: string | null | undefined): Row => 
 const AHEAD = (...live: (string | null | undefined)[]) => [
   row("job-board", "job-board.2026-09-09.98", live.length ? live[0] : "job-board.2026-09-09.96"),
   row("agent-mcp", "agent-mcp.2026-10-11.38", "agent-mcp.2026-10-11.38"),
+  // The bug round's paste (the Privacy page's third datedAtDeploy rule): not yet live.
+  row("delete-account", "delete-account.2026-11-12.1", "delete-account.2026-11-09.1"),
 ];
 
 describe("the rows this test stands on", () => {
@@ -95,7 +97,7 @@ describe("datedAtDeploy: a date the live build made history stays history", () =
     }
   });
 
-  it("the real policy: the two dates job-board .93 made history stay history with .96 live, and only audit-rest's .101 re-date is due", () => {
+  it("the real policy: the two dates job-board .93 made history stay history with .96 live, and only audit-rest's .101 re-date and the bug round's are due", () => {
     const real = L.datedAtDeploy(policy, AHEAD(), readRepo, "2026-11-02");
     expect(real.errors).toEqual([]);
     type Check = { constant: string; due: boolean; need: string };
@@ -104,7 +106,7 @@ describe("datedAtDeploy: a date the live build made history stays history", () =
     expect(at93.every((c: Check) => !c.due)).toBe(true);
     const msg: string[] = L.lovableMessage({ head: "abc12345", draftOf: "fix/post-deploy", phases: L.migrationPhases([], {}, []), toDeploy: [], dated: at93 });
     expect(msg.join("\n")).not.toMatch(/On the merge day, before merging, set/);
-    expect(real.checks.filter((c: Check) => c.due).map((c: Check) => `${c.constant}@${c.need}`)).toEqual(["PRIVACY_LAST_UPDATED@job-board.2026-09-09.101"]);
+    expect(real.checks.filter((c: Check) => c.due).map((c: Check) => `${c.constant}@${c.need}`)).toEqual(["PRIVACY_LAST_UPDATED@job-board.2026-09-09.101", "PRIVACY_LAST_UPDATED@delete-account.2026-11-12.1"]);
   });
 });
 

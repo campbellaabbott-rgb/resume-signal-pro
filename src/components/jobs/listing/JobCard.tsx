@@ -52,10 +52,12 @@ export interface CardContext {
 /**
  * `reason` is job-fit's own (S14X-052): no_description when we hold no
  * stored description, no_recognised_terms when we hold one and the scorer
- * recognised no skill or tool in it. Absent from an older job-fit, which
- * reads as before.
+ * recognised no skill or tool in it, no_resume_terms when it recognised none
+ * in the reader's résumé (job-fit 2026-11-12.2). Absent from an older
+ * job-fit, which reads as before.
  */
-export type JobCardFit = { kind: "score"; pct: number } | { kind: "unscored"; reason?: "no_description" | "no_recognised_terms" };
+export type UnscoredFitReason = "no_description" | "no_recognised_terms" | "no_resume_terms";
+export type JobCardFit = { kind: "score"; pct: number } | { kind: "unscored"; reason?: UnscoredFitReason };
 
 export interface JobCardSlots {
   /** /jobs only: the employer's gated hiring-record chip. */
@@ -309,7 +311,9 @@ export function JobCard({
                   that sits in the same slot for a genuinely low score. A null
                   from the scorer is no measurement, never a low one. */}
               {!tier && fit?.kind === "unscored" && (
-                <span className="rounded-md border border-dashed border-border px-2 py-0.5 text-muted-foreground" title={fit.reason === "no_recognised_terms"
+                <span className="rounded-md border border-dashed border-border px-2 py-0.5 text-muted-foreground" title={fit.reason === "no_resume_terms"
+                  ? t("boardUi.unscoredResumeTermsTip", "Not scored: the scorer recognised no skill or tool in your résumé (it reads English keywords only), so there was nothing to compare. This is not a low score — it is no score.")
+                  : fit.reason === "no_recognised_terms"
                   ? t("boardUi.unscoredTermsTip", "Not scored: we hold this posting's description, but the scorer recognised no skill or tool in it (it reads English keywords only). This is not a low score — it is no score.")
                   : t("jobsPage.notScoredTip", "We hold no stored description for this posting, so there was nothing to compare your resume against. This is not a low score — it is no score.")}>
                   {t("jobsPage.notScoredChip", "Not scored")}

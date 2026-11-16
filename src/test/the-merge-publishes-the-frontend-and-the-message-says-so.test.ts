@@ -45,6 +45,8 @@ const LIVE: Record<string, string> = {
   "job-board": "job-board.2026-09-09.92",
   "agent-mcp": "agent-mcp.2026-10-09.71",
   "process-email-queue": "process-email-queue.2026-10-14.1",
+  // bugs/base's build, before the bug round's paste.
+  "delete-account": "delete-account.2026-11-09.1",
 };
 const rows = (live: Record<string, string | null>) => Object.keys(LIVE).map((fn) => {
   const want = repoBuild(fn);
@@ -181,13 +183,30 @@ describe("a constant dated at the deploy is checked against the day the message 
     expect(msg.join("\n")).toMatch(/On the merge day, before merging, set src\/config\/a\.ts A_DAY \(it reads 2026-10-31\) to that day \(UTC\): the deploy message refuses another day while job-board is older than job-board\.2026-09-09\.93 \(the page names the day\)\./);
   });
 
-  it("the real policy dates the Privacy page and the connector log by job-board .93, and the Privacy page again by .101", () => {
+  it("the real policy dates the Privacy page and the connector log by job-board .93, the Privacy page again by .101, and by the bug round's paste", () => {
     const real = L.datedAtDeploy(policy, rows(LIVE), (f: string) => { try { return readFileSync(resolve(ROOT, f), "utf8"); } catch { return null; } }, "2026-10-31");
     expect(real.errors).toEqual([]);
     expect(real.checks.map((c: { file: string; constant: string; need: string }) => `${c.file}#${c.constant}@${c.need}`).sort()).toEqual([
       "src/config/mcp-privacy.ts#CONNECTOR_SEARCH_LOG_CHANGED@job-board.2026-09-09.93",
+      "src/config/seller.ts#PRIVACY_LAST_UPDATED@delete-account.2026-11-12.1",
       "src/config/seller.ts#PRIVACY_LAST_UPDATED@job-board.2026-09-09.101",
       "src/config/seller.ts#PRIVACY_LAST_UPDATED@job-board.2026-09-09.93",
     ]);
+  });
+
+  // The bug round rewrites the Privacy page (searches kept 180 days, the
+  // sign-in mail's fallback, ipinfo on a report email, what a sign-out
+  // clears), and the page's Last updated read 2026-11-06, the day before the
+  // round began. Its paste carries delete-account 2026-11-12.1, which bugs/base
+  // does not: until that answers, the date must be the day the message is made.
+  it("the bug round's Privacy text is dated at its paste: due while delete-account answers bugs/base's build, history once it answers the round's", () => {
+    expect(repoBuild("delete-account")).toBe("delete-account.2026-11-12.1");
+    const read = (f: string) => { try { return readFileSync(resolve(ROOT, f), "utf8"); } catch { return null; } };
+    const round = (c: { need: string }) => c.need === "delete-account.2026-11-12.1";
+    const before = L.datedAtDeploy(policy, rows(LIVE), read, "2026-11-20").checks.find(round);
+    expect(before).toMatchObject({ file: "src/config/seller.ts", constant: "PRIVACY_LAST_UPDATED", due: true });
+    expect(before.ok, "a date other than the message's day must refuse the message").toBe(before.value === "2026-11-20");
+    const after = L.datedAtDeploy(policy, rows({ ...LIVE, "delete-account": "delete-account.2026-11-12.1" }), read, "2026-11-20").checks.find(round);
+    expect(after).toMatchObject({ due: false, ok: true });
   });
 });

@@ -17,8 +17,7 @@
 #              one does, an older build is INFO (not pasted yet); once one
 #              does, another still older is a FAIL (a partial paste). A
 #              preflight with no x-fn-build is a FAIL either way.
-#   frontend   the entry carries the lane's English shard: the merge
-#              published. Until then every frontend claim is INFO; from then
+#   frontend   the entry names the lane's shards: the merge published. Until then every frontend claim is INFO; from then
 #              on a missing mark is a FAIL. The page works against the older
 #              parsers: a refusal with no code keeps the page's own copy.
 #
@@ -27,7 +26,9 @@
 # holding the parse-refusal map, homepage.toast.fileDamaged); the entry names
 # the Account chunk, and the résumé text reader is that chunk or the first
 # chunk it imports that calls both parsers by name and tests a .txt name; the
-# entry names the eight lazy shard chunks.
+# entry names the eight lazy shard chunks. The English strings ride with the
+# scanner (its chunk or a chunk it imports) since the bug round's review moved
+# them out of the entry; a build from before that carried them in the entry.
 #
 # THE CLAIMS, one line each:
 #   B   parse-pdf (S14X-044 right-to-left order, S14X-123 and S14X-146 a Mac
@@ -41,9 +42,10 @@
 #       RC-S13-066 a patched SheetJS) serve 2026-11-12.1 or later.
 #   L0  the chunks above can be read (FAIL when the layout moved: the claim
 #       that needed the chunk could not be judged).
-#   S1  S14X-183: the entry carries the English ingest-parsers shard and
-#       names eight more (de, en-GB, es, fr, hi, nl, pt, tl), each holding
-#       every string of the repo's own file for that language.
+#   S1  S14X-183: the English ingest-parsers strings ride with the scanner
+#       (or the entry) and the entry names eight more (de, en-GB, es, fr, hi,
+#       nl, pt, tl), each holding every string of the repo's own file for that
+#       language.
 #   R1  S14X-183: the scanner chunk's refusal map names every refusal code
 #       the parsers send, the ingestParsers refusal keys, and a title for a
 #       Word document's garbled text (docxGarbled).
@@ -68,7 +70,7 @@
 # reader, and the eight shard chunks. Nothing is posted and no file is parsed.
 echo "== 99zzzzzzz-bugs-ingest-parsers. bug round, ingest-parsers lane: three parser builds, every refusal in the reader's language, a .txt read in its own encoding, owner gate =="
 
-rm -f /tmp/vd_ip_hdr /tmp/vd_ip_page.html /tmp/vd_ip_entry.js /tmp/vd_ip_idx.js /tmp/vd_ip_acc.js /tmp/vd_ip_cand.js /tmp/vd_ip_reader.js /tmp/vd_ip_shard_*.js
+rm -f /tmp/vd_ip_hdr /tmp/vd_ip_page.html /tmp/vd_ip_entry.js /tmp/vd_ip_idx.js /tmp/vd_ip_acc.js /tmp/vd_ip_cand.js /tmp/vd_ip_reader.js /tmp/vd_ip_shard_*.js /tmp/vd_ip_en.js
 VDIP_LEDGER="${VDIP_LEDGER:-docs/deploy-ledger.json}"
 # The refusal codes parse-pdf and parse-docx send (PARSE_FAILURE_CODES less
 # the two the page already knew); the suite holds this list to the module's.
@@ -130,6 +132,18 @@ if [ -f /tmp/vd_ip_acc.js ]; then
   fi
 fi
 
+# Where the English strings can be: the entry, the scanner chunk, and every
+# chunk the scanner chunk imports.
+cat /tmp/vd_ip_entry.js /tmp/vd_ip_idx.js > /tmp/vd_ip_en.js 2>/dev/null
+if [ -f /tmp/vd_ip_idx.js ]; then
+  for VDIP_C in $(grep -aoE '(from|import)"\./[A-Za-z0-9_-]+\.js"' /tmp/vd_ip_idx.js | sed -E 's/^(from|import)"\.\/(.*)"$/\2/' | sort -u); do
+    case "$VDIP_C" in index-*) continue ;; esac
+    rm -f /tmp/vd_ip_cand.js
+    curl -s -m 30 "$SITE/assets/$VDIP_C" > /tmp/vd_ip_cand.js
+    { echo; cat /tmp/vd_ip_cand.js; } >> /tmp/vd_ip_en.js
+  done
+fi
+
 VDIP_SHARDS=$( { [ -f /tmp/vd_ip_entry.js ] && grep -aoE '"\./shards/ingest-parsers/[A-Za-z-]+\.json":\(\)=>([A-Za-z_$][A-Za-z0-9_$]*\(\(\)=>)?import\("\./[A-Za-z0-9_-]+\.js"' /tmp/vd_ip_entry.js; } \
   | sed -E 's#^"\./shards/ingest-parsers/([A-Za-z-]+)\.json".*import\("\./([A-Za-z0-9_-]+\.js)"$#\1=\2#')
 for VDIP_P in $VDIP_SHARDS; do
@@ -145,7 +159,7 @@ const rd = (p) => { try { return fs.readFileSync(p, "utf8"); } catch { return ""
 const E = process.env;
 const say = (v, id, m) => console.log(v + "  " + id + " " + m);
 const base = (s) => s.replace(/^\/?assets\//, "");
-const entry = rd("/tmp/vd_ip_entry.js"), idx = rd("/tmp/vd_ip_idx.js"), reader = rd("/tmp/vd_ip_reader.js");
+const entry = rd("/tmp/vd_ip_entry.js"), idx = rd("/tmp/vd_ip_idx.js"), reader = rd("/tmp/vd_ip_reader.js"), enHome = rd("/tmp/vd_ip_en.js");
 const N = { entry: E.VDIP_N_ENTRY || "", idx: E.VDIP_N_IDX || "", acc: E.VDIP_N_ACC || "", reader: E.VDIP_N_READER || "" };
 
 // L0: the layout.
@@ -157,8 +171,9 @@ if (!idxOk) say("FAIL", "L0", N.idx ? "the scanner chunk " + base(N.idx) + " hol
 if (!readerOk) say("FAIL", "L0", N.acc ? "neither the Account chunk (" + base(N.acc) + ") nor a chunk it imports holds the résumé text reader (it calls parse-pdf and parse-docx and tests a .txt name): the bundle layout moved, so T1 cannot be judged" : "the entry names no Account chunk, so the résumé text reader cannot be found and T1 cannot be judged");
 if (entryOk && idxOk && readerOk) say("INFO", "L0", "chunks read: " + [N.entry, N.idx, N.reader].map(base).join(", "));
 
-// The stage: the English shard rides in the entry.
-const published = entryOk && entry.includes("\"./shards/ingest-parsers/en.json\":");
+// The stage: the entry names the lane shards (the English one too, in a
+// build from before the review moved it to the scanner).
+const published = entryOk && /"\.\/shards\/ingest-parsers\/[A-Za-z-]+\.json":/.test(entry);
 if (entryOk && !published) say("INFO", "S1", "the entry carries no ingest-parsers shard yet: the merge carrying the round has not published, so S1, R1, R2 and T1 are INFO");
 
 // S1: the strings, as the repo writes them, in nine languages.
@@ -172,16 +187,16 @@ if (published) {
   const miss = [];
   const en = repo("en");
   if (!en) miss.push("en: the repo has no src/i18n/shards/ingest-parsers/en.json to read");
-  else for (const [k, v] of en) if (!entry.includes(v)) miss.push("en:" + k);
+  else for (const [k, v] of en) if (!enHome.includes(v)) miss.push("en:" + k);
   for (const [l] of shards) {
     const vals = repo(l);
     if (!vals) { miss.push(l + ": no such shard in the repo"); continue; }
     const body = rd("/tmp/vd_ip_shard_" + l + ".js");
     for (const [k, v] of vals) if (!body.includes(v)) miss.push(l + ":" + k);
   }
-  if (absent.length) say("FAIL", "S1", "S14X-183 the entry carries the English ingest-parsers shard but names no lazy shard for " + absent.join(", ") + ": those readers see keys where the refusals should be");
+  if (absent.length) say("FAIL", "S1", "S14X-183 the entry names no lazy ingest-parsers shard for " + absent.join(", ") + ": those readers see keys where the refusals should be");
   else if (miss.length) say("FAIL", "S1", "S14X-183 ingest-parsers strings missing from the published shards: " + miss.slice(0, 12).join(", ") + (miss.length > 12 ? " and " + (miss.length - 12) + " more" : ""));
-  else say("PASS", "S1", "S14X-183 the entry carries the English ingest-parsers shard and names 8 more (" + LANGS.join(", ") + "), each holding all " + en.length + " refusal and notice strings in the repo\x27s own words");
+  else say("PASS", "S1", "S14X-183 the English ingest-parsers strings ride with the scanner (" + base(N.idx) + ", a chunk it imports, or the entry) and the entry names 8 more languages (" + LANGS.join(", ") + "), each holding all " + en.length + " refusal and notice strings in the repo\x27s own words");
 }
 
 // R1, R2: the refusal map and the notices, in the scanner chunk.

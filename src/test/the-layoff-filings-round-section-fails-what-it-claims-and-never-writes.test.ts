@@ -88,6 +88,8 @@ type Over = {
   get?: string; version?: string; parser?: string; warnBuild?: string | null; audit?: Record<string, unknown> | null;
   m1?: string; m4?: string; ia?: unknown[]; ak?: unknown[]; wd?: unknown[];
   ledgerLit?: string[]; twinsLit?: boolean; hisense?: boolean; sigmaLit?: boolean; strings?: string; home?: string;
+  /** Where the English strings ride: the board's chunk (this round's build), the entry (an older build), or only the whole-file safety net. */
+  where?: "jobs" | "entry" | "all-only";
 };
 function routes(o: Over = {}): Route[] {
   const get = o.get ?? JSON.stringify({
@@ -97,6 +99,8 @@ function routes(o: Over = {}): Route[] {
       audit: o.audit === null ? null : (o.audit ?? { at: "2026-11-17T05:17:00Z", build: "2026-11-12.1", reread: 10, rereadReplaced: 3 }),
     },
   });
+  const where = o.where ?? "jobs";
+  const strings = o.strings ?? NEW_STRINGS;
   const ledger = ["socialfinance", "sigmasoftware2", "sunday", "echo", "lockwood", "roadrunner"].map((t) => lca(t, (o.ledgerLit ?? []).includes(t)));
   return [
     { match: "^GET https://p\\.supabase\\.co/functions/v1/layoff-filings$", body: get },
@@ -109,8 +113,10 @@ function routes(o: Over = {}): Route[] {
     { match: "^POST https://p\\.supabase\\.co/rest/v1/rpc/get_employer_lca_wages\t.*ebb9e98a", body: JSON.stringify([lca("ebb9e98a-78f1-47eb-a562-c52b36b09dd3", !!o.twinsLit), lca("32d78507-2175-47fb-8427-a89a691203be")]) },
     { match: "^POST https://p\\.supabase\\.co/rest/v1/rpc/get_employer_lca_wages\t.*hisense", body: JSON.stringify([{ ...lca("hisenseusacorporation", o.hisense ?? true), ow_worksite_state: "GA" }, lca("sigmasoftware2", !!o.sigmaLit)]) },
     { match: "^GET https://site\\.test/$", body: o.home ?? '<html><script src="/assets/index-AbC123.js"></script></html>' },
-    { match: "^GET https://site\\.test/assets/index-AbC123\\.js$", body: `import("./rb-en_ns_jobsPage-Zz9.js"); ${o.strings ?? NEW_STRINGS}` },
+    { match: "^GET https://site\\.test/assets/index-AbC123\\.js$", body: `const J=()=>import("./Jobs-Jb1.js"); import("./rb-en_ns_jobsPage-Zz9.js"); const A=()=>import("./rb-en_all-Al1.js"); ${PAD} ${where === "entry" ? strings : ""}` },
+    { match: "^GET https://site\\.test/assets/Jobs-Jb1\\.js$", body: `import"./rb-en_ns_jobsPage-Zz9.js"; const Jobs=()=>null; ${where === "jobs" ? strings : ""}` },
     { match: "^GET https://site\\.test/assets/rb-en_ns_jobsPage-Zz9\\.js$", body: "addEnglish({jobsPage:{}})" },
+    { match: "^GET https://site\\.test/assets/rb-en_all-Al1\\.js$", body: `export default {${strings}}` },
   ];
 }
 const verdicts = (lines: string[]) => lines.filter((l) => /^(PASS|FAIL|INFO) /.test(l));
@@ -123,6 +129,23 @@ describe("a good deploy", () => {
     for (const id of IDS) expect(line(lines, id), id).toMatch(/^PASS /);
     expect(verdicts(lines).length).toBe(IDS.length);
     expect(lines.filter((l) => !/^(PASS|FAIL|INFO) /.test(l) && !l.startsWith("== "))).toEqual([]);
+  });
+});
+
+describe("where the English strings ride (the entry carries no page's shard strings)", () => {
+  it("an older build that carried them in the entry still PASSes", () => {
+    const { lines } = run(routes({ where: "entry" }));
+    expect(line(lines, "S14X-184")).toMatch(/^PASS /);
+    expect(line(lines, "S14X-279")).toMatch(/^PASS /);
+  });
+  it("the board chunk carrying them PASSes and names the chunk", () => {
+    const { lines } = run(routes());
+    expect(line(lines, "S14X-184")).toMatch(/^PASS .*Jobs-Jb1\.js/);
+  });
+  it("strings found only in the whole-file safety net prove nothing about the board: FAIL", () => {
+    const { lines } = run(routes({ where: "all-only" }));
+    expect(line(lines, "S14X-184")).toMatch(/^FAIL /);
+    expect(line(lines, "S14X-279")).toMatch(/^FAIL /);
   });
 });
 

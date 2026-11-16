@@ -4,8 +4,9 @@
 # S14X-015, S14X-052, S14X-053, S14X-054, S14X-161, S14X-173, S14X-174,
 # S14X-175, S14X-196, S14X-244, S14X-252, S14X-291, S14X-292, S14X-293,
 # S14X-294, S14X-295, S14X-296, NB-3, NB-4, NB-23, NB-24, NB-25, NB-26,
-# S11-094, and the board's halves of NB-21, NB-22 and NB-45. Two functions at
-# 2026-11-12.1 (job-fit, nl-search; the integrator stamps them), no
+# S11-094, and the board's halves of NB-21, NB-22 and NB-45. Two functions,
+# job-fit at 2026-11-12.2 and nl-search at 2026-11-12.1 (the integrator
+# stamps them; job-fit's .2 adds the résumé half of S14X-052), no
 # migration, and the board, the free report's matches and a new translation
 # shard (src/i18n/shards/board-ui), published by the merge itself.
 #
@@ -14,7 +15,8 @@
 # ignores the dash.
 #
 # THE STAGES, read from production, never assumed:
-#   functions job-fit and nl-search answer 2026-11-12.1 or later: the round's
+#   functions job-fit answers 2026-11-12.2 or later and nl-search 2026-11-12.1
+#             or later: the round's
 #             paste is live. Until then an older build is INFO. The page never
 #             waits on them: without fit-batch's `unscored` map a null score
 #             reads as before, and nl-search's refusals are read either way.
@@ -26,8 +28,9 @@
 # No line waits on an owner: no key of this lane is owner-gated.
 #
 # THE CLAIMS, one line each:
-#   F1  job-fit serves 2026-11-12.1 or later: fit-batch names why each
-#       unscored posting was not scored (S14X-052).
+#   F1  job-fit serves 2026-11-12.2 or later: fit-batch names why each
+#       unscored posting was not scored, a résumé it recognises nothing in
+#       among the reasons, never a 0% (S14X-052).
 #   F2  nl-search serves 2026-11-12.1 or later: an unreadable tool reply goes
 #       on down the model chain, an empty answer is not remembered (NB-23), and
 #       a gateway refusal answers its status and a fixed reason (NB-24).
@@ -56,6 +59,7 @@
 #   P23 NB-26: the shortcuts card keeps its keys to itself.
 #   P24 NB-45: the board's keyword box has a name.
 #   P25 S11-094: similar openings carry the reader's own filters.
+#   P26 S14X-052: the board reads the résumé reason (no_resume_terms).
 #   M1  S14X-294: the free report's matches name the hourly allowance.
 #   M2  S14X-296: the report's matches say the occupation found nothing.
 #   N1  S14X-196: the Jobs chunk holds no "$" + revenue/1e9 template.
@@ -82,17 +86,17 @@
 # matches, and the eight board-ui shard chunks. Nothing is posted.
 echo "== 99zzzzzzz-bugs-board-ui. bug round, board-ui lane: the board keeps what the reader chose, says why a posting went unscored, and names what it withholds; the board-ui strings exist in nine languages =="
 
-rm -f /tmp/vd_bu_home.html /tmp/vd_bu_entry.js /tmp/vd_bu_jobs.js /tmp/vd_bu_board.js /tmp/vd_bu_cand.js /tmp/vd_bu_matches.js /tmp/vd_bu_shard.js
+rm -f /tmp/vd_bu_home.html /tmp/vd_bu_entry.js /tmp/vd_bu_jobs.js /tmp/vd_bu_board.js /tmp/vd_bu_cand.js /tmp/vd_bu_matches.js /tmp/vd_bu_shard.js /tmp/vd_bu_en.js
 
 # F1, F2: the functions' builds. The page falls back without them, so an
 # older build is INFO, never a FAIL.
 for VDBU_FN in job-fit nl-search; do
-  if [ "$VDBU_FN" = job-fit ]; then VDBU_CL=F1; VDBU_W="S14X-052 fit-batch names why each unscored posting was not scored (no_description, no_recognised_terms)"
-  else VDBU_CL=F2; VDBU_W="NB-23 an unreadable tool reply goes on down the model chain and an empty answer is not remembered; NB-24 a gateway refusal answers its status and a fixed reason, never the upstream text"; fi
+  if [ "$VDBU_FN" = job-fit ]; then VDBU_CL=F1; VDBU_SEQ=2; VDBU_W="S14X-052 fit-batch names why each unscored posting was not scored (no_description, no_recognised_terms, and no_resume_terms for a résumé it recognises nothing in, never a 0%)"
+  else VDBU_CL=F2; VDBU_SEQ=1; VDBU_W="NB-23 an unreadable tool reply goes on down the model chain and an empty answer is not remembered; NB-24 a gateway refusal answers its status and a fixed reason, never the upstream text"; fi
   VDBU_FB=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$VDBU_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
-  if [ -z "$VDBU_FB" ]; then echo "FAIL  $VDBU_CL $VDBU_FN preflight carries no x-fn-build (want $VDBU_FN.2026-11-12.1 or later)"
-  elif build_ge "$VDBU_FN" "$VDBU_FB" 2026-11-12 1; then echo "PASS  $VDBU_CL $VDBU_FN x-fn-build = $VDBU_FB (2026-11-12.1 or later): $VDBU_W"
-  else echo "INFO  $VDBU_CL $VDBU_FN x-fn-build = $VDBU_FB: the round's paste with 2026-11-12.1 has not landed (section 49 lists the gap); the board reads the older answer meanwhile"; fi
+  if [ -z "$VDBU_FB" ]; then echo "FAIL  $VDBU_CL $VDBU_FN preflight carries no x-fn-build (want $VDBU_FN.2026-11-12.$VDBU_SEQ or later)"
+  elif build_ge "$VDBU_FN" "$VDBU_FB" 2026-11-12 "$VDBU_SEQ"; then echo "PASS  $VDBU_CL $VDBU_FN x-fn-build = $VDBU_FB (2026-11-12.$VDBU_SEQ or later): $VDBU_W"
+  else echo "INFO  $VDBU_CL $VDBU_FN x-fn-build = $VDBU_FB: the round's paste with 2026-11-12.$VDBU_SEQ has not landed (section 49 lists the gap); the board reads the older answer meanwhile"; fi
 done
 
 # The published app: the entry, the Jobs chunk with every chunk it imports
@@ -170,6 +174,7 @@ board|\+\$\{[A-Za-z_$]+\} more`|P22|NB-25 a search over several employers is nam
 board|"data-shortcuts-card"|P23|NB-26 the shortcuts card takes focus, and its Escape and Enter go no further
 board|id:"board-search","aria-label":[A-Za-z_$]+\("filterBar\.keywordLabel"|P24|NB-45 the board'"'"'s keyword box is named, not only its placeholder
 board|limit:12,includeFacets:!1,\.\.\.|P25|S11-094 similar openings carry the reader'"'"'s country, location and work mode
+board|no_resume_terms|P26|S14X-052 a résumé the scorer recognises nothing in is named as the reason a posting went unscored, never shown as 0%
 matches|boardUi\.fitLimited|M1|S14X-294 the free report'"'"'s matches name the hourly fit allowance
 matches|boardUi\.matchesNoneForRole|M2|S14X-296 the report'"'"'s matches say the occupation was read and found no opening'
   VDBU_HITS=0
@@ -202,16 +207,25 @@ board|jobsPage.matchCoverage|N3|S14X-291 a fit score is never called a share of 
     else echo "INFO  $VDBU_CL $VDBU_W: $VDBU_CH holds $VDBU_S: not published yet"; fi
   done <<< "$VDBU_GONE"
 
-  # S1: the English shard rides the entry; the other eight load on demand.
-  VDBU_KEYS="nlLabel nlRunAsKeywords nlUnavailable nlNothingRead yearsFromSearch salaryFromSearch salaryCeilingFromSearch compareDescription recordOneBoard handoffWithheld handoffWithheldSearch fitRankedFilters fitScoreTip fitNotScoredLimit fitNotScoredFailed fitLimitedHour fitLimitedDay fitLimitedPlain unscoredTerms unscoredTermsBody unscoredTermsTip matchesNoneForRole"
+  # S1: the English strings ride with the board (the Jobs chunk or a chunk it
+  # imports, the namespace chunk among them; the entry in a build from before
+  # the bug round's review moved them); the other eight load on demand, named
+  # by the entry.
+  VDBU_KEYS="nlLabel nlRunAsKeywords nlUnavailable nlNothingRead yearsFromSearch salaryFromSearch salaryCeilingFromSearch compareDescription recordOneBoard handoffWithheld handoffWithheldSearch fitRankedFilters fitScoreTip fitNotScoredLimit fitNotScoredFailed fitLimitedHour fitLimitedDay fitLimitedPlain unscoredTerms unscoredTermsBody unscoredTermsTip unscoredResumeTerms unscoredResumeTermsBody unscoredResumeTermsTip matchesNoneForRole"
   VDBU_SH=$(grep -oE '"\./shards/board-ui/[A-Za-z-]+\.json":\(\)=>[A-Za-z_$]+\(\(\)=>import\("\./[A-Za-z0-9_-]+\.js"' /tmp/vd_bu_entry.js)
-  VDBU_EN=no; grep -qF '"./shards/board-ui/en.json":' /tmp/vd_bu_entry.js && VDBU_EN=yes
-  if [ -z "$VDBU_SH" ] && [ "$VDBU_EN" = no ]; then
+  cat /tmp/vd_bu_entry.js /tmp/vd_bu_board.js > /tmp/vd_bu_en.js
+  for VDBU_C in $(grep -oE 'import"\./[A-Za-z0-9_-]+\.js"' /tmp/vd_bu_jobs.js | sed -E 's/^import"\.\/(.*)"$/\1/' | sort -u); do
+    case "$VDBU_C" in index-*) continue;; esac
+    rm -f /tmp/vd_bu_cand.js
+    curl -s -m 30 "$SITE/assets/$VDBU_C" > /tmp/vd_bu_cand.js
+    { echo; cat /tmp/vd_bu_cand.js; } >> /tmp/vd_bu_en.js
+  done
+  if [ -z "$VDBU_SH" ]; then
     if [ "$VDBU_FE" = published ]; then echo "FAIL  S1 the lane's board published but the entry loads no board-ui shard, so its new strings show as keys or English"
     else echo "INFO  S1 the entry loads no board-ui shard yet: not published yet"; fi
   else
     VDBU_MISS=""; VDBU_N=0
-    for VDBU_KEY in $VDBU_KEYS; do grep -qF "$VDBU_KEY:" /tmp/vd_bu_entry.js || VDBU_MISS="$VDBU_MISS en:$VDBU_KEY"; done
+    for VDBU_KEY in $VDBU_KEYS; do grep -qF "$VDBU_KEY:" /tmp/vd_bu_en.js || VDBU_MISS="$VDBU_MISS en:$VDBU_KEY"; done
     while IFS= read -r VDBU_L; do
       [ -n "$VDBU_L" ] || continue
       VDBU_LNG=$(printf '%s' "$VDBU_L" | sed -E 's#.*shards/board-ui/([A-Za-z-]+)\.json.*#\1#')
@@ -221,10 +235,9 @@ board|jobsPage.matchCoverage|N3|S14X-291 a fit score is never called a share of 
       VDBU_N=$((VDBU_N + 1))
       for VDBU_KEY in $VDBU_KEYS; do grep -qF "$VDBU_KEY:" /tmp/vd_bu_shard.js || VDBU_MISS="$VDBU_MISS $VDBU_LNG:$VDBU_KEY"; done
     done <<< "$VDBU_SH"
-    if [ "$VDBU_EN" = no ]; then echo "FAIL  S1 the entry names $VDBU_N lazy board-ui shards but not the English one it should carry"
-    elif [ "$VDBU_N" -ne 8 ]; then echo "FAIL  S1 the entry names $VDBU_N non-English board-ui shards, not 8"
+    if [ "$VDBU_N" -ne 8 ]; then echo "FAIL  S1 the entry names $VDBU_N non-English board-ui shards, not 8"
     elif [ -n "$VDBU_MISS" ]; then echo "FAIL  S1 board-ui shard strings missing:$VDBU_MISS"
-    else echo "PASS  S1 the entry carries the English board-ui shard and names 8 more, each with all 22 of the lane's strings"; fi
+    else echo "PASS  S1 the English board-ui strings ride with the board ($VDBU_JOBSN or a chunk it imports) and the entry names 8 more languages, each with all 25 of the lane's strings"; fi
   fi
 
   # I1: the other half of RC-OI-42 belongs to the names track; reported, never judged.

@@ -77,7 +77,7 @@ import { keyBelongsToALayer } from "@/lib/board-keys";
 import { tPlural } from "@/lib/company/plural";
 import { bakedLanderName, cachedLanderName, rememberLanderName } from "@/lib/display-name";
 import { zeroPageHead } from "@/components/jobs/company/CompanyHeader";
-import { JobCard } from "@/components/jobs/listing/JobCard";
+import { JobCard, type UnscoredFitReason } from "@/components/jobs/listing/JobCard";
 import { PostingDetail } from "@/components/jobs/listing/PostingDetail";
 import { PostingSheet } from "@/components/jobs/listing/PostingSheet";
 import type { ListingServed } from "@/components/jobs/listing/LiveStatus";
@@ -3233,7 +3233,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // WHY A NULL IS A NULL (S14X-052): job-fit's `unscored` reason beside each
   // null. A job-fit that sends none leaves this empty, and a null reads as
   // it always did.
-  const [fitWhy, setFitWhy] = useState<Record<string, "no_description" | "no_recognised_terms">>({});
+  const [fitWhy, setFitWhy] = useState<Record<string, UnscoredFitReason>>({});
   // THE HOURLY ALLOWANCE IS NOT A BLIP (S14X-294). job-fit's 429 names the
   // allowance and its window; it was counted with every other failure and
   // printed as "usually temporary", with a Try again that asked again inside
@@ -5979,8 +5979,8 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
           }
           if (payload?.fits) setFits((prev) => ({ ...prev, ...payload.fits }));
           if (payload.unscored && typeof payload.unscored === "object") {
-            const why: Record<string, "no_description" | "no_recognised_terms"> = {};
-            for (const [id, r] of Object.entries(payload.unscored)) if (r === "no_description" || r === "no_recognised_terms") why[id] = r;
+            const why: Record<string, UnscoredFitReason> = {};
+            for (const [id, r] of Object.entries(payload.unscored)) if (r === "no_description" || r === "no_recognised_terms" || r === "no_resume_terms") why[id] = r;
             setFitWhy((prev) => ({ ...prev, ...why }));
           }
           setFitHeld((prev) => {
@@ -8273,7 +8273,16 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                 <div className="rounded-xl border border-dashed border-border bg-muted/20 p-3 text-sm" data-unscored={fitWhy[detailJob.id] ?? "no_description"}>
                   {/* WE HOLD THIS ONE'S DESCRIPTION (S14X-052): a posting the
                       scorer could not read is not one we hold nothing for. */}
-                  {fitWhy[detailJob.id] === "no_recognised_terms" ? (
+                  {fitWhy[detailJob.id] === "no_resume_terms" ? (
+                    <>
+                      <p className="font-semibold mb-1">
+                        {t("boardUi.unscoredResumeTerms", "Not scored — we recognised no skill or tool in your résumé")}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {t("boardUi.unscoredResumeTermsBody", "The scorer reads English keywords only, and found none in your résumé, so there was nothing to compare against this posting. There is no percentage here; that is the absence of a measurement, not a weak one.")}
+                      </p>
+                    </>
+                  ) : fitWhy[detailJob.id] === "no_recognised_terms" ? (
                     <>
                       <p className="font-semibold mb-1">
                         {t("boardUi.unscoredTerms", "Not scored — we can't read this posting's terms yet")}

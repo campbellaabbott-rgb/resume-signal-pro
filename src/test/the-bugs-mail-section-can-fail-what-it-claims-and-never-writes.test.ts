@@ -13,14 +13,17 @@
  * fakes:
  *   - production as it was on 2026-11-15 (every function 2026-11-09.1, 58 cron
  *     jobs with no prune, the one-argument claim, the account page without the
- *     lane's marks, notify's DMARC p=none) prints INFO and no FAIL but the
- *     DMARC line, which is the owner's DNS step and is true;
+ *     lane's marks, notify's DMARC p=none) prints INFO and no FAIL at all:
+ *     the DMARC line judges the owner's DNS step, so it says 'owner pending'
+ *     with what dig read until the ledger names S14X-234, and a run before
+ *     or after the paste is not red for a step the paste cannot take;
  *   - a good deploy prints PASS for every claim and no FAIL;
  *   - each regression prints FAIL: a missing build header, a partial paste, a
  *     paste without the prune job, the job without its own timeout or failing,
  *     a paste without the two-argument claim, a claim anon reaches, no pulse
  *     schedule or three, a published page missing a mark, a missing or
- *     unreadable chunk, a short mail shard, and a DMARC record of p=none;
+ *     unreadable chunk, a short mail shard, and, once the owner's DNS
+ *     decision is recorded, a DMARC record of p=none;
  *   - the owner-gated lines are INFO 'owner pending' until the ledger names
  *     their keys, then judge the option chosen;
  *   - every request is a GET or an OPTIONS, a function is only asked for its
@@ -124,17 +127,21 @@ const shardBody = (keys = SHARD_KEYS) => `const e={${keys.map((k) => `${k}:"x"`)
 
 type Over = {
   builds?: Partial<Record<Fn, string | null>>; cron?: string; claim?: string; claimStatus?: number;
-  account?: string | null; pulse?: string | null; shard?: "none" | "full" | "seven" | "short" | "no-en"; accountName?: string | null;
+  // "page": the English strings in a chunk the Account chunk imports (this
+  // branch's build); "entry": beside the lazy shards in the entry (a build
+  // from before the bug round's review); "no-en": in neither.
+  account?: string | null; pulse?: string | null; shard?: "none" | "page" | "entry" | "seven" | "short" | "no-en"; accountName?: string | null;
 };
 function routes(o: Over = {}, deployed = true): Route[] {
   const today: Record<Fn, string> = Object.fromEntries(FNS.map((f) => [f, `${f}.2026-11-09.1`])) as Record<Fn, string>;
   const fresh: Record<Fn, string> = Object.fromEntries(FNS.map((f) => [f, `${f}.2026-11-12.1`])) as Record<Fn, string>;
   const builds: Record<Fn, string | null> = { ...(deployed ? { ...fresh, "send-scan-report": today["send-scan-report"] } : today), ...o.builds };
-  const shard = o.shard ?? (deployed ? "full" : "none");
+  const shard = o.shard ?? (deployed ? "page" : "none");
   const accountName = o.accountName === undefined ? "Account-AAA111.js" : o.accountName;
   const lazy = (shard === "seven" ? LANGS.slice(0, 7) : shard === "none" ? [] : LANGS)
     .map((l) => `"./shards/mail/${l}.json":()=>O(()=>import("./${l}-m${l.replace("-", "")}.js"),[])`).join(",");
-  const enInline = shard === "none" || shard === "no-en" ? "" : `"./shards/mail/en.json":Mn,${SHARD_KEYS.map((k) => `${k}:"x"`).join(",")}`;
+  const enInline = shard === "entry" ? `"./shards/mail/en.json":Mn,${SHARD_KEYS.map((k) => `${k}:"x"`).join(",")}` : "";
+  const enImport = shard === "none" || shard === "no-en" || shard === "entry" ? "" : 'import"./rb-en_ns_mailPrefs-MP.js";';
   const entry = `import"./x.js";${accountName ? `"assets/${accountName}";` : ""}"assets/MarketPulseConfirm-PPP222.js";${enInline};${lazy}`;
   const out: Route[] = [
     ...FNS.map((fn): Route => ({ match: `^OPTIONS ${P}/functions/v1/${fn}$`, headers: { "access-control-allow-origin": "*", ...(builds[fn] ? { "x-fn-build": builds[fn] as string } : {}) } })),
@@ -142,7 +149,8 @@ function routes(o: Over = {}, deployed = true): Route[] {
     { match: `^GET ${P}/rest/v1/rpc/market_pulse_claim_batch\\?p_limit=1&p_now=`, status: o.claimStatus ?? (deployed ? 401 : 404), body: o.claim ?? (deployed ? E42501 : E202) },
     { match: `^GET ${S}/account$`, body: '<html><script type="module" src="/assets/index-ENTRY1.js"></script></html>' },
     { match: `^GET ${S}/assets/index-ENTRY1\\.js$`, body: entry },
-    { match: `^GET ${S}/assets/Account-AAA111\\.js$`, body: o.account === undefined ? (deployed ? NEW_ACCOUNT : BASE_ACCOUNT) : (o.account ?? "") },
+    { match: `^GET ${S}/assets/Account-AAA111\\.js$`, body: enImport + (o.account === undefined ? (deployed ? NEW_ACCOUNT : BASE_ACCOUNT) : (o.account ?? "")) },
+    { match: `^GET ${S}/assets/rb-en_ns_mailPrefs-MP\\.js$`, body: `import{a as e}from"./index-ENTRY1.js";e({mailPrefs:{${SHARD_KEYS.map((k) => `${k}:"en"`).join(",")}}});` },
     { match: `^GET ${S}/assets/MarketPulseConfirm-PPP222\\.js$`, body: o.pulse === undefined ? (deployed ? NEW_PULSE : BASE_PULSE) : (o.pulse ?? "") },
     ...LANGS.map((l, i): Route => ({ match: `^GET ${S}/assets/${l}-m${l.replace("-", "")}\\.js$`, body: shard === "short" && i === 2 ? shardBody(SHARD_KEYS.slice(1)) : shardBody() })),
   ];
@@ -159,8 +167,9 @@ const KEYS = ["S14X-062", "S14X-107", "S14X-102", "S14X-237", "S14X-238", "S14X-
 
 describe("today's production, before the paste", () => {
   const { lines, out, calls } = run(routes({}, false), DIG_TODAY);
-  it("prints no FAIL but the notify DMARC, which is true today and the owner's step", () => {
-    expect(fails(lines), show(lines)).toEqual([expect.stringMatching(/^FAIL {2}S14X-234-verify _dmarc\.notify\.resumebooster\.work says 'v=DMARC1; p=none'/)]);
+  it("prints no FAIL: the notify DMARC is the owner's DNS step, pending with what dig read", () => {
+    expect(fails(lines), show(lines)).toEqual([]);
+    expect(has(lines, "INFO", /^INFO {2}S14X-234-verify owner pending: .*_dmarc\.notify\.resumebooster\.work says 'v=DMARC1; p=none'/), show(lines)).toBe(true);
     expect(lines.filter((l) => /^INFO {2}B /.test(l)), show(lines)).toHaveLength(4);
     expect(has(lines, "INFO", /^INFO {2}S14X-102 no mail-lists-prune job among 58 yet/), show(lines)).toBe(true);
     expect(has(lines, "INFO", /^INFO {2}S14X-238 market_pulse_claim_batch takes p_limit alone yet/), show(lines)).toBe(true);
@@ -181,14 +190,16 @@ describe("today's production, before the paste", () => {
 describe("a good deploy", () => {
   const { lines, calls, out } = run(routes(), DIG_FIXED, decided({ "S14X-012": { choice: "B" }, D9: "yes" }));
   it("prints PASS for every claim and no FAIL", () => {
-    const withB = run(routes({ builds: { "send-scan-report": "send-scan-report.2026-11-12.1" }, account: `${NEW_ACCOUNT};"mail_resume"` }), DIG_FIXED, decided({ "S14X-012": { choice: "B" }, D9: "yes" })).lines;
+    const withB = run(routes({ builds: { "send-scan-report": "send-scan-report.2026-11-12.1" }, account: `${NEW_ACCOUNT};"mail_resume"` }), DIG_FIXED, decided({ "S14X-012": { choice: "B" }, D9: "yes", "S14X-234": "quarantine" })).lines;
     expect(fails(withB), show(withB)).toEqual([]);
     expect(withB.filter((l) => /^PASS {2}B /.test(l)), show(withB)).toHaveLength(4);
     for (const k of KEYS) expect(withB.some((l) => l.startsWith(`PASS  ${k} `)), `${k}\n${show(withB)}`).toBe(true);
     for (const k of ["NB-21", "S1", "D9"]) expect(withB.some((l) => l.startsWith(`PASS  ${k} `)), `${k}\n${show(withB)}`).toBe(true);
     expect(has(withB, "PASS", /^PASS {2}S14X-102 mail-lists-prune runs 37 4 \* \* \* with statement_timeout 5min/), show(withB)).toBe(true);
     expect(has(withB, "PASS", /^PASS {2}S14X-238 the two-argument claim exists .*second schedule is the owner step C-S14-080/), show(withB)).toBe(true);
-    expect(has(withB, "PASS", /^PASS {2}S1 the entry carries the English mail shard and names 8 more/), show(withB)).toBe(true);
+    expect(has(withB, "PASS", /^PASS {2}S1 the English mail strings ride with the account page \(Account-AAA111\.js or a chunk it imports\) and the entry names 8 more languages/), show(withB)).toBe(true);
+    const inEntry = run(routes({ shard: "entry" }), DIG_FIXED, decided({ "S14X-012": { choice: "B" }, D9: "yes" })).lines;
+    expect(has(inEntry, "PASS", /^PASS {2}S1 /), "a build from before the review, the English strings in the entry: " + show(inEntry)).toBe(true);
   });
   it("a later build passes too: this round's build or later", () => {
     const later = run(routes({ builds: { "send-market-pulse": "send-market-pulse.2026-11-13.1" } }), DIG_FIXED).lines;
@@ -260,16 +271,23 @@ describe("each regression prints FAIL", () => {
 
   it("S1: a mail shard with seven languages, a missing English one, or a language short of a string", () => {
     expect(has(run(routes({ shard: "seven" }), DIG_FIXED).lines, "FAIL", /^FAIL {2}S1 the entry names 7 non-English mail shards, not 8/)).toBe(true);
-    expect(has(run(routes({ shard: "no-en" }), DIG_FIXED).lines, "FAIL", /^FAIL {2}S1 the entry names 8 lazy mail shards but not the English one/)).toBe(true);
+    expect(has(run(routes({ shard: "no-en" }), DIG_FIXED).lines, "FAIL", /^FAIL {2}S1 the entry names 8 lazy mail shards but neither the Account chunk \(Account-AAA111\.js\), a chunk it imports nor the entry carries the English strings: en:pulseDoneNextMonth/)).toBe(true);
     expect(has(run(routes({ shard: "short" }), DIG_FIXED).lines, "FAIL", /^FAIL {2}S1 mail shard strings missing: es:pulseDoneNextMonth$/)).toBe(true);
   });
 
-  it("S14X-234-verify: notify's own p=none, and no record over an apex of p=none; no record over a quarantined apex passes", () => {
-    expect(has(run(routes(), DIG_TODAY).lines, "FAIL", /^FAIL {2}S14X-234-verify _dmarc\.notify\.resumebooster\.work says 'v=DMARC1; p=none'/)).toBe(true);
-    const bare = run(routes(), { "_dmarc.resumebooster.work": '"v=DMARC1; p=none"' }).lines;
+  it("S14X-234-verify, once the owner's DNS decision is recorded: notify's own p=none, and no record over an apex of p=none, fail; no record over a quarantined apex passes", () => {
+    const dns = decided({ "S14X-234": "quarantine" });
+    expect(has(run(routes(), DIG_TODAY, dns).lines, "FAIL", /^FAIL {2}S14X-234-verify _dmarc\.notify\.resumebooster\.work says 'v=DMARC1; p=none'/)).toBe(true);
+    const bare = run(routes(), { "_dmarc.resumebooster.work": '"v=DMARC1; p=none"' }, dns).lines;
     expect(has(bare, "FAIL", /^FAIL {2}S14X-234-verify no record at _dmarc\.notify and the apex says 'v=DMARC1; p=none'/), show(bare)).toBe(true);
-    const apex = run(routes(), { "_dmarc.resumebooster.work": DIG_TODAY["_dmarc.resumebooster.work"] }).lines;
+    const apex = run(routes(), { "_dmarc.resumebooster.work": DIG_TODAY["_dmarc.resumebooster.work"] }, dns).lines;
     expect(has(apex, "PASS", /^PASS {2}S14X-234-verify no record at _dmarc\.notify, so the apex's applies: v=DMARC1; p=quarantine/), show(apex)).toBe(true);
+  });
+
+  it("S14X-234-verify, before the owner's DNS decision: a good deploy with notify at p=none is INFO owner pending, never a FAIL", () => {
+    const r = run(routes(), DIG_TODAY).lines;
+    expect(fails(r), show(r)).toEqual([]);
+    expect(has(r, "INFO", /^INFO {2}S14X-234-verify owner pending: .*says 'v=DMARC1; p=none'/), show(r)).toBe(true);
   });
 });
 

@@ -58,7 +58,26 @@ describe("every route is named in all four places", () => {
   }
 });
 
+/** The /v1/changes entry: the page's ENDPOINTS item and the bake's list item. */
+const CHANGES_ENTRY = {
+  DataApi: PAGE.slice(PAGE.indexOf('path: "GET /v1/changes"'), PAGE.indexOf('path: "GET /v1/companies"')),
+  "the /data-api bake": (() => { const a = DATA_API_LIST.indexOf("<code>GET /v1/changes</code>"); return DATA_API_LIST.slice(a, DATA_API_LIST.indexOf("</li>", a)); })(),
+};
+
 describe("the /v1/changes entry says where a reader resumes (S14X-065)", () => {
+  // The page and the bake publish with the frontend, which can go out before
+  // public-api 2026-11-12.1 is pasted: until then a response carries no
+  // settledThrough and no resumeCursor, only nextCursor and hasMore.
+  it("describes both shapes a response can take, never promising resumeCursor on every page", () => {
+    for (const [where, entry] of Object.entries(CHANGES_ENTRY)) {
+      expect(entry.length, `${where}: the /v1/changes entry was not found`).toBeGreaterThan(200);
+      expect(entry, where).toMatch(/nextCursor/);
+      expect(entry, where).toMatch(/hasMore/);
+      expect(entry, `${where} says every page carries resumeCursor, which a response before the paste does not`).not.toMatch(/every page carries/i);
+      expect(entry, where).toMatch(/without them/);
+    }
+  });
+
   it("names settledThrough and resumeCursor on the page and in the bake", () => {
     for (const [where, src] of [["DataApi", PAGE], ["the /data-api bake", DATA_API_LIST]] as const) {
       expect(src, where).toContain("settledThrough");

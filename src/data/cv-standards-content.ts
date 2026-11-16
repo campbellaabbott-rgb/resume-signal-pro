@@ -39,6 +39,9 @@ export interface CvTemplateStrings {
   faqLength: string; // {name}
   /** The heading over the visible questions (SEO-032). */
   faqHeading: string;
+  /** The trail's first two steps, shown and marked up in the page's language (SEO-F18). */
+  breadcrumbHome: string;
+  breadcrumbIndex: string;
   ctaTitle: string;
   ctaText: string; // {name}
   ctaButton: string;
@@ -84,6 +87,8 @@ export const EN_TEMPLATE: CvTemplateStrings = {
   faqPhoto: "Should a CV in {name} include a photo?",
   faqLength: "How long should a CV be in {name}?",
   faqHeading: "Common questions",
+  breadcrumbHome: "Home",
+  breadcrumbIndex: "CV Standards",
   ctaTitle: "Check your resume against these standards",
   ctaText:
     "The free scan evaluates your resume against the norms in {name} automatically — photo expectations, personal-data conventions, length, and the keywords your industry expects.",
@@ -115,6 +120,8 @@ const ES_T: CvTemplateStrings = {
   faqPhoto: "¿Debe llevar foto un CV en {name}?",
   faqLength: "¿Cuánto debe medir un CV en {name}?",
   faqHeading: "Preguntas frecuentes",
+  breadcrumbHome: "Inicio",
+  breadcrumbIndex: "Normas de CV",
   ctaTitle: "Comprueba tu currículum contra estas normas",
   ctaText:
     "El escaneo gratuito evalúa tu currículum según las normas de {name} automáticamente — expectativas de foto, datos personales, extensión y las palabras clave de tu sector.",
@@ -146,6 +153,8 @@ const FR_T: CvTemplateStrings = {
   faqPhoto: "Faut-il une photo sur un CV en {name} ?",
   faqLength: "Quelle longueur pour un CV en {name} ?",
   faqHeading: "Questions fréquentes",
+  breadcrumbHome: "Accueil",
+  breadcrumbIndex: "Normes de CV",
   ctaTitle: "Vérifiez votre CV contre ces normes",
   ctaText:
     "Le scan gratuit évalue votre CV selon les normes de {name} automatiquement — photo, données personnelles, longueur et les mots-clés de votre secteur.",
@@ -177,6 +186,8 @@ const DE_T: CvTemplateStrings = {
   faqPhoto: "Braucht ein Lebenslauf in {name} ein Foto?",
   faqLength: "Wie lang sollte ein Lebenslauf in {name} sein?",
   faqHeading: "Häufige Fragen",
+  breadcrumbHome: "Startseite",
+  breadcrumbIndex: "Lebenslauf-Standards",
   ctaTitle: "Prüfen Sie Ihren Lebenslauf gegen diese Standards",
   ctaText:
     "Der kostenlose Scan bewertet Ihren Lebenslauf automatisch nach den Normen von {name} — Foto-Erwartungen, persönliche Daten, Länge und die Keywords Ihrer Branche.",
@@ -208,6 +219,8 @@ const PT_T: CvTemplateStrings = {
   faqPhoto: "Um currículo em {name} deve ter foto?",
   faqLength: "Qual o tamanho ideal de um currículo em {name}?",
   faqHeading: "Perguntas frequentes",
+  breadcrumbHome: "Início",
+  breadcrumbIndex: "Padrões de CV",
   ctaTitle: "Verifique seu currículo contra esses padrões",
   ctaText:
     "O escaneamento gratuito avalia seu currículo pelas normas de {name} automaticamente — expectativas de foto, dados pessoais, extensão e as palavras-chave do seu setor.",
@@ -239,6 +252,8 @@ const NL_T: CvTemplateStrings = {
   faqPhoto: "Moet een cv in {name} een foto hebben?",
   faqLength: "Hoe lang moet een cv in {name} zijn?",
   faqHeading: "Veelgestelde vragen",
+  breadcrumbHome: "Home",
+  breadcrumbIndex: "Cv-normen",
   ctaTitle: "Toets je cv aan deze normen",
   ctaText:
     "De gratis scan beoordeelt je cv automatisch volgens de normen van {name} — fotoverwachtingen, persoonsgegevens, lengte en de trefwoorden van jouw sector.",

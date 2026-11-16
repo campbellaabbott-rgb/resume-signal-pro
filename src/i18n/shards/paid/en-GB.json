@@ -17,7 +17,8 @@
       "notThisProduct": "This purchase was not for a Full CV Analysis, so it cannot open one here. Open it from the link in its own purchase email.",
       "notFound": "We could not find this purchase. Open your analysis from the link in your purchase email, and if this page still says this, write to {{email}} from the address you paid with.",
       "used": "This purchase has already made its analysis, and each purchase makes one. Open it from the link in your purchase email or from the order in your account.",
-      "grant": "Your Pro membership cannot include this analysis right now: the membership is not active, its payment was refunded, or this link is from before an update. Sign in and open the Full Analysis again from your account."
+      "grant": "Your Pro membership cannot include this analysis right now: the membership is not active, its payment was refunded, or this link is from before an update. Sign in and open the Full Analysis again from your account.",
+      "cap": "Pro includes up to 10 Full Analyses a day and 60 a month, and this account has reached one of those limits, so nothing was made and nothing was spent. Open it again from the same link tomorrow; if you have opened 60 in the last 30 days, it opens once that count falls."
     },
     "pdf": {
       "device": "This device's browser could not draw the PDF: the analysis is larger than it can draw. Open this page on a computer to save it, or use your browser's Print to save it as a PDF."

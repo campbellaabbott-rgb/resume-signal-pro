@@ -13,10 +13,13 @@
 #       preflight's x-fn-build). An older build is INFO (not pasted yet) while
 #       none of the four is on the round's build, and FAIL once one is (a
 #       partial paste); a missing header is FAIL.
-#   BF2 20261112130000 applied: product_deliveries.notice_owed exists, read as
-#       the client role (a GET: [] or 42501, both answered only by a column
-#       that exists). Missing (42703) is INFO until retry-failed-deliveries
-#       serves 2026-11-12.1, then FAIL; rows answered to anon are FAIL.
+#   BF2 20261112130000 applied: product_deliveries.notice_owed and the three
+#       columns that keep a buyer's notice from being owed forever
+#       (notice_tries, notice_tried_at, notice_given_up) exist, read as the
+#       client role in one GET ([] or 42501, both answered only when every
+#       column named exists). Any missing (42703) is INFO until
+#       retry-failed-deliveries serves 2026-11-12.1, then FAIL; rows answered
+#       to anon are FAIL.
 #   BF3 the published success page (its chunk): a section the analysis went
 #       out without is named (sections-missing, S14X-041); a refusal is read
 #       by its code (purchase_refunded, RC-S13-048); a busy service says so
@@ -57,24 +60,30 @@ for VDBF_PAIR in $VDBF_OLD; do
   else echo "INFO  BF1 $VDBF_FN preflight x-fn-build = $VDBF_H: the round's build ($VDBF_FN.2026-11-12.1) is not pasted yet"; fi
 done
 
-# BF2: the column the sweep writes a refused notice to, read as the client
-# role. A missing column is answered 42703 before any permission is checked.
+# BF2: the columns the sweep writes a refused notice to, read as the client
+# role in one GET. A missing column is answered 42703 before any permission
+# is checked, and the message names it.
 rm -f /tmp/vd_99zzzzzzz_bf_notice.json
-curl -s -m 30 "$B/rest/v1/product_deliveries?select=notice_owed&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K" > /tmp/vd_99zzzzzzz_bf_notice.json
+VDBF_COLS=notice_owed,notice_tries,notice_tried_at,notice_given_up
+curl -s -m 30 "$B/rest/v1/product_deliveries?select=$VDBF_COLS&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K" > /tmp/vd_99zzzzzzz_bf_notice.json
 VDBF_COL=$(node -e 'let s="";try{s=require("fs").readFileSync(process.argv[1],"utf8")}catch{}try{const j=JSON.parse(s);console.log(Array.isArray(j)?"ROWS:"+j.length:(j.code||"NOCODE"))}catch{console.log("NONJSON:"+s.slice(0,80).replace(/\s+/g," "))}' /tmp/vd_99zzzzzzz_bf_notice.json)
+VDBF_WHICH=$(node -e 'let s="";try{s=require("fs").readFileSync(process.argv[1],"utf8")}catch{}try{const m=/column [a-z_.]*?(notice_[a-z_]+)/.exec(String(JSON.parse(s).message||""));console.log(m?m[1]:"a notice column")}catch{console.log("a notice column")}' /tmp/vd_99zzzzzzz_bf_notice.json)
 case "$VDBF_COL" in
-  ROWS:0) echo "PASS  BF2 product_deliveries.notice_owed exists and anon sees no order (20261112130000 applied)" ;;
-  42501) echo "PASS  BF2 product_deliveries.notice_owed exists and anon is refused the table (20261112130000 applied)" ;;
+  ROWS:0) echo "PASS  BF2 product_deliveries has notice_owed, notice_tries, notice_tried_at and notice_given_up, and anon sees no order (20261112130000 applied)" ;;
+  42501) echo "PASS  BF2 product_deliveries has notice_owed, notice_tries, notice_tried_at and notice_given_up, and anon is refused the table (20261112130000 applied)" ;;
   42703|PGRST204)
-    if [ "$VDBF_RFD" = 1 ]; then echo "FAIL  BF2 product_deliveries.notice_owed does not exist while retry-failed-deliveries serves 2026-11-12.1: 20261112130000 has not applied, so a refused alarm about a spent order is lost again"
-    else echo "INFO  BF2 product_deliveries.notice_owed does not exist yet: 20261112130000 has not applied (it goes before retry-failed-deliveries 2026-11-12.1)"; fi ;;
+    if [ "$VDBF_RFD" = 1 ]; then echo "FAIL  BF2 product_deliveries.$VDBF_WHICH does not exist while retry-failed-deliveries serves 2026-11-12.1: 20261112130000 has not applied (or applied as an older text), so a refused alarm about a spent order is lost again and a buyer's notice is never given up"
+    else echo "INFO  BF2 product_deliveries.$VDBF_WHICH does not exist yet: 20261112130000 has not applied (it goes before retry-failed-deliveries 2026-11-12.1)"; fi ;;
   ROWS:*) echo "FAIL  BF2 product_deliveries answered anon with rows ($VDBF_COL): buyers' orders are readable by anyone" ;;
-  *) echo "FAIL  BF2 product_deliveries?select=notice_owed as anon -> $VDBF_COL (want [] or 42501)" ;;
+  *) echo "FAIL  BF2 product_deliveries?select=$VDBF_COLS as anon -> $VDBF_COL (want [] or 42501)" ;;
 esac
 
 # BF3: the published success page. The entry names the Success chunk, which
-# holds the page, its PDF export, the report and the run helper; the English
-# shards ride in the entry, so an English sentence in this chunk is a literal.
+# holds the page, its PDF export, the report and the run helper. Since the bug
+# round's review the English paidAnalysis strings ride in this chunk too (the
+# namespace plugin registers them beside the code that reads them), so their
+# object, paidAnalysis:{...}, is cut out first: what is left is the page's
+# code, where an English sentence is a literal.
 VDBF_MAIN=$(curl -s -m 30 "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -1)
 VDBF_MAINJS=""
 [ -n "$VDBF_MAIN" ] && VDBF_MAINJS=$(curl -s -m 30 "$SITE$VDBF_MAIN")
@@ -87,7 +96,13 @@ vdbf_page() { # $1 claim, $2 PASS text, $3 missing text, $4 1 when present
 if [ -z "$VDBF_SUCC" ]; then
   echo "FAIL  BF3 the served entry (${VDBF_MAIN:-none found}) names no Success chunk: the frontend is not serving, or the bundle layout moved, so the published page cannot be judged"
 else
-  VDBF_SJS=$(curl -s -m 30 "$SITE/assets/$VDBF_SUCC")
+  VDBF_SJS=$(curl -s -m 30 "$SITE/assets/$VDBF_SUCC" | node -e 'let s="";process.stdin.on("data",(d)=>s+=d).on("end",()=>{
+const key="paidAnalysis:{";let out="",i=0;
+for(;;){const at=s.indexOf(key,i);if(at<0){out+=s.slice(i);break}
+out+=s.slice(i,at);let j=at+key.length-1,depth=0,q=null;
+for(;j<s.length;j++){const c=s[j];if(q){if(c==="\\"){j++;continue}if(c===q)q=null;continue}
+if(c==="\""||c==="\x27"||c==="`"){q=c;continue}if(c==="{")depth++;else if(c==="}"){depth--;if(depth===0)break}}
+i=j+1}process.stdout.write(out)})')
   VDBF_HAS=0; printf '%s' "$VDBF_SJS" | grep -qF 'sections-missing' && VDBF_HAS=1
   vdbf_page "S14X-041" "names a section the analysis went out without (sections-missing)" "carries no note for a section the analysis went out without (sections-missing)" "$VDBF_HAS"
   VDBF_HAS=0; printf '%s' "$VDBF_SJS" | grep -qF 'purchase_refunded' && VDBF_HAS=1

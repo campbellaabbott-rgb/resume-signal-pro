@@ -94,11 +94,13 @@ const LIVE = preflights((fn) => `${fn}.2026-11-12.1`);
 const OLD = preflights((fn) => TODAY[fn]);
 
 const notice = (status: number, body: unknown): Route => ({
-  match: "^GET https://p\\.supabase\\.co/rest/v1/product_deliveries\\?select=notice_owed&limit=1$", status, body: typeof body === "string" ? body : JSON.stringify(body),
+  match: "^GET https://p\\.supabase\\.co/rest/v1/product_deliveries\\?select=notice_owed,notice_tries,notice_tried_at,notice_given_up&limit=1$", status, body: typeof body === "string" ? body : JSON.stringify(body),
 });
 const EMPTY = notice(200, []);
 const REFUSED = notice(401, { code: "42501", message: "permission denied for table product_deliveries" });
 const NO_COLUMN = notice(400, { code: "42703", message: "column product_deliveries.notice_owed does not exist" });
+/** 20261112130000 as the lanes first wrote it: the marker without the try count, the last try and the reason a notice was given up. */
+const MARKER_ONLY = notice(400, { code: "42703", message: "column product_deliveries.notice_tries does not exist" });
 
 /** The success chunk after the merge, minified as Vite writes it. */
 const NEW_PAGE = [
@@ -175,6 +177,11 @@ describe("the bug round's full-analysis section", () => {
     expect(fails(lines).slice(1).every((l) => l.includes("while analyze-resume serves 2026-11-12.1")), out).toBe(true);
   });
 
+  it("a marker without the try count, the last try and the given-up reason fails once the sweep is live: the sweep writes all four in one write", () => {
+    const { lines, out } = run([...LIVE, MARKER_ONLY, ...site(NEW_PAGE)]);
+    expect(fails(lines), out).toEqual([expect.stringMatching(/^FAIL  BF2 .*notice_tries.*while retry-failed-deliveries serves 2026-11-12\.1/)]);
+  });
+
   it("a paste of only some of the four fails the ones left behind", () => {
     const { lines, out } = run([...preflights((fn) => (fn === "analyze-resume" ? `${fn}.2026-11-12.1` : TODAY[fn])), EMPTY, ...site(NEW_PAGE)]);
     expect(fails(lines), out).toEqual([
@@ -226,6 +233,20 @@ describe("the bug round's full-analysis section", () => {
     ]);
     const sentence = run([...LIVE, EMPTY, ...site(`${NEW_PAGE};const tr={howLong:"Until it is cleared: the Clear Browser Data button on a paid results page clears all of it"}`)]);
     expect(fails(sentence.lines), sentence.out).toEqual([]);
+  });
+
+  it("the English paidAnalysis strings riding in the chunk are not literals the page prints (the bug round's review moved them there)", () => {
+    const en = readFileSync(resolve(ROOT, "src/i18n/shards/paid/en.json"), "utf8");
+    // As the namespace plugin registers them, minified: unquoted keys, the sentences as written.
+    const registered = `Rn(${JSON.stringify(JSON.parse(en)).replace(/"([A-Za-z_$][\w$]*)":/g, "$1:")});`;
+    expect(registered).toContain('"Clear Browser Data"');
+    const withShard = run([...LIVE, EMPTY, ...site(`${registered}${NEW_PAGE}`)]);
+    expect(fails(withShard.lines), withShard.out).toEqual([]);
+    expect(withShard.lines.some((l) => l.startsWith("PASS  BF3 S14X-178 ")), withShard.out).toBe(true);
+    const andALiteral = run([...LIVE, EMPTY, ...site(`${registered}${NEW_PAGE};e.jsx(Ac,{children:"Clear Browser Data"})`)]);
+    expect(fails(andALiteral.lines), andALiteral.out).toEqual([
+      "FAIL  BF3 S14X-178 the published success page (Success-XyZ789.js) still prints \"Clear Browser Data\" in English whatever the buyer's language while analyze-resume serves 2026-11-12.1: the round's frontend has not published",
+    ]);
   });
 
   it("never writes: nothing is POSTed, and the key is never printed", () => {

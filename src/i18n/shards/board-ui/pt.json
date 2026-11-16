@@ -21,6 +21,9 @@
     "unscoredTerms": "Sem pontuação — ainda não conseguimos ler os termos desta vaga",
     "unscoredTermsBody": "Temos a descrição, mas o avaliador não reconheceu nela nenhuma habilidade nem ferramenta: ele lê apenas palavras-chave em inglês. Não há porcentagem aqui; é a ausência de uma medição, não uma medição fraca.",
     "unscoredTermsTip": "Sem pontuação: temos a descrição desta vaga, mas o avaliador não reconheceu nela nenhuma habilidade nem ferramenta (ele lê apenas palavras-chave em inglês). Não é uma pontuação baixa — é a falta de pontuação.",
+    "unscoredResumeTerms": "Sem pontuação — não reconhecemos nenhuma habilidade nem ferramenta no seu currículo",
+    "unscoredResumeTermsBody": "O avaliador lê apenas palavras-chave em inglês e não encontrou nenhuma no seu currículo, então não havia nada para comparar com esta vaga. Não há porcentagem aqui; é a ausência de uma medição, não uma medição fraca.",
+    "unscoredResumeTermsTip": "Sem pontuação: o avaliador não reconheceu nenhuma habilidade nem ferramenta no seu currículo (ele lê apenas palavras-chave em inglês), então não havia nada para comparar. Não é uma pontuação baixa — é a falta de pontuação.",
     "matchesNoneForRole": "Não encontramos vagas abertas para {{role}} agora, então estas são vagas da sua área — pontuadas com base no seu currículo, não encontradas por ele."
   }
 }

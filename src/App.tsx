@@ -7,11 +7,16 @@ import { FloatingHelpButton } from "./components/FloatingHelpButton";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { LanguageDebugBanner } from "./components/LanguageDebugBanner";
 import { ErrorBoundary, RouteErrorBoundary } from "./components/ErrorBoundary";
-import { RouteDefaultHead } from "./components/RouteDefaultHead";
 import { VisitSource } from "./components/VisitSource";
 import { SkipLinkFallback } from "./components/SkipLinkFallback";
 
 const TargetRolesDialog = lazy(() => import("./components/TargetRolesDialog").then((m) => ({ default: m.TargetRolesDialog })));
+// Lazy, so the entry every page loads does not carry the baked-head reader,
+// the prerendered-head helpers and the bake's employer-statements module it
+// imports (SEO-040's budget, the bug round's review). The baked head is still
+// read before any route renders: this renders only once its chunk, and the
+// reader, have run, and every page that reads the baked head imports it too.
+const RouteDefaultHead = lazy(() => import("./components/RouteDefaultHead").then((m) => ({ default: m.RouteDefaultHead })));
 
 // Every route is lazy-loaded, so a visitor to one page does not download the
 // code for /pricing, /terms, internal dashboards and the rest (they were all
@@ -111,7 +116,7 @@ const App = () => (
       <SkipLinkFallback />
       <ScrollToTop />
       {/* A title for the routes whose pages write none (NB-43). */}
-      <RouteDefaultHead />
+      <Suspense fallback={null}><RouteDefaultHead /></Suspense>
       {/* A crash inside a page stays inside the page and clears when the path
           changes (NB-40); the root boundary above is the last resort. */}
       <RouteErrorBoundary>

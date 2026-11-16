@@ -27,9 +27,11 @@
 #       into the stash (S14X-103);
 #   F1  the published entry carries the landing held for the yes (S14X-040),
 #       the chunk-load test and the new-version screen (NB-41), the crash
-#       screen's homepage link (NB-40) and the route titles (NB-43); the
-#       NotFound chunk the board and pricing links and no console error
-#       (NB-44). Before the paste INFO, after it a FAIL;
+#       screen's homepage link (NB-40) and the route titles (NB-43, in the
+#       entry or in the RouteDefaultHead chunk the entry loads lazily since
+#       the bug round's review moved it out of the entry); the NotFound
+#       chunk the board and pricing links and no console error (NB-44).
+#       Before the paste INFO, after it a FAIL;
 #   O   SEO-F10 prints INFO owner pending until docs/deploy-ledger.json
 #       reservations['bug-round'].ownerDecided names it; then it judges what
 #       the decision ships.
@@ -117,15 +119,18 @@ if [ -z "$VDBS_MAINJS" ] || [ -z "$VDBS_NF" ]; then
   echo "FAIL  F1 the served entry (${VDBS_MAIN:-none found}) names no NotFound chunk: the frontend is not serving, or the bundle layout moved, so the published shell cannot be judged"
 else
   VDBS_NFJS=$(curl -s -m 30 "$SITE/assets/$VDBS_NF")
+  VDBS_RDH=$(printf '%s' "$VDBS_MAINJS" | grep -oE '(\./|assets/)RouteDefaultHead-[A-Za-z0-9_-]+\.js' | head -1 | sed -E 's#^(\./|assets/)##')
+  VDBS_RDHJS=""
+  [ -n "$VDBS_RDH" ] && VDBS_RDHJS=$(curl -s -m 30 "$SITE/assets/$VDBS_RDH")
   VDBS_MISSING=""
   printf '%s' "$VDBS_MAINJS" | grep -qF 'Funnel landing after consent failed:' || VDBS_MISSING="$VDBS_MISSING the landing held for the analytics yes (S14X-040);"
   printf '%s' "$VDBS_MAINJS" | grep -qF 'Importing a module script failed' || VDBS_MISSING="$VDBS_MISSING the chunk-load test the boundaries read (NB-41);"
   printf '%s' "$VDBS_MAINJS" | grep -qF 'Loading the new version' || VDBS_MISSING="$VDBS_MISSING the new-version screen's English string (NB-41);"
   printf '%s' "$VDBS_MAINJS" | grep -qF 'siteShell.crashHome' || VDBS_MISSING="$VDBS_MISSING the crash screen's homepage link (NB-40);"
-  printf '%s' "$VDBS_MAINJS" | grep -qF 'siteShell.titles.' || VDBS_MISSING="$VDBS_MISSING the route titles (NB-43);"
+  printf '%s\n%s' "$VDBS_MAINJS" "$VDBS_RDHJS" | grep -qF 'siteShell.titles.' || VDBS_MISSING="$VDBS_MISSING the route titles (NB-43, in the entry or the RouteDefaultHead chunk ${VDBS_RDH:-it names});"
   printf '%s' "$VDBS_NFJS" | grep -qF 'siteShell.notFound.jobs' || VDBS_MISSING="$VDBS_MISSING the 404 page's board and pricing links (NB-44);"
   printf '%s' "$VDBS_NFJS" | grep -qF '404 Error: User attempted' && VDBS_MISSING="$VDBS_MISSING a 404 page without its console error (NB-44);"
-  if [ -z "$VDBS_MISSING" ]; then echo "PASS  F1 the published entry carries the held landing, the chunk-load test and new-version screen, the crash screen's homepage link and the route titles, and the 404 chunk ($VDBS_NF) offers the board and pricing with no console error"
+  if [ -z "$VDBS_MISSING" ]; then echo "PASS  F1 the published entry carries the held landing, the chunk-load test and new-version screen and the crash screen's homepage link, the route titles are served (${VDBS_RDH:-in the entry}), and the 404 chunk ($VDBS_NF) offers the board and pricing with no console error"
   elif [ "$VDBS_LIVE" = 1 ]; then echo "FAIL  F1 the published site lacks${VDBS_MISSING%;} while the lane's functions serve 2026-11-12.1: the round's frontend publish has not happened"
   else echo "INFO  F1 the published site lacks${VDBS_MISSING%;}: the round's frontend has not published yet"; fi
 fi

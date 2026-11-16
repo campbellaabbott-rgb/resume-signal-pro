@@ -68,6 +68,7 @@ import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
 import { CreditsAndPurchases, type AccountPass } from "@/components/account/CreditsAndPurchases";
 import type { AccountOrder } from "@/components/account/OrdersList";
 import { SecurityCard, type MailboxProofSummary } from "@/components/account/SecurityCard";
+import { SignOutChoice } from "@/components/auth/SignOutChoice";
 import { DataPrivacyCard } from "@/components/account/DataPrivacyCard";
 import { AccountSettingsCards } from "@/components/account/ConnectedAIsCard";
 import { lastScanResumeToOffer, localScansToOffer } from "@/lib/account-history-import";
@@ -815,12 +816,10 @@ export default function Account() {
               {t("accountPage.memberSince", "Member since {{when}}", { when: user?.created_at ? fmtDate(user.created_at, { lng }) : t("accountPage.memberToday", "today") })}
             </p>
           </div>
-          <button
-            onClick={async () => { await signOut(); navigate("/"); }}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-          >
+          {/* Asks before a sign-out deletes a résumé kept only in this browser, as the security card's two do (S14X-097). */}
+          <SignOutChoice className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors">
             <LogOut className="w-3.5 h-3.5" /> {t("accountPage.signOut", "Sign out")}
-          </button>
+          </SignOutChoice>
         </div>
 
         <AccountNav />

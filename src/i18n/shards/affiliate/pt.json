@@ -55,6 +55,9 @@
     },
     "auth": {
       "forgot": "Esqueceu a senha?",
+      "email": "E-mail",
+      "password": "Senha (mín. 8 caracteres)",
+      "pleaseWait": "Aguarde…",
       "resetTitle": "Redefinir sua senha",
       "resetIntro": "Digite o endereço que você usou no cadastro. Se uma conta de afiliado o usa, enviamos um link que funciona uma vez em até 30 minutos.",
       "sendLink": "Me envie um link",
@@ -90,6 +93,7 @@
       "changeSent": "Enviamos um link para {{email}}. A alteração acontece quando você o abrir.",
       "eraseTitle": "Encerrar a conta",
       "eraseWarning": "Isso remove seu endereço, sua senha, suas sessões e seu histórico de cliques, e não pode ser desfeito. Digite ERASE para confirmar.",
+      "eraseConfirmLabel": "Digite ERASE para confirmar",
       "eraseButton": "Encerrar a conta de vez",
       "erased": "Sua conta de afiliado foi encerrada."
     }

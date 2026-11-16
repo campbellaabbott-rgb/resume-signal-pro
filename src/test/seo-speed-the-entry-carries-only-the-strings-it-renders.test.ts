@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { gzipSync } from "node:zlib";
-import { EN_ALL_ID, EN_NAMESPACE_ID, EN_REGISTRY_ID, namespaceModule, namespacesNamedIn, registryModule } from "../../vite.config";
+import { EN_ALL_ID, EN_NAMESPACE_ID, EN_REGISTRY_ID, EN_SHARD_EMPTY_ID, deferredEnglishShards, namespaceModule, namespacesNamedIn, registryModule } from "../../vite.config";
 import { skipWithoutDist } from "./helpers/built-output";
 
 /**
@@ -102,7 +102,7 @@ describe("the modules the build writes", () => {
     api.addEnglish({ common: { close: "Close" } });
     expect(handler("common.nothingHere", "Fallback"), "a loaded namespace's miss keeps its default").toBe("Fallback");
     expect(handler("auth.signIn.title"), "the auth strings are not en.json's").toBe("auth.signIn.title");
-    expect(handler("listing.row.open"), "a shard is not en.json's").toBe("listing.row.open");
+    expect(handler("siteShell.crashHome"), "the site shell's strings ride the entry, never a namespace").toBe("siteShell.crashHome");
     expect(imported).toEqual([]);
     expect(handler("jobsPage.filters.title")).toBe("jobsPage.filters.title");
     expect(handler("explore.title", "Explore")).toBe("Explore");
@@ -163,6 +163,21 @@ describe.skipIf(skipWithoutDist(hasDist))("the built app's entry", () => {
     expect(holders.length, "some chunk carries the board's strings").toBeGreaterThan(0);
   });
 
+  it("carries no deferred shard's English strings and no baked-head reader (the bug round's review)", () => {
+    const { files } = entryClosure();
+    const code = files.map((f) => readFileSync(resolve(DIST, "assets", f), "utf8")).join("\n");
+    for (const s of deferredEnglishShards()) {
+      const leaves: string[] = [];
+      // The literal runs between interpolations, so a shard of short sentences still has one.
+      const walk = (v: unknown) => (typeof v === "string" ? leaves.push(...v.split(/\{\{[^}]*\}\}/)) : v && typeof v === "object" && Object.values(v).forEach(walk));
+      walk(s.strings);
+      const sig = leaves.filter((x) => x.length >= 24 && !/[{}"\\<']/.test(x)).sort((a, b) => b.length - a.length)[0];
+      expect(sig, `${s.dir} has a long string`).toBeTruthy();
+      expect(code.includes(sig!), `the entry carries ${s.dir}'s "${sig}"`).toBe(false);
+    }
+    expect(code, "the employer-statements meta name (scripts/employer-statements.mjs)").not.toContain("x-rb-employer-stated");
+  });
+
   it("ships the namespace chunks under names a static host serves (none starts with an underscore)", () => {
     const assets = readdirSync(resolve(DIST, "assets"));
     expect(assets.filter((f) => f.startsWith("_")), "files whose names start with an underscore").toEqual([]);
@@ -194,5 +209,5 @@ describe.skipIf(skipWithoutDist(existsSync(METHODOLOGY)))("the bake", () => {
 });
 
 it("the namespace ids the build uses are its own (no clash with a real module path)", () => {
-  for (const id of [EN_REGISTRY_ID, EN_ALL_ID, EN_NAMESPACE_ID]) expect(id.startsWith("\0rb-en:")).toBe(true);
+  for (const id of [EN_REGISTRY_ID, EN_ALL_ID, EN_NAMESPACE_ID, EN_SHARD_EMPTY_ID]) expect(id.startsWith("\0rb-en:")).toBe(true);
 });

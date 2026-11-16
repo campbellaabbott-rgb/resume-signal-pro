@@ -21,6 +21,9 @@
     "unscoredTerms": "Walang puntos — hindi pa namin mabasa ang mga termino ng anunsyong ito",
     "unscoredTermsBody": "Hawak namin ang paglalarawan nito, pero walang nakilalang kasanayan o tool dito ang tagapagbigay ng puntos: Ingles na keyword lang ang nababasa nito. Walang porsiyento rito; ibig sabihin ay walang sukat, hindi mahinang sukat.",
     "unscoredTermsTip": "Walang puntos: hawak namin ang paglalarawan ng anunsyong ito, pero walang nakilalang kasanayan o tool dito ang tagapagbigay ng puntos (Ingles na keyword lang ang nababasa nito). Hindi ito mababang puntos — wala talagang puntos.",
+    "unscoredResumeTerms": "Walang puntos — wala kaming nakilalang kasanayan o tool sa résumé mo",
+    "unscoredResumeTermsBody": "Ingles na keyword lang ang nababasa ng tagapagbigay ng puntos, at wala itong nakita sa résumé mo, kaya walang maihahambing sa anunsyong ito. Walang porsiyento rito; ibig sabihin ay walang sukat, hindi mahinang sukat.",
+    "unscoredResumeTermsTip": "Walang puntos: walang nakilalang kasanayan o tool sa résumé mo ang tagapagbigay ng puntos (Ingles na keyword lang ang nababasa nito), kaya walang maihahambing. Hindi ito mababang puntos — wala talagang puntos.",
     "matchesNoneForRole": "Wala kaming nahanap na bukas na trabaho para sa {{role}} ngayon, kaya ito ang mga bakante sa larangan mo — binigyan ng puntos batay sa resume mo, hindi nahanap gamit ito."
   }
 }

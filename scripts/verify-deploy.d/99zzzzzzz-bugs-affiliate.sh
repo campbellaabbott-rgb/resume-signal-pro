@@ -2,8 +2,9 @@
 # ── 99zzzzzzz-bugs-affiliate. THE BUG ROUND OF 2026-11-08, LANE AFFILIATE
 # (branch bugs/a-affiliate): RC-S13-063, S14X-021, S14X-085 (the display half;
 # the approval rule is owner-gated), S14X-092, S14X-093, S14X-115, S14X-116,
-# S14X-212, S14X-226 and S14X-227. Two functions at 2026-11-12.1
-# (affiliate-payout-request, and affiliate-account, new), three migrations
+# S14X-212, S14X-226 and S14X-227. Two functions: affiliate-payout-request
+# at 2026-11-12.1, and affiliate-account, new, at 2026-11-12.2 (the change
+# link's doors were added at integration), three migrations
 # (20261112120000 sign-in, 20261112121000 click privacy, 20261112122000 money
 # and display; the integrator sets the final stamps), and the affiliate page,
 # its hooks and track-transport, published by the merge itself.
@@ -19,19 +20,22 @@
 #              round applies its migrations before its functions).
 #   frontend   the published Affiliates chunk reads stats_by_range: the merge
 #              published. Until then the old page and the old hook are INFO.
-#   owner      a line that depends on an owner's answer prints INFO 'owner
-#              pending' until reservations['bug-round'].ownerDecided in
-#              docs/deploy-ledger.json names its key: S14X-021 (approved-full
-#              in plan.json 2026-11-15; the integrator copies it) and S14X-085
-#              (the approval rule; no answer yet).
+#   owner      the one line that depends on an owner's answer (O1, S14X-085's
+#              approval rule) prints INFO 'owner pending' until
+#              reservations['bug-round'].ownerDecided in docs/deploy-ledger.json
+#              names S14X-085. The click privacy lines (M6, C1, P2, P3,
+#              S14X-021) judge code the round ships, so they wait for the paste
+#              and the publish, never for an owner; S14X-021's owner half is
+#              the privacy notice's entry, judged by privacy-retention PR5a.
 #
 # THE CLAIMS, one line each:
 #   F1  affiliate-payout-request serves 2026-11-12.1 or later (S14X-093,
 #       S14X-115, S14X-116, RC-S13-063: token hash, proven address, flagged
 #       rows never requested, the refusal named in the body).
-#   F2  affiliate-account answers its preflight at 2026-11-12.1 or later
+#   F2  affiliate-account answers its preflight at 2026-11-12.2 or later
 #       (S14X-115, S14X-093, S14X-021: reset, confirm, email change, sign out
-#       everywhere, export, erase).
+#       everywhere, export, erase; a change link reaches one address three
+#       times an hour and one affiliate asks five times a day).
 #   M1  affiliate_sessions.token_hash exists and the table is closed to anon
 #       (S14X-093). A GET of one named column answers 42501 when it exists
 #       and is refused, 42703 when it is missing; [] means anon kept a grant
@@ -91,7 +95,6 @@ VDAF_LEDGER="${VDAF_LEDGER:-docs/deploy-ledger.json}"
 vdaf_owner() { # $1 key -> yes | no
   VDAF_K="$1" node -e 'const fs=require("fs");let d=null;try{d=JSON.parse(fs.readFileSync(process.argv[1],"utf8"))}catch{}const o=d&&d.reservations&&d.reservations["bug-round"]&&d.reservations["bug-round"].ownerDecided;console.log(o&&typeof o==="object"&&Object.prototype.hasOwnProperty.call(o,process.env.VDAF_K)?"yes":"no")' "$VDAF_LEDGER"
 }
-VDAF_O021=$(vdaf_owner S14X-021)
 VDAF_O085=$(vdaf_owner S14X-085)
 
 # One named column of a table, as anon: 42501 | 42703 | 42P01 | PGRST205 | ROWS:n | EMPTY | NONJSON:...
@@ -115,8 +118,8 @@ else echo "INFO  F1 affiliate-payout-request x-fn-build = $VDAF_PB: the round's 
 
 # F2.
 VDAF_AB=$(vdaf_build affiliate-account)
-if [ -n "$VDAF_AB" ] && build_ge affiliate-account "$VDAF_AB" 2026-11-12 1; then echo "PASS  F2 affiliate-account x-fn-build = $VDAF_AB: a lost password, the address proof, the email change, sign-out everywhere, export and erase have a server"
-elif [ -n "$VDAF_AB" ]; then echo "FAIL  F2 affiliate-account x-fn-build = $VDAF_AB, older than 2026-11-12.1 (it was born at 2026-11-12.1)"
+if [ -n "$VDAF_AB" ] && build_ge affiliate-account "$VDAF_AB" 2026-11-12 2; then echo "PASS  F2 affiliate-account x-fn-build = $VDAF_AB: a lost password, the address proof, the email change, sign-out everywhere, export and erase have a server, and a change link reaches one address three times an hour"
+elif [ -n "$VDAF_AB" ]; then echo "FAIL  F2 affiliate-account x-fn-build = $VDAF_AB, older than 2026-11-12.2 (the round ships it at 2026-11-12.2, with the change link's doors)"
 elif [ "$VDAF_FNS" = live ]; then echo "FAIL  F2 affiliate-account answers no x-fn-build though affiliate-payout-request is at $VDAF_PB from the same paste: the new function was not deployed, so the reset link, the confirm banner and the account card all answer 'something went wrong'"
 else echo "INFO  F2 affiliate-account is not deployed yet (no x-fn-build): it arrives with the round's paste"; fi
 
@@ -178,17 +181,14 @@ VDAF_CD=$(vdaf_col affiliate_click_days day)
 VDAF_CLICKS=pending
 case "$VDAF_HK" in ROWS:*|EMPTY) echo "FAIL  M6 affiliate_hash_keys answered the publishable key $VDAF_HK: the table holding the click and network keys must refuse anon (42501)";; esac
 if [ "$VDAF_HK" = 42501 ] && [ "$VDAF_CD" = 42501 ]; then VDAF_CLICKS=applied; fi
-if [ "$VDAF_O021" != yes ]; then echo "INFO  M6 owner pending: reservations['bug-round'].ownerDecided does not name S14X-021 (affiliate_hash_keys $VDAF_HK, affiliate_click_days $VDAF_CD)"
-else
-  case "$VDAF_CD" in
-    42501) if [ "$VDAF_HK" = 42501 ]; then echo "PASS  M6 affiliate_click_days and affiliate_hash_keys exist and refuse anon: a click keeps a keyed address hash, and clicks older than ninety days become daily counts (S14X-021)"
-           else case "$VDAF_HK" in ROWS:*|EMPTY) ;; PGRST205|42P01) echo "FAIL  M6 affiliate_click_days exists but affiliate_hash_keys does not ($VDAF_HK): 20261112121000 applied without 20261112120000's key table";; *) echo "FAIL  M6 affiliate_hash_keys answered $VDAF_HK (want 42501)";; esac; fi;;
-    PGRST205|42P01) vdaf_missing M6 "affiliate_click_days does not exist ($VDAF_CD)";;
-    EMPTY) echo "FAIL  M6 affiliate_click_days answered [] to anon: the rollup kept a grant 20261112121000 revokes";;
-    ROWS:*) echo "FAIL  M6 affiliate_click_days answered rows to the publishable key ($VDAF_CD)";;
-    *) echo "FAIL  M6 affiliate_click_days answered $VDAF_CD (want 42501)";;
-  esac
-fi
+case "$VDAF_CD" in
+  42501) if [ "$VDAF_HK" = 42501 ]; then echo "PASS  M6 affiliate_click_days and affiliate_hash_keys exist and refuse anon: a click keeps a keyed address hash, and clicks older than ninety days become daily counts (S14X-021)"
+         else case "$VDAF_HK" in ROWS:*|EMPTY) ;; PGRST205|42P01) echo "FAIL  M6 affiliate_click_days exists but affiliate_hash_keys does not ($VDAF_HK): 20261112121000 applied without 20261112120000's key table";; *) echo "FAIL  M6 affiliate_hash_keys answered $VDAF_HK (want 42501)";; esac; fi;;
+  PGRST205|42P01) vdaf_missing M6 "affiliate_click_days does not exist ($VDAF_CD)";;
+  EMPTY) echo "FAIL  M6 affiliate_click_days answered [] to anon: the rollup kept a grant 20261112121000 revokes";;
+  ROWS:*) echo "FAIL  M6 affiliate_click_days answered rows to the publishable key ($VDAF_CD)";;
+  *) echo "FAIL  M6 affiliate_click_days answered $VDAF_CD (want 42501)";;
+esac
 
 # C1, O1: the jobs, from the anon cron reader (by GET: it only reads).
 curl -s -m 30 "$B/rest/v1/rpc/get_cron_health?p_hours=26" -H "apikey: $K" -H "Authorization: Bearer $K" > /tmp/vd_baf_cron.json
@@ -209,8 +209,7 @@ if(runs===0){console.log("INFO  "+c+" "+e.VDAF_J+" is scheduled ("+e.VDAF_S+") a
 if(failed>0||r.ch_last_status!=="succeeded"){console.log("FAIL  "+c+" "+e.VDAF_J+": "+runs+" run(s) in 26 h, "+failed+" failed, last "+r.ch_last_status+" at "+r.ch_last_start);process.exit(0)}
 console.log("PASS  "+c+" "+e.VDAF_J+" ran "+runs+" time(s) in 26 h, last succeeded at "+r.ch_last_start+": "+e.VDAF_W);' /tmp/vd_baf_cron.json
 }
-if [ "$VDAF_O021" != yes ]; then echo "INFO  C1 owner pending: reservations['bug-round'].ownerDecided does not name S14X-021 (the click prune job)"
-else vdaf_job C1 affiliate-clicks-prune "23 4 * * *" "$VDAF_CLICKS" "clicks older than ninety days are rolled into daily counts and deleted, with their keyed hashes (S14X-021)"; fi
+vdaf_job C1 affiliate-clicks-prune "23 4 * * *" "$VDAF_CLICKS" "clicks older than ninety days are rolled into daily counts and deleted, with their keyed hashes (S14X-021)"
 if [ "$VDAF_O085" != yes ]; then echo "INFO  O1 owner pending: reservations['bug-round'].ownerDecided does not name S14X-085 (the commission approval rule)"
 else vdaf_job O1 affiliate-commission-approval "47 4 * * *" pending "a commission is approved only after its hold, with no refund, no flag and a proven address (S14X-085)"; fi
 
@@ -249,16 +248,14 @@ else
   else VDAF_FE=live; echo "FAIL  P1 the published Affiliates chunk ($VDAF_PAGEN) is neither page: missing$VDAF_GOT$([ "$VDAF_OLDP" = yes ] && echo "; still draws 'Initial Payout'")"; fi
 fi
 
-if [ "$VDAF_O021" != yes ]; then echo "INFO  P2 owner pending: reservations['bug-round'].ownerDecided does not name S14X-021 (the referral hook's fingerprint)"
-elif [ -z "$VDAF_HOOKN" ] || ! grep -qF 'track_affiliate_click' /tmp/vd_baf_hook.js 2>/dev/null; then
+if [ -z "$VDAF_HOOKN" ] || ! grep -qF 'track_affiliate_click' /tmp/vd_baf_hook.js 2>/dev/null; then
   echo "FAIL  P2 the entry names no use-affiliate-auth chunk that logs track_affiliate_click (${VDAF_HOOKN:-none named}): the referral hook cannot be judged"
 elif grep -qE 'getTimezoneOffset|p_ip_hash' /tmp/vd_baf_hook.js; then
   if [ "$VDAF_FE" = live ]; then echo "FAIL  P2 the published referral hook ($VDAF_HOOKN) still builds the agent/screen/time-zone fingerprint and sends p_ip_hash, though the round's page is published"
   else echo "INFO  P2 the published referral hook ($VDAF_HOOKN) still sends a page-built p_ip_hash: the merge carrying the round has not published"; fi
 else echo "PASS  P2 the published referral hook ($VDAF_HOOKN) builds no fingerprint and sends no p_ip_hash: the server keys the address itself (S14X-021)"; fi
 
-if [ "$VDAF_O021" != yes ]; then echo "INFO  P3 owner pending: reservations['bug-round'].ownerDecided does not name S14X-021 (a No forgetting the stored referral)"
-elif [ ! -f /tmp/vd_baf_entry.js ] || ! grep -qF 'startsWith("ab_")' /tmp/vd_baf_entry.js; then
+if [ ! -f /tmp/vd_baf_entry.js ] || ! grep -qF 'startsWith("ab_")' /tmp/vd_baf_entry.js; then
   echo "FAIL  P3 the entry ${VDAF_MAIN:-(none)} holds no forgetVisitorIds (the loop that removes the ab_ keys): the bundle layout moved, so a No's reach cannot be judged"
 elif grep -qF 'affiliate_ref=;expires=Thu, 01 Jan 1970' /tmp/vd_baf_entry.js; then echo "PASS  P3 the published forgetVisitorIds also clears the affiliate_ref cookie and its stored copy: a No forgets a stored referral (S14X-021)"
 elif [ "$VDAF_FE" = live ]; then echo "FAIL  P3 the published forgetVisitorIds does not clear the affiliate_ref cookie, though the round's page is published: a No leaves a stored referral behind"

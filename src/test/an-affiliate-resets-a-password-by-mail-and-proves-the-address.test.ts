@@ -19,6 +19,9 @@
  *   - a signed-in affiliate can ask for a confirmation link, change the
  *     address by a link sent to the new one, sign out everywhere, download
  *     what the program holds, and erase the account;
+ *   - a change link reaches one address at most three times an hour,
+ *     whichever affiliate asks, and one affiliate asks at most five times a
+ *     day, so the change form cannot mail a stranger on a loop;
  *   - the function answers its preflight with Access-Control-Max-Age 7200
  *     and its build stamp.
  */
@@ -174,6 +177,29 @@ describe("a signed-in affiliate", () => {
     mail.length = 0;
     await post({ action: "email-change-request", sessionToken: t, newEmail: "taken@example.com" });
     expect(mail, "a link to take over another affiliate's address was mailed").toEqual([]);
+  });
+
+  it("a stranger's address gets at most three change links an hour, whichever affiliate asks and from whichever network", async () => {
+    const a = await register("asker-one@example.com");
+    const b = await register("asker-two@example.com");
+    for (let i = 0; i < 3; i++) {
+      expect((await post({ action: "email-change-request", sessionToken: i < 2 ? a : b, newEmail: "Stranger@Example.com" })).body).toEqual({ status: "sent" });
+    }
+    expect(mail.map((m) => m.to)).toEqual(["stranger@example.com", "stranger@example.com", "stranger@example.com"]);
+    const fourth = await post({ action: "email-change-request", sessionToken: b, newEmail: "stranger@example.com" });
+    expect(fourth.status, "a fourth link reached the same stranger within the hour").toBe(429);
+    expect(mail).toHaveLength(3);
+  });
+
+  it("one affiliate asks for at most five address changes a day", async () => {
+    const t = await register("restless@example.com");
+    for (let i = 0; i < 5; i++) {
+      expect((await post({ action: "email-change-request", sessionToken: t, newEmail: `elsewhere-${i}@example.com` })).status).toBe(200);
+    }
+    const sixth = await post({ action: "email-change-request", sessionToken: t, newEmail: "elsewhere-6@example.com" });
+    expect(sixth.status, "a sixth change link went out the same day").toBe(429);
+    expect(mail.map((m) => m.to)).not.toContain("elsewhere-6@example.com");
+    expect(mail).toHaveLength(5);
   });
 
   it("signs out everywhere", async () => {

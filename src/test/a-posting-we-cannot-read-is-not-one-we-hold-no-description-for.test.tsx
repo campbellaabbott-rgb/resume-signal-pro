@@ -8,6 +8,10 @@
 // reason beside each null (`unscored`), and the card and the panel say which.
 // A job-fit that sends no reason (the build before this round) reads as
 // before: the old sentence, which is true for most nulls.
+//
+// And a résumé the scorer recognised nothing in (no_resume_terms, job-fit
+// 2026-11-12.2): the panel and the chip say it was the résumé, not the
+// posting, that held nothing to compare, instead of a 0% Stretch.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
@@ -44,7 +48,7 @@ const ROWS = [
   { id: "j1", company: "Beta", title: "Described Role", location: "Remote", salary: null, applyUrl: "https://x/1", source: "greenhouse", token: "beta", postedAt: null },
 ];
 
-function mount(opts: { withReason: boolean }) {
+function mount(opts: { withReason: boolean; reason?: string }) {
   invoke.mockImplementation(async (fn: string, o: { body?: Record<string, unknown> } | undefined) => {
     const b = o?.body ?? {};
     if (fn === "job-fit" && b.action === "fit-terms") return { data: { terms: [] } };
@@ -52,7 +56,7 @@ function mount(opts: { withReason: boolean }) {
       const ids = (b.ids as string[]) ?? [];
       const fits = Object.fromEntries(ids.map((id) => [id, id === "j1" ? 62 : null]));
       return { data: opts.withReason
-        ? { fits, unscored: { j2: "no_recognised_terms" }, missing: {}, matched: {} }
+        ? { fits, unscored: { j2: opts.reason ?? "no_recognised_terms" }, missing: {}, matched: {} }
         : { fits, missing: {}, matched: {} } };
     }
     if (fn === "job-board" && b.action === "detail") {
@@ -80,6 +84,11 @@ describe("the reason a row has no score (job-fit/score-rows.ts)", () => {
   });
   it("a description we hold in which nothing was recognised is no_recognised_terms", () => {
     expect(unscoredReason("Wir suchen eine Pflegefachkraft ".repeat(10), null)).toBe("no_recognised_terms");
+  });
+  it("a résumé the scan recognised no term in is no_resume_terms for every held description", () => {
+    expect(unscoredReason("x".repeat(400), 0, 0)).toBe("no_resume_terms");
+    expect(unscoredReason("Wir suchen eine Pflegefachkraft ".repeat(10), null, 0)).toBe("no_resume_terms");
+    expect(unscoredReason(null, null, 0)).toBe("no_description");
   });
   it("a scored row has no reason, a zero included", () => {
     expect(unscoredReason("x".repeat(400), 0)).toBeNull();
@@ -111,6 +120,27 @@ describe("a posting we cannot read is not one we hold no description for", () =>
     await waitFor(() => expect(screen.queryAllByText("Not scored").length).toBe(1), SLOW);
     const chip = screen.getByText("Not scored").closest("[title]") as HTMLElement;
     expect(chip.getAttribute("title")).toMatch(/we hold this posting's description, but the scorer recognised no skill or tool/);
+  });
+
+  it("a résumé the scorer recognised nothing in: the panel says so of the résumé, not of the posting", async () => {
+    window.history.replaceState({}, "", "/jobs?job=j2");
+    mount({ withReason: true, reason: "no_resume_terms" });
+    await waitFor(() => expect(fileInput()).not.toBeNull(), SLOW);
+    dropResume();
+    await waitFor(() => expect(text()).toContain("Not scored — we recognised no skill or tool in your résumé"), SLOW);
+    expect(text()).not.toContain("we hold no description for this posting");
+    expect(text()).not.toContain("can't read this posting's terms");
+    expect(document.querySelector('[data-unscored="no_resume_terms"]')).not.toBeNull();
+  });
+
+  it("the card's chip says the same of the résumé in its tip", async () => {
+    window.history.replaceState({}, "", "/jobs");
+    mount({ withReason: true, reason: "no_resume_terms" });
+    await waitFor(() => expect(fileInput()).not.toBeNull(), SLOW);
+    dropResume();
+    await waitFor(() => expect(screen.queryAllByText("Not scored").length).toBe(1), SLOW);
+    const chip = screen.getByText("Not scored").closest("[title]") as HTMLElement;
+    expect(chip.getAttribute("title")).toMatch(/recognised no skill or tool in your résumé/);
   });
 
   it("a job-fit that sends no reason reads as before", async () => {

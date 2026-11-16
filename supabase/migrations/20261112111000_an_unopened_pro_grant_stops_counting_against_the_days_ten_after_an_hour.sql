@@ -17,6 +17,13 @@
 -- Analysis grant of the day instead of minting another (S14X-079), so a
 -- second press no longer adds a row at all.
 --
+-- THIS TRIGGER COUNTS MINTS. A grant minted on an earlier day and left
+-- unopened costs nothing here, and stays redeemable until its paid period
+-- ends plus a week, so the same limits are counted again when a grant is
+-- opened: analyze-resume (redemption-cap.ts) counts the account's grants by
+-- consumed_at, ten in 24 hours and sixty in 30 days, before any model run,
+-- and refuses the next with code grant_cap and the grant left unspent.
+--
 -- Same signature, owner and grants: REVOKE from PUBLIC, anon, authenticated;
 -- EXECUTE for service_role. Safe to re-run. Independent of every function.
 -- The self-check exercises both halves inside a sub-transaction it always

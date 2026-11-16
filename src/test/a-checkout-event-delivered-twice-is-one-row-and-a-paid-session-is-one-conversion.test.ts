@@ -12,7 +12,10 @@
  *   S14X-042  an expired (never paid) session's row kept the buyer's address.
  *   S14X-152  product_conversion held only what a Success page reported: a
  *             tab closed early, and every Pro subscription, was a sale with
- *             no conversion.
+ *             no conversion. The webhook's row names its session, so under
+ *             the session rule of 20261112140517 the page's event is the
+ *             same purchase in either arrival order, and a returning buyer's
+ *             next purchase is a row of its own.
  *   S14X-084  a refund of a Pro plan's FIRST invoice named no checkout, so
  *             the affiliate's first-month commission was never rejected.
  *   S14X-076  two open Pro pages could sell two plans, and nobody heard.
@@ -110,20 +113,43 @@ beforeEach(() => {
     row.hits = Number(row.hits) + 1;
     return { data: true, error: null };
   };
-  // track_ab_event_optimized's repeat rule: one conversion per (test, variant, visitor, type) in 90 days.
-  record("track_ab_event_optimized", (a) => {
-    const rows = db.rows("ab_test_events");
-    if (rows.some((r) => r.test_name === a.p_test_name && r.variant === a.p_variant && r.visitor_id === a.p_visitor_id && r.event_type === a.p_event_type)) {
-      return { data: { success: true, status: "duplicate" }, error: null };
-    }
-    rows.push({ test_name: a.p_test_name, variant: a.p_variant, visitor_id: a.p_visitor_id, event_type: a.p_event_type });
-    return { data: { success: true, status: "recorded" }, error: null };
-  });
+  record("track_ab_event_optimized", writerRule);
   record("record_affiliate_conversion", () => ({ data: false, error: null }));
   record("payment_revoke", () => ({ data: {}, error: null }));
   db.rpcs.log_webhook_event = () => ({ data: null, error: null });
   db.rpcs.check_rate_limit = () => ({ data: true, error: null });
 });
+
+/**
+ * track_ab_event_optimized's repeat rule as 20261112140517 writes it: a
+ * conversion naming a Checkout session (metadata.stripeSessionId, or a page's
+ * metadata.sessionId outside conversion_funnel) is a repeat only of a row
+ * naming that session, at any age; any other event is a repeat of the same
+ * test, variant, visitor and type within 90 days (every row here is recent).
+ */
+const CS = /^cs_(test|live)_/;
+const sessionOf = (eventType: unknown, testName: unknown, meta: Record<string, unknown> | undefined): string | null => {
+  if (eventType !== "conversion") return null;
+  if (typeof meta?.stripeSessionId === "string" && CS.test(meta.stripeSessionId)) return meta.stripeSessionId;
+  if (testName !== "conversion_funnel" && typeof meta?.sessionId === "string" && CS.test(meta.sessionId)) return meta.sessionId;
+  return null;
+};
+function writerRule(a: Record<string, unknown>): { data: unknown; error: null } {
+  const rows = db.rows("ab_test_events");
+  const meta = (a.p_metadata ?? {}) as Record<string, unknown>;
+  const purchase = sessionOf(a.p_event_type, a.p_test_name, meta);
+  const same = (r: Record<string, unknown>) => r.test_name === a.p_test_name && r.variant === a.p_variant && r.event_type === a.p_event_type;
+  const repeat = purchase
+    ? rows.some((r) => same(r) && [(r.metadata as Record<string, unknown>)?.stripeSessionId, (r.metadata as Record<string, unknown>)?.sessionId].includes(purchase))
+    : rows.some((r) => same(r) && r.visitor_id === a.p_visitor_id);
+  if (repeat) return { data: { success: true, status: "duplicate" }, error: null };
+  rows.push({ test_name: a.p_test_name, variant: a.p_variant, visitor_id: a.p_visitor_id, event_type: a.p_event_type, metadata: meta });
+  return { data: { success: true, status: "recorded" }, error: null };
+}
+/** The Success page's own event for a session: track-ab-event hands the writer the page's metadata (use-conversion-tracking.ts trackPurchaseCompleted). */
+const pageReports = (sessionId: string, variant: string, visitor: string) =>
+  db.rpcs.track_ab_event_optimized({ p_test_name: "product_conversion", p_variant: variant, p_event_type: "conversion", p_visitor_id: visitor, p_metadata: { sessionId, productId: variant } });
+const conversions = () => db.rows("ab_test_events").map(({ test_name, variant, visitor_id, event_type }) => ({ test_name, variant, visitor_id, event_type }));
 
 async function deliver(type: string, object: Record<string, unknown>, livemode = true) {
   const res = await handler(new Request("https://harness.supabase.co/functions/v1/stripe-webhook", {
@@ -191,7 +217,7 @@ describe("a paid session is one product_conversion (S14X-152)", () => {
     db.rows("checkout_starts").push({ stripe_session_id: "cs_live_paid_2", visitor_id: null, product_type: "full_analysis", product_id: "fullAnalysis" });
     await deliver("checkout.session.completed", paid("cs_live_paid_2"));
     await deliver("checkout.session.completed", paid("cs_live_paid_2"));
-    expect(db.rows("ab_test_events")).toEqual([{ test_name: "product_conversion", variant: "fullAnalysis", visitor_id: "session:cs_live_paid_2", event_type: "conversion" }]);
+    expect(conversions()).toEqual([{ test_name: "product_conversion", variant: "fullAnalysis", visitor_id: "session:cs_live_paid_2", event_type: "conversion" }]);
   });
 
   it("a test-mode session, and one never paid, write none", async () => {
@@ -201,11 +227,42 @@ describe("a paid session is one product_conversion (S14X-152)", () => {
     expect(calls.track_ab_event_optimized).toEqual([]);
   });
 
+  it("the webhook names the session it records, so the writer can tell one purchase from the next", async () => {
+    db.rows("checkout_starts").push({ stripe_session_id: "cs_live_named_6", visitor_id: "visitor-0006-abcd", product_type: "full_analysis", product_id: "fullAnalysis" });
+    await deliver("checkout.session.completed", paid("cs_live_named_6"));
+    expect(calls.track_ab_event_optimized[0].p_metadata).toMatchObject({ source: "stripe-webhook", stripeSessionId: "cs_live_named_6" });
+  });
+
+  it("the webhook first and the Success page second is one conversion", async () => {
+    db.rows("checkout_starts").push({ stripe_session_id: "cs_live_order_7", visitor_id: "visitor-0007-abcd", product_type: "full_analysis", product_id: "fullAnalysis" });
+    await deliver("checkout.session.completed", paid("cs_live_order_7"));
+    expect(pageReports("cs_live_order_7", "fullAnalysis", "visitor-0007-abcd")).toMatchObject({ data: { status: "duplicate" } });
+    expect(conversions()).toHaveLength(1);
+  });
+
+  it("the Success page first and the webhook second is one conversion", async () => {
+    db.rows("checkout_starts").push({ stripe_session_id: "cs_live_order_8", visitor_id: "visitor-0008-abcd", product_type: "full_analysis", product_id: "fullAnalysis" });
+    expect(pageReports("cs_live_order_8", "fullAnalysis", "visitor-0008-abcd")).toMatchObject({ data: { status: "recorded" } });
+    await deliver("checkout.session.completed", paid("cs_live_order_8"));
+    expect(conversions()).toHaveLength(1);
+  });
+
+  it("a returning buyer's second purchase within 90 days is a conversion of its own, its page closed or not", async () => {
+    for (const id of ["cs_live_again_9a", "cs_live_again_9b"]) {
+      db.rows("checkout_starts").push({ stripe_session_id: id, visitor_id: "visitor-0009-abcd", product_type: "full_analysis", product_id: "fullAnalysis" });
+    }
+    await deliver("checkout.session.completed", paid("cs_live_again_9a"));
+    pageReports("cs_live_again_9a", "fullAnalysis", "visitor-0009-abcd");
+    await deliver("checkout.session.completed", paid("cs_live_again_9b"));
+    const named = db.rows("ab_test_events").map((r) => { const m = r.metadata as Record<string, unknown>; return m.stripeSessionId ?? m.sessionId; });
+    expect(named).toEqual(["cs_live_again_9a", "cs_live_again_9b"]);
+  });
+
   it("a Pro subscription's first session is the 'pro' conversion", async () => {
     world.subs.sub_one = { id: "sub_one", customer: "cus_1", status: "active", items: { data: [{ price: { unit_amount: 4500 } }] }, metadata: {} };
     db.rows("checkout_starts").push({ stripe_session_id: "cs_live_pro_5", visitor_id: "visitor-0005-abcd", product_type: "pro_subscription", product_id: null });
     await deliver("checkout.session.completed", paid("cs_live_pro_5", { mode: "subscription", amount_total: 4500, subscription: "sub_one", customer: "cus_1", metadata: { product_type: "pro_subscription" } }));
-    expect(db.rows("ab_test_events")).toEqual([{ test_name: "product_conversion", variant: "pro", visitor_id: "visitor-0005-abcd", event_type: "conversion" }]);
+    expect(conversions()).toEqual([{ test_name: "product_conversion", variant: "pro", visitor_id: "visitor-0005-abcd", event_type: "conversion" }]);
   });
 });
 

@@ -17,7 +17,8 @@
       "notThisProduct": "Deze aankoop was geen Volledige cv-analyse, dus hij kan er hier geen openen. Open hem via de link in zijn eigen aankoopmail.",
       "notFound": "We konden deze aankoop niet vinden. Open je analyse via de link in je aankoopmail, en als deze pagina dit nog steeds zegt, schrijf dan naar {{email}} vanaf het adres waarmee je hebt betaald.",
       "used": "Met deze aankoop is de analyse al gemaakt, en elke aankoop maakt er één. Open hem via de link in je aankoopmail of via de bestelling in je account.",
-      "grant": "Je Pro-lidmaatschap kan deze analyse nu niet bevatten: het lidmaatschap is niet actief, de betaling ervan is terugbetaald, of deze link is van vóór een update. Log in en open de Volledige analyse opnieuw vanuit je account."
+      "grant": "Je Pro-lidmaatschap kan deze analyse nu niet bevatten: het lidmaatschap is niet actief, de betaling ervan is terugbetaald, of deze link is van vóór een update. Log in en open de Volledige analyse opnieuw vanuit je account.",
+      "cap": "Pro omvat tot 10 Volledige analyses per dag en 60 per maand, en dit account heeft een van die grenzen bereikt, dus er is niets gemaakt en niets verbruikt. Open hem morgen opnieuw via dezelfde link; heb je er de afgelopen 30 dagen 60 geopend, dan opent hij zodra dat aantal daalt."
     },
     "pdf": {
       "device": "De browser van dit apparaat kon de pdf niet maken: de analyse is groter dan hij kan tekenen. Open deze pagina op een computer om hem op te slaan, of gebruik Afdrukken in je browser om hem als pdf op te slaan."

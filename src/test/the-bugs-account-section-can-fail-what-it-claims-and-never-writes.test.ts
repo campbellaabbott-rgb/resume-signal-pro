@@ -96,7 +96,7 @@ const OLD_ACC = [
 const OLD_PANELS = 'const a=t("applyProfile.title","Profile");const b=t("applyQueue.sUncertain");new Date(x).toLocaleDateString();n.toLocaleString();m.toLocaleString();';
 // ... and as this branch builds them (the tells read from a build of it).
 const NEW_ACC = [
-  'import{s as e}from"./index-A1.js";e.functions.invoke("get-account-data",{body:{action:"export"}}).then(r=>r.data.serverRecords);',
+  'import{s as e}from"./index-A1.js";import{A as b}from"./AgentStatusBand-PB.js";e.functions.invoke("get-account-data",{body:{action:"export"}}).then(r=>r.data.serverRecords);',
   't("accountView.trackerLoadFailed","We could not load");t("accountView.lifecycleNotChecked");t("accountView.fitCheckHourly");',
   'const p=typeof r?.portalLoginUrl=="string"?r.portalLoginUrl:"";',
   'if(ge&&!(f.median.ok&&f.neverHalf.ok)||!ge&&(f.ceilingBasis!=="fills"||typeof f.ceiling14!="number"))return null;',
@@ -104,15 +104,19 @@ const NEW_ACC = [
   'localStorage.setItem("rb_scan_fixes",JSON.stringify({rewrites:[],keywords:t.map(([m])=>m),reportId:null,fingerprint:a?bn(a):null}));',
   times("new Date(x).toLocaleDateString()", 2), "c.n.toLocaleString()",
 ].join("");
-const NEW_PANELS = 'const a=t("applyProfile.title","Profile");t("accountView.queueRetired");t("accountView.agentProfileRetired");t("accountView.queueUncertain");';
-
 const LNGS = ["de", "en-GB", "es", "fr", "hi", "nl", "pt", "tl"];
 const SHARD_KEYS = ["followUpDraft", "followUpWhen", "postingOpen", "ivOutcomeQ", "ivhClosedAfter", "ivhSinceTitle", "trackerLoadFailed", "queueRetired", "agentProfileRetired"];
+// The English account strings, as the namespace plugin registers them (the
+// bug round's review moved them out of the entry): a build of this branch put
+// them in the chunk the Account and Agent pages share.
+const EN_STRINGS = (drop: string[] = []) => `ne({accountView:{${SHARD_KEYS.filter((k) => !drop.includes(k)).map((k) => `${k}:"en ${k}"`).join(",")}}});`;
+const NEW_PANELS = `const a=t("applyProfile.title","Profile");t("accountView.queueRetired");t("accountView.agentProfileRetired");t("accountView.queueUncertain");${EN_STRINGS()}`;
 const SHARD = (lng: string, drop: string[] = []) => `const e={${SHARD_KEYS.filter((k) => !drop.includes(k)).map((k) => `${k}:"${lng} ${k}"`).join(",")}};export{e as default};`;
 const OTHER_SHARDS = 'const r={"./shards/company/de.json":()=>O(()=>import("./de-Co1.js"),[]),"./shards/company/en.json":jN};';
 const OLD_ENTRY = `const m=["assets/Account-AC.js","assets/Agent-AG.js"];${OTHER_SHARDS}`;
-const NEW_ENTRY = (lngs: string[] = LNGS, en = true) =>
-  `const m=["assets/Account-AC.js","assets/Agent-AG.js"];${OTHER_SHARDS}const q={${en ? '"./shards/account/en.json":kN,' : ""}${lngs.map((l) => `"./shards/account/${l}.json":()=>O(()=>import("./${l}-Sh${l.replace("-", "")}.js"),[])`).join(",")}};`;
+/** The entry: the eight lazy shards, and (`en`, a build from before the review) the English strings beside them. */
+const NEW_ENTRY = (lngs: string[] = LNGS, en = false) =>
+  `const m=["assets/Account-AC.js","assets/Agent-AG.js"];${OTHER_SHARDS}${en ? `const kN={${SHARD_KEYS.map((k) => `${k}:"en ${k}"`).join(",")}};` : ""}const q={${en ? '"./shards/account/en.json":kN,' : ""}${lngs.map((l) => `"./shards/account/${l}.json":()=>O(()=>import("./${l}-Sh${l.replace("-", "")}.js"),[])`).join(",")}};`;
 const AGENT = 'import{A as s}from"./AgentStatusBand-PB.js";import{F as f}from"./Footer-F1.js";import"./index-A1.js";const R=y.lazy(()=>import("./AgentReachNote-RN.js"));';
 
 type Over = Partial<{
@@ -232,12 +236,23 @@ describe("each regression prints FAIL", () => {
     expect(has(pan, "FAIL", /^FAIL {2}D1 .*still prints 3 and the agent panels chunk 1 /), show(pan)).toBe(true);
   });
 
-  it("S1: seven shards, a shard short of a string, no English shard, no shard at all once published", () => {
+  it("S1: seven shards, a shard short of a string, no English strings anywhere or one short, no shard at all once published", () => {
     expect(has(run(routes({ entry: NEW_ENTRY(LNGS.slice(1)) })).lines, "FAIL", /^FAIL {2}S1 .*names 7 non-English account shards, not 8/)).toBe(true);
     const short = run(routes({ shard: { fr: SHARD("fr", ["followUpWhen"]) } })).lines;
     expect(has(short, "FAIL", /^FAIL {2}S1 .*missing: fr:followUpWhen$/), show(short)).toBe(true);
-    expect(has(run(routes({ entry: NEW_ENTRY(LNGS, false) })).lines, "FAIL", /^FAIL {2}S1 .*not the English one/)).toBe(true);
+    const noEn = run(routes({ panels: NEW_PANELS.replace(EN_STRINGS(), "") })).lines;
+    expect(has(noEn, "FAIL", /^FAIL {2}S1 .*neither the Account chunk \(Account-AC\.js\), a chunk it imports nor the entry carries the English strings: en:followUpDraft en:followUpWhen/), show(noEn)).toBe(true);
+    const enShort = run(routes({ panels: NEW_PANELS.replace(EN_STRINGS(), EN_STRINGS(["ivhSinceTitle"])) })).lines;
+    expect(has(enShort, "FAIL", /^FAIL {2}S1 .*the English strings: en:ivhSinceTitle$/), show(enShort)).toBe(true);
     expect(has(run(routes({ entry: OLD_ENTRY })).lines, "FAIL", /^FAIL {2}S1 .*published but the entry loads no account shard/)).toBe(true);
+  });
+
+  it("S1: the English strings ride with the page, or in the entry as a build from before the review carried them", () => {
+    const withPage = run(routes()).lines;
+    expect(has(withPage, "PASS", /^PASS {2}S1 S14X-254 the English account strings ride with the page \(Account-AC\.js or a chunk it imports\) and the entry names 8 more languages/), show(withPage)).toBe(true);
+    const inEntry = run(routes({ entry: NEW_ENTRY(LNGS, true), panels: NEW_PANELS.replace(EN_STRINGS(), "") })).lines;
+    expect(has(inEntry, "PASS", claim("PASS", "S1")), show(inEntry)).toBe(true);
+    expect(fails(inEntry), show(inEntry)).toEqual([]);
   });
 
   it("a layout the section cannot read: no entry, no Account chunk calling get-account-data, no panels chunk", () => {

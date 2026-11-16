@@ -17,7 +17,8 @@
       "notThisProduct": "Esta compra não foi de uma Análise Completa de Currículo, então não pode abrir uma aqui. Abra-a pelo link do próprio e-mail de compra dela.",
       "notFound": "Não encontramos esta compra. Abra sua análise pelo link do seu e-mail de compra e, se esta página continuar dizendo isso, escreva para {{email}} a partir do endereço com que pagou.",
       "used": "Esta compra já gerou a análise dela, e cada compra gera uma. Abra-a pelo link do seu e-mail de compra ou pelo pedido na sua conta.",
-      "grant": "Sua assinatura Pro não pode incluir esta análise agora: a assinatura não está ativa, o pagamento dela foi reembolsado ou este link é de antes de uma atualização. Entre na sua conta e abra a Análise Completa de novo por lá."
+      "grant": "Sua assinatura Pro não pode incluir esta análise agora: a assinatura não está ativa, o pagamento dela foi reembolsado ou este link é de antes de uma atualização. Entre na sua conta e abra a Análise Completa de novo por lá.",
+      "cap": "O Pro inclui até 10 Análises Completas por dia e 60 por mês, e esta conta atingiu um desses limites, então nada foi criado nem gasto. Abra de novo pelo mesmo link amanhã; se você abriu 60 nos últimos 30 dias, ela abre assim que esse número cair."
     },
     "pdf": {
       "device": "O navegador deste dispositivo não conseguiu gerar o PDF: a análise é maior do que ele consegue desenhar. Abra esta página em um computador para salvá-la, ou use a opção Imprimir do navegador para salvá-la como PDF."

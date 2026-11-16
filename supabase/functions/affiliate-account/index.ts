@@ -19,7 +19,9 @@
 //   email-change-request { sessionToken, newEmail }
 //                                      mails a link to the NEW address; an
 //                                      address another affiliate holds gets
-//                                      nothing, and the same answer.
+//                                      nothing, and the same answer. An
+//                                      address gets three an hour, whoever
+//                                      asks, and an affiliate asks five a day.
 //   email-confirm { token }            changes the address and proves it.
 //   sign-out-everywhere { sessionToken }
 //   export { sessionToken }            what the program holds about them.
@@ -33,7 +35,7 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 import { sendMail } from "../_shared/send-mail.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
-const FN_BUILD = "affiliate-account.2026-11-12.1";
+const FN_BUILD = "affiliate-account.2026-11-12.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,6 +49,7 @@ const SITE = "https://resumebooster.work";
 const FROM = "Resume Booster <reports@resumebooster.work>";
 const PER_NETWORK_PER_HOUR = 20;
 const PER_ADDRESS_PER_HOUR = 3;
+const CHANGES_PER_AFFILIATE_PER_DAY = 5;
 const TOKEN = /^[0-9a-f]{64}$/;
 const SESSION = /^[0-9a-f]{32,128}$/;
 
@@ -167,6 +170,24 @@ Deno.serve(async (req) => {
       const newEmail = purpose === "email" && typeof body.newEmail === "string" ? body.newEmail.trim().toLowerCase() : null;
       if (purpose === "email" && (!newEmail || newEmail.length > 254 || !newEmail.includes("@"))) {
         return json({ error: "Enter the new address." }, 400);
+      }
+      // A CHANGE LINK GOES TO AN ADDRESS NOBODY HAS PROVED (S14X-115). Sign-up
+      // is open, so without these doors any account could mail a stranger a
+      // link twenty times an hour from each network. The affiliate's own day
+      // first, then the address's hour, the same three reset-request allows.
+      if (purpose === "email") {
+        const { data: perAccount, error: accountErr } = await admin.rpc("mail_door_take", {
+          p_door: "affiliate-email-change-account", p_bucket: affiliateId.slice(0, 64),
+          p_max: CHANGES_PER_AFFILIATE_PER_DAY, p_window_minutes: 1440,
+        });
+        if (accountErr) return json({ error: "Please try again in a moment." }, 503);
+        if (perAccount !== true) return json({ error: "Too many address changes today. Please try again tomorrow." }, 429);
+        const { data: perAddress, error: addressErr } = await admin.rpc("mail_door_take", {
+          p_door: "affiliate-email-change-address", p_bucket: (await sha256Hex(`${serviceKey}:affiliate-email-change:${newEmail}`)).slice(0, 32),
+          p_max: PER_ADDRESS_PER_HOUR, p_window_minutes: 60,
+        });
+        if (addressErr) return json({ error: "Please try again in a moment." }, 503);
+        if (perAddress !== true) return json({ error: "Too many requests for this address. Please try again later." }, 429);
       }
       const { data: link, error } = await admin.rpc("affiliate_link_mint", {
         p_purpose: purpose, p_affiliate_id: affiliateId, p_new_email: newEmail,

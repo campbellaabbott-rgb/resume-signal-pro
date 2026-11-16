@@ -158,13 +158,27 @@ async function sendOwnerMail(subject: string, html: string): Promise<boolean> {
 
 /**
  * WHAT BECAME OF A NOTICE (RC-S13-110): sent; already sent, or being sent, by
- * another run (its door is taken); refused, so it is owed to a later run; or
- * nobody to send it to.
+ * another run (its door is taken); refused, so it is owed to a later run;
+ * rejected (send-product-email answered 4xx: an address or a request it will
+ * never take, so no later run tries it); or nobody to send it to.
  */
-type NoticeOutcome = 'sent' | 'not-first' | 'refused' | 'nobody';
+type NoticeOutcome = 'sent' | 'not-first' | 'refused' | 'rejected' | 'nobody';
 type NoticeOwed = 'owner' | 'buyer' | 'both';
 const owedOf = (buyer: NoticeOutcome, owner: NoticeOutcome): NoticeOwed | null =>
   buyer === 'refused' ? (owner === 'refused' ? 'both' : 'buyer') : owner === 'refused' ? 'owner' : null;
+
+/**
+ * A BUYER'S NOTICE IS NOT OWED FOREVER (RC-S13-110). One the mail service
+ * refused outright is given up on that run, and one refused on this many
+ * runs is given up then: an address that bounces for good was retried on
+ * every run, wrote a failed log row naming the address each time, and kept
+ * one of the run's few owed-notice slots. The owner is told once, by a mail
+ * of its own, that the buyer was not asked.
+ */
+const OWED_BUYER_TRIES = 6;
+const GIVEN_UP_OUTRIGHT = 'the mail service refused the address outright';
+const givenUpAfter = (tries: number) => `the mail service refused it on ${tries} runs`;
+const buyerNotToldLine = (why: string) => `The buyer was not told what is missing (${why}). Write to them yourself at the address above.`;
 
 /**
  * THE NOTICE A SPENT ORDER STILL OWES, WRITTEN ON THE ORDER (RC-S13-110,
@@ -173,9 +187,16 @@ const owedOf = (buyer: NoticeOutcome, owner: NoticeOutcome): NoticeOwed | null =
  * write of its own, so a database without the column (before the migration)
  * fails only this write and is logged. Never throws.
  */
-async function owe(supabase: Db, id: string, owed: NoticeOwed | null): Promise<void> {
+async function owe(supabase: Db, id: string, owed: NoticeOwed | null, buyer: { tries?: number; givenUp?: string | null } = {}): Promise<void> {
   try {
-    const { error } = await supabase.from('product_deliveries').update({ notice_owed: owed }).eq('id', id);
+    // notice_tried_at orders the next run's read (oldest first); the try count
+    // and the reason a buyer's notice was given up ride in the same write.
+    const { error } = await supabase.from('product_deliveries').update({
+      notice_owed: owed,
+      notice_tried_at: new Date().toISOString(),
+      ...(buyer.tries !== undefined ? { notice_tries: buyer.tries } : {}),
+      ...(buyer.givenUp !== undefined ? { notice_given_up: buyer.givenUp } : {}),
+    }).eq('id', id);
     if (error) logStep("The notice this order owes could not be written", { id, owed, error: String(error.message ?? error).slice(0, 200) });
   } catch (e) {
     logStep("The notice this order owes could not be written", { id, owed, error: e instanceof Error ? e.message : String(e) });
@@ -187,10 +208,13 @@ async function owe(supabase: Db, id: string, owed: NoticeOwed | null): Promise<v
  * product (S12-061). The door (held 30 days) is taken before the send so two
  * runs cannot both mail, and given back when no sender accepted it (CP-027:
  * the door used to be spent on a refused send). Says what became of it, so a
- * refused alarm is owed on the order (RC-S13-110). Never throws.
+ * refused alarm is owed on the order (RC-S13-110). With `buyerNotTold` (why
+ * the buyer's notice was given up) it is the mail saying so, through a door
+ * of its own, since the spent-order alarm has usually gone already. Never
+ * throws.
  */
-async function alertDeliverySpent(supabase: Db, delivery: DeliveryRow, lastError: string, buyerTold: string | null = null): Promise<NoticeOutcome> {
-  const door = 'owner-alert:delivery';
+async function alertDeliverySpent(supabase: Db, delivery: DeliveryRow, lastError: string, buyerTold: string | null = null, buyerNotTold: string | null = null): Promise<NoticeOutcome> {
+  const door = buyerNotTold ? 'owner-alert:buyer-not-told' : 'owner-alert:delivery';
   const bucket = String(delivery.id).slice(0, 64);
   try {
     const { data: first, error } = await supabase.rpc('mail_door_take', {
@@ -199,11 +223,14 @@ async function alertDeliverySpent(supabase: Db, delivery: DeliveryRow, lastError
     if (error) return 'refused';
     if (first !== true) return 'not-first';
     const sent = await sendOwnerMail(
-      `Paid delivery ran out of retries: ${String(delivery.product_type).slice(0, 40)}`,
+      buyerNotTold
+        ? `Buyer of a spent order could not be told: ${String(delivery.product_type).slice(0, 40)}`
+        : `Paid delivery ran out of retries: ${String(delivery.product_type).slice(0, 40)}`,
       `<div style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#111">
           <p>A paid order was not delivered, and the retry sweep has stopped trying.</p>
           <p>Product: <b>${escapeHtml(delivery.product_type)}</b><br>Buyer: ${escapeHtml(delivery.customer_email ?? '(no address on the row)')}<br>Checkout session: ${escapeHtml(delivery.stripe_session_id)}<br>Last error: ${escapeHtml(String(lastError).slice(0, 300))}</p>
           ${buyerTold ? `<p>The buyer was mailed: ${escapeHtml(buyerTold)}</p>` : ''}
+          ${buyerNotTold ? `<p><b>${escapeHtml(buyerNotToldLine(buyerNotTold))}</b></p>` : ''}
           <p>What to do: ${escapeHtml(remedyFor(delivery.product_type, delivery.stripe_session_id))}</p>
           <p>Once it is delivered, set the order's status to delivered so the monitors stop counting it.</p>
         </div>`,
@@ -236,6 +263,7 @@ async function mailBuyerNeedsInput(
     return 'refused';
   }
   let sent = false;
+  let status = 0;
   try {
     const language = (delivery.metadata as { language?: unknown } | null)?.language;
     const res = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
@@ -248,12 +276,15 @@ async function mailBuyerNeedsInput(
       }),
     });
     sent = res.ok;
+    status = res.status;
   } catch { /* given back below */ }
   if (sent) return 'sent';
   try {
     await supabase.from('mail_door_counts').delete().eq('door', door).eq('bucket', bucket);
   } catch { /* the door expires on its own */ }
-  return 'refused';
+  // A 4xx is an answer about the request (send-product-email refuses an
+  // address its pattern rejects with a 400): no later run would fare better.
+  return status >= 400 && status < 500 ? 'rejected' : 'refused';
 }
 
 const buyerAskedLine = (reason: Terminal['reason']) => `${TERMINAL_DETAIL[reason]}; they were asked for it.`;
@@ -271,9 +302,10 @@ async function spendTerminal(
     .update({ status: 'generation_failed', generation_success: false, generation_error: detail, last_retry_error: detail, max_retries: 0, next_retry_at: null })
     .eq('id', delivery.id);
   const buyer = await mailBuyerNeedsInput(supabase, supabaseUrl, supabaseServiceKey, delivery, terminal.reason);
-  const owner = await alertDeliverySpent(supabase, delivery, detail, buyer === 'sent' ? buyerAskedLine(terminal.reason) : null);
+  const givenUp = buyer === 'rejected' ? GIVEN_UP_OUTRIGHT : null;
+  const owner = await alertDeliverySpent(supabase, delivery, detail, buyer === 'sent' ? buyerAskedLine(terminal.reason) : null, givenUp);
   const owed = owedOf(buyer, owner);
-  if (owed) await owe(supabase, delivery.id, owed);
+  if (owed || givenUp) await owe(supabase, delivery.id, owed, { tries: buyer === 'refused' || buyer === 'rejected' ? 1 : 0, givenUp });
   return { buyerMailed: buyer === 'sent' };
 }
 
@@ -282,39 +314,49 @@ async function spendTerminal(
  * is never selected for a retry again, so the run that spent it was the only
  * one that ever tried its alarm and its buyer mail. Now a refused one is owed
  * on the order (notice_owed) and every run reads a few such orders, whatever
- * their tries, sends what is owed through the same doors (so nothing is sent
- * twice), and writes what is still owed, or nothing. Nothing is made again.
- * Before 20261112130000 the read fails on the missing column and is skipped.
- * Never throws.
+ * their tries, the ones tried longest ago first (notice_tried_at), sends what
+ * is owed through the same doors (so nothing is sent twice), and writes what
+ * is still owed, or nothing. A buyer's notice rejected outright, or refused
+ * on OWED_BUYER_TRIES runs, is given up and the owner told once. Nothing is
+ * made again. Before 20261112130000 the read fails on the missing columns and
+ * is skipped. Never throws.
  */
 const OWED_NOTICES_PER_RUN = 5;
 async function sendOwedNotices(supabase: Db, supabaseUrl: string, supabaseServiceKey: string): Promise<number> {
   try {
     const { data, error } = await supabase.from('product_deliveries')
-      .select('id, status, stripe_session_id, product_type, product_name, customer_email, metadata, generation_error, last_retry_error, notice_owed')
+      .select('id, status, stripe_session_id, product_type, product_name, customer_email, metadata, generation_error, last_retry_error, notice_owed, notice_tries, notice_given_up')
       .in('notice_owed', ['owner', 'buyer', 'both'])
+      .order('notice_tried_at', { ascending: true, nullsFirst: true })
       .limit(OWED_NOTICES_PER_RUN);
     if (error) {
       logStep("Owed notices not read", { error: String(error.message ?? error).slice(0, 200) });
       return 0;
     }
     let handled = 0;
-    for (const row of (data ?? []) as Array<DeliveryRow & { status?: string; notice_owed?: string; generation_error?: string | null; last_retry_error?: string | null }>) {
+    for (const row of (data ?? []) as Array<DeliveryRow & { status?: string; notice_owed?: string; generation_error?: string | null; last_retry_error?: string | null; notice_tries?: number | null; notice_given_up?: string | null }>) {
       // An order made good since (delivered by hand, or refunded) owes nobody a notice.
       if (row.status === 'delivered' || row.status === 'refunded') {
         await owe(supabase, row.id, null);
         continue;
       }
       const reason = /^(job_posting_required|resume_missing|resume_expired):/.exec(String(row.generation_error ?? ''))?.[1] as Terminal['reason'] | undefined;
-      const buyer: NoticeOutcome = (row.notice_owed === 'buyer' || row.notice_owed === 'both') && reason
-        ? await mailBuyerNeedsInput(supabase, supabaseUrl, supabaseServiceKey, row, reason)
+      const buyerOwed = (row.notice_owed === 'buyer' || row.notice_owed === 'both') && !!reason && !row.notice_given_up;
+      const tried: NoticeOutcome = buyerOwed
+        ? await mailBuyerNeedsInput(supabase, supabaseUrl, supabaseServiceKey, row, reason!)
         : 'nobody';
-      const owner: NoticeOutcome = row.notice_owed === 'owner' || row.notice_owed === 'both'
-        ? await alertDeliverySpent(supabase, row, String(row.last_retry_error ?? row.generation_error ?? 'not recorded'), buyer === 'sent' && reason ? buyerAskedLine(reason) : null)
+      const tries = Number(row.notice_tries ?? 0) + (tried === 'refused' || tried === 'rejected' ? 1 : 0);
+      const givenUp = row.notice_given_up
+        ?? (tried === 'rejected' ? GIVEN_UP_OUTRIGHT : tried === 'refused' && tries >= OWED_BUYER_TRIES ? givenUpAfter(tries) : null);
+      // A notice given up on this run is the owner's to hear, once.
+      const newlyGivenUp = !!givenUp && !row.notice_given_up;
+      const buyer: NoticeOutcome = givenUp ? 'nobody' : tried;
+      const owner: NoticeOutcome = row.notice_owed === 'owner' || row.notice_owed === 'both' || newlyGivenUp
+        ? await alertDeliverySpent(supabase, row, String(row.last_retry_error ?? row.generation_error ?? 'not recorded'), buyer === 'sent' && reason ? buyerAskedLine(reason) : null, givenUp)
         : 'nobody';
-      await owe(supabase, row.id, owedOf(buyer, owner));
+      await owe(supabase, row.id, owedOf(buyer, owner), { tries, givenUp });
       handled++;
-      logStep("Owed notice", { id: row.id, owed: row.notice_owed, buyer, owner });
+      logStep("Owed notice", { id: row.id, owed: row.notice_owed, buyer: tried, owner, tries, givenUp: !!givenUp });
     }
     return handled;
   } catch (e) {

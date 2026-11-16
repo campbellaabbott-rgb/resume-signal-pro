@@ -53,6 +53,9 @@
     },
     "auth": {
       "forgot": "Forgot password?",
+      "email": "Email",
+      "password": "Password (min 8 characters)",
+      "pleaseWait": "Please wait…",
       "resetTitle": "Reset your password",
       "resetIntro": "Enter the address you signed up with. If an affiliate account uses it, we email a link that works once within 30 minutes.",
       "sendLink": "Email me a link",
@@ -88,6 +91,7 @@
       "changeSent": "We sent a link to {{email}}. The change happens when you open it.",
       "eraseTitle": "Close the account",
       "eraseWarning": "This removes your address, password, sessions and click history, and cannot be undone. Type ERASE to confirm.",
+      "eraseConfirmLabel": "Type ERASE to confirm",
       "eraseButton": "Close the account for good",
       "erased": "Your affiliate account is closed."
     }

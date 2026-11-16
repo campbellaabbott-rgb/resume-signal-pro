@@ -2439,6 +2439,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         const name = notes.countryName;
         const vars = { name, docTerm: std.docTerm };
         const faqs = D.cvStandardsFaqs(locale, t, { name, docTerm: std.docTerm, photo: std.photo, photoNote: notes.photoNote, lengthNote: notes.lengthNote });
+        // SEO-F18: one trail, in the page's language, shown and marked up
+        // alike; the React page prints the same labels (src/pages/CvStandards.tsx).
+        const trail = [{ name: t.breadcrumbHome, href: "/", path: "/" }, { name: t.breadcrumbIndex, href: "/cv-standards", path: "/cv-standards" }, { name, path: `/${cfg.pathBase}/${slug}` }];
         write({
           path: `/${cfg.pathBase}/${slug}`,
           lang: cfg.htmlLang,
@@ -2446,9 +2449,10 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           title: D.cvFill(t.title, vars, locale),
           description: D.cvFill(t.metaDescription, vars, locale),
           // SEO-F18: the translated pages carried no BreadcrumbList while the
-          // English ones did; the trail is the English one's, ending here.
-          jsonLd: [faqLd(faqs), breadcrumbLd([{ name: "Home", path: "/" }, { name: "CV Standards", path: "/cv-standards" }, { name, path: `/${cfg.pathBase}/${slug}` }])],
+          // English ones did; it describes the trail the page shows.
+          jsonLd: [faqLd(faqs), breadcrumbLd(trail)],
           content: `
+            ${breadcrumbNav(trail)}
             <h1 class="text-3xl font-bold mb-3">${esc(D.cvFill(t.h1, vars, locale))}</h1>
             <p class="text-muted-foreground mb-8">${esc(D.cvFill(t.intro, vars, locale))}</p>
             <p class="text-xs text-muted-foreground mb-6"><a href="/cv-standards/${D.COUNTRY_SLUGS[iso]}" class="text-primary">English version →</a></p>
@@ -4005,7 +4009,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
             <li><code>GET /v1/jobs</code> — live postings, newest first; every result is still open in the employer's own feed and dated within the last 30 days. Filters for country, category, company, work mode, source system, experience band, department, pay basis and floor, posting date; paginate with <code>cursor=</code>, never a deep offset. <code>explain=1</code> names every filter that bound; <code>engine=ranked</code> (paid) swaps the title match for the site's full relevance engine.</li>
             <li><code>GET /v1/jobs/{id}</code> — one posting with its description; a 404 once the employer withdraws it, never a stale 200.</li>
             <li><code>GET /v1/jobs/{id}/application</code> — the employer's own application form for a live posting, when its hiring system publishes one: each question with who should answer it (the person, by default), cached for 24 hours. It never fills or submits anything; the person answers and presses submit on the employer's own site. Metered as one call.</li>
-            <li><code>GET /v1/changes</code> — what opened and what closed since a timestamp, and for each close whether the role genuinely came down or was re-listed under a new id. Opened reaches back 30 days on any key; closed reaches back 72 hours on a free key and 180 days on a paid one, and leaves out batches our own collector flagged as a possible failed read unless you ask for them with <code>include_suspect=true</code>. Closures written before the collector began assessing its batches were never assessed: they carry <code>suspectBatch: null</code> and no walk filters them. Each list reads only up to a settled horizon (<code>page.opened.settledThrough</code>, <code>page.closed.settledThrough</code>), because a closure's row can be written minutes after the time it is stamped with; every page carries <code>page.opened.resumeCursor</code> and <code>page.closed.resumeCursor</code>, and a reader resumes by sending them back as <code>opened_cursor</code> and <code>closed_cursor</code>, never by moving <code>since</code>.</li>
+            <li><code>GET /v1/changes</code> — what opened and what closed since a timestamp, and for each close whether the role genuinely came down or was re-listed under a new id. Opened reaches back 30 days on any key; closed reaches back 72 hours on a free key and 180 days on a paid one, and leaves out batches our own collector flagged as a possible failed read unless you ask for them with <code>include_suspect=true</code>. Closures written before the collector began assessing its batches were never assessed: they carry <code>suspectBatch: null</code> and no walk filters them. Both lists are ordered oldest first and page on their own: follow <code>page.opened.nextCursor</code> as <code>opened_cursor</code> and <code>page.closed.nextCursor</code> as <code>closed_cursor</code> until <code>hasMore</code> is false. When a list carries <code>settledThrough</code> (<code>page.opened.settledThrough</code>, <code>page.closed.settledThrough</code>), it reads only up to that settled horizon, because a closure's row can be written minutes after the time it is stamped with; such a list also carries <code>resumeCursor</code>, and a reader resumes by sending it back as <code>opened_cursor</code> or <code>closed_cursor</code>, never by moving <code>since</code>. A response without them runs each list up to the moment it was read.</li>
             <li><code>GET /v1/companies</code> — employers ranked by open postings, from the same cached facet the board renders, with the as-of stamp and its basis.</li>
             <li><code>GET /v1/stats</code> — headline counts, the closure log, feed freshness (p50/p95/max minutes since each feed was last re-read) and per-system coverage, each figure with its own as-of and basis.</li>
             <li><code>GET /v1/usage</code> — your own consumption for the last 30 days and what is left of today's limits.</li>

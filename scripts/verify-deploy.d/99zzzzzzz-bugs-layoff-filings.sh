@@ -67,18 +67,24 @@ R get_employer_lca_wages '{"p_tokens":["socialfinance","sigmasoftware2","sunday"
 R get_employer_lca_wages '{"p_tokens":["ebb9e98a-78f1-47eb-a562-c52b36b09dd3","32d78507-2175-47fb-8427-a89a691203be"]}' > /tmp/vd_lf_twins.json
 R get_employer_lca_wages '{"p_tokens":["hisenseusacorporation","sigmasoftware2"]}' > /tmp/vd_lf_hisense.json
 
-# The served English strings: the page's entry script and every rb-en_ chunk it or the page names.
+# The served English strings: the page's entry script, the board's chunk the
+# entry names (a shard's English rides with the page that renders it), and
+# every rb-en_ namespace chunk the entry or the page names. The whole-file
+# safety net (rb-en_all) is not read: it carries every string, so finding one
+# there says nothing about what the board serves.
 curl -s -m 30 -A "$UA" -o /tmp/vd_lf_home.html "$SITE/"
 VDLF_IDX=$(grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' /tmp/vd_lf_home.html 2>/dev/null | head -1)
 [ -n "$VDLF_IDX" ] && curl -s -m 60 -A "$UA" -o /tmp/vd_lf_index.js "$SITE$VDLF_IDX"
 : > /tmp/vd_lf_chunks.txt
 cat /tmp/vd_lf_index.js >> /tmp/vd_lf_chunks.txt 2>/dev/null
+VDLF_JOBS=$(grep -oE '"\./Jobs-[A-Za-z0-9_-]+\.js"' /tmp/vd_lf_index.js 2>/dev/null | head -1 | tr -d '"' | sed 's|^\./||')
+[ -n "$VDLF_JOBS" ] && { curl -s -m 60 -A "$UA" "$SITE/assets/$VDLF_JOBS" >> /tmp/vd_lf_chunks.txt; echo >> /tmp/vd_lf_chunks.txt; }
 VDLF_NC=0
-for VDLF_C in $(cat /tmp/vd_lf_home.html /tmp/vd_lf_index.js 2>/dev/null | grep -oE 'rb-en_[A-Za-z0-9_-]+\.js' | sort -u | head -80); do
+for VDLF_C in $(cat /tmp/vd_lf_home.html /tmp/vd_lf_index.js 2>/dev/null | grep -oE 'rb-en_[A-Za-z0-9_-]+\.js' | grep -v '^rb-en_all-' | sort -u | head -80); do
   curl -s -m 60 -A "$UA" "$SITE/assets/$VDLF_C" >> /tmp/vd_lf_chunks.txt; echo >> /tmp/vd_lf_chunks.txt; VDLF_NC=$((VDLF_NC + 1))
 done
 
-VDLF_VER="$VDLF_VER" VDLF_LIVE="$VDLF_LIVE" VDLF_WARN="$VDLF_WARN" VDLF_AUDIT="$VDLF_AUDIT" VDLF_IDX="$VDLF_IDX" VDLF_NC="$VDLF_NC" node -e '
+VDLF_VER="$VDLF_VER" VDLF_LIVE="$VDLF_LIVE" VDLF_WARN="$VDLF_WARN" VDLF_AUDIT="$VDLF_AUDIT" VDLF_IDX="$VDLF_IDX" VDLF_JOBS="$VDLF_JOBS" VDLF_NC="$VDLF_NC" node -e '
 const fs=require("fs");const E=process.env;
 const raw=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};
 const read=(f)=>{try{return JSON.parse(raw(f))}catch{return undefined}};
@@ -165,6 +171,6 @@ for(const [id,f,what] of [["S14X-067","/tmp/vd_lf_ledger.json","the ledger and t
 {const idx=E.VDLF_IDX,src=raw("/tmp/vd_lf_chunks.txt");
  if(!idx||src.length<20000)say("FAIL","S14X-184/279 the served page names no readable entry script ("+(idx||"none")+", "+src.length+" bytes): no string can be read");
  else for(const [id,s,what] of [["S14X-184","Filed LCA wages (H-1B, H-1B1, E-3)","the wage chip names the three classes its file holds"],["S14X-279","via Big Local News, read","a courier state\x27s read stamp names Big Local News"]]){
-  if(src.includes(s))say("PASS",id+" "+what+": "+JSON.stringify(s)+" is served ("+idx+" and "+E.VDLF_NC+" rb-en chunk(s))");
-  else say(live?"FAIL":"INFO",id+" "+JSON.stringify(s)+" is not in "+idx+" or its "+E.VDLF_NC+" rb-en chunk(s)"+(live?": this round\x27s frontend is not published":" ("+pre+")"));}}
+  if(src.includes(s))say("PASS",id+" "+what+": "+JSON.stringify(s)+" is served ("+idx+", the board chunk "+(E.VDLF_JOBS||"(none named)")+" and "+E.VDLF_NC+" rb-en namespace chunk(s))");
+  else say(live?"FAIL":"INFO",id+" "+JSON.stringify(s)+" is not in "+idx+", the board chunk "+(E.VDLF_JOBS||"(none named)")+" or "+E.VDLF_NC+" rb-en namespace chunk(s)"+(live?": this round\x27s frontend is not published":" ("+pre+")"));}}
 '

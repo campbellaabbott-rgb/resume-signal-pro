@@ -114,7 +114,7 @@ const OLD_CVS = 'e.jsx(u,{to:o==="es"?"/es/revisar-curriculum":"/resume-checker"
 // ... and as this branch builds them.
 const NEW_ENTRY = 'const r=[()=>import("./CvStandards-C1.js")];const en={freeScanPage:{keywordImpact:{mustHave:"Must have"},report:{triggeredBy:"Triggered by:"},checkout:{postingOverCap:"The analysis reads the first 20,000 characters."}}};'
   + 'function c2(t,e){const n=new URLSearchParams(t);return e==="#pricing"&&n.get("utm_medium")==="scan_report"?`/pricing${t}#full-analysis`:e==="#upload"?`/resume-checker${t}`:null}';
-const NEW_IDX = 'import{a as e}from"./index-E1.js";const F=()=>import("./FreeKeywordResults-F1.js");function startStreamingScan(e,t,n){return fetch(u,{method:"POST",body:JSON.stringify({resumeText:e,jobDescription:t,userContext:o.userContext,deadlineAt:o.deadlineAt}),signal:n})}'
+const NEW_IDX = 'import"./rb-en_ns_freeResults-R1.js";import{a as e}from"./index-E1.js";const F=()=>import("./FreeKeywordResults-F1.js");function startStreamingScan(e,t,n){return fetch(u,{method:"POST",body:JSON.stringify({resumeText:e,jobDescription:t,userContext:o.userContext,deadlineAt:o.deadlineAt}),signal:n})}'
   + 'const M=' + market(52) + ';'
   + 'sessionStorage.setItem("rb_pending_report",JSON.stringify(p));'
   + 'e.jsxs(fe,{size:"xl",onClick:Ns,className:"w-full sm:w-auto sm:min-w-[340px] h-auto min-h-16 py-3 px-4 sm:px-8 text-base sm:text-lg text-center justify-center gap-3 border-2 border-success bg-success"});'
@@ -138,9 +138,13 @@ const NEW_FKR_OWNER = NEW_FKR_BASE + 'Ue.functions.invoke("send-scan-report",{bo
 const NEW_APS = 'const label=t("freeScanPage.parseCheck.label.sections");';
 const NEW_CVS = 'e.jsx(u,{to:`${o==="es"?"/es/revisar-curriculum":"/resume-checker"}?market=${n}`,children:[i.ctaButton]});';
 
-type Chunks = { page: string; entry: string; idx: string; fkr: string; aps: string; cvs: string };
+// This round's build: the scanner's English rides in a namespace chunk it
+// imports, not in the entry; the whole-file safety net is never read.
+const NEW_EN = 'const r=Symbol.for("rb-en-registry");addEnglish({freeScanPage:{checkout:{postingOverCap:"The analysis reads the first 20,000 characters."}}});';
+
+type Chunks = { page: string; entry: string; idx: string; fkr: string; aps: string; cvs: string; en?: string };
 const TODAY: Chunks = { page: PAGE, entry: OLD_ENTRY, idx: OLD_IDX, fkr: OLD_FKR, aps: OLD_APS, cvs: OLD_CVS };
-const BUILT: Chunks = { page: PAGE, entry: NEW_ENTRY, idx: NEW_IDX, fkr: NEW_FKR, aps: NEW_APS, cvs: NEW_CVS };
+const BUILT: Chunks = { page: PAGE, entry: NEW_ENTRY, idx: NEW_IDX, fkr: NEW_FKR, aps: NEW_APS, cvs: NEW_CVS, en: NEW_EN };
 
 function routes(c: Chunks, builds: { saveLead?: string | null; notifyOwner?: string | null } = {}): Route[] {
   const sl = builds.saveLead === undefined ? "save-lead.2026-11-09.1" : builds.saveLead;
@@ -152,6 +156,7 @@ function routes(c: Chunks, builds: { saveLead?: string | null; notifyOwner?: str
     { match: `^GET ${S}/assets/FreeKeywordResults-F1\\.js$`, body: c.fkr },
     { match: `^GET ${S}/assets/ATSParseSimulator-S1\\.js$`, body: c.aps },
     { match: `^GET ${S}/assets/CvStandards-C1\\.js$`, body: c.cvs },
+    { match: `^GET ${S}/assets/rb-en_ns_freeResults-R1\\.js$`, body: c.en ?? "" },
     { match: `^OPTIONS ${P}/functions/v1/save-lead$`, headers: sl ? { "x-fn-build": sl } : {} },
     { match: `^OPTIONS ${P}/functions/v1/notify-owner$`, headers: no ? { "x-fn-build": no } : {} },
   ];
@@ -256,6 +261,9 @@ describe("each regression fails its own claim", () => {
     ["S14X-144", { idx: sub(NEW_IDX, ",deadlineAt:o.deadlineAt", "") }],
     ["S14X-269", { fkr: NEW_FKR + 'const f="Every quoted line in the full report is verified";' }],
     ["S14X-269", { entry: NEW_ENTRY + 'const g="Every quoted line is verified";' }],
+    // The shard's English now loads with the scanner, from the namespace chunk it imports.
+    ["S14X-269", { en: NEW_EN + 'addEnglish({freeScanPage:{proof:{all:"Every quoted line is verified against your resume"}}});' }],
+    ["RC-S13-094", { en: NEW_EN + 'addEnglish({freeScanPage:{hint:{daily:"7 free scans a day"}}});' }],
     ["S14X-270", { idx: sub(NEW_IDX, 't("freeScanPage.jobUrl.truncated");', "") }],
     ["S14X-028", { fkr: sub(NEW_FKR, "const pg=cs==null?void 0:cs.pagesMin;", "") }],
     ["NB-7", { fkr: NEW_FKR + "line(`ATS Score: ${s}/100  →  about ${p} after fixes`);" }],

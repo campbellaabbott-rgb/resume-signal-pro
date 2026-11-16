@@ -207,7 +207,11 @@ class PgQuery implements PromiseLike<Result> {
     });
     return this;
   }
-  order(col: string, o?: { ascending?: boolean }) { this.orders.push(`${ident(col)} ${o?.ascending === false ? "DESC" : "ASC"}`); return this; }
+  order(col: string, o?: { ascending?: boolean; nullsFirst?: boolean }) {
+    const nulls = o?.nullsFirst === true ? " NULLS FIRST" : o?.nullsFirst === false ? " NULLS LAST" : "";
+    this.orders.push(`${ident(col)} ${o?.ascending === false ? "DESC" : "ASC"}${nulls}`);
+    return this;
+  }
   limit(n: number) { this.lim = n; return this; }
 
   maybeSingle(): Promise<Result> { return this.exec("maybe"); }

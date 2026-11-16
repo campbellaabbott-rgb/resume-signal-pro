@@ -21,6 +21,9 @@
     "unscoredTerms": "Sin puntuar — aún no podemos leer los términos de esta oferta",
     "unscoredTermsBody": "Tenemos su descripción, pero el evaluador no reconoció en ella ninguna habilidad ni herramienta: solo lee palabras clave en inglés. Aquí no hay porcentaje; es la ausencia de una medición, no una medición baja.",
     "unscoredTermsTip": "Sin puntuar: tenemos la descripción de esta oferta, pero el evaluador no reconoció en ella ninguna habilidad ni herramienta (solo lee palabras clave en inglés). No es una puntuación baja: no hay puntuación.",
+    "unscoredResumeTerms": "Sin puntuar — no reconocimos ninguna habilidad ni herramienta en tu currículum",
+    "unscoredResumeTermsBody": "El evaluador solo lee palabras clave en inglés y no encontró ninguna en tu currículum, así que no había nada que comparar con esta oferta. Aquí no hay porcentaje; es la ausencia de una medición, no una medición baja.",
+    "unscoredResumeTermsTip": "Sin puntuar: el evaluador no reconoció ninguna habilidad ni herramienta en tu currículum (solo lee palabras clave en inglés), así que no había nada que comparar. No es una puntuación baja: no hay puntuación.",
     "matchesNoneForRole": "No encontramos ofertas activas para {{role}} en este momento, así que estas son ofertas de tu sector: puntuadas con tu currículum, no encontradas a partir de él."
   }
 }

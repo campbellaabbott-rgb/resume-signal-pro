@@ -9,6 +9,12 @@
  * why. A held description the scorer recognised nothing in is
  * no_recognised_terms; a row with no description is no_description; a scored
  * row, a zero included, has no entry.
+ *
+ * AND A RÉSUMÉ WE CANNOT READ IS NOT A POOR MATCH (S14X-052, the half that
+ * stayed open). A German nurse's CV holds none of the English terms the
+ * scorer reads, so every posting she opened scored 0% and the board called
+ * her own job a Stretch. When the résumé scan recognises no term, every held
+ * description is a null with no_resume_terms: no measurement, not a low one.
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
@@ -21,10 +27,11 @@ const ROWS = [
   { id: "none", description: null, min_years: null },
   { id: "short", description: "Nurse.", min_years: null },
 ];
+let rows: Array<{ id: string; description: string | null; min_years: number | null }> = ROWS;
 const fakeClient = {
   rpc: async () => ({ data: true, error: null }),
   from: () => {
-    const q = { select: () => q, in: async () => ({ data: ROWS, error: null }) };
+    const q = { select: () => q, in: async () => ({ data: rows, error: null }) };
     return q;
   },
 };
@@ -59,5 +66,43 @@ describe("fit-batch names why each null is a null", () => {
     // The keys every older reader takes are unchanged.
     expect(body).toMatchObject({ scored: 2, of: 4 });
     expect(Object.keys(body.fits).sort()).toEqual(["de", "en", "none", "short"]);
+  });
+});
+
+describe("a résumé the scorer recognises nothing in", () => {
+  // A German ICU posting that names two tools in English, and a German nurse's CV.
+  const ICU = { id: "icu", description: "Pflegefachkraft (m/w/d) für unsere Intensivstation. Sie betreuen Patientinnen und Patienten im Schichtdienst, dokumentieren in SAP und planen Dienste in Excel. Wir bieten Fortbildungen und ein engagiertes Team. ".repeat(2), min_years: null };
+  const CV = "Examinierte Gesundheits- und Krankenpflegerin, acht Jahre auf der Intensivstation, Überwachung beatmeter Patientinnen und Patienten, Wundversorgung, Angehörigengespräche, Praxisanleitung. ".repeat(3);
+  const batch = async (resumeText: string, ids: string[]) => {
+    const res = await jobFit(new Request("https://h.supabase.co/functions/v1/job-fit", {
+      method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.9" },
+      body: JSON.stringify({ action: "fit-batch", resumeText, ids }),
+    }));
+    expect(res.status).toBe(200);
+    return await res.json() as { fits: Record<string, number | null>; unscored?: Record<string, string>; scored: number; of: number };
+  };
+
+  it("scores her own job as no measurement, never 0%: a null with no_resume_terms", async () => {
+    rows = [ICU, ...ROWS];
+    try {
+      const body = await batch(CV, ["icu", "en", "none"]);
+      expect(body.fits.icu, "the German nurse scored 0% (a Stretch) on her own job").toBeNull();
+      expect(body.fits.en).toBeNull();
+      // The fake answers every row it holds; a posting with no description stays no_description.
+      expect(body.unscored).toEqual({ icu: "no_resume_terms", en: "no_resume_terms", de: "no_resume_terms", none: "no_description", short: "no_description" });
+    } finally {
+      rows = ROWS;
+    }
+  });
+
+  it("an English CV against the same posting still scores it", async () => {
+    rows = [ICU];
+    try {
+      const body = await batch("ICU nurse. Charting in SAP, rota planning in Excel, patient assessment. ".repeat(4), ["icu"]);
+      expect(typeof body.fits.icu).toBe("number");
+      expect(body.unscored ?? {}).toEqual({});
+    } finally {
+      rows = ROWS;
+    }
   });
 });

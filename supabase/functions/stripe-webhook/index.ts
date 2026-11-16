@@ -260,8 +260,12 @@ async function sessionDoor(supabase: SupabaseClient<any, any, any>, door: string
  * subscription, whose return is /account) was a sale with no conversion. One
  * 'conversion' per paid live session, under the visitor checkout_starts holds
  * for it (a stand-in from the session when it holds none) and the variant the
- * page uses ('pro', else the product id): the writer's 90-day repeat rule
- * keeps the page's own event and a redelivery from counting twice.
+ * page uses ('pro', else the product id). The row names its Checkout session
+ * (stripeSessionId), as the Success page's own event does (sessionId): the
+ * writer counts a conversion naming a session as a repeat only of a row naming
+ * that session (20261112140517), so the page's event and a redelivery are the
+ * same purchase whichever arrives first, and a returning buyer's next purchase
+ * is a row of its own. Before that writer, its 90-day visitor rule holds both.
  */
 // deno-lint-ignore no-explicit-any
 async function recordPaidConversion(supabase: SupabaseClient<any, any, any>, session: Stripe.Checkout.Session): Promise<void> {
@@ -273,7 +277,7 @@ async function recordPaidConversion(supabase: SupabaseClient<any, any, any>, ses
     const visitor = typeof start?.visitor_id === "string" && start.visitor_id ? start.visitor_id : `session:${session.id.slice(-48)}`;
     const { error } = await supabase.rpc("track_ab_event_optimized", {
       p_test_name: "product_conversion", p_variant: variant, p_event_type: "conversion", p_visitor_id: visitor,
-      p_metadata: { source: "stripe-webhook", productType }, p_client_ip: "stripe-webhook", p_max_requests: 100000, p_window_minutes: 60,
+      p_metadata: { source: "stripe-webhook", productType, stripeSessionId: session.id }, p_client_ip: "stripe-webhook", p_max_requests: 100000, p_window_minutes: 60,
     });
     if (error) logStep("Paid conversion not recorded", { error: error.message });
   } catch (e) {

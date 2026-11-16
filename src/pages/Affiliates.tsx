@@ -382,6 +382,7 @@ export default function Affiliates() {
               <Input
                 type="password"
                 placeholder={t('affiliateProgram.auth.newPassword')}
+                aria-label={t('affiliateProgram.auth.newPassword')}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 minLength={8}
@@ -390,7 +391,7 @@ export default function Affiliates() {
                 required
               />
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Please wait...' : t('affiliateProgram.auth.savePassword')}
+                {isSubmitting ? t('affiliateProgram.auth.pleaseWait') : t('affiliateProgram.auth.savePassword')}
               </Button>
             </form>
             <div className="mt-4 text-center">
@@ -448,7 +449,8 @@ export default function Affiliates() {
                 </div>
                 <Input
                   type="email"
-                  placeholder="Email"
+                  placeholder={t('affiliateProgram.auth.email')}
+                  aria-label={t('affiliateProgram.auth.email')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
@@ -456,7 +458,7 @@ export default function Affiliates() {
                 />
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
                   <Mail className="h-4 w-4 mr-2" />
-                  {isSubmitting ? 'Please wait...' : t('affiliateProgram.auth.sendLink')}
+                  {isSubmitting ? t('affiliateProgram.auth.pleaseWait') : t('affiliateProgram.auth.sendLink')}
                 </Button>
                 <div className="text-center">
                   <button
@@ -474,7 +476,8 @@ export default function Affiliates() {
               <div>
                 <Input
                   type="email"
-                  placeholder="Email"
+                  placeholder={t('affiliateProgram.auth.email')}
+                  aria-label={t('affiliateProgram.auth.email')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -483,7 +486,8 @@ export default function Affiliates() {
               <div>
                 <Input
                   type="password"
-                  placeholder="Password (min 8 characters)"
+                  placeholder={t('affiliateProgram.auth.password')}
+                  aria-label={t('affiliateProgram.auth.password')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   minLength={8}
@@ -491,7 +495,7 @@ export default function Affiliates() {
                 />
               </div>
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Please wait...' : isLoginMode ? 'Sign In' : 'Create Account'}
+                {isSubmitting ? t('affiliateProgram.auth.pleaseWait') : isLoginMode ? 'Sign In' : 'Create Account'}
               </Button>
             </form>
             <div className="mt-4 text-center space-y-2">
@@ -1184,6 +1188,7 @@ export default function Affiliates() {
               <Input
                 type="email"
                 placeholder={t('affiliateProgram.account.newEmail')}
+                aria-label={t('affiliateProgram.account.newEmail')}
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
                 autoComplete="email"
@@ -1198,7 +1203,7 @@ export default function Affiliates() {
               <p className="font-medium">{t('affiliateProgram.account.eraseTitle')}</p>
               <p className="text-sm text-muted-foreground">{t('affiliateProgram.account.eraseWarning')}</p>
               <div className="flex flex-col sm:flex-row gap-2">
-                <Input placeholder="ERASE" value={eraseConfirm} onChange={(e) => setEraseConfirm(e.target.value)} autoComplete="off" />
+                <Input placeholder="ERASE" aria-label={t('affiliateProgram.account.eraseConfirmLabel')} value={eraseConfirm} onChange={(e) => setEraseConfirm(e.target.value)} autoComplete="off" />
                 <Button variant="destructive" onClick={handleErase} disabled={accountBusy || eraseConfirm !== 'ERASE'}>
                   <Trash2 className="h-4 w-4 mr-2" />
                   {t('affiliateProgram.account.eraseButton')}

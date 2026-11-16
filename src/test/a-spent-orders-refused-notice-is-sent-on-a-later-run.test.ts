@@ -16,6 +16,13 @@
  * owe a notice, sends it through the same door, and clears the marker once it
  * is sent; a notice refused again stays owed. Nothing is made again.
  *
+ * AND IT IS NOT OWED FOREVER. A buyer's notice the mail service refuses
+ * outright (send-product-email answers 4xx: an address it will never take)
+ * is given up on that run, and one refused on six runs is given up then; the
+ * owner is told once, by a mail of its own, that the buyer was not asked.
+ * The read takes the orders whose owed notice was tried longest ago first
+ * (notice_tried_at), so five stuck orders cannot keep a sixth's alarm unread.
+ *
  * The money path runs (e2e/money-path/harness.ts): the shipped sweep, the
  * shipped send-product-email, Postgres with the live update_delivery_retry
  * and mail_door_take and this round's migration, and a Resend that refuses.
@@ -49,13 +56,15 @@ const madeButUnmailed = async (id: string) => {
 };
 
 /** A cover letter with no résumé linked and nothing saved: no retry can make it. */
-const unmakeable = async (id: string) => {
+const unmakeable = async (id: string, email = BUYER) => {
   await p.db.query(
     `INSERT INTO public.product_deliveries (stripe_session_id, customer_email, product_type, product_name, status, next_retry_at, metadata)
      VALUES ($1, $2, 'cover_letter', 'Cover Letter', 'generation_failed', now() - interval '1 minute', '{}'::jsonb)`,
-    [id, BUYER],
+    [id, email],
   );
 };
+const unreachable = () => mailsTo(p, OWNER, /could not be told/);
+const buyerTries = () => p.routed.filter((f) => f === "send-product-email").length;
 
 describe("the owner's alarm", () => {
   it("refused when the order is spent: owed on the order, sent by the next run, once, and cleared", async () => {
@@ -143,6 +152,72 @@ describe("the buyer's notice for an order no retry can make", () => {
     await p.sweep();
     expect(mailsTo(p, BUYER)).toHaveLength(1);
     expect(alarms()).toHaveLength(1);
+    expect(await owed(id)).toBeNull();
+  });
+});
+
+describe("a buyer's notice that can never be sent", () => {
+  it("an address the mail service refuses outright is given up on the spending run, and the owner is told the buyer was not asked", async () => {
+    const id = "cs_live_needsinputbadaddr";
+    await unmakeable(id, "buyer@nowhere");
+    await p.sweep();
+    const tried = buyerTries();
+    expect(tried, "the buyer's notice was never tried").toBeGreaterThan(0);
+    expect(await owed(id), "a notice the mail service will never take is still owed").toBeNull();
+    const told = [...alarms(), ...unreachable()];
+    expect(told, "the owner was not told").toHaveLength(1);
+    expect(told[0].html).toMatch(/was not told what is missing/);
+    expect(told[0].html).toContain("buyer@nowhere");
+    expect(String((await p.order(id))?.notice_given_up ?? "")).toMatch(/refused/);
+
+    await p.sweep();
+    await p.sweep();
+    expect(buyerTries(), "a later run tried the refused address again").toBe(tried);
+    expect([...alarms(), ...unreachable()]).toHaveLength(1);
+  });
+
+  it("refused on six runs, it is given up then, and the owner is told once that the buyer could not be mailed", async () => {
+    const id = "cs_live_needsinputsixruns";
+    await unmakeable(id);
+    p.refuse.when = (m) => m.to.includes(BUYER);
+    await p.sweep();
+    expect(alarms(), "the spent-order alarm").toHaveLength(1);
+    expect(await owed(id)).toBe("buyer");
+    for (let run = 2; run <= 5; run++) {
+      await p.sweep();
+      expect(await owed(id), `run ${run}`).toBe("buyer");
+    }
+    await p.sweep();
+    expect(await owed(id), "a buyer notice refused six times is still owed").toBeNull();
+    expect(unreachable(), "the owner never heard the buyer could not be mailed").toHaveLength(1);
+    expect(unreachable()[0].html).toMatch(/was not told what is missing/);
+    expect(unreachable()[0].html).toContain(BUYER);
+    expect(Number((await p.order(id))?.notice_tries)).toBe(6);
+
+    const tried = buyerTries();
+    await p.sweep();
+    expect(buyerTries(), "a given-up notice was tried again").toBe(tried);
+    expect(unreachable()).toHaveLength(1);
+    expect(alarms()).toHaveLength(1);
+  });
+
+  it("five stuck orders do not keep a sixth's alarm unread: the notice tried longest ago is read first", async () => {
+    for (let i = 1; i <= 5; i++) {
+      await p.db.query(
+        `INSERT INTO public.product_deliveries (stripe_session_id, customer_email, product_type, product_name, status, generation_success, generation_error, last_retry_error, max_retries, next_retry_at, metadata, notice_owed, notice_tries, notice_tried_at)
+         VALUES ($1, $2, 'cover_letter', 'Cover Letter', 'generation_failed', false, 'resume_missing: none', 'resume_missing: none', 0, NULL, '{}'::jsonb, 'buyer', 1, now() - interval '1 hour')`,
+        [`cs_live_stuckorder00000${i}`, `stuck${i}@example.com`],
+      );
+    }
+    const id = "cs_live_waitingalarm00001";
+    await p.db.query(
+      `INSERT INTO public.product_deliveries (stripe_session_id, customer_email, product_type, product_name, status, generation_success, generation_error, last_retry_error, retry_count, max_retries, next_retry_at, metadata, notice_owed, notice_tries, notice_tried_at)
+       VALUES ($1, $2, 'cover_letter', 'Cover Letter', 'generation_failed', false, 'Generation failed', 'Generation failed', 8, 8, NULL, '{}'::jsonb, 'owner', 0, now() - interval '2 hours')`,
+      [id, BUYER],
+    );
+    p.refuse.when = (m) => m.to.some((t) => /^stuck/.test(t));
+    await p.sweep();
+    expect(alarms().filter((m) => m.html.includes(id)), "the sixth order's alarm waited behind five stuck orders").toHaveLength(1);
     expect(await owed(id)).toBeNull();
   });
 });

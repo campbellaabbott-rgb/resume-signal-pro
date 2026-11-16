@@ -21,6 +21,9 @@
     "unscoredTerms": "Non évaluée — nous ne savons pas encore lire les termes de cette offre",
     "unscoredTermsBody": "Nous avons sa description, mais l'évaluateur n'y a reconnu aucune compétence ni aucun outil : il ne lit que des mots-clés en anglais. Il n'y a pas de pourcentage ici ; c'est l'absence de mesure, pas une mesure faible.",
     "unscoredTermsTip": "Non évaluée : nous avons la description de cette offre, mais l'évaluateur n'y a reconnu aucune compétence ni aucun outil (il ne lit que des mots-clés en anglais). Ce n'est pas un score faible — c'est une absence de score.",
+    "unscoredResumeTerms": "Non évaluée — nous n'avons reconnu aucune compétence ni aucun outil dans votre CV",
+    "unscoredResumeTermsBody": "L'évaluateur ne lit que des mots-clés en anglais et n'en a trouvé aucun dans votre CV : il n'y avait donc rien à comparer avec cette offre. Il n'y a pas de pourcentage ici ; c'est l'absence de mesure, pas une mesure faible.",
+    "unscoredResumeTermsTip": "Non évaluée : l'évaluateur n'a reconnu aucune compétence ni aucun outil dans votre CV (il ne lit que des mots-clés en anglais), il n'y avait donc rien à comparer. Ce n'est pas un score faible — c'est une absence de score.",
     "matchesNoneForRole": "Nous n'avons trouvé aucune offre ouverte pour {{role}} pour le moment : voici donc des offres de votre domaine — évaluées par rapport à votre CV, pas trouvées grâce à lui."
   }
 }

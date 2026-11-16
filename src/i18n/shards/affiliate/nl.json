@@ -53,6 +53,9 @@
     },
     "auth": {
       "forgot": "Wachtwoord vergeten?",
+      "email": "E-mailadres",
+      "password": "Wachtwoord (min. 8 tekens)",
+      "pleaseWait": "Even geduld…",
       "resetTitle": "Je wachtwoord opnieuw instellen",
       "resetIntro": "Vul het adres in waarmee je je hebt aangemeld. Als een affiliateaccount het gebruikt, mailen we een link die één keer werkt binnen 30 minuten.",
       "sendLink": "Mail me een link",
@@ -88,6 +91,7 @@
       "changeSent": "We hebben een link naar {{email}} gestuurd. De wijziging gaat in wanneer je hem opent.",
       "eraseTitle": "Account sluiten",
       "eraseWarning": "Dit verwijdert je adres, wachtwoord, sessies en klikgeschiedenis, en kan niet ongedaan worden gemaakt. Typ ERASE om te bevestigen.",
+      "eraseConfirmLabel": "Typ ERASE om te bevestigen",
       "eraseButton": "Account definitief sluiten",
       "erased": "Je affiliateaccount is gesloten."
     }

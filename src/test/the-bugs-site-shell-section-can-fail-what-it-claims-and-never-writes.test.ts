@@ -133,9 +133,14 @@ const ENTRY_NEW = [
 const ENTRY_OLD = `const a=()=>import("./NotFound-Nf1.js");const r=/Unable to preload CSS/;sessionStorage.setItem("rb_chunk_reload_at",n);`;
 const NF_NEW = `t("notFound.returnHome");t("siteShell.notFound.jobs");t("siteShell.notFound.pricing");`;
 const NF_OLD = `s.useEffect(()=>{console.error("404 Error: User attempted to access non-existent route:",o.pathname)},[o.pathname]);`;
-const site = (published: boolean, opts: { entry?: string; fallback?: string } = {}): Route[] => [
+// Since the bug round's review the entry loads RouteDefaultHead lazily, and
+// the route titles ride in that chunk.
+const ENTRY_LAZY = ENTRY_NEW.replace("t(`siteShell.titles.${k}`);", 'const RouteDefaultHead=lazy(()=>import("./RouteDefaultHead-Rd1.js"));');
+const RDH_NEW = 'import"./baked-head-Bh1.js";const h=t(`siteShell.titles.${k}`);';
+const site = (published: boolean, opts: { entry?: string; fallback?: string; rdh?: string } = {}): Route[] => [
   { match: GET("https://site.test/"), body: '<script type="module" src="/assets/index-AbC123.js"></script>' },
   { match: GET("https://site.test/assets/index-AbC123.js"), body: opts.entry ?? (published ? ENTRY_NEW : ENTRY_OLD) },
+  { match: GET("https://site.test/assets/RouteDefaultHead-Rd1.js"), body: opts.rdh ?? RDH_NEW },
   { match: GET("https://site.test/assets/NotFound-Nf1.js"), body: published ? NF_NEW : NF_OLD },
   { match: GET("https://site.test/rb-verify-no-baked-page-here"), body: opts.fallback ?? FALLBACK_TODAY },
 ];
@@ -152,7 +157,7 @@ describe("the bug round site-shell section", () => {
     for (const fn of FNS) expect(lines.some((l) => l.startsWith(`INFO  B ${fn} preflight x-fn-build = ${OLD(fn)}: bug round A is not pasted yet`)), `${fn}\n${out}`).toBe(true);
     expect(lines.some((l) => l.startsWith("INFO  M1 ab_purchase_known does not exist yet")), out).toBe(true);
     expect(lines.some((l) => l.startsWith("INFO  H1 the served head's first script does not stash the claim token yet (notoken nopath)")), out).toBe(true);
-    expect(lines.some((l) => l.startsWith("INFO  F1 the published site lacks the landing held for the analytics yes (S14X-040); the chunk-load test the boundaries read (NB-41); the new-version screen's English string (NB-41); the crash screen's homepage link (NB-40); the route titles (NB-43); the 404 page's board and pricing links (NB-44); a 404 page without its console error (NB-44)")), out).toBe(true);
+    expect(lines.some((l) => l.startsWith("INFO  F1 the published site lacks the landing held for the analytics yes (S14X-040); the chunk-load test the boundaries read (NB-41); the new-version screen's English string (NB-41); the crash screen's homepage link (NB-40); the route titles (NB-43, in the entry or the RouteDefaultHead chunk it names); the 404 page's board and pricing links (NB-44); a 404 page without its console error (NB-44)")), out).toBe(true);
     expect(lines.some((l) => l.startsWith("INFO  SEO-F10 owner pending")), out).toBe(true);
     // The claim page is today's fact, judged before the paste too.
     expect(passes(lines), out).toEqual([expect.stringMatching(/^PASS {2}L1 /)]);
@@ -226,11 +231,22 @@ describe("the bug round site-shell section", () => {
   it("after the paste an unpublished shell fails, naming what is missing, and one missing string is named alone", () => {
     const { lines, out } = run([...preflights(NEW), ...helper("refused"), ...claimPage(HEAD_NEW), ...site(false)]);
     expect(fails(lines), out).toEqual([
-      "FAIL  F1 the published site lacks the landing held for the analytics yes (S14X-040); the chunk-load test the boundaries read (NB-41); the new-version screen's English string (NB-41); the crash screen's homepage link (NB-40); the route titles (NB-43); the 404 page's board and pricing links (NB-44); a 404 page without its console error (NB-44) while the lane's functions serve 2026-11-12.1: the round's frontend publish has not happened",
+      "FAIL  F1 the published site lacks the landing held for the analytics yes (S14X-040); the chunk-load test the boundaries read (NB-41); the new-version screen's English string (NB-41); the crash screen's homepage link (NB-40); the route titles (NB-43, in the entry or the RouteDefaultHead chunk it names); the 404 page's board and pricing links (NB-44); a 404 page without its console error (NB-44) while the lane's functions serve 2026-11-12.1: the round's frontend publish has not happened",
     ]);
     const one = run([...preflights(NEW), ...helper("refused"), ...claimPage(HEAD_NEW), ...site(true, { entry: ENTRY_NEW.replace("siteShell.crashHome", "x") })]);
     expect(fails(one.lines), one.out).toEqual([
       "FAIL  F1 the published site lacks the crash screen's homepage link (NB-40) while the lane's functions serve 2026-11-12.1: the round's frontend publish has not happened",
+    ]);
+  });
+
+  it("the route titles may ride in the RouteDefaultHead chunk the entry loads lazily, and are missed there too", () => {
+    expect(ENTRY_LAZY).not.toContain("siteShell.titles.");
+    const lazy = run([...preflights(NEW), ...helper("refused"), ...claimPage(HEAD_NEW), ...site(true, { entry: ENTRY_LAZY })]);
+    expect(fails(lazy.lines), lazy.out).toEqual([]);
+    expect(lazy.lines.some((l) => l.startsWith("PASS  F1 ") && l.includes("RouteDefaultHead-Rd1.js")), lazy.out).toBe(true);
+    const gone = run([...preflights(NEW), ...helper("refused"), ...claimPage(HEAD_NEW), ...site(true, { entry: ENTRY_LAZY, rdh: 'import"./baked-head-Bh1.js";' })]);
+    expect(fails(gone.lines), gone.out).toEqual([
+      "FAIL  F1 the published site lacks the route titles (NB-43, in the entry or the RouteDefaultHead chunk RouteDefaultHead-Rd1.js) while the lane's functions serve 2026-11-12.1: the round's frontend publish has not happened",
     ]);
   });
 

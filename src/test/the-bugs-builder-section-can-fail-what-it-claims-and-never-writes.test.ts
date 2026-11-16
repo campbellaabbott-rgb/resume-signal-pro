@@ -99,7 +99,7 @@ const OLD_PREVIEW = ["yourName", "summary", "experience", "role", "education", "
 const OLD_EXP = 'import{u as U}from"./pdf-text-support-PT.js";import{x}from"./index-A1.js";const L={de:{experience:"Berufserfahrung"}};p.splitTextToSize(t,w);new TextRun({text:t,font:F});';
 const OLD_PTS = 'const W=new Set(["\\u20AC","\\u201A"]);export{W};';
 // ... and as this branch builds them (the tells read from a vite build of it).
-const NEW_PAGE = [
+const NEW_PAGE_CODE = [
   IMPORTS,
   'e.functions.invoke("parse-resume-structured",{body:{resumeText:x}});const X=()=>O(()=>import("./resume-builder-export-EX.js"),[]);',
   'if(n===429)return r==="rate_limited_function"||r==="rate_limited_session"?"dailyLimit":"busy";',
@@ -119,8 +119,13 @@ const SHARD_KEYS = ["importFailed", "importTruncated", "importLatest", "otherTab
 const SHARD = (lng: string, drop: string[] = []) => `const a={${SHARD_KEYS.filter((k) => !drop.includes(k)).map((k) => `${k}:"${lng} ${k}"`).join(",")}};export{a as default};`;
 const OTHER_SHARDS = 'const r={"./shards/company/de.json":()=>O(()=>import("./de-Co1.js"),[]),"./shards/company/en.json":jN};';
 const OLD_ENTRY = `const m=["assets/ResumeBuilder-RB.js"];${OTHER_SHARDS}`;
-const NEW_ENTRY = (lngs: string[] = LNGS, en = true) =>
-  `const m=["assets/ResumeBuilder-RB.js"];${OTHER_SHARDS}const q={${en ? '"./shards/builder/en.json":kN,' : ""}${lngs.map((l) => `"./shards/builder/${l}.json":()=>O(()=>import("./${l}-Bd${l.replace("-", "")}.js"),[])`).join(",")}};`;
+// The English builder strings, as the namespace plugin registers them: a
+// build of this branch put them in the ResumeBuilder chunk itself.
+const EN_STRINGS = (drop: string[] = []) => `ne({builderPage:{${SHARD_KEYS.filter((k) => !drop.includes(k)).map((k) => `${k}:"en ${k}"`).join(",")}}});`;
+/** The entry: the eight lazy shards, and (`en`, a build from before the bug round's review) the English strings beside them. */
+const NEW_PAGE = NEW_PAGE_CODE + EN_STRINGS();
+const NEW_ENTRY = (lngs: string[] = LNGS, en = false) =>
+  `const m=["assets/ResumeBuilder-RB.js"];${OTHER_SHARDS}${en ? `const kN={${SHARD_KEYS.map((k) => `${k}:"en ${k}"`).join(",")}};` : ""}const q={${en ? '"./shards/builder/en.json":kN,' : ""}${lngs.map((l) => `"./shards/builder/${l}.json":()=>O(()=>import("./${l}-Bd${l.replace("-", "")}.js"),[])`).join(",")}};`;
 
 type Over = Partial<{
   fn: string | null;
@@ -244,11 +249,22 @@ describe("each regression prints FAIL", () => {
     expect(fails(lines).filter((l) => !claim("FAIL", "N2").test(l)), show(lines)).toEqual([]);
   });
 
-  it("S1: seven shards, a shard short of a string, no English shard, no shard at all once published", () => {
+  it("S1: the English strings may ride with the page or, as a build from before the review carried them, in the entry", () => {
+    const withPage = run(routes()).lines;
+    expect(has(withPage, "PASS", /^PASS {2}S1 the English builder strings ride with the page \(ResumeBuilder-RB\.js or a chunk it imports\) and the entry names 8 more languages/), show(withPage)).toBe(true);
+    const inEntry = run(routes({ entry: NEW_ENTRY(LNGS, true), page: NEW_PAGE_CODE })).lines;
+    expect(has(inEntry, "PASS", claim("PASS", "S1")), show(inEntry)).toBe(true);
+    expect(fails(inEntry), show(inEntry)).toEqual([]);
+  });
+
+  it("S1: seven shards, a shard short of a string, no English strings anywhere or one short, no shard at all once published", () => {
     expect(has(run(routes({ entry: NEW_ENTRY(LNGS.slice(1)) })).lines, "FAIL", /^FAIL {2}S1 .*names 7 non-English builder shards, not 8/)).toBe(true);
     const short = run(routes({ shard: { hi: SHARD("hi", ["storageBlocked"]) } })).lines;
     expect(has(short, "FAIL", /^FAIL {2}S1 .*missing: hi:storageBlocked$/), show(short)).toBe(true);
-    expect(has(run(routes({ entry: NEW_ENTRY(LNGS, false) })).lines, "FAIL", /^FAIL {2}S1 .*not the English one/)).toBe(true);
+    const noEn = run(routes({ page: NEW_PAGE_CODE })).lines;
+    expect(has(noEn, "FAIL", /^FAIL {2}S1 .*neither the ResumeBuilder chunk \(ResumeBuilder-RB\.js\), a chunk it imports nor the entry carries the English strings: en:importFailed en:importTruncated/), show(noEn)).toBe(true);
+    const enShort = run(routes({ page: NEW_PAGE_CODE + EN_STRINGS(["otherTab"]) })).lines;
+    expect(has(enShort, "FAIL", /^FAIL {2}S1 .*the English strings: en:otherTab$/), show(enShort)).toBe(true);
     expect(has(run(routes({ entry: OLD_ENTRY })).lines, "FAIL", /^FAIL {2}S1 .*published but the entry loads no builder shard/)).toBe(true);
   });
 

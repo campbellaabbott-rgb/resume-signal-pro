@@ -136,7 +136,8 @@ const NEW_BAKE: Bake = {
   "/ats/lever": page("", desc("Lever&#39;s section detection expects standard headers.") + crumb),
   "/ats/workday": page("", desc("Multi-column layouts frequently scramble Workday&#39;s parser.")),
   "/research/ats-score-benchmarks": page(crumb),
-  "/es/normas-cv/espana": page(crumb),
+  // The trail is shown and marked up in Spanish (SEO-F18, the review).
+  "/es/normas-cv/espana": page(`<nav class="text-xs"><a href="/">Inicio</a> / <a href="/cv-standards">Normas de CV</a> / <span>España</span></nav>`, '<script type="application/ld+json">{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Inicio"}]}</script>'),
   "/es/industrias/legal": page("litigios, juzgado", desc("Abogado, derecho, litigios")),
   "/es/industrias/finance": page("contador", desc("Contabilidad, finanzas")),
   "/jobs": page("<li><a>Customer Service Banker</a> — the employer, Hooksett, NH, US</li>"),
@@ -191,7 +192,7 @@ function routes(deployed: boolean, o: Over = {}): Route[] {
     { match: `^GET ${P}/rest/v1/rpc/get_explore_cache$`, body: JSON.stringify(EC) },
     { match: `^GET ${P}/rest/v1/rpc/get_stats_cache$`, body: JSON.stringify(o.sc ?? SC_NEW) },
     { match: `^GET ${P}/rest/v1/rpc/get_cron_health\\?p_hours=26$`, body: JSON.stringify(o.cron ?? CRON) },
-    { match: `^OPTIONS ${P}/functions/v1/free-keyword-scan$`, headers: o.fks === null ? {} : { "x-fn-build": o.fks ?? (deployed ? "free-keyword-scan.2026-11-15.1" : "free-keyword-scan.2026-11-09.2") } },
+    { match: `^OPTIONS ${P}/functions/v1/free-keyword-scan$`, headers: o.fks === null ? {} : { "x-fn-build": o.fks ?? (deployed ? "free-keyword-scan.2026-11-15.2" : "free-keyword-scan.2026-11-09.2") } },
   ];
 }
 
@@ -256,6 +257,8 @@ describe("each regression after the deploy is a FAIL", () => {
     ["B8", { cron: [{ ch_jobname: "job-board-stats-rollup", ch_schedule: "*/20 * * * *", ch_active: true }] }],
     ["B9", { bake: { "/companies": page(companiesRow("891")) } }],
     ["B10", { bake: { "/es/normas-cv/espana": page('{"@type":"FAQPage"}') } }],
+    // An English trail marked up on a page that shows none (the review of SEO-F18).
+    ["B10", { bake: { "/es/normas-cv/espana": page("<h1>Normas</h1>", '<script type="application/ld+json">{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home"}]}</script>') } }],
     ["B11", { bake: { "/ats/workday": OLD_BAKE["/ats/workday"] } }],
     ["B12", { bake: { "/jobs": OLD_BAKE["/jobs"] } }],
     ["B13", { bake: { "/jobs/posting/workday/hcmportal~wd5~Search/R26040621": page('{"addressCountry":"US"}', '<meta name="x-rb-employer-stated" content="{&quot;address&quot;:{&quot;addressLocality&quot;:&quot;Tortuguitas&quot;,&quot;addressCountry&quot;:&quot;Argentina&quot;}}" />') } }],
@@ -271,6 +274,20 @@ describe("each regression after the deploy is a FAIL", () => {
       expect(has(lines, "FAIL", new RegExp(`^FAIL  ${claim} `)), `${claim}\n${show(lines)}`).toBe(true);
     });
   }
+});
+
+describe("B14 waits for the round's grounded engine, not for the NB-1 hotfix above the floor date", () => {
+  it("free-keyword-scan.2026-11-15.1 (the hotfix, no grounding) is INFO, never a PASS for the llms.txt promise", () => {
+    const { lines } = run(routes(true, { fks: "free-keyword-scan.2026-11-15.1" }), OWNERS);
+    expect(has(lines, "PASS", /^PASS  B14 /), show(lines)).toBe(false);
+    expect(has(lines, "INFO", /^INFO  B14 S14X-269 llms\.txt promises every quoted line checked while free-keyword-scan is at free-keyword-scan\.2026-11-15\.1/), show(lines)).toBe(true);
+  });
+  it("the round's free-keyword-scan.2026-11-15.2, or a later build, passes", () => {
+    for (const fks of ["free-keyword-scan.2026-11-15.2", "free-keyword-scan.2026-11-20.1"]) {
+      const { lines } = run(routes(true, { fks }), OWNERS);
+      expect(has(lines, "PASS", /^PASS  B14 /), `${fks}\n${show(lines)}`).toBe(true);
+    }
+  });
 });
 
 describe("the owner's answer decides what an owner line judges", () => {
