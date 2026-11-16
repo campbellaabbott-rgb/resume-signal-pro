@@ -745,6 +745,27 @@ export function stagedFile(stageName, repo) {
 }
 
 /**
+ * The one repo file a stub that names none holds, read by its text (the
+ * closeout review of 2026-11-16). Lovable applied 20261109100000 and
+ * 20261109110000 on 2026-11-15 as drizzle 0226_stop_unused_recency_ladder.sql
+ * and 0227_slim_explore_cache.sql: stubs with no stamp, a title of Lovable's
+ * own and no staged name, byte for byte the repo files. Matched by name only,
+ * both stayed pending, so every generated message asked Lovable to apply them
+ * again ahead of every later file, and section 49 printed "migration not
+ * applied" for both after every deploy. A stub whose SQL, comments and
+ * whitespace aside (sqlText), equals exactly one file's names that file; an
+ * empty stub, or one whose text two files share, names none, and a stub that
+ * ran another text is left to a person (the file stays pending and section 49
+ * says so). `texts` maps each candidate file to its sqlText. Pure.
+ */
+export function sameTextFile(stubSql, texts) {
+  const want = sqlText(stubSql);
+  if (!want) return null;
+  const hits = [...(texts ?? new Map())].filter(([, t]) => t === want).map(([f]) => f);
+  return hits.length === 1 ? hits[0] : null;
+}
+
+/**
  * The repo's migrations against the staged-runner record: pending, held,
  * never applied by decision, applied, and the stubs that ran another text
  * than their file (retypedStubs). Reads the working tree only (or the two
@@ -758,6 +779,10 @@ export function migrations(policy, dirs = {}) {
   const applied = new Set();
   const byTitle = new Map(repo.map((f) => [f.replace(/^\d{14}_/, ""), f]));
   const baseline = policy.drizzleBaseline;
+  // Only a file the record decides (at or after the baseline) is read by its text, and only once a stub needs it.
+  let texts = null;
+  const byText = (src) => sameTextFile(src, texts ??= new Map(repo.filter((f) => f >= baseline)
+    .map((f) => [f, sqlText(readFileSync(join(migDir, f), "utf8"))])));
   const pairs = [];
   for (const d of readdirSync(drizzleDir).filter((f) => f.endsWith(".sql")).sort()) {
     const src = readFileSync(join(drizzleDir, d), "utf8");
@@ -765,7 +790,9 @@ export function migrations(policy, dirs = {}) {
     if (staged) { applied.add(stagedFile(staged[1], repo) ?? staged[1]); continue; }
     const stamped = /^\d{4}_(\d{14}_.+\.sql)$/.exec(d);
     const title = d.replace(/^\d{4}_/, "");
-    const file = stamped && repo.includes(stamped[1]) ? stamped[1] : byTitle.get(title);
+    const named = stamped && repo.includes(stamped[1]) ? stamped[1] : byTitle.get(title);
+    // A stub that names no file applied the one whose text it holds, if exactly one does.
+    const file = named ?? byText(src);
     if (!file) continue;
     applied.add(file);
     // Before the baseline every file counts as applied whatever its stub says.
