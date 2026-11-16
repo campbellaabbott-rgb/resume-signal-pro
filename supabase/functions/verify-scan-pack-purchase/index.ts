@@ -4,7 +4,6 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { buyerEmailOf } from "../_shared/buyer-email.ts";
-import { clientAddressOr } from "../_shared/client-address.ts";
 import { maskEmail } from "../_shared/mailbox-proof.ts";
 import { networkBucket } from "../_shared/network-bucket.ts";
 
@@ -282,7 +281,9 @@ serve(async (req) => {
       .from('used_stripe_sessions')
       .insert({
         session_id: sessionId,
-        ip_address: clientAddressOr(req.headers),
+        // No address on a claim that names its product (S14X-042): only an
+        // old unnamed claim is ever judged by who wrote it.
+        ip_address: null,
         product_type: productType,
       });
 

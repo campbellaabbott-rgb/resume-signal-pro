@@ -244,6 +244,51 @@ const ERROR_MESSAGES = {
   IN_PROGRESS: 'Your analysis is already being made. This page shows it as soon as it is ready.',
 };
 
+/**
+ * THE REFUSALS THAT END A PURCHASE, BY CODE (RC-S13-048). Each answered a
+ * bare English sentence, and the success page read every one of them as "the
+ * résumé is missing": a refunded buyer was asked to paste their résumé, then
+ * shown the English sentence and "contact support". The page reads the code
+ * and says why in the buyer's language, with nothing to retry
+ * (src/lib/paid-analysis-run.ts).
+ */
+const REFUSED = {
+  refunded: 'purchase_refunded',
+  notThisProduct: 'payment_required',
+  notFound: 'purchase_not_found',
+  used: 'session_used',
+  grant: 'grant_refused',
+} as const;
+
+/**
+ * A FAILURE A LATER TRY CAN CURE IS A RETRYABLE 503 (S14X-110). The model
+ * gateway's 429 was answered 429 "Too many requests" and its 402 a bare 503,
+ * and the page told a buyer whose purchase was untouched to contact support.
+ * Every 503 here now says retryable: true; nothing is redeemed by any of them.
+ */
+const unavailable = (code: string, retryAfterSeconds?: number) =>
+  new Response(JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE, code, retryable: true }), {
+    status: 503,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json', ...(retryAfterSeconds ? { 'Retry-After': String(retryAfterSeconds) } : {}) },
+  });
+
+/**
+ * A Stripe failure a later try can cure (its network, its API, its rate
+ * limit, the standing of our key) is not the buyer's purchase being missing:
+ * it was answered 401 "Payment verification required", which the page now
+ * reads as a purchase it cannot find. Anything else (no such session, a
+ * test-mode id with no test key) is still that 401.
+ */
+const STRIPE_OUTAGES = new Set(['StripeConnectionError', 'StripeAPIError', 'StripeRateLimitError', 'StripeAuthenticationError', 'StripePermissionError']);
+const stripeOutage = (failure: unknown): boolean => {
+  const type = (failure as { type?: unknown } | null)?.type;
+  return typeof type === 'string' && STRIPE_OUTAGES.has(type);
+};
+
+/** How long deliver() waits for the analysis mail, and when a refused one is tried again (S14X-220). */
+const ANALYSIS_MAIL_WAIT_MS = 8_000;
+const ANALYSIS_MAIL_RETRY_MINUTES = 15;
+
 // Helper to get client IP from request (prioritize Cloudflare's trusted header)
 const getClientIp = (req: Request): string => {
   return req.headers.get('cf-connecting-ip') ||
@@ -277,7 +322,7 @@ async function analysisAlreadyDelivered(supabase: any, shareId: string | null): 
     }
   }
   return new Response(
-    JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED }),
+    JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED, code: REFUSED.used }),
     { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
 }
@@ -431,8 +476,11 @@ async function askPart(apiKey: string, part: AnalysisPart, systemPrompt: string,
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[ANALYZE-RESUME] (${part.label}) AI gateway error:`, response.status, errorText);
-      if (response.status === 429) throw new PartAnswer(answer(429, ERROR_MESSAGES.RATE_LIMITED));
-      if (response.status === 402) throw new PartAnswer(answer(503, ERROR_MESSAGES.SERVICE_UNAVAILABLE));
+      // The gateway busy (429) or out of credit (402) is a retryable 503
+      // (S14X-110), never the caller's own 429: the buyer did nothing wrong
+      // and the purchase is untouched.
+      if (response.status === 429) throw new PartAnswer(unavailable('model_busy', 30));
+      if (response.status === 402) throw new PartAnswer(unavailable('ai_unavailable'));
       throw new PartAnswer(answer(500, ERROR_MESSAGES.INTERNAL));
     }
 
@@ -547,7 +595,7 @@ serve(async (req) => {
     if (!sessionId) {
       console.log("[ANALYZE-RESUME] Missing sessionId - payment verification required");
       return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
+        JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED, code: REFUSED.notFound }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -560,7 +608,7 @@ serve(async (req) => {
     if (!ref) {
       console.log("[ANALYZE-RESUME] The session id is not a purchase reference; refused before any Stripe read");
       return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
+        JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED, code: REFUSED.notFound }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -571,7 +619,7 @@ serve(async (req) => {
     if (!supabase) {
       console.error("[ANALYZE-RESUME] Supabase client not available");
       return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE, retryable: true }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -601,13 +649,13 @@ serve(async (req) => {
     if (deliveredLookup.error || claimLookup.error) {
       console.error("[ANALYZE-RESUME] Redemption lookup failed:", deliveredLookup.error ?? claimLookup.error);
       return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE, retryable: true }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     if (refunded) {
       return new Response(
-        JSON.stringify({ error: REFUNDED_PURCHASE_MESSAGE }),
+        JSON.stringify({ error: REFUNDED_PURCHASE_MESSAGE, code: REFUSED.refunded }),
         { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -636,7 +684,7 @@ serve(async (req) => {
     if (!stripeKey) {
       console.error("[ANALYZE-RESUME] STRIPE_SECRET_KEY is not set");
       return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE, retryable: true }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -661,14 +709,14 @@ serve(async (req) => {
       if (grantError) {
         console.error("[ANALYZE-RESUME] Grant lookup failed:", grantError);
         return new Response(
-          JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+          JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE, retryable: true }),
           { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       if (!grant || grant.product_type !== FULL_ANALYSIS_PRODUCT_TYPE) {
         console.warn(`[ANALYZE-RESUME] Grant ${grantId} is not a full-analysis grant`);
         return new Response(
-          JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
+          JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED, code: REFUSED.notThisProduct }),
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -706,7 +754,7 @@ serve(async (req) => {
       if (readCountError) {
         console.error("[ANALYZE-RESUME] The Stripe read could not be counted; not reading blind:", readCountError);
         return new Response(
-          JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+          JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE, retryable: true }),
           { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -730,9 +778,13 @@ serve(async (req) => {
         customerEmail = session.customer_details?.email || session.customer_email || null;
         console.log(`[ANALYZE-RESUME] Customer email: ${customerEmail ? 'found' : 'not found'}`);
       } catch (stripeError) {
+        if (stripeOutage(stripeError)) {
+          console.error("[ANALYZE-RESUME] Stripe could not be read just now; the purchase is untouched:", stripeError);
+          return unavailable('stripe_unavailable', 30);
+        }
         console.error("[ANALYZE-RESUME] Invalid Stripe session:", stripeError);
         return new Response(
-          JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
+          JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED, code: REFUSED.notFound }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -753,7 +805,7 @@ serve(async (req) => {
     if (refusal) {
       console.warn(`[ANALYZE-RESUME] Session ${sessionId} refused: ${refusal}`);
       return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
+        JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED, code: REFUSED.notThisProduct }),
         { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -763,7 +815,7 @@ serve(async (req) => {
     if (prior.state === 'refused') {
       console.log(`[ANALYZE-RESUME] Session ${sessionId} not redeemable: ${prior.reason}`);
       return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED }),
+        JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED, code: REFUSED.used }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -842,7 +894,7 @@ serve(async (req) => {
     if (proGrant) {
       if (proGrant.consumed_at) {
         return new Response(
-          JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED }),
+          JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED, code: REFUSED.used }),
           { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -850,7 +902,7 @@ serve(async (req) => {
       if (grantRefusal) {
         console.warn(`[ANALYZE-RESUME] Grant ${proGrant.id} refused: ${grantRefusal.error}`);
         return new Response(
-          JSON.stringify({ error: grantRefusal.error }),
+          JSON.stringify({ error: grantRefusal.error, ...(grantRefusal.status === 503 ? { retryable: true } : { code: REFUSED.grant }) }),
           { status: grantRefusal.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -864,7 +916,7 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) {
       console.error("[ANALYZE-RESUME] LOVABLE_API_KEY is not configured");
       return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE, retryable: true }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -1121,7 +1173,7 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
       if (dbError || !shareId) {
         console.error("[ANALYZE-RESUME] The analysis could not be stored; not redeeming the session:", dbError ?? "no share id returned");
         return new Response(
-          JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+          JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE, retryable: true }),
           { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -1152,7 +1204,7 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
         }
         console.error("[ANALYZE-RESUME] Redemption write failed; nothing delivered, the session stays redeemable:", redeemError);
         return new Response(
-          JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+          JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE, retryable: true }),
           { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -1160,7 +1212,10 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
       try {
         const { error: claimError } = await supabase
           .from('used_stripe_sessions')
-          .insert({ session_id: sessionId, ip_address: clientIp, product_type: FULL_ANALYSIS_PRODUCT_TYPE });
+          // NO ADDRESS ON A CLAIM THAT NAMES ITS PRODUCT (S14X-042): the
+          // address is read only to tell an old UNNAMED claim's writer
+          // (priorRedemptionOf), so keeping the buyer's here served nothing.
+          .insert({ session_id: sessionId, ip_address: null, product_type: FULL_ANALYSIS_PRODUCT_TYPE });
         if (claimError?.code === '23505') {
           // Already claimed -- by the webhook or verify, on payment. If that
           // claim names no product (a webhook from before claims did), it is
@@ -1187,53 +1242,30 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
             .is('consumed_at', null);
           if (spendError) console.error("[ANALYZE-RESUME] Could not stamp the grant spent:", spendError);
         }
-
-        // Close the webhook's delivery row if it opened one; open a delivered
-        // one if it has not run (or never will). Either way the purchase reads
-        // as delivered rather than as nothing at all.
-        const deliveredAt = new Date().toISOString();
-        const { data: closed, error: closeError } = await supabase
-          .from('product_deliveries')
-          .update({ status: 'delivered', generation_success: true, content_generation_completed_at: deliveredAt })
-          .eq('stripe_session_id', sessionId)
-          .eq('product_type', FULL_ANALYSIS_PRODUCT_TYPE)
-          .select('id');
-        if (closeError) {
-          console.error("[ANALYZE-RESUME] Could not close the delivery record:", closeError);
-        } else if (!closed || closed.length === 0) {
-          const { error: openError } = await supabase.from('product_deliveries').insert({
-            stripe_session_id: sessionId,
-            product_type: FULL_ANALYSIS_PRODUCT_TYPE,
-            product_name: FULL_ANALYSIS_PRODUCT_NAME,
-            customer_email: customerEmail,
-            status: 'delivered',
-            amount_cents: paidTotal,
-            payment_completed_at: deliveredAt,
-            generation_success: true,
-            content_generation_completed_at: deliveredAt,
-            // A test-mode rehearsal (S13-043) is tagged as the webhook tags it,
-            // and the buyer's language is kept as the webhook keeps it (FA-1).
-            metadata: {
-              share_id: shareId,
-              ...((session as { livemode?: boolean }).livemode === false ? { livemode: false } : {}),
-              ...(mailLanguage ? { language: mailLanguage } : {}),
-            },
-          });
-          if (openError) console.error("[ANALYZE-RESUME] Could not record the delivery:", openError);
-        }
       } catch (bookkeepingError) {
         // The analysis is redeemed and in hand; a bookkeeping failure must not
         // turn a delivered purchase into an error page.
         console.error("[ANALYZE-RESUME] Post-redemption bookkeeping failed:", bookkeepingError);
       }
 
-      // Send analysis results via email (non-blocking)
-      if (customerEmail && shareId) {
+      // THE MAIL BEFORE THE ORDER IS CLOSED (S14X-220). The mail was handed
+      // to the background, the page was told emailSent: true before any mail
+      // was tried, and the order was already 'delivered': a mail the provider
+      // refused was logged and forgotten, and a delivered order moves only to
+      // refunded (20261011140000), so no sweep could resend it. Now the mail
+      // is waited for (ANALYSIS_MAIL_WAIT_MS at most) and the order is
+      // written once, from what happened: delivered with its mail recorded,
+      // or email_failed with a try due, which retry-failed-deliveries resends
+      // from the stored copy. A send that outlives the wait is counted as
+      // refused, so in that one case the buyer may get the mail twice.
+      let mailSent = false;
+      const mailOwed = !!(customerEmail && shareId);
+      if (mailOwed) {
         console.log(`[ANALYZE-RESUME] Sending analysis email to: ${customerEmail}`);
-        EdgeRuntime.waitUntil(
+        try {
           // The service-role key: send-analysis-email is internal and refuses
           // the publishable key, which every visitor holds.
-          fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-analysis-email`, {
+          const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-analysis-email`, {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
@@ -1245,23 +1277,79 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
               shareId,
               ...(mailLanguage ? { language: mailLanguage } : {}),
             }),
-          }).then(async (res) => {
-            if (res.ok) {
-              console.log("[ANALYZE-RESUME] Email sent successfully");
-            } else {
-              console.error("[ANALYZE-RESUME] Email send failed:", await res.text());
-            }
-          }).catch((err) => {
-            console.error("[ANALYZE-RESUME] Email send error:", err);
-          })
-        );
+            signal: AbortSignal.timeout(ANALYSIS_MAIL_WAIT_MS),
+          });
+          mailSent = res.ok;
+          if (res.ok) console.log("[ANALYZE-RESUME] Email sent successfully");
+          else console.error("[ANALYZE-RESUME] Email send failed:", res.status, (await res.text().catch(() => '')).slice(0, 300));
+        } catch (err) {
+          console.error("[ANALYZE-RESUME] Email send error:", err instanceof Error ? err.message : String(err));
+        }
       } else {
         console.log("[ANALYZE-RESUME] No customer email (or no stored copy), skipping email send");
       }
 
-      trackPerformance(requestStartTime, 'analyze-resume', true, { hasLinkedIn: !!linkedInText, hasJobDesc: !!jobDescriptionText, emailSent: !!(customerEmail && shareId) }, clientIp);
+      try {
+        // Close the webhook's delivery row if it opened one; open one if it
+        // has not run (or never will). Either way the purchase reads as
+        // delivered, or, when its mail was refused, as a mail to resend.
+        const deliveredAt = new Date().toISOString();
+        const outcome = mailOwed && !mailSent
+          ? {
+            status: 'email_failed', generation_success: true, content_generation_completed_at: deliveredAt,
+            email_success: false, email_error: 'send-analysis-email did not accept the analysis mail',
+            next_retry_at: new Date(Date.now() + ANALYSIS_MAIL_RETRY_MINUTES * 60_000).toISOString(),
+          }
+          : {
+            status: 'delivered', generation_success: true, content_generation_completed_at: deliveredAt,
+            ...(mailSent ? { email_success: true, email_sent_at: deliveredAt } : {}),
+          };
+        const { data: closed, error: closeError } = await supabase
+          .from('product_deliveries')
+          .update(outcome)
+          .eq('stripe_session_id', sessionId)
+          .eq('product_type', FULL_ANALYSIS_PRODUCT_TYPE)
+          .select('id, retry_count, max_retries');
+        if (closeError) {
+          console.error("[ANALYZE-RESUME] Could not close the delivery record:", closeError);
+        } else if (!closed || closed.length === 0) {
+          const { error: openError } = await supabase.from('product_deliveries').insert({
+            stripe_session_id: sessionId,
+            product_type: FULL_ANALYSIS_PRODUCT_TYPE,
+            product_name: FULL_ANALYSIS_PRODUCT_NAME,
+            customer_email: customerEmail,
+            ...outcome,
+            amount_cents: paidTotal,
+            payment_completed_at: deliveredAt,
+            // A test-mode rehearsal (S13-043) is tagged as the webhook tags it,
+            // and the buyer's language is kept as the webhook keeps it (FA-1).
+            metadata: {
+              share_id: shareId,
+              ...((session as { livemode?: boolean }).livemode === false ? { livemode: false } : {}),
+              ...(mailLanguage ? { language: mailLanguage } : {}),
+            },
+          });
+          if (openError) console.error("[ANALYZE-RESUME] Could not record the delivery:", openError);
+        } else if (outcome.status === 'email_failed') {
+          // A row whose tries the purchase-link mail already spent would never
+          // be selected again: it gets tries for this mail.
+          for (const row of closed as Array<{ id: string; retry_count?: unknown; max_retries?: unknown }>) {
+            const used = Number(row.retry_count ?? 0);
+            if (used >= Number(row.max_retries ?? 0)) {
+              const { error: triesError } = await supabase.from('product_deliveries').update({ max_retries: used + 3 }).eq('id', row.id);
+              if (triesError) console.error("[ANALYZE-RESUME] Could not give the refused mail its tries:", triesError);
+            }
+          }
+        }
+      } catch (recordError) {
+        // The analysis is redeemed and in hand; a bookkeeping failure must not
+        // turn a delivered purchase into an error page.
+        console.error("[ANALYZE-RESUME] The delivery record could not be written:", recordError);
+      }
+
+      trackPerformance(requestStartTime, 'analyze-resume', true, { hasLinkedIn: !!linkedInText, hasJobDesc: !!jobDescriptionText, emailSent: mailSent }, clientIp);
       return new Response(
-        JSON.stringify({ ...analysis, shareId, emailSent: !!(customerEmail && shareId) }),
+        JSON.stringify({ ...analysis, shareId, emailSent: mailSent }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     };
@@ -1361,6 +1449,22 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
     // this flag: a report whose LinkedIn section call failed and went out
     // without it does not claim it.
     if (hasLinkedIn && !(analysis.linkedInAnalysis && typeof analysis.linkedInAnalysis === 'object')) analysis.hasLinkedIn = false;
+    // AND THE POSTING, AND EACH SECTION IS NAMED (S14X-041). A posting
+    // section whose call failed went out silently: hasJobDescription stayed
+    // true, the page hid the posting card with no word and the mail said
+    // nothing. Now the flag says what the report holds, and missingSections
+    // names each section it went out without, for the page's notice and the
+    // mail's line (send-analysis-email/grade.ts).
+    const missingSections: string[] = [];
+    if (hasJobDescription && !(analysis.jobDescriptionAlignment && typeof analysis.jobDescriptionAlignment === 'object')) {
+      analysis.hasJobDescription = false;
+      missingSections.push('jobDescription');
+    }
+    if (hasLinkedIn && analysis.hasLinkedIn === false) missingSections.push('linkedIn');
+    if (missingSections.length) {
+      analysis.missingSections = missingSections;
+      console.warn(`[ANALYZE-RESUME] Delivered without ${missingSections.join(" and ")}; the report and the mail say so`);
+    }
     // What was read up to the cap rather than whole (H4): the report says so.
     if (inputsClipped.jobDescription || inputsClipped.linkedIn) analysis.inputsClipped = inputsClipped;
 
