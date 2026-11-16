@@ -30,6 +30,7 @@ import { oneClickHeaders, oneClickUrl, redirectToConfirm, unsubscribeParams, uns
 import { sellerFooterHtml } from "../_shared/seller.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
+import { mailSafeText } from "../_shared/mail-text.ts";
 import { DIGEST_COPY, formatCount, storedLanguage, type MailLanguage } from "./copy.ts";
 import { postedDaysAgo } from "./posted.ts";
 
@@ -508,6 +509,14 @@ Deno.serve(async (req) => {
       const { data: localeRow, error: localeErr } = await supabase.from("user_job_searches").select("locale").eq("id", s.id).maybeSingle();
       const lang: MailLanguage = storedLanguage(localeErr ? null : (localeRow as { locale?: unknown } | null)?.locale);
       const c = DIGEST_COPY[lang];
+      // TEXT THE ACCOUNT TYPED, IN A MAIL FROM OUR DOMAIN (NB-2, the hardening
+      // half): a search's name and its free-text query are whatever the
+      // account wrote, and the address the digest goes to may never have been
+      // proven. Both are printed with every link, bare domain, address and
+      // phone number taken out and clipped to 80 characters, as the scan
+      // report's model text is; a name that was nothing but those reads as the
+      // card's own "Saved search".
+      const safeName = mailSafeText(s.name, 80) || c.tagline;
 
       const token = await hmacToken(s.id as string);
       // "10,000+" when the board could only tell us "at least this many".
@@ -548,11 +557,11 @@ Deno.serve(async (req) => {
   <div style="max-width:560px;margin:0 auto;padding:24px 16px">
     <div style="text-align:center;padding:0 0 14px">
       <span style="font-size:17px;font-weight:800;color:#0f172a">Resume <span style="color:#2563eb">Booster</span></span>
-      <div style="font-size:11px;color:#94a3b8;margin-top:2px">${c.tagline} · ${escapeHtml(s.name as string)}</div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:2px">${c.tagline} · ${escapeHtml(safeName)}</div>
     </div>
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:22px">
       <p style="font-size:15px;color:#0f172a;margin:0 0 4px">${c.countLine(escapeHtml(shownCount), newCount, strongMode)}</p>
-      <p style="font-size:13px;color:#64748b;margin:0 0 16px">${c.lead(escapeHtml(s.name as string), newCount, strongMode)}</p>
+      <p style="font-size:13px;color:#64748b;margin:0 0 16px">${c.lead(escapeHtml(safeName), newCount, strongMode)}</p>
       <table style="width:100%;border-collapse:collapse">${rows}</table>
       <div style="text-align:center;margin:20px 0 4px">
         <a href="${escapeHtml(viewUrl)}" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:700;padding:11px 22px;border-radius:10px;text-decoration:none">${c.seeAll(escapeHtml(shownCount))}</a>
@@ -566,7 +575,7 @@ Deno.serve(async (req) => {
 </body></html>`;
 
       try {
-        const catLabel = p.category ? (c.category[p.category] ?? null) : (p.q || null);
+        const catLabel = p.category ? (c.category[p.category] ?? null) : (mailSafeText(p.q, 80) || null);
         // First-ever send on a daily-cadence search = the user clicked "Alert
         // me when this exists" (or watch-company) and this is the moment it
         // exists. Say that, plainly — it's the single most awaited email the
@@ -591,10 +600,10 @@ Deno.serve(async (req) => {
           firstMatch = !bornErr && Date.parse(String((born as { created_at?: unknown } | null)?.created_at ?? "")) >= SENT_RECORD_BEGAN_MS;
         }
         const subject = firstMatch
-          ? c.subjectFirstMatch(shownCount, newCount, s.name)
+          ? c.subjectFirstMatch(shownCount, newCount, safeName)
           : strongMode
-            ? (threshold >= STRONG_FIT_BAR ? c.subjectStrong(shownCount, newCount, s.name) : c.subjectPossible(shownCount, newCount, s.name))
-            : c.subjectPlain(shownCount, newCount, catLabel, s.name);
+            ? (threshold >= STRONG_FIT_BAR ? c.subjectStrong(shownCount, newCount, safeName) : c.subjectPossible(shownCount, newCount, safeName))
+            : c.subjectPlain(shownCount, newCount, catLabel, safeName);
         due++;
         const { error: sendErr } = await resend.emails.send({ from: "Resume Booster <reports@resumebooster.work>", to: email, reply_to: CUSTOMER_REPLY_TO, subject, html, headers: unsubHeaders });
         if (sendErr) { refused++; throw new Error(String((sendErr as { message?: string }).message ?? "send refused")); }
