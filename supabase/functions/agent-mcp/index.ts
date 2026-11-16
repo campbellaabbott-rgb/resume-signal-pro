@@ -586,6 +586,8 @@ type Decision = {
   is_allowed: boolean; deny_reason: string; api_key_id: string | null; key_tier: string | null;
   rate_limit: number; rate_used: number; quota_limit: number; quota_used: number;
   pass_ends_at?: string | null; pass_apps_left?: number | null;
+  /** Set by a check that read the day's count on a refusal; absent on today's api_key_check. */
+  quota_read?: boolean | null;
 };
 
 const db = (): SupabaseClient =>
@@ -5289,13 +5291,19 @@ Deno.serve(browserGated(async (req) => {
     }
     d = (dec ?? null) as Decision | null;
     // Rate/quota headers ride the DENY response too — that is the response a
-    // client most needs them on.
+    // client most needs them on. But only the limits the check READ: on a
+    // rate_limited or revoked refusal api_key_check returns quota_used 0
+    // without reading the day, and a key at 990 of 1,000 was told 1,000
+    // remained (S14X-275). The quota pair rides an allowed call and the
+    // quota refusal; a row that says it read the day (quota_read) is believed.
+    const quotaRead = !!d && (d.is_allowed || d.deny_reason === "quota_exceeded" || d.quota_read === true);
     rateHeaders = d
       ? {
           "X-RateLimit-Limit": String(d.rate_limit),
           "X-RateLimit-Remaining": String(Math.max(0, d.rate_limit - d.rate_used)),
-          "X-Quota-Limit": String(d.quota_limit),
-          "X-Quota-Remaining": String(Math.max(0, d.quota_limit - d.quota_used)),
+          ...(quotaRead
+            ? { "X-Quota-Limit": String(d.quota_limit), "X-Quota-Remaining": String(Math.max(0, d.quota_limit - d.quota_used)) }
+            : {}),
         }
       : {};
     // A key the check does not recognise, on a tool that answers with NO
