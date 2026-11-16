@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
+-- (reviewed 2026-11-16 in the bug round A integration).
+--
 -- AN ACCOUNT CANNOT SET THE CLOCK THAT THROTTLES ITS AGENT KICK (bug round
 -- 2026-11-08, lane mail: NB-14).
 --

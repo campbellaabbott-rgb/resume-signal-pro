@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. Every job this file schedules
+-- runs once a day (reviewed 2026-11-16 in the bug round A integration).
+--
 -- A RUN-OUT PASS CLOSES, AND GIVES BACK WHAT IT NEVER SENT (S14X-083, M-S14-051).
 --
 -- WHAT WAS WRONG. agent_pass_settle (20261008132000) gives back a pass's

@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
+-- (reviewed 2026-11-16 in the bug round A integration).
+--
 -- A FIT CALL THAT SCORED NOTHING GIVES ITS ALLOWANCE BACK (S14X-132, M-S14-106).
 --
 -- The free fit allowance is 25 SCORED calls a UTC day on a confirmed key

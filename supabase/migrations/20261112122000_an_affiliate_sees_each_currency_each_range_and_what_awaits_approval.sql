@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
+-- (reviewed 2026-11-16 in the bug round A integration).
+--
 -- AN AFFILIATE SEES EACH CURRENCY, EACH RANGE, AND WHAT AWAITS APPROVAL; A
 -- SALE THAT NEEDS A SECOND LOOK IS HELD FOR IT
 -- (bug round 2026-11-08, lane affiliate: S14X-226, S14X-227, RC-S13-063,

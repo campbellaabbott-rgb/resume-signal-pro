@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
+-- (reviewed 2026-11-16 in the bug round A integration).
+--
 -- A DELETED ACCOUNT TAKES ITS "NOT SUBSCRIBED" ROWS (S14X-231).
 --
 -- WHAT WAS WRONG. check-subscription remembers "this signed-in visitor has no

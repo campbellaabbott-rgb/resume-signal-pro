@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. Every job this file schedules
+-- runs once a day (reviewed 2026-11-16 in the bug round A integration).
+--
 -- AN AFFILIATE CLICK KEEPS A KEYED ADDRESS HASH FOR NINETY DAYS
 -- (bug round 2026-11-08, lane affiliate: S14X-021, owner decision
 -- 2026-11-15 "approved-full").

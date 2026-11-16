@@ -1,3 +1,8 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file creates or changes no
+-- cron schedule; it rewrites only the command of the once-a-day
+-- scan-cache-and-telemetry-purge job (reviewed 2026-11-16 in the bug round A
+-- integration).
+--
 -- A SPENT PRO GRANT LIVES AS LONG AS ITS SAVED COPY (S14X-104, M-S14-073).
 --
 -- WHAT WAS WRONG. 'scan-cache-and-telemetry-purge' (10 4 * * *,

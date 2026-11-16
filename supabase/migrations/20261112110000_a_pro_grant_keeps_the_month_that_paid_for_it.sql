@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
+-- (reviewed 2026-11-16 in the bug round A integration).
+--
 -- A PRO GRANT KEEPS THE MONTH THAT PAID FOR IT (bug round 2026-11-08, lane
 -- payments, S14X-078).
 --

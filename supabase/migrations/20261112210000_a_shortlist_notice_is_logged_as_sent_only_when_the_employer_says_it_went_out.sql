@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
+-- (reviewed 2026-11-16 in the bug round A integration).
+--
 -- A SHORTLIST NOTICE IS LOGGED AS SENT ONLY WHEN THE EMPLOYER SAYS IT WENT
 -- OUT (bug round 2026-11-08, S14X-163).
 --

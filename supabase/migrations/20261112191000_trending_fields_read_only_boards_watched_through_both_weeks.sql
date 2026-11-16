@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
+-- (reviewed 2026-11-16 in the bug round A integration).
+--
 -- TRENDING FIELDS READ ONLY BOARDS WATCHED THROUGH BOTH WEEKS (S14X-038).
 --
 -- /hiring-trends prints, per field, (last7 - prior7) / prior7 from

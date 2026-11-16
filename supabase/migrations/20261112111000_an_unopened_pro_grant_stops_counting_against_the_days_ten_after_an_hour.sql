@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
+-- (reviewed 2026-11-16 in the bug round A integration).
+--
 -- AN UNOPENED PRO GRANT STOPS COUNTING AGAINST THE DAY'S TEN AFTER AN HOUR
 -- (bug round 2026-11-08, lane payments, S14X-079).
 --

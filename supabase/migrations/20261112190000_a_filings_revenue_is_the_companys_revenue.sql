@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
+-- (reviewed 2026-11-16 in the bug round A integration).
+--
 -- A FILING'S REVENUE IS THE COMPANY'S REVENUE (S14X-026).
 --
 -- company_financials was seeded (20260722234500, copied in 20260723021844)

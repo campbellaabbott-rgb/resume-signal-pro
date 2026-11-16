@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
+-- (reviewed 2026-11-16 in the bug round A integration).
+--
 -- A WAGE FILING UNDER A REFUSED OR UNPLACED EMPLOYER IS NEVER SERVED
 -- (S14X-067, S14X-068, RC-OI-21).
 --

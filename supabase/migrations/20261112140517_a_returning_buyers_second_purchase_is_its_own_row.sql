@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
+-- (reviewed 2026-11-16 in the bug round A integration).
+--
 -- A RETURNING BUYER'S SECOND PURCHASE IS ITS OWN ROW, AND A PURCHASE THE
 -- PAYMENT SIDE NEVER SAW CAN BE TOLD APART (S14X-153, S14X-154).
 --

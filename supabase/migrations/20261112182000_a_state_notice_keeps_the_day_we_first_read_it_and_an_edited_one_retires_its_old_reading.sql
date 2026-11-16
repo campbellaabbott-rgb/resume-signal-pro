@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
+-- (reviewed 2026-11-16 in the bug round A integration).
+--
 -- A STATE NOTICE KEEPS THE DAY WE FIRST READ IT, AND ONE THE STATE EDITED IN
 -- PLACE RETIRES ITS OLD READING (S14X-036, S14X-069).
 --

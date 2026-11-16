@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
+-- (reviewed 2026-11-16 in the bug round A integration).
+--
 -- A PRUNED MONTH IS NEVER WRITTEN TO AGAIN (S14X-158).
 --
 -- roll_up_and_prune_layoff_filings (20261110160000) floors its keep window
