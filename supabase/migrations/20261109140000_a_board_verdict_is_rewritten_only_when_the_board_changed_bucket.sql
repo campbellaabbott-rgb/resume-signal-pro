@@ -210,7 +210,7 @@ COMMENT ON FUNCTION public.refresh_closure_population() IS
   'job_board_board_state_latest_idx serves index-only instead of sorting the '
   'whole seven-day slice. Service-role only, ten-minute budget, scheduled at '
   ':09 and :39 past the hour, clear of the explore cache (:07), the facet '
-  'sweep (:07/:22/:37/:52) and ghost stats (:05/:35). IT WRITES UNCONDITIONALLY '
+  'sweep (:02/:17/:32/:47) and ghost stats (:15). IT WRITES UNCONDITIONALLY '
   'AND HAS NO PARTIAL-FAILURE MODE: a population figure whose board buckets are '
   'fresh and whose closure counts are an hour old would size a mixture, which '
   'is the exact error this disclosure exists to prevent. If it raises, the '

@@ -462,7 +462,7 @@ describe("each duplicate index is dropped concurrently, only against a proven tw
     for (const job of [...Object.keys(DROPPERS), WATCH]) minute(job);
     const a = minute("oneshot-drop-temp-resume-expires-idx");
     const b = minute("oneshot-drop-temp-resume-storage-expires-idx");
-    expect(Math.min(Math.abs(a - b), 60 - Math.abs(a - b))).toBeGreaterThanOrEqual(20);
+    expect(Math.abs(a - b), "half an hour apart, so never in the same half of an hour").toBe(30);
   });
 
   it("the droppers' statements run outside a transaction, the watcher then unschedules every job, and every twin survives", async () => {

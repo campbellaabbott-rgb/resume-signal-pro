@@ -87,4 +87,13 @@ describe("every pending cost-wave migration opens with its sub-hourly cron revie
     const keep = PENDING.filter((s) => subHourly(code(fileFor(s))).length > 0);
     expect(keep).toEqual(["20261109120000", "20261109121000", "20261109161000"]);
   });
+
+  // The deploy message reads a migration's note only from migrationOrder. The
+  // index droppers' retry note sat under reservations from 2026-11-15, so no
+  // message carried it (review 2026-11-16).
+  it("every migration's ledger entry sits where the deploy message reads it", () => {
+    const ledger = JSON.parse(readFileSync(resolve(__dirname, "../../docs/deploy-ledger.json"), "utf8"));
+    expect(Object.keys(ledger.reservations).filter((k) => /^\d{14}$/.test(k))).toEqual([]);
+    for (const stamp of PENDING) expect(Object.keys(ledger.migrationOrder), stamp).toContain(stamp);
+  });
 });

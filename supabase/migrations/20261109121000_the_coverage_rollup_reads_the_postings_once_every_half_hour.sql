@@ -39,11 +39,13 @@
 -- definition (checked: no later migration redefines this function). The
 -- header, the 4min budget and the revoke are the same.
 --
--- PUBLISHED CADENCE. Two published sentences name fifteen minutes and must
--- move with this file: the data pages' "recomputed every 15 minutes"
--- (scripts/prerender-seo.mjs DATA_PAGE_CADENCE) and /v1/stats' basis string
--- (supabase/functions/public-api). Both belong to other owners; the deploy
--- notes carry them.
+-- PUBLISHED CADENCE. The rollup's two published sentences already say thirty
+-- minutes: the data pages' "recomputed every 30 minutes" (scripts/prerender-
+-- seo.mjs DATA_PAGE_CADENCE, 'job-board-stats-rollup') and the /v1/stats basis
+-- (supabase/functions/public-api 2026-11-09.1, "a rollup recomputed every 30
+-- minutes"). Until this file applies they understate how often the rollup
+-- runs, which review 2026-11-15 accepted. The basis's "~15 minutes" names the
+-- livePostings count, which this file does not change.
 --
 -- Safe to re-run: the function is replaced whole, the job is altered only when
 -- it exists in cron.job, and the self-check reads both back.

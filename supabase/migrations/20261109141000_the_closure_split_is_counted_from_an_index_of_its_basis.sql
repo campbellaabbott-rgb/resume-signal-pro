@@ -31,8 +31,9 @@
 --
 -- WHEN. The builder fires at :44, clear of the closure-population refresh
 -- (:09/:39), the stats cache (:27, about six minutes), the explore cache
--- (:07), the facet sweep (:07/:22/:37/:52), the upkeep and ladder (:x2/:x7)
--- and the stats rollup (:00/:15/:30/:45), because a concurrent build waits for
+-- (:07), the facet sweep (:02/:17/:32/:47 once 20261109120000 applies), the
+-- upkeep (:x2/:x7) and the stats rollup (:00/:30 once 20261109121000
+-- applies), because a concurrent build waits for
 -- every older snapshot in the database. The watcher looks once an hour, at :14
 -- (half an hour after the builder starts), so nothing here runs more often
 -- than hourly; a valid index is retired within the hour.
