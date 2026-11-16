@@ -72,8 +72,9 @@
 // outside Supabase and Resend), every completed run pings it, and only a run
 // with an alarm that reached no sender pings its /fail: the alarms go by mail,
 // so a standing alarm cannot blind the dead-man check. The run is stamped in
-// job_board_meta (mail_watch_run, counts and states only: that table has an
-// anon reader); the canaries keep their own stamp there (mail_watch_canary,
+// job_board_meta (mail_watch_run, counts and states only, kept fit for any
+// reader although anon is refused the table, 42501 since 20260722154749);
+// the canaries keep their own stamp there (mail_watch_canary,
 // timestamps and a sanitised error only), and R11 its memory of the runs it
 // has seen (mail_watch_runs_seen, class names, times and counts).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";

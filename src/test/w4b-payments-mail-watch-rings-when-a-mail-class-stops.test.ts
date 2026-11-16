@@ -413,7 +413,7 @@ describe("each failing member has its own door (S14X-242)", () => {
     for (const b of buckets) expect(b).toMatch(/^R\d+(:[0-9a-f]{16})?$/);
   });
 
-  it("the response and the anon-readable stamp carry no member", async () => {
+  it("the response and the run stamp carry no member", async () => {
     delete env.CANARY_EMAIL;
     await unmailed(A, "a@example.com");
     const r = await run();
