@@ -240,8 +240,12 @@ export const composeHtml = (
   // scanner's address, and its home-only blocks must not stay in the
   // scanner's head (review round 2026-10-26). The rule is the route's own
   // (src/lib/scanner-address.ts scannerAddressScript).
+  // SEO-F10 (the owner's option: an address with no baked file is not
+  // indexable): any path other than "/" is told noindex, follow before the
+  // app writes its own head, so an unknown address, a case variant or an
+  // unbaked posting is never an indexable copy of the homepage.
   const clearScript = isFallback
-    ? `<script>if(location.pathname!=="/"||${D.scannerAddressScript()}){var r=document.getElementById("root");if(r)r.innerHTML="";var c=document.querySelector('link[rel="canonical"]');if(c)c.remove();document.querySelectorAll('script[data-home-only]').forEach(function(s){s.remove();});}</script>`
+    ? `<script>if(location.pathname!=="/"||${D.scannerAddressScript()}){var r=document.getElementById("root");if(r)r.innerHTML="";var c=document.querySelector('link[rel="canonical"]');if(c)c.remove();document.querySelectorAll('script[data-home-only]').forEach(function(s){s.remove();});}if(location.pathname!=="/"){var m=document.querySelector('meta[name="robots"]');if(m)m.setAttribute("content","noindex, follow");}</script>`
     : "";
   html = putVerbatim(html, '<div id="root"></div>', `<div id="root">${shell(content, lang)}</div>${clearScript}`);
   return html;
