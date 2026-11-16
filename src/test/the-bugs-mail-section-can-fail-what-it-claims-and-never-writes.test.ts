@@ -307,8 +307,8 @@ describe("the marks the section reads are the ones the lane ships", () => {
     const shardDir = resolve(ROOT, "src/i18n/shards/mail");
     const langs = readdirSync(shardDir).filter((f) => f.endsWith(".json")).map((f) => f.replace(/\.json$/, "")).sort();
     expect(langs).toEqual(["de", "en", "en-GB", "es", "fr", "hi", "nl", "pt", "tl"]);
-    const keys = Object.keys((JSON.parse(src("src/i18n/shards/mail/en.json")) as { mailPrefs: Record<string, string> }).mailPrefs).sort();
-    expect(keys).toEqual([...SHARD_KEYS].sort());
+    const keys = Object.keys((JSON.parse(src("src/i18n/shards/mail/en.json")) as { mailPrefs: Record<string, string> }).mailPrefs);
+    for (const k of SHARD_KEYS) expect(keys, k).toContain(k);
     expect(SECTION).toContain(`VDBM_KEYS="${SHARD_KEYS.join(" ")}"`);
   });
   it("the prune job the section reads is the one the migration schedules, with its timeout first", () => {

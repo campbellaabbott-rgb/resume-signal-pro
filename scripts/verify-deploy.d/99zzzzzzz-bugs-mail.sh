@@ -166,7 +166,7 @@ if [ -z "$VDBM_O012" ]; then echo "INFO  S14X-012-mail owner pending: the fix-pl
 elif printf '%s' "$VDBM_O012" | grep -qi '^B'; then
   VDBM_SSR=$(vdbm_build send-scan-report)
   if [ -z "$VDBM_SSR" ]; then echo "FAIL  S14X-012-mail decided ($VDBM_O012): send-scan-report's preflight carries no x-fn-build"
-  elif vdbm_new send-scan-report "$VDBM_SSR"; then echo "PASS  S14X-012-mail decided ($VDBM_O012): send-scan-report serves $VDBM_SSR, which offers no fix-plan drip and answers a confirm with paused"
+  elif vdbm_new send-scan-report "$VDBM_SSR"; then echo "PASS  S14X-012-mail decided ($VDBM_O012): send-scan-report serves $VDBM_SSR, which offers no fix-plan sequence and answers a press of an old button with withdrawn, queueing nothing"
   elif [ "$VDBM_LIVE" = 1 ]; then echo "FAIL  S14X-012-mail decided ($VDBM_O012): the paste is live but send-scan-report serves $VDBM_SSR, so the drip is still offered and never sent"
   else echo "INFO  S14X-012-mail decided ($VDBM_O012): send-scan-report serves $VDBM_SSR; the paste has not landed"; fi
 elif ! printf '%s' "$VDBM_O012" | grep -qi '^A'; then echo "FAIL  S14X-012-mail ownerDecided names S14X-012 as '$VDBM_O012', which is neither option A nor option B"
