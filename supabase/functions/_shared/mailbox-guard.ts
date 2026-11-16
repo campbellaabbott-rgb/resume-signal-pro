@@ -32,36 +32,26 @@
  *     shows no account change since the sign-in. Otherwise 409, and no proof.
  *
  * WHY THE PASSWORD IS CLEARED EVEN WHEN THE PROOF IS REFUSED FOR AN ACCOUNT
- * CHANGE (a deliberate departure from the plan's order, which refused before
- * rotating). The account-change check reads entries any session of the
- * account can write. Refusing to rotate on them would let the stranger who
- * pre-registered the address keep a script editing the account's metadata
- * every few seconds, so that every sign-in by the real owner is refused and
- * the stranger's password survives. Once the log vouches that the code or
- * link went to the address the account carries, whoever holds the session
- * reads that mailbox, so a password set before it protects nobody but a
- * stranger. What the change check guards is the PROOF, which opens things
- * keyed by the address. A session the log does not vouch for (an
- * address-change confirmation, a log not written to Postgres) clears nothing.
+ * CHANGE (unlike the plan's order). Any session of the account can write the
+ * entries the change check reads, so refusing to rotate on them would let a
+ * stranger who pre-registered the address keep their password by editing
+ * metadata every few seconds. Once the log vouches that the code or link
+ * reached the address the account carries, a password set before it protects
+ * only a stranger. The change check guards the PROOF. A session the log does
+ * not vouch for (an address-change confirmation, an unwritten log) clears
+ * nothing. The account's API and connector keys made before the sign-in go
+ * with the password (S14X-228).
  *
- * WHY THE ADMIN API DOES NOT ROTATE (another departure). GoTrue v2.197.0, the
- * version /auth/v1/health reports, ends EVERY session when an admin sets a
- * password (internal/api/admin.go: user.UpdatePassword(tx, nil), which calls
- * Logout for the user), the caller's own included, so the person who just
- * proved the address would be signed out by the guard. The user's own update
- * (internal/api/user.go) ends every session except the caller's. The admin
- * API is the fallback only when GoTrue REFUSES the session's own update with
- * a rule only an admin can pass (ADMIN_FALLBACK_CODES: reauthentication, a
- * current-password rule, MFA), never on a timeout or a 5xx (review of R1:
- * those answered 200 signedOut, and a timed-out update that had in fact
- * succeeded was rotated twice). The answer then says signedOut, and the site
- * asks the person to sign in again. It runs even when the proof is refused
- * for an account change (S12-086): a stranger who pre-registered the address
- * and enrolled MFA must not keep the password by failing the session's own
- * update. When the proof is not refused it is written BEFORE any rotation,
- * and taken back if the rotation fails, so a rotation never stands without
- * its proof (whose absence made every later call refuse on the rotation's
- * own audit entry).
+ * WHY THE ADMIN API DOES NOT ROTATE. GoTrue v2.197.0 (/auth/v1/health) ends
+ * EVERY session on an admin password set (admin.go: UpdatePassword(tx, nil)),
+ * the caller's too; the user's own update (user.go) keeps the caller's. The
+ * admin API is the fallback only when GoTrue REFUSES the session's update with
+ * a rule only an admin passes (ADMIN_FALLBACK_CODES), never on a timeout or a
+ * 5xx (review of R1: a timed-out update that had succeeded was rotated
+ * twice); the answer then says signedOut. It runs even when the proof is
+ * refused for an account change (S12-086), so a stranger's MFA cannot keep
+ * the password. An unrefused proof is written BEFORE any rotation and taken
+ * back if the rotation fails, so a rotation never stands without its proof.
  *
  * AN ACCOUNT ALREADY PROVEN AT ANOTHER ADDRESS keeps its password (S12-177):
  * it belongs to whoever proved it, and only that owner could have changed
@@ -144,6 +134,8 @@ export type GuardBody = {
   error?: string;
   /** The fallback ended every session, this one included: sign in again. */
   signedOut?: boolean;
+  /** Prefixes of the account's API and connector keys made before this sign-in, turned off with the password (S14X-228). */
+  keysRevoked?: string[];
 };
 
 export type GuardAnswer = { status: 200 | 409 | 503; body: GuardBody };
@@ -200,8 +192,8 @@ export function newestSignIn(jwt: string): { method: string; atMs: number | null
 }
 
 const answer = (status: GuardAnswer["status"], body: GuardBody): GuardAnswer => ({ status, body });
-const unavailable = (reason: string, passwordCleared = false): GuardAnswer =>
-  answer(503, { proven: false, passwordCleared, reason, error: "We could not finish checking this sign-in. Please try again." });
+const unavailable = (reason: string, passwordCleared = false, more: Partial<GuardBody> = {}): GuardAnswer =>
+  answer(503, { proven: false, passwordCleared, reason, error: "We could not finish checking this sign-in. Please try again.", ...more });
 
 const REFUSAL_TEXT: Record<string, string> = {
   token_email_mismatch: "This session was issued for a different address than the account now carries.",
@@ -289,6 +281,8 @@ async function guardOnce(deps: GuardDeps, session: WebsiteSession): Promise<Guar
   let signedOut = false;
   let hasPassword = false;
   let proofWritten = false;
+  let keysRevoked: string[] = [];
+  const keyNote = () => (keysRevoked.length ? { keysRevoked } : {});
   if (vouched) {
     const { data, error } = await admin.rpc("auth_user_has_password", { p_user_id: userId });
     if (error || typeof data !== "boolean") return unavailable("unavailable");
@@ -319,12 +313,8 @@ async function guardOnce(deps: GuardDeps, session: WebsiteSession): Promise<Guar
     const claimError = (claim as { error?: { code?: string } | null }).error;
     if (claimError && claimError.code !== "23505") return unavailable("unavailable");
     if (!claimError) {
-      // THE PROOF BEFORE THE ROTATION (review of R1). A rotation whose proof
-      // then failed left the session's own password change in the auth log,
-      // and every later call (and a new code within a minute) read it as an
-      // account change and refused: the old password gone and the address
-      // never proven. Now a proof that cannot be written stops the call before
-      // anything is rotated, and a rotation that fails takes its proof back.
+      // THE PROOF BEFORE THE ROTATION (review of R1): a rotation without its
+      // proof read as an account change to every later call, which refused.
       if (!refusal) {
         const ins = await admin.from("account_mailbox_proofs").insert(proofRow(true));
         const insError = (ins as { error?: { code?: string } | null }).error;
@@ -334,6 +324,15 @@ async function guardOnce(deps: GuardDeps, session: WebsiteSession): Promise<Guar
         }
         proofWritten = true;
       }
+      // THE KEYS GO WITH THE PASSWORD (S14X-228): one made before this
+      // sign-in outlives any password change. A failed write stops the call.
+      const keys = await admin.from("api_keys").update({ revoked_at: new Date(now).toISOString() })
+        .eq("user_id", userId).is("revoked_at", null).lt("created_at", amrAt.toISOString()).select("id, key_prefix");
+      if (keys.error || !Array.isArray(keys.data)) {
+        await undo(proofWritten);
+        return unavailable("keys_not_revoked");
+      }
+      keysRevoked = (keys.data as Array<{ key_prefix?: unknown }>).map((k) => String(k.key_prefix ?? "")).filter(Boolean);
       const secret = (deps.newSecret ?? newRotationSecret)();
       const rotated = await deps.rotateAsSession(jwt, secret);
       if (rotated.ok) {
@@ -354,7 +353,7 @@ async function guardOnce(deps: GuardDeps, session: WebsiteSession): Promise<Guar
         const { error } = await admin.auth.admin.updateUserById(userId, { password: secret });
         if (error) {
           await undo(proofWritten);
-          return unavailable("rotation_failed");
+          return unavailable("rotation_failed", false, keyNote());
         }
         passwordCleared = true;
         signedOut = true;
@@ -363,7 +362,7 @@ async function guardOnce(deps: GuardDeps, session: WebsiteSession): Promise<Guar
         // (or a rotation we cannot see), so nothing claimed and nothing proven.
         log("the session's own password update failed; nothing rotated", { userId, status: rotated.status, code: rotated.code ?? null });
         await undo(proofWritten);
-        return unavailable("rotation_failed");
+        return unavailable("rotation_failed", false, keyNote());
       }
     }
   }
@@ -372,19 +371,19 @@ async function guardOnce(deps: GuardDeps, session: WebsiteSession): Promise<Guar
     log("proof refused", { userId, reason: refusal, passwordCleared, signedOut });
     return answer(409, {
       proven: false, passwordCleared, reason: refusal, error: REFUSAL_TEXT[refusal] ?? "The address stays unproven.",
-      ...(signedOut ? { signedOut: true } : {}),
+      ...(signedOut ? { signedOut: true } : {}), ...keyNote(),
     });
   }
 
   if (!proofWritten) {
     const ins = await admin.from("account_mailbox_proofs").insert(proofRow(passwordCleared));
     const insError = (ins as { error?: { code?: string } | null }).error;
-    if (insError && insError.code !== "23505") return unavailable("proof_not_recorded", passwordCleared);
+    if (insError && insError.code !== "23505") return unavailable("proof_not_recorded", passwordCleared, keyNote());
   }
   return answer(200, {
     proven: true,
     passwordCleared,
-    ...(signedOut ? { signedOut: true, reason: "every_session_ended" } : {}),
+    ...(signedOut ? { signedOut: true, reason: "every_session_ended" } : {}), ...keyNote(),
   });
 }
 

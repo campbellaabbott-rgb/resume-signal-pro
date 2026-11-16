@@ -66,6 +66,12 @@ const STAND_INS = `
     instance_id uuid, id uuid PRIMARY KEY, payload json, created_at timestamptz,
     ip_address varchar(64) NOT NULL DEFAULT ''
   );
+  -- The columns of public.api_keys the guard writes (S14X-228; its own test is
+  -- a-key-minted-before-the-owner-proved-the-address-stops-with-the-old-password).
+  CREATE TABLE public.api_keys (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), key_prefix text NOT NULL, user_id uuid,
+    created_at timestamptz NOT NULL DEFAULT now(), revoked_at timestamptz
+  );
 `;
 
 const ADMIN_ACTOR = "00000000-0000-0000-0000-000000000000";

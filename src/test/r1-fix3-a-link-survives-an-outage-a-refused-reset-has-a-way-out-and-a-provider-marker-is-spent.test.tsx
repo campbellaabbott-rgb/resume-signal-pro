@@ -231,6 +231,32 @@ describe("E. the provider marker is spent, short-lived, and never silent", () =>
   });
 });
 
+describe("S14X-206: a spent reset link does not say no password was set", () => {
+  it("our mail's reset link refused for good says it may have been used to set one, and to sign in with it", async () => {
+    marker("/account", "member@example.com");
+    h.verifyLink.mockResolvedValue({ error: "Email link is invalid or has expired", transient: false });
+    mount("/auth?mode=confirm&token_hash=th-r&type=recovery");
+    await screen.findByRole("heading", { name: "Finish signing in" });
+    await press(/^Continue$/);
+    const alert = await screen.findByRole("alert", {}, SLOW);
+    expect(alert.textContent, "the page told someone whose code already set the password that none was set").not.toMatch(/no password was set/);
+    expect(alert).toHaveTextContent("This reset link has expired or was already used. If you already chose a new password with this email's code, sign in with it; otherwise ask for a new link.");
+  });
+
+  it("no language's sign-in strings say a spent reset link set no password", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const clause: Record<string, RegExp> = {
+      en: /no password was set/, "en-GB": /no password was set/, de: /kein Passwort festgelegt/, es: /no se estableció ninguna contraseña/,
+      fr: /aucun mot de passe n'a donc été défini/, hi: /कोई पासवर्ड सेट नहीं हुआ/, nl: /geen wachtwoord ingesteld/, pt: /nenhuma (palavra-passe|senha) foi definida/, tl: /walang password na naitakda/,
+    };
+    for (const [lng, re] of Object.entries(clause)) {
+      const j = JSON.parse(readFileSync(resolve(__dirname, `../i18n/auth/${lng}.json`), "utf8")) as { auth: { reset: { expired: string } } };
+      expect(j.auth.reset.expired, lng).not.toMatch(re);
+    }
+  });
+});
+
 describe("F. a refused reset has a way out", () => {
   const recovery = sessionFor("member@example.com", "sid-r", "otp");
   async function reachChecking() {
