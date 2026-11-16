@@ -39,7 +39,8 @@ import { SellerIdentity } from "@/components/SellerIdentity";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { isOwingStatus } from "@/config/subscription-status";
-import { money } from "@/lib/format";
+import { date, money } from "@/lib/format";
+import { PRO_SUPPORT_EMAIL } from "@/config/pro-support";
 import { FULL_ANALYSIS_PRICE_USD, PRO_PRICE_USD } from "./plan-facts";
 import { LINK_TARGET_44 } from "@/lib/home/targets";
 import { GATE_TEXT_KEY, type FullAnalysisClosedBy, type ProClosedBy, type SaleGates } from "./sale-gates";
@@ -163,28 +164,70 @@ export function ProBuyBlock({ gates, busy = false, onGoPro, preview }: ProBuyBlo
 }
 
 /**
- * Go Pro wired to the account: a member sees Manage, an account that owes a
- * payment sees Update payment (never a second subscription, platform sweep
- * L6-06), anyone else the buy block. Signed out, Go Pro goes to sign-in first.
+ * Go Pro wired to the account, in the account card's order (S14X-114,
+ * ProSubscriptionCard): a retired Agent plan is named as retired (no card
+ * asked for), a member sees when the plan renews or ends and Manage, an
+ * account that owes sees that Pro is paused and Update payment (never a
+ * second subscription, platform sweep L6-06), an address whose plan is not
+ * linked yet sees how it gets linked and no Go Pro, anyone else the buy
+ * block. Signed out, Go Pro goes to sign-in first.
  *
  * The renewal consent travels in purchaseTerms(), from PurchaseTerms' box in
  * the pressed button's block (see the head of this file), so subscribe()
  * takes no consent argument.
  */
 export function ProBuyConnected({ gates }: { gates: SaleGates }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { pro, subscribe, manage, actionLoading } = useProSubscription();
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  if (pro.active || isOwingStatus(pro.status)) {
-    const owing = !pro.active;
+  const owing = isOwingStatus(pro.status);
+  const ends = pro.cancelAtPeriodEnd && pro.currentPeriodEnd ? date(pro.currentPeriodEnd, { lng: i18n.language }) : null;
+  const manageButton = (label: string) => (
+    <Button type="button" variant="secondary" size="lg" wrap className={`mt-3 ${BUY_BUTTON}`} onClick={() => void manage()} disabled={actionLoading}>
+      {label}
+    </Button>
+  );
+  if (pro.planTier === "agent") {
     return (
-      <div className="mt-5" data-pro-state={owing ? "owing" : "active"}>
-        <p className="text-sm text-foreground">{t(owing ? "pricingPlans.pro.owing" : "pricingPlans.pro.memberActive")}</p>
-        <Button type="button" variant="secondary" size="lg" wrap className={`mt-3 ${BUY_BUTTON}`} onClick={() => void manage()} disabled={actionLoading}>
-          {t(owing ? "pricingPlans.pro.updatePayment" : "pricingPlans.pro.manage")}
-        </Button>
+      <div className="mt-5" data-pro-state="retired">
+        <p className="text-sm text-foreground">{t("proPlan.retiredPlanTitle")}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {owing ? t("proPlan.retiredPlanOwing") : ends ? t("proPlan.retiredPlanEnds", { date: ends }) : t("proPlan.retiredPlanLive")}
+        </p>
+        {manageButton(t("proPlan.manageRetired"))}
+      </div>
+    );
+  }
+  if (pro.active) {
+    const renews = pro.currentPeriodEnd ? date(pro.currentPeriodEnd, { lng: i18n.language }) : null;
+    return (
+      <div className="mt-5" data-pro-state="active">
+        <p className="text-sm text-foreground">{t("pricingPlans.pro.memberActive")}</p>
+        {ends ? (
+          <p className="mt-1 text-sm text-muted-foreground" data-testid="pro-ends">{t("proPlan.endsOn", { date: ends })}</p>
+        ) : renews ? (
+          <p className="mt-1 text-sm text-muted-foreground" data-testid="pro-renews">{t("proPlan.renewsOn", { date: renews })}</p>
+        ) : null}
+        {manageButton(t("pricingPlans.pro.manage"))}
+      </div>
+    );
+  }
+  if (owing) {
+    return (
+      <div className="mt-5" data-pro-state="owing">
+        <p className="text-sm text-foreground">{t("pricingPlans.pro.owing")}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t("payments.pro.pausedUntilPaid")}</p>
+        {manageButton(t("pricingPlans.pro.updatePayment"))}
+      </div>
+    );
+  }
+  if (pro.linkPending) {
+    return (
+      <div className="mt-5" data-pro-state="link-pending">
+        <p className="text-sm text-foreground">{t("proPlan.linkPendingUnlinked", { support: PRO_SUPPORT_EMAIL })}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t("proPlan.linkPendingNoSecondPlan")}</p>
       </div>
     );
   }

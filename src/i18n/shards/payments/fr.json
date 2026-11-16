@@ -1,0 +1,10 @@
+{
+  "payments": {
+    "pro": {
+      "pausedUntilPaid": "Les outils Pro sont en pause jusqu'à ce que ce paiement passe. Le paiement couvre le mois entier à partir de votre date de renouvellement, y compris les jours où les outils étaient en pause."
+    },
+    "perks": {
+      "fullAnalysisCap": "Jusqu'à 10 Analyses complètes par jour et 60 par mois"
+    }
+  }
+}

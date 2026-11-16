@@ -15,6 +15,7 @@ import {
   WRITING,
 } from "./plan-facts";
 import type { SaleGates } from "./sale-gates";
+import { PRO_GRANTS_PER_DAY, PRO_GRANTS_PER_MONTH } from "@/config/pro-perks";
 
 export type Tone = "ok" | "no" | undefined;
 export interface Cell {
@@ -45,7 +46,7 @@ export function limitGroups(
   const same = (c: Cell): [Cell, Cell, Cell] => [c, c, c];
   const faPrice = write.money(FULL_ANALYSIS_PRICE_USD);
   const faCells: [Cell, Cell, Cell] = gates.fullAnalysis.onSale
-    ? [{ text: L("faEach", { price: faPrice }) }, { text: L("faEach", { price: faPrice }) }, inc]
+    ? [{ text: L("faEach", { price: faPrice }) }, { text: L("faEach", { price: faPrice }) }, { text: L("faProCapped", { perDay: PRO_GRANTS_PER_DAY, perMonth: PRO_GRANTS_PER_MONTH }), tone: "ok" }]
     : same({ text: L("faNotOnSale"), tone: "no" });
   return {
     columns: [L("colOut"), L("colFree"), L("colPro")],

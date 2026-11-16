@@ -102,6 +102,25 @@ const corsHeaders = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+/** A Pro checkout page stays open thirty minutes (Stripe's shortest), not a day (S14X-076). */
+const PRO_CHECKOUT_OPEN_SECONDS = 30 * 60;
+
+/**
+ * THE ACCOUNT'S EARLIER PRO CHECKOUTS ARE CLOSED BEFORE A NEW ONE (S14X-076).
+ * A second tab or a reload left a day-long session open, and paying both sold
+ * two plans. Every session this account started in the last day is expired;
+ * Stripe refuses one that is no longer open, which is ignored. Best-effort.
+ */
+// deno-lint-ignore no-explicit-any
+async function expireOpenProCheckouts(stripe: Stripe, db: { from: (t: string) => any }, userId: string): Promise<void> {
+  try {
+    const { data } = await db.from("checkout_buyers").select("stripe_session_id")
+      .eq("user_id", userId).eq("checkout_function", "create-subscription-checkout")
+      .gt("created_at", new Date(Date.now() - 86_400_000).toISOString()).limit(5);
+    await Promise.allSettled((Array.isArray(data) ? data : []).map((r: { stripe_session_id: string }) => stripe.checkout.sessions.expire(r.stripe_session_id)));
+  } catch (_) { /* a stale tab is never a reason to refuse a sale */ }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -176,6 +195,8 @@ serve(async (req) => {
     // The service-start request (EU/UK switch) rides on the plan too: a
     // withdrawal reads it there to know whether the days provided may be kept.
     // The renewal consent rides on the plan too, for its whole life.
+    await expireOpenProCheckouts(stripe, supabase, buyer.id);
+    const expiresAt = Math.floor(Date.now() / 1000) + PRO_CHECKOUT_OPEN_SECONDS;
     const subscriptionBuyer = {
       user_id: buyer.id,
       ...(policy.service_start_consent ? { service_start_consent: policy.service_start_consent } : {}),
@@ -199,6 +220,7 @@ serve(async (req) => {
         },
       ],
       allow_promotion_codes: true,
+      expires_at: expiresAt,
       // THE BUYER, three ways (the session, its metadata, the subscription).
       client_reference_id: buyer.id,
       subscription_data: { metadata: subscriptionBuyer },
@@ -243,11 +265,12 @@ serve(async (req) => {
       currency: session.currency,
       mode: session.mode,
       context: checkoutContextOf(body),
-      metadata: { planCents: PRO_PRICE_CENTS, termsVersion: policy.terms_version || null, referral: !!policy.referral_code, serviceStartConsent: policy.service_start_consent ?? null, autoRenewConsentAt: consentedAt },
+      metadata: { planCents: PRO_PRICE_CENTS, termsVersion: policy.terms_version || null, referral: !!policy.referral_code, serviceStartConsent: policy.service_start_consent ?? null, autoRenewConsentAt: consentedAt, expiresAt: new Date(expiresAt * 1000).toISOString() },
     });
     // The account behind the session, before the browser has the url (CP-022).
     await recordCheckoutBuyer(supabase, {
       stripeSessionId: session.id, caller: { kind: "signed_in", id: buyer.id, email }, checkoutFunction: "create-subscription-checkout", productType: "pro_subscription",
+      address: clientAddressOr(req.headers, "") || null,
     });
 
     console.log(`[CREATE-SUBSCRIPTION-CHECKOUT] Session ${session.id} created`);

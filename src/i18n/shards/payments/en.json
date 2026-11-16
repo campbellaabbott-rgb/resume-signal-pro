@@ -1,0 +1,10 @@
+{
+  "payments": {
+    "pro": {
+      "pausedUntilPaid": "Pro's tools are paused until this payment goes through. The payment covers the whole month from your renewal date, including the days the tools were paused."
+    },
+    "perks": {
+      "fullAnalysisCap": "Up to 10 Full Analyses a day and 60 a month"
+    }
+  }
+}

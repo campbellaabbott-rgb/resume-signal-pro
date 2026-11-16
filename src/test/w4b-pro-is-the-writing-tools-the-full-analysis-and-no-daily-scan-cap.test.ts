@@ -45,6 +45,8 @@ describe("the list says exactly what Pro is", () => {
       "Everything in a free account, plus the writing tools",
       "A tailored résumé, cover letter and interview prep for your jobs: up to 5 packages a day and 60 a month",
       "The $5 Full Analysis included",
+      // The cap pro_grants_cap enforces (owner decision D7), named where Pro is sold (S14X-079).
+      "Up to 10 Full Analyses a day and 60 a month",
       "No daily cap on scans",
       "Cancel anytime from your account",
     ]);

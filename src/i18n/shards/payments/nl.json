@@ -1,0 +1,10 @@
+{
+  "payments": {
+    "pro": {
+      "pausedUntilPaid": "De tools van Pro staan stil tot deze betaling gelukt is. De betaling dekt de hele maand vanaf je verlengingsdatum, ook de dagen waarop de tools stilstonden."
+    },
+    "perks": {
+      "fullAnalysisCap": "Tot 10 volledige analyses per dag en 60 per maand"
+    }
+  }
+}

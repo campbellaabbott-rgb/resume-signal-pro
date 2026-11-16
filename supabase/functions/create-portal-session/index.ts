@@ -10,7 +10,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkProByEmail } from "../_shared/pro.ts";
-import { provenMailbox } from "../_shared/mailbox-proof.ts";
+import { accountProvenEmail } from "../_shared/account-proof.ts";
 import { checkoutOrigin } from "../_shared/checkout-policy.ts";
 import { refusedCallerBody, websiteTokenRefusal } from "../_shared/checkout-buyer.ts";
 import { boundCustomerOfRows, portalCustomerOf, type BoundRow } from "../_shared/pro-answer.ts";
@@ -180,7 +180,9 @@ serve(async (req) => {
     // no longer carries that address in Stripe, so only the binding counts.
     const foundIt = found.stripeCustomerId === customerId;
     const bound = !!uid && (viaBinding || (foundIt && found.boundUserId === uid) || await rowBindsCustomer(supabase, uid, customerId));
-    const proven = bound || (mailboxCounts && !!(await provenMailbox(data?.user, jwt, {
+    // The account's proof of its address, as the other account pages read it
+    // (S14X-229): a session proof, or R1's recorded code or link proof.
+    const proven = bound || (mailboxCounts && !!(await accountProvenEmail(data?.user, jwt, {
       db: supabase,
       confirmedSince: Deno.env.get("EMAIL_CONFIRMED_SINCE") ?? null,
       supabaseUrl: Deno.env.get("SUPABASE_URL") ?? "",
