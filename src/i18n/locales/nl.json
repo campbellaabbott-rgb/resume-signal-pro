@@ -3975,7 +3975,7 @@
     "verdictGo": "Nu solliciteren loont",
     "verdictCaution": "Solliciteer met verwachtingen",
     "verdictNeutral": "Wat de data zegt",
-    "takedownsLast24h": "{{n}} vacatures vervuld of gesloten in de afgelopen 24 uur",
+    "takedownsLast24h": "{{n}} vacatures offline gehaald in de afgelopen 24 uur",
     "recheckLine": "mediaan feed {{m}} min geleden gecheckt",
     "chipWeek": "Deze week",
     "chipRemote": "Remote",

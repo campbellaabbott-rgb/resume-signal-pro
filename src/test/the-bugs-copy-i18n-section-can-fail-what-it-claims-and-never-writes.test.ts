@@ -290,19 +290,12 @@ const DECIDED = {
   "NB-47": { choice: "postings taken down in the last 24 hours" },
 };
 /**
- * The owner halves as bugs/a-copy-i18n-owner and its partners publish them:
- * this branch's own strings where it holds the half (the Trust Shortlist and
- * email rows, the withdrawn fix-plan strings, the Pro badge), the rest as they
- * will read.
+ * The owner halves as bugs/a-copy-i18n-owner publishes them: this branch's own
+ * strings, which hold every half (the Trust Shortlist and email rows, the
+ * withdrawn fix-plan strings, the Pro badge and the takedown ticker).
  */
 function ownerBuilt(): Record<Lng, Json> {
-  const out = {} as Record<Lng, Json>;
-  for (const l of LNGS) {
-    const b = clone(LANE[l]);
-    set(b, "jobsPage.takedownsLast24h", l.startsWith("en") ? "{{n}} postings taken down in the last 24 hours" : `{{n}} (${l})`);
-    out[l] = b;
-  }
-  return out;
+  return clone(LANE);
 }
 
 describe("verify section 99zzzzzzz-bugs-copy-i18n", () => {
