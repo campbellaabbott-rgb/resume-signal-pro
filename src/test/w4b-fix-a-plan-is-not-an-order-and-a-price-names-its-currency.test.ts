@@ -26,7 +26,7 @@
  */
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
-import { money } from "@/components/account/OrdersList";
+import { money, orderPath } from "@/components/account/OrdersList";
 
 const USER_ID = "00000000-0000-4000-8000-0000000a0f01";
 const EMAIL = "pro.member@example.com";
@@ -106,5 +106,26 @@ describe("an order's price is in the currency the buyer paid in", () => {
     expect(money(7100, "krw", "en-US")).toBe("₩7,100");
     expect(money(500, "usd", "en-US")).toBe("$5.00");
     expect(money(500, null, "en-US")).toBeNull();
+  });
+});
+
+describe("S14X-223: an Agent Pass is shown where passes are, not as an order with a dead link", () => {
+  beforeEach(() => {
+    db.rows("checkout_buyers").push({ stripe_session_id: "cs_pass_granted", user_id: USER_ID }, { stripe_session_id: "cs_pass_refused", user_id: USER_ID });
+    db.rows("product_deliveries").push(
+      { stripe_session_id: "cs_pass_granted", customer_email: EMAIL, product_name: "Agent Pass", product_type: "agent_pass", status: "delivered", amount_cents: 2900, created_at: "2026-10-05T10:00:00Z" },
+      { stripe_session_id: "cs_pass_refused", customer_email: EMAIL, product_name: "Agent Pass", product_type: "agent_pass", status: "generation_failed", generation_error: "agent_pass_grant: no grant", max_retries: 0, amount_cents: 2900, created_at: "2026-10-04T10:00:00Z" },
+    );
+  });
+
+  it("a granted pass leaves the orders list; a pass whose grant failed stays, as couldn't be made", async () => {
+    const byId = Object.fromEntries((await ask()).orders.map((o) => [o.id, o]));
+    expect(byId.cs_pass_granted).toBeUndefined();
+    expect(byId.cs_pass_refused).toMatchObject({ status: "failed", productType: "agent_pass" });
+  });
+
+  it("no page holds a pass, so a pass order has no Open link", () => {
+    expect(orderPath({ productType: "agent_pass", sessionId: "cs_test_abcdefghij12" })).toBeNull();
+    expect(orderPath({ productType: "full_analysis", sessionId: "cs_test_abcdefghij12" })).toBe("/success?session_id=cs_test_abcdefghij12");
   });
 });

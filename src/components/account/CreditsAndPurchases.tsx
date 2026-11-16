@@ -19,12 +19,20 @@
  *
  * Scan packs are no longer sold (owner decision 2026-10-12), so the card
  * offers no pack: credits already bought stay spendable.
+ *
+ * S14X-223. While the apply agent is switched off a pass can never start, yet
+ * an unactivated one read "not started yet" and a live one "running". Such a
+ * pass now reads as retired before it could run, with the address to write
+ * to, which is the owner's own "we will honour what you bought". A closed
+ * pass still reads closed. Dates print in the reader's language (S14X-255).
  */
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Coins, Loader2, RefreshCw, ShoppingBag } from "lucide-react";
 import { AUTH_SUPPORT_EMAIL, CODE_SIGN_IN_LIVE, GOOGLE_SIGN_IN_LIVE, RECOVERY_LIVE } from "@/config/auth-providers";
 import { OrdersList, type AccountOrder } from "@/components/account/OrdersList";
+import { date as fmtDate } from "@/lib/format";
+import { APPLY_AGENT_ON } from "../../../supabase/functions/_shared/apply-agent-switch";
 
 export type AccountPass = { date: string; state: "unactivated" | "live" | "closed" };
 
@@ -48,7 +56,8 @@ type Props = {
 export const MAILBOX_PROOF_LIVE: boolean = GOOGLE_SIGN_IN_LIVE || CODE_SIGN_IN_LIVE || RECOVERY_LIVE;
 
 export function CreditsAndPurchases({ fetching, account, failed = false, onRetry }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lng = i18n.language;
   const purchases = account?.purchases ?? [];
   const passes = account?.passes ?? [];
   const orders = account?.orders ?? null;
@@ -102,7 +111,14 @@ export function CreditsAndPurchases({ fetching, account, failed = false, onRetry
           </p>
         ) : (
           <div className="space-y-1.5 max-h-64 overflow-y-auto">
-            {passes.map((p, i) => (
+            {passes.map((p, i) => (!APPLY_AGENT_ON && p.state !== "closed" ? (
+              <div key={`pass-${i}`} className="flex items-start justify-between text-xs border border-border/50 rounded-lg px-2.5 py-1.5" data-pass-retired>
+                <span className="text-foreground">
+                  {t("accountView.passRetired", "Agent Pass: retired before it could run. Write to {{support}} from the address you paid with and we will honour what you bought.", { support: AUTH_SUPPORT_EMAIL })}
+                </span>
+                <span className="text-muted-foreground shrink-0 ml-2">{fmtDate(p.date, { lng })}</span>
+              </div>
+            ) : (
               <Link
                 key={`pass-${i}`}
                 to="/agents/pass"
@@ -111,16 +127,16 @@ export function CreditsAndPurchases({ fetching, account, failed = false, onRetry
                 <span className="text-foreground truncate">
                   {t("accountPage.passRow")} · {t(`accountPage.passState.${p.state}`)}
                 </span>
-                <span className="text-muted-foreground shrink-0 ml-2">{new Date(p.date).toLocaleDateString()}</span>
+                <span className="text-muted-foreground shrink-0 ml-2">{fmtDate(p.date, { lng })}</span>
               </Link>
-            ))}
+            )))}
             {orders ? (
               <OrdersList orders={orders} />
             ) : (
               purchases.map((p, i) => (
                 <div key={i} className="flex items-center justify-between text-xs border border-border/50 rounded-lg px-2.5 py-1.5">
                   <span className="text-foreground truncate">{p.product}</span>
-                  <span className="text-muted-foreground shrink-0 ml-2">{new Date(p.date).toLocaleDateString()}</span>
+                  <span className="text-muted-foreground shrink-0 ml-2">{fmtDate(p.date, { lng })}</span>
                 </div>
               ))
             )}

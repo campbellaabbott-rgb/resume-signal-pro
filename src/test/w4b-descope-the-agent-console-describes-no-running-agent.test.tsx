@@ -30,6 +30,12 @@
  * profile form (the person's stored answers) still do. The positive control
  * switches the agent on and finds each of them, so the absence is not an
  * artefact of the mocks.
+ *
+ * S14X-199. The settings tab also went on collecting for the retired agent: a
+ * CV upload and an "apply for me automatically" daily cap, and the Today tab
+ * offered to mail a morning list no run will make. With the switch off there
+ * is no file input, no number input and no morning-mail switch; the positive
+ * control (an auto-mode profile, the agent on) finds all three.
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, screen } from "@testing-library/react";
@@ -198,6 +204,18 @@ describe("/agent?tab=settings, signed in, with the agent switched off as it ship
     await mount(lng, "today");
     expect(document.body.textContent).not.toContain(fixed(str(lng, "agentQueue.emptyActive")));
   });
+
+  it("S14X-199: the settings tab takes no CV and no daily cap, even from an auto-mode profile", async () => {
+    mandate = { ...COMPLETE, apply_mode: "auto" };
+    await mount("en", "settings");
+    expect(document.querySelector('input[type="file"]')).toBeNull();
+    expect(document.querySelector('input[type="number"]')).toBeNull();
+  });
+
+  it.each(Object.keys(LOCALES))("%s: S14X-199: the Today tab offers no morning mail of a list no run will make", async (lng) => {
+    await mount(lng, "today");
+    expect(document.body.textContent).not.toContain(fixed(str(lng, "agentQueue.emailToggle")));
+  });
 });
 
 describe("positive control: with the agent switched on, the same mounts show every one of them", () => {
@@ -224,5 +242,16 @@ describe("positive control: with the agent switched on, the same mounts show eve
     sw.on = true;
     await mount("en", "today");
     expect(document.body.textContent).toContain(fixed(str("en", "agentQueue.emptyActive")));
+  });
+
+  it("S14X-199: an auto-mode profile shows the CV upload and the daily cap, and the Today tab the morning mail", async () => {
+    sw.on = true;
+    mandate = { ...COMPLETE, apply_mode: "auto" };
+    await mount("en", "settings");
+    expect(document.querySelector('input[type="file"]')).not.toBeNull();
+    expect(document.querySelector('input[type="number"]')).not.toBeNull();
+    cleanup();
+    await mount("en", "today");
+    expect(document.body.textContent).toContain(fixed(str("en", "agentQueue.emailToggle")));
   });
 });

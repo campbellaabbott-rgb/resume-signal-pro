@@ -24,6 +24,11 @@ const jwt = (extra: Record<string, unknown> = {}) =>
 const SESSION = jwt();
 const MINE = "cs_live_a1b2c3d4e5f6g7h8";
 const THEIRS = "cs_live_z9y8x7w6v5u4t3s2";
+const FA = "cs_live_fullanalysis0001";
+/** Pro grants: the reference that opens an inclusion is pro_<grant id>. */
+const MY_GRANT = "bbbbbbbb-2222-4222-8222-000000000001";
+const THEIR_GRANT = "bbbbbbbb-2222-4222-8222-000000000002";
+const SHARE = "0123456789abcdef01234567";
 
 let handler: EdgeHandler;
 let db: FakeDb;
@@ -40,8 +45,9 @@ beforeAll(async () => {
     auth: { getUser: async (token: string) => (token === SESSION ? { data: { user: { id: USER_ID, email: EMAIL, identities: [] } }, error: null } : { data: { user: null }, error: { message: "no" } }) },
   });
   g.fetch = async (u: string, init?: { body?: string; headers?: Record<string, string> }) => {
-    if (String(u).endsWith("/functions/v1/send-product-email")) {
-      mailed.push({ ...JSON.parse(String(init?.body ?? "{}")), auth: init?.headers?.Authorization });
+    const mailer = /\/functions\/v1\/(send-product-email|send-analysis-email)$/.exec(String(u));
+    if (mailer) {
+      mailed.push({ ...JSON.parse(String(init?.body ?? "{}")), auth: init?.headers?.Authorization, mailer: mailer[1] });
       return new Response(JSON.stringify({ success: true }), { status: 200 });
     }
     throw new Error(`unexpected fetch ${u}`);
@@ -123,7 +129,7 @@ describe("mail_again", () => {
     expect(fourth.status).toBe(429);
     expect(mailed).toHaveLength(3);
     for (const m of mailed) {
-      expect(m).toMatchObject({ email: EMAIL, productType: "cover_letter", sessionId: MINE, generatedContent: { letter: "Dear hiring manager" }, auth: "Bearer service" });
+      expect(m).toMatchObject({ mailer: "send-product-email", email: EMAIL, productType: "cover_letter", sessionId: MINE, generatedContent: { letter: "Dear hiring manager" }, auth: "Bearer service" });
     }
   });
 
@@ -146,6 +152,79 @@ describe("mail_again", () => {
     expect(r.status).toBe(409);
     expect(r.json.code).toBe("no_saved_copy");
     expect(doorHits).toBe(0);
+  });
+});
+
+describe("S14X-108: a Pro inclusion is an order its own account can ask about", () => {
+  beforeEach(() => {
+    db.rows("pro_grants").push(
+      { id: MY_GRANT, user_id: USER_ID, email: EMAIL, product_type: "full_analysis", revoked_at: null },
+      { id: THEIR_GRANT, user_id: "00000000-0000-4000-8000-0000000d0d0d", email: EMAIL, product_type: "full_analysis", revoked_at: null },
+    );
+    for (const id of [MY_GRANT, THEIR_GRANT]) {
+      db.rows("product_deliveries").push({ stripe_session_id: `pro_${id}`, customer_email: EMAIL, product_name: "Full Resume Analysis", product_type: "full_analysis", status: "delivered" });
+      db.rows("purchased_content").push({ stripe_session_id: `pro_${id}`, customer_email: EMAIL, product_name: "Full Resume Analysis", product_type: "full_analysis", generated_content: { shareId: SHARE } });
+    }
+    db.rows("resume_analyses").push({ share_id: SHARE, analysis_result: { score: 71 } });
+  });
+
+  it("Email it again on the account's own inclusion sends it", async () => {
+    const r = await ask({ action: "mail_again", sessionId: `pro_${MY_GRANT}` });
+    expect(r.status).toBe(200);
+    expect(r.json).toEqual({ sent: true });
+    expect(mailed).toHaveLength(1);
+    expect(mailed[0]).toMatchObject({ email: EMAIL, shareId: SHARE });
+  });
+
+  it("another account's grant answers 404 and nothing is read for it or sent, even at the same address", async () => {
+    const r = await ask({ action: "mail_again", sessionId: `pro_${THEIR_GRANT}` });
+    expect(r.status).toBe(404);
+    expect(mailed).toEqual([]);
+    expect(doorHits).toBe(0);
+  });
+
+  it("an inclusion has no receipt: 404, and Stripe is never asked", async () => {
+    const g = globalThis as Record<string, unknown>;
+    g.__aoRetrieves = 0;
+    const r = await ask({ action: "receipt", sessionId: `pro_${MY_GRANT}` });
+    expect(r.status).toBe(404);
+    expect(g.__aoRetrieves).toBe(0);
+    expect(doorHits).toBe(0);
+  });
+
+  it("a pro_ reference that is not a uuid is still a 400", async () => {
+    expect((await ask({ action: "mail_again", sessionId: "pro_g1" })).status).toBe(400);
+  });
+});
+
+describe("S14X-222: a finished Full Analysis is mailed as the analysis, not as a purchase still to run", () => {
+  beforeEach(() => {
+    db.rows("product_deliveries").push({ stripe_session_id: FA, customer_email: EMAIL, product_name: "Full Resume Analysis", product_type: "full_analysis", status: "delivered", metadata: { language: "de" } });
+    db.rows("purchased_content").push({ stripe_session_id: FA, customer_email: EMAIL, product_name: "Full Resume Analysis", product_type: "full_analysis", generated_content: { shareId: SHARE } });
+  });
+
+  it("the saved share pointer is read back and sent through the analysis mail, in the order's language", async () => {
+    db.rows("resume_analyses").push({ share_id: SHARE, analysis_result: { score: 71, sections: [] } });
+    const r = await ask({ action: "mail_again", sessionId: FA });
+    expect(r.json).toEqual({ sent: true });
+    expect(mailed).toHaveLength(1);
+    expect(mailed[0]).toMatchObject({ mailer: "send-analysis-email", email: EMAIL, shareId: SHARE, analysisData: { score: 71, sections: [] }, language: "de", auth: "Bearer service" });
+    expect(mailed.some((m) => m.mailer === "send-product-email")).toBe(false);
+  });
+
+  it("an analysis that is gone answers 409 no_saved_copy and takes no daily slot", async () => {
+    const r = await ask({ action: "mail_again", sessionId: FA });
+    expect(r.status).toBe(409);
+    expect(r.json.code).toBe("no_saved_copy");
+    expect(doorHits).toBe(0);
+    expect(mailed).toEqual([]);
+  });
+
+  it("Full Analysis content that is not a share pointer answers 409 and is never posted as a product mail", async () => {
+    db.tables.purchased_content = db.rows("purchased_content").map((c) => (c.stripe_session_id === FA ? { ...c, generated_content: { text: "x" } } : c));
+    const r = await ask({ action: "mail_again", sessionId: FA });
+    expect(r.status).toBe(409);
+    expect(mailed).toEqual([]);
   });
 });
 

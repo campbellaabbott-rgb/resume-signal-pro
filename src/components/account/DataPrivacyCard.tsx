@@ -9,29 +9,36 @@
  * what is cancelled and what is kept (payment records only, for the period tax
  * law sets, plus a do-not-mail note so queued mail stops). Every string goes
  * through t(key, English default).
+ *
+ * S14X-230. A refusal for a plan that is billed to the address but not linked
+ * to the account says to cancel it from Stripe's billing page: the page is a
+ * link now when delete-account answered Stripe's address, and without one the
+ * line says where to write instead.
  */
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, Download, Loader2 } from "lucide-react";
+import { AUTH_SUPPORT_EMAIL } from "@/config/auth-providers";
+import type { DeleteRefusalView } from "@/lib/account-delete";
 
 type Props = {
   onExport: () => void | Promise<void>;
-  /** Runs the delete; answers the refusal's message keys, or null when the account is gone. */
-  onDelete: () => Promise<string[] | null>;
+  /** Runs the delete; answers the refusal (its message keys, or keys and billing page), or null when the account is gone. */
+  onDelete: () => Promise<string[] | DeleteRefusalView | null>;
 };
 
 export function DataPrivacyCard({ onExport, onDelete }: Props) {
   const { t } = useTranslation();
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [refusal, setRefusal] = useState<string[] | null>(null);
+  const [refusal, setRefusal] = useState<DeleteRefusalView | null>(null);
 
   const run = async () => {
     setDeleting(true);
     setRefusal(null);
-    const keys = await onDelete();
+    const answer = await onDelete();
     setDeleting(false);
-    if (keys) { setRefusal(keys); setConfirming(false); }
+    if (answer) { setRefusal(Array.isArray(answer) ? { keys: answer, billingUrl: null } : answer); setConfirming(false); }
   };
 
   return (
@@ -61,7 +68,20 @@ export function DataPrivacyCard({ onExport, onDelete }: Props) {
       </ul>
       <p className="text-xs text-muted-foreground mb-3">{t("accountPrivacy.cannotUndo", "This cannot be undone.")}</p>
 
-      {refusal && <p className="text-xs text-destructive mb-3" role="alert" data-delete-refusal>{refusal.map((k) => t(k)).join(" ")}</p>}
+      {refusal && (
+        <div className="text-xs text-destructive mb-3" role="alert" data-delete-refusal>
+          <p>{refusal.keys.map((k) => t(k)).join(" ")}</p>
+          {refusal.keys[0] === "accountPage.deleteUnlinkedPlan" && (refusal.billingUrl ? (
+            <a href={refusal.billingUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" data-billing-page>
+              {t("accountView.deleteBillingPage", "Open Stripe's billing page")}
+            </a>
+          ) : (
+            <p className="text-muted-foreground" data-billing-support>
+              {t("accountView.deleteBillingSupport", "Can't find it? Write to {{support}} from the address the plan is billed to.", { support: AUTH_SUPPORT_EMAIL })}
+            </p>
+          ))}
+        </div>
+      )}
 
       {!confirming ? (
         <button type="button" onClick={() => setConfirming(true)}

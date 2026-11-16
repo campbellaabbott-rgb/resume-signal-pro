@@ -41,6 +41,7 @@
  * failure this component exists to prevent.
  */
 import { useTranslation } from "react-i18next";
+import { count as fmtCount } from "@/lib/format";
 import { useAgentReach, reachPct } from "@/hooks/use-agent-reach";
 import { SENDABLE_VENDORS } from "../../../supabase/functions/_shared/apply-automation";
 
@@ -53,7 +54,7 @@ export default function AgentReachNote() {
   if (!reach) return null;
 
   const pct = reachPct(reach);
-  const fmt = (n: number) => n.toLocaleString();
+  const fmt = (n: number) => fmtCount(n);
 
   /**
    * NAME THE VENDORS ONLY WHEN BOTH RUNTIMES AGREE ON HOW MANY THERE ARE.

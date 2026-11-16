@@ -13,6 +13,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ScanHistoryEntry } from "@/hooks/use-scan-history";
+import { date } from "@/lib/format";
 import {
   declineLastScanResume, declineLocalScans, importLocalScans, saveLastScanResume,
 } from "@/lib/account-history-import";
@@ -30,7 +31,7 @@ export function LocalHistoryOffer<T>({
   mapRow: (row: never) => T;
   onScans: (list: T[]) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [scansOpen, setScansOpen] = useState(offeredScans.length > 0);
   const [resumeState, setResumeState] = useState<"offer" | "saving" | "saved" | "gone">(offeredResume ? "offer" : "gone");
   const [busy, setBusy] = useState(false);
@@ -53,7 +54,7 @@ export function LocalHistoryOffer<T>({
     setResumeState("saving");
     setFailed(false);
     const { text, score } = offeredResume;
-    const day = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const day = date(new Date(), { lng: i18n.language });
     const label = t("accountPage.lastResumeLabelScored", "Last scan, {{day}}: scored {{score}}", { day, score });
     const ok = await saveLastScanResume(db, userId, text, score, label);
     if (!ok) { setResumeState("offer"); setFailed(true); return; }
@@ -97,7 +98,7 @@ export function LocalHistoryOffer<T>({
                   className="px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50">
                   {t("accountPage.lastResumeSave", "Save it")}
                 </button>
-                <button type="button" disabled={resumeState === "saving"} onClick={() => { declineLastScanResume(userId); setResumeState("gone"); }} data-last-resume-decline
+                <button type="button" disabled={resumeState === "saving"} onClick={() => { declineLastScanResume(userId, offeredResume?.text ?? ""); setResumeState("gone"); }} data-last-resume-decline
                   className="px-3.5 py-1.5 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50">
                   {t("accountPage.lastResumeNo", "No thanks")}
                 </button>
