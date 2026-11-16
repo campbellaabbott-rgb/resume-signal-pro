@@ -386,7 +386,7 @@ export const MCP_OWN_CONNECTION_GLOSS =
  */
 export const MCP_WITHHELD_SOURCES: readonly string[] = ["usajobs", "smartrecruiters"];
 export const MCP_WITHHELD_NOTE =
-  "Two hiring systems on the job board are not handed on by this server or the data API: the U.S. federal job feed, whose terms forbid redistributing it as a data feed, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. Their postings stay on the job board, where you can open them yourself.";
+  "Two hiring systems on the job board are not handed on by this server or the data API: the U.S. federal job feed, which we choose not to redistribute for now, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. Their postings stay on the job board, where you can open them yourself.";
 
 /** "a, b and c" for prose; items carrying their own " and " are joined with semicolons so no list reads "and … and". Declared above every sentence built with it (a const cannot be read above its line). */
 export const andList = (xs: readonly string[]): string => {

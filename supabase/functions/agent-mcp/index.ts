@@ -819,14 +819,16 @@ async function board(body: Record<string, unknown>, ctx: Ctx = KEYED_CTX): Promi
 
 
 /**
- * THE ONE HIRING SYSTEM THIS SERVER READS AND MAY NOT HAND ON.
+ * THE HIRING SYSTEMS THIS SERVER READS AND DOES NOT HAND ON.
  *
- * Kept here for the same reason /v1 keeps it: the U.S. federal job feed's
- * terms of use permit DISPLAYING its results to a person and forbid
- * republishing the data as a feed. An MCP tool result is a feed — the rows
- * leave this runtime into a third-party host that stores them, re-presents
- * them and may hand them on again — so this surface is on the same side of
- * that line as the public API, not the website.
+ * The federal feed was kept here because its terms of use were read as
+ * forbidding republishing the data as a feed. The API terms read on
+ * 2026-11-16 say its Public Data may be redistributed without prior OPM
+ * approval (USAJOBS-COPY-1), so it is withheld by our own choice for now;
+ * handing it on is the owner's decision (OD16). An MCP tool result is a feed
+ * — the rows leave this runtime into a third-party host that stores them,
+ * re-presents them and may hand them on again — so this surface stays on the
+ * same side as the public API, not the website.
  *
  * IT IS THE SAME LIST, DELIBERATELY, AND A GUARD HOLDS THE TWO TOGETHER.
  * These vendor codes are declared identically in public-api's index.ts; a
@@ -851,7 +853,7 @@ async function board(body: Record<string, unknown>, ctx: Ctx = KEYED_CTX): Promi
 const NO_REDISTRIBUTION_SOURCES = ["usajobs", "smartrecruiters"] as const;
 /** Said in every refusal this file makes about it. One wording, like /v1's. */
 const NO_REDISTRIBUTION_REASON =
-  "Two hiring systems are shown on resumebooster.work but not handed on by this connector: the U.S. federal job feed, whose terms of use forbid redistributing it as a data feed, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. No tool here returns their rows; open the posting on the site instead.";
+  "Two hiring systems are shown on resumebooster.work but not handed on by this connector: the U.S. federal job feed, which we choose not to redistribute for now, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. No tool here returns their rows; open the posting on the site instead.";
 const isNoRedistributionSource = (v: unknown): boolean =>
   (NO_REDISTRIBUTION_SOURCES as readonly string[]).includes(String(v ?? "").trim().toLowerCase());
 /** A job id is `vendor:employer:externalId`, so its vendor is its first field. */
