@@ -161,12 +161,48 @@ const OLD_DIGEST: Record<Lng, string> = {
   nl: "Stop de ochtendselectie. Je agent blijft draaien.", pt: "Parar a seleção da manhã. O seu agente continua a funcionar.",
   tl: "Itigil ang shortlist sa umaga. Patuloy na tatakbo ang iyong agent.",
 };
+/**
+ * The strings the four owner lines judge, as this lane leaves them: the owner
+ * halves (bugs/a-copy-i18n-owner) change them, so a bundle "before the owner's
+ * half" is built from these and never from whatever the branch's files hold.
+ */
+const BEFORE_OWNER: Record<Lng, { shortlist: string; done: string; badge: string; takedowns: string }> = {
+  en: { shortlist: "Until the employer deletes them", done: "Done. The first email arrives in two days.", badge: "Writing tools", takedowns: "{{n}} roles filled or closed in the last 24 hours" },
+  "en-GB": { shortlist: "Until the employer deletes them", done: "Done. The first email arrives in two days.", badge: "Writing tools", takedowns: "{{n}} roles filled or closed in the last 24 hours" },
+  de: { shortlist: "Bis der Arbeitgeber sie löscht", done: "Erledigt. Die erste E-Mail kommt in zwei Tagen.", badge: "Schreibwerkzeuge", takedowns: "{{n}} Stellen in den letzten 24 Stunden besetzt oder geschlossen" },
+  es: { shortlist: "Hasta que la empresa los elimine", done: "Listo. El primer correo llega en dos días.", badge: "Herramientas de redacción", takedowns: "{{n}} puestos cubiertos o cerrados en las últimas 24 horas" },
+  fr: { shortlist: "Jusqu'à ce que l'employeur les supprime", done: "C'est fait. Le premier e-mail arrive dans deux jours.", badge: "Outils de rédaction", takedowns: "{{n}} postes pourvus ou fermés au cours des dernières 24 heures" },
+  hi: { shortlist: "जब तक नियोक्ता उन्हें नहीं हटाता", done: "हो गया। पहला ईमेल दो दिन में आएगा।", badge: "लेखन टूल्स", takedowns: "पिछले 24 घंटों में {{n}} भूमिकाएँ भरी या बंद हुईं" },
+  nl: { shortlist: "Tot de werkgever ze verwijdert", done: "Klaar. De eerste e-mail komt over twee dagen.", badge: "Schrijftools", takedowns: "{{n}} vacatures vervuld of gesloten in de afgelopen 24 uur" },
+  pt: { shortlist: "Até o empregador os eliminar", done: "Pronto. O primeiro e-mail chega em dois dias.", badge: "Ferramentas de escrita", takedowns: "{{n}} vagas preenchidas ou fechadas nas últimas 24 horas" },
+  tl: { shortlist: "Hanggang burahin ng employer ang mga ito", done: "Tapos na. Darating ang unang email sa loob ng dalawang araw.", badge: "Mga writing tool", takedowns: "{{n}} posisyon ang napunan o nagsara sa nakalipas na 24 oras" },
+};
+const BEFORE_OWNER_EMAIL_ROW = {
+  what: "A report you email to yourself, the paid analysis we email you, and any fix-plan emails you opt into",
+  where: "Your inbox, sent through our email provider; scheduled fix-plan emails wait in our send queue",
+  howLong: "The queued emails go out over 14 days; unsubscribing cancels the rest",
+};
+function beforeOwner(bundles: Record<Lng, Json>): Record<Lng, Json> {
+  const out = {} as Record<Lng, Json>;
+  for (const l of LNGS) {
+    const b = clone(bundles[l]);
+    const v = BEFORE_OWNER[l];
+    set(b, "trustPage.retention.rows.shortlist.howLong", v.shortlist);
+    set(b, "fixPlanConfirm.done", v.done);
+    set(b, "proPlan.badge", v.badge);
+    set(b, "jobsPage.takedownsLast24h", v.takedowns);
+    if (l.startsWith("en")) for (const [k, x] of Object.entries(BEFORE_OWNER_EMAIL_ROW)) set(b, `trustPage.retention.rows.email.${k}`, x);
+    out[l] = b;
+  }
+  return out;
+}
 const PLURAL_KEYS = ["freeResults.actionBanner.issuesFound", "jobsPage.a11yResults", "freeResults.lockedInsights.kwDescWithStats", "homepage.toast.unreadCharactersDescription", "jobKeywordMatcher.topActions", "jobsPage.fuzzyExtraLine", "jobsPage.hiddenCount", "jobsPage.hiddenByViews", "accountPage.tracked"];
 const NEW_KEYS = ["atsCoverage.stripHeading", "atsCoverage.stripSub", "atsCoverage.subCounted", "atsCoverage.eyebrow", "atsCoverage.asOf", "freeResults.matches.openBoard", "emailUnsubscribe.metaTitle", "emailUnsubscribe.metaDescription", "agentControls", "agentNight", "agent", "agentSetup", "receipt", "morningQueue", "agentQueue.countryAny", "accountPage.notifAgentEmail", "accountPage.notifAgentPaused"];
 function today(): Record<Lng, Json> {
   const out = {} as Record<Lng, Json>;
+  const pre = beforeOwner(LANE);
   for (const l of LNGS) {
-    const b = clone(LANE[l]);
+    const b = pre[l];
     delete b.edgeErrors;
     for (const k of PLURAL_KEYS) {
       const { holder, leaf } = at(b, k);
@@ -305,7 +341,7 @@ describe("verify section 99zzzzzzz-bugs-copy-i18n", () => {
   });
 
   it("an owner answer whose half is not published yet is a FAIL, and the halves published pass", () => {
-    const before = run({ bundles: LANE }, DECIDED).lines;
+    const before = run({ bundles: beforeOwner(LANE) }, DECIDED).lines;
     for (const id of OWNER) expect(verdict(before, id), `${id}\n${show(before)}`).toEqual(["FAIL"]);
     const built = ownerBuilt();
     const after = run({ bundles: built, fpc: FPC_WITHDRAWN }, DECIDED).lines;
@@ -314,7 +350,7 @@ describe("verify section 99zzzzzzz-bugs-copy-i18n", () => {
   });
 
   it("an owner answer for the other option is judged by that option, or says nothing changes", () => {
-    const { lines } = run({ bundles: LANE }, { "S14X-073": { choice: "B", rule: "copy only (not rule A)" }, "S14X-012": "A", "NB-11": "keep the card", "NB-47": "closed" });
+    const { lines } = run({ bundles: beforeOwner(LANE) }, { "S14X-073": { choice: "B", rule: "copy only (not rule A)" }, "S14X-012": "A", "NB-11": "keep the card", "NB-47": "closed" });
     expect(line(lines, "O1")[0], show(lines)).toMatch(/^FAIL .*rule B.*still says it/);
     expect(line(lines, "O2")[0]).toMatch(/^INFO .*decided "A": .*nothing here changes/);
     expect(line(lines, "O3")[0]).toMatch(/^INFO .*decided "keep the card"/);
