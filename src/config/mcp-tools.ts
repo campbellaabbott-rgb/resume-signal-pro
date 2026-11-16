@@ -203,7 +203,7 @@ export const MCP_TOOLS: readonly McpTool[] = [
   {
     name: "employer_hiring_record",
     tier: "read",
-    body: "An employer's record on its own board, from the closure ledger no other board keeps: roles open now, roles watched coming down in the last 90 days with re-lists counted separately, medians from the employer's own stated dates, and how long that board has been watched — per board, never summed across an employer's boards, and a takedown is never called a hire; a board with no closure observed answers unknown with the reason, never a verdict.",
+    body: "An employer's record on its own board, from the closure ledger no other board keeps, as the employer's page on this site prints it: roles open now and how long that board has been watched, and, only where our read of that board supports them, roles taken down in the last 90 days and left down, re-lists counted separately, and the day by which half came down, from the employer's own stated dates. A figure our read cannot support is left out with the reason, in the page's words — per board, never summed across an employer's boards, and a takedown is never called a hire; a board name two hiring systems share gets no record, and a board with no closure observed answers unknown with the reason, never a verdict.",
   },
   {
     name: "employer_growth",

@@ -107,6 +107,8 @@ import { parseJobId } from "./job-link.ts";
 // OpenAI's published ChatGPT egress as last read, for when the live list
 // cannot be (sweep S12-085).
 import { BUNDLED_CHATGPT_EGRESS_V4 } from "./chatgpt-egress.ts";
+// The hiring record as the site prints it, through the site's own gate (M2-01).
+import { NOT_JUDGED, SHARED_TOKEN, SHARED_TOKEN_COPY, UNREAD, gatedRecord, sharedTokenBoards } from "./hiring-record-view.ts";
 // The keyless allowance: who pays (by verified address only), and what a
 // refusal says (by edition).
 import {
@@ -627,6 +629,50 @@ async function sha256Hex(s: string): Promise<string> {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/**
+ * WHO MAY CALL FROM A WEB PAGE (S14X-091). A keyless call spends the
+ * allowance of the address it comes from, so a page on any site could spend
+ * its visitors' allowance: a text/plain POST needs no preflight, and the
+ * answer said Access-Control-Allow-Origin: *. A browser always sends Origin on
+ * a POST, so a POST from a page not listed here is refused before its body is
+ * read, and anything that is not application/json is refused first. Claude's
+ * and ChatGPT's servers, Claude Code and scripts send no Origin and are
+ * answered as before; a listed page is answered by name, with Vary: Origin.
+ */
+const BROWSER_ORIGINS: ReadonlySet<string> = new Set([
+  "https://claude.ai", "https://chatgpt.com", "https://resumebooster.work", "https://www.resumebooster.work",
+  "https://resume-signal-pro.lovable.app",
+]);
+/** The Origin as answered, or null. A local page (the MCP Inspector, a dev server) runs on the caller's own machine. */
+function allowedOrigin(origin: string): string | null {
+  if (BROWSER_ORIGINS.has(origin)) return origin;
+  return /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d{1,5})?$/.test(origin) ? origin : null;
+}
+function browserGated(handle: (req: Request) => Promise<Response>): (req: Request) => Promise<Response> {
+  return async (req) => {
+    const origin = req.headers.get("origin");
+    const allowed = origin === null ? null : allowedOrigin(origin);
+    const named = (res: Response): Response => {
+      if (origin !== null) {
+        if (allowed) res.headers.set("Access-Control-Allow-Origin", allowed);
+        else res.headers.delete("Access-Control-Allow-Origin");
+      }
+      res.headers.append("Vary", "Origin");
+      return res;
+    };
+    if (req.method === "POST") {
+      const type = req.headers.get("content-type");
+      if (type !== null && !/^application\/json\s*(?:;|$)/i.test(type.trim())) {
+        return named(json(rpcError(null, -32600, "Send the JSON-RPC message with Content-Type: application/json."), 415));
+      }
+      if (origin !== null && !allowed) {
+        return named(json(rpcError(null, -32600, `This server does not answer calls made from a web page on ${origin.slice(0, 80)}. Call it from your agent or a script, which send no Origin.`), 403));
+      }
+    }
+    return named(await handle(req));
+  };
+}
+
 const json = (body: unknown, status = 200, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), {
     status,
@@ -700,6 +746,19 @@ class ToolArgumentError extends Error {
  * one (owner decision 2026-10-11).
  */
 class BoardTransportError extends Error {}
+/** The board answered with a non-2xx status after doing its work: the status rides with the message. */
+class BoardHttpError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message);
+  }
+}
+/**
+ * The board says it holds no such posting: 404 "Unknown job id" for a prefix it
+ * does not carry, 404 "Posting not found (it may have closed)" for an id under a
+ * carried prefix (S14X-016). Read by status first, the words second.
+ */
+const boardHoldsNoSuchJob = (e: unknown): boolean =>
+  (e instanceof BoardHttpError && e.status === 404) || /posting not found/i.test(String((e as Error)?.message ?? ""));
 
 /**
  * Who is calling, for the words and the shape of an answer — never for who
@@ -743,7 +802,7 @@ async function board(body: Record<string, unknown>, ctx: Ctx = KEYED_CTX): Promi
   // the board running out of time, which is the expensive case and is NOT.
   if (res.status === 502 || res.status === 503) throw new BoardTransportError(`board answered ${res.status}`);
   const out = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(String((out as { error?: string }).error ?? `board returned ${res.status}`));
+  if (!res.ok) throw new BoardHttpError(String((out as { error?: string }).error ?? `board returned ${res.status}`), res.status);
   return out as Record<string, unknown>;
 }
 
@@ -1125,21 +1184,23 @@ const HIRING_RECORD_WINDOW_DAYS = 90;
  * jobsPage.hiringBasis3 and jobsPage.hiringBadgeTip3) — copied, not rewritten,
  * so an agent and a person reading the site are told the same thing about the
  * same ledger. Never a hire: a filled role, a cancelled one and a withdrawn one
- * look identical from here.
+ * look identical from here. Since M2-01 it describes only what the row prints:
+ * the roles and the median the site's gate admits, never the event counts or
+ * the two medians the site retired.
  */
 const HIRING_RECORD_BASIS =
-  `A record of one BOARD (a vendor tenant), never summed across an employer's boards, and never a headcount. ` +
-  `closed_${HIRING_RECORD_WINDOW_DAYS}d counts TAKEDOWN EVENTS, not distinct postings (a posting that came back and came down again counts each time), ` +
-  `that we watched on this board in the last ${HIRING_RECORD_WINDOW_DAYS} days ` +
-  `on a board read to the end — in one visit or across a provable full lap — excluding re-lists (an identical title still live within a day, counted separately in ` +
-  `superseded_${HIRING_RECORD_WINDOW_DAYS}d, which is a floor), excluding takedowns the collector marked as its own ` +
-  `collection failure, and excluding takedowns first observable on a big board's first laps. A takedown is not a hire ` +
-  `— a filled role, a cancelled one and a withdrawn one look identical from here. tracking_days is how long we have ` +
-  `watched THIS board (capped at ${HIRING_RECORD_WINDOW_DAYS}), not the age of the ledger. median_days_open and ` +
-  `median_days_to_close are measured from the employer's own stated posting dates only, and both are LOWER BOUNDS: ` +
-  `serving stops at 30 days, so no closure can be observed later than that, and neither is a typical time-to-fill. ` +
-  `The site's "Actively hiring" chip is judged from a stricter read of the same ledger and this tool does not ` +
-  `reproduce that judgement; these figures are the record itself.`;
+  `A record of one BOARD (a vendor tenant), never summed across an employer's boards, and never a headcount, printed as the site's company page prints it. ` +
+  `open_roles is what this board serves now; tracking_days is how long we have watched it (capped at ${HIRING_RECORD_WINDOW_DAYS}); feed_total is what the employer's feed advertised at our last check. ` +
+  `filled_roles_${HIRING_RECORD_WINDOW_DAYS}d counts ROLES taken down in the last ${HIRING_RECORD_WINDOW_DAYS} days and not re-listed, and relisted_roles_${HIRING_RECORD_WINDOW_DAYS}d the roles that came back, a floor (one logged per title per day). ` +
+  `median_days_to_fill is the day by which half of the dated roles came down, from the employer's own stated posting dates only, in whole days, and a lower bound. ` +
+  `A takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here. ` +
+  `Each figure is printed only where the site's own gate admits it for this board (a board we read to its end, watched long enough, whose re-list test works); ` +
+  `otherwise gate names the reason and gate.sentence says it in the site's words. A token two hiring systems carry gets no record (unknown_reason ${SHARED_TOKEN}).`;
+
+/** The basis every row carries: short, and the same four facts (TQ-6). */
+const HIRING_RECORD_ROW_BASIS =
+  "One board, never summed across an employer's boards. A takedown is not a hire. Role counts exclude re-lists, and the re-list count is a floor. " +
+  "The median uses the employer's stated dates only and is a lower bound.";
 
 const HIRING_RECORD_UNKNOWN = {
   no_record:
@@ -1151,6 +1212,14 @@ const HIRING_RECORD_UNKNOWN = {
     "a provable full pass and then watch a role go after it. The two cannot be told apart from here — so this is " +
     "unknown, not a verdict about the employer.",
 } as const;
+
+/** What the site's gate said of each half of a row: ok or its reason, and its words for each refusal. */
+const HIRING_RECORD_GATE_SCHEMA = {
+  type: "object",
+  properties: { counts: { type: "string" }, median: { type: "string" }, sentence: { type: ["string", "null"] } },
+  required: ["counts", "median", "sentence"],
+  description: "ok or the gate's reason per half; sentence: the site's words for each refusal.",
+};
 
 /**
  * THE FILING BARS, MIRRORED FROM THE READER THAT APPLIES THEM AND THE
@@ -1189,6 +1258,8 @@ const LAYOFF_FILING_BASIS =
   `${LAYOFF_BARS.warnMinWorkers} workers (an unstated count is not zero and is not carried). Filings are read ` +
   `${LAYOFF_BARS.cadenceEdgar} from SEC EDGAR and ${LAYOFF_BARS.cadenceWarn} from state notices as consolidated by ` +
   `Big Local News; read_at is our read, event_date and public_date are the filing's own, each with its basis named. ` +
+  `workforce is the reader's answer to whether an 8-K's Item 2.05 section describes a workforce event: false or null is an ` +
+  `exit-or-disposal filing that describes none, and it is null on a state notice. ` +
   `more_n counts further qualifying filings the employer page lists; null means nothing qualified, never that nothing happened ` +
   `-- except when layoff_read on the response is not "ok": then the filing read failed on this call, every layoff_filing is null ` +
   `for that reason alone, and the record beside it is untouched.`;
@@ -1213,12 +1284,13 @@ const LAYOFF_FILING_SCHEMA = {
     pct: { type: ["number", "null"], description: "Workforce share the 8-K states, as parsed; null when it states none or on a WARN notice." },
     headcount: { type: ["integer", "null"], description: "Positions the 8-K states, as parsed; null when it states none or on a WARN notice." },
     form: { type: ["string", "null"], description: "The SEC form (an amendment never appears); null on a WARN notice." },
+    workforce: { type: ["boolean", "null"], description: "8-K only: whether its Item 2.05 section describes a workforce event. Null on a WARN notice." },
     source_url: { type: "string", description: "The filing itself, at the source." },
     source_name: { type: "string", description: "SEC EDGAR, or the state agency as it names itself." },
     read_at: { type: "string", description: "When we read it. Our stamp, never a date basis for the filing." },
     more_n: { type: "integer", description: "Further qualifying filings for this employer beyond this newest one." },
   },
-  required: ["source", "relation", "filer", "event_date", "event_basis", "public_date", "public_basis", "state", "site", "workers", "event_type", "effective_date", "pct", "headcount", "form", "source_url", "source_name", "read_at", "more_n"],
+  required: ["source", "relation", "filer", "event_date", "event_basis", "public_date", "public_basis", "state", "site", "workers", "event_type", "effective_date", "pct", "headcount", "form", "workforce", "source_url", "source_name", "read_at", "more_n"],
   additionalProperties: false,
 };
 
@@ -1228,21 +1300,23 @@ const HIRING_RECORD_ROW_SCHEMA = {
     company_token: { type: "string" },
     record: {
       type: "string", enum: ["observed", "unknown"],
-      description: "observed: the ledger holds at least one closure for this board in the window, so the figures speak. unknown: it holds none, with unknown_reason saying why that is not a finding.",
+      description: "observed: the ledger holds at least one closure for this board in the window. unknown: it holds none, or the token is shared; unknown_reason says why that is not a finding.",
     },
-    unknown_reason: { type: ["string", "null"], enum: [...Object.keys(HIRING_RECORD_UNKNOWN), null] },
+    unknown_reason: { type: ["string", "null"], enum: [...Object.keys(HIRING_RECORD_UNKNOWN), SHARED_TOKEN, null] },
     open_roles: { type: "integer", description: "Postings served from this board right now, under the same two serving rules as search." },
-    [`closed_${HIRING_RECORD_WINDOW_DAYS}d`]: { type: "integer", description: "Watched takedowns in the window, re-lists excluded. Never a count of hires." },
-    [`superseded_${HIRING_RECORD_WINDOW_DAYS}d`]: { type: "integer", description: "Re-lists in the window — a FLOOR, one logged per title per day." },
-    median_days_open: { type: ["number", "null"], description: "Median age of the roles served now, from the employer's stated dates only. Null when none carry one." },
-    median_days_to_close: { type: ["number", "null"], description: "Median stated-date-to-takedown over the window's dated closures. A lower bound; null when no closure carries a date." },
     tracking_days: { type: ["integer", "null"], description: "Days this board has been watched, capped." },
     feed_total: { type: ["integer", "null"], description: "What the employer's feed advertised at the last verification. Null when never verified." },
+    filled_roles_90d: { type: "integer", description: "Roles taken down, not re-listed; only where gate.counts is ok. Never a count of hires." },
+    relisted_roles_90d: { type: "integer", description: "Roles that came back, a FLOOR; only where gate.counts is ok." },
+    median_days_to_fill: { type: "integer", description: "Day by which half the dated roles came down (stated dates, a lower bound); only where gate.median is ok." },
+    median_note: { type: "string", description: "The site's sentence when half never came down, in place of a median." },
+    gate: HIRING_RECORD_GATE_SCHEMA,
+    boards: { type: "array", items: { type: "object" }, description: "Shared token only: its boards." },
     basis: { type: "string" },
     note: { type: "string", description: "Present on an unknown row: what the absence means and does not mean." },
     layoff_filing: LAYOFF_FILING_SCHEMA,
   },
-  required: ["company_token", "record", "basis", "layoff_filing"],
+  required: ["company_token", "record", "gate", "basis", "layoff_filing"],
   additionalProperties: true,
 };
 
@@ -1255,8 +1329,8 @@ const GROWTH_ROW_SCHEMA = {
       description: "The board's own judgement, passed through untouched. unknown is NOT no-growth: it is a reading we could not take, and unknown_reason says why.",
     },
     unknown_reason: {
-      type: ["string", "null"], enum: [...GROWTH_UNKNOWN_REASONS, null],
-      description: "Null for grew and no-growth. Otherwise the gate that refused, in the migration's own words.",
+      type: ["string", "null"], enum: [...GROWTH_UNKNOWN_REASONS, SHARED_TOKEN, null],
+      description: `Null for grew and no-growth. Otherwise the gate that refused, in the migration's own words; ${SHARED_TOKEN}: two hiring systems carry the token.`,
     },
     window_days: { type: "integer" },
     baseline_day: { type: ["string", "null"], description: "Our observation date at the window's start." },
@@ -1600,16 +1674,15 @@ const TOOLS = [
     name: "employer_hiring_record",
     title: "An employer's hiring record on this board",
     description:
-      `For each employer handle (companyToken, up to ${EMPLOYER_TOKENS_MAX} a call), its record on this board: open_roles, ` +
-      `closed_${HIRING_RECORD_WINDOW_DAYS}d (takedowns watched in ${HIRING_RECORD_WINDOW_DAYS} days, re-lists excluded), superseded_${HIRING_RECORD_WINDOW_DAYS}d (re-lists, a floor), ` +
-      `two medians from the employer's stated dates (lower bounds), tracking_days and feed_total. ` +
-      "A takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here — and it is a record of one BOARD, " +
-      "never summed across an employer's boards, never a headcount. A board with no closure observed answers record:'unknown' with its reason, " +
-      "never a verdict about the employer: on a board bigger than one visit can read, no closure is observable to us until we complete a provable full pass and then watch a role go after it. " +
-      "Every row carries its basis. " +
-      `Every row also carries layoff_filing, the newest US state WARN notice or SEC 8-K Item 2.05 disclosure matched to the employer by a curated alias or an exact multi-token name, printed as a filing (filer verbatim, dates with their bases, count, state or form, link), ` +
-      `read ${LAYOFF_BARS.cadenceEdgar} from SEC EDGAR and ${LAYOFF_BARS.cadenceWarn} from state notices, null when none qualifies within ${LAYOFF_BARS.displayMaxAgeDays} days, and no part of any verdict; layoff_basis says what it is and is not. ` +
-      `Pair with employer_growth for the other half of what the site calls "Actively hiring".`,
+      "Use this when the person asks how an employer's postings come and go: whether roles come down or sit open, how long they stay open, any recent layoffs filing. It does not judge whether the employer is hiring. " +
+      `Per companyToken (up to ${EMPLOYER_TOKENS_MAX}), as the site prints it: open_roles, tracking_days, feed_total and, where its gate admits them, ` +
+      `filled_roles_${HIRING_RECORD_WINDOW_DAYS}d (taken down, not re-listed), relisted_roles_${HIRING_RECORD_WINDOW_DAYS}d (a floor), median_days_to_fill (stated dates, lower bound); gate names why not. ` +
+      "A takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here; it is one BOARD, " +
+      "never summed across an employer's boards, never a headcount; a token two hiring systems share gets none. No closure observed is record:'unknown' with a reason, " +
+      "never a verdict: on a board bigger than one visit can read, no closure is observable to us until we complete a provable full pass and then watch a role go after it. " +
+      `layoff_filing: the newest US WARN notice or SEC 8-K Item 2.05 filing (filer verbatim, dates, count, link), ` +
+      `read ${LAYOFF_BARS.cadenceEdgar} from EDGAR and ${LAYOFF_BARS.cadenceWarn} from state notices, null if none within ${LAYOFF_BARS.displayMaxAgeDays} days; see layoff_basis. ` +
+      `employer_growth is the other half of "Actively hiring".`,
     annotations: READS_THE_BOARD,
     inputSchema: {
       type: "object",
@@ -2332,7 +2405,8 @@ async function answerRead(client: SupabaseClient, read: MeteredRead, d: Decision
         await probeSignIn();
         return contentsOf(r.uri, r.mimeType, guideText(ctx.edition, true));
       }
-      if (r.uri === BOARD_STATS_URI) return contentsOf(r.uri, r.mimeType, await runBoardStats());
+      // The same five-minute answer board_stats gives, never a live facet count per read (S14X-133).
+      if (r.uri === BOARD_STATS_URI) return contentsOf(r.uri, r.mimeType, await runCachedBoardStats());
       if (r.uri === MY_KEY_URI) return contentsOf(r.uri, r.mimeType, await runKeyStatus(client, d, ctx));
       throw new Error(`no runner for resource ${r.uri}`);
     }
@@ -2831,7 +2905,7 @@ async function detailOf(id: string, descCap: number, truncNote: string, ctx: Ctx
     // shortly" — telling an agent to retry a call that can never succeed, which
     // is the same wrong instruction the scorer's 429 used to give. Classified
     // here; anything else still throws and is still logged server-side.
-    if (/unknown job id/i.test(String((e as Error)?.message ?? ""))) return { ok: false, id, reason: "notFound" };
+    if (/unknown job id/i.test(String((e as Error)?.message ?? "")) || boardHoldsNoSuchJob(e)) return { ok: false, id, reason: "notFound" };
     throw e;
   }
   if (r.error) throw new Error(String(r.error));
@@ -3238,7 +3312,7 @@ async function runApplyMyself(client: SupabaseClient, args: Record<string, unkno
   try {
     r = await board({ action: "detail", id }, ctx);
   } catch (e) {
-    if (/unknown job id/i.test(String((e as Error)?.message ?? ""))) {
+    if (/unknown job id/i.test(String((e as Error)?.message ?? "")) || boardHoldsNoSuchJob(e)) {
       return { jobId: id, state: "notFound", note: "No posting with that id: search again with search_jobs and use the id on a card." };
     }
     throw e;
@@ -3404,19 +3478,35 @@ async function runEmployerHiringRecord(client: SupabaseClient, args: Record<stri
   // tool is metered before it runs, so a reader that cannot answer -- the
   // migration not yet applied, its statement timeout, a transient fault --
   // must not take a charged call down with it. The rows ship with the record
-  // intact and layoff_filing null, and layoff_read names the fault so null
-  // is not read as "nothing qualified".
+  // intact and layoff_filing null, and layoff_read says the read failed so
+  // null is not read as "nothing qualified". The database's own words stay
+  // in the server log (NB-28).
   let filings = new Map<string, LayoffFiling | null>();
   let layoffRead = "ok";
   try {
     filings = await employerLayoffFilings(client, tokens);
   } catch (e) {
-    layoffRead = `unread: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300);
-    console.warn(`[agent-mcp] employer_hiring_record: ${layoffRead}`);
+    layoffRead = `unread: filing reader unavailable`;
+    console.warn(`[agent-mcp] employer_hiring_record: filing read failed: ${String(e instanceof Error ? e.message : e).slice(0, 300)}`);
   }
   const closedCol = `closed_${HIRING_RECORD_WINDOW_DAYS}d`;
   const supersededCol = `superseded_${HIRING_RECORD_WINDOW_DAYS}d`;
+  // THE GATE'S INPUT (M2-01): the fill curve, read only for the boards that
+  // have a closure to judge (a cold read of twenty tokens took 7-19 s), and
+  // never for a token two hiring systems share.
+  const judged = tokens.filter((tok) => {
+    const r = rows.get(tok);
+    return !!r && !sharedTokenBoards(tok) && Number(r[closedCol] ?? 0) + Number(r[supersededCol] ?? 0) > 0;
+  });
+  const curves = await fillCurvesOf(client, judged);
   const employers = tokens.map((tok) => {
+    const shared = sharedTokenBoards(tok);
+    if (shared) {
+      return {
+        company_token: tok, record: "unknown", unknown_reason: SHARED_TOKEN, gate: { counts: SHARED_TOKEN, median: SHARED_TOKEN, sentence: null },
+        boards: shared, basis: HIRING_RECORD_ROW_BASIS, note: SHARED_TOKEN_COPY, layoff_filing: null,
+      };
+    }
     const r = rows.get(tok);
     // The RPC answers every token by construction; a missing row is a fault in
     // the read, not a fact about the employer, and is thrown rather than filled.
@@ -3426,16 +3516,47 @@ async function runEmployerHiringRecord(client: SupabaseClient, args: Record<stri
     const openRoles = Number(r.open_roles ?? 0);
     const nothingAtAll = openRoles === 0 && closed + superseded === 0 && Number(r.tracking_days ?? 0) === 0 && r.feed_total == null;
     const unknownReason = nothingAtAll ? "no_record" : closed + superseded === 0 ? "no_closures_observed" : null;
+    const view = unknownReason ? { fields: {}, gate: NOT_JUDGED } : curves ? gatedRecord(curves.get(tok)) : { fields: {}, gate: UNREAD };
+    // AN EXPLICIT FIELD LIST, never the RPC row spread: the event counts and
+    // the two medians the site retired never reach the answer.
     return {
-      ...r,
+      company_token: tok,
       record: unknownReason ? "unknown" : "observed",
       unknown_reason: unknownReason,
-      basis: HIRING_RECORD_BASIS,
+      open_roles: openRoles,
+      tracking_days: r.tracking_days == null ? null : Number(r.tracking_days),
+      feed_total: r.feed_total == null ? null : Number(r.feed_total),
+      ...view.fields,
+      gate: view.gate,
+      basis: HIRING_RECORD_ROW_BASIS,
       ...(unknownReason ? { note: HIRING_RECORD_UNKNOWN[unknownReason] } : {}),
       layoff_filing: filings.get(tok) ?? null,
     };
   });
   return { employers, asked: tokens.length, window_days: HIRING_RECORD_WINDOW_DAYS, basis: HIRING_RECORD_BASIS, layoff_basis: LAYOFF_FILING_BASIS, layoff_read: layoffRead };
+}
+
+/**
+ * get_company_fill_curve for the boards the gate judges, one row per token,
+ * or null when the read failed: then every judged row prints the gate's
+ * 'unread' sentence and no figure (fail closed). A token the reader did not
+ * answer is unread in the same way, never a zero.
+ */
+async function fillCurvesOf(client: SupabaseClient, tokens: string[]): Promise<Map<string, Record<string, unknown>> | null> {
+  const out = new Map<string, Record<string, unknown>>();
+  if (!tokens.length) return out;
+  try {
+    const { data, error } = await client.rpc("get_company_fill_curve", { p_tokens: tokens });
+    if (error || !Array.isArray(data)) {
+      console.warn(`[agent-mcp] employer_hiring_record: fill curve unread: ${String(error?.message ?? "no rows").slice(0, 200)}`);
+      return null;
+    }
+    for (const r of data as Array<Record<string, unknown>>) out.set(String(r.company_token), r);
+    return out;
+  } catch (e) {
+    console.warn(`[agent-mcp] employer_hiring_record: fill curve unread: ${String(e instanceof Error ? e.message : e).slice(0, 200)}`);
+    return null;
+  }
 }
 
 /** The layoff_filing object as the response carries it: the reader's row with its lf_ prefix dropped and nothing added. */
@@ -3444,7 +3565,7 @@ type LayoffFiling = {
   event_date: string; event_basis: string; public_date: string; public_basis: string;
   state: string | null; site: string | null; workers: number | null;
   event_type: string | null; effective_date: string | null;
-  pct: number | null; headcount: number | null; form: string | null;
+  pct: number | null; headcount: number | null; form: string | null; workforce: boolean | null;
   source_url: string; source_name: string; read_at: string; more_n: number;
 };
 
@@ -3493,6 +3614,7 @@ function layoffFilingOf(r: Record<string, unknown>): LayoffFiling | null {
     pct: num(r.lf_pct),
     headcount: num(r.lf_headcount),
     form: text(r.lf_form),
+    workforce: typeof r.lf_workforce === "boolean" ? r.lf_workforce : null,
     source_url: String(r.lf_source_url),
     source_name: String(r.lf_source_name),
     read_at: String(r.lf_read_at),
@@ -3517,6 +3639,8 @@ async function runEmployerGrowth(client: SupabaseClient, args: Record<string, un
   const rows = new Map<string, Record<string, unknown>>();
   for (const r of (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>) rows.set(String(r.company_token), r);
   const employers = tokens.map((tok) => {
+    // A token two hiring systems carry: the site gives no reading for it, and neither does this tool (M2-01).
+    if (sharedTokenBoards(tok)) return { company_token: tok, verdict: "unknown", unknown_reason: SHARED_TOKEN, boards: sharedTokenBoards(tok), note: SHARED_TOKEN_COPY };
     const r = rows.get(tok);
     if (!r) throw new Error(`get_company_growth answered no row for ${tok}`);
     return { ...r, verdict: r.verdict, unknown_reason: r.unknown_reason ?? null };
@@ -4720,7 +4844,7 @@ function instructionsFor(edition: Edition): string {
     `A resumebooster.work/jobs?job=<id> link's id is the argument to every job tool. A resumebooster.work/jobs/posting/ page is read as its id too. ` +
     `Without a key these tools share a daily allowance; each answer says what is left and that it resets at midnight UTC. ` +
     `SmartRecruiters and USAJOBS postings are not served here. ` +
-    `This board watches postings come down and can say which employers take roles down and leave them down: ${tool("employer_hiring_record")} and ${tool("employer_growth")} carry that record per employer board, every unknown named as unknown. ` +
+    `This board watches postings come down and, where its read of a board supports it, says which employers take roles down and leave them down: ${tool("employer_hiring_record")} and ${tool("employer_growth")} carry that record per employer board, every figure it cannot support named with why. ` +
     (edition === "other" ? `A free key (${MINT_URL}) raises the allowance to ${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day and opens ${tool("fit_resume")}. ` : "") +
     `When helping someone apply: ${HONESTY_RULES} Guide: ${GUIDE_URI}.`
   );
@@ -4835,6 +4959,8 @@ function checkArgs(toolName: string, args: Record<string, unknown>, keyless: boo
       employerTokensArg(args, toolName);
       return;
     case "fit_resume":
+      // With no credential the answer is the key or sign-in, never a request for the CV it would then refuse (S14X-263).
+      if (keyless) return;
       if (typeof args.resumeText !== "string" || args.resumeText.trim().length < 100) {
         throw new ToolArgumentError("resumeText must be the CV as plain text, at least 100 characters.", "Send {resumeText: '...'} with the whole CV.");
       }
@@ -4856,7 +4982,7 @@ function pastKeylessPage(toolName: string, args: Record<string, unknown>): Recor
   };
 }
 
-Deno.serve(async (req) => {
+Deno.serve(browserGated(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method === "GET") {
     // The protected-resource metadata — matched on the pathname AFTER the
@@ -5203,4 +5329,4 @@ Deno.serve(async (req) => {
     console.error(`[AGENT-MCP] tool ${toolName} failed:`, ctx.noLog ? String((e as Error)?.name ?? "Error") : String((e as Error)?.message ?? e).slice(0, 300));
     return json(rpcResult(id, toolErr(`The ${toolName} tool hit an internal error. Try again shortly.`)), 200, rateHeaders);
   }
-});
+}));
