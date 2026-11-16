@@ -1,0 +1,29 @@
+{
+  "siteShell": {
+    "crashHome": "होमपेज पर जाएं",
+    "newVersion": {
+      "loading": "नया संस्करण लोड हो रहा है…",
+      "reload": "अभी फिर से लोड करें"
+    },
+    "notFound": {
+      "title": "पेज नहीं मिला",
+      "jobs": "खुली नौकरियां देखें",
+      "pricing": "कीमतें देखें"
+    },
+    "titles": {
+      "account": "आपका खाता",
+      "auth": "साइन इन करें",
+      "shortlist": "नियोक्ताओं के लिए शॉर्टलिस्ट",
+      "success": "आपका पूरा विश्लेषण",
+      "productSuccess": "आपकी खरीद",
+      "paymentFailed": "भुगतान पूरा नहीं हुआ",
+      "affiliates": "एफ़िलिएट प्रोग्राम",
+      "affiliateRedirect": "आगे भेजा जा रहा है…",
+      "agent": "अपने AI से आवेदन करें",
+      "analytics": "एनालिटिक्स",
+      "errors": "त्रुटि लॉग",
+      "healthCheck": "सिस्टम जांच",
+      "scanMetrics": "स्कैन मेट्रिक्स"
+    }
+  }
+}

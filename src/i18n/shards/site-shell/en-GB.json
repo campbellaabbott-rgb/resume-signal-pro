@@ -1,0 +1,29 @@
+{
+  "siteShell": {
+    "crashHome": "Go to the homepage",
+    "newVersion": {
+      "loading": "Loading the new version…",
+      "reload": "Reload now"
+    },
+    "notFound": {
+      "title": "Page not found",
+      "jobs": "Browse open jobs",
+      "pricing": "See pricing"
+    },
+    "titles": {
+      "account": "Your account",
+      "auth": "Sign in",
+      "shortlist": "Shortlist for employers",
+      "success": "Your full analysis",
+      "productSuccess": "Your purchase",
+      "paymentFailed": "Payment not completed",
+      "affiliates": "Affiliate programme",
+      "affiliateRedirect": "Redirecting…",
+      "agent": "Apply with your own AI",
+      "analytics": "Analytics",
+      "errors": "Error log",
+      "healthCheck": "Health check",
+      "scanMetrics": "Scan metrics"
+    }
+  }
+}

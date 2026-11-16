@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { addressBucket, metadataTooLarge, recordEvent, type Rpc } from "./budget.ts";
+import { admits } from "./allowlist.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Returned in every response so a deploy is provable from the outside: a
@@ -72,6 +73,13 @@ serve(async (req) => {
     // into slightly messier data instead of total, invisible data loss.
     if (testName.length > 50 || variant.length > 30 || visitorId.length < 8 || visitorId.length > 64) {
       return json({ error: 'Invalid input format' }, 400);
+    }
+
+    // Only the events the site sends (S14X-154, ./allowlist.ts): a test,
+    // type or variant the browser never sends is refused here, before any
+    // count, check or write.
+    if (!admits(testName, variant, eventType)) {
+      return json({ error: 'Unknown event' }, 400);
     }
 
     // Metadata of any size was stored (S8-019).
