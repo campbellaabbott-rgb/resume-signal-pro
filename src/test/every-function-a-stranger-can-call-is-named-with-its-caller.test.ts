@@ -635,6 +635,8 @@ describe("every anonymous writer on the list is bounded, and the budget is keyed
    * function answers but never how much a stranger may write.
    *   record_scan_feedback: answers true/false instead of void, so the page
    *   can tell a stored vote from one the budget skipped (S13-057).
+   *   log_industry_correction, both overloads: refuses a label the scanner
+   *   does not know, or an unchanged one, before the budget (S14X-046).
    */
   const REDEFINED_AFTER_CENSUS: Record<string, string> = {
     "public.record_scan_feedback(text,boolean,text,integer,boolean,integer,text)": "20261101150000_a_feedback_vote_the_budget_skipped_is_never_thanked.sql",
@@ -643,6 +645,10 @@ describe("every anonymous writer on the list is bounded, and the budget is keyed
     "public.track_affiliate_click(text,text,text,text)": "20261112121000_an_affiliate_click_keeps_a_keyed_address_hash_for_ninety_days.sql",
     "public.login_affiliate(text,text)": "20261112120000_an_affiliate_signs_in_with_a_hashed_session_and_a_proven_address.sql",
     "public.register_affiliate(text,text)": "20261112120000_an_affiliate_signs_in_with_a_hashed_session_and_a_proven_address.sql",
+    // Bug round 2026-11-08, lane free-scan-engine: the correction log takes only
+    // labels the scanner knows.
+    "public.log_industry_correction(text,text,text,text)": "20261112170000_a_scan_that_delivered_nothing_gives_its_day_back_and_a_stranger_names_no_new_industry.sql",
+    "public.log_industry_correction(text,text,text,text,integer,text[],text,text,text)": "20261112170000_a_scan_that_delivered_nothing_gives_its_day_back_and_a_stranger_names_no_new_industry.sql",
   };
 
   /**

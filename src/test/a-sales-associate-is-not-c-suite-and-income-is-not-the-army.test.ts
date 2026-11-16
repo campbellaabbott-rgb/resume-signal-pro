@@ -129,3 +129,20 @@ describe("the tables", () => {
     expect(src).not.toMatch(/lowerText\.includes\(k\)/);
   });
 });
+
+describe("RC-S13-009: an employer named for a service is not the service", () => {
+  it("an Old Navy store career is a retail career, not a move from the military", () => {
+    const titles = ["Store Manager, Old Navy", "Assistant Store Manager, Old Navy", "Sales Associate, Target"];
+    const t = analyzeCareerTrajectory(titles, "retail", titles.join("\n"));
+    expect(t.fromIndustry).not.toBe("military");
+    expect(t.progressionSummary).not.toMatch(/military/i);
+  });
+  it("a Navy Federal Credit Union teller is a banker", () => {
+    const titles = ["Member Service Representative, Navy Federal Credit Union", "Teller, Navy Federal Credit Union"];
+    expect(analyzeCareerTrajectory(titles, "finance", titles.join("\n")).fromIndustry).not.toBe("military");
+  });
+  it("control: a U.S. Navy Petty Officer still is", () => {
+    const titles = ["Logistics Coordinator, Acme", "Petty Officer, U.S. Navy"];
+    expect(analyzeCareerTrajectory(titles, "logistics", titles.join("\n")).fromIndustry).toBe("military");
+  });
+});
