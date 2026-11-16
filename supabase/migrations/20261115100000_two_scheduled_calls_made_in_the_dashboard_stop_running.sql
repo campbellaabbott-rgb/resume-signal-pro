@@ -2,8 +2,8 @@
 -- removes two sub-hourly jobs (reviewed 2026-11-16 under the owner's
 -- instruction "we need maximum cost savings").
 --
--- TWO SCHEDULED CALLS NOTHING READS STOP RUNNING (cost wave 2, 2026-11-16,
--- plan item BN-1: INV-1 and INV-2).
+-- TWO SCHEDULED CALLS MADE IN THE DASHBOARD STOP RUNNING (cost wave 2,
+-- 2026-11-16, plan item BN-1: INV-1 and INV-2).
 --
 -- Both jobs were created outside the migrations, in the dashboard, so no file
 -- here ever scheduled them; they are found and removed by name.
@@ -20,10 +20,15 @@
 -- posts to scheduled-health-probe. Keyless, it answers from the database and
 -- nobody reads the answer; with a key it adds a Stripe balance call, an
 -- empty-message AI gateway call and a heartbeat row, and raises no alert.
--- Those rows have one reader: the Services tab of the owner's /health-check
--- history card, whose Database, AI Gateway and Stripe lines come only from
--- them, so if the job was keyed those lines stop (the card now says it has
--- no per-service latency rather than drawing 0 ms). scan-heartbeat already
+-- Those rows have one reader, the owner's /health-check history card, which
+-- reads every heartbeat row unfiltered. If the job was keyed, its rows were
+-- about two thirds of the card's (12 an hour beside scan-heartbeat's 6, and
+-- nearly always passing), so after this file the card's uptime, average
+-- latency and volume are scan-heartbeat's alone and shift on the day; its
+-- Services tab, whose Database, AI Gateway and Stripe lines came only from
+-- these rows, says it has no per-service latency rather than drawing 0 ms.
+-- Nothing else reads them, and nothing reads a keyless probe's answer or
+-- the warm-up's posts. scan-heartbeat already
 -- probes the database, the AI gateway and Stripe and is the job mail-watch
 -- watches; 20260706050000 meant this probe to stay a manual diagnostic,
 -- never a schedule. Its past heartbeat rows are kept.

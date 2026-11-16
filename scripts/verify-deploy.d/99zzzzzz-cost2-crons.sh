@@ -1,6 +1,7 @@
 # shellcheck shell=bash
 # ── 99zzzzzz. COST WAVE 2 (2026-11-16, branch cost2/db): two scheduled calls
-# nothing reads stop, and the database size is written down once a night.
+# made in the dashboard stop, and the database size is written down once a
+# night.
 #
 # THE CLAIMS, one line each below, read from get_cron_health (name, schedule,
 # the timeout a command sets, run counts; never a command):
@@ -13,8 +14,9 @@
 # pair counts as applied once storage-size-stamp shows in cron health
 # (20261115110000 applies after 20261115100000, so from then on either old job
 # still listed is a FAIL), or once COST2_APPLIED_AT (UTC, when the second file
-# finished applying, e.g. 2026-11-20T17:05Z; a value with no zone is read as
-# UTC, and one that is no date or lies in the future is a FAIL) is set, in the
+# finished applying, e.g. 2026-11-20T17:05Z or the SQL editor's
+# 2026-11-20 17:05:00+00; a date and time with no zone is read as UTC, and a
+# value with no time of day, no date, or a future one is a FAIL) is set, in the
 # environment or on the line below. Without it, a scheduled stamp job that has
 # not run in 24h is an INFO asking for it: only a date can tell a job whose
 # first night is still ahead from one pg_cron never starts.
@@ -23,7 +25,7 @@
 # may call it, and the removal can run twice.
 #
 # READ-ONLY: one anon read RPC.
-echo "== 99zzzzzz. Cost wave 2: two scheduled calls nothing reads stop, and the database size is written down nightly =="
+echo "== 99zzzzzz. Cost wave 2: two scheduled calls made in the dashboard stop, and the database size is written down nightly =="
 
 VDC2_APPLIED_AT="${COST2_APPLIED_AT:-}"
 
@@ -45,11 +47,13 @@ if(!cj.length){out("FAIL  get_cron_health answered no jobs at all, so no schedul
 const J=Object.fromEntries(cj.map((r)=>[r.ch_jobname,r]));
 const desc=(r)=>r.ch_schedule+(r.ch_active?"":" PAUSED")+", timeout "+(r.ch_timeout||"none")+", "+r.ch_runs+" runs in 24h";
 const given=(process.env.VDC2_APPLIED||"").trim();
-const zoned=/(Z|[+-]\d\d:?\d\d|UTC|GMT)$/i.test(given);
-const at=Date.parse(given&&/\d:\d\d/.test(given)&&!zoned?given.replace(" ","T")+"Z":given);
-if(given&&!Number.isFinite(at))out("FAIL  COST2_APPLIED_AT="+given+" is not a date");
-else if(given&&at>now)out("FAIL  COST2_APPLIED_AT="+given+" is in the future (a value without a zone is read as UTC)");
-const asserted=Number.isFinite(at)&&at<=now;
+// Only a bare date and time gains a Z; anything with a zone (Z, +00 as the SQL
+// editor prints it, +05:30, UTC) is read as written.
+const bare=/^\d{4}-\d\d-\d\d[ T]\d\d:\d\d(:\d\d(\.\d+)?)?$/.test(given);
+const at=Date.parse(bare?given.replace(" ","T")+"Z":given);
+const bad=!given?"":!/\d:\d\d/.test(given)?"has no time of day (the 25-hour check needs the UTC time the file finished applying)":!Number.isFinite(at)?"is not a date":at>now?"is in the future (a value without a zone is read as UTC)":"";
+if(bad)out("FAIL  COST2_APPLIED_AT="+given+" "+bad);
+const asserted=!bad&&Number.isFinite(at)&&at<=now;
 const applied=!!J[ST]||asserted;
 const why=J[ST]?ST+" shows in cron health":"COST2_APPLIED_AT says the files applied";
 

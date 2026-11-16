@@ -8,10 +8,12 @@
  * rows carry none. 20261115100000 unscheduled the five-minute probe, so the
  * tab would otherwise draw three flat lines at 0 ms for every hour, which
  * reads as three instant services. An hour without a reading is now a gap,
- * and a day without any says so in words.
+ * each reading a dot (a lone hour between two gaps would otherwise draw
+ * nothing), and a day without any says so in words.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, cleanup, fireEvent, within } from "@testing-library/react";
+import { cloneElement, type ReactElement } from "react";
 
 const adminRpc = vi.fn();
 vi.mock("@/integrations/supabase/client", () => ({
@@ -21,6 +23,21 @@ vi.mock("@/integrations/supabase/client", () => ({
     functions: { invoke: async () => ({ data: null, error: null }) },
   },
 }));
+// ResponsiveContainer measures a box jsdom never lays out and so draws
+// nothing; a fixed size lets the chart render its lines and dots here. A Line
+// leaves its dots out until its entry animation ends, which never happens in
+// jsdom, so the animation is off here (the page keeps it).
+vi.mock("recharts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("recharts")>();
+  const line = actual.Line as unknown as { defaultProps?: Record<string, unknown> };
+  line.defaultProps = { ...line.defaultProps, isAnimationActive: false };
+  return {
+    ...actual,
+    ResponsiveContainer: ({ children }: { children: ReactElement }) => (
+      <div style={{ width: 800, height: 200 }}>{cloneElement(children, { width: 800, height: 200 } as Record<string, unknown>)}</div>
+    ),
+  };
+});
 vi.mock("@/lib/admin-auth", () => ({
   adminRpc: (...a: unknown[]) => adminRpc(...a),
   adminAuthHeaders: () => ({}),
@@ -54,26 +71,36 @@ const PROBE = (id: string, minAgo: number) => ({
 });
 const NONE = /No per-service latency recorded in the last 24 hours/;
 
-async function openServices() {
+/** Opens the Services tab and returns its panel, failing unless the tab is the selected one. */
+async function openServices(): Promise<HTMLElement> {
   await waitFor(() => expect(screen.getByText("Health History (24h)")).toBeTruthy());
   const tab = await screen.findByRole("tab", { name: /Services/ });
   fireEvent.mouseDown(tab);
   fireEvent.click(tab);
+  await waitFor(() => expect(tab.getAttribute("aria-selected")).toBe("true"));
+  const panel = screen.getByRole("tabpanel");
+  expect(panel.getAttribute("aria-labelledby")).toBe(tab.id);
+  return panel;
 }
+const dots = (panel: HTMLElement) => panel.querySelectorAll(".recharts-line-dots circle, circle.recharts-dot");
 
 describe("the Services tab of the health history card", () => {
   it("says it has no per-service reading when only scan-heartbeat rows exist", async () => {
     adminRpc.mockImplementation(async () => ({ data: [HEARTBEAT("b", 5), HEARTBEAT("a", 75)], error: null }));
     render(<HealthHistoryChart />);
-    await openServices();
-    await waitFor(() => expect(screen.getByText(NONE)).toBeTruthy());
+    const panel = await openServices();
+    await waitFor(() => expect(within(panel).getByText(NONE)).toBeTruthy());
+    expect(dots(panel)).toHaveLength(0);
   });
 
-  it("draws the chart, not the notice, once one probe row carries per-service latency", async () => {
-    adminRpc.mockImplementation(async () => ({ data: [HEARTBEAT("c", 5), PROBE("b", 10), HEARTBEAT("a", 75)], error: null }));
+  it("draws a lone hour's readings as three visible dots, not the notice and not zeros", async () => {
+    // One probe row in an hour of its own, between hours of heartbeat rows:
+    // every service line has one reading with a gap on each side.
+    adminRpc.mockImplementation(async () => ({ data: [HEARTBEAT("c", 5), PROBE("b", 70), HEARTBEAT("a", 135)], error: null }));
     render(<HealthHistoryChart />);
-    await openServices();
-    await waitFor(() => expect(screen.getByRole("tabpanel")).toBeTruthy());
-    expect(screen.queryByText(NONE)).toBeNull();
+    const panel = await openServices();
+    await waitFor(() => expect(dots(panel).length).toBeGreaterThan(0));
+    expect(within(panel).queryByText(NONE)).toBeNull();
+    expect(dots(panel), "one dot per service, none for the hours without a reading").toHaveLength(3);
   });
 });

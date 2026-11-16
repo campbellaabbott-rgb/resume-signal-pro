@@ -328,7 +328,9 @@ export function HealthHistoryChart() {
               {/* Only keyed scheduled-health-probe rows carry per-service latency
                   (metadata.probes); scan-heartbeat's rows do not. Cost wave 2
                   (20261115100000) unscheduled the probe, so with no such row the
-                  tab says so instead of drawing three flat lines at 0 ms. */}
+                  tab says so instead of drawing three flat lines at 0 ms. Each
+                  reading is a dot: an hour between two gaps would otherwise
+                  draw nothing at all. */}
               {hourlyStats.some((s) => s.dbLatency !== null || s.aiLatency !== null || s.stripeLatency !== null) ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={hourlyStats}>
@@ -363,7 +365,7 @@ export function HealthHistoryChart() {
                       name="Database"
                       stroke="#3b82f6" 
                       strokeWidth={2}
-                      dot={false}
+                      dot={{ r: 2 }}
                     />
                     <Line 
                       type="monotone" 
@@ -371,7 +373,7 @@ export function HealthHistoryChart() {
                       name="AI Gateway"
                       stroke="#a855f7" 
                       strokeWidth={2}
-                      dot={false}
+                      dot={{ r: 2 }}
                     />
                     <Line 
                       type="monotone" 
@@ -379,7 +381,7 @@ export function HealthHistoryChart() {
                       name="Stripe"
                       stroke="#22c55e" 
                       strokeWidth={2}
-                      dot={false}
+                      dot={{ r: 2 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>

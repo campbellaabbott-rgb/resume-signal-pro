@@ -100,7 +100,7 @@ const ring = async (pg: PGlite) =>
   (await pg.query<{ v: { entries: Array<{ at: string; db_bytes: number; top: Array<{ rel: string; bytes: number }> }>; keep: number } }>(
     "SELECT v FROM public.job_board_meta WHERE k = 'storage_size_ring'")).rows[0]?.v;
 
-describe("20261115100000: two scheduled calls nothing reads stop running", () => {
+describe("20261115100000: two scheduled calls made in the dashboard stop running", () => {
   it("removes the warm-up and the five-minute probe by name and keeps every other job", async () => {
     const pg = await boot();
     await apply(pg, CALLS);

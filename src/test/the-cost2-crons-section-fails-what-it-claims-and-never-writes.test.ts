@@ -16,9 +16,11 @@
  *   - each broken claim is a FAIL: an old job still listed once the stamp job
  *     shows or COST2_APPLIED_AT is set, the stamp job on another schedule,
  *     without its timeout, paused, failing, missing after the files applied,
- *     or silent for more than a day after them, a COST2_APPLIED_AT that is no
- *     date or lies ahead (one without a zone is read as UTC, whatever the
- *     machine's clock), and every unreadable answer;
+ *     or silent for more than a day after them, a COST2_APPLIED_AT with no
+ *     time of day, no date or a future one (a bare date and time is read as
+ *     UTC whatever the machine's clock; +00 as the SQL editor prints it, and
+ *     any other written zone, is read as written), and every unreadable
+ *     answer;
  *   - its one call is the read RPC, and the publishable key is never printed.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
@@ -152,17 +154,40 @@ describe("every broken claim is a FAIL", () => {
     failsWith(AFTER(STAMP({}, 0)), /^FAIL  storage-size-stamp has not run in the last 24h though COST2_APPLIED_AT is more than 25 hours ago/, ago(30));
   });
 
-  it("a COST2_APPLIED_AT that is no date or lies ahead, and one without a zone read as UTC on any clock", () => {
-    failsWith(AFTER(), /^FAIL  COST2_APPLIED_AT=yesterday is not a date/, "yesterday");
+  it("a COST2_APPLIED_AT with no time of day, no date, or a future one", () => {
+    failsWith(AFTER(), /^FAIL  COST2_APPLIED_AT=yesterday has no time of day/, "yesterday");
+    failsWith(AFTER(), /^FAIL  COST2_APPLIED_AT=2026-11-20 has no time of day/, "2026-11-20");
+    failsWith(AFTER(), /^FAIL  COST2_APPLIED_AT=2026-13-45 17:05 is not a date/, "2026-13-45 17:05");
     failsWith(AFTER(), /^FAIL  COST2_APPLIED_AT=\S+ is in the future/, new Date(Date.now() + 3600e3).toISOString());
-    // Two hours ago, written without a zone. Read as local time it would land
-    // in the future on a clock behind UTC (New York), disarming every FAIL,
-    // and too far back on one ahead of it (Auckland).
-    const zoneless = ago(2).replace("T", " ").replace(/:\d\d\.\d+Z$/, "");
-    for (const TZ of ["Pacific/Auckland", "America/New_York"]) {
-      const { lines, out } = run(JSON.stringify(OTHERS), zoneless, { TZ });
-      expect(fails(lines).some((l) => /^FAIL  storage-size-stamp is not scheduled though COST2_APPLIED_AT says 20261115110000 applied/.test(l)), `${TZ}: ${out}`).toBe(true);
-      expect(fails(lines).some((l) => /COST2_APPLIED_AT=.* is (not a date|in the future)/.test(l)), `${TZ}: ${out}`).toBe(false);
+  });
+
+  it("reads the SQL editor's +00 and any written zone as written, and a bare date and time as UTC on any clock", () => {
+    const iso = (h: number) => ago(h).replace(/\.\d+Z$/, "");
+    // The SQL editor prints now() as 2026-11-20 17:05:00.123456+00; +05:30 and UTC are kept too.
+    const written = [
+      iso(2).replace("T", " ") + ".123456+00",
+      new Date(Date.now() - 2 * 3600e3 + 5.5 * 3600e3).toISOString().replace(/\.\d+Z$/, "+05:30"),
+      iso(2).replace("T", " ") + " UTC",
+    ];
+    for (const appliedAt of written) {
+      const { lines, out } = run(JSON.stringify(OTHERS), appliedAt);
+      expect(fails(lines).some((l) => /^FAIL  storage-size-stamp is not scheduled though COST2_APPLIED_AT says/.test(l)), `${appliedAt}: ${out}`).toBe(true);
+      expect(fails(lines).some((l) => /COST2_APPLIED_AT=/.test(l)), `${appliedAt}: ${out}`).toBe(false);
+    }
+    // A bare date and time. Read as local time on a clock behind UTC (New
+    // York) two hours ago would land in the future and disarm every FAIL:
+    const bare = (h: number) => iso(h).replace("T", " ").slice(0, 16);
+    {
+      const { lines, out } = run(JSON.stringify(OTHERS), bare(2), { TZ: "America/New_York" });
+      expect(fails(lines).some((l) => /^FAIL  storage-size-stamp is not scheduled though COST2_APPLIED_AT says/.test(l)), out).toBe(true);
+      expect(fails(lines).some((l) => /COST2_APPLIED_AT=/.test(l)), out).toBe(false);
+    }
+    // and on a clock ahead of it (Auckland) twenty hours ago would read as
+    // thirty-three, failing a stamp job whose first night is still ahead.
+    {
+      const { lines, out } = run(JSON.stringify(AFTER(STAMP({}, 0))), bare(20), { TZ: "Pacific/Auckland" });
+      expect(fails(lines), out).toEqual([]);
+      expect(has(lines, "PASS", /^PASS  storage-size-stamp runs on 11 11 \* \* \* .*its first night is due within 25 hours/), out).toBe(true);
     }
   });
 
