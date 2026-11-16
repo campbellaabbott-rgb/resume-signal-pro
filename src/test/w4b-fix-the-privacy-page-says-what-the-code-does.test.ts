@@ -55,11 +55,15 @@ describe("ipinfo is named for the report email too, and sign-in mail for its fal
     expect(line).toMatch(/refuse a report email from a region we do not serve/);
   });
 
-  it("the path: save-lead asks ipinfo.io before it saves a report request, and process-email-queue falls back to Resend for sign-in mail", () => {
+  // Since S14X-101 ('remove', 2026-11-15) save-lead keeps no address, so the
+  // lookup comes before the owner's alert, the one thing the request still does.
+  it("the path: save-lead asks ipinfo.io before it answers a request and alerts the owner, and process-email-queue falls back to Resend for sign-in mail", () => {
     const lead = codeOf(read("supabase/functions/save-lead/index.ts"));
     expect(lead).toMatch(/https:\/\/ipinfo\.io\//);
     expect(lead.indexOf("isBlockedCountry(req")).toBeGreaterThan(-1);
-    expect(lead.indexOf("isBlockedCountry(req")).toBeLessThan(lead.indexOf("save_free_scan_lead"));
+    expect(lead.indexOf("alertOwnerOfLead(supabase")).toBeGreaterThan(-1);
+    expect(lead.indexOf("isBlockedCountry(req")).toBeLessThan(lead.indexOf("alertOwnerOfLead(supabase"));
+    expect(lead).not.toMatch(/save_free_scan_lead/);
     const queue = codeOf(read("supabase/functions/process-email-queue/index.ts"));
     expect(queue).toMatch(/async function sendAuthThroughResend\(/);
     expect(queue.split("sendAuthThroughResend(").length).toBeGreaterThan(2);

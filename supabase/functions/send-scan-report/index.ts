@@ -80,7 +80,7 @@ import { mailLanguageOf, REPORT_COPY, reportDate, type MailLanguage, type Report
 // hands its counts back (S13-098, mail_door_give); an unsubscribe never lowers
 // a bounce or a complaint (S13-068).
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-// 2026-11-12.1 (bug round of 2026-11-08, part A, mail lane, owner S14X-012 option B): the fix-plan sequence is withdrawn (./sequence-offered.ts), so a report mail carries no button and a button from a mail already sent queues nothing and answers withdrawn.
+// 2026-11-12.1 (bug round of 2026-11-08, part A, mail lane, owner S14X-012 option B): the fix-plan sequence is withdrawn (./sequence-offered.ts), so a report mail carries no button and a button from a mail already sent queues nothing and answers withdrawn. And (owner S14X-101 'remove') a report mail no longer copies its address into the lead list: nothing mailed that list, and 20261112103000 empties it.
 const FN_BUILD = "send-scan-report.2026-11-12.1";
 
 const corsHeaders = {
@@ -567,16 +567,9 @@ Deno.serve(async (req) => {
     }
     if (suppressed) return reply({ success: true });
 
-    // Store the lead (non-blocking failure — email still sends)
-    try {
-      await admin.rpc("save_free_scan_lead", {
-        p_email: email,
-        p_ats_score: body.score,
-        p_industry: body.industry,
-      });
-    } catch (e) {
-      console.warn("[SEND-SCAN-REPORT] Lead save failed (continuing):", e);
-    }
+    // The address goes to the report mail and nowhere else: it is not copied
+    // into the lead list (S14X-101, the owner's answer 'remove'), which no job
+    // ever mailed and 20261112103000 empties.
 
     if (!resend) {
       console.error("[SEND-SCAN-REPORT] RESEND_API_KEY not configured");

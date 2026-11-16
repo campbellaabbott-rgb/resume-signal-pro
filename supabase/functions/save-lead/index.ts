@@ -15,7 +15,7 @@ import { CORRECTION_MENU_INDUSTRIES } from "../_shared/correction-menu-industrie
 // and an hourly ceiling; the country lookup waits for validation and the limit;
 // the limit counts a network, not an address.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-// 2026-11-12.1 (bug round of 2026-11-08, part A, free-scan-page lane, owner S14X-101 'remove'): the lead alert names only the industry, the score and an eight-character reference, with no address, IP, country or reply link, and the performance alert carries no IP.
+// 2026-11-12.1 (bug round of 2026-11-08, part A, free-scan-page lane, owner S14X-101 'remove'): the lead alert names only the industry, the score and an eight-character reference, with no address, IP, country or reply link, and the performance alert carries no IP. And no address is kept: the request no longer calls the lead-saving function (20261112103000 empties free_scan_leads and makes that function keep nothing), so a tab still running the old page, or a script, stores no address that nothing would ever mail.
 const FN_BUILD = "save-lead.2026-11-12.1";
 
 /**
@@ -122,7 +122,7 @@ async function sendLeadNotificationEmail(
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; background: #f8fafc;">
             <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: white; padding: 20px; border-radius: 12px 12px 0 0;">
-              <h1 style="margin: 0; font-size: 20px;">New lead saved</h1>
+              <h1 style="margin: 0; font-size: 20px;">New lead</h1>
               <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 13px;">${new Date().toISOString()}</p>
             </div>
             <div style="background: white; padding: 20px; border-radius: 0 0 12px 12px;">
@@ -138,7 +138,7 @@ async function sendLeadNotificationEmail(
                   </td>
                 </tr>
               </table>
-              <p style="margin: 14px 0 0 0; font-size: 12px; color: #64748b;">Reference: ${escapeHtml(reference)}. The lead is saved; this alert carries no address, IP or country.</p>
+              <p style="margin: 14px 0 0 0; font-size: 12px; color: #64748b;">Reference: ${escapeHtml(reference)}. No address is kept, and this alert carries no address, IP or country.</p>
             </div>
           </div>
         `,
@@ -169,7 +169,7 @@ const corsHeaders = {
  * purchase mail shares, and the lead table's upsert means repeating one address
  * from a proxy pool never reached any row cap. Now one address alerts at most
  * once a day and all addresses at most OWNER_ALERTS_PER_HOUR an hour, each
- * counted by the database; the lead itself is saved either way. A counter that
+ * counted by the database; no address is kept either way (S14X-101). A counter that
  * cannot answer leaves the alert as it was before the doors, so it goes: a gate
  * on mail defaults to today's behaviour. Past the ceiling the owner is told so,
  * once a day.
@@ -206,7 +206,7 @@ async function alertOwnerOfLead(admin: Admin, secret: string, email: string, ind
     if (await take(admin, CEILING_NOTICE_DOOR) === "ok") {
       await sendAlert("lead_alerts_ceiling", "Lead alerts reached their hourly ceiling", {
         ceilingPerHour: OWNER_ALERTS_PER_HOUR,
-        leads: "still saved; only the alert mails stop until the hour's window ends",
+        leads: "answered as before, and no address is kept; only the alert mails stop until the hour's window ends",
       });
     }
     return;
@@ -436,23 +436,13 @@ serve(async (req) => {
       );
     }
 
-    // Save lead using RPC
-    const { error } = await supabase.rpc('save_free_scan_lead', {
-      p_email: email,
-      p_industry: industry || null,
-      p_ats_score: atsScore || null
-    });
-
-    if (error) {
-      console.error("[SAVE-LEAD] Database error:", error);
-      return new Response(
-        JSON.stringify({ error: 'Something went wrong. Please try again.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // No address is kept (S14X-101, the owner's answer 'remove'): the
+    // weekly-tips box that posted here is gone, no tips were ever sent, and
+    // 20261112103000 deleted the addresses already held. A tab still running
+    // the old page, or a script, is answered as before and stores nothing.
 
     // Send lead notification email in background, through its doors. A failure
-    // there is the alert's alone: the lead is saved and the visitor is answered.
+    // there is the alert's alone: the visitor is answered either way.
     const score = typeof atsScore === 'number' && Number.isInteger(atsScore) && atsScore >= 0 && atsScore <= 100 ? atsScore : null;
     EdgeRuntime.waitUntil(
       alertOwnerOfLead(supabase, supabaseServiceKey, email, knownIndustry(industry), score)
@@ -460,7 +450,7 @@ serve(async (req) => {
     );
 
     trackPerformance(requestStartTime, 'save-lead', true, {});
-    console.log(`[SAVE-LEAD] Lead saved successfully for IP: ${clientIp}`);
+    console.log(`[SAVE-LEAD] Lead answered, no address kept, for IP: ${clientIp}`);
 
     return new Response(
       JSON.stringify({ success: true }),
