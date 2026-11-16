@@ -80,7 +80,8 @@ import { mailLanguageOf, REPORT_COPY, reportDate, type MailLanguage, type Report
 // hands its counts back (S13-098, mail_door_give); an unsubscribe never lowers
 // a bounce or a complaint (S13-068).
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "send-scan-report.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, mail lane, owner S14X-012 option B): the fix-plan sequence is withdrawn (./sequence-offered.ts), so a report mail carries no button and a button from a mail already sent queues nothing and answers withdrawn.
+const FN_BUILD = "send-scan-report.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

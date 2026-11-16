@@ -15,7 +15,8 @@ import { CORRECTION_MENU_INDUSTRIES } from "../_shared/correction-menu-industrie
 // and an hourly ceiling; the country lookup waits for validation and the limit;
 // the limit counts a network, not an address.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "save-lead.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, free-scan-page lane, owner S14X-101 'remove'): the lead alert names only the industry, the score and an eight-character reference, with no address, IP, country or reply link, and the performance alert carries no IP.
+const FN_BUILD = "save-lead.2026-11-12.1";
 
 /**
  * WHAT A CALLER WROTE NEVER BECOMES MARKUP IN THE OWNER'S MAIL (S8-100). The

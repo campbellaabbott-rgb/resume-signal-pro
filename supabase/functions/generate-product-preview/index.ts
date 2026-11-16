@@ -32,7 +32,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 // asked after a failed flash is no longer the dearest and slowest one. Flash
 // still answers first, behind the same spend gate. Every reply's usage is
 // logged (numbers only), and browsers keep the preflight two hours.
-// 2026-11-12.1 (bug round of 2026-11-08, part A, writing-tools lane, S14X-109, through the shared gateway reader): a gateway out of credits is a retryable 503, never a 402.
+// 2026-11-12.1 (bug round of 2026-11-08, part A, writing-tools lane, owner NB-10 'retire'): retired; every request, the preflight aside, is answered 410 and nothing is read, written or asked of a model.
 const FN_BUILD = "generate-product-preview.2026-11-12.1";
 
 const corsHeaders = {

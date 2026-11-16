@@ -21,7 +21,8 @@ import { isScheduledCaller } from "../_shared/email-cron.ts";
 // answered 400 "unrecognized payload" to it, so the owner was never told a
 // share had reached half its cap. The share is a short label and the two
 // counts are whole numbers, or the note is refused.
-const FN_BUILD = "notify-owner.2026-11-03.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, free-scan-page lane, owner S14X-101 'remove'): a new-account note says an account was created and when, never whose.
+const FN_BUILD = "notify-owner.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
