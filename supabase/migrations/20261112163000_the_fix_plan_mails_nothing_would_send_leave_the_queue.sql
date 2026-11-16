@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
+-- (reviewed 2026-11-16 in the bug round A integration).
+--
 -- THE FIX-PLAN MAILS NOTHING WOULD SEND LEAVE THE QUEUE (S14X-012, the
 -- owner's option B of 2026-11-15, with the purge approved).
 --

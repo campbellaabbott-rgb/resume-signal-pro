@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. Every job this file schedules
+-- runs once a day (reviewed 2026-11-16 in the bug round A integration).
+--
 -- S14X-073, RULE A (the owner's decision of 2026-11-15): AN EMPLOYER DELETES A
 -- SHORTLIST CANDIDATE OR A ROLE, AND WHATEVER IS STILL HELD FOUR YEARS AFTER
 -- IT WAS UPLOADED IS DELETED.
