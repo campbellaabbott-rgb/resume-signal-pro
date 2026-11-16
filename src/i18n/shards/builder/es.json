@@ -1,0 +1,33 @@
+{
+  "builderPage": {
+    "importFailed": {
+      "title": "Tu currículum no se importó",
+      "busy": "El importador está ocupado en este momento. Inténtalo de nuevo en unos minutos.",
+      "dailyLimit": "Alcanzaste el límite de importaciones de hoy. Inténtalo mañana o completa tú mismo las secciones de abajo.",
+      "paused": "La importación está en pausa por ahora. Completa tú mismo las secciones de abajo o inténtalo más tarde.",
+      "tooLong": "Leer tu currículum tardó demasiado. Volver a intentarlo suele funcionar.",
+      "generic": "Algo salió mal al leer tu currículum. Inténtalo de nuevo.",
+      "retry": "Intentar de nuevo",
+      "fixesWaiting": "Las correcciones del informe se aplicarán cuando la importación funcione."
+    },
+    "importTruncated": "Solo se importaron los primeros {{imported}} de {{total}} caracteres de tu currículum. Añade el resto abajo.",
+    "importLatest": "Importar mi análisis más reciente",
+    "importedNoneMatchedTitle": "Currículum importado",
+    "importedNoneMatchedDescription_one": "La reescritura del informe no coincidió con ningún punto, así que no se aplicó. Sigue en tu informe.",
+    "importedNoneMatchedDescription_many": "Ninguna de las {{count}} reescrituras del informe coincidió con un punto, así que no se aplicó ninguna. Siguen en tu informe.",
+    "importedNoneMatchedDescription_other": "Ninguna de las {{count}} reescrituras del informe coincidió con un punto, así que no se aplicó ninguna. Siguen en tu informe.",
+    "otherTab": {
+      "changed": "Este borrador se cambió en otra pestaña.",
+      "load": "Cargar esa versión",
+      "keep": "Mantener la mía",
+      "cleared": "Este borrador se borró en otra pestaña o al cerrar sesión."
+    },
+    "storageBlocked": "Este navegador no está guardando tu borrador. Expórtalo antes de salir.",
+    "moveUp": "Subir",
+    "moveDown": "Bajar",
+    "removeEntry": "Quitar esta entrada",
+    "removeBullet": "Quitar este punto",
+    "bullet": "Punto {{num}}",
+    "dismiss": "Ocultar"
+  }
+}

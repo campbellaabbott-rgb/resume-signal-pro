@@ -1,0 +1,32 @@
+{
+  "builderPage": {
+    "importFailed": {
+      "title": "Your résumé wasn't imported",
+      "busy": "The importer is busy right now. Try again in a few minutes.",
+      "dailyLimit": "You've reached today's import limit. Try again tomorrow, or fill in the sections below yourself.",
+      "paused": "Importing is paused for now. Fill in the sections below yourself, or try again later.",
+      "tooLong": "Reading your résumé took too long. Trying again usually works.",
+      "generic": "Something went wrong while reading your résumé. Try again.",
+      "retry": "Try again",
+      "fixesWaiting": "The report's fixes will be applied when the import works."
+    },
+    "importTruncated": "Only the first {{imported}} of {{total}} characters of your résumé were imported. Add the rest below.",
+    "importLatest": "Import my latest scan",
+    "importedNoneMatchedTitle": "Résumé imported",
+    "importedNoneMatchedDescription_one": "The report's rewrite didn't match any bullet here, so it wasn't applied. It's still in your report.",
+    "importedNoneMatchedDescription_other": "None of the report's {{count}} rewrites matched a bullet here, so none were applied. They're still in your report.",
+    "otherTab": {
+      "changed": "This draft was changed in another tab.",
+      "load": "Load that version",
+      "keep": "Keep mine",
+      "cleared": "This draft was cleared in another tab or by signing out."
+    },
+    "storageBlocked": "This browser isn't saving your draft. Export it before you leave.",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "removeEntry": "Remove this entry",
+    "removeBullet": "Remove this bullet",
+    "bullet": "Bullet {{num}}",
+    "dismiss": "Dismiss"
+  }
+}

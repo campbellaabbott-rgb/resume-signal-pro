@@ -1,0 +1,32 @@
+{
+  "builderPage": {
+    "importFailed": {
+      "title": "Dein Lebenslauf wurde nicht übernommen",
+      "busy": "Der Import ist gerade ausgelastet. Versuch es in ein paar Minuten noch einmal.",
+      "dailyLimit": "Du hast das heutige Importlimit erreicht. Versuch es morgen noch einmal oder füll die Abschnitte unten selbst aus.",
+      "paused": "Der Import ist vorübergehend pausiert. Füll die Abschnitte unten selbst aus oder versuch es später noch einmal.",
+      "tooLong": "Das Lesen deines Lebenslaufs hat zu lange gedauert. Ein zweiter Versuch klappt meistens.",
+      "generic": "Beim Lesen deines Lebenslaufs ist etwas schiefgelaufen. Versuch es noch einmal.",
+      "retry": "Noch einmal versuchen",
+      "fixesWaiting": "Die Verbesserungen aus dem Bericht werden übernommen, sobald der Import klappt."
+    },
+    "importTruncated": "Nur die ersten {{imported}} von {{total}} Zeichen deines Lebenslaufs wurden übernommen. Ergänze den Rest unten.",
+    "importLatest": "Meinen neuesten Scan übernehmen",
+    "importedNoneMatchedTitle": "Lebenslauf übernommen",
+    "importedNoneMatchedDescription_one": "Die Umformulierung aus dem Bericht passte zu keinem Aufzählungspunkt und wurde nicht übernommen. Sie steht weiter in deinem Bericht.",
+    "importedNoneMatchedDescription_other": "Keine der {{count}} Umformulierungen aus dem Bericht passte zu einem Aufzählungspunkt, daher wurde keine übernommen. Sie stehen weiter in deinem Bericht.",
+    "otherTab": {
+      "changed": "Dieser Entwurf wurde in einem anderen Tab geändert.",
+      "load": "Diese Fassung laden",
+      "keep": "Meine behalten",
+      "cleared": "Dieser Entwurf wurde in einem anderen Tab oder beim Abmelden gelöscht."
+    },
+    "storageBlocked": "Dieser Browser speichert deinen Entwurf nicht. Exportiere ihn, bevor du die Seite verlässt.",
+    "moveUp": "Nach oben",
+    "moveDown": "Nach unten",
+    "removeEntry": "Diesen Eintrag entfernen",
+    "removeBullet": "Diesen Aufzählungspunkt entfernen",
+    "bullet": "Aufzählungspunkt {{num}}",
+    "dismiss": "Ausblenden"
+  }
+}

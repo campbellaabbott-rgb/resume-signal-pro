@@ -1,0 +1,33 @@
+{
+  "builderPage": {
+    "importFailed": {
+      "title": "Seu currículo não foi importado",
+      "busy": "O importador está ocupado agora. Tente de novo em alguns minutos.",
+      "dailyLimit": "Você atingiu o limite de importações de hoje. Tente de novo amanhã ou preencha você mesmo as seções abaixo.",
+      "paused": "A importação está pausada por enquanto. Preencha você mesmo as seções abaixo ou tente de novo mais tarde.",
+      "tooLong": "A leitura do seu currículo demorou demais. Tentar de novo costuma funcionar.",
+      "generic": "Algo deu errado ao ler seu currículo. Tente de novo.",
+      "retry": "Tentar de novo",
+      "fixesWaiting": "As correções do relatório serão aplicadas quando a importação funcionar."
+    },
+    "importTruncated": "Só os primeiros {{imported}} de {{total}} caracteres do seu currículo foram importados. Adicione o restante abaixo.",
+    "importLatest": "Importar minha verificação mais recente",
+    "importedNoneMatchedTitle": "Currículo importado",
+    "importedNoneMatchedDescription_one": "A reescrita do relatório não correspondeu a nenhum tópico, então não foi aplicada. Ela continua no seu relatório.",
+    "importedNoneMatchedDescription_many": "Nenhuma das {{count}} reescritas do relatório correspondeu a um tópico, então nenhuma foi aplicada. Elas continuam no seu relatório.",
+    "importedNoneMatchedDescription_other": "Nenhuma das {{count}} reescritas do relatório correspondeu a um tópico, então nenhuma foi aplicada. Elas continuam no seu relatório.",
+    "otherTab": {
+      "changed": "Este rascunho foi alterado em outra aba.",
+      "load": "Carregar essa versão",
+      "keep": "Manter a minha",
+      "cleared": "Este rascunho foi apagado em outra aba ou ao sair da conta."
+    },
+    "storageBlocked": "Este navegador não está salvando seu rascunho. Exporte-o antes de sair.",
+    "moveUp": "Mover para cima",
+    "moveDown": "Mover para baixo",
+    "removeEntry": "Remover esta entrada",
+    "removeBullet": "Remover este tópico",
+    "bullet": "Tópico {{num}}",
+    "dismiss": "Ocultar"
+  }
+}
