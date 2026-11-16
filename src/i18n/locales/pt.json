@@ -2791,9 +2791,9 @@
           "howLong": "Enviado apenas para produzir o seu relatório, nos termos desse fornecedor"
         },
         "email": {
-          "what": "Um relatório que envia para si por e-mail, a análise paga que lhe enviamos e os e-mails do plano de correções que aceitar",
-          "where": "A sua caixa de entrada, através do nosso fornecedor de e-mail; os e-mails agendados do plano aguardam na nossa fila de envio",
-          "howLong": "Os e-mails agendados saem ao longo de 14 dias; cancelar a subscrição cancela os restantes"
+          "what": "Um relatório que você envia para si mesmo por e-mail e a análise paga que enviamos para você",
+          "where": "Sua caixa de entrada, por meio do nosso provedor de e-mail",
+          "howLong": "Na sua caixa de entrada, enquanto você guardar"
         },
         "paid": {
           "what": "Uma análise paga, que cita o seu currículo",
@@ -2823,7 +2823,7 @@
         "shortlist": {
           "what": "Currículos de candidatos que um empregador avalia com o Shortlist",
           "where": "A conta desse empregador, como texto anonimizado",
-          "howLong": "Até o empregador os eliminar"
+          "howLong": "Até o empregador excluir o candidato, a vaga ou a conta dele; o que ainda estiver guardado quatro anos após o envio é excluído"
         }
       },
       "footnote": "A eliminação corre a cada 15 minutos no armazenamento temporário e a cada hora na cache de relatórios, na cache de IA e nas análises pagas. Para apagar algo mais cedo, envie um e-mail para {{email}}."
@@ -4012,7 +4012,7 @@
     "verdictGo": "Vale aplicar agora",
     "verdictCaution": "Aplique com expectativas",
     "verdictNeutral": "O que os dados dizem",
-    "takedownsLast24h": "{{n}} vagas preenchidas ou fechadas nas últimas 24 horas",
+    "takedownsLast24h": "{{n}} vagas retiradas do ar nas últimas 24 horas",
     "recheckLine": "feed mediano re-verificado há {{m}} min",
     "chipWeek": "Esta semana",
     "chipRemote": "Remoto",
@@ -5392,7 +5392,7 @@
     "confirming": "A confirmar a sua assinatura com a Stripe. Demora alguns segundos.",
     "notConfirmedYet": "Ainda não conseguimos confirmar a sua assinatura. Atualize esta página daqui a um minuto ou contacte o suporte se o seu plano não aparecer.",
     "activeMember": "É membro Pro: as ferramentas de escrita estão desbloqueadas.",
-    "badge": "Ferramentas de escrita",
+    "badge": "Pro",
     "checkoutRefusedTitle": "Não foi possível iniciar o pagamento",
     "endsOn": "Termina a {{date}}: cancelado, não será renovado",
     "goPro": "Passar a Pro — ${{price}}/mês",
@@ -5752,16 +5752,6 @@
     "home": "Voltar para o Resume Booster"
   },
   "fixPlanConfirm": {
-    "title": "Inicie os e-mails do seu plano de ajustes",
-    "body": "Quatro e-mails curtos em duas semanas: os ajustes principais no dia 2, o resto no dia 4, um lembrete de nova análise no dia 6 e uma pergunta no dia 14. Cada e-mail traz um link para cancelar a inscrição.",
-    "button": "Sim, iniciar os e-mails",
-    "done": "Pronto. O primeiro e-mail chega em dois dias.",
-    "already": "Uma sequência do plano já foi iniciada para este endereço este mês, então nada mais foi agendado.",
-    "optedOut": "Este endereço cancelou nossos e-mails antes, então nada foi agendado.",
-    "invalid": "Este link expirou ou não é válido. Envie para você um novo relatório na próxima análise para receber outro.",
-    "missing": "Esta página precisa do botão do e-mail do seu relatório.",
-    "error": "Não foi possível iniciar agora. Tente o botão de novo em instantes.",
-    "errorFinal": "Não foi possível iniciar a sequência completa, e tocar no botão de novo não vai reiniciá-la este mês.",
     "home": "Voltar para o Resume Booster"
   },
   "emailUnsubscribe": {

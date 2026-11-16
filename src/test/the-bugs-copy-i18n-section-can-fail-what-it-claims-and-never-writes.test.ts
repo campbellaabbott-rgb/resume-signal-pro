@@ -289,23 +289,13 @@ const DECIDED = {
   "NB-11": { choice: "proposed wording", rule: "five packages a day" },
   "NB-47": { choice: "postings taken down in the last 24 hours" },
 };
-/** The owner halves as bugs/a-copy-i18n-owner and its partners publish them. */
+/**
+ * The owner halves as bugs/a-copy-i18n-owner publishes them: this branch's own
+ * strings, which hold every half (the Trust Shortlist and email rows, the
+ * withdrawn fix-plan strings, the Pro badge and the takedown ticker).
+ */
 function ownerBuilt(): Record<Lng, Json> {
-  const four: Record<Lng, string> = { en: "four years", "en-GB": "four years", de: "vier Jahre", es: "cuatro años", fr: "quatre ans", hi: "चार साल", nl: "vier jaar", pt: "quatro anos", tl: "apat na taon" };
-  const out = {} as Record<Lng, Json>;
-  for (const l of LNGS) {
-    const b = clone(LANE[l]);
-    set(b, "trustPage.retention.rows.shortlist.howLong", `Until the employer deletes the candidate, the role or its account (${four[l]})`);
-    const fp = b.fixPlanConfirm as Json;
-    for (const k of Object.keys(fp)) if (k !== "home") delete fp[k];
-    set(b, "trustPage.retention.rows.email.what", "A report you email to yourself and the paid analysis we email you");
-    set(b, "trustPage.retention.rows.email.where", "Your inbox, sent through our email provider");
-    set(b, "trustPage.retention.rows.email.howLong", "In your inbox for as long as you keep it");
-    set(b, "proPlan.badge", "Pro");
-    set(b, "jobsPage.takedownsLast24h", l.startsWith("en") ? "{{n}} postings taken down in the last 24 hours" : `{{n}} (${l})`);
-    out[l] = b;
-  }
-  return out;
+  return clone(LANE);
 }
 
 describe("verify section 99zzzzzzz-bugs-copy-i18n", () => {

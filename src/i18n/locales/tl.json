@@ -2768,9 +2768,9 @@
           "howLong": "Ipinapadala lang para gawin ang report mo, sa ilalim ng mga tuntunin ng provider na iyon"
         },
         "email": {
-          "what": "Ang report na ine-email mo sa sarili mo, ang bayad na pagsusuri na ine-email namin sa iyo, at mga fix-plan email na pinili mong tanggapin",
-          "where": "Ang inbox mo, ipinadala sa pamamagitan ng aming email provider; naghihintay sa aming send queue ang mga naka-iskedyul na fix-plan email",
-          "howLong": "Ipinapadala ang mga naka-iskedyul na email sa loob ng 14 araw; kinakansela ng pag-unsubscribe ang natitira"
+          "what": "Ang report na ine-email mo sa sarili mo at ang bayad na pagsusuri na ine-email namin sa iyo",
+          "where": "Ang inbox mo, ipinadala sa pamamagitan ng aming email provider",
+          "howLong": "Nasa inbox mo hangga't itinatago mo ang mga ito"
         },
         "paid": {
           "what": "Ang bayad na pagsusuri, na sumisipi sa resume mo",
@@ -2800,7 +2800,7 @@
         "shortlist": {
           "what": "Mga resume ng kandidato na sinusuri ng isang employer gamit ang Shortlist",
           "where": "Ang account ng employer na iyon, bilang redacted na text",
-          "howLong": "Hanggang burahin ng employer ang mga ito"
+          "howLong": "Hanggang burahin ng employer ang kandidato, ang role o ang account nito; binubura ang anumang nakatago pa rin apat na taon matapos itong i-upload"
         }
       },
       "footnote": "Tumatakbo ang pagbura kada 15 minuto para sa pansamantalang storage at kada oras para sa report cache, AI cache at mga bayad na pagsusuri. Para ipabura ang anuman nang mas maaga, mag-email sa {{email}}."
@@ -3975,7 +3975,7 @@
     "verdictGo": "Sulit mag-apply ngayon",
     "verdictCaution": "Mag-apply nang may inaasahan",
     "verdictNeutral": "Ang sabi ng datos",
-    "takedownsLast24h": "{{n}} posisyon ang napunan o nagsara sa nakalipas na 24 oras",
+    "takedownsLast24h": "{{n}} posting ang tinanggal sa nakalipas na 24 oras",
     "recheckLine": "median feed na-check {{m}} min na nakalipas",
     "chipWeek": "Ngayong linggo",
     "chipRemote": "Remote",
@@ -5337,7 +5337,7 @@
     "confirming": "Kinukumpirma ang iyong subscription sa Stripe. Ilang segundo lang ito.",
     "notConfirmedYet": "Hindi pa namin makumpirma ang iyong subscription. I-refresh ang page na ito makalipas ang isang minuto, o makipag-ugnayan sa support kung hindi lumabas ang iyong plan.",
     "activeMember": "Pro member ka: naka-unlock ang mga writing tool.",
-    "badge": "Mga writing tool",
+    "badge": "Pro",
     "checkoutRefusedTitle": "Hindi masimulan ang checkout",
     "endsOn": "Matatapos sa {{date}}: kinansela, hindi na magre-renew",
     "goPro": "Mag-Pro — ${{price}}/buwan",
@@ -5697,16 +5697,6 @@
     "home": "Bumalik sa Resume Booster"
   },
   "fixPlanConfirm": {
-    "title": "Simulan ang mga email ng iyong fix plan",
-    "body": "Apat na maikling email sa loob ng dalawang linggo: pangunahing ayos sa araw 2, ang iba sa araw 4, paalala sa muling pag-scan sa araw 6, at isang tanong sa araw 14. May link para mag-unsubscribe ang bawat email.",
-    "button": "Oo, simulan ang mga email",
-    "done": "Tapos na. Darating ang unang email sa loob ng dalawang araw.",
-    "already": "May fix plan sequence nang nasimulan para sa address na ito ngayong buwan, kaya walang naidagdag.",
-    "optedOut": "Nag-unsubscribe na dati ang address na ito sa aming mga email, kaya walang naidagdag.",
-    "invalid": "Expired na o hindi valid ang link na ito. I-email ang bagong report sa iyong susunod na scan para makakuha ng bago.",
-    "missing": "Kailangan ng page na ito ang button mula sa email ng iyong report.",
-    "error": "Hindi masimulan ngayon. Subukan ulit ang button maya-maya.",
-    "errorFinal": "Hindi nasimulan ang buong sequence, at hindi ito mauulit ngayong buwan kahit pindutin ulit ang button.",
     "home": "Bumalik sa Resume Booster"
   },
   "emailUnsubscribe": {

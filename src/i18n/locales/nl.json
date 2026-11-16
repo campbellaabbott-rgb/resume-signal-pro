@@ -2768,9 +2768,9 @@
           "howLong": "Alleen verstuurd om je rapport te maken, onder de voorwaarden van die aanbieder"
         },
         "email": {
-          "what": "Een rapport dat je naar jezelf mailt, de betaalde analyse die we je mailen, en verbeterplan-e-mails waarvoor je kiest",
-          "where": "Je inbox, verstuurd via onze e-mailprovider; ingeplande verbeterplan-e-mails wachten in onze verzendwachtrij",
-          "howLong": "De ingeplande e-mails gaan over 14 dagen uit; afmelden annuleert de rest"
+          "what": "Een rapport dat je naar jezelf mailt en de betaalde analyse die we je mailen",
+          "where": "Je inbox, verstuurd via onze e-mailprovider",
+          "howLong": "In je inbox, zolang je ze bewaart"
         },
         "paid": {
           "what": "Een betaalde analyse, die je cv citeert",
@@ -2800,7 +2800,7 @@
         "shortlist": {
           "what": "Cv's van kandidaten die een werkgever met Shortlist beoordeelt",
           "where": "Het account van die werkgever, als geredigeerde tekst",
-          "howLong": "Tot de werkgever ze verwijdert"
+          "howLong": "Tot de werkgever de kandidaat, de functie of zijn account verwijdert; wat vier jaar na het uploaden nog bewaard is, wordt verwijderd"
         }
       },
       "footnote": "Verwijderen gebeurt elke 15 minuten voor de tijdelijke opslag en elk uur voor de rapportcache, de AI-cache en betaalde analyses. Wil je iets eerder laten wissen, mail dan {{email}}."
@@ -3975,7 +3975,7 @@
     "verdictGo": "Nu solliciteren loont",
     "verdictCaution": "Solliciteer met verwachtingen",
     "verdictNeutral": "Wat de data zegt",
-    "takedownsLast24h": "{{n}} vacatures vervuld of gesloten in de afgelopen 24 uur",
+    "takedownsLast24h": "{{n}} vacatures offline gehaald in de afgelopen 24 uur",
     "recheckLine": "mediaan feed {{m}} min geleden gecheckt",
     "chipWeek": "Deze week",
     "chipRemote": "Remote",
@@ -5337,7 +5337,7 @@
     "confirming": "Je abonnement wordt bij Stripe bevestigd. Dit duurt een paar seconden.",
     "notConfirmedYet": "We konden je abonnement nog niet bevestigen. Vernieuw deze pagina over een minuut, of neem contact op met support als je abonnement niet verschijnt.",
     "activeMember": "Je bent Pro-lid: de schrijftools zijn ontgrendeld.",
-    "badge": "Schrijftools",
+    "badge": "Pro",
     "checkoutRefusedTitle": "Afrekenen kon niet worden gestart",
     "endsOn": "Eindigt op {{date}}: opgezegd, wordt niet verlengd",
     "goPro": "Neem Pro — ${{price}}/maand",
@@ -5697,16 +5697,6 @@
     "home": "Terug naar Resume Booster"
   },
   "fixPlanConfirm": {
-    "title": "Start je fix-plan-mails",
-    "body": "Vier korte e-mails in twee weken: de belangrijkste fixes op dag 2, de rest op dag 4, een rescan-herinnering op dag 6 en één vraag op dag 14. Elke e-mail bevat een afmeldlink.",
-    "button": "Ja, start de e-mails",
-    "done": "Klaar. De eerste e-mail komt over twee dagen.",
-    "already": "Voor dit adres is deze maand al een fix-plan-reeks gestart, dus er is niets meer ingepland.",
-    "optedOut": "Dit adres heeft zich eerder afgemeld voor onze e-mails, dus er is niets ingepland.",
-    "invalid": "Deze link is verlopen of ongeldig. Mail jezelf een nieuw rapport bij je volgende scan om een nieuwe te krijgen.",
-    "missing": "Deze pagina heeft de knop uit je rapportmail nodig.",
-    "error": "Starten lukt nu niet. Probeer de knop zo meteen opnieuw.",
-    "errorFinal": "De hele reeks kon niet worden gestart, en opnieuw op de knop drukken start hem deze maand niet opnieuw.",
     "home": "Terug naar Resume Booster"
   },
   "emailUnsubscribe": {

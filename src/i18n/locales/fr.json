@@ -2791,9 +2791,9 @@
           "howLong": "Envoyé uniquement pour produire votre rapport, selon les conditions de ce fournisseur"
         },
         "email": {
-          "what": "Un rapport que vous vous envoyez par e-mail, l'analyse payante que nous vous envoyons, et les e-mails du plan de correction auxquels vous vous inscrivez",
-          "where": "Votre boîte de réception, via notre prestataire d'e-mail ; les e-mails programmés du plan attendent dans notre file d'envoi",
-          "howLong": "Les e-mails programmés partent sur 14 jours ; vous désinscrire annule le reste"
+          "what": "Un rapport que vous vous envoyez par e-mail et l'analyse payante que nous vous envoyons",
+          "where": "Votre boîte de réception, via notre prestataire d'e-mail",
+          "howLong": "Dans votre boîte de réception, tant que vous les gardez"
         },
         "paid": {
           "what": "Une analyse payante, qui cite votre CV",
@@ -2823,7 +2823,7 @@
         "shortlist": {
           "what": "Les CV de candidats qu'un employeur évalue avec Shortlist",
           "where": "Le compte de cet employeur, sous forme de texte caviardé",
-          "howLong": "Jusqu'à ce que l'employeur les supprime"
+          "howLong": "Jusqu'à ce que l'employeur supprime le candidat, le poste ou son compte ; ce qui est encore conservé quatre ans après son téléversement est supprimé"
         }
       },
       "footnote": "La suppression tourne toutes les 15 minutes pour le stockage temporaire et toutes les heures pour le cache de rapports, le cache d'IA et les analyses payantes. Pour faire effacer quoi que ce soit plus tôt, écrivez à {{email}}."
@@ -4012,7 +4012,7 @@
     "verdictGo": "Ça vaut le coup de postuler maintenant",
     "verdictCaution": "Postulez en connaissance de cause",
     "verdictNeutral": "Ce que disent les données",
-    "takedownsLast24h": "{{n}} postes pourvus ou fermés au cours des dernières 24 heures",
+    "takedownsLast24h": "{{n}} offres retirées au cours des dernières 24 heures",
     "recheckLine": "flux médian revérifié il y a {{m}} min",
     "chipWeek": "Cette semaine",
     "chipRemote": "Télétravail",
@@ -5392,7 +5392,7 @@
     "confirming": "Confirmation de votre abonnement auprès de Stripe. Cela prend quelques secondes.",
     "notConfirmedYet": "Nous n'avons pas encore pu confirmer votre abonnement. Actualisez cette page dans une minute, ou contactez le support si votre abonnement n'apparaît pas.",
     "activeMember": "Vous êtes membre Pro : les outils de rédaction sont débloqués.",
-    "badge": "Outils de rédaction",
+    "badge": "Pro",
     "checkoutRefusedTitle": "Impossible de lancer le paiement",
     "endsOn": "Prend fin le {{date}} : résilié, il ne sera pas renouvelé",
     "goPro": "Passer à Pro — ${{price}}/mois",
@@ -5752,16 +5752,6 @@
     "home": "Retour à Resume Booster"
   },
   "fixPlanConfirm": {
-    "title": "Lancez les e-mails de votre plan de correction",
-    "body": "Quatre courts e-mails sur deux semaines : les corrections clés au jour 2, le reste au jour 4, un rappel de re-scan au jour 6 et une question au jour 14. Chaque e-mail contient un lien de désabonnement.",
-    "button": "Oui, lancer les e-mails",
-    "done": "C'est fait. Le premier e-mail arrive dans deux jours.",
-    "already": "Une séquence du plan a déjà été lancée pour cette adresse ce mois-ci, donc rien de plus n'a été programmé.",
-    "optedOut": "Cette adresse s'est désabonnée de nos e-mails auparavant, donc rien n'a été programmé.",
-    "invalid": "Ce lien a expiré ou n'est pas valide. Envoyez-vous un nouveau rapport lors de votre prochain scan pour en obtenir un autre.",
-    "missing": "Cette page a besoin du bouton de l'e-mail de votre rapport.",
-    "error": "Impossible de lancer pour le moment. Réessayez le bouton dans un instant.",
-    "errorFinal": "Impossible de lancer toute la série, et appuyer de nouveau sur le bouton ne la relancera pas ce mois-ci.",
     "home": "Retour à Resume Booster"
   },
   "emailUnsubscribe": {
