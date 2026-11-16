@@ -18,6 +18,8 @@
 # left it; section 99zzzzzz-cost-ai checks each of them answers 410 and calls
 # nothing. Live before that deploy they serve 2026-11-03.1, and after it a
 # build that bundles no gate, so this line has nothing left to say of them.
+# The product preview left it the same way when the bug round retired it
+# (NB-10); section 99zzzzzzz-bugs-writing-tools judges its 410.
 # Every line FAILs on the build c4a29736 serves: the functions there are older,
 # its homepage chunk carries the invented job, its board chunk has no such key.
 #
@@ -40,7 +42,7 @@ for VDHP_FN in application-fit free-keyword-scan free-keyword-scan-stream \
   generate-application-answers generate-apply-package generate-ats-defense generate-career-path \
   generate-career-snapshot generate-cover-letter \
   generate-freelance-boost generate-graduate-gameplan generate-interview-coach generate-keyword-fix \
-  generate-premium-package generate-product-preview \
+  generate-premium-package \
   generate-tailored-resume import-freelance-profile job-fit nl-search \
   parse-resume-structured shortlist-evaluate test-ai-fallback; do
   VDHP_H=$(vdhp_build "$VDHP_FN")

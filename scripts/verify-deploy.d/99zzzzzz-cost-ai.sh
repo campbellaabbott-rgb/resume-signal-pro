@@ -55,7 +55,8 @@ vdca_carries() { # $1 fn -> what this lane's build of it carries
   case "$1" in
     warm-up) echo "the full warm-up answers only the owner's key, our servers or the cron key";;
     nl-search) echo "the parse inside eight seconds, today's model then gpt-5-mini, a sentence parsed once per isolate";;
-    generate-product-preview|generate-application-answers|import-freelance-profile) echo "flash, then gpt-5-mini after a failure, never pro";;
+    generate-application-answers|import-freelance-profile) echo "flash, then gpt-5-mini after a failure, never pro";;
+    generate-product-preview) echo "flash, then gpt-5-mini after a failure, never pro; retired to a bare 410 by the bug round (NB-10, judged in 99zzzzzzz-bugs-writing-tools.sh), never any model";;
     generate-summary|generate-resume-roast|generate-recruiter-view|generate-elevator-pitch|analyze-linkedin-profile|generate-cover-letter-stream|generate-premium-package-stream) echo "retired: answers 410 and calls nothing";;
     *) echo "the shared helper's numbers-only usage line; its own code is unchanged";;
   esac

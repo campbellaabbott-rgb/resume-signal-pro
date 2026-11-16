@@ -64,7 +64,7 @@ describe("ATS Defense's bullets in nine locales", () => {
     for (const f of ["pages/pricing/PricingPage.tsx", ...readdirSync(resolve(__dirname, "..", "components/pricing")).filter((x) => x.endsWith(".tsx")).map((x) => `components/pricing/${x}`)]) {
       expect(readFileSync(resolve(__dirname, "..", f), "utf8"), f).not.toMatch(/\.features\.(map|slice)\(/);
     }
-    for (const f of ["components/ProductPreview.tsx", "pages/ProductSuccess.tsx", "components/TieredPricingSection.tsx", "components/AddOnsShowcase.tsx", "components/ProductSelectionModal.tsx"]) {
+    for (const f of ["pages/ProductSuccess.tsx", "components/TieredPricingSection.tsx", "components/ProductSelectionModal.tsx"]) {
       const src = readFileSync(resolve(__dirname, "..", f), "utf8");
       expect(src, f).toMatch(/productFeatures\(t, /);
       expect(src, f).not.toMatch(/product\.features\.(map|slice)\(/);

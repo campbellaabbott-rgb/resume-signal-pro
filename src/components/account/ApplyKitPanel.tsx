@@ -1,16 +1,15 @@
 // Per-application apply kit, launched from the Account tracker. Pro members
-// generate directly (the gated function accepts their JWT); everyone else
-// gets the standard preview-before-pay flow with the resume + posting
-// pre-stored server-side so post-purchase delivery has everything.
+// generate the kit their plan includes (the gated function accepts their
+// JWT). The $7 Apply Assistant is retired (owner decision 2026-10-11) and the
+// free preview that sold it is retired with it (NB-10), so a member without
+// Pro is offered nothing here.
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FileText, Loader2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { ProductPreview } from "@/components/ProductPreview";
 import { ApplyAssistantResults, type ApplyPackageData } from "@/components/ApplyAssistantResults";
 import { normalizeBuilderResume } from "@/types/resume-builder";
-import { isProductHidden } from "@/config/products";
 import { toast } from "sonner";
 import { writingRefusalOf, writingRefusalText } from "@/lib/writing-refusal";
 
@@ -25,22 +24,8 @@ export function ApplyKitPanel({ jobPosting, resumeText, proActive }: ApplyKitPan
   const [open, setOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [kit, setKit] = useState<ApplyPackageData | null>(null);
-  const [tempSessionId, setTempSessionId] = useState<string | undefined>(undefined);
 
-  const openPanel = async () => {
-    setOpen((v) => !v);
-    if (!proActive && !tempSessionId) {
-      // Pre-store resume + posting so checkout delivery can pick them up.
-      try {
-        const { data } = await supabase.rpc("store_temp_resume", {
-          p_resume: resumeText,
-          p_linkedin: null,
-          p_job_description: jobPosting,
-        } as never);
-        if (typeof data === "string") setTempSessionId(data);
-      } catch { /* refused: the buy button stores this résumé + posting itself, or refuses (bindPurchaseResume) */ }
-    }
-  };
+  const openPanel = () => setOpen((v) => !v);
 
   const generateAsPro = async () => {
     setGenerating(true);
@@ -69,10 +54,10 @@ export function ApplyKitPanel({ jobPosting, resumeText, proActive }: ApplyKitPan
   };
 
   if (!jobPosting || jobPosting.trim().length < 30 || !resumeText || resumeText.trim().length < 50) return null;
-  // THE APPLY ASSISTANT IS RETIRED (owner decision 2026-10-11): the $7 kit is
-  // out of the catalogue (HIDDEN_PRODUCT_IDS), so a member without Pro is not
-  // offered it here. Pro members still generate the kit their plan includes.
-  if (!proActive && isProductHidden("applyAssistant")) return null;
+  // THE APPLY ASSISTANT IS RETIRED (owner decision 2026-10-11), and so is the
+  // preview that sold it: a member without Pro is offered nothing here. Pro
+  // members still generate the kit their plan includes.
+  if (!proActive) return null;
 
   return (
     <div className="mt-2">
@@ -88,7 +73,7 @@ export function ApplyKitPanel({ jobPosting, resumeText, proActive }: ApplyKitPan
         <div className="mt-3 pt-3 border-t border-border/50">
           {kit ? (
             <ApplyAssistantResults data={kit} />
-          ) : proActive ? (
+          ) : (
             <div className="flex items-center gap-3">
               <button
                 onClick={generateAsPro}
@@ -102,13 +87,6 @@ export function ApplyKitPanel({ jobPosting, resumeText, proActive }: ApplyKitPan
                 {t("accountPage.akBlurb", "Tailored resume + gap list + checklist, fact-checked against your real resume.")}
               </span>
             </div>
-          ) : (
-            <ProductPreview
-              productId="applyAssistant"
-              resumeText={resumeText}
-              jobDescription={jobPosting}
-              sessionId={tempSessionId}
-            />
           )}
         </div>
       )}

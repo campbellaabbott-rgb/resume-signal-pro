@@ -102,7 +102,8 @@ const CASES: Case[] = [
   { fn: "generate-tailored-resume", perAddress: 20, global: 200, body: { resumeText: RESUME, jobTitle: "Engineer", jobDescription: POSTING } },
   // Signed-in website sessions only since S14 (M-S14-009): `call` sends one.
   { fn: "generate-application-answers", perAddress: 30, global: 300, body: { resumeText: RESUME, jobTitle: "Engineer", jobDescription: POSTING } },
-  { fn: "generate-product-preview", perAddress: 20, global: 200, body: { productId: "freelance_transition_pro", resumeText: RESUME } },
+  // The product preview is retired (NB-10): it answers 410 and counts and
+  // asks nothing (the-product-preview-endpoint-is-retired-and-no-page-asks-it).
   { fn: "nl-search", perAddress: 40, global: 600, body: { query: "remote product roles over 150k" } },
   // A Freelance Boost buyer's tool since S14 (M-S14-058): purchase-gated, so no function-wide ceiling.
   { fn: "import-freelance-profile", perAddress: 10, window: 1440, body: { profileText: RESUME, sessionId: PAID } },

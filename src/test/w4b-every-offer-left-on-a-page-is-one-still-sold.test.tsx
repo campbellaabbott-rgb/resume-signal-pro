@@ -48,7 +48,6 @@ vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("no network in this t
 import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 import { ScanPackPurchase } from "@/components/ScanPackPurchase";
 import { MiniPricingCards } from "@/components/MiniPricingCards";
-import { AddOnsShowcase } from "@/components/AddOnsShowcase";
 import { FREE_REPORT_SIGNUP_NEXT, FreeReportSignupNudge } from "@/components/FreeReportSignupNudge";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { HIDDEN_PRODUCT_IDS, PRODUCTS } from "@/config/products";
@@ -76,8 +75,10 @@ describe("the components that list products by hand offer only what is still sol
     expect(screen.queryByRole("textbox")).toBeNull();
   });
 
-  it("the featured cards and the $5 add-ons, all cut, render nothing", () => {
-    const { container } = inRouter(<><MiniPricingCards /><AddOnsShowcase variant="full" /><AddOnsShowcase variant="compact" /></>);
+  // The $5 add-ons component, imported by no page, was deleted with the free
+  // preview it carried (NB-10).
+  it("the featured cards, all cut, render nothing", () => {
+    const { container } = inRouter(<MiniPricingCards />);
     expect(container.textContent).toBe("");
   });
 });

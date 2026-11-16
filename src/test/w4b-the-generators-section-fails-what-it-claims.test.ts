@@ -82,7 +82,8 @@ const ROUND = [
   "generate-cover-letter", "generate-tailored-resume", "generate-interview-coach", "generate-application-answers", "generate-apply-package",
   "generate-freelance-boost", "generate-career-path", "scrape-linkedin", "free-keyword-scan-stream",
   "application-fit", "generate-ats-defense", "generate-career-snapshot",
-  "generate-graduate-gameplan", "generate-keyword-fix", "generate-premium-package", "generate-product-preview",
+  "generate-graduate-gameplan", "generate-keyword-fix", "generate-premium-package",
+  // The product preview, retired to a bare 410 by the bug round (NB-10), carries no gate either.
   "import-freelance-profile", "job-fit", "nl-search", "parse-resume-structured",
   "shortlist-evaluate", "test-ai-fallback",
 ];
