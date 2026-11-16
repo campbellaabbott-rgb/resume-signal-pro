@@ -1,0 +1,32 @@
+{
+  "writingTools": {
+    "tailorBusyTitle": "Busy right now",
+    "tailorBusy": "The CV tailor is busy — try again in a moment.",
+    "lettersStillOwed": "Cover letters still to write: {{count}}. Run prep again to add them.",
+    "answersRetryTitle": "We couldn't draft these just now",
+    "answersRetryBody": "Something went wrong while drafting them. Draft again to try these questions again.",
+    "answersJoined": "Still drafting the answers you started. They will appear here.",
+    "answersWritingTitle": "Longer writing, not drafted here",
+    "answersWritingBody": "These ask for a letter, an essay or a rewritten CV, which this step doesn't write. Use the cover letter or tailored CV tools, or write them yourself.",
+    "answersAiUnavailable": "The AI service can't take requests right now. Please try again in a few minutes.",
+    "postingTruncated": "This job advert was very long, so only its first part was read. Check its last requirements yourself.",
+    "export": {
+      "prepTitle": "Interview Prep Guide",
+      "whyAsked": "Why they ask:",
+      "opener": "Strong opener:",
+      "modelAnswer": "Model Answer (STAR method):",
+      "tips": "Tips:",
+      "avoid": "Avoid:",
+      "before": "Before the Interview",
+      "during": "During the Interview",
+      "askThem": "Questions to Ask Them",
+      "pathTitle": "Career Roadmap",
+      "current": "Current:",
+      "pathOdds": "{{probability}} likely, {{risk}} risk",
+      "skills": "Skills to develop:",
+      "actionPlan": "90-Day Action Plan:",
+      "thisWeek": "Do This Week (Any Path)",
+      "pathPrintDescription": "The PDF's fonts can't draw this roadmap's script, so choose \"Save as PDF\" in the print dialogue to keep it."
+    }
+  }
+}

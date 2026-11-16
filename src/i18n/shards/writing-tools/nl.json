@@ -1,0 +1,32 @@
+{
+  "writingTools": {
+    "tailorBusyTitle": "Even bezet",
+    "tailorBusy": "De cv-aanpasser is even bezet — probeer het zo opnieuw.",
+    "lettersStillOwed": "Nog te schrijven sollicitatiebrieven: {{count}}. Start de voorbereiding opnieuw om ze toe te voegen.",
+    "answersRetryTitle": "Deze konden we nu niet opstellen",
+    "answersRetryBody": "Er ging iets mis bij het opstellen. Stel opnieuw op om deze vragen nog eens te proberen.",
+    "answersJoined": "De antwoorden die je begon, worden nog opgesteld. Ze verschijnen hier.",
+    "answersWritingTitle": "Langere teksten, hier niet opgesteld",
+    "answersWritingBody": "Deze vragen vragen om een brief, een essay of een herschreven cv, en die schrijft deze stap niet. Gebruik de tools voor sollicitatiebrief of aangepast cv, of schrijf ze zelf.",
+    "answersAiUnavailable": "De AI-dienst kan nu geen verzoeken aannemen. Probeer het over een paar minuten opnieuw.",
+    "postingTruncated": "Deze vacature was erg lang, dus alleen het eerste deel is gelezen. Controleer de laatste eisen zelf.",
+    "export": {
+      "prepTitle": "Gids voor je sollicitatiegesprek",
+      "whyAsked": "Waarom ze het vragen:",
+      "opener": "Sterke opening:",
+      "modelAnswer": "Voorbeeldantwoord (STAR-methode):",
+      "tips": "Tips:",
+      "avoid": "Vermijd:",
+      "before": "Voor het gesprek",
+      "during": "Tijdens het gesprek",
+      "askThem": "Vragen om aan hen te stellen",
+      "pathTitle": "Loopbaanroutekaart",
+      "current": "Huidig:",
+      "pathOdds": "kans {{probability}}, risico {{risk}}",
+      "skills": "Te ontwikkelen vaardigheden:",
+      "actionPlan": "Actieplan voor 90 dagen:",
+      "thisWeek": "Doe dit deze week (elk pad)",
+      "pathPrintDescription": "De lettertypen van de pdf kunnen het schrift van deze routekaart niet weergeven, dus kies \"Opslaan als pdf\" in het afdrukvenster om hem te bewaren."
+    }
+  }
+}

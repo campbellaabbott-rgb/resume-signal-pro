@@ -5,8 +5,8 @@ import { TrendingUp, Loader2, ChevronRight, DollarSign, AlertTriangle, Zap, Down
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { hasUnsupportedPdfCharacters } from "@/lib/pdf-text-support";
 import { useReportEnumLabel } from "@/hooks/use-report-enum-label";
+import type { CareerPathLabels } from "@/lib/career-tools-export";
 
 interface CareerPathSimulatorProps {
   resumeText: string;
@@ -19,6 +19,9 @@ interface CareerPathSimulatorProps {
   // against that purchase's own daily allowance instead of the free tool's
   // shared hourly one, which strangers can spend.
   sessionId?: string | null;
+  // A roadmap already made and saved (a past buyer's delivery): shown as it
+  // is, never generated again (RC-S12-042).
+  savedCopy?: unknown;
 }
 
 interface TimelineStep {
@@ -64,13 +67,20 @@ const pathColors: Record<string, { bg: string; border: string; accent: string }>
   pivot: { bg: "bg-orange-500/5", border: "border-orange-500/20", accent: "text-orange-700" },
 };
 
-export function CareerPathSimulator({ resumeText, industry, currentRole, isPremium, sessionId }: CareerPathSimulatorProps) {
-  const { t } = useTranslation();
+/** A saved roadmap, as the function's data or its whole reply ({ data }); null when it is neither. */
+export function savedCareerData(saved: unknown): CareerData | null {
+  const outer = saved && typeof saved === "object" ? (saved as Record<string, unknown>) : null;
+  const inner = outer && Array.isArray(outer.paths) ? outer : outer?.data && typeof outer.data === "object" ? (outer.data as Record<string, unknown>) : null;
+  return inner && Array.isArray(inner.paths) && inner.paths.length > 0 ? (inner as unknown as CareerData) : null;
+}
+
+export function CareerPathSimulator({ resumeText, industry, currentRole, isPremium, sessionId, savedCopy }: CareerPathSimulatorProps) {
+  const { t, i18n } = useTranslation();
   // Level and risk arrive in English (the colours key on them); shown in the reader's language.
   const enumLabel = useReportEnumLabel();
-  const [data, setData] = useState<CareerData | null>(null);
+  const [data, setData] = useState<CareerData | null>(() => savedCareerData(savedCopy));
   const [isLoading, setIsLoading] = useState(false);
-  const [activePath, setActivePath] = useState<string | null>(null);
+  const [activePath, setActivePath] = useState<string | null>(() => savedCareerData(savedCopy)?.paths[0]?.id ?? null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const { toast } = useToast();
 
@@ -91,18 +101,31 @@ export function CareerPathSimulator({ resumeText, industry, currentRole, isPremi
     }
   };
 
+  /** The roadmap's labels in the reader's language (RC-S12-114). */
+  const pathLabels = (): CareerPathLabels => ({
+    title: t('writingTools.export.pathTitle', 'Career Roadmap'),
+    current: t('writingTools.export.current', 'Current:'),
+    odds: (probability, risk) => t('writingTools.export.pathOdds', '{{probability}} likely, {{risk}} risk', { probability: enumLabel(probability), risk: enumLabel(risk) }),
+    skills: t('writingTools.export.skills', 'Skills to develop:'),
+    actionPlan: t('writingTools.export.actionPlan', '90-Day Action Plan:'),
+    thisWeek: t('writingTools.export.thisWeek', 'Do This Week (Any Path)'),
+  });
+
   const handleExportPdf = async () => {
     if (!data) return;
     setIsExportingPdf(true);
     try {
-      // The PDF export's standard font only supports Latin-1 + common
-      // punctuation — content in other scripts would otherwise render as
-      // blank/missing glyphs with no explanation.
-      if (hasUnsupportedPdfCharacters(JSON.stringify(data))) {
-        toast({ title: t('careerPathSimulator.toast.headsUp'), description: t('careerPathSimulator.toast.pdfCharWarning') });
-      }
+      // A roadmap the PDF's fonts cannot draw (its words or its labels) goes
+      // to the browser's print dialog, which draws every script; the person
+      // is told so, as the interview guide does (RC-S12-114).
       const { exportCareerPathPDF } = await import("@/lib/career-tools-export");
-      await exportCareerPathPDF(data);
+      const saved = await exportCareerPathPDF(data, pathLabels(), { lang: i18n.language });
+      if (saved?.method === "print") {
+        toast({
+          title: t('interviewCoach.toast.printTitle', 'Opened in your print dialog'),
+          description: t('writingTools.export.pathPrintDescription', "The PDF's fonts can't draw this roadmap's script, so choose \"Save as PDF\" in the print dialog to keep it."),
+        });
+      }
     } catch (err) {
       console.error("[CareerPathSimulator] PDF export failed:", err);
       toast({ title: t('careerPathSimulator.toast.exportFailed'), description: t('careerPathSimulator.toast.exportFailedDescription'), variant: "destructive" });

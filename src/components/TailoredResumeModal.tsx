@@ -29,6 +29,8 @@ export interface TailoredResumeContent {
   applicationTips: string[];
   jobTitle: string;
   jobCompany?: string;
+  /** The posting was longer than the writer reads, so its end was not read (S14X-270). */
+  postingTruncated?: boolean;
 }
 
 interface TailoredResumeModalProps {
@@ -189,6 +191,12 @@ export function TailoredResumeModal({
                 {t('tailoredResumeModal.downloadPdf')}
               </Button>
             </div>
+
+            {content.postingTruncated && (
+              <p data-testid="tailor-posting-truncated" className="text-xs text-muted-foreground rounded-lg border border-border bg-muted/40 px-3 py-2">
+                {t('writingTools.postingTruncated', "This job posting was very long, so only its first part was read. Check its last requirements yourself.")}
+              </p>
+            )}
 
             {/* Match score delta */}
             {content.matchScoreDelta != null && content.matchScoreDelta > 0 && (
