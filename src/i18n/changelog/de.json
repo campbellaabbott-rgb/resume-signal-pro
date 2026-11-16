@@ -869,12 +869,12 @@
       "description": "Beim Lebenslauf-Scan wurde ein 55-Sekunden-Timeout für den primären KI-Aufruf hinzugefügt. Wenn das erste KI-Modell ins Stocken gerät, wechselt die Engine jetzt automatisch zu einem schnelleren Backup-Modell, anstatt bis zu 2,5 Minuten zu warten."
     },
     "industryDetectionAccuracy": {
-      "title": "Sharper, more accurate industry detection",
-      "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."
+      "title": "Schärfere, genauere Branchenerkennung",
+      "description": "Wir haben grundlegend überarbeitet, wie wir deine Branche aus deinem Lebenslauf erkennen. Sechs Runden aus Tests und Korrekturen haben Fehlzuordnungen bei Rollen wie Growth Hacker (fälschlich als Data Science bewertet), Salesforce-Administrator (als Vertrieb bewertet), Quantitative Researcher bei einem Hedgefonds (als Data Science bewertet) und Softwareentwicklern bei KI-Unternehmen (fälschlich als ML Engineers bewertet) behoben. Außerdem haben wir einen Fehler in der Bewertungslogik behoben, durch den Muster gemeinsam auftretender Keywords greifen konnten, bevor überhaupt ein Branchensignal feststand — die Hauptursache für Fehltreffer bei DevOps-Engineers und SREs. Das Ergebnis sind genauere branchenspezifische Tipps, Keyword-Vorschläge und ATS-Gewichtungen, die wirklich zu deiner Rolle passen."
     },
     "dataAiIndustrySplit": {
-      "title": "Data Engineering, Data Science, and AI/ML are now separate industries",
-      "description": "Previously, data engineers, data scientists, and machine learning engineers all received the same generic feedback under a single Technology category. We have split these into three distinct industry tracks with their own ATS scoring weights, keyword gap analysis, and resume tips tailored to each role."
+      "title": "Data Engineering, Data Science und KI/ML sind jetzt eigene Branchen",
+      "description": "Bisher bekamen Data Engineers, Data Scientists und Machine-Learning-Engineers alle dasselbe allgemeine Feedback unter einer einzigen Kategorie „Technologie“. Wir haben daraus drei eigene Branchenpfade gemacht. Data Engineers bekommen jetzt Feedback zu Pipeline-Tools (Airflow, dbt, Snowflake, Kafka), Modellierungsansätzen und Kennzahlen zum Datenvolumen. Data Scientists bekommen Hinweise zu statistischer Sorgfalt, zur Methodik von A/B-Tests und zur Bezifferung des geschäftlichen Nutzens. ML- und KI-Engineers bekommen Feedback speziell zu Produktivbetrieb, Inferenz-Optimierung, LLM-Frameworks (LangChain, vLLM, Hugging Face) und modernen Techniken wie RAG, Fine-Tuning und QLoRA. Jeder Pfad hat eigene ATS-Gewichtungen, eine eigene Keyword-Lückenanalyse und eigene Lebenslauf-Tipps."
     },
     "everythingTranslated": {
       "title": "Jeder Bildschirm ist jetzt übersetzt",
@@ -965,28 +965,28 @@
       "description": "Wenn du ein gescanntes, bildbasiertes PDF ohne auswählbaren Text hochlädst, sagen wir dir das jetzt sofort, statt stillschweigend leeren Inhalt zu analysieren — mit einem klaren Vorschlag, eine textbasierte Version hochzuladen oder deinen Lebenslauf direkt einzufügen."
     },
     "industryDetectionAccuracy8Fixes": {
-      "title": "8 accuracy upgrades to industry detection",
-      "description": "We identified and fixed every known category of industry misclassification. Unambiguous role titles now hard-lock the industry, anchor terms prevent skills-list false positives, very short resumes rely only on job titles, the employer boost is guarded, implausible industry/seniority combos are flagged, skills section contribution is capped, the AI classifies from resume titles not the target job, and user corrections now compound the more they repeat."
+      "title": "8 Verbesserungen für eine genauere Branchenerkennung",
+      "description": "Wir haben jede bekannte Art von Branchen-Fehlzuordnung gefunden und behoben. (1) Eindeutige Berufsbezeichnungen — Pflegefachkraft, Anwalt, Produktmanager, ML Engineer und über 50 weitere — legen die Branche jetzt fest, unabhängig von den Keyword-Werten, sodass eine Pflegefachkraft mit Python in den Kenntnissen nie als Data Scientist eingestuft wird. (2) Jede Branche verlangt jetzt mindestens einen Ankerbegriff, bevor hohe Sicherheit vergeben wird — das beseitigt Fehltreffer durch lange Kenntnislisten. (3) Sehr kurze Lebensläufe (unter 80 Wörtern) überspringen die Keyword-Bewertung ganz und stützen sich nur auf deine Berufsbezeichnungen. (4) Der Bonus für den Arbeitgebernamen ist jetzt abgesichert — ein Finanzanalyst bei Google bekommt keinen Technologie-Bonus mehr. (5) Unplausible Kombinationen aus Branche und Karrierestufe (z. B. Berufseinstieg in der Beratung, Führungsebene im Einzelhandel) werden markiert, und die Sicherheit wird gedeckelt. (6) Der Beitrag des Kenntnisbereichs ist jetzt fest auf 6 Punkte begrenzt, egal wie viele Kenntnisse aufgeführt sind — deine letzten Berufsbezeichnungen wiegen immer schwerer als eine Liste mit 60 Kenntnissen. (7) Wenn du eine Stellenbeschreibung zusammen mit deinem Lebenslauf einfügst, bestimmt die KI deine Branche jetzt aus den Berufsbezeichnungen in deinem Lebenslauf, nicht aus dem Unternehmen, bei dem du dich bewirbst. (8) Korrekturen von Nutzern summieren sich jetzt logarithmisch — je öfter ein Muster korrigiert wird, desto stärker das Lernsignal."
     },
     "marketIntelligenceCards": {
-      "title": "Live market intelligence in your scan results",
-      "description": "Five new data cards now appear in your scan results: Market Intelligence (hot skills, rising keywords, local CV norms, salary context), Skills Recency (aging vs in-demand skills), Career Trajectory (upward/lateral/transition path), Competitive Keyword Gap (top-quartile keyword coverage), and ATS System detection (when we can identify which ATS the company uses)."
+      "title": "Aktuelle Marktdaten in deinen Scan-Ergebnissen",
+      "description": "Dein Scan enthält jetzt fünf neue Datenkarten unter den Hauptergebnissen. Die Karte „Marktdaten“ zeigt die Lage am Arbeitsmarkt für deine Branche in deinem Land — gerade gefragte Kenntnisse, steigende Keywords in Stellenanzeigen, landesübliche Lebenslauf-Normen und Gehaltskontext. Die Karte „Aktualität der Kenntnisse“ markiert Kenntnisse, die in Stellenanzeigen seltener werden (durchgestrichen, gelb), und hebt Kenntnisse hervor, die derzeit stark gefragt sind (grün). Die Karte „Karriereverlauf“ liest die Entwicklung deiner Berufsbezeichnungen und sagt dir, ob du auf einem aufsteigenden, seitlichen oder wechselnden Weg bist. Die Karte „Keyword-Lücke im Wettbewerb“ zeigt, welchen Anteil der Keywords aus dem oberen Viertel du abdeckst, und listet die häufigsten, die dir fehlen. Die Karte „ATS-System“ erscheint, wenn wir aus deiner Stellenbeschreibung erkennen, welches ATS das Unternehmen nutzt, und passt die Hinweise zum Auslesen an genau dieses System an."
     },
     "resumeTimelineAnalysis": {
-      "title": "Employment gap and short tenure detection",
-      "description": "The scanner now parses your work history date ranges to detect gaps longer than 6 months and roles shorter than 12 months. If found, a new card appears with the specific gap duration and concrete advice on how to address it before applying."
+      "title": "Erkennung von Lücken im Lebenslauf und kurzen Beschäftigungen",
+      "description": "Der Scanner liest jetzt die Zeiträume in deinem Werdegang aus und erkennt Lücken von mehr als 6 Monaten sowie Stellen, die kürzer als 12 Monate waren — beides markieren viele ATS-Systeme und Vorauswahl-Tools von Recruitern. Werden Lücken oder kurze Beschäftigungen gefunden, erscheint in deinen Ergebnissen eine neue Karte mit der genauen Dauer der Lücke, der Stelle, auf die sie folgte, und konkreten Tipps, wie du damit umgehst (ein Eintrag für Beratungstätigkeit, eine kurze Erklärung in deinem Profil oder der Hinweis auf eine befristete Stelle). Außerdem werden deine gesamte Berufserfahrung und die durchschnittliche Verweildauer angezeigt."
     },
     "gatedKeywordGap": {
-      "title": "Keywords now sorted by how often they appear in job postings",
-      "description": "Missing keywords are ranked by real posting frequency for your role — the highest-impact gaps appear first. The top 3 are shown in full; additional high-priority keywords are previewed so you know there's more."
+      "title": "Keywords jetzt danach sortiert, wie oft sie in Stellenanzeigen vorkommen",
+      "description": "Fehlende Keywords werden nach ihrer tatsächlichen Häufigkeit in Stellenanzeigen für deine Rolle gereiht — die Lücken mit der größten Wirkung stehen oben. Die ersten 3 werden vollständig gezeigt; weitere wichtige Keywords erscheinen als Vorschau, damit du weißt, dass es mehr gibt."
     },
     "phraseAwareKeywordMatching": {
-      "title": "Fewer false 'missing keyword' reports",
-      "description": "The keyword detector now understands compound phrases and abbreviations. 'Machine learning' and 'ML' match. 'CI/CD', 'ci-cd', and 'cicd' match. 'P&L' matches 'profit and loss'. 'Full-stack' and 'fullstack' are equivalent. This eliminates false positives where skills you clearly had were reported as missing."
+      "title": "Weniger falsche Meldungen über „fehlende Keywords“",
+      "description": "Die Erkennung von Keyword-Lücken versteht jetzt zusammengesetzte Begriffe, Abkürzungen und Schreibvarianten mit und ohne Leerzeichen. „Machine Learning“ und „ML“ gelten als dasselbe Keyword. „CI/CD“, „ci-cd“ und „cicd“ passen alle. „P&L“ passt zu „profit and loss“ (Gewinn und Verlust). „Full-Stack“, „full stack“ und „fullstack“ sind gleichwertig. Damit fällt eine ganze Klasse von Fehlmeldungen weg, bei denen eine Kenntnis, die du eindeutig hattest, als fehlend gemeldet wurde, nur weil sie etwas anders geschrieben war."
     },
     "roleLockDetection": {
-      "title": "Role-specific detection for 50+ job titles",
-      "description": "Over 50 unambiguous job titles now hard-lock the correct industry regardless of what else appears on the resume — registered nurses, attorneys, teachers, product managers, data engineers, ML engineers, and many more. A nurse with SQL in her skills can no longer be classified as a data scientist."
+      "title": "Rollenspezifische Erkennung für über 50 Berufsbezeichnungen",
+      "description": "Neu ist eine Rollenbindung, die über 50 eindeutige Berufsbezeichnungen erkennt und die richtige Branche festlegt, egal was sonst im Lebenslauf steht. Abgedeckt sind unter anderem klinische Berufe (Pflegefachkraft, Nurse Practitioner, Ärztin oder Arzt, Chirurg, Apotheker, Rettungssanitäter), juristische Berufe (Anwalt, Justiziar, Rechtsanwaltsfachangestellte), Bildung (Lehrkraft, Professor, Schulleitung), Produktmanagement (PM, APM, CPO), Data Engineering (Data-Pipeline-Engineer, Analytics Engineer), ML/KI (ML Engineer, Applied Scientist, LLM Engineer) und mehr. Bisher konnte eine Pflegefachkraft mit SQL in den Kenntnissen fälschlich der Technologie zugeordnet werden — das ist jetzt ausgeschlossen."
     },
     "fiftyNineIndustries": {
       "title": "59 Branchen — auch die, die andere Tools ignorieren",

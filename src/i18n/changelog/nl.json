@@ -869,12 +869,12 @@
       "description": "Een time-out van 55 seconden toegevoegd aan de primaire AI-aanroep tijdens het scannen van cv's. Als het eerste AI-model vastloopt, schakelt de engine nu automatisch over naar een sneller back-upmodel in plaats van tot 2,5 minuten te wachten."
     },
     "industryDetectionAccuracy": {
-      "title": "Sharper, more accurate industry detection",
-      "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."
+      "title": "Scherpere, nauwkeurigere branche-herkenning",
+      "description": "We hebben grondig herzien hoe we je branche uit je cv afleiden. Zes rondes testen en verbeteren losten verkeerde indelingen op voor functies als Growth Hacker (werd ten onrechte als Data Science gescoord), Salesforce-beheerder (werd als Sales gescoord), Quantitative Researcher bij een hedgefonds (werd als Data Science gescoord) en software-engineers bij AI-bedrijven (werden ten onrechte als ML-engineers gescoord). We hebben ook een fout in de scorelogica opgelost waardoor patronen van samen voorkomende trefwoorden konden afgaan voordat er enig branchesignaal was vastgesteld — de belangrijkste oorzaak van vals-positieven bij DevOps-engineers en SRE's. Het resultaat: nauwkeurigere branchespecifieke tips, trefwoordsuggesties en ATS-scoregewichten die echt bij je functie passen."
     },
     "dataAiIndustrySplit": {
-      "title": "Data Engineering, Data Science, and AI/ML are now separate industries",
-      "description": "Previously, data engineers, data scientists, and machine learning engineers all received the same generic feedback under a single Technology category. We have split these into three distinct industry tracks with their own ATS scoring weights, keyword gap analysis, and resume tips tailored to each role."
+      "title": "Data-engineering, datawetenschap en AI/ML zijn nu aparte branches",
+      "description": "Eerder kregen data-engineers, datawetenschappers en machine-learning-engineers allemaal dezelfde algemene feedback onder één categorie ‘Technologie’. We hebben die opgesplitst in drie aparte branches. Data-engineers krijgen nu feedback over pipelinetools (Airflow, dbt, Snowflake, Kafka), modelleeraanpakken en datavolumecijfers. Datawetenschappers krijgen advies over statistische zorgvuldigheid, de opzet van A/B-tests en het in cijfers uitdrukken van bedrijfsimpact. ML- en AI-engineers krijgen feedback specifiek over productie-uitrol, inferentie-optimalisatie, LLM-frameworks (LangChain, vLLM, Hugging Face) en moderne technieken zoals RAG, fine-tuning en QLoRA. Elke branche heeft eigen ATS-scoregewichten, een eigen analyse van ontbrekende trefwoorden en eigen cv-tips."
     },
     "everythingTranslated": {
       "title": "Elk scherm is nu vertaald",
@@ -965,28 +965,28 @@
       "description": "Als je een gescande, op afbeeldingen gebaseerde PDF zonder selecteerbare tekst uploadt, laten we dit nu direct weten in plaats van stilzwijgend lege inhoud te analyseren — met een duidelijke suggestie om een tekstgebaseerde versie te uploaden of je cv direct te plakken."
     },
     "industryDetectionAccuracy8Fixes": {
-      "title": "8 accuracy upgrades to industry detection",
-      "description": "We identified and fixed every known category of industry misclassification. Unambiguous role titles now hard-lock the industry, anchor terms prevent skills-list false positives, very short resumes rely only on job titles, the employer boost is guarded, implausible industry/seniority combos are flagged, skills section contribution is capped, the AI classifies from resume titles not the target job, and user corrections now compound the more they repeat."
+      "title": "8 verbeteringen voor nauwkeurigere branche-herkenning",
+      "description": "We hebben elke bekende soort verkeerde branche-indeling opgespoord en opgelost. (1) Eenduidige functietitels — verpleegkundige, advocaat, productmanager, ML-engineer en meer dan 50 andere — leggen de branche nu vast, ongeacht de trefwoordscores, zodat een verpleegkundige met Python in haar vaardigheden nooit als datawetenschapper wordt ingedeeld. (2) Elke branche vereist nu minstens één ankerterm voordat er een hoge zekerheid wordt gegeven — dat haalt vals-positieven door lange vaardighedenlijsten weg. (3) Heel korte cv's (minder dan 80 woorden) slaan de trefwoordscore helemaal over en gaan alleen uit van je functietitels. (4) De bonus voor de naam van de werkgever is nu begrensd — een financieel analist bij Google krijgt geen technologiebonus meer. (5) Onwaarschijnlijke combinaties van branche en niveau (bijv. starter in consultancy, directie in de retail) worden gemarkeerd en hun zekerheid wordt begrensd. (6) De bijdrage van het vaardighedenblok is nu vast begrensd op 6 punten, hoeveel vaardigheden er ook staan — je meest recente functietitels wegen altijd zwaarder dan een lijst van 60 vaardigheden. (7) Als je een vacaturetekst samen met je cv plakt, bepaalt de AI je branche nu uit de functietitels in je cv, niet uit het bedrijf waar je solliciteert. (8) Correcties van gebruikers stapelen nu logaritmisch op — hoe vaker een patroon wordt gecorrigeerd, hoe sterker het leersignaal."
     },
     "marketIntelligenceCards": {
-      "title": "Live market intelligence in your scan results",
-      "description": "Five new data cards now appear in your scan results: Market Intelligence (hot skills, rising keywords, local CV norms, salary context), Skills Recency (aging vs in-demand skills), Career Trajectory (upward/lateral/transition path), Competitive Keyword Gap (top-quartile keyword coverage), and ATS System detection (when we can identify which ATS the company uses)."
+      "title": "Actuele marktinformatie in je scanresultaten",
+      "description": "Je scan bevat nu vijf nieuwe datakaarten onder je hoofdresultaten. De kaart Marktinformatie toont de stand van de arbeidsmarkt voor je branche in je land — vaardigheden die nu gevraagd zijn, trefwoorden die opkomen in vacatures, lokale cv-normen en salariscontext. De kaart Actualiteit van vaardigheden markeert vaardigheden die minder vaak in vacatures staan (doorgestreept, oranje) en licht vaardigheden uit waar nu veel vraag naar is (groen). De kaart Loopbaantraject leest hoe je functietitels zich ontwikkelen en vertelt je of je op een opwaarts, zijwaarts of overgangstraject zit. De kaart Trefwoordachterstand op de concurrentie toont welk percentage van de trefwoorden uit het bovenste kwart je dekt en noemt de meest voorkomende die je mist. De kaart ATS-systeem verschijnt als we uit je vacaturetekst opmaken welk ATS het bedrijf gebruikt, en stemt het advies over het inlezen af op precies dat systeem."
     },
     "resumeTimelineAnalysis": {
-      "title": "Employment gap and short tenure detection",
-      "description": "The scanner now parses your work history date ranges to detect gaps longer than 6 months and roles shorter than 12 months. If found, a new card appears with the specific gap duration and concrete advice on how to address it before applying."
+      "title": "Herkenning van gaten in je loopbaan en korte dienstverbanden",
+      "description": "De scanner leest nu de periodes in je werkervaring uit om gaten van meer dan 6 maanden en functies korter dan 12 maanden te vinden — beide worden door veel ATS-systemen en selectietools van recruiters gemarkeerd. Worden er gaten of korte dienstverbanden gevonden, dan verschijnt er een nieuwe kaart in je resultaten met de precieze duur van het gat, de functie waarna het kwam en concreet advies over hoe je het aanpakt (een consultancy-regel toevoegen, een korte uitleg in je profieltekst of de context van een tijdelijk contract). Ook je totale ervaring en je gemiddelde diensttijd worden getoond."
     },
     "gatedKeywordGap": {
-      "title": "Keywords now sorted by how often they appear in job postings",
-      "description": "Missing keywords are ranked by real posting frequency for your role — the highest-impact gaps appear first. The top 3 are shown in full; additional high-priority keywords are previewed so you know there's more."
+      "title": "Trefwoorden nu gesorteerd op hoe vaak ze in vacatures voorkomen",
+      "description": "Ontbrekende trefwoorden worden gerangschikt op hoe vaak ze echt voorkomen in vacatures voor je functie — de tekorten met de meeste impact staan bovenaan. De eerste 3 worden volledig getoond; andere belangrijke trefwoorden zie je als voorvertoning, zodat je weet dat er meer zijn."
     },
     "phraseAwareKeywordMatching": {
-      "title": "Fewer false 'missing keyword' reports",
-      "description": "The keyword detector now understands compound phrases and abbreviations. 'Machine learning' and 'ML' match. 'CI/CD', 'ci-cd', and 'cicd' match. 'P&L' matches 'profit and loss'. 'Full-stack' and 'fullstack' are equivalent. This eliminates false positives where skills you clearly had were reported as missing."
+      "title": "Minder onterechte meldingen van ‘ontbrekende trefwoorden’",
+      "description": "De detector voor ontbrekende trefwoorden begrijpt nu samengestelde termen, afkortingen en varianten met of zonder spaties. ‘Machine learning’ en ‘ML’ gelden als hetzelfde trefwoord. ‘CI/CD’, ‘ci-cd’ en ‘cicd’ komen allemaal overeen. ‘P&L’ komt overeen met ‘profit and loss’ (winst en verlies). ‘Full-stack’, ‘full stack’ en ‘fullstack’ zijn gelijkwaardig. Zo verdwijnt een hele groep vals-positieven waarbij een vaardigheid die je duidelijk had als ontbrekend werd gemeld, alleen omdat die net iets anders was geschreven."
     },
     "roleLockDetection": {
-      "title": "Role-specific detection for 50+ job titles",
-      "description": "Over 50 unambiguous job titles now hard-lock the correct industry regardless of what else appears on the resume — registered nurses, attorneys, teachers, product managers, data engineers, ML engineers, and many more. A nurse with SQL in her skills can no longer be classified as a data scientist."
+      "title": "Functiespecifieke herkenning voor meer dan 50 functietitels",
+      "description": "We hebben een functievergrendeling toegevoegd die meer dan 50 eenduidige functietitels herkent en de juiste branche vastlegt, wat er verder ook in het cv staat. Daaronder vallen onder meer zorgfuncties (verpleegkundige, verpleegkundig specialist, arts, chirurg, apotheker, ambulanceverpleegkundige), juridische functies (advocaat, bedrijfsjurist, juridisch medewerker), onderwijs (leraar, hoogleraar, schoolleider), productmanagement (PM, APM, CPO), data-engineering (datapipeline-engineer, analytics engineer), ML/AI (ML-engineer, applied scientist, LLM-engineer) en meer. Eerder kon een verpleegkundige met SQL in haar vaardigheden ten onrechte als technologie worden ingedeeld — dat kan nu niet meer."
     },
     "fiftyNineIndustries": {
       "title": "59 sectoren — ook die welke anderen negeren",

@@ -869,12 +869,12 @@
       "description": "Adicionamos um timeout de 55 segundos para a chamada de IA primária durante a verificação de currículos. Se o primeiro modelo de IA travar, o motor agora muda automaticamente para um modelo de backup mais rápido em vez de aguardar até 2,5 minutos."
     },
     "industryDetectionAccuracy": {
-      "title": "Sharper, more accurate industry detection",
-      "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."
+      "title": "Detecção de setor mais precisa",
+      "description": "Reformulamos a forma como identificamos o seu setor a partir do seu currículo. Seis rodadas de testes e correções acertaram classificações erradas em cargos como Growth Hacker (era pontuado por engano como Data Science), administrador de Salesforce (era pontuado como Vendas), Quantitative Researcher em um fundo de hedge (era pontuado como Data Science) e engenheiros de software em empresas de IA (eram pontuados por engano como engenheiros de ML). Também corrigimos um erro na lógica de pontuação em que padrões de palavras-chave que aparecem juntas podiam ser acionados antes de existir qualquer sinal de setor — a principal causa de falsos positivos para engenheiros de DevOps e SREs. O resultado são dicas específicas do setor, sugestões de palavras-chave e pesos de pontuação ATS mais precisos, que de fato combinam com o seu cargo."
     },
     "dataAiIndustrySplit": {
-      "title": "Data Engineering, Data Science, and AI/ML are now separate industries",
-      "description": "Previously, data engineers, data scientists, and machine learning engineers all received the same generic feedback under a single Technology category. We have split these into three distinct industry tracks with their own ATS scoring weights, keyword gap analysis, and resume tips tailored to each role."
+      "title": "Engenharia de dados, ciência de dados e IA/ML agora são setores separados",
+      "description": "Antes, engenheiros de dados, cientistas de dados e engenheiros de machine learning recebiam o mesmo feedback genérico em uma única categoria de “Tecnologia”. Dividimos isso em três setores distintos. Engenheiros de dados agora recebem feedback focado em ferramentas de pipeline (Airflow, dbt, Snowflake, Kafka), abordagens de modelagem e métricas de volume de dados. Cientistas de dados recebem orientação sobre rigor estatístico, metodologia de testes A/B e quantificação do impacto no negócio. Engenheiros de ML e IA recebem feedback específico sobre implantação em produção, otimização de inferência, frameworks de LLM (LangChain, vLLM, Hugging Face) e técnicas modernas como RAG, fine-tuning e QLoRA. Cada setor tem seus próprios pesos de pontuação ATS, sua análise de palavras-chave ausentes e suas dicas de currículo."
     },
     "everythingTranslated": {
       "title": "Todas as telas agora estão traduzidas",
@@ -965,28 +965,28 @@
       "description": "Se enviar um PDF digitalizado baseado em imagem sem texto selecionável, agora avisamo-lo imediatamente em vez de analisar silenciosamente conteúdo vazio — com uma sugestão clara para enviar uma versão baseada em texto ou colar o seu currículo diretamente."
     },
     "industryDetectionAccuracy8Fixes": {
-      "title": "8 accuracy upgrades to industry detection",
-      "description": "We identified and fixed every known category of industry misclassification. Unambiguous role titles now hard-lock the industry, anchor terms prevent skills-list false positives, very short resumes rely only on job titles, the employer boost is guarded, implausible industry/seniority combos are flagged, skills section contribution is capped, the AI classifies from resume titles not the target job, and user corrections now compound the more they repeat."
+      "title": "8 melhorias de precisão na detecção de setor",
+      "description": "Identificamos e corrigimos todos os tipos conhecidos de classificação errada de setor. (1) Cargos sem ambiguidade — enfermeira, advogado, gerente de produto, engenheiro de ML e mais de 50 outros — agora fixam o setor independentemente da pontuação das palavras-chave, então uma enfermeira com Python na seção de habilidades nunca é classificada como cientista de dados. (2) Cada setor agora exige pelo menos um termo âncora antes de conceder alta confiança — o que elimina falsos positivos causados por listas longas de habilidades. (3) Currículos muito curtos (menos de 80 palavras) pulam totalmente a pontuação de palavras-chave e se baseiam apenas nos seus cargos. (4) O bônus pelo nome do empregador agora é controlado — um analista financeiro no Google não recebe mais um bônus de tecnologia. (5) Combinações improváveis de setor e nível (por exemplo, consultoria em nível inicial, varejo em nível executivo) são sinalizadas e têm a confiança limitada. (6) A contribuição da seção de habilidades agora tem um teto fixo de 6 pontos, não importa quantas habilidades estejam listadas — seus cargos mais recentes sempre pesam mais que uma lista de 60 habilidades. (7) Quando você cola uma descrição de vaga junto com o currículo, a IA agora classifica o seu setor pelos cargos do seu currículo, e não pela empresa à qual você está se candidatando. (8) As correções dos usuários agora se acumulam de forma logarítmica — quanto mais vezes um padrão é corrigido, mais forte é o sinal de aprendizado."
     },
     "marketIntelligenceCards": {
-      "title": "Live market intelligence in your scan results",
-      "description": "Five new data cards now appear in your scan results: Market Intelligence (hot skills, rising keywords, local CV norms, salary context), Skills Recency (aging vs in-demand skills), Career Trajectory (upward/lateral/transition path), Competitive Keyword Gap (top-quartile keyword coverage), and ATS System detection (when we can identify which ATS the company uses)."
+      "title": "Dados de mercado ao vivo nos resultados da sua análise",
+      "description": "Sua análise agora inclui cinco novos cartões de dados abaixo dos resultados principais. O cartão Inteligência de mercado mostra as condições do mercado de trabalho para o seu setor no seu país — habilidades em alta no momento, palavras-chave em crescimento nas vagas, normas locais de currículo e contexto salarial. O cartão Atualidade das habilidades sinaliza habilidades que estão caindo nas vagas (riscadas, em âmbar) e destaca as que têm alta demanda atual (em verde). O cartão Trajetória de carreira lê a evolução dos seus cargos e diz se você está em um caminho ascendente, lateral ou de transição. O cartão Lacuna competitiva de palavras-chave mostra a porcentagem de palavras-chave do quartil superior que você cobre e lista as mais frequentes que estão faltando. O cartão Sistema ATS aparece quando identificamos na descrição da vaga qual ATS a empresa usa, e adapta as dicas de leitura a esse sistema específico."
     },
     "resumeTimelineAnalysis": {
-      "title": "Employment gap and short tenure detection",
-      "description": "The scanner now parses your work history date ranges to detect gaps longer than 6 months and roles shorter than 12 months. If found, a new card appears with the specific gap duration and concrete advice on how to address it before applying."
+      "title": "Detecção de lacunas de emprego e empregos de curta duração",
+      "description": "O scanner agora lê os períodos do seu histórico profissional para detectar lacunas de emprego maiores que 6 meses e cargos mais curtos que 12 meses — duas coisas sinalizadas por muitos sistemas ATS e ferramentas de triagem de recrutadores. Se forem encontradas lacunas ou empregos curtos, um novo cartão aparece nos seus resultados com a duração exata da lacuna, o cargo depois do qual ela veio e dicas concretas de como tratá-la (incluir uma entrada de consultoria, uma breve explicação no seu resumo ou o contexto de um contrato temporário). A experiência total e o tempo médio em cada emprego também são mostrados."
     },
     "gatedKeywordGap": {
-      "title": "Keywords now sorted by how often they appear in job postings",
-      "description": "Missing keywords are ranked by real posting frequency for your role — the highest-impact gaps appear first. The top 3 are shown in full; additional high-priority keywords are previewed so you know there's more."
+      "title": "Palavras-chave agora ordenadas pela frequência com que aparecem nas vagas",
+      "description": "As palavras-chave ausentes são ordenadas pela frequência real nas vagas para o seu cargo — as lacunas de maior impacto aparecem primeiro. As 3 primeiras são mostradas por completo; as demais palavras-chave prioritárias aparecem como prévia, para você saber que há mais."
     },
     "phraseAwareKeywordMatching": {
-      "title": "Fewer false 'missing keyword' reports",
-      "description": "The keyword detector now understands compound phrases and abbreviations. 'Machine learning' and 'ML' match. 'CI/CD', 'ci-cd', and 'cicd' match. 'P&L' matches 'profit and loss'. 'Full-stack' and 'fullstack' are equivalent. This eliminates false positives where skills you clearly had were reported as missing."
+      "title": "Menos avisos falsos de “palavra-chave ausente”",
+      "description": "O detector de palavras-chave ausentes agora entende expressões compostas, abreviações e variações de espaçamento. “Machine learning” e “ML” são tratados como a mesma palavra-chave. “CI/CD”, “ci-cd” e “cicd” correspondem. “P&L” corresponde a “profit and loss” (lucros e perdas). “Full-stack”, “full stack” e “fullstack” são equivalentes. Isso elimina toda uma classe de falsos positivos em que uma habilidade que você claramente tinha era apontada como ausente só porque estava escrita de um jeito um pouco diferente."
     },
     "roleLockDetection": {
-      "title": "Role-specific detection for 50+ job titles",
-      "description": "Over 50 unambiguous job titles now hard-lock the correct industry regardless of what else appears on the resume — registered nurses, attorneys, teachers, product managers, data engineers, ML engineers, and many more. A nurse with SQL in her skills can no longer be classified as a data scientist."
+      "title": "Detecção por cargo para mais de 50 títulos",
+      "description": "Adicionamos um sistema de trava por cargo que reconhece mais de 50 títulos sem ambiguidade e define a classificação correta de setor, não importa o que mais apareça no currículo. Os cargos cobertos incluem a área clínica (enfermeira, enfermeira de prática avançada, médico, cirurgião, farmacêutico, socorrista), a área jurídica (advogado, consultor jurídico, assistente jurídico), educação (professor, professor universitário, diretor de escola), gestão de produto (PM, APM, CPO), engenharia de dados (engenheiro de pipelines de dados, analytics engineer), ML/IA (engenheiro de ML, applied scientist, engenheiro de LLM) e outros. Antes, uma enfermeira com SQL na seção de habilidades podia ser classificada por engano como tecnologia — agora isso é impossível."
     },
     "fiftyNineIndustries": {
       "title": "59 setores — incluindo os que todos ignoram",

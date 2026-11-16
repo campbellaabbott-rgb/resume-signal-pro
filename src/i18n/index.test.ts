@@ -340,6 +340,35 @@ describe("changelog string files (lazy-loaded, still must be complete)", () => {
     }
   });
 
+  // NEW-COPY-I18N-01: eight entries written in English were copied, untranslated,
+  // into all seven other languages' files, so a German reader of /changelog read
+  // them in English. A title equal to the English one is a copy unless it is a
+  // product name listed here, and no description may read as an English sentence.
+  const SAME_TITLE_IS_A_NAME: Record<string, string[]> = {
+    de: ["applyAssistant"], es: ["applyAssistant"], fr: ["applyAssistant"], nl: ["applyAssistant"], pt: ["applyAssistant"],
+    tl: ["applyAssistant", "atsParseSimulation", "resumeBuilder"],
+  };
+  it("no non-English changelog entry is the English one copied: no English title outside product names, no English description", () => {
+    const copied: string[] = [];
+    for (const lng of NON_ENGLISH) {
+      const d = JSON.parse(readFileSync(join(clDir, `${lng}.json`), "utf8")) as typeof enCl;
+      const names = SAME_TITLE_IS_A_NAME[lng] ?? [];
+      for (const [id, e] of Object.entries(d.changelogEntries)) {
+        const en = enCl.changelogEntries[id];
+        if (en && e.title === en.title && !names.includes(id)) copied.push(`${lng} ${id}: the English title`);
+        if (readsAsEnglish(e.description)) copied.push(`${lng} ${id}: an English description`);
+      }
+    }
+    expect(copied).toEqual([]);
+  });
+
+  it("each title kept in English is still the English title, so the list cannot outlive a translation", () => {
+    for (const [lng, ids] of Object.entries(SAME_TITLE_IS_A_NAME)) {
+      const d = JSON.parse(readFileSync(join(clDir, `${lng}.json`), "utf8")) as typeof enCl;
+      for (const id of ids) expect(`${lng} ${id}: ${d.changelogEntries[id]?.title}`).toBe(`${lng} ${id}: ${enCl.changelogEntries[id]?.title}`);
+    }
+  });
+
   it("no changelog copy is left behind in the main locale bundle", () => {
     const localesDir2 = join(dirname(fileURLToPath(import.meta.url)), "locales");
     for (const file of readdirSync(localesDir2).filter((f) => f.endsWith(".json"))) {
