@@ -11,7 +11,7 @@ import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 // every heartbeat run since the check shipped. See _shared/search-caller.ts.
 import { searchCallerHeader } from "../_shared/search-caller.ts";
 import { boardTailChecks, dbFailureCheck } from "./board-tail.ts";
-import { AI_PROBE_MS, aiProbeAbortedText, aiProbeCheck, ceilingRefusalCheck, cronAnswersCheck, CRON_ERROR_WINDOW_MIN, CRON_REFUSAL_WINDOW_MIN, E2E_ABORT_MS, e2eAbortedText, FACETS_STALE_MIN, HEARTBEAT_PING_ENV, HOURLY, HOURLY_VERDICT_KEY, carriedFailures, carriedText, hourlyVerdictOf, isAbort, isFullRun, worse, mailWatchCheck, NO_MODEL_FIELD, noModelScanCheck, pingDeadMan, RUN_BUDGET_MS, runBudgetText, SCAN_PATH_CHECK } from "./watch.ts";
+import { AI_PROBE_MS, aiProbeAbortedText, aiProbeCheck, ceilingRefusalCheck, cronAnswersCheck, CRON_ERROR_WINDOW_MIN, CRON_REFUSAL_WINDOW_MIN, E2E_ABORT_MS, e2eAbortedText, FACETS_STALE_MIN, HEARTBEAT_PING_ENV, HOURLY, HOURLY_VERDICT_KEY, carriedFailures, carriedText, hourlyVerdictOf, isAbort, isFullRun, worse, mailWatchCheck, NO_MODEL_FIELD, ALERT_STATE_KEY, decideHeartbeatMail, heartbeatMailWords, type HeartbeatMailDecision, noModelScanCheck, pingDeadMan, RUN_BUDGET_MS, runBudgetText, SCAN_PATH_CHECK } from "./watch.ts";
 import { aiUsageLine } from "./ai-usage.ts";
 import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 
@@ -524,9 +524,13 @@ serve(async (req) => {
           });
         }
       }
+      // DOWN, NOT DEGRADED (S14X-045): a refused or missing key fails every
+      // checkout, which is an outage of the thing people pay for. As down it
+      // escalates past any cooldown and is reminded every two hours.
       const stripeCheck = checks.find((c) => c.name === 'stripe_credentials');
       if (stripeCheck && !stripeCheck.passed) {
-        if (overallStatus === 'healthy') overallStatus = 'degraded';
+        stripeCheck.severity = 'down';
+        overallStatus = 'down';
         errorMessage = errorMessage || `Stripe: ${stripeCheck.error}`;
       }
     } catch (e) {
@@ -971,7 +975,10 @@ serve(async (req) => {
         .from('job_board_meta').select('v, updated_at').eq('k', 'audit').maybeSingle();
       if (audit) {
         const aV = (audit.v ?? {}) as { accuracyPct?: number | null; live?: number; gone?: number; at?: string; byVendor?: Record<string, { sampled?: number; live?: number; gone?: number; pageCapped?: number; accuracyPct?: number | null }> };
-        const auditAgeH = Math.round((Date.now() - new Date(audit.updated_at).getTime()) / 3600_000);
+        // The reading's own time when it carries one (NB-34): a row rewritten
+        // without a new reading must not make an old figure look current.
+        const readingAt = Number.isFinite(Date.parse(String(aV.at ?? ''))) ? Date.parse(String(aV.at)) : new Date(audit.updated_at).getTime();
+        const auditAgeH = Math.round((Date.now() - readingAt) / 3600_000);
         // Per-vendor floor: the stratified audit samples every vendor, so one
         // broken vendor can't hide inside a healthy blended number. A vendor
         // with a real sample below 80% is an incident even at 99% overall.
@@ -1019,18 +1026,27 @@ serve(async (req) => {
             return ((sampled - decided) / sampled) * 100 > UNDECIDABLE_PCT;
           })
           .map(([v, b]) => `${v} ${(b.live ?? 0) + (b.gone ?? 0)}/${b.sampled ?? 0} decided${(b.pageCapped ?? 0) > 0 ? ` (${b.pageCapped} page-capped)` : ''}`);
-        const lowOverall = typeof aV.accuracyPct === 'number' && aV.accuracyPct < 97;
-        const lowAccuracy = lowOverall || badVendors.length > 0;
-        const auditStale = auditAgeH > 48;
+        // STALENESS FIRST (NB-34). The audit is a daily job; a reading older
+        // than AUDIT_STALE_H is not a measurement of today's board, so it is
+        // not judged against the SLA at all. The check used to lead with a
+        // nine-day-old 96.6% as "the board is serving dead listings; check
+        // refresh/prune" and never say the audit had stopped writing.
+        const AUDIT_STALE_H = 26;
+        const auditStale = !(auditAgeH <= AUDIT_STALE_H);
+        const lowOverall = !auditStale && typeof aV.accuracyPct === 'number' && aV.accuracyPct < 97;
+        const lowAccuracy = lowOverall || (!auditStale && badVendors.length > 0);
+        const lastReading = `${typeof aV.accuracyPct === 'number' ? `${aV.accuracyPct}%` : 'no figure'}, ${String(aV.at ?? audit.updated_at ?? 'undated').slice(0, 10)}`;
         checks.push({
           name: 'job_board_accuracy',
           passed: !lowAccuracy && !auditStale,
           responseTimeMs: 0,
-          error: lowAccuracy
+          error: auditStale
+            ? `ground-truth audit has not written a result in ${auditAgeH}h (it runs daily; stale past ${AUDIT_STALE_H}h): its last reading (${lastReading}) is not a current measurement, so accuracy is unmeasured; check the job-board-audit cron and its function's run`
+            : lowAccuracy
             ? (badVendors.length > 0
                 ? `ground-truth audit: vendor(s) below the 80% floor — ${badVendors.join(', ')} (overall ${aV.accuracyPct}%) — that vendor is serving dead listings; check its feed/fetcher`
                 : `ground-truth audit: only ${aV.accuracyPct}% of sampled postings confirmed live at the source (${aV.live}/${(aV.live ?? 0) + (aV.gone ?? 0)}) — the board is serving dead listings; check refresh/prune`)
-            : auditStale ? `ground-truth audit hasn't run in ${auditAgeH}h — accuracy unmeasured; check the job-board-audit cron` : undefined,
+            : undefined,
         });
         // Reported as its OWN check, not folded into the accuracy verdict: an
         // unenforceable floor and a breached floor are different faults with
@@ -1052,10 +1068,12 @@ serve(async (req) => {
           // 97.8% (below 97% SLA)" on 2026-08-06 — self-contradictory, because a
           // per-vendor breach was being reported in the overall-SLA's words, and
           // that summary is what the alert email leads with.
+          // A stale reading is named as stale first (NB-34), never as a breach.
           errorMessage = errorMessage || (
-            lowOverall ? `Board accuracy ${aV.accuracyPct}% (below 97% SLA)`
+            auditStale ? `Board accuracy unmeasured: the daily audit has not written a result in ${auditAgeH}h (last reading ${lastReading})`
+              : lowOverall ? `Board accuracy ${aV.accuracyPct}% (below 97% SLA)`
               : badVendors.length > 0 ? `Board accuracy: vendor(s) below the 80% floor — ${badVendors.join(', ')} (overall ${aV.accuracyPct}%)`
-              : 'Board accuracy audit stale');
+              : 'Board accuracy unmeasured');
         }
       }
 
@@ -2121,16 +2139,13 @@ serve(async (req) => {
       return acc;
     }, {} as Record<string, any>);
 
-    // THE ALERT IS DECIDED FIRST (S13-069): it reads nothing below, and a
+    // THE MAIL IS DECIDED FIRST (S13-069): it reads nothing below, and a
     // database slow enough to hold the row or the delivery reads must not
-    // hold the owner's mail too. A single recovery note when a previously
-    // alerted state clears, so the inbox learns the incident ended without
-    // anyone re-curling the endpoint.
-    if (overallStatus !== 'healthy') {
-      EdgeRuntime.waitUntil(sendHeartbeatAlert(overallStatus, errorMessage, checks, totalTime));
-    } else {
-      EdgeRuntime.waitUntil(sendRecoveryIfAlerted());
-    }
+    // hold the owner's mail too. Asked on every run, healthy or not: a
+    // reminder while it stays down, a 'no longer down' note, and a single
+    // recovery note when an announced incident clears, so the inbox learns
+    // how an incident went without anyone re-curling the endpoint.
+    EdgeRuntime.waitUntil(sendHeartbeatMail(overallStatus, errorMessage, checks, totalTime));
 
     await supabase.rpc('log_heartbeat_result', {
       p_function_name: 'free-keyword-scan',
@@ -2272,7 +2287,7 @@ serve(async (req) => {
       p_metadata: {}
     });
 
-    EdgeRuntime.waitUntil(sendHeartbeatAlert('down', error instanceof Error ? error.message : 'Unknown', checks, totalTime));
+    EdgeRuntime.waitUntil(sendHeartbeatMail('down', error instanceof Error ? error.message : 'Unknown', checks, totalTime));
     EdgeRuntime.waitUntil(pingDeadMan(Deno.env.get(HEARTBEAT_PING_ENV), 'down'));
 
     return new Response(
@@ -2806,57 +2821,16 @@ async function sendSenderOfflineAlert(state: SenderState): Promise<void> {
   }
 }
 
-// One recovery note when a previously-alerted state clears. Reads the same
-// durable fingerprint the alert path writes; sends nothing when the last
-// stored state was already healthy (or absent), so a healthy board costs zero
-// email. Best-effort throughout.
-async function sendRecoveryIfAlerted(): Promise<void> {
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!supabaseUrl || !serviceKey) return;
-    // Its own client, like sendHeartbeatAlert's dedupeClient: passing the
-    // outer client fails deno check on generics (see evaluateSenderState's
-    // note), and this path runs a handful of times a day at most.
-    const client = createClient(supabaseUrl, serviceKey);
-    const { data: st } = await client
-      .from('job_board_meta').select('v').eq('k', 'heartbeat_alert_state').maybeSingle();
-    const prev = ((st as { v?: unknown } | null)?.v ?? {}) as { fingerprint?: string };
-    if (!prev.fingerprint || prev.fingerprint.startsWith('healthy')) return;
-    // The state turns healthy only once the note is out (register L10-05):
-    // it was written first, so a refused note was never retried.
-    const markHealthy = () => client.from('job_board_meta').upsert(
-      { k: 'heartbeat_alert_state', v: { fingerprint: 'healthy', lastSentAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
-      { onConflict: 'k' },
-    );
-    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "resumeboostersupp@gmail.com";
-    if (!RESEND_API_KEY) { await markHealthy(); return; }
-    const noteRes = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: "Resume Booster Alerts <onboarding@resend.dev>",
-        to: [ADMIN_EMAIL],
-        subject: `✅ Heartbeat recovered: all checks passing`,
-        html: `<h2>Heartbeat recovered</h2><p>The previously reported failing state (<code>${prev.fingerprint}</code>) has cleared — all checks pass as of ${new Date().toISOString()}.</p>`,
-      }),
-    });
-    if (!noteRes.ok) {
-      console.error(`[SCAN-HEARTBEAT] Recovery email REFUSED by Resend: HTTP ${noteRes.status}; the state stays alerted and the note is retried next healthy run`);
-      return;
-    }
-    await markHealthy();
-    console.log('[SCAN-HEARTBEAT] Recovery email sent');
-  } catch (e) {
-    console.error('[SCAN-HEARTBEAT] Recovery email failed:', e);
-  }
-}
-
-// Send alert email for heartbeat failures
-async function sendHeartbeatAlert(
-  status: string, 
-  errorMessage: string | null, 
+// THE OWNER'S HEARTBEAT MAIL (watch.ts decideHeartbeatMail says which, and
+// why). Every run, healthy or not, asks once: an alert while something fails,
+// a reminder while it stays down or stays the same for a day, a 'no longer
+// down' note, and one recovery note when an announced incident clears. The
+// state lives in job_board_meta so it survives isolates. Every read and write
+// is best-effort: a failed read of the state must never swallow a real alert,
+// so on any error an unhealthy run falls through to the backstop and sends.
+async function sendHeartbeatMail(
+  status: string,
+  errorMessage: string | null,
   checks: HealthCheckResult[],
   responseTime: number
 ): Promise<void> {
@@ -2865,142 +2839,86 @@ async function sendHeartbeatAlert(
     // Fallback must be a real inbox: the old admin@resumebooster.com default
     // was a dead letter on a domain we don't even use (.com, site is .work).
     const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "resumeboostersupp@gmail.com";
-
-    if (!RESEND_API_KEY) return;
-
     const failedChecks = checks.filter(c => !c.passed);
+    const failedNames = failedChecks.map((c) => c.name);
+    const nowMs = Date.now();
 
-    // ALERT ON CHANGE, REMIND RARELY. The old gate was a 2/hour rate cap — on
-    // a 10-minute cron a PERSISTENT degraded state (a slow census digestion, a
-    // week of a miscalibrated SLA) meant 48 identical emails a day, and the
-    // inbox learned to ignore them, which is how alerting dies. The state that
-    // matters is the FAILING SET: email when it changes (a new check fails,
-    // the status escalates, part of it recovers), remind at most once a day
-    // while it persists, and send one recovery note when it clears. The
-    // fingerprint lives in job_board_meta so it survives isolates; every read
-    // and write is best-effort — a dedupe failure must never swallow a real
-    // alert, so on any error we fall through to the rate cap below and send.
-    const fingerprint = `${status}|${failedChecks.map((c) => c.name).sort().join(",")}`;
     // Written only AFTER Resend accepted the mail (register L10-05). It was
     // written before the backstop (which could then return) and before the
     // send (whose Response was discarded), so a refused alert -- a 429, a
     // 5xx, a 403 if ADMIN_EMAIL stops matching the Resend account -- marked
     // every failing check announced and silenced it for a day.
     let stampAfterSend: (() => PromiseLike<unknown>) | null = null;
+    let decision: HeartbeatMailDecision | null = null;
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL");
       const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
       if (supabaseUrl && serviceKey) {
+        // Its own client: passing the outer client fails deno check on
+        // generics (see evaluateSenderState's note).
         const stateClient = createClient(supabaseUrl, serviceKey);
-        const { data: st } = await stateClient
-          .from('job_board_meta').select('v').eq('k', 'heartbeat_alert_state').maybeSingle();
-        const prev = (st?.v ?? {}) as { fingerprint?: string; lastSentAt?: string; alerted?: Record<string, string> };
-        const lastSent = Date.parse(prev.lastSentAt ?? '');
-        const REMIND_MS = 24 * 60 * 60_000;
-        const alerted = (prev.alerted && typeof prev.alerted === 'object') ? prev.alerted : {};
-
-        // FLAP-PROOF, measured on the user's own inbox: verification_ceiling
-        // oscillated in and out of the failing set as rotation caught up, and
-        // under fingerprint-equality EVERY flip emailed — including the SHRINK
-        // (an email whose news was "less is wrong than before"). Two rules
-        // replace equality:
-        //   * a check is NEWS only if it has not been alerted in 24h — a
-        //     flapping check emails once per day, not once per flip;
-        //   * a shrink is never news — the whole-board recovery note is the
-        //     only "getting better" email worth sending.
-        // Escalation to DOWN always sends: a worsening severity is news even
-        // when the failing set is unchanged.
-        const now = Date.now();
-        const newsChecks = failedChecks.filter((c) => {
-          const at = Date.parse(alerted[c.name] ?? '');
-          return !Number.isFinite(at) || now - at >= REMIND_MS;
-        });
-        const escalated = status === 'down' && !String(prev.fingerprint ?? '').startsWith('down');
-        const remindDue = prev.fingerprint === fingerprint && Number.isFinite(lastSent) && now - lastSent >= REMIND_MS;
-        // ONE INCIDENT, ONE EMAIL PER FOUR HOURS. During a real incident the
-        // failing set grows in waves — facets stalls, then the deploy check
-        // trips on the same load — and "a new member is news" sent an email
-        // per wave (three in one morning, measured on the user's inbox, all
-        // one underlying story). Degraded-severity emails now share a 4-hour
-        // cooldown; a check that trips inside it is announced when the window
-        // opens, IF it is still failing. Escalation to DOWN and the recovery
-        // note bypass the cooldown — a worsening board and a healed board are
-        // always worth one email.
-        const DEGRADED_COOLDOWN_MS = 4 * 60 * 60_000;
-        const cooled = status !== 'down' && Number.isFinite(lastSent) && now - lastSent < DEGRADED_COOLDOWN_MS;
-        const shouldSend = (newsChecks.length > 0 && !cooled) || escalated || remindDue;
-
-        // The state row is kept CURRENT even when silent, so the recovery note
-        // and the reminder clock stay truthful across silent shrinks. But a
-        // check is stamped as announced ONLY when an email actually went out:
-        // initializing first-seen names on silent runs consumed their news
-        // slot with no email ever sent, so a check that first failed during a
-        // cooldown would stay unannounced for a full day.
-        const nextAlerted: Record<string, string> = {};
-        for (const c of failedChecks) {
-          if (shouldSend) nextAlerted[c.name] = new Date().toISOString();
-          else if (alerted[c.name]) nextAlerted[c.name] = alerted[c.name];
-        }
-        const writeState = () => stateClient.from('job_board_meta').upsert(
-          {
-            k: 'heartbeat_alert_state',
-            v: {
-              fingerprint,
-              lastSentAt: shouldSend ? new Date().toISOString() : (prev.lastSentAt ?? new Date().toISOString()),
-              alerted: nextAlerted,
-            },
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'k' },
-        );
-        if (shouldSend) stampAfterSend = writeState;
-        else await writeState();
-        if (!shouldSend) {
-          console.log(`[SCAN-HEARTBEAT] Alert suppressed — no unalerted check (24h/check), no escalation, no reminder due (${fingerprint})`);
-          return;
+        const { data: st, error: stErr } = await stateClient
+          .from('job_board_meta').select('v').eq('k', ALERT_STATE_KEY).maybeSingle();
+        if (!stErr) {
+          decision = decideHeartbeatMail((st as { v?: unknown } | null)?.v ?? null, status, failedNames, nowMs);
+          const next = decision.next;
+          const writeState = next
+            ? () => stateClient.from('job_board_meta').upsert(
+              { k: ALERT_STATE_KEY, v: next, updated_at: new Date().toISOString() },
+              { onConflict: 'k' },
+            )
+            : null;
+          // With no key nothing can be sent, so nothing is stamped announced;
+          // a healthy run still clears the state, as it always has.
+          if (!RESEND_API_KEY) { if (status === 'healthy' && writeState) await writeState(); return; }
+          if (decision.kind) stampAfterSend = writeState;
+          else if (writeState) await writeState();
+          if (!decision.kind) {
+            if (status !== 'healthy') console.log(`[SCAN-HEARTBEAT] Alert suppressed: ${decision.reason} (${status}|${[...failedNames].sort().join(',')})`);
+            return;
+          }
         }
       }
-    } catch (_e) { /* fall through — the cap below still bounds the volume */ }
+    } catch (_e) { /* fall through: an unhealthy run still reaches the backstop and sends */ }
 
-    // The rate cap survives as a BACKSTOP for a flapping fingerprint (a check
-    // oscillating in and out of the failing set would otherwise email every
-    // flip): still at most 2 emails an hour, no matter what.
-    try {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL");
-      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-      if (supabaseUrl && serviceKey) {
-        const dedupeClient = createClient(supabaseUrl, serviceKey);
-        const { data: allowed } = await dedupeClient.rpc('check_rate_limit', {
-          p_function: 'alert:heartbeat',
-          p_ip: 'global',
-          p_max_requests: 2,
-          p_window_minutes: 60,
-        });
-        if (allowed === false) {
-          console.log('[SCAN-HEARTBEAT] Alert suppressed (2/hour global cap)');
-          return;
+    if (!RESEND_API_KEY) return;
+    // A state that could not be read: a healthy run sends nothing (there is
+    // nothing to say it recovered from), an unhealthy one alerts.
+    if (!decision) {
+      if (status === 'healthy') return;
+      decision = { kind: 'alert', next: null, prevStatus: 'unknown', reason: 'the alert state could not be read' };
+    }
+
+    // The rate cap survives as a BACKSTOP for a flapping set: at most 2
+    // alerts an hour, no matter what. The recovery note is outside it, and
+    // follows only an alert that went out, so it is bounded by it too.
+    if (decision.kind !== 'recovered') {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL");
+        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (supabaseUrl && serviceKey) {
+          const dedupeClient = createClient(supabaseUrl, serviceKey);
+          const { data: allowed } = await dedupeClient.rpc('check_rate_limit', {
+            p_function: 'alert:heartbeat',
+            p_ip: 'global',
+            p_max_requests: 2,
+            p_window_minutes: 60,
+          });
+          if (allowed === false) {
+            console.log('[SCAN-HEARTBEAT] Alert suppressed (2/hour global cap)');
+            return;
+          }
         }
-      }
-    } catch (_e) { /* fall through and send */ }
-    const statusEmoji = status === 'down' ? '🔴' : '🟡';
+      } catch (_e) { /* fall through and send */ }
+    }
 
-    const alertRes = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "Resume Booster Alerts <onboarding@resend.dev>",
-        to: [ADMIN_EMAIL],
-        // The failing set in the subject: identical subjects for different
-        // incidents thread together in Gmail and hide each other; a stable
-        // subject PER FINGERPRINT threads one incident as one conversation.
-        subject: `${statusEmoji} Heartbeat ${status.toUpperCase()}: ${failedChecks.map((c) => c.name.replace(/^job_board_/, "")).sort().join(", ").slice(0, 140) || "no failing checks"}`,
-        html: `
-          <h2>Free Scan Heartbeat Alert</h2>
-          <p><strong>Status:</strong> ${status.toUpperCase()}</p>
-          <p><strong>Time:</strong> ${new Date().toISOString()}</p>
+    const words = heartbeatMailWords(decision, status, failedNames);
+    const html = decision.kind === 'recovered'
+      ? `<h2>Heartbeat recovered</h2><p>The failing state that was reported has cleared: all checks pass as of ${new Date(nowMs).toISOString()}.</p>`
+      : `
+          <h2>${words.lead}</h2>
+          <p><strong>Status:</strong> ${status.toUpperCase()}${decision.prevStatus !== 'unknown' && decision.prevStatus !== status ? ` (was ${decision.prevStatus})` : ''}</p>
+          <p><strong>Time:</strong> ${new Date(nowMs).toISOString()}</p>
           <p><strong>Response Time:</strong> ${responseTime}ms</p>
           ${errorMessage ? `<p><strong>Error:</strong> ${errorMessage}</p>` : ''}
           
@@ -3021,19 +2939,31 @@ async function sendHeartbeatAlert(
               ${failedChecks.map(c => `<li>${c.name}: ${c.error}</li>`).join('')}
             </ul>
           ` : ''}
-        `,
+          <p>While it stays down, a reminder goes every 2 hours; the same degraded set is reminded once a day.</p>
+        `;
+
+    const mailRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "Resume Booster Alerts <onboarding@resend.dev>",
+        to: [ADMIN_EMAIL],
+        subject: words.subject,
+        html,
       }),
     });
-    if (!alertRes.ok) {
-      console.error(`[SCAN-HEARTBEAT] Alert email REFUSED by Resend: HTTP ${alertRes.status} ${(await alertRes.text().catch(() => '')).slice(0, 200)}; nothing is marked announced, so the next run tries again`);
+    if (!mailRes.ok) {
+      console.error(`[SCAN-HEARTBEAT] ${decision.kind} mail REFUSED by Resend: HTTP ${mailRes.status} ${(await mailRes.text().catch(() => '')).slice(0, 200)}; nothing is marked, so the next run tries again`);
       return;
     }
     if (stampAfterSend) {
-      try { await stampAfterSend(); } catch (e) { console.error('[SCAN-HEARTBEAT] alert state write failed after a sent alert:', e); }
+      try { await stampAfterSend(); } catch (e) { console.error('[SCAN-HEARTBEAT] alert state write failed after a sent mail:', e); }
     }
-
-    console.log(`[SCAN-HEARTBEAT] Alert email sent for status: ${status}`);
+    console.log(`[SCAN-HEARTBEAT] ${decision.kind} mail sent for status: ${status} (${decision.reason})`);
   } catch (e) {
-    console.error("[SCAN-HEARTBEAT] Failed to send alert:", e);
+    console.error("[SCAN-HEARTBEAT] Failed to send the heartbeat mail:", e);
   }
 }
