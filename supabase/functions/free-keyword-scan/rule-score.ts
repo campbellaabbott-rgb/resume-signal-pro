@@ -91,6 +91,7 @@
 import { INDUSTRY_KEYWORDS } from "./industry-detection.ts";
 import { resumeHasTerm } from "./term-presence.ts";
 import { detectResumeLanguage, SUPPORTED_LANGUAGES } from "./resume-language.ts";
+import { countWords, SECTION_WORDS } from "./resume-structure.ts";
 
 /** The seniority the length and quantification bars relax for ('entry' | 'mid' | 'senior' | 'executive'). */
 export interface RuleScoreSeniority {
@@ -143,54 +144,15 @@ type SectionWords = { experience: readonly string[]; education: readonly string[
 
 /**
  * Each language's words for the three sections the English reading looks for,
- * lower case. They mirror the English pattern: experience, employment, work
+ * lower case, held in resume-structure.ts beside each language's summary
+ * words so every reader of a résumé's sections reads the same table (register
+ * NB-6). They mirror the English pattern: experience, employment, work
  * history, career / education, degree, university, college, bachelor, master,
  * phd / skills, technologies, technical, competencies, tools. A word starting
  * with "-" may end a compound (German Berufserfahrung, Dutch werkervaring);
  * every other word stands on its own.
  */
-export const SECTION_WORDS: Record<string, SectionWords> = {
-  es: {
-    experience: ["experiencia", "experiencias", "empleo", "empleos", "historial laboral", "trayectoria", "carrera profesional"],
-    education: ["educación", "formación", "estudios", "título", "titulación", "universidad", "licenciatura", "grado", "máster", "maestría", "doctorado"],
-    skills: ["habilidades", "competencias", "conocimientos", "tecnologías", "técnico", "técnica", "técnicos", "técnicas", "herramientas"],
-  },
-  fr: {
-    experience: ["expérience", "expériences", "emploi", "emplois", "parcours professionnel", "carrière"],
-    education: ["éducation", "formation", "formations", "études", "diplôme", "diplômes", "université", "licence", "master", "doctorat"],
-    skills: ["compétences", "connaissances", "technologies", "technique", "techniques", "outils", "savoir-faire"],
-  },
-  de: {
-    experience: ["-erfahrung", "-erfahrungen", "beschäftigung", "werdegang", "laufbahn", "karriere"],
-    education: ["-ausbildung", "bildungsweg", "schulbildung", "-studium", "abschluss", "-universität", "-hochschule", "bachelor", "master", "diplom"],
-    skills: ["-kenntnisse", "-fähigkeiten", "-kompetenzen", "kompetenz", "technologien", "technisch", "technische", "technischen", "werkzeuge"],
-  },
-  pt: {
-    experience: ["experiência", "experiências", "emprego", "empregos", "histórico profissional", "trajetória", "carreira"],
-    education: ["educação", "formação", "escolaridade", "graduação", "universidade", "faculdade", "bacharelado", "licenciatura", "mestrado", "doutorado"],
-    skills: ["habilidades", "competências", "conhecimentos", "tecnologias", "técnico", "técnica", "técnicos", "técnicas", "ferramentas"],
-  },
-  nl: {
-    experience: ["-ervaring", "werkgeschiedenis", "loopbaan", "carrière"],
-    education: ["-opleiding", "-opleidingen", "onderwijs", "diploma", "universiteit", "hogeschool", "bachelor", "master"],
-    skills: ["-vaardigheden", "competenties", "kennis", "technologieën", "technisch", "technische", "hulpmiddelen"],
-  },
-  it: {
-    experience: ["esperienza", "esperienze", "impiego", "carriera", "percorso professionale"],
-    education: ["istruzione", "formazione", "laurea", "università", "diploma", "master", "dottorato", "titolo di studio"],
-    skills: ["competenze", "conoscenze", "capacità", "tecnologie", "tecnico", "tecnica", "tecnici", "tecniche", "strumenti"],
-  },
-  hi: {
-    experience: ["अनुभव", "रोज़गार", "रोजगार", "करियर"],
-    education: ["शिक्षा", "डिग्री", "विश्वविद्यालय", "महाविद्यालय", "कॉलेज", "स्नातक"],
-    skills: ["कौशल", "तकनीकी", "तकनीक", "उपकरण"],
-  },
-  tl: {
-    experience: ["karanasan", "trabaho", "hanapbuhay"],
-    education: ["edukasyon", "pag-aaral", "unibersidad", "kolehiyo", "paaralan"],
-    skills: ["kasanayan", "kakayahan", "teknikal"],
-  },
-};
+export { SECTION_WORDS };
 
 /**
  * Section words above that are English words too. Once a CV is read in its
@@ -286,7 +248,9 @@ export function ruleBasedAtsParts(
     : rawQuantPct;
 
   // Length, in words; in its own language, in English-sized words (header).
-  const words = resumeText.split(/\s+/).filter(Boolean).length;
+  // Han and kana count at countWords' rate (S14X-117): a Chinese CV has no
+  // spaces between its words. A text without them counts as it always did.
+  const words = countWords(resumeText);
   const englishSizedWords = ownLanguage
     ? Math.max(words, resumeText.normalize("NFC").replace(/\s/g, "").length / CHARS_PER_ENGLISH_WORD)
     : words;

@@ -85,6 +85,9 @@ function rateLimit(a: Args) {
   return { data: true, error: null };
 }
 
+/** The caller's day row as the primary reads it before the hour (S14X-011); null = no row. */
+let dayRow: Record<string, unknown> | null = null;
+
 function primaryClient() {
   const rpc = async (name: string, args: Args = {}) => {
     switch (name) {
@@ -94,11 +97,11 @@ function primaryClient() {
       default: return { data: null, error: null };
     }
   };
-  const from = () => {
+  const from = (table: string) => {
     const builder: Record<string, unknown> = new Proxy({}, {
       get(_t, prop: string) {
         if (prop === "then") return (ok: (r: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(ok);
-        if (prop === "maybeSingle" || prop === "single") return async () => ({ data: null, error: null });
+        if (prop === "maybeSingle" || prop === "single") return async () => ({ data: table === "rate_limits" ? dayRow : null, error: null });
         return () => builder;
       },
     });
@@ -138,6 +141,7 @@ beforeEach(() => {
   pending = [];
   fetched = [];
   ceilingCalls = [];
+  dayRow = null;
   ceilingAnswer = () => ({ data: true, error: null });
   (globalThis as Record<string, unknown>).__scanClient = primaryClient();
   streamDb = new FakeDb();
@@ -236,5 +240,57 @@ describe("the stream fork", () => {
     const r = await scanStream();
     expect(r.error?.code).toBe("busy");
     expect(modelCalls()).toBe(0);
+  });
+});
+
+describe("S14X-011: a caller the day has already refused spends no one's hour", () => {
+  /** Every check of an hour: the function's strangers' or proven hour, a network's, a caller's own. */
+  let hourChecks: Args[];
+  const atTheDayLimit = (a: Args) => {
+    if (a.p_window_minutes === 1440) return { data: false, error: null };
+    hourChecks.push(a);
+    return rateLimit(a);
+  };
+  const fromTheNetwork = (i: number) => ({ ...HEADERS, "cf-connecting-ip": `198.51.100.${10 + i}` });
+
+  it("thirteen exhausted addresses on one /24 leave the network's and the strangers' hours untouched, and each gets the day's refusal (primary)", async () => {
+    hourChecks = [];
+    dayRow = { request_count: 7, window_start: new Date().toISOString() };
+    (globalThis as Record<string, unknown>).__scanClient = { ...primaryClient(), rpc: async (name: string, args: Args = {}) => (
+      name === "check_rate_limit" ? atTheDayLimit(args) : name === "check_global_rate_limit" ? { data: true, error: null } : { data: null, error: null }) };
+    for (let i = 0; i < 13; i++) {
+      const res = await primary(new Request("https://harness.supabase.co/functions/v1/free-keyword-scan", { method: "POST", headers: fromTheNetwork(i), body: JSON.stringify({ resumeText: RESUME }) }));
+      const json = await res.json() as Record<string, unknown>;
+      expect(res.status).toBe(429);
+      expect(json.rateLimited).toBe(true);
+    }
+    expect(hourChecks).toEqual([]);
+    expect(modelCalls()).toBe(0);
+  });
+
+  it("the same thirteen against the backup scan (stream fork)", async () => {
+    hourChecks = [];
+    streamDb.rpcs.check_rate_limit = (a) => atTheDayLimit(a) as { data: unknown; error: { message: string } | null };
+    for (let i = 0; i < 13; i++) {
+      streamDb.rows("rate_limits").push({ ip_address: `198.51.100.${10 + i}`, function_name: "free-keyword-scan", request_count: 7, window_start: new Date().toISOString() });
+    }
+    for (let i = 0; i < 13; i++) {
+      const res = await stream(new Request("https://harness.supabase.co/functions/v1/free-keyword-scan-stream", { method: "POST", headers: fromTheNetwork(i), body: JSON.stringify({ resumeText: RESUME }) }));
+      const text = await res.text();
+      const error = [...text.matchAll(/event: (\w+)\ndata: (.*)\n/g)].map((m) => ({ event: m[1], data: JSON.parse(m[2]) as Record<string, unknown> })).find((e) => e.event === "error")?.data;
+      expect(error?.code).toBe("daily_scan_limit");
+    }
+    expect(hourChecks).toEqual([]);
+    expect(modelCalls()).toBe(0);
+  });
+
+  it("control: a caller with day left still spends the hour first", async () => {
+    hourChecks = [];
+    (globalThis as Record<string, unknown>).__scanClient = { ...primaryClient(), rpc: async (name: string, args: Args = {}) => {
+      if (name === "check_rate_limit") { if (args.p_window_minutes !== 1440) hourChecks.push(args); return rateLimit(args); }
+      return name === "check_global_rate_limit" ? { data: true, error: null } : name === "acquire_scan_slot" ? { data: "slot-1", error: null } : { data: null, error: null };
+    } };
+    await scanPrimary();
+    expect(hourChecks.map((c) => c.p_ip)).toContain(GLOBAL_BUCKET);
   });
 });

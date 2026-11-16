@@ -26,9 +26,22 @@ export interface CountryStandard {
   paper: "Letter" | "A4" | "A4/B5 form";
   docTerm: string;
   lengthNote: string;
+  /**
+   * The page counts the lengthNote allows, as numbers (register S14X-028):
+   * the scan judges a résumé's length against these, and the prompt states
+   * them, so the page verdict is the market's and not one worldwide rule.
+   */
+  pagesMin: number;
+  pagesMax: number;
   photo: PhotoNorm;
   photoNote: string;
   personalDataNote: string;
+  /**
+   * Where personalDataNote says a national ID number is still listed on a
+   * CV in some sectors (S14X-130), finding one is information, not a
+   * critical finding.
+   */
+  nationalIdCustomary?: boolean;
   conventions: string[];
   /** MNC vs domestic employers follow different norms — advice shifts one
    *  notch toward Western-minimal for multinationals. */
@@ -45,6 +58,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   US: {
     iso: "US", name: "United States", confidence: "high", paper: "Letter", docTerm: "Resume",
     lengthNote: "1 page strongly preferred (2 max for senior)",
+    pagesMin: 1, pagesMax: 2,
     photo: "never",
     photoNote: "Photos get resumes discarded — EEOC bias-liability practice. Do not include one.",
     personalDataNote: "No date of birth, marital status, nationality, or gender (Title VII / ADEA).",
@@ -53,6 +67,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   CA: {
     iso: "CA", name: "Canada", confidence: "high", paper: "Letter", docTerm: "Resume / CV",
     lengthNote: "2 pages is the accepted norm (1 entry-level, up to 3 executive)",
+    pagesMin: 1, pagesMax: 3,
     photo: "never",
     photoNote: "Employers discard resumes with photos (human-rights codes). Do not include one.",
     personalDataNote: "None — Canadian Human Rights Act and provincial codes.",
@@ -62,6 +77,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   MX: {
     iso: "MX", name: "Mexico", confidence: "high", paper: "Letter", docTerm: "Curriculum Vitae",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "optional",
     photoNote: "Traditionally common; anti-discrimination guidance and tech/multinational employers now recommend none.",
     personalDataNote: "Traditional employers expect DOB/marital status; multinationals expect none. City-level address only.",
@@ -71,6 +87,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   BR: {
     iso: "BR", name: "Brazil", confidence: "high", paper: "A4", docTerm: "Currículo",
     lengthNote: "2–3 pages tolerated",
+    pagesMin: 1, pagesMax: 3,
     photo: "discouraged",
     photoNote: "Recruiters advise against; a growing number of firms refuse photo CVs (exception: appearance-based roles).",
     personalDataNote: "Age/marital/children traditional but fading; never CPF/RG numbers.",
@@ -79,6 +96,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   AR: {
     iso: "AR", name: "Argentina", confidence: "high", paper: "A4", docTerm: "Curriculum Vitae",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "optional",
     photoNote: "Still habitual in much of the country, but Buenos Aires Law 6471 bars employers from requiring photos (or even name/address) — blind-CV mandate in CABA.",
     personalDataNote: "Trend to minimal: city, phone, email. ID/marital/age get requested later in the process.",
@@ -88,6 +106,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   CL: {
     iso: "CL", name: "Chile", confidence: "medium", paper: "Letter", docTerm: "Curriculum Vitae",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "optional",
     photoNote: "Declining in line with anti-discrimination practice; anonymous CVs gaining ground.",
     personalDataNote: "City-level address, phone, email suffice; no ID/marital/age.",
@@ -97,6 +116,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   CO: {
     iso: "CO", name: "Colombia", confidence: "medium", paper: "Letter", docTerm: "Hoja de vida",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "optional",
     photoNote: "Traditional in banking/formal sectors; optional in tech/startups.",
     personalDataNote: "Traditional formats carry personal data; modern guidance drops ID, marital status, age.",
@@ -106,6 +126,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   PE: {
     iso: "PE", name: "Peru", confidence: "medium", paper: "A4", docTerm: "Curriculum Vitae",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "Traditional employers commonly expect a photo; optional in tech.",
     personalDataNote: "DOB/nationality still common in traditional sectors.",
@@ -116,6 +137,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   GB: {
     iso: "GB", name: "United Kingdom", confidence: "high", paper: "A4", docTerm: "CV",
     lengthNote: "2 pages standard",
+    pagesMin: 1, pagesMax: 2,
     photo: "never",
     photoNote: "Not expected; discrimination risk under the Equality Act 2010.",
     personalDataNote: "No DOB — dropped since the Equality Act 2010.",
@@ -124,6 +146,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   IE: {
     iso: "IE", name: "Ireland", confidence: "high", paper: "A4", docTerm: "CV",
     lengthNote: "2 pages (max 3 senior)",
+    pagesMin: 1, pagesMax: 3,
     photo: "never",
     photoNote: "Discouraged; can lead to automatic rejection under employment equality law.",
     personalDataNote: "No DOB, PPS number, marital status, or nationality.",
@@ -132,6 +155,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   FR: {
     iso: "FR", name: "France", confidence: "high", paper: "A4", docTerm: "CV",
     lengthNote: "1 page (2 if 8+ years experience)",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "A professional headshot in the top corner remains standard, though legally optional.",
     personalDataNote: "État civil block traditional; age/DOB still frequent but optional.",
@@ -140,6 +164,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   DE: {
     iso: "DE", name: "Germany", confidence: "high", paper: "A4", docTerm: "Lebenslauf",
     lengthNote: "1–2 pages, tabular",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "Optional since AGG 2006 — employers may not demand one — but still widely included, and some recruiters still expect one. Standard in the Mittelstand, fading in tech/startups.",
     personalDataNote: "DOB common; marital status declining.",
@@ -149,6 +174,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   AT: {
     iso: "AT", name: "Austria", confidence: "high", paper: "A4", docTerm: "Lebenslauf",
     lengthNote: "1–2 pages, tabular",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "The DACH region has the strongest photo culture in Europe; nearly all CVs include one.",
     personalDataNote: "DOB commonly listed; conventions track Germany closely.",
@@ -157,6 +183,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   CH: {
     iso: "CH", name: "Switzerland", confidence: "high", paper: "A4", docTerm: "Lebenslauf / CV",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "Photo customary (DACH culture), though international firms in Zurich/Geneva are increasingly neutral.",
     personalDataNote: "DOB, nationality, and work-permit status commonly listed (permit type matters to employers).",
@@ -166,6 +193,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   NL: {
     iso: "NL", name: "Netherlands", confidence: "high", paper: "A4", docTerm: "CV",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "optional",
     photoNote: "Historically common, now actively discouraged (blind-hiring trend, government guidance).",
     personalDataNote: "DOB declining; never marital status, religion, or BSN.",
@@ -174,6 +202,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   BE: {
     iso: "BE", name: "Belgium", confidence: "medium", paper: "A4", docTerm: "CV",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "No obligation, but photos are majority practice — a CV without one can look unusual to Belgian employers; both accepted.",
     personalDataNote: "DOB fairly common; other personal data declining.",
@@ -183,14 +212,17 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   ES: {
     iso: "ES", name: "Spain", confidence: "high", paper: "A4", docTerm: "Curriculum Vitae",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "A passport-style photo in the top corner is normal and widely expected; international firms increasingly omit.",
     personalDataNote: "DOB/nationality common; DNI/NIE still listed in formal sectors (public, finance, legal).",
+    nationalIdCustomary: true,
     conventions: ["Languages section with levels (B2/C1) important"],
   },
   PT: {
     iso: "PT", name: "Portugal", confidence: "high", paper: "A4", docTerm: "Currículo",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "Professional headshot customary; declining under EU anti-discrimination practice.",
     personalDataNote: "DOB/nationality customary; marital status fading.",
@@ -199,15 +231,17 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   IT: {
     iso: "IT", name: "Italy", confidence: "high", paper: "A4", docTerm: "Curriculum Vitae",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "Common on Italian CVs, though not strictly required.",
     personalDataNote: "DOB/nationality common on traditional CVs.",
-    conventions: ["Privacy-consent line authorizing personal-data processing (GDPR / D.Lgs. 196/2003) at the bottom — CVs without it are often filtered out"],
+    conventions: ["A privacy-consent line authorizing personal-data processing (GDPR / D.Lgs. 196/2003) at the bottom is common practice that many recruiters still look for; the law does not require it on a CV you send (art. 111-bis D.Lgs. 196/2003)"],
     checks: ["privacy_consent_it"],
   },
   GR: {
     iso: "GR", name: "Greece", confidence: "medium", paper: "A4", docTerm: "Βιογραφικό (CV)",
     lengthNote: "2+ pages tolerated",
+    pagesMin: 1, pagesMax: 3,
     photo: "optional",
     photoNote: "Optional — skipping it does not hurt the application.",
     personalDataNote: "Personal data (DOB, nationality) still customary on traditional CVs.",
@@ -217,6 +251,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   SE: {
     iso: "SE", name: "Sweden", confidence: "high", paper: "A4", docTerm: "CV",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "optional",
     photoNote: "Becoming less common — anonymous recruitment initiatives have traction.",
     personalDataNote: "DOB/marital typically omitted; never personnummer.",
@@ -225,6 +260,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   NO: {
     iso: "NO", name: "Norway", confidence: "high", paper: "A4", docTerm: "CV",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "optional",
     photoNote: "Not customary (anti-discrimination norms); never penalized if absent.",
     personalDataNote: "DOB sometimes present but declining; never fødselsnummer.",
@@ -233,6 +269,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   DK: {
     iso: "DK", name: "Denmark", confidence: "medium", paper: "A4", docTerm: "CV",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "Danish-market sources report photos are now quite normal and often expected — notably more photo-friendly than Sweden/Norway — but a CV is never rejected for lacking one.",
     personalDataNote: "DOB occasionally present; never CPR number.",
@@ -241,6 +278,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   FI: {
     iso: "FI", name: "Finland", confidence: "medium", paper: "A4", docTerm: "CV",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "optional",
     photoNote: "Optional and declining.",
     personalDataNote: "DOB declining; never henkilötunnus.",
@@ -250,15 +288,17 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   PL: {
     iso: "PL", name: "Poland", confidence: "high", paper: "A4", docTerm: "CV",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "Photos widely included — a CV without one can read as unfinished.",
     personalDataNote: "DOB common on traditional CVs.",
-    conventions: ["RODO/GDPR data-processing consent clause at the bottom — many employers cannot process applications without it"],
+    conventions: ["A RODO/GDPR data-processing consent clause at the bottom is a widespread recruiter expectation, not a legal requirement"],
     checks: ["rodo_pl"],
   },
   CZ: {
     iso: "CZ", name: "Czechia", confidence: "high", paper: "A4", docTerm: "Životopis (CV)",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "Customary (ID-style photo, top corner) and helps recruiters, but not mandatory — no application is rejected for lacking one.",
     personalDataNote: "DOB fairly common; other data declining.",
@@ -267,6 +307,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   UA: {
     iso: "UA", name: "Ukraine", confidence: "medium", paper: "A4", docTerm: "Resume / Europass CV",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "optional",
     photoNote: "Optional; EU/international employers recommend omitting to avoid bias.",
     personalDataNote: "DOB common on traditional formats; minimal for international applications.",
@@ -276,6 +317,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   RU: {
     iso: "RU", name: "Russia", confidence: "high", paper: "A4", docTerm: "Резюме",
     lengthNote: "2 pages max",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "A formal head-and-shoulders portrait is customary; hh.ru lists it among recommended resume elements.",
     personalDataNote: "DOB commonly included; marital status voluntary and increasingly advised against; city-level address only.",
@@ -285,6 +327,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   TR: {
     iso: "TR", name: "Turkey", confidence: "high", paper: "A4", docTerm: "Özgeçmiş (CV)",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "A recent professional photo at the top is common and often expected.",
     personalDataNote: "Nationality, marital status, and age commonly included, unlike most of Europe.",
@@ -293,6 +336,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   AE: {
     iso: "AE", name: "United Arab Emirates", confidence: "high", paper: "A4", docTerm: "CV",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "Photos expected for customer-facing/hospitality/corporate roles; some recruiters now prefer none.",
     personalDataNote: "Nationality, visa status, and DOB standard; marital status common but optional.",
@@ -303,6 +347,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   SA: {
     iso: "SA", name: "Saudi Arabia (GCC)", confidence: "high", paper: "A4", docTerm: "CV",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "Photo standard across the GCC, especially client-facing roles; optional for multinational/technical roles.",
     personalDataNote: "Nationality, Iqama/visa status, and DOB expected; family details common but optional.",
@@ -313,6 +358,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   IL: {
     iso: "IL", name: "Israel", confidence: "high", paper: "A4", docTerm: "קורות חיים (CV)",
     lengthNote: "1 page (max 2)",
+    pagesMin: 1, pagesMax: 2,
     photo: "optional",
     photoNote: "No legal or professional requirement — purely personal choice; recruiters do not reject CVs lacking one. Safe default: none (tech follows US norms).",
     personalDataNote: "Military service (IDF role/unit) is a standard section; DOB common.",
@@ -322,6 +368,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   EG: {
     iso: "EG", name: "Egypt", confidence: "high", paper: "A4", docTerm: "CV",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "A professional photo is customary and improves chances per Arabic-language career sources; a minority advise omitting when not requested.",
     personalDataNote: "DOB, nationality, marital status commonly included; military-service status for men.",
@@ -332,6 +379,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   ZA: {
     iso: "ZA", name: "South Africa", confidence: "high", paper: "A4", docTerm: "CV",
     lengthNote: "2–3 pages (traditional up to 5)",
+    pagesMin: 1, pagesMax: 3,
     photo: "optional",
     photoNote: "Photo common but not universally expected.",
     personalDataNote: "ID number appears on traditional formats but is being phased out (identity-theft concerns); DOB still seen.",
@@ -341,6 +389,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   NG: {
     iso: "NG", name: "Nigeria", confidence: "high", paper: "A4", docTerm: "CV",
     lengthNote: "2–3 pages (traditional longer)",
+    pagesMin: 1, pagesMax: 3,
     photo: "discouraged",
     photoNote: "Include only if the posting requests one; photos + DOB/religion now read as outdated.",
     personalDataNote: "DOB, religion, marital status, state of origin were standard historically — no longer expected in professional contexts.",
@@ -350,6 +399,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   KE: {
     iso: "KE", name: "Kenya", confidence: "medium", paper: "A4", docTerm: "CV",
     lengthNote: "2 pages (max 3)",
+    pagesMin: 1, pagesMax: 3,
     photo: "optional",
     photoNote: "Not expected in the corporate mainstream.",
     personalDataNote: "Minimal personal data in corporate/MNC applications; traditional formats carry more.",
@@ -361,6 +411,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   IN: {
     iso: "IN", name: "India", confidence: "high", paper: "A4", docTerm: "Resume / CV",
     lengthNote: "1 page fresher; 2–3 experienced",
+    pagesMin: 1, pagesMax: 3,
     photo: "optional",
     photoNote: "Accepted and common domestically; omit for multinational applications.",
     personalDataNote: "DOB, marital status, sometimes parents' names traditional; fading for MNC roles.",
@@ -370,6 +421,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   PK: {
     iso: "PK", name: "Pakistan", confidence: "medium", paper: "A4", docTerm: "CV / Resume",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "optional",
     photoNote: "Traditional CVs carried photos, but current Pakistani guidance advises omitting photo, CNIC, marital status, and religion unless the employer requires them.",
     personalDataNote: "Provide CNIC/domicile/DOB only when required; avoid father's name and religion on modern CVs.",
@@ -379,6 +431,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   BD: {
     iso: "BD", name: "Bangladesh", confidence: "high", paper: "A4", docTerm: "CV / Biodata",
     lengthNote: "2–3 pages",
+    pagesMin: 1, pagesMax: 3,
     photo: "common",
     photoNote: "Photo customary on domestic applications (bdjobs.com conventions).",
     personalDataNote: "DOB, address, family details (parents' names/occupations), signature — the traditional format is data-heavy.",
@@ -389,6 +442,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   CN: {
     iso: "CN", name: "China", confidence: "high", paper: "A4", docTerm: "简历 (jiǎnlì)",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "expected",
     photoNote: "A professional headshot in the upper corner is standard across industries — a missing photo reads as incomplete.",
     personalDataNote: "DOB and gender expected; Party membership status relevant for government/SOE roles.",
@@ -397,6 +451,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   JP: {
     iso: "JP", name: "Japan", confidence: "high", paper: "A4/B5 form", docTerm: "履歴書 + 職務経歴書",
     lengthNote: "Fixed form + 1–3 pages",
+    pagesMin: 1, pagesMax: 3,
     photo: "expected",
     photoNote: "A 4×3 cm photo is required on the rirekisho — applications without one are treated as incomplete.",
     personalDataNote: "Name, DOB, gender, address on the standardized JIS form; consistent calendar (Western or Japanese era) required.",
@@ -406,6 +461,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   KR: {
     iso: "KR", name: "South Korea", confidence: "high", paper: "A4", docTerm: "이력서 + 자기소개서",
     lengthNote: "1–2 pages + essay",
+    pagesMin: 1, pagesMax: 2,
     photo: "expected",
     photoNote: "A 3×4 cm photo top-right is standard; international firms may waive it.",
     personalDataNote: "DOB expected (age matters in seniority-driven workplaces); marital status NOT expected.",
@@ -416,6 +472,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   HK: {
     iso: "HK", name: "Hong Kong", confidence: "high", paper: "A4", docTerm: "CV / Resume",
     lengthNote: "2 pages max",
+    pagesMin: 1, pagesMax: 2,
     photo: "optional",
     photoNote: "Not required for most roles — content and formatting matter more.",
     personalDataNote: "Minimal; expected salary and notice period are commonly stated when requested, unlike Western norms.",
@@ -424,6 +481,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   TW: {
     iso: "TW", name: "Taiwan", confidence: "high", paper: "A4", docTerm: "履歷表",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "expected",
     photoNote: "Strong domestic norm — domestic employers often skip a resume without an appropriate photo. International firms neutral.",
     personalDataNote: "DOB and personal data common on domestic formats.",
@@ -435,6 +493,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   SG: {
     iso: "SG", name: "Singapore", confidence: "high", paper: "A4", docTerm: "Resume",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "never",
     photoNote: "MOM Fair Consideration Framework / TAFEP guidance: no photo, age, marital status, race, or religion.",
     personalDataNote: "Job-relevant information only, per TAFEP fair-hiring guidelines.",
@@ -443,6 +502,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   MY: {
     iso: "MY", name: "Malaysia", confidence: "medium", paper: "A4", docTerm: "Resume / CV",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "No legal restriction; photos common in practice and some application systems require one.",
     personalDataNote: "DOB/personal details fairly common but declining in MNCs.",
@@ -452,6 +512,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   ID: {
     iso: "ID", name: "Indonesia", confidence: "high", paper: "A4", docTerm: "CV / Daftar Riwayat Hidup",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "Photo still common practice (3×4 or 4×6); red/blue background conventional for formal/state (BUMN) applications, neutral for startups.",
     personalDataNote: "DOB, sometimes religion and marital status on traditional formats; startups/tech minimal.",
@@ -461,6 +522,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   TH: {
     iso: "TH", name: "Thailand", confidence: "high", paper: "A4", docTerm: "Resume",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "A formal photo in the top corner is customary; some companies may not consider photo-less resumes.",
     personalDataNote: "Age/DOB commonly included; traditional formats may carry more.",
@@ -470,6 +532,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   VN: {
     iso: "VN", name: "Vietnam", confidence: "high", paper: "A4", docTerm: "CV (+ sơ yếu lý lịch)",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "Photo customary; the full application dossier (hồ sơ xin việc) conventionally includes ~4 passport photos.",
     personalDataNote: "DOB and personal data common.",
@@ -480,9 +543,11 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   PH: {
     iso: "PH", name: "Philippines", confidence: "high", paper: "Letter", docTerm: "Resume",
     lengthNote: "1–2 pages",
+    pagesMin: 1, pagesMax: 2,
     photo: "common",
     photoNote: "A 2×2-inch formal headshot (plain background, business attire) is expected for local applications; omit for international employers.",
     personalDataNote: "Age, civil status, sometimes SSS/TIN on local applications.",
+    nationalIdCustomary: true,
     conventions: ["US-influenced format but retains a personal-data section", "2–3 named character references with contact info expected"],
     checks: ["references_expected"],
     splitMarket: true,
@@ -491,6 +556,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   AU: {
     iso: "AU", name: "Australia", confidence: "high", paper: "A4", docTerm: "Resume / CV",
     lengthNote: "2–3 pages (grads 2)",
+    pagesMin: 2, pagesMax: 3,
     photo: "never",
     photoNote: "Photos raise discrimination concerns under Equal Opportunity law; include only if explicitly requested.",
     personalDataNote: "No age, DOB, marital status, or full street address.",
@@ -499,6 +565,7 @@ export const COUNTRY_STANDARDS: Record<string, CountryStandard> = {
   NZ: {
     iso: "NZ", name: "New Zealand", confidence: "high", paper: "A4", docTerm: "CV",
     lengthNote: "2 pages max (1 early-career)",
+    pagesMin: 1, pagesMax: 2,
     photo: "never",
     photoNote: "Employers generally do not want photos.",
     personalDataNote: "No age, DOB, marital status, health, or nationality.",
@@ -529,6 +596,9 @@ export interface CountryStandardsResult {
   docTerm: string;
   paper: string;
   lengthNote: string;
+  /** The page counts this market's lengthNote allows (S14X-028). */
+  pagesMin: number;
+  pagesMax: number;
   photoNorm: PhotoNorm;
   photoAdvice: string;
   personalDataNote: string;
@@ -538,13 +608,39 @@ export interface CountryStandardsResult {
   advisories: CountryAdvisory[];
 }
 
-const DOB_RE = /\b(date of birth|geburtsdatum|fecha de nacimiento|data de nascimento|data di nascita|date de naissance|дата рождения|生年月日|d\.o\.b\.?)\b\s*[:\-]?/i;
+// A date of birth: the phrase in the languages a CV is written in, or the
+// bare "DOB:" / "D.O.B." label (S14X-027: "DOB: 01/02/1990" was not read).
+const DOB_RE = /(?<![\p{L}])(date of birth|geburtsdatum|fecha de nacimiento|data de nascimento|data di nascita|date de naissance|дата рождения|生年月日|d\.\s?o\.\s?b\.?|dob)(?![\p{L}])\s*[:\-]?/iu;
+// "Born 1990", "Born on 4 May 1990", "born in 1990": a year or a date after it.
+const BORN_RE = /(?<![\p{L}])born\s+(?:on\s+|in\s+)?(?:(?:19|20)\d\d(?!\d)|\d{1,2}[\s./-]+(?:\d{1,2}|\p{L}+)[\s./-]+(?:19|20)?\d\d(?!\d)|\p{L}+\s+\d{1,2},?\s+(?:19|20)\d\d(?!\d))/iu;
+// The labels of a personal-data block, at the start of a line or after a
+// separator, followed by a value: "Age: 34", "Nationality: Indian".
+const LABEL_START = String.raw`(?:^|\n|[|•·;])\s*`;
+const AGE_RE = new RegExp(String.raw`${LABEL_START}age\s*[:\-]\s*\d{2}(?!\d)`, "iu");
+const NATIONALITY_RE = new RegExp(String.raw`${LABEL_START}(?:nationality|citizenship)\s*[:\-]\s*\p{L}`, "iu");
+const GENDER_RE = new RegExp(String.raw`${LABEL_START}(?:gender|sex)\s*[:\-]\s*\p{L}`, "iu");
+const RELIGION_RE = new RegExp(String.raw`${LABEL_START}(?:religion|race|ethnicity|caste)\s*[:\-]\s*\p{L}`, "iu");
+const HEALTH_RE = new RegExp(String.raw`${LABEL_START}(?:health(?:\s+status)?|medical\s+(?:condition|history)|disabilit(?:y|ies))\s*[:\-]\s*\p{L}`, "iu");
 const MARITAL_RE = /\b(marital status|estado civil|familienstand|état civil|família:|기혼|未婚|已婚)\b/i;
-const NATIONAL_ID_RE = /\b(ssn|social security number|cpf|rg\s*[:#]|dni|nie\s*[:#]|cnic|personnummer|fødselsnummer|henkilötunnus|cpr[-\s]?n|bsn|pps\s?number|aadhaar|national id)\b\s*[:\-]?/i;
-const RODO_RE = /(wyrażam zgodę na przetwarzanie|rodo|art\.?\s?6\s?ust)/i;
-const IT_CONSENT_RE = /(autorizzo il trattamento|d\.?\s?lgs\.?\s?(n\.?\s?)?196\/2003|gdpr\s?679\/2016|reg\.?\s?ue\s?2016\/679)/i;
-const VISA_RE = /(visa status|iqama|work permit|employment visa|golden visa|residence permit|transferable visa|sponsorship status)/i;
-const REFERENCES_RE = /(^|\n)\s*(references?|referees?)\s*[:\n]/i;
+// A national ID number by its name. Each name ends at a word's edge of its
+// own, so a labelled one is read too: "NIE: X1234567L" (S14X-130) was missed
+// because the old pattern wanted a word character after the colon.
+const NATIONAL_ID_RE = /(?<![\p{L}\p{N}])(?:ssn|social security number|cpf|dni|cnic|personnummer|fødselsnummer|henkilötunnus|cpr[-\s]?nr?|bsn|pps\s?number|aadhaar|national id)(?![\p{L}\p{N}])|(?<![\p{L}\p{N}])(?:rg|nie)\s*[:#]/iu;
+// Polish consent clause, by what it says (S14X-030): consent to processing in
+// Polish or English, or the GDPR's number. RODO is a word of its own, so
+// "Narodowy Bank Polski" no longer stands in for the clause.
+const RODO_RE = /(?:wyrażam\s+zgodę|zgadzam\s+się|i\s+(?:hereby\s+)?(?:agree|consent))[^\n]{0,60}?(?:przetwarza|processing)|2016\/679|679\/(?:20)?16|\bRODO\b|art\.?\s?6\s?ust/iu;
+// Italian consent line, by what it says (S14X-029): consent to the
+// "trattamento" in Italian, the GDPR's number, the Italian code's, or
+// "authorise the processing" in English.
+const IT_CONSENT_RE = /(?:autorizzo|acconsento|consenso|do\s+il\s+consenso)[^\n]{0,40}?trattamento|d\.?\s?lgs\.?\s?(?:n\.?\s?)?196\/(?:20)?03|2016\/679|679\/(?:20)?16|authori[sz]e\s+(?:you\s+to\s+process|the\s+processing)/iu;
+// A stated visa status (S14X-131): the old names, a visa named by its kind
+// ("Residence Visa (Transferable)", "Dependent Visa"), "Own sponsorship", or a
+// "Visa:" label with its value.
+const VISA_RE = /visa status|iqama|work permit|employment visa|golden visa|residence permit|transferable visa|sponsorship status|(?<![\p{L}])(?:residence|residency|employment|dependent|dependant|spouse|family|visit|own|investor|freelance|student|sponsor(?:ed)?|transferable|golden|valid|work)\s+(?:visa|sponsorship)(?![\p{L}])|(?<![\p{L}])visa\s*[:(]/iu;
+// A references section, its heading qualified or not (S14X-031): the
+// Philippines' "CHARACTER REFERENCES" is the section the page asks for.
+const REFERENCES_RE = /(^|\n)\s*((character|professional|personal|work)\s+)?(references?|referees?)\s*[:\n]/i;
 const PHOTO_MENTION_RE = /\b(photo|photograph|headshot|foto)\b/i;
 
 export function evaluateCountryStandards(resumeText: string, countryCode: string | null): CountryStandardsResult | null {
@@ -570,24 +666,47 @@ export function evaluateCountryStandards(resumeText: string, countryCode: string
   // the minimal-data norm).
   const minimalDataMarket = ["US", "CA", "GB", "IE", "AU", "NZ", "SG"].includes(std.iso);
   if (minimalDataMarket) {
-    if (DOB_RE.test(text)) {
-      advisories.push({ severity: "critical", check: "dob_present", message: `A date-of-birth line was found. In ${std.name}, DOB on a ${std.docTerm.toLowerCase()} is a discrimination-liability signal — remove it.` });
+    const doc = std.docTerm.toLowerCase();
+    if (DOB_RE.test(text) || BORN_RE.test(text)) {
+      advisories.push({ severity: "critical", check: "dob_present", message: `A date-of-birth line was found. In ${std.name}, DOB on a ${doc} is a discrimination-liability signal — remove it.` });
+    }
+    // Each field the minimal-data norm leaves out is named on its own
+    // (S14X-027): a bare "Age: 34" or "Gender: Female" used to pass.
+    if (AGE_RE.test(text)) {
+      advisories.push({ severity: "critical", check: "age_present", message: `An age line was found. In ${std.name}, age on a ${doc} is a discrimination-liability signal — remove it.` });
+    }
+    if (GENDER_RE.test(text)) {
+      advisories.push({ severity: "critical", check: "gender_present", message: `A gender line was found. ${std.name} employers expect no gender on a ${doc} — remove it.` });
+    }
+    if (RELIGION_RE.test(text)) {
+      advisories.push({ severity: "critical", check: "religion_present", message: `A religion, race or ethnicity line was found. ${std.name} employers expect none of these on a ${doc} — remove it.` });
+    }
+    if (NATIONALITY_RE.test(text)) {
+      advisories.push({ severity: "warning", check: "nationality_present", message: `A nationality or citizenship line was found. ${std.name} employers do not expect nationality on a ${doc}; where a role needs it, state your right to work instead.` });
+    }
+    if (HEALTH_RE.test(text)) {
+      advisories.push({ severity: "warning", check: "health_present", message: `A health line was found. ${std.name} employers expect no health information on a ${doc} — remove it.` });
     }
     if (MARITAL_RE.test(text)) {
       advisories.push({ severity: "critical", check: "marital_present", message: `A marital-status line was found. ${std.name} employers expect no marital status — remove it.` });
     }
   }
   if (NATIONAL_ID_RE.test(text)) {
-    advisories.push({ severity: "critical", check: "national_id_present", message: "A national ID / personal number pattern was found. Almost no market expects ID numbers on the document itself anymore (identity-theft risk) — provide them later in the process if asked." });
+    // Where the market still lists one in some sectors (Spain's formal
+    // sectors, the Philippines' local applications) it is information
+    // (S14X-130); elsewhere it is an identity-theft risk.
+    advisories.push(std.nationalIdCustomary
+      ? { severity: "info", check: "national_id_present", message: `A national ID number was found. In ${std.name} it is still listed in some sectors (${std.personalDataNote}) — leave it off unless the employer asks for it.` }
+      : { severity: "critical", check: "national_id_present", message: "A national ID / personal number pattern was found. Almost no market expects ID numbers on the document itself anymore (identity-theft risk) — provide them later in the process if asked." });
   }
 
   // Market-specific boilerplate the report flags as filter criteria.
   for (const check of std.checks ?? []) {
     if (check === "rodo_pl" && !RODO_RE.test(text)) {
-      advisories.push({ severity: "critical", check, message: "No RODO/GDPR consent clause found. Many Polish employers legally cannot process applications without it — add the standard consent line at the bottom." });
+      advisories.push({ severity: "warning", check, message: "No RODO/GDPR consent clause found. The law does not require one on a CV, but many Polish recruiters expect the standard consent line at the bottom — adding it costs nothing." });
     }
     if (check === "privacy_consent_it" && !IT_CONSENT_RE.test(text)) {
-      advisories.push({ severity: "critical", check, message: "No privacy-consent line found ('Autorizzo il trattamento dei miei dati personali…'). Italian CVs without it are often filtered out — add it at the bottom." });
+      advisories.push({ severity: "info", check, message: "No privacy-consent line found ('Autorizzo il trattamento dei miei dati personali…'). The law does not require one on a CV you send (art. 111-bis D.Lgs. 196/2003), but many Italian recruiters still look for it — adding it at the bottom costs nothing." });
     }
     if (check === "visa_status_gulf" && !VISA_RE.test(text)) {
       advisories.push({ severity: "warning", check, message: "No visa/work-eligibility status found. In the Gulf, visa status directly under your contact info is the single most scanned field ('Employment Visa (Transferable)', Iqama type, etc.)." });
@@ -609,6 +728,8 @@ export function evaluateCountryStandards(resumeText: string, countryCode: string
     docTerm: std.docTerm,
     paper: std.paper,
     lengthNote: std.lengthNote,
+    pagesMin: std.pagesMin,
+    pagesMax: std.pagesMax,
     photoNorm: std.photo,
     photoAdvice: std.photoNote,
     personalDataNote: std.personalDataNote,
@@ -619,4 +740,21 @@ export function evaluateCountryStandards(resumeText: string, countryCode: string
       : undefined,
     advisories,
   };
+}
+
+/**
+ * The page verdict, judged against the market's own bounds (S14X-028): a
+ * two-page UK CV is within range whatever the candidate's years, and the
+ * prompt's old worldwide rule (1 page under 5 years, 3 past 15) no longer
+ * decides it.
+ */
+export function pageVerdictFor(pages: number, bounds: { pagesMin: number; pagesMax: number }): "too_long" | "too_short" | "just_right" {
+  return pages > bounds.pagesMax ? "too_long" : pages < bounds.pagesMin ? "too_short" : "just_right";
+}
+
+/** The length rule the prompt states for a market: its own note and bounds. */
+export function lengthRuleForPrompt(std: { name: string; lengthNote: string; pagesMin: number; pagesMax: number } | null | undefined): string {
+  if (!std) return "Estimate pages and recommend the length this candidate's experience calls for";
+  const range = std.pagesMin === std.pagesMax ? `${std.pagesMin}` : `${std.pagesMin}-${std.pagesMax}`;
+  return `Estimate pages and compare to ${std.name}'s norm: ${std.lengthNote} (${range} page${std.pagesMax === 1 ? "" : "s"}); set recommendedPages within ${range}`;
 }

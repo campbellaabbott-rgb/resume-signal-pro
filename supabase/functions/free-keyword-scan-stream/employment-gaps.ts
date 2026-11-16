@@ -169,8 +169,14 @@ const monthsBetween = (a: DatePoint, b: DatePoint) => key(b) - key(a);
 const NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const formatDatePoint = (d: DatePoint) => `${NAMES[d.month]} ${d.year}`;
 
-// A heading line: short, and nothing but the heading's words.
-export const EDUCATION_HEADING = /^(?:education(?:al)?(?:\s+(?:and|&)\s+[\p{L} ]+)?|academic(?:\s+[\p{L}]+)?|qualifications|ausbildung|bildung|formation|formaci[óo]n|educaci[óo]n|istruzione|formazione|forma[çc][ãa]o|educa[çc][ãa]o|opleiding(?:en)?|studies|studium)\s*:?$/iu;
+// A heading line: short, and nothing but the heading's words. The education
+// heading may open with a bullet and run on in a heading's own words
+// (RC-S13-022): "Educational Background", "Education History", "Formación
+// Académica" and "• Education" end the experience section too, so a teaching
+// job held during the degree is not two overlapping roles. A job title that
+// opens with the word ("Education Coordinator") is not a heading.
+const EDUCATION_TAIL = String.raw`(?:\s*(?:&|and|y|e|et|und|\/|,)?\s*(?:background|history|details|summary|profile|records?|achievements|qualifications?|certifications?|training|credentials|courses|acad[ée]mica|acad[ée]mico|accademica|acad[ée]mique|acad[êe]mica|professionnelle|superior))`;
+export const EDUCATION_HEADING = new RegExp(String.raw`^(?:[•·▪●■\-*]\s*)?(?:education(?:al)?|academic|qualifications|ausbildung|bildung|formation|formaci[óo]n|educaci[óo]n|istruzione|formazione|forma[çc][ãa]o|educa[çc][ãa]o|opleiding(?:en)?|studies|studium)${EDUCATION_TAIL}{0,3}\s*:?$`, "iu");
 export const OTHER_HEADING = /^(?:(?:professional|work|relevant|employment|career)\s+)?(?:experience|history|employment|projects?|skills|certifications?|licen[cs]es?|volunteer(?:ing)?|awards|publications|languages|summary|profile|berufserfahrung|exp[ée]riences?(?:\s+professionnelles?)?|experiencia(?:\s+profesional)?|esperienz[ae](?:\s+professionali)?|experi[êe]ncia(?:\s+profissional)?|werkervaring)\s*:?$/iu;
 const DEGREE = /\b(?:bachelor(?:'s|s)?|master(?:'s|s)?\s+(?:of|in|degree)|master of|mba|ph\.?\s?d|doctorate|b\.?sc|m\.?sc|b\.a\.|m\.a\.|b\.s\.|m\.s\.|diploma|degree|associate of|high school|ged|licenciatura|laurea|abitur|baccalaur[ée]at|bachillerato)\b/iu;
 
@@ -233,19 +239,22 @@ export function extractDateRanges(resumeText: string, opts: { open?: boolean; no
 /** Months since year 0: compare and subtract date points with it. */
 export const monthIndex = (d: DatePoint) => d.year * 12 + d.month;
 
-export function detectEmploymentGaps(resumeText: string, now: Date = new Date()): GapAnalysis {
-  const today: DatePoint = { year: now.getFullYear(), month: now.getMonth() };
-  const none: GapAnalysis = { gaps: [], mostRecentEndYear: null, mostRecentEndMonth: null, isStale: false, staleDuration: '' };
-  const ranges = extractDateRanges(resumeText, { open: true, now });
-  if (ranges.length < 2) return none;
-
-  const entries = ranges
+type TimelineEntry = { start: DatePoint; end: DatePoint; isPresent: boolean; line: string; education: boolean };
+// The ranges the gap check reads, oldest first, a current one ending today.
+function timelineEntries(resumeText: string, today: DatePoint, now: Date): TimelineEntry[] {
+  return extractDateRanges(resumeText, { open: true, now })
     .filter(r => key(r.start) <= key(today)) // a range that has not started yet accounts for nothing
     .map(r => {
       const isPresent = r.end === 'present' || key(r.end) > key(today);
-      return { start: r.start, end: isPresent ? today : r.end as DatePoint, isPresent, line: r.line };
+      return { start: r.start, end: isPresent ? today : r.end as DatePoint, isPresent, line: r.line, education: r.education };
     })
     .sort((a, b) => key(a.start) - key(b.start) || key(a.end) - key(b.end));
+}
+
+export function detectEmploymentGaps(resumeText: string, now: Date = new Date()): GapAnalysis {
+  const today: DatePoint = { year: now.getFullYear(), month: now.getMonth() };
+  const none: GapAnalysis = { gaps: [], mostRecentEndYear: null, mostRecentEndMonth: null, isStale: false, staleDuration: '' };
+  const entries = timelineEntries(resumeText, today, now);
   if (entries.length < 2) return none;
 
   let latest = entries[0];
@@ -282,4 +291,27 @@ export function detectEmploymentGaps(resumeText: string, now: Date = new Date())
 export function timelineGapOf(resumeText: string, now: Date = new Date()): { hasGaps: boolean; gapNote?: string } {
   const first = detectEmploymentGaps(resumeText, now).gaps[0];
   return first ? { hasGaps: true, gapNote: `Gap detected between ${first.startDate} and ${first.endDate}` } : { hasGaps: false };
+}
+
+/**
+ * What a triggered interview question may claim about the dates (S14X-269,
+ * grounding.ts groundTrigger): every gap between the ranges the gap check
+ * reads, and every role's length outside education, in months. A gap is
+ * measured the way detectEmploymentGaps measures it (that reader reports only
+ * the ones over six months), from the month one range ends to the month the
+ * next starts, so a December end and a January start measure 1 and are no
+ * gap: a gap here measures 2 or more, a whole month with no role.
+ */
+export function timelineFactsOf(resumeText: string, now: Date = new Date()): { gapMonths: number[]; tenureMonths: number[] } {
+  const today: DatePoint = { year: now.getFullYear(), month: now.getMonth() };
+  const entries = timelineEntries(resumeText, today, now);
+  const gapMonths: number[] = [];
+  let cover = entries[0];
+  for (const next of entries.slice(1)) {
+    const gap = monthsBetween(cover.end, next.start);
+    if (gap >= 2) gapMonths.push(gap);
+    if (key(next.end) > key(cover.end)) cover = next;
+  }
+  const tenureMonths = entries.filter(e => !e.education).map(e => monthsBetween(e.start, e.end));
+  return { gapMonths, tenureMonths };
 }
