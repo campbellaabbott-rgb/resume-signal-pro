@@ -37,10 +37,12 @@
 -- running is not closed.
 --
 -- Safe to re-run: the one-shot finds nothing the second time, and the job is
--- scheduled only when it is absent (and given its command back if it drifted).
--- Self-verifying: where pg_cron is installed the job must exist, be active and
--- set its own statement_timeout in its command; no run-out pass may be left
--- open, and no closed pass unsettled.
+-- scheduled only when it is absent (and given its command and its daily
+-- schedule back if either drifted: a job of this name made elsewhere runs
+-- once a day, at 03:41, after this file, never on a schedule of its own).
+-- Self-verifying: where pg_cron is installed the job must exist, be active,
+-- run at 03:41 daily and set its own statement_timeout in its command; no
+-- run-out pass may be left open, and no closed pass unsettled.
 
 SET LOCAL statement_timeout = '2min';
 
@@ -74,18 +76,19 @@ DECLARE
     || 'UPDATE public.agent_passes ap SET closed_at = now(), '
     || 'close_reason = CASE WHEN ap.activated_at IS NULL THEN ''shelf_expired'' ELSE ''session_ended'' END '
     || 'WHERE ap.closed_at IS NULL AND coalesce(ap.expires_at, ap.shelf_expires_at) <= now();';
-  v_id  bigint;
-  v_old text;
+  v_id    bigint;
+  v_old   text;
+  v_sched text;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron') THEN
     RAISE NOTICE 'pg_cron is not installed here; schedule agent-pass-close by hand: %', v_cmd;
     RETURN;
   END IF;
-  SELECT j.jobid, j.command INTO v_id, v_old FROM cron.job j WHERE j.jobname = 'agent-pass-close';
+  SELECT j.jobid, j.command, j.schedule INTO v_id, v_old, v_sched FROM cron.job j WHERE j.jobname = 'agent-pass-close';
   IF v_id IS NULL THEN
     PERFORM cron.schedule('agent-pass-close', '41 3 * * *', v_cmd);
-  ELSIF v_old IS DISTINCT FROM v_cmd THEN
-    PERFORM cron.alter_job(v_id, command => v_cmd, active => true);
+  ELSIF v_old IS DISTINCT FROM v_cmd OR v_sched IS DISTINCT FROM '41 3 * * *' THEN
+    PERFORM cron.alter_job(v_id, schedule => '41 3 * * *', command => v_cmd, active => true);
   END IF;
 END $$;
 
@@ -94,6 +97,7 @@ DO $verify$
 DECLARE
   v_active boolean;
   v_cmd    text;
+  v_sched  text;
   v_open   bigint;
   v_unsettled bigint;
 BEGIN
@@ -114,12 +118,15 @@ BEGIN
     RAISE NOTICE 'self-verify 20261112152000: run-out passes closed and settled; pg_cron absent, so no daily closer was checked';
     RETURN;
   END IF;
-  SELECT j.active, j.command INTO v_active, v_cmd FROM cron.job j WHERE j.jobname = 'agent-pass-close';
+  SELECT j.active, j.command, j.schedule INTO v_active, v_cmd, v_sched FROM cron.job j WHERE j.jobname = 'agent-pass-close';
   IF v_cmd IS NULL THEN
     RAISE EXCEPTION 'self-check: the agent-pass-close job does not exist';
   END IF;
   IF v_active IS NOT TRUE THEN
     RAISE EXCEPTION 'self-check: the agent-pass-close job is not active';
+  END IF;
+  IF v_sched IS DISTINCT FROM '41 3 * * *' THEN
+    RAISE EXCEPTION 'self-check: the agent-pass-close job runs on %, not daily at 03:41', v_sched;
   END IF;
   IF v_cmd !~* '^[[:space:]]*SET[[:space:]]+statement_timeout[[:space:]]*=' THEN
     RAISE EXCEPTION 'self-check: the agent-pass-close job sets no statement_timeout in its command: %', v_cmd;

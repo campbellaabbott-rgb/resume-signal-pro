@@ -163,4 +163,20 @@ describe("the daily job 'agent-pass-close'", () => {
     expect(job.active).toBe(true);
     expect(job.command).toMatch(/^SET statement_timeout = '2min'; UPDATE public\.agent_passes/);
   });
+
+  // The closeout review of 2026-11-16: the file's marker says every job it
+  // schedules runs once a day, so a job of this name it finds on another
+  // schedule (made elsewhere, or edited) is put back on 03:41 daily, not kept.
+  it("a job found on another schedule is put back on its daily one, and the self-check refuses a job left off it", async () => {
+    await db.exec("UPDATE cron.job SET schedule = '*/5 * * * *' WHERE jobname = 'agent-pass-close'");
+    await db.exec(migration(M));
+    const job = await one<{ active: boolean; schedule: string }>("SELECT active, schedule FROM cron.job WHERE jobname = 'agent-pass-close'");
+    expect(job).toEqual({ active: true, schedule: "41 3 * * *" });
+    // The verify block alone, on a job moved after the closer ran, names the schedule it found.
+    await db.exec("UPDATE cron.job SET schedule = '*/5 * * * *' WHERE jobname = 'agent-pass-close'");
+    const sql = migration(M);
+    const verify = sql.slice(sql.indexOf("DO $verify$"));
+    await expect(db.exec(verify)).rejects.toThrow(/runs on \*\/5 \* \* \* \*, not daily at 03:41/);
+    await db.exec("UPDATE cron.job SET schedule = '41 3 * * *' WHERE jobname = 'agent-pass-close'");
+  });
 });

@@ -372,7 +372,7 @@
       "why": "bug round of 2026-11-08, part A, past-buyers lane (S14X-111): take_delivery_lease_status, service_role only, answers why a lease was refused; verify-product-purchase 2026-11-12.1 calls it and falls back to take_delivery_lease while it is missing, and the header asks for it first. Safe to re-run."
     },
     "20261112152000": {
-      "why": "bug round of 2026-11-08, part A, past-buyers lane (S14X-083): once, a released unsent 'ready' packet on a run-out pass goes 'stale' (given back once by the refund trigger), the run-out passes close the way the lazy closers close them, and 'agent-pass-close' ('41 3 * * *', statement_timeout in the command) closes later ones daily. No function depends on it. Safe to re-run."
+      "why": "bug round of 2026-11-08, part A, past-buyers lane (S14X-083): once, a released unsent 'ready' packet on a run-out pass goes 'stale' (given back once by the refund trigger), the run-out passes close the way the lazy closers close them, and 'agent-pass-close' ('41 3 * * *', statement_timeout in the command) closes later ones daily; a job of that name found on another schedule is put back on 03:41 daily, and the self-check refuses one left off it. No function depends on it. Safe to re-run."
     },
     "20261112160000": {
       "why": "bug round of 2026-11-08, part A, mail lane (S14X-238, S14X-102): market_pulse_claim_batch(p_limit, p_now DEFAULT now()) claims a row at most once a calendar month (the one-argument form dropped in the same transaction; send-market-pulse's call resolves through the default), and mail_lists_prune runs as 'mail-lists-prune' ('37 4 * * *', statement_timeout in the command). Before the functions, which work either way. Safe to re-run."
