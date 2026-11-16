@@ -18,7 +18,7 @@
  * main also misread), and never worse case by case (n1418).
  */
 import { describe, expect, it } from "vitest";
-import { readQuery } from "../../supabase/functions/agent-mcp/query-place";
+import { readLocationArg, readQuery } from "../../supabase/functions/agent-mcp/query-place";
 import { countryMentions } from "../../supabase/functions/_shared/work-countries";
 
 const country = (q: string) => readQuery(q).country ?? null;
@@ -58,5 +58,45 @@ describe("countryMentions: whole words, with the words before", () => {
     expect(countryMentions("New South Wales")).toEqual([{ code: "GB", alias: "wales", before: "new south" }]);
     expect(countryMentions("Spanish")).toEqual([{ code: "ES", alias: "spanish", before: "" }]);
     expect(countryMentions("industry customer")).toEqual([]);
+  });
+});
+
+/**
+ * RC-S13-041 (2026-11-16): "Northern Ireland" read as the UK only when the
+ * word before Ireland was exactly north or northern, so "N. Ireland" searched
+ * Ireland with a place "N." left over, and a country word followed by a US
+ * state ("Mexico Missouri", a town) searched that country. Now an abbreviated
+ * north is the UK's too, taken whole, and a country word followed by a US
+ * state name or its code in capitals is no country.
+ */
+describe("Northern Ireland however it is shortened is the UK, with no place left over", () => {
+  it.each(["nurse in N. Ireland", "nurse in N.Ireland", "nurse in N Ireland", "nurse in Northern Ireland", "nurse in North Ireland"])("%s", (q) => {
+    const r = readQuery(q);
+    expect(r.country).toBe("GB");
+    expect(r.location).toBeUndefined();
+    expect(r.query).toBe("nurse");
+  });
+
+  it("a city before it stays the city", () => {
+    expect(readQuery("nurse in Belfast N. Ireland")).toMatchObject({ location: "Belfast", country: "GB" });
+    expect(readQuery("nurse in Belfast, Northern Ireland")).toMatchObject({ location: "Belfast", country: "GB" });
+    expect(readLocationArg("Belfast, N. Ireland")).toMatchObject({ location: "Belfast", country: "GB" });
+  });
+
+  it("Ireland on its own is still Ireland", () => {
+    expect(readQuery("nurse in Ireland").country).toBe("IE");
+    expect(readQuery("nurse in Dublin, Ireland")).toMatchObject({ location: "Dublin", country: "IE" });
+  });
+});
+
+describe("a country word followed by a US state is a US town, not that country", () => {
+  it.each(["nurse in Mexico Missouri", "nurse in Poland Ohio", "nurse in Denmark Wisconsin", "nurse in Norway Maine", "nurse in Holland Michigan", "nurse in Mexico MO"])("%s", (q) => {
+    expect(readQuery(q).country).toBeUndefined();
+  });
+
+  it("a country followed by its own region, or two countries, reads as before", () => {
+    expect(readQuery("nurse in Mexico").country).toBe("MX");
+    expect(readQuery("engineer in Canada ON").country).toBe("CA");
+    expect(readQuery("engineer in Mexico or Canada").country).toBeUndefined();
   });
 });

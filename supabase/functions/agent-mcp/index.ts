@@ -102,7 +102,7 @@ import { postingExcerptOf } from "./posting-excerpt.ts";
 // The first search answers the question as asked: a place moved out of the
 // query (spec D2 §2.3). An employer name is resolved by job-board itself, one
 // rule for every spelling (sweep S12-080).
-import { placeHint, placeInQuery, readLocationArg, readQuery, sponsorshipOnly, type QueryReading } from "./query-place.ts";
+import { locationAsField, placeHint, placeInQuery, readLocationArg, readQuery, sponsorshipOnly, type QueryReading } from "./query-place.ts";
 import { parseJobId } from "./job-link.ts";
 // OpenAI's published ChatGPT egress as last read, for when the live list
 // cannot be (sweep S12-085).
@@ -589,6 +589,15 @@ type Decision = {
   /** Set by a check that read the day's count on a refusal; absent on today's api_key_check. */
   quota_read?: boolean | null;
 };
+
+/**
+ * Whether the check read the day's count (S14X-275): on a rate or revoked
+ * refusal api_key_check returns quota_used 0 without reading the day, so the
+ * quota pair rides only an allowed call, the quota refusal, and a row that
+ * says it read the day.
+ */
+const quotaWasRead = (d: Decision | null): boolean =>
+  !!d && (d.is_allowed || d.deny_reason === "quota_exceeded" || d.quota_read === true);
 
 const db = (): SupabaseClient =>
   createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
@@ -1112,6 +1121,7 @@ const DISCLOSURE_SCHEMA = {
   agenciesExcluded: { type: "boolean", description: "Row-selecting: agency postings are hidden from this page." },
   withheld: { type: "integer", description: "Rows on this page the connector may not hand on (the board's total still counts them)." },
   locationInterpreted: { type: "object", description: "What was read out of the query: the place moved to location or country, a trailing remote, and the words moved." },
+  locationNote: { type: "string", description: "The location was a whole country or a remote word, matched as words: names the country or remote filter that searches the board's own field." },
   rankedFellBack: { type: "boolean", description: "The ranked search failed and the board answered with its fallback search: the order may be less relevant." },
   companiesResolved: { type: "array", description: "Employer names in companies, each with the board tokens it resolved to." },
   companiesUnresolved: { type: "array", description: "Names in companies that matched no single employer, or only a board with under 10 open roles (held: carried, but not searched under that name), each with up to five candidates to offer; nothing was searched for them: ask before using a candidate's token." },
@@ -1984,7 +1994,7 @@ const PROMPTS: readonly Prompt[] = [
       `1) Call ${tool("search_jobs")} with query = ${a.what?.trim() ? argText(a.what) : "the role I name (ask me if I have not)"}, ` +
       `location = ${a.where?.trim() ? argText(a.where) : "the place I name (leave it out if I name none)"}, limit = ${ANON_SEARCH_LIMIT}. ` +
       `Show the jobs as a table: title, employer, location, pay only when the card states it (salary, or salaryMinAnnual/salaryMaxAnnual), posted date. ` +
-      `Relay ignoredFilters (a filter the board could not apply) and countUnavailable as the board says them. ` +
+      `Relay ignoredFilters (a filter the board could not apply), countUnavailable and locationNote as the board says them, and offer the search locationNote names. ` +
       `2) For more, call again with offset = nextOffset; if pageLimitReached is true, suggest narrowing the search instead. ` +
       `3) To read a posting call ${tool("get_job")}, or ${tool("get_jobs")} for up to ${GET_JOBS_MAX} at once. ` +
       `4) Before I act on a shortlist, call ${tool("check_jobs_open")} with its ids and say which closed. ` +
@@ -2004,7 +2014,7 @@ const PROMPTS: readonly Prompt[] = [
       `location = ${a.location?.trim() ? argText(a.location) : "the place the CV or I name (leave it out if neither does)"}, limit = ${ANON_SEARCH_LIMIT}. ` +
       `4) Call ${tool("check_jobs_open")} with the ids you are about to show. ` +
       `5) Show a table: title, employer, location, pay only when the card states it, posted date, and in a few words why it matches (titles and skills only). ` +
-      `Relay ignoredFilters and countUnavailable as the board says them. ` +
+      `Relay ignoredFilters, countUnavailable and locationNote as the board says them, and offer the search locationNote names. ` +
       `6) Offer to read any posting with ${tool("get_job")} and to help me apply with ${tool("apply_myself")}. Every step works with no key.`,
   },
   {
@@ -2163,7 +2173,7 @@ function guideText(edition: Edition, keyed: boolean): string {
     `- \`total\` counts postings whose TITLE matches; \`relatedTotal\` counts those that only mention the words in their description, and rows past the title matches are those (\`matchScope: "description"\`; \`matchNote\` when a whole page is). Say which you mean.`,
     `- \`postedAt\` is the date the employer's own hiring system gives for the posting, not when this board first saw it; it is absent when the feed states none, which does not make a posting old.`,
     `- \`locationInterpreted\` says what was read out of the query into a filter (a place, remote, a date window, an employer) and \`from\` the words as typed; \`sponsorshipNote\` means this board cannot filter by visa sponsorship, so never say a posting sponsors unless its own text does. \`notSearched\` means the search named nothing the board can look for (only sponsorship words): ask the person for a role or a place.`,
-    `- \`withheld\` counts postings on the page this server may not hand on (SmartRecruiters, USAJOBS); \`withheldNote\` gives the site search where they open. \`locationHint\` means a place was not read: places go by name, never a ZIP code.`,
+    `- \`withheld\` counts postings on the page this server may not hand on (SmartRecruiters, USAJOBS); \`withheldNote\` gives the site search where they open. \`locationHint\` means a place was not read: places go by name, never a ZIP code. \`locationNote\` means a whole country or a remote word was matched as words in each posting's location: relay it and offer the search again with the filter it names.`,
     `- \`unknownCompanies\` names an employer this board does not carry under that name, and \`companiesUnresolved\` a name that matched no single employer, or only a board with under 10 open roles, which we carry, with candidates to ask about before you use one: neither is an employer with no openings.`,
     `- Pay and seniority arrive parsed (\`salaryMinAnnual\`, \`salaryMaxAnnual\`, \`experienceBand\`, \`minYears\`) and are ABSENT when the posting states none: absence is not zero.`,
     `- \`applyForm: true\` on a card means \`${tool("apply_myself")}\` can read that employer's form for you.`,
@@ -2661,9 +2671,10 @@ async function servableSearchBody(args: Record<string, unknown>): Promise<Record
  * and names what it did (companiesResolved, companiesUnresolved,
  * companiesNotLookedUp, unknownCompanies); disclosures() forwards all four.
  */
-function searchAsMeant(input: Record<string, unknown>, opts: { employer?: boolean } = {}): { args: Record<string, unknown>; reading: QueryReading | null } {
+function searchAsMeant(input: Record<string, unknown>, opts: { employer?: boolean } = {}): { args: Record<string, unknown>; reading: QueryReading | null; locationNote?: string } {
   let args = { ...input };
   let reading: QueryReading | null = null;
+  let locationNote: string | undefined;
   const set = (v: unknown) => v !== undefined && v !== null && v !== "";
   if (typeof args.query === "string" && args.query.trim()) {
     const r = readQuery(args.query, {
@@ -2702,9 +2713,19 @@ function searchAsMeant(input: Record<string, unknown>, opts: { employer?: boolea
         locationSent: input.location.trim(),
         note: [reading?.note, split.note].filter(Boolean).join(" "),
       };
+    } else {
+      // A WHOLE COUNTRY OR A REMOTE WORD AS THE LOCATION (RC-S9-002): sent as
+      // typed, and said, with the filter that searches the board's own field.
+      const field = locationAsField(input.location);
+      const sendCountry = field?.country && !set(input.country) ? field.country : null;
+      const sendRemote = field?.remote && input.remote !== true;
+      if (sendCountry || sendRemote) {
+        const fix = [sendRemote ? "remote: true" : "", sendCountry ? `country: "${sendCountry}"` : ""].filter(Boolean).join(" and ");
+        locationNote = `location "${input.location.trim()}" was matched as words in each posting's location, which misses postings that state it only in the board's own field; search again with ${fix} (and no location) to search that field.`;
+      }
     }
   }
-  return { args, reading };
+  return { args, reading, ...(locationNote ? { locationNote } : {}) };
 }
 
 /** Said beside a search whose query held visa-sponsorship words (connect W1, BR-01). */
@@ -2769,7 +2790,7 @@ function unboundScope(asked: readonly string[], r: Record<string, unknown>): Rec
  * employer name it did not resolve, carried onto the answer searched as typed.
  */
 async function runSearchJobs(input: Record<string, unknown>, ctx: Ctx = KEYED_CTX, employerNotes: Record<string, unknown> | null = null): Promise<unknown> {
-  const { args, reading } = searchAsMeant(input, employerNotes ? { employer: false } : {});
+  const { args, reading, locationNote } = searchAsMeant(input, employerNotes ? { employer: false } : {});
   // NOTHING LEFT BUT SPONSORSHIP WORDS (connect W1 recheck, 2026-11-08): with
   // them taken out, "visa sponsorship" sent no query and the board answered
   // its whole catalogue beside the sponsorship note. With no role, place,
@@ -2801,6 +2822,7 @@ async function runSearchJobs(input: Record<string, unknown>, ctx: Ctx = KEYED_CT
   const offset = Math.max(0, Number(args.offset ?? 0) || 0);
   const out: Record<string, unknown> = { jobs: jobs.map((j) => compactJob(j, ctx)), ...disclosures(r) };
   if (reading) out.locationInterpreted = reading;
+  if (locationNote) out.locationNote = locationNote;
   if (employerNotes) Object.assign(out, employerNotes);
   if (reading?.sponsorship) out.sponsorshipNote = SPONSORSHIP_NOTE;
   // The board's `total` beside them still counts what it counted, so rows
@@ -5291,12 +5313,9 @@ Deno.serve(browserGated(async (req) => {
     }
     d = (dec ?? null) as Decision | null;
     // Rate/quota headers ride the DENY response too — that is the response a
-    // client most needs them on. But only the limits the check READ: on a
-    // rate_limited or revoked refusal api_key_check returns quota_used 0
-    // without reading the day, and a key at 990 of 1,000 was told 1,000
-    // remained (S14X-275). The quota pair rides an allowed call and the
-    // quota refusal; a row that says it read the day (quota_read) is believed.
-    const quotaRead = !!d && (d.is_allowed || d.deny_reason === "quota_exceeded" || d.quota_read === true);
+    // client most needs them on. But only the limits the check READ: a key at
+    // 990 of 1,000 refused for its minute was told 1,000 remained (S14X-275).
+    const quotaRead = quotaWasRead(d);
     rateHeaders = d
       ? {
           "X-RateLimit-Limit": String(d.rate_limit),
