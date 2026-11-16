@@ -6984,7 +6984,9 @@ export type Database = {
           median_days_open: number
           median_days_to_close: number
           observed_days: number
+          open_window_days: number
           posted_coverage_pct: number
+          stale_parts: string[]
           total_companies: number
           total_company_names: number
           total_open: number
