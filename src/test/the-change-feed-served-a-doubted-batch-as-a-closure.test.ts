@@ -54,6 +54,8 @@ class Query implements PromiseLike<{ data: Row[]; error: null }> {
   is(col: string, v: unknown) { this.preds.push((r) => (r[col] ?? null) === v); return this; }
   eq(col: string, v: unknown) { this.preds.push((r) => r[col] === v); return this; }
   gte(col: string, v: string) { this.preds.push((r) => String(r[col]) >= v); return this; }
+  // The settled horizon each list now reads up to (S14X-065).
+  lte(col: string, v: string) { this.preds.push((r) => String(r[col]) <= v); return this; }
   not(col: string, op: string, list: string) {
     if (op !== "in") throw new Error(`fake: not.${op}`);
     const vals = list.replace(/^\(|\)$/g, "").split(",");
