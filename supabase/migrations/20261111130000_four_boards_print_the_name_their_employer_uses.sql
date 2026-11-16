@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
+-- (reviewed 2026-11-16 in the board .102 integration).
+--
 -- FOUR BOARDS PRINT THE NAME THEIR EMPLOYER USES.
 --
 -- The SEO/GEO audit of 2026-11-07 (B05) found four bare-token boards printing

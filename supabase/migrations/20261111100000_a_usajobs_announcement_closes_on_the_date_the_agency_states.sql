@@ -1,3 +1,6 @@
+-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
+-- (reviewed 2026-11-16 in the board .102 integration).
+--
 -- A USAJOBS ANNOUNCEMENT CLOSES ON THE DATE THE AGENCY STATES.
 --
 -- Board .102, XR-1. Every USAJOBS announcement states the day applications
@@ -19,8 +22,8 @@
 -- last, each waiting at most two seconds for its lock. A timeout on either
 -- rolls the block back, which releases both locks before the one-second wait,
 -- and the block is tried up to ten times. So the posting table's lock is held
--- only from its grant to the commit, never across a wait for the exit
--- table's, and the ALTER never queues behind a long reader of either.
+-- only from its grant to the end of the transaction, never across a wait for
+-- the exit table's, and the ALTER never queues behind a long reader of either.
 --
 -- AND THE CORRECTIONS RPC LEARNS TWO KEYS. apply_posting_corrections is
 -- restated after the ALTERs with closes_at and department, the two keys .102's
