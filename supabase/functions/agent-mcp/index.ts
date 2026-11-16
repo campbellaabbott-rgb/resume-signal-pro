@@ -1602,9 +1602,9 @@ const TOOLS = [
     name: "fit_resume",
     title: "Score a CV against open jobs",
     description:
-      "Score a CV against open jobs: reads the occupation out of resumeText (or uses `query`), searches the board for it and scores up to 20 results 0-100 with the matched and missing terms. " +
+      "Reads the occupation out of resumeText (or uses `query`), searches the board for it and scores up to 20 results 0-100 with the matched and missing terms. " +
       `Free on a confirmed key (one from ${MINT_URL}) or on an account that has proven its mailbox: ${FIT_FREE_PER_DAY} scorings a day; an account with a paid plan gets ${FIT_FULL_PER_DAY.toLocaleString("en-US")}. ` +
-      "This connector keeps no copy of the CV it scores; send it here only, never to the search tools. A null fit means the posting has no stored text to score. " + KEYED_TOOL_SENTENCE,
+      "This connector keeps no copy of the CV it scores; send it here only, never to the search tools. A null fit is unscorable: no stored text, or no term the English-only scorer reads (see unscored). " + KEYED_TOOL_SENTENCE,
     annotations: READS_THE_BOARD,
     inputSchema: {
       type: "object",
@@ -1628,7 +1628,8 @@ const TOOLS = [
             // A job card (search_jobs' shape) plus its score.
             properties: {
               id: { type: "string" },
-              fit: { type: ["number", "null"], description: "Keyword fit 0-100; null means no stored text to score, not a poor match." },
+              fit: { type: ["number", "null"], description: "Keyword fit 0-100; null means the posting could not be scored, not a poor match." },
+              unscored: { type: "string", description: "Beside a null fit, when the scorer says why: no_description (no stored text) or no_recognised_terms (none of the English terms it reads)." },
               matched: { type: "array", items: { type: "string" } },
               missing: { type: "array", items: { type: "string" } },
             },
@@ -1681,8 +1682,7 @@ const TOOLS = [
       "never summed across an employer's boards, never a headcount; a token two hiring systems share gets none. No closure observed is record:'unknown' with a reason, " +
       "never a verdict: on a board bigger than one visit can read, no closure is observable to us until we complete a provable full pass and then watch a role go after it. " +
       `layoff_filing: the newest US WARN notice or SEC 8-K Item 2.05 filing (filer verbatim, dates, count, link), ` +
-      `read ${LAYOFF_BARS.cadenceEdgar} from EDGAR and ${LAYOFF_BARS.cadenceWarn} from state notices, null if none within ${LAYOFF_BARS.displayMaxAgeDays} days; see layoff_basis. ` +
-      `employer_growth is the other half of "Actively hiring".`,
+      `read ${LAYOFF_BARS.cadenceEdgar} from EDGAR and ${LAYOFF_BARS.cadenceWarn} from state notices, null if none within ${LAYOFF_BARS.displayMaxAgeDays} days; see layoff_basis.`,
     annotations: READS_THE_BOARD,
     inputSchema: {
       type: "object",
@@ -3152,16 +3152,20 @@ async function runCheckJobsOpen(args: Record<string, unknown>, ctx: Ctx = KEYED_
  * service-role bearer job-fit requires before trusting the name, and a 429
  * surfaces as ScorerLimited so the dispatcher can say so honestly.
  */
-async function runFitResume(args: Record<string, unknown>, apiKeyId: string): Promise<unknown> {
+async function runFitResume(args: Record<string, unknown>, apiKeyId: string, ctx: Ctx = KEYED_CTX): Promise<unknown> {
   const resumeText = typeof args.resumeText === "string" ? args.resumeText.slice(0, 50000) : "";
   if (resumeText.trim().length < 100) throw new Error("resumeText must be at least 100 characters");
   const terms = resumeRoleTerms(resumeText, 4);
-  const query = typeof args.query === "string" && args.query.trim() ? args.query.trim() : (terms[0] ?? "");
+  const typed = typeof args.query === "string" && args.query.trim() ? args.query.trim() : "";
+  const query = typed || (terms[0] ?? "");
   if (!query) {
     return { terms, query: null, jobs: [], note: "No occupation the scanner recognises appears in this résumé — pass `query` with a job title." };
   }
   const limit = Math.max(1, Math.min(20, Number(args.limit ?? 20) || 20));
-  const r = await board(await servableSearchBody({ ...args, query, limit }));
+  // A title read out of the CV is not written to the board's search log
+  // (GP-NOLOG-1): the CV is never stored, and neither is what we read from
+  // it. A title the caller typed is searched as any other search is.
+  const r = await board(await servableSearchBody({ ...args, query, limit }), typed ? ctx : { ...ctx, noLog: true });
   // An employer scope the board could not apply is never scored as the whole board (S12-080).
   const unbound = unboundScope(companyTokens(args.companies), r);
   if (unbound) return { terms, query, ...unbound };
@@ -3171,6 +3175,9 @@ async function runFitResume(args: Record<string, unknown>, apiKeyId: string): Pr
   const jobs = servableJobs(r);
   const ids = jobs.map((j) => String(j.id)).slice(0, 20);
   let fits: Record<string, number | null> = {}, matched: Record<string, string[]> = {}, missing: Record<string, string[]> = {};
+  // Why a posting got no fit, per id, where the scorer says (S14X-052);
+  // a scorer that does not say leaves it out.
+  let unscored: Record<string, unknown> = {};
   if (ids.length) {
     const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -3188,10 +3195,16 @@ async function runFitResume(args: Record<string, unknown>, apiKeyId: string): Pr
     if (res.status === 429) throw new ScorerLimited(typeof f?.limit === "number" ? f.limit : null);
     if (!res.ok || !f?.fits) throw new Error(String(f?.error ?? `scorer answered ${res.status}`));
     fits = f.fits; matched = f.matched ?? {}; missing = f.missing ?? {};
+    unscored = f.unscored && typeof f.unscored === "object" ? f.unscored : {};
   }
   return {
     terms, query,
-    jobs: jobs.map((j) => ({ ...compactJob(j), fit: fits[String(j.id)] ?? null, matched: matched[String(j.id)] ?? [], missing: missing[String(j.id)] ?? [] })),
+    jobs: jobs.map((j) => {
+      const id = String(j.id);
+      const fit = fits[id] ?? null;
+      const why = fit === null && typeof unscored[id] === "string" ? { unscored: unscored[id] as string } : {};
+      return { ...compactJob(j), fit, ...why, matched: matched[id] ?? [], missing: missing[id] ?? [] };
+    }),
     ...disclosures(r),
   };
 }
@@ -4397,6 +4410,22 @@ async function fitFreeGate(client: SupabaseClient, apiKeyId: string): Promise<Fi
   return fitGate({ paid: false, plan: false, standing });
 }
 
+/**
+ * A FIT CALL THAT SCORED NOTHING GIVES ITS ALLOWANCE BACK (S14X-132, this
+ * door; POST /v1/fit is the other). api_key_check counted the call before the
+ * tool ran; api_key_fit_unscored records it as unscored, so
+ * api_key_fit_allowance counts scorings, not calls. Until the migration that
+ * defines it is applied the read fails: logged and swallowed, never held
+ * against the answer, and the call stays counted exactly as before.
+ */
+function giveBackFitCall(client: SupabaseClient, apiKeyId: string): void {
+  if (!apiKeyId) return;
+  background((async () => {
+    const { error } = await client.rpc("api_key_fit_unscored", { p_key_id: apiKeyId, p_endpoint: FIT_ENDPOINT });
+    if (error) console.warn("[AGENT-MCP] fit give-back not recorded:", String(error.message ?? "").slice(0, 160));
+  })());
+}
+
 /** fit_resume's refusal for a closed free gate, one sentence per reason. */
 function fitRefusal(gate: Extract<FitGate, { open: false }>): unknown {
   if (gate.reason === "unconfirmed") {
@@ -4453,8 +4482,21 @@ async function callTool(
       // (_shared/fit-gate.ts): a confirmed key or a proven account, 25 a day.
       const standing = hasFitAccess(tier) ? fitStanding(true) : await fitStandingOf(client, tier, apiKeyId);
       const gate = standing.full ? null : await fitFreeGate(client, apiKeyId);
-      if (gate && !gate.open) return fitRefusal(gate);
-      const scored = await runFitResume(args, apiKeyId) as Record<string, unknown>;
+      if (gate && !gate.open) {
+        giveBackFitCall(client, apiKeyId);
+        return fitRefusal(gate);
+      }
+      // A call that scored nothing is given back (S14X-132): no occupation,
+      // an employer scope the board could not apply, no rows, the scorer's
+      // own limit or its failure.
+      let scored: Record<string, unknown>;
+      try {
+        scored = await runFitResume(args, apiKeyId, ctx) as Record<string, unknown>;
+      } catch (e) {
+        giveBackFitCall(client, apiKeyId);
+        throw e;
+      }
+      if (!Array.isArray(scored.jobs) || scored.jobs.length === 0) giveBackFitCall(client, apiKeyId);
       return toolOk(gate && gate.basis === "free" ? { ...scored, fitFreeLeftToday: gate.left } : scored);
     }
     case "search": return toolOk(await runSearchAlias(args, ctx));
