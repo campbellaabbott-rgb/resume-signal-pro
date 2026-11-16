@@ -456,6 +456,7 @@ export { parseVendorCounts } from "../src/lib/home/vendor-counts";
 export { utcStamp, andList as homeAndList } from "../src/lib/home/stamps";
 export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/lib/format";
 export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
+export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCAN_SIGNED_IN_PER_DAY } from "../src/config/scan-allowance";
 `));
   const bundle = OUT ? join(OUT, ".prerender-data.mjs") : join(root, "scripts", ".prerender-data.mjs");
   execSync(`npx esbuild "${entry}" --bundle --format=esm --outfile="${bundle}" --log-level=error`, { cwd: root, stdio: "inherit" });
@@ -4048,7 +4049,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
           <p class="text-sm text-muted-foreground mb-3">${esc(T.transparentScoringSubtitle || "")}</p>
           <a href="/methodology" class="text-sm font-medium text-primary underline">${esc(T.viewMethodology || "View the methodology")}</a>
         </section>
-        ${cta("Scan without an account", `No signup and no card — 7 free scans a day. The text is deleted after ${clocks.tempHours} hours, the report after ${clocks.reportDays} days.`, "Scan my resume free")}`,
+        ${cta("Scan without an account", `No signup and no card — ${D.SCAN_FREE_PER_DAY} free scans a day (${D.SCAN_SIGNED_IN_PER_DAY} with a free account). The text is deleted after ${clocks.tempHours} hours, the report after ${clocks.reportDays} days.`, "Scan my resume free")}`,
     });
 
     // ---- /agent ----
@@ -4196,7 +4197,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       // constants are pinned to (a-first-call-with-no-key guard), never typed.
       // DECLARED BEFORE THE TWO SENTENCES THAT READ THEM (the 2026-09-16 bake).
       const unkeyedNames = codes(D.MCP_ANON_TOOLS.filter(toolKept));
-      const unkeyedCaps = `${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per network address (from ChatGPT, ${D.MCP_ANON_CAPS.chatgptPerPerson} for each person ChatGPT's call names; from Claude, a shared pool of ${D.MCP_ANON_CAPS.hostPoolPerDay} first), search capped at ${D.MCP_ANON_CAPS.searchRows} rows`;
+      const unkeyedCaps = `${D.MCP_ANON_CAPS.perAddressPerDay} calls a day for each internet connection an app calls from (from ChatGPT, ${D.MCP_ANON_CAPS.chatgptPerPerson} for each person ChatGPT's call names; from Claude, a shared pool of ${D.MCP_ANON_CAPS.hostPoolPerDay} first), search capped at ${D.MCP_ANON_CAPS.searchRows} rows`;
       const signInSentence = withSignIn
         ? ` From ${h(withSignIn)}: a sign-in instead of a key, while the server's sign-in service is on — the call then runs on your own account key (the same row and quota a pasted key would use); before sign-in, or while it is off, the unkeyed tools — ${unkeyedNames} — still answer, ${unkeyedCaps}.`
         : "";
@@ -4241,7 +4242,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
             <p class="text-sm text-muted-foreground mt-3">${inline(D.MCP_SIGN_IN_NEUTRAL)}</p>
             <p class="text-sm mt-2"><strong class="text-foreground">How you know it worked:</strong> ${inline(host.verify)}</p>
             <p class="text-xs text-muted-foreground mt-2">${inline(D.MCP_NEEDS_ACCOUNT_LINE)}</p>
-            <p class="text-xs text-muted-foreground mt-2">${h(D.MCP_ADDRESS_GLOSS)}</p>
+            <p class="text-xs text-muted-foreground mt-2">${h(host.allowance ?? D.MCP_ADDRESS_GLOSS)}</p>
             ${keyedHtml(host)}
           </section>`;
       // THE TILES: the page hosts only, in the mirror's order; then the one
@@ -4326,7 +4327,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
             <p class="text-sm text-muted-foreground mt-2">Any other app reaches every tool your key allows when it can send an Authorization header; how to set each one up is in <a href="${h(D.MCP_INSTALL_REPO_URL)}">the install repository</a>.</p>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">The search and read tools</h2>
-            <ul class="space-y-1.5">${keptTools.map((t) => `<li class="text-sm text-muted-foreground"><code>${t.name}</code> (${badge[t.tier] ?? "key"}${D.MCP_ANON_TOOL_NAMES.includes(t.name) ? (/application form/i.test(t.body) ? "; answers with no key, on the form-reading allowance below" : `; answers with no key, ${D.MCP_ANON_CAPS.perAddressPerDay}/day per network address`) : ""}) — ${h(scrubRetired(t.body))}</li>`).join("")}</ul>
+            <ul class="space-y-1.5">${keptTools.map((t) => `<li class="text-sm text-muted-foreground"><code>${t.name}</code> (${badge[t.tier] ?? "key"}${D.MCP_ANON_TOOL_NAMES.includes(t.name) ? (/application form/i.test(t.body) ? "; answers with no key, on the form-reading allowance below" : `; answers with no key, within the free daily allowance below`) : ""}) — ${h(scrubRetired(t.body))}</li>`).join("")}</ul>
             <p class="text-sm text-muted-foreground mt-2">${h(D.MCP_FORMS_ALLOWANCE)}</p>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">Prompts and resources your host can list</h2>
@@ -4454,6 +4455,11 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
     const affHeadline = affFill(AFF.headline, "headline");
     const affHow = affFill(AFF.howItWorks, "howItWorks");
     const affTagline = affFill(AFF.tagline, "tagline");
+    // THE DASHBOARD'S PERIODS, NOT "ANY DATE RANGE" (S14X-212): its selector
+    // offers four fixed periods, and from the affiliate lane's round the
+    // tiles answer each of them (stats_by_range). The guard reads the
+    // selector's values from Affiliates.tsx and holds this list to them.
+    const AFFILIATE_DASHBOARD_RANGES = "7, 30, 90 or 365 days";
     write({
       path: "/affiliates",
       title: `Affiliate Program — ${affRate.amount} per Referred First Month of Pro`,
@@ -4465,7 +4471,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Affiliate Program" }])}
         <h1 class="text-3xl font-bold mb-3">Join the Resume Booster affiliate program</h1>
-        <p class="text-muted-foreground mb-8">${esc(affTagline)} ${esc(affHeadline)}, a 30-day attribution window, and a dashboard that shows referrals and earnings over any date range you pick.</p>
+        <p class="text-muted-foreground mb-8">${esc(affTagline)} ${esc(affHeadline)}, a 30-day attribution window, and a dashboard that shows referrals and earnings over the last ${AFFILIATE_DASHBOARD_RANGES}.</p>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">The terms</h2>
           <ul class="space-y-2 text-sm text-muted-foreground">
             <li class="rounded-xl border border-border bg-card p-4"><span class="font-semibold text-foreground">${esc(affHeadline)}</span>: ${esc(affHow)}</li>
@@ -5026,7 +5032,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
     lines.push(companiesLlmsLine({ site: SITE, count: COMPANY_PAGE_COUNT }));
     lines.push(`- About: ${SITE}/about — what resumebooster.work is, what the board is, and how its counts are made and dated.`);
     lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API over the live board at ${API_BASE}/v1 (every path below is relative to ${API_BASE}; the addresses under ${SITE}/v1 are pages that point here), with free self-serve keys (${FREE_KEY_RATE_SENTENCE}): GET /v1/jobs, /v1/jobs/{id}, /v1/jobs/{id}/application (the employer's own application form for a live posting, read and never filled or submitted), /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (${D.MCP_FIT_ALLOWANCE}, counted together with fit_resume on the MCP server). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
-    lines.push(`- MCP server for AI agents: ${SITE}/agents (listed in the official MCP registry as ${MCP_REGISTRY_NAME}) — search and read tools (${LLMS_TOOLS.map((t) => t.name).join(", ")}) over the same board.${LLMS_REACH_LINE ? ` ${LLMS_REACH_LINE}` : ""} ${D.MCP_FORMS_ALLOWANCE} MCP server address (Streamable HTTP): ${MCP_URL} — registry name ${MCP_REGISTRY_NAME}. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per network address — an office or a home connection counts as one; from ChatGPT each person has their own ${D.MCP_ANON_CAPS.chatgptPerPerson}, and Claude's users share ${D.MCP_ANON_CAPS.hostPoolPerDay} a day first — ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, and ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} ${D.MCP_PAID_TOOLS.length === 1 ? "gives" : "give"} ${D.MCP_FIT_ALLOWANCE}. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.page && x.header).map((x) => x.name))}, and any other app that can send a header, with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => x.page && !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; the page's own steps are at ${SITE}/agents#<host> for ${D.MCP_PAGE_HOSTS.map((x) => x.id).join(", ")}; setup for every other app is in the install repository's README at ${D.MCP_INSTALL_REPO_URL}. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}`);
+    lines.push(`- MCP server for AI agents: ${SITE}/agents (listed in the official MCP registry as ${MCP_REGISTRY_NAME}) — search and read tools (${LLMS_TOOLS.map((t) => t.name).join(", ")}) over the same board.${LLMS_REACH_LINE ? ` ${LLMS_REACH_LINE}` : ""} ${D.MCP_FORMS_ALLOWANCE} MCP server address (Streamable HTTP): ${MCP_URL} — registry name ${MCP_REGISTRY_NAME}. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day for each internet connection an app calls from — an office or a home connection counts as one; from ChatGPT each person has their own ${D.MCP_ANON_CAPS.chatgptPerPerson}, and Claude's users share ${D.MCP_ANON_CAPS.hostPoolPerDay} a day first — ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, and ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} ${D.MCP_PAID_TOOLS.length === 1 ? "gives" : "give"} ${D.MCP_FIT_ALLOWANCE}. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.page && x.header).map((x) => x.name))}, and any other app that can send a header, with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => x.page && !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; the page's own steps are at ${SITE}/agents#<host> for ${D.MCP_PAGE_HOSTS.map((x) => x.id).join(", ")}; setup for every other app is in the install repository's README at ${D.MCP_INSTALL_REPO_URL}. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}`);
     lines.push("");
     if (insights?.overall?.n) {
       const o = insights.overall;
