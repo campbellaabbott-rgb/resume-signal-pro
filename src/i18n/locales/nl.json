@@ -2800,7 +2800,7 @@
         "shortlist": {
           "what": "Cv's van kandidaten die een werkgever met Shortlist beoordeelt",
           "where": "Het account van die werkgever, als geredigeerde tekst",
-          "howLong": "Tot de werkgever ze verwijdert"
+          "howLong": "Tot de werkgever de kandidaat, de functie of zijn account verwijdert; wat vier jaar na het uploaden nog bewaard is, wordt verwijderd"
         }
       },
       "footnote": "Verwijderen gebeurt elke 15 minuten voor de tijdelijke opslag en elk uur voor de rapportcache, de AI-cache en betaalde analyses. Wil je iets eerder laten wissen, mail dan {{email}}."

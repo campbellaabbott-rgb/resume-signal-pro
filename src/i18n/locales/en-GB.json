@@ -2800,7 +2800,7 @@
         "shortlist": {
           "what": "Candidates' CVs an employer screens with Shortlist",
           "where": "That employer's account, as redacted text",
-          "howLong": "Until the employer deletes them"
+          "howLong": "Until the employer deletes the candidate, the role or its account; anything still held four years after it was uploaded is deleted"
         }
       },
       "footnote": "Deletion runs every 15 minutes for the temporary store and every hour for the report cache, the AI cache and paid analyses. To have anything erased sooner, email {{email}}."

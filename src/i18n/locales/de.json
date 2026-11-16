@@ -2800,7 +2800,7 @@
         "shortlist": {
           "what": "Lebensläufe von Kandidaten, die ein Arbeitgeber mit Shortlist prüft",
           "where": "Das Konto dieses Arbeitgebers, als geschwärzter Text",
-          "howLong": "Bis der Arbeitgeber sie löscht"
+          "howLong": "Bis der Arbeitgeber die Kandidatin oder den Kandidaten, die Stelle oder sein Konto löscht; was vier Jahre nach dem Hochladen noch gespeichert ist, wird gelöscht"
         }
       },
       "footnote": "Gelöscht wird alle 15 Minuten im Zwischenspeicher und stündlich im Bericht-Cache, im KI-Cache und bei bezahlten Analysen. Wenn etwas früher gelöscht werden soll, schreib an {{email}}."

@@ -2800,7 +2800,7 @@
         "shortlist": {
           "what": "Mga resume ng kandidato na sinusuri ng isang employer gamit ang Shortlist",
           "where": "Ang account ng employer na iyon, bilang redacted na text",
-          "howLong": "Hanggang burahin ng employer ang mga ito"
+          "howLong": "Hanggang burahin ng employer ang kandidato, ang role o ang account nito; binubura ang anumang nakatago pa rin apat na taon matapos itong i-upload"
         }
       },
       "footnote": "Tumatakbo ang pagbura kada 15 minuto para sa pansamantalang storage at kada oras para sa report cache, AI cache at mga bayad na pagsusuri. Para ipabura ang anuman nang mas maaga, mag-email sa {{email}}."

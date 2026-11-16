@@ -2823,7 +2823,7 @@
         "shortlist": {
           "what": "Currículos de candidatos que um empregador avalia com o Shortlist",
           "where": "A conta desse empregador, como texto anonimizado",
-          "howLong": "Até o empregador os eliminar"
+          "howLong": "Até o empregador excluir o candidato, a vaga ou a conta dele; o que ainda estiver guardado quatro anos após o envio é excluído"
         }
       },
       "footnote": "A eliminação corre a cada 15 minutos no armazenamento temporário e a cada hora na cache de relatórios, na cache de IA e nas análises pagas. Para apagar algo mais cedo, envie um e-mail para {{email}}."

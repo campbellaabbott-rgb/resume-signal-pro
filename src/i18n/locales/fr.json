@@ -2823,7 +2823,7 @@
         "shortlist": {
           "what": "Les CV de candidats qu'un employeur évalue avec Shortlist",
           "where": "Le compte de cet employeur, sous forme de texte caviardé",
-          "howLong": "Jusqu'à ce que l'employeur les supprime"
+          "howLong": "Jusqu'à ce que l'employeur supprime le candidat, le poste ou son compte ; ce qui est encore conservé quatre ans après son téléversement est supprimé"
         }
       },
       "footnote": "La suppression tourne toutes les 15 minutes pour le stockage temporaire et toutes les heures pour le cache de rapports, le cache d'IA et les analyses payantes. Pour faire effacer quoi que ce soit plus tôt, écrivez à {{email}}."

@@ -2823,7 +2823,7 @@
         "shortlist": {
           "what": "Currículums de candidatos que una empresa evalúa con Shortlist",
           "where": "La cuenta de esa empresa, como texto anonimizado",
-          "howLong": "Hasta que la empresa los elimine"
+          "howLong": "Hasta que el empleador elimine al candidato, el puesto o su cuenta; lo que siga guardado cuatro años después de subirse se elimina"
         }
       },
       "footnote": "El borrado se ejecuta cada 15 minutos en el almacén temporal y cada hora en la caché de informes, la caché de IA y los análisis de pago. Si quieres que se borre algo antes, escribe a {{email}}."
