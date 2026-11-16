@@ -20,6 +20,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { definitionOf, migFile } from "./helpers/fixed-clock-sql";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 
 vi.setConfig({ hookTimeout: 120_000, testTimeout: 60_000 });
 
@@ -38,8 +39,10 @@ let now: Insights;
 
 beforeAll(async () => {
   db = new PGlite();
+  // From Supabase's default grants (S14X-140): the client roles start holding
+  // what the live database gives every new function, as the file meets them.
+  await db.exec(SUPABASE_DEFAULTS);
   await db.exec(`
-    CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
     CREATE TABLE public.scan_metrics (
       id bigserial PRIMARY KEY, scan_type text, status text, response_score integer,
       metadata jsonb NOT NULL DEFAULT '{}'::jsonb, created_at timestamptz NOT NULL DEFAULT now());
