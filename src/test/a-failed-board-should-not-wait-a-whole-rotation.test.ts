@@ -179,7 +179,7 @@ describe("a failed board should not wait a whole rotation", () => {
     // from DEEP_PER_SLICE, which cost the rotation 4x at 25.
     expect(cap).toBeGreaterThan(0);
     expect(cap, "a retry lane larger than the deep lane will cost rotation speed").toBeLessThanOrEqual(8);
-    const lane = CODE.slice(CODE.indexOf("let retryBoards"), CODE.indexOf("const slice = [...demandBoards"));
+    const lane = CODE.slice(CODE.indexOf("let retryBoards"), CODE.indexOf("const slice = [...waitBoards"));
     expect(lane).toMatch(/if \(!inHotPhase\)/);
     expect(lane).toMatch(/\} catch \{/);
     // Retry is present and ahead of base: a lane behind the budget-hit tail is
@@ -191,7 +191,7 @@ describe("a failed board should not wait a whole rotation", () => {
 
   it("the failure state is read BEFORE the slice is sealed", () => {
     const read = CODE.indexOf('eq("k", "board_failures")');
-    const sealed = CODE.indexOf("const slice = [...demandBoards");
+    const sealed = CODE.indexOf("const slice = [...waitBoards");
     expect(read).toBeGreaterThan(-1);
     expect(read, "the retry lane has no work list because the state is read too late").toBeLessThan(sealed);
   });

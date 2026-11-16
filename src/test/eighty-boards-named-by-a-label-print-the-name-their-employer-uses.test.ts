@@ -91,9 +91,9 @@ describe("every board the evidence names prints that name", () => {
     }
   });
 
-  it("each bare token is in RENAMED_TOKENS and the lane's version moved to 6, so the stored rows follow", () => {
+  it("each bare token is in RENAMED_TOKENS and the lane's version moved to 7, so the stored rows follow", () => {
     const code = codeOf(readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8"));
-    expect(/const NAME_SYNC_VERSION = (\d+);/.exec(code)?.[1]).toBe("6");
+    expect(/const NAME_SYNC_VERSION = (\d+);/.exec(code)?.[1]).toBe("7");
     const block = /const RENAMED_TOKENS: readonly string\[\] = \[([\s\S]*?)\];/.exec(code)?.[1] ?? "";
     const listed = new Set([...block.matchAll(/"([^"]+)"/g)].map((m) => m[1]));
     for (const slug of EVIDENCE.keys()) if (!slug.includes("~")) expect(listed.has(slug.slice(slug.indexOf(":") + 1)), slug).toBe(true);

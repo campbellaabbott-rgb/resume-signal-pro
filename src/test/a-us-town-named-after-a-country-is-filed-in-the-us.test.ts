@@ -46,6 +46,13 @@ const CHANGED: Record<string, { want: string | null; why: string }> = {
   "IL - Peru": { want: "US", why: "CVS Health, the string names Illinois" },
 };
 
+/** Strings .102 moves, each labelled and judged in country-corpus-2026-11-11.json. */
+const FX_102 = JSON.parse(readFileSync(resolve(__dirname, "fixtures/country-corpus-2026-11-11.json"), "utf8")) as {
+  moved: Record<string, string | null>;
+  movedStated: Record<string, string | null>;
+};
+const has = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);
+
 describe("the corpus: every distinct live location string reads as it did at 4b62fb7a, except the measured fixes", () => {
   it("holds the real corpus the rule was measured on", () => {
     expect(CORPUS.rows.length).toBeGreaterThanOrEqual(5_000);
@@ -58,8 +65,8 @@ describe("the corpus: every distinct live location string reads as it did at 4b6
     const drift: string[] = [];
     for (const [loc, d0, s0] of CORPUS.rows) {
       const c = Object.prototype.hasOwnProperty.call(CHANGED, loc) ? CHANGED[loc] : null;
-      const wantD = c ? c.want : d0;
-      const wantS = c ? c.want : s0;
+      const wantD = c ? c.want : has(FX_102.moved, loc) ? FX_102.moved[loc] : d0;
+      const wantS = c ? c.want : has(FX_102.movedStated, loc) ? FX_102.movedStated[loc] : s0;
       const d = detectCountry(loc), s = statedCountry(loc);
       if (d !== wantD) drift.push(`detectCountry(${JSON.stringify(loc)}) = ${d}, want ${wantD} (was ${d0})`);
       if (s !== wantS) drift.push(`statedCountry(${JSON.stringify(loc)}) = ${s}, want ${wantS} (was ${s0})`);
@@ -111,6 +118,6 @@ describe("the rule needs a state the string names, upper case and one of the fif
   });
 
   it("the map version moved, so the backfill sweep re-reads the rows stored with no country", () => {
-    expect(COUNTRY_MAP_VERSION).toBe(12);
+    expect(COUNTRY_MAP_VERSION).toBe(13);
   });
 });

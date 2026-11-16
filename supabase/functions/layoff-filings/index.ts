@@ -76,7 +76,10 @@ import {
 // 2026-10-26.1 (trust/round3): the copy carries 64 boards renamed to their employers' own names, 20
 // employers' boards without the agency label and Jobandtalent's three with it, the Exelon brand boards
 // in the four duplicate iCIMS hosts' places, the iCIMS org field and the Oracle pool sites.
-export const BUILD_VERSION = "2026-10-26.1";
+// 2026-11-11.1 (board .102, catalogue lane): the copy drops 25 boards (OD1's six, nine twins, ten
+// dead or duplicate boards), labels six agencies, repoints 13 boards, renames four and adds
+// Convergint's Workday site; the alias copy drops broadbean and Mindrift.
+export const BUILD_VERSION = "2026-11-11.1";
 
 // ── mirror constants (src/config/layoffs.ts names this file) ──────────────
 export const LAYOFF_LOOKBACK_DAYS = 90;

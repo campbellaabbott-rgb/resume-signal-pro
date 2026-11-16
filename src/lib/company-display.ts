@@ -131,6 +131,13 @@ const REAL_TENANT_NAMES = new Set([
   // Gartner, we guide the leaders", momentive~wd1~MC "Join the Momentive
   // Talent Community", zoom~wd5~Zoom "Zoom's Enterprise Security team".
   "agiliti", "brightli", "chevron", "flowserve", "gartner", "momentive", "zoom",
+  // convergint~wd501~Gbl, read 2026-11-15 from its CXS sidebar: "Convergint’s
+  // story is defined by people, purpose, and progress" (board .102 appends it).
+  "convergint",
+  // A single-segment token: ashby:black-forest-labs, read 2026-11-15 from its
+  // Ashby board: "Black Forest Labs builds visual intelligence" (board .102
+  // repoints it from greenhouse:blackforestlabs).
+  "black-forest-labs",
 ]);
 
 /**
@@ -187,7 +194,8 @@ const titleWord = (w: string) => (w ? w[0].toUpperCase() + w.slice(1) : w);
  *     "Starfish" for Torch Technologies' tenant), with no override and not a
  *     REAL_TENANT_NAMES name read on the employer's own site;
  *   - a single-segment board whose name is its token title-cased and nothing
- *     more ("Harmattan Ai" for harmattan-ai, "Creatoriq" for creatoriq).
+ *     more ("Harmattan Ai" for harmattan-ai, "Creatoriq" for creatoriq), unless
+ *     REAL_TENANT_NAMES holds the whole token.
  *
  * The bake asks this ONLY of a posting it would give a NEW page
  * (postingFreshNameReason in scripts/prerender-posting-rule.mjs): measured
@@ -208,6 +216,7 @@ export function isUnreviewedTenantName(token: string | null | undefined, name: s
     if (!slug || REAL_TENANT_NAMES.has(slug)) return false;
     return isSystemCodeName(t, n);
   }
+  if (REAL_TENANT_NAMES.has(t.toLowerCase())) return false;
   return n === t.toLowerCase().split(/[-_.]+/).filter(Boolean).map(titleWord).join(" ");
 }
 

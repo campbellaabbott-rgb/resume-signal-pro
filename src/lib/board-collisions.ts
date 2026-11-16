@@ -4,7 +4,7 @@
  *   npx tsx scripts/board-collisions.ts
  *
  * A company page lives at /jobs/company/<token>, and the token is the board's
- * name on its hiring system. 139 tokens are carried by two systems at once,
+ * name on its hiring system. 138 tokens are carried by two systems at once,
  * and nothing we hold says whether the two boards are one employer. Often they
  * are not: /jobs/company/clear lists Clear (BambooHR) beside CLEAR - Corporate
  * (Greenhouse), and /jobs/company/ans lists ANS beside the Agence du Numérique
@@ -95,7 +95,6 @@ const ROWS: ReadonlyArray<readonly [token: string, boards: ReadonlyArray<readonl
   ["grand", [["ashby", "Grand"], ["lever", "Grand Games"]]],
   ["grantthornton", [["bamboohr", "Grant Thornton"], ["teamtailor", "Grant Thornton Sweden"]]],
   ["headway", [["ashby", "Headway"], ["teamtailor", "Headway Inc"]]],
-  ["helsing", [["greenhouse", "Helsing"], ["pinpoint", "Helsing"]]],
   ["hived", [["ashby", "Hived"], ["recruitee", "Hived NV"]]],
   ["hll", [["bamboohr", "Hll"], ["teamtailor", "HLL Hyreslandslaget"]]],
   ["infinite", [["ashby", "Infinite"], ["breezy", "Infinite Group"]]],

@@ -7,9 +7,11 @@ import {
   clearOversize,
   heldOversize,
   loadOversizeEntries,
+  nextWaiting,
   noteOversize,
   oversizeStatusRows,
   oversizeTokens,
+  unreadKeys,
   type OversizeEntry,
 } from "../../supabase/functions/job-board/oversize-registry.ts";
 import { classifyStale, staleExclusion, type StaleContext, type StaleRow } from "../../supabase/functions/job-board/stale-lane.ts";
@@ -148,7 +150,7 @@ function run<T>(body: string, scope: Record<string, unknown>): T {
   const names = Object.keys(scope);
   return new Function(...names, `${transpile(`function __shipped() {\n${body}\n}`)}\nreturn __shipped();`)(...names.map((n) => scope[n])) as T;
 }
-const MODULE = { clearOversize, heldOversize, loadOversizeEntries, noteOversize, oversizeStatusRows, oversizeTokens };
+const MODULE = { clearOversize, heldOversize, loadOversizeEntries, nextWaiting, noteOversize, oversizeStatusRows, oversizeTokens, unreadKeys };
 
 /** One top-level function of index.ts. */
 function lifted(name: string): string {
@@ -190,17 +192,17 @@ function propertyExpr(prop: string, from = 0): string {
 }
 
 /** The oversize branch's registry statements, run for `board`; returns whether they marked the row dirty. */
-function recordOversizeVisit(reg: Map<string, OversizeEntry>, board: { source: string; token: string }, mb: number): boolean {
+function recordOversizeVisit(reg: Map<string, OversizeEntry>, board: { source: string; token: string }, mb: number, waits = false): boolean {
   const lines = registryLines('if (failReason.startsWith("oversize"))', "budgetSkipped.push(s.token);");
   return run<boolean>(`let oversizeDirty = false;\n${lines.join("\n")}\nreturn oversizeDirty;`, {
-    ...MODULE, OVERSIZE_BOARDS: reg, SHARED_TOKENS: SHIPPED_SHARED, s: board, mb,
+    ...MODULE, OVERSIZE_BOARDS: reg, SHARED_TOKENS: SHIPPED_SHARED, s: board, mb, waits,
   });
 }
-/** The success path's registry statements, run for `board`. */
-function recordRead(reg: Map<string, OversizeEntry>, board: { source: string; token: string }): boolean {
+/** The success path's registry statements, run for `board`; `bare` when D7 read it without its details. */
+function recordRead(reg: Map<string, OversizeEntry>, board: { source: string; token: string }, bare?: { mb: number }): boolean {
   const lines = registryLines("okKeys.push(boardKeyOf(s));", "try {");
   return run<boolean>(`let oversizeDirty = false;\n${lines.join("\n")}\nreturn oversizeDirty;`, {
-    ...MODULE, OVERSIZE_BOARDS: reg, SHARED_TOKENS: SHIPPED_SHARED, s: board,
+    ...MODULE, OVERSIZE_BOARDS: reg, SHARED_TOKENS: SHIPPED_SHARED, s: board, bareRead: !!bare, failReason: bare ? `oversize ${bare.mb}MB` : "",
   });
 }
 
@@ -210,7 +212,8 @@ async function loadShipped(reg: Map<string, OversizeEntry>, boards: unknown): Pr
   const client = { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { v: { boards } }, error: null }) }) }) }) };
   const load = run<(c: unknown) => Promise<void>>(
     `${metaRead}\n${FN.includes("async function readMetaRow(") ? lifted("readMetaRow") : ""}\n${lifted("loadOversizeBoards")}\nreturn loadOversizeBoards;`,
-    { ...MODULE, OVERSIZE_BOARDS: reg, SHARED_TOKENS: SHIPPED_SHARED, console: { warn: () => {}, log: () => {} } },
+    // CATALOGUE_KEYS unbound to a set: board .102's catalogue prune has its own test.
+    { ...MODULE, OVERSIZE_BOARDS: reg, SHARED_TOKENS: SHIPPED_SHARED, CATALOGUE_KEYS: undefined, console: { warn: () => {}, log: () => {} } },
   );
   await load(client);
 }
@@ -315,7 +318,7 @@ describe("index.ts keys the oversize registry by board", () => {
       ["greenhouse:pulse", { source: "greenhouse", mb: 20.6, at: "x" }],
       ["bigco", { source: "teamtailor", mb: 15, at: "y" }],
     ]);
-    const lines = registryLines("let staleBoards: JobSource[] = [];", "const slice = [...demandBoards");
+    const lines = registryLines("let staleBoards: JobSource[] = [];", "const slice = [...waitBoards");
     const scope = { ...MODULE, OVERSIZE_BOARDS: reg, staleExclusion, staleTries: new Map<string, number>() };
     const exclusion = lines.map((l) => /^\s*const (staleExclude) = ([\s\S]*);\s*$/.exec(l)).find(Boolean);
     expect(exclusion, "the p_exclude list is built in one statement from the registry").toBeTruthy();
@@ -340,6 +343,47 @@ describe("index.ts keys the oversize registry by board", () => {
     const row = (k: string, v: string): StaleRow => ({ stale_token: k, stale_vendor: v, stamped_at: "2026-10-01T00:00:00Z", age_min: 6000, posting_rows: 3, live_rows: 3, newest_effective: null });
     const verdicts = classifyStale([row("greenhouse:pulse", "greenhouse"), row("ashby:pulse", "ashby")], ctx);
     expect(verdicts.map((v) => v.cls), "the deferred board is oversize; its twin is not").toEqual(["oversize", "unexplained"]);
+  });
+
+  it("a board refused for want of the slice's one stream is registered waiting, from its first refusal, and the next cold slice streams it first", () => {
+    const reg = new Map<string, OversizeEntry>();
+    const vdk = { source: "recruitee", token: "vdkgroep" }, ster = { source: "recruitee", token: "sterkinmatches" };
+    // sterkinmatches was first refused before vdkgroep, whose visit is stamped with the real clock.
+    const t0 = Date.parse("2026-11-01T00:00:00Z");
+    noteOversize(reg, ster, 4, SHARED, t0, "wait");
+    expect(recordOversizeVisit(reg, vdk, 4, true)).toBe(true);
+    expect(reg.get("vdkgroep")).toMatchObject({ source: "recruitee", mb: 4, wait: true });
+    // Refused again: the entry keeps its first refusal, so the longest waiter goes first and a starved one shows its age.
+    noteOversize(reg, ster, 4, SHARED, t0 + 3_600_000, "wait");
+    expect(reg.get("sterkinmatches")!.at).toBe(new Date(t0).toISOString());
+    expect(nextWaiting(reg, new Set()), "the one refused longest ago").toBe("sterkinmatches");
+    expect(nextWaiting(reg, new Set(["sterkinmatches"])), "not one the slice already carries").toBe("vdkgroep");
+    // A refusal the stream made itself (a bound tripped) is no wait: the entry restarts its clock and leaves the lane.
+    noteOversize(reg, ster, 4, SHARED, t0 + 7_200_000);
+    expect(reg.get("sterkinmatches")).toEqual({ source: "recruitee", mb: 4, at: new Date(t0 + 7_200_000).toISOString() });
+    expect(nextWaiting(reg, new Set(["vdkgroep"]))).toBeNull();
+    // The streamed read clears it.
+    expect(recordRead(reg, vdk)).toBe(true);
+    expect(reg.has("vdkgroep")).toBe(false);
+  });
+
+  it("a Workable board read without its details stays registered, marked bare: its rows exit as any read board's, and the stale lane may pick it", async () => {
+    const reg = new Map<string, OversizeEntry>();
+    const cxg = { source: "workable", token: "cxg" };
+    recordOversizeVisit(reg, cxg, 4);
+    expect(recordRead(reg, cxg, { mb: 4 }), "the flag is news: the row is written").toBe(true);
+    expect(reg.get("cxg")).toMatchObject({ source: "workable", mb: 4, bare: true });
+    expect(heldOversize(reg, { source: "workable", company_token: "cxg" }, SHARED), "a bare board's aged rows are not held").toBe(false);
+    expect(unreadKeys(reg)).toEqual([]);
+    noteOversize(reg, bigco, 15, SHARED);
+    expect(unreadKeys(reg)).toEqual(["bigco"]);
+    const logged = await sweepShipped(reg, [agedRow("workable", "cxg", 1), agedRow("teamtailor", "bigco", 2)]);
+    expect(logged, "the bare board's aged row reaches the closure log; the unread board's is held").toEqual(["workable:cxg:1"]);
+    // The flags survive a reload and reach status.
+    loadOversizeEntries(reg, { cxg: { source: "workable", mb: 4, at: "a", bare: true }, vdkgroep: { source: "recruitee", mb: 4, at: "b", wait: true } }, SHARED);
+    expect(reg.get("cxg")).toEqual({ source: "workable", mb: 4, at: "a", bare: true });
+    expect(reg.get("vdkgroep")).toEqual({ source: "recruitee", mb: 4, at: "b", wait: true });
+    expect(oversizeStatusRows({ cxg: { source: "workable", mb: 4, at: "a", bare: true } })).toEqual([{ token: "cxg", key: "cxg", source: "workable", mb: 4, at: "a", bare: true }]);
   });
 
   it("status names each entry by bare token and by board key", () => {

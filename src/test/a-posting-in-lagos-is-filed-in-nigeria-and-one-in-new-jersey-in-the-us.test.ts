@@ -85,10 +85,11 @@ describe("SmartRecruiters: the employer's own country overrules a region code re
       if (right(r.main, truth)) expect(now, `${r.token}/${r.id} "${r.location.fullLocation}" was right (${r.main}) and must stay right`).toSatisfy((g: string | null) => right(g, truth));
       else if (right(now, truth)) fixed.push(`${r.token}:${now}`);
     }
-    // 36 Nigeria (Lagos, Ikeja, Lekki; the four StandardBankGroup captures whose location is a bare ","
-    // stay unplaced, as they are today), 3 Nicaragua, 2 Iraq, 1 North Macedonia and 1 Kazakhstan.
+    // 40 Nigeria (Lagos, Ikeja, Lekki, and since .102 the four StandardBankGroup captures whose location is
+    // a bare ",": the vendor's stated ng stands where we read nothing), 3 Nicaragua, 2 Iraq, 1 North
+    // Macedonia and 1 Kazakhstan.
     const by = (c: string) => fixed.filter((x) => x.endsWith(`:${c}`)).length;
-    expect({ NG: by("NG"), NI: by("NI"), IQ: by("IQ"), MK: by("MK"), KZ: by("KZ"), all: fixed.length }).toEqual({ NG: 36, NI: 3, IQ: 2, MK: 1, KZ: 1, all: 43 });
+    expect({ NG: by("NG"), NI: by("NI"), IQ: by("IQ"), MK: by("MK"), KZ: by("KZ"), all: fixed.length }).toEqual({ NG: 40, NI: 3, IQ: 2, MK: 1, KZ: 1, all: 47 });
   });
 
   it("the four StandardBankGroup captures whose detail answer says \",\" read \"Lagos, LA, Nigeria\" in the list the board reads, and are filed NG with it", () => {
@@ -193,12 +194,16 @@ describe("the corpus: every distinct live location string answers what the reade
   };
   /** Strings the fix takes from a wrong country to none, where the vendor's own field says US. */
   const UNPLACED: Record<string, null> = { "Lake Wales (1250)": null };
+  /** Strings .102 moves (seventeen names, Wien, Hong Kong, Macau and Taiwan ahead of China), each
+   *  labelled by a vendor's code or by hand in country-corpus-2026-11-11.json, which judges them. */
+  const MOVED_102 = (JSON.parse(readFileSync(resolve(__dirname, "fixtures/country-corpus-2026-11-11.json"), "utf8")) as { moved: Record<string, string | null> }).moved;
 
   it(`holds a real corpus (${"5,596"} strings) and pins it`, () => {
     expect(CORPUS.rows.length).toBeGreaterThanOrEqual(5_000);
     const drift: string[] = [];
     for (const [loc, main] of CORPUS.rows) {
-      const want = Object.prototype.hasOwnProperty.call(CHANGED, loc) ? CHANGED[loc] : Object.prototype.hasOwnProperty.call(UNPLACED, loc) ? null : main;
+      const want = Object.prototype.hasOwnProperty.call(CHANGED, loc) ? CHANGED[loc] : Object.prototype.hasOwnProperty.call(UNPLACED, loc) ? null
+        : Object.prototype.hasOwnProperty.call(MOVED_102, loc) ? MOVED_102[loc] : main;
       const got = detectCountry(loc);
       if (got !== want) drift.push(`${JSON.stringify(loc)}: ${main} at 8a65d88a, want ${want}, got ${got}`);
     }
@@ -214,8 +219,8 @@ describe("the corpus: every distinct live location string answers what the reade
   });
 
   it("the map version moved, so the backfill sweep re-reads the rows stored with no country", () => {
-    // 11 for this fix; 12 since trust round 3 (US towns named after countries).
-    expect(COUNTRY_MAP_VERSION).toBe(12);
+    // 11 for this fix; 12 since trust round 3 (US towns named after countries); 13 since .102.
+    expect(COUNTRY_MAP_VERSION).toBe(13);
   });
 });
 

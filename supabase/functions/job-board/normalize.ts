@@ -38,6 +38,8 @@ export interface JobPosting {
   employmentTypeText?: string | null;
   /** The level the employer picked in its ATS (Personio), n1421. */
   level?: StatedLevel | null;
+  /** The day the employer says the posting closes. */
+  closesAt?: string | null;
 }
 
 export type EmploymentType = "full_time" | "part_time" | "contract" | "temporary" | "internship";
@@ -108,13 +110,18 @@ export function safeIso(value: unknown): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+/** XR-1: USAJOBS closes at 11:59 p.m. Eastern on the date it states with no zone; read as the end of that day at UTC-5, never early. */
+export function easternClose(value: unknown): string | null {
+  return typeof value === "string" && /^\d{4}-\d\d-\d\d(?:T[\d:.]*)?$/.test(value) ? safeIso(`${value.slice(0, 10)}T23:59:59-05:00`) : safeIso(value);
+}
+
 // Rationale: docs/job-board-index-notes.md#n966-export-function-isdatedbefore-sanitizedp
 export function isDatedBefore(sanitizedPostedAt: string | null, cutoffMs: number): boolean {
   return sanitizedPostedAt !== null && Date.parse(sanitizedPostedAt) < cutoffMs;
 }
 
 // Rationale: docs/job-board-index-notes.md#n967-const-unescapeentities-s-string
-const unescapeEntities = (s: string) =>
+export const unescapeEntities = (s: string) =>
   s
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
@@ -190,10 +197,14 @@ export function stripNegatedRemote(s: string): string {
 const P_HYBRID = /\bhybrid\b|\bhybride\b|\bh[íi]brido?\b/i;
 const P_REMOTE = /\bremote\b|\bwork from home\b|\bwfh\b|\bt[ée]l[ée]travail\b|\bhome\s?office\b|\bremoto\b|\bthuiswerken\b|\bteletrabajo\b/i;
 const P_ONSITE = /\bon-?site\b|\bin-?office\b|\bvor ort\b|\bpresencial\b|\bsur site\b/i;
+// A trade, not a mode ("Remote Sensing"): each term hand-labelled in fixtures/work-mode-corpus-2026-11-11.json.
+const P_TRADE = /\b(?:remote(?:ly)?(?:\s+|-)(?:sens\w*|pilot\w*|operated|operations?\s+(?:cent|contr)\w*|monitoring|access|sites?|services)|hybrid(?:\s+|-)(?:cloud|infrastructure|vehicles?|drivers?|riders?))\b/gi;
+/** BR-08: text naming a trade term, whose mode changed only by this reading (index.ts logs no employer edit for it). */
+export const namesATrade = (s: string) => s.search(P_TRADE) >= 0;
 export function detectWorkMode(...parts: Array<string | null | undefined>): "remote" | "hybrid" | "onsite" | null {
   const joined = parts.filter(Boolean).join(" · ");
   if (!joined) return null;
-  const s = stripNegatedRemote(joined);
+  const s = stripNegatedRemote(joined).replace(P_TRADE, " ");
   if (P_HYBRID.test(s)) return "hybrid";
   if (P_REMOTE.test(s)) return "remote";
   if (P_ONSITE.test(s)) return "onsite";
@@ -275,6 +286,15 @@ export function vendorWorkMode(v: string | null | undefined): "remote" | "hybrid
   return VENDOR_MODE.get(v.toLowerCase().replace(/[\s-]+/g, "_")) ?? null;
 }
 
+const P_US_STATE_NAME = /\b(?:alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming)\b/i;
+const P_STREET_WORD = /\b(?:road|rd|street|st|avenue|ave|suite|blvd|drive|dr|lane|ln|way|parkway|pkwy|highway|hwy|court|ct|place|pl)\b/i;
+// Ahead of the comma-state rule ("Lagos, LA, Nigeria"), and never a name a street word follows.
+// Jordan and Lebanon are US towns: last segment only, and never with a US state's name in the text.
+const COUNTRY_NAMES_17: ReadonlyArray<readonly [RegExp, string]> = [
+  ...("nigeria NG;ghana GH;bangladesh BD;ethiopia ET;uganda UG;tanzania TZ;rwanda RW;senegal SN;ivory coast|c[oô]te d['’]ivoire CI;" +
+    "cameroon CM;algeria DZ;sri lanka LK;nepal NP;kazakhstan KZ;qatar QA").split(";").map((e) => [new RegExp(`\\b(?:${e.slice(0, -3)})\\b(?!\\s+${P_STREET_WORD.source})`, "i"), e.slice(-2)] as const),
+  ...(["jordan JO", "lebanon LB"]).map((e) => [new RegExp(`^(?!.*${P_US_STATE_NAME.source})[^,]{3}.*,\\s*${e.slice(0, -3)}\\s*$`, "i"), e.slice(-2)] as const),
+];
 // Rationale: docs/job-board-index-notes.md#n975-const-country_patterns-readonlyarray-rea
 const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b(?:united states|u\.?s\.?a\.?|estados unidos)\b/i, "US"],
@@ -326,10 +346,14 @@ const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b(?:turkey|türkiye)\b/i, "TR"],
   [/\bukraine\b/i, "UA"],
   [/\bcosta rica\b/i, "CR"],
+  // Ahead of China ("Hong Kong SAR, China").
+  [/\btaiwan\b/i, "TW"],
+  [/\bhong kong\b/i, "HK"],
+  // Not Macau beside a Brazilian state's code ("Macau, RN").
+  [/\bmaca[uo]\b(?!\s*[,/-]\s*(?:AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b|.*\b(?:rio grande do norte|bra[sz]il)\b)/i, "MO"],
   // Rationale: docs/job-board-index-notes.md#n979-bchina-b-i-cn
   [/\bchina\b/i, "CN"],
   [/\bpakistan\b/i, "PK"],
-  [/\btaiwan\b/i, "TW"],
   [/\bbulgaria\b/i, "BG"],
   [/\bcroatia\b/i, "HR"],
   [/\bslovakia\b/i, "SK"],
@@ -341,6 +365,7 @@ const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\bkenya\b/i, "KE"],
   [/\becuador\b/i, "EC"],
   [/\buruguay\b/i, "UY"],
+  ...COUNTRY_NAMES_17,
 ];
 // Comma-prefixed uppercase state/province codes only — "Austin, TX" yes,
 // stray "in" or "or" inside words no.
@@ -408,11 +433,10 @@ function leadingCodeItsOwnCountry(s: string): string | null {
 function leadingStatedState(s: string): string | null {
   return P_US_PREFIXED_STATE.exec(s)?.[1] ?? leadingPunctuatedState(s);
 }
-const P_US_STATE_NAME = /\b(?:alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming)\b/i;
 const P_CA_PROV_NAME = /\b(?:ontario|quebec|british columbia|alberta|manitoba|saskatchewan|nova scotia|new brunswick|newfoundland)\b/i;
 
 // Rationale: docs/job-board-index-notes.md#n983-export-const-country_map_version
-export const COUNTRY_MAP_VERSION = 12;
+export const COUNTRY_MAP_VERSION = 13;
 const CITY_COUNTRY = new Map<string, string>([
   ["aarhus", "DK"],
   ["aberdeen", "GB"],
@@ -750,6 +774,22 @@ export function cityCountry(location: string): string | null {
   return null;
 }
 
+// "Road ... Vienna VA 22182" with no comma: US after a street word in the same segment, with the ZIP's USPS prefix in that state.
+const ZIP3 = new Map(("AL350-369 AK995-999 AZ850-865 AR716-729 CA900-961 CO800-816 CT060-069 DE197-199 DC200,202-205,569 " +
+  "FL320-349 GA300-319,398-399 HI967-968 ID832-838 IL600-629 IN460-479 IA500-528 KS660-679 KY400-427 LA700-714 ME039-049 " +
+  "MD206-219 MA010-027,055 MI480-499 MN550-567 MS386-397 MO630-658 MT590-599 NE680-693 NV889-898 NH030-038 NJ070-089 " +
+  "NM870-884 NY005,100-149 NC270-289 ND580-588 OH430-459 OK730-731,734-749 OR970-979 PA150-196 RI028-029 SC290-299 " +
+  "SD570-577 TN370-385 TX733,750-799,885 UT840-847 VT050-054,056-059 VA201,220-246 WA980-994 WV247-268 WI530-549 WY820-831")
+  .split(" ").map((e) => [e.slice(0, 2), e.slice(2).split(",").map((r) => r.split("-").map(Number))] as const));
+const P_STATE_ZIP = /\b([A-Z]{2})\s+(\d{5})(?:-\d{4})?(?![\d-])/g;
+function usStreetAddress(s: string): boolean {
+  for (const m of s.matchAll(P_STATE_ZIP)) {
+    const p = Number(m[2].slice(0, 3));
+    if (P_STREET_WORD.test(s.slice(0, m.index).split(",").pop()!) && ZIP3.get(m[1])?.some(([a, b = a]) => p >= a && p <= b)) return true;
+  }
+  return false;
+}
+
 /** The trailing ", XX" (optionally a ZIP after it) a location ends with, upper case as written. */
 const P_TRAILING_CODE = /,\s*([A-Z]{2})(?:\s+\d{5}(?:-\d{4})?)?\s*$/;
 
@@ -793,6 +833,7 @@ function countryOf(location: string | null | undefined, guessFromCity: boolean):
   if (refused !== null) return refused;
   for (const [re, code] of COUNTRY_PATTERNS) if (re.test(s)) return code;
   if (P_US_STATE_CODE.test(s) || P_US_STATE_NAME.test(s) || P_US_STATE_CODE_LEADING.test(s)) return "US";
+  if (usStreetAddress(s)) return "US";
   if (P_CA_PROV_CODE.test(s) || P_CA_PROV_NAME.test(s)) return "CA";
   if (/\bUS\b/.test(s)) return "US"; // "Remote - US", "US Remote" — after state codes so ", USA" paths won
   return guessFromCity ? cityCountry(s) : null;
@@ -1385,16 +1426,19 @@ const inNorthAmerica = (lat: number, lon: number) => lat >= 18 && lat <= 84 && l
 const coord = (v: unknown) => (typeof v === "string" && v.trim() !== "" ? Number(v) : NaN);
 // Rationale: docs/job-board-index-notes.md#n1392-smartrecruiters-states-the-country
 export function smartRecruitersCountry(loc: SmartRecruitersPosting["location"], location: string): string | null {
-  const read = detectCountry(location);
   const raw = String(loc?.country ?? "").trim();
-  const stated = /^[a-z]{2}$/i.test(raw) ? raw.toUpperCase() : null;
+  const stated = /^[a-z]{2}$/i.test(raw) && !/^(?:xx|un|zz)$/i.test(raw) ? raw.toUpperCase() : null;
+  // The vendor's own name for a new-name code is not read: "Biloxi, MS, Algeria" stays US.
+  const segs = location.split(","), last = segs.length > 1 ? segs.pop() : "";
+  const echo = !!stated && COUNTRY_NAMES_17.some(([, c]) => c === stated) && statedCountry(last) === stated;
+  const read = detectCountry(echo ? segs.join(",") : location);
   if (!stated || stated === read) return read;
   if ((read === "US" || read === "CA") && stated !== "US" && stated !== "CA" && /^[A-Z]{2}$/.test(String(loc?.region ?? "").trim())) {
     const lat = coord(loc?.latitude), lon = coord(loc?.longitude);
     const placed = Number.isFinite(lat) && Number.isFinite(lon);
     if (placed ? !inNorthAmerica(lat, lon) : cityCountry(String(loc?.city ?? "")) === stated) return stated;
   }
-  return read;
+  return read ?? stated;
 }
 
 export function normalizeSmartRecruiters(raw: { content?: SmartRecruitersPosting[] }, company: string, token: string): JobPosting[] {
@@ -1532,6 +1576,12 @@ export function xmlValue(block: string, tag: string): string | null {
   return v || null;
 }
 
+/** xmlValue decoded once (titles); htmlToText decodes descriptions. */
+export function xmlText(block: string, tag: string): string | null {
+  const v = xmlValue(block, tag);
+  return v === null ? null : unescapeEntities(v).trim() || null;
+}
+
 // Rationale: docs/job-board-index-notes.md#n1423-a-personio-posting-in-another-language
 export const PERSONIO_NO_DESCRIPTION = /<jobDescriptions>\s*<\/jobDescriptions>|<jobDescriptions\s*\/>/;
 export function mergePersonioDescriptions(xml: string, other: string): string {
@@ -1609,9 +1659,9 @@ export function normalizePersonio(xml: string, company: string, token: string, h
   return xmlBlocks(xml, "position")
     .map((block) => {
       const id = xmlValue(block, "id") ?? "";
-      const title = xmlValue(block, "name") ?? "";
+      const title = xmlText(block, "name") ?? "";
       const office = xmlValue(block, "office") ?? "";
-      const department = xmlValue(block, "department");
+      const department = xmlText(block, "department");
       const schedule = xmlValue(block, "schedule") ?? "";
       // <schedule> is an enum (full-time | part-time | …), NOT a description —
       // the "never infer from prose" rule is intact.
@@ -1741,12 +1791,18 @@ function icimsSalary(d: IcimsJobData): string | null {
   return null;
 }
 
+/** A country's ISO 3166-2 subdivision codes (Mexico's: the usual BC, NL) that are also a US state or Canadian province code. */
+const OWN_SUBDIVISIONS: Record<string, string> = { AU: "NT WA", BR: "AL MA MS MT PA PE SC", CH: "AR NE", CN: "HI NM SC", CO: "DC", ES: "AB AL AR CA CO CT GA MA NC OR RI VA", IN: "AR GA LA MN NL SK TN", IT: "AL AR CA CO CT MB ME MI MN MO MS MT NU OR PA PE RI TN VA VT", MX: "BC NL", NG: "AB AK DE LA ON RI", NL: "FL NB NH UT", ZA: "NC" };
 // Rationale: docs/job-board-index-notes.md#n1243-export-function-icimscountry-feedcode-un
 export function icimsCountry(feedCode: unknown, location: string | null | undefined): string | null {
   const code = /^[A-Za-z]{2}$/.test(String(feedCode ?? "")) ? String(feedCode).toUpperCase() : null;
   if (code === null) return detectCountry(location);
   const first = String(location ?? "").split(";")[0].slice(0, 300);
   if (statedCountry(first) === code) return code; // the place names the code's own country (n1425)
+  // A non-US/CA code stands on a bare code that is its own subdivision ("Chennai, TN" with IN), never on a state or
+  // province in words, nor FR at "Paris, TX" or GB at "London, ON" (S14X-120).
+  const sub = (P_US_STATE_CODE.exec(first) ?? P_CA_PROV_CODE.exec(first))?.[1];
+  if (sub && OWN_SUBDIVISIONS[code]?.includes(sub) && !P_US_STATE_NAME.test(first) && !P_CA_PROV_NAME.test(first) && !COUNTRY_PATTERNS.some(([re, c]) => (c === "US" || c === "CA") && re.test(first))) return code;
   const notOwn = (m: RegExpExecArray | null) => !!m?.[1] && m[1] !== code;
   const us = notOwn(P_US_STATE_CODE.exec(first)) || P_US_STATE_NAME.test(first) || notOwn(P_US_STATE_CODE_LEADING.exec(first));
   const ca = notOwn(P_CA_PROV_CODE.exec(first)) || P_CA_PROV_NAME.test(first);
@@ -2430,7 +2486,7 @@ export function normalizeOracle(items: OracleReq[], company: string, token: stri
 export function normalizeTeamtailor(rss: string, company: string, token: string): JobPosting[] {
   return xmlBlocks(rss, "item")
     .map((item) => {
-      const title = xmlValue(item, "title") ?? "";
+      const title = xmlText(item, "title") ?? "";
       const link = xmlValue(item, "link") ?? "";
       const idMatch = link.match(/\/jobs\/(\d+)/);
       const externalId = idMatch ? idMatch[1] : "";
@@ -2455,7 +2511,7 @@ export function normalizeTeamtailor(rss: string, company: string, token: string)
         location,
         workMode,
         remote: workMode === "remote",
-        department: xmlValue(item, "tt:department"),
+        department: xmlText(item, "tt:department"),
         postedAt: safeIso(xmlValue(item, "pubDate")),
         category: categorize(title, null),
         salary: null,
@@ -2510,7 +2566,7 @@ interface UsajobsDetails { JobSummary?: unknown; MajorDuties?: unknown; Telework
 interface UsajobsDescriptor {
   PositionID?: unknown; PositionTitle?: unknown; OrganizationName?: unknown; DepartmentName?: unknown;
   PositionLocation?: Array<{ LocationName?: unknown; CountryCode?: unknown }>; PositionLocationDisplay?: unknown;
-  RemoteIndicator?: unknown; TeleworkEligible?: unknown; PublicationStartDate?: unknown;
+  RemoteIndicator?: unknown; TeleworkEligible?: unknown; PublicationStartDate?: unknown; ApplicationCloseDate?: unknown; PositionEndDate?: unknown;
   PositionRemuneration?: UsajobsRemuneration[]; JobCategory?: Array<{ Name?: unknown }>;
   PositionSchedule?: Array<{ Name?: unknown }>; QualificationSummary?: unknown;
   ApplyURI?: unknown[]; PositionURI?: unknown;
@@ -2592,6 +2648,8 @@ export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: 
         // PositionSchedule Name: "Full-time"/"Part-time"/"Intermittent" etc.
         employmentType: normalizeEmploymentType(String(d.PositionSchedule?.[0]?.Name ?? "")),
         country,
+        // PositionEndDate when no ApplicationCloseDate. Both are zoneless Eastern wall time.
+        closesAt: easternClose(d.ApplicationCloseDate) ?? easternClose(d.PositionEndDate),
         applyUrl: safeUrl(String(d.ApplyURI?.[0] ?? d.PositionURI ?? "")),
       };
     })

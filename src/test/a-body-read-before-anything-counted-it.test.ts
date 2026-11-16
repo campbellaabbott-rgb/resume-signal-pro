@@ -136,7 +136,9 @@ describe("a body read before anything counted it", () => {
     const i = CODE.indexOf("async function fetchWithTimeout(");
     const body = CODE.slice(i, CODE.indexOf("\n}", i));
     expect(body, "fetchWithTimeout not found").not.toBe("");
-    expect(body).toMatch(/return boundBody\(await once\(\), limit\);/);
+    expect(body).toMatch(/const again = await once\(\);\s*if \(again\.status !== 503 \|\| !busy\(again\)\) return boundBody\(again, limit\);/);
+    // BB-09: a second 503-with-Retry-After is released and answered as a bodyless 429.
+    expect(body).toMatch(/discardBody\(again\);\s*return Object\.defineProperty\(new Response\(null, \{ status: 429, headers: again\.headers \}\)/);
     expect(body).toMatch(/return boundBody\(res, limit\);/);
     expect(body, "the 429 body is never read — release it instead of leaving it hanging")
       .toMatch(/discardBody\(res\);/);
@@ -413,7 +415,7 @@ describe("a body read before anything counted it", () => {
     };
     const reg = new Map<string, { source: string; mb: number; at: string }>();
     const recordStmts = block.slice(0, block.indexOf("budgetSkipped.push(s.token);")).split("\n").filter((l) => l.includes("OVERSIZE_BOARDS")).join("\n");
-    runWith(`let oversizeDirty = false;\n${recordStmts}`, { OVERSIZE_BOARDS: reg, s: { source: "greenhouse", token: "pulse" }, mb: 20.6 });
+    runWith(`let oversizeDirty = false;\n${recordStmts}`, { OVERSIZE_BOARDS: reg, s: { source: "greenhouse", token: "pulse" }, mb: 20.6, waits: false });
     expect(
       [...reg.keys()],
       "an oversize board must be recorded where it survives the next slice, under its own board's key (pulse is greenhouse AND ashby)",

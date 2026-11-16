@@ -26,7 +26,7 @@ const ROOT = resolve(__dirname, "../..");
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), "utf8");
 
 /** The test-fixture token shapes, case-folded: the made-up employers src/test names. */
-const FIXTURE_TOKEN = /^(?:acme(?:\d+|corp\d*|widgets|-?sr|uk|-dev\d+)?(?:~[\w~-]+)?|levertest)$/;
+const FIXTURE_TOKEN = /^(?:acme(?:\d+|corp\d*|widgets|-?sr|uk|-dev\d+|-gigs)?(?:~[\w~-]+)?|levertest)$/;
 const isFixtureToken = (token: string) => FIXTURE_TOKEN.test(token.toLowerCase());
 
 /** The employer token of a site path: /jobs/company/<t> or /jobs/posting/<vendor>/<t>/<id>. */
@@ -118,7 +118,7 @@ describe("the committed sitemap and ledger carry no test fixture", () => {
 
   it("real employers whose names start the same way are not fixtures", () => {
     for (const t of ["acmelogistics", "Acmehouseco", "acmebrick~wd1~Careers"]) expect(isFixtureToken(t), t).toBe(false);
-    for (const t of ["acme", "acme0", "acme39", "acmecorp", "AcmeCorp091614", "acme-sr", "acmesr", "acmeuk", "acmewidgets", "acme~a", "acme~wd1~ext", "acme~wd3~Careers_Alt", "acme-dev1~us2~CX_1", "levertest"]) expect(isFixtureToken(t), t).toBe(true);
+    for (const t of ["acme", "acme0", "acme39", "acmecorp", "AcmeCorp091614", "acme-sr", "acmesr", "acmeuk", "acmewidgets", "acme~a", "acme~wd1~ext", "acme~wd3~Careers_Alt", "acme-dev1~us2~CX_1", "acme-gigs", "levertest"]) expect(isFixtureToken(t), t).toBe(true);
   });
 
   it("every acme-shaped employer token the tests use is one the guard recognises", () => {

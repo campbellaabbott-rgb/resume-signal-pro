@@ -81,6 +81,15 @@ const RELEASED_CONVICTIONS = new Set([
   // feed (TrueBlue's tenant, recruitingCESites CX_1 "Your Industrial Staffing
   // Agency | PeopleReady", read that day), which is a self-description.
   "oracle:ehnn~us2~cx_1",            // PeopleReady, industrial staffing, self-described
+  // Owner decision OD1 (2026-11-08): six boards labelled, not retired. Each was a packed
+  // catalogue row, which carries no flag, so .102 writes each as an object entry in the
+  // same position. Each board's own words, read 2026-11-15:
+  "workable:pavago",                 // "a distinguished international recruitment agency"
+  "workable:hire-overseas",          // "the right fit for both you and our clients", then a "Client Interview"
+  "smartrecruiters:jobmobz1",        // "talent acquisition services to fit the unique hiring challenges of our clients"
+  "recruitee:sterkinmatches",        // Sterk in Matches B.V. posts its clients' roles (Metaalcenter Driessen, Academica)
+  "recruitee:deintraumjobwartet",    // ANGEHEUERT GmbH: "Unser Kunde ist ein etablierter Energiedienstleister"
+  "lever:americaatwork",             // "conducting this search on behalf of a confidential global organization"
 ]);
 
 // The staffing half of merge-all's name gate, canonical spelling. The junk

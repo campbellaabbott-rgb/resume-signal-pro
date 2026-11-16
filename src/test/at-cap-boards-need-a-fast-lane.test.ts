@@ -62,7 +62,7 @@ describe("at-cap boards need a fast lane", () => {
     // slice the lane silently has nothing to schedule, which is exactly the
     // failure that looks identical to "the lane is broken".
     const read = CODE.indexOf('eq("k", "deep_cursor")');
-    const sealed = CODE.indexOf("const slice = [...demandBoards");
+    const sealed = CODE.indexOf("const slice = [...waitBoards");
     expect(read, "deep_cursor is never read in the refresh path").toBeGreaterThan(-1);
     expect(sealed, "the slice is never assembled").toBeGreaterThan(-1);
     expect(read, "deep_cursor is read after the slice is already sealed").toBeLessThan(sealed);

@@ -263,15 +263,41 @@ describe("the catalogue", () => {
       38760: ["careers.bpas.com", "careers.pepco.com"],
       41040: ["talent.lla.com", "careers.atlanticcityelectric.com"],
     };
+    // job-board .102 (catalogue lane) removed 25 boards before JPMorgan on purpose (OD1, BB-05's
+    // twins, PRUNE-1024) and D13 rewrote thirteen in place under the vendor their employer now
+    // posts on. Each removed board goes back at its wave-4 index and each rewrite is read as the
+    // key it replaced, so the wave-4 pin below holds unchanged: nothing else moved.
+    const RETIRED_102: ReadonlyArray<[number, string, string]> = [
+      [757, "greenhouse", "starcloud"], [1397, "greenhouse", "etchedai"], [1817, "greenhouse", "deepmind"], [2300, "greenhouse", "applytonumeral"],
+      [8850, "ashby", "corgi"], [13553, "breezy", "cdpdoctor"], [15037, "greenhouse", "dataikujobs"], [15197, "smartrecruiters", "JobsForHumanity"],
+      [15253, "workable", "huzzle"], [15260, "workable", "toloka-ai"], [18687, "recruitee", "vluchtelingenwerkvrijwilligers"],
+      [18691, "recruitee", "easyapplyrimutee"], [18698, "recruitee", "boggimilano"], [19124, "teamtailor", "eutalents"],
+      [20802, "workday", "lbg~wd3~broadbean_external"], [21524, "workable", "clients-blackbox-inc"], [22700, "greenhouse", "eu~imc"],
+      [28252, "pinpoint", "helsing"], [32754, "oracle", "login-esms-saasfaukgovprod1~ocs~CX_1"],
+      [33982, "paylocity", "0c4c3299-d50f-40e2-aca1-0de562ac280d"], [36121, "paylocity", "b8c553b7-79ad-4da0-a8b2-3ce8e842324a"],
+      [38718, "icims", "careers.spglobal.com"], [40572, "adp", "48d65e3f-dbfc-44b9-996a-65283fbdcee9"],
+      [41370, "adp", "ba397985-19df-4126-90de-3220631304e5"], [42535, "adp", "1da67361-03ef-4aa2-8925-9ef512ba7c42"],
+    ];
+    const D13_WAS: Record<string, [string, string]> = {
+      "ashby:kalshi": ["greenhouse", "kalshi"], "ashby:webflow": ["greenhouse", "webflow"], "greenhouse:browserbaseinc": ["ashby", "browserbase"],
+      "ashby:clickhouse": ["greenhouse", "clickhouse"], "ashby:black-forest-labs": ["greenhouse", "blackforestlabs"], "ashby:hume-ai": ["greenhouse", "humeai"],
+      "workday:postman~wd108~careers": ["greenhouse", "postman"], "ashby:wayve": ["greenhouse", "wayve"], "ashby:lovable": ["greenhouse", "lovable"],
+      "ashby:temporal": ["greenhouse", "temporaltechnologies"], "ashby:worldlabs": ["greenhouse", "worldlabs"], "greenhouse:machindustries": ["ashby", "mach"],
+      "greenhouse:swordhealth": ["lever", "swordhealth"],
+    };
     const before = CATALOG.slice(0, jpmc[0]?.index ?? 0);
+    expect(before.length).toBe(44_519 - RETIRED_102.length);
+    const wave4: Array<[string, string]> = before.map((e) => D13_WAS[`${e.source}:${e.token}`] ?? [e.source, e.token]);
+    expect(Object.keys(D13_WAS).filter((k) => !before.some((e) => `${e.source}:${e.token}` === k)), "a D13 key is not where wave 4's board was").toEqual([]);
+    for (const [i, source, token] of RETIRED_102) wave4.splice(i, 0, [source, token]);
     const h = createHash("sha256");
-    for (const e of before) {
-      h.update(JSON.stringify([e.index, e.source, REPOINTED[e.index]?.[0] ?? e.token]));
+    wave4.forEach(([source, token], i) => {
+      h.update(JSON.stringify([i, source, REPOINTED[i]?.[0] ?? token]));
       h.update("\n");
-    }
-    expect(before.length).toBe(44_519);
+    });
+    expect(wave4.length).toBe(44_519);
     expect(h.digest("hex").slice(0, 16)).toBe("8f388176f2692e17");
-    for (const [at, [, now]] of Object.entries(REPOINTED)) expect([CATALOG[Number(at)].source, CATALOG[Number(at)].token], at).toEqual(["icims", now]);
+    for (const [at, [, now]] of Object.entries(REPOINTED)) expect([wave4[Number(at)][0], wave4[Number(at)][1]], at).toEqual(["icims", now]);
   });
 
   it("holds no other region-less token: every other tenant found on such a host was a sandbox or unreachable", () => {

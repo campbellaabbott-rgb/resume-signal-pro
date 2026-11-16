@@ -267,8 +267,8 @@ describe("a shortlist costs one call, not twenty", () => {
       .toMatch(/removal grace[\s\S]{0,200}past the cap reads closed here, as get_job[\s\S]{0,12}declines it/);
     expect(served).not.toMatch(/WEAKER/);
     expect(row, "a board that names no test gets the sentence true of any build").toMatch(/WEAKER[\s\S]{0,250}can still read open here/);
-    const existsBody = BOARD_RAW.slice(existsAt, existsAt + 1500);
-    expect(existsBody, "the board names the test only where it runs it").toMatch(/return json\(\{ open: openMap, rowTest: "served" \}\);/);
+    const existsBody = BOARD_RAW.slice(existsAt, existsAt + 3000);
+    expect(existsBody, "the board names the test only where it runs it").toMatch(/return json\(\{ open: openMap, rowTest: "served", unknown: unknownIds \}\);/);
     expect(existsBody, "the served basis says a posting the feed stopped listing reads closed").toMatch(/\.is\("missing_since", null\)/);
     expect(existsBody, "and that one past the cap does").toMatch(/pastFence\(r, cutoffMs\)/);
     expect(block("check_jobs_open")).toMatch(/maxItems: CHECK_JOBS_OPEN_MAX/);

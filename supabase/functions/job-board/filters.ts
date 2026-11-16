@@ -3,12 +3,10 @@ import { JOB_CATEGORIES } from "./categories.ts";
 import { isExperienceBand } from "./experience.ts";
 import type { JobSourceKind } from "./sources.ts";
 
-// Defined in ../_shared/board-domains.ts so public-api's bundle can read the
-// same list; re-exported here because this file is the board's filter contract.
+// Rationale: docs/job-board-index-notes.md#n1560-export-work_modes-from-_shared-board-dom
 export { WORK_MODES } from "../_shared/board-domains.ts";
 import { WORK_MODES } from "../_shared/board-domains.ts";
-/** Closed domain, matching the column CHECK — values come from vendors'
- *  structured fields only (nine of sixteen carry one, measured 2026-08-28). */
+// Rationale: docs/job-board-index-notes.md#n1561-export-const-employment_types-full_time
 export const EMPLOYMENT_TYPES = ["full_time", "part_time", "contract", "temporary", "internship"] as const;
 
 /** "hourly" -> salary_period = 'hour'; "salaried" -> salary_period IN ('year','month'). */
@@ -20,8 +18,7 @@ export const SALARIED_PERIODS = ["year", "month"] as const;
 // Rationale: docs/job-board-index-notes.md#n1257-export-board_vendors-from-_shared-board
 export { BOARD_VENDORS } from "../_shared/board-domains.ts";
 import { BOARD_VENDORS } from "../_shared/board-domains.ts";
-// Extras are still caught here, where JobSourceKind lives: a vendor in the
-// shared list that sources.ts does not know fails this assignment.
+// Rationale: docs/job-board-index-notes.md#n1562-const-_vendorsarekinds-readonly-jobsourc
 const _vendorsAreKinds: readonly JobSourceKind[] = BOARD_VENDORS;
 void _vendorsAreKinds;
 
@@ -205,8 +202,7 @@ export function normalizeFilters(
 
   // Rationale: docs/job-board-index-notes.md#n1058-const-country_limit
   const COUNTRY_LIMIT = 5;
-  // ISO-3166 alpha-2, with "UK" read as GB: "XX" or "UK" matched no row and
-  // answered 0 jobs with nothing named (L8-10). An unknown code is dropped and named.
+  // Rationale: docs/job-board-index-notes.md#n1563-const-countrysent-array-isarray-body-cou
   const countrySent = (Array.isArray(body.country) ? body.country : String(body.country ?? "").split(","))
     .map((c) => String(c ?? "").trim().toUpperCase())
     .filter(Boolean)
@@ -261,8 +257,7 @@ export function normalizeFilters(
   const etValid = [...new Set(etAsked.filter((t) => (EMPLOYMENT_TYPES as readonly string[]).includes(t)))]
     .slice(0, EMPLOYMENT_TYPES.length);
   const employmentType = etValid.length ? etValid.join(",") : null;
-  // Deduped comparison, same reason as workMode: "contract,contract" must not
-  // report the filter as ignored.
+  // Rationale: docs/job-board-index-notes.md#n1564-if-sent-body-employmenttype-etvalid-leng
   if (sent(body.employmentType) && etValid.length !== new Set(etAsked).size) ignored.push("employmentType");
 
   // Rationale: docs/job-board-index-notes.md#n1067-const-bandsasked-asbands-body-experience
@@ -283,8 +278,7 @@ export function normalizeFilters(
   const ceilUsable = Number.isFinite(ceilN) && ceilN > 0;
   const ceilUnderFloor = ceilUsable && salaryFloor !== null && ceilN < salaryFloor;
   const salaryCeiling = ceilUsable && !ceilUnderFloor ? ceilN : null;
-  // 0 is the off position here for the same reason it is for salaryFloor and
-  // maxAgeDays — a control at rest must not hang a warning on the page.
+  // Rationale: docs/job-board-index-notes.md#n1565-if-sent-body-salaryceiling-salaryceiling
   if (sent(body.salaryCeiling) && salaryCeiling === null && ceilN !== 0) ignored.push("salaryCeiling");
 
   // Rationale: docs/job-board-index-notes.md#n1070-const-pbraw-string-body-paybasis-trim
@@ -378,8 +372,7 @@ export function normalizeFilters(
     ignored.push("excludeAgencies");
   }
 
-  // One instant, in one spelling, for the database AND the sensor (.88): see
-  // canonicalInstant. The caller's own string is never bound.
+  // Rationale: docs/job-board-index-notes.md#n1566-const-paraw-body-postedafter
   const paRaw = body.postedAfter;
   const postedAfter = canonicalInstant(paRaw);
   if (sent(paRaw) && !postedAfter) ignored.push("postedAfter");
@@ -582,8 +575,7 @@ export function filterViolations(
     if (a.companies.length && !a.companies.includes(tok)) {
       push("companies", `${a.companies.length} token(s)`, tok);
     }
-    // Undated rows are EXCLUDED by the maxAgeDays predicate at the database, so
-    // a row with no postedAt reaching us under that filter is itself the defect.
+    // Rationale: docs/job-board-index-notes.md#n1567-if-cutoff-null
     if (cutoff !== null) {
       const p = r.postedAt ? Date.parse(String(r.postedAt)) : NaN;
       if (!Number.isFinite(p) || p < cutoff) push("maxAgeDays", `<=${a.maxAgeDays}d`, r.postedAt);
@@ -630,12 +622,10 @@ export function splitPage(offset: number, limit: number, countA: number): PageSp
   // How many of this page's slots the first subset can still fill.
   const aLimit = Math.max(0, Math.min(ca - off, lim));
   return {
-    // Past the end of A, aLimit is 0 and the offset is irrelevant — clamped so
-    // it can never be a negative range.
+    // Rationale: docs/job-board-index-notes.md#n1568-aoffset-math-min-off-ca
     aOffset: Math.min(off, ca),
     aLimit,
-    // B starts where A ran out. On pages entirely inside A this is 0 and
-    // bLimit is 0, so B is never queried at all.
+    // Rationale: docs/job-board-index-notes.md#n1569-boffset-math-max-off-ca
     bOffset: Math.max(0, off - ca),
     bLimit: lim - aLimit,
   };

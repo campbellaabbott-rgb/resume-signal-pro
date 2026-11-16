@@ -62,11 +62,12 @@ describe("the catalogue: five Reyes boards, each one brand of the shared feed", 
 
   it("the two carried boards keep their catalogue places and names; the three new ones come after JPMorgan Chase", () => {
     const at = (t: string) => JOB_SOURCES.findIndex((s) => s.token === t);
-    expect(at("jobportal.martinbrower.com")).toBe(28180);
-    expect(at("talent.reyesholdings.com")).toBe(41021);
-    expect(at("jpmc~~CX_1001")).toBe(44519);
-    expect([at("jobportal.reyescocacola.com"), at("jobportal.reyesfleet.com"), at("jobportal.reyesholdings.com")]).toEqual([44520, 44521, 44522]);
-    expect(JOB_SOURCES.length).toBe(44523);
+    // .102 retired 25 boards ahead of these places (17 before Martin Brower) and appended Convergint after Reyes.
+    expect(at("jobportal.martinbrower.com")).toBe(28163);
+    expect(at("talent.reyesholdings.com")).toBe(40998);
+    expect(at("jpmc~~CX_1001")).toBe(44494);
+    expect([at("jobportal.reyescocacola.com"), at("jobportal.reyesfleet.com"), at("jobportal.reyesholdings.com")]).toEqual([44495, 44496, 44497]);
+    expect(JOB_SOURCES.length).toBe(44499);
   });
 
   it("layoff-filings' copy carries the same five, field for field", () => {

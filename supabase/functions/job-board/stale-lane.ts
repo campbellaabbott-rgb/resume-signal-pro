@@ -109,11 +109,7 @@ export const STALE_LANE_MIN_AGE_H = 72;
 export const STALE_TRIES_MAX = 4;
 // Rationale: docs/job-board-index-notes.md#n1377-export-const-stale_exclude_max
 export const STALE_EXCLUDE_MAX = 400;
-/**
- * Every property name of Object.prototype, own and accessor alike — the
- * twelve tokens a token-keyed Record misreads. Computed, not listed, so an
- * engine that grows the prototype grows the exclusion with it.
- */
+// Rationale: docs/job-board-index-notes.md#n1545-export-const-prototype_names-readonly-st
 export const PROTOTYPE_NAMES: readonly string[] = Object.getOwnPropertyNames(Object.prototype);
 
 /** One row of get_stalest_boards(), as PostgREST returns it. */
@@ -145,10 +141,7 @@ export type StaleClass =
   /** Catalogued, vendor healthy, no failure, dormancy or oversize record: the rotation has not reached it. The lane's candidate. */
   | "unexplained";
 
-/**
- * Everything classification needs, as Sets and Maps. Never Records: a Record
- * keyed by token is the trap this module exists to name.
- */
+// Rationale: docs/job-board-index-notes.md#n1546-export-interface-stalecontext
 export interface StaleContext {
   /** Every token in JOB_SOURCES. */
   catalogued: ReadonlySet<string>;
@@ -188,11 +181,7 @@ export function tokensOf(rec: unknown): Set<string> {
   }));
 }
 
-/**
- * Own keys of a meta Record, unchanged, as a Set. Since .91 the lane reads its
- * rows by board key (bare token, or source:token on a shared token, n428), the
- * same keys board_failures holds, so a failing twin no longer marks the other.
- */
+// Rationale: docs/job-board-index-notes.md#n1547-export-function-keysof-rec-unknown-set
 export function keysOf(rec: unknown): Set<string> {
   if (rec === null || typeof rec !== "object" || Array.isArray(rec)) return new Set();
   return new Set(Object.keys(rec as Record<string, unknown>));
@@ -295,11 +284,7 @@ export function classifyStale(rows: readonly StaleRow[], ctx: StaleContext): Sta
   return out;
 }
 
-/**
- * The tokens the lane fetches this hop: 'unexplained' verdicts only, oldest
- * stamp first, minus anything already in the slice, capped at perSlice.
- * Every other class is either another lane's, or nobody's to fetch.
- */
+// Rationale: docs/job-board-index-notes.md#n1548-export-function-selectstalelane
 export function selectStaleLane(
   verdicts: readonly StaleVerdict[],
   opts: { perSlice: number; exclude: ReadonlySet<string> },

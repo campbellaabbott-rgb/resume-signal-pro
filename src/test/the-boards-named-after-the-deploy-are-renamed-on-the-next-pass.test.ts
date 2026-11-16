@@ -149,7 +149,8 @@ const STORED = `
   INSERT INTO public.job_board_company_snapshots VALUES ('${PARALLELS}', '2026-10-30', 'parallels wordmark on light');
   INSERT INTO public.job_board_closure_rollup VALUES ('${PARALLELS}', 'parallels wordmark on light', 'engineering', '2026-10-01');
   INSERT INTO public.job_board_meta (k, v) VALUES
-    ('name_sync_version', '{"version": 6, "fixed": 6, "already": 119, "sweptAt": "2026-10-31T19:19:32Z"}'),
+    -- The lane's own version: 6 on 2026-10-31, and whatever index.ts holds now (7 since board .102).
+    ('name_sync_version', '{"version": ${constNum("NAME_SYNC_VERSION")}, "fixed": 6, "already": 119, "sweptAt": "2026-10-31T19:19:32Z"}'),
     ('refresh', '{"companiesFacet": []}'),
     ('slice_stats', '{"build": "2026-09-09.96"}');
 `;
@@ -219,9 +220,9 @@ describe("with both applied, the lane walks every board again and renames the st
     await db.exec(A);
     await db.exec(B);
     // The lifted span is the version read and the `if` it gates; a skipped `if` returns nothing, and
-    // passEndNames falls through to its "name sync v6 done" line without reading a board.
+    // passEndNames falls through to its "name sync vN done" line without reading a board.
     const r = await runLane(client);
-    expect(r, "the version-6 stamp skipped the walk").toBeUndefined();
+    expect(r, "the stamp of the lane's own version skipped the walk").toBeUndefined();
     expect(await names(db, "job_board_postings", PARALLELS)).toEqual(["parallels wordmark on light"]);
     expect(await names(db, "job_board_postings", FARRANS)).toEqual(["Farrans Recruitment Team"]);
   });
@@ -253,7 +254,7 @@ describe("with both applied, the lane walks every board again and renames the st
     expect(stale.tokens).toEqual([]);
   });
 
-  it("the next pass-end renames the postings, closures, snapshots and closure rollup, and stamps version 6 again", async () => {
+  it("the next pass-end renames the postings, closures, snapshots and closure rollup, and stamps the lane's version again", async () => {
     const r = await runLane(client);
     expect(r?.ok, r?.detail).toBe(true);
     expect(r?.detail).toMatch(/complete: [1-9]\d* renamed/);

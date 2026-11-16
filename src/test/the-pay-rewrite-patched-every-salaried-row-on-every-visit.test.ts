@@ -27,13 +27,12 @@ const between = (from: string, to: string) => {
   return SRC.slice(a, b + to.length);
 };
 const BLOCK = between("const nextPay = (row.salary ?? null)", 'else put("salary", row.salary, prev.salary, false);');
-const SET_LINE = /const OUR_PAY_REWRITE = new Set\(\[[^\]]*\]\);/.exec(SRC)?.[0] ?? "";
 const FIRST_LINE = /const VENDOR_FIELD_FIRST_READ = new Set\(\[[^\]]*\]\);/.exec(SRC)?.[0] ?? "";
 
 type Row = { salary: string | null; country?: string | null };
 /** Run the shipped block: what it patches and what it logs. */
 function decide(source: string, prev: Row, row: Row) {
-  const js = transformSync(`${SET_LINE}\n${FIRST_LINE}\n${BLOCK}`, { loader: "ts" }).code;
+  const js = transformSync(`${FIRST_LINE}\n${BLOCK}`, { loader: "ts" }).code;
   const patch: Record<string, unknown> = {};
   const logged: unknown[] = [];
   const put = (k: string, next: unknown, cur: unknown) => { if (next === null || next === undefined || next === "") return; if (next !== cur) { patch[k] = next; logged.push([k, cur, next]); } };
@@ -50,10 +49,12 @@ describe("an unchanged pay text is not rewritten", () => {
     }
   });
 
-  it("a re-formatted text is still our correction, unlogged, inside the window", () => {
-    const r = decide("lever", { salary: "$120k - $150k", country: "US" }, { salary: "$120,000 - $150,000 per year", country: "US" });
-    expect(r.patch).toEqual({ salary: "$120,000 - $150,000 per year" });
-    expect(r.logged).toEqual([]);
+  it("past the window a Lever or Recruitee figure that moved is an employer edit, logged like any other vendor's", () => {
+    for (const source of ["lever", "recruitee"]) {
+      const r = decide(source, { salary: "$120,000", country: "US" }, { salary: "$130,000", country: "US" });
+      expect(r.patch, source).toEqual({ salary: "$130,000" });
+      expect(r.logged, source).toEqual([["salary", "$120,000", "$130,000"]]);
+    }
   });
 
   it("another vendor's changed figure is an employer edit, logged", () => {
@@ -63,23 +64,8 @@ describe("an unchanged pay text is not rewritten", () => {
   });
 });
 
-describe("the one-shot rewrite has an enforced end", () => {
-  // The day after which the set must be gone (one cold rotation after the
-  // wave-3 deploy; the same day as the USAJOBS reading's own window, n444).
-  const REMOVE_AFTER = "2026-11-09";
-  // The removal is job-board code, so it can land only in a job-board build:
-  // .101 was serving when the day passed, and the first build after it must
-  // drop the set. A date alone turned every branch red on 2026-11-10, job-board
-  // or not, with no build able to ship before it.
-  const LAST_BUILD_WITH_SET = "2026-09-09.101";
-  it(`the set is removed by ${REMOVE_AFTER}, in the first job-board build after .101`, () => {
-    const today = new Date().toISOString().slice(0, 10);
-    const present = /\bOUR_PAY_REWRITE\b/.test(codeOf(SRC));
-    const build = /const BUILD_VERSION = "([^"]+)"/.exec(SRC)?.[1];
-    expect(build, "job-board/index.ts names no BUILD_VERSION").toBeTruthy();
-    expect(today <= REMOVE_AFTER || !present || build === LAST_BUILD_WITH_SET, `remove the Lever/Recruitee pay rewrite from job-board/index.ts in job-board ${build}: its window closed ${REMOVE_AFTER}, and ${LAST_BUILD_WITH_SET} is the last build that may carry it`).toBe(true);
-  });
-  it("the code names the same day beside the set", () => {
-    expect(SRC).toMatch(new RegExp(`Remove after ${REMOVE_AFTER}[^\\n]*\\n[^\\n]*\\n\\s*const OUR_PAY_REWRITE`));
+describe("the one-shot rewrite has ended (board .102)", () => {
+  it("OUR_PAY_REWRITE is gone from job-board/index.ts, its window having closed 2026-11-09", () => {
+    expect(/\bOUR_PAY_REWRITE\b|\bourRewrite\b/.test(codeOf(SRC))).toBe(false);
   });
 });

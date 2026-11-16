@@ -40,7 +40,7 @@ describe("iCIMS: each feed is read once, one brand or one hirer a board", () => 
   it("the Exelon pair reads one brand each, in place, with its name and place kept", () => {
     expect(entry("careers.delmarva.com")).toMatchObject({ source: "icims", name: "Exelon", brand: "Exelon" });
     expect(entry("careers.comed.com")).toMatchObject({ source: "icims", name: "ComEd", brand: "ComEd" });
-    expect([at("careers.delmarva.com"), at("careers.comed.com")]).toEqual([28141, 38775]);
+    expect([at("careers.delmarva.com"), at("careers.comed.com")]).toEqual([28124, 38753]); // .102 retired 17 and 22 boards ahead of these places
   });
 
   it("the Chick-fil-A and YNV pairs keep one hiring organization each, as the feed spells it", () => {
@@ -56,16 +56,16 @@ describe("iCIMS: each feed is read once, one brand or one hirer a board", () => 
   it("the four duplicate hosts are gone and their places hold the Exelon brand boards, each reading its brand as the feed spells it", () => {
     for (const t of ["careers.bpas.com", "careers.keysight.com", "careers.goldennugget.com", "talent.lla.com"]) expect(at(t), t).toBe(-1);
     const placed: Array<[number, string, string, string]> = [
-      [38669, "careers.bge.com", "Baltimore Gas and Electric Company", "Baltimore Gas and Electric Company"],
-      [38698, "careers.peco.com", "PECO", "PECO"],
+      [38648, "careers.bge.com", "Baltimore Gas and Electric Company", "Baltimore Gas and Electric Company"],
+      [38677, "careers.peco.com", "PECO", "PECO"],
       // "Pepco" is also PEPCO Germany GmbH's board (personio pepco, the discount retailer), and the bake keys a page on
       // the lowercased name, so the utility prints the legal name its own careers site files it under (tags3, read
       // 2026-10-26 on careers.pepco.com) while the feed is still asked for brand PEPCO.
-      [38760, "careers.pepco.com", "Potomac Electric Power Co", "PEPCO"],
-      [41040, "careers.atlanticcityelectric.com", "Atlantic City Electric", "Atlantic City Electric"],
+      [38738, "careers.pepco.com", "Potomac Electric Power Co", "PEPCO"],
+      [41017, "careers.atlanticcityelectric.com", "Atlantic City Electric", "Atlantic City Electric"],
     ];
     for (const [i, t, n, b] of placed) expect(JOB_SOURCES[i], t).toMatchObject({ source: "icims", token: t, name: n, brand: b });
-    expect(JOB_SOURCES.length).toBe(44_523);
+    expect(JOB_SOURCES.length).toBe(44_499); // .102: 25 boards retired, Convergint appended
   });
 
   it("no Exelon brand board shares its printed name with another employer's board", () => {
@@ -352,8 +352,9 @@ describe("the deploy: trust/round3 is its own reservation, and the order holds",
     expect(L.workstreamOf(policy, "origin/trust/round3")).toBe("trust-round-3");
     expect(L.workstreamOf(policy, "trust/pages")).toBe("oracle-regionless");
     expect(policy.reservations["trust-round-3"]).toMatchObject({ jobBoard: "2026-09-09.96", migrations: expect.stringMatching(/^20261026\*/), fnBuildDate: "2026-10-26" });
-    // .98 went to pd-job-board on 2026-11-01, so phase 3 moved past it.
-    expect(policy.reservations["company-profiles-phase3"].jobBoard).toBe("2026-09-09.99");
+    // .98 went to pd-job-board on 2026-11-01, so phase 3 moved past it to .99; board-102's integration
+    // (2026-11-15) cleared that too, since .100-.102 deployed first: phase 3 reserves no version until its branch is cut.
+    expect(policy.reservations["company-profiles-phase3"].jobBoard).toBe("none reserved: the next free version when its branch is cut");
   });
   it("the scope migration waits for .96 to serve, and the names migration goes before it", () => {
     // A slice rule since the land/all recheck: the file waits for .96's first slice, which comes after its OPTIONS answer.

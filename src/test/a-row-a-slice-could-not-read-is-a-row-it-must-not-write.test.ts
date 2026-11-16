@@ -135,6 +135,7 @@ function isolate() {
   const deps: Record<string, unknown> = {
     ...oversizeRegistry,
     SHARED_TOKENS: new Set<string>(),
+    CATALOGUE_KEYS: undefined, // board .102's catalogue prune has its own test (a-board-the-catalogue-dropped-leaves-the-oversize-list)
     DYNAMIC_LIGHT,
     JOB_SOURCES: [{ source: "greenhouse", token: "acme" }],
     LIGHT_CAPABLE_VENDORS: new Set(["greenhouse"]),

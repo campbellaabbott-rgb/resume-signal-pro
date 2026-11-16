@@ -195,6 +195,7 @@ function world(opts: { aged?: number; now?: () => number } = {}) {
     maybeKickMaintenance: async () => { events.push("maintenance"); },
     recordSliceStats: async () => { events.push("slice-stats"); },
     pruneWholeBoard: async () => ({ logged: 0, complete: true }),
+    closeStatedClosed: async () => 0, // board .102 (XR-1); its own test runs it
     insertExits: async (_c: unknown, rows: unknown[]) => { events.push(`exits:${rows.length}`); return { error: null }; },
     heldOversize: () => false,
     tenureDays: () => ({ days: 70, basis: "posted_at" }),
@@ -231,6 +232,7 @@ function world(opts: { aged?: number; now?: () => number } = {}) {
     NAME_SYNC_VERSION: 3,
     NAME_SYNC_UNTIL_MS: constNum("NAME_SYNC_UNTIL_MS"),
     RENAMED_TOKENS: [],
+    RETIRED_TWIN_KEYS: [], // board .102; its own test runs the arm
     JOB_SOURCES: [{ source: "greenhouse", token: "acme", name: "Acme" }],
     ORACLE_SITE_RANK: new Map(),
     ORACLE_CANONICAL_SITES: [],

@@ -318,7 +318,11 @@ const PINNED = {
   // of 4efea332: 14 staffing companies' boards gain agency: true (each split
   // out of its packed literal in place) and careers.pepco.com is named
   // Potomac Electric Power Co (brand PEPCO kept).
-  sourcesHash: "43b15655ee4749a2",
+  // 2026-09-09.102 (board-102, the catalogue lane merged with core and
+  // normalize): 25 boards retired, six agency boards split out in place,
+  // thirteen repointed, four renamed and Convergint's Workday board appended.
+  // layoff-filings carries the byte-identical copy as 2026-11-11.1.
+  sourcesHash: "665b55f2ab82802a",
   // The PARSED catalog behind that hash — 44,081 packed + 463 object-literal
   // entries — pinned separately so a re-format is distinguishable from a real
   // catalog change (see the two-pins note at the top of this file). Read
@@ -343,8 +347,16 @@ const PINNED = {
   // (trust/pages). Not yet deployed, so .95's bootstrap lane takes all four.
   // 44,523 still at 2026-09-09.96: names, flags and four repointed positions,
   // nothing added or removed.
-  catalogSize: 44_523,
-  catalogHash: "b815524774b6cb04",
+  // 44,499 since 2026-09-09.102, DOWN 24 ON PURPOSE: 25 boards retired (OD1's
+  // six, BB-05's nine twins, the ten pruned on 2026-10-24) and Convergint's
+  // Workday board appended last. Every later index moves back, so the
+  // positional cursor re-crawls once, as after a census merge. Six packed
+  // agency boards were split out in place (agency: true), thirteen were
+  // repointed in place under the vendor their employer now uses, and four
+  // were renamed. Migration 20261111120000 lowers the high-water to the same
+  // figure after the function serves.
+  catalogSize: 44_499,
+  catalogHash: "7ee1a93907409a42",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -1520,7 +1532,14 @@ const PINNED = {
   // none (S13-104), an anonymous status is counted and writes nothing and the
   // scheduler has its own upkeep action (S13-114), and the retired agent-ready
   // flag narrows nothing (S13-118). sources.ts unchanged.
-  buildVersion: "2026-09-09.101",
+  // 2026-09-09.102 (board-102: the core, normalize and catalogue lanes,
+  // merged in board/102-integration): the oversize Recruitee, Pinpoint and
+  // Workable boards are read a posting at a time, USAJOBS closes on its stated
+  // date, a rate-limited board is deferred, the upkeep route is gone and the
+  // wrap is readable from status; the readers file Nigeria, Hong Kong and a
+  // Vienna VA street in their own countries; sources.ts CHANGED (catalogSize
+  // 44,499, above).
+  buildVersion: "2026-09-09.102",
 };
 
 /**

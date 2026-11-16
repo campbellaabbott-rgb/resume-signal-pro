@@ -26,7 +26,7 @@ export interface RekickInput {
 export type RekickDecision =
   /** Nothing has ever pulsed: nothing to judge, and the cron owns first light. */
   | "no_pulse"
-  /** chain_kick.outcome === 'continued' and no pulse has landed since — never fires here, however old the pulse. */
+  /** chain_kick.outcome === 'continued', no pulse has landed since, and the stamp is inside thresholdMs (HB-1). */
   | "chain_alive"
   /** The freshest pulse is inside 2 x coldEmaMs + sliceLockMs — a slow board or a tail, not a death. */
   | "within_window"
@@ -85,7 +85,8 @@ export function decideRekick(input: RekickInput): RekickVerdict {
   if (chainOutcome === "continued") {
     const chainMs = parse(input.chainAt);
     stampSuperseded = Number.isFinite(chainMs) && pulseMs > chainMs;
-    if (!stampSuperseded) return { decision: "chain_alive", pulseAgeMs, pulse, thresholdMs, chainOutcome, stampSuperseded };
+    // HB-1: a stamp older than the threshold proves nothing; the child it named never pulsed.
+    if (!stampSuperseded && !(input.now - chainMs > thresholdMs)) return { decision: "chain_alive", pulseAgeMs, pulse, thresholdMs, chainOutcome, stampSuperseded };
   }
   if (pulseAgeMs <= thresholdMs) return { decision: "within_window", pulseAgeMs, pulse, thresholdMs, chainOutcome, stampSuperseded };
   const wdMs = parse(input.watchdogAt);

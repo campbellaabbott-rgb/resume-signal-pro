@@ -570,6 +570,7 @@ describe("the log says which kind of evidence ended each posting", () => {
       "missingSinceById",
       "r",
       "startIso",
+      "basis",
       `return (${basis![1].trim().replace(/,\s*$/, "")});`,
     ) as (
       lapMode: boolean,
@@ -577,6 +578,7 @@ describe("the log says which kind of evidence ended each posting", () => {
       missingSinceById: Map<string, string | null>,
       r: { id: string },
       startIso: string,
+      basis?: "stated_close",
     ) => string;
 
     const NOW = "2026-09-20T00:00:00.000Z";
@@ -595,6 +597,10 @@ describe("the log says which kind of evidence ended each posting", () => {
     // A row with no stamp at all on the very first proven lap is backlog too:
     // the board has no history in which it could have been seen absent.
     expect(decide(true, NOW, none, { id: "a" }, NOW)).toBe("lap_backfill");
+    // Board .102 (XR-1): a USAJOBS announcement closed on the date the agency
+    // stated is its own population, whatever read the board was in.
+    expect(decide(true, NOW, none, { id: "a" }, NOW, "stated_close")).toBe("stated_close");
+    expect(decide(false, "", none, { id: "a" }, NOW, "stated_close")).toBe("stated_close");
   });
 
   it("the basis column survives a deploy that lands ahead of its migration", () => {

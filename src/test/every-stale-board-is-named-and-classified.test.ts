@@ -22,7 +22,7 @@ import {
   type StaleRow,
 } from "../../supabase/functions/job-board/stale-lane.ts";
 import { JOB_SOURCES } from "../../supabase/functions/job-board/sources.ts";
-import { oversizeTokens } from "../../supabase/functions/job-board/oversize-registry.ts";
+import { oversizeTokens, unreadKeys } from "../../supabase/functions/job-board/oversize-registry.ts";
 import { runCompose } from "./helpers/slice-worker";
 
 /**
@@ -319,12 +319,15 @@ describe("the lane is WIRED into index.ts the way the header planned it (2026-09
     .replace(/(^|[^:\w])\/\/[^\n]*/g, "$1 ").replace(/\/\*[\s\S]*?\*\//g, " ");
   // Since .90 the oversize registry is keyed by board (bare token, or source:token on a
   // shared token), so the lane's expressions are RUN against one, not matched by spelling.
-  const REGISTRY = new Map([
+  // .102: a Workable board read bare stays registered (bare: true) but is read
+  // every lap, so the lane neither excludes nor classifies it as oversize.
+  const REGISTRY = new Map<string, { source: string; mb: number; at: string; bare?: true }>([
     ["greenhouse:pulse", { source: "greenhouse", mb: 20.6, at: "x" }],
     ["bigco", { source: "teamtailor", mb: 15, at: "y" }],
+    ["cxg", { source: "workable", mb: 31, at: "z", bare: true }],
   ]);
   const laneExpr = <T,>(expr: string, scope: Record<string, unknown>): T => {
-    const all: Record<string, unknown> = { OVERSIZE_BOARDS: REGISTRY, oversizeTokens, staleExclusion, ...scope };
+    const all: Record<string, unknown> = { OVERSIZE_BOARDS: REGISTRY, oversizeTokens, unreadKeys, staleExclusion, ...scope };
     return new Function(...Object.keys(all), `return (${expr});`)(...Object.values(all)) as T;
   };
 
@@ -340,7 +343,7 @@ describe("the lane is WIRED into index.ts the way the header planned it (2026-09
     expect(IDX).toMatch(/const effStalePerSlice = shedLevel === 2 \? 0 : shedLevel === 1 \? 1 : STALE_PER_SLICE;/);
     expect(IDX).toMatch(/if \(!inHotPhase && effStalePerSlice > 0\) \{/);
     // The same try/catch shape as the retry lane: an accelerator, never a failed slice.
-    const lane = IDX.slice(IDX.indexOf("let staleBoards: JobSource[] = [];"), IDX.indexOf("const slice = [...demandBoards"));
+    const lane = IDX.slice(IDX.indexOf("let staleBoards: JobSource[] = [];"), IDX.indexOf("const slice = [...waitBoards"));
     expect(lane).toMatch(/\} catch \(e\) \{/);
     expect(lane).toMatch(/staleBoards = \[\];/);
     // And the throughput constant it is sized by is the module's, not a copy.
@@ -390,7 +393,7 @@ describe("the lane is WIRED into index.ts the way the header planned it (2026-09
     expect(IDX).toMatch(/let rpc = await askStale\(staleExclude\);/);
     expect(IDX).toMatch(/let excluded = staleExclude\.length;/);
     // The tries map is read BEFORE the exclusion is built (unresolved comes from it).
-    const lane = IDX.slice(IDX.indexOf("let staleBoards: JobSource[] = [];"), IDX.indexOf("const slice = [...demandBoards"));
+    const lane = IDX.slice(IDX.indexOf("let staleBoards: JobSource[] = [];"), IDX.indexOf("const slice = [...waitBoards"));
     expect(lane.indexOf("staleTries = readStaleTries(slMeta?.v);")).toBeLessThan(lane.indexOf("const staleExclude = staleExclusion("));
     // Nothing else is excluded here: the ladder of what a fetch can fix is the module's.
     expect(lane).not.toMatch(/staleExclusion\(\{[^}]*(dormant|failing|quarantined|catalogued)/);
@@ -427,8 +430,8 @@ describe("the lane is WIRED into index.ts the way the header planned it (2026-09
     expect(IDX).toMatch(/tries: staleTries,/);
     expect(IDX).toMatch(/staleTries = readStaleTries\(slMeta\?\.v\);/);
     // The quarantine set is read BEFORE the slice is sealed, or the context is empty by construction.
-    expect(IDX.indexOf('eq("k", "vendor_breaker")')).toBeLessThan(IDX.indexOf("const slice = [...demandBoards"));
-    expect(IDX.indexOf('eq("k", "stale_lane")')).toBeLessThan(IDX.indexOf("const slice = [...demandBoards"));
+    expect(IDX.indexOf('eq("k", "vendor_breaker")')).toBeLessThan(IDX.indexOf("const slice = [...waitBoards"));
+    expect(IDX.indexOf('eq("k", "stale_lane")')).toBeLessThan(IDX.indexOf("const slice = [...waitBoards"));
   });
 
   it("takes up to STALE_PER_SLICE 'unexplained' tokens not already in the slice, through the ordinary fetch path", () => {
@@ -437,13 +440,13 @@ describe("the lane is WIRED into index.ts the way the header planned it (2026-09
     const slice = runCompose({ demand: [], bootstrap: [], retry: ["r"], stale: ["s"], deep: [], base: ["k"] });
     expect([slice.indexOf("r") < slice.indexOf("s"), slice.indexOf("s") < slice.indexOf("k")], "retry, then stale, then base").toEqual([true, true]);
     // No second fetch path, no second budget: the lane has no fetchBoard call of its own.
-    const lane = IDX.slice(IDX.indexOf("let staleBoards: JobSource[] = [];"), IDX.indexOf("const slice = [...demandBoards"));
+    const lane = IDX.slice(IDX.indexOf("let staleBoards: JobSource[] = [];"), IDX.indexOf("const slice = [...waitBoards"));
     expect(lane).not.toMatch(/fetchBoard\(/);
     expect(lane).not.toMatch(/SLICE_POSTING_BUDGET|inFlightReserve/);
   });
 
   it("folds tries at hop end: a stamped board leaves the map, an attempted one counts, a budget-deferred one is untouched", () => {
-    expect(IDX).toMatch(/const attempted = staleBoards\.filter\(\(s\) => !budgetSkippedSet\.has\(s\.token\)\)\.map\(boardKeyOf\);/);
+    expect(IDX).toMatch(/const tried = new Set\(\[\.\.\.sliceReads\.rateLimited, \.\.\.sliceReads\.rawNoRows\]\);\s*const attempted = staleBoards\.filter\(\(s\) => !budgetSkippedSet\.has\(s\.token\) \|\| tried\.has\(boardKeyOf\(s\)\)\)\.map\(boardKeyOf\);/);
     expect(IDX).toMatch(/const resolved = attempted\.filter\(\(k\) => okKeySet\.has\(k\)\)\.length;/);
     expect(IDX).toMatch(/const nextTries = bumpStaleTries\(staleTries, attempted, okKeySet\);/);
     // okKeySet is EVERY stamp the slice landed (by board key since .91), so the
@@ -456,6 +459,25 @@ describe("the lane is WIRED into index.ts the way the header planned it (2026-09
     // staleTries ride slice_stats beside the budget note.
     expect(IDX).toMatch(/\.\.\.\(sliceStaleNote \? \{ staleTries: sliceStaleNote\.tries, staleResolved: sliceStaleNote\.resolved \} : \{\}\),/);
     expect(IDX).toMatch(/sliceStaleNote = \{ tries: attempted\.length, resolved \};/);
+  });
+
+  it("a stale board refused by its vendor (429) or answered with no rows counts as tried; one only the budget deferred does not (board .102 review)", () => {
+    // Both the 429 and the raw-no-rows paths push the token onto budgetSkipped
+    // as well, so the old fold read them as never tried: their tries never
+    // rose, and a board that answers 429 every visit held a lane seat forever.
+    // Run here: the two shipped lines, lifted from the hop end.
+    const lines = /(const tried = new Set\([^\n]*\);\s*const attempted = staleBoards\.filter\([^\n]*\);)/.exec(IDX);
+    expect(lines, "the fold's tried/attempted lines").toBeTruthy();
+    const fold = (budgetSkipped: string[], rateLimited: string[], rawNoRows: string[]) =>
+      new Function("staleBoards", "budgetSkippedSet", "sliceReads", "boardKeyOf", `${lines![1]}\nreturn attempted;`)(
+        [{ source: "lever", token: "r429" }, { source: "ashby", token: "empty" }, { source: "greenhouse", token: "deferred" }, { source: "lever", token: "read" }],
+        new Set(budgetSkipped), { rateLimited, rawNoRows, streamed: 0, srPartial: [] },
+        (b: { source: string; token: string }) => (b.token === "empty" ? `${b.source}:${b.token}` : b.token),
+      ) as string[];
+    const attempted = fold(["r429", "empty", "deferred"], ["r429"], ["ashby:empty"]);
+    expect(attempted, "429 and no-rows are tries; the budget deferral is not").toEqual(["r429", "ashby:empty", "read"]);
+    // The control: with no vendor refusal recorded, a budget-skipped board is untouched, as before.
+    expect(fold(["r429", "empty", "deferred"], [], [])).toEqual(["read"]);
   });
 
   it("status publishes staleLane: asked, classes, fetched, resolved, and the two classes no fetch can fix", () => {

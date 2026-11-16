@@ -15,7 +15,10 @@
 #   B2  agent-mcp and public-api serve 2026-11-03.1 or later;
 #   F1  a list asking for the retired flag has it named in ignoredFilters;
 #   F2  that list is not narrowed to the four vendors the flag used to mean;
-#   U1  upkeep, asked with the publishable key, is refused as the scheduler's;
+#   U1  (rewritten for board .102, which deleted the route) no POST: on
+#       job-board .102 or later, the checkout's index.ts, when it is the build
+#       production serves, has no upkeep route, and status has no boardUpkeep
+#       key; before .102 the line is INFO;
 #   S1  a status this request made compute reports the watchdog readOnly;
 #   S2  that computed status moved the meter's probe count. The count is shared
 #       with every other probe in that minute (15 in 20 s measured on .100, with
@@ -34,8 +37,6 @@
 #       was unpaused under 3 minutes ago (status.ingestPausedAgeMin), before
 #       the kick's next tick; it judges only the moment it reads, and a memo
 #       answer can understate the age by 30 s.
-#   Upkeep has no scheduled caller, by decision: an INFO line says so, with
-#   status.boardUpkeep as read.
 # Not provable from outside, so proved in the suite: no query text and no
 # per-person hash in a log line, an allowance note's claim given back, the
 # stored flag stripped from user_job_searches (the row is private; the migration
@@ -43,9 +44,9 @@
 # parameters reaching the board as the vendor list.
 #
 # READ-ONLY: OPTIONS preflights, one list and up to six status reads with
-# x-rb-budget: probe, one upkeep the anon key is refused, and the anon telemetry
-# and cron aggregates. Nothing is sent, bought or written.
-echo "== 99zzzz. audit-rest held board items: status counted and read-only, upkeep refused, the dead-chain kick, the retired flag (job-board .101, 20261107100000) =="
+# x-rb-budget: probe, and the anon telemetry and cron aggregates. Nothing is
+# sent, bought or written.
+echo "== 99zzzz. audit-rest held board items: status counted and read-only, the upkeep route gone on .102, the dead-chain kick, the retired flag (job-board .101, 20261107100000) =="
 
 vdhb_build() { # $1 fn -> the x-fn-build its preflight answers
   curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$1" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+:[[:space:]]*//'
@@ -66,8 +67,12 @@ vdhb_post() { # $1 json, $2 body file, $3 header file -> prints the HTTP status
 
 # F1, F2: the retired flag, on a list.
 VDHB_LIST_CODE=$(vdhb_post '{"action":"list","sendableOnly":true,"limit":25,"includeFacets":false}' /tmp/vd_hb_list.json /tmp/vd_hb_list_h.txt)
-# U1: the scheduler's action, without the scheduler's key.
-VDHB_UP_CODE=$(vdhb_post '{"action":"upkeep"}' /tmp/vd_hb_upkeep.json /tmp/vd_hb_upkeep_h.txt)
+# U1: no request. The build production serves, and whether this checkout is that build.
+VDHB_JB_BUILD=$(vdhb_build job-board)
+VDHB_INDEX=${VDHB_INDEX:-supabase/functions/job-board/index.ts}
+VDHB_REPO_BUILD=$(grep -m1 -oE 'BUILD_VERSION = "[^"]+"' "$VDHB_INDEX" | sed 's/.*"\(.*\)"/\1/')
+VDHB_GE102=0; build_ge job-board "$VDHB_JB_BUILD" 2026-09-09 102 && VDHB_GE102=1
+VDHB_ROUTE=0; grep -q 'action === "upkeep"' "$VDHB_INDEX" && VDHB_ROUTE=1
 
 # S1, S2: only a status that computed can show either, and a memo answer says
 # its age. A memo lives thirty seconds, so six tries six seconds apart outlast it.
@@ -83,7 +88,7 @@ done
 R get_board_anon_hourly '{"p_hours":3}' > /tmp/vd_hb_after.json
 R get_cron_health '{"p_hours":1}' > /tmp/vd_hb_cron.json
 
-VDHB_LIST_CODE="$VDHB_LIST_CODE" VDHB_UP_CODE="$VDHB_UP_CODE" VDHB_ST_CODE="$VDHB_ST_CODE" VDHB_FRESH="$VDHB_FRESH" node -e '
+VDHB_LIST_CODE="$VDHB_LIST_CODE" VDHB_JB_BUILD="$VDHB_JB_BUILD" VDHB_REPO_BUILD="$VDHB_REPO_BUILD" VDHB_GE102="$VDHB_GE102" VDHB_ROUTE="$VDHB_ROUTE" VDHB_ST_CODE="$VDHB_ST_CODE" VDHB_FRESH="$VDHB_FRESH" node -e '
 const fs=require("fs");
 const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const js=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
@@ -102,11 +107,7 @@ else{
   else{const off=srcs.filter((s)=>!SENDABLE.has(s)).length;ok(off>0,off+" of "+srcs.length+" rows on that list come from vendors the flag used to exclude (0 means it still narrows)");}
 }
 
-// U1
-const up=js("/tmp/vd_hb_upkeep.json");
-if(E.VDHB_UP_CODE==="403"&&/scheduler/.test(String(up&&up.error)))ok(true,"upkeep with the publishable key is refused as the scheduler\u0027s action (403)");
-else if(E.VDHB_UP_CODE==="400")ok(false,"upkeep answered 400 ("+short(up&&up.error)+"): no build with the action is serving");
-else ok(false,"upkeep with the publishable key answered HTTP "+E.VDHB_UP_CODE+": "+short(up)+" (want 403, and a 200 means anyone can run it)");
+// U1 is judged after the status read, below.
 
 // S1, S2
 const st=js("/tmp/vd_hb_status.json");
@@ -153,8 +154,15 @@ else{
     else ok(false,"the chain is silent "+s(age-bound)+" s past the dead-chain kick\u0027s bound: its freshest pulse is "+s(age)+" s old against "+s(th)+" s plus 120 s (decision "+wd.decision+"), so no kick restarted it");
   }
 }
-const bu=st&&typeof st==="object"?st.boardUpkeep:undefined;
-info("upkeep has no scheduled caller by decision (20261103221000 neverApply); boardUpkeep "+(bu===undefined?"not in the status read":bu===null?"null":typeof bu.ageMin==="number"?"last ran "+bu.ageMin+" min ago":short(bu)));
+// U1: board .102 deleted the upkeep route (nothing posted it: 20261103221000 neverApply).
+const hasSt=!!st&&typeof st==="object"&&("catalogSize" in st);
+if(E.VDHB_GE102!=="1")info("job-board serves "+(E.VDHB_JB_BUILD||"no x-fn-build")+", before 2026-09-09.102: the upkeep route and status.boardUpkeep ("+(hasSt?("boardUpkeep" in st?"present":"absent"):"no status")+") are judged once .102 serves");
+else{
+  if(E.VDHB_JB_BUILD!=="job-board."+E.VDHB_REPO_BUILD)info("production serves "+E.VDHB_JB_BUILD+" and this checkout is "+E.VDHB_REPO_BUILD+": the served source is not this index.ts, so its routes are not read here");
+  else ok(E.VDHB_ROUTE!=="1","the served build\u0027s index.ts ("+E.VDHB_REPO_BUILD+") has "+(E.VDHB_ROUTE==="1"?"an":"no")+" upkeep route");
+  if(!hasSt)info("no status body to read boardUpkeep from ("+short(st)+")");
+  else ok(!("boardUpkeep" in st),"status on "+E.VDHB_JB_BUILD+" has "+("boardUpkeep" in st?"a boardUpkeep key ("+short(st.boardUpkeep)+")":"no boardUpkeep key"));
+}
 
 info("S13-104 is proved in the suite (a-search-asked-not-to-be-logged-reaches-no-log-line-on-any-path.test.ts), since function logs are not readable from here");
 info("S13-040 is proved in the suite (a-refused-allowance-note-gives-its-claim-back.test.ts): a claim stands only for a note notify-owner says it mailed");

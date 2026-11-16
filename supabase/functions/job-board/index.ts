@@ -62,6 +62,8 @@ import {
   workdayDetailPlace,
   isPlacelessLocation,
   listMayRewriteMode,
+  namesATrade,
+  unescapeEntities,
 } from "./normalize.ts";
 import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
 import { computeFit, resumeRoleTerms, scanResume } from "../_shared/fit-score.ts";
@@ -76,7 +78,7 @@ import {
   backlogFromCoverage,
 } from "../_shared/posted-backfill.ts";
 import { extractSalary, parseSalaryStructured } from "../_shared/salary-extract.ts";
-import { boardKey, classifyDormancy, DB_FAIL_ALARM_VISITS, dbFailingBoards, dropBareSharedKeys, foldDbFailures, keySource, keyToken, rearmIncompletePrunes, selectRetries, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
+import { boardKey, classifyDormancy, DB_FAIL_ALARM_VISITS, dbFailingBoards, dropBareSharedKeys, foldDbFailures, foldDeferrals, keySource, keyToken, rearmIncompletePrunes, selectRetries, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
 import { STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, keysOf, readStaleTries, selectStaleLane, staleExclusion, unresolvedTokens, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict } from "./stale-lane.ts";
 import { tokenMapFromRecord, tokenMapToRecord } from "./token-map.ts";
 import { decideRekick } from "./chain-watchdog.ts";
@@ -98,7 +100,6 @@ import { beforeDeadline, SLIM_SPECS, streamSlim } from "./slim-stream.ts";
 import { withWorkdayLanguage } from "./request-headers.ts";
 import { ANON_OFFSET_CEILING, anonBudgetGate, anonBudgetStatus, budgetEcho, callerAddress, exemptKind, METERED_ACTIONS, offsetCeiling, pageCeiling } from "./anon-budget.ts";
 import { boardPassAction } from "./board-pass.ts";
-import { isScheduledCaller } from "../_shared/email-cron.ts";
 import {
   addressAllowance, admitDemand, CLICK_PER_ADDRESS_HOUR, DEMAND_QUEUE_KEY, demandLaneStatus, FIT_PER_ADDRESS_HOUR, incidentRows, readDemand,
   REPORT_PER_ADDRESS_HOUR, stampDemandServed, summariseIncidents, takeDemand, VERIFY_PER_ADDRESS_HOUR, writeIncidents,
@@ -107,7 +108,7 @@ import { splitTombstoned, type Tombstone } from "./tombstone.ts";
 import { laneRows, stampKeyOfJob, stampPlan, stampRows } from "./verification-stamp.ts";
 import { ANCHOR, isStateCodeAlias, locationBranch, partMatchesTerm } from "./location-match.ts";
 import { belowCapFloor, capLapCovers, cursorAfterFailure, emptyFirstPage, emptyInsideLapTotal, lapTotal, ORACLE_RESULT_CAP, resumeAt, stampFeedTotal, workdayWindowed } from "./read-window.ts";
-import { clearOversize, heldOversize, loadOversizeEntries, noteOversize, oversizeStatusRows } from "./oversize-registry.ts";
+import { clearOversize, heldOversize, loadOversizeEntries, nextWaiting, noteOversize, oversizeStatusRows, unreadKeys, type OversizeEntry } from "./oversize-registry.ts";
 import { startGate } from "./start-gate.ts";
 import { addLightReread, lightReread, lightRereadStats, type LightRereadStats } from "./light-reread.ts";
 import { selectDeepLane } from "./deep-lane.ts";
@@ -126,9 +127,12 @@ const SEMANTIC_PROBE_ROWS = 10;
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-rb-pass",
+  "Access-Control-Max-Age": "7200",
 };
+// BR-04: a page with nothing after it names no next offset (the key stays, null).
+const lastPage = (b: unknown) => (b && typeof b === "object" && (b as { hasMore?: unknown }).hasMore === false && "nextOffset" in b ? { ...b, nextOffset: null } : b);
 const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  new Response(JSON.stringify(lastPage(body)), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
 // Rationale: docs/job-board-index-notes.md#n001-sitemap-days
 // RETAINED WITH NO READER, ON PURPOSE. Its one consumer — the live sitemap
@@ -140,11 +144,11 @@ const json = (body: unknown, status = 200) =>
 // a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.101"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.102"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // Rationale: docs/job-board-index-notes.md#n483-const-name_sync_version
-const NAME_SYNC_VERSION = 6;
+const NAME_SYNC_VERSION = 7;
 // Rationale: docs/job-board-index-notes.md#n484-boards-whose-catalog-display-name-was
 
 // Rationale: docs/job-board-index-notes.md#n1135-const-renamed_tokens-readonly-string
@@ -255,6 +259,10 @@ const RENAMED_TOKENS: readonly string[] = [
   "ferric-recruiting",
   "meundies-recruiting",
   "lylaw-recruitment",
+  "creatoriq",
+  "harmattan-ai",
+  "deag-deutsche-entertainment-ag",
+  "americaatwork",
 ];
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
@@ -518,6 +526,8 @@ const boardByKey = (key: string): JobSource | undefined => {
 };
 /** Every catalogued board's key, once: the stale lane's 'uncatalogued' test (n428). */
 const CATALOGUE_KEYS: ReadonlySet<string> = new Set(JOB_SOURCES.map(boardKeyOf));
+/** Retired vendor:token boards whose token another vendor still carries, so the token-keyed orphan prune never reaches them (board .102). */
+const RETIRED_TWIN_KEYS: readonly string[] = ["pinpoint:helsing", "greenhouse:wayve", "greenhouse:clickhouse", "lever:swordhealth", "greenhouse:lovable", "greenhouse:kalshi", "greenhouse:webflow", "greenhouse:worldlabs"];
 /** One cold hop's stale-lane run, as persisted under meta k = "stale_lane" beside `tries`, and as status reads it. */
 interface StaleLaneRun {
   at: string;
@@ -663,7 +673,7 @@ async function loadDynamicLight(client: SupabaseClient): Promise<void> {
 }
 
 // Rationale: docs/job-board-index-notes.md#n020-oversize-boards
-const OVERSIZE_BOARDS = new Map<string, { source: string; mb: number; at: string }>();
+const OVERSIZE_BOARDS = new Map<string, OversizeEntry>();
 const OVERSIZE_CAP = 200;
 async function loadOversizeBoards(client: SupabaseClient): Promise<void> {
   const row = await readMetaRow(client, "oversize_boards");
@@ -672,7 +682,7 @@ async function loadOversizeBoards(client: SupabaseClient): Promise<void> {
     console.warn(`[JOB-BOARD] oversize registry unread (${row.why}): previous registry kept, not persisted, and the freshness sweep skipped this slice`);
     return;
   }
-  loadOversizeEntries(OVERSIZE_BOARDS, (row.v as { boards?: unknown } | null)?.boards, SHARED_TOKENS);
+  if (loadOversizeEntries(OVERSIZE_BOARDS, (row.v as { boards?: unknown } | null)?.boards, SHARED_TOKENS, CATALOGUE_KEYS)) await persistOversizeBoards(client);
 }
 async function persistOversizeBoards(client: SupabaseClient): Promise<void> {
   if (!META_READ.oversize) return;
@@ -736,7 +746,7 @@ async function enrolDynamicLight(client: SupabaseClient, board: Pick<JobSource, 
 
 // startOffset is honoured only by the paginating vendors; every other branch
 // fetches a whole feed and ignores it.
-const listUrl = (s: JobSource, startOffset = 0) =>
+const listUrl = (s: JobSource, startOffset = 0, details = !isLight(s)) =>
   s.source === "greenhouse"
     // content=true costs a bigger payload but delivers every description in
     // ONE call — fit-ranking coverage for GH boards, plus real departments.
@@ -749,7 +759,7 @@ const listUrl = (s: JobSource, startOffset = 0) =>
           ? `https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=100${startOffset ? `&offset=${startOffset}` : ""}`
           : s.source === "workable"
             // Rationale: docs/job-board-index-notes.md#n492-https-apply-workable-com-api-v1
-            ? `https://apply.workable.com/api/v1/widget/accounts/${s.token}?details=${isLight(s) ? "false" : "true"}`
+            ? `https://apply.workable.com/api/v1/widget/accounts/${s.token}?details=${details}`
             : s.source === "recruitee"
               ? `https://${s.token}.recruitee.com/api/offers/`
               : s.source === "breezy"
@@ -757,7 +767,10 @@ const listUrl = (s: JobSource, startOffset = 0) =>
                 : s.source === "teamtailor"
                   // Rationale: docs/job-board-index-notes.md#n493-https-s-host-s-token-teamtailor
                   ? `https://${s.host ?? `${s.token}.teamtailor.com`}/jobs.rss`
-                  : `https://${s.token}.bamboohr.com/careers/list`;
+                  : s.source === "pinpoint"
+                    // Rationale: docs/job-board-index-notes.md#n036-pinpointhost
+                    ? `https://${s.token.includes(".") ? s.token : `${s.token}.pinpointhq.com`}/postings.json`
+                    : `https://${s.token}.bamboohr.com/careers/list`;
 
 // Rationale: docs/job-board-index-notes.md#n022-sr-page
 const SR_PAGE = 100;
@@ -778,9 +791,11 @@ async function fetchSmartRecruiters(s: JobSource, startOffset = 0): Promise<{ co
   // CAPPED_VISIT_VENDOR; this used to run to SR_CAP), srEnded false, so it resumes.
   for (let offset = SR_PAGE; !srEnded && offset < total && content.length < MAX_POSTINGS_PER_VISIT; offset += SR_PAGE) {
     const want = Math.min(SR_PAGE, MAX_POSTINGS_PER_VISIT - content.length);
-    const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=${want}&offset=${startOffset + content.length}`);
-    if (!res.ok) { discardBody(res); break; } // partial page set: windowed below, so nothing is pruned on it
-    const page = await res.json();
+    // S14X-121: a later page refused, timed out or broken keeps page one; windowed below, so nothing is pruned on it.
+    const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=${want}&offset=${startOffset + content.length}`).catch(() => null);
+    let page: { content?: unknown[] } | null = null;
+    try { if (res?.ok) page = await res.json(); } catch { /* broke mid-read */ }
+    if (!page) { discardBody(res); sliceReads.srPartial.push(boardKeyOf(s)); break; }
     const batch = (page.content ?? []) as unknown[];
     content.push(...batch);
     // RECORD the ending; a short page is the only end-of-feed observation.
@@ -1018,14 +1033,19 @@ async function fetchWithTimeout(url: string, init?: RequestInit, limit = MAX_RES
   const once = () => withWorkdayLanguage(url, init?.headers, send, discardBody, init?.body);
   const res = await once();
   // Rationale: docs/job-board-index-notes.md#n500-if-res-status
-  if (res.status === 429) {
+  // BB-09: a 503 that names a Retry-After is the same refusal for load.
+  const busy = (x: Response) => x.status === 429 || (x.status === 503 && x.headers.has("retry-after"));
+  if (busy(res)) {
     const ra = Number(res.headers.get("retry-after"));
     const waitMs = Number.isFinite(ra) && ra > 0 ? Math.min(ra * 1000, 4000) : 1500;
     // The 429's own body is never read. Release it rather than leave the
     // connection hanging while we sleep out the Retry-After.
     discardBody(res);
     await new Promise((r) => setTimeout(r, waitMs));
-    return boundBody(await once(), limit);
+    const again = await once();
+    if (again.status !== 503 || !busy(again)) return boundBody(again, limit);
+    discardBody(again);
+    return Object.defineProperty(new Response(null, { status: 429, headers: again.headers }), "url", { value: again.url });
   }
   return boundBody(res, limit);
 }
@@ -1601,7 +1621,7 @@ async function readOversizeBoard(s: JobSource, deadlineAt: number, freshCutoffMs
     const { raw, stats } = await streamSlim(res.body, spec, {
       freshCutoffMs,
       maxBytes: SLIM_RETAINED_BYTES,
-      maxElementBytes: SLIM_ELEMENT_BYTES,
+      maxElementBytes: spec.maxElementBytes ?? SLIM_ELEMENT_BYTES,
       descKeepChars: 2 * STORED_DESC_CAP,
       descCeiling: SLIM_DESC_CEILING,
       deadlineAt,
@@ -1609,6 +1629,8 @@ async function readOversizeBoard(s: JobSource, deadlineAt: number, freshCutoffMs
     const jobs = s.source === "lever" ? normalizeLever(raw as never, s.name, s.token)
       : s.source === "ashby" ? normalizeAshby(raw as never, s.name, s.token)
       : s.source === "greenhouse" ? normalizeGreenhouse(raw as never, s.name, s.token)
+      : s.source === "recruitee" ? normalizeRecruitee(raw as never, s.name, s.token)
+      : s.source === "pinpoint" ? normalizePinpoint((raw as { data: never }).data, s.name, s.token)
       : null;
     if (!jobs) throw new Error(`no normaliser for ${s.source}`);
     console.warn(`[JOB-BOARD] streamed ${s.source}:${s.token}: ${(stats.bytes / 1e6).toFixed(1)}MB read, ${(stats.slimBytes / 1e6).toFixed(1)}MB kept, ${stats.descDropped} description(s) dropped`);
@@ -1617,6 +1639,18 @@ async function readOversizeBoard(s: JobSource, deadlineAt: number, freshCutoffMs
     console.warn(`[JOB-BOARD] streamed read of ${s.source}:${s.token} failed, stays deferred:`, String((e as Error)?.message ?? e).slice(0, 120));
     return null;
   }
+}
+
+/** D7: held until a mill screen and an owner call (OD1: nogigiddy; weekday-1 unscreened; hire-resolve names itself an agency). */
+const WORKABLE_OVERSIZE_HELD: ReadonlySet<string> = new Set(["nogigiddy", "weekday-1", "hire-resolve-the-top-recruitment-agency"]);
+/** A Workable list with details=false (listUrl's third argument). Not light mode: the board stays out of DYNAMIC_LIGHT (n017). */
+async function readWorkableBare(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unknown } | null> {
+  try {
+    const res = await fetchWithTimeout(listUrl(s, 0, false));
+    if (!res.ok) { discardBody(res); return null; }
+    const raw = await res.json();
+    return { jobs: normalizeWorkable(raw, s.name, s.token), raw };
+  } catch { return null; }
 }
 
 // Rationale: docs/job-board-index-notes.md#n521-async-function-fetchboard
@@ -1652,9 +1686,7 @@ async function fetchBoard(
       return { jobs: normalizeRippling(items as never, s.name, s.token), raw, windowed, feedTotal, nextOffset, feedEnded, endOffset };
     }
     if (s.source === "pinpoint") {
-      // Rationale: docs/job-board-index-notes.md#n036-pinpointhost
-      const pinpointHost = s.token.includes(".") ? s.token : `${s.token}.pinpointhq.com`;
-      const res = await fetchWithTimeout(`https://${pinpointHost}/postings.json`);
+      const res = await fetchWithTimeout(listUrl(s));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = await res.json();
       const data = Array.isArray((body as { data?: unknown[] }).data) ? (body as { data: unknown[] }).data : [];
@@ -1799,7 +1831,7 @@ const VENDOR_STATS_DECAY = 0.8; // per-slice decay — recent slices dominate
 // Rationale: docs/job-board-index-notes.md#n1475-const-experience_version
 const EXPERIENCE_VERSION = 3;
 // Rationale: docs/job-board-index-notes.md#n043-salary-parse-version
-const SALARY_PARSE_VERSION = 10; // v10 (2026-10-09, wave 3 board-data-ingest, docs/wave3/board-data-ingest.md): NT$/AR$/CL$/COL$/RD$/$U and a bare $ in TW/AR/CL/CO/DO/UY are not USD; a figure in millions is no wage; "up to X" alone is no floor; "$17/hr - $38/hr" is a range. // v9 (2026-09-27): A COMMA IS A DECIMAL POINT IN MOST OF EUROPE and the money pattern read it as a thousands group, so the figure split in half: P_RANGE is two money patterns with a dash between them, and on "€14,61 — €14,61" (ouihelp's own greenhouse pay footer) the grouped alternative could not match a 2-digit group, the plain one matched the bare "14", no separator followed, and the engine restarted INSIDE the number — taking the decimal tail 61 as the low end and the next figure's 14 as the high end. A €14.61/hour rate was read as a range from 61 down to 14. Where the halves descended, annualisation refused and the columns stored NULL (643 of 684 rows); where they ascended, the WRONG pair annualised cleanly — smartrecruiters/Securitas "€ 18,10 – € 19,51" stored 20,800-39,520 and workday/Assurant "$ 19,08 - $ 30,53" stored a floor of 16,640 against a true 39,686, 58% low, in the column salary_rank_usd is generated from (41 rows). Worst single shape: smartrecruiters/Flink "€15,96 - €17,14 per hour" read min 96 WITH a stated period and annualised to 199,680 — a €33k job published as a €200k one at the top of the pay sort. THE TAIL LENGTH DECIDES, NOT THE SEPARATOR AND NOT THE LOCALE: no thousands group has two digits, while three genuinely is ambiguous, so the v8 rule below and parseMoney's European reading are untouched (1,715 dot-3 rows in the census, zero changed) and the fix is unconditional — 29 of the 74 shape-carrying rows found by the country census have country NULL, so a locale-gated rule would have missed most of the population. Lookaheads refuse a tail followed by another separator (ashby/Oscilar's Indian lakh grouping "₹66,21,800") or by a period and a digit. MEASURED LIVE 2026-09-27 with the anon key: 684 rows carry the shape on NINE boards (greenhouse ouihelp 550 / joya 114, smartrecruiters Securitas 8 / Flink 5, workday Ia 2 / Assurant 2 / Enzazaden 1, oracle CareOne 1 / IHG 1), found by censusing every servable posting placed in any of the 64 comma-decimal countries the board holds (80,006 rows, cluster fold off) and then walking each discovered board to its exact countOnly total; an independent 60,000-row offset sample of the whole board found one further board and nothing else. Re-parsing 178,591 real stored salary strings with the old reader and the new one: 683 rows change, 638 NULL to a value, 45 a wrong value to a right one, ZERO a value to NULL. Boards, not one board, and never a token condition — the same lesson as v8. // v8 (2026-09-26): a 3-decimal HOURLY rate was read as a thousands group — Saskatchewan Health Authority's own field says "RequisitionType": "Hourly" beside "Pay Band 12 $23.170 to $24.840", and the board stored $23.17/hr as a $23,170 ANNUAL salary (under SK minimum wage, ~29% of real pay). Measured live over 176,575 rows: 1,404 rows on FIVE boards / two vendors — oracle HealthCareersInSask.ca 1,294, oracle DPS 96, workday Scarborough Health Network 11, workday Richmond University Medical Center 2, oracle Northwell 1 — of which 1,323 hold a wrong stored annual and 81 stored NULL. Every salary floor, ceiling and the pay sort read salary_rank_usd off salary_min_annual, so all of them filtered and sorted at ~half their true pay. See readsDotThreeAsRate: the European thousands reading ('€45.000' = 45,000) is deliberately kept, so the re-read is conditioned on the posting's locale, not the separator. // v7 (2026-08-25): day rates (x260) + a part-time/casual guard that REFUSES to annualise a load-dependent rate — {"q":"teacher","salaryFloor":90000} was serving 14 hourly part-timers out of 15, incl. $44/hr read as 91,520 and a $160/day substitute read as 332,800
+const SALARY_PARSE_VERSION = 10;
 // v6 (2026-08-24): // v6 (2026-08-24): "an hour"/"a year" vocabulary + unambiguous-hourly inference for parity currencies in [7,200) — 17,641 workday vendor-stated ranges sat unannualized; whole-dollar rounding
 const COUNTRY_VERSION = 1; // v1: deterministic country from location text (names + US/CA state patterns)
 // Rationale: docs/job-board-index-notes.md#n044-the-completion-stamp-expires-without-this-th
@@ -1925,6 +1957,7 @@ const EXIT_OPTIONAL_COLS = [
   "origin_basis", "title", "company", "department", "country", "region_code",
   "work_mode", "employment_type", "experience_band", "min_years",
   "salary_min_annual", "salary_max_annual", "salary_period", "salary_currency",
+  "exit_basis",
 ] as const;
 
 // Rationale: docs/job-board-index-notes.md#n1160-const-closure_optional_cols
@@ -2103,9 +2136,11 @@ async function closeVanishedChunk(
     lapBackfillUntil: string;
     missingSinceById: ReadonlyMap<string, string | null | undefined>;
     startIso: string;
+    /** XR-1: the evidence is the close date the employer stated, not a read of the feed. */
+    basis?: "stated_close";
   },
 ): Promise<string[]> {
-  const { closedAt, agedOutIds, freshCutoffMs, liveTitles, recentSuperseded, batchSuspect, absentInPass, removableBefore, lapMode, lapBackfillUntil, missingSinceById, startIso } = ctx;
+  const { closedAt, agedOutIds, freshCutoffMs, liveTitles, recentSuperseded, batchSuspect, absentInPass, removableBefore, lapMode, lapBackfillUntil, missingSinceById, startIso, basis } = ctx;
   const keep = new Set<string>();
   const agedIds = new Set<string>(agedOutIds);
   try {
@@ -2183,9 +2218,9 @@ async function closeVanishedChunk(
         batch_removed: absentInPass,
         batch_live_before: removableBefore,
         // Rationale: docs/job-board-index-notes.md#n538-absence_basis-lapmode
-        absence_basis: lapMode
+        absence_basis: basis ?? (lapMode
           ? (lapBackfillUntil && (missingSinceById.get(String(r.id)) ?? startIso) <= lapBackfillUntil ? "lap_backfill" : "lap")
-          : "full_read",
+          : "full_read"),
         ...lifecycleFacets(r),
       }));
       // Rationale: docs/job-board-index-notes.md#n126-const-error-rawclerr-await-client-from-j
@@ -2213,6 +2248,7 @@ async function closeVanishedChunk(
           origin_basis: t.basis,
           exited_at: closedAt,
           ...lifecycleFacets(r),
+          ...(basis ? { exit_basis: basis } : {}),
         };
       };
       // Only beside a closure that landed: a kept row comes back next
@@ -2502,6 +2538,8 @@ function firstSliceOf(pv: { build?: unknown; buildSince?: unknown }, sliceWallSt
 let sliceBudgetNote: { fetched: number; skipped: number; hit: boolean; lastUpsertError: string | null; heapStopped: boolean; wallStopped: boolean; sizeStopped: boolean; boardBudget: number } | null = null;
 // This slice's light re-reads (n081), added to the row's running totals by the recorder.
 let sliceLightReread: LightRereadStats | null = null;
+// This slice's streamed reads (CAP-8) and the boards a vendor refused for load (BB-09), whose items none normalised (S14X-063b) or whose later SmartRecruiters page threw (S14X-121).
+let sliceReads = { streamed: 0, bare: 0, rateLimited: [] as string[], rawNoRows: [] as string[], srPartial: [] as string[] };
 // This slice's boards whose feed read but whose rows our database would not read or store (S11-023).
 let sliceDbFailNote: { boards: number; alarm: number } | null = null;
 // Rationale: docs/job-board-index-notes.md#n547-let-currenthop
@@ -2579,6 +2617,10 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
         // Boards our own database failed this slice, and how many have failed DB_FAIL_ALARM_VISITS running (S11-023).
         ...(sliceDbFailNote ? { dbFailed: sliceDbFailNote } : {}),
         ...(sliceLightReread ? { lightReread: addLightReread((pv as { lightReread?: unknown }).lightReread, sliceLightReread, new Date().toISOString()) } : {}),
+        streamed: sliceReads.streamed,
+        rateLimited: sliceReads.rateLimited.slice(0, 50),
+        rawNoRows: sliceReads.rawNoRows.slice(0, 50),
+        srPartial: sliceReads.srPartial.slice(0, 50),
       },
       updated_at: new Date().toISOString(),
     }, { onConflict: "k" });
@@ -2615,7 +2657,6 @@ async function admitSlice(
 }
 
 async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, boardBudget = MIN_BOARDS_PER_SLICE): Promise<{ ok: boolean; detail: string }> {
-  currentHop = chainHop;
   // Checked at the ENTRY too, not only at the hop: pausing must also stop a
   // fresh chain started by pg_cron, a manual refresh, or any other trigger.
   // `force` does NOT override this — force exists to bypass the slice lock, and
@@ -2634,6 +2675,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   sliceCursorNote = null;
   sliceLightReread = null;
   sliceDbFailNote = null;
+  sliceReads = { streamed: 0, bare: 0, rateLimited: [], rawNoRows: [], srPartial: [] };
   const { hotList: HOT_LIST, coldList: COLD_LIST } = await tierLists(client);
   await loadDynamicLight(client); // auto-enrolled giant boards fetch without content
   // Rationale: docs/job-board-index-notes.md#n551-await-loadoversizeboards-client
@@ -2956,7 +2998,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       // By board key since .91 (n428): a shared token's bare entry names no board.
       for (const k of [...staleTries.keys()]) if (SHARED_TOKENS.has(k)) staleTries.delete(k);
       // Rationale: docs/job-board-index-notes.md#n072-staleexclude
-      const staleExclude = staleExclusion({ oversize: OVERSIZE_BOARDS.keys(), tries: staleTries });
+      const staleExclude = staleExclusion({ oversize: unreadKeys(OVERSIZE_BOARDS), tries: staleTries });
       const askStale = (exclude: readonly string[] | null) => withDeadline(
         client.rpc("get_stalest_boards", { p_limit: STALE_RPC_LIMIT, p_min_age_hours: STALE_LANE_MIN_AGE_H, ...(exclude ? { p_exclude: exclude } : {}) })
           .abortSignal(AbortSignal.timeout(STALE_RPC_DEADLINE_MS + 500))
@@ -2984,7 +3026,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         const verdicts: StaleVerdict[] = classifyStale(laneRows(rows, SHARED_TOKENS), {
           catalogued: CATALOGUE_KEYS,
           quarantinedVendors,
-          oversize: new Set(OVERSIZE_BOARDS.keys()),
+          oversize: new Set(unreadKeys(OVERSIZE_BOARDS)),
           dormant: keysOf(boardFailures.dormant),
           failing: new Set([...keysOf(boardFailures.failedAt), ...keysOf(boardFailures.streaks)]),
           tries: staleTries,
@@ -3019,8 +3061,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       staleBoards = [];
     }
   }
+  // A cold slice's one stream goes first to the board a slice refused longest ago for want of it, wherever the cursor is.
+  const waitKey = inHotPhase ? null : nextWaiting(OVERSIZE_BOARDS, new Set([...demandBoards, ...bootstrapBoards, ...retryBoards, ...staleBoards, ...deepBoards, ...baseSlice].map(boardKeyOf)));
+  const waitBoards = waitKey ? [boardByKey(waitKey)].filter((s): s is JobSource => !!s) : [];
   // Base LAST: a base board the budget defers heads the next slice (the cursor counts only base boards started); n426.
-  const slice = [...demandBoards, ...bootstrapBoards, ...retryBoards, ...staleBoards, ...deepBoards, ...baseSlice];
+  const slice = [...waitBoards, ...demandBoards, ...bootstrapBoards, ...retryBoards, ...staleBoards, ...deepBoards, ...baseSlice];
   const startIso = new Date().toISOString();
   const freshCutoffMs = Date.now() - FRESH_WINDOW_DAYS * 86_400_000; // roles older than this are dropped
 
@@ -3058,6 +3103,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       return { ok: true, detail: "skipped — a slice was admitted moments ago" };
     }
   }
+  // UPK-3: a kick the pause or the lock refused never relabels the running hop.
+  currentHop = chainHop;
   // The demand board this admitted slice took starts its cooldown and counts
   // against the hour, in the row only the refresh writes.
   if (demandTaken.length) await stampDemandServed(client, demandTaken, Date.now()).catch(() => {});
@@ -3161,10 +3208,28 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           done: lightRereadDone, stats: lightStats,
         }));
         // Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read, #n424-greenhouse-streamed-light-read
-        if (!r && failReason.startsWith("oversize") && SLIM_SPECS[s.source] && (s.source !== "greenhouse" || (lightOversize && isLight(s))) && Date.now() - sliceWallStart + STREAM_READ_BUDGET_MS <= SLICE_WALL_BUDGET_MS && (memStamp().heapMb ?? 0) < HEAP_SOFT_LIMIT_MB) {
-          inFlightReserve += reserve;
-          try { r = await readOversizeBoard(s, Date.now() + STREAM_READ_BUDGET_MS, freshCutoffMs); }
-          finally { inFlightReserve -= reserve; }
+        // CAP-8: one streamed read a slice, in either phase (a hot board has no other read), and only while the heap holds two
+        // elements plus the retained budget. A board this refuses waits in the registry for a cold slice's stream (nextWaiting).
+        let waits = false;
+        if (!r && failReason.startsWith("oversize") && SLIM_SPECS[s.source] && (s.source !== "greenhouse" || (lightOversize && isLight(s)))) {
+          if (sliceReads.streamed < 1 && Date.now() - sliceWallStart + STREAM_READ_BUDGET_MS <= SLICE_WALL_BUDGET_MS && (memStamp().heapMb ?? 0) + 2 * ((SLIM_SPECS[s.source].maxElementBytes ?? SLIM_ELEMENT_BYTES) + SLIM_RETAINED_BYTES) / 1e6 < HEAP_SOFT_LIMIT_MB) {
+            sliceReads.streamed++;
+            inFlightReserve += reserve;
+            try { r = await readOversizeBoard(s, Date.now() + STREAM_READ_BUDGET_MS, freshCutoffMs); }
+            finally { inFlightReserve -= reserve; }
+          } else waits = true;
+        }
+        // D7: a Workable board too big with its details is read without them, one a slice, under CAP-8's clock and a heap that
+        // holds two whole bodies (or it waits, as above); fillWorkableDetails brings the text back a posting at a time.
+        let bareRead = false;
+        if (!r && failReason.startsWith("oversize") && s.source === "workable" && !WORKABLE_OVERSIZE_HELD.has(s.token)) {
+          if (sliceReads.bare < 1 && Date.now() - sliceWallStart + STREAM_READ_BUDGET_MS <= SLICE_WALL_BUDGET_MS && (memStamp().heapMb ?? 0) + 2 * MAX_RESPONSE_BYTES / 1e6 < HEAP_SOFT_LIMIT_MB) {
+            sliceReads.bare++;
+            inFlightReserve += reserve;
+            try { r = await readWorkableBare(s); }
+            finally { inFlightReserve -= reserve; }
+            bareRead = !!r;
+          } else waits = true;
         }
         if (r) fetchedInSlice += r.jobs.length;
         // Rationale: docs/job-board-index-notes.md#n079-boardsdone
@@ -3178,7 +3243,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             oversized.push(s.token);
             const mb = Number(failReason.match(/([\d.]+)MB/)?.[1]) || 0;
             // Rationale: docs/job-board-index-notes.md#n573-if-noteoversize-oversize_boards-s-mb-sha
-            if (noteOversize(OVERSIZE_BOARDS, s, mb, SHARED_TOKENS)) oversizeDirty = true;
+            if (noteOversize(OVERSIZE_BOARDS, s, mb, SHARED_TOKENS, undefined, waits ? "wait" : undefined)) oversizeDirty = true;
+            budgetSkipped.push(s.token);
+            continue;
+          }
+          // BB-09: refused for load is a deferral, never a failure; foldDeferrals fails it after DEFERRAL_FAILING_MS.
+          if (failReason === "HTTP 429") {
+            sliceReads.rateLimited.push(boardKeyOf(s));
             budgetSkipped.push(s.token);
             continue;
           }
@@ -3275,6 +3346,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           const rec = deepLaps[lapKey];
           if (rec && rec.f !== 1) { rec.f = 1; deepCursorsDirty = true; }
         };
+        // S14X-063(b): items that all failed to normalise are drift, not an empty board (Ashby and ADP drop unlisted ones by design).
+        const unread = r.jobs.length === 0 && s.source !== "ashby" && s.source !== "adp" && rawItemCount(s.source, r.raw) > 0;
         // Rationale: docs/job-board-index-notes.md#n087-s-source-workday-r-jobs-length
         if (s.source === "workday" && r.jobs.length > 0) {
           const tenant = s.token.split("~")[0];
@@ -3330,9 +3403,15 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             continue;
           }
         }
+        if (unread) {
+          sliceReads.rawNoRows.push(boardKeyOf(s));
+          failLap();
+          budgetSkipped.push(s.token);
+          continue;
+        }
         const descs = new Map<string, string>();
         // Rationale: docs/job-board-index-notes.md#n580-let-descsdeferred-false
-        let descsDeferred = false;
+        let descsDeferred = bareRead;
         if (s.source === "lever") {
           for (const j of (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; lists?: unknown; additionalPlain?: string }>) {
             const text = leverText(j);
@@ -3357,8 +3436,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             }
           }
         } else if (s.source === "recruitee") {
-          for (const o of ((r.raw as { offers?: Array<{ id: string | number; description?: string; requirements?: string }> }).offers ?? [])) {
-            const text = htmlToText([o.description, o.requirements].filter(Boolean).join("\n").slice(0, RAW_HTML_CAP)).trim();
+          for (const o of ((r.raw as { offers?: Array<{ id: string | number; description?: string; requirements?: string; descriptionPlain?: string }> }).offers ?? [])) {
+            // A streamed board (D12) carries its text built already.
+            const text = o.descriptionPlain ?? htmlToText([o.description, o.requirements].filter(Boolean).join("\n").slice(0, RAW_HTML_CAP)).trim();
             if (text) descs.set(`recruitee:${s.token}:${o.id}`, text.slice(0, STORED_DESC_CAP));
           }
         } else if (s.source === "workable" && !isLight(s)) {
@@ -3410,6 +3490,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           const salaryText = (clean(j.salary?.slice(0, 200) ?? null) || null) ?? (lightDescs ? null : extractSalary(descs.get(j.id) ?? null));
           // Rationale: docs/job-board-index-notes.md#n588-if-isdatedbefore-posted-freshcutoffms-ag
           if (isDatedBefore(posted, freshCutoffMs)) { agedOutIds.add(j.id); continue; }
+          // XR-1: an announcement past the close date its agency states is not stored.
+          if (statedClosed(j, Date.now())) continue;
           // Experience band from the best text we have this pass (title + the
           // fetched description where the vendor provides one). null → "unspecified".
           const exp = detectExperience(j.title ?? "", lightDescs ? null : (descs.get(j.id) ?? null), j.level);
@@ -3454,6 +3536,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             // Light boards omit the column so previously stored descriptions
             // survive the upsert instead of being nulled.
             ...(lightDescs ? {} : { description: clean(descs.get(j.id) ?? null) }),
+            ...(j.closesAt ? { closes_at: j.closesAt } : {}),
             last_seen: startIso, // set at INSERT only — semantically first_seen; rows are never rewritten
           });
         }
@@ -3468,6 +3551,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           apply_url?: string | null; work_mode?: string | null; remote?: boolean | null;
           salary?: string | null; agency?: boolean | null; employment_type?: string | null;
           region_code?: string | null; first_seen?: string | null; posted_at?: string | null;
+          department?: string | null; closes_at?: string | null;
           /** Which lap last SERVED this row. See deepLaps. Absent/NULL = never, or not read this visit. */
           lap_epoch?: number | null;
         };
@@ -3478,14 +3562,18 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         let regionColUnknown = false;
         // Rationale: docs/job-board-index-notes.md#n093-lapcolunknown
         let lapColUnknown = false;
+        // XR-1: a USAJOBS row's stored close date, so a read can move it.
+        let closesCol = s.source === "usajobs" ? ",closes_at" : "";
         for (let from = 0; ; from += 1000) {
           // Rationale: docs/job-board-index-notes.md#n094-res
           let res = await client
             .from("job_board_postings")
-            .select("id,lap_epoch,missing_since,title,location,country,region_code,apply_url,work_mode,employment_type,remote,salary,agency,first_seen,posted_at")
+            .select(`id,lap_epoch,missing_since,title,location,country,region_code,apply_url,work_mode,employment_type,remote,salary,agency,first_seen,posted_at,department${closesCol}`)
             .eq("company_token", s.token)
             .order("id")
             .range(from, from + 999);
+          // Before 20261111100000 the column is absent: the same page again without it.
+          if (closesCol && res.error?.message?.includes("closes_at")) { closesCol = ""; from -= 1000; continue; }
           // The lap column's own deploy window, FIRST because its fallback is
           // the exact select the other three already know how to degrade.
           if (res.error?.message?.includes("lap_epoch")) {
@@ -3534,7 +3622,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             lastUpsertError = `${s.token}: ${readErr.message}`;
             break;
           }
-          existingRows.push(...((page ?? []) as Array<ExistingRow>).map((r) => ({
+          existingRows.push(...((page ?? []) as unknown as Array<ExistingRow>).map((r) => ({
             id: r.id, missing_since: r.missing_since ?? null,
             title: r.title ?? null, location: r.location ?? null, country: r.country ?? null,
             apply_url: r.apply_url ?? null, work_mode: r.work_mode ?? null,
@@ -3545,6 +3633,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             // Rationale: docs/job-board-index-notes.md#n597-first_seen-r-as-first_seen-string-null
             first_seen: (r as { first_seen?: string | null }).first_seen ?? null,
             posted_at: r.posted_at ?? null, // the cap floor reads it (n1430)
+            department: r.department ?? null, closes_at: r.closes_at ?? null, // the heal and XR-1 patch compare them
             // Rationale: docs/job-board-index-notes.md#n598-lap_epoch-r-as-lap_epoch-number-null
             lap_epoch: (r as { lap_epoch?: number | null }).lap_epoch ?? null,
           })));
@@ -3799,16 +3888,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         const DERIVED_NOT_EMPLOYER_EDITS = new Set(["region_code", "country"]);
         // Rationale: docs/job-board-index-notes.md#n108-vendor-field-first-read
         const VENDOR_FIELD_FIRST_READ = new Set(["personio:salary"]);
-        // .92 changed how these federal fields are read (S8-023, S8-083): the patches land, unlogged. Remove after 2026-11-09 (n444).
-        const OUR_READING_CHANGED = new Set(["usajobs:country", "usajobs:work_mode", "usajobs:remote", "usajobs:salary",
+        const OUR_READING_CHANGED = new Set([
           // Remove after 2026-11-30 (n1426).
           "lever:employment_type", "bamboohr:employment_type", "recruitee:employment_type", "breezy:employment_type", "personio:employment_type", "breezy:salary", "lever:salary"]);
-        // ONE-SHOT, REMOVE AFTER ONE COLD ROTATION (wave 3, L7-04/L7-05): the Lever and
-        // Recruitee pay text is re-formatted (exact figures, the stated period), so the
-        // first rewrite of a stored figure is our correction, not an employer edit.
-        // Remove after 2026-11-09: a dated test fails from that day while this set exists
-        // (S11-136), since an employer's real pay edit on these vendors goes unlogged.
-        const OUR_PAY_REWRITE = new Set(["lever", "recruitee"]);
         const FIELD_CHANGES_PER_VISIT = 500;
         const VALUE_CAP = 1_000; // salary strings and titles both fit generously
         const changeLog: Array<Record<string, unknown>> = [];
@@ -3837,6 +3919,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             // Ingest folding a stored curly apostrophe is our reading changing,
             // not the employer editing the posting (S11-021): patched, unlogged.
             if (sameButApostrophes(oldV, newV)) return;
+            // BR-08: a trade term ("Remote Sensing") read as no mode, title and place unchanged: our reading, patched unlogged.
+            if ((field === "remote" || field === "work_mode") && row.title === prev.title && row.location === prev.location && namesATrade(`${row.title} ${row.location}`)) return;
+            // S14X-216: so is a value that differs only by HTML entities ('R&amp;D' read as 'R&D').
+            if (typeof oldV === "string" && typeof newV === "string" && unescapeEntities(oldV) === unescapeEntities(newV)) return;
             if (changeLog.length >= FIELD_CHANGES_PER_VISIT) {
               // Rationale: docs/job-board-index-notes.md#n609-if-changecapat-changecapat-corrections-l
               if (changeCapAt < 0) { changeCapAt = corrections.length; changeCapLogAt = logMark; }
@@ -3885,10 +3971,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           const sameMoney = statesTheSameMoney(nextPay, curPay, payCountry);
           // Rationale: docs/job-board-index-notes.md#n610-const-firstvendorread-curpay-null-nextpa
           const firstVendorRead = curPay === null && nextPay !== null && VENDOR_FIELD_FIRST_READ.has(`${s.source}:salary`);
-          // Only a CHANGED text is a rewrite: the same string patched every salaried
-          // Lever and Recruitee row on every visit (S11-136).
-          const ourRewrite = curPay !== null && nextPay !== null && curPay !== nextPay && OUR_PAY_REWRITE.has(s.source);
-          if (sameMoney || firstVendorRead || ourRewrite) patch.salary = nextPay;
+          if (sameMoney || firstVendorRead) patch.salary = nextPay;
           else put("salary", row.salary, prev.salary, false);
           // Rationale: docs/job-board-index-notes.md#n113-patch-salary-undefined
           const reparse = payToReparse(patch, row.salary, prev.salary);
@@ -3922,6 +4005,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           if (typeof row.agency === "boolean" && typeof prev.agency === "boolean" && row.agency !== prev.agency) {
             patch.agency = row.agency;
           }
+          // XR-1: the stated close date is our reading of the feed, so an extension moves it, unlogged.
+          if (closesCol && row.closes_at && Date.parse(String(row.closes_at)) !== Date.parse(String(prev.closes_at))) patch.closes_at = row.closes_at;
+          // S14X-216: a department stored before the decode heals, unlogged.
+          if (typeof prev.department === "string" && row.department !== prev.department && unescapeEntities(prev.department) === row.department) patch.department = row.department;
           if (Object.keys(patch).length) corrections.push({ id, ...patch });
           // Keep the marks index-aligned with the array above: one entry per
           // queued patch, holding the log length at that moment.
@@ -4034,6 +4121,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             const stripped = newRows.slice(i, i + 250).map((r) => { const { req_key: _k, ...rest } = r as Record<string, unknown>; return rest; });
             ({ error } = await client.from("job_board_postings").upsert(stripped, { onConflict: "id" }));
           }
+          // XR-1: deployed before 20261111100000 added the column.
+          if (error?.message?.includes("closes_at")) {
+            const stripped = newRows.slice(i, i + 250).map((r) => { const { closes_at: _z, ...rest } = r as Record<string, unknown>; return rest; });
+            ({ error } = await client.from("job_board_postings").upsert(stripped, { onConflict: "id" }));
+          }
           if (error) {
             boardOk = false;
             lastUpsertError = `${s.token}: ${error.message}`;
@@ -4126,7 +4218,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         }
         okKeys.push(boardKeyOf(s));
         // Rationale: docs/job-board-index-notes.md#n623-if-clearoversize-oversize_boards-s-share
-        if (clearOversize(OVERSIZE_BOARDS, s, SHARED_TOKENS)) oversizeDirty = true;
+        // D7: a board read without its details stays registered, marked bare, so the description sweep goes straight to the filler.
+        if (bareRead ? noteOversize(OVERSIZE_BOARDS, s, Number(failReason.match(/([\d.]+)MB/)?.[1]) || 0, SHARED_TOKENS, undefined, "bare") : clearOversize(OVERSIZE_BOARDS, s, SHARED_TOKENS)) oversizeDirty = true;
         // Rationale: docs/job-board-index-notes.md#n624-try
         try {
           // Rationale: docs/job-board-index-notes.md#n625-const-stamptotal-stampfeedtotal-r-feedto
@@ -4255,9 +4348,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     // BY BOARD KEY (n417): on a shared token the twin that read no longer
     // clears the failing twin's streak. The deferral sets stay token-keyed.
     const okKeySet = new Set(okKeys);
-    const failedTokens = [...new Set(slice
+    const deferral = foldDeferrals(bfV.deferredAt, sliceReads.rateLimited, okKeys, Date.now(), DORMANT_CAP);
+    const failedTokens = [...new Set([...slice
       .filter((s) => !skipTokens.has(boardKeyOf(s)) && !quarantineSkipped.has(s.token) && !budgetSkippedSet.has(s.token) && !okKeySet.has(boardKeyOf(s)))
-      .map(boardKeyOf))];
+      .map(boardKeyOf), ...deferral.failing])];
     // A board whose rows we could not read or store, visit after visit, is our
     // bug, not the employer's: counted, named, and never pruned for it.
     const sliceDbStreaks = foldDbFailures(bfV.dbStreaks, dbFailedKeys, okKeys, DORMANT_CAP);
@@ -4266,7 +4360,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     if (dbAlarm.length > 0) {
       console.error(`[JOB-BOARD] DB FAILURES: ${dbAlarm.length} board(s) whose feed reads but whose rows our database would not read or store for ${DB_FAIL_ALARM_VISITS}+ visits running: ${dbAlarm.slice(0, 8).map((b) => `${b.key} x${b.visits}`).join(", ")}${lastUpsertError ? ` — last: ${String(lastUpsertError).slice(0, 160)}` : ""}`);
     }
-    if (okKeys.length > 0 || failedTokens.length > 0 || recheckTokens.size > 0 || dbFailedKeys.length > 0) {
+    if (okKeys.length > 0 || failedTokens.length > 0 || recheckTokens.size > 0 || dbFailedKeys.length > 0 || sliceReads.rateLimited.length > 0) {
       const folded = updateBoardFailures({
         okTokens: okKeys,
         // Our database failing is not the vendor failing (S11-023): these
@@ -4296,7 +4390,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       // A prune the exit log broke is retried, not left dormant (n416).
       const { streaks, dormant, failedAt, firstFailedAt } = rearmIncompletePrunes(folded, pruneUnfinished, boardFailures, DEAD_BOARD_THRESHOLD, Date.now());
       await client.from("job_board_meta").upsert(
-        { k: "board_failures", v: { streaks, dormant, failedAt, firstFailedAt, dbStreaks: sliceDbStreaks, ...(retryLane ? { lastRetryLane: retryLane } : {}) }, updated_at: new Date().toISOString() },
+        { k: "board_failures", v: { streaks, dormant, failedAt, firstFailedAt, dbStreaks: sliceDbStreaks, deferredAt: deferral.deferredAt, ...(retryLane ? { lastRetryLane: retryLane } : {}) }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
       if (deepCursorsDirty || deepLane) {
@@ -4332,7 +4426,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     // Rationale: docs/job-board-index-notes.md#n138-stalelane
     if (staleLane) {
       try {
-        const attempted = staleBoards.filter((s) => !budgetSkippedSet.has(s.token)).map(boardKeyOf);
+        // A 429 deferral and a feed that normalised nothing were tried: they count toward STALE_TRIES_MAX.
+        const tried = new Set([...sliceReads.rateLimited, ...sliceReads.rawNoRows]);
+        const attempted = staleBoards.filter((s) => !budgetSkippedSet.has(s.token) || tried.has(boardKeyOf(s))).map(boardKeyOf);
         const resolved = attempted.filter((k) => okKeySet.has(k)).length;
         const nextTries = bumpStaleTries(staleTries, attempted, okKeySet);
         staleLane.fetched = attempted.length;
@@ -4438,7 +4534,7 @@ async function runPassEndStep(client: SupabaseClient, step: PassEndStep, started
   const begun = await passEndReceipt(client, startedAt, step, { startedAt: new Date(t0).toISOString() });
   if (begun.superseded) return { ok: false, step, detail: "not run: a newer pass owns the tail" };
   await breadcrumb(client, `pass-end-${step}`, {});
-  let r: { ok: boolean; detail: string; swept?: number; stop?: string };
+  let r: { ok: boolean; detail: string; swept?: number; stop?: string; statedClosed?: number };
   try {
     r = step === "serve" ? await passEndServe(client, ctx, t0)
       : step === "kicks" ? await passEndKicks(client)
@@ -4446,7 +4542,8 @@ async function runPassEndStep(client: SupabaseClient, step: PassEndStep, started
       : step === "sweep" ? await (async () => {
         await loadOversizeBoards(client);
         const sw = await freshnessSweep(client, ctx.freshCutoffMs, t0);
-        return { ok: !/error|unread/.test(sw.stop), detail: `dropped ${sw.swept} (stopped: ${sw.stop})`, swept: sw.swept, stop: sw.stop };
+        const onDate = await closeStatedClosed(client);
+        return { ok: !/error|unread/.test(sw.stop), detail: `dropped ${sw.swept} (stopped: ${sw.stop}); ${onDate} closed on their stated date`, swept: sw.swept, stop: sw.stop, statedClosed: onDate };
       })()
       : step === "capacity" ? await passEndCapacity(client)
       : await passEndNames(client, t0);
@@ -4458,7 +4555,7 @@ async function runPassEndStep(client: SupabaseClient, step: PassEndStep, started
   const doneAt = new Date().toISOString();
   await passEndReceipt(
     client, startedAt, step,
-    { doneAt, ms: Date.now() - t0, ok: r.ok, detail: r.detail.slice(0, 200), ...(hops !== undefined ? { hops, ...(step === "sweep" ? { dropped: (begun.prior.dropped ?? 0) + (r.swept ?? 0) } : {}) } : {}) },
+    { doneAt, ms: Date.now() - t0, ok: r.ok, detail: r.detail.slice(0, 200), ...(hops !== undefined ? { hops, ...(step === "sweep" ? { dropped: (begun.prior.dropped ?? 0) + (r.swept ?? 0), statedClosed: ((begun.prior as { statedClosed?: number }).statedClosed ?? 0) + (r.statedClosed ?? 0) } : {}) } : {}) },
     next ? { next, nextKickedAt: doneAt } : { next: null, refreshedAt: ctx.refreshedAt, doneAt, ms: Date.now() - Date.parse(startedAt) },
   );
   console.log(`[JOB-BOARD] pass-end ${step}: ${r.detail}${next ? ` -> ${next}` : " (tail finished)"}`);
@@ -4597,7 +4694,13 @@ async function passEndServe(client: SupabaseClient, ctx: PassEndCtx, sliceWallSt
       console.log(`[JOB-BOARD] orphan-pruned ${orphanTokens.length} removed board(s), ${orphanLogged} postings logged as untracked: ${orphanTokens.slice(0, 8).join(", ")}`);
       companies = companies.filter((c) => !orphanTokens.includes((c as { token?: string }).token ?? ""));
     }
-    await breadcrumb(client, "pass-end-pruned", { orphans: orphanTokens.length, elapsedMs: Date.now() - sliceWallStart });
+    // A retired twin leaves by its own vendor and token; a key the catalogue carries again is never touched.
+    let twinsLogged = 0;
+    for (const k of RETIRED_TWIN_KEYS) {
+      const [src, tk] = [k.slice(0, k.indexOf(":")), k.slice(k.indexOf(":") + 1)];
+      if (!JOB_SOURCES.some((s) => s.source === src && s.token === tk)) twinsLogged += (await pruneWholeBoard(client, tk, "untracked", src)).logged;
+    }
+    await breadcrumb(client, "pass-end-pruned", { orphans: orphanTokens.length, twinsLogged, elapsedMs: Date.now() - sliceWallStart });
   }
 
   // Rationale: docs/job-board-index-notes.md#n149-coverage
@@ -4902,6 +5005,36 @@ async function passEndHygiene(client: SupabaseClient): Promise<{ ok: boolean; de
     if (e1 || e2) console.warn("[JOB-BOARD] date-hygiene error:", (e1 ?? e2)?.message);
   }
   return { ok: true, detail: "dates checked" };
+}
+
+/** XR-1: a USAJOBS row whose agency's stated close date has passed. */
+const statedClosed = (j: { source: string; closesAt?: string | null }, now: number): boolean =>
+  j.source === "usajobs" && !!j.closesAt && Date.parse(j.closesAt) <= now;
+const STATED_CLOSE_MAX = 1_000;
+/** XR-1, in the sweep step: stored USAJOBS rows past closes_at close through the feed-removal path, capped. No vendor request. */
+async function closeStatedClosed(client: SupabaseClient): Promise<number> {
+  const now = new Date().toISOString();
+  // Only a date a board read has passed since: that read could move an extended date, so a stored date never closes a row alone.
+  const { data: v } = await client.from("job_board_verifications").select("verified_at").eq("company_token", "usajobs").maybeSingle();
+  if (!v?.verified_at) return 0;
+  const { data, error } = await client.from("job_board_postings").select("id, company_token")
+    .eq("source", "usajobs").lt("closes_at", v.verified_at).limit(STATED_CLOSE_MAX);
+  if (error || !data?.length) return 0; // before 20261111100000 the column is absent: nothing to close
+  const byToken = new Map<string, string[]>();
+  for (const r of data as Array<{ id: string; company_token: string }>) byToken.set(r.company_token, [...(byToken.get(r.company_token) ?? []), r.id]);
+  let closed = 0;
+  for (const [token, ids] of byToken) {
+    // The batch is measured against the board's live rows, not itself: a stated close is not a vanished board.
+    const { count } = await client.from("job_board_postings").select("id", { count: "exact", head: true }).eq("company_token", token);
+    for (let i = 0; i < ids.length; i += 200) {
+      closed += (await closeVanishedChunk(client, { source: "usajobs", token }, ids.slice(i, i + 200), {
+        closedAt: now, agedOutIds: new Set(), freshCutoffMs: 0, liveTitles: new Set(), recentSuperseded: new Set(),
+        batchSuspect: false, absentInPass: ids.length, removableBefore: count ?? ids.length, lapMode: false, lapBackfillUntil: "",
+        missingSinceById: new Map(), startIso: now, basis: "stated_close",
+      })).length;
+    }
+  }
+  return closed;
 }
 
 // Rationale: docs/job-board-index-notes.md#n1479-async-function-freshnesssweep-client-sup
@@ -5257,34 +5390,6 @@ async function maybeRekickDeadChain(client: SupabaseClient, opts: { inHop?: bool
   }
 }
 
-/**
- * THE SCHEDULER'S WATCH (S13-114). status used to run the watchdog and write
- * the coverage copy for whoever asked, so an anonymous read could stamp a row
- * and kick a refresh. Both now run here, on pg_cron's clock (migration
- * 20261103221000): the kick decided and throttled exactly as before, and the
- * last good coverage stored at most once per COVERAGE_COPY_EVERY_MS.
- */
-const BOARD_UPKEEP_KEY = "board_upkeep";
-const COVERAGE_COPY_EVERY_MS = 15 * 60_000;
-async function boardUpkeep(client: SupabaseClient): Promise<Record<string, unknown>> {
-  const watchdog = await maybeRekickDeadChain(client);
-  const [coverage, stored] = await Promise.all([
-    withDeadline(client.rpc("get_date_coverage"), 2_500),
-    client.from("job_board_meta").select("updated_at").eq("k", "date_coverage_cache").maybeSingle(),
-  ]);
-  const storedAgeMs = Date.now() - Date.parse(String((stored.data as { updated_at?: string } | null)?.updated_at ?? ""));
-  const rows = (coverage as { data?: unknown }).data;
-  const now = new Date().toISOString();
-  let coverageStored = false;
-  if (Array.isArray(rows) && rows.length && !(storedAgeMs < COVERAGE_COPY_EVERY_MS)) {
-    const { error } = await client.from("job_board_meta").upsert({ k: "date_coverage_cache", v: rows, updated_at: now }, { onConflict: "k" });
-    coverageStored = !error;
-  }
-  const v = { at: now, watchdog: watchdog?.decision ?? null, kicked: watchdog?.kicked === true, coverageStored };
-  await client.from("job_board_meta").upsert({ k: BOARD_UPKEEP_KEY, v, updated_at: now }, { onConflict: "k" });
-  return v;
-}
-
 async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
   try {
     // Rationale: docs/job-board-index-notes.md#n663-await-mayberekickdeadchain-client-inhop
@@ -5620,7 +5725,7 @@ function listPayloadDescriptions(s: JobSource, raw: unknown): Map<string, string
       const html = [p.description, p.key_responsibilities, p.skills_knowledge_expertise]
         .filter((x): x is string => typeof x === "string" && x.length > 0)
         .join("\n");
-      const text = html ? htmlToText(html.slice(0, RAW_HTML_CAP)).trim() : "";
+      const text = typeof p.descriptionPlain === "string" ? p.descriptionPlain : html ? htmlToText(html.slice(0, RAW_HTML_CAP)).trim() : "";
       if (ext && text) out.set(`pinpoint:${s.token}:${ext}`, text.slice(0, STORED_DESC_CAP));
     }
   }
@@ -5645,6 +5750,29 @@ async function readBoardForDetail(src: JobSource): Promise<Awaited<ReturnType<ty
     DETAIL_BOARD_REFUSED.set(key, Date.now());
   }
   return r;
+}
+
+const WORKABLE_DETAIL_PER_HOP = 60;
+const WORKABLE_DETAIL_GAP_MS = 1_100;
+/** D7: null-description rows of a Workable board too big to read whole, one detail read at a time on one host, never two in flight, until the deadline. */
+async function fillWorkableDetails<R>(
+  rows: readonly R[],
+  read: (row: R) => Promise<string | null>,
+  write: (row: R, text: string) => Promise<boolean>,
+  clock: { now: () => number; sleep: (ms: number) => Promise<unknown> },
+  deadlineAt: number,
+): Promise<{ asked: number; filled: number }> {
+  let asked = 0, filled = 0, last = -Infinity;
+  for (const row of rows.slice(0, WORKABLE_DETAIL_PER_HOP)) {
+    const wait = Math.max(0, last + WORKABLE_DETAIL_GAP_MS - clock.now());
+    if (clock.now() + wait >= deadlineAt) break;
+    if (wait > 0) await clock.sleep(wait);
+    last = clock.now();
+    asked++;
+    const text = await read(row).catch(() => null);
+    if (text && await write(row, text).catch(() => false)) filled++;
+  }
+  return { asked, filled };
 }
 
 // Rationale: docs/job-board-index-notes.md#n1184-async-function-fetchvendordetail
@@ -5685,12 +5813,13 @@ async function fetchVendorDetail(
       text = htmlToText(html).slice(0, DESC_CAP) || null;
     }
   } else if (src.source === "workable") {
-    const res = await fetchWithTimeout(`https://apply.workable.com/api/v1/widget/accounts/${src.token}?details=true`);
+    // D7: the one posting (about 5 KB), never the account's whole details=true widget.
+    const res = await fetchWithTimeout(`https://apply.workable.com/api/v2/accounts/${src.token}/jobs/${encodeURIComponent(externalId)}`);
     if (res.ok) {
-      const j = await res.json();
-      const job = (j.jobs ?? []).find((x: { shortcode: string }) => x.shortcode === externalId);
-      if (job?.description) text = htmlToText(String(job.description)).slice(0, DESC_CAP) || null;
-    }
+      const j = await res.json().catch(() => null) as Record<string, unknown> | null;
+      const html = [j?.description, j?.requirements, j?.benefits].filter((x) => typeof x === "string" && x).join("\n");
+      text = html ? htmlToText(html).slice(0, DESC_CAP) || null : null;
+    } else discardBody(res);
   } else if (src.source === "oracle") {
     // Per-requisition detail carries the full posting: description +
     // qualifications + responsibilities as separate HTML fields.
@@ -5874,14 +6003,22 @@ function placeWrite(
   return patch;
 }
 
+// VF-BMS: a sweep that moves the country re-reads the stored pay under it (callers use it only where no other pay is written).
+function payUnderPlace(row: { salary?: string | null; country: string | null; title?: string | null }, place: Record<string, unknown>): Record<string, unknown> {
+  const c = place.country as string | undefined;
+  const p = c && c !== row.country && row.salary ? parseSalaryStructured(row.salary, c, { title: row.title ?? null, description: null }) : null;
+  return p ? { salary_min_annual: p.annualMin, salary_max_annual: p.annualMax, salary_period: p.period, salary_currency: p.currency } : {};
+}
+
 // Rationale: docs/job-board-index-notes.md#n1187-function-isodateonly-v-unknown-string-nu
 function isoDateOnly(v: unknown): string | null {
   if (typeof v !== "string" || !v.trim()) return null;
   const t = Date.parse(v.length <= 10 ? `${v}T00:00:00Z` : v);
   if (!Number.isFinite(t)) return null;
-  // Not in the future, not absurdly old.
-  if (t > Date.now() + 86_400_000 || t < Date.now() - 400 * 86_400_000) return null;
-  return new Date(t).toISOString();
+  // Not in the future, not absurdly old; a feed's "tomorrow" (a zone ahead of ours) is today (BB-10).
+  const now = Date.now();
+  if (t > now + 86_400_000 || t < now - 400 * 86_400_000) return null;
+  return new Date(Math.min(t, now)).toISOString();
 }
 
 // ── list: SQL reads + SWR background refresh ───────────────────────────────
@@ -6463,14 +6600,6 @@ async function handleRequest(req: Request): Promise<Response> {
       return json({ swept: slice.length, cursor: wrapped ? 0 : cursor, of: list.length, wrapped, persisted: !persistErr });
     }
 
-    // S13-114: the watchdog and the coverage copy, on the scheduler's clock. No other caller reaches them through here.
-    if (action === "upkeep") {
-      if (!(await isScheduledCaller(req.headers, client, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""))) {
-        return json({ error: "upkeep is the scheduler's action" }, 403);
-      }
-      return json(await boardUpkeep(client));
-    }
-
     if (action === "status") {
       // Rationale: docs/job-board-index-notes.md#n202-try
       try {
@@ -6484,10 +6613,7 @@ async function handleRequest(req: Request): Promise<Response> {
       const passEndRead = Promise.resolve(
         client.from("job_board_meta").select("v").eq("k", "pass_end").maybeSingle(),
       ).catch(() => null);
-      const upkeepRead = Promise.resolve(
-        client.from("job_board_meta").select("v, updated_at").eq("k", BOARD_UPKEEP_KEY).maybeSingle(),
-      ).catch(() => null);
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop, oracleRepair, staleMeta, freshRow] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop, oracleRepair, staleMeta, freshRow] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -6504,9 +6630,6 @@ async function handleRequest(req: Request): Promise<Response> {
         client.from("job_board_meta").select("v, updated_at").eq("k", "board_flow_cache").maybeSingle(),
         // Rationale: docs/job-board-index-notes.md#n709-client-from-job_board_meta-select-v-upda
         client.from("job_board_meta").select("v, updated_at").eq("k", "ingest_paused").maybeSingle(),
-        // Last good coverage, so a timeout serves stale numbers with their age
-        // attached instead of nothing at all.
-        client.from("job_board_meta").select("v, updated_at").eq("k", "date_coverage_cache").maybeSingle(),
         client.from("job_board_meta").select("v").eq("k", "bootstrap").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "desc_sweep").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "structured_sweep").maybeSingle(),
@@ -6551,9 +6674,8 @@ async function handleRequest(req: Request): Promise<Response> {
       const anonBudgetRow = await anonBudgetRead;
       const demandRow = await demandRead;
       const passEndRow = await passEndRead;
-      const upkeepRow = (await upkeepRead)?.data ?? null;
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
-      const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
+      const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number; wrapMin?: number };
       const rfV = { total: (refreshMeta.data as { total?: unknown } | null)?.total as number | undefined };
       const dormant = ((bf.data?.v ?? {}) as { dormant?: Record<string, number> }).dormant ?? {};
       const hotTokens = ((hotMeta.data?.v ?? {}) as { tokens?: unknown[] }).tokens;
@@ -6562,7 +6684,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
       // Rationale: docs/job-board-index-notes.md#n722-const-pbbacklognow-await-undatedbacklog
       const pbBacklogNow = await undatedBacklog(client);
-      // S13-114: every caller reads the verdict; only a credential may act on it. The scheduler's upkeep is what acts.
+      // S13-114: every caller reads the verdict; only a credential may act on it. The minute kick (20261107100000) restarts a dead chain.
       const chainWatchdog = await maybeRekickDeadChain(client, { readOnly: !statusFresh });
       // Serialised once, here, so the memo holds the exact bytes this caller gets.
       const statusText = JSON.stringify({
@@ -6648,7 +6770,7 @@ async function handleRequest(req: Request): Promise<Response> {
         sendable: (() => {
           const cov = Array.isArray((dateCov as { data?: unknown }).data)
             ? (dateCov as { data: Array<{ source: string; total: number }> }).data
-            : ((dcCache.data?.v as Array<{ source: string; total: number }> | undefined) ?? null);
+            : null;
           if (!cov) return null;
           const set = new Set(SENDABLE_VENDORS);
           let send = 0, all = 0;
@@ -6849,6 +6971,9 @@ async function handleRequest(req: Request): Promise<Response> {
         })(),
         lastSliceAgeMin: ageMin(prog.data?.updated_at),
         lastRotationAgeMin: ageMin(rotV.completedAt ?? rot.data?.updated_at ?? null),
+        // The last cold wrap's own length, as the wrap stamped it (null when it could not).
+        lastWrapMin: typeof rotV.wrapMin === "number" ? rotV.wrapMin : null,
+        lastWrapAt: rotV.completedAt ?? null,
         recentFailures: Array.isArray(pgV.failedAcc) ? pgV.failedAcc.slice(-10) : [],
         // The sample above is capped at 120 and these ten are its tail; this
         // is the population it was drawn from.
@@ -6899,7 +7024,6 @@ async function handleRequest(req: Request): Promise<Response> {
         })(),
         // Rationale: docs/job-board-index-notes.md#n739-chainwatchdog
         chainWatchdog,
-        boardUpkeep: upkeepRow ? { ...(upkeepRow.v as Record<string, unknown>), ageMin: ageMin(upkeepRow.updated_at) } : null,
         quarantinedVendors: (((breaker.data?.v ?? {}) as { quarantined?: string[] }).quarantined ?? []),
         // Rationale: docs/job-board-index-notes.md#n221-boardflow
         boardFlow: (() => {
@@ -6916,12 +7040,11 @@ async function handleRequest(req: Request): Promise<Response> {
         ingestPausedAgeMin: ageMin(
           (ingestPaused as { data?: { updated_at?: string } } | null)?.data?.updated_at ?? null,
         ),
-        dateCoverageSource: Array.isArray((dateCov as { data?: unknown }).data)
-          ? "rollup"
-          : (dcCache.data?.v ? "cache" : "unavailable"),
+        // UPK-DROP: the rollup's own computed_at, or nothing; no copy is kept.
+        dateCoverageSource: Array.isArray((dateCov as { data?: unknown }).data) ? "rollup" : "unavailable",
         dateCoverageAgeMin: Array.isArray((dateCov as { data?: unknown }).data)
           ? ageMin((((dateCov as { data: Array<{ computed_at?: string }> }).data)[0]?.computed_at) ?? null)
-          : ageMin(dcCache.data?.updated_at ?? null),
+          : null,
         // The last thing a slice said before it stopped saying anything.
         sliceTrace: ((traceRow as { data?: { v?: unknown } } | null)?.data?.v ?? null) as Record<string, unknown> | null,
         // The pass-end tail's receipt (S11-001): a startedAt with no later doneAt
@@ -6945,8 +7068,7 @@ async function handleRequest(req: Request): Promise<Response> {
               total: Number(r.total),
               datedPct: Math.round(100 * Number(r.dated) / Math.max(Number(r.total), 1)),
             }))
-          // Rationale: docs/job-board-index-notes.md#n742-dccache-data-v-as-unknown-undefined
-          : ((dcCache.data?.v as unknown[] | undefined) ?? null),
+          : null,
         at: new Date().toISOString(),
       });
       statusMemo = { at: Date.now(), text: statusText };
@@ -8117,6 +8239,7 @@ async function handleRequest(req: Request): Promise<Response> {
     }
 
     if (action === "desc-sweep") {
+      const sweepStart = Date.now();
       // Rationale: docs/job-board-index-notes.md#n245-typeof-body-chainkey-string-bod
       if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
         return json({ error: "desc-sweep is a maintenance action" }, 403);
@@ -8152,16 +8275,12 @@ async function handleRequest(req: Request): Promise<Response> {
           .is("description", null)
           .limit(DESC_SWEEP_PER_HOP);
         let filled = 0;
+        let stay = false;
         if ((nullRows ?? []).length > 0) {
           try {
-            const r = await fetchBoard(b);
-            if (r) {
-              const map = listPayloadDescriptions(b, r.raw);
-              for (const row of nullRows ?? []) {
-                const text = map.get(String(row.id));
-                if (!text) continue;
+            const fill = async (row: { id: string; country?: string | null; title?: string | null }, text: string): Promise<boolean> => {
                 const clean = text.replace(/\u0000/g, "").slice(0, STORED_DESC_CAP);
-                if (!clean) continue;
+                if (!clean) return false;
                 const minedSalary = extractSalary(clean);
                 const minedParse = minedSalary ? parseSalaryStructured(minedSalary, (row as { country?: string | null }).country ?? undefined, { title: (row as { title?: string | null }).title ?? null, description: clean }) : null;
                 const { error } = await client.from("job_board_postings")
@@ -8177,13 +8296,27 @@ async function handleRequest(req: Request): Promise<Response> {
                   })
                   .eq("id", row.id)
                   .is("description", null);
-                if (!error) filled++;
+                return !error;
+            };
+            // D7: a Workable board too big to read whole is filled a posting at a time, and the lane stays on it while that fills.
+            const whole = !(b.source === "workable" && (await loadOversizeBoards(client), OVERSIZE_BOARDS.has(boardKeyOf(b))));
+            const r = whole ? await readBoardForDetail(b) : null;
+            if (r) {
+              const map = listPayloadDescriptions(b, r.raw);
+              for (const row of nullRows ?? []) {
+                const text = map.get(String(row.id));
+                if (text && await fill(row, text)) filled++;
               }
+            } else if (b.source === "workable" && (!whole || DETAIL_BOARD_REFUSED.has(`workable:${b.token}`))) {
+              const own = (nullRows ?? []).filter((x) => String(x.id).startsWith("workable:"));
+              const f = await fillWorkableDetails(own, async (row) => (await fetchVendorDetail(b, row.id, row.id.split(":").slice(2).join(":"))).text, fill, { now: Date.now, sleep: (ms) => new Promise((res) => setTimeout(res, ms)) }, sweepStart + SLICE_WALL_BUDGET_MS - 20_000 - FETCH_TIMEOUT_MS);
+              filled = f.filled;
+              stay = f.filled > 0 && own.length > f.asked;
             }
           } catch { /* transient — rows stay null and are retried next sweep */ }
         }
-        // Always advance: a board whose feed is down must not stall the lane.
-        bi += 1;
+        // Always advance, unless the Workable filler is still filling: a board whose feed is down must not stall the lane.
+        if (!stay) bi += 1;
         const bUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
         waitUntil(chainKey().then((key) => fetch(bUrl, {
           method: "POST",
@@ -8237,7 +8370,7 @@ async function handleRequest(req: Request): Promise<Response> {
             const placePatch = placeWrite(row, vCountry, vLocation, additionalSites);
             if (!text) {
               // Rationale: docs/job-board-index-notes.md#n247-salv
-              const salv: Record<string, unknown> = { ...placePatch };
+              const salv: Record<string, unknown> = { ...placePatch, ...payUnderPlace(row, placePatch) };
               if (wmVendor && row.work_mode === null) { salv.work_mode = wmVendor; salv.remote = wmVendor === "remote"; }
               if (postedAt && (row.source === "workday" || !row.posted_at)) salv.posted_at = postedAt;
               // Rationale: docs/job-board-index-notes.md#n248-vendorpay-row-salary
@@ -8270,7 +8403,7 @@ async function handleRequest(req: Request): Promise<Response> {
             // Rationale: docs/job-board-index-notes.md#n799-const-exp-detectexperience-row-title-cle
             const exp = detectExperience(row.title ?? "", clean);
             // Rationale: docs/job-board-index-notes.md#n252-wm
-            const wm = wmVendor ?? (row.work_mode ? null : detectWorkMode(row.location, row.title));
+            const wm = wmVendor ?? (row.work_mode ? null : detectWorkMode((placePatch.location as string | undefined) ?? row.location, row.title));
             // Rationale: docs/job-board-index-notes.md#n800-const-betterdate-postedat-row-source-wor
             const betterDate = postedAt && (row.source === "workday" || !row.posted_at) ? postedAt : null;
             const { error } = await client.from("job_board_postings")
@@ -8287,7 +8420,7 @@ async function handleRequest(req: Request): Promise<Response> {
                   salary_max_annual: statedParse?.annualMax ?? null,
                   salary_period: statedParse?.period ?? null,
                   salary_currency: statedParse?.currency ?? null,
-                } : {}),
+                } : payUnderPlace(row, placePatch)),
               })
               .eq("id", row.id)
               .is("description", null); // never clobber a description a reader already stored
@@ -8357,7 +8490,7 @@ async function handleRequest(req: Request): Promise<Response> {
       // Rationale: docs/job-board-index-notes.md#n804-let-sel-client
       let sel = client
         .from("job_board_postings")
-        .select("id, company_token, apply_url, posted_at, work_mode, location, country")
+        .select("id, company_token, apply_url, posted_at, work_mode, location, country, salary, title")
         .eq("source", sVendor)
         .not("description", "is", null)
         .is("work_mode", null)
@@ -8371,6 +8504,7 @@ async function handleRequest(req: Request): Promise<Response> {
       const sQueue = [...(sRows ?? [])] as Array<{
         id: string; company_token: string; apply_url: string | null;
         posted_at: string | null; work_mode: string | null; location: string | null; country: string | null;
+        salary: string | null; title: string | null;
       }>;
       const sPending = [...sQueue];
       let sFilled = 0;
@@ -8394,7 +8528,8 @@ async function handleRequest(req: Request): Promise<Response> {
             // Rationale: docs/job-board-index-notes.md#n807-if-postedat-row-posted_at-patch-posted_a
             if (postedAt && !row.posted_at) patch.posted_at = postedAt;
             // Rationale: docs/job-board-index-notes.md#n259-object-assign-patch-placewrite-row-vcountry-v
-            Object.assign(patch, placeWrite(row, vCountry, vLocation, additionalSites));
+            const place = placeWrite(row, vCountry, vLocation, additionalSites);
+            Object.assign(patch, place, payUnderPlace(row, place));
             if (!Object.keys(patch).length) continue;
             // Rationale: docs/job-board-index-notes.md#n260-upd
             const upd = client.from("job_board_postings").update(patch).eq("id", row.id);
@@ -8811,7 +8946,7 @@ async function handleRequest(req: Request): Promise<Response> {
     if (action === "exists") {
       // Rationale: docs/job-board-index-notes.md#n826-const-asked-array-isarray-body-ids
       const asked = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string").slice(0, 200) : [];
-      if (asked.length === 0) return json({ open: {}, rowTest: "served" });
+      if (asked.length === 0) return json({ open: {}, rowTest: "served", unknown: [] });
       const openMap: Record<string, boolean> = {};
       for (const id of asked) openMap[id] = false;
       // S12-123: no posting id is longer than EXISTS_ID_MAX; a longer one is
@@ -8827,8 +8962,26 @@ async function handleRequest(req: Request): Promise<Response> {
         if (error) throw error;
         for (const r of data ?? []) if (!pastFence(r, cutoffMs)) openMap[r.id as string] = true;
       }
+      // BR-03: an id with neither a row nor an exit is unknown (exits prune at
+      // 90 days, so not "never held"); null when a read failed.
+      let unknownIds: string[] | null = asked.filter((id) => !openMap[id]);
+      const held = async (t: string, c: string, toks?: string[]) => {
+        if (!unknownIds) return;
+        const q = unknownIds.filter((id) => id.length <= EXISTS_ID_MAX);
+        if (!q.length) return;
+        let r = client.from(t).select(c).in(c, q);
+        if (toks) r = r.in("company_token", toks);
+        const { data, error } = await r;
+        if (error) { unknownIds = null; return; }
+        const got = new Set(((data ?? []) as unknown as Record<string, unknown>[]).map((x) => x[c]));
+        unknownIds = unknownIds.filter((id) => !got.has(id));
+      };
+      await held("job_board_postings", "id");
+      // job_board_exits has no posting_id index: the exit read names at most 5 tokens, and more answers unknown null.
+      const toks = [...new Set((unknownIds ?? []).map((id) => id.split(":")[1] ?? ""))];
+      if (toks.length > 5) unknownIds = null; else await held("job_board_exits", "posting_id", toks);
       // The answer names its test; check_jobs_open's basis follows it (n1464).
-      return json({ open: openMap, rowTest: "served" });
+      return json({ open: openMap, rowTest: "served", unknown: unknownIds });
     }
 
     if (action === "semantic-search") {
