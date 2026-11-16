@@ -166,7 +166,7 @@ describe("the free-scan-engine section", () => {
     expect(r.lines.some((l) => l.startsWith("INFO  T get_scan_totals names no basis yet (total 1102)")), r.out).toBe(true);
     expect(r.lines.some((l) => l.startsWith("INFO  H get_scan_health_status has no model_fallback_last_hour yet")), r.out).toBe(true);
     expect(r.lines.filter((l) => /^INFO {2}P \/cv-standards\/(poland|italy) .* the round has not published$/.test(l)), r.out).toHaveLength(2);
-    expect(r.lines, r.out).toContain("INFO  S14X-101 owner pending: the free scan's failure alert still carries the visitor's address until the owner's answer is recorded");
+    expect(r.lines, r.out).toContain("INFO  S14X-101 owner pending: the free scan's failure alert still carries the visitor's address, and each scanner's scan note the visitor's country, until the owner's answer is recorded");
   });
 
   it("hotfix NB-1's build alone (2026-11-15.1) is not the round's, and fails nothing", () => {
@@ -290,7 +290,7 @@ describe("the section reads only what it asked for", () => {
 describe("the owner-gated line", () => {
   it("prints owner pending while the ledger does not name S14X-101, and reads the repo's ledger by default", () => {
     const r = run(routes(AFTER));
-    expect(r.lines, r.out).toContain("INFO  S14X-101 owner pending: the free scan's failure alert still carries the visitor's address until the owner's answer is recorded");
+    expect(r.lines, r.out).toContain("INFO  S14X-101 owner pending: the free scan's failure alert still carries the visitor's address, and each scanner's scan note the visitor's country, until the owner's answer is recorded");
     expect(SECTION).toContain("${VDFSE_LEDGER:-docs/deploy-ledger.json}");
   });
 

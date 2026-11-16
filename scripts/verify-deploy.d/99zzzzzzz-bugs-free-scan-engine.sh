@@ -190,10 +190,10 @@ done
 VDFSE_OD=$(node -e 'let l={};try{l=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))}catch{}
 const d=((l.reservations||{})["bug-round"]||{}).ownerDecided||{};const v=d[process.argv[2]];
 process.stdout.write(v==null?"":typeof v==="object"?String(v.choice??v.option??JSON.stringify(v)):String(v))' "${VDFSE_LEDGER:-docs/deploy-ledger.json}" S14X-101)
-if [ -z "$VDFSE_OD" ]; then echo "INFO  S14X-101 owner pending: the free scan's failure alert still carries the visitor's address until the owner's answer is recorded"
+if [ -z "$VDFSE_OD" ]; then echo "INFO  S14X-101 owner pending: the free scan's failure alert still carries the visitor's address, and each scanner's scan note the visitor's country, until the owner's answer is recorded"
 else
   case " $VDFSE_NEW " in
-    *" free-keyword-scan="*) echo "PASS  S14X-101 decided ($VDFSE_OD): free-keyword-scan, whose alert no longer carries the visitor's address, serves the round's build (the alert body itself is proven in the suite: a live alert needs a failing scan)" ;;
+    *" free-keyword-scan="*) echo "PASS  S14X-101 decided ($VDFSE_OD): free-keyword-scan, whose alert no longer carries the visitor's address, serves the round's build (the alert and note bodies are proven in the suite: a live alert needs a failing scan)" ;;
     *) if [ "$VDFSE_LIVE" = 1 ]; then echo "FAIL  S14X-101 decided ($VDFSE_OD), but free-keyword-scan does not serve the round's build while the stream does"
        else echo "INFO  S14X-101 decided ($VDFSE_OD); free-keyword-scan does not serve the round's build yet"; fi ;;
   esac
