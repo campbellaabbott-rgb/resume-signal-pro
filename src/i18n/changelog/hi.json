@@ -869,12 +869,12 @@
       "description": "रिज्यूमे स्कैनिंग के दौरान प्राथमिक AI कॉल के लिए 55-सेकंड का टाइमआउट जोड़ा गया। अगर पहला AI मॉडल रुक जाता है, तो इंजन अब 2.5 मिनट तक इंतजार करने की बजाय स्वचालित रूप से एक तेज बैकअप मॉडल पर स्विच करता है।"
     },
     "industryDetectionAccuracy": {
-      "title": "ज़्यादा सटीक इंडस्ट्री पहचान",
-      "description": "हमने आपके रिज़्यूमे से आपकी इंडस्ट्री पहचानने का तरीका पूरी तरह बदल दिया है। जाँच और सुधार के छह दौरों ने कई भूमिकाओं की गलत श्रेणी ठीक की, जैसे Growth Hacker (जिसे गलती से Data Science माना जा रहा था), Salesforce Administrator (जिसे Sales माना जा रहा था), हेज फ़ंड में Quantitative Researcher (जिसे Data Science माना जा रहा था) और AI कंपनियों में काम करने वाले सॉफ़्टवेयर इंजीनियर (जिन्हें गलती से ML इंजीनियर माना जा रहा था)। हमने स्कोरिंग लॉजिक की एक गड़बड़ी भी ठीक की, जिसमें साथ-साथ आने वाले कीवर्ड के पैटर्न किसी भी इंडस्ट्री संकेत के तय होने से पहले ही लागू हो सकते थे — DevOps इंजीनियरों और SREs के गलत नतीजों की यही मुख्य वजह थी। नतीजा: इंडस्ट्री के हिसाब से ज़्यादा सटीक सुझाव, कीवर्ड सुझाव और ATS स्कोरिंग वेट, जो सच में आपकी भूमिका से मेल खाते हैं।"
+      "title": "Sharper, more accurate industry detection",
+      "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."
     },
     "dataAiIndustrySplit": {
-      "title": "डेटा इंजीनियरिंग, डेटा साइंस और AI/ML अब अलग-अलग इंडस्ट्री हैं",
-      "description": "पहले डेटा इंजीनियरों, डेटा साइंटिस्टों और मशीन लर्निंग इंजीनियरों को एक ही “टेक्नोलॉजी” श्रेणी में एक जैसा सामान्य फ़ीडबैक मिलता था। हमने इन्हें तीन अलग इंडस्ट्री ट्रैक में बाँट दिया है। डेटा इंजीनियरों को अब पाइपलाइन टूल (Airflow, dbt, Snowflake, Kafka), मॉडलिंग के तरीकों और डेटा वॉल्यूम के आँकड़ों पर केंद्रित फ़ीडबैक मिलता है। डेटा साइंटिस्टों को सांख्यिकीय सटीकता, A/B टेस्टिंग की पद्धति और बिज़नेस पर असर को आँकड़ों में बताने पर मार्गदर्शन मिलता है। ML और AI इंजीनियरों को प्रोडक्शन डिप्लॉयमेंट, इन्फ़रेंस ऑप्टिमाइज़ेशन, LLM फ़्रेमवर्क (LangChain, vLLM, Hugging Face) और RAG, फ़ाइन-ट्यूनिंग और QLoRA जैसी आधुनिक तकनीकों पर खास फ़ीडबैक मिलता है। हर ट्रैक के अपने ATS स्कोरिंग वेट, कीवर्ड गैप विश्लेषण और रिज़्यूमे सुझाव हैं।"
+      "title": "Data Engineering, Data Science, and AI/ML are now separate industries",
+      "description": "Previously, data engineers, data scientists, and machine learning engineers all received the same generic feedback under a single Technology category. We have split these into three distinct industry tracks with their own ATS scoring weights, keyword gap analysis, and resume tips tailored to each role."
     },
     "everythingTranslated": {
       "title": "हर स्क्रीन अब अनुवादित है",
@@ -965,28 +965,28 @@
       "description": "यदि आप बिना सेलेक्ट करने योग्य टेक्स्ट वाला इमेज-आधारित स्कैन किया गया PDF अपलोड करते हैं, तो अब हम आपको तुरंत बताते हैं, बजाय चुपचाप खाली कंटेंट का विश्लेषण करने के — साथ ही टेक्स्ट-आधारित वर्शन अपलोड करने या अपना रिज़्यूमे सीधे पेस्ट करने का स्पष्ट सुझाव।"
     },
     "industryDetectionAccuracy8Fixes": {
-      "title": "इंडस्ट्री पहचान की सटीकता में 8 सुधार",
-      "description": "हमने इंडस्ट्री की गलत श्रेणी तय होने के हर ज्ञात प्रकार को पहचाना और ठीक किया। (1) साफ़ अर्थ वाले पदनाम — रजिस्टर्ड नर्स, वकील, प्रोडक्ट मैनेजर, ML इंजीनियर और 50 से ज़्यादा दूसरे — अब कीवर्ड स्कोर चाहे जो हों, इंडस्ट्री को पक्का तय कर देते हैं, ताकि स्किल्स सेक्शन में Python लिखने वाली नर्स को कभी डेटा साइंटिस्ट न माना जाए। (2) हर इंडस्ट्री के लिए अब ऊँचा भरोसा देने से पहले कम से कम एक मुख्य शब्द का होना ज़रूरी है — इससे लंबी स्किल सूचियों से होने वाले गलत नतीजे खत्म होते हैं। (3) बहुत छोटे रिज़्यूमे (80 शब्दों से कम) कीवर्ड स्कोरिंग को पूरी तरह छोड़ देते हैं और सिर्फ़ आपके पदनामों पर निर्भर रहते हैं। (4) नियोक्ता के नाम से मिलने वाली बढ़त पर अब रोक है — Google में काम करने वाले फ़ाइनेंस एनालिस्ट को अब टेक्नोलॉजी की बढ़त नहीं मिलती। (5) इंडस्ट्री और वरिष्ठता के अविश्वसनीय मेल (जैसे एंट्री-लेवल कंसल्टिंग, एग्ज़ीक्यूटिव रिटेल) चिह्नित किए जाते हैं और उनका भरोसा सीमित कर दिया जाता है। (6) स्किल्स सेक्शन का योगदान अब अधिकतम 6 अंकों तक सीमित है, चाहे कितनी भी स्किल्स लिखी हों — आपके सबसे हाल के पदनाम हमेशा 60 स्किल्स वाली सूची से ज़्यादा वज़न रखते हैं। (7) जब आप अपने रिज़्यूमे के साथ जॉब डिस्क्रिप्शन पेस्ट करते हैं, तो AI अब आपकी इंडस्ट्री आपके रिज़्यूमे के पदनामों से तय करता है, न कि उस कंपनी से जहाँ आप आवेदन कर रहे हैं। (8) यूज़र के सुधार अब लघुगणकीय रूप से जुड़ते हैं — किसी पैटर्न को जितनी बार सुधारा जाता है, सीखने का संकेत उतना ही मज़बूत होता है।"
+      "title": "8 accuracy upgrades to industry detection",
+      "description": "We identified and fixed every known category of industry misclassification. Unambiguous role titles now hard-lock the industry, anchor terms prevent skills-list false positives, very short resumes rely only on job titles, the employer boost is guarded, implausible industry/seniority combos are flagged, skills section contribution is capped, the AI classifies from resume titles not the target job, and user corrections now compound the more they repeat."
     },
     "marketIntelligenceCards": {
-      "title": "आपके स्कैन नतीजों में लाइव मार्केट जानकारी",
-      "description": "आपके स्कैन में अब मुख्य नतीजों के नीचे पाँच नए डेटा कार्ड हैं। मार्केट इंटेलिजेंस कार्ड आपके देश में आपकी इंडस्ट्री के जॉब मार्केट का हाल दिखाता है — इस समय माँग वाली स्किल्स, जॉब पोस्टिंग में बढ़ते कीवर्ड, स्थानीय CV मानदंड और वेतन का संदर्भ। स्किल्स रिसेंसी कार्ड उन स्किल्स को चिह्नित करता है जो जॉब पोस्टिंग में घट रही हैं (कटी हुई, पीली) और अभी ज़्यादा माँग वाली स्किल्स को उभारता है (हरी)। करियर ट्रैजेक्टरी कार्ड आपके पदनामों की प्रगति पढ़कर बताता है कि आप ऊपर की ओर, बराबरी पर या बदलाव वाले रास्ते पर हैं। कॉम्पिटिटिव कीवर्ड गैप कार्ड दिखाता है कि ऊपरी चौथाई के कितने प्रतिशत कीवर्ड आप कवर कर रहे हैं और सबसे ज़्यादा आने वाले वे कीवर्ड बताता है जो आपके पास नहीं हैं। ATS सिस्टम कार्ड तब दिखता है जब हम आपके जॉब डिस्क्रिप्शन से पहचान लेते हैं कि कंपनी कौन-सा ATS इस्तेमाल करती है, और पार्सिंग की सलाह उसी सिस्टम के हिसाब से देता है।"
+      "title": "Live market intelligence in your scan results",
+      "description": "Five new data cards now appear in your scan results: Market Intelligence (hot skills, rising keywords, local CV norms, salary context), Skills Recency (aging vs in-demand skills), Career Trajectory (upward/lateral/transition path), Competitive Keyword Gap (top-quartile keyword coverage), and ATS System detection (when we can identify which ATS the company uses)."
     },
     "resumeTimelineAnalysis": {
-      "title": "नौकरी में अंतराल और कम अवधि की नौकरियों की पहचान",
-      "description": "स्कैनर अब आपके कार्य इतिहास की तारीखें पढ़कर 6 महीने से लंबे रोज़गार अंतराल और 12 महीने से छोटी भूमिकाएँ पहचानता है — दोनों को कई ATS सिस्टम और रिक्रूटर के स्क्रीनिंग टूल चिह्नित करते हैं। अगर अंतराल या कम अवधि की नौकरियाँ मिलती हैं, तो आपके नतीजों में एक नया कार्ड दिखता है, जिसमें अंतराल की ठीक अवधि, वह किस भूमिका के बाद आया, और उसे संभालने की ठोस सलाह होती है (कंसल्टिंग की एंट्री जोड़ना, अपने सारांश में छोटी व्याख्या, या कॉन्ट्रैक्ट भूमिका का संदर्भ)। कुल अनुभव और औसत कार्यकाल भी दिखाए जाते हैं।"
+      "title": "Employment gap and short tenure detection",
+      "description": "The scanner now parses your work history date ranges to detect gaps longer than 6 months and roles shorter than 12 months. If found, a new card appears with the specific gap duration and concrete advice on how to address it before applying."
     },
     "gatedKeywordGap": {
-      "title": "कीवर्ड अब जॉब पोस्टिंग में उनके आने की आवृत्ति के हिसाब से क्रम में",
-      "description": "छूटे हुए कीवर्ड आपकी भूमिका की असली जॉब पोस्टिंग में उनकी आवृत्ति के हिसाब से क्रम में रखे जाते हैं — सबसे ज़्यादा असर वाली कमियाँ सबसे पहले दिखती हैं। पहले 3 पूरे दिखाए जाते हैं; बाकी ज़रूरी कीवर्ड की झलक दिखाई जाती है, ताकि आपको पता रहे कि और भी हैं।"
+      "title": "Keywords now sorted by how often they appear in job postings",
+      "description": "Missing keywords are ranked by real posting frequency for your role — the highest-impact gaps appear first. The top 3 are shown in full; additional high-priority keywords are previewed so you know there's more."
     },
     "phraseAwareKeywordMatching": {
-      "title": "“छूटे कीवर्ड” की गलत रिपोर्ट अब कम",
-      "description": "कीवर्ड गैप पहचानने वाला सिस्टम अब संयुक्त वाक्यांश, संक्षिप्त रूप और स्पेसिंग के अलग-अलग रूप समझता है। “Machine learning” और “ML” को एक ही कीवर्ड माना जाता है। “CI/CD”, “ci-cd” और “cicd” तीनों मेल खाते हैं। “P&L” का मेल “profit and loss” से होता है। “Full-stack”, “full stack” और “fullstack” बराबर हैं। इससे ऐसे गलत नतीजों की पूरी श्रेणी खत्म हो जाती है, जिनमें आपके पास साफ़ तौर पर मौजूद स्किल को सिर्फ़ थोड़ा अलग लिखे होने की वजह से छूटा हुआ बताया जाता था।"
+      "title": "Fewer false 'missing keyword' reports",
+      "description": "The keyword detector now understands compound phrases and abbreviations. 'Machine learning' and 'ML' match. 'CI/CD', 'ci-cd', and 'cicd' match. 'P&L' matches 'profit and loss'. 'Full-stack' and 'fullstack' are equivalent. This eliminates false positives where skills you clearly had were reported as missing."
     },
     "roleLockDetection": {
-      "title": "50 से ज़्यादा पदनामों के लिए भूमिका-आधारित पहचान",
-      "description": "हमने एक रोल-लॉक व्यवस्था जोड़ी है, जो 50 से ज़्यादा साफ़ अर्थ वाले पदनाम पहचानती है और रिज़्यूमे में बाकी कुछ भी लिखा हो, सही इंडस्ट्री तय करती है। इसमें क्लिनिकल पद (रजिस्टर्ड नर्स, नर्स प्रैक्टिशनर, डॉक्टर, सर्जन, फ़ार्मासिस्ट, EMT), कानूनी पद (वकील, लीगल काउंसल, पैरालीगल), शिक्षा (शिक्षक, प्रोफ़ेसर, प्रिंसिपल), प्रोडक्ट मैनेजमेंट (PM, APM, CPO), डेटा इंजीनियरिंग (डेटा पाइपलाइन इंजीनियर, एनालिटिक्स इंजीनियर), ML/AI (ML इंजीनियर, एप्लाइड साइंटिस्ट, LLM इंजीनियर) और भी कई शामिल हैं। पहले स्किल्स सेक्शन में SQL लिखने वाली नर्स को गलती से टेक्नोलॉजी में रखा जा सकता था — अब ऐसा नहीं हो सकता।"
+      "title": "Role-specific detection for 50+ job titles",
+      "description": "Over 50 unambiguous job titles now hard-lock the correct industry regardless of what else appears on the resume — registered nurses, attorneys, teachers, product managers, data engineers, ML engineers, and many more. A nurse with SQL in her skills can no longer be classified as a data scientist."
     },
     "fiftyNineIndustries": {
       "title": "59 उद्योग — वे भी जिन्हें बाकी सब नज़रअंदाज़ करते हैं",

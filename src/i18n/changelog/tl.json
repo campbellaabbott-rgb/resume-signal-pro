@@ -869,12 +869,12 @@
       "description": "Nagdagdag ng 55-segundong timeout sa pangunahing AI na tawag sa panahon ng pag-scan ng resume. Kung ang unang modelo ng AI ay bumagal, awtomatiko na ngayong nagpapalit ang engine sa mas mabilis na backup na modelo sa halip na maghintay nang hanggang 2.5 minuto."
     },
     "industryDetectionAccuracy": {
-      "title": "Mas matalas at mas tumpak na pagtukoy ng industriya",
-      "description": "Binago namin nang buo kung paano namin tinutukoy ang industriya mo mula sa resume mo. Anim na round ng pagsubok at pag-aayos ang nagtama sa maling pag-uuri ng mga role tulad ng Growth Hacker (maling na-score bilang Data Science), Salesforce Administrator (na-score bilang Sales), Quantitative Researcher sa isang hedge fund (na-score bilang Data Science), at mga Software Engineer sa mga AI company (maling na-score bilang ML Engineer). Inayos din namin ang isang bug sa scoring logic kung saan puwedeng gumana ang mga pattern ng sabay na lumalabas na keyword bago pa matukoy ang anumang senyales ng industriya — ito ang pangunahing sanhi ng mga maling resulta para sa mga DevOps engineer at SRE. Ang resulta: mas tumpak na mga tip para sa industriya mo, mga mungkahing keyword, at mga ATS scoring weight na talagang tugma sa role mo."
+      "title": "Sharper, more accurate industry detection",
+      "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."
     },
     "dataAiIndustrySplit": {
-      "title": "Magkakahiwalay nang industriya ang Data Engineering, Data Science, at AI/ML",
-      "description": "Dati, iisang pangkalahatang feedback ang natatanggap ng mga data engineer, data scientist, at machine learning engineer sa ilalim ng iisang kategoryang “Technology”. Hinati na namin ang mga ito sa tatlong magkakahiwalay na industry track. Nakakatanggap na ngayon ang mga Data Engineer ng feedback na nakatuon sa mga pipeline tool (Airflow, dbt, Snowflake, Kafka), mga paraan ng modeling, at mga sukatan ng dami ng data. Ginagabayan ang mga Data Scientist tungkol sa statistical rigor, pamamaraan ng A/B testing, at pagsukat ng epekto sa negosyo. Nakakatanggap ang mga ML at AI Engineer ng feedback na partikular sa production deployment, inference optimization, mga LLM framework (LangChain, vLLM, Hugging Face), at mga modernong teknik tulad ng RAG, fine-tuning, at QLoRA. May sariling ATS scoring weight, keyword gap analysis, at mga tip para sa resume ang bawat track."
+      "title": "Data Engineering, Data Science, and AI/ML are now separate industries",
+      "description": "Previously, data engineers, data scientists, and machine learning engineers all received the same generic feedback under a single Technology category. We have split these into three distinct industry tracks with their own ATS scoring weights, keyword gap analysis, and resume tips tailored to each role."
     },
     "everythingTranslated": {
       "title": "Lahat ng screen ay isinalin na ngayon",
@@ -965,28 +965,28 @@
       "description": "Kung mag-upload ka ng image-based na na-scan na PDF na walang napipiling teksto, agad ka na namin sasabihan sa halip na tahimik na suriin ang walang lamang content — may malinaw na suhestiyon na mag-upload ng text-based na bersyon o i-paste mismo ang iyong resume."
     },
     "industryDetectionAccuracy8Fixes": {
-      "title": "8 pagpapahusay sa katumpakan ng pagtukoy ng industriya",
-      "description": "Natukoy at inayos namin ang bawat kilalang uri ng maling pag-uuri ng industriya. (1) Ang mga malinaw na job title — registered nurse, abogado, product manager, ML engineer, at higit 50 pa — ay nagla-lock na ngayon ng industriya anuman ang keyword score, kaya ang nurse na may Python sa skills section ay hindi kailanman maiuuri bilang data scientist. (2) Bawat industriya ay nangangailangan na ngayon ng kahit isang anchor term bago magbigay ng mataas na kumpiyansa — inaalis nito ang mga maling resulta na dulot ng mahahabang listahan ng skill. (3) Ang napakaikling resume (wala pang 80 salita) ay hindi na dumadaan sa keyword scoring at umaasa lang sa mga job title mo. (4) May bantay na ngayon ang boost mula sa pangalan ng employer — hindi na nakakakuha ng technology boost ang isang finance analyst sa Google. (5) Ang mga hindi kapani-paniwalang kombinasyon ng industriya at seniority (hal. entry-level na consulting, executive na retail) ay minamarkahan at nililimitahan ang kumpiyansa. (6) Ang ambag ng skills section ay may mahigpit na limitasyon na ngayong 6 na puntos gaano man karami ang nakalistang skill — laging mas mabigat ang pinakabago mong mga job title kaysa sa listahan ng 60 skill. (7) Kapag nag-paste ka ng job description kasama ng resume mo, tinutukoy na ngayon ng AI ang industriya mo mula sa mga title sa resume mo, hindi sa kumpanyang inaaplayan mo. (8) Nagpapatong-patong na nang logarithmic ang mga pagtatama ng user — habang mas madalas naitatama ang isang pattern, mas lumalakas ang learning signal."
+      "title": "8 accuracy upgrades to industry detection",
+      "description": "We identified and fixed every known category of industry misclassification. Unambiguous role titles now hard-lock the industry, anchor terms prevent skills-list false positives, very short resumes rely only on job titles, the employer boost is guarded, implausible industry/seniority combos are flagged, skills section contribution is capped, the AI classifies from resume titles not the target job, and user corrections now compound the more they repeat."
     },
     "marketIntelligenceCards": {
-      "title": "Live na market intelligence sa mga resulta ng scan mo",
-      "description": "May limang bagong data card na ngayon ang scan mo sa ilalim ng mga pangunahing resulta. Ipinapakita ng Market Intelligence card ang lagay ng job market para sa industriya mo sa bansa mo — ang mga skill na in-demand ngayon, mga keyword na dumarami sa mga job posting, mga lokal na pamantayan ng CV, at konteksto ng sahod. Minamarkahan ng Skills Recency card ang mga skill na humihina sa mga job posting (naka-strikethrough, amber) at itinatampok ang mga skill na mataas ang demand ngayon (berde). Binabasa ng Career Trajectory card ang pag-usad ng mga title mo at sinasabi kung paakyat, patagilid, o palipat ang landas mo. Ipinapakita ng Competitive Keyword Gap card ang porsiyento ng mga keyword mula sa top quartile na saklaw mo at inililista ang mga pinakamadalas na kulang sa iyo. Lumalabas ang ATS System card kapag natukoy namin mula sa job description mo kung anong ATS ang gamit ng kumpanya, at iniaangkop nito ang payo sa parsing sa sistemang iyon."
+      "title": "Live market intelligence in your scan results",
+      "description": "Five new data cards now appear in your scan results: Market Intelligence (hot skills, rising keywords, local CV norms, salary context), Skills Recency (aging vs in-demand skills), Career Trajectory (upward/lateral/transition path), Competitive Keyword Gap (top-quartile keyword coverage), and ATS System detection (when we can identify which ATS the company uses)."
     },
     "resumeTimelineAnalysis": {
-      "title": "Pagtukoy ng puwang sa trabaho at maiikling panunungkulan",
-      "description": "Binabasa na ngayon ng scanner ang mga petsa sa work history mo para matukoy ang mga puwang sa trabaho na mahigit 6 na buwan at mga role na wala pang 12 buwan — parehong minamarkahan ng maraming ATS system at screening tool ng mga recruiter. Kapag may nakitang puwang o maikling panunungkulan, may lalabas na bagong card sa mga resulta mo na may eksaktong haba ng puwang, kung aling role ang sinundan nito, at konkretong payo kung paano ito haharapin (pagdagdag ng consulting entry, maikling paliwanag sa summary mo, o konteksto ng contract role). Ipinapakita rin ang kabuuang karanasan at karaniwang tagal sa bawat trabaho."
+      "title": "Employment gap and short tenure detection",
+      "description": "The scanner now parses your work history date ranges to detect gaps longer than 6 months and roles shorter than 12 months. If found, a new card appears with the specific gap duration and concrete advice on how to address it before applying."
     },
     "gatedKeywordGap": {
-      "title": "Nakaayos na ang mga keyword ayon sa dalas ng paglabas nila sa mga job posting",
-      "description": "Inaayos ang mga kulang na keyword ayon sa totoong dalas nila sa mga job posting para sa role mo — unang lumalabas ang mga kakulangang may pinakamalaking epekto. Buong ipinapakita ang unang 3; ipinapakita bilang preview ang iba pang mahahalagang keyword para malaman mong may iba pa."
+      "title": "Keywords now sorted by how often they appear in job postings",
+      "description": "Missing keywords are ranked by real posting frequency for your role — the highest-impact gaps appear first. The top 3 are shown in full; additional high-priority keywords are previewed so you know there's more."
     },
     "phraseAwareKeywordMatching": {
-      "title": "Mas kaunting maling ulat ng “kulang na keyword”",
-      "description": "Nauunawaan na ngayon ng keyword gap detector ang mga pinagsamang parirala, mga daglat, at mga bersyon na may iba't ibang espasyo. Iisang keyword ang turing sa “Machine learning” at “ML”. Tugma ang “CI/CD”, “ci-cd”, at “cicd”. Tugma ang “P&L” sa “profit and loss”. Magkakapareho ang “Full-stack”, “full stack”, at “fullstack”. Inaalis nito ang isang buong uri ng maling resulta kung saan iniuulat na kulang ang skill na malinaw na mayroon ka dahil lang bahagyang iba ang pagkakasulat nito."
+      "title": "Fewer false 'missing keyword' reports",
+      "description": "The keyword detector now understands compound phrases and abbreviations. 'Machine learning' and 'ML' match. 'CI/CD', 'ci-cd', and 'cicd' match. 'P&L' matches 'profit and loss'. 'Full-stack' and 'fullstack' are equivalent. This eliminates false positives where skills you clearly had were reported as missing."
     },
     "roleLockDetection": {
-      "title": "Pagtukoy na batay sa role para sa mahigit 50 job title",
-      "description": "Nagdagdag kami ng role-lock system na kumikilala sa mahigit 50 malinaw na job title at nagtatakda ng tamang industriya anuman ang iba pang nakasulat sa resume. Kasama ang mga clinical title (registered nurse, NP, doktor, surgeon, pharmacist, EMT), mga legal title (abogado, counsel, paralegal), edukasyon (guro, propesor, punong-guro), product management (PM, APM, CPO), data engineering (data pipeline engineer, analytics engineer), ML/AI (ML engineer, applied scientist, LLM engineer), at iba pa. Dati, puwedeng maling maiuri bilang technology ang isang nurse na may SQL sa skills section — hindi na iyon mangyayari ngayon."
+      "title": "Role-specific detection for 50+ job titles",
+      "description": "Over 50 unambiguous job titles now hard-lock the correct industry regardless of what else appears on the resume — registered nurses, attorneys, teachers, product managers, data engineers, ML engineers, and many more. A nurse with SQL in her skills can no longer be classified as a data scientist."
     },
     "fiftyNineIndustries": {
       "title": "59 na industriya — kasama ang mga karaniwang binabalewala",

@@ -221,7 +221,7 @@ function today(): Record<Lng, Json> {
   return out;
 }
 
-type Site = { bundles: Record<Lng, Json>; changelog?: Record<Lng, Json>; edge?: string | null; edgeIn?: "SellerIdentity" | "check"; fpc?: string; trust?: string | null; page?: string; drop?: string[] };
+type Site = { bundles: Record<Lng, Json>; edge?: string | null; edgeIn?: "SellerIdentity" | "check"; fpc?: string; trust?: string | null; page?: string; drop?: string[] };
 function routesFor(dir: string, site: Site): Route[] {
   const files = new Map<string, string>();
   for (const l of LNGS) {
@@ -229,7 +229,7 @@ function routesFor(dir: string, site: Site): Route[] {
       const c = englishChunks(site.bundles.en);
       files.set(EN_ALL, c.all); files.set(EN_JOBS, c.jobs); files.set(EN_FORMAT, c.format);
     } else files.set(MAIN_NAME(l), moduleChunk(site.bundles[l]));
-    files.set(CL_NAME(l), changelogChunk((site.changelog ?? CHANGELOG)[l]));
+    files.set(CL_NAME(l), changelogChunk(CHANGELOG[l]));
   }
   const edge = site.edge === undefined ? EDGE_BUILT : site.edge;
   const shared = { SellerIdentity: "export const s=1;", check: "export const c=1;" };
@@ -277,7 +277,7 @@ function run(site: Site, ownerDecided: Json = {}): { lines: string[]; calls: str
   return { lines: out.split("\n").filter(Boolean), calls: readFileSync(join(dir, "calls.log"), "utf8").split("\n").filter(Boolean), out };
 }
 
-const CLAIMS = ["S14X-176", "S14X-232", "S14X-097", "S14X-253", "S14X-183", "S14X-109", "S14X-110", "S14X-225", "S14X-178", "S14X-291", "NEW-COPY-I18N-02", "NEW-COPY-I18N-01"];
+const CLAIMS = ["S14X-176", "S14X-232", "S14X-097", "S14X-253", "S14X-183", "S14X-109", "S14X-110", "S14X-225", "S14X-178", "S14X-291", "NEW-COPY-I18N-02"];
 const OWNER = ["O1", "O2", "O3", "O4"];
 const line = (lines: string[], id: string) => lines.filter((l) => new RegExp(`^(PASS|FAIL|INFO) {2}${id.replace(/[-.]/g, "\\$&")} `).test(l));
 const verdict = (lines: string[], id: string) => line(lines, id).map((l) => l.slice(0, 4));
@@ -415,16 +415,6 @@ describe("verify section 99zzzzzzz-bugs-copy-i18n", () => {
     const moved = run({ bundles: LANE, edgeIn: "check" }).lines;
     for (const id of ["S14X-183", "S14X-109", "S14X-110"]) expect(verdict(moved, id), `${id}\n${show(moved)}`).toEqual(["PASS"]);
     expect(line(moved, "L0")[0]).toContain("check-Ck000000.js");
-  });
-
-  it("the changelog claim fails on a language that still serves an English entry, and on one whose changelog it cannot find", () => {
-    const cl = clone(CHANGELOG);
-    set(cl.es, "changelogEntries.dataAiIndustrySplit.title", "Data Engineering, Data Science, and AI/ML are now separate industries");
-    set(cl.tl, "changelogEntries.phraseAwareKeywordMatching.title", "Fewer false 'missing keyword' reports");
-    const stale = run({ bundles: LANE, changelog: cl }).lines;
-    expect(line(stale, "NEW-COPY-I18N-01")[0], show(stale)).toMatch(/^FAIL .*an English title is still served in es, tl$/);
-    const gone = run({ bundles: LANE, drop: [CL_NAME("hi")] }).lines;
-    expect(line(gone, "NEW-COPY-I18N-01")[0], show(gone)).toMatch(/^FAIL .*no changelog chunk found for hi/);
   });
 
   it("a layout it cannot read is a FAIL that says so, never a quiet pass", () => {

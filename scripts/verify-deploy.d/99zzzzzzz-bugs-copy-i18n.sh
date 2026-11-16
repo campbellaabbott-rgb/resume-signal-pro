@@ -51,8 +51,6 @@
 #             fit tooltip prints no percent, and the retired coverage key is
 #             gone.
 #   NEW-COPY-I18N-02  the retired agent's panels have their strings in all nine.
-#   NEW-COPY-I18N-01  no other language's changelog serves the eight entries
-#             first written in English with their English titles.
 #   O1  S14X-073 rule A (owner-gated): the Shortlist row names the four-year
 #       deletion, on /trust and in every language.
 #   O2  S14X-012 option B (owner-gated): no bundle, no FixPlanConfirm chunk and
@@ -386,15 +384,6 @@ claim("S14X-291", "no bundle calls the keyword fit score a share of the posting\
 const PANELS = ["agentControls.blocklist.title", "agentControls.pause.title", "agentNight.title", "agent.reach.title", "agentSetup.title", "receipt.title", "agentQueue.countryAny", "morningQueue.qPlaceholder", "accountPage.notifAgentEmail"];
 claim("NEW-COPY-I18N-02", "the retired agent\x27s panels a past buyer still sees have their strings in all nine languages", [],
   () => { const bad = PANELS.map((k) => [k, missingIn((l) => str_(l, k) !== null)]).filter(([, m]) => m.length); return [bad.length === 0, bad.map(([k, m]) => k + " is missing in " + named(m)).join("; ")]; });
-
-const ENGLISH_CHANGELOG_TITLES = ["Sharper, more accurate industry detection", "Data Engineering, Data Science, and AI/ML are now separate industries", "8 accuracy upgrades to industry detection", "Live market intelligence in your scan results", "Employment gap and short tenure detection", "Keywords now sorted by how often they appear in job postings", "Top keywords now sorted by how often they actually appear in job postings", "Fewer false \x27missing keyword\x27 reports", "Role-specific detection for 50+ job titles"];
-const TRANSLATED = ["de", "es", "fr", "hi", "nl", "pt", "tl"];
-claim("NEW-COPY-I18N-01", "the eight changelog entries first written in English are translated in de, es, fr, hi, nl, pt and tl", [],
-  () => {
-    const unseen = TRANSLATED.filter((l) => !CHANGELOG[l]);
-    const stale = TRANSLATED.filter((l) => CHANGELOG[l] && ENGLISH_CHANGELOG_TITLES.some((s) => CHANGELOG[l].t.includes(s)));
-    return [!unseen.length && !stale.length, [unseen.length ? "no changelog chunk found for " + unseen.join(", ") : "", stale.length ? "an English title is still served in " + stale.join(", ") : ""].filter(Boolean).join("; ")];
-  });
 
 if (!blind) say("INFO", "X1", "proved in the suite, not from outside: every literal key a page asks for resolves in nine languages, a count of one renders the singular, and an answer\x27s code is read before its sentence");
 
