@@ -7,13 +7,14 @@ import { validateTailoredResume, type TailoredResumeShape } from "../_shared/res
 import { roleGuidance } from "../_shared/application-questions.ts";
 import { APPLY_KIT_PRODUCT_TYPES } from "../_shared/apply-kit.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
-import { CHAIN_DEADLINE_MS, callAIWithModelFallback, describeError, describeReply, logAiUsage } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, THINKING_TOKENS, UnusableModelOutput, callAIForUsableReply, describeError, describeReply, type UsableReply } from "../_shared/ai-fallback.ts";
+import { aiUnavailable } from "../_shared/ai-gateway-response.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { accountProStanding } from "../_shared/pro.ts";
 import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
 import { purchaseSpendGate, spendRefusal } from "../_shared/model-spend-gate.ts";
-import { refundWriting, takeWriting, type WritingPass } from "../_shared/writing-allowance.ts";
+import { WRITING_ALLOWANCE, refundWriting, takeWriting, type WritingPass } from "../_shared/writing-allowance.ts";
 import { websiteSessionOf } from "../_shared/website-session.ts";
 import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting-text.ts";
 
@@ -99,17 +100,18 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Max-Age': '7200',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  // The co-pilot reads when a limit ends from Retry-After (RC-S12-051).
+  'Access-Control-Expose-Headers': 'x-fn-build, retry-after',
   'x-fn-build': FN_BUILD,
 };
 
 // Per address per day, for purchase and unentitled callers. A Pro account
-// is never counted here: its plan is unlimited kits, and with the day now
-// lasting a day (20261009110000) this bucket capped Pro at 40.
+// is never counted here: its kits come from its writing allowance, and with
+// the day now lasting a day (20261009110000) this bucket capped Pro at 40.
 const RATE_LIMIT = 40;
 const RATE_WINDOW_MINUTES = 1440;
-// Unlimited kits a day is not unlimited gemini-2.5-pro calls an hour: every
-// signed-in account has its own hourly bucket, counted before its plan is
-// read, and Pro accounts together share one hourly ceiling.
+// Every signed-in account has its own hourly bucket, counted before its plan
+// is read, and Pro accounts together share one hourly ceiling.
 const KITS_PER_ACCOUNT_HOUR = 60;
 const PRO_KITS_PER_HOUR = 600;
 const HOUR_WINDOW_MINUTES = 60;
@@ -128,25 +130,28 @@ function signedInToken(authHeader: string): string | null {
     return null;
   }
 }
-/** Kits one purchase (a checkout session or a Pro grant) may generate in a day. A Pro account's own plan is unlimited and not counted here. */
+/** Kits one purchase (a checkout session or a Pro grant) may generate in a day. A Pro account's own kits are counted by its writing allowance. */
 const KITS_PER_PURCHASE_DAY = 10;
 
 // The platform's word for the caller's address, never the first forwarded
 // hop, which a caller writes itself.
 const getClientIp = (req: Request): string => clientAddressOr(req.headers);
 
-// THE SHARED FALLBACK CHAIN, NOT A HAND-COPIED ONE (platform sweep L5-16).
-// The copy that lived here returned only on success or a non-429/402 status
-// under 500, so a 429 or a 402 was retried on every model (six calls) and then
-// thrown, and the caller got a non-retryable 500 naming the model -- the
-// "busy, try again" and "credits" answers below never ran. The shared chain
-// advances past a 429 to the next model, returns the last 429 when every model
-// is busy, and returns a 402 at once. Same models, same order as before.
+// THE SHARED FALLBACK CHAIN, NOT A HAND-COPIED ONE (platform sweep L5-16):
+// a 429 asks the next model, a 402 is answered at once. Same models, same
+// order as before.
 const MODEL_FALLBACK_ORDER = [
   'google/gemini-2.5-pro',
   'openai/gpt-5',
   'openai/gpt-5-mini',
 ];
+
+// THE KIT'S OUTPUT CAP (S14X-266). The largest kit, a 20,000-character
+// résumé as a structured résumé (15 roles of 8 bullets) with its metadata,
+// gaps and checklist, measures about 10,800 tokens; the cap keeps headroom,
+// plus the reasoning the pro and gpt-5 legs spend against the same cap.
+// Unset, a model could run to its own ceiling on the project's key.
+const KIT_OUTPUT_TOKENS = 12_000;
 
 interface AIRequestOptions {
   messages: Array<{ role: string; content: string }>;
@@ -154,21 +159,60 @@ interface AIRequestOptions {
   tool_choice?: unknown;
 }
 
-/** One chain call, inside what is left of the request's one budget (deadlineAt). */
-function callAIWithFallback(
+type KitReply = { choices?: Array<{ message?: { tool_calls?: Array<{ function?: { name?: unknown; arguments?: unknown } }> } }> };
+
+/**
+ * A submit_apply_package call whose arguments parse to a kit, or null: a 200
+ * without one asks the next model (callAIForUsableReply), never answers a
+ * 500 on the first. `last` keeps why, for the answer when no model gives one.
+ */
+function readKit(data: unknown, last: { refusal: "format" | "malformed" }): Record<string, unknown> | null {
+  const toolCall = (data as KitReply | null)?.choices?.[0]?.message?.tool_calls?.[0];
+  if (!toolCall || toolCall.function?.name !== "submit_apply_package") {
+    // Its shape, never its words: the reply carries the person's résumé (S13-064).
+    console.error("[GENERATE-APPLY-PACKAGE] Unexpected response format:", describeReply(data));
+    last.refusal = "format";
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(String(toolCall.function.arguments));
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && parsed.tailoredResume && typeof parsed.tailoredResume === "object") return parsed;
+  } catch (e) {
+    // Its name and position, never the arguments it quotes (S13-064).
+    console.warn("[GENERATE-APPLY-PACKAGE] tool-call JSON parse failed:", describeError(e), `(${String(toolCall.function.arguments ?? "").length} chars)`);
+  }
+  last.refusal = "malformed";
+  return null;
+}
+
+/** One chain walk to a usable kit, inside what is left of the request's one budget (deadlineAt). */
+function askForKit(
   apiKey: string,
   options: AIRequestOptions,
   context: string,
   deadlineAt: number,
-): Promise<{ response: Response; modelUsed: string }> {
-  return callAIWithModelFallback(apiKey, {
+  last: { refusal: "format" | "malformed" },
+): Promise<UsableReply<Record<string, unknown>>> {
+  return callAIForUsableReply(apiKey, {
     messages: options.messages,
     tools: options.tools,
     toolChoice: options.tool_choice,
+    maxTokens: KIT_OUTPUT_TOKENS + THINKING_TOKENS,
     models: MODEL_FALLBACK_ORDER,
     context: `GENERATE-APPLY-PACKAGE ${context}`,
     deadlineMs: deadlineAt - Date.now(),
+    read: (data) => readKit(data, last),
   });
+}
+
+/** The grounding issues by kind and count, never their words: each quotes a real employer or school (RC-S13-064). */
+function issueCounts(issues: string[]): string {
+  const kinds = new Map<string, number>();
+  for (const issue of issues) {
+    const kind = (/^[A-Za-z]+/.exec(issue)?.[0] ?? "other").toLowerCase();
+    kinds.set(kind, (kinds.get(kind) ?? 0) + 1);
+  }
+  return `${issues.length} issues: ${[...kinds].map(([k, n]) => `${k} ${n}`).join(", ")}`;
 }
 
 /** An aborted or timed-out model call: the one failure a retry may fix. */
@@ -236,13 +280,18 @@ async function handleKit(req: Request, holder: { pass: WritingPass | null }, dea
         const mine = await counted({ p_ip: `user:${userId}`, p_max_requests: KITS_PER_ACCOUNT_HOUR, p_window_minutes: HOUR_WINDOW_MINUTES });
         if (mine === null) return spendRefusal("limiter_unavailable", null, corsHeaders);
         if (!mine) return spendRefusal("rate_limited_function", KITS_PER_ACCOUNT_HOUR, corsHeaders);
+        // A plan that cannot be read is a 503 to try again, never the
+        // address's day and a purchase refusal for a Pro member (S14X-169).
+        let known = false;
         try {
           const standing = await accountProStanding(supabase, userId);
           proAccount = standing.pro;
           proPaid = standing.consumables;
+          known = standing.known !== false;
         } catch (e) {
           console.warn("[GENERATE-APPLY-PACKAGE] pro check failed:", String(e).slice(0, 120));
         }
+        if (!known) return spendRefusal("limiter_unavailable", null, corsHeaders);
       }
     }
     if (proAccount) {
@@ -357,13 +406,13 @@ async function handleKit(req: Request, holder: { pass: WritingPass | null }, dea
     }
     if (!entitled) {
       return new Response(
-        JSON.stringify({ error: "This is a paid tool. Unlock the Apply Assistant from the pricing page, or go Pro for unlimited application kits.", requiresPurchase: true }),
+        JSON.stringify({ error: `Application packages come with Pro, which includes ${WRITING_ALLOWANCE.proPackagesPerDay} application packages a day. A past Apply Assistant purchase opens it from its receipt link.`, requiresPurchase: true }),
         { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    // One purchase buys a day of kits, not unlimited gemini-2.5-pro runs from
-    // a pool of addresses (sweep S8-063). A Pro account keeps its unlimited
-    // day; its hour was counted above.
+    // One purchase buys a day of kits, not endless gemini-2.5-pro runs from
+    // a pool of addresses (sweep S8-063). A Pro account's kits come from its
+    // writing allowance; its hour was counted above.
     if (entitledByPurchase) {
       const purchaseRefused = await purchaseSpendGate(supabase, 'generate-apply-package', sessionId, KITS_PER_PURCHASE_DAY, corsHeaders);
       if (purchaseRefused) return purchaseRefused;
@@ -503,77 +552,64 @@ Prepare the tailored application package.`;
         }];
     const applyToolChoice = { type: "function", function: { name: "submit_apply_package" } };
 
-    const { response, modelUsed } = await callAIWithFallback(
-      LOVABLE_API_KEY,
-      {
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        tools: applyPackageTool,
-        tool_choice: applyToolChoice
+    // Why the last reply was refused, for the answer when no model gives one.
+    const last = { refusal: "malformed" as "format" | "malformed" };
+    let reply: UsableReply<Record<string, unknown>>;
+    try {
+      reply = await askForKit(
+        LOVABLE_API_KEY,
+        {
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          tools: applyPackageTool,
+          tool_choice: applyToolChoice
+        },
+        'Apply package generation',
+        deadlineAt,
+        last,
+      );
+    } catch (error) {
+      if (!(error instanceof UnusableModelOutput)) throw error;
+      // No model gave a kit it could read: retryable, and the use given back.
+      return last.refusal === "format"
+        ? new Response(
+          JSON.stringify({ error: "Invalid AI response format", retryable: true }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+        : new Response(
+          JSON.stringify({ error: "The generator returned a malformed draft. Try again — regeneration is free.", retryable: true }),
+          { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+    }
 
-      },
-      'Apply package generation',
-      deadlineAt,
-    );
-
-    if (!response.ok) {
+    if (!reply.ok) {
+      const { response, modelUsed } = reply;
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "AI service is temporarily busy. Please try again in a few moments.", retryable: true }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI service credits depleted. Please try again later.", retryable: false }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      // The provider out of credits is our outage, not the caller's purchase (S14X-109).
+      if (response.status === 402) return aiUnavailable(corsHeaders);
       const errorText = await response.text();
-      console.error("[GENERATE-APPLY-PACKAGE] AI API error:", response.status, errorText, "model:", modelUsed);
+      console.error("[GENERATE-APPLY-PACKAGE] AI API error:", response.status, errorText.slice(0, 200), "model:", modelUsed);
       return new Response(
         JSON.stringify({ error: "Failed to generate application package" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const data = await response.json();
-    logAiUsage("generate-apply-package", modelUsed, data);
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall || toolCall.function.name !== "submit_apply_package") {
-      // Its shape, never its words: the reply carries the person's résumé (S13-064).
-      console.error("[GENERATE-APPLY-PACKAGE] Unexpected response format:", describeReply(data));
-      return new Response(
-        JSON.stringify({ error: "Invalid AI response format" }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Tool-call arguments are usually valid JSON, but a response truncated at
-    // max_tokens (or a model hiccup) yields malformed JSON. Unguarded, that
-    // threw to the outer catch as a generic 500 — and skipped the grounding
-    // retry below. Return the same retryable shape the grounding refusal uses,
-    // so the UI (and the batch co-pilot) handle it gracefully with "try again".
-    let result;
-    try {
-      result = JSON.parse(toolCall.function.arguments);
-    } catch (e) {
-      // Its name and position, never the arguments it quotes (S13-064).
-      console.warn("[GENERATE-APPLY-PACKAGE] tool-call JSON parse failed:", describeError(e), `(${String(toolCall.function.arguments ?? "").length} chars)`);
-      return new Response(
-        JSON.stringify({ error: "The generator returned a malformed draft. Try again — regeneration is free.", retryable: true }),
-        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const modelUsed = reply.modelUsed;
+    let result = reply.value;
 
     // ── Grounding check: verify, don't trust ────────────────────────────────
     let grounding = validateTailoredResume(resumeText, result.tailoredResume as TailoredResumeShape);
     if (!grounding.ok) {
-      console.warn("[GENERATE-APPLY-PACKAGE] grounding rejected draft:", grounding.issues.slice(0, 6));
+      console.warn("[GENERATE-APPLY-PACKAGE] grounding rejected draft:", issueCounts(grounding.issues));
       try {
-        const { response: r2, modelUsed: model2 } = await callAIWithFallback(
+        const r2 = await askForKit(
           LOVABLE_API_KEY,
           {
             messages: [
@@ -586,18 +622,15 @@ Prepare the tailored application package.`;
           },
           'Apply package regeneration',
           deadlineAt,
+          { refusal: "malformed" },
         );
         if (r2.ok) {
-          const d2 = await r2.json();
-          logAiUsage("generate-apply-package.regenerate", model2, d2);
-          const tc2 = d2.choices?.[0]?.message?.tool_calls?.[0];
-          if (tc2?.function?.arguments) {
-            const res2 = JSON.parse(tc2.function.arguments);
-            const g2 = validateTailoredResume(resumeText, res2.tailoredResume as TailoredResumeShape);
-            if (g2.ok) {
-              result = res2;
-              grounding = g2;
-            }
+          const g2 = validateTailoredResume(resumeText, r2.value.tailoredResume as TailoredResumeShape);
+          if (g2.ok) {
+            result = r2.value;
+            grounding = g2;
+          } else {
+            console.warn("[GENERATE-APPLY-PACKAGE] grounding rejected regeneration:", issueCounts(g2.issues));
           }
         }
       } catch (e) {

@@ -1,0 +1,32 @@
+{
+  "writingTools": {
+    "tailorBusyTitle": "Gerade ausgelastet",
+    "tailorBusy": "Die Lebenslauf-Anpassung ist gerade ausgelastet — versuch es gleich noch einmal.",
+    "lettersStillOwed": "Noch zu schreibende Anschreiben: {{count}}. Starte die Vorbereitung erneut, um sie hinzuzufügen.",
+    "answersRetryTitle": "Diese konnten wir gerade nicht entwerfen",
+    "answersRetryBody": "Beim Entwerfen ist etwas schiefgelaufen. Entwirf erneut, um diese Fragen noch einmal zu versuchen.",
+    "answersJoined": "Die Antworten, die du begonnen hast, werden noch entworfen. Sie erscheinen hier.",
+    "answersWritingTitle": "Längere Texte, hier nicht entworfen",
+    "answersWritingBody": "Diese Fragen verlangen ein Anschreiben, einen Aufsatz oder einen neu geschriebenen Lebenslauf, und so etwas schreibt dieser Schritt nicht. Nutze die Werkzeuge für Anschreiben oder angepassten Lebenslauf, oder schreib sie selbst.",
+    "answersAiUnavailable": "Der KI-Dienst nimmt gerade keine Anfragen an. Bitte versuch es in ein paar Minuten erneut.",
+    "postingTruncated": "Diese Stellenanzeige war sehr lang, daher wurde nur ihr erster Teil gelesen. Prüfe ihre letzten Anforderungen selbst.",
+    "export": {
+      "prepTitle": "Leitfaden zur Interviewvorbereitung",
+      "whyAsked": "Warum sie fragen:",
+      "opener": "Starker Einstieg:",
+      "modelAnswer": "Musterantwort (STAR-Methode):",
+      "tips": "Tipps:",
+      "avoid": "Vermeiden:",
+      "before": "Vor dem Interview",
+      "during": "Während des Interviews",
+      "askThem": "Fragen, die du stellen kannst",
+      "pathTitle": "Karriere-Fahrplan",
+      "current": "Aktuell:",
+      "pathOdds": "Wahrscheinlichkeit: {{probability}}, Risiko: {{risk}}",
+      "skills": "Zu entwickelnde Fähigkeiten:",
+      "actionPlan": "90-Tage-Aktionsplan:",
+      "thisWeek": "Diese Woche tun (für jeden Weg)",
+      "pathPrintDescription": "Die Schriften des PDFs können die Schrift dieses Fahrplans nicht darstellen. Wähle im Druckdialog „Als PDF speichern“, um ihn zu behalten."
+    }
+  }
+}

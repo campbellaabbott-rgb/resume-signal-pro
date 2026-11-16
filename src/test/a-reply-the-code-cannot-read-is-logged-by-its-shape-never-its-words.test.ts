@@ -88,8 +88,10 @@ describe("each logger, run as shipped", () => {
 
   it("generate-apply-package", async () => {
     const r = await post(kit, "generate-apply-package", { resumeText: RESUME, jobPostingText: "Globex is hiring a senior engineer to own payments end to end.", sessionId: "cs_live_kit" }, "anon");
-    expect(r.status, JSON.stringify(r.body).slice(0, 200)).toBe(500);
-    expect(r.body).toMatchObject({ error: "Invalid AI response format" });
+    // Every model asked in turn for a readable kit (S14X-266), then the
+    // retryable answer the tailor gives.
+    expect(r.status, JSON.stringify(r.body).slice(0, 200)).toBe(502);
+    expect(r.body).toMatchObject({ error: "Invalid AI response format", retryable: true });
     expectNoWordsOfTheResume("generate-apply-package");
   });
 });
@@ -184,7 +186,9 @@ describe("a tool call whose arguments do not parse, run as shipped", () => {
       : malformedCall("submit_apply_package"));
     const r = await post(kit, "generate-apply-package", { resumeText: RESUME, jobPostingText: "Globex is hiring a senior engineer to own payments end to end.", sessionId: "cs_live_kit" }, "anon");
     expect(r.status, JSON.stringify(r.body).slice(0, 200)).toBe(422);
-    expect(n).toBe(2);
+    // The draft, then the regeneration asking each model of the chain for a
+    // kit it can read (S14X-266).
+    expect(n).toBe(4);
     expectNoWordsInAnyLine("generate-apply-package regeneration");
   });
 });

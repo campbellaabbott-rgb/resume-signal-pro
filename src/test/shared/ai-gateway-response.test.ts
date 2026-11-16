@@ -32,14 +32,16 @@ describe("checkAiGatewayResponse", () => {
     );
   });
 
-  it("returns a 402 Response with a clear error message for payment-required", async () => {
+  it("answers the gateway's payment-required as a retryable 503: our outage, never the caller's purchase (S14X-109)", async () => {
     const response = new Response("Payment required", { status: 402 });
     const result = await checkAiGatewayResponse(response, corsHeaders);
 
     expect(result).not.toBeNull();
-    expect(result!.status).toBe(402);
+    expect(result!.status).toBe(503);
+    expect(result!.headers.get("Retry-After")).toBe("300");
     const body = await result!.json();
-    expect(body.error).toBe("Service temporarily unavailable.");
+    expect(body).toMatchObject({ code: "ai_unavailable", retryable: true });
+    expect(body.requiresPurchase).toBeUndefined();
   });
 
   it("throws for a 401 (unauthorized) error", async () => {

@@ -80,8 +80,10 @@ export type WritingTool = "tailor" | "cover" | "coach";
 type Copy = [key: string, fallback: string];
 const TOOL_COPY: Readonly<Record<WritingTool, { limitTitle: Copy; limit: Copy; errorTitle: Copy; error: Copy }>> = {
   tailor: {
-    limitTitle: ["jobsPage.tailorLimitTitle", "Hourly limit reached"],
-    limit: ["jobsPage.tailorLimit", "You’ve used this hour’s résumé-tailoring runs — they reset within the hour. Everything you’ve generated is saved."],
+    // A busy model is not an hourly limit (S14X-265): the real limits are
+    // said by writingRefusalOf and the gated branch below.
+    limitTitle: ["writingTools.tailorBusyTitle", "Busy right now"],
+    limit: ["writingTools.tailorBusy", "The résumé tailor is busy — try again in a moment."],
     errorTitle: ["jobsPage.tailorErrorTitle", "Couldn't tailor your résumé"],
     error: ["jobsPage.tailorError", "Something went wrong tailoring your résumé. Please try again."],
   },

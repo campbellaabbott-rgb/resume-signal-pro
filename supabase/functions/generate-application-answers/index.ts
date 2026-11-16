@@ -21,10 +21,11 @@ import { CHAIN_DEADLINE_MS, callAIWithModelFallback, freeChainFrom, logAiUsage }
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
-import { classifyQuestion, selectDraftable, roleGuidance, shapeModelAnswers, type AppQuestion } from "../_shared/application-questions.ts";
+import { classifyQuestion, selectDraftable, roleGuidance, shapeModelAnswers, type AppQuestion, type QuestionClass } from "../_shared/application-questions.ts";
 import { coverNotePrompt, validateCoverNote, gateCanCheck, COVER_NOTE_VERSION } from "../_shared/cover-note.ts";
 import { toAskedLabels } from "../_shared/draft-reply.ts";
-import { groundAnswers, ANSWER_CAP, ANSWER_CHUNK, chunked } from "./answers.ts";
+import { groundAnswers, ANSWER_CAP, ANSWER_CHUNK, answersTokenCap, asksForWriting, chunked, clipAnswer } from "./answers.ts";
+import { aiUnavailable } from "../_shared/ai-gateway-response.ts";
 import { postingLanguageInstruction } from "../_shared/posting-language.ts";
 import { resolveLanguageName } from "../_shared/language-instruction.ts";
 import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting-text.ts";
@@ -132,7 +133,8 @@ serve(async (req) => {
   const deadlineAt = Date.now() + CHAIN_DEADLINE_MS;
 
   const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-  const spendGate = () => modelSpendGate(supabase, req, "generate-application-answers", ANSWERS_LIMITS, corsHeaders);
+  // A held board pass counts the caller by the pass, as the other writers do (S14X-205).
+  const spendGate = (boardPass: unknown) => modelSpendGate(supabase, req, "generate-application-answers", ANSWERS_LIMITS, corsHeaders, { boardPass });
 
   try {
     const body = await req.json();
@@ -190,7 +192,7 @@ serve(async (req) => {
       const apiKeyCN = Deno.env.get("LOVABLE_API_KEY");
       if (!apiKeyCN) return json({ error: "AI is not configured." }, 500);
 
-      const refusedCN = await spendGate();
+      const refusedCN = await spendGate(body?.boardPass);
       if (refusedCN) return refusedCN;
 
       const gateCtx = {
@@ -237,7 +239,7 @@ serve(async (req) => {
               status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
             });
           }
-          if (response.status === 402) return json({ error: "AI credits exhausted.", code: "model_credits", retryable: false }, 402);
+          if (response.status === 402) return aiUnavailable(corsHeaders);
           return json({ error: "Couldn't draft a cover note right now.", code: "draft_failed", retryable: true }, 502);
         }
         const r = await response.json();
@@ -283,11 +285,18 @@ serve(async (req) => {
     // ONE CAP (S12-148): drafted up to 25 and returned at most 12, so a
     // 15-question form came back with three answers missing. Every question
     // up to ANSWER_CAP is drafted and returned; any past it is named back.
-    const allDraftable = hasExplicit ? selectDraftable(questions) : [];
+    // A question asking for a letter, an essay or a rewritten résumé is
+    // handed back as "writing" before any model call (S14X-090).
+    const allDraftable = hasExplicit ? selectDraftable(questions).filter((q) => !asksForWriting(q.label ?? "")) : [];
     const draftable = allDraftable.slice(0, ANSWER_CAP);
     const undrafted: string[] = allDraftable.slice(ANSWER_CAP).map((q) => q.label ?? "").filter(Boolean);
-    const skipped = hasExplicit
-      ? questions.map((q) => ({ question: q.label, class: classifyQuestion(q.label ?? "", q.type) })).filter((q) => q.class !== "draftable")
+    const skipped: Array<{ question: string; class: QuestionClass | "writing" }> = hasExplicit
+      ? questions
+        .map((q) => {
+          const cls = classifyQuestion(q.label ?? "", q.type);
+          return { question: q.label, class: cls === "draftable" && asksForWriting(q.label ?? "") ? "writing" as const : cls };
+        })
+        .filter((q) => q.class !== "draftable")
       : [];
     const inferred = !hasExplicit;
 
@@ -301,7 +310,7 @@ serve(async (req) => {
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) return json({ error: "AI is not configured." }, 500);
 
-    const refused = await spendGate();
+    const refused = await spendGate(body?.boardPass);
     if (refused) return refused;
 
     // THE LANGUAGE (S12-026). Answers are pasted into the employer's form, so
@@ -358,7 +367,7 @@ ${inferred ? "" : `\nQUESTIONS TO ANSWER (draft each, grounded strictly in the r
     const replies = await Promise.all(batches.map(async (batch) => {
       // The fallback THROWS when every model fails (5xx or network), rather
       // than handing back a response: caught here, so one failed chunk is
-      // named back as undrafted instead of taking the answers the other
+      // named back as retryable instead of taking the answers the other
       // chunks wrote down with it as a 500.
       let response: Response;
       let modelUsed: string;
@@ -369,7 +378,7 @@ ${inferred ? "" : `\nQUESTIONS TO ANSWER (draft each, grounded strictly in the r
             { role: "user", content: userPrompt(batch) },
           ],
           temperature: 0.3,
-          maxTokens: inferred ? 3500 : 4000,
+          maxTokens: inferred ? 3500 : answersTokenCap(batch.length),
           jsonResponse: true,
           models: freeChainFrom("google/gemini-2.5-flash"),
           context: "APPLICATION-ANSWERS",
@@ -399,7 +408,8 @@ ${inferred ? "" : `\nQUESTIONS TO ANSWER (draft each, grounded strictly in the r
     const good = replies.filter((r) => r.answers !== null);
     if (good.length === 0) {
       const statuses = replies.map((r) => r.status);
-      if (statuses.includes(402)) return json({ error: "AI credits exhausted.", code: "model_credits", retryable: false }, 402);
+      // The provider out of credits is our outage, not the caller's purchase (S14X-109).
+      if (statuses.includes(402)) return aiUnavailable(corsHeaders);
       if (statuses.includes(429)) {
         return new Response(JSON.stringify({ error: "The AI service is busy. Please try again in a minute.", code: "model_busy", retryable: true }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
@@ -408,8 +418,10 @@ ${inferred ? "" : `\nQUESTIONS TO ANSWER (draft each, grounded strictly in the r
       return json({ error: "Couldn't draft answers right now.", code: "draft_failed", retryable: true }, 502);
     }
     // A chunk that failed while others answered: its questions are named back
-    // for the person rather than dropped.
-    for (const r of replies) if (r.answers === null) undrafted.push(...r.batch.map((q) => q.label ?? "").filter(Boolean));
+    // as retryable (S14X-119), never as left for the person: undrafted is the
+    // cap's overflow only, and a draft again asks for these.
+    const retryable: string[] = [];
+    for (const r of replies) if (r.answers === null) retryable.push(...r.batch.map((q) => q.label ?? "").filter(Boolean));
 
     const draftLabels = new Set(draftable.map((q) => (q.label ?? "").trim()));
     const raw = good.flatMap((r) => r.answers ?? []);
@@ -420,14 +432,23 @@ ${inferred ? "" : `\nQUESTIONS TO ANSWER (draft each, grounded strictly in the r
     // Support is a literal true, and an invented question is classified before
     // it is answered (S8-008): see shapeModelAnswers.
     const shaped = shapeModelAnswers(echoed, { inferred, askedLabels: draftLabels, limit: ANSWER_CAP });
+    // An inferred letter or essay is handed back too, and every answer is
+    // clipped to a screening answer's length (S14X-090).
+    const kept = shaped.answers
+      .filter((a) => {
+        if (!asksForWriting(a.question)) return true;
+        skipped.push({ question: a.question, class: "writing" });
+        return false;
+      })
+      .map((a) => ({ ...a, answer: clipAnswer(String(a.answer ?? "")) }));
     // THE FACT CHECK (S12-062): the model's supported:true is a claim, not a
     // verdict. An answer naming a credential, degree, figure, employer or
     // title the résumé does not state is marked for the person to fix.
-    const answers = groundAnswers(resumeText, shaped.answers, { posting: jobDescription, jobTitle, company: jobCompany });
+    const answers = groundAnswers(resumeText, kept, { posting: jobDescription, jobTitle, company: jobCompany });
     skipped.push(...shaped.skipped);
 
-    console.log(`[APPLICATION-ANSWERS] mode=${inferred ? "inferred" : "explicit"}; drafted ${answers.length}; ${answers.filter((a) => !a.supported).length} gaps; ${skipped.length} for candidate; ${undrafted.length} not drafted`);
-    return json({ answers, skipped, inferred, ...(undrafted.length ? { undrafted } : {}) });
+    console.log(`[APPLICATION-ANSWERS] mode=${inferred ? "inferred" : "explicit"}; drafted ${answers.length}; ${answers.filter((a) => !a.supported).length} gaps; ${skipped.length} for candidate; ${undrafted.length} not drafted; ${retryable.length} retryable`);
+    return json({ answers, skipped, inferred, ...(undrafted.length ? { undrafted } : {}), ...(retryable.length ? { retryable } : {}) });
   } catch (e) {
     console.error("[APPLICATION-ANSWERS] error:", e);
     return json({ error: "Something went wrong drafting answers.", retryable: true }, 500);

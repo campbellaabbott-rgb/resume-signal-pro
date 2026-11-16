@@ -275,10 +275,12 @@ describe("a reply the model could not finish goes to the next model", () => {
   it("an answer's score has its measured cap, and a cut-off score is answered by the next model", async () => {
     const SCORE = JSON.stringify({ score: 7, grade: "B+", strengths: ["s"], improvements: ["i"], revisedAnswer: "r", recruiterReaction: "ok" });
     world.reply = (c) => (c.model === QUALITY ? cutOff('{"score": 7, "grade": "B') : chatReply(SCORE));
-    const r = await post(handler, FN, { resumeText: RESUME, mode: "evaluate", question: "Tell me about a migration.", answer: "I led it.", category: "Behavioral" }, FREE);
+    // A Pro member's score runs on the quality chain; a free account's on
+    // flash (S14X-268, writing-scoring-a-free-accounts-answer-runs-on-flash).
+    const r = await post(handler, FN, { resumeText: RESUME, mode: "evaluate", question: "Tell me about a migration.", answer: "I led it.", category: "Behavioral" }, tokenFor(PRO_USER));
     expect(r.status, JSON.stringify(r.body).slice(0, 300)).toBe(200);
     expect((r.body as { data: { score: number } }).data.score).toBe(7);
-    expect(world.ai.map((c) => c.model)).toEqual([QUALITY, "google/gemini-2.5-flash"]);
+    expect(world.ai.map((c) => c.model)).toEqual([QUALITY, "openai/gpt-5"]);
     for (const c of world.ai) expect(capOf(c)).toBe(EVALUATION_OUTPUT_TOKENS + THINKING_TOKENS);
   });
 });

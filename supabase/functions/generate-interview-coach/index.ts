@@ -10,6 +10,7 @@ import { assertPaidSession } from "../_shared/paid-session.ts";
 import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 import { refundWriting, signInRequired, writingChain, writingGate, type WritingPass } from "../_shared/writing-allowance.ts";
 import { websiteSessionOf } from "../_shared/website-session.ts";
+import { accountProStanding } from "../_shared/pro-standing.ts";
 import {
   EVALUATION_FORMAT,
   EVALUATION_OUTPUT_TOKENS,
@@ -157,11 +158,15 @@ serve(async (req) => {
     const purchase = !service && (premium || (typeof sessionId === "string" && sessionId.length <= 255 && !!sessionId
       && await deliversProduct(supabase, sessionId, COACH_PRODUCTS)));
     if (evaluate) {
+      pass = { kind: service ? "service" : "purchase" };
       if (!service && !purchase) {
         const signedIn = await websiteSessionOf(req.headers, supabase.auth);
         if (!("session" in signedIn)) return signInRequired(corsHeaders);
+        // A free account's score runs on the free chain, a paid plan's on the
+        // quality chain (S14X-268); scoring takes no use from the allowance.
+        const standing = await accountProStanding(supabase, signedIn.session.user.id);
+        pass = { kind: "account", userId: signedIn.session.user.id, tier: standing.consumables ? "pro" : "free", useIds: [] };
       }
-      pass = { kind: service ? "service" : "purchase" };
     } else {
       const gate = await writingGate(supabase, req, ["prep"], corsHeaders, { service, purchase, auth: supabase.auth });
       if ("refused" in gate) return gate.refused;
@@ -184,6 +189,7 @@ serve(async (req) => {
     if (evaluate) {
       return await handleEvaluate(apiKey, {
         resumeText, question: question!, answer: answer!, category: clipField(body.category, 40) ?? "General", language,
+        models: writingChain(pass ?? { kind: "service" }),
       });
     }
     // Pro first, cut at 80 s, then flash, when the writing chain starts on
@@ -296,14 +302,14 @@ Make them SPECIFIC to the candidate's actual experience.${buildLanguageInstructi
 
 async function handleEvaluate(
   apiKey: string,
-  { resumeText, question, answer, category, language }: {
-    resumeText: string; question: string; answer: string; category: string; language?: string;
+  { resumeText, question, answer, category, language, models }: {
+    resumeText: string; question: string; answer: string; category: string; language?: string; models: string[];
   },
 ) {
   const systemPrompt = `You are an expert interview coach evaluating a candidate's answer. Be direct and specific. Output JSON:
 ${EVALUATION_FORMAT}${buildLanguageInstruction(language)}`;
 
-  // The default chain (pro, flash, gpt-5-mini). The cap is the largest
+  // The caller's chain (writingChain: Flash for a free account). The cap is the largest
   // legitimate score plus the model's thinking (the 1,500 it had was below
   // the largest score alone, 1,665, before pro thought at all), and a
   // cut-off or unreadable score asks the next model.
@@ -315,6 +321,7 @@ ${EVALUATION_FORMAT}${buildLanguageInstruction(language)}`;
     temperature: 0.5,
     maxTokens: EVALUATION_OUTPUT_TOKENS + THINKING_TOKENS,
     jsonResponse: true,
+    models,
     context: "INTERVIEW-COACH-EVAL",
     read: readEvaluation,
   });

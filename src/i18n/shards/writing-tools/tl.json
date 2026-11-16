@@ -1,0 +1,32 @@
+{
+  "writingTools": {
+    "tailorBusyTitle": "Busy ngayon",
+    "tailorBusy": "Busy ang résumé tailor — subukan ulit maya-maya.",
+    "lettersStillOwed": "Mga cover letter na isusulat pa: {{count}}. Patakbuhin ulit ang prep para maidagdag ang mga ito.",
+    "answersRetryTitle": "Hindi namin ito na-draft ngayon",
+    "answersRetryBody": "May naging problema habang dina-draft ang mga ito. Mag-draft ulit para subukan muli ang mga tanong na ito.",
+    "answersJoined": "Dina-draft pa ang mga sagot na sinimulan mo. Lalabas ang mga ito rito.",
+    "answersWritingTitle": "Mas mahabang sulatin, hindi dina-draft dito",
+    "answersWritingBody": "Humihingi ang mga ito ng sulat, sanaysay o binagong résumé, na hindi isinusulat ng hakbang na ito. Gamitin ang cover letter o tailored résumé tools, o ikaw mismo ang sumulat.",
+    "answersAiUnavailable": "Hindi makatanggap ng request ang AI service ngayon. Subukan ulit pagkalipas ng ilang minuto.",
+    "postingTruncated": "Napakahaba ng job posting na ito, kaya ang unang bahagi lang nito ang nabasa. Ikaw mismo ang tumingin sa mga huling requirement nito.",
+    "export": {
+      "prepTitle": "Gabay sa Paghahanda sa Interview",
+      "whyAsked": "Bakit nila ito tinatanong:",
+      "opener": "Malakas na simula:",
+      "modelAnswer": "Halimbawang Sagot (STAR method):",
+      "tips": "Mga tip:",
+      "avoid": "Iwasan:",
+      "before": "Bago ang Interview",
+      "during": "Habang Nasa Interview",
+      "askThem": "Mga Tanong na Itatanong Mo sa Kanila",
+      "pathTitle": "Career Roadmap",
+      "current": "Kasalukuyan:",
+      "pathOdds": "posibilidad {{probability}}, panganib {{risk}}",
+      "skills": "Mga skill na dapat paunlarin:",
+      "actionPlan": "90-Araw na Action Plan:",
+      "thisWeek": "Gawin Ngayong Linggo (Anumang Landas)",
+      "pathPrintDescription": "Hindi kayang iguhit ng mga font ng PDF ang script ng roadmap na ito, kaya piliin ang \"Save as PDF\" sa print dialog para maitabi ito."
+    }
+  }
+}
