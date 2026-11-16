@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { FIX_PLAN_BASIS, marketBasis, skillsBasis } from "@/lib/report-basis";
+import { unsupportedPdfCharacters } from "@/lib/pdf-text-support";
+import { resumeLanguageCode } from "@/lib/scan-fallback";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
@@ -50,7 +52,7 @@ import { MetricCardsGrid } from "./scorecard/MetricCardsGrid";
 import { RedFlagsSection, KeywordsSection } from "./scorecard/RedFlagsKeywords";
 import { SectionNav } from "./scorecard/SectionNav";
 import { scoreTone } from "@/lib/score-bands";
-import { isUsableRewrite } from "@/lib/builder-import";
+import { isUsableRewrite, textFingerprint } from "@/lib/builder-import";
 import { fixLabel, isFixCode } from "@/lib/fix-labels";
 import { CollapsibleSection } from "./scorecard/CollapsibleSection";
 import { 
@@ -598,6 +600,53 @@ export interface FreeKeywordResultsProps {
   sourceWasFile?: boolean;
   /** Provenance of keyword expectations: employer's posting, O*NET, or model */
   keywordSource?: { source: 'job_description' | 'onet' | 'model'; occupation?: string; code?: string } | null;
+  /** The résumé's language as the scanner detected it ("de", or {code}). */
+  detectedLanguage?: string | { code?: string } | null;
+  /** The file's email and phone sit only in its page header (RC-S13-036). */
+  contactOnlyInHeader?: boolean;
+  /**
+   * Called just before a sign-in link leaves the report (S14X-019), with what
+   * the reader was about to do, so the page can keep this report and bring
+   * the reader back to it.
+   */
+  onBeforeSignIn?: (intent: 'tailor' | 'interview') => void;
+  /** Open the interview-prep section on mount: a reader back from signing in to use it. */
+  openInterviewPrep?: boolean;
+}
+
+/** One line of the PDF summary: text, size and colour, or a gap in points. */
+export interface SummaryLine { text: string; size: number; bold: boolean; color: [number, number, number]; gap?: number }
+
+/**
+ * The PDF summary as a page for the browser's print dialog, for a summary
+ * jsPDF's built-in fonts cannot draw (NB-7). Every line is escaped.
+ */
+export function summaryPrintHtml(lines: SummaryLine[], lang: string): string {
+  const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+  const body = lines.map((l) => (l.gap
+    ? `<div style="height:${l.gap}pt"></div>`
+    : `<p style="margin:0 0 4pt;font-size:${l.size}pt;font-weight:${l.bold ? 700 : 400};color:rgb(${l.color.join(",")})">${esc(l.text)}</p>`)).join("");
+  const title = esc(lines.find((l) => !l.gap)?.text ?? "");
+  return `<!doctype html><html lang="${esc(lang)}"><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;margin:40pt;color:#282828}</style></head><body>${body}</body></html>`;
+}
+
+/** Opens the browser's print dialog on a page of its own, in a hidden frame. */
+function printSummary(html: string): void {
+  const frame = document.createElement("iframe");
+  frame.setAttribute("aria-hidden", "true");
+  frame.setAttribute("data-summary-print", "true");
+  frame.style.position = "fixed";
+  frame.style.width = "0";
+  frame.style.height = "0";
+  frame.style.border = "0";
+  document.body.appendChild(frame);
+  const doc = frame.contentDocument;
+  if (!doc || !frame.contentWindow) { frame.remove(); return; }
+  doc.open();
+  doc.write(html);
+  doc.close();
+  try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch { /* a browser without print */ }
+  setTimeout(() => frame.remove(), 60_000);
 }
 
 export function FreeKeywordResults({
@@ -722,7 +771,17 @@ export function FreeKeywordResults({
   hadJobDescription,
   sourceWasFile,
   keywordSource,
+  detectedLanguage,
+  contactOnlyInHeader,
+  onBeforeSignIn,
+  openInterviewPrep,
 }: FreeKeywordResultsProps) {
+  // A résumé the scanner read as another language (NB-6): its English-only
+  // section checks are not shown as findings.
+  const resumeNotEnglish = (() => {
+    const code = resumeLanguageCode(detectedLanguage);
+    return !!code && code !== 'en';
+  })();
   // A null list from the model is an empty list, not a crash: a default
   // parameter applies only to undefined (S11-029).
   const matchingSkills = Array.isArray(matchingSkillsProp) ? matchingSkillsProp : [];
@@ -800,13 +859,16 @@ export function FreeKeywordResults({
     };
   }, [effectiveIndustry, resumeText]);
 
-  // Handle industry correction
-  const handleIndustryChange = (newIndustry: string) => {
+  // Handle industry correction. ONE CORRECTION IS ONE LOGGED ROW (S14X-046):
+  // the industry card's grid (IndustryConfidenceIndicator) logs its own full
+  // row before it calls back here, so a change from the card is not logged a
+  // second time; only the "We read this as" select logs from here.
+  const handleIndustryChange = (newIndustry: string, source: 'select' | 'card' = 'select') => {
     setCorrectedIndustry(newIndustry);
     onIndustryChange?.(newIndustry);
     // Feed the detection feedback loop: recurring detected→corrected pairs
     // surface in the weekly digest and become disambiguation rules.
-    if (industry && newIndustry !== industry) {
+    if (source === 'select' && industry && newIndustry !== industry) {
       supabase.rpc('log_industry_correction' as never, {
         p_detected: industry,
         p_corrected: newIndustry,
@@ -816,7 +878,7 @@ export function FreeKeywordResults({
     }
     toast({
       title: t('freeResults.industryUpdated'),
-      description: t('freeResults.industryUpdatedDescription', { industry: scanIndustryLabel(newIndustry) }),
+      description: t('freeResults.industryUpdatedDescription', { industry: scanIndustryLabel(newIndustry, t) }),
     });
   };
   
@@ -824,8 +886,8 @@ export function FreeKeywordResults({
   // industry card's grid (S13-018): the report re-reads itself, and the next
   // scan is told. "General / Other" is no industry to hold the scanner to (it
   // drops a confirmed "general"), so it is sent as no override.
-  const confirmIndustry = (newIndustry: string) => {
-    handleIndustryChange(newIndustry);
+  const confirmIndustry = (newIndustry: string, source: 'select' | 'card' = 'select') => {
+    handleIndustryChange(newIndustry, source);
     onContextConfirm?.({ confirmedIndustry: newIndustry === 'general' ? null : newIndustry });
   };
 
@@ -1050,9 +1112,21 @@ export function FreeKeywordResults({
   // the same invented numbers. Non-derivable metrics fall through as null and
   // their tiles hide.
   const realWordCount = (resumeText ?? "").split(/\s+/).filter(Boolean).length;
+  // THE COUNTRY'S PAGE RANGE (S14X-028): when the scanner sends the target
+  // country's bounds (countryStandards.pagesMin/pagesMax), a length inside
+  // them is right; a two-page German CV is not "too long" for a mid-level
+  // reader. Without them, the old worldwide 1-or-2-pages rule.
   const resumeLength = resumeLengthProp || (realWordCount > 0 ? (() => {
     const pages = Math.max(1, Math.ceil(realWordCount / 550));
     const recommended = (experienceLevelProp?.level === "senior" || experienceLevelProp?.level === "executive") ? 2 : 1;
+    const range = countryStandards as { pagesMin?: unknown; pagesMax?: unknown } | null | undefined;
+    const min = typeof range?.pagesMin === "number" && range.pagesMin > 0 ? range.pagesMin : null;
+    const max = typeof range?.pagesMax === "number" && min !== null && range.pagesMax >= min ? range.pagesMax : null;
+    if (min !== null && max !== null) {
+      // The target shown is the nearest length the range allows.
+      const inRange = Math.min(max, Math.max(min, pages));
+      return { currentPages: pages, recommendedPages: inRange, verdict: (pages > max ? "too_long" : pages < min ? "too_short" : "just_right") as "too_short" | "just_right" | "too_long" };
+    }
     return { currentPages: pages, recommendedPages: recommended, verdict: (pages > recommended ? "too_long" : pages < recommended ? "too_short" : "just_right") as "too_short" | "just_right" | "too_long" };
   })() : null);
   const wordCount = wordCountProp || (realWordCount > 0
@@ -1565,53 +1639,83 @@ export function FreeKeywordResults({
             <p className="text-xs text-muted-foreground">{t('freeResults.enterprise.verdictEvidence', 'Everything below is the evidence — and the fix.')}</p>
             <button
               onClick={async () => {
+                // THE SUMMARY IS WRITTEN IN THE READER'S LANGUAGE AND DRAWN
+                // ONLY WITH CHARACTERS ITS FONT HAS (NB-7, S14X-057). jsPDF's
+                // built-in fonts draw WinAnsi alone: the score line's arrow
+                // and the findings' cross mark came out as clipped,
+                // letter-spaced garbage. The lines use ASCII marks, and when
+                // any line still holds a character the font cannot draw (a
+                // Hindi reader, a name or a step with one), the same lines go
+                // to the browser's print dialog ("Save as PDF") instead.
+                const lng = i18n.language || 'en';
+                const grey: [number, number, number] = [120, 120, 120];
+                const amber: [number, number, number] = [160, 110, 20];
+                const lines: SummaryLine[] = [];
+                const add = (text: string, size = 10, bold = false, color: [number, number, number] = [40, 40, 40]) => { lines.push({ text, size, bold, color }); };
+                const gap = (pt: number) => { lines.push({ text: '', size: 0, bold: false, color: grey, gap: pt }); };
+                add(t('freeScanPage.pdf.title'), 15, true, [30, 30, 30]);
+                if (reportMeta) {
+                  add(t('freeScanPage.pdf.meta', { id: reportMeta.reportId, date: new Date(reportMeta.generatedAt).toLocaleDateString(lng), engine: reportMeta.engineVersion }), 8.5, false, grey);
+                  const conf = ['high', 'medium', 'low'].includes(reportMeta.industryConfidence)
+                    ? ` (${t('freeResults.confidencePercent', { confidence: t(`freeScanPage.confidence.${reportMeta.industryConfidence}`) })})`
+                    : '';
+                  add(t('freeScanPage.pdf.subject', {
+                    name: candidateName || t('freeScanPage.diagnostic.candidate'),
+                    industry: `${scanIndustryLabel(reportMeta.industry ?? 'general', t)}${conf}`,
+                    benchmarks: reportMeta.benchmarkSource === 'measured' ? t('freeScanPage.diagnostic.benchmarksMeasured') : t('freeScanPage.diagnostic.benchmarksEstimated'),
+                  }), 8.5, false, grey);
+                } else {
+                  add(new Date().toLocaleDateString(lng), 9, false, grey);
+                }
+                gap(8);
+                if (resumeTruncated === true) add(`${t('freeResults.resumeTruncated.title')} ${t('freeResults.resumeTruncated.body')}`, 9.5, true, amber);
+                if (languageNoticeTitle) add(`${languageNoticeTitle} ${t('freeResults.languageNotice.body')}`, 9.5, true, amber);
+                add([
+                  t('freeScanPage.pdf.score', { score: atsScoreEstimate }),
+                  scoreBand ? t('freeScanPage.pdf.band', { low: scoreBand.low, high: scoreBand.high }) : '',
+                  projectedScore ? t('freeScanPage.pdf.projected', { score: projectedScore }) : '',
+                ].filter(Boolean).join('  '), 12, true);
+                if (scoreBreakdown) add(t('freeScanPage.pdf.breakdown', { keywords: `${scoreBreakdown.keywords}%`, format: `${scoreBreakdown.format}%`, quantification: `${scoreBreakdown.quantification}%` }), 10);
+                gap(6);
+                {
+                  const crit = findings.filter(f => f.severity === 'critical');
+                  const warn = findings.filter(f => f.severity === 'warning');
+                  const passN = findings.filter(f => f.severity === 'pass').length;
+                  add(t('freeScanPage.pdf.findings', { critical: crit.length, warnings: warn.length, passed: passN }), 11, true);
+                  [...crit, ...warn].slice(0, 6).forEach(f => add(`${f.severity === 'critical' ? '[x]' : '[!]'}  ${f.label}`, 9.5, false, f.severity === 'critical' ? [180, 40, 40] : amber));
+                  gap(4);
+                }
+                if (fixRoadmap && fixRoadmap.steps.length > 0) {
+                  add(t('freeScanPage.pdf.fixPlan', { minutes: fixRoadmap.totalMinutes }), 11, true);
+                  fixRoadmap.steps.forEach(st => add(`${st.order}. ${st.step} ${t('freeScanPage.pdf.stepCost', { minutes: st.minutes, points: st.scoreImpact })}`, 10));
+                  add(FIX_PLAN_BASIS, 8.5, false, grey);
+                  gap(4);
+                }
+                if (keywordSource?.source === 'onet') add(t('freeScanPage.pdf.sourceOnet', { code: keywordSource.code ?? '', occupation: keywordSource.occupation ?? '' }), 8.5, false, grey);
+                if (keywordSource?.source === 'job_description') add(t('freeScanPage.pdf.sourcePosting'), 8.5, false, grey);
+                // What is checked (S14X-269): the rewrites and the lines they
+                // quote, and nothing wider.
+                add(t('freeScanPage.pdf.footer'), 8.5, false, grey);
+                trackButtonClick('download_pdf_summary', 'verdict_hero');
+                if (lines.some(l => unsupportedPdfCharacters(l.text).length > 0)) {
+                  printSummary(summaryPrintHtml(lines, lng));
+                  return;
+                }
                 const { default: JsPDF } = await import('jspdf');
                 const doc = new JsPDF({ unit: 'pt', format: 'a4' });
                 const W = doc.internal.pageSize.getWidth();
                 const margin = 48;
                 let y = 56;
-                const line = (text: string, size = 10, bold = false, color: [number, number, number] = [40, 40, 40]) => {
-                  doc.setFontSize(size);
-                  doc.setFont('helvetica', bold ? 'bold' : 'normal');
-                  doc.setTextColor(...color);
-                  const wrapped = doc.splitTextToSize(text, W - margin * 2);
+                for (const l of lines) {
+                  if (l.gap) { y += l.gap; continue; }
+                  doc.setFontSize(l.size);
+                  doc.setFont('helvetica', l.bold ? 'bold' : 'normal');
+                  doc.setTextColor(...l.color);
+                  const wrapped = doc.splitTextToSize(l.text, W - margin * 2);
                   doc.text(wrapped, margin, y);
-                  y += wrapped.length * (size * 1.35) + 4;
-                };
-                // Diagnostic anatomy — same specimen header, findings
-                // triage, band, and provenance as the on-screen report.
-                line('RESUME DIAGNOSTIC REPORT', 15, true, [30, 30, 30]);
-                if (reportMeta) {
-                  line(`Report #${reportMeta.reportId}  ·  ${new Date(reportMeta.generatedAt).toLocaleDateString()}  ·  Engine ${reportMeta.engineVersion}`, 8.5, false, [120, 120, 120]);
-                  line(`Subject: ${candidateName || 'Candidate'}  ·  Industry: ${(reportMeta.industry ?? 'general').replace(/_/g, ' ')} (${reportMeta.industryConfidence} confidence)  ·  Benchmarks: ${reportMeta.benchmarkSource === 'measured' ? 'measured from real scans' : 'industry estimates'}`, 8.5, false, [120, 120, 120]);
-                } else {
-                  line(new Date().toLocaleDateString(), 9, false, [120, 120, 120]);
+                  y += wrapped.length * (l.size * 1.35) + 4;
                 }
-                y += 8;
-                if (resumeTruncated === true) line(`${t('freeResults.resumeTruncated.title')} ${t('freeResults.resumeTruncated.body')}`, 9.5, true, [160, 110, 20]);
-                if (languageNoticeTitle) line(`${languageNoticeTitle} ${t('freeResults.languageNotice.body')}`, 9.5, true, [160, 110, 20]);
-                line(`ATS Score: ${atsScoreEstimate}/100${scoreBand ? `  (modeling band ${scoreBand.low}–${scoreBand.high})` : ''}${projectedScore ? `  →  about ${projectedScore} after fixes, a rough guide` : ''}`, 12, true);
-                if (scoreBreakdown) line(`Breakdown — Keywords: ${scoreBreakdown.keywords}%  ·  Format: ${scoreBreakdown.format}%  ·  Quantification: ${scoreBreakdown.quantification}%`, 10);
-                y += 6;
-                {
-                  const crit = findings.filter(f => f.severity === 'critical');
-                  const warn = findings.filter(f => f.severity === 'warning');
-                  const passN = findings.filter(f => f.severity === 'pass').length;
-                  line(`Findings: ${crit.length} critical  ·  ${warn.length} warnings  ·  ${passN} passed`, 11, true);
-                  [...crit, ...warn].slice(0, 6).forEach(f => line(`${f.severity === 'critical' ? '✗' : '!'}  ${f.label}`, 9.5, false, f.severity === 'critical' ? [180, 40, 40] : [160, 110, 20]));
-                  y += 4;
-                }
-                if (fixRoadmap && fixRoadmap.steps.length > 0) {
-                  line(`Your ${fixRoadmap.totalMinutes}-minute fix plan:`, 11, true);
-                  fixRoadmap.steps.forEach(s => line(`${s.order}. ${s.step} (~${s.minutes} min, +${s.scoreImpact} pts)`, 10));
-                  line(FIX_PLAN_BASIS, 8.5, false, [120, 120, 120]);
-                  y += 4;
-                }
-                if (keywordSource?.source === 'onet') line(`Keyword expectations sourced from O*NET ${keywordSource.code} (U.S. Department of Labor — ${keywordSource.occupation}).`, 8.5, false, [120, 120, 120]);
-                if (keywordSource?.source === 'job_description') line('Keyword analysis matched against the job posting you provided.', 8.5, false, [120, 120, 120]);
-                line('Every quoted line in the full report is verified against your resume. Full detail: resumebooster.work', 8.5, false, [120, 120, 120]);
                 doc.save(`resume-diagnostic-${reportMeta?.reportId ?? 'report'}.pdf`);
-                trackButtonClick('download_pdf_summary', 'verdict_hero');
               }}
               className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/15 text-primary text-xs font-semibold hover:bg-primary/25 transition-colors"
             >
@@ -1720,7 +1824,7 @@ export function FreeKeywordResults({
             data-industry-select
           >
             {/* The scanner's own ids (S13-018), plus this report's if it is not one of them. */}
-            {scanIndustryOptions(effectiveIndustry).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            {scanIndustryOptions(effectiveIndustry, t).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </label>
         <label className="flex items-center gap-1.5">
@@ -1823,7 +1927,7 @@ export function FreeKeywordResults({
       {/* Mechanical ATS Parse Simulation — distinct from the AI judgment below */}
       {resumeText && (
         <div className="mb-4">
-          <ATSParseSimulator resumeText={resumeText} multiColumnDetected={multiColumnDetected} isActualExtraction={sourceWasFile} />
+          <ATSParseSimulator resumeText={resumeText} multiColumnDetected={multiColumnDetected} isActualExtraction={sourceWasFile} contactOnlyInHeader={contactOnlyInHeader} translated />
         </div>
       )}
 
@@ -1863,8 +1967,7 @@ export function FreeKeywordResults({
       {/* Score band — no real screening process resolves to one integer */}
       {scoreBand && (
         <p className="text-[11px] text-muted-foreground -mt-2 mb-4 px-1">
-          Score {atsScoreEstimate} sits in a modeling band of {scoreBand.low}–{scoreBand.high}. The band spans our deterministic
-          calculation and the AI estimate — single-point precision would be false confidence.
+          {t('freeScanPage.report.scoreBand', { score: atsScoreEstimate, low: scoreBand.low, high: scoreBand.high })}
         </p>
       )}
 
@@ -1951,7 +2054,7 @@ export function FreeKeywordResults({
         industryDetection={industryDetection}
         industry={effectiveIndustry}
         candidateName={candidateName}
-        onIndustryChange={confirmIndustry}
+        onIndustryChange={(next) => confirmIndustry(next, 'card')}
         resumeTextLength={resumeText?.length}
         visitorId={getVisitorId()}
       />
@@ -2258,6 +2361,7 @@ export function FreeKeywordResults({
               ) : (
                 <Link
                   to={`/auth?next=${encodeURIComponent(scannerReturnPath())}`}
+                  onClick={() => onBeforeSignIn?.('tailor')}
                   data-testid="tailored-resume-sign-in"
                   className="w-full inline-flex items-center justify-center gap-2 rounded-md bg-success px-4 py-2 text-sm font-semibold text-success-foreground hover:bg-success/90"
                 >
@@ -2349,7 +2453,7 @@ export function FreeKeywordResults({
           title={t('freeResults.interviewCoachSection.title')}
           subtitle={t('freeResults.interviewCoachSection.subtitle')}
           icon={<MessageSquare className="w-4 h-4" />}
-          defaultOpen={false}
+          defaultOpen={openInterviewPrep === true}
         >
           {user ? (
             <InterviewCoach
@@ -2367,6 +2471,7 @@ export function FreeKeywordResults({
               </p>
               <Link
                 to={`/auth?next=${encodeURIComponent(scannerReturnPath())}`}
+                onClick={() => onBeforeSignIn?.('interview')}
                 className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 {t('freeResults.interviewPrepSignIn.cta', 'Sign in or create a free account')}
@@ -2626,7 +2731,8 @@ export function FreeKeywordResults({
               careerSituation.confidence === "high" ? "bg-success/20 text-success" :
               careerSituation.confidence === "medium" ? "bg-warning/20 text-warning" : "bg-muted text-muted-foreground"
             )}>
-              {t('freeResults.confidencePercent', { confidence: careerSituation.confidence })}
+              {/* The confidence word in the reader's language (S13-122), never the enum. */}
+              {t('freeResults.confidencePercent', { confidence: t(`freeScanPage.confidence.${["high", "medium", "low"].includes(careerSituation.confidence) ? careerSituation.confidence : "low"}`) })}
             </span>
           </div>
           
@@ -3188,7 +3294,7 @@ export function FreeKeywordResults({
           <div className="flex items-center gap-2 mb-3">
             <BarChart3 className="w-4 h-4 text-primary" />
             <h4 className="font-semibold text-foreground">
-              {marketIntelligence.countryName} Market Intelligence
+              {t('freeScanPage.market.title', { country: marketIntelligence.countryName })}
             </h4>
             <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
               {marketIntelligence.countryName}
@@ -3197,7 +3303,7 @@ export function FreeKeywordResults({
           <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{marketIntelligence.marketSummary}</p>
           {marketIntelligence.hotSkills?.length > 0 && (
             <div className="mb-3">
-              <p className="text-xs font-semibold text-foreground mb-1.5">🔥 Skills in demand (hand-compiled)</p>
+              <p className="text-xs font-semibold text-foreground mb-1.5">🔥 {t('freeScanPage.market.hotSkills')}</p>
               <div className="flex flex-wrap gap-1.5">
                 {(marketIntelligence.hotSkills ?? []).map((skill, i) => (
                   <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20 font-medium">{skill}</span>
@@ -3207,7 +3313,7 @@ export function FreeKeywordResults({
           )}
           {marketIntelligence.risingKeywords?.length > 0 && (
             <div className="mb-3">
-              <p className="text-xs font-semibold text-foreground mb-1.5">📈 Rising keywords (hand-compiled)</p>
+              <p className="text-xs font-semibold text-foreground mb-1.5">📈 {t('freeScanPage.market.risingKeywords')}</p>
               <div className="flex flex-wrap gap-1.5">
                 {(marketIntelligence.risingKeywords ?? []).map((kw, i) => (
                   <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning border border-warning/20 font-medium">{kw}</span>
@@ -3217,7 +3323,7 @@ export function FreeKeywordResults({
           )}
           {marketIntelligence.cvNorms?.length > 0 && (
             <div className="mb-2">
-              <p className="text-xs font-semibold text-foreground mb-1.5">📋 {marketIntelligence.countryName} CV norms</p>
+              <p className="text-xs font-semibold text-foreground mb-1.5">📋 {t('freeScanPage.market.cvNorms', { country: marketIntelligence.countryName })}</p>
               <ul className="space-y-1">
                 {(marketIntelligence.cvNorms ?? []).map((norm, i) => (
                   <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
@@ -3356,11 +3462,11 @@ export function FreeKeywordResults({
           <div className="flex items-center gap-2 mb-1">
             <Settings2 className="w-4 h-4 text-warning" />
             <p className="text-sm font-semibold text-foreground">
-              Target ATS: <span className="text-warning">{atsSystemDetected.name}</span>
+              {t('freeScanPage.ats.target')} <span className="text-warning">{atsSystemDetected.name}</span>
             </p>
           </div>
           <p className="text-xs text-muted-foreground">
-            We detected this company uses {atsSystemDetected.name}. Formatting recommendations above are tailored for this specific system.
+            {t('freeScanPage.ats.detected', { name: atsSystemDetected.name })}
           </p>
         </div>
       )}
@@ -3603,25 +3709,25 @@ export function FreeKeywordResults({
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center gap-2 mb-1">
             <Award className="w-4 h-4 text-primary" />
-            <h4 className="font-semibold text-foreground text-sm">Executive Scope Check</h4>
+            <h4 className="font-semibold text-foreground text-sm">{t('freeScanPage.execScope.title')}</h4>
             <span className={cn(
               "ml-auto text-xs px-2 py-0.5 rounded-full font-semibold",
               executiveScopeCheck.presentCount >= 4 ? "bg-success/10 text-success" :
               executiveScopeCheck.presentCount >= 2 ? "bg-warning/10 text-warning" : "bg-destructive/10 text-destructive"
             )}>
-              {executiveScopeCheck.presentCount}/5 scope signals
+              {t('freeScanPage.execScope.signals', { n: executiveScopeCheck.presentCount, total: 5 })}
             </span>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            At the {executiveScopeCheck.level} level, recruiters screen for scope evidence before anything else.
+            {t('freeScanPage.execScope.intro')}
           </p>
           <div className="space-y-1.5">
             {([
-              { label: "Team size", value: executiveScopeCheck.signals.teamSize },
-              { label: "Budget / P&L ownership", value: executiveScopeCheck.signals.budgetOrPL },
-              { label: "Quantified business impact", value: executiveScopeCheck.signals.revenueImpact },
-              { label: "Board / governance exposure", value: executiveScopeCheck.signals.boardExposure ? "present" : null },
-              { label: "Strategic-scope language", value: executiveScopeCheck.signals.strategicLanguage ? "present" : null },
+              { label: t('freeScanPage.execScope.teamSize'), value: executiveScopeCheck.signals.teamSize },
+              { label: t('freeScanPage.execScope.budget'), value: executiveScopeCheck.signals.budgetOrPL },
+              { label: t('freeScanPage.execScope.impact'), value: executiveScopeCheck.signals.revenueImpact },
+              { label: t('freeScanPage.execScope.board'), value: executiveScopeCheck.signals.boardExposure ? "present" : null },
+              { label: t('freeScanPage.execScope.strategy'), value: executiveScopeCheck.signals.strategicLanguage ? "present" : null },
             ]).map((row, i) => (
               <div key={i} className="flex items-start gap-2 text-sm">
                 {row.value
@@ -3636,7 +3742,7 @@ export function FreeKeywordResults({
           </div>
           {executiveScopeCheck.missing.length > 0 && (
             <p className="text-xs text-muted-foreground mt-3">
-              <span className="font-medium text-foreground">Add next:</span> {executiveScopeCheck.missing[0]}
+              <span className="font-medium text-foreground">{t('freeScanPage.execScope.addNext')}</span> {executiveScopeCheck.missing[0]}
             </p>
           )}
         </div>
@@ -3699,9 +3805,12 @@ export function FreeKeywordResults({
       )}
 
       {/* ── Section Word Count Audit ─────────────────────────────────────────── */}
-      {sectionWordCounts && Object.keys(sectionWordCounts).length > 0 && (
+      {/* Not for a résumé in another language (NB-6): the audit finds sections
+          by their English headings, so every section of a clean German or
+          Spanish CV read as "Missing" until the scanner learns the headings. */}
+      {sectionWordCounts && Object.keys(sectionWordCounts).length > 0 && !resumeNotEnglish && (
         <div className="rounded-2xl border border-border bg-card p-5">
-          <h4 className="font-semibold text-foreground text-sm mb-3">Section Length Audit</h4>
+          <h4 className="font-semibold text-foreground text-sm mb-3">{t('freeScanPage.sectionAudit.title')}</h4>
           <div className="space-y-3">
             {(["summary", "experience", "skills", "education"] as const).map((sec) => {
               const s = sectionWordCounts[sec];
@@ -3709,12 +3818,12 @@ export function FreeKeywordResults({
               const pct = s.idealMax > 0 ? Math.min(100, Math.round((s.current / s.idealMax) * 100)) : 0;
               const color = s.verdict === 'ideal' ? "bg-success" : s.verdict === 'too_many' ? "bg-warning" : "bg-destructive";
               const badge = s.verdict === 'ideal' ? "text-success" : s.verdict === 'too_many' ? "text-warning" : "text-destructive";
-              const label = s.verdict === 'ideal' ? "Good" : s.verdict === 'too_many' ? "Too long" : s.current === 0 ? "Missing" : "Too short";
+              const label = t(s.verdict === 'ideal' ? 'freeScanPage.sectionAudit.good' : s.verdict === 'too_many' ? 'freeScanPage.sectionAudit.tooLong' : s.current === 0 ? 'freeScanPage.sectionAudit.missing' : 'freeScanPage.sectionAudit.tooShort');
               return (
                 <div key={sec} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-foreground capitalize font-medium">{sec}</span>
-                    <span className="text-muted-foreground">{s.current} words <span className="text-muted-foreground/60">(target {s.idealMin}–{s.idealMax})</span></span>
+                    <span className="text-foreground font-medium">{t(`freeScanPage.parseCheck.section.${sec}`)}</span>
+                    <span className="text-muted-foreground">{t('freeScanPage.sectionAudit.words', { n: s.current })} <span className="text-muted-foreground/60">{t('freeScanPage.sectionAudit.target', { min: s.idealMin, max: s.idealMax })}</span></span>
                     <span className={cn("font-semibold", badge)}>{label}</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-muted overflow-hidden">
@@ -3732,13 +3841,13 @@ export function FreeKeywordResults({
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center gap-2 mb-3">
             <FileText className="w-4 h-4 text-muted-foreground" />
-            <h4 className="font-semibold text-foreground text-sm">ATS Parse Preview</h4>
-            <span className="ml-auto text-xs text-muted-foreground">What the ATS actually reads</span>
+            <h4 className="font-semibold text-foreground text-sm">{t('freeScanPage.parsePreview.title')}</h4>
+            <span className="ml-auto text-xs text-muted-foreground">{t('freeScanPage.parsePreview.subtitle')}</span>
           </div>
           <pre className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed max-h-40 overflow-y-auto">
             {atsParsedPreview}
           </pre>
-          <p className="text-xs text-muted-foreground mt-2">Formatting (bold, columns, icons) is stripped. If your name, title, or key sections don't appear clearly here, an ATS may miss them.</p>
+          <p className="text-xs text-muted-foreground mt-2">{t('freeScanPage.parsePreview.note')}</p>
         </div>
       )}
 
@@ -3952,10 +4061,10 @@ export function FreeKeywordResults({
               <div key={i} className="rounded-xl border border-border/60 bg-muted/20 p-3">
                 <p className="text-sm font-semibold text-foreground">“{q.question}”</p>
                 <p className="text-xs text-muted-foreground mt-1.5">
-                  <span className="font-medium text-destructive">Triggered by:</span> {q.trigger}
+                  <span className="font-medium text-destructive">{t('freeScanPage.questions.triggeredBy')}</span> {q.trigger}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  <span className="font-medium text-success">Prepare:</span> {q.howToPrepare}
+                  <span className="font-medium text-success">{t('freeScanPage.questions.prepare')}</span> {q.howToPrepare}
                 </p>
               </div>
             ))}
@@ -4036,6 +4145,9 @@ export function FreeKeywordResults({
                   rewrites: handoffRewrites,
                   keywords: (keywords ?? []).slice(0, 12).map((k) => k.keyword),
                   reportId: reportMeta?.reportId ?? null,
+                  // The résumé these fixes were made for (S14X-285), so the
+                  // builder can refuse them for a different one.
+                  fingerprint: textFingerprint(resumeText),
                 }));
               } catch { /* session storage unavailable — builder still opens */ }
             }}

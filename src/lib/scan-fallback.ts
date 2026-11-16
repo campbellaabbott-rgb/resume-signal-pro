@@ -36,3 +36,54 @@ export function asFallbackReport<T extends object>(report: T): T & { partialResu
   const hidden = (report as { partialReason?: unknown }).partialReason === "thin_unfilled";
   return { ...report, partialResults: true, partialReason: "fallback", ...(hidden ? { partialHidden: true as const } : {}) };
 }
+
+/**
+ * THE RÉSUMÉ'S LANGUAGE, as either scanner reports it: the primary sends a
+ * code ("de"), the backup an object ({code, name}). Lower-case, or null.
+ */
+export function resumeLanguageCode(detected: unknown): string | null {
+  const raw = typeof detected === "string"
+    ? detected
+    : detected && typeof detected === "object" && typeof (detected as { code?: unknown }).code === "string"
+      ? (detected as { code: string }).code
+      : "";
+  const code = raw.trim().toLowerCase();
+  return code || null;
+}
+
+/** One problem the scanner's parse note names, as a translation key. */
+export type ParseIssue = { key: "fewWords"; n: number } | { key: "lowLetters" | "garbled" | "noSections" } | { text: string };
+
+/**
+ * THE PARSE NOTE ABOVE THE REPORT (NB-6, NB-17): the scanner's parseQuality,
+ * read into translation keys, or null when there is nothing to say.
+ *
+ * The scanner writes its issues as English sentences ("only 80 words
+ * extracted", "no standard resume sections found"); each known one becomes a
+ * key the page says in the reader's language, and an unknown one is kept as
+ * its text. Its section check reads English headings only, so for a résumé
+ * the scanner itself detected as another language "no standard sections" is
+ * not a finding: it is dropped, and the verdict is counted again from what is
+ * left (two or more problems: poor; one: fair; none: no note).
+ */
+export function parseNoteFor(
+  parseQuality: { verdict?: string; wordCount?: number; issues?: unknown } | null | undefined,
+  detectedLanguage?: unknown,
+): { verdict: "fair" | "poor"; issues: ParseIssue[] } | null {
+  if (!parseQuality || parseQuality.verdict === "good" || !Array.isArray(parseQuality.issues)) return null;
+  const lang = resumeLanguageCode(detectedLanguage);
+  const notEnglish = !!lang && lang !== "en";
+  const issues: ParseIssue[] = [];
+  for (const raw of parseQuality.issues) {
+    const said = String(raw ?? "").trim();
+    if (!said) continue;
+    const few = /^only (\d+) words extracted$/i.exec(said);
+    if (few) issues.push({ key: "fewWords", n: Number(few[1]) });
+    else if (/^unusually low text-to-symbol ratio$/i.test(said)) issues.push({ key: "lowLetters" });
+    else if (/^garbled characters detected$/i.test(said)) issues.push({ key: "garbled" });
+    else if (/^no standard resume sections found$/i.test(said)) { if (!notEnglish) issues.push({ key: "noSections" }); }
+    else issues.push({ text: said });
+  }
+  if (issues.length === 0) return null;
+  return { verdict: issues.length >= 2 ? "poor" : "fair", issues };
+}

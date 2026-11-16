@@ -49,8 +49,11 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
   // address, and nothing is sent to it until that link is clicked.
   const [subscribePulse, setSubscribePulse] = useState(false);
   // What the pulse request came back with: a link was mailed (or one is
-  // already due), or the pulse does not cover this field (422).
-  const [pulseOutcome, setPulseOutcome] = useState<"pending" | "not_covered" | null>(null);
+  // already due), the pulse does not cover this field (422), or the request
+  // was refused or failed (S14X-240), with the server's own sentence when it
+  // gave one. The ticked box never goes unanswered.
+  const [pulseOutcome, setPulseOutcome] = useState<"pending" | "not_covered" | "not_asked" | null>(null);
+  const [pulseRefusal, setPulseRefusal] = useState<string | null>(null);
   // Off by default — the drip is a commitment; defaulting it on would be the
   // dark pattern the rest of the product refuses to be. And a ticked box only
   // ASKS, like the pulse: the report mail carries a button that starts the
@@ -61,7 +64,7 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
   const send = async () => {
     const trimmed = email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(trimmed)) {
-      setErrorMsg("Please enter a valid email address.");
+      setErrorMsg(t('freeScanPage.email.invalid'));
       return;
     }
     setStatus("sending");
@@ -94,13 +97,25 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
           });
           if (!pErr && (p as { success?: boolean } | null)?.success) setPulseOutcome("pending");
           else if ((pErr as { context?: { status?: number } } | null)?.context?.status === 422) setPulseOutcome("not_covered");
-        } catch { /* the report stands on its own */ }
+          else {
+            // Refused (an inbox's allowance, the day's ceiling) or failed: say
+            // no confirmation was asked for. The server's sentence is English,
+            // so it is shown to an English reader; anyone else reads ours.
+            const b = pErr ? await errorBodyOf(pErr) : (p as { error?: string } | null);
+            const said = typeof b?.error === "string" && b.error.trim() ? b.error.trim() : null;
+            setPulseRefusal(said && /^en\b/i.test(i18n.language || "") ? said : null);
+            setPulseOutcome("not_asked");
+          }
+        } catch {
+          // The report stands on its own; the box still gets its answer.
+          setPulseOutcome("not_asked");
+        }
       }
       setStatus("sent");
     } catch (e) {
       console.error("[EmailReport] send failed:", e);
       setStatus("error");
-      setErrorMsg(refusal ?? "Couldn't send right now — the PDF download above works offline.");
+      setErrorMsg(refusal ?? t('freeScanPage.email.failed'));
     }
   };
 
@@ -133,6 +148,11 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
           {pulseOutcome === "not_covered" && (
             <p className="text-xs text-muted-foreground mt-1">
               {t('freeResults.enterprise.pulseNotCovered', "The monthly market pulse doesn't cover your field yet, so no confirmation was sent.")}
+            </p>
+          )}
+          {pulseOutcome === "not_asked" && (
+            <p className="text-xs text-muted-foreground mt-1" data-testid="pulse-not-asked">
+              {pulseRefusal ?? t('freeScanPage.pulse.notAsked')}
             </p>
           )}
         </div>
@@ -192,6 +212,7 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
           placeholder="you@example.com"
           className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
           disabled={status === "sending"}
+          aria-label={t('freeScanPage.a11y.emailAddress')}
         />
         <button
           onClick={send}

@@ -30,6 +30,7 @@ import {
 } from "@/config/personalization";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { scoreTone } from "@/lib/score-bands";
 import { SkillsGapAnalysis } from "./SkillsGapAnalysis";
 import { CompetitorBenchmark } from "./CompetitorBenchmark";
 
@@ -200,18 +201,20 @@ export function PersonalizedInsights({
           {t('personalizedInsights.yourTopPriorities')}
         </h4>
         <div className="space-y-2">
+          {/* The first priority is an alarm on the same bands every other
+              card grades by (RC-S13-019): below "fair", not below 60. */}
           {priorities.map((priority, i) => (
             <div 
               key={i}
               className={cn(
                 "p-3 rounded-lg border text-sm",
-                i === 0 && atsScore < 60 
+                i === 0 && scoreTone(atsScore) === "destructive"
                   ? "bg-destructive/10 border-destructive/30 text-foreground" 
                   : "bg-card border-border"
               )}
             >
               <div className="flex items-start gap-2">
-                {i === 0 && atsScore < 60 ? (
+                {i === 0 && scoreTone(atsScore) === "destructive" ? (
                   <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
                 ) : (
                   <CheckCircle2 className="w-4 h-4 text-success mt-0.5 flex-shrink-0" />

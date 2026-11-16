@@ -3429,77 +3429,93 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
   }
 };
 
+/**
+ * True when `term` appears in `role` as whole words: bounded by the start,
+ * the end, or a character that is not a letter or a digit, with an optional
+ * plural "s" ("teachers" is a teacher). Both are lower-case. Pure.
+ */
+export function hasRoleWord(role: string, term: string): boolean {
+  const t = term.trim();
+  if (!t) return false;
+  const esc = t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|[^\\p{L}\\p{N}])${esc}(?:e?s)?(?=$|[^\\p{L}\\p{N}])`, "u").test(role);
+}
+
 // Get role-specific advice
 export function getRoleAdvice(role: string): RoleConfig | null {
   if (!role) return null;
   const normalizedRole = role.toLowerCase().trim();
+  // WHOLE WORDS ONLY (OI-28). A substring test read "Area Manager" as an
+  // executive assistant ("ea"), "Brand Ambassador" as a business analyst
+  // ("ba") and "Head of Research" by a short alias inside "research".
+  const has = (term: string) => hasRoleWord(normalizedRole, term);
   
   // Direct match or alias match
   for (const [key, config] of Object.entries(ROLE_CONFIGS)) {
-    if (normalizedRole.includes(config.name.toLowerCase()) || 
-        config.aliases.some(alias => normalizedRole.includes(alias.toLowerCase()))) {
+    if (has(config.name.toLowerCase()) || 
+        config.aliases.some(alias => has(alias.toLowerCase()))) {
       return config;
     }
   }
   
   // Keyword-based matching
-  if (normalizedRole.includes('product') && normalizedRole.includes('manager')) return ROLE_CONFIGS.product_manager;
-  if (normalizedRole.includes('software') || normalizedRole.includes('developer') || normalizedRole.includes('engineer')) return ROLE_CONFIGS.software_engineer;
-  if (normalizedRole.includes('data') && (normalizedRole.includes('scientist') || normalizedRole.includes('analyst'))) return ROLE_CONFIGS.data_scientist;
-  if (normalizedRole.includes('nurse') || normalizedRole.includes('rn') || normalizedRole.includes('nursing')) return ROLE_CONFIGS.nurse;
-  if (normalizedRole.includes('marketing')) return ROLE_CONFIGS.marketing_manager;
-  if (normalizedRole.includes('sales') || normalizedRole.includes('account executive') || normalizedRole.includes('bdr') || normalizedRole.includes('sdr')) return ROLE_CONFIGS.sales_representative;
-  if (normalizedRole.includes('project') && normalizedRole.includes('manager')) return ROLE_CONFIGS.project_manager;
-  if (normalizedRole.includes('ux') || normalizedRole.includes('ui') || normalizedRole.includes('designer')) return ROLE_CONFIGS.ux_designer;
-  if (normalizedRole.includes('accountant') || normalizedRole.includes('cpa') || normalizedRole.includes('controller')) return ROLE_CONFIGS.accountant;
-  if (normalizedRole.includes('teacher') || normalizedRole.includes('educator') || normalizedRole.includes('professor')) return ROLE_CONFIGS.teacher;
-  if (normalizedRole.includes('hr') || normalizedRole.includes('human resources') || normalizedRole.includes('people operations') || normalizedRole.includes('hrbp')) return ROLE_CONFIGS.hr_manager;
-  if (normalizedRole.includes('financial analyst') || normalizedRole.includes('fp&a') || normalizedRole.includes('finance analyst')) return ROLE_CONFIGS.financial_analyst;
-  if (normalizedRole.includes('customer success') || normalizedRole.includes('csm') || normalizedRole.includes('client success')) return ROLE_CONFIGS.customer_success;
-  if (normalizedRole.includes('operations') && normalizedRole.includes('manager')) return ROLE_CONFIGS.operations_manager;
-  if (normalizedRole.includes('executive assistant') || normalizedRole.includes('ea') || normalizedRole.includes('admin assistant')) return ROLE_CONFIGS.executive_assistant;
-  if (normalizedRole.includes('business analyst') || normalizedRole.includes('ba') || normalizedRole.includes('requirements analyst')) return ROLE_CONFIGS.business_analyst;
-  if (normalizedRole.includes('devops') || normalizedRole.includes('sre') || normalizedRole.includes('site reliability') || normalizedRole.includes('platform engineer')) return ROLE_CONFIGS.devops_engineer;
-  if (normalizedRole.includes('qa') || normalizedRole.includes('quality assurance') || normalizedRole.includes('test engineer') || normalizedRole.includes('sdet')) return ROLE_CONFIGS.qa_engineer;
-  if (normalizedRole.includes('recruiter') || normalizedRole.includes('talent acquisition') || normalizedRole.includes('sourcer')) return ROLE_CONFIGS.recruiter;
-  if (normalizedRole.includes('content writer') || normalizedRole.includes('copywriter') || normalizedRole.includes('content creator') || normalizedRole.includes('technical writer')) return ROLE_CONFIGS.content_writer;
-  if (normalizedRole.includes('graphic designer') || normalizedRole.includes('visual designer') || normalizedRole.includes('brand designer')) return ROLE_CONFIGS.graphic_designer;
-  if (normalizedRole.includes('pharmacist') || normalizedRole.includes('pharm.d') || normalizedRole.includes('pharmacy')) return ROLE_CONFIGS.pharmacist;
-  if (normalizedRole.includes('social media') || normalizedRole.includes('community manager')) return ROLE_CONFIGS.social_media_manager;
-  if (normalizedRole.includes('architect') && !normalizedRole.includes('software') && !normalizedRole.includes('solutions')) return ROLE_CONFIGS.architect;
-  if (normalizedRole.includes('physical therapist') || normalizedRole.includes('physiotherapist') || normalizedRole.includes('pt') || normalizedRole.includes('dpt')) return ROLE_CONFIGS.physical_therapist;
-  if (normalizedRole.includes('supply chain') || normalizedRole.includes('logistics') || normalizedRole.includes('procurement')) return ROLE_CONFIGS.supply_chain_manager;
-  if (normalizedRole.includes('attorney') || normalizedRole.includes('lawyer') || normalizedRole.includes('legal counsel') || normalizedRole.includes('litigator')) return ROLE_CONFIGS.attorney;
-  if (normalizedRole.includes('chef') || normalizedRole.includes('culinary') || normalizedRole.includes('kitchen')) return ROLE_CONFIGS.chef;
-  if (normalizedRole.includes('real estate') || normalizedRole.includes('realtor') || normalizedRole.includes('property agent')) return ROLE_CONFIGS.real_estate_agent;
-  if (normalizedRole.includes('mechanical engineer') || normalizedRole.includes('hvac engineer') || normalizedRole.includes('manufacturing engineer')) return ROLE_CONFIGS.mechanical_engineer;
-  if (normalizedRole.includes('robotics') || normalizedRole.includes('automation engineer') || normalizedRole.includes('controls engineer') || normalizedRole.includes('mechatronics')) return ROLE_CONFIGS.robotics_engineer;
-  if (normalizedRole.includes('machine learning') || normalizedRole.includes('ml engineer') || normalizedRole.includes('ai engineer') || normalizedRole.includes('deep learning') || normalizedRole.includes('nlp engineer')) return ROLE_CONFIGS.ai_ml_engineer;
-  if (normalizedRole.includes('dentist') || normalizedRole.includes('dds') || normalizedRole.includes('dmd') || normalizedRole.includes('orthodontist')) return ROLE_CONFIGS.dentist;
-  if (normalizedRole.includes('veterinarian') || normalizedRole.includes('vet') || normalizedRole.includes('dvm')) return ROLE_CONFIGS.veterinarian;
-  if (normalizedRole.includes('civil engineer') || normalizedRole.includes('structural engineer') || normalizedRole.includes('transportation engineer')) return ROLE_CONFIGS.civil_engineer;
-  if (normalizedRole.includes('data engineer') || normalizedRole.includes('etl') || normalizedRole.includes('analytics engineer') || normalizedRole.includes('data platform')) return ROLE_CONFIGS.data_engineer;
-  if (normalizedRole.includes('security analyst') || normalizedRole.includes('cybersecurity') || normalizedRole.includes('soc analyst') || normalizedRole.includes('penetration tester')) return ROLE_CONFIGS.security_analyst;
-  if (normalizedRole.includes('paralegal') || normalizedRole.includes('legal assistant') || normalizedRole.includes('law clerk')) return ROLE_CONFIGS.paralegal;
-  if (normalizedRole.includes('event planner') || normalizedRole.includes('event coordinator') || normalizedRole.includes('wedding planner') || normalizedRole.includes('meeting planner')) return ROLE_CONFIGS.event_planner;
-  if (normalizedRole.includes('electrician') || normalizedRole.includes('electrical technician')) return ROLE_CONFIGS.electrician;
-  if (normalizedRole.includes('insurance agent') || normalizedRole.includes('insurance broker') || normalizedRole.includes('insurance producer')) return ROLE_CONFIGS.insurance_agent;
-  if (normalizedRole.includes('physician') || normalizedRole.includes('doctor') || normalizedRole.includes('md') || normalizedRole.includes('hospitalist')) return ROLE_CONFIGS.physician;
-  if (normalizedRole.includes('flight attendant') || normalizedRole.includes('cabin crew') || normalizedRole.includes('inflight')) return ROLE_CONFIGS.flight_attendant;
-  if (normalizedRole.includes('truck driver') || normalizedRole.includes('cdl driver') || normalizedRole.includes('commercial driver') || normalizedRole.includes('otr driver')) return ROLE_CONFIGS.truck_driver;
-  if (normalizedRole.includes('data analyst') || normalizedRole.includes('reporting analyst') || normalizedRole.includes('insights analyst')) return ROLE_CONFIGS.data_analyst;
-  if (normalizedRole.includes('business intelligence') || normalizedRole.includes('bi analyst') || normalizedRole.includes('bi developer')) return ROLE_CONFIGS.bi_analyst;
-  if (normalizedRole.includes('quant') || normalizedRole.includes('quantitative analyst') || normalizedRole.includes('algorithmic trader')) return ROLE_CONFIGS.quantitative_analyst;
-  if (normalizedRole.includes('electrical engineer') || normalizedRole.includes('electronics engineer') || normalizedRole.includes('hardware engineer') || normalizedRole.includes('pcb')) return ROLE_CONFIGS.electrical_engineer;
-  if (normalizedRole.includes('chemical engineer') || normalizedRole.includes('process engineer') || normalizedRole.includes('petrochemical')) return ROLE_CONFIGS.chemical_engineer;
-  if (normalizedRole.includes('aerospace') || normalizedRole.includes('aeronautical') || normalizedRole.includes('aircraft engineer') || normalizedRole.includes('avionics')) return ROLE_CONFIGS.aerospace_engineer;
-  if (normalizedRole.includes('biomedical') || normalizedRole.includes('medical device') || normalizedRole.includes('clinical engineer')) return ROLE_CONFIGS.biomedical_engineer;
-  if (normalizedRole.includes('industrial engineer') || normalizedRole.includes('lean engineer') || normalizedRole.includes('continuous improvement')) return ROLE_CONFIGS.industrial_engineer;
-  if (normalizedRole.includes('environmental engineer') || normalizedRole.includes('sustainability engineer') || normalizedRole.includes('remediation')) return ROLE_CONFIGS.environmental_engineer;
-  if (normalizedRole.includes('solutions architect') || normalizedRole.includes('enterprise architect') || normalizedRole.includes('technical architect')) return ROLE_CONFIGS.solutions_architect;
-  if (normalizedRole.includes('cloud engineer') || normalizedRole.includes('cloud infrastructure') || normalizedRole.includes('cloud operations')) return ROLE_CONFIGS.cloud_engineer;
-  if (normalizedRole.includes('network engineer') || normalizedRole.includes('network admin') || normalizedRole.includes('network architect')) return ROLE_CONFIGS.network_engineer;
-  if (normalizedRole.includes('dba') || normalizedRole.includes('database admin') || normalizedRole.includes('database engineer')) return ROLE_CONFIGS.database_administrator;
+  if (has('product') && has('manager')) return ROLE_CONFIGS.product_manager;
+  if (has('software') || has('developer') || has('engineer')) return ROLE_CONFIGS.software_engineer;
+  if (has('data') && (has('scientist') || has('analyst'))) return ROLE_CONFIGS.data_scientist;
+  if (has('nurse') || has('rn') || has('nursing')) return ROLE_CONFIGS.nurse;
+  if (has('marketing')) return ROLE_CONFIGS.marketing_manager;
+  if (has('sales') || has('account executive') || has('bdr') || has('sdr')) return ROLE_CONFIGS.sales_representative;
+  if (has('project') && has('manager')) return ROLE_CONFIGS.project_manager;
+  if (has('ux') || has('ui') || has('designer')) return ROLE_CONFIGS.ux_designer;
+  if (has('accountant') || has('cpa') || has('controller')) return ROLE_CONFIGS.accountant;
+  if (has('teacher') || has('educator') || has('professor')) return ROLE_CONFIGS.teacher;
+  if (has('hr') || has('human resources') || has('people operations') || has('hrbp')) return ROLE_CONFIGS.hr_manager;
+  if (has('financial analyst') || has('fp&a') || has('finance analyst')) return ROLE_CONFIGS.financial_analyst;
+  if (has('customer success') || has('csm') || has('client success')) return ROLE_CONFIGS.customer_success;
+  if (has('operations') && has('manager')) return ROLE_CONFIGS.operations_manager;
+  if (has('executive assistant') || has('ea') || has('admin assistant')) return ROLE_CONFIGS.executive_assistant;
+  if (has('business analyst') || has('ba') || has('requirements analyst')) return ROLE_CONFIGS.business_analyst;
+  if (has('devops') || has('sre') || has('site reliability') || has('platform engineer')) return ROLE_CONFIGS.devops_engineer;
+  if (has('qa') || has('quality assurance') || has('test engineer') || has('sdet')) return ROLE_CONFIGS.qa_engineer;
+  if (has('recruiter') || has('talent acquisition') || has('sourcer')) return ROLE_CONFIGS.recruiter;
+  if (has('content writer') || has('copywriter') || has('content creator') || has('technical writer')) return ROLE_CONFIGS.content_writer;
+  if (has('graphic designer') || has('visual designer') || has('brand designer')) return ROLE_CONFIGS.graphic_designer;
+  if (has('pharmacist') || has('pharm.d') || has('pharmacy')) return ROLE_CONFIGS.pharmacist;
+  if (has('social media') || has('community manager')) return ROLE_CONFIGS.social_media_manager;
+  if (has('architect') && !has('software') && !has('solutions')) return ROLE_CONFIGS.architect;
+  if (has('physical therapist') || has('physiotherapist') || has('pt') || has('dpt')) return ROLE_CONFIGS.physical_therapist;
+  if (has('supply chain') || has('logistics') || has('procurement')) return ROLE_CONFIGS.supply_chain_manager;
+  if (has('attorney') || has('lawyer') || has('legal counsel') || has('litigator')) return ROLE_CONFIGS.attorney;
+  if (has('chef') || has('culinary') || has('kitchen')) return ROLE_CONFIGS.chef;
+  if (has('real estate') || has('realtor') || has('property agent')) return ROLE_CONFIGS.real_estate_agent;
+  if (has('mechanical engineer') || has('hvac engineer') || has('manufacturing engineer')) return ROLE_CONFIGS.mechanical_engineer;
+  if (has('robotics') || has('automation engineer') || has('controls engineer') || has('mechatronics')) return ROLE_CONFIGS.robotics_engineer;
+  if (has('machine learning') || has('ml engineer') || has('ai engineer') || has('deep learning') || has('nlp engineer')) return ROLE_CONFIGS.ai_ml_engineer;
+  if (has('dentist') || has('dds') || has('dmd') || has('orthodontist')) return ROLE_CONFIGS.dentist;
+  if (has('veterinarian') || has('vet') || has('dvm')) return ROLE_CONFIGS.veterinarian;
+  if (has('civil engineer') || has('structural engineer') || has('transportation engineer')) return ROLE_CONFIGS.civil_engineer;
+  if (has('data engineer') || has('etl') || has('analytics engineer') || has('data platform')) return ROLE_CONFIGS.data_engineer;
+  if (has('security analyst') || has('cybersecurity') || has('soc analyst') || has('penetration tester')) return ROLE_CONFIGS.security_analyst;
+  if (has('paralegal') || has('legal assistant') || has('law clerk')) return ROLE_CONFIGS.paralegal;
+  if (has('event planner') || has('event coordinator') || has('wedding planner') || has('meeting planner')) return ROLE_CONFIGS.event_planner;
+  if (has('electrician') || has('electrical technician')) return ROLE_CONFIGS.electrician;
+  if (has('insurance agent') || has('insurance broker') || has('insurance producer')) return ROLE_CONFIGS.insurance_agent;
+  if (has('physician') || has('doctor') || has('md') || has('hospitalist')) return ROLE_CONFIGS.physician;
+  if (has('flight attendant') || has('cabin crew') || has('inflight')) return ROLE_CONFIGS.flight_attendant;
+  if (has('truck driver') || has('cdl driver') || has('commercial driver') || has('otr driver')) return ROLE_CONFIGS.truck_driver;
+  if (has('data analyst') || has('reporting analyst') || has('insights analyst')) return ROLE_CONFIGS.data_analyst;
+  if (has('business intelligence') || has('bi analyst') || has('bi developer')) return ROLE_CONFIGS.bi_analyst;
+  if (has('quant') || has('quantitative analyst') || has('algorithmic trader')) return ROLE_CONFIGS.quantitative_analyst;
+  if (has('electrical engineer') || has('electronics engineer') || has('hardware engineer') || has('pcb')) return ROLE_CONFIGS.electrical_engineer;
+  if (has('chemical engineer') || has('process engineer') || has('petrochemical')) return ROLE_CONFIGS.chemical_engineer;
+  if (has('aerospace') || has('aeronautical') || has('aircraft engineer') || has('avionics')) return ROLE_CONFIGS.aerospace_engineer;
+  if (has('biomedical') || has('medical device') || has('clinical engineer')) return ROLE_CONFIGS.biomedical_engineer;
+  if (has('industrial engineer') || has('lean engineer') || has('continuous improvement')) return ROLE_CONFIGS.industrial_engineer;
+  if (has('environmental engineer') || has('sustainability engineer') || has('remediation')) return ROLE_CONFIGS.environmental_engineer;
+  if (has('solutions architect') || has('enterprise architect') || has('technical architect')) return ROLE_CONFIGS.solutions_architect;
+  if (has('cloud engineer') || has('cloud infrastructure') || has('cloud operations')) return ROLE_CONFIGS.cloud_engineer;
+  if (has('network engineer') || has('network admin') || has('network architect')) return ROLE_CONFIGS.network_engineer;
+  if (has('dba') || has('database admin') || has('database engineer')) return ROLE_CONFIGS.database_administrator;
   
   return null;
 }

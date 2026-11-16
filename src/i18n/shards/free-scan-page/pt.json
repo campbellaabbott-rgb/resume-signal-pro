@@ -1,0 +1,305 @@
+{
+  "freeScanPage": {
+    "a11y": {
+      "resumeText": "Texto do seu currículo",
+      "emailAddress": "Seu endereço de e-mail"
+    },
+    "jobUrl": {
+      "truncated": "Esta vaga era mais longa do que conseguimos ler, então só a primeira parte está na caixa."
+    },
+    "checkout": {
+      "postingOverCap": "A Análise Completa lê os primeiros {{max}} caracteres desta vaga. O restante fica de fora.",
+      "linkedInOverCap": "A Análise Completa lê os primeiros {{max}} caracteres do seu texto do LinkedIn. O restante fica de fora."
+    },
+    "hero": {
+      "dropzone": "Ou solte seu currículo aqui: PDF, DOCX ou TXT",
+      "dropzoneActive": "Solte aqui: a análise está a segundos"
+    },
+    "parseCheck": {
+      "fromYourFile": "Estas verificações foram feitas no texto que extraímos do seu arquivo. Um ATS usa o próprio leitor, que pode ver algumas partes de outro jeito.",
+      "section": {
+        "summary": "Resumo",
+        "experience": "Experiência",
+        "education": "Formação",
+        "skills": "Habilidades"
+      },
+      "label": {
+        "sections": "Títulos de seção",
+        "contact": "Dados de contato",
+        "dates": "Datas",
+        "encoding": "Codificação de caracteres",
+        "iconGlyphs": "Caracteres de fontes de ícones",
+        "lines": "Estrutura das linhas",
+        "layout": "Layout em colunas"
+      },
+      "detail": {
+        "sectionsAll": "Todos os {{n}} títulos de seção padrão foram encontrados ({{found}}).",
+        "sectionsNone": "Nenhum título de seção padrão foi encontrado. A maioria dos ATS divide um currículo por títulos como Experiência ou Formação; sem eles, seu conteúdo pode acabar em um único bloco.",
+        "sectionsSome": "Encontrados: {{found}}. Nenhum título reconhecível para: {{missing}}.",
+        "contactHeaderOnly": "Seu e-mail e telefone estão só no cabeçalho da página, que alguns ATS ignoram. Coloque-os também no corpo da primeira página.",
+        "contactBoth": "Seu e-mail e seu número de telefone foram encontrados no texto.",
+        "contactBothLinkedIn": "Seu e-mail, seu número de telefone e seu endereço do LinkedIn foram encontrados no texto.",
+        "contactNone": "Nenhum e-mail ou número de telefone foi encontrado no texto. Se o seu arquivo os tem, eles podem estar em uma imagem, uma caixa de texto ou um cabeçalho que a extração de texto ignora.",
+        "contactEmailOnly": "Seu e-mail foi encontrado, mas nenhum número de telefone em formato padrão.",
+        "contactPhoneOnly": "Seu número de telefone foi encontrado, mas nenhum endereço de e-mail em formato padrão.",
+        "datesMany": "Foram encontradas {{n}} datas diferentes, então um ATS provavelmente consegue montar sua trajetória e seu tempo em cada cargo.",
+        "datesNone": "Nenhuma data em formato reconhecível (como jan 2020 ou 2020-2023) foi encontrada. Um ATS usa as datas para calcular sua experiência e eventuais lacunas.",
+        "datesOne": "Só uma data foi encontrada. Se você lista vários cargos, a maioria pode estar sem datas de início e fim que um ATS consiga ler.",
+        "encodingOk": "Nenhum caractere corrompido foi encontrado no texto extraído.",
+        "encodingBroken": "Caracteres que não puderam ser decodificados: {{n}}. Provavelmente uma fonte do seu PDF não está mapeada para o Unicode padrão, e um ATS que a leia do mesmo jeito veria o mesmo texto ilegível.",
+        "iconsNone": "Nenhum caractere de fonte de ícones foi encontrado no texto extraído.",
+        "iconsFound": "Caracteres de fonte de ícones encontrados: {{n}}. Modelos costumam desenhar os símbolos de telefone, e-mail e LinkedIn com uma fonte de ícones; um ATS vê ali um caractere solto, não o ícone.",
+        "linesNormal": "O texto saiu com quebras de linha normais (cerca de {{chars}} caracteres por linha).",
+        "linesLong": "O texto saiu com linhas incomumente longas (cerca de {{chars}} caracteres por linha). Uma tabela ou caixa de texto pode ter juntado várias linhas; confira se seus tópicos não estão emendados.",
+        "linesFlat": "O texto saiu quase sem quebras de linha (cerca de {{chars}} caracteres por linha), sinal de um layout em tabela ou de caixas de texto achatadas em um único bloco. Um ATS pode perder suas seções e tópicos.",
+        "layoutSingle": "Nenhum layout de várias colunas foi encontrado: o texto é lido em uma única ordem.",
+        "layoutColumns": "Um layout de várias colunas foi encontrado no seu PDF. Extratores de texto leem na ordem do arquivo, não na ordem visual, então as colunas costumam se misturar ou ser lidas fora de sequência."
+      }
+    },
+    "industry": {
+      "cybersecurity": "Cibersegurança",
+      "logistics": "Logística",
+      "real_estate": "Imobiliário",
+      "insurance": "Seguros",
+      "nonprofit": "Terceiro setor",
+      "biotech": "Biotecnologia",
+      "aviation": "Aviação",
+      "energy": "Energia",
+      "skilled_trades": "Ofícios técnicos",
+      "customer_success": "Sucesso do cliente",
+      "pharmacy": "Farmácia",
+      "dental": "Odontologia",
+      "veterinary": "Veterinária",
+      "fitness": "Fitness",
+      "media": "Mídia",
+      "telecom": "Telecomunicações",
+      "agriculture": "Agricultura",
+      "sports_management": "Gestão esportiva",
+      "entertainment": "Entretenimento",
+      "academia": "Meio acadêmico",
+      "construction_management": "Gestão de obras",
+      "architecture": "Arquitetura",
+      "social_work": "Serviço social",
+      "childcare": "Cuidado infantil",
+      "beauty": "Beleza",
+      "culinary": "Gastronomia",
+      "law_enforcement": "Segurança pública",
+      "environmental": "Meio ambiente",
+      "gaming": "Games",
+      "ecommerce": "E-commerce",
+      "translation": "Tradução",
+      "event_planning": "Organização de eventos",
+      "administrative": "Administrativo",
+      "library": "Biblioteconomia",
+      "clergy": "Ministério religioso",
+      "mining": "Mineração",
+      "maritime": "Marítimo",
+      "landscaping": "Paisagismo",
+      "janitorial": "Limpeza e conservação",
+      "general": "Geral / Outro"
+    },
+    "confidence": {
+      "high": "alta",
+      "medium": "média",
+      "low": "baixa"
+    },
+    "diagnostic": {
+      "title": "Relatório de diagnóstico do currículo",
+      "report": "Relatório",
+      "date": "Data",
+      "subject": "Assunto",
+      "candidate": "Candidato",
+      "industry": "Setor",
+      "benchmarks": "Referências",
+      "benchmarksMeasured": "medidas em análises reais",
+      "benchmarksEstimated": "estimativas do setor",
+      "engine": "Motor",
+      "footer": "Analisar de novo exatamente este documento retorna este ID de relatório. Os resultados são determinísticos onde indicado, e cada tópico reescrito é conferido com o documento."
+    },
+    "band": {
+      "ats": {
+        "excellent": "Excelente: os portais de emprego devem ler isto sem problemas.",
+        "good": "Bom: a maioria dos portais de emprego vai ler isto sem problemas.",
+        "fair": "Regular: alguns portais podem ler partes errado.",
+        "weak": "Fraco: os portais podem ler errado ou descartar partes importantes."
+      },
+      "recruiter": {
+        "excellent": "Excelente: um recrutador vê impacto claro e comprovado.",
+        "good": "Bom: um recrutador vê impacto sólido; algumas linhas poderiam mostrar mais.",
+        "fair": "Regular: mais números e resultados ajudariam um recrutador.",
+        "weak": "Fraco: um recrutador vê mais tarefas do que resultados."
+      }
+    },
+    "enhanced": {
+      "locatedIn": "Encontrado em: {{places}}"
+    },
+    "share": {
+      "yourResults": "Seus resultados"
+    },
+    "metric": {
+      "formatA": "Um ATS consegue ler isto bem",
+      "formatB": "Pequenos ajustes de formatação necessários",
+      "formatC": "Pode causar erros de leitura",
+      "formatD": "Um ATS pode embaralhar seus dados",
+      "readEasy": "Fácil de ler rapidamente",
+      "readSome": "Algumas seções são difíceis de ler rapidamente",
+      "readHard": "Difícil de ler rapidamente",
+      "quantStrong": "Números fortes em todo o currículo",
+      "quantOlder": "Os cargos mais antigos precisam de mais números",
+      "quantAdd": "Adicione mais números, porcentagens e valores",
+      "verbsA": "Verbos de ação fortes e variados",
+      "verbsB": "Boa variedade de verbos",
+      "verbsC": "Use verbos mais fortes",
+      "verbsD": "Verbos fracos reduzem seu impacto",
+      "lengthRight": "O tamanho certo para o seu nível",
+      "lengthShort": "Adicione mais conquistas",
+      "lengthLong": "Recrutadores podem pular um currículo longo",
+      "wordsIdeal": "Faixa ideal: {{min}}-{{max}} palavras",
+      "wordsFew": "Parece enxuto demais: adicione conteúdo",
+      "wordsMany": "Denso demais: corte o excesso",
+      "sectionsAll": "Todas as seções principais estão presentes",
+      "sectionsAdd": "Adicione: {{section}}",
+      "contactAll": "Recrutadores conseguem falar com você facilmente",
+      "contactAdd": "Adicione {{item}}",
+      "impactStrong": "Mostra resultados, não tarefas",
+      "impactEarlier": "Cargos anteriores listam atribuições",
+      "impactFocus": "Foque em resultados em vez de atribuições",
+      "densityDense": "Um ATS vai encontrar suas habilidades",
+      "densityModerate": "Adicione mais termos do setor",
+      "densitySparse": "Faltam termos de busca importantes",
+      "levelDense": "Alta",
+      "levelModerate": "Moderada",
+      "levelSparse": "Baixa",
+      "learnAbout": "Saiba mais sobre {{title}}"
+    },
+    "keywordImpact": {
+      "critical": "Obrigatório",
+      "high": "Alto impacto",
+      "medium": "Útil",
+      "countCritical": "Essenciais: {{n}}",
+      "countHigh": "Alto impacto: {{n}}",
+      "showAll": "Ver todas as palavras-chave de {{industry}} (+{{n}})"
+    },
+    "keywordCategory": {
+      "certification": "Certificação",
+      "tool": "Ferramenta",
+      "skill": "Habilidade",
+      "methodology": "Método",
+      "metric": "Métrica",
+      "regulation": "Regulamentação"
+    },
+    "xray": {
+      "legendIntro": "Seu currículo como o lemos, com anotações:",
+      "legendWeak": "sublinhado vermelho: um tópico fraco (passe o mouse para ver o motivo)",
+      "legendAmber": "âmbar: sem números",
+      "legendGreen": "verde: um verbo de ação forte",
+      "showLess": "Mostrar menos",
+      "showAll": "Mostrar todas as linhas ({{n}})",
+      "flagged_one": "{{count}} linha sinalizada",
+      "flagged_many": "{{count}} linhas sinalizadas",
+      "flagged_other": "{{count}} linhas sinalizadas"
+    },
+    "email": {
+      "invalid": "Digite um endereço de e-mail válido.",
+      "failed": "Não foi possível enviar agora. O download do PDF acima funciona offline."
+    },
+    "pulse": {
+      "notAsked": "Desta vez não conseguimos enviar o link de confirmação do pulso mensal do mercado. Marque a caixa de novo no seu próximo relatório."
+    },
+    "pdf": {
+      "title": "RELATÓRIO DE DIAGNÓSTICO DO CURRÍCULO",
+      "meta": "Relatório nº {{id}}  ·  {{date}}  ·  Motor {{engine}}",
+      "subject": "Assunto: {{name}}  ·  Setor: {{industry}}  ·  Referências: {{benchmarks}}",
+      "score": "Pontuação ATS: {{score}}/100",
+      "band": "(faixa do modelo {{low}}-{{high}})",
+      "projected": "cerca de {{score}} após as correções (uma estimativa aproximada)",
+      "breakdown": "Detalhamento: palavras-chave {{keywords}}  ·  formato {{format}}  ·  quantificação {{quantification}}",
+      "findings": "Achados: {{critical}} críticos  ·  {{warnings}} alertas  ·  {{passed}} aprovados",
+      "fixPlan": "Seu plano de correções de {{minutes}} minutos:",
+      "stepCost": "(cerca de {{minutes}} min, +{{points}} pts)",
+      "sourceOnet": "Palavras-chave esperadas tiradas do O*NET {{code}} (Departamento do Trabalho dos EUA: {{occupation}}).",
+      "sourcePosting": "Palavras-chave comparadas com a vaga que você informou.",
+      "footer": "Na Análise Completa, cada tópico reescrito e a linha que ele cita são conferidos com o seu currículo. Todos os detalhes: resumebooster.work"
+    },
+    "report": {
+      "scoreBand": "A pontuação {{score}} fica em uma faixa de modelo de {{low}}–{{high}}. A faixa vai do nosso cálculo baseado em regras à estimativa da IA: um único número exato passaria mais precisão do que existe.",
+      "preparing": "Preparando seu relatório…"
+    },
+    "market": {
+      "title": "Inteligência de mercado: {{country}}",
+      "hotSkills": "Habilidades em alta (compiladas à mão)",
+      "risingKeywords": "Palavras-chave em ascensão (compiladas à mão)",
+      "cvNorms": "Normas de currículo: {{country}}"
+    },
+    "ats": {
+      "target": "ATS alvo:",
+      "detected": "Detectamos que esta empresa usa {{name}}. As dicas de formatação acima foram adaptadas a esse sistema."
+    },
+    "execScope": {
+      "title": "Verificação de escopo executivo",
+      "signals": "{{n}}/{{total}} sinais de escopo",
+      "intro": "Neste nível, os recrutadores procuram evidências de escopo antes de qualquer outra coisa.",
+      "teamSize": "Tamanho da equipe",
+      "budget": "Responsabilidade por orçamento ou resultado (P&L)",
+      "impact": "Impacto de negócio quantificado",
+      "board": "Exposição ao conselho ou à governança",
+      "strategy": "Linguagem de escopo estratégico",
+      "addNext": "Adicione em seguida:"
+    },
+    "sectionAudit": {
+      "title": "Verificação do tamanho das seções",
+      "good": "Bom",
+      "tooLong": "Longa demais",
+      "missing": "Ausente",
+      "tooShort": "Curta demais",
+      "words": "{{n}} palavras",
+      "target": "(meta {{min}}–{{max}})"
+    },
+    "parsePreview": {
+      "title": "Prévia da leitura do ATS",
+      "subtitle": "O que um ATS lê",
+      "note": "A formatação (negrito, colunas, ícones) é removida. Se seu nome, cargo ou seções principais não aparecem com clareza aqui, um ATS pode deixá-los passar."
+    },
+    "questions": {
+      "triggeredBy": "Motivada por:",
+      "prepare": "Prepare:"
+    },
+    "toast": {
+      "creditUsedTitle": "Crédito de análise usado",
+      "creditUsed": "Você tinha passado do limite grátis de hoje, então 1 crédito comprado cobriu esta análise.",
+      "creditUsedRemaining": "Você tinha passado do limite grátis de hoje, então 1 crédito comprado cobriu esta análise. Créditos restantes: {{remaining}}.",
+      "budgetTitle": "Muitas solicitações agora",
+      "budgetBody": "Muitas análises vieram da sua conexão nesta hora. Tente de novo em cerca de {{minutes}} min. Este não é o seu limite diário.",
+      "busyTitle": "Os analisadores estão ocupados",
+      "busyBody": "Nossos analisadores estão ocupados agora. Tente de novo em um minuto."
+    },
+    "intent": {
+      "heading": "Deixe sua análise com a sua cara",
+      "optional": "(opcional, 5 segundos)",
+      "situation": {
+        "actively_applying": "Me candidatando ativamente",
+        "exploring": "Explorando opções",
+        "career_change": "Mudando de carreira",
+        "first_job": "Primeiro emprego",
+        "freelance": "Freelancer"
+      },
+      "targetRoleLabel": "Cargo desejado",
+      "targetRolePlaceholder": "Cargo desejado (ex.: Senior Data Engineer): refina palavras-chave e referências",
+      "countryLabel": "País onde você está se candidatando",
+      "countryAuto": "Candidatura em… (detectar automaticamente as normas do país)"
+    },
+    "parse": {
+      "poorTitle": "Este currículo pode não ter sido lido corretamente.",
+      "fairTitle": "Uma observação sobre como seu arquivo foi lido.",
+      "found": "Encontramos: {{issues}}.",
+      "poorAdvice": "As pontuações abaixo podem não ser confiáveis. Tente enviar um DOCX ou cole o texto diretamente.",
+      "fairAdvice": "Se o relatório parecer estranho, tente colar o texto diretamente.",
+      "issue": {
+        "fewWords": "só {{n}} palavras extraídas",
+        "lowLetters": "uma proporção incomumente baixa de letras em relação a símbolos",
+        "garbled": "caracteres ilegíveis",
+        "noSections": "nenhuma seção padrão de currículo"
+      }
+    }
+  }
+}
