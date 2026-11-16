@@ -1,10 +1,14 @@
 {
   "payments": {
     "pro": {
-      "pausedUntilPaid": "Naka-pause ang mga tool ng Pro hanggang pumasok ang bayad na ito. Sakop ng bayad ang buong buwan mula sa petsa ng renewal mo, kasama ang mga araw na naka-pause ang mga tool."
+      "pausedUntilPaid": "Naka-pause ang mga tool ng Pro hanggang pumasok ang bayad na ito. Sakop ng bayad ang buong buwan mula sa petsa ng renewal mo, kasama ang mga araw na naka-pause ang mga tool.",
+      "activeMemberPackages": "Pro member ka: 5 writing package bawat araw (60 bawat buwan) sa mas malakas na model."
     },
     "perks": {
-      "fullAnalysisCap": "Hanggang 10 Full Analysis bawat araw at 60 bawat buwan"
+      "fullAnalysisCap": "Hanggang 10 Full Analysis bawat araw at 60 bawat buwan",
+      "everythingFreeOneEach": "Lahat ng nasa libreng account, na may tig-isang gamit na ng bawat writing tool bawat araw",
+      "summaryPackages": "Lahat ng nasa libreng account, dagdag ang 5 writing package bawat araw (60 bawat buwan) sa mas malakas na model, kasama ang $5 na Full Analysis at walang daily cap sa mga scan",
+      "summaryPackagesWithoutAnalysis": "Lahat ng nasa libreng account, dagdag ang 5 writing package bawat araw (60 bawat buwan) sa mas malakas na model at walang daily cap sa mga scan"
     }
   }
 }

@@ -166,7 +166,7 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
                 one-off tool (the one rule, _shared/pro-standing.ts). */}
             {pro.trialing
               ? t("proPlan.trialingNoCap", "Your trial is on: scans have no daily cap now. The $5 Full Analysis is included from your first payment.")
-              : t("proPlan.activeMember", "You're a Pro member: the writing tools are unlocked.")}
+              : t("payments.pro.activeMemberPackages", "You're a Pro member: 5 writing packages a day (60 a month) on a stronger model.")}
             {periodEnd && (
               <span className="text-muted-foreground font-normal" data-testid={pro.cancelAtPeriodEnd ? "pro-ends" : "pro-renews"}>
                 {pro.cancelAtPeriodEnd

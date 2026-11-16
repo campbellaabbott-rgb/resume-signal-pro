@@ -42,8 +42,8 @@ export const PRO_ANALYSIS_CAP_KEY = "payments.perks.fullAnalysisCap";
 
 /** Pro's summary without the included Full Analysis, for while G2 is closed. */
 export const PRO_SUMMARY_WITHOUT_ANALYSIS: ProPerk = {
-  key: "proPlan.summaryLineWithoutAnalysis",
-  text: "Everything in a free account, plus the writing tools and no daily cap on scans",
+  key: "payments.perks.summaryPackagesWithoutAnalysis",
+  text: "Everything in a free account, plus 5 writing packages a day (60 a month) on a stronger model and no daily cap on scans",
 };
 
 /** The perks a page may list today. */

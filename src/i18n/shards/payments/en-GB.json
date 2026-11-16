@@ -1,10 +1,14 @@
 {
   "payments": {
     "pro": {
-      "pausedUntilPaid": "Pro's tools are paused until this payment goes through. The payment covers the whole month from your renewal date, including the days the tools were paused."
+      "pausedUntilPaid": "Pro's tools are paused until this payment goes through. The payment covers the whole month from your renewal date, including the days the tools were paused.",
+      "activeMemberPackages": "You're a Pro member: 5 writing packages a day (60 a month) on a stronger model."
     },
     "perks": {
-      "fullAnalysisCap": "Up to 10 Full Analyses a day and 60 a month"
+      "fullAnalysisCap": "Up to 10 Full Analyses a day and 60 a month",
+      "everythingFreeOneEach": "Everything in a free account, which already has one of each writing tool a day",
+      "summaryPackages": "Everything in a free account, plus 5 writing packages a day (60 a month) on a stronger model, the $5 Full Analysis included and no daily cap on scans",
+      "summaryPackagesWithoutAnalysis": "Everything in a free account, plus 5 writing packages a day (60 a month) on a stronger model and no daily cap on scans"
     }
   }
 }

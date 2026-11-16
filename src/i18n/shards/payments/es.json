@@ -1,10 +1,14 @@
 {
   "payments": {
     "pro": {
-      "pausedUntilPaid": "Las herramientas de Pro están en pausa hasta que se complete este pago. El pago cubre el mes completo desde tu fecha de renovación, incluidos los días en que las herramientas estuvieron en pausa."
+      "pausedUntilPaid": "Las herramientas de Pro están en pausa hasta que se complete este pago. El pago cubre el mes completo desde tu fecha de renovación, incluidos los días en que las herramientas estuvieron en pausa.",
+      "activeMemberPackages": "Eres miembro Pro: 5 paquetes de redacción al día (60 al mes) con un modelo más potente."
     },
     "perks": {
-      "fullAnalysisCap": "Hasta 10 Análisis completos al día y 60 al mes"
+      "fullAnalysisCap": "Hasta 10 Análisis completos al día y 60 al mes",
+      "everythingFreeOneEach": "Todo lo de una cuenta gratuita, que ya incluye cada herramienta de redacción una vez al día",
+      "summaryPackages": "Todo lo de una cuenta gratuita, más 5 paquetes de redacción al día (60 al mes) con un modelo más potente, el Análisis completo de 5 $ incluido y sin límite diario de análisis",
+      "summaryPackagesWithoutAnalysis": "Todo lo de una cuenta gratuita, más 5 paquetes de redacción al día (60 al mes) con un modelo más potente y sin límite diario de análisis"
     }
   }
 }
