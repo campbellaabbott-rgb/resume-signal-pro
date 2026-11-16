@@ -37,7 +37,8 @@ import { boundCustomerOfRows, portalCustomerOf, type BoundRow } from "../_shared
 // member with two bound plans is sent to the live or owing one, never to the
 // one whose row was written last.
 // 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "create-portal-session.2026-11-10.2";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, payments lane, S14X-229): an address the account proved by code opens billing for an unbound plan.
+const FN_BUILD = "create-portal-session.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

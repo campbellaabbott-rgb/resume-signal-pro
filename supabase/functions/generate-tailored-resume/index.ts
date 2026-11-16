@@ -68,7 +68,8 @@ import { refundWriting, writingChain, writingGate, type WritingPass } from "../_
 // 2026-11-09.2 (fix/cost-wave, the integration): both lanes' changes above together.
 // cost/ai and cost/ci-edge each stamped 2026-11-09.1 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "generate-tailored-resume.2026-11-09.2";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, writing-tools lane, S14X-059, S14X-270, S14X-265, S14X-109): the draft is checked against the résumé, asked once more and then refused as ungrounded, skills the résumé does not state are dropped, the posting is read to 20,000 characters with the cut said, a busy model is not worded as an hourly limit, and a gateway out of credits is a retryable 503.
+const FN_BUILD = "generate-tailored-resume.2026-11-12.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

@@ -87,7 +87,8 @@ import { commissionCentsFor } from "../_shared/affiliate-commission.ts";
 // that names its customer, whatever address the row is kept under; and
 // _shared/pro.ts no longer nulls a row's customer when an address search
 // finds nothing.
-const FN_BUILD = "stripe-webhook.2026-11-10.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, payments lane, S14X-076, S14X-081, S14X-084, S14X-152, S14X-042): a second live Pro plan alerts the owner, a redelivered expired or failed checkout is one row and one mail, an abandoned checkout keeps no address, a refunded first invoice reaches its commission, and a paid session records one conversion.
+const FN_BUILD = "stripe-webhook.2026-11-12.1";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // HOW LONG A MAKER HOLDS AN ORDER (20261011144000, CP-019). The lease

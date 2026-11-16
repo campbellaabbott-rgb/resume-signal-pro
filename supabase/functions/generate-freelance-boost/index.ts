@@ -49,7 +49,8 @@ import { BOOST_MAX_TOKENS, decideStructure, readBoostReply, type BoostReply } fr
 // 2026-11-10.3 (fix/cost-wave, the integration): both lanes' changes above together.
 // cost/ai and cost/ci-edge each stamped 2026-11-10.2 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "generate-freelance-boost.2026-11-10.3";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, past-buyers lane, RC-S12-104; payments lane, S14X-078): a failed Freelance Boost is written on its order, and a grant keeps its paid month.
+const FN_BUILD = "generate-freelance-boost.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

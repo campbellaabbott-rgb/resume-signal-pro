@@ -39,7 +39,8 @@ import { ParseMemo, normaliseQuery } from "./memo.ts";
 // platform's 150 s. A sentence asked twice is parsed once per isolate
 // (memo.ts). Browsers keep the preflight for two hours. The usage line of
 // every reply is logged (numbers only).
-const FN_BUILD = "nl-search.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, board-ui lane, S14X-293, NB-23, NB-24): an unreadable reply goes down the chain, an empty answer is not remembered, and no upstream text reaches the reader.
+const FN_BUILD = "nl-search.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

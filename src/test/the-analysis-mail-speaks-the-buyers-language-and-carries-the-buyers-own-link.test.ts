@@ -154,6 +154,6 @@ describe("S13-079: the button is the buyer's own link", () => {
 
   it("the preflight names this build", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/send-analysis-email", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toBe("send-analysis-email.2026-11-03.1");
+    expect(res.headers.get("x-fn-build")).toBe("send-analysis-email.2026-11-12.1");
   });
 });

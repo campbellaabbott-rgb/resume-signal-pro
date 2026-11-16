@@ -62,7 +62,8 @@ import { PULSE_COPY, industryLabel, mailLanguageOf, storedLanguage, type MailLan
 // stored when the address confirmed (market_pulse_subscribers.locale,
 // 20261103191000); English when neither is known (./copy.ts).
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "send-market-pulse.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, mail lane): the pulse goes once a calendar month, prints only the newest score, keeps the language it was asked in, clears what a stopped address gave, and every run is stamped.
+const FN_BUILD = "send-market-pulse.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

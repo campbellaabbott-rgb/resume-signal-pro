@@ -22,7 +22,8 @@ import { experienceLabel, industryLabel, jobMatchScoreOf, mailGrade, mailScoreCo
 // is "Good" in the mail as on the page, and the industry is the label the
 // page shows in the mail's language, never the fixed choice's spelling
 // ("data_engineering"); ./grade.ts.
-const FN_BUILD = "send-analysis-email.2026-11-03.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, full-analysis lane): the mail names the level as the page does, shows the posting's match score the analysis writes, and names a section the analysis could not write.
+const FN_BUILD = "send-analysis-email.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

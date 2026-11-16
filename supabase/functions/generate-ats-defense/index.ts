@@ -37,7 +37,8 @@ import { simulateAtsParse } from "./ats-parse-simulator.ts";
 // 2026-11-10.3 (fix/cost-wave, the integration): both lanes' changes above together.
 // cost/ai and cost/ci-edge each stamped 2026-11-10.2 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "generate-ats-defense.2026-11-10.3";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, past-buyers lane, RC-S12-007, RC-S12-031): the recovery form's copy is kept, recorded and mailed once, with its saved parse checks.
+const FN_BUILD = "generate-ats-defense.2026-11-12.1";
 /** Reports one purchase may generate in a day (regenerations included). */
 const ATS_DEFENSE_PER_PURCHASE_DAY = 10;
 

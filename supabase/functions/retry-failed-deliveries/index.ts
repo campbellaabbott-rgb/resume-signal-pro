@@ -8,7 +8,8 @@ import { purchaseLinkFor } from "../_shared/purchase-links.ts";
 
 // Provable from outside without running a sweep: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "retry-failed-deliveries.2026-10-11.22";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, full-analysis lane, S14X-220, RC-S13-110): a finished analysis whose mail was refused is resent from its stored copy, and a refused owner alarm or buyer notice is sent first on a later run.
+const FN_BUILD = "retry-failed-deliveries.2026-11-12.1";
 
 // HOW LONG THIS SWEEP HOLDS AN ORDER IT MAKES (20261011144000, CP-019). The
 // row is leased before the generator is called: a maker that lost its lease

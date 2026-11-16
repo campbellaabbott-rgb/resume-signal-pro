@@ -33,7 +33,8 @@ import { websiteTokenRefusal } from "../_shared/checkout-buyer.ts";
 
 // Provable from outside without signing in: the preflight carries it.
 // 2026-11-03.1 (S9-001, fix/audit-rest-abuse): a connected app's token is refused with the signed-out answer before the auth server is asked.
-const FN_BUILD = "agent-connect.2026-11-03.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, payments lane, RC-S13-063, through the shared buyer-record module): the record can carry the buyer's network key; this function hands it no address, so what it does is unchanged.
+const FN_BUILD = "agent-connect.2026-11-12.1";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

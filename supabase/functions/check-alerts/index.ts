@@ -27,7 +27,8 @@ import { keyMatches } from "../_shared/admin-key.ts";
 
 // Provable from outside without a key: every response, the preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "check-alerts.2026-10-11.28";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, ops-alerts lane): the owner's alarm is sent from our own domain first and Resend's onboarding sender second.
+const FN_BUILD = "check-alerts.2026-11-12.1";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",

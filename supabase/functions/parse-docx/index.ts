@@ -13,7 +13,8 @@ import { contactOnlyInHeader, headerFooterLines, withHeaderFooter, type ZipLike 
 // (w:numPr resolving to a bullet format) keep a bullet mark in the text
 // (register S13-037).
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "parse-docx.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, ingest-parsers lane): damaged, moved, nested, web-content and list-style Word files open, and every refusal carries a code.
+const FN_BUILD = "parse-docx.2026-11-12.1";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };

@@ -38,7 +38,8 @@ import { requireWebsiteSession } from "../_shared/website-session.ts";
 // preflight included, carries this in x-fn-build. It imports
 // _shared/mailbox-proof.ts, which R1 stamped 2026-10-14.1, as account-order does.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "account-settings.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, mail lane, S14X-102, S14X-107): a stopped list keeps no field, and the read says when the proven address is on the do-not-mail list.
+const FN_BUILD = "account-settings.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

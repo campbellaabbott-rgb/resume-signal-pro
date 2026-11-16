@@ -25,7 +25,8 @@ import { importSlice } from "./import-slice.ts";
 // 2026-11-09.2 (fix/cost-wave, the integration): both lanes' changes above together.
 // cost/ai and cost/ci-edge each stamped 2026-11-09.1 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "parse-resume-structured.2026-11-09.2";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, builder lane, S14X-071): the import is cut at a line break and says how much of the résumé it read.
+const FN_BUILD = "parse-resume-structured.2026-11-12.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

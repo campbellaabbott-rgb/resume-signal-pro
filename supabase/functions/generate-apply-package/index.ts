@@ -94,7 +94,8 @@ import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting
 // 2026-11-10.4 (fix/cost-wave, the integration): both lanes' changes above together.
 // cost/ai and cost/ci-edge each stamped 2026-11-10.3 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "generate-apply-package.2026-11-10.4";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, writing-tools lane, RC-S12-051, S14X-266, S14X-169, RC-S13-064, S14X-109; payments lane, S14X-078): Retry-After is exposed, a cut-off reply goes to the next model under a cap sized for the largest kit, an unreadable plan is a 503, a rejected draft is logged as counts, a gateway out of credits is a retryable 503, and a grant keeps its paid month.
+const FN_BUILD = "generate-apply-package.2026-11-12.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

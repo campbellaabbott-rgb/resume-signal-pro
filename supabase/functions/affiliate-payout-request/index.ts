@@ -35,7 +35,8 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { networkBucket } from "../_shared/network-bucket.ts";
 
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "affiliate-payout-request.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, affiliate lane, S14X-093, S14X-115, S14X-116, RC-S13-063): the session is found by its hash (by the plain token while the hash column is absent), an unproven address and a commission held for review are refused, and every refusal is named in the body.
+const FN_BUILD = "affiliate-payout-request.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

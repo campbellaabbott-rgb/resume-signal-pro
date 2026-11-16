@@ -18,7 +18,8 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 // Provable from outside without an upload: every response, the CORS preflight
 // included, carries this in x-fn-build.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "parse-pdf.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, ingest-parsers lane): right-to-left lines read as written, a Mac CJK PDF keeps its spaces and ideographs, hidden link targets are kept, image pages after the résumé are skipped and counted, and every refusal carries a code.
+const FN_BUILD = "parse-pdf.2026-11-12.1";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };

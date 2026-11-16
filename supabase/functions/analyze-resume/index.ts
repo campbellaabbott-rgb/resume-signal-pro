@@ -130,7 +130,8 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 // 2026-11-10.4 (fix/cost-wave, the integration): both lanes' changes above together.
 // cost/ai and cost/ci-edge each stamped 2026-11-10.3 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "analyze-resume.2026-11-10.4";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, full-analysis lane, S14X-220, RC-S13-048, S14X-110, S14X-041, S14X-042; payments lane, S14X-078, through the shared plan module): the order closes only once its mail is sent or refused, every refusal has a code and every outage is a retryable 503, a missing section is named, a named claim stores no address, the résumé's language is read by the free scanner's detector, and a grant minted in a paid month stays redeemable.
+const FN_BUILD = "analyze-resume.2026-11-12.1";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };

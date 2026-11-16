@@ -67,7 +67,8 @@ import { REHEARSAL_UNCONFIGURED, rehearsalKeyOf } from "./owner-rehearsal.ts";
 // above together. hotfix/pro and hotfix/paid each stamped 2026-11-10.1 on
 // code of its own, so the merged code takes the next sequence (DEPLOY-LEDGER §3).
 // 2026-11-10.3 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "create-checkout.2026-11-10.3";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, payments lane, S14X-078, S14X-079, RC-S13-063): a grant carries the window of the month that paid for it, a member's second press is handed the newest unopened grant, and the buyer's network key is recorded.
+const FN_BUILD = "create-checkout.2026-11-12.1";
 
 /** How long the checkout waits for the résumé reference before answering without it. */
 const RESUME_REF_WAIT_MS = 2_000;

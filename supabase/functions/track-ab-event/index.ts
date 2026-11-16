@@ -11,7 +11,8 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 // answer INCLUDING the CORS preflight, so a deploy can be checked with an
 // OPTIONS request that writes no row and spends no budget.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const BUILD_VERSION = "2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, site-shell lane, S14X-153, S14X-154, S14X-155): a purchase conversion carrying a Checkout id is a duplicate only of a row naming that id, an event the site never sends is refused before any read, a conversion whose Checkout id we never minted writes nothing, and a known purchase takes its own site hour.
+const BUILD_VERSION = "2026-11-12.1";
 
 // OPTIMIZATION: Removed alert system - not needed for tracking events
 // Removed EdgeRuntime dependency for simpler, faster execution

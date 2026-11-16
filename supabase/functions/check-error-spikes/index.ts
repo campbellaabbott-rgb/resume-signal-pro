@@ -17,7 +17,8 @@ import { keyMatches } from '../_shared/admin-key.ts';
 
 // Provable from outside without the key: every response, the preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = 'check-error-spikes.2026-10-08.1';
+// 2026-11-12.1 (bug round of 2026-11-08, part A, ops-alerts lane): the spike mail is sent from our own domain first and Resend's onboarding sender second, and one nobody accepted gives its six-hour door back.
+const FN_BUILD = 'check-error-spikes.2026-11-12.1';
 
 /** At most one spike mail per this many minutes, however often it runs. */
 const MAIL_COOLDOWN_MINUTES = 360;

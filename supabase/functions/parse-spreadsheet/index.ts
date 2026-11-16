@@ -24,7 +24,8 @@ import { MAX_ROWS, MAX_UNZIPPED_BYTES, MAX_UPLOAD_BYTES, PER_ADDRESS_PER_HOUR, S
 // unpacks past MAX_UNZIPPED_BYTES is refused before SheetJS reads it. The 15 s
 // clock is the Google Sheets fetch's only.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "parse-spreadsheet.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, ingest-parsers lane, S14X-148, S14X-284, RC-S13-066): a CSV is read in the encoding Excel wrote, a Sheets link reads its own tab, and workbooks open with a patched SheetJS.
+const FN_BUILD = "parse-spreadsheet.2026-11-12.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

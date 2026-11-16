@@ -80,7 +80,10 @@ import {
 // 2026-11-11.1 (board .102, catalogue lane): the copy drops 25 boards (OD1's six, nine twins, ten
 // dead or duplicate boards), labels six agencies, repoints 13 boards, renames four and adds
 // Convergint's Workday site; the alias copy drops broadbean and Mindrift.
-export const BUILD_VERSION = "2026-11-11.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, layoff-filings lane): four more states are read by our
+// first read, a notice the state edited retires its old reading, rows an older parser read are read
+// again, and wage cells the ledger refused are not served. The catalogue copy is .102's, unchanged.
+export const BUILD_VERSION = "2026-11-12.1";
 
 // ── mirror constants (src/config/layoffs.ts names this file) ──────────────
 export const LAYOFF_LOOKBACK_DAYS = 90;

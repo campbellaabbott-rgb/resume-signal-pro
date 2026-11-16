@@ -72,7 +72,8 @@ import { retiredCheckoutAnswer } from "../_shared/apply-agent-retired.ts";
 // customer by that customer instead of clearing it when an address
 // search finds nothing, and gained the by-customer and by-account readers.
 // 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "create-agent-checkout.2026-11-10.2";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, payments lane, S14X-078, S14X-080, S14X-211, RC-S13-063, through the shared plan and buyer-record modules): a grant keeps its paid month, a Stripe read writes no stale row, and the buyer record can carry a network key; this function hands it no address.
+const FN_BUILD = "create-agent-checkout.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

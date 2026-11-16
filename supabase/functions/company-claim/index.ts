@@ -75,7 +75,8 @@ import { companyLanderPath } from "./public-href.ts";
 // kept on the claim (company_claims.locale, 20261103195000) for the
 // "verified" notice the owner's decision sends later.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "company-claim.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, site-shell lane, S14X-061): both mails link the company page in the form this host serves, and an inbox that bounced or complained is answered sent with nothing written, counted or mailed.
+const FN_BUILD = "company-claim.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

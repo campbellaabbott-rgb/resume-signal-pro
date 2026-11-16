@@ -86,7 +86,8 @@ import { proStripeDescription } from "../_shared/pro-perks.ts";
 // to the plan they have instead of sold a second one. Who a new plan is
 // billed to is unchanged, and a customer that cannot be read refuses nothing.
 // 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "create-subscription-checkout.2026-11-10.2";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, payments lane, S14X-076, S14X-079, RC-S13-063): a Pro checkout page lasts thirty minutes and closes the account's older open one, the Stripe description names the Full Analysis cap, and the buyer's network key is recorded.
+const FN_BUILD = "create-subscription-checkout.2026-11-12.1";
 
 /** What Stripe's page and receipts say Pro is: the Pro card's own items (_shared/pro-perks.ts), as sentences. */
 export const PRO_STRIPE_DESCRIPTION = proStripeDescription();

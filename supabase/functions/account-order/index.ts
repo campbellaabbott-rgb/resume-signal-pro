@@ -42,7 +42,8 @@ import { requireWebsiteSession } from "../_shared/website-session.ts";
 // (the account's Stripe reads share one limit with the checkouts).
 // 2026-10-14.31 (recheck 3, 2026-10-26): "Email it again" sends the order's own language (the delivery's metadata.language) to send-product-email.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "account-order.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, account lane, S14X-108, S14X-222): a used Pro inclusion is one order under its grant's reference and opens only for the grant's own account, and a Full Analysis mailed again carries its saved analysis or answers that no copy is saved.
+const FN_BUILD = "account-order.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

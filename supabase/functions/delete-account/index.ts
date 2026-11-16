@@ -54,7 +54,8 @@ import { requireWebsiteSession } from "../_shared/website-session.ts";
 // 2026-10-14.25 (wave 4 round 2): plans found by the account, a bound legacy
 // plan accepted, keys and lists erased, a website session only.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "delete-account.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, payments lane, S14X-076): every checkout the account started in the last day is expired before the account goes.
+const FN_BUILD = "delete-account.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -48,7 +48,8 @@ import { sessionWasRefunded } from "../_shared/payment-revocation.ts";
 // 2026-11-10.3 (fix/cost-wave, the integration): both lanes' changes above together.
 // cost/ai and cost/ci-edge each stamped 2026-11-10.2 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "generate-career-path.2026-11-10.3";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, writing-tools lane, S14X-109, through the shared gateway reader): a gateway out of credits is a retryable 503, never a 402.
+const FN_BUILD = "generate-career-path.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

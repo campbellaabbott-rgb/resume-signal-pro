@@ -652,7 +652,8 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // was, as its score does, so the engine version is not bumped and English
 // reports keep their week of cache. Each scan prints its rule score's parts
 // (numbers and codes only).
-const FN_BUILD = "free-keyword-scan.2026-11-15.1";
+// 2026-11-15.2 (bug round of 2026-11-08, part A, free-scan-engine lane, above the NB-1 hotfix's 2026-11-15.1, which it carries): a scan that delivers no full report gives the visitor's day back, an exhausted address makes no hour check, each market is judged by its own norms and page bounds, the nine report languages are read in their own section words, and a triggered-by quote must be on the résumé.
+const FN_BUILD = "free-keyword-scan.2026-11-15.2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

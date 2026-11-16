@@ -30,7 +30,8 @@ import { PREVIEW_FORMAT, PREVIEW_OUTPUT_TOKENS, readPreviewReply } from "./previ
 // asked after a failed flash is no longer the dearest and slowest one. Flash
 // still answers first, behind the same spend gate. Every reply's usage is
 // logged (numbers only), and browsers keep the preflight two hours.
-const FN_BUILD = "generate-product-preview.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, writing-tools lane, S14X-109, through the shared gateway reader): a gateway out of credits is a retryable 503, never a 402.
+const FN_BUILD = "generate-product-preview.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

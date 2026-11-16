@@ -93,7 +93,8 @@ import { sendMail } from "../_shared/send-mail.ts";
 // no longer reads as unmailed and a report that never left does; R10 rings
 // for any scheduled job failing, cancelled every run, switched off or
 // disarmed by a missing vault secret (cron_disarmed_jobs, 20261103120000).
-const FN_BUILD = "mail-watch.2026-11-03.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, ops-alerts lane): a delivered Full Analysis is judged by its report, each new failing order or job rings within a run, a job failing every run rings within the hour, an SPF include that does not exist is named, the mail classes' run stamps are read, and the dead-man check is told of a failure only when an alarm reached nobody.
+const FN_BUILD = "mail-watch.2026-11-12.1";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

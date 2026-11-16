@@ -39,7 +39,8 @@ import { restoreUnsupportedLines, rewrittenResumeFigureIssues, validateProseClai
 // model-call helper it imports (_shared/ai-fallback.ts) now logs one usage
 // line per reply it reads, token counts and the model id only, so the build
 // moves with it.
-const FN_BUILD = "admin-regenerate-delivery.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, past-buyers lane, RC-S12-106): the owner's re-delivery takes out contact details the résumé does not hold, sends a draft with an unstated figure back once, and refuses what still invents one.
+const FN_BUILD = "admin-regenerate-delivery.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -109,7 +109,8 @@ import { websiteSessionOf, type WebsiteAuth } from "../_shared/website-session.t
 // freeChainFrom), never the dearest model after a failed flash; flash still
 // answers first, behind the same sign-in check and spend gate. Every reply's
 // usage is logged (numbers only), and browsers keep the preflight two hours.
-const FN_BUILD = "generate-application-answers.2026-11-10.2";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, writing-tools lane, S14X-090, S14X-119, S14X-205, S14X-268, S14X-109): a letter or essay is left to the reader before any model call, each answer is capped, a failed chunk comes back retryable, a shared ceiling is not worded as the reader's own, a free account's scoring runs on flash, and a gateway out of credits is a retryable 503.
+const FN_BUILD = "generate-application-answers.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

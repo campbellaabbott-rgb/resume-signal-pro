@@ -69,7 +69,8 @@ import { keepPastBuyerCopy } from "../_shared/past-buyer-copy.ts";
 // 2026-11-09.2 (fix/cost-wave, the integration): both lanes' changes above together.
 // cost/ai and cost/ci-edge each stamped 2026-11-09.1 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "generate-cover-letter.2026-11-09.2";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, past-buyers lane, RC-S12-007): the recovery form's copy is kept, recorded and mailed once.
+const FN_BUILD = "generate-cover-letter.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

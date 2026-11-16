@@ -99,7 +99,8 @@ import { requireWebsiteSession } from "../_shared/website-session.ts";
 // the buyer paid in, or no price.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
 // Also (Worth doing, small sequential hops): the checkout_buyers read starts with the mailbox proof, right after the session is accepted, instead of after the proof and the proof row.
-const FN_BUILD = "get-account-data.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, account lane, S14X-108, S14X-221, S14X-223, S14X-100; auth-signin lane, S14X-228, through the shared mailbox guard): each order is listed once under the reference it opens by, statuses are the ones the writers store, a granted agent product is no order, the export holds what only the server can read, and proving the address revokes keys made before it.
+const FN_BUILD = "get-account-data.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

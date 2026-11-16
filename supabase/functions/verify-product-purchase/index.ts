@@ -42,7 +42,8 @@ import { retrieveFailureAnswer } from "./retrieve-failure.ts";
 // customer by that customer instead of clearing it when an address
 // search finds nothing, and gained the by-customer and by-account readers.
 // 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "verify-product-purchase.2026-11-10.2";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, past-buyers lane, S14X-111, S14X-227; payments lane, S14X-078): a refused delivery lease says why, so a closed order with no copy is told so, the order row carries its currency, and a grant keeps its paid month.
+const FN_BUILD = "verify-product-purchase.2026-11-12.1";
 
 /** Why a sale of this product cannot be delivered while it is not sold, or null. */
 function retiredReasonOf(productType: string | null | undefined): string | null {

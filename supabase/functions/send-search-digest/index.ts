@@ -53,7 +53,8 @@ import { postedDaysAgo } from "./posted.ts";
 // agent-ready search is no longer narrowed to the sendable vendors (S13-118);
 // the mail speaks the language kept on the saved search (S13-102).
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "send-search-digest.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, mail lane): each recipient is checked against the do-not-mail list, a saved search's name and query carry no link, domain, address or phone number, a possible fit is called possible, and every run is stamped.
+const FN_BUILD = "send-search-digest.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

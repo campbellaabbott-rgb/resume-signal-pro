@@ -6468,7 +6468,8 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // reply and the streamed analysis each print one [AI-USAGE] line of token
 // counts (ai-usage.ts, the primary's copy byte for byte). A stream that
 // carried no usage chunk prints its counts as '-', the owner's one format.
-const FN_BUILD = "free-keyword-scan-stream.2026-11-10.3";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, free-scan-engine lane): a scan that delivers no full report gives the visitor's day back, the backup scan stops when the page gives up, each market is judged by its own norms and page bounds, and the nine report languages are read in their own section words.
+const FN_BUILD = "free-keyword-scan-stream.2026-11-12.1";
 
 /** The primary's report id formula (free-keyword-scan/report-meta.ts reportIdFor): this report's cache key and its score. */
 async function streamReportId(cacheKey: string, score: unknown): Promise<string> {

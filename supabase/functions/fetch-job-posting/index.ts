@@ -20,7 +20,8 @@ import { runtimeResolver } from "./net-guard.ts";
 // in scope, as a browser's does; and a hidden formatting element a paragraph's end closes keeps hiding the text after it
 // until its own end tag or the end of its table cell, as a browser rebuilds it.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "fetch-job-posting.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, writing-tools lane, S14X-048, S14X-270): the posting is clipped at 17,000 characters, so the uploader's header still fits under the writers' 20,000.
+const FN_BUILD = "fetch-job-posting.2026-11-12.1";
 
 const fetchImpl = (url: string, init: RequestInit) => fetch(url, init);
 const resolve = runtimeResolver(fetchImpl);

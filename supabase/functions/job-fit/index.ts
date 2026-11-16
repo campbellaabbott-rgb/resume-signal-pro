@@ -36,7 +36,8 @@ import { unscoredReason, type UnscoredReason } from "./score-rows.ts";
 // 2026-10-09.1 (wave3/board-data-ingest): the fit score is capped at 100 (_shared/fit-score.ts, L8-13).
 // Provable from outside: every response, the preflight included, carries it.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "job-fit.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, board-ui lane, S14X-052): each posting left unscored carries the reason it was not scored.
+const FN_BUILD = "job-fit.2026-11-12.1";
 
 // x-rb-bucket is deliberately NOT in Allow-Headers: a browser cannot send it,
 // and a server caller does not preflight.
