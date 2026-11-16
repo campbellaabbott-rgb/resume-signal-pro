@@ -92,12 +92,13 @@ function boardMock() {
   });
 }
 
-/** The per-card coverage tooltip carries the exact percentage, so it says which
- *  résumé each badge on screen was actually computed from. */
+/** The per-card score tooltip carries the exact score, so it says which
+ *  résumé each badge on screen was actually computed from. (Since S14X-291 it
+ *  names a score out of 100, not a share of the posting's keywords.) */
 const coverageTooltips = () =>
   Array.from(document.querySelectorAll("[title]"))
     .map((e) => e.getAttribute("title") ?? "")
-    .filter((t) => t.includes("recognized keywords"));
+    .filter((t) => t.startsWith("Keyword fit score "));
 
 const fileInput = () => document.querySelector('input[type="file"]') as HTMLInputElement | null;
 const dropResume = (text: string, name: string) =>
@@ -121,7 +122,7 @@ describe("a second resume the board never read", () => {
     await waitFor(() => expect(fileInput()).not.toBeNull(), SLOW);
     dropResume(NURSE, "nurse.txt");
     await waitFor(() => expect(coverageTooltips().length).toBe(3), SLOW);
-    for (const t of coverageTooltips()) expect(t).toContain("11%");
+    for (const t of coverageTooltips()) expect(t).toContain("score 11 out of 100");
     expect(fitBatches.map((b) => b.ids), "the first résumé must not be scored twice").toHaveLength(1);
     // The handler trims before storing, so compare against what it stores.
     expect(fitBatches[0].resume).toBe(NURSE.trim());

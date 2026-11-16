@@ -256,6 +256,13 @@ export interface LanderModel {
   undatedOpen: number | null;
   /** How many of the employer's boards the figure counts, when more than one (S12-021). */
   pooledBoards: number | null;
+  /**
+   * The one board the hiring record reads, by its own label, when the page
+   * counts more than one (S14X-161): the record RPCs read the page's own
+   * board, so its heading names that board instead of standing under the
+   * pooled count. Null with one board.
+   */
+  recordBoard: string | null;
   /** On the zero page only: what may be said about the board. */
   zeroReading: ZeroReading | null;
   /**
@@ -379,6 +386,19 @@ const WORKDAY_SITE_TOKEN = /^([^~]+)~wd\d+~[^~]+$/;
  * with that same site's own stored rows, and a page that promises stated no
  * total at its newest complete read (job-board never writes 0).
  */
+/**
+ * A board's own label for the hiring record's heading (S14X-161): a Workday
+ * board by its career site ("Global_Experienced_Careers" reads "Global
+ * Experienced Careers"), any other board by its token as written. A BOARD
+ * label, never the employer's name: the name still comes from data or not
+ * at all (landerName).
+ */
+export function recordBoardLabel(boardToken: string): string {
+  const workday = /^[^~]+~wd\d+~([^~]+)$/.exec(boardToken);
+  const site = workday ? workday[1].split("_").join(" ").trim() : "";
+  return site || boardToken;
+}
+
 export function siteDedupedToken(token: string | null | undefined): boolean {
   const t = String(token ?? "");
   if (ORACLE_SITE_TOKEN.test(t)) return true;
@@ -570,6 +590,7 @@ export function buildLanderModel(input: LanderInput): LanderModel {
     boardTotal: employerBoard ? boardTotalFact(input.boardTotal, input.now ?? Date.now()) : null,
     undatedOpen: employerBoard ? undated : null,
     pooledBoards: employerBoard && typeof input.pooledBoards === "number" && input.pooledBoards > 1 ? input.pooledBoards : null,
+    recordBoard: employerBoard && typeof input.pooledBoards === "number" && input.pooledBoards > 1 ? recordBoardLabel(input.token) : null,
     zeroReading: variant === "zero" ? zeroReadingOf(input) : null,
     watchPromise: variant === "zero" ? watchPromiseOf(input) : !siteDedupedToken(input.token),
     nameSettled: !input.loading && (input.error || input.budgetRefusal || finite(input.listTotal)),

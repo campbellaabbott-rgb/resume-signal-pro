@@ -91,7 +91,7 @@ import { PASS } from "../config/products";
 import { changelog } from "../data/changelog";
 import {
   agentPrompt, agentDeepLink, DEEP_LINK_HOST_NAMES, HOST_STORAGE_KEY, SEARCH_ARG_DROPS, SEARCH_ARG_RENAMES,
-  searchPrompt, setupPath, toSearchJobsArgs, tool,
+  searchPrompt, setupPath, toSearchJobsArgs, tool, isWithheldSource, withheldVendorLabels,
 } from "../lib/agent-handoff";
 
 vi.setConfig({ testTimeout: 30_000 });
@@ -847,4 +847,99 @@ describe("3. the changelog entry is one, dated, and count-free in every locale",
       expect(`${e.title} ${e.description}`).not.toMatch(/hired|only way/i);
     });
   }
+});
+
+// ───────────────────────── 3. what the connector does not hand on ─────────
+
+describe("3. a system the connector withholds is not handed on (S14X-054)", () => {
+  it("the search mapper drops a withheld vendor, and drops the key when nothing is left", () => {
+    expect(isWithheldSource("SmartRecruiters")).toBe(true);
+    expect(isWithheldSource("greenhouse")).toBe(false);
+    expect(toSearchJobsArgs({ vendor: "greenhouse,smartrecruiters" }).vendor).toBe("greenhouse");
+    expect("vendor" in toSearchJobsArgs({ vendor: "smartrecruiters,usajobs" }), "a vendor key naming only withheld systems was handed on").toBe(false);
+    expect(withheldVendorLabels({ vendor: "greenhouse,smartrecruiters" })).toEqual(["SmartRecruiters"]);
+  });
+
+  it("the search prompt says which systems it left out, and says nothing when none were", () => {
+    expect(searchPrompt({ q: "nurse" }, { withheld: ["SmartRecruiters"] }))
+      .toContain("The board's filter also named SmartRecruiters, whose postings the server does not hand on, so they are not included here; they stay on the job board.");
+    expect(searchPrompt({ q: "nurse" })).not.toMatch(/does not hand on/);
+  });
+});
+
+const SR_ROW = {
+  ...ROWS[1], id: "smartrecruiters:gamma:9", source: "smartrecruiters", token: "gamma", company: "Gamma", title: "Retail Supervisor", applyUrl: "https://x/9",
+};
+function mountWith(rows: typeof ROWS, path = "/jobs") {
+  window.history.replaceState({}, "", path);
+  rpc.mockImplementation(async () => ({ data: [], error: null }));
+  invoke.mockImplementation(async (fn: string, a: { body?: Body } | undefined) => {
+    const b = a?.body ?? {};
+    if (fn === "job-fit") return { data: { terms: [] }, error: null };
+    if (fn === "job-board" && b.action === "detail") return { data: { job: rows.find((r) => r.id === b.id) ?? null, description: "A role." } };
+    if (fn === "job-board" && b.action === "facets") return { data: { categories: {}, refreshedAt: ago(0), sources: {}, sourcesAt: ago(0) }, error: null };
+    if (fn === "job-board" && b.action === "list") {
+      if (b.facetCounts) return { data: { categories: {} } };
+      if (b.countOnly) return { data: { total: rows.length } };
+      return { data: { jobs: rows, total: rows.length, totalAllCompanies: rows.length, companies: [], companiesCount: 0, categories: {}, failedSources: [], failedCount: 0, refreshedAt: null, hasMore: false } };
+    }
+    return { data: {} };
+  });
+  return render(<MemoryRouter><Jobs /></MemoryRouter>);
+}
+
+describe("3. on /jobs, a withheld posting offers no hand-off (S14X-054)", () => {
+  beforeEach(() => {
+    try { localStorage.clear(); sessionStorage.clear(); } catch { /* blocked */ }
+    invoke.mockReset(); rpc.mockReset(); toastSpy.mockReset();
+  });
+
+  it("positive control and the case: the greenhouse-style row's menu hands on; the SmartRecruiters row's does not, and its panel says why", async () => {
+    mountWith([ROWS[1], SR_ROW]);
+    await waitFor(() => expect(text()).toContain("Retail Supervisor"), SLOW);
+    const { openPostingMenu } = await import("./helpers/posting-menu");
+    const okMenu = await openPostingMenu(card("Warehouse Associate"));
+    expect(within(okMenu).queryAllByRole("menuitem", { name: "Open in Claude or ChatGPT" }).length).toBe(1);
+    fireEvent.keyDown(okMenu, { key: "Escape" });
+    const srMenu = await openPostingMenu(card("Retail Supervisor"));
+    expect(within(srMenu).queryAllByRole("menuitem", { name: "Open in Claude or ChatGPT" }), "a withheld posting was offered to the connector").toEqual([]);
+    fireEvent.keyDown(srMenu, { key: "Escape" });
+    fireEvent.click(card("Retail Supervisor"));
+    await waitFor(() => expect(document.querySelector("[data-handoff-withheld]")?.textContent)
+      .toBe("The AI connector does not hand on SmartRecruiters postings: open this one here instead."), SLOW);
+    expect(screen.queryAllByLabelText("Which agent?"), "the withheld posting's panel kept the chooser").toEqual([]);
+  });
+});
+
+describe("3. the deep link appears only for a host the reader picked (S14X-174)", () => {
+  const realMatchMedia = window.matchMedia;
+  beforeEach(() => {
+    try { localStorage.clear(); sessionStorage.clear(); } catch { /* blocked */ }
+    invoke.mockReset(); rpc.mockReset(); toastSpy.mockReset();
+  });
+  afterEach(() => { window.matchMedia = realMatchMedia; });
+
+  it("with no pick and nothing remembered, the panel offers no claude:// link; a pick brings it", async () => {
+    mountWith(ROWS);
+    await settled();
+    fireEvent.click(card("Warehouse Associate"));
+    await panelOpen();
+    expect(screen.queryAllByRole("link", { name: /Open there/ }), "a deep link was offered before any host was chosen").toEqual([]);
+    const host = DEEP_LINK_HOST_NAMES[0];
+    for (const select of screen.getAllByLabelText("Which agent?") as HTMLSelectElement[]) fireEvent.change(select, { target: { value: host } });
+    expect((await screen.findAllByRole("link", { name: /Open there/ })).length).toBeGreaterThan(0);
+  });
+
+  it("on a touch device a remembered deep-link host gets no link: the desktop app is not there", async () => {
+    window.matchMedia = ((q: string) => ({
+      matches: q.includes("pointer: coarse"), media: q, onchange: null,
+      addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    localStorage.setItem(HOST_STORAGE_KEY, DEEP_LINK_HOST_NAMES[0]);
+    mountWith(ROWS);
+    await settled();
+    fireEvent.click(card("Warehouse Associate"));
+    await panelOpen();
+    expect(screen.queryAllByRole("link", { name: /Open there/ })).toEqual([]);
+  });
 });

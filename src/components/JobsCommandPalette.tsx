@@ -26,6 +26,7 @@ export function JobsCommandPalette({
   const [q, setQ] = useState("");
   const [idx, setIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  useReturnFocus(open);
   const filtered = useMemo(
     () => actions.filter((a) => a.label.toLowerCase().includes(q.toLowerCase())),
     [actions, q],
@@ -39,7 +40,12 @@ export function JobsCommandPalette({
   }, [open]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[70] flex items-start justify-center pt-[15vh] bg-black/50" onClick={onClose} role="dialog" aria-modal="true" aria-label={t("jobsPage.paletteTitle", "Quick actions")}>
+    <div
+      className="fixed inset-0 z-[70] flex items-start justify-center pt-[15vh] bg-black/50" onClick={onClose} role="dialog" aria-modal="true" aria-label={t("jobsPage.paletteTitle", "Quick actions")}
+      // THE PALETTE KEEPS THE KEYBOARD (NB-26): Tab stays in its box, which
+      // is the search field (the arrows choose the action).
+      onKeyDown={(e) => { if (e.key === "Tab") { e.preventDefault(); inputRef.current?.focus(); } }}
+    >
       <div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
           <Search className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -51,7 +57,7 @@ export function JobsCommandPalette({
               if (e.key === "ArrowDown") { e.preventDefault(); setIdx((i) => Math.min(i + 1, filtered.length - 1)); }
               else if (e.key === "ArrowUp") { e.preventDefault(); setIdx((i) => Math.max(i - 1, 0)); }
               else if (e.key === "Enter" && filtered[idx]) { e.preventDefault(); filtered[idx].run(); onClose(); }
-              else if (e.key === "Escape") onClose();
+              else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); onClose(); }
             }}
             placeholder={t("jobsPage.paletteHint", "Type a command or filter…")}
             className="flex-1 bg-transparent text-sm focus:outline-none"
@@ -82,8 +88,34 @@ export function JobsCommandPalette({
   );
 }
 
+/**
+ * Where focus was when a layer opened, given back when it closes (NB-26), so
+ * a keyboard reader lands where they were rather than at the top of the page.
+ */
+function useReturnFocus(open: boolean) {
+  const before = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    before.current = document.activeElement as HTMLElement | null;
+    return () => {
+      const el = before.current;
+      before.current = null;
+      if (el && typeof el.focus === "function" && document.contains(el)) el.focus();
+    };
+  }, [open]);
+  return before;
+}
+
 export function ShortcutsOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
+  const boxRef = useRef<HTMLDivElement>(null);
+  useReturnFocus(open);
+  // THE CARD OWNS THE KEYBOARD WHILE IT IS OPEN (NB-26). It took no focus
+  // and read no key, so Escape closed the posting behind it and Enter opened
+  // that posting's apply page and marked it Applied.
+  useEffect(() => {
+    if (open) boxRef.current?.focus();
+  }, [open]);
   if (!open) return null;
   const rows: Array<[string, string]> = [
     ["↑ / ↓  ·  j / k", t("jobsPage.scNavigate", "Move through postings")],
@@ -94,8 +126,14 @@ export function ShortcutsOverlay({ open, onClose }: { open: boolean; onClose: ()
     ["?", t("jobsPage.scHelp", "Show or hide this help")],
   ];
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50" onClick={onClose} role="dialog" aria-modal="true" aria-label={t("jobsPage.scTitle", "Keyboard shortcuts")}>
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-5" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50" onClick={onClose} role="dialog" aria-modal="true" aria-label={t("jobsPage.scTitle", "Keyboard shortcuts")}
+      onKeyDown={(e) => {
+        if (e.key === "Escape" || e.key === "Enter") { e.preventDefault(); e.stopPropagation(); onClose(); }
+        else if (e.key === "Tab") { e.preventDefault(); boxRef.current?.focus(); }
+      }}
+    >
+      <div ref={boxRef} tabIndex={-1} data-shortcuts-card="" className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-5 focus:outline-none" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
           <Command className="w-4 h-4" />
           {t("jobsPage.scTitle", "Keyboard shortcuts")}

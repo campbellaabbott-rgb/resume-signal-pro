@@ -61,7 +61,8 @@ import { CompanyClaim } from "@/components/jobs/CompanyClaim";
 import { CompanyIntelPanel } from "@/components/jobs/CompanyIntelPanel";
 import { CompanyPerks } from "@/components/jobs/CompanyPerks";
 import { PublicCompanyCard } from "@/components/jobs/PublicCompanyCard";
-import { EmployerContext } from "@/components/jobs/EmployerContext";
+import { EmployerContext, fmtMoney } from "@/components/jobs/EmployerContext";
+import { cardAgeText } from "@/components/jobs/listing/listing-text";
 import { HIRING_RECORD_GATE_COPY, LAP_BUCKET, LAP_MODE_BUCKETS, feedReadStatable, hiringRecordGate, type HiringRecordRefusal } from "@/lib/hiring-record-gate";
 import { datedHeadcount } from "@/lib/headcount";
 import { SavedSearchPills } from "@/components/jobs/SavedSearchPills";
@@ -85,6 +86,7 @@ import { FilterBar, type FilterBarValue } from "@/components/jobs/FilterBar";
 import { HowApplyingWorks } from "@/components/jobs/HowApplyingWorks";
 import { applySystem, cleanApplyUrl } from "@/lib/listing/apply-url";
 import { listingEmployer } from "@/lib/listing/employer";
+import { listingAge } from "@/lib/listing/age";
 import { displayLocation as listingDisplayLocation } from "@/lib/listing/location";
 import { postingJsonLd } from "@/components/jobs/posting-page";
 import { LcaFiledWagesLine } from "@/components/jobs/LcaFiledWagesLine";
@@ -115,13 +117,15 @@ import { writingToolToast } from "@/lib/writing-refusal";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchName, searchToQuery } from "@/lib/job-search-params";
 import { boardName, boardNamesItsHirer, companyDisplayName, cleanJobTitle, decodeNameEntities, possessive } from "@/lib/company-display";
+import { employerNameOverride } from "@/lib/employer-names";
 import { displaySalary } from "@/lib/salary-display";
 import { adjacentRoles } from "@/lib/role-adjacency";
 import { accentFor } from "@/lib/category-accent";
 import { JobsCommandPalette, ShortcutsOverlay, useGlobalPaletteKeys, type PaletteAction } from "@/components/JobsCommandPalette";
 import { isBoardCategory } from "@/lib/job-board-categories";
 import { honourPendingSkipLink } from "@/lib/skip-link";
-import { agentPrompt, agentDeepLink, toSearchJobsArgs, searchPrompt, copyText, rememberedHostName, rememberHostName, setupPath, type HandoffJob, type SearchSort } from "@/lib/agent-handoff";
+import { agentPrompt, agentDeepLink, toSearchJobsArgs, searchPrompt, copyText, rememberedHostName, rememberedHostChoice, rememberHostName, setupPath, isWithheldSource, withheldVendorLabels, type HandoffJob, type SearchSort } from "@/lib/agent-handoff";
+import { systemLabel } from "@/lib/listing/apply-url";
 import { SaveFromLinkPrompt, saveRequestFrom } from "@/components/jobs/SaveFromLinkPrompt";
 import { MCP_CHOOSER_HOSTS } from "@/config/mcp-tools";
 
@@ -1092,6 +1096,8 @@ const MAX_YEARS_STEPS = [1, 2, 3, 5, 7, 10, 15, 20] as const;
 // roles they are overqualified for and will not be called about).
 const SALARY_FLOOR_STEPS = [40_000, 60_000, 80_000, 100_000, 120_000, 150_000, 200_000] as const;
 const SALARY_CEILING_STEPS = [60_000, 80_000, 100_000, 120_000, 150_000, 200_000, 250_000, 300_000] as const;
+/** A set value that is none of a select's steps (0 is "any", which every select holds). */
+const offStep = (v: number, steps: readonly number[]) => v > 0 && !steps.includes(v);
 /**
  * THE DATE THE PAY BAND'S EXCHANGE RATES STOPPED MOVING.
  *
@@ -1799,6 +1805,72 @@ function countryLabel(code: string): string {
   }
 }
 
+/**
+ * WHAT A SIGNED-OUT CLICK ASKED FOR, KEPT ACROSS THE SIGN-IN (NB-3).
+ *
+ * "Alert me", Save job, Save search, Watch and Prepare sent a signed-out
+ * reader to a bare /auth, which lands on the account page: the board, its
+ * filters and the thing they clicked were all gone. The click is kept here
+ * with the page it was made on, and the board does it once when it mounts
+ * signed in on that page. localStorage, not sessionStorage: a sign-in link
+ * opened from the mail lands in a new tab. An hour, then it is dropped.
+ */
+export const PENDING_BOARD_ACTION_KEY = "rb_board_pending_action";
+const PENDING_BOARD_ACTION_TTL_MS = 60 * 60_000;
+export type PendingBoardAction =
+  | { kind: "saveJob"; job: { id: string; company: string; title: string; applyUrl: string; location: string } }
+  | { kind: "saveSearch"; alert: boolean }
+  | { kind: "watch"; promise: boolean }
+  | { kind: "prepare"; jobId: string };
+function stashBoardAction(a: PendingBoardAction, now: number = Date.now()): void {
+  try { localStorage.setItem(PENDING_BOARD_ACTION_KEY, JSON.stringify({ ...a, at: now, path: window.location.pathname })); } catch { /* blocked storage: the sign-in still returns here */ }
+}
+/** The kept click for this page, still inside its hour, or null. Does not remove it. */
+function peekBoardAction(now: number = Date.now()): PendingBoardAction | null {
+  try {
+    const raw = JSON.parse(localStorage.getItem(PENDING_BOARD_ACTION_KEY) ?? "null") as (PendingBoardAction & { at?: unknown; path?: unknown }) | null;
+    if (!raw || typeof raw.at !== "number" || now - raw.at > PENDING_BOARD_ACTION_TTL_MS || now < raw.at) return null;
+    if (raw.path !== window.location.pathname) return null;
+    if (raw.kind === "saveJob" && raw.job && typeof raw.job.id === "string") return { kind: "saveJob", job: raw.job };
+    if (raw.kind === "saveSearch") return { kind: "saveSearch", alert: raw.alert === true };
+    if (raw.kind === "watch") return { kind: "watch", promise: raw.promise !== false };
+    if (raw.kind === "prepare" && typeof raw.jobId === "string") return { kind: "prepare", jobId: raw.jobId };
+    return null;
+  } catch { return null; }
+}
+function clearBoardAction(): void {
+  try { localStorage.removeItem(PENDING_BOARD_ACTION_KEY); } catch { /* blocked */ }
+}
+
+/**
+ * A function's refusal as the page can read it: the HTTP status and the JSON
+ * body supabase-js keeps on error.context (a Response). Nulls when the error
+ * carries neither (a network failure, a thrown fetch).
+ */
+async function refusalOf(error: unknown): Promise<{ status: number | null; body: Record<string, unknown> | null }> {
+  const ctx = (error as { context?: unknown } | null)?.context as { status?: unknown; clone?: () => unknown; json?: () => Promise<unknown> } | undefined;
+  const status = typeof ctx?.status === "number" ? ctx.status : null;
+  let body: Record<string, unknown> | null = null;
+  try {
+    const r = (typeof ctx?.clone === "function" ? ctx.clone() : ctx) as { json?: () => Promise<unknown> } | undefined;
+    if (r && typeof r.json === "function") {
+      const b = await r.json();
+      if (b && typeof b === "object" && !Array.isArray(b)) body = b as Record<string, unknown>;
+    }
+  } catch { /* not JSON, or already read */ }
+  return { status, body };
+}
+
+/**
+ * THE PANE'S AGE IS THE CARD'S (NB-22): src/lib/listing/age.ts, the rule the
+ * card prints, so the two cannot disagree about one posting. Null for an
+ * undated posting and for a system that re-dates a posting when it is
+ * edited, whose date is not the day the employer posted it.
+ */
+function paneAgeDays(job: Pick<BoardJob, "id" | "postedAt"> & { source?: string | null }): number | null {
+  const age = listingAge(job as Parameters<typeof listingAge>[0]);
+  return age.kind === "dated" ? age.days : null;
+}
 
 function daysAgo(iso: string | null): number | null {
   if (!iso) return null;
@@ -2352,8 +2424,15 @@ function JobAgentHandoff({ job, compact, track }: {
 }) {
   const { t } = useTranslation();
   const [host, setHost] = useState<string>(() => rememberedHostName());
+  // THE LINK WAITS FOR A PICK (S14X-174). The select shows a default host,
+  // and the claude:// link was built from that default before the reader had
+  // said which agent they use; it is built only from a host they chose (in
+  // this select, or remembered from an earlier pick), and never on a touch
+  // screen, where no desktop app is there to open it.
+  const [picked, setPicked] = useState<string | null>(() => rememberedHostChoice());
+  const coarse = typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
   const prompt = agentPrompt(job);
-  const deep = agentDeepLink(host, prompt);
+  const deep = picked && !coarse ? agentDeepLink(picked, prompt) : null;
   const copy = () => handOffJobToAgent(job, host, track, (k, d) => t(k, d));
   const button = (
     <button
@@ -2376,7 +2455,7 @@ function JobAgentHandoff({ job, compact, track }: {
           is remembered in the browser and shared with the pass receipt page. */}
       <select
         value={host}
-        onChange={(e) => { setHost(e.target.value); rememberHostName(e.target.value); }}
+        onChange={(e) => { setHost(e.target.value); setPicked(e.target.value); rememberHostName(e.target.value); }}
         aria-label={t("jobsPage.whichAgent", "Which agent?")}
         className="text-[11px] px-1.5 py-0.5 rounded-md border border-border bg-background text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
       >
@@ -2942,7 +3021,33 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     try {
       const { data, error } = await supabase.functions.invoke("nl-search", { body: { query: raw } });
       const f = (data as { filters?: Record<string, unknown> } | null)?.filters;
-      if (error || !f) { toast({ title: t("jobsPage.nlFailed", "Couldn't read that — try the filters below instead.") }); return; }
+      // The words as a plain keyword search: the way out of every refusal
+      // below that is not the reader's own sentence's fault.
+      const asKeywords = { label: t("boardUi.nlRunAsKeywords", "Search these words instead"), onClick: () => { setQ(raw); setNlOpen(false); } };
+      if (error) {
+        // A REFUSAL IS NAMED FOR WHAT IT IS (S14X-293). The spend gate's 429
+        // carries its own sentence (the hourly allowance, or the busy
+        // ceiling); a gateway that is down or out of credit, a limiter that
+        // cannot answer, and the eight-second budget are not the reader's
+        // sentence, so they are not "couldn't read that".
+        const { status, body } = await refusalOf(error);
+        const sentence = typeof body?.error === "string" && typeof body?.code === "string" ? body.error : null;
+        if (status === 429 && sentence) { toast({ title: sentence }); return; }
+        if (status === 429 || status === 402 || status === 502 || status === 503 || status === 504) {
+          toast({ title: t("boardUi.nlUnavailable", "Plain-language search is unavailable right now."), action: asKeywords });
+          return;
+        }
+        toast({ title: t("jobsPage.nlFailed", "Couldn't read that — try the filters below instead.") });
+        return;
+      }
+      if (!f) { toast({ title: t("jobsPage.nlFailed", "Couldn't read that — try the filters below instead.") }); return; }
+      // AN ANSWER THAT BINDS NOTHING CHANGES NOTHING (NB-23). Read as "every
+      // filter off", it cleared the reader's own filters for a sentence the
+      // model could not map at all.
+      if (Object.keys(f).length === 0) {
+        toast({ title: t("boardUi.nlNothingRead", "Nothing in that sentence matched a filter, so your filters are unchanged."), action: asKeywords });
+        return;
+      }
       // Apply the parsed filters through the existing setters; reset the ones
       // NOT returned so the applied state matches the interpretation exactly.
       setQ(typeof f.q === "string" ? f.q : "");
@@ -3005,6 +3110,10 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       // paying first" → salary sort. Reset like the other fields.
       setActivelyHiringOnly(f.activelyHiring === true);
       setSortMode(f.sort === "salary" ? "salary" : "newest");
+      // "Newest first" with a keyword is served newest first (S14X-292): on a
+      // keyword search the board ranks by relevance unless this is on, and a
+      // parse that does not say so switches a stale toggle off.
+      setSearchNewestFirst(f.sort === "newest" && typeof f.q === "string" && f.q.trim() !== "");
       const d = data as { interpreted?: string[]; notMapped?: string[]; applied?: unknown; dropped?: unknown };
       const names = (v: unknown): string[] | null =>
         Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x !== "") : null;
@@ -3121,6 +3230,31 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   const [fitRetry, setFitRetry] = useState(0);
   const FIT_BATCH = 20;
   const [fits, setFits] = useState<Record<string, number | null>>({});
+  // WHY A NULL IS A NULL (S14X-052): job-fit's `unscored` reason beside each
+  // null. A job-fit that sends none leaves this empty, and a null reads as
+  // it always did.
+  const [fitWhy, setFitWhy] = useState<Record<string, "no_description" | "no_recognised_terms">>({});
+  // THE HOURLY ALLOWANCE IS NOT A BLIP (S14X-294). job-fit's 429 names the
+  // allowance and its window; it was counted with every other failure and
+  // printed as "usually temporary", with a Try again that asked again inside
+  // the same hour. Held here until the window has passed: no batch is asked
+  // for, Load more included, and Try again appears only then.
+  const [fitLimited, setFitLimited] = useState<{ message: string | null; limit: number | null; window: "1h" | "24h"; until: number } | null>(null);
+  // Ids a batch left without an answer, and why, so the open posting says so
+  // instead of spinning on a score that is not coming.
+  const [fitHeld, setFitHeld] = useState<Record<string, "limit" | "failed">>({});
+  const [, setFitClock] = useState(0);
+  /** Why this id has no answer and none is coming: the allowance, a failed call, or null (scored, or in flight). */
+  const fitHeldOf = (id: string): "limit" | "failed" | null =>
+    fitHeld[id] ?? (fitLimited && Date.now() < fitLimited.until ? "limit" : null);
+  // One render when the allowance's window ends, so Try again appears then.
+  useEffect(() => {
+    if (!fitLimited) return;
+    const ms = fitLimited.until - Date.now();
+    if (ms <= 0) return;
+    const id = window.setTimeout(() => setFitClock((n) => n + 1), Math.min(ms + 50, 2_000_000_000));
+    return () => window.clearTimeout(id);
+  }, [fitLimited]);
   // Top missing keywords per posting id — the "add these to compete" signal
   // rendered inline on each card once fit-ranking is on.
   const [misses, setMisses] = useState<Record<string, string[]>>({});
@@ -3182,6 +3316,8 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     // résumé arriving while the reader has typed a query of their own — in
     // both cases `jobs` never changes, and `jobs` was the only trigger).
     setFits({});
+    setFitWhy({});
+    setFitHeld({});
     setMisses({});
     setHits({});
     setFitFailedCount(0);
@@ -3223,6 +3359,9 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // compare cards with headcount/public-co facts when they exist.
   const [compareCtx, setCompareCtx] = useState<Record<string, EmployerCtx>>({});
   const [compareOpen, setCompareOpen] = useState(false);
+  // The tray's Compare button: the sheet has no Radix trigger, so its close
+  // hands focus back here by name (S14X-175).
+  const compareButtonRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!compareOpen) return;
     for (const id of compareIds) {
@@ -3711,19 +3850,22 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       }, () => {});
   }, [session]);
 
-  const requireAuth = () => {
+  // THE SIGN-IN COMES BACK HERE (NB-3): to this page with its filters, and
+  // the click that sent the reader away is done once they are signed in.
+  const requireAuth = (action?: PendingBoardAction) => {
+    if (action) stashBoardAction(action);
     toast({
       title: t("jobsPage.signInToSaveTitle", "Sign in to track jobs"),
       description: t("jobsPage.signInToSave", "Saved jobs and searches live in your free account."),
     });
-    navigate("/auth");
+    navigate(`/auth?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
   };
 
   // Save = a 'saved' row in the SAME application tracker Account already
   // shows. Best effort afterwards: pull the description so the tracker's
   // deterministic fit check is one click instead of a paste.
   const saveJob = async (job: BoardJob) => {
-    if (!session) return requireAuth();
+    if (!session) return requireAuth({ kind: "saveJob", job: { id: job.id, company: job.company, title: job.title, applyUrl: job.applyUrl, location: job.location } });
     if (savedIds.has(job.id)) return;
     setSavedIds((prev) => new Set(prev).add(job.id));
     // Attach the latest scan as the working resume version — keeps "sent
@@ -3778,6 +3920,15 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     } catch { /* enrichment is a bonus — the save already landed */ }
   };
 
+  // A SAVED POSTING'S BOOKMARK OPENS THE TRACKER (S14X-173). Its title says
+  // "In your application tracker — click to open it"; the click went to
+  // saveJob, which returns at once for a saved id, so nothing happened.
+  // #pipeline is the section Account renders the tracker in.
+  const saveOrOpenTracker = (job: BoardJob) => {
+    if (savedIds.has(job.id)) { navigate("/account#pipeline"); return; }
+    void saveJob(job);
+  };
+
   // The tracker fills itself on Apply clicks (below) but did so silently —
   // surface it when the user comes back from the company's site, so they know
   // the row exists and can fix it if they didn't actually submit.
@@ -3823,7 +3974,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // exists"). A plain save stays email-silent — clicking Save is not consent
   // to be mailed; clicking an alert CTA is, and it gets the daily cadence.
   const saveCurrentSearch = async (alert = false) => {
-    if (!session) return requireAuth();
+    if (!session) return requireAuth({ kind: "saveSearch", alert });
     // Every active filter must ride along: a saved search is a promise to mail
     // THIS query. country and the freshness window were dropped, so a US-only
     // zero-result "Alert me when this exists" saved an all-countries search
@@ -3840,14 +3991,15 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       remote: (remoteOnly && !workMode) || undefined,
       workMode: workMode || undefined,
       employmentType: employmentType || undefined,
-      // ONE TOKEN OR NONE, and the multi-employer case is named in the toast
-      // instead. send-search-digest hand-lists the params it forwards and sends
-      // `companies: p.company ? [p.company] : undefined` — one array element —
-      // so a comma-joined "a,b" saved here reaches the board as a single
-      // employer token spelled "a,b", which matches nothing. The digest would
-      // then never fire and never say why. Saving what the runner can honour
-      // and naming what it cannot is the same rule activelyHiring follows.
+      // THE BOARDS ON SCREEN, ALL OF THEM (RC-S12-021). `company` stays one
+      // token, never a comma-joined pair the board would read as one
+      // employer; `companies` is every board the screen covers: an employer
+      // page's pool, or the employers a multi-employer search names.
+      // send-search-digest and the board read it first (companiesOf), so the
+      // mail covers what the screen showed. Saved as one token only, a
+      // pooled page mailed one of its boards.
       company: companyTokens.length === 1 ? companyTokens[0] : undefined,
+      companies: landerScope ?? (companyTokens.length > 1 ? companyTokens : undefined),
       country: country || undefined,
       salaryFloor: salaryFloor || undefined,
       maxAgeDays: Number(freshness) || undefined,
@@ -3872,27 +4024,50 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       // drop of 2026-07-26 in new clothes.
       excludeAgencies: hideAgencies || undefined,
     };
-    const name = searchName(
+    // The bands by name, every one (NB-4): "2 levels" named entry+mid and
+    // senior+expert alike, so the second save collided with the first.
+    const bands = experience.split(",").filter(Boolean);
+    let name = searchName(
       params,
       category ? t(`jobsPage.categories.${category}`, category) : undefined,
-      experience
-        ? (experience.split(",").filter(Boolean).length === 1
-          ? t(`jobsPage.experience.${experience}`, experience)
-          : t("jobsPage.nExperience", "{{n}} levels", { n: experience.split(",").filter(Boolean).length }))
-        : undefined,
+      bands.length ? bands.map((b) => t(`jobsPage.experience.${b}`, b)).join("/") : undefined,
     );
     // The page's language is what the digest is written in (S13-102); a
     // database with no such column yet takes the write without it.
-    let { error: err } = await writeWithDigestLocale(i18n.language, (lang) => searchesTable().insert({
-      user_id: session.user.id, name, params, ...lang,
-      ...(alert ? { digest_opt_in: true, digest_cadence: "daily" } : {}),
-    }));
-    // Deploy-skew guard (same as watchCompany): a missing cadence column must
-    // not fail the save — fall back to opt-in without it.
-    if (err && alert && /digest_cadence/.test(err.message ?? "")) {
-      ({ error: err } = await writeWithDigestLocale(i18n.language, (lang) => searchesTable().insert({
-        user_id: session.user.id, name, params, digest_opt_in: true, ...lang,
-      })));
+    const insertAs = async (as: string) => {
+      let { error: e } = await writeWithDigestLocale(i18n.language, (lang) => searchesTable().insert({
+        user_id: session.user.id, name: as, params, ...lang,
+        ...(alert ? { digest_opt_in: true, digest_cadence: "daily" } : {}),
+      }));
+      // Deploy-skew guard (same as watchCompany): a missing cadence column must
+      // not fail the save — fall back to opt-in without it.
+      if (e && alert && /digest_cadence/.test(e.message ?? "")) {
+        ({ error: e } = await writeWithDigestLocale(i18n.language, (lang) => searchesTable().insert({
+          user_id: session.user.id, name: as, params, digest_opt_in: true, ...lang,
+        })));
+      }
+      return e;
+    };
+    let err = await insertAs(name);
+    // A NAME IS NOT A SEARCH (NB-4). The table is unique on (user, name), and
+    // a name can be shared by two searches that differ (a rounded figure, an
+    // older bundle's name). On a collision the saved row's own filters are
+    // read: the same search is the one on screen; a different one is not, so
+    // this search is saved beside it under a numbered name and the other
+    // row is left as it was. A row that cannot be read keeps the old answer.
+    if (err && err.code === "23505") {
+      let held: unknown = undefined;
+      try {
+        const { data: row } = await searchesTable().select("params").eq("user_id", session.user.id).eq("name", name).maybeSingle();
+        held = (row as { params?: unknown } | null)?.params;
+      } catch { /* unreadable: the old answer stands */ }
+      if (held && typeof held === "object" && searchToQuery(held as Parameters<typeof searchToQuery>[0]) !== searchToQuery(params)) {
+        for (let n = 2; n <= 9 && err?.code === "23505"; n++) {
+          const numbered = `${name} (${n})`;
+          err = await insertAs(numbered);
+          if (!err) name = numbered;
+        }
+      }
     }
     // AN ALERT ON A SEARCH ALREADY SAVED TURNS THE ALERT ON (sweep S11-037).
     // The name is a pure function of the filters and the table is unique on
@@ -3922,16 +4097,14 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       toast({ title: t("jobsPage.saveFailed", "Couldn't save — try again.") });
       return;
     }
-    const filterLabel = (k: string) => t(`jobsPage.filterName.${k}`, k);
-    // WAS seven filters longer. salaryCeiling, payBasis, hasStatedPay,
-    // includeUnstatedPay, maxYears, department and vendor are SAVED now and the
-    // digest forwards them — naming a filter as un-mailable while mailing it
-    // would be the same drift this toast exists to prevent, inverted. Only the
-    // genuinely un-mailable remain: a multi-employer scope (the digest runner
-    // sends one token) and Actively hiring (browser-side, no server predicate).
-    const unsavedFilters = [
-      companyTokens.length > 1 ? filterLabel("companies") : "",
-    ].filter(Boolean);
+    // WAS seven filters longer, then one. salaryCeiling, payBasis,
+    // hasStatedPay, includeUnstatedPay, maxYears, department and vendor are
+    // SAVED and the digest forwards them, and so are the employers, as
+    // `companies` (RC-S12-021) — naming a filter as un-mailable while mailing
+    // it would be the same drift this toast exists to prevent, inverted. Only
+    // Actively hiring (browser-side, no server predicate) remains, below; the
+    // list stays for the next filter the digest cannot read.
+    const unsavedFilters = [] as string[];
     // ACTIVELY HIRING CANNOT RIDE ALONG, SO IT IS NAMED INSTEAD OF SAVED.
     // It filters the fetched page in the browser (jobs.filter on the fill
     // record); the board has no such predicate, so the nightly runner cannot
@@ -4386,6 +4559,15 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     // grid" on reload and on every shared link.
     const backParam = new URLSearchParams(window.location.search).get("back");
     if (backParam) p.set("back", backParam);
+    // A FILTERED COMPANY PAGE STAYS ON ITS PAGE (S14X-014). The query form
+    // carried company=<primary>, and a reload or a shared link of it was the
+    // board scoped to one board: the page's route, and with it the pool of
+    // the employer's other boards (usePooledBoards), was gone. On its own page
+    // the company is the route, so it leaves the query, and the write below
+    // lands on the page's own address with the filters as its query, which
+    // re-enters the page and re-pools.
+    const filteredOwnPage = !!landerCompany && company === landerCompany;
+    if (filteredOwnPage) p.delete("company");
     const qs = p.toString();
     // THE LANDER FORM IS A REWRITE, NOT A PASSTHROUGH. Both lander branches
     // below build their URL by hand and `return` before `qs` is ever used, so
@@ -4439,7 +4621,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       writeBoardEntry("replace", boardId, `/jobs/field/${landerCategory}${landerQs ? `?${landerQs}` : ""}`);
       return;
     }
-    writeBoardEntry("replace", boardId, qs ? `/jobs?${qs}` : "/jobs");
+    writeBoardEntry("replace", boardId, filteredOwnPage && landerCompany ? companyLanderPath(landerCompany, qs) : qs ? `/jobs?${qs}` : "/jobs");
   }, [q, location, remoteOnly, workMode, company, category, inclUncat, activelyHiringOnly, experience, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, maxYears, department, vendor, employmentType, hideAgencies, freshness, sortMode, searchNewestFirst, urlSyncTick, landerCategory, landerCompany, boardId]);
 
   // THE PER-SOURCE INVENTORY FOR THE VENDOR DROPDOWN, read once on mount from
@@ -4861,20 +5043,34 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // more-at-company drill-down owns those. Race-guarded per panel open.
   const [similarJobs, setSimilarJobs] = useState<BoardJob[]>([]);
   const similarSeq = useRef(0);
+  // The scoping keys of the reader's own filters: where, and how they work.
+  const similarScope = useMemo(() => {
+    const body = boardFilterBody(filterState);
+    const scope: Record<string, unknown> = {};
+    for (const k of ["country", "location", "remote", "workMode"] as const) if (body[k] !== undefined) scope[k] = body[k];
+    return scope;
+  }, [filterState]);
+  const similarScopeKey = JSON.stringify(similarScope);
   useEffect(() => {
     setSimilarJobs([]);
     if (!detailJob) return;
     const seq = ++similarSeq.current;
     const NOISE = new Set(["senior", "sr", "junior", "jr", "staff", "lead", "principal", "associate", "assistant", "head", "director", "vp", "intern", "i", "ii", "iii", "iv", "v", "remote", "hybrid", "onsite", "contract", "temporary", "the", "of", "and", "for", "a", "an"]);
+    // Letters and digits in ANY script (S11-094): an a-z class left a
+    // Japanese, Greek or Hindi title with no term at all, so no similar
+    // openings were ever asked for.
     const terms = detailJob.title
       .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, " ")
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
       .split(/\s+/)
       .filter((w) => w.length > 1 && !NOISE.has(w))
       .slice(0, 4)
       .join(" ");
     if (!terms) return;
-    invokeBoard<{ jobs?: BoardJob[] }>({ action: "list", q: terms, limit: 12, includeFacets: false })
+    // THE READER'S PLACE RIDES ALONG (S11-094). Asked with the title alone,
+    // a reader filtered to one country and on-site was sent roles in eight
+    // countries and every work mode.
+    invokeBoard<{ jobs?: BoardJob[] }>({ action: "list", q: terms, limit: 12, includeFacets: false, ...similarScope })
       .then(({ data }) => {
         if (seq !== similarSeq.current || !Array.isArray(data?.jobs)) return;
         setSimilarJobs(
@@ -4885,7 +5081,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
         );
       })
       .catch(() => { /* the same-category fallback still renders */ });
-  }, [detailJob?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [detailJob?.id, similarScopeKey]); // eslint-disable-line react-hooks/exhaustive-deps
   // Back button closes the panel; Escape too. Deep link opens it on load.
   useEffect(() => {
     const onPop = () => {
@@ -4919,13 +5115,16 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       if (keyBelongsToALayer(e)) return;
+      // The shortcuts card and the palette own the keyboard while open
+      // (NB-26): Escape closes them, not the posting behind them.
+      if (helpOpen || paletteOpen) return;
       if (compareOpen) { setCompareOpen(false); return; }
       closeDetail();
     };
     window.addEventListener("popstate", onPop);
     window.addEventListener("keydown", onKey);
     return () => { window.removeEventListener("popstate", onPop); window.removeEventListener("keydown", onKey); };
-  }, [closeDetail, compareOpen]);
+  }, [closeDetail, compareOpen, helpOpen, paletteOpen]);
   const deepLinkTried = useRef(false);
   // A shared ?job= link that no longer resolves. null = no dead link; `kind`
   // separates a watched closure from a posting that merely aged past OUR cap
@@ -5135,7 +5334,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // same there (the SEO round's merge review).
   const watchCompany = async (promise = true) => {
     if (!landerCompany) return;
-    if (!session) return requireAuth();
+    if (!session) return requireAuth({ kind: "watch", promise });
     // A BOARD NAME TWO HIRING SYSTEMS SHARE IS NO EMPLOYER (S13-117): its
     // watch is named for the boards, as its page and its button are.
     const boardsNamed = landerModel?.variant === "collision";
@@ -5214,7 +5413,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // latest scan) and the posting's JD; then opens the drafting modal, which pulls
   // the REAL Greenhouse questions and grounds every answer in that resume.
   const prepareApplication = async (job: BoardJob) => {
-    if (!session) return requireAuth();
+    if (!session) return requireAuth({ kind: "prepare", jobId: job.id });
     setPreparingId(job.id);
     try {
       const resume = await resolveFitResume();
@@ -5398,8 +5597,12 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
    */
   const shownSortControl: SearchSort | "discovered" = discoveredView ? "discovered" : shownSort;
   const sendSearchToAgent = () => {
-    const args = toSearchJobsArgs(boardFilterBody(filterState), discoveredView ? undefined : shownSort);
-    const prompt = searchPrompt(args, { activelyHiring: activelyHiringOnly })
+    const body = boardFilterBody(filterState);
+    const args = toSearchJobsArgs(body, discoveredView ? undefined : shownSort);
+    // A hiring system the connector does not hand on leaves the arguments
+    // and is named in the prompt and the toast (S14X-054).
+    const withheld = withheldVendorLabels(body);
+    const prompt = searchPrompt(args, { activelyHiring: activelyHiringOnly, withheld })
       + (discoveredView
         ? " The board is showing them by each employer's stated date, or for an undated posting by when we first saw it, which search_jobs has no argument for, so the order is not included here."
         : "");
@@ -5408,9 +5611,14 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       title: ok
         ? t("jobsPage.searchPromptCopied", "Search copied as a prompt — paste it to your agent.")
         : t("jobsPage.agentPromptFailed", "Couldn't copy the prompt"),
-      description: activelyHiringOnly
-        ? t("jobsPage.savedWithoutHiringFilter3", "The “Actively hiring” filter — employers we have watched take roles down and leave them down, or whose board served at least {{minNet}} more roles ({{minRate}}%+) than {{gdays}} days earlier, counted from our own daily observation; not a count of hires and not a headcount — is applied in your browser, not on the board, so this saved search does not include it.", { minNet: GROWTH_MIN_NET_ADD, minRate: Math.round(GROWTH_MIN_RATE * 100), gdays: GROWTH_WINDOW_DAYS })
-        : undefined,
+      description: [
+        activelyHiringOnly
+          ? t("jobsPage.savedWithoutHiringFilter3", "The “Actively hiring” filter — employers we have watched take roles down and leave them down, or whose board served at least {{minNet}} more roles ({{minRate}}%+) than {{gdays}} days earlier, counted from our own daily observation; not a count of hires and not a headcount — is applied in your browser, not on the board, so this saved search does not include it.", { minNet: GROWTH_MIN_NET_ADD, minRate: Math.round(GROWTH_MIN_RATE * 100), gdays: GROWTH_WINDOW_DAYS })
+          : "",
+        withheld.length > 0
+          ? t("boardUi.handoffWithheldSearch", "The AI connector does not hand on {{systems}} postings, so the prompt leaves them out; they stay here on the board.", { systems: withheld.join(", ") })
+          : "",
+      ].filter(Boolean).join(" ") || undefined,
     }));
   };
   /**
@@ -5472,6 +5680,15 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
    * the newest rows are exactly the ones whose descriptions the sweep has not
    * reached yet (newest 20: ~5% scoreable; a role query: 85-95%).
    */
+  // Set by retrieveForResume when the résumé had a role to search but the
+  // reader's filters were kept instead; its caller reads it once.
+  const fitKeptFilters = useRef(false);
+  const fitKeptFiltersToast = () => {
+    if (!fitKeptFilters.current) return false;
+    fitKeptFilters.current = false;
+    toast({ title: t("boardUi.fitRankedFilters", "Résumé loaded — your filters are kept, and the openings they match are ranked by fit.") });
+    return true;
+  };
   const retrieveForResume = async (text: string): Promise<string> => {
     try {
       // job-fit, not job-board: the scorer has its own isolate since
@@ -5485,8 +5702,17 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       setFitTerms(terms);
       // Never overwrite an intent the reader has already stated. A typed query
       // or an employer lander is a narrower ask than "my résumé", and fit
-      // ranking still applies on top of whichever they chose.
+      // ranking still applies on top of whichever they chose. A FILTER IS AN
+      // INTENT TOO (S14X-053): a field, a band or a country from a link was
+      // typed over by the résumé's title. Kept, the filtered page is read with
+      // descriptions (fitBrowseNeedsDescriptions) and ranked by fit, and the
+      // caller says so.
+      const filtered = Object.keys(boardFilterBody(filterState)).length > 0;
       if (terms.length > 0 && !q.trim() && !company && !landerCompany) {
+        if (filtered) {
+          fitKeptFilters.current = true;
+          return "";
+        }
         fitAwaitingPage.current = true; // before setQ: the gap opens the instant the query changes
         setQ(terms[0]);
         return terms[0];
@@ -5552,6 +5778,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       const searched = await retrieveForResume(text);
 
       setFitRanking(true);
+      if (!searched && fitKeptFiltersToast()) return;
       toast({
         title: searched
           ? t("jobsPage.dropParsedSearched", "Résumé loaded — finding {{role}} roles and ranking them by fit.", { role: searched })
@@ -5663,7 +5890,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     // The search box visibly changes under the reader's hands, so say why.
     if (searched) {
       toast({ title: t("jobsPage.fitSearchedRole", "Finding {{role}} roles — what your résumé is for — and ranking them by fit.", { role: searched }) });
-    }
+    } else fitKeptFiltersToast();
   };
 
   // Score whatever's loaded whenever ranking is on.
@@ -5678,6 +5905,8 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     // waits for the page the reader actually asked for; the arrival of that
     // page changes `jobs`, which re-runs the effect.
     if (!fitRanking || jobs.length === 0 || refreshing || fitAwaitingPage.current) return;
+    // Inside the allowance's window nothing is asked (S14X-294).
+    if (fitLimited && Date.now() < fitLimited.until) return;
     const unscored = jobs.filter((j) => !(j.id in fits)).map((j) => j.id);
     if (unscored.length === 0) return;
     (async () => {
@@ -5713,17 +5942,52 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
           // Compared against the résumé itself rather than a second counter,
           // so there is nothing to keep in step.
           if (fitResume.current !== resume) return;
+          const ids = unscored.slice(i, i + FIT_BATCH);
+          // Asked again (a Try again, or the allowance's window ended): no
+          // longer held. A batch none of whose ids is held changes nothing.
+          setFitHeld((prev) => {
+            if (!ids.some((id) => id in prev)) return prev;
+            const n = { ...prev };
+            for (const id of ids) delete n[id];
+            return n;
+          });
           const { data, error } = await supabase.functions.invoke("job-fit", {
             body: { action: "fit-batch", resumeText: resume, ids: unscored.slice(i, i + FIT_BATCH) },
           });
-          const payload = data as { fits?: Record<string, number | null>; missing?: Record<string, string[]>; matched?: Record<string, string[]>; code?: string } | null;
+          const payload = data as { fits?: Record<string, number | null>; unscored?: Record<string, unknown>; missing?: Record<string, string[]>; matched?: Record<string, string[]>; code?: string } | null;
           // No `fits` key is a failure, whether or not the transport errored —
           // the function can return 200 with an error body.
           if (error || !payload?.fits) {
+            const { status, body } = error ? await refusalOf(error) : { status: null, body: null };
+            if (status === 429) {
+              // The allowance, not a blip: this batch and every later one
+              // wait for the window, and the loop stops asking.
+              const rest = unscored.slice(i);
+              const day = body?.window === "24h";
+              setFitLimited({
+                message: typeof body?.message === "string" ? body.message : null,
+                limit: typeof body?.limit === "number" ? body.limit : null,
+                window: day ? "24h" : "1h",
+                until: Date.now() + (day ? 24 : 1) * 3_600_000,
+              });
+              setFitHeld((prev) => { const n = { ...prev }; for (const id of rest) n[id] = "limit"; return n; });
+              break;
+            }
             failed += Math.min(FIT_BATCH, unscored.length - i);
+            setFitHeld((prev) => { const n = { ...prev }; for (const id of ids) n[id] = "failed"; return n; });
             continue;
           }
           if (payload?.fits) setFits((prev) => ({ ...prev, ...payload.fits }));
+          if (payload.unscored && typeof payload.unscored === "object") {
+            const why: Record<string, "no_description" | "no_recognised_terms"> = {};
+            for (const [id, r] of Object.entries(payload.unscored)) if (r === "no_description" || r === "no_recognised_terms") why[id] = r;
+            setFitWhy((prev) => ({ ...prev, ...why }));
+          }
+          setFitHeld((prev) => {
+            const n = { ...prev };
+            for (const id of Object.keys(payload.fits!)) delete n[id];
+            return n;
+          });
           if (payload?.missing) setMisses((prev) => ({ ...prev, ...payload.missing }));
           if (payload?.matched) setHits((prev) => ({ ...prev, ...payload.matched }));
         }
@@ -5739,7 +6003,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     // file while the reader has typed a query of their own, left the whole
     // board scored against the file they had replaced.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitRanking, jobs, refreshing, fitRetry, fitResumeGen]);
+  }, [fitRanking, jobs, refreshing, fitRetry, fitResumeGen, fitLimited]);
 
   // Fit-first by default: the moment we can tell there's a resume to score
   // against (a fresh scan stashed this session, or the signed-in user's latest
@@ -5774,7 +6038,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       // The search box fills itself as they land, so say why.
       if (searched) {
         toast({ title: t("jobsPage.fitSearchedRole", "Finding {{role}} roles — what your résumé is for — and ranking them by fit.", { role: searched }) });
-      }
+      } else fitKeptFiltersToast();
     })();
     return () => { cancelled = true; };
     // session gates the DB lookup inside resolveFitResume; re-run when it lands.
@@ -6394,6 +6658,15 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     // The board's own pick follows the list's top when the list changes
     // (S12-033); a posting the reader chose stays open.
     const boardsPick = !!detailJob && autoSelectedId.current === detailJob.id;
+    // A list that settled EMPTY takes the board's own pick with it: the old
+    // top posting stayed open beside "no openings match" (S12-033). Not
+    // userClosed, so the next search with rows opens its top again; the pick
+    // wrote no address, so there is none to take back.
+    if (boardsPick && !loading && !refreshing && groupedJobs.length === 0) {
+      autoSelectedId.current = null;
+      setDetailJob(null);
+      return;
+    }
     if (loading || refreshing || (detailJob && !boardsPick) || groupedJobs.length === 0) return;
     if (boardsPick && groupedJobs[0].primary.id === detailJob!.id) return;
     if (!window.matchMedia("(min-width: 1024px)").matches) return;
@@ -6423,6 +6696,9 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // Never intercepts keys while the user is typing in a field.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // An open shortcuts card or palette owns the keyboard (NB-26): Enter
+      // there opened the selected posting's apply page and marked it Applied.
+      if (helpOpen || paletteOpen) return;
       const el = e.target as HTMLElement;
       if (["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable) return;
       // Enter on a focused CONTROL belongs to that control. Without this the
@@ -6474,7 +6750,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupedJobs, detailJob]);
+  }, [groupedJobs, detailJob, helpOpen, paletteOpen]);
 
   // Aggregate the per-card tiers into one motivating headline for the personalized
   // view — the reason a returning seeker stays. Counts only SCORED postings among
@@ -6561,7 +6837,10 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     if (!landerCompany) return null;
     const raw = jobs.find((j) => j.token === landerCompany)?.company
       ?? data?.companies?.find((c) => c.token === landerCompany)?.name;
-    return raw ? boardName(landerCompany, raw) : null;
+    // A ZERO PAGE STILL HAS A NAME WHEN THE OVERRIDE MAP HOLDS ONE (RC-OI-42).
+    // With no row and no facet the override was never reached, and the page
+    // headed itself with the board's system token.
+    return raw ? boardName(landerCompany, raw) : employerNameOverride(landerCompany);
   }, [landerCompany, jobs, data]);
   // This board's own last read (the newest feed-read stamp on its rows), never
   // the board-wide median, and ONLY ON A BOARD WE READ IN FULL: the same gate
@@ -6667,6 +6946,30 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     landerCollision, loading, error, budgetRefusal, landerRecord, landerGrowthVerdict, landerLayoffFilings, landerVisitorFilters, listAnsweredAt,
     landerReplyCurrent, landerUncarried, landerScope]);
   const onCompanyPage = !!landerCompany && !!landerModel;
+  // THE CLICK A SIGN-IN INTERRUPTED, DONE ONCE (NB-3). A watch waits for the
+  // page's model (its name and variant), a Prepare for its posting to be on
+  // the page; a kept click for another page, or past its hour, is dropped.
+  const boardActionReplayed = useRef(false);
+  useEffect(() => {
+    if (!session || boardActionReplayed.current) return;
+    const kept = peekBoardAction();
+    if (!kept) { boardActionReplayed.current = true; return; }
+    // On a company page the save and the watch carry the employer's pool,
+    // which the page has once its model and first read are in.
+    if ((kept.kind === "watch" || kept.kind === "saveSearch") && landerCompany && (!landerModel || loading)) return;
+    let preparing: BoardJob | null = null;
+    if (kept.kind === "prepare") {
+      preparing = detailJob?.id === kept.jobId ? detailJob : jobs.find((j) => j.id === kept.jobId) ?? null;
+      if (!preparing && (loading || refreshing)) return;
+    }
+    boardActionReplayed.current = true;
+    clearBoardAction();
+    if (kept.kind === "saveJob") void saveJob(kept.job as BoardJob);
+    else if (kept.kind === "saveSearch") void saveCurrentSearch(kept.alert);
+    else if (kept.kind === "watch") void watchCompany(kept.promise);
+    else if (preparing) void prepareApplication(preparing);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the actions read the render they run in; this runs once
+  }, [session, landerCompany, landerModel, jobs, detailJob, loading, refreshing]);
   // The polite region's empty line (below): a zero company page has no filter
   // to blame, so it says the page's own line (round 3 review, 2026-10-25),
   // and so does a page for a board we do not read: its heading (the SEO
@@ -6719,6 +7022,8 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       supportDays: FILL_SUPPORT_MAX_DAYS,
     },
     computedAt: curveAnsweredAt,
+    // The record reads the page's own board; on a pooled page it says so.
+    oneBoardOf: landerModel?.recordBoard && landerModel.pooledBoards ? { n: landerModel.pooledBoards, board: landerModel.recordBoard } : null,
   } : null;
 
   // Company-page fill curve: one lifecycle-derived lookup per company page.
@@ -7786,6 +8091,25 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   const curveOf = useCallback((token: string | null | undefined): FillCurve | undefined =>
     !token ? undefined : curveByToken[token] ?? (token === landerCompany ? hiringCurve ?? undefined : undefined),
   [curveByToken, landerCompany, hiringCurve]);
+  // A LAP-READ BOARD'S POSTING IS RE-CHECKED WHEN IT IS OPENED (S14X-244).
+  // openDetail's rule waits for a re-check stamp six hours old, and a board
+  // read in laps restamps its rows on every partial visit, so the rule almost
+  // never opened on exactly the boards whose closures we cannot prove. Here
+  // the posting is verified once per page, whatever the stamp says, inside
+  // job-board's own per-address verify allowance. A stamp past six hours is
+  // openDetail's (it already fired); no stamp, or a posting already marked
+  // missing, is never verified (the lookup failed, or the answer is in).
+  const lapVerified = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const job = detailJob;
+    if (!job || !job.recheckedAt || job.missingSince || lapVerified.current.has(job.id)) return;
+    const curve = curveOf(job.token);
+    if (!curve || !LAP_MODE_BUCKETS.includes(String(curve.observability_bucket ?? ""))) return;
+    if (Date.now() - Date.parse(job.recheckedAt) > VERIFY_ON_VIEW_AFTER_HOURS * 3600_000) return;
+    lapVerified.current.add(job.id);
+    invokeBoard({ action: "verify", ids: [job.id] }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- invokeBoard is a plain closure over stable refs
+  }, [detailJob, curveOf]);
   // THE STAMP DATES THE BOARD'S FEED READ, AND PRINTS ONLY ON A BOARD WE READ
   // IN FULL (Track 1, A3). A board read in laps says so instead of a stamp
   // that would claim the read covered every posting on it.
@@ -7821,7 +8145,8 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     onCompare: () => toggleCompare(job.id),
     compared: compareIds.includes(job.id),
     onCopyLink: () => copyPostingLink(job),
-    aiHandoff: () => handOffJobToAgent(handoffJobOf(job), rememberedHostName(), trackBoard, t),
+    // No hand-off for a posting the connector refuses (S14X-054).
+    aiHandoff: isWithheldSource(postingSource(job)) ? undefined : () => handOffJobToAgent(handoffJobOf(job), rememberedHostName(), trackBoard, t),
   });
   // The board's Apply re-checks the posting (verifyJob) on the click, so the
   // pane, the sheet and the card's siblings may say so; the posting page's
@@ -7894,7 +8219,16 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                   onDismiss={() => setSaveAsk(null)}
                 />
               )}
-              <JobAgentHandoff job={handoffJobOf(detailJob)} track={trackBoard} />
+              {/* A POSTING THE CONNECTOR REFUSES IS NOT HANDED TO IT (S14X-054):
+                  agent-mcp withholds every row of these systems, so the prompt
+                  asked the agent for an id it would be refused. */}
+              {isWithheldSource(postingSource(detailJob)) ? (
+                <p className="text-xs text-muted-foreground" data-handoff-withheld="">
+                  {t("boardUi.handoffWithheld", "The AI connector does not hand on {{system}} postings: open this one here instead.", { system: systemLabel(postingSource(detailJob)) ?? postingSource(detailJob) })}
+                </p>
+              ) : (
+                <JobAgentHandoff job={handoffJobOf(detailJob)} track={trackBoard} />
+              )}
             </>
           ),
           howApplying: howApplyingFor(detailJob),
@@ -7912,11 +8246,21 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                   </span>
                 </button>
               )}
-              {fitRanking && fits[detailJob.id] === undefined && (
+              {fitRanking && fits[detailJob.id] === undefined && !fitHeldOf(detailJob.id) && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   {t("jobsPage.detailFitLoading", "Scoring this posting against your resume…")}
                 </div>
+              )}
+              {/* A SCORE THAT IS NOT COMING IS SAID, NOT SPUN (S14X-294): an id
+                  in a refused or failed batch stayed undefined forever, under
+                  a spinner. */}
+              {fitRanking && fits[detailJob.id] === undefined && fitHeldOf(detailJob.id) && (
+                <p className="rounded-xl border border-dashed border-border bg-muted/20 p-3 text-sm text-muted-foreground" data-fit-held={fitHeldOf(detailJob.id)!}>
+                  {fitHeldOf(detailJob.id) === "limit"
+                    ? t("boardUi.fitNotScoredLimit", "Not scored: the fit-scoring allowance for now is used up, so this posting was not scored.")
+                    : t("boardUi.fitNotScoredFailed", "Not scored: the scorer did not answer for this posting. Try again from the note above the list.")}
+                </p>
               )}
               {/* AN HONEST NULL IS NOT A LOW SCORE, and it used to render as
                   nothing at all. job-fit answers `fits[id] = null` for a
@@ -7926,13 +8270,28 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                   from "your résumé is a poor match". Only one of those is about
                   them. */}
               {fitRanking && fits[detailJob.id] === null && (
-                <div className="rounded-xl border border-dashed border-border bg-muted/20 p-3 text-sm">
-                  <p className="font-semibold mb-1">
-                    {t("jobsPage.detailNotScored", "Not scored — we hold no description for this posting")}
-                  </p>
-                  <p className="text-[12px] text-muted-foreground">
-                    {t("jobsPage.detailNotScoredBody", "The scorer had nothing to compare your resume against, so there is no percentage here. That is the absence of a measurement, not a weak one.")}
-                  </p>
+                <div className="rounded-xl border border-dashed border-border bg-muted/20 p-3 text-sm" data-unscored={fitWhy[detailJob.id] ?? "no_description"}>
+                  {/* WE HOLD THIS ONE'S DESCRIPTION (S14X-052): a posting the
+                      scorer could not read is not one we hold nothing for. */}
+                  {fitWhy[detailJob.id] === "no_recognised_terms" ? (
+                    <>
+                      <p className="font-semibold mb-1">
+                        {t("boardUi.unscoredTerms", "Not scored — we can't read this posting's terms yet")}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {t("boardUi.unscoredTermsBody", "We hold its description, but the scorer recognised no skill or tool in it: it reads English keywords only. There is no percentage here; that is the absence of a measurement, not a weak one.")}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-semibold mb-1">
+                        {t("jobsPage.detailNotScored", "Not scored — we hold no description for this posting")}
+                      </p>
+                      <p className="text-[12px] text-muted-foreground">
+                        {t("jobsPage.detailNotScoredBody", "The scorer had nothing to compare your resume against, so there is no percentage here. That is the absence of a measurement, not a weak one.")}
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
               {typeof fits[detailJob.id] === "number" && (
@@ -8022,7 +8381,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
               {(() => {
                 const hh = detailJob.token ? curveByToken[detailJob.token] : undefined;
                 const f = fits[detailJob.id];
-                const age = daysAgo(detailJob.postedAt);
+                const age = paneAgeDays(detailJob);
                 // ROLES on both sides (20261008110000): the roles that stayed
                 // down against the roles that came back, never an event count.
                 const fills = hh?.filled_roles_90d ?? 0;
@@ -8137,7 +8496,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                 );
               })()}
               {(() => {
-                const age = daysAgo(detailJob.postedAt);
+                const age = paneAgeDays(detailJob);
                 if (age === null) return null;
                 const rawField = detailJob.category ? fillCurveByCategory?.[detailJob.category] ?? null : null;
                 // A field row that cannot carry a rate is not a weaker fact, it
@@ -8311,7 +8670,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                           <button type="button" className="text-left text-sm text-primary hover:underline" onClick={() => void openDetail(j)}>
                             {j.title}
                           </button>
-                          <span className="text-[11px] text-muted-foreground"> · {j.company}</span>
+                          <span className="text-[11px] text-muted-foreground"> · {j.company}{displayLocation(j.location).text ? ` · ${displayLocation(j.location).text}` : ""}</span>
                         </li>
                       ))}
                     </ul>
@@ -8336,7 +8695,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
         // the list, and the pane kept showing the posting just hidden.
         menu={{ ...postingMenu(detailJob), onHide: () => { dismissJob(detailJob); closeDetail(); } }}
         saved={savedIds.has(detailJob.id)}
-        onToggleSave={() => { void saveJob(detailJob); }}
+        onToggleSave={() => saveOrOpenTracker(detailJob)}
         highlight={{ have: hits[detailJob.id] ?? [], missing: misses[detailJob.id] ?? [] }}
         sectionsOpen={isSmallScreen ? 0 : 3}
         onSectionOpen={(title) => trackBoard("jd_section_open", { title: title.slice(0, 40) })}
@@ -8698,9 +9057,15 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                   }))
               : t("jobsPage.subtitleShort", "Every job straight from the employer's own hiring system, dated in the last 30 days.")}
             {/* "Posted today" rides the count line (it wrapped to a line of
-                its own under the strip), and the strip below it is its own line. */}
-            {!landerCompany && newToday !== null && (
-              <span className="inline-flex items-center gap-1.5 ml-2 text-success whitespace-nowrap" data-board-new-today="">
+                its own under the strip), and the strip below it is its own line.
+                IT IS THE WHOLE BOARD'S NUMBER (S14X-015): one count read with
+                no filter, so it is printed only where nothing narrows the
+                board. Beside a field's or a filter's own count it read as
+                theirs (4,179 "posted today" on a field of 4,595, of which 14
+                were). */}
+            {!landerCompany && !countCategory && !landerCategory && !activelyHiringOnly
+              && Object.keys(boardFilterBody(filterState)).length === 0 && newToday !== null && (
+              <span className="inline-flex items-center gap-1.5 ml-2 text-success whitespace-nowrap" data-board-new-today="board">
                 <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-success animate-pulse motion-reduce:animate-none" />
                 {t("jobsPage.newTodayLine", "{{n}} posted today.", { n: `${newToday.toLocaleString()}${newTodayCapped ? "+" : ""}` })}
               </span>
@@ -8873,6 +9238,8 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                       else if (e.key === "Escape") setNlOpen(false);
                     }}
                     placeholder={t("jobsPage.nlPlaceholder", "e.g. remote product roles over $150k posted this week")}
+                    // NB-45: a placeholder is not a name; it vanishes as you type.
+                    aria-label={t("boardUi.nlLabel", "Describe the job you want in plain language")}
                     className="flex-1 min-w-0 px-3 py-1.5 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
                   <Button size="sm" disabled={nlLoading || nlQuery.trim().length < 3} onClick={() => void applyNlSearch()}>
@@ -8916,6 +9283,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                   aria-controls="search-suggest-list"
                   aria-activedescendant={suggestIdx >= 0 ? `search-sug-${suggestIdx}` : undefined}
                   id="board-search"
+                  aria-label={t("filterBar.keywordLabel", "Search jobs by title or keyword")}
                   placeholder={t("jobsPage.searchPlaceholder", "Title or keyword — e.g. product designer")}
                   className="w-full pl-9 pr-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
@@ -8963,6 +9331,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder={t("jobsPage.locationPlaceholder", "Location")}
+                  aria-label={t("filterBar.locationLabel", "Location")}
                   className="w-full pl-9 pr-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
@@ -8990,6 +9359,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder={t("jobsPage.locationPlaceholder", "Location")}
+                aria-label={t("filterBar.locationLabel", "Location")}
                 className="w-full pl-9 pr-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
@@ -9105,6 +9475,12 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                 title={t("jobsPage.maxYearsTip", "Hides postings that ask for more than this many years. Only postings that state a number can be matched, so the rest are hidden while this is on.")}
               >
                 <option value="">{t("jobsPage.anyMaxYears", "Any years required")}</option>
+                {/* A value the steps do not hold (a parsed sentence, a shared
+                    link) is shown as what it is, so the control never reads
+                    "Any" while a filter applies (S14X-295). */}
+                {offStep(maxYears, MAX_YEARS_STEPS) && (
+                  <option value={maxYears}>{t("boardUi.yearsFromSearch", "Asks {{n}} yrs or fewer (from your search)", { n: maxYears })}</option>
+                )}
                 {MAX_YEARS_STEPS.map((y) => (
                   <option key={y} value={y}>
                     {t("jobsPage.maxYearsOption", "Asks {{n}} yrs or fewer", { n: y })}
@@ -9259,6 +9635,9 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                 title={t("jobsPage.salaryFloorTip", "Filters on pay the posting itself states, annualized where we can and compared in approximate US dollars at fixed rates unchanged since {{since}}. Hidden while this is on: postings that publish no figure — most of the board — and figures we cannot turn into a comparable yearly dollar amount, like an hourly rate on a part-time role or a currency we don't convert.", { since: fxSince })}
               >
                 <option value="">{t("jobsPage.anySalary", "Any salary")}</option>
+                {offStep(salaryFloor, SALARY_FLOOR_STEPS) && (
+                  <option value={salaryFloor}>{t("boardUi.salaryFromSearch", "{{amount}}k+ stated (from your search)", { amount: salaryFloor / 1000 })}</option>
+                )}
                 {SALARY_FLOOR_STEPS.map((f) => (
                   <option key={f} value={f}>
                     {t("jobsPage.salaryFloorOption", "{{amount}}k+ stated", { amount: f / 1000 })}
@@ -9278,6 +9657,9 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                 title={t("jobsPage.salaryCeilingTip", "The other end of the band, on the same annualized and approximately converted figure as the floor (fixed rates unchanged since {{since}}). Useful for screening out roles you're overqualified for — and, like the floor, it can only see postings whose figure we could convert.", { since: fxSince })}
               >
                 <option value="">{t("jobsPage.anyCeiling", "No maximum")}</option>
+                {offStep(salaryCeiling, SALARY_CEILING_STEPS) && (
+                  <option value={salaryCeiling}>{t("boardUi.salaryCeilingFromSearch", "up to {{amount}}k stated (from your search)", { amount: salaryCeiling / 1000 })}</option>
+                )}
                 {SALARY_CEILING_STEPS.map((c) => (
                   <option key={c} value={c}>
                     {t("jobsPage.salaryCeilingOption", "up to {{amount}}k stated", { amount: c / 1000 })}
@@ -10321,7 +10703,28 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                 that failed scored 60/60 on retry. Silence made a transient look
                 permanent, so the person concluded the product was broken rather
                 than pressing again. */}
-            {fitRanking && fitFailedCount > 0 && (
+            {fitRanking && fitLimited && (
+              <span className="text-xs text-warning" data-fit-limited="">
+                {fitLimited.limit !== null
+                  ? (fitLimited.window === "24h"
+                    ? t("boardUi.fitLimitedDay", "Daily fit-scoring allowance of {{limit}} reached; it resets 24 hours after the first scored call. Postings without a score here have not been scored yet.", { limit: fitLimited.limit })
+                    : t("boardUi.fitLimitedHour", "Hourly fit-scoring allowance of {{limit}} reached; it resets an hour after the first scored call. Postings without a score here have not been scored yet.", { limit: fitLimited.limit }))
+                  : (fitLimited.message ?? t("boardUi.fitLimitedPlain", "The fit-scoring allowance is used up for now. Postings without a score here have not been scored yet."))}
+                {Date.now() >= fitLimited.until && (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      onClick={() => { setFitLimited(null); setFitHeld({}); setFitFailedCount(0); setFitRetry((n) => n + 1); }}
+                      className="underline hover:text-foreground"
+                    >
+                      {t("jobsPage.fitRetry", "Try again")}
+                    </button>
+                  </>
+                )}
+              </span>
+            )}
+            {fitRanking && fitFailedCount > 0 && !fitLimited && (
               <span className="text-[11px] text-warning">
                 {t("jobsPage.fitFailedNote", "{{n}} postings could not be scored just now — this is usually temporary.", { n: fitFailedCount })}{" "}
                 <button
@@ -11749,7 +12152,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                         selected: detailJob?.id === job.id,
                       }}
                       href={jobDetailHref(job.id)}
-                      fit={fit === null ? { kind: "unscored" } : typeof fit === "number" ? { kind: "score", pct: fit } : null}
+                      fit={fit === null ? { kind: "unscored", reason: fitWhy[job.id] } : typeof fit === "number" ? { kind: "score", pct: fit } : null}
                       fitKeywords={fitRanking ? { have: strengths, missing: gaps } : undefined}
                       saved={savedIds.has(job.id)}
                       applied={appliedIds.has(job.id)}
@@ -11984,7 +12387,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                       )) || undefined,
                       }}
                       onOpen={() => { void openDetail(job); }}
-                      onToggleSave={() => { void saveJob(job); }}
+                      onToggleSave={() => saveOrOpenTracker(job)}
                       onCheckFit={() => { void checkFit(job); }}
                       checkFitBusy={fitFetching === job.id}
                       menu={postingMenu(job)}
@@ -12404,7 +12807,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
         onApply={detailJob ? () => applyFrom(detailJob) : undefined}
         onCheckFit={detailJob ? () => { void checkFit(detailJob); } : undefined}
         checkFitBusy={!!detailJob && fitFetching === detailJob.id}
-        onToggleSave={detailJob ? () => { void saveJob(detailJob); } : undefined}
+        onToggleSave={detailJob ? () => saveOrOpenTracker(detailJob) : undefined}
         saved={!!detailJob && savedIds.has(detailJob.id)}
         returnFocusTo={lastFocusRef.current}
       >
@@ -12432,7 +12835,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                 return (
                   <span
                     className={`inline-flex w-fit text-[11px] px-2 py-0.5 rounded-full font-bold ${tier === "strong" ? "bg-success/10 text-success" : tier === "possible" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"}`}
-                    title={t("jobsPage.matchCoverage", "{{pct}}% of this posting's recognized keywords are already in your resume", { pct: fit })}
+                    title={t("boardUi.fitScoreTip", "Keyword fit score {{pct}} out of 100: how far this posting's recognised keywords and your résumé overlap, lowered when the posting asks for more years than your résumé shows. It is not the share of the posting's keywords you already have.", { pct: fit })}
                   >
                     {tier === "strong"
                       ? t("jobsPage.matchStrong", "Strong match")
@@ -12586,12 +12989,15 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       <ShortcutsOverlay open={helpOpen} onClose={() => setHelpOpen(false)} />
       {/* Compare tray: fixed bar while picking; side-by-side sheet on open.
           Every compared field is data already on the client — nothing fetched. */}
-      {compareIds.length > 0 && !compareOpen && (
+      {/* The tray stays mounted under the open sheet, so the sheet's focus
+          return has its Compare button to land on (S14X-175). */}
+      {compareIds.length > 0 && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-full border border-border bg-card shadow-lg px-4 py-2">
           <span className="text-sm text-foreground font-medium">
             {t("jobsPage.compareCount", "Comparing {{n}} of 3", { n: compareIds.length })}
           </span>
           <button
+            ref={compareButtonRef}
             onClick={() => { trackBoard("compare_open", { n: compareIds.length }); setCompareOpen(true); }}
             disabled={compareIds.length < 2}
             className="rounded-full bg-primary text-primary-foreground text-sm font-semibold px-3 py-1 disabled:opacity-50"
@@ -12603,13 +13009,22 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
           </button>
         </div>
       )}
-      {compareOpen && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setCompareOpen(false)}>
-          <div className="bg-card border border-border rounded-2xl shadow-xl max-w-4xl w-full max-h-[85vh] overflow-auto p-5" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-foreground">{t("jobsPage.compareTitle", "Side by side")}</h2>
-              <button onClick={() => setCompareOpen(false)} className="text-muted-foreground hover:text-foreground text-lg leading-none">✕</button>
-            </div>
+      {/* THE SHEET IS A DIALOG (S14X-175): a plain div had no role, no name,
+          no focus move and a close mark with no accessible name. Radix
+          supplies the role, aria-modal, the focus trap, Escape and the focus
+          return; its own close button is named "Close". */}
+      <Dialog open={compareOpen} onOpenChange={(o) => { if (!o) setCompareOpen(false); }}>
+        <DialogContent
+          data-compare-dialog=""
+          className="max-w-4xl w-[calc(100vw-2rem)] max-h-[85vh] overflow-auto p-5"
+          onCloseAutoFocus={(e) => { e.preventDefault(); compareButtonRef.current?.focus(); }}
+        >
+          {compareOpen && (
+            <>
+            <DialogHeader className="mb-2 pr-8">
+              <DialogTitle className="text-base font-bold text-foreground">{t("jobsPage.compareTitle", "Side by side")}</DialogTitle>
+              <DialogDescription className="sr-only">{t("boardUi.compareDescription", "The postings you picked, compared on what the board already holds for each.")}</DialogDescription>
+            </DialogHeader>
             <div
               className="grid gap-3 grid-cols-1 sm:[grid-template-columns:var(--cmp-cols)]"
               style={{ "--cmp-cols": `repeat(${Math.min(compareIds.length, 3)}, minmax(220px, 1fr))` } as React.CSSProperties}
@@ -12619,7 +13034,9 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                 if (!j) return null;
                 const f = fits[id];
                 const hh = j.token ? curveByToken[j.token] : undefined;
-                const age = daysAgo(j.postedAt);
+                // The card's own age rule (S14X-252): none for a system that
+                // re-dates on edit, none for an undated posting.
+                const age = cardAgeText(t, j);
                 return (
                   <div key={id} className="rounded-xl border border-border p-3 min-w-0">
                     <p className="text-sm font-semibold text-foreground leading-tight">{j.title}</p>
@@ -12671,7 +13088,12 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                             )}
                             {ctx.ticker && ctx.revenue != null && (
                               <li>
-                                {ctx.exchange}: {ctx.ticker} · {ctx.revenue >= 1e9 ? `$${(ctx.revenue / 1e9).toFixed(1)}B` : `$${Math.round(ctx.revenue / 1e6)}M`}
+                                {/* The card's own sentence (S14X-196): the
+                                    filing's currency and fiscal year, never a
+                                    dollar sign on a euro figure. */}
+                                {t("jobsPage.employerCtx.publicCo", "Public company ({{ex}}: {{tk}}) — {{rev}} revenue FY{{y}}", {
+                                  ex: ctx.exchange, tk: ctx.ticker, rev: fmtMoney(ctx.revenue, ctx.currency, i18n.language), y: ctx.fyYear,
+                                })}
                                 {ctx.netIncome != null && (
                                   <span className={ctx.netIncome > 0 ? " text-success" : " text-destructive"}>
                                     {" "}· {ctx.netIncome > 0 ? t("jobsPage.employerCtx.profitable", "profitable") : t("jobsPage.employerCtx.unprofitable", "operating at a loss")}
@@ -12682,9 +13104,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                           </>
                         );
                       })()}
-                      {age !== null && (
-                        <li>{age === 0 ? t("jobsPage.postedToday", "today") : t("jobsPage.postedDaysAgo", "{{count}}d ago", { count: age })}</li>
-                      )}
+                      {age !== null && <li data-compare-age="">{age}</li>}
                       {/* THE COMPARISON IS WHERE A SILENT THIRD STATE DOES THE
                           MOST DAMAGE: two employers side by side, one carrying
                           the green line and the other carrying nothing, with no
@@ -12756,9 +13176,10 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                 );
               })}
             </div>
-          </div>
-        </div>
-      )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
       {/* Lander hub: other companies hiring in this company's dominant field. */}
       {landerCompany && !landerCollision && <SimilarCompanies companyToken={landerCompany} />}
       <Footer />

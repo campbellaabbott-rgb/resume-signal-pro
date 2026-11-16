@@ -1,0 +1,26 @@
+{
+  "boardUi": {
+    "nlLabel": "Beschrijf de baan die je zoekt in gewone taal",
+    "nlRunAsKeywords": "Zoek in plaats daarvan op deze woorden",
+    "nlUnavailable": "Zoeken in gewone taal is op dit moment niet beschikbaar.",
+    "nlNothingRead": "Niets in die zin kwam overeen met een filter, dus je filters zijn niet gewijzigd.",
+    "yearsFromSearch": "Vraagt {{n}} jaar of minder (uit je zoekopdracht)",
+    "salaryFromSearch": "{{amount}}k+ vermeld (uit je zoekopdracht)",
+    "salaryCeilingFromSearch": "tot {{amount}}k vermeld (uit je zoekopdracht)",
+    "compareDescription": "De vacatures die je koos, vergeleken op wat het bord al over elk ervan heeft.",
+    "recordOneBoard": "Wervingsoverzicht voor een van de {{n}} vacatureborden van deze werkgever: {{board}}",
+    "handoffWithheld": "De AI-connector geeft geen {{system}}-vacatures door: open deze in plaats daarvan hier.",
+    "handoffWithheldSearch": "De AI-connector geeft geen vacatures van {{systems}} door, dus de prompt laat ze weg; ze blijven hier op het bord.",
+    "fitRankedFilters": "Cv geladen — je filters blijven staan en de vacatures die erbij passen worden op match gerangschikt.",
+    "fitScoreTip": "Trefwoord-matchscore {{pct}} van 100: hoeveel de herkende trefwoorden van deze vacature en je cv overlappen, verlaagd als de vacature meer jaren vraagt dan je cv laat zien. Het is niet het aandeel van de trefwoorden van de vacature dat je al hebt.",
+    "fitNotScoredLimit": "Niet beoordeeld: het tegoed voor matchbeoordeling is voorlopig op, dus deze vacature is niet beoordeeld.",
+    "fitNotScoredFailed": "Niet beoordeeld: de beoordelaar gaf voor deze vacature geen antwoord. Probeer het opnieuw via de melding boven de lijst.",
+    "fitLimitedHour": "Uurtegoed van {{limit}} matchbeoordelingen bereikt; het wordt een uur na de eerste beoordeelde aanvraag opnieuw ingesteld. Vacatures zonder score hier zijn nog niet beoordeeld.",
+    "fitLimitedDay": "Dagtegoed van {{limit}} matchbeoordelingen bereikt; het wordt 24 uur na de eerste beoordeelde aanvraag opnieuw ingesteld. Vacatures zonder score hier zijn nog niet beoordeeld.",
+    "fitLimitedPlain": "Het tegoed voor matchbeoordeling is voorlopig op. Vacatures zonder score hier zijn nog niet beoordeeld.",
+    "unscoredTerms": "Niet beoordeeld — we kunnen de termen van deze vacature nog niet lezen",
+    "unscoredTermsBody": "We hebben de beschrijving, maar de beoordelaar herkende er geen vaardigheid of tool in: hij leest alleen Engelse trefwoorden. Er staat hier geen percentage; dat is het ontbreken van een meting, geen zwakke meting.",
+    "unscoredTermsTip": "Niet beoordeeld: we hebben de beschrijving van deze vacature, maar de beoordelaar herkende er geen vaardigheid of tool in (hij leest alleen Engelse trefwoorden). Dit is geen lage score — het is geen score.",
+    "matchesNoneForRole": "We vonden op dit moment geen openstaande vacatures voor {{role}}, dus dit zijn vacatures in je vakgebied — beoordeeld aan de hand van je cv, niet erdoor gevonden."
+  }
+}

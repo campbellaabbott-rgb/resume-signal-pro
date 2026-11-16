@@ -30,6 +30,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { computeFit, resumeRoleTerms, scanResume } from "../_shared/fit-score.ts";
 import { spendAddressKey } from "../_shared/model-spend-gate.ts";
+import { unscoredReason, type UnscoredReason } from "./score-rows.ts";
 
 // 2026-10-09.1: a reader's allowance is keyed on the platform's address, hourly (S8-062).
 // 2026-10-09.1 (wave3/board-data-ingest): the fit score is capped at 100 (_shared/fit-score.ts, L8-13).
@@ -152,6 +153,9 @@ Deno.serve(async (req) => {
       const { data: rows, error } = await client.from("job_board_postings").select("id, description, min_years").in("id", ids);
       if (error) throw error;
       const fits: Record<string, number | null> = {};
+      // Beside each null, why (S14X-052): an additive key, so a bundle that
+      // never reads it, /v1/fit and fit_resume see the same answer as before.
+      const unscored: Record<string, UnscoredReason> = {};
       const missing: Record<string, string[]> = {};
       const matched: Record<string, string[]> = {};
       let scored = 0;
@@ -161,14 +165,17 @@ Deno.serve(async (req) => {
           const minYears = typeof r.min_years === "number" ? r.min_years : null;
           const f = computeFit(r.description.slice(0, FIT_DESC_CHARS), resumeScan, 40, minYears);
           fits[r.id] = f.pct;
+          const why = unscoredReason(r.description, f.pct);
+          if (why) unscored[r.id] = why;
           if (f.missing.length > 0) missing[r.id] = f.missing.slice(0, 4);
           if (f.matched.length > 0) matched[r.id] = f.matched.slice(0, 6);
           scored++;
         } else {
           fits[r.id] = null; // no stored description — honest null
+          unscored[r.id] = "no_description";
         }
       }
-      return json({ fits, missing, matched, scored, of: ids.length });
+      return json({ fits, unscored, missing, matched, scored, of: ids.length });
     }
 
     return json({ error: `unknown action "${action}"` }, 400);

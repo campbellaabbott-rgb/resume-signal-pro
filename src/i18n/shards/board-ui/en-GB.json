@@ -1,0 +1,26 @@
+{
+  "boardUi": {
+    "nlLabel": "Describe the job you want in plain language",
+    "nlRunAsKeywords": "Search these words instead",
+    "nlUnavailable": "Plain-language search is unavailable right now.",
+    "nlNothingRead": "Nothing in that sentence matched a filter, so your filters are unchanged.",
+    "yearsFromSearch": "Asks {{n}} yrs or fewer (from your search)",
+    "salaryFromSearch": "{{amount}}k+ stated (from your search)",
+    "salaryCeilingFromSearch": "up to {{amount}}k stated (from your search)",
+    "compareDescription": "The postings you picked, compared on what the board already holds for each.",
+    "recordOneBoard": "Hiring record for one of this employer's {{n}} boards: {{board}}",
+    "handoffWithheld": "The AI connector does not hand on {{system}} postings: open this one here instead.",
+    "handoffWithheldSearch": "The AI connector does not hand on {{systems}} postings, so the prompt leaves them out; they stay here on the board.",
+    "fitRankedFilters": "CV loaded — your filters are kept, and the openings they match are ranked by fit.",
+    "fitScoreTip": "Keyword fit score {{pct}} out of 100: how far this posting's recognised keywords and your CV overlap, lowered when the posting asks for more years than your CV shows. It is not the share of the posting's keywords you already have.",
+    "fitNotScoredLimit": "Not scored: the fit-scoring allowance for now is used up, so this posting was not scored.",
+    "fitNotScoredFailed": "Not scored: the scorer did not answer for this posting. Try again from the note above the list.",
+    "fitLimitedHour": "Hourly fit-scoring allowance of {{limit}} reached; it resets an hour after the first scored call. Postings without a score here have not been scored yet.",
+    "fitLimitedDay": "Daily fit-scoring allowance of {{limit}} reached; it resets 24 hours after the first scored call. Postings without a score here have not been scored yet.",
+    "fitLimitedPlain": "The fit-scoring allowance is used up for now. Postings without a score here have not been scored yet.",
+    "unscoredTerms": "Not scored — we can't read this posting's terms yet",
+    "unscoredTermsBody": "We hold its description, but the scorer recognised no skill or tool in it: it reads English keywords only. There is no percentage here; that is the absence of a measurement, not a weak one.",
+    "unscoredTermsTip": "Not scored: we hold this posting's description, but the scorer recognised no skill or tool in it (it reads English keywords only). This is not a low score — it is no score.",
+    "matchesNoneForRole": "We found no live openings for {{role}} right now, so these are openings in your field — scored against your CV, not found by it."
+  }
+}

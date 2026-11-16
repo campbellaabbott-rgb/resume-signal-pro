@@ -57,6 +57,14 @@ const MODE_LABEL: Record<string, string> = {
   remote: "remote", hybrid: "hybrid", onsite: "on-site",
 };
 
+/**
+ * A pay figure in thousands, EXACT (NB-4). Rounded to the nearest thousand,
+ * a floor of 57,150 and one of 57,000 shared the name "$57k+", the table's
+ * UNIQUE(user, name) refused the second, and "Alert me" switched mail on for
+ * the first search instead of the one on screen.
+ */
+const thousands = (n: number) => (n % 1000 === 0 ? String(n / 1000) : String(Math.round(n) / 1000));
+
 /** Human name for a saved search, e.g. "nurse · Healthcare & Clinical · remote". */
 export function searchName(p: JobSearchParams, categoryLabel?: string, experienceLabel?: string): string {
   // EVERY DISTINGUISHING FIELD, or two different searches get one name. Saving
@@ -66,17 +74,25 @@ export function searchName(p: JobSearchParams, categoryLabel?: string, experienc
   const modes = (p.workMode ?? "")
     .split(",").map((m) => m.trim()).filter(Boolean)
     .map((m) => MODE_LABEL[m] ?? m).join("/");
+  // THE EMPLOYERS ARE PART OF THE NAME (NB-25). A search over an employer's
+  // pooled boards, or over several employers, was named like the search over
+  // one board, so the two collided on the table's UNIQUE(user, name).
+  const boards = companiesOf(p) ?? [];
+  const lead = p.company ?? boards[0];
+  const others = boards.filter((b) => b !== lead).length;
   return (
     [
       p.q,
       categoryLabel ?? p.category,
+      // The category widener changes the results, so it names the search too.
+      p.category && p.includeUncategorised ? "+ unsorted" : "",
       experienceLabel ?? p.experience,
       p.location,
       p.country,
       modes || (p.remote ? "remote" : ""),
-      p.company,
-      p.salaryFloor ? `$${Math.round(p.salaryFloor / 1000)}k+` : "",
-      p.salaryCeiling ? `≤$${Math.round(p.salaryCeiling / 1000)}k` : "",
+      lead ? (others > 0 ? `${lead} +${others} more` : lead) : "",
+      p.salaryFloor ? `$${thousands(p.salaryFloor)}k+` : "",
+      p.salaryCeiling ? `≤$${thousands(p.salaryCeiling)}k` : "",
       p.payBasis ?? "",
       p.hasStatedPay ? "pay stated" : "",
       // Truthy, not != null: 0 is the picker's off position and is refused by

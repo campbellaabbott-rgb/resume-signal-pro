@@ -91,6 +91,12 @@ export interface HiringRecordInput {
   bars: RecordBars;
   /** When the fill curve was computed (the figures' date basis), when known. */
   computedAt?: string | null;
+  /**
+   * The page counts several of the employer's boards and this record reads
+   * one of them (S14X-161): its heading says which, so "this board" below it
+   * is never read as the pooled count. Absent or null with one board.
+   */
+  oneBoardOf?: { n: number; board: string } | null;
 }
 
 const num = (v: unknown): number => {
@@ -289,6 +295,11 @@ export function HiringRecordCard({ input, floorOnly = false, headingLevel = 2, l
       data-hiring-record={input.actively}
       headingLevel={headingLevel}
     >
+      {input.oneBoardOf && input.oneBoardOf.n > 1 && (
+        <p className="text-xs font-medium text-muted-foreground" data-record-one-board="">
+          {t("boardUi.recordOneBoard", "Hiring record for one of this employer's {{n}} boards: {{board}}", { n: input.oneBoardOf.n, board: input.oneBoardOf.board })}
+        </p>
+      )}
       <p className="flex items-start gap-2 text-sm font-medium text-foreground" data-record-lead="">
         <Activity className={positive ? "mt-0.5 h-4 w-4 shrink-0 text-signal" : "mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"} aria-hidden="true" />
         <span>{lead}</span>

@@ -99,7 +99,10 @@ describe("a badge that counts a looser query than the one saved", () => {
     expect(body.action).toBe("list");
     expect(body.countOnly).toBe(true);
     // The watermark is what makes it a "new since" count at all.
-    expect(body.postedAfter).toBe(WATERMARK);
+    // newSince, the digest's own rule (NB-21): dated after the watermark OR
+    // first seen after it.
+    expect(body.newSince).toBe(WATERMARK);
+    expect(body.postedAfter).toBeUndefined();
     // Every filter that used to be dropped, on the wire.
     expect(body.workMode).toBe("remote,hybrid");
     expect(body.remote, "the legacy boolean must not ride alongside a work mode").toBeUndefined();
@@ -138,7 +141,7 @@ describe("a badge that counts a looser query than the one saved", () => {
     const body = probeBody();
     const mapped = searchToBoardBody(SAVED);
     for (const [k, v] of Object.entries(body)) {
-      if (k === "action" || k === "countOnly" || k === "includeFacets" || k === "postedAfter") continue;
+      if (k === "action" || k === "countOnly" || k === "includeFacets" || k === "newSince") continue;
       expect(mapped[k], `the probe sent ${k}, which the saved search did not`).toEqual(v);
     }
   });
@@ -208,6 +211,6 @@ describe("a badge that counts a looser query than the one saved", () => {
     await waitFor(() => expect(invoke).toHaveBeenCalled());
     const body = probeBody();
     const sent = Object.entries(body).filter(([, v]) => v !== undefined).map(([k]) => k).sort();
-    expect(sent).toEqual(["action", "countOnly", "includeFacets", "postedAfter", "q"]);
+    expect(sent).toEqual(["action", "countOnly", "includeFacets", "newSince", "q"]);
   });
 });

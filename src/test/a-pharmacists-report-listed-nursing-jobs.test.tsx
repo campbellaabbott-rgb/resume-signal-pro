@@ -289,3 +289,34 @@ describe("a pharmacist's report listed nursing jobs", () => {
     }
   });
 });
+
+describe("a résumé whose occupation was read but found nothing (S14X-296)", () => {
+  beforeEach(() => { invoke.mockReset(); });
+
+  it("says the occupation was read and found no opening, not that no title could be read", async () => {
+    invoke.mockImplementation(async (fn: string, opts: { body?: Record<string, unknown> } | undefined) => {
+      const b = opts?.body ?? {};
+      if (fn === "job-fit" && b.action === "fit-terms") return { data: { terms: ["pharmacist"] } };
+      // Nothing for the occupation; the field has openings.
+      if (fn === "job-board" && b.action === "list") return b.q ? { data: { jobs: [], total: 0 } } : { data: { jobs: JOBS, total: 4_242 } };
+      if (fn === "job-board" && b.action === "verify") return { data: { live: {} } };
+      if (fn === "job-fit" && b.action === "fit-batch") {
+        const ids = b.ids as string[];
+        return { data: { fits: Object.fromEntries(ids.map((id, i) => [id, 30 - i])) } };
+      }
+      throw new Error(`unexpected invoke ${fn} ${String(b.action)}`);
+    });
+    mount();
+    await waitFor(() => expect(screen.getAllByRole("listitem").length).toBe(5));
+    expect(document.body.textContent).toContain("We found no live openings for pharmacist right now, so these are openings in your field");
+    expect(document.body.textContent, "a résumé we read the occupation from was told we could not read one")
+      .not.toMatch(/couldn't read a job title from this resume/);
+  });
+
+  it("control: a résumé with no occupation keeps the could-not-read sentence", async () => {
+    mockBoard([]);
+    mount();
+    await waitFor(() => expect(screen.getAllByRole("listitem").length).toBe(5));
+    expect(document.body.textContent).toMatch(/couldn't read a job title from this resume/);
+  });
+});

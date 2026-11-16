@@ -76,7 +76,12 @@ export function SavedSearchPills() {
                 // the mapper — which is the entire reason the mapper exists, and
                 // exactly the drift this file had already re-introduced.
                 ...searchToBoardBody(s.params ?? {}),
-                postedAfter: s.last_seen_at,
+                // THE DIGEST'S RULE (NB-21): new since the last look is a
+                // posting dated after it OR first seen after it. postedAfter
+                // reads the posting date only, so a posting the employer
+                // dated last week and we first saw this morning was in the
+                // alert mail and missing from the badge.
+                newSince: s.last_seen_at,
               },
             });
             if (probeErr) {
