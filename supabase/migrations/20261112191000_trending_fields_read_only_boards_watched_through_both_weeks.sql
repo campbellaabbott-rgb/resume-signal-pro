@@ -62,6 +62,9 @@ BEGIN
     EXECUTE format('DROP FUNCTION %s', r.sig);
   END LOOP;
 END $$;
+-- The signature the loop above dropped, named, so a reader of the migrations
+-- alone sees the old one go (a no-op here; IF EXISTS).
+DROP FUNCTION IF EXISTS public.get_trending_categories();
 
 CREATE OR REPLACE FUNCTION public.get_trending_categories(p_watch_days int DEFAULT 14)
 RETURNS TABLE (category text, last7 int, prior7 int)
