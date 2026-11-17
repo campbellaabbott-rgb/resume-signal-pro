@@ -55,8 +55,8 @@ describe("the oversize retry reads a Workable board without its details", () => 
     expect(x.streamCalls, "Workable has no stream spec").toEqual([]);
   });
 
-  it("a held token is never read again: nogigiddy, weekday-1 and hire-resolve stay dark as they are today", async () => {
-    expect([...workableHeld()].sort()).toEqual(["hire-resolve-the-top-recruitment-agency", "nogigiddy", "weekday-1"]);
+  it("a held token is never read again: nogigiddy, weekday-1, hire-resolve and both Mercier boards stay dark (H8 holds them from every read)", async () => {
+    expect([...workableHeld()].sort()).toEqual(["hire-resolve-the-top-recruitment-agency", "mercier-consultancy", "mercier-consultancy-group", "nogigiddy", "weekday-1"]);
     for (const token of workableHeld()) {
       const x = await runVisit({ board: { source: "workable", token }, failReason: "oversize 9.1MB", bare: () => ({ jobs: [1], raw: feed(1) }) });
       expect(x.bareCalls, token).toEqual([]);

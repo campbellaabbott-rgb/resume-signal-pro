@@ -653,9 +653,10 @@ describe("the handler, run with only its network faked", () => {
     // The claim: the conditional update matches no row, and the insert meets the row another caller holds.
     answers.push((q) => (q.table === "job_board_meta" && q.calls.some(([m]) => m === "lt") ? { data: [], error: null } : undefined));
     answers.push((q) => (q.table === "job_board_meta" && q.calls.some(([m]) => m === "insert") ? { data: null, error: { code: "23505", message: "duplicate key" } } : undefined));
-    for (const action of ["audit", "vendor-health"]) {
+    // NB-35 (board .103): an anonymous audit no longer claims a run at all; it reads the cache marked stale.
+    for (const [action, want] of [["audit", { cached: true, stale: true }], ["vendor-health", { cached: true, running: true }]] as const) {
       const res = await post({ action });
-      expect(await res.json(), action).toMatchObject({ cached: true, running: true });
+      expect(await res.json(), action).toMatchObject(want);
     }
     expect(fetched).toEqual([]);
     expect(db.on("job_board_postings")).toEqual([]);

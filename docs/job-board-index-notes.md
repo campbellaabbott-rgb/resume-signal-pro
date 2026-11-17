@@ -24493,3 +24493,112 @@ In `supabase/functions/job-board/anon-budget.ts`, above: `pass: { configured: op
 
 configured: TURNSTILE_SECRET_KEY is set on this function; required: the row's requirePass;
 cap: the row's passCap (reads per pass per UTC day), null = the counter's default of 600.
+
+## n1585-export-const-host_delay_ms-readonly-reco
+
+In `supabase/functions/_shared/host-gate.ts`, above: `export const HOST_DELAY_MS: Readonly<Record<string, number>> = {`
+
+ITEM 18 (board .103): A HOST'S STATED CRAWL-DELAY IS HONOURED BY EVERY LANE.
+
+api.lever.co and api.eu.lever.co state `Crawl-delay: 1`; careers.84lumber.com,
+careers.petsmart.com and careers.aarp.org state 5 (robots read 2026-11-15/16,
+legal-max carried/raw), and every other iCIMS tenant is paced at 5 until its
+own robots is read (legal-max's default for a tenant not yet read). One
+isolate's clock is not enough: the chain's hop, the description sweep, the
+pass-end steps and a visitor's detail read run in different isolates at
+once. So each paced host has one job_board_meta row, `host_gate:<host>`,
+whose v.next_at is the earliest start of the next request to it. A request
+takes the slot by a conditional update on the row's updated_at as it read
+it; a lane that loses reads again and waits out the remainder, and past its
+wall budget gives up (the caller defers the board, never fails it). The row
+is created on first use by an insert whose conflict means another lane took
+it first, so no table is added. Inside one isolate requests to a host queue
+behind each other, so only one at a time contends for the row. If the row
+cannot be read or written, the isolate's own clock still paces it.
+
+The row also keeps the pacing figures status shows: reads, the smallest gap
+between two starts (minGapMs), since and last. Pure but for the store, so
+vitest walks it.
+
+## n1586-export-async-function-awaithostslot-url
+
+In `supabase/functions/_shared/host-gate.ts`, above: `export async function awaitHostSlot(url: string, deps: GateDeps): Promise<boolean> {`
+
+Waits for the host's slot and takes it. true: start the request now. false:
+the slot did not come inside `maxWaitMs`, counted from the call, queueing
+included (the caller defers: a 429 to the slice, never a failure).
+
+## n1587-type-board-source-string-token-string
+
+In `supabase/functions/job-board/bootstrap-seed.ts`, above: `type Board = { source: string; token: string };`
+
+W4-1 (board .103): A DEPLOY SEEDS THE BOOTSTRAP LANE WITH WHAT IS NEW, NOT
+WITH EVERY EMPTY BOARD.
+
+Through .102 a BUILD_VERSION change appended every board with no stored row
+(get_empty_boards), and an empty queue at an unchanged version seeded the
+same list again: 11,776 at the .102 deploy, 4,576 still pending 2026-11-17
+21:21Z, about 27-32 lap-minutes (model F) or 87-113 (model R) spent reading
+boards the rotation reads anyway, most of them read and found empty many
+times over (capacity.md section 6).
+
+Now a version change REPLACES the queue with, in this order:
+  (a) the tokens this build repointed: a RETIRED_TWIN_KEYS entry the last
+      seed had not seen whose token the catalogue carries under another
+      vendor (their old reads say nothing about the new board);
+  (b) the empties no read has ever stamped (no job_board_verifications row
+      under the token): boards a catalogue change added, which the rotation
+      would otherwise reach only a lap later;
+  (c) the empties of a vendor whose READER_VERSION entry changed (a new
+      reader may find what the old one could not).
+The old queue held only what the old rule seeded; anything in it no read
+has stamped comes back under (b), so nothing the lane exists for is lost,
+and a token leaves the next seed once a read stamps it, so the drain the
+2026-08-24 restart defect never let finish now ends. If the stamps cannot be
+read, nothing is seeded and the version is not stamped, so the next slice
+tries again. An empty queue at an unchanged version seeds nothing.
+
+Pure, so vitest walks it.
+
+## n1588-export-function-repointedtokens-twins-re
+
+In `supabase/functions/job-board/bootstrap-seed.ts`, above: `export function repointedTokens(twins: readonly string[], storedTwins: readonly string[] | null | undefined, sources: readonly Board[]): str`
+
+(a): the tokens of twin keys the last seed had not seen (all of them when it
+stored none), each only while its own key has left the catalogue and its
+token is carried under another vendor.
+
+## n1589-export-function-clearrepointedfailures-v
+
+In `supabase/functions/job-board/bootstrap-seed.ts`, above: `export function clearRepointedFailures(v: Record<string, unknown>, tokens: readonly string[], sourcesOf: (token: string) => readonly string[`
+
+The failure state a repointed token leaves behind: its entries under the
+bare token and under each source:token key, in every map that holds them.
+null when it holds none, so the caller writes nothing.
+
+## n1590-export-type-capclock-now-number-sleep
+
+In `supabase/functions/job-board/rate-cap.ts`, above: `export type CapClock = { now: () => number; sleep: (ms: number) => Promise<void> };`
+
+W4-17 (board .103): A CAP ON ONE VENDOR'S DETAIL READS.
+
+The description sweep runs DESC_SWEEP_CONCURRENCY (8) wide whatever the
+vendor, so a hop of SmartRecruiters rows opened eight posting reads at once,
+back to back. A cap admits a call only while fewer than `concurrent` are in
+flight and fewer than `perSecond` started in the last second, in the order
+they asked; the rest wait their turn. Per isolate. Pure but for the clock,
+so vitest walks it on a virtual one.
+
+## n1591-export-const-disk_offset_gb
+
+In `supabase/functions/job-board/disk-band.ts`, above: `export const DISK_OFFSET_GB = 0.73;`
+
+Board .103 (spec §7, T-20): THE DISK BAND STATUS SHOWS, NEVER THE SIZE.
+
+cost2's nightly stamp keeps a ring of database sizes in job_board_meta
+`storage_size_ring` (newest first). Lovable's "used" figure is read as
+(db_bytes + wal_bytes) / 1e9 + an offset, 0.73 GB until two dated owner
+readings calibrate it. Status shows only the band that reading falls in
+(<28, 28-32, 32-34, ≥34 GB) and the stamp's time; the exact figure stays in
+the service-only ring. No reading, or one without its WAL figure, is null:
+a band without the WAL could read low, and the add gate stops on it.

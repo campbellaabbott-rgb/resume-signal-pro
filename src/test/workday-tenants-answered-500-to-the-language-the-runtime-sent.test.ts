@@ -61,6 +61,7 @@ function shippedFetch(): (url: string, init?: RequestInit) => Promise<Response> 
     MAX_RESPONSE_BYTES: constOf("MAX_RESPONSE_BYTES"),
     OVERSIZE_MARKER: "OVERSIZE_BODY",
     BODY_LATE_MARKER: /\nconst BODY_LATE_MARKER = "([^"]+)";/.exec(FN)?.[1] ?? "",
+    hostSlot: async () => true, // item 18's host gate: Workday hosts are not paced
   };
   // Whatever helpers fetchWithTimeout calls today are lifted with it.
   const src = ["discardBody", "boundBody", "bodyDeadline", "fetchWithTimeout"]

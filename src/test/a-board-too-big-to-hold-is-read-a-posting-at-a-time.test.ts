@@ -675,10 +675,11 @@ describe("(f) readOversizeBoard and the worker's retry, executed — not spelled
     const warned: string[] = [];
     const urls: string[] = [];
     const listUrl = (s: Board) => { urls.push(`${s.source}:${s.token}`); return `https://feed.test/${s.source}/${s.token}`; };
-    const read = new Function("fetch", "listUrl", "beforeDeadline", "SLIM_SPECS", "streamSlim", "normalizeLever", "normalizeAshby", "normalizeGreenhouse", "normalizeRecruitee", "normalizePinpoint", "console", "withWorkdayLanguage", `${toJs(ts)}\nreturn readOversizeBoard;`)(
+    const read = new Function("fetch", "listUrl", "beforeDeadline", "SLIM_SPECS", "streamSlim", "normalizeLever", "normalizeAshby", "normalizeGreenhouse", "normalizeRecruitee", "normalizePinpoint", "console", "withWorkdayLanguage", "hostSlot", `${toJs(ts)}\nreturn readOversizeBoard;`)(
       fetchStub, listUrl, beforeDeadline, SLIM_SPECS, streamSlim, normalizeLever, normalizeAshby, normalizeGreenhouse, normalizeRecruitee, normalizePinpoint,
       { warn: (...a: unknown[]) => warned.push(a.map(String).join(" ")), log: () => {}, error: () => {} },
       withWorkdayLanguage,
+      async () => true, // item 18's host gate: its own test runs it
     ) as (s: Board, deadlineAt: number, freshCutoffMs: number) => Promise<Read>;
     return { read, warned, urls };
   };

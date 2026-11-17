@@ -391,6 +391,7 @@ describe("BB-09: a vendor that refuses for load defers the board; it does not fa
       discardBody: (r: Response) => { discarded.push(r.status); },
       setTimeout: (f: () => void) => { f(); return 0; }, clearTimeout: () => {},
       MAX_RESPONSE_BYTES: 4_000_000, FETCH_TIMEOUT_MS: 15_000,
+      hostSlot: async () => true, // item 18's host gate: these hosts are not paced
     });
     return { fetchWithTimeout, asked, discarded };
   };

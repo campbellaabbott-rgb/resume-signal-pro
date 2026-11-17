@@ -33,9 +33,10 @@ describe("giant iCIMS boards are read fully without wedging a slice", () => {
     expect(FN).toMatch(/ICIMS_MAX_PAGES = Math\.max\(1, s\.pages \?\? 12\)/);
   });
 
-  it("pages fetch in bounded parallel chunks, and a short page ends the walk", () => {
-    // At most five pages in flight, fewer when the visit's cap needs fewer (S13-035, n1432).
-    expect(FN).toMatch(/ICIMS_CHUNK = Math\.min\(5, Math\.ceil\(MAX_POSTINGS_PER_VISIT \/ pageSize\)\)/);
+  it("pages fetch one at a time, and a short page ends the walk", () => {
+    // Board .103 item 18: every iCIMS tenant is paced (its stated Crawl-delay, 5 s on the three read, or
+    // the default until its robots is read), so a page is asked only after the one before it was read.
+    expect(FN).toMatch(/ICIMS_CHUNK = 1;/);
     // The early-exit must survive the chunking: a short page inside a chunk
     // ends the whole walk, or out-of-range pages would be read as data.
     expect(FN).toMatch(/break outer;/);

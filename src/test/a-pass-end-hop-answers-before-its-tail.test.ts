@@ -114,6 +114,7 @@ function world(opts: { aged?: number; now?: () => number } = {}) {
   const events: string[] = [];
   const background: Promise<unknown>[] = [];
   const kicks: Array<{ step: string; startedAt: string }> = [];
+  const hop0: unknown[][] = [];
   const aged = Array.from({ length: opts.aged ?? 3 }, (_, i) => ({
     id: `greenhouse:acme:${i}`, source: "greenhouse", company_token: "acme", company: "Acme", title: "Role",
     category: "other", posted_at: "2026-08-01T00:00:00Z", first_seen: "2026-08-01T00:00:00Z", effective_posted: "2026-08-01T00:00:00Z",
@@ -191,6 +192,9 @@ function world(opts: { aged?: number; now?: () => number } = {}) {
       events.push(v.doneAt ? "pass_end:done" : "pass_end:stamp");
     },
     kickPassEndStep: (step: string, startedAt: string) => { kicks.push({ step, startedAt }); events.push(`step-kick:${step}`); },
+    // W4-2 (board .103): the pass end kicks the next pass's hop 0 through the CAS.
+    chainNextSlice: (...a: unknown[]) => { hop0.push(a); events.push("hop0-kick"); },
+    progAt: "2026-10-12T06:01:00.000Z",
     loadOversizeBoards: async () => { META_READ.oversize = true; },
     maybeKickMaintenance: async () => { events.push("maintenance"); },
     recordSliceStats: async () => { events.push("slice-stats"); },
@@ -233,6 +237,7 @@ function world(opts: { aged?: number; now?: () => number } = {}) {
     NAME_SYNC_UNTIL_MS: constNum("NAME_SYNC_UNTIL_MS"),
     RENAMED_TOKENS: [],
     RETIRED_TWIN_KEYS: [], // board .102; its own test runs the arm
+    WORKABLE_OVERSIZE_HELD: new Set<string>(), // H8; its own test runs the arm
     JOB_SOURCES: [{ source: "greenhouse", token: "acme", name: "Acme" }],
     ORACLE_SITE_RANK: new Map(),
     ORACLE_CANONICAL_SITES: [],
@@ -248,7 +253,7 @@ function world(opts: { aged?: number; now?: () => number } = {}) {
     CORPUS_CEILING: 10_000_000,
     CORPUS_TARGET: 9_000_000,
   };
-  return { deps, events, background, aged, meta, kicks };
+  return { deps, events, background, aged, meta, kicks, hop0 };
 }
 
 /** The step functions and their plumbing, as shipped. */
@@ -281,6 +286,9 @@ describe("the pass-end hop hands its tail over and answers (S11-001)", () => {
     expect((w.meta.pass_end?.v as PassEndRow).next).toBe("serve");
     expect(w.kicks.map((k) => k.step)).toEqual(["serve"]);
     expect(w.events.filter((e) => e === "slice-stats"), "the hop records its slice once").toHaveLength(1);
+    // W4-2: the next pass's hop 0 is kicked once, after the tail's first step, against the stamp this hop wrote.
+    expect(w.hop0).toEqual([[12, w.deps.client, undefined, { after: "2026-10-12T06:01:00.000Z", passEnd: ctx.startedAt }]]);
+    expect(w.events.indexOf("hop0-kick")).toBeGreaterThan(w.events.indexOf("step-kick:serve"));
   });
 
   it("the step is a maintenance request that carries its pass, and nobody else may send it", () => {
