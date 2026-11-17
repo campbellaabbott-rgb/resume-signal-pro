@@ -1,5 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. Every job this file schedules
--- runs at most once an hour (reviewed 2026-11-16 by the project owner).
+-- lovable-cron-fallback-reviewed: no sub-hourly cron; every job this file schedules runs at most once an hour (reviewed 2026-11-16 by the project owner).
 --
 -- FOUR DUPLICATE INDEXES ARE DROPPED CONCURRENTLY, AND THEIR TWINS KEPT
 -- (cost audit 2026-11-08, db-cadence lane, "do first" #14).

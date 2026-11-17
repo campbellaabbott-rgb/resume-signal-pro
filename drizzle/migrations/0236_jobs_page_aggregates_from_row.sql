@@ -1,0 +1,2 @@
+-- lovable-cron-fallback-reviewed: no cron; this file creates or changes no cron schedule (reviewed 2026-11-16 by the project owner).
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261109170000_two_jobs_page_aggregates_answer_from_a_row_once_its_writer_is_scheduled'));

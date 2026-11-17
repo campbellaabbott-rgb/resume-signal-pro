@@ -1,0 +1,2 @@
+-- lovable-cron-fallback-reviewed: no cron; this file creates or changes no cron schedule (reviewed 2026-11-16 by the project owner).
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261109131000_the_nightly_purge_stops_repeating_the_hourly_report_cache_delete'));

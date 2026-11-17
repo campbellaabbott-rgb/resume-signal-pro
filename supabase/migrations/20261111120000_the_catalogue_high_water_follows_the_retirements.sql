@@ -1,5 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
--- (reviewed 2026-11-16 in the board .102 integration).
+-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing (reviewed 2026-11-16 in the board .102 integration).
 --
 -- THE CATALOGUE HIGH-WATER FOLLOWS THE RETIREMENTS.
 --

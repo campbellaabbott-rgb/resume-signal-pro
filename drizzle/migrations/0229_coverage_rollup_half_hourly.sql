@@ -1,0 +1,2 @@
+-- lovable-cron-fallback-reviewed: job-board-stats-rollup goes from every 15 minutes to every 30 minutes; reviewed 2026-11-16 by the project owner; the public data API already promises a 30-minute rollup, and each run now reads the postings once instead of twice.
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261109121000_the_coverage_rollup_reads_the_postings_once_every_half_hour'));
