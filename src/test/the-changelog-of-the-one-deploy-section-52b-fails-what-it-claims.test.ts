@@ -297,8 +297,13 @@ describe("each claim can FAIL after the publish", () => {
   });
 
   it("a title the crawler page lost (the prerender did not rebuild), and a title dropped from both", () => {
-    const lost = run({ changelog: changelogPage({ titles: (t) => (t === TITLES[5] ? null : t) }) }).lines;
-    expect(has(lost, "FAIL", new RegExp(`carry "${TITLES[5]}", but the crawler copy of /changelog does not`)), show(lost)).toBe(true);
+    // The page can lose only a title it still lists: newer batches (17 November's
+    // six) pushed all but the first few of the seventeen past its newest 30.
+    const listed = new Set(ENTRIES.slice(0, 30).map((e) => e.id));
+    const onPage = TITLES[THIS_DEPLOY.map((e) => listed.has(e.id)).lastIndexOf(true)];
+    expect(onPage, "none of the seventeen is left on the page to lose").toBeTruthy();
+    const lost = run({ changelog: changelogPage({ titles: (t) => (t === onPage ? null : t) }) }).lines;
+    expect(has(lost, "FAIL", new RegExp(`carry "${onPage.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}", but the crawler copy of /changelog does not`)), show(lost)).toBe(true);
     const dropped = Object.fromEntries(Object.entries(EN).filter(([k]) => k !== THIS_DEPLOY[8].id));
     const gone = run({ chunk: chunkOf(dropped), changelog: changelogPage({ titles: (t) => (t === TITLES[8] ? null : t) }) }).lines;
     expect(has(gone, "FAIL", new RegExp(`neither /changelog nor the US English changelog strings carry "${TITLES[8]}"`)), show(gone)).toBe(true);
