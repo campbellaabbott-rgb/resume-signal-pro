@@ -71,7 +71,7 @@ import { METRO_ALIASES, sanitizeTerm, STATE_ALIASES } from "../_shared/location-
 // The board's place terms: _shared's aliases, and "City, ST" as the city in that state (query-place.ts).
 import { COUNTRY_NAMES, liftTrailingPlace, negatedTrailingPlace, placeTerms as locationTerms, rankedPlaceParam as rankedLocationParam } from "./query-place.ts";
 import { askedByName, resolveCompanyNames, type CompanyScope } from "./company-names.ts";
-import { nextPassEndStep, PASS_END_RETRIES, PASS_END_STEPS, stalledPassEndStep, withStepReceipt, isPassEndStep, type PassEndRow, type PassEndStep, type StepReceipt } from "./pass-end.ts";
+import { nextPassEndStep, namesOutOfTime, PASS_END_NAME_HOPS, PASS_END_RETRIES, PASS_END_STEPS, stalledPassEndStep, withStepReceipt, isPassEndStep, type PassEndRow, type PassEndStep, type StepReceipt } from "./pass-end.ts";
 import {
   POSTED_BACKFILL_VERSION,
   postedBackfillDue,
@@ -4628,6 +4628,7 @@ async function passEndReceipt(client: SupabaseClient, startedAt: string, step: P
     if (Date.parse(String(v.startedAt)) > Date.parse(startedAt)) return { superseded: true, prior: {} };
     v = { startedAt, steps: {} }; // the pass's opening receipt never landed: open it here
   }
+  if (v.steps?.[step]?.resumable) return { superseded: true, prior: {} }; // W4-3: closed on its own clock
   await stampPassEnd(client, withStepReceipt(v, step, patch, top));
   return { superseded: false, prior: v.steps?.[step] ?? {} };
 }
@@ -4660,12 +4661,13 @@ async function runPassEndStep(client: SupabaseClient, step: PassEndStep, started
   const hops = step === "sweep" || step === "names" ? (begun.prior.hops ?? 0) + 1 : undefined;
   const next = nextPassEndStep(step, hops !== undefined && r.stop !== undefined ? { stop: r.stop, hops } : undefined);
   const doneAt = new Date().toISOString();
-  await passEndReceipt(
+  const ended = await passEndReceipt(
     client, startedAt, step,
     { doneAt, ms: Date.now() - t0, ok: r.ok, detail: r.detail.slice(0, 200), ...(hops !== undefined ? { hops, ...(step === "sweep" ? { dropped: (begun.prior.dropped ?? 0) + (r.swept ?? 0), statedClosed: ((begun.prior as { statedClosed?: number }).statedClosed ?? 0) + (r.statedClosed ?? 0) } : {}) } : {}) },
     next ? { next, nextKickedAt: doneAt } : { next: null, refreshedAt: ctx.refreshedAt, doneAt, ms: Date.now() - Date.parse(startedAt) },
   );
-  console.log(`[JOB-BOARD] pass-end ${step}: ${r.detail}${next ? ` -> ${next}` : " (tail finished)"}`);
+  console.log(`[JOB-BOARD] pass-end ${step}: ${r.detail}${ended.superseded ? " (the tail was closed meanwhile)" : next ? ` -> ${next}` : " (tail finished)"}`);
+  if (ended.superseded) return { ok: r.ok, step, next: null, detail: r.detail };
   if (next) kickPassEndStep(next, startedAt);
   else await maybeKickMaintenance(client);
   return { ok: r.ok, step, next, detail: r.detail };
@@ -4679,6 +4681,13 @@ async function maybeResumePassEnd(client: SupabaseClient): Promise<void> {
   try {
     const row = await readMetaRow(client, "pass_end");
     const v = (row.read ? row.v : null) as PassEndRow | null;
+    if (v && typeof v.startedAt === "string" && namesOutOfTime(v, Date.now(), NAME_SYNC_UNTIL_MS)) {
+      const doneAt = new Date().toISOString();
+      const detail = `closed on its own clock (${PASS_END_NAME_HOPS} x ${NAME_SYNC_UNTIL_MS / 1000}s); the next tail resumes from its cursor`;
+      await stampPassEnd(client, withStepReceipt(v, "names", { doneAt, ok: false, resumable: true, detail }, { next: null, doneAt, ms: Date.now() - Date.parse(v.startedAt) }));
+      console.warn(`[JOB-BOARD] pass-end names ${detail}`);
+      return;
+    }
     const step = stalledPassEndStep(v, Date.now());
     if (!step || !v || typeof v.startedAt !== "string") return;
     const tries = (v.steps?.[step]?.tries ?? 0) + 1;
@@ -5363,11 +5372,19 @@ async function passEndNames(client: SupabaseClient, sliceWallStart: number): Pro
     // A retry the clock never reached sorts at or before `after`: carried, or it is never visited again.
     const unreachedRetries: string[] = [];
     let after = queue.resumeAfter;
+    // W4-3: the cursor is written as the hop goes (every 10 s), so a hop that dies is resumed near where it got to.
+    const retryLeft = new Set(queue.retry);
+    let cursorAt = Date.now();
     for (const tk of queue.tokens) {
       if (Date.now() >= nameSyncUntil) {
         waiting += JOB_SOURCES.filter((s) => s.token === tk).length || 1;
         if (queue.retry.has(tk)) unreachedRetries.push(tk);
         continue;
+      }
+      if (Date.now() - cursorAt >= 10_000) {
+        cursorAt = Date.now();
+        const mid: NameSyncProgress = { version: NAME_SYNC_VERSION, after, retry: [...failedTokens, ...retryLeft].slice(0, 200), at: new Date(cursorAt).toISOString() };
+        await client.from("job_board_meta").upsert({ k: "name_sync_progress", v: mid, updated_at: mid.at }, { onConflict: "k" });
       }
       let tokenFailed = false;
       // Each board on the token, by its own vendor: a twin never takes the
@@ -5402,6 +5419,7 @@ async function passEndNames(client: SupabaseClient, sliceWallStart: number): Pro
         } else fixed++;
       }
       if (tokenFailed) failedTokens.push(tk);
+      retryLeft.delete(tk);
       if (!queue.retry.has(tk) && tk > after) after = tk;
     }
     const doneAt = new Date().toISOString();

@@ -37,6 +37,8 @@ export const PASS_END_RETRIES = 2;
 export type StepReceipt = {
   startedAt?: string; doneAt?: string; ms?: number; ok?: boolean; detail?: string;
   tries?: number; hops?: number; dropped?: number;
+  /** W4-3: closed on its own clock; the next tail resumes from its cursor. A late hop of this step neither writes nor kicks. */
+  resumable?: boolean;
 };
 export type PassEndRow = {
   startedAt?: string; doneAt?: string; next?: string | null; nextKickedAt?: string;
@@ -81,4 +83,21 @@ export function stalledPassEndStep(v: PassEndRow | null | undefined, now: number
 /** The row with one step's receipt merged in (and any top-level fields). */
 export function withStepReceipt(v: PassEndRow, step: PassEndStep, patch: StepReceipt, top: Record<string, unknown> = {}): PassEndRow {
   return { ...v, ...top, steps: { ...(v.steps ?? {}), [step]: { ...(v.steps?.[step] ?? {}), ...patch } } };
+}
+
+/**
+ * W4-3 (board .103): the names step is closed on its own clock. Its hops can
+ * die or hang inside one board's updates (11-15, and 11-17 18:32:40-20:06:09Z:
+ * the tail held open 94 min), and each re-kick restarted from the cursor the
+ * dead hop never wrote. Once PASS_END_NAME_HOPS x the hop clock has passed
+ * since the step was first kicked (the capacity step's finish; its own first
+ * start when that is missing) with the tail still open on it, the tail is
+ * closed ok:false, resumable:true, and the next pass's tail resumes from
+ * name_sync_progress.
+ */
+export function namesOutOfTime(v: PassEndRow | null | undefined, now: number, hopMs: number): boolean {
+  if (!v || passEndDone(v) || v.next !== "names") return false;
+  const cap = ms(v.steps?.capacity?.doneAt);
+  const since = Number.isFinite(cap) ? cap : ms(v.steps?.names?.startedAt);
+  return Number.isFinite(since) && now - since >= PASS_END_NAME_HOPS * hopMs;
 }
