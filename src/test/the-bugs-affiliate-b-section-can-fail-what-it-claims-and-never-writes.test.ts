@@ -20,6 +20,10 @@
  *     the publish;
  *   - a kit that is half old and half new fails; a chunk that carries
  *     neither kit, or an entry that names none, fails;
+ *   - the three hashed addresses the old kit wrote into embeds (O1-O3) are
+ *     INFO while the old kit serves its own JPEGs there, and once this
+ *     round's kit is published a 404, the SPA fallback or the old JPEG at one
+ *     of them fails, naming it (review of part B, 2026-11-17);
  *   - every call is a GET, no body is sent, and the key is never printed;
  *   - every string the section looks for in the chunk is one this branch's
  *     kit writes, and the old kit's strings are ones it no longer writes.
@@ -39,6 +43,12 @@ const KIT = readFileSync(resolve(ROOT, "src/components/affiliate/MarketingKit.ts
 const KEY = "pk_test_SECRET_marker_bugs_affiliate_b";
 const BANNERS = resolve(ROOT, "public/affiliate");
 const SIZES = ["728x90", "300x250", "160x600"];
+/** The addresses the old kit's embed code wrote, each with the size its label named, and the claim that reads it. */
+const OLD_EMBEDS: Array<[string, string, string]> = [
+  ["O1", "/assets/banner-leaderboard-7wRFqWjL.png", "728x90"],
+  ["O2", "/assets/banner-square-Cs_OOO75.png", "300x250"],
+  ["O3", "/assets/banner-skyscraper-CCTK8RI-.png", "160x600"],
+];
 
 type Route = { match: string; status?: number; headers?: Record<string, string>; body?: string; bodyB64?: string };
 
@@ -112,11 +122,14 @@ const fileBytes = (name: string) => readFileSync(resolve(BANNERS, name));
 const served = (path: string, bytes: Buffer, type: string): Route => ({ match: GET(`https://site.test${path}`), headers: { "content-type": type }, bodyB64: bytes.toString("base64") });
 const svgAt = (wh: string, bytes = fileBytes(`banner-${wh}.svg`), type = "image/svg+xml"): Route => served(`/affiliate/banner-${wh}.svg`, bytes, type);
 const pngAt = (wh: string, bytes = fileBytes(`banner-${wh}.png`), type = "image/png"): Route => served(`/affiliate/banner-${wh}.png`, bytes, type);
-const allFiles = (): Route[] => SIZES.flatMap((wh) => [svgAt(wh), pngAt(wh)]);
+const allFiles = (): Route[] => [...SIZES.flatMap((wh) => [svgAt(wh), pngAt(wh)]), ...OLD_EMBEDS.map(([, path]) => served(path, readFileSync(resolve(ROOT, `public${path}`)), "image/png"))];
+/** The old kit's own files at those addresses today: JPEG bytes served as image/png. */
+const JPEG = Buffer.concat([Buffer.from("ffd8ffe000104a46494600010100000100010000", "hex"), Buffer.alloc(64)]);
+const oldJpegs = (): Route[] => OLD_EMBEDS.map(([, path]) => served(path, JPEG, "image/png"));
 const SPA = (path: string): Route => ({ match: GET(`https://site.test${path}`), headers: { "content-type": "text/html; charset=utf-8" }, body: "<!doctype html><div id=root></div>" });
 const NOT_FOUND = (path: string): Route => ({ match: GET(`https://site.test${path}`), status: 404, headers: { "content-type": "text/plain; charset=UTF-8" }, body: "Not found" });
 
-const before = (): Route[] => [...site(CHUNK_OLD)];
+const before = (): Route[] => [...site(CHUNK_OLD), ...oldJpegs()];
 const after = (over: Route[] = []): Route[] => [...over, ...site(CHUNK_NEW), ...allFiles()];
 
 describe("the bug round affiliate-b section", () => {
@@ -128,20 +141,24 @@ describe("the bug round affiliate-b section", () => {
     for (const [c, path] of [["S1", "/affiliate/banner-728x90.svg"], ["S2", "/affiliate/banner-300x250.svg"], ["S3", "/affiliate/banner-160x600.svg"], ["P1", "/affiliate/banner-728x90.png"], ["P2", "/affiliate/banner-300x250.png"], ["P3", "/affiliate/banner-160x600.png"]]) {
       expect(lines, out).toContain(`INFO  ${c} ${path} answers 404 text/plain; charset=utf-8: the publish carrying part B has not happened`);
     }
-    expect(infos(lines), out).toHaveLength(7);
+    for (const [c, path] of OLD_EMBEDS) {
+      expect(lines, out).toContain(`INFO  ${c} ${path} answers 200 image/png: the old kit serves its own file here until the publish carrying part B`);
+    }
+    expect(infos(lines), out).toHaveLength(10);
   });
 
   it("after the publish passes the kit and the six banners this branch serves", () => {
     const { lines, out } = run(after());
     expect(fails(lines), out).toEqual([]);
-    expect(passes(lines).map((l) => l.slice(0, 8)), out).toEqual(["PASS  K1", "PASS  S1", "PASS  S2", "PASS  S3", "PASS  P1", "PASS  P2", "PASS  P3"]);
+    expect(passes(lines).map((l) => l.slice(0, 8)), out).toEqual(["PASS  K1", "PASS  S1", "PASS  S2", "PASS  S3", "PASS  P1", "PASS  P2", "PASS  P3", "PASS  O1", "PASS  O2", "PASS  O3"]);
+    expect(lines, out).toContain("PASS  O1 /assets/banner-leaderboard-7wRFqWjL.png answers 200 image/png at 728x90: a banner embedded from the old kit still loads, now the size its label said (S14X-213)");
     expect(lines, out).toContain("PASS  S1 /affiliate/banner-728x90.svg answers 200 image/svg+xml at 728x90, lettered in text with no script or outside reference: the size its label says, at an address no rebuild moves (S14X-213)");
   });
 
   it("an SVG served with a charset in its content type still passes", () => {
     const { lines, out } = run(after([svgAt("728x90", fileBytes("banner-728x90.svg"), "image/svg+xml; charset=utf-8")]));
     expect(fails(lines), out).toEqual([]);
-    expect(passes(lines), out).toHaveLength(7);
+    expect(passes(lines), out).toHaveLength(10);
   });
 
   it("after the publish, the SPA fallback or a 404 at a banner address fails, naming it", () => {
@@ -150,6 +167,22 @@ describe("the bug round affiliate-b section", () => {
       "FAIL  S1 /affiliate/banner-728x90.svg answers 200 text/html; charset=utf-8 though the kit that names it is published (want 200 image/svg+xml): an embedded banner shows nothing",
       "FAIL  P2 /affiliate/banner-300x250.png answers 404 text/plain; charset=utf-8 though the kit that names it is published (want 200 image/png): an embedded banner shows nothing",
     ]);
+  });
+
+  it("after the publish, an old embed address that is gone, the SPA fallback, or still the old JPEG fails, naming it", () => {
+    const { lines, out } = run(after([
+      NOT_FOUND("/assets/banner-leaderboard-7wRFqWjL.png"),
+      SPA("/assets/banner-square-Cs_OOO75.png"),
+      served("/assets/banner-skyscraper-CCTK8RI-.png", JPEG, "image/png"),
+    ]));
+    expect(fails(lines), out).toEqual([
+      "FAIL  O1 /assets/banner-leaderboard-7wRFqWjL.png answers 404 text/plain; charset=utf-8 though this round kit is published (want 200 image/png): every banner an affiliate embedded from the old kit shows nothing (S14X-213)",
+      "FAIL  O2 /assets/banner-square-Cs_OOO75.png answers 200 text/html; charset=utf-8 though this round kit is published (want 200 image/png): every banner an affiliate embedded from the old kit shows nothing (S14X-213)",
+      "FAIL  O3 /assets/banner-skyscraper-CCTK8RI-.png is served as image/png but its bytes are not a PNG (they begin ffd8ffe0) (S14X-213)",
+    ]);
+    // A banner of another size under an old address fails too.
+    const wrong = run(after([served("/assets/banner-square-Cs_OOO75.png", fileBytes("banner-728x90.png"), "image/png")]));
+    expect(fails(wrong.lines), wrong.out).toEqual(["FAIL  O2 /assets/banner-square-Cs_OOO75.png is served as image/png but it is 728x90, not 300x250 (S14X-213)"]);
   });
 
   it("a served banner of the wrong size fails even before the publish", () => {
@@ -164,8 +197,7 @@ describe("the bug round affiliate-b section", () => {
   });
 
   it("JPEG bytes under a .png address fail, as the old banners were", () => {
-    const jpeg = Buffer.concat([Buffer.from("ffd8ffe000104a46494600010100000100010000", "hex"), Buffer.alloc(64)]);
-    const { lines, out } = run(after([pngAt("160x600", jpeg)]));
+    const { lines, out } = run(after([pngAt("160x600", JPEG)]));
     expect(fails(lines), out).toEqual([
       "FAIL  P3 /affiliate/banner-160x600.png is served as image/png but its bytes are not a PNG (they begin ffd8ffe0) (S14X-213)",
     ]);
@@ -193,8 +225,8 @@ describe("the bug round affiliate-b section", () => {
     expect(fails(mixed.lines), mixed.out).toEqual([
       "FAIL  K1 the published kit (Affiliates-Af1x.js) is neither the old one nor this round's: it still carries 'real ATS algorithms'",
     ]);
-    // The six files still judge as published: they PASS.
-    expect(passes(mixed.lines), mixed.out).toHaveLength(6);
+    // The six files and the three old addresses still judge as published: they PASS.
+    expect(passes(mixed.lines), mixed.out).toHaveLength(9);
     const short = run(after([{ match: GET("https://site.test/assets/Affiliates-Af1x.js"), body: CHUNK_NEW.replace('"/affiliate/banner-160x600.svg"', '"x"') }]));
     expect(fails(short.lines), short.out).toEqual([
       "FAIL  K1 the published kit (Affiliates-Af1x.js) is neither the old one nor this round's: it does not name /affiliate/banner-160x600.svg",
@@ -207,7 +239,7 @@ describe("the bug round affiliate-b section", () => {
       "FAIL  K1 the Affiliates chunk (Affiliates-Af1x.js) carries neither the old kit nor the new one: the kit moved out of the chunk, so it cannot be judged",
     ]);
     expect(infos(lines).every((l) => l.endsWith(": K1 could not tell whether the kit is published")), out).toBe(true);
-    expect(infos(lines), out).toHaveLength(6);
+    expect(infos(lines), out).toHaveLength(9);
   });
 
   it("an entry that names no Affiliates chunk, or a homepage with no entry, fails", () => {
@@ -232,6 +264,13 @@ describe("what the section looks for is what this branch writes", () => {
     expect(KIT_PATHS.slice().sort()).toEqual(files.map((f) => `/affiliate/${f}`));
     expect(SECTION).toContain(`VDAFB_SIZES="${SIZES.join(" ")}"`);
     expect(files).toEqual(SIZES.flatMap((wh) => [`banner-${wh}.png`, `banner-${wh}.svg`]).sort());
+  });
+
+  it("the three old addresses the section reads are this branch's banners of the size each label named", () => {
+    for (const [c, path, wh] of OLD_EMBEDS) {
+      expect(SECTION, c).toContain(`vdafb_file ${c} ${wh} png ${path}`);
+      expect(readFileSync(resolve(ROOT, `public${path}`)).equals(fileBytes(`banner-${wh}.png`)), path).toBe(true);
+    }
   });
 
   it("the kit no longer writes the strings the section reads as the old kit", () => {

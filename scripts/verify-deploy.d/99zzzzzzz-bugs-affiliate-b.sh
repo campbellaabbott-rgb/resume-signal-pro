@@ -29,14 +29,23 @@
 #   P1-P3  /affiliate/banner-728x90.png, -300x250.png and -160x600.png each
 #       answer 200 image/png whose IHDR is that width and height (the old
 #       files were JPEG bytes under .png names, at other sizes).
+#   O1-O3  /assets/banner-leaderboard-7wRFqWjL.png, banner-square-Cs_OOO75.png
+#       and banner-skyscraper-CCTK8RI-.png, the hashed addresses the old kit's
+#       "Copy HTML embed" wrote into affiliates' pages, each answer 200
+#       image/png at 728x90, 300x250 and 160x600 once this round's kit is
+#       published (review of part B, 2026-11-17). Their source files left the
+#       build with S14X-213 and a publish stops serving an earlier build's
+#       hashed files, so public/assets/ carries the new banners under those
+#       names. Before the publish they are the old kit's JPEG bytes at other
+#       sizes, so every O line is INFO until K1 says the kit is published.
 #
 # NOT PROVABLE FROM OUTSIDE, so proved in the suite: the preview and the
 # label read the same width and height, the embed code names the file by its
 # fixed address and marks the link sponsored, and a download that does not
 # answer saves nothing (the-affiliate-banners-are-the-size-their-labels-say).
 #
-# READ-ONLY. GETs of the homepage, its entry, the Affiliates chunk and the six
-# banner files. Nothing is posted.
+# READ-ONLY. GETs of the homepage, its entry, the Affiliates chunk, the six
+# banner files and the three old addresses. Nothing is posted.
 echo "== 99zzzzzzz-bugs-affiliate-b. bug round part B, affiliate-b lane: banners the size their labels say, at fixed addresses, and a newsletter that promises what the scan shows =="
 
 rm -f /tmp/vd_bafb_home.html /tmp/vd_bafb_entry.js /tmp/vd_bafb_page.js /tmp/vd_bafb_hdr.txt /tmp/vd_bafb_body.bin
@@ -77,12 +86,13 @@ fi
 
 # S1-S3 and P1-P3: each banner file, by GET. The verdict reads the status
 # line and content type the host sent and the bytes themselves.
-vdafb_file() { # $1 claim $2 WxH $3 png|svg
+vdafb_file() { # $1 claim $2 WxH $3 png|svg [$4 an address the old kit wrote into embeds]
   rm -f /tmp/vd_bafb_hdr.txt /tmp/vd_bafb_body.bin
-  curl -s -m 30 -D /tmp/vd_bafb_hdr.txt -o /tmp/vd_bafb_body.bin "$SITE/affiliate/banner-$2.$3"
-  VDAFB_C="$1" VDAFB_WH="$2" VDAFB_EXT="$3" VDAFB_STAGE="$VDAFB_FE" node -e '
+  VDAFB_P="${4:-/affiliate/banner-$2.$3}"
+  curl -s -m 30 -D /tmp/vd_bafb_hdr.txt -o /tmp/vd_bafb_body.bin "$SITE$VDAFB_P"
+  VDAFB_C="$1" VDAFB_WH="$2" VDAFB_EXT="$3" VDAFB_PATH="$VDAFB_P" VDAFB_LEGACY="${4:+1}" VDAFB_STAGE="$VDAFB_FE" node -e '
 const fs=require("fs");const e=process.env;const c=e.VDAFB_C;
-const path="/affiliate/banner-"+e.VDAFB_WH+"."+e.VDAFB_EXT;
+const path=e.VDAFB_PATH;const legacy=e.VDAFB_LEGACY==="1";
 const w=Number(e.VDAFB_WH.split("x")[0]),h=Number(e.VDAFB_WH.split("x")[1]);
 let hdr="";try{hdr=fs.readFileSync(process.argv[1],"utf8")}catch{}
 let body=Buffer.alloc(0);try{body=fs.readFileSync(process.argv[2])}catch{}
@@ -93,6 +103,12 @@ const tm=/^content-type:[ \t]*([^\r\n]*)/im.exec(last);const ctype=tm?tm[1].trim
 const want=e.VDAFB_EXT==="svg"?"image/svg+xml":"image/png";
 const served=status===200&&ctype.split(";")[0].trim()===want;
 const said="answers "+(status||"nothing")+" "+(ctype||"(no content type)");
+if(legacy&&e.VDAFB_STAGE!=="live"){
+  console.log("INFO  "+c+" "+path+" "+said+(e.VDAFB_STAGE==="old"?": the old kit serves its own file here until the publish carrying part B":": K1 could not tell whether the kit is published"));
+  process.exit(0)}
+if(!served&&legacy){
+  console.log("FAIL  "+c+" "+path+" "+said+" though this round kit is published (want 200 "+want+"): every banner an affiliate embedded from the old kit shows nothing (S14X-213)");
+  process.exit(0)}
 if(!served){
   if(e.VDAFB_STAGE==="live")console.log("FAIL  "+c+" "+path+" "+said+" though the kit that names it is published (want 200 "+want+"): an embedded banner shows nothing");
   else if(e.VDAFB_STAGE==="old")console.log("INFO  "+c+" "+path+" "+said+": the publish carrying part B has not happened");
@@ -116,6 +132,7 @@ if(e.VDAFB_EXT==="png"){
 }
 if(size!==null&&size!==w+"x"+h)bad.push("it is "+size+", not "+w+"x"+h);
 if(bad.length)console.log("FAIL  "+c+" "+path+" is served as "+want+" but "+bad.join("; ")+" (S14X-213)");
+else if(legacy)console.log("PASS  "+c+" "+path+" answers 200 "+want+" at "+w+"x"+h+": a banner embedded from the old kit still loads, now the size its label said (S14X-213)");
 else console.log("PASS  "+c+" "+path+" answers 200 "+want+" at "+w+"x"+h+(e.VDAFB_EXT==="svg"?", lettered in text with no script or outside reference":"")+": the size its label says, at an address no rebuild moves (S14X-213)");' /tmp/vd_bafb_hdr.txt /tmp/vd_bafb_body.bin
 }
 vdafb_file S1 728x90 svg
@@ -124,3 +141,6 @@ vdafb_file S3 160x600 svg
 vdafb_file P1 728x90 png
 vdafb_file P2 300x250 png
 vdafb_file P3 160x600 png
+vdafb_file O1 728x90 png /assets/banner-leaderboard-7wRFqWjL.png
+vdafb_file O2 300x250 png /assets/banner-square-Cs_OOO75.png
+vdafb_file O3 160x600 png /assets/banner-skyscraper-CCTK8RI-.png
