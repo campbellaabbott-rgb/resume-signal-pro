@@ -74,7 +74,7 @@ while IFS='|' read -r VD52F_D VD52F_T; do
   elif [ "$VD52F_N" -ge 30 ] && [ ! "$VD52F_OLDEST" \< "$VD52F_D" ]; then echo "PASS  \"$VD52F_T\" is past the newest 30 entries the crawler page lists, and the US English changelog strings carry it"
   else echo "FAIL  the US English changelog strings carry \"$VD52F_T\", but the crawler copy of /changelog does not (the prerender did not rebuild)"; fi
 done <<'VD52F_TITLES'
-2026-11-17|The free scan no longer scores a résumé in another language as if it were English
+2026-11-17|The free scan no longer scores a résumé in one of eight other languages as if it were English
 2026-11-17|Several employers whose job lists were too big for us now show their jobs
 2026-11-17|Boards that posted jobs in bulk, and second copies of the same jobs, leave the board
 2026-11-17|More jobs filed under Hong Kong, Nigeria, Kazakhstan, Jordan and Lebanon, and US pay in US dollars

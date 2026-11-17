@@ -15,11 +15,14 @@
  * here:
  *   - the free-scan entry is about words found anywhere in the text, never
  *     headings; names exactly the eight languages the code reads besides
- *     English; says the keywords are still matched only in English and that
- *     the credit is a limited share in step with length, not a reading; keeps
- *     "no keyword credit" for a résumé placed in no field; measures nothing
- *     (no score, never "the same score as in English"); and names no paid tool
- *     and no fallback;
+ *     English, in its title too, since a résumé in any other language is
+ *     read as before; says the keyword lists are still mostly English, never
+ *     English alone (some fields' lists carry Spanish terms, before this
+ *     deploy and after it), and that the credit is at least a limited share
+ *     in step with length (the lists' own finds count when they are more),
+ *     not a reading; keeps "no keyword credit" for a résumé placed in no
+ *     field; measures nothing (no score, never "the same score as in
+ *     English"); and names no paid tool and no fallback;
  *   - the oversize-list entry says several, never all, keeps that some lists
  *     are still too big (twenty-five boards still were, some serving none),
  *     names only the four employers the site's name list spells that way,
@@ -144,14 +147,17 @@ describe("each English description carries the limit the live read set, and not 
       must: [
         "they looked only for the English words for experience, education and skills",
         "uses that language's own words for at least two of experience, education and skills",
-        "The keywords are still matched only in English",
-        "the scan credits a limited share of them, in step with its length",
+        "matched the keywords of the résumé's field mostly in English",
+        "The keyword lists are still mostly English (only some fields also carry Spanish terms)",
+        "the scan credits at least a limited share of the keywords, in step with its length",
         "it still gives no keyword credit",
         "is scored by the same rules as before",
       ],
       mustNot: [
         // The check finds the language's words anywhere in the text.
         ["headings, where the check reads words anywhere in the text", /heading/i],
+        // Some fields' lists carry Spanish terms, and they are matched.
+        ["keywords matched only in English", /only in English|English alone|English only/i],
         // No scan was run: the code at the live build is what was read.
         ["a measured score or a promise of the English score", /same score|as in English|\d/i],
         ["keywords read in the résumé's own language", /keywords? (?:are|is) (?:now )?read in|read(?:s)? (?:the )?keywords in (?:Spanish|French|German|Portuguese|Dutch|Italian|Hindi|Tagalog)/i],
@@ -263,47 +269,50 @@ describe("each English description carries the limit the live read set, and not 
 type Other = Exclude<Locale, "en" | "en-GB">;
 const OTHERS = LOCALES.filter((l): l is Other => l !== "en" && l !== "en-GB");
 const LOCAL: Record<string, Record<Other, { must: string[]; mustNot: RegExp }>> = {
-  // words not headings; keywords still English; a limited share, not a reading;
-  // no field, no credit; nothing measured; free scan only
+  // words not headings; keyword lists still mostly English, never English
+  // alone, some fields carrying Spanish terms; at least a limited share, not a
+  // reading; no field, no credit; nothing measured; free scan only
   [SCAN]: {
     de: {
-      must: ["die eigenen Wörter dieser Sprache", "mindestens zwei der Begriffe Berufserfahrung, Ausbildung und Kenntnisse", "Die Schlüsselwörter werden weiterhin nur auf Englisch abgeglichen", "einen begrenzten Anteil der Schlüsselwörter an, im Verhältnis zu seiner Länge", "rechnet er weiterhin keine Schlüsselwörter an", "nach denselben Regeln bewertet wie bisher", "Der kostenlose Scan"],
-      mustNot: /Überschrift|Abschnitt|Full Analysis|\bpro\b|kostenpflichtig|bezahlt|Fallback|gleichen Score|denselben Score|wie auf Englisch/i,
+      must: ["die eigenen Wörter dieser Sprache", "mindestens zwei der Begriffe Berufserfahrung, Ausbildung und Kenntnisse", "Schlüsselwörter für das Fachgebiet des Lebenslaufs überwiegend auf Englisch ab", "Die Schlüsselwortlisten sind weiterhin überwiegend auf Englisch (nur manche Fachgebiete enthalten auch spanische Begriffe)", "mindestens einen begrenzten Anteil der Schlüsselwörter an, im Verhältnis zu seiner Länge", "rechnet er weiterhin keine Schlüsselwörter an", "nach denselben Regeln bewertet wie bisher", "Der kostenlose Scan"],
+      mustNot: /Überschrift|Abschnitt|Full Analysis|\bpro\b|kostenpflichtig|bezahlt|Fallback|gleichen Score|denselben Score|wie auf Englisch|nur auf Englisch/i,
     },
     es: {
-      must: ["las palabras propias de ese idioma", "al menos dos de los conceptos experiencia, formación y habilidades", "Las palabras clave se siguen comparando solo en inglés", "computa a su favor una parte limitada de ellas, en proporción a su longitud", "sigue sin computar a su favor ninguna palabra clave", "se puntúan con las mismas reglas que antes", "El escaneo gratis"],
-      mustNot: /encabezado|sección|secciones|Full Analysis|\bpro\b|de pago|alternativ|misma puntuación/i,
+      must: ["las palabras propias de ese idioma", "al menos dos de los conceptos experiencia, formación y habilidades", "comparaban las palabras clave del campo del currículum sobre todo en inglés", "Las listas de palabras clave siguen estando sobre todo en inglés (solo algunos campos incluyen también términos en español)", "computa a su favor al menos una parte limitada de esas palabras clave, en proporción a su longitud", "sigue sin computar a su favor ninguna palabra clave", "se puntúan con las mismas reglas que antes", "El escaneo gratis"],
+      mustNot: /encabezado|sección|secciones|Full Analysis|\bpro\b|de pago|alternativ|misma puntuación|solo en inglés/i,
     },
     fr: {
-      must: ["les mots propres à cette langue", "au moins deux des trois notions d'expérience, de formation et de compétences", "Les mots-clés sont toujours comparés uniquement en anglais", "le scan lui accorde donc une part limitée de ces mots-clés, proportionnelle à sa longueur", "il ne lui accorde toujours aucun crédit pour les mots-clés", "sont notés selon les mêmes règles qu'avant", "Le scan gratuit"],
-      mustNot: /\btitres?\b|intitulé|en-tête|\bsections?\b|Full Analysis|\bpro\b|payant|même score/i,
+      must: ["les mots propres à cette langue", "au moins deux des trois notions d'expérience, de formation et de compétences", "comparaient les mots-clés du domaine du CV essentiellement en anglais", "Les listes de mots-clés restent essentiellement en anglais (seuls certains domaines contiennent aussi des termes en espagnol)", "le scan lui accorde donc au moins une part limitée de ces mots-clés, proportionnelle à sa longueur", "il ne lui accorde toujours aucun crédit pour les mots-clés", "sont notés selon les mêmes règles qu'avant", "Le scan gratuit"],
+      mustNot: /\btitres?\b|intitulé|en-tête|\bsections?\b|Full Analysis|\bpro\b|payant|même score|uniquement en anglais/i,
     },
     hi: {
-      must: ["उसी भाषा के अपने शब्द", "कम से कम दो", "कीवर्ड अब भी सिर्फ़ अंग्रेज़ी में मिलाए जाते हैं", "एक सीमित हिस्से का श्रेय देता है, उसकी लंबाई के अनुपात में", "वह अब भी कीवर्ड का कोई श्रेय नहीं देता", "पहले जैसे ही नियमों से", "मुफ़्त स्कैन"],
-      mustNot: /शीर्षक|हेडिंग|Full Analysis|सशुल्क|पेड|वही स्कोर/,
+      must: ["उसी भाषा के अपने शब्द", "कम से कम दो", "रिज़्यूमे के क्षेत्र के कीवर्ड ज़्यादातर अंग्रेज़ी में मिलाते थे", "कीवर्ड की सूचियाँ अब भी ज़्यादातर अंग्रेज़ी में हैं (सिर्फ़ कुछ क्षेत्रों की सूचियों में स्पेनिश शब्द भी हैं)", "कम से कम कीवर्ड के एक सीमित हिस्से का श्रेय देता है, उसकी लंबाई के अनुपात में", "वह अब भी कीवर्ड का कोई श्रेय नहीं देता", "पहले जैसे ही नियमों से", "मुफ़्त स्कैन"],
+      mustNot: /शीर्षक|हेडिंग|Full Analysis|सशुल्क|पेड|वही स्कोर|सिर्फ़ अंग्रेज़ी में/,
     },
     nl: {
-      must: ["de eigen woorden van die taal", "minstens twee van werkervaring, opleiding en vaardigheden", "De trefwoorden worden nog steeds alleen in het Engels vergeleken", "kent de scan er een beperkt deel van toe, in verhouding tot de lengte", "dan kent hij nog steeds geen trefwoorden toe", "volgens dezelfde regels beoordeeld als voorheen", "De gratis scan"],
-      mustNot: /\bkop\b|kopje|sectie|Full Analysis|\bpro\b|betaald|dezelfde score/i,
+      must: ["de eigen woorden van die taal", "minstens twee van werkervaring, opleiding en vaardigheden", "vergeleken de trefwoorden van het vakgebied van het cv grotendeels in het Engels", "De trefwoordenlijsten zijn nog steeds grotendeels Engels (alleen sommige vakgebieden bevatten ook Spaanse termen)", "kent de scan minstens een beperkt deel van de trefwoorden toe, in verhouding tot de lengte", "dan kent hij nog steeds geen trefwoorden toe", "volgens dezelfde regels beoordeeld als voorheen", "De gratis scan"],
+      mustNot: /\bkop\b|kopje|sectie|Full Analysis|\bpro\b|betaald|dezelfde score|alleen in het Engels/i,
     },
     pt: {
-      must: ["as palavras do próprio idioma", "pelo menos duas", "As palavras-chave continuam sendo identificadas apenas em inglês", "dá crédito a uma parcela limitada delas, de acordo com o tamanho", "ela continua sem dar nenhum crédito por palavras-chave", "pelas mesmas regras de antes", "A análise gratuita"],
-      mustNot: /títul|cabeçalho|seção|seções|Full Analysis|\bpro\b|mesma pontuação/i,
+      must: ["as palavras do próprio idioma", "pelo menos duas", "identificavam as palavras-chave da área do currículo principalmente em inglês", "As listas de palavras-chave continuam principalmente em inglês (só algumas áreas também trazem termos em espanhol)", "dá crédito a pelo menos uma parcela limitada dessas palavras-chave, de acordo com o tamanho", "ela continua sem dar nenhum crédito por palavras-chave", "pelas mesmas regras de antes", "A análise gratuita"],
+      mustNot: /títul|cabeçalho|seção|seções|Full Analysis|\bpro\b|mesma pontuação|apenas em inglês|só em inglês/i,
     },
     tl: {
-      must: ["sariling mga salita ng wikang iyon", "hindi bababa sa dalawa", "Sa Ingles lang pa rin itinutugma ang mga keyword", "credit sa limitadong bahagi lang ng mga ito, na umaayon sa haba nito", "wala pa rin itong ibinibigay na keyword credit", "parehong mga panuntunan gaya ng dati", "libreng scan"],
-      mustNot: /heading|Full Analysis|\bpro\b|bayad|parehong iskor/i,
+      must: ["sariling mga salita ng wikang iyon", "hindi bababa sa dalawa", "itinutugma nila ang mga keyword ng larangan ng résumé na karamihan ay nasa Ingles", "Nasa Ingles pa rin ang karamihan sa mga keyword sa mga listahan (ilang larangan lang ang may mga terminong Espanyol din)", "credit sa hindi bababa sa isang limitadong bahagi ng mga keyword, na umaayon sa haba nito", "wala pa rin itong ibinibigay na keyword credit", "parehong mga panuntunan gaya ng dati", "libreng scan"],
+      mustNot: /heading|Full Analysis|\bpro\b|bayad|parehong iskor|\bsa Ingles lang\b/i,
     },
   },
-  // several, never all; some lists still too big; no company page, full
-  // description, hiring system or agency
+  // several, never all; some lists still too big, and the employers not shown
+  // yet are those whose lists still are (never "these", which would point at
+  // the named four, all read live); no company page, full description, hiring
+  // system or agency
   [OVERSIZE]: {
-    de: { must: ["Mehrere davon", "Manche Listen sind für uns noch immer zu groß", "noch nicht jeder dieser Arbeitgeber", "Noch in diesem Monat"], mustNot: /\balle\b|Unternehmensseite|vollständig|Agentur|zurückgestellt|Workable|Recruitee|Pinpoint/i },
-    es: { must: ["varias de ellas", "Algunas listas siguen siendo demasiado grandes para nosotros", "todavía no aparecen todos esos empleadores", "Este mismo mes"], mustNot: /todas las listas|página de empresa|descripción completa|agencia|Workable|Recruitee|Pinpoint/i },
-    fr: { must: ["Nous en lisons désormais plusieurs", "Certaines listes restent trop grandes pour nous", "certains de ces employeurs n'apparaissent pas encore", "Plus tôt ce mois-ci"], mustNot: /\btous\b|\btoutes\b|page entreprise|description complète|agence|Workable|Recruitee|Pinpoint/i },
+    de: { must: ["Mehrere davon", "Manche Listen sind für uns noch immer zu groß", "noch nicht jeder Arbeitgeber mit einer so großen Liste", "Noch in diesem Monat"], mustNot: /\balle\b|Unternehmensseite|vollständig|Agentur|zurückgestellt|Workable|Recruitee|Pinpoint|jeder dieser Arbeitgeber/i },
+    es: { must: ["varias de ellas", "Algunas listas siguen siendo demasiado grandes para nosotros", "todavía no aparecen todos los empleadores en esa situación", "Este mismo mes"], mustNot: /todas las listas|página de empresa|descripción completa|agencia|Workable|Recruitee|Pinpoint|todos esos empleadores/i },
+    fr: { must: ["Nous en lisons désormais plusieurs", "Certaines listes restent trop grandes pour nous", "certains employeurs dans ce cas n'apparaissent pas encore", "Plus tôt ce mois-ci"], mustNot: /\btous\b|\btoutes\b|page entreprise|description complète|agence|Workable|Recruitee|Pinpoint|certains de ces employeurs/i },
     hi: { must: ["उनमें से कई", "कुछ सूचियाँ अब भी हमारे लिए बहुत बड़ी हैं", "ऐसे सभी नियोक्ता अभी नहीं दिखते"], mustNot: /कंपनी पेज|पूरा विवरण|एजेंसी|Workable|Recruitee|Pinpoint/ },
     nl: { must: ["Meerdere daarvan", "Sommige lijsten zijn nog steeds te groot voor ons", "nog niet elke werkgever van dit soort staat erop", "Eerder deze maand"], mustNot: /\balle\b|bedrijfspagina|volledige|bureau|Workable|Recruitee|Pinpoint/i },
-    pt: { must: ["várias delas", "Algumas listas ainda são grandes demais para nós", "nem todos esses empregadores aparecem ainda"], mustNot: /página de empresa|descrição completa|agência|Workable|Recruitee|Pinpoint/i },
+    pt: { must: ["várias delas", "Algumas listas ainda são grandes demais para nós", "nem todo empregador nessa situação aparece ainda"], mustNot: /página de empresa|descrição completa|agência|Workable|Recruitee|Pinpoint|todos esses empregadores/i },
     tl: { must: ["ang ilan sa mga ito", "May ilang listahan na masyadong malaki pa rin para sa amin", "hindi pa lumalabas ang lahat ng ganitong employer"], mustNot: /company page|full description|agency|Workable|Recruitee|Pinpoint/i },
   },
   // a few, unnamed; in bulk rather than an employer's own page; one kept copy
@@ -374,7 +383,7 @@ describe("each translation carries the same limits in its own words", () => {
     expect(textOf("de", OVERSIZE).match(/\bjeder\b/gi), "de jeder").toHaveLength(1);
     expect(textOf("hi", OVERSIZE).match(/सभी/g), "hi").toHaveLength(1);
     expect(textOf("tl", OVERSIZE).match(/\blahat\b/g), "tl lahat").toHaveLength(1);
-    expect(textOf("pt", OVERSIZE).match(/\btodos\b/g), "pt todos").toHaveLength(1);
+    expect(textOf("pt", OVERSIZE).match(/\btodos?\b/g), "pt todo").toHaveLength(1);
   });
 
   it("the capitals entry quotes no caption, title or employer in any language", () => {
@@ -388,15 +397,15 @@ describe("each translation carries the same limits in its own words", () => {
 // of them fails here until the new text is read against what production showed
 // on 17 November and its hash is written in.
 const REVIEWED: Record<Locale, string[]> = {
-  en: ["bca524d59c8f", "0c9e0aff3bab", "ca43e8b69ebd", "191905a7cc70", "c786857ae1be", "160d542013c3"],
-  "en-GB": ["4f087bef6664", "0c9e0aff3bab", "ca43e8b69ebd", "191905a7cc70", "c786857ae1be", "160d542013c3"],
-  de: ["19a137764f83", "99dc2d84c54a", "dbbff89b914c", "ecaf355dfcc0", "41028ff1fdb5", "492238f694a1"],
-  es: ["a7971eb43940", "5ade4093a7ce", "87d4c05f03fb", "654e0a585c0b", "c33018e8e55c", "066b5c1fdd01"],
-  fr: ["00229cddf8f5", "607d74ac3efe", "246b72ff74f9", "a547d665b696", "25d0f57e7fba", "fb7c4f1cbea8"],
-  hi: ["32310f3c4aad", "65680ad8a61d", "b6b5aca91ee1", "001b22d078ce", "b64d92222691", "f0ea36487519"],
-  nl: ["c99b4626fd00", "4a02c9de3faf", "e00a05533982", "8e0dcaafa90d", "2a54b23ec458", "3d82aeaad9bf"],
-  pt: ["0c69c7e043de", "85c41b3fb092", "41cc594862ba", "5fb5ef7a7b34", "3eec849c60a2", "c4748e54950a"],
-  tl: ["fd7b70e9c899", "3b1992017f0e", "7bedfbd00045", "f15830153dc7", "3a6e1d462844", "b1c549c770b0"],
+  en: ["529e835013f2", "0c9e0aff3bab", "ca43e8b69ebd", "191905a7cc70", "c786857ae1be", "160d542013c3"],
+  "en-GB": ["4034b777d5e9", "0c9e0aff3bab", "ca43e8b69ebd", "191905a7cc70", "c786857ae1be", "160d542013c3"],
+  de: ["916729365ff2", "132a2f6cf951", "dbbff89b914c", "ecaf355dfcc0", "41028ff1fdb5", "492238f694a1"],
+  es: ["262b92784403", "f2ee0d0f19f7", "87d4c05f03fb", "654e0a585c0b", "c33018e8e55c", "066b5c1fdd01"],
+  fr: ["3216812ec4f9", "46138ddf500a", "246b72ff74f9", "a547d665b696", "25d0f57e7fba", "fb7c4f1cbea8"],
+  hi: ["ed70e90153b4", "65680ad8a61d", "b6b5aca91ee1", "001b22d078ce", "b64d92222691", "f0ea36487519"],
+  nl: ["7360d3c52f52", "4a02c9de3faf", "e00a05533982", "8e0dcaafa90d", "2a54b23ec458", "3d82aeaad9bf"],
+  pt: ["0ed6054bd013", "268747f08386", "41cc594862ba", "5fb5ef7a7b34", "3eec849c60a2", "c4748e54950a"],
+  tl: ["fadc06510e28", "3b1992017f0e", "7bedfbd00045", "f15830153dc7", "3a6e1d462844", "b1c549c770b0"],
 };
 const hash = (t: Text) => createHash("sha256").update(`${t.title}\n${t.description}`).digest("hex").slice(0, 12);
 
@@ -429,6 +438,29 @@ describe("what the entries name is what the site itself carries", () => {
       expect(Object.keys(LANGUAGE_NAMES[l]).sort(), l).toEqual([...codes].sort());
       for (const name of Object.values(LANGUAGE_NAMES[l])) expect(SHARDS[l][SCAN].description, `${l}: ${name}`).toContain(name);
     }
+  });
+
+  it("the free-scan title says one of eight other languages, not any other language, in every language", () => {
+    // A résumé in a language the code does not read (Polish, Russian,
+    // Chinese...) is read exactly as before, so the title names the eight.
+    expect(source("supabase/functions/free-keyword-scan/rule-score.ts")).toMatch(/WHAT IS UNCHANGED\.[\s\S]*?a language the report is not built for/);
+    const EIGHT: Record<Locale, string> = {
+      en: "in one of eight other languages", "en-GB": "in one of eight other languages", de: "in einer von acht anderen Sprachen",
+      es: "en uno de otros ocho idiomas", fr: "dans l'une de huit autres langues", hi: "आठ दूसरी भाषाओं में से किसी एक",
+      nl: "in een van acht andere talen", pt: "em um de oito outros idiomas", tl: "sa isa sa walong ibang wika",
+    };
+    for (const l of LOCALES) expect(SHARDS[l][SCAN].title, l).toContain(EIGHT[l]);
+  });
+
+  it("the free-scan entry's keyword lists are mostly English with Spanish terms for some fields, and the credit is a floor, as the code has them", () => {
+    const detection = source("supabase/functions/free-keyword-scan/industry-detection.ts");
+    expect(detection, "Spanish terms merged into the fields' primary lists").toMatch(/for \(const \[industry, terms\] of Object\.entries\(SPANISH_INDUSTRY_TERMS\)\)[\s\S]{0,200}entry\.primary\.push\(\.\.\.terms\.primary\)/);
+    expect(source("supabase/functions/free-keyword-scan/rule-score.ts"), "what the lists find counts when it is more than the share").toMatch(/Math\.max\(readCoverage, Math\.min\(UNREAD_KEYWORD_CAP,/);
+    const SPANISH: Record<Locale, string> = {
+      en: "Spanish terms", "en-GB": "Spanish terms", de: "spanische Begriffe", es: "términos en español", fr: "termes en espagnol",
+      hi: "स्पेनिश शब्द भी", nl: "Spaanse termen", pt: "termos em espanhol", tl: "terminong Espanyol",
+    };
+    for (const l of LOCALES) expect(SHARDS[l][SCAN].description, l).toContain(SPANISH[l]);
   });
 
   it("the free-scan entry's at least two is the code's own threshold, in every language", () => {
