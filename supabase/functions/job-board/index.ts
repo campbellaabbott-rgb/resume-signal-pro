@@ -95,14 +95,14 @@ import { planRankedPage, RANKED_WINDOW, RING_WINDOW, rowsReached, symbolLiteralR
 import { collapseClusters, continuePastSeam, GROUP_OVERFETCH, interleaveByCompany, rowClusterKey, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
 import { ROUTE_BRANDS } from "./route-brands.ts";
-import { expandQuery, ROLE_ALIASES } from "./search-alias.ts";
+import { expandQuery, joinCompoundRoleWords, ROLE_ALIASES, roleAliasesFor } from "./search-alias.ts";
 import { rankedWithDeadline } from "./ranked-deadline.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
 import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
 import { realQuestionVendors, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { beforeDeadline, SLIM_SPECS, streamSlim } from "./slim-stream.ts";
 import { withWorkdayLanguage } from "./request-headers.ts";
-import { ANON_OFFSET_CEILING, anonBudgetGate, anonBudgetStatus, budgetEcho, callerAddress, exemptKind, METERED_ACTIONS, offsetCeiling, pageCeiling } from "./anon-budget.ts";
+import { ANON_OFFSET_CEILING, anonBudgetGate, anonBudgetStatus, BOARD_BUDGET_HEADER, budgetEcho, callerAddress, exemptKind, METERED_ACTIONS, offsetCeiling, pageCeiling } from "./anon-budget.ts";
 import { boardPassAction } from "./board-pass.ts";
 import {
   addressAllowance, admitDemand, CLICK_PER_ADDRESS_HOUR, DEMAND_QUEUE_KEY, demandLaneStatus, FIT_PER_ADDRESS_HOUR, incidentRows, readDemand,
@@ -758,7 +758,8 @@ const listUrl = (s: JobSource, startOffset = 0, details = !isLight(s)) =>
   s.source === "greenhouse"
     // content=true costs a bigger payload but delivers every description in
     // ONE call — fit-ranking coverage for GH boards, plus real departments.
-    ? (({ host, token }) => `https://${host}/v1/boards/${token}/jobs${isLight(s) ? "" : "?content=true"}`)(greenhouseApi(s.token))
+    // pay_transparency=true adds the board's own stated pay ranges, light or not (S9-010, n1602).
+    ? (({ host, token }) => `https://${host}/v1/boards/${token}/jobs?${isLight(s) ? "" : "content=true&"}pay_transparency=true`)(greenhouseApi(s.token))
     : s.source === "lever"
       ? (({ host, token }) => `https://${host}/v0/postings/${token}?mode=json`)(leverApi(s.token))
       : s.source === "ashby"
@@ -2031,6 +2032,8 @@ function resolveCaller(req: Request, body: Record<string, unknown>): string | nu
   // A LABEL, not an authorisation decision — the platform already
   // authenticated whatever this token is before the request reached us.
   if (svc && (auth === `Bearer ${svc}` || req.headers.get("apikey") === svc)) return "maintenance";
+  // Our verify and diagnostic probes send x-rb-budget: probe; their searches are not visitors' (push-all plan).
+  if ((req.headers.get(BOARD_BUDGET_HEADER) ?? "").trim().toLowerCase() === "probe") return "maintenance";
   if (req.headers.get("origin") || req.headers.get("referer")) return "web";
   return null;
 }
@@ -3971,7 +3974,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         const VENDOR_FIELD_FIRST_READ = new Set(["personio:salary"]);
         const OUR_READING_CHANGED = new Set([
           // Remove after 2026-11-30 (n1426).
-          "lever:employment_type", "bamboohr:employment_type", "recruitee:employment_type", "breezy:employment_type", "personio:employment_type", "breezy:salary", "lever:salary"]);
+          "lever:employment_type", "bamboohr:employment_type", "recruitee:employment_type", "breezy:employment_type", "personio:employment_type", "breezy:salary", "lever:salary",
+          // Remove after 2026-12-31 (n1602): a greenhouse board's own stated pay replaces our mined reading on its first lap.
+          "greenhouse:salary"]);
         const FIELD_CHANGES_PER_VISIT = 500;
         const VALUE_CAP = 1_000; // salary strings and titles both fit generously
         const changeLog: Array<Record<string, unknown>> = [];
@@ -9914,14 +9919,15 @@ async function serveList(
   const qt = queryTerms(body.q);
   // phraseText, not a plain join: a quoted phrase is one term here and must
   // reach the tsquery parser back inside its quotes, or the tip is a lie.
-  const qText = phraseText(qt.terms).slice(0, 200) || (qt.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
+  // "back end" / "back-end" / "backend" are one word to every title tier (search-alias.ts, n1600).
+  const qText = joinCompoundRoleWords(phraseText(qt.terms).slice(0, 200) || (qt.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200)));
   // S13-104: a search our servers ask not to log reaches no log line, its words or an error's text, which can quote them.
   const qLog = noLog ? "(not logged)" : JSON.stringify(qText);
   const errLog = (text: string) => (noLog ? "(not logged)" : text);
   // The router's employer keys: the table, plus the live employer list's (S12-014).
   const routeAliases = qText ? routeAliasesFor(client) : ROUTE_TABLE;
   /** The SIMPLE route's split title match, with an employer's boards beside its key (S12-014). */
-  const simpleSplit = (q: string) => simpleRouteFilters(ftsSafe(q), ROLE_ALIASES, routeAliases);
+  const simpleSplit = (q: string) => simpleRouteFilters(ftsSafe(q), roleAliasesFor(q), routeAliases);
 
   if (body.facetCounts === true) {
     // Rationale: docs/job-board-index-notes.md#n865-const-facetroute-qtext-pickroute-qtext-r
@@ -10050,7 +10056,7 @@ async function serveList(
     }
     // Rationale: docs/job-board-index-notes.md#n322-qtc
     const qtC = queryTerms(body.q);
-    const qTextC = phraseText(qtC.terms).slice(0, 200) || (qtC.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
+    const qTextC = joinCompoundRoleWords(phraseText(qtC.terms).slice(0, 200) || (qtC.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200)));
     // Rationale: docs/job-board-index-notes.md#n323-qtextc-body-sort-salary-rpc
     if (qTextC && body.sort !== "salary" && !rpcBlindFilters(applied).length) {
       try {

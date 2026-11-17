@@ -4521,7 +4521,7 @@
    "reason": "'Base Pay range ... $55,000 - $75,000 annually' then 'Target Annual Bonus' on the next line: the old guard refuses it (a safe miss)",
    "results": {
     "main": {
-     "got": null,
+     "got": "$55,000 - $75,000 annually",
      "ok": true,
      "sweep": null
     },
@@ -12026,7 +12026,7 @@
    "reason": "'Annual Base Salary Range: $80,000 – $105,000' then 'Annual Bonus Eligibility: 15%': the old guard refuses it (a safe miss)",
    "results": {
     "main": {
-     "got": null,
+     "got": "$80,000 – $105,000",
      "ok": true,
      "sweep": null
     },
@@ -16682,7 +16682,7 @@
    "reason": "labelled salary; the bonus is on top. Main refuses it (bonus within 20 chars after), so null is main's safe miss",
    "results": {
     "main": {
-     "got": null,
+     "got": "$95,000 - $120,000",
      "ok": true,
      "sweep": "keep"
     },
@@ -17296,7 +17296,7 @@
    "reason": "the first range is a sign-on bonus; base pay follows. Null (main) is a safe miss; the bonus is wrong",
    "results": {
     "main": {
-     "got": null,
+     "got": "$38 - $52 per hour",
      "ok": true,
      "sweep": null
     },
@@ -17331,7 +17331,7 @@
    "reason": "the first range is a bonus; null is a safe miss",
    "results": {
     "main": {
-     "got": null,
+     "got": "$150,000 - $170,000",
      "ok": true,
      "sweep": null
     },
@@ -17584,7 +17584,7 @@
    "reason": "portfolio figure, then pay. Main refuses the revenue range and stops (null): a safe miss",
    "results": {
     "main": {
-     "got": null,
+     "got": "$60,000 - $75,000 per year",
      "ok": true,
      "sweep": null
     },
@@ -22466,7 +22466,7 @@
    "reason": "recheck-3 G-allowance",
    "results": {
     "main": {
-     "got": null,
+     "got": "$120,000 - $140,000",
      "ok": true,
      "sweep": null
     },
@@ -22501,7 +22501,7 @@
    "reason": "recheck-3 G-allowance",
    "results": {
     "main": {
-     "got": null,
+     "got": "$25 - $30/hr",
      "ok": true,
      "sweep": null
     },
@@ -22536,7 +22536,7 @@
    "reason": "recheck-3 G-allowance",
    "results": {
     "main": {
-     "got": null,
+     "got": "$22.50 - $26.00/hr",
      "ok": true,
      "sweep": null
     },
@@ -22571,7 +22571,7 @@
    "reason": "recheck-3 G-allowance",
    "results": {
     "main": {
-     "got": null,
+     "got": "$24 - $28 per hour",
      "ok": true,
      "sweep": null
     },
@@ -25003,7 +25003,7 @@
    "reason": "recheck-3 O-target",
    "results": {
     "main": {
-     "got": null,
+     "got": "$210,000 - $250,000",
      "ok": true,
      "sweep": null
     },
@@ -33800,7 +33800,7 @@
    "reason": "'Potential income: $420,000-$470,400 yearly' is the pay; the sign-on bonus and stipend beside it keep main's null, a safe miss",
    "results": {
     "main": {
-     "got": null,
+     "got": "$420,000-$470,400 yearly",
      "ok": true,
      "sweep": "keep"
     },
@@ -33835,7 +33835,7 @@
    "reason": "'Potential income: $420,000-$470,400 yearly' is the pay; the sign-on bonus and stipend beside it keep main's null, a safe miss",
    "results": {
     "main": {
-     "got": null,
+     "got": "$420,000-$470,400 yearly",
      "ok": true,
      "sweep": "keep"
     },
@@ -33917,7 +33917,7 @@
    "reason": "'EARN $200K–$300K+' is the pay; the sign-on bonus beside it keeps main's null, a safe miss",
    "results": {
     "main": {
-     "got": null,
+     "got": "$200,000–$300,000",
      "ok": true,
      "sweep": "keep"
     },
