@@ -29,6 +29,7 @@ import { rankCandidates, reviewsFromDecisions, type CandidateReview } from "@/li
 import { csvDocument } from "@/lib/spreadsheet-safe-csv";
 import { readRoleCandidates, readRoleDecisions, readRoleNotices, withoutEmbed } from "@/lib/shortlist-reads";
 import { readShortlistRefusal } from "@/lib/shortlist-refusal";
+import { readTextFile } from "@/lib/resumeText";
 import { SHORTLIST_ATTESTATION_TEXT } from "../../supabase/functions/_shared/shortlist-attestation";
 import { PLANTED_INSTRUCTIONS_FLAG } from "../../supabase/functions/_shared/planted-instructions";
 
@@ -230,7 +231,14 @@ export default function Shortlist() {
     if (file.size > 10 * 1024 * 1024) { setError("File too large (10MB max)."); return; }
     const ext = file.name.toLowerCase().split(".").pop();
     if (ext === "txt") {
-      setCandidateText(await file.text());
+      // Read in the encoding it was saved in: a Notepad "Unicode" file is
+      // UTF-16 (S14X-283), which a UTF-8 read turned into NULs.
+      const { text, garbled } = await readTextFile(file);
+      if (garbled) {
+        setError("Couldn't extract enough text from that file — try DOCX or paste the text directly.");
+        return;
+      }
+      setCandidateText(text);
       setCandidateName(file.name);
       return;
     }

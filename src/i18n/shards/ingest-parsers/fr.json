@@ -17,6 +17,8 @@
       "noTextDescription": "Si votre CV se trouve dans une image ou une zone de texte, collez plutôt son texte.",
       "docxGarbled": "Les lettres de ce document sont illisibles",
       "docxGarbledDescription": "Son texte est corrompu, généralement à cause d'une police endommagée ou incorporée. Enregistrez à nouveau le document ou collez le texte de votre CV.",
+      "txtUnreadable": "Ce fichier ne contient pas de texte lisible",
+      "txtUnreadableDescription": "C'est peut-être un autre type de fichier renommé en .txt. Enregistrez à nouveau votre CV en texte brut, téléversez un PDF ou un .docx, ou collez le texte de votre CV.",
       "webExport": "Ce document a été enregistré comme contenu web",
       "webExportDescription": "Nous ne pouvons pas le lire directement. Ouvrez-le dans Word et choisissez Fichier > Enregistrer sous > Document Word (.docx), ou collez le texte de votre CV.",
       "rateLimited": "Trop de téléversements en ce moment",

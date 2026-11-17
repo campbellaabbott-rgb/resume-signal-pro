@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { readTextFile } from "@/lib/resumeText";
 
 interface ResumeRecoveryProps {
   /** The résumé, and the posting when the buyer gave one in the box below. */
@@ -50,7 +51,11 @@ export function ResumeRecovery({ onResumeTextReady, disabled, askPosting }: Resu
 
       try {
         if (file.type === "text/plain") {
-          const text = await file.text();
+          // In the encoding it was saved in (S14X-283): a UTF-16 file read as
+          // UTF-8 came back with a NUL beside every letter. Text that is still
+          // not readable is refused below like any file we could not read.
+          const { text, garbled } = await readTextFile(file);
+          if (garbled) throw new Error("unreadable text file");
           setExtractedText(text);
           toast({ title: t("resumeRecovery.toastTextLoaded"), description: t("resumeRecovery.toastTextLoadedDesc") });
           return;

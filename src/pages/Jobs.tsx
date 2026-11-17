@@ -72,6 +72,7 @@ import type { HiringRecordInput } from "@/components/jobs/company/HiringRecordCa
 import { buildLanderModel, isUsajobsBoard, FEDERAL_LISTING_RESULT_CAP, type OpenRolesValue as LanderOpenRoles } from "@/lib/company/lander-model";
 import { companyBoardHead, fieldBoardHead, jobsBoardHead, type HeadT } from "@/lib/seo/board-heads";
 import { count as fmtCount } from "@/lib/format";
+import { readTextFile } from "@/lib/resumeText";
 import { VERIFY_ON_VIEW_AFTER_HOURS } from "@/lib/seo/source-copy";
 import { keyBelongsToALayer } from "@/lib/board-keys";
 import { tPlural } from "@/lib/company/plural";
@@ -5736,7 +5737,11 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       const name = file.name.toLowerCase();
       let text = "";
       if (file.type === "text/plain" || name.endsWith(".txt")) {
-        text = await file.text();
+        // In the encoding it was saved in (S14X-283): a UTF-16 file read as
+        // UTF-8 came back with a NUL beside every letter. Text that is still
+        // not readable reads as nothing, and the too-short refusal below says so.
+        const read = await readTextFile(file);
+        text = read.garbled ? "" : read.text;
       } else {
         const fn = file.type === "application/pdf" || name.endsWith(".pdf") ? "parse-pdf" : "parse-docx";
         const fd = new FormData();

@@ -17,6 +17,8 @@
       "noTextDescription": "Staat je cv in een afbeelding of een tekstvak, plak dan de tekst.",
       "docxGarbled": "De letters in dit document kunnen niet worden gelezen",
       "docxGarbledDescription": "De tekst kwam beschadigd uit, meestal door een kapot of ingesloten lettertype. Sla het document opnieuw op of plak de tekst van je cv.",
+      "txtUnreadable": "Dit bestand bevat geen tekst die we kunnen lezen",
+      "txtUnreadableDescription": "Misschien is het een ander soort bestand dat naar .txt is hernoemd. Sla je cv opnieuw op als platte tekst, upload een PDF of .docx, of plak de tekst van je cv.",
       "webExport": "Dit document is opgeslagen als webinhoud",
       "webExportDescription": "We kunnen het niet direct lezen. Open het in Word en kies Bestand > Opslaan als > Word-document (.docx), of plak de tekst van je cv.",
       "rateLimited": "Op dit moment te veel uploads",
