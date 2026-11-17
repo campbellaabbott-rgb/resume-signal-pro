@@ -3,17 +3,20 @@
 # DATA-PAGES-B (branch bugs/b-data-pages): the closure rollup's suspect
 # column (one migration, 20261113100000; the integrator sets the final
 # stamp), the company page's header and Pay card, and the German Austria
-# CV-standards page. No function changes in this lane.
+# CV-standards page; with the side branch bugs/b-data-pages-census, the field
+# curve closed to the publishable key (20261113101000). No function changes
+# in this lane.
 #
 # Named 99zzzzzzz-bugs-* as the ledger's bug-round verifySections list it.
 #
 # THE STAGES, read from production and the repo, never assumed:
-#   db        the migration has applied once a drizzle stub in
+#   db        a migration has applied once a drizzle stub in
 #             drizzle/migrations names its file or holds its text (Lovable's
 #             runner writes one per applied file, under the file's name, a
 #             staged name, or a title of its own over the same SQL; matched by
-#             title, so a new stamp from the integrator still counts). Until
-#             then a missing column prints INFO; from then on, a FAIL.
+#             title, so a new stamp from the integrator still counts). Each of
+#             the two files is staged on its own. Until then a missing column,
+#             or a curve anon still reaches, prints INFO; from then on, a FAIL.
 #   frontend  the entry, or the Jobs chunk with every chunk it imports,
 #             carries one of this lane's code markers: the merge published.
 #             Until then each page claim is INFO; from then on a missing
@@ -23,6 +26,8 @@
 #   D1  S14X-159       job_board_closure_rollup has suspect_n and anon cannot
 #                      read it: the column probe answers 42501, not 42703,
 #                      and never 200.
+#   D2  CW2-SC5        the field curve answers only the service role: a POST
+#                      whose day count cannot cast answers 42501, not 22P02.
 #   F1  S14X-195       the company header and Pay card read whose roles the
 #                      intel counts: their two keys in the code, the English
 #                      label in the entry.
@@ -43,8 +48,9 @@
 #
 # READ-ONLY. GETs of the homepage, its entry, the Jobs chunk and the chunks
 # it imports, one baked page, and one PostgREST column probe of a table anon
-# is denied. Nothing is posted.
-echo "== 99zzzzzzz-bugs-data-pages-b. bug round part B, data-pages-b: a suspect takedown has its own column, a pooled fact says so, no system code is a heading, the chip names its board, Austria in German says what English says =="
+# is denied; one POST to a read RPC whose argument cannot cast, so the curve
+# never runs (D2). Nothing is written.
+echo "== 99zzzzzzz-bugs-data-pages-b. bug round part B, data-pages-b: a suspect takedown has its own column, the field curve answers only the service role, a pooled fact says so, no system code is a heading, the chip names its board, Austria in German says what English says =="
 
 rm -f /tmp/vd_bdpb_*
 VDDPB_DRIZZLE="${VDDPB_DRIZZLE:-drizzle/migrations}"
@@ -74,6 +80,14 @@ curl -s -m 60 -A "$UA" "$SITE/de/lebenslauf-standards/oesterreich" -o /tmp/vd_bd
 # column exists, 42703 when it does not). A GET with limit=0 reads no row.
 curl -s -m 30 "$B/rest/v1/job_board_closure_rollup?select=suspect_n&limit=0" -H "apikey: $K" -H "Authorization: Bearer $K" -o /tmp/vd_bdpb_roll.json
 
+# The field curve, asked with a day count that cannot cast. A POST carries its
+# arguments as JSON that the statement converts after the executor checked
+# EXECUTE, so a closed function answers 42501 and an open one 22P02, and in
+# neither case does the curve run (live 2026-11-17: a reader the census closed
+# answered 42501, an open one 22P02, the curve 22P02 in 0.36 s). A GET would
+# not do: it casts the query string first and answers 22P02 either way.
+curl -s -m 30 -X POST "$B/rest/v1/rpc/get_category_fill_curve" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{"p_days":"x","p_min_n":300}' -o /tmp/vd_bdpb_curve.json
+
 VDDPB_P=/tmp/vd_bdpb_ VDDPB_DRIZZLE="$VDDPB_DRIZZLE" VDDPB_MIGDIR="$VDDPB_MIGDIR" SITE="$SITE" node -e '
 const fs = require("fs");
 const P = process.env.VDDPB_P;
@@ -84,21 +98,26 @@ const head = (s) => JSON.stringify(String(s).slice(0, 80));
 
 // ---- the stages ----
 const FILE = "a_pruned_takedown_is_counted_in_the_column_its_mark_names";
+const CURVE_FILE = "a_field_curve_no_page_calls_answers_only_the_service_role";
 // The SQL with its comments and runs of whitespace set aside, as the deploy
 // ledger compares a stub Lovable retyped with its file (sqlText).
 const sqlText = (s) => String(s || "").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ").replace(/\s+/g, " ").trim();
-let ours = "";
-try { const m = fs.readdirSync(process.env.VDDPB_MIGDIR).find((f) => f.endsWith("_" + FILE + ".sql")); if (m) ours = sqlText(fs.readFileSync(process.env.VDDPB_MIGDIR + "/" + m, "utf8")); } catch {}
-let applied = false;
-try {
-  const dir = process.env.VDDPB_DRIZZLE;
-  for (const f of fs.readdirSync(dir)) {
-    if (!f.endsWith(".sql")) continue;
-    if (f.includes(FILE)) { applied = true; break; }
-    let s = ""; try { s = fs.readFileSync(dir + "/" + f, "utf8"); } catch {}
-    if (s.includes(FILE) || (ours && sqlText(s) === ours)) { applied = true; break; }
-  }
-} catch {}
+const appliedFile = (name) => {
+  let ours = "";
+  try { const m = fs.readdirSync(process.env.VDDPB_MIGDIR).find((f) => f.endsWith("_" + name + ".sql")); if (m) ours = sqlText(fs.readFileSync(process.env.VDDPB_MIGDIR + "/" + m, "utf8")); } catch {}
+  try {
+    const dir = process.env.VDDPB_DRIZZLE;
+    for (const f of fs.readdirSync(dir)) {
+      if (!f.endsWith(".sql")) continue;
+      if (f.includes(name)) return true;
+      let s = ""; try { s = fs.readFileSync(dir + "/" + f, "utf8"); } catch {}
+      if (s.includes(name) || (ours && sqlText(s) === ours)) return true;
+    }
+  } catch {}
+  return false;
+};
+const applied = appliedFile(FILE);
+const curveApplied = appliedFile(CURVE_FILE);
 const ENTRY = txt("entry.js"), BOARD = txt("board.js"), CODE = ENTRY + "\n" + BOARD;
 const MARKS = {
   F1: ["companyProfile.facts.countriesLabelPooled", "companyProfile.pay.floorPooled"],
@@ -106,7 +125,7 @@ const MARKS = {
   F3: ["companyProfile.employerChipOneBoard", "data-employer-chip-board"],
 };
 const FE = Object.values(MARKS).some((ms) => ms.some((m) => CODE.includes(m)));
-say("INFO", "stages: database " + (applied ? "applied (a drizzle stub names " + FILE + ")" : "pending (no drizzle stub names " + FILE + " yet)") + "; frontend " + (FE ? "published" : "not published (neither the entry nor the Jobs chunks carry a marker of this lane)"));
+say("INFO", "stages: database " + (applied ? "applied (a drizzle stub names " + FILE + ")" : "pending (no drizzle stub names " + FILE + " yet)") + ", field curve " + (curveApplied ? "applied (a drizzle stub names " + CURVE_FILE + ")" : "pending") + "; frontend " + (FE ? "published" : "not published (neither the entry nor the Jobs chunks carry a marker of this lane)"));
 const feVerdict = (good, m) => say(good ? "PASS" : FE ? "FAIL" : "INFO", m + (good || FE ? "" : " -- the frontend of this round is not published yet"));
 
 // ---- D1 S14X-159 ----
@@ -118,6 +137,16 @@ const feVerdict = (good, m) => say(good ? "PASS" : FE ? "FAIL" : "INFO", m + (go
   else if (code === "42501") say("PASS", "D1 S14X-159 job_board_closure_rollup.suspect_n exists and anon is denied (42501): a suspect takedown has its own column");
   else if (code === "42703") say(applied ? "FAIL" : "INFO", "D1 S14X-159 job_board_closure_rollup has no suspect_n (42703)" + (applied ? " although the migration applied" : " -- the migration has not applied yet"));
   else say("FAIL", "D1 S14X-159 the suspect_n probe answered " + (j ? JSON.stringify(j).slice(0, 160) : "non-JSON " + head(s)));
+}
+
+// ---- D2 CW2-SC5 ----
+{
+  const s = txt("curve.json");
+  let j = null; try { j = JSON.parse(s); } catch {}
+  const code = j && !Array.isArray(j) && typeof j === "object" ? String(j.code ?? "") : "";
+  if (code === "42501") say("PASS", "D2 CW2-SC5 get_category_fill_curve refuses the publishable key (42501): the field curve answers only the service role");
+  else if (code === "22P02") say(curveApplied ? "FAIL" : "INFO", "D2 CW2-SC5 the publishable key still reaches get_category_fill_curve (22P02 from the argument, so nothing ran)" + (curveApplied ? " although the migration applied" : " -- the migration has not applied yet"));
+  else say("FAIL", "D2 CW2-SC5 the field curve probe answered " + (Array.isArray(j) ? "rows, so the curve ran on an argument that cannot cast" : j ? JSON.stringify(j).slice(0, 160) : "non-JSON " + head(s)));
 }
 
 // ---- F1-F3, the company page ----

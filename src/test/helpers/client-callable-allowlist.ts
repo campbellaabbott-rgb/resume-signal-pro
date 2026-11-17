@@ -64,7 +64,6 @@ export const CLIENT_CALLABLE: AllowedFunction[] = [
   A("public.get_actively_hiring_companies(integer)", "src/pages/GhostJobIndex.tsx", "aggregates: per-company closure and open-role counts"),
   A("public.get_audit_result()", "src/pages/GhostJobIndex.tsx", "public record: the cached board audit blob"),
   A("public.get_board_vendor_counts()", "src/hooks/useBoardVendorCounts.ts", "aggregates: postings per ATS vendor"),
-  A("public.get_category_fill_curve(integer,integer)", "scripts/verify-deploy.sh", "aggregates: per-category fill curve"),
   A("public.get_company_claim_status(text)", "src/components/jobs/CompanyClaim.tsx", "public record: whether an employer verified its page, and its website"),
   A("public.get_company_fill_curve(text[])", "src/pages/Jobs.tsx", "aggregates: per-company fill curve for the tokens asked about"),
   A("public.get_company_financials(text)", "src/components/jobs/PublicCompanyCard.tsx", "public record: SEC ticker and revenue series"),
@@ -177,17 +176,42 @@ export const REPLACED_AFTER_CENSUS: Record<string, string> = {
 };
 
 /**
+ * A row an earlier census listed open that a later census re-issue CLOSED to
+ * both client roles, with the stamp of the re-issue that closed it.
+ * CLIENT_CALLABLE no longer holds it; listedAt() hands it back to a census
+ * issued before `closedIn`, which did list it, and the mirror test holds it
+ * closed in the replay from `closedIn` on.
+ *   get_category_fill_curve(integer,integer): no page calls it, since every
+ *   page that shows the field curve and /v1/stats read the hourly stats
+ *   cache, which computes it as its owner; its one publishable-key caller was
+ *   the verifier's opt-in observation (20261113101000, CW2-SC5).
+ */
+export const CLOSED_AFTER_CENSUS: Array<{ was: AllowedFunction; closedIn: string; why: string; served: string }> = [
+  {
+    was: A("public.get_category_fill_curve(integer,integer)", "scripts/verify-deploy.sh", "aggregates: per-category fill curve"),
+    closedIn: "20261113101000",
+    why: "a definer read over the whole closure ledger with a five-minute header that no page calls: open, anyone holding the publishable key could start it on the pooled connections as often as they liked (CW2-SC5)",
+    served: "refresh_stats_cache (SECURITY DEFINER, the hourly cron) computes it as its owner into the stats cache the pages and /v1/stats read",
+  },
+];
+
+/**
  * The allowlist as a census issued at `stamp` lists it: the rows it knew (no
  * `since`, or a `since` at or before it), with each signature a later re-issue
- * replaced as it was then, held by its replacement's caller.
+ * replaced as it was then, held by its replacement's caller, and each row a
+ * later re-issue closed, as it was listed before that.
  */
 export function listedAt(stamp: string): AllowedFunction[] {
   const replaced = new Map(Object.entries(REPLACED_AFTER_CENSUS).map(([was, now]) => [now, was]));
-  return CLIENT_CALLABLE.flatMap((a) => {
+  const open = CLIENT_CALLABLE.flatMap((a) => {
     if (!a.since || a.since <= stamp) return [a];
     const was = replaced.get(a.sig);
     return was ? [{ ...a, sig: was, since: undefined }] : [];
   });
+  const closedLater = CLOSED_AFTER_CENSUS
+    .filter((c) => stamp < c.closedIn && (!c.was.since || c.was.since <= stamp))
+    .map((c) => c.was);
+  return [...open, ...closedLater];
 }
 
 /**

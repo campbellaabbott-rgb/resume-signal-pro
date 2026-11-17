@@ -42,7 +42,7 @@ import { join, resolve } from "node:path";
 import { anonCan, authenticatedCan, migrationReplay, arrayLiteralAt, replayMigrations, type FnState } from "./helpers/function-acl";
 import { access, tableReplay } from "./helpers/table-acl";
 import {
-  ADMIN_READERS_CREATED_CLOSED, CLIENT_CALLABLE, CLOSED_BY_CENSUS, CLOSED_TABLES, CREATED_CLOSED, OPEN_TABLES, OWNED_ELSEWHERE, REPLACED_AFTER_CENSUS, UNCAPPED_TOKEN_ARRAYS,
+  ADMIN_READERS_CREATED_CLOSED, CLIENT_CALLABLE, CLOSED_AFTER_CENSUS, CLOSED_BY_CENSUS, CLOSED_TABLES, CREATED_CLOSED, OPEN_TABLES, OWNED_ELSEWHERE, REPLACED_AFTER_CENSUS, UNCAPPED_TOKEN_ARRAYS,
 } from "./helpers/client-callable-allowlist";
 import { codeOf } from "./helpers/strip-comments";
 
@@ -468,8 +468,10 @@ describe("the migration carries exactly these lists and checks every one", () =>
   it("20261004110000 lists every row but the ones a re-issue added, and each of those names a re-issue that lists it", () => {
     const first = censusLists(code);
     const kept = (sigs: string[]) => sigs.filter((s) => !REPLACED_AFTER_CENSUS[s]);
-    expect(kept(first.anon)).toEqual(CLIENT_CALLABLE.filter((a) => a.roles === "anon" && !a.since).map((a) => a.sig).sort());
-    expect(kept(first.auth)).toEqual(CLIENT_CALLABLE.filter((a) => a.roles === "authenticated" && !a.since).map((a) => a.sig).sort());
+    // A row a later re-issue closed was the census's own row all the same.
+    const closedLater = (roles: string) => CLOSED_AFTER_CENSUS.filter((c) => c.was.roles === roles && !c.was.since).map((c) => c.was.sig);
+    expect(kept(first.anon)).toEqual([...CLIENT_CALLABLE.filter((a) => a.roles === "anon" && !a.since).map((a) => a.sig), ...closedLater("anon")].sort());
+    expect(kept(first.auth)).toEqual([...CLIENT_CALLABLE.filter((a) => a.roles === "authenticated" && !a.since).map((a) => a.sig), ...closedLater("authenticated")].sort());
     for (const [was, now] of Object.entries(REPLACED_AFTER_CENSUS)) {
       expect([...first.anon, ...first.auth], `20261004110000 does not list ${was}`).toContain(was);
       expect(CLIENT_CALLABLE.find((a) => a.sig === now)?.since, `${now} is not stamped since the re-issue that replaced ${was}`).toBeTruthy();
@@ -482,6 +484,26 @@ describe("the migration carries exactly these lists and checks every one", () =>
       const lists = censusLists(read(`supabase/migrations/${f}`).replace(/--[^\n]*/g, ""));
       expect([...lists.anon, ...lists.auth], `${f} does not list ${a.sig}`).toContain(a.sig);
     }
+  });
+
+  it("a row a census re-issue closed is closed to both client roles from that re-issue on, and no list names it open", () => {
+    const bad: string[] = [];
+    for (const c of CLOSED_AFTER_CENSUS) {
+      const sig = c.was.sig;
+      if (ALLOW.has(sig) || ELSEWHERE.has(sig) || CLOSED.has(sig)) bad.push(`${sig}: closed after the census, yet another list still names it`);
+      const f = fns.get(sig);
+      if (!f) { bad.push(`${sig}: not in the replay`); continue; }
+      if (anonCan(f)) bad.push(`${sig}: anon can still execute it`);
+      if (authenticatedCan(f)) bad.push(`${sig}: authenticated can still execute it`);
+      if (!f.acl.service_role) bad.push(`${sig}: service_role lost it`);
+      const file = readdirSync(MIG_DIR).find((n) => n.startsWith(`${c.closedIn}_`));
+      if (!file) { bad.push(`${sig}: no migration ${c.closedIn}_*.sql closes it`); continue; }
+      if (file > CENSUS_NOW_FILE) bad.push(`${sig}: ${file} sorts after the newest census`);
+      const lists = censusLists(read(`supabase/migrations/${file}`).replace(/--[^\n]*/g, ""));
+      if ([...lists.anon, ...lists.auth].includes(sig)) bad.push(`${sig}: ${file} closes it and still lists it open`);
+      if (!(history.get(sig) ?? []).some((h) => h.startsWith(file) && /REVOKE[^\n]*anon[^\n]*authenticated/.test(h))) bad.push(`${sig}: ${file} does not revoke it from anon and authenticated`);
+    }
+    expect(bad, bad.join("\n")).toEqual([]);
   });
 
   it("the overload sweep names every closed function whose every overload closes, and only those", () => {

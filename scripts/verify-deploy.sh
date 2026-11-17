@@ -287,16 +287,21 @@ if(m.carried)console.log("INFO  stale_parts names fill_curve: these rows were ca
 if(m.error)console.log("INFO  fill_curve_error on this run: reason="+m.error.reason+" sqlstate="+(m.error.sqlstate||"-")+" at="+m.error.at+" -- "+String(m.error.message||"").slice(0,160)+why(m.error)+" (a function header never governs a cron run: the timer is armed when the cron statement starts, so 57014 lands at the limit the job command sets, or at the session two minutes when it sets none)");
 if(m.variant)console.log(((m.variant.p_days===90&&m.variant.p_min_n===300)?"PASS":"FAIL")+"  fill_curve.variant = "+JSON.stringify(m.variant)+" (the pages and /v1 claim the (90, 300) variant)");'
 # ONE LIVE OBSERVATION, INFO ONLY, NEVER A VERDICT, AND OFF BY DEFAULT. The
-# function's own header is five minutes (20260928003117) and it is still
-# anon-callable; a client that gives up at 70s does not cancel the statement
-# on the server, so every run of this script would otherwise pin a pooled
-# connection for the full header on a path no visitor waits on. Opt in with
-# SKIP_LIVE_CURVE=0 when the observation is wanted; the default skips it.
+# function's own header is five minutes (20260928003117), and until
+# 20261113101000 (CW2-SC5) it was anon-callable; a client that gives up at 70s
+# does not cancel the statement on the server, so every run of this script
+# would otherwise pin a pooled connection for the full header on a path no
+# visitor waits on. From that file on it answers only the service role, so
+# with the publishable key this line reads 42501 at once (the refusal that
+# 99zzzzzzz-bugs-data-pages-b grades), and the cache read graded below is the
+# curve's only measure from outside. Opt in with SKIP_LIVE_CURVE=0 when the
+# observation is wanted; the default skips it.
 if [ "${SKIP_LIVE_CURVE:-1}" != "1" ]; then
   T0=$(date +%s); curl -s -m 70 -X POST "$B/rest/v1/rpc/get_category_fill_curve" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{"p_days":90,"p_min_n":300}' > /tmp/vd_cat_live.json; T1=$(date +%s)
   node -e 'const fs=require("fs");const t=Number(process.argv[1]);let j=null;try{j=JSON.parse(fs.readFileSync("/tmp/vd_cat_live.json","utf8"))}catch{}
 const answered=Array.isArray(j)&&j.length>0;
-console.log("INFO  live get_category_fill_curve(90,300) on the REST path: "+(answered?j.length+" rows in "+t+"s":(j===null?"no answer within 70s":"no rows in "+t+"s -- "+JSON.stringify(j).slice(0,120)))+" (34s on 09-25, 60s timeouts on 09-27; no visitor waits on this path now)")' "$((T1-T0))"
+const refused=!!j&&!Array.isArray(j)&&j.code==="42501";
+console.log("INFO  live get_category_fill_curve(90,300) on the REST path: "+(refused?"refused to the publishable key (42501) in "+t+"s, as 20261113101000 meant: the curve answers only the service role":answered?j.length+" rows in "+t+"s":(j===null?"no answer within 70s":"no rows in "+t+"s -- "+JSON.stringify(j).slice(0,120)))+" (34s on 09-25, 60s timeouts on 09-27; no visitor waits on this path now)")' "$((T1-T0))"
 fi
 
 echo "== 4g. /v1/stats serves the same cached curve to API customers, with its date =="
