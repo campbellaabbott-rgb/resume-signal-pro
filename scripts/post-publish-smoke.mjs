@@ -14,7 +14,11 @@
 //   3. the scanner's report is malformed      → (2)
 //   4. checkout / heartbeat / frontend / prerender regressions → (3–6)
 //
-// Exit 0 = safe to walk away; exit 1 = something specific is broken below.
+// Exit 1 = something specific is broken below. Exit 0 = nothing failed, and
+// the last line says how much was looked at: ALL CLEAR only when every check
+// ran and passed; PARTIAL names each check that was not run (NO_SCAN=1, a
+// rate-limited scan), since a check not run is neither a pass nor a fail.
+// IndexNow's list (9) is sent only on an ALL CLEAR pass.
 // Costs at most one AI scan (skipped if the rate limiter answers and no
 // HEARTBEAT_SECRET is provided).
 
@@ -37,11 +41,23 @@ const COMMITTED_ENGINE = (readFileSync(join(root, "supabase/functions/free-keywo
 
 const CORPUS = `Sam Ortiz\nsam@email.com\n\nEXPERIENCE\nStaff Accountant, Meridian LLC (2021-present)\n- Closed monthly books for 8 entities in QuickBooks\n- Cut close cycle from 10 to 6 days\n\nCERTIFICATIONS\nCPA, Texas\n\nEDUCATION\nBS Accounting (deploy-verify-corpus)`;
 
+// THREE STATES, NOT TWO (S14X-138). A check that was skipped (NO_SCAN=1) or
+// could not be read (a rate-limited scan) used to be recorded as a pass, so a
+// zero-cost run printed PASS beside "SKIPPED", ended "ALL CLEAR — publish
+// verified" having never looked at the report or the engine, and counted as
+// the clean pass IndexNow waits for. skip() records it as not run: never ok,
+// never a failure, named in the PARTIAL verdict. A reading that judges
+// nothing is an INFO line and no result at all.
 const results = [];
 const record = (name, ok, detail = "") => {
   results.push({ name, ok, detail });
   console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`);
 };
+const skip = (name, detail) => {
+  results.push({ name, ok: false, skipped: true, detail });
+  console.log(`SKIP  ${name} — ${detail}`);
+};
+const info = (name, detail) => console.log(`INFO  ${name} — ${detail}`);
 
 const hdrs = { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" };
 const post = (fn, body, ms = 90000, extra = {}) =>
@@ -80,8 +96,8 @@ record("edge functions respond", missing.length === 0,
 let deployedEngine = null;
 let scanFields = null;
 if (process.env.NO_SCAN) {
-  record("free scan end-to-end", true, "SKIPPED (NO_SCAN=1) — zero-cost mode; run verify:deploy:scan for end-to-end proof");
-  record("AI generation live", true, "SKIPPED (NO_SCAN=1)");
+  skip("free scan end-to-end", "not run (NO_SCAN=1, the zero-cost mode); run verify:deploy:scan for end-to-end proof");
+  skip("AI generation live", "not run (NO_SCAN=1)");
 } else try {
   const t0 = Date.now();
   // Prefer the heartbeat bypass (guaranteed run, logged as scan_type='heartbeat'
@@ -95,7 +111,8 @@ if (process.env.NO_SCAN) {
     HEARTBEAT ? { "x-heartbeat-secret": HEARTBEAT } : SYNTHETIC ? { "x-synthetic-secret": SYNTHETIC } : {});
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
   if (r.status === 429) {
-    record("free scan end-to-end", true, `rate-limited from this IP — function alive, report+freshness UNVERIFIED (set HEARTBEAT_SECRET to force) (${secs}s)`);
+    skip("free scan end-to-end", `not read: rate-limited from this IP, so the function answered but its report was not seen (set HEARTBEAT_SECRET to force) (${secs}s)`);
+    skip("AI generation live", "not read: the scan was rate-limited");
   } else if (!r.ok) {
     record("free scan end-to-end", false, `HTTP ${r.status}: ${(await r.text()).slice(0, 150)}`);
   } else {
@@ -131,9 +148,9 @@ if (process.env.NO_SCAN) {
 if (!COMMITTED_ENGINE) {
   record("engine version fresh", false, "could not read committed REPORT_ENGINE_VERSION from source");
 } else if (!deployedEngine) {
-  record("engine version fresh", true, process.env.NO_SCAN
-    ? `UNVERIFIED (NO_SCAN=1) — committed ${COMMITTED_ENGINE}; a user-run scan on the site shows the deployed version`
-    : `UNVERIFIED (no scan response; rate-limited?) — committed ${COMMITTED_ENGINE}; re-run with HEARTBEAT_SECRET`);
+  skip("engine version fresh", process.env.NO_SCAN
+    ? `not read (NO_SCAN=1): committed ${COMMITTED_ENGINE}; a user-run scan on the site shows the deployed version`
+    : `not read (no scan report; rate-limited?): committed ${COMMITTED_ENGINE}; re-run with HEARTBEAT_SECRET`);
 } else {
   const fresh = deployedEngine === COMMITTED_ENGINE;
   record("engine version fresh", fresh,
@@ -196,9 +213,9 @@ try {
   const r = await fetch(`${SITE}/industries/healthcare`, { signal: AbortSignal.timeout(10000) });
   const html = await r.text();
   const served = html.includes("x-prerendered");
-  record("prerendered pages served", true, served
-    ? "static HTML live — all crawlers see content"
-    : "host serving SPA fallback — Google-only rendering (investigate hosting config)");
+  // Informational: the SPA fallback is reported, never passed.
+  if (served) record("prerendered pages served", true, "static HTML live — all crawlers see content");
+  else info("prerendered pages served", "NOT SERVED: the host answers with the SPA fallback, so only Google renders it (investigate hosting config)");
 } catch (e) {
   record("prerendered pages served", false, String(e));
 }
@@ -311,7 +328,7 @@ const dbObjects = {
 //
 // The table is closed to anon by design, so this cannot count its rows from
 // here; what it can do is say, out loud, which of the two lanes is armed.
-record("filed-wage panel: reader present, quarter loaded by one POST", true,
+info("filed-wage panel: reader present, quarter loaded by one POST",
   dbObjects["get_employer_lca_wages()"] === "ok"
     ? "reader reachable. The panel prints nothing until the deploy carrying the quarter is POSTed once: "
       + "`{\"action\":\"lca_wages\"}` to /functions/v1/layoff-filings with the x-layoff-cron key. That action decodes the cells "
@@ -366,7 +383,7 @@ try {
     ...requiredMethods.filter(([field, value]) => !(Array.isArray(asBody?.[field]) && asBody[field].includes(value))).map(([field, value]) => `${field}:${value}`),
   ];
   const asOn = as.status === 200 && asMissing.length === 0;
-  record("authorization server metadata read", true,
+  info("authorization server metadata read",
     `${asUrl} → ${as.status}${asOn ? " with registration_endpoint, S256 and a public-client token endpoint" : as.status === 200 ? ` WITHOUT ${asMissing.join(", ")}` : ` ${asBody?.error_code ?? ""}`.trimEnd()}`);
 
   const init = await rpc(1, "initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "post-publish-smoke", version: "1" } });
@@ -439,8 +456,11 @@ try {
 }
 
 // ---- Verdict ----
-const failures = results.filter((r) => !r.ok);
-console.log(failures.length === 0
-  ? "\nALL CLEAR — publish verified."
-  : `\n${failures.length} FAILURE(S) — do not walk away:\n${failures.map((f) => `  - ${f.name}: ${f.detail}`).join("\n")}`);
+const failures = results.filter((r) => !r.ok && !r.skipped);
+const notRun = results.filter((r) => r.skipped);
+console.log(failures.length
+  ? `\n${failures.length} FAILURE(S) — do not walk away:\n${failures.map((f) => `  - ${f.name}: ${f.detail}`).join("\n")}${notRun.length ? `\n(and ${notRun.length} check(s) not run: ${notRun.map((r) => r.name).join(", ")})` : ""}`
+  : notRun.length
+    ? `\nPARTIAL — ${notRun.length} check(s) not run, so this publish is not verified: ${notRun.map((r) => r.name).join(", ")}. Nothing that ran failed.`
+    : "\nALL CLEAR — publish verified.");
 process.exit(failures.length === 0 ? 0 : 1);

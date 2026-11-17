@@ -16,7 +16,12 @@
 #   - 20261011141000 applied: scan_credit_redeem takes the caller's user id and
 #     is closed to anon (a GET probe: PostgREST runs it read-only);
 #   - 20261011142000 applied: get_cron_health lists an active mail-watch job,
-#     and once it has run, its runs did not fail;
+#     and pg_cron's runs of its command did not fail in SQL. A run that did
+#     not fail is INFO, never PASS (RC-S13-108): the command only queues a
+#     post, so pg_cron reads succeeded whatever mail-watch answered. What
+#     mail-watch answered is judged by scan-heartbeat (mail_watch_alive, its
+#     run stamp under 45 minutes old; cron_http_answers, refused or 5xx
+#     answers), which mails the owner;
 #   - 20261011143000 applied: the retry selector takes p_include_unmailed (the
 #     sweep 2026-10-11.22 passes it; without the migration every sweep names
 #     a missing function) and is closed to anon;
@@ -108,8 +113,8 @@ if(j.ch_active!==true){console.log("FAIL  the mail-watch job is inactive");proce
 console.log("PASS  mail-watch is scheduled and active ("+j.ch_schedule+")");
 const runs=Number(j.ch_runs||0),failed=Number(j.ch_failed||0);
 if(runs===0)console.log("INFO  mail-watch has not run yet in the last 24 hours (it runs every 15 minutes)");
-else if(failed>0)console.log("FAIL  mail-watch ran "+runs+" times in 24 hours and "+failed+" failed: read cron.job_run_details for the message (the vault key, or the function)");
-else console.log("PASS  mail-watch ran "+runs+" times in 24 hours with no failed run");'
+else if(failed>0)console.log("FAIL  pg_cron ran the mail-watch command "+runs+" times in 24 hours and "+failed+" failed in SQL: read cron.job_run_details for the message (the vault key read, or the command)");
+else console.log("INFO  pg_cron queued "+runs+" mail-watch posts in 24 hours and none failed in SQL; that is not what mail-watch answered (a queued post reads succeeded whatever the function says): scan-heartbeat\x27s mail_watch_alive and cron_http_answers judge that, and mail the owner");'
 
 echo "INFO  20261011140000 (a refunded or delivered order never reopens) is proven by the owner's read: select tgname, tgenabled from pg_trigger where tgname = 'product_delivery_stays_closed' (one row, enabled O)"
 echo "INFO  20261011143500 (a paid order whose mail never left counts as stuck; a test purchase never counts) is proven by the owner's read: select position('email_failed' in pg_get_functiondef('public.product_delivery_health(integer)'::regprocedure)) > 0 (true)"

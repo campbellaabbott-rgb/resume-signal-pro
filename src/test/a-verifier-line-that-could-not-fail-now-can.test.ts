@@ -222,6 +222,31 @@ const OLD_STEP_LOG = [
   `${STEP}2026-10-11T01:26:14.4679437Z ##[warning]SUPABASE_URL / SUPABASE_ANON_KEY not set — cannot verify what is live.`,
 ].join("\n");
 
+// The verify step since S14X-139: every function the push changed, through
+// the ledger's --push-verdict, whose annotations name every build compared.
+const STEP2 = "verify\tCompare the live build of every function this push changed against this commit\t";
+const echo2 = (t: string, line: string) => `${STEP2}${t} ${ESC}[36;1m${line}${ESC}[0m`;
+const PUSH_STEP_ECHO = [
+  `${STEP2}\ufeff2026-11-18T01:26:14.4542236Z ##[group]Run set -u`,
+  echo2("2026-11-18T01:26:14.4551977Z", `  echo "::error title=Deploy not verified::neither the commit before this push nor this commit's parent could be read, so nothing was compared."`),
+  echo2("2026-11-18T01:26:14.4553556Z", `node scripts/deploy-ledger.mjs --push-verdict "$FROM"`),
+  `${STEP2}2026-11-18T01:26:14.4599256Z ##[endgroup]`,
+  `${STEP2}2026-11-18T01:26:20.1000000Z this push: 4 file(s) changed from 0123abcd, 2 function(s) to compare`,
+];
+const PUSH_VERIFIED_LOG = [...PUSH_STEP_ECHO,
+  `${STEP2}2026-11-18T01:26:20.3000000Z ##[notice]2 function(s) this push changed serve this commit's builds or later: job-board.2026-09-09.102, mail-watch.2026-11-17.1`,
+].join("\n");
+const PUSH_BEHIND_LOG = [...PUSH_STEP_ECHO,
+  `${STEP2}2026-11-18T01:26:20.3000000Z ##[error]mail-watch serves 'mail-watch.2026-11-12.1' and this commit is 'mail-watch.2026-11-17.1'. Either the Lovable deploy has not run yet (re-run this job after it does) or it shipped stale code, which happened twice on 2026-08-07.`,
+  `${STEP2}2026-11-18T01:26:20.4000000Z ##[error]Process completed with exit code 1.`,
+].join("\n");
+const PUSH_NOTHING_LOG = [...PUSH_STEP_ECHO,
+  `${STEP2}2026-11-18T01:26:20.3000000Z ##[notice]this push changed no edge function, so no live build was compared`,
+].join("\n");
+const PUSH_UNREAD_LOG = [...PUSH_STEP_ECHO,
+  `${STEP2}2026-11-18T01:26:20.3000000Z ##[error]mail-watch did not answer its preflight, so nothing was compared for it.`,
+].join("\n");
+
 /** A gh that is signed in, lists one Deploy run with `conclusion`, and prints `log` for it. */
 const fakeGh = (conclusion: string | null, log: string) => `#!/usr/bin/env node
 const a=process.argv.slice(2);
@@ -242,20 +267,38 @@ describe("S11-156: section 78 judges the Deploy run by its conclusion and execut
   });
 
   it("positive control: a successful run that executed the verified notice passes", () => {
+    const lines = runSection("78-wave3-tests-ci.sh", { gh: fakeGh("success", PUSH_VERIFIED_LOG), rewriteTmp: true });
+    expect(has(lines, "PASS", /latest Deploy run compared the live build of every function its push changed, and each served that commit's build or later: 2 function\(s\) this push changed serve this commit's builds or later: job-board\.2026-09-09\.102, mail-watch\.2026-11-17\.1$/), show(lines)).toBe(true);
+  });
+
+  it("S14X-139: the old step's notice compared job-board alone, so it is INFO, never PASS", () => {
     const lines = runSection("78-wave3-tests-ci.sh", { gh: fakeGh("success", VERIFIED_LOG), rewriteTmp: true });
-    expect(has(lines, "PASS", /latest Deploy run compared the live job-board build and it matched this commit or later: job-board serves 2026-09-09\.92 \(this commit is 2026-09-09\.92\)/), show(lines)).toBe(true);
+    expect(deployLine(lines).some((l) => l.startsWith("PASS")), show(lines)).toBe(false);
+    expect(has(lines, "INFO", /latest Deploy run predates S14X-139: it compared job-board alone, whatever its push changed \(job-board serves 2026-09-09\.92/), show(lines)).toBe(true);
+  });
+
+  it("the new step: production behind is INFO naming the function, a push with no function is INFO, a function unread is INFO", () => {
+    const behind = runSection("78-wave3-tests-ci.sh", { gh: fakeGh("failure", PUSH_BEHIND_LOG), rewriteTmp: true });
+    expect(has(behind, "INFO", /latest Deploy run \(failure\) compared and production was behind that commit at push time: .*mail-watch serves 'mail-watch\.2026-11-12\.1'/), show(behind)).toBe(true);
+    const nothing = runSection("78-wave3-tests-ci.sh", { gh: fakeGh("success", PUSH_NOTHING_LOG), rewriteTmp: true });
+    expect(deployLine(nothing).some((l) => l.startsWith("PASS")), show(nothing)).toBe(false);
+    expect(has(nothing, "INFO", /push changed no edge function, so it compared no live build/), show(nothing)).toBe(true);
+    const unread = runSection("78-wave3-tests-ci.sh", { gh: fakeGh("failure", PUSH_UNREAD_LOG), rewriteTmp: true });
+    expect(has(unread, "INFO", /latest Deploy run \(failure\) could not compare \(mail-watch did not answer its preflight/), show(unread)).toBe(true);
   });
 
   it("a successful run whose log carries only the echo, or that ran the old step, is never a PASS", () => {
-    const echoOnly = runSection("78-wave3-tests-ci.sh", { gh: fakeGh("success", NEW_STEP_ECHO.join("\n")), rewriteTmp: true });
-    expect(deployLine(echoOnly).some((l) => l.startsWith("PASS")), show(echoOnly)).toBe(false);
-    expect(has(echoOnly, "INFO", /executed no verdict of its own/), show(echoOnly)).toBe(true);
+    for (const echoed of [NEW_STEP_ECHO, PUSH_STEP_ECHO]) {
+      const echoOnly = runSection("78-wave3-tests-ci.sh", { gh: fakeGh("success", echoed.join("\n")), rewriteTmp: true });
+      expect(deployLine(echoOnly).some((l) => l.startsWith("PASS")), show(echoOnly)).toBe(false);
+      expect(has(echoOnly, "INFO", /executed no verdict of its own/), show(echoOnly)).toBe(true);
+    }
     const old = runSection("78-wave3-tests-ci.sh", { gh: fakeGh("success", OLD_STEP_LOG), rewriteTmp: true });
     expect(has(old, "FAIL", /still ran the old verify step/), show(old)).toBe(true);
   });
 
   it("the verified notice a run printed counts only from a successful run", () => {
-    const lines = runSection("78-wave3-tests-ci.sh", { gh: fakeGh(null, VERIFIED_LOG), rewriteTmp: true });
+    const lines = runSection("78-wave3-tests-ci.sh", { gh: fakeGh(null, PUSH_VERIFIED_LOG), rewriteTmp: true });
     expect(deployLine(lines).some((l) => l.startsWith("PASS")), show(lines)).toBe(false);
   });
 });

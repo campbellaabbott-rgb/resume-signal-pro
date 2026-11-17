@@ -13,7 +13,12 @@
 # upkeep hotfix, 2026-11-07). A stub Lovable retyped into another text than
 # its repo file, comments and whitespace aside, is a FAIL until a person has
 # read the diff and recorded it under retypedRead, then INFO (the upkeep
-# hotfix review, 2026-11-07).
+# hotfix review, 2026-11-07). A pending file that reads the vault is the
+# owner's step, never Lovable's (OI-47b): it FAILs as an owner step not yet
+# run, and a held one is INFO. A function that calls what only an unapplied
+# migration creates FAILs until absentTolerant records how it copes, since
+# Lovable deploys functions ahead of their migrations (NB-33); a recorded one
+# is INFO.
 echo "== 49. deploy ledger: main vs production =="
 L49=$(node scripts/deploy-ledger.mjs --json 2>/dev/null)
 if [ -z "$L49" ]; then echo "FAIL  the deploy ledger did not run (node scripts/deploy-ledger.mjs --json)"; else
@@ -29,8 +34,20 @@ let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
   for(const r of j.unbumped) console.log("FAIL  "+r.fn+": code changed after its live stamp "+r.want+" -- bump FN_BUILD and deploy (or, if the deploy of this very commit verified, record it: node scripts/deploy-ledger.mjs --record-deploy)");
   for(const r of j.sharedOnly) console.log("INFO  "+r.fn+": a _shared import changed after its live stamp ("+r.changedSinceStamp.map(p=>p.split("/").pop()).join(", ")+")");
   const why=new Map((mig.unproven||[]).map(u=>[u.file,u.why]));
+  const owner=Array.isArray(j.ownerSteps)?j.ownerSteps:[];
+  const ownerFile=new Set(owner.map(s=>s.file));
   if(!mig.pending.length) console.log("PASS  no migration on main is missing from the staged-runner record or its behaviour proof");
-  for(const f of mig.pending) console.log("FAIL  migration not applied: "+f+(why.has(f)?" (its behaviour proof: "+why.get(f)+")":""));
+  for(const f of mig.pending) if(!ownerFile.has(f)) console.log("FAIL  migration not applied: "+f+(why.has(f)?" (its behaviour proof: "+why.get(f)+")":""));
+  for(const s of owner){
+    if(s.held) console.log("INFO  held, and an owner step once released (it reads the vault, which Lovable\x27s agent refuses): "+s.file);
+    else console.log("FAIL  owner step not run: "+s.file+" reads the vault, which Lovable\x27s agent refuses; run it in the SQL editor"+(s.note?" ("+s.note+")":"")+", then record it under appliedOutsideDrizzle in docs/deploy-ledger.json");
+  }
+  const ahead=(j.aheadOfMigration&&Array.isArray(j.aheadOfMigration.calls))?j.aheadOfMigration.calls:[];
+  for(const c of ahead){
+    const what=c.fn+" calls "+c.object+", which only "+(c.files||[]).join(" and ")+" create"+((c.files||[]).length===1?"s":"");
+    if(c.tolerated) console.log("INFO  "+what+"; absentTolerant records how it copes: "+c.tolerated);
+    else console.log("FAIL  "+what+", and Lovable deploys functions ahead of their migrations: make "+c.fn+" work while "+c.object+" is absent, then record how under absentTolerant in docs/deploy-ledger.json");
+  }
   const never=mig.neverApplyWhy||{};
   for(const f of (mig.neverApplyPresent||[])) console.log("INFO  never applied, by decision (docs/deploy-ledger.json neverApply): "+f+" ("+(never[f]||"superseded")+")");
   for(const p of (mig.appliedByBehaviour||[])) console.log("INFO  applied by behaviour, no stub: "+p.file+" (get_cron_health lists "+p.jobs.join(", ")+" active)");

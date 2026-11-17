@@ -18,7 +18,9 @@
 #     tests and the guards on built output, and its `test` job can pass
 #     (L12-02 interim, L12-04, L12-10, L12-11, S8-130);
 #   - the bot-wall sweep and the deploy check's verify job have what they read
-#     (L12-07, L12-08).
+#     (L12-07, L12-08), and that job judges every function its push changed,
+#     not job-board alone (S14X-139): a run that executed the old job-board
+#     notice predates it and is INFO, as is a push that changed no function.
 # READ-ONLY: OPTIONS preflights, one job-board status read (x-rb-budget:
 # probe), and GitHub reads through `gh` (run lists and one job log). Without
 # gh, or before these commits are on main, the GitHub lines are INFO/FAIL by
@@ -102,13 +104,19 @@ else ok(bl.conclusion==="success","the bot-wall sweep'"'"'s latest scheduled run
 let log="";try{log=fs.readFileSync("/tmp/vd_78_dep.log","utf8")}catch{}
 const dep=(rd("/tmp/vd_78_dep.json")||[])[0]||null;
 const executed=log.split("\n").map((l)=>{const rest=l.split("\t").slice(2).join("\t").replace(/^﻿/,"");const m=/^\d{4}-\d{2}-\d{2}T[\d:.]+Z (.*)$/.exec(rest);return m?m[1].trim():""}).filter((x)=>/^##\[(notice|warning|error)\]/.test(x));
-const verified=executed.find((x)=>/^##\[notice\]job-board serves \S+ \(this commit is \S+\)/.test(x));
+const verified=executed.find((x)=>/^##\[notice\]\d+ function\(s\) this push changed serve this commit\x27s builds or later: /.test(x));
+const nothing=executed.find((x)=>/^##\[notice\]this push changed no edge function/.test(x));
+const jobBoardOnly=executed.find((x)=>/^##\[notice\]job-board serves \S+ \(this commit is \S+\)/.test(x));
 const behind=executed.find((x)=>/^##\[error\].*this commit is/.test(x));
+const unread=executed.find((x)=>/^##\[error\].*nothing was compared/.test(x));
 const oldStep=executed.find((x)=>/^##\[warning\].*cannot verify what is live/.test(x));
 if(!dep)info("the latest Deploy run could not be listed");
 else if(!log)info("the latest Deploy run'"'"'s log could not be read");
 else if(oldStep)ok(false,"the latest Deploy run still ran the old verify step (no URL or key: it compared nothing)");
-else if(dep.conclusion==="success"&&verified)ok(true,"the latest Deploy run compared the live job-board build and it matched this commit or later: "+verified.replace(/^##\[notice\]/,""));
+else if(dep.conclusion==="success"&&verified)ok(true,"the latest Deploy run compared the live build of every function its push changed, and each served that commit\x27s build or later: "+verified.replace(/^##\[notice\]/,""));
+else if(dep.conclusion==="success"&&nothing)info("the latest Deploy run\x27s push changed no edge function, so it compared no live build: nothing to judge");
+else if(dep.conclusion==="success"&&jobBoardOnly)info("the latest Deploy run predates S14X-139: it compared job-board alone, whatever its push changed ("+jobBoardOnly.replace(/^##\[notice\]/,"")+"); judged once main runs the new verify step");
 else if(behind)info("the latest Deploy run ("+(dep.conclusion||"unfinished")+") compared and production was behind that commit at push time: re-run its verify job after the Lovable deploy ("+behind.replace(/^##\[error\]/,"").slice(0,120)+")");
+else if(unread)info("the latest Deploy run ("+(dep.conclusion||"unfinished")+") could not compare ("+unread.replace(/^##\[error\]/,"").slice(0,160)+"): not judged; re-run its verify job");
 else info("the latest Deploy run ("+(dep.conclusion||"unfinished")+") executed no verdict of its own (the script echo is not one): not judged; see its log");'
 fi
