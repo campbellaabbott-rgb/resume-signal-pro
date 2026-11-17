@@ -5104,6 +5104,17 @@ async function passEndKicks(client: SupabaseClient): Promise<{ ok: boolean; deta
     ).then((r) => discardBody(r)).catch(() => {}));
   }
 
+  // NB-35: the daily accuracy audit starts here, with the chain key, once its
+  // result is 20 hours old (the 04:23 cron sends no key and only reads it now).
+  const { data: auRow } = await client.from("job_board_meta").select("updated_at").eq("k", "audit").maybeSingle();
+  const auAge = auRow?.updated_at ? Date.now() - Date.parse(auRow.updated_at) : Infinity;
+  if (!(auAge < 20 * 3600_000)) {
+    const auUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+    waitUntil(chainKey().then((key) =>
+      fetch(auUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "audit", chainKey: key }) })
+    ).then((r) => discardBody(r)).catch(() => {}));
+  }
+
   // Rationale: docs/job-board-index-notes.md#n653-const-data-pbver-await-client-from
   const { data: pbVer } = await client.from("job_board_meta").select("v").eq("k", "posted_backfill").maybeSingle();
   const pbV = (pbVer?.v ?? {}) as { version?: number; resumeVersion?: number; phase?: string; cursor?: string; at?: string; sweptAt?: string; backlogAtSweep?: number };
@@ -6771,6 +6782,8 @@ async function handleRequest(req: Request): Promise<Response> {
       ).catch(() => null);
       // Item 18: each paced host's gate row (_shared/host-gate.ts).
       const pacingRead = Promise.resolve(client.from("job_board_meta").select("k, v").like("k", "host_gate:%")).catch(() => null);
+      // NB-35: when an audit run last started (audit_run) and last finished (audit); the stamps only.
+      const auditRead = Promise.resolve(client.from("job_board_meta").select("k, updated_at").in("k", ["audit", "audit_run"])).catch(() => null);
       const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop, oracleRepair, staleMeta, freshRow] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
@@ -7211,6 +7224,10 @@ async function handleRequest(req: Request): Promise<Response> {
         passEnd: passEndWithHop0(((passEndRow as { data?: { v?: unknown } } | null)?.data?.v ?? null) as Record<string, unknown> | null, instRows.get("pass_chain")),
         inst: instStatus(instRows, (traceRow as { data?: { v?: unknown } } | null)?.data?.v ?? null),
         pacing: pacingOf(((await pacingRead) as { data?: Array<{ k: string; v: unknown }> } | null)?.data),
+        audit: await auditRead.then((r) => {
+          const at = new Map(((r as { data?: Array<{ k: string; updated_at: string }> } | null)?.data ?? []).map((x) => [x.k, x.updated_at]));
+          return { startedAt: at.get("audit_run") ?? null, doneAt: at.get("audit") ?? null };
+        }),
         // Rationale: docs/job-board-index-notes.md#n741-oversizeboards-oversizestatusrows-overme
         oversizeBoards: oversizeStatusRows((overMeta as { data?: { v?: { boards?: unknown } } } | null)?.data?.v?.boards),
         oversizeBoardCount: Object.keys(((overMeta as { data?: { v?: { boards?: Record<string, unknown> } } } | null)?.data?.v?.boards) ?? {}).length,
@@ -8873,10 +8890,14 @@ async function handleRequest(req: Request): Promise<Response> {
       const prevAge = prevAudit ? Date.now() - new Date(prevAudit.updated_at).getTime() : Infinity;
       // force (100 live probes and the demotions they write) is maintenance
       // only (.88); an expired cache starts one audit, not one per caller.
-      const auditForced = body.force === true && await isMaintenance(req, body);
+      const maint = body.force === true || prevAge >= 20 * 3600_000 ? await isMaintenance(req, body) : false;
+      const auditForced = body.force === true && maint;
       if (prevAge < 20 * 3600_000 && !auditForced) {
         return json({ ...(prevAudit?.v as Record<string, unknown>), cached: true });
       }
+      // NB-35: only maintenance starts a run (the pass end kicks it with the
+      // chain key); anyone else past the 20 hours reads the cache, marked stale.
+      if (!maint) return json({ ...((prevAudit?.v ?? {}) as Record<string, unknown>), cached: true, stale: true });
       if (!auditForced && !(await claimRun(client, "audit_run", 30 * 60_000))) {
         return json({ ...((prevAudit?.v ?? {}) as Record<string, unknown>), cached: true, running: true });
       }
