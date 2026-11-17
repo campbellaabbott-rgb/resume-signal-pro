@@ -86,3 +86,119 @@ export function installSkipLinkFallback(doc: Document = document): () => void {
   doc.addEventListener("click", onClick);
   return () => doc.removeEventListener("click", onClick);
 }
+
+/**
+ * A ROUTE CHANGE MOVES FOCUS TO THE NEW PAGE AND SAYS ITS TITLE (S14X-256).
+ *
+ * Every page is lazy and nothing persists across routes, so the link a
+ * keyboard user pressed leaves with the old page and focus falls to <body>:
+ * the next Tab starts from the top of the document, and a screen reader hears
+ * nothing about the new page. ScrollToTop calls these on a path change (never
+ * on the first load, an address with a fragment or a change of query alone):
+ * wait for the new page to show, say its title in a polite live region, and,
+ * when focus fell out of the old page, land it where the skip link lands
+ * (skipLinkTarget's order), made focusable, without scrolling.
+ *
+ * Nothing is said or moved while a modal dialog is open (the consent banner
+ * is not one: aria-modal="false"), and focus the reader put on a control that
+ * stayed is left there.
+ */
+export const ROUTE_ANNOUNCER_ID = "rb-route-announcer";
+
+/** How long a new page may take to show (a phone fetching the board's chunk) before nothing is moved. */
+export const ROUTE_SETTLE_MAX_MS = 10_000;
+
+const PAGE_TARGETS = ["#main-content", "main", "h1"] as const;
+const OPEN_MODAL = '[role="dialog"][aria-modal="true"], [role="alertdialog"], [role="dialog"][data-state="open"]';
+
+/** In the document and not inside anything hidden: React hides a page whose successor is still loading with display:none. */
+function isShown(el: Element | null): boolean {
+  if (!el || !el.isConnected) return false;
+  for (let n: Element | null = el; n; n = n.parentElement) {
+    const h = n as HTMLElement;
+    if (h.hidden || h.style?.display === "none") return false;
+  }
+  return true;
+}
+
+/**
+ * Where a new page lands: skipLinkTarget's order, among what the app renders
+ * and shows (inside the app's mount on a baked page, else #root, else the
+ * document), so never a hidden old page or a baked node about to leave.
+ */
+export function shownPageTarget(doc: Document = document): HTMLElement | null {
+  const scope: ParentNode = doc.querySelector("[data-app-mount]") ?? doc.getElementById("root") ?? doc;
+  for (const sel of PAGE_TARGETS) {
+    for (const el of Array.from(scope.querySelectorAll<HTMLElement>(sel))) if (isShown(el)) return el;
+  }
+  return null;
+}
+
+/** Focus fell out of the page: onto <body>, nowhere, or an element that left or was hidden. */
+export function focusWasLost(doc: Document = document): boolean {
+  const a = doc.activeElement;
+  return !a || a === doc.body || a === doc.documentElement || !isShown(a);
+}
+
+/** A modal dialog is open: it owns the focus and the reader's attention. */
+export function modalIsOpen(doc: Document = document): boolean {
+  return Array.from(doc.querySelectorAll(OPEN_MODAL)).some(isShown);
+}
+
+/**
+ * The new page shows: say its title and, if focus fell out of the old page,
+ * land it on the new one. Answers whether focus moved.
+ */
+export function landOnNewPage(doc: Document, announcer: HTMLElement | null): boolean {
+  if (modalIsOpen(doc)) return false;
+  if (announcer) {
+    // Emptied first, so the same title twice in a row is still a change.
+    announcer.textContent = "";
+    announcer.textContent = doc.title;
+  }
+  if (!focusWasLost(doc)) return false;
+  const el = shownPageTarget(doc);
+  if (!el) return false;
+  if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex", "-1");
+  el.focus({ preventScroll: true });
+  return doc.activeElement === el;
+}
+
+/**
+ * Wait, a frame at a time, for the new page to show (a lazy page's code may
+ * still be on its way), then one frame more for a title written on the next
+ * frame, and call `land`. Gives up after `maxMs`. Returns a cancel, for the
+ * next route change or an unmount.
+ */
+export function whenNewPageShows(doc: Document, land: () => void, maxMs: number = ROUTE_SETTLE_MAX_MS): () => void {
+  const win = doc.defaultView;
+  const raf: (cb: () => void) => number = win?.requestAnimationFrame
+    ? (cb) => win.requestAnimationFrame(cb)
+    : (cb) => setTimeout(cb, 16) as unknown as number;
+  const caf: (id: number) => void = win?.cancelAnimationFrame ? (id) => win.cancelAnimationFrame(id) : (id) => clearTimeout(id);
+  const start = Date.now();
+  let shownOnce = false;
+  let done = false;
+  let id = 0;
+  const tick = () => {
+    if (done) return;
+    if (shownPageTarget(doc)) {
+      if (shownOnce) {
+        done = true;
+        land();
+        return;
+      }
+      shownOnce = true;
+    }
+    if (Date.now() - start > maxMs) {
+      done = true;
+      return;
+    }
+    id = raf(tick);
+  };
+  id = raf(tick);
+  return () => {
+    done = true;
+    caf(id);
+  };
+}
