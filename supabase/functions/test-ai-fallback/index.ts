@@ -44,7 +44,8 @@ import { SCAN_MODEL_CHAIN } from "../_shared/scan-models.ts";
 // 2026-11-10.3 (fix/cost-wave, the integration): both lanes' changes above together.
 // cost/ai and cost/ci-edge each stamped 2026-11-10.2 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "test-ai-fallback.2026-11-10.3";
+// 2026-11-13.1 (bug round of 2026-11-08, part B, free-scan-engine-b lane, CW2-AI1): this lane changes no line of this file. The scan chain it tests (_shared/scan-models.ts) now lists only the models the gateway serves, so the build moves with it.
+const FN_BUILD = "test-ai-fallback.2026-11-13.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

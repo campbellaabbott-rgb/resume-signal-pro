@@ -14,7 +14,8 @@ import { createRollup, orderMilestones, type AnalyticsEvent } from "./rollup.ts"
 // that spends its time budget leaves the oldest days partial and says from
 // where (audience.coveredFrom), never the newest.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "get-analytics.2026-11-09.1";
+// 2026-11-13.1 (bug round of 2026-11-08, part B, ops-alerts-b lane, S14X-189, S14X-190): the time and scroll milestones are ordered by value (rollup.ts), and days are bucketed in the time zone the page sends, UTC when it sends none or one that is not valid.
+const FN_BUILD = "get-analytics.2026-11-13.1";
 /** Nothing new is asked for after this long (the isolate dies near 150 s). */
 const READ_BUDGET_MS = 110_000;
 

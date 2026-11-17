@@ -9,7 +9,8 @@ import { keyMatches } from "../_shared/admin-key.ts";
 // whatever key was entered. The header is allowed now, and the key is
 // compared in constant time.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "get-error-telemetry.2026-11-09.1";
+// 2026-11-13.1 (bug round of 2026-11-08, part B, ops-alerts-b lane, S14X-157): head counts over the whole range (total, last hour, previous hour, server errors) and a truncated flag ride beside the newest rows the answer carries.
+const FN_BUILD = "get-error-telemetry.2026-11-13.1";
 
 /** The most rows one answer carries. The page shows them as a sample of the range. */
 const SAMPLE_CAP = 1000;

@@ -6469,7 +6469,8 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // counts (ai-usage.ts, the primary's copy byte for byte). A stream that
 // carried no usage chunk prints its counts as '-', the owner's one format.
 // 2026-11-12.1 (bug round of 2026-11-08, part A, free-scan-engine lane): a scan that delivers no full report gives the visitor's day back, the backup scan stops when the page gives up, each market is judged by its own norms and page bounds, and the nine report languages are read in their own section words.
-const FN_BUILD = "free-keyword-scan-stream.2026-11-12.1";
+// 2026-11-13.1 (bug round of 2026-11-08, part B, free-scan-engine-b lane, RC-OI-25, S14X-280, CW2-AI1): the presence test reads a plural on the never-swapped list as its own word and sees through soft hyphens, non-breaking hyphens and zero-width spaces (term-presence.ts, the primary's copy byte for byte), and AI_MODELS lists only the models the gateway serves, so a third attempt asks the pro model again.
+const FN_BUILD = "free-keyword-scan-stream.2026-11-13.1";
 
 /** The primary's report id formula (free-keyword-scan/report-meta.ts reportIdFor): this report's cache key and its score. */
 async function streamReportId(cacheKey: string, score: unknown): Promise<string> {

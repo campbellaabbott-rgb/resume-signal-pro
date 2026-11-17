@@ -655,7 +655,8 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // reports keep their week of cache. Each scan prints its rule score's parts
 // (numbers and codes only).
 // 2026-11-15.2 (bug round of 2026-11-08, part A, free-scan-engine lane, above the NB-1 hotfix's 2026-11-15.1, which it carries): a scan that delivers no full report gives the visitor's day back, an exhausted address makes no hour check, each market is judged by its own norms and page bounds, the nine report languages are read in their own section words, and a triggered-by quote must be on the résumé.
-const FN_BUILD = "free-keyword-scan.2026-11-15.2";
+// 2026-11-15.3 (bug round of 2026-11-08, part B, free-scan-engine-b lane, RC-OI-25, S14X-280, CW2-AI1; above part A's 2026-11-15.2, which it carries): a singular on the never-swapped list is not found in its plural, which is another word (security in securities), a soft hyphen, a non-breaking hyphen or a zero-width space no longer hides a skill on the résumé (term-presence.ts), and the scan chain asks only the models the gateway serves (_shared/scan-models.ts).
+const FN_BUILD = "free-keyword-scan.2026-11-15.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
