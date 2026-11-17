@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { INDUSTRY_KEYWORDS } from "@/config/industry-keywords";
-import { scanIndustryOptions } from "@/config/scan-industries";
+import { scanIndustryLabel, scanIndustryOptions } from "@/config/scan-industries";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface IndustryDetectionData {
@@ -39,53 +39,6 @@ interface IndustryConfidenceIndicatorProps {
   resumeTextLength?: number;
   visitorId?: string;
 }
-
-// Format industry name for display
-const formatIndustryName = (ind: string): string => {
-  const industryLabels: Record<string, string> = {
-    technology: 'Technology',
-    software: 'Software/Tech',
-    sales: 'Sales',
-    business_development: 'Business Development',
-    marketing: 'Marketing',
-    finance: 'Finance',
-    healthcare: 'Healthcare',
-    legal: 'Legal',
-    consulting: 'Consulting',
-    hr: 'Human Resources',
-    human_resources: 'Human Resources',
-    humanResources: 'Human Resources',
-    engineering: 'Engineering',
-    education: 'Education',
-    creative: 'Creative/Design',
-    design: 'Design',
-    retail: 'Retail',
-    hospitality: 'Hospitality',
-    manufacturing: 'Manufacturing',
-    government: 'Government',
-    operations: 'Operations',
-    dataScience: 'Data Science',
-    data_science: 'Data Science',
-    projectManagement: 'Project Management',
-    project_management: 'Project Management',
-    customerService: 'Customer Service',
-    customer_service: 'Customer Service',
-    real_estate: 'Real Estate',
-    realEstate: 'Real Estate',
-    nonprofit: 'Nonprofit',
-    general: 'General',
-    other: 'Other'
-  };
-  
-  if (industryLabels[ind]) return industryLabels[ind];
-  
-  // Convert snake_case to Title Case
-  return ind
-    .replace(/_/g, ' ')
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-};
 
 // The client keyword config's industries. The correction grid no longer
 // offers these (register S13-018: 38 of them are ids the scanner does not
@@ -133,6 +86,11 @@ export function IndustryConfidenceIndicator({
   const [showCorrection, setShowCorrection] = useState(false);
   const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  // One label for an industry everywhere on the report (S13-018): the words
+  // of the "We read this as" select and the hero, in the reader's language.
+  // The card used to keep a map of its own, in English, so an HR résumé was
+  // "Human Resources" here, "HR" in the select and "Hr" in the hero.
+  const industryLabel = (id: string) => scanIndustryLabel(id, t);
 
   const getConfidenceConfig = (confidence: 'high' | 'medium' | 'low') => {
     switch (confidence) {
@@ -236,9 +194,10 @@ export function IndustryConfidenceIndicator({
   // Show different treatment based on confidence
   const showWarning = confidence === 'low' || confidence === 'medium';
   const displayIndustry = selectedIndustry || industry;
-  // The scanner's own ids (S13-018), the same list the report's "We read this
-  // as" select offers, plus this report's id if it is not one of them.
-  const availableIndustries = scanIndustryOptions(displayIndustry);
+  // The scanner's own ids (S13-018), the same list and the same words the
+  // report's "We read this as" select offers, plus this report's id if it is
+  // not one of them.
+  const availableIndustries = scanIndustryOptions(displayIndustry, t);
   
   return (
     <div className={cn("rounded-2xl border transition-all duration-300", className, 
@@ -259,8 +218,8 @@ export function IndustryConfidenceIndicator({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm text-muted-foreground">{t("industryConfidence.industry")} </span>
-                <span className="font-bold text-foreground text-lg">
-                  {formatIndustryName(displayIndustry)}
+                <span data-industry-label className="font-bold text-foreground text-lg">
+                  {industryLabel(displayIndustry)}
                 </span>
                 {selectedIndustry && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-success/20 text-success font-medium">
@@ -407,7 +366,7 @@ export function IndustryConfidenceIndicator({
                   >
                     <div>
                       <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
-                        {formatIndustryName(alt.industry)}
+                        {industryLabel(alt.industry)}
                       </span>
                       {alt.reason && (
                         <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{alt.reason}</p>
@@ -426,7 +385,7 @@ export function IndustryConfidenceIndicator({
               <div className="flex items-start gap-2">
                 <Lightbulb className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-foreground">{t("industryConfidence.aiSuggested", { industry: formatIndustryName(aiSuggested) })}</p>
+                  <p className="text-sm font-medium text-foreground">{t("industryConfidence.aiSuggested", { industry: industryLabel(aiSuggested) })}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Click below to change if this is more accurate.
                   </p>
@@ -504,7 +463,7 @@ export function IndustryConfidenceIndicator({
                   className="w-full gap-2 border-primary/50 text-primary"
                 >
                   <Check className="w-4 h-4" />
-                  Use AI suggestion: {formatIndustryName(aiSuggested)}
+                  Use AI suggestion: {industryLabel(aiSuggested)}
                 </Button>
               )}
             </div>
