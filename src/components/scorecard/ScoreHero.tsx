@@ -12,6 +12,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { bandTone, scoreBand, scoreTone } from "@/lib/score-bands";
+import { scanIndustryLabel } from "@/config/scan-industries";
 
 interface ScoreHeroProps {
   candidateName?: string | null;
@@ -194,7 +195,10 @@ export function ScoreHero({
   };
 
   const firstName = candidateName?.split(" ")[0];
-  const displayIndustry = industry.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  // The industry in the words the report's "We read this as" select and the
+  // industry card use, in the reader's language (S13-018): the hero used to
+  // title-case the raw id, so an HR résumé read "Hr" here and "HR" there.
+  const displayIndustry = scanIndustryLabel(industry, t);
 
   return (
     <div className="mb-6">
@@ -277,7 +281,7 @@ export function ScoreHero({
               </div>
             )}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mb-3">
-              <span className="text-foreground/80">{displayIndustry}</span>
+              <span data-hero-industry className="text-foreground/80">{displayIndustry}</span>
               <span className="text-border">•</span>
               <span>{t(`scoreHero.experienceLevel.${getExperienceLevelKey(experienceLevel.level)}`)}</span>
             </div>
