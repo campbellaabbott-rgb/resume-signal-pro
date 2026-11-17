@@ -85,16 +85,7 @@ export function withStepReceipt(v: PassEndRow, step: PassEndStep, patch: StepRec
   return { ...v, ...top, steps: { ...(v.steps ?? {}), [step]: { ...(v.steps?.[step] ?? {}), ...patch } } };
 }
 
-/**
- * W4-3 (board .103): the names step is closed on its own clock. Its hops can
- * die or hang inside one board's updates (11-15, and 11-17 18:32:40-20:06:09Z:
- * the tail held open 94 min), and each re-kick restarted from the cursor the
- * dead hop never wrote. Once PASS_END_NAME_HOPS x the hop clock has passed
- * since the step was first kicked (the capacity step's finish; its own first
- * start when that is missing) with the tail still open on it, the tail is
- * closed ok:false, resumable:true, and the next pass's tail resumes from
- * name_sync_progress.
- */
+/** W4-3: true once PASS_END_NAME_HOPS x the hop clock has passed since names was kicked (capacity's finish, else its own start) with the tail still on it. */
 export function namesOutOfTime(v: PassEndRow | null | undefined, now: number, hopMs: number): boolean {
   if (!v || passEndDone(v) || v.next !== "names") return false;
   const cap = ms(v.steps?.capacity?.doneAt);

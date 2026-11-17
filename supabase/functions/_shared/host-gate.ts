@@ -1,26 +1,4 @@
-/**
- * ITEM 18 (board .103): A HOST'S STATED CRAWL-DELAY IS HONOURED BY EVERY LANE.
- *
- * api.lever.co and api.eu.lever.co state `Crawl-delay: 1`; careers.84lumber.com,
- * careers.petsmart.com and careers.aarp.org state 5 (robots read 2026-11-15/16,
- * legal-max carried/raw), and every other iCIMS tenant is paced at 5 until its
- * own robots is read (legal-max's default for a tenant not yet read). One
- * isolate's clock is not enough: the chain's hop, the description sweep, the
- * pass-end steps and a visitor's detail read run in different isolates at
- * once. So each paced host has one job_board_meta row, `host_gate:<host>`,
- * whose v.next_at is the earliest start of the next request to it. A request
- * takes the slot by a conditional update on the row's updated_at as it read
- * it; a lane that loses reads again and waits out the remainder, and past its
- * wall budget gives up (the caller defers the board, never fails it). The row
- * is created on first use by an insert whose conflict means another lane took
- * it first, so no table is added. Inside one isolate requests to a host queue
- * behind each other, so only one at a time contends for the row. If the row
- * cannot be read or written, the isolate's own clock still paces it.
- *
- * The row also keeps the pacing figures status shows: reads, the smallest gap
- * between two starts (minGapMs), since and last. Pure but for the store, so
- * vitest walks it.
- */
+// Rationale: docs/job-board-index-notes.md#n1585-export-const-host_delay_ms-readonly-reco
 
 /** Each paced host's stated delay. The robots ledger extends it build by build; a host it does not name is paced only when the caller names it. */
 export const HOST_DELAY_MS: Readonly<Record<string, number>> = {
@@ -65,11 +43,7 @@ export function hostDelayOf(url: string, extra?: (host: string) => number | unde
   return typeof ms === "number" && ms > 0 ? { host, ms } : null;
 }
 
-/**
- * Waits for the host's slot and takes it. true: start the request now. false:
- * the slot did not come inside `maxWaitMs`, counted from the call, queueing
- * included (the caller defers: a 429 to the slice, never a failure).
- */
+// Rationale: docs/job-board-index-notes.md#n1586-export-async-function-awaithostslot-url
 export async function awaitHostSlot(url: string, deps: GateDeps): Promise<boolean> {
   const d = hostDelayOf(url, deps.extra);
   if (!d) return true;

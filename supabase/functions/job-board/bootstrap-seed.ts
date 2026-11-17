@@ -1,32 +1,4 @@
-/**
- * W4-1 (board .103): A DEPLOY SEEDS THE BOOTSTRAP LANE WITH WHAT IS NEW, NOT
- * WITH EVERY EMPTY BOARD.
- *
- * Through .102 a BUILD_VERSION change appended every board with no stored row
- * (get_empty_boards), and an empty queue at an unchanged version seeded the
- * same list again: 11,776 at the .102 deploy, 4,576 still pending 2026-11-17
- * 21:21Z, about 27-32 lap-minutes (model F) or 87-113 (model R) spent reading
- * boards the rotation reads anyway, most of them read and found empty many
- * times over (capacity.md section 6).
- *
- * Now a version change REPLACES the queue with, in this order:
- *   (a) the tokens this build repointed: a RETIRED_TWIN_KEYS entry the last
- *       seed had not seen whose token the catalogue carries under another
- *       vendor (their old reads say nothing about the new board);
- *   (b) the empties no read has ever stamped (no job_board_verifications row
- *       under the token): boards a catalogue change added, which the rotation
- *       would otherwise reach only a lap later;
- *   (c) the empties of a vendor whose READER_VERSION entry changed (a new
- *       reader may find what the old one could not).
- * The old queue held only what the old rule seeded; anything in it no read
- * has stamped comes back under (b), so nothing the lane exists for is lost,
- * and a token leaves the next seed once a read stamps it, so the drain the
- * 2026-08-24 restart defect never let finish now ends. If the stamps cannot be
- * read, nothing is seeded and the version is not stamped, so the next slice
- * tries again. An empty queue at an unchanged version seeds nothing.
- *
- * Pure, so vitest walks it.
- */
+// Rationale: docs/job-board-index-notes.md#n1587-type-board-source-string-token-string
 
 type Board = { source: string; token: string };
 
@@ -36,11 +8,7 @@ export function readersChanged(stored: Readonly<Record<string, number>> | null |
   return new Set([...Object.keys(now), ...Object.keys(s)].filter((v) => (now[v] ?? 0) !== (s[v] ?? 0)));
 }
 
-/**
- * (a): the tokens of twin keys the last seed had not seen (all of them when it
- * stored none), each only while its own key has left the catalogue and its
- * token is carried under another vendor.
- */
+// Rationale: docs/job-board-index-notes.md#n1588-export-function-repointedtokens-twins-re
 export function repointedTokens(twins: readonly string[], storedTwins: readonly string[] | null | undefined, sources: readonly Board[]): string[] {
   const seen = new Set(storedTwins ?? []);
   const out: string[] = [];
@@ -73,11 +41,7 @@ export function bootstrapSeed(i: {
   return { queue: [...out], repointed: a, unread: b, readerChanged: out.size - a - b };
 }
 
-/**
- * The failure state a repointed token leaves behind: its entries under the
- * bare token and under each source:token key, in every map that holds them.
- * null when it holds none, so the caller writes nothing.
- */
+// Rationale: docs/job-board-index-notes.md#n1589-export-function-clearrepointedfailures-v
 export function clearRepointedFailures(v: Record<string, unknown>, tokens: readonly string[], sourcesOf: (token: string) => readonly string[]): Record<string, unknown> | null {
   const keys = new Set(tokens.flatMap((t) => [t, ...sourcesOf(t).map((s) => `${s}:${t}`)]));
   let hit = false;

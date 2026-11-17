@@ -1,13 +1,4 @@
-/**
- * W4-17 (board .103): A CAP ON ONE VENDOR'S DETAIL READS.
- *
- * The description sweep runs DESC_SWEEP_CONCURRENCY (8) wide whatever the
- * vendor, so a hop of SmartRecruiters rows opened eight posting reads at once,
- * back to back. A cap admits a call only while fewer than `concurrent` are in
- * flight and fewer than `perSecond` started in the last second, in the order
- * they asked; the rest wait their turn. Per isolate. Pure but for the clock,
- * so vitest walks it on a virtual one.
- */
+// Rationale: docs/job-board-index-notes.md#n1590-export-type-capclock-now-number-sleep
 export type CapClock = { now: () => number; sleep: (ms: number) => Promise<void> };
 
 export function rateCap(

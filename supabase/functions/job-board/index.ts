@@ -1664,12 +1664,7 @@ async function readOversizeBoard(s: JobSource, deadlineAt: number, freshCutoffMs
   }
 }
 
-/**
- * D7, H8: held until the owner's call on OD1 (the mill screen marks nogigiddy and
- * weekday-1 EXCLUDE; hire-resolve names itself an agency; both Mercier boards are
- * for review). No lane reads a held board, whatever its size: every slice puts it
- * in its skip set, and the pass-end prune removes what it still serves.
- */
+/** D7, H8: held until OD1. No lane reads a held board, whatever its size, and the pass-end prune removes its rows. */
 const WORKABLE_OVERSIZE_HELD: ReadonlySet<string> = new Set(["nogigiddy", "weekday-1", "hire-resolve-the-top-recruitment-agency", "mercier-consultancy", "mercier-consultancy-group"]);
 /** A Workable list with details=false (listUrl's third argument). Not light mode: the board stays out of DYNAMIC_LIGHT (n017). */
 async function readWorkableBare(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unknown } | null> {
@@ -4587,12 +4582,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   return { ok: true, detail: `slice done (${sliceTotal} postings, ${failed.length} failed) — ${phase}${shedLevel > 0 ? ` [shedding L${shedLevel}]` : ""}${budgetSkipped.length ? ` [budget: ${fetchedInSlice} fetched, ${budgetSkipped.length} deferred]` : ""}` };
 }
 
-/**
- * W4-1: the queue a version change writes (bootstrap-seed.ts), with the
- * repointed tokens' failure state already cleared, and the bootstrap_seen
- * write that commits it once the queue has landed. Throws when anything it
- * reads fails, so nothing is seeded and the next slice tries again.
- */
+/** W4-1: the version change's queue (bootstrap-seed.ts) and its commit; throws on any failed read, so the next slice retries. */
 async function bootstrapSeedFor(client: SupabaseClient): Promise<{ queue: string[]; commit: () => Promise<unknown> }> {
   const { data: seenRow, error: seenErr } = await client.from("job_board_meta").select("v").eq("k", "bootstrap_seen").maybeSingle();
   if (seenErr) throw seenErr;
