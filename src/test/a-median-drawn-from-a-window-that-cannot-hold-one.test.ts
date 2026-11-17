@@ -475,8 +475,11 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     // (it rolled by instant and overwrote the month, and on the NULL the cron
     // passes it rolled nothing). The aggregates were carried verbatim; the two
     // properties below are asserted against whatever body is live.
-    const CLOSURE_KEEP_FIX = "20261008112500_the_closure_rollup_rolls_whole_months_and_rolls_them_when_nothing_is_pruned.sql";
-    expect(LIVE.get("roll_up_and_prune_closures")?.file, "roll_up_and_prune_closures must resolve to the migration that made its rollup read whole months").toBe(CLOSURE_KEEP_FIX);
+    // MOVED AGAIN ON 20261113100000 (S14X-159): a suspect takedown gets its own
+    // column, and the prune counts the rows it deletes in the same statement.
+    // The whole-month roll and both properties below were carried forward.
+    const CLOSURE_KEEP_FIX = "20261113100000_a_pruned_takedown_is_counted_in_the_column_its_mark_names.sql";
+    expect(LIVE.get("roll_up_and_prune_closures")?.file, "roll_up_and_prune_closures must resolve to the migration that last re-issued its whole-month rollup").toBe(CLOSURE_KEEP_FIX);
     expect(
       LIVE.get("roll_up_and_prune_closures")?.code,
       "the re-issue must carry the late-closed_at fix forward: lap_backfill rows are excluded from the duration statistics",
