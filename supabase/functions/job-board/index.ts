@@ -98,7 +98,7 @@ import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointA
 import { realQuestionVendors, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { beforeDeadline, SLIM_SPECS, streamSlim } from "./slim-stream.ts";
 import { withWorkdayLanguage } from "./request-headers.ts";
-import { ANON_OFFSET_CEILING, anonBudgetGate, anonBudgetStatus, budgetEcho, callerAddress, exemptKind, METERED_ACTIONS, offsetCeiling, pageCeiling } from "./anon-budget.ts";
+import { ANON_OFFSET_CEILING, anonBudgetGate, anonBudgetStatus, BOARD_BUDGET_HEADER, budgetEcho, callerAddress, exemptKind, METERED_ACTIONS, offsetCeiling, pageCeiling } from "./anon-budget.ts";
 import { boardPassAction } from "./board-pass.ts";
 import {
   addressAllowance, admitDemand, CLICK_PER_ADDRESS_HOUR, DEMAND_QUEUE_KEY, demandLaneStatus, FIT_PER_ADDRESS_HOUR, incidentRows, readDemand,
@@ -2008,6 +2008,8 @@ function resolveCaller(req: Request, body: Record<string, unknown>): string | nu
   // A LABEL, not an authorisation decision — the platform already
   // authenticated whatever this token is before the request reached us.
   if (svc && (auth === `Bearer ${svc}` || req.headers.get("apikey") === svc)) return "maintenance";
+  // Our verify and diagnostic probes send x-rb-budget: probe; their searches are not visitors' (push-all plan).
+  if ((req.headers.get(BOARD_BUDGET_HEADER) ?? "").trim().toLowerCase() === "probe") return "maintenance";
   if (req.headers.get("origin") || req.headers.get("referer")) return "web";
   return null;
 }
