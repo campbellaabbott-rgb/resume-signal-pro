@@ -1,5 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. Every job this file schedules
--- runs once a day (reviewed 2026-11-16 in the bug round A integration).
+-- lovable-cron-fallback-reviewed: no sub-hourly cron; every job this file schedules runs once a day (reviewed 2026-11-16 in the bug round A integration).
 --
 -- A RUN-OUT PASS CLOSES, AND GIVES BACK WHAT IT NEVER SENT (S14X-083, M-S14-051).
 --

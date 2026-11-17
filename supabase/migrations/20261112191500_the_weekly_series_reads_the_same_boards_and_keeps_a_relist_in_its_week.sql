@@ -1,5 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
--- (reviewed 2026-11-16 in the bug round A integration).
+-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing (reviewed 2026-11-16 in the bug round A integration).
 --
 -- THE WEEKLY SERIES READS THE SAME BOARDS AND KEEPS A RE-LIST IN ITS OWN WEEK
 -- (NB-46, the weekly half of S14X-038).

@@ -1,5 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
--- (reviewed 2026-11-16 in the bug round A integration).
+-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing (reviewed 2026-11-16 in the bug round A integration).
 --
 -- AN ACCOUNT WRITES ONLY THE FIELDS OF ITS SAVED SEARCH IT CHOSE (NB-2, the
 -- column half; the same pattern as NB-14's agent kick clock).

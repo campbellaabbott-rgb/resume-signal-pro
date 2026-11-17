@@ -1,5 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
--- (reviewed 2026-11-16 in the bug round A integration).
+-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing (reviewed 2026-11-16 in the bug round A integration).
 --
 -- THE GHOST INDEX COUNTS BY THE BOARD'S 30-DAY RULE AND NAMES WHAT IT CARRIED
 -- (S14X-273, S14X-160).

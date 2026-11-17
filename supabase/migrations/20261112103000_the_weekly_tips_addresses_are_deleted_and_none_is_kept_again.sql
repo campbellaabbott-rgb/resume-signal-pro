@@ -1,5 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
--- (reviewed 2026-11-16 in the bug round A integration).
+-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing (reviewed 2026-11-16 in the bug round A integration).
 --
 -- THE WEEKLY-TIPS ADDRESSES ARE DELETED, AND NONE IS KEPT AGAIN (S14X-101,
 -- the owner's answer 'remove' of 2026-11-15, which approved this purge).

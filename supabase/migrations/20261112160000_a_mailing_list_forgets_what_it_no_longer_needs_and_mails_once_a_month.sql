@@ -1,5 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. Every job this file schedules
--- runs once a day (reviewed 2026-11-16 in the bug round A integration).
+-- lovable-cron-fallback-reviewed: no sub-hourly cron; every job this file schedules runs once a day (reviewed 2026-11-16 in the bug round A integration).
 --
 -- A MAILING LIST FORGETS WHAT IT NO LONGER NEEDS, AND THE PULSE GOES ONCE A
 -- CALENDAR MONTH (bug round 2026-11-08, lane mail: S14X-102, S14X-238).
