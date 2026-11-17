@@ -51,6 +51,25 @@ export function skipLinkTarget(doc: Document = document): HTMLElement | null {
     ?? doc.querySelector("h1")) as HTMLElement | null;
 }
 
+/**
+ * THE SHELL'S SKIP LINK, IN THE READER'S LANGUAGE (S14X-177).
+ *
+ * index.html writes the link in English as the first child of <body>, outside
+ * React: the words a reader meets before the app has run. Once the app knows
+ * the language, the link takes its words and its lang. Only that one link:
+ * a page's own skip link is the page's.
+ */
+export const SHELL_SKIP_LINK = 'body > a[href="#main-content"]';
+
+/** Give the shell's link these words and this lang. Answers whether there was a link to give them to. */
+export function localiseSkipLink(doc: Document, text: string, lang: string): boolean {
+  const link = doc.querySelector(SHELL_SKIP_LINK);
+  if (!link || !text.trim()) return false;
+  if (link.textContent !== text) link.textContent = text;
+  if (lang) link.setAttribute("lang", lang);
+  return true;
+}
+
 /** Catch a press on the skip link wherever the page has no #main-content.
  *  Returns the uninstaller. */
 export function installSkipLinkFallback(doc: Document = document): () => void {

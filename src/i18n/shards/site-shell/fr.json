@@ -1,5 +1,6 @@
 {
   "siteShell": {
+    "skipToMain": "Aller au contenu principal",
     "crashHome": "Aller à la page d'accueil",
     "newVersion": {
       "loading": "Chargement de la nouvelle version…",
