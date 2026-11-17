@@ -14,6 +14,14 @@
 #      slice was admitted within 6 hours (lastSliceAgeMin) and the last slice
 #      to finish its work did so within 6 hours (sliceStats.workAt). A dead
 #      scheduler shows up here long before any data page looks wrong.
+#   3. Closures are still recorded (S14X-243): a board can serve and slice
+#      while proving no absence at all. The last lap proof
+#      (deepCursor.laps.lastProvenAt) is within 24 hours, the closure
+#      population (closurePopulation.as_of, refreshed at :09 and :39) within
+#      3 hours, and the anon get_takedowns_today count is above zero. As read
+#      live for the November 2026 bug round: 1,051 of 1,099 laps proven, the
+#      newest proof a minute before the closure population, and 17,520
+#      takedowns in 24 hours.
 #
 # WHAT IT DOES ON FAILURE: opens a GitHub issue labeled `board-health` (or
 # comments on the existing open one, so a long outage is one thread rather
@@ -126,12 +134,37 @@ jobs:
             *) if [ "$WORK" -gt 360 ]; then FAILS="${FAILS:+$FAILS; }the last slice to finish its work did so ${WORK} minutes ago (>6h: slices are admitted and dying)"; fi;;
           esac
 
+          # 3. Closures are still recorded (S14X-243). Read from the same
+          # status answer, plus one anon count; a missing or non-numeric
+          # value fails, as above. A big board proves an absence only across
+          # a completed lap, so no lap proof in a day means no closure on any
+          # windowed board; a stale closure population means its refresher
+          # stopped; no takedown in 24 hours means the closure writer did.
+          LAP=$(printf '%s' "$ST" | jq -r '(.deepCursor.laps.lastProvenAt // empty) | sub("\\.[0-9]+"; "") | sub("\\+00:00$"; "Z") | fromdateiso8601 | (now - .) / 60 | floor' 2>/dev/null || echo "")
+          POP=$(printf '%s' "$ST" | jq -r '(.closurePopulation.as_of // empty) | sub("\\.[0-9]+"; "") | sub("\\+00:00$"; "Z") | fromdateiso8601 | (now - .) / 60 | floor' 2>/dev/null || echo "")
+          TD=$(curl -sS -m 25 -X POST "$SB_URL/rest/v1/rpc/get_takedowns_today" \
+            -H "apikey: $SB_ANON" -H "Authorization: Bearer $SB_ANON" \
+            -H "Content-Type: application/json" -d '{}' || echo "")
+          TD=$(printf '%s' "$TD" | jq -r 'if type == "number" then floor else empty end' 2>/dev/null || echo "")
+          case "$LAP" in
+            ''|*[!0-9-]*) FAILS="${FAILS:+$FAILS; }status answered no lap proof (deepCursor.laps.lastProvenAt = '${LAP:-missing}'): no big board can record a closure";;
+            *) if [ "$LAP" -gt 1440 ]; then FAILS="${FAILS:+$FAILS; }the last lap proof was ${LAP} minutes ago (>24h: no big board has proved an absence, so none can record a closure)"; fi;;
+          esac
+          case "$POP" in
+            ''|*[!0-9-]*) FAILS="${FAILS:+$FAILS; }status answered no closure population (closurePopulation.as_of = '${POP:-missing}')";;
+            *) if [ "$POP" -gt 180 ]; then FAILS="${FAILS:+$FAILS; }the closure population was last computed ${POP} minutes ago (>3h: its refresher runs twice an hour)"; fi;;
+          esac
+          case "$TD" in
+            ''|*[!0-9]*) FAILS="${FAILS:+$FAILS; }get_takedowns_today answered no count (timeout, error, or non-JSON)";;
+            0) FAILS="${FAILS:+$FAILS; }no takedown was recorded in the last 24 hours (the closure writer has stopped)";;
+          esac
+
           if [ -n "$FAILS" ]; then
             echo "note=$FAILS" >> "$GITHUB_OUTPUT"
             echo "failed=probe" >> "$GITHUB_OUTPUT"
           else
             echo "failed=" >> "$GITHUB_OUTPUT"
-            echo "board OK: total=$TOTAL, lastSliceAgeMin=$SLICE, last slice work ${WORK} min ago"
+            echo "board OK: total=$TOTAL, lastSliceAgeMin=$SLICE, last slice work ${WORK} min ago, laps last proven ${LAP} min ago, closure population ${POP} min old, takedowns in 24 h = $TD"
           fi
 
       # THE ALARM'S OWN DEAD-MAN (S12-069). Every run pings the healthchecks.io
