@@ -1585,10 +1585,11 @@ async function main(argv) {
   const refusal = checkoutRefusal({ head: headFull, originMain, fetched, behind, ahead, dirty });
   const checkout = { head: headFull, originMain, behind, ahead, refusal };
 
-  // Exit: 5 refused (not main), 6 an order rule cannot be met, 7 a late-stamped
-  // migration would revert a later one, 8 main is behind a live build, 4 a
-  // function could not be checked, 2 MUST BUMP. (3 is --against's.)
-  const exitFor = (withMessage) => (withMessage && refusal ? 5 : phases.errors.length || callsAhead.errors.length ? 6 : late.length ? 7 : liveAhead.length ? 8
+  // Exit: 5 refused (not main), 6 a function calls ahead of its migration or an
+  // order rule cannot be met, 7 a late-stamped migration would revert a later
+  // one, 8 main is behind a live build, 4 a function could not be checked,
+  // 2 MUST BUMP. (3 is --against's.)
+  const exitFor = (withMessage) => (withMessage && refusal ? 5 : callsAhead.errors.length ? 6 : phases.errors.length ? 6 : late.length ? 7 : liveAhead.length ? 8
     : unreachable.length ? 4 : unbumped.length ? 2 : 0);
   // 9: a constant dated at the deploy does not read today (datedAtDeploy), with
   // --message only, after every refusal that stops the message before it.
