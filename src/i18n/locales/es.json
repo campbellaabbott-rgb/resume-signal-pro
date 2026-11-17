@@ -799,7 +799,7 @@
   },
   "scanProgress": {
     "title": "Análisis IA en Progreso",
-    "subtitle": "Usando Gemini Pro para máxima precisión",
+    "subtitle": "Leyendo tu currículum, paso a paso",
     "complete": "{{percent}}% completado",
     "live": "En vivo",
     "securityNote": "Tu currículum se borra en un máximo de 7 días y nunca se vende",
@@ -3223,11 +3223,11 @@
     "crafting": "Generando comentarios personalizados..."
   },
   "aiGenerationProgress": {
-    "title": "GPT-5 está trabajando",
+    "title": "La IA está trabajando",
     "generating": "Generando {{productName}}",
     "steps": {
       "analyzingTitle": "Analizando currículum",
-      "analyzingDesc": "GPT-5 está leyendo tu experiencia y habilidades",
+      "analyzingDesc": "Leyendo tu experiencia y habilidades",
       "optimizingTitle": "Optimizando para ATS",
       "optimizingDesc": "Agregando palabras clave y mejorando el formato",
       "generatingTitle": "Generando contenido",
@@ -3236,7 +3236,7 @@
       "finalizingDesc": "Controles de calidad y formato"
     },
     "complete": "{{progress}}% completado",
-    "quality": "Usando GPT-5 para máxima calidad",
+    "quality": "Escrito con IA",
     "secure": "Tus datos se procesan de forma segura"
   },
   "atsDefenseResults": {
@@ -3543,7 +3543,7 @@
     "copied": "Copiado",
     "error": "Error de generación",
     "waiting": "Esperando contenido...",
-    "gpt5Writing": "GPT-5 está escribiendo..."
+    "gpt5Writing": "La IA está escribiendo..."
   },
   "notFound": {
     "code": "404",

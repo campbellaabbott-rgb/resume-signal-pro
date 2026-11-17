@@ -11,10 +11,15 @@ export type GenerationStage =
   | 'finalizing'
   | 'complete';
 
+// Every word below is a key into aiGenerationProgress (nine locales), so the
+// overlay speaks the reader's language. None names a model (CW2-AI7): which
+// model answers changes on the AI gateway's schedule, not ours, so a name
+// typed here goes false without a line of ours changing. The English literals
+// this replaced named one, and were never translated.
 interface GenerationStep {
   id: GenerationStage;
-  label: string;
-  description: string;
+  labelKey: string;
+  descriptionKey: string;
   icon: React.ElementType;
   duration: number; // estimated duration in ms
 }
@@ -22,29 +27,29 @@ interface GenerationStep {
 const steps: GenerationStep[] = [
   { 
     id: 'analyzing', 
-    label: 'Analyzing Resume', 
-    description: 'GPT-5 is reading your experience and skills',
+    labelKey: 'aiGenerationProgress.steps.analyzingTitle',
+    descriptionKey: 'aiGenerationProgress.steps.analyzingDesc',
     icon: Brain,
     duration: 3000
   },
   { 
     id: 'optimizing', 
-    label: 'Optimizing for ATS', 
-    description: 'Adding keywords and improving formatting',
+    labelKey: 'aiGenerationProgress.steps.optimizingTitle',
+    descriptionKey: 'aiGenerationProgress.steps.optimizingDesc',
     icon: Zap,
     duration: 4000
   },
   { 
     id: 'generating', 
-    label: 'Generating Content', 
-    description: 'Crafting your enhanced documents',
+    labelKey: 'aiGenerationProgress.steps.generatingTitle',
+    descriptionKey: 'aiGenerationProgress.steps.generatingDesc',
     icon: FileText,
     duration: 5000
   },
   { 
     id: 'finalizing', 
-    label: 'Finalizing', 
-    description: 'Quality checks and formatting',
+    labelKey: 'aiGenerationProgress.steps.finalizingTitle',
+    descriptionKey: 'aiGenerationProgress.steps.finalizingDesc',
     icon: Sparkles,
     duration: 2000
   },
@@ -116,10 +121,10 @@ export function AIGenerationProgress({
         {/* Title */}
         <div className="space-y-2">
           <h3 className="text-2xl font-bold text-foreground">
-            GPT-5 is Working
+            {t('aiGenerationProgress.title')}
           </h3>
           <p className="text-muted-foreground">
-            Generating {productName}
+            {t('aiGenerationProgress.generating', { productName })}
           </p>
         </div>
 
@@ -127,7 +132,7 @@ export function AIGenerationProgress({
         <div className="space-y-2">
           <Progress value={progress} className="h-3" />
           <p className="text-sm text-muted-foreground">
-            {Math.round(progress)}% complete
+            {t('aiGenerationProgress.complete', { progress: Math.round(progress) })}
           </p>
         </div>
 
@@ -136,8 +141,8 @@ export function AIGenerationProgress({
           <div className="flex items-center gap-3 justify-center">
             <currentStep.icon className="h-5 w-5 text-primary animate-pulse" />
             <div className="text-left">
-              <p className="font-medium text-foreground">{currentStep.label}</p>
-              <p className="text-sm text-muted-foreground">{currentStep.description}</p>
+              <p className="font-medium text-foreground">{t(currentStep.labelKey)}</p>
+              <p className="text-sm text-muted-foreground">{t(currentStep.descriptionKey)}</p>
             </div>
           </div>
         </div>
@@ -166,7 +171,7 @@ export function AIGenerationProgress({
                 ) : (
                   <StepIcon className="h-3 w-3" />
                 )}
-                <span className="hidden sm:inline">{step.label}</span>
+                <span className="hidden sm:inline">{t(step.labelKey)}</span>
               </div>
             );
           })}
@@ -174,8 +179,8 @@ export function AIGenerationProgress({
 
         {/* Tips */}
         <div className="pt-4 text-xs text-muted-foreground space-y-1">
-          <p>⚡ Using GPT-5 for maximum quality</p>
-          <p>🔒 Your data is processed securely</p>
+          <p>⚡ {t('aiGenerationProgress.quality')}</p>
+          <p>🔒 {t('aiGenerationProgress.secure')}</p>
         </div>
       </div>
     </div>

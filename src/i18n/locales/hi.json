@@ -798,7 +798,7 @@
   },
   "scanProgress": {
     "title": "AI विश्लेषण जारी है",
-    "subtitle": "अधिकतम सटीकता के लिए Gemini Pro का उपयोग",
+    "subtitle": "आपका रिज़्यूमे चरण-दर-चरण पढ़ा जा रहा है",
     "complete": "{{percent}}% पूर्ण",
     "live": "लाइव",
     "securityNote": "आपका रिज़्यूमे 7 दिनों के भीतर हटा दिया जाता है और कभी बेचा नहीं जाता",
@@ -3195,11 +3195,11 @@
     "crafting": "व्यक्तिगत फ़ीडबैक तैयार किया जा रहा है..."
   },
   "aiGenerationProgress": {
-    "title": "GPT-5 काम कर रहा है",
+    "title": "AI काम कर रहा है",
     "generating": "{{productName}} बनाया जा रहा है",
     "steps": {
       "analyzingTitle": "रिज़्यूमे का विश्लेषण",
-      "analyzingDesc": "GPT-5 आपके अनुभव और कौशल पढ़ रहा है",
+      "analyzingDesc": "आपका अनुभव और कौशल पढ़ा जा रहा है",
       "optimizingTitle": "ATS के लिए अनुकूलन",
       "optimizingDesc": "कीवर्ड जोड़े जा रहे हैं और फ़ॉर्मेटिंग सुधारी जा रही है",
       "generatingTitle": "सामग्री बनाई जा रही है",
@@ -3208,7 +3208,7 @@
       "finalizingDesc": "गुणवत्ता जांच और फ़ॉर्मेटिंग"
     },
     "complete": "{{progress}}% पूर्ण",
-    "quality": "अधिकतम गुणवत्ता के लिए GPT-5 का उपयोग",
+    "quality": "AI की मदद से लिखा गया",
     "secure": "आपका डेटा सुरक्षित तरीके से संसाधित किया जाता है"
   },
   "atsDefenseResults": {
@@ -3509,7 +3509,7 @@
     "copied": "कॉपी हो गया",
     "error": "जनरेशन त्रुटि",
     "waiting": "सामग्री की प्रतीक्षा...",
-    "gpt5Writing": "GPT-5 लिख रहा है..."
+    "gpt5Writing": "AI लिख रहा है..."
   },
   "notFound": {
     "code": "404",

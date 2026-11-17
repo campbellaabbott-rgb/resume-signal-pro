@@ -798,7 +798,7 @@
   },
   "scanProgress": {
     "title": "AI Analysis in Progress",
-    "subtitle": "Using Gemini Pro for maximum accuracy",
+    "subtitle": "Reading your CV, step by step",
     "complete": "{{percent}}% complete",
     "live": "Live",
     "securityNote": "Your CV is deleted within 7 days and never sold",
@@ -3195,11 +3195,11 @@
     "crafting": "Crafting personalised feedback..."
   },
   "aiGenerationProgress": {
-    "title": "GPT-5 is Working",
+    "title": "AI is working",
     "generating": "Generating {{productName}}",
     "steps": {
       "analyzingTitle": "Analysing CV",
-      "analyzingDesc": "GPT-5 is reading your experience and skills",
+      "analyzingDesc": "Reading your experience and skills",
       "optimizingTitle": "Optimising for ATS",
       "optimizingDesc": "Adding keywords and improving formatting",
       "generatingTitle": "Generating Content",
@@ -3208,7 +3208,7 @@
       "finalizingDesc": "Quality checks and formatting"
     },
     "complete": "{{progress}}% complete",
-    "quality": "Using GPT-5 for maximum quality",
+    "quality": "Written with AI",
     "secure": "Your data is processed securely"
   },
   "atsDefenseResults": {
@@ -3509,7 +3509,7 @@
     "copied": "Copied",
     "error": "Generation Error",
     "waiting": "Waiting for content...",
-    "gpt5Writing": "GPT-5 is writing..."
+    "gpt5Writing": "AI is writing..."
   },
   "notFound": {
     "code": "404",
