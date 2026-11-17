@@ -58,10 +58,22 @@ import BOILER from "./fixtures/posting-terms-boilerplate-2026-11.json";
 import LANG from "./fixtures/posting-language-corpus-2026-11-15.json";
 
 const SIZE = 100_000;
-/** Per shape and per reader, at 100 KB, the fastest of three runs: the heading shape cost more than this before. */
-const PER_READER_MS = 150;
-/** All 597 real postings, requirementsExcerptOf and boilerplateLast each. */
-const REAL_TOTAL_MS = 2_500;
+/**
+ * Per shape and per reader, at 100 KB, the fastest of three runs. Alone every
+ * shape costs 22 ms or less; the bound sits far above that because the
+ * pre-push hook runs every test file at once, where one shape measured 179 ms
+ * and failed a push at a bound of 150. What tells linear from worse is the
+ * growth check beside it: the old heading shape cost 176 ms at 100 KB, cubic
+ * in its length, so it costs about 64 times its 25 KB cost, where a linear
+ * shape costs about 4.
+ */
+const PER_READER_MS = 1_500;
+/** Cost at 100 KB over cost at 25 KB, per shape: 4 when linear, 16 when quadratic, 64 when cubic. */
+const GROWTH_MAX = 8;
+/** Below this cost at 100 KB, timer noise outweighs growth, so growth is not judged. */
+const GROWTH_FLOOR_MS = 20;
+/** All 597 real postings, requirementsExcerptOf and boilerplateLast each (about 240-460 ms alone). */
+const REAL_TOTAL_MS = 6_000;
 /** The slowest single real posting: a 14 KB posting read quadratically took longer than this. */
 const REAL_ONE_MS = 150;
 
@@ -151,9 +163,13 @@ describe("a hostile posting costs the excerpt time in proportion to its length",
     for (const [name, make] of SHAPES) expect(make().length, name).toBeGreaterThanOrEqual(SIZE - 100);
   });
 
-  it.each(SHAPES)("%s at 100 KB stays under the bound for each reader", (name, make) => {
+  it.each(SHAPES)("%s at 100 KB stays under the bound for each reader, and grows no faster than its length", (name, make) => {
     const { ms, reader } = costOf(make());
     expect(ms, `${name}: ${reader} ${ms.toFixed(1)} ms`).toBeLessThan(PER_READER_MS);
+    if (ms > GROWTH_FLOOR_MS) {
+      const quarter = costOf(make(SIZE / 4)).ms;
+      expect(ms / Math.max(quarter, 0.5), `${name}: ${quarter.toFixed(1)} ms at 25 KB, ${ms.toFixed(1)} ms at 100 KB`).toBeLessThan(GROWTH_MAX);
+    }
   }, 60_000);
 
   it("reads a description to its first 100,000 characters, so twice the size costs no more", () => {
