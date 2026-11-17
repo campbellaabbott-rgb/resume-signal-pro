@@ -29,7 +29,9 @@ export const PLANTED_INSTRUCTION_PATTERNS: ReadonlyArray<{ label: string; re: Re
  * (S14X-164). \b is ASCII (it breaks on "précédentes"), so a word's edges
  * are letter classes. Each ask needs what an instruction has (an "all/previous"
  * word; "this candidate", or a scoring verb, beside a perfect score), so a CV
- * that placed 100 candidates or came first with full marks stays quiet.
+ * that placed 100 candidates or came first with full marks stays quiet. CJK
+ * puts no space after 分 or 点: a particle or joining word there still reads
+ * as a score (100点を, 100分并), never 100分钟 or 100点を超える.
  */
 const A = "(?<![\\p{L}\\p{M}])", Z = "(?![\\p{L}\\p{M}])", E = "[^.!?。！？।\\n]";
 const rx = (s: string) => new RegExp(s, "giu");
@@ -39,7 +41,7 @@ const NOUN = `${A}(?:anweisung\\p{L}*|instruktion\\p{L}*|vorgaben|regeln|befehle
 const QUAL = `${A}(?:alle[nms]?|sämtliche\\p{L}*|vorherige\\p{L}*|vorige\\p{L}*|bisherige\\p{L}*|obige\\p{L}*|frühere\\p{L}*|toute?s?|tous|précédent\\p{L}*|antérieur\\p{L}*|todo?s|todas?|anterior\\p{L}*|pr[eé]vi[ao]s?|eerdere|voorgaande|lahat|nauna\\p{L}*|सभी|पिछल[\\p{L}\\p{M}]*)${Z}|ci-dessus|之前|以前|先前|此前|上面|上述|以上|前面|所有|全部|一切|これまで|上記|すべて|全て|今まで`;
 const CAND = `${A}(?:kandidat\\p{L}*|bewerber\\p{L}*|candidat[oae]?|postulante?|aspirante|kandidaat|sollicitant|aplikante)${Z}|उम्मीदवार|आवेदक|候[选選]人|求[职職]者|[应應]聘者|申[请請]人|候補者|応募者|志[願望]者`;
 const THIS = `${A}(?:dies\\p{L}*|ce|cet|cette|este|esta|ese|esa|esse|essa|deze|itong|इस)\\s+(?:${CAND})|(?:[这這][位个個名]|[该該此]|この|当該)\\s*(?:${CAND})|${A}(?:kandidatong|aplikanteng)\\s+ito${Z}`;
-const PERFECT = `(?<![\\p{N}.,])(?:100|१००)(?![.,]?\\p{N})(?=\\s*(?:$|[^\\s\\p{L}\\p{M}\\p{N}%]|(?:punkte?n?|points?|puntos?|pontos?|punten|अंक|分|点|à|a|al|ao|bewerten|geven)(?![\\p{L}\\p{M}])))|10\\s*\\/\\s*10(?!\\p{N})|${A}(?:note|nota|puntuaci[oó]n|puntaje|calificaci[oó]n|pontua[cç][aã]o|score|cijfer|punktzahl|bewertung|marka|iskor)\\s+(?:m[aá]xim\\p{L}*|perfe\\p{L}*|parfait\\p{L}*)|${A}(?:m[aá]xim\\p{L}*|perfe\\p{L}*|hoogste|h[öo]chste|volle|pinakamataas na|perpektong)\\s+(?:note|nota|score|cijfer|punktzahl|bewertung|punkte?n?|puntuaci[oó]n|marka|iskor)${Z}|h[öo]chst(?:punktzahl|note|wertung)|bestnote|[满滿]分|最高分|満点|最高点|पूर[\\p{L}\\p{M}]*\\s+अंक`;
+const PERFECT = `(?<![\\p{N}.,])(?:100|१००)(?![.,]?\\p{N})(?=\\s*(?:$|[^\\s\\p{L}\\p{M}\\p{N}%]|(?:punkte?n?|points?|puntos?|pontos?|punten|अंक|分|点|à|a|al|ao|bewerten|geven)(?![\\p{L}\\p{M}])|[分点][をとでにがはも并和及给給吧](?![超越])))|10\\s*\\/\\s*10(?!\\p{N})|${A}(?:note|nota|puntuaci[oó]n|puntaje|calificaci[oó]n|pontua[cç][aã]o|score|cijfer|punktzahl|bewertung|marka|iskor)\\s+(?:m[aá]xim\\p{L}*|perfe\\p{L}*|parfait\\p{L}*)|${A}(?:m[aá]xim\\p{L}*|perfe\\p{L}*|hoogste|h[öo]chste|volle|pinakamataas na|perpektong)\\s+(?:note|nota|score|cijfer|punktzahl|bewertung|punkte?n?|puntuaci[oó]n|marka|iskor)${Z}|h[öo]chst(?:punktzahl|note|wertung)|bestnote|[满滿]分|最高分|満点|最高点|पूर[\\p{L}\\p{M}]*\\s+अंक`;
 const ASK = `${A}(?:bewerten?|gib|geben|vergib|vergeben|benoten?|donne[rz]?|attribue[rz]?|accorde[rz]?|notez|évaluez|mettez|dale|dé|dar|asígnale|asigna|otórgale|otorga|califica|califique|puntúa|ponle|dê|dá|atribua|conceda|avalie|geef|beoordeel|bigyan|ibigay|दें|दीजिए|दीजिये)${Z}|[打给給]|[评評][为為]|つけ|付け|与え|ください`;
 /** An ask: where it starts, what must stand within `reach` characters of it in the same sentence, and its label. */
 type Ask = { label: string; at: RegExp; near: RegExp[]; reach: number };
