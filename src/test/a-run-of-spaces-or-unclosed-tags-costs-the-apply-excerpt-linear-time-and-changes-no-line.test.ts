@@ -22,10 +22,16 @@
  * character (a line break when the run holds one) and each "<" that no ">"
  * follows as "&lt;", in the whole text before the break and again in each
  * sentence before textOf; the shared helpers are not edited. Each shape
- * below costs under BOUND_100_MS at 100 KB and BOUND_500_MS at 500 KB (the
- * slowest measured 10 and 51 ms, a run of "<" closed by "<br>"), and the
- * shapes together cost at 500 KB no more than GROWTH_MAX times what they
- * cost at 100 KB (5.4 measured; the square of the length would be 25).
+ * below costs under BOUND_100_MS at 100 KB and BOUND_500_MS at 500 KB (in
+ * vitest the slowest measured 15 and 75 ms, a run of bare bullets of all
+ * four kinds, each one an empty sentence; next a run of "<" closed by
+ * "<br>", 9 and 48 ms), and the shapes together cost at 500 KB no more than
+ * GROWTH_MAX times what they cost at 100 KB (5.3 measured; the square of the
+ * length would be 25). And it reads no more than EXCERPT_READ_MAX
+ * characters, over four times the longest fixture text, so a description has
+ * a ceiling as well as a slope: that bullet shape measured 151 ms at the
+ * limit and 156 ms at four times it, where reading on cost 619 ms there and
+ * kept growing with the length.
  *
  * And the lines picked are the same: postingExcerptOf equals the frozen copy
  * of c7abaf00d's function (fixtures/posting-excerpt.before-l4.ts) on every
@@ -33,14 +39,24 @@
  * written, 2,368 of them with an excerpt, among them the 597 fixture
  * postings and two whole application pages of 130 and 238 KB), on 3,000
  * random strings of markup, white space and requirement words, and on each
- * shape below at 4 KB. It still reads the whole description: cut at the
- * 100,000 characters the module's other readers stop at, it picked other
+ * shape below at 4 KB. It reads that far and not only to the 100,000
+ * characters the module's other readers stop at: cut there, it picked other
  * lines from those two pages.
+ *
+ * NOT YET TRUE OF apply_myself AS A WHOLE. On the same uncapped description
+ * it also runs the shared terms reader, whose boilerplate pass splits the
+ * raw text on the same shared sentence break with nothing normalised.
+ * Measured in Deno at 14, 28, 56 and 100 KB: "Requirements" then spaces
+ * 204, 433, 1,639 and 5,107 ms; a run of mixed Unicode spaces 296, 825,
+ * 3,300 and 10,459 ms; repeated "<p " 33, 113, 418 and 1,293 ms. That
+ * reader and its call sit in the shared helpers and the connector's entry
+ * file, outside this lane's files, so apply_myself's CPU-limit bug stays
+ * open until they are fixed there.
  */
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { postingExcerptOf } from "../../supabase/functions/agent-mcp/posting-excerpt";
+import { EXCERPT_READ_MAX, postingExcerptOf } from "../../supabase/functions/agent-mcp/posting-excerpt";
 import { postingExcerptOf as postingExcerptBefore } from "./fixtures/posting-excerpt.before-l4";
 import { POSTINGS, RESUMES } from "./fixtures/cv-matching-corpus";
 import { NON_HEALTHCARE_POSTINGS, NURSING_POSTING } from "./fixtures/non-healthcare-postings";
@@ -161,6 +177,7 @@ const SHAPES: Array<[string, (n: number) => string]> = [
   ["'&lt;p ' entities", (n) => rep("", "&lt;p ", "", n)],
   ["spaces then a bullet", (n) => " ".repeat(n - 1) + "•"],
   ["bullets", (n) => rep("", "• ", "", n)],
+  ["bare bullets of all four kinds", (n) => rep("", "•·▪●", "", n)],
   ["one-letter lines", (n) => rep("", "a\n", "", n)],
   ["one word", (n) => "a".repeat(n)],
   ["prose with no sentence break", (n) => rep("", "lorem ipsum dolor sit amet consectetur ", "", n)],
@@ -176,11 +193,15 @@ const msOf = (f: () => unknown) => {
 };
 const fastest = (t: string, runs = 3) => Math.min(...Array.from({ length: runs }, () => msOf(() => postingExcerptOf(t))));
 
-/** Per shape, fastest of three: the slowest measured 10 ms at 100 KB and 51 ms at 500 KB; main took 5,027 ms at 100 KB. */
+/** Per shape, fastest of three: the slowest measured 15 ms at 100 KB and 75 ms at 500 KB; main took 5,027 ms at 100 KB. */
 const BOUND_100_MS = 75;
 const BOUND_500_MS = 400;
 /** All shapes' cost at 500 KB over their cost at 100 KB: 5 when linear, 25 when it grows with the square. */
 const GROWTH_MAX = 7;
+/** The costliest shape at four times EXCERPT_READ_MAX, fastest of three. */
+const BOUND_CAP_MS = 500;
+/** Its cost at four times EXCERPT_READ_MAX over its cost at EXCERPT_READ_MAX: 1 when the rest is not read, 4 when it is. */
+const CAP_GROWTH_MAX = 2;
 
 describe("the apply excerpt picks the same lines as before", () => {
   it("on every real text in the fixtures: at least 1,500, the 597 postings among them", () => {
@@ -234,4 +255,30 @@ describe("the apply excerpt costs time in proportion to a description's length",
     }
     expect(at500 / at100, `100 KB: ${at100.toFixed(1)} ms, 500 KB: ${at500.toFixed(1)} ms`).toBeLessThan(GROWTH_MAX);
   }, 120_000);
+});
+
+describe("the apply excerpt reads no more than EXCERPT_READ_MAX characters", () => {
+  const LINE = "You must hold a valid licence.";
+  /** `n` line breaks, then `LINE`. */
+  const lineAfter = (n: number) => "\n".repeat(n) + LINE;
+
+  it("is longer than every real text in the fixtures, so it moves no fixture line", () => {
+    const longest = Math.max(...[...realTexts().keys()].map((t) => t.length));
+    expect(longest).toBeGreaterThan(200_000);
+    expect(EXCERPT_READ_MAX).toBeGreaterThanOrEqual(4 * longest);
+  }, 120_000);
+
+  it("quotes a line that ends at the limit and not one that starts there", () => {
+    expect(lineAfter(EXCERPT_READ_MAX - LINE.length).length).toBe(EXCERPT_READ_MAX);
+    expect(postingExcerptOf(lineAfter(EXCERPT_READ_MAX - LINE.length))).toEqual([LINE]);
+    expect(postingExcerptOf(lineAfter(EXCERPT_READ_MAX))).toEqual([]);
+  }, 60_000);
+
+  it("costs the costliest shape at four times the limit about what it costs at the limit", () => {
+    const make = SHAPES.find(([name]) => name === "bare bullets of all four kinds")![1];
+    const atMax = fastest(make(EXCERPT_READ_MAX));
+    const atFour = fastest(make(4 * EXCERPT_READ_MAX));
+    expect(atFour, `${atMax.toFixed(1)} ms at the limit, ${atFour.toFixed(1)} ms at four times it`).toBeLessThan(BOUND_CAP_MS);
+    expect(atFour / atMax, `${atMax.toFixed(1)} ms at the limit, ${atFour.toFixed(1)} ms at four times it`).toBeLessThan(CAP_GROWTH_MAX);
+  }, 60_000);
 });

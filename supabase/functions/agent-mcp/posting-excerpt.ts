@@ -5,7 +5,8 @@
  * _shared counts toward job-board's deploy upload (src/test/the-upload-tally-
  * counts-every-shared-file-and-every-comment.test.ts).
  *
- * Below postingExcerptOf, which picks the lines it always picked (only what
+ * Below postingExcerptOf, which picks the lines it always picked from any
+ * description of up to a million characters and reads no further (only what
  * its shared helpers are given is normalised, so a description costs time in
  * proportion to its length): the excerpt get_jobs returns
  * for "requirements" (MCP upgrade 3, W1), and the reorder that puts a
@@ -59,6 +60,18 @@ const ANY_HEAD = /^.{0,60}:$|^\W*(?:responsibilities|duties|what you(?:'ll| will
 const EXCERPT_LINE_MAX = 240;
 
 /**
+ * The most characters of a description postingExcerptOf reads: over four
+ * times the longest real text in the test fixtures (a whole application page
+ * of 238,420 characters), so no fixture line moves, and the costliest shape
+ * measured (a run of bare bullets, each one an empty sentence) costs about
+ * 0.15 s at this length and the same at four times it, where reading on cost
+ * about 0.6 s there and kept growing with the length. Each board writer
+ * read when this was set stores 24,000 characters or fewer, but not every
+ * writer of a description was read, so this is the ceiling here.
+ */
+export const EXCERPT_READ_MAX = 1_000_000;
+
+/**
  * `s` with each run of two or more white-space characters written as one: a
  * line break when the run holds one, else a space. The shared sentence break
  * treats every white-space character alike except a line break, and textOf
@@ -97,14 +110,17 @@ function lessThanAsText(s: string): string {
  * the whole text for the break and again in each sentence for textOf
  * (lessThanAsText). Neither changes a sentence or its text, so the lines
  * picked are those of the function before
- * (src/test/fixtures/posting-excerpt.before-l4.ts) on every input, and a
- * description costs time in proportion to its length. It still reads the
- * whole description: cut at DESCRIPTION_READ_MAX, as the readers below are,
- * it picked other lines from the two fixture texts longer than that (whole
- * application pages of 130,255 and 238,420 characters).
+ * (src/test/fixtures/posting-excerpt.before-l4.ts) on every input of up to
+ * EXCERPT_READ_MAX characters, and a description costs time in proportion to
+ * its length up to there and no more past it. It reads that far, not only
+ * to DESCRIPTION_READ_MAX as the readers below do: cut there, it picked
+ * other lines from the two fixture texts longer than that (whole application
+ * pages of 130,255 and 238,420 characters).
  */
 export function postingExcerptOf(text: string): string[] {
-  const segs = lessThanAsText(oneSpacePerRun(String(text ?? ""))).split(SENTENCE_BREAK)
+  const whole = String(text ?? "");
+  const read = whole.length > EXCERPT_READ_MAX ? whole.slice(0, safeEnd(whole, EXCERPT_READ_MAX)) : whole;
+  const segs = lessThanAsText(oneSpacePerRun(read)).split(SENTENCE_BREAK)
     .map((x) => textOf(lessThanAsText(x))).filter(Boolean);
   const apply: number[] = [];
   const req: number[] = [];
