@@ -84,6 +84,7 @@ import { tokenMapFromRecord, tokenMapToRecord } from "./token-map.ts";
 import { decideRekick } from "./chain-watchdog.ts";
 import { awaitHostSlot, hostDelayOf, ICIMS_DEFAULT_DELAY_MS, metaGateStore, pacingOf, type GateDeps } from "../_shared/host-gate.ts";
 import { bootstrapSeed, clearRepointedFailures, readersChanged, repointedTokens } from "./bootstrap-seed.ts";
+import { rateCap } from "./rate-cap.ts";
 import { advanceProgress, baseConsumedPrefix, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
@@ -280,6 +281,8 @@ const DESC_SWEEP_PER_HOP = 120;
 const STORED_DESC_CAP = 12_000;
 const RAW_HTML_CAP = 24_000;
 const DESC_SWEEP_CONCURRENCY = 8;
+/** W4-17: SmartRecruiters posting reads, whichever lane asks: at most 4 at once and 5 started a second, per isolate. */
+const SR_DETAIL_CAP = rateCap({ concurrent: 4, perSecond: 5 });
 // Rationale: docs/job-board-index-notes.md#n007-structured-sweep-sources
 const STRUCTURED_SWEEP_SOURCES: readonly string[] = ["workday"];
 // Rationale: docs/job-board-index-notes.md#n008-structured-sweep-per-hop
@@ -5968,13 +5971,14 @@ async function fetchVendorDetail(
   // two vendors whose page carries the structured node (see the return type).
   let pay: string | null = null;
   if (src.source === "smartrecruiters") {
-    const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${src.token}/postings/${externalId}`);
-    if (res.ok) {
+    text = await SR_DETAIL_CAP(async () => {
+      const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${src.token}/postings/${externalId}`);
+      if (!res.ok) return null;
       const j = await res.json();
       const s = j.jobAd?.sections ?? {};
       const html = [s.jobDescription?.text, s.qualifications?.text, s.additionalInformation?.text].filter(Boolean).join("\n");
-      text = htmlToText(html).slice(0, DESC_CAP) || null;
-    }
+      return htmlToText(html).slice(0, DESC_CAP) || null;
+    });
   } else if (src.source === "workable") {
     // D7: the one posting (about 5 KB), never the account's whole details=true widget.
     const res = await fetchWithTimeout(`https://apply.workable.com/api/v2/accounts/${src.token}/jobs/${encodeURIComponent(externalId)}`);
