@@ -1049,7 +1049,7 @@ async function fetchWithTimeout(url: string, init?: RequestInit, limit = MAX_RES
   // Workday: English only where the runtime's language is refused (S8-003, n437).
   const once = () => withWorkdayLanguage(url, init?.headers, send, discardBody, init?.body);
   const res = await once();
-  if (res.headers.has("x-rb-gate")) return res;
+  if (res.headers.has("x-rb-gate")) return boundBody(res, limit);
   // Rationale: docs/job-board-index-notes.md#n500-if-res-status
   // BB-09: a 503 that names a Retry-After is the same refusal for load.
   const busy = (x: Response) => x.status === 429 || (x.status === 503 && x.headers.has("retry-after"));
@@ -2737,50 +2737,6 @@ async function admitSlice(
   return true;
 }
 
-/**
- * W4-1: the queue a version change writes (bootstrap-seed.ts), with the
- * repointed tokens' failure state already cleared, and the bootstrap_seen
- * write that commits it once the queue has landed. Throws when anything it
- * reads fails, so nothing is seeded and the next slice tries again.
- */
-async function bootstrapSeedFor(client: SupabaseClient): Promise<{ queue: string[]; commit: () => Promise<unknown> }> {
-  const { data: seenRow, error: seenErr } = await client.from("job_board_meta").select("v").eq("k", "bootstrap_seen").maybeSingle();
-  if (seenErr) throw seenErr;
-  const seen = (seenRow?.v ?? {}) as { readers?: Record<string, number>; twins?: string[] };
-  const repointed = repointedTokens(RETIRED_TWIN_KEYS, seen.twins, JOB_SOURCES);
-  const { data: empty, error: ebErr } = await client.rpc("get_empty_boards", { p_tokens: JOB_SOURCES.map((s) => s.token) });
-  if (ebErr) throw ebErr;
-  const tokens = Array.isArray(empty) ? (empty as string[]) : [];
-  const verified = new Set<string>();
-  const chunks: string[][] = [];
-  for (let i = 0; i < tokens.length; i += 200) chunks.push(tokens.slice(i, i + 200));
-  for (let i = 0; i < chunks.length; i += 4) {
-    await Promise.all(chunks.slice(i, i + 4).map(async (c) => {
-      const { data, error } = await client.from("job_board_verifications").select("company_token").in("company_token", c);
-      if (error) throw error;
-      for (const r of (data ?? []) as Array<{ company_token: string }>) verified.add(r.company_token);
-    }));
-  }
-  const byToken = new Map<string, string[]>();
-  for (const s of JOB_SOURCES) byToken.set(s.token, [...(byToken.get(s.token) ?? []), s.source]);
-  const vendorsOf = (t: string) => byToken.get(t) ?? [];
-  const q = bootstrapSeed({ repointed, empty: tokens, verified, vendorsOf, changedReaders: readersChanged(seen.readers, READER_VERSION) });
-  if (repointed.length) {
-    const { data: bf, error: bfErr } = await client.from("job_board_meta").select("v").eq("k", "board_failures").maybeSingle();
-    if (bfErr) throw bfErr;
-    const cleared = clearRepointedFailures((bf?.v ?? {}) as Record<string, unknown>, repointed, vendorsOf);
-    if (cleared) {
-      const { error } = await client.from("job_board_meta").upsert({ k: "board_failures", v: cleared, updated_at: new Date().toISOString() }, { onConflict: "k" });
-      if (error) throw error;
-    }
-  }
-  const note = { repointed: q.repointed, unread: q.unread, readerChanged: q.readerChanged, empty: tokens.length };
-  console.log(`[JOB-BOARD] bootstrap: version change seeds ${q.queue.length} ${JSON.stringify(note)}`);
-  return {
-    queue: q.queue,
-    commit: () => Promise.resolve(client.from("job_board_meta").upsert({ k: "bootstrap_seen", v: { readers: READER_VERSION, twins: RETIRED_TWIN_KEYS, build: BUILD_VERSION, at: new Date().toISOString(), ...note }, updated_at: new Date().toISOString() }, { onConflict: "k" })),
-  };
-}
 async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, boardBudget = MIN_BOARDS_PER_SLICE, after = "", passEndAt = ""): Promise<{ ok: boolean; detail: string }> {
   // Checked at the ENTRY too, not only at the hop: pausing must also stop a
   // fresh chain started by pg_cron, a manual refresh, or any other trigger.
@@ -4618,6 +4574,51 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // The shed level rides the summary, because a rotation that is deliberately
   // running small must not look like a rotation that is mysteriously slow.
   return { ok: true, detail: `slice done (${sliceTotal} postings, ${failed.length} failed) — ${phase}${shedLevel > 0 ? ` [shedding L${shedLevel}]` : ""}${budgetSkipped.length ? ` [budget: ${fetchedInSlice} fetched, ${budgetSkipped.length} deferred]` : ""}` };
+}
+
+/**
+ * W4-1: the queue a version change writes (bootstrap-seed.ts), with the
+ * repointed tokens' failure state already cleared, and the bootstrap_seen
+ * write that commits it once the queue has landed. Throws when anything it
+ * reads fails, so nothing is seeded and the next slice tries again.
+ */
+async function bootstrapSeedFor(client: SupabaseClient): Promise<{ queue: string[]; commit: () => Promise<unknown> }> {
+  const { data: seenRow, error: seenErr } = await client.from("job_board_meta").select("v").eq("k", "bootstrap_seen").maybeSingle();
+  if (seenErr) throw seenErr;
+  const seen = (seenRow?.v ?? {}) as { readers?: Record<string, number>; twins?: string[] };
+  const repointed = repointedTokens(RETIRED_TWIN_KEYS, seen.twins, JOB_SOURCES);
+  const { data: empty, error: ebErr } = await client.rpc("get_empty_boards", { p_tokens: JOB_SOURCES.map((s) => s.token) });
+  if (ebErr) throw ebErr;
+  const tokens = Array.isArray(empty) ? (empty as string[]) : [];
+  const verified = new Set<string>();
+  const chunks: string[][] = [];
+  for (let i = 0; i < tokens.length; i += 200) chunks.push(tokens.slice(i, i + 200));
+  for (let i = 0; i < chunks.length; i += 4) {
+    await Promise.all(chunks.slice(i, i + 4).map(async (c) => {
+      const { data, error } = await client.from("job_board_verifications").select("company_token").in("company_token", c);
+      if (error) throw error;
+      for (const r of (data ?? []) as Array<{ company_token: string }>) verified.add(r.company_token);
+    }));
+  }
+  const byToken = new Map<string, string[]>();
+  for (const s of JOB_SOURCES) byToken.set(s.token, [...(byToken.get(s.token) ?? []), s.source]);
+  const vendorsOf = (t: string) => byToken.get(t) ?? [];
+  const q = bootstrapSeed({ repointed, empty: tokens, verified, vendorsOf, changedReaders: readersChanged(seen.readers, READER_VERSION) });
+  if (repointed.length) {
+    const { data: bf, error: bfErr } = await client.from("job_board_meta").select("v").eq("k", "board_failures").maybeSingle();
+    if (bfErr) throw bfErr;
+    const cleared = clearRepointedFailures((bf?.v ?? {}) as Record<string, unknown>, repointed, vendorsOf);
+    if (cleared) {
+      const { error } = await client.from("job_board_meta").upsert({ k: "board_failures", v: cleared, updated_at: new Date().toISOString() }, { onConflict: "k" });
+      if (error) throw error;
+    }
+  }
+  const note = { repointed: q.repointed, unread: q.unread, readerChanged: q.readerChanged, empty: tokens.length };
+  console.log(`[JOB-BOARD] bootstrap: version change seeds ${q.queue.length} ${JSON.stringify(note)}`);
+  return {
+    queue: q.queue,
+    commit: () => Promise.resolve(client.from("job_board_meta").upsert({ k: "bootstrap_seen", v: { readers: READER_VERSION, twins: RETIRED_TWIN_KEYS, build: BUILD_VERSION, at: new Date().toISOString(), ...note }, updated_at: new Date().toISOString() }, { onConflict: "k" })),
+  };
 }
 
 // ── THE PASS-END TAIL, ONE HOP PER STEP (S11-001, .93; pass-end.ts) ─────────
