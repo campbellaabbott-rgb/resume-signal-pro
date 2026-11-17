@@ -5,7 +5,9 @@
  * _shared counts toward job-board's deploy upload (src/test/the-upload-tally-
  * counts-every-shared-file-and-every-comment.test.ts).
  *
- * Below postingExcerptOf, which is unchanged: the excerpt get_jobs returns
+ * Below postingExcerptOf, which picks the lines it always picked (only what
+ * its shared helpers are given is normalised, so a description costs time in
+ * proportion to its length): the excerpt get_jobs returns
  * for "requirements" (MCP upgrade 3, W1), and the reorder that puts a
  * description's boilerplate after everything else before a cut.
  *
@@ -57,13 +59,53 @@ const ANY_HEAD = /^.{0,60}:$|^\W*(?:responsibilities|duties|what you(?:'ll| will
 const EXCERPT_LINE_MAX = 240;
 
 /**
+ * `s` with each run of two or more white-space characters written as one: a
+ * line break when the run holds one, else a space. The shared sentence break
+ * treats every white-space character alike except a line break, and textOf
+ * makes every run one space, so the sentences and their text are the same;
+ * but the break's bullet pattern reads a run again from each character in it
+ * when no bullet ends it, which made a long run cost time in proportion to
+ * the square of its length.
+ */
+function oneSpacePerRun(s: string): string {
+  return s.replace(/\s{2,}/g, (w) => (w.includes("\n") ? "\n" : " "));
+}
+
+/**
+ * `s` with each "<" that has no ">" anywhere after it written "&lt;". A tag
+ * pattern can only match from a "<" to a ">" after it, so no such "<" starts
+ * or sits inside a tag that the shared sentence break or textOf removes, and
+ * textOf decodes "&lt;" back to "<" (an entity cannot reach across one): the
+ * text is the same. Left as it was, each of them scanned to the end of the
+ * text, so a run of "<" or of "<p " cost time in proportion to the square of
+ * its length.
+ */
+function lessThanAsText(s: string): string {
+  const lt = s.indexOf("<", s.lastIndexOf(">") + 1);
+  return lt < 0 ? s : s.slice(0, lt) + s.slice(lt).replace(/</g, "&lt;");
+}
+
+/**
  * Up to eight of the posting's own lines on how to apply and what it requires
  * (at most three on applying), in the posting's order, boilerplate excluded:
  * the employer's words, so the AI can tell the person what is asked without a
  * second call when no form was read.
+ *
+ * What the shared sentence break and textOf are given is normalised so
+ * neither reads the same characters again from each place it could start:
+ * white-space runs (oneSpacePerRun), and a "<" that no ">" follows, once in
+ * the whole text for the break and again in each sentence for textOf
+ * (lessThanAsText). Neither changes a sentence or its text, so the lines
+ * picked are those of the function before
+ * (src/test/fixtures/posting-excerpt.before-l4.ts) on every input, and a
+ * description costs time in proportion to its length. It still reads the
+ * whole description: cut at DESCRIPTION_READ_MAX, as the readers below are,
+ * it picked other lines from the two fixture texts longer than that (whole
+ * application pages of 130,255 and 238,420 characters).
  */
 export function postingExcerptOf(text: string): string[] {
-  const segs = String(text ?? "").split(SENTENCE_BREAK).map((x) => textOf(x)).filter(Boolean);
+  const segs = lessThanAsText(oneSpacePerRun(String(text ?? ""))).split(SENTENCE_BREAK)
+    .map((x) => textOf(lessThanAsText(x))).filter(Boolean);
   const apply: number[] = [];
   const req: number[] = [];
   let inSection = false;
