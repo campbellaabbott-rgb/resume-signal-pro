@@ -1,4 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER
+-- lovable-cron-fallback-reviewed: employer-perks-sweep keeps its existing every-minute schedule unchanged; reviewed 2026-11-16 by the project owner; this file only adds a condition so the job calls its function when there is work, removing about 1,000 to 1,440 idle calls a day.
 -- reviewed: 2026-11-16 by the project owner, who approves this schedule as written.
 -- job: employer-perks-sweep (every minute since 20261012111000).
 -- schedule: '* * * * *', UNCHANGED. This file changes only the job's command.
