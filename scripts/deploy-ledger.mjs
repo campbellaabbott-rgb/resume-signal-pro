@@ -18,6 +18,10 @@
 //   node scripts/deploy-ledger.mjs --overlap <git-ref> [<git-ref> ...] [--main <git-ref>]
 //                                             # parallel branches' shared files and functions, no network
 //                                             # (exit 4 when one is not declared in sharedFiles)
+//   node scripts/deploy-ledger.mjs --push-verdict <git-ref>
+//                                             # the Deploy workflow's verify job: every function the commits
+//                                             # from <git-ref> to HEAD changed must answer HEAD's build or later
+//                                             # (OPTIONS preflights only; GitHub annotations; exit 1 when one does not)
 //
 // Read-only: OPTIONS preflights (no function logic runs), `git fetch origin
 // main` and git/file reads; --against makes no network call at all. Policy
@@ -565,6 +569,63 @@ async function pool(items, n, f) {
   const out = new Array(items.length); let i = 0;
   await Promise.all(Array.from({ length: n }, async () => { while (i < items.length) { const k = i++; out[k] = await f(items[k]); } }));
   return out;
+}
+
+// ── --push-verdict: the Deploy workflow's verify job ───────────────────────
+/**
+ * THE DEPLOY CHECK VERIFIED ONE FUNCTION (S14X-139). .github/workflows/
+ * deploy.yml announced "Deploy verified" after comparing job-board's
+ * BUILD_VERSION with this commit's, whatever the push changed: a push that
+ * changed mail-watch went green on job-board's build while mail-watch served
+ * an older one, and a push that changed no function went red whenever
+ * job-board lagged main.
+ *
+ * Now the verify job judges the functions the push changed (their own
+ * folders, and every function importing a _shared module it changed), each
+ * by the same rule as the ledger's rows: the build its preflight answers must
+ * be this commit's or later. `rows` are { fn, want, have, state } as rowState
+ * names them. Pure. Returns { ok, notice: { title, text } | null, errors:
+ * [{ title, text }] }; the texts are GitHub annotations, one line each.
+ */
+export function pushVerdict(rows) {
+  if (!rows.length) return { ok: true, notice: { title: "No function changed", text: "this push changed no edge function, so no live build was compared" }, errors: [] };
+  const behind = rows.filter((r) => r.state === "deploy" || r.state === "deploy (no live header)");
+  const unread = rows.filter((r) => r.state === "unreachable" || r.state === "no-marker");
+  const errors = [];
+  if (behind.length) {
+    errors.push({ title: "Deployed code is not this commit", text: `${behind.map((r) => `${r.fn} serves '${r.have || "no build header"}' and this commit is '${r.want}'`).join("; ")}. Either the Lovable deploy has not run yet (re-run this job after it does) or it shipped stale code, which happened twice on 2026-08-07.` });
+  }
+  if (unread.length) {
+    errors.push({ title: "Deploy not verified", text: `${unread.map((r) => (r.state === "no-marker" ? `${r.fn} names no build its preflight sends` : `${r.fn} did not answer its preflight`)).join("; ")}, so nothing was compared for ${unread.length === 1 ? "it" : "them"}.` });
+  }
+  if (errors.length) return { ok: false, notice: null, errors };
+  return { ok: true, notice: { title: "Deploy verified", text: `${rows.length} function(s) this push changed serve this commit's builds or later: ${rows.map((r) => r.have).join(", ")}` }, errors: [] };
+}
+
+/** --push-verdict: the rows for the functions changed from `from` to HEAD, judged by pushVerdict. Returns the exit code. */
+async function runPushVerdict(from, policy) {
+  const say = (kind, a) => console.log(`::${kind} title=${a.title}::${a.text}`);
+  let files;
+  try {
+    if (!from) throw new Error("no ref was given");
+    files = execFileSync("git", ["diff", "--name-only", from, "HEAD"], { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 28, stdio: ["ignore", "pipe", "pipe"] }).split("\n").filter(Boolean);
+  } catch (e) {
+    say("error", { title: "Deploy not verified", text: `what this push changed could not be listed from ${from ?? "(none)"} (${String(e?.stderr || e?.message || e).split("\n")[0].slice(0, 160)}), so nothing was compared.` });
+    return 1;
+  }
+  const fns = functionsTouched("HEAD", files).filter((fn) => existsSync(join(FN_DIR, fn, "index.ts")));
+  const rows = await pool(fns, 8, async (fn) => {
+    const stamp = buildOf(fn, readFileSync(join(FN_DIR, fn, "index.ts"), "utf8"));
+    const want = stamp && sendsBuildHeader(fn) ? stamp : null;
+    const have = await liveBuild(policy.supabaseUrl, fn);
+    return { fn, want, have: have ?? null, state: rowState(want, have) };
+  });
+  console.log(`this push: ${files.length} file(s) changed from ${from}, ${rows.length} function(s) to compare`);
+  for (const r of rows) console.log(`  ${r.fn.padEnd(32)} this commit ${r.want ?? "(names no build)"}  live ${r.have ?? "(none)"}  ${r.state}`);
+  const v = pushVerdict(rows);
+  if (v.notice) say("notice", v.notice);
+  for (const e of v.errors) say("error", e);
+  return v.ok ? 0 : 1;
 }
 
 // ── migrations ──────────────────────────────────────────────────────────────
@@ -1443,6 +1504,12 @@ async function main(argv) {
     // --head: judge another commit in place of HEAD (read-only; e.g. a commit before a restamp).
     const bad = runAgainst(against, opt("--main", "origin/main"), POLICY, opt("--head", "HEAD"));
     process.exit(bad ? 3 : 0);
+  }
+
+  if (argv.includes("--push-verdict")) {
+    const at = argv.indexOf("--push-verdict");
+    const from = argv[at + 1] && !argv[at + 1].startsWith("--") ? argv[at + 1] : null;
+    process.exit(await runPushVerdict(from, POLICY));
   }
 
   const BASE = POLICY.supabaseUrl;
