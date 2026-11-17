@@ -26,9 +26,21 @@ export type Region = {
   key: RegionKey;
   /** How the answer names it ("the Nordics"). */
   name: string;
-  /** The region's own word, searched as location text when remote is asked. */
+  /** The region's own word: what the query reader lifts to `location` for the region reader to read. */
   word: string;
-  /** What the answer says of its members, for a region larger than one search ("has 27 member states"). */
+  /**
+   * The text a remote search's second arm sends as `location`, to find remote
+   * postings that name only the region and no country ("Remote - Europe").
+   * Null when no one text is safe: the board matches a location as a
+   * case-blind substring (job-board location-match.ts), and the short words
+   * sit inside other place names ("Dachau", "New Iberia, LA", "Tanzania").
+   */
+  text: string | null;
+  /** A posting location that names only the region, found by `text`; "Remote - <text>" when unset. */
+  example?: string;
+  /** Said after the second arm's text (it names a wider area), or instead of it (why there is none). */
+  textSays?: string;
+  /** What the answer says of its members, for a region larger than one search ("its 27 member states"). */
   says?: string;
   members: readonly string[];
 };
@@ -43,18 +55,27 @@ const EEA: readonly string[] = [...EU, "IS", "LI", "NO"];
 /** Europe as this server reads it: the EEA, the UK and Switzerland. */
 const EUROPE: readonly string[] = [...EEA, "GB", "CH"];
 
+/** Why a region's own word is no safe location text: the board matches a location as a substring. */
+const INSIDE = (word: string, places: string) => `"${word}" is not searched as text, because other place names hold those letters, ${places}`;
+
 export const REGIONS: Readonly<Record<RegionKey, Region>> = {
-  dach: { key: "dach", name: "DACH", word: "DACH", members: ["DE", "AT", "CH"] },
-  nordics: { key: "nordics", name: "the Nordics", word: "Nordics", members: ["DK", "FI", "IS", "NO", "SE"] },
-  benelux: { key: "benelux", name: "Benelux", word: "Benelux", members: ["BE", "NL", "LU"] },
-  uk_ireland: { key: "uk_ireland", name: "the UK and Ireland", word: "UK & Ireland", members: ["GB", "IE"] },
-  iberia: { key: "iberia", name: "Iberia", word: "Iberia", members: ["ES", "PT"] },
-  baltics: { key: "baltics", name: "the Baltics", word: "Baltics", members: ["EE", "LV", "LT"] },
-  anz: { key: "anz", name: "Australia and New Zealand", word: "ANZ", members: ["AU", "NZ"] },
-  north_america: { key: "north_america", name: "North America", word: "North America", members: ["US", "CA", "MX"] },
-  eu: { key: "eu", name: "the EU", word: "EU", says: "has 27 member states", members: EU },
-  eea: { key: "eea", name: "the EEA", word: "EEA", says: "has 30 countries (the EU, Iceland, Liechtenstein and Norway)", members: EEA },
-  europe: { key: "europe", name: "Europe", word: "Europe", says: "is read here as 32 countries (the EEA, the UK and Switzerland)", members: EUROPE },
+  dach: { key: "dach", name: "DACH", word: "DACH", text: null, textSays: INSIDE("DACH", "such as Dachau"), members: ["DE", "AT", "CH"] },
+  nordics: { key: "nordics", name: "the Nordics", word: "Nordics", text: "Nordic", example: "Remote - Nordics", members: ["DK", "FI", "IS", "NO", "SE"] },
+  benelux: { key: "benelux", name: "Benelux", word: "Benelux", text: "Benelux", members: ["BE", "NL", "LU"] },
+  uk_ireland: { key: "uk_ireland", name: "the UK and Ireland", word: "UK & Ireland", text: "Ireland", example: "Remote - UK & Ireland", members: ["GB", "IE"] },
+  iberia: { key: "iberia", name: "Iberia", word: "Iberia", text: null, textSays: INSIDE("Iberia", "such as New Iberia, Louisiana, and Liberia"), members: ["ES", "PT"] },
+  baltics: { key: "baltics", name: "the Baltics", word: "Baltics", text: "Baltics", members: ["EE", "LV", "LT"] },
+  anz: { key: "anz", name: "Australia and New Zealand", word: "ANZ", text: null, textSays: INSIDE("ANZ", "such as Tanzania"), members: ["AU", "NZ"] },
+  north_america: { key: "north_america", name: "North America", word: "North America", text: "North America", members: ["US", "CA", "MX"] },
+  eu: {
+    key: "eu", name: "the EU", word: "EU", text: "Europe", says: "its 27 member states", members: EU,
+    textSays: `Europe is wider than the EU; ${INSIDE("EU", "such as Deutschland and Eugene")}`,
+  },
+  eea: {
+    key: "eea", name: "the EEA", word: "EEA", text: "Europe", says: "30 countries (the EU, Iceland, Liechtenstein and Norway)", members: EEA,
+    textSays: "Europe is wider than the EEA",
+  },
+  europe: { key: "europe", name: "Europe", word: "Europe", text: "Europe", says: "32 countries (the EEA, the UK and Switzerland)", members: EUROPE },
 };
 
 /**
@@ -64,17 +85,28 @@ export const REGIONS: Readonly<Record<RegionKey, Region>> = {
  * through the public board search (52 reads, 2026-11-17T05:44Z); re-run it
  * and paste its order to update. Served then: GB at least 19,331, DE 13,983,
  * FR 12,072, NL 7,196, ES 7,099, IT 4,048, PL 4,039, SE 3,686; the rest at
- * most their board count. Null would mean unmeasured: a large region then
- * searches no country and lists them all.
+ * most their board count. Served meant every vendor but SmartRecruiters and
+ * USAJOBS: once more vendors are withheld, re-run it with them named (its
+ * MEASURE_WITHHELD). `heads`: each large region's 5th member against the most
+ * any member past it could have, as the run printed them; the EU's and the
+ * EEA's 5th place was settled by 9 postings, so a re-run can move it. Null
+ * would mean unmeasured: a large region then searches no country and lists
+ * them all.
  */
-export const EUROPE_BY_POSTINGS: { measuredAt: string; basis: string; order: readonly string[] } | null = {
+export const EUROPE_BY_POSTINGS: {
+  measuredAt: string;
+  basis: string;
+  order: readonly string[];
+  heads: Readonly<Record<"europe" | "eea" | "eu", { fifth: number; nextAtMost: number }>>;
+} | null = {
   measuredAt: "2026-11-17",
   basis: "scripts/measure-region-search-ab.mjs: per country, the board's count less SmartRecruiters and USAJOBS, which settles the 5 at the head of the EU, the EEA and Europe; a member past every head whose withheld rows were not counted is ordered by the board's count",
   order: ["GB", "DE", "FR", "NL", "ES", "IT", "PL", "SE", "IE", "PT", "CH", "BE", "GR", "RO", "AT", "DK", "CZ", "FI", "HU", "NO", "BG", "SK", "LT", "HR", "LU", "SI", "LV", "CY", "MT", "EE", "LI", "IS"],
+  heads: { europe: { fifth: 7099, nextAtMost: 4048 }, eea: { fifth: 4048, nextAtMost: 4039 }, eu: { fifth: 4048, nextAtMost: 4039 } },
 };
 
 /** The spellings each region is typed in, after normalising (see spelling()). */
-const SPELLINGS: ReadonlyArray<readonly [RegionKey, readonly string[]]> = [
+export const SPELLINGS: ReadonlyArray<readonly [RegionKey, readonly string[]]> = [
   ["dach", ["dach", "d a ch"]],
   ["nordics", ["nordics", "nordic countries", "nordic region"]],
   ["benelux", ["benelux"]],
@@ -157,15 +189,22 @@ export type RegionRead = {
   /** The words as the caller wrote them. */
   typed: string;
   members: string[];
-  /** country: the members went to the country filter; location: a word went to location text. */
-  how: "country" | "location";
+  /**
+   * country: members went to the country filter. location: a word that names
+   * no fixed list (or a large region with no measured order) went to location
+   * text. none: nothing of the region was searched (it stayed in, or was taken
+   * out of, `country` beside the caller's own location).
+   */
+  how: "country" | "location" | "none";
   /** The text searched as location, when how is location. */
   location?: string;
-  /** The members put in `country` (or offered for it, when how is location). */
+  /** The members sent as `country`: empty unless how is country. */
   searched: string[];
   /** The members not searched. */
   rest: string[];
   remote: boolean;
   measuredAt?: string;
   neverGuessed?: true;
+  /** The stated second search (remote asked): location text that finds postings naming only the region. */
+  alsoSearch?: { location: string };
 };

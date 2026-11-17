@@ -28,6 +28,10 @@
 // Reads VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY from the
 // environment or the repo's .env; prints neither. MEASURE_PAUSE_MS sets the
 // pause between reads (400 by default; 0 only against a local mock).
+// MEASURE_WITHHELD names more vendors the connector no longer hands on
+// (comma-separated, for example "ukg,adp,breezy" once round A withholds
+// them): they are counted as withheld, not served, so the order is re-cut
+// on what is served then.
 
 import { readFileSync } from "node:fs";
 import { COUNTRIES_PER_SEARCH, REGIONS } from "../supabase/functions/agent-mcp/regions.ts";
@@ -36,13 +40,20 @@ const MAX_READS = 60;
 /** Reads kept back for the A/B: one query, both arms, at the least. */
 const AB_FLOOR = 2;
 const AB_QUERIES = ["senior data engineer", "software engineer", "product manager"];
-const WITHHELD = ["smartrecruiters", "usajobs"];
+const EXTRA_WITHHELD = String(process.env.MEASURE_WITHHELD ?? "").split(",").map((v) => v.trim().toLowerCase()).filter(Boolean);
+const WITHHELD = [...new Set(["smartrecruiters", "usajobs", ...EXTRA_WITHHELD])];
 /** Every served vendor, in groups of at most 8 (the board's vendor cap). */
 const SERVED_GROUPS = [
   ["greenhouse", "lever", "ashby", "workable", "bamboohr", "recruitee", "teamtailor", "personio"],
   ["breezy", "rippling", "workday", "pinpoint", "oracle", "icims", "paylocity", "ukg"],
   ["adp", "jazzhr"],
-];
+].map((g) => g.filter((v) => !WITHHELD.includes(v))).filter((g) => g.length);
+if (WITHHELD.length > 8) {
+  console.error(`MEASURE_WITHHELD names ${WITHHELD.length} vendors; the board counts at most 8 in one read: nothing was read.`);
+  process.exit(1);
+}
+const WITHHELD_NAMES = WITHHELD.map((v) => ({ smartrecruiters: "SmartRecruiters", usajobs: "USAJOBS" })[v] ?? v);
+const WITHHELD_SAID = WITHHELD_NAMES.length > 1 ? `${WITHHELD_NAMES.slice(0, -1).join(", ")} and ${WITHHELD_NAMES.at(-1)}` : WITHHELD_NAMES.join("");
 
 const env = (() => {
   const out = { ...process.env };
@@ -105,7 +116,7 @@ async function count(filters) {
 const today = new Date().toISOString().slice(0, 10);
 const EUROPE = [...REGIONS.europe.members];
 const LARGE = ["europe", "eea", "eu"];
-console.log(`measure-region-search-ab ${new Date().toISOString()}: ${EUROPE.length} members of Europe, at most ${MAX_READS} reads, each sent with x-rb-budget probe`);
+console.log(`measure-region-search-ab ${new Date().toISOString()}: ${EUROPE.length} members of Europe, at most ${MAX_READS} reads, each sent with x-rb-budget probe; withheld: ${WITHHELD_SAID}`);
 
 // ---- 1. The board's count for each member. ----
 const stat = new Map();
@@ -157,7 +168,7 @@ async function refine(c) {
   s.refined = true;
 }
 
-console.log("\n2. Refining the head (served = board count less SmartRecruiters and USAJOBS):");
+console.log(`\n2. Refining the head (served = board count less ${WITHHELD_SAID}):`);
 let unresolved = null;
 for (;;) {
   const open = LARGE.filter((k) => !headOf(k).settled);
@@ -223,11 +234,13 @@ if (unresolved || !LARGE.every((k) => headOf(k).settled)) {
   console.log(`UNRESOLVED: ${unresolved ?? "a head is unsettled"}. No order to store: EUROPE_BY_POSTINGS stays null.`);
   process.exit(2);
 }
-console.log("\nPaste into supabase/functions/agent-mcp/regions.ts:");
+const heads = LARGE.map((k) => { const h = headOf(k); return `${k}: { fifth: ${h.floor}, nextAtMost: ${h.ceiling} }`; }).join(", ");
+console.log("\nPaste into supabase/functions/agent-mcp/regions.ts (EUROPE_BY_POSTINGS's value):");
 console.log(
-  `export const EUROPE_BY_POSTINGS: { measuredAt: string; basis: string; order: readonly string[] } | null = {\n` +
+  `{\n` +
     `  measuredAt: "${today}",\n` +
-    `  basis: "scripts/measure-region-search-ab.mjs: per country, the board's count less SmartRecruiters and USAJOBS, which settles the 5 at the head of the EU, the EEA and Europe; a member past every head whose withheld rows were not counted is ordered by the board's count",\n` +
+    `  basis: "scripts/measure-region-search-ab.mjs: per country, the board's count less ${WITHHELD_SAID}, which settles the 5 at the head of the EU, the EEA and Europe; a member past every head whose withheld rows were not counted is ordered by the board's count",\n` +
     `  order: [${order.map((c) => `"${c}"`).join(", ")}],\n` +
-    `};`,
+    `  heads: { ${heads} },\n` +
+    `}`,
 );

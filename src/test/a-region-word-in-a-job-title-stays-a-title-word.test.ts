@@ -19,12 +19,21 @@
  * that shape, and every one keeps its region word in the words searched. The seeker negatives appended beside them read
  * exactly as main read them (judged in the query-reader corpus test). A
  * seniority word is never moved to a filter: no reading carries experience.
+ * A region counts as read when the search the server sends finds one: the
+ * query reader's location, read by search-notes.ts readRegionArgs (the query
+ * reader itself carries no region field until withRegion writes one).
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readQuery } from "../../supabase/functions/agent-mcp/query-place";
 import { readRegionArgs } from "../../supabase/functions/agent-mcp/search-notes";
+
+/** The region the server's search reads from this query: the query reader's lift, read by the region reader. */
+function regionRead(q: string) {
+  const r = readQuery(q);
+  return readRegionArgs({ query: r.query, ...(r.location ? { location: r.location } : {}), ...(r.country ? { country: r.country } : {}), ...(r.remote ? { remote: true } : {}) });
+}
 
 type TitleRow = { title: string; company: string; location: string | null; country: string | null; seed: string; mainRight: boolean };
 const CORPUS = JSON.parse(readFileSync(resolve(__dirname, "fixtures/model-queries-2026-11.json"), "utf8")) as {
@@ -51,7 +60,7 @@ describe("a region word beside a role noun is never read as a region", () => {
   it("every board title keeps its region word in the words searched, and no region is read from it", () => {
     const moved = REGION_TITLES.filter((row) => {
       const r = readQuery(row.title);
-      return r.region !== undefined || !fold(r.query).includes(fold(row.seed));
+      return regionRead(row.title) !== null || !fold(r.query).includes(fold(row.seed));
     }).map((row) => ({ title: row.title, got: readQuery(row.title) }));
     expect(moved).toEqual([]);
   });
@@ -64,21 +73,21 @@ describe("a region word beside a role noun is never read as a region", () => {
   ])("%s reads whole", (q) => {
     const r = readQuery(q);
     expect(r.query).toBe(q);
-    expect(r.region).toBeUndefined();
+    expect(regionRead(q)).toBeNull();
     expect(r.location).toBeUndefined();
     expect(r.country).toBeUndefined();
   });
 
   it('"jobs at ANZ" is the employer, not the region', () => {
     expect(readQuery("graduate jobs at ANZ")).toMatchObject({ query: "graduate", companies: ["ANZ"] });
-    expect(readQuery("graduate jobs at ANZ").region).toBeUndefined();
+    expect(regionRead("graduate jobs at ANZ")).toBeNull();
   });
 
   it("the same region word after in is a region: position is the whole rule", () => {
     expect(readQuery("Sales Director in EMEA")).toMatchObject({ query: "Sales Director", location: "EMEA" });
     expect(readQuery("Account Executive in the Nordics")).toMatchObject({ query: "Account Executive", location: "Nordics" });
     expect(readRegionArgs({ query: "Account Executive", location: "Nordics" })!.args).toEqual({ location: null, country: "DK,FI,IS,NO,SE" });
-    expect(readQuery("Policy Officer in the EU").region?.key).toBe("eu");
+    expect(regionRead("Policy Officer in the EU")?.region.key).toBe("eu");
     expect(readQuery("Partnerships Lead across APAC")).toMatchObject({ query: "Partnerships Lead", location: "APAC" });
   });
 });

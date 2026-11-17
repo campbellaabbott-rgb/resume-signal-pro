@@ -1,7 +1,7 @@
 // @vitest-environment node
 /**
  * A REGION WORD SEARCHES ITS COUNTRIES AND SAYS WHICH (MCP upgrade 3, W1 lane
- * L2: U3-05 as revised by F1, M8 and M9).
+ * L2: U3-05 as revised by F1, M8 and M9, and by the lane review).
  *
  * WHAT WAS WRONG (live keyless probe, 2026-11-16):
  *   - c22, "remote senior data engineer jobs in Europe": "Europe" stayed in
@@ -15,27 +15,54 @@
  * Nothing read a region word, and "near Austin" searched three spellings of
  * Austin with no word that nearby towns were left out.
  *
+ * AND IN THE LANE'S FIRST BUILD (review, 2026-11-17):
+ *   - a city sent beside a large region as country was searched only in the
+ *     region's top 5, which left out the city's own country: location Warsaw
+ *     with country EU fell from 2,028 rows (main, where the board ignored EU)
+ *     to 2;
+ *   - the query reader's own reading said location "Europe", "matched as
+ *     text", and listed 5 countries as `searched`, though the server sent a
+ *     country list and no location once the region reader ran; nothing gave
+ *     the wiring lane one call that made the two agree;
+ *   - "analyst in UK & I" read as country GB on main, and as location text
+ *     "UK & Ireland" (which no posting location holds) from the query reader;
+ *   - "near" also fired after German "bei", which is "at" an employer;
+ *   - a country sent as a list (["DE"]) read as no country, so a region
+ *     location overwrote it.
+ *
  * WHAT IS TRUE NOW (agent-mcp/regions.ts, query-place.ts, and search-notes.ts,
- * where readRegionArgs reads a region sent as `location` or `country`):
+ * where readRegionArgs reads a region sent as `location` or `country`, and
+ * withRegionArgs and withRegion apply what it found):
  *   - a region word right after "in", "across", "within" or "throughout" in
  *     the query, or as the whole of `location` or `country`, is read. The
- *     query reader lifts it to `location` as its own word, never to
- *     `country` (S13-041's named-place cases, "engineer in North America",
- *     judge that reading), and readRegionArgs reads that location as it
- *     reads one the caller sent; the search is judged here as the two run;
- *   - with no remote asked, a region of 5 countries or fewer becomes the
- *     country filter, and a larger one (EU, EEA, Europe) searches the 5 of its
- *     members with the most postings this connector serves, in the order the
- *     A/B script measured and dated; regionNote names what was searched and
- *     lists the rest, to send as country;
+ *     query reader lifts it to `location` as its own word and says nothing
+ *     more (S13-041's named-place cases, "engineer in North America", judge
+ *     that reading); readRegionArgs reads that location as it reads one the
+ *     caller sent, and withRegion writes what was sent back into the reading,
+ *     so locationInterpreted and the arguments agree. Judged here as the
+ *     server runs them once lane L5 wires them;
+ *   - a region of 5 countries or fewer becomes the country filter, and a
+ *     larger one (EU, EEA, Europe) searches the 5 of its members with the most
+ *     postings this connector serves, in the order the A/B script measured
+ *     and dated; regionNote names what was searched and lists the rest, to
+ *     send as country. `searched` holds only countries that were sent;
+ *   - beside the caller's own location, a small region is searched with it,
+ *     and a large one is taken out of `country`, said, so the place the caller
+ *     named is searched whole, as on main;
  *   - EMEA, APAC, LatAm, worldwide, global and international name no fixed
  *     list, so no country is guessed: a word that still names a part of the
- *     world (EMEA, APAC, LatAm) is matched as location text, one that names
- *     none (worldwide, global) is never moved into a search, and the note
- *     asks for the countries;
+ *     world (EMEA, APAC, LatAm) is matched as location text as the person
+ *     spelt it, with a note that the text also matches other place names
+ *     holding those letters; one that names none (worldwide, global) is never
+ *     moved into a search; the note asks for the countries;
  *   - "near X" searches X, and the note says nearby towns are not included;
  *   - a place the caller already set, a negated place, and RC-S9-002's
- *     whole-country location note are left exactly as they were.
+ *     whole-country location note are left exactly as they were;
+ *   - on the corpus, composed, every S13-041 case scores no worse than main
+ *     except the two named-place rows that name a region ("engineer in North
+ *     America", "customer service in Europe"), which the spec's region rule
+ *     now searches as the region's countries: an owner call on those rows'
+ *     want, named here so nothing else can slip in beside them.
  * Every country list here is one the board's own filter normaliser applies
  * whole, with nothing in ignoredFilters.
  */
@@ -43,23 +70,31 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ISO_ALPHA2, normalizeFilters } from "../../supabase/functions/job-board/filters";
-import { locationAsField, readQuery } from "../../supabase/functions/agent-mcp/query-place";
-import { readRegionArgs } from "../../supabase/functions/agent-mcp/search-notes";
+import { locationAsField, readQuery, type QueryReading } from "../../supabase/functions/agent-mcp/query-place";
+import { readRegionArgs, withRegion, withRegionArgs, type RegionFound } from "../../supabase/functions/agent-mcp/search-notes";
 import { COUNTRIES_PER_SEARCH, EUROPE_BY_POSTINGS, REGIONS, membersToSearch, regionNamed } from "../../supabase/functions/agent-mcp/regions";
 
 /**
- * What the server searches once lane L5 wires this lane: readQuery on the
- * query, then readRegionArgs on the arguments that leaves (search-notes.ts).
+ * What the server searches once lane L5 wires this lane, as search-notes.ts's
+ * header gives it: readQuery on the query, its reading merged into the
+ * arguments, then readRegionArgs on those, applied to both.
  */
 function searched(q: string, input: Record<string, unknown> = {}) {
-  const r = readQuery(q, { remote: input.remote === true, workMode: typeof input.workMode === "string" ? input.workMode : null });
-  const args: Record<string, unknown> = { ...input, query: r.query, ...(r.location ? { location: r.location } : {}), ...(r.country ? { country: r.country } : {}), ...(r.remote ? { remote: true } : {}) };
-  const g = readRegionArgs(args);
-  return { reading: r, args: g ? { ...args, ...g.args } : args, region: g?.region ?? r.region, regionNote: g?.regionNote ?? r.regionNote };
+  const set = (v: unknown) => v !== undefined && v !== null && v !== "";
+  const r = readQuery(q, { remote: input.remote === true, location: set(input.location), country: set(input.country) });
+  let args: Record<string, unknown> = { ...input, query: r.query, ...(r.location ? { location: r.location } : {}), ...(r.country ? { country: r.country } : {}), ...(r.remote ? { remote: true } : {}) };
+  let reading: QueryReading | null = r.from ? r : null;
+  const found = readRegionArgs(args);
+  if (found) {
+    args = withRegionArgs(args, found.args);
+    reading = withRegion(reading ?? { query: String(args.query ?? "") }, found);
+  }
+  return { first: r, reading, args, found, region: found?.region, regionNote: found?.regionNote };
 }
 
 const EU27 = ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE"];
 const sorted = (xs: readonly string[]) => [...xs].sort();
+const headOf = (key: keyof typeof REGIONS) => EUROPE_BY_POSTINGS!.order.filter((c) => REGIONS[key].members.includes(c)).slice(0, COUNTRIES_PER_SEARCH);
 
 describe("each region is an explicit list of countries", () => {
   it("the small regions hold exactly their members", () => {
@@ -94,20 +129,22 @@ describe("each region is an explicit list of countries", () => {
     for (const r of Object.values(REGIONS)) for (const c of r.members) expect(ISO_ALPHA2.has(c), `${r.name}: ${c}`).toBe(true);
   });
 
-  it("the large regions' order is measured, dated and holds each of Europe's members once", () => {
+  it("the large regions' order is measured, dated, holds each of Europe's members once, and keeps its printed head margins", () => {
     expect(EUROPE_BY_POSTINGS, "run scripts/measure-region-search-ab.mjs and store its order").not.toBeNull();
     const m = EUROPE_BY_POSTINGS!;
     expect(m.measuredAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(m.basis).toMatch(/scripts\/measure-region-search-ab\.mjs/);
     expect(sorted(m.order)).toEqual(sorted(REGIONS.europe.members));
     expect(new Set(m.order).size).toBe(m.order.length);
+    // Each stored head was settled when it ran: the 5th at least the most any later member could have.
+    for (const [k, h] of Object.entries(m.heads)) expect(h.fifth, k).toBeGreaterThanOrEqual(h.nextAtMost);
   });
 });
 
 describe("a region names itself in the ways people type it", () => {
   it.each([
     ["DACH", "dach"], ["the Nordics", "nordics"], ["Nordic countries", "nordics"], ["Benelux", "benelux"],
-    ["UK & Ireland", "uk_ireland"], ["the UK and Ireland", "uk_ireland"], ["UK&I", "uk_ireland"], ["Iberia", "iberia"],
+    ["UK & Ireland", "uk_ireland"], ["the UK and Ireland", "uk_ireland"], ["UK&I", "uk_ireland"], ["UK & I", "uk_ireland"], ["Iberia", "iberia"],
     ["the Baltics", "baltics"], ["Baltic states", "baltics"], ["ANZ", "anz"], ["Australia and New Zealand", "anz"],
     ["North America", "north_america"], ["EU", "eu"], ["the E.U.", "eu"], ["European Union", "eu"], ["EEA", "eea"],
     ["European Economic Area", "eea"], ["Europe", "europe"], ["europe", "europe"],
@@ -136,17 +173,19 @@ describe("in the query, a region after in, across, within or throughout leaves t
     ["nurse jobs in the Nordics", "nurse", null],
     ["accountant in Benelux", "accountant", null],
     ["sales jobs in the UK and Ireland", "sales", "GB,IE"],
+    ["analyst in UK & I", "analyst", "GB,IE"],
     ["developer jobs across Iberia", "developer", null],
     ["QA engineer within the Baltics", "QA engineer", null],
     ["teacher jobs in ANZ", "teacher", "AU,NZ"],
     ["truck driver jobs throughout North America", "truck driver", null],
   ])("%s searches %s in the region's countries", (q, query, country) => {
-    const r = readQuery(q);
-    expect(r.query).toBe(query);
-    expect(r.country).toBeUndefined();
-    expect(r.location).toBe(REGIONS[r.region!.key!].word);
     const f = searched(q);
-    expect(f.args.location).toBeNull();
+    expect(f.first.query).toBe(query);
+    expect(f.first.country).toBeUndefined();
+    // The query reader's location is the region's own word, which the region reader names again.
+    const named = regionNamed(f.first.location ?? "");
+    expect(named !== null && "region" in named && named.region.word === f.first.location, String(f.first.location)).toBe(true);
+    expect(f.args.location).toBeUndefined();
     const members = f.region?.members ?? [];
     expect(members.length).toBeGreaterThan(0);
     expect(members.length).toBeLessThanOrEqual(COUNTRIES_PER_SEARCH);
@@ -155,27 +194,33 @@ describe("in the query, a region after in, across, within or throughout leaves t
     expect(f.regionNote).toContain(`country ${f.args.country}`);
   });
 
-  it("S13-041's named-place cases are read as location text by the query reader, never as a country", () => {
+  it("S13-041's named-place cases are read as location text by the query reader alone, never as a country", () => {
     expect(readQuery("engineer in North America")).toMatchObject({ query: "engineer", location: "North America" });
     expect(readQuery("customer service in Europe")).toMatchObject({ query: "customer service", location: "Europe" });
     expect(readQuery("engineer in North America").country).toBeUndefined();
     expect(readQuery("customer service in Europe").country).toBeUndefined();
   });
 
+  it("the query reader says nothing about a region on its own: no region, no regionNote, until the search is final", () => {
+    for (const q of ["customer service in Europe", "nurse jobs in the EU", "engineer in EMEA", "analyst in UK & I"]) {
+      const r = readQuery(q);
+      expect(r.region, q).toBeUndefined();
+      expect(r.regionNote, q).toBeUndefined();
+    }
+  });
+
   it("a large region searches its 5 members with the most postings, in the measured order, and lists the rest", () => {
     for (const [q, key] of [["data engineer jobs in Europe", "europe"], ["nurse jobs within the EU", "eu"], ["analyst jobs across the EEA", "eea"]] as const) {
       const f = searched(q);
-      const r = { country: f.args.country, region: f.region, regionNote: f.regionNote };
       const members = REGIONS[key].members;
-      const order = EUROPE_BY_POSTINGS!.order.filter((c) => members.includes(c));
-      const head = order.slice(0, COUNTRIES_PER_SEARCH);
-      expect(r.country, q).toBe(head.join(","));
-      expect(r.region?.searched).toEqual(head);
-      expect(sorted([...(r.region?.searched ?? []), ...(r.region?.rest ?? [])])).toEqual(sorted(members));
-      expect(r.regionNote).toContain(`country ${head.join(",")}`);
-      expect(r.regionNote).toContain(EUROPE_BY_POSTINGS!.measuredAt);
-      expect(r.regionNote).toMatch(/send them as country to search them/);
-      for (const c of r.region?.rest ?? []) expect(r.regionNote).toContain(c);
+      const head = headOf(key);
+      expect(f.args.country, q).toBe(head.join(","));
+      expect(f.region?.searched).toEqual(head);
+      expect(sorted([...(f.region?.searched ?? []), ...(f.region?.rest ?? [])])).toEqual(sorted(members));
+      expect(f.regionNote).toContain(`country ${head.join(",")}`);
+      expect(f.regionNote).toContain(EUROPE_BY_POSTINGS!.measuredAt);
+      expect(f.regionNote).toMatch(/send them as country to search them/);
+      for (const c of f.region?.rest ?? []) expect(f.regionNote).toContain(c);
     }
   });
 
@@ -188,7 +233,7 @@ describe("in the query, a region after in, across, within or throughout leaves t
   });
 
   it("the board's own filter applies every list whole, with nothing ignored", () => {
-    for (const q of ["data engineer jobs in DACH", "nurse jobs in the Nordics", "data engineer jobs in Europe", "sales jobs in the UK and Ireland"]) {
+    for (const q of ["data engineer jobs in DACH", "nurse jobs in the Nordics", "data engineer jobs in Europe", "sales jobs in the UK and Ireland", "nurse jobs in the EU"]) {
       const country = searched(q).args.country;
       const f = normalizeFilters({ country }, 25);
       expect(f.ignored, q).not.toContain("country");
@@ -196,24 +241,26 @@ describe("in the query, a region after in, across, within or throughout leaves t
     }
   });
 
-  it.each(["data engineer jobs in EMEA", "account executive in APAC", "developer jobs in LatAm", "designer jobs in Latin America"])(
-    "%s guesses no country: the word is searched as location text and the note asks for the countries",
+  it.each(["data engineer jobs in EMEA", "account executive in APAC", "developer jobs in LatAm", "designer jobs in Latin America", "engineer jobs in the Asia-Pacific"])(
+    "%s guesses no country: the words are searched as location text as typed, and the note asks for the countries",
     (q) => {
       const r = searched(q);
       expect(r.args.country).toBeUndefined();
       expect(typeof r.args.location).toBe("string");
-      expect(q.toLowerCase()).toContain(String(r.args.location).toLowerCase());
-      expect(r.args.query).not.toMatch(/emea|apac|latam|latin america/i);
+      expect(q).toContain(String(r.args.location));
+      expect(r.args.query).not.toMatch(/emea|apac|latam|latin america|asia/i);
       expect(r.regionNote).toMatch(/names no fixed list of countries, so none was guessed/);
+      expect(r.regionNote).toMatch(/also matches any place whose name holds those letters/);
       expect(r.regionNote).toMatch(/[Nn]ame the countries/);
     },
   );
 
   it("a word that names no part of the world stays in the title words", () => {
     for (const q of ["consultant jobs in global", "analyst in international", "sales jobs across worldwide"]) {
-      const r = readQuery(q);
-      expect(r.region, q).toBeUndefined();
-      expect(r.country, q).toBeUndefined();
+      const r = searched(q);
+      expect(r.found, q).toBeNull();
+      expect(r.first.location, q).toBeUndefined();
+      expect(r.args.country, q).toBeUndefined();
     }
   });
 
@@ -225,11 +272,45 @@ describe("in the query, a region after in, across, within or throughout leaves t
     expect(readQuery("nurse jobs outside the EU")).toEqual({ query: "nurse jobs outside the EU" });
   });
 
-  it("a remote the person refused is no remote: the region goes to the country filter", () => {
+  it("a remote the person refused is no remote: the region is its country list, with no second search", () => {
     const r = searched("data engineer not remote in the EU");
-    expect(r.reading.remote).toBeUndefined();
+    expect(r.first.remote).toBeUndefined();
     expect(r.region?.how).toBe("country");
     expect(String(r.args.country).split(",")).toHaveLength(5);
+    expect(r.found?.alsoSearch).toBeUndefined();
+  });
+});
+
+describe("what the server says it searched is what it sent", () => {
+  const CASES: Array<[string, Record<string, unknown>]> = [
+    ["customer service in Europe", {}], ["nurse jobs in the EU", {}], ["analyst in UK & I", {}], ["engineer in EMEA", {}],
+    ["senior data engineer jobs in Europe", { remote: true }], ["remote data engineer in the Nordics", {}], ["engineer", { location: "Europe" }],
+    ["engineer", { location: "Remote - Europe" }], ["engineer", { country: "EU" }], ["engineer", { country: "EU", location: "Warsaw" }],
+    ["engineer", { country: "DACH", location: "Berlin" }], ["engineer", { country: "EMEA" }], ["engineer", { country: "worldwide" }],
+    ["engineer", { location: "Europe (remote)", workMode: "remote" }], ["engineer", { country: "ANZ", remote: true }],
+  ];
+
+  it.each(CASES)("%s %j: locationInterpreted's place keys are the arguments sent", (q, input) => {
+    const f = searched(q, input);
+    expect(f.found, `${q} ${JSON.stringify(input)}`).not.toBeNull();
+    const reading = f.reading as Record<string, unknown>;
+    for (const k of Object.keys(f.found!.args)) expect(reading[k] ?? null, k).toEqual(f.args[k] ?? null);
+    expect(reading.regionNote).toBe(f.found!.regionNote);
+    expect(reading.region).toEqual(f.found!.region);
+  });
+
+  it.each(CASES)("%s %j: `searched` names only countries sent as country", (q, input) => {
+    const f = searched(q, input);
+    const region = f.found!.region;
+    if (region.searched.length) expect(region.searched.join(",")).toBe(f.args.country);
+    else expect(region.how).not.toBe("country");
+    if (region.how === "country") expect(typeof f.args.country).toBe("string");
+  });
+
+  it("withRegionArgs takes out a key set to null and leaves the rest", () => {
+    expect(withRegionArgs({ query: "x", location: "Europe", remote: true }, { location: null, country: "DE,AT,CH" })).toEqual({ query: "x", remote: true, country: "DE,AT,CH" });
+    const found = readRegionArgs({ query: "x", location: "DACH" }) as RegionFound;
+    expect(withRegion({ query: "x", location: "DACH" }, found)).toEqual({ query: "x", country: "DE,AT,CH", region: found.region, regionNote: found.regionNote });
   });
 });
 
@@ -242,15 +323,40 @@ describe("a region sent as location or country is always read", () => {
     for (const c of order.slice(5)) expect(r.regionNote).toContain(c);
   });
 
-  it("location DACH with no remote becomes the country filter, and the location is taken away", () => {
+  it("location DACH becomes the country filter, and the location is taken away", () => {
     expect(readRegionArgs({ query: "sales manager", location: "DACH" })!.args).toEqual({ location: null, country: "DE,AT,CH" });
     expect(readRegionArgs({ query: "sales manager", location: "the Nordics" })!.args).toEqual({ location: null, country: "DK,FI,IS,NO,SE" });
+  });
+
+  it.each([
+    ["Warsaw", "EU", "PL"], ["Lisbon", "EU", "PT"], ["Stockholm", "EEA", "SE"], ["Oslo", "EEA", "NO"], ["Dublin", "Europe", "IE"], ["Zurich", "Europe", "CH"],
+  ])("location %s beside country %s: the region is taken out of country, so %s is searched, as on main", (loc, region, own) => {
+    const r = readRegionArgs({ query: "engineer", location: loc, country: region })!;
+    expect(r.args).toEqual({ country: null });
+    expect(r.region.how).toBe("none");
+    expect(r.region.searched).toEqual([]);
+    expect(r.region.members).toContain(own);
+    expect(r.regionNote).toBe(`country "${region}" is read here as ${(Object.values(REGIONS).find((g) => g.word === region)!).says}, more than one search takes (5), so no country was sent: location "${loc}" was searched on its own.`);
+    expect(r.regionNote).not.toMatch(/send them as country/);
+  });
+
+  it("a small region beside the caller's location is searched with it", () => {
+    const r = readRegionArgs({ query: "engineer", location: "Berlin", country: "DACH" })!;
+    expect(r.args).toEqual({ country: "DE,AT,CH" });
+    expect(r.regionNote).toBe('country "DACH" is read here as country DE,AT,CH.');
+  });
+
+  it("a country sent as a list is read as that list: a region in it is read, a country in it stands", () => {
+    expect(readRegionArgs({ query: "engineer", country: ["DE"], location: "Europe" })).toBeNull();
+    expect(readRegionArgs({ query: "engineer", country: ["DE", "AT"], location: "the Nordics" })).toBeNull();
+    expect(readRegionArgs({ query: "engineer", country: ["EU"] })!.args).toEqual({ country: headOf("eu").join(",") });
   });
 
   it("country worldwide or global moves nothing, and says no country was searched", () => {
     for (const c of ["worldwide", "Global", "International"]) {
       const r = readRegionArgs({ query: "sales manager", country: c })!;
       expect(r.args, c).toEqual({});
+      expect(r.region.how, c).toBe("none");
       expect(r.regionNote, c).toMatch(/none was guessed and no country was searched/);
     }
   });
@@ -278,6 +384,42 @@ describe("a region sent as location or country is always read", () => {
 
   it("a location and a country the caller both set are left alone", () => {
     expect(readRegionArgs({ location: "Europe", country: "DE" })).toBeNull();
+  });
+
+  it("small regions say what they are read as, never a fact about the map", () => {
+    expect(readRegionArgs({ query: "x", location: "North America" })!.regionNote).toBe('"North America" is read here as country US,CA,MX.');
+    expect(readRegionArgs({ query: "x", country: "UK & Ireland" })!.regionNote).toBe('country "UK & Ireland" is read here as country GB,IE.');
+  });
+});
+
+describe("judged on the real corpus as the server will run it", () => {
+  type CountryCase = { q: string; place: string; want: string | null; group: string; mainScore: 0 | 1 | 2 };
+  type TitleRow = { title: string; company: string; location: string | null; country: string | null; mainRight: boolean };
+  const CORPUS = JSON.parse(readFileSync(resolve(__dirname, "fixtures/model-queries-2026-11.json"), "utf8")) as { country: CountryCase[]; titles: TitleRow[] };
+  const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  // The query-reader corpus test's own scorer: 0 right, 1 nothing read, 2 a wrong country.
+  function countryScore(r: Record<string, unknown>, c: CountryCase): 0 | 1 | 2 {
+    if (r.country && r.country !== c.want) return 2;
+    if (r.country === c.want && c.want) return 0;
+    if (typeof r.location === "string" && fold(c.place).includes(fold(r.location).replace(/,\s*/g, ", "))) return 0;
+    if (typeof r.location === "string" && fold(c.place).replace(/,\s*/g, " ").includes(fold(r.location).replace(/,\s*/g, " "))) return 0;
+    return c.want ? 1 : (r.location || r.country ? 2 : 0);
+  }
+
+  it("every S13-041 case scores no worse composed than main, but the two named-place rows a region rule now searches as its countries", () => {
+    const worse = CORPUS.country.flatMap((c) => {
+      const f = searched(c.q);
+      return countryScore(f.args, c) > c.mainScore ? [{ q: c.q, country: f.args.country, regionCountries: f.region?.searched.join(",") }] : [];
+    });
+    // Each is the region's own members, sent as country and said in regionNote; the rows' want (null) predates regions.
+    expect(worse).toEqual([
+      { q: "engineer in North America", country: "US,CA,MX", regionCountries: "US,CA,MX" },
+      { q: "customer service in Europe", country: headOf("europe").join(","), regionCountries: headOf("europe").join(",") },
+    ]);
+  });
+
+  it("no board title typed as a query is read as a region, so the composed search leaves every title as the corpus test judged it", () => {
+    expect(CORPUS.titles.filter((t) => searched(t.title).found !== null).map((t) => t.title)).toEqual([]);
   });
 });
 
@@ -312,5 +454,10 @@ describe('"near X" searches X and says nearby towns are not included', () => {
     expect(readQuery("nurse jobs in Austin, TX").note ?? "").not.toMatch(/nearby towns/);
     expect(readQuery("nurse jobs near Texas").note ?? "").not.toMatch(/nearby towns/);
     expect(readQuery("engineer jobs near the Bay Area").note ?? "").not.toMatch(/nearby towns/);
+  });
+
+  it('German "bei" is "at" an employer, never "near": no nearby-towns note after it', () => {
+    expect(readQuery("Sommerpraktikum 2027 bei CGM in Österreich", { country: true }).note ?? "").not.toMatch(/nearby towns/);
+    expect(readQuery("nurse jobs bei Berlin").note ?? "").not.toMatch(/nearby towns/);
   });
 });
