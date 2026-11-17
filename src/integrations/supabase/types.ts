@@ -3040,6 +3040,7 @@ export type Database = {
           department: string | null
           employment_type: string | null
           event_id: number
+          exit_basis: string | null
           exit_reason: string
           exited_at: string
           experience_band: string | null
@@ -3065,6 +3066,7 @@ export type Database = {
           department?: string | null
           employment_type?: string | null
           event_id?: never
+          exit_basis?: string | null
           exit_reason: string
           exited_at?: string
           experience_band?: string | null
@@ -3090,6 +3092,7 @@ export type Database = {
           department?: string | null
           employment_type?: string | null
           event_id?: never
+          exit_basis?: string | null
           exit_reason?: string
           exited_at?: string
           experience_band?: string | null
@@ -3296,6 +3299,7 @@ export type Database = {
           category_proposed: string | null
           category_proposed_at: string | null
           category_proposed_v: number | null
+          closes_at: string | null
           company: string
           company_token: string
           country: string | null
@@ -3337,6 +3341,7 @@ export type Database = {
           category_proposed?: string | null
           category_proposed_at?: string | null
           category_proposed_v?: number | null
+          closes_at?: string | null
           company: string
           company_token: string
           country?: string | null
@@ -3378,6 +3383,7 @@ export type Database = {
           category_proposed?: string | null
           category_proposed_at?: string | null
           category_proposed_v?: number | null
+          closes_at?: string | null
           company?: string
           company_token?: string
           country?: string | null

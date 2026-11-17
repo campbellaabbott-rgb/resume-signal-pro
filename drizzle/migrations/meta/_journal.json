@@ -1674,6 +1674,41 @@
       "when": 1794939377270,
       "tag": "0238_four_duplicate_indexes_dropped",
       "breakpoints": true
+    },
+    {
+      "idx": 239,
+      "version": "7",
+      "when": 1794939745233,
+      "tag": "0239_usajobs_closes_on_stated_date",
+      "breakpoints": true
+    },
+    {
+      "idx": 240,
+      "version": "7",
+      "when": 1794939754991,
+      "tag": "0240_four_boards_employer_names",
+      "breakpoints": true
+    },
+    {
+      "idx": 241,
+      "version": "7",
+      "when": 1794939816950,
+      "tag": "0241_wrong_currency_pay_reread",
+      "breakpoints": true
+    },
+    {
+      "idx": 242,
+      "version": "7",
+      "when": 1794939825433,
+      "tag": "0242_catalogue_high_water_follows_retirements",
+      "breakpoints": true
+    },
+    {
+      "idx": 243,
+      "version": "7",
+      "when": 1794940002008,
+      "tag": "0243_ghost_index_hourly_before_cache",
+      "breakpoints": true
     }
   ]
 }

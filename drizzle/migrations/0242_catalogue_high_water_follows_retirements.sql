@@ -1,0 +1,2 @@
+-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing (reviewed 2026-11-16 in the board .102 integration).
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261111120000_the_catalogue_high_water_follows_the_retirements'));
