@@ -1193,8 +1193,8 @@ const INDUSTRY_ATS_BENCHMARKS: Record<string, number> = {
 // Retry helper for AI API calls with exponential backoff
 const MAX_AI_RETRIES = 2;
 const AI_RETRY_DELAY_MS = 2000;
-// Flash-first, then pro, then cross-provider: the rationale lives with the
-// list in _shared/scan-models.ts, which test-ai-fallback reads too.
+// Flash-first, then pro: the rationale lives with the list in
+// _shared/scan-models.ts, which test-ai-fallback reads too.
 const MODEL_FALLBACK_ORDER: string[] = [...SCAN_MODEL_CHAIN];
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
