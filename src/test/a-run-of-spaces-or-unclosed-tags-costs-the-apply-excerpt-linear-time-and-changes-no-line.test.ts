@@ -193,13 +193,20 @@ const msOf = (f: () => unknown) => {
 };
 const fastest = (t: string, runs = 3) => Math.min(...Array.from({ length: runs }, () => msOf(() => postingExcerptOf(t))));
 
-/** Per shape, fastest of three: the slowest measured 15 ms at 100 KB and 75 ms at 500 KB; main took 5,027 ms at 100 KB. */
-const BOUND_100_MS = 75;
-const BOUND_500_MS = 400;
+/**
+ * Per shape, fastest of three. Alone, the slowest measured 15 ms at 100 KB and
+ * 75 ms at 500 KB; main took 5,027 ms at 100 KB. The bounds sit about ten
+ * times above the lone figures because the pre-push hook runs every test file
+ * at once, which slowed the costliest shape about four times (574 ms where it
+ * measured 145 ms alone) and failed a push at a bound of 500. Growth with the
+ * length, not the bounds, is what tells linear from quadratic.
+ */
+const BOUND_100_MS = 750;
+const BOUND_500_MS = 3_000;
 /** All shapes' cost at 500 KB over their cost at 100 KB: 5 when linear, 25 when it grows with the square. */
 const GROWTH_MAX = 7;
-/** The costliest shape at four times EXCERPT_READ_MAX, fastest of three. */
-const BOUND_CAP_MS = 500;
+/** The costliest shape at four times EXCERPT_READ_MAX, fastest of three (145 ms alone, 578 ms in a full suite). */
+const BOUND_CAP_MS = 4_000;
 /** Its cost at four times EXCERPT_READ_MAX over its cost at EXCERPT_READ_MAX: 1 when the rest is not read, 4 when it is. */
 const CAP_GROWTH_MAX = 2;
 
