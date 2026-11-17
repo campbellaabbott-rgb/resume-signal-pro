@@ -192,8 +192,8 @@ export function sharedReservation(policy, { ref, head, mainJobBoard = null }) {
   return new Set([build]);
 }
 
-function sharedImports(fn) {
-  const dir = join(FN_DIR, fn);
+function sharedImports(fn, root = ROOT) {
+  const dir = join(root, "supabase/functions", fn);
   const files = readdirSync(dir).filter((f) => f.endsWith(".ts"));
   const out = new Set();
   for (const f of files) {
@@ -203,26 +203,74 @@ function sharedImports(fn) {
   return [...out];
 }
 
-function changedSinceStamp(fn, build, policy) {
-  // The commit that introduced the current build string; anything in the
-  // function's own folder or its _shared imports changed after it is code the
-  // stamp does not prove deployed.
+/**
+ * The line of a function's index.ts that declares `build` (S14X-137): the
+ * first line holding its YYYY-MM-DD.N that is not a comment line, which is
+ * the line buildOf reads its marker from. 1-based; 0 when no line does. A
+ * history note naming the build ("// 2026-11-08.1: ...") is a comment line
+ * and never the declaration. Pure.
+ */
+export function declarationLine(fn, build, src) {
+  const tail = BUILD_TAIL.exec(String(build ?? ""));
+  if (!tail || !String(build).startsWith(`${fn}.`)) return 0;
+  const seq = new RegExp(`(?<![0-9])${`${tail[1]}.${tail[2]}`.replace(/\./g, "\\.")}(?![0-9])`);
+  const lines = String(src ?? "").split("\n");
+  return lines.findIndex((l) => seq.test(l) && !/^\s*(\/\/|\*|\/\*)/.test(l)) + 1;
+}
+
+/**
+ * The commit the live stamp proves deployed, and what changed in the
+ * function's own folder or its _shared imports since (the MUST BUMP input).
+ *
+ * THE ANCHOR IS THE DECLARATION (S14X-137). It was `git log -1 -S<build>`:
+ * the newest commit that changed how many times the build string appears in
+ * index.ts. A comment that names the build (a history note, "kept from
+ * 2026-11-08.1") changes that count, so the anchor jumped to the comment's
+ * commit and every unbumped code change before it went unseen: on main of
+ * 2026-11-15 six functions were anchored that way (agent-mcp on af016311,
+ * where its declaration was written in b2ef3f25). Now it is the commit that
+ * last wrote the declaration line (git blame of declarationLine at HEAD),
+ * moved to the newest verified deploy of this very build when that deploy
+ * came later. `root` is the checkout (a test points it at a throwaway repo).
+ */
+export function changedSinceStamp(fn, build, policy, { root = ROOT } = {}) {
+  const run = (...a) => execFileSync("git", a, { cwd: root, encoding: "utf8", maxBuffer: 1 << 28, stdio: ["ignore", "pipe", "ignore"] });
+  const index = `supabase/functions/${fn}/index.ts`;
   let c = "";
-  try { c = git("log", "-1", "--format=%H", `-S${build.slice(fn.length + 1)}`, "--", `supabase/functions/${fn}/index.ts`); } catch { /* none */ }
-  if (!c) return { since: null, changed: [] };
+  try {
+    const n = declarationLine(fn, build, run("show", `HEAD:${index}`));
+    if (n) c = run("blame", "-L", `${n},${n}`, "--porcelain", "HEAD", "--", index).split(/\s/)[0];
+  } catch { /* no such file at HEAD, or no history */ }
+  if (!/^[0-9a-f]{40,64}$/.test(c) || /^0+$/.test(c)) return { since: null, changed: [] };
   // A verified deploy that shipped this very build from a later commit proves
   // everything up to that commit is live: Lovable deploys the function as main
   // holds it, not as it was when the stamp was written. Only changes after the
   // newest such deploy are unproven (docs/deploy-ledger.json verifiedDeploys).
   for (const d of [...(policy?.verifiedDeploys ?? [])].reverse()) {
     if (d.functions?.[fn] !== build) continue;
-    if (isAncestor(c, d.commit)) c = git("rev-parse", d.commit);
+    if (isAncestor(c, d.commit, root)) c = run("rev-parse", d.commit).trim();
     break;
   }
-  const paths = [`supabase/functions/${fn}`, ...sharedImports(fn)];
+  const paths = [`supabase/functions/${fn}`, ...sharedImports(fn, root)];
   let changed = [];
-  try { changed = git("diff", "--name-only", `${c}..HEAD`, "--", ...paths).split("\n").filter(Boolean); } catch { /* none */ }
+  try { changed = run("diff", "--name-only", `${c}..HEAD`, "--", ...paths).split("\n").filter(Boolean); } catch { /* none */ }
   return { since: c.slice(0, 8), changed };
+}
+
+/**
+ * The text of each function's code: its own .ts files (not the Deno or vitest
+ * tests beside them) and the _shared modules it imports, the reach the rest
+ * of the ledger uses. For callsAheadOfMigrations.
+ */
+function functionSources(fns, root = ROOT) {
+  const out = new Map();
+  for (const fn of fns) {
+    const dir = join(root, "supabase/functions", fn);
+    const own = readdirSync(dir).filter((f) => f.endsWith(".ts") && !/(_test|\.test)\.ts$/.test(f)).map((f) => join(dir, f));
+    const shared = sharedImports(fn, root).map((p) => join(root, p)).filter((p) => existsSync(p));
+    out.set(fn, [...own, ...shared].map((p) => readFileSync(p, "utf8")));
+  }
+  return out;
 }
 
 /**
@@ -257,8 +305,8 @@ function codeChanged(ref, fn, headRef = "HEAD") {
   if (names.some((n) => n !== index)) return true;
   return !onlyMarkerLines(fn, git("diff", "-U0", ref, headRef, "--", index).split("\n"));
 }
-function isAncestor(a, b) {
-  try { execFileSync("git", ["merge-base", "--is-ancestor", a, b], { cwd: ROOT, stdio: "ignore" }); return true; } catch { return false; }
+function isAncestor(a, b, root = ROOT) {
+  try { execFileSync("git", ["merge-base", "--is-ancestor", a, b], { cwd: root, stdio: "ignore" }); return true; } catch { return false; }
 }
 export function runAgainst(refs, mainRef, policy, headRef = "HEAD") {
   const fns = filesAt(headRef, "supabase/functions")
@@ -560,6 +608,133 @@ export function lateStampViolations(pending, applied, sqlOf) {
     }
   }
   return out;
+}
+
+// ── calls ahead of their migration (NB-33) ─────────────────────────────────
+/** What a function's code calls by name: `.rpc("x")`, `.from("x")`, and the REST paths /rest/v1/rpc/x and /rest/v1/x. */
+const CALLS = [
+  /\.rpc\(\s*["'`]([A-Za-z_][A-Za-z0-9_]*)["'`]/g,
+  /\.from\(\s*["'`]([A-Za-z_][A-Za-z0-9_]*)["'`]/g,
+  /\/rest\/v1\/rpc\/([A-Za-z_][A-Za-z0-9_]*)/g,
+  /\/rest\/v1\/(?!rpc\/)([A-Za-z_][A-Za-z0-9_]*)(?=[?"'`/])/g,
+];
+
+/**
+ * A FUNCTION THAT CALLS WHAT ONLY A PENDING MIGRATION CREATES (NB-33). The
+ * message's order says migrations before the functions, and Lovable Cloud
+ * does not keep it: on 2026-11-15 it deployed every function and the
+ * frontend while twelve of the cost wave's fourteen migrations stayed
+ * unapplied. So a function that calls an RPC or a table that only a pending
+ * (or held, or never-applied) migration creates is live without it, and it
+ * must work while it is absent. The ledger cannot read a fallback, so each
+ * such call is an error that stops the message until a person has checked
+ * the function and written how it copes under `absentTolerant` in
+ * docs/deploy-ledger.json:
+ *
+ *   "absentTolerant": { "<fn>:<object>": "what the function does while <object> is absent" }
+ *
+ * `sources` maps each function to the text of its code (its own files and
+ * the _shared modules it imports); `pending` are the files not applied
+ * (pending, held and never applied); `applied` the rest; `sqlOf(file)` reads
+ * one. An object an applied file also creates is not ahead of anything.
+ * Names only: a new column, or a new signature of an existing function, is
+ * not seen here. Pure apart from sqlOf.
+ *
+ *   returns { calls: [{ fn, object, files, tolerated }], errors: [sentence] }
+ */
+export function callsAheadOfMigrations({ sources, pending, applied, sqlOf, policy }) {
+  const made = new Set();
+  for (const f of applied ?? []) for (const o of objectsOf(sqlOf(f)).defines) made.add(o);
+  const onlyPending = new Map();
+  for (const f of [...(pending ?? [])].sort()) {
+    for (const o of objectsOf(sqlOf(f)).defines) if (!made.has(o)) onlyPending.set(o, [...(onlyPending.get(o) ?? []), f]);
+  }
+  const ack = policy?.absentTolerant && typeof policy.absentTolerant === "object" ? policy.absentTolerant : {};
+  const out = { calls: [], errors: [] };
+  const fns = sources instanceof Map ? [...sources.keys()].sort() : Object.keys(sources ?? {}).sort();
+  for (const fn of fns) {
+    const texts = sources instanceof Map ? sources.get(fn) : sources[fn];
+    const seen = new Set();
+    for (const text of Array.isArray(texts) ? texts : [texts]) {
+      for (const re of CALLS) for (const m of String(text ?? "").matchAll(re)) seen.add(m[1].toLowerCase());
+    }
+    for (const object of [...seen].sort()) {
+      const files = onlyPending.get(object);
+      if (!files) continue;
+      const why = ack[`${fn}:${object}`];
+      const tolerated = typeof why === "string" && why.trim() ? why.trim() : null;
+      out.calls.push({ fn, object, files, tolerated });
+      if (!tolerated) {
+        out.errors.push(`${fn} calls ${object}, which only ${files.join(" and ")} create${files.length === 1 ? "s" : ""}, and Lovable deploys functions ahead of their migrations (2026-11-15): make ${fn} work while ${object} is absent, then record how under absentTolerant "${fn}:${object}" in docs/deploy-ledger.json`);
+      }
+    }
+  }
+  return out;
+}
+
+// ── owner steps (OI-47b) ────────────────────────────────────────────────────
+/** A migration that reads the vault, in its code or its comments (Lovable's agent refuses on the words). */
+const VAULT_READ = /\bvault\s*\.|decrypted_secrets/i;
+
+/**
+ * A MIGRATION LOVABLE'S AGENT WILL REFUSE IS THE OWNER'S STEP (OI-47b). On
+ * 2026-11-06 the agent refused 20261103120000 and 20261103221000 ("Agent
+ * access to secrets is not allowed") and the deploy stopped part-way; both
+ * were listed as ordinary Lovable steps, and only a hand-written neverApply
+ * entry took them out. Every pending or held file whose text reads the vault
+ * (comments count) is selected here. Pure apart from sqlOf.
+ */
+export function ownerStepMigrations(files, sqlOf) {
+  return [...(files ?? [])].sort().filter((f) => VAULT_READ.test(String(sqlOf(f) ?? "")));
+}
+
+/**
+ * Where each owner step goes. It is taken out of the Lovable steps and run
+ * by the owner in the SQL editor BEFORE the message is sent, so it must have
+ * a migrationOrder entry (the order is a decision, never a guess), and that
+ * entry may name the functions it must precede (`before`) but no later step:
+ * no `after`, and no afterMigrations naming a file Lovable applies in this
+ * message. A held one stays held (the message's hold line says so) and is
+ * listed with `held`. Pure.
+ *
+ *   returns { steps: [{ file, note, held }], errors }
+ */
+export function ownerStepPlan(ownerFiles, policy, { hold = [], pending = [], rows = [] } = {}) {
+  const order = policy?.migrationOrder ?? {};
+  const byFn = new Map((rows ?? []).map((r) => [r.fn, r]));
+  const owner = new Set(ownerFiles ?? []);
+  const out = { steps: [], errors: [] };
+  for (const file of [...owner].sort()) {
+    const stamp = file.slice(0, 14);
+    const held = (hold ?? []).includes(file);
+    const e = Object.prototype.hasOwnProperty.call(order, stamp) ? order[stamp] : null;
+    const why = `${file} reads the vault, which Lovable's agent refuses, so it is an owner step (the SQL editor, before the message)`;
+    if (!e || typeof e !== "object") { out.errors.push(`${why}, and it has no migrationOrder entry to place it: add one naming the functions it must precede (before: ["fn:<name>"], or an empty list)`); continue; }
+    if (e.after !== undefined) out.errors.push(`${why}, yet its migrationOrder entry waits for ${e.after}, a step that comes after the owner's`);
+    const lovableFirst = (Array.isArray(e.afterMigrations) ? e.afterMigrations.map(String) : [])
+      .map((x) => (pending ?? []).find((f) => f.startsWith(`${x}_`)))
+      .filter((f) => f && !owner.has(f));
+    if (lovableFirst.length) out.errors.push(`${why}, yet it must apply after ${lovableFirst.join(" and ")}, which Lovable applies in this message`);
+    const before = (Array.isArray(e.before) ? e.before : []).map((b) => BEFORE_FN.exec(String(b))?.[1]).filter(Boolean);
+    const deploying = before.filter((fn) => { const r = byFn.get(fn); return !r || !(r.state === "live" || r.state === "live-ahead"); });
+    const note = [deploying.length ? `before ${deploying.join(" and ")}` : "", typeof e.note === "string" ? e.note : ""].filter(Boolean).join("; ");
+    out.steps.push({ file, note, held });
+  }
+  return out;
+}
+
+/**
+ * THE MESSAGE'S PLAN, from what is pending (OI-47b, NB-33): the owner steps
+ * (ownerStepPlan) and the Lovable steps (migrationPhases over every pending
+ * file that is not an owner step), with every error from both. The report
+ * builds its message from this. Pure apart from sqlOf.
+ */
+export function messagePlan({ pending = [], hold = [], policy, rows = [], onDisk = null, sqlOf }) {
+  const ownerFiles = ownerStepMigrations([...pending, ...hold], sqlOf);
+  const owner = ownerStepPlan(ownerFiles, policy, { hold, pending, rows });
+  const phases = migrationPhases(pending.filter((f) => !ownerFiles.includes(f)), policy, rows, onDisk);
+  phases.errors.push(...owner.errors);
+  return { phases, ownerSteps: owner.steps };
 }
 
 /** Rows whose live build is LATER than the one main carries: main is behind production (exit 8). Pure. */
@@ -1117,8 +1292,14 @@ export function checkoutRefusal({ head, originMain, fetched = true, behind = 0, 
  * under other names, 20260909212000, and the ledger's title matching would
  * count such a copy as applied). `dated` is datedAtDeploy's checks: a draft
  * names each one still due.
+ *
+ * OWNER FIRST (OI-47b). `ownerSteps` (messagePlan) are migrations Lovable's
+ * agent refuses because they read the vault: they are in no step below, and
+ * one line before step 1 tells the owner to run them in the SQL editor
+ * before sending, and tells Lovable they are not its steps. A held one is
+ * left to the hold line.
  */
-export function lovableMessage({ head, draftOf = null, phases, hold = [], holds = null, neverApply = [], neverApplyWhy = {}, toDeploy = [], unreachable = [], liveAhead = [], dated = [] }) {
+export function lovableMessage({ head, draftOf = null, phases, hold = [], holds = null, neverApply = [], neverApplyWhy = {}, toDeploy = [], unreachable = [], liveAhead = [], dated = [], ownerSteps = [] }) {
   const L = [];
   const holdsAny = hold.length || (holds && holds.length) || neverApply.length;
   const backendSteps = (phases.pre.length || holdsAny ? 1 : 0) + (toDeploy.length ? 1 : 0) + (phases.afterFunctions.length ? 1 : 0);
@@ -1140,6 +1321,10 @@ export function lovableMessage({ head, draftOf = null, phases, hold = [], holds 
   }
   L.push("Merging into main publishes the frontend by itself, so this commit's pages may already be serving in front of the old edge functions: work the steps below straight through, without a pause.");
   L.push("If a migration fails, stop and send its error (only a file whose own note below says to wait and apply it again may be retried, unedited): never edit, rename or re-stage a migration file.", "");
+  const owners = (ownerSteps ?? []).filter((s) => !s.held);
+  if (owners.length) {
+    L.push(`OWNER FIRST, before this message is sent (not a step for Lovable, whose agent refuses a migration that reads a stored key): run ${owners.length === 1 ? "this migration" : `these ${owners.length} migrations, in this order,`} yourself in the SQL editor, then record ${owners.length === 1 ? "it" : "each"} under appliedOutsideDrizzle in docs/deploy-ledger.json: ${owners.map((s, i) => `${i + 1}. ${s.file}${s.note ? ` (${s.note})` : ""}`).join("; ")}.`, "");
+  }
   let step = 0;
   const migs = (list, lead) => {
     L.push(`${++step}. ${lead}`);
@@ -1296,11 +1481,15 @@ async function main(argv) {
   const noMarker = rows.filter((r) => r.state === "no-marker");
   // Every migration file on disk, so an afterMigrations stamp that names none is an error.
   const onDisk = [...mig.applied, ...mig.pending, ...mig.hold, ...mig.neverApplyPresent];
-  const phases = migrationPhases(mig.pending, POLICY, rows, onDisk);
+  const sqlOf = (f) => readFileSync(join(MIG_DIR, f), "utf8");
+  // A file that reads the vault is the owner's step, in no Lovable step (OI-47b).
+  const { phases, ownerSteps } = messagePlan({ pending: mig.pending, hold: mig.hold, policy: POLICY, rows, onDisk, sqlOf });
   // A hold the ledger cannot check stops the message like an order rule (S12-032).
   const holds = holdStates(mig.hold, POLICY, rows);
   phases.errors.push(...holds.errors);
-  const late = lateStampViolations([...mig.pending, ...mig.hold], mig.applied, (f) => readFileSync(join(MIG_DIR, f), "utf8"));
+  const late = lateStampViolations([...mig.pending, ...mig.hold], mig.applied, sqlOf);
+  // A function that calls what only an unapplied migration creates must work without it (NB-33).
+  const callsAhead = callsAheadOfMigrations({ sources: functionSources(fns), pending: [...mig.pending, ...mig.hold, ...mig.neverApplyPresent], applied: mig.applied, sqlOf, policy: POLICY });
   const liveAhead = liveAheadRows(rows);
   // Text that names the deploy day must read today while its change is not live (datedAtDeploy).
   const dated = datedAtDeploy(POLICY, rows, (f) => { try { return readFileSync(join(ROOT, f), "utf8"); } catch { return null; } }, new Date().toISOString().slice(0, 10));
@@ -1332,7 +1521,7 @@ async function main(argv) {
   // Exit: 5 refused (not main), 6 an order rule cannot be met, 7 a late-stamped
   // migration would revert a later one, 8 main is behind a live build, 4 a
   // function could not be checked, 2 MUST BUMP. (3 is --against's.)
-  const exitFor = (withMessage) => (withMessage && refusal ? 5 : phases.errors.length ? 6 : late.length ? 7 : liveAhead.length ? 8
+  const exitFor = (withMessage) => (withMessage && refusal ? 5 : phases.errors.length || callsAhead.errors.length ? 6 : late.length ? 7 : liveAhead.length ? 8
     : unreachable.length ? 4 : unbumped.length ? 2 : 0);
   // 9: a constant dated at the deploy does not read today (datedAtDeploy), with
   // --message only, after every refusal that stops the message before it.
@@ -1343,7 +1532,7 @@ async function main(argv) {
     // names would push the JSON past the 64 KB a pipe takes before exit cuts it
     // off (section 49 reads it through one), so only its length is printed.
     const { applied, ...migOut } = mig;
-    console.log(JSON.stringify({ head, checkout, stubs, toDeploy, unreachable, unbumped, sharedOnly, noMarker, migrations: { ...migOut, appliedCount: applied.length }, phases, holds: holds.holds, staleHolds: holds.stale, staleRollbacks: rb.stale, late, liveAhead, dated, rows }, null, 2));
+    console.log(JSON.stringify({ head, checkout, stubs, toDeploy, unreachable, unbumped, sharedOnly, noMarker, migrations: { ...migOut, appliedCount: applied.length }, phases, ownerSteps, aheadOfMigration: callsAhead, holds: holds.holds, staleHolds: holds.stale, staleRollbacks: rb.stale, late, liveAhead, dated, rows }, null, 2));
     process.exit(exitFor(false));
   }
   if (args.has("--record-deploy")) {
@@ -1405,6 +1594,14 @@ async function main(argv) {
     console.log(`\nORDER RULES THAT CANNOT BE MET (docs/deploy-ledger.json migrationOrder): no message until they are fixed:`);
     for (const e of phases.errors) console.log(`  ${e}`);
   }
+  if (ownerSteps.length) {
+    console.log(`\nOWNER STEPS (each reads the vault, which Lovable's agent refuses: the owner runs it in the SQL editor before the message, then records it under appliedOutsideDrizzle):`);
+    for (const s of ownerSteps) console.log(`  ${s.held ? "HELD  " : ""}${s.file}${s.note ? ` (${s.note})` : ""}`);
+  }
+  if (callsAhead.calls.length) {
+    console.log(`\nCALLS AHEAD OF THEIR MIGRATION (Lovable deploys functions before migrations, so each function must work while the object is absent; docs/deploy-ledger.json absentTolerant):`);
+    for (const c of callsAhead.calls) console.log(`  ${c.tolerated ? "TOLERATED" : "UNCHECKED"}  ${c.fn} calls ${c.object}, which only ${c.files.join(" and ")} create${c.files.length === 1 ? "s" : ""}${c.tolerated ? `: ${c.tolerated}` : ""}`);
+  }
   if (late.length) {
     console.log(`\nLATE STAMPS: an unapplied migration defines or alters what an applied migration with a later stamp defines; applying it would put the older definition back (no message until each is resolved):`);
     for (const v of late) console.log(`  ${v.pending}  touches  ${v.objects.join(", ")}  defined by the later ${v.applied}`);
@@ -1419,6 +1616,8 @@ async function main(argv) {
     console.log(`\n──────── Lovable message ────────\n`);
     if (phases.errors.length) {
       console.log(`REFUSED: the order rules above cannot be met, so no order can be printed.`);
+    } else if (callsAhead.errors.length) {
+      console.log(`REFUSED: a function above calls what only an unapplied migration creates, and Lovable deploys functions ahead of their migrations; record how each copes under absentTolerant first.`);
     } else if (late.length) {
       console.log(`REFUSED: a late-stamped migration above would revert a later one; resolve it before any message is printed.`);
     } else if (args.has("--message") && refusal) {
@@ -1429,7 +1628,7 @@ async function main(argv) {
       let branch = "";
       try { branch = git("rev-parse", "--abbrev-ref", "HEAD"); } catch { /* detached */ }
       const draftOf = args.has("--message") ? null : (branch && branch !== "HEAD" ? branch : head);
-      for (const l of lovableMessage({ head, draftOf, phases, hold: mig.hold, holds: holds.holds, neverApply: mig.neverApplyPresent, neverApplyWhy: mig.neverApplyWhy, toDeploy, unreachable, liveAhead, dated: dated.checks })) console.log(l);
+      for (const l of lovableMessage({ head, draftOf, phases, hold: mig.hold, holds: holds.holds, neverApply: mig.neverApplyPresent, neverApplyWhy: mig.neverApplyWhy, toDeploy, unreachable, liveAhead, dated: dated.checks, ownerSteps })) console.log(l);
     }
   }
   process.exitCode = exitWithDated(args.has("--message"));
