@@ -248,7 +248,7 @@ describe("a finding buried in its own method", () => {
     expect(JOBS).toMatch(/jobsPage\.salaryAbove/);
     expect(JOBS).toMatch(/jobsPage\.salaryBelow/);
     expect(JOBS).toMatch(/jobsPage\.salaryLevel/);
-    expect(JOBS).toMatch(/detailSalaryContext\.n\.toLocaleString\(\)/);
+    expect(JOBS).toMatch(/fmtCount\(detailSalaryContext\.n\)/);
   });
 
   it("every new string is translated in all nine locales, not defaulted into English", () => {
