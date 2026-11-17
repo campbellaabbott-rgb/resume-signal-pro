@@ -360,7 +360,8 @@ export const CV_LOCALES: Record<string, CvLocaleConfig> = {
         lengthNote: "1–2 Seiten, tabellarisch",
         photoNote: "Die DACH-Region hat die stärkste Foto-Kultur Europas; fast alle Lebensläufe enthalten eines.",
         personalDataNote: "Geburtsdatum üblich; die Konventionen folgen eng dem deutschen Vorbild.",
-        conventions: ["Tabellarischer Aufbau wie in Deutschland", "Zeugnisse werden erwartet"],
+        // Translated from COUNTRY_STANDARDS.AT, not adapted from Germany's list (S14X-215).
+        conventions: ["Tabellarischer Lebenslauf nach deutschem Muster", "Akademische Titel (Mag., Dipl.-Ing.) zählen mehr als in Deutschland"],
       },
       CH: {
         countryName: "Schweiz",

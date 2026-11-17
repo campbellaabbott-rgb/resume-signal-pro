@@ -18,6 +18,7 @@
       "copied": "Link copiado",
       "copyLink": "Copiar link",
       "more": "Mais ações para {{name}}",
+      "moreThis": "Mais ações para este portal",
       "watchBoards": "Acompanhar os portais chamados «{{token}}»",
       "watchGeneric": "Acompanhar o portal «{{label}}»",
       "watchThis": "Acompanhar este portal"
@@ -65,6 +66,7 @@
     },
     "facts": {
       "countriesLabel": "A maioria das vagas em",
+      "countriesLabelPooled": "A maioria das vagas de todo o sistema de recrutamento de {{company}} em",
       "payLabel": "Salário indicado em",
       "payValue": "{{k}} de {{n}}",
       "systemLabel": "Sistema de recrutamento",
@@ -75,6 +77,8 @@
     "factsLabel": "Sobre este portal",
     "h1Generic": "Vagas no portal «{{label}}»",
     "h1GenericSystem": "Vagas no portal «{{label}}» ({{system}})",
+    "h1SystemBoard": "Vagas em um portal {{system}}",
+    "h1ThisBoard": "Vagas neste portal",
     "mix": {
       "basis": "Os maiores grupos entre as vagas abertas que lemos a {{date}}; as vagas de áreas que não reconhecemos ficam de fora.",
       "basisUndated": "Os maiores grupos entre as vagas abertas que lemos; as vagas de áreas que não reconhecemos ficam de fora.",
@@ -99,6 +103,9 @@
       "floor_one": "Base típica da faixa salarial indicada: {{amount}} · mediana de {{m}} anúncio em {{currency}}",
       "floor_other": "Base típica da faixa salarial indicada: {{amount}} · mediana de {{m}} anúncios em {{currency}}",
       "floor_many": "Base típica da faixa salarial indicada: {{amount}} · mediana de {{m}} anúncios em {{currency}}",
+      "floorPooled_one": "Base típica da faixa salarial indicada: {{amount}} · mediana de {{m}} anúncio em {{currency}} em todo o sistema de recrutamento desta empresa",
+      "floorPooled_many": "Base típica da faixa salarial indicada: {{amount}} · mediana de {{m}} anúncios em {{currency}} em todo o sistema de recrutamento desta empresa",
+      "floorPooled_other": "Base típica da faixa salarial indicada: {{amount}} · mediana de {{m}} anúncios em {{currency}} em todo o sistema de recrutamento desta empresa",
       "read": "lido a {{date}}",
       "stated": "Salário indicado em {{k}} de {{n}} anúncios",
       "title": "Salário"
@@ -198,6 +205,7 @@
     "boardTotal_one": "O portal listava {{total}} vaga no total quando o lemos {{ago}}.",
     "boardTotal_other": "O portal listava {{total}} vagas no total quando o lemos {{ago}}.",
     "boardTotal_many": "O portal listava {{total}} vagas no total quando o lemos {{ago}}.",
-    "pooledBoards": "Contadas em {{n}} portais do sistema de recrutamento desta empresa"
+    "pooledBoards": "Contadas em {{n}} portais do sistema de recrutamento desta empresa",
+    "employerChipOneBoard": "Histórico de contratações de um dos {{n}} quadros de vagas deste empregador: {{board}}"
   }
 }
