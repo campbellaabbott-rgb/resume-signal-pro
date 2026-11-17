@@ -15,23 +15,31 @@ import {
   FileText
 } from 'lucide-react';
 
-import bannerLeaderboard from '@/assets/banners/banner-leaderboard.png';
-import bannerSquare from '@/assets/banners/banner-square.png';
-import bannerSkyscraper from '@/assets/banners/banner-skyscraper.png';
-
 interface MarketingKitProps {
   referralLink: string;
   referralCode: string;
 }
 
+/**
+ * One banner, at the pixel size its files have (S14X-213). The label, the
+ * preview, the embed code and the download name are all read from width and
+ * height, and the files sit at fixed addresses under public/affiliate/, so a
+ * banner an affiliate embeds keeps working when the site is rebuilt (a
+ * bundled asset's address carries a content hash and changes with the file).
+ * Each size comes as a PNG, for mail and social posts, and as an SVG, which
+ * scales on a web page.
+ */
 interface BannerAsset {
   id: string;
   name: string;
-  dimensions: string;
   description: string;
-  src: string;
-  aspectRatio: string;
+  width: number;
+  height: number;
+  png: string;
+  svg: string;
 }
+
+type BannerFormat = 'png' | 'svg';
 
 interface EmailTemplate {
   id: string;
@@ -45,26 +53,29 @@ const bannerAssets: BannerAsset[] = [
   {
     id: 'leaderboard',
     name: 'Leaderboard Banner',
-    dimensions: '728 × 90',
-    description: 'Perfect for website headers and footers',
-    src: bannerLeaderboard,
-    aspectRatio: '728/90',
+    description: 'For website headers and footers',
+    width: 728,
+    height: 90,
+    png: '/affiliate/banner-728x90.png',
+    svg: '/affiliate/banner-728x90.svg',
   },
   {
-    id: 'square',
-    name: 'Square Banner',
-    dimensions: '300 × 250',
-    description: 'Great for sidebars and social media',
-    src: bannerSquare,
-    aspectRatio: '1/1',
+    id: 'medium-rectangle',
+    name: 'Medium Rectangle Banner',
+    description: 'For sidebars and between paragraphs of an article',
+    width: 300,
+    height: 250,
+    png: '/affiliate/banner-300x250.png',
+    svg: '/affiliate/banner-300x250.svg',
   },
   {
     id: 'skyscraper',
     name: 'Skyscraper Banner',
-    dimensions: '160 × 600',
-    description: 'Ideal for sidebar placements',
-    src: bannerSkyscraper,
-    aspectRatio: '160/600',
+    description: 'For tall sidebar placements',
+    width: 160,
+    height: 600,
+    png: '/affiliate/banner-160x600.png',
+    svg: '/affiliate/banner-160x600.svg',
   },
 ];
 
@@ -143,9 +154,8 @@ This free scanner shows you the actual parse of your file and exactly what's mis
 → Get your free scan: {{REFERRAL_LINK}}
 
 **What it does:**
-- Analyzes your resume against real ATS algorithms
-- Identifies formatting issues that cause rejection
-- Suggests missing keywords for your industry
+- Shows how your file parses: the text and sections that come through, and the layouts that scramble them
+- Lists the keywords your resume is missing
 - Takes 30 seconds (seriously)
 
 **Why I recommend it:**
@@ -198,14 +208,15 @@ export function MarketingKit({ referralLink, referralCode }: MarketingKitProps) 
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleDownloadBanner = async (banner: BannerAsset) => {
+  const handleDownloadBanner = async (banner: BannerAsset, format: BannerFormat) => {
     try {
-      const response = await fetch(banner.src);
+      const response = await fetch(banner[format]);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `affiliate-${banner.id}-${referralCode}.png`;
+      a.download = `resume-booster-${banner.width}x${banner.height}${referralCode ? `-${referralCode}` : ''}.${format}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -216,9 +227,11 @@ export function MarketingKit({ referralLink, referralCode }: MarketingKitProps) 
     }
   };
 
+  // The PNG, which mail clients show as well as web pages; rel="sponsored"
+  // is how a search engine is told that a link is paid for.
   const handleCopyHtmlEmbed = (banner: BannerAsset) => {
-    const html = `<a href="${referralLink}" target="_blank" rel="noopener">
-  <img src="${window.location.origin}${banner.src}" alt="Resume ATS Scanner" style="max-width: 100%; height: auto;" />
+    const html = `<a href="${referralLink}" target="_blank" rel="sponsored noopener">
+  <img src="${window.location.origin}${banner.png}" width="${banner.width}" height="${banner.height}" alt="Resume Booster: see how an ATS reads your resume, free scan" style="max-width: 100%; height: auto;" />
 </a>`;
     navigator.clipboard.writeText(html);
     toast.success('HTML embed code copied!');
@@ -250,8 +263,8 @@ export function MarketingKit({ referralLink, referralCode }: MarketingKitProps) 
 
           <TabsContent value="banners" className="space-y-6">
             <p className="text-sm text-muted-foreground">
-              Download high-quality banners to use on your website, blog, or social media. 
-              Your referral code is automatically included in tracking.
+              Each banner is the size on its label. Download a PNG for email and social posts or an SVG for web pages,
+              or copy the HTML embed, which links the banner to your referral URL.
             </p>
             
             <div className="grid gap-6">
@@ -260,15 +273,15 @@ export function MarketingKit({ referralLink, referralCode }: MarketingKitProps) 
                   key={banner.id} 
                   className="border rounded-lg p-4 space-y-4"
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                       <h4 className="font-medium">{banner.name}</h4>
                       <p className="text-sm text-muted-foreground">{banner.description}</p>
                       <Badge variant="secondary" className="mt-1">
-                        {banner.dimensions}
+                        {banner.width} × {banner.height}
                       </Badge>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button 
                         size="sm" 
                         variant="outline"
@@ -279,20 +292,32 @@ export function MarketingKit({ referralLink, referralCode }: MarketingKitProps) 
                       </Button>
                       <Button 
                         size="sm"
-                        onClick={() => handleDownloadBanner(banner)}
+                        aria-label={`Download the ${banner.width} × ${banner.height} banner as PNG`}
+                        onClick={() => handleDownloadBanner(banner, 'png')}
                       >
                         <Download className="h-4 w-4 mr-1" />
-                        Download
+                        PNG
+                      </Button>
+                      <Button 
+                        size="sm"
+                        variant="outline"
+                        aria-label={`Download the ${banner.width} × ${banner.height} banner as SVG`}
+                        onClick={() => handleDownloadBanner(banner, 'svg')}
+                      >
+                        <Download className="h-4 w-4 mr-1" />
+                        SVG
                       </Button>
                     </div>
                   </div>
                   
                   <div className="bg-muted/30 rounded-lg p-4 flex justify-center">
                     <img 
-                      src={banner.src} 
+                      src={banner.png} 
                       alt={banner.name}
-                      className="max-w-full h-auto max-h-48 object-contain rounded"
-                      style={{ aspectRatio: banner.aspectRatio }}
+                      width={banner.width}
+                      height={banner.height}
+                      className="max-w-full h-auto max-h-48 w-auto object-contain rounded"
+                      style={{ aspectRatio: `${banner.width} / ${banner.height}` }}
                     />
                   </div>
                 </div>

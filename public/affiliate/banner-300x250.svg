@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="250" viewBox="0 0 300 250" role="img" aria-labelledby="banner-title" font-family="Inter, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+  <title id="banner-title">Resume Booster: see how an ATS reads your resume. Free scan: the parse of your file and the keywords you’re missing. Scan my resume free. No sign-up.</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0c1222"/>
+      <stop offset="1" stop-color="#172544"/>
+    </linearGradient>
+  </defs>
+  <rect width="300" height="250" fill="url(#bg)"/>
+  <g transform="translate(24 20) scale(0.62)">
+    <path d="M4 0h26l14 14v38a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V4a4 4 0 0 1 4-4z" fill="#ffffff"/>
+    <path d="M30 0v10a4 4 0 0 0 4 4h10z" fill="#c9d8f5"/>
+    <rect x="8" y="20" width="20" height="4" rx="2" fill="#70a5ff"/>
+    <rect x="8" y="29" width="28" height="3" rx="1.5" fill="#b7c4dc"/>
+    <rect x="8" y="36" width="24" height="3" rx="1.5" fill="#b7c4dc"/>
+    <rect x="8" y="43" width="16" height="3" rx="1.5" fill="#b7c4dc"/>
+  </g>
+  <text x="60" y="42" font-size="11" font-weight="700" letter-spacing="1.2" fill="#70a5ff">RESUME BOOSTER</text>
+  <text font-size="23" font-weight="700" fill="#ffffff">
+    <tspan x="24" y="86">See how an ATS</tspan>
+    <tspan x="24" y="114">reads your resume</tspan>
+  </text>
+  <text font-size="13" fill="#c7d2e8">
+    <tspan x="24" y="142">Free scan: the parse of your file</tspan>
+    <tspan x="24" y="160">and the keywords you’re missing</tspan>
+  </text>
+  <rect x="24" y="176" width="252" height="40" rx="20" fill="#70a5ff"/>
+  <text x="150" y="201" font-size="15" font-weight="700" fill="#0c1222" text-anchor="middle">Scan my resume free</text>
+  <text x="150" y="236" font-size="11" fill="#93a3c2" text-anchor="middle">No sign-up</text>
+</svg>
