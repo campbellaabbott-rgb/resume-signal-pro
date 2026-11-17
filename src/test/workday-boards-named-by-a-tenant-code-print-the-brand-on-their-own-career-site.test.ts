@@ -8,14 +8,15 @@
  * independent re-check of 2026-11-17 judged 100 of its rows. Migration
  * 20261111150000 ships the stratum the re-check measured above the bar (high
  * confidence, hand-reviewed), less every key a pattern rule flags, plus the
- * rows the re-check judged, each wrong one corrected: 431 keys over 370
+ * rows the re-check judged, each wrong one corrected, less the 14 keys whose
+ * name was read on a page the tenant's robots.txt disallows: 417 keys over 357
  * tenants. Every name and every evidence row rests on the employer's own words
- * in the 2026-11-08 capture; none on the re-check's 2026-11-17 reads. Judged
- * on the 11-08 captures alone the stratum measures 33/36 (bound 78.2%) under
- * the re-check's own precedents and clears 85% only under readings that count
- * hss and svha as the re-check did: the file's header says so, and holding the
- * stratum is the lead's or the owner's call. The list, with every key left out
- * and why, is the names build's final-names.json.
+ * in the 2026-11-08 capture; none on the re-check's 2026-11-17 reads. A fresh
+ * sample of the list on 2026-11-18 (50 keys, three judges each, the 11-08
+ * captures only, no live read) found 50/50 right by majority, a Wilson 95%
+ * lower bound of 92.9% against the 85% bar fixed before the judging, so the
+ * list ships. The list, with every key left out and why, is the names build's
+ * final-names.json; every verdict of the sample is in its confirm/result.json.
  *
  * Checked: the file holds that list, pinned here by a hash of its key=name
  * pairs so that any machine fails on a changed name, and nothing a main
@@ -51,15 +52,15 @@ const TABLE_SQL = readFileSync(resolve(MIGRATIONS, FILES.find((f) => f.startsWit
 const FINAL = resolve(homedir(), ".config/resumebooster/push-all-2026-11-17/names/final-names.json");
 
 /** The counts final-names.json gives: keys, tenants, rows the boards served on 2026-11-08. */
-const KEYS = 431;
-const TENANTS = 370;
-const ROWS = 29_020;
+const KEYS = 417;
+const TENANTS = 357;
+const ROWS = 28_524;
 /**
  * sha256 of the file's key=name pairs, one per line, sorted: the names build's list, pinned in the
  * repository, so a name changed in both the file and the mirror fails on every machine, not only on
  * the one that holds final-names.json. A deliberate change re-pins it from the names build.
  */
-const PIN = "39b95885e9090607dc39c4e84d6323de6fca93569349e51fab062070ee4a8799";
+const PIN = "4b2e7fb3c37db41b53adf300bf241eaaa884a49aba65afce7294b235033d066c";
 
 const lit = (s: string) => s.slice(1, -1).replace(/''/g, "'");
 const STR = "'(?:[^']|'')*'";
@@ -89,7 +90,6 @@ const WRONG: [string, string, string][] = [
   ["mfs", "Mass Financial Services", "MFS"],
   ["nghs", "NGHS", "Northeast Georgia Health System"],
   ["americanglobal", "American", "American Global"],
-  ["lumaenergy", "New LUMA", "LUMA"],
   ["woundedwarriorproject", "Wounded Warrior Project | WWP", "Wounded Warrior Project"],
   ["gcu~wd1~Orbis", "Grand Canyon Education", "Orbis Education"],
   ["cba~wd3~CommBank_Careers", "Commonwealth Bank", "CommBank"],
@@ -105,6 +105,8 @@ const LEFT_OUT: Record<string, string[]> = {
   "a pattern rule flagged it": ["christianacare", "landolakes", "hshs", "dcsd", "orix", "melcoresorts", "uvmhealth", "comfortsystemsusa~wd1~cusasw", "comfortsystemsusa~wd1~MidSouth", "bbinsurance~wd1~ArrowheadCareers", "thgrp~wd12~HeritageConstructionMaterials", "vhaca~wd10~Champlain", "crystalsugar", "melocheinc"],
   "its name folds equal to another catalogued employer's": ["deloitteie", "bdoau", "goodwinprocter", "newschool", "dennys", "morsco"],
   "code-unresolved in the corpus": ["onehealthineers", "mmc", "ncr", "campbellsoup", "blackstone", "suffolkcountyny"],
+  // lumaenergy's corrected name (LUMA, not the corpus's "New LUMA") goes with these.
+  "its name was read on a page the tenant's robots.txt disallows": ["citicclsa", "dallascollege", "davispolk", "eset", "fimc", "lumaenergy", "massmutual", "pepperlfuchs", "rbs", "rgare", "sdguthrie~wd3~NBPOL", "sdguthrie~wd3~SDGUTHRIEMINAMAS", "situsamc", "ucf~wd1~careers"],
 };
 
 describe("the file holds the names build's list, and only new keys", () => {

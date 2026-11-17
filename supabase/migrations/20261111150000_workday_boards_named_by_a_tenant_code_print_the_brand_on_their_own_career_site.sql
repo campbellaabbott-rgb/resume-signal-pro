@@ -7,22 +7,23 @@
 -- the legal hiring entity only where the site states no brand. The names
 -- corpus of 2026-11-08 (board program BB-02, wave W8) found 1,430 tenants
 -- printing their code ("Nghs", "Owensminor", "Beigene") on 82,757 served rows.
--- This file names 370 of them: 431 company_name_overrides keys over 29,020
+-- This file names 357 of them: 417 company_name_overrides keys over 28,524
 -- rows served on 2026-11-08, each with its evidence row.
 --
 -- WHERE EVERY NAME CAME FROM. The employer's own words for itself on its own
 -- Workday career site, as the corpus read it on 2026-11-08 (GET only,
--- robots.txt read first and honoured, at most one request a second per host,
--- never logged in): the page title and og tags, the CXS sidebar
--- (/wday/cxs/<tenant>/<site>/sidebar) and one to three postings (their
--- hiringOrganization). Each row of public.company_name_evidence
--- (20261025100000 made it; only the service role reads it) carries the page
--- the words were read on, the words themselves holding the name letter for
--- letter, and the day of the read, 2026-11-08 for every row. The independent
--- re-check of 2026-11-17 judged names, but its reads of Workday sites were
--- made with curl after Workday's bot check had refused its reader, so no
--- evidence row cites them and no name rests on them alone. Nothing is guessed:
--- a name the employer's 11-08 text does not hold is not here.
+-- robots.txt read first, at most one request a second per host, never logged
+-- in; a key whose page that robots.txt disallows is left out): the page title
+-- and og tags, the CXS sidebar (/wday/cxs/<tenant>/<site>/sidebar) and one to
+-- three postings (their hiringOrganization). Each row of
+-- public.company_name_evidence (20261025100000 made it; only the service role
+-- reads it) carries the page the words were read on, the words themselves
+-- holding the name letter for letter, and the day of the read, 2026-11-08 for
+-- every row. The independent re-check of 2026-11-17 judged names, but its
+-- reads of Workday sites were made with curl after Workday's bot check had
+-- refused its reader, so no evidence row cites them and no name rests on them
+-- alone. Nothing is guessed: a name the employer's 11-08 text does not hold is
+-- not here.
 --
 -- THE INCLUSION RULE AND THE MEASURED PRECISION. The re-check read 100 rows
 -- (96 tenants) of the corpus and replaces the owner's 30-row spot check. Its
@@ -42,10 +43,21 @@
 -- set aside, its capture never naming it), 33/37, bound 75.3% with vcuhealth
 -- counted wrong, and clear 85% only when hss and svha are counted as the
 -- re-check counted them (35/36, bound 85.8%) or svha so and hss set aside
--- (34/35, bound 85.5%). OPEN BEFORE THE PASTE: the lead or the owner accepts
--- that bound, or the stratum is held (its 361 keys), leaving the 70 re-checked
--- keys. The count of each row is in the names build's final-names.json
--- (precision0811).
+-- (34/35, bound 85.5%). The count of each row is in the names build's
+-- final-names.json (precision0811).
+--
+-- THE CONFIRMING SAMPLE, 2026-11-18, settles it by measuring this list itself.
+-- 50 keys were drawn from it before any judging (the 10 serving the most rows
+-- and 40 by a seeded draw, over the 345 keys no earlier sample had read and
+-- robots.txt does not reach), and three judges read each on its 2026-11-08
+-- capture alone, with no read of any Workday site: a name is right only if it
+-- is the name the employer itself uses for that board on that site (brand over
+-- legal entity; never a logo file label, a photo's alt text, a slogan, a
+-- parent on a child brand's site, or a truncation the employer never uses
+-- alone). 50/50 were right by majority (50 unanimously), a Wilson 95% lower
+-- bound of 92.9% against the 85% bar fixed before the judging, so the list
+-- ships. Every verdict, with the capture words it quotes, is in the names
+-- build's confirm/result.json.
 --
 -- Every wrong-row pattern the re-check found is then a rule over the whole
 -- corpus, judged on the words of each board's own 11-08 capture, and a key any
@@ -69,46 +81,51 @@
 -- which was built from nghs itself.
 --
 -- THE ROWS THE RE-CHECK JUDGED ship from any stratum with the name it judged
--- right (70 keys, 54 tenants, 7,353 rows), each with its evidence from the
+-- right (69 keys, 53 tenants, 7,339 rows), each with its evidence from the
 -- 11-08 capture, each sampled wrong row corrected: tscfl is Tallahassee State
 -- College (not "HVAC Photo"), mfs MFS, nghs Northeast Georgia Health System,
--- americanglobal American Global, lumaenergy LUMA, woundedwarriorproject
--- Wounded Warrior Project, cba's CommBank board CommBank (not "Commonwealth
--- Bank"), gcu's Orbis board Orbis Education, erm ERM, isc ISC, agreenspace
--- Team Global Express. Seven ship though an 11-08 rule flags them, on the
--- 11-08 words final-names.json quotes for each (support0811): bobsdf, odfl,
--- christmanco and Madewell's board, where a posting's hiringOrganization holds
--- the brand the site writes; tscfl, whose site states no brand; geha, which
--- writes its name out once and then goes by G.E.H.A; citjpl, written after its
--- owners' names. Left out, keeping today's name: travelhrportal (the 11-08
--- site states no brand and its postings are CWT's; "Amex GBT" rests only on
--- the 11-17 reads), vcuhealth (the 11-08 site never names itself), hss (the
--- site writes only HSS; the expansion stands only in Workday's coded label, as
--- mfs's did) and gcu's GCU board (the same shape). The stratum itself adds 285
--- tenant keys (19,520 rows) and 76 board keys on 31 tenants of several
--- employers (2,147 rows).
+-- americanglobal American Global, woundedwarriorproject Wounded Warrior
+-- Project, cba's CommBank board CommBank (not "Commonwealth Bank"), gcu's
+-- Orbis board Orbis Education, erm ERM, isc ISC, agreenspace Team Global
+-- Express. Seven ship though an 11-08 rule flags them, on the 11-08 words
+-- final-names.json quotes for each (support0811): bobsdf, odfl, christmanco
+-- and Madewell's board, where a posting's hiringOrganization holds the brand
+-- the site writes; tscfl, whose site states no brand; geha, which writes its
+-- name out once and then goes by G.E.H.A; citjpl, written after its owners'
+-- names. Left out, keeping today's name: travelhrportal (the 11-08 site states
+-- no brand and its postings are CWT's; "Amex GBT" rests only on the 11-17
+-- reads), vcuhealth (the 11-08 site never names itself), hss (the site writes
+-- only HSS; the expansion stands only in Workday's coded label, as mfs's did)
+-- and gcu's GCU board (the same shape); lumaenergy (corrected to LUMA) leaves
+-- with the robots.txt keys below. The stratum itself adds 275 tenant keys
+-- (19,113 rows) and 73 board keys on 29 tenants of several employers (2,072
+-- rows).
 --
 -- TENANTS OF SEVERAL EMPLOYERS are named board by board, by the exact token
 -- (the trigger reads a full-token key first), never by the tenant slug, so a
 -- site added later keeps its stored name instead of taking one member's. A
 -- tenant with any full-token key is read one site at a time by
 -- get_company_intel and get_similar_companies (workday_site_is_own_employer,
--- 20261012135000): 39 tenants here, 38 of them found by the corpus hosting
+-- 20261012135000): 37 tenants here, 36 of them found by the corpus hosting
 -- several employers, and maxar, whose one board named here (Vantor) sits on a
 -- tenant whose robots.txt lists staffing agencies' sites.
 --
--- LEFT OUT, KEEPING TODAY'S NAME: the strata under the bar (high confidence
--- machine-reviewed 263 tenants, medium hand-reviewed 417, medium
--- machine-reviewed 235, low 33); 108 keys a rule flagged (5,113 rows); the 27
--- code-unresolved tenants and the 7 unread ones, which the corpus never
--- proposed; tenants the re-check found with no single right name or a name in
--- motion (gi carries TYLin, Introba and Landrum & Brown; warnerbros read
--- Warner Bros. on 2026-11-08 and Skydance on 2026-11-17), and the four
--- re-checked keys above whose name the 11-08 capture does not support; 9 keys
--- main already names; and 10 names that fold equal to another catalogued
--- employer's shown name ("Deloitte", "BDO", "Goodwin"), which the company
--- suggest and the clusters would merge (S11-134). The list, every left-out key
--- and its reason are in the names build's final-names.json.
+-- LEFT OUT, KEEPING TODAY'S NAME: 14 keys (496 rows) whose name was read on a
+-- page the tenant's robots.txt, as the 2026-11-08 capture holds it, disallows
+-- (citicclsa, dallascollege, davispolk, eset, fimc, lumaenergy, massmutual,
+-- pepperlfuchs, rbs, rgare, sdguthrie~wd3~NBPOL,
+-- sdguthrie~wd3~SDGUTHRIEMINAMAS, situsamc and ucf~wd1~careers); the strata
+-- under the bar (high confidence machine-reviewed 263 tenants, medium
+-- hand-reviewed 417, medium machine-reviewed 235, low 33); 108 keys a rule
+-- flagged (5,113 rows); the 27 code-unresolved tenants and the 7 unread ones,
+-- which the corpus never proposed; tenants the re-check found with no single
+-- right name or a name in motion (gi carries TYLin, Introba and Landrum &
+-- Brown; warnerbros read Warner Bros. on 2026-11-08 and Skydance on
+-- 2026-11-17), and the four re-checked keys above whose name the 11-08 capture
+-- does not support; 9 keys main already names; and 10 names that fold equal to
+-- another catalogued employer's shown name ("Deloitte", "BDO", "Goodwin"),
+-- which the company suggest and the clusters would merge (S11-134). The list,
+-- every left-out key and its reason are in the names build's final-names.json.
 --
 -- A NAME ALREADY SET IS KEPT. ON CONFLICT DO NOTHING: a key the table
 -- already holds, from an earlier file or set by hand, keeps its name, and
@@ -116,7 +133,7 @@
 --
 -- THE LANE'S ONE READ. job-board's name-sync lane reads company_name_overrides
 -- in one PostgREST answer, which returns at most 1,000 rows. The migrations
--- leave 505 rows before this file and 936 after it; the self-check
+-- leave 505 rows before this file and 922 after it; the self-check
 -- raises above 1,000, and the next names file waits until the lane pages
 -- that read.
 --
@@ -128,7 +145,7 @@
 -- name_sync_progress after the names exist.
 --
 -- ORDER: after 20261108100000 (applied) and after the frontend publish that
--- carries src/lib/employer-names.ts with the same 431 rows, so the bake and
+-- carries src/lib/employer-names.ts with the same 417 rows, so the bake and
 -- the app print a name the moment the lane writes it. No function deploys
 -- with it.
 --
@@ -247,7 +264,6 @@ INSERT INTO public.company_name_overrides (slug, display_name) VALUES
   ('chghealthcare', 'CHG Healthcare'),
   ('christmanco', 'The Christman Company'),
   ('chrobinson', 'C.H. Robinson'),
-  ('citicclsa', 'CITIC Securities International'),
   ('citjpl', 'Jet Propulsion Laboratory'),
   ('cityoforlando', 'City of Orlando'),
   ('clearesult', 'CLEAResult'),
@@ -279,9 +295,7 @@ INSERT INTO public.company_name_overrides (slug, display_name) VALUES
   ('csusystem', 'Colorado State University'),
   ('daikinapplied', 'Daikin Applied'),
   ('dallascityhall', 'City of Dallas'),
-  ('dallascollege', 'Dallas College'),
   ('datev', 'DATEV'),
-  ('davispolk', 'Davis Polk'),
   ('dealertire~wd5~4710', 'Dent Wizard'),
   ('dealertire~wd5~Sonsio', 'Sonsio'),
   ('destinationpet', 'Destination Pet'),
@@ -306,7 +320,6 @@ INSERT INTO public.company_name_overrides (slug, display_name) VALUES
   ('epicorsoftware', 'Epicor'),
   ('erm', 'ERM'),
   ('eroadgroup', 'EROAD'),
-  ('eset', 'ESET'),
   ('etch', 'Dolly Parton Children''s Hospital'),
   ('factset', 'FactSet'),
   ('fanniemae', 'Fannie Mae'),
@@ -314,7 +327,6 @@ INSERT INTO public.company_name_overrides (slug, display_name) VALUES
   ('ffive', 'F5'),
   ('fib', 'First Interstate Bank'),
   ('fico', 'FICO'),
-  ('fimc', 'Fairway Independent Mortgage'),
   ('firstam~wd1~fctcareers', 'FCT'),
   ('firstam~wd1~firstamericancareers', 'First American'),
   ('firstquality', 'First Quality'),
@@ -390,7 +402,6 @@ INSERT INTO public.company_name_overrides (slug, display_name) VALUES
   ('loewshotels', 'Loews Hotels'),
   ('loganhealth', 'Logan Health'),
   ('lplfinancial', 'LPL Financial'),
-  ('lumaenergy', 'LUMA'),
   ('luriechildrens', 'Ann & Robert H. Lurie Children''s Hospital of Chicago'),
   ('madrigalpharma', 'Madrigal'),
   ('mainegeneral', 'MaineGeneral'),
@@ -398,7 +409,6 @@ INSERT INTO public.company_name_overrides (slug, display_name) VALUES
   ('marathonhealth', 'Marathon Health'),
   ('maryfreebed', 'Mary Free Bed Rehabilitation Hospital'),
   ('marywashingtonhealthcare', 'Mary Washington Healthcare'),
-  ('massmutual', 'MassMutual'),
   ('mattressfirm', 'Mattress Firm'),
   ('maxar~wd1~Vantor', 'Vantor'),
   ('mbda', 'MBDA'),
@@ -455,7 +465,6 @@ INSERT INTO public.company_name_overrides (slug, display_name) VALUES
   ('palmbeachstate', 'Palm Beach State College'),
   ('papedawson', 'Pape-Dawson'),
   ('pciservices', 'PCI Pharma Services'),
-  ('pepperlfuchs', 'Pepperl+Fuchs'),
   ('permianres', 'Permian Resources'),
   ('pfg~wd3~QFCareers', 'Quality Foods'),
   ('pfg~wd3~SaveonfoodsCareers', 'Save-On-Foods'),
@@ -477,10 +486,8 @@ INSERT INTO public.company_name_overrides (slug, display_name) VALUES
   ('quadreal~wd10~quadreal', 'QuadReal'),
   ('racwa', 'RAC'),
   ('rb', 'Federal Reserve System'),
-  ('rbs', 'NatWest Group'),
   ('recoveryfocus', 'Waythrough'),
   ('redrobin', 'Red Robin'),
-  ('rgare', 'RGA'),
   ('richlandonline', 'Richland County'),
   ('riministreet', 'Rimini Street'),
   ('ringcentral', 'RingCentral'),
@@ -500,8 +507,6 @@ INSERT INTO public.company_name_overrides (slug, display_name) VALUES
   ('sbasite', 'SBA Communications'),
   ('scanhealthplan', 'SCAN'),
   ('scottsmiraclegro', 'ScottsMiracle-Gro'),
-  ('sdguthrie~wd3~NBPOL', 'NBPOL'),
-  ('sdguthrie~wd3~SDGUTHRIEMINAMAS', 'SD Guthrie'),
   ('senecacasinos', 'Seneca Resorts & Casinos'),
   ('sfcollege', 'Santa Fe College'),
   ('sharpservices', 'Sharp Packaging Services'),
@@ -511,7 +516,6 @@ INSERT INTO public.company_name_overrides (slug, display_name) VALUES
   ('silgancontainers', 'Silgan'),
   ('silvercross', 'Silver Cross'),
   ('simmonsbank', 'Simmons Bank'),
-  ('situsamc', 'SitusAMC'),
   ('skbs', 'Städtisches Klinikum Braunschweig'),
   ('slc', 'Student Loans Company'),
   ('smithnephew', 'Smith+Nephew'),
@@ -550,7 +554,6 @@ INSERT INTO public.company_name_overrides (slug, display_name) VALUES
   ('transunion', 'TransUnion'),
   ('tscfl', 'Tallahassee State College'),
   ('tucsonaz', 'City of Tucson'),
-  ('ucf~wd1~careers', 'University of Central Florida'),
   ('ukib', 'National Wealth Fund'),
   ('umb', 'UMB'),
   ('umphysicians', 'M Physicians'),
@@ -684,7 +687,6 @@ SELECT v.slug, v.display_name, v.evidence, v.quote, v.read_on
   ('chghealthcare', 'CHG Healthcare', ARRAY['https://chghealthcare.wd1.myworkdayjobs.com/External'], 'og:description: "Since founding the locum tenens industry in 1979, CHG Healthcare has been dedicated to serving the healthcare workforce and making a difference in human..."', DATE '2026-11-08'),
   ('christmanco', 'The Christman Company', ARRAY['https://christmanco.wd108.myworkdayjobs.com/en-US/careers/job/Oklahoma-City-OK/Project-Scheduler_R-100409'], 'posting hiringOrganization: "The Christman Company"', DATE '2026-11-08'),
   ('chrobinson', 'C.H. Robinson', ARRAY['https://chrobinson.wd5.myworkdayjobs.com/CHRobinson'], 'og:description: "Why Do You Belong at C.H. Robinson? C.H. Robinson solves logistics problems for companies across the globe and across..."', DATE '2026-11-08'),
-  ('citicclsa', 'CITIC Securities International', ARRAY['https://citicclsa.wd3.myworkdayjobs.com/External'], 'og:title: "CITIC Securities International Careers"', DATE '2026-11-08'),
   ('citjpl', 'Jet Propulsion Laboratory', ARRAY['https://citjpl.wd5.myworkdayjobs.com/Jobs'], 'og:description: "Formed in 1936, the NASA Jet Propulsion Laboratory is a federally funded research and development center managed for NASA by the California..."', DATE '2026-11-08'),
   ('cityoforlando', 'City of Orlando', ARRAY['https://cityoforlando.wd5.myworkdayjobs.com/CityofOrlandoCareers'], 'og:description: "...you possess. Applications may be rejected if incomplete. City of Orlando accepts applications for current job openin"', DATE '2026-11-08'),
   ('clearesult', 'CLEAResult', ARRAY['https://clearesult.wd1.myworkdayjobs.com/CLEAResult_External_Careers'], 'og:description: "We change the way people use energy. CLEAResult started in Austin, Texas, in 2003 with a simple idea: a results-oriented company could..."', DATE '2026-11-08'),
@@ -716,9 +718,7 @@ SELECT v.slug, v.display_name, v.evidence, v.quote, v.read_on
   ('csusystem', 'Colorado State University', ARRAY['https://csusystem.wd12.myworkdayjobs.com/fortcollins_careers'], 'og:description: "Inspired by its land-grant heritage, Colorado State University is committed to excellence and engagement, setting the standard for public research..."', DATE '2026-11-08'),
   ('daikinapplied', 'Daikin Applied', ARRAY['https://daikinapplied.wd1.myworkdayjobs.com/Daikin-Careers'], 'og:description: "...to connect, live and work. Perfecting the air we share. Daikin Applied is not just an HVAC company. We''re part of a global technology powerhouse that uses..."', DATE '2026-11-08'),
   ('dallascityhall', 'City of Dallas', ARRAY['https://dallascityhall.wd5.myworkdayjobs.com/codcareers'], 'og:description: "The City of Dallas is one of the largest employers in the DFW Metroplex. We offer growth opportunities and a..."', DATE '2026-11-08'),
-  ('dallascollege', 'Dallas College', ARRAY['https://dallascollege.wd1.myworkdayjobs.com/Dallas_College_Careers'], 'og:description: "Dallas College is one of the largest community colleges in Texas. Since 1965, we have helped almost 3..."', DATE '2026-11-08'),
   ('datev', 'DATEV', ARRAY['https://datev.wd3.myworkdayjobs.com/Datev_Careers'], 'og:description: "...transparently, and responsibly. Information about DATEV Imprint Data Protection Click here for the English career page: Job vacancies @DATEV"', DATE '2026-11-08'),
-  ('davispolk', 'Davis Polk', ARRAY['https://davispolk.wd5.myworkdayjobs.com/business-professionals-services-usa'], 'og:description: "Davis Polk is not only a top-tier law firm. We are a unique community of highly motivated..."', DATE '2026-11-08'),
   ('dealertire~wd5~4710', 'Dent Wizard', ARRAY['https://dealertire.wd5.myworkdayjobs.com/4710'], 'og:description: "About Dent Wizard: Crafting Excellence in Automotive Reconditioning At Dent Wizard, we''ve dedicated..."', DATE '2026-11-08'),
   ('dealertire~wd5~Sonsio', 'Sonsio', ARRAY['https://dealertire.wd5.myworkdayjobs.com/Sonsio'], 'og:description: "With a comprehensive lineup of Vehicle Protection plans, Sonsio offers industry-leading programs that cover Tire Road Hazard Protection, Appearance,..."', DATE '2026-11-08'),
   ('destinationpet', 'Destination Pet', ARRAY['https://destinationpet.wd5.myworkdayjobs.com/DPEC'], 'og:description: "Destination Pet, headquartered in Irving, Texas, is a national network of pet-obsessed professionals..."', DATE '2026-11-08'),
@@ -743,7 +743,6 @@ SELECT v.slug, v.display_name, v.evidence, v.quote, v.read_on
   ('epicorsoftware', 'Epicor', ARRAY['https://epicorsoftware.wd5.myworkdayjobs.com/epicorjobs'], 'og:title: "Careers at Epicor"', DATE '2026-11-08'),
   ('erm', 'ERM', ARRAY['https://erm.wd3.myworkdayjobs.com/ERM_Careers'], 'og:description: "At ERM, sustainability is our business. We are the world''s largest advisory firm focused solely..."', DATE '2026-11-08'),
   ('eroadgroup', 'EROAD', ARRAY['https://eroadgroup.wd3.myworkdayjobs.com/EROAD'], 'og:description: "EROAD provide in-vehicle technology solutions to fleets in New Zealand, Australia and North..."', DATE '2026-11-08'),
-  ('eset', 'ESET', ARRAY['https://eset.wd3.myworkdayjobs.com/ESET_External'], 'og:description: "Join ESET Talent Community and we will contact you. This is an option for candidates who haven''t..."', DATE '2026-11-08'),
   ('etch', 'Dolly Parton Children''s Hospital', ARRAY['https://etch.wd5.myworkdayjobs.com/ETCH'], 'og:description: "At Dolly Parton Children''s Hospital, care is at the CORE of who we are. We are comprised of team members who live out our..."', DATE '2026-11-08'),
   ('factset', 'FactSet', ARRAY['https://factset.wd108.myworkdayjobs.com/FactSetCareers'], 'og:title: "FactSet Careers"', DATE '2026-11-08'),
   ('fanniemae', 'Fannie Mae', ARRAY['https://fanniemae.wd1.myworkdayjobs.com/FannieMaeCareers'], 'og:description: "...community to be the first to hear about happenings at Fannie Mae and share your experience to hear about potential job opportunities for you. As a Fortune..."', DATE '2026-11-08'),
@@ -751,7 +750,6 @@ SELECT v.slug, v.display_name, v.evidence, v.quote, v.read_on
   ('ffive', 'F5', ARRAY['https://ffive.wd5.myworkdayjobs.com/f5jobs'], 'og:title: "Careers at F5"', DATE '2026-11-08'),
   ('fib', 'First Interstate Bank', ARRAY['https://fib.wd1.myworkdayjobs.com/FIBCareers'], 'og:description: "First Interstate Bank is an equal opportunity employer committed to a diverse workforce and a barrier-free..."', DATE '2026-11-08'),
   ('fico', 'FICO', ARRAY['https://fico.wd1.myworkdayjobs.com/External'], 'og:description: "FICO powers decisions that help people and businesses around the world prosper. Founded in..."', DATE '2026-11-08'),
-  ('fimc', 'Fairway Independent Mortgage', ARRAY['https://fimc.wd1.myworkdayjobs.com/Fairway_Careers'], 'og:description: "At Fairway Independent Mortgage Corporation, we''ve been committed to delivering exceptional service and fostering a..."', DATE '2026-11-08'),
   ('firstam~wd1~fctcareers', 'FCT', ARRAY['https://firstam.wd1.myworkdayjobs.com/fctcareers'], 'og:title: "FCT Careers"', DATE '2026-11-08'),
   ('firstam~wd1~firstamericancareers', 'First American', ARRAY['https://firstam.wd1.myworkdayjobs.com/firstamericancareers'], 'og:description: "Our people are the foundation of First American''s success and that is the reason we put them first. This philosophy has cultivated a..."', DATE '2026-11-08'),
   ('firstquality', 'First Quality', ARRAY['https://firstquality.wd5.myworkdayjobs.com/FIRSTQUALITY'], 'og:description: "Founded over 35 years ago, First Quality is a family-owned company that has grown from a small business in McElhattan,..."', DATE '2026-11-08'),
@@ -827,7 +825,6 @@ SELECT v.slug, v.display_name, v.evidence, v.quote, v.read_on
   ('loewshotels', 'Loews Hotels', ARRAY['https://loewshotels.wd5.myworkdayjobs.com/loewshotels'], 'og:description: "Headquartered in New York City, Loews Hotels & Co is rooted in deep heritage in the hotel industry and excellence in service. As one..."', DATE '2026-11-08'),
   ('loganhealth', 'Logan Health', ARRAY['https://loganhealth.wd1.myworkdayjobs.com/Logan_Careers'], 'og:description: "At Logan Health, our work is driven by our mission, vision, and values: Our Mission Quality,..."', DATE '2026-11-08'),
   ('lplfinancial', 'LPL Financial', ARRAY['https://lplfinancial.wd1.myworkdayjobs.com/External'], 'og:description: "LPL Financial is the nation''s largest independent broker-dealer.* Our company is widely known for its..."', DATE '2026-11-08'),
-  ('lumaenergy', 'LUMA', ARRAY['https://lumaenergy.wd1.myworkdayjobs.com/lumacareers'], 'og:description: "LUMA was created especially for Puerto Rico. We combine the expertise and resources of our..."', DATE '2026-11-08'),
   ('luriechildrens', 'Ann & Robert H. Lurie Children''s Hospital of Chicago', ARRAY['https://luriechildrens.wd1.myworkdayjobs.com/externalportal'], 'og:description: "Ann & Robert H. Lurie Children''s Hospital of Chicago provides superior pediatric care in a setting that offers the latest benefits and..."', DATE '2026-11-08'),
   ('madrigalpharma', 'Madrigal', ARRAY['https://madrigalpharma.wd501.myworkdayjobs.com/Madrigal'], 'og:description: "...transforming the treatment of people with liver diseases. Madrigal is an Equal Opportunity Employer. All employment is decided on the basis of..."', DATE '2026-11-08'),
   ('mainegeneral', 'MaineGeneral', ARRAY['https://mainegeneral.wd5.myworkdayjobs.com/MaineGeneralCareers'], 'og:description: "MaineGeneral participates in E-Verify. Click the links below to view more information regarding..."', DATE '2026-11-08'),
@@ -835,7 +832,6 @@ SELECT v.slug, v.display_name, v.evidence, v.quote, v.read_on
   ('marathonhealth', 'Marathon Health', ARRAY['https://marathonhealth.wd501.myworkdayjobs.com/Marathon-Health-Careers'], 'og:description: "Marathon Health is a leading advanced primary care provider, partnering with employer and union plan..."', DATE '2026-11-08'),
   ('maryfreebed', 'Mary Free Bed Rehabilitation Hospital', ARRAY['https://maryfreebed.wd12.myworkdayjobs.com/MFB'], 'og:title: "Mary Free Bed Rehabilitation Hospital"', DATE '2026-11-08'),
   ('marywashingtonhealthcare', 'Mary Washington Healthcare', ARRAY['https://marywashingtonhealthcare.wd5.myworkdayjobs.com/Externalcareers'], 'og:description: "Working at Mary Washington Healthcare Whether you are a new grad, experienced clinical professional or wanting to begin a..."', DATE '2026-11-08'),
-  ('massmutual', 'MassMutual', ARRAY['https://massmutual.wd1.myworkdayjobs.com/MMCareers'], 'og:description: "At MassMutual, we''re passionate about helping people secure their future and protect the ones they..."', DATE '2026-11-08'),
   ('mattressfirm', 'Mattress Firm', ARRAY['https://mattressfirm.wd1.myworkdayjobs.com/MattressFirmCareers'], 'og:description: "...for making a difference every day. In just under 40 years, Mattress Firm has grown to more than 2,400 stores nationwide, supported by a team of more than 6,000..."', DATE '2026-11-08'),
   ('maxar~wd1~Vantor', 'Vantor', ARRAY['https://maxar.wd1.myworkdayjobs.com/Vantor'], 'og:description: "Vantor is forging the new frontier of spatial intelligence, helping decision makers and..."', DATE '2026-11-08'),
   ('mbda', 'MBDA', ARRAY['https://mbda.wd3.myworkdayjobs.com/MBDA-UK'], 'og:description: "...Whatever your background, we welcome your application to MBDA UK and look forward to speaking with you soon."', DATE '2026-11-08'),
@@ -892,7 +888,6 @@ SELECT v.slug, v.display_name, v.evidence, v.quote, v.read_on
   ('palmbeachstate', 'Palm Beach State College', ARRAY['https://palmbeachstate.wd1.myworkdayjobs.com/external'], 'og:description: "About the College Palm Beach State College, Florida''s first public community college, was founded in 1933 and has grown to become..."', DATE '2026-11-08'),
   ('papedawson', 'Pape-Dawson', ARRAY['https://papedawson.wd12.myworkdayjobs.com/PDE'], 'og:title: "Pape-Dawson Careers"', DATE '2026-11-08'),
   ('pciservices', 'PCI Pharma Services', ARRAY['https://pciservices.wd1.myworkdayjobs.com/External'], 'og:title: "PCI Pharma Services Careers"', DATE '2026-11-08'),
-  ('pepperlfuchs', 'Pepperl+Fuchs', ARRAY['https://pepperlfuchs.wd103.myworkdayjobs.com/PepperlFuchs'], 'og:description: "...Pepperl and Ludwig Fuchs laid the foundation for today''s Pepperl+Fuchs Group in 1945 with a small radio workshop in Mannheim. These values remain the..."', DATE '2026-11-08'),
   ('permianres', 'Permian Resources', ARRAY['https://permianres.wd12.myworkdayjobs.com/Permian_Resources_Careers'], 'og:description: "Permian Resources (NYSE: PR) is an independent oil and natural gas company focused on driving sustainable..."', DATE '2026-11-08'),
   ('pfg~wd3~QFCareers', 'Quality Foods', ARRAY['https://pfg.wd3.myworkdayjobs.com/QFCareers'], 'og:description: "Small Town Grocery Store - Since 1982! Quality Foods started in small towns on Vancouver Island and grew with the communities. We believe that..."', DATE '2026-11-08'),
   ('pfg~wd3~SaveonfoodsCareers', 'Save-On-Foods', ARRAY['https://pfg.wd3.myworkdayjobs.com/SaveonfoodsCareers'], 'og:title: "Save-On-Foods"', DATE '2026-11-08'),
@@ -914,10 +909,8 @@ SELECT v.slug, v.display_name, v.evidence, v.quote, v.read_on
   ('quadreal~wd10~quadreal', 'QuadReal', ARRAY['https://quadreal.wd10.myworkdayjobs.com/quadreal'], 'og:description: "For 10 years, QuadReal has created spaces that enhance the lives of the people and communities we serve...."', DATE '2026-11-08'),
   ('racwa', 'RAC', ARRAY['https://racwa.wd3.myworkdayjobs.com/RAC-WA'], 'og:title: "RAC Careers"', DATE '2026-11-08'),
   ('rb', 'Federal Reserve System', ARRAY['https://rb.wd5.myworkdayjobs.com/FRS'], 'og:title: "Federal Reserve System Careers"', DATE '2026-11-08'),
-  ('rbs', 'NatWest Group', ARRAY['https://rbs.wd3.myworkdayjobs.com/RBS'], 'og:title: "NatWest Group Careers"', DATE '2026-11-08'),
   ('recoveryfocus', 'Waythrough', ARRAY['https://recoveryfocus.wd3.myworkdayjobs.com/Recovery_Focus_Careers'], 'og:description: "Waythrough launched in October 2024 following the merger of Humankind and Richmond Fellowship. In..."', DATE '2026-11-08'),
   ('redrobin', 'Red Robin', ARRAY['https://redrobin.wd1.myworkdayjobs.com/wday/cxs/redrobin/RedRobin_Careers/sidebar'], 'sidebar: "At Red Robin, we''re not your typical burger restaurant. Our fans love us for our quirky personality,..."', DATE '2026-11-08'),
-  ('rgare', 'RGA', ARRAY['https://rgare.wd1.myworkdayjobs.com/Careers'], 'og:title: "RGA Careers"', DATE '2026-11-08'),
   ('richlandonline', 'Richland County', ARRAY['https://richlandonline.wd5.myworkdayjobs.com/richlandcountygovcareers'], 'og:title: "Richland County Careers"', DATE '2026-11-08'),
   ('riministreet', 'Rimini Street', ARRAY['https://riministreet.wd1.myworkdayjobs.com/riministreet'], 'og:description: "...work is challenging and meaningful, allowing everyone at Rimini Street to start and end each day with a sense of achievement and purpose. We are looking for..."', DATE '2026-11-08'),
   ('ringcentral', 'RingCentral', ARRAY['https://ringcentral.wd1.myworkdayjobs.com/RingCentral_Careers'], 'og:description: "RingCentral, Inc. (NYSE: RNG) is a leading provider of global enterprise cloud communications,..."', DATE '2026-11-08'),
@@ -937,8 +930,6 @@ SELECT v.slug, v.display_name, v.evidence, v.quote, v.read_on
   ('sbasite', 'SBA Communications', ARRAY['https://sbasite.wd5.myworkdayjobs.com/SBA_Communications_Careers'], 'og:description: "...in touch if there''s a role that seems like a good match. SBA Communications is an industry leader in providing wireless communications infrastructure essential to..."', DATE '2026-11-08'),
   ('scanhealthplan', 'SCAN', ARRAY['https://scanhealthplan.wd108.myworkdayjobs.com/scancareers'], 'og:title: "SCAN Careers"', DATE '2026-11-08'),
   ('scottsmiraclegro', 'ScottsMiracle-Gro', ARRAY['https://scottsmiraclegro.wd5.myworkdayjobs.com/SMGExternal'], 'og:description: "...Talent Acquisition Team will reach out to you if we find a ScottsMiracle-Gro or Hawthorne role that suits your skills. Don''t see a job you''re interested in? Sign in..."', DATE '2026-11-08'),
-  ('sdguthrie~wd3~NBPOL', 'NBPOL', ARRAY['https://sdguthrie.wd3.myworkdayjobs.com/NBPOL'], 'og:description: "...are the largest private-sector employer in PNG. Throughout NBPOL''s history, each chapter has been defined by learning and growth. Today, we produce..."', DATE '2026-11-08'),
-  ('sdguthrie~wd3~SDGUTHRIEMINAMAS', 'SD Guthrie', ARRAY['https://sdguthrie.wd3.myworkdayjobs.com/SDGUTHRIEMINAMAS'], 'og:description: "SD Guthrie Berhad (SD Guthrie) is one of the world''s leading producers of Certified Sustainable Palm..."', DATE '2026-11-08'),
   ('senecacasinos', 'Seneca Resorts & Casinos', ARRAY['https://senecacasinos.wd12.myworkdayjobs.com/SGC'], 'og:description: "Welcome to Seneca Resorts & Casinos! We are thrilled that you are considering joining our team. At Seneca Resorts & Casinos,..."', DATE '2026-11-08'),
   ('sfcollege', 'Santa Fe College', ARRAY['https://sfcollege.wd5.myworkdayjobs.com/SFcareers'], 'og:description: "Santa Fe College (SF) has been recognized as one of the top-rated community colleges in the United States...."', DATE '2026-11-08'),
   ('sharpservices', 'Sharp Packaging Services', ARRAY['https://sharpservices.wd3.myworkdayjobs.com/Sharp'], 'og:title: "Sharp Packaging Services"', DATE '2026-11-08'),
@@ -948,7 +939,6 @@ SELECT v.slug, v.display_name, v.evidence, v.quote, v.read_on
   ('silgancontainers', 'Silgan', ARRAY['https://silgancontainers.wd1.myworkdayjobs.com/silgan'], 'og:title: "Silgan Careers"', DATE '2026-11-08'),
   ('silvercross', 'Silver Cross', ARRAY['https://silvercross.wd5.myworkdayjobs.com/SilverCrossCareers'], 'og:title: "Silver Cross Careers"', DATE '2026-11-08'),
   ('simmonsbank', 'Simmons Bank', ARRAY['https://simmonsbank.wd5.myworkdayjobs.com/SimmonsCareers'], 'og:description: "...been putting people first by making a commitment to you. Simmons Bank is the subsidiary bank for Simmons First National Corporation (NASDAQ: SFNC), a publicly..."', DATE '2026-11-08'),
-  ('situsamc', 'SitusAMC', ARRAY['https://situsamc.wd1.myworkdayjobs.com/SitusAMC'], 'og:description: "SitusAMC is a leading independent provider of technology, strategic outsourcing, talent and..."', DATE '2026-11-08'),
   ('skbs', 'Städtisches Klinikum Braunschweig', ARRAY['https://skbs.wd103.myworkdayjobs.com/SKBS_Extern1'], 'og:title: "Städtisches Klinikum Braunschweig"', DATE '2026-11-08'),
   ('slc', 'Student Loans Company', ARRAY['https://slc.wd3.myworkdayjobs.com/SLC_Careers'], 'og:description: "...futures via access to further and higher education. The Student Loans Company is a non-profit making government-owned organisation, who enable opportunity by providing..."', DATE '2026-11-08'),
   ('smithnephew', 'Smith+Nephew', ARRAY['https://smithnephew.wd5.myworkdayjobs.com/External'], 'og:description: "Smith+Nephew is a global medical technology company. We design and manufacture technology that takes..."', DATE '2026-11-08'),
@@ -987,7 +977,6 @@ SELECT v.slug, v.display_name, v.evidence, v.quote, v.read_on
   ('transunion', 'TransUnion', ARRAY['https://transunion.wd5.myworkdayjobs.com/TransUnion'], 'og:description: "...or social media communication you weren''t expecting from TransUnion, take a moment to confirm the relevant information. Be wary when providing personal..."', DATE '2026-11-08'),
   ('tscfl', 'Tallahassee State College', ARRAY['https://tscfl.wd12.myworkdayjobs.com/en-US/TSC_External_Career_Site/job/Site-1---Main-M---Campus/Elementary-Education-Adjunct-Faculty_REQ05398'], 'posting hiringOrganization: "Tallahassee State College"', DATE '2026-11-08'),
   ('tucsonaz', 'City of Tucson', ARRAY['https://tucsonaz.wd1.myworkdayjobs.com/Tucson_Talent'], 'og:description: "City Organization The City of Tucson, founded in 1775 and incorporated in 1877, is a City Manager-led Mayor and Council..."', DATE '2026-11-08'),
-  ('ucf~wd1~careers', 'University of Central Florida', ARRAY['https://ucf.wd1.myworkdayjobs.com/careers'], 'og:title: "University of Central Florida"', DATE '2026-11-08'),
   ('ukib', 'National Wealth Fund', ARRAY['https://ukib.wd3.myworkdayjobs.com/UKIB'], 'og:description: "The National Wealth Fund encourages a diverse workforce and welcomes applications from all suitably qualified..."', DATE '2026-11-08'),
   ('umb', 'UMB', ARRAY['https://umb.wd1.myworkdayjobs.com/UMBExternal'], 'og:title: "UMB Careers"', DATE '2026-11-08'),
   ('umphysicians', 'M Physicians', ARRAY['https://umphysicians.wd1.myworkdayjobs.com/umpcareers'], 'og:description: "Company Overview: At University of Minnesota Physicians (M Physicians), we are on a mission to deliver exceptional patient care, advance medicine through..."', DATE '2026-11-08'),
@@ -1046,14 +1035,15 @@ BEGIN
 END $$;
 
 -- SELF-CHECK. Raises, and so undoes every statement above, unless:
---   1. each of the 431 keys has its override, and each override this run
+--   1. each of the 417 keys has its override, and each override this run
 --      wrote has its evidence row naming the same employer, read on
 --      2026-11-08 (no row may rest on a later read), with an https link and
 --      the words read; a key the table already held keeps its own name and
 --      is only reported;
 --   2. none of the re-check's twelve wrong names stands on its key, and no
 --      key it left out (gi, warnerbros, travelhrportal, vcuhealth, hss, gcu's
---      GCU board) was written here;
+--      GCU board) and none of the 14 keys robots.txt reaches was
+--      written here;
 --   3. no tenant of several employers took a tenant key in this run;
 --   4. the table holds at most 1,000 rows, all the lane's one read returns;
 --   5. no client role holds a privilege on the evidence, row level security
@@ -1076,8 +1066,8 @@ DECLARE
     'cba~wd3~Bankwest_Careers', 'cba~wd3~CommBank_Careers', 'cbh', 'ceritypartners', 'cesco',
     'ceu~wd3~CEU', 'ceu~wd3~CEUAND', 'ceu~wd3~COL', 'ceu~wd3~FP', 'ceu~wd3~UF3', 'ceu~wd3~uao',
     'ceu~wd3~uch', 'ceu~wd3~usp', 'cfr', 'cgb', 'cgm', 'chaptershealth~wd5~capitalcaringjobs',
-    'charlottenc', 'chartermfg', 'chghealthcare', 'christmanco', 'chrobinson', 'citicclsa',
-    'citjpl', 'cityoforlando', 'clearesult', 'clearskyhealth', 'clearwateranalytics', 'cmcmarkets',
+    'charlottenc', 'chartermfg', 'chghealthcare', 'christmanco', 'chrobinson', 'citjpl',
+    'cityoforlando', 'clearesult', 'clearskyhealth', 'clearwateranalytics', 'cmcmarkets',
     'colemanwm', 'collectorsuniverse', 'collegeboard', 'comfortsystemsusa~wd1~BCM',
     'comfortsystemsusa~wd1~Corpcareers', 'comfortsystemsusa~wd1~Design_Mechanical',
     'comfortsystemsusa~wd1~DynaTen', 'comfortsystemsusa~wd1~SM_Lawrence',
@@ -1086,15 +1076,14 @@ DECLARE
     'corpartners~wd5~EngleMartin', 'corrohealth', 'countryfinancial~wd5~COUNTRYAgencyExternal',
     'countryfinancial~wd5~COUNTRYCorporateExternal', 'countryfinancial~wd5~IllinoisFarmBureau',
     'creditacceptance', 'crhc', 'crossoverhealth', 'csagroup', 'csusystem', 'daikinapplied',
-    'dallascityhall', 'dallascollege', 'datev', 'davispolk', 'dealertire~wd5~4710',
-    'dealertire~wd5~Sonsio', 'destinationpet', 'digitalturbine', 'dlapiper', 'drinkpak',
-    'druryhotels', 'dsvgruppe', 'dukeenergy', 'dupont', 'dynastymanagement~wd12~GREENWAY',
-    'dynastymanagement~wd12~SCOTT_PETROLEUM', 'earlywarning', 'ebi~wd5~afbcareers',
-    'ebi~wd5~ebicareers', 'ebi~wd5~envirologixcareers', 'ebnhc', 'elderslimited', 'elliottdavis',
-    'emerysapp~wd501~ESS', 'emerysapp~wd501~RUM', 'epicorsoftware', 'erm', 'eroadgroup', 'eset',
-    'etch', 'factset', 'fanniemae', 'fau', 'ffive', 'fib', 'fico', 'fimc', 'firstam~wd1~fctcareers',
-    'firstam~wd1~firstamericancareers', 'firstquality', 'flagshipinc', 'flpoly', 'fnz',
-    'formfactor', 'freseniusglobal', 'fticonsulting~wd108~CompassLexeconCareers',
+    'dallascityhall', 'datev', 'dealertire~wd5~4710', 'dealertire~wd5~Sonsio', 'destinationpet',
+    'digitalturbine', 'dlapiper', 'drinkpak', 'druryhotels', 'dsvgruppe', 'dukeenergy', 'dupont',
+    'dynastymanagement~wd12~GREENWAY', 'dynastymanagement~wd12~SCOTT_PETROLEUM', 'earlywarning',
+    'ebi~wd5~afbcareers', 'ebi~wd5~ebicareers', 'ebi~wd5~envirologixcareers', 'ebnhc',
+    'elderslimited', 'elliottdavis', 'emerysapp~wd501~ESS', 'emerysapp~wd501~RUM', 'epicorsoftware',
+    'erm', 'eroadgroup', 'etch', 'factset', 'fanniemae', 'fau', 'ffive', 'fib', 'fico',
+    'firstam~wd1~fctcareers', 'firstam~wd1~firstamericancareers', 'firstquality', 'flagshipinc',
+    'flpoly', 'fnz', 'formfactor', 'freseniusglobal', 'fticonsulting~wd108~CompassLexeconCareers',
     'fticonsulting~wd108~FTIConsultingCareers', 'fullsail', 'gaig~wd1~GAIG_External',
     'gaig~wd1~National_Interstate_External', 'gaig~wd1~Vanliner_External', 'gategroup',
     'gcu~wd1~GCE', 'gcu~wd1~GCEC', 'gcu~wd1~Orbis', 'gea', 'geha', 'genesishcs', 'georgesinc',
@@ -1107,62 +1096,61 @@ DECLARE
     'kimberlyclark', 'kmkp~wd1~KACECareers', 'kmkp~wd1~TPGCareers', 'kmkp~wd1~careers', 'kpluss',
     'ksb', 'ksbe', 'kumc', 'languageline~wd5~HAS_Careers', 'languageline~wd5~LLS_Careers',
     'leecompany', 'lendingclub', 'lfb', 'lifefitness', 'livanova', 'llbean', 'loewshotels',
-    'loganhealth', 'lplfinancial', 'lumaenergy', 'luriechildrens', 'madrigalpharma', 'mainegeneral',
-    'manh', 'marathonhealth', 'maryfreebed', 'marywashingtonhealthcare', 'massmutual',
-    'mattressfirm', 'maxar~wd1~Vantor', 'mbda', 'mc', 'mchapusa', 'mechanicsbank', 'medimpact',
-    'merceruniversity~wd1~external', 'merceruniversity~wd1~student', 'methodisthealthsystem', 'mfs',
-    'miamioh', 'michelinhr', 'minnstate', 'missionaustralia', 'modernatx', 'monolithicpower',
-    'morganlewis', 'msiexpress', 'msssecurity', 'msudenver', 'mwaa', 'myhana', 'myhrhome',
-    'nationalchurchresidences', 'nationwidechildrens', 'navcanada', 'nbtbancorp', 'ncratleos',
-    'nebraskamed', 'newperkinelmer', 'nghs', 'nordsonhcm', 'northwesternmutual', 'nrpgroup',
-    'nshe~wd1~CSN-External', 'nshe~wd1~DRI-External', 'nshe~wd1~GBC-external',
-    'nshe~wd1~NSHE-external', 'nshe~wd1~NSU-external', 'nshe~wd1~TMCC-External',
-    'nshe~wd1~UNLV-External', 'nshe~wd1~UNR-external', 'nshe~wd1~WNC-External',
-    'nshe~wd1~wnc-waiver', 'nus', 'oakvalleyhealth', 'ocdc', 'odfl', 'oldrepublic', 'oneok',
-    'originbank', 'owensminor', 'palmbeachstate', 'papedawson', 'pciservices', 'pepperlfuchs',
-    'permianres', 'pfg~wd3~QFCareers', 'pfg~wd3~SaveonfoodsCareers', 'pillsburylaw', 'pimacounty',
-    'pinerest', 'pipersandler', 'plantemoran~wd1~opportunity', 'plantemoran~wd1~pmexternalcareers',
-    'plugpower', 'powerdesigninc', 'premierresearch', 'primetherapeutics', 'progleasing',
+    'loganhealth', 'lplfinancial', 'luriechildrens', 'madrigalpharma', 'mainegeneral', 'manh',
+    'marathonhealth', 'maryfreebed', 'marywashingtonhealthcare', 'mattressfirm', 'maxar~wd1~Vantor',
+    'mbda', 'mc', 'mchapusa', 'mechanicsbank', 'medimpact', 'merceruniversity~wd1~external',
+    'merceruniversity~wd1~student', 'methodisthealthsystem', 'mfs', 'miamioh', 'michelinhr',
+    'minnstate', 'missionaustralia', 'modernatx', 'monolithicpower', 'morganlewis', 'msiexpress',
+    'msssecurity', 'msudenver', 'mwaa', 'myhana', 'myhrhome', 'nationalchurchresidences',
+    'nationwidechildrens', 'navcanada', 'nbtbancorp', 'ncratleos', 'nebraskamed', 'newperkinelmer',
+    'nghs', 'nordsonhcm', 'northwesternmutual', 'nrpgroup', 'nshe~wd1~CSN-External',
+    'nshe~wd1~DRI-External', 'nshe~wd1~GBC-external', 'nshe~wd1~NSHE-external',
+    'nshe~wd1~NSU-external', 'nshe~wd1~TMCC-External', 'nshe~wd1~UNLV-External',
+    'nshe~wd1~UNR-external', 'nshe~wd1~WNC-External', 'nshe~wd1~wnc-waiver', 'nus',
+    'oakvalleyhealth', 'ocdc', 'odfl', 'oldrepublic', 'oneok', 'originbank', 'owensminor',
+    'palmbeachstate', 'papedawson', 'pciservices', 'permianres', 'pfg~wd3~QFCareers',
+    'pfg~wd3~SaveonfoodsCareers', 'pillsburylaw', 'pimacounty', 'pinerest', 'pipersandler',
+    'plantemoran~wd1~opportunity', 'plantemoran~wd1~pmexternalcareers', 'plugpower',
+    'powerdesigninc', 'premierresearch', 'primetherapeutics', 'progleasing',
     'propetroservices~wd5~ProPetro_Careers', 'pultegroup', 'puma~wd502~Jobs_at_Puma',
-    'qtsdatacenters', 'quadreal~wd10~quadreal', 'racwa', 'rb', 'rbs', 'recoveryfocus', 'redrobin',
-    'rgare', 'richlandonline', 'riministreet', 'ringcentral', 'rockwoolgroup', 'rogersbh',
-    'roswellpark', 'ryancompanies', 'ryansg', 'saabusa', 'sailpoint', 'saintsfc',
-    'salinasvalleyhealth', 'salvationarmy', 'sarahbush', 'sasllc', 'saxobank', 'sbasite',
-    'scanhealthplan', 'scottsmiraclegro', 'sdguthrie~wd3~NBPOL', 'sdguthrie~wd3~SDGUTHRIEMINAMAS',
-    'senecacasinos', 'sfcollege', 'sharpservices', 'shelterinsurance', 'shm', 'sierraspace',
-    'silgancontainers', 'silvercross', 'simmonsbank', 'situsamc', 'skbs', 'slc', 'smithnephew',
+    'qtsdatacenters', 'quadreal~wd10~quadreal', 'racwa', 'rb', 'recoveryfocus', 'redrobin',
+    'richlandonline', 'riministreet', 'ringcentral', 'rockwoolgroup', 'rogersbh', 'roswellpark',
+    'ryancompanies', 'ryansg', 'saabusa', 'sailpoint', 'saintsfc', 'salinasvalleyhealth',
+    'salvationarmy', 'sarahbush', 'sasllc', 'saxobank', 'sbasite', 'scanhealthplan',
+    'scottsmiraclegro', 'senecacasinos', 'sfcollege', 'sharpservices', 'shelterinsurance', 'shm',
+    'sierraspace', 'silgancontainers', 'silvercross', 'simmonsbank', 'skbs', 'slc', 'smithnephew',
     'snapchat', 'snc', 'sonyglobal', 'soterahealth', 'spinmaster', 'starrcompanies', 'stjude',
     'storaenso', 'stormontvail', 'sumitomopharma', 'svb', 'svha~wd3~SVHA_SVHA',
     'svha~wd3~broadbean_external', 'svha~wd3~svha_svphm', 'synchronyfinancial', 'taskus',
     'taylormorrison', 'tcsedsystem~wd1~KHSC', 'tcsedsystem~wd1~TCSES', 'tcsedsystem~wd1~TCSPP',
     'tcsedsystem~wd1~UWS', 'texascapitalbank', 'theapexgroup', 'theirc', 'thejacksonlaboratory',
     'thgrp~wd12~TheHeritageGroup', 'thgrp~wd12~monumentchemical', 'tiaa', 'tigerbrands',
-    'tihinsurance', 'towerloan', 'transformingage', 'transunion', 'tscfl', 'tucsonaz',
-    'ucf~wd1~careers', 'ukib', 'umb', 'umphysicians', 'unimelb', 'uofl', 'upenn~wd1~PSOM',
-    'upenn~wd1~careers-at-penn', 'upm', 'uq', 'usaa', 'usyd', 'utaustin', 'uva', 'veitusa',
-    'veoliauki', 'vertexinc', 'vst', 'vwr', 'walshgroup', 'wasatchproperty~wd1~BlendtecCareers',
-    'wasatchproperty~wd1~MarketStarCareers', 'wasatchproperty~wd1~PDK',
-    'wasatchproperty~wd1~marketstarcareersemea', 'wasatchproperty~wd1~marketstarcareersnamer',
-    'waynefarms', 'wellsky', 'westernalliancebank~wd5~AMH', 'westernalliancebank~wd5~WAB', 'wework',
-    'wexinc', 'wgu', 'wilsonco', 'woundedwarriorproject', 'wwecorp~wd5~IMG', 'wwecorp~wd5~TKO',
+    'tihinsurance', 'towerloan', 'transformingage', 'transunion', 'tscfl', 'tucsonaz', 'ukib',
+    'umb', 'umphysicians', 'unimelb', 'uofl', 'upenn~wd1~PSOM', 'upenn~wd1~careers-at-penn', 'upm',
+    'uq', 'usaa', 'usyd', 'utaustin', 'uva', 'veitusa', 'veoliauki', 'vertexinc', 'vst', 'vwr',
+    'walshgroup', 'wasatchproperty~wd1~BlendtecCareers', 'wasatchproperty~wd1~MarketStarCareers',
+    'wasatchproperty~wd1~PDK', 'wasatchproperty~wd1~marketstarcareersemea',
+    'wasatchproperty~wd1~marketstarcareersnamer', 'waynefarms', 'wellsky',
+    'westernalliancebank~wd5~AMH', 'westernalliancebank~wd5~WAB', 'wework', 'wexinc', 'wgu',
+    'wilsonco', 'woundedwarriorproject', 'wwecorp~wd5~IMG', 'wwecorp~wd5~TKO',
     'wwecorp~wd5~private_postings', 'wwecorp~wd5~wwecorp', 'yeehong', 'yeticoolers', 'ymcaatlanta',
     'younglife'
   ];
-  v_multi text[] := ARRAY['baltimorecity', 'bbinsurance', 'cba', 'ceu', 'chaptershealth', 'comfortsystemsusa', 'corebridgefinancial', 'corpartners', 'countryfinancial', 'dealertire', 'dynastymanagement', 'ebi', 'emerysapp', 'firstam', 'fticonsulting', 'gaig', 'gcu', 'jacksongov', 'jcrew', 'kaishaservice', 'kmkp', 'languageline', 'maxar', 'merceruniversity', 'nshe', 'pfg', 'plantemoran', 'propetroservices', 'puma', 'quadreal', 'sdguthrie', 'svha', 'tcsedsystem', 'thgrp', 'ucf', 'upenn', 'wasatchproperty', 'westernalliancebank', 'wwecorp'];
+  v_multi text[] := ARRAY['baltimorecity', 'bbinsurance', 'cba', 'ceu', 'chaptershealth', 'comfortsystemsusa', 'corebridgefinancial', 'corpartners', 'countryfinancial', 'dealertire', 'dynastymanagement', 'ebi', 'emerysapp', 'firstam', 'fticonsulting', 'gaig', 'gcu', 'jacksongov', 'jcrew', 'kaishaservice', 'kmkp', 'languageline', 'maxar', 'merceruniversity', 'nshe', 'pfg', 'plantemoran', 'propetroservices', 'puma', 'quadreal', 'svha', 'tcsedsystem', 'thgrp', 'upenn', 'wasatchproperty', 'westernalliancebank', 'wwecorp'];
   v_missing text[];
   v_bad text[];
   v_kept text[];
   v_n int;
   v_left text;
 BEGIN
-  IF cardinality(v_slugs) <> 431 OR (SELECT count(DISTINCT s) FROM unnest(v_slugs) s) <> 431 THEN
-    RAISE EXCEPTION 'self-check 20261111150000: the key list holds % keys, not 431 distinct ones', cardinality(v_slugs);
+  IF cardinality(v_slugs) <> 417 OR (SELECT count(DISTINCT s) FROM unnest(v_slugs) s) <> 417 THEN
+    RAISE EXCEPTION 'self-check 20261111150000: the key list holds % keys, not 417 distinct ones', cardinality(v_slugs);
   END IF;
   SELECT array_agg(s ORDER BY s) INTO v_missing
     FROM unnest(v_slugs) AS s
    WHERE NOT EXISTS (SELECT 1 FROM public.company_name_overrides o WHERE o.slug = s);
   IF v_missing IS NOT NULL THEN
-    RAISE EXCEPTION 'self-check 20261111150000: % of the 431 keys have no override (first: %)', cardinality(v_missing), array_to_string(v_missing[1:3], ', ');
+    RAISE EXCEPTION 'self-check 20261111150000: % of the 417 keys have no override (first: %)', cardinality(v_missing), array_to_string(v_missing[1:3], ', ');
   END IF;
   -- An override this run wrote carries this transaction's added_at.
   SELECT array_agg(o.slug ORDER BY o.slug) INTO v_bad
@@ -1196,7 +1184,7 @@ BEGIN
   END IF;
   SELECT array_agg(o.slug ORDER BY o.slug) INTO v_bad
     FROM public.company_name_overrides o
-   WHERE o.added_at = now() AND (o.slug = ANY (v_multi) OR o.slug IN ('warnerbros', 'gi', 'travelhrportal', 'vcuhealth', 'hss', 'gcu~wd1~GCU'));
+   WHERE o.added_at = now() AND (o.slug = ANY (v_multi) OR o.slug IN ('warnerbros', 'gi', 'travelhrportal', 'vcuhealth', 'hss', 'gcu~wd1~GCU', 'citicclsa', 'dallascollege', 'davispolk', 'eset', 'fimc', 'lumaenergy', 'massmutual', 'pepperlfuchs', 'rbs', 'rgare', 'sdguthrie~wd3~NBPOL', 'sdguthrie~wd3~SDGUTHRIEMINAMAS', 'situsamc', 'ucf~wd1~careers'));
   IF v_bad IS NOT NULL THEN
     RAISE EXCEPTION 'self-check 20261111150000: this run wrote a key for a tenant it names board by board, or one it leaves out: %', array_to_string(v_bad, ', ');
   END IF;
@@ -1223,5 +1211,5 @@ BEGIN
   IF v_left IS NOT NULL THEN
     RAISE EXCEPTION 'self-check 20261111150000: job_board_meta still holds %, so job-board''s name-sync lane would not walk these boards', v_left;
   END IF;
-  RAISE NOTICE 'self-check 20261111150000: 431 keys present (% rows in the table); the name-sync lane renames their stored rows from the next pass-end', v_n;
+  RAISE NOTICE 'self-check 20261111150000: 417 keys present (% rows in the table); the name-sync lane renames their stored rows from the next pass-end', v_n;
 END $$;
