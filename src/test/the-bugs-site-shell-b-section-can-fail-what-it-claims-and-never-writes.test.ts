@@ -28,6 +28,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSyn
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { skipWithoutDist } from "./helpers/built-output";
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -161,7 +162,7 @@ describe("at any stage", () => {
 
 const DIST = resolve(ROOT, "dist");
 describe("this branch's own build", () => {
-  it.skipIf(!existsSync(resolve(DIST, "pricing.html")))("passes every line: the markers are what the minified code keeps", () => {
+  it.skipIf(skipWithoutDist(existsSync(resolve(DIST, "pricing.html"))))("passes every line: the markers are what the minified code keeps", () => {
     const page = readFileSync(resolve(DIST, "pricing.html"), "utf8");
     const entryName = /\/assets\/(index-[A-Za-z0-9_-]+\.js)/.exec(page)![1];
     const entry = readFileSync(resolve(DIST, "assets", entryName), "utf8");
