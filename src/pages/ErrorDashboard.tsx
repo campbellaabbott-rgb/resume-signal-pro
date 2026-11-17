@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom';
 import { ErrorTrendChart } from '@/components/dashboard/ErrorTrendChart';
 import { LegacyUserHealthTable as UserHealthTable } from '@/components/dashboard/LegacyUserHealthTable';
 import { ErrorDiagnostics } from '@/components/dashboard/ErrorDiagnostics';
-import { ErrorStatsCards } from '@/components/dashboard/ErrorStatsCards';
+import { ErrorStatsCards, type ErrorRangeCounts } from '@/components/dashboard/ErrorStatsCards';
 import { AdminAuthGate } from '@/components/dashboard/AdminAuthGate';
 import { adminAuthHeaders } from '@/lib/admin-auth';
 import { toast } from 'sonner';
@@ -111,8 +111,35 @@ function SectionHeader({ title, description }: { title: string; description: str
 /** How often the page re-reads the telemetry while auto-refresh is on. */
 const ERROR_POLL_MS = 30_000;
 
+/** The most rows get-error-telemetry answers: the page holds a sample of a busy range. */
+const ERROR_SAMPLE_CAP = 1000;
+
+const fmt = (n: number) => n.toLocaleString('en-US');
+
+/** The reader's range counts, when its build sends them (S14X-157); null from an older build. */
+function rangeCountsOf(v: unknown): ErrorRangeCounts | null {
+  if (!v || typeof v !== 'object') return null;
+  const c = v as Record<string, unknown>;
+  const ok = ['total', 'lastHour', 'previousHour', 'serverErrors'].every((k) => typeof c[k] === 'number' && Number.isFinite(c[k]));
+  return ok ? (c as unknown as ErrorRangeCounts) : null;
+}
+
+/**
+ * WHAT THE ROWS ON SCREEN ARE (S14X-157). The page holds at most the newest
+ * 1,000 rows of a range, and printed them as if they were all of it. With the
+ * reader's count it names the total; without one (the reader built before the
+ * count) a full sample says it may not be all.
+ */
+export function sampleNote(shown: number, counts: ErrorRangeCounts | null, truncated: boolean): string | null {
+  if (counts && counts.total > shown) return `Showing the newest ${fmt(shown)} of ${fmt(counts.total)} errors in this range: the trend, the tables and the export read only these.`;
+  if (!counts && (truncated || shown >= ERROR_SAMPLE_CAP)) return `Showing the newest ${fmt(shown)} errors: the range may hold more, and the trend, the tables and the export read only these.`;
+  return null;
+}
+
 function ErrorDashboardContent() {
   const [errors, setErrors] = useState<ErrorTelemetry[]>([]);
+  const [rangeCounts, setRangeCounts] = useState<ErrorRangeCounts | null>(null);
+  const [truncated, setTruncated] = useState(false);
   const errorsRef = useRef<ErrorTelemetry[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
@@ -130,7 +157,7 @@ function ErrorDashboardContent() {
       const startTime = subHours(new Date(), hours).toISOString();
       
       const { data: result, error } = await supabase.functions.invoke('get-error-telemetry', {
-        body: { sinceIso: startTime, limit: 1000 },
+        body: { sinceIso: startTime, limit: ERROR_SAMPLE_CAP },
         headers: adminAuthHeaders(),
       });
 
@@ -154,6 +181,8 @@ function ErrorDashboardContent() {
       }
       errorsRef.current = next;
       setErrors(next);
+      setRangeCounts(rangeCountsOf(result?.counts));
+      setTruncated(result?.truncated === true);
       setLastUpdated(new Date());
     } catch (err) {
       console.error('Error fetching errors:', err);
@@ -204,6 +233,9 @@ function ErrorDashboardContent() {
     URL.revokeObjectURL(url);
     toast.success(`Exported ${errors.length} errors to CSV`);
   };
+
+  const rangeLabel = TIME_RANGE_OPTIONS.find((o) => o.value === timeRange)?.label ?? 'Selected range';
+  const note = sampleNote(errors.length, rangeCounts, truncated);
 
   // Calculate severity counts
   const severityCounts = errors.reduce((acc, e) => {
@@ -329,7 +361,10 @@ function ErrorDashboardContent() {
             title="Overview" 
             description="Key metrics showing error counts, trends, and affected users at a glance."
           />
-          <ErrorStatsCards errors={errors} />
+          <ErrorStatsCards errors={errors} rangeLabel={rangeLabel} counts={rangeCounts} />
+          {note && (
+            <p className="mt-3 text-xs text-yellow-600" role="status" data-error-sample-note="true">{note}</p>
+          )}
         </section>
 
         {/* Trend Section */}
@@ -362,7 +397,7 @@ function ErrorDashboardContent() {
           <div className="border rounded-lg overflow-hidden">
             <div className="bg-card px-4 py-3 border-b flex items-center justify-between">
               <span className="text-sm text-muted-foreground">
-                Showing {Math.min(errors.length, 100)} of {errors.length} errors
+                Showing the newest {Math.min(errors.length, 100)} of {fmt(rangeCounts ? Math.max(rangeCounts.total, errors.length) : errors.length)} errors{note ? ' in this range' : ''}
               </span>
             </div>
             <div className="max-h-[500px] overflow-auto">
