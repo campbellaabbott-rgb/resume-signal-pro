@@ -59,6 +59,14 @@
  *     Adyen, Liquid Personnel), and on every real text no moved line states
  *     pay or a requirement.
  *
+ * Found in a second review: to keep a hostile page's cost in bounds, every
+ * "<" with no ">" in the next 1,000 characters was read as text, so one long
+ * tag (an inline base64 image, a Word style attribute, a SafeLinks href, an
+ * SVG path) came back in postingExcerpt as its own markup, in place of the
+ * requirement beside it. Now such a "<" is text only when another "<" comes
+ * before its ">", so a long tag is still a tag, and a stray "<" in a line
+ * still is text.
+ *
  * Judged on real text: the c14 postings (fixture), and the 99 held-out
  * postings of the perk reader's test split, whose work-rights sentences are
  * listed below by hand. On that split the new excerpt keeps every listed
@@ -644,6 +652,45 @@ describe("boilerplateLast never moves a requirement or a pay line", () => {
       "smartrecruiters:BoschGroup:pt:744000161544969",
       "smartrecruiters:JYSK:it:744000160799260",
     ]);
+  });
+});
+
+describe("a long tag is still a tag, and a stray \"<\" is still text", () => {
+  const b64 = `iVBORw0KGgo${"A".repeat(3000)}`;
+  it.each([
+    [
+      "an inline base64 image in a list item",
+      `<p>Requirements</p><ul><li>5+ years of nursing experience</li><li><img src="data:image/png;base64,${b64}" alt="badge"> Must hold an active RN licence</li><li>Must be authorized to work in the United States without sponsorship.</li></ul>`,
+      ["5+ years of nursing experience", "Must hold an active RN licence", "Must be authorized to work in the United States without sponsorship."],
+    ],
+    [
+      "a Word style attribute",
+      `<h2>Requirements</h2><p style="${"margin:0in;font-size:11pt;font-family:Calibri,sans-serif;mso-fareast-font-family:Calibri;".repeat(14)}">Bachelor's degree required.</p><p>Visa sponsorship is not available for this role.</p>`,
+      ["Bachelor's degree required.", "Visa sponsorship is not available for this role."],
+    ],
+    [
+      "a SafeLinks link",
+      `<h3>Qualifications</h3><ul><li>Must have a CDL licence, see <a href="https://nam12.safelinks.protection.outlook.com/?url=${"x".repeat(1100)}">policy</a></li><li>Security clearance required.</li></ul>`,
+      ["Must have a CDL licence, see policy", "Security clearance required."],
+    ],
+    [
+      "an inline SVG path",
+      `<div><h2>What you'll bring</h2><ul><li><svg viewBox="0 0 24 24"><path d="${"M12 2 L 3 7 ".repeat(120)}"></path></svg> 3+ years of experience with Python required</li></ul></div>`,
+      ["3+ years of experience with Python required"],
+    ],
+  ])("%s: the requirement beside it is picked, and no markup is", (_name, html, lines) => {
+    const got = requirementsExcerptOf(html).postingExcerpt;
+    expect(got).toEqual(lines);
+    expect(got.join("\n")).not.toMatch(/[<>]|base64|safelinks|mso-/);
+  });
+
+  it("a \"<\" in a line's own words, with another tag before any \">\", is text and keeps the lines after it", () => {
+    const filler = "and the ability to work closely with the warehouse team on every shift, ".repeat(16);
+    const got = requirementsExcerptOf(
+      `<h2>Requirements</h2><ul><li>Must be able to lift loads of < 50 lb ${filler}</li><li>Must hold a valid forklift licence</li><li>Must be authorized to work in the United States without sponsorship.</li></ul>`,
+    ).postingExcerpt;
+    expect(got[0]).toMatch(/^Must be able to lift loads of < 50 lb and the ability/);
+    expect(got.slice(1)).toEqual(["Must hold a valid forklift licence", "Must be authorized to work in the United States without sponsorship."]);
   });
 });
 

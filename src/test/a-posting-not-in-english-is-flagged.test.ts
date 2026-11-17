@@ -25,6 +25,17 @@
  * requirement lines were French or German, and picked German lines that sat
  * under an English heading while saying such lines were not picked out.
  *
+ * Found in a second review: a requirements list of short Dutch or German
+ * lines ("Goede kennis van Nederlands en Engels", "Führerschein Klasse B")
+ * holds few of the function words counted, so those lines were picked
+ * while the posting said lines in other languages are not. In a flagged
+ * posting a line of three words or more with no English word at all
+ * (counting "in", "is", "a" and the like, which other languages share) is
+ * now left out, unless every word is capitalised (names, "Microsoft Excel
+ * PowerPoint"), and so is a line that holds two or more words of another
+ * language and more of them than of English. A work-rights line is never
+ * left out this way.
+ *
  * Judged on the 463 real postings of the posting-language corpus (259
  * labelled English, 204 in 20 other languages): every posting in another
  * language is flagged, and the seven English-labelled ones that are flagged
@@ -152,5 +163,20 @@ describe("the flag", () => {
     const ex = requirementsExcerptOf(`${de}\nApplicants must have the right to work in Germany.`);
     expect(ex.excerptLanguage).toBe(EXCERPT_NOT_ENGLISH);
     expect(ex.postingExcerpt).toContain("Applicants must have the right to work in Germany.");
+  });
+
+  it.each([
+    [
+      "About the role\nWe are hiring a data engineer for our Amsterdam office. You will build pipelines with our analytics team and work closely with product.\nRequirements:\n· Minimaal 3 jaar ervaring met Python en SQL\n· Goede kennis van Nederlands en Engels\n· Een afgeronde hbo- of wo-opleiding in de informatica\n· Rijbewijs B is een pluspunt\n· You must be eligible to work in the Netherlands",
+      ["You must be eligible to work in the Netherlands"],
+    ],
+    [
+      "About the role\nWe are hiring a sales manager for our Munich office. You will grow our accounts across the region and work with the marketing team.\nRequirements:\n· Sehr gute Deutschkenntnisse\n· Mehrjährige Erfahrung im Vertrieb und in der Kundenbetreuung\n· Führerschein Klasse B\n· Bachelor's degree in business required",
+      ["Bachelor's degree in business required"],
+    ],
+  ])("picks only the English lines of a requirements list of short lines in another language (%#)", (text, english) => {
+    const ex = requirementsExcerptOf(text);
+    expect(ex.excerptLanguage).toBe(EXCERPT_NOT_ENGLISH);
+    expect(ex.postingExcerpt).toEqual(english);
   });
 });

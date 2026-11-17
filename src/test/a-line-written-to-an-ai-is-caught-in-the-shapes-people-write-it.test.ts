@@ -26,6 +26,15 @@
  * same two ways (the reader before flagged one of them 17 times there). The floors below are what was reached:
  * a change that loses one fails here. Round 1's rule stands: one passage is
  * quoted and the rest are counted in addressedToAiNotShown.
+ *
+ * SECOND REVIEW. A second review read the patterns and wrote 40 more lines
+ * to an AI and 40 that only mention one (fromSecondReview in the fixture).
+ * The reader flagged 17 of the 40 and 10 of the 40 mention-only lines. It
+ * now flags all 40 and none of the 40, under every placing below, so the
+ * floor is 249. These lines were tuned on; the holdout that was not is
+ * pinned in a-line-written-to-an-ai-that-no-pattern-was-written-for-is-counted-honestly.test.ts,
+ * and there the reader still misses 18 of 40. A posting whose excerpt carries
+ * no addressedToAi has not been shown to hold no such line.
  */
 import { describe, expect, it } from "vitest";
 import { isAddressedToAi, requirementsExcerptOf } from "../../supabase/functions/agent-mcp/posting-excerpt";
@@ -36,13 +45,14 @@ const F = CORPUS as {
   addressed: string[];
   mentionOnly: string[];
   fromReview: { addressed: string[]; mentionOnly: string[] };
+  fromSecondReview: { addressed: string[]; mentionOnly: string[] };
   mentionOnlyReal: Array<{ source: string; line: string }>;
 };
-const ADDRESSED = [...F.addressed, ...F.fromReview.addressed];
-const MENTION_ONLY = [...F.mentionOnly, ...F.fromReview.mentionOnly, ...F.mentionOnlyReal.map((r) => r.line)];
+const ADDRESSED = [...F.addressed, ...F.fromReview.addressed, ...F.fromSecondReview.addressed];
+const MENTION_ONLY = [...F.mentionOnly, ...F.fromReview.mentionOnly, ...F.fromSecondReview.mentionOnly, ...F.mentionOnlyReal.map((r) => r.line)];
 
 /** What was reached: every line written to an AI flagged, no mention-only line flagged. */
-const FLAGGED_FLOOR = 209;
+const FLAGGED_FLOOR = 249;
 const FALSE_FLAGS_CEILING = 0;
 
 const OWN = ["3+ years of experience in B2B marketing", "Strong written communication skills"];
@@ -99,7 +109,7 @@ describe("a line written to an AI is caught in the shapes people write it", () =
     }
   });
 
-  it("quotes one passage of all 209 together and counts the rest, the posting's own lines untouched", () => {
+  it("quotes one passage of all 249 together and counts the rest, the posting's own lines untouched", () => {
     const r = requirementsExcerptOf(`${REQUIREMENTS}\n${ADDRESSED.join("\n")}`);
     expect(r.postingExcerpt).toEqual(OWN);
     expect(r.addressedToAi).toHaveLength(1);
