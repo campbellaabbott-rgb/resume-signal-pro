@@ -17,6 +17,8 @@
       "noTextDescription": "If your CV is inside an image or a text box, paste your CV text instead.",
       "docxGarbled": "This document's letters can't be read",
       "docxGarbledDescription": "Its text came out corrupted, usually because of a broken or embedded font. Save the document again, or paste your CV text.",
+      "txtUnreadable": "This file isn't text we can read",
+      "txtUnreadableDescription": "It may be another kind of file renamed to .txt. Save your CV as plain text again, upload a PDF or .docx, or paste your CV text.",
       "webExport": "This document was saved as web content",
       "webExportDescription": "We can't read it directly. Open it in Word and use File > Save As > Word Document (.docx), or paste your CV text.",
       "rateLimited": "Too many uploads right now",

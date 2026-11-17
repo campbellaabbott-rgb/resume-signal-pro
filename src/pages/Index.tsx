@@ -70,6 +70,7 @@ import { useBackForwardRestore } from "@/hooks/use-back-forward-restore";
 import { resilientCallers, callEdgeFunctionWithRetry, scanFailureKind, shouldRetryScan } from "@/lib/resilient-edge-function";
 import { writingToolToast } from "@/lib/writing-refusal";
 import { parseFailureCopy, parseNoticeCopy } from "@/lib/parse-failure-copy";
+import { readTextFile } from "@/lib/resumeText";
 import { MAX_RESUME_LENGTH } from "@/lib/resume-validation";
 import { outcomeWasStored, type ScanOutcomeRpcAnswer } from "@/lib/scan-outcome-answer";
 import { prepareJobAnalysisScan } from "@/lib/job-analysis-scan";
@@ -948,8 +949,20 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     trackUploadStarted(file.type);
 
     if (file.type === "text/plain") {
-      const text = await file.text();
+      // In the encoding it was saved in (S14X-283): Notepad's "Unicode" is
+      // UTF-16, which a UTF-8 read turned into a NUL beside every letter, and
+      // that was scanned. Text that is still not readable is refused.
+      const { text, garbled } = await readTextFile(file);
       if (!current()) return;
+      if (garbled) {
+        toast({
+          title: t('ingestParsers.refusal.txtUnreadable'),
+          description: t('ingestParsers.refusal.txtUnreadableDescription'),
+          variant: "destructive",
+        });
+        failUpload();
+        return;
+      }
       setResumeText(text);
       setResumeMultiColumnDetected(undefined); // No layout data for plain text
       saveResumeToSession(text); // Persist to session storage

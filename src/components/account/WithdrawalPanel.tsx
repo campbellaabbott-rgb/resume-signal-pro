@@ -16,6 +16,7 @@ import { Undo2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { WITHDRAWAL_DAYS } from "@/config/eu-consumer";
 import { askServerForEuUkSwitch, useEuUkBoxShown } from "@/lib/purchase-terms";
+import { money as formatMoney } from "@/lib/format";
 
 type Withdrawn = { subscription: string; refunded: number; currency: string };
 type Outcome =
@@ -25,13 +26,9 @@ type Outcome =
 const outcomeOf = (reason: unknown): Outcome =>
   ({ kind: reason === "plan_not_linked" ? "notLinked" : reason === "outside_territory" ? "outsideTerritory" : "none" });
 
-const money = (cents: number, currency: string) => {
-  try {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
-  } catch {
-    return `${(cents / 100).toFixed(2)} ${currency.toUpperCase()}`;
-  }
-};
+// The refund in the page's language (S14X-255), not the browser's: the one
+// formatter every price on the site goes through.
+const money = (cents: number, currency: string) => formatMoney(cents / 100, currency);
 
 export function WithdrawalPanel() {
   const { t } = useTranslation();

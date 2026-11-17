@@ -20,6 +20,7 @@ import { Split } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { CollidedBoard } from "@/lib/board-collisions";
 import { useCompanyIntel } from "@/components/jobs/CompanyIntelPanel";
+import { count as fmtCount } from "@/lib/format";
 
 /** Open roles per hiring system from the intel answer, or null when it did not say. */
 export function openBySource(rows: Array<{ source: string; open_roles: number }> | undefined | null): Record<string, number> | null {
@@ -64,7 +65,7 @@ export function BoardCollisionNotice({ companyToken, boards, labelOf }: {
               <span className="text-muted-foreground" data-collision-count={typeof open[b.source] === "number" ? "known" : "unavailable"}>
                 {" · "}
                 {typeof open[b.source] === "number"
-                  ? t("jobsPage.collision.openRoles", "open roles now: {{n}}", { n: open[b.source].toLocaleString() })
+                  ? t("jobsPage.collision.openRoles", "open roles now: {{n}}", { n: fmtCount(open[b.source]) })
                   : t("companyProfile.collision.countUnavailable", "count not available")}
               </span>
             )}

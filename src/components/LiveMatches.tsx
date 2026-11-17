@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { rolesForIndustry } from "@/data/roles";
 import { roundedFloor } from "@/hooks/use-board-totals";
+import { count as fmtCount } from "@/lib/format";
 import { SCAN_INDUSTRY_TO_CATEGORY } from "@/lib/job-board-categories";
 
 interface MatchJob {
@@ -303,7 +304,7 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
               TRACKED total under the SERVABLE noun. The number is a parameter so
               a translated copy cannot bake a stale one in either. */}
           {boardTotal
-            ? t("freeResults.matches.openBoardFallbackLive", "Open the live job board — {{n}}+ openings live now, ranked against your resume", { n: roundedFloor(boardTotal).toLocaleString() })
+            ? t("freeResults.matches.openBoardFallbackLive", "Open the live job board — {{n}}+ openings live now, ranked against your resume", { n: fmtCount(roundedFloor(boardTotal)) })
             : t("freeResults.matches.openBoardFallbackPlain", "Open the live job board — live openings, ranked against your resume")}
           <ArrowRight className="w-4 h-4 shrink-0" />
         </Link>
@@ -418,7 +419,7 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
           </Link>
           <p className="text-[11px] text-muted-foreground text-center mt-2">
             {boardTotal
-              ? t("freeResults.matches.openBoardNoteLive", "{{n}}+ openings live now · save searches, watch companies, track applications", { n: roundedFloor(boardTotal).toLocaleString() })
+              ? t("freeResults.matches.openBoardNoteLive", "{{n}}+ openings live now · save searches, watch companies, track applications", { n: fmtCount(roundedFloor(boardTotal)) })
               : t("freeResults.matches.openBoardNotePlain", "Live openings · save searches, watch companies, track applications")}
           </p>
         </>

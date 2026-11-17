@@ -9,6 +9,12 @@
 
 import { useState } from "react";
 
+// THE DATA PAGES PRINT IN en-US (S14X-255), as GhostJobIndex does and as the
+// bake prints them: a figure formatted with no locale followed the browser,
+// so the same axis read "1.234" in Germany beside an English page. A tick can
+// be fractional (2.5), so these keep their fraction digits rather than round.
+const EN = "en-US";
+
 export const VIZ_SERIES_A = "#3b82f6"; // blue-500 — primary series
 export const VIZ_SERIES_B = "#059669"; // emerald-600 — second series
 
@@ -86,7 +92,7 @@ export function WeeklyBars({
           <g key={tv}>
             <line x1={PAD_L} x2={W - 8} y1={y(tv)} y2={y(tv)} stroke="currentColor" strokeWidth="1" className="text-border" opacity={tv === 0 ? 0.9 : 0.4} />
             <text x={PAD_L - 6} y={y(tv) + 3} textAnchor="end" fontSize="10" className="fill-current text-muted-foreground">
-              {tv >= 1000 ? `${(tv / 1000).toLocaleString()}k` : tv.toLocaleString()}
+              {tv >= 1000 ? `${(tv / 1000).toLocaleString(EN)}k` : tv.toLocaleString(EN)}
             </text>
           </g>
         ))}
@@ -104,7 +110,7 @@ export function WeeklyBars({
               {hasB && bar(x0 + barW + 2, d.b ?? 0, VIZ_SERIES_B, !!d.muted)}
               {i === maxIdx && !d.muted && (
                 <text x={x0 + barW / 2} y={y(d.a) - 4} textAnchor="middle" fontSize="10" fontWeight="600" className="fill-current text-foreground">
-                  {d.a.toLocaleString()}
+                  {d.a.toLocaleString(EN)}
                 </text>
               )}
               <text x={PAD_L + i * band + band / 2} y={height - 6} textAnchor="middle" fontSize="10" className="fill-current text-muted-foreground">
@@ -117,8 +123,8 @@ export function WeeklyBars({
       {hover !== null && data[hover] && (
         <div className="absolute -top-1 left-1/2 -translate-x-1/2 pointer-events-none rounded-lg border border-border bg-background/95 backdrop-blur px-3 py-1.5 text-[11px] shadow-lg whitespace-nowrap">
           <span className="font-semibold text-foreground">{data[hover].label}</span>
-          <span className="text-muted-foreground"> · {data[hover].aDetail ?? data[hover].a.toLocaleString()}</span>
-          {hasB && <span className="text-muted-foreground"> · {data[hover].bDetail ?? (data[hover].b ?? 0).toLocaleString()}</span>}
+          <span className="text-muted-foreground"> · {data[hover].aDetail ?? data[hover].a.toLocaleString(EN)}</span>
+          {hasB && <span className="text-muted-foreground"> · {data[hover].bDetail ?? (data[hover].b ?? 0).toLocaleString(EN)}</span>}
         </div>
       )}
     </div>
@@ -150,7 +156,7 @@ export function HBarList({
             />
           </span>
           <span className="w-16 shrink-0 text-[12px] font-semibold text-foreground tabular-nums">
-            {it.value.toLocaleString()}
+            {it.value.toLocaleString(EN)}
           </span>
         </li>
       ))}

@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { Bot, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MAILBOX_PROOF_LIVE } from "@/components/account/CreditsAndPurchases";
+import { date as fmtDate } from "@/lib/format";
 
 export type Connector = { id: string; prefix: string; name: string; createdAt: string; lastUsedAt: string | null };
 export type PulseRow = { industry: string | null; state: "subscribed" | "awaiting_confirmation" | "off" };
@@ -45,7 +46,8 @@ async function errorText(error: unknown): Promise<string | undefined> {
   }
 }
 
-const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString() : null);
+// In the page's language (S14X-255), not the browser's.
+const day = (iso: string | null) => (iso ? fmtDate(iso) : null);
 
 export function ConnectedAIsCard({ connectors, busy, onRevoke }: { connectors: Connector[]; busy: boolean; onRevoke: (id: string) => void }) {
   const { t } = useTranslation();

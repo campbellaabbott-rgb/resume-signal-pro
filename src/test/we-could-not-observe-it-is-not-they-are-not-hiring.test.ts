@@ -361,8 +361,8 @@ describe("we could not observe it is not they are not hiring", () => {
     // And BOTH unread halves are counted in the set-aside sentence, not just
     // the closure one: the growth half has its own reasons and they are
     // rendered, per family, from the partition.
-    expect(JOBS, "the set-aside sentence must count the employers whose closure record is unread").toMatch(/noClosure: hiringPartition\.noClosureEmployers/);
-    expect(JOBS, "the set-aside sentence must count the employers whose growth reading is unread").toMatch(/growthUnread: hiringPartition\.growthUnreadEmployers/);
+    expect(JOBS, "the set-aside sentence must count the employers whose closure record is unread").toMatch(/noClosure: fmtCount\(hiringPartition\.noClosureEmployers\)/);
+    expect(JOBS, "the set-aside sentence must count the employers whose growth reading is unread").toMatch(/growthUnread: fmtCount\(hiringPartition\.growthUnreadEmployers\)/);
     for (const fam of ["read", "series", "tooNew", "tooSmall", "excluded", "unread"]) {
       expect(JOBS, `the set-aside sentence must render the growth reason family "${fam}"`).toMatch(new RegExp(`hiringPartition\\.growthReasons\\.${fam}`));
     }

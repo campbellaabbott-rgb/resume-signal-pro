@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Database } from "lucide-react";
 import { SERVING_SOURCES, type BoardSource } from "@/config/ats-vendors";
 import { useBoardVendorCounts } from "@/hooks/useBoardVendorCounts";
+import { count as fmtCount, dateTime as fmtDateTime } from "@/lib/format";
 
 /**
  * The ATS platforms we integrate with, on the front page.
@@ -54,7 +55,7 @@ function VendorPill({ v, count }: { v: BoardSource; count?: number }) {
       <span className="text-sm font-medium truncate min-w-0" title={v.label}>{v.label}</span>
       {count !== undefined && (
         <span className="text-xs text-muted-foreground tabular-nums flex-shrink-0 ml-auto">
-          {count.toLocaleString()}
+          {fmtCount(count)}
         </span>
       )}
     </li>
@@ -100,7 +101,7 @@ export function AtsCoverage({
   // difference between a measurement and a decoration.
   const asOfLine = ready && asOf
     ? t("atsCoverage.asOf", "Live counts of currently open roles, measured {{time}}.", {
-        time: asOf.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }),
+        time: fmtDateTime(asOf),
       })
     : null;
 
@@ -141,7 +142,7 @@ export function AtsCoverage({
                 <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{v.label}</span>
                 {n !== undefined && (
                   <span className="text-xs sm:text-sm font-bold text-foreground tabular-nums">
-                    {n.toLocaleString()}
+                    {fmtCount(n)}
                   </span>
                 )}
               </li>
@@ -203,7 +204,7 @@ export function AtsCoverage({
         <p className="text-muted-foreground max-w-2xl mx-auto">
           {ready && openTotal !== null
             ? t("atsCoverage.subCounted", "{{total}} open roles, read straight from the {{count}} applicant tracking systems below — not scraped from a search engine.", {
-                total: openTotal.toLocaleString(),
+                total: fmtCount(openTotal),
                 count: SERVING_SOURCES.length,
               })
             : t("atsCoverage.sub", "We read jobs straight from {{count}} applicant tracking systems — not scraped from a search engine.", {

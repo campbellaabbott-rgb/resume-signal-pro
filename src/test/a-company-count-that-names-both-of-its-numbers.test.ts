@@ -359,8 +359,8 @@ describe("the denominator obeys the same rule as the numerator", () => {
 
   it("the /jobs count line pairs its openings with the servable board count", () => {
     const c = code(JOBS);
-    expect(c).toMatch(/companyFeeds: data\.companiesOpenCount\.toLocaleString\(\)/);
-    expect(c).toMatch(/companyFeeds: data\.companiesOpenCount\.toLocaleString\(\)/);
+    expect(c).toMatch(/companyFeeds: fmtCount\(data\.companiesOpenCount\)/);
+    expect(c).toMatch(/companyFeeds: fmtCount\(data\.companiesOpenCount\)/);
     expect(c, "companiesCount must never feed a companyFeeds slot")
       .not.toMatch(/companyFeeds: \(data\??\.companiesCount/);
   });

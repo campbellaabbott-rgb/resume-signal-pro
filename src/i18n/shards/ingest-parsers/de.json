@@ -17,6 +17,8 @@
       "noTextDescription": "Wenn dein Lebenslauf in einem Bild oder Textfeld steht, füge stattdessen den Text ein.",
       "docxGarbled": "Die Buchstaben in diesem Dokument lassen sich nicht lesen",
       "docxGarbledDescription": "Der Text ist beschädigt, meist wegen einer fehlerhaften oder eingebetteten Schrift. Speichere das Dokument erneut oder füge den Text deines Lebenslaufs ein.",
+      "txtUnreadable": "Diese Datei enthält keinen lesbaren Text",
+      "txtUnreadableDescription": "Vielleicht ist es eine andere Datei, die in .txt umbenannt wurde. Speichere deinen Lebenslauf erneut als reinen Text, lade ein PDF oder eine .docx-Datei hoch oder füge den Text deines Lebenslaufs ein.",
       "webExport": "Dieses Dokument wurde als Webinhalt gespeichert",
       "webExportDescription": "Wir können es nicht direkt lesen. Öffne es in Word und wähle Datei > Speichern unter > Word-Dokument (.docx) oder füge den Text deines Lebenslaufs ein.",
       "rateLimited": "Gerade zu viele Uploads",

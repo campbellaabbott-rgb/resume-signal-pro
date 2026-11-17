@@ -60,6 +60,7 @@ import { CREDITS_UPDATED_EVENT, fetchProvenCredits, rememberCreditSession } from
 import { maskEmail, stashedSessionIdFor } from "@/lib/auth-fragment";
 import { VERIFY_REFUSAL_RETRIES, type VerifyRefusal, openPage, productPageForPaste, verifyRefusalOf } from "@/lib/purchase-verify-refusal";
 import { AUTH_SUPPORT_EMAIL } from "@/config/auth-providers";
+import { readTextFile } from "@/lib/resumeText";
 
 // Map product keys to icons
 const productIcons: Record<string, React.ElementType> = {
@@ -537,7 +538,10 @@ export default function ProductSuccess() {
 
     try {
       if (file.type === "text/plain") {
-        const text = await file.text();
+        // In the encoding it was saved in (S14X-283): a UTF-16 file read as
+        // UTF-8 came back with a NUL beside every letter.
+        const { text, garbled } = await readTextFile(file);
+        if (garbled) throw new Error("Could not read the file. Please try pasting your resume text instead.");
         setRecoveryResumeText(text);
         setIsParsingFile(false);
         return;

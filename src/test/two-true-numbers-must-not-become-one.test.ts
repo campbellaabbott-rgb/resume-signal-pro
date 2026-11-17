@@ -61,7 +61,7 @@ describe("two true numbers must not become one", () => {
   it("the headline line still renders the SERVABLE figure", () => {
     // countLine is the "live openings" sentence. It must keep reading the
     // servable total, whatever else is added to the page.
-    expect(PAGE_CODE).toMatch(/jobsPage\.countLine[\s\S]{0,200}?total: data\.totalAllCompanies\.toLocaleString\(\)/);
+    expect(PAGE_CODE).toMatch(/jobsPage\.countLine[\s\S]{0,200}?total: fmtCount\(data\.totalAllCompanies\)/);
   });
 
   it("tracked is labelled as including closed roles, never as openings", () => {

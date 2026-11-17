@@ -17,6 +17,8 @@
       "noTextDescription": "Si tu currículum está dentro de una imagen o un cuadro de texto, pega el texto en su lugar.",
       "docxGarbled": "No se pueden leer las letras de este documento",
       "docxGarbledDescription": "El texto salió dañado, normalmente por una fuente rota o incrustada. Guarda el documento de nuevo o pega el texto de tu currículum.",
+      "txtUnreadable": "Este archivo no tiene texto que podamos leer",
+      "txtUnreadableDescription": "Puede ser otro tipo de archivo renombrado a .txt. Guarda tu currículum de nuevo como texto sin formato, sube un PDF o un .docx, o pega el texto de tu currículum.",
       "webExport": "Este documento se guardó como contenido web",
       "webExportDescription": "No podemos leerlo directamente. Ábrelo en Word y usa Archivo > Guardar como > Documento de Word (.docx), o pega el texto de tu currículum.",
       "rateLimited": "Demasiadas subidas en este momento",
