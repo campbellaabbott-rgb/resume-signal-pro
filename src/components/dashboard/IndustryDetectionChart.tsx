@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { adminRpc } from '@/lib/admin-auth';
+import { useVisibleInterval } from '@/hooks/use-visible-interval';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { Target, AlertTriangle, CheckCircle, TrendingUp } from 'lucide-react';
 
@@ -41,9 +42,9 @@ export function IndustryDetectionChart() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 60000);
-    return () => clearInterval(interval);
   }, []);
+  // Every minute while the tab is shown, nothing while it is hidden (CW2-HB1).
+  useVisibleInterval(() => fetchData(), 60_000);
 
   const fetchData = async () => {
     try {

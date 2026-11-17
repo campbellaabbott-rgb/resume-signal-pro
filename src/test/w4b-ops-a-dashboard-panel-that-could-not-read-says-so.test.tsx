@@ -32,9 +32,17 @@ vi.mock("@/lib/admin-auth", () => ({
 }));
 vi.mock("@/components/dashboard/AdminAuthGate", () => ({ AdminAuthGate: ({ children }: { children: React.ReactNode }) => children }));
 vi.mock("@/hooks/use-circuit-breaker", () => ({ getAllCircuitStates: () => ({}), resetServiceCircuit: () => {} }));
-for (const m of ["HealthTrendChart", "EmailTrendChart", "WebhookTrendChart", "AIGenerationTrendChart", "UserHealthTable", "HealthHistoryChart", "GeoPerformanceChart", "IndustryDetectionChart"]) {
-  vi.doMock(`@/components/dashboard/${m}`, () => ({ [m]: () => null }));
-}
+// The charts are stubbed with hoisted mocks: a vi.doMock loop here ran after the
+// page's import, so the real trend cards rendered, and since S14X-156 they say
+// Unavailable too. This test counts the nine operations panels.
+vi.mock("@/components/dashboard/HealthTrendChart", () => ({ HealthTrendChart: () => null }));
+vi.mock("@/components/dashboard/EmailTrendChart", () => ({ EmailTrendChart: () => null }));
+vi.mock("@/components/dashboard/WebhookTrendChart", () => ({ WebhookTrendChart: () => null }));
+vi.mock("@/components/dashboard/AIGenerationTrendChart", () => ({ AIGenerationTrendChart: () => null }));
+vi.mock("@/components/dashboard/UserHealthTable", () => ({ UserHealthTable: () => null }));
+vi.mock("@/components/dashboard/HealthHistoryChart", () => ({ HealthHistoryChart: () => null }));
+vi.mock("@/components/dashboard/GeoPerformanceChart", () => ({ GeoPerformanceChart: () => null }));
+vi.mock("@/components/dashboard/IndustryDetectionChart", () => ({ IndustryDetectionChart: () => null }));
 
 import HealthCheck from "../pages/HealthCheck";
 
