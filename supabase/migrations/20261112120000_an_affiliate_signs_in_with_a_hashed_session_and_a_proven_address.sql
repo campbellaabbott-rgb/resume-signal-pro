@@ -1,5 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
--- (reviewed 2026-11-16 in the bug round A integration).
+-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing (reviewed 2026-11-16 in the bug round A integration).
 --
 -- AN AFFILIATE SIGNS IN WITH A HASHED SESSION AND A PROVEN ADDRESS
 -- (bug round 2026-11-08, lane affiliate: S14X-092, S14X-093, S14X-115, and

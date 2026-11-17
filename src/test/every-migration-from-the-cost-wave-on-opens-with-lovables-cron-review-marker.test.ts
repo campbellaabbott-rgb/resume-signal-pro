@@ -10,10 +10,17 @@
  * at or after the refused file (20261109120000) opens with the marker:
  *
  *  - a file whose code (comment lines dropped) schedules or keeps a job more
- *    often than hourly opens with the full review block, as main's
- *    20261109120000 does;
- *  - every other file opens with the one-line form, "not required.", and a
- *    sentence saying what it schedules.
+ *    often than hourly opens with a first line that names the job, then the
+ *    full review block, as main's 20261109120000 does;
+ *  - every other file's first line says "no cron;" or "no sub-hourly cron;"
+ *    and a sentence saying what it schedules.
+ *
+ * THE LINE ITSELF (Lovable, 2026-11-17). Lovable stopped at 20261109120000 a
+ * second time: its tool reads only the first line, and that line must be
+ * "-- lovable-cron-fallback-reviewed: <reason>", whole, on one line. PR #65
+ * rewrote main's sixteen files to that form and Lovable applied all of them.
+ * So the first line is that prefix and a reason that ends on the same line;
+ * the bug round's earlier wording fails here, as it failed there.
  *
  * A file Lovable's runner has already applied is not read: its drizzle stub
  * names it, Lovable will not run it again, and main's rule is that an applied
@@ -58,7 +65,8 @@ const DRIZZLE = resolve(__dirname, "../../drizzle/migrations");
 const LEDGER = JSON.parse(readFileSync(resolve(__dirname, "../../docs/deploy-ledger.json"), "utf8")) as { neverApply?: string[] };
 /** The first file Lovable's agent refused for want of the marker. */
 const FLOOR = "20261109120000";
-const MARKER = "-- SUB-HOURLY CRON REVIEW MARKER";
+/** The prefix Lovable's tool reads on line one (its own words, 2026-11-17). */
+const MARKER = "-- lovable-cron-fallback-reviewed: ";
 
 /** Stamps Lovable's staged runner has applied, read from its drizzle stubs. */
 const appliedStamps = (): Set<string> => {
@@ -280,7 +288,7 @@ const FULL = [
   /^-- load: lower than today/m,
   /^-- new standing sub-hourly jobs: none\.$/m,
 ];
-const NOT_REQUIRED = /^-- SUB-HOURLY CRON REVIEW MARKER: not required\. \S/;
+const NOT_REQUIRED = /^-- lovable-cron-fallback-reviewed: no (?:sub-hourly )?cron; \S/;
 /** A transaction statement in the code: Lovable's agent runs each file in its own transaction and refuses one that ends or opens another. */
 const TRANSACTION = /\bBEGIN\s*(?:TRANSACTION|WORK)?\s*;|\b(?:COMMIT|ROLLBACK|ABORT)(?:\s+(?:WORK|TRANSACTION|AND\s+(?:NO\s+)?CHAIN|PREPARED\s+'[^']*'|TO\s+(?:SAVEPOINT\s+)?\w+))?\s*;|\b(?:START|END)\s+TRANSACTION\b|^\s*END\s+WORK\s*;/im;
 /**
@@ -322,6 +330,8 @@ const markerProblems = (sql: string, stamp = "99999999999999"): string[] => {
   const problems: string[] = [];
   if (!sql.startsWith(MARKER)) return ["does not begin with the marker"];
   const head = headOf(sql);
+  const first = sql.slice(0, sql.indexOf("\n") < 0 ? sql.length : sql.indexOf("\n"));
+  if (!/^-- lovable-cron-fallback-reviewed: \S.*\.$/.test(first)) problems.push("its first line is not the whole reason: Lovable reads line one only, so the sentence must end there");
   const run = code(sql);
   if (!/reviewed:? \d{4}-\d{2}-\d{2}/.test(head)) problems.push("its marker names no review date");
   const calls = callReading(run, stamp);
@@ -329,6 +339,8 @@ const markerProblems = (sql: string, stamp = "99999999999999"): string[] => {
   if (runs.length > 0) {
     if (NOT_REQUIRED.test(head)) problems.push(`it schedules or keeps ${[...new Set(runs)].join(", ")} but says the review is not required`);
     for (const line of FULL) if (!line.test(head)) problems.push(`its full review lacks ${line}`);
+    const job = /^-- job: ([\w-]+)/m.exec(head)?.[1];
+    if (job && !first.includes(job)) problems.push(`its first line does not name ${job}, the job its review is about`);
   } else if (!NOT_REQUIRED.test(head)) {
     problems.push("it runs nothing more often than hourly, so its marker is the not-required form with a sentence");
   }
@@ -372,9 +384,9 @@ describe("every migration from the cost wave on opens with Lovable's sub-hourly 
 });
 
 describe("the guard can fail", () => {
-  const notRequired = `${MARKER}: not required. This file schedules nothing\n-- (reviewed 2026-11-16 in a test).\n--\nSELECT 1;\n`;
+  const notRequired = `${MARKER}no cron; this file schedules nothing (reviewed 2026-11-16 in a test).\n--\nSELECT 1;\n`;
   const full = [
-    MARKER,
+    `${MARKER}example-job runs every 15 minutes; reviewed 2026-11-16 by the project owner; load falls.`,
     "-- reviewed: 2026-11-16 by the project owner, who approves this schedule as written.",
     "-- job: example-job.",
     "-- schedule: none today -> every 15 minutes after this file.",
@@ -414,6 +426,17 @@ describe("the guard can fail", () => {
 
   it("fails a file without the marker", () => {
     expect(markerProblems("-- A TITLE\nSELECT 1;\n")).toEqual(["does not begin with the marker"]);
+  });
+
+  it("fails the wording Lovable's tool refused on 2026-11-17, in both its forms", () => {
+    const oldOneLine = "-- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing\n-- (reviewed 2026-11-16 in a test).\n--\nSELECT 1;\n";
+    expect(markerProblems(oldOneLine)).toEqual(["does not begin with the marker"]);
+    expect(markerProblems(full.replace(/^[^\n]*/, "-- SUB-HOURLY CRON REVIEW MARKER"))).toEqual(["does not begin with the marker"]);
+  });
+
+  it("fails a reason that runs past line one, and a full review whose first line does not name its job", () => {
+    expect(markerProblems(notRequired.replace(" (reviewed", "\n-- (reviewed")).join("; ")).toMatch(/first line is not the whole reason/);
+    expect(markerProblems(full.replace("example-job runs", "a job runs")).join("; ")).toMatch(/does not name example-job/);
   });
 
   it("fails a sub-hourly file that says the review is not required", () => {

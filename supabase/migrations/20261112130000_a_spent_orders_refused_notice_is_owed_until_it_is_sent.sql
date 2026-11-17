@@ -1,5 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
--- (reviewed 2026-11-16 in the bug round A integration).
+-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing (reviewed 2026-11-16 in the bug round A integration).
 --
 -- A SPENT ORDER'S REFUSED NOTICE IS OWED UNTIL IT IS SENT (RC-S13-110,
 -- bug round 2026-11-12, lane full-analysis).

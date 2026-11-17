@@ -1,5 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
--- (reviewed 2026-11-16 in the bug round A integration).
+-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing (reviewed 2026-11-16 in the bug round A integration).
 --
 -- A ROLE THAT CAME BACK IS NO FILL IN THE CHAIN (S14X-066): the employer curve.
 -- The field curve takes the same rule in the next file (20261112192500).

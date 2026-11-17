@@ -1,5 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
--- (reviewed 2026-11-16 in the bug round A integration).
+-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing (reviewed 2026-11-16 in the bug round A integration).
 --
 -- THE SCAN FLOOR COVERS EVERY BAND (S14X-193).
 --

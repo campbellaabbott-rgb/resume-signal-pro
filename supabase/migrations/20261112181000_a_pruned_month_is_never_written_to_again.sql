@@ -1,5 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
--- (reviewed 2026-11-16 in the bug round A integration).
+-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing (reviewed 2026-11-16 in the bug round A integration).
 --
 -- A PRUNED MONTH IS NEVER WRITTEN TO AGAIN (S14X-158).
 --

@@ -1,5 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
--- (reviewed 2026-11-16 in the bug round A integration).
+-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing (reviewed 2026-11-16 in the bug round A integration).
 --
 -- A SCAN THAT DELIVERED NOTHING GIVES ITS DAY BACK, AND A STRANGER NAMES NO
 -- NEW INDUSTRY (bug round 2026-11-12, lane free-scan-engine).

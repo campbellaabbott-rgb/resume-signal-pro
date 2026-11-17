@@ -1,5 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. Every job this file schedules
--- runs once a day (reviewed 2026-11-16 in the bug round A integration).
+-- lovable-cron-fallback-reviewed: no sub-hourly cron; every job this file schedules runs once a day (reviewed 2026-11-16 in the bug round A integration).
 --
 -- A LOG KEEPS NO ADDRESS PAST NINETY DAYS (S14X-042, NEW-PRIVACY-RETENTION-01).
 --
