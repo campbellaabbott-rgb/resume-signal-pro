@@ -15,6 +15,12 @@
  * (the landing's session copy, the board's fit request, the recovery box,
  * the candidate box, the panel's analysis handler), and a binary file renamed
  * .txt is refused at the landing in the reader's words, not scanned.
+ *
+ * THE SUCCESS PAGE'S REFUSAL (review of part B, 2026-11-17). Its recovery
+ * upload refused that file with an English sentence thrown as an Error and
+ * shown under "Parsing failed", whatever language the page was read in. It
+ * now refuses in the reader's words, the landing's two keys, and lets go of
+ * the file, so a German reader sees German and the box stays empty.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement as h } from "react";
@@ -22,6 +28,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { MemoryRouter } from "react-router-dom";
 import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import en from "../i18n/locales/en.json";
+import deIngest from "../i18n/shards/ingest-parsers/de.json";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
 
@@ -109,6 +116,9 @@ function utf16le(text: string): Uint8Array {
   return out;
 }
 const unicodeTxt = () => new File([utf16le(RESUME)], "resume.txt", { type: "text/plain" });
+/** A binary file renamed .txt: still not text once any byte-order mark is honoured. */
+const binaryTxt = () => new File([new Uint8Array(400).map((_, i) => (i * 37) % 32)], "resume.txt", { type: "text/plain" });
+const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const choose = (input: Element, file: File) => fireEvent.change(input, { target: { files: [file] } });
 /** The landing's drop panel (ResumeUploader's), once the page has drawn it. */
 async function uploadPanel(): Promise<HTMLElement> {
@@ -180,8 +190,7 @@ describe("a file that is still not text after the mark is honoured", () => {
   it("is refused at the scanner's landing in the reader's words, and nothing is kept or scanned", async () => {
     render(h(MemoryRouter, null, h(Index)));
     const panel = await uploadPanel();
-    const binary = new File([new Uint8Array(400).map((_, i) => (i * 37) % 32)], "resume.txt", { type: "text/plain" });
-    fireEvent.drop(panel, { dataTransfer: { files: [binary] } });
+    fireEvent.drop(panel, { dataTransfer: { files: [binaryTxt()] } });
     await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({
       title: i18n.t("ingestParsers.refusal.txtUnreadable"),
       description: i18n.t("ingestParsers.refusal.txtUnreadableDescription"),
@@ -190,5 +199,25 @@ describe("a file that is still not text after the mark is honoured", () => {
     expect(i18n.t("ingestParsers.refusal.txtUnreadable")).not.toBe("ingestParsers.refusal.txtUnreadable");
     expect(sessionStorage.getItem("rb_resume_text")).toBeNull();
     expect(freeScan).not.toHaveBeenCalled();
+  });
+});
+
+describe("the success page's recovery upload refuses that file in the reader's language", () => {
+  it("a German reader is told in German, no English sentence is shown, and the box stays empty", async () => {
+    backend.invoke = (fn) => fn === "verify-product-purchase"
+      ? { data: { verified: true, isFirstUse: false, customerEmail: "b@example.com", generatedContent: null, inProgress: false, hasResumeData: false }, error: null }
+      : { data: null, error: null };
+    const { txtUnreadable: title, txtUnreadableDescription: description } = deIngest.ingestParsers.refusal;
+    await act(async () => { await i18n.changeLanguage("de"); });
+    // German loads beside its shards after the switch.
+    await waitFor(() => expect(i18n.t("ingestParsers.refusal.txtUnreadable")).toBe(title), SLOW);
+    render(h(MemoryRouter, { initialEntries: ["/product-success?session_id=cs_test_binary_txt&product=careerSnapshot"] }, h(ProductSuccess)));
+    const input = await screen.findByLabelText(new RegExp(escape(i18n.t("productSuccess.recovery.yourResume"))), { selector: "input" }, SLOW);
+    choose(input, binaryTxt());
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title, description, variant: "destructive" })), SLOW);
+    const shown = toast.mock.calls.flatMap(([arg]) => [arg?.title, arg?.description]).map(String);
+    expect(shown.filter((x) => /Could not read the file|Parsing failed/.test(x)), "an English refusal reached the toast").toEqual([]);
+    expect((screen.getByPlaceholderText(i18n.t("productSuccess.recovery.pasteResumePlaceholder")) as HTMLTextAreaElement).value).toBe("");
+    expect(screen.queryByText("resume.txt"), "the refused file is still shown as chosen").toBeNull();
   });
 });

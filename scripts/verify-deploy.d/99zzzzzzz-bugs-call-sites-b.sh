@@ -28,6 +28,11 @@
 #       did not: nothing below could be judged.
 #   L1  the stage; once published, FAIL when the chunk that refuses the .txt
 #       neither decodes utf-16le itself nor imports a chunk that does.
+#   R1  S14X-283 (call sites): once published, FAIL when the success page's
+#       chunk (ProductSuccess-) does not carry the refusal key: its recovery
+#       upload refused the same file with an English sentence under "Parsing
+#       failed" whatever language the reader chose (review of part B,
+#       2026-11-17), and now refuses it with the landing's two keys.
 #   D1  S14X-255: no chunk a reader can load calls a toLocale string method
 #       with no locale, void 0 or an empty list, or builds an Intl number,
 #       date, relative-time, plural or list formatter that way (a bare
@@ -103,6 +108,13 @@ else {
   if (blind.length) say("FAIL", "L1", "S14X-283 " + blind.join(", ") + " refuses an unreadable .txt but neither decodes utf-16le nor imports a chunk that does: the landing still reads a Notepad Unicode file as UTF-8");
   else say("PASS", "L1", "S14X-283 the scanner landing (" + carriers.join(", ") + ") reads a .txt through the byte-order decoder (" + carriers.map(decoderOf).join(", ") + ") and refuses one that is still not text");
 }
+
+// R1: the success page refuses the same file with the same key, not in English.
+const success = [...src.keys()].filter((n) => n.startsWith("ProductSuccess-"));
+const successSays = success.filter((n) => (src.get(n) || "").includes(KEY));
+if (!published) say("INFO", "R1", "S14X-283 the success page recovery upload is judged once a chunk carries " + KEY + ": not published yet");
+else if (!successSays.length) say("FAIL", "R1", "S14X-283 " + success.join(", ") + " carries no " + KEY + ": the success page recovery upload refuses an unreadable .txt in English whatever language the reader chose");
+else say("PASS", "R1", "S14X-283 the success page recovery upload (" + successSays.join(", ") + ") refuses an unreadable .txt with the landing key, in the language the reader chose");
 
 // D1: the browser picks the language.
 const OWNER = /^(HealthCheck|AnalyticsDashboard|AdminClaims|ScanMetrics|ErrorDashboard|UserHealthTable|IndustryDetectionChart|AIGenerationTrendChart|EmailTrendChart|HealthTrendChart|WebhookTrendChart)-/;

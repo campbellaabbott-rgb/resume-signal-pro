@@ -539,9 +539,18 @@ export default function ProductSuccess() {
     try {
       if (file.type === "text/plain") {
         // In the encoding it was saved in (S14X-283): a UTF-16 file read as
-        // UTF-8 came back with a NUL beside every letter.
+        // UTF-8 came back with a NUL beside every letter. Text that is still
+        // not readable is refused in the reader's words, as the landing does.
         const { text, garbled } = await readTextFile(file);
-        if (garbled) throw new Error("Could not read the file. Please try pasting your resume text instead.");
+        if (garbled) {
+          toast({
+            title: t('ingestParsers.refusal.txtUnreadable'),
+            description: t('ingestParsers.refusal.txtUnreadableDescription'),
+            variant: "destructive",
+          });
+          setRecoveryFile(null);
+          return;
+        }
         setRecoveryResumeText(text);
         setIsParsingFile(false);
         return;
@@ -589,7 +598,7 @@ export default function ProductSuccess() {
     } finally {
       setIsParsingFile(false);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   // THE SAVED COPY OF A PURCHASE, PUT ON THE PAGE. recover-purchase answers
   // with every row saved under a reference; the one for this page's product

@@ -20,7 +20,8 @@
  *   - each regression prints FAIL: every spelling of the browser's locale in a
  *     reader's chunk, one in a chunk only a lazy import two hops deep names,
  *     each upload box reading a .txt as UTF-8 again, a landing that refuses
- *     the .txt without the decoder, and a bundle layout the walk cannot read;
+ *     the .txt without the decoder, a success page that refuses it in English
+ *     again (R1), and a bundle layout the walk cannot read;
  *   - every request is a GET, each chunk is read once, and the key is never
  *     printed.
  */
@@ -109,12 +110,16 @@ const OLD: Chunks = {
 // Success-_KLsXIvJ.js), cut to the same tells.
 const READER = 'async function r(e){const t=new Uint8Array(await e.arrayBuffer());let n;if(t[0]===255&&t[1]===254)n=new TextDecoder("utf-16le").decode(t.subarray(2));else if(t[0]===254&&t[1]===255)n=new TextDecoder("utf-16be").decode(t.subarray(2));else n=new TextDecoder("windows-1252").decode(t);return{text:n,garbled:!1}}async function s(e){try{if(e.type==="text/plain"||/\\.txt$/i.test(e.name)){const{text:a,garbled:o}=await r(e);return o?"":a}return""}catch{return""}}export{r,s};';
 const LANDING = 'import{r as cn}from"./resumeText-RT.js";if(o.type==="text/plain"){const{text:R,garbled:U}=await cn(o);if(!N())return;if(U){_({title:s("ingestParsers.refusal.txtUnreadable"),description:s("ingestParsers.refusal.txtUnreadableDescription"),variant:"destructive"});return}}t("homepage.toast.fileDamaged");Ct(e)';
+/** The success page as this round builds it: the landing's two keys, then the file let go. */
+const SUCCESS = 'import{r as Dr}from"./resumeText-RT.js";if(n.type==="text/plain"){const{text:o,garbled:v}=await Dr(n);if(v){m({title:t("ingestParsers.refusal.txtUnreadable"),description:t("ingestParsers.refusal.txtUnreadableDescription"),variant:"destructive"});F(null);return}k(o)}';
+/** The success page as part B's call-sites lane built it: the refusal thrown as an English sentence. */
+const SUCCESS_ENGLISH = 'import{r as Dr}from"./resumeText-RT.js";if(n.type==="text/plain"){const{text:o,garbled:v}=await Dr(n);if(v)throw new Error("Could not read the file. Please try pasting your resume text instead.");k(o)}';
 const NEW: Chunks = {
   "Index-IX.js": LANDING,
   "resumeText-RT.js": READER,
   "Jobs-JB.js": 'import{r as Sf}from"./resumeText-RT.js";const Dp=()=>import("./Deep-DP.js");if(s.type==="text/plain"||l.endsWith(".txt")){const x=await Sf(s);m=x.garbled?"":x.text}Q(n);new Intl.DisplayNames(void 0,{type:"region"});const z=Intl.DateTimeFormat().resolvedOptions().timeZone',
   "Deep-DP.js": "export const d=1;",
-  "ProductSuccess-PS.js": 'import{r as Dr}from"./resumeText-RT.js";if(n.type==="text/plain"){const{text:o,garbled:v}=await Dr(n);if(v)throw new Error("Could not read the file.")}',
+  "ProductSuccess-PS.js": SUCCESS,
   "Shortlist-SL.js": 'import{r as gt}from"./resumeText-RT.js";if(r==="txt"){const{text:a,garbled:b}=await gt(e);if(b)return;_(a)}fe(n.sent_at,{lng:"en"})',
   "Success-SC.js": 'import{r as Gt}from"./resumeText-RT.js";if(r.type==="text/plain"){const{text:D,garbled:ee}=await Gt(r);if(ee)throw new Error("unreadable text file");R(D)}',
   "AgentStatusBand-AB.js": 'import{s as Ce}from"./resumeText-RT.js";',
@@ -148,7 +153,7 @@ describe("today's production", () => {
     const { lines } = run(site(OLD));
     expect(lines.filter((l) => /^FAIL/.test(l)), show(lines)).toEqual([]);
     expect(lines.filter((l) => /^PASS/.test(l)), show(lines)).toEqual([]);
-    for (const id of ["L0", "L1", "D1", "T1"]) expect(verdict(lines, id), `${id}\n${show(lines)}`).toEqual(["INFO"]);
+    for (const id of ["L0", "L1", "R1", "D1", "T1"]) expect(verdict(lines, id), `${id}\n${show(lines)}`).toEqual(["INFO"]);
     expect(line(lines, "L0")[0]).toMatch(/read 120 chunks/);
     // The owner's 25 stay out of the count; the region name is not a figure.
     expect(line(lines, "D1")[0], show(lines)).toMatch(/S14X-255 87 calls in 6 chunks .* hold 25\): not published yet/);
@@ -161,8 +166,9 @@ describe("a good deploy", () => {
   it("passes every claim, with the owner dashboards still English and a time-zone read left alone", () => {
     const { lines } = run(site(NEW));
     expect(lines.filter((l) => /^FAIL/.test(l)), show(lines)).toEqual([]);
-    for (const id of ["L1", "D1", "T1"]) expect(verdict(lines, id), `${id}\n${show(lines)}`).toEqual(["PASS"]);
+    for (const id of ["L1", "R1", "D1", "T1"]) expect(verdict(lines, id), `${id}\n${show(lines)}`).toEqual(["PASS"]);
     expect(line(lines, "L1")[0]).toContain("Index-IX.js");
+    expect(line(lines, "R1")[0]).toContain("ProductSuccess-PS.js");
     expect(line(lines, "L1")[0]).toContain("resumeText-RT.js");
     expect(line(lines, "D1")[0]).toMatch(/none of the 121 chunks .* hold 25\)/);
   });
@@ -202,6 +208,14 @@ describe("each regression fails once the merge has published", () => {
     expect(verdict(lines, "D1"), show(lines)).toEqual(["PASS"]);
   });
 
+  it("R1: a success page that refuses an unreadable .txt in English again fails, and the landing still passes", () => {
+    const { lines } = run(site({ ...NEW, "ProductSuccess-PS.js": SUCCESS_ENGLISH }));
+    expect(verdict(lines, "R1"), show(lines)).toEqual(["FAIL"]);
+    expect(line(lines, "R1")[0]).toMatch(/ProductSuccess-PS\.js carries no ingestParsers\.refusal\.txtUnreadable/);
+    expect(verdict(lines, "L1"), show(lines)).toEqual(["PASS"]);
+    expect(verdict(lines, "T1"), show(lines)).toEqual(["PASS"]);
+  });
+
   it("L1: a landing that refuses a .txt it read without the decoder fails", () => {
     const blind = LANDING.replace('import{r as cn}from"./resumeText-RT.js";', 'const cn=async(f)=>({text:new TextDecoder().decode(await f.arrayBuffer()),garbled:!1});');
     const { lines } = run(site({ ...NEW, "Index-IX.js": blind, "resumeText-RT.js": "export const r=1;" }));
@@ -219,7 +233,7 @@ describe("a layout the walk cannot read fails L0 and judges nothing", () => {
     const { lines } = run(routes);
     expect(verdict(lines, "L0"), show(lines)).toEqual(["FAIL"]);
     expect(line(lines, "L0")[0]).toMatch(said);
-    for (const id of ["L1", "D1", "T1"]) expect(line(lines, id), `${id} was judged without its chunks`).toEqual([]);
+    for (const id of ["L1", "R1", "D1", "T1"]) expect(line(lines, id), `${id} was judged without its chunks`).toEqual([]);
   });
 });
 
