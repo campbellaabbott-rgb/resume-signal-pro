@@ -18,9 +18,12 @@
  * candidate", or beside a candidate with a scoring verb. So a CV that placed
  * 100 candidates, came first of 300 with full marks, trained a model to ignore
  * injected instructions, or is an agency profile saying "this candidate led
- * 100 projects" is left alone, and every English line reads as it did.
+ * 100 projects" is left alone, and every English line reads as it did. The
+ * Shortlist page imports this module for its flag sentence, so the new
+ * patterns (lookbehind, which older Safari refuses) are built only when the
+ * scorer first calls the check, never at import.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { plantedInstructions } from "../../supabase/functions/_shared/planted-instructions";
 
 const IGNORE = "asks to ignore earlier instructions";
@@ -125,6 +128,31 @@ describe("English reads as it did", () => {
       "Recruited 100 candidates a quarter for this client.",
     ]) expect(plantedInstructions(line), line).toEqual([]);
     expect(plantedInstructions(`Engineer${"​".repeat(5)} with hidden text`)).toEqual(["hidden characters"]);
+  });
+});
+
+describe("the page that imports the flag sentence never builds the new patterns", () => {
+  it("a browser that cannot read lookbehind still loads the module", async () => {
+    // The Shortlist page imports this module for PLANTED_INSTRUCTIONS_FLAG. The
+    // new patterns use lookbehind, which older Safari refuses, so they may be
+    // built only when the scorer calls plantedInstructions, never at import.
+    const Real = globalThis.RegExp;
+    const refused: string[] = [];
+    globalThis.RegExp = new Proxy(Real, {
+      construct(target, args: [string | RegExp, string?]) {
+        const src = String(args[0]);
+        if (src.includes("(?<![\\p{L}\\p{M}])")) { refused.push(src.slice(0, 40)); throw new SyntaxError("Invalid regular expression: invalid group specifier name"); }
+        return Reflect.construct(target, args);
+      },
+    });
+    try {
+      vi.resetModules();
+      const fresh = await import("../../supabase/functions/_shared/planted-instructions");
+      expect(fresh.PLANTED_INSTRUCTIONS_FLAG).toMatch(/^Possible instructions to the scoring tool/);
+      expect(refused, "the module built a lookbehind pattern at import").toEqual([]);
+    } finally {
+      globalThis.RegExp = Real;
+    }
   });
 });
 

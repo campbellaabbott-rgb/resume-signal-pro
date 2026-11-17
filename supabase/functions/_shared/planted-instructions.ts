@@ -41,8 +41,12 @@ const CAND = `${A}(?:kandidat\\p{L}*|bewerber\\p{L}*|candidat[oae]?|postulante?|
 const THIS = `${A}(?:dies\\p{L}*|ce|cet|cette|este|esta|ese|esa|esse|essa|deze|itong|इस)\\s+(?:${CAND})|(?:[这這][位个個名]|[该該此]|この|当該)\\s*(?:${CAND})|${A}(?:kandidatong|aplikanteng)\\s+ito${Z}`;
 const PERFECT = `(?<![\\p{N}.,])(?:100|१००)(?![.,]?\\p{N})(?=\\s*(?:$|[^\\s\\p{L}\\p{M}\\p{N}%]|(?:punkte?n?|points?|puntos?|pontos?|punten|अंक|分|点|à|a|al|ao|bewerten|geven)(?![\\p{L}\\p{M}])))|10\\s*\\/\\s*10(?!\\p{N})|${A}(?:note|nota|puntuaci[oó]n|puntaje|calificaci[oó]n|pontua[cç][aã]o|score|cijfer|punktzahl|bewertung|marka|iskor)\\s+(?:m[aá]xim\\p{L}*|perfe\\p{L}*|parfait\\p{L}*)|${A}(?:m[aá]xim\\p{L}*|perfe\\p{L}*|hoogste|h[öo]chste|volle|pinakamataas na|perpektong)\\s+(?:note|nota|score|cijfer|punktzahl|bewertung|punkte?n?|puntuaci[oó]n|marka|iskor)${Z}|h[öo]chst(?:punktzahl|note|wertung)|bestnote|[满滿]分|最高分|満点|最高点|पूर[\\p{L}\\p{M}]*\\s+अंक`;
 const ASK = `${A}(?:bewerten?|gib|geben|vergib|vergeben|benoten?|donne[rz]?|attribue[rz]?|accorde[rz]?|notez|évaluez|mettez|dale|dé|dar|asígnale|asigna|otórgale|otorga|califica|califique|puntúa|ponle|dê|dá|atribua|conceda|avalie|geef|beoordeel|bigyan|ibigay|दें|दीजिए|दीजिये)${Z}|[打给給]|[评評][为為]|つけ|付け|与え|ください`;
-/** Each ask: where it starts, what must stand within `reach` characters of it in the same sentence, and its label. */
-const OTHER_LANGUAGES = [
+/** An ask: where it starts, what must stand within `reach` characters of it in the same sentence, and its label. */
+type Ask = { label: string; at: RegExp; near: RegExp[]; reach: number };
+// Built on first use, never at import: the Shortlist page imports this module
+// for its flag sentence, and a browser without lookbehind would throw here.
+let asks: Ask[] | null = null;
+const otherLanguages = (): Ask[] => asks ??= [
   { label: "asks to ignore earlier instructions", at: rx(`(?:${VERB})${E}{0,40}?(?:${NOUN})|(?:${NOUN})${E}{0,40}?(?:${LATE})`), near: [rx(QUAL)], reach: 25 },
   { label: "asks for a score", at: rx(THIS), near: [rx(PERFECT)], reach: 60 },
   { label: "asks for a score", at: rx(`(?<!\\p{N}[+\\s]*[名位个個人]?\\s*)(?:${CAND})`), near: [rx(PERFECT), rx(ASK)], reach: 60 },
@@ -51,7 +55,7 @@ const OTHER_LANGUAGES = [
 const spans = (s: string, re: RegExp) => [...s.matchAll(re)].map((m) => [m.index!, m.index! + m[0].length]);
 
 /** Whether an ask starts somewhere with everything it needs beside it, in one sentence. */
-function asked(s: string, ask: (typeof OTHER_LANGUAGES)[number]): boolean {
+function asked(s: string, ask: Ask): boolean {
   const near = ask.near.map((re) => ({ hits: spans(s, re), k: 0 }));
   for (const [i, j] of spans(s, ask.at)) {
     let lo = Math.max(0, i - ask.reach), hi = Math.min(s.length, j + ask.reach);
@@ -77,7 +81,7 @@ export function plantedInstructions(text: string): string[] {
   const s = String(text ?? "").normalize("NFC");
   const out: string[] = [];
   for (const p of PLANTED_INSTRUCTION_PATTERNS) {
-    if (p.re.test(s) || OTHER_LANGUAGES.some((a) => a.label === p.label && asked(s, a))) out.push(p.label);
+    if (p.re.test(s) || otherLanguages().some((a) => a.label === p.label && asked(s, a))) out.push(p.label);
   }
   const hidden = s.match(HIDDEN_CHARS)?.length ?? 0;
   if (hidden >= 5) out.push("hidden characters");
