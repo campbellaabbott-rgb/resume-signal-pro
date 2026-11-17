@@ -1571,6 +1571,30 @@
     "theFooterLinksOurDataPages": {
       "title": "The footer links our data pages and ATS benchmarks",
       "description": "The footer now also links the Ghost Job Index, Weekly Hiring Trends, the Entry-Level Index and ATS score benchmarks, next to the Pay Transparency Index it already linked."
+    },
+    "aResumeInAnotherLanguageIsNoLongerScoredAsEnglish": {
+      "title": "The free scan no longer scores a CV in another language as if it were English",
+      "description": "The free scan keeps its score close to one worked out by fixed rules, and those rules read every CV as if it were in English: they looked only for the English words for experience, education and skills, and matched the keywords of the CV's field only in English. Now, when a CV is in Spanish, French, German, Portuguese, Dutch, Italian, Hindi or Tagalog and uses that language's own words for at least two of experience, education and skills, the rules accept that language's words for those three, and measure its length by its letters as well as its words, so a language with longer words is not counted short. The keywords are still matched only in English, so for such a CV the scan credits a limited share of them, in step with its length, instead of counting every one it cannot match as missing. If the scan places the CV in no particular field, it still gives no keyword credit. A result the scan saved for such a CV before this change is not shown again: scanning it again gives a fresh score. Every other CV, in English or any other language, is scored by the same rules as before."
+    },
+    "severalEmployersWhoseListsWereTooBigNowShowTheirJobs": {
+      "title": "Several employers whose job lists were too big for us now show their jobs",
+      "description": "Some employers publish their whole job list in one piece, too large for us to take in, so we set those lists aside. We now read several of them a posting at a time, in a way that copes with their size, and their jobs show on the board and in search, among them TransPerfect, Dura Vermeer, aaff B.V. and Tether Operations Limited. Earlier this month our board showed no jobs from TransPerfect at all. Some lists are still too big for us, so not every such employer shows yet."
+    },
+    "boardsThatPostedInBulkAndSecondCopiesOfJobsLeaveTheBoard": {
+      "title": "Boards that posted jobs in bulk, and second copies of the same jobs, leave the board",
+      "description": "A few boards posted jobs in bulk rather than as an employer's own hiring page. They are gone from the board, and their postings no longer show as open. Some employers' jobs also reached us from two places, so the same job could be listed twice. For those, we now keep one copy: the second copy is gone, and the copy we kept still lists the employer's jobs."
+    },
+    "moreJobsFiledInTheirOwnCountryAndUsPayInUsDollars": {
+      "title": "More jobs filed under Hong Kong, Nigeria, Kazakhstan, Jordan and Lebanon, and US pay in US dollars",
+      "description": "Jobs in Hong Kong whose place also names China, such as “Hong Kong, SAR, China”, were filed under China. When we read such a job again, it is now filed under Hong Kong, and the country filter finds it there; many are still filed under China until we read them again. Jobs whose place ended in Nigeria, Kazakhstan, Jordan or Lebanon, after a town or region we did not know, were left with no country, so the country filter missed them. New reads now file them under that country, and older ones follow as we read them again. And a few jobs in US towns that share their name with a Canadian place still showed their pay in Canadian dollars; they now show it in US dollars."
+    },
+    "jobPagesWriteCapitalsTitlesNormallyAndNoLogoNamesTheEmployer": {
+      "title": "Job titles typed in capitals, and logo captions printed as the employer",
+      "description": "When an employer types a job title all in capitals, the job's own page now writes it in the usual mix of capitals and small letters, in the heading you see, the browser tab, the description search engines show and the job details they read. Short groups of letters that may be abbreviations stay in capitals, and the trail of links above the heading still shows the title as the employer typed it. On the board itself, a job's title still shows as the employer typed it. Some hiring systems also give a logo caption where the employer's name should be. The board, job pages and the job details search engines read no longer print such a caption as the employer: where we have no other name for the employer, we leave it out or say “the employer”. And where a careers site meant for one group of candidates, such as military candidates, adds that group to the employer's name, the name now shows without it."
+    },
+    "jobsOnlyStaffMayApplyForAreNotOfferedToSearchEngines": {
+      "title": "Jobs only an employer's own staff may apply for are no longer offered to search engines as openings",
+      "description": "Some employers post jobs that only their own staff, people they refer or people they invite may apply for, either on a board kept for staff, referrals or invitations, or with a line in the posting saying only its own staff may apply. Our pages for these jobs no longer give search engines the job details they use to list an opening in their job search, and a page of this kind that we had listed for search engines now asks them to leave it out. These jobs still show on our board, and their pages still open, with a link to the employer's site."
     }
   }
 }
