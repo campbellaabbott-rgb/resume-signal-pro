@@ -1,4 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER
+-- lovable-cron-fallback-reviewed: job-board-stats-rollup goes from every 15 minutes to every 30 minutes; reviewed 2026-11-16 by the project owner; the public data API already promises a 30-minute rollup, and each run now reads the postings once instead of twice.
 -- reviewed: 2026-11-16 by the project owner, who approves this schedule as written.
 -- job: job-board-stats-rollup (an existing job, altered in place).
 -- schedule: '*/15 * * * *' today -> '*/30 * * * *' after this file (half as often).

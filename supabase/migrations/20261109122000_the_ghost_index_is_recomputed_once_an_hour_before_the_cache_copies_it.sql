@@ -1,5 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. Every job this file schedules
--- runs at most once an hour (reviewed 2026-11-16 by the project owner).
+-- lovable-cron-fallback-reviewed: no sub-hourly cron; every job this file schedules runs at most once an hour (reviewed 2026-11-16 by the project owner).
 --
 -- THE GHOST INDEX IS RECOMPUTED ONCE AN HOUR, BEFORE THE CACHE COPIES IT
 -- (cost audit 2026-11-08, db-cadence lane, "do first" #7).

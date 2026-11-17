@@ -1,0 +1,2 @@
+-- lovable-cron-fallback-reviewed: no sub-hourly cron; every job this file schedules runs at most once an hour (reviewed 2026-11-16 by the project owner).
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261109141000_the_closure_split_is_counted_from_an_index_of_its_basis'));

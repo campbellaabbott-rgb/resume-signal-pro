@@ -1884,6 +1884,8 @@ export type Database = {
           perks_y: number
           posting_id: string
           quote_line_hash: string[] | null
+          read_had_description: boolean | null
+          read_title_md5: string | null
           readable: boolean
           source: string
           text_hash: string | null
@@ -1901,6 +1903,8 @@ export type Database = {
           perks_y?: number
           posting_id: string
           quote_line_hash?: string[] | null
+          read_had_description?: boolean | null
+          read_title_md5?: string | null
           readable: boolean
           source: string
           text_hash?: string | null
@@ -1918,6 +1922,8 @@ export type Database = {
           perks_y?: number
           posting_id?: string
           quote_line_hash?: string[] | null
+          read_had_description?: boolean | null
+          read_title_md5?: string | null
           readable?: boolean
           source?: string
           text_hash?: string | null
@@ -2914,6 +2920,21 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_embed_requeue: {
+        Row: {
+          id: string
+          queued_at: string
+        }
+        Insert: {
+          id: string
+          queued_at?: string
+        }
+        Update: {
+          id?: string
+          queued_at?: string
+        }
+        Relationships: []
+      }
       job_board_embeddings: {
         Row: {
           embedded_desc: boolean
@@ -3019,6 +3040,7 @@ export type Database = {
           department: string | null
           employment_type: string | null
           event_id: number
+          exit_basis: string | null
           exit_reason: string
           exited_at: string
           experience_band: string | null
@@ -3044,6 +3066,7 @@ export type Database = {
           department?: string | null
           employment_type?: string | null
           event_id?: never
+          exit_basis?: string | null
           exit_reason: string
           exited_at?: string
           experience_band?: string | null
@@ -3069,6 +3092,7 @@ export type Database = {
           department?: string | null
           employment_type?: string | null
           event_id?: never
+          exit_basis?: string | null
           exit_reason?: string
           exited_at?: string
           experience_band?: string | null
@@ -3275,6 +3299,7 @@ export type Database = {
           category_proposed: string | null
           category_proposed_at: string | null
           category_proposed_v: number | null
+          closes_at: string | null
           company: string
           company_token: string
           country: string | null
@@ -3316,6 +3341,7 @@ export type Database = {
           category_proposed?: string | null
           category_proposed_at?: string | null
           category_proposed_v?: number | null
+          closes_at?: string | null
           company: string
           company_token: string
           country?: string | null
@@ -3357,6 +3383,7 @@ export type Database = {
           category_proposed?: string | null
           category_proposed_at?: string | null
           category_proposed_v?: number | null
+          closes_at?: string | null
           company?: string
           company_token?: string
           country?: string | null
@@ -6226,6 +6253,7 @@ export type Database = {
         Returns: Json
       }
       employer_perk_audit_status: { Args: never; Returns: Json }
+      employer_perk_extractor_version: { Args: never; Returns: number }
       employer_perk_rollup_tick: {
         Args: { p_budget_ms?: number }
         Returns: Json
@@ -6241,6 +6269,7 @@ export type Database = {
         }
         Returns: Json
       }
+      employer_perk_sweep_due: { Args: never; Returns: boolean }
       employer_perk_sweep_take: {
         Args: { p_budget_ms?: number; p_limit: number; p_version: number }
         Returns: {
@@ -7948,6 +7977,7 @@ export type Database = {
       refresh_headline_open: { Args: never; Returns: number }
       refresh_job_board_facets: { Args: never; Returns: Json }
       refresh_job_board_stats: { Args: never; Returns: undefined }
+      refresh_jobs_live_aggregates: { Args: never; Returns: Json }
       refresh_layoff_partition: {
         Args: never
         Returns: {

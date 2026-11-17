@@ -1597,6 +1597,118 @@
       "when": 1794766579208,
       "tag": "0227_slim_explore_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 228,
+      "version": "7",
+      "when": 1794939259656,
+      "tag": "0228_facets_cron_rebuilds_only_old_row",
+      "breakpoints": true
+    },
+    {
+      "idx": 229,
+      "version": "7",
+      "when": 1794939281008,
+      "tag": "0229_coverage_rollup_half_hourly",
+      "breakpoints": true
+    },
+    {
+      "idx": 230,
+      "version": "7",
+      "when": 1794939300752,
+      "tag": "0230_nightly_purge_no_repeat_cache_delete",
+      "breakpoints": true
+    },
+    {
+      "idx": 231,
+      "version": "7",
+      "when": 1794939304408,
+      "tag": "0231_board_verdict_rewritten_on_bucket_change",
+      "breakpoints": true
+    },
+    {
+      "idx": 232,
+      "version": "7",
+      "when": 1794939312834,
+      "tag": "0232_closure_split_from_basis_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 233,
+      "version": "7",
+      "when": 1794939320332,
+      "tag": "0233_title_only_embedding_requeued",
+      "breakpoints": true
+    },
+    {
+      "idx": 234,
+      "version": "7",
+      "when": 1794939329908,
+      "tag": "0234_perk_posting_reread_on_text_change",
+      "breakpoints": true
+    },
+    {
+      "idx": 235,
+      "version": "7",
+      "when": 1794939346360,
+      "tag": "0235_perk_sweep_kicked_only_with_work",
+      "breakpoints": true
+    },
+    {
+      "idx": 236,
+      "version": "7",
+      "when": 1794939358542,
+      "tag": "0236_jobs_page_aggregates_from_row",
+      "breakpoints": true
+    },
+    {
+      "idx": 237,
+      "version": "7",
+      "when": 1794939368825,
+      "tag": "0237_vendor_wall_small_head_row",
+      "breakpoints": true
+    },
+    {
+      "idx": 238,
+      "version": "7",
+      "when": 1794939377270,
+      "tag": "0238_four_duplicate_indexes_dropped",
+      "breakpoints": true
+    },
+    {
+      "idx": 239,
+      "version": "7",
+      "when": 1794939745233,
+      "tag": "0239_usajobs_closes_on_stated_date",
+      "breakpoints": true
+    },
+    {
+      "idx": 240,
+      "version": "7",
+      "when": 1794939754991,
+      "tag": "0240_four_boards_employer_names",
+      "breakpoints": true
+    },
+    {
+      "idx": 241,
+      "version": "7",
+      "when": 1794939816950,
+      "tag": "0241_wrong_currency_pay_reread",
+      "breakpoints": true
+    },
+    {
+      "idx": 242,
+      "version": "7",
+      "when": 1794939825433,
+      "tag": "0242_catalogue_high_water_follows_retirements",
+      "breakpoints": true
+    },
+    {
+      "idx": 243,
+      "version": "7",
+      "when": 1794940002008,
+      "tag": "0243_ghost_index_hourly_before_cache",
+      "breakpoints": true
     }
   ]
 }

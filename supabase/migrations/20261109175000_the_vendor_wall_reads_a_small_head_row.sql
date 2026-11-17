@@ -1,5 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. This file creates or changes no
--- cron schedule (reviewed 2026-11-16 by the project owner).
+-- lovable-cron-fallback-reviewed: no cron; this file creates or changes no cron schedule (reviewed 2026-11-16 by the project owner).
 --
 -- THE VENDOR WALL READS A SMALL HEAD ROW.
 --
