@@ -2,16 +2,18 @@
  * Lovable's agent applied the cost wave's first two migrations and then
  * refused the third (2026-11-15) "for a missing sub-hourly cron review
  * marker", and stopped. Lovable's documentation names no such rule, so the
- * marker is written in the agent's own words at the top of every pending
- * cost-wave file:
+ * marker was first written in the agent's own words. On 2026-11-17 the agent
+ * refused the same file again and named the exact first line its tool
+ * requires: the words lovable-cron-fallback-reviewed, a colon, and a reason.
+ * Every pending cost-wave file now opens with that line:
  *
  *  - a file whose code schedules or keeps a job on a sub-hourly cron
- *    expression opens with the full review block (who reviewed it and when,
- *    the job, the schedule before and after, why it is sub-hourly, the load,
- *    and that it adds no standing sub-hourly job);
- *  - every other file opens with the one-line form saying the review is not
- *    required, and is held to it: its code may not carry a sub-hourly
- *    expression.
+ *    expression gives a reason that names the job, and the lines under it
+ *    keep the owner's full review (who reviewed it and when, the job, the
+ *    schedule before and after, why it is sub-hourly, the load, and that it
+ *    adds no standing sub-hourly job);
+ *  - every other file's reason says it has no cron or no sub-hourly cron, and
+ *    is held to it: its code may not carry a sub-hourly expression.
  *
  * Lovable also documents that it rejects a migration containing BEGIN,
  * COMMIT or ROLLBACK as transaction statements; the files carry none, and the
@@ -57,23 +59,28 @@ const FULL = [
   /^-- new standing sub-hourly jobs: none\.$/m,
 ];
 
-describe("every pending cost-wave migration opens with its sub-hourly cron review marker", () => {
+/** The first line Lovable's tool requires, with a reason that is one line. */
+const MARKER = /^-- lovable-cron-fallback-reviewed: \S[^\n]*\n/;
+
+describe("every pending cost-wave migration opens with Lovable's cron review line", () => {
   for (const stamp of PENDING) {
     const sql = fileFor(stamp);
     const runs = subHourly(code(sql));
     const head = sql.split("\n--\n")[0];
 
-    it(`${stamp} begins with the marker`, () => {
-      expect(sql.startsWith("-- SUB-HOURLY CRON REVIEW MARKER")).toBe(true);
+    it(`${stamp} begins with the line Lovable's tool requires`, () => {
+      expect(sql).toMatch(MARKER);
     });
 
     if (runs.length > 0) {
       it(`${stamp} keeps a sub-hourly job (${[...new Set(runs)].join(", ")}), so its marker is the full review`, () => {
         for (const line of FULL) expect(head, String(line)).toMatch(line);
+        const job = /^-- job: (\S+)/m.exec(head)?.[1] ?? "";
+        expect(sql.split("\n")[0], `the reason names ${job}`).toContain(job);
       });
     } else {
       it(`${stamp} runs nothing more often than hourly and says the review is not required`, () => {
-        expect(head).toMatch(/^-- SUB-HOURLY CRON REVIEW MARKER: not required\./);
+        expect(head).toMatch(/^-- lovable-cron-fallback-reviewed: no (sub-hourly )?cron; /);
       });
     }
 

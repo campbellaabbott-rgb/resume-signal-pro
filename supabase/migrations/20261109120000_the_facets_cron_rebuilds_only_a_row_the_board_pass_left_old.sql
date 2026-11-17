@@ -1,4 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER
+-- lovable-cron-fallback-reviewed: refresh-board-facets keeps its existing every-15-minute schedule (only its minutes move, from 7,22,37,52 to 2,17,32,47); reviewed 2026-11-16 by the project owner; load falls, as a tick now rebuilds only a row the board pass left more than 40 minutes old.
 -- reviewed: 2026-11-16 by the project owner, who approves this schedule as written.
 -- job: refresh-board-facets (scheduled since 20260801000000).
 -- schedule: '7,22,37,52 * * * *' today -> '2,17,32,47 * * * *' after this file.
