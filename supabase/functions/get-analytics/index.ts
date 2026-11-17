@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { keyMatches } from "../_shared/admin-key.ts";
-import { createRollup, type AnalyticsEvent } from "./rollup.ts";
+import { createRollup, orderMilestones, type AnalyticsEvent } from "./rollup.ts";
 
 // THE DASHBOARD COULD NEVER REACH THIS (register L1-03). Its page sends the
 // owner's key as x-admin-key, and this preflight did not allow that header,
@@ -45,9 +45,9 @@ serve(async (req) => {
       );
     }
 
-    const { startDate, endDate, pageFilter } = await req.json();
+    const { startDate, endDate, pageFilter, timeZone } = await req.json();
 
-    console.log('[Analytics] Fetching data:', { startDate, endDate, pageFilter });
+    console.log('[Analytics] Fetching data:', { startDate, endDate, pageFilter, timeZone });
 
     // Validate inputs
     if (!startDate || !endDate) {
@@ -71,7 +71,8 @@ serve(async (req) => {
     // stops early now, and then the oldest days are the partial ones.
     const batchSize = 1000;
     const startedAt = Date.now();
-    const rollup = createRollup(pageFilter);
+    // Days are the owner's calendar days, in the zone the page sends (S14X-190).
+    const rollup = createRollup(pageFilter, typeof timeZone === 'string' ? timeZone : null);
     let lastCreatedAt: string | null = null;
     let lastId: string | null = null;
     let truncated = false;
@@ -126,21 +127,21 @@ serve(async (req) => {
     const metrics = rollup.metrics;
     const pageSpecificMetrics = rollup.pageSpecificMetrics;
 
-    // Transform to MetricData arrays
+    // Transform to MetricData arrays. Scroll and time milestones in the order
+    // a visitor reaches them (S14X-189: by digits, 30s sorted after 10m); every
+    // other test by its variants' names.
     const transformMetrics = (testName: string, source?: Record<string, { views: number; conversions: number }>) => {
       const testMetrics = source || metrics[testName] || {};
-      return Object.entries(testMetrics)
+      const rows = Object.entries(testMetrics)
         .map(([variant, counts]) => ({
           variant,
           views: counts.views,
           conversions: counts.conversions,
           conversionRate: counts.views > 0 ? (counts.conversions / counts.views) * 100 : 0,
-        }))
-        .sort((a, b) => {
-          const aNum = parseFloat(a.variant.replace(/[^0-9.]/g, '')) || 0;
-          const bNum = parseFloat(b.variant.replace(/[^0-9.]/g, '')) || 0;
-          return aNum - bNum;
-        });
+        }));
+      return testName === 'scroll_depth' || testName === 'time_on_page'
+        ? orderMilestones(rows)
+        : rows.sort((a, b) => a.variant.localeCompare(b.variant));
     };
 
     // Get A/B test names

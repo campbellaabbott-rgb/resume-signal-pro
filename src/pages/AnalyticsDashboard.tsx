@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { AdminAuthGate } from "@/components/dashboard/AdminAuthGate";
 import { adminAuthHeaders } from "@/lib/admin-auth";
 import { analyticsCutNote } from "@/lib/analytics-cut-note";
+import { orderMilestones } from "../../supabase/functions/get-analytics/rollup";
 
 interface MetricData {
   variant: string;
@@ -40,6 +41,8 @@ interface AudienceData {
   coveredFrom?: string | null;
   /** When truncated: new and returning are approximate on every day, the read ones too. */
   visitorSplitApproximate?: boolean;
+  /** The zone whose calendar days `daily` holds (S14X-190). Absent from a build that bucketed by UTC date. */
+  dayZone?: string;
 }
 
 interface EngagementData {
@@ -57,6 +60,39 @@ const DATE_PRESETS = [
   { label: "Last 14 days", days: 14 },
   { label: "Last 30 days", days: 30 },
 ];
+
+/**
+ * What a milestone count is (S14X-189): the funnels called them users, but a
+ * browser sends each milestone once per page per session-day, so a count is
+ * events, and one person on two days is two.
+ */
+const MILESTONE_COUNT_NOTE = "Counts are events: one per page, per browser session, per day that reached the step. They are not people.";
+
+/**
+ * A preset's first day (S14X-190): today and the N-1 days before it. It was
+ * subDays(now, N) and then local midnight, so "Last 7 days" covered eight.
+ */
+const presetStart = (days: number, now = new Date()): Date => startOfDay(days <= 1 ? now : subDays(now, days - 1));
+
+/** The browser's IANA zone, so the function counts days the owner's calendar has. */
+const browserTimeZone = (): string | undefined => {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined; } catch { return undefined; }
+};
+
+/**
+ * The milestones in the order a visitor reaches them (S14X-189). The function
+ * sorts them so too from this round's build; the build before it sorted by
+ * digits (30s after 10m), and this page may publish before it deploys.
+ */
+const inMilestoneOrder = (data: EngagementData): EngagementData => ({
+  ...data,
+  scrollDepth: orderMilestones(data.scrollDepth ?? []),
+  timeOnPage: orderMilestones(data.timeOnPage ?? []),
+  pageMetrics: Object.fromEntries(Object.entries(data.pageMetrics ?? {}).map(([page, pm]) => [page, {
+    scrollDepth: orderMilestones(pm?.scrollDepth ?? []),
+    timeOnPage: orderMilestones(pm?.timeOnPage ?? []),
+  }])),
+});
 
 /**
  * What each engagement bucket holds. The "home" bucket's events come from
@@ -81,8 +117,8 @@ function AnalyticsDashboardContent() {
   const [data, setData] = useState<EngagementData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 7));
-  const [endDate, setEndDate] = useState<Date>(new Date());
+  const [startDate, setStartDate] = useState<Date>(() => presetStart(7));
+  const [endDate, setEndDate] = useState<Date>(() => endOfDay(new Date()));
   const [activePreset, setActivePreset] = useState<number>(7);
   const [pageFilter, setPageFilter] = useState<string>("all");
 
@@ -92,13 +128,9 @@ function AnalyticsDashboardContent() {
 
   const handlePresetClick = (days: number) => {
     setActivePreset(days);
-    if (days === 0) {
-      setStartDate(startOfDay(new Date()));
-      setEndDate(endOfDay(new Date()));
-    } else {
-      setStartDate(subDays(new Date(), days));
-      setEndDate(new Date());
-    }
+    const now = new Date();
+    setStartDate(presetStart(days, now));
+    setEndDate(endOfDay(now));
   };
 
   const fetchAnalytics = async () => {
@@ -114,6 +146,7 @@ function AnalyticsDashboardContent() {
           startDate: startOfDay(startDate).toISOString(),
           endDate: endOfDay(endDate).toISOString(),
           pageFilter,
+          timeZone: browserTimeZone(),
         },
         headers: adminAuthHeaders(),
       });
@@ -121,7 +154,7 @@ function AnalyticsDashboardContent() {
       if (invokeError) throw invokeError;
       if (result?.error) throw new Error(result.error);
 
-      setData(result);
+      setData(inMilestoneOrder(result as EngagementData));
     } catch (err) {
       console.error('Failed to fetch analytics:', err);
       setError('Failed to load analytics data');
@@ -311,7 +344,9 @@ function AnalyticsDashboardContent() {
 
             {data.audience.daily.length > 0 && (
               <div className="mt-5">
-                <p className="text-xs font-semibold text-muted-foreground mb-2">Visitors per day (new shown separately)</p>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">
+                  Visitors per day (new shown separately), days in {data.audience.dayZone ?? "UTC"}
+                </p>
                 <div className="flex items-end gap-1 h-24">
                   {data.audience.daily.map((d) => {
                     const peak = Math.max(...data.audience!.daily.map((x) => x.visitors), 1);
@@ -417,6 +452,7 @@ function AnalyticsDashboardContent() {
                   <ScrollText className="h-5 w-5" />
                   Scroll Depth Funnel
                 </CardTitle>
+                <p className="text-xs text-muted-foreground">{MILESTONE_COUNT_NOTE}</p>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -430,7 +466,7 @@ function AnalyticsDashboardContent() {
                         <div className="flex justify-between items-center">
                           <span className="font-medium">{metric.variant}</span>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">{metric.views} users</span>
+                            <span className="text-sm text-muted-foreground">{metric.views} events</span>
                             {dropOff > 0 && (
                               <Badge variant="outline" className="text-destructive">
                                 <TrendingDown className="h-3 w-3 mr-1" />
@@ -454,6 +490,7 @@ function AnalyticsDashboardContent() {
                   <Clock className="h-5 w-5" />
                   Time on Page
                 </CardTitle>
+                <p className="text-xs text-muted-foreground">{MILESTONE_COUNT_NOTE}</p>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -467,7 +504,7 @@ function AnalyticsDashboardContent() {
                         <div className="flex justify-between items-center">
                           <span className="font-medium">{metric.variant}</span>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">{metric.views} users</span>
+                            <span className="text-sm text-muted-foreground">{metric.views} events</span>
                             {dropOff > 0 && (
                               <Badge variant="outline" className="text-destructive">
                                 <TrendingDown className="h-3 w-3 mr-1" />
@@ -632,7 +669,7 @@ function AnalyticsDashboardContent() {
                     <thead>
                       <tr className="border-b">
                         <th className="text-left py-3 px-4">Milestone</th>
-                        <th className="text-right py-3 px-4">Users</th>
+                        <th className="text-right py-3 px-4">Events</th>
                         <th className="text-right py-3 px-4">% of Total</th>
                         <th className="text-right py-3 px-4">Drop-off</th>
                       </tr>
@@ -676,7 +713,7 @@ function AnalyticsDashboardContent() {
                     <thead>
                       <tr className="border-b">
                         <th className="text-left py-3 px-4">Duration</th>
-                        <th className="text-right py-3 px-4">Users</th>
+                        <th className="text-right py-3 px-4">Events</th>
                         <th className="text-right py-3 px-4">% of Total</th>
                         <th className="text-right py-3 px-4">Drop-off</th>
                       </tr>
