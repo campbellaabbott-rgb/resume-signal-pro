@@ -345,6 +345,7 @@ const markerProblems = (sql: string, stamp = "99999999999999"): string[] => {
   if (REFUSED_MARKER.test(sql)) return ["opens with the marker Lovable's tool refused on 2026-11-17; its first line must be -- lovable-cron-fallback-reviewed: <reason>"];
   if (!MARKER.test(sql)) return ["does not begin with the line Lovable's tool requires (-- lovable-cron-fallback-reviewed: <reason>)"];
   const head = headOf(sql);
+  if (!/^-- lovable-cron-fallback-reviewed: \S[^\n]*\.\n/.test(sql)) problems.push("its first line is not the whole reason: Lovable's tool reads line one only, so the sentence must end there");
   const run = code(sql);
   if (!/reviewed:? \d{4}-\d{2}-\d{2}/.test(head)) problems.push("its marker names no review date");
   const calls = callReading(run, stamp);
@@ -437,6 +438,11 @@ describe("the guard can fail", () => {
     // A file that schedules only hourly or daily jobs says so.
     const daily = "-- lovable-cron-fallback-reviewed: no sub-hourly cron; every job this file schedules runs once a day (reviewed 2026-11-16 in a test).\n--\nSELECT cron.schedule('j', '41 4 * * *', 'SELECT 1');\n";
     expect(markerProblems(daily)).toEqual([]);
+  });
+
+  it("fails a reason that runs past line one, since Lovable's tool reads line one only", () => {
+    expect(markerProblems(notRequired.replace(" (reviewed", "\n-- (reviewed")).join("; ")).toMatch(/first line is not the whole reason/);
+    expect(markerProblems(full.replace("by the project owner.", "by the project owner;\n-- load falls."))).toEqual(expect.arrayContaining([expect.stringMatching(/first line is not the whole reason/)]));
   });
 
   it("fails a file without the line Lovable's tool reads", () => {
