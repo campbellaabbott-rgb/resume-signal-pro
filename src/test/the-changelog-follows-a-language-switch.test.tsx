@@ -17,7 +17,10 @@
  * The test renders the page (header, footer and head tags stubbed), reads the
  * newest entry's title in English, then switches to Spanish, French and back
  * to Spanish, and waits for that entry's title in each language's own notes.
- * Each title is read from the locale files, never typed here.
+ * A second case holds two loads open (German, then Dutch) and lets the
+ * German one finish first: the page, now in Dutch, must keep its skeleton
+ * until the Dutch notes are in. Each title is read from the locale files,
+ * never typed here.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
@@ -34,6 +37,20 @@ vi.setConfig(MOUNT_TEST_BUDGET);
 vi.mock("@/components/Header", () => ({ Header: () => null }));
 vi.mock("@/components/Footer", () => ({ Footer: () => null }));
 vi.mock("@/components/seo/SEO", () => ({ SEO: () => null }));
+
+// The real loader, except for a language the test holds open: its load
+// starts only when the test releases it.
+const held = vi.hoisted(() => ({ on: new Set<string>(), release: new Map<string, () => Promise<void>>() }));
+vi.mock("@/i18n", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/i18n")>();
+  return {
+    ...real,
+    loadChangelogStrings: (lng?: string): Promise<void> => {
+      if (!lng || !held.on.has(lng)) return real.loadChangelogStrings(lng);
+      return new Promise<void>((done) => { held.release.set(lng, () => real.loadChangelogStrings(lng).then(done)); });
+    },
+  };
+});
 
 const NOTES = resolve(__dirname, "../i18n/changelog");
 type Notes = { changelogEntries: Record<string, { title: string; description: string }> };
@@ -61,6 +78,31 @@ describe("the changelog page and the language picker", () => {
       // language's title for the same entry is left on the page.
       await waitFor(() => expect(container.querySelector("[data-changelog-lng]")?.getAttribute("data-changelog-lng")).toBe(lng), SLOW);
       for (const other of ["en", "es", "fr"].filter((l) => l !== lng)) expect(screen.queryByText(title(other))).toBeNull();
+    }
+  });
+
+  it("a slow load for a language the reader has already left cannot mark the one they chose ready", async () => {
+    await act(async () => { await i18n.changeLanguage("en"); });
+    held.on.add("de");
+    held.on.add("nl");
+    try {
+      const { container } = render(<MemoryRouter><Changelog /></MemoryRouter>);
+      await screen.findByText(title("en"), undefined, SLOW);
+      await act(async () => { await i18n.changeLanguage("de"); });
+      await act(async () => { await i18n.changeLanguage("nl"); });
+      await waitFor(() => expect([...held.release.keys()].sort()).toEqual(["de", "nl"]), SLOW);
+
+      // German finishes first, for a reader who is now on Dutch.
+      await act(async () => { await held.release.get("de")?.(); });
+      expect(container.querySelector("[data-changelog-lng]")).toBeNull();
+      for (const l of ["en", "de", "nl"]) expect(screen.queryByText(title(l))).toBeNull();
+
+      await act(async () => { await held.release.get("nl")?.(); });
+      await screen.findByText(title("nl"), undefined, SLOW);
+      expect(container.querySelector("[data-changelog-lng]")?.getAttribute("data-changelog-lng")).toBe("nl");
+    } finally {
+      held.on.clear();
+      held.release.clear();
     }
   });
 });
