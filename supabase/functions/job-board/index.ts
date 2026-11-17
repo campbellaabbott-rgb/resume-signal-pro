@@ -2431,8 +2431,16 @@ async function isIngestPaused(client: SupabaseClient): Promise<boolean> {
   return false;
 }
 
+/** SUP-a: re-kicks per hop after a 546 or a RateLimitError, and the isolate age past which none is tried (legal-max plan 3.3). */
+const REKICKS_PER_HOP = 2;
+const REKICK_AGE_MS = 120_000;
+/** This isolate's birth: a re-kick's wait must end inside its wall clock. */
+const ISOLATE_BORN = Date.now();
+/** W4-2 / SUP-a: a kick that names the refresh_progress stamp it was sent against is admitted only while that stamp stands. */
+const kickStale = (after: string, prog: { updated_at: string } | null) => !!after && Date.parse(prog?.updated_at ?? "") !== Date.parse(after);
+
 // Rationale: docs/job-board-index-notes.md#n1174-function-chainnextslice-hop-number-clien
-function chainNextSlice(hop: number, client?: SupabaseClient, nextBoards?: number) {
+function chainNextSlice(hop: number, client?: SupabaseClient, nextBoards?: number, cas?: { after: string; passEnd?: string }) {
   const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
   const stamp = async (v: Record<string, unknown>) => {
     if (!client) return;
@@ -2452,25 +2460,46 @@ function chainNextSlice(hop: number, client?: SupabaseClient, nextBoards?: numbe
     // Rationale: docs/job-board-index-notes.md#n543-await-stamp-outcome-kicked
     await stamp({ outcome: "kicked" });
     const key = await chainKey();
-    try {
-      const r = boundBody(await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "refresh", force: true, chain: hop + 1, chainKey: key, ...(nextBoards ? { boards: nextBoards } : {}) }),
-      }), SELF_RESPONSE_BYTES);
-      const body = (await r.text()).slice(0, 300);
-      // A 200 is not proof the chain continued. The child returns 200 for every
-      // early exit, so the DETAIL is what says whether a slice actually ran.
-      const declined = /skipped|paused|unknown action|chainkey|not authori/i.test(body);
-      const outcome = !r.ok ? "http_error" : declined ? "declined" : "continued";
-      if (outcome !== "continued") {
-        console.error(`[JOB-BOARD] chain did NOT continue past hop ${hop}: ${outcome} status=${r.status} body=${body}`);
+    // W4-2: the pass end starts the next pass's hop 0; every other kick is the next hop.
+    const child = cas?.passEnd ? 0 : hop + 1;
+    let after = cas?.after ?? "";
+    for (let rekicked = 0; ; rekicked++) {
+      let wait = 0;
+      try {
+        const r = boundBody(await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          // A kick that names a refresh_progress stamp is admitted only through admitSlice's CAS on it, never the force upsert.
+          body: JSON.stringify({ action: "refresh", ...(after ? { after } : { force: true }), chain: child, chainKey: key, ...(nextBoards ? { boards: nextBoards } : {}), ...(cas?.passEnd && !rekicked ? { passEnd: cas.passEnd } : {}) }),
+        }), SELF_RESPONSE_BYTES);
+        const body = (await r.text()).slice(0, 300);
+        // A 200 is not proof the chain continued. The child returns 200 for every
+        // early exit, so the DETAIL is what says whether a slice actually ran.
+        const declined = /skipped|paused|unknown action|chainkey|not authori/i.test(body);
+        const outcome = !r.ok ? "http_error" : declined ? "declined" : "continued";
+        if (outcome !== "continued") {
+          console.error(`[JOB-BOARD] chain did NOT continue past hop ${hop}: ${outcome} status=${r.status} body=${body}`);
+        }
+        await stamp({ outcome, status: r.status, detail: body, ...(rekicked ? { rekicked } : {}) });
+        // SUP-a: the platform killed the child (WORKER_RESOURCE_LIMIT). Not 503, 429 or a silent death: those need SUP-b's epoch.
+        if (r.status === 546) wait = 3_000 + Math.round(Math.random() * 2_000);
+      } catch (e) {
+        const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+        console.error(`[JOB-BOARD] chain kick threw at hop ${hop}: ${msg}`);
+        await stamp({ outcome: "threw", detail: msg.slice(0, 300), ...(rekicked ? { rekicked } : {}) });
+        // SUP-a: the runtime refused the self-call ("RateLimitError: ... Retry after N s").
+        if (/RateLimitError/.test(msg)) wait = Math.min(1_000 * (Number(/retry after (\d+(?:\.\d+)?)/i.exec(msg)?.[1]) || 5), 40_000);
       }
-      await stamp({ outcome, status: r.status, detail: body });
-    } catch (e) {
-      const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
-      console.error(`[JOB-BOARD] chain kick threw at hop ${hop}: ${msg}`);
-      await stamp({ outcome: "threw", detail: msg.slice(0, 300) });
+      // SUP-a: at most REKICKS_PER_HOP re-kicks, and none the isolate's wall clock would cut off.
+      if (!wait || !client || rekicked >= REKICKS_PER_HOP || Date.now() - ISOLATE_BORN + wait > REKICK_AGE_MS) return;
+      const { data: was } = await client.from("job_board_meta").select("updated_at").eq("k", "refresh_progress").maybeSingle();
+      if (!was?.updated_at) return;
+      await new Promise((res) => setTimeout(res, wait));
+      const { data: now } = await client.from("job_board_meta").select("updated_at").eq("k", "refresh_progress").maybeSingle();
+      // The watchdog or another kick moved the chain on during the wait: this re-kick would be a second chain.
+      if (now?.updated_at !== was.updated_at) { await stamp({ outcome: "declined", detail: "re-kick: refresh_progress moved during the wait", rekicked: rekicked + 1 }); return; }
+      after = was.updated_at;
+      await stamp({ outcome: "rekicked", waitMs: wait, rekicked: rekicked + 1 });
     }
   })().catch((e) => {
     // Was `() => {}`. A swallowed rejection here is the failure mode that made
@@ -2548,11 +2577,22 @@ let currentHop = 0;
 let sliceStampError: string | null = null;
 // Rationale: docs/job-board-index-notes.md#n052-traceseq
 let traceSeq = 0;
+// INST: the running slice (set once admitted, cleared at its record), for a shutdown stamp.
+let instSlice = { at: 0, boardsDone: 0, fetched: 0 };
+// INST: cpuProxyMs, performance.now() summed over each board's description and row building this slice (a proxy: CPU is unreadable).
+let sliceCpuMs = 0;
+// XR-6 (W4-4): a per-board mark writes at most once per TRACE_GAP_MS per isolate; the phase marks always write.
+const TRACE_GAP_MS = 2_000;
+let traceWroteAt = 0;
 async function breadcrumb(client: SupabaseClient, mark: string, extra?: Record<string, unknown>): Promise<void> {
+  if (typeof extra?.boardsDone === "number") instSlice.boardsDone = extra.boardsDone;
+  if (typeof extra?.fetched === "number") instSlice.fetched = extra.fetched;
+  if (mark.startsWith("board-") && Date.now() - traceWroteAt < TRACE_GAP_MS) return;
+  traceWroteAt = Date.now();
   const write = (async () => {
     await client.from("job_board_meta").upsert({
       k: "slice_trace",
-      v: { at: new Date().toISOString(), hop: currentHop, seq: ++traceSeq, mark, ...memStamp(), ...(extra ?? {}) },
+      v: { at: new Date().toISOString(), hop: currentHop, seq: ++traceSeq, mark, ...memStamp(), cpuProxyMs: Math.round(sliceCpuMs), ...(extra ?? {}) },
       updated_at: new Date().toISOString(),
     }, { onConflict: "k" });
   })().catch(() => { /* never break the thing it measures */ });
@@ -2569,6 +2609,26 @@ async function stampPassEnd(client: SupabaseClient, v: Record<string, unknown>):
   })().catch(() => { /* never break the thing it measures */ });
   await Promise.race([write, new Promise<void>((r) => setTimeout(r, 2_000))]);
 }
+/** INST: five rotating job_board_meta slots for shutdown stamps; status.inst reads them. */
+const INST_SLOTS = ["inst:0", "inst:1", "inst:2", "inst:3", "inst:4"];
+/** INST: a slice the platform shuts down says why: always in the log, and on a slot when the write lands (best effort). */
+function instOnUnload(ev: Event): void {
+  if (!instSlice.at || Date.now() - instSlice.at > 400_000) return;
+  const line = { at: new Date().toISOString(), build: BUILD_VERSION, reason: String((ev as CustomEvent).detail?.reason ?? ev.type), hop: currentHop, boardsDone: instSlice.boardsDone, fetched: instSlice.fetched, heapMb: memStamp().heapMb ?? null, elapsedMs: Date.now() - instSlice.at, cpuProxyMs: Math.round(sliceCpuMs) };
+  console.error(`[JOB-BOARD] INST shutdown ${JSON.stringify(line)}`);
+  Promise.resolve(db().from("job_board_meta").upsert({ k: INST_SLOTS[Math.floor(Date.now() / 1000) % INST_SLOTS.length], v: line, updated_at: line.at }, { onConflict: "k" })).catch(() => {});
+}
+// Optional: the node bundle harness that runs this module in vitest has no global listener.
+globalThis.addEventListener?.("beforeunload", instOnUnload);
+/** status.inst: the slots' stamps newest first, how many name this build, and the last pre-emptive heartbeat (slice_trace). */
+function instStatus(rows: Map<string, Record<string, unknown>>, heartbeat: unknown): Record<string, unknown> {
+  const st = INST_SLOTS.map((k) => rows.get(k)).filter((x): x is Record<string, unknown> => !!x).sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  return { lastStamps: st, countThisBuild: st.filter((x) => x.build === BUILD_VERSION).length, lastHeartbeat: heartbeat };
+}
+/** status.passEnd, with W4-2's hop0At when the pass_chain row names this pass end. */
+function passEndWithHop0(pe: Record<string, unknown> | null, pc: Record<string, unknown> | undefined): Record<string, unknown> | null {
+  return pe && pc && pc.startedAt === pe.startedAt ? { ...pe, hop0At: pc.hop0At } : pe;
+}
 function memStamp(): { heapMb?: number; rssMb?: number } {
   try {
     const mu = (Deno as unknown as { memoryUsage?: () => { heapUsed?: number; rss?: number } }).memoryUsage;
@@ -2583,6 +2643,7 @@ function memStamp(): { heapMb?: number; rssMb?: number } {
 
 async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, inHotPhase: boolean): Promise<void> {
   const sliceMs = Date.now() - sliceWallStart;
+  instSlice.at = 0;
   const phase = inHotPhase ? "hot" : "cold";
   const mem = memStamp();
   // Rationale: docs/job-board-index-notes.md#n548-const-write-async
@@ -2618,6 +2679,7 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
         ...(sliceDbFailNote ? { dbFailed: sliceDbFailNote } : {}),
         ...(sliceLightReread ? { lightReread: addLightReread((pv as { lightReread?: unknown }).lightReread, sliceLightReread, new Date().toISOString()) } : {}),
         streamed: sliceReads.streamed,
+        cpuProxyMs: Math.round(sliceCpuMs),
         rateLimited: sliceReads.rateLimited.slice(0, 50),
         rawNoRows: sliceReads.rawNoRows.slice(0, 50),
         srPartial: sliceReads.srPartial.slice(0, 50),
@@ -2656,7 +2718,7 @@ async function admitSlice(
   return true;
 }
 
-async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, boardBudget = MIN_BOARDS_PER_SLICE): Promise<{ ok: boolean; detail: string }> {
+async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, boardBudget = MIN_BOARDS_PER_SLICE, after = "", passEndAt = ""): Promise<{ ok: boolean; detail: string }> {
   // Checked at the ENTRY too, not only at the hop: pausing must also stop a
   // fresh chain started by pg_cron, a manual refresh, or any other trigger.
   // `force` does NOT override this — force exists to bypass the slice lock, and
@@ -2665,7 +2727,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     return { ok: true, detail: "ingest paused — set job_board_meta.ingest_paused.paused=false to resume" };
   }
   const { data: prog } = await client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle();
-  if (!force && prog && Date.now() - new Date(prog.updated_at).getTime() < SLICE_LOCK_MS) {
+  // W4-2 / SUP-a: a kick sent against a stamp skips the lock but only while the stamp stands; admitSlice then CASes on it.
+  if (kickStale(after, prog as { updated_at: string } | null)) return { ok: true, detail: "skipped — the chain moved on before this kick (declined)" };
+  if (!force && !after && prog && Date.now() - new Date(prog.updated_at).getTime() < SLICE_LOCK_MS) {
     return { ok: true, detail: "skipped — a slice ran moments ago" };
   }
   // Rationale: docs/job-board-index-notes.md#n549-const-slicewallstart-date-now
@@ -3105,6 +3169,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   }
   // UPK-3: a kick the pause or the lock refused never relabels the running hop.
   currentHop = chainHop;
+  sliceCpuMs = 0;
+  instSlice = { at: sliceWallStart, boardsDone: 0, fetched: 0 };
+  // W4-2: the pass end's own kick started this pass; P1 reads the gap (status passEnd.hop0At).
+  if (passEndAt) await client.from("job_board_meta").upsert({ k: "pass_chain", v: { startedAt: passEndAt, hop0At: new Date().toISOString() }, updated_at: new Date().toISOString() }, { onConflict: "k" }).then(() => {}, () => {});
   // The demand board this admitted slice took starts its cooldown and counts
   // against the hour, in the row only the refresh writes.
   if (demandTaken.length) await stampDemandServed(client, demandTaken, Date.now()).catch(() => {});
@@ -3409,6 +3477,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           budgetSkipped.push(s.token);
           continue;
         }
+        const cpu0 = performance.now();
         const descs = new Map<string, string>();
         // Rationale: docs/job-board-index-notes.md#n580-let-descsdeferred-false
         let descsDeferred = bareRead;
@@ -3541,6 +3610,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           });
         }
         const rows = [...rowsById.values()];
+        sliceCpuMs += performance.now() - cpu0;
 
         // Rationale: docs/job-board-index-notes.md#n593-let-boardok-true
         let boardOk = true;
@@ -4335,8 +4405,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   }
   const passDone = isPassDone(progressAfter, HOT_LIST.length, COLD_SLICES_PER_PASS);
 
+  // W4-2: the stamp the pass end's own hop-0 kick is admitted against.
+  const progAt = new Date().toISOString();
   await client.from("job_board_meta").upsert(
-    { k: "refresh_progress", v: progressAfter, updated_at: new Date().toISOString() },
+    { k: "refresh_progress", v: progressAfter, updated_at: progAt },
     { onConflict: "k" },
   );
 
@@ -4482,6 +4554,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     await breadcrumb(client, "pass-end", { elapsedMs: Date.now() - sliceWallStart });
     await stampPassEnd(client, { startedAt: passEndStartedAt, hop: chainHop, refreshedAt: startIso, steps: {}, next: PASS_END_STEPS[0], nextKickedAt: passEndStartedAt });
     kickPassEndStep(PASS_END_STEPS[0], passEndStartedAt);
+    // W4-2: the next pass's hop 0 starts now, not at the next cron tick (4.7 min a pass); a cron kick racing it loses the CAS.
+    chainNextSlice(chainHop, client, undefined, { after: progAt, passEnd: passEndStartedAt });
     await recordSliceStats(client, sliceWallStart, inHotPhase);
     return { ok: true, detail: `pass complete — cold rotation at ${cold}/${COLD_LIST.length}; the pass-end tail runs as its own hops from "${PASS_END_STEPS[0]}"${lastUpsertError ? ` — last upsert error: ${String(lastUpsertError).slice(0, 120)}` : ""}` };
   }
@@ -6613,6 +6687,10 @@ async function handleRequest(req: Request): Promise<Response> {
       const passEndRead = Promise.resolve(
         client.from("job_board_meta").select("v").eq("k", "pass_end").maybeSingle(),
       ).catch(() => null);
+      // W4-2's hop0At (pass_chain) and INST's stamps (inst:0..4), read beside the pass end.
+      const instRead = Promise.resolve(
+        client.from("job_board_meta").select("k, v").in("k", ["pass_chain", ...INST_SLOTS]),
+      ).catch(() => null);
       const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop, oracleRepair, staleMeta, freshRow] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
@@ -6674,6 +6752,7 @@ async function handleRequest(req: Request): Promise<Response> {
       const anonBudgetRow = await anonBudgetRead;
       const demandRow = await demandRead;
       const passEndRow = await passEndRead;
+      const instRows = new Map((((await instRead) as { data?: Array<{ k: string; v: Record<string, unknown> }> } | null)?.data ?? []).map((r) => [r.k, r.v]));
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number; wrapMin?: number };
       const rfV = { total: (refreshMeta.data as { total?: unknown } | null)?.total as number | undefined };
@@ -7049,7 +7128,8 @@ async function handleRequest(req: Request): Promise<Response> {
         sliceTrace: ((traceRow as { data?: { v?: unknown } } | null)?.data?.v ?? null) as Record<string, unknown> | null,
         // The pass-end tail's receipt (S11-001): a startedAt with no later doneAt
         // past half an hour is a tail that died (scan-heartbeat job_board_pass_end).
-        passEnd: ((passEndRow as { data?: { v?: unknown } } | null)?.data?.v ?? null) as Record<string, unknown> | null,
+        passEnd: passEndWithHop0(((passEndRow as { data?: { v?: unknown } } | null)?.data?.v ?? null) as Record<string, unknown> | null, instRows.get("pass_chain")),
+        inst: instStatus(instRows, (traceRow as { data?: { v?: unknown } } | null)?.data?.v ?? null),
         // Rationale: docs/job-board-index-notes.md#n741-oversizeboards-oversizestatusrows-overme
         oversizeBoards: oversizeStatusRows((overMeta as { data?: { v?: { boards?: unknown } } } | null)?.data?.v?.boards),
         oversizeBoardCount: Object.keys(((overMeta as { data?: { v?: { boards?: Record<string, unknown> } } } | null)?.data?.v?.boards) ?? {}).length,
@@ -7786,13 +7866,15 @@ async function handleRequest(req: Request): Promise<Response> {
         );
         return json({ ok: true, detail: `catalog high-water reset to ${JOB_SOURCES.length}` });
       }
-      const force = body.force === true && keyOk;
+      // W4-2 / SUP-a: a chain kick that names a refresh_progress stamp is admitted by CAS on it, never forced.
+      const after = keyOk && typeof body.after === "string" ? body.after : "";
+      const force = body.force === true && keyOk && !after;
       // Clamped on the way in: the budget arrives over the wire from a sibling
       // isolate, and an unbounded one would undo the bound entirely.
       const boards = Number.isFinite(Number(body.boards))
         ? Math.min(MAX_BOARDS_PER_SLICE, Math.max(MIN_BOARDS_PER_SLICE, Math.floor(Number(body.boards))))
         : MIN_BOARDS_PER_SLICE;
-      const r = await runRefresh(client, force, force ? hop : 0, force ? boards : MIN_BOARDS_PER_SLICE);
+      const r = await runRefresh(client, force, force || after ? hop : 0, force || after ? boards : MIN_BOARDS_PER_SLICE, after, after && typeof body.passEnd === "string" ? body.passEnd : "");
       return json(r, r.ok ? 200 : 502);
     }
 
