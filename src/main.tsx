@@ -10,6 +10,7 @@ import { applyTheme, resolveTheme } from "./lib/theme";
 import { captureBakedLanderName } from "./lib/baked-lander-name";
 import { mountBesidePrerendered } from "./lib/keep-prerendered-page";
 import { reloadForNewVersion } from "./lib/new-version-reload";
+import { installWindowCrashReporting } from "./lib/client-crash-report";
 
 // The theme attribute goes on <html> before anything paints from React, so
 // no component renders once in the wrong palette. Dark for everyone unless
@@ -31,6 +32,11 @@ captureBakedLanderName(document, window.location.pathname);
 window.addEventListener("vite:preloadError", (event) => {
   reloadForNewVersion(event);
 });
+
+// What no error boundary catches (an error in an event handler, a promise
+// nobody awaited) is written to the error log too, from before the app
+// mounts (NB-42, src/lib/client-crash-report.ts).
+installWindowCrashReporting(window);
 
 // The prerendered page stays on screen until React has the page: React mounts
 // beside the baked markup, which leaves in the same task as the route's first

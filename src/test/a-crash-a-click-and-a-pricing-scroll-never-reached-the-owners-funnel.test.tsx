@@ -15,9 +15,11 @@
  *           /pricing.
  *
  * WHAT HOLDS NOW, with the real components and hooks mounted and only the
- * transport captured: a crash's variant fits in 30 characters and its message
- * rides in metadata; a click is a view under its own test name, so its key is
- * never a conversion's; the same milestone on two pages is two keys.
+ * transport and the database client captured: a crash is no longer a funnel
+ * event at all (NB-42): both boundaries write it, message included, to the
+ * error log, so no variant has to fit; a click is a view under its own test
+ * name, so its key is never a conversion's; the same milestone on two pages
+ * is two keys.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/react";
@@ -31,6 +33,8 @@ vi.mock("@/lib/track-transport", async (orig) => ({
   getVisitorId: () => "8b2f1c2e-4d5a-4b6c-8d7e-9f0a1b2c3d4e",
 }));
 vi.mock("@/hooks/use-shared-data", () => ({ queueABEvent: (e: Record<string, unknown>) => { queued.push(e); } }));
+const rpc = vi.fn(async (..._a: unknown[]) => ({ data: true, error: null }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: (...a: unknown[]) => rpc(...a) } }));
 
 import { eventKeyOf } from "@/lib/track-transport";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -38,32 +42,34 @@ import { CardErrorBoundary } from "@/components/CardErrorBoundary";
 import { useABTest } from "@/hooks/use-ab-test";
 import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
+import { resetCrashReportsForTests } from "@/lib/client-crash-report";
 
 const MESSAGE = "Cannot read properties of undefined (reading 'map')";
 function Boom(): JSX.Element { throw new Error(MESSAGE); }
 
 beforeEach(() => {
   posted.length = 0; queued.length = 0;
+  rpc.mockClear(); resetCrashReportsForTests();
   sessionStorage.clear(); localStorage.clear();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
-describe("S8-121: a crash fits the variant the server accepts", () => {
-  it("the app boundary sends a short stable variant and the message in metadata", () => {
+describe("S8-121, then NB-42: a crash arrives, message and all, and not as a funnel event", () => {
+  const logged = () => rpc.mock.calls.filter(([fn]) => fn === "log_error_telemetry").map(([, a]) => a as Record<string, unknown>);
+
+  it("the app boundary writes the message to the error log and sends the funnel nothing", () => {
     render(<ErrorBoundary><Boom /></ErrorBoundary>);
-    const e = posted.find((p) => p.testName === "client_error")!;
-    expect(e, "no crash event was sent").toBeTruthy();
-    expect(String(e.variant).length, `variant "${String(e.variant)}" is over track-ab-event's 30`).toBeLessThanOrEqual(30);
-    expect((e.metadata as Record<string, unknown>).message).toBe(MESSAGE);
+    expect(posted.filter((p) => p.testName === "client_error"), "a crash went to the funnel").toEqual([]);
+    expect(logged().map((a) => a.p_error_message), "no crash reached the error log").toEqual([MESSAGE]);
   });
 
-  it("the card boundary sends the section, within 30, and the message in metadata", () => {
+  it("the card boundary writes the message and its section, and sends the funnel nothing", () => {
     render(<CardErrorBoundary section="salary_insight_card_for_the_report"><Boom /></CardErrorBoundary>);
-    const e = posted.find((p) => p.testName === "client_error")!;
-    expect(String(e.variant).length).toBeLessThanOrEqual(30);
-    expect(String(e.variant)).toMatch(/^salary_insight/);
-    expect((e.metadata as Record<string, unknown>).message).toBe(MESSAGE);
+    expect(posted.filter((p) => p.testName === "client_error")).toEqual([]);
+    const [row] = logged();
+    expect(row.p_error_message).toBe(MESSAGE);
+    expect((row.p_context as Record<string, unknown>).place).toBe("salary_insight_card_for_the_report");
   });
 });
 

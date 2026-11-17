@@ -12,7 +12,9 @@
  *   - the function's list (supabase/functions/track-ab-event/allowlist.ts)
  *     names exactly the tests the browser sends, as derived from src/ (every
  *     testName literal, every constant a testName names, every running A/B
- *     test and its click name), and refuses a name it does not list;
+ *     test and its click name), plus the retired names a tab still running an
+ *     earlier build sends (client_error: crashes go to the error log since
+ *     NB-42), and refuses a name it does not list;
  *   - its copies of the funnel stages, cohort sources and A/B variants equal
  *     the browser's own lists;
  *   - every variant the browser sends as a literal (sign-ins, board and
@@ -103,11 +105,21 @@ function sentTestNames(): Set<string> {
   return names;
 }
 
+/**
+ * Names this build no longer sends that a tab opened on an earlier one still
+ * does. The writer keeps them, so a function deployed before the frontend
+ * that stops sending them refuses nothing the live site sends. client_error:
+ * since NB-42 a crash is written to the error log (src/lib/client-crash-
+ * report.ts), never the A/B list.
+ */
+const RETIRED_STILL_ACCEPTED = ["client_error"];
+
 describe("the writer's list is the browser's list", () => {
-  it("names exactly the tests the browser sends", () => {
+  it("names exactly the tests the browser sends, and the retired names earlier builds still send", () => {
     const sent = [...sentTestNames()].sort();
     expect(sent.length, "no test names were derived from src/").toBeGreaterThan(10);
-    expect([...EVENT_RULES.keys()].sort()).toEqual(sent);
+    for (const r of RETIRED_STILL_ACCEPTED) expect(sent, `${r} is sent again: it is no longer retired`).not.toContain(r);
+    expect([...EVENT_RULES.keys()].sort()).toEqual([...sent, ...RETIRED_STILL_ACCEPTED].sort());
   });
 
   it("refuses a test, a type or a variant the browser never sends", () => {
@@ -177,7 +189,7 @@ describe("every variant the browser sends passes its pattern", () => {
     for (const v of agents) ok("agents", v, "view");
   });
 
-  it("crash places, cut to fit, with their hash", () => {
+  it("crash places, cut to fit, with their hash, as earlier builds send them", () => {
     const places = SOURCES.flatMap(({ code: c }) => [...c.matchAll(/\bsection="([^"$]+)"/g)].map((m) => m[1]));
     for (const p of ["app", "section", ...places]) {
       ok("client_error", crashVariant(p, "Cannot read properties of undefined"), "view");
