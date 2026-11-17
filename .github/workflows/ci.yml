@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       # --legacy-peer-deps, and the reason is not laziness.
       #
@@ -180,7 +180,7 @@ jobs:
       # is written above the `test` job's install).
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci --legacy-peer-deps
       - uses: denoland/setup-deno@v2
@@ -224,7 +224,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci --legacy-peer-deps
       - name: Production build (bakes the prerendered pages)
@@ -258,7 +258,7 @@ jobs:
           fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
       - name: Does this change touch the bake's code?
         id: scope
         env:

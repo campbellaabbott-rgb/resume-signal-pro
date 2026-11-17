@@ -40,7 +40,10 @@ describe("the builder's strings, in every language the app serves", () => {
     const keys = keysOf(file);
     expect(keys.length).toBeGreaterThan(0);
     const missing: string[] = [];
-    for (const lf of LOCALE_FILES) for (const k of keys) if (!resolves(readLocale(lf), k)) missing.push(`${lf}: ${k}`);
+    for (const lf of LOCALE_FILES) {
+      const bundle = readLocale(lf);
+      for (const k of keys) if (!resolves(bundle, k)) missing.push(`${lf}: ${k}`);
+    }
     expect(missing).toEqual([]);
   });
 
