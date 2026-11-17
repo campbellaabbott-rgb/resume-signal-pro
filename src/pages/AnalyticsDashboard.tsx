@@ -313,7 +313,7 @@ function AnalyticsDashboardContent() {
             <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
               <h2 className="text-lg font-semibold text-foreground">Audience</h2>
               <span className="text-[11px] text-muted-foreground">
-                distinct browsers, de-duplicated by visitor id — not page loads
+                visitors who allowed analytics, de-duplicated by visitor id: not page loads, and not everyone who came
               </span>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -335,10 +335,14 @@ function AnalyticsDashboardContent() {
               </div>
             </div>
 
+            {/* OPT-IN COUNTS (S14X-191). Since the consent banner of 12 October
+                2026 an event is posted only after a visitor allows analytics, so
+                an empty range is not a count of everyone. */}
             {data.audience.uniqueVisitors === 0 && (
               <p className="mt-4 text-sm text-muted-foreground">
-                No visitors recorded in this range. That is a real measurement, not a broken chart —
-                the pipeline is verified working, so this means nobody arrived.
+                No visitors who allowed analytics were recorded in this range. Since 12 October 2026 events are
+                recorded only after a visitor allows analytics, so an empty range is no proof that nobody came:
+                Search Console and the host&apos;s own analytics count all traffic.
               </p>
             )}
 
