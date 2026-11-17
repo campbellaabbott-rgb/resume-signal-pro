@@ -92,9 +92,12 @@ describe("each board the audit saw named by its tenant code prints its employer'
 
   it("names one career site, never the tenant, where the tenant hosts more than one employer", () => {
     // ebi carries four companies' sites; only Ensign-Bickford Aerospace &
-    // Defense's was read, so the other three keep their stored name.
+    // Defense's was read here. 20261111150000 named the other three from their
+    // own pages, each by its exact token, so a site neither file read keeps
+    // its stored name.
     expect(employerNameOverride("ebi~wd5~ebadcareers")).toBe("Ensign-Bickford Aerospace & Defense Company");
-    expect(employerNameOverride("ebi~wd5~afbcareers")).toBeNull();
+    expect(employerNameOverride("ebi~wd5~afbcareers")).toBe("AFB International");
+    expect(employerNameOverride("ebi~wd5~some-other-site")).toBeNull();
     expect(employerNameOverride("tcbrands~wd1~some-other-site")).toBeNull();
     expect(employerNameOverride("surbanajurong~wd3~some-other-site")).toBeNull();
     expect(employerNameOverride("djeholdings~wd5~some-other-site")).toBeNull();

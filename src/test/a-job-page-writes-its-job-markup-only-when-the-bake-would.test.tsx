@@ -150,7 +150,7 @@ const CASES: Array<{ what: string; row: PostingRow; markup: boolean }> = [
   },
   {
     what: "a board still named by its tenant code",
-    row: good({ id: "workday:shm~wd5~Summit_CityMD:JR9", token: "shm~wd5~Summit_CityMD", company: "Shm" }),
+    row: good({ id: "workday:wnc~wd3~WNC_External:JR9", token: "wnc~wd3~WNC_External", company: "Wnc" }),
     markup: false,
   },
 ];

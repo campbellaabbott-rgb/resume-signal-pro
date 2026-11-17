@@ -131,11 +131,15 @@ describe("a tenant code the display name uppercased is still a tenant code", () 
   // both passed as real names, and both had indexable company pages and
   // posting pages naming the code as hiringOrganization (225 and 230 open
   // roles in the committed facets snapshot).
-  it("SHM, PFG and BCBS are flagged on the name a page would print", () => {
-    expect(employerName("shm~wd5~Summit_CityMD", "Shm")).toBe("SHM");
-    expect(isCodeShapedName("shm~wd5~Summit_CityMD", employerName("shm~wd5~Summit_CityMD", "Shm"))).toBe(true);
-    expect(isCodeShapedName("pfg~wd3~SaveonfoodsCareers", employerName("pfg~wd3~SaveonfoodsCareers", "Pfg"))).toBe(true);
+  // 20261111150000 (2026-11-17) names the two boards the reviewer found from
+  // their own career sites, so they print VillageMD and Save-On-Foods now; WNC,
+  // a reviewed vowelless code no override names, stands in for them.
+  it("WNC and BCBS are flagged on the name a page would print, and SHM and PFG carry their employers' names", () => {
+    expect(employerName("wnc~wd3~WNC_External", "Wnc")).toBe("WNC");
+    expect(isCodeShapedName("wnc~wd3~WNC_External", employerName("wnc~wd3~WNC_External", "Wnc"))).toBe(true);
     expect(isCodeShapedName("bcbs~wd1~External", employerName("bcbs~wd1~External", "Bcbs"))).toBe(true);
+    expect(employerName("shm~wd5~Summit_CityMD", "Shm")).toBe("VillageMD");
+    expect(employerName("pfg~wd3~SaveonfoodsCareers", "Pfg")).toBe("Save-On-Foods");
   });
 
   it("a name someone wrote, with a space, is not a code even when it folds to one", () => {
@@ -154,7 +158,7 @@ describe("the bake applies the tenant-code rule to company pages and posting pag
     isPostingLive: (j: PostingRow) => isPostingLive(j, NOW2),
   };
   const facet = [
-    { token: "shm~wd5~Summit_CityMD", name: "Shm", open: 225, count: 300 },
+    { token: "wnc~wd3~WNC_External", name: "Wnc", open: 225, count: 300 },
     { token: "uoflhealth~wd1~UofLHealthCareers", name: "Uoflhealth", open: 120, count: 130 },
     { token: "ms~wd5~external", name: "Ms", open: 400, count: 420 },
     { token: "target~wd5~targetcareers", name: "Target", open: 260, count: 270 },
@@ -163,7 +167,7 @@ describe("the bake applies the tenant-code rule to company pages and posting pag
   const by = Object.fromEntries(landers.map((c: { token: string }) => [c.token, c]));
 
   it("a code-named board gets a page that is never indexable; a named one keeps its index", () => {
-    for (const t of ["shm~wd5~Summit_CityMD", "uoflhealth~wd1~UofLHealthCareers"]) {
+    for (const t of ["wnc~wd3~WNC_External", "uoflhealth~wd1~UofLHealthCareers"]) {
       expect(by[t].unreadable, t).toBe(true);
       expect(landerRobots({ isPrimary: true, unreadable: by[t].unreadable, answered: true, ownContent: true }), t).toBe("noindex, follow");
     }
@@ -173,9 +177,9 @@ describe("the bake applies the tenant-code rule to company pages and posting pag
   });
 
   it("a posting on a code-named board gets no page; the same posting under a real name does", () => {
-    const shm = row({ id: "workday:shm~wd5~Summit_CityMD:JR9", token: "shm~wd5~Summit_CityMD", company: "Shm" });
-    expect(postingRowEligible(shm, D)).toBe(false);
-    expect(postingRowEligible({ ...shm, token: null }, D), "the token is read from the id when the row has none").toBe(false);
+    const wnc = row({ id: "workday:wnc~wd3~WNC_External:JR9", token: "wnc~wd3~WNC_External", company: "Wnc" });
+    expect(postingRowEligible(wnc, D)).toBe(false);
+    expect(postingRowEligible({ ...wnc, token: null }, D), "the token is read from the id when the row has none").toBe(false);
     expect(postingRowEligible(row(), D), "Morgan Stanley's posting is eligible").toBe(true);
     expect(postingRowEligible(row({ agency: true } as Partial<PostingRow>), D), "a staffing agency's row is not").toBe(false);
   });
