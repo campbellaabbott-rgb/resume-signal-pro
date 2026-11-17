@@ -1660,8 +1660,13 @@ async function readOversizeBoard(s: JobSource, deadlineAt: number, freshCutoffMs
   }
 }
 
-/** D7: held until a mill screen and an owner call (OD1: nogigiddy; weekday-1 unscreened; hire-resolve names itself an agency). */
-const WORKABLE_OVERSIZE_HELD: ReadonlySet<string> = new Set(["nogigiddy", "weekday-1", "hire-resolve-the-top-recruitment-agency"]);
+/**
+ * D7, H8: held until the owner's call on OD1 (the mill screen marks nogigiddy and
+ * weekday-1 EXCLUDE; hire-resolve names itself an agency; both Mercier boards are
+ * for review). No lane reads a held board, whatever its size: every slice puts it
+ * in its skip set, and the pass-end prune removes what it still serves.
+ */
+const WORKABLE_OVERSIZE_HELD: ReadonlySet<string> = new Set(["nogigiddy", "weekday-1", "hire-resolve-the-top-recruitment-agency", "mercier-consultancy", "mercier-consultancy-group"]);
 /** A Workable list with details=false (listUrl's third argument). Not light mode: the board stays out of DYNAMIC_LIGHT (n017). */
 async function readWorkableBare(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unknown } | null> {
   try {
@@ -3148,6 +3153,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     const eligible = baseSlice.map(boardKeyOf).filter((k) => !demandSet.has(k));
     ({ skip: skipTokens, recheck: recheckTokens } = classifyDormancy(eligible, boardFailures.dormant, Date.now(), DORMANT_RECHECK_MS));
   }
+  // H8: a held board is read by no lane, hot or cold; weekday-1 fit and served 153 rows on 11-17.
+  for (const s of slice) if (s.source === "workable" && WORKABLE_OVERSIZE_HELD.has(s.token)) skipTokens.add(boardKeyOf(s));
   // Rationale: docs/job-board-index-notes.md#n073-the-cursor-rule-advanceprogress-is-shared-w
 
   // Rationale: docs/job-board-index-notes.md#n567-const-advanceargs
@@ -4833,7 +4840,10 @@ async function passEndServe(client: SupabaseClient, ctx: PassEndCtx, sliceWallSt
       const [src, tk] = [k.slice(0, k.indexOf(":")), k.slice(k.indexOf(":") + 1)];
       if (!JOB_SOURCES.some((s) => s.source === src && s.token === tk)) twinsLogged += (await pruneWholeBoard(client, tk, "untracked", src)).logged;
     }
-    await breadcrumb(client, "pass-end-pruned", { orphans: orphanTokens.length, twinsLogged, elapsedMs: Date.now() - sliceWallStart });
+    // H8: what a held board still serves leaves by its own vendor and token.
+    let heldLogged = 0;
+    for (const tk of WORKABLE_OVERSIZE_HELD) heldLogged += (await pruneWholeBoard(client, tk, "untracked", "workable")).logged;
+    await breadcrumb(client, "pass-end-pruned", { orphans: orphanTokens.length, twinsLogged, heldLogged, elapsedMs: Date.now() - sliceWallStart });
   }
 
   // Rationale: docs/job-board-index-notes.md#n149-coverage

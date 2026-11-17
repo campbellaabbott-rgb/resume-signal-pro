@@ -44,8 +44,8 @@ async function pass(o: { sources: Src[]; highwater: number; facetsOk?: boolean; 
     },
   };
   const js = ts.transpileModule(`return (async () => {\n${SPAN}\nreturn companies; })();`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
-  await new Function("client", "JOB_SOURCES", "RETIRED_TWIN_KEYS", "facetsOk", "companies", "pruneWholeBoard", "breadcrumb", "sliceWallStart", "console", js)(
-    client, o.sources, KEYS, o.facetsOk ?? true, o.companies ?? [],
+  await new Function("client", "JOB_SOURCES", "RETIRED_TWIN_KEYS", "WORKABLE_OVERSIZE_HELD", "facetsOk", "companies", "pruneWholeBoard", "breadcrumb", "sliceWallStart", "console", js)(
+    client, o.sources, KEYS, new Set<string>(), o.facetsOk ?? true, o.companies ?? [],
     async (_c: unknown, token: string, reason: string, source: string | null) => { pruned.push([token, reason, source]); return { logged: 3, complete: true }; },
     async (_c: unknown, _m: string, v: Record<string, unknown>) => { crumbs.push(v); }, Date.now(), { log: () => {}, warn: () => {} },
   );
