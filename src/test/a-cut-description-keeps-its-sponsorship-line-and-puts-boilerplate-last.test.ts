@@ -30,10 +30,34 @@
  *     is not one either.
  *   - boilerplateLast moves equal-opportunity, accommodation, privacy and
  *     benefits paragraphs after everything else before any cut, never a
- *     paragraph with work-rights words, and deletes nothing. Replaying c14's
- *     own cut on Movable Ink's whole posting with a sponsorship line at its
- *     end: today the line is cut off, with boilerplate last it survives.
+ *     paragraph with work-rights words, a stated pay range or a requirement,
+ *     and deletes nothing. Replaying c14's own cut on Movable Ink's whole
+ *     posting with a sponsorship line at its end: today the line is cut off,
+ *     with boilerplate last it survives.
  *   - postingExcerptOf, which apply_myself serves today, is unchanged.
+ *
+ * Found in review of the first version, and now true as well:
+ *   - a veto word reaches only its own clause: "Visa" beside a card scheme
+ *     in the same clause is the card, but a visa sentence after a sentence
+ *     naming American Express is still a work-rights line, as is "the right
+ *     to work in the UK and be willing to work shifts" and "a passport or a
+ *     visa that allows them to work", while "eligible to work from home" is
+ *     still not one;
+ *   - citizenship, U.S.-person, immigration-support and "Remote (US only)"
+ *     lines are work-rights lines, while a mission line about serving
+ *     citizens, a firm that sponsors benefit plans, and a duty to manage an
+ *     office relocation are not;
+ *   - a label keeps its value from the next line, a benefits bullet that
+ *     only says "Visa sponsorship" is kept, a heading is never a label's
+ *     value, two joined headings are still a heading, and a line that opens
+ *     with a heading and states a requirement is a requirement line;
+ *   - portfolio, reference and licence lines are requirements, not
+ *     how-to-apply lines;
+ *   - a cut never splits an emoji;
+ *   - boilerplateLast ends a benefits section at the next section heading,
+ *     so requirements and pay under or after it are never moved (Airbus,
+ *     Adyen, Liquid Personnel), and on every real text no moved line states
+ *     pay or a requirement.
  *
  * Judged on real text: the c14 postings (fixture), and the 99 held-out
  * postings of the perk reader's test split, whose work-rights sentences are
@@ -398,6 +422,228 @@ describe("boilerplateLast", () => {
     for (const t of ["", "Requirements:\n· SQL\n· Python", "We are an equal opportunity employer.", "<p>one line of html</p>"]) {
       expect(boilerplateLast(t)).toBe(t);
     }
+  });
+});
+
+// ── Found in review of the first version (each case a reviewer's probe) ──
+
+describe("work-rights words are read in their own clause, not in the next one", () => {
+  it.each([
+    "Must have the right to work in the UK and be willing to work shifts, including weekends.",
+    "You must be eligible to work in the UK and able to work remotely two days a week.",
+    "We are unable to offer sponsorship for this role; conference sponsorship sales experience preferred.",
+    "We comply with federal law and participate in E-Verify to confirm that every new hire is authorized to work in the U.S.",
+    "Applicants must hold a valid UK passport or a visa that allows them to work in the UK.",
+    "You will manage our partnerships with American Express. You must hold a valid visa for Ireland.",
+  ])("a work-rights line: %s", (line) => {
+    expect(isWorkRightsLine(line)).toBe(true);
+  });
+
+  it.each([
+    "Employees are eligible to work from home two days a week.",
+    "We comply with all applicable laws and regulations on work authorization requirements.",
+    "Sponsorship opportunities across EMEA events and conferences.",
+  ])("still not one: %s", (line) => {
+    expect(isWorkRightsLine(line)).toBe(false);
+  });
+
+  it("a hotel posting's right-to-work line after six bullets is kept", () => {
+    const text = [
+      "Requirements:",
+      "· 2+ years of experience in hotel front office operations",
+      "· Experience with Opera PMS is required",
+      "· Excellent written and spoken English is essential",
+      "· A hospitality degree or diploma is preferred",
+      "· Minimum of one year in a supervisory role",
+      "· Food hygiene certificate level 2 required",
+      "Must have the right to work in the UK and be willing to work shifts, including weekends.",
+    ].join("\n");
+    expect(requirementsExcerptOf(text).postingExcerpt).toContain("Must have the right to work in the UK and be willing to work shifts, including weekends.");
+  });
+});
+
+describe("citizenship, U.S.-person, immigration and location-only lines are work-rights lines; relocation duties are not", () => {
+  it.each([
+    "Applicants must be U.S. citizens.",
+    "Candidates must have U.S. citizenship.",
+    "This position requires U.S. citizenship.",
+    "Requires US citizenship due to government contract.",
+    "Only U.S. citizens are eligible for this position.",
+    "Due to ITAR regulations, applicants must be U.S. Persons.",
+    "We do not provide immigration support for this role.",
+    "This role is Remote (US only).",
+    "Remote - UK only.",
+    "Remote in the EU only.",
+    "US-based remote role; candidates outside the US will not be considered.",
+    "This position is open to candidates residing in Germany only.",
+    "This is a remote role open to candidates based in Canada only.",
+    "You must already live in the UK.",
+  ])("%s", (line) => {
+    expect(isWorkRightsLine(line)).toBe(true);
+  });
+
+  it.each([
+    "Manage the relocation of our data centre to Slough in Q3.",
+    "We are relocating our head office to Manchester next year.",
+    "Coordinate employee relocation and immigration paperwork for new hires.",
+  ])("a duty, not a condition on the applicant: %s", (line) => {
+    expect(isWorkRightsLine(line)).toBe(false);
+  });
+
+  it.each([
+    // NCDOT's real mission line (posting-selection-screen public/308).
+    "Our work not only serves the citizens of North Carolina but also the nation.",
+    // GE Aerospace's real benefits notice (experience-merge-recheck row 65).
+    "GE Aerospace (General Electric Company or the Company) and its affiliates each sponsor certain employee benefit plans or programs (i.e., is a “Sponsor”).",
+  ])("a mission or a benefit plan, not a condition on the applicant: %s", (line) => {
+    expect(isWorkRightsLine(line)).toBe(false);
+  });
+});
+
+describe("a work-rights label keeps its value, a list item is a statement, and a heading is never a value", () => {
+  it.each([
+    ["Visa sponsorship:\nNo", "Visa sponsorship: No"],
+    ["Sponsorship:\nNot available", "Sponsorship: Not available"],
+    ["Security Clearance:\nSecret", "Security Clearance: Secret"],
+    ["Work Authorization:\nUS Citizen", "Work Authorization: US Citizen"],
+    ["Visa sponsorship\nNot available for this role", "Visa sponsorship Not available for this role"],
+  ])("%j", (text, line) => {
+    expect(requirementsExcerptOf(`Requirements:\n· 3+ years of experience in B2B marketing\n${text}`).postingExcerpt).toContain(line);
+  });
+
+  it("a benefits bullet that only says \"Visa sponsorship\" is kept, beside its relocation bullet", () => {
+    const dash = requirementsExcerptOf("Requirements:\n- 3+ years of experience with Go\nWhat we offer\n- Visa sponsorship\n- Relocation package\n- 25 days holiday").postingExcerpt;
+    expect(dash).toContain("- Visa sponsorship");
+    expect(dash).toContain("- Relocation package");
+    const dot = requirementsExcerptOf("Requirements:\n· 3+ years of SaaS marketing experience required.\nWhat we offer:\n• Visa sponsorship\n• Relocation").postingExcerpt;
+    expect(dot).toContain("Visa sponsorship");
+    const html = requirementsExcerptOf("<p>Requirements</p><ul><li>3+ years of experience with Go</li></ul><p>Benefits</p><ul><li>Visa sponsorship</li><li>Relocation package</li></ul>").postingExcerpt;
+    expect(html).toContain("Visa sponsorship");
+  });
+
+  it("a label left blank is dropped, never joined to the heading after it", () => {
+    for (const text of ["Sponsorship Available:\nJob Description\nYou will build services.", "Visa Sponsorship Available:\nResponsibilities\nShip features."]) {
+      const ex = requirementsExcerptOf(`Requirements:\n· 3+ years of experience in B2B marketing\n${text}`).postingExcerpt;
+      expect(ex.join("\n"), text).not.toMatch(/Sponsorship Available/);
+    }
+  });
+});
+
+describe("requirement lines are not taken for how-to-apply lines or headings", () => {
+  it("portfolio, references and licence lines are requirements", () => {
+    const ex = requirementsExcerptOf([
+      "Requirements:",
+      "- A strong portfolio showcasing UX work is required.",
+      "- 3+ years of experience in product design",
+      "- Two professional references are required.",
+      "- Must have a valid driving licence and two references.",
+    ].join("\n")).postingExcerpt;
+    for (const words of ["strong portfolio", "Two professional references", "valid driving licence"]) expect(keeps(ex, words), words).toBe(true);
+  });
+
+  it("\"Qualifications: <a requirement>\" is a requirement line, not only a heading", () => {
+    const ex = requirementsExcerptOf("Qualifications: Bachelor's degree in nursing required.\nAbout us\nWe run clinics across the region.").postingExcerpt;
+    expect(ex).toEqual(["Qualifications: Bachelor's degree in nursing required."]);
+  });
+
+  it("two headings joined (\"Qualifications / Requirements\") are still a heading, and a bare \"Requirements\" is never glued to the line under it", () => {
+    // GE Vernova's and a cleared-role posting's real shapes (posting-selection-screen public/28 and 303).
+    const ge = requirementsExcerptOf("Qualifications / Requirements\nAssociate's degree in electrical technology or mechatronics\nThree years of maintenance experience in a manufacturing plant").postingExcerpt;
+    expect(ge).toEqual(["Associate's degree in electrical technology or mechatronics", "Three years of maintenance experience in a manufacturing plant"]);
+    const cleared = requirementsExcerptOf("Requirements\nRequired Clearance: TS/SCI with Poly\nCandidate must have 10 years of experience in network engineering.").postingExcerpt;
+    expect(cleared[0]).toBe("Required Clearance: TS/SCI with Poly");
+    expect(requirementsExcerptOf("Requirements - Must have 5 years of Python experience\nAbout us\nWe are a software firm.").postingExcerpt).toEqual(["Requirements - Must have 5 years of Python experience"]);
+  });
+});
+
+describe("a cut never splits a character", () => {
+  it("a 240-character cut steps back from the middle of an emoji", () => {
+    const line = `· ${"a".repeat(237)} 😀 required experience with dashboards and reporting tools.`;
+    // The emoji's first half is the 239th character, where a cut to 239 plus "…" falls.
+    expect(line.slice(2).charCodeAt(238)).toBe(0xd83d);
+    const [got] = requirementsExcerptOf(`Requirements:\n${line}`).postingExcerpt;
+    expect(got.length).toBeLessThanOrEqual(240);
+    expect(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(got)).toBe(false);
+  });
+});
+
+describe("boilerplateLast never moves a requirement or a pay line", () => {
+  const moved = (text: string) => {
+    const lines = linesOf(text);
+    const out = linesOf(boilerplateLast(text));
+    const once = lines.filter((l) => l.trim() && lines.indexOf(l) === lines.lastIndexOf(l));
+    return once.filter((l) => out.indexOf(l) > lines.indexOf(l));
+  };
+  const PAY = /[$€£]\s?\d|\b(?:salary|pay) range\b/i;
+  const MUST = /\bmust (?:have|hold|possess)\b|\b(?<!as )required\b(?! by)|\brequirements?\b|\byears? of (?:\w+ )?experience\b|\bdegree\b|\blicen[cs]e[ds]?\b|\bcertifi(?:ed|cations?)\b|\bexperience (?:with|in)\b/i;
+
+  it("requirements under a benefits heading stay where they are, before the next section", () => {
+    const out = linesOf(boilerplateLast("Benefits\nHealth insurance\nYour Skills\n3+ years of experience required\nA bachelor's degree is required\nResponsibilities\nShip features."));
+    expect(out.indexOf("3+ years of experience required")).toBeLessThan(out.indexOf("Responsibilities"));
+    expect(out.indexOf("A bachelor's degree is required")).toBeLessThan(out.indexOf("Responsibilities"));
+    expect(out.indexOf("Your Skills")).toBeLessThan(out.indexOf("3+ years of experience required"));
+  });
+
+  it("a stated salary range is never moved, under a benefits heading or in a pay-transparency sentence", () => {
+    for (const text of [
+      "Compensation & Benefits\nThe base salary range for this role is $120,000 - $150,000 per year.\nHealth insurance and a 401(k) match.\nAbout the role\nYou will lead the analytics team.",
+      "In accordance with pay transparency laws, the base salary range for this role is $100,000 - $130,000.\nAbout the role\nYou will lead the analytics team.",
+    ]) {
+      expect(moved(text).filter((l) => PAY.test(l)), text).toEqual([]);
+    }
+  });
+
+  it("Adyen's and Liquid Personnel's pay lines keep their place", () => {
+    for (const [idx, words] of [[141, "The annual base salary range for this role is $125,000-175,000"], [159, "€44,000 - €55,000"]] as Array<[number, string]>) {
+      const t = row(idx).description;
+      expect(t.includes(words), `#${idx}`).toBe(true);
+      expect(moved(t).filter((l) => l.includes(words)), `#${idx}`).toEqual([]);
+    }
+  });
+
+  it("Airbus's \"What's In It For You\" section ends at \"Job Summary\": the job and its requirements stay ahead of the privacy text", () => {
+    const t = row(10).description;
+    const out = boilerplateLast(t);
+    const consent = "By submitting your CV or application you are consenting";
+    expect(out.indexOf(consent)).toBeGreaterThanOrEqual(t.indexOf(consent));
+    for (const kept of ["Job Summary", "HOW YOU WILL CONTRIBUTE TO THE TEAM", "Be educated to degree level"]) {
+      expect(out.indexOf(kept), kept).toBeLessThanOrEqual(t.indexOf(kept));
+    }
+    expect(out.indexOf("Financial Reward")).toBeGreaterThan(t.indexOf("Financial Reward"));
+  });
+
+  it("on every real text, no moved line states pay or a requirement, and a job's own sections are never moved", () => {
+    const texts: Array<[string, string]> = [
+      ...POSTINGS.flatMap((p) => [[p.id, p.cutText], [`${p.id} whole`, p.wholeText ?? ""]] as Array<[string, string]>),
+      ...ROWS.map((r) => [`split#${r.idx}`, r.description] as [string, string]),
+      ...(BOILER as { rows: Array<{ id: string; description: string }> }).rows.map((r) => [r.id, r.description] as [string, string]),
+      ...(LANG as { cases: Array<{ id: string; truth: string; text: string }> }).cases.filter((c) => c.truth === "en").map((c) => [c.id, c.text] as [string, string]),
+    ].filter(([, t]) => t);
+    let movedLines = 0;
+    const overHalf: string[] = [];
+    for (const [id, t] of texts) {
+      const m = moved(t);
+      movedLines += m.length;
+      for (const l of m) {
+        expect(PAY.test(l), `${id}: ${l}`).toBe(false);
+        expect(MUST.test(l), `${id}: ${l}`).toBe(false);
+      }
+      if (m.join("\n").length > t.length / 2) overHalf.push(id);
+    }
+    console.log(`[L4] boilerplateLast on ${texts.length} real texts: ${movedLines} lines moved, ${overHalf.length} texts with more than half their characters moved`);
+    expect(movedLines).toBeGreaterThan(50);
+    // In review, ten texts had more than half moved, among them Airbus (89%,
+    // its whole job body), Salesforce's "Day to Day" duties and two Johnson
+    // Controls postings. The five left are short postings whose moved text is
+    // only a company or equal-opportunity paragraph, or a "Why join" pitch:
+    // their duties and requirements stay first.
+    expect(overHalf.sort()).toEqual([
+      "site:/jobs/posting/greenhouse/tipaltisolutions/6234229004",
+      "smartrecruiters:BoschGroup:pt:744000161294895",
+      "smartrecruiters:BoschGroup:pt:744000161331490",
+      "smartrecruiters:BoschGroup:pt:744000161544969",
+      "smartrecruiters:JYSK:it:744000160799260",
+    ]);
   });
 });
 
