@@ -798,7 +798,7 @@
   },
   "scanProgress": {
     "title": "AI Analysis na Ginagawa",
-    "subtitle": "Gumagamit ng Gemini Pro para sa pinakamataas na katumpakan",
+    "subtitle": "Binabasa ang iyong resume, hakbang-hakbang",
     "complete": "{{percent}}% kumpleto",
     "live": "Live",
     "securityNote": "Binubura ang resume mo sa loob ng 7 araw at hindi kailanman ibinebenta",
@@ -3195,11 +3195,11 @@
     "crafting": "Ginagawa ang personalisadong feedback..."
   },
   "aiGenerationProgress": {
-    "title": "Nagtatrabaho ang GPT-5",
+    "title": "Nagtatrabaho ang AI",
     "generating": "Ginagawa ang {{productName}}",
     "steps": {
       "analyzingTitle": "Sinusuri ang Resume",
-      "analyzingDesc": "Binabasa ng GPT-5 ang iyong karanasan at kasanayan",
+      "analyzingDesc": "Binabasa ang iyong karanasan at kasanayan",
       "optimizingTitle": "Ino-optimize para sa ATS",
       "optimizingDesc": "Nagdadagdag ng mga keyword at nagpapabuti ng formatting",
       "generatingTitle": "Ginagawa ang Nilalaman",
@@ -3208,7 +3208,7 @@
       "finalizingDesc": "Mga quality check at formatting"
     },
     "complete": "{{progress}}% kumpleto",
-    "quality": "Gumagamit ng GPT-5 para sa pinakamataas na kalidad",
+    "quality": "Isinulat gamit ang AI",
     "secure": "Ang iyong data ay pinoproseso nang ligtas"
   },
   "atsDefenseResults": {
@@ -3509,7 +3509,7 @@
     "copied": "Nakopya",
     "error": "Error sa Pagbuo",
     "waiting": "Naghihintay ng nilalaman...",
-    "gpt5Writing": "Sumusulat ang GPT-5..."
+    "gpt5Writing": "Sumusulat ang AI..."
   },
   "notFound": {
     "code": "404",
