@@ -7,10 +7,23 @@
 # that took the production scan down on 2026-07-05. This gate catches that
 # entire class (TS2448 and friends) before commit.
 #
-# Usage: bash scripts/check-functions.sh          (requires deno in PATH;
+# Usage: bash scripts/check-functions.sh               (requires deno in PATH;
 #        install: curl -fsSL https://deno.land/install.sh | sh)
+#        bash scripts/check-functions.sh --check-only  the typecheck alone,
+#        as CI runs it (S14X-136): CI's deno-tests job runs the Deno tests in
+#        a step of their own, so this gate does not run them a second time.
+#
+# Run from the repo root (npm run check:functions and CI both do).
 set -uo pipefail
 export PATH="$HOME/.deno/bin:$PATH"
+
+CHECK_ONLY=0
+for arg in "$@"; do
+  case "$arg" in
+    --check-only) CHECK_ONLY=1 ;;
+    *) echo "unknown argument: $arg (the one flag is --check-only)"; exit 2 ;;
+  esac
+done
 
 if ! command -v deno >/dev/null; then
   echo "deno not found — install it (curl -fsSL https://deno.land/install.sh | sh)"; exit 1
@@ -58,6 +71,7 @@ else
   echo "$fails function(s) failed deno check"
   exit 1
 fi
+[ "$CHECK_ONLY" = 1 ] && exit 0
 
 # Typechecked above, and RUN here: a test that compiles is not a test that passes.
 if ! bash "$(dirname "$0")/deno-tests.sh" >/tmp/check-functions-deno-tests.log 2>&1; then

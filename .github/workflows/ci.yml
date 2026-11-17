@@ -164,9 +164,18 @@ jobs:
   # nothing ran them: check-functions.sh only typechecked them and CI never
   # called it. Their own job, so a Deno failure and a vitest failure are two
   # separate red checks rather than one step hiding the other.
+  #
+  # AND THE TYPECHECK OF EVERY EDGE FUNCTION (S14X-136). `deno test` checks
+  # only the test modules and what they import, so no CI run had ever
+  # typechecked an entry point or a _shared module no test reaches: deno
+  # check lived in the local pre-push hook alone, which a push from another
+  # machine, or one with --no-verify, never runs. The step below runs the
+  # same gate the hook does, without its test run (the next step runs the
+  # tests). Both run whatever the other said, once Deno is installed. About a
+  # hundred entry points are checked one by one, hence the longer timeout.
   deno-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       # NODE AND THE ROOT DEPS, because one Deno test is a node test too.
@@ -183,10 +192,16 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci --legacy-peer-deps
+        id: deps
       - uses: denoland/setup-deno@v2
+        id: deno
         with:
           deno-version: v2.x
+      - name: Edge-function type check (every index.ts and *_test.ts, deno check)
+        if: ${{ !cancelled() && steps.deno.outcome == 'success' }}
+        run: bash scripts/check-functions.sh --check-only
       - name: Deno tests (supabase/functions/**/*_test.ts)
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' && steps.deno.outcome == 'success' }}
         run: bash scripts/deno-tests.sh
 
   # THE GUARDS ON BUILT OUTPUT. Five suites read dist/ (the sitemap, the
