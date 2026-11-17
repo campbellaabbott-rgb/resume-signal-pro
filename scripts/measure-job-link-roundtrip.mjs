@@ -8,15 +8,25 @@
 // Read-only. It reads 300 or more live Workday cards through job-board's
 // public list (vendor workday; job-board serves a caller without a secret 60
 // rows a call whatever limit it sends, anon-budget.ts BROWSER_PAGE_ROWS, so
-// five calls), each POST carrying x-rb-budget: probe, and asks agent-mcp/job-link.ts's parseJobLink, with the
-// Workday reading on, to name each card's id from its applyUrl, and from the
-// forms a person pastes: the host in capitals, the locale dropped, swapped or
-// added, the /details/ page, the myworkdaysite.com address with and without a
-// locale, the /apply page and a tracking query. It prints each form's hit
-// rate. The Workday reading ships on only when every form reaches 98% (F13);
+// five calls, spread STRIDE rows apart so they cover more careers sites),
+// each POST carrying x-rb-budget: probe, and asks agent-mcp/job-link.ts's
+// parseJobLink, with the Workday reading on, to name each card's id from its
+// applyUrl, and from the forms a person pastes: the tenant in capitals (in
+// the host, which the URL parser lowercases, and in a myworkdaysite path,
+// which it does not), the locale dropped, swapped or added, the /details/
+// page, the myworkdaysite.com address with and without a locale, the /apply
+// page and a tracking query. Those forms are made here from each applyUrl,
+// not observed in the wild, and every applyUrl is the board's own link
+// (normalizeWorkday's base), so the round trip shows the reader inverts the
+// board's link and reads the forms it makes; it cannot show how people's
+// links differ. One such difference is measured and reported, never gated:
+// the careers site written in other letter case, which the board's id keeps
+// as the catalogue writes it, so the reader misses it by design.
+// It prints each form's hit rate. The Workday reading ships on only when
+// GATE holds: 300+ cards, 50+ careers sites, every gated form at 98% (F13);
 // below that, WORKDAY_LINKS_READ in job-link.ts stays false.
 //
-// No shebang: a test imports roundTrip and workdayVariants from this file.
+// No shebang: a test imports roundTrip, workdayVariants and gatePasses from this file.
 import { readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { parseJobLink } from "../supabase/functions/agent-mcp/job-link.ts";
@@ -25,12 +35,16 @@ const BASE = process.env.BOARD_URL ?? "https://bwhdazbotpblihdxcmho.supabase.co/
 // The site's public anon key (the same one scripts/verify-board-search.mjs carries).
 const KEY = process.env.BOARD_KEY ??
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3aGRhemJvdHBibGloZHhjbWhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyMDM2NTgsImV4cCI6MjA2Njc3OTY1OH0.WWetSNSyWlG5CkedbeIQ1p7MB2Q1eLPTUiWy2FrPeGE";
-const WANT = 300;
+/** The F13 gate: cards, distinct careers sites, and the lowest rate any gated form may have. */
+export const GATE = { cards: 300, sites: 50, rate: 0.98 };
+const WANT = GATE.cards;
 // The rows job-board serves a call without a secret (anon-budget.ts BROWSER_PAGE_ROWS).
 // The first run (2026-11-17) asked for 200 a call and stepped the offset by
-// 200, so it read 60 of every 200 rows, 240 cards in four calls; the offset
-// now steps by the rows each call returned.
+// 200, so it read 60 of every 200 rows, 240 cards in four calls. Each call
+// now asks for the 60 it gets, at offsets STRIDE apart (the anon offset
+// ceiling is 10,000), until 300 distinct cards are read.
 const PAGE = 60;
+const STRIDE = 500;
 const MAX_CALLS = 6;
 
 /** The forms of one Workday applyUrl a person may paste, each named; [] when the link is no Workday posting link. */
@@ -48,21 +62,31 @@ export function workdayVariants(applyUrl) {
   const after = bare.slice(1).join("/"); // job/<place>/<slug>
   const slug = bare[bare.length - 1];
   const host = `${tenant}.${dc}.myworkdayjobs.com`;
+  // The site in other letter case: lowered when it has a capital, else raised.
+  const otherSite = site === site.toLowerCase() ? site.toUpperCase() : site.toLowerCase();
   return [
     { name: "case", url: `https://${host.toUpperCase()}/${path}` },
+    { name: "case", url: `https://${dc}.myworkdaysite.com/recruiting/${tenant.toUpperCase()}/${site}/${after}` },
     { name: "locale", url: `https://${host}/${hasLocale ? "" : "en-US/"}${bare.join("/")}` },
     { name: "locale", url: `https://${host}/de-DE/${bare.join("/")}` },
     { name: "details", url: `https://${host}/${hasLocale ? `${seg[0]}/` : ""}${site}/details/${slug}` },
     { name: "myworkdaysite", url: `https://${dc}.myworkdaysite.com/recruiting/${tenant}/${site}/${after}` },
     { name: "myworkdaysite", url: `https://${dc}.myworkdaysite.com/en-US/recruiting/${tenant}/${site}/details/${slug}` },
     { name: "apply", url: `https://${host}/${path}/apply/applyManually?source=LinkedIn` },
+    { name: "siteCase", url: `https://${host}/${hasLocale ? `${seg[0]}/` : ""}${[otherSite, ...bare.slice(1)].join("/")}` },
   ];
 }
+
+/** The forms the gate counts, and the ones reported beside it as known misses. */
+const GATED = ["case", "locale", "details", "myworkdaysite", "apply"];
+const REPORTED = ["siteCase"];
 
 /**
  * Each card's applyUrl, and each of its pasted forms, read back through `parse`
  * (url -> id or null). The rate of a form is its hits over every card: a card
- * whose link yields no form counts as a miss for every form.
+ * whose link yields no form counts as a miss for every form. `rates` and
+ * `counts` hold the exact read and the gated forms; `reported` holds the
+ * known-miss forms, each {hit, n, rate}, which no gate reads.
  */
 export function roundTrip(cards, parse) {
   const tally = new Map();
@@ -73,33 +97,47 @@ export function roundTrip(cards, parse) {
     tally.set(name, t);
   };
   const misses = [];
-  const FORMS = ["case", "locale", "details", "myworkdaysite", "apply"];
   for (const c of cards) {
     const got = parse(c.applyUrl);
     count("exact", got === c.id);
     if (got !== c.id) misses.push({ form: "exact", id: c.id, url: c.applyUrl, got });
     const vs = workdayVariants(c.applyUrl);
-    for (const name of FORMS) {
+    for (const name of [...GATED, ...REPORTED]) {
       const own = vs.filter((v) => v.name === name);
       if (!own.length) {
         count(name, false);
-        misses.push({ form: name, id: c.id, url: c.applyUrl, got: "no such form" });
+        if (GATED.includes(name)) misses.push({ form: name, id: c.id, url: c.applyUrl, got: "no such form" });
         continue;
       }
       for (const v of own) {
         const g = parse(v.url);
         count(name, g === c.id);
-        if (g !== c.id) misses.push({ form: name, id: c.id, url: v.url, got: g });
+        if (g !== c.id && GATED.includes(name)) misses.push({ form: name, id: c.id, url: v.url, got: g });
       }
     }
   }
   const rates = {};
   const counts = {};
+  const reported = {};
   for (const [name, t] of tally) {
-    rates[name] = t.n ? t.hit / t.n : 0;
+    const rate = t.n ? t.hit / t.n : 0;
+    if (REPORTED.includes(name)) {
+      reported[name] = { ...t, rate };
+      continue;
+    }
+    rates[name] = rate;
     counts[name] = t;
   }
-  return { n: cards.length, rates, counts, misses };
+  return { n: cards.length, rates, counts, reported, misses };
+}
+
+/** The careers sites (tenant~dc~site) a set of cards covers. */
+export const careersSites = (cards) => new Set(cards.map((c) => String(c.id).split(":")[1]));
+
+/** Whether a round trip passes the F13 gate (GATE): the one rule the script prints and the test holds the switch to. */
+export function gatePasses(cards, out) {
+  const rates = Object.values(out.rates);
+  return cards.length >= GATE.cards && careersSites(cards).size >= GATE.sites && rates.length > 0 && Math.min(...rates) >= GATE.rate;
 }
 
 async function board(body) {
@@ -118,9 +156,8 @@ async function board(body) {
 async function readLive() {
   const cards = new Map();
   const calls = [];
-  let offset = 0;
   for (let i = 0; i < MAX_CALLS && cards.size < WANT; i++) {
-    const body = { action: "list", vendor: "workday", limit: PAGE, offset, groupSimilar: false };
+    const body = { action: "list", vendor: "workday", limit: PAGE, offset: i * STRIDE, groupSimilar: false };
     const t = Date.now();
     const r = await board(body);
     const jobs = Array.isArray(r.json?.jobs) ? r.json.jobs : [];
@@ -134,7 +171,6 @@ async function readLive() {
         cards.set(j.id, { id: j.id, applyUrl: j.applyUrl });
       }
     }
-    offset += jobs.length;
     if (r.json?.hasMore === false) break;
   }
   return { cards: [...cards.values()], calls };
@@ -165,7 +201,7 @@ async function main() {
       console.log(`call ${i + 1}: offset ${c.offset}, HTTP ${c.status}, ${c.rows} rows, ${c.ms} ms${c.ignoredFilters ? `, ignoredFilters ${JSON.stringify(c.ignoredFilters)}` : ""}`);
     }
   }
-  const sites = new Set(cards.map((c) => c.id.split(":")[1]));
+  const sites = careersSites(cards);
   const tenants = new Set(cards.map((c) => c.id.split(":")[1].split("~")[0]));
   const upperTenant = cards.filter((c) => /[A-Z]/.test(c.id.split(":")[1].split("~").slice(0, 2).join("~")));
   const notWorkdayHost = cards.filter((c) => !/\.myworkdayjobs\.com\//i.test(c.applyUrl));
@@ -178,17 +214,21 @@ async function main() {
   for (const [name, t] of Object.entries(out.counts)) {
     console.log(`  ${name.padEnd(14)} ${String(t.hit).padStart(4)}/${String(t.n).padEnd(4)} ${pct(out.rates[name])}`);
   }
+  for (const [name, t] of Object.entries(out.reported)) {
+    console.log(`  ${name.padEnd(14)} ${String(t.hit).padStart(4)}/${String(t.n).padEnd(4)} ${pct(t.rate)}  (reported, not gated: a known miss)`);
+  }
   const lowest = Math.min(...Object.values(out.rates));
-  const pass = cards.length >= WANT && lowest >= 0.98;
-  console.log(`hit rate (parseJobLink(applyUrl) === id): ${pct(out.rates.exact)}; lowest of every form: ${pct(lowest)}`);
-  console.log(`GATE (${WANT}+ cards, 98% on every form, F13): ${pass ? "PASS: the Workday reading may ship on" : `FAIL: keep WORKDAY_LINKS_READ false${cards.length < WANT ? ` (only ${cards.length} cards)` : ""}`}`);
+  const pass = gatePasses(cards, out);
+  const short = [cards.length < GATE.cards ? `only ${cards.length} cards` : "", sites.size < GATE.sites ? `only ${sites.size} careers sites` : ""].filter(Boolean).join(", ");
+  console.log(`hit rate (parseJobLink(applyUrl) === id): ${pct(out.rates.exact)}; lowest of every gated form: ${pct(lowest)}`);
+  console.log(`GATE (${GATE.cards}+ cards, ${GATE.sites}+ careers sites, ${GATE.rate * 100}% on every gated form, F13): ${pass ? "PASS: the Workday reading may ship on" : `FAIL: keep WORKDAY_LINKS_READ false${short ? ` (${short})` : ""}`}`);
   for (const m of out.misses.slice(0, 25)) console.log(`  miss [${m.form}] ${m.id} <- ${m.url} (read ${m.got})`);
   if (out.misses.length > 25) console.log(`  ... ${out.misses.length - 25} more misses`);
   if (write && !from) {
     writeFileSync(write, `${JSON.stringify({
       measuredAt,
       source: `job-board list {vendor: workday, limit ${PAGE}, groupSimilar false}, offsets ${calls.map((c) => c.offset).join(", ")}, x-rb-budget: probe; scripts/measure-job-link-roundtrip.mjs`,
-      printed: `${cards.length} cards, ${sites.size} careers sites, ${tenants.size} tenants; ${Object.entries(out.counts).map(([k, t]) => `${k} ${t.hit}/${t.n}`).join(", ")}; lowest ${pct(lowest)}; gate ${pass ? "PASS" : "FAIL"}`,
+      printed: `${cards.length} cards, ${sites.size} careers sites, ${tenants.size} tenants; ${Object.entries(out.counts).map(([k, t]) => `${k} ${t.hit}/${t.n}`).join(", ")}; lowest gated ${pct(lowest)}; gate ${pass ? "PASS" : "FAIL"}; reported, not gated: ${Object.entries(out.reported).map(([k, t]) => `${k} ${t.hit}/${t.n}`).join(", ")}; every form but exact is made by the script from the board's own applyUrl, not observed`,
       cards,
     }, null, 1)}\n`);
     console.log(`recorded ${cards.length} cards to ${write}`);

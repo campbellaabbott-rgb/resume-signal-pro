@@ -19,9 +19,25 @@
  *     by asking the person for the title and employer;
  *   - an Indeed, Glassdoor or other aggregator link with "we don't read that
  *     site", asking the person for the title and employer.
- * None of these is ever fetched: the reader is shown making no request, and
- * the shipped agent-mcp handler, given such links on every job tool, is shown
- * reaching no host but its own board.
+ * None of these is ever fetched: the reader is shown making no request.
+ *
+ * The handler block is a guard for L5's wiring, not a test that fails first:
+ * the shipped handler still calls parseJobId, which refuses these links before
+ * any request, so its five cases pass on c7abaf00d too. It shows the handler,
+ * given such links on every job tool, reaching no host but its own board and
+ * the harness's connector list, and a control call on a board id shows the
+ * recorder sees the handler's requests at all.
+ *
+ * WHAT THE REVIEW FOUND WRONG IN THE FIRST BUILD, AND IS NOW TRUE.
+ *   - A LinkedIn externalApply link (/jobs/view/externalApply/<n>?url=...)
+ *     became a search for the title "externalApply": only a <words>-<number>
+ *     segment after /jobs/view/ is read as a title now.
+ *   - A LinkedIn link naming only an employer (/company/<name>/jobs/) was
+ *     told it names no title or employer; every LinkedIn link with no title
+ *     slug is now told this reader finds no title in it.
+ *   - A slug with no "-at-" said the link names no employer; it says this
+ *     reader found none (a slug in another language may name one). "-AT-"
+ *     is read in any letter case, and a search is at most 80 characters.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { parseJobLink } from "../../supabase/functions/agent-mcp/job-link";
@@ -73,14 +89,40 @@ describe("the reader answers a LinkedIn link from its own words, and fetches not
   });
 
   it("a LinkedIn link that carries no title asks the person for the title and employer, with no search", () => {
-    for (const url of [LINKEDIN_BARE, "https://www.linkedin.com/jobs/collections/recommended/?currentJobId=4012345678", "https://lnkd.in/gAbCdEf"]) {
+    for (const url of [
+      LINKEDIN_BARE,
+      "https://www.linkedin.com/jobs/collections/recommended/?currentJobId=4012345678",
+      "https://lnkd.in/gAbCdEf",
+      // LinkedIn's off-site Apply link: "externalApply" is no title.
+      "https://www.linkedin.com/jobs/view/externalApply/4012345678?url=https%3A%2F%2Facme%2Ewd1%2Emyworkdayjobs%2Ecom%2Fx&urlHash=abc",
+      "https://www.linkedin.com/jobs/view/4012345678/apply",
+      // These name an employer, and no posting.
+      "https://www.linkedin.com/company/acme-analytics/jobs/",
+      "https://www.linkedin.com/jobs/acme-analytics-jobs",
+    ]) {
       const r = parseJobLink(url);
       expect(r, url).toMatchObject({ kind: "words", site: "linkedin" });
       if (r.kind !== "words") continue;
-      expect(r.suggestedSearch).toBeUndefined();
+      expect(r.suggestedSearch, url).toBeUndefined();
       expect(r.note).toMatch(/ask the person for the title and employer/);
+      // A bare number names LinkedIn's posting, and a company link names an employer: neither names a title.
+      expect(r.note, url).toMatch(/this reader finds no title in it/);
+      expect(r.note, url).not.toMatch(/names no title or employer/);
     }
     expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("'-at-' is read in any letter case; a slug with none says this reader found no employer; a search is at most 80 characters", () => {
+    expect(parseJobLink("https://www.linkedin.com/jobs/view/Senior-Data-Engineer-AT-Acme-4012345678")).toMatchObject({
+      suggestedSearch: { query: "Senior Data Engineer", companies: ["Acme"] },
+    });
+    const r = parseJobLink("https://de.linkedin.com/jobs/view/software-engineer-bei-sap-4012345678");
+    if (r.kind !== "words") throw new Error("expected words");
+    expect(r.note).toMatch(/names no employer this reader could find/);
+    const long = parseJobLink(`https://www.linkedin.com/jobs/view/${"x".repeat(1200)}-at-${"y".repeat(1200)}-4012345678`);
+    if (long.kind !== "words") throw new Error("expected words");
+    expect(long.suggestedSearch?.query?.length).toBeLessThanOrEqual(80);
+    expect(long.suggestedSearch?.companies?.[0]?.length).toBeLessThanOrEqual(80);
   });
 
   it("an aggregator link is a site we don't read: ask the person for the title and employer", () => {
@@ -102,7 +144,7 @@ describe("the reader answers a LinkedIn link from its own words, and fetches not
   });
 });
 
-describe("the shipped agent-mcp handler, given these links, reaches no host but its own board", () => {
+describe("the shipped agent-mcp handler, given these links, reaches no host but its own board and the harness's connector list (a guard for L5's wiring)", () => {
   let mcp: KeylessMcp;
   const reached: string[] = [];
   beforeAll(async () => {
@@ -114,6 +156,13 @@ describe("the shipped agent-mcp handler, given these links, reaches no host but 
       return inner(url, init);
     };
   }, 120_000);
+
+  it("control: get_job on a board id reaches the board, so the recorder sees the handler's requests", async () => {
+    reached.length = 0;
+    await mcp.call({ id: "greenhouse:acme:12345" }, { name: "get_job" });
+    expect(reached.length).toBeGreaterThan(0);
+    expect(reached.some((u) => new URL(u).hostname === "harness.supabase.co" && u.endsWith("/functions/v1/job-board"))).toBe(true);
+  });
 
   it.each([
     ["get_job", { id: LINKEDIN_SLUG }],
