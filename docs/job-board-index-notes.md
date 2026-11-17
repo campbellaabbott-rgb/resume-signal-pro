@@ -24531,3 +24531,34 @@ relevant(), not by either matcher): recall 0.478 -> 0.921, precision 0.916 ->
 0.925 against 0b9d5dfab; no query lost a relevant title it found; every query
 outside the software families reads identically. Ranked search stays
 "ranked": true. The search log keeps body.q as typed.
+
+## n1601-the-figures-own-clause
+
+In `supabase/functions/_shared/salary-extract.ts`, above: `const RANGE_ALL = new RegExp(RANGE_RE.source, "gi");`
+
+Read 2026-11-17 on five Greenhouse boards whose postings carry structured pay
+(pay_transparency=true): the description miner found the stated pay on 23 of
+Coinbase's 248 and 13 of Airbnb's 163, because the words NEAR the range refused
+it, never the range's own words:
+
+    "...eligible for bonus, equity, benefits, and Employee Travel Credits. Pay Range $168,000 — $203,000 USD"
+    "Annual base salary range (excluding equity and bonus): $166,345 — $195,700 USD"
+    "Zone 1 Pay Range $311 — $325,000 USD Zone 2 Pay Range $330,000 — ..."   (first range implausible; the miner stopped)
+
+Three changes, each only ever turning a null into a figure:
+1. NOT_PAY reads the 40 characters before a figure from the start of its own
+   sentence (cut after . ! ? followed by a space, or at ; • | ·). The 20 after
+   are read whole: cut there, "Average deal size $30,000 - $60,000. Sign-on
+   bonus: ..." read the deal size as pay (benchmark rc3-s100; and r4-036).
+2. A range a pay label names (pay range, salary range, base salary, base pay,
+   with its own parenthesis) is pay, unless the two words before the label are
+   not pay ("bonus pay range") or a NOT_PAY word stands between label and figure.
+3. A refused range no longer ends the search: the next range is read. If every
+   range is refused, no single figure is taken (unchanged).
+
+Because the new window is a substring of the old and the label only relaxes,
+no range main accepted is refused and the first accepted range is unchanged:
+wherever main answered, the answer is the same text (tested on both corpora).
+Corpus: src/test/fixtures/pay-text-miner-corpus-2026-11-17.json (562 distinct
+excerpts of 1,123 postings): right 773 -> 1,115 of 1,123, never a wrong figure.
+The w4b-fix3 benchmark moved 14 answers, all safe-miss null -> the stated pay.
