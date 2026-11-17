@@ -1053,6 +1053,40 @@ interface GreenhouseJob {
   first_published?: string;
   updated_at?: string;
   departments?: Array<{ name?: string }>;
+  /** pay_transparency=true: the board's own stated ranges (S9-010). */
+  pay_input_ranges?: GreenhousePayRange[];
+}
+
+/** One range a Greenhouse board states: whole-cent figures, an ISO code, and the board's own label ("Hourly Rate:", "Zone 1 Pay Range"). */
+export interface GreenhousePayRange {
+  min_cents?: number;
+  max_cents?: number;
+  currency_type?: string;
+  title?: string;
+}
+
+/**
+ * The pay a Greenhouse board states (S9-010), through the one formatter whose
+ * output the parser reads back to the same figures. The first range that reads
+ * as a rate of pay: the order the posting itself lists its zones in, which is
+ * the range the description miner read before. A range whose top is more than
+ * five times its floor ("$311 — $325,000", a typo'd zone) is passed over, as the
+ * miner passes over such a range in prose. The period is the board's own label's
+ * word; a label with none ("Pay Range") states figures only, read as the miner's
+ * figures are read.
+ * Rationale: docs/job-board-index-notes.md#n1602-the-pay-a-greenhouse-board-states
+ */
+export function greenhouseSalary(ranges: readonly GreenhousePayRange[] | null | undefined): string | null {
+  if (!Array.isArray(ranges)) return null;
+  for (const r of ranges) {
+    if (!r || typeof r !== "object") continue;
+    const min = typeof r.min_cents === "number" && r.min_cents > 0 ? r.min_cents / 100 : null;
+    const max = typeof r.max_cents === "number" && r.max_cents > 0 ? r.max_cents / 100 : null;
+    if (min === null || (max !== null && (max < min || max / min > 5))) continue;
+    const stated = statedPayText(vendorPayPeriod(r.title), min, max, r.currency_type ?? null, null);
+    if (stated !== null) return stated;
+  }
+  return null;
 }
 
 // Rationale: docs/job-board-index-notes.md#n994-const-coord_suffix-s-s-d-d
@@ -1104,7 +1138,7 @@ export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: st
       // Rationale: docs/job-board-index-notes.md#n998-postedat-j-first_published-null
       postedAt: j.first_published ?? null,
       category: categorize(j.title ?? "", j.departments?.[0]?.name),
-      salary: null,
+      salary: greenhouseSalary(j.pay_input_ranges),
       applyUrl: safeUrl(indexUrl ? `https://${pageHost}/${pageToken}/jobs/${j.id}` : j.absolute_url),
     };
   }).filter((j) => j.applyUrl !== "");
@@ -1177,7 +1211,7 @@ const fmtStatedPay = (n: number) => n.toLocaleString("en-US", { minimumFractionD
 
 // Rationale: docs/job-board-index-notes.md#n1235-function-statedpaytext
 function statedPayText(
-  period: StatedPayPeriod,
+  period: StatedPayPeriod | null,
   min: number | null,
   max: number | null,
   currencyCode: string | null,
@@ -1191,9 +1225,10 @@ function statedPayText(
   const marker = /^[A-Z]{3}$/.test(code) ? `${code} ` : sym;
   if (!marker) return null;
   const figures = ceiling === null ? fmtStatedPay(min) : `${fmtStatedPay(min)} – ${fmtStatedPay(ceiling)}`;
-  const text = `${marker}${figures} ${STATED_PAY_PERIOD_WORD[period]}`;
+  // No period: the figures alone, read by the parser's magnitude rules (greenhouse "Pay Range").
+  const text = period === null ? `${marker}${figures}` : `${marker}${figures} ${STATED_PAY_PERIOD_WORD[period]}`;
   const read = parseSalaryStructured(text, null, null);
-  if (!read || read.period !== period || read.annualMin === null) return null;
+  if (!read || (period !== null && read.period !== period) || read.annualMin === null) return null;
   if (read.min !== min) return null;
   if (ceiling === null ? read.max !== null : read.max !== ceiling) return null;
   return text;

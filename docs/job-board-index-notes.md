@@ -24562,3 +24562,45 @@ wherever main answered, the answer is the same text (tested on both corpora).
 Corpus: src/test/fixtures/pay-text-miner-corpus-2026-11-17.json (562 distinct
 excerpts of 1,123 postings): right 773 -> 1,115 of 1,123, never a wrong figure.
 The w4b-fix3 benchmark moved 14 answers, all safe-miss null -> the stated pay.
+
+## n1602-the-pay-a-greenhouse-board-states
+
+In `supabase/functions/job-board/normalize.ts`, above: `export function greenhouseSalary(ranges: readonly GreenhousePayRange[] | null | undefined): string | null {`
+
+S9-010. Greenhouse's job board API states a posting's pay when asked with
+pay_transparency=true: pay_input_ranges, each {min_cents, max_cents,
+currency_type, title, blurb, description}. The list asked without it, so every
+Greenhouse row's pay came from mining the description, and a light board (no
+content) had none at all. Read 2026-11-17, one GET per board:
+
+    board        postings  stated  main  now   gained  lost
+    coinbase        259      248     23   236    213      0
+    airbnb          200      163     13   157    144      0
+    databricks      902      470      0   467    467      0   (light: main's list read no pay; its description sweep mines it)
+    robinhood       166      154    157   157      0      0
+    figma           139       92     92    92      0      0
+
+The list now asks for it on both reads (content=true&pay_transparency=true, or
+pay_transparency=true alone on a light list). Payload: the Databricks content
+list 9.87 MB -> 10.61 MB (+7.5%); its light list 0.78 MB -> 1.51 MB, because
+each range carries HTML blurb and description prose. The streamed light read
+(slim-stream SLIM_SPECS.greenhouse) keeps pay_input_ranges and drops those two.
+A content list near MAX_RESPONSE_BYTES or AUTO_LIGHT_THRESHOLD_CHARS can cross
+it and read light from then on; the pay still arrives on the light list.
+
+The first range that reads as a rate of pay is the posting's pay, in the order
+the posting lists its zones (the range the miner read before). A range whose
+top is more than five times its floor is passed over (Databricks "Zone 1 Pay
+Range $311 — $325,000"), as the miner passes over it in prose. The period is
+the label's own word (Hourly Rate, Annual base salary range, Mexico Monthly Pay
+Range); a label with none ("Pay Range", "Zone 2 Pay Range", "Internship")
+states the figures only, through statedPayText with a null period, and the
+parser reads them by the same magnitude rules it reads mined figures with.
+
+Stored rows: every list visit re-reads every posting's pay and patches it, so
+no version bump is needed (SALARY_PARSE_VERSION re-parses stored strings only,
+and would not reach a row whose salary is null). The first lap changes the
+text of rows the miner had read ("$166,000—$232,400" -> "USD 166,000.00 –
+232,400.00"): same money patches unlogged already (statesTheSameMoney); the
+rest is our reading too (Robinhood Toronto read as USD, now CAD), so
+"greenhouse:salary" sits in OUR_READING_CHANGED until 2026-12-31.

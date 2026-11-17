@@ -750,7 +750,8 @@ const listUrl = (s: JobSource, startOffset = 0, details = !isLight(s)) =>
   s.source === "greenhouse"
     // content=true costs a bigger payload but delivers every description in
     // ONE call — fit-ranking coverage for GH boards, plus real departments.
-    ? (({ host, token }) => `https://${host}/v1/boards/${token}/jobs${isLight(s) ? "" : "?content=true"}`)(greenhouseApi(s.token))
+    // pay_transparency=true adds the board's own stated pay ranges, light or not (S9-010, n1602).
+    ? (({ host, token }) => `https://${host}/v1/boards/${token}/jobs?${isLight(s) ? "" : "content=true&"}pay_transparency=true`)(greenhouseApi(s.token))
     : s.source === "lever"
       ? (({ host, token }) => `https://${host}/v0/postings/${token}?mode=json`)(leverApi(s.token))
       : s.source === "ashby"
@@ -3892,7 +3893,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         const VENDOR_FIELD_FIRST_READ = new Set(["personio:salary"]);
         const OUR_READING_CHANGED = new Set([
           // Remove after 2026-11-30 (n1426).
-          "lever:employment_type", "bamboohr:employment_type", "recruitee:employment_type", "breezy:employment_type", "personio:employment_type", "breezy:salary", "lever:salary"]);
+          "lever:employment_type", "bamboohr:employment_type", "recruitee:employment_type", "breezy:employment_type", "personio:employment_type", "breezy:salary", "lever:salary",
+          // Remove after 2026-12-31 (n1602): a greenhouse board's own stated pay replaces our mined reading on its first lap.
+          "greenhouse:salary"]);
         const FIELD_CHANGES_PER_VISIT = 500;
         const VALUE_CAP = 1_000; // salary strings and titles both fit generously
         const changeLog: Array<Record<string, unknown>> = [];
