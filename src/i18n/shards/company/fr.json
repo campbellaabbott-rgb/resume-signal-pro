@@ -18,6 +18,7 @@
       "copied": "Lien copié",
       "copyLink": "Copier le lien",
       "more": "Plus d'actions pour {{name}}",
+      "moreThis": "Plus d'actions pour ce site carrières",
       "watchBoards": "Suivre les sites carrières nommés « {{token}} »",
       "watchGeneric": "Suivre le site carrières « {{label}} »",
       "watchThis": "Suivre ce site carrières"
@@ -65,6 +66,7 @@
     },
     "facts": {
       "countriesLabel": "La plupart des postes en",
+      "countriesLabelPooled": "La plupart des postes de tout le système de recrutement de {{company}} en",
       "payLabel": "Salaire indiqué dans",
       "payValue": "{{k}} sur {{n}}",
       "systemLabel": "Système de recrutement",
@@ -75,6 +77,8 @@
     "factsLabel": "À propos de ce site carrières",
     "h1Generic": "Postes sur le site « {{label}} »",
     "h1GenericSystem": "Postes sur le site « {{label}} » ({{system}})",
+    "h1SystemBoard": "Postes sur un site {{system}}",
+    "h1ThisBoard": "Postes sur ce site",
     "mix": {
       "basis": "Les groupes les plus importants parmi les postes ouverts lus le {{date}} ; les postes d'un domaine que nous ne reconnaissons pas sont exclus.",
       "basisUndated": "Les groupes les plus importants parmi les postes ouverts que nous avons lus ; les postes d'un domaine que nous ne reconnaissons pas sont exclus.",
@@ -99,6 +103,9 @@
       "floor_one": "Bas habituel de la fourchette de salaire indiquée : {{amount}} · médiane sur {{m}} offre en {{currency}}",
       "floor_other": "Bas habituel de la fourchette de salaire indiquée : {{amount}} · médiane sur {{m}} offres en {{currency}}",
       "floor_many": "Bas habituel de la fourchette de salaire indiquée : {{amount}} · médiane sur {{m}} offres en {{currency}}",
+      "floorPooled_one": "Bas habituel de la fourchette de salaire indiquée : {{amount}} · médiane sur {{m}} offre en {{currency}} sur tout le système de recrutement de cet employeur",
+      "floorPooled_many": "Bas habituel de la fourchette de salaire indiquée : {{amount}} · médiane sur {{m}} offres en {{currency}} sur tout le système de recrutement de cet employeur",
+      "floorPooled_other": "Bas habituel de la fourchette de salaire indiquée : {{amount}} · médiane sur {{m}} offres en {{currency}} sur tout le système de recrutement de cet employeur",
       "read": "lu le {{date}}",
       "stated": "Salaire indiqué dans {{k}} offres sur {{n}}",
       "title": "Salaire"
@@ -198,6 +205,7 @@
     "boardTotal_one": "Son site affichait {{total}} poste en tout quand nous l'avons lu {{ago}}.",
     "boardTotal_other": "Son site affichait {{total}} postes en tout quand nous l'avons lu {{ago}}.",
     "boardTotal_many": "Son site affichait {{total}} postes en tout quand nous l'avons lu {{ago}}.",
-    "pooledBoards": "Comptés sur {{n}} sites carrières du système de recrutement de cet employeur"
+    "pooledBoards": "Comptés sur {{n}} sites carrières du système de recrutement de cet employeur",
+    "employerChipOneBoard": "Historique d'embauche pour l'un des {{n}} tableaux d'offres de cet employeur : {{board}}"
   }
 }
