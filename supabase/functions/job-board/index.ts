@@ -91,7 +91,7 @@ import { planRankedPage, RANKED_WINDOW, RING_WINDOW, rowsReached, symbolLiteralR
 import { collapseClusters, continuePastSeam, GROUP_OVERFETCH, interleaveByCompany, rowClusterKey, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
 import { ROUTE_BRANDS } from "./route-brands.ts";
-import { expandQuery, ROLE_ALIASES } from "./search-alias.ts";
+import { expandQuery, joinCompoundRoleWords, ROLE_ALIASES, roleAliasesFor } from "./search-alias.ts";
 import { rankedWithDeadline } from "./ranked-deadline.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
 import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
@@ -9734,14 +9734,15 @@ async function serveList(
   const qt = queryTerms(body.q);
   // phraseText, not a plain join: a quoted phrase is one term here and must
   // reach the tsquery parser back inside its quotes, or the tip is a lie.
-  const qText = phraseText(qt.terms).slice(0, 200) || (qt.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
+  // "back end" / "back-end" / "backend" are one word to every title tier (search-alias.ts, n1600).
+  const qText = joinCompoundRoleWords(phraseText(qt.terms).slice(0, 200) || (qt.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200)));
   // S13-104: a search our servers ask not to log reaches no log line, its words or an error's text, which can quote them.
   const qLog = noLog ? "(not logged)" : JSON.stringify(qText);
   const errLog = (text: string) => (noLog ? "(not logged)" : text);
   // The router's employer keys: the table, plus the live employer list's (S12-014).
   const routeAliases = qText ? routeAliasesFor(client) : ROUTE_TABLE;
   /** The SIMPLE route's split title match, with an employer's boards beside its key (S12-014). */
-  const simpleSplit = (q: string) => simpleRouteFilters(ftsSafe(q), ROLE_ALIASES, routeAliases);
+  const simpleSplit = (q: string) => simpleRouteFilters(ftsSafe(q), roleAliasesFor(q), routeAliases);
 
   if (body.facetCounts === true) {
     // Rationale: docs/job-board-index-notes.md#n865-const-facetroute-qtext-pickroute-qtext-r
@@ -9870,7 +9871,7 @@ async function serveList(
     }
     // Rationale: docs/job-board-index-notes.md#n322-qtc
     const qtC = queryTerms(body.q);
-    const qTextC = phraseText(qtC.terms).slice(0, 200) || (qtC.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
+    const qTextC = joinCompoundRoleWords(phraseText(qtC.terms).slice(0, 200) || (qtC.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200)));
     // Rationale: docs/job-board-index-notes.md#n323-qtextc-body-sort-salary-rpc
     if (qTextC && body.sort !== "salary" && !rpcBlindFilters(applied).length) {
       try {

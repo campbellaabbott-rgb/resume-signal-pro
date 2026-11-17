@@ -24493,3 +24493,41 @@ In `supabase/functions/job-board/anon-budget.ts`, above: `pass: { configured: op
 
 configured: TURNSTILE_SECRET_KEY is set on this function; required: the row's requirePass;
 cap: the row's passCap (reads per pass per UTC day), null = the counter's default of 600.
+
+## n1600-one-role-word-in-every-spelling
+
+In `supabase/functions/job-board/search-alias.ts`, above: `const SOFTWARE_FAMILY: ReadonlySet<string> = new Set([`
+
+Measured live 2026-11-17 with labelled probes (x-rb-budget: probe, x-rb-caller:
+maintenance), the board's most-searched terms read very differently by spelling:
+
+    back end developer     32  (SIMPLE)   backend developer    281   backend engineer    1,079
+    front end developer    70  (SIMPLE)   frontend developer   158   frontend engineer     320
+    dev ops engineer       21             devops engineer   1,117
+    a.i. engineer           3  (junk: "Engineer I-... a Doubletree")
+
+"end", "dev" and "ops" are three letters, so the spaced spelling took the
+SIMPLE route and was matched literally; the hyphen made "back-end" one more
+literal word; "a.i." became the words "a" and "i". The fix joins the compound
+once, before routing (joinCompoundRoleWords), so the query takes the ranked
+route and the alias table (backend: back end, frontend: front end, fullstack,
+devops, devsecops) carries every spelling back into the title tier through
+search_jobs' existing title_tsv index. No new OR arm and no new index: the
+ilike substring arms still read the raw typed terms, a superset.
+
+Back end and front end join only beside a role or software word: a grocery's
+"Front End Manager" is a checkout, and it reads exactly as before.
+
+Developer and engineer trade places only inside a software family
+(SOFTWARE_FAMILY), and never with a word from NOT_SOFTWARE: the board's own
+titles show "Business Developer", "Sales Engineer", "Property Developer",
+"Real Estate Developer", "Land Developer", "Product Engineer", "Web Content
+Developer", "Application Engineer" and "Learning Developer" are other jobs.
+Bare "developer" or "engineer" never swaps.
+
+Corpus (src/test/fixtures/search-reach-corpus-2026-11-17.json, 86 queries over
+real board titles, 39,796 query/title cases judged by helpers/search-reach.ts
+relevant(), not by either matcher): recall 0.478 -> 0.921, precision 0.916 ->
+0.925 against 0b9d5dfab; no query lost a relevant title it found; every query
+outside the software families reads identically. Ranked search stays
+"ranked": true. The search log keeps body.q as typed.

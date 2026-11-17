@@ -72,7 +72,8 @@ describe("the sidebar must not contradict the page", () => {
     expect((FN.match(/const qText\s*=/g) ?? []).length, "exactly one qText declaration").toBe(1);
     // (phraseText(qt.terms) since 2026-09-04 — the same join with each quoted
     // phrase re-quoted for the tsquery parser; still derived from qt.terms.)
-    const qAt = FN.indexOf("const qText = phraseText(qt.terms)");
+    // (joinCompoundRoleWords around it since .103, n1600.)
+    const qAt = FN.indexOf("const qText = joinCompoundRoleWords(phraseText(qt.terms)");
     const facetAt = FN.indexOf("if (body.facetCounts === true)");
     expect(qAt).toBeGreaterThan(-1);
     expect(qAt < facetAt, "qText must be derived before the facet block that reads it").toBe(true);
