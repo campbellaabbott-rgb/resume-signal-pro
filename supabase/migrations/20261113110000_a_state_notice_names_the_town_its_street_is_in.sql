@@ -1,5 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
--- (reviewed 2026-11-17 in the bug round part B, lane layoff-filings-b).
+-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing (reviewed 2026-11-17 in the bug round part B, lane layoff-filings-b).
 --
 -- A STATE NOTICE NAMES THE TOWN ITS STREET IS IN (S14X-185).
 --

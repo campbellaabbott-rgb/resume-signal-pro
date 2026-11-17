@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Lovable's agent refused the cost wave's third migration on 2026-11-15 "for
  * a missing sub-hourly cron review marker" and stopped there, so every file
@@ -6,20 +7,36 @@
  * someone remembered to add: the bug round's 29 files reached review without
  * one.
  *
- * This guard reads the directory instead. Every migration whose stamp sorts
- * at or after the refused file (20261109120000) opens with the marker:
+ * THE LINE LOVABLE'S TOOL READS (2026-11-17). The first marker was written in
+ * the agent's own words, upper case, two lines. On 2026-11-17 Lovable's tool
+ * refused that file again with the marker in place and named the exact first
+ * line it requires: the words lovable-cron-fallback-reviewed, a colon, and a
+ * reason on the same line. Main re-headed its sixteen pending files to that
+ * form (PR #65) and Lovable applied them. A file that still opens with the old
+ * words fails here by name, since this guard passing it is what let the bug
+ * round's 37 files reach review in a form the tool refuses.
+ *
+ * This guard reads the directory instead of a list. Every migration whose
+ * stamp sorts at or after the refused file (20261109120000), and that a
+ * message can still send, opens with that line:
  *
  *  - a file whose code (comment lines dropped) schedules or keeps a job more
- *    often than hourly opens with the full review block, as main's
- *    20261109120000 does;
- *  - every other file opens with the one-line form, "not required.", and a
- *    sentence saying what it schedules.
+ *    often than hourly gives a reason that names the job, and the lines under
+ *    it keep the full review block, as main's 20261109120000 does;
+ *  - every other file's reason opens "no cron;" or "no sub-hourly cron;" and
+ *    says what the file schedules.
  *
- * A file Lovable's runner has already applied is not read: its drizzle stub
- * names it, Lovable will not run it again, and main's rule is that an applied
- * migration is never edited (the 2026-11-10 hotfix's three files went in
- * before the marker was asked for). Nor is a file the ledger lists under
- * neverApply: no message ever sends it to Lovable.
+ * WHICH FILES A MESSAGE CAN STILL SEND is the ledger's own reading
+ * (scripts/deploy-ledger.mjs migrations()): a file Lovable's runner applied is
+ * not read, Lovable will not run it again, and an applied migration is never
+ * edited (the 2026-11-10 hotfix's three files went in before the marker was
+ * asked for). The ledger knows every stub Lovable writes: one that runs a
+ * staged name, one stamped with its file's name, one under its file's title,
+ * and one that names no file at all and holds its file's SQL inline (drizzle
+ * 0226-0228). This guard read only the first two, so main's 0228, which holds
+ * 20261109120000 under a title of Lovable's own, left that applied file
+ * pending here and judged it again. Nor is a file the ledger lists under
+ * neverApply or appliedOutsideDrizzle read: no message ever sends it.
  *
  * HOW A SCHEDULE IS READ (the closeout review of 2026-11-16). The text reading
  * is main's (a minute field that is not one number, read without its quotes so
@@ -49,27 +66,31 @@
  * applied such words before (drizzle 0212 and 0214 raise a self-check named
  * for the word; 20261110140000, applied as 0224, says it in a comment).
  */
-import { readdirSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import * as L from "../../scripts/deploy-ledger.mjs";
 
 const MIG = resolve(__dirname, "../../supabase/migrations");
 const DRIZZLE = resolve(__dirname, "../../drizzle/migrations");
-const LEDGER = JSON.parse(readFileSync(resolve(__dirname, "../../docs/deploy-ledger.json"), "utf8")) as { neverApply?: string[] };
+const POLICY = JSON.parse(readFileSync(resolve(__dirname, "../../docs/deploy-ledger.json"), "utf8"));
 /** The first file Lovable's agent refused for want of the marker. */
 const FLOOR = "20261109120000";
-const MARKER = "-- SUB-HOURLY CRON REVIEW MARKER";
+/** The first line Lovable's tool requires (it named the form on 2026-11-17): the words, a colon, and a reason on that line. */
+const MARKER = /^-- lovable-cron-fallback-reviewed: \S[^\n]*\n/;
+/** The marker in the agent's own words, which the tool refused on 2026-11-17 with it in place. */
+const REFUSED_MARKER = /^-- SUB-HOURLY CRON REVIEW MARKER\b/;
 
-/** Stamps Lovable's staged runner has applied, read from its drizzle stubs. */
-const appliedStamps = (): Set<string> => {
-  const out = new Set<string>();
-  for (const f of readdirSync(DRIZZLE).filter((x) => x.endsWith(".sql"))) {
-    const byName = /^\d{4}_(\d{14})_/.exec(f);
-    if (byName) out.add(byName[1]);
-    const text = readFileSync(resolve(DRIZZLE, f), "utf8");
-    for (const m of text.matchAll(/_mig_stage WHERE name = '(\d{14})_/g)) out.add(m[1]);
-  }
-  return out;
+/**
+ * The files from the floor on that a message can still send Lovable: the
+ * ledger's pending and held files, read against every kind of stub Lovable
+ * writes (scripts/deploy-ledger.mjs migrations()). `dirs` points it at a
+ * fixture.
+ */
+const sendable = (dirs?: { migrations: string; drizzle: string }): string[] => {
+  const m = L.migrations(POLICY, dirs);
+  return [...m.pending, ...m.hold].filter((f: string) => f.slice(0, 14) >= FLOOR).sort();
 };
 
 /** The file without its comment lines: what the database runs. */
@@ -280,7 +301,8 @@ const FULL = [
   /^-- load: lower than today/m,
   /^-- new standing sub-hourly jobs: none\.$/m,
 ];
-const NOT_REQUIRED = /^-- SUB-HOURLY CRON REVIEW MARKER: not required\. \S/;
+/** The reason a file that runs nothing more often than hourly gives. */
+const NOT_REQUIRED = /^-- lovable-cron-fallback-reviewed: no (?:sub-hourly )?cron; \S/;
 /** A transaction statement in the code: Lovable's agent runs each file in its own transaction and refuses one that ends or opens another. */
 const TRANSACTION = /\bBEGIN\s*(?:TRANSACTION|WORK)?\s*;|\b(?:COMMIT|ROLLBACK|ABORT)(?:\s+(?:WORK|TRANSACTION|AND\s+(?:NO\s+)?CHAIN|PREPARED\s+'[^']*'|TO\s+(?:SAVEPOINT\s+)?\w+))?\s*;|\b(?:START|END)\s+TRANSACTION\b|^\s*END\s+WORK\s*;/im;
 /**
@@ -320,7 +342,8 @@ const headOf = (sql: string): string => sql.split("\n--\n")[0];
 /** What this guard asks of one file; an empty list is a pass. `stamp` places the file among the others. */
 const markerProblems = (sql: string, stamp = "99999999999999"): string[] => {
   const problems: string[] = [];
-  if (!sql.startsWith(MARKER)) return ["does not begin with the marker"];
+  if (REFUSED_MARKER.test(sql)) return ["opens with the marker Lovable's tool refused on 2026-11-17; its first line must be -- lovable-cron-fallback-reviewed: <reason>"];
+  if (!MARKER.test(sql)) return ["does not begin with the line Lovable's tool requires (-- lovable-cron-fallback-reviewed: <reason>)"];
   const head = headOf(sql);
   const run = code(sql);
   if (!/reviewed:? \d{4}-\d{2}-\d{2}/.test(head)) problems.push("its marker names no review date");
@@ -329,8 +352,10 @@ const markerProblems = (sql: string, stamp = "99999999999999"): string[] => {
   if (runs.length > 0) {
     if (NOT_REQUIRED.test(head)) problems.push(`it schedules or keeps ${[...new Set(runs)].join(", ")} but says the review is not required`);
     for (const line of FULL) if (!line.test(head)) problems.push(`its full review lacks ${line}`);
+    const job = /^-- job: ([\w-]+)/m.exec(head)?.[1];
+    if (job && !sql.split("\n")[0].includes(job)) problems.push(`its first line's reason does not name ${job}, the job it keeps sub-hourly`);
   } else if (!NOT_REQUIRED.test(head)) {
-    problems.push("it runs nothing more often than hourly, so its marker is the not-required form with a sentence");
+    problems.push("it runs nothing more often than hourly, so its first line's reason opens \"no cron;\" or \"no sub-hourly cron;\" and says what it schedules");
   }
   for (const c of computedMinute(run)) problems.push(`a schedule's minute is computed (${c}); write it literally`);
   problems.push(...calls.problems);
@@ -341,19 +366,18 @@ const markerProblems = (sql: string, stamp = "99999999999999"): string[] => {
   return problems;
 };
 
-const APPLIED = appliedStamps();
-const NEVER = (LEDGER.neverApply ?? []).map(String);
 const FROM_FLOOR = ALL.filter((f) => f.slice(0, 14) >= FLOOR);
-const READ = FROM_FLOOR.filter((f) => !APPLIED.has(f.slice(0, 14)) && !NEVER.some((n) => f.startsWith(n)));
+const READ = sendable();
 
-describe("every migration from the cost wave on opens with Lovable's sub-hourly cron review marker", () => {
-  it("the floor is a real file, and the guard reads every pending file from it on", () => {
+describe("every migration from the cost wave on that a message can send opens with the line Lovable's cron review tool reads", () => {
+  it("the floor is a real file, and the guard reads every file from it on that the ledger can still send", () => {
     expect(ALL.filter((f) => f.startsWith(`${FLOOR}_`))).toHaveLength(1);
     expect(FROM_FLOOR.length).toBeGreaterThan(0);
-    // A file is skipped only because a drizzle stub names it or the ledger never sends it.
-    for (const f of FROM_FLOOR.filter((x) => !READ.includes(x))) {
-      expect(APPLIED.has(f.slice(0, 14)) || NEVER.some((n) => f.startsWith(n)), f).toBe(true);
-    }
+    // A file is skipped only because the ledger reads it applied or never sends it.
+    const m = L.migrations(POLICY);
+    const skipped = new Set([...m.applied, ...m.neverApplyPresent]);
+    for (const f of FROM_FLOOR.filter((x) => !READ.includes(x))) expect(skipped.has(f), f).toBe(true);
+    for (const f of READ) expect(FROM_FLOOR, f).toContain(f);
   });
 
   it("every schedule accepted from rows still names a call in its file", () => {
@@ -372,9 +396,9 @@ describe("every migration from the cost wave on opens with Lovable's sub-hourly 
 });
 
 describe("the guard can fail", () => {
-  const notRequired = `${MARKER}: not required. This file schedules nothing\n-- (reviewed 2026-11-16 in a test).\n--\nSELECT 1;\n`;
+  const notRequired = "-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing (reviewed 2026-11-16 in a test).\n--\nSELECT 1;\n";
   const full = [
-    MARKER,
+    "-- lovable-cron-fallback-reviewed: example-job runs every 15 minutes, as before; reviewed 2026-11-16 by the project owner.",
     "-- reviewed: 2026-11-16 by the project owner, who approves this schedule as written.",
     "-- job: example-job.",
     "-- schedule: none today -> every 15 minutes after this file.",
@@ -410,10 +434,49 @@ describe("the guard can fail", () => {
   it("passes the two marker forms where they belong", () => {
     expect(markerProblems(notRequired)).toEqual([]);
     expect(markerProblems(full)).toEqual([]);
+    // A file that schedules only hourly or daily jobs says so.
+    const daily = "-- lovable-cron-fallback-reviewed: no sub-hourly cron; every job this file schedules runs once a day (reviewed 2026-11-16 in a test).\n--\nSELECT cron.schedule('j', '41 4 * * *', 'SELECT 1');\n";
+    expect(markerProblems(daily)).toEqual([]);
   });
 
-  it("fails a file without the marker", () => {
-    expect(markerProblems("-- A TITLE\nSELECT 1;\n")).toEqual(["does not begin with the marker"]);
+  it("fails a file without the line Lovable's tool reads", () => {
+    expect(markerProblems("-- A TITLE\nSELECT 1;\n")).toEqual(["does not begin with the line Lovable's tool requires (-- lovable-cron-fallback-reviewed: <reason>)"]);
+    // The words with no reason, or the reason on the next line, are not the line.
+    expect(markerProblems("-- lovable-cron-fallback-reviewed:\n-- no cron (reviewed 2026-11-16).\n--\nSELECT 1;\n")).toHaveLength(1);
+    expect(markerProblems(" -- lovable-cron-fallback-reviewed: no cron; nothing (reviewed 2026-11-16).\n--\nSELECT 1;\n")).toHaveLength(1);
+  });
+
+  it("fails a file that opens with the marker Lovable's tool refused on 2026-11-17, in either of its forms", () => {
+    const refused = "-- SUB-HOURLY CRON REVIEW MARKER";
+    for (const sql of [
+      `${refused}: not required. This file schedules nothing\n-- (reviewed 2026-11-16 in a test).\n--\nSELECT 1;\n`,
+      full.replace(/^[^\n]*/, refused),
+    ]) {
+      expect(markerProblems(sql).join("; "), sql).toMatch(/opens with the marker Lovable's tool refused on 2026-11-17/);
+    }
+  });
+
+  it("fails a sub-hourly file whose first line does not name the job it keeps sub-hourly", () => {
+    const unnamed = full.replace(/^[^\n]*/, "-- lovable-cron-fallback-reviewed: a job keeps its schedule; reviewed 2026-11-16 by the project owner.");
+    expect(markerProblems(unnamed).join("; ")).toMatch(/first line's reason does not name example-job/);
+  });
+
+  it("reads a file Lovable applied through a stub that names no file as applied, and every other file from the floor as one a message can send", () => {
+    const dir = mkdtempSync(join(tmpdir(), "marker-guard-"));
+    try {
+      const migrations = join(dir, "migrations"), drizzle = join(dir, "drizzle");
+      mkdirSync(migrations);
+      mkdirSync(drizzle);
+      const appliedSql = "-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing (reviewed 2026-11-16 in a test).\n--\nSELECT 'the applied file';\n";
+      writeFileSync(join(migrations, "20261201000000_the_applied_file.sql"), appliedSql);
+      writeFileSync(join(migrations, "20261201000001_the_pending_file.sql"), "SELECT 'the pending file';\n");
+      writeFileSync(join(migrations, "20261109000000_below_the_floor.sql"), "SELECT 'below the floor';\n");
+      // Lovable's stub: a title of its own, no stamp, no staged name, the file's SQL inline (as drizzle 0226-0228).
+      writeFileSync(join(drizzle, "0300_a_title_of_lovables_own.sql"), appliedSql);
+      expect(sendable({ migrations, drizzle })).toEqual(["20261201000001_the_pending_file.sql"]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("fails a sub-hourly file that says the review is not required", () => {
@@ -421,7 +484,7 @@ describe("the guard can fail", () => {
   });
 
   it("fails a full review on a file that schedules nothing sub-hourly", () => {
-    expect(markerProblems(full.replace("'*/15 * * * *'", "'15 * * * *'")).join("; ")).toMatch(/not-required form/);
+    expect(markerProblems(full.replace("'*/15 * * * *'", "'15 * * * *'")).join("; ")).toMatch(/so its first line's reason opens "no cron;" or "no sub-hourly cron;"/);
   });
 
   it("does not read a schedule in a comment line", () => {

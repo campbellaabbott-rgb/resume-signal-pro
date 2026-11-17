@@ -1,7 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
--- and changes no job: the closure rollup job keeps its daily '17 3 * * *'
--- schedule and its command (reviewed 2026-11-17 in the bug round B, lane
--- data-pages-b).
+-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing and changes no job: the closure rollup job keeps its daily '17 3 * * *' schedule and its command (reviewed 2026-11-17 in the bug round B, lane data-pages-b).
 --
 -- A PRUNED TAKEDOWN IS COUNTED IN THE COLUMN ITS MARK NAMES (S14X-159).
 --

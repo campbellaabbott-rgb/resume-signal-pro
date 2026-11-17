@@ -1,7 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing
--- and changes no job: the hourly stats cache keeps computing the field curve
--- as its own function's owner (reviewed 2026-11-17 in the bug round B, lane
--- data-pages-b).
+-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing and changes no job: the hourly stats cache keeps computing the field curve as its own function's owner (reviewed 2026-11-17 in the bug round B, lane data-pages-b).
 --
 -- A FIELD CURVE NO PAGE CALLS ANSWERS ONLY THE SERVICE ROLE (CW2-SC5).
 --

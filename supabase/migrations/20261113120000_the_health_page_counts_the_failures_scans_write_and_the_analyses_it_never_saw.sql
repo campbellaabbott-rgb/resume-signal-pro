@@ -1,6 +1,4 @@
--- SUB-HOURLY CRON REVIEW MARKER: not required. This file schedules nothing; it
--- re-creates two owner-dashboard readers with their signatures unchanged
--- (reviewed 2026-11-17, bug round part B, lane ops-alerts-b).
+-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing; it re-creates two owner-dashboard readers with their signatures unchanged (reviewed 2026-11-17, bug round part B, lane ops-alerts-b).
 --
 -- THE HEALTH PAGE COUNTS THE FAILURES SCANS WRITE, AND THE ANALYSES IT NEVER
 -- SAW (S14X-156).
