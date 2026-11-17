@@ -1539,7 +1539,15 @@ const PINNED = {
   // wrap is readable from status; the readers file Nigeria, Hong Kong and a
   // Vienna VA street in their own countries; sources.ts CHANGED (catalogSize
   // 44,499, above).
-  buildVersion: "2026-09-09.102",
+  // 2026-09-09.103 (board-103, grow/103-integration on bug round B's tip
+  // 0b9d5dfab: the db, core-lap and core-search-pay lanes): a deploy seeds the
+  // bootstrap lane with what is new, a pass end starts the next pass, a hop the
+  // platform killed is kicked again, stated Crawl-delays hold across lanes,
+  // the held boards are read by no lane, a compound role word is one word in
+  // every spelling and a Greenhouse board's stated pay reaches the row.
+  // sources.ts unchanged here (the catalogue lane had not committed when the
+  // integration merged), so sourcesHash and catalogSize hold.
+  buildVersion: "2026-09-09.103",
 };
 
 /**

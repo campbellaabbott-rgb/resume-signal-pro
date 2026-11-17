@@ -1,4 +1,4 @@
--- lovable-cron-fallback-reviewed: no cron; this file schedules nothing (reviewed 2026-11-17 in the board .103 db lane).
+-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing (reviewed 2026-11-17 in the board .103 integration).
 --
 -- THE CATALOGUE HIGH-WATER FOLLOWS THE DEAD-BOARD PRUNE.
 --

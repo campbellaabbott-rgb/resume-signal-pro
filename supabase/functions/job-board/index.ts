@@ -148,7 +148,7 @@ const json = (body: unknown, status = 200) =>
 // a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.102"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.103"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // Rationale: docs/job-board-index-notes.md#n483-const-name_sync_version
