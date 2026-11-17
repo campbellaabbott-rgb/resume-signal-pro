@@ -23,9 +23,18 @@ import { resolve } from "node:path";
  *     was genuinely empty.
  *
  * So these are not dead boards. They are jobs the board has the right to
- * serve and has never fetched. The queue now refills only when it is EMPTY,
- * so progress survives a deploy; boards filled meanwhile drop out naturally
- * because the refill asks which boards are still empty.
+ * serve and has never fetched. The queue then refilled only when it was
+ * EMPTY, so progress survived a deploy.
+ *
+ * Board .103 (W4-1) ends the restart a different way. Refill-on-empty kept
+ * the lane re-reading the same empties forever (4,576 still pending
+ * 2026-11-17, most of them read and found empty many times over). A version
+ * change now REPLACES the queue with what no read has stamped (plus the
+ * repointed tokens and any vendor whose reader changed), and nothing else
+ * seeds it. A read stamps a token, so the token leaves the next seed: the
+ * drain the 2026-08-24 defect never let finish now gets shorter with every
+ * read, and a deploy cannot send it back to a start it has already passed.
+ * The behaviour is run in a-deploy-seeds-the-bootstrap-lane-with-what-is-new.
  */
 const FN = readFileSync(
   resolve(__dirname, "../../supabase/functions/job-board/index.ts"),
@@ -34,27 +43,20 @@ const FN = readFileSync(
 const CODE = FN.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
 
 describe("a deploy must not restart the bootstrap queue", () => {
-  it("the queue refills on exhaustion, not on a version change", () => {
-    expect(CODE).toMatch(/if \(queue\.length === 0\) \{[\s\S]{0,240}get_empty_boards/);
+  it("nothing refills the queue but a version change", () => {
+    // The lane never reads the empty-board list itself: only bootstrapSeedFor
+    // does, and the lane calls it only inside a version-change branch.
+    const lane = CODE.slice(CODE.indexOf("let bootstrapBoards"), CODE.indexOf("const slice = ["));
+    expect(lane).not.toMatch(/get_empty_boards/);
+    const calls = [...lane.matchAll(/bootstrapSeedFor\(client\)/g)].map((m) => m.index!);
+    expect(calls).toHaveLength(2);
+    for (const at of calls) expect(lane.slice(Math.max(0, at - 400), at)).toMatch(/(storedVersion|bs\.version) !== BUILD_VERSION\) \{/);
   });
 
-  it("a version change may APPEND, never REBUILD", () => {
-    // The 2026-08-01 defect was not the version COMPARISON — it was rebuilding
-    // the queue when versions differed, which restarted the drain and kept the
-    // tail forever out of reach. The comparison returned on 2026-08-28 for the
-    // opposite reason: refill-on-empty made a fresh MERGE wait a whole cycle
-    // (the Oracle tranche sat at zero for 2+ hours behind a 7.5k backlog), and
-    // the reconciliation appends the merge's boards at the BACK with the drain
-    // position untouched. So the property this pins is: inside the
-    // version-change branch, the existing queue must always be the PREFIX of
-    // the new one.
-    const lane = CODE.slice(CODE.indexOf("let bootstrapBoards"), CODE.indexOf("const slice = ["));
-    const vb = lane.indexOf("bs.version !== BUILD_VERSION");
-    expect(vb, "the merge-append branch is gone").toBeGreaterThan(-1);
-    const branch = lane.slice(vb, vb + 900);
-    expect(branch, "the version branch REBUILDS the queue — the restart defect returns")
-      .not.toMatch(/queue = Array\.isArray/);
-    expect(branch).toMatch(/queue = \[\.\.\.queue, \.\.\.fresh\]/);
+  it("a version change seeds only boards no read has stamped, so a read moves the drain forward for good", async () => {
+    const { bootstrapSeed } = await import("../../supabase/functions/job-board/bootstrap-seed");
+    const seed = bootstrapSeed({ repointed: [], empty: ["read-and-empty", "never-read"], verified: new Set(["read-and-empty"]), vendorsOf: () => ["lever"], changedReaders: new Set() });
+    expect(seed.queue).toEqual(["never-read"]);
   });
 
   it("the drain is still optimistic, so a died slice cannot wedge the lane", () => {

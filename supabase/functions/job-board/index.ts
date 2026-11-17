@@ -82,6 +82,7 @@ import { boardKey, classifyDormancy, DB_FAIL_ALARM_VISITS, dbFailingBoards, drop
 import { STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, keysOf, readStaleTries, selectStaleLane, staleExclusion, unresolvedTokens, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict } from "./stale-lane.ts";
 import { tokenMapFromRecord, tokenMapToRecord } from "./token-map.ts";
 import { decideRekick } from "./chain-watchdog.ts";
+import { bootstrapSeed, clearRepointedFailures, readersChanged, repointedTokens } from "./bootstrap-seed.ts";
 import { advanceProgress, baseConsumedPrefix, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
@@ -528,6 +529,8 @@ const boardByKey = (key: string): JobSource | undefined => {
 const CATALOGUE_KEYS: ReadonlySet<string> = new Set(JOB_SOURCES.map(boardKeyOf));
 /** Retired vendor:token boards whose token another vendor still carries, so the token-keyed orphan prune never reaches them (board .102). */
 const RETIRED_TWIN_KEYS: readonly string[] = ["pinpoint:helsing", "greenhouse:wayve", "greenhouse:clickhouse", "lever:swordhealth", "greenhouse:lovable", "greenhouse:kalshi", "greenhouse:webflow", "greenhouse:worldlabs"];
+/** W4-1: bump a vendor's entry when its reader changes what an empty board can yield, and the next deploy seeds that vendor's empties (bootstrap-seed.ts). */
+const READER_VERSION: Readonly<Record<string, number>> = {};
 /** One cold hop's stale-lane run, as persisted under meta k = "stale_lane" beside `tries`, and as status reads it. */
 interface StaleLaneRun {
   at: string;
@@ -2718,6 +2721,50 @@ async function admitSlice(
   return true;
 }
 
+/**
+ * W4-1: the queue a version change writes (bootstrap-seed.ts), with the
+ * repointed tokens' failure state already cleared, and the bootstrap_seen
+ * write that commits it once the queue has landed. Throws when anything it
+ * reads fails, so nothing is seeded and the next slice tries again.
+ */
+async function bootstrapSeedFor(client: SupabaseClient): Promise<{ queue: string[]; commit: () => Promise<unknown> }> {
+  const { data: seenRow, error: seenErr } = await client.from("job_board_meta").select("v").eq("k", "bootstrap_seen").maybeSingle();
+  if (seenErr) throw seenErr;
+  const seen = (seenRow?.v ?? {}) as { readers?: Record<string, number>; twins?: string[] };
+  const repointed = repointedTokens(RETIRED_TWIN_KEYS, seen.twins, JOB_SOURCES);
+  const { data: empty, error: ebErr } = await client.rpc("get_empty_boards", { p_tokens: JOB_SOURCES.map((s) => s.token) });
+  if (ebErr) throw ebErr;
+  const tokens = Array.isArray(empty) ? (empty as string[]) : [];
+  const verified = new Set<string>();
+  const chunks: string[][] = [];
+  for (let i = 0; i < tokens.length; i += 200) chunks.push(tokens.slice(i, i + 200));
+  for (let i = 0; i < chunks.length; i += 4) {
+    await Promise.all(chunks.slice(i, i + 4).map(async (c) => {
+      const { data, error } = await client.from("job_board_verifications").select("company_token").in("company_token", c);
+      if (error) throw error;
+      for (const r of (data ?? []) as Array<{ company_token: string }>) verified.add(r.company_token);
+    }));
+  }
+  const byToken = new Map<string, string[]>();
+  for (const s of JOB_SOURCES) byToken.set(s.token, [...(byToken.get(s.token) ?? []), s.source]);
+  const vendorsOf = (t: string) => byToken.get(t) ?? [];
+  const q = bootstrapSeed({ repointed, empty: tokens, verified, vendorsOf, changedReaders: readersChanged(seen.readers, READER_VERSION) });
+  if (repointed.length) {
+    const { data: bf, error: bfErr } = await client.from("job_board_meta").select("v").eq("k", "board_failures").maybeSingle();
+    if (bfErr) throw bfErr;
+    const cleared = clearRepointedFailures((bf?.v ?? {}) as Record<string, unknown>, repointed, vendorsOf);
+    if (cleared) {
+      const { error } = await client.from("job_board_meta").upsert({ k: "board_failures", v: cleared, updated_at: new Date().toISOString() }, { onConflict: "k" });
+      if (error) throw error;
+    }
+  }
+  const note = { repointed: q.repointed, unread: q.unread, readerChanged: q.readerChanged, empty: tokens.length };
+  console.log(`[JOB-BOARD] bootstrap: version change seeds ${q.queue.length} ${JSON.stringify(note)}`);
+  return {
+    queue: q.queue,
+    commit: () => Promise.resolve(client.from("job_board_meta").upsert({ k: "bootstrap_seen", v: { readers: READER_VERSION, twins: RETIRED_TWIN_KEYS, build: BUILD_VERSION, at: new Date().toISOString(), ...note }, updated_at: new Date().toISOString() }, { onConflict: "k" })),
+  };
+}
 async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, boardBudget = MIN_BOARDS_PER_SLICE, after = "", passEndAt = ""): Promise<{ ok: boolean; detail: string }> {
   // Checked at the ENTRY too, not only at the hop: pausing must also stop a
   // fresh chain started by pg_cron, a manual refresh, or any other trigger.
@@ -2858,32 +2905,27 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         if (!verErr) {
           const storedVersion = (verRow as { version?: string } | null)?.version ?? "";
           let appendDone = true;
-          const seed = async (why: string) => {
-            const { data: empty, error: ebErr } = await client.rpc("get_empty_boards", { p_tokens: JOB_SOURCES.map((s) => s.token) });
-            if (ebErr) throw new Error(ebErr.message ?? "get_empty_boards error");
-            const { data: len, error: apErr } = await client.rpc("bootstrap_queue_append", { p_tokens: Array.isArray(empty) ? empty : [] });
-            if (apErr) throw apErr;
-            console.log(`[JOB-BOARD] bootstrap: ${why} — appended empties server-side (queue now ${len})`);
-          };
           try {
             if (storedVersion !== BUILD_VERSION) {
-              try { await seed("version change"); } catch (e) {
+              // W4-1: the queue is REPLACED by what is new (bootstrap-seed.ts). An empty queue at an unchanged version stays empty.
+              try {
+                const seed = await bootstrapSeedFor(client);
+                const { error: rsErr } = await client.from("job_board_meta").upsert({ k: "bootstrap", v: { queue: [], version: storedVersion }, updated_at: new Date().toISOString() }, { onConflict: "k" });
+                if (rsErr) throw rsErr;
+                const { data: len, error: apErr } = await client.rpc("bootstrap_queue_append", { p_tokens: seed.queue });
+                if (apErr) throw apErr;
+                await seed.commit();
+                console.log(`[JOB-BOARD] bootstrap: version change — queue replaced server-side (now ${len})`);
+              } catch (e) {
                 if (rpcAbsent(e as { code?: string; message?: string })) throw e;
                 appendDone = false;
-                console.error(`[JOB-BOARD] bootstrap version-append failed (will retry next slice): ${e instanceof Error ? e.message.slice(0, 120) : e}`);
+                console.error(`[JOB-BOARD] bootstrap seed failed (will retry next slice): ${e instanceof Error ? e.message.slice(0, 120) : String((e as { message?: string })?.message ?? e).slice(0, 120)}`);
               }
             }
             const takeArgs = { p_n: bootstrapTake, p_skip: [...sliceTokens], p_version: BUILD_VERSION, p_stamp_version: appendDone };
-            let take = await client.rpc("bootstrap_queue_take", takeArgs);
+            const take = await client.rpc("bootstrap_queue_take", takeArgs);
             if (take.error) throw take.error;
-            let res = take.data as { taken?: string[]; drained?: number; remaining?: number } | null;
-            if ((res?.drained ?? 0) === 0 && (res?.remaining ?? 0) === 0 && storedVersion === BUILD_VERSION) {
-              // Empty on an unchanged version: seed once, take again.
-              await seed("empty queue");
-              take = await client.rpc("bootstrap_queue_take", takeArgs);
-              if (take.error) throw take.error;
-              res = take.data as { taken?: string[]; drained?: number; remaining?: number } | null;
-            }
+            const res = take.data as { taken?: string[]; drained?: number; remaining?: number } | null;
             const taken = Array.isArray(res?.taken) ? (res!.taken as string[]) : [];
             bootstrapBoards = taken
               .map((t) => JOB_SOURCES.find((s) => s.token === t))
@@ -2900,28 +2942,18 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       const { data: bsMeta } = await client.from("job_board_meta").select("v").eq("k", "bootstrap").maybeSingle();
       const bs = (bsMeta?.v ?? {}) as { queue?: string[]; version?: string };
       let queue = Array.isArray(bs.queue) ? bs.queue : [];
-      // Rationale: docs/job-board-index-notes.md#n062-queue-length-0
-      if (queue.length === 0) {
-        const { data: empty, error } = await client.rpc("get_empty_boards", { p_tokens: JOB_SOURCES.map((s) => s.token) });
-        if (error) throw error;
-        queue = Array.isArray(empty) ? empty : [];
-      }
       let bootstrapAppendDone = true;
-      if (queue.length > 0 && bs.version !== BUILD_VERSION) {
-        // Rationale: docs/job-board-index-notes.md#n063-try
+      let commitSeed: (() => Promise<unknown>) | null = null;
+      // W4-1: a version change REPLACES the queue with what is new; an empty queue at an unchanged version stays empty.
+      if (bs.version !== BUILD_VERSION) {
         try {
-          const { data: empty, error: ebErr } = await client.rpc("get_empty_boards", { p_tokens: JOB_SOURCES.map((s) => s.token) });
-          if (ebErr) throw new Error(ebErr.message ?? "get_empty_boards error");
-          const have = new Set(queue);
-          const fresh = (Array.isArray(empty) ? (empty as string[]) : []).filter((t) => !have.has(t));
-          if (fresh.length > 0) {
-            queue = [...queue, ...fresh];
-            console.log(`[JOB-BOARD] bootstrap: appended ${fresh.length} empty board(s) on version change (queue ${have.size} -> ${queue.length})`);
-          }
+          const seed = await bootstrapSeedFor(client);
+          queue = seed.queue;
+          commitSeed = seed.commit;
         } catch (e) {
           // Rationale: docs/job-board-index-notes.md#n559-bootstrapappenddone-false
           bootstrapAppendDone = false;
-          console.error(`[JOB-BOARD] bootstrap version-append failed (will retry next slice): ${e instanceof Error ? e.message.slice(0, 120) : e}`);
+          console.error(`[JOB-BOARD] bootstrap seed failed (will retry next slice): ${e instanceof Error ? e.message.slice(0, 120) : e}`);
         }
       }
       if (queue.length > 0) {
@@ -2932,9 +2964,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           .map((t) => JOB_SOURCES.find((s) => s.token === t))
           .filter((s): s is JobSource => !!s);
       }
-      if (queue.length > 0) {
+      if (queue.length > 0 || bs.version !== BUILD_VERSION) {
         // Rationale: docs/job-board-index-notes.md#n064-await-client-from-job-board-meta-upsert
-        await client.from("job_board_meta").upsert(
+        const { error: bsErr } = await client.from("job_board_meta").upsert(
           {
             k: "bootstrap",
             v: {
@@ -2951,6 +2983,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           },
           { onConflict: "k" },
         );
+        if (!bsErr && commitSeed) await commitSeed();
       }
       } // !bootstrapViaRpc
     } catch { /* bootstrap is an accelerator — on any error the rotation still reaches every board */ }
