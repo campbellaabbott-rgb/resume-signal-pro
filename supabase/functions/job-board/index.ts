@@ -85,6 +85,7 @@ import { decideRekick } from "./chain-watchdog.ts";
 import { awaitHostSlot, hostDelayOf, ICIMS_DEFAULT_DELAY_MS, metaGateStore, pacingOf, type GateDeps } from "../_shared/host-gate.ts";
 import { bootstrapSeed, clearRepointedFailures, readersChanged, repointedTokens } from "./bootstrap-seed.ts";
 import { rateCap } from "./rate-cap.ts";
+import { dbBandOf } from "./disk-band.ts";
 import { advanceProgress, baseConsumedPrefix, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
@@ -6788,6 +6789,8 @@ async function handleRequest(req: Request): Promise<Response> {
       const pacingRead = Promise.resolve(client.from("job_board_meta").select("k, v").like("k", "host_gate:%")).catch(() => null);
       // NB-35: when an audit run last started (audit_run) and last finished (audit); the stamps only.
       const auditRead = Promise.resolve(client.from("job_board_meta").select("k, updated_at").in("k", ["audit", "audit_run"])).catch(() => null);
+      // The disk band (disk-band.ts): the ring's newest stamp only, never the ring.
+      const ringRead = Promise.resolve(client.from("job_board_meta").select("head:v->entries->0").eq("k", "storage_size_ring").maybeSingle()).catch(() => null);
       const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop, oracleRepair, staleMeta, freshRow] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
@@ -7232,6 +7235,7 @@ async function handleRequest(req: Request): Promise<Response> {
           const at = new Map(((r as { data?: Array<{ k: string; updated_at: string }> } | null)?.data ?? []).map((x) => [x.k, x.updated_at]));
           return { startedAt: at.get("audit_run") ?? null, doneAt: at.get("audit") ?? null };
         }),
+        dbBand: dbBandOf(((await ringRead) as { data?: { head?: unknown } } | null)?.data?.head),
         // Rationale: docs/job-board-index-notes.md#n741-oversizeboards-oversizestatusrows-overme
         oversizeBoards: oversizeStatusRows((overMeta as { data?: { v?: { boards?: unknown } } } | null)?.data?.v?.boards),
         oversizeBoardCount: Object.keys(((overMeta as { data?: { v?: { boards?: Record<string, unknown> } } } | null)?.data?.v?.boards) ?? {}).length,
