@@ -44,7 +44,20 @@
 //     the per-city state shares that would justify dropping the state are not
 //     in this repository; the answer says so in locationInterpreted;
 //   - a place split happens only when the query that remains is not empty,
-//     and never when the caller already set that filter itself.
+//     and never when the caller already set that filter itself;
+//   - a REGION (MCP upgrade 3, lane L2: regions.ts) is read in the query only
+//     right after "in", "across", "within" or "throughout" at its end, so
+//     "EMEA Sales Director" stays a title. Its own word goes to `location`
+//     ("Europe"), never to `country`, and regionNote says how it was read.
+//     search-notes.ts readRegionArgs then reads that location as it reads one
+//     the caller sent: with remote asked (remote true, workMode remote, or a
+//     "remote" not refused) it stays location text, where "Remote - Europe"
+//     postings that name no country match; otherwise a region of 5 countries
+//     or fewer becomes `country`, and a larger one its 5 members with the
+//     most postings, in the measured order. EMEA, APAC, LatAm and the like
+//     name no fixed list: no country is guessed;
+//   - a place after "near" or "around" is searched by its name, and the note
+//     says nearby towns are not included.
 //
 // Company names are resolved by the board, never here (sweep S12-080): this
 // module only moves the words the person typed after "at" into `companies`,
@@ -55,11 +68,14 @@
 import { METRO_ALIASES, STATE_ALIASES } from "../_shared/location-terms.ts";
 import { countryMentions, KNOWN_COUNTRY_CODES } from "../_shared/work-countries.ts";
 import { KNOWN_CITIES } from "./known-cities.ts";
+import { regionNamed, type RegionNamed, type RegionRead } from "./regions.ts";
+import { NEGATION_BEFORE_REMOTE, nearNote, regionSearch, remoteMode, remoteWordAsked } from "./search-notes.ts";
 
 /** What was read out of the query, said back to the caller. */
 export type QueryReading = {
   query: string;
   location?: string;
+  /** One ISO-2 code, or a region's members joined by commas ("DE,AT,CH"). */
   country?: string;
   remote?: true;
   /** A date window read from words such as "posted this week". */
@@ -73,6 +89,10 @@ export type QueryReading = {
   /** A location argument read as a city and its country, as it was sent ("London, UK"). */
   locationSent?: string;
   note?: string;
+  /** A region read after "in", "across", "within" or "throughout", and how it was searched. */
+  region?: RegionRead;
+  /** What the region search covered, and the call that covers the rest. */
+  regionNote?: string;
 };
 
 /** The filters the caller already set: nothing is moved into one of them. */
@@ -83,6 +103,8 @@ export type QueryHas = {
   /** maxAgeDays or postedAfter. */
   maxAgeDays?: boolean;
   companies?: boolean;
+  /** The workMode the caller sent: "remote" asks for remote, as remote true does. */
+  workMode?: string | null;
 };
 
 /**
@@ -93,13 +115,9 @@ export type QueryHas = {
  */
 const NEGATION_BEFORE_PLACE = /(?:^|\s)(?:not|except|excluding|exclude|but|outside|without|minus|other than|anywhere but)$/i;
 
-/**
- * A remote typed after a negation is the remote NOT wanted (wave 4 recheck of
- * the descope): "nurse not remote" lifted to remote:true served only remote
- * postings. The place words, plus the two that negate a work mode, and an
- * article between ("not a remote"). A refused lift leaves the query as typed.
- */
-const NEGATION_BEFORE_REMOTE = /(?:^|\s)(?:not|no|non|except|excluding|exclude|but|outside|without|minus|other than|anywhere but)(?:\s+(?:a|an))?$/i;
+// NEGATION_BEFORE_REMOTE (a remote typed after a negation is the remote NOT
+// wanted) lives in search-notes.ts, so the region reader there refuses the
+// same words; it is imported above.
 
 /** Metro shorthands that are also ordinary words or too short to trust at the end of a query. */
 const METRO_SKIP = new Set(["the city", "la"]);
@@ -532,6 +550,49 @@ function liftEmployer(query: string): { rest: string; name: string; words: strin
   return { rest, name, words: query.slice(i).trim() };
 }
 
+/** A trailing "remote" or "anywhere" the person did not refuse ("nurse remote"; never "nurse -remote", "nurse not remote"). */
+function liftTrailingRemote(query: string): { rest: string; words: string } | null {
+  // A minus on it is the board's exclusion ("nurse -remote", "nurse -fully
+  // remote"), captured so the lift refuses it, as it refuses a negating word
+  // before it.
+  const remote = /(?:^|[\s,(])(-?)(?:fully\s+)?(?:remote|anywhere)\)?\s*$/i.exec(query);
+  if (!remote) return null;
+  const rest = query.slice(0, remote.index).replace(/[\s,(-]+$/, "").trim();
+  if (!rest || remote[1] || NEGATION_BEFORE_REMOTE.test(rest)) return null;
+  return { rest, words: query.slice(remote.index).trim() };
+}
+
+/** The prepositions a region follows in a query (the last one, at the end): never "for", "at" or a bare region word. */
+const REGION_PREPOSITION = /\s((?:anywhere\s+)?(?:in|across|within|throughout))\s+/gi;
+
+/** "data engineer jobs in the Nordics": the region after the last of those prepositions, when the whole remainder names one. */
+function liftRegion(query: string): { rest: string; words: string; named: RegionNamed } | null {
+  const at = [...query.matchAll(REGION_PREPOSITION)].pop();
+  if (!at || at.index === undefined) return null;
+  const rest = query.slice(0, at.index).trim();
+  const place = query.slice(at.index + at[0].length);
+  // A region after a negation is the region NOT wanted: left to the place rule, which keeps the query whole.
+  if (!rest || !place.trim() || NEGATION_BEFORE_PLACE.test(rest)) return null;
+  const named = regionNamed(place);
+  // "in global", "in international": no part of the world, so the words stay as typed.
+  if (!named || ("neverGuessed" in named && !named.area)) return null;
+  return { rest: tidy(rest), words: query.slice(at.index).trim(), named };
+}
+
+/**
+ * True when a place read after "near" is matched by its name alone: not a
+ * state or province (which holds its towns) and not a metro shorthand the
+ * board widens to other cities ("Bay Area", "DFW"). A shorthand that is only
+ * the city's other spelling ("München") is still the place by its name.
+ */
+function nearIsTheNameAlone(place: string): boolean {
+  const p = norm(place);
+  if (p.length > 2 && has(STATE_ALIASES, p)) return false;
+  if (METRO_SKIP.has(p) || !has(METRO_ALIASES, p)) return true;
+  return METRO_ALIASES[p].names.some((n) => norm(fold(n)) === norm(fold(place)));
+}
+const NEAR_WORD = /^(?:near|around|nahe|bei|cerca de|près de|pres de)$/i;
+
 /**
  * The query as the person meant it. `has`: the filters the caller already
  * set, so nothing is moved into one of them.
@@ -561,24 +622,47 @@ export function readQuery(raw: string, h: QueryHas = {}): QueryReading {
     }
   }
 
-  // remote / anywhere, at the END only. A minus on it is the board's
-  // exclusion ("nurse -remote", "nurse -fully remote"), captured so the lift
-  // refuses it, as it refuses a negating word before it.
-  const remote = /(?:^|[\s,(])(-?)(?:fully\s+)?(?:remote|anywhere)\)?\s*$/i.exec(query);
-  if (remote && !h.remote) {
-    const rest = query.slice(0, remote.index).replace(/[\s,(-]+$/, "").trim();
-    if (rest && !remote[1] && !NEGATION_BEFORE_REMOTE.test(rest)) {
-      moved.push(query.slice(remote.index).trim());
-      query = rest;
-      out.remote = true;
+  // remote / anywhere, at the END only.
+  const remote = h.remote ? null : liftTrailingRemote(query);
+  if (remote) {
+    moved.push(remote.words);
+    query = remote.rest;
+    out.remote = true;
+    lifted = true;
+  }
+
+  // A REGION after in, across, within or throughout, at the end (lane L2),
+  // only when the caller set no place of their own.
+  let placeDone = false;
+  if (!h.location && !h.country) {
+    const reg = liftRegion(query);
+    if (reg) {
+      moved.push(reg.words);
+      query = reg.rest;
+      // "data engineer remote in Europe": the remote is now the query's end.
+      const rm = h.remote || out.remote ? null : liftTrailingRemote(query);
+      if (rm) {
+        moved.push(rm.words);
+        query = rm.rest;
+        out.remote = true;
+      }
+      // Location text here, never a country: readRegionArgs (search-notes.ts)
+      // reads the location this leaves, as it reads one the caller sent, and
+      // makes it the country filter when no remote was asked. S13-041's
+      // named-place cases ("engineer in North America") judge this reading.
+      const asked = h.remote === true || out.remote === true || remoteMode(h.workMode) || remoteWordAsked(query);
+      const s = regionSearch(reg.named, asked, undefined, { asText: true });
+      out.location = s.location as string;
+      out.region = s.region;
+      out.regionNote = s.note;
+      placeDone = true;
       lifted = true;
     }
   }
 
   // A known place after a preposition, read from the LAST preposition back,
   // so "nurse in the ICU in Texas" reads Texas.
-  let placeDone = false;
-  if (!h.location) {
+  if (!h.location && !placeDone) {
     const preps = [...query.matchAll(PLACE_PREPOSITION)].reverse();
     for (const at of preps) {
       const rest = query.slice(0, at.index).trim();
@@ -598,6 +682,7 @@ export function readQuery(raw: string, h: QueryHas = {}): QueryReading {
       if (read.location) out.location = read.location;
       if (read.country) out.country = read.country;
       if (read.note) notes.push(read.note);
+      if (read.location && NEAR_WORD.test(at[1]) && nearIsTheNameAlone(place)) notes.push(nearNote(read.location));
       placeDone = true;
       lifted = true;
       break;
