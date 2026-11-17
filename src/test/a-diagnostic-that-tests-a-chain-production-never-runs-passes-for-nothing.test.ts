@@ -17,6 +17,14 @@
  * model asked with the parameters the shared helper sends it; a model that
  * production does not run is never called; and the scanner's chain is the
  * list free-keyword-scan itself walks.
+ *
+ * AND THE CHAIN NAMES ONLY MODELS THE GATEWAY SERVES (cost wave 2, CW2-AI1).
+ * The scanner's third step, openai/gpt-4o-mini, has never been served by the
+ * Lovable AI gateway since it entered the chain on 2026-06-30: every request
+ * to it was refused, the scan logged that refusal as the last gateway body
+ * (masking the Gemini answer that mattered), and the diagnostic tested a step
+ * that could never pass. Both scanners' lists now end at gemini-2.5-pro, and
+ * the stream fork's hand copy is held to the shared list.
  */
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
@@ -96,6 +104,19 @@ describe("the scanner's chain is the one the scanner walks", () => {
       .replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, " ");
     expect(code).toMatch(/import \{ SCAN_MODEL_CHAIN \} from "\.\.\/_shared\/scan-models\.ts";/);
     expect(code).toMatch(/const MODEL_FALLBACK_ORDER: string\[\] = \[\.\.\.SCAN_MODEL_CHAIN\];/);
-    expect(SCAN_MODEL_CHAIN).toEqual(["google/gemini-2.5-flash", "google/gemini-2.5-pro", "openai/gpt-4o-mini"]);
+    expect(SCAN_MODEL_CHAIN).toEqual(["google/gemini-2.5-flash", "google/gemini-2.5-pro"]);
+  });
+
+  it("the stream fork's hand-copied list is the same chain, and neither names a model the gateway does not serve", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const stream = readFileSync(resolve(__dirname, "../../supabase/functions/free-keyword-scan-stream/index.ts"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+    const list = /const AI_MODELS = \[([^\]]*)\]/.exec(stream)?.[1];
+    expect(list, "the stream fork's AI_MODELS list").toBeTruthy();
+    expect([...String(list).matchAll(/"([^"]+)"/g)].map((m) => m[1])).toEqual([...SCAN_MODEL_CHAIN]);
+    const unserved = ["openai", "gpt-4o-mini"].join("/");
+    expect(SCAN_MODEL_CHAIN).not.toContain(unserved);
+    expect(stream).not.toContain(unserved);
   });
 });

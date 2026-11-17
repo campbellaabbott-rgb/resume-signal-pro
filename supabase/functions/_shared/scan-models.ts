@@ -11,7 +11,9 @@
  * several times faster on the same workload, and the post-call safety nets
  * (rule-based score clamp, claim grounding, consistency validation, schema
  * coercion) were built precisely so model choice can't corrupt the report.
- * Pro stays second as the quality fallback.
+ * Pro stays second as the quality fallback, and last: the gateway never
+ * served the third step (OpenAI's 4o-mini, from 2026-06-30), whose refusal
+ * the scan logged in place of Gemini's (CW2-AI1).
  *
  * (free-keyword-scan-stream keeps its own hand-copied list, as it does for
  * every shared module.)
@@ -19,5 +21,4 @@
 export const SCAN_MODEL_CHAIN: readonly string[] = [
   "google/gemini-2.5-flash",
   "google/gemini-2.5-pro",
-  "openai/gpt-4o-mini",
 ];
