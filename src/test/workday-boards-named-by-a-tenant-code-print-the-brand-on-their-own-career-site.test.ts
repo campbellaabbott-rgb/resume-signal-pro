@@ -5,15 +5,22 @@
  * Owner decision OD9 (a), 2026-11-08: a Workday board that shows a tenant code
  * shows the brand its employer presents on its own Workday career site. The
  * names corpus of 2026-11-08 proposed a name for 1,430 tenants; the
- * independent re-check of 2026-11-17 read 100 of its rows live. Migration
- * 20261111150000 ships the one stratum whose measured precision clears the bar
- * (high confidence, hand-reviewed: 36/37, Wilson 95% lower bound 86.2%), less
- * every key a pattern rule flags, plus the rows the re-check read live, each
- * wrong one corrected: 437 keys over 375 tenants. The list, with every key
- * left out and why, is the names build's final-names.json.
+ * independent re-check of 2026-11-17 judged 100 of its rows. Migration
+ * 20261111150000 ships the stratum the re-check measured above the bar (high
+ * confidence, hand-reviewed), less every key a pattern rule flags, plus the
+ * rows the re-check judged, each wrong one corrected: 431 keys over 370
+ * tenants. Every name and every evidence row rests on the employer's own words
+ * in the 2026-11-08 capture; none on the re-check's 2026-11-17 reads. Judged
+ * on the 11-08 captures alone the stratum measures 33/36 (bound 78.2%) under
+ * the re-check's own precedents and clears 85% only under readings that count
+ * hss and svha as the re-check did: the file's header says so, and holding the
+ * stratum is the lead's or the owner's call. The list, with every key left out
+ * and why, is the names build's final-names.json.
  *
- * Checked: the file holds that list and nothing a main migration already
- * holds; every name has its evidence and passes the bake's gate unchanged;
+ * Checked: the file holds that list, pinned here by a hash of its key=name
+ * pairs so that any machine fails on a changed name, and nothing a main
+ * migration already holds; every name has its 11-08 evidence and passes the
+ * bake's gate unchanged;
  * the re-check's wrong names and every class left out are absent; and on a
  * real Postgres from Supabase's default grants, applied twice, a sampled
  * board's next write takes its new name, a board left out keeps its own, a
@@ -22,6 +29,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
@@ -43,9 +51,15 @@ const TABLE_SQL = readFileSync(resolve(MIGRATIONS, FILES.find((f) => f.startsWit
 const FINAL = resolve(homedir(), ".config/resumebooster/push-all-2026-11-17/names/final-names.json");
 
 /** The counts final-names.json gives: keys, tenants, rows the boards served on 2026-11-08. */
-const KEYS = 437;
-const TENANTS = 375;
-const ROWS = 29_716;
+const KEYS = 431;
+const TENANTS = 370;
+const ROWS = 29_020;
+/**
+ * sha256 of the file's key=name pairs, one per line, sorted: the names build's list, pinned in the
+ * repository, so a name changed in both the file and the mirror fails on every machine, not only on
+ * the one that holds final-names.json. A deliberate change re-pins it from the names build.
+ */
+const PIN = "39b95885e9090607dc39c4e84d6323de6fca93569349e51fab062070ee4a8799";
 
 const lit = (s: string) => s.slice(1, -1).replace(/''/g, "'");
 const STR = "'(?:[^']|'')*'";
@@ -81,14 +95,14 @@ const WRONG: [string, string, string][] = [
   ["cba~wd3~CommBank_Careers", "Commonwealth Bank", "CommBank"],
   ["erm", "Environmental Resources Management", "ERM"],
   ["isc", "Information Services", "ISC"],
-  ["travelhrportal", "CWT", "Amex GBT"],
   ["agreenspace", "NZ National Carriers", "Team Global Express"],
 ];
 /** Tenants and boards left out, one or more of each class, none of which may hold a key here. */
 const LEFT_OUT: Record<string, string[]> = {
   "the re-check found no single right name, or a name in motion": ["gi", "warnerbros", "goldenagri", "tcbrands"],
+  "the re-check judged it, but the 2026-11-08 capture does not support the name": ["travelhrportal", "vcuhealth", "hss", "gcu~wd1~GCU"],
   "sampled in a stratum under the bar, and wrong": ["wehi", "teamselecthh", "lgi", "luminegrp", "flutterbe", "employeeownedbrands", "ausvenueco", "lmg", "pmpediatrics"],
-  "a pattern rule flagged it": ["christianacare", "landolakes", "hshs", "dcsd", "orix", "melcoresorts", "uvmhealth", "comfortsystemsusa~wd1~cusasw", "comfortsystemsusa~wd1~MidSouth", "bbinsurance~wd1~ArrowheadCareers", "thgrp~wd12~HeritageConstructionMaterials", "vhaca~wd10~Champlain"],
+  "a pattern rule flagged it": ["christianacare", "landolakes", "hshs", "dcsd", "orix", "melcoresorts", "uvmhealth", "comfortsystemsusa~wd1~cusasw", "comfortsystemsusa~wd1~MidSouth", "bbinsurance~wd1~ArrowheadCareers", "thgrp~wd12~HeritageConstructionMaterials", "vhaca~wd10~Champlain", "crystalsugar", "melocheinc"],
   "its name folds equal to another catalogued employer's": ["deloitteie", "bdoau", "goodwinprocter", "newschool", "dennys", "morsco"],
   "code-unresolved in the corpus": ["onehealthineers", "mmc", "ncr", "campbellsoup", "blackstone", "suffolkcountyny"],
 };
@@ -103,6 +117,11 @@ describe("the file holds the names build's list, and only new keys", () => {
     expect(NAMES.size).toBe(KEYS);
     expect(new Set(OVERRIDES.map(([k]) => tenantOf(k))).size).toBe(TENANTS);
     expect(SQL).toMatch(new RegExp(`This file names ${TENANTS} of them: ${KEYS} company_name_overrides keys over ${ROWS.toLocaleString("en-US")}(?:\\s|-)+rows`));
+  });
+
+  it("holds the pinned list, name for name, on any machine", () => {
+    const pairs = OVERRIDES.map(([k, n]) => `${k}=${n}`).sort().join("\n");
+    expect(createHash("sha256").update(pairs).digest("hex")).toBe(PIN);
   });
 
   it.runIf(existsSync(FINAL))("matches final-names.json, key for key and name for name, where the names build left it", () => {
@@ -135,7 +154,7 @@ describe("every name is the employer's own words, and the bake prints it", () =>
       expect(e.name, k).toBe(NAMES.get(k));
       expect(e.links.length, k).toBeGreaterThan(0);
       for (const l of e.links) expect(l, k).toMatch(new RegExp(`^https://${tenantOf(k).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\.wd\\d+\\.myworkdayjobs\\.com/\\S+$`));
-      expect(["2026-11-08", "2026-11-17"], k).toContain(e.readOn);
+      expect(e.readOn, `${k}: every name rests on the 2026-11-08 capture`).toBe("2026-11-08");
       expect(e.quote, `${k}: "${e.name}" is not in its words`).toContain(e.name);
     }
   });
@@ -299,6 +318,17 @@ describe("the migration on a real Postgres, from Supabase's default grants", () 
       await d.exec(`INSERT INTO public.company_name_overrides (slug, display_name) VALUES ('tscfl', 'HVAC Photo')`);
       const n = await count(d, "company_name_overrides");
       await expect(d.exec(SQL)).rejects.toThrow(/20261111150000: a name the re-check of 2026-11-17 read as wrong stands: tscfl = HVAC Photo/);
+      expect(await count(d, "company_name_overrides")).toBe(n);
+    } finally { await d.close(); }
+  });
+
+  it("refuses a name whose evidence is a read later than the 2026-11-08 capture", async () => {
+    const d = await fresh();
+    try {
+      await d.exec(`INSERT INTO public.company_name_evidence (slug, display_name, evidence, quote, read_on) VALUES
+        ('nghs', 'Northeast Georgia Health System', ARRAY['https://nghs.wd1.myworkdayjobs.com/External'], 'posting: "Northeast Georgia Health System is a non-profit..."', DATE '2026-11-17')`);
+      const n = await count(d, "company_name_overrides");
+      await expect(d.exec(SQL)).rejects.toThrow(/20261111150000: 1 override\(s\) this file wrote lack the evidence naming them \(first: nghs\)/);
       expect(await count(d, "company_name_overrides")).toBe(n);
     } finally { await d.close(); }
   });

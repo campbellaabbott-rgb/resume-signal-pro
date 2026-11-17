@@ -1,11 +1,12 @@
 # shellcheck shell=bash
 # ── 99zzzzzzz-board-102-names. THE WORKDAY NAMES (board/102-names; owner
-# decision OD9 (a), board program BB-02). Migration 20261111150000 writes 437
-# company_name_overrides keys over 375 Workday tenants that print their tenant
-# code, each with its evidence, and re-arms job-board's name-sync lane, which
-# renames the stored rows a board at a time from the next pass end (job-board
-# 2026-09-09.102, NAME_SYNC_VERSION 7). It applies after the frontend publish
-# that carries src/lib/employer-names.ts with the same rows.
+# decision OD9 (a), board program BB-02). Migration 20261111150000 writes 431
+# company_name_overrides keys over 370 Workday tenants that print their tenant
+# code, each with its evidence from the 2026-11-08 capture, and re-arms
+# job-board's name-sync lane, which renames the stored rows a board at a time
+# from the next pass end (job-board 2026-09-09.102, NAME_SYNC_VERSION 7). It
+# applies after the frontend publish that carries src/lib/employer-names.ts
+# with the same rows.
 #
 # Named 99zzzzzzz so it sorts after every 99zzzzzz- section.
 #
@@ -26,7 +27,7 @@
 #   N2  the name-sync lane finished a walk after the file applied: INFO until
 #       then, FAIL 48 h after the clock;
 #   N3  each of six named boards (a tenant key the re-check corrected, two the
-#       re-check read live, an exact site on a tenant of several employers,
+#       re-check judged right, an exact site on a tenant of several employers,
 #       the board kept by its site on a hosting tenant, and one of the
 #       stratum's tenant keys) serves only the new name once the walk is done;
 #       a board serving no row is INFO;
@@ -38,10 +39,10 @@
 #
 # READ-ONLY. One OPTIONS preflight; job-board status and list reads sent with
 # x-rb-budget: probe (J); git and file reads. Nothing is written anywhere.
-echo "== 99zzzzzzz. board .102 names: 437 Workday boards print the brand on their own career site once the name-sync lane has walked (20261111150000, job-board .102) =="
+echo "== 99zzzzzzz. board .102 names: 431 Workday names print the brand on their own career site once the name-sync lane has walked (20261111150000, job-board .102) =="
 
 rm -f /tmp/vd_102n_*
-VD102N_JB=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/job-board" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+:[[:space:]]*//')
+VD102N_JB=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/job-board" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+:[[:space:]]*//')
 VD102N_LIVE=0; build_ge job-board "$VD102N_JB" 2026-09-09 102 && VD102N_LIVE=1
 
 # The file's state in the staged runner's record, and the commit time of the stub that ran it.
