@@ -15,6 +15,7 @@ import { adminAuthHeaders } from '@/lib/admin-auth';
 import { toast } from 'sonner';
 import { subHours, format } from 'date-fns';
 import { csvDocument } from '@/lib/spreadsheet-safe-csv';
+import { useVisibleInterval } from '@/hooks/use-visible-interval';
 
 export interface ErrorTelemetry {
   id: string;
@@ -201,11 +202,9 @@ function ErrorDashboardContent() {
   // error_telemetry, which RLS denies the browser (an insert-only policy), so
   // nothing ever arrived under a pulsing "Live" badge and the page never
   // polled. It re-reads through get-error-telemetry (the owner's key) instead.
-  useEffect(() => {
-    if (!isLive) return;
-    const id = setInterval(() => { void fetchErrors(); }, ERROR_POLL_MS);
-    return () => clearInterval(id);
-  }, [isLive, fetchErrors]);
+  // Only while the tab is shown (CW2-HB1): a hidden tab asks nothing, and
+  // reads once when it is shown again.
+  useVisibleInterval(fetchErrors, isLive ? ERROR_POLL_MS : null);
 
   const handleRefresh = () => {
     setLoading(true);

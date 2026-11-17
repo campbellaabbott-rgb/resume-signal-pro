@@ -17,6 +17,7 @@ import { GeoPerformanceChart } from '@/components/dashboard/GeoPerformanceChart'
 import { IndustryDetectionChart } from '@/components/dashboard/IndustryDetectionChart';
 import { AdminAuthGate } from '@/components/dashboard/AdminAuthGate';
 import { PanelUnavailable } from '@/components/dashboard/PanelUnavailable';
+import { useVisibleInterval } from '@/hooks/use-visible-interval';
 
 interface CheckResult {
   status: 'ok' | 'slow' | 'error';
@@ -626,10 +627,10 @@ function HealthCheckContent() {
 
   useEffect(() => {
     refreshAll();
-    
-    const interval = setInterval(refreshAll, 30000);
-    return () => clearInterval(interval);
   }, []);
+  // Every 30 s while the tab is shown, and nothing while it is hidden: each
+  // refresh is a dozen edge calls, a gateway probe and a Stripe call (CW2-HB1).
+  useVisibleInterval(refreshAll, 30_000);
 
   const StatusIcon = data ? statusConfig[data.status].icon : Activity;
 
