@@ -50,7 +50,7 @@ import { useCompanyProfileLink } from "@/lib/seo/lander-manifest";
 import { useTranslation } from "react-i18next";
 import { ExternalLink, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { date as fmtDate, dateTime as fmtDateTime } from "@/lib/format";
+import { count, date as fmtDate, dateTime as fmtDateTime } from "@/lib/format";
 import { STATE_ALIASES } from "../../../supabase/functions/_shared/location-terms";
 import {
   LAYOFF_MATCHED_VIA,
@@ -334,8 +334,10 @@ export function layoffStateName(code: string | null): string {
   return STATE_ALIASES[code.toLowerCase()]?.names[0] ?? code;
 }
 
-const fmtCount = (n: number) => Math.round(n).toLocaleString();
-const fmtPct = (p: number) => p.toLocaleString(undefined, { maximumFractionDigits: 1 });
+// Counts and shares in the line's own language, as its dates are (S14X-255):
+// with no locale they followed the browser, "1.234 positions" in English.
+const fmtCount = (n: number, lang?: string) => count(n, { lng: pageLang(lang) });
+const fmtPct = (p: number, lang?: string) => p.toLocaleString(pageLang(lang), { maximumFractionDigits: 1 });
 
 // Where the source link goes inside the translated sentence. The key holds
 // "{{sourceName}} ↗" at the point the link belongs; the sentence is rendered
@@ -357,7 +359,7 @@ export function layoffLineText(row: LayoffFiling, t: T, lang?: string): { text: 
     linkLabel = row.sourceName;
     const common = {
       filer,
-      workers: fmtCount(row.workers ?? 0),
+      workers: fmtCount(row.workers ?? 0, lang),
       site: row.site ?? t("jobsPage.layoffSiteUnstated", "a site the notice does not name"),
       effectiveClause: row.effectiveDate ? t("jobsPage.layoffEffective", ", effective {{effectiveDate}}", { effectiveDate: day(row.effectiveDate) }) : "",
       kindClause: row.eventType === "closure" ? t("jobsPage.layoffKindClosure", " (site closure)") : "",
@@ -382,9 +384,9 @@ export function layoffLineText(row: LayoffFiling, t: T, lang?: string): { text: 
       // workforce event we could read, so it is named, never called a cut.
       text = t("jobsPage.layoffLineSecExit", "{{filer}} filed an 8-K under Item 2.05 (costs of exiting or disposing of an activity) dated {{reportDate}}, filed with the SEC on {{filedDate}} · {{sourceName}} ↗", common);
     } else if (row.pct !== null) {
-      text = t("jobsPage.layoffLineSecPct", "{{filer}} reported a workforce reduction of about {{pct}}% in an 8-K (Item 2.05) dated {{reportDate}}, filed with the SEC on {{filedDate}} · {{sourceName}} ↗", { ...common, pct: fmtPct(row.pct) });
+      text = t("jobsPage.layoffLineSecPct", "{{filer}} reported a workforce reduction of about {{pct}}% in an 8-K (Item 2.05) dated {{reportDate}}, filed with the SEC on {{filedDate}} · {{sourceName}} ↗", { ...common, pct: fmtPct(row.pct, lang) });
     } else if (row.headcount !== null) {
-      text = t("jobsPage.layoffLineSecCount", "{{filer}} reported a workforce reduction of about {{headcount}} positions in an 8-K (Item 2.05) dated {{reportDate}}, filed with the SEC on {{filedDate}} · {{sourceName}} ↗", { ...common, headcount: fmtCount(row.headcount) });
+      text = t("jobsPage.layoffLineSecCount", "{{filer}} reported a workforce reduction of about {{headcount}} positions in an 8-K (Item 2.05) dated {{reportDate}}, filed with the SEC on {{filedDate}} · {{sourceName}} ↗", { ...common, headcount: fmtCount(row.headcount, lang) });
     } else {
       text = t("jobsPage.layoffLineSecNoNumber", "{{filer}} reported a workforce reduction in an 8-K (Item 2.05) dated {{reportDate}}, filed with the SEC on {{filedDate}} · {{sourceName}} ↗", common);
     }

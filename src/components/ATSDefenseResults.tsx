@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import jsPDF from "jspdf";
 import { ATSParseSimulator } from "./ATSParseSimulator";
 import { simulateAtsParse, type AtsParseSimulationResult, type ParseCheckResult } from "@/lib/ats-parse-simulator";
+import { date as fmtDate } from "@/lib/format";
 
 export interface ATSDefenseData {
   beforeScore: {
@@ -282,7 +283,8 @@ export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATS
       pdf.text('ATS Defense Complete Report', margin, 18);
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Generated: ${new Date().toLocaleDateString()}`, margin, 28);
+      // The report is English, and helvetica draws Latin only: its date is too (S14X-255).
+      pdf.text(`Generated: ${fmtDate(new Date(), { lng: "en" })}`, margin, 28);
       y = 45;
 
       // Score Summary

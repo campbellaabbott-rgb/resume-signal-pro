@@ -29,6 +29,7 @@ import { rankCandidates, reviewsFromDecisions, type CandidateReview } from "@/li
 import { csvDocument } from "@/lib/spreadsheet-safe-csv";
 import { readRoleCandidates, readRoleDecisions, readRoleNotices, withoutEmbed } from "@/lib/shortlist-reads";
 import { readShortlistRefusal } from "@/lib/shortlist-refusal";
+import { date as fmtDate, dateTime as fmtDateTime } from "@/lib/format";
 import { readTextFile } from "@/lib/resumeText";
 import { SHORTLIST_ATTESTATION_TEXT } from "../../supabase/functions/_shared/shortlist-attestation";
 import { PLANTED_INSTRUCTIONS_FLAG } from "../../supabase/functions/_shared/planted-instructions";
@@ -119,6 +120,10 @@ export function shortlistAuditCsv(
     ];
   }));
 }
+
+// The employer's workspace is written in English, and so are its dates
+// (S14X-255): with no locale they followed the browser's language instead.
+const EN = { lng: "en" } as const;
 
 const JURISDICTIONS = ["OTHER", "NYC", "IL", "CA", "EU"] as const;
 
@@ -754,7 +759,7 @@ export default function Shortlist() {
                     <p className="text-xs font-semibold text-foreground mb-1">Logged notices</p>
                     {notices.map(n => (
                       <p key={n.id} className="text-[11px] text-muted-foreground">
-                        {n.notice_type.replace(/_/g, " ")} · sent {new Date(n.sent_at).toLocaleDateString()} · logged {new Date(n.logged_at ?? n.sent_at).toLocaleString()}
+                        {n.notice_type.replace(/_/g, " ")} · sent {fmtDate(n.sent_at, EN)} · logged {fmtDateTime(n.logged_at ?? n.sent_at, EN)}
                         {n.recipients ? ` · to ${n.recipients}` : ""}
                       </p>
                     ))}
@@ -908,7 +913,7 @@ export default function Shortlist() {
                                 <span className="text-foreground font-medium">{d.action.replace(/_/g, " ")}</span>
                                 {d.old_value && d.new_value ? ` (${d.old_value} → ${d.new_value})` : ""}
                                 {d.reason ? ` — "${d.reason}"` : ""}
-                                {" · "}{d.actor_email ?? "unknown"} · {new Date(d.created_at).toLocaleString()}
+                                {" · "}{d.actor_email ?? "unknown"} · {fmtDateTime(d.created_at, EN)}
                               </p>
                             ))}
                           </div>

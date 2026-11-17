@@ -47,7 +47,9 @@ interface Leader {
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
 
-const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString() : "—");
+// en-US, as the bake prints this English page and as its own as-of line does
+// (S14X-255): with no locale a count followed the browser instead.
+const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString("en-US") : "—");
 
 // Human labels for category slugs on an English-only SEO page — mirrors
 // jobsPage.categories in en.json (this page doesn't load i18n).

@@ -1,6 +1,10 @@
 import jsPDF from 'jspdf';
 import { reportTone, shapeCareerSnapshot, shapeGamePlan, type CareerSnapshotShape, type GamePlanShape } from '@/lib/career-report-shape';
 import { unsupportedPdfCharacters } from '@/lib/pdf-text-support';
+import { date as fmtDate } from '@/lib/format';
+
+/** The footer's date. The PDF's words are English and its font draws Latin only, so the date is English too (S14X-255). */
+const generatedOn = () => `Generated on ${fmtDate(new Date(), { lng: 'en' })}`;
 
 // Both exports take the report in whatever shape it was stored and shape it
 // first (sweep S8-073): a missing list prints nothing instead of throwing.
@@ -288,7 +292,7 @@ export const exportCareerSnapshotPDF = (stored: unknown, deps: PdfExportDeps = {
   // Footer
   doc.setFontSize(8);
   doc.setTextColor(...COLORS.muted);
-  doc.text(`Generated on ${new Date().toLocaleDateString()}`, 20, 290);
+  doc.text(generatedOn(), 20, 290);
   doc.text('ResumeFixer Career Snapshot', 150, 290);
   
   doc.save('career-snapshot-report.pdf');
@@ -427,7 +431,7 @@ export const exportGraduateGamePlanPDF = (stored: unknown, deps: PdfExportDeps =
   // Footer
   doc.setFontSize(8);
   doc.setTextColor(...COLORS.muted);
-  doc.text(`Generated on ${new Date().toLocaleDateString()}`, 20, 290);
+  doc.text(generatedOn(), 20, 290);
   doc.text('ResumeFixer Graduate Game Plan', 140, 290);
   
   doc.save('graduate-game-plan.pdf');

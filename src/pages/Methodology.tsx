@@ -20,6 +20,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { SCAN_ATS_SYSTEMS, SCORE_AI_BAND, SCORE_AUDIT_PARTS } from "@/config/score-method";
+import { count as fmtCount } from "@/lib/format";
 
 // Everything this page says about the scorer comes from the mirror of the
 // scorer's own constants (src/config/score-method.ts), held to the edge
@@ -103,7 +104,7 @@ export default function Methodology() {
                 {scanTotals && (
                   <span className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-primary" />
-                    {t('methodologyPage.resumesProcessed', { total: scanTotals.total_scans.toLocaleString() })}
+                    {t('methodologyPage.resumesProcessed', { total: fmtCount(scanTotals.total_scans) })}
                   </span>
                 )}
               </div>
@@ -255,7 +256,7 @@ export default function Methodology() {
                     {scanTotals && (
                       <li className="flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-primary" />
-                        <span>{t('methodologyPage.validatedByResults.resumesAnalyzed', { total: scanTotals.total_scans.toLocaleString() })}</span>
+                        <span>{t('methodologyPage.validatedByResults.resumesAnalyzed', { total: fmtCount(scanTotals.total_scans) })}</span>
                       </li>
                     )}
                   </ul>

@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { roundedFloor, useBoardTotals } from "@/hooks/use-board-totals";
+import { count as fmtCount } from "@/lib/format";
 import { FREE_REPORT_SIGNUP_NEXT } from "./FreeReportSignupNudge";
 
 export function SaveResumeVersion({
@@ -21,17 +22,17 @@ export function SaveResumeVersion({
   reportId?: string;
 }) {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   // THE BOARD'S OWN COUNT, AND WHAT IT REALLY DOES (S12-136). The pitch said
   // the board "ranks all ~40,000 live openings" against the résumé: the board
   // serves about a million, and it scores the page of openings the person is
   // looking at, not all of them. The live floor, or no number at all.
   const totals = useBoardTotals();
   const boardLine = totals
-    ? t("saveResume.boardFitWithCount", "Save this résumé and the job board scores each opening you look at against it — over {{n}} live openings to browse", { n: roundedFloor(totals.jobs).toLocaleString() })
+    ? t("saveResume.boardFitWithCount", "Save this résumé and the job board scores each opening you look at against it — over {{n}} live openings to browse", { n: fmtCount(roundedFloor(totals.jobs)) })
     : t("saveResume.boardFit", "Save this résumé and the job board scores each opening you look at against it");
   const [label, setLabel] = useState(
-    () => `${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" })}${score != null ? ` — scored ${score}` : ""}`,
+    () => `${new Date().toLocaleDateString(i18n.language || "en", { month: "short", day: "numeric" })}${score != null ? ` — scored ${score}` : ""}`,
   );
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
 

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { count as fmtCount } from "@/lib/format";
 import { readTextFile } from "@/lib/resumeText";
 
 interface ResumeRecoveryProps {
@@ -265,7 +266,7 @@ export function ResumeRecovery({ onResumeTextReady, disabled, askPosting }: Resu
               className="w-full h-56 p-4 rounded-xl bg-background/50 border border-border/50 text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 resize-none text-sm leading-relaxed transition-all"
             />
             <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-lg bg-card/80 border border-border text-xs text-muted-foreground">
-              {textInput.length.toLocaleString()} chars
+              {fmtCount(textInput.length)} chars
             </div>
           </div>
         </div>
