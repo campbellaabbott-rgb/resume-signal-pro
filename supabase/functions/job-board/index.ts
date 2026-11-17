@@ -82,6 +82,7 @@ import { boardKey, classifyDormancy, DB_FAIL_ALARM_VISITS, dbFailingBoards, drop
 import { STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, keysOf, readStaleTries, selectStaleLane, staleExclusion, unresolvedTokens, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict } from "./stale-lane.ts";
 import { tokenMapFromRecord, tokenMapToRecord } from "./token-map.ts";
 import { decideRekick } from "./chain-watchdog.ts";
+import { awaitHostSlot, hostDelayOf, ICIMS_DEFAULT_DELAY_MS, metaGateStore, pacingOf, type GateDeps } from "../_shared/host-gate.ts";
 import { bootstrapSeed, clearRepointedFailures, readersChanged, repointedTokens } from "./bootstrap-seed.ts";
 import { advanceProgress, baseConsumedPrefix, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
@@ -1016,8 +1017,21 @@ function boundBody(src: Response | Request, limit = MAX_RESPONSE_BYTES): Respons
   return out;
 }
 
+/** Item 18: an iCIMS tenant is paced at the default until a robots ledger states its own delay. */
+let icimsHosts: Set<string> | null = null;
+const icimsDelay = (host: string) => (icimsHosts ??= new Set(JOB_SOURCES.filter((s) => s.source === "icims").map((s) => s.token.toLowerCase()))).has(host) ? ICIMS_DEFAULT_DELAY_MS : undefined;
+let gateDeps: GateDeps | null = null;
+/** Item 18: a request's slot on a paced host (_shared/host-gate.ts), shared by every isolate and lane; false past 15 s, so the board is deferred. */
+function hostSlot(url: string): Promise<boolean> {
+  if (!hostDelayOf(url, icimsDelay)) return Promise.resolve(true);
+  gateDeps ??= { store: metaGateStore(db()), now: Date.now, sleep: (ms) => new Promise((r) => setTimeout(r, ms)), local: new Map(), queue: new Map(), maxWaitMs: 15_000, extra: icimsDelay };
+  return awaitHostSlot(url, gateDeps);
+}
+
 async function fetchWithTimeout(url: string, init?: RequestInit, limit = MAX_RESPONSE_BYTES, bodyMs = FETCH_TIMEOUT_MS): Promise<Response> {
   const send = async (lang: Record<string, string>) => {
+    // Item 18: every request to a paced host takes its slot first; one the slot did not reach in time is a deferral, never retried here.
+    if (!(await hostSlot(url))) return new Response(null, { status: 429, headers: { "x-rb-gate": "deferred" } });
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     let res: Response;
@@ -1035,6 +1049,7 @@ async function fetchWithTimeout(url: string, init?: RequestInit, limit = MAX_RES
   // Workday: English only where the runtime's language is refused (S8-003, n437).
   const once = () => withWorkdayLanguage(url, init?.headers, send, discardBody, init?.body);
   const res = await once();
+  if (res.headers.has("x-rb-gate")) return res;
   // Rationale: docs/job-board-index-notes.md#n500-if-res-status
   // BB-09: a 503 that names a Retry-After is the same refusal for load.
   const busy = (x: Response) => x.status === 429 || (x.status === 503 && x.headers.has("retry-after"));
@@ -1439,8 +1454,9 @@ const ICIMS_SIZE_HINT = new Map<string, number>();
 
 // Rationale: docs/job-board-index-notes.md#n516-async-function-fetchicims-s-jobsource-st
 async function fetchIcims(s: JobSource, startOffset: number, pageSize: number): Promise<{ items: unknown[]; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
-  // A chunk asks only for pages the visit can keep (S13-035, n1432).
-  const ICIMS_MAX_PAGES = Math.max(1, s.pages ?? 12), ICIMS_CHUNK = Math.min(5, Math.ceil(MAX_POSTINGS_PER_VISIT / pageSize));
+  // Item 18: every iCIMS tenant is paced (its stated Crawl-delay, or the default until its robots is read), so its pages
+  // are asked one at a time and a short page ends the walk before another is asked (S13-035, n1432).
+  const ICIMS_MAX_PAGES = Math.max(1, s.pages ?? 12), ICIMS_CHUNK = 1;
   const startPage = Math.floor(startOffset / pageSize) + 1;
   // Where the first page really starts: a cursor from another page size may fall inside one.
   const base = (startPage - 1) * pageSize;
@@ -6742,6 +6758,8 @@ async function handleRequest(req: Request): Promise<Response> {
       const instRead = Promise.resolve(
         client.from("job_board_meta").select("k, v").in("k", ["pass_chain", ...INST_SLOTS]),
       ).catch(() => null);
+      // Item 18: each paced host's gate row (_shared/host-gate.ts).
+      const pacingRead = Promise.resolve(client.from("job_board_meta").select("k, v").like("k", "host_gate:%")).catch(() => null);
       const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop, oracleRepair, staleMeta, freshRow] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
@@ -7181,6 +7199,7 @@ async function handleRequest(req: Request): Promise<Response> {
         // past half an hour is a tail that died (scan-heartbeat job_board_pass_end).
         passEnd: passEndWithHop0(((passEndRow as { data?: { v?: unknown } } | null)?.data?.v ?? null) as Record<string, unknown> | null, instRows.get("pass_chain")),
         inst: instStatus(instRows, (traceRow as { data?: { v?: unknown } } | null)?.data?.v ?? null),
+        pacing: pacingOf(((await pacingRead) as { data?: Array<{ k: string; v: unknown }> } | null)?.data),
         // Rationale: docs/job-board-index-notes.md#n741-oversizeboards-oversizestatusrows-overme
         oversizeBoards: oversizeStatusRows((overMeta as { data?: { v?: { boards?: unknown } } } | null)?.data?.v?.boards),
         oversizeBoardCount: Object.keys(((overMeta as { data?: { v?: { boards?: Record<string, unknown> } } } | null)?.data?.v?.boards) ?? {}).length,
