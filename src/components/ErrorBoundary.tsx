@@ -1,10 +1,9 @@
 import { Component, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
-import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
-import { crashVariant } from "@/lib/crash-variant";
 import { AUTH_SUPPORT_EMAIL } from "@/config/auth-providers";
 import { isChunkLoadError, isReloadingForNewVersion } from "@/lib/new-version-reload";
+import { reportClientCrash } from "@/lib/client-crash-report";
 
 /**
  * THE APP'S CRASH SCREEN, IN THE VISITOR'S LANGUAGE (S12-138). It was English
@@ -86,6 +85,8 @@ interface Props {
    * leaves a crashed page (NB-40).
    */
   resetKey?: unknown;
+  /** Where this boundary sits, for the error log: the app's (the default) or a page's. */
+  source?: "app" | "page";
 }
 
 interface State {
@@ -116,25 +117,9 @@ export class ErrorBoundary extends Component<Props, State> {
       return;
     }
     console.error("[ErrorBoundary] Uncaught error:", error, info.componentStack);
-    // Fire-and-forget telemetry so crashes are diagnosable without asking
-    // users to open devtools. No PII: message + trimmed stacks only.
-    try {
-      const visitorId = getVisitorId();
-      postTrackEvent({
-        testName: "client_error",
-        // Within track-ab-event's 30 characters (S8-121) and one per crash,
-        // so a visitor's second crash is not a duplicate of the first.
-        variant: crashVariant("app", error?.message ?? "unknown"),
-        eventType: "view",
-        visitorId,
-        metadata: {
-          message: (error?.message ?? "unknown").slice(0, 300),
-          stack: (error?.stack ?? "").slice(0, 600),
-          componentStack: (info?.componentStack ?? "").slice(0, 600),
-          path: window.location.pathname,
-        },
-      });
-    } catch { /* never let telemetry crash the boundary */ }
+    // To the error log /errors reads, whatever the analytics choice and with
+    // no visitor id; never to the A/B list (NB-42, src/lib/client-crash-report.ts).
+    reportClientCrash({ source: this.props.source ?? "app", error, componentStack: info?.componentStack });
   }
 
   render() {
@@ -159,5 +144,5 @@ export class ErrorBoundary extends Component<Props, State> {
  */
 export function RouteErrorBoundary({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
-  return <ErrorBoundary resetKey={pathname}>{children}</ErrorBoundary>;
+  return <ErrorBoundary resetKey={pathname} source="page">{children}</ErrorBoundary>;
 }
