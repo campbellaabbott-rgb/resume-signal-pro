@@ -17,10 +17,12 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
-import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
+import { FIRST_REPORT, SLOW, budgetFor } from "./helpers/mount-budget";
 import { clickWhenEnabled } from "./helpers/click-when-enabled";
 
-vi.setConfig(MOUNT_TEST_BUDGET);
+// The page's buttons, the enabled scan button, then the report: this file's
+// one case is always the first to render it, so it always pays the lazy path.
+vi.setConfig(budgetFor(SLOW, SLOW, FIRST_REPORT));
 
 const SCAN = {
   success: true,
@@ -82,7 +84,9 @@ if (!(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver) {
 // the same case takes two seconds quiet. Importing the chunk here pays that
 // compile in the import phase, so the wait measures the render, which is
 // what this test is about (src/test/helpers/mount-budget.ts: make it fast,
-// never widen the budget).
+// never widen the budget). What the import cannot pay is the lazy path
+// itself, a module fetch from vitest's main process and a held fallback,
+// which reached 11.5 s on CI: that wait takes FIRST_REPORT (mount-budget.ts).
 import "@/components/FreeKeywordResults";
 import Index from "@/pages/Index";
 import { saveResumeToSession } from "@/hooks/use-session-resume";
@@ -98,7 +102,7 @@ describe("the homepage's result screen", () => {
     expect(scan, "the free-scan button").toBeTruthy();
     // Disabled until the restored résumé is in place: a click before that did nothing (S12-166).
     await clickWhenEnabled(() => screen.getAllByRole("button").find((b) => b.closest('[data-scan-button="true"]')) as HTMLElement);
-    const steps = await screen.findByTestId("report-next-steps", {}, SLOW);
+    const steps = await screen.findByTestId("report-next-steps", {}, FIRST_REPORT);
     expect(invoke.mock.calls.some((c) => c[0] === "free-keyword-scan")).toBe(true);
 
     // The region the report renders in, and everything after it up to the page's own sections.

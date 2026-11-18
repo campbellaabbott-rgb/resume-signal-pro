@@ -101,3 +101,45 @@ export const MOUNT_TEST_BUDGET = { testTimeout: 30_000 } as const;
  * budget and reported as "Test timed out".
  */
 export const SLOW = { timeout: 15_000 } as const;
+
+/**
+ * THE FIRST REPORT A FILE RENDERS. The homepage's report (FreeKeywordResults)
+ * is a React.lazy chunk of Index, and only the first case in a file to scan
+ * takes the lazy path. Its wait holds three costs no later case pays: the
+ * import() is a fetchModule round trip to vitest's main process (vite's module
+ * runner asks the server even for a module the file already imported), React
+ * shows the Suspense fallback and holds it at least 300 ms before revealing,
+ * and the report renders cold. Every later case gets the resolved component in
+ * the same commit as the results section. Importing the chunk at the top of
+ * the file pays its compile and none of these.
+ *
+ * Measured on CI (ubuntu-latest: 2 cores, 2 workers beside the main process),
+ * 14 green runs 2026-11-15..17, whole case (mount, scan, real report):
+ *
+ *     a-tailored-resume-is-aimed-at-a-real-posting, first case   1.6-9.2 s
+ *       (1.2-2.5x the same file's second case, in every run)
+ *     the-result-screen-still-sold-a-premium-package, its case   1.8-11.5 s
+ *
+ * On main after PR #66 (run 44163605289) the first case's report wait ran out
+ * at SLOW, 16.6 s in all, while that file's later cases took 3.0 s and 2.8 s:
+ * 5.6x, a stall in the lazy path on a runner that was otherwise on time. Quiet
+ * on a laptop, scan to report on the same path takes 0.5-1.5 s. 11.5 s against SLOW is the 1.3x this file calls
+ * the next file to fail, so this wait gets twice SLOW. It is a positive wait on
+ * document.body: the longer budget forgives a late first render and cannot
+ * forgive a wrong one (WHY A LONGER WAIT CANNOT HIDE A BUG HERE, above).
+ *
+ * Files that stub FreeKeywordResults still take the lazy path but render
+ * nothing cold; their whole-file CI totals stayed at 0.7-7.3 s, and they
+ * keep SLOW.
+ */
+export const FIRST_REPORT = { timeout: 2 * SLOW.timeout } as const;
+
+/**
+ * A per-test budget above the SUM of the waits one case chains, plus one SLOW
+ * for the work between them (the mount renders synchronously, outside every
+ * wait). MOUNT_TEST_BUDGET is two SLOW waits' worth; a case that chains more
+ * names its chain here, in order, so its last wait still fails as itself.
+ */
+export function budgetFor(...waits: ReadonlyArray<{ readonly timeout: number }>): { testTimeout: number } {
+  return { testTimeout: waits.reduce((sum, w) => sum + w.timeout, SLOW.timeout) };
+}
