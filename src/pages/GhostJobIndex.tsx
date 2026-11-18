@@ -669,6 +669,9 @@ const STALE_PART_WORDS: Record<string, string> = {
   closures: "the closure figures",
 };
 
+/** How many runs the trend draws, the newest last. */
+export const AUDIT_TREND_RUNS = 14;
+
 /** THE RE-CHECK'S AGE (SEO-F07). It is scheduled once a day; past 36 hours the
  *  page stops saying it runs daily and says how old the newest run is. */
 export const auditAgeHours = (at: string | null | undefined, now: number = Date.now()): number | null => {
@@ -676,6 +679,36 @@ export const auditAgeHours = (at: string | null | undefined, now: number = Date.
   return Number.isFinite(t) ? (now - t) / 3_600_000 : null;
 };
 const ageWords = (h: number) => (h >= 48 ? `${Math.floor(h / 24)} days` : `${Math.round(h)} hours`);
+/** Past this many hours since the newest run, the re-check is not called daily. */
+export const AUDIT_DAILY_MAX_HOURS = 36;
+/** A run's date as the page prints it beside a cadence: the UTC day, spelled so no reader can swap day and month. */
+export const auditRunDate = (at: string): string =>
+  new Date(at).toLocaleDateString(EN, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+/** WHAT THE PAGE MAY SAY ABOUT THE RE-CHECK'S CADENCE (CONTENT-7): "daily" only
+ *  while the newest run is under AUDIT_DAILY_MAX_HOURS old; past it, that it is
+ *  scheduled daily and the date of the latest run; with no run read (still
+ *  loading, or a failed read), only that it is scheduled daily. */
+export type AuditCadence = { kind: "daily" } | { kind: "stale"; latest: string } | { kind: "unknown" };
+export const auditCadence = (at: string | null | undefined, now: number = Date.now()): AuditCadence => {
+  const h = auditAgeHours(at, now);
+  if (h === null) return { kind: "unknown" };
+  return h > AUDIT_DAILY_MAX_HOURS ? { kind: "stale", latest: auditRunDate(at as string) } : { kind: "daily" };
+};
+/** The confirmed-live method line, opened by the cadence the run record supports. */
+export const accuracyMethodLead = (c: AuditCadence): string =>
+  c.kind === "daily"
+    ? "Every day we draw ~100 served postings and re-check each at the company's own system."
+    : c.kind === "stale"
+      ? `The re-check is scheduled daily; latest run ${c.latest}. Each run draws ~100 served postings and re-checks each at the company's own system.`
+      : "The re-check is scheduled daily. Each run draws ~100 served postings and re-checks each at the company's own system.";
+/** The trend's caption: how many runs the bars are, and the dates they span (never "days": a run can be missed). */
+export const auditTrendCaption = (shown: ReadonlyArray<{ at: string }>): string => {
+  const n = shown.length;
+  const first = n > 0 ? auditRunDate(shown[0].at) : "";
+  const last = n > 0 ? auditRunDate(shown[n - 1].at) : "";
+  const span = first === last ? first : `${first}–${last}`;
+  return `Latest ${n} ${n === 1 ? "run" : "runs"}, ${span} — hover any bar for the dated measurement.`;
+};
 
 /** WHAT THE 90-DAY CLOSURE COUNT IS (S14X-192): rows in the closure log, not
  *  distinct roles, in the bake's own noun ("closure events"). */
@@ -1234,7 +1267,7 @@ export default function GhostJobIndex() {
               The handful already taken down are pruned by the next refresh cycle.{" "}
               {(() => {
                 const h = auditAgeHours(audit.at);
-                return h !== null && h > 36
+                return h !== null && h > AUDIT_DAILY_MAX_HOURS
                   ? `This audit is scheduled to run every day, but this is the latest run on record, ${ageWords(h)} old.`
                   : "We run this audit every day.";
               })()}
@@ -1294,7 +1327,7 @@ export default function GhostJobIndex() {
             {(audit.history?.length ?? 0) >= 2 && (
               <div className="mt-3">
                 <div className="flex items-end gap-0.5">
-                  {audit.history!.slice(-14).map((h) => (
+                  {audit.history!.slice(-AUDIT_TREND_RUNS).map((h) => (
                     <div
                       key={h.at}
                       className="w-5 rounded-t"
@@ -1303,8 +1336,8 @@ export default function GhostJobIndex() {
                     />
                   ))}
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1.5">
-                  Daily audit results, most recent {Math.min(audit.history!.length, 14)} days — hover any bar for the dated measurement.
+                <p className="text-[11px] text-muted-foreground mt-1.5" data-audit-trend-caption="">
+                  {auditTrendCaption(audit.history!.slice(-AUDIT_TREND_RUNS))}
                 </p>
               </div>
             )}
@@ -1317,7 +1350,7 @@ export default function GhostJobIndex() {
             { term: "30-day freshness cap", method: "Postings whose company-stated date is older than 30 days are dropped at ingestion AND filtered at read time — the board cannot serve a stale posting even mid-sweep. Undated postings can't be judged old, so they're kept and simply show no age. Past the cap a posting is deleted, not watched, so nothing on this page says how long postings stay up beyond it. What can be measured is how many reach it: for each field, the share of dated roles from a stated posting window that were still advertised when they reached day 30, with its interval, and beside it the share taken down for good (a ceiling: a takedown we have not yet seen re-listed counts there) and the share re-listed (a floor). The three sum to one before each is rounded to the nearest point, so the printed figures can add to one more or less than a hundred. The pool that line is computed over is narrower than the table above it, in two steps, and the line says how much of the field survived both. First, it is counted only on boards we read to the end — on a board we can only read part of, a takedown is invisible and every posting would seem to reach the cap. Second: of those boards, only the ones that logged at least five takedowns, in any field, in the 90 days before the cohort began. The rule reads evidence from before the cohort and never the cohort's own events: a board that can show us nothing would yield a share of one by construction rather than by measurement, and admitting a board because its own roles came down during the cohort selected on the outcome (on 753 sampled full-read boards the boards that rule left out read 0.892 still up at day 30 against 0.435 for those it kept). A board first watched too recently to have that history waits until it has it, and the line says how many company job boards it is pooled over. What it cannot fix is weighting: the share is an average over the roles that remain, so one very large board with only a handful of events of its own still pulls it, and where the row tells us so we print how much of the figure sits on a single company's board. Fields with no line are named above the table, each with the term that withheld it, and never with a zero. A role still advertised at day 30 is a fact about that posting, not proof of anything about the employer: a role can be genuinely open for longer than a month." },
             { term: "Median posting age", method: "Computed only from postings whose company states its own post date (the coverage share is shown next to the number). Undated postings are excluded from age stats, never estimated. We never use our own discovery time as a posting age." },
             { term: t("ghostIndex.fillTerm"), method: t("ghostIndex.fillMethod") },
-            { term: "Confirmed-live accuracy", method: "Every day we draw ~100 served postings and re-check each at the company's own system. Draws are spread evenly across hiring systems rather than taken at random from the corpus, so a small vendor is checked as hard as a large one — which also means the blended figure weights systems equally, not by how many postings each contributes. Per-vendor results are published unedited alongside it, including runs that fail or miss a system. The percentage is a share of the probes that DECIDED, and the count it was computed on is printed beside it: a probe we could not reach, and a probe on a feed larger than one read of ours, both leave the denominator instead of being scored either way. That exclusion is not a rounding detail — around a tenth of our boards page short of the vendor's own advertised total, and on those a posting's absence from our read is evidence about our page cap, not about the employer. Saying 'we could not decide' is the only honest answer there, and it is why this figure is published with its own basis attached." },
+            { term: "Confirmed-live accuracy", method: `${accuracyMethodLead(auditCadence(audit?.at))} Draws are spread evenly across hiring systems rather than taken at random from the corpus, so a small vendor is checked as hard as a large one — which also means the blended figure weights systems equally, not by how many postings each contributes. Per-vendor results are published unedited alongside it, including runs that fail or miss a system. The percentage is a share of the probes that DECIDED, and the count it was computed on is printed beside it: a probe we could not reach, and a probe on a feed larger than one read of ours, both leave the denominator instead of being scored either way. That exclusion is not a rounding detail — around a tenth of our boards page short of the vendor's own advertised total, and on those a posting's absence from our read is evidence about our page cap, not about the employer. Saying 'we could not decide' is the only honest answer there, and it is why this figure is published with its own basis attached.` },
             { term: "Re-verification freshness", method: "Every board carries a verification stamp from the refresh loop; the median and 95th-percentile ages shown are computed from those stamps at page load — a measurement, not a promise." },
           ]}
         />
