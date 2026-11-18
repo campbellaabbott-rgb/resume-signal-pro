@@ -1,8 +1,8 @@
 # shellcheck shell=bash
-# ── 98zzz. THE SEO AUDIT OF 2026-11-18, LANE A: THE BAKE (phase A1), judged
-# on the served documents. A FRONTEND + PRERENDER deploy: no migration and no
-# edge function. Sourced by scripts/verify-deploy.sh; $SITE and $UA are in
-# scope. Phase A2 (R3, R6, R8-R12) adds its claims to this file.
+# ── 98zzz. THE SEO AUDIT OF 2026-11-18, LANE A: THE BAKE (phases A1 and A2),
+# judged on the served documents. A FRONTEND + PRERENDER deploy: no migration
+# and no edge function. Sourced by scripts/verify-deploy.sh; $SITE and $UA are
+# in scope.
 #
 # THE CLAIMS:
 #   R1 (CRAWL-M1) /posting-pages.json is served, names the day it was baked,
@@ -28,15 +28,40 @@
 #   R7 (CRAWL-9) no sitemap posting lastmod is an earlier day than the
 #      datePosted its page serves (its JobPosting, or with none its own
 #      "Posted <day>, as stated by the employer" line).
+#   R3 (CONTENT-2, CONTENT-M2) /roles/rn names /roles/registered-nurse as its
+#      canonical; the sitemap lists 166 /roles pages and none of the eight
+#      short names that defer to a full name; no sampled role page says
+#      recruiters search anything.
+#   R6 (CONTENT-1) the served /explore names every role in this checkout's
+#      src/data/field-roles.ts under its own field's link.
+#   R8 (CONTENT-3) /cv-standards/{kuwait,qatar,bahrain,oman} each name
+#      /cv-standards/saudi-arabia as canonical and are out of the sitemap,
+#      which lists the Saudi page.
+#   R9 (CONTENT-6) /vs/chatgpt says "are" of ChatGPT & Claude and names two
+#      owners; /changelog's description is at most 160 characters and ends
+#      at a word of the newest entry's title (or with no "Latest" clause).
+#   R10 (CONTENT-7) when the re-check the Ghost Job Index prints is older
+#      than 36 hours at bake time (the page says so, or the audit's day is
+#      three or more days before /posting-pages.json's bake day), neither
+#      /ghost-job-index nor /data-api says "daily" except as "scheduled
+#      daily". INFO when the run was fresh at bake time.
+#   R11 (CONTENT-4, OFFSITE-9) the served llms.txt names the same form
+#      vendors as /agents, in both of its form sentences' places; and
+#      llms-full.txt carries each data page's figures, the line equal to the
+#      description that page serves (INFO when no data page serves one).
+#   R12 (PERFORMANCE-M2) no sampled guide, /roles, /industries, CV-standards
+#      or translated page preconnects to the Supabase host (each keeps its
+#      dns-prefetch); /jobs, which calls it, is printed as the control.
 #
 # Read-only: GETs of the site's sitemap, /posting-pages.json,
-# /prerender-ledger.json and the sitemap's posting pages, and a read of the
-# committed list in this checkout. Nothing is sent or written.
-echo "== 98zzz. the SEO audit of 2026-11-18, the bake: the live posting pages manifest, carried end dates, the closed-at-employer list, job titles, places, one job one page, lastmod against datePosted =="
+# /prerender-ledger.json, the sitemap's posting pages and the pages named
+# above, and reads of the committed list and field-roles file in this
+# checkout. Nothing is sent or written.
+echo "== 98zzz. the SEO audit of 2026-11-18, the bake: the live posting pages manifest, carried end dates, the closed-at-employer list, job titles, places, one job one page, lastmod against datePosted; role canonicals, /explore roles, GCC CV pages, /vs grammar and the changelog snippet, the re-check cadence, llms vendors and figures, preconnects =="
 
-SITE="$SITE" UA="$UA" VD98ZZZ_LIST="${VD98ZZZ_LIST:-scripts/seo-seed/closed-at-employer.txt}" node --input-type=module -e '
+SITE="$SITE" UA="$UA" VD98ZZZ_LIST="${VD98ZZZ_LIST:-scripts/seo-seed/closed-at-employer.txt}" VD98ZZZ_FIELD_ROLES="${VD98ZZZ_FIELD_ROLES:-src/data/field-roles.ts}" node --input-type=module -e '
 import { readFileSync } from "node:fs";
-const { SITE, UA, VD98ZZZ_LIST } = process.env;
+const { SITE, UA, VD98ZZZ_LIST, VD98ZZZ_FIELD_ROLES } = process.env;
 const out = (s, m) => console.log(`${s.padEnd(5)} ${m}`);
 const get = async (path, ms = 30000) => {
   try {
@@ -206,5 +231,165 @@ const marked = pages.flatMap((p) => p.blocks.map((b) => ({ path: p.path, b })));
   }
   if (!judged) out("FAIL", `R7 ${paths.length ? "no sitemap posting page has both a lastmod and a posting date to compare" : "the sitemap names no posting page"}`);
   else out(early.length ? "FAIL" : "PASS", `R7 ${judged - early.length} of ${judged} sitemap posting pages carry a lastmod no earlier than their datePosted${early.length ? `; e.g. ${early.slice(0, 3).join("; ")}` : ""}`);
+}
+
+// ---- Phase A2 ----
+const decode = (s) => String(s ?? "").replace(/&quot;/g, "\"").replace(/&#39;/g, "\u0027").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+const canonicalPath = (h) => ((/<link rel="canonical" href="([^"]+)"/.exec(String(h)) ?? [])[1] ?? "").replace(/^https?:\/\/[^/]+/, "").replace(/\/+$/, "") || null;
+const metaDesc = (h) => decode((/<meta name="description" content="([^"]*)"/.exec(String(h)) ?? [])[1] ?? "");
+const textOfPage = (h) => decode(String(h).replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ");
+const inSitemap = new Set(urls.map((u) => u.path.replace(/\/+$/, "")));
+
+// R3: a short role name defers to the full name; the role pages claim no recruiter searches.
+{
+  const SHORT = ["admin-assistant", "e-commerce-manager", "hr-manager", "lab-technician", "ml-engineer", "project-manager-construction", "rn", "vet-tech"];
+  const rn = await get("/roles/rn");
+  const rnCanon = canonicalPath(rn.body);
+  const roleLocs = [...inSitemap].filter((p) => p.startsWith("/roles/"));
+  const listedShort = SHORT.filter((s) => inSitemap.has(`/roles/${s}`));
+  const sample = ["/roles/rn", "/roles/registered-nurse", ...roleLocs.slice(0, 3)];
+  const claiming = [];
+  for (const p of sample) { const r = p === "/roles/rn" ? rn : await get(p); if (r.status === 200 && /recruiters?\s+search/i.test(textOfPage(r.body))) claiming.push(p); }
+  const problems = [];
+  if (rn.status !== 200) problems.push(`/roles/rn answered HTTP ${rn.status}`);
+  else if (rnCanon !== "/roles/registered-nurse") problems.push(`/roles/rn names ${rnCanon ?? "no canonical"}, not /roles/registered-nurse`);
+  if (roleLocs.length !== 166) problems.push(`the sitemap lists ${roleLocs.length} /roles pages, not 166`);
+  if (listedShort.length) problems.push(`the sitemap lists ${listedShort.length} short name(s) that defer: ${listedShort.slice(0, 3).join(", ")}`);
+  if (claiming.length) problems.push(`${claiming.join(", ")} say recruiters search`);
+  out(problems.length ? "FAIL" : "PASS", `R3 ${problems.length ? problems.join("; ") : `/roles/rn names /roles/registered-nurse; the sitemap lists 166 /roles pages and none of the ${SHORT.length} short names; ${sample.length} sampled role pages say nothing of recruiter searches`}`);
+}
+
+// R6: /explore names the field roles, each under its own field.
+{
+  let src = null;
+  try { src = readFileSync(VD98ZZZ_FIELD_ROLES, "utf8"); } catch { src = null; }
+  const fields = src ? [...src.matchAll(/^\s*([a-z_]+):\s*\[([^\]]*)\]/gm)].map((m) => [m[1], [...m[2].matchAll(/"([^"]+)"/g)].map((x) => x[1])]) : [];
+  const ex = await get("/explore");
+  const section = (/<section[^>]*data-field-roles=""[^>]*>([\s\S]*?)<\/section>/.exec(ex.body) ?? [])[1] ?? "";
+  const served = new Map([...section.matchAll(/<a href="\/jobs\/field\/([a-z_]+)">[^<]*<\/a><\/h3><ul[^>]*>([\s\S]*?)<\/ul>/g)].map((m) => [m[1], [...m[2].matchAll(/<li>([^<]*)<\/li>/g)].map((x) => decode(x[1]))]));
+  const total = fields.reduce((n, [, names]) => n + names.length, 0);
+  const missing = fields.flatMap(([f, names]) => names.filter((n) => !(served.get(f) ?? []).includes(n)).map((n) => `${f}: ${n}`));
+  if (!fields.length) out("FAIL", `R6 ${VD98ZZZ_FIELD_ROLES} names no field roles in this checkout`);
+  else if (ex.status !== 200) out("FAIL", `R6 /explore answered HTTP ${ex.status}`);
+  else if (!section) out("FAIL", `R6 /explore serves no field-roles section: 0 of the ${total} role names in ${VD98ZZZ_FIELD_ROLES}`);
+  else out(missing.length ? "FAIL" : "PASS", `R6 /explore names ${total - missing.length} of the ${total} role names in ${fields.length} fields${missing.length ? `; missing e.g. ${missing.slice(0, 3).join("; ")}` : ", each under its own field\u0027s link"}`);
+}
+
+// R8: the GCC CV pages defer to the Saudi page.
+{
+  const SAUDI = "/cv-standards/saudi-arabia";
+  const problems = [];
+  for (const slug of ["kuwait", "qatar", "bahrain", "oman"]) {
+    const p = `/cv-standards/${slug}`;
+    const r = await get(p);
+    if (r.status !== 200) { problems.push(`${p} answered HTTP ${r.status}`); continue; }
+    const c = canonicalPath(r.body);
+    if (c !== SAUDI) problems.push(`${p} names ${c ?? "no canonical"}`);
+    if (inSitemap.has(p)) problems.push(`${p} is in the sitemap`);
+  }
+  if (!inSitemap.has(SAUDI)) problems.push(`the sitemap does not list ${SAUDI}`);
+  out(problems.length ? "FAIL" : "PASS", `R8 ${problems.length ? problems.join("; ") : `Kuwait, Qatar, Bahrain and Oman name ${SAUDI} as canonical and are out of the sitemap, which lists it`}`);
+}
+
+// R9: two products named as two; the changelog snippet ends where a word ends.
+{
+  const vs = await get("/vs/chatgpt");
+  const t = textOfPage(vs.body) + " " + metaDesc(vs.body);
+  const singular = /ChatGPT & Claude (?:is|uses)\b|Where is ChatGPT & Claude\b|ChatGPT & Claude\u0027s public product changes/.exec(t);
+  const problems = [];
+  if (vs.status !== 200) problems.push(`/vs/chatgpt answered HTTP ${vs.status}`);
+  else {
+    if (singular) problems.push(`/vs/chatgpt says "${singular[0]}"`);
+    if (!/ChatGPT & Claude are trademarks of their owners/.test(t)) problems.push("/vs/chatgpt does not name two owners");
+  }
+  const cl = await get("/changelog");
+  const d = metaDesc(cl.body);
+  const newest = decode(((/<h2[^>]*>([^<]+)<\/h2>/.exec(cl.body) ?? [])[1] ?? "").trim());
+  const m = /Latest \(\d{4}-\d{2}-\d{2}\): (.*)$/.exec(d);
+  if (cl.status !== 200) problems.push(`/changelog answered HTTP ${cl.status}`);
+  else if (d.length > 160) problems.push(`/changelog\u0027s description is ${d.length} characters`);
+  else if (m && m[1].endsWith("…")) {
+    const said = m[1].slice(0, -1);
+    if (!newest.startsWith(said) || !/\s/.test(newest.charAt(said.length))) problems.push(`/changelog\u0027s description ends mid-word: "…${said.slice(-24)}…" (newest entry "${newest.slice(0, 60)}")`);
+    else if (said.length < 30) problems.push(`/changelog\u0027s description keeps a Latest clause of ${said.length} characters`);
+  } else if (m && newest && m[1].replace(/\.$/, "") !== newest.replace(/[.!?…]+$/, "")) problems.push(`/changelog\u0027s description names "${m[1].slice(0, 40)}", not the newest entry`);
+  out(problems.length ? "FAIL" : "PASS", `R9 ${problems.length ? problems.join("; ") : `/vs/chatgpt says "are" and names two owners; /changelog\u0027s description (${d.length} characters) ends ${m ? (m[1].endsWith("…") ? "where a word of the newest title ends" : "with the newest title whole") : "with no Latest clause"}`}`);
+}
+
+// R10: a stale re-check is not called daily.
+{
+  const g = await get("/ghost-job-index");
+  const a = await get("/data-api");
+  let bakeDay = null;
+  try { bakeDay = JSON.parse((await get("/posting-pages.json")).body).at ?? null; } catch { bakeDay = null; }
+  const gt = textOfPage(g.body);
+  const auditDay = (/(?:latest run on record is from |latest re-check on record, |daily re-check on |sampled on )(\d{4}-\d{2}-\d{2})/.exec(gt) ?? [])[1] ?? null;
+  const saysStale = /older than this page\u0027s build/.test(gt);
+  const daysOld = bakeDay && auditDay ? daysBetween(auditDay, bakeDay) : null;
+  const stale = saysStale || (daysOld !== null && daysOld >= 3);
+  const daily = (h) => [...String(h).matchAll(/(.{0,40})\bdaily\b(.{0,30})/gi)].filter((x) => !/scheduled\s*$/i.test(x[1])).map((x) => x[0].replace(/\s+/g, " ").trim());
+  const said = [...daily(g.body).map((x) => `/ghost-job-index: "${x}"`), ...daily(a.body).map((x) => `/data-api: "${x}"`)];
+  if (g.status !== 200 || a.status !== 200) out("FAIL", `R10 /ghost-job-index answered HTTP ${g.status}, /data-api ${a.status}`);
+  else if (!auditDay) out(said.length ? "FAIL" : "PASS", `R10 the Ghost Job Index prints no re-check run${said.length ? `, and the pages still say "daily" ${said.length} time(s): ${said.slice(0, 2).join("; ")}` : "; neither page says \"daily\" except as \"scheduled daily\""}`);
+  else if (!stale) out("INFO", `R10 the re-check of ${auditDay} was fresh at bake time (${bakeDay ?? "bake day unread"}): "daily" stands (${said.length} time(s))`);
+  else out(said.length ? "FAIL" : "PASS", `R10 the re-check of ${auditDay} was over 36 hours old at bake time (${saysStale ? "the page says so" : `bake day ${bakeDay}`}): ${said.length ? `"daily" is said ${said.length} time(s): ${said.slice(0, 2).join("; ")}` : "neither page says \"daily\" except as \"scheduled daily\""}`);
+}
+
+// R11: llms.txt names /agents\u0027 form vendors; llms-full carries the data pages\u0027 figures.
+{
+  const names = (list) => String(list ?? "").split(/,\s*(?:or\s+)?|\s+or\s+/).map((x) => x.trim()).filter(Boolean).sort();
+  const lt = await get("/llms.txt");
+  const ag = await get("/agents");
+  const onLlms = (/When the employer uses ([^.;]*?), your AI can read the employer\u0027s published application form/.exec(lt.body) ?? [])[1];
+  const onAgents = (/When the employer uses ([^.;<]*?), it returns the employer\u0027s real application form/.exec(decode(ag.body)) ?? [])[1];
+  if (lt.status !== 200 || ag.status !== 200) out("FAIL", `R11 /llms.txt answered HTTP ${lt.status}, /agents ${ag.status}`);
+  else if (!onLlms || !onAgents) out("FAIL", `R11 ${!onLlms ? "llms.txt" : "/agents"} carries no form-vendor sentence`);
+  else {
+    const x = names(onLlms), y = names(onAgents);
+    const same = x.length === y.length && x.every((v, i) => v === y[i]);
+    out(same ? "PASS" : "FAIL", `R11 llms.txt names ${x.length} form vendors, /agents ${y.length}${same ? ", the same ones" : `: llms.txt lacks ${y.filter((v) => !x.includes(v)).join(", ") || "none"}, /agents lacks ${x.filter((v) => !y.includes(v)).join(", ") || "none"}`}`);
+  }
+  const full = await get("/llms-full.txt");
+  const pages = [["Ghost Job Index", "/ghost-job-index"], ["Weekly Hiring Trends", "/hiring-trends"], ["Entry-Level Index", "/entry-level-index"], ["Pay Transparency Index", "/pay-transparency"]];
+  const judged = [];
+  const wrong = [];
+  for (const [name, p] of pages) {
+    const r = await get(p);
+    const desc = metaDesc(r.body);
+    if (r.status !== 200 || !/\d/.test(desc)) continue;
+    judged.push(name);
+    const line = String(full.body).split("\n").find((l) => l.startsWith(`- ${name} (`));
+    if (!line) wrong.push(`${name}: no line`);
+    else if (!line.endsWith(`: ${desc}`)) wrong.push(`${name}: "${line.slice(0, 80)}" against "${desc.slice(0, 60)}"`);
+    else if (!/measured \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC/.test(line)) wrong.push(`${name}: undated`);
+  }
+  if (full.status !== 200) out("FAIL", `R11 /llms-full.txt answered HTTP ${full.status}`);
+  else if (!judged.length) out("INFO", "R11 no data page serves a figure in its description (nothing for llms-full to carry)");
+  else out(wrong.length ? "FAIL" : "PASS", `R11 llms-full carries ${judged.length - wrong.length} of ${judged.length} data pages\u0027 figures, each its page\u0027s description, dated${wrong.length ? `; ${wrong.slice(0, 3).join("; ")}` : ""}`);
+}
+
+// R12: no preconnect where nothing calls Supabase.
+{
+  const PRE = /<link rel="preconnect" href="https:\/\/[a-z0-9]+\.supabase\.co"[^>]*>/;
+  const PREFETCH = /<link rel="dns-prefetch" href="https:\/\/[a-z0-9]+\.supabase\.co"[^>]*>/;
+  const pick = (re) => [...inSitemap].find((p) => re.test(p));
+  const sample = [
+    pick(/^\/guides\/[^/]+$/), pick(/^\/roles\/[^/]+$/), pick(/^\/industries\/[^/]+$/), pick(/^\/cv-standards\/[^/]+$/),
+    pick(/^\/(?:es|fr|de|pt|nl)\/[^/]+\/[^/]+$/),
+  ].filter(Boolean);
+  const bad = [];
+  let read = 0;
+  for (const p of sample) {
+    const r = await get(p);
+    if (r.status !== 200) { bad.push(`${p} answered HTTP ${r.status}`); continue; }
+    read++;
+    if (PRE.test(r.body)) bad.push(`${p} preconnects`);
+    else if (!PREFETCH.test(r.body)) bad.push(`${p} lost its dns-prefetch too`);
+  }
+  const jobs = await get("/jobs");
+  const control = jobs.status === 200 ? (PRE.test(jobs.body) ? "/jobs keeps its preconnect" : "/jobs carries no preconnect either") : `/jobs answered HTTP ${jobs.status}`;
+  if (sample.length < 5) out("FAIL", `R12 the sitemap lists ${sample.length} of the five page kinds to sample (a guide, a role, an industry, a CV-standards and a translated page)`);
+  else out(bad.length ? "FAIL" : "PASS", `R12 ${bad.length ? bad.slice(0, 3).join("; ") : `${read} sampled pages (${sample.join(", ")}) carry no Supabase preconnect and keep the dns-prefetch`}`);
+  out("INFO", `R12 control: ${control}`);
 }
 ' || echo "FAIL  98zzz the section threw"

@@ -1,14 +1,18 @@
 // @vitest-environment node
 /**
  * SECTION 98zzz CAN FAIL WHAT IT CLAIMS, AND NEVER WRITES (SEO audit
- * 2026-11-18, lane A, phase A1: R1, R2, R4, R5, R7).
+ * 2026-11-18, lane A, phase A1: R1, R2, R4, R5, R7; phase A2: R3, R6, R8-R12).
  *
  * The section is sourced against a stubbed site (every request a GET, or the
  * stub throws): once as the bake now serves it, where each claim PASSes, and
  * once with each defect the audit found, where each claim FAILs naming it.
+ * Phase A1's claims read synthetic posting pages; phase A2's read the files a
+ * real bake writes (offline, its data pages fed by a stubbed network with a
+ * re-check 44 hours old), served as they are and then with each defect the
+ * audit found written back into them.
  */
-import { afterAll, describe, expect, it, vi } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { cpSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -88,9 +92,9 @@ const closedStub: Route = { url: `${SITE}${CLOSED}`, body: pageHtml({ path: CLOS
 
 describe("as the bake now serves it", () => {
   const lines = runSection(site(GOOD, { ledger: goodLedger, extra: [closedStub] }), `# closed\n${CLOSED} ${daysAgo(1)} employer\n`);
-  it("PASSes R1, R2, R4, R5 and R7, and FAILs nothing", () => {
+  it("PASSes R1, R2, R4, R5 and R7, and FAILs none of them (this site serves no page phase A2 reads)", () => {
     for (const r of ["R1", "R2", "R4", "R5", "R7"]) expect(has(lines, "PASS", new RegExp(`^PASS\\s+${r} `)), `${r}\n${show(lines)}`).toBe(true);
-    expect(lines.filter((l) => l.startsWith("FAIL")), show(lines)).toEqual([]);
+    expect(lines.filter((l) => /^FAIL\s+(?:R[12457] |98zzz)/.test(l)), show(lines)).toEqual([]);
     expect(has(lines, "INFO", /R5 0 of 2 JobPosting descriptions are HTML paragraphs/), show(lines)).toBe(true);
   });
 });
@@ -149,7 +153,149 @@ describe("with each defect the audit found", () => {
 
 describe("the section reads and never writes", () => {
   it("sends only GETs and names no write", () => {
-    const src = require("node:fs").readFileSync(resolve(ROOT, "scripts/verify-deploy.d/98zzz-seo-1118-bake.sh"), "utf8") as string;
+    const src = readFileSync(resolve(ROOT, "scripts/verify-deploy.d/98zzz-seo-1118-bake.sh"), "utf8");
     expect(src).not.toMatch(/method:\s*"(?:POST|PUT|PATCH|DELETE)"|writeFileSync|appendFileSync|curl -X/);
+  });
+});
+
+// ---- Phase A2: the files a real bake writes ----
+const DIST_STUB = `const fs=require("fs"),path=require("path");
+const dist=process.env.VD_DIST;
+globalThis.fetch=async(url,init)=>{const u=new URL(String(url));
+if(init&&init.method&&init.method!=="GET")throw new Error("not a GET: "+init.method+" "+u);
+const p=decodeURIComponent(u.pathname).replace(/\\/+$/,"");
+const cands=p===""?["index.html"]:[p.slice(1),p.slice(1)+"/index.html"];
+for(const c of cands){const f=path.join(dist,c);if(f.startsWith(dist)&&fs.existsSync(f)&&fs.statSync(f).isFile())return new Response(fs.readFileSync(f,"utf8"),{status:200,headers:{"content-type":"text/html"}});}
+return new Response("",{status:404,headers:{"content-type":"text/plain"}});};
+`;
+function runOnDist(dist: string): string[] {
+  const dir = mkdtempSync(join(tmpdir(), "vd-98zzz-a2-"));
+  dirs.push(dir);
+  writeFileSync(join(dir, "fetch.cjs"), DIST_STUB);
+  writeFileSync(join(dir, "closed.txt"), "");
+  writeFileSync(join(dir, "run.sh"), `set -u\nSITE=${SITE}; UA=ua\n. ${JSON.stringify(resolve(ROOT, "scripts/verify-deploy.d/98zzz-seo-1118-bake.sh"))}\n`);
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    PATH: `${dirname(process.execPath)}:${process.env.PATH ?? ""}`,
+    VD_DIST: dist,
+    VD98ZZZ_LIST: join(dir, "closed.txt"),
+    NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --require ${join(dir, "fetch.cjs")}`.trim(),
+  };
+  let out = "";
+  try { out = execFileSync("bash", [join(dir, "run.sh")], { cwd: ROOT, env, encoding: "utf8", timeout: 85_000, stdio: ["ignore", "pipe", "pipe"] }); }
+  catch (e) { out = String((e as { stdout?: string }).stdout ?? ""); }
+  return out.split("\n").filter(Boolean);
+}
+
+const A2 = ["R3", "R6", "R8", "R9", "R10", "R11", "R12"];
+let GOOD_DIST = "";
+let BAD_DIST = "";
+let goodLines: string[] = [];
+let badLines: string[] = [];
+beforeAll(() => {
+  const out = mkdtempSync(join(tmpdir(), "vd-98zzz-bake-"));
+  dirs.push(out);
+  mkdirSync(join(out, "dist"), { recursive: true });
+  copyFileSync(join(ROOT, "index.html"), join(out, "dist", "index.html"));
+  const at = new Date(Date.now() - 44 * 3_600_000).toISOString();
+  const routes = {
+    get_public_scan_insights: {},
+    get_stats_cache: {
+      computed_at: "2026-11-17T06:00:00+00:00",
+      ghost_stats: { total_open: 1024429, total_company_names: 31000, closed_90d: 1286209, observed_days: 120, median_days_open: 14, posted_coverage_pct: 99.5, computed_at: "2026-11-17T05:30:00+00:00" },
+      entry_stats: { total_entry: 139290, total_open: 1024429, companies_with_entry: 4000, remote_entry: 3000, by_category: { other: 9000, engineering: 4000 } },
+      hiring_trends: [
+        { week_start: "2026-10-27", new_postings: 280000, closed: 100, closed_flagged: 0, remote_new: 1, entry_new: 1 },
+        { week_start: "2026-11-03", new_postings: 288808, closed: 100, closed_flagged: 0, remote_new: 1, entry_new: 1 },
+        { week_start: "2026-11-10", new_postings: 1000, closed: 1, remote_new: 1, entry_new: 1 },
+      ],
+      trending_categories: [{ category: "engineering", last7: 90000, prior7: 80000 }],
+    },
+    get_transparency_cache: { computed_at: "2026-11-17T06:10:00+00:00", pay: { overall: { pay_pct: 33.3, total: 1045070 }, categories: [], top_companies: [] }, coverage: { overall: { mode_pct: 40 } } },
+    get_audit_result: { at, sampled: 114, decided: 113, live: 112, gone: 1, unknown: 1, accuracyPct: 99.1 },
+  };
+  const stub = join(out, "stub-fetch.cjs");
+  writeFileSync(stub, `
+const routes = ${JSON.stringify(routes)};
+globalThis.fetch = async (input) => {
+  const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  const m = /\\/rest\\/v1\\/rpc\\/([a-z_0-9]+)$/.exec(url);
+  if (m && routes[m[1]]) return new Response(JSON.stringify(routes[m[1]]), { status: 200, headers: { "content-type": "application/json" } });
+  throw new Error("stubbed network: " + url);
+};`);
+  execFileSync("node", [join(ROOT, "scripts/prerender-seo.mjs")], {
+    cwd: ROOT,
+    env: { ...process.env, PRERENDER_OUT: out, PRERENDER_OFFLINE: "", VITE_SUPABASE_URL: "https://stub.supabase.test", VITE_SUPABASE_PUBLISHABLE_KEY: "stub-key", NODE_OPTIONS: `--require ${stub}` },
+    stdio: ["ignore", "pipe", "pipe"],
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  GOOD_DIST = join(out, "dist");
+  goodLines = runOnDist(GOOD_DIST);
+
+  // The same files with each defect the audit found written back into them.
+  BAD_DIST = join(out, "bad");
+  cpSync(GOOD_DIST, BAD_DIST, { recursive: true });
+  const edit = (rel: string, f: (s: string) => string) => { const file = join(BAD_DIST, rel); writeFileSync(file, f(readFileSync(file, "utf8"))); };
+  const selfCanonical = (rel: string, p: string) => edit(rel, (h) => h.replace(/<link rel="canonical" href="[^"]+"/, `<link rel="canonical" href="https://resumebooster.work${p}"`));
+  selfCanonical("roles/rn/index.html", "/roles/rn");
+  edit("roles/registered-nurse/index.html", (h) => h.replace("Other titles in the", "Adjacent titles recruiters search alongside the"));
+  selfCanonical("cv-standards/qatar/index.html", "/cv-standards/qatar");
+  edit("sitemap.xml", (x) => x.replace("</urlset>", "<url><loc>https://resumebooster.work/roles/rn</loc></url><url><loc>https://resumebooster.work/cv-standards/qatar</loc></url></urlset>"));
+  edit("explore/index.html", (h) => h.replace(/<section[^>]*data-field-roles=""[^>]*>[\s\S]*?<\/section>/, ""));
+  edit("vs/chatgpt/index.html", (h) => h.replace("ChatGPT &amp; Claude are trademarks of their owners", "ChatGPT &amp; Claude is a trademark of its owner").replace(/ChatGPT &amp; Claude are genuinely stronger/g, "ChatGPT &amp; Claude is genuinely stronger"));
+  edit("changelog/index.html", (h) => {
+    const newest = (/<h2[^>]*>([^<]+)<\/h2>/.exec(h) || [])[1] ?? "";
+    return h.replace(/<meta name="description" content="[^"]*"/, `<meta name="description" content="What changed and when, newest first — including honest postmortems. Latest (2026-11-17): ${newest.slice(0, 11)}…"`);
+  });
+  edit("data-api/index.html", (h) => h.replace("a sample is re-checked against them, scheduled daily", "a daily sample is re-checked against them"));
+  edit("llms.txt", (t) => t.replace(/(When the employer uses )[^;]*?(, your AI can read the employer's published application form)/, "$1Greenhouse, Ashby, Recruitee, Breezy or Pinpoint$2"));
+  edit("llms-full.txt", (t) => t.replace(/\n## Board figures[^\n]*\n(?:- [^\n]*\n)+/, "\n"));
+  const role = (/<loc>https:\/\/resumebooster\.work(\/roles\/[^<]+)<\/loc>/.exec(readFileSync(join(BAD_DIST, "sitemap.xml"), "utf8")) || [])[1] ?? "/roles/registered-nurse";
+  edit(`${role.slice(1)}/index.html`, (h) => h.replace("<head>", '<head><link rel="preconnect" href="https://bwhdazbotpblihdxcmho.supabase.co" crossorigin />'));
+  badLines = runOnDist(BAD_DIST);
+}, 300_000);
+
+describe("phase A2, on the files this branch bakes", () => {
+  it("PASSes R3, R6, R8, R9, R10, R11 and R12, and FAILs none of them", () => {
+    for (const r of A2) expect(has(goodLines, "PASS", new RegExp(`^PASS\\s+${r} `)), `${r}\n${show(goodLines)}`).toBe(true);
+    expect(goodLines.filter((l) => new RegExp(`^FAIL\\s+(?:${A2.join("|")}) |^FAIL\\s+98zzz`).test(l)), show(goodLines)).toEqual([]);
+    expect(has(goodLines, "PASS", /^PASS\s+R10 the re-check of \d{4}-\d{2}-\d{2} was over 36 hours old at bake time \(the page says so\): neither page says "daily"/), show(goodLines)).toBe(true);
+    expect(has(goodLines, "PASS", /^PASS\s+R11 llms-full carries 4 of 4 data pages/), show(goodLines)).toBe(true);
+    expect(has(goodLines, "INFO", /^INFO\s+R12 control: \/jobs keeps its preconnect/), show(goodLines)).toBe(true);
+  });
+});
+
+describe("phase A2, with each defect the audit found", () => {
+  it("R3 FAILs a self-canonical short name, a listed short name and a recruiter-search heading", () => {
+    const r3 = badLines.find((l) => /^FAIL\s+R3 /.test(l)) ?? "";
+    expect(r3, show(badLines)).toMatch(/\/roles\/rn names \/roles\/rn, not \/roles\/registered-nurse/);
+    expect(r3).toMatch(/the sitemap lists 167 \/roles pages, not 166/);
+    expect(r3).toMatch(/the sitemap lists 1 short name\(s\) that defer: rn/);
+    expect(r3).toMatch(/\/roles\/registered-nurse say recruiters search/);
+  });
+  it("R6 FAILs an /explore that names no role", () => {
+    expect(has(badLines, "FAIL", /^FAIL\s+R6 \/explore serves no field-roles section: 0 of the 116 role names/), show(badLines)).toBe(true);
+  });
+  it("R8 FAILs a GCC page that names itself and sits in the sitemap", () => {
+    expect(has(badLines, "FAIL", /^FAIL\s+R8 \/cv-standards\/qatar names \/cv-standards\/qatar; \/cv-standards\/qatar is in the sitemap/), show(badLines)).toBe(true);
+  });
+  it("R9 FAILs 'is' of two products and a snippet cut mid-word", () => {
+    const r9 = badLines.find((l) => /^FAIL\s+R9 /.test(l)) ?? "";
+    expect(r9, show(badLines)).toMatch(/\/vs\/chatgpt says "ChatGPT & Claude is"/);
+    expect(r9).toMatch(/\/vs\/chatgpt does not name two owners/);
+    expect(r9).toMatch(/\/changelog's description ends mid-word/);
+  });
+  it("R10 FAILs 'daily' said of a stale re-check", () => {
+    expect(has(badLines, "FAIL", /^FAIL\s+R10 the re-check of \d{4}-\d{2}-\d{2} was over 36 hours old at bake time \(the page says so\): "daily" is said 1 time\(s\): \/data-api: ".*a daily sample is re-checked/), show(badLines)).toBe(true);
+  });
+  it("R11 FAILs five vendors against ten, and an llms-full with no board figures", () => {
+    expect(has(badLines, "FAIL", /^FAIL\s+R11 llms\.txt names 5 form vendors, \/agents 10: llms\.txt lacks .*Paylocity/), show(badLines)).toBe(true);
+    expect(has(badLines, "FAIL", /^FAIL\s+R11 llms-full carries 0 of 4 data pages' figures/), show(badLines)).toBe(true);
+  });
+  it("R12 FAILs a sampled role page that preconnects", () => {
+    expect(has(badLines, "FAIL", /^FAIL\s+R12 \/roles\/[^ ]+ preconnects/), show(badLines)).toBe(true);
+  });
+  it("PASSes none of them", () => {
+    for (const r of A2) expect(has(badLines, "PASS", new RegExp(`^PASS\\s+${r} `)), `${r}\n${show(badLines)}`).toBe(false);
   });
 });

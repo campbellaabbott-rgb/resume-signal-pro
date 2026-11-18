@@ -28,22 +28,86 @@ export function routeChunkPrefix(path) {
 }
 
 /**
- * ONE ROUTE-CHUNK HINT, AT LOW PRIORITY (PERF-01, SEO/GEO audit 2026-11-07).
+ * ONE ROUTE-CHUNK HINT IN THE HEAD, ASKING AT LOW PRIORITY.
  *
- * Every baked page paints from its own HTML and one render-blocking
- * stylesheet; no preloaded script feeds that paint (the LCP element is baked
- * text on every page type measured). At the default priority the twelve hints
- * a company, field, posting, /jobs or /pricing page writes shared the line
- * with that stylesheet: on the phone lab profile (4x CPU, 150 ms, 1.6 Mbps)
- * the stylesheet finished 1,290-1,360 ms in and LCP followed it; with the
- * hints at low priority and no font preload (index.html) it finished at
- * 1,150-1,190 and LCP came 200-250 ms sooner on company, field and posting
- * pages (Domino's 1,576-1,656 ms to 1,328-1,384). The hint still starts the
- * chunk before the entry asks for it, so hydration keeps its one round trip.
- * The attribute comes after href, so a reader that matches the tag up to its
- * href still reads it.
+ * What is left in a head: the pages whose hints are not deferred (below) and
+ * the SPA fallback's Footer. The attribute is honoured only by the preload
+ * scanner and only without bandwidth throttling (SEO audit 2026-11-18,
+ * PERFORMANCE-1: lab/prio2.mjs saw the live /jobs hints at Low unthrottled and
+ * at High with the download throttled, and the parser's own link path ignores
+ * it), so it is no guarantee that a head hint waits for the stylesheet. The
+ * 11-07 gain once credited to it (stylesheet 1,290 to 1,150 ms) most likely
+ * came from dropping the font preload in the same commit. The attribute comes
+ * after href, so a reader that matches the tag up to its href still reads it.
  */
 export const modulepreloadTag = (file) => `<link rel="modulepreload" href="/assets/${file}" fetchpriority="low">`;
+
+/**
+ * THE PAGES WHOSE ROUTE CHUNKS START AFTER THE FIRST PAINT (SEO audit
+ * 2026-11-18, PERFORMANCE-1): the board's own pages, /jobs, a field, an
+ * employer and a posting. Each paints from its own HTML and one
+ * render-blocking stylesheet, and its twelve head hints shared the line with
+ * that stylesheet: in 4 interleaved phone rounds (verify-performance-raw/
+ * ab.jsonl) /jobs LCP was 2,402 ms as served and 1,876 with the hints written
+ * after first paint, the field page 2,040 and 1,598, and React's board came no
+ * later. The homepage's hints are already added by a script that waits for
+ * the stylesheet (fallbackPreloadHtml), and /pricing and the scanner's pages
+ * keep theirs in the head: they were not measured.
+ */
+export function defersRouteHints(path) {
+  const p = String(path ?? "");
+  return p === "/jobs" || p.startsWith("/jobs/field/") || p.startsWith("/jobs/company/") || p.startsWith("/jobs/posting/");
+}
+
+/**
+ * THE ROUTE HINTS, WRITTEN AFTER THE FIRST PAINT: one inline script at the end
+ * of <body>. requestAnimationFrame does not run while the stylesheet blocks
+ * rendering, so the chunks start after the first paint and still before the
+ * entry asks for them (a hint, not a dependency: a stale name costs one
+ * ignored request). The shape is the one the audit's lab measured (ov-defer),
+ * the file names read from the build and never anything a quote could break.
+ */
+export function deferredPreloadHtml(files) {
+  const ok = (files ?? []).filter((f) => /^[\w.-]+\.js$/.test(f));
+  if (!ok.length) return "";
+  const add = 'function(f){var l=document.createElement("link");l.rel="modulepreload";l.href="/assets/"+f;document.head.appendChild(l);}';
+  return `<script data-route-preload="1">requestAnimationFrame(function(){setTimeout(function(){${JSON.stringify(ok)}.forEach(${add});},0);});</script>`;
+}
+
+/** The file names a deferred loader adds, in its order (empty when the page has none). */
+export function deferredPreloadFiles(html) {
+  const body = (/<script data-route-preload="1">([\s\S]*?)<\/script>/.exec(String(html ?? "")) || [])[1] ?? "";
+  const list = (/(\[[^\]]*\])\.forEach\(/.exec(body) || [])[1];
+  if (!list) return [];
+  try { const xs = JSON.parse(list); return Array.isArray(xs) ? xs.filter((x) => typeof x === "string") : []; } catch { return []; }
+}
+
+/**
+ * THE PAGES THAT NEVER CALL SUPABASE KEEP ITS dns-prefetch AND LOSE ITS
+ * preconnect (SEO audit 2026-11-18, PERFORMANCE-M2). index.html preconnects
+ * every baked head to the project host; lab/supa-count.mjs counted 0 Supabase
+ * requests in the 10 s after load on a guide, a translated CV page, a /roles
+ * page, a CV-standards page and an industry page, so each phone visit paid a
+ * DNS, TCP and TLS setup it never used. Every other page keeps it: home,
+ * /jobs, a field, an employer, a posting and /pricing call the board, and a
+ * page not measured keeps today's head.
+ */
+export function dropsSupabasePreconnect(path) {
+  const p = String(path ?? "");
+  if (p === "/guides" || p.startsWith("/guides/")) return true;
+  if (p === "/industries" || p.startsWith("/industries/")) return true;
+  if (p.startsWith("/roles/")) return true;
+  if (p === "/cv-standards" || p.startsWith("/cv-standards/")) return true;
+  // The translated pages: the Spanish industry pages and the localized CV
+  // pages, two segments under a language. /es/revisar-curriculum (one
+  // segment) is the Spanish scanner and keeps it.
+  return /^\/(?:es|fr|de|pt|nl)\/[^/]+\/[^/]+$/.test(p);
+}
+
+/** The head with the Supabase host's preconnect taken out (its dns-prefetch stays). */
+export function withoutSupabasePreconnect(html) {
+  return String(html).replace(/[ \t]*<link rel="preconnect" href="https:\/\/[a-z0-9]+\.supabase\.co"[^>]*>[ \t]*\r?\n?/g, "");
+}
 
 /**
  * THE HEAD OF THE ROOT index.html, WHICH IS ALSO THE SPA FALLBACK.

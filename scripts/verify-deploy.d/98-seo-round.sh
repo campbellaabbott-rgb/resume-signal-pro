@@ -192,11 +192,21 @@ const pick = (arr, n) => (arr.length <= n ? arr : Array.from({ length: n }, (_, 
   else out("PASS", `P2 ${titles.size} sitemap posting pages, ${titles.size} distinct titles`);
   // P3 preloads.
   const pre = (h) => [...String(h).matchAll(/<link rel="modulepreload" href="\/assets\/([^"]+)"/g)].map((m) => m[1]);
+  // The board\x27s own pages (/jobs, a field, an employer, a posting) write
+  // their hints from one script at the end of <body> once the first frame is
+  // painted (SEO audit 2026-11-18, PERFORMANCE-1): its file list, read here.
+  const afterPaint = (h) => {
+    const body = (/<script data-route-preload="1">([\s\S]*?)<\/script>/.exec(String(h)) || [])[1] || "";
+    const list = (/(\[[^\]]*\])\.forEach\(/.exec(body) || [])[1];
+    try { const xs = list ? JSON.parse(list) : []; return Array.isArray(xs) ? xs.filter((x) => typeof x === "string") : []; } catch { return []; }
+  };
   const one = sample.find((p) => docs.get(p) && docs.get(p).status === 200);
   if (one) {
-    const hints = pre(docs.get(one).body);
-    if (hints.some((h) => h.startsWith("JobPosting-")) && !hints.some((h) => h.startsWith("Jobs-"))) out("PASS", `P3 ${one} preloads ${hints.filter((h) => /^JobPosting-/.test(h)).join(", ")} and not the Jobs chunk`);
-    else out("FAIL", `P3 ${one} preloads ${hints.join(", ") || "nothing"}: want JobPosting-*.js and not Jobs-*.js`);
+    const inHead = pre(docs.get(one).body);
+    const hints = [...inHead, ...afterPaint(docs.get(one).body)];
+    if (!(hints.some((h) => h.startsWith("JobPosting-")) && !hints.some((h) => h.startsWith("Jobs-")))) out("FAIL", `P3 ${one} preloads ${hints.join(", ") || "nothing"}: want JobPosting-*.js and not Jobs-*.js`);
+    else if (inHead.length) out("FAIL", `P3 ${one} names its route chunks in the head (${inHead.join(", ")}), on the render-blocking stylesheet\x27s line: want them written after the first paint (PERFORMANCE-1)`);
+    else out("PASS", `P3 ${one} preloads ${hints.filter((h) => /^JobPosting-/.test(h)).join(", ")} after the first paint, and not the Jobs chunk`);
   }
   {
     // Since the homepage switch-over (home-pricing) /pricing runs PricingPage.
