@@ -190,7 +190,13 @@ describe("(a) the light set holds the population that needs it", () => {
     // pinpoint or ashby. Under a token key going light would have stripped
     // the twin's descriptions, so they were refused and stayed dark; keyed by
     // board, the greenhouse board goes light alone.
-    const r = population.boards.map((b) => b.token).filter(refused);
+    // Board .103 pruned one census board: greenhouse:herewithgmbh answered 404 on two reads ten days apart
+    // and served no row (the .103 fixture's evidence). A board the catalogue no longer carries is not refused.
+    const f103 = JSON.parse(readFileSync(resolve(__dirname, "fixtures/board-103-catalogue-2026-11-17.json"), "utf8")) as { pruned: Array<[string, string]> };
+    const pruned = new Set(f103.pruned.map(([k]) => k));
+    const census = population.boards.map((b) => b.token);
+    expect(census.filter((t) => pruned.has(`greenhouse:${t}`))).toEqual(["herewithgmbh"]);
+    const r = census.filter((t) => !pruned.has(`greenhouse:${t}`)).filter(refused);
     expect(r, "census boards refused light mode, so they stay over the byte bound").toEqual([]);
   });
 

@@ -16,6 +16,13 @@
  * board is written as an object entry exactly where its packed row was, a repoint rewrites
  * its record in place, and the one new board is appended last. Each is pinned by its index
  * and by the two neighbours it had on .101.
+ *
+ * BOARD .103 MOVED THE PINS, NOT THE ENTRIES. .103 prunes 336 dead boards, retires one and
+ * holds five outside the catalogue (the-dead-boards-leave-and-the-moved-ones-follow-their-
+ * employer.test.ts), so every index below is its .103 index, and Pavago's and Lovable's
+ * neighbours are the boards beside them once their .101 neighbours left. .102's high-water
+ * migration is applied, so it keeps the 44,499 it ran with; the newest clamp follows the
+ * catalogue from .103 on.
  */
 import { describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
@@ -65,39 +72,41 @@ const PRUNED = [
 ];
 const RETIRED = [...OD1_RETIRED, ...TWINS.map(([b]) => b), ...PRUNED];
 
-/** The six labelled boards: [key, name, index on .102, the neighbours it had on .101]. */
+/** The six labelled boards: [key, name, index on .103, its neighbours (.101's, but for Pavago's two held boards)]. */
 const LABELLED: ReadonlyArray<[string, string, number, string, string]> = [
-  ["workable:pavago", "Pavago", 15248, "workable:hire-resolve-the-top-recruitment-agency", "workable:mercier-consultancy-group"],
-  ["workable:hire-overseas", "Hire Overseas", 15281, "workable:leigh-and-co", "workable:amazingcarecareers"],
-  ["smartrecruiters:JobMobz1", "Job Mobz", 3120, "smartrecruiters:ITTrailBlazers1", "smartrecruiters:AustroHolding"],
-  ["recruitee:sterkinmatches", "Sterk in Matches B.V.", 24134, "bamboohr:zulzi", "recruitee:vdkgroep"],
-  ["recruitee:deintraumjobwartet", "ANGEHEUERT GmbH", 41802, "recruitee:yellowstone", "recruitee:fridayrecruitment"],
-  ["lever:americaatwork", "America At Work", 2509, "bamboohr:achievebh", "ashby:dapper"],
+  ["workable:pavago", "Pavago", 15030, "workable:remote-va", "workable:cxg"],
+  ["workable:hire-overseas", "Hire Overseas", 15061, "workable:leigh-and-co", "workable:amazingcarecareers"],
+  ["smartrecruiters:JobMobz1", "Job Mobz", 3061, "smartrecruiters:ITTrailBlazers1", "smartrecruiters:AustroHolding"],
+  ["recruitee:sterkinmatches", "Sterk in Matches B.V.", 23867, "bamboohr:zulzi", "recruitee:vdkgroep"],
+  ["recruitee:deintraumjobwartet", "ANGEHEUERT GmbH", 41460, "recruitee:yellowstone", "recruitee:fridayrecruitment"],
+  ["lever:americaatwork", "America At Work", 2457, "bamboohr:achievebh", "ashby:dapper"],
 ];
-/** D13: [old key, new key, index on .102, neighbours on .101]. The first seven keep their token. */
+/** D13: [old key, new key, index on .103, neighbours (.101's, but for Lovable's pruned one)]. The first seven keep their token. */
 const REPOINTS: ReadonlyArray<[string, string, number, string, string]> = [
-  ["greenhouse:wayve", "ashby:wayve", 4007, "greenhouse:focusfinancialpartners", "greenhouse:valtech"],
-  ["greenhouse:clickhouse", "ashby:clickhouse", 1033, "greenhouse:archer56", "greenhouse:formlabs"],
-  ["lever:swordhealth", "greenhouse:swordhealth", 23001, "lever:significanceinc", "lever:wintermute-trading"],
-  ["greenhouse:lovable", "ashby:lovable", 4168, "greenhouse:skinlaundry", "greenhouse:northpointtechnology"],
-  ["greenhouse:kalshi", "ashby:kalshi", 589, "ashby:junction", "ashby:kastle"],
-  ["greenhouse:webflow", "ashby:webflow", 814, "ashby:wallbit", "greenhouse:xendit"],
-  ["greenhouse:worldlabs", "ashby:worldlabs", 5078, "greenhouse:zafinlabsamericasinc", "greenhouse:10beauty"],
-  ["ashby:mach", "greenhouse:machindustries", 7249, "ashby:kong", "ashby:polene-paris"],
-  ["greenhouse:temporaltechnologies", "ashby:temporal", 4172, "greenhouse:orchard", "greenhouse:vonage"],
-  ["ashby:browserbase", "greenhouse:browserbaseinc", 883, "greenhouse:brex", "greenhouse:calm"],
-  ["greenhouse:postman", "workday:postman~wd108~careers", 3998, "greenhouse:woolpert", "greenhouse:waldensecurity"],
-  ["greenhouse:humeai", "ashby:hume-ai", 2150, "greenhouse:hspg", "greenhouse:iftother"],
-  ["greenhouse:blackforestlabs", "ashby:black-forest-labs", 1640, "greenhouse:attivopartners", "greenhouse:britive"],
+  ["greenhouse:wayve", "ashby:wayve", 3947, "greenhouse:focusfinancialpartners", "greenhouse:valtech"],
+  ["greenhouse:clickhouse", "ashby:clickhouse", 1017, "greenhouse:archer56", "greenhouse:formlabs"],
+  ["lever:swordhealth", "greenhouse:swordhealth", 22735, "lever:significanceinc", "lever:wintermute-trading"],
+  ["greenhouse:lovable", "ashby:lovable", 4104, "greenhouse:pmg", "greenhouse:northpointtechnology"],
+  ["greenhouse:kalshi", "ashby:kalshi", 580, "ashby:junction", "ashby:kastle"],
+  ["greenhouse:webflow", "ashby:webflow", 801, "ashby:wallbit", "greenhouse:xendit"],
+  ["greenhouse:worldlabs", "ashby:worldlabs", 4999, "greenhouse:zafinlabsamericasinc", "greenhouse:10beauty"],
+  ["ashby:mach", "greenhouse:machindustries", 7147, "ashby:kong", "ashby:polene-paris"],
+  ["greenhouse:temporaltechnologies", "ashby:temporal", 4108, "greenhouse:orchard", "greenhouse:vonage"],
+  ["ashby:browserbase", "greenhouse:browserbaseinc", 869, "greenhouse:brex", "greenhouse:calm"],
+  ["greenhouse:postman", "workday:postman~wd108~careers", 3938, "greenhouse:woolpert", "greenhouse:waldensecurity"],
+  ["greenhouse:humeai", "ashby:hume-ai", 2111, "greenhouse:hspg", "greenhouse:iftother"],
+  ["greenhouse:blackforestlabs", "ashby:black-forest-labs", 1612, "greenhouse:attivopartners", "greenhouse:britive"],
 ];
+/** .102's catalogue, which its applied high-water migration clamps to. */
+const CATALOGUE_102 = 44_499;
 const BB01_COLD = ["transperfect", "duravermeer", "aaff", "tether"];
 
 describe("the retired boards leave the catalogue, keyed by vendor and token", () => {
-  it("none of the 25 retired keys is catalogued, and the catalogue is 44,499 boards", () => {
+  it("none of the 25 retired keys is catalogued, and the catalogue is .102's 44,499 less the 342 board .103 takes out", () => {
     expect(RETIRED.length).toBe(25);
     expect(RETIRED.filter((k) => HAS.has(k))).toEqual([]);
-    // 44,523 on .101, 25 out, Convergint in.
-    expect(JOB_SOURCES.length).toBe(44_499);
+    // 44,523 on .101, 25 out, Convergint in: 44,499 on .102. Then .103: 336 dead, usasurveyjob, five held.
+    expect(JOB_SOURCES.length).toBe(CATALOGUE_102 - 342);
     expect(new Set(KEYS).size, "a key is carried twice").toBe(KEYS.length);
   });
 
@@ -113,8 +122,9 @@ describe("the retired boards leave the catalogue, keyed by vendor and token", ()
     expect(shared).toEqual(["pinpoint:helsing"]);
   });
 
-  it("OD1's held Workable board stays catalogued (dark until the mill screen)", () => {
-    expect(HAS.has("workable:nogigiddy")).toBe(true);
+  it("OD1's held Workable boards wait outside the catalogue from board .103, so no lane reads them until the owner rules", () => {
+    // .102 kept them catalogued and skipped them only when oversize, so weekday-1 served 153 rows.
+    for (const k of ["workable:nogigiddy", "workable:weekday-1", "workable:hire-resolve-the-top-recruitment-agency"]) expect(HAS.has(k), k).toBe(false);
   });
 
   it("no employer alias names a retired token, and the two aliases that did are rewritten", () => {
@@ -195,16 +205,16 @@ describe("the hot list and the one new board", () => {
   });
 });
 
-describe("the high-water migration follows the catalogue", () => {
+describe(".102's high-water migration keeps the 44,499 it ran with", () => {
   const FILE = readdirSync(resolve(ROOT, "supabase/migrations")).find((f) => f.startsWith("20261111120000_"));
   const sql = FILE ? read(`supabase/migrations/${FILE}`).split("\n").filter((l) => !l.trimStart().startsWith("--")).join("\n") : "";
 
-  it("its clamp is the literal JOB_SOURCES.length, written in the form the demo-board guard parses", () => {
+  it("its clamp is the literal 44,499 (.102's JOB_SOURCES.length), written in the form the demo-board guard parses", () => {
     expect(FILE).toBe("20261111120000_the_catalogue_high_water_follows_the_retirements.sql");
     const clamps = [...sql.matchAll(/LEAST\(\(v->>'size'\)::int,\s*(\d+)\)/g)].map((m) => Number(m[1]));
-    expect(clamps).toEqual([JOB_SOURCES.length]);
+    expect(clamps).toEqual([CATALOGUE_102]);
     expect(sql).toMatch(/WHERE k = 'catalog_highwater'/);
-    expect(sql, "the self-check raises when the mark is above the catalogue").toMatch(new RegExp(`IF mark > ${JOB_SOURCES.length} THEN\\s+RAISE EXCEPTION`));
+    expect(sql, "the self-check raises when the mark is above the catalogue").toMatch(new RegExp(`IF mark > ${CATALOGUE_102} THEN\\s+RAISE EXCEPTION`));
   });
 
   it("on a real Postgres it lowers the .101 mark to the catalogue, never raises one, runs again, and tolerates a database with no mark", async () => {
@@ -218,10 +228,10 @@ describe("the high-water migration follows the catalogue", () => {
       expect(await mark(db)).toBeNull();
       await db.exec(`INSERT INTO public.job_board_meta (k, v) VALUES ('catalog_highwater', '{"size": 44523, "at": "2026-11-15T00:00:00Z"}')`);
       await db.exec(raw);
-      expect(await mark(db)).toBe(JOB_SOURCES.length);
+      expect(await mark(db)).toBe(CATALOGUE_102);
       expect((await db.query<{ at: string }>(`SELECT v->>'at' AS at FROM public.job_board_meta WHERE k = 'catalog_highwater'`)).rows[0].at, "the rest of the row is kept").toBe("2026-11-15T00:00:00Z");
       await db.exec(raw);
-      expect(await mark(db)).toBe(JOB_SOURCES.length);
+      expect(await mark(db)).toBe(CATALOGUE_102);
       await db.exec(`UPDATE public.job_board_meta SET v = '{"size": 44000}' WHERE k = 'catalog_highwater'`);
       await db.exec(raw);
       expect(await mark(db), "LEAST lowers and never raises").toBe(44000);
@@ -251,7 +261,7 @@ describe("the high-water migration follows the catalogue", () => {
         await db.exec(`UPDATE public.job_board_meta SET v = '{"size": 44523}' WHERE k = 'catalog_highwater'`);
         await db.exec(`UPDATE public.job_board_meta SET v = '{"build": "${build}"}' WHERE k = 'slice_stats'`);
         await db.exec(raw);
-        expect(await mark(), build).toBe(JOB_SOURCES.length);
+        expect(await mark(), build).toBe(CATALOGUE_102);
       }
     } finally { await db.close(); }
   }, 30_000);

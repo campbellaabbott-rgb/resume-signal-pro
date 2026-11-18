@@ -28,8 +28,8 @@
  *   - every POST is job-board status or list with the probe header, or the
  *     anon get_company_fill_curve read, and the publishable key is never
  *     printed;
- *   - the section's keys are the catalogue's: 44,499 is JOB_SOURCES.length,
- *     its retired keys are absent and their tokens carried by no vendor, its
+ *   - the section's keys are the catalogue's: 44,499 is the size .102
+ *     shipped (board .103's prune shrank JOB_SOURCES after it), its retired keys are absent and their tokens carried by no vendor, its
  *     kept, labelled and repointed keys present.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
@@ -250,8 +250,10 @@ describe("the section's keys are the catalogue's", () => {
     expect(SERVED.filter((k) => !keys.has(k))).toEqual([]);
   });
 
-  it("its high-water is the catalogue's size", () => {
-    expect(/const CATALOGUE=(\d+),/.exec(SECTION)?.[1]).toBe(String(JOB_SOURCES.length));
+  it("its high-water is the size .102 shipped, which board .103's prune shrank: a build after .102 is section 49's to judge", () => {
+    const f103 = JSON.parse(readFileSync(resolve(ROOT, "src/test/fixtures/board-103-catalogue-2026-11-17.json"), "utf8")) as { catalogue: { before: number; after: number } };
+    expect(/const CATALOGUE=(\d+),/.exec(SECTION)?.[1]).toBe(String(f103.catalogue.before));
+    expect(f103.catalogue.after).toBe(JOB_SOURCES.length);
   });
 });
 

@@ -173,7 +173,7 @@ const reg = (key: string, source: string, at = iso(60_000)) => ({ token: key.inc
 const STATUS = (o: Record<string, unknown> = {}) => ({
   version: "2026-09-09.102",
   sliceStats: ss(),
-  oversizeBoards: [...HELD.map((t) => reg(t, "workable")), reg("usasurveyjob", "lever")],
+  oversizeBoards: HELD.map((t) => reg(t, "workable")),
   descCoverage: [{ source: "workday", total: 400_000, described: 399_000 }, { source: "workable", total: 20_000, described: 19_500 }],
   descCoverageAgeMin: 10,
   passEnd: {
@@ -301,10 +301,12 @@ describe("the board .102 core section", () => {
     expect(fails(none.lines), none.out).toEqual([expect.stringMatching(/^FAIL {2}D12 registry: status carries no oversizeBoards list/)]);
   });
 
-  it("D12 registry fails on a board of any stream vendor still oversize, and on one waiting 2 h for a stream; a bare Workable board and the W4 Lever board stay", () => {
+  it("D12 registry fails on a board of any stream vendor still oversize, and on one waiting 2 h for a stream; a bare Workable board stays, and no Lever board is exempt", () => {
     const late = iso(8 * DAY - 13 * H);
+    // lever:usasurveyjob was the one exemption (W4) until board .103 retired it (OD1(a), a paid-survey
+    // ad feed). A registry that still names it while a catalogue carries it is a stream board read late.
     const dark = ok(good(status(STATUS({ oversizeBoards: [reg("bjakcareer", "ashby", late), reg("gopuff", "lever", late), reg("usasurveyjob", "lever", late)] }))));
-    expect(fails(dark.lines), dark.out).toEqual([expect.stringMatching(/^FAIL {2}D12 registry: 2 board\(s\) .*\[\["bjakcareer","ashby".*\["gopuff","lever"/)]);
+    expect(fails(dark.lines), dark.out).toEqual([expect.stringMatching(/^FAIL {2}D12 registry: 3 board\(s\) .*\[\["bjakcareer","ashby".*\["gopuff","lever".*\["usasurveyjob","lever"/)]);
     const waiting = (at: string) => ok(good(status(STATUS({ oversizeBoards: [{ ...reg("vdkgroep", "recruitee", at), wait: true }, { ...reg("cxg", "workable", late), bare: true }] }))));
     const short = waiting(iso(H));
     expect(fails(short.lines), short.out).toEqual([]);
@@ -314,9 +316,9 @@ describe("the board .102 core section", () => {
     expect(fails(waiting(iso(7 * DAY)).lines)).toEqual([expect.stringMatching(/^FAIL {2}D12 registry: 1 board\(s\) .*\[\["vdkgroep","recruitee"/)]);
   });
 
-  it("the catalogue is read from this checkout's sources.ts when none is given", () => {
-    const { lines, out } = ok(good(status(STATUS({ oversizeBoards: [reg("usasurveyjob", "lever"), reg("retired-nowhere-token", "lever")] }))), { catalog: null });
-    expect(fails(lines), out).toEqual([expect.stringMatching(/^FAIL {2}D12 registry: 1 key\(s\) name a board the catalogue does not carry .*"retired-nowhere-token"/)]);
+  it("the catalogue is read from this checkout's sources.ts when none is given, which no longer carries lever:usasurveyjob", () => {
+    const { lines, out } = ok(good(status(STATUS({ oversizeBoards: [reg("shieldai", "lever", iso(8 * DAY - H)), reg("usasurveyjob", "lever"), reg("retired-nowhere-token", "lever")] }))), { catalog: null });
+    expect(fails(lines), out).toEqual([expect.stringMatching(/^FAIL {2}D12 registry: 2 key\(s\) name a board the catalogue does not carry .*"usasurveyjob".*"retired-nowhere-token"/)]);
   });
 
   it("a board count off its feed by more than 15% fails, within it passes, and a feed robots.txt disallows is not read", () => {
