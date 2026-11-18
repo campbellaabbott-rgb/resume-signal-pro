@@ -7013,9 +7013,7 @@ export type Database = {
           median_days_open: number
           median_days_to_close: number
           observed_days: number
-          open_window_days: number
           posted_coverage_pct: number
-          stale_parts: string[]
           total_companies: number
           total_company_names: number
           total_open: number
@@ -7421,7 +7419,7 @@ export type Database = {
       get_transparency_coverage: { Args: never; Returns: Json }
       get_transparent_employers: { Args: { p_limit?: number }; Returns: Json }
       get_trending_categories: {
-        Args: { p_watch_days?: number }
+        Args: never
         Returns: {
           category: string
           last7: number
