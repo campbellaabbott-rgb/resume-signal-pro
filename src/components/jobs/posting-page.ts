@@ -234,9 +234,59 @@ export function jdText(description: string): string {
   return decodeJdEntities(description).replace(/^[ \t]*undefined[ \t]*(?:\r?\n|$)/gm, "");
 }
 
-/** The description as display paragraphs: decoded, blank-line split, empties dropped. */
+/** A line this long that repeats an earlier one is a duplicated paragraph, not a repeated heading or bullet. */
+const JD_REPEAT_MIN_CHARS = 80;
+/** A line its text carries this many times or more is a list's recurring item, never a pasted copy. */
+const JD_RECURRING_TIMES = 3;
+
+/** A line as a repeat is recognised: one space for each run, case folded, typographic quotes as plain ones. */
+const jdLineKey = (line: string): string =>
+  line.replace(/\s+/g, " ").trim().toLowerCase().replace(/[\u2018\u2019\u02bc]/g, "'").replace(/[\u201c\u201d]/g, '"');
+
+/**
+ * THE DESCRIPTION WITH EACH OF THE EMPLOYER'S PARAGRAPHS ONCE (SEO audit
+ * 2026-11-18, STRUCTURED-3). Some feeds hand the board one body twice: iCIMS
+ * repeats whole sections (keo 12843 printed its paragraphs 6-30 again as
+ * 40-63) and Lever joins its body to its lists (Mobileye 0d17f0b5 printed its
+ * whole body twice), and the bake printed every copy on the page and in the
+ * markup's description; 25 of the 500 served descriptions were a tenth or
+ * more repeated text. A later copy of a line of JD_REPEAT_MIN_CHARS or more
+ * with a letter in it is dropped, compared with its whitespace collapsed, its
+ * case folded and a curly apostrophe read as a straight one (iCIMS's second
+ * copy of keo's "Project’s" is "Project's"). It is the rule the board's pane
+ * applies (src/lib/listing/description.ts collapseRepeatedParagraphs, which
+ * counts what it drops and so reads jdText, not this), with two lines it
+ * leaves alone: a rule of underscores is not a paragraph, and a line carried
+ * JD_RECURRING_TIMES times or more is the employer's own list repeating an
+ * item under each heading (WVU Medicine JR24-50138 requires the same
+ * competency at levels 3, 4, 5 and 6). Shorter lines ("Requirements:",
+ * "• Python") repeat legitimately and stay. A text with nothing dropped is
+ * jdText's own, byte for byte: 465 of the 500 served descriptions.
+ */
+export function jdTextOnce(description: string): string {
+  const text = jdText(description);
+  const lines = text.split("\n");
+  const keys = lines.map(jdLineKey);
+  const times = new Map<string, number>();
+  for (const k of keys) times.set(k, (times.get(k) ?? 0) + 1);
+  const seen = new Set<string>();
+  const kept: string[] = [];
+  let dropped = 0;
+  lines.forEach((line, i) => {
+    const key = keys[i];
+    if (key.length >= JD_REPEAT_MIN_CHARS && /\p{L}/u.test(key) && (times.get(key) ?? 0) < JD_RECURRING_TIMES) {
+      if (seen.has(key)) { dropped++; return; }
+      seen.add(key);
+    }
+    kept.push(line);
+  });
+  // A dropped block leaves its blank-line padding behind.
+  return dropped ? kept.join("\n").replace(/\n{3,}/g, "\n\n") : text;
+}
+
+/** The description as display paragraphs: decoded, each repeat dropped (jdTextOnce), blank-line split, empties dropped. */
 export function jdParagraphs(description: string): string[] {
-  return jdText(description)
+  return jdTextOnce(description)
     .split(/\n\s*\n/)
     .map((p) => p.replace(/[ \t]+\n/g, "\n").trim())
     .filter((p) => p.length > 0);
@@ -1450,7 +1500,7 @@ export function postingJsonLdShape(
   const job = postingMarkupGate(row, description, { now, ignoreNameGate: opts.ignoreNameGate });
   if (!job) return null;
   const path = postingPagePath(job.id);
-  const desc = typeof description === "string" ? jdText(description).trim() : "";
+  const desc = typeof description === "string" ? jdTextOnce(description).trim() : "";
   // TELECOMMUTE ONLY ON THE HIRING SYSTEM'S OWN REMOTE FIELD (SEO-003's rule).
   // A place-free remote label ("Remote - US", "China - Remote") is marked up
   // as its country: the round's bake shipped TELECOMMUTE on a medical
