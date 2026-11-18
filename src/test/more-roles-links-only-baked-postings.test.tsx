@@ -18,9 +18,16 @@
  * file has not loaded or is missing, it links the employer's page, the same
  * address the section's "see every open role" link uses. On 9c9234e9a the
  * unlisted card links /jobs/posting/<id>.
+ *
+ * Also held (review of lane B, 2026-11-18): the mounted section reads the
+ * file itself; after a mixed reply no card links the token's page (the
+ * see-all link is withheld there for that reason); and the company page's
+ * perk panel, closed but still in the DOM, holds no posting address until a
+ * reader opens it.
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import i18n from "@/i18n";
 import enListing from "@/i18n/shards/listing/en.json";
@@ -37,6 +44,8 @@ vi.mock("@/integrations/supabase/client", () => ({
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: null, session: null }) }));
 
 import { MoreRolesAtEmployer } from "@/components/jobs/listing/MoreRolesAtEmployer";
+import { CompanyPerksView } from "@/components/jobs/CompanyPerks";
+import { readEmployerPerks } from "@/lib/employer-perks";
 import { postingPagePath } from "@/components/jobs/posting-page";
 import { setLanderManifestForTests } from "@/lib/seo/lander-manifest";
 import {
@@ -75,15 +84,19 @@ const scrollIntoView = () => act(() => {
 });
 
 /** The section on Acme's posting greenhouse:acme:1001, scrolled into view, its four cards drawn. */
-async function section() {
+async function section(extra: ListingJob[] = []) {
   vi.stubGlobal("IntersectionObserver", FakeIO);
-  invoke.mockResolvedValue({ data: { jobs: ROWS.map((r) => ({ ...r, postedAt: POSTED(), missingSince: null, agency: false })) }, error: null });
+  invoke.mockResolvedValue({ data: { jobs: [...ROWS, ...extra].map((r) => ({ ...r, postedAt: POSTED(), missingSince: null, agency: false })) }, error: null });
   render(<MemoryRouter><MoreRolesAtEmployer token="acme" employer="Acme" excludeId="greenhouse:acme:1001" source="greenhouse" /></MemoryRouter>);
   scrollIntoView();
   await waitFor(() => expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(4));
 }
 const cardHref = (title: string) => screen.getByRole("link", { name: title }).getAttribute("href");
 const seeAllHref = () => document.querySelector("[data-more-roles-all]")!.getAttribute("href");
+const sectionHrefs = () => [...document.querySelectorAll("[data-more-roles] a")].map((a) => a.getAttribute("href"));
+/** A fetch answer as loadPostingManifest reads it. */
+const jsonResponse = (body: unknown, type = "application/json", ok = true) =>
+  ({ ok, headers: { get: (h: string) => (h.toLowerCase() === "content-type" ? type : null) }, json: async () => body }) as unknown as Response;
 
 beforeAll(() => { i18n.addResourceBundle("en", "translation", enListing, true, true); });
 beforeEach(() => {
@@ -147,9 +160,87 @@ describe("a More roles card", () => {
   });
 });
 
+describe("the section asks for the manifest itself", () => {
+  // Every case above presets the manifest or leaves it unread. In production
+  // the one caller is useBakedPostingPath's effect: with it gone, the file is
+  // never read and every card links the employer's page forever, with every
+  // case above still green (review of lane B, 2026-11-18).
+  it("with nothing preset, the mounted section fetches /posting-pages.json and links the page the file names", async () => {
+    const fetcher = vi.fn(async (input: RequestInfo | URL) =>
+      String(input) === "/posting-pages.json"
+        ? jsonResponse({ at: "2026-11-18", live: ["/jobs/posting/greenhouse/acme/1003"] })
+        : jsonResponse(null, "application/json", false));
+    vi.stubGlobal("fetch", fetcher);
+    await section();
+    await waitFor(() => expect(cardHref("Tax Manager")).toBe("/jobs/posting/greenhouse/acme/1003"));
+    expect(fetcher).toHaveBeenCalledWith("/posting-pages.json", expect.anything());
+    expect(cardHref("Controller")).toBe("/jobs?company=acme");
+  });
+});
+
+describe("after a mixed reply (another employer's row under the same token)", () => {
+  // The see-all link is withheld there because the token's page also lists
+  // the other employer's roles; a card must not send the reader to that page
+  // either (review of lane B, 2026-11-18). Main linked these cards to their
+  // unbaked posting pages.
+  const OTHER: ListingJob = { id: "greenhouse:acme:2001", source: "greenhouse", token: "acme", company: "Acme Staffing Partner", title: "Recruiting Coordinator" };
+
+  it.each([
+    ["no company page written", null],
+    ["a written company page", { acme: "/jobs/company/acme" }],
+  ] as const)("with %s, no card links the token's page or an unbaked posting page, and the role is still listed", async (_, landers) => {
+    if (landers) setLanderManifestForTests({ ...landers });
+    await section([OTHER]);
+    expect(document.querySelector("[data-more-roles-all]"), "the see-all link is withheld").toBeNull();
+    expect(screen.queryByText("Recruiting Coordinator"), "the other employer's row is not printed").toBeNull();
+    expect(sectionHrefs()).toEqual([]);
+    for (const title of ["Payroll Specialist", "Tax Manager", "Audit Senior", "Controller"]) {
+      expect(screen.getByRole("heading", { level: 3, name: title })).toBeInTheDocument();
+    }
+  });
+
+  it("a card whose page the bake wrote still links it, and only it", async () => {
+    setPostingManifestForTests(["/jobs/posting/greenhouse/acme/1003"]);
+    await section([OTHER]);
+    expect(sectionHrefs()).toEqual(["/jobs/posting/greenhouse/acme/1003"]);
+    expect(cardHref("Tax Manager")).toBe("/jobs/posting/greenhouse/acme/1003");
+  });
+});
+
+describe("a perk's quoted posting on the company page", () => {
+  // The perk panel is closed with the hidden attribute and stays in the DOM
+  // (its count is the check's description). Google reads the rendered DOM and
+  // opens nothing, so the quoted posting's address, almost never a baked
+  // page, was a link on every company page with perks (CRAWL-M1's second
+  // source). The link is drawn only while the panel is open.
+  const PERKS = {
+    token: "acme", collision: false, expiry_days: 45, published_keys: ["health"], withheld: [],
+    perks: [{
+      source: "greenhouse", country: "US", perk: "health", k: 212, n: 240, qualified_share: 0, standard_text: false,
+      as_of: "2026-10-12T12:00:00Z", quote: "Medical, dental and vision insurance", quote_posting_id: "greenhouse:acme:1002", baseline: null,
+    }],
+  };
+  const postingLinks = (root: ParentNode) =>
+    [...root.querySelectorAll("a")].map((a) => a.getAttribute("href") ?? "").filter((h) => h.includes("/jobs/posting/") || h.includes("job="));
+
+  it("a closed panel holds no posting address; the reader who opens it gets the posting the line came from", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<MemoryRouter><CompanyPerksView answer={readEmployerPerks(PERKS)} /></MemoryRouter>);
+    const check = screen.getByRole("button", { name: /Health insurance/ });
+    const panel = document.getElementById(check.getAttribute("aria-controls")!)!;
+    expect(panel).not.toBeVisible();
+    expect(panel.textContent, "the closed panel keeps its count and its quote").toContain("Medical, dental and vision insurance");
+    expect(postingLinks(container), "a crawler reads the closed panel").toEqual([]);
+    await user.click(check);
+    expect(within(panel).getByRole("link", { name: "See the posting this line comes from" })).toHaveAttribute("href", "/jobs/posting/greenhouse/acme/1002");
+    await user.click(check);
+    expect(panel).not.toBeVisible();
+    expect(postingLinks(container)).toEqual([]);
+  });
+});
+
 describe("the manifest reader", () => {
-  const response = (body: unknown, type = "application/json", ok = true) =>
-    ({ ok, headers: { get: (h: string) => (h.toLowerCase() === "content-type" ? type : null) }, json: async () => body }) as unknown as Response;
+  const response = jsonResponse;
 
   it("reads the bake's {at, live} file, and only posting paths in it", async () => {
     const fetcher = vi.fn(async () => response({ at: "2026-11-18", live: [
