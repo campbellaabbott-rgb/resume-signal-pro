@@ -214,7 +214,9 @@ describe("the /v1 index describes the form route as it behaves", () => {
     const body = await res.json() as { endpoints: string[]; modes: Record<string, string>; restrictions: { note: string } };
     expect(body.endpoints).toContain("/v1/jobs/{id}/application");
     const text = body.modes.applicationForm;
-    for (const v of FORM_READER_VENDORS) expect(text.toLowerCase()).toContain(v);
+    // Every reader /v1 uses: all of them but Ashby's, whose form /v1 stopped
+    // reading (OD14-ASHBY-2; the-data-api-sends-nothing-to-ashbys-form-endpoint).
+    for (const v of FORM_READER_VENDORS.filter((x) => x !== "ashby")) expect(text.toLowerCase()).toContain(v);
     expect(text).toMatch(/451/);
     expect(text).toMatch(/503 with Retry-After/);
     expect(text).toMatch(/default-deny/);

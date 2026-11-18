@@ -40,7 +40,20 @@ import { FIT_FREE_DAILY, FIT_PAID_DAILY, fitGate, fitStandingFrom, type FitGate 
 import { APPLICATION_ENDPOINT, FIT_ENDPOINT, applicationIdSegment, meteredEndpoint } from "./endpoint.ts";
 // THE APPLY-MYSELF TWIN: the /v1 shape around the shared form reader and the
 // shared default-deny who-answers rule (./application.ts), deciding nothing.
-import { ANSWERED_BY_MEANS, APPLICATION_DESCRIPTION, APPLICATION_NOTE, FORM_UNREACHABLE_RETRY_S, applicationData, formBlock, readV1Form } from "./application.ts";
+import { ANSWERED_BY_MEANS, APPLICATION_DESCRIPTION, APPLICATION_NOTE, FORM_UNREACHABLE_RETRY_S, V1_FORM_VENDORS, applicationData, formBlock, formCacheFor, postingRefOf } from "./application.ts";
+import { readApplicationForm } from "../_shared/application-form.ts";
+/**
+ * ASHBY'S FORM IS NOT READ BY /v1 (OD14-ASHBY-2, owner option "stop",
+ * 2026-11-16). The shared reader POSTs to jobs.ashbyhq.com/api/, a path
+ * Ashby's robots file disallows. /v1 reads every other system's form as
+ * before; an Ashby posting answers form.source "not-read-on-this-surface"
+ * beside its apply_url and Ashby is sent nothing. Every sentence that lists
+ * the systems whose forms /v1 reads is said without Ashby, held so by
+ * the-data-api-sends-nothing-to-ashbys-form-endpoint.test.ts.
+ */
+const V1_FORM_READS: readonly string[] = V1_FORM_VENDORS.filter((v) => v !== "ashby");
+const withoutAshby = (s: string): string => s.split("Ashby, ").join("");
+const V1_APPLICATION_DESCRIPTION = withoutAshby(APPLICATION_DESCRIPTION);
 import { fillCurveFromCache } from "./fill-curve-cache.ts";
 import { intParam as intQ, isInvalid, isoParam as isoQ, numParam as numQ, type Parsed, secondsToMidnightUtc } from "./params.ts";
 import { companyPage } from "./company-walk.ts";
@@ -545,7 +558,7 @@ Deno.serve(async (req) => {
         // The two descriptions below are what the routes do, written from
         // the code that answers them (fit-allowance.ts; applicationForm).
         fit: FIT_DESCRIPTION,
-        applicationForm: APPLICATION_DESCRIPTION,
+        applicationForm: V1_APPLICATION_DESCRIPTION,
       },
       // WHAT A FREE KEY INCLUDES, beside what it does not. The per-minute and
       // daily limits are the key's own (api_keys), so they are reported on
@@ -1753,8 +1766,14 @@ async function applicationForm(client: SupabaseClient, url: URL, id: string, hea
     return fail(404, "not_found", "No live posting with that id. It may have been withdrawn by the employer or aged past the 30-day window, so there is no form to read.", headers);
   }
   const row = posting as unknown as Record<string, unknown>;
-  const [, read] = await Promise.all([attachLastVerified(client, [row]), readV1Form(row, client)]);
-  const form = formBlock(read);
+  const [, read] = await Promise.all([
+    attachLastVerified(client, [row]),
+    // Every reader but Ashby's (OD14-ASHBY-2): an Ashby posting reads as
+    // "withheld" before the cache or the network is touched.
+    readApplicationForm(postingRefOf(row), { fetch, cache: formCacheFor(client), vendors: V1_FORM_READS }),
+  ]);
+  const block = formBlock(read);
+  const form = block && block.note ? { ...block, note: withoutAshby(block.note) } : block;
   // NOT READ IS NOT "ASKS NOTHING". The hiring system did not answer (a
   // timeout, a 429 or a 5xx, none of them cached), so there is no form to
   // serve and no honest empty one: the client retries.
