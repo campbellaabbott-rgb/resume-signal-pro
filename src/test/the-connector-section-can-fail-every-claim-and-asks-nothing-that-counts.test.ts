@@ -437,6 +437,12 @@ const KEEP_STEP = "Claude shows the authentication settings it detected. Keep th
 const naming = (s: string, choice: string) => s.split("Keep them as they are").join(`Choose **${choice}**`);
 
 describe("the owner keys", () => {
+  it("OD14-REDIST-1 \"keep\" (the owner's 2026-11-18 answer) is reported, never judged as a withhold", () => {
+    const r = run(routes(OFF, { mt: NEW_MT }), { decided: { ...OWNER_SHIPPED, "OD14-REDIST-1": "keep" } });
+    expect(lineOf(r.lines, "OD14-REDIST-1"), r.out).toMatch(/^INFO  OD14-REDIST-1 decided \(keep\): the connector keeps handing UKG, ADP and Breezy on/);
+    expect(r.lines.some((l) => /^FAIL  OD14-REDIST-1/.test(l)), r.out).toBe(false);
+  });
+
   it("OD14-REDIST-1 \"withhold\": PASS on answers that withhold UKG, ADP and Breezy, and SEO-F15 then wants no Breezy reader", () => {
     const r = run(routes(OFF, { a: withRedist(OFF), mt: dropLabel(NEW_MT, "Breezy") }), { decided: { ...OWNER_SHIPPED, "OD14-REDIST-1": "withhold" } });
     expect(lineOf(r.lines, "OD14-REDIST-1"), r.out).toMatch(/^PASS  OD14-REDIST-1 decided \(withhold\)/);
