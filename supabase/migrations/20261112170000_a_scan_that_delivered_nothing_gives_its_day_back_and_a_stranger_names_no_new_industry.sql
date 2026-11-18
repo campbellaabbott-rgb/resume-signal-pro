@@ -25,11 +25,13 @@
 --    correction-menu-industries.ts, compared in lower case because the
 --    four-argument call stores lower case), and the two labels differ; a
 --    call that fails either returns before client_write_allowed, so it writes
---    nothing, the address's budget included. The helper's name puts the
---    adjective last on purpose: Lovable's migration tool will not close a
---    function named like a row-security helper (is_, has_ or can_ first) to
---    the authenticated role, and it stopped this file there on 2026-11-18,
---    after round A's first fourteen files, before anything in it ran.
+--    nothing, the address's budget included. scan_industry_known is not a
+--    row-security helper: no policy calls it, only the three SECURITY DEFINER
+--    functions below and this file's own self-check, so it is closed to
+--    every client role and the service role alone may run it. (Its first
+--    name began with is_, which Lovable's tool reads as a policy helper's;
+--    it refused the file on 2026-11-18 before any of it ran, and the
+--    function was renamed, nothing else.)
 --
 -- 3. get_industry_correction_stats leaves out the rows it should never have
 --    counted: unknown labels, original = corrected, and detection_source
