@@ -252,7 +252,8 @@ interface FillCurveRow {
   cohort_from?: string | null;
   cohort_to?: string | null;
   /** n_at_risk_30 >= 25 AND half-width <= 0.15 AND R + X + S = 1 within 1e-6
-   *  AND events_30 >= the floor below, over admitted boards. */
+   *  (on the server's unrounded arms) AND events_30 >= the floor below, over
+   *  admitted boards. */
   sufficient_30?: boolean | null;
   /** THE POSITIVE CONTROL, PUBLISHED. Fills plus re-listings observed INSIDE
    *  the day-30 cohort at days at or before the cap — the events that move S.
@@ -316,6 +317,17 @@ export const MAX_HALF_WIDTH_30 = 0.15;
  *  0.0045 to 0.0295. */
 export const MAX_REL_HALF_WIDTH_30 = 0.5;
 export const SUM_CHECK_TOLERANCE_30 = 0.000001;
+/** THE ROUNDING THE PAGE IS HANDED. The server holds R + X + S = 1 within
+ *  SUM_CHECK_TOLERANCE_30 on its UNROUNDED arms, then publishes each of the
+ *  three rounded to PUBLISHED_DECIMALS_30 places, so the three this page adds
+ *  can miss one by up to three half-units of the last place while the
+ *  server's own identity holds. Held to SUM_CHECK_TOLERANCE_30 alone, 144 of
+ *  the 612 server-sufficient rows read hourly 2026-11-16..18 (sum_check_30 = 1
+ *  on every one) missed by 0.0001 either way and printed a false "did not add
+ *  up" refusal that came and went hour to hour. */
+export const PUBLISHED_DECIMALS_30 = 4;
+export const IDENTITY_SLACK_30 = SUM_CHECK_TOLERANCE_30 + 3 * 0.5 * 10 ** -PUBLISHED_DECIMALS_30;
+const identityHolds30 = (r: number, x: number, s: number): boolean => Math.abs(r + x + s - 1) <= IDENTITY_SLACK_30;
 /** The columns the day-30 gate and the day-30 sentence read, and the only
  *  ones either is allowed to read. Named here, beside the row it is cut from,
  *  so the guard that forbids any other part of the page touching a raw day-30
@@ -413,7 +425,7 @@ export const day30Reading = (row: Day30Row): Day30Reading | null => {
   // about. An absolute half-width is blind exactly where the sentence is most
   // damning; see MAX_REL_HALF_WIDTH_30.
   if ((hi - lo) / 2 > MAX_REL_HALF_WIDTH_30 * (1 - s)) return null;
-  if (Math.abs(r + x + s - 1) > SUM_CHECK_TOLERANCE_30) return null;
+  if (!identityHolds30(r, x, s)) return null;
   if (typeof row.cohort_from !== "string" || typeof row.cohort_to !== "string") return null;
   if (row.cohort_from.length === 0 || row.cohort_to.length === 0) return null;
   const gs = numOr(row.gate_share_30);
@@ -507,7 +519,7 @@ export const day30Verdict = (row: Day30Row): Day30Verdict => {
   if (n < MIN_N_AT_RISK_30) return withheld("fewRoles");
   if ((hi - lo) / 2 > MAX_HALF_WIDTH_30) return withheld("width");
   if ((hi - lo) / 2 > MAX_REL_HALF_WIDTH_30 * (1 - s)) return withheld("precision");
-  if (Math.abs(r + x + s - 1) > SUM_CHECK_TOLERANCE_30) return withheld("arithmetic");
+  if (!identityHolds30(r, x, s)) return withheld("arithmetic");
   const reading = day30Reading(row);
   if (reading) return { state: "published", reading };
   // TWO DIFFERENT REFUSALS, NOT ONE. Reaching here means every term this page
