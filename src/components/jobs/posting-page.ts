@@ -1568,6 +1568,23 @@ function postalAddressOf(raw: string, country: string, job: PostingRow): Record<
   return put(region, locality, street && STREETISH.test(street) && STREET_WORD.test(street) ? street : null, postal);
 }
 
+/**
+ * A TITLE THAT NAMES AN INTERNSHIP (SEO audit 2026-11-18, STRUCTURED-9), in
+ * the employer's own word for it: intern or internship, tirocinio, Praktikum
+ * or Praktikant, stagiaire, and "stage" only in a description written in a
+ * language whose word for an internship it is and never before a number
+ * (Levi's Italian "Sales Stylist - Stage" is one; Blue Origin's "New Glenn
+ * Stage 2" is a rocket's). "Internal" and "International" are not. Measured
+ * on the 492 served titles: five name one, and no other title does.
+ */
+const INTERNSHIP_TITLE = /\b(?:interns?|internships?|tirocini[oa]|tirocinante|praktikum|praktikant(?:in)?|stagiaire)\b/i;
+const STAGE_LANGS = new Set(["fr", "it", "nl", "pt", "es"]);
+export function postingInternshipTitle(title: string | null | undefined, description = ""): boolean {
+  const t = postingText(title);
+  if (INTERNSHIP_TITLE.test(t)) return true;
+  return /\bstage\b(?!\s*\d)/i.test(t) && STAGE_LANGS.has(postingLanguage(description) ?? "");
+}
+
 /** schema.org's own enumeration. Anything outside it is ignored by Google, so it is never guessed. */
 const LD_EMPLOYMENT_TYPE: Record<string, string> = {
   full_time: "FULL_TIME",
@@ -1837,6 +1854,9 @@ export function postingJsonLdShape(
 
   const empType = ldEmploymentType(job.employmentType);
   if (empType) ld.employmentType = empType;
+  // AN INTERNSHIP SAYS INTERN (STRUCTURED-9): the employer's own title names
+  // it ("Emerging Technology & AI Internship" was FULL_TIME only).
+  if (postingInternshipTitle(job.title, desc) && empType !== "INTERN") ld.employmentType = empType ? [empType, "INTERN"] : "INTERN";
 
   return ld;
 }
