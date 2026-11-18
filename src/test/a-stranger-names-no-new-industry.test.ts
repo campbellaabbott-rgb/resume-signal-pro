@@ -75,11 +75,11 @@ describe("the database refuses a label the scanner does not know (pglite)", () =
       "public.log_industry_correction(text, text, text, text, integer, text[], text, text, text)",
       "public.get_industry_correction_stats(integer)",
     ]) expect(await one<boolean>(db, `select has_function_privilege('anon', '${fn}', 'EXECUTE')`)).toBe(true);
-    expect(await one<boolean>(db, "select has_function_privilege('anon', 'public.is_scan_industry(text)', 'EXECUTE')")).toBe(false);
+    expect(await one<boolean>(db, "select has_function_privilege('anon', 'public.scan_industry_known(text)', 'EXECUTE')")).toBe(false);
   });
 
   it("the SQL list is exactly the scanner's industries and the correction menu's, in lower case", () => {
-    const def = definitionOf(migFile(FSE_MIGRATION), "is_scan_industry");
+    const def = definitionOf(migFile(FSE_MIGRATION), "scan_industry_known");
     const inSql = [...def.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]).sort();
     const want = [...new Set([...SCAN_INDUSTRY_IDS, ...CORRECTION_MENU_INDUSTRIES].map((l) => l.toLowerCase()))].sort();
     expect(inSql).toEqual(want);
