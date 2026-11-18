@@ -16,7 +16,7 @@
 -- WHAT THIS DOES. The function is re-issued exactly as 20261009131000 left
 -- it (the daily allowance, the token-first closure read, the suspect and
 -- superseded filters, going_down, lap_backfill keeping the row with no
--- duration), with three changes:
+-- duration), with four changes:
 --   1. days_standing is measured from the employer's posted_at only. A
 --      posting with no employer date has no days_standing (Account then
 --      prints "Posting still open" with no count, and a came-down line with
@@ -28,6 +28,15 @@
 --      dated) after the closure. It compares dates; it measures no age.
 --      It is written as two comparisons instead of one coalesce so that a
 --      reader of the age rule sees no age expression in it.
+--   4. The same id come back is read by id, as the check reads it. The
+--      collector deletes a posting's row as soon as it logs a closure, so a
+--      row beside a trusted closure is that id listed again. Stamped missing
+--      AFTER the closure, it is going down again: 20261009131000 answered
+--      came_down with the OLD closure's date ("It has not reappeared"), and
+--      Account then wrote that date to the tracker row for good. Now it is
+--      going_down, with no closure date and no duration, and relisted says
+--      the id came back. A row stamped missing BEFORE the closure is one the
+--      closure's delete left behind: the closure stands, as before.
 --
 -- Grants are re-issued as 20261009131000 issued them: signed-in accounts
 -- and the service role; never anon.
@@ -121,7 +130,7 @@ BEGIN
   ),
   liv AS (
     -- Served now: stamped missing is going down, not standing.
-    SELECT p.id, p.posted_at, (p.missing_since IS NULL) AS served
+    SELECT p.id, p.posted_at, p.missing_since, (p.missing_since IS NULL) AS served
     FROM public.job_board_postings p
     WHERE p.id IN (SELECT ids.jid FROM ids)
   )
@@ -130,6 +139,7 @@ BEGIN
     CASE
       WHEN liv.served AND cl.posting_id IS NOT NULL THEN 'came_down_relisted'
       WHEN liv.served THEN 'still_standing'
+      WHEN b.back_going THEN 'going_down'
       WHEN cl.posting_id IS NOT NULL THEN
         CASE WHEN EXISTS (
           SELECT 1 FROM public.job_board_postings p2
@@ -142,9 +152,10 @@ BEGIN
       WHEN liv.id IS NOT NULL THEN 'going_down'
       ELSE 'not_observed'
     END AS outcome,
-    cl.closed_at,
+    CASE WHEN b.back_going THEN NULL ELSE cl.closed_at END AS closed_at,
     -- The employer's date or nothing.
     CASE
+      WHEN b.back_going THEN NULL
       WHEN cl.posting_id IS NOT NULL AND cl.absence_basis = 'lap_backfill' THEN NULL
       WHEN cl.posting_id IS NOT NULL AND cl.posted_at IS NOT NULL
         THEN GREATEST(round((EXTRACT(epoch FROM (cl.closed_at - cl.posted_at)) / 86400.0)::numeric, 1), 0)
@@ -152,11 +163,20 @@ BEGIN
         THEN GREATEST(round((EXTRACT(epoch FROM (now() - liv.posted_at)) / 86400.0)::numeric, 1), 0)
       ELSE NULL
     END AS days_standing,
-    (cl.posting_id IS NOT NULL AND COALESCE(liv.served, false)) AS relisted,
-    COALESCE(cl.posting_id IS NOT NULL AND cl.absence_basis = 'lap_backfill', false) AS closed_at_is_observation
+    b.back AS relisted,
+    COALESCE(cl.posting_id IS NOT NULL AND cl.absence_basis = 'lap_backfill' AND NOT b.back_going, false) AS closed_at_is_observation
   FROM ids
   LEFT JOIN cl  ON cl.posting_id = ids.jid
-  LEFT JOIN liv ON liv.id = ids.jid;
+  LEFT JOIN liv ON liv.id = ids.jid
+  CROSS JOIN LATERAL (
+    -- The same id, listed again after its newest trusted closure (served
+    -- now, or stamped missing after that closure), and the second case alone.
+    SELECT
+      COALESCE(cl.posting_id IS NOT NULL AND liv.id IS NOT NULL
+               AND (liv.served OR liv.missing_since > cl.closed_at), false) AS back,
+      COALESCE(cl.posting_id IS NOT NULL AND liv.id IS NOT NULL
+               AND NOT liv.served AND liv.missing_since > cl.closed_at, false) AS back_going
+  ) b;
 END
 $fn$;
 

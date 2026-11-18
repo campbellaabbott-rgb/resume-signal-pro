@@ -54,7 +54,8 @@ const CAPPED: Array<boolean | null> = [true, false, null];
 const row = (bucket: string | null, read: { at: string | null; state: string | null }, capped: boolean | null, over: Partial<PostingTruthRow> = {}): PostingTruthRow => ({
   pt_id: "workday:acme~wd5~Careers:1", pt_source: "workday", pt_token: "acme~wd5~Careers", pt_title: "Planner", pt_company: "Acme",
   pt_row_found: true, pt_listed: true, pt_in_window: true, pt_missing_since: null, pt_posted_at: "2026-12-01T00:00:00Z",
-  pt_has_closure: false, pt_closed_at: null, pt_seen_gone_at: null, pt_aged_at: null, pt_board_known: true,
+  pt_has_closure: false, pt_closed_at: null, pt_seen_gone_at: null, pt_closures: 0, pt_untrusted_gone_at: null,
+  pt_untrusted_kind: null, pt_aged_at: null, pt_board_known: true,
   pt_bucket: bucket, pt_read_at: read.at, pt_read_state: read.state, pt_capped: capped,
   ...over,
 });

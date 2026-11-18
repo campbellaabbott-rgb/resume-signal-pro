@@ -11,17 +11,31 @@
  * disagree; a title match on a board that lists one title in many places is
  * not the same role.
  *
+ * And the first build of this check answered from the wrong record. The
+ * collector deletes a posting's row the moment it logs ANY closure, superseded
+ * and suspect ones included (job-board closeVanishedChunk). Dropping those
+ * closures left a posting we listed and saw go with no record at all, so the
+ * check called it not_carried: "we never listed it". And it read a trusted
+ * closure before the row, so an id that came back after its takedown and was
+ * missing again read "closed" on the OLD date, and a posting closed twice
+ * never said it came back (adversarial review, 2026-11-18).
+ *
  * THE PROPERTY. posting_truth (20261206100000), run in a real Postgres over
  * stand-ins with the columns its SQL reads, and shaped by
  * public-api/posting-truth.ts, names each posting's state from our own
- * records by its id alone:
+ * records by its id alone, the newest record deciding:
  *   open (with the same id coming back after a trusted closure said so),
- *   going_down (stamped missing, no trusted closure: suspect and superseded
- *   closures are not takedowns), closed (and a lap-dated closure said as the
- *   day we first saw it gone), aged_out (a tombstone, or listed past the
- *   window), not_carried, board_not_carried, withheld, unknown_id.
- * Its closure read is the lifecycle's token-first one: planned through the
- * board's curve index, never a scan of the ledger. It answers ten ids at most.
+ *   going_down (stamped missing after any closure; came back, if a trusted
+ *   closure came before), closed (the newest record is a trusted closure; a
+ *   lap-dated one said as the day we first saw it gone; two of them mean the
+ *   id came back between), gone_unconfirmed (the newest record is a closure
+ *   the collector did not trust: listed, gone, no takedown counted),
+ *   aged_out (a tombstone, or listed past the window), not_carried,
+ *   board_not_carried, withheld, unknown_id.
+ * Account (get_application_lifecycle, M16) and the check, run over the same
+ * rows, say the same thing happened. Its closure read is the lifecycle's
+ * token-first one: planned through the board's curve index, never a scan of
+ * the ledger. It answers ten ids at most.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
@@ -42,10 +56,11 @@ import {
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 120_000 });
 
-const MIGRATION = readFileSync(
-  resolve(__dirname, "../../supabase/migrations/20261206100000_a_posting_is_answered_by_what_we_saw_of_it.sql"),
-  "utf8",
-);
+const MIG = (f: string) => readFileSync(resolve(__dirname, "../../supabase/migrations", f), "utf8");
+const MIGRATION = MIG("20261206100000_a_posting_is_answered_by_what_we_saw_of_it.sql");
+/** Account's lifecycle before the API4 lane, and M16's. */
+const LIFECYCLE_PRE = MIG("20261009131000_a_tracker_row_reads_the_closure_log_by_the_day_and_a_free_account_has_bounds.sql");
+const LIFECYCLE_M16 = MIG("20261206110000_an_account_row_ages_from_the_employers_date.sql");
 
 const STAND_INS = `
   CREATE TABLE public.job_board_postings (
@@ -72,6 +87,14 @@ const STAND_INS = `
     company_token text PRIMARY KEY, bucket text NOT NULL, lap_w0 timestamptz, as_of timestamptz NOT NULL DEFAULT now());
   CREATE TABLE public.job_board_verifications (
     company_token text PRIMARY KEY, verified_at timestamptz NOT NULL DEFAULT now(), feed_total integer);
+  -- What Account's lifecycle reads besides the two ledgers.
+  CREATE SCHEMA auth;
+  CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+  CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$ SELECT coalesce(nullif(current_setting('request.jwt.claim.role', true), ''), 'service_role') $$;
+  CREATE TABLE public.user_applications (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL, company text, role text, label text,
+    location text, status text, job_id text, apply_url text, job_posting text, fit_missing jsonb, kit jsonb,
+    posting_closed_at timestamptz, created_at timestamptz NOT NULL DEFAULT now());
 `;
 
 const WD = "acme~wd5~Careers";
@@ -97,6 +120,9 @@ const FIXTURES = `
     ('greenhouse:fullco:7', 'greenhouse', 'fullco', 'Full Co', 'Chef', now() - interval '8 days', now() - interval '8 days', now() - interval '8 days', now() - interval '2 hours'),
     ('greenhouse:fullco:9', 'greenhouse', 'fullco', 'Full Co', 'Porter', now() - interval '40 days', now() - interval '40 days', now() - interval '40 days', NULL),
     ('greenhouse:fullco:undated', 'greenhouse', 'fullco', 'Full Co', 'Clerk', NULL, now() - interval '12 days', now() - interval '12 days', NULL),
+    -- Came down twenty days ago, listed again under the same id, and stamped
+    -- missing three hours ago: going down again, not the old takedown.
+    ('greenhouse:fullco:back', 'greenhouse', 'fullco', 'Full Co', 'Mason', now() - interval '10 days', now() - interval '10 days', now() - interval '10 days', now() - interval '3 hours'),
     ('workday:${WD}:x1', 'workday', '${WD}', 'Acme', 'Planner', now() - interval '2 days', now() - interval '2 days', now() - interval '2 days', NULL),
     ('greenhouse:darkco:1', 'greenhouse', 'darkco', 'Dark Co', 'Baker', now() - interval '4 days', now() - interval '4 days', now() - interval '4 days', NULL);
 
@@ -107,14 +133,32 @@ const FIXTURES = `
     -- Gone, and dated only by the lap that could first see it.
     ('greenhouse:fullco:5', 'greenhouse', 'fullco', 'Full Co', 'Cook', now() - interval '25 days', now() - interval '4 days', 'lap_backfill', false, false),
     -- A feed that went dark, and a superseded closure: neither is a takedown.
+    -- Each id came back after it and is stamped missing again (above).
     ('greenhouse:fullco:6', 'greenhouse', 'fullco', 'Full Co', 'Nurse', now() - interval '8 days', now() - interval '1 day', 'full_read', true, false),
     ('greenhouse:fullco:7', 'greenhouse', 'fullco', 'Full Co', 'Chef', now() - interval '8 days', now() - interval '1 day', 'full_read', false, true),
+    -- The same two kinds as the collector leaves them: the row deleted.
+    ('greenhouse:fullco:sus', 'greenhouse', 'fullco', 'Full Co', 'Plumber', now() - interval '9 days', now() - interval '1 day', 'full_read', true, false),
+    ('greenhouse:fullco:sup', 'greenhouse', 'fullco', 'Full Co', 'Tiler', now() - interval '9 days', now() - interval '1 day', 'full_read', false, true),
+    -- The takedown before greenhouse:fullco:back came back.
+    ('greenhouse:fullco:back', 'greenhouse', 'fullco', 'Full Co', 'Mason', now() - interval '30 days', now() - interval '20 days', 'full_read', false, false),
+    -- Closed, listed again, closed again: no row.
+    ('greenhouse:fullco:twice', 'greenhouse', 'fullco', 'Full Co', 'Roofer', now() - interval '30 days', now() - interval '20 days', 'full_read', false, false),
+    ('greenhouse:fullco:twice', 'greenhouse', 'fullco', 'Full Co', 'Roofer', now() - interval '30 days', now() - interval '2 days', 'full_read', false, false),
+    -- Closed, listed again, then gone in a way the collector did not count.
+    ('greenhouse:fullco:back-sup', 'greenhouse', 'fullco', 'Full Co', 'Joiner', now() - interval '30 days', now() - interval '20 days', 'full_read', false, false),
+    ('greenhouse:fullco:back-sup', 'greenhouse', 'fullco', 'Full Co', 'Joiner', now() - interval '30 days', now() - interval '2 days', 'full_read', false, true),
+    -- Closed, listed again, then aged out of the window (the tombstone below).
+    ('greenhouse:fullco:back-aged', 'greenhouse', 'fullco', 'Full Co', 'Welder', now() - interval '50 days', now() - interval '40 days', 'full_read', false, false),
+    -- A tombstone its closure's delete left behind: the closure is newer.
+    ('greenhouse:fullco:tomb-old', 'greenhouse', 'fullco', 'Full Co', 'Carver', now() - interval '35 days', now() - interval '2 days', 'full_read', false, false),
     -- A different posting with the SAME title, served now: no title is matched.
     ('greenhouse:fullco:old-analyst', 'greenhouse', 'fullco', 'Full Co', 'Analyst', now() - interval '40 days', now() - interval '20 days', 'full_read', false, false);
 
   INSERT INTO public.job_board_aged_out (id, source, company_token, posted_at, aged_at) VALUES
     ('greenhouse:fullco:8', 'greenhouse', 'fullco', now() - interval '31 days', now() - interval '1 day'),
-    ('greenhouse:fullco:8u', 'greenhouse', 'fullco', NULL, now() - interval '1 day');
+    ('greenhouse:fullco:8u', 'greenhouse', 'fullco', NULL, now() - interval '1 day'),
+    ('greenhouse:fullco:back-aged', 'greenhouse', 'fullco', now() - interval '31 days', now() - interval '1 day'),
+    ('greenhouse:fullco:tomb-old', 'greenhouse', 'fullco', now() - interval '35 days', now() - interval '10 days');
 
   -- Ballast so the planner has a ledger to choose an index over.
   INSERT INTO public.job_board_closures (posting_id, source, company_token, company, title, closed_at)
@@ -166,6 +210,8 @@ const IDS = [
   "greenhouse:fullco:6", "greenhouse:fullco:7", "greenhouse:fullco:8", "greenhouse:fullco:8u", "greenhouse:fullco:9",
   "greenhouse:fullco:nothing", "greenhouse:fullco:undated", `workday:${WD}:x1`, `workday:${WD}:none`,
   "greenhouse:unknownco:1", "greenhouse:darkco:1", "smartrecruiters:srco:1", "usajobs:fed:1", "not-an-id",
+  "greenhouse:fullco:sus", "greenhouse:fullco:sup", "greenhouse:fullco:back", "greenhouse:fullco:twice",
+  "greenhouse:fullco:back-sup", "greenhouse:fullco:back-aged", "greenhouse:fullco:tomb-old",
 ];
 
 let T: Map<string, PostingTruth>;
@@ -196,20 +242,75 @@ describe("a posting check names its state from what we saw (pglite)", () => {
     expect(T.get("greenhouse:fullco:1")!.relisted).toEqual({ sameIdCameBack: false });
   });
 
-  it("going down: stamped missing with no trusted closure, and a suspect or superseded closure is no takedown", () => {
+  it("going down: stamped missing after any closure, and a suspect or superseded closure is no takedown", () => {
     for (const id of ["greenhouse:fullco:3", "greenhouse:fullco:6", "greenhouse:fullco:7"]) {
       expect(T.get(id)!.state, id).toBe("going_down");
       expect(T.get(id)!.sentence).toBe(TRUTH_COPY.goingDown);
       expect(T.get(id)!.closedAt).toBeNull();
+      expect(T.get(id)!.relisted, "a closure we do not count is not a takedown the id came back from").toEqual({ sameIdCameBack: false });
     }
   });
 
-  it("closed: a trusted takedown, dated", () => {
+  it("closed: a trusted takedown, dated, newer than the row its delete left behind", () => {
     const t = T.get("greenhouse:fullco:4")!;
     expect(t.state).toBe("closed");
     expect(t.closedAtIsObservation).toBe(false);
     expect(t.closedAt).not.toBeNull();
     expect(t.sentence).toMatch(/^Came down from the employer's system by \d{4}-\d{2}-\d{2}\.$/);
+    expect(t.relisted).toEqual({ sameIdCameBack: false });
+  });
+
+  it("a posting we listed and saw go, in a way the collector did not count, is gone_unconfirmed, never not_carried", () => {
+    const sus = T.get("greenhouse:fullco:sus")!;
+    expect(sus.state).toBe("gone_unconfirmed");
+    expect(sus.sentence).toMatch(/^Our reads found it gone from the employer's board by \d{4}-\d{2}-\d{2}, along with so much of the board at once/);
+    expect(sus.unconfirmed).toMatchObject({ kind: "suspect" });
+    const sup = T.get("greenhouse:fullco:sup")!;
+    expect(sup.state).toBe("gone_unconfirmed");
+    expect(sup.sentence).toMatch(/^Our reads found it gone from the employer's board by \d{4}-\d{2}-\d{2}, while a posting with the same title was still listed there/);
+    expect(sup.unconfirmed).toMatchObject({ kind: "superseded" });
+    for (const t of [sus, sup]) {
+      expect(t.state).not.toBe("not_carried");
+      expect(t.sentence).not.toMatch(/never listed it|no record of this id/);
+      expect(t.closedAt, "no takedown is counted, so none is dated").toBeNull();
+      expect(t.unconfirmed?.seenGoneAt).not.toBeNull();
+      expect(t.relisted).toEqual({ sameIdCameBack: false });
+      expect(t).toMatchObject({ title: expect.any(String), company: "Full Co" });
+      expect(t.age, "the employer's date the closure carried").toMatchObject({ days: 9, dateClass: "employer" });
+    }
+  });
+
+  it("came back after its takedown and missing again: going down, the same id came back, no old closure date", () => {
+    const t = T.get("greenhouse:fullco:back")!;
+    expect(t.state).toBe("going_down");
+    expect(t.relisted).toEqual({ sameIdCameBack: true });
+    expect(t.sentence).toBe(`${TRUTH_COPY.goingDown} ${TRUTH_COPY.sameIdCameBack}`);
+    expect(t.closedAt).toBeNull();
+    expect(t.age, "the row's own employer date, not the old closure's").toMatchObject({ days: 10 });
+  });
+
+  it("closed twice: the newest takedown's date, and the same id came back between", () => {
+    const t = T.get("greenhouse:fullco:twice")!;
+    expect(t.state).toBe("closed");
+    expect(t.relisted).toEqual({ sameIdCameBack: true });
+    expect(Math.round((Date.now() - Date.parse(t.closedAt!)) / 86_400_000)).toBe(2);
+    expect(t.sentence.endsWith(TRUTH_COPY.sameIdCameBack)).toBe(true);
+  });
+
+  it("came back after a takedown, then gone uncounted: gone_unconfirmed, and it came back", () => {
+    const t = T.get("greenhouse:fullco:back-sup")!;
+    expect(t.state).toBe("gone_unconfirmed");
+    expect(t.relisted).toEqual({ sameIdCameBack: true });
+    expect(t.unconfirmed).toMatchObject({ kind: "superseded" });
+  });
+
+  it("a tombstone newer than the takedown is the same id come back and aged out; an older one is the closure's leftover", () => {
+    const aged = T.get("greenhouse:fullco:back-aged")!;
+    expect(aged.state).toBe("aged_out");
+    expect(aged.relisted).toEqual({ sameIdCameBack: true });
+    const old = T.get("greenhouse:fullco:tomb-old")!;
+    expect(old.state).toBe("closed");
+    expect(old.relisted).toEqual({ sameIdCameBack: false });
   });
 
   it("closed by a lap: the date is the day we first saw it gone, and is said so", () => {
@@ -298,9 +399,17 @@ describe("posting_truth reads ten ids at most, and by the board first", () => {
     expect(() => truthsOf(["greenhouse:fullco:1"], [], OPTS)).toThrow(/no row/);
   });
 
+  it("reads every closure of an id once: the trusted count and the untrusted witness come from the same read", async () => {
+    const [twice, sus] = await rowsFor(["greenhouse:fullco:twice", "greenhouse:fullco:sus"]).then((r) =>
+      ["greenhouse:fullco:twice", "greenhouse:fullco:sus"].map((id) => r.find((x) => x.pt_id === id)!));
+    expect(twice).toMatchObject({ pt_has_closure: true, pt_closures: 2, pt_untrusted_gone_at: null, pt_untrusted_kind: null });
+    expect(sus).toMatchObject({ pt_has_closure: false, pt_closures: 0, pt_untrusted_kind: "suspect", pt_row_found: false });
+    expect(sus.pt_untrusted_gone_at).not.toBeNull();
+  });
+
   it("its closure read reaches the curve index through each posting's token, as the lifecycle's does", async () => {
-    const at = MIGRATION.indexOf("  cl AS (", MIGRATION.indexOf("FUNCTION public.posting_truth("));
-    expect(at, "posting_truth's cl CTE was not found").toBeGreaterThan(0);
+    const at = MIGRATION.indexOf("  seen AS (", MIGRATION.indexOf("FUNCTION public.posting_truth("));
+    expect(at, "posting_truth's closure read (the seen CTE) was not found").toBeGreaterThan(0);
     let depth = 0;
     let cte = "";
     for (let j = MIGRATION.indexOf("(", at); j < MIGRATION.length; j++) {
@@ -311,7 +420,7 @@ describe("posting_truth reads ten ids at most, and by the board first", () => {
     await db.exec("SET enable_seqscan = off");
     try {
       const { rows } = await db.query<{ "QUERY PLAN": string }>(
-        `EXPLAIN WITH ids AS (SELECT DISTINCT x AS jid FROM unnest($1::text[]) AS x) SELECT * FROM (${cte}) cl`,
+        `EXPLAIN WITH ids AS (SELECT DISTINCT x AS jid FROM unnest($1::text[]) AS x) SELECT * FROM (${cte}) seen`,
         [["greenhouse:board7:7", "greenhouse:board9:nope"]],
       );
       const plan = rows.map((r) => r["QUERY PLAN"]).join("\n");
@@ -321,5 +430,93 @@ describe("posting_truth reads ten ids at most, and by the board first", () => {
     } finally {
       await db.exec("RESET enable_seqscan");
     }
+  });
+});
+
+// ── Account and the check, over the same rows ────────────────────────────────
+const U1 = "00000000-0000-4000-8000-0000000000a1";
+/** Ids Account's tracker can hold: each has a row or a closure. */
+const TRACKED = [
+  "greenhouse:fullco:1", "greenhouse:fullco:2", "greenhouse:fullco:3", "greenhouse:fullco:4", "greenhouse:fullco:5",
+  "greenhouse:fullco:6", "greenhouse:fullco:7", "greenhouse:fullco:sus", "greenhouse:fullco:sup",
+  "greenhouse:fullco:back", "greenhouse:fullco:twice",
+];
+/** What each check state may be called on Account (get_application_lifecycle's outcomes). */
+const SAME_THING: Record<string, string[]> = {
+  open: ["still_standing", "came_down_relisted"],
+  going_down: ["going_down"],
+  closed: ["came_down", "came_down_relisted"],
+  gone_unconfirmed: ["not_observed"],
+};
+
+type Lc = { job_id: string; outcome: string; closed_at: string | null; relisted: boolean };
+async function lifecycle(): Promise<Map<string, Lc>> {
+  await db.exec(`SELECT set_config('request.jwt.claim.sub', '${U1}', false), set_config('request.jwt.claim.role', 'authenticated', false); SET ROLE authenticated;`);
+  try {
+    const { rows } = await db.query<Lc>("SELECT job_id, outcome, closed_at, relisted FROM public.get_application_lifecycle($1::text[])", [TRACKED]);
+    return new Map(rows.map((r) => [r.job_id, r]));
+  } finally {
+    await db.exec("RESET ROLE; SELECT set_config('request.jwt.claim.sub', '', false), set_config('request.jwt.claim.role', '', false);");
+  }
+}
+const disagreements = (lc: Map<string, Lc>): string[] => TRACKED.flatMap((id) => {
+  const t = T.get(id)!;
+  const o = lc.get(id)?.outcome ?? "(no answer)";
+  return (SAME_THING[t.state] ?? []).includes(o) ? [] : [`${id}: check ${t.state}, Account ${o}`];
+});
+
+let before: Map<string, Lc>;
+let after: Map<string, Lc>;
+beforeAll(async () => {
+  await db.exec(LIFECYCLE_PRE);
+  await db.exec(`INSERT INTO public.user_applications (user_id, company, job_id) SELECT '${U1}', 'Full Co', x FROM unnest(ARRAY['${TRACKED.join("','")}']) AS x;`);
+  before = await lifecycle();
+  await db.exec(LIFECYCLE_M16);
+  after = await lifecycle();
+}, 120_000);
+
+describe("Account and the check say the same thing happened (pglite)", () => {
+  it("every tracked id: the check's state and Account's outcome name the same event", () => {
+    expect(after.size).toBe(TRACKED.length);
+    expect(disagreements(after)).toEqual([]);
+  });
+
+  it("the id that came back and is going down again: going_down on both, came back on both, no closure date on Account", () => {
+    expect(after.get("greenhouse:fullco:back")).toMatchObject({ outcome: "going_down", closed_at: null, relisted: true });
+    expect(T.get("greenhouse:fullco:back")!.relisted).toEqual({ sameIdCameBack: true });
+  });
+
+  it("a closure the collector did not count, with no row: Account says not_observed, the check gone_unconfirmed", () => {
+    for (const id of ["greenhouse:fullco:sus", "greenhouse:fullco:sup"]) {
+      expect(after.get(id)!.outcome, id).toBe("not_observed");
+      expect(T.get(id)!.state, id).toBe("gone_unconfirmed");
+    }
+  });
+
+  it("teeth: before M16 Account answered the came-back id with its old takedown, which it then stores for good", () => {
+    expect(before.get("greenhouse:fullco:back")).toMatchObject({ outcome: "came_down", relisted: false });
+    expect(before.get("greenhouse:fullco:back")!.closed_at).not.toBeNull();
+    expect(disagreements(before)).toEqual(["greenhouse:fullco:back: check going_down, Account came_down"]);
+  });
+});
+
+describe("teeth: the witnesses the review found missing are load-bearing", () => {
+  const rowOf = async (id: string) => (await rowsFor([id]))[0];
+
+  it("without the untrusted-closure witness, a posting we listed and saw go reads as one we never had", async () => {
+    const r = await rowOf("greenhouse:fullco:sup");
+    expect(truthsOf([r.pt_id], [{ ...r, pt_untrusted_gone_at: null, pt_untrusted_kind: null }], OPTS)[0].state).toBe("not_carried");
+  });
+
+  it("without the trusted count, a posting closed twice never says it came back", async () => {
+    const r = await rowOf("greenhouse:fullco:twice");
+    expect(truthsOf([r.pt_id], [{ ...r, pt_closures: 1 }], OPTS)[0].relisted).toEqual({ sameIdCameBack: false });
+  });
+
+  it("reading the closure before the row answers the came-back id with its old date", async () => {
+    const r = await rowOf("greenhouse:fullco:back");
+    // The row as a closure-first reader sees it: the missing stamp ignored.
+    const closureFirst = truthsOf([r.pt_id], [{ ...r, pt_row_found: false, pt_missing_since: null }], OPTS)[0];
+    expect(closureFirst).toMatchObject({ state: "closed", relisted: { sameIdCameBack: false } });
   });
 });

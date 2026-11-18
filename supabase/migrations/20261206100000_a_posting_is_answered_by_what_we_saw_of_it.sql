@@ -9,13 +9,20 @@
 --      our own records hold. It is built on get_application_lifecycle's
 --      token-first closure read (20261009131000, S11-024): a posting id is
 --      source:token:native, so its token reaches job_board_closures_curve_idx
---      and the id filters that board; superseded and suspect closures are not
---      takedowns. Beside it: the posting row (listed = not stamped missing;
---      inside the 30-day serving window), the aged-out tombstone, and the
---      board's read (its observability bucket, its newest read and that
---      read's state, and whether its last stated total is Workday's 2,000
---      cap). No title is compared with any other
---      posting: a re-post is answered only when the SAME id came back.
+--      and the id filters that board. Every closure of the id is read once.
+--      A takedown is a closure the collector trusted (never superseded, never
+--      suspect): the newest one and how many there are. The newest closure
+--      the collector did NOT trust is returned apart, with its flag, because
+--      the collector deletes a posting's row as soon as it logs ANY closure:
+--      without it, a posting we listed and saw go would read as one we never
+--      had. Beside them: the posting row (listed = not stamped missing;
+--      inside the 30-day serving window; when it was stamped missing), the
+--      aged-out tombstone, and the board's read (its observability bucket,
+--      its newest read and that read's state, and whether its last stated
+--      total is Workday's 2,000 cap). No title is compared with any other
+--      posting: a re-post is answered only when the SAME id came back, which
+--      the shaper reads from these rows (a row or a tombstone newer than a
+--      trusted closure, or two trusted closures).
 --      The age is the employer's date only. Our discovery stamp is not read
 --      at all, so no age here can be built from it (M16's class of defect).
 --      A closure the collector dated by the lap that could first see it
@@ -303,6 +310,9 @@ RETURNS TABLE (
   pt_has_closure boolean,
   pt_closed_at timestamptz,
   pt_seen_gone_at timestamptz,
+  pt_closures integer,
+  pt_untrusted_gone_at timestamptz,
+  pt_untrusted_kind text,
   pt_aged_at timestamptz,
   pt_board_known boolean,
   pt_bucket text,
@@ -321,21 +331,40 @@ AS $$
     FROM unnest(p_ids[1:10]) AS x
     WHERE x IS NOT NULL AND x <> ''
   ),
-  cl AS (
+  seen AS (
     -- get_application_lifecycle's closure read, by the board first: the
     -- token reaches job_board_closures_curve_idx and the id filters that
-    -- board. A takedown is a closure the collector trusted: never superseded,
-    -- never stamped suspect.
-    SELECT DISTINCT ON (c.posting_id)
-      c.posting_id, c.closed_at, c.posted_at, c.source, c.company_token, c.title, c.company,
-      c.absence_basis
+    -- board. Every closure of these ids, read once, with the collector's
+    -- verdict on it.
+    SELECT c.posting_id, c.closed_at, c.posted_at, c.source, c.title, c.company, c.absence_basis,
+           (COALESCE(c.superseded, false) OR COALESCE(c.suspect, false)) AS untrusted,
+           CASE WHEN COALESCE(c.suspect, false) THEN 'suspect'
+                WHEN COALESCE(c.superseded, false) THEN 'superseded' END AS untrusted_kind
     FROM ids
     JOIN public.job_board_closures c
       ON c.company_token = split_part(ids.jid, ':', 2)
      AND c.posting_id = ids.jid
-    WHERE NOT COALESCE(c.superseded, false)
-      AND NOT COALESCE(c.suspect, false)
-    ORDER BY c.posting_id, c.closed_at DESC
+  ),
+  cl AS (
+    -- A takedown is a closure the collector trusted: never superseded, never
+    -- stamped suspect. The newest, and how many the id has had.
+    SELECT DISTINCT ON (s.posting_id)
+      s.posting_id, s.closed_at, s.posted_at, s.source, s.title, s.company, s.absence_basis,
+      (count(*) OVER (PARTITION BY s.posting_id))::integer AS n
+    FROM seen s
+    WHERE NOT s.untrusted
+    ORDER BY s.posting_id, s.closed_at DESC
+  ),
+  ucl AS (
+    -- The newest closure the collector did not trust: gone at a read while a
+    -- posting of the same title stayed listed (superseded), or gone with so
+    -- much of the board at once that the read may have been short (suspect).
+    -- Not a takedown, but the posting was listed and is no longer.
+    SELECT DISTINCT ON (s.posting_id)
+      s.posting_id, s.closed_at, s.posted_at, s.source, s.title, s.company, s.untrusted_kind
+    FROM seen s
+    WHERE s.untrusted
+    ORDER BY s.posting_id, s.closed_at DESC
   ),
   liv AS (
     -- Listed: not stamped missing at our last read. In the window: the
@@ -393,21 +422,24 @@ AS $$
   )
   SELECT
     ids.jid,
-    lower(COALESCE(NULLIF(liv.source, ''), NULLIF(cl.source, ''), split_part(ids.jid, ':', 1))),
+    lower(COALESCE(NULLIF(liv.source, ''), NULLIF(cl.source, ''), NULLIF(ucl.source, ''), split_part(ids.jid, ':', 1))),
     split_part(ids.jid, ':', 2),
-    COALESCE(liv.title, cl.title),
-    COALESCE(liv.company, cl.company),
+    COALESCE(liv.title, cl.title, ucl.title),
+    COALESCE(liv.company, cl.company, ucl.company),
     (liv.id IS NOT NULL),
     COALESCE(liv.listed, false),
     COALESCE(liv.in_window, false),
     liv.missing_since,
     -- The employer's date, from whichever record of the posting holds it.
-    COALESCE(liv.posted_at, cl.posted_at, aged.posted_at),
+    COALESCE(liv.posted_at, cl.posted_at, ucl.posted_at, aged.posted_at),
     (cl.posting_id IS NOT NULL),
     -- A takedown's date, except where the collector dated it by the lap that
     -- could first see it: that date is when we saw it gone, said apart.
-    CASE WHEN cl.absence_basis IS DISTINCT FROM 'lap_backfill' THEN cl.closed_at END,
-    CASE WHEN cl.absence_basis IS NOT DISTINCT FROM 'lap_backfill' THEN cl.closed_at END,
+    CASE WHEN cl.posting_id IS NOT NULL AND cl.absence_basis IS DISTINCT FROM 'lap_backfill' THEN cl.closed_at END,
+    CASE WHEN cl.posting_id IS NOT NULL AND cl.absence_basis IS NOT DISTINCT FROM 'lap_backfill' THEN cl.closed_at END,
+    COALESCE(cl.n, 0),
+    ucl.closed_at,
+    ucl.untrusted_kind,
     aged.aged_at,
     COALESCE(b.known, false),
     b.bucket,
@@ -416,6 +448,7 @@ AS $$
     b.capped
   FROM ids
   LEFT JOIN cl ON cl.posting_id = ids.jid
+  LEFT JOIN ucl ON ucl.posting_id = ids.jid
   LEFT JOIN liv ON liv.id = ids.jid
   LEFT JOIN aged ON aged.id = ids.jid
   LEFT JOIN board b ON b.src = split_part(ids.jid, ':', 1) AND b.tok = split_part(ids.jid, ':', 2)
@@ -424,8 +457,9 @@ $$;
 
 COMMENT ON FUNCTION public.posting_truth(text[]) IS
   'What our records hold of up to ten posting ids, by id only: the posting row (listed, inside the 30-day window), the '
-  'newest trusted closure (lap_backfill dates returned apart as pt_seen_gone_at), the aged-out tombstone, the employer''s '
-  'date, and the board''s read (bucket, newest read and its state, Workday cap). Built on '
+  'newest trusted closure (lap_backfill dates returned apart as pt_seen_gone_at) and how many trusted closures the id has '
+  'had, the newest closure the collector did not trust (superseded or suspect) with its flag, the aged-out tombstone, the '
+  'employer''s date, and the board''s read (bucket, newest read and its state, Workday cap). Built on '
   'get_application_lifecycle''s token-first closure read. Service role only. 20261206100000.';
 
 -- ── 6. who may call ──────────────────────────────────────────────────────────

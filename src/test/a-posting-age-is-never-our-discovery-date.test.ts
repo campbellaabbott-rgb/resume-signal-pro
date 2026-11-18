@@ -22,6 +22,9 @@
  *     the employer's date, never negative; a lap-dated closure still keeps
  *     its row with no duration; the re-post probe answers as before; anon is
  *     refused and a signed-in account is answered.
+ *   - The same id, come back after its takedown and stamped missing again,
+ *     is going down with no duration and no closure date, as the check says
+ *     (20261009131000 gave it the old takedown, and Account stored it).
  * The teeth: the pre-fix definition, run over the same rows, gives the
  * undated posting forty days from our first sighting, and the static checks
  * catch it in that file's text.
@@ -108,7 +111,8 @@ describe("no age is built from our discovery date (the text)", () => {
     const row: PostingTruthRow = {
       pt_id: "greenhouse:acme:1", pt_source: "greenhouse", pt_token: "acme", pt_title: "Clerk", pt_company: "Acme",
       pt_row_found: true, pt_listed: true, pt_in_window: true, pt_missing_since: null, pt_posted_at: null,
-      pt_has_closure: false, pt_closed_at: null, pt_seen_gone_at: null, pt_aged_at: null, pt_board_known: true,
+      pt_has_closure: false, pt_closed_at: null, pt_seen_gone_at: null, pt_closures: 0, pt_untrusted_gone_at: null,
+      pt_untrusted_kind: null, pt_aged_at: null, pt_board_known: true,
       pt_bucket: "full_read", pt_read_at: "2026-12-06T09:00:00Z", pt_read_state: "ok", pt_capped: false,
     };
     const opts = { now, withheldSources: [], withheldReason: "withheld" };
@@ -146,23 +150,26 @@ const ROWS = `
     ('gh:acme:dated', 'acme', 'Analyst', now() - interval '5 days', now() - interval '1 day', NULL),
     ('gh:acme:future', 'acme', 'Porter', now() + interval '1 day', now() - interval '1 hour', NULL),
     -- served again under a new id, undated, first seen after the closure below.
-    ('gh:acme:writer-again', 'acme', 'Writer', NULL, now() - interval '1 day', NULL);
+    ('gh:acme:writer-again', 'acme', 'Writer', NULL, now() - interval '1 day', NULL),
+    -- the same id, listed again after its takedown below, missing again.
+    ('gh:acme:back', 'acme', 'Mason', now() - interval '10 days', now() - interval '10 days', now() - interval '3 hours');
   INSERT INTO public.job_board_closures (posting_id, closed_at, posted_at, first_seen, company_token, title, absence_basis) VALUES
     ('gh:acme:closed-undated', now() - interval '2 days', NULL, now() - interval '20 days', 'acme', 'Baker', 'full_read'),
     ('gh:acme:closed-dated', now() - interval '2 days', now() - interval '12 days', now() - interval '3 days', 'acme', 'Cook', 'full_read'),
     ('gh:acme:lap', now() - interval '2 days', now() - interval '12 days', now() - interval '12 days', 'acme', 'Chef', 'lap_backfill'),
-    ('gh:acme:writer', now() - interval '3 days', now() - interval '20 days', now() - interval '20 days', 'acme', 'Writer', 'full_read');
+    ('gh:acme:writer', now() - interval '3 days', now() - interval '20 days', now() - interval '20 days', 'acme', 'Writer', 'full_read'),
+    ('gh:acme:back', now() - interval '20 days', now() - interval '30 days', now() - interval '30 days', 'acme', 'Mason', 'full_read');
   INSERT INTO public.user_applications (user_id, company, job_id)
     SELECT '${U1}', 'Acme', x FROM unnest(ARRAY['gh:acme:undated', 'gh:acme:dated', 'gh:acme:future', 'gh:acme:closed-undated',
-      'gh:acme:closed-dated', 'gh:acme:lap', 'gh:acme:writer']) AS x;
+      'gh:acme:closed-dated', 'gh:acme:lap', 'gh:acme:writer', 'gh:acme:back']) AS x;
 `;
-const IDS = ["gh:acme:undated", "gh:acme:dated", "gh:acme:future", "gh:acme:closed-undated", "gh:acme:closed-dated", "gh:acme:lap", "gh:acme:writer"];
+const IDS = ["gh:acme:undated", "gh:acme:dated", "gh:acme:future", "gh:acme:closed-undated", "gh:acme:closed-dated", "gh:acme:lap", "gh:acme:writer", "gh:acme:back"];
 
-type Lc = { job_id: string; outcome: string; days_standing: string | null; closed_at_is_observation: boolean };
+type Lc = { job_id: string; outcome: string; days_standing: string | null; closed_at_is_observation: boolean; closed_at: unknown; relisted: boolean };
 async function lifecycle(db: PGlite): Promise<Map<string, Lc>> {
   await db.exec(`SELECT set_config('request.jwt.claim.sub', '${U1}', false), set_config('request.jwt.claim.role', 'authenticated', false); SET ROLE authenticated;`);
   try {
-    const { rows } = await db.query<Lc>("SELECT job_id, outcome, days_standing, closed_at_is_observation FROM public.get_application_lifecycle($1::text[])", [IDS]);
+    const { rows } = await db.query<Lc>("SELECT job_id, outcome, days_standing, closed_at_is_observation, closed_at, relisted FROM public.get_application_lifecycle($1::text[])", [IDS]);
     return new Map(rows.map((r) => [r.job_id, r]));
   } finally {
     await db.exec("RESET ROLE; SELECT set_config('request.jwt.claim.sub', '', false), set_config('request.jwt.claim.role', '', false);");
@@ -213,7 +220,13 @@ describe("an account row ages from the employer's date (pglite)", () => {
   it("the re-post probe answers as it did", () => {
     expect(before.get("gh:acme:writer")!.outcome).toBe("came_down_relisted");
     expect(after.get("gh:acme:writer")!.outcome).toBe("came_down_relisted");
-    for (const id of IDS) expect(after.get(id)!.outcome, id).toBe(before.get(id)!.outcome);
+    for (const id of IDS.filter((x) => x !== "gh:acme:back")) expect(after.get(id)!.outcome, id).toBe(before.get(id)!.outcome);
+  });
+
+  it("the same id come back and missing again is going down: no old closure date, no duration, and it came back", () => {
+    expect(before.get("gh:acme:back"), "teeth: the pre-fix answer was the old takedown").toMatchObject({ outcome: "came_down", relisted: false });
+    expect(days(before, "gh:acme:back")).toBeCloseTo(10, 0);
+    expect(after.get("gh:acme:back")).toMatchObject({ outcome: "going_down", closed_at: null, days_standing: null, relisted: true, closed_at_is_observation: false });
   });
 
   it("refuses anon and answers a signed-in account", async () => {

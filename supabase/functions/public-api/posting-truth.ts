@@ -7,25 +7,37 @@
  * prints, and it is pure: no client, no clock but the one handed in, so the
  * Node suite runs it exactly as Deno does.
  *
- * THE STATES, from what our own records hold, by id only:
+ * THE STATES, from what our own records hold, by id only. The newest record
+ * decides: the collector deletes a posting's row the moment it logs any
+ * closure, so a row (or a tombstone) newer than a closure is the same id come
+ * back, and a closure newer than a row's missing stamp is a row its delete
+ * left behind.
  *   open               listed at our last read and inside the 30-day window.
  *                      Worded by how the board is read: only a board read to
  *                      its end, whose newest read completed, may say the read
  *                      listed the posting (the hiring-record gate's own
  *                      feed-read rule, GD6). Any other board says it is read
  *                      in parts and makes no claim about this posting.
- *   going_down         stamped missing at our last read, no trusted closure.
- *   closed             a trusted closure. A closure the collector could date
- *                      only by the lap that first saw it gone says so.
+ *   going_down         stamped missing at our last read, after any closure.
+ *   closed             a trusted closure is the newest record. A closure the
+ *                      collector could date only by the lap that first saw it
+ *                      gone says so.
+ *   gone_unconfirmed   a closure the collector did not trust (superseded or
+ *                      suspect) is the newest record: the posting was listed
+ *                      and is gone, but we count no takedown and date none
+ *                      (Account's not_observed says the same of it).
  *   aged_out           still advertised when its date passed our window.
  *   not_carried        a board we read, and no record of this id; the
- *                      sentence names the window fence and, where the board
- *                      is read in parts or capped, the part we never read.
+ *                      sentence names the window fence, the closures the
+ *                      collector does not log, and, where the board is read
+ *                      in parts or capped, the part we never read.
  *   board_not_carried  a board we do not read.
  *   withheld           a source or employer this API does not hand on.
  *   unknown_id         not an id we issue.
  * A re-post is answered only when the SAME id came back after a trusted
- * closure. No title is matched against another posting.
+ * closure: a row or tombstone newer than one, a closure we do not count newer
+ * than one, or a second trusted closure. No title is matched against another
+ * posting.
  *
  * THE AGE is the employer's date only (date-classes.ts): our discovery stamp
  * is never read, and a posting with no employer date has no age.
@@ -64,11 +76,15 @@ export const NOT_COMPUTED_YET = "not_computed_yet";
 export const EMPLOYER_SCOPE = "all roles on this board";
 
 export type TruthState =
-  | "open" | "going_down" | "closed" | "aged_out" | "not_carried" | "board_not_carried" | "withheld" | "unknown_id";
+  | "open" | "going_down" | "closed" | "gone_unconfirmed" | "aged_out" | "not_carried" | "board_not_carried"
+  | "withheld" | "unknown_id";
 
 export const TRUTH_STATES: readonly TruthState[] = [
-  "open", "going_down", "closed", "aged_out", "not_carried", "board_not_carried", "withheld", "unknown_id",
+  "open", "going_down", "closed", "gone_unconfirmed", "aged_out", "not_carried", "board_not_carried", "withheld", "unknown_id",
 ];
+
+/** Why the collector did not count a closure as a takedown (job_board_closures.superseded / .suspect). */
+export type UntrustedKind = "superseded" | "suspect";
 
 /** One sentence per case. Placeholders are {{name}}, filled by the gate's fillGateCopy. */
 export const TRUTH_COPY = {
@@ -78,19 +94,23 @@ export const TRUTH_COPY = {
   openInParts: "This board is read in parts; we last read part of it {{ago}}.",
   openInPartsNoRead: "This board is read in parts, and we have no record of when we last read it.",
   openNoRead: "We have no record of when we last read this employer's board, so we do not say when this posting was last listed.",
-  sameIdCameBack: "It came down once before, and this same posting came back.",
+  sameIdCameBack: "It came down before, and this same posting came back.",
   goingDown: "Missing from the employer's system at our last read; we have not yet confirmed it came down.",
   closed: "Came down from the employer's system by {{closedAt}}.",
   closedSeenLate:
     "We first saw it gone from the employer's system on {{seenGoneAt}}; it came down on or before that day.",
+  goneSuperseded:
+    "Our reads found it gone from the employer's board by {{seenGoneAt}}, while a posting with the same title was still listed there, so we do not count it as taken down and give no date for that.",
+  goneSuspect:
+    "Our reads found it gone from the employer's board by {{seenGoneAt}}, along with so much of the board at once that the read may have been incomplete, so we do not count it as taken down and give no date for that.",
   agedOut: "Still advertised by the employer when its own date passed our 30-day window on {{agedAt}}; we have not read it since.",
   agedOutUndated:
     "Still advertised by the employer when it passed our 30-day window on {{agedAt}}; the employer gives it no date, and we have not read it since.",
   agedOutPending: "Still advertised by the employer at our last read, but past our 30-day window, so we no longer list it.",
   notCarriedFullRead:
-    "We have no record of this id on a board we read: it may have closed more than 180 days ago, or we never listed it (dated more than 30 days ago).",
+    "We have no record of this id on a board we read: it may have closed more than 180 days ago, or gone while a posting with the same title stayed listed (we record that once a day for each title), or we never listed it (dated more than 30 days ago).",
   notCarriedInParts:
-    "We have no record of this id on a board we read: it may have closed more than 180 days ago, or we never listed it (dated more than 30 days ago, or past the part of a large board we read).",
+    "We have no record of this id on a board we read: it may have closed more than 180 days ago, or gone while a posting with the same title stayed listed (we record that once a day for each title), or we never listed it (dated more than 30 days ago, or past the part of a large board we read).",
   boardNotCarried: "We don't read this employer's board, so we have no record of this posting.",
   unknownId: "That is not a posting id we issue. Send an id as /v1/jobs returns it: <source>:<company_token>:<external id>.",
 } as const;
@@ -117,9 +137,15 @@ export interface PostingTruthRow {
   pt_in_window: boolean;
   pt_missing_since: string | null;
   pt_posted_at: string | null;
+  /** A trusted closure exists; pt_closed_at or pt_seen_gone_at is the newest one's date. */
   pt_has_closure: boolean;
   pt_closed_at: string | null;
   pt_seen_gone_at: string | null;
+  /** How many trusted closures the id has had. */
+  pt_closures: number | null;
+  /** The newest closure the collector did not trust, and its flag. */
+  pt_untrusted_gone_at: string | null;
+  pt_untrusted_kind: string | null;
   pt_aged_at: string | null;
   pt_board_known: boolean;
   pt_bucket: string | null;
@@ -156,6 +182,8 @@ export interface PostingTruth {
   /** True when the only date we hold is the day we first saw it gone. */
   closedAtIsObservation: boolean;
   agedAt: string | null;
+  /** gone_unconfirmed: when our reads found it gone, and why that is not counted as a takedown. */
+  unconfirmed: { seenGoneAt: string | null; kind: UntrustedKind } | null;
   /** Id-based only: the same id served again after a trusted closure. */
   relisted: { sameIdCameBack: boolean } | null;
 }
@@ -184,7 +212,7 @@ export function parsePostingId(id: unknown): { source: string; token: string; na
 
 const bare = (id: string, state: TruthState, sentence: string, source: string | null, token: string | null): PostingTruth => ({
   id, state, sentence, source, companyToken: token, title: null, company: null, age: null, read: null,
-  closedAt: null, closedAtIsObservation: false, agedAt: null, relisted: null,
+  closedAt: null, closedAtIsObservation: false, agedAt: null, unconfirmed: null, relisted: null,
 });
 
 /**
@@ -250,6 +278,14 @@ function openSentence(read: BoardRead, now: Date): string {
   return ago ? fillGateCopy(TRUTH_COPY.openInParts, { ago }) : TRUTH_COPY.openInPartsNoRead;
 }
 
+const msOf = (iso: string | null | undefined): number => (typeof iso === "string" ? Date.parse(iso) : NaN);
+/** a is strictly later than b; false when either is unknown. */
+const laterThan = (a: string | null | undefined, b: string | null | undefined): boolean => {
+  const x = msOf(a);
+  const y = msOf(b);
+  return Number.isFinite(x) && Number.isFinite(y) && x > y;
+};
+
 /** The answer for one id from its posting_truth row. */
 export function truthFromRow(id: string, row: PostingTruthRow, opts: TruthOptions): PostingTruth {
   const now = opts.now ?? new Date();
@@ -257,42 +293,65 @@ export function truthFromRow(id: string, row: PostingTruthRow, opts: TruthOption
   const source = row.pt_source ?? p?.source ?? null;
   const token = row.pt_token ?? p?.token ?? null;
   const read = boardRead(row);
-  const base = {
-    id, source, companyToken: token, title: row.pt_title ?? null, company: row.pt_company ?? null, read,
-    closedAt: null as string | null, closedAtIsObservation: false, agedAt: null as string | null,
-  };
   const age = postingAge(source, row.pt_posted_at, now);
-  const record = { ...base, age, relisted: { sameIdCameBack: false } };
+  const record = {
+    id, source, companyToken: token, title: row.pt_title ?? null, company: row.pt_company ?? null, read, age,
+    closedAt: null as string | null, closedAtIsObservation: false, agedAt: null as string | null,
+    unconfirmed: null as PostingTruth["unconfirmed"],
+  };
 
-  if (row.pt_row_found && row.pt_listed && row.pt_in_window) {
-    const cameBack = row.pt_has_closure === true;
-    const sentence = openSentence(read, now) + (cameBack ? ` ${TRUTH_COPY.sameIdCameBack}` : "");
-    return { ...record, state: "open", sentence, relisted: { sameIdCameBack: cameBack } };
-  }
+  // The closures, newest of each kind. A trusted one wins a tie.
+  const trustedAt = row.pt_has_closure ? (row.pt_closed_at ?? row.pt_seen_gone_at ?? null) : null;
+  const trusted = trustedAt !== null;
+  const trustedN = trusted ? Math.max(1, Number(row.pt_closures) || 1) : 0;
+  const untrustedAt = row.pt_untrusted_gone_at ?? null;
+  const untrustedNewest = untrustedAt !== null && (!trusted || laterThan(untrustedAt, trustedAt));
+  const newestClosureAt = untrustedNewest ? untrustedAt : trustedAt;
+
+  /** The state, with the same id's return said where a trusted closure came before it. */
+  const said = (state: TruthState, sentence: string, cameBack: boolean, extra: Partial<PostingTruth> = {}): PostingTruth => ({
+    ...record, ...extra, state,
+    sentence: cameBack ? `${sentence} ${TRUTH_COPY.sameIdCameBack}` : sentence,
+    relisted: { sameIdCameBack: cameBack },
+  });
+
+  // A listed row is the newest record there is: a closure deletes the row.
+  if (row.pt_row_found && row.pt_listed && row.pt_in_window) return said("open", openSentence(read, now), trusted);
   if (row.pt_row_found && row.pt_listed) {
-    return { ...record, state: "aged_out", sentence: TRUTH_COPY.agedOutPending, agedAt: row.pt_aged_at ?? null };
+    return said("aged_out", TRUTH_COPY.agedOutPending, trusted, { agedAt: row.pt_aged_at ?? null });
   }
-  if (row.pt_has_closure) {
-    if (row.pt_closed_at) {
-      return { ...record, state: "closed", closedAt: row.pt_closed_at,
-        sentence: fillGateCopy(TRUTH_COPY.closed, { closedAt: dayOf(row.pt_closed_at) ?? "" }) };
-    }
-    return { ...record, state: "closed", closedAt: row.pt_seen_gone_at ?? null, closedAtIsObservation: true,
-      sentence: fillGateCopy(TRUTH_COPY.closedSeenLate, { seenGoneAt: dayOf(row.pt_seen_gone_at) ?? "" }) };
+  // Stamped missing after every closure: the same id came back (if any came
+  // before) and is going down again. Stamped missing before the newest
+  // closure: the row its delete left behind, and the closure is the answer.
+  if (row.pt_row_found && (newestClosureAt === null || laterThan(row.pt_missing_since, newestClosureAt))) {
+    return said("going_down", TRUTH_COPY.goingDown, trusted);
   }
-  if (row.pt_row_found) {
-    return { ...record, state: "going_down", sentence: TRUTH_COPY.goingDown };
-  }
-  if (row.pt_aged_at) {
+  if (row.pt_aged_at && (newestClosureAt === null || laterThan(row.pt_aged_at, newestClosureAt))) {
     const template = age.dateClass === "none" ? TRUTH_COPY.agedOutUndated : TRUTH_COPY.agedOut;
-    return { ...record, state: "aged_out", agedAt: row.pt_aged_at,
-      sentence: fillGateCopy(template, { agedAt: dayOf(row.pt_aged_at) ?? "" }) };
+    return said("aged_out", fillGateCopy(template, { agedAt: dayOf(row.pt_aged_at) ?? "" }), trusted, { agedAt: row.pt_aged_at });
+  }
+  if (untrustedNewest) {
+    const kind: UntrustedKind = row.pt_untrusted_kind === "suspect" ? "suspect" : "superseded";
+    const template = kind === "suspect" ? TRUTH_COPY.goneSuspect : TRUTH_COPY.goneSuperseded;
+    return said("gone_unconfirmed", fillGateCopy(template, { seenGoneAt: dayOf(untrustedAt) ?? "" }), trusted,
+      { unconfirmed: { seenGoneAt: untrustedAt, kind } });
+  }
+  if (trusted) {
+    // A row is deleted at its closure, so a second trusted closure needed the
+    // same id listed again in between.
+    const cameBack = trustedN >= 2;
+    if (row.pt_closed_at) {
+      return said("closed", fillGateCopy(TRUTH_COPY.closed, { closedAt: dayOf(row.pt_closed_at) ?? "" }), cameBack,
+        { closedAt: row.pt_closed_at });
+    }
+    return said("closed", fillGateCopy(TRUTH_COPY.closedSeenLate, { seenGoneAt: dayOf(row.pt_seen_gone_at) ?? "" }), cameBack,
+      { closedAt: row.pt_seen_gone_at ?? null, closedAtIsObservation: true });
   }
   if (row.pt_board_known) {
     const sentence = read.bucket === FULL_READ_BUCKET && read.capped !== true
       ? TRUTH_COPY.notCarriedFullRead
       : TRUTH_COPY.notCarriedInParts;
-    return { ...base, state: "not_carried", sentence, age: null, relisted: null };
+    return { ...record, state: "not_carried", sentence, age: null, relisted: null };
   }
   return { ...bare(id, "board_not_carried", TRUTH_COPY.boardNotCarried, source, token) };
 }
