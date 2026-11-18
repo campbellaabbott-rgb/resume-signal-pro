@@ -5973,7 +5973,7 @@
     "draftButton": "Rédiger les questions de cette candidature",
     "draftAgain": "Rédiger à nouveau",
     "failed": "Impossible de rédiger les réponses pour le moment.",
-    "inferredIntro": "Questions probables pour ce poste (cet ATS ne publie pas son formulaire), fondées sur votre CV. Relisez-les avant de les coller.",
+    "inferredIntro": "Questions probables pour ce poste (nous n'avons pas lu le formulaire de cet employeur), fondées sur votre CV. Relisez-les avant de les coller.",
     "limit": "Vous avez utilisé ce quota pour l'instant. Veuillez réessayer plus tard.",
     "limitHours": "Vous avez atteint la limite de rédaction pour l'instant. Veuillez réessayer dans environ {{hours}} heures.",
     "limitMinutes": "Vous avez atteint la limite de rédaction pour l'instant. Veuillez réessayer dans environ {{minutes}} minutes.",

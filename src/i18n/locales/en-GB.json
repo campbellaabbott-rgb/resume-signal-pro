@@ -5918,7 +5918,7 @@
     "draftButton": "Draft this application's questions",
     "draftAgain": "Draft again",
     "failed": "Couldn't draft answers right now.",
-    "inferredIntro": "Likely questions for this role (this ATS doesn't publish its form) — grounded in your CV. Review before you paste.",
+    "inferredIntro": "Likely questions for this role (we did not read this employer's form) — grounded in your CV. Review before you paste.",
     "limit": "You've used this allowance for now. Please try again later.",
     "limitHours": "You've reached the drafting limit for now. Please try again in about {{hours}} hours.",
     "limitMinutes": "You've reached the drafting limit for now. Please try again in about {{minutes}} minutes.",
