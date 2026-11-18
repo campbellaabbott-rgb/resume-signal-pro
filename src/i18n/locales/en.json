@@ -5728,7 +5728,7 @@
     "startNewPurchase": "Buying for a different role? Start a new purchase.",
     "boughtHereTitle": "3. Your experience section — already bought on this device",
     "openYourLink": "To see or generate it, open the link in your purchase email. You won't be charged again.",
-    "noLongerSoldBody": "Freelance Boost and Transition Pro are no longer sold, and they are not part of Pro. If you bought one, open the link in your purchase email: it keeps working for 90 days. A free account now writes a tailored résumé, cover letter and interview prep for a job each day.",
+    "noLongerSoldBody": "Freelance Boost and Transition Pro are no longer sold, and they are not part of Pro. If you bought one, open the link in your purchase email: it keeps working. A free account now writes a tailored résumé, cover letter and interview prep for a job each day.",
     "noLongerSoldMeta": "Freelance Boost and Transition Pro are no longer sold. If you bought one, the link in your purchase email keeps working.",
     "noLongerSoldTitle": "Freelance Boost is no longer sold",
     "regenerate": "Regenerate",
@@ -5938,7 +5938,7 @@
     "autoRenewTitle": "Please tick the renewal box",
     "fairUseTitle": "You've reached Pro's fair-use limit",
     "planUnpaidTitle": "Your plan is not paid yet",
-    "retiredBody": "This product is no longer sold, and nothing was charged. If you bought it before, your link keeps working for 90 days.",
+    "retiredBody": "This product is no longer sold, and nothing was charged. If you bought it before, your link keeps working.",
     "retiredTitle": "No longer sold"
   },
   "consent": {

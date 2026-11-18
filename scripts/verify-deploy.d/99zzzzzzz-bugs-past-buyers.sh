@@ -38,7 +38,12 @@
 #       file byte for byte, and _shared/paid-session.ts is untouched;
 #   O   the owner-gated keys (S14X-143, S14X-225) print INFO owner pending
 #       until docs/deploy-ledger.json reservations['bug-round'].ownerDecided
-#       names them; then each judges what its decision ships.
+#       names them; then each judges what its decision ships. S14X-225's
+#       yes and S14X-143's B ship in round B: their FAILs wait for round
+#       B's paste (the send-product-email build), and before it each line is
+#       INFO. B's build lines ask each function that bundles product-cuts.ts
+#       for its own round B build, so round A's builds, which still carry the
+#       old sentence, never pass them.
 #
 # WHAT THIS SECTION CANNOT SEE: every write the lane changed needs a paid
 # order, a model call or the service role. Those are proven on the shipped
@@ -57,13 +62,23 @@ vdpb_build() {
 VDPB_FNS="generate-keyword-fix generate-cover-letter generate-premium-package generate-career-snapshot generate-graduate-gameplan generate-ats-defense generate-freelance-boost admin-regenerate-delivery verify-product-purchase send-product-email"
 VDPB_NEW=""
 VDPB_OLD=""
+VDPB_SPE=""
 for VDPB_F in $VDPB_FNS; do
   VDPB_H=$(vdpb_build "$VDPB_F")
+  [ "$VDPB_F" = send-product-email ] && VDPB_SPE="$VDPB_H"
   if [ -n "$VDPB_H" ] && build_ge "$VDPB_F" "$VDPB_H" 2026-11-12 1; then VDPB_NEW="$VDPB_NEW $VDPB_F=$VDPB_H"
   else VDPB_OLD="$VDPB_OLD $VDPB_F=${VDPB_H:-none}"; fi
 done
 VDPB_LIVE=0
 [ -n "$VDPB_NEW" ] && VDPB_LIVE=1
+# Round B's paste. The owner's answers of 2026-11-18 (S14X-225 yes, S14X-143
+# B) ship in round B, not in round A, whose builds above are already live.
+# Round B restamps send-product-email (it bundles _shared/product-cuts.ts)
+# and applies its migrations before its functions, so once send-product-email
+# serves round B's build the owner lines below are judged; before that they
+# print INFO (not pasted yet), never a FAIL on round A's live builds.
+VDPB_RB=0
+[ -n "$VDPB_SPE" ] && build_ge send-product-email "$VDPB_SPE" 2026-11-13 1 && VDPB_RB=1
 for VDPB_P in $VDPB_NEW; do echo "PASS  B ${VDPB_P%%=*} preflight x-fn-build = ${VDPB_P#*=} (2026-11-12.1 or later)"; done
 for VDPB_P in $VDPB_OLD; do
   VDPB_F=${VDPB_P%%=*}; VDPB_H=${VDPB_P#*=}
@@ -208,11 +223,15 @@ case "$VDPB_O143" in
     if grep -qE 'pastBuyers:.*PAST_BUYER_DAYS' supabase/functions/_shared/product-cuts.ts 2>/dev/null; then echo "FAIL  S14X-143 decided ($VDPB_O143), but _shared/product-cuts.ts still promises the link for PAST_BUYER_DAYS days in a pastBuyers sentence"
     elif ! grep -qE 'pastBuyers:' supabase/functions/_shared/product-cuts.ts 2>/dev/null; then echo "FAIL  S14X-143 decided ($VDPB_O143), but _shared/product-cuts.ts has no pastBuyers sentence to judge"
     else echo "PASS  S14X-143 decided ($VDPB_O143): no cut-product sentence promises a day count nothing enforces"; fi
-    for VDPB_F in create-product-checkout create-scan-pack-checkout; do
+    # Each function that bundles product-cuts.ts, at the build that carries
+    # the new sentence: round A's 2026-11-12.1 and the owner branch's
+    # create-product-checkout 2026-11-18.1 still name the day count.
+    for VDPB_P in create-product-checkout:2026-11-18:2 create-scan-pack-checkout:2026-11-13:1 send-product-email:2026-11-13:1; do
+      VDPB_F=${VDPB_P%%:*}; VDPB_R=${VDPB_P#*:}; VDPB_D=${VDPB_R%%:*}; VDPB_N=${VDPB_R#*:}
       VDPB_H=$(vdpb_build "$VDPB_F")
-      if [ -n "$VDPB_H" ] && build_ge "$VDPB_F" "$VDPB_H" 2026-11-12 1; then echo "PASS  S14X-143 $VDPB_F preflight x-fn-build = $VDPB_H (2026-11-12.1 or later: it answers the new sentence)"
-      elif [ "$VDPB_LIVE" = 1 ]; then echo "FAIL  S14X-143 $VDPB_F preflight x-fn-build = ${VDPB_H:-none} while the lane's functions serve 2026-11-12.1 (want 2026-11-12.1 or later: it bundles product-cuts.ts)"
-      else echo "INFO  S14X-143 $VDPB_F preflight x-fn-build = ${VDPB_H:-none}: not pasted yet"; fi
+      if [ -n "$VDPB_H" ] && build_ge "$VDPB_F" "$VDPB_H" "$VDPB_D" "$VDPB_N"; then echo "PASS  S14X-143 $VDPB_F preflight x-fn-build = $VDPB_H ($VDPB_D.$VDPB_N or later: it answers the new sentence)"
+      elif [ "$VDPB_RB" = 1 ]; then echo "FAIL  S14X-143 $VDPB_F preflight x-fn-build = ${VDPB_H:-none} while send-product-email serves $VDPB_SPE: round B is pasted (want $VDPB_F.$VDPB_D.$VDPB_N or later: it bundles product-cuts.ts)"
+      else echo "INFO  S14X-143 $VDPB_F preflight x-fn-build = ${VDPB_H:-none}: round B, which carries the new sentence, is not pasted yet (want $VDPB_D.$VDPB_N or later)"; fi
     done;;
   *) echo "FAIL  S14X-143 ownerDecided reads '$VDPB_O143', neither A (enforce) nor B (drop the promise): nothing says what must ship";;
 esac
@@ -223,7 +242,7 @@ else
   VDPB_DIGEST=$(node -e 'let j;try{j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))}catch{process.stdout.write("UNREADABLE");process.exit(0)}if(!Array.isArray(j)){process.stdout.write("UNREADABLE");process.exit(0)}process.stdout.write(j.filter((r)=>r&&/^send-agent-digest(-morning)?$/.test(r.ch_jobname)).map((r)=>r.ch_jobname).join(" "))' /tmp/vd_bpb_cron.json)
   if [ "$VDPB_DIGEST" = UNREADABLE ]; then echo "FAIL  S14X-225 decided ($VDPB_O225), but get_cron_health did not answer a list, so the digest jobs cannot be judged"
   elif [ -z "$VDPB_DIGEST" ]; then echo "PASS  S14X-225 decided ($VDPB_O225): neither send-agent-digest nor send-agent-digest-morning is scheduled"
-  elif [ "$VDPB_LIVE" = 1 ]; then echo "FAIL  S14X-225 decided ($VDPB_O225), but get_cron_health still lists $VDPB_DIGEST while the lane's functions serve 2026-11-12.1"
-  else echo "INFO  S14X-225 decided ($VDPB_O225); get_cron_health still lists $VDPB_DIGEST: the round has not pasted"; fi
+  elif [ "$VDPB_RB" = 1 ]; then echo "FAIL  S14X-225 decided ($VDPB_O225), but get_cron_health still lists $VDPB_DIGEST while send-product-email serves $VDPB_SPE: round B is pasted, so 20261112153000 did not apply"
+  else echo "INFO  S14X-225 decided ($VDPB_O225); get_cron_health still lists $VDPB_DIGEST: round B, which carries 20261112153000, is not pasted yet (send-product-email serves ${VDPB_SPE:-none}; judged once it serves 2026-11-13.1)"; fi
 fi
 rm -f /tmp/vd_bpb_cron.json

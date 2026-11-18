@@ -265,6 +265,24 @@ describe("the bug round public-api section", () => {
     expect(fails(r.lines), "a decision is judged only once the round is live").toEqual([]);
   });
 
+  it("an owner who kept UKG, ADP and Breezy is judged on /v1 still handing them on, never as a withhold", () => {
+    // 2026-11-18 the owner kept them (no letters will be sent). Before this
+    // case the judge read ANY recorded choice as withhold, so recording
+    // "keep" would have printed a FAIL against the owner's own decision.
+    const kept = { "OD14-REDIST-2": "keep" };
+    let r = run(routes(after()), { ownerDecided: kept });
+    expect(has(r.lines, /^PASS {2}OD14-REDIST-2 \(keep\) \/v1 still hands on ukg, adp and breezy/), r.out).toBe(true);
+    expect(r.lines.some((l) => /^FAIL {2}OD14-REDIST-2/.test(l)), r.out).toBe(false);
+    // TEETH: a build that withholds one of them anyway fails the kept decision.
+    const w = after();
+    w.index = { restrictions: { excludedSources: ["usajobs", "smartrecruiters", "breezy"], reason: NEW_REASON }, modes: (after().index as { modes?: unknown }).modes };
+    r = run(routes(w), { ownerDecided: kept });
+    expect(has(r.lines, /^FAIL {2}OD14-REDIST-2 \(keep\) \/v1 withholds breezy although the owner kept them/), r.out).toBe(true);
+    // A choice naming neither is reported, not judged.
+    r = run(routes(after()), { ownerDecided: { "OD14-REDIST-2": "later" } });
+    expect(has(r.lines, /^INFO {2}OD14-REDIST-2 recorded as "later"/), r.out).toBe(true);
+  });
+
   it("sends only OPTIONS and GETs, and job-board list reads under the probe budget, and never prints a key", () => {
     for (const w of [before(), after()]) {
       const { calls, out } = run(routes(w), { fresh: true });

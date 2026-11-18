@@ -1,0 +1,1 @@
+SELECT public._mig_exec(sql) FROM public._mig_stage WHERE name = '20261112195000_the_scan_floor_covers_every_band.sql';

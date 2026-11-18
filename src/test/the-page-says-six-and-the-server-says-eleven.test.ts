@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { MCP_TOOLS, MCP_HOSTS, MCP_FORM_VENDORS, MCP_FORM_VENDORS_AFTER_DEPLOY } from "../config/mcp-tools";
+import { MCP_TOOLS, MCP_HOSTS, MCP_FORM_VENDORS, MCP_FORM_VENDORS_AFTER_DEPLOY, MCP_FORM_NOT_READ_HERE, MCP_WITHHELD_SOURCES } from "../config/mcp-tools";
 import { FORM_READER_VENDORS } from "../../supabase/functions/_shared/application-form";
 import { SENDABLE_VENDOR_KEYS, SENDABLE_VENDOR_LABELS } from "../config/sendable-vendors";
+
+/**
+ * The shared readers the connector uses: none for a system whose postings it
+ * withholds (MCP_WITHHELD_SOURCES), and none it stopped (OD14-ASHBY-1; pinned
+ * to agent-mcp's below).
+ */
+const CONNECTOR_READERS = FORM_READER_VENDORS.filter((v) => !MCP_WITHHELD_SOURCES.includes(v) && !MCP_FORM_NOT_READ_HERE.includes(v));
 
 /**
  * THE /agents PAGE DESCRIBED A SERVER THAT DID NOT EXIST.
@@ -222,13 +229,16 @@ describe("the page says six and the server says eleven", () => {
     const realQ = /realQuestions:\s*true/;
     const deno = [...APPLY.matchAll(/\n\s*([a-z0-9_]+):\s*\{[^}]*\}/g)].filter((m) => realQ.test(m[0])).map((m) => m[1]).sort();
     expect(deno.length, "no real-question vendor parsed from apply-automation.ts").toBeGreaterThan(2);
-    // Every vendor whose real questions the board harvests is one the page names.
-    for (const k of deno) expect(MCP_FORM_VENDORS.map((v) => v.key), k).toContain(k);
+    // Every vendor whose real questions the board harvests is one the page
+    // names, unless the connector withholds its postings or stopped its reader.
+    for (const k of deno.filter((x) => !MCP_WITHHELD_SOURCES.includes(x) && !MCP_FORM_NOT_READ_HERE.includes(x))) expect(MCP_FORM_VENDORS.map((v) => v.key), k).toContain(k);
+    for (const k of MCP_WITHHELD_SOURCES) expect(MCP_FORM_VENDORS.map((v) => v.key), `${k} is withheld, so its form is never read here`).not.toContain(k);
+    for (const k of MCP_FORM_NOT_READ_HERE) expect(MCP_FORM_VENDORS.map((v) => v.key), `${k}'s form is not read here`).not.toContain(k);
     // Connect W5: the server reads five more forms than the vendor table
     // flags (realQuestions stays false for them: job-board has no question
     // branch for them). They waited in the unrendered after-deploy list until
     // their build; with it live, the mirror IS the readers (SEO-F15).
-    expect([...MCP_FORM_VENDORS, ...MCP_FORM_VENDORS_AFTER_DEPLOY].map((v) => v.key).sort()).toEqual([...FORM_READER_VENDORS].sort());
+    expect([...MCP_FORM_VENDORS, ...MCP_FORM_VENDORS_AFTER_DEPLOY].map((v) => v.key).sort()).toEqual([...CONNECTOR_READERS].sort());
     for (const v of MCP_FORM_VENDORS_AFTER_DEPLOY) expect(PAGE, `${v.label} is rendered before its reader deploys`).not.toMatch(new RegExp(`\\b${v.label}\\b`));
     for (const src of [PAGE, APPLY_SECTION]) {
       const spelledName = [...MCP_FORM_VENDORS.map((v) => v.label), ...SENDABLE_VENDOR_LABELS].filter((label) => new RegExp(`\\b${label}\\b`).test(src));
@@ -265,13 +275,18 @@ describe("the page says six and the server says eleven", () => {
  */
 describe("a form vendor waits for its reader's build, and no longer", () => {
   const RAW_MCP = read("supabase/functions/agent-mcp/index.ts");
+  it("the readers the page leaves out are the ones agent-mcp does not use (OD14-ASHBY-1)", () => {
+    const m = /const FORM_NOT_READ_HERE: readonly string\[\] = \[([^\]]*)\];/.exec(RAW_MCP);
+    expect(m, "agent-mcp no longer declares FORM_NOT_READ_HERE as a literal list").toBeTruthy();
+    expect([...m![1].matchAll(/"([a-z0-9_-]+)"/g)].map((x) => x[1]).sort()).toEqual([...MCP_FORM_NOT_READ_HERE].sort());
+  });
   const stamp = /FN_BUILD\s*=\s*"agent-mcp\.(\d{4}-\d{2}-\d{2})\.(\d+)"/.exec(RAW_MCP);
   it("the server's build is read", () => expect(stamp, "agent-mcp FN_BUILD is no longer a literal agent-mcp.<date>.<n>").toBeTruthy());
   it("past agent-mcp 2026-11-08.1, the after-deploy list is empty and the mirror is every reader", () => {
     const past = `${stamp![1]}.${stamp![2].padStart(3, "0")}` > "2026-11-08.001";
     expect(past, "the build gate: this test speaks only past 2026-11-08.1").toBe(true);
     expect(MCP_FORM_VENDORS_AFTER_DEPLOY.map((v) => v.label)).toEqual([]);
-    expect(MCP_FORM_VENDORS.map((v) => v.key).sort()).toEqual([...FORM_READER_VENDORS].sort());
+    expect(MCP_FORM_VENDORS.map((v) => v.key).sort()).toEqual([...CONNECTOR_READERS].sort());
   });
 });
 

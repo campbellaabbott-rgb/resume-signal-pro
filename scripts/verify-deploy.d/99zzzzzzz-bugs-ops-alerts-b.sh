@@ -20,8 +20,11 @@
 #   workflow   the latest scheduled board-health run used a board-health.yml
 #              that calls get_takedowns_today: the lane merged. Until then
 #              INFO.
-# No line waits on an owner: CW2-HO1, the one owner-gated key, is on
-# bugs/b-ops-alerts-owner and has no line here.
+# No line waits on an owner. CW2-HO1, the one owner-gated key, merged on the
+# owner's yes of 2026-11-18 (20261113121000, the error-spike job's gate) and
+# has no line here: that file raises unless the gate is in the job's
+# command, and section 63 judges the job's schedule and active flag, which
+# it keeps.
 #
 # THE CLAIMS, one line each:
 #   B1  get-error-telemetry serves 2026-11-13.1 or later.

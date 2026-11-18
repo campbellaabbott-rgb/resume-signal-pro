@@ -125,6 +125,76 @@ export type Database = {
         }
         Relationships: []
       }
+      affiliate_account_links: {
+        Row: {
+          affiliate_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          new_email: string | null
+          purpose: string
+          token_hash: string
+          used_at: string | null
+        }
+        Insert: {
+          affiliate_id: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          new_email?: string | null
+          purpose: string
+          token_hash: string
+          used_at?: string | null
+        }
+        Update: {
+          affiliate_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          new_email?: string | null
+          purpose?: string
+          token_hash?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_account_links_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliate_click_days: {
+        Row: {
+          affiliate_id: string
+          clicks: number
+          day: string
+          visitors: number
+        }
+        Insert: {
+          affiliate_id: string
+          clicks: number
+          day: string
+          visitors: number
+        }
+        Update: {
+          affiliate_id?: string
+          clicks?: number
+          day?: string
+          visitors?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_click_days_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       affiliate_clicks: {
         Row: {
           affiliate_id: string
@@ -165,9 +235,11 @@ export type Database = {
           affiliate_id: string
           commission_amount: number
           created_at: string
+          currency: string | null
           id: string
           paid_at: string | null
           product_name: string | null
+          review_flags: string[]
           sale_amount: number
           status: string
           stripe_session_id: string
@@ -176,9 +248,11 @@ export type Database = {
           affiliate_id: string
           commission_amount: number
           created_at?: string
+          currency?: string | null
           id?: string
           paid_at?: string | null
           product_name?: string | null
+          review_flags?: string[]
           sale_amount: number
           status?: string
           stripe_session_id: string
@@ -187,9 +261,11 @@ export type Database = {
           affiliate_id?: string
           commission_amount?: number
           created_at?: string
+          currency?: string | null
           id?: string
           paid_at?: string | null
           product_name?: string | null
+          review_flags?: string[]
           sale_amount?: number
           status?: string
           stripe_session_id?: string
@@ -203,6 +279,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      affiliate_hash_keys: {
+        Row: {
+          created_at: string
+          hash_key: string
+          purpose: string
+        }
+        Insert: {
+          created_at?: string
+          hash_key: string
+          purpose: string
+        }
+        Update: {
+          created_at?: string
+          hash_key?: string
+          purpose?: string
+        }
+        Relationships: []
       }
       affiliate_payout_requests: {
         Row: {
@@ -251,25 +345,57 @@ export type Database = {
           created_at: string
           expires_at: string
           id: string
-          session_token: string
+          session_token: string | null
+          token_hash: string
         }
         Insert: {
           affiliate_id: string
           created_at?: string
           expires_at?: string
           id?: string
-          session_token?: string
+          session_token?: string | null
+          token_hash: string
         }
         Update: {
           affiliate_id?: string
           created_at?: string
           expires_at?: string
           id?: string
-          session_token?: string
+          session_token?: string | null
+          token_hash?: string
         }
         Relationships: [
           {
             foreignKeyName: "affiliate_sessions_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliate_sign_in_networks: {
+        Row: {
+          affiliate_id: string
+          first_seen: string
+          last_seen: string
+          network_key: string
+        }
+        Insert: {
+          affiliate_id: string
+          first_seen?: string
+          last_seen?: string
+          network_key: string
+        }
+        Update: {
+          affiliate_id?: string
+          first_seen?: string
+          last_seen?: string
+          network_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_sign_in_networks_affiliate_id_fkey"
             columns: ["affiliate_id"]
             isOneToOne: false
             referencedRelation: "affiliates"
@@ -282,6 +408,7 @@ export type Database = {
           commission_amount: number
           created_at: string
           email: string
+          email_confirmed_at: string | null
           id: string
           paid_out: number
           password_hash: string
@@ -295,6 +422,7 @@ export type Database = {
           commission_amount?: number
           created_at?: string
           email: string
+          email_confirmed_at?: string | null
           id?: string
           paid_out?: number
           password_hash: string
@@ -308,6 +436,7 @@ export type Database = {
           commission_amount?: number
           created_at?: string
           email?: string
+          email_confirmed_at?: string | null
           id?: string
           paid_out?: number
           password_hash?: string
@@ -1020,6 +1149,35 @@ export type Database = {
         }
         Relationships: []
       }
+      api_fit_unscored: {
+        Row: {
+          calls: number
+          day: string
+          endpoint: string
+          key_id: string
+        }
+        Insert: {
+          calls?: number
+          day: string
+          endpoint: string
+          key_id: string
+        }
+        Update: {
+          calls?: number
+          day?: string
+          endpoint?: string
+          key_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_fit_unscored_key_id_fkey"
+            columns: ["key_id"]
+            isOneToOne: false
+            referencedRelation: "api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_key_agent_mints: {
         Row: {
           created_at: string
@@ -1302,6 +1460,7 @@ export type Database = {
         Row: {
           checkout_function: string
           created_at: string
+          network_key: string | null
           product_type: string | null
           stripe_session_id: string
           user_id: string | null
@@ -1309,6 +1468,7 @@ export type Database = {
         Insert: {
           checkout_function: string
           created_at?: string
+          network_key?: string | null
           product_type?: string | null
           stripe_session_id: string
           user_id?: string | null
@@ -1316,6 +1476,7 @@ export type Database = {
         Update: {
           checkout_function?: string
           created_at?: string
+          network_key?: string | null
           product_type?: string | null
           stripe_session_id?: string
           user_id?: string | null
@@ -3977,6 +4138,24 @@ export type Database = {
         }
         Relationships: []
       }
+      lca_refused_tokens: {
+        Row: {
+          company_token: string
+          evidence: string
+          refused_at: string
+        }
+        Insert: {
+          company_token: string
+          evidence: string
+          refused_at?: string
+        }
+        Update: {
+          company_token?: string
+          evidence?: string
+          refused_at?: string
+        }
+        Relationships: []
+      }
       lifecycle_reads: {
         Row: {
           day: string
@@ -5129,6 +5308,39 @@ export type Database = {
           },
         ]
       }
+      shortlist_deletions: {
+        Row: {
+          candidate_id: string | null
+          deleted_at: string
+          how: string
+          id: string
+          owner_id: string
+          role_id: string
+          uploaded_at: string | null
+          what: string
+        }
+        Insert: {
+          candidate_id?: string | null
+          deleted_at?: string
+          how: string
+          id?: string
+          owner_id: string
+          role_id: string
+          uploaded_at?: string | null
+          what: string
+        }
+        Update: {
+          candidate_id?: string | null
+          deleted_at?: string
+          how?: string
+          id?: string
+          owner_id?: string
+          role_id?: string
+          uploaded_at?: string | null
+          what?: string
+        }
+        Relationships: []
+      }
       shortlist_demographics: {
         Row: {
           candidate_id: string
@@ -5166,8 +5378,10 @@ export type Database = {
           content: string
           id: string
           jurisdiction: string
+          logged_at: string
           notice_type: string
           owner_id: string
+          recipients: string | null
           role_id: string
           sent_at: string
         }
@@ -5175,8 +5389,10 @@ export type Database = {
           content: string
           id?: string
           jurisdiction: string
+          logged_at?: string
           notice_type: string
           owner_id: string
+          recipients?: string | null
           role_id: string
           sent_at?: string
         }
@@ -5184,8 +5400,10 @@ export type Database = {
           content?: string
           id?: string
           jurisdiction?: string
+          logged_at?: string
           notice_type?: string
           owner_id?: string
+          recipients?: string | null
           role_id?: string
           sent_at?: string
         }
@@ -5681,6 +5899,48 @@ export type Database = {
         Returns: boolean
       }
       affiliate_address_key: { Args: { p_email: string }; Returns: string }
+      affiliate_clicks_roll_up_and_prune: {
+        Args: { p_keep_days?: number }
+        Returns: number
+      }
+      affiliate_erase: { Args: { p_affiliate_id: string }; Returns: boolean }
+      affiliate_export: { Args: { p_affiliate_id: string }; Returns: Json }
+      affiliate_keyed_hash: {
+        Args: { p_purpose: string; p_value: string }
+        Returns: string
+      }
+      affiliate_link_mint: {
+        Args: {
+          p_affiliate_id?: string
+          p_email?: string
+          p_new_email?: string
+          p_purpose: string
+        }
+        Returns: Json
+      }
+      affiliate_link_use: {
+        Args: { p_new_password?: string; p_purpose: string; p_token: string }
+        Returns: Json
+      }
+      affiliate_network_key: { Args: { p_addr: string }; Returns: string }
+      affiliate_note_network: {
+        Args: { p_affiliate_id: string }
+        Returns: undefined
+      }
+      affiliate_returning_pro_customer: {
+        Args: {
+          p_before: string
+          p_email: string
+          p_stripe_session_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      affiliate_session_owner: { Args: { p_token: string }; Returns: string }
+      affiliate_sign_out_everywhere: {
+        Args: { p_affiliate_id: string }
+        Returns: number
+      }
       agent_adoption_metrics: {
         Args: { p_days: number }
         Returns: {
@@ -5978,6 +6238,10 @@ export type Database = {
           fa_user_id: string
         }[]
       }
+      api_key_fit_unscored: {
+        Args: { p_endpoint: string; p_key_id: string }
+        Returns: boolean
+      }
       api_key_issue: {
         Args: {
           p_key_hash: string
@@ -6131,6 +6395,15 @@ export type Database = {
           p_window_minutes: number
         }
         Returns: boolean
+      }
+      client_write_budget_left: {
+        Args: {
+          p_ceiling: number
+          p_per_address: number
+          p_scope: string
+          p_window_minutes: number
+        }
+        Returns: number
       }
       collect_company_flow: { Args: { p_date?: string }; Returns: number }
       compare_cohorts: {
@@ -7030,7 +7303,9 @@ export type Database = {
           median_days_open: number
           median_days_to_close: number
           observed_days: number
+          open_window_days: number
           posted_coverage_pct: number
+          stale_parts: string[]
           total_companies: number
           total_company_names: number
           total_open: number
@@ -7334,6 +7609,7 @@ export type Database = {
           last_heartbeat_status: string
           last_heartbeat_time: string
           last_successful_scan: string
+          model_fallback_last_hour: number
           scans_last_hour: number
           status: string
           success_rate_last_hour: number
@@ -7436,7 +7712,7 @@ export type Database = {
       get_transparency_coverage: { Args: never; Returns: Json }
       get_transparent_employers: { Args: { p_limit?: number }; Returns: Json }
       get_trending_categories: {
-        Args: never
+        Args: { p_watch_days?: number }
         Returns: {
           category: string
           last7: number
@@ -7490,6 +7766,10 @@ export type Database = {
           successful_webhooks: number
           total_webhooks: number
         }[]
+      }
+      give_back_scan_day: {
+        Args: { p_function: string; p_ip: string }
+        Returns: boolean
       }
       increment_free_scan_count: { Args: never; Returns: undefined }
       job_board_anon_check: {
@@ -7550,6 +7830,21 @@ export type Database = {
         }[]
       }
       layoff_norm: { Args: { p_raw: string }; Returns: string }
+      layoff_warn_retire_unseen: {
+        Args: {
+          p_feed: string
+          p_from: string
+          p_seen: string[]
+          p_state: string
+          p_to: string
+        }
+        Returns: {
+          lr_active: number
+          lr_candidates: number
+          lr_refused: boolean
+          lr_retired: number
+        }[]
+      }
       load_category_anchors: {
         Args: {
           p_anchors_sha256?: string
@@ -8118,6 +8413,7 @@ export type Database = {
         Args: { p_email: string; p_session_hash?: string }
         Returns: boolean
       }
+      scan_industry_known: { Args: { p_label: string }; Returns: boolean }
       scrub_emails: { Args: { p_text: string }; Returns: string }
       search_digest_claim_batch: {
         Args: { p_limit: number }
@@ -8223,6 +8519,12 @@ export type Database = {
         Args: { p_action: string; p_candidate_id: string; p_reason?: string }
         Returns: Json
       }
+      shortlist_delete_candidate: {
+        Args: { p_candidate_id: string }
+        Returns: Json
+      }
+      shortlist_delete_role: { Args: { p_role_id: string }; Returns: Json }
+      shortlist_purge_expired: { Args: { p_now?: string }; Returns: Json }
       should_generate_weekly_report: { Args: never; Returns: boolean }
       should_send_alert: {
         Args: {

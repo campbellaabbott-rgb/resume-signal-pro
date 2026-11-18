@@ -183,7 +183,7 @@ describe("the refusal's words", () => {
         expect(s, `${lang}/${p} names the connect page`).toMatch(/resumebooster\.work\/agents/);
         expect(s, `${lang}/${p} names Claude`).toMatch(/\bClaude\b/);
         expect(s, `${lang}/${p} names ChatGPT`).toMatch(/\bChatGPT\b/);
-        for (const vendor of ["Greenhouse", "Ashby", "Recruitee", "Breezy", "Pinpoint"]) {
+        for (const vendor of retired.RETIRED_FORM_VENDORS) {
           expect(s, `${lang}/${p} scopes the form reading to ${vendor}`).toContain(vendor);
         }
       }

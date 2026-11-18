@@ -1,0 +1,1 @@
+SELECT public._mig_exec(sql) FROM public._mig_stage WHERE name = '20261112122000_an_affiliate_sees_each_currency_each_range_and_what_awaits_approval.sql';

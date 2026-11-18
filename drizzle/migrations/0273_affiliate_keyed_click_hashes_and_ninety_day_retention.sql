@@ -1,0 +1,2 @@
+-- lovable-cron-fallback-reviewed: no sub-hourly cron; every job this file schedules runs once a day (reviewed 2026-11-16 in the bug round A integration).
+SELECT public._mig_exec(sql) FROM public._mig_stage WHERE name = '20261112121000_an_affiliate_click_keeps_a_keyed_address_hash_for_ninety_days.sql';

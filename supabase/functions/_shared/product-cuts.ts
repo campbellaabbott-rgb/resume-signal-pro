@@ -7,8 +7,9 @@
 // (and create-scan-pack-checkout for the scan packs) answers a purchase of one
 // with this module's refusal, BEFORE the rate limiter, a Pro grant or Stripe,
 // so nothing is counted, granted or charged. Past buyers keep what they
-// bought for PAST_BUYER_DAYS: their success pages, saved copies and the
-// recovery link do not read this list.
+// bought: their success pages, saved copies and the recovery link do not read
+// this list, and no sentence here names a day count (S14X-143, owner pick B:
+// nothing enforced one).
 //
 // The refusal mirrors the retired agent products' (apply-agent-retired.ts):
 // HTTP 410, `retired: true`, the reason a page keys on, and one sentence in
@@ -23,7 +24,7 @@
 import { type CheckoutLanguage } from "./checkout-policy.ts";
 import { RETIRED_REASON, RETIRED_STATUS, retiredLanguageOf } from "./apply-agent-retired.ts";
 
-/** How long a past buyer's link and saved copy keep working (owner decision). */
+/** The window the sentences once promised; no sentence names it now (S14X-143, pick B). */
 export const PAST_BUYER_DAYS = 90;
 
 /**
@@ -67,7 +68,7 @@ type Lines = {
 
 const EN: Lines = {
   opening: (n) => `${n} is no longer sold, and nothing was charged.`,
-  pastBuyers: `If you bought it before, your link keeps working for ${PAST_BUYER_DAYS} days.`,
+  pastBuyers: "If you bought it before, your link keeps working.",
   writing: "Tailored résumés, cover letters and interview prep now come with a free account and with Pro.",
   reports: "The $5 Full Analysis is still on sale, and tailored résumés, cover letters and interview prep come with a free account and with Pro.",
   scans: "A free account scans more each day, and Pro has no daily cap on scans.",
@@ -79,49 +80,49 @@ export const CUT_LINES: Readonly<Record<CheckoutLanguage, Lines>> = {
   "en-GB": EN,
   de: {
     opening: (n) => `${n} wird nicht mehr verkauft, und dir wurde nichts berechnet.`,
-    pastBuyers: `Wenn du es früher gekauft hast, funktioniert dein Link noch ${PAST_BUYER_DAYS} Tage.`,
+    pastBuyers: "Wenn du es früher gekauft hast, funktioniert dein Link weiterhin.",
     writing: "Angepasste Lebensläufe, Anschreiben und Interviewvorbereitung gibt es jetzt mit einem kostenlosen Konto und mit Pro.",
     reports: "Die Full Analysis für 5 $ gibt es weiterhin, und angepasste Lebensläufe, Anschreiben und Interviewvorbereitung gibt es mit einem kostenlosen Konto und mit Pro.",
     scans: "Ein kostenloses Konto scannt mehr pro Tag, und Pro scannt ohne Tageslimit.",
   },
   es: {
     opening: (n) => `${n} ya no se vende y no se te ha cobrado nada.`,
-    pastBuyers: `Si lo compraste antes, tu enlace sigue funcionando durante ${PAST_BUYER_DAYS} días.`,
+    pastBuyers: "Si lo compraste antes, tu enlace sigue funcionando.",
     writing: "Los currículums adaptados, las cartas de presentación y la preparación de entrevistas ahora vienen con una cuenta gratuita y con Pro.",
     reports: "El Full Analysis de 5 $ sigue a la venta, y los currículums adaptados, las cartas de presentación y la preparación de entrevistas vienen con una cuenta gratuita y con Pro.",
     scans: "Una cuenta gratuita escanea más cada día, y Pro escanea sin límite diario.",
   },
   fr: {
     opening: (n) => `${n} n'est plus vendu, et rien ne vous a été facturé.`,
-    pastBuyers: `Si vous l'avez acheté auparavant, votre lien reste valable ${PAST_BUYER_DAYS} jours.`,
+    pastBuyers: "Si vous l'avez acheté auparavant, votre lien reste valable.",
     writing: "Les CV adaptés, les lettres de motivation et la préparation aux entretiens sont désormais inclus avec un compte gratuit et avec Pro.",
     reports: "La Full Analysis à 5 $ reste en vente, et les CV adaptés, les lettres de motivation et la préparation aux entretiens sont inclus avec un compte gratuit et avec Pro.",
     scans: "Un compte gratuit analyse davantage chaque jour, et Pro analyse sans limite quotidienne.",
   },
   hi: {
     opening: (n) => `${n} अब नहीं बेचा जाता, और आपसे कोई शुल्क नहीं लिया गया।`,
-    pastBuyers: `अगर आपने इसे पहले खरीदा था, तो आपका लिंक ${PAST_BUYER_DAYS} दिनों तक काम करता रहेगा।`,
+    pastBuyers: "अगर आपने इसे पहले खरीदा था, तो आपका लिंक काम करता रहेगा।",
     writing: "नौकरी के अनुसार बना रिज़्यूमे, कवर लेटर और इंटरव्यू की तैयारी अब मुफ़्त खाते और Pro के साथ मिलती है।",
     reports: "$5 का Full Analysis अभी भी बिक्री पर है, और नौकरी के अनुसार बना रिज़्यूमे, कवर लेटर और इंटरव्यू की तैयारी मुफ़्त खाते और Pro के साथ मिलती है।",
     scans: "मुफ़्त खाता हर दिन ज़्यादा स्कैन करता है, और Pro बिना दैनिक सीमा के स्कैन करता है।",
   },
   nl: {
     opening: (n) => `${n} wordt niet meer verkocht, en er is niets in rekening gebracht.`,
-    pastBuyers: `Heb je het eerder gekocht, dan blijft je link nog ${PAST_BUYER_DAYS} dagen werken.`,
+    pastBuyers: "Heb je het eerder gekocht, dan blijft je link werken.",
     writing: "Aangepaste cv's, sollicitatiebrieven en sollicitatievoorbereiding krijg je nu bij een gratis account en bij Pro.",
     reports: "De Full Analysis van $5 is nog te koop, en aangepaste cv's, sollicitatiebrieven en sollicitatievoorbereiding krijg je bij een gratis account en bij Pro.",
     scans: "Een gratis account scant meer per dag, en Pro scant zonder daglimiet.",
   },
   pt: {
     opening: (n) => `${n} não é mais vendido, e nada foi cobrado de você.`,
-    pastBuyers: `Se você comprou antes, seu link continua funcionando por ${PAST_BUYER_DAYS} dias.`,
+    pastBuyers: "Se você comprou antes, seu link continua funcionando.",
     writing: "Currículos adaptados, cartas de apresentação e preparação para entrevistas agora vêm com uma conta gratuita e com o Pro.",
     reports: "A Full Analysis de US$ 5 continua à venda, e currículos adaptados, cartas de apresentação e preparação para entrevistas vêm com uma conta gratuita e com o Pro.",
     scans: "Uma conta gratuita faz mais análises por dia, e o Pro analisa sem limite diário.",
   },
   tl: {
     opening: (n) => `Hindi na ibinebenta ang ${n}, at walang siningil sa iyo.`,
-    pastBuyers: `Kung binili mo ito dati, gagana pa ang link mo sa loob ng ${PAST_BUYER_DAYS} araw.`,
+    pastBuyers: "Kung binili mo ito dati, gagana pa rin ang link mo.",
     writing: "Kasama na ngayon sa libreng account at sa Pro ang iniangkop na résumé, cover letter at paghahanda sa interview.",
     reports: "Ibinebenta pa rin ang $5 na Full Analysis, at kasama sa libreng account at sa Pro ang iniangkop na résumé, cover letter at paghahanda sa interview.",
     scans: "Mas maraming scan bawat araw ang libreng account, at walang pang-araw-araw na limit ang Pro.",

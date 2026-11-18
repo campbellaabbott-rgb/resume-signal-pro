@@ -1,0 +1,1 @@
+SELECT public._mig_exec(sql) FROM public._mig_stage WHERE name = '20261112192000_a_role_that_came_back_is_no_fill_in_the_chain.sql';

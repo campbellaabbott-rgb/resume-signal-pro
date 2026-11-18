@@ -52,7 +52,8 @@ import { proIncludes } from "../_shared/pro-perks.ts";
 // search finds nothing, and gained the by-customer and by-account readers.
 // 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
 // 2026-11-12.1 (bug round of 2026-11-08, part A, payments lane, S14X-078, S14X-079, RC-S13-063, through the shared plan, perk and buyer-record modules): the Pro perk list names the Full Analysis cap; this function still answers retired and hands the buyer record no address.
-const FN_BUILD = "create-product-checkout.2026-11-12.1";
+// 2026-11-18.2 (bug round part B, the owner's S14X-143 pick B of 2026-11-18, through _shared/product-cuts.ts): a cut product's sentence says a past buyer's link keeps working and names no day count; it sorts above 2026-11-18.1, the owner branch's Add to Claude build.
+const FN_BUILD = "create-product-checkout.2026-11-18.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

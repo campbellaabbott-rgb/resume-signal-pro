@@ -15,7 +15,8 @@ import { cutCheckoutAnswer, SCAN_PACKS_ON_SALE } from "../_shared/product-cuts.t
 // 2026-10-11.24 (recheck 3, 2026-10-26): _shared/product-cuts.ts gained the closed form of the reports line and reads the seller gate; a scan pack's sentence is unchanged.
 // 2026-10-27.1 (sales stay on, owner 2026-10-27): _shared/product-cuts.ts lost that closed form and no longer reads a seller gate; a scan pack's sentence is unchanged.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "create-scan-pack-checkout.2026-11-09.1";
+// 2026-11-13.1 (bug round part B, the owner's S14X-143 pick B of 2026-11-18, through _shared/product-cuts.ts): a scan pack's sentence says a past buyer's link keeps working and names no day count.
+const FN_BUILD = "create-scan-pack-checkout.2026-11-13.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
