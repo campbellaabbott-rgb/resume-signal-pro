@@ -99,14 +99,17 @@ const REPOINTS: ReadonlyArray<[string, string, number, string, string]> = [
 ];
 /** .102's catalogue, which its applied high-water migration clamps to. */
 const CATALOGUE_102 = 44_499;
+/** Row A: the boards .103 appends after Convergint (src/test/fixtures/board-103-row-a-2026-11-17.json). */
+const ROW_A = (JSON.parse(read("src/test/fixtures/board-103-row-a-2026-11-17.json")) as { added: Array<{ key: string }> }).added.map((a) => a.key);
 const BB01_COLD = ["transperfect", "duravermeer", "aaff", "tether"];
 
 describe("the retired boards leave the catalogue, keyed by vendor and token", () => {
-  it("none of the 25 retired keys is catalogued, and the catalogue is .102's 44,499 less the 342 board .103 takes out", () => {
+  it("none of the 25 retired keys is catalogued, and the catalogue is .102's 44,499 less the 342 board .103 takes out, plus row A", () => {
     expect(RETIRED.length).toBe(25);
     expect(RETIRED.filter((k) => HAS.has(k))).toEqual([]);
-    // 44,523 on .101, 25 out, Convergint in: 44,499 on .102. Then .103: 336 dead, usasurveyjob, five held.
-    expect(JOB_SOURCES.length).toBe(CATALOGUE_102 - 342);
+    // 44,523 on .101, 25 out, Convergint in: 44,499 on .102. Then .103: 336 dead, usasurveyjob, five held, and row A's six in.
+    expect(ROW_A).toHaveLength(6);
+    expect(JOB_SOURCES.length).toBe(CATALOGUE_102 - 342 + ROW_A.length);
     expect(new Set(KEYS).size, "a key is carried twice").toBe(KEYS.length);
   });
 
@@ -194,8 +197,11 @@ describe("the hot list and the one new board", () => {
     for (const t of HOT_TOKENS) expect(TOKENS.has(t), `${t} is hot but not catalogued`).toBe(true);
   });
 
-  it("Convergint's Workday site is the last entry, so no board's position moves for it", () => {
-    expect(JOB_SOURCES[JOB_SOURCES.length - 1]).toEqual({ name: "Convergint", source: "workday", token: "convergint~wd501~Gbl" });
+  it("Convergint's Workday site was appended last, so no board's position moved for it, and only row A comes after it", () => {
+    const at = KEYS.indexOf("workday:convergint~wd501~Gbl");
+    expect(at, "Convergint's .103 index: .102's 44,498 less the 342 boards .103 takes out ahead of it").toBe(CATALOGUE_102 - 1 - 342);
+    expect(JOB_SOURCES[at]).toEqual({ name: "Convergint", source: "workday", token: "convergint~wd501~Gbl" });
+    expect(KEYS.slice(at + 1)).toEqual(ROW_A);
     // The name it prints is its tenant code title-cased, and it is the employer's own (read on its site): a posting page may name it.
     expect(isUnreviewedTenantName("convergint~wd501~Gbl", "Convergint")).toBe(false);
     // The UKG board stays catalogued and unlabelled (an-agency-is-disclosed-not-hidden's round 3).

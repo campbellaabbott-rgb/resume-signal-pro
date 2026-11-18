@@ -49,6 +49,8 @@ const FIX = JSON.parse(read("src/test/fixtures/board-103-catalogue-2026-11-17.js
   left102: Array<[index: number, key: string]>;
 };
 
+/** Row A, appended after Convergint in the same build (the-ai-startup-boards-join-after-convergint.test.ts). */
+const ROW_A = (JSON.parse(read("src/test/fixtures/board-103-row-a-2026-11-17.json")) as { added: Array<{ key: string }> }).added.map((a) => a.key);
 const key = (s: { source: string; token: string }) => `${s.source}:${s.token}`;
 const tokenOf = (k: string) => k.slice(k.indexOf(":") + 1);
 const KEYS = JOB_SOURCES.map(key);
@@ -79,17 +81,18 @@ describe("the dead boards leave", () => {
     for (const [k] of FIX.keptAlive) expect(HAS.has(k), `${k} answered 200 and was pruned`).toBe(true);
   });
 
-  it("the catalogue is .102's 44,499 less what left; a repoint changes no count", () => {
+  it("the catalogue is .102's 44,499 less what left, plus row A's appended boards; a repoint changes no count", () => {
     expect(FIX.catalogue.before).toBe(44_499);
     expect(FIX.catalogue.after).toBe(FIX.catalogue.before - LEFT.length);
-    expect(JOB_SOURCES.length).toBe(FIX.catalogue.after);
+    expect(JOB_SOURCES.length).toBe(FIX.catalogue.after + ROW_A.length);
+    expect(KEYS.slice(FIX.catalogue.after), "row A sits after every board this lane kept").toEqual(ROW_A);
     expect(new Set(KEYS).size, "a key is carried twice").toBe(KEYS.length);
   });
 
   it("each board that left goes back at its .102 index and each repoint reads as its old key, rebuilding .102's 44,499 (the oracle-host pin hashes that order)", () => {
     expect(FIX.left102.map(([, k]) => k).sort()).toEqual([...LEFT].sort());
     const was = new Map(FIX.repointed.map((r) => [r.to, r.from]));
-    const back = KEYS.map((k) => was.get(k) ?? k);
+    const back = KEYS.slice(0, FIX.catalogue.after).map((k) => was.get(k) ?? k);
     for (const [i, k] of FIX.left102) back.splice(i, 0, k);
     expect(back).toHaveLength(FIX.catalogue.before);
     for (const [i, k] of FIX.left102) expect(back[i], `${k} at ${i}`).toBe(k);

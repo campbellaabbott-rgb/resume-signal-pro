@@ -1318,6 +1318,8 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Reyes Fleet Management", source: "icims", token: "jobportal.reyesfleet.com", brand: "Reyes Fleet Management" },
   { name: "Reyes Holdings", source: "icims", token: "jobportal.reyesholdings.com", brand: "Reyes Holdings" },
   ...u("Convergint\v12\vconvergint~wd501~Gbl"),
+  // ── Board .103 row A (2026-11-17): AI-startup boards read live, robots first; each name is the one its postings print ──
+  ...u("Castelion Corporation\v1\vcastelioncorporation\nAidoc\v1\vaidocmedical\nDropzone AI\v1\vdropzoneai\nSiPearl\v8\vsipearl\nUpscale AI\v2\vupscale-ai\nMythic\v2\vmythic-ai.com"),
 ];
 
 // ── Oracle sub-site canonicals (2026-09-09) ────────────────────────────────

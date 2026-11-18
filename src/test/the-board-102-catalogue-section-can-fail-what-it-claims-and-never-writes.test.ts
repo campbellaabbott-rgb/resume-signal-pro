@@ -250,10 +250,11 @@ describe("the section's keys are the catalogue's", () => {
     expect(SERVED.filter((k) => !keys.has(k))).toEqual([]);
   });
 
-  it("its high-water is the size .102 shipped, which board .103's prune shrank: a build after .102 is section 49's to judge", () => {
+  it("its high-water is the size .102 shipped, which board .103's prune shrank and row A grew: a build after .102 is section 49's to judge", () => {
     const f103 = JSON.parse(readFileSync(resolve(ROOT, "src/test/fixtures/board-103-catalogue-2026-11-17.json"), "utf8")) as { catalogue: { before: number; after: number } };
+    const rowA = JSON.parse(readFileSync(resolve(ROOT, "src/test/fixtures/board-103-row-a-2026-11-17.json"), "utf8")) as { added: unknown[] };
     expect(/const CATALOGUE=(\d+),/.exec(SECTION)?.[1]).toBe(String(f103.catalogue.before));
-    expect(f103.catalogue.after).toBe(JOB_SOURCES.length);
+    expect(f103.catalogue.after + rowA.added.length).toBe(JOB_SOURCES.length);
   });
 });
 

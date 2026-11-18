@@ -327,8 +327,9 @@ const PINNED = {
   // out, 34 repointed in place, Distro split out as an agency and CardFlight's
   // board named SwipeSimple. BUILD_VERSION .103 is grow/103-integration's,
   // which this lane merges into. layoff-filings carries the copy as
-  // 2026-11-17.1.
-  sourcesHash: "0decab9fb436df91",
+  // 2026-11-17.1. Same build, row A: six AI-startup boards appended after
+  // Convergint (src/test/fixtures/board-103-row-a-2026-11-17.json).
+  sourcesHash: "81400ae4c189f168",
   // The PARSED catalog behind that hash — 44,081 packed + 463 object-literal
   // entries — pinned separately so a re-format is distinguishable from a real
   // catalog change (see the two-pins note at the top of this file). Read
@@ -366,10 +367,12 @@ const PINNED = {
   // ad feed, OD1(a)) and the five Workable boards held for the owner's OD1
   // ruling (src/test/fixtures/board-103-catalogue-2026-11-17.json). Thirty-four
   // were repointed in place, Distro was split out as an agency and one board
-  // renamed, so the content hash moves too. Migration 20261117110000 lowers the
-  // high-water to the same figure after .103 slices.
-  catalogSize: 44_157,
-  catalogHash: "30325825f1273110",
+  // renamed, so the content hash moves too. Then +6 in the same build, row A:
+  // Castelion Corporation, Aidoc, Dropzone AI, SiPearl, Upscale AI and Mythic,
+  // appended after Convergint so no board's place moves. 44,163. Migration
+  // 20261117110000 lowers the high-water to the same figure after .103 slices.
+  catalogSize: 44_163,
+  catalogHash: "24ed69445a4a2e1f",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts

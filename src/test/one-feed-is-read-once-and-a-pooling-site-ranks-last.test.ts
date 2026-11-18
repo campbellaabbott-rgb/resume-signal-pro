@@ -67,7 +67,7 @@ describe("iCIMS: each feed is read once, one brand or one hirer a board", () => 
       [40675, "careers.atlanticcityelectric.com", "Atlantic City Electric", "Atlantic City Electric"],
     ];
     for (const [i, t, n, b] of placed) expect(JOB_SOURCES[i], t).toMatchObject({ source: "icims", token: t, name: n, brand: b });
-    expect(JOB_SOURCES.length).toBe(44_157); // .102: 25 boards retired, Convergint appended; .103: 342 out
+    expect(JOB_SOURCES.length).toBe(44_163); // .102: 25 boards retired, Convergint appended; .103: 342 out, row A's 6 appended last
   });
 
   it("no Exelon brand board shares its printed name with another employer's board", () => {

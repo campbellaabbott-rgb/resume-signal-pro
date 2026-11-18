@@ -69,7 +69,7 @@ describe("the catalogue: five Reyes boards, each one brand of the shared feed", 
     expect(at("talent.reyesholdings.com")).toBe(40656);
     expect(at("jpmc~~CX_1001")).toBe(44152);
     expect([at("jobportal.reyescocacola.com"), at("jobportal.reyesfleet.com"), at("jobportal.reyesholdings.com")]).toEqual([44153, 44154, 44155]);
-    expect(JOB_SOURCES.length).toBe(44157);
+    expect(JOB_SOURCES.length).toBe(44163); // .103 appends row A's six after Convergint, behind every place above
   });
 
   it("layoff-filings' copy carries the same five, field for field", () => {
