@@ -12,9 +12,11 @@
  * pruneWholeBoard(client, token, "untracked", source): only that vendor's rows,
  * logged first. A key the catalogue carries again is never touched.
  *
- * Board .103 adds the old key of each of its 34 kept-token repoints (the dead
- * entries whose employer now posts on Greenhouse or Ashby under the same slug),
- * in the order src/test/fixtures/board-103-catalogue-2026-11-17.json lists them.
+ * Board .103 adds the old key of each of its four kept-token repoints (the dead
+ * entries whose employer now posts on Greenhouse under the same slug), in the
+ * order src/test/fixtures/board-103-catalogue-2026-11-17.json lists them. The
+ * thirty whose new board is on Ashby wait for OD14(b) (heldForOD14b): their
+ * old records stay catalogued, so their old keys are no twins yet.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -60,7 +62,7 @@ async function pass(o: { sources: Src[]; highwater: number; facetsOk?: boolean; 
 describe("a retired twin leaves with its own vendor", () => {
   it("names .102's eight boards and then .103's repointed old keys, each as source:token", () => {
     expect(KEYS).toEqual(["pinpoint:helsing", "greenhouse:wayve", "greenhouse:clickhouse", "lever:swordhealth", "greenhouse:lovable", "greenhouse:kalshi", "greenhouse:webflow", "greenhouse:worldlabs", ...REPOINTED_103]);
-    expect(REPOINTED_103).toHaveLength(34);
+    expect(REPOINTED_103).toEqual(["ashby:stay22", "bamboohr:everstand", "bamboohr:couriernewsroom", "rippling:droneshield"]);
   });
 
   it("after the catalogue retires them, each is pruned by its own vendor and token, as untracked, and the count is recorded", async () => {

@@ -15,9 +15,14 @@
  *  - REPOINT. A dead entry whose employer now posts on Greenhouse or Ashby under the same slug, found by
  *    probing each dead entry's own slug on those vendors (no Common Crawl list: owner decision OD-CC,
  *    2026-11-17), with at least one posting inside the 30-day window and the board's own text naming the
- *    employer, quoted in the fixture. The record carries the name the board prints: CardFlight's employer
- *    posts as SwipeSimple. Rewritten in place, because the refresh cursor is positional. The token stays catalogued, so
- *    the token-keyed orphan prune cannot reach the old vendor's rows: the old key joins RETIRED_TWIN_KEYS.
+ *    employer, quoted in the fixture. The record carries the name the board prints, in the case it prints it:
+ *    DroneShield, not the slug's Droneshield. Rewritten in place, because the refresh cursor is positional. The token
+ *    stays catalogued, so the token-keyed orphan prune cannot reach the old vendor's rows: the old key joins
+ *    RETIRED_TWIN_KEYS.
+ *  - HELD FOR OD14(b). The thirty repoints whose new board is on Ashby are not carried (heldForOD14b): spec-final
+ *    3.1 (RP, L-M4) rides every board newly read on Ashby only on the owner's OD14(b) yes, the same rule that holds
+ *    row A's eleven Ashby boards (helpers/ashby-gate.ts states it once for both). Each old record stays as .102
+ *    carried it, serving nothing, until .104.
  *  - RETIRE lever:usasurveyjob, a paid-survey ad feed (OD1(a)).
  *  - HOLD the five Workable boards that wait for the owner's OD1 ruling OUTSIDE the catalogue. On .102 a
  *    held board stayed catalogued and was skipped only on the oversize path, so weekday-1 served 153 rows.
@@ -32,16 +37,19 @@ import { resolve } from "node:path";
 import { HOT_TOKENS, JOB_SOURCES, type JobSource } from "../../supabase/functions/job-board/sources";
 import { EMPLOYER_ALIASES } from "../../supabase/functions/job-board/employer-aliases";
 import { codeOf } from "./helpers/strip-comments";
+import { ashbyGate, ashbyNewIn103, newAshbyBoards, ASHBY_102 } from "./helpers/ashby-gate";
 
 const ROOT = resolve(__dirname, "../..");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
 type Repoint = { from: string; to: string; name: string; total: number; inWindow: number; at: string; index: number; prev: string; next: string; evidence: string; was?: string };
 type Held = { key: string; name: string; servedAtPr0: number };
+type HeldRepoint = Repoint & { reason: string };
 const FIX = JSON.parse(read("src/test/fixtures/board-103-catalogue-2026-11-17.json")) as {
   catalogue: { before: number; after: number };
   pruned: Array<[key: string, secondRead: string, firstRead: string]>;
   keptAlive: Array<[key: string, evidence: string]>;
   repointed: Repoint[];
+  heldForOD14b: HeldRepoint[];
   retired: string[];
   held: Held[];
   agency: { key: string; name: string; index: number; prev: string; next: string };
@@ -109,7 +117,8 @@ describe("the dead boards leave", () => {
 
 describe("the moved boards follow their employer, in place", () => {
   it("each repoint's new key is carried at its record's index, between its neighbours, under the employer's name; the old key is not", () => {
-    expect(FIX.repointed.length).toBeGreaterThanOrEqual(5);
+    expect(FIX.repointed.length).toBeGreaterThanOrEqual(1);
+    expect(FIX.repointed.length + FIX.heldForOD14b.length, "the lane found 34 moved boards").toBe(34);
     for (const r of FIX.repointed) {
       expect(HAS.has(r.from), `${r.from} is still carried`).toBe(false);
       expect(tokenOf(r.to), "a repoint keeps its token").toBe(tokenOf(r.from));
@@ -122,24 +131,38 @@ describe("the moved boards follow their employer, in place", () => {
     }
   });
 
-  it("each repoint carries the name its new board prints, quoted from that board's own response", () => {
-    // A legal suffix the old record carried ("Courier Newsroom, Inc.") is not part of the name the board prints.
+  it("each repoint carries the name its new board prints, in the case it prints it, quoted from that board's own response", () => {
+    // A legal suffix the old record carried ("Courier Newsroom, Inc.") is not part of the name the board prints;
+    // the suffix is dropped in any case, the name itself is matched case for case (DroneShield is not Droneshield).
     const bare = (s: string) => s.replace(/,?\s+(inc|llc|ltd|gmbh|corp)\.?$/i, "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const prints = (evidence: string, name: string) => new RegExp(`(^|[^A-Za-z0-9])${bare(name)}([^A-Za-z0-9]|$)`, "i").test(evidence);
-    for (const r of FIX.repointed) {
+    const prints = (evidence: string, name: string) => new RegExp(`(^|[^A-Za-z0-9])${bare(name)}([^A-Za-z0-9]|$)`).test(evidence);
+    // The held ones too: .104 carries them under these names.
+    for (const r of [...FIX.repointed, ...FIX.heldForOD14b]) {
       expect(r.evidence, `${r.to}: no quote of the board naming its employer`).toBeTruthy();
       expect(prints(r.evidence, r.name), `${r.to} is carried as ${r.name}, which its quote does not print: ${r.evidence}`).toBe(true);
     }
-    // One board prints another name than its old record: CardFlight's employer posts on Ashby as SwipeSimple.
-    const renamed = FIX.repointed.filter((r) => r.was !== undefined).map((r) => [r.from, r.was, r.name]);
-    expect(renamed).toEqual([["greenhouse:cardflight", "CardFlight", "SwipeSimple"]]);
-    for (const r of FIX.repointed.filter((x) => x.was)) expect(prints(r.evidence, r.was!), `${r.to}'s quote prints its old name, so it needs no rename`).toBe(false);
+    // Boards that print another name, or another case, than their old record. CardFlight's employer posts on
+    // Ashby as SwipeSimple; DroneShield, EGYM, FUTRUE and UJV are the case their boards print.
+    const renamed = (rs: Repoint[]) => rs.filter((r) => r.was !== undefined).map((r) => [r.from, r.was, r.name]);
+    expect(renamed(FIX.repointed)).toEqual([["rippling:droneshield", "Droneshield", "DroneShield"]]);
+    expect(renamed(FIX.heldForOD14b)).toEqual([["greenhouse:cardflight", "CardFlight", "SwipeSimple"], ["personio:egym", "Egym", "EGYM"],
+      ["personio:futrue", "Futrue", "FUTRUE"], ["rippling:ujv", "Ujv", "UJV"]]);
+    for (const r of [...FIX.repointed, ...FIX.heldForOD14b].filter((x) => x.was)) expect(prints(r.evidence, r.was!), `${r.to}'s quote prints its old name, so it needs no rename`).toBe(false);
   });
 
-  it("the spec's five measured repoints are among them", () => {
+  it("has teeth: a slug-cased name its board does not print fails, and a legal suffix still passes", () => {
+    const bare = (s: string) => s.replace(/,?\s+(inc|llc|ltd|gmbh|corp)\.?$/i, "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const prints = (evidence: string, name: string) => new RegExp(`(^|[^A-Za-z0-9])${bare(name)}([^A-Za-z0-9]|$)`).test(evidence);
+    expect(prints("company_name: DroneShield", "Droneshield")).toBe(false);
+    expect(prints("company_name: DroneShield", "DroneShield")).toBe(true);
+    expect(prints("company_name: Courier Newsroom", "Courier Newsroom, Inc.")).toBe(true);
+  });
+
+  it("the spec's five measured repoints: the two to Greenhouse ride, the three to Ashby wait for OD14(b)", () => {
     const moved = new Set(FIX.repointed.map((r) => `${r.from}>${r.to}`));
-    for (const m of ["greenhouse:toogoodtogo>ashby:toogoodtogo", "greenhouse:amenitiz>ashby:amenitiz", "greenhouse:philo>ashby:philo",
-      "bamboohr:everstand>greenhouse:everstand", "bamboohr:couriernewsroom>greenhouse:couriernewsroom"]) expect(moved.has(m), m).toBe(true);
+    for (const m of ["bamboohr:everstand>greenhouse:everstand", "bamboohr:couriernewsroom>greenhouse:couriernewsroom"]) expect(moved.has(m), m).toBe(true);
+    const held = new Set(FIX.heldForOD14b.map((r) => `${r.from}>${r.to}`));
+    for (const m of ["greenhouse:toogoodtogo>ashby:toogoodtogo", "greenhouse:amenitiz>ashby:amenitiz", "greenhouse:philo>ashby:philo"]) expect(held.has(m), m).toBe(true);
   });
 
   it("RETIRED_TWIN_KEYS adds exactly the keys that left while their token stays carried, after .102's eight", () => {
@@ -148,6 +171,46 @@ describe("the moved boards follow their employer, in place", () => {
     expect(new Set(TWINS.slice(TWINS_102.length))).toEqual(new Set(stillCarried));
     expect(TWINS.length).toBe(TWINS_102.length + stillCarried.length);
     for (const k of TWINS) expect(HAS.has(k), `${k} is a twin key the catalogue still carries`).toBe(false);
+  });
+});
+
+describe("the boards newly read on Ashby wait for OD14(b), as row A's do", () => {
+  it("each held repoint's old record is still carried at its index, between its neighbours, and its Ashby key is not", () => {
+    const back = new Map(FIX.heldForOD14b.map((r) => [r.to, r.from]));
+    for (const r of FIX.heldForOD14b) {
+      expect(r.to.startsWith("ashby:"), r.to).toBe(true);
+      expect(r.reason, r.to).toMatch(/OD14\(b\)/);
+      expect(HAS.has(r.to), `${r.to} is carried before the owner's OD14(b) answer`).toBe(false);
+      expect(KEYS[r.index], `${r.from} is not back at its index`).toBe(r.from);
+      expect([KEYS[r.index - 1], KEYS[r.index + 1]], r.from).toEqual([back.get(r.prev) ?? r.prev, back.get(r.next) ?? r.next]);
+      expect(FIX.pr0.served[r.from], `${r.from} served rows at PR0, so its .102 name reaches rows`).toBe(0);
+    }
+  });
+
+  it("no board is new to Ashby in this build while the gate is shut, and every Ashby board is accounted for", () => {
+    const gate = ashbyGate();
+    const n = ashbyNewIn103(KEYS);
+    expect(n.unaccounted, "Ashby boards the fixtures do not account for: one moved onto Ashby without an entry").toBe(0);
+    expect(gate.open ? [] : n.boards, `new Ashby boards while the gate is shut (${gate.why.join("; ")})`).toEqual([]);
+  });
+
+  it("has teeth: a repoint onto Ashby, or one with no fixture entry, fails while the gate is shut, and the gate opens only on both conditions", () => {
+    expect(newAshbyBoards({ ashby102: ASHBY_102, ashbyNow: ASHBY_102 - 86 + 1, leftAshby: 86, repointedTo: ["ashby:toogoodtogo", "greenhouse:everstand"], added: [] }))
+      .toEqual({ boards: ["ashby:toogoodtogo"], unaccounted: 0 });
+    expect(newAshbyBoards({ ashby102: ASHBY_102, ashbyNow: ASHBY_102 - 86 + 30, leftAshby: 86, repointedTo: [], added: [] }).unaccounted).toBe(30);
+    const asked = { "supabase/functions/job-board/index.ts": 'await fetch("https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobPosting");' };
+    const listed = { "supabase/functions/_shared/application-form.ts": 'export const FORM_READER_VENDORS: readonly string[] = ["ashby", "lever"];' };
+    const stopped = {
+      "supabase/functions/job-board/index.ts": '// was: await fetch("https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobPosting");\nconst x = 1;',
+      "supabase/functions/_shared/application-form.ts": 'export const FORM_READER_VENDORS: readonly string[] = ["lever"]; // "ashby" left on OD14(b)',
+    };
+    const yes = { reservations: { "bug-round": { ownerDecided: { "OD14-ASHBY-1": { choice: "stop", on: "2026-11-20" } } } } };
+    const none = { reservations: { "bug-round": { ownerDecided: { "S14X-012": { choice: "B" } } } } };
+    expect(ashbyGate({ ledger: none, files: stopped }).open).toBe(false);
+    expect(ashbyGate({ ledger: yes, files: asked }).open).toBe(false);
+    expect(ashbyGate({ ledger: yes, files: listed }).open).toBe(false);
+    expect(ashbyGate({ ledger: yes, files: stopped })).toEqual({ open: true, why: [] });
+    expect(ashbyGate({ ledger: { reservations: { x: { ownerDecided: { "OD14(b)": { choice: "yes" } } } } }, files: stopped }).open).toBe(true);
   });
 });
 

@@ -14,7 +14,8 @@
  *    appended, and no other board's place moves.
  *  - HELD. The eleven Ashby boards wait for the owner's OD14(b) answer. Ashby's robots file forbids the
  *    application-questions call that job-board and /v1 still make, and every Ashby board added widens
- *    it (jobs-clear spec-final, L-M4). Their reads were not made.
+ *    it (jobs-clear spec-final, L-M4). Their reads were not made. The catalogue lane's thirty repoints onto
+ *    Ashby wait under the same rule, judged by the same module (helpers/ashby-gate.ts).
  *  - LEVER RIDES THE GATE. api.lever.co asks for a one-second Crawl-delay. The two Lever boards are
  *    valid only in a build whose shared host gate paces that host at 1,000 ms or more (item 18).
  *    grow/103-integration carries the gate; this branch's BUILD_VERSION is still .102's.
@@ -26,6 +27,7 @@ import { JOB_SOURCES } from "../../supabase/functions/job-board/sources";
 import { isUnreviewedTenantName } from "../lib/company-display";
 import { censusNameReason } from "../../scripts/census-names.mjs";
 import { codeOf } from "./helpers/strip-comments";
+import { ashbyGate, ashbyNewIn103 } from "./helpers/ashby-gate";
 
 const ROOT = resolve(__dirname, "../..");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
@@ -120,6 +122,13 @@ describe("the Ashby boards wait for OD14(b)", () => {
       expect(h.reason, h.key).toMatch(/OD14\(b\)/);
       expect(tokens.has(tokenOf(h.key).toLowerCase()), `${h.key} is carried before the owner's OD14(b) answer`).toBe(false);
     }
+  });
+
+  it("one rule for adds and repoints: no board is new to Ashby in this build while the gate is shut", () => {
+    const gate = ashbyGate();
+    const n = ashbyNewIn103(KEYS);
+    expect(n.unaccounted, "Ashby boards neither fixture accounts for").toBe(0);
+    expect(gate.open ? [] : n.boards, `new Ashby boards while the gate is shut (${gate.why.join("; ")})`).toEqual([]);
   });
 });
 

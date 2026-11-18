@@ -86,8 +86,11 @@ import {
 // 2026-11-17.1 (board .103, catalogue lane): the copy drops 336 dead boards, lever:usasurveyjob and the
 // five held Workable boards, repoints 34 boards to the vendor their employer now posts on, labels
 // Distro an agency and names CardFlight's board SwipeSimple; the alias copy drops two held boards.
-// Same build, row A: six AI-startup boards appended after Convergint (44,163 boards in the copy).
-export const BUILD_VERSION = "2026-11-17.1";
+// The lane's tip adds row A: six AI-startup boards appended after Convergint.
+// 2026-11-17.2 (board .103 integration, on review): the thirty repoints onto Ashby go back to their
+// .102 records until the owner's OD14(b) answer (CardFlight's name with them), and DroneShield's
+// board carries the name its postings print. 44,163 boards in the copy.
+export const BUILD_VERSION = "2026-11-17.2";
 
 // ── mirror constants (src/config/layoffs.ts names this file) ──────────────
 export const LAYOFF_LOOKBACK_DAYS = 90;

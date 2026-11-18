@@ -328,8 +328,11 @@ const PINNED = {
   // board named SwipeSimple. BUILD_VERSION .103 is grow/103-integration's,
   // which this lane merges into. layoff-filings carries the copy as
   // 2026-11-17.1. Same build, row A: six AI-startup boards appended after
-  // Convergint (src/test/fixtures/board-103-row-a-2026-11-17.json).
-  sourcesHash: "81400ae4c189f168",
+  // Convergint (src/test/fixtures/board-103-row-a-2026-11-17.json). On the
+  // integration's review, the thirty repoints onto Ashby went back to their
+  // .102 records for OD14(b) (CardFlight's name with them) and DroneShield
+  // took the case its board prints; layoff-filings ships that as 2026-11-17.2.
+  sourcesHash: "93b1641e9d9cfa3f",
   // The PARSED catalog behind that hash — 44,081 packed + 463 object-literal
   // entries — pinned separately so a re-format is distinguishable from a real
   // catalog change (see the two-pins note at the top of this file). Read
@@ -365,14 +368,16 @@ const PINNED = {
   // 44,157 since 2026-09-09.103, DOWN 342 ON PURPOSE: 336 boards dead on two
   // reads ten days apart that served no row, lever:usasurveyjob (a paid-survey
   // ad feed, OD1(a)) and the five Workable boards held for the owner's OD1
-  // ruling (src/test/fixtures/board-103-catalogue-2026-11-17.json). Thirty-four
-  // were repointed in place, Distro was split out as an agency and one board
-  // renamed, so the content hash moves too. Then +6 in the same build, row A:
+  // ruling (src/test/fixtures/board-103-catalogue-2026-11-17.json). Four
+  // were repointed in place to Greenhouse (the thirty onto Ashby wait for
+  // OD14(b) under their .102 records), Distro was split out as an agency and
+  // DroneShield took the case its board prints, so the content hash moves
+  // too. Then +6 in the same build, row A:
   // Castelion Corporation, Aidoc, Dropzone AI, SiPearl, Upscale AI and Mythic,
   // appended after Convergint so no board's place moves. 44,163. Migration
   // 20261117110000 lowers the high-water to the same figure after .103 slices.
   catalogSize: 44_163,
-  catalogHash: "24ed69445a4a2e1f",
+  catalogHash: "eeaddde4f9367ba5",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -1564,8 +1569,10 @@ const PINNED = {
   // The catalogue lane merged in a second pass (d787a4f36): sources.ts
   // CHANGED (catalogSize 44,163, above: the prune, the repoints, the
   // retirement, the held boards out and row A), and layoff-filings ships the
-  // copies as 2026-11-17.1. job-board/** + _shared/** measures 4,421,971 B
-  // (git ls-tree -r -l), 18,029 under the 4,440,000 trigger.
+  // copies as 2026-11-17.2 (the review's revert of the thirty Ashby repoints
+  // changed the copy the lane stamped .1). job-board/** + _shared/** measures
+  // 4,421,316 B (git ls-tree -r -l), 18,684 under the 4,440,000 trigger, which
+  // the-upload-fits-under-the-trigger-before-it-merges.test.ts enforces.
   buildVersion: "2026-09-09.103",
 };
 
