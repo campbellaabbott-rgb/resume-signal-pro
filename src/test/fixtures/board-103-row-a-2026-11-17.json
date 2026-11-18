@@ -1,0 +1,256 @@
+{
+ "what": "Board .103 row A (push-all plan, owner 2026-11-17 late): the AI-startup boards on CLEAR vendors (jobs-clear-2026-11-17 clear-candidates.json, group new-board, W6 D13 CLEAR subset) and the two Lever boards, folded into the .103 catalogue lane.",
+ "provenance": "The 2026-10-24 AI-startup list (YC directory and the employers' own careers pages). Nothing from Common Crawl (owner decision OD-CC, 2026-11-17).",
+ "window": {
+  "days": 30,
+  "cutoff": "2026-10-19T01:52:00Z",
+  "dateField": "greenhouse first_published, lever createdAt, teamtailor pubDate"
+ },
+ "pacing": "GET only; robots.txt first on every host; 2.5 s between any two requests; generic User-Agent; no 429, challenge or bot wall met.",
+ "appendedAfter": "workday:convergint~wd501~Gbl",
+ "added": [
+  {
+   "key": "greenhouse:castelioncorporation",
+   "name": "Castelion Corporation",
+   "robots": {
+    "host": "boards-api.greenhouse.io",
+    "url": "https://boards-api.greenhouse.io/robots.txt",
+    "at": "2026-11-18T01:51:54Z",
+    "status": 200,
+    "bytes": 131,
+    "sha256_16": "0bc35a3bc59e53b4",
+    "rule": "User-agent: * / Disallow: /embed/ (the list path is allowed)"
+   },
+   "read": {
+    "url": "https://boards-api.greenhouse.io/v1/boards/castelioncorporation/jobs?content=true",
+    "at": "2026-11-18T01:51:57Z",
+    "status": 200,
+    "bytes": 4498240,
+    "sha256_16": "70e42a1ad21f0139"
+   },
+   "nameFrom": "company_name on all 270 postings",
+   "evidence": "company_name \"Castelion Corporation\"; \"Why Castelion, Why Now Castelion is moving incredibly fast to develop and deliver advanced defense systems at a\"",
+   "quoteFrom": "https://job-boards.greenhouse.io/castelioncorporation/jobs/4456693009",
+   "note": "The content=true body is 4,498,240 B, over job-board's MAX_RESPONSE_BYTES 4,000,000: the first visit enrols it in the dynamic light set and re-reads it without descriptions in the same visit (lightReread); descriptions come back through the Greenhouse per-job backfill. Mill screen (>= 100 postings): MILL_TEXT matched 0 of 270 postings.",
+   "total": 270,
+   "inWindow": 75,
+   "newest": "2026-11-17T12:24:12-05:00",
+   "millHits": 0
+  },
+  {
+   "key": "greenhouse:aidocmedical",
+   "name": "Aidoc",
+   "robots": {
+    "host": "boards-api.greenhouse.io",
+    "url": "https://boards-api.greenhouse.io/robots.txt",
+    "at": "2026-11-18T01:51:54Z",
+    "status": 200,
+    "bytes": 131,
+    "sha256_16": "0bc35a3bc59e53b4",
+    "rule": "User-agent: * / Disallow: /embed/ (the list path is allowed)"
+   },
+   "read": {
+    "url": "https://boards-api.greenhouse.io/v1/boards/aidocmedical/jobs?content=true",
+    "at": "2026-11-18T01:52:09Z",
+    "status": 200,
+    "bytes": 363746,
+    "sha256_16": "fd37cc2adb0c8bb4"
+   },
+   "nameFrom": "company_name on all 38 postings",
+   "evidence": "company_name \"Aidoc\"; \"About Aidoc Aidoc is the market leader in healthcare AI and has developed the world's largest cli\"",
+   "quoteFrom": "https://job-boards.eu.greenhouse.io/aidocmedical/jobs/4876551101",
+   "note": "Served by boards-api.greenhouse.io (the reader's host for an unprefixed token); its postings' own pages are on job-boards.eu.greenhouse.io.",
+   "total": 38,
+   "inWindow": 11,
+   "newest": "2026-11-15T02:54:32-05:00",
+   "millHits": 0
+  },
+  {
+   "key": "greenhouse:dropzoneai",
+   "name": "Dropzone AI",
+   "robots": {
+    "host": "boards-api.greenhouse.io",
+    "url": "https://boards-api.greenhouse.io/robots.txt",
+    "at": "2026-11-18T01:51:54Z",
+    "status": 200,
+    "bytes": 131,
+    "sha256_16": "0bc35a3bc59e53b4",
+    "rule": "User-agent: * / Disallow: /embed/ (the list path is allowed)"
+   },
+   "read": {
+    "url": "https://boards-api.greenhouse.io/v1/boards/dropzoneai/jobs?content=true",
+    "at": "2026-11-18T01:52:14Z",
+    "status": 200,
+    "bytes": 102355,
+    "sha256_16": "3276a513851ec830"
+   },
+   "nameFrom": "company_name on all 10 postings",
+   "evidence": "company_name \"Dropzone AI\"; \"About Dropzone AI Dropzone’s mission is to scale cybersecurity beyond human limits, and augment every sing\"",
+   "quoteFrom": "https://job-boards.greenhouse.io/dropzoneai/jobs/4454152009",
+   "total": 10,
+   "inWindow": 5,
+   "newest": "2026-11-17T19:10:07-05:00",
+   "millHits": 0
+  },
+  {
+   "key": "teamtailor:sipearl",
+   "name": "SiPearl",
+   "robots": {
+    "host": "sipearl.teamtailor.com",
+    "url": "https://sipearl.teamtailor.com/robots.txt",
+    "at": "2026-11-18T01:52:04Z",
+    "status": 200,
+    "bytes": 263,
+    "sha256_16": "90d387551de897e2",
+    "served": "https://careers.sipearl.com/robots.txt",
+    "rule": "User-Agent: * / Disallow: /app/, /messages/, /messenger/, /facebook/tab/, /jobs/internal/ (/jobs.rss is allowed); Content-Signal: search=yes, ai-train=no, ai-input=yes"
+   },
+   "read": {
+    "url": "https://sipearl.teamtailor.com/jobs.rss",
+    "at": "2026-11-18T01:52:07Z",
+    "status": 200,
+    "bytes": 115520,
+    "sha256_16": "62fc209cb82c1a1d"
+   },
+   "nameFrom": "the RSS channel title, and all 14 postings",
+   "evidence": "<title>SiPearl</title>; \"SiPearl is the European fabless designer of sovereign secure high-performance energy-efficient CPUs\"",
+   "quoteFrom": "https://sipearl.teamtailor.com/jobs.rss",
+   "termsRead": {
+    "spec": "spec-final m3: careers.sipearl.com's legal page, robots first; dropped if its terms bar automated reading",
+    "reads": [
+     {
+      "url": "https://careers.sipearl.com/",
+      "at": "2026-11-18T01:53:30Z",
+      "status": 200,
+      "bytes": 115673,
+      "sha256_16": "fc123fd0b006c565"
+     },
+     {
+      "url": "https://careers.sipearl.com/data-privacy",
+      "at": "2026-11-18T01:53:42Z",
+      "status": 200,
+      "bytes": 35305,
+      "sha256_16": "4747525740a04c95"
+     }
+    ],
+    "found": "The careers site links one legal page of its own, /data-privacy (candidate data requests, a privacy policy and a cookie policy). It has no terms of use and nothing on automated reading. robots allows /jobs.rss and states ai-train=no, which the merge rules carry: never used to train or fine-tune a model.",
+    "verdict": "not barred"
+   },
+   "total": 14,
+   "inWindow": 4,
+   "newest": "2026-11-06T10:24:35+01:00",
+   "millHits": 0
+  },
+  {
+   "key": "lever:upscale-ai",
+   "name": "Upscale AI",
+   "robots": {
+    "host": "api.lever.co",
+    "url": "https://api.lever.co/robots.txt",
+    "at": "2026-11-18T01:51:59Z",
+    "status": 200,
+    "bytes": 38,
+    "sha256_16": "6aa3556bd611889c",
+    "rule": "User-agent: * / Allow: / / Crawl-delay: 1 (reads 2.5 s apart; job-board paces api.lever.co at 1,000 ms through _shared/host-gate.ts on grow/103-integration, item 18)"
+   },
+   "read": {
+    "url": "https://api.lever.co/v0/postings/upscale-ai?mode=json",
+    "at": "2026-11-18T01:52:02Z",
+    "status": 200,
+    "bytes": 932127,
+    "sha256_16": "6aec6a3c89c70791"
+   },
+   "nameFrom": "posting text (Lever's list carries no company field)",
+   "evidence": "\"About the Role Upscale AI is seeking a highly hands-on, execution-focused Director of Corporate Marketing\"; every posting's equal-opportunity line reads \"Upscale, Inc., is building a team\"",
+   "quoteFrom": "https://jobs.lever.co/upscale-ai/f0abbe79-8ecd-4ab7-bd41-547682ca15e4",
+   "total": 38,
+   "inWindow": 14,
+   "newest": "2026-11-15T20:22:57.115000+00:00",
+   "millHits": 0
+  },
+  {
+   "key": "lever:mythic-ai.com",
+   "name": "Mythic",
+   "robots": {
+    "host": "api.lever.co",
+    "url": "https://api.lever.co/robots.txt",
+    "at": "2026-11-18T01:51:59Z",
+    "status": 200,
+    "bytes": 38,
+    "sha256_16": "6aa3556bd611889c",
+    "rule": "User-agent: * / Allow: / / Crawl-delay: 1 (reads 2.5 s apart; job-board paces api.lever.co at 1,000 ms through _shared/host-gate.ts on grow/103-integration, item 18)"
+   },
+   "read": {
+    "url": "https://api.lever.co/v0/postings/mythic-ai.com?mode=json",
+    "at": "2026-11-18T01:52:12Z",
+    "status": 200,
+    "bytes": 292044,
+    "sha256_16": "14eb377fa1969de1"
+   },
+   "nameFrom": "posting text (Lever's list carries no company field); 24 of 26 postings name it",
+   "evidence": "\"Mythic is building the future of AI computing with breakthrough analog technology that\"",
+   "quoteFrom": "https://jobs.lever.co/mythic-ai.com/b04a2bff-a3e5-46e5-abe8-81dcfb9612e1",
+   "total": 26,
+   "inWindow": 1,
+   "newest": "2026-10-21T20:18:59.687000+00:00",
+   "millHits": 0
+  }
+ ],
+ "held": [
+  {
+   "key": "ashby:mistral.ai",
+   "name": "Mistral AI",
+   "reason": "OD14(b) is undecided: no OD14-ASHBY key in docs/deploy-ledger.json ownerDecided on main 18744c65d, and the robots-disallowed Ashby questions call is still in job-board index.ts (main :9125, grow/103-integration :9329) and _shared/application-form.ts:155. spec-final L-M4 and section 5.1 make OD14(b) the precondition for every Ashby add; the push-all plan's 'round A's Ashby stop deployed first (it is)' does not hold. Not read."
+  },
+  {
+   "key": "ashby:spellbook.com",
+   "name": "Spellbook",
+   "reason": "OD14(b) is undecided: no OD14-ASHBY key in docs/deploy-ledger.json ownerDecided on main 18744c65d, and the robots-disallowed Ashby questions call is still in job-board index.ts (main :9125, grow/103-integration :9329) and _shared/application-form.ts:155. spec-final L-M4 and section 5.1 make OD14(b) the precondition for every Ashby add; the push-all plan's 'round A's Ashby stop deployed first (it is)' does not hold. Not read."
+  },
+  {
+   "key": "ashby:matx",
+   "name": "MatX",
+   "reason": "OD14(b) is undecided: no OD14-ASHBY key in docs/deploy-ledger.json ownerDecided on main 18744c65d, and the robots-disallowed Ashby questions call is still in job-board index.ts (main :9125, grow/103-integration :9329) and _shared/application-form.ts:155. spec-final L-M4 and section 5.1 make OD14(b) the precondition for every Ashby add; the push-all plan's 'round A's Ashby stop deployed first (it is)' does not hold. Not read."
+  },
+  {
+   "key": "ashby:PlayerZero",
+   "name": "PlayerZero",
+   "reason": "OD14(b) is undecided: no OD14-ASHBY key in docs/deploy-ledger.json ownerDecided on main 18744c65d, and the robots-disallowed Ashby questions call is still in job-board index.ts (main :9125, grow/103-integration :9329) and _shared/application-form.ts:155. spec-final L-M4 and section 5.1 make OD14(b) the precondition for every Ashby add; the push-all plan's 'round A's Ashby stop deployed first (it is)' does not hold. Not read."
+  },
+  {
+   "key": "ashby:wonderful",
+   "name": "Wonderful",
+   "reason": "OD14(b) is undecided: no OD14-ASHBY key in docs/deploy-ledger.json ownerDecided on main 18744c65d, and the robots-disallowed Ashby questions call is still in job-board index.ts (main :9125, grow/103-integration :9329) and _shared/application-form.ts:155. spec-final L-M4 and section 5.1 make OD14(b) the precondition for every Ashby add; the push-all plan's 'round A's Ashby stop deployed first (it is)' does not hold. Not read."
+  },
+  {
+   "key": "ashby:ResolveAI",
+   "name": "Resolve AI",
+   "reason": "OD14(b) is undecided: no OD14-ASHBY key in docs/deploy-ledger.json ownerDecided on main 18744c65d, and the robots-disallowed Ashby questions call is still in job-board index.ts (main :9125, grow/103-integration :9329) and _shared/application-form.ts:155. spec-final L-M4 and section 5.1 make OD14(b) the precondition for every Ashby add; the push-all plan's 'round A's Ashby stop deployed first (it is)' does not hold. Not read."
+  },
+  {
+   "key": "ashby:genspark",
+   "name": "Genspark",
+   "reason": "OD14(b) is undecided: no OD14-ASHBY key in docs/deploy-ledger.json ownerDecided on main 18744c65d, and the robots-disallowed Ashby questions call is still in job-board index.ts (main :9125, grow/103-integration :9329) and _shared/application-form.ts:155. spec-final L-M4 and section 5.1 make OD14(b) the precondition for every Ashby add; the push-all plan's 'round A's Ashby stop deployed first (it is)' does not hold. Not read."
+  },
+  {
+   "key": "ashby:surge-ai",
+   "name": "Surge AI",
+   "reason": "OD14(b) is undecided: no OD14-ASHBY key in docs/deploy-ledger.json ownerDecided on main 18744c65d, and the robots-disallowed Ashby questions call is still in job-board index.ts (main :9125, grow/103-integration :9329) and _shared/application-form.ts:155. spec-final L-M4 and section 5.1 make OD14(b) the precondition for every Ashby add; the push-all plan's 'round A's Ashby stop deployed first (it is)' does not hold. Not read."
+  },
+  {
+   "key": "ashby:recursive-superintelligence",
+   "name": "Recursive Superintelligence",
+   "reason": "OD14(b) is undecided: no OD14-ASHBY key in docs/deploy-ledger.json ownerDecided on main 18744c65d, and the robots-disallowed Ashby questions call is still in job-board index.ts (main :9125, grow/103-integration :9329) and _shared/application-form.ts:155. spec-final L-M4 and section 5.1 make OD14(b) the precondition for every Ashby add; the push-all plan's 'round A's Ashby stop deployed first (it is)' does not hold. Not read."
+  },
+  {
+   "key": "ashby:fortell",
+   "name": "Fortell",
+   "reason": "OD14(b) is undecided: no OD14-ASHBY key in docs/deploy-ledger.json ownerDecided on main 18744c65d, and the robots-disallowed Ashby questions call is still in job-board index.ts (main :9125, grow/103-integration :9329) and _shared/application-form.ts:155. spec-final L-M4 and section 5.1 make OD14(b) the precondition for every Ashby add; the push-all plan's 'round A's Ashby stop deployed first (it is)' does not hold. Not read."
+  },
+  {
+   "key": "ashby:oxa",
+   "name": "Oxa",
+   "reason": "OD14(b) is undecided: no OD14-ASHBY key in docs/deploy-ledger.json ownerDecided on main 18744c65d, and the robots-disallowed Ashby questions call is still in job-board index.ts (main :9125, grow/103-integration :9329) and _shared/application-form.ts:155. spec-final L-M4 and section 5.1 make OD14(b) the precondition for every Ashby add; the push-all plan's 'round A's Ashby stop deployed first (it is)' does not hold. Not read."
+  }
+ ]
+}

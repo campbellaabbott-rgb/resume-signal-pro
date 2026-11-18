@@ -70,14 +70,22 @@
 #            equals catalogSize, and orphanPruneBlocked is false (20261117110000
 #            applied after the first slice).
 #   PR2, RT1, RP1, AG1  from the catalogue lane's fixture (VD103_FIXTURE,
-#            src/test/fixtures/board-103-catalogue-2026-11-17.json). INFO when
-#            this checkout carries none (the lane had not merged). After the
+#            src/test/fixtures/board-103-catalogue-2026-11-17.json), which
+#            merged into .103 with the lane: a checkout without it FAILs all
+#            four as unjudgeable, never INFO. After the
 #            same pass end as H1: no pruned key and no repoint's old key serves
 #            a row (vendor-scoped counts, five tokens a call), and
 #            usasurveyjob serves none. 48 h after buildSince: a repointed board
 #            whose M2 read listed in-window postings serves at least one (the
 #            spread against M2 is INFO: a feed moves in two days). 24 h after
 #            buildSince: every listed Distro row carries agency true.
+#   RA1      row A, the six AI-startup boards appended after Convergint
+#            (VD103_ROWA, src/test/fixtures/board-103-row-a-2026-11-17.json):
+#            a five-row vendor-scoped sample of each. Any listed row printing
+#            a name other than the one its own postings print (the fixture's)
+#            FAILs at once; 48 h after buildSince a board whose read listed
+#            in-window postings serves at least one. The spread against that
+#            read is INFO. A checkout without the fixture FAILs RA1.
 #   SR <term>  the 13 most-searched terms of 2026-11-17: ranked is true, and
 #            the total (or totalAtLeast) is at or above its floor. Back end,
 #            front end and full stack developer have floors that rest on the
@@ -110,7 +118,7 @@
 # x-rb-budget: probe, x-rb-caller: maintenance and noLog; one logged nonce
 # search (PROBE). No vendor request. The only write is the local VD103_STATE
 # file.
-echo "== 99zzzzzzzz. job-board .103: pass-end chain, tail clock, host pacing, held boards, the clamp, the catalogue lane, search reach, Greenhouse pay, the probe label, the lap =="
+echo "== 99zzzzzzzz. job-board .103: pass-end chain, tail clock, host pacing, held boards, the clamp, the catalogue lane, row A, search reach, Greenhouse pay, the probe label, the lap =="
 
 VD103_GUARD=4450000; VD103_TRIGGER=4440000
 VD103_TALLY="${VD103_TALLY:-$(git ls-tree -r -l HEAD -- supabase/functions/job-board supabase/functions/_shared 2>/dev/null | awk '{s+=$4} END {print s+0}')}"
@@ -175,6 +183,16 @@ console.log(out.join("\n"))' "$VD103_FIXTURE" 2>/dev/null)"
     VD103_AG=$(node -e 'try{const a=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).agency;if(a&&/^[a-z]+:[A-Za-z0-9~_.-]+$/.test(a.key))process.stdout.write(a.key)}catch{}' "$VD103_FIXTURE")
     [ -n "$VD103_AG" ] && J103 "{\"action\":\"list\",\"companies\":[\"${VD103_AG#*:}\"],\"vendor\":[\"${VD103_AG%%:*}\"],\"limit\":20,$VD103_A}" > /tmp/vd_103_agency.json
   fi
+  # Row A: a five-row vendor-scoped sample of each appended board.
+  VD103_ROWA="${VD103_ROWA:-src/test/fixtures/board-103-row-a-2026-11-17.json}"
+  if [ -f "$VD103_ROWA" ]; then
+    VD103_I=0
+    for VD103_K in $(node -e 'try{const f=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.stdout.write((f.added||[]).map((a)=>a&&a.key).filter((k)=>typeof k==="string"&&/^[a-z]+:[A-Za-z0-9~_.-]+$/.test(k)).join(" "))}catch{}' "$VD103_ROWA"); do
+      J103 "{\"action\":\"list\",\"companies\":[\"${VD103_K#*:}\"],\"vendor\":[\"${VD103_K%%:*}\"],\"limit\":5,$VD103_A}" > "/tmp/vd_103_rowa_$VD103_I.json"
+      printf '%s\t%s\n' "$VD103_I" "$VD103_K" >> /tmp/vd_103_rowa_index.txt
+      VD103_I=$((VD103_I + 1))
+    done
+  fi
 
   # PROBE: the one logged search, probe header and no declared caller.
   VD103_NONCE="vd103-probe-$(date +%s)-$$"
@@ -185,7 +203,7 @@ console.log(out.join("\n"))' "$VD103_FIXTURE" 2>/dev/null)"
   VD103_DELAYS="${VD103_DELAYS:-$(node -e 'try{const s=require("fs").readFileSync("supabase/functions/_shared/host-gate.ts","utf8");const b=/HOST_DELAY_MS[^=]*=\s*\{([\s\S]*?)\};/.exec(s);const o={};for(const m of (b?b[1]:"").matchAll(/"([a-z0-9.-]+)"\s*:\s*([0-9_]+)/g))o[m[1]]=Number(m[2].replace(/_/g,""));const d=/ICIMS_DEFAULT_DELAY_MS\s*=\s*([0-9_]+)/.exec(s);o["*"]=d?Number(d[1].replace(/_/g,"")):5000;process.stdout.write(JSON.stringify(o))}catch{}')}"
 
   VD103_H="$VD103_H" VD103_N="$VD103_N" VD103_STATE="$VD103_STATE" VD103_HELD="$VD103_HELD" VD103_GH="$VD103_GH" VD103_SIZE="$VD103_SIZE" VD103_DELAYS="$VD103_DELAYS" \
-  VD103_FIXTURE="$VD103_FIXTURE" VD103_NONCE="$VD103_NONCE" VD103_COST2_APPLIED_AT="${VD103_COST2_APPLIED_AT:-}" VD103_LAP_BAR="${VD103_LAP_BAR:-}" VD103_M6="${VD103_M6:-}" \
+  VD103_FIXTURE="$VD103_FIXTURE" VD103_ROWA="$VD103_ROWA" VD103_NONCE="$VD103_NONCE" VD103_COST2_APPLIED_AT="${VD103_COST2_APPLIED_AT:-}" VD103_LAP_BAR="${VD103_LAP_BAR:-}" VD103_M6="${VD103_M6:-}" \
   VD103_LAPS="${VD103_LAPS:-$HOME/.config/resumebooster/verify-state/cold-wraps.json}" node -e '
 const fs=require("fs");const E=process.env;const H=3600000,MIN=60000,now=Date.now();
 const read=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
@@ -237,7 +255,7 @@ const since=lo?ms(lo.ss.buildSince):NaN;const ageH=Number.isFinite(since)?(now-s
 const clock=!reads[reads.length-1].ss?"status carries no sliceStats":!lo?"sliceStats.build is "+reads[reads.length-1].ss.build+", not the serving "+serving+": no slice of this build has run yet":ageH===null?"status states no sliceStats.buildSince":"the first slice of this build was "+ageH.toFixed(1)+" h ago";
 say("INFO","clock",clock+"; "+reads.length+" status read(s), "+ours.length+" from a slice of this build");
 const wait=(tag)=>say("INFO",tag,"waits for a slice of this build ("+clock+")");
-if(!lo){for(const t of ["P1","T1","PC1","IN1","SA1","B1","B2","F1","FR1","A1","DS1","H1","PR1","PR2","RT1","RP1","AG1","Lap"])wait(t);for(const t of String(E.VD103_GH).split(" "))wait("GH "+t);save();process.exit(0)}
+if(!lo){for(const t of ["P1","T1","PC1","IN1","SA1","B1","B2","F1","FR1","A1","DS1","H1","PR1","PR2","RT1","RP1","AG1","RA1","Lap"])wait(t);for(const t of String(E.VD103_GH).split(" "))wait("GH "+t);save();process.exit(0)}
 if(state.build!==serving)state={build:serving,passEnds:[],unblockedAt:null};
 if(!Array.isArray(state.passEnds))state.passEnds=[];
 for(const k of ["hops","boot","fresh","wraps"])if(!Array.isArray(state[k]))state[k]=[];
@@ -349,7 +367,7 @@ const afterWhy=prunedAfter?"a pass end finished after the prune was seen unblock
 
 // The catalogue lane, from its fixture.
 const FX=read(E.VD103_FIXTURE);
-if(!FX){for(const t of ["PR2","RT1","RP1","AG1"])say("INFO",t,"this checkout carries no catalogue-lane fixture ("+E.VD103_FIXTURE+"): the lane had not merged, so .103 prunes, repoints and retires nothing");}
+if(!FX){for(const t of ["PR2","RT1","RP1","AG1"])say("FAIL",t,"unjudgeable: this checkout carries no catalogue-lane fixture ("+E.VD103_FIXTURE+"), though .103 merged the lane with it, so its prune, repoints, retirement and agency label go unread");}
 else{
   const cat=new Map(String((()=>{try{return fs.readFileSync("/tmp/vd_103_cat_index.txt","utf8")}catch{return ""}})()).split("\n").filter(Boolean).map((l)=>{const t=l.indexOf("\t");return [l.slice(t+1),total(read("/tmp/vd_103_cat_"+l.slice(0,t)+".json"))]}));
   const of=(kind)=>[...cat.entries()].filter(([k])=>k.startsWith(kind+"|")).map(([k,n])=>[k.slice(kind.length+1),n]);
@@ -376,6 +394,22 @@ else{
     else if(ageH<24)say("INFO",tag,key+": "+L.filter((r)=>r.agency===true).length+" of "+L.length+" listed rows carry agency true (judged 24 h after buildSince)");
     else{const off=L.filter((r)=>r.agency!==true);say(off.length?"FAIL":"PASS",tag,key+": "+(L.length-off.length)+" of "+L.length+" listed rows carry agency true");}}
 }
+
+// RA1: row A, the AI-startup boards appended after Convergint, from their fixture.
+{const tag="RA1";const RA=read(E.VD103_ROWA);const added=RA&&Array.isArray(RA.added)?RA.added.filter((a)=>a&&typeof a.key==="string"&&typeof a.name==="string"):[];
+  if(!added.length)say("FAIL",tag,"unjudgeable: this checkout carries no readable row A fixture ("+E.VD103_ROWA+"), though .103 appends its boards");
+  else{const ix=new Map(String((()=>{try{return fs.readFileSync("/tmp/vd_103_rowa_index.txt","utf8")}catch{return ""}})()).split("\n").filter(Boolean).map((l)=>{const t=l.indexOf("\t");return [l.slice(t+1),l.slice(0,t)]}));
+    const norm=(s)=>String(s??"").replace(/\s+/g," ").trim().toLowerCase();
+    const got=added.map((a)=>{const i=ix.get(a.key);const j=i===undefined?null:read("/tmp/vd_103_rowa_"+i+".json");const L=rows(j);
+      return {a,L,n:L?(num(j.total)!==null?j.total:L.length):null,off:L?[...new Set(L.filter((r)=>norm(r.company)!==norm(a.name)).map((r)=>r.company??null))]:[]}});
+    const bad=got.filter((g)=>!g.L);const named=got.filter((g)=>g.off.length);const empty=got.filter((g)=>g.L&&g.n===0&&g.a.inWindow>0);
+    const s=got.map((g)=>g.a.key+" "+g.n).join(", ");
+    if(bad.length)say("FAIL",tag,bad.length+" of "+got.length+" row A list(s) unreadable, first "+bad[0].a.key);
+    else if(named.length)say("FAIL",tag,named.map((g)=>g.a.key+" prints "+JSON.stringify(g.off.slice(0,3))+", not "+JSON.stringify(g.a.name)).join("; ")+": a board serves under a name its own postings do not print");
+    else if(ageH<48)say("INFO",tag,s+" (served; a board serving none is judged 48 h after buildSince)");
+    else if(empty.length)say("FAIL",tag,empty.length+" row A board(s) serve no row though their read listed in-window postings: "+JSON.stringify(empty.map((g)=>[g.a.key,g.a.inWindow])));
+    else say("PASS",tag,got.length+" row A board(s) serve under their own names: "+s);
+    say("INFO","RA1 spread","[key, served, in-window postings the fixture\x27s read listed (posted after "+String(RA.window&&RA.window.cutoff||"its cutoff")+")]; a feed moves: "+JSON.stringify(got.map((g)=>[g.a.key,g.n,g.a.inWindow??null])));}}
 
 // GH: Greenhouse stated pay on the five measured boards.
 const GHM={coinbase:[236,259],airbnb:[157,200],databricks:[467,902],robinhood:[157,166],figma:[92,139]};

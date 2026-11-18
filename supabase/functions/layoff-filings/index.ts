@@ -83,7 +83,11 @@ import {
 // 2026-11-12.1 (bug round of 2026-11-08, part A, layoff-filings lane): four more states are read by our
 // first read, a notice the state edited retires its old reading, rows an older parser read are read
 // again, and wage cells the ledger refused are not served. The catalogue copy is .102's, unchanged.
-export const BUILD_VERSION = "2026-11-12.1";
+// 2026-11-17.1 (board .103, catalogue lane): the copy drops 336 dead boards, lever:usasurveyjob and the
+// five held Workable boards, repoints 34 boards to the vendor their employer now posts on, labels
+// Distro an agency and names CardFlight's board SwipeSimple; the alias copy drops two held boards.
+// Same build, row A: six AI-startup boards appended after Convergint (44,163 boards in the copy).
+export const BUILD_VERSION = "2026-11-17.1";
 
 // ── mirror constants (src/config/layoffs.ts names this file) ──────────────
 export const LAYOFF_LOOKBACK_DAYS = 90;

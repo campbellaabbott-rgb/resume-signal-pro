@@ -215,7 +215,8 @@ describe("trust round 3: an employer's own board is not labelled an agency, and 
       expect(byKey.get(k)!.agency, `${k} is a staffing company's board`).toBe(true);
       expect(conv.has(k), `${k} is not in RELEASED_CONVICTIONS`).toBe(true);
     }
-    expect(JOB_SOURCES.filter((s) => (s as { agency?: boolean }).agency === true).length).toBe(140);
+    // 141 since board .103 unpacked Distro (lever:distro), a staffing platform, to carry the flag.
+    expect(JOB_SOURCES.filter((s) => (s as { agency?: boolean }).agency === true).length).toBe(141);
   });
 
   it("every TrueBlue site that lists requisitions is labelled, so the label holds wherever the dedupe stores one", () => {

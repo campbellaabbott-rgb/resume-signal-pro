@@ -11,6 +11,10 @@
  * after its high-water check, and removes each through
  * pruneWholeBoard(client, token, "untracked", source): only that vendor's rows,
  * logged first. A key the catalogue carries again is never touched.
+ *
+ * Board .103 adds the old key of each of its 34 kept-token repoints (the dead
+ * entries whose employer now posts on Greenhouse or Ashby under the same slug),
+ * in the order src/test/fixtures/board-103-catalogue-2026-11-17.json lists them.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -22,6 +26,7 @@ const a = FN.indexOf("  const validTokens = new Set(JOB_SOURCES.map((s) => s.tok
 const z = FN.indexOf('await breadcrumb(client, "pass-end-pruned"', a);
 if (a < 0 || z < 0) throw new Error("the orphan prune moved; re-point this test");
 const SPAN = FN.slice(a, FN.indexOf("\n  }\n", z) + "\n  }\n".length);
+const REPOINTED_103 = (JSON.parse(readFileSync(resolve(__dirname, "fixtures/board-103-catalogue-2026-11-17.json"), "utf8")) as { repointed: Array<{ from: string }> }).repointed.map((r) => r.from);
 const KEYS = JSON.parse(`[${/const RETIRED_TWIN_KEYS: readonly string\[\] = \[([^\]]*)\];/.exec(FN)![1]}]`) as string[];
 
 type Src = { source: string; token: string };
@@ -53,8 +58,9 @@ async function pass(o: { sources: Src[]; highwater: number; facetsOk?: boolean; 
 }
 
 describe("a retired twin leaves with its own vendor", () => {
-  it("names the eight boards the spec retires, each as source:token", () => {
-    expect(KEYS).toEqual(["pinpoint:helsing", "greenhouse:wayve", "greenhouse:clickhouse", "lever:swordhealth", "greenhouse:lovable", "greenhouse:kalshi", "greenhouse:webflow", "greenhouse:worldlabs"]);
+  it("names .102's eight boards and then .103's repointed old keys, each as source:token", () => {
+    expect(KEYS).toEqual(["pinpoint:helsing", "greenhouse:wayve", "greenhouse:clickhouse", "lever:swordhealth", "greenhouse:lovable", "greenhouse:kalshi", "greenhouse:webflow", "greenhouse:worldlabs", ...REPOINTED_103]);
+    expect(REPOINTED_103).toHaveLength(34);
   });
 
   it("after the catalogue retires them, each is pruned by its own vendor and token, as untracked, and the count is recorded", async () => {

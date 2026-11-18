@@ -37,8 +37,9 @@
 #               bare was read without details and stays registered on purpose;
 #               a key marked wait (its at is its first refusal) FAILs once it
 #               has waited 2 h for a cold slice's stream, from buildSince + 12 h.
-#               lever:usasurveyjob is INFO: spec-102 sends the stream bound it
-#               trips to W4. No
+#               No board is exempt: lever:usasurveyjob, which spec-102 sent to
+#               W4, left the catalogue in board .103 (OD1(a): a paid-survey ad
+#               feed), so a key for it is a miss of the prune like any other. No
 #               key the catalogue lacks (the catalogue is this checkout's
 #               sources.ts through tsx; VDBC_CATALOG names a JSON file of keys
 #               instead). The count is INFO.
@@ -270,11 +271,11 @@ if(!lo)wait("D12 registry");else{
   if(!Array.isArray(reg))say("FAIL","D12 registry","status carries no oversizeBoards list: "+String(JSON.stringify(reg)).slice(0,120));
   else{
     const STREAMS=new Set(["lever","ashby","greenhouse","recruitee","pinpoint"]);
-    const W4=new Set(["usasurveyjob"]);const at=(e)=>Date.parse(e.at||"");
+    const at=(e)=>Date.parse(e.at||"");
     // A bare key an older build wrote for a token now shared is read as its own vendor:token.
     const lost=keys?reg.filter((e)=>!keys.has(e.key)&&(String(e.key).includes(":")||!keys.has(e.source+":"+e.key))):[];
     // An uncatalogued key is a miss of the prune, named once below, not a board the build failed to read.
-    const late=reg.filter((e)=>!lost.includes(e)&&!e.bare&&!W4.has(e.token)&&(e.wait?now-at(e)>=2*H&&now-since>12*H:at(e)>since+12*H)&&(STREAMS.has(e.source)||(e.source==="workable"&&!held.has(e.token))));
+    const late=reg.filter((e)=>!lost.includes(e)&&!e.bare&&(e.wait?now-at(e)>=2*H&&now-since>12*H:at(e)>since+12*H)&&(STREAMS.has(e.source)||(e.source==="workable"&&!held.has(e.token))));
     const fmt=(a)=>JSON.stringify(a.slice(0,5).map((e)=>[e.key,e.source,e.mb,e.at]));
     if(late.length||lost.length)say("FAIL","D12 registry",(late.length?late.length+" board(s) the stream or a details-free read should now read were still oversize 12 h after buildSince: "+fmt(late):"")+(late.length&&lost.length?"; ":"")+(lost.length?lost.length+" key(s) name a board the catalogue does not carry (the registry prune keeps only catalogued boards): "+fmt(lost):""));
     else if(!reg.length)say("INFO","D12 registry","the registry is empty (expected at least the three held Workable boards)");

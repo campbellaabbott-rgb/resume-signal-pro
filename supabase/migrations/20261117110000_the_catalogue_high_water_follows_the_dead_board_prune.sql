@@ -8,7 +8,9 @@
 -- that served 0 rows before the merge), and it retires lever:usasurveyjob, a
 -- paid-survey ad feed under the owner's OD1(a) junk and aggregator bar. The
 -- repoints move a board to its employer's live vendor in place, so they change
--- no count.
+-- no count. Merged: 336 dead boards, usasurveyjob and the five held Workable
+-- boards out (44,499 to 44,157), then six AI-startup boards appended after
+-- Convergint (44,163).
 --
 -- WHY THE MARK HAS TO MOVE. The orphan prune refuses to run from a bundle whose
 -- catalogue is smaller than the largest one ever deployed (the stale-bundle
@@ -70,7 +72,7 @@ BEGIN
 END $$;
 
 UPDATE public.job_board_meta
-SET v = jsonb_set(v, '{size}', to_jsonb(LEAST((v->>'size')::int, 44499))),
+SET v = jsonb_set(v, '{size}', to_jsonb(LEAST((v->>'size')::int, 44163))),
     updated_at = now()
 WHERE k = 'catalog_highwater';
 
@@ -86,8 +88,8 @@ BEGIN
     RAISE NOTICE 'self-check 20261117110000: no catalogue high-water row yet; the first pass end of the bundle writes one';
     RETURN;
   END IF;
-  IF mark > 44499 THEN
-    RAISE EXCEPTION 'self-check 20261117110000: the catalogue high-water is %, above the 44499 boards job-board 2026-09-09.103 carries, so the orphan prune stays blocked', mark;
+  IF mark > 44163 THEN
+    RAISE EXCEPTION 'self-check 20261117110000: the catalogue high-water is %, above the 44163 boards job-board 2026-09-09.103 carries, so the orphan prune stays blocked', mark;
   END IF;
-  RAISE NOTICE 'self-check 20261117110000: the catalogue high-water is % (at most 44499)', mark;
+  RAISE NOTICE 'self-check 20261117110000: the catalogue high-water is % (at most 44163)', mark;
 END $$;

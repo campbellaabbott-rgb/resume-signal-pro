@@ -19,8 +19,11 @@
  *     pacing, the held boards, the clamp, the catalogue lane's prune,
  *     retirement, repoints and agency flag, Greenhouse stated pay, the status
  *     fields, and the lap;
- *   - with no catalogue-lane fixture in the checkout, the catalogue lines are
- *     INFO and no catalogue key is read;
+ *   - the catalogue lane merged into .103, so a checkout without its fixture
+ *     FAILs the catalogue lines as unjudgeable (never INFO) and reads no
+ *     catalogue key; row A's six boards are sampled from their own fixture
+ *     and FAIL under a name their postings do not print, or serving nothing
+ *     two days in;
  *   - every job-board read declares the probe header and the maintenance
  *     caller, except the one nonce search, which sends the probe header alone
  *     (the backstop it proves); the key is never printed, and the only file
@@ -61,7 +64,7 @@ else if(method==="POST"&&/\\/functions\\/v1\\/job-board$/.test(url)){const b=JSO
   if(b.action==="status")body=JSON.stringify(W.status);
   else if(b.action==="list"&&typeof b.q==="string"){body=JSON.stringify(/^vd103-probe-/.test(b.q)?{jobs:[],total:0}:(W.search[b.q]||{jobs:[],total:0,ranked:true}))}
   else if(b.action==="list"){const k=(b.vendor||[])[0]+":"+(b.companies||[]).join(",");
-    body=JSON.stringify(b.countOnly?{total:W.counts[k]??0,jobs:[]}:{jobs:W.rows[k]||[]})}
+    body=JSON.stringify(b.countOnly?{total:W.counts[k]??0,jobs:[]}:{jobs:W.rows[k]||[],...(k in W.counts?{total:W.counts[k]}:{})})}
   else{st=400;body="{}"}}
 else{st=404}
 const h="HTTP/2 "+st+"\\r\\n"+Object.entries(hdr).map(([k,v])=>k+": "+v+"\\r\\n").join("")+"\\r\\n";
@@ -94,14 +97,14 @@ const STATUS = (o: Record<string, unknown> = {}): Record<string, unknown> => ({
   chainKick: { outcome: "ok", at: iso(MIN) },
   audit: { startedAt: iso(5 * H), doneAt: iso(4 * H) },
   dbBand: null,
-  catalogSize: 44_157, catalogHighwater: 44_157, orphanPruneBlocked: false,
+  catalogSize: 44_163, catalogHighwater: 44_163, orphanPruneBlocked: false,
   lastWrapMin: 430, lastWrapAt: iso(H),
   ...o,
 });
 const STATE = {
   build: "2026-09-09.103", passEnds: [{ startedAt: iso(12 * H), hop0At: iso(12 * H - 40_000), doneAt: iso(12 * H - 5 * MIN) }], unblockedAt: iso(30 * H),
   // [read ms, pending, catalogSize]: the seed drained to 0 at this build.
-  boot: [[NOW - 30 * H, 120, 44_157], [NOW - 20 * H, 0, 44_157]],
+  boot: [[NOW - 30 * H, 120, 44_163], [NOW - 20 * H, 0, 44_163]],
   // [computed_at ms, p50, p95] and [wrap end ms, wrap min]: one judged wrap seen before this run.
   fresh: [[NOW - 36 * H, 250, 520], [NOW - 20 * H, 230, 500], [NOW - 10 * H, 220, 490]],
   wraps: [[NOW - 30 * H, 420]],
@@ -127,10 +130,17 @@ const SEARCH = (): Record<string, unknown> => ({
 // Description pay the miner read before .103 (Databricks' prose): not the board's stated range.
 const ghMined = (n: number, paid: number) => Array.from({ length: n }, (_, i) => ({ id: `g:${i}`, recheckedAt: iso(3 * H), salary: i < paid ? "$180,000 — $247,500 USD" : null }));
 const gh = (n: number, paid: number) => Array.from({ length: n }, (_, i) => ({ id: `g:${i}`, recheckedAt: iso(3 * H), ...(i < paid ? { salary: "USD 100,000.00 – 120,000.00 per year" } : { salary: null }) }));
+// Row A: the six appended boards, read from the real fixture the section reads (cwd is the repo root).
+const ROW_A = (JSON.parse(readFileSync(resolve(ROOT, "src/test/fixtures/board-103-row-a-2026-11-17.json"), "utf8")) as {
+  added: Array<{ key: string; name: string; inWindow: number }>;
+}).added;
+const rowA = (): Record<string, unknown[]> =>
+  Object.fromEntries(ROW_A.map((a) => [a.key, [{ id: `${a.key}:1`, company: a.name }, { id: `${a.key}:2`, company: a.name }]]));
 const ROWS = (): Record<string, unknown[]> => ({
   "greenhouse:coinbase": gh(40, 37), "greenhouse:airbnb": gh(40, 32), "greenhouse:databricks": gh(40, 21),
   "greenhouse:robinhood": gh(40, 38), "greenhouse:figma": gh(40, 27),
   "lever:distro": [{ id: "d:1", agency: true }, { id: "d:2", agency: true }],
+  ...rowA(),
 });
 const WORLD = (o: Partial<World> = {}): World => ({ build: "2026-09-09.103", status: STATUS(), search: SEARCH(), counts: { "ashby:amplitude": 30 }, rows: ROWS(), ...o });
 
@@ -159,7 +169,7 @@ function run(world: World, opts: Opts = {}): { lines: string[]; calls: Calls; ou
     PATH: `${join(dir, "bin")}:${dirname(process.execPath)}:${process.env.PATH ?? ""}`,
     VD_WORLD: join(dir, "world.json"), VD_CALLS: join(dir, "calls.log"),
     VD103_STATE: statePath, VD103_FIXTURE: join(dir, "fixture.json"), VD103_LAPS: join(dir, "laps.json"),
-    VD103_TALLY: "4427516", VD103_READS: "1", VD103_CATALOG_SIZE: "44157", VD103_M6: "200",
+    VD103_TALLY: "4427516", VD103_READS: "1", VD103_CATALOG_SIZE: "44163", VD103_M6: "200",
     ...opts.env,
   };
   let out = "";
@@ -175,7 +185,7 @@ const fails = (lines: string[]) => lines.filter((l) => l.startsWith("FAIL"));
 const failTags = (lines: string[]) => fails(lines).map((l) => l.slice(6, l.indexOf(":", 6)));
 const verdict = (lines: string[], tag: string) => lines.filter((l) => l.slice(6).startsWith(tag + ":")).map((l) => l.slice(0, 4));
 
-const SLICE_TAGS = ["P1", "T1", "PC1", "SA1", "B1", "B2", "F1", "FR1", "A1", "PR1", "H1", "PR2", "RT1", "RP1", "AG1", "GH coinbase", "GH airbnb", "GH databricks", "GH robinhood", "GH figma", "Lap"];
+const SLICE_TAGS = ["P1", "T1", "PC1", "SA1", "B1", "B2", "F1", "FR1", "A1", "PR1", "H1", "PR2", "RT1", "RP1", "AG1", "RA1", "GH coinbase", "GH airbnb", "GH databricks", "GH robinhood", "GH figma", "Lap"];
 const SR_TAGS = ["SR back end developer", "SR nurse", "SR software engineer", "SR front end developer", "SR registered nurse", "SR ai engineer", "SR customer success", "SR privacy", "SR product designer", "SR data analyst", "SR devops engineer", "SR full stack developer", "SR pharmacist"];
 
 describe("section 99zzzzzzzz-board-103: before .103 serves", () => {
@@ -258,6 +268,10 @@ describe("section 99zzzzzzzz-board-103: each claim fails alone", () => {
     ["usasurveyjob still serves", () => ({ world: WORLD({ counts: { "ashby:amplitude": 30, "lever:usasurveyjob": 559 } }) }), ["RT1"]],
     ["a repointed board serves nothing", () => ({ world: WORLD({ counts: {} }) }), ["RP1"]],
     ["a Distro row lost its agency flag", () => ({ world: WORLD({ rows: { ...ROWS(), "lever:distro": [{ id: "d:1", agency: true }, { id: "d:2" }] } }) }), ["AG1"]],
+    ["a row A board serves under a name its postings do not print", () => ({
+      world: WORLD({ rows: { ...ROWS(), "lever:mythic-ai.com": [{ id: "m:1", company: "Mythic AI Inc" }] } }),
+    }), ["RA1"]],
+    ["a row A board serves nothing two days in", () => ({ world: WORLD({ rows: { ...ROWS(), "greenhouse:castelioncorporation": [] } }) }), ["RA1"]],
     ["Greenhouse stated pay does not reach Coinbase's rows", () => ({ world: WORLD({ rows: { ...ROWS(), "greenhouse:coinbase": gh(40, 3) } }) }), ["GH coinbase"]],
     ["a Greenhouse board was not re-read in two days", () => ({ world: WORLD({ rows: { ...ROWS(), "greenhouse:airbnb": gh(10, 9) } }) }), ["GH airbnb"]],
     ["status lost inst", () => { const s = STATUS(); delete s.inst; return { world: WORLD({ status: s }) }; }, ["IN1"]],
@@ -270,7 +284,7 @@ describe("section 99zzzzzzzz-board-103: each claim fails alone", () => {
     }), ["SA1"]],
     ["the bootstrap queue was seeded again at this build (pending rose)", () => ({
       world: WORLD({ status: STATUS({ bootstrapQueue: { pending: 40, forVersion: "2026-09-09.103" } }) }),
-      opts: { state: { ...STATE, boot: [[NOW - 2 * H, 10, 44_157]] } },
+      opts: { state: { ...STATE, boot: [[NOW - 2 * H, 10, 44_163]] } },
     }), ["B1"]],
     ["the first seed at this build holds more than M6 + 15", () => ({
       world: WORLD({ status: STATUS({ bootstrapQueue: { pending: 400, forVersion: "2026-09-09.103" } }) }), opts: { state: { ...STATE, boot: [] } },
@@ -295,13 +309,29 @@ describe("section 99zzzzzzzz-board-103: each claim fails alone", () => {
   });
 });
 
-describe("section 99zzzzzzzz-board-103: the catalogue lane absent", () => {
-  it("is INFO for every catalogue line and reads no catalogue key", () => {
+describe("section 99zzzzzzzz-board-103: a fixture missing from the checkout", () => {
+  it("FAILs every catalogue line as unjudgeable (the lane merged into .103) and reads no catalogue key", () => {
     const r = run(WORLD(), { fixture: null });
-    expect(fails(r.lines)).toEqual([]);
-    for (const t of ["PR2", "RT1", "RP1", "AG1"]) expect(verdict(r.lines, t), t).toEqual(["INFO"]);
+    expect(failTags(r.lines).sort()).toEqual(["AG1", "PR2", "RP1", "RT1"]);
+    for (const t of ["PR2", "RT1", "RP1", "AG1"]) expect(r.lines.find((l) => l.slice(6).startsWith(`${t}:`)), t).toContain("unjudgeable");
     const lists = r.calls.filter((c) => c.data && /"action":"list"/.test(c.data)).map((c) => JSON.parse(c.data as string) as { companies?: string[] });
     for (const t of ["deadone", "deadtwo", "amplitude", "usasurveyjob", "distro"]) expect(lists.some((b) => (b.companies ?? []).includes(t)), t).toBe(false);
+  });
+  it("FAILs RA1 without the row A fixture, and reads no row A board", () => {
+    const r = run(WORLD(), { env: { VD103_ROWA: "/nonexistent/board-103-row-a.json" } });
+    expect(failTags(r.lines)).toEqual(["RA1"]);
+    const lists = r.calls.filter((c) => c.data && /"action":"list"/.test(c.data)).map((c) => JSON.parse(c.data as string) as { companies?: string[] });
+    for (const a of ROW_A) expect(lists.some((b) => (b.companies ?? []).includes(a.key.slice(a.key.indexOf(":") + 1))), a.key).toBe(false);
+  });
+  it("samples each row A board once, vendor-scoped, five rows, without logging", () => {
+    const r = run(WORLD());
+    for (const a of ROW_A) {
+      const [vendor, token] = [a.key.slice(0, a.key.indexOf(":")), a.key.slice(a.key.indexOf(":") + 1)];
+      const hits = r.calls.filter((c) => c.data && /"action":"list"/.test(c.data)).map((c) => JSON.parse(c.data as string) as Record<string, unknown>)
+        .filter((b) => JSON.stringify(b.companies) === JSON.stringify([token]) && JSON.stringify(b.vendor) === JSON.stringify([vendor]));
+      expect(hits, a.key).toEqual([{ action: "list", companies: [token], vendor: [vendor], limit: 5, noLog: true }]);
+    }
+    expect(r.lines.find((l) => l.startsWith("PASS  RA1:"))).toContain(`${ROW_A.length} row A board(s)`);
   });
 });
 
