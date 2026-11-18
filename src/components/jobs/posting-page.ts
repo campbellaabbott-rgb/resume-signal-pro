@@ -701,8 +701,13 @@ const SITE_WORD = /\b(?:mall|plaza|plasma|casino|hotel|resort|chophouse|restaura
  * Africa", "New England - MA", "HK, HKSAR" and "United States Of America, New
  * Mexico, Other" each read one into the town slot).
  */
-const NOT_A_TOWN =/^(?:remote|hybrid|onsite|on-site|office|various|multiple|flexible|anywhere|home|work from home|wfh|virtual|field|nationwide|n\/a|tbd|apac|emea|latam|amer|americas|europe|asia|asia pacific|africa|oceania|middle east|mena|benelux|dach|nordics|caribbean|(?:north|south|central|latin) america|new england|midwest|pacific northwest|(?:east|west|gulf) coast|bay area|tri-?state(?: area)?|global|international|worldwide|other|others|unknown|sar|hksar|macao sar|macau sar)$/i;
+const NOT_A_TOWN =/^(?:remote|hybrid|onsite|on-site|office|various|multiple|flexible|anywhere|home|work from home|wfh|virtual|field|nationwide|n\/a|tbd|apac|emea|latam|amer|americas|europe|asia|asia pacific|africa|oceania|middle east|mena|benelux|dach|nordics|caribbean|(?:north|south|central|latin) america|new england|midwest|pacific northwest|(?:east|west|gulf) coast|bay area|tri-?state(?: area)?|global|international|worldwide|other|others|unknown|sar|hksar|macao sar|macau sar|clients?|client sites?|customer sites?)$/i;
 
+/**
+ * "Client" is no town either (SEO audit 2026-11-18, STRUCTURED-7): Syneos
+ * Health's "CHN-Client" (the client's site, in China) was served as
+ * addressLocality "Client".
+ */
 /** A country written where a town should be. Three letters is the shortest town we will publish. */
 const NOT_A_TOWN_BUT_A_COUNTRY = /^(?:usa|u\.?s\.?a?\.?|uk|u\.?k\.?|eu)$/i;
 
@@ -1145,6 +1150,38 @@ function regionProblem(region: string): string | null {
   return localityProblem(region);
 }
 
+/**
+ * A STREET LINE NAMES A STREET (SEO audit 2026-11-18, STRUCTURED-7). What is
+ * left in front of the town was published as streetAddress whenever it
+ * opened with a digit, and "01147 - Cinemark Renaissance Marketplace and XD"
+ * (a theatre's number and name) was a street. A street line now carries a
+ * street word as well.
+ */
+const STREET_WORD = /\b(?:st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|way|pkwy|parkway|hwy|highway|rte|route|circle|cir|court|ct|place|pl|pike|trail|square|terrace|crescent|suite|ste|floor|fl|unit|bldg|building)\b/i;
+
+/**
+ * A FIRST SEGMENT THAT IS NOT THE TOWN, BEFORE ONE THAT IS (STRUCTURED-7): a
+ * German district ("Rheingau-Taunus-Kreis, Idstein, Deutschland" is Idstein)
+ * or a store named after its town with more words after the town's name
+ * ("LS FIRENZE SPEZIALI, Firenze, Italy" is Firenze). Each was served as
+ * addressLocality. Read only when the segment after it is itself a town, and
+ * held to the reviewed corpus (fixtures/posting-locations.json), so it is
+ * narrow on purpose: a town named after its county ("Târgu Mures, Mures"),
+ * an employer's site ("OCBC Malaysia, Kulaijaya") and a district written in
+ * English before its city ("Yeongdeungpo District, Seoul") keep main's
+ * reading there.
+ */
+const DISTRICT_SEGMENT = /(?:^|[\s-])(?:kreis|landkreis|regierungsbezirk|bezirk)$/i;
+function notTheTownBefore(first: string, next: string): boolean {
+  const f = ` ${first.replace(/\s+/g, " ").trim().toLowerCase()} `;
+  const n = next.replace(/\s+/g, " ").trim().toLowerCase();
+  if (DISTRICT_SEGMENT.test(first.trim())) return true;
+  // The town's name inside the store's, with a word after it: never a town
+  // named after its county, whose county's name ends it.
+  const at = f.indexOf(` ${n} `);
+  return n.length >= 3 && at >= 0 && f.slice(at + n.length + 2).trim().length > 0;
+}
+
 /** A trailing bracket holding an address line or a number ("(1361 Heather Street)", "(10178)"): a note, not the place. */
 const STREET_NOTE = /\s*\((?=[^)]*\d)[^)]*\)\s*$/;
 
@@ -1383,7 +1420,13 @@ function postalAddressOf(raw: string, country: string, job: PostingRow): Record<
       const t = rest[rest.length - 1];
       if ((rest.length === 1 || (rest.length === 2 && /^[A-Z]{2,3}$/.test(rest[0]))) && town(t)) return put(null, t.trim(), null, postal);
     }
+    // A district, a road or a store before the town (STRUCTURED-7).
+    if (segs.length >= 2 && notTheTownBefore(segs[0], segs[1]) && town(segs[1])) return put(null, segs[1].trim(), null, postal);
     const candidate = segs[0] ?? "";
+    // "<Town> <ST>" with more after it ("Pittsburgh PA, 15222, FAP, 5th
+    // Avenue Place"): the town and its state, as when it stands alone.
+    const stated = segs.length > 1 && /^(.+?)\s+([A-Z]{2})$/.test(candidate) ? townBeside(candidate) : null;
+    if (stated?.region && stated.locality) return put(stated.region, stated.locality, null, postal);
     const beside = segs.length === 1 ? townBeside(candidate) : null;
     if (beside) return put(beside.region, beside.locality, null, postal);
     if (town(candidate)) locality = candidate.trim();
@@ -1394,8 +1437,16 @@ function postalAddressOf(raw: string, country: string, job: PostingRow): Record<
     return put(null, locality, null, postal);
   }
 
-  const street = segs.join(", ").trim();
-  return put(region, locality, street && STREETISH.test(street) ? street : null, postal);
+  // THE STREET LINE (STRUCTURED-7): a leading "<town>, " that repeats the
+  // locality is not part of it ("Fort Madison, Ave L, Fort Madison, IA" is
+  // Ave L), nor is a venue before the street number ("Adventureland, 3200
+  // Adventureland drive"), and it names a street (STREET_WORD).
+  const lines = [...segs];
+  while (lines.length > 1 && locality && lines[0].trim().toLowerCase() === locality.toLowerCase()) lines.shift();
+  const numbered = lines.findIndex((x) => /^\d/.test(x.trim()));
+  if (numbered > 0 && lines.slice(0, numbered).every((x) => !/\d/.test(x))) lines.splice(0, numbered);
+  const street = lines.join(", ").trim();
+  return put(region, locality, street && STREETISH.test(street) && STREET_WORD.test(street) ? street : null, postal);
 }
 
 /** schema.org's own enumeration. Anything outside it is ignored by Google, so it is never guessed. */
