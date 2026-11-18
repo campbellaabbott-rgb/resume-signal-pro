@@ -45,6 +45,7 @@
 //
 // Run: deno test --config supabase/functions/deno.json --allow-read supabase/functions/layoff-filings/lca_test.ts
 
+import { fileURLToPath } from "node:url";
 import { assert, assertEquals, assertRejects, assertStringIncludes, assertThrows } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   decodeLcaCells, LCA_CHUNK_ROWS, LCA_EXPECTED, LCA_WAGE_PLAUSIBLE_MAX, LCA_WAGE_PLAUSIBLE_MIN,
@@ -76,7 +77,7 @@ function fiscalLabelForSpan(from: string, to: string): string {
   return a.q === b.q ? `FY${a.fy} Q${a.q}` : `FY${a.fy} Q${a.q}-Q${b.q}`;
 }
 
-const REPO = new URL("../../../", import.meta.url).pathname.replace(/\/$/, "");
+const REPO = fileURLToPath(new URL("../../../", import.meta.url)).replace(/\/$/, "");
 const RAW = Deno.readTextFileSync(new URL("./index.ts", import.meta.url));
 const CODE = RAW.replace(/\/\*[\s\S]*?\*\//g, "\n").replace(/^\s*\/\/.*$/gm, "");
 

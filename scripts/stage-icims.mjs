@@ -35,13 +35,14 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const inFile = process.argv[2];
 if (!inFile) { console.error("usage: node scripts/stage-icims.mjs <icims-netnew.json> [out.json]"); process.exit(1); }
 const outFile = process.argv[3] ?? path.join(path.dirname(inFile), "icims-staged.json");
 const candidates = JSON.parse(fs.readFileSync(inFile, "utf8"));
 
-const SOURCES = new URL("../supabase/functions/job-board/sources.ts", import.meta.url).pathname;
+const SOURCES = fileURLToPath(new URL("../supabase/functions/job-board/sources.ts", import.meta.url));
 const src = fs.readFileSync(SOURCES, "utf8");
 
 // ── screens copied verbatim from merge-all.mjs (see header) ────────────────
