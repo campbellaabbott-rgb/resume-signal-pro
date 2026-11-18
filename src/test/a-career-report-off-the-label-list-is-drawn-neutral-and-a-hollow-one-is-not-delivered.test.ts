@@ -4,13 +4,15 @@
  *
  * The wave-3 shape check refused a whole Career Snapshot or Game Plan over
  * one off-list or translated label ("Declining", "Low" for a trajectory,
- * "Listo para postularte"): the generator walked its model chain to a 502 and
+ * "Casi listo para postularte"): the generator walked its model chain to a 502 and
  * a paid delivery failed although the page could draw it. In the other
  * direction a reply whose strengths, risks, fixes, positioning or weeks were
  * empty passed with no problem and shipped as delivered.
  *
  * Run against the shipped shape module (the generators' copy is byte-
  * identical, held by the translated-verdict test).
+ * ("Listo para postularte" itself is now read as Ready to Apply, RC-S12-113,
+ * so the off-list example is one no list holds.)
  */
 import { describe, expect, it } from "vitest";
 import { reportTone, shapeCareerSnapshot, shapeGamePlan } from "../../supabase/functions/_shared/career-report-shape";
@@ -57,7 +59,7 @@ describe("a label off the list", () => {
     const base = plan();
     const r = shapeGamePlan({
       ...base,
-      resumeReadinessGate: { ...base.resumeReadinessGate, verdict: "Listo para postularte" },
+      resumeReadinessGate: { ...base.resumeReadinessGate, verdict: "Casi listo para postularte" },
       applicationStrategy: { ...base.applicationStrategy, whereToApply: [{ channel: "Career pages", tip: "Early." }, { channel: "Referrals", priority: "Low", tip: "Ask." }] },
     });
     expect(r.problems).toEqual([]);

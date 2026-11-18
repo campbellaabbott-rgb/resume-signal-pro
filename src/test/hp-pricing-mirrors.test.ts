@@ -119,7 +119,8 @@ describe("mirrors of constants still on other branches (they pin themselves when
     const writing = PRO_PERK_ITEMS.find((p) => /interview prep/.test(p.text))!;
     expect(writing.text).toMatch(new RegExp(`${F.WRITING.proPackagesPerDay} packages a day and ${F.WRITING.proPackagesPerMonth} a month`));
     expect(writing.text).not.toMatch(/\bsets?\b/);
-    expect(PRO_PERK_ITEMS.filter((p) => PRO_PERK_REQUIRES[p.key] === "fullAnalysisOnSale").map((p) => p.key)).toEqual(["proPlan.perks.fullAnalysisIncluded"]);
+    // The included Full Analysis and its daily and monthly cap (S14X-079) show and hide together.
+    expect(PRO_PERK_ITEMS.filter((p) => PRO_PERK_REQUIRES[p.key] === "fullAnalysisOnSale").map((p) => p.key)).toEqual(["proPlan.perks.fullAnalysisIncluded", "payments.perks.fullAnalysisCap"]);
     // The page's English list, joined the way Stripe's description is built (P6).
     const english = PRO_PERK_ITEMS.map((p) => i18n.t(p.key, { lng: "en", defaultValue: p.text }));
     expect(english).toEqual(texts);

@@ -145,6 +145,7 @@
       "writingFree": "{{perDay}} van elk per dag",
       "writingPro": "{{perDay}} van elk per dag, {{perMonth}} per maand",
       "faEach": "{{price}} per stuk",
+      "faProCapped": "Inbegrepen: {{perDay}} per dag, {{perMonth}} per maand",
       "faNotOnSale": "Nog niet te koop",
       "sharedAllowance": "Gedeeld daglimiet",
       "codeSearch": "Gedeeld limiet, of {{perDay}} per dag met een gratis sleutel",

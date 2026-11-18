@@ -167,7 +167,8 @@ describe("the auth strings in nine languages", () => {
 
   it("English is the default each call site passes, and every key a call site names exists", () => {
     // use-product-checkout.ts raises the one auth notice outside /auth (S12-087), through i18n.t with the same defaults.
-    const files = ["src/pages/Auth.tsx", "src/contexts/AuthContext.tsx", "src/hooks/use-product-checkout.ts", ...readdirSync(resolve(ROOT, "src/components/auth")).map((f) => `src/components/auth/${f}`)];
+    // The account page's security card asks for its code in auth strings (S14X-087).
+    const files = ["src/pages/Auth.tsx", "src/contexts/AuthContext.tsx", "src/hooks/use-product-checkout.ts", "src/components/account/SecurityCard.tsx", ...readdirSync(resolve(ROOT, "src/components/auth")).map((f) => `src/components/auth/${f}`)];
     const used = new Map<string, string>();
     for (const rel of files) {
       for (const m of read(rel).matchAll(/\b(?:t|tr)\(\s*"(auth\.[A-Za-z0-9_.]+)"\s*,\s*"((?:[^"\\]|\\.)*)"/g)) used.set(m[1], JSON.parse(`"${m[2]}"`));

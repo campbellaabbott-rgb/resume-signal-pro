@@ -49,7 +49,8 @@ import { BOOST_MAX_TOKENS, decideStructure, readBoostReply, type BoostReply } fr
 // 2026-11-10.3 (fix/cost-wave, the integration): both lanes' changes above together.
 // cost/ai and cost/ci-edge each stamped 2026-11-10.2 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "generate-freelance-boost.2026-11-10.3";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, past-buyers lane, RC-S12-104; payments lane, S14X-078): a failed Freelance Boost is written on its order, and a grant keeps its paid month.
+const FN_BUILD = "generate-freelance-boost.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -302,9 +303,26 @@ ${p.repeatOrReferral ? `Repeat/referral: ${p.repeatOrReferral}` : ""}`).join("\n
     if (!out) {
       // Nothing deliverable: the purchase is untouched, the record stays
       // open, and the page says to try again.
-      if (statuses.includes(402)) return jsonRes({ error: "The writing service is temporarily unavailable. Your purchase is safe — please try again later.", code: "model_credits", retryable: true }, 503, { "Retry-After": "600" });
-      if (statuses.length > 0 && statuses.every((s) => s === 429)) return jsonRes({ error: "The writing service is busy. Your purchase is safe — please try again in a minute.", code: "model_busy", retryable: true }, 429, { "Retry-After": "60" });
-      return jsonRes({ error: "We couldn't write a complete section this time. Your purchase is safe — press Generate to try again.", code: "draft_unusable", retryable: true }, 502);
+      const failed: { body: { error: string; code: string; retryable: boolean }; status: number; extra: Record<string, string> } = statuses.includes(402)
+        ? { body: { error: "The writing service is temporarily unavailable. Your purchase is safe — please try again later.", code: "model_credits", retryable: true }, status: 503, extra: { "Retry-After": "600" } }
+        : statuses.length > 0 && statuses.every((s) => s === 429)
+          ? { body: { error: "The writing service is busy. Your purchase is safe — please try again in a minute.", code: "model_busy", retryable: true }, status: 429, extra: { "Retry-After": "60" } }
+          : { body: { error: "We couldn't write a complete section this time. Your purchase is safe — press Generate to try again.", code: "draft_unusable", retryable: true }, status: 502, extra: {} };
+      // WRITTEN ON THE ORDER BEFORE THE PAGE IS ANSWERED (RC-S12-104): the
+      // failure was only in the answer, so the order read as if the buyer had
+      // never pressed Generate. Its status is left as it was (the buyer can
+      // press Generate again), a delivered order is not touched, and a failed
+      // write never changes the answer.
+      try {
+        const { error: noteError } = await supabase.from("product_deliveries")
+          .update({ generation_success: false, generation_error: failed.body.code })
+          .eq("stripe_session_id", body.sessionId)
+          .neq("status", "delivered");
+        if (noteError) console.error("[FREELANCE-BOOST] the failure could not be written on the order:", noteError.message);
+      } catch (noteThrew) {
+        console.error("[FREELANCE-BOOST] the failure could not be written on the order:", noteThrew);
+      }
+      return jsonRes(failed.body, failed.status, failed.extra);
     }
 
     // Keyword coverage vs the posting (deterministic, not model-claimed)

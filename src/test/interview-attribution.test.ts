@@ -5,6 +5,7 @@ import {
   attributionSummary,
   interviewSignals,
   isUpcomingInterview,
+  trackedPostingState,
   type TrackedApplication,
 } from "@/lib/interviewAttribution";
 
@@ -53,6 +54,26 @@ describe("what the closure log can say about an interview", () => {
     const [s] = interviewSignals([row()], NOW);
     expect(s.kind).toBe("still-open");
     expect(s.days).toBe(35);
+  });
+});
+
+describe("S14X-198: a closure the tracker already holds keeps saying what it said", () => {
+  // The lifecycle RPC is asked only about rows with no closure on file, so on
+  // every load after the first a persisted closure comes back with no outcome.
+  it("a closure after the interview stays closed-after when the row holds the date and no outcome", () => {
+    const [s] = interviewSignals([row({ lifecycle_outcome: undefined, posting_closed_at: d("2026-07-12T00:00:00Z") })], NOW);
+    expect(s.kind).toBe("closed-after");
+    expect(s.closedAt).toBe("2026-07-12T00:00:00Z");
+  });
+
+  it("the state is the measured outcome when there is one, a held closure when there is not, else unknown", () => {
+    expect(trackedPostingState({ lifecycle_outcome: "came_down_relisted", posting_closed_at: "2026-07-12T00:00:00Z" })).toBe("came_down_relisted");
+    expect(trackedPostingState({ lifecycle_outcome: "still_standing", posting_closed_at: null })).toBe("still_standing");
+    expect(trackedPostingState({ lifecycle_outcome: "going_down", posting_closed_at: null })).toBe("going_down");
+    expect(trackedPostingState({ lifecycle_outcome: null, posting_closed_at: "2026-07-12T00:00:00Z" })).toBe("came_down");
+    expect(trackedPostingState({ lifecycle_outcome: "not_observed", posting_closed_at: null })).toBe("not_observed");
+    expect(trackedPostingState({ lifecycle_outcome: undefined, posting_closed_at: null })).toBe("unknown");
+    expect(trackedPostingState({ lifecycle_outcome: undefined, posting_closed_at: "not a date" })).toBe("unknown");
   });
 });
 

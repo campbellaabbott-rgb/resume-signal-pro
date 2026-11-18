@@ -20,12 +20,23 @@
 //     Resend path every owner note uses. The answer is {status:"requested"}
 //     only once the row exists; a mail that fails is logged and said in the
 //     answer, never hidden.
+//
+// BUG ROUND 2026-11-08 (S14X-093, S14X-115, S14X-116, RC-S13-063). The
+// session is found by the sha256 of its token (20261112120000 stores no
+// token as itself); an affiliate whose address is unproven is answered 403
+// {status:"unproven_address"}; a conversion held for review (review_flags,
+// 20261112122000) is never requested; and every refusal names itself in the
+// body's status (already_requested, balance_changed), which the page reads
+// rather than the HTTP code. Each new column is read with a fallback to what
+// main had, because this file may go live before those migrations: a
+// missing column (42703) reads as main read it.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { networkBucket } from "../_shared/network-bucket.ts";
 
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "affiliate-payout-request.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, affiliate lane, S14X-093, S14X-115, S14X-116, RC-S13-063): the session is found by its hash (by the plain token while the hash column is absent), an unproven address and a commission held for review are refused, and every refusal is named in the body.
+const FN_BUILD = "affiliate-payout-request.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,6 +60,14 @@ function escapeHtml(text: string | number | undefined | null): string {
 }
 const dollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
+/** PostgREST's answer for a column this database does not have yet. */
+const missingColumn = (e: { code?: string } | null) => e?.code === "42703";
+
+async function sha256Hex(s: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
@@ -70,26 +89,55 @@ Deno.serve(async (req) => {
     if (!/^[0-9a-f]{32,128}$/i.test(token)) return json({ error: "Please sign in again." }, 401);
 
     // THE CALLER OWNS THE ACCOUNT: the session row names it, and it is live.
-    const { data: session, error: sErr } = await admin
+    // Found by the token's sha256; before 20261112120000 applies, by itself.
+    const tokenHash = await sha256Hex(token);
+    let { data: session, error: sErr } = await admin
       .from("affiliate_sessions").select("affiliate_id, expires_at")
-      .eq("session_token", token).maybeSingle();
+      .eq("token_hash", tokenHash).maybeSingle();
+    if (sErr && missingColumn(sErr)) {
+      ({ data: session, error: sErr } = await admin
+        .from("affiliate_sessions").select("affiliate_id, expires_at")
+        .eq("session_token", token).maybeSingle());
+    }
     if (sErr) return json({ error: "Please try again in a moment." }, 503);
     if (!session || Date.parse(String(session.expires_at)) <= Date.now()) {
       return json({ error: "Your session has expired. Please sign in again." }, 401);
     }
 
-    const { data: affiliate, error: aErr } = await admin
-      .from("affiliates").select("id, email, status")
+    let { data: affiliate, error: aErr } = await admin
+      .from("affiliates").select("id, email, status, email_confirmed_at")
       .eq("id", session.affiliate_id).maybeSingle();
+    // Before 20261112120000 no address is proven or unproven: main's rule.
+    let addressProven = true;
+    if (aErr && missingColumn(aErr)) {
+      ({ data: affiliate, error: aErr } = await admin
+        .from("affiliates").select("id, email, status")
+        .eq("id", session.affiliate_id).maybeSingle());
+    } else if (affiliate) {
+      addressProven = Boolean(affiliate.email_confirmed_at);
+    }
     if (aErr) return json({ error: "Please try again in a moment." }, 503);
     if (!affiliate) return json({ error: "Please sign in again." }, 401);
     if (affiliate.status !== "active") return json({ error: "This affiliate account is not active." }, 403);
-    const { data: approved, error: cErr } = await admin
-      .from("affiliate_conversions").select("id, commission_amount")
-      .eq("affiliate_id", affiliate.id).eq("status", "approved");
+    // A payout goes to an address the affiliate has proven is theirs.
+    if (!addressProven) {
+      return json({ status: "unproven_address", error: "Confirm your email address first: the dashboard mails you a link." }, 403);
+    }
+
+    type ApprovedRow = { id: string; commission_amount: number | string; review_flags?: unknown };
+    const approvedRows = async (columns: string) => {
+      const { data, error } = await admin.from("affiliate_conversions").select(columns)
+        .eq("affiliate_id", affiliate.id).eq("status", "approved");
+      return { rows: data as unknown as ApprovedRow[] | null, error };
+    };
+    let { rows: approved, error: cErr } = await approvedRows("id, commission_amount, review_flags");
+    // Before 20261112122000 there are no review flags: every approved row is payable, as on main.
+    if (cErr && missingColumn(cErr)) ({ rows: approved, error: cErr } = await approvedRows("id, commission_amount"));
     if (cErr || !Array.isArray(approved)) return json({ error: "Please try again in a moment." }, 503);
-    const conversionIds = approved.map((c: { id: string }) => c.id);
-    const amount = approved.reduce((t: number, c: { commission_amount: number | string }) => t + (Number(c.commission_amount) || 0), 0);
+    // A conversion held for review is not payable until the review clears it.
+    const payable = approved.filter((c: { review_flags?: unknown }) => !Array.isArray(c.review_flags) || c.review_flags.length === 0);
+    const conversionIds = payable.map((c: { id: string }) => c.id);
+    const amount = payable.reduce((t: number, c: { commission_amount: number | string }) => t + (Number(c.commission_amount) || 0), 0);
     if (amount < MIN_PAYOUT_CENTS) {
       return json({ error: `The minimum payout is ${dollars(MIN_PAYOUT_CENTS)}.`, minimumCents: MIN_PAYOUT_CENTS }, 400);
     }
@@ -101,8 +149,10 @@ Deno.serve(async (req) => {
     if (insErr) {
       if ((insErr as { code?: string }).code === "23505") return json({ status: "already_requested" }, 409);
       // The settlement trigger re-adds the conversions: one changed between
-      // the read and the write.
-      if ((insErr as { code?: string }).code === "23514") return json({ error: "Your balance changed while we recorded the request. Please try again." }, 409);
+      // the read and the write. Said in the body, never read as "already open".
+      if ((insErr as { code?: string }).code === "23514") {
+        return json({ status: "balance_changed", error: "Your balance changed while we recorded the request. Please try again." }, 409);
+      }
       console.error("[AFFILIATE-PAYOUT] request insert failed:", insErr.message);
       return json({ error: "Could not record the request. Please try again." }, 500);
     }

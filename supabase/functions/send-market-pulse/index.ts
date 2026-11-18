@@ -12,7 +12,9 @@
 //     networks that have not asked today are served, and 400 stops it for
 //     everyone; either one tells the owner. Nothing else is ever sent to an
 //     address that has not clicked its link.
-//   POST {action:"confirm", token}  anyone holding a link from that mail.
+//   POST {action:"confirm", token}  anyone holding a link from that mail. The
+//     answer adds nextPulse ('later_this_month' | 'next_month') when the
+//     address already had a pulse too recently for the next run to send one.
 //   POST {action:"send"}  the daily cron (x-email-cron, a vault key) or our own
 //     service role. Nobody else: this used to answer any caller, so N
 //     concurrent posts mailed every due subscriber N times (defect sweep 2.23).
@@ -29,6 +31,7 @@
 
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { KEYWORD_FREQUENCY } from "../_shared/market-intelligence.ts";
 import { sameSecret } from "../_shared/service-caller.ts";
 import { networkBucket } from "../_shared/network-bucket.ts";
@@ -59,7 +62,8 @@ import { PULSE_COPY, industryLabel, mailLanguageOf, storedLanguage, type MailLan
 // stored when the address confirmed (market_pulse_subscribers.locale,
 // 20261103191000); English when neither is known (./copy.ts).
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "send-market-pulse.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, mail lane): the pulse goes once a calendar month, prints only the newest score, keeps the language it was asked in, clears what a stopped address gave, and every run is stamped.
+const FN_BUILD = "send-market-pulse.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,6 +79,44 @@ const BATCH = 200;
 // with its month intact (S8-052: the isolate dies near 150 s).
 const RUN_BUDGET_MS = 100_000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const DAY_MS = 86_400_000;
+/**
+ * THE RUN IS STAMPED (NB-37): job_board_meta mail_run:market_pulse = {at,
+ * due, sent, givenBack, refused}, read by mail-watch R11, so a pulse that
+ * stops trying is seen. due is the pulses composed; givenBack counts every
+ * claim handed back (the run's budget and the provider's refusals). Counts
+ * and a time only, best effort.
+ */
+const RUN_STAMP_KEY = "mail_run:market_pulse";
+
+// deno-lint-ignore no-explicit-any
+async function stampRun(db: SupabaseClient<any, any, any>, counts: { due: number; sent: number; givenBack: number; refused: number }) {
+  const at = new Date().toISOString();
+  try {
+    const { error } = await db.from("job_board_meta").upsert({ k: RUN_STAMP_KEY, v: { at, ...counts }, updated_at: at }, { onConflict: "k" });
+    if (error) console.warn("[MARKET-PULSE] run stamp not written:", String(error.message ?? "").slice(0, 120));
+  } catch (e) {
+    console.warn("[MARKET-PULSE] run stamp not written:", (e as Error)?.message?.slice(0, 120));
+  }
+}
+
+/**
+ * WHEN AN ADDRESS THAT ALREADY HAD A PULSE GETS ITS NEXT ONE (S14X-238). The
+ * claim (market_pulse_claim_batch) takes a row 28 days after its last pulse
+ * and never twice in one calendar month (UTC), so a confirmation that comes
+ * back after an unsubscribe is told the truth instead of "within a day":
+ * 'later_this_month', 'next_month', or null when the next run may send it.
+ */
+export function nextPulseAfter(lastSentAt: unknown, now: Date): "later_this_month" | "next_month" | null {
+  const last = typeof lastSentAt === "string" ? Date.parse(lastSentAt) : NaN;
+  if (!Number.isFinite(last)) return null;
+  const l = new Date(last);
+  const firstOfNextMonth = Date.UTC(l.getUTCFullYear(), l.getUTCMonth() + 1, 1);
+  const earliest = Math.max(last + 28 * DAY_MS, firstOfNextMonth);
+  if (earliest <= now.getTime()) return null;
+  const e = new Date(earliest);
+  return e.getUTCFullYear() === now.getUTCFullYear() && e.getUTCMonth() === now.getUTCMonth() ? "later_this_month" : "next_month";
+}
 
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -159,13 +201,21 @@ Deno.serve(async (req) => {
   if (un) {
     const email = (un.email ?? "").toLowerCase();
     if (!email || !sameSecret(un.token ?? "", await hmacToken(email))) return json({ error: "invalid unsubscribe link" }, 400);
+    // AN ADDRESS OFF THE LIST TAKES ITS DETAILS WITH IT (S14X-102): the score
+    // and the field it gave go with the stop (industry is NOT NULL, so it
+    // returns to 'general'; a new request writes both again). The language is
+    // cleared on its own, after the stop has landed, so a refusal there never
+    // costs the unsubscribe.
     const { error: unErr } = await supabase.from("market_pulse_subscribers")
-      .update({ unsubscribed_at: new Date().toISOString() })
+      .update({ unsubscribed_at: new Date().toISOString(), last_score: null, industry: "general" })
       .eq("email", email);
     if (unErr) {
       console.error("[MARKET-PULSE] unsubscribe failed:", unErr.message);
       return json({ error: "could not unsubscribe right now" }, 503);
     }
+    try {
+      await supabase.from("market_pulse_subscribers").update({ locale: null }).eq("email", email);
+    } catch { /* the stop has landed; the language waits for the nightly prune */ }
     return json({ unsubscribed: true });
   }
 
@@ -222,6 +272,13 @@ Deno.serve(async (req) => {
         if (!RESEND_API_KEY) return json({ success: false, error: "Email service not configured" }, 503);
         const link = `${SITE_URL}${CONFIRM_PATH}#t=${token}`;
         const lang = mailLanguageOf(body, req.headers.get("accept-language"));
+        // THE PULSE KEEPS THE LANGUAGE IT WAS ASKED IN (S14X-239): the one
+        // this confirmation mail is written in, on the row the new token
+        // names, so a link opened on another device does not change it. Best
+        // effort: a refusal leaves the confirm to write the confirming page's.
+        try {
+          await supabase.from("market_pulse_subscribers").update({ locale: lang }).eq("confirm_token_hash", tokenHash);
+        } catch { /* the confirm writes one */ }
         const { error: sendErr } = await new Resend(RESEND_API_KEY).emails.send({
           from: "Resume Booster <reports@resumebooster.work>",
           to: [email],
@@ -255,21 +312,35 @@ Deno.serve(async (req) => {
       if (rlError) return json({ success: false, error: "Could not confirm right now. Try the link again shortly." }, 503);
       if (allowed !== true) return json({ success: false, error: "Too many requests. Please try again later." }, 429);
       const tokenHash = await sha256Hex(token);
-      // THE PULSE'S LANGUAGE (S13-102): the confirming page's, stored on the
-      // row this token names while it is still live, before the confirm
-      // spends the token. Best effort: a refusal (no locale column yet) only
-      // leaves the pulse in English.
+      const liveSince = new Date(Date.now() - 7 * DAY_MS).toISOString();
+      // WHEN THE NEXT PULSE GOES (S14X-238): an address coming back after an
+      // unsubscribe may have had one this month, and the claim sends none
+      // twice in a calendar month. Read by the token before the confirm
+      // spends it; a read that fails says nothing, as before.
+      let lastSentAt: unknown = null;
+      try {
+        const { data: pending } = await supabase.from("market_pulse_subscribers")
+          .select("last_sent_at").eq("confirm_token_hash", tokenHash).gt("confirm_sent_at", liveSince).maybeSingle();
+        lastSentAt = (pending as { last_sent_at?: unknown } | null)?.last_sent_at ?? null;
+      } catch { /* no next-pulse line */ }
+      // THE PULSE'S LANGUAGE (S13-102, S14X-239): the asking page's, stored
+      // at the request. The confirming page's is written only on a row that
+      // has none (asked before the request stored it), on the row this token
+      // names while it is still live. Best effort: a refusal only leaves the
+      // pulse in English.
       try {
         await supabase.from("market_pulse_subscribers")
           .update({ locale: mailLanguageOf(body, req.headers.get("accept-language")) })
           .eq("confirm_token_hash", tokenHash)
-          .gt("confirm_sent_at", new Date(Date.now() - 7 * 86_400_000).toISOString());
+          .is("locale", null)
+          .gt("confirm_sent_at", liveSince);
       } catch { /* the pulse stays English */ }
       const { data, error } = await supabase.rpc("market_pulse_confirm", { p_token_hash: tokenHash }).maybeSingle();
       if (error) return json({ success: false, error: "Could not confirm right now. Try the link again shortly." }, 503);
       const d = data as { cf_confirmed?: boolean } | null;
       if (!d?.cf_confirmed) return json({ success: false, error: "This link has expired or was already used." }, 410);
-      return json({ success: true, confirmed: true });
+      const nextPulse = nextPulseAfter(lastSentAt, new Date());
+      return json(nextPulse ? { success: true, confirmed: true, nextPulse } : { success: true, confirmed: true });
     }
 
     // ── Batch send: the cron, or our own service role, and nobody else ───
@@ -288,7 +359,7 @@ Deno.serve(async (req) => {
       const startedAt = Date.now();
       const { data: claimed, error } = await supabase.rpc("market_pulse_claim_batch", { p_limit: BATCH });
       if (error) throw error;
-      let sent = 0, skipped = 0, handedBack = 0;
+      let sent = 0, skipped = 0, handedBack = 0, composed = 0, refused = 0, givenBack = 0;
 
       const due = (claimed ?? []) as Array<{ cl_email: string; cl_industry: string; cl_last_score: number | null; cl_confirmed_at: string; cl_prev_sent_at: string | null }>;
       // Each subscriber's language, stored at confirmation (S13-102). A read
@@ -307,6 +378,7 @@ Deno.serve(async (req) => {
           for (const rest of due.slice(i)) {
             await supabase.from("market_pulse_subscribers").update({ last_sent_at: rest.cl_prev_sent_at }).eq("email", rest.cl_email);
             handedBack++;
+            givenBack++;
           }
           break;
         }
@@ -328,9 +400,17 @@ Deno.serve(async (req) => {
 
         // Personal progress -- accounts with scan history get THEIR trend, not
         // just their industry's. Service-role RPC resolves scores by email.
+        // THE SCORE A PULSE PRINTS IS THE NEWEST ONE (S14X-237): trend[0],
+        // or no line at all. The row's last_score is the score the address
+        // signed up with, which a later request never replaces, so a pulse
+        // printing it read back a months-old number as "your last scan".
         let progressHtml = "";
+        let newestScore: number | null = null;
         try {
           const { data: trend } = await supabase.rpc("get_user_score_trend", { p_email: sub.cl_email });
+          if (Array.isArray(trend) && trend.length >= 1 && trend[0]?.ats_score != null && Number.isFinite(Number(trend[0].ats_score))) {
+            newestScore = Number(trend[0].ats_score);
+          }
           if (Array.isArray(trend) && trend.length >= 2) {
             const newest = Number(trend[0].ats_score);
             const oldest = Number(trend[trend.length - 1].ats_score);
@@ -364,7 +444,7 @@ Deno.serve(async (req) => {
       ${progressHtml}
       ${digest.mustHave.length ? `<h3 style="font-size:12px;color:#111;margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.5px">${c.coreKeywords}</h3><div>${kwPills(digest.mustHave, "#fef2f2", "#dc2626")}</div>` : ""}
       ${digest.common.length ? `<h3 style="font-size:12px;color:#111;margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.5px">${c.oftenExpected}</h3><div>${kwPills(digest.common, "#fffbeb", "#d97706")}</div>` : ""}
-      <p style="font-size:13px;color:#444;margin:16px 0 0">${sub.cl_last_score ? c.lastScan(escapeHtml(sub.cl_last_score)) : ""}${c.freshScan}</p>
+      <p style="font-size:13px;color:#444;margin:16px 0 0">${newestScore !== null ? c.lastScan(escapeHtml(newestScore)) : ""}${c.freshScan}</p>
       <div style="text-align:center;margin-top:20px">
         <a href="${rescanUrl}" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:700;padding:12px 26px;border-radius:10px;text-decoration:none">${c.rescanButton}</a>
       </div>
@@ -376,6 +456,7 @@ Deno.serve(async (req) => {
   </div>
 </body></html>`;
 
+        composed++;
         const { error: sendErr } = await resend.emails.send({
           from: "Resume Booster <reports@resumebooster.work>",
           to: [sub.cl_email],
@@ -386,17 +467,20 @@ Deno.serve(async (req) => {
         });
         if (sendErr) {
           console.error("[MARKET-PULSE] send failed for one subscriber", sendErr);
+          refused++;
           // Give the claim back, so a failed send is retried by the next run
           // rather than silently costing this subscriber a month.
           await supabase.from("market_pulse_subscribers")
             .update({ last_sent_at: sub.cl_prev_sent_at })
             .eq("email", sub.cl_email);
+          givenBack++;
           skipped++;
           continue;
         }
         sent++;
       }
 
+      await stampRun(supabase, { due: composed, sent, givenBack, refused });
       console.log(`[MARKET-PULSE] Batch complete: sent=${sent} skipped=${skipped} handedBack=${handedBack}`);
       return json({ success: true, sent, skipped, handedBack });
     }

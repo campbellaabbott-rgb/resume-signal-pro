@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { callAIWithModelFallback, describeError, describeReply, logAiUsage } from "../_shared/ai-fallback.ts";
+import { importSlice } from "./import-slice.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -24,7 +25,8 @@ import { callAIWithModelFallback, describeError, describeReply, logAiUsage } fro
 // 2026-11-09.2 (fix/cost-wave, the integration): both lanes' changes above together.
 // cost/ai and cost/ci-edge each stamped 2026-11-09.1 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "parse-resume-structured.2026-11-09.2";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, builder lane, S14X-071): the import is cut at a line break and says how much of the résumé it read.
+const FN_BUILD = "parse-resume-structured.2026-11-12.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -111,7 +113,10 @@ serve(async (req) => {
 
     const systemPrompt = `You extract a resume's existing content into structured sections for an editable resume builder. This is EXTRACTION, not rewriting — preserve the candidate's actual wording, dates, and details as closely as possible. Do not invent, embellish, or omit content. If a field genuinely isn't present in the resume, return an empty string for it rather than guessing.`;
 
-    const userPrompt = `Extract the following resume into structured sections:\n\n${resumeText.slice(0, 20000)}`;
+    // At most IMPORT_MAX_CHARS, cut at a line break, and the answer says what
+    // was left out (S14X-071, import-slice.ts).
+    const slice = importSlice(resumeText);
+    const userPrompt = `Extract the following resume into structured sections:\n\n${slice.text}`;
 
     console.log("[PARSE-RESUME-STRUCTURED] Parsing resume, length:", resumeText.length);
 
@@ -236,7 +241,12 @@ serve(async (req) => {
     console.log("[PARSE-RESUME-STRUCTURED] Successfully parsed resume, model:", modelUsed);
 
     return new Response(
-      JSON.stringify({ success: true, modelUsed, ...structured }),
+      // The import's own counts go last, so nothing the model writes can
+      // claim the résumé was read whole when it was not.
+      JSON.stringify({
+        success: true, modelUsed, ...structured,
+        resumeTruncated: slice.truncated, importedChars: slice.importedChars, totalChars: slice.totalChars,
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

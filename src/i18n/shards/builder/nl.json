@@ -1,0 +1,32 @@
+{
+  "builderPage": {
+    "importFailed": {
+      "title": "Je cv is niet geïmporteerd",
+      "busy": "De import is nu even druk. Probeer het over een paar minuten opnieuw.",
+      "dailyLimit": "Je hebt de importlimiet van vandaag bereikt. Probeer het morgen opnieuw, of vul de onderdelen hieronder zelf in.",
+      "paused": "Importeren is voorlopig gepauzeerd. Vul de onderdelen hieronder zelf in, of probeer het later opnieuw.",
+      "tooLong": "Het lezen van je cv duurde te lang. Opnieuw proberen werkt meestal.",
+      "generic": "Er ging iets mis bij het lezen van je cv. Probeer het opnieuw.",
+      "retry": "Opnieuw proberen",
+      "fixesWaiting": "De verbeteringen uit het rapport worden toegepast zodra de import lukt."
+    },
+    "importTruncated": "Alleen de eerste {{imported}} van {{total}} tekens van je cv zijn geïmporteerd. Vul de rest hieronder aan.",
+    "importLatest": "Mijn nieuwste scan importeren",
+    "importedNoneMatchedTitle": "Cv geïmporteerd",
+    "importedNoneMatchedDescription_one": "De herschrijving uit het rapport paste bij geen enkel opsommingsteken en is dus niet toegepast. Ze staat nog in je rapport.",
+    "importedNoneMatchedDescription_other": "Geen van de {{count}} herschrijvingen uit het rapport paste bij een opsommingsteken, dus er is er geen toegepast. Ze staan nog in je rapport.",
+    "otherTab": {
+      "changed": "Dit concept is in een ander tabblad gewijzigd.",
+      "load": "Die versie laden",
+      "keep": "Mijn versie houden",
+      "cleared": "Dit concept is in een ander tabblad of bij het uitloggen gewist."
+    },
+    "storageBlocked": "Deze browser bewaart je concept niet. Exporteer het voordat je weggaat.",
+    "moveUp": "Omhoog",
+    "moveDown": "Omlaag",
+    "removeEntry": "Dit item verwijderen",
+    "removeBullet": "Dit opsommingsteken verwijderen",
+    "bullet": "Opsommingsteken {{num}}",
+    "dismiss": "Verbergen"
+  }
+}

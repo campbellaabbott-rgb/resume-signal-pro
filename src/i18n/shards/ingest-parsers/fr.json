@@ -1,0 +1,32 @@
+{
+  "ingestParsers": {
+    "refusal": {
+      "emptyFile": "Ce fichier est vide",
+      "emptyFileDescription": "Il ne contient rien à lire. Vérifiez le fichier et téléversez-le à nouveau, ou collez le texte de votre CV.",
+      "passwordProtected": "Ce PDF est protégé par un mot de passe",
+      "passwordProtectedDescription": "Retirez le mot de passe (ou exportez une copie non protégée) et téléversez-le à nouveau, ou collez le texte de votre CV.",
+      "invalidPdf": "Nous ne pouvons pas ouvrir ce PDF",
+      "invalidPdfDescription": "Il est peut-être endommagé, ou c'est un autre type de fichier renommé en .pdf. Exportez-le à nouveau, téléversez un .docx ou collez le texte de votre CV.",
+      "tooManyPages": "Ce PDF est trop long",
+      "tooManyPagesDescription": "Il compte {{pages}} pages et nous en lisons jusqu'à {{max}}. Téléversez uniquement votre CV, pas un document combiné.",
+      "scannedOrEmpty": "Ce PDF ne contient aucun texte lisible",
+      "scannedOrEmptyDescription": "Il semble s'agir d'une image numérisée. Téléversez un PDF exporté depuis Word ou Google Docs, un .docx, ou collez le texte de votre CV.",
+      "legacyDoc": "Nous ne pouvons pas ouvrir ce fichier Word",
+      "legacyDocDescription": "C'est un ancien fichier .doc ou un document protégé par un mot de passe. Enregistrez-le en .docx non protégé (Fichier > Enregistrer sous dans Word) ou collez le texte de votre CV.",
+      "noText": "Aucun texte trouvé dans ce document",
+      "noTextDescription": "Si votre CV se trouve dans une image ou une zone de texte, collez plutôt son texte.",
+      "docxGarbled": "Les lettres de ce document sont illisibles",
+      "docxGarbledDescription": "Son texte est corrompu, généralement à cause d'une police endommagée ou incorporée. Enregistrez à nouveau le document ou collez le texte de votre CV.",
+      "webExport": "Ce document a été enregistré comme contenu web",
+      "webExportDescription": "Nous ne pouvons pas le lire directement. Ouvrez-le dans Word et choisissez Fichier > Enregistrer sous > Document Word (.docx), ou collez le texte de votre CV.",
+      "rateLimited": "Trop de téléversements en ce moment",
+      "rateLimitedDescription": "Veuillez patienter un moment et réessayer, ou collez le texte de votre CV."
+    },
+    "notice": {
+      "rtlUnreliable": "Certaines lettres sont peut-être dans le désordre",
+      "rtlUnreliableDescription": "Les PDF ne conservent pas de façon fiable les lettres arabes liées : des parties de ce texte peuvent se lire dans le désordre. Pour l'analyse la plus précise, téléversez un .docx ou collez le texte de votre CV.",
+      "imagePagesSkipped": "Certaines pages ne contenaient pas de texte",
+      "imagePagesSkippedDescription": "Pages sans texte lisible : {{pages}}. Nous avons lu le reste. Si ces pages font partie de votre CV, téléversez un .docx ou collez le texte."
+    }
+  }
+}

@@ -29,7 +29,7 @@
  * it over the real bullet. Stored reports still carry them. A rewrite that is
  * blank or holds an unfilled [placeholder] is never applied.
  */
-import type { BuilderResume } from "@/types/resume-builder";
+import type { BuilderEducationEntry, BuilderExperienceEntry, BuilderResume } from "@/types/resume-builder";
 
 /** Where the draft's source fingerprint is kept, beside the draft itself. */
 export const IMPORTED_FROM_KEY = "resumeBuilderImportedFrom";
@@ -39,15 +39,66 @@ export const MIN_IMPORT_CHARS = 50;
 
 const filled = (v: unknown): boolean => typeof v === "string" && v.trim().length > 0;
 
+/**
+ * An entry with something typed or imported in it (S14X-035). A new résumé
+ * starts with one blank job and one blank school, and an import that finds
+ * none keeps a blank one: the exports, the preview and the rescan text leave
+ * such an entry out, and print no heading over a section with none left.
+ */
+export function experienceEntryHasContent(e: BuilderExperienceEntry | null | undefined): boolean {
+  if (!e) return false;
+  return [e.company, e.title, e.location, e.startDate, e.endDate].some(filled) || (e.bullets ?? []).some(filled);
+}
+
+export function educationEntryHasContent(e: BuilderEducationEntry | null | undefined): boolean {
+  if (!e) return false;
+  return [e.school, e.degree, e.field, e.startDate, e.endDate, e.details].some(filled);
+}
+
 /** True when anything in the résumé was typed or imported. */
 export function builderResumeHasContent(r: BuilderResume | null | undefined): boolean {
   if (!r) return false;
   if (Object.values(r.contact ?? {}).some(filled) || filled(r.summary)) return true;
   if ((r.skills ?? []).some(filled) || (r.certifications ?? []).some(filled)) return true;
-  if ((r.experience ?? []).some((e) =>
-    [e.company, e.title, e.location, e.startDate, e.endDate].some(filled) || (e.bullets ?? []).some(filled))) return true;
-  return (r.education ?? []).some((e) =>
-    [e.school, e.degree, e.field, e.startDate, e.endDate, e.details].some(filled));
+  if ((r.experience ?? []).some(experienceEntryHasContent)) return true;
+  return (r.education ?? []).some(educationEntryHasContent);
+}
+
+/**
+ * Plain-text serialization for the rescan ritual: the exported document goes
+ * back through the real scanner so the improvement is measured, not assumed.
+ * Only filled entries are written, and a section heading only over entries.
+ */
+export function builderResumeToText(r: BuilderResume): string {
+  const lines: string[] = [];
+  const c = r.contact;
+  if (c.fullName) lines.push(c.fullName);
+  if (c.title) lines.push(c.title);
+  lines.push([c.email, c.phone, c.location, c.linkedIn, c.website].filter(Boolean).join(" | "));
+  if (filled(r.summary)) lines.push("", "SUMMARY", r.summary);
+  const jobs = (r.experience ?? []).filter(experienceEntryHasContent);
+  if (jobs.length) {
+    lines.push("", "EXPERIENCE");
+    for (const e of jobs) {
+      const dates = [e.startDate, e.endDate].filter(Boolean).join(" - ");
+      const head = [e.title, e.company].filter(filled).join(", ");
+      lines.push(`${head}${e.location ? ` — ${e.location}` : ""}${dates ? ` (${dates})` : ""}`);
+      for (const b of (e.bullets ?? []).filter(filled)) lines.push(`- ${b}`);
+    }
+  }
+  const schools = (r.education ?? []).filter(educationEntryHasContent);
+  if (schools.length) {
+    lines.push("", "EDUCATION");
+    for (const e of schools) {
+      lines.push([[e.degree, e.field].filter(Boolean).join(" in "), e.school, [e.startDate, e.endDate].filter(Boolean).join(" - ")].filter(Boolean).join(", "));
+      if (e.details) lines.push(e.details);
+    }
+  }
+  const skills = (r.skills ?? []).filter(filled);
+  const certifications = (r.certifications ?? []).filter(filled);
+  if (skills.length) lines.push("", "SKILLS", skills.join(", "));
+  if (certifications.length) lines.push("", "CERTIFICATIONS", certifications.join(", "));
+  return lines.join("\n");
 }
 
 /**

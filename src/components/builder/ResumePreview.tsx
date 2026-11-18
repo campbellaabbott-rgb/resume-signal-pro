@@ -1,5 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { BuilderResume } from "@/types/resume-builder";
+import { educationEntryHasContent, experienceEntryHasContent } from "@/lib/builder-import";
+import { resumeSectionLabels } from "@/lib/resume-section-labels";
 
 function formatDateRange(startDate: string, endDate: string): string {
   if (!startDate && !endDate) return "";
@@ -8,8 +10,21 @@ function formatDateRange(startDate: string, endDate: string): string {
   return `${startDate} – ${endDate}`;
 }
 
+/**
+ * The preview beside the editor shows what the exports print (S14X-187,
+ * S14X-035): the headings come from the same resumeSectionLabels, so a
+ * German résumé is headed in German here as in its PDF, whatever the
+ * interface language; a blank entry and a section with none left are not
+ * shown; an entry with no title is headed by its company (never an English
+ * "Role"); and a line break in a bullet shows as one.
+ */
 export function ResumePreview({ resume }: { resume: BuilderResume }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const labels = resumeSectionLabels(resume, { uiLanguage: i18n.language });
+  const experience = (resume.experience ?? []).filter(experienceEntryHasContent);
+  const education = (resume.education ?? []).filter(educationEntryHasContent);
+  const skills = (resume.skills ?? []).filter((s) => s.trim());
+  const certifications = (resume.certifications ?? []).filter((s) => s.trim());
   const contactLine = [
     resume.contact.email,
     resume.contact.phone,
@@ -26,48 +41,46 @@ export function ResumePreview({ resume }: { resume: BuilderResume }) {
       {resume.contact.title && <p className="text-neutral-600 mt-0.5">{resume.contact.title}</p>}
       {contactLine && <p className="text-xs text-neutral-500 mt-1">{contactLine}</p>}
 
-      {resume.summary && (
+      {resume.summary?.trim() && (
         <section className="mt-5">
-          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">{t("resumeBuilder.preview.summary")}</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">{labels.summary}</h2>
           <p className="whitespace-pre-wrap">{resume.summary}</p>
         </section>
       )}
 
-      {resume.experience.length > 0 && (
+      {experience.length > 0 && (
         <section className="mt-5">
-          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">{t("resumeBuilder.preview.experience")}</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">{labels.experience}</h2>
           <div className="space-y-4">
-            {resume.experience.map((entry) => (
-              <div key={entry.id}>
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-semibold">{entry.title || t("resumeBuilder.preview.role")}</span>
-                  <span className="text-xs text-neutral-500 shrink-0">{formatDateRange(entry.startDate, entry.endDate)}</span>
-                </div>
-                {(entry.company || entry.location) && (
-                  <p className="italic text-neutral-600 text-[13px]">
-                    {[entry.company, entry.location].filter(Boolean).join(" — ")}
-                  </p>
-                )}
-                {entry.bullets.filter((b) => b.trim()).length > 0 && (
-                  <ul className="list-disc list-outside ml-4 mt-1 space-y-0.5">
-                    {entry.bullets
-                      .filter((b) => b.trim())
-                      .map((bullet, i) => (
-                        <li key={i}>{bullet}</li>
+            {experience.map((entry) => {
+              const companyLine = [entry.title ? entry.company : "", entry.location].filter(Boolean).join(" — ");
+              const bullets = (entry.bullets ?? []).filter((b) => b.trim());
+              return (
+                <div key={entry.id}>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="font-semibold">{entry.title || entry.company}</span>
+                    <span className="text-xs text-neutral-500 shrink-0">{formatDateRange(entry.startDate, entry.endDate)}</span>
+                  </div>
+                  {companyLine && <p className="italic text-neutral-600 text-[13px]">{companyLine}</p>}
+                  {bullets.length > 0 && (
+                    <ul className="list-disc list-outside ml-4 mt-1 space-y-0.5">
+                      {bullets.map((bullet, i) => (
+                        <li key={i} className="whitespace-pre-wrap">{bullet}</li>
                       ))}
-                  </ul>
-                )}
-              </div>
-            ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
 
-      {resume.education.length > 0 && (
+      {education.length > 0 && (
         <section className="mt-5">
-          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">{t("resumeBuilder.preview.education")}</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">{labels.education}</h2>
           <div className="space-y-3">
-            {resume.education.map((entry) => {
+            {education.map((entry) => {
               const degreeLine = [entry.degree, entry.field].filter(Boolean).join(", ");
               return (
                 <div key={entry.id}>
@@ -76,7 +89,7 @@ export function ResumePreview({ resume }: { resume: BuilderResume }) {
                     <span className="text-xs text-neutral-500 shrink-0">{formatDateRange(entry.startDate, entry.endDate)}</span>
                   </div>
                   {degreeLine && entry.school && <p className="italic text-neutral-600 text-[13px]">{entry.school}</p>}
-                  {entry.details && <p className="text-[13px] mt-0.5">{entry.details}</p>}
+                  {entry.details && <p className="text-[13px] mt-0.5 whitespace-pre-wrap">{entry.details}</p>}
                 </div>
               );
             })}
@@ -84,17 +97,17 @@ export function ResumePreview({ resume }: { resume: BuilderResume }) {
         </section>
       )}
 
-      {resume.skills.length > 0 && (
+      {skills.length > 0 && (
         <section className="mt-5">
-          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">{t("resumeBuilder.preview.skills")}</h2>
-          <p>{resume.skills.join("  •  ")}</p>
+          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">{labels.skills}</h2>
+          <p>{skills.join("  •  ")}</p>
         </section>
       )}
 
-      {resume.certifications.length > 0 && (
+      {certifications.length > 0 && (
         <section className="mt-5">
-          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">{t("resumeBuilder.preview.certifications")}</h2>
-          <p>{resume.certifications.join("  •  ")}</p>
+          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">{labels.certifications}</h2>
+          <p>{certifications.join("  •  ")}</p>
         </section>
       )}
     </div>

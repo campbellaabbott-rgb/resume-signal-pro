@@ -198,4 +198,24 @@ describe("a card that could not be scored must say so", () => {
       }
     }
   });
+
+  // S14X-291: the score's tooltip said "4% of this posting's recognized
+  // keywords are already in your resume". The number is a fit score out of
+  // 100 (overlap, lowered for a years gap), not that share, and the share it
+  // named was false for most cards. The tooltip now says what the number is.
+  it("behaviour: a score's tooltip names a score out of 100, not a share of keywords you have", async () => {
+    mount();
+    await waitFor(() => expect(fileInput()).not.toBeNull(), SLOW);
+    dropResume();
+    await waitFor(() => expect(chips("Stretch").length).toBe(1), SLOW);
+    const tips = Array.from(document.querySelectorAll("[title]")).map((e) => e.getAttribute("title") ?? "");
+    expect(tips.some((x) => x.startsWith("Keyword fit score 4 out of 100:"))).toBe(true);
+    expect(tips.some((x) => /% of this posting's recognized keywords are already in your resume/.test(x)), "the share claim is still printed").toBe(false);
+  });
+
+  it("no board surface asks for the share sentence any more", () => {
+    const card = readFileSync(resolve(ROOT, "src/components/jobs/listing/JobCard.tsx"), "utf8").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+    expect(JOBS).not.toMatch(/jobsPage\.matchCoverage/);
+    expect(card).not.toMatch(/jobsPage\.matchCoverage/);
+  });
 });

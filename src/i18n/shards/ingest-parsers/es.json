@@ -1,0 +1,32 @@
+{
+  "ingestParsers": {
+    "refusal": {
+      "emptyFile": "Este archivo está vacío",
+      "emptyFileDescription": "No contiene nada que leer. Revisa el archivo y vuelve a subirlo, o pega el texto de tu currículum.",
+      "passwordProtected": "Este PDF está protegido con contraseña",
+      "passwordProtectedDescription": "Quita la contraseña (o exporta una copia sin protección) y vuelve a subirlo, o pega el texto de tu currículum.",
+      "invalidPdf": "No podemos abrir este PDF",
+      "invalidPdfDescription": "Puede estar dañado o ser otro tipo de archivo renombrado a .pdf. Expórtalo de nuevo, sube un .docx o pega el texto de tu currículum.",
+      "tooManyPages": "Este PDF es demasiado largo",
+      "tooManyPagesDescription": "Tiene {{pages}} páginas y leemos hasta {{max}}. Sube solo tu currículum, no un documento combinado.",
+      "scannedOrEmpty": "Este PDF no tiene texto que podamos leer",
+      "scannedOrEmptyDescription": "Parece una imagen escaneada. Sube un PDF exportado desde Word o Google Docs, un .docx, o pega el texto de tu currículum.",
+      "legacyDoc": "No podemos abrir este archivo de Word",
+      "legacyDocDescription": "Es un archivo .doc antiguo o un documento protegido con contraseña. Guárdalo como .docx sin protección (Archivo > Guardar como en Word) o pega el texto de tu currículum.",
+      "noText": "No se encontró texto en este documento",
+      "noTextDescription": "Si tu currículum está dentro de una imagen o un cuadro de texto, pega el texto en su lugar.",
+      "docxGarbled": "No se pueden leer las letras de este documento",
+      "docxGarbledDescription": "El texto salió dañado, normalmente por una fuente rota o incrustada. Guarda el documento de nuevo o pega el texto de tu currículum.",
+      "webExport": "Este documento se guardó como contenido web",
+      "webExportDescription": "No podemos leerlo directamente. Ábrelo en Word y usa Archivo > Guardar como > Documento de Word (.docx), o pega el texto de tu currículum.",
+      "rateLimited": "Demasiadas subidas en este momento",
+      "rateLimitedDescription": "Espera un rato y vuelve a intentarlo, o pega el texto de tu currículum."
+    },
+    "notice": {
+      "rtlUnreliable": "Algunas letras pueden estar desordenadas",
+      "rtlUnreliableDescription": "Los PDF no conservan bien las letras árabes enlazadas, así que partes de este texto pueden leerse desordenadas. Para un análisis más preciso, sube un .docx o pega el texto de tu currículum.",
+      "imagePagesSkipped": "Algunas páginas no tenían texto",
+      "imagePagesSkippedDescription": "Páginas sin texto legible: {{pages}}. Leímos el resto. Si esas páginas son parte de tu currículum, sube un .docx o pega el texto."
+    }
+  }
+}

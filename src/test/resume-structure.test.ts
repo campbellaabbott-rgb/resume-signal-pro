@@ -6,6 +6,7 @@ import {
   parseResumeStructure,
   formatStructureForPrompt,
 } from "../../supabase/functions/free-keyword-scan/resume-structure";
+import { parseResumeStructure as streamParseResumeStructure } from "../../supabase/functions/free-keyword-scan-stream/resume-structure";
 
 const GOOD_RESUME = `John Doe
 Senior Software Engineer
@@ -90,5 +91,13 @@ describe("formatStructureForPrompt", () => {
     expect(block).toContain("deterministic_structure");
     expect(block).toContain("Sections detected:");
     expect(block).toContain("never flag as ABSENT");
+  });
+});
+
+describe("S14X-168: 'Personal Statement' is the UK's summary heading", () => {
+  const UK = "Sam Taylor | sam@example.co.uk\nPERSONAL STATEMENT\nOperations coordinator with six years in logistics.\nWORK HISTORY\nCoordinator, Northern Freight, 2020 - Present";
+  it("is read as Summary by both copies", () => {
+    expect(parseResumeStructure(UK).sections).toContain("Summary");
+    expect(streamParseResumeStructure(UK).sections).toContain("Summary");
   });
 });

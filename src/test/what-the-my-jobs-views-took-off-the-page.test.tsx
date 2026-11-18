@@ -124,12 +124,15 @@ describe("what the my-jobs views took off the page", () => {
   });
 
   it("the key carries both placeholders in the English locales, and the count is interpolated, never spelled", () => {
+    // A plural pair since S14X-176: each form carries both placeholders.
     for (const f of ["en.json", "en-GB.json"]) {
-      const s = String(jp(f).hiddenByViews ?? "");
-      expect(s, `${f} lacks jobsPage.hiddenByViews`).not.toBe("");
-      expect(s).toContain("{{count}}");
-      expect(s).toContain("{{views}}");
-      expect(s).not.toMatch(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\b/i);
+      for (const form of ["hiddenByViews_one", "hiddenByViews_other"]) {
+        const s = String(jp(f)[form] ?? "");
+        expect(s, `${f} lacks jobsPage.${form}`).not.toBe("");
+        expect(s).toContain("{{count}}");
+        expect(s).toContain("{{views}}");
+        expect(s).not.toMatch(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\b/i);
+      }
     }
   });
 });

@@ -13,6 +13,11 @@
  * faked: a failed save removes nothing, so the mandate's file is still there;
  * a successful save removes the old file only after the mandate names the new
  * one.
+ *
+ * The upload is the live agent's: while the agent is switched off the panel
+ * is read-only with no upload at all (S14X-199, pinned in
+ * the-retired-agent-profile-shows-what-is-stored-and-deletes-it.test.tsx), so
+ * this file switches the agent on.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -28,6 +33,10 @@ const { world } = vi.hoisted(() => ({
   },
 }));
 
+vi.mock("../../supabase/functions/_shared/apply-agent-switch", async (importActual) => ({
+  ...(await importActual<typeof import("../../supabase/functions/_shared/apply-agent-switch")>()),
+  APPLY_AGENT_ON: true,
+}));
 vi.mock("@/lib/resumeText", () => ({ resumeTextFrom: async () => "" }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/integrations/supabase/client", () => {

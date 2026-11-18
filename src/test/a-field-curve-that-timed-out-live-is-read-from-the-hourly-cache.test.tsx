@@ -383,7 +383,8 @@ function ghostViolations(code: string): string[] {
   if (!/setFillCurve\(cachedCurve\.rows\);[\s\S]{0,200}setFillCurveComputedAt\(cachedCurve\.computedAt\);[\s\S]{0,200}setFillCurveCarried\(cachedCurve\.carried\);/.test(code)) {
     out.push("the rows, the stamp and the carry flag are not taken from the same reading");
   }
-  const stamp = "`" + AS_OF + "${new Date(fillCurveComputedAt).toLocaleString()}`";
+  // In en-US, as the bake prints it (S14X-255, data-pages lane): a bare toLocaleString followed the browser.
+  const stamp = "`" + AS_OF + "${new Date(fillCurveComputedAt).toLocaleString(EN)}`";
   if (!code.includes(stamp)) out.push("the section does not print the curve's own computed_at");
   const h2 = code.indexOf(HEADING_IN_CODE);
   const end = code.indexOf("Measured from our own lifecycle log over the last", h2);
@@ -402,7 +403,7 @@ describe("the Ghost Job Index source carries every property, comment-stripped", 
   });
 
   it("teeth: a copy that dates the table with the tiles' stamp fails", () => {
-    const mutant = GHOST_PAGE.replace("new Date(fillCurveComputedAt).toLocaleString()", "new Date(statsComputedAt as string).toLocaleString()");
+    const mutant = GHOST_PAGE.replace("new Date(fillCurveComputedAt).toLocaleString(EN)", "new Date(statsComputedAt as string).toLocaleString(EN)");
     expect(mutant).not.toBe(GHOST_PAGE);
     const v = ghostViolations(mutant);
     expect(v).toContain("the section borrows another stamp");

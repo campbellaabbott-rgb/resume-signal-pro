@@ -10,7 +10,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkProByEmail } from "../_shared/pro.ts";
-import { provenMailbox } from "../_shared/mailbox-proof.ts";
+import { accountProvenEmail } from "../_shared/account-proof.ts";
 import { checkoutOrigin } from "../_shared/checkout-policy.ts";
 import { refusedCallerBody, websiteTokenRefusal } from "../_shared/checkout-buyer.ts";
 import { boundCustomerOfRows, portalCustomerOf, type BoundRow } from "../_shared/pro-answer.ts";
@@ -37,7 +37,8 @@ import { boundCustomerOfRows, portalCustomerOf, type BoundRow } from "../_shared
 // member with two bound plans is sent to the live or owing one, never to the
 // one whose row was written last.
 // 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "create-portal-session.2026-11-10.2";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, payments lane, S14X-229): an address the account proved by code opens billing for an unbound plan.
+const FN_BUILD = "create-portal-session.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -180,7 +181,9 @@ serve(async (req) => {
     // no longer carries that address in Stripe, so only the binding counts.
     const foundIt = found.stripeCustomerId === customerId;
     const bound = !!uid && (viaBinding || (foundIt && found.boundUserId === uid) || await rowBindsCustomer(supabase, uid, customerId));
-    const proven = bound || (mailboxCounts && !!(await provenMailbox(data?.user, jwt, {
+    // The account's proof of its address, as the other account pages read it
+    // (S14X-229): a session proof, or R1's recorded code or link proof.
+    const proven = bound || (mailboxCounts && !!(await accountProvenEmail(data?.user, jwt, {
       db: supabase,
       confirmedSince: Deno.env.get("EMAIL_CONFIRMED_SINCE") ?? null,
       supabaseUrl: Deno.env.get("SUPABASE_URL") ?? "",

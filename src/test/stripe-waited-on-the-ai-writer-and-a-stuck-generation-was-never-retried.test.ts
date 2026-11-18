@@ -19,6 +19,7 @@
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { FakeDb, loadEdgeHandler, type EdgeHandler, fakeLeaseRpcs } from "./helpers/edge-harness";
@@ -150,7 +151,7 @@ describe("the retry sweep finishes a generation nobody finished", () => {
 const MIG = resolve(__dirname, "../../supabase/migrations");
 const SELECTOR_SQL = readFileSync(resolve(MIG, "20261009140000_a_paid_order_stuck_mid_generation_is_retried_after_fifteen_minutes.sql"), "utf8");
 const DELIVERIES = `
-  CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+  ${SUPABASE_DEFAULTS}
   CREATE TABLE public.product_deliveries (
     id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     created_at timestamptz NOT NULL DEFAULT now(),

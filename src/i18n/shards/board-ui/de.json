@@ -1,0 +1,29 @@
+{
+  "boardUi": {
+    "nlLabel": "Beschreibe den gewünschten Job in Alltagssprache",
+    "nlRunAsKeywords": "Stattdessen nach diesen Wörtern suchen",
+    "nlUnavailable": "Die Suche in Alltagssprache ist gerade nicht verfügbar.",
+    "nlNothingRead": "Nichts in diesem Satz passte zu einem Filter, deine Filter bleiben also unverändert.",
+    "yearsFromSearch": "Verlangt höchstens {{n}} Jahre (aus deiner Suche)",
+    "salaryFromSearch": "{{amount}}k+ angegeben (aus deiner Suche)",
+    "salaryCeilingFromSearch": "bis {{amount}}k angegeben (aus deiner Suche)",
+    "compareDescription": "Die von dir gewählten Anzeigen, verglichen anhand dessen, was das Board zu jeder bereits hat.",
+    "recordOneBoard": "Einstellungsbilanz für eines von {{n}} Boards dieses Arbeitgebers: {{board}}",
+    "handoffWithheld": "Der KI-Connector gibt keine {{system}}-Anzeigen weiter: Öffne diese stattdessen hier.",
+    "handoffWithheldSearch": "Der KI-Connector gibt keine Anzeigen von {{systems}} weiter, daher lässt der Prompt sie aus; sie bleiben hier auf dem Board.",
+    "fitRankedFilters": "Lebenslauf geladen — deine Filter bleiben erhalten, und die passenden Stellen werden nach Passung sortiert.",
+    "fitScoreTip": "Keyword-Passungswert {{pct}} von 100: wie stark sich die erkannten Schlüsselwörter dieser Anzeige und dein Lebenslauf überschneiden, abgesenkt, wenn die Anzeige mehr Jahre verlangt, als dein Lebenslauf zeigt. Es ist nicht der Anteil der Schlüsselwörter der Anzeige, die du schon hast.",
+    "fitNotScoredLimit": "Nicht bewertet: Das Kontingent für Passungsbewertungen ist vorerst aufgebraucht, daher wurde diese Anzeige nicht bewertet.",
+    "fitNotScoredFailed": "Nicht bewertet: Die Bewertung hat für diese Anzeige nicht geantwortet. Versuche es erneut über den Hinweis über der Liste.",
+    "fitLimitedHour": "Stündliches Kontingent von {{limit}} Passungsbewertungen erreicht; es wird eine Stunde nach dem ersten bewerteten Aufruf zurückgesetzt. Anzeigen ohne Wert hier wurden noch nicht bewertet.",
+    "fitLimitedDay": "Tägliches Kontingent von {{limit}} Passungsbewertungen erreicht; es wird 24 Stunden nach dem ersten bewerteten Aufruf zurückgesetzt. Anzeigen ohne Wert hier wurden noch nicht bewertet.",
+    "fitLimitedPlain": "Das Kontingent für Passungsbewertungen ist vorerst aufgebraucht. Anzeigen ohne Wert hier wurden noch nicht bewertet.",
+    "unscoredTerms": "Nicht bewertet — die Begriffe dieser Anzeige können wir noch nicht lesen",
+    "unscoredTermsBody": "Wir haben ihre Beschreibung, aber die Bewertung hat darin keine Fähigkeit und kein Werkzeug erkannt: Sie liest nur englische Schlüsselwörter. Hier gibt es keinen Prozentwert; das ist das Fehlen einer Messung, keine schwache Messung.",
+    "unscoredTermsTip": "Nicht bewertet: Wir haben die Beschreibung dieser Anzeige, aber die Bewertung hat darin keine Fähigkeit und kein Werkzeug erkannt (sie liest nur englische Schlüsselwörter). Das ist keine niedrige Bewertung — es ist gar keine.",
+    "unscoredResumeTerms": "Nicht bewertet — in Ihrem Lebenslauf haben wir keine Fähigkeit und kein Werkzeug erkannt",
+    "unscoredResumeTermsBody": "Die Bewertung liest nur englische Schlüsselwörter und hat in Ihrem Lebenslauf keines gefunden, also gab es nichts, womit sie diese Anzeige vergleichen konnte. Hier gibt es keinen Prozentwert; das ist das Fehlen einer Messung, keine schwache Messung.",
+    "unscoredResumeTermsTip": "Nicht bewertet: Die Bewertung hat in Ihrem Lebenslauf keine Fähigkeit und kein Werkzeug erkannt (sie liest nur englische Schlüsselwörter), also gab es nichts zu vergleichen. Das ist keine niedrige Bewertung — es ist gar keine.",
+    "matchesNoneForRole": "Wir haben gerade keine offenen Stellen für {{role}} gefunden, deshalb sind das Stellen in deinem Fachgebiet — mit deinem Lebenslauf bewertet, nicht durch ihn gefunden."
+  }
+}

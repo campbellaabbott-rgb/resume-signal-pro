@@ -1131,7 +1131,8 @@
       "fontUnreadable": "This PDF's letters can't be read",
       "fontUnreadableDescription": "Its font doesn't map to real characters. Upload a .docx or paste your CV text instead.",
       "unreadCharacters": "Some characters couldn't be read",
-      "unreadCharactersDescription": "We skipped {{count}} characters this PDF doesn't name. For the most accurate scan, upload a .docx or paste your CV text.",
+      "unreadCharactersDescription_one": "We skipped {{count}} character this PDF doesn't name. For the most accurate scan, upload a .docx or paste your CV text.",
+      "unreadCharactersDescription_other": "We skipped {{count}} characters this PDF doesn't name. For the most accurate scan, upload a .docx or paste your CV text.",
       "checkoutRefusedTitle": "Couldn't start checkout",
       "resumeTooLong": "CV too long to scan",
       "resumeTooLongDescription": "This CV is {{length}} characters; the free scan reads up to {{max}}. Shorten it (older roles and long lists go first) and scan again."
@@ -1428,7 +1429,8 @@
       "subtitle": "Editable sections, live preview, export to PDF or Word"
     },
     "actionBanner": {
-      "issuesFound": "{{count}} issues found — fix them now",
+      "issuesFound_one": "{{count}} issue found — fix it now",
+      "issuesFound_other": "{{count}} issues found — fix them now",
       "keyImprovements": "Key improvements available",
       "withRole": "{{industry}}-specific fixes for your {{role}} CV",
       "withoutRole": "Industry-specific fixes with rewritten bullet points",
@@ -1556,7 +1558,8 @@
       "careerBrand": "• Personal brand assessment: current vs ideal positioning",
       "careerDescWithRole": "Salary negotiation guidance, next-role paths, and interview talking points for your {{role}} background",
       "careerDescDefault": "Salary negotiation guidance, next-role paths, and interview talking points for {{industry}}",
-      "kwDescWithStats": "{{count}} missing keywords found specific to {{industry}} that ATS systems look for",
+      "kwDescWithStats_one": "{{count}} missing keyword found specific to {{industry}} that ATS systems look for",
+      "kwDescWithStats_other": "{{count}} missing keywords found specific to {{industry}} that ATS systems look for",
       "kwDescGood": "Strong keyword coverage for {{industry}} — get phrasing and placement tips to make them count even more",
       "kwDescDefault": "Missing keywords specific to {{industry}} that ATS systems look for"
     },
@@ -1630,7 +1633,8 @@
       "openBoardFallbackLive": "Open the live job board — {{n}}+ openings live now, ranked against your CV",
       "openBoardFallbackPlain": "Open the live job board — live openings, ranked against your CV",
       "openBoardNoteLive": "{{n}}+ openings live now · save searches, watch companies, track applications",
-      "openBoardNotePlain": "Live openings · save searches, watch companies, track applications"
+      "openBoardNotePlain": "Live openings · save searches, watch companies, track applications",
+      "openBoard": "Open your ranked board — every opening scored against this CV"
     },
     "nextSteps": {
       "eyebrow": "Next steps",
@@ -2756,7 +2760,7 @@
         "browserLocal": {
           "what": "A CV you build on the site (in the builder or in Freelance Boost), a history of your recent scans (name, role and scores), and your recent reports",
           "where": "This browser's local storage, on your device",
-          "howLong": "Until it is cleared: the Clear Browser Data button on a paid results page clears all of it, and so does clearing this site's data in your browser"
+          "howLong": "Until it is cleared: signing out on this device clears it (when a CV you built or your Freelance Boost details exist only here, you are asked first and can keep them), and so do the Clear Browser Data button on a paid results page and clearing this site's data in your browser"
         },
         "ai": {
           "what": "Your CV text, while a report is written",
@@ -2764,9 +2768,9 @@
           "howLong": "Sent only to produce your report, under that provider's terms"
         },
         "email": {
-          "what": "A report you email to yourself, the paid analysis we email you, and any fix-plan emails you opt into",
-          "where": "Your inbox, sent through our email provider; scheduled fix-plan emails wait in our send queue",
-          "howLong": "The queued emails go out over 14 days; unsubscribing cancels the rest"
+          "what": "A report you email to yourself and the paid analysis we email you",
+          "where": "Your inbox, sent through our email provider",
+          "howLong": "In your inbox for as long as you keep it"
         },
         "paid": {
           "what": "A paid analysis, which quotes your CV",
@@ -2786,7 +2790,7 @@
         "agent": {
           "what": "The CV you give the apply agent: the file and its text",
           "where": "Private storage that only you and the agent can read",
-          "howLong": "The apply agent is switched off and sends it to no one. A CV given to it earlier is kept until you delete your account or ask for erasure: deleting your account erases the text; email {{email}} to have the file erased."
+          "howLong": "The apply agent is switched off and sends it to no one. A CV given to it earlier is kept until you delete your account, which erases both the text and the file; to have them erased without deleting your account, email {{email}}."
         },
         "payment": {
           "what": "Your payment",
@@ -2796,7 +2800,7 @@
         "shortlist": {
           "what": "Candidates' CVs an employer screens with Shortlist",
           "where": "That employer's account, as redacted text",
-          "howLong": "Until the employer deletes them"
+          "howLong": "Until the employer deletes the candidate, the role or its account; anything still held four years after it was uploaded is deleted"
         }
       },
       "footnote": "Deletion runs every 15 minutes for the temporary store and every hour for the report cache, the AI cache and paid analyses. To have anything erased sooner, email {{email}}."
@@ -3353,7 +3357,8 @@
     "gapsByCategory": "Gaps by Category",
     "gapCount_one": "({{count}} gap)",
     "gapCount_other": "({{count}} gaps)",
-    "topActions": "Top {{count}} Actions to Improve Your Match",
+    "topActions_one": "Top {{count}} Action to Improve Your Match",
+    "topActions_other": "Top {{count}} Actions to Improve Your Match",
     "addSkill": "Add \"{{skill}}\"",
     "copySuggestion": "Copy suggestion",
     "technical": "Technical Skills",
@@ -3857,7 +3862,6 @@
     "matchStrong": "Strong match",
     "matchPossible": "Possible match",
     "matchStretch": "Stretch",
-    "matchCoverage": "{{pct}}% of this posting's recognised keywords are already in your CV",
     "allCountries": "All countries",
     "countryTip": "Country read from each posting's own location text — postings we can't place are excluded while this is on, never guessed.",
     "freshHint": "Counts company-stated posting dates only",
@@ -3971,7 +3975,7 @@
     "verdictGo": "Worth applying now",
     "verdictCaution": "Apply with expectations",
     "verdictNeutral": "What the data says",
-    "takedownsLast24h": "{{n}} roles filled or closed in the last 24 hours",
+    "takedownsLast24h": "{{n}} postings taken down in the last 24 hours",
     "recheckLine": "median feed re-checked {{m}} min ago",
     "chipWeek": "Posted this week",
     "chipRemote": "Remote",
@@ -4156,7 +4160,8 @@
     "discWorkMode2": "{{shown}} of these employers state where the work happens. Another {{hidden}} openings match everything else but carry no stated mode — their employer said nothing, or said two different things and we refused to choose — so this filter hides them.",
     "discShowAll": "Show those too",
     "discCategory": "Separately, {{hidden}} openings across the whole board have a job title that never says which field they're in, so no field filter can reach them.",
-    "fuzzyExtraLine": "Only a few exact matches for “{{q}}” — {{count}} close-match titles are included below, labelled.",
+    "fuzzyExtraLine_one": "Only a few exact matches for “{{q}}” — {{count}} close-match title is included below, labelled.",
+    "fuzzyExtraLine_other": "Only a few exact matches for “{{q}}” — {{count}} close-match titles are included below, labelled.",
     "closeMatchChip": "close match",
     "zeroAlertHint": "New postings land here every day. Get an email when roles matching this search appear:",
     "zeroAlertCta": "Alert me when this exists",
@@ -4279,8 +4284,10 @@
     "skillUnlockPlain": "is missing from {{n}} of these postings.",
     "skillUnlockCta": "Have it? Add it to your CV honestly →",
     "updating": "updating…",
-    "hiddenCount": "{{count}} hidden",
-    "hiddenByViews": "{{count}} hidden by {{views}}",
+    "hiddenCount_one": "{{count}} hidden",
+    "hiddenCount_other": "{{count}} hidden",
+    "hiddenByViews_one": "{{count}} hidden by {{views}}",
+    "hiddenByViews_other": "{{count}} hidden by {{views}}",
     "restoreHidden": "restore",
     "benchmarkTip": "Median of the annualised lower bounds companies publish themselves (hourly and monthly rates annualised), computed over this field's dominant stated currency only — never converted, never mixed. Live from this board — not a survey or an estimate.",
     "benchmarkLine": "Advertised pay in this field: median floor {{symbol}}{{median}} ({{currency}}) — from {{n}} postings here that state pay",
@@ -4429,7 +4436,8 @@
     "a11yLoading": "Loading openings…",
     "a11yError": "Could not load openings. Try again.",
     "a11yNoResults": "No openings match these filters.",
-    "a11yResults": "{{count}} openings shown.",
+    "a11yResults_one": "{{count}} opening shown.",
+    "a11yResults_other": "{{count}} openings shown.",
     "experienceFieldLabel": "Experience level",
     "salaryFieldLabel": "Minimum stated pay",
     "companyFieldLabel": "Employer",
@@ -4660,7 +4668,8 @@
     "laneAll": "All",
     "advanceTip": "Advance to {{stage}}",
     "statusLabel": "Application status",
-    "tracked": "{{count}} tracked",
+    "tracked_one": "{{count}} tracked",
+    "tracked_other": "{{count}} tracked",
     "tracker": "Application tracker",
     "scoreHistory": "Score history",
     "targetScore": "Target score",
@@ -4772,7 +4781,7 @@
     "acPrepAll_other": "Prep {{count}} tailored applications",
     "acGoPro_one": "Go Pro to batch-prep {{count}} saved job",
     "acGoPro_other": "Go Pro to batch-prep {{count}} saved jobs",
-    "acFitTitle": "{{pct}}% of the posting's recognized keywords are in your CV",
+    "acFitTitle": "Keyword fit score {{pct}} out of 100: how far this posting's recognised keywords and your CV overlap. It is not the share of the posting's keywords you already have.",
     "acApply": "Apply",
     "acToggleKit": "Toggle kit",
     "acKitUnreadable": "This kit couldn't be read — regenerate it from the tracker row below.",
@@ -4954,7 +4963,9 @@
     "acLimitHours": "Generation limit reached — the ones prepped so far are saved. Try the rest in about {{hours}} hours.",
     "acLimitMinutes": "Generation limit reached — the ones prepped so far are saved. Try the rest in about {{minutes}} minutes.",
     "acAiUnavailable": "The AI service can't take requests right now. What was prepped so far is saved; try the rest later.",
-    "acSavedNoLetter": "Tailored CVs saved: {{count}}. Their cover letters couldn't be written this time; run prep again to add them."
+    "acSavedNoLetter": "Tailored CVs saved: {{count}}. Their cover letters couldn't be written this time; run prep again to add them.",
+    "notifAgentEmail": "Apply Agent morning shortlist email",
+    "notifAgentPaused": "(mandate paused — no sends)"
   },
   "applyAgent": {
     "badge": "Your AI apply agent",
@@ -5136,7 +5147,55 @@
     "searchLimitHit": "You can run up to 10 active searches. Pause one to add another.",
     "searchLastRun": "Last run: scanned {{scanned}}, queued {{picked}}.",
     "passFunds": "Your Agent Pass funds this agent: {{left}} applications left. Switch the agent on below, and your connected AI can request applications.",
-    "trackerFull": "Kept, but your tracker is full (2,000 entries). Remove old entries to add more."
+    "trackerFull": "Kept, but your tracker is full (2,000 entries). Remove old entries to add more.",
+    "countryAny": "Countries — any (the agent applies wherever your roles and places match)",
+    "countryPicked": "Countries the agent may apply in",
+    "countryNote": "Reads each posting's country, not its wording — so picking Germany finds roles that only say “Berlin”. Leave all off to search everywhere.",
+    "needResumeHere": "Add your CV first — upload or paste it just below, and the agent can start.",
+    "keptTracked": "Kept — added to your tracker below.",
+    "cvTooShort": "That looks too short to match against — please upload the full CV, or paste the text.",
+    "cvSaveError": "Couldn't save that — please try again.",
+    "cvSaved": "CV saved — the agent will score every posting against it.",
+    "cvParseFailed": "Couldn't read that file — paste the text instead and it will work.",
+    "sumSalary": "{{n}}+",
+    "sumRemote": "remote only",
+    "sumAge": "posted within {{n}}d",
+    "sumUncat": "+ uncategorised",
+    "sumDaily": "{{n}}/morning",
+    "fromCvTitle": "From your CV",
+    "fromCvUseAll": "Use these",
+    "fromCvRoles": "Roles:",
+    "fromCvEvidence": "Read from: {{line}}",
+    "fromCvAlso": "Often a fit too:",
+    "fromCvAdjacentTip": "A career-adjacent role — our suggestion, not something your CV says",
+    "fromCvPlaces": "Places:",
+    "fromCvNote": "Suggestions only — nothing runs until you activate. We drop the seniority word (“Senior”) on purpose: postings title the same job a dozen ways, and the shorter term finds all of them.",
+    "startFromCv": "Start the agent with these",
+    "fewerOptions": "Fewer options",
+    "moreOptions": "More options",
+    "advancedActive": "Also applying:",
+    "fieldMaxAge": "Posted within",
+    "ageAny": "Any age",
+    "age1": "24 hours",
+    "age3": "3 days",
+    "age7": "7 days",
+    "age14": "14 days",
+    "age30": "30 days",
+    "ageNote": "Based on the date each employer states on its own feed. Postings that carry no date are left out — we never guess an age.",
+    "fieldUncategorised": "Also search uncategorised postings — about a quarter of the board, where the role's field could not be read from its title.",
+    "uncategorisedNoTerms": "With no job titles above, this widens the search a lot. Add titles and it costs you almost nothing.",
+    "needResumeTitle": "Add your CV to start",
+    "needResumeWhy": "The agent scores every posting against it, and reads your roles and locations from it — it is the only thing we cannot work out for you.",
+    "cvReading": "Reading…",
+    "cvUpload": "Upload CV",
+    "cvPasteHide": "Hide paste box",
+    "cvPaste": "or paste the text",
+    "cvPastePlaceholder": "Paste your CV text here…",
+    "cvPasteSave": "Save CV",
+    "cvPasteCount": "{{n}} characters — 100 needed",
+    "statusAwaiting": "Active — awaiting subscription",
+    "summaryAge": "posted within {{d}}d",
+    "summaryUncat": "+ uncategorised"
   },
   "applyProfile": {
     "authorized": "Are you authorised to work where you're applying?",
@@ -5278,7 +5337,7 @@
     "confirming": "Confirming your subscription with Stripe. This takes a few seconds.",
     "notConfirmedYet": "We could not confirm your subscription yet. Refresh this page in a minute, or contact support if your plan does not appear.",
     "activeMember": "You're a Pro member: the writing tools are unlocked.",
-    "badge": "Writing tools",
+    "badge": "Pro",
     "checkoutRefusedTitle": "Couldn't start checkout",
     "endsOn": "Ends {{date}}: cancelled, it will not renew",
     "goPro": "Go Pro — ${{price}}/month",
@@ -5328,7 +5387,12 @@
     "heading": "Built for the systems employers actually use",
     "sub": "We read jobs straight from {{count}} applicant tracking systems — not scraped from a search engine.",
     "readTitle": "Read straight from the employer's own system",
-    "readBlurb": "Every posting on the board comes from one of these systems, and you apply on the employer's own site. We never submit an application for you."
+    "readBlurb": "Every posting on the board comes from one of these systems, and you apply on the employer's own site. We never submit an application for you.",
+    "asOf": "Live counts of currently open roles, measured {{time}}.",
+    "stripHeading": "Every job here comes straight from these systems",
+    "stripSub": "Read directly from all {{count}} — never scraped from a search engine.",
+    "eyebrow": "Where our jobs come from",
+    "subCounted": "{{total}} open roles, read straight from the {{count}} applicant tracking systems below — not scraped from a search engine."
   },
   "pendingQ": {
     "title": "Questions the agent stopped on",
@@ -5633,16 +5697,6 @@
     "home": "Back to Resume Booster"
   },
   "fixPlanConfirm": {
-    "title": "Start your fix-plan emails",
-    "body": "Four short emails over two weeks: your top fixes on day 2, the rest on day 4, a rescan reminder on day 6, and one question on day 14. Every email has an unsubscribe link.",
-    "button": "Yes, start the emails",
-    "done": "Done. The first email arrives in two days.",
-    "already": "A fix-plan sequence already started for this address this month, so nothing more was queued.",
-    "optedOut": "This address unsubscribed from our emails earlier, so nothing was queued.",
-    "invalid": "This link has expired or is not valid. Email yourself a fresh report from your next scan to get a new one.",
-    "missing": "This page needs the button from your report email.",
-    "error": "Could not start it right now. Try the button again shortly.",
-    "errorFinal": "Could not start the whole sequence, and pressing the button again will not restart it this month.",
     "home": "Back to Resume Booster"
   },
   "emailUnsubscribe": {
@@ -5656,7 +5710,9 @@
     "missing": "This page needs the unsubscribe link from one of our emails.",
     "error": "Could not turn them off right now. Try the button again shortly.",
     "home": "Back to Resume Booster",
-    "agentDigest": "Stop the morning shortlist emails. Your agent keeps running, and its picks stay in your account."
+    "agentDigest": "Stop the morning shortlist emails. The apply agent has been retired and applies nowhere; this stops any of its emails still scheduled to this address.",
+    "metaTitle": "Unsubscribe | Resume Booster",
+    "metaDescription": "Turn off emails from Resume Booster."
   },
   "purchaseTerms": {
     "finalSale": "All sales are final.",
@@ -6175,5 +6231,183 @@
       "minor_one": "{{count}} minor",
       "minor_other": "{{count}} minor"
     }
+  },
+  "edgeErrors": {
+    "rateLimited": {
+      "title": "Rate limit reached",
+      "description": "You've made too many requests. Please wait a few minutes and try again."
+    },
+    "aiUnavailable": {
+      "title": "AI service busy",
+      "description": "Our AI service is temporarily unavailable. Please try again in a moment."
+    },
+    "serviceUnavailable": {
+      "title": "Service unavailable",
+      "description": "The service is temporarily unavailable. Please try again shortly."
+    },
+    "paymentRequired": {
+      "title": "Payment required",
+      "description": "Please complete payment to access this feature."
+    },
+    "sessionUsed": {
+      "title": "Session expired",
+      "description": "This purchase session has already been used. Please contact support if you need help."
+    },
+    "invalidInput": {
+      "title": "Invalid input",
+      "description": "Please check your input and try again."
+    },
+    "aiTimeout": {
+      "title": "AI timeout",
+      "description": "The AI took longer than expected. This usually works on a retry—click the button below to try again."
+    },
+    "aiBusy": {
+      "title": "AI busy",
+      "description": "Our AI service is handling high demand. Please wait a moment and try again."
+    },
+    "aiOutage": {
+      "title": "AI service busy",
+      "description": "Our AI service can't take requests right now. This is on our side, not a problem with your payment. Please try again in a few minutes."
+    },
+    "busyShort": {
+      "title": "Busy right now",
+      "description": "This is on our side, not a limit you reached. Please try again in a few minutes."
+    },
+    "busyLong": {
+      "title": "Too busy for now",
+      "description": "This tool has had too many requests for now. Please try again later."
+    },
+    "status400": {
+      "title": "Invalid request",
+      "description": "There was a problem with your request. Please check your input and try again."
+    },
+    "status401": {
+      "title": "Authentication required",
+      "description": "Please verify your purchase or log in to continue."
+    },
+    "status403": {
+      "title": "Access denied",
+      "description": "You don't have permission to access this resource."
+    },
+    "status404": {
+      "title": "Not found",
+      "description": "The requested resource was not found."
+    },
+    "status409": {
+      "title": "Already processed",
+      "description": "This request has already been processed."
+    },
+    "status422": {
+      "title": "Couldn't process that",
+      "description": "We couldn't process what was sent. If it was a file, try a .docx, or paste your CV text instead."
+    },
+    "status429": {
+      "title": "Too many requests",
+      "description": "You've hit the hourly limit. Please try again later, or paste your CV text instead."
+    },
+    "status500": {
+      "title": "Server error",
+      "description": "Something went wrong on our end. Please try again."
+    },
+    "status502": {
+      "title": "Service unavailable",
+      "description": "Our service is temporarily unavailable. Please try again in a moment."
+    },
+    "status503": {
+      "title": "Service busy",
+      "description": "Our AI service is currently busy. Please try again in a few moments."
+    },
+    "status504": {
+      "title": "AI response timeout",
+      "description": "The AI took longer than expected to respond. This usually works on a retry—please try again."
+    },
+    "unknown": {
+      "title": "Something went wrong",
+      "description": "An unexpected error occurred. Please try again."
+    },
+    "network": {
+      "title": "Connection error",
+      "description": "Unable to connect to the server. Please check your internet connection and try again."
+    },
+    "relay": {
+      "title": "Service error",
+      "description": "There was a problem connecting to our service. Please try again."
+    },
+    "non2xx": {
+      "title": "Request failed",
+      "description": "The request could not be completed. Please try again."
+    },
+    "plain": {
+      "title": "Error"
+    }
+  },
+  "agentControls": {
+    "saveError": "Couldn't save that — please try again.",
+    "blocklist": {
+      "title": "Never apply to these employers",
+      "help": "Add your current employer first. The agent will skip every posting from these companies, and it matches the name however it is capitalised.",
+      "placeholder": "Company name",
+      "remove": "Remove {{name}}"
+    },
+    "add": "Add",
+    "pause": {
+      "title": "Pause, with a date it comes back",
+      "active": "Paused until {{when}}. It resumes on its own — nothing to remember.",
+      "help": "Going on holiday, or interviewing somewhere already? Pause it and it switches itself back on.",
+      "resumeNow": "Resume now",
+      "1w": "1 week",
+      "2w": "2 weeks",
+      "1m": "1 month"
+    },
+    "cooldown": {
+      "title": "Days between applications to the same employer",
+      "help": "Stops several applications landing on one recruiter's desk in a week. 0 turns it off."
+    }
+  },
+  "agentNight": {
+    "title": "Since yesterday",
+    "sent": "applied",
+    "waiting": "waiting for you",
+    "unconfirmed": "sent but unconfirmed",
+    "skipped": "skipped",
+    "ourFault": "On us:"
+  },
+  "agent": {
+    "reach": {
+      "title": "Where the agent can apply for you",
+      "body": "It submits automatically to {{drivable}} of the {{total}} postings on the board ({{pct}}%). The rest put bot protection on their application form, so the agent prepares everything and you press submit.",
+      "vendors": "Auto-submits on: {{vendors}}. Counted from the live board, not an estimate.",
+      "vendorsCount": "Auto-submits on {{n}} application systems. Counted from the live board, not an estimate."
+    }
+  },
+  "agentSetup": {
+    "profile": {
+      "title": "Upload your CV",
+      "why": "That is the whole of setup. We read your name and contact details straight off it, and ask about anything else only when a form actually needs it."
+    },
+    "exclusions": {
+      "title": "Optional: name employers to skip",
+      "why": "Your current employer above all. Worth a moment now — it is the one thing that cannot be undone afterwards."
+    },
+    "mandate": {
+      "title": "Tell it what you're looking for",
+      "why": "Job titles, location and how many a day. Start with one a day until you've seen its work."
+    },
+    "title": "Two things before it can start",
+    "progress": "{{done}} of {{total}}",
+    "continue": "Continue",
+    "howItWorks": "What happens after this →"
+  },
+  "receipt": {
+    "title": "What we submitted for you",
+    "noRecord": "This application was submitted before we started keeping per-field records, so we can't show the exact wording.",
+    "changedAtSend": "updated at send time (prepared: “{{was}}”)",
+    "evidence": "The employer's confirmation",
+    "noEvidence": "The form accepted this but returned no confirmation text we could capture.",
+    "via": "Submitted via {{via}}."
+  },
+  "morningQueue": {
+    "qPlaceholder": "Product Manager, Programme Manager",
+    "locPlaceholder": "London, Manchester, Remote"
   }
 }

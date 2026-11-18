@@ -60,6 +60,8 @@ export default function PayTransparencyIndex() {
   // The cache ships its own computed_at and the page was throwing it away, then
   // saying "Right now" over numbers up to an hour old. See the headline below.
   const [computedAt, setComputedAt] = useState<string | null>(null);
+  /** The parts the hourly refresh carried forward from an earlier run (S14X-160). */
+  const [staleParts, setStaleParts] = useState<string[]>([]);
   // Whether the one read this page makes has answered, either way. Until it
   // has, a section without its figure says "Loading…"; after, it says the
   // figure could not be read.
@@ -70,13 +72,14 @@ export default function PayTransparencyIndex() {
     Promise.resolve(rpc("get_transparency_cache"))
       .then((r) => {
         if (cancelled) return;
-        const c = r.data as { pay?: unknown; coverage?: unknown; computed_at?: unknown } | null;
+        const c = r.data as { pay?: unknown; coverage?: unknown; computed_at?: unknown; stale_parts?: unknown } | null;
         // Object-shape checks, not truthiness: the row is NULL before the first
         // refresh, and `typeof null === "object"` would put null into state.
         const isObj = (v: unknown) => !!v && typeof v === "object" && !Array.isArray(v);
         if (isObj(c?.pay)) setPay(c!.pay as PayData);
         if (isObj(c?.coverage)) setCov(c!.coverage as Coverage);
         if (typeof c?.computed_at === "string") setComputedAt(c.computed_at);
+        if (Array.isArray(c?.stale_parts)) setStaleParts(c!.stale_parts.filter((x): x is string => x === "pay" || x === "coverage"));
       })
       .catch(() => { /* rendered below as a figure we could not read */ })
       .finally(() => { if (!cancelled) setSettled(true); });
@@ -89,7 +92,8 @@ export default function PayTransparencyIndex() {
     </p>
   );
 
-  const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString() : "—");
+  // en-US, as the bake prints it (S14X-255).
+  const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString("en-US") : "—");
 
   return (
     <>
@@ -139,6 +143,13 @@ export default function PayTransparencyIndex() {
               <p className="text-[13px] text-muted-foreground mb-2">
                 Measured {new Date(computedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}, refreshed hourly.
                 Counted across the postings the board currently carries, plus the few awaiting removal; the table keeps no postings that have come down.
+                {staleParts.length > 0 && (
+                  <span data-pay-carried>
+                    {" "}Carried forward: the latest hourly recomputation could not finish{" "}
+                    {staleParts.map((x) => (x === "pay" ? "the pay shares" : "the coverage figures")).join(" or ")}, so{" "}
+                    {staleParts.length === 1 ? "that part is" : "those parts are"} from an earlier run, no newer than this.
+                  </span>
+                )}
               </p>
             )}
             <p className="text-[13px] text-muted-foreground flex items-center gap-1.5">

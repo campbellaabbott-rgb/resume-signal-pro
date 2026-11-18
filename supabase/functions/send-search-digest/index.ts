@@ -29,8 +29,11 @@ import { sameSecret } from "../_shared/service-caller.ts";
 import { oneClickHeaders, oneClickUrl, redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
 import { sellerFooterHtml } from "../_shared/seller.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
+import { mailSafeText } from "../_shared/mail-text.ts";
 import { DIGEST_COPY, formatCount, storedLanguage, type MailLanguage } from "./copy.ts";
+import { postedDaysAgo } from "./posted.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -50,7 +53,8 @@ import { DIGEST_COPY, formatCount, storedLanguage, type MailLanguage } from "./c
 // agent-ready search is no longer narrowed to the sendable vendors (S13-118);
 // the mail speaks the language kept on the saved search (S13-102).
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "send-search-digest.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, mail lane): each recipient is checked against the do-not-mail list, a saved search's name and query carry no link, domain, address or phone number, a possible fit is called possible, and every run is stamped.
+const FN_BUILD = "send-search-digest.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -94,6 +98,22 @@ const RUN_HARD_MS = 140_000;
 const CANDIDATES = 60;
 /** search_digest_sent (20261008120000) began filling with the deploy of 2026-10-11: a search older than this may have been mailed before it. */
 const SENT_RECORD_BEGAN_MS = Date.UTC(2026, 9, 12);
+/**
+ * The bar a "strong match" alert sets (SavedSearchesCard: 10 is "Possible
+ * fit+", 20 "Strong fit only"). Below it a mail that cleared its bar is a
+ * possible match, never called strong (S14X-171).
+ */
+const STRONG_FIT_BAR = 20;
+/**
+ * THE RUN IS STAMPED (NB-37). mail-watch counts the rows a mail class writes,
+ * so a class that stopped trying wrote none and rang nothing. Every run ends
+ * by writing job_board_meta mail_run:search_digest = {at, due, sent,
+ * givenBack, refused}: due is the mails composed after the run's own opt-outs
+ * and suppressions, refused the sends the provider would not take, givenBack
+ * the claims handed back. Counts and a time only; a stamp that cannot be
+ * written never fails the run.
+ */
+const RUN_STAMP_KEY = "mail_run:search_digest";
 
 /**
  * The board's answer for THIS window, or null. The digest asks for newSince
@@ -173,6 +193,18 @@ function boardUrl(p: SearchParams): string {
   return `${SITE_URL}/jobs${s ? `?${s}` : ""}`;
 }
 
+/** The run's stamp for mail-watch R11; best effort, never fails the run (NB-37). */
+// deno-lint-ignore no-explicit-any
+async function stampRun(db: SupabaseClient<any, any, any>, counts: { due: number; sent: number; givenBack: number; refused: number }) {
+  const at = new Date().toISOString();
+  try {
+    const { error } = await db.from("job_board_meta").upsert({ k: RUN_STAMP_KEY, v: { at, ...counts }, updated_at: at }, { onConflict: "k" });
+    if (error) console.error("[SEARCH-DIGEST] run stamp not written:", String(error.message ?? "").slice(0, 120));
+  } catch (e) {
+    console.error("[SEARCH-DIGEST] run stamp not written:", e instanceof Error ? e.message.slice(0, 120) : String(e));
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -229,7 +261,9 @@ Deno.serve(async (req) => {
      * and keeps its place. The attempt stamp is written only when the claim
      * returned it (a claim from before 20261009144000 does not).
      */
+    let givenBack = 0;
     const giveBack = async (s: Claimed, untouched = false) => {
+      givenBack++;
       const patch: Record<string, string | null> = { digest_last_sent_at: s.digest_last_sent_at };
       if (untouched && s.attempted) patch.digest_attempted_at = s.attempted.prev;
       const { error: gbErr } = await supabase.from("user_job_searches").update(patch).eq("id", s.id);
@@ -238,11 +272,12 @@ Deno.serve(async (req) => {
     /** A board call's clock: 20 s, and never past the run's hard limit. */
     const boardClock = () => Math.max(1_000, Math.min(BOARD_CALL_MS, RUN_HARD_MS - (Date.now() - startedAt)));
 
-    // Suppressed addresses (global unsubscribes) are honored too.
-    const { data: suppressedRows } = await supabase.from("suppressed_emails").select("email");
-    const suppressed = new Set((suppressedRows ?? []).map((r) => (r.email as string).toLowerCase()));
-
-    let sent = 0, skipped = 0, considered = 0, handedBack = 0;
+    // THE DO-NOT-MAIL LIST IS READ PER ADDRESS (S14X-062). It was read whole,
+    // in one request with no range and its error thrown away: PostgREST
+    // answers 1,000 rows at most, so an address past them was mailed, and a
+    // failed read became "nobody is suppressed". Each owner's address is now
+    // looked up once it is known (every writer stores it lower-cased).
+    let sent = 0, skipped = 0, considered = 0, handedBack = 0, suppressed = 0, suppressionUnread = 0, refused = 0, due = 0;
     const seen = new Set<string>();
     claiming: while (considered < RUN_MAX && !overBudget()) {
     // THE CLAIM IS THE SELECTION. Each row comes back already stamped (its
@@ -282,7 +317,15 @@ Deno.serve(async (req) => {
       const { data: userRes, error: userErr } = await supabase.auth.admin.getUserById(s.user_id as string);
       const email = userRes?.user?.email?.toLowerCase();
       if (userErr && !email) { await giveBack(s); skipped++; continue; }
-      if (!email || suppressed.has(email)) { skipped++; continue; }
+      if (!email) { skipped++; continue; }
+      // A hit keeps the claim's stamps (looked at a cadence later); a read
+      // that failed is not an answer, so the window is retried.
+      const { data: stop, error: stopErr } = await supabase.from("suppressed_emails").select("reason").eq("email", email).maybeSingle();
+      if (stopErr) {
+        console.error(`[SEARCH-DIGEST] do-not-mail read failed for search ${s.id}; claim given back:`, String(stopErr.message ?? "").slice(0, 120));
+        await giveBack(s); suppressionUnread++; skipped++; continue;
+      }
+      if (stop) { suppressed++; skipped++; continue; }
 
       // Count NEW matches since last digest, and pull the freshest few.
       const callBoard = (extra: Record<string, unknown>) =>
@@ -368,7 +411,7 @@ Deno.serve(async (req) => {
       // actually clear the bar — so the email is "3 strong matches for you", not
       // "40 new postings". Falls back to the plain digest if no résumé is on file.
       const threshold = Number((s as { fit_threshold?: number }).fit_threshold) || 0;
-      let jobs: Array<{ id?: string; company: string; title: string; location: string; applyUrl: string; fit?: number; postedAt?: string | null }>;
+      let jobs: Array<{ id?: string; source?: string | null; company: string; title: string; location: string; applyUrl: string; fit?: number; postedAt?: string | null }>;
       let newCount: number;
       let countIsLowerBound = false;
       let strongMode = false;
@@ -384,8 +427,11 @@ Deno.serve(async (req) => {
           .eq("user_id", s.user_id).maybeSingle();
         resumeText = ((prof?.matching_resume_text as string | null) ?? "").trim();
         if (resumeText.length < 100 && prof?.matching_scan_id) {
+          // The pin is the account's own write, so the scan it names is read
+          // only when it is the owner's (NB-12): the service role would read
+          // anyone's, and an alert was scored against a stranger's résumé.
           const { data: pinned } = await supabase
-            .from("user_scans").select("resume_text").eq("id", prof.matching_scan_id).maybeSingle();
+            .from("user_scans").select("resume_text").eq("id", prof.matching_scan_id).eq("user_id", s.user_id).maybeSingle();
           resumeText = ((pinned?.resume_text as string | null) ?? "").trim();
         }
         if (resumeText.length < 100) {
@@ -404,7 +450,7 @@ Deno.serve(async (req) => {
         if (!Array.isArray(candJobs)) { await giveBack(s); skipped++; continue; }
         const sentBefore = await alreadySent(candJobs.map((j: { id?: string }) => j.id).filter((x): x is string => !!x));
         if (!sentBefore) { await giveBack(s); skipped++; continue; }
-        const cand = (candJobs as Array<{ id: string; company: string; title: string; location: string; applyUrl: string }>)
+        const cand = (candJobs as Array<{ id: string; source?: string | null; company: string; title: string; location: string; applyUrl: string; postedAt?: string | null }>)
           .filter((j) => !sentBefore.has(j.id));
         const ids = cand.map((j) => j.id).filter(Boolean);
         const descById = new Map<string, string>();
@@ -427,7 +473,7 @@ Deno.serve(async (req) => {
             const f = computeFit(d, resumeText, 40);
             return typeof f.pct === "number" && f.pct >= threshold ? { ...j, fit: f.pct } : null;
           })
-          .filter((x): x is { id: string; company: string; title: string; location: string; applyUrl: string; fit: number } => x !== null)
+          .filter((x): x is { id: string; source?: string | null; company: string; title: string; location: string; applyUrl: string; postedAt?: string | null; fit: number } => x !== null)
           .sort((a, b) => b.fit - a.fit);
         if (passing.length === 0) {
           // Nothing cleared the bar this window — don't email; the claim's
@@ -444,7 +490,7 @@ Deno.serve(async (req) => {
         const listRes = await callBoard({ limit: CANDIDATES, offset: 0, newSince: since });
         const listJobs = (listRes as { jobs?: unknown } | null)?.jobs;
         if (!Array.isArray(listJobs) || listJobs.length === 0) { await giveBack(s); skipped++; continue; } // count said new but no list (transient) — retry next run, claim handed back
-        const all = listJobs as Array<{ id?: string; company: string; title: string; location: string; applyUrl: string; postedAt?: string | null }>;
+        const all = listJobs as Array<{ id?: string; source?: string | null; company: string; title: string; location: string; applyUrl: string; postedAt?: string | null }>;
         const sentBefore = await alreadySent(all.map((j) => j.id).filter((x): x is string => !!x));
         if (!sentBefore) { await giveBack(s); skipped++; continue; }
         const fresh = all.filter((j) => !j.id || !sentBefore.has(j.id));
@@ -466,6 +512,14 @@ Deno.serve(async (req) => {
       const { data: localeRow, error: localeErr } = await supabase.from("user_job_searches").select("locale").eq("id", s.id).maybeSingle();
       const lang: MailLanguage = storedLanguage(localeErr ? null : (localeRow as { locale?: unknown } | null)?.locale);
       const c = DIGEST_COPY[lang];
+      // TEXT THE ACCOUNT TYPED, IN A MAIL FROM OUR DOMAIN (NB-2, the hardening
+      // half): a search's name and its free-text query are whatever the
+      // account wrote, and the address the digest goes to may never have been
+      // proven. Both are printed with every link, bare domain, address and
+      // phone number taken out and clipped to 80 characters, as the scan
+      // report's model text is; a name that was nothing but those reads as the
+      // card's own "Saved search".
+      const safeName = mailSafeText(s.name, 80) || c.tagline;
 
       const token = await hmacToken(s.id as string);
       // "10,000+" when the board could only tell us "at least this many".
@@ -475,9 +529,14 @@ Deno.serve(async (req) => {
       const unsubHeaders = oneClickHeaders(oneClickUrl(Deno.env.get("SUPABASE_URL") ?? "", "send-search-digest", unsubParams));
       const viewUrl = `${boardUrl(p)}${boardUrl(p).includes("?") ? "&" : "?"}utm_source=email&utm_medium=search_digest`;
 
-      const fmtPosted = (iso?: string | null) => {
-        if (!iso) return "";
-        const d = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 86_400_000));
+      // THE BOARD'S RULE FOR AN AGE (S14X-172, S14X-252): whole calendar days,
+      // so a posting dated today reads today in the 14:23 mail (Math.round of
+      // 0.6 of a day read "yesterday"), and nothing for a system that moves
+      // its date when a posting is edited (./posted.ts).
+      const runDay = new Date();
+      const fmtPosted = (j: { id?: string; source?: string | null; postedAt?: string | null }) => {
+        const d = postedDaysAgo(j, runDay);
+        if (d === null) return "";
         return d === 0 ? c.postedToday : d === 1 ? c.postedYesterday : c.postedDaysAgo(d);
       };
       const rows = jobs.map((j) => {
@@ -490,7 +549,7 @@ Deno.serve(async (req) => {
         return `
         <tr><td style="padding:10px 0;border-bottom:1px solid #eef2f7">
           <div style="font-size:14px;font-weight:600;color:#0f172a"><a href="${escapeHtml(rowUrl)}" style="color:#0f172a;text-decoration:none">${escapeHtml(j.title)}</a></div>
-          <div style="font-size:12px;color:#64748b">${escapeHtml(j.company)}${j.location ? " · " + escapeHtml(j.location) : ""}${j.postedAt ? ` · ${escapeHtml(fmtPosted(j.postedAt))}` : ""}${typeof j.fit === "number" ? ` · <span style="color:#16a34a;font-weight:600">${c.fitMatch(escapeHtml(j.fit))}</span>` : ""}</div>
+          <div style="font-size:12px;color:#64748b">${escapeHtml(j.company)}${j.location ? " · " + escapeHtml(j.location) : ""}${fmtPosted(j) ? ` · ${escapeHtml(fmtPosted(j))}` : ""}${typeof j.fit === "number" ? ` · <span style="color:#16a34a;font-weight:600">${c.fitMatch(escapeHtml(j.fit))}</span>` : ""}</div>
         </td><td style="padding:10px 0;border-bottom:1px solid #eef2f7;text-align:right;vertical-align:middle">
           <a href="${escapeHtml(rowUrl)}" style="font-size:12px;color:#2563eb;text-decoration:none;font-weight:600">${c.view}&nbsp;→</a>
         </td></tr>`;
@@ -501,11 +560,11 @@ Deno.serve(async (req) => {
   <div style="max-width:560px;margin:0 auto;padding:24px 16px">
     <div style="text-align:center;padding:0 0 14px">
       <span style="font-size:17px;font-weight:800;color:#0f172a">Resume <span style="color:#2563eb">Booster</span></span>
-      <div style="font-size:11px;color:#94a3b8;margin-top:2px">${c.tagline} · ${escapeHtml(s.name as string)}</div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:2px">${c.tagline} · ${escapeHtml(safeName)}</div>
     </div>
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:22px">
       <p style="font-size:15px;color:#0f172a;margin:0 0 4px">${c.countLine(escapeHtml(shownCount), newCount, strongMode)}</p>
-      <p style="font-size:13px;color:#64748b;margin:0 0 16px">${c.lead(escapeHtml(s.name as string), newCount, strongMode)}</p>
+      <p style="font-size:13px;color:#64748b;margin:0 0 16px">${c.lead(escapeHtml(safeName), newCount, strongMode)}</p>
       <table style="width:100%;border-collapse:collapse">${rows}</table>
       <div style="text-align:center;margin:20px 0 4px">
         <a href="${escapeHtml(viewUrl)}" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:700;padding:11px 22px;border-radius:10px;text-decoration:none">${c.seeAll(escapeHtml(shownCount))}</a>
@@ -519,7 +578,7 @@ Deno.serve(async (req) => {
 </body></html>`;
 
       try {
-        const catLabel = p.category ? (c.category[p.category] ?? null) : (p.q || null);
+        const catLabel = p.category ? (c.category[p.category] ?? null) : (mailSafeText(p.q, 80) || null);
         // First-ever send on a daily-cadence search = the user clicked "Alert
         // me when this exists" (or watch-company) and this is the moment it
         // exists. Say that, plainly — it's the single most awaited email the
@@ -544,12 +603,13 @@ Deno.serve(async (req) => {
           firstMatch = !bornErr && Date.parse(String((born as { created_at?: unknown } | null)?.created_at ?? "")) >= SENT_RECORD_BEGAN_MS;
         }
         const subject = firstMatch
-          ? c.subjectFirstMatch(shownCount, newCount, s.name)
+          ? c.subjectFirstMatch(shownCount, newCount, safeName)
           : strongMode
-            ? c.subjectStrong(shownCount, newCount, s.name)
-            : c.subjectPlain(shownCount, newCount, catLabel, s.name);
+            ? (threshold >= STRONG_FIT_BAR ? c.subjectStrong(shownCount, newCount, safeName) : c.subjectPossible(shownCount, newCount, safeName))
+            : c.subjectPlain(shownCount, newCount, catLabel, safeName);
+        due++;
         const { error: sendErr } = await resend.emails.send({ from: "Resume Booster <reports@resumebooster.work>", to: email, reply_to: CUSTOMER_REPLY_TO, subject, html, headers: unsubHeaders });
-        if (sendErr) throw new Error(String((sendErr as { message?: string }).message ?? "send refused"));
+        if (sendErr) { refused++; throw new Error(String((sendErr as { message?: string }).message ?? "send refused")); }
         sent++;
         // Remembered so a re-dated or re-discovered posting is not mailed
         // twice; a failed record costs at most one repeat, never a lost mail.
@@ -565,7 +625,8 @@ Deno.serve(async (req) => {
       }
     }
     }
-    return new Response(JSON.stringify({ ok: true, sent, skipped, considered, handedBack }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    await stampRun(supabase, { due, sent, givenBack, refused });
+    return new Response(JSON.stringify({ ok: true, sent, skipped, considered, handedBack, suppressed, suppressionUnread }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("[SEARCH-DIGEST] error:", e instanceof Error ? e.message : e);
     return new Response(JSON.stringify({ error: "digest run failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

@@ -11,7 +11,7 @@
 // "June 2012" from the employment history.
 
 import { describe, it, expect } from "vitest";
-import { redactForScoring } from "../../supabase/functions/_shared/redaction";
+import { redactForScoring } from "../../supabase/functions/shortlist-evaluate/redaction";
 
 const feature = (r: ReturnType<typeof redactForScoring>, f: string) =>
   r.exclusionsApplied.find((e) => e.feature === f)?.count ?? 0;

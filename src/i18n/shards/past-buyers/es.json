@@ -1,0 +1,9 @@
+{
+  "pastBuyers": {
+    "closedNoCopy": "Ya no se está preparando nada para este pedido y esta página no guarda ninguna copia. Si te lo enviamos por correo, esa copia sigue siendo tuya. Añade tu currículum abajo para crearlo aquí ahora.",
+    "openedInPrint": "Tu informe usa letras que la fuente del PDF no puede dibujar, así que se abrió en el cuadro de impresión. Elige «Guardar como PDF» allí para conservar una copia.",
+    "parseSimulationSaved": "Comprobado cuando se creó este informe. Tu currículum no se guarda.",
+    "parseSimulationMissing": "Este informe se guardó antes de que sus comprobaciones de análisis se conservaran con él. Vuelve a escanear tu currículum para ver cómo lo lee un ATS.",
+    "downloadLetter": "Descargar"
+  }
+}

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { postTrackEvent } from '@/lib/track-transport';
 import { getCohortData, initCohortTracking } from './use-cohort-tracking';
-import { analyticsSessionGet, analyticsSessionSet } from '@/lib/analytics-session-store';
+import { analyticsSessionGet, analyticsSessionSet, persistAnalyticsSession } from '@/lib/analytics-session-store';
+import { CONSENT_EVENT, analyticsAllowed } from '@/lib/consent';
 // Funnel stages in order
 export const FUNNEL_STAGES = [
   'landing_view',
@@ -68,12 +69,9 @@ const getTimeSinceLanding = (): number => {
   return Math.round((Date.now() - parseInt(landingTime)) / 1000);
 };
 
-// Track funnel event with cohort context
-const trackFunnelEvent = async (
-  stage: FunnelStage,
-  metadata?: Record<string, unknown>
-) => {
-  try {
+// The body one funnel stage sends, as it stands NOW: the page, the referrer,
+// the session, the progress and the cohort are read at the moment it is built.
+const funnelBody = (stage: FunnelStage, metadata?: Record<string, unknown>) => {
     const sessionId = getSessionId();
     const progress = getFunnelProgress();
     const stageIndex = FUNNEL_STAGES.indexOf(stage);
@@ -84,12 +82,7 @@ const trackFunnelEvent = async (
     const expectedPrevious = stageIndex;
     const skippedStages = expectedPrevious - previousStages;
     
-    // Track the event with cohort context
-    // Keepalive transport, not a plain client invoke: checkout_started fires
-    // milliseconds before window.location.assign(stripe) and plain fetches are
-    // cancelled by navigation — this funnel recorded purchases with zero
-    // checkout_starts until this was switched.
-    postTrackEvent({
+    return {
         testName: 'conversion_funnel',
         variant: stage,
         eventType: stage === 'purchase_completed' ? 'conversion' : 'view',
@@ -116,18 +109,67 @@ const trackFunnelEvent = async (
           isReturningUser: cohortData.isReturningUser,
           cohortSegment: `${cohortData.trafficSource}_${cohortData.deviceType}_${cohortData.isReturningUser ? 'returning' : 'new'}`,
         }
-    });
-    
-    // Update progress (only add if not already tracked)
-    if (!progress.includes(stage)) {
-      progress.push(stage);
-      saveFunnelProgress(progress);
-    }
-    
-    console.log(`[Funnel] Stage: ${stage}`, { stageIndex, cohort: cohortData.trafficSource });
+    };
+};
+
+/** This tab reached `stage`: kept once, in order. */
+const markReached = (stage: FunnelStage) => {
+  const progress = getFunnelProgress();
+  if (!progress.includes(stage)) {
+    progress.push(stage);
+    saveFunnelProgress(progress);
+  }
+};
+
+// Track funnel event with cohort context
+const trackFunnelEvent = async (
+  stage: FunnelStage,
+  metadata?: Record<string, unknown>
+) => {
+  try {
+    // Keepalive transport, not a plain client invoke: checkout_started fires
+    // milliseconds before window.location.assign(stripe) and plain fetches are
+    // cancelled by navigation — this funnel recorded purchases with zero
+    // checkout_starts until this was switched.
+    const body = funnelBody(stage, metadata);
+    postTrackEvent(body);
+    markReached(stage);
+    console.log(`[Funnel] Stage: ${stage}`, { stageIndex: body.metadata.stageIndex, cohort: body.metadata.trafficSource });
   } catch (error) {
     console.debug('Funnel tracking failed:', error);
   }
+};
+
+// ── The landing a visitor saw before they chose (S14X-040) ─────────────────
+// The landing is recorded once per tab, and on a first visit it runs before
+// the banner is answered, when the transport sends nothing. It used to be
+// marked done anyway and never sent, so a visitor who said yes during their
+// first visit had no landing row and lost their campaign and referrer. The
+// landing is now built when the page lands (its page, referrer and campaign
+// as they were then) and held in this page's memory; a yes sends it once,
+// after moving what the page held into the tab's storage, and a no drops it.
+let heldLanding: ReturnType<typeof funnelBody> | null = null;
+let onChoice: ((e: Event) => void) | null = null;
+
+const sendLandingOnYes = (body: ReturnType<typeof funnelBody>) => {
+  heldLanding = body;
+  if (onChoice) return;
+  onChoice = (e: Event) => {
+    const choice = (e as CustomEvent<unknown>).detail;
+    if (choice !== 'granted' && choice !== 'denied') return;
+    if (onChoice) window.removeEventListener(CONSENT_EVENT, onChoice);
+    onChoice = null;
+    const held = heldLanding;
+    heldLanding = null;
+    if (choice !== 'granted' || !held) return;
+    try {
+      persistAnalyticsSession();
+      postTrackEvent(held);
+    } catch (error) {
+      console.debug('Funnel landing after consent failed:', error);
+    }
+  };
+  window.addEventListener(CONSENT_EVENT, onChoice);
 };
 
 // Get device type for segmentation
@@ -153,14 +195,25 @@ export const initFunnelTracking = () => {
   
   const cohortData = getCohortData();
   
-  // Track landing immediately with cohort context
-  trackFunnelEvent('landing_view', {
+  const landing = {
     landingPage: window.location.pathname,
     utmSource: cohortData.utmSource,
     utmMedium: cohortData.utmMedium,
     utmCampaign: cohortData.utmCampaign,
     trafficSource: cohortData.trafficSource,
-  });
+  };
+  // Track landing immediately with cohort context; before the visitor chose,
+  // the landing as it is now waits for their answer (S14X-040).
+  if (analyticsAllowed()) {
+    trackFunnelEvent('landing_view', landing);
+    return;
+  }
+  try {
+    sendLandingOnYes(funnelBody('landing_view', landing));
+    markReached('landing_view');
+  } catch (error) {
+    console.debug('Funnel tracking failed:', error);
+  }
 };
 
 // React hook for funnel tracking

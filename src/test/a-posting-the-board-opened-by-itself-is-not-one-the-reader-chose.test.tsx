@@ -187,4 +187,23 @@ describe("the posting a wide screen opens by itself", () => {
     expect(detailCalls().length, "the reader's own pick was replaced by the list's top").toBe(before);
     expect(search().get("job")).toBe(ROWS[2].id);
   });
+
+  it("RC-S12-033: a search that settles empty takes the board's own pick with it", async () => {
+    // Nothing matches "zzzz": the list settles with no rows.
+    const board = invoke.getMockImplementation()!;
+    invoke.mockImplementation(async (fn: string, o: { body?: Record<string, unknown> } | undefined) => {
+      const b = o?.body ?? {};
+      if (fn === "job-board" && b.action === "list" && b.q === "zzzz" && !b.facetCounts) {
+        return b.countOnly ? { data: { total: 0 } } : { data: { jobs: [], total: 0, totalAllCompanies: 0, companies: [], companiesCount: 0, categories: {}, failedSources: [], failedCount: 0, refreshedAt: null, hasMore: false } };
+      }
+      return board(fn, o);
+    });
+    mount();
+    await waitFor(() => expect(detailCalls()).toContain(ROWS[0].id), SLOW);
+    await settle();
+    fireEvent.change(document.getElementById("board-search") as HTMLInputElement, { target: { value: "zzzz" } });
+    await waitFor(() => expect(cards().length).toBe(0), SLOW);
+    await settle();
+    expect(document.body.textContent, "the old top posting stayed open beside an empty list").not.toContain(ROWS[0].title);
+  });
 });

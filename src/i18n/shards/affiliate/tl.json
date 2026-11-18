@@ -1,0 +1,99 @@
+{
+  "affiliateProgram": {
+    "updates": {
+      "click_one": "May bagong click sa affiliate link mo!",
+      "click_other": "{{count}} bagong click sa affiliate link mo!",
+      "earned": "Kumita ka ng {{amount}}!",
+      "earnedDescription": "Bagong conversion mula sa referral mo. Binabayaran ang komisyon kapag naaprubahan na."
+    },
+    "cookieLine": "30-araw na cookie • Binabayaran kapag hiniling, pagkatapos maaprubahan",
+    "tiles": {
+      "clicks": "Mga click",
+      "conversions": "Mga conversion",
+      "rate": "{{rate}}% rate",
+      "commission": "{{amount}} na komisyon",
+      "allTime": "Mula sa simula",
+      "payable": "Puwede nang bayaran",
+      "awaitingApproval": "Naghihintay ng pag-apruba",
+      "awaitingCount_one": "{{count}} komisyon, babayaran kapag naaprubahan",
+      "awaitingCount_other": "{{count}} na komisyon, babayaran kapag naaprubahan",
+      "totalPaid": "Kabuuang naibayad",
+      "range": {
+        "d7": "Huling 7 araw",
+        "d30": "Huling 30 araw",
+        "d90": "Huling 90 araw",
+        "d365": "Nakaraang taon"
+      }
+    },
+    "revenue": {
+      "description": "Mga benta mula sa referral mo, bawat currency sa sarili nitong linya",
+      "unknownCurrency": "{{amount}} (hindi naitala ang currency)",
+      "none": "Walang benta sa panahong ito"
+    },
+    "conversions": {
+      "heldForReview": "Naka-hold para suriin"
+    },
+    "payout": {
+      "timing": "Mag-e-email kami para ayusin ang bayad kapag nasuri na namin ang request",
+      "notNotified": "Naitala ang request mo, pero hindi naipadala ang abisong nagsasabi sa amin tungkol dito. Nasa records pa rin namin ito, kaya makikita namin ito kapag sinuri namin ang mga payout.",
+      "awaitingNote": "May {{amount}} pa na naghihintay ng pag-apruba at puwede nang bayaran kapag naaprubahan.",
+      "openSince": "Ni-request noong {{date}} para sa {{amount}}"
+    },
+    "history": {
+      "requested": "Ni-request",
+      "paid": "Nabayaran",
+      "rejected": "Tinanggihan",
+      "requestedOn": "Ni-request noong {{date}}",
+      "paidOn": "Nabayaran noong {{date}}",
+      "rejectedOn": "Tinanggihan noong {{date}}",
+      "paidToDate": "Naibayad hanggang ngayon"
+    },
+    "howItWorks": {
+      "getPaid": "Naghihintay muna ng pag-apruba ang isang komisyon bago ito mabayaran. Kapag umabot na sa minimum ang mga naaprubahang komisyon mo, mag-request ng payout sa tab na \"Payouts\" at mag-e-email kami para ayusin ang bayad. Nag-e-email din kami kapag kumita ng komisyon ang isang referral."
+    },
+    "auth": {
+      "forgot": "Nakalimutan ang password?",
+      "email": "Email",
+      "password": "Password (hindi bababa sa 8 character)",
+      "pleaseWait": "Sandali lang…",
+      "resetTitle": "I-reset ang password mo",
+      "resetIntro": "Ilagay ang address na ginamit mo sa pag-sign up. Kung may affiliate account na gumagamit nito, mag-e-email kami ng link na gagana nang isang beses sa loob ng 30 minuto.",
+      "sendLink": "I-email sa akin ang link",
+      "resetSent": "Kung may affiliate account na gumagamit ng address na iyon, papunta na ang link. Gagana ito nang isang beses sa loob ng 30 minuto.",
+      "backToSignIn": "Bumalik sa pag-sign in",
+      "newPasswordTitle": "Pumili ng bagong password",
+      "newPasswordIntro": "Kapag sinave ito, masa-sign out ang bawat device na naka-sign in.",
+      "newPassword": "Bagong password (hindi bababa sa 8 character)",
+      "savePassword": "I-save ang bagong password",
+      "passwordChanged": "Napalitan ang password at na-sign out ang bawat device. Mag-sign in gamit ang bagong password.",
+      "linkExpired": "Nag-expire na o nagamit na ang link na ito. Humingi ng bago.",
+      "weakPassword": "Pumili ng password na may 8 hanggang 200 character.",
+      "addressConfirmed": "Nakumpirma na ang email address mo.",
+      "emailChanged": "Napalitan na ang email address mo. Sa susunod, mag-sign in gamit ang bagong address.",
+      "emailTaken": "May ibang affiliate account na gumagamit na ng address na iyon.",
+      "failed": "May nagkamali. Pakisubukang muli."
+    },
+    "confirm": {
+      "bannerTitle": "Kumpirmahin ang email address mo para mabayaran",
+      "bannerBody": "Naka-hold para suriin ang mga komisyon at hindi ka makakapag-request ng payout hangga't hindi mo napapatunayang sa iyo ang address na ito.",
+      "send": "Ipadala ang link ng kumpirmasyon",
+      "sent": "Nagpadala kami ng link ng kumpirmasyon sa {{email}}. Gagana ito nang isang beses sa loob ng 30 minuto."
+    },
+    "account": {
+      "title": "Ang account mo",
+      "description": "Mag-sign out sa bawat device, mag-download ng kopya ng data mo, palitan ang address mo o isara ang account.",
+      "signOutEverywhere": "Mag-sign out kahit saan",
+      "signedOutEverywhere": "Na-sign out ang bawat device, kasama ang isang ito.",
+      "export": "I-download ang data ko",
+      "exported": "Na-download na ang data mo.",
+      "newEmail": "Bagong email address",
+      "sendChangeLink": "Magpadala ng link sa bagong address",
+      "changeSent": "Nagpadala kami ng link sa {{email}}. Mangyayari ang pagpapalit kapag binuksan mo ito.",
+      "eraseTitle": "Isara ang account",
+      "eraseWarning": "Tatanggalin nito ang address, password, mga session at click history mo, at hindi na ito maibabalik. I-type ang ERASE para kumpirmahin.",
+      "eraseConfirmLabel": "I-type ang ERASE para kumpirmahin",
+      "eraseButton": "Isara nang tuluyan ang account",
+      "erased": "Nakasara na ang affiliate account mo."
+    }
+  }
+}

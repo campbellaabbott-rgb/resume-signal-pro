@@ -21,7 +21,8 @@ import { isScheduledCaller } from "../_shared/email-cron.ts";
 // answered 400 "unrecognized payload" to it, so the owner was never told a
 // share had reached half its cap. The share is a short label and the two
 // counts are whole numbers, or the note is refused.
-const FN_BUILD = "notify-owner.2026-11-03.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, free-scan-page lane, owner S14X-101 'remove'): a new-account note says an account was created and when, never whose.
+const FN_BUILD = "notify-owner.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -70,17 +71,20 @@ Deno.serve(async (req) => {
     let subject = "";
     let lines: string[] = [];
 
+    // A NEW-ACCOUNT NOTE SAYS THAT AND WHEN, NEVER WHO (S14X-101, the
+    // owner's answer 'remove'): the subject and the body carried the
+    // account's address.
     if (body.type === "INSERT" && body.record?.email) {
       kind = "signup";
-      subject = `🎉 New account: ${subjectSafe(String(body.record.email))}`;
+      subject = "🎉 New account";
       lines = [
-        `<b>${escapeHtml(body.record.email)}</b> just created an account.`,
+        "A new account was created.",
         `Signed up at: ${escapeHtml(body.record.created_at ?? new Date().toISOString())}`,
       ];
     } else if (body.type === "signup" && body.email) {
       kind = "signup";
-      subject = `🎉 New account: ${subjectSafe(String(body.email))}`;
-      lines = [`<b>${escapeHtml(body.email)}</b> just created an account.`];
+      subject = "🎉 New account";
+      lines = ["A new account was created."];
     } else if (body.type === "scan") {
       kind = "scan";
       subject = subjectSafe(`📄 New scan: ${body.score ?? "?"}/100 (${body.industry ?? "unknown"})`);

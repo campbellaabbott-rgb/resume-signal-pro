@@ -139,6 +139,16 @@ export function addDays(isoDate: string, n: number): string {
   return new Date(Date.parse(isoDate + "T00:00:00Z") + n * 86_400_000).toISOString().slice(0, 10);
 }
 
+/**
+ * The oldest event date a writer may store (S14X-158): the first day of the
+ * month that holds `readIso - retentionDays`. The monthly prune deletes and
+ * rolls up every whole month that ended on or before that day, so a row
+ * dated earlier would land in a month already counted, and be counted again.
+ */
+export function prunedMonthFloor(readIso: string, retentionDays: number): string {
+  return `${addDays(readIso, -retentionDays).slice(0, 7)}-01`;
+}
+
 // ── numbers ────────────────────────────────────────────────────────────────
 
 /** A worker count; NULL when the cell does not state one (never 0 for "blank"). */
@@ -162,11 +172,29 @@ const AMEND_TRAIL =
   /\s*[-–—(*]\s*(rescinded|rescission|amended|amendment|updated?|update\s*\d*|correction|revised)\s*[)*]*\s*$/i;
 /** "Public Storage Correction to 7/22/26 WARN" — the affix trails without a dash. */
 const AMEND_TRAIL_TO = /\s+(correction|corrected|amendment|revision)\s+(?:to|of)\b.*$/i;
+/**
+ * Texas writes the marker bare after a parenthetical, a legal suffix or the
+ * name ("Tyson Foods, Inc (Amarillo B-Shift Operations) Updated", "Yang Ming
+ * (America) Corporation Updated"), or as a dated parenthetical ("Congo, LLC
+ * (Updated March 2026)") (S14X-151).
+ */
+const AMEND_TRAIL_BARE = /\s+(updated|amended)\s*$/i;
+const AMEND_TRAIL_PAREN = /\s*\(\s*(updated?|amended|amendment|revised|corrected|correction|rescinded)\b[^()]*\)\s*$/i;
+
+/** The trailing amendment markers, in the order they are tried. */
+function trailAffix(raw: string): RegExpExecArray | null {
+  return AMEND_TRAIL.exec(raw) ?? AMEND_TRAIL_PAREN.exec(raw) ?? AMEND_TRAIL_BARE.exec(raw) ?? AMEND_TRAIL_TO.exec(raw);
+}
+
+/** The filer string without its trailing amendment markers (a leading one stays). */
+export function stripTrailingAmend(raw: string): string {
+  return raw.replace(AMEND_TRAIL, "").replace(AMEND_TRAIL_PAREN, "").replace(AMEND_TRAIL_BARE, "").replace(AMEND_TRAIL_TO, "").trim();
+}
 
 /** Classify an amendment affix on the filer string (the OH "UPDATE 2 …" / "… - Rescinded" shapes). */
 export function amendKind(raw: string): AmendKind {
   const lead = leadAffix(raw);
-  const trail = AMEND_TRAIL.exec(raw) ?? AMEND_TRAIL_TO.exec(raw);
+  const trail = trailAffix(raw);
   const word = (lead?.[1] ?? trail?.[1] ?? "").toLowerCase();
   if (word === "") return null;
   if (word.startsWith("rescind") || word.startsWith("rescis")) return "rescinded";
@@ -195,7 +223,7 @@ function leadAffix(raw: string): RegExpExecArray | null {
 export function stripAmendAffix(raw: string): string {
   const lead = leadAffix(raw);
   const s = lead ? raw.slice(lead[0].length) : raw;
-  return s.replace(AMEND_TRAIL, "").replace(AMEND_TRAIL_TO, "").trim();
+  return stripTrailingAmend(s);
 }
 
 /**
@@ -206,6 +234,8 @@ export function stripAmendAffix(raw: string): string {
 export function warnPrePass(raw: string): string {
   let s = stripAmendAffix(raw.replace(/\s+/g, " ").trim());
   s = s.replace(/\([^)]*\)/g, " ");
+  // An unbalanced trailing "(" (a cell cut short) opens no name of its own.
+  s = s.replace(/\([^)]*$/, " ");
   s = s.split(/\s+(?:dba|d\/b\/a|d\.b\.a\.?|aka|a\/k\/a|f\/k\/a|fka)\s+/i)[0];
   return s.replace(/\s+/g, " ").trim();
 }

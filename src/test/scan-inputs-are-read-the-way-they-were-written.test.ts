@@ -46,7 +46,9 @@ describe("L5-05: the employment timeline", () => {
 
   it("a real gap is measured in calendar months", () => {
     const t = extractTimeline(["Engineer, Acme", "Jan 2019 - Present", "Engineer, Beta", "Jan 2016 - Mar 2018"].join("\n"));
-    expect(t.gapPeriods.map((g) => g.monthsGap)).toEqual([9]);
+    // Mar 2018 to Jan 2019 is ten calendar months, the length the gap detector reports (S10-007:
+    // the timeline card now shows the detector's gaps, so the two can never disagree).
+    expect(t.gapPeriods.map((g) => g.monthsGap)).toEqual([10]);
     expect(t.hasSignificantGap).toBe(true);
   });
 

@@ -63,12 +63,15 @@ const READS = files.flatMap(replyReads);
 describe("the usage line beside every reply a function reads itself", () => {
   it("finds the reads the review named, so a pass is not a search that found nothing", () => {
     const where = new Set(READS.map((r) => r.file.split("/")[0]));
-    for (const fn of ["analyze-resume", "parse-resume-structured", "generate-apply-package", "generate-ats-defense", "generate-career-path",
+    for (const fn of ["analyze-resume", "parse-resume-structured", "generate-ats-defense", "generate-career-path",
       "generate-career-snapshot", "generate-freelance-boost", "generate-graduate-gameplan", "generate-keyword-fix", "shortlist-evaluate",
       "generate-application-answers", "import-freelance-profile"]) {
       expect(where.has(fn), `${fn}: no model reply read found`).toBe(true);
     }
-    expect(READS.filter((r) => r.file.startsWith("generate-apply-package/")), "the package and its regeneration").toHaveLength(2);
+    // The kit and its regeneration are read by callAIForUsableReply, which
+    // prints the usage line itself (S14X-266): no read of its own is left.
+    expect(READS.filter((r) => r.file.startsWith("generate-apply-package/")), "the package reads no reply itself").toHaveLength(0);
+    expect(code(readFileSync(resolve(FUNCTIONS, "generate-apply-package/index.ts"), "utf8"))).toMatch(/\bcallAIForUsableReply\(/);
   });
 
   it("each read is followed by its [AI-USAGE] line", () => {

@@ -31,7 +31,8 @@ import { requireWebsiteSession } from "../_shared/website-session.ts";
 // Provable from outside without a session: every response, the preflight
 // included, carries this in x-fn-build.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "auth-signed-in.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, auth-signin lane, S14X-228, through the shared mailbox guard): proving the address revokes the account's API keys made before it and names them.
+const FN_BUILD = "auth-signed-in.2026-11-12.1";
 
 /** At most this many calls per session per hour (the site calls once per sign-in). */
 const CALLS_PER_HOUR = 20;

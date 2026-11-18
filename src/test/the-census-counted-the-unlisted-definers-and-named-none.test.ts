@@ -23,6 +23,7 @@
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { anonCan, authenticatedCan, migrationReplay, splitStatements } from "./helpers/function-acl";
@@ -44,7 +45,7 @@ afterAll(async () => { for (const db of OPEN) { try { await db.close(); } catch 
 async function boot(census: string[] = CENSUS): Promise<PGlite> {
   const db = new PGlite();
   OPEN.push(db);
-  await db.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;");
+  await db.exec(SUPABASE_DEFAULTS);
   for (const st of census) await db.exec(st);
   await db.exec(`
     -- Listed in the census (allow_anon), with Supabase's default grants.
@@ -55,11 +56,12 @@ async function boot(census: string[] = CENSUS): Promise<PGlite> {
     GRANT EXECUTE ON FUNCTION public.stray_reader(integer) TO anon, authenticated, service_role;
     -- In no list, signed-in only.
     CREATE FUNCTION public.stray_writer(p text) RETURNS void LANGUAGE sql SECURITY DEFINER AS $$ SELECT $$;
-    REVOKE ALL ON FUNCTION public.stray_writer(text) FROM PUBLIC;
+    -- (Supabase's defaults gave anon its own grant: PUBLIC alone would leave it.)
+    REVOKE ALL ON FUNCTION public.stray_writer(text) FROM PUBLIC, anon;
     GRANT EXECUTE ON FUNCTION public.stray_writer(text) TO authenticated, service_role;
     -- In no list but closed to clients: not the owner's problem here.
     CREATE FUNCTION public.closed_definer() RETURNS void LANGUAGE sql SECURITY DEFINER AS $$ SELECT $$;
-    REVOKE ALL ON FUNCTION public.closed_definer() FROM PUBLIC;
+    REVOKE ALL ON FUNCTION public.closed_definer() FROM PUBLIC, anon, authenticated;
     GRANT EXECUTE ON FUNCTION public.closed_definer() TO service_role;
     -- Open, but INVOKER: it runs with the caller's own rights.
     CREATE FUNCTION public.invoker_open() RETURNS void LANGUAGE sql AS $$ SELECT $$;

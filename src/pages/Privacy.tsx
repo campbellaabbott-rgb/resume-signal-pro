@@ -56,7 +56,7 @@ export default function Privacy() {
               <h3 className="text-xl font-medium mb-3 text-foreground">{t('privacy.sections.infoAuto')}</h3>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                 <li><strong className="text-foreground">Device Information:</strong> Browser type, operating system, device identifiers</li>
-                <li><strong className="text-foreground">Usage Data:</strong> Pages visited, time spent, features used, click patterns</li>
+                <li><strong className="text-foreground">Usage Data:</strong> Pages visited, time spent, features used, click patterns, and the searches run on the job board with the results opened from them (no account, address or visitor id is stored with a search)</li>
                 <li><strong className="text-foreground">Log Data:</strong> IP address, access times, referring URLs, error logs</li>
                 <li><strong className="text-foreground">Cookies and Browser Storage:</strong> What keeps you signed in and remembers your settings, and, only if you allow it, an analytics visitor id (see the Cookies section)</li>
               </ul>
@@ -99,13 +99,14 @@ export default function Privacy() {
                     <li>Stripe (payment processing)</li>
                     <li>Lovable (hosting, and the AI gateway our analysis runs through); its cloud runs on Supabase (database, sign-in and server functions)</li>
                     <li>Google and OpenAI, whose AI models analyze resume text, reached through Lovable's AI gateway</li>
-                    <li>Lovable Emails, which sends sign-in emails through Mailgun from the EU</li>
+                    <li data-signin-mail>Lovable Emails, which sends sign-in emails through Mailgun from the EU; a sign-in email it cannot send goes through Resend, from the United States, instead</li>
                     <li>Resend (receipts, reports and our other email, from the United States)</li>
-                    <li data-ipinfo>ipinfo (the country of the IP address a free scan comes from, to set its limits)</li>
+                    <li data-ipinfo>ipinfo (the country of the IP address a free scan, or a request to email you a scan report, comes from: to set the free scan's limits, and to refuse a report email from a region we do not serve)</li>
                     <li data-fonts>No font host: the site's fonts are served from this site itself, so loading a page asks Google, or anyone else, for no font</li>
                   </ul>
                 </li>
-                <li><strong className="text-foreground">Shortlist:</strong> An employer who screens candidates with Shortlist uploads their resumes and confirms, for each one, that they may have it scored by AI. We remove protected-class proxies before scoring, keep the redacted text and the evaluation for that employer until they delete the role or their account, and record no candidate's sex or race</li>
+                <li><strong className="text-foreground">Shortlist:</strong> An employer who screens candidates with Shortlist uploads their resumes and confirms, for each one, that they may have it scored by AI. We remove protected-class proxies before scoring, keep the redacted text and the evaluation for that employer until they delete the candidate, the role or their account, and delete any still held four years after it was uploaded; we record no candidate's sex or race</li>
+                <li data-affiliate-entry><strong className="text-foreground">Affiliate Program:</strong> Some people reach us through a referral link that carries an affiliate's code (for example ?ref=example). If you arrive on such a link and choose Allow analytics, we store that code in a cookie named affiliate_ref and in this browser's local storage for 30 days, so that the affiliate is credited if you buy something in that time. If you choose No thanks we do not store the code, and choosing No thanks later clears it. When the code is stored we also record the click: the date and time, the page you landed on, the referring website, your browser's user-agent string, and a keyed hash of your IP address. We do not store the IP address itself, and the hash cannot be reversed by us or by the affiliate. We keep these click records for 90 days and then delete them automatically. Affiliates never see your identity: they see counts, and the value of purchases credited to them. The cookie is listed under Affiliate program in the Cookies section</li>
                 <li><strong className="text-foreground">Legal Requirements:</strong> When required by law, court order, or governmental authority</li>
                 <li><strong className="text-foreground">Protection of Rights:</strong> To protect our rights, privacy, safety, or property</li>
                 <li><strong className="text-foreground">Business Transfers:</strong> In connection with a merger, acquisition, or sale of assets</li>
@@ -126,7 +127,8 @@ export default function Privacy() {
                 <li><strong className="text-foreground">Payment Records:</strong> The Stripe reference, amount, date and the address on the receipt, retained as required by tax and financial regulations (typically 7 years), including after an account is deleted</li>
                 <li><strong className="text-foreground">Email Address and Mail:</strong> The monthly market pulse keeps your address until you unsubscribe. We keep a record of each email we send (the address, the time and whether it was delivered) to show delivery and to honour unsubscribes, and a do-not-mail note after you unsubscribe or delete your account, so that no mail already queued reaches you</li>
                 <li><strong className="text-foreground">Log Data:</strong> Retained for up to 90 days for security and debugging purposes</li>
-                <li><strong className="text-foreground">In Your Browser:</strong> The resume text a tab carries between pages is in that tab's session storage until you close it. A resume you build on the site, your recent scan history and recent reports are in this browser's local storage until it is cleared; the Clear Browser Data button on a paid results page clears them, as does clearing this site's data in your browser.</li>
+                <li data-search-retention><strong className="text-foreground">Job Board Searches:</strong> The words, place and filters of a search on the job board, and which results were opened from it, are kept for 180 days with no account, address or visitor id attached, then only as daily totals.</li>
+                <li><strong className="text-foreground">In Your Browser:</strong> The resume text a tab carries between pages is in that tab's session storage until you close it. A resume you build on the site, your recent scan history and recent reports are in this browser's local storage until it is cleared; the Clear Browser Data button on a paid results page clears them, as does clearing this site's data in your browser. Signing out on this device clears them too, apart from anything you choose to keep on this device.</li>
               </ul>
             </section>
 
@@ -225,6 +227,7 @@ export default function Privacy() {
                 <li><strong className="text-foreground">Essential:</strong> keeping you signed in, security, and the choice you make below</li>
                 <li><strong className="text-foreground">Preferences:</strong> remembering your settings, recent searches and the resumes and reports you keep in this browser</li>
                 <li><strong className="text-foreground">Analytics, only if you allow it:</strong> an anonymous visitor id kept in this browser, and a record of which pages and steps you use. Until you choose, our own analytics stores and sends nothing; choosing no removes the id and the records this browser kept for it</li>
+                <li data-affiliate-cookie><strong className="text-foreground">Affiliate program, only if you allow analytics:</strong> the affiliate_ref cookie and the same entry in this browser's storage, holding the code of the referral link you arrived on for 30 days; choosing No thanks, then or later, clears both</li>
               </ul>
               <p className="text-muted-foreground leading-relaxed mt-4">
                 Our hosting provider runs its own page-visit counter, which this choice does not control.
@@ -248,7 +251,7 @@ export default function Privacy() {
                 <li><strong className="text-foreground">Stripe:</strong> <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">stripe.com/privacy</a></li>
                 <li><strong className="text-foreground">Resend:</strong> <a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">resend.com/legal/privacy-policy</a></li>
                 <li><strong className="text-foreground">Supabase:</strong> <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">supabase.com/privacy</a></li>
-                <li><strong className="text-foreground">Google (AI models and fonts):</strong> <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">policies.google.com/privacy</a></li>
+                <li><strong className="text-foreground">Google (AI models, reached through Lovable's AI gateway):</strong> <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">policies.google.com/privacy</a></li>
                 <li><strong className="text-foreground">OpenAI:</strong> <a href="https://openai.com/policies/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">openai.com/policies/privacy-policy</a></li>
                 <li><strong className="text-foreground">Lovable, Mailgun and ipinfo:</strong> each publishes its own privacy policy on its website</li>
               </ul>

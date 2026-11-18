@@ -199,14 +199,43 @@ function metroAlias(place: string): string | null {
  * word counts as a whole word, never as a language ("in Spanish", "French
  * Camp"), never in a "New ..." place named after it ("New South Wales", "New
  * Mexico"), and a compass America is a continent; northern Ireland is the UK's.
+ *
+ * RC-S13-041: "N. Ireland", "N Ireland" and "North Ireland" are Northern
+ * Ireland too, and the compass word belongs to the country's name, so "Belfast
+ * N. Ireland" is Belfast in GB and never a city called "N.". A country word
+ * followed by a US state ("Mexico Missouri", "Poland Ohio", "Holland
+ * Michigan") is a US town named after it, not that country; a state code
+ * counts only in capitals and never when it is also a word ("or", "in").
  */
 const LANGUAGE = new Set(["german", "french", "spanish", "portuguese", "italian", "dutch", "swiss"]);
+const NORTHERN = /(?:^|\s)(n|north(?:ern)?)$/;
+const CANADIAN = new Set(["ON", "BC", "AB", "QC", "MB", "SK", "NS", "NB", "NL", "PE", "YT", "NT", "NU"]);
+/** work-countries' own normalisation (not exported there), to find what follows a mention. */
+const countryWords = (s: string) =>
+  s.replace(/\b(?:[A-Za-z]\.){1,3}[A-Za-z]\b\.?/g, (m) => m.replace(/\./g, "")).toLowerCase().replace(/[.,;:!?()/]/g, " ").replace(/\s+/g, " ").trim();
+/** The words after a mention open with a US state's name, or its code written in capitals. */
+function stateFollows(after: string, place: string): boolean {
+  const words = after.split(" ").filter(Boolean);
+  for (let k = Math.min(3, words.length); k >= 1; k--) {
+    const w = words.slice(0, k).join(" ");
+    const hit = has(STATE_ALIASES, w) ? STATE_ALIASES[w] : null;
+    const code = hit ? (/, ([A-Z]{2})$/.exec(hit.names.find((n) => n.startsWith(", ")) ?? "")?.[1] ?? "") : "";
+    if (!hit || !code || CANADIAN.has(code)) continue;
+    if (w.length > 2) return true;
+    if (!CODE_IS_A_WORD.has(w) && new RegExp(`(?:^|[\\s,])${code}(?:$|[\\s,.])`).test(place)) return true;
+  }
+  return false;
+}
 function mentionsOf(place: string): Array<{ code: string; alias: string; before: string }> {
   const out: Array<{ code: string; alias: string; before: string }> = [];
+  const t = ` ${countryWords(place)} `;
   for (const m of countryMentions(place)) {
     if (LANGUAGE.has(m.alias) || (/(?:^|\s)new(?:\s+(?:north|south|east|west))?$/.test(m.before) && !m.alias.startsWith("new"))) continue;
     if (m.alias === "america" && /(?:^|\s)(?:latin|(?:north|south)(?:ern)?|central)$/.test(m.before)) continue;
-    out.push(m.alias === "ireland" && /(?:^|\s)north(?:ern)?$/.test(m.before) ? { ...m, code: "GB" } : m);
+    const at = t.indexOf(` ${m.alias} `);
+    if (m.code !== "US" && at >= 0 && stateFollows(t.slice(at + m.alias.length + 2).trim(), place)) continue;
+    const north = m.alias === "ireland" ? NORTHERN.exec(m.before) : null;
+    out.push(north ? { code: "GB", alias: `${north[1]} ireland`, before: m.before.slice(0, north.index).trim() } : m);
   }
   return out;
 }
@@ -630,6 +659,35 @@ export function readLocationArg(raw: string, h: { country?: string | null } = {}
     ...(asked ? {} : { country: cc.country }),
     note: `"${typed}" was searched as ${cc.city} in ${cc.country}: the board files a posting's country in its own field, so the place is matched without the country's name.`,
   };
+}
+
+/**
+ * A LOCATION ARGUMENT THE BOARD HAS A FIELD FOR (RC-S9-002): the whole
+ * argument is one country by name ("United States", "Germany", "USA"), a
+ * remote word ("remote", "anywhere"), or both ("Remote US"). The board
+ * matches a location as words in each posting's location, so it misses
+ * postings that file the country or remote only in their own field. Read only
+ * to SAY so: the location is still sent as typed, because every filter
+ * reading lost rows main finds while the board has no OR of a filter and a
+ * substring (n1461). A state, a city or a "City, ST" is never a country here.
+ */
+export function locationAsField(raw: string): { country?: string; remote?: true } | null {
+  const typed = String(raw ?? "").replace(/\s+/g, " ").trim();
+  if (!typed || typed.length > 60) return null;
+  if (/^(?:fully )?(?:remote|anywhere|work from home|wfh)$/i.test(typed)) return { remote: true };
+  const rm = /^(?:fully )?remote[\s,:;(–—-]+(.+?)\)?$/i.exec(typed) ?? /^(.+?)[\s,:;(–—-]+remote\)?$/i.exec(typed);
+  if (rm) {
+    const c = wholeCountry(rm[1]);
+    return c ? { remote: true, country: c } : null;
+  }
+  const c = wholeCountry(typed);
+  return c ? { country: c } : null;
+}
+/** The place is exactly one country's name, under every guard above; never a state or a city the board knows. */
+function wholeCountry(place: string): string | null {
+  const p = place.trim();
+  if (!p || cityState(p) || knownLocation(p) || knownCity(p)) return null;
+  return exactCountry(p);
 }
 
 /**

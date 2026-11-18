@@ -75,6 +75,8 @@
 // Pure functions, so a Deno test drives them with a fake RPC and the entry
 // point stays a thin parser around them.
 
+import { isPurchase, stripeSessionOf } from "./allowlist.ts";
+
 export const VISITOR_BUDGET_PER_HOUR = 180;
 export const ADDRESS_CEILING_PER_HOUR = 1800;
 export const BUDGET_WINDOW_MINUTES = 60;
@@ -100,9 +102,55 @@ export const METADATA_MAX_CHARS = 2048;
 // the writer's own address ceiling still holds.
 export const ADDRESS_DOOR = "track-ab-event:address";
 
-/** The address tier's bucket: a 32-hex keyed hash of the address, never the address. */
+// A PURCHASE IS ONE THE PAYMENT SIDE KNOWS, AND IT HAS AN HOUR OF ITS OWN
+// (S14X-154, S14X-155). A purchase conversion (allowlist.ts isPurchase) was
+// whatever a caller typed, and it shared the site's hour with every view, so
+// a flood of views answered the sale that followed "rate_limited_global" and
+// a typed purchase counted as a sale. Now a purchase is recorded only when
+// ab_purchase_known says its Stripe Checkout session is one a checkout
+// function minted or the payment side redeemed; anything else is answered
+// "unverified" and stored nowhere (a failed check fails open, like every
+// tier). A known purchase is then counted in PURCHASE_BUDGET_SCOPE instead of
+// the site's hour. Only a known session reaches that bucket, so neither a
+// flood of views nor typed purchases can fill it; every other conversion
+// (sign-ins, shares) stays in the site's hour, because anyone can send one.
+export const PURCHASE_BUDGET_SCOPE = "track-ab-event:global-purchase";
+export const PURCHASE_CEILING_PER_HOUR = 2000;
+
+/**
+ * The address the address tier counts: an IPv4 address as it is, an IPv6
+ * address as its /64 (S14X-155). One subscriber is routinely given a whole
+ * /64, so counting each /128 gave one connection 2^64 fresh allowances. An
+ * IPv4-mapped IPv6 address is its IPv4 address. Anything unparseable is
+ * counted as it is. Local to this function: _shared/client-address.ts is the
+ * board's, and the address itself is read there unchanged.
+ */
+export function addressKey(address: string): string {
+  const a = address.trim().toLowerCase().replace(/%.*$/, "");
+  if (!a.includes(":")) return a;
+  let s = a;
+  const v4 = /(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(s);
+  if (v4) {
+    const [b1, b2, b3, b4] = v4.slice(1).map(Number);
+    if ([b1, b2, b3, b4].some((b) => b > 255)) return a;
+    s = `${s.slice(0, v4.index)}${((b1 << 8) | b2).toString(16)}:${((b3 << 8) | b4).toString(16)}`;
+  }
+  const halves = s.split("::");
+  if (halves.length > 2) return a;
+  const head = halves[0] ? halves[0].split(":") : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(":") : [];
+  const fill = halves.length === 2 ? 8 - head.length - tail.length : 0;
+  if (fill < 0) return a;
+  const groups = [...head, ...Array<string>(fill).fill("0"), ...tail];
+  if (groups.length !== 8 || groups.some((g) => !/^[0-9a-f]{1,4}$/.test(g))) return a;
+  const n = groups.map((g) => parseInt(g, 16));
+  if (n.slice(0, 5).every((x) => x === 0) && n[5] === 0xffff) return `${n[6] >> 8}.${n[6] & 255}.${n[7] >> 8}.${n[7] & 255}`;
+  return `${n.slice(0, 4).map((x) => x.toString(16)).join(":")}::/64`;
+}
+
+/** The address tier's bucket: a 32-hex keyed hash of the address (an IPv6 address's /64), never the address. */
 export async function addressBucket(address: string, secret: string): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${secret}:${ADDRESS_DOOR}:${address}`));
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${secret}:${ADDRESS_DOOR}:${addressKey(address)}`));
   return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
 }
 
@@ -129,6 +177,7 @@ export type TrackStatus =
   | "rate_limited_visitor"
   | "rate_limited_address"
   | "rate_limited_global"
+  | "unverified"
   | "error";
 
 export interface TrackEvent {
@@ -148,12 +197,13 @@ export interface TrackOutcome {
 }
 
 /**
- * Record one event: the visitor's budget, then the address's hour, then the
- * site's hour, then the writer. Each refusal stops the chain, so a runaway
- * client spends nothing of its address's ceiling and an address spends at most
- * its ceiling of the site's hour. A failure of a tier's own RPC fails OPEN to
- * the next: the writer's address ceiling still holds, and an analytics event
- * is not worth a hard error.
+ * Record one event: the visitor's budget, then the address's hour, then (for
+ * a purchase) the payment side's word on its session, then the site's hour
+ * (a known purchase's own hour), then the writer. Each refusal stops the
+ * chain, so a runaway client spends nothing of its address's ceiling and an
+ * address spends at most its ceiling of the site's hour. A failure of a
+ * tier's own RPC fails OPEN to the next: the writer's address ceiling still
+ * holds, and an analytics event is not worth a hard error.
  */
 export async function recordEvent(rpc: Rpc, ev: TrackEvent): Promise<TrackOutcome> {
   const visitor = await rpc("check_rate_limit", {
@@ -182,13 +232,30 @@ export async function recordEvent(rpc: Rpc, ev: TrackEvent): Promise<TrackOutcom
     }
   }
 
+  // A purchase the payment side never saw is not a purchase. No session
+  // named at all is answered without a call.
+  const purchase = isPurchase(ev.testName, ev.eventType);
+  if (purchase) {
+    const session = stripeSessionOf(ev.testName, ev.metadata);
+    if (!session) return { status: "unverified" };
+    const known = await rpc("ab_purchase_known", { p_session_id: session });
+    if (known.error) {
+      console.error("[TRACK-AB] purchase check failed, failing open:", known.error.message);
+    } else if (known.data !== true) {
+      return { status: "unverified" };
+    }
+  }
+
   // The site's hour: one bucket for every caller (client_write_allowed's
   // per-address bucket sees this function's egress, so it equals the
-  // ceiling; the address was counted just above). A failed check fails open.
+  // ceiling; the address was counted just above). A known purchase takes
+  // its own hour. A failed check fails open.
+  const scope = purchase ? PURCHASE_BUDGET_SCOPE : GLOBAL_BUDGET_SCOPE;
+  const ceiling = purchase ? PURCHASE_CEILING_PER_HOUR : GLOBAL_CEILING_PER_HOUR;
   const site = await rpc("client_write_allowed", {
-    p_scope: GLOBAL_BUDGET_SCOPE,
-    p_per_address: GLOBAL_CEILING_PER_HOUR,
-    p_ceiling: GLOBAL_CEILING_PER_HOUR,
+    p_scope: scope,
+    p_per_address: ceiling,
+    p_ceiling: ceiling,
     p_window_minutes: BUDGET_WINDOW_MINUTES,
   });
   if (site.error) {

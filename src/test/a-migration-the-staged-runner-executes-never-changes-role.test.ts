@@ -15,6 +15,7 @@
  * proves this guard finds one of them, so it is not passing on an empty scan.
  */
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -58,7 +59,7 @@ describe("no migration the staged runner can be handed switches role", () => {
 
   it("the refusal is real: PostgreSQL rejects a role switch inside the runner's definer, and accepts it inline", async () => {
     const db = new PGlite();
-    await db.exec(`CREATE ROLE anon;
+    await db.exec(`${SUPABASE_DEFAULTS}
       CREATE FUNCTION public._mig_exec(p_sql text) RETURNS void
         LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $fn$ BEGIN EXECUTE p_sql; END; $fn$;`);
     const block = "DO $$ BEGIN SET LOCAL ROLE anon; PERFORM 1; RESET ROLE; END $$;";

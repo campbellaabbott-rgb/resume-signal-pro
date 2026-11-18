@@ -246,6 +246,160 @@ export function carriedText(from: string, error: string): string {
 }
 
 /**
+ * THE OWNER'S HEARTBEAT MAIL, DECIDED IN ONE PLACE (bug round 2026-11-08:
+ * S14X-018, S14X-045). index.ts reads the stored state, asks this, sends the
+ * mail it names, and writes back the state it returns: after Resend accepted
+ * the mail when there is one (a refused mail stamps nothing, so the next run
+ * tries again), at once when there is none.
+ *
+ * WHAT WAS WRONG.
+ *   - A heartbeat that stayed down mailed once and then said nothing for a
+ *     day: every failing check had been announced, escalation needs a status
+ *     that was not down before, and the reminder waits 24 hours. Going from
+ *     down to degraded was never said at all.
+ *   - The recovery note stamped the time the four-hour cooldown counts from,
+ *     so a new failure soon after a recovery (a refused Stripe key: every
+ *     checkout failing) waited up to four hours; and a degraded state only
+ *     ever written silently got a 'recovered' note when it cleared.
+ *
+ * THE RULES NOW.
+ *   - A check is news when it has not been announced in REMIND_MS.
+ *   - Degraded and unhealthy alerts share a cooldown of DEGRADED_COOLDOWN_MS
+ *     from lastAlertAt: the last alert Resend accepted IN THIS INCIDENT. A
+ *     healthy run ends the incident and clears it, so the cooldown ends with
+ *     its incident.
+ *   - Going down always mails. While it stays down, a reminder goes every
+ *     DOWN_REMIND_MS saying how long (downSince). Leaving down for degraded
+ *     or unhealthy mails one 'no longer down' note, past the cooldown.
+ *   - The same degraded set is reminded once a day.
+ *   - A healthy run mails 'recovered' only when this incident was announced
+ *     (its checks carry a stamp); otherwise it clears the state silently.
+ *     A check flapping in and out is still bounded by the two-an-hour
+ *     backstop in index.ts: a recovery follows only an accepted alert.
+ */
+export const REMIND_MS = 24 * 60 * 60_000;
+export const DOWN_REMIND_MS = 2 * 60 * 60_000;
+export const DEGRADED_COOLDOWN_MS = 4 * 60 * 60_000;
+export const ALERT_STATE_KEY = "heartbeat_alert_state";
+/** What job_board_meta keeps between runs. lastSentAt is an older build's field: read, never written. */
+export type AlertState = {
+  fingerprint: string;
+  lastAlertAt?: string;
+  alerted?: Record<string, string>;
+  downSince?: string;
+};
+export type HeartbeatMailKind = "alert" | "reminder" | "down-reminder" | "eased" | "recovered";
+export type HeartbeatMailDecision = {
+  /** The mail to send, or null for a silent run. */
+  kind: HeartbeatMailKind | null;
+  /** The state to keep, or null to leave the stored row as it is. */
+  next: AlertState | null;
+  /** The status the stored state held before this run. */
+  prevStatus: string;
+  /** While down: since when, and for how many minutes. */
+  downSince?: string;
+  downForMin?: number;
+  reason: string;
+};
+
+const parseAt = (v: unknown) => (typeof v === "string" ? Date.parse(v) : NaN);
+
+export function decideHeartbeatMail(stored: unknown, status: string, failedNames: string[], now: number): HeartbeatMailDecision {
+  const prev = stored && typeof stored === "object" ? (stored as Record<string, unknown>) : {};
+  const fp = typeof prev.fingerprint === "string" ? prev.fingerprint : "";
+  const inIncident = fp !== "" && !fp.startsWith("healthy");
+  const prevStatus = inIncident ? fp.split("|")[0] : "healthy";
+  const alerted: Record<string, string> = {};
+  if (prev.alerted && typeof prev.alerted === "object") {
+    for (const [k, v] of Object.entries(prev.alerted as Record<string, unknown>)) if (Number.isFinite(parseAt(v))) alerted[k] = String(v);
+  }
+  const stamps = Object.values(alerted).map(parseAt);
+  // Announced in this incident: a check carries a stamp (a healthy run clears
+  // them). The cooldown's anchor is lastAlertAt; a row an older build wrote
+  // has only lastSentAt, which is the last alert's time while stamps exist.
+  const announced = inIncident && stamps.length > 0;
+  const lastAlert = !announced ? NaN
+    : Number.isFinite(parseAt(prev.lastAlertAt)) ? parseAt(prev.lastAlertAt)
+    : Number.isFinite(parseAt(prev.lastSentAt)) ? parseAt(prev.lastSentAt)
+    : Math.max(...stamps);
+  const iso = (t: number) => new Date(t).toISOString();
+
+  if (status === "healthy") {
+    if (!inIncident) return { kind: null, next: null, prevStatus, reason: "healthy, as the stored state was" };
+    const next: AlertState = { fingerprint: "healthy" };
+    return announced
+      ? { kind: "recovered", next, prevStatus, reason: `the announced state ${fp} cleared` }
+      : { kind: null, next, prevStatus, reason: `cleared silently: ${fp} was never announced` };
+  }
+
+  const failed = [...new Set(failedNames)].sort();
+  const fingerprint = `${status}|${failed.join(",")}`;
+  const isDown = status === "down";
+  const wasDown = prevStatus === "down";
+  const news = failed.filter((c) => {
+    const t = parseAt(alerted[c]);
+    return !Number.isFinite(t) || now - t >= REMIND_MS;
+  });
+  const downSince = !isDown ? undefined
+    : wasDown && Number.isFinite(parseAt(prev.downSince)) ? String(prev.downSince)
+    : wasDown && Number.isFinite(lastAlert) ? iso(lastAlert)
+    : iso(now);
+  const cooled = !isDown && Number.isFinite(lastAlert) && now - lastAlert < DEGRADED_COOLDOWN_MS;
+
+  let kind: HeartbeatMailKind | null = null;
+  let reason = "no unannounced check, no escalation, no reminder due";
+  if (isDown && !wasDown) { kind = "alert"; reason = "went down"; }
+  else if (wasDown && !isDown && announced) { kind = "eased"; reason = `no longer down, still ${status}`; }
+  else if (news.length && !cooled) { kind = "alert"; reason = `news: ${news.join(", ")}`; }
+  else if (isDown && (!Number.isFinite(lastAlert) || now - lastAlert >= DOWN_REMIND_MS)) { kind = "down-reminder"; reason = "still down"; }
+  else if (!isDown && fp === fingerprint && Number.isFinite(lastAlert) && now - lastAlert >= REMIND_MS) { kind = "reminder"; reason = "the same set, a day on"; }
+  else if (news.length) reason = `news held by the cooldown: ${news.join(", ")}`;
+
+  // A check is stamped announced only by a mail that went out; a silent run
+  // keeps the stamps it had for checks still failing.
+  const nextAlerted: Record<string, string> = {};
+  for (const c of failed) {
+    if (kind) nextAlerted[c] = iso(now);
+    else if (alerted[c]) nextAlerted[c] = alerted[c];
+  }
+  const next: AlertState = {
+    fingerprint,
+    alerted: nextAlerted,
+    ...(kind ? { lastAlertAt: iso(now) } : Number.isFinite(lastAlert) ? { lastAlertAt: iso(lastAlert) } : {}),
+    ...(downSince ? { downSince } : {}),
+  };
+  return {
+    kind, next, prevStatus, reason,
+    ...(downSince ? { downSince, downForMin: Math.max(0, Math.round((now - Date.parse(downSince)) / 60_000)) } : {}),
+  };
+}
+
+/** How a span of minutes reads in the owner's mail. */
+export function spanText(min: number): string {
+  if (min < 90) return `${min} min`;
+  const h = min / 60;
+  return h < 48 ? `about ${Math.round(h)} h` : `about ${Math.round(h / 24)} days`;
+}
+
+/** The subject and the opening line of each kind of heartbeat mail. */
+export function heartbeatMailWords(d: HeartbeatMailDecision, status: string, failedNames: string[]): { subject: string; lead: string } {
+  const set = [...new Set(failedNames)].map((c) => c.replace(/^job_board_/, "")).sort().join(", ").slice(0, 140) || "no failing checks";
+  const emoji = status === "down" ? "🔴" : "🟡";
+  const since = d.downSince ? ` since ${d.downSince.slice(11, 16)} UTC (${spanText(d.downForMin ?? 0)})` : "";
+  switch (d.kind) {
+    case "recovered":
+      return { subject: "✅ Heartbeat recovered: all checks passing", lead: "Heartbeat recovered" };
+    case "eased":
+      return { subject: `🟡 Heartbeat no longer down (still ${status.toUpperCase()}: ${set})`, lead: `No longer down; still ${status} on: ${set}` };
+    case "down-reminder":
+      return { subject: `🔴 Heartbeat DOWN${since}: ${set}`, lead: `Still down${since}` };
+    default:
+      // The failing set in the subject: one incident threads as one conversation.
+      return { subject: `${emoji} Heartbeat ${status.toUpperCase()}: ${set}`, lead: d.downSince ? `Down${since}` : "Free Scan Heartbeat Alert" };
+  }
+}
+
+/**
  * THE AI PROBE'S VERDICT. It failed on a reply with no text, and its model
  * thinks before it answers: with a 100-token cap the thinking can spend the
  * whole budget and the reply comes back empty (finish_reason length), which

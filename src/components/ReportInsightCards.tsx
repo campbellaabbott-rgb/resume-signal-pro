@@ -6,6 +6,7 @@ import { fixLabel } from "@/lib/fix-labels";
 import { PROJECTION_CEILING } from "../../supabase/functions/free-keyword-scan/score-projection";
 import { SHARE_SITE } from "./ShareableScoreCard";
 import { scoreTone, TONE_HEX } from "@/lib/score-bands";
+import { scanIndustryLabel } from "@/config/scan-industries";
 
 /* ============================================================
  * New free-report insight cards:
@@ -300,30 +301,37 @@ export function DiagnosticHeader({
   meta: { reportId: string; engineVersion: string; generatedAt: string; industry: string; industryConfidence: string; benchmarkSource: string };
   candidateName?: string;
 }) {
+  // In the reader's language (RC-OI-29, S14X-057): the industry by its label,
+  // never its id with spaces, and the confidence word translated.
+  const { t, i18n } = useTranslation();
+  const confidence = ["high", "medium", "low"].includes(meta.industryConfidence)
+    ? t("freeResults.confidencePercent", { confidence: t(`freeScanPage.confidence.${meta.industryConfidence}`) })
+    : "";
+  const industry = scanIndustryLabel(meta.industry, t);
   const fields: Array<[string, string]> = [
-    ["Report", `#${meta.reportId}`],
-    ["Date", new Date(meta.generatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })],
-    ["Subject", candidateName || "Candidate"],
-    ["Industry", `${meta.industry.replace(/_/g, " ")} (${meta.industryConfidence} confidence)`],
-    ["Benchmarks", meta.benchmarkSource === "measured" ? "measured from real scans" : "industry estimates"],
-    ["Engine", meta.engineVersion],
+    [t("freeScanPage.diagnostic.report"), `#${meta.reportId}`],
+    [t("freeScanPage.diagnostic.date"), new Date(meta.generatedAt).toLocaleDateString(i18n.language, { year: "numeric", month: "short", day: "numeric" })],
+    [t("freeScanPage.diagnostic.subject"), candidateName || t("freeScanPage.diagnostic.candidate")],
+    [t("freeScanPage.diagnostic.industry"), confidence ? `${industry} (${confidence})` : industry],
+    [t("freeScanPage.diagnostic.benchmarks"), meta.benchmarkSource === "measured" ? t("freeScanPage.diagnostic.benchmarksMeasured") : t("freeScanPage.diagnostic.benchmarksEstimated")],
+    [t("freeScanPage.diagnostic.engine"), meta.engineVersion],
   ];
   return (
     <div className="rounded-2xl border border-border bg-card/80 px-5 py-4 mb-4">
       <div className="flex items-center justify-between gap-2 mb-3">
-        <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Resume Diagnostic Report</p>
+        <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">{t("freeScanPage.diagnostic.title")}</p>
         <span className="text-[10px] px-2 py-0.5 rounded-full border border-border text-muted-foreground font-mono">#{meta.reportId}</span>
       </div>
       <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1.5">
         {fields.map(([k, v]) => (
           <div key={k} className="flex items-baseline gap-1.5 min-w-0">
             <dt className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">{k}</dt>
-            <dd className="text-xs text-foreground truncate capitalize">{v}</dd>
+            <dd className="text-xs text-foreground truncate">{v}</dd>
           </div>
         ))}
       </dl>
       <p className="text-[10px] text-muted-foreground mt-3 pt-2 border-t border-border/60">
-        Rescanning this exact document reproduces this report ID — results are deterministic where marked, and every quoted line is verified against the document.
+        {t("freeScanPage.diagnostic.footer")}
       </p>
     </div>
   );

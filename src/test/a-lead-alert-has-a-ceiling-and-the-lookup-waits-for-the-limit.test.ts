@@ -14,9 +14,12 @@
  * faked:
  *   - one address alerts at most once a day however many networks repeat it;
  *   - all addresses together alert at most twenty times an hour, and past that
- *     the owner hears so once, while every lead is still saved;
+ *     the owner hears so once, while every visitor is still answered;
  *   - a counter that cannot answer leaves the alert as it was, so it goes (a gate
- *     on mail defaults to today's behaviour), and the lead is saved;
+ *     on mail defaults to today's behaviour), and the visitor is answered;
+ *   - no address is kept, on any path (S14X-101, the owner's answer 'remove' of
+ *     2026-11-15: the weekly-tips box is gone and 20261112103000 empties the
+ *     lead list), so the lead-saving function is never called;
  *   - the limit counts a network, as a keyed hash, not an address;
  *   - a malformed body, a bad address and a limited caller cost no lookup, and
  *     a blocked country is still refused, behind the limit.
@@ -83,11 +86,11 @@ const post = async (body: unknown, ip = "203.0.113.9", raw = false) => {
 const leadMails = () => mails.filter((m) => /NEW LEAD/.test(m.subject));
 
 describe("the owner's lead alert is bounded", () => {
-  it("one address repeated from many networks alerts once and is saved each time", async () => {
+  it("one address repeated from many networks alerts once, is answered each time, and is never kept", async () => {
     for (let i = 0; i < 30; i++) {
       expect((await post({ email: "a@corp.example.com" }, `198.51.${i}.7`)).status).toBe(200);
     }
-    expect(saved).toHaveLength(30);
+    expect(saved).toEqual([]);
     expect(leadMails(), "a proxy pool repeated one address into the owner's inbox").toHaveLength(1);
   });
 
@@ -100,13 +103,14 @@ describe("the owner's lead alert is bounded", () => {
     expect(buckets[0]).toMatch(/^[0-9a-f]{32}$/);
   });
 
-  it("many addresses stop at twenty an hour, every lead is saved, and the owner hears once", async () => {
-    for (let i = 0; i < 30; i++) await post({ email: `lead${i}@corp.example.com` }, `198.51.${i}.7`);
-    expect(saved).toHaveLength(30);
+  it("many addresses stop at twenty an hour, none is kept, and the owner hears once", async () => {
+    for (let i = 0; i < 30; i++) expect((await post({ email: `lead${i}@corp.example.com` }, `198.51.${i}.7`)).status).toBe(200);
+    expect(saved).toEqual([]);
     expect(leadMails()).toHaveLength(20);
     const notice = mails.filter((m) => /hourly ceiling/.test(m.subject));
     expect(notice, "the owner was not told the alerts stopped, or was told more than once").toHaveLength(1);
-    expect(notice[0].html).toMatch(/still saved/);
+    expect(notice[0].html).toMatch(/no address is kept/);
+    expect(notice[0].html).not.toMatch(/still saved/);
   });
 
   it("the doors' windows are a day for an address and an hour for all", async () => {
@@ -117,11 +121,11 @@ describe("the owner's lead alert is bounded", () => {
     expect(taken).toEqual([["save-lead:owner-address", 1, 1440], ["save-lead:owner", 20, 60]]);
   });
 
-  it("a counter that cannot answer leaves the alert as it was: it goes, and the lead is saved and answered", async () => {
+  it("a counter that cannot answer leaves the alert as it was: it goes, and the visitor is answered", async () => {
     doorDown = true;
     const res = await post({ email: "lead@corp.example.com" });
     expect(res.status).toBe(200);
-    expect(saved).toEqual(["lead@corp.example.com"]);
+    expect(saved).toEqual([]);
     expect(leadMails()).toHaveLength(1);
   });
 
@@ -129,17 +133,17 @@ describe("the owner's lead alert is bounded", () => {
     delete db.rpcs.mail_door_take;
     const res = await post({ email: "lead@corp.example.com" });
     expect(res.status).toBe(200);
-    expect(saved).toEqual(["lead@corp.example.com"]);
+    expect(saved).toEqual([]);
     expect(leadMails()).toHaveLength(1);
   });
 
-  it("a ceiling notice whose door cannot answer is not sent, and the lead is still saved", async () => {
+  it("a ceiling notice whose door cannot answer is not sent, and the visitor is still answered", async () => {
     for (let i = 0; i < 20; i++) await post({ email: `lead${i}@corp.example.com` }, `198.51.${i}.7`);
     const real = db.rpcs.mail_door_take;
     db.rpcs.mail_door_take = (a) => (a.p_door === "owner-alert" ? { data: null, error: { message: "fake: down" } } : real(a));
     const res = await post({ email: "one-more@corp.example.com" }, "198.51.21.7");
     expect(res.status).toBe(200);
-    expect(saved).toContain("one-more@corp.example.com");
+    expect(saved).toEqual([]);
     expect(mails.filter((m) => /hourly ceiling/.test(m.subject))).toEqual([]);
     expect(leadMails()).toHaveLength(20);
   });
@@ -205,17 +209,21 @@ describe("the limit and the lookup", () => {
     expect(leadMails()).toEqual([]);
   });
 
-  it("an alert that goes spends one lookup on its address, the same one the geo check made", async () => {
+  // The alert names no country since S14X-101 (the owner's answer 'remove',
+  // 2026-11-15: owner alerts carry counts or a reference only), so the geo
+  // check's lookup is the only one.
+  it("an alert that goes spends no lookup of its own: the geo check's is the one, and the alert names no country", async () => {
     await post({ email: "one@corp.example.com" }, "192.0.2.83");
     expect(lookups).toHaveLength(1);
     expect(leadMails()).toHaveLength(1);
-    expect(leadMails()[0].subject).toContain("US");
+    expect(leadMails()[0].subject).not.toContain("US");
+    expect(leadMails()[0].html).not.toContain("US");
   });
 
-  it("a limit the database could not answer still saves the lead, as it always has, and the doors bound the mail", async () => {
+  it("a limit the database could not answer still answers the visitor, as it always has, keeps nothing, and the doors bound the mail", async () => {
     db.rpcs.check_rate_limit = () => ({ data: null, error: { message: "fake: down" } });
     for (let i = 0; i < 3; i++) expect((await post({ email: "a@corp.example.com" })).status).toBe(200);
-    expect(saved).toHaveLength(3);
+    expect(saved).toEqual([]);
     expect(leadMails()).toHaveLength(1);
   });
 });

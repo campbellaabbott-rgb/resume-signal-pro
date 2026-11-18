@@ -160,6 +160,15 @@ interface PremiumPackageData {
  * makes each, with the non-stream generator that runs both checks, and this
  * page renders the saved copy.
  */
+/**
+ * The Coach and the Career Path, handed the saved copy (RC-S12-042). Typed
+ * loosely here so the page compiles whether or not the widget's own type
+ * names the prop yet; the widget shows the copy in place of its first call.
+ */
+type WithSavedCopy<P> = Omit<P, 'savedCopy'> & { savedCopy?: unknown };
+const CoachWithCopy = InterviewCoach as unknown as React.ComponentType<WithSavedCopy<React.ComponentProps<typeof InterviewCoach>>>;
+const PathWithCopy = CareerPathSimulator as unknown as React.ComponentType<WithSavedCopy<React.ComponentProps<typeof CareerPathSimulator>>>;
+
 export const SERVER_RENDERED: ReadonlySet<string> = new Set(['basicKeywordFix', 'atsDefense', 'careerSnapshot', 'graduateGamePlan', 'applyAssistant', 'premiumPackage', 'coverLetter']);
 /**
  * The waits between asks while the server is still making the product
@@ -204,6 +213,9 @@ export default function ProductSuccess() {
   // own content on demand (same components used for free on the scan results page) —
   // they just need the resume text, not a pre-generated payload.
   const [coachResumeText, setCoachResumeText] = useState<string | null>(null);
+  // The Coach's or the Career Path's saved copy (RC-S12-042): the copy mailed
+  // at payment, shown by the widget in place of its first generation.
+  const [coachSavedCopy, setCoachSavedCopy] = useState<unknown>(null);
   const [applyPackageData, setApplyPackageData] = useState<ApplyPackageData | null>(null);
   const [applyCoverLetter, setApplyCoverLetter] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'resume' | 'coverLetter'>('resume');
@@ -238,6 +250,10 @@ export default function ProductSuccess() {
   // The product is still being made by the server after the page stopped
   // asking (S11-140): it is mailed when ready, never regenerated from this tab.
   const [stillBeingMade, setStillBeingMade] = useState(false);
+  // A delivered, mailed or otherwise closed order with no saved copy
+  // (S14X-111): nothing is being made, so the buyer is told so and given the
+  // form, never "still being made".
+  const [closedNoCopy, setClosedNoCopy] = useState(false);
   // An order nothing can make yet (S12-054): an Apply Assistant bought with
   // no job posting. The buyer is told what is missing and how to send it,
   // never to close the tab and wait for a mail that cannot come.
@@ -279,8 +295,8 @@ export default function ProductSuccess() {
 
   /**
    * A saved copy, put where this product's view reads it. False when the
-   * product has no view for a saved copy (the coach and the simulator are
-   * widgets that fetch their own) or the copy is empty.
+   * product has no view for a saved copy or the copy is empty. The coach and
+   * the simulator are widgets that make their own, handed the saved copy.
    */
   const applySavedContent = useCallback((content: any): boolean => {
     if (!content || typeof content !== 'object') return false;
@@ -297,6 +313,12 @@ export default function ProductSuccess() {
     }
     else if (productKey === 'careerSnapshot') setCareerSnapshotData(content);
     else if (productKey === 'graduateGamePlan') setGraduateGamePlanData(content);
+    else if (productKey === 'interviewCoach' || productKey === 'careerPathSimulator') {
+      // The saved copy is the buyer's (RC-S12-042): the widget shows it and
+      // makes nothing. The tab's résumé, when it holds one, lets them ask for more.
+      setCoachSavedCopy(content);
+      setCoachResumeText(getResumeFromSession().resumeText || '');
+    }
     else if (productKey === 'applyAssistant') {
       setApplyPackageData({ ...content, tailoredResume: normalizeBuilderResume(content.tailoredResume) });
       setApplyCoverLetter(content.coverLetter || null);
@@ -568,8 +590,7 @@ export default function ProductSuccess() {
   // THE SAVED COPY OF A PURCHASE, PUT ON THE PAGE. recover-purchase answers
   // with every row saved under a reference; the one for this page's product
   // is shown. False when there is none (the caller decides what follows).
-  // interviewCoach/careerPathSimulator and the scan products have no stored
-  // blob to restore: they are not in the map.
+  // The scan products have no stored blob to restore: they are not in the map.
   const applyRecoveredPurchase = (purchases: Array<{ productType?: string; generatedContent?: unknown }> | undefined): boolean => {
     const productTypeMap: Record<string, string> = {
       basicKeywordFix: 'basic_keyword_fix',
@@ -578,7 +599,9 @@ export default function ProductSuccess() {
       atsDefense: 'ats_defense',
       careerSnapshot: 'career_snapshot',
       graduateGamePlan: 'graduate_gameplan',
-      applyAssistant: 'apply_assistant'
+      applyAssistant: 'apply_assistant',
+      interviewCoach: 'interview_coach',
+      careerPathSimulator: 'career_path_simulator',
     };
     const targetType = productTypeMap[productKey || ''];
     const content = targetType
@@ -707,6 +730,16 @@ export default function ProductSuccess() {
           return;
         }
 
+        // CLOSED, AND NO COPY KEPT (S14X-111): the order was delivered, mailed
+        // or refunded, so nothing is being made and no mail is coming. The
+        // form makes it again; checked before "still being made".
+        if (data?.closedNoCopy === true && !data?.generatedContent && SERVER_RENDERED.has(productKey ?? '')) {
+          setClosedNoCopy(true);
+          setIsRecoveryMode(true);
+          setIsVerifying(false);
+          return;
+        }
+
         const sweepMakesIt = !data?.generatedContent && data?.hasResumeData === true && SERVER_RENDERED.has(productKey ?? '');
         if (SERVER_RENDERED.has(productKey ?? '') && ((data?.inProgress && !data?.generatedContent) || sweepMakesIt)) {
           setStillBeingMade(true);
@@ -823,6 +856,8 @@ export default function ProductSuccess() {
               body: {
                 sessionId,
                 resumeText: sessionData.resumeText,
+                // The checks saved with the report read the layout this tab measured (RC-S12-031).
+                multiColumnDetected: getMultiColumnDetectedFromSession() === true,
                 targetRoles: boughtRoles,
                 language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })()
               }
@@ -1005,6 +1040,18 @@ export default function ProductSuccess() {
     } catch (err) {
       toast({ title: "Failed to copy", variant: "destructive" });
     }
+  };
+
+  // The letter as a plain-text file (RC-S12-043).
+  const downloadLetter = (text: string) => {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'cover-letter.txt';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   // Determine if we should show generation progress
@@ -1445,7 +1492,7 @@ export default function ProductSuccess() {
 
               {/* Cover Letter Content */}
               <div className="relative">
-                <div className="absolute top-4 right-4 z-10">
+                <div className="absolute top-4 right-4 z-10 flex gap-2">
                   <Button 
                     variant="secondary" 
                     size="sm"
@@ -1454,6 +1501,17 @@ export default function ProductSuccess() {
                   >
                     {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                     {copied ? t('analysisResults.copied') : t('analysisResults.copy')}
+                  </Button>
+                  {/* The download the product page promises (RC-S12-043). */}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => downloadLetter(coverLetterData.coverLetter)}
+                    className="gap-2"
+                    data-rb-download-letter
+                  >
+                    <Download className="w-4 h-4" />
+                    {t('pastBuyers.downloadLetter')}
                   </Button>
                 </div>
                 <div className="p-6 md:p-8 rounded-2xl bg-card border border-border">
@@ -1626,7 +1684,9 @@ export default function ProductSuccess() {
                       size="sm"
                       className="shrink-0"
                       onClick={() => {
-                        try { sessionStorage.setItem('rb_resume_text', premiumData.resume.rewrittenResume); } catch { /* ignore */ }
+                        // A one-shot seed the builder reads and removes (RC-S12-110): the
+                        // scanned résumé every other tool reads stays as it is.
+                        try { sessionStorage.setItem('rb_builder_seed', premiumData.resume.rewrittenResume); } catch { /* ignore */ }
                         window.location.href = '/builder';
                       }}
                     >
@@ -1765,7 +1825,7 @@ export default function ProductSuccess() {
         )}
 
         {/* Generated Content Section - Interview Coach / Career Path Simulator */}
-        {(isInterviewCoach || isCareerPathSimulator) && coachResumeText && (
+        {(isInterviewCoach || isCareerPathSimulator) && (coachResumeText || coachSavedCopy) && (
           <section className="py-12 border-t border-border/50">
             <div className="container max-w-4xl">
               <div className="text-center mb-8">
@@ -1784,9 +1844,9 @@ export default function ProductSuccess() {
               </div>
 
               {isInterviewCoach ? (
-                <InterviewCoach resumeText={coachResumeText} isPremium sessionId={sessionId} />
+                <CoachWithCopy resumeText={coachResumeText ?? ''} isPremium sessionId={sessionId} savedCopy={coachSavedCopy ?? undefined} />
               ) : (
-                <CareerPathSimulator resumeText={coachResumeText} isPremium sessionId={sessionId} />
+                <PathWithCopy resumeText={coachResumeText ?? ''} isPremium sessionId={sessionId} savedCopy={coachSavedCopy ?? undefined} />
               )}
             </div>
           </section>
@@ -1802,10 +1862,15 @@ export default function ProductSuccess() {
             above (S13-048), never under "Payment Successful". */}
 
         {/* No Generated Content - Show Inline Upload Recovery */}
-        {(isKeywordFix || isCoverLetter || isPremiumPackage || isAtsDefense || isCareerSnapshot || isGraduateGamePlan || isInterviewCoach || isCareerPathSimulator || isApplyAssistant) && !generatedContent && !atsDefenseData && !careerSnapshotData && !graduateGamePlanData && !coachResumeText && !applyPackageData && !verificationError && !isVerifying && !isRegenerating && !!sessionId && (
+        {(isKeywordFix || isCoverLetter || isPremiumPackage || isAtsDefense || isCareerSnapshot || isGraduateGamePlan || isInterviewCoach || isCareerPathSimulator || isApplyAssistant) && !generatedContent && !atsDefenseData && !careerSnapshotData && !graduateGamePlanData && !coachResumeText && !coachSavedCopy && !applyPackageData && !verificationError && !isVerifying && !isRegenerating && !!sessionId && (
           <section className="py-12 border-t border-border/50">
             <div className="container max-w-2xl">
               <div className="p-8 rounded-2xl bg-muted/50 border border-border">
+                    {closedNoCopy && (
+                      <p className="mb-6 rounded-xl border border-border bg-background p-4 text-sm text-foreground" data-testid="closed-no-copy">
+                        {t('pastBuyers.closedNoCopy')}
+                      </p>
+                    )}
                     <div className="text-center mb-6">
                       <Upload className="w-12 h-12 text-primary mx-auto mb-4" />
                       <h3 className="text-xl font-semibold mb-2">
@@ -1997,23 +2062,33 @@ export default function ProductSuccess() {
 
                     {/* File Upload */}
                     <div className="space-y-4">
-                      <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <label htmlFor="product-success-recovery-file" className="text-sm font-medium text-foreground flex items-center gap-2">
                         <FileText className="w-4 h-4" />
                         {t('productSuccess.recovery.yourResume')}
                         <Badge variant="destructive" className="text-[10px]">{t('productSuccess.recovery.required')}</Badge>
                       </label>
-                      <div 
+                      {/* A label around a focusable input (S14X-180): a div with
+                          onClick around a display:none input was out of reach of
+                          Tab and of a screen reader. */}
+                      <label
+                        htmlFor="product-success-recovery-file"
                         className={cn(
-                          "relative rounded-xl border-2 border-dashed p-6 text-center transition-colors cursor-pointer",
+                          "relative block rounded-xl border-2 border-dashed p-6 text-center transition-colors cursor-pointer focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2",
                           recoveryFile ? "border-success bg-success/5" : "border-border hover:border-primary/50 hover:bg-primary/5"
                         )}
-                        onClick={() => fileInputRef.current?.click()}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const file = e.dataTransfer.files?.[0];
+                          if (file) handleRecoveryFileUpload(file);
+                        }}
                       >
                         <input
+                          id="product-success-recovery-file"
                           ref={fileInputRef}
                           type="file"
                           accept=".pdf,.docx,.txt"
-                          className="hidden"
+                          className="sr-only"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) handleRecoveryFileUpload(file);
@@ -2036,7 +2111,7 @@ export default function ProductSuccess() {
                             <p className="text-sm text-muted-foreground">{t('productSuccess.recovery.fileTypes')}</p>
                           </div>
                         )}
-                      </div>
+                      </label>
 
                       <div className="relative">
                         <div className="absolute inset-0 flex items-center">

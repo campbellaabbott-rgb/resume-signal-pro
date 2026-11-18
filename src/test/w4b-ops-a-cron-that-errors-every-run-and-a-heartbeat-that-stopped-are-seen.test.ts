@@ -25,6 +25,7 @@
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
@@ -40,7 +41,7 @@ const MIG = resolve(ROOT, "supabase/migrations");
 const file = (stamp: string) => readFileSync(resolve(MIG, readdirSync(MIG).find((f) => f.startsWith(`${stamp}_`))!), "utf8");
 const BASE = file("20251223182331");
 const SQL = file("20261011200000");
-const ROLES = "CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;";
+const ROLES = SUPABASE_DEFAULTS;
 
 async function boot(withNet: boolean) {
   const db = new PGlite();

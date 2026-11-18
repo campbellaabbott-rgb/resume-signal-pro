@@ -48,7 +48,24 @@ interface CatTrend {
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
 
-const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString() : "—");
+// en-US, as the bake prints it (S14X-255): a bare toLocale call followed the
+// browser's locale and hydrated differently from the baked HTML.
+const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString("en-US") : "—");
+
+/** THIS PAGE'S PARTS OF THE HOURLY CACHE, in the words the page uses (S14X-160). */
+const TRENDS_PART_WORDS: Record<string, string> = {
+  hiring_trends: "the weekly counts",
+  trending_categories: "the field comparison",
+  ghost_stats: "the 90-day closure record the weeks are judged against",
+};
+/** When the cache row was written, and which of this page's parts it carried
+ *  forward from an earlier run. Null for a live read, which has no stamp. */
+export const trendsStamp = (cache: Record<string, unknown> | null): { at: string; carried: string[] } | null => {
+  const at = typeof cache?.computed_at === "string" && !Number.isNaN(new Date(cache.computed_at).getTime()) ? cache.computed_at : null;
+  if (!at) return null;
+  const stale = Array.isArray(cache?.stale_parts) ? (cache!.stale_parts as unknown[]) : [];
+  return { at, carried: Object.keys(TRENDS_PART_WORDS).filter((k) => stale.includes(k)) };
+};
 
 const CAT_LABELS: Record<string, string> = {
   engineering: "Engineering & IT", data_ai: "Data & AI", design: "Design", product: "Product",
@@ -65,6 +82,8 @@ export default function HiringTrends() {
   // The 90-day closure record the week is judged against, read from the SAME
   // cache row as the weeks so the two can never come from different hours.
   const [ghost, setGhost] = useState<ClosureRecord | null>(null);
+  /** The cache row's stamp and the parts it carried; null for a live read. */
+  const [stamp, setStamp] = useState<{ at: string; carried: string[] } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -80,6 +99,7 @@ export default function HiringTrends() {
           // computed has lost its aged-out postings; it is not drawn.
           setWeeks((cache.hiring_trends as WeekRow[]).filter((w) => weekInsideFence(w.week_start, cache.computed_at)));
           if (Array.isArray(cache.trending_categories)) setCats(cache.trending_categories as CatTrend[]);
+          setStamp(trendsStamp(cache));
           return;
         }
         const [w, c] = await Promise.all([rpc("get_hiring_trends"), rpc("get_trending_categories")]);
@@ -126,7 +146,7 @@ export default function HiringTrends() {
   // week_start is a date-only UTC string: format it in UTC, or every week is
   // labelled a day early west of Greenwich.
   const weekLabel = (iso: string) =>
-    new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+    new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
   return (
     <div className="min-h-screen bg-background">
@@ -152,6 +172,14 @@ export default function HiringTrends() {
           companies newly added to our catalog are excluded from weekly counts, so growth in our coverage never shows up
           as a fake hiring spike.
         </p>
+        {stamp && (
+          <p data-trends-as-of className="text-[11px] text-muted-foreground -mt-6 mb-8">
+            Figures as of {new Date(stamp.at).toLocaleString("en-US")}
+            {stamp.carried.length > 0
+              ? ` — carried forward: the latest hourly recomputation could not finish ${stamp.carried.map((k) => TRENDS_PART_WORDS[k]).join(", ")}, so those are from an earlier run, no newer than this.`
+              : "."}
+          </p>
+        )}
 
         {/* Week-over-week headline */}
         {lastFull && (

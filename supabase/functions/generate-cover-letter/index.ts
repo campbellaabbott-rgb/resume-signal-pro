@@ -9,6 +9,7 @@ import { clipField, clipText, deliversProduct, isServiceCaller, modelSpendGate }
 import { postingLanguageInstruction } from "../_shared/posting-language.ts";
 import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting-text.ts";
 import { refundWriting, writingChain, writingGate, type WritingPass } from "../_shared/writing-allowance.ts";
+import { keepPastBuyerCopy } from "../_shared/past-buyer-copy.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -68,7 +69,8 @@ import { refundWriting, writingChain, writingGate, type WritingPass } from "../_
 // 2026-11-09.2 (fix/cost-wave, the integration): both lanes' changes above together.
 // cost/ai and cost/ci-edge each stamped 2026-11-09.1 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "generate-cover-letter.2026-11-09.2";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, past-buyers lane, RC-S12-007): the recovery form's copy is kept, recorded and mailed once.
+const FN_BUILD = "generate-cover-letter.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -265,6 +267,15 @@ serve(async (req) => {
       deadlineAt,
     });
     if (delivered.status >= 400) await refundWriting(supabase, pass);
+    // A LETTER A COVER LETTER BUYER'S BROWSER ASKED FOR IS KEPT (RC-S12-007):
+    // the recovery form is the only maker of a sale with no résumé bound, and
+    // its copy was never saved, recorded or mailed. Only the purchase branch:
+    // a board or signed-in letter is nobody's order, and an Apply Assistant's
+    // letter is half of its package (the claim names the product).
+    if (purchase && delivered.status === 200) {
+      const made = await delivered.clone().json().catch(() => null) as { data?: unknown } | null;
+      if (made?.data) await keepPastBuyerCopy(supabase, { sessionId: session, productType: "cover_letter", productName: "Cover Letter", content: made.data });
+    }
     return delivered;
 
   } catch (error) {
@@ -455,8 +466,13 @@ Write something that sounds like this specific person wrote it - confident, spec
     if (response.status === 429) {
       return jsonResponse({ error: "AI service is temporarily busy. Please try again in a few moments.", code: "model_busy", retryable: true }, 429);
     }
+    // The gateway out of credits is our outage, not the buyer's payment
+    // (S14X-109): a retryable 503, never a 402 the page reads as "buy this".
     if (response.status === 402) {
-      return jsonResponse({ error: "AI service credits depleted. Please try again later.", retryable: false }, 402);
+      return new Response(
+        JSON.stringify({ error: "The writing service is temporarily unavailable. Your purchase is safe, please try again later.", code: "ai_unavailable", retryable: true }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "300" } },
+      );
     }
 
     throw new Error(`AI API error: ${response.status}`);

@@ -54,6 +54,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { sqlCodeOf } from "./helpers/strip-comments";
@@ -317,7 +318,7 @@ afterAll(async () => { for (const db of OPEN) { try { await db.close(); } catch 
 async function boot(defs: Definition[]): Promise<PGlite> {
   const db = new PGlite();
   OPEN.push(db);
-  await db.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;");
+  await db.exec(SUPABASE_DEFAULTS);
   await db.exec(tableDdl("20251216002238", "rate_limits"));
   await db.exec(tableDdl("20251217181914", TABLE));
   for (const d of defs) await db.exec(read(d.file));

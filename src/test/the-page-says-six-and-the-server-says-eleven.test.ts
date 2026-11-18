@@ -222,11 +222,12 @@ describe("the page says six and the server says eleven", () => {
     const realQ = /realQuestions:\s*true/;
     const deno = [...APPLY.matchAll(/\n\s*([a-z0-9_]+):\s*\{[^}]*\}/g)].filter((m) => realQ.test(m[0])).map((m) => m[1]).sort();
     expect(deno.length, "no real-question vendor parsed from apply-automation.ts").toBeGreaterThan(2);
-    expect(MCP_FORM_VENDORS.map((v) => v.key).sort()).toEqual(deno);
+    // Every vendor whose real questions the board harvests is one the page names.
+    for (const k of deno) expect(MCP_FORM_VENDORS.map((v) => v.key), k).toContain(k);
     // Connect W5: the server reads five more forms than the vendor table
     // flags (realQuestions stays false for them: job-board has no question
-    // branch for them). Page and table still agree; the five wait in the
-    // unrendered after-deploy list, and with the mirror they are the readers.
+    // branch for them). They waited in the unrendered after-deploy list until
+    // their build; with it live, the mirror IS the readers (SEO-F15).
     expect([...MCP_FORM_VENDORS, ...MCP_FORM_VENDORS_AFTER_DEPLOY].map((v) => v.key).sort()).toEqual([...FORM_READER_VENDORS].sort());
     for (const v of MCP_FORM_VENDORS_AFTER_DEPLOY) expect(PAGE, `${v.label} is rendered before its reader deploys`).not.toMatch(new RegExp(`\\b${v.label}\\b`));
     for (const src of [PAGE, APPLY_SECTION]) {
@@ -252,5 +253,43 @@ describe("the page says six and the server says eleven", () => {
     // "four hiring systems" while the Deno list held five. Every vendor count
     // in the script is rendered from the mirror or absent.
     expect(/\b(?:four|five|six|seven|\d+) hiring systems\b/i.exec(PRERENDER)?.[0], "prerender spells a vendor count").toBeUndefined();
+  });
+});
+
+/**
+ * SEO-F15 (2026-11-16): the five form readers connect W5 added were held in
+ * MCP_FORM_VENDORS_AFTER_DEPLOY, rendered nowhere, until agent-mcp
+ * 2026-11-08.1 shipped them. That build went live and the list stayed, so
+ * /agents, the guide and llms.txt named five of the ten forms the server
+ * reads. The wait list must be empty once the server's own build is past it.
+ */
+describe("a form vendor waits for its reader's build, and no longer", () => {
+  const RAW_MCP = read("supabase/functions/agent-mcp/index.ts");
+  const stamp = /FN_BUILD\s*=\s*"agent-mcp\.(\d{4}-\d{2}-\d{2})\.(\d+)"/.exec(RAW_MCP);
+  it("the server's build is read", () => expect(stamp, "agent-mcp FN_BUILD is no longer a literal agent-mcp.<date>.<n>").toBeTruthy());
+  it("past agent-mcp 2026-11-08.1, the after-deploy list is empty and the mirror is every reader", () => {
+    const past = `${stamp![1]}.${stamp![2].padStart(3, "0")}` > "2026-11-08.001";
+    expect(past, "the build gate: this test speaks only past 2026-11-08.1").toBe(true);
+    expect(MCP_FORM_VENDORS_AFTER_DEPLOY.map((v) => v.label)).toEqual([]);
+    expect(MCP_FORM_VENDORS.map((v) => v.key).sort()).toEqual([...FORM_READER_VENDORS].sort());
+  });
+});
+
+/**
+ * S14X-261 (2026-11-16): the page's get_job sentence said the posting's
+ * re-check time is "when the employer's feed last confirmed it open". The
+ * server's recheckedAt says it is when the board last read the employer's
+ * feed, and a large board is read in windows, so that read may not have
+ * included the posting at all.
+ */
+describe("get_job's re-check time is said the way the server says it", () => {
+  it("the server's recheckedAt and the page's get_job body both say the board last read the feed", () => {
+    const rechecked = /recheckedAt:\s*\{[^}]*description:\s*"([^"]+)"/.exec(MCP);
+    expect(rechecked, "recheckedAt's description was not found in agent-mcp").toBeTruthy();
+    expect(rechecked![1]).toMatch(/last read (?:this|the) employer's feed/);
+    const body = MCP_TOOLS.find((t) => t.name === "get_job")!.body;
+    expect(body).toMatch(/last read the employer's feed/);
+    expect(body).toMatch(/read in windows/);
+    expect(body).not.toMatch(/confirmed it open/);
   });
 });

@@ -1,0 +1,32 @@
+{
+  "writingTools": {
+    "tailorBusyTitle": "Occupé pour le moment",
+    "tailorBusy": "L'adaptateur de CV est occupé — réessayez dans un instant.",
+    "lettersStillOwed": "Lettres de motivation encore à rédiger : {{count}}. Relancez la préparation pour les ajouter.",
+    "answersRetryTitle": "Nous n'avons pas pu rédiger celles-ci pour le moment",
+    "answersRetryBody": "Un problème est survenu pendant leur rédaction. Relancez la rédaction pour réessayer ces questions.",
+    "answersJoined": "Les réponses que vous avez lancées sont encore en cours de rédaction. Elles s'afficheront ici.",
+    "answersWritingTitle": "Textes longs, non rédigés ici",
+    "answersWritingBody": "Ces questions demandent une lettre, une rédaction ou un CV réécrit, ce que cette étape ne rédige pas. Utilisez les outils de lettre de motivation ou de CV adapté, ou rédigez-les vous-même.",
+    "answersAiUnavailable": "Le service d'IA ne peut pas traiter de demandes pour le moment. Veuillez réessayer dans quelques minutes.",
+    "postingTruncated": "Cette offre d'emploi était très longue : seule sa première partie a été lue. Vérifiez vous-même ses dernières exigences.",
+    "export": {
+      "prepTitle": "Guide de préparation à l'entretien",
+      "whyAsked": "Pourquoi ils la posent :",
+      "opener": "Bonne entrée en matière :",
+      "modelAnswer": "Réponse type (méthode STAR) :",
+      "tips": "Conseils :",
+      "avoid": "À éviter :",
+      "before": "Avant l'entretien",
+      "during": "Pendant l'entretien",
+      "askThem": "Questions à leur poser",
+      "pathTitle": "Feuille de route de carrière",
+      "current": "Actuel :",
+      "pathOdds": "probabilité {{probability}}, risque {{risk}}",
+      "skills": "Compétences à développer :",
+      "actionPlan": "Plan d'action sur 90 jours :",
+      "thisWeek": "À faire cette semaine (quel que soit le parcours)",
+      "pathPrintDescription": "Les polices du PDF ne peuvent pas afficher l'écriture de cette feuille de route : choisissez « Enregistrer au format PDF » dans la boîte d'impression pour la conserver."
+    }
+  }
+}

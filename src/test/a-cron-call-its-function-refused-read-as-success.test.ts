@@ -18,6 +18,7 @@
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
@@ -26,7 +27,7 @@ import { ProxyDb, type Answer, type Query } from "./helpers/proxy-db";
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 120_000 });
 
 const SQL = readFileSync(resolve(__dirname, "../../supabase/migrations/20261009143000_a_cron_call_its_function_refused_is_counted_not_read_as_success.sql"), "utf8");
-const ROLES = "CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;";
+const ROLES = SUPABASE_DEFAULTS;
 
 describe("20261009143000 in pglite", () => {
   it("without pg_net it answers unavailable, and it is service-role only", async () => {

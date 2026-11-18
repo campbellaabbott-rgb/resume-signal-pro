@@ -60,6 +60,24 @@ export function analyticsSessionSet(key: AnalyticsSessionKey, value: string): vo
   }
 }
 
+/**
+ * A yes: what this page held in memory moves into the tab's storage, so a
+ * reload in the same tab still finds the funnel session, landing time and
+ * cohort the page started (S14X-040). A key that cannot be stored stays in
+ * memory. Nothing moves before analytics are allowed.
+ */
+export function persistAnalyticsSession(): void {
+  if (!analyticsAllowed()) return;
+  for (const [key, value] of [...memory]) {
+    try {
+      sessionStorage.setItem(key, value);
+      memory.delete(key);
+    } catch {
+      /* storage blocked: held for this page */
+    }
+  }
+}
+
 /** A "no": every analytics key this tab holds is forgotten, in memory and in storage, the prefixed ones too. */
 export function forgetAnalyticsSession(): void {
   memory.clear();

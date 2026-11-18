@@ -1,0 +1,14 @@
+{
+  "payments": {
+    "pro": {
+      "pausedUntilPaid": "De tools van Pro staan stil tot deze betaling gelukt is. De betaling dekt de hele maand vanaf je verlengingsdatum, ook de dagen waarop de tools stilstonden.",
+      "activeMemberPackages": "Je bent Pro-lid: 5 schrijfpakketten per dag (60 per maand) met een sterker model."
+    },
+    "perks": {
+      "fullAnalysisCap": "Tot 10 volledige analyses per dag en 60 per maand",
+      "everythingFreeOneEach": "Alles van een gratis account, dat al elke schrijftool één keer per dag bevat",
+      "summaryPackages": "Alles van een gratis account, plus 5 schrijfpakketten per dag (60 per maand) met een sterker model, de volledige analyse van $ 5 inbegrepen en geen daglimiet op scans",
+      "summaryPackagesWithoutAnalysis": "Alles van een gratis account, plus 5 schrijfpakketten per dag (60 per maand) met een sterker model en geen daglimiet op scans"
+    }
+  }
+}

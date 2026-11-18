@@ -1,0 +1,14 @@
+{
+  "mailPrefs": {
+    "pulseDoneNextMonth": "Vuelves a estar suscrito. Ya recibiste el pulso de este mes, así que el próximo llegará a principios del mes que viene.",
+    "pulseDoneLater": "Vuelves a estar suscrito. Tu último pulso salió hace menos de cuatro semanas, así que el próximo llegará más adelante este mes.",
+    "stoppedUnsubscribe": "Esta dirección nos pidió dejar de enviarle correos, así que no le llegan las alertas de búsquedas guardadas, los informes de análisis ni el pulso del mercado.",
+    "stoppedAccountDeleted": "Al eliminarse una cuenta con esta dirección, se nos pidió dejar de enviarle correos, así que no le llegan las alertas de búsquedas guardadas, los informes de análisis ni el pulso del mercado.",
+    "stoppedBounce": "Los correos a esta dirección rebotaron, así que dejamos de enviarle: no le llegan las alertas de búsquedas guardadas, los informes de análisis ni el pulso del mercado.",
+    "stoppedComplaint": "Esta dirección marcó uno de nuestros correos como spam, así que dejamos de enviarle: no le llegan las alertas de búsquedas guardadas, los informes de análisis ni el pulso del mercado.",
+    "cadenceAria": "Con qué frecuencia te escribimos sobre {{name}}",
+    "newHeadlineCapped": "{{n}} empleos nuevos coinciden con tus búsquedas desde tu última visita",
+    "fixPlanWithdrawnTitle": "Correos del plan de arreglos",
+    "fixPlanWithdrawn": "Ya no enviamos los correos del plan de arreglos, así que este enlace no inicia nada y no te llegará ningún correo por él."
+  }
+}

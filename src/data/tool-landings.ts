@@ -7,8 +7,14 @@
 import { SCAN_RESULTS_WITHIN_SECONDS } from "../config/scan-timing";
 import { REPORT_CACHE_DAYS } from "../lib/resume-retention";
 import { LANGUAGE_COUNT } from "../i18n/languages";
+import { FREE_SCANS_PER_DAY, SIGNED_IN_SCANS_PER_DAY } from "../config/scan-allowance";
 
 const S = SCAN_RESULTS_WITHIN_SECONDS;
+// The free allowance, as the scanner enforces it (S13-094): read from the
+// module the scanners are held equal to, never typed. Relative import: the
+// bake bundles this file with esbuild.
+const FREE = FREE_SCANS_PER_DAY;
+const SIGNED_IN = SIGNED_IN_SCANS_PER_DAY;
 const D = REPORT_CACHE_DAYS;
 
 export interface ToolLanding {
@@ -48,7 +54,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
     faqs: [
       {
         q: "¿Este revisor de currículum es realmente gratis?",
-        a: "Sí — el informe de diagnóstico completo es gratis y sin registro: puntaje con auditoría, palabras clave faltantes, viñetas débiles reescritas y verificaciones por sistema ATS (Workday, Greenhouse, Lever, iCIMS). Tienes 7 escaneos al día (15 con una cuenta gratuita).",
+        a: `Sí — el informe de diagnóstico completo es gratis y sin registro: puntaje con auditoría, palabras clave faltantes, viñetas débiles reescritas y verificaciones por sistema ATS (Workday, Greenhouse, Lever, iCIMS). Tienes ${FREE} escaneos al día (${SIGNED_IN} con una cuenta gratuita).`,
       },
       {
         q: "¿Funciona con currículums en español?",
@@ -56,11 +62,11 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
       },
       {
         q: "¿Guardan mi currículum?",
-        a: `Por poco tiempo. El texto se guarda 24 horas para que un pago pueda usarlo, y el informe, que cita tu currículum, se guarda ${D} días para que un nuevo escaneo del mismo archivo con la misma oferta dé el mismo informe; después ambos se borran automáticamente. Durante esos ${D} días, ese nuevo escaneo lleva el mismo identificador de informe, para que compruebes esa coherencia tú mismo.`,
+        a: `Por poco tiempo. El texto se guarda 24 horas para que un pago pueda usarlo, y el informe, que cita tu currículum, se guarda ${D} días para que un nuevo escaneo del mismo archivo con la misma oferta dé el mismo informe completo; después ambos se borran automáticamente. Durante esos ${D} días, ese nuevo escaneo lleva el mismo identificador de informe, para que compruebes esa coherencia tú mismo.`,
       },
       {
         q: "¿Cómo se calcula el puntaje?",
-        a: "Un analizador ATS basado en reglas y un análisis de IA corren en paralelo; el informe muestra el puntaje combinado con su banda de modelado y una auditoría punto por punto. Cada cita se verifica contra tu documento real antes de llegar al informe.",
+        a: "Un analizador ATS basado en reglas y un análisis de IA corren en paralelo; el informe muestra el puntaje combinado con su banda de modelado y una auditoría punto por punto. Cada viñeta reescrita, y la línea original que cita, se comprueba contra tu documento real antes de llegar al informe.",
       },
     ],
   },
@@ -73,7 +79,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
       `Check your resume free within ${S} seconds: ATS score with an audit trail, missing keywords, weak bullets rewritten, per-vendor parsing checks. No sign-up; your resume is deleted within 7 days.`,
     heading: "A resume checker that shows its work",
     intro:
-      `Upload or paste your resume above and you get the complete diagnostic — not a teaser. Every finding quotes your actual document, the score comes with its modeling band, and a rescan of the same file against the same posting within ${D} days returns the same report and ID.`,
+      `Upload or paste your resume above and you get the complete diagnostic — not a teaser. Every finding quotes your actual document, the score comes with its modeling band, and a rescan of the same file against the same posting within ${D} days returns the same full report and ID.`,
     bullets: [
       "No sign-up and no email required for the full report",
       "Your resume is deleted within 7 days and never sold",
@@ -84,15 +90,15 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
     faqs: [
       {
         q: "Is this resume checker really free?",
-        a: "Yes — the full diagnostic report is free with no sign-up: score with audit trail, missing keywords, weak bullets rewritten, recruiter panel, and per-vendor ATS checks. You get 7 scans a day (15 with a free account). Paid products are separate, optional tools.",
+        a: `Yes — the full diagnostic report is free with no sign-up: score with audit trail, missing keywords, weak bullets rewritten, recruiter panel, and per-vendor ATS checks. You get ${FREE} scans a day (${SIGNED_IN} with a free account). Paid products are separate, optional tools.`,
       },
       {
         q: "Do you store my resume?",
-        a: `Briefly. The text is held for 24 hours so a checkout can use it, and the report, which quotes your resume, is cached for ${D} days so a rescan of the same file against the same posting returns the same report; both are then deleted automatically. Within those ${D} days such a rescan carries the same report ID, so you can verify that consistency yourself.`,
+        a: `Briefly. The text is held for 24 hours so a checkout can use it, and the report, which quotes your resume, is cached for ${D} days so a rescan of the same file against the same posting returns the same full report; both are then deleted automatically. Within those ${D} days such a rescan carries the same report ID, so you can verify that consistency yourself.`,
       },
       {
         q: "How is the score calculated?",
-        a: "A rule-based ATS parser and an AI analysis run in parallel; the report shows the blended score with its modeling band and a point-by-point audit trail. Every quoted line is verified against your actual document before it reaches the report.",
+        a: "A rule-based ATS parser and an AI analysis run in parallel; the report shows the blended score with its modeling band and a point-by-point audit trail. Every rewritten bullet, and the original line it quotes, is checked against your actual document before it reaches the report.",
       },
       {
         q: "Do I need a job description to check my resume?",

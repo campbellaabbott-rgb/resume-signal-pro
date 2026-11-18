@@ -206,6 +206,12 @@ interface StreamingScanOptions {
    * src/lib/scan-fallback.ts). Without it each attempt has two minutes.
    */
   deadlineAt?: number;
+  /**
+   * What the visitor told the scanner about themselves (situation, target
+   * role, confirmed industry and level). The primary is sent it; the backup
+   * is now sent it too (S14X-118), so a fork that reads it can apply it.
+   */
+  userContext?: { situation?: string; targetRole?: string; confirmedIndustry?: string; confirmedExperience?: string };
   onProgress?: (progress: StreamProgress) => void;
   onComplete?: (result: StreamingScanResult) => void;
   onError?: (error: ParsedEdgeFunctionError) => void;
@@ -332,6 +338,9 @@ export function useStreamingScan() {
         controllerForThisAttempt.abort();
       }, STREAM_TIMEOUT_MS);
 
+      // Set once the fork has answered this attempt: from then on it has
+      // counted the scan, so nothing that goes wrong after it is retried.
+      let answered = false;
       try {
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -358,24 +367,21 @@ export function useStreamingScan() {
             skipCache: options?.skipCache,
             targetCountry: options?.targetCountry,
             language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })(),
+            userContext: options?.userContext,
+            // The window the scan must answer in (S14X-144): a fork that reads
+            // it can refuse to start, or shorten its clock, past it.
+            deadlineAt: options?.deadlineAt,
           }),
           signal: controllerForThisAttempt.signal,
         });
 
+        answered = true;
         if (!response.ok) {
-          // Check if this is a retryable error
-          const isRetryable = response.status === 408 || 
-                             response.status === 429 || 
-                             response.status >= 500;
-          
-          if (isRetryable && attempt <= maxRetries) {
-            console.log(`[StreamingScan] HTTP ${response.status}, will retry in ${retryDelay}ms`);
-            lastError = new Error(`HTTP error: ${response.status}`);
-            options?.onRetry?.(attempt, retryDelay);
-            await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
-            continue;
-          }
-          
+          // AN ANSWERED REQUEST IS NEVER SENT AGAIN (S14X-043). The fork
+          // counts a scan before it replies, so retrying a 408/429/5xx it
+          // answered spent another of the visitor's scans on each retry. Only
+          // a request that never got an answer (the network catch below) is
+          // retried, the rule shouldRetryScan keeps for the primary.
           throw new Error(`HTTP error: ${response.status}`);
         }
 
@@ -518,7 +524,7 @@ export function useStreamingScan() {
         }
 
         // Check if we should retry
-        const shouldRetry = attempt <= maxRetries && isNetworkRetryable(error) && leftMs() > retryDelay * attempt;
+        const shouldRetry = !answered && attempt <= maxRetries && isNetworkRetryable(error) && leftMs() > retryDelay * attempt;
         
         if (shouldRetry) {
           console.log(`[StreamingScan] Network error, retrying in ${retryDelay * attempt}ms`);

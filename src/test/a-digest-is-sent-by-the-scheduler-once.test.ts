@@ -209,7 +209,11 @@ describe("send-search-digest answers the scheduler and our service role, nobody 
     boardTotal = 0;
     await post(search, "send-search-digest", { authorization: `Bearer ${SERVICE}` });
     expect(sent).toEqual([]);
-    expect(db.writes).toEqual([]);
+    // The one write is the run's own stamp for mail-watch (NB-37): nothing was due.
+    expect(db.writes.filter((w) => w.table !== "job_board_meta")).toEqual([]);
+    expect(db.writes.map((w) => (w.payload as { k?: string; v?: { due?: number; sent?: number } }))).toEqual([
+      expect.objectContaining({ k: "mail_run:search_digest", v: expect.objectContaining({ due: 0, sent: 0 }) }),
+    ]);
   });
 
   it("the preflight answers its build", async () => {

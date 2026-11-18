@@ -35,7 +35,7 @@
  * borrow nothing: the review's "own industry only".
  */
 import { describe, expect, it } from "vitest";
-import { analyzeCompetitiveKeywordGap, formatCompetitiveGapForPrompt } from "../../supabase/functions/free-keyword-scan/market-intelligence";
+import { analyzeCompetitiveKeywordGap, analyzeSkillsRecency, formatCompetitiveGapForPrompt } from "../../supabase/functions/free-keyword-scan/market-intelligence";
 import { INDUSTRY_KEYWORDS } from "../../supabase/functions/free-keyword-scan/industry-detection";
 import slice from "./fixtures/free-scan-wave/s13-010-competitive-gap.json";
 
@@ -96,4 +96,24 @@ describe("no other field borrows technology's list", () => {
       }
     });
   }
+});
+
+describe("RC-S13-010: the prompt says what the list is, and ordinary words are not skills", () => {
+  it("the gap block names a hand-picked list, not a measured frequency", () => {
+    const gap = analyzeCompetitiveKeywordGap(TEACHER, "technology", "mid");
+    const block = formatCompetitiveGapForPrompt(gap, "technology", "mid");
+    expect(block).toContain("hand-picked list");
+    expect(block).not.toMatch(/high-frequency/i);
+    expect(block).not.toContain("70%+");
+  });
+  it("go-to-market, a RAG status, the Rust belt and a flash sale are not Go, RAG, Rust or Flash", () => {
+    const r = analyzeSkillsRecency("Led go-to-market; tracked RAG status; Rust belt plants; flash sale", "technology");
+    const read = [...r.freshSkills, ...r.agingSkills].map((x) => x.toLowerCase());
+    for (const w of ["go", "rag", "rust", "flash"]) expect(read).not.toContain(w);
+  });
+  it("control: the languages and the retrieval method are still read", () => {
+    const r = analyzeSkillsRecency("Built services in Go and Rust; shipped a RAG pipeline over our docs", "technology");
+    const read = r.freshSkills.map((x) => x.toLowerCase());
+    expect(read).toEqual(expect.arrayContaining(["go", "rust"]));
+  });
 });

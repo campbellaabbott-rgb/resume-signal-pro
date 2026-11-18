@@ -187,3 +187,36 @@ describe("the crawler copies carry the apply steps and the browser guidance (APP
     expect(text).not.toMatch(/\/agents\/pass|Agent Pass|Agent plan/);
   });
 });
+
+/**
+ * S14X-259 (2026-11-16): every host panel printed Claude's allowance line,
+ * "Claude's servers carry every Claude user, so Claude users share one
+ * allowance", Claude Code's too. Claude Code calls from the person's own
+ * connection, and the limits that refuse it are a connection's own day
+ * inside the share and the minute every caller outside Claude's and
+ * ChatGPT's servers splits, which neither the panel nor the developer
+ * paragraph named.
+ */
+describe("each panel names the allowance its reader's calls draw on (S14X-259)", () => {
+  const allowanceOf = (id: string) => panel(host(id)).querySelector("[data-allowance]")!.textContent ?? "";
+  it("Claude Code's panel says the calls come from your own connection, with the share and the minute from MCP_ANON_CAPS", () => {
+    const line = allowanceOf("claude-code");
+    expect(line).toContain("your own internet connection");
+    expect(line).toContain(`${MCP_ANON_CAPS.otherPerConnection} a day for each connection`);
+    expect(line).toContain(MCP_ANON_CAPS.shares.other.toLocaleString("en-US"));
+    expect(line).toContain(`${MCP_ANON_CAPS.perMinute.other} a minute`);
+    expect(line).not.toMatch(/Claude users share one allowance/);
+  });
+  it("Claude's panel keeps the shared line, and ChatGPT's names no connection of its own", () => {
+    expect(allowanceOf("claude")).toMatch(/Claude users share one allowance/);
+    expect(allowanceOf("chatgpt")).not.toMatch(/your own internet connection/);
+  });
+  it("the developer paragraph prints the share and the minute every other caller splits", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const page = readFileSync(resolve(__dirname, "../pages/AgentConnect.tsx"), "utf8");
+    const para = page.slice(page.indexOf("every other caller has {MCP_ANON_CAPS.otherPerConnection}"), page.indexOf("a day in all, and at"));
+    expect(para).toContain("{MCP_ANON_CAPS.shares.other.toLocaleString(\"en-US\")}");
+    expect(para).toContain("{MCP_ANON_CAPS.perMinute.other}");
+  });
+});

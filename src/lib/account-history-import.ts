@@ -18,7 +18,8 @@
  *     scans found in this browser" or "not mine" (localScansToOffer,
  *     importLocalScans, declineLocalScans). Each local scan still carries its
  *     checklist, red-flag count and matched job, and a scan the account
- *     already holds (the same second) is skipped.
+ *     already holds (the same second, or the same score within ten minutes,
+ *     since the two copies are stamped by two clocks) is skipped.
  *   - Once one account adds this browser's scans, the browser remembers which
  *     scans were claimed (CLAIMED_KEY), so a second account is never offered
  *     them.
@@ -45,11 +46,22 @@ export const importFlagKey = (userId: string) => `scan_history_imported:${userId
 export const CLAIMED_KEY = "rb_scan_history_claimed";
 /** The résumé this tab scanned last (use-session-resume.ts SESSION_KEYS.resumeText). */
 export const SESSION_RESUME_KEY = "rb_resume_text";
-/** This account saved, or declined, this tab's last scanned résumé. */
-export const lastResumeFlagKey = (userId: string) => `rb_last_resume_decided:${userId}`;
 const MAX_IMPORT = 25;
 const MIN_RESUME_CHARS = 200;
 const MAX_RESUME_CHARS = 60_000;
+/**
+ * This account saved, or declined, THIS résumé in this tab (S14X-166). The
+ * decision was one flag per account, so one "No thanks" silenced every later
+ * résumé the tab scanned; it is now keyed by the text it was about.
+ */
+export const lastResumeFlagKey = (userId: string, text: string) =>
+  `rb_last_resume_decided_by_text:${userId}:${resumeFingerprint(text.trim().slice(0, MAX_RESUME_CHARS))}`;
+/**
+ * A signed-in scan is written twice: user_scans with the server's clock and
+ * the local history with the browser's (S14X-202). A local scan with the same
+ * score as an account scan this close in time is that scan.
+ */
+const SAME_SCAN_WINDOW_S = 10 * 60;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = { from: (t: string) => any };
@@ -103,7 +115,7 @@ const claimed = (): Record<string, string> => {
  * The local scans this account may be offered: none once it decided; never
  * a scan another account added; never one it already holds. Reads only.
  */
-export function localScansToOffer(userId: string, cloudScans: Array<{ created_at: string }>): ScanHistoryEntry[] {
+export function localScansToOffer(userId: string, cloudScans: Array<{ created_at: string; ats_score?: number | null }>): ScanHistoryEntry[] {
   if (!userId || read("local", importFlagKey(userId))) return [];
   let entries: ScanHistoryEntry[] = [];
   try {
@@ -114,8 +126,14 @@ export function localScansToOffer(userId: string, cloudScans: Array<{ created_at
   }
   const taken = claimed();
   const held = new Set(cloudScans.map((s) => second(s.created_at)));
+  const heldNear = (e: ScanHistoryEntry): boolean => {
+    const at = second(e.timestamp);
+    if (held.has(at)) return true;
+    return Number.isFinite(at) && cloudScans.some((s) =>
+      typeof s.ats_score === "number" && s.ats_score === e.atsScore && Math.abs(second(s.created_at) - at) <= SAME_SCAN_WINDOW_S);
+  };
   return entries
-    .filter((e) => e && typeof e.atsScore === "number" && !(taken[String(e.id)] && taken[String(e.id)] !== userId) && !held.has(second(e.timestamp)))
+    .filter((e) => e && typeof e.atsScore === "number" && !(taken[String(e.id)] && taken[String(e.id)] !== userId) && !heldNear(e))
     .slice(0, MAX_IMPORT);
 }
 
@@ -154,9 +172,9 @@ export function declineLocalScans(userId: string): void {
 
 /** The résumé this tab scanned last and that scan's score: an offer only when it is long enough, a local scan of that exact text scored it, and the account has not decided. */
 export function lastScanResumeToOffer(userId: string): { text: string; score: number } | null {
-  if (!userId || read("session", lastResumeFlagKey(userId))) return null;
+  if (!userId) return null;
   const text = (read("session", SESSION_RESUME_KEY) ?? "").trim();
-  if (text.length < MIN_RESUME_CHARS) return null;
+  if (text.length < MIN_RESUME_CHARS || read("session", lastResumeFlagKey(userId, text))) return null;
   const score = scoreOfThisText(text);
   return score === null ? null : { text: text.slice(0, MAX_RESUME_CHARS), score };
 }
@@ -172,16 +190,16 @@ export async function saveLastScanResume(db: Db, userId: string, text: string, s
       resume_text: text.slice(0, MAX_RESUME_CHARS),
     });
     if (error) return false;
-    write("session", lastResumeFlagKey(userId), "saved");
+    write("session", lastResumeFlagKey(userId, text), "saved");
     return true;
   } catch {
     return false;
   }
 }
 
-/** "No thanks": the offer is not made again in this tab. */
-export function declineLastScanResume(userId: string): void {
-  if (userId) write("session", lastResumeFlagKey(userId), "declined");
+/** "No thanks": this résumé is not offered again in this tab. */
+export function declineLastScanResume(userId: string, text: string): void {
+  if (userId && text) write("session", lastResumeFlagKey(userId, text), "declined");
 }
 
 /** The score of the newest local scan of exactly this text, or null when none scored it. */

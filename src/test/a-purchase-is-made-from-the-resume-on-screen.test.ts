@@ -12,10 +12,14 @@
  *
  * Run, not read: bindPurchaseResume and purchaseProduct with the database and
  * the checkout function faked, sessionStorage real (jsdom).
+ *
+ * The apply-kit panel's own buy path sat behind the free preview, and went
+ * with the preview's retirement (NB-10): the panel offers a member without
+ * Pro nothing (the-retired-agent-is-sold-nowhere-in-the-console). The hook's
+ * binding, which every other buy button uses, is still held here.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
-import { createElement } from "react";
+import { act, renderHook } from "@testing-library/react";
 
 type Call = { fn: string; args: Record<string, unknown> };
 const calls: Call[] = [];
@@ -51,17 +55,6 @@ vi.mock("@/hooks/use-conversion-tracking", () => ({ useConversionTracking: () =>
 vi.mock("@/hooks/use-funnel-tracking", () => ({ useFunnelTracking: () => ({ trackProductClicked: () => {}, trackCheckoutStarted: () => {} }) }));
 vi.mock("@/hooks/use-checkout-prefetch", () => ({ useCheckoutPrefetch: () => ({ prefetch: () => {}, prefetchProps: {} }) }));
 vi.mock("@/hooks/use-currency", () => ({ useCurrency: () => ({ formatPrice: (n: number) => `$${n}`, isLocalCurrency: false }) }));
-// The preview slice itself is another function's job: here it is simply there.
-vi.mock("@/hooks/use-product-preview", () => ({
-  useProductPreview: () => ({
-    generate: async () => null,
-    reset: () => {},
-    isLoading: false,
-    error: null,
-    preview: { productId: "applyAssistant", kind: "text", label: "", heading: "Your tailored summary", body: "A real slice.", before: null, note: null },
-  }),
-}));
-
 import {
   bindPurchaseResume,
   PRESTORED_RESUME_KEY,
@@ -70,7 +63,6 @@ import {
   useProductCheckout,
 } from "@/hooks/use-product-checkout";
 import { saveResumeToSession, clearResumeSession } from "@/hooks/use-session-resume";
-import { ApplyKitPanel } from "@/components/account/ApplyKitPanel";
 
 const RESUME_A = "Jane Doe — senior financial analyst, nine years of FP&A, Excel, SQL, forecasting. ".repeat(2);
 const JD_1 = "Senior FP&A analyst at Acme: forecasting, budgeting, vendor management.";
@@ -174,31 +166,5 @@ describe("purchaseProduct", () => {
     expect(url).toBeNull();
     expect(checkouts()).toEqual([]);
     expect(toasts.map((t) => t.title)).toContain("Couldn't prepare your résumé");
-  });
-});
-
-describe("the Account page's apply kit, clicked through", () => {
-  const openAndBuy = async () => {
-    render(createElement(ApplyKitPanel, { jobPosting: POSTING_2, resumeText: RESUME_B, proActive: false }));
-    fireEvent.click(screen.getByRole("button", { name: /application kit/i }));
-    const unlock = await screen.findByRole("button", { name: /apply assistant/i });
-    fireEvent.click(unlock);
-  };
-
-  it("its own store refused at open: the buy stores the résumé + posting on screen and checks out with that copy", async () => {
-    const answers = [{ data: null, error: null }, { data: Q, error: null }];
-    storeAnswer = () => answers.shift() ?? { data: null, error: null };
-    await openAndBuy();
-    await waitFor(() => expect(checkouts()).toHaveLength(1));
-    expect(checkouts()[0].args.sessionId).toBe(Q);
-    expect(stores().map((c) => c.args.p_job_description)).toEqual([POSTING_2, POSTING_2]);
-  });
-
-  it("refused at open and at the buy: no checkout, and never the homepage's copy", async () => {
-    storeAnswer = () => ({ data: null, error: null });
-    await openAndBuy();
-    await waitFor(() => expect(stores()).toHaveLength(2));
-    await waitFor(() => expect(toasts.map((t) => t.title)).toContain("Couldn't prepare your résumé"));
-    expect(checkouts()).toEqual([]);
   });
 });

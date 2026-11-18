@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { addressBucket, metadataTooLarge, recordEvent, type Rpc } from "./budget.ts";
+import { admits } from "./allowlist.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Returned in every response so a deploy is provable from the outside: a
@@ -10,7 +11,8 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 // answer INCLUDING the CORS preflight, so a deploy can be checked with an
 // OPTIONS request that writes no row and spends no budget.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const BUILD_VERSION = "2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, site-shell lane, S14X-153, S14X-154, S14X-155): a purchase conversion carrying a Checkout id is a duplicate only of a row naming that id, an event the site never sends is refused before any read, a conversion whose Checkout id we never minted writes nothing, and a known purchase takes its own site hour.
+const BUILD_VERSION = "2026-11-12.1";
 
 // OPTIMIZATION: Removed alert system - not needed for tracking events
 // Removed EdgeRuntime dependency for simpler, faster execution
@@ -72,6 +74,13 @@ serve(async (req) => {
     // into slightly messier data instead of total, invisible data loss.
     if (testName.length > 50 || variant.length > 30 || visitorId.length < 8 || visitorId.length > 64) {
       return json({ error: 'Invalid input format' }, 400);
+    }
+
+    // Only the events the site sends (S14X-154, ./allowlist.ts): a test,
+    // type or variant the browser never sends is refused here, before any
+    // count, check or write.
+    if (!admits(testName, variant, eventType)) {
+      return json({ error: 'Unknown event' }, 400);
     }
 
     // Metadata of any size was stored (S8-019).

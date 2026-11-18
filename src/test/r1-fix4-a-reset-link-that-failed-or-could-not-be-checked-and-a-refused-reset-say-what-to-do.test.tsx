@@ -126,7 +126,8 @@ const typeIn = (label: RegExp, value: string) => fireEvent.change(screen.getByLa
 const guardRefuses = (status: number, body: Record<string, unknown>) =>
   h.invoke.mockResolvedValue({ data: null, error: { message: "refused", context: { status, clone: () => ({ json: async () => body }) } } });
 
-const EXPIRED = "This reset link has expired or was already used, so no password was set. Ask for a new one.";
+// S14X-206: a spent link may be the one whose code already set the password.
+const EXPIRED = "This reset link has expired or was already used. If you already chose a new password with this email's code, sign in with it; otherwise ask for a new link.";
 
 beforeEach(() => {
   h.listeners = [];

@@ -5,7 +5,7 @@ import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 import { purchaseLinkFor } from "../_shared/purchase-links.ts";
 import { ANALYSIS_MAIL_COPY, type AnalysisMailCopy, type MailLanguage, mailLanguageIn } from "./copy.ts";
-import { industryLabel, mailGrade, mailScoreColor } from "./grade.ts";
+import { experienceLabel, industryLabel, jobMatchScoreOf, mailGrade, mailScoreColor, missingSectionsOf, sectionMissingLines } from "./grade.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -22,7 +22,8 @@ import { industryLabel, mailGrade, mailScoreColor } from "./grade.ts";
 // is "Good" in the mail as on the page, and the industry is the label the
 // page shows in the mail's language, never the fixed choice's spelling
 // ("data_engineering"); ./grade.ts.
-const FN_BUILD = "send-analysis-email.2026-11-03.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, full-analysis lane): the mail names the level as the page does, shows the posting's match score the analysis writes, and names a section the analysis could not write.
+const FN_BUILD = "send-analysis-email.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,10 +61,13 @@ interface AnalysisEmailRequest {
     actionPlan?: string[];
     hasLinkedIn?: boolean;
     hasJobDescription?: boolean;
+    /** What analyze-resume writes for a posting: its match score (0-100) among the comparison. */
+    jobDescriptionAlignment?: { matchScore?: number } | null;
+    /** The sections the analysis went out without (analyze-resume, S14X-041). */
+    missingSections?: string[];
+    /** An older shape nothing writes any more; read only as a fallback for the score. */
     jobMatch?: {
       score?: number;
-      matchedRequirements?: string[];
-      missingRequirements?: string[];
     };
   };
   shareId?: string;
@@ -102,7 +106,14 @@ function generateEmailHtml(data: AnalysisEmailRequest, copy: AnalysisMailCopy, l
     `<span style="display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 16px; margin: 4px; font-size: 14px;">${escapeHtml(kw)}</span>`
   ).join('') || '';
 
-  const jobScore = Number(analysisData.jobMatch?.score) || 0;
+  // The posting's match score as analyze-resume writes it
+  // (jobDescriptionAlignment.matchScore; S14X-219), a number clamped 0-100,
+  // shown only for an analysis made with a posting.
+  const jobScore = analysisData.hasJobDescription ? jobMatchScoreOf(analysisData) : null;
+  // The sections the analysis went out without, one line each (S14X-041).
+  const missingHtml = sectionMissingLines(language, missingSectionsOf(analysisData)).map((line) =>
+    `<p style="margin: 0 0 8px; color: #4b5563; font-size: 14px;">${escapeHtml(line)}</p>`
+  ).join('');
 
   return `
 <!DOCTYPE html>
@@ -151,10 +162,17 @@ function generateEmailHtml(data: AnalysisEmailRequest, copy: AnalysisMailCopy, l
                 <strong style="color: #111827; margin-left: 4px;">${escapeHtml(industryLabel(language, analysisData.industry) ?? copy.industryDefault)}</strong>
                 <span style="color: #d1d5db; margin: 0 12px;">|</span>
                 <span style="color: #6b7280;">${escapeHtml(copy.level)}</span>
-                <strong style="color: #111827; margin-left: 4px; text-transform: capitalize;">${escapeHtml(analysisData.experienceLevel || copy.levelDefault)}</strong>
+                <strong style="color: #111827; margin-left: 4px;">${escapeHtml(experienceLabel(language, analysisData.experienceLevel) ?? copy.levelDefault)}</strong>
               </div>
 
-              ${analysisData.hasJobDescription && analysisData.jobMatch ? `
+              ${missingHtml ? `
+              <!-- Sections the analysis could not write -->
+              <div style="background: #f3f4f6; padding: 16px 16px 8px; border-radius: 12px; margin-bottom: 24px;">
+                ${missingHtml}
+              </div>
+              ` : ''}
+
+              ${jobScore !== null ? `
               <!-- Job Match Score -->
               <div style="background: #fef3c7; padding: 16px; border-radius: 12px; margin-bottom: 24px; border-left: 4px solid #f59e0b;">
                 <p style="margin: 0 0 8px; font-weight: 600; color: #92400e;">📋 ${escapeHtml(copy.jobMatch(jobScore))}</p>

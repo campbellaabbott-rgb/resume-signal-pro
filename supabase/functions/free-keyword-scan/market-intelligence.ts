@@ -301,7 +301,8 @@ const EDUCATION_SIGNALS: Array<{ re: RegExp; country: string; label: string }> =
 ];
 
 import { detectResumeLanguage, LANGUAGE_GEO } from './resume-language.ts';
-import { EDUCATION_HEADING, OTHER_HEADING, readDateRanges } from './employment-gaps.ts';
+import { detectEmploymentGaps, EDUCATION_HEADING, OTHER_HEADING, readDateRanges } from './employment-gaps.ts';
+import { COUNTRY_STANDARDS, type CountryStandard } from './country-standards.ts';
 
 // Spelling conventions only CORROBORATE a country that already has another
 // signal — they never introduce a country alone (British spelling can't tell GB
@@ -554,7 +555,7 @@ const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
     marketSummary: 'Singapore is APAC\'s tech hub. Strong government investment in digital economy; hyperscalers (AWS, Google, Meta, ByteDance) have major offices. Fintech and healthtech booming.',
     hotSkills: ['Python', 'Kubernetes', 'TypeScript', 'AWS/GCP', 'Golang', 'Data Engineering'],
     risingKeywords: ['AI governance', 'MAS TRM compliance', 'green tech', 'APAC expansion'],
-    cvNorms: ['2 pages standard', 'Include Singapore PR/EP/DP status explicitly', 'Photo optional but common', 'Include expected salary range'],
+    cvNorms: ['2 pages standard', 'Include Singapore PR/EP/DP status explicitly', 'No photo, age, marital status, race or religion (TAFEP fair-hiring guidance)', 'Include expected salary range'],
     salaryContext: 'Senior SWE SGD $150-220K; mid-level $100-150K',
     uniqueSignals: ['MAS TRM (Technology Risk Management) guidelines knowledge valued in fintech/banking', 'PDPA compliance knowledge is increasingly expected', 'EP/PR status affects hiring speed significantly'],
   },
@@ -650,28 +651,44 @@ const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
 };
 
 /**
- * Get market insight for a country + industry combination.
- * Falls back to US data, then country-only, then DEFAULT.
+ * Get market insight for a country + industry combination: the market's own
+ * entry, else (for the United States) the US entry for the field, else the
+ * neutral DEFAULT. Another country never borrows the US entry (register
+ * S14X-003): Japan, China, Korea and France were told the US norm "Do NOT
+ * include photo, age, nationality, or marital status", the opposite of their
+ * own. A market with no entry of its own is told its norms from
+ * country-standards.ts, the table the country pages and the standards card
+ * read, and is named by that table (Poland, not "PL").
  */
 export function getMarketInsight(country: string | null, industry: string): MarketInsight & { countryName: string } {
   const c = (country || 'US').toUpperCase();
-
-  const COUNTRY_NAMES: Record<string, string> = {
-    US: 'United States', GB: 'United Kingdom', AU: 'Australia', CA: 'Canada',
-    DE: 'Germany', FR: 'France', IN: 'India', SG: 'Singapore', AE: 'UAE',
-    HK: 'Hong Kong', JP: 'Japan', NL: 'Netherlands', IE: 'Ireland',
-    CH: 'Switzerland', SE: 'Sweden', NZ: 'New Zealand', ZA: 'South Africa',
-    BR: 'Brazil', MX: 'Mexico', IL: 'Israel', KR: 'South Korea',
-  };
+  const std = COUNTRY_STANDARDS[c];
+  const countryName = std?.name ?? COUNTRY_NAMES[c] ?? c;
 
   const specific = MARKET_DATA[`${c}:${industry}`];
-  if (specific) return { ...specific, countryName: COUNTRY_NAMES[c] || c };
+  if (specific) return { ...specific, countryName };
 
-  // Try broader industry match with US
-  const usIndustry = MARKET_DATA[`US:${industry}`];
-  if (usIndustry) return { ...usIndustry, countryName: COUNTRY_NAMES[c] || c };
+  if (c === 'US') {
+    const usIndustry = MARKET_DATA[`US:${industry}`];
+    if (usIndustry) return { ...usIndustry, countryName };
+  }
 
-  return { ...MARKET_DATA['DEFAULT'], countryName: COUNTRY_NAMES[c] || c };
+  const fallback = MARKET_DATA['DEFAULT'];
+  return { ...fallback, cvNorms: std ? countryNormsOf(std) : fallback.cvNorms, countryName };
+}
+
+// The names of the markets country-standards.ts does not carry.
+const COUNTRY_NAMES: Record<string, string> = {
+  US: 'United States', GB: 'United Kingdom', AU: 'Australia', CA: 'Canada',
+  DE: 'Germany', FR: 'France', IN: 'India', SG: 'Singapore', AE: 'UAE',
+  HK: 'Hong Kong', JP: 'Japan', NL: 'Netherlands', IE: 'Ireland',
+  CH: 'Switzerland', SE: 'Sweden', NZ: 'New Zealand', ZA: 'South Africa',
+  BR: 'Brazil', MX: 'Mexico', IL: 'Israel', KR: 'South Korea',
+};
+
+/** A market's CV norms as country-standards.ts states them: length, photo, personal data, conventions. */
+function countryNormsOf(std: CountryStandard): string[] {
+  return [`Length: ${std.lengthNote}`, `Photo: ${std.photoNote}`, `Personal data: ${std.personalDataNote}`, ...std.conventions];
 }
 
 export function formatGeoContextForPrompt(
@@ -823,6 +840,18 @@ export interface SkillsRecencyResult {
   hasAgingSignals: boolean;
 }
 
+// Short skill names that are ordinary words too (RC-S13-010). Each counts only
+// in its skill's sense: "Go" the language, not "go-to-market" or "we go";
+// RAG retrieval, not a "RAG status" report; Rust the language, not the "Rust
+// belt"; Adobe Flash, not a "flash sale".
+const SKILL_SENSE: Record<string, RegExp> = {
+  go: /(?<![\p{L}\p{N}])(?:golang|Go(?:lang)?)(?![\p{L}\p{N}]|-|\s+(?:to|live|ahead|back|beyond|forward)\b)/u,
+  rag: /(?<![\p{L}\p{N}])RAG(?![\p{L}\p{N}])(?!\s+(?:status|statuses|rating|ratings|report|reports|reporting))/u,
+  rust: /(?<![\p{L}\p{N}-])Rust(?![\p{L}\p{N}])(?!\s+(?:belt|proofing|prevention|removal))/u,
+  flash: /(?<![\p{L}\p{N}])flash(?![\p{L}\p{N}])(?!\s+(?:sales?|memory|storage|drives?|points?|cards?|fiction|mobs?|floods?|news|reports?|deals?))/iu,
+};
+const hasSkill = (text: string, skill: string) => SKILL_SENSE[skill] ? SKILL_SENSE[skill].test(text) : hasWholeTerm(text, skill);
+
 export function analyzeSkillsRecency(resumeText: string, industry: string): SkillsRecencyResult {
   // Only the fields with lists of their own are read: technology's lists used
   // to stand in for every other field, so a nurse or a teacher was scored on
@@ -830,8 +859,8 @@ export function analyzeSkillsRecency(resumeText: string, industry: string): Skil
   const agingList = AGING_SKILLS_BY_INDUSTRY[industry] ?? [];
   const freshList = FRESH_SKILLS_BY_INDUSTRY[industry] ?? [];
 
-  const agingSkills = agingList.filter(s => hasWholeTerm(resumeText, s));
-  const freshSkills = freshList.filter(s => hasWholeTerm(resumeText, s));
+  const agingSkills = agingList.filter(s => hasSkill(resumeText, s));
+  const freshSkills = freshList.filter(s => hasSkill(resumeText, s));
 
   // Score: start at 70, +5 per fresh skill (max +30), -8 per aging skill (min 20)
   const freshnessScore = Math.max(20, Math.min(100,
@@ -1023,7 +1052,14 @@ export function roleHeaderLines(allTitles: string[], resumeText: string): string
 }
 const DOCTORAL_ROLE = /(?<![\p{L}])(?:ph\.?\s?d\.?|doctoral)\s+(?:candidate|student|researcher|fellow)(?![\p{L}])/iu;
 
+// Employers whose names hold a service's word but are not the service
+// (RC-S13-009): a store manager at Old Navy or a teller at Navy Federal
+// Credit Union did not leave the military. Blanked before the field words
+// are read; "U.S. Navy" still is the Navy.
+const NOT_THE_SERVICE = /(?<![\p{L}])(?:old\s+navy|navy\s+federal|navy\s+pier|navy\s+blue|salvation\s+army|swiss\s+army|army\s+(?:&|and)\s+navy|army[\s-]+navy|army\s+surplus)(?![\p{L}])/giu;
+
 function transitionFieldOf(roleLines: string[], industry: string): string | undefined {
+  roleLines = roleLines.map(l => l.replace(NOT_THE_SERVICE, ' '));
   const text = roleLines.join('\n');
   // "Development Associate at Ford Foundation": "at" before a capitalised
   // name also ends a segment.
@@ -1335,8 +1371,9 @@ export function formatAtsSystemForPrompt(atsSystem: AtsSystem, resumeText: strin
 
 // ─── COMPETITIVE KEYWORD GAP ─────────────────────────────────────────────────
 
-// Top-quartile keywords per industry + seniority tier.
-// These appear in 70%+ of top-scoring resumes at each level.
+// A hand-picked keyword list per field and seniority tier. No measured share
+// of résumés stands behind it, so nothing a reader sees says how often its
+// terms appear (RC-S13-010).
 const COMPETITIVE_KEYWORDS: Record<string, Record<string, string[]>> = {
   technology: {
     entry: ['github', 'git', 'api', 'agile', 'unit testing', 'pull request', 'sql', 'rest'],
@@ -1383,8 +1420,8 @@ const COMPETITIVE_KEYWORDS: Record<string, Record<string, string[]>> = {
 };
 
 export interface CompetitiveGapResult {
-  missingHighFrequency: string[];   // Keywords present in 70%+ of top resumes but absent from this one
-  presentHighFrequency: string[];   // Keywords present in both top resumes and this resume (strengths)
+  missingHighFrequency: string[];   // Terms from the field's hand-picked list absent from this résumé
+  presentHighFrequency: string[];   // Terms from the field's hand-picked list this résumé holds
   gapScore: number;                 // 0-100, lower = more gaps
 }
 
@@ -1435,13 +1472,15 @@ export function analyzeCompetitiveKeywordGap(
 export function formatCompetitiveGapForPrompt(gap: CompetitiveGapResult, industry: string, level: string): string {
   if (gap.missingHighFrequency.length === 0 && gap.presentHighFrequency.length === 0) return '';
   const lines = ['\n\n<competitive_keyword_analysis>'];
-  lines.push(`Competitive Keyword Coverage: ${gap.gapScore}% of high-frequency ${industry} ${level} resume keywords present`);
+  // A hand-picked list (RC-S13-010): no measured share of résumés stands
+  // behind it, so the prompt claims none.
+  lines.push(`Keyword coverage: ${gap.gapScore}% of the hand-picked list for ${industry} ${level} present`);
   if (gap.presentHighFrequency.length > 0) {
     lines.push(`Present (competitive strengths): ${gap.presentHighFrequency.join(', ')}`);
   }
   if (gap.missingHighFrequency.length > 0) {
-    lines.push(`Missing (appear in 70%+ of top-quartile ${industry} ${level} resumes): ${gap.missingHighFrequency.join(', ')}`);
-    lines.push('INSTRUCTION: These are high-frequency competitive keywords. If genuinely absent and applicable, prioritize them in keyword gaps and quick wins. If present implicitly (demonstrated through experience), flag them as "add the explicit keyword for ATS" rather than as a hard gap. Do NOT add keywords the candidate doesn\'t genuinely have.');
+    lines.push(`Missing from the hand-picked list for ${industry} ${level}: ${gap.missingHighFrequency.join(', ')}`);
+    lines.push('INSTRUCTION: These terms come from a hand-picked list for the field and level, not from measured résumés; never say how often they appear. If genuinely absent and applicable, prioritize them in keyword gaps and quick wins. If present implicitly (demonstrated through experience), flag them as "add the explicit keyword for ATS" rather than as a hard gap. Do NOT add keywords the candidate doesn\'t genuinely have.');
   }
   lines.push('</competitive_keyword_analysis>');
   return lines.join('\n');
@@ -1453,7 +1492,7 @@ export interface TimelineEntry {
   title: string;
   company?: string;
   startYear: number;
-  /** 1-12; a bare year reads as mid-year (6) and `startMonthExact` is false. */
+  /** 1-12; a bare year starts in January and ends in December (employment-gaps.ts). */
   startMonth: number;
   startMonthExact: boolean;
   endYear: number | null; // null = present
@@ -1474,33 +1513,6 @@ export interface TimelineResult {
   formattedSummary: string;
 }
 
-const MONTH_MAP: Record<string, number> = {
-  jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3,
-  apr: 4, april: 4, may: 5, jun: 6, june: 6, jul: 7, july: 7,
-  aug: 8, august: 8, sep: 9, sept: 9, september: 9, oct: 10, october: 10,
-  nov: 11, november: 11, dec: 12, december: 12,
-};
-
-function parseYearMonth(raw: string): { year: number; month: number; exact: boolean } {
-  const lower = raw.toLowerCase().trim();
-  // "Jan 2020" / "January 2020"
-  for (const [name, m] of Object.entries(MONTH_MAP)) {
-    const re = new RegExp(`${name}[a-z]*[\\s,/]+([12]\\d{3})`);
-    const match = lower.match(re);
-    if (match) return { year: parseInt(match[1]), month: m, exact: true };
-  }
-  // "2020/01" or "01/2020"
-  const slash1 = lower.match(/(\d{1,2})[\/\-]([12]\d{3})/);
-  if (slash1) {
-    const month = parseInt(slash1[1]);
-    if (month >= 1 && month <= 12) return { year: parseInt(slash1[2]), month, exact: true };
-  }
-  // Bare year
-  const bareYear = lower.match(/([12]\d{3})/);
-  if (bareYear) return { year: parseInt(bareYear[1]), month: 6, exact: false }; // mid-year estimate
-  return { year: 2020, month: 1, exact: false };
-}
-
 /**
  * Months between the end of one role and the start of the next, in calendar
  * months: Dec 2019 -> Jan 2020 is 1 (consecutive), not the 7 the old
@@ -1519,88 +1531,68 @@ export function monthsBetweenRoles(
 }
 
 /**
- * Extract employment timeline from resume text — parses date ranges like
- * "Jan 2020 – Mar 2022", "2019 - Present", "03/2021 to 08/2023".
+ * Extract the employment timeline: one entry per role's date range, and the
+ * gaps between roles.
+ *
+ * The ranges are read by employment-gaps.ts, the reader the gap detector uses
+ * (RC-S10-007), and the gaps ARE the detector's. This function had a range
+ * pattern of its own that read no "To date", "Till date", "Présent", "heute"
+ * or "aujourd'hui", so the "Employment gap detected" card missed a 19-month
+ * gap the detector found, and newest-first it built a role out of the
+ * education section's years. Now a range under an education heading, or on a
+ * degree's line, is study and never a role, and a role still under way in any
+ * of the reader's words ends today.
  */
-export function extractTimeline(resumeText: string): TimelineResult {
-  const lines = resumeText.split('\n').map(l => l.trim()).filter(Boolean);
-  const now = new Date();
+export function extractTimeline(resumeText: string, now: Date = new Date()): TimelineResult {
   const nowYear = now.getFullYear();
   const nowMonth = now.getMonth() + 1;
-
-  // Regexes to catch date ranges on a line. Global: a line can hold more than
-  // one range ("2015 - 2017, 2018 - 2020"), and each is a role.
-  const RANGE_RE = /([A-Za-z]+[\s,\/]*[12]\d{3}|[12]\d{3})\s*[–—\-–to]+\s*([A-Za-z]+[\s,\/]*[12]\d{3}|present|current|now)/gi;
-  const YEAR_ONLY_RANGE = /([12]\d{3})\s*[–—\-–]+\s*([12]\d{3}|present|current|now)/gi;
+  const TITLE_LINE = /\b(manager|director|engineer|developer|analyst|specialist|consultant|executive|lead|vp|president|associate|senior|principal|architect|designer|coordinator|administrator|officer|nurse|teacher|attorney|accountant|researcher|scientist|founder|ceo|cfo|cto|intern|head of|staff)\b/i;
 
   const entries: TimelineEntry[] = [];
+  /** The line each role's range was read on (the detector names gaps by it). */
+  const lineOf: string[] = [];
   let currentTitle = '';
+  let section: 'education' | 'other' | null = null;
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const isTitleLine = /\b(manager|director|engineer|developer|analyst|specialist|consultant|executive|lead|vp|president|associate|senior|principal|architect|designer|coordinator|administrator|officer|nurse|teacher|attorney|accountant|researcher|scientist|founder|ceo|cfo|cto|intern|head of|staff)\b/i.test(line) && line.length < 120;
-    if (isTitleLine) currentTitle = line;
+  for (const rawLine of resumeText.split(/\r?\n/)) {
+    const line = rawLine.replace(/\s+/g, ' ').trim();
+    if (!line) continue;
+    if (line.length <= 40 && EDUCATION_HEADING.test(line)) { section = 'education'; continue; }
+    if (line.length <= 40 && OTHER_HEADING.test(line)) { section = 'other'; continue; }
+    if (section === 'education') continue;
+    if (TITLE_LINE.test(line) && line.length < 120) currentTitle = line;
 
-    let ranges = [...line.matchAll(RANGE_RE)];
-    if (ranges.length === 0) ranges = [...line.matchAll(YEAR_ONLY_RANGE)];
-
-    for (const m of ranges) {
-      const start = parseYearMonth(m[1]);
-      const endRaw = m[2].toLowerCase().trim();
-      let endYear: number | null;
-      let endMonth: number;
-      let endMonthExact: boolean;
-
-      if (/present|current|now/.test(endRaw)) {
-        endYear = null;
-        endMonth = nowMonth;
-        endMonthExact = true;
-      } else {
-        const parsed = parseYearMonth(m[2]);
-        endYear = parsed.year;
-        endMonth = parsed.month;
-        endMonthExact = parsed.exact;
-      }
-
-      const actualEndYear = endYear ?? nowYear;
-      const durationMonths = Math.max(1,
-        (actualEndYear - start.year) * 12 + (endMonth - start.month)
-      );
-
+    for (const r of readDateRanges(line, { open: true, now })) {
+      if (r.reversed || r.education) continue;
+      const startYear = r.start.year, startMonth = r.start.month + 1;
+      const present = r.end === 'present';
+      const endYear = present ? null : (r.end as { year: number }).year;
+      const endMonth = present ? nowMonth : (r.end as { month: number }).month + 1;
       entries.push({
         title: currentTitle || 'Role',
-        startYear: start.year,
-        startMonth: start.month,
-        startMonthExact: start.exact,
+        startYear,
+        startMonth,
+        startMonthExact: true,
         endYear,
         endMonth,
-        endMonthExact,
-        durationMonths,
+        endMonthExact: true,
+        durationMonths: Math.max(1, ((endYear ?? nowYear) - startYear) * 12 + (endMonth - startMonth)),
       });
+      lineOf.push(r.line);
     }
   }
 
-  // Sort chronologically by year AND month (oldest first for gap detection).
-  entries.sort((a, b) => (a.startYear - b.startYear) || (a.startMonth - b.startMonth));
+  // Oldest first.
+  const order = entries.map((_, i) => i).sort((a, b) => (entries[a].startYear - entries[b].startYear) || (entries[a].startMonth - entries[b].startMonth));
+  const sorted = order.map(i => entries[i]);
+  const sortedLines = order.map(i => lineOf[i]);
+  entries.splice(0, entries.length, ...sorted);
 
-  // Detect gaps: a role that starts after every earlier role has ended. The
-  // latest end seen so far is the reference, so a role held alongside
-  // another (a part-time or overlapping job) never opens a false gap.
-  const gapPeriods: Array<{ afterTitle: string; monthsGap: number }> = [];
-  let latestEnd: { year: number; month: number; exact: boolean; title: string } | null = null;
-  for (const e of entries) {
-    const end = { year: e.endYear ?? nowYear, month: e.endMonth, exact: e.endMonthExact, title: e.title };
-    if (latestEnd) {
-      // Calendar months with no role at all: Mar 2018 -> Jan 2019 is nine.
-      const idle = monthsBetweenRoles(latestEnd, { year: e.startYear, month: e.startMonth, exact: e.startMonthExact }) - 1;
-      if (idle > 2) {
-        gapPeriods.push({ afterTitle: latestEnd.title, monthsGap: idle });
-      }
-    }
-    const endKey = end.year * 12 + (end.exact ? end.month : 12);
-    const latestKey = latestEnd ? latestEnd.year * 12 + (latestEnd.exact ? latestEnd.month : 12) : -Infinity;
-    if (endKey >= latestKey) latestEnd = end;
-  }
+  // The gaps are the detector's, named after the role before each one.
+  const gapPeriods: Array<{ afterTitle: string; monthsGap: number }> = detectEmploymentGaps(resumeText, now).gaps.map(g => {
+    const i = sortedLines.indexOf(g.between[0]);
+    return { afterTitle: i >= 0 ? entries[i].title : g.between[0], monthsGap: g.gapMonths };
+  });
 
   const totalExperienceMonths = entries.reduce((sum, e) => sum + e.durationMonths, 0);
   const longestTenureMonths = entries.length > 0 ? Math.max(...entries.map(e => e.durationMonths)) : 0;

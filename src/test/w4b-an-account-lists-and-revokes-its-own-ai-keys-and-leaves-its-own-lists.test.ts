@@ -69,7 +69,7 @@ describe("read", () => {
   it("lists this account's live keys without the key, and the pulse rows of its proven address", async () => {
     const r = await ask({ action: "read" });
     expect(r.status).toBe(200);
-    expect(r.build).toBe("account-settings.2026-11-09.1");
+    expect(r.build).toBe("account-settings.2026-11-12.1");
     expect(r.json.connectors).toEqual([{ id: MY_KEY, prefix: "rb_live_ab12cd34", name: "Connected agent", createdAt: "2026-10-10T09:00:00Z", lastUsedAt: "2026-10-12T08:00:00Z" }]);
     expect(JSON.stringify(r.json)).not.toContain("key_hash");
     expect(r.json.mail).toEqual({ marketPulse: [{ industry: "technology", state: "subscribed" }] });
@@ -108,7 +108,8 @@ describe("pulse_off", () => {
     expect(r.json).toEqual({ unsubscribed: 1 });
     expect(db.rows("market_pulse_subscribers").find((p) => p.email === EMAIL)?.unsubscribed_at).toBeTruthy();
     expect(db.rows("market_pulse_subscribers").find((p) => p.email === "them@example.com")?.unsubscribed_at).toBeNull();
-    expect((await ask({ action: "read" })).json.mail).toEqual({ marketPulse: [{ industry: "technology", state: "off" }] });
+    // An off row names no field (S14X-102: the stop clears what the address gave).
+    expect((await ask({ action: "read" })).json.mail).toEqual({ marketPulse: [{ industry: null, state: "off" }] });
   });
 
   it("is refused while the address is unproven", async () => {

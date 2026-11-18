@@ -1,0 +1,32 @@
+{
+  "writingTools": {
+    "tailorBusyTitle": "Ocupado agora",
+    "tailorBusy": "O adaptador de currículo está ocupado — tente novamente daqui a pouco.",
+    "lettersStillOwed": "Cartas de apresentação ainda por escrever: {{count}}. Rode a preparação de novo para adicioná-las.",
+    "answersRetryTitle": "Não conseguimos redigir estas agora",
+    "answersRetryBody": "Algo deu errado ao redigi-las. Redija de novo para tentar estas perguntas outra vez.",
+    "answersJoined": "As respostas que você começou ainda estão sendo redigidas. Elas vão aparecer aqui.",
+    "answersWritingTitle": "Textos longos, não redigidos aqui",
+    "answersWritingBody": "Estas perguntas pedem uma carta, uma redação ou um currículo reescrito, que esta etapa não escreve. Use as ferramentas de carta de apresentação ou de currículo adaptado, ou escreva você mesmo.",
+    "answersAiUnavailable": "O serviço de IA não pode atender pedidos agora. Tente novamente em alguns minutos.",
+    "postingTruncated": "Esta vaga era muito longa, então só a primeira parte foi lida. Confira você mesmo os últimos requisitos.",
+    "export": {
+      "prepTitle": "Guia de preparação para a entrevista",
+      "whyAsked": "Por que perguntam:",
+      "opener": "Boa abertura:",
+      "modelAnswer": "Resposta modelo (método STAR):",
+      "tips": "Dicas:",
+      "avoid": "Evite:",
+      "before": "Antes da entrevista",
+      "during": "Durante a entrevista",
+      "askThem": "Perguntas para fazer a eles",
+      "pathTitle": "Roteiro de carreira",
+      "current": "Atual:",
+      "pathOdds": "probabilidade {{probability}}, risco {{risk}}",
+      "skills": "Habilidades a desenvolver:",
+      "actionPlan": "Plano de ação de 90 dias:",
+      "thisWeek": "Faça isto esta semana (qualquer caminho)",
+      "pathPrintDescription": "As fontes do PDF não conseguem desenhar a escrita deste roteiro, então escolha \"Salvar como PDF\" na janela de impressão para guardá-lo."
+    }
+  }
+}

@@ -26,6 +26,7 @@
       "wrongAddress": "Verkeerd adres?"
     },
     "confirm": {
+      "adoptFailed": "We hebben je link gecontroleerd, maar konden het inloggen niet afronden. Controleer je verbinding en probeer het opnieuw.",
       "body": "Druk op Doorgaan om het inloggen af te ronden. De link werkt maar één keer.",
       "emailChangeBody": "Druk op Doorgaan om je nieuwe e-mailadres te bevestigen.",
       "emailChanged": "Je e-mailwijziging is bevestigd. Heeft je andere adres ook een link gekregen, gebruik die dan ook.",
@@ -49,6 +50,7 @@
       "label": "E-mail",
       "placeholder": "jij@voorbeeld.nl",
       "remembered": "Doorgaan als {{email}}",
+      "rememberedMismatch": "We konden je niet inloggen als {{email}}. Typ je adres om het opnieuw te proberen.",
       "useDifferent": "Een ander adres gebruiken"
     },
     "footnote": "Een account bewaart je scores, credits en aankopen, en een cv alleen als je er een opslaat.",
@@ -59,6 +61,7 @@
       "onlyGoogle": "Dit account meldt zich aan met Google, dus er is hier geen wachtwoord om te wijzigen. Ga verder met Google om in te loggen."
     },
     "guard": {
+      "keysRevoked": "We hebben ook de API- en connectorsleutels uitgeschakeld die op dit account zijn gemaakt voordat je het adres aantoonde ({{keys}}). Maak zo nodig een nieuwe aan in je account.",
       "passwordCleared": "We hebben een wachtwoord gewist dat voor dit adres was ingesteld voordat je aantoonde dat het van jou is. Stel als je wilt een nieuw in bij je accountinstellingen.",
       "passwordClearedTitle": "Je oude wachtwoord is gewist",
       "signedOut": "We hebben een wachtwoord gewist dat voor dit adres was ingesteld voordat je aantoonde dat het van jou is, en daardoor is elk apparaat uitgelogd, ook dit.",
@@ -94,7 +97,7 @@
       "done": "Je nieuwe wachtwoord is ingesteld.",
       "doneOthers": "Je nieuwe wachtwoord is ingesteld en al je andere apparaten zijn uitgelogd.",
       "emailSupport": "Support mailen",
-      "expired": "Deze herstellink is verlopen of al gebruikt, dus er is geen wachtwoord ingesteld. Vraag een nieuwe aan.",
+      "expired": "Deze herstellink is verlopen of al gebruikt. Heb je met de code uit deze e-mail al een nieuw wachtwoord gekozen, log daar dan mee in; vraag anders een nieuwe link aan.",
       "intro": "Vul je e-mailadres in. Als er een account bij hoort, mailen we een link (of een 6-cijferige code) waarmee je een nieuw wachtwoord kunt kiezen.",
       "newLink": "Nieuwe herstellink sturen",
       "newPassword": "Nieuw wachtwoord",
@@ -118,8 +121,33 @@
       "failed": "Het inloggen is niet afgerond. Probeer het opnieuw."
     },
     "samePassword": "Kies een wachtwoord dat je hier nog niet hebt gebruikt.",
+    "security": {
+      "askCode": "Nog geen wachtwoord, of vergeten? Mail me in plaats daarvan een code",
+      "codeFailed": "We konden nu geen code aanvragen. Probeer het over een minuut opnieuw.",
+      "codeField": "Code uit de e-mail om je wachtwoord te herstellen",
+      "codeOnItsWay": "Als je adres e-mail kan ontvangen, is er een e-mail om je wachtwoord te herstellen met een code van 6 cijfers onderweg naar {{email}}. Vul de code hier in.",
+      "codeRefused": "Die code werkte niet, dus je wachtwoord is niet gewijzigd. Controleer hem of vraag een nieuwe aan.",
+      "guardBlocked": "We konden je adres nu niet bevestigen, dus je wachtwoord is niet gewijzigd. Probeer het over een paar minuten opnieuw.",
+      "guardRefused": "We konden je adres met die code niet bevestigen, dus je wachtwoord is niet gewijzigd. Vraag een nieuwe code aan.",
+      "signedOut": "Voor je veiligheid is elk apparaat uitgelogd, ook dit. Herstel je wachtwoord via de inlogpagina om af te ronden."
+    },
     "sendFailed": "We konden dat nu niet versturen. Probeer het over een minuut opnieuw, of mail {{support}}.",
     "sessionExpired": "Je sessie is verlopen. Log opnieuw in om verder te gaan waar je was.",
+    "signOut": {
+      "builder": "Je cv uit de cv-maker is alleen in deze browser opgeslagen, en uitloggen verwijdert het.",
+      "cancel": "Annuleren",
+      "delete": "Verwijderen en uitloggen",
+      "everywhereDone": "Je bent op elk apparaat uitgelogd.",
+      "freelance": "Je gegevens voor Freelance Boost zijn alleen in deze browser opgeslagen, en uitloggen verwijdert ze.",
+      "keep": "Bewaren op dit apparaat en uitloggen",
+      "offlineEverywhere": "Je bent uitgelogd op dit apparaat, maar we konden de server niet bereiken, dus je andere apparaten zijn mogelijk nog ingelogd.",
+      "offlineHere": "Je bent uitgelogd op dit apparaat, maar we konden de server niet bereiken om de sessie daar ook te beëindigen.",
+      "offlineTitle": "Uitgelogd op dit apparaat",
+      "openBuilder": "Open de cv-maker om het te downloaden",
+      "retry": "Opnieuw proberen",
+      "signInAgain": "We konden je andere apparaten hiervandaan niet uitloggen. Log opnieuw in en kies ‘Overal uitloggen’.",
+      "title": "Voordat je uitlogt"
+    },
     "subtitle": "Volg je cv-scores in de loop van de tijd, bewaar je scangeschiedenis en zie je credits en aankopen op één plek. Voor altijd gratis.",
     "title": "Log in of maak je gratis account aan",
     "usePassword": "Liever een wachtwoord gebruiken",

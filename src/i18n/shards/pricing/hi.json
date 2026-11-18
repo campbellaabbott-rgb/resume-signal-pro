@@ -145,6 +145,7 @@
       "writingFree": "हर एक का दिन में {{perDay}}",
       "writingPro": "हर एक का दिन में {{perDay}}, महीने में {{perMonth}}",
       "faEach": "{{price}} प्रत्येक",
+      "faProCapped": "शामिल: दिन में {{perDay}}, महीने में {{perMonth}}",
       "faNotOnSale": "अभी बिक्री में नहीं",
       "sharedAllowance": "साझा दैनिक सीमा",
       "codeSearch": "साझा सीमा, या मुफ़्त कुंजी से दिन में {{perDay}}",

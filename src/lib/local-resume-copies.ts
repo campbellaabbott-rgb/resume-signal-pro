@@ -31,13 +31,47 @@ export const LOCAL_RESUME_COPY_PREFIXES = {
 } as const;
 
 /**
+ * WORK THAT EXISTS NOWHERE ELSE (S14X-097). The builder's résumé and Freelance
+ * Boost's intake have no copy on the server: a sign-out that deleted them
+ * without a word deleted the only copy. Sign-out asks first when either holds
+ * something typed (src/components/auth/SignOutChoice.tsx), and "keep it" keeps
+ * exactly these two keys.
+ */
+export const LOCAL_WORK_KEYS: readonly string[] = [LOCAL_RESUME_COPY_KEYS.builderDraft, LOCAL_RESUME_COPY_KEYS.freelanceDraft];
+
+/** Fields that hold no typed work: entry ids and the two Freelance Boost choices that always have a value. */
+const NOT_TYPED = new Set(["id", "situation", "workMode"]);
+function typed(v: unknown, key = ""): boolean {
+  if (NOT_TYPED.has(key)) return false;
+  if (typeof v === "string") return v.trim().length > 0;
+  if (Array.isArray(v)) return v.some((x) => typed(x));
+  if (v && typeof v === "object") return Object.entries(v as Record<string, unknown>).some(([k, x]) => typed(x, k));
+  return false;
+}
+
+/** Which of the two hold something typed (an empty form Freelance Boost saved on a visit is nothing). Never throws. */
+export function localWork(): { builder: boolean; freelance: boolean } {
+  const has = (key: string) => {
+    try {
+      const raw = localStorage.getItem(key);
+      return !!raw && typed(JSON.parse(raw));
+    } catch {
+      return false;
+    }
+  };
+  return { builder: has(LOCAL_RESUME_COPY_KEYS.builderDraft), freelance: has(LOCAL_RESUME_COPY_KEYS.freelanceDraft) };
+}
+
+/**
  * Removes every key above from this browser's local storage and returns how
  * many it removed. Never throws: storage that is blocked or unavailable has
- * nothing to clear.
+ * nothing to clear. keepWork leaves the two LOCAL_WORK_KEYS (the person chose
+ * to keep them on this device).
  */
-export function clearLocalResumeCopies(): number {
+export function clearLocalResumeCopies(opts?: { keepWork?: boolean }): number {
   try {
     const exact = new Set<string>(Object.values(LOCAL_RESUME_COPY_KEYS));
+    if (opts?.keepWork) for (const k of LOCAL_WORK_KEYS) exact.delete(k);
     const prefixes = Object.values(LOCAL_RESUME_COPY_PREFIXES);
     const doomed: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {

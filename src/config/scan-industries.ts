@@ -8,7 +8,11 @@
  * an id the scanner keeps. src/test/the-report-offers-the-industries-the-
  * scanner-knows.test.tsx fails when the two lists part.
  *
- * Labels are English for now; the ids are what the page sends.
+ * Labels are said in the reader's language when the caller passes its t
+ * (S14X-057): the shard's freeScanPage.industry.<id> first (the ids the main
+ * locales never named, and General / Other), then the main locales'
+ * analysisResults.enum.industry.<id>, then the English label below. The ids
+ * are what the page sends.
  */
 
 export const SCAN_INDUSTRY_IDS = [
@@ -39,8 +43,17 @@ const LABELS: Partial<Record<string, string>> = {
   general: "General / Other",
 };
 
-/** An English label for any industry id, listed or not. */
-export function scanIndustryLabel(id: string): string {
+/** i18next's t, or anything that returns the key itself for a missing one. */
+export type IndustryTranslate = (key: string) => string;
+
+/** A label for any industry id, listed or not: translated when given t, else English. */
+export function scanIndustryLabel(id: string, t?: IndustryTranslate): string {
+  if (t && /^[a-z0-9_]+$/i.test(id)) {
+    for (const key of [`freeScanPage.industry.${id}`, `analysisResults.enum.industry.${id}`]) {
+      const said = t(key);
+      if (typeof said === "string" && said && said !== key) return said;
+    }
+  }
   const known = LABELS[id];
   if (known) return known;
   return id
@@ -58,10 +71,10 @@ export function scanIndustryLabel(id: string): string {
  * list) is added as itself, so the select never shows a different industry
  * from the one the report was scored for.
  */
-export function scanIndustryOptions(current?: string | null): Array<{ value: string; label: string }> {
+export function scanIndustryOptions(current?: string | null, t?: IndustryTranslate): Array<{ value: string; label: string }> {
   const ids: string[] = [...SCAN_INDUSTRY_IDS];
   if (typeof current === "string" && current.trim() && !ids.includes(current)) ids.push(current);
   return ids
-    .map((value) => ({ value, label: scanIndustryLabel(value) }))
+    .map((value) => ({ value, label: scanIndustryLabel(value, t) }))
     .sort((a, b) => (a.value === "general" ? 1 : b.value === "general" ? -1 : a.label.localeCompare(b.label)));
 }

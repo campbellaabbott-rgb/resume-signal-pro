@@ -9,6 +9,42 @@
       "posting": "O anúncio da vaga tinha mais de {{max}} caracteres, então esta análise leu os primeiros {{max}}.",
       "linkedIn": "Seu texto do LinkedIn tinha mais de {{max}} caracteres, então esta análise leu os primeiros {{max}}."
     },
-    "inProgress": "Sua análise já está sendo feita. Esta página vai mostrá-la assim que ficar pronta."
+    "inProgress": "Sua análise já está sendo feita. Esta página vai mostrá-la assim que ficar pronta.",
+    "busy": "O serviço de análise está ocupado agora, então nada foi criado e nada foi salvo. Sua compra está segura e ainda não foi usada: tente de novo em alguns minutos.",
+    "refused": {
+      "title": "Esta compra não pode abrir uma análise",
+      "refunded": "Esta compra foi reembolsada, então não inclui mais uma análise. Se você não esperava isso, escreva para {{email}} a partir do endereço com que pagou.",
+      "notThisProduct": "Esta compra não foi de uma Análise Completa de Currículo, então não pode abrir uma aqui. Abra-a pelo link do próprio e-mail de compra dela.",
+      "notFound": "Não encontramos esta compra. Abra sua análise pelo link do seu e-mail de compra e, se esta página continuar dizendo isso, escreva para {{email}} a partir do endereço com que pagou.",
+      "used": "Esta compra já gerou a análise dela, e cada compra gera uma. Abra-a pelo link do seu e-mail de compra ou pelo pedido na sua conta.",
+      "grant": "Sua assinatura Pro não pode incluir esta análise agora: a assinatura não está ativa, o pagamento dela foi reembolsado ou este link é de antes de uma atualização. Entre na sua conta e abra a Análise Completa de novo por lá.",
+      "cap": "O Pro inclui até 10 Análises Completas por dia e 60 por mês, e esta conta atingiu um desses limites, então nada foi criado nem gasto. Abra de novo pelo mesmo link amanhã; se você abriu 60 nos últimos 30 dias, ela abre assim que esse número cair."
+    },
+    "pdf": {
+      "device": "O navegador deste dispositivo não conseguiu gerar o PDF: a análise é maior do que ele consegue desenhar. Abra esta página em um computador para salvá-la, ou use a opção Imprimir do navegador para salvá-la como PDF."
+    },
+    "sectionsMissing": {
+      "jobDescription": "Desta vez a análise não conseguiu comparar seu currículo com a vaga, então essa parte ficou de fora. Todo o resto da análise está completo.",
+      "linkedIn": "Desta vez a análise não conseguiu revisar seu perfil do LinkedIn, então essa parte ficou de fora. Todo o resto da análise está completo."
+    },
+    "page": {
+      "emailSentTitle": "E-mail enviado",
+      "emailSentBody": "Uma cópia foi enviada para o seu e-mail",
+      "emailSentCheck": "Confira sua caixa de entrada",
+      "clearTitle": "Limpar dados do navegador",
+      "clearBody": "Remove os dados de sessão locais",
+      "cleared": "Limpo",
+      "clearButton": "Limpar dados",
+      "deleteTitle": "Excluir dados do servidor",
+      "deleteBody": "Exclui a análise dos nossos servidores",
+      "deleteButton": "Excluir dados",
+      "deleteConfirmTitle": "Excluir os dados da sua análise?",
+      "deleteConfirmBody": "Esta ação não pode ser desfeita. A análise do seu currículo será excluída permanentemente dos nossos servidores. Isso ajuda a proteger sua privacidade de acordo com o GDPR e a CCPA.",
+      "deleteConfirmYes": "Sim, excluir meus dados",
+      "scrollHint": "Role para ver os resultados",
+      "analyzeYourResume": "Analise seu currículo",
+      "seoTitle": "Sua Análise Completa de Currículo — Resume Booster",
+      "seoDescription": "Sua Análise Completa de Currículo, aberta pela sua compra ou por um link para ela."
+    }
   }
 }

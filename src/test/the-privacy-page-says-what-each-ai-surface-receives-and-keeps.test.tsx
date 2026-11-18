@@ -37,7 +37,7 @@ vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: null, session
 import Privacy from "../pages/Privacy";
 import {
   CONNECTOR_PRUNE_APPLIED, CONNECTOR_SEARCH_LOG_CHANGED, EARLIER_SEARCHES_GONE_BY, MCP_PRIVACY_ROWS, MCP_SEARCH_PRUNE_LIVE,
-  MCP_SEARCH_PRUNE_RUN, searchKept, writtenDay,
+  MCP_SEARCH_PRUNE_RUN, searchKept, writtenDay, CONNECTOR_CALLER_RECORDED_FROM, UNNAMED_SEARCHES_GONE_BY,
 } from "@/config/mcp-privacy";
 import { PRIVACY_LAST_UPDATED } from "@/config/seller";
 
@@ -84,18 +84,29 @@ describe("the MCP section of the Privacy page", () => {
   // include ChatGPT's, and outlive the prune's first run by two weeks, since
   // it deletes only rows 30 days old. Both wordings are judged here, whichever
   // the flag picks, so the 30-day one is right before anyone sets the flag.
-  it("the 30-day wording names the earlier searches and the day the last of them is deleted, and says nothing of 180 days", () => {
+  it("the 30-day wording names the earlier searches and the day the last of them is deleted, and names 180 days only for the searches logged before any connection was named", () => {
     const day = writtenDay(CONNECTOR_SEARCH_LOG_CHANGED);
     const last = writtenDay(EARLIER_SEARCHES_GONE_BY);
     const changed = new Date(`${CONNECTOR_SEARCH_LOG_CHANGED}T00:00:00Z`).getTime();
     expect(EARLIER_SEARCHES_GONE_BY, "31 days after the log changed: the nightly prune deletes a row on the 31st day after the day it was made").toBe(new Date(changed + 31 * 86_400_000).toISOString().slice(0, 10));
     const live = searchKept(true);
     expect(live).toMatch(/^From Claude and other connections: the search words and filters, kept for 30 days;/);
-    expect(live).not.toMatch(/180/);
+    // NB-39: the 30-day prune deletes only rows that name a connection, and
+    // none did before the caller column: those are the one 180 days it names.
+    const unnamed = `Searches made through any connection before ${writtenDay(CONNECTOR_CALLER_RECORDED_FROM)} were logged without naming it, so they cannot be told apart from the site's own and are kept like them, for up to 180 days, the last by ${writtenDay(UNNAMED_SEARCHES_GONE_BY)}.`;
+    expect(live, "NB-39: the searches logged before the caller column are kept 180 days, and the 30-day wording says so").toContain(unnamed);
+    expect(live.split(unnamed).join(""), "no other 180 days").not.toMatch(/180/);
     if (new Date().toISOString().slice(0, 10) < EARLIER_SEARCHES_GONE_BY) {
       expect(live).toContain(`searches made from ${day} on keep no record of which postings were shown, and earlier ones still do until they are deleted at 30 days old, the last by ${last}.`);
       expect(live).toContain(`From ChatGPT: searches made from ${day} on are not kept; earlier ones are deleted at 30 days old, the last by ${last}.`);
     }
+  });
+
+  it("NB-39: the unnamed searches are the ones logged before the caller column, and the last of them goes 181 days after the last day without it", () => {
+    const from = new Date(`${CONNECTOR_CALLER_RECORDED_FROM}T00:00:00Z`).getTime();
+    expect(CONNECTOR_CALLER_RECORDED_FROM, "the day after the 2026-09-06 deploy that added the caller column").toBe("2026-09-07");
+    expect(UNNAMED_SEARCHES_GONE_BY, "a row made on the last unnamed day (D) goes on the run of day D+181; the page names the day after").toBe(new Date(from - 86_400_000 + 182 * 86_400_000).toISOString().slice(0, 10));
+    expect(searchKept(false), "the 180-day wording already covers them").toMatch(/kept for up to 180 days/);
   });
 
   it("claims 30 days only once a run of the prune that succeeded is recorded from get_cron_health, and the page's date is no earlier than that read", () => {

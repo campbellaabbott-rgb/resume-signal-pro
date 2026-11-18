@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { IndustryConfidenceIndicator } from "./IndustryConfidenceIndicator";
-import { scoreTone, type ScoreTone } from "@/lib/score-bands";
+import { scoreBand, scoreTone, type ScoreTone } from "@/lib/score-bands";
 
 // Resume Type Detection Types
 export type ResumeType = 'chronological' | 'executive_summary' | 'ats_optimized' | 'outreach_referral' | 'hybrid';
@@ -317,17 +317,19 @@ export function EnhancedAnalysisDisplay({
           <div className={cn("rounded-2xl border p-4", getScoreBgColor(dualScore.atsCompatibility))}>
             <div className="flex items-center gap-2 mb-2">
               <Target className="w-5 h-5 text-primary" />
-              <p className="text-sm font-medium text-foreground flex-1">ATS Compatibility</p>
+              <p className="text-sm font-medium text-foreground flex-1">{t('enhancedAnalysis.atsCompat')}</p>
               <InfoTooltip 
-                title="ATS Compatibility Score" 
+                title={t('enhancedAnalysis.atsCompat')}
                 description={t('enhancedAnalysis.atsDesc')}
               />
             </div>
             <p className={cn("text-3xl font-bold", getScoreColor(dualScore.atsCompatibility))}>
               {dualScore.atsCompatibility}<span className="text-lg text-muted-foreground">/100</span>
             </p>
+            {/* Said from the report's own bands (RC-S13-019), never the
+                backup scanner's note, which graded at 75/55 in English. */}
             <p className="text-xs text-muted-foreground mt-2">
-              {dualScore.atsNote}
+              {t(`freeScanPage.band.ats.${scoreBand(dualScore.atsCompatibility)}`)}
             </p>
           </div>
 
@@ -335,9 +337,9 @@ export function EnhancedAnalysisDisplay({
           <div className={cn("rounded-2xl border p-4", getScoreBgColor(dualScore.recruiterImpact))}>
             <div className="flex items-center gap-2 mb-2">
               <Users className="w-5 h-5 text-primary" />
-              <p className="text-sm font-medium text-foreground flex-1">Recruiter Impact</p>
+              <p className="text-sm font-medium text-foreground flex-1">{t('enhancedAnalysis.recruiterImpact')}</p>
               <InfoTooltip 
-                title="Recruiter Impact Score" 
+                title={t('enhancedAnalysis.recruiterImpact')}
                 description={t('enhancedAnalysis.recruiterDesc')}
               />
             </div>
@@ -345,7 +347,7 @@ export function EnhancedAnalysisDisplay({
               {dualScore.recruiterImpact}<span className="text-lg text-muted-foreground">/100</span>
             </p>
             <p className="text-xs text-muted-foreground mt-2">
-              {dualScore.recruiterNote}
+              {t(`freeScanPage.band.recruiter.${scoreBand(dualScore.recruiterImpact)}`)}
             </p>
           </div>
         </div>
@@ -356,13 +358,13 @@ export function EnhancedAnalysisDisplay({
         <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="w-5 h-5 text-destructive" />
-            <h4 className="font-bold text-foreground">Credibility Flags</h4>
+            <h4 className="font-bold text-foreground">{t('enhancedAnalysis.credibilityFlags')}</h4>
             <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/20 text-destructive font-medium">
-              High Priority
+              {t('enhancedAnalysis.highPriority')}
             </span>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            These issues may raise red flags with recruiters and should be addressed first.
+            {t('enhancedAnalysis.highPriorityDesc')}
           </p>
           <div className="space-y-2">
             {credibilityIssues.map((issue, idx) => (
@@ -389,7 +391,7 @@ export function EnhancedAnalysisDisplay({
                   <p className="text-sm font-medium text-foreground">{issue.description}</p>
                   {issue.location && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Found: {issue.location}
+                      {t('enhancedAnalysis.found', { location: issue.location })}
                     </p>
                   )}
                 </div>
@@ -404,20 +406,20 @@ export function EnhancedAnalysisDisplay({
         <div className="rounded-2xl border border-border bg-card/50 p-4">
           <div className="flex items-center gap-2 mb-3">
             <MessageSquare className="w-5 h-5 text-primary" />
-            <h4 className="font-bold text-foreground">Content Insights</h4>
+            <h4 className="font-bold text-foreground">{t('enhancedAnalysis.contentInsights')}</h4>
           </div>
           <div className="space-y-2">
             {contentLocations.quota?.exists && (
               <div className="flex items-start gap-3 p-3 rounded-xl bg-success/5 border border-success/20">
                 <CheckCircle2 className="w-4 h-4 text-success mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-foreground">Quota/Revenue Data Found</p>
+                  <p className="text-sm font-medium text-foreground">{t('enhancedAnalysis.quotaFound')}</p>
                   <p className="text-xs text-muted-foreground">
                     {contentLocations.quota.suggestion}
                   </p>
                   {contentLocations.quota.locations.length > 0 && (
                     <p className="text-xs text-primary mt-1">
-                      Located in: {contentLocations.quota.locations.join(', ')}
+                      {t('freeScanPage.enhanced.locatedIn', { places: contentLocations.quota.locations.join(', ') })}
                     </p>
                   )}
                 </div>
@@ -427,7 +429,7 @@ export function EnhancedAnalysisDisplay({
               <div className="flex items-start gap-3 p-3 rounded-xl bg-success/5 border border-success/20">
                 <CheckCircle2 className="w-4 h-4 text-success mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-foreground">Quantified Metrics Found</p>
+                  <p className="text-sm font-medium text-foreground">{t('enhancedAnalysis.metricsFound')}</p>
                   <p className="text-xs text-muted-foreground">
                     {contentLocations.metrics.suggestion}
                   </p>

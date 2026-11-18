@@ -5,7 +5,8 @@ import { getServiceClient } from "../_shared/supabase-client.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 import { rememberCheckoutResume, tempResumeIdOf } from "../_shared/checkout-resume-ref.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
-import { accountProStanding } from "../_shared/pro.ts";
+import { accountProStanding, PRO_ENTITLEMENT_RPC } from "../_shared/pro.ts";
+import { grantRedeemUntil, mintingPeriodEnd } from "./grant-window.ts";
 import { FULL_ANALYSIS_PRODUCT_NAME, FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
 import { checkoutOrigin, euConsentAnswer, euConsentRefusal, euSalesPolicy, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
 import {
@@ -66,7 +67,8 @@ import { REHEARSAL_UNCONFIGURED, rehearsalKeyOf } from "./owner-rehearsal.ts";
 // above together. hotfix/pro and hotfix/paid each stamped 2026-11-10.1 on
 // code of its own, so the merged code takes the next sequence (DEPLOY-LEDGER §3).
 // 2026-11-10.3 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "create-checkout.2026-11-10.3";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, payments lane, S14X-078, S14X-079, RC-S13-063): a grant carries the window of the month that paid for it, a member's second press is handed the newest unopened grant, and the buyer's network key is recorded.
+const FN_BUILD = "create-checkout.2026-11-12.1";
 
 /** How long the checkout waits for the résumé reference before answering without it. */
 const RESUME_REF_WAIT_MS = 2_000;
@@ -129,6 +131,46 @@ async function sendAlert(alertType: string, subject: string, details: Record<str
     console.error("[ALERT] Error sending alert:", error);
   }
 }
+
+// deno-lint-ignore no-explicit-any
+type Db = { from: (t: string) => any; rpc: (fn: string, args: Record<string, unknown>) => any };
+
+/**
+ * ONE OPEN GRANT A DAY (S14X-079): the member's newest unopened, unrevoked
+ * Full Analysis grant of the last day, moved to the résumé of this press,
+ * instead of a new row each press (a reload or a second tab used one of the
+ * day's ten). null when there is none or it cannot be read: then one is minted.
+ */
+async function openAnalysisGrant(db: Db, userId: string, resumeSessionId: string | null): Promise<string | null> {
+  try {
+    const { data, error } = await db.from("pro_grants").select("id")
+      .eq("user_id", userId).eq("product_type", FULL_ANALYSIS_PRODUCT_TYPE)
+      .is("consumed_at", null).is("revoked_at", null)
+      .gt("created_at", new Date(Date.now() - 86_400_000).toISOString())
+      .order("created_at", { ascending: false }).limit(1);
+    const id = !error && Array.isArray(data) ? data[0]?.id : null;
+    if (typeof id !== "string") return null;
+    const { data: moved, error: moveError } = await db.from("pro_grants").update({ resume_session_id: resumeSessionId })
+      .eq("id", id).is("consumed_at", null).select("id");
+    return !moveError && Array.isArray(moved) && moved.length ? id : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/** redeem_until for a grant minted now (S14X-078): the paid period's end plus a week; null when unknown. */
+async function grantWindowEnd(db: Db, userId: string): Promise<string | null> {
+  try {
+    const { data, error } = await db.rpc(PRO_ENTITLEMENT_RPC, { p_user_id: userId });
+    return error ? null : grantRedeemUntil(mintingPeriodEnd(data));
+  } catch (_) {
+    return null;
+  }
+}
+
+/** A database without pro_grants.redeem_until (before 20261112110000). */
+const noWindowColumn = (e: { code?: string; message?: string } | null) =>
+  !!e && (e.code === "PGRST204" || e.code === "42703") && /redeem_until/.test(String(e.message ?? ""));
 
 // Performance tracking helper with alerting
 const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>, clientIp?: string) => {
@@ -522,20 +564,23 @@ serve(async (req) => {
       if (standing.consumables) {
         const tempSessionId = typeof requestBody?.tempSessionId === "string" && UUID_RE.test(requestBody.tempSessionId)
           ? requestBody.tempSessionId : null;
-        const { data: grant, error: grantError } = await supabase
-          .from("pro_grants")
-          .insert({
-            email: member.email,
-            user_id: member.id,
-            product_id: "fullAnalysis",
-            product_type: FULL_ANALYSIS_PRODUCT_TYPE,
-            product_name: FULL_ANALYSIS_PRODUCT_NAME,
-            resume_session_id: tempSessionId,
-          })
-          .select("id")
-          .single();
+        const reused = await openAnalysisGrant(supabase, member.id, tempSessionId);
+        const row = {
+          email: member.email,
+          user_id: member.id,
+          product_id: "fullAnalysis",
+          product_type: FULL_ANALYSIS_PRODUCT_TYPE,
+          product_name: FULL_ANALYSIS_PRODUCT_NAME,
+          resume_session_id: tempSessionId,
+        };
+        const redeemUntil = reused ? null : await grantWindowEnd(supabase, member.id);
+        const mint = (r: Record<string, unknown>) => supabase.from("pro_grants").insert(r).select("id").single();
+        let { data: grant, error: grantError } = reused
+          ? { data: { id: reused }, error: null }
+          : await mint(redeemUntil ? { ...row, redeem_until: redeemUntil } : row);
+        if (redeemUntil && noWindowColumn(grantError)) ({ data: grant, error: grantError } = await mint(row));
         if (!grantError && grant?.id) {
-          logStep("Pro grant issued for the full analysis", { grant: grant.id });
+          logStep(reused ? "The member's open grant handed back" : "Pro grant issued for the full analysis", { grant: grant.id });
           trackPerformance(requestStartTime, 'create-checkout', true, { proIncluded: true }, clientIp);
           return new Response(JSON.stringify({
             url: `${origin}/success?session_id=pro_${grant.id}`,
@@ -699,7 +744,7 @@ serve(async (req) => {
       metadata: { promo: !!promotionCodeId, requestedCurrency: requestedCurrency ?? null, termsVersion: policy.terms_version || null, referral: !!policy.referral_code, withdrawalWaiver: policy.withdrawal_waiver ?? null, ...(hasPosting !== null ? { hasPosting } : {}), ...(ownerTestMode ? { testMode: true } : {}) },
     });
     // The account behind the session, before the browser has the url.
-    await recordCheckoutBuyer(supabase, { stripeSessionId: session.id, caller, checkoutFunction: "create-checkout", productType: "full_analysis" });
+    await recordCheckoutBuyer(supabase, { stripeSessionId: session.id, caller, checkoutFunction: "create-checkout", productType: "full_analysis", address: clientAddressOr(req.headers, "") || null });
 
     trackPerformance(requestStartTime, 'create-checkout', true, { currency, amount }, clientIp);
     logStep("Checkout session created", { sessionId: session.id, currency, amount });

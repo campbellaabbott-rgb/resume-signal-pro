@@ -73,6 +73,26 @@ export async function purchaseRequiredOf(error: unknown): Promise<boolean> {
   }
 }
 
+/**
+ * AN AI OUTAGE, NOT A PURCHASE (S14X-109). The writers answer the AI
+ * provider running out of credits as 503 { code: "ai_unavailable" } (older
+ * builds sent a 402 without requiresPurchase); either way the batch stops and
+ * says the service is down, never "needs Pro".
+ */
+export async function aiOutageOf(error: unknown): Promise<boolean> {
+  const ctx = (error as { context?: Response } | null)?.context;
+  const status = ctx?.status;
+  if (status !== 402 && status !== 503) return false;
+  try {
+    const copy = ctx && typeof ctx.clone === "function" ? ctx.clone() : ctx;
+    const parsed = copy && typeof copy.json === "function" ? await copy.json() : null;
+    const b = (parsed && typeof parsed === "object" ? parsed : {}) as { code?: unknown; requiresPurchase?: unknown };
+    return status === 503 ? b.code === "ai_unavailable" : b.requiresPurchase !== true;
+  } catch {
+    return false;
+  }
+}
+
 export interface CopilotApp {
   id: string;
   company: string;
@@ -164,6 +184,9 @@ export function ApplyCopilotPanel({
     // A kit made and saved this run whose letter could not be written
     // (S13-084): progress, said as such, never "nothing new to prep".
     let savedWithoutLetter = 0;
+    // A kit from an earlier run whose letter failed again (S14X-267): still
+    // owed, and said so, never "couldn't be tailored".
+    let lettersStillOwed = 0;
     // A refusal already told the member why the batch stopped.
     let told = false;
     let i = 0;
@@ -185,9 +208,9 @@ export function ApplyCopilotPanel({
             // On a non-2xx the SDK nulls `data` and puts the Response on
             // error.context — that's the only place the real status lives.
             const status = (error as { context?: { status?: number } })?.context?.status;
-            if (status === 402) {
+            if (status === 402 || (status === 503 && await aiOutageOf(error))) {
               told = true;
-              toast.error(await purchaseRequiredOf(error)
+              toast.error(status === 402 && await purchaseRequiredOf(error)
                 ? t("accountPage.acNeedsPro", "Batch prep needs Pro. Upgrade to prep applications in bulk.")
                 : t("accountPage.acAiUnavailable", "The AI service can't take requests right now. What was prepped so far is saved; try the rest later."));
               break;
@@ -197,6 +220,8 @@ export function ApplyCopilotPanel({
             const refusal = await writingRefusalOf(error);
             if (refusal) { told = true; toast.error(writingRefusalText(refusal, (k, d, v) => t(k, d, v), i18n.language)); break; }
             if (status === 429) { told = true; toast.error(await limitTextOf(error, (k, d, v) => t(k, d, v))); break; }
+            // A plan or limiter that could not be read (S14X-169): busy, try later.
+            if (status === 503) { told = true; toast.error(copilotLimitText({ code: "limiter_unavailable" }, null, (k, d, v) => t(k, d, v))); break; }
             continue; // 422 grounding refusal or transient — skip this one, keep going
           }
           if (!(data as { success?: boolean } | null)?.success) continue;
@@ -219,6 +244,11 @@ export function ApplyCopilotPanel({
           toast.error(await limitTextOf(letterError, (k, d, v) => t(k, d, v)));
           stop = true;
           told = true;
+        } else if (letterError && await aiOutageOf(letterError)) {
+          // The letter writer's outage stops the batch as the kit's does (S14X-267).
+          toast.error(t("accountPage.acAiUnavailable", "The AI service can't take requests right now. What was prepped so far is saved; try the rest later."));
+          stop = true;
+          told = true;
         }
         const full = typeof letter === "string" && letter.trim() ? { ...kit, coverLetter: letter } : kit;
         // Persist the kit so it survives reloads and never re-charges; one
@@ -227,6 +257,7 @@ export function ApplyCopilotPanel({
         onKit(a.id, full);
         if (full !== kit) succeeded++;
         else if (madeNow) savedWithoutLetter++;
+        else lettersStillOwed++;
       } catch {
         // network hiccup — leave it pending, next run picks it up
       }
@@ -241,7 +272,10 @@ export function ApplyCopilotPanel({
     if (savedWithoutLetter > 0) {
       toast(t("accountPage.acSavedNoLetter", "Tailored résumés saved: {{count}}. Their cover letters couldn't be written this time; run prep again to add them.", { count: savedWithoutLetter }));
     }
-    if (succeeded === 0 && savedWithoutLetter === 0 && !told) {
+    if (lettersStillOwed > 0) {
+      toast(t("writingTools.lettersStillOwed", "Cover letters still to write: {{count}}. Run prep again to add them.", { count: lettersStillOwed }));
+    }
+    if (succeeded === 0 && savedWithoutLetter === 0 && lettersStillOwed === 0 && !told) {
       toast(t("accountPage.acNothingNew", "Nothing new to prep — the saved postings couldn't be tailored (missing description or grounding check). Add a job posting and try again."));
     }
   };

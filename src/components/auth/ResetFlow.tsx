@@ -148,7 +148,7 @@ export function ResetFlow({ next, initialSession, initialExpired }: { next: stri
   // the token itself cannot say it came from a reset.)
   useEffect(() => {
     if (recoverySession || loading || !session || ended) return;
-    if (stashState.kind === "adopting" || stashState.kind === "interstitial") return;
+    if (stashState.kind === "adopting" || stashState.kind === "interstitial" || stashState.kind === "adoptRetry") return;
     if (stashState.kind === "adopted" && stashState.type === "recovery") { setRecoverySession(session); setStep("checking"); return; }
     if (step === "request") setStep("signedIn");
   }, [session, loading, stashState, recoverySession, step, ended]);
@@ -284,6 +284,8 @@ export function ResetFlow({ next, initialSession, initialExpired }: { next: stri
   if (step === "checking") return <Working text={t("auth.reset.checking", "Checking your account…")} />;
   if (stashState.kind === "adopting" && !recoverySession) return <Working text={t("auth.confirm.working", "Signing you in…")} />;
   const unreachable = stashState.kind === "unreachable" && !recoverySession;
+  // The link was verified and its session could not be handed over (S14X-208).
+  const adoptRetry = stashState.kind === "adoptRetry" && !recoverySession;
 
   return (
     <Card>
@@ -296,10 +298,18 @@ export function ResetFlow({ next, initialSession, initialExpired }: { next: stri
         </div>
       )}
 
+      {adoptRetry && (
+        <div className="mb-4">
+          <p role="alert" className="text-sm text-destructive mb-4">{t("auth.confirm.adoptFailed", "We verified your link but couldn't finish signing in. Check your connection and try again.")}</p>
+          <button type="button" className={primaryBtn} onClick={retryStashedSession}>{t("auth.confirm.retry", "Try again")}</button>
+        </div>
+      )}
+
       {step === "expired" && (
         <div>
           <p role="alert" className="text-sm text-foreground mb-4">
-            {t("auth.reset.expired", "This reset link has expired or was already used, so no password was set. Ask for a new one.")}
+            {/* A spent link may be the one whose code already set the password (S14X-206). */}
+            {t("auth.reset.expired", "This reset link has expired or was already used. If you already chose a new password with this email's code, sign in with it; otherwise ask for a new link.")}
           </p>
           <button type="button" className={primaryBtn} onClick={() => { setError(null); setNotice(null); setStep("request"); }}>{t("auth.reset.newLink", "Send a new reset link")}</button>
           <div className="mt-3 flex flex-col items-center gap-1 text-xs">
@@ -308,7 +318,7 @@ export function ResetFlow({ next, initialSession, initialExpired }: { next: stri
         </div>
       )}
 
-      {step === "request" && !unreachable && (
+      {step === "request" && !unreachable && !adoptRetry && (
         <form onSubmit={request} noValidate>
           <p className="text-xs text-muted-foreground mb-4">{t("auth.reset.intro", "Enter your email. If it has an account, we'll email a link (or a 6-digit code) you can use to choose a new password.")}</p>
           {notice && <p role="status" className="text-xs text-foreground mb-3">{notice(t)}</p>}

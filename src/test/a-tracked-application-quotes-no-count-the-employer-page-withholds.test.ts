@@ -47,6 +47,6 @@ describe("the tracker's employer chip asks the employer page's gate", () => {
     const src = readFileSync(resolve(__dirname, "../pages/Account.tsx"), "utf8");
     // The row is kept whole, so observability_bucket and watched_from reach the gate.
     expect(src).toMatch(/const \{ company_token: _token, \.\.\.row \} = r;\s*map\[r\.company_token\] = row;/);
-    expect(src).toMatch(/if \(!hiringRecordGate\(hh\)\.share14\.ok\) return null;/);
+    expect(src).toMatch(/const g = hiringRecordGate\(hh\);\s*if \(!g\.share14\.ok\) return null;/);
   });
 });

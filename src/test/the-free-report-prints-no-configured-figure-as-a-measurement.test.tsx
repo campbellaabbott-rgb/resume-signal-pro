@@ -418,12 +418,16 @@ describe("the report's modules", () => {
     // The downloadable summary printed "→ 83 after fixes" and each step's
     // "~15 min, +5 pts" with no basis, the same fixed amounts the page now
     // calls a rough guide (the review of 2026-10-27, finding 7).
+    // The summary's lines are the reader's language now (free-scan-page lane,
+    // 2026-11-12): the projection is the shard's freeScanPage.pdf.projected.
     const code = codeOf(read(ENTRY));
-    const pdf = code.slice(code.indexOf("line(`ATS Score: ${atsScoreEstimate}/100"), code.indexOf("doc.save("));
+    const pdf = code.slice(code.indexOf("add(t('freeScanPage.pdf.title')"), code.indexOf("doc.save("));
     expect(pdf.length, "the PDF block was found").toBeGreaterThan(400);
     expect(pdf).not.toMatch(/\$\{projectedScore\} after fixes`/);
-    expect(pdf).toMatch(/about \$\{projectedScore\} after fixes, a rough guide/);
-    expect(pdf).toMatch(/fixRoadmap\.steps\.forEach\([^\n]*\n\s*line\(FIX_PLAN_BASIS\b/);
+    expect(pdf).toMatch(/t\('freeScanPage\.pdf\.projected', \{ score: projectedScore \}\)/);
+    const shard = JSON.parse(read("src/i18n/shards/free-scan-page/en.json")) as { freeScanPage: { pdf: { projected: string } } };
+    expect(shard.freeScanPage.pdf.projected).toMatch(/^about \{\{score\}\} after fixes \(a rough guide\)$/);
+    expect(pdf).toMatch(/fixRoadmap\.steps\.forEach\([^\n]*\n\s*add\(FIX_PLAN_BASIS\b/);
   });
 });
 

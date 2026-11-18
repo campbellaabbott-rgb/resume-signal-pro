@@ -12,15 +12,21 @@
 // into every file again.
 
 /**
- * Checks an AI gateway fetch response. Returns a ready-to-return Response for
- * the two recoverable cases the gateway can signal — 429 (rate limited) and
- * 402 (out of credits/payment required) — or null if the response was ok.
- * Throws for any other non-ok status, matching every generate-* function's
- * existing "throw on real failure" convention — the caller's own try/catch
- * and error logging stays unchanged. Two of seven functions already handled
- * 402 distinctly before this was centralized; the other five didn't, so a
- * gateway billing issue fell through to a generic 500 for those — bringing
- * everyone to the same standard now that this is one shared place to fix.
+ * A gateway 402 is the AI provider out of credits: our outage, never the
+ * caller's purchase, so it is a retryable 503 (S14X-109). 402 stays for our
+ * own purchase refusals.
+ */
+export function aiUnavailable(corsHeaders: Record<string, string>): Response {
+  return new Response(
+    JSON.stringify({ error: "The AI service can't take requests right now. Try again in a few minutes.", code: "ai_unavailable", retryable: true }),
+    { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "300" } },
+  );
+}
+
+/**
+ * Checks an AI gateway fetch response: a ready Response for 429 (rate
+ * limited) and 402 (see aiUnavailable), null when ok, and a throw for any
+ * other status (the caller's own try/catch logs it).
  */
 export async function checkAiGatewayResponse(
   response: Response,
@@ -35,12 +41,7 @@ export async function checkAiGatewayResponse(
     );
   }
 
-  if (response.status === 402) {
-    return new Response(
-      JSON.stringify({ error: "Service temporarily unavailable." }),
-      { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
+  if (response.status === 402) return aiUnavailable(corsHeaders);
 
   const errorText = await response.text();
   throw new Error(`AI API error: ${response.status} - ${errorText}`);

@@ -34,7 +34,8 @@ import { publicApiBase } from "@/config/public-endpoints";
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
 
-const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString() : "—");
+// en-US, as the bake prints it (S14X-255).
+const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString("en-US") : "—");
 
 const CONTACT = "resumeboostersupp@gmail.com";
 
@@ -62,6 +63,12 @@ const ENDPOINTS: Array<{ path: string; body: string; params?: string; notes?: st
     ],
   },
   { path: "GET /v1/jobs/{id}", body: "One posting, description included. Returns 404 once the employer withdraws it — never a stale 200, so you can tell 'gone' from 'we stopped looking'." },
+  // EVERY PUBLIC ROUTE IS LISTED (RC-S13-105): the application route was served
+  // and metered for weeks while no page an agent reads named it.
+  {
+    path: "GET /v1/jobs/{id}/application",
+    body: "The employer's own application form for a live posting, when its hiring system publishes one: each question with who should answer it (the person, by default), read from the employer's page and cached for 24 hours. A posting whose system publishes no form answers form.source \"not-published\" beside its apply link. It never fills or submits anything — the person answers and presses submit on the employer's own site. Metered as one call.",
+  },
   {
     path: "GET /v1/changes",
     body: "What opened and what closed since a timestamp — and for each close, whether the role genuinely came down or was re-listed under a new id. Almost nobody else can answer the second half. The two halves reach back different distances on a free key, and every response says how far each one went: closureHistoryDays, openedHistoryDays, and closureSince, the lower bound the closure query actually ran with.",
@@ -70,6 +77,11 @@ const ENDPOINTS: Array<{ path: string; body: string; params?: string; notes?: st
       "closed leaves out, by default, batches our own collector flagged as a possible failed read: a single pass that removed so much of one board that the takedown may be ours, not the employer's. include_suspect=true returns them too, each marked suspectBatch: true, and every response says which you got in suspectBatchesIncluded.",
       "suspectBatch: false means the collector assessed the batch and did not doubt it. Closures written before it began assessing its batches carry suspectBatch: null instead: they were never assessed, so neither walk leaves a failed read of ours out of them. Only a paid key reaches back that far.",
       "A default walk, with outcome relisted and closedAtIsObservation rows dropped, is counted on the same rules as the board's daily takedown figure — except that figure also counts the hiring systems this API may not redistribute, so the feed can come out lower by those, never higher.",
+      // S14X-065: a takedown's row can commit minutes after its stamp, so each
+      // list reads only to a settled horizon and hands back where to resume.
+      // This page can publish before the API that does it, so it describes
+      // both shapes a response can take.
+      "Both lists are ordered oldest first and page on their own: follow page.opened.nextCursor as opened_cursor and page.closed.nextCursor as closed_cursor until hasMore is false. When a list carries settledThrough (page.opened.settledThrough, page.closed.settledThrough), it reads only up to that settled horizon: a closure's row can be written minutes after the time it is stamped with, so the newest minutes are served on a later call. Such a list also carries resumeCursor; resume by sending it back as opened_cursor or closed_cursor, never by moving since to the last time you saw, which is the walk that loses rows. A response without them runs each list up to the moment it was read.",
     ],
   },
   { path: "GET /v1/companies", body: "Employers ranked by open postings, from the same cached facet the board itself renders. open_postings counts postings the employer has not taken down, dated inside the last 30 days — the same rule /v1/jobs serves, so the two join. Carries asOf and a basis line; open_postings is null, never a substitute number, when a pass could not compute it.", params: "q, limit (max 100), cursor" },
@@ -187,7 +199,7 @@ function GetAKeyBody({ box }: { box: React.RefObject<HTMLDivElement> }) {
           </p>
         )}
         <p className="text-sm text-muted-foreground">
-          Free tier: {issued.limits.perMinute} requests/minute, {issued.limits.perDay.toLocaleString()}/day.
+          Free tier: {issued.limits.perMinute} requests/minute, {issued.limits.perDay.toLocaleString("en-US")}/day.
         </p>
       </div>
     );

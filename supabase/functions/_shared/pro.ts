@@ -21,7 +21,6 @@ export {
   PRO_ENTITLEMENT_RPC,
   PRO_GRACE_MS,
   PRO_LIVE_STATUSES,
-  proGrantRefusal,
   proRowIsLive,
   proStandingFrom,
   type GrantRefusal,
@@ -29,6 +28,7 @@ export {
   type ProRow,
   type ProStanding,
 } from "./pro-standing.ts";
+import { proGrantRefusal as standingRefusal, type GrantRefusal, type ProGrantLike } from "./pro-standing.ts";
 import {
   LIVE_SUBSCRIPTION_STATUSES,
   standingFrom,
@@ -37,6 +37,31 @@ import {
   type TierStanding,
 } from "./subscription-standing.ts";
 import { significantSubscription, subscriptionEnds } from "./pro-cancel.ts";
+
+/** True while an unrevoked grant naming an account is before its redeem_until (S14X-078). */
+export function grantWindowOpen(g: { user_id?: unknown; revoked_at?: unknown; redeem_until?: unknown } | null | undefined, now = Date.now()): boolean {
+  const t = typeof g?.redeem_until === "string" ? Date.parse(g.redeem_until) : NaN;
+  return !!g && !g.revoked_at && typeof g.user_id === "string" && /^[0-9a-f-]{36}$/i.test(g.user_id) && t > now;
+}
+
+/** pro-standing's rule, except a grant inside its paid month's window is redeemable whatever the plan is now. */
+export async function proGrantRefusal(
+  // deno-lint-ignore no-explicit-any
+  db: { rpc: (fn: string, args: Record<string, unknown>) => any; from?: (t: string) => any },
+  grant: ProGrantLike & { id?: unknown; redeem_until?: unknown },
+  now: number = Date.now(),
+): Promise<GrantRefusal | null> {
+  const refusal = await standingRefusal(db, grant, now);
+  if (!refusal || !grant) return refusal;
+  let until = grant.redeem_until;
+  if (until === undefined && typeof grant.id === "string" && db.from) {
+    try {
+      const { data, error } = await db.from("pro_grants").select("redeem_until").eq("id", grant.id).maybeSingle();
+      until = error ? null : data?.redeem_until ?? null;
+    } catch (_) { until = null; }
+  }
+  return grantWindowOpen({ ...grant, redeem_until: until }, now) ? null : refusal;
+}
 
 export const PRO_PRICE_CENTS = 4500;
 export const PRO_PRODUCT_NAME = "Resume Booster Pro";
@@ -295,32 +320,7 @@ export interface ProRefreshOptions {
   seenUpdatedAt?: string | null;
 }
 
-/**
- * Look up the subscription state for an email directly in Stripe and refresh
- * the pro_subscribers cache. `supabase` must be a service-role client.
- *
- * The answer is the MOST SIGNIFICANT subscription the address holds: a live
- * one, else one that owes money (past_due, unpaid...), else whatever ended.
- * It used to keep the first non-live status it met, so a past_due plan could
- * read as "canceled" because a canceled one was listed first, and the card
- * that should have said "update your card" said "Go Pro".
- *
- * NO ROW IS CREATED FOR AN ADDRESS STRIPE HAS NO SUBSCRIPTION FOR. The upsert
- * used to run whatever the answer, so the checkout's own pre-check wrote an
- * "inactive" row for every first-time buyer minutes before they paid, and
- * check-subscription served that row as the truth for an hour after they had
- * (platform sweep L6-28). An existing row is still downgraded (see
- * ProRefreshOptions); a missing one stays missing until the webhook writes it
- * when the payment lands.
- *
- * A ROW BOUND TO AN ACCOUNT IS NEVER CLEARED BECAUSE THE ADDRESS FOUND
- * NOTHING (S14, M-S14-002): it is refreshed by the customer it names, and the
- * answer is that customer's plan (matchedBy "customer"). So is an unbound
- * row whose plan names its buyer: the write binds it to that account. Any
- * other unbound row (one pro_entitlement_rows hands to whoever proves the
- * address) whose customer has left the address is downgraded as it was read,
- * the customer kept on it, and so is a row naming no customer.
- */
+/** Stripe's plan for an address, cached in pro_subscribers (service-role client). docs/shared-notes.md#s1121 */
 export async function checkProByEmail(
   stripe: Stripe,
   supabase: { from: (t: string) => any },
@@ -329,12 +329,15 @@ export async function checkProByEmail(
 ): Promise<ProStatus> {
   const normalized = email.trim().toLowerCase();
   let result: ProStatus = { active: false, status: "inactive", currentPeriodEnd: null, stripeCustomerId: null };
+  const readStart = new Date().toISOString();
+  let chosen: Stripe.Subscription | null = null;
 
   for (const customer of await customersWithSubscriptions(stripe, normalized)) {
     for (const sub of customer.subscriptions) {
       if (statusRank(sub.status) <= statusRank(result.stripeCustomerId ? result.status : null)) continue;
       const periodEnd = periodEndOf(sub);
       const live = ACTIVE_STATUSES.has(sub.status);
+      chosen = sub;
       result = {
         active: live,
         status: sub.status,
@@ -358,12 +361,17 @@ export async function checkProByEmail(
       // AND WHOSE IT IS (20261008130000): a plan that carries its buyer's user
       // id binds the row to that account, which is how every gate reads it
       // (pro_entitlement_rows). The id is never cleared here: an unstamped
-      // plan leaves whatever binding the row already has.
-      await supabase.from("pro_subscribers").upsert({
-        email: normalized,
-        ...cached,
-        ...(result.boundUserId ? { user_id: result.boundUserId } : {}),
-      });
+      // plan leaves whatever binding the row already has. A newer row wins
+      // (S14X-080); the cancel flag is its own write (S14X-211).
+      const row = { ...cached, ...(result.boundUserId ? { user_id: result.boundUserId } : {}) };
+      const { data, error } = await supabase.from("pro_subscribers").update(row)
+        .eq("email", normalized).lt("updated_at", readStart).select("email");
+      const landed = !error && (Array.isArray(data) && data.length > 0
+        || !(await supabase.from("pro_subscribers").insert({ email: normalized, ...row })).error);
+      if (landed) {
+        await supabase.from("pro_subscribers").update({ cancel_at_period_end: result.active && !!chosen && subscriptionEnds(chosen) })
+          .eq("email", normalized).eq("stripe_customer_id", result.stripeCustomerId);
+      }
     } catch (_) {
       // Cache refresh is best-effort; the caller already has the live answer.
     }

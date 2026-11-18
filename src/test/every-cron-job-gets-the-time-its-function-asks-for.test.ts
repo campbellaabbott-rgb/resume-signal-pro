@@ -23,6 +23,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -36,7 +37,7 @@ const ROOT = resolve(__dirname, "../..");
 const SQL = readFileSync(resolve(ROOT, "supabase/migrations/20261004010000_every_cron_job_gets_the_time_its_function_asks_for.sql"), "utf8");
 
 const STAND_IN = `
-  CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+  ${SUPABASE_DEFAULTS}
   CREATE SCHEMA cron;
   CREATE TABLE cron.job (
     jobid bigserial PRIMARY KEY, schedule text NOT NULL, command text NOT NULL,
@@ -157,7 +158,7 @@ describe("a job whose function asks for more than two minutes gets it in its com
 
   it("a host without pg_cron gets the reader and nothing else", async () => {
     const db = new PGlite();
-    await db.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;");
+    await db.exec(SUPABASE_DEFAULTS);
     await db.exec(SQL);
     expect((await db.query("SELECT * FROM public.get_cron_health(24)")).rows).toEqual([]);
   });

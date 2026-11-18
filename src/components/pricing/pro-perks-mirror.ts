@@ -18,10 +18,11 @@ import { PRO_PERK_ITEMS, type ProPerk } from "@/config/pro-perks";
 /**
  * The included Full Analysis line, by wave 4's key
  * ("proPlan.perks.fullAnalysisIncluded", the list above) and by the key the
- * card's own list used before switch-over step 6. Keyed on both, the G2 rule
- * hides the line whichever list a caller passes.
+ * card's own list used before switch-over step 6, and its daily and monthly
+ * cap (S14X-079). Keyed on all, the G2 rule hides the lines whichever list a
+ * caller passes.
  */
-export const INCLUDED_FULL_ANALYSIS_KEYS = ["pricingPlans.pro.perks.includedFullAnalysis", "proPlan.perks.fullAnalysisIncluded"] as const;
+export const INCLUDED_FULL_ANALYSIS_KEYS = ["pricingPlans.pro.perks.includedFullAnalysis", "proPlan.perks.fullAnalysisIncluded", "payments.perks.fullAnalysisCap"] as const;
 
 /**
  * A perk that may print only while a sale gate is open. The included Full

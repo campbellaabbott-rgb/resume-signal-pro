@@ -7,18 +7,24 @@
 // market pulse could only be left from a link in one of its mails. Three
 // actions, each for the caller's own account only:
 //
-//   POST {action:"read"} -> {connectors, mail, mailboxProven}
+//   POST {action:"read"} -> {connectors, mail, mailboxProven, mailStopped}
 //        connectors: the account's live keys (api_keys bound to its user id):
 //        id, prefix, name, created and last-used dates. Never the key.
 //        mail: the market pulse rows under the account's PROVEN address
 //        (_shared/account-proof.ts), or null while the address is unproven:
 //        an auto-confirmed sign-up must not read or change a stranger's list.
+//        A row that is off names no field (S14X-102: the stop clears it).
+//        mailStopped (S14X-107): {reason, accountDeleted} when the PROVEN
+//        address is on the do-not-mail list (suppressed_emails), so the page
+//        can say no alert, report or pulse reaches it; null otherwise, and
+//        null (the list unread) while the address is unproven.
 //   POST {action:"revoke_connector", keyId} -> {revoked:true}: that key stops
 //        working now (revoked_at). A key of another account, or one already
 //        revoked, answers 404, the same as no key at all.
 //   POST {action:"pulse_off"} -> {unsubscribed:n}: every market pulse row under
 //        the proven address stops (unsubscribed_at), as its mail's own link
-//        does. 403 address_unproven while the address is unproven.
+//        does, and takes with it the score, field and language it gave
+//        (S14X-102). 403 address_unproven while the address is unproven.
 //
 // A WEBSITE SESSION ONLY (plan CP-J, _shared/website-session.ts): a token
 // minted for a connected app can neither list nor revoke the keys.
@@ -32,7 +38,8 @@ import { requireWebsiteSession } from "../_shared/website-session.ts";
 // preflight included, carries this in x-fn-build. It imports
 // _shared/mailbox-proof.ts, which R1 stamped 2026-10-14.1, as account-order does.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "account-settings.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, mail lane, S14X-102, S14X-107): a stopped list keeps no field, and the read says when the proven address is on the do-not-mail list.
+const FN_BUILD = "account-settings.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,6 +56,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 export type Connector = { id: string; prefix: string; name: string; createdAt: string; lastUsedAt: string | null };
 export type PulseRow = { industry: string | null; state: "subscribed" | "awaiting_confirmation" | "off" };
+export type MailStopped = { reason: string; accountDeleted: boolean };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -92,20 +100,34 @@ Deno.serve(async (req) => {
       if (!provenEmail) {
         return json({ error: "Prove this address first by signing in with an emailed code. The link in any market pulse mail also stops it.", code: "address_unproven" }, 403);
       }
+      // The stop takes the score and the field the address gave (S14X-102):
+      // industry is NOT NULL, so it returns to 'general'; a new request
+      // writes both again. The language is cleared on its own, after the
+      // stop has landed, so a refusal there never costs the stop.
       const { data, error } = await service.from("market_pulse_subscribers")
-        .update({ unsubscribed_at: new Date().toISOString() })
+        .update({ unsubscribed_at: new Date().toISOString(), last_score: null, industry: "general" })
         .eq("email", provenEmail).is("unsubscribed_at", null)
         .select("email");
       if (error) return json({ error: "Could not change it right now. Try again in a minute." }, 503);
+      try {
+        await service.from("market_pulse_subscribers").update({ locale: null }).eq("email", provenEmail);
+      } catch { /* the nightly prune clears it */ }
       return json({ unsubscribed: Array.isArray(data) ? data.length : 0 });
     }
 
     // read
-    const [keys, pulse] = await Promise.all([
+    const [keys, pulse, stopped] = await Promise.all([
       service.from("api_keys").select("id, key_prefix, name, created_at, last_used_at")
         .eq("user_id", user.id).is("revoked_at", null).order("created_at", { ascending: false }).limit(20),
       provenEmail
         ? service.from("market_pulse_subscribers").select("industry, confirmed_at, unsubscribed_at").eq("email", provenEmail).limit(20)
+        : Promise.resolve({ data: null, error: null }),
+      // THE DO-NOT-MAIL LIST, FOR THE PROVEN ADDRESS ONLY (S14X-107): an
+      // address there gets no alert, report or pulse, and the page said
+      // nothing. Every writer stores the address lower-cased. A read that
+      // fails says nothing rather than failing the page.
+      provenEmail
+        ? service.from("suppressed_emails").select("reason, metadata").eq("email", provenEmail.toLowerCase()).maybeSingle()
         : Promise.resolve({ data: null, error: null }),
     ]);
     if (keys.error || pulse.error) return json({ error: "Could not read your settings right now. Try again in a minute." }, 503);
@@ -119,12 +141,20 @@ Deno.serve(async (req) => {
     const mail = provenEmail
       ? {
         marketPulse: ((pulse.data ?? []) as Array<Record<string, unknown>>).map((p): PulseRow => ({
-          industry: typeof p.industry === "string" ? p.industry : null,
+          industry: !p.unsubscribed_at && typeof p.industry === "string" ? p.industry : null,
           state: p.unsubscribed_at ? "off" : p.confirmed_at ? "subscribed" : "awaiting_confirmation",
         })),
       }
       : null;
-    return json({ connectors, mail, mailboxProven: !!provenEmail });
+    if (stopped.error) console.warn("[ACCOUNT-SETTINGS] do-not-mail read failed:", String(stopped.error.message ?? "").slice(0, 120));
+    const stop = !stopped.error ? stopped.data as { reason?: unknown; metadata?: unknown } | null : null;
+    const mailStopped: MailStopped | null = provenEmail && stop
+      ? {
+        reason: typeof stop.reason === "string" ? stop.reason : "unsubscribe",
+        accountDeleted: (stop.metadata as { source?: unknown } | null)?.source === "account_deleted",
+      }
+      : null;
+    return json({ connectors, mail, mailboxProven: !!provenEmail, mailStopped });
   } catch (e) {
     console.error("[ACCOUNT-SETTINGS] Uncaught:", e instanceof Error ? e.message : String(e));
     return json({ error: "Unexpected error" }, 500);

@@ -92,7 +92,9 @@ export const CLIENT_CALLABLE: AllowedFunction[] = [
   A("public.get_takedowns_today()", "src/pages/Jobs.tsx", "aggregates: one count"),
   A("public.get_today_scan_count()", "src/hooks/use-shared-data.ts", "aggregates: one count"),
   A("public.get_transparency_cache()", "src/pages/PayTransparencyIndex.tsx", "public record: the cached pay-transparency payload"),
-  A("public.get_trending_categories()", "src/pages/HiringTrends.tsx", "aggregates: per-category posting counts, last 7 vs prior 7 days"),
+  // Re-issued with a watch-window argument (p_watch_days, default 14) by the
+  // census re-issue that names it (S14X-038): the no-argument form is dropped.
+  since("20261112191000", A("public.get_trending_categories(integer)", "src/pages/HiringTrends.tsx", "aggregates: per-category posting counts, last 7 vs prior 7 days")),
   // Opened after the census, by the census re-issue that names it. The perk
   // reader of company profiles (phase 1): only keys that passed their row
   // audit in the last 45 days, thresholds re-checked, nothing on a token two
@@ -130,11 +132,11 @@ export const CLIENT_CALLABLE: AllowedFunction[] = [
   // job deletes it.
   A("public.get_temp_resume(text)", "src/pages/Success.tsx", "own rows: the resume text stored under a session uuid the caller holds, until its 24-hour expiry"),
   A("public.store_temp_resume(text,text,text)", "src/pages/Index.tsx", "own rows: a new session uuid", "stores <=50k characters of the caller's own resume under a fresh uuid that only the caller learns; 30 an hour per address, 120 an hour and 150 unexpired rows per /24 or /48 network; past 8,000 unexpired rows only a /16 or /32 holding fewer than 5, none past 10,000 (20261005123000)"),
-  A("public.get_affiliate_dashboard(text)", "src/hooks/use-affiliate-auth.ts", "own rows: the dashboard of the affiliate whose session token is presented"),
+  A("public.get_affiliate_dashboard(text)", "src/hooks/use-affiliate-auth.ts", "own rows: the dashboard of the active affiliate whose session token hashes to a live session: totals, each currency, each period, what awaits approval and its own payout requests"),
   A("public.get_affiliate_clicks(text,integer)", "src/pages/Affiliates.tsx", "own rows: daily click counts for the presented affiliate session"),
-  A("public.login_affiliate(text,text)", "src/hooks/use-affiliate-auth.ts", "own rows: a session token (and the affiliate's own email) for the affiliate whose password matched", "inserts one affiliate session after a bcrypt password check; 20 attempts an hour per address and 20 an hour per email from every address together"),
+  A("public.login_affiliate(text,text)", "src/hooks/use-affiliate-auth.ts", "own rows: a session token (stored only as its hash) and the affiliate's own email, for the active affiliate whose password matched", "inserts one affiliate session after a bcrypt password check and notes the sign-in network; 20 attempts an hour per address, and only failures are charged to the email (10 an hour per address and email, 200 an hour per email), so a stranger's wrong guesses cannot lock the affiliate out"),
   A("public.logout_affiliate(text)", "src/hooks/use-affiliate-auth.ts", "write-only: true/false", "deletes the session whose token the caller presents"),
-  A("public.register_affiliate(text,text)", "src/hooks/use-affiliate-auth.ts", "own rows: the new affiliate's id, referral code and session token", "creates one affiliate account (open sign-up by design); 3 attempts per address and 50 in all a day, because sign-up without a verification email cannot hide whether an address already has an account"),
+  A("public.register_affiliate(text,text)", "src/hooks/use-affiliate-auth.ts", "own rows: the new affiliate's id, referral code and session token (stored only as its hash)", "creates one affiliate account (open sign-up by design); 10 a day per /24 or /48 network and 1000 in all a day, safe because an unproven address earns nothing payable and cannot request a payout until its mailed link is opened"),
 
   // ── write-only telemetry from the browser. Every one spends
   // client_write_allowed (20261004110000): a per-address budget keyed on the
@@ -146,7 +148,7 @@ export const CLIENT_CALLABLE: AllowedFunction[] = [
   A("public.log_industry_correction(text,text,text,text,integer,text[],text,text,text)", "src/components/IndustryConfidenceIndicator.tsx", "write-only: the new row's id", "one industry_corrections row from the confirmation strip, every field capped (<=20 signals of 60 chars), 20 per address and 300 in all an hour"),
   A("public.record_scan_feedback(text,boolean,text,integer,boolean,integer,text)", "src/components/ScanFeedback.tsx", "write-only: true/false", "one scan_feedback row (thumbs up/down, text <=1000 chars), 10 per address and 300 in all an hour"),
   A("public.record_scan_outcome(text,text,text)", "src/components/ScanOutcomeAsk.tsx", "write-only: true/false", "one scan_outcomes upsert per report and browser, 5 per address and 200 in all a day; p_ip (the visitor id) names the answer but no longer picks the budget"),
-  A("public.track_affiliate_click(text,text,text,text)", "src/hooks/use-affiliate-auth.ts", "write-only: true/false", "one affiliate_clicks row for an active referral code, 3 per address per code and 500 per code a day; ip_hash derived from the platform address when there is one"),
+  A("public.track_affiliate_click(text,text,text,text)", "src/hooks/use-affiliate-auth.ts", "write-only: true/false", "one affiliate_clicks row for an active referral code, 3 per address per code and 500 per code a day; ip_hash is a keyed hash of the platform address, never the caller's value, and rows older than 90 days become daily counts"),
   // Opened after the census, by the census re-issue that names it (S13-080):
   // 20260821030000 closed it as an unbounded write, so the report's level
   // control recorded nothing for ten weeks; it reopens on the same budget.
@@ -161,6 +163,32 @@ export const CLIENT_CALLABLE: AllowedFunction[] = [
   U("public.get_application_lifecycle(text[])", "src/pages/Account.tsx", "own rows: outcome, closure date and days standing for the job ids on the caller's own tracker (auth.uid()), never another user's and never posting content",
     "the caller's own day ledger in lifecycle_reads (the posting ids it was answered today, at most 1,000 distinct a day) and the deletion of rows older than two days; nothing a stranger can read (20261009131000, S8-018)"),
 ];
+
+/**
+ * A signature 20261004110000 lists that a later census re-issue dropped and
+ * replaced, each with its replacement, which CLIENT_CALLABLE stamps `since`
+ * that re-issue. A harness that applies 20261004110000 creates the old one,
+ * as the database held it then.
+ *   get_trending_categories() became get_trending_categories(integer), the
+ *   watch window as an argument (20261112191000, S14X-038).
+ */
+export const REPLACED_AFTER_CENSUS: Record<string, string> = {
+  "public.get_trending_categories()": "public.get_trending_categories(integer)",
+};
+
+/**
+ * The allowlist as a census issued at `stamp` lists it: the rows it knew (no
+ * `since`, or a `since` at or before it), with each signature a later re-issue
+ * replaced as it was then, held by its replacement's caller.
+ */
+export function listedAt(stamp: string): AllowedFunction[] {
+  const replaced = new Map(Object.entries(REPLACED_AFTER_CENSUS).map(([was, now]) => [now, was]));
+  return CLIENT_CALLABLE.flatMap((a) => {
+    if (!a.since || a.since <= stamp) return [a];
+    const was = replaced.get(a.sig);
+    return was ? [{ ...a, sig: was, since: undefined }] : [];
+  });
+}
 
 /**
  * Created by 20261004110000 already closed to clients: the budget and the

@@ -16,6 +16,8 @@ import { PRO_PERK_ITEMS, PRO_SUMMARY, type ProPerk } from "../../supabase/functi
 import { FULL_ANALYSIS_ON_SALE } from "@/config/sales-gate";
 
 export {
+  PRO_GRANTS_PER_DAY,
+  PRO_GRANTS_PER_MONTH,
   PRO_INCLUDED_PRODUCT_IDS,
   PRO_PERK_ITEMS,
   PRO_SUMMARY,
@@ -35,16 +37,18 @@ export const PRO_PERKS: readonly string[] = PRO_PERK_ITEMS.map((p) => p.text);
  * list and Stripe's description are unchanged: this is what a page says.
  */
 export const PRO_INCLUDED_ANALYSIS_KEY = "proPlan.perks.fullAnalysisIncluded";
+/** Its daily and monthly cap (S14X-079), which goes with it. */
+export const PRO_ANALYSIS_CAP_KEY = "payments.perks.fullAnalysisCap";
 
 /** Pro's summary without the included Full Analysis, for while G2 is closed. */
 export const PRO_SUMMARY_WITHOUT_ANALYSIS: ProPerk = {
-  key: "proPlan.summaryLineWithoutAnalysis",
-  text: "Everything in a free account, plus the writing tools and no daily cap on scans",
+  key: "payments.perks.summaryPackagesWithoutAnalysis",
+  text: "Everything in a free account, plus 5 writing packages a day (60 a month) on a stronger model and no daily cap on scans",
 };
 
 /** The perks a page may list today. */
 export function proPerksOnSale(items: readonly ProPerk[] = PRO_PERK_ITEMS, analysisOnSale: boolean = FULL_ANALYSIS_ON_SALE): readonly ProPerk[] {
-  return analysisOnSale ? items : items.filter((p) => p.key !== PRO_INCLUDED_ANALYSIS_KEY);
+  return analysisOnSale ? items : items.filter((p) => p.key !== PRO_INCLUDED_ANALYSIS_KEY && p.key !== PRO_ANALYSIS_CAP_KEY);
 }
 
 /** The summary a page may print today. */

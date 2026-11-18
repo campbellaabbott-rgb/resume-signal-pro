@@ -1,0 +1,14 @@
+{
+  "mailPrefs": {
+    "pulseDoneNextMonth": "Vous êtes de nouveau inscrit. Vous avez déjà reçu le pouls de ce mois-ci, le prochain arrive début du mois prochain.",
+    "pulseDoneLater": "Vous êtes de nouveau inscrit. Votre dernier pouls est parti il y a moins de quatre semaines, le prochain arrive plus tard ce mois-ci.",
+    "stoppedUnsubscribe": "Cette adresse nous a demandé de ne plus lui envoyer d'e-mails : les alertes de recherches enregistrées, les rapports d'analyse et le pouls du marché ne lui sont donc pas envoyés.",
+    "stoppedAccountDeleted": "Lors de la suppression d'un compte à cette adresse, il nous a été demandé de ne plus lui envoyer d'e-mails : les alertes de recherches enregistrées, les rapports d'analyse et le pouls du marché ne lui sont donc pas envoyés.",
+    "stoppedBounce": "Les e-mails envoyés à cette adresse ont été rejetés, nous avons donc cessé de lui écrire : les alertes de recherches enregistrées, les rapports d'analyse et le pouls du marché ne lui parviennent pas.",
+    "stoppedComplaint": "Cette adresse a signalé un de nos e-mails comme spam, nous avons donc cessé de lui écrire : les alertes de recherches enregistrées, les rapports d'analyse et le pouls du marché ne lui parviennent pas.",
+    "cadenceAria": "À quelle fréquence vous écrire au sujet de {{name}}",
+    "newHeadlineCapped": "{{n}} nouvelles offres correspondent à vos recherches depuis votre dernière visite",
+    "fixPlanWithdrawnTitle": "E-mails du plan de correction",
+    "fixPlanWithdrawn": "Nous n'envoyons plus les e-mails du plan de correction : ce lien ne lance donc rien et aucun e-mail n'en découlera."
+  }
+}

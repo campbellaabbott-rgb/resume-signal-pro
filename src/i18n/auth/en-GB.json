@@ -26,6 +26,7 @@
       "wrongAddress": "Wrong address?"
     },
     "confirm": {
+      "adoptFailed": "We verified your link but couldn't finish signing in. Check your connection and try again.",
       "body": "Press Continue to finish signing in. The link works once.",
       "emailChangeBody": "Press Continue to confirm your new email address.",
       "emailChanged": "Your email change is confirmed. If your other address also received a link, use that one too.",
@@ -49,6 +50,7 @@
       "label": "Email",
       "placeholder": "you@example.com",
       "remembered": "Continue as {{email}}",
+      "rememberedMismatch": "We couldn't sign you in as {{email}}. Type your address to try again.",
       "useDifferent": "Use a different address"
     },
     "footnote": "An account keeps your scores, credits and purchases, and a CV only if you save one.",
@@ -59,6 +61,7 @@
       "onlyGoogle": "This account signs in with Google, so it has no password to change here. Continue with Google to sign in."
     },
     "guard": {
+      "keysRevoked": "We also turned off the API and connector keys made on this account before you proved the address ({{keys}}). Make a new one in your account if you need it.",
       "passwordCleared": "We cleared a password set on this address before you proved you own it. Set a new one in your account settings if you want one.",
       "passwordClearedTitle": "Your old password was cleared",
       "signedOut": "We cleared a password set on this address before you proved you own it, and that signed out every device, this one too.",
@@ -94,7 +97,7 @@
       "done": "Your new password is set.",
       "doneOthers": "Your new password is set, and every other device was signed out.",
       "emailSupport": "Email support",
-      "expired": "This reset link has expired or was already used, so no password was set. Ask for a new one.",
+      "expired": "This reset link has expired or was already used. If you already chose a new password with this email's code, sign in with it; otherwise ask for a new link.",
       "intro": "Enter your email. If it has an account, we'll email a link (or a 6-digit code) you can use to choose a new password.",
       "newLink": "Send a new reset link",
       "newPassword": "New password",
@@ -118,8 +121,33 @@
       "failed": "Sign-in didn't finish. Please try again."
     },
     "samePassword": "Choose a password you haven't used here before.",
+    "security": {
+      "askCode": "No password yet, or forgotten it? Email me a code instead",
+      "codeFailed": "We couldn't ask for a code right now. Try again in a minute.",
+      "codeField": "Code from the password-reset email",
+      "codeOnItsWay": "If your address can receive mail, a password-reset email with a 6-digit code is on its way to {{email}}. Enter the code here.",
+      "codeRefused": "That code didn't work, so your password was not changed. Check it, or ask for a new one.",
+      "guardBlocked": "We couldn't confirm your address just now, so your password was not changed. Try again in a few minutes.",
+      "guardRefused": "We couldn't confirm your address with that code, so your password was not changed. Ask for a new code.",
+      "signedOut": "For your security every device was signed out, this one too. Reset your password from the sign-in page to finish."
+    },
     "sendFailed": "We couldn't send that just now. Try again in a minute, or email {{support}}.",
     "sessionExpired": "Your session expired. Sign back in to pick up where you left off.",
+    "signOut": {
+      "builder": "Your builder CV is saved only in this browser, and signing out deletes it.",
+      "cancel": "Cancel",
+      "delete": "Delete it and sign out",
+      "everywhereDone": "You're signed out on every device.",
+      "freelance": "Your Freelance Boost details are saved only in this browser, and signing out deletes them.",
+      "keep": "Keep it on this device and sign out",
+      "offlineEverywhere": "You're signed out on this device, but we couldn't reach the server, so your other devices may still be signed in.",
+      "offlineHere": "You're signed out on this device, but we couldn't reach the server to end the session there too.",
+      "offlineTitle": "Signed out on this device",
+      "openBuilder": "Open the builder to download it",
+      "retry": "Try again",
+      "signInAgain": "We couldn't sign out your other devices from here. Sign in again and choose Sign out everywhere.",
+      "title": "Before you sign out"
+    },
     "subtitle": "Track your CV scores over time, keep your scan history, and see your credits and purchases in one place. Free forever.",
     "title": "Sign in or create your free account",
     "usePassword": "Use a password instead",

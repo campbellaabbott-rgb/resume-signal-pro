@@ -141,7 +141,7 @@ describe("no promise nobody keeps (S12-008)", () => {
   it("no product card or sale surface says them either", () => {
     const pricing = ["src/pages/pricing/PricingPage.tsx", ...readdirSync(resolve(ROOT, "src/components/pricing")).filter((f) => /\.tsx?$/.test(f)).map((f) => `src/components/pricing/${f}`)];
     const files = [...pricing, "src/i18n/shards/pricing/en.json", "src/components/ProSubscriptionCard.tsx", "src/components/MiniPricingCards.tsx",
-      "src/components/AddOnsShowcase.tsx", "src/components/FinalCTA.tsx", "src/components/RateLimitUpsell.tsx",
+      "src/components/FinalCTA.tsx", "src/components/RateLimitUpsell.tsx",
       "src/config/pro-perks.ts", "supabase/functions/create-subscription-checkout/index.ts", "supabase/functions/_shared/product-cuts.ts"];
     for (const f of files) {
       const src = codeOf(readFileSync(resolve(ROOT, f), "utf8"));

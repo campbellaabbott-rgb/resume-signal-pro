@@ -2,7 +2,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { assertPaidSession } from "../_shared/paid-session.ts";
-import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { keepPastBuyerCopy } from "../_shared/past-buyer-copy.ts";
+import { clipField, clipText, isServiceCaller, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
 import { callAIWithModelFallback, chainFrom, logAiUsage, UnusableModelOutput } from "../_shared/ai-fallback.ts";
@@ -32,7 +33,8 @@ import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 // 2026-11-10.3 (fix/cost-wave, the integration): both lanes' changes above together.
 // cost/ai and cost/ci-edge each stamped 2026-11-10.2 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "generate-career-snapshot.2026-11-10.3";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, past-buyers lane, RC-S12-007; writing-tools lane, S14X-109): the recovery form's copy is kept, recorded and mailed once, and a gateway out of credits is a retryable 503.
+const FN_BUILD = "generate-career-snapshot.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -283,6 +285,13 @@ Analyze this resume from a senior recruiter's perspective and generate the Caree
       if (i <= 0) break;
     }
     if (!careerSnapshot) throw new UnusableModelOutput(`Career Snapshot reply incomplete: ${problems.slice(0, 3).join("; ")}`);
+
+    // A COPY MADE FOR A BROWSER IS KEPT (RC-S12-007): the recovery form is the
+    // only maker of a sale with no résumé bound, and its copy was never saved,
+    // recorded or mailed. Our own servers keep what they make themselves.
+    if (!isServiceCaller(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))) {
+      await keepPastBuyerCopy(supabase, { sessionId, productType: "career_snapshot", productName: "Career Snapshot", content: careerSnapshot });
+    }
 
     return new Response(
       JSON.stringify({

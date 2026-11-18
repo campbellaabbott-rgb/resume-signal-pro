@@ -254,7 +254,7 @@ export function buildSecRow(input: SecRowInput): { row: Record<string, unknown>;
   // The whole section is stored on every SEC row. When no Item 2.05 heading
   // was found (an exhibit, a PDF-only filing), the head of the document text
   // stands in and parse_confidence says 0 — the row still ships with a link.
-  const sectionText = parsed?.sectionText ?? (parsed ? headOf(input.documentHtml!) : "(document not read)");
+  const sectionText = parsed?.sectionText ?? (parsed ? headOf(input.documentHtml!) : PLACEHOLDER_SECTION);
   return {
     parsed,
     row: {
@@ -289,10 +289,62 @@ export function buildSecRow(input: SecRowInput): { row: Record<string, unknown>;
   };
 }
 
+/** The section text a row carries when its document was never read. */
+export const PLACEHOLDER_SECTION = "(document not read)";
+
 /** A primary-document status worth asking again: throttled, server-side or
- *  no answer. A 404/410 is the document's own answer and is stored as such. */
-export function documentReadIsTransient(status: number): boolean {
+ *  no answer. A 404/410 is the document's own answer and is stored as such.
+ *  A 403 from sec.gov is the SEC's fair-access block on the caller, not an
+ *  answer about the document (S14X-278): it was stored as a placeholder row
+ *  that no run ever read again. */
+export function documentReadIsTransient(status: number, url: string): boolean {
+  if (status === 403) return isSecHost(url);
   return status === 0 || status === 408 || status === 425 || status === 429 || status >= 500;
+}
+
+function isSecHost(url: string): boolean {
+  try {
+    const h = new URL(url).hostname.toLowerCase();
+    return h === "sec.gov" || h.endsWith(".sec.gov");
+  } catch {
+    return false;
+  }
+}
+
+// ── the re-read of stored rows ─────────────────────────────────────────────
+
+/**
+ * Stored rows worth reading again: a placeholder, a workforce event whose
+ * own text is a status update (S8-026), or a row an older parser read whose
+ * section was found (S14X-149, S14X-150: the classifier and the percentage
+ * changed with the version, and every ingest path skips an id it holds, so
+ * nothing else would re-read it). A row with no section found reads the
+ * same under any version and is not asked again.
+ */
+export function rereadCandidates(rows: Array<Record<string, unknown>>, after: string): Array<Record<string, unknown>> {
+  return rows
+    .filter((r) => String(r.filing_id) > after)
+    .filter((r) =>
+      (Number(r.parse_confidence) === 0 && r.section_text === PLACEHOLDER_SECTION) ||
+      (r.is_workforce_event === true && isStatusUpdate(typeof r.section_text === "string" ? r.section_text : null)) ||
+      (String(r.parser_version ?? "") !== PARSER_VERSION && Number(r.parse_confidence) > 0))
+    .sort((a, b) => String(a.filing_id).localeCompare(String(b.filing_id)));
+}
+
+/** At most this many stored rows are re-read by each daily audit run. */
+export const AUDIT_REREAD_MAX = 10;
+
+/**
+ * The daily audit's share of the re-read (S14X-278): at most `limit`
+ * candidates, the window rotating by day so a document that never reads
+ * cannot hold the head of the queue for ever.
+ */
+export function auditRereadPick(rows: Array<Record<string, unknown>>, today: string, limit = AUDIT_REREAD_MAX): Array<Record<string, unknown>> {
+  const all = rereadCandidates(rows, "");
+  if (all.length <= limit) return all;
+  const day = Math.floor(Date.parse(`${today}T00:00:00Z`) / 86_400_000);
+  const start = (day * limit) % all.length;
+  return [...all.slice(start), ...all.slice(0, start)].slice(0, limit);
 }
 
 function headOf(html: string): string {
@@ -370,9 +422,10 @@ export async function fetchFiling(
   let html: string | null = null;
   let note: string | null = coNote;
   if (rec.primaryDocument) {
-    const doc = await http.getText(primaryDocUrl(cik, adsh, rec.primaryDocument), { Accept: "text/html" });
+    const docUrl = primaryDocUrl(cik, adsh, rec.primaryDocument);
+    const doc = await http.getText(docUrl, { Accept: "text/html" });
     if (doc.status === 200) html = doc.text;
-    else if (documentReadIsTransient(doc.status)) {
+    else if (documentReadIsTransient(doc.status, docUrl)) {
       // NO ROW FOR A READ THAT MAY SUCCEED NEXT TIME (S8-108). Every ingest
       // path skips a filing_id it already holds, so a placeholder stored on
       // one throttled GET read "(document not read)" with no numbers forever.

@@ -23,6 +23,7 @@
  * them and moves the amount from pending_payout to paid_out in one statement.
  */
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { bootEmailOpsDb, migration, rows } from "./helpers/email-ops-db";
 
@@ -47,13 +48,23 @@ beforeAll(async () => {
 
 afterEach(() => { mail.length = 0; db.tables = {}; db.writes = []; db.rpcs = {}; });
 
-/** `approved` is the approved conversions' commissions; `pending` the affiliates column. */
-function install(opts: { approved?: number[]; pending?: number; expires?: string; status?: string } = {}) {
+/** sha256 hex: how 20261112120000 stores a session token. */
+const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
+
+/**
+ * `approved` is the approved conversions' commissions; `pending` the
+ * affiliates column; `flagged` the indexes of approved conversions held for
+ * review; `proven` whether the address is confirmed (default yes). The
+ * session row is stored as the round's migration stores it: by hash only.
+ */
+function install(opts: { approved?: number[]; pending?: number; expires?: string; status?: string; flagged?: number[]; proven?: boolean } = {}) {
   db.rpcs.mail_door_take = () => ({ data: true, error: null });
-  db.rows("affiliate_sessions").push({ session_token: TOKEN, affiliate_id: "aff-1", expires_at: opts.expires ?? new Date(Date.now() + 86_400_000).toISOString() });
+  db.rows("affiliate_sessions").push({ token_hash: sha256(TOKEN), session_token: null, affiliate_id: "aff-1", expires_at: opts.expires ?? new Date(Date.now() + 86_400_000).toISOString() });
   const approved = opts.approved ?? [500, 2500];
-  db.rows("affiliates").push({ id: "aff-1", email: "partner@example.com", status: opts.status ?? "active", pending_payout: opts.pending ?? approved.reduce((a, b) => a + b, 0) });
-  approved.forEach((c, i) => db.rows("affiliate_conversions").push({ id: `conv-${i + 1}`, affiliate_id: "aff-1", commission_amount: c, status: "approved" }));
+  db.rows("affiliates").push({ id: "aff-1", email: "partner@example.com", status: opts.status ?? "active", pending_payout: opts.pending ?? approved.reduce((a, b) => a + b, 0),
+    email_confirmed_at: opts.proven === false ? null : "2026-11-01T00:00:00Z" });
+  approved.forEach((c, i) => db.rows("affiliate_conversions").push({ id: `conv-${i + 1}`, affiliate_id: "aff-1", commission_amount: c, status: "approved",
+    review_flags: opts.flagged?.includes(i) ? ["affiliate-network"] : [] }));
 }
 const post = (body: unknown) => handler(new Request("https://harness.supabase.co/functions/v1/affiliate-payout-request", {
   method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.5" }, body: JSON.stringify(body),
@@ -172,4 +183,61 @@ describe("the table, applied to pglite (20261008124000)", () => {
     expect(acl).toEqual({ anon: false, auth: false, svc: true });
     await pg.exec(migration("20261008124000"));
   }, 60_000);
+});
+
+/**
+ * BUG ROUND 2026-11-08 (S14X-093, S14X-115, S14X-116, RC-S13-063). The session
+ * is found by the sha256 of its token; an unproven address cannot be paid; a
+ * conversion held for review is never requested; and a refusal names itself
+ * in the body, so the page never reads "your balance changed" as "a request is
+ * already open". Until the round's migrations apply, a missing column (42703)
+ * reads as main read it.
+ */
+describe("the round's session, address and review rules", () => {
+  it("a token stored only as its hash files the request; the token itself is never looked up", async () => {
+    install({ approved: [3000] });
+    const res = await post({ sessionToken: TOKEN });
+    expect(await res.json()).toMatchObject({ status: "requested", amountCents: 3000 });
+  });
+
+  it("an unproven address is answered 403 unproven_address, and nothing is written or mailed", async () => {
+    install({ approved: [3000], proven: false });
+    const res = await post({ sessionToken: TOKEN });
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ status: "unproven_address" });
+    expect(requests()).toEqual([]);
+    expect(mail).toEqual([]);
+  });
+
+  it("a conversion held for review is left out of the request", async () => {
+    install({ approved: [3000, 2500], flagged: [1] });
+    const res = await post({ sessionToken: TOKEN });
+    expect(await res.json()).toMatchObject({ status: "requested", amountCents: 3000 });
+    expect(requests().map((r) => r.conversion_ids)).toEqual([["conv-1"]]);
+  });
+
+  it("held for review alone is under the minimum: nothing is requested", async () => {
+    install({ approved: [3000], flagged: [0] });
+    expect((await post({ sessionToken: TOKEN })).status).toBe(400);
+    expect(requests()).toEqual([]);
+  });
+
+  it("a balance that changed under the request (23514) says balance_changed, not already_requested", async () => {
+    install({ approved: [3000] });
+    db.faults.push({ table: "affiliate_payout_requests", op: "insert", error: { code: "23514", message: "check violation" } });
+    const res = await post({ sessionToken: TOKEN });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ status: "balance_changed" });
+  });
+
+  it("before the migrations apply (42703 on each new column) it reads the plain token and main's columns", async () => {
+    install({ approved: [3000] });
+    db.rows("affiliate_sessions")[0].session_token = TOKEN;
+    for (const table of ["affiliate_sessions", "affiliates", "affiliate_conversions"]) {
+      db.faults.push({ table, op: "select", error: { code: "42703", message: "column does not exist" } });
+    }
+    const res = await post({ sessionToken: TOKEN });
+    expect(await res.json()).toMatchObject({ status: "requested", amountCents: 3000 });
+    expect(db.faults).toEqual([]);
+  });
 });

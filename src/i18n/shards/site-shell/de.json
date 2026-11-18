@@ -1,0 +1,29 @@
+{
+  "siteShell": {
+    "crashHome": "Zur Startseite",
+    "newVersion": {
+      "loading": "Die neue Version wird geladen …",
+      "reload": "Jetzt neu laden"
+    },
+    "notFound": {
+      "title": "Seite nicht gefunden",
+      "jobs": "Offene Stellen ansehen",
+      "pricing": "Preise ansehen"
+    },
+    "titles": {
+      "account": "Ihr Konto",
+      "auth": "Anmelden",
+      "shortlist": "Shortlist für Arbeitgeber",
+      "success": "Ihre vollständige Analyse",
+      "productSuccess": "Ihr Kauf",
+      "paymentFailed": "Zahlung nicht abgeschlossen",
+      "affiliates": "Partnerprogramm",
+      "affiliateRedirect": "Weiterleitung …",
+      "agent": "Mit Ihrer eigenen KI bewerben",
+      "analytics": "Analysen",
+      "errors": "Fehlerprotokoll",
+      "healthCheck": "Systemprüfung",
+      "scanMetrics": "Scan-Kennzahlen"
+    }
+  }
+}

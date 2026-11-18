@@ -17,7 +17,8 @@
  *   - the request form says a link is on its way (if the address can receive
  *     our mail: the server's answer is the same either way) and never shows a
  *     key;
- *   - the fix-plan sequence is started only by its page's button.
+ *   - the fix-plan sequence, withdrawn by the owner (S14X-012 option B),
+ *     is started by nothing: its page says so and asks the server nothing.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
@@ -172,60 +173,22 @@ describe("/market-pulse/confirm: subscribed only by the person's click", () => {
   });
 });
 
-describe("/fix-plan/confirm: the sequence starts only on the person's click", () => {
+describe("/fix-plan/confirm: the sequence is withdrawn (S14X-012, the owner's option B)", () => {
   const SIGNED = `eyJ2IjoxfQ_-abc.${"0f".repeat(32)}`;
 
-  it("waits for the button, then starts it with the plan from the fragment", async () => {
+  it("a button from a mail already sent says nothing was started, asks the server nothing and forgets the plan", async () => {
     window.history.replaceState(null, "", `/fix-plan/confirm#d=${SIGNED}`);
-    invoke.mockResolvedValue({ data: { success: true, queued: true }, error: null });
     page(<FixPlanConfirm />);
-    const button = await screen.findByRole("button", { name: /yes, start the emails/i });
-    expect(invoke, "the page started the sequence on load").not.toHaveBeenCalled();
-    fireEvent.click(button);
-    await waitFor(() => expect(screen.getByText(/The first email arrives in two days/)).toBeInTheDocument());
-    expect(invoke).toHaveBeenCalledWith("send-scan-report", { body: { action: "confirm-drip", token: SIGNED, language: "en" } });
-    // Cleared by a passive effect after the success render: waited for.
+    expect(screen.getByText(/no longer send the fix-plan emails/)).toBeInTheDocument();
+    expect(screen.queryByRole("button"), "the page offers a sequence nothing sends").toBeNull();
     await waitFor(() => expect(window.location.hash).toBe(""));
+    expect(invoke).not.toHaveBeenCalled();
   });
 
-  it("a sequence already running this month, or an address that opted out, is said plainly", async () => {
-    for (const [reason, text] of [["already_started", /already started for this address this month/], ["opted_out", /unsubscribed from our emails earlier/]] as const) {
-      window.history.replaceState(null, "", `/fix-plan/confirm#d=${SIGNED}`);
-      invoke.mockResolvedValue({ data: { success: true, queued: false, reason }, error: null });
-      page(<FixPlanConfirm />);
-      fireEvent.click(await screen.findByRole("button", { name: /yes, start the emails/i }));
-      await waitFor(() => expect(screen.getByText(text)).toBeInTheDocument());
-      cleanup();
-    }
-  });
-
-  it("an expired or forged link is named as such, and no button can resend it", async () => {
-    window.history.replaceState(null, "", `/fix-plan/confirm#d=${SIGNED}`);
-    invoke.mockResolvedValue({ data: null, error: httpError(410, { success: false, error: "This link has expired or is not valid." }) });
+  it("without a plan it says the same, with nothing to press", () => {
     page(<FixPlanConfirm />);
-    fireEvent.click(await screen.findByRole("button", { name: /yes, start the emails/i }));
-    await waitFor(() => expect(screen.getByText(/expired or is not valid/)).toBeInTheDocument());
-    expect(screen.queryByRole("button", { name: /yes, start the emails/i })).toBeNull();
-  });
-
-  it("a failed start asks for another press only when another press can work", async () => {
-    for (const [body, text, retryWorks] of [
-      [{ success: false, error: "Could not start it right now. Try the button again shortly." }, /Try the button again shortly/, true],
-      [{ success: false, error: "Could not start the whole sequence.", retry: false }, /will not restart it this month/, false],
-    ] as const) {
-      window.history.replaceState(null, "", `/fix-plan/confirm#d=${SIGNED}`);
-      invoke.mockResolvedValue({ data: null, error: httpError(503, body) });
-      page(<FixPlanConfirm />);
-      fireEvent.click(await screen.findByRole("button", { name: /yes, start the emails/i }));
-      await waitFor(() => expect(screen.getByText(text)).toBeInTheDocument());
-      if (!retryWorks) expect(screen.queryByText(/Try the button again/), "the page asked for a press that can only answer already started").toBeNull();
-      cleanup();
-    }
-  });
-
-  it("without a plan there is nothing to press", () => {
-    page(<FixPlanConfirm />);
-    expect(screen.getByText(/needs the button from your report email/)).toBeInTheDocument();
+    expect(screen.getByText(/no longer send the fix-plan emails/)).toBeInTheDocument();
     expect(screen.queryByRole("button")).toBeNull();
+    expect(invoke).not.toHaveBeenCalled();
   });
 });

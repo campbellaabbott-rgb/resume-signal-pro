@@ -1,0 +1,32 @@
+{
+  "ingestParsers": {
+    "refusal": {
+      "emptyFile": "Walang laman ang file na ito",
+      "emptyFileDescription": "Walang mababasa rito. Tingnan ang file at i-upload ulit, o i-paste ang teksto ng iyong resume.",
+      "passwordProtected": "May password ang PDF na ito",
+      "passwordProtectedDescription": "Alisin ang password (o mag-export ng kopyang walang proteksyon) at i-upload ulit, o i-paste ang teksto ng iyong resume.",
+      "invalidPdf": "Hindi namin mabuksan ang PDF na ito",
+      "invalidPdfDescription": "Maaaring sira ito, o ibang uri ng file na pinalitan ng pangalan na .pdf. I-export ulit, mag-upload ng .docx, o i-paste ang teksto ng iyong resume.",
+      "tooManyPages": "Masyadong mahaba ang PDF na ito",
+      "tooManyPagesDescription": "May {{pages}} pahina ito at hanggang {{max}} lang ang binabasa namin. I-upload lang ang iyong resume, hindi ang pinagsamang dokumento.",
+      "scannedOrEmpty": "Walang mababasang teksto ang PDF na ito",
+      "scannedOrEmptyDescription": "Mukhang na-scan na larawan ito. Mag-upload ng PDF na na-export mula sa Word o Google Docs, ng .docx, o i-paste ang teksto ng iyong resume.",
+      "legacyDoc": "Hindi namin mabuksan ang Word file na ito",
+      "legacyDocDescription": "Lumang .doc file ito o dokumentong may password. I-save bilang .docx na walang proteksyon (File > Save As sa Word), o i-paste ang teksto ng iyong resume.",
+      "noText": "Walang nakitang teksto sa dokumentong ito",
+      "noTextDescription": "Kung nasa loob ng larawan o text box ang iyong resume, i-paste na lang ang teksto.",
+      "docxGarbled": "Hindi mabasa ang mga titik ng dokumentong ito",
+      "docxGarbledDescription": "Sira ang lumabas na teksto, kadalasan dahil sa sira o naka-embed na font. I-save ulit ang dokumento, o i-paste ang teksto ng iyong resume.",
+      "webExport": "Na-save ang dokumentong ito bilang web content",
+      "webExportDescription": "Hindi namin ito mabasa nang direkta. Buksan ito sa Word at piliin ang File > Save As > Word Document (.docx), o i-paste ang teksto ng iyong resume.",
+      "rateLimited": "Masyadong maraming upload ngayon",
+      "rateLimitedDescription": "Maghintay muna sandali at subukan ulit, o i-paste ang teksto ng iyong resume."
+    },
+    "notice": {
+      "rtlUnreliable": "Maaaring wala sa ayos ang ilang titik",
+      "rtlUnreliableDescription": "Hindi maaasahang naiingatan ng mga PDF ang magkakadugtong na titik na Arabic, kaya maaaring wala sa ayos ang ilang bahagi ng tekstong ito. Para sa pinakatumpak na scan, mag-upload ng .docx o i-paste ang teksto ng iyong resume.",
+      "imagePagesSkipped": "May mga pahinang walang teksto",
+      "imagePagesSkippedDescription": "Mga pahinang walang mababasang teksto: {{pages}}. Binasa namin ang iba. Kung bahagi ng iyong resume ang mga pahinang iyon, mag-upload ng .docx o i-paste ang teksto."
+    }
+  }
+}

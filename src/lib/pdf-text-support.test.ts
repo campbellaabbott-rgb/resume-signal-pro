@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { hasUnsupportedPdfCharacters, anyFieldHasUnsupportedPdfCharacters } from "./pdf-text-support";
+import { hasUnsupportedPdfCharacters, anyFieldHasUnsupportedPdfCharacters, sanitizeExportText, unsupportedPdfCharacters } from "./pdf-text-support";
 
 describe("hasUnsupportedPdfCharacters", () => {
   it("does not flag plain English text", () => {
@@ -50,5 +50,28 @@ describe("anyFieldHasUnsupportedPdfCharacters", () => {
 
   it("ignores undefined/null/empty fields", () => {
     expect(anyFieldHasUnsupportedPdfCharacters([undefined, null, ""])).toBe(false);
+  });
+});
+
+// S14X-034: what an export draws first passes through sanitizeExportText, so a
+// character nobody can see never decides the file format. The check itself
+// is unchanged for the career-tools exporters, which do not sanitise.
+describe("sanitizeExportText", () => {
+  it("removes what cannot be seen and keeps what can", () => {
+    expect(sanitizeExportText("Led\u200B the team\uFEFF")).toBe("Led the team");
+    expect(sanitizeExportText("Résumé — “quoted” € 5½")).toBe("Résumé — “quoted” € 5½");
+  });
+
+  it("turns the soft breaks into line breaks", () => {
+    expect(sanitizeExportText("one\u000Btwo\u2028three")).toBe("one\ntwo\nthree");
+  });
+
+  it("leaves the check itself as it was: a zero-width space alone is still undrawable", () => {
+    expect(unsupportedPdfCharacters("a\u200Bb")).toEqual(["\u200B"]);
+    expect(unsupportedPdfCharacters(sanitizeExportText("a\u200Bb"))).toEqual([]);
+  });
+
+  it("handles an empty string", () => {
+    expect(sanitizeExportText("")).toBe("");
   });
 });

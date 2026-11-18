@@ -1,0 +1,32 @@
+{
+  "ingestParsers": {
+    "refusal": {
+      "emptyFile": "Dit bestand is leeg",
+      "emptyFileDescription": "Er staat niets in om te lezen. Controleer het bestand en upload het opnieuw, of plak de tekst van je cv.",
+      "passwordProtected": "Deze PDF is beveiligd met een wachtwoord",
+      "passwordProtectedDescription": "Verwijder het wachtwoord (of exporteer een onbeveiligde kopie) en upload het opnieuw, of plak de tekst van je cv.",
+      "invalidPdf": "We kunnen deze PDF niet openen",
+      "invalidPdfDescription": "Hij is misschien beschadigd, of het is een ander soort bestand dat naar .pdf is hernoemd. Exporteer hem opnieuw, upload een .docx of plak de tekst van je cv.",
+      "tooManyPages": "Deze PDF is te lang",
+      "tooManyPagesDescription": "Hij heeft {{pages}} pagina's en we lezen er maximaal {{max}}. Upload alleen je cv, geen samengevoegd document.",
+      "scannedOrEmpty": "Deze PDF bevat geen leesbare tekst",
+      "scannedOrEmptyDescription": "Het lijkt een gescande afbeelding. Upload een PDF die uit Word of Google Docs is geëxporteerd, een .docx, of plak de tekst van je cv.",
+      "legacyDoc": "We kunnen dit Word-bestand niet openen",
+      "legacyDocDescription": "Het is een ouder .doc-bestand of een met een wachtwoord beveiligd document. Sla het op als onbeveiligde .docx (Bestand > Opslaan als in Word) of plak de tekst van je cv.",
+      "noText": "Geen tekst gevonden in dit document",
+      "noTextDescription": "Staat je cv in een afbeelding of een tekstvak, plak dan de tekst.",
+      "docxGarbled": "De letters in dit document kunnen niet worden gelezen",
+      "docxGarbledDescription": "De tekst kwam beschadigd uit, meestal door een kapot of ingesloten lettertype. Sla het document opnieuw op of plak de tekst van je cv.",
+      "webExport": "Dit document is opgeslagen als webinhoud",
+      "webExportDescription": "We kunnen het niet direct lezen. Open het in Word en kies Bestand > Opslaan als > Word-document (.docx), of plak de tekst van je cv.",
+      "rateLimited": "Op dit moment te veel uploads",
+      "rateLimitedDescription": "Wacht even en probeer het opnieuw, of plak de tekst van je cv."
+    },
+    "notice": {
+      "rtlUnreliable": "Sommige letters staan mogelijk in de verkeerde volgorde",
+      "rtlUnreliableDescription": "PDF's bewaren verbonden Arabische letters niet betrouwbaar, dus delen van deze tekst kunnen in de verkeerde volgorde staan. Upload voor de nauwkeurigste scan een .docx of plak de tekst van je cv.",
+      "imagePagesSkipped": "Sommige pagina's bevatten geen tekst",
+      "imagePagesSkippedDescription": "Pagina's zonder leesbare tekst: {{pages}}. De rest hebben we gelezen. Horen die pagina's bij je cv, upload dan een .docx of plak de tekst."
+    }
+  }
+}

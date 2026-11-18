@@ -41,6 +41,8 @@ function stubTable() {
 
 import { EmailReportCapture } from "../components/EmailReportCapture";
 import FixPlanConfirm from "../pages/FixPlanConfirm";
+import mailDe from "@/i18n/shards/mail/de.json";
+import mailEn from "@/i18n/shards/mail/en.json";
 
 const LOCALES = resolve(__dirname, "../../src/i18n/locales");
 const payload = {
@@ -81,13 +83,15 @@ describe("the two presses that start a report mail", () => {
     expect((invoke.mock.calls[0] as [string, { body: Record<string, unknown> }])[1].body.language).toBe("en");
   });
 
-  it("the fix-plan button sends the page's language beside its token", async () => {
+  it("the fix-plan page, the sequence withdrawn (S14X-012 option B), says so from the mail shard and asks nothing", async () => {
     await i18n.changeLanguage("de");
     const token = `eyJ2IjoxfQ_-abc.${"0f".repeat(32)}`;
     window.history.replaceState(null, "", `/fix-plan/confirm#d=${token}`);
     render(<HelmetProvider><MemoryRouter><FixPlanConfirm /></MemoryRouter></HelmetProvider>);
-    fireEvent.click(await screen.findByRole("button", { name: /ja, e-mails starten/i }));
-    await waitFor(() => expect(invoke).toHaveBeenCalled());
-    expect(invoke).toHaveBeenCalledWith("send-scan-report", { body: { action: "confirm-drip", token, language: "de" } });
+    // The German sentence once the lazy shard has loaded; the English default before it.
+    const said = document.querySelector('[data-fix-plan="withdrawn"]')?.textContent;
+    expect([mailDe.mailPrefs.fixPlanWithdrawn, mailEn.mailPrefs.fixPlanWithdrawn]).toContain(said);
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(invoke).not.toHaveBeenCalled();
   });
 });

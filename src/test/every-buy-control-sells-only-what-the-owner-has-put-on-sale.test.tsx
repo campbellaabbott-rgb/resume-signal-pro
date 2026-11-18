@@ -204,7 +204,7 @@ describe("G2 and G2b off: nothing priced anywhere on the scanner or the Pro card
     const card = proCard();
     expect(screen.getByRole("button", { name: /Go Pro/ })).not.toBeNull();
     expect(card.textContent).not.toMatch(INCLUDED);
-    expect(card.textContent).toMatch(/writing tools/);
+    expect(card.textContent).toMatch(/writing tool/);
   });
 });
 

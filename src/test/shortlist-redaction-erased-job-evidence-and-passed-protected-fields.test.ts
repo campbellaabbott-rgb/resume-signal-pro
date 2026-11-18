@@ -8,7 +8,7 @@
 // Education-first section went the wrong way.
 
 import { describe, it, expect } from "vitest";
-import { redactForScoring } from "../../supabase/functions/_shared/redaction";
+import { redactForScoring } from "../../supabase/functions/shortlist-evaluate/redaction";
 
 const run = (text: string) => redactForScoring(text);
 const has = (r: ReturnType<typeof run>, f: string) => r.exclusionsApplied.some((e) => e.feature === f);
@@ -120,5 +120,49 @@ describe("an Education-first résumé keeps every employment year", () => {
     const r = run("Jane Okafor\nEducation\nB.S. Computer Science, 2014\nClinical Experience\nRN, Mercy, 2016-2024");
     expect(r.redacted).toContain("RN, Mercy, 2016-2024");
     expect(r.redacted).not.toMatch(/2014/);
+  });
+});
+
+describe("no rule reads past the line it starts on (S14X-024)", () => {
+  it("the line after an affinity line survives whole", () => {
+    const r = run("Jane Okafor\nAFFILIATIONS\nNational Society of Black Engineers\nPMP Certified Project Manager\nWomen in\nTechnology Leadership Program");
+    expect(r.redacted).toContain("PMP Certified Project Manager");
+    expect(r.redacted).toContain("Technology Leadership Program");
+    expect(r.redacted).not.toMatch(/Black Engineers/);
+  });
+
+  it("'as a' at a line end does not take the next line", () => {
+    const r = run("Jane Okafor\nI joined as a\nBlack Belt trainer");
+    expect(r.redacted).toContain("Black Belt trainer");
+  });
+
+  it("a church membership does not reach into the next line", () => {
+    const r = run("Jane Okafor\nVolunteer at the\nTemple University Hospital pharmacy");
+    expect(r.redacted).toContain("Temple University Hospital pharmacy");
+  });
+});
+
+describe("role nouns and named events are job evidence (S14X-025)", () => {
+  const lines = ["Worked as a Japanese interpreter for Toyota", "Certified as a Black Belt in Six Sigma", "Spoke at Black Hat USA Conference 2019", "Served as an Indian market specialist"];
+  it("keeps each line verbatim and logs no identity or affinity exclusion for them", () => {
+    const r = run(`Jane Okafor\nEXPERIENCE\n${lines.join("\n")}`);
+    for (const l of lines) expect(r.redacted).toContain(l);
+    expect(has(r, "identity_self_description")).toBe(false);
+    expect(has(r, "affinity_group")).toBe(false);
+  });
+
+  it("'As a Black woman' is still self-description and goes", () => {
+    const r = run("Jane Okafor\nSUMMARY\nAs a Black woman in tech, I mentor new engineers.");
+    expect(has(r, "identity_self_description")).toBe(true);
+    expect(r.redacted).not.toMatch(/Black woman/);
+    expect(r.redacted).toContain("in tech, I mentor new engineers.");
+  });
+});
+
+describe("a birth date with a capitalised month goes (S14X-288)", () => {
+  it("'Born: March 3, 1958', 'D.O.B. 3 March 1958', 'born on March 3, 1958' and 'D. O. B.' lose the year", () => {
+    const r = run("Jane Okafor\nBorn: March 3, 1958\nD.O.B. 3 March 1958\nborn on March 3, 1958\nD. O. B. 3 March 1958");
+    expect(r.redacted).not.toMatch(/1958/);
+    expect(r.exclusionsApplied.find((e) => e.feature === "date_of_birth")?.count).toBe(4);
   });
 });

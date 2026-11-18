@@ -22,7 +22,10 @@ import { MCP_TOOLS } from "../config/mcp-tools";
  * The same file carries the site's second moat tool, employer_hiring_record,
  * whose description promises never to call a takedown a hire and never to sum
  * one board with another; those are pinned here too, to the words the site's
- * own locale file uses for the same half of the same ledger.
+ * own locale file uses for the same half of the same ledger. Since M2-01 its
+ * rows print what the site's employer page prints: the fill curve's role
+ * counts and median, through the site's gate, and none of the health RPC's
+ * takedown-event counts or the two medians the site retired.
  *
  * Everything below is a PROPERTY read off comment-stripped code, and every
  * property has a teeth case that hands the routine a broken copy and requires
@@ -54,9 +57,11 @@ function newestDefining(fnName: string): string {
 }
 const GROWTH_MIG = newestDefining("get_company_growth");
 const HEALTH_MIG = newestDefining("get_company_hiring_health");
+const FILL_MIG = newestDefining("get_company_fill_curve");
 const MCP_RAW = read("supabase/functions/agent-mcp/index.ts");
 const GROWTH_RAW = read(GROWTH_MIG);
 const HEALTH_RAW = read(HEALTH_MIG);
+const FILL_RAW = read(FILL_MIG);
 const EN = JSON.parse(read("src/i18n/locales/en.json")) as Record<string, Record<string, string>>;
 
 // ── the parsers, each a pure function of one source text ───────────────────
@@ -201,7 +206,7 @@ describe("the bars an agent is told are the bars the verdict uses", () => {
     expect(/\b\d+%/.exec(GROWTH_TOOL)?.[0], "a typed percentage").toBeUndefined();
     // The reason enum in the schema is spread from the same constant the
     // migration is pinned to, and the tool declares that schema.
-    expect(CONSTANTS).toMatch(/unknown_reason: \{\s*type: \["string", "null"\], enum: \[\.\.\.GROWTH_UNKNOWN_REASONS, null\]/);
+    expect(CONSTANTS).toMatch(/unknown_reason: \{\s*type: \["string", "null"\], enum: \[\.\.\.GROWTH_UNKNOWN_REASONS, (?:SHARED_TOKEN, )?null\]/);
     expect(GROWTH_TOOL).toMatch(/items: GROWTH_ROW_SCHEMA/);
     expect(GROWTH_TOOL).toMatch(/outputSchema: \{/);
     // The bars an answer carries are the same constant, name for name.
@@ -239,6 +244,12 @@ describe("the hiring record says what it is and is not, in the site's own words"
   const returns = /RETURNS TABLE\(([^)]*)\)/.exec(health)![1];
   const rpcColumns = [...returns.matchAll(/(\w+)\s+(?:text|integer|numeric)/g)].map((m) => m[1]);
   const windowFromName = Number(/closed_(\d+)d/.exec(returns)![1]);
+  const fillReturns = /RETURNS TABLE \(([\s\S]*?)\)\s*LANGUAGE sql/.exec(stripSql(FILL_RAW))![1];
+  const fillColumns = [...fillReturns.matchAll(/^\s*(\w+)\s+(?:text|int|date|numeric|boolean|timestamptz)/gm)].map((m) => m[1]);
+  /** The health columns a row prints as they are; the rest of the record comes through the gate. */
+  const KEPT_FROM_HEALTH = ["company_token", "open_roles", "tracking_days", "feed_total"];
+  /** The fill-curve figures a row prints, each only where the site's gate admits it. */
+  const GATED_FROM_FILL = ["filled_roles_90d", "relisted_roles_90d", "median_days_to_fill"];
 
   it("the migrations the mirror is read from are resolved, and a re-anchor is a visible diff here", () => {
     // Resolved by scanning, asserted by name: when a newer migration redefines
@@ -254,17 +265,32 @@ describe("the hiring record says what it is and is not, in the site's own words"
     // Every interval the RPC's closed CTE counts over is the same window.
     const closedCte = between(health, "closed AS (", "ver AS (");
     for (const m of closedCte.matchAll(/interval '(\d+) days'/g)) expect(Number(m[1])).toBe(windowFromName);
-    expect(CONSTANTS).toMatch(/\[`closed_\$\{HIRING_RECORD_WINDOW_DAYS\}d`\]/);
     expect(RECORD_RUNNER).toMatch(/const closedCol = `closed_\$\{HIRING_RECORD_WINDOW_DAYS\}d`/);
+    // The role counts a row prints are the fill curve's columns over the same window.
+    for (const col of [`filled_roles_${srv}d`, `relisted_roles_${srv}d`]) expect(fillColumns, `the fill curve returns ${col}`).toContain(col);
   });
 
-  it("every column the RPC returns is described in the row schema, under the RPC's own name", () => {
+  it("the row schema describes what a row prints, each under its RPC's own name, and none of the figures the site does not print", () => {
     const schema = between(CONSTANTS, "const HIRING_RECORD_ROW_SCHEMA = {", "const GROWTH_ROW_SCHEMA");
-    for (const col of rpcColumns) {
-      const key = col.replace(/_\d+d$/, `_\${HIRING_RECORD_WINDOW_DAYS}d`);
-      const re = /\$\{/.test(key) ? new RegExp(`\\[\`${key.replace(/[$]/g, "\\$").replace(/[{}]/g, (c) => `\\${c}`)}\`\\]: \\{`) : new RegExp(`\\n    ${key}: \\{`);
-      expect(schema, `column ${col} is returned by the RPC and must be described`).toMatch(re);
+    for (const col of KEPT_FROM_HEALTH) {
+      expect(rpcColumns, `the health RPC returns ${col}`).toContain(col);
+      expect(schema, `column ${col} is printed and must be described`).toMatch(new RegExp(`\\n    ${col}: \\{`));
     }
+    for (const col of GATED_FROM_FILL) {
+      expect(fillColumns, `the fill curve returns ${col}`).toContain(col);
+      expect(schema, `column ${col} is printed where the gate admits it and must be described`).toMatch(new RegExp(`\\n    ${col}: \\{`));
+    }
+    // The takedown EVENT counts and the two medians the site retired are
+    // neither described nor written: the row is an explicit field list, never
+    // the RPC row spread.
+    const dropped = rpcColumns.filter((c) => !KEPT_FROM_HEALTH.includes(c));
+    expect(dropped.length).toBeGreaterThanOrEqual(4);
+    for (const col of dropped) {
+      const key = col.replace(/_\d+d$/, "_");
+      expect(schema, `${col} is described`).not.toContain(key);
+      expect(RECORD_RUNNER, `${col} is written into a row`).not.toMatch(new RegExp(`\\n\\s+${col}:`));
+    }
+    expect(RECORD_RUNNER, "the RPC row is spread into the answer").not.toMatch(/\.\.\.r\b/);
     // The growth RPC's columns likewise, every one.
     const growthReturns = /RETURNS TABLE \(([\s\S]*?)\)\s*LANGUAGE sql/.exec(stripSql(GROWTH_RAW))![1];
     const growthCols = [...growthReturns.matchAll(/^\s*(\w+)\s+(?:text|int|date|numeric|boolean)/gm)].map((m) => m[1]);
@@ -298,8 +324,13 @@ describe("the hiring record says what it is and is not, in the site's own words"
       expect(/\bhired\b/i.exec(t.body)?.[0], `${t.name} mirror body says "hired"`).toBeUndefined();
       expect(t.body, `${t.name} mirror body must say per board`).toMatch(/board/);
     }
-    // Per row, not only at the top: every row carries the basis.
-    expect(RECORD_RUNNER).toMatch(/basis: HIRING_RECORD_BASIS,/);
+    // Per row, not only at the top: every row carries a basis. Since M2-01
+    // (OD2-8) that is the short per-row constant, which keeps the four facts.
+    expect(RECORD_RUNNER).toMatch(/basis: HIRING_RECORD(?:_ROW)?_BASIS,/);
+    const rowBasis = between(CONSTANTS, "const HIRING_RECORD_ROW_BASIS =", "const HIRING_RECORD_UNKNOWN");
+    for (const must of [/One board, never summed across an employer's boards/, /A takedown is not a hire/, /re-list count is a floor/, /stated dates only and is a lower bound/]) {
+      expect(rowBasis, `the per-row basis must say ${must}`).toMatch(must);
+    }
   });
 
   it("what it says about a big board's silence is the site's current sentence, not a stale claim about the instrument", () => {
@@ -322,15 +353,17 @@ describe("the hiring record says what it is and is not, in the site's own words"
     }
   });
 
-  it("the basis claims no read-quality gate the RPC's closed CTE does not apply", () => {
+  it("the basis claims no read-quality gate the record does not apply", () => {
     // "on days we read it in full" qualifies the GROWTH half in the locale
-    // file (a per-day read-quality gate the growth RPC applies); the closed
-    // CTE filters on superseded / suspect / dark-batch / lap_backfill only.
-    const closedCte = between(health, "closed AS (", "ver AS (");
-    expect(closedCte).not.toMatch(/board_state|state\s*=\s*'ok'/);
+    // file (a per-day read-quality gate the growth RPC applies). The record's
+    // figures are admitted by the site's gate, which the basis names, and the
+    // old claim that every board is read "across a provable full lap" was
+    // false on lap boards and shared tokens (M2-01).
     const basisConst = between(CONSTANTS, "const HIRING_RECORD_BASIS =", "const HIRING_RECORD_UNKNOWN");
     expect(basisConst).not.toMatch(/read it in full/);
-    expect(basisConst).toMatch(/lap_backfill|full lap|provable full/);
+    expect(basisConst).not.toMatch(/provable full lap/);
+    expect(basisConst).toMatch(/only where the site's own gate admits it/);
+    expect(basisConst).toMatch(/gate\.sentence/);
   });
 
   it("TEETH: a copy that brings the stale sentence back, and one that borrows the growth half's gate, are both caught", () => {
@@ -342,7 +375,7 @@ describe("the hiring record says what it is and is not, in the site's own words"
     expect(stale).toMatch(/no closures by design/);
     expect(stale).not.toContain(fragment);
     const basisConst = between(CONSTANTS, "const HIRING_RECORD_BASIS =", "const HIRING_RECORD_UNKNOWN");
-    const borrowed = basisConst.replace("on a board read to the end", "on days we read it in full");
+    const borrowed = basisConst.replace("a board we read to its end", "on days we read it in full");
     expect(borrowed).not.toBe(basisConst);
     expect(borrowed).toMatch(/read it in full/);
   });
@@ -357,7 +390,7 @@ describe("the hiring record says what it is and is not, in the site's own words"
     // unknown is one of two states and carries a reason from a named vocabulary.
     expect(RECORD_RUNNER).toMatch(/record: unknownReason \? "unknown" : "observed",/);
     expect(CONSTANTS).toMatch(/enum: \["observed", "unknown"\]/);
-    expect(CONSTANTS).toMatch(/enum: \[\.\.\.Object\.keys\(HIRING_RECORD_UNKNOWN\), null\]/);
+    expect(CONSTANTS).toMatch(/enum: \[\.\.\.Object\.keys\(HIRING_RECORD_UNKNOWN\), (?:SHARED_TOKEN, )?null\]/);
     const unknown = between(CONSTANTS, "const HIRING_RECORD_UNKNOWN = {", "} as const;");
     const reasons = [...unknown.matchAll(/^\s{2}([a-z_]+):/gm)].map((m) => m[1]);
     expect(reasons).toEqual(["no_record", "no_closures_observed"]);

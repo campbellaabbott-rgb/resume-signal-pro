@@ -333,14 +333,15 @@ describe("a chain that ran out of time answers 504, retryable, and the same purc
     expect(h.db.rows("purchased_content")).toHaveLength(0);
   });
 
-  it("a gateway refusal is answered as the single call answered it", async () => {
-    for (const [status, want] of [[429, 429], [402, 503], [500, 500]] as const) {
+  it("a gateway refusal: busy or out of credit is a try-again 503 (S14X-110), anything else is answered as the call answered it", async () => {
+    for (const [status, want, retryable] of [[429, 503, true], [402, 503, true], [500, 500, undefined]] as const) {
       h.reset();
       buy("cs_refused");
       reply = async () => ({ response: new Response(JSON.stringify({ error: "upstream" }), { status }), modelUsed: PRO });
       const r = await h.call({ resumeText: RESUME, sessionId: "cs_refused" });
       expect(r.status, `a ${status} from the gateway`).toBe(want);
-      expect(r.json.retryable).toBeUndefined();
+      expect(r.json.retryable, `a ${status} from the gateway`).toBe(retryable);
+      if (status === 429) expect(r.json.code).toBe("model_busy");
       expect(h.db.rows("purchased_content")).toHaveLength(0);
     }
   });
@@ -372,7 +373,10 @@ describe("a LinkedIn or posting section is optional in the old object: its failu
       expect(r.json.linkedInAnalysis).toEqual(instance(oldParams("both").properties!.linkedInAnalysis));
       expect(r.json.optimizedBullets).toBeDefined();
       // What is left is still the old object for the input that was answered.
-      expect(keyTree(without(r.json, "shareId", "emailSent", "hasLinkedIn", "hasJobDescription"))).toEqual(schemaKeyTree(oldParams("linkedin")));
+      // It says so (S14X-041): no posting comparison, and the section named.
+      expect(r.json.hasJobDescription).toBe(false);
+      expect(r.json.missingSections).toEqual(["jobDescription"]);
+      expect(keyTree(without(r.json, "shareId", "emailSent", "hasLinkedIn", "hasJobDescription", "missingSections"))).toEqual(schemaKeyTree(oldParams("linkedin")));
       expect(h.db.rows("purchased_content")).toHaveLength(1);
       expect(h.db.rows("resume_analyses")[0].analysis_result).toEqual(without(r.json, "shareId", "emailSent"));
     });
@@ -389,7 +393,8 @@ describe("a LinkedIn or posting section is optional in the old object: its failu
     expect(r.json.linkedInAnalysis).toBeUndefined();
     // AnalysisResults prints "LinkedIn included" and "Full profile breakdown" from this flag.
     expect(r.json.hasLinkedIn, "the page would say LinkedIn is included with no LinkedIn section").toBe(false);
-    expect(keyTree(without(r.json, "shareId", "emailSent", "hasLinkedIn", "hasJobDescription"))).toEqual(schemaKeyTree(oldParams("none")));
+    expect(r.json.missingSections).toEqual(["linkedIn"]);
+    expect(keyTree(without(r.json, "shareId", "emailSent", "hasLinkedIn", "hasJobDescription", "missingSections"))).toEqual(schemaKeyTree(oldParams("none")));
   });
 
   it("a stray section the core call wrote never stands in for the section's own call", async () => {
@@ -412,7 +417,8 @@ describe("a LinkedIn or posting section is optional in the old object: its failu
     };
     const r = await h.call({ resumeText: RESUME, linkedInText: LINKEDIN, jobDescriptionText: POSTING, sessionId: "cs_core_only" });
     expect(r.status).toBe(200);
-    expect(keyTree(without(r.json, "shareId", "emailSent", "hasLinkedIn", "hasJobDescription"))).toEqual(schemaKeyTree(oldParams("none")));
+    expect(r.json.missingSections).toEqual(["jobDescription", "linkedIn"]);
+    expect(keyTree(without(r.json, "shareId", "emailSent", "hasLinkedIn", "hasJobDescription", "missingSections"))).toEqual(schemaKeyTree(oldParams("none")));
     expect(h.db.rows("purchased_content")).toHaveLength(1);
   });
 
@@ -430,7 +436,9 @@ describe("a LinkedIn or posting section is optional in the old object: its failu
     };
     const started = performance.now();
     const r = await h.call({ resumeText: RESUME, linkedInText: LINKEDIN, jobDescriptionText: POSTING, sessionId: "cs_core_fails" });
-    expect(r.status).toBe(429);
+    // A busy gateway is a try-again (S14X-110).
+    expect(r.status).toBe(503);
+    expect(r.json.retryable).toBe(true);
     expect(performance.now() - started, "the core's refusal waited for the sections").toBeLessThan(2_500);
     expect(signals).toHaveLength(2);
     for (const s of signals) expect(s.aborted, "a section's chain kept running after the core failed").toBe(true);

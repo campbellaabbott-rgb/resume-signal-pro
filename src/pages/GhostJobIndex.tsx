@@ -64,6 +64,13 @@ interface Stats {
   // measured basis for every age stat on this page. Optional: absent until
   // the stated-date-medians migration is applied.
   posted_coverage_pct?: number | null;
+  /** When refresh_ghost_stats wrote the row: the stamp the tiles are dated by. */
+  computed_at?: string | null;
+  /** The pieces the writer carried forward from the run before (counts,
+   *  median_days_open, closures). Returned from 20261112194000; absent before. */
+  stale_parts?: string[] | null;
+  /** The window the open counts were taken over (30 from 20261112194000). */
+  open_window_days?: number | null;
   // Days the closure record actually spans.
   //
   // THE COLUMN WAS RENAMED AND THIS PAGE WAS NOT. `tracking_days` was returned
@@ -615,7 +622,12 @@ interface AuditResult {
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
 
-const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString() : "—");
+// EVERY NUMBER AND DATE ON THIS PAGE PRINTS IN en-US (S14X-255), as the bake
+// prints it: a bare toLocale call followed the browser's locale, so the same
+// figure hydrated differently from the baked HTML outside the US.
+const EN = "en-US";
+const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString(EN) : "—");
+const stampOf = (iso: string) => new Date(iso).toLocaleString(EN);
 /** A tile that has not been answered yet. Drawn INSTEAD of "—" while the
  *  stats read is in flight, so an unanswered tile cannot be mistaken for an
  *  empty one. Sized to the number it stands in for. */
@@ -625,7 +637,49 @@ interface FreshnessStats {
   boards: number;
   p50_min: number | null;
   p95_min: number | null;
+  /** When the rollup behind these figures was computed. */
+  computed_at?: string | null;
 }
+
+/** THE GHOST FIGURES' OWN STAMP, AND WHETHER THEY WERE CARRIED (S14X-160).
+ *
+ *  The tiles were dated by the cache row's top-level computed_at, which is
+ *  when the hourly copy ran, not when refresh_ghost_stats computed the
+ *  figures (live, 2026-11-15: root 03:27, ghost_stats 03:05). They are dated
+ *  by the row's own computed_at, and carried when the cache names
+ *  'ghost_stats' in its stale_parts (it copied the part from an earlier run)
+ *  or the row names pieces its writer could not recompute (20261112194000).
+ *  Before that migration the row has no stale_parts, and only the cache's
+ *  word counts. */
+export interface GhostStatsStamp {
+  computedAt: string | null;
+  carried: boolean;
+  /** The row's own carried pieces; empty when only the cache said "carried". */
+  parts: string[];
+}
+export const ghostStatsStamp = (cache: Record<string, unknown> | null, row: Stats | null): GhostStatsStamp => {
+  const at = typeof row?.computed_at === "string" && !Number.isNaN(new Date(row.computed_at).getTime()) ? row.computed_at : null;
+  const parts = Array.isArray(row?.stale_parts) ? row!.stale_parts!.filter((x): x is string => typeof x === "string") : [];
+  const cacheStale = Array.isArray(cache?.stale_parts) ? (cache!.stale_parts as unknown[]) : [];
+  return { computedAt: at, carried: Boolean(row) && (parts.length > 0 || cacheStale.includes("ghost_stats")), parts };
+};
+const STALE_PART_WORDS: Record<string, string> = {
+  counts: "the open-role counts",
+  median_days_open: "the median age",
+  closures: "the closure figures",
+};
+
+/** THE RE-CHECK'S AGE (SEO-F07). It is scheduled once a day; past 36 hours the
+ *  page stops saying it runs daily and says how old the newest run is. */
+export const auditAgeHours = (at: string | null | undefined, now: number = Date.now()): number | null => {
+  const t = typeof at === "string" ? new Date(at).getTime() : NaN;
+  return Number.isFinite(t) ? (now - t) / 3_600_000 : null;
+};
+const ageWords = (h: number) => (h >= 48 ? `${Math.floor(h / 24)} days` : `${Math.round(h)} hours`);
+
+/** WHAT THE 90-DAY CLOSURE COUNT IS (S14X-192): rows in the closure log, not
+ *  distinct roles, in the bake's own noun ("closure events"). */
+export const CLOSURE_COUNT_IS = "closure events over the window (a posting that came down more than once counts each time)";
 
 export default function GhostJobIndex() {
   // SEO-010: an employer link goes to its written company page, or to the
@@ -638,8 +692,11 @@ export default function GhostJobIndex() {
   // from a failed read, on a page whose subject is whether numbers can be
   // trusted. While this is true the tiles draw a skeleton instead.
   const [statsLoading, setStatsLoading] = useState(true);
-  /** When the cached figures were computed. Null when they were read live. */
+  /** When refresh_ghost_stats computed the figures: the row's OWN stamp,
+   *  never the cache row's (S14X-160). Null when the row carries none. */
   const [statsComputedAt, setStatsComputedAt] = useState<string | null>(null);
+  /** The figures were carried forward from an earlier run, and which pieces. */
+  const [statsCarried, setStatsCarried] = useState<{ carried: boolean; parts: string[] }>({ carried: false, parts: [] });
   /** Hours since those figures were computed; null when they are live. */
   const statsStaleHours = statsComputedAt
     ? (Date.now() - new Date(statsComputedAt).getTime()) / 3_600_000
@@ -816,8 +873,6 @@ export default function GhostJobIndex() {
         // A stale statistic that names its date is honest. The same number
         // presented as current is not, and this page's entire subject is
         // whether job numbers can be trusted.
-        const cachedAt = typeof cache?.computed_at === "string" ? cache.computed_at : null;
-        setStatsComputedAt(cache?.ghost_stats ? cachedAt : null);
         let srow = Array.isArray(s.data) ? (s.data[0] as Stats) : null;
         // The stats RPC can time out on a cold cache and succeed warm — one
         // spaced retry turns a half-blank page into a reliably full one.
@@ -827,6 +882,11 @@ export default function GhostJobIndex() {
           srow = Array.isArray(s2.data) ? (s2.data[0] as Stats) : null;
         }
         if (srow) setStats(srow);
+        // Dated by the row's own computed_at, from the cache's copy and from a
+        // live read alike: both serve the same precomputed row (S14X-160).
+        const stamp = ghostStatsStamp(cache, srow);
+        setStatsComputedAt(stamp.computedAt);
+        setStatsCarried({ carried: stamp.carried, parts: stamp.parts });
         const frow = Array.isArray(f.data) ? (f.data[0] as FreshnessStats) : null;
         if (frow && typeof frow.p50_min === "number") setFreshness(frow);
         // The RPC returns the stored value directly; the old table read
@@ -1047,8 +1107,8 @@ export default function GhostJobIndex() {
                 A page arguing that job numbers cannot be trusted cannot be
                 sloppy about its own. */}
             <div className="text-[11px] text-muted-foreground mt-0.5">
-              {statsStaleHours !== null && statsStaleHours >= 3
-                ? `open roles, as of ${new Date(statsComputedAt as string).toLocaleDateString()}`
+              {(statsStaleHours !== null && statsStaleHours >= 3) || (statsCarried.carried && statsComputedAt)
+                ? `open roles, as of ${new Date(statsComputedAt as string).toLocaleString(EN)}`
                 : "open roles right now"}
             </div>
           </div>
@@ -1093,6 +1153,17 @@ export default function GhostJobIndex() {
           </div>
         </div>
 
+        {statsCarried.carried && (
+          <p data-ghost-stats-carried className="text-xs text-muted-foreground -mt-5 mb-8">
+            Carried forward: the latest hourly recomputation could not finish{" "}
+            {statsCarried.parts.length > 0
+              ? statsCarried.parts.map((x) => STALE_PART_WORDS[x] ?? x).join(", ")
+              : "these figures"}
+            , so {statsCarried.parts.length > 0 ? "those are" : "they are"} from an earlier run
+            {statsComputedAt ? `, no newer than ${stampOf(statsComputedAt)}` : ""}.
+          </p>
+        )}
+
         {/* Measured freshness. This is no longer the number BEHIND a claim —
             since the "re-verified within a few hours" promise was retracted
             (2026-09-06) it IS the claim: llms.txt, the field landers and
@@ -1103,10 +1174,13 @@ export default function GhostJobIndex() {
             those surfaces are pointing at nothing. */}
         {freshness && (
           <p className="text-xs text-muted-foreground -mt-5 mb-8">
-            Measured right now across {freshness.boards.toLocaleString()} company feeds: the median feed was re-checked{" "}
-            <b className="text-foreground">{Math.round(freshness.p50_min ?? 0)} minutes ago</b>
+            {/* WHAT IT COUNTS AND WHEN (S14X-194): the rollup's boards are the
+                ones holding a live posting, measured at its own stamp. */}
+            Measured {freshness.computed_at ? stampOf(freshness.computed_at) : "at page load"} across{" "}
+            {fmt(freshness.boards)} job boards we read that hold a live posting: the median one had been re-checked{" "}
+            <b className="text-foreground">{Math.round(freshness.p50_min ?? 0)} minutes</b> before that
             {typeof freshness.p95_min === "number" && (
-              <> — 95% of all feeds within <b className="text-foreground">{(freshness.p95_min / 60).toFixed(1)} hours</b></>
+              <> — 95% of them within <b className="text-foreground">{(freshness.p95_min / 60).toFixed(1)} hours</b></>
             )}
             .
           </p>
@@ -1133,7 +1207,7 @@ export default function GhostJobIndex() {
               <ShieldCheck className="w-4 h-4 text-success" /> We audit ourselves — here's the number
             </h2>
             <p className="text-sm text-muted-foreground">
-              On {new Date(audit.at).toLocaleDateString()}, we sampled <b className="text-foreground">{audit.sampled}</b>{" "}
+              On {new Date(audit.at).toLocaleDateString(EN)}, we sampled <b className="text-foreground">{audit.sampled}</b>{" "}
               listings from this board — drawn evenly across hiring systems, not at random, so a single
               broken vendor cannot hide inside a large one — and re-checked each against the company's own system:{" "}
               <b className="text-success">{audit.accuracyPct}% were confirmed live at the source</b>
@@ -1157,7 +1231,13 @@ export default function GhostJobIndex() {
               {typeof audit.decided === "number" ? ` (${audit.decided} of ${audit.sampled}` : ""}
               {typeof audit.decided === "number" && typeof audit.decidedPct === "number" ? `, ${audit.decidedPct}%)` : typeof audit.decided === "number" ? ")" : ""}
               {" "}— undecidable probes leave the denominator rather than counting as passes.
-              The handful already taken down are pruned by the next refresh cycle. We run this audit every day.
+              The handful already taken down are pruned by the next refresh cycle.{" "}
+              {(() => {
+                const h = auditAgeHours(audit.at);
+                return h !== null && h > 36
+                  ? `This audit is scheduled to run every day, but this is the latest run on record, ${ageWords(h)} old.`
+                  : "We run this audit every day.";
+              })()}
             </p>
             {/* An accuracy figure that quietly skips a hiring system is a figure
                 about a different board. If a stratum was missed, the number
@@ -1219,7 +1299,7 @@ export default function GhostJobIndex() {
                       key={h.at}
                       className="w-5 rounded-t"
                       style={{ height: `${Math.max(6, Math.round((h.accuracyPct ?? 0) * 0.4))}px`, backgroundColor: VIZ_SERIES_A }}
-                      title={`${new Date(h.at).toLocaleDateString()}: ${h.accuracyPct ?? "—"}% of ${h.sampled} sampled confirmed live`}
+                      title={`${new Date(h.at).toLocaleDateString(EN)}: ${h.accuracyPct ?? "—"}% of ${h.sampled} sampled confirmed live`}
                     />
                   ))}
                 </div>
@@ -1250,8 +1330,8 @@ export default function GhostJobIndex() {
           {hasClosureData ? (
             <p className="text-sm text-muted-foreground">
               {closureOpener} we've
-              watched <b className="text-foreground">{fmt(stats?.closed_90d)}</b> roles
-              come down across the board. Postings that never close are exactly the ghost jobs we drop.{" "}
+              logged <b className="text-foreground">{fmt(stats?.closed_90d)}</b> closure events
+              across the board. Postings that never close are exactly the ghost jobs we drop.{" "}
               {/* WHAT THIS NUMBER COUNTS, SAID ON THE PAGE.
                   It held NEITHER a superseded test nor a suspect test until
                   20260906094000 added both to the cache arm that builds it, so
@@ -1267,7 +1347,7 @@ export default function GhostJobIndex() {
                   open-roles denominator to compare a batch against. So the two
                   can still differ, in one direction, for one stated reason. */}
               <span className="text-muted-foreground/80">
-                That count is roles an employer took down: same-title re-listings and batches we flagged as bad feeds
+                That count is {CLOSURE_COUNT_IS}: same-title re-listings and batches we flagged as bad feeds
                 at the time are excluded. The per-field figures below go one step further and also drop batches we can
                 only recognise in hindsight, from before we started stamping them — so where the two differ, this one
                 is the larger.
@@ -1341,7 +1421,7 @@ export default function GhostJobIndex() {
                 the stats tiles were caught in for four days in August. */}
             {leaderboardComputedAt && (
               <p className="text-[11px] text-muted-foreground mb-2">
-                {`Ranking as of ${new Date(leaderboardComputedAt).toLocaleString()}`}
+                {`Ranking as of ${new Date(leaderboardComputedAt).toLocaleString(EN)}`}
                 {leaderboardCarried
                   ? " — carried forward from that earlier run: the latest hourly recomputation of this ranking did not finish, so these rows date from that earlier run, not from the latest hourly refresh."
                   : " — recomputed hourly; the open-roles count on each row is from the same run."}
@@ -1474,7 +1554,7 @@ export default function GhostJobIndex() {
                 stats tiles were caught in for four days in August. */}
             {fillCurveComputedAt && (
               <p className="text-[11px] text-muted-foreground mb-2">
-                {`Field figures as of ${new Date(fillCurveComputedAt).toLocaleString()}`}
+                {`Field figures as of ${new Date(fillCurveComputedAt).toLocaleString(EN)}`}
                 {fillCurveCarried
                   ? " — carried forward from that earlier run: the latest hourly recomputation of these figures did not finish, so every row here dates from that earlier run, not from the latest hourly refresh."
                   : " — recomputed hourly from our own lifecycle log; every row here is from the same run."}
@@ -1549,7 +1629,7 @@ export default function GhostJobIndex() {
                     </span>
                     <span className="text-[11px] text-muted-foreground shrink-0 w-32 text-right">
                       {t("ghostIndex.fillRowInterval", "{{lo}}–{{hi}}% · {{n}} tracked", {
-                        lo: Math.round(r.fill_rate_14_lo * 100), hi: Math.round(r.fill_rate_14_hi * 100), n: r.n_at_risk_14.toLocaleString(),
+                        lo: Math.round(r.fill_rate_14_lo * 100), hi: Math.round(r.fill_rate_14_hi * 100), n: r.n_at_risk_14.toLocaleString(EN),
                       })}
                     </span>
                   </div>
@@ -1587,13 +1667,13 @@ export default function GhostJobIndex() {
                           (stillUp30Row3) and the pool's size is printed. */}
                       {t("ghostIndex.stillUp30Row3",
                         "{{pct}}% of dated {{field}} roles posted {{cohortFrom}} to {{cohortTo}} were still advertised when they reached our 30-day cap (n={{n}}, ±{{hw}} points); at most {{r}}% had been taken down for good and at least {{x}}% re-listed. Counted only on boards we read to the end that showed us takedowns in the 90 days before this cohort began.",
-                        { pct: d.pct, field: r.category.replace(/_/g, " "), cohortFrom: d.cohortFrom, cohortTo: d.cohortTo, n: d.n.toLocaleString(), hw: d.hw, r: d.r, x: d.x })}
+                        { pct: d.pct, field: r.category.replace(/_/g, " "), cohortFrom: d.cohortFrom, cohortTo: d.cohortTo, n: d.n.toLocaleString(EN), hw: d.hw, r: d.r, x: d.x })}
                       {typeof d.boards === "number" && (
                         <>
                           {" "}
                           {t("ghostIndex.stillUp30Boards",
                             "Pooled over {{n}} employers whose boards we read in full.",
-                            { n: d.boards!.toLocaleString() })}
+                            { n: d.boards!.toLocaleString(EN) })}
                         </>
                       )}
                       {d.gateShare !== null && (
@@ -1724,7 +1804,7 @@ export default function GhostJobIndex() {
                     {dateCov.map((r) => (
                       <tr key={r.source} className="border-b border-border/30 last:border-0">
                         <td className="py-1 pr-4 capitalize text-foreground">{r.source}</td>
-                        <td className="py-1 pr-4 text-right">{r.total.toLocaleString()}</td>
+                        <td className="py-1 pr-4 text-right">{fmt(r.total)}</td>
                         <td className="py-1 text-right">{Math.round(r.datedPct)}%</td>
                       </tr>
                     ))}

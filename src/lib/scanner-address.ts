@@ -17,6 +17,9 @@ export const SCANNER_QUERY_PARAMS: readonly string[] = [
   "scan_pack_canceled",
   "session_id",
   "ref",
+  // The market the scan is aimed at, preselected (S14X-032): the CV
+  // standards pages' "Scan my CV" links carry it.
+  "market",
 ];
 
 /**
@@ -52,9 +55,19 @@ function scannerParam(params: URLSearchParams, k: string): boolean {
   return k === "ref" ? AFFILIATE_CODE.test(params.get(k) ?? "") : true;
 }
 
-/** The scanner's address for this location of "/", or null when it is not one of the scanner's. */
+/**
+ * The scanner's address for this location of "/", or null when it is not one
+ * of the scanner's.
+ *
+ * ONE EXCEPTION (S13-099): a scan-report mail's "Get the full analysis"
+ * button. About four months of report mail (2026-07-02 to 2026-11-03) link
+ * it to "/?…utm_medium=scan_report…#pricing"; /resume-checker has no
+ * #pricing, so it landed on the scanner, not on the $5 card. That address
+ * goes to /pricing#full-analysis, the anchor the mail links today.
+ */
 export function scannerAddressFor(search: string, hash: string): string | null {
   const params = new URLSearchParams(search);
+  if (hash === "#pricing" && params.get("utm_medium") === "scan_report") return `/pricing${search}#full-analysis`;
   const scanner = hash === "#upload" || SCANNER_QUERY_PARAMS.some((k) => scannerParam(params, k)) || scannerMailCampaign(params);
   return scanner ? `/resume-checker${search}${hash}` : null;
 }

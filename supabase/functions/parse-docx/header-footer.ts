@@ -66,3 +66,22 @@ export function withHeaderFooter(body: string, parts: { header: string[]; footer
   const footer = fresh(parts.footer);
   return [header.join("\n"), body, footer.join("\n")].filter((s) => s.trim() !== "").join("\n\n");
 }
+
+/**
+ * RC-S13-036: THE CONTACT DETAILS ARE ONLY IN THE HEADER OR FOOTER. The text
+ * the scanner reads has them (withHeaderFooter), but an applicant tracking
+ * system that reads the body alone does not, so parse-docx tells the page,
+ * which warns. True when the body holds no email and no phone number and the
+ * header or footer lines hold one of them.
+ */
+const EMAIL = /[^\s@<>()]+@[^\s@<>()]+\.[a-z]{2,}/i;
+// A phone number: seven or more digits, with the separators people write;
+// a span of years ("2019 - 2024") is not one.
+const PHONES = /(?:\+|\b)\d[\d ().-]{5,}\d\b/g;
+const YEARS = /^\d{4}\s*[-–]\s*\d{4}$/;
+const hasContact = (text: string) =>
+  EMAIL.test(text) || [...text.matchAll(PHONES)].some(([m]) => m.replace(/\D/g, "").length >= 7 && !YEARS.test(m.trim()));
+
+export function contactOnlyInHeader(body: string, parts: { header: string[]; footer: string[] }): boolean {
+  return !hasContact(body) && hasContact([...parts.header, ...parts.footer].join("\n"));
+}

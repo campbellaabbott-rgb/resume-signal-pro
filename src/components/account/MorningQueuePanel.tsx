@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { count as fmtCount, dateTime as fmtDateTime } from "@/lib/format";
 import { Sunrise, Play, Pause, X, Check, ArrowRight, Sparkles, Plus, ChevronDown, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -166,7 +167,7 @@ function CountryPicker({ value, onChange, options }: {
               }`}
             >
               {countryLabel(o.country)}
-              {o.n > 0 ? <span className="opacity-60"> {o.n.toLocaleString()}</span> : null}
+              {o.n > 0 ? <span className="opacity-60"> {fmtCount(o.n)}</span> : null}
             </button>
           );
         })}
@@ -677,7 +678,7 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
   const advancedSummary = ((): string[] => {
     const out: string[] = [];
     if (form.category) out.push(t(`jobsPage.categories.${form.category}`, form.category));
-    if (form.salary_min) out.push(t("agentQueue.sumSalary", "{{n}}+", { n: Number(form.salary_min).toLocaleString() }));
+    if (form.salary_min) out.push(t("agentQueue.sumSalary", "{{n}}+", { n: fmtCount(Number(form.salary_min)) }));
     if (form.remote_only) out.push(t("agentQueue.sumRemote", "remote only"));
     if (form.max_age_days) out.push(t("agentQueue.sumAge", "posted within {{n}}d", { n: form.max_age_days }));
     if (form.include_uncategorised) out.push(t("agentQueue.sumUncat", "+ uncategorised"));
@@ -1204,7 +1205,7 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
                       re-opens to check, which is the summary failing at its job. */}
                   {[s.q, s.category && t(`jobsPage.categories.${s.category}`, s.category), s.location,
                     s.remote_only ? t("agentQueue.fieldRemote", "Remote only") : "",
-                    s.salary_min ? `$${s.salary_min.toLocaleString()}+` : "",
+                    s.salary_min ? `$${fmtCount(s.salary_min)}+` : "",
                     s.max_age_days ? t("agentQueue.summaryAge", "posted within {{d}}d", { d: s.max_age_days }) : "",
                     s.include_uncategorised ? t("agentQueue.summaryUncat", "+ uncategorised") : ""].filter(Boolean).join(" · ")
                     || t("agentQueue.anyRole", "Any role")}
@@ -1246,7 +1247,7 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
               : t("agentQueue.statusPaused", "Paused")}
           </span>
           <span className="truncate">
-            {[mandate.q, mandate.category && t(`jobsPage.categories.${mandate.category}`, mandate.category), mandate.location, mandate.remote_only ? t("agentQueue.fieldRemote", "Remote only") : "", mandate.salary_min ? `$${mandate.salary_min.toLocaleString()}+` : "",
+            {[mandate.q, mandate.category && t(`jobsPage.categories.${mandate.category}`, mandate.category), mandate.location, mandate.remote_only ? t("agentQueue.fieldRemote", "Remote only") : "", mandate.salary_min ? `$${fmtCount(mandate.salary_min)}+` : "",
               mandate.max_age_days ? t("agentQueue.summaryAge", "posted within {{d}}d", { d: mandate.max_age_days }) : "",
               mandate.include_uncategorised ? t("agentQueue.summaryUncat", "+ uncategorised") : ""].filter(Boolean).join(" · ")}
           </span>
@@ -1261,7 +1262,7 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
       {mandate?.last_run_summary && mandate.last_run_at && (
         <p className="text-[11px] text-muted-foreground mb-3">
           {t("agentQueue.runSummary", "Last run {{when}}: scanned {{scanned}} new postings, picked {{picked}}, skipped {{churn}} from churn-heavy companies and {{lowfit}} weak matches.", {
-            when: new Date(mandate.last_run_at).toLocaleString(),
+            when: fmtDateTime(mandate.last_run_at),
             scanned: mandate.last_run_summary.scanned,
             picked: mandate.last_run_summary.picked,
             churn: mandate.last_run_summary.skipped_churn,
@@ -1270,8 +1271,11 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
         </p>
       )}
 
-      {/* Morning email control — same place the mandate lives. */}
-      {mandate && (
+      {/* Morning email control — same place the mandate lives. While the
+          agent is switched off no run makes a pick, so there is no morning
+          list to mail and no switch for one (S14X-199). The mail it would send
+          carries its own one-click unsubscribe. */}
+      {APPLY_AGENT_ON && mandate && (
         <label className="flex items-start gap-2 mb-3 text-[11px] text-muted-foreground cursor-pointer">
           <input
             type="checkbox"

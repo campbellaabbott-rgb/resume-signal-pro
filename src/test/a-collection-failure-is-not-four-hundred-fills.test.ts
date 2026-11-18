@@ -205,15 +205,13 @@ const unguardedFillReaders = (defs: Map<string, string>) =>
  * migration that will fix it, written above it.
  */
 //
-// get_trending_categories (20261008111500) IS NOT A FILL STATISTIC. It counts
-// postings DATED in a seven-day window, by field, and since that migration it
-// adds back the postings that have since closed, exactly as get_hiring_trends'
-// posted_closed leg does -- a closure row there is evidence that a posting was
-// dated that week, not a count of takedowns. A doubted takedown does not undo
-// the posting date, so its rows stay in (that leg's own rule), and the
-// non-superseded predicate is there to keep same-title re-lists from counting
-// as new postings. Nothing it returns is a number of roles taken down.
-const KNOWN_UNGUARDED: readonly string[] = ["get_trending_categories"];
+// get_trending_categories held the one entry since (20261008111500): a count
+// of postings DATED in a seven-day window, by field, whose closed leg used
+// the non-superseded predicate to keep same-title re-lists out, not a count of
+// takedowns. 20261112191000 (S14X-038) counts a re-listed posting in the week
+// it was dated too, so its closed leg selects no non-superseded closure and it
+// is no closure-fill reader at all: the ledger is empty again.
+const KNOWN_UNGUARDED: readonly string[] = [];
 
 // ── collector shape, read off comment-stripped TypeScript ───────────────────
 
@@ -415,9 +413,8 @@ describe("a collection failure is not four hundred fills", () => {
       }
       // The two readers this ledger existed for are fixed; it starts empty
       // and an addition needs its own reason written above the constant. The
-      // one entry since (get_trending_categories, 20261008111500) carries it:
-      // a count of postings dated in a window, not of takedowns.
-      expect(KNOWN_UNGUARDED).toEqual(["get_trending_categories"]);
+      // one entry since (get_trending_categories) left with 20261112191000.
+      expect(KNOWN_UNGUARDED).toEqual([]);
       for (const name of ["get_hiring_trends", "get_takedowns_today"]) {
         const r = readers.find((x) => x.name === name);
         expect(r, `${name} is no longer found as a closure reader -- the classifier drifted`).toBeTruthy();

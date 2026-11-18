@@ -66,6 +66,12 @@ const STAND_INS = `
     instance_id uuid, id uuid PRIMARY KEY, payload json, created_at timestamptz,
     ip_address varchar(64) NOT NULL DEFAULT ''
   );
+  -- The columns of public.api_keys the guard writes (S14X-228; its own test is
+  -- a-key-minted-before-the-owner-proved-the-address-stops-with-the-old-password).
+  CREATE TABLE public.api_keys (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), key_prefix text NOT NULL, user_id uuid,
+    created_at timestamptz NOT NULL DEFAULT now(), revoked_at timestamptz
+  );
 `;
 
 const ADMIN_ACTOR = "00000000-0000-0000-0000-000000000000";
@@ -694,7 +700,7 @@ describe("the shipped auth-signed-in handler", () => {
     const ours = await call("OPTIONS", { origin: "https://resumebooster.work" });
     expect(ours.status).toBe(200);
     expect(buildIsAtLeast(ours.headers.get("x-fn-build"), "auth-signed-in", "2026-10-14", 1)).toBe(true);
-    expect(ours.headers.get("x-fn-build")).toBe("auth-signed-in.2026-11-09.1");
+    expect(ours.headers.get("x-fn-build")).toBe("auth-signed-in.2026-11-12.1");
     expect(ours.headers.get("access-control-expose-headers")).toMatch(/x-fn-build/);
     expect(ours.headers.get("access-control-allow-origin")).toBe("https://resumebooster.work");
     const preview = await call("OPTIONS", { origin: "https://id-preview--0b9d1a4e-1111-4222-8333-944445555666.lovable.app" });
@@ -720,7 +726,7 @@ describe("the shipped auth-signed-in handler", () => {
       const r = await call("POST", headers);
       expect(r.status, reason).toBe(401);
       expect(await r.json()).toMatchObject({ reason });
-      expect(r.headers.get("x-fn-build")).toBe("auth-signed-in.2026-11-09.1");
+      expect(r.headers.get("x-fn-build")).toBe("auth-signed-in.2026-11-12.1");
     }
     expect(tokensSeen, "the claims are refused before the auth server is asked").toEqual([]);
     gotrue.sessions.get(sessionId)!.active = false;

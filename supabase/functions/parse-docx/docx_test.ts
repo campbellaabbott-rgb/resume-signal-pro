@@ -10,13 +10,27 @@
 import { assert, assertEquals, assertRejects } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { JSZip, mammoth } from "./libs.ts";
 import { DamagedDocxError, readDocxBody } from "./docx-text.ts";
+import { normalizeIntakeText } from "../_shared/text-validation.ts";
 import {
+  ALT_CHUNK,
+  altChunkDocx,
+  damagedPartDocx,
+  HYPHENS,
+  hyphensDocx,
+  LINKS,
+  linksDocx,
+  LIST_STYLE_BULLETS,
+  NESTED,
+  nestedTextBoxDocx,
+  numStyleLinkBulletsDocx,
   RESUME_LINES,
   type ZipClass,
   RTF_RENAMED,
   softBreaksDocx,
   strictDocx,
   textBoxNoFallbackDocx,
+  TRACKED_MOVE,
+  trackedMoveDocx,
   transitionalDocx,
   WORD_BULLETS,
   wordBulletsDocx,
@@ -68,4 +82,50 @@ Deno.test("S13-037: Word's own bullets keep a bullet mark on the deployed mammot
     ...B.numbered,
   ]);
   assertEquals(listBullets, 4);
+});
+
+// The bug round of 2026-11-08, on the builds parse-docx deploys.
+
+Deno.test("S14X-124: a part whose deflated bytes are damaged is a damaged file, not a crash", async () => {
+  for (const part of ["word/document.xml", "word/numbering.xml"] as const) {
+    const e = await assertRejects(async () => read(await damagedPartDocx(Zip, part)), DamagedDocxError);
+    assertEquals((e as DamagedDocxError).reason, "unreadable_document");
+  }
+});
+
+Deno.test("S14X-125: a tracked move reads its text once, where it went", async () => {
+  const { body } = await read(await trackedMoveDocx(Zip));
+  assertEquals(body.split(TRACKED_MOVE.moved).length, 2);
+  assert(lines(body).indexOf(TRACKED_MOVE.moved) > lines(body).indexOf("EXPERIENCE"));
+});
+
+Deno.test("S14X-126: a text box holding a drawing keeps its email", async () => {
+  for (const inner of ["fallback", "choiceOnly", "none"] as const) {
+    const { body } = await read(await nestedTextBoxDocx(Zip, inner));
+    assert(body.includes(NESTED.email), inner);
+    assert(lines(body).includes(NESTED.phone), inner);
+  }
+});
+
+Deno.test("S14X-281: a document exported as web content reads its lines", async () => {
+  const { body, altChunks } = await read(await altChunkDocx(Zip));
+  assertEquals(lines(body), ALT_CHUNK.lines);
+  assertEquals(altChunks, { read: 1, unreadable: 0 });
+});
+
+Deno.test("RC-S13-037: bullets defined through a list style keep their bullets", async () => {
+  const { body, listBullets } = await read(await numStyleLinkBulletsDocx(Zip));
+  assertEquals(listBullets, 3);
+  for (const t of LIST_STYLE_BULLETS) assert(lines(body).includes(`\u2022 ${t}`), t);
+});
+
+Deno.test("S14X-147: linked contact details end the text with their addresses", async () => {
+  const { body } = await read(await linksDocx(Zip));
+  assertEquals(lines(body).at(-1), `Links: ${LINKS.email} | ${LINKS.linkedin} | ${LINKS.github}`);
+});
+
+Deno.test("S14X-280: Word's non-breaking and optional hyphens read as plain words", async () => {
+  const text = normalizeIntakeText((await read(await hyphensDocx(Zip))).body);
+  assert(text.includes(HYPHENS.cofounded));
+  assert(text.includes(HYPHENS.implemented));
 });

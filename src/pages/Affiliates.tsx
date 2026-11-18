@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAffiliateAuth } from '@/hooks/use-affiliate-auth';
+import { useAffiliateAuth, type AffiliateRangeStats } from '@/hooks/use-affiliate-auth';
 import { AFFILIATE_POLL_MS, useAffiliateUpdates } from '@/hooks/use-affiliate-realtime';
 import { AFFILIATE_PRO_FIRST_MONTH_CENTS, formatUsd } from '@/config/affiliate-commission';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,7 +28,11 @@ import {
   Palette,
   Link2,
   Wallet,
-  Bell
+  Bell,
+  Mail,
+  Download,
+  Trash2,
+  ShieldAlert
 } from 'lucide-react';
 import {
   AreaChart,
@@ -44,13 +48,46 @@ import {
 } from 'recharts';
 import { MarketingKit } from '@/components/affiliate/MarketingKit';
 import { AdvancedLinkTools } from '@/components/affiliate/AdvancedLinkTools';
-import { PayoutRequest } from '@/components/affiliate/PayoutRequest';
+import { PayoutRequest, type PayoutOutcome } from '@/components/affiliate/PayoutRequest';
 
 interface ClickData {
   click_date: string;
   click_count: number;
   unique_referrers: number;
 }
+
+/** An edge function's answer body, whatever its HTTP code (supabase-js puts a non-2xx response in error.context). */
+interface FunctionAnswer {
+  status?: string;
+  error?: string;
+  ownerNotified?: boolean;
+  [key: string]: unknown;
+}
+
+async function answerOf(data: unknown, error: unknown): Promise<{ ok: boolean; httpStatus: number; body: FunctionAnswer }> {
+  if (!error) return { ok: true, httpStatus: 200, body: (data ?? {}) as FunctionAnswer };
+  const ctx = (error as { context?: Response } | null)?.context;
+  let body: FunctionAnswer = {};
+  try { body = ((await ctx?.clone().json()) ?? {}) as FunctionAnswer; } catch { /* no body */ }
+  return { ok: false, httpStatus: typeof ctx?.status === 'number' ? ctx.status : 0, body };
+}
+
+/**
+ * A sale amount in its own currency (S14X-227). Amounts are in the currency's
+ * smallest unit, as Stripe records them; a currency with no minor unit (JPY)
+ * is not divided by 100.
+ */
+function formatMoney(minor: number, currency: string): string {
+  try {
+    const f = new Intl.NumberFormat('en-US', { style: 'currency', currency: currency.toUpperCase() });
+    return f.format(minor / 10 ** (f.resolvedOptions().maximumFractionDigits ?? 2));
+  } catch {
+    return `${(minor / 100).toFixed(2)} ${currency.toUpperCase()}`;
+  }
+}
+
+/** A link from an affiliate mail: #reset=, #confirm= or #email= and its 64-hex token. */
+const LINK_FRAGMENT = /^#(reset|confirm|email)=([0-9a-f]{64})$/i;
 
 export default function Affiliates() {
   const { t } = useTranslation();
@@ -79,6 +116,47 @@ export default function Affiliates() {
   const [dateRange, setDateRange] = useState('30');
   const [clickHistory, setClickHistory] = useState<ClickData[]>([]);
   const [isLoadingClicks, setIsLoadingClicks] = useState(false);
+  // Account mail and actions (S14X-115, S14X-093, S14X-021): affiliate-account.
+  const [isForgotMode, setIsForgotMode] = useState(false);
+  const [resetToken, setResetToken] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [eraseConfirm, setEraseConfirm] = useState('');
+  const [accountBusy, setAccountBusy] = useState(false);
+  const [dashboardReload, setDashboardReload] = useState(0);
+
+  /** affiliate-account, with its answer's body whatever the HTTP code. */
+  const callAccount = async (body: Record<string, unknown>) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('affiliate-account', { body });
+      return await answerOf(data, error);
+    } catch {
+      return { ok: false, httpStatus: 0, body: {} as FunctionAnswer };
+    }
+  };
+  const failed = () => t('affiliateProgram.auth.failed');
+
+  // A link from an affiliate mail. The token leaves the address bar at once;
+  // a reset link opens the new-password form, the other two are spent here.
+  useEffect(() => {
+    const m = LINK_FRAGMENT.exec(window.location.hash);
+    if (!m) return;
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    const kind = m[1].toLowerCase();
+    const token = m[2].toLowerCase();
+    if (kind === 'reset') { setResetToken(token); return; }
+    void (async () => {
+      const { ok, body } = await callAccount({ action: kind === 'confirm' ? 'confirm' : 'email-confirm', token });
+      if (ok) {
+        toast.success(kind === 'confirm' ? t('affiliateProgram.auth.addressConfirmed') : t('affiliateProgram.auth.emailChanged'));
+        setDashboardReload((n) => n + 1);
+      } else {
+        toast.error(body.status === 'taken' ? t('affiliateProgram.auth.emailTaken') : body.status === 'expired' ? t('affiliateProgram.auth.linkExpired') : failed());
+      }
+    })();
+    // Once, on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // New clicks and sales, read every 30 s while the page is open (register
   // L3-10: the Realtime subscription could never receive a row).
@@ -88,16 +166,27 @@ export default function Affiliates() {
     refresh: fetchDashboard,
   });
 
-  /** Request Payout: a real server record, or an error the button shows. */
-  const requestPayout = async (): Promise<'requested' | 'already'> => {
+  /**
+   * Request Payout: a real server record, or an error the button shows. The
+   * answer's status decides, never the HTTP code alone (S14X-116): a 409 is
+   * also the settlement trigger's "your balance changed", which used to read
+   * as "already open" when nothing had been recorded.
+   */
+  const requestPayout = async (): Promise<PayoutOutcome> => {
     if (!session?.sessionToken) throw new Error(t('affiliates.payout.failed', 'Could not request the payout. Please try again.'));
     const { data, error } = await supabase.functions.invoke('affiliate-payout-request', { body: { sessionToken: session.sessionToken } });
-    if (!error && (data as { status?: string } | null)?.status === 'requested') return 'requested';
-    const ctx = (error as { context?: Response } | null)?.context;
-    if (ctx && typeof ctx.status === 'number' && ctx.status === 409) return 'already';
-    let message = '';
-    try { message = String(((await ctx?.clone().json()) as { error?: string } | undefined)?.error ?? ''); } catch { /* no body */ }
-    throw new Error(message || t('affiliates.payout.failed', 'Could not request the payout. Please try again.'));
+    const { ok, httpStatus, body } = await answerOf(data, error);
+    if (ok && body.status === 'requested') {
+      // The new row is what the history and the card show after this.
+      fetchDashboard().catch(() => { /* the next poll reads it */ });
+      return body.ownerNotified === false ? 'requested_unnotified' : 'requested';
+    }
+    if (body.status === 'already_requested') return 'already';
+    // balance_changed, unproven_address and every other refusal carry their reason.
+    if (body.error) throw new Error(body.error);
+    // A bare 409 is the one-open-request rule, as the function answered it before it named its statuses.
+    if (httpStatus === 409 && !body.status) return 'already';
+    throw new Error(t('affiliates.payout.failed', 'Could not request the payout. Please try again.'));
   };
   useEffect(() => {
     if (isAuthenticated) {
@@ -105,7 +194,7 @@ export default function Affiliates() {
         toast.error(err.message || 'Failed to load dashboard');
       });
     }
-  }, [isAuthenticated, fetchDashboard]);
+  }, [isAuthenticated, fetchDashboard, dashboardReload]);
 
   // Fetch click history when date range changes
   useEffect(() => {
@@ -150,6 +239,92 @@ export default function Affiliates() {
     }
   };
 
+  /** Forgot password: the same answer whether or not the address has an account. */
+  const handleResetRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const { ok, body } = await callAccount({ action: 'reset-request', email });
+      if (ok) toast.success(t('affiliateProgram.auth.resetSent'));
+      else toast.error(body.error || failed());
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  /** A #reset= link: the new password spends it and signs out every device. */
+  const handleNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetToken) return;
+    setIsSubmitting(true);
+    try {
+      const { ok, body } = await callAccount({ action: 'reset', token: resetToken, password: newPassword });
+      if (ok) {
+        toast.success(t('affiliateProgram.auth.passwordChanged'));
+        setResetToken(null);
+        setNewPassword('');
+        setIsForgotMode(false);
+        setIsLoginMode(true);
+        // Every session ended with the old password, this device's included.
+        if (session) await logout();
+      } else {
+        toast.error(body.status === 'weak_password' ? t('affiliateProgram.auth.weakPassword') : body.status === 'expired' ? t('affiliateProgram.auth.linkExpired') : body.error || failed());
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  /** Runs one signed-in account action; the caller says what success means. */
+  const accountAction = async (body: Record<string, unknown>, onOk: (answer: FunctionAnswer) => Promise<void> | void) => {
+    if (!session?.sessionToken) return;
+    setAccountBusy(true);
+    try {
+      const answer = await callAccount({ ...body, sessionToken: session.sessionToken });
+      if (answer.ok) await onOk(answer.body);
+      else toast.error(answer.body.error || failed());
+    } finally {
+      setAccountBusy(false);
+    }
+  };
+
+  const handleSendConfirmation = () => accountAction({ action: 'confirm-request' }, () => {
+    toast.success(t('affiliateProgram.confirm.sent', { email: dashboardData?.affiliate?.email ?? session?.email ?? '' }));
+  });
+
+  const handleSignOutEverywhere = () => accountAction({ action: 'sign-out-everywhere' }, async () => {
+    toast.success(t('affiliateProgram.account.signedOutEverywhere'));
+    await logout();
+  });
+
+  const handleExport = () => accountAction({ action: 'export' }, (answer) => {
+    const blob = new Blob([JSON.stringify(answer.export ?? {}, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'affiliate-data.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast.success(t('affiliateProgram.account.exported'));
+  });
+
+  const handleEmailChange = (e: React.FormEvent) => {
+    e.preventDefault();
+    const address = newEmail.trim();
+    return accountAction({ action: 'email-change-request', newEmail: address }, () => {
+      toast.success(t('affiliateProgram.account.changeSent', { email: address }));
+      setNewEmail('');
+    });
+  };
+
+  const handleErase = () => accountAction({ action: 'erase', confirm: eraseConfirm }, async () => {
+    toast.success(t('affiliateProgram.account.erased'));
+    setEraseConfirm('');
+    await logout();
+  });
+
   const handleCopyLink = () => {
     const link = getReferralLink();
     if (link) {
@@ -193,6 +368,47 @@ export default function Affiliates() {
     );
   }
 
+  // A reset link, signed in or not: the new password ends every session.
+  if (resetToken) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">{t('affiliateProgram.auth.newPasswordTitle')}</CardTitle>
+            <CardDescription>{t('affiliateProgram.auth.newPasswordIntro')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleNewPassword} className="space-y-4">
+              <Input
+                type="password"
+                placeholder={t('affiliateProgram.auth.newPassword')}
+                aria-label={t('affiliateProgram.auth.newPassword')}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                minLength={8}
+                maxLength={200}
+                autoComplete="new-password"
+                required
+              />
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? t('affiliateProgram.auth.pleaseWait') : t('affiliateProgram.auth.savePassword')}
+              </Button>
+            </form>
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={() => { setResetToken(null); setIsForgotMode(true); }}
+                className="text-sm text-muted-foreground hover:text-primary"
+              >
+                {t('affiliateProgram.auth.forgot')}
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Auth form
   if (!isAuthenticated) {
     return (
@@ -220,16 +436,48 @@ export default function Affiliates() {
                 {t('affiliates.proCommission.excludedFa', 'Other purchases (the Full Resume Analysis) earn no commission. Commissions you have already earned are paid as before.')}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                30-day cookie • Paid monthly
+                {t('affiliateProgram.cookieLine')}
               </p>
             </div>
           </CardHeader>
           <CardContent>
+            {isForgotMode ? (
+              <form onSubmit={handleResetRequest} className="space-y-4">
+                <div>
+                  <p className="font-medium">{t('affiliateProgram.auth.resetTitle')}</p>
+                  <p className="text-sm text-muted-foreground">{t('affiliateProgram.auth.resetIntro')}</p>
+                </div>
+                <Input
+                  type="email"
+                  placeholder={t('affiliateProgram.auth.email')}
+                  aria-label={t('affiliateProgram.auth.email')}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  required
+                />
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  <Mail className="h-4 w-4 mr-2" />
+                  {isSubmitting ? t('affiliateProgram.auth.pleaseWait') : t('affiliateProgram.auth.sendLink')}
+                </Button>
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotMode(false)}
+                    className="text-sm text-muted-foreground hover:text-primary"
+                  >
+                    {t('affiliateProgram.auth.backToSignIn')}
+                  </button>
+                </div>
+              </form>
+            ) : (
+            <>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <Input
                   type="email"
-                  placeholder="Email"
+                  placeholder={t('affiliateProgram.auth.email')}
+                  aria-label={t('affiliateProgram.auth.email')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -238,7 +486,8 @@ export default function Affiliates() {
               <div>
                 <Input
                   type="password"
-                  placeholder="Password (min 8 characters)"
+                  placeholder={t('affiliateProgram.auth.password')}
+                  aria-label={t('affiliateProgram.auth.password')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   minLength={8}
@@ -246,10 +495,21 @@ export default function Affiliates() {
                 />
               </div>
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Please wait...' : isLoginMode ? 'Sign In' : 'Create Account'}
+                {isSubmitting ? t('affiliateProgram.auth.pleaseWait') : isLoginMode ? 'Sign In' : 'Create Account'}
               </Button>
             </form>
-            <div className="mt-4 text-center">
+            <div className="mt-4 text-center space-y-2">
+              {isLoginMode && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotMode(true)}
+                    className="text-sm text-muted-foreground hover:text-primary"
+                  >
+                    {t('affiliateProgram.auth.forgot')}
+                  </button>
+                </div>
+              )}
               <button
                 onClick={() => setIsLoginMode(!isLoginMode)}
                 className="text-sm text-muted-foreground hover:text-primary"
@@ -259,6 +519,8 @@ export default function Affiliates() {
                   : 'Already have an account? Sign in'}
               </button>
             </div>
+            </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -269,6 +531,26 @@ export default function Affiliates() {
   const stats = dashboardData?.stats;
   const affiliate = dashboardData?.affiliate;
   const conversions = dashboardData?.recent_conversions || [];
+  // The selected period's figures (S14X-212). Before the round's dashboard
+  // answers stats_by_range, the tiles show all-time figures and say so.
+  const rangeStats: AffiliateRangeStats | undefined = dashboardData?.stats_by_range?.[dateRange];
+  const periodLabel = rangeStats ? t(`affiliateProgram.tiles.range.d${dateRange}`) : t('affiliateProgram.tiles.allTime');
+  const clicksShown = rangeStats ? rangeStats.clicks : stats?.total_clicks || 0;
+  const conversionsShown = rangeStats ? rangeStats.conversions : stats?.total_conversions || 0;
+  const rateShown = rangeStats
+    ? (rangeStats.clicks > 0 ? Math.round((rangeStats.conversions / rangeStats.clicks) * 10000) / 100 : 0)
+    : stats?.conversion_rate || 0;
+  // Sales per currency (S14X-227); null before the dashboard answers it.
+  const revenueShown: Record<string, number> | null = rangeStats ? rangeStats.revenue_by_currency ?? {} : stats?.revenue_by_currency ?? null;
+  const revenueLines = revenueShown
+    ? Object.entries(revenueShown)
+        .filter(([, v]) => Number(v) !== 0)
+        .sort(([a], [b]) => (a === 'unknown' ? 1 : b === 'unknown' ? -1 : a.localeCompare(b)))
+    : [];
+  const hasAwaiting = typeof stats?.awaiting_approval === 'number';
+  const payoutRequests = dashboardData?.payout_requests;
+  const openRequest = payoutRequests?.find((r) => r.status === 'requested') ?? null;
+  const shortDate = (iso: string | null) => (iso ? formatDate(iso) : '');
 
   return (
     <div className="min-h-screen bg-background">
@@ -293,6 +575,23 @@ export default function Affiliates() {
       </header>
 
       <main className="container mx-auto px-4 py-8 space-y-8">
+        {/* An unproven address earns and is paid nothing until confirmed (S14X-115). */}
+        {affiliate?.email_confirmed === false && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg border border-yellow-500/40 bg-yellow-500/10">
+            <div className="flex items-start gap-3">
+              <ShieldAlert className="h-5 w-5 text-yellow-600 mt-0.5" />
+              <div>
+                <p className="font-semibold">{t('affiliateProgram.confirm.bannerTitle')}</p>
+                <p className="text-sm text-muted-foreground">{t('affiliateProgram.confirm.bannerBody')}</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleSendConfirmation} disabled={accountBusy}>
+              <Mail className="h-4 w-4 mr-2" />
+              {t('affiliateProgram.confirm.send')}
+            </Button>
+          </div>
+        )}
+
         {/* Commission Banner */}
         <div className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
           <div className="flex items-center gap-3">
@@ -373,14 +672,15 @@ export default function Affiliates() {
           </Select>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Stats Grid: clicks and conversions follow the period; balances say what they are. */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${hasAwaiting ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-4`}>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Clicks</p>
-                  <p className="text-2xl font-bold">{stats?.total_clicks || 0}</p>
+                  <p className="text-sm text-muted-foreground">{t('affiliateProgram.tiles.clicks')}</p>
+                  <p className="text-2xl font-bold">{clicksShown}</p>
+                  <p className="text-xs text-muted-foreground">{periodLabel}</p>
                 </div>
                 <MousePointerClick className="h-8 w-8 text-muted-foreground/50" />
               </div>
@@ -391,11 +691,16 @@ export default function Affiliates() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Conversions</p>
-                  <p className="text-2xl font-bold">{stats?.total_conversions || 0}</p>
+                  <p className="text-sm text-muted-foreground">{t('affiliateProgram.tiles.conversions')}</p>
+                  <p className="text-2xl font-bold">{conversionsShown}</p>
                   <p className="text-xs text-muted-foreground">
-                    {stats?.conversion_rate || 0}% rate
+                    {periodLabel} · {t('affiliateProgram.tiles.rate', { rate: rateShown })}
                   </p>
+                  {rangeStats && (
+                    <p className="text-xs text-muted-foreground">
+                      {t('affiliateProgram.tiles.commission', { amount: formatCurrency(rangeStats.commission) })}
+                    </p>
+                  )}
                 </div>
                 <TrendingUp className="h-8 w-8 text-muted-foreground/50" />
               </div>
@@ -410,20 +715,41 @@ export default function Affiliates() {
                   <p className="text-2xl font-bold text-yellow-600">
                     {formatCurrency(stats?.pending_payout || 0)}
                   </p>
+                  <p className="text-xs text-muted-foreground">{t('affiliateProgram.tiles.payable')}</p>
                 </div>
                 <Clock className="h-8 w-8 text-yellow-600/50" />
               </div>
             </CardContent>
           </Card>
 
+          {hasAwaiting && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">{t('affiliateProgram.tiles.awaitingApproval')}</p>
+                    <p className="text-2xl font-bold">
+                      {formatCurrency(stats?.awaiting_approval || 0)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('affiliateProgram.tiles.awaitingCount', { count: stats?.awaiting_approval_count ?? 0 })}
+                    </p>
+                  </div>
+                  <ShieldAlert className="h-8 w-8 text-muted-foreground/50" />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Paid</p>
+                  <p className="text-sm text-muted-foreground">{t('affiliateProgram.tiles.totalPaid')}</p>
                   <p className="text-2xl font-bold text-green-600">
                     {formatCurrency(stats?.paid_out || 0)}
                   </p>
+                  <p className="text-xs text-muted-foreground">{t('affiliateProgram.tiles.allTime')}</p>
                 </div>
                 <DollarSign className="h-8 w-8 text-green-600/50" />
               </div>
@@ -431,7 +757,7 @@ export default function Affiliates() {
           </Card>
         </div>
 
-        {/* Revenue Card */}
+        {/* Revenue Card: each currency on its own line (S14X-227) */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -439,11 +765,25 @@ export default function Affiliates() {
               Revenue Generated
             </CardTitle>
             <CardDescription>
-              Total sales from your referrals
+              {t('affiliateProgram.revenue.description')} · {periodLabel}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-4xl font-bold">{formatCurrency(stats?.total_revenue || 0)}</p>
+            {revenueShown === null ? (
+              <p className="text-4xl font-bold">{formatCurrency(stats?.total_revenue || 0)}</p>
+            ) : revenueLines.length === 0 ? (
+              <p className="text-muted-foreground">{t('affiliateProgram.revenue.none')}</p>
+            ) : (
+              <div className="space-y-1">
+                {revenueLines.map(([currency, minor]) => (
+                  <p key={currency} className={revenueLines.length === 1 ? 'text-4xl font-bold' : 'text-2xl font-bold'}>
+                    {currency === 'unknown'
+                      ? t('affiliateProgram.revenue.unknownCurrency', { amount: (Number(minor) / 100).toFixed(2) })
+                      : formatMoney(Number(minor), currency)}
+                  </p>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -585,7 +925,7 @@ export default function Affiliates() {
         </Card>
 
         {/* Conversion Rate Chart */}
-        {(stats?.total_clicks || 0) > 0 && (
+        {clicksShown > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -601,8 +941,8 @@ export default function Affiliates() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={[
-                      { stage: 'Clicks', value: stats?.total_clicks || 0, fill: 'hsl(var(--primary))' },
-                      { stage: 'Conversions', value: stats?.total_conversions || 0, fill: 'hsl(142 76% 36%)' },
+                      { stage: 'Clicks', value: clicksShown, fill: 'hsl(var(--primary))' },
+                      { stage: 'Conversions', value: conversionsShown, fill: 'hsl(142 76% 36%)' },
                     ]}
                     layout="vertical"
                     margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
@@ -623,13 +963,13 @@ export default function Affiliates() {
               </div>
               <div className="flex items-center justify-center gap-2 mt-4 p-3 bg-muted/50 rounded-lg">
                 <span className="text-muted-foreground">Conversion Rate:</span>
-                <span className="text-2xl font-bold text-primary">{stats?.conversion_rate || 0}%</span>
-                {(stats?.conversion_rate || 0) >= 5 ? (
+                <span className="text-2xl font-bold text-primary">{rateShown}%</span>
+                {rateShown >= 5 ? (
                   <Badge variant="default" className="bg-green-500">
                     <ArrowUpRight className="h-3 w-3 mr-1" />
                     Great
                   </Badge>
-                ) : (stats?.conversion_rate || 0) > 0 ? (
+                ) : rateShown > 0 ? (
                   <Badge variant="secondary">
                     Room to grow
                   </Badge>
@@ -677,6 +1017,9 @@ export default function Affiliates() {
                         {conversion.status === 'paid' && <CheckCircle className="h-3 w-3 mr-1" />}
                         {conversion.status}
                       </Badge>
+                      {conversion.held_for_review && (
+                        <p className="text-xs text-muted-foreground mt-1">{t('affiliateProgram.conversions.heldForReview')}</p>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -720,7 +1063,7 @@ export default function Affiliates() {
               <div>
                 <p className="font-medium">Get Paid</p>
                 <p className="text-sm text-muted-foreground">
-                  Payouts are processed monthly for approved conversions. You'll receive an email notification for each commission earned.
+                  {t('affiliateProgram.howItWorks.getPaid')}
                 </p>
               </div>
             </div>
@@ -740,6 +1083,8 @@ export default function Affiliates() {
               <PayoutRequest
                 pendingPayout={stats?.pending_payout || 0}
                 totalPaidOut={stats?.paid_out || 0}
+                awaitingApproval={stats?.awaiting_approval || 0}
+                openRequest={openRequest}
                 onRequestPayout={requestPayout}
               />
               
@@ -755,28 +1100,42 @@ export default function Affiliates() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {(stats?.paid_out || 0) === 0 ? (
+                  {payoutRequests && payoutRequests.length > 0 ? (
+                    // The requests the server holds (S14X-116), newest first.
+                    <div className="space-y-3">
+                      {payoutRequests.map((r, i) => (
+                        <div key={r.id ?? `${r.requested_at}-${i}`} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <p className="font-medium">{formatCurrency(r.amount_cents)}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {r.status === 'paid' && r.resolved_at
+                                ? t('affiliateProgram.history.paidOn', { date: shortDate(r.resolved_at) })
+                                : r.status === 'rejected' && r.resolved_at
+                                  ? t('affiliateProgram.history.rejectedOn', { date: shortDate(r.resolved_at) })
+                                  : t('affiliateProgram.history.requestedOn', { date: shortDate(r.requested_at) })}
+                            </p>
+                          </div>
+                          <Badge variant={r.status === 'paid' ? 'default' : r.status === 'rejected' ? 'destructive' : 'outline'} className="text-xs">
+                            {r.status === 'paid' && <CheckCircle className="h-3 w-3 mr-1" />}
+                            {r.status === 'paid'
+                              ? t('affiliateProgram.history.paid')
+                              : r.status === 'rejected'
+                                ? t('affiliateProgram.history.rejected')
+                                : t('affiliateProgram.history.requested')}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : !payoutRequests && (stats?.paid_out || 0) > 0 ? (
+                    // Before the dashboard lists requests: the paid total, under its own name.
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <p className="font-medium">{t('affiliateProgram.history.paidToDate')}</p>
+                      <p className="font-medium text-green-600">{formatCurrency(stats?.paid_out || 0)}</p>
+                    </div>
+                  ) : (
                     <p className="text-muted-foreground text-center py-8">
                       No payouts yet. Keep promoting to earn commissions!
                     </p>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <p className="font-medium">Initial Payout</p>
-                          <p className="text-sm text-muted-foreground">Completed</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium text-green-600">
-                            {formatCurrency(stats?.paid_out || 0)}
-                          </p>
-                          <Badge variant="default" className="text-xs">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Paid
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -807,6 +1166,52 @@ export default function Affiliates() {
             />
           </TabsContent>
         </Tabs>
+
+        {/* The account itself (S14X-093, S14X-021, S14X-115): affiliate-account. */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('affiliateProgram.account.title')}</CardTitle>
+            <CardDescription>{t('affiliateProgram.account.description')}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={handleSignOutEverywhere} disabled={accountBusy}>
+                <LogOut className="h-4 w-4 mr-2" />
+                {t('affiliateProgram.account.signOutEverywhere')}
+              </Button>
+              <Button variant="outline" onClick={handleExport} disabled={accountBusy}>
+                <Download className="h-4 w-4 mr-2" />
+                {t('affiliateProgram.account.export')}
+              </Button>
+            </div>
+            <form onSubmit={handleEmailChange} className="flex flex-col sm:flex-row gap-2">
+              <Input
+                type="email"
+                placeholder={t('affiliateProgram.account.newEmail')}
+                aria-label={t('affiliateProgram.account.newEmail')}
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                autoComplete="email"
+                required
+              />
+              <Button type="submit" variant="outline" disabled={accountBusy}>
+                <Mail className="h-4 w-4 mr-2" />
+                {t('affiliateProgram.account.sendChangeLink')}
+              </Button>
+            </form>
+            <div className="space-y-2 border-t pt-4">
+              <p className="font-medium">{t('affiliateProgram.account.eraseTitle')}</p>
+              <p className="text-sm text-muted-foreground">{t('affiliateProgram.account.eraseWarning')}</p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input placeholder="ERASE" aria-label={t('affiliateProgram.account.eraseConfirmLabel')} value={eraseConfirm} onChange={(e) => setEraseConfirm(e.target.value)} autoComplete="off" />
+                <Button variant="destructive" onClick={handleErase} disabled={accountBusy || eraseConfirm !== 'ERASE'}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {t('affiliateProgram.account.eraseButton')}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

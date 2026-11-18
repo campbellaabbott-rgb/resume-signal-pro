@@ -15,7 +15,8 @@ import { CORRECTION_MENU_INDUSTRIES } from "../_shared/correction-menu-industrie
 // and an hourly ceiling; the country lookup waits for validation and the limit;
 // the limit counts a network, not an address.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "save-lead.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, free-scan-page lane, owner S14X-101 'remove'): the lead alert names only the industry, the score and an eight-character reference, with no address, IP, country or reply link, and the performance alert carries no IP. And no address is kept: the request no longer calls the lead-saving function (20261112103000 empties free_scan_leads and makes that function keep nothing), so a tab still running the old page, or a script, stores no address that nothing would ever mail.
+const FN_BUILD = "save-lead.2026-11-12.1";
 
 /**
  * WHAT A CALLER WROTE NEVER BECOMES MARKUP IN THE OWNER'S MAIL (S8-100). The
@@ -73,7 +74,14 @@ async function sendAlert(alertType: string, subject: string, details: Record<str
   } catch (e) { console.error("[ALERT] Error:", e); }
 }
 
-const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>, clientIp?: string) => {
+/**
+ * THE OWNER'S ALERTS CARRY COUNTS OR A REFERENCE ONLY (S14X-101, the owner's
+ * answer 'remove'): no subscriber address, no raw IP, no country. The
+ * performance alert carried the caller's IP; the lead alert carried the
+ * address (in its subject, its body and a reply link), the IP and the
+ * looked-up country.
+ */
+const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>) => {
   const duration = Date.now() - startTime;
   const level = duration > VERY_SLOW_THRESHOLD ? 'CRITICAL' : duration > SLOW_REQUEST_THRESHOLD ? 'SLOW' : 'OK';
   console.log(`[PERF] ${operation} | ${duration}ms | ${level} | success=${success}${details ? ` | ${JSON.stringify(details)}` : ''}`);
@@ -82,27 +90,25 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
     EdgeRuntime.waitUntil(sendAlert(
       success ? `${operation}_slow` : `${operation}_error`,
       success ? `${operation} CRITICAL (${duration}ms)` : `${operation} Error`,
-      { operation, duration, level, success, ip: clientIp || 'unknown', ...details }
+      { operation, duration, level, success, ...details }
     ));
   }
 };
 
-// Send lead notification email with customer info
+// The lead alert: the field, the score and a short reference, never the
+// address, the IP or a country (S14X-101).
 async function sendLeadNotificationEmail(
-  email: string,
-  ip: string,
-  country: string,
+  reference: string,
   industry: string | null,
   atsScore: number | null
 ) {
   try {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) return;
-    
+
     const scoreColor = atsScore && atsScore >= 80 ? '#22c55e' : atsScore && atsScore >= 60 ? '#eab308' : '#ef4444';
     const scoreEmoji = atsScore && atsScore >= 80 ? '🟢' : atsScore && atsScore >= 60 ? '🟡' : '🔴';
-    const conversionNote = atsScore && atsScore < 70 ? 'HIGH CONVERSION POTENTIAL - Low score means they need help!' : 'Good candidate for premium upsell';
-    
+
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -112,64 +118,33 @@ async function sendLeadNotificationEmail(
       body: JSON.stringify({
         from: "Resume Booster <onboarding@resend.dev>",
         to: [ADMIN_EMAIL],
-        subject: subjectSafe(`${scoreEmoji} NEW LEAD: ${email} | ${industry || 'Unknown'} | ${country}`),
+        subject: subjectSafe(`${scoreEmoji} NEW LEAD | ${industry || 'Unknown'}`),
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; background: #f8fafc;">
-            
-            <!-- Header -->
             <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: white; padding: 20px; border-radius: 12px 12px 0 0;">
-              <h1 style="margin: 0; font-size: 20px;">🎯 New Lead Captured!</h1>
-              <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 13px;">${new Date().toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+              <h1 style="margin: 0; font-size: 20px;">New lead</h1>
+              <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 13px;">${new Date().toISOString()}</p>
             </div>
-            
-            <!-- Customer Email - PROMINENT -->
-            <div style="background: #eff6ff; padding: 25px; border-bottom: 2px solid #3b82f6;">
-              <p style="margin: 0 0 8px 0; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">📧 Customer Email</p>
-              <a href="mailto:${escapeHtml(email)}" style="font-size: 24px; font-weight: bold; color: #1e40af; text-decoration: none;">${escapeHtml(email)}</a>
-            </div>
-            
-            <!-- Quick Info -->
-            <div style="background: white; padding: 20px;">
+            <div style="background: white; padding: 20px; border-radius: 0 0 12px 12px;">
               <table style="width: 100%; border-collapse: collapse;">
                 <tr>
-                  <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px;">🌍 Location</td>
-                  <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 600; color: #1e293b;">${escapeHtml(country)}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px;">🏢 Industry</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px;">Industry</td>
                   <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 600; color: #1e293b;">${escapeHtml(industry || 'Not detected')}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px;">📊 ATS Score</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px;">ATS score</td>
                   <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; text-align: right;">
-                    <span style="background: ${scoreColor}; color: white; padding: 4px 12px; border-radius: 12px; font-weight: 600; font-size: 14px;">${escapeHtml(atsScore || 'N/A')}</span>
+                    <span style="background: ${scoreColor}; color: white; padding: 4px 12px; border-radius: 12px; font-weight: 600; font-size: 14px;">${escapeHtml(atsScore ?? 'N/A')}</span>
                   </td>
                 </tr>
-                <tr>
-                  <td style="padding: 10px 0; color: #64748b; font-size: 13px;">🔍 IP Address</td>
-                  <td style="padding: 10px 0; text-align: right; font-size: 12px; color: #94a3b8; font-family: monospace;">${escapeHtml(ip)}</td>
-                </tr>
               </table>
+              <p style="margin: 14px 0 0 0; font-size: 12px; color: #64748b;">Reference: ${escapeHtml(reference)}. No address is kept, and this alert carries no address, IP or country.</p>
             </div>
-            
-            <!-- Conversion Note -->
-            <div style="background: #fefce8; padding: 15px 20px; border-left: 4px solid #eab308;">
-              <p style="margin: 0; font-size: 13px; color: #854d0e;"><strong>💡 Note:</strong> ${conversionNote}</p>
-            </div>
-            
-            <!-- CTA -->
-            <div style="background: #f1f5f9; padding: 20px; border-radius: 0 0 12px 12px; text-align: center;">
-              <a href="mailto:${escapeHtml(email)}?subject=Your%20Resume%20Booster%20Results%20%F0%9F%93%84&body=Hi!%0A%0AThanks%20for%20trying%20our%20free%20resume%20scan.%20I%20noticed%20your%20ATS%20score%20could%20use%20some%20improvement%20%E2%80%93%20I%E2%80%99d%20love%20to%20help%20you%20boost%20it!%0A%0AWould%20you%20be%20interested%20in%20a%20quick%20chat%20about%20how%20to%20optimize%20your%20resume%3F%0A%0ABest%2C%0AResume%20Booster%20Team" 
-                 style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
-                📧 Reply to Lead
-              </a>
-            </div>
-            
           </div>
         `,
       }),
     });
-    
+
     if (!response.ok) {
       console.error("[SAVE-LEAD] Email notification failed:", await response.text());
     } else {
@@ -194,7 +169,7 @@ const corsHeaders = {
  * purchase mail shares, and the lead table's upsert means repeating one address
  * from a proxy pool never reached any row cap. Now one address alerts at most
  * once a day and all addresses at most OWNER_ALERTS_PER_HOUR an hour, each
- * counted by the database; the lead itself is saved either way. A counter that
+ * counted by the database; no address is kept either way (S14X-101). A counter that
  * cannot answer leaves the alert as it was before the doors, so it goes: a gate
  * on mail defaults to today's behaviour. Past the ceiling the owner is told so,
  * once a day.
@@ -223,21 +198,21 @@ async function addressBucket(email: string, secret: string): Promise<string> {
   return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
 }
 
-async function alertOwnerOfLead(admin: Admin, secret: string, email: string, ip: string, industry: string | null, score: number | null): Promise<void> {
-  if (await take(admin, { ...ADDRESS_DOOR, p_bucket: await addressBucket(email, secret) }) === "full") return;
+async function alertOwnerOfLead(admin: Admin, secret: string, email: string, industry: string | null, score: number | null): Promise<void> {
+  const bucket = await addressBucket(email, secret);
+  if (await take(admin, { ...ADDRESS_DOOR, p_bucket: bucket }) === "full") return;
   const atAll = await take(admin, ALL_DOOR);
   if (atAll === "full") {
     if (await take(admin, CEILING_NOTICE_DOOR) === "ok") {
       await sendAlert("lead_alerts_ceiling", "Lead alerts reached their hourly ceiling", {
         ceilingPerHour: OWNER_ALERTS_PER_HOUR,
-        leads: "still saved; only the alert mails stop until the hour's window ends",
+        leads: "answered as before, and no address is kept; only the alert mails stop until the hour's window ends",
       });
     }
     return;
   }
-  // The lookup of the platform's address only: a country header is the caller's.
-  const country = (await getCountryFromIpInfo(ip)) || "Unknown";
-  await sendLeadNotificationEmail(email, ip, country, industry, score);
+  // A reference, not the address: the first eight characters of its keyed hash.
+  await sendLeadNotificationEmail(bucket.slice(0, 8), industry, score);
 }
 
 // Common disposable email domains to block
@@ -461,31 +436,21 @@ serve(async (req) => {
       );
     }
 
-    // Save lead using RPC
-    const { error } = await supabase.rpc('save_free_scan_lead', {
-      p_email: email,
-      p_industry: industry || null,
-      p_ats_score: atsScore || null
-    });
-
-    if (error) {
-      console.error("[SAVE-LEAD] Database error:", error);
-      return new Response(
-        JSON.stringify({ error: 'Something went wrong. Please try again.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // No address is kept (S14X-101, the owner's answer 'remove'): the
+    // weekly-tips box that posted here is gone, no tips were ever sent, and
+    // 20261112103000 deleted the addresses already held. A tab still running
+    // the old page, or a script, is answered as before and stores nothing.
 
     // Send lead notification email in background, through its doors. A failure
-    // there is the alert's alone: the lead is saved and the visitor is answered.
+    // there is the alert's alone: the visitor is answered either way.
     const score = typeof atsScore === 'number' && Number.isInteger(atsScore) && atsScore >= 0 && atsScore <= 100 ? atsScore : null;
     EdgeRuntime.waitUntil(
-      alertOwnerOfLead(supabase, supabaseServiceKey, email, clientIp, knownIndustry(industry), score)
+      alertOwnerOfLead(supabase, supabaseServiceKey, email, knownIndustry(industry), score)
         .catch((e) => console.error("[SAVE-LEAD] Owner alert failed:", e))
     );
 
-    trackPerformance(requestStartTime, 'save-lead', true, {}, clientIp);
-    console.log(`[SAVE-LEAD] Lead saved successfully for IP: ${clientIp}`);
+    trackPerformance(requestStartTime, 'save-lead', true, {});
+    console.log(`[SAVE-LEAD] Lead answered, no address kept, for IP: ${clientIp}`);
 
     return new Response(
       JSON.stringify({ success: true }),
@@ -493,7 +458,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    trackPerformance(requestStartTime, 'save-lead', false, { error: error instanceof Error ? error.message : 'Unknown' }, clientIp);
+    trackPerformance(requestStartTime, 'save-lead', false, { error: error instanceof Error ? error.message : 'Unknown' });
     console.error("[SAVE-LEAD] Error:", error);
     return new Response(
       JSON.stringify({ error: 'Something went wrong. Please try again.' }),

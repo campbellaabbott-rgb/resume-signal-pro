@@ -95,6 +95,26 @@ export function calendarDaysUntil(iso: string, now: number | Date = Date.now()):
   return Math.round((day - today.getTime()) / DAY);
 }
 
+/**
+ * WHAT THE TRACKER KNOWS ABOUT A POSTING NOW (S14X-198).
+ *
+ * The page asks get_application_lifecycle only about rows with no closure on
+ * file, so on every load after the first a persisted closure comes back with
+ * no outcome at all. Only a came_down closure with a measured date is ever
+ * persisted (Account.tsx writes no other), so a held date with no answer is
+ * that. Otherwise the measured outcome decides, and with neither the state is
+ * "unknown": never "still standing" by default.
+ */
+export type TrackedPostingState = "came_down" | "came_down_relisted" | "still_standing" | "going_down" | "unknown" | (string & {});
+const MEASURED: ReadonlySet<string> = new Set(["came_down", "came_down_relisted", "still_standing", "going_down"]);
+
+export function trackedPostingState(a: Pick<TrackedApplication, "lifecycle_outcome" | "posting_closed_at">): TrackedPostingState {
+  const outcome = String(a.lifecycle_outcome ?? "");
+  if (MEASURED.has(outcome)) return outcome;
+  if (at(a.posting_closed_at) !== null) return "came_down";
+  return outcome || "unknown";
+}
+
 /** Today or later in the viewer's calendar: listed as upcoming, never as past. */
 export const isUpcomingInterview = (iso: string | null | undefined, now: number | Date = Date.now()): boolean =>
   !!iso && calendarDaysUntil(iso, now) >= 0;
@@ -120,7 +140,7 @@ export function interviewSignals(
     // InterviewsHub lists as upcoming, so no row is in both at once.
     if (isUpcomingInterview(a.interview_at, now)) continue;
 
-    const outcome = String(a.lifecycle_outcome ?? "");
+    const outcome = trackedPostingState(a);
     const closed = at(a.posting_closed_at);
 
     if (outcome === "still_standing") {

@@ -1,0 +1,304 @@
+{
+  "freeScanPage": {
+    "a11y": {
+      "resumeText": "Text deines Lebenslaufs",
+      "emailAddress": "Deine E-Mail-Adresse"
+    },
+    "jobUrl": {
+      "truncated": "Diese Stellenanzeige war länger, als wir lesen können, daher steht nur ihr erster Teil im Feld."
+    },
+    "checkout": {
+      "postingOverCap": "Die Vollständige Analyse liest die ersten {{max}} Zeichen dieser Stellenanzeige. Der Rest bleibt unberücksichtigt.",
+      "linkedInOverCap": "Die Vollständige Analyse liest die ersten {{max}} Zeichen deines LinkedIn-Texts. Der Rest bleibt unberücksichtigt."
+    },
+    "hero": {
+      "dropzone": "Oder lege deinen Lebenslauf hier ab: PDF, DOCX oder TXT",
+      "dropzoneActive": "Hier ablegen: der Scan ist nur Sekunden entfernt"
+    },
+    "parseCheck": {
+      "fromYourFile": "Diese Prüfungen liefen auf dem Text, den wir aus deiner Datei gelesen haben. Ein ATS nutzt seinen eigenen Leser, der manche Teile anders sehen kann.",
+      "section": {
+        "summary": "Zusammenfassung",
+        "experience": "Berufserfahrung",
+        "education": "Ausbildung",
+        "skills": "Kenntnisse"
+      },
+      "label": {
+        "sections": "Abschnittsüberschriften",
+        "contact": "Kontaktdaten",
+        "dates": "Datumsangaben",
+        "encoding": "Zeichenkodierung",
+        "iconGlyphs": "Zeichen aus Icon-Schriften",
+        "lines": "Zeilenstruktur",
+        "layout": "Spaltenlayout"
+      },
+      "detail": {
+        "sectionsAll": "Alle {{n}} Standardüberschriften wurden gefunden ({{found}}).",
+        "sectionsNone": "Es wurden keine Standardüberschriften gefunden. Die meisten ATS teilen einen Lebenslauf nach Überschriften wie Berufserfahrung oder Ausbildung auf; ohne sie landet dein Inhalt womöglich in einem einzigen Block.",
+        "sectionsSome": "Gefunden: {{found}}. Keine erkennbare Überschrift für: {{missing}}.",
+        "contactHeaderOnly": "Deine E-Mail-Adresse und Telefonnummer stehen nur in der Kopfzeile, die manche ATS überspringen. Schreib sie auch in den Text der ersten Seite.",
+        "contactBoth": "Deine E-Mail-Adresse und deine Telefonnummer wurden beide im Text gefunden.",
+        "contactBothLinkedIn": "Deine E-Mail-Adresse, Telefonnummer und LinkedIn-Adresse wurden alle im Text gefunden.",
+        "contactNone": "Im Text wurde weder eine E-Mail-Adresse noch eine Telefonnummer gefunden. Wenn deine Datei sie enthält, stehen sie vielleicht in einem Bild, einem Textfeld oder einer Kopfzeile, die beim Auslesen des Texts übersprungen wird.",
+        "contactEmailOnly": "Deine E-Mail-Adresse wurde gefunden, aber keine Telefonnummer in einem gängigen Format.",
+        "contactPhoneOnly": "Deine Telefonnummer wurde gefunden, aber keine E-Mail-Adresse in einem gängigen Format.",
+        "datesMany": "Es wurden {{n}} verschiedene Datumsangaben gefunden, sodass ein ATS deinen Werdegang und deine Zeit in jeder Position wahrscheinlich nachvollziehen kann.",
+        "datesNone": "Es wurden keine Datumsangaben in erkennbarer Form (etwa Jan 2020 oder 2020-2023) gefunden. Ein ATS nutzt Daten, um deine Erfahrung und eventuelle Lücken zu ermitteln.",
+        "datesOne": "Es wurde nur eine Datumsangabe gefunden. Wenn du mehrere Positionen aufführst, fehlen den meisten davon womöglich Start- und Enddaten, die ein ATS lesen kann.",
+        "encodingOk": "Im ausgelesenen Text wurden keine fehlerhaften Zeichen gefunden.",
+        "encodingBroken": "Zeichen, die nicht dekodiert werden konnten: {{n}}. Eine Schrift in deinem PDF ist wahrscheinlich nicht auf Standard-Unicode abgebildet, und ein ATS, das sie genauso liest, sähe denselben unleserlichen Text.",
+        "iconsNone": "Im ausgelesenen Text wurden keine Zeichen aus Icon-Schriften gefunden.",
+        "iconsFound": "Gefundene Zeichen aus Icon-Schriften: {{n}}. Vorlagen zeichnen die Symbole für Telefon, E-Mail und LinkedIn oft mit einer Icon-Schrift; ein ATS sieht dort ein verirrtes Zeichen statt des Symbols.",
+        "linesNormal": "Der Text hat normale Zeilenumbrüche (etwa {{chars}} Zeichen pro Zeile).",
+        "linesLong": "Der Text hat ungewöhnlich lange Zeilen (etwa {{chars}} Zeichen pro Zeile). Eine Tabelle oder ein Textfeld hat womöglich mehrere Zeilen zusammengeführt; prüfe, ob deine Aufzählungspunkte ineinanderlaufen.",
+        "linesFlat": "Der Text hat fast keine Zeilenumbrüche (etwa {{chars}} Zeichen pro Zeile), ein Zeichen für ein Tabellenlayout oder Textfelder, die zu einem Block zusammengedrückt wurden. Ein ATS verliert dabei womöglich deine Abschnitte und Aufzählungspunkte.",
+        "layoutSingle": "Es wurde kein mehrspaltiges Layout gefunden: der Text liest sich in einer Reihenfolge.",
+        "layoutColumns": "In deinem PDF wurde ein mehrspaltiges Layout gefunden. Textextraktoren lesen in Dateireihenfolge, nicht in der sichtbaren Reihenfolge, daher werden Spalten oft vermischt oder in falscher Folge gelesen."
+      }
+    },
+    "industry": {
+      "cybersecurity": "Cybersicherheit",
+      "logistics": "Logistik",
+      "real_estate": "Immobilien",
+      "insurance": "Versicherungen",
+      "nonprofit": "Gemeinnütziger Sektor",
+      "biotech": "Biotechnologie",
+      "aviation": "Luftfahrt",
+      "energy": "Energie",
+      "skilled_trades": "Handwerk",
+      "customer_success": "Customer Success",
+      "pharmacy": "Pharmazie",
+      "dental": "Zahnmedizin",
+      "veterinary": "Tiermedizin",
+      "fitness": "Fitness",
+      "media": "Medien",
+      "telecom": "Telekommunikation",
+      "agriculture": "Landwirtschaft",
+      "sports_management": "Sportmanagement",
+      "entertainment": "Unterhaltung",
+      "academia": "Wissenschaft und Forschung",
+      "construction_management": "Bauleitung",
+      "architecture": "Architektur",
+      "social_work": "Soziale Arbeit",
+      "childcare": "Kinderbetreuung",
+      "beauty": "Beauty und Kosmetik",
+      "culinary": "Küche und Gastronomie",
+      "law_enforcement": "Polizei und Strafverfolgung",
+      "environmental": "Umwelt",
+      "gaming": "Gaming",
+      "ecommerce": "E-Commerce",
+      "translation": "Übersetzung",
+      "event_planning": "Eventplanung",
+      "administrative": "Verwaltung",
+      "library": "Bibliothekswesen",
+      "clergy": "Seelsorge",
+      "mining": "Bergbau",
+      "maritime": "Seefahrt",
+      "landscaping": "Garten- und Landschaftsbau",
+      "janitorial": "Gebäudereinigung",
+      "general": "Allgemein / Sonstiges"
+    },
+    "confidence": {
+      "high": "hohe",
+      "medium": "mittlere",
+      "low": "niedrige"
+    },
+    "diagnostic": {
+      "title": "Diagnosebericht zum Lebenslauf",
+      "report": "Bericht",
+      "date": "Datum",
+      "subject": "Gegenstand",
+      "candidate": "Kandidat",
+      "industry": "Branche",
+      "benchmarks": "Vergleichswerte",
+      "benchmarksMeasured": "aus echten Scans gemessen",
+      "benchmarksEstimated": "Branchenschätzungen",
+      "engine": "Engine",
+      "footer": "Ein erneuter Scan genau dieses Dokuments liefert diese Berichts-ID. Wo markiert, sind die Ergebnisse deterministisch, und jeder umgeschriebene Aufzählungspunkt wird mit dem Dokument abgeglichen."
+    },
+    "band": {
+      "ats": {
+        "excellent": "Ausgezeichnet: Jobportale sollten das sauber lesen.",
+        "good": "Gut: die meisten Jobportale lesen das sauber.",
+        "fair": "Mittel: manche Portale lesen Teile davon womöglich falsch.",
+        "weak": "Schwach: Portale lesen wichtige Teile womöglich falsch oder lassen sie weg."
+      },
+      "recruiter": {
+        "excellent": "Ausgezeichnet: Recruiter sehen klare, belegte Wirkung.",
+        "good": "Gut: Recruiter sehen solide Wirkung; einige Zeilen könnten mehr zeigen.",
+        "fair": "Mittel: mehr Zahlen und Ergebnisse würden Recruitern helfen.",
+        "weak": "Schwach: Recruiter sehen eher Aufgaben als Ergebnisse."
+      }
+    },
+    "enhanced": {
+      "locatedIn": "Gefunden in: {{places}}"
+    },
+    "share": {
+      "yourResults": "Deine Ergebnisse"
+    },
+    "metric": {
+      "formatA": "Ein ATS kann das gut lesen",
+      "formatB": "Kleine Formatierungskorrekturen nötig",
+      "formatC": "Kann Lesefehler verursachen",
+      "formatD": "Ein ATS bringt deine Angaben womöglich durcheinander",
+      "readEasy": "Leicht zu überfliegen",
+      "readSome": "Manche Abschnitte sind schwer zu überfliegen",
+      "readHard": "Schwer zu überfliegen",
+      "quantStrong": "Durchgehend starke Zahlen",
+      "quantOlder": "Ältere Stationen brauchen mehr Zahlen",
+      "quantAdd": "Füge mehr Zahlen, Prozente und Beträge hinzu",
+      "verbsA": "Starke, abwechslungsreiche Verben",
+      "verbsB": "Gute Auswahl an Verben",
+      "verbsC": "Verwende stärkere Verben",
+      "verbsD": "Schwache Verben schwächen deine Wirkung",
+      "lengthRight": "Die richtige Länge für deine Erfahrungsstufe",
+      "lengthShort": "Füge mehr Erfolge hinzu",
+      "lengthLong": "Einen langen Lebenslauf überspringen Recruiter oft",
+      "wordsIdeal": "Idealbereich: {{min}}-{{max}} Wörter",
+      "wordsFew": "Wirkt dünn: ergänze Inhalte",
+      "wordsMany": "Zu dicht: kürze ihn",
+      "sectionsAll": "Alle wichtigen Abschnitte vorhanden",
+      "sectionsAdd": "Ergänze: {{section}}",
+      "contactAll": "Recruiter erreichen dich leicht",
+      "contactAdd": "Ergänze {{item}}",
+      "impactStrong": "Zeigt Ergebnisse, nicht Aufgaben",
+      "impactEarlier": "Frühere Stationen listen Aufgaben auf",
+      "impactFocus": "Setze auf Ergebnisse statt Aufgaben",
+      "densityDense": "Ein ATS findet deine Fähigkeiten",
+      "densityModerate": "Ergänze mehr Branchenbegriffe",
+      "densitySparse": "Wichtige Suchbegriffe fehlen",
+      "levelDense": "Dicht",
+      "levelModerate": "Mittel",
+      "levelSparse": "Dünn",
+      "learnAbout": "Mehr zu {{title}}"
+    },
+    "keywordImpact": {
+      "critical": "Pflicht",
+      "high": "Große Wirkung",
+      "medium": "Hilfreich",
+      "countCritical": "Pflicht: {{n}}",
+      "countHigh": "Große Wirkung: {{n}}",
+      "showAll": "Alle Keywords für {{industry}} anzeigen (+{{n}})"
+    },
+    "keywordCategory": {
+      "certification": "Zertifizierung",
+      "tool": "Tool",
+      "skill": "Fähigkeit",
+      "methodology": "Methode",
+      "metric": "Kennzahl",
+      "regulation": "Vorschrift"
+    },
+    "xray": {
+      "legendIntro": "Dein Lebenslauf, wie wir ihn lesen, mit Anmerkungen:",
+      "legendWeak": "rote Unterstreichung: ein schwacher Aufzählungspunkt (Maus darüber zeigt den Grund)",
+      "legendAmber": "gelb: keine Zahlen",
+      "legendGreen": "grün: ein starkes Handlungsverb",
+      "showLess": "Weniger anzeigen",
+      "showAll": "Alle Zeilen anzeigen ({{n}})",
+      "flagged_one": "{{count}} Zeile markiert",
+      "flagged_other": "{{count}} Zeilen markiert"
+    },
+    "email": {
+      "invalid": "Bitte gib eine gültige E-Mail-Adresse ein.",
+      "failed": "Senden ist gerade nicht möglich. Der PDF-Download oben funktioniert auch offline."
+    },
+    "pulse": {
+      "notAsked": "Wir konnten den Bestätigungslink für den monatlichen Markt-Puls dieses Mal nicht senden. Setze das Häkchen bei deinem nächsten Bericht erneut."
+    },
+    "pdf": {
+      "title": "DIAGNOSEBERICHT ZUM LEBENSLAUF",
+      "meta": "Bericht #{{id}}  ·  {{date}}  ·  Engine {{engine}}",
+      "subject": "Gegenstand: {{name}}  ·  Branche: {{industry}}  ·  Vergleichswerte: {{benchmarks}}",
+      "score": "ATS-Score: {{score}}/100",
+      "band": "(Modellbereich {{low}}-{{high}})",
+      "projected": "etwa {{score}} nach den Korrekturen (ein grober Richtwert)",
+      "breakdown": "Aufschlüsselung: Keywords {{keywords}}  ·  Format {{format}}  ·  Quantifizierung {{quantification}}",
+      "findings": "Befunde: {{critical}} kritisch  ·  {{warnings}} Warnungen  ·  {{passed}} bestanden",
+      "fixPlan": "Dein {{minutes}}-Minuten-Korrekturplan:",
+      "stepCost": "(etwa {{minutes}} Min., +{{points}} Pkt.)",
+      "sourceOnet": "Keyword-Erwartungen aus O*NET {{code}} (US-Arbeitsministerium: {{occupation}}).",
+      "sourcePosting": "Keywords mit der von dir angegebenen Stellenanzeige abgeglichen.",
+      "footer": "In der Vollständigen Analyse werden jeder umgeschriebene Aufzählungspunkt und die zitierte Zeile mit deinem Lebenslauf abgeglichen. Alle Details: resumebooster.work"
+    },
+    "report": {
+      "scoreBand": "Der Score {{score}} liegt in einem Modellbereich von {{low}}–{{high}}. Der Bereich reicht von unserer regelbasierten Berechnung bis zur KI-Schätzung: eine einzige exakte Zahl würde mehr Genauigkeit behaupten, als es gibt.",
+      "preparing": "Dein Bericht wird vorbereitet…"
+    },
+    "market": {
+      "title": "Marktinformationen: {{country}}",
+      "hotSkills": "Gefragte Fähigkeiten (von Hand zusammengestellt)",
+      "risingKeywords": "Aufsteigende Keywords (von Hand zusammengestellt)",
+      "cvNorms": "Lebenslauf-Normen: {{country}}"
+    },
+    "ats": {
+      "target": "Ziel-ATS:",
+      "detected": "Wir haben erkannt, dass dieses Unternehmen {{name}} nutzt. Die Formatierungstipps oben sind auf dieses System zugeschnitten."
+    },
+    "execScope": {
+      "title": "Prüfung des Führungsumfangs",
+      "signals": "{{n}}/{{total}} Signale für Verantwortungsumfang",
+      "intro": "Auf dieser Ebene prüfen Recruiter vor allem anderen, ob dein Verantwortungsumfang belegt ist.",
+      "teamSize": "Teamgröße",
+      "budget": "Budget- oder GuV-Verantwortung",
+      "impact": "Bezifferte Geschäftswirkung",
+      "board": "Kontakt zu Vorstand oder Aufsichtsgremien",
+      "strategy": "Sprache mit strategischer Tragweite",
+      "addNext": "Als Nächstes ergänzen:"
+    },
+    "sectionAudit": {
+      "title": "Prüfung der Abschnittslängen",
+      "good": "Gut",
+      "tooLong": "Zu lang",
+      "missing": "Fehlt",
+      "tooShort": "Zu kurz",
+      "words": "{{n}} Wörter",
+      "target": "(Ziel {{min}}–{{max}})"
+    },
+    "parsePreview": {
+      "title": "ATS-Lesevorschau",
+      "subtitle": "Was ein ATS liest",
+      "note": "Formatierung (Fettdruck, Spalten, Icons) wird entfernt. Wenn dein Name, deine Berufsbezeichnung oder wichtige Abschnitte hier nicht klar erscheinen, übersieht ein ATS sie womöglich."
+    },
+    "questions": {
+      "triggeredBy": "Ausgelöst durch:",
+      "prepare": "Vorbereiten:"
+    },
+    "toast": {
+      "creditUsedTitle": "Scan-Credit verwendet",
+      "creditUsed": "Du warst über dem heutigen Gratislimit, daher hat 1 gekaufter Credit diesen Scan abgedeckt.",
+      "creditUsedRemaining": "Du warst über dem heutigen Gratislimit, daher hat 1 gekaufter Credit diesen Scan abgedeckt. Verbleibende Credits: {{remaining}}.",
+      "budgetTitle": "Gerade zu viele Anfragen",
+      "budgetBody": "Von deiner Verbindung kamen in dieser Stunde zu viele Scans. Versuch es in etwa {{minutes}} Min. erneut. Das ist nicht dein Tageslimit.",
+      "busyTitle": "Die Analyse ist ausgelastet",
+      "busyBody": "Unsere Analyse ist gerade ausgelastet. Versuch es in einer Minute erneut."
+    },
+    "intent": {
+      "heading": "Mach deinen Scan persönlich",
+      "optional": "(optional, 5 Sekunden)",
+      "situation": {
+        "actively_applying": "Bewerbe mich aktiv",
+        "exploring": "Schaue mich um",
+        "career_change": "Berufswechsel",
+        "first_job": "Erster Job",
+        "freelance": "Freiberuflich"
+      },
+      "targetRoleLabel": "Zielposition",
+      "targetRolePlaceholder": "Zielposition (z. B. Senior Data Engineer): schärft Keywords und Vergleichswerte",
+      "countryLabel": "Land, in dem du dich bewirbst",
+      "countryAuto": "Bewerbung in… (Landesstandards automatisch erkennen)"
+    },
+    "parse": {
+      "poorTitle": "Dieser Lebenslauf wurde möglicherweise nicht richtig gelesen.",
+      "fairTitle": "Ein Hinweis dazu, wie deine Datei gelesen wurde.",
+      "found": "Wir haben gefunden: {{issues}}.",
+      "poorAdvice": "Die Werte unten sind womöglich unzuverlässig. Lade eine DOCX-Datei hoch oder füge den Text direkt ein.",
+      "fairAdvice": "Wenn der Bericht seltsam wirkt, füge den Text direkt ein.",
+      "issue": {
+        "fewWords": "nur {{n}} Wörter ausgelesen",
+        "lowLetters": "ein ungewöhnlich geringer Anteil von Buchstaben gegenüber Symbolen",
+        "garbled": "unleserliche Zeichen",
+        "noSections": "keine Standardabschnitte eines Lebenslaufs"
+      }
+    }
+  }
+}

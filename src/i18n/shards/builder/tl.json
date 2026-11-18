@@ -1,0 +1,32 @@
+{
+  "builderPage": {
+    "importFailed": {
+      "title": "Hindi na-import ang resume mo",
+      "busy": "Abala ang importer sa ngayon. Subukan ulit pagkalipas ng ilang minuto.",
+      "dailyLimit": "Naabot mo na ang limit ng import ngayong araw. Subukan ulit bukas, o ikaw na ang pumuno sa mga seksyon sa ibaba.",
+      "paused": "Naka-pause muna ang pag-import. Ikaw na ang pumuno sa mga seksyon sa ibaba, o subukan ulit mamaya.",
+      "tooLong": "Masyadong natagalan ang pagbasa sa resume mo. Kadalasang gumagana ito sa pangalawang subok.",
+      "generic": "Nagkaproblema habang binabasa ang resume mo. Subukan ulit.",
+      "retry": "Subukan ulit",
+      "fixesWaiting": "Ilalapat ang mga ayos mula sa report kapag gumana na ang import."
+    },
+    "importTruncated": "Ang unang {{imported}} lang sa {{total}} na character ng resume mo ang na-import. Idagdag ang natitira sa ibaba.",
+    "importLatest": "I-import ang pinakabago kong scan",
+    "importedNoneMatchedTitle": "Na-import ang resume",
+    "importedNoneMatchedDescription_one": "Walang bullet dito na tumugma sa rewrite mula sa report, kaya hindi ito nailapat. Nasa report mo pa rin ito.",
+    "importedNoneMatchedDescription_other": "Wala sa {{count}} rewrite mula sa report ang tumugma sa isang bullet dito, kaya walang nailapat. Nasa report mo pa rin ang mga ito.",
+    "otherTab": {
+      "changed": "Binago ang draft na ito sa ibang tab.",
+      "load": "I-load ang bersyong iyon",
+      "keep": "Panatilihin ang akin",
+      "cleared": "Binura ang draft na ito sa ibang tab o nang mag-sign out."
+    },
+    "storageBlocked": "Hindi sine-save ng browser na ito ang draft mo. I-export ito bago ka umalis.",
+    "moveUp": "Iakyat",
+    "moveDown": "Ibaba",
+    "removeEntry": "Alisin ang entry na ito",
+    "removeBullet": "Alisin ang bullet na ito",
+    "bullet": "Bullet {{num}}",
+    "dismiss": "Itago"
+  }
+}

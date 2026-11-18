@@ -123,6 +123,36 @@ describe("the résumé this tab scanned is offered to the account", () => {
   });
 });
 
+describe("S14X-166: a decision about one résumé is not a decision about the next", () => {
+  it("No thanks on résumé A still offers résumé B scanned after it in the same tab, and never A again", () => {
+    const B = "John Roe, journeyman electrician with twelve years of commercial fit-outs and a clean safety record. ".repeat(4);
+    sessionStorage.setItem(SESSION_RESUME_KEY, RESUME);
+    const { db, inserted } = fakeDb();
+    render(<MemoryRouter><LocalHistoryOffer db={db} userId="u-1" offeredScans={[]} offeredResume={lastScanResumeToOffer("u-1")} mapRow={(r: never) => r} onScans={() => {}} /></MemoryRouter>);
+    fireEvent.click(screen.getByRole("button", { name: "No thanks" }));
+    expect(inserted).toEqual([]);
+    expect(lastScanResumeToOffer("u-1")).toBeNull();
+    localStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify({ entries: [...LOCAL.entries, { id: "b1", timestamp: "2026-10-03T10:00:00.000Z", atsScore: 64, resumeFingerprint: resumeFingerprint(B) }] }));
+    sessionStorage.setItem(SESSION_RESUME_KEY, B);
+    expect(lastScanResumeToOffer("u-1")).toEqual({ text: B.trim(), score: 64 });
+    sessionStorage.setItem(SESSION_RESUME_KEY, RESUME);
+    expect(lastScanResumeToOffer("u-1"), "A stays declined").toBeNull();
+  });
+});
+
+describe("S14X-202: a scan the account already holds is not offered because two clocks stamped it", () => {
+  it("the same score within ten minutes of an account scan is held; another score, or a later time, is offered", () => {
+    localStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify({ entries: [
+      { id: "same", timestamp: "2026-10-05T12:00:03.000Z", atsScore: 71 },
+      { id: "earlier", timestamp: "2026-10-05T09:00:00.000Z", atsScore: 71 },
+      { id: "later", timestamp: "2026-10-05T12:20:00.000Z", atsScore: 71 },
+      { id: "other-score", timestamp: "2026-10-05T12:00:04.000Z", atsScore: 58 },
+    ] }));
+    const cloud = [{ created_at: "2026-10-05T12:00:05.000Z", ats_score: 71 }];
+    expect(localScansToOffer("u-1", cloud).map((e) => e.id)).toEqual(["earlier", "later", "other-score"]);
+  });
+});
+
 describe("the page wires the offer, and the signed-out card returns to it", () => {
   it("Account.tsx reads the offer and imports nothing on load", () => {
     const page = readFileSync(resolve(__dirname, "../pages/Account.tsx"), "utf8");

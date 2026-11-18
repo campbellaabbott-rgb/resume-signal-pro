@@ -497,6 +497,7 @@ describe("every keyed tool says what it needs, a shortlist read with no ids is a
       const rpcResult = (id, r) => r;
       const json = (body, status, headers) => ({ body, status, headers });
       const secondsToMidnightUtc = () => 1;
+      const quotaWasRead = (d) => !!d;
       const withUnkeyedNote = (rpc, note) => ({ ...rpc, note });
       const answerUnkeyed = async () => ({ rpc: { unkeyed: true }, headers: { "X-Unkeyed-Remaining": "1" } });
       const countCall = () => {};

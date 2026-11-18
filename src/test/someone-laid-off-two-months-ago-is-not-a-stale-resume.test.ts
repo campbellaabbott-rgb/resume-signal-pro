@@ -34,6 +34,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { detectEmploymentGaps, extractDateRanges, timelineGapOf } from "../../supabase/functions/free-keyword-scan/employment-gaps";
 import { codeOf } from "./helpers/strip-comments";
+import { extractTimeline } from "../../supabase/functions/free-keyword-scan/market-intelligence";
 import slice from "./fixtures/free-scan-wave/s10-007-employment-gaps.json";
 
 const NOW = new Date(2026, 9, 31); // 31 Oct 2026, local time
@@ -196,4 +197,28 @@ describe("the scanner reads the module", () => {
     expect(primary).not.toMatch(/function detectEmploymentGaps\(/);
     expect(primary).not.toMatch(/const MONTH_MAP\b/);
   });
+});
+
+describe("RC-S10-007: the timeline card reads the gap detector's ranges", () => {
+  const OPEN_ENDS = ["To date", "Till Date", "Présent", "heute", "aujourd'hui"];
+  const cvEndingIn = (end: string) => [
+    "EXPERIENCE",
+    `Senior Analyst, Initech, Oct 2023 - ${end}`,
+    "- Built the forecasting model",
+    "Analyst, Hooli, Jan 2019 - Mar 2022",
+    "- Reconciled ledgers",
+    "EDUCATION",
+    "BSc Economics, State University, 2014 - 2018",
+  ].join("\n");
+  for (const end of OPEN_ENDS) {
+    it(`a current role ending '${end}': the card's gaps are the detector's, and no role is built from the education section`, () => {
+      const text = cvEndingIn(end);
+      const t = extractTimeline(text, NOW);
+      const found = detectEmploymentGaps(text, NOW).gaps.map((g) => g.gapMonths);
+      expect(found).toEqual([19]);
+      expect(t.gapPeriods.map((g) => g.monthsGap)).toEqual(found);
+      expect(t.entries.map((e) => e.startYear).sort()).toEqual([2019, 2023]);
+      expect(t.entries.some((e) => /State University|BSc/.test(`${e.title} ${e.company ?? ""}`))).toBe(false);
+    });
+  }
 });

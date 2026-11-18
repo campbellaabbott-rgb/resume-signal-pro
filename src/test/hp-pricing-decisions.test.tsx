@@ -167,13 +167,16 @@ describe("2. Pro's perks come from one typed source", () => {
     expect(keys).toEqual(PRO_PERK_ITEMS.map((p) => p.key));
   });
 
-  it("every item's key is a main-locale key whose English matches the item's text", () => {
+  it("every item's key is a main-locale key, or the payments shard's, whose English matches the item's text", () => {
     // Switch-over step 6: the list is wave 4's (proPlan.perks.*, in the main
-    // locales); the pricing shard keeps no perk strings of its own.
+    // locales); the pricing shard keeps no perk strings of its own. The Full
+    // Analysis cap (S14X-079) is the payments lane's string, in its shard.
     const main = readMainLocale("en.json") as { proPlan: { perks: Record<string, string> } };
+    const payments = (JSON.parse(readFileSync(resolve(__dirname, "../i18n/shards/payments/en.json"), "utf8")) as { payments: { perks: Record<string, string> } }).payments.perks;
     for (const p of PRO_PERK_ITEMS) {
-      expect(p.key, p.key).toMatch(/^proPlan\.perks\./);
-      expect(main.proPlan.perks[p.key.replace(/^proPlan\.perks\./, "")], p.key).toBe(p.text);
+      expect(p.key, p.key).toMatch(/^(proPlan|payments)\.perks\./);
+      const english = p.key.startsWith("payments.") ? payments[p.key.replace(/^payments\.perks\./, "")] : main.proPlan.perks[p.key.replace(/^proPlan\.perks\./, "")];
+      expect(english, p.key).toBe(p.text);
     }
     expect((S.pro as Record<string, unknown>).perks, "the pricing shard keeps no perk strings").toBeUndefined();
   });

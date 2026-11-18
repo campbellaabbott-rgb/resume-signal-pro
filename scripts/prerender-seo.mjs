@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
   PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
-  bakeLanders, D7_TRUSTED_COMPANY_TOKENS, employerBoardsOf, employerPageOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, freshPoolOrder, postingFreshNameReason, postingPoolWalksOn, postingRowEligible, postingStubEntry, postingStubPage, keptPostingStub, postingStubPageBasis,
+  bakeLanders, D7_TRUSTED_COMPANY_TOKENS, employerBoardsOf, employerPageOf, pooledMembersOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, freshPoolOrder, postingFreshNameReason, postingPoolWalksOn, postingRowEligible, postingStubEntry, postingStubPage, keptPostingStub, postingStubPageBasis,
   LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, LLMS_TXT_COMPANIES, companiesLlmsLine, readCompanyIntel, llmsTxtCompaniesCount, duplicateSkeletons, landerBreakers, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
 } from "./prerender-pages.mjs";
 // The once-published pages, the ceiling, the dates and the duplicate groups
@@ -240,6 +240,52 @@ export const composeHtml = (
 };
 
 /**
+ * AN /ats/:vendor DESCRIPTION (B09, DESC-10; SEO-F16). Whole sentences: a
+ * slice at 155 ended all four mid-word. An answer whose whole sentences that
+ * fit say too little (Greenhouse's first is 40 characters) gives way to the
+ * page's own one-line summary. The answer's opening word is the reply to the
+ * page's question, which a search result does not show, so a description
+ * that opened "Yes." or "Unreliably." read as a non sequitur: it is dropped,
+ * and the sentence after it opens the description.
+ */
+export function atsGuideDescription(data) {
+  const answer = String(data?.behaviors?.[0]?.a ?? "");
+  const rest = answer.replace(/^[A-Z][a-z]+(?:\s+not)?(?:\.\s+|\s+[—–-]\s+)/, "");
+  const body = rest === answer ? answer : rest.charAt(0).toUpperCase() + rest.slice(1);
+  const first = fitSentence(body);
+  return first.length >= 70 && first.length <= 160
+    ? first
+    : `How ${data.name} reads a resume: the ${data.behaviors.length} parsing behaviors our free scan checks every file against, each answered plainly.`;
+}
+
+/**
+ * ONE LINE OF /jobs' LIST OF POSTING PAGES (SEO-F11): the title, the employer
+ * as the posting's own page prints it, and the place. The list printed the
+ * raw row's name, so seven lines carried names the name gate refused ("Group
+ * withMVSB wtag", an email-signature file name) while the pages they linked
+ * said "The employer" (2026-11-15). A refused name is "the employer" here too.
+ * `page` is bakePostingPage's answer for the row, `esc` the bake's escaper.
+ */
+export function postingIndexLine(page, job, { D, esc }) {
+  const employer = page && page.nameRefused ? "the employer" : D.postingEmployer(job);
+  return `<li><a href="${D.postingPagePath(job.id)}">${esc(D.postingText(job.title))}</a> — ${esc(employer)}${job.location ? `, ${esc(D.postingText(job.location))}` : ""}</li>`;
+}
+
+/**
+ * THE COUNTRY THE EMPLOYER'S OWN PAGE STATES (SEO-F08), as a two-letter code,
+ * or null when it states none the bake can read. `stated` is the row's
+ * employer statements (employerStatedOf): its address's addressCountry, a code
+ * or a name (D.countryCodeOfName reads a name).
+ */
+export function employerStatedCountry(stated, D) {
+  const v = stated && typeof stated === "object" && stated.address && typeof stated.address === "object" ? stated.address.addressCountry : null;
+  const s = typeof v === "string" ? v.trim() : "";
+  if (!s) return null;
+  if (/^[A-Za-z]{2}$/.test(s)) return s.toUpperCase();
+  return (D && typeof D.countryCodeOfName === "function" ? D.countryCodeOfName(s) : null) ?? null;
+}
+
+/**
  * ONE POSTING ROW AS THE BAKE WRITES IT: whether it keeps a live page, the row
  * its page prints, and the job markup the page carries. `row` is the board's
  * detail row, `D` the bake's bundle of the app's own modules and `carried`
@@ -297,6 +343,23 @@ export function bakePostingPage(row, description, { D, SITE, carried }) {
 }
 
 /**
+ * THE EMPLOYER'S OWN COUNTRY OUTRANKS A GUESS FROM THE LOCATION (SEO-F08).
+ * "AR - BUENOS AIRES (ARBUO)" read as Arkansas, so a Buenos Aires posting was
+ * marked up as US while its employer's own page said Argentina. `page` is
+ * bakePostingPage's answer for the row and `stated` the row's employer
+ * statements. When the employer's page states a country and the row says
+ * another, the markup is withheld as a location naming another country's is
+ * (SEO-035): a carried page keeps its page with no markup (D7) and goes on the
+ * dry run, a new one gets no page. Any other page is returned as it came.
+ */
+export function withEmployerCountry(page, stated, { D, carried }) {
+  const statedCountry = employerStatedCountry(stated, D);
+  const rowCountry = String(page?.rawJob?.country ?? "").trim().toUpperCase();
+  if (!page || !page.path || !page.live || !statedCountry || !rowCountry || statedCountry === rowCountry) return page;
+  return { ...page, ld: null, switchedOff: false, mismatchOnly: true, statedCountry, live: !!carried };
+}
+
+/**
  * THE EMPLOYER'S OWN ANSWER FOR EACH ROW ABOUT TO KEEP A LIVE PAGE (B01, B06).
  * `list` holds the bake's { job, description, ... } items; each job is read
  * at its employer (scripts/employer-reads.mjs, GET only, under the shared
@@ -343,6 +406,28 @@ export function postingMarkupWithheld(page) {
   return page.nameRefused ? "name" : "country";
 }
 
+/**
+ * THE 25-SCAN FLOOR COVERS EVERY BAND (S14X-193), as ScoreStudy applies it.
+ * From 20261112195000 get_public_scan_insights holds back every score band
+ * under the floor, counts the scans it held back (histogram_hidden_n) and
+ * answers pct_80_plus null under 25 such scans; an answer from before it
+ * published every band, so the bake holds those back itself.
+ */
+export const SCAN_FLOOR = 25;
+export function scoreBandsOverFloor(ins) {
+  const floor = ins?.band_floor ?? SCAN_FLOOR;
+  const histogram = Array.isArray(ins?.histogram) ? ins.histogram : [];
+  const shown = histogram.filter((h) => h.n >= floor);
+  const hidden = (ins?.histogram_hidden_n ?? 0) + histogram.filter((h) => h.n < floor).reduce((s, h) => s + h.n, 0);
+  const o = ins?.overall;
+  const pct80 =
+    o?.pct_80_plus == null ? null
+    : ins.band_floor != null ? o.pct_80_plus
+    : Math.round((o.pct_80_plus * o.n) / 100) >= floor ? o.pct_80_plus
+    : null;
+  return { floor, shown, hidden, pct80 };
+}
+
 // Importable for its pure functions (the guard renders a template through
 // composeHtml) and RUN only as a script — the rule load-oflc-lca.mjs uses.
 // The vite plugin invokes `node scripts/prerender-seo.mjs`, which is main.
@@ -374,7 +459,7 @@ export { TOOL_LANDINGS } from "../src/data/tool-landings";
 export { SCAN_RESULTS_WITHIN_SECONDS } from "../src/config/scan-timing";
 export { COMPETITORS } from "../src/data/competitors";
 export { VENDORS } from "../src/data/ats-vendors";
-export { ES_INDUSTRIES, isSpanish } from "../src/data/es-industries";
+export { ES_INDUSTRIES, isSpanish, esIndustryTerms, capitalizeFirst } from "../src/data/es-industries";
 export { SCREENER_NOTES } from "../src/data/screener-notes";
 export { GUIDES, GUIDES_INDEX_DESCRIPTION, GUIDES_INDEX_TITLE, GUIDES_INTRO, GUIDE_ARTICLE_IMAGE_PATH, guideGrounding } from "../src/data/guides";
 export { buildIndustryFaqs } from "../src/data/industry-faqs";
@@ -389,6 +474,7 @@ export { ALL_BOARD_SOURCES } from "../src/config/ats-vendors";
 export { publicApiBase, mcpServerUrl } from "../src/config/public-endpoints";
 export { cvFill, cvStandardsFaqs } from "../src/lib/cv-country-phrase";
 export { collidedBoards } from "../src/lib/board-collisions";
+export { countryCodeOfName } from "../src/components/jobs/posting-page";
 export { localityProblem, postingRemoteBasis, postingRequisitionIdentity, postingText, postingLanguage, postingCountryMismatch, postingValidThrough, remoteLocationNamesAPlace } from "../src/components/jobs/posting-page";
 export { changelog } from "../src/data/changelog";
 export { SCAN_ATS_SYSTEMS, SCORE_AI_BAND, SCORE_AUDIT_PARTS } from "../src/config/score-method";
@@ -434,6 +520,7 @@ export { parseVendorCounts } from "../src/lib/home/vendor-counts";
 export { utcStamp, andList as homeAndList } from "../src/lib/home/stamps";
 export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/lib/format";
 export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
+export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCAN_SIGNED_IN_PER_DAY } from "../src/config/scan-allowance";
 `));
   const bundle = OUT ? join(OUT, ".prerender-data.mjs") : join(root, "scripts", ".prerender-data.mjs");
   execSync(`npx esbuild "${entry}" --bundle --format=esm --outfile="${bundle}" --log-level=error`, { cwd: root, stdio: "inherit" });
@@ -738,6 +825,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
   let transparencyCache = null;
   let freshnessRow = null;
   let auditRow = null;
+  let cronRows = null;
   try {
     const envText4 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
     const grab4 = (k) => OFFLINE ? undefined : process.env[k] || (envText4.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
@@ -769,6 +857,12 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       // cached blob the React page reads.
       const au4 = await rpc4("get_audit_result", 10000);
       if (isObj(au4)) auditRow = au4;
+      // THE SCHEDULES THE CADENCE WORDS DESCRIBE, read from pg_cron itself
+      // (NB-32): the migrations that re-time a job can sit unapplied while the
+      // code that describes them ships, so the words follow the schedule the
+      // database runs, and DATA_PAGE_CADENCE only when this read fails.
+      const cr4 = await rpc4("get_cron_health", 10000);
+      if (Array.isArray(cr4)) cronRows = cr4;
     }
   } catch { /* offline build -- the four data pages ship their count-free copy */ }
   console.log(`[prerender-seo] data-page figures: stats_cache ${statsCache ? "read" : "UNREAD"}, transparency_cache ${transparencyCache ? "read" : "UNREAD"}, freshness ${freshnessRow ? "read" : "UNREAD"}, audit ${auditRow ? "read" : "UNREAD"}`);
@@ -857,7 +951,24 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
    * is not a number.
    */
   function dataPageFigures(P) {
-    const C = DATA_PAGE_CADENCE;
+    // THE WORDS FOLLOW THE SCHEDULE THE DATABASE RUNS (NB-32): a job's live
+    // pg_cron expression, when the build read one and it is an hourly-or-
+    // faster pattern these words can say; otherwise the constant above.
+    const cadencePhrase = (expr) => {
+      const f = String(expr ?? "").trim().split(/\s+/);
+      if (f.length !== 5 || f.slice(1).some((x) => x !== "*")) return null;
+      const step = /^\*\/(\d+)$/.exec(f[0]);
+      if (step) return `recomputed every ${step[1]} minutes`;
+      if (!/^\d+(,\d+)*$/.test(f[0])) return null;
+      const n = f[0].split(",").length;
+      return n === 1 ? "recomputed once an hour" : n === 2 ? "recomputed twice an hour" : `recomputed ${n} times an hour`;
+    };
+    const C = { ...DATA_PAGE_CADENCE };
+    for (const r of Array.isArray(P.cron) ? P.cron : []) {
+      const job = r && typeof r.ch_jobname === "string" ? r.ch_jobname : null;
+      const live = job && job in C && r.ch_active !== false ? cadencePhrase(r.ch_schedule) : null;
+      if (live) C[job] = live;
+    }
     const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
     const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
     const fmt = (v) => (num(v) === null ? null : Number(v).toLocaleString("en-US"));
@@ -922,6 +1033,16 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       if (!g && !f) return unread();
       const openN = g ? fmt(g.total_open) : null;
       const gAt = g ? asOf(g.computed_at) : null;
+      // THE GHOST FIGURES ARE DATED BY THEIR OWN PART, AND SAY WHEN THEY WERE
+      // CARRIED (S14X-160): the cache names 'ghost_stats' when it copied the
+      // part from an earlier run, and the part itself (from 20261112194000)
+      // names the pieces its writer could not recompute.
+      const gParts = g && Array.isArray(g.stale_parts) ? g.stale_parts.map((x) => String(x)) : [];
+      const gCarried = Boolean(g) && ((Array.isArray(P.stats?.stale_parts) && P.stats.stale_parts.includes("ghost_stats")) || gParts.length > 0);
+      const PART_WORDS = { counts: "the open-role counts", median_days_open: "the median age", closures: "the closure figures" };
+      const gCarriedNote = gCarried
+        ? ` Carried forward: the latest recomputation could not finish ${gParts.length ? gParts.map((x) => esc(PART_WORDS[x] ?? x)).join(", ") : "these figures"}, so ${gParts.length ? "those are" : "they are"} from an earlier run${gAt ? `, no newer than ${gAt}` : ""}.`
+        : "";
       const span = g ? num(g.observed_days) : null;
       const coverage = g ? num(g.posted_coverage_pct) : null;
       const stock = group("What the board holds right now", [
@@ -933,7 +1054,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
         // decimal.
         { value: g && num(g.median_days_open) !== null ? `${g.median_days_open} days` : null,
           label: `median age of an open posting, by the date the employer itself put on it${coverage !== null ? ` — ${coverage}% of postings state one and the rest are excluded from this median, never estimated` : ""}` },
-      ], `Counted over the postings the board serves. ${gAt ? `Measured ${gAt}` : "Measured when this page was last built"}, ${C["refresh-ghost-stats"]}; the live page re-reads it when it opens in a browser.`);
+      ], `Counted over the postings the board serves. ${gAt ? `Measured ${gAt}` : "Measured when this page was last built"}, ${C["refresh-ghost-stats"]}; the live page re-reads it when it opens in a browser.${gCarriedNote}`);
       // THE CLOSURE COUNT CARRIES THE DEPTH OF THE RECORD BESIDE IT, always.
       // A closure total from a young log reads as a rate to anyone who does
       // not know how long the log is -- the right-censoring trap that put a
@@ -955,11 +1076,13 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
         // showcase_excluded, which this total keeps -- so each of its weeks is
         // a part of this total, drawn on a narrower filter, not the same one.
         { value: g ? fmt(g.closed_90d) : null, label: `closure events logged in the last 90 days${span !== null ? `, from a record ${span} days deep` : ""} — takedowns, with re-listings, batches later flagged as collection faults and the takedowns a big board's first lap backfilled all excluded. A posting coming down is never called a hire: a hire, a withdrawal, a cancelled requisition and a retitle are indistinguishable from a feed` },
-      ], `${gAt ? `Measured ${gAt}` : "Measured when this page was last built"}, ${C["refresh-ghost-stats"]}.`);
+      ], `${gAt ? `Measured ${gAt}` : "Measured when this page was last built"}, ${C["refresh-ghost-stats"]}.${gCarriedNote}`);
       const fresh = group("How far behind the re-check rotation is", [
         { value: f && num(f.p50_min) !== null ? `${Math.round(f.p50_min)} minutes` : null, label: "since the median company feed was last re-read" },
         { value: f && num(f.p95_min) !== null ? `${(f.p95_min / 60).toFixed(1)} hours` : null, label: "covers 95% of feeds — the rest are older, and this is a measurement rather than a promise" },
-        { value: f ? fmt(f.boards) : null, label: "company feeds in the rotation" },
+        // WHAT THE DENOMINATOR COUNTS (S14X-194): the rollup's boards are the
+        // ones holding a live posting, the home rail's words, not every feed.
+        { value: f ? fmt(f.boards) : null, label: "job boards we read that hold a live posting" },
       ], `Measured from each feed's own last verification stamp${f && asOf(f.computed_at) ? ` ${asOf(f.computed_at)}` : ""}, ${C["job-board-stats-rollup"]}.`);
       // THE DAILY RE-CHECK, DATED, from the audit blob and nowhere else
       // (S2: llms.txt sent answer engines here for this number and the page
@@ -987,10 +1110,17 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       const aCi = aLive !== null && aDecided !== null ? wilson(aLive, aDecided) : null;
       const ciText = aCi ? `95% interval ${aCi[0]}–${aCi[1]}%` : null;
       const weighting = "drawn evenly across hiring systems, so the largest boards, where most takedowns happen, are under-sampled";
+      // THE RUN'S AGE WHEN IT IS NO LONGER DAILY (SEO-F07): the re-check is
+      // scheduled once a day, and when the newest run on record is more than
+      // 36 hours older than this build the page says how old it is instead of
+      // saying it runs daily. P.now is the build's clock; with none, no age.
+      const aAgeH = a && aAt && num(P.now) !== null ? (P.now - new Date(a.at).getTime()) / 3_600_000 : null;
+      const aStale = aAgeH !== null && aAgeH > 36;
+      const aAge = aStale ? (aAgeH >= 48 ? `${Math.floor(aAgeH / 24)} days` : `${Math.round(aAgeH)} hours`) : null;
       const audit = a && num(a.accuracyPct) !== null && num(a.sampled) !== null && aDecided !== null && aAt
         ? group("The daily re-check", [
             { value: `${a.accuracyPct}%`, label: `of ${fmt(aDecided)} sampled postings that could be decided were still live at the employer's own source${ciText ? ` (${ciText})` : ""} — ${fmt(a.sampled)} sampled on ${aAt}, ${weighting}` },
-          ], `Daily re-check: ${a.accuracyPct}% of ${fmt(aDecided)} decided sample postings still live at the source (n = ${fmt(aDecided)}${ciText ? `, ${ciText}` : ""}, ${aAt}), ${weighting}. A probe that could not be decided leaves the denominator rather than counting as a pass. Run once a day; the live page shows the latest run.`)
+          ], `Daily re-check: ${a.accuracyPct}% of ${fmt(aDecided)} decided sample postings still live at the source (n = ${fmt(aDecided)}${ciText ? `, ${ciText}` : ""}, ${aAt}), ${weighting}. A probe that could not be decided leaves the denominator rather than counting as a pass. ${aStale ? `The re-check is scheduled once a day, but this is the latest run on record, ${aAge} older than this page's build.` : "Run once a day; the live page shows the latest run."}`)
         : "";
       const html = stock + audit + lifecycle + fresh;
       if (!html) return unread();
@@ -1004,7 +1134,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
         ? `Measured ${gAt}, this board holds ${openN} open roles, postings the employer's feed served at our last read of it, and no dated posting older than 30 days${median !== null ? `; their median age is ${median} days by the date the employer itself put on them${coverage !== null ? ` (${coverage}% state one)` : ""}` : ""}.`
         : "";
       const answerAudit = audit
-        ? ` In the daily re-check on ${aAt}, ${a.accuracyPct}% of ${fmt(aDecided)} sampled postings that could be decided were still live at the employer's own source${ciText ? ` (${ciText}; ${weighting})` : ` (${weighting})`}.`
+        ? ` In ${aStale ? `the latest re-check on record, ${aAt}` : `the daily re-check on ${aAt}`}, ${a.accuracyPct}% of ${fmt(aDecided)} sampled postings that could be decided were still live at the employer's own source${ciText ? ` (${ciText}; ${weighting})` : ` (${weighting})`}.`
         : "";
       const answer = answerStock ? `${answerStock}${answerAudit}` : null;
       return {
@@ -1192,7 +1322,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       const openNow = num(P.openTotal);
       const awaitingPct = tableTotal && openNow && tableTotal >= openNow ? Math.round((1000 * (tableTotal - openNow)) / tableTotal) / 10 : null;
       const population = `Counted across the postings the board currently carries, plus ${awaitingPct !== null ? `about ${awaitingPct < 1 ? "1" : Math.round(awaitingPct)}%` : "the few"} awaiting removal${awaitingPct !== null ? ` (${fmt(tableTotal)} rows in the table against ${fmt(openNow)} open)` : ""}; the table keeps no postings that have come down.`;
-      const basis = `A posting states pay when its own description text or its system's structured compensation field carries a figure or a range, in the employer's words; nothing is estimated, modelled or converted. ${population} ${at ? `Measured ${at}` : "Measured when this page was last built"}, ${C["transparency-cache-hourly"]}.`;
+      const basis = `A posting states pay when its own description text or its system's structured compensation field carries a figure or a range, in the employer's words; nothing is estimated, modelled or converted. ${population} ${at ? `Measured ${at}` : "Measured when this page was last built"}, ${C["transparency-cache-hourly"]}.${Array.isArray(t?.stale_parts) && t.stale_parts.length ? ` This refresh could not recompute every part; these carry the previous run's value: ${t.stale_parts.map((x) => esc(String(x))).join(", ")}.` : ""}`;
       const o = isObj(p?.overall) ? p.overall : null;
       const co = isObj(cov?.overall) ? cov.overall : null;
       const head = group("How much of the corpus states pay", [
@@ -1785,13 +1915,10 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       // these descriptions mid-word ("... A", "... reduce ho"). An answer
       // whose whole sentences that fit say too little (Greenhouse's first is
       // 40 characters) gives way to the page's own one-line summary.
-      description: (() => {
-        const first = fitSentence(data.behaviors[0].a);
-        return first.length >= 70 && first.length <= 160
-          ? first
-          : `How ${data.name} reads a resume: the ${data.behaviors.length} parsing behaviors our free scan checks every file against, each answered plainly.`;
-      })(),
-      jsonLd: [faqLd(data.behaviors)],
+      description: atsGuideDescription(data),
+      // BREADCRUMBS IN THE MARKUP TOO (SEO-F18): the visible trail's middle
+      // step has no page, so the markup names the two that do.
+      jsonLd: [faqLd(data.behaviors), breadcrumbLd([{ name: "Home", path: "/" }, { name: data.name, path: `/ats/${vendor}` }])],
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "ATS guides" }, { name: data.name }])}
         <h1 class="text-3xl font-bold mb-3">${esc(data.headline)}</h1>
@@ -1806,15 +1933,16 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
   for (const [slug, name] of Object.entries(D.ES_INDUSTRIES)) {
     const data = D.INDUSTRY_KEYWORDS[slug];
     if (!data) continue;
-    const esKeywords = uniq(data.primary.filter(D.isSpanish)).slice(0, 20);
-    const esTitles = uniq(data.titles.filter(D.isSpanish)).slice(0, 14);
-    const enKeywords = uniq(data.primary.filter((t) => !D.isSpanish(t))).slice(0, 14);
+    // The page's own model (S14X-214): every Spanish term and title the
+    // engine knows, the English list with every Spanish term left out.
+    const { esKeywords, esTitles, enKeywords } = D.esIndustryTerms(slug, data);
     write({
       path: `/es/industrias/${slug}`,
       lang: "es",
       hreflang: { en: `/industries/${slug}`, es: `/es/industrias/${slug}` },
       title: `Palabras Clave para Currículum de ${name} — Qué Buscan los ATS`.length > 68 ? `Palabras Clave para CV de ${name} — Guía ATS` : `Palabras Clave para Currículum de ${name} — Qué Buscan los ATS`,
-      description: listDesc(esKeywords.slice(0, 5), " y más: ", `las palabras clave, títulos y certificaciones que nuestro escáner busca en ${name.toLowerCase()}. Escaneo gratis.`),
+      // A snippet opens with a capital (SEO-F16).
+      description: listDesc(esKeywords.slice(0, 5).map((k, i) => (i === 0 ? D.capitalizeFirst(k) : k)), " y más: ", `las palabras clave, títulos y certificaciones que nuestro escáner busca en ${name.toLowerCase()}. Escaneo gratis.`),
       // The Spanish pages carried no breadcrumb markup while the English
       // twins did (SEO-034).
       jsonLd: [breadcrumbLd([{ name: "Inicio", path: "/" }, { name: "Industrias", path: "/industries" }, { name, path: `/es/industrias/${slug}` }])],
@@ -1958,6 +2086,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
     // says that is what it counts.
     const studyFaqs = D.studyFaqs(ins);
     const studyBasis = D.studyBasisLine(ins);
+    const bands = scoreBandsOverFloor(ins);
     write({
       path: "/research/ats-score-benchmarks",
       // B09 (DATE-09): dated in the sitemap by the day its figures were taken, as its markup is.
@@ -1980,12 +2109,14 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
           publisher: orgRef(SITE),
           mainEntityOfPage: `${SITE}/research/ats-score-benchmarks`,
         },
+        // SEO-F18: the page's place in the site, as every other guide states it.
+        breadcrumbLd([{ name: "Home", path: "/" }, { name: "ATS score benchmarks", path: "/research/ats-score-benchmarks" }]),
         {
           "@context": "https://schema.org",
           "@type": "Dataset",
           "@id": `${SITE}/research/ats-score-benchmarks#dataset`,
           name: "Resume Booster ATS score benchmarks",
-          description: "Aggregated ATS score distributions (median, quartiles, decile histogram) from real resume scans, by industry and experience level. Rolling 180-day window; buckets published only at n ≥ 25.",
+          description: "Aggregated ATS score distributions (median, quartiles, decile histogram) from real resume scans, by industry and experience level. Rolling 180-day window; every score band, industry and experience level published only at n ≥ 25.",
           creator: { "@id": ORG_ID(SITE) },
           url: `${SITE}/research/ats-score-benchmarks`,
           isAccessibleForFree: true,
@@ -2007,19 +2138,19 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Guides", href: "/guides" }, { name: "ATS score benchmarks" }])}
         <article>
         <h1 class="text-3xl font-bold mb-3">What's a good ATS score? Live benchmarks from real scans</h1>
-        <p class="text-xs text-muted-foreground mb-6">Computed live from our scan corpus (rolling 180-day window${ins ? `, as of ${esc(ins.as_of)}` : ""}) · Aggregates only, minimum 25 scans per bucket${studyBasis ? `<span class="block mt-1">${esc(studyBasis)}</span>` : ""}</p>
+        <p class="text-xs text-muted-foreground mb-6">Computed live from our scan corpus (rolling 180-day window${ins ? `, as of ${esc(ins.as_of)}` : ""}) · Aggregates only, minimum ${SCAN_FLOOR} scans per score band, industry and experience level${studyBasis ? `<span class="block mt-1">${esc(studyBasis)}</span>` : ""}</p>
         <section class="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-8"><h2 class="text-sm font-semibold text-foreground mb-1.5">The short answer</h2><p class="text-sm text-muted-foreground leading-relaxed">${
           o
-            ? esc(`Across the last ${o.n.toLocaleString("en-US")} scans logged, the median resume scored ${o.median}, with the middle half of resumes landing between ${o.p25} and ${o.p75}.${o.pct_80_plus != null ? ` Only ${o.pct_80_plus}% scored 80 or higher — so a score in the 80s is genuinely strong, not table stakes.` : ""} There is no universal pass mark: use the distribution below to see where you actually stand.`)
+            ? esc(`Across the last ${o.n.toLocaleString("en-US")} scans logged, the median resume scored ${o.median}, with the middle half of resumes landing between ${o.p25} and ${o.p75}.${bands.pct80 != null ? ` Only ${bands.pct80}% scored 80 or higher — so a score in the 80s is genuinely strong, not table stakes.` : ` Fewer than ${SCAN_FLOOR} of them scored 80 or higher, too few to state as a share.`} There is no universal pass mark: use the distribution below to see where you actually stand.`)
             : "There is no universal “good” ATS score — the honest benchmark is where you fall in the distribution of real resumes being scanned right now. This page computes that distribution live from our scan corpus: overall median and quartiles, per-industry benchmarks, and experience-level medians."
         }</p></section>
         ${
           ins
             ? `
         <section class="mb-10"><h2 class="text-xl font-bold mb-3">How real resumes score</h2>
-          <p class="text-sm text-muted-foreground leading-relaxed mb-4">Each row is a 10-point score band across every scan logged in the current window.</p>
+          <p class="text-sm text-muted-foreground leading-relaxed mb-4">Each row is a 10-point score band with at least ${bands.floor} scans${bands.hidden > 0 ? `; ${bands.hidden.toLocaleString("en-US")} ${bands.hidden === 1 ? "scan" : "scans"} in bands under that floor ${bands.hidden === 1 ? "is" : "are"} held back and counted only in the overall figures.` : ", and together they cover every scan logged in the current window."}</p>
           <table class="w-full text-sm"><thead><tr class="text-left text-xs text-muted-foreground"><th class="p-2">Score band</th><th class="p-2">Scans</th><th class="p-2">Share</th></tr></thead><tbody>
-          ${ins.histogram.map((h) => `<tr class="border-b border-border"><td class="p-2 text-foreground">${h.bucket}–${h.bucket + 9}</td><td class="p-2 text-muted-foreground">${h.n.toLocaleString("en-US")}</td><td class="p-2 text-muted-foreground">${o ? Math.round((1000 * h.n) / o.n) / 10 : 0}%</td></tr>`).join("")}
+          ${bands.shown.map((h) => `<tr class="border-b border-border"><td class="p-2 text-foreground">${h.bucket}–${h.bucket + 9}</td><td class="p-2 text-muted-foreground">${h.n.toLocaleString("en-US")}</td><td class="p-2 text-muted-foreground">${o ? Math.round((1000 * h.n) / o.n) / 10 : 0}%</td></tr>`).join("")}
           </tbody></table></section>
         ${ins.industries.length ? `<section class="mb-10"><h2 class="text-xl font-bold mb-3">Benchmarks by industry</h2>
           <p class="text-sm text-muted-foreground leading-relaxed mb-4">Median and middle-half range (25th–75th percentile) per detected industry, minimum 25 scans each.</p>
@@ -2308,14 +2439,20 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
         const name = notes.countryName;
         const vars = { name, docTerm: std.docTerm };
         const faqs = D.cvStandardsFaqs(locale, t, { name, docTerm: std.docTerm, photo: std.photo, photoNote: notes.photoNote, lengthNote: notes.lengthNote });
+        // SEO-F18: one trail, in the page's language, shown and marked up
+        // alike; the React page prints the same labels (src/pages/CvStandards.tsx).
+        const trail = [{ name: t.breadcrumbHome, href: "/", path: "/" }, { name: t.breadcrumbIndex, href: "/cv-standards", path: "/cv-standards" }, { name, path: `/${cfg.pathBase}/${slug}` }];
         write({
           path: `/${cfg.pathBase}/${slug}`,
           lang: cfg.htmlLang,
           hreflang: D.hreflangCluster(iso),
           title: D.cvFill(t.title, vars, locale),
           description: D.cvFill(t.metaDescription, vars, locale),
-          jsonLd: [faqLd(faqs)],
+          // SEO-F18: the translated pages carried no BreadcrumbList while the
+          // English ones did; it describes the trail the page shows.
+          jsonLd: [faqLd(faqs), breadcrumbLd(trail)],
           content: `
+            ${breadcrumbNav(trail)}
             <h1 class="text-3xl font-bold mb-3">${esc(D.cvFill(t.h1, vars, locale))}</h1>
             <p class="text-muted-foreground mb-8">${esc(D.cvFill(t.intro, vars, locale))}</p>
             <p class="text-xs text-muted-foreground mb-6"><a href="/cv-standards/${D.COUNTRY_SLUGS[iso]}" class="text-primary">English version →</a></p>
@@ -2384,6 +2521,15 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
     // out loud, because section 99zz FAILs it live.
     if (pinnedMissing.length) console.warn(`[prerender-seo] D7: ${pinnedMissing.length} pinned company page(s) not chosen (under the minimum open roles or not carried): ${pinnedMissing.join(", ")}`);
   }
+  // THE BOARDS AN EMPLOYER RUNS BELOW THE CUT (RC-S12-021, pooledMembersOf):
+  // no page of their own, so nothing below writes, counts or indexes them as
+  // pages; their openings are summed on their employer's page (pooledOpen)
+  // and /landers.json maps them there.
+  const POOLED_MEMBERS = pooledMembersOf(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], LANDERS, {
+    openOf: openRolesOf, displayName: (c) => bakeEmployerName(c.token, c.name, NAME_PARTS).name,
+  });
+  const memberByToken = new Map(POOLED_MEMBERS.map((c) => [c.token, c]));
+  console.log(`[prerender-seo] pooled members: ${POOLED_MEMBERS.length} board(s) below the cut pooled into their employer's page${POOLED_MEMBERS.length ? ` (${POOLED_MEMBERS.slice(0, 30).map((c) => `${c.token} -> ${c.employerPrimary}`).join(", ")})` : ""}`);
   const NAME_GATE = new Map(LANDERS.map((c) => [c.token, bakeEmployerName(c.token, c.stored, NAME_PARTS)]));
   // WHAT EACH BOARD IS, as the live page says it (prerender-pages.mjs
   // companyLanderPage `kind`): the USAJOBS listing site, a staffing agency's
@@ -2407,6 +2553,10 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
   const landerByToken = new Map(LANDERS.map((c) => [c.token, c]));
   /** The indexable employer page for a board token, when this bake writes one. */
   const landerFor = (token) => {
+    // A pooled member (RC-S12-021) links the page its employer's own board
+    // links; employerPrimary is always a chosen board, never a member.
+    const member = typeof token === "string" ? memberByToken.get(token) : null;
+    if (member) return landerFor(member.employerPrimary);
     const c = typeof token === "string" ? landerByToken.get(token) : null;
     if (!c) return null;
     // A board whose page canonicalises to ANOTHER employer that shares its
@@ -2422,9 +2572,9 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
   // (src/lib/seo/lander-manifest.ts) and links /jobs?company=<token> for any
   // board the file does not name, so a crawler that runs scripts is never
   // sent to an address that serves the homepage's copy.
-  const landersManifest = Object.fromEntries(LANDERS.map((c) => [c.token, landerFor(c.token)?.href ?? null]));
+  const landersManifest = Object.fromEntries([...LANDERS, ...POOLED_MEMBERS].map((c) => [c.token, landerFor(c.token)?.href ?? null]));
   writeFileSync(join(dist, "landers.json"), JSON.stringify(landersManifest));
-  console.log(`[prerender-seo] /landers.json written: ${Object.values(landersManifest).filter(Boolean).length} of ${LANDERS.length} chosen boards name a page`);
+  console.log(`[prerender-seo] /landers.json written: ${Object.values(landersManifest).filter(Boolean).length} of ${LANDERS.length} chosen boards and ${POOLED_MEMBERS.length} pooled member(s) name a page`);
   /** The href a data-page table or a posting uses for an employer board. */
   const companyHrefFor = (token) => landerFor(token)?.href ?? `/jobs?company=${encodeURIComponent(String(token ?? ""))}`;
   const companyLinkHtml = (token, name) => {
@@ -2903,6 +3053,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       // returned: the name, the page and the markup.
       for (const d of detailed) {
         d.page = bakePostingPage(d.job, d.description, { D, SITE, carried: d.carried });
+        d.page = withEmployerCountry(d.page, d.stated, { D, carried: d.carried });
         const { named } = d.page;
         if (named.reason) {
           nameGateDryRun.push({ path: D.postingPagePath(d.job.id), kind: "posting", token: d.job.token ?? null, name: named.name, shown: named.shown, reason: named.reason, would: "be marked noindex (its job markup is already withheld and its head names no employer)" });
@@ -2932,7 +3083,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
           stubs.push({ id: job.id, path, state: "retired", title: job.title, company: job.company });
           continue;
         }
-        if (mismatchOnly) nameGateDryRun.push({ path, kind: "posting", token: job.token ?? null, name: D.postingEmployer(rawJob), shown: job.location ?? null, reason: `the location ends in another country's name than the row's (${job.country})`, would: "be marked noindex (its job markup is already withheld)" });
+        if (mismatchOnly) nameGateDryRun.push({ path, kind: "posting", token: job.token ?? null, name: D.postingEmployer(rawJob), shown: job.location ?? null, reason: page.statedCountry ? `the employer's own page states ${page.statedCountry}, the row ${job.country}` : `the location ends in another country's name than the row's (${job.country})`, would: "be marked noindex (its job markup is already withheld)" });
         if (job.salary) withPay++;
         const paras = D.jdParagraphs(description);
         const title = D.postingText(job.title);
@@ -3040,7 +3191,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
           .filter((d) => postingPaths.includes(D.postingPagePath(d.job.id)))
           // Each line as the posting's own page prints it (postingText): a feed's
           // "&amp;" is one ampersand, never escaped twice (B07, F08).
-          .map((d) => `<li><a href="${D.postingPagePath(d.job.id)}">${esc(D.postingText(d.job.title))}</a> — ${esc(D.postingEmployer(d.job))}${d.job.location ? `, ${esc(D.postingText(d.job.location))}` : ""}</li>`)
+          .map((d) => postingIndexLine(d.page, d.job, { D, esc }))
           .join("\n              ");
         postingIndexSection = `
           <section>
@@ -3103,6 +3254,9 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
   // employer page only where this bake writes one.
   const DATA_FIGURES = dataPageFigures({
     stats: statsCache, transparency: transparencyCache, freshness: freshnessRow, audit: auditRow,
+    // The live cron schedules the cadence words follow (NB-32), and the
+    // build's clock the re-check's age is measured against (SEO-F07).
+    cron: cronRows, now: Date.now(),
     // The board's open count, for the pay page's population sentence (S13-088).
     openTotal: BOARD_TOTAL,
     companyHref: (token, query) => {
@@ -3374,11 +3528,12 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       // this one, and the page says how many. A board that is not its
       // employer's primary keeps its own count; a sum with any board's count
       // unread is no sum, and the page states its own.
+      // Its boards include the ones below the cut (RC-S12-021: POOLED_MEMBERS).
       const pooledOpen = (c) => {
         if (c.primary !== c.token || c.sameEmployer === false) return null;
-        const boards = employerBoardsOf(LANDERS, c.token);
+        const boards = employerBoardsOf([...LANDERS, ...POOLED_MEMBERS], c.token);
         if (boards.length < 2) return null;
-        const counts = boards.map((t) => openRolesOf(landerByToken.get(t)));
+        const counts = boards.map((t) => openRolesOf(landerByToken.get(t) ?? memberByToken.get(t)));
         if (counts.some((n) => typeof n !== "number")) return null;
         return { open: counts.reduce((a, b) => a + b, 0), boards: boards.length };
       };
@@ -3625,10 +3780,14 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
             ${cs.map((c) => {
               // Same rule as the landers this index links to: the servable
               // count or no count. An A-Z row that disagreed with the page one
-              // click away is the same defect at directory scale.
+              // click away is the same defect at directory scale, and it did
+              // (SEO-F17, 2026-11-15: PwC 891 here, 2,008 on its page): the
+              // row states the page's own figure, pooled over the employer's
+              // boards when the page pools them.
               const o = openRolesOf(c);
+              const pooledRow = pooledOpen(c);
               const kind = KIND_LABEL[landerKindOf(c.token)];
-              return `<li><a href="${landerPath(c.token)}" class="text-primary hover:underline">${esc(c.name)}</a>${kind ? ` <span class="text-muted-foreground">(${kind})</span>` : ""}${typeof o === "number" ? ` <span class="text-muted-foreground">— ${fmt(o)} open roles</span>` : ""}</li>`;
+              return `<li><a href="${landerPath(c.token)}" class="text-primary hover:underline">${esc(c.name)}</a>${kind ? ` <span class="text-muted-foreground">(${kind})</span>` : ""}${typeof o === "number" ? ` <span class="text-muted-foreground">— ${fmt(pooledRow ? pooledRow.open : o)} open roles</span>` : ""}</li>`;
             }).join("\n            ")}
           </ul>`).join("\n");
         COMPANY_PAGE_COUNT = primaries.length;
@@ -3849,7 +4008,8 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
           <ul>
             <li><code>GET /v1/jobs</code> — live postings, newest first; every result is still open in the employer's own feed and dated within the last 30 days. Filters for country, category, company, work mode, source system, experience band, department, pay basis and floor, posting date; paginate with <code>cursor=</code>, never a deep offset. <code>explain=1</code> names every filter that bound; <code>engine=ranked</code> (paid) swaps the title match for the site's full relevance engine.</li>
             <li><code>GET /v1/jobs/{id}</code> — one posting with its description; a 404 once the employer withdraws it, never a stale 200.</li>
-            <li><code>GET /v1/changes</code> — what opened and what closed since a timestamp, and for each close whether the role genuinely came down or was re-listed under a new id. Opened reaches back 30 days on any key; closed reaches back 72 hours on a free key and 180 days on a paid one, and leaves out batches our own collector flagged as a possible failed read unless you ask for them with <code>include_suspect=true</code>. Closures written before the collector began assessing its batches were never assessed: they carry <code>suspectBatch: null</code> and no walk filters them.</li>
+            <li><code>GET /v1/jobs/{id}/application</code> — the employer's own application form for a live posting, when its hiring system publishes one: each question with who should answer it (the person, by default), cached for 24 hours. It never fills or submits anything; the person answers and presses submit on the employer's own site. Metered as one call.</li>
+            <li><code>GET /v1/changes</code> — what opened and what closed since a timestamp, and for each close whether the role genuinely came down or was re-listed under a new id. Opened reaches back 30 days on any key; closed reaches back 72 hours on a free key and 180 days on a paid one, and leaves out batches our own collector flagged as a possible failed read unless you ask for them with <code>include_suspect=true</code>. Closures written before the collector began assessing its batches were never assessed: they carry <code>suspectBatch: null</code> and no walk filters them. Both lists are ordered oldest first and page on their own: follow <code>page.opened.nextCursor</code> as <code>opened_cursor</code> and <code>page.closed.nextCursor</code> as <code>closed_cursor</code> until <code>hasMore</code> is false. When a list carries <code>settledThrough</code> (<code>page.opened.settledThrough</code>, <code>page.closed.settledThrough</code>), it reads only up to that settled horizon, because a closure's row can be written minutes after the time it is stamped with; such a list also carries <code>resumeCursor</code>, and a reader resumes by sending it back as <code>opened_cursor</code> or <code>closed_cursor</code>, never by moving <code>since</code>. A response without them runs each list up to the moment it was read.</li>
             <li><code>GET /v1/companies</code> — employers ranked by open postings, from the same cached facet the board renders, with the as-of stamp and its basis.</li>
             <li><code>GET /v1/stats</code> — headline counts, the closure log, feed freshness (p50/p95/max minutes since each feed was last re-read) and per-system coverage, each figure with its own as-of and basis.</li>
             <li><code>GET /v1/usage</code> — your own consumption for the last 30 days and what is left of today's limits.</li>
@@ -3977,7 +4137,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
           <p class="text-sm text-muted-foreground mb-3">${esc(T.transparentScoringSubtitle || "")}</p>
           <a href="/methodology" class="text-sm font-medium text-primary underline">${esc(T.viewMethodology || "View the methodology")}</a>
         </section>
-        ${cta("Scan without an account", `No signup and no card — 7 free scans a day. The text is deleted after ${clocks.tempHours} hours, the report after ${clocks.reportDays} days.`, "Scan my resume free")}`,
+        ${cta("Scan without an account", `No signup and no card — ${D.SCAN_FREE_PER_DAY} free scans a day (${D.SCAN_SIGNED_IN_PER_DAY} with a free account). The text is deleted after ${clocks.tempHours} hours, the report after ${clocks.reportDays} days.`, "Scan my resume free")}`,
     });
 
     // ---- /agent ----
@@ -4125,7 +4285,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       // constants are pinned to (a-first-call-with-no-key guard), never typed.
       // DECLARED BEFORE THE TWO SENTENCES THAT READ THEM (the 2026-09-16 bake).
       const unkeyedNames = codes(D.MCP_ANON_TOOLS.filter(toolKept));
-      const unkeyedCaps = `${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per network address (from ChatGPT, ${D.MCP_ANON_CAPS.chatgptPerPerson} for each person ChatGPT's call names; from Claude, a shared pool of ${D.MCP_ANON_CAPS.hostPoolPerDay} first), search capped at ${D.MCP_ANON_CAPS.searchRows} rows`;
+      const unkeyedCaps = `${D.MCP_ANON_CAPS.perAddressPerDay} calls a day for each internet connection an app calls from (from ChatGPT, ${D.MCP_ANON_CAPS.chatgptPerPerson} for each person ChatGPT's call names; from Claude, a shared pool of ${D.MCP_ANON_CAPS.hostPoolPerDay} first), search capped at ${D.MCP_ANON_CAPS.searchRows} rows`;
       const signInSentence = withSignIn
         ? ` From ${h(withSignIn)}: a sign-in instead of a key, while the server's sign-in service is on — the call then runs on your own account key (the same row and quota a pasted key would use); before sign-in, or while it is off, the unkeyed tools — ${unkeyedNames} — still answer, ${unkeyedCaps}.`
         : "";
@@ -4170,7 +4330,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
             <p class="text-sm text-muted-foreground mt-3">${inline(D.MCP_SIGN_IN_NEUTRAL)}</p>
             <p class="text-sm mt-2"><strong class="text-foreground">How you know it worked:</strong> ${inline(host.verify)}</p>
             <p class="text-xs text-muted-foreground mt-2">${inline(D.MCP_NEEDS_ACCOUNT_LINE)}</p>
-            <p class="text-xs text-muted-foreground mt-2">${h(D.MCP_ADDRESS_GLOSS)}</p>
+            <p class="text-xs text-muted-foreground mt-2">${h(host.allowance ?? D.MCP_ADDRESS_GLOSS)}</p>
             ${keyedHtml(host)}
           </section>`;
       // THE TILES: the page hosts only, in the mirror's order; then the one
@@ -4255,7 +4415,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
             <p class="text-sm text-muted-foreground mt-2">Any other app reaches every tool your key allows when it can send an Authorization header; how to set each one up is in <a href="${h(D.MCP_INSTALL_REPO_URL)}">the install repository</a>.</p>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">The search and read tools</h2>
-            <ul class="space-y-1.5">${keptTools.map((t) => `<li class="text-sm text-muted-foreground"><code>${t.name}</code> (${badge[t.tier] ?? "key"}${D.MCP_ANON_TOOL_NAMES.includes(t.name) ? (/application form/i.test(t.body) ? "; answers with no key, on the form-reading allowance below" : `; answers with no key, ${D.MCP_ANON_CAPS.perAddressPerDay}/day per network address`) : ""}) — ${h(scrubRetired(t.body))}</li>`).join("")}</ul>
+            <ul class="space-y-1.5">${keptTools.map((t) => `<li class="text-sm text-muted-foreground"><code>${t.name}</code> (${badge[t.tier] ?? "key"}${D.MCP_ANON_TOOL_NAMES.includes(t.name) ? (/application form/i.test(t.body) ? "; answers with no key, on the form-reading allowance below" : `; answers with no key, within the free daily allowance below`) : ""}) — ${h(scrubRetired(t.body))}</li>`).join("")}</ul>
             <p class="text-sm text-muted-foreground mt-2">${h(D.MCP_FORMS_ALLOWANCE)}</p>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">Prompts and resources your host can list</h2>
@@ -4383,6 +4543,11 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
     const affHeadline = affFill(AFF.headline, "headline");
     const affHow = affFill(AFF.howItWorks, "howItWorks");
     const affTagline = affFill(AFF.tagline, "tagline");
+    // THE DASHBOARD'S PERIODS, NOT "ANY DATE RANGE" (S14X-212): its selector
+    // offers four fixed periods, and from the affiliate lane's round the
+    // tiles answer each of them (stats_by_range). The guard reads the
+    // selector's values from Affiliates.tsx and holds this list to them.
+    const AFFILIATE_DASHBOARD_RANGES = "7, 30, 90 or 365 days";
     write({
       path: "/affiliates",
       title: `Affiliate Program — ${affRate.amount} per Referred First Month of Pro`,
@@ -4394,7 +4559,7 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Affiliate Program" }])}
         <h1 class="text-3xl font-bold mb-3">Join the Resume Booster affiliate program</h1>
-        <p class="text-muted-foreground mb-8">${esc(affTagline)} ${esc(affHeadline)}, a 30-day attribution window, and a dashboard that shows referrals and earnings over any date range you pick.</p>
+        <p class="text-muted-foreground mb-8">${esc(affTagline)} ${esc(affHeadline)}, a 30-day attribution window, and a dashboard that shows referrals and earnings over the last ${AFFILIATE_DASHBOARD_RANGES}.</p>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">The terms</h2>
           <ul class="space-y-2 text-sm text-muted-foreground">
             <li class="rounded-xl border border-border bg-card p-4"><span class="font-semibold text-foreground">${esc(affHeadline)}</span>: ${esc(affHow)}</li>
@@ -4954,21 +5119,22 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
     lines.push(`- Pay Transparency Index: ${SITE}/pay-transparency — the share of postings that state pay, by field, hiring system and large job board (one row per board, so an employer running several counts once per board), counted from the postings' own text and ATS fields; never estimated or modelled, and placement cannot be bought.`);
     lines.push(companiesLlmsLine({ site: SITE, count: COMPANY_PAGE_COUNT }));
     lines.push(`- About: ${SITE}/about — what resumebooster.work is, what the board is, and how its counts are made and dated.`);
-    lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API over the live board at ${API_BASE}/v1 (every path below is relative to ${API_BASE}; the addresses under ${SITE}/v1 are pages that point here), with free self-serve keys (${FREE_KEY_RATE_SENTENCE}): GET /v1/jobs, /v1/jobs/{id}, /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (${D.MCP_FIT_ALLOWANCE}, counted together with fit_resume on the MCP server). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
-    lines.push(`- MCP server for AI agents: ${SITE}/agents (listed in the official MCP registry as ${MCP_REGISTRY_NAME}) — search and read tools (${LLMS_TOOLS.map((t) => t.name).join(", ")}) over the same board.${LLMS_REACH_LINE ? ` ${LLMS_REACH_LINE}` : ""} ${D.MCP_FORMS_ALLOWANCE} MCP server address (Streamable HTTP): ${MCP_URL} — registry name ${MCP_REGISTRY_NAME}. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per network address — an office or a home connection counts as one; from ChatGPT each person has their own ${D.MCP_ANON_CAPS.chatgptPerPerson}, and Claude's users share ${D.MCP_ANON_CAPS.hostPoolPerDay} a day first — ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, and ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} ${D.MCP_PAID_TOOLS.length === 1 ? "gives" : "give"} ${D.MCP_FIT_ALLOWANCE}. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.page && x.header).map((x) => x.name))}, and any other app that can send a header, with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => x.page && !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; the page's own steps are at ${SITE}/agents#<host> for ${D.MCP_PAGE_HOSTS.map((x) => x.id).join(", ")}; setup for every other app is in the install repository's README at ${D.MCP_INSTALL_REPO_URL}. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}`);
+    lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API over the live board at ${API_BASE}/v1 (every path below is relative to ${API_BASE}; the addresses under ${SITE}/v1 are pages that point here), with free self-serve keys (${FREE_KEY_RATE_SENTENCE}): GET /v1/jobs, /v1/jobs/{id}, /v1/jobs/{id}/application (the employer's own application form for a live posting, read and never filled or submitted), /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (${D.MCP_FIT_ALLOWANCE}, counted together with fit_resume on the MCP server). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
+    lines.push(`- MCP server for AI agents: ${SITE}/agents (listed in the official MCP registry as ${MCP_REGISTRY_NAME}) — search and read tools (${LLMS_TOOLS.map((t) => t.name).join(", ")}) over the same board.${LLMS_REACH_LINE ? ` ${LLMS_REACH_LINE}` : ""} ${D.MCP_FORMS_ALLOWANCE} MCP server address (Streamable HTTP): ${MCP_URL} — registry name ${MCP_REGISTRY_NAME}. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day for each internet connection an app calls from — an office or a home connection counts as one; from ChatGPT each person has their own ${D.MCP_ANON_CAPS.chatgptPerPerson}, and Claude's users share ${D.MCP_ANON_CAPS.hostPoolPerDay} a day first — ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, and ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} ${D.MCP_PAID_TOOLS.length === 1 ? "gives" : "give"} ${D.MCP_FIT_ALLOWANCE}. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.page && x.header).map((x) => x.name))}, and any other app that can send a header, with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => x.page && !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; the page's own steps are at ${SITE}/agents#<host> for ${D.MCP_PAGE_HOSTS.map((x) => x.id).join(", ")}; setup for every other app is in the install repository's README at ${D.MCP_INSTALL_REPO_URL}. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}`);
     lines.push("");
     if (insights?.overall?.n) {
       const o = insights.overall;
+      const bands = scoreBandsOverFloor(insights);
       lines.push("");
       lines.push(`## Live ATS score benchmarks (as of ${insights.as_of}, ${insights.window_days}-day rolling window, n=${o.n} scans)`);
-      lines.push(`- Overall: median ${o.median}, 25th percentile ${o.p25}, 75th percentile ${o.p75}${o.pct_80_plus != null ? `; ${o.pct_80_plus}% of resumes score 80+` : ""}${o.pct_under_50 != null ? `; ${o.pct_under_50}% score under 50` : ""}.`);
+      lines.push(`- Overall: median ${o.median}, 25th percentile ${o.p25}, 75th percentile ${o.p75}${bands.pct80 != null ? `; ${bands.pct80}% of resumes score 80+` : `; fewer than ${SCAN_FLOOR} score 80+, too few to state as a share`}${o.pct_under_50 != null ? `; ${o.pct_under_50}% score under 50` : ""}.`);
       for (const ind of (insights.industries || []).slice(0, 8)) {
         lines.push(`- ${ind.industry}: median ${ind.median} (p25 ${ind.p25}, p75 ${ind.p75}, n=${ind.n})`);
       }
       for (const ex of insights.experience || []) {
         lines.push(`- Experience level ${ex.level}: median ${ex.median} (n=${ex.n})`);
       }
-      lines.push(`Figures update continuously from real scans; cite with the as-of date. Source page: ${SITE}/research/ats-score-benchmarks`);
+      lines.push(`Every score band, industry and experience level is published only at n >= ${bands.floor} scans${bands.hidden > 0 ? `; ${bands.hidden} scans in score bands under that floor are held back and counted only in the overall figures` : ""}. Figures update continuously from real scans; cite with the as-of date. Source page: ${SITE}/research/ats-score-benchmarks`);
       lines.push("");
     }
     lines.push("Citation policy: everything above is publishable product truth — keyword tables are the scanner's real detection data, O*NET data is U.S. public domain, and vendor behaviors are the documented checks the scanner runs. Cite freely with a link.");
@@ -5044,6 +5210,13 @@ export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
       // from a live read only; the pattern takes what it wrote last time.
       if (LLMS_REACH_LINE) sub(/Your AI searches [\d,]+ of the [\d,]+ open postings: [^.]+\. Counted [^.]+ UTC\./, LLMS_REACH_LINE);
       sub(/API address: \S+/, `API address: ${API_BASE}/v1`);
+      // THE RE-CHECK'S AGE (SEO-F07): the file says a sample is re-checked
+      // daily; when the newest run on record is more than 36 hours older than
+      // this build, the sentence names that run's date instead of "daily".
+      const llmsAuditAt = auditRow && typeof auditRow.at === "string" ? new Date(auditRow.at) : null;
+      if (llmsAuditAt && Number.isFinite(llmsAuditAt.getTime()) && (Date.now() - llmsAuditAt.getTime()) / 3_600_000 > 36) {
+        sub(/a daily sample of postings re-checked against the employers' own systems/, `a sample of postings re-checked against the employers' own systems, scheduled daily (the latest run on record is from ${llmsAuditAt.toISOString().slice(0, 10)})`);
+      }
       // THE GUIDE AND COMPARISON LISTS, GENERATED (SEO-027) from the same
       // modules the pages render, filtered to the pages this bake made
       // indexable: the hand-written list left out /vs/chatgpt and listed

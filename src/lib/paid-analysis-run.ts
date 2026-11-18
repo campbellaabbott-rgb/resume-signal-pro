@@ -80,15 +80,63 @@ export async function invokePaidAnalysis(ask: Ask, opts: PollOptions = {}): Prom
   }
 }
 
+/**
+ * THE PURCHASES analyze-resume WILL NOT ANALYSE (RC-S13-048): refunded, not a
+ * Full Analysis, not found, already used, or a Pro grant it cannot honour,
+ * or one past the account's day's ten or month's sixty (grant_cap, S14X-079:
+ * read before the 429 that carries it is taken for a busy service). Asking
+ * again now cannot change any of them, so the page says which and asks for no
+ * résumé.
+ */
+export const REFUSAL_CODES = ["purchase_refunded", "payment_required", "purchase_not_found", "session_used", "grant_refused", "grant_cap"] as const;
+export type RefusalCode = (typeof REFUSAL_CODES)[number];
+
+/** The HTTP status of a failed function call, or null. */
+export function errorStatusOf(error: unknown): number | null {
+  const status = Number((error as { context?: { status?: unknown } } | null)?.context?.status);
+  return Number.isFinite(status) && status > 0 ? status : null;
+}
+
+export type FailureKind =
+  | { kind: "refused"; code: RefusalCode }
+  | { kind: "timedOut" }
+  | { kind: "retryable" }
+  | { kind: "other" };
+
+/**
+ * What a failed analyze-resume call means for the buyer. A refusal by its code
+ * (analyze-resume 2026-11-12.1 on) or, before that build is live, by its
+ * status: a 402 (refunded when it says so), a 401, a 409 that is not "in
+ * progress". A timeout (504), and an outage (S14X-110: retryable, or a 502,
+ * 503 or 429 from a build that does not say so), are asked again. Never throws.
+ */
+export async function failureKindOf(error: unknown): Promise<FailureKind> {
+  const status = errorStatusOf(error);
+  const body = await errorBodyOf(error);
+  const code = typeof body?.code === "string" ? body.code : null;
+  if (code && (REFUSAL_CODES as readonly string[]).includes(code)) return { kind: "refused", code: code as RefusalCode };
+  if (status === 504) return { kind: "timedOut" };
+  if (body?.retryable === true || status === 502 || status === 503 || status === 429) return { kind: "retryable" };
+  if (status === 402) return { kind: "refused", code: /refund/i.test(String(body?.error ?? "")) ? "purchase_refunded" : "payment_required" };
+  if (status === 401) return { kind: "refused", code: "purchase_not_found" };
+  if (status === 409 && code !== IN_PROGRESS_CODE) return { kind: "refused", code: "session_used" };
+  return { kind: "other" };
+}
+
 export type SessionOnlyAnswer =
   | { kind: "delivered"; data: Record<string, unknown> }
   | { kind: "stored" }
-  | { kind: "needsResume"; askPosting: boolean };
+  | { kind: "needsResume"; askPosting: boolean }
+  | { kind: "refused"; code: RefusalCode };
 
 /** What a request naming only the purchase was told. */
 export async function readSessionOnlyAnswer(answer: Answer): Promise<SessionOnlyAnswer> {
   const { data, error } = answer;
   if (!error && data && !data.error && data.alreadyDelivered) return { kind: "delivered", data };
+  if (error) {
+    const failure = await failureKindOf(error);
+    if (failure.kind === "refused") return failure;
+  }
   const body = error ? await errorBodyOf(error) : (data && typeof data === "object" ? (data as Record<string, unknown>) : null);
   const stored = body?.storedInputs as { resume?: unknown } | undefined;
   if (stored?.resume === true) return { kind: "stored" };

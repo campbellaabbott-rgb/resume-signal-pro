@@ -17,6 +17,8 @@ import { keyMatches } from "../_shared/admin-key.ts";
 import { purchaseLinkFor } from "../_shared/purchase-links.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 import { callAIForUsableReply, describeError, looksLikeBrokenJson, type UsableReply } from "../_shared/ai-fallback.ts";
+import { stripInventedContact } from "../_shared/contact-guard.ts";
+import { restoreUnsupportedLines, rewrittenResumeFigureIssues, validateProseClaims } from "../_shared/resume-grounding.ts";
 
 // Provable from outside without the key: every response, the preflight
 // included, carries this in x-fn-build.
@@ -37,7 +39,8 @@ import { callAIForUsableReply, describeError, looksLikeBrokenJson, type UsableRe
 // model-call helper it imports (_shared/ai-fallback.ts) now logs one usage
 // line per reply it reads, token counts and the model id only, so the build
 // moves with it.
-const FN_BUILD = "admin-regenerate-delivery.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, past-buyers lane, RC-S12-106): the owner's re-delivery takes out contact details the résumé does not hold, sends a draft with an unstated figure back once, and refuses what still invents one.
+const FN_BUILD = "admin-regenerate-delivery.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -118,7 +121,19 @@ async function refusalOf(reply: { response: Response; modelUsed: string }, part:
   return new Error(`${part} AI API error: ${reply.response.status}`);
 }
 
-async function processRegeneration(newSessionId: string, email: string, resumeText: string, jobTitle: string, jobCompany: string, jobDescription?: string) {
+/**
+ * How a regeneration ended: 200 saved and mailed; 422 refused by the figure
+ * check after its one repair (nothing saved, nothing mailed); 502 no model
+ * wrote it. The request has already been answered, so this is what the log
+ * and the background task carry.
+ */
+type RegenerationOutcome = { status: 200 | 422 | 502; part?: string; issues?: string[] };
+
+/** The words sent back with a draft the figure check refused, as the premium package sends them. */
+const FIGURE_REPAIR = (issues: string[]) =>
+  `Your draft was REJECTED by an automated fact check:\n- ${issues.slice(0, 6).join("\n- ")}\nRewrite it so every number, percentage, amount, count and date attributed to the candidate appears in the resume. Remove a figure the resume does not state; never replace it with another. Rephrasing is fine; new facts are not. Return the same JSON format.`;
+
+async function processRegeneration(newSessionId: string, email: string, resumeText: string, jobTitle: string, jobCompany: string, jobDescription?: string): Promise<RegenerationOutcome> {
   try {
     logStep("Background task started", { email, jobTitle, jobCompany });
 
@@ -157,7 +172,8 @@ async function processRegeneration(newSessionId: string, email: string, resumeTe
 ### RULE 3: ENHANCE, NEVER DELETE
 - Improve wording of EXISTING content
 - Add relevant keywords naturally INTO existing bullets
-- Quantify achievements where you can infer reasonable metrics
+- Keep every figure the resume states, exactly as stated. NEVER add a number, percentage, amount, count or date the resume does not state: a figure the candidate never claimed is refused by an automated fact check and the whole package is rejected
+- Never add a phone number, email address or link the resume does not contain
 - Strengthen action verbs
 
 ## WHAT YOU SHOULD DO:
@@ -174,7 +190,6 @@ Respond with valid JSON:
   "professionalSummary": "The new professional summary",
   "keyChanges": [{ "section": "string", "before": "original", "after": "improved", "reason": "why" }],
   "addedKeywords": ["keyword1", "keyword2"],
-  "atsScore": { "before": number, "after": number, "improvement": "explanation" },
   "highlights": ["improvement 1", "improvement 2"]
 }`;
 
@@ -202,7 +217,62 @@ ${jobDescription ? `JOB DESCRIPTION:\n${jobDescription}` : 'No job description w
       (data) => partOf(contentOf(data), "rewrittenResume"),
     );
     if (!resumeReply.ok) throw await refusalOf(resumeReply, "Resume");
-    const resumeResult = resumeReply.value;
+    let resumeResult = resumeReply.value;
+
+    // NO FIGURE OR CONTACT DETAIL THE RÉSUMÉ DOES NOT STATE (RC-S12-106), the
+    // premium package's own checks (generate-premium-package): a phone, email
+    // or link the résumé does not contain is taken out; a figure it does not
+    // state sends the draft back once with the figures named; a line that
+    // still carries one is put back to the résumé's own line. A draft that
+    // still fails is refused: nothing is saved and nothing is mailed.
+    const figureContext = [jobDescription, jobTitle, jobCompany].filter(Boolean).join("\n");
+    // deno-lint-ignore no-explicit-any
+    const guardContact = (part: Record<string, any>, field: "rewrittenResume" | "coverLetter", label: string) => {
+      const guarded = stripInventedContact(String(part[field] || ""), resumeText);
+      if (guarded.removed.length > 0) logStep(`${label}: contact details the resume does not contain were removed`, { removed: guarded.removed.length });
+      return { ...part, [field]: guarded.text };
+    };
+    // deno-lint-ignore no-explicit-any
+    const repairOnce = async (label: string, messages: Array<{ role: string; content: string }>, draft: Record<string, any>, issues: string[], field: "rewrittenResume" | "coverLetter", maxTokens: number) => {
+      logStep(`${label} failed the figure check, repairing once`, { issues: issues.slice(0, 5) });
+      const reply = await askAI(apiKey, [
+        ...messages,
+        { role: "assistant", content: JSON.stringify(draft) },
+        { role: "user", content: FIGURE_REPAIR(issues) },
+      ], maxTokens, `${label} figure repair`, (data) => partOf(contentOf(data), field));
+      if (!reply.ok) {
+        await reply.response.body?.cancel().catch(() => {});
+        return null;
+      }
+      return guardContact(reply.value, field, `${label} repair`);
+    };
+
+    resumeResult = guardContact(resumeResult, "rewrittenResume", "Resume");
+    const checkResume = () => rewrittenResumeFigureIssues(resumeText, String(resumeResult.rewrittenResume || ""), figureContext);
+    let resumeIssues = checkResume();
+    if (resumeIssues.length > 0) {
+      const repaired = await repairOnce("Resume", [
+        { role: "system", content: resumeSystemPrompt },
+        { role: "user", content: resumeUserPrompt },
+      ], resumeResult, resumeIssues, "rewrittenResume", 12000);
+      if (repaired) {
+        resumeResult = repaired;
+        resumeIssues = checkResume();
+      }
+    }
+    if (resumeIssues.length > 0) {
+      const drafted = String(resumeResult.rewrittenResume || "");
+      const restored = restoreUnsupportedLines(resumeText, drafted, figureContext);
+      if (restored.text.trim().length >= drafted.trim().length * 0.6) {
+        resumeResult = { ...resumeResult, rewrittenResume: restored.text };
+        resumeIssues = checkResume();
+      }
+      logStep("Resume lines put back to the resume's own after the repair", { restored: restored.restored.length, dropped: restored.dropped.length, remaining: resumeIssues.length });
+    }
+    if (resumeIssues.length > 0) {
+      logStep("Refused (422): the rewrite states figures the resume does not; nothing was saved or mailed", { issues: resumeIssues.slice(0, 5) });
+      return { status: 422, part: "resume", issues: resumeIssues.slice(0, 5) };
+    }
 
     logStep("Resume rewrite complete", { 
       model: resumeReply.modelUsed,
@@ -218,7 +288,7 @@ ${jobDescription ? `JOB DESCRIPTION:\n${jobDescription}` : 'No job description w
 
 ## STRUCTURE (300-400 words, 4 paragraphs):
 **Opening**: Hook with a specific achievement. NEVER start with "I am writing to apply".
-**Body 1**: Connect 2-3 specific experiences with metrics.
+**Body 1**: Connect 2-3 specific experiences from the resume. Cite a figure only as the resume states it; NEVER add a number, percentage, amount, count or date the resume does not state.
 **Body 2**: Why THIS company/role.
 **Closing**: Confident call to action.
 
@@ -271,7 +341,26 @@ ${jobDescription ? `JOB REQUIREMENTS:\n${jobDescription}` : ''}`;
       readLetter,
     );
     if (!coverLetterReply.ok) throw await refusalOf(coverLetterReply, "Cover letter");
-    const coverLetterResult = coverLetterReply.value;
+    let coverLetterResult = guardContact(coverLetterReply.value, "coverLetter", "Cover letter");
+
+    // The letter may also cite the posting's own numbers; it has no line of
+    // the résumé's to fall back on, so a letter that still fails is refused.
+    const checkLetter = () => validateProseClaims(resumeText, String(coverLetterResult.coverLetter || ""), figureContext);
+    let letterIssues = checkLetter();
+    if (letterIssues.length > 0) {
+      const repaired = await repairOnce("Cover letter", [
+        { role: "system", content: coverLetterSystemPrompt },
+        { role: "user", content: coverLetterUserPrompt },
+      ], coverLetterResult, letterIssues, "coverLetter", 4000);
+      if (repaired) {
+        coverLetterResult = repaired;
+        letterIssues = checkLetter();
+      }
+    }
+    if (letterIssues.length > 0) {
+      logStep("Refused (422): the letter states figures the resume does not; nothing was saved or mailed", { issues: letterIssues.slice(0, 5) });
+      return { status: 422, part: "coverLetter", issues: letterIssues.slice(0, 5) };
+    }
 
     logStep("Cover letter generated", { model: coverLetterReply.modelUsed, coverLetterLength: coverLetterResult.coverLetter?.length });
 
@@ -325,10 +414,12 @@ ${jobDescription ? `JOB REQUIREMENTS:\n${jobDescription}` : ''}`;
     }
 
     logStep("Background task completed successfully", { email });
+    return { status: 200 };
 
   } catch (error) {
     // describeError: a parse error's message can quote the reply's words.
     console.error("[ADMIN-REGENERATE] Background task error; nothing was saved or mailed:", describeError(error));
+    return { status: 502 };
   }
 }
 
@@ -380,7 +471,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: "The premium package is being regenerated. This takes 2-3 minutes; the customer is emailed when it is ready, and nothing is sent if no model writes it (see the function's log).",
+        message: "The premium package is being regenerated. This takes 2-3 minutes; the customer is emailed when it is ready. Nothing is sent if no model writes it, or if what it writes states a figure the resume does not (see the function's log).",
         estimatedTime: "2-3 minutes",
         email: email,
         sessionId: newSessionId,
@@ -418,14 +509,6 @@ function generatePremiumPackageEmail(email: string, generatedContent: any, sessi
     `<li style="color: #374151; margin-bottom: 8px;"><strong>${escapeHtml(c?.section)}:</strong> ${escapeHtml(c?.reason)}</li>`
   ).join('') || '';
   const addedKeywords: unknown[] = Array.isArray(resume.addedKeywords) ? resume.addedKeywords : [];
-  // The scores the reply wrote, or no score block: 60% -> 92% was printed
-  // for a reply that named none.
-  const scoreOf = (v: unknown) => {
-    const n = Math.round(Number(v));
-    return typeof v === "number" && Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : null;
-  };
-  const before = scoreOf(resume.atsScore?.before);
-  const after = scoreOf(resume.atsScore?.after);
 
   return `
 <!DOCTYPE html>
@@ -454,17 +537,9 @@ function generatePremiumPackageEmail(email: string, generatedContent: any, sessi
             </td>
           </tr>
 
-          <!-- ATS Score -->
+          <!-- No score: nothing measured one (RC-S12-106) -->
           <tr>
             <td style="background: white; padding: 32px;">
-              ${before !== null && after !== null ? `
-              <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 12px; padding: 24px; margin-bottom: 24px; text-align: center;">
-                <div style="font-size: 28px; font-weight: bold; color: #9ca3af; display: inline-block;">${before}%</div>
-                <span style="font-size: 28px; color: #22c55e; margin: 0 16px;">→</span>
-                <div style="font-size: 42px; font-weight: bold; color: #22c55e; display: inline-block;">${after}%</div>
-                <div style="color: #166534; font-size: 15px; margin-top: 16px; font-weight: 600;">ATS Score Improvement</div>
-              </div>
-              ` : ''}
 
               ${keyChangesHtml ? `
               <div style="background: #f9fafb; border-radius: 12px; padding: 24px; margin-bottom: 24px;">

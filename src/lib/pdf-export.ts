@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
-import { reportTone, shapeCareerSnapshot, shapeGamePlan } from '@/lib/career-report-shape';
+import { reportTone, shapeCareerSnapshot, shapeGamePlan, type CareerSnapshotShape, type GamePlanShape } from '@/lib/career-report-shape';
+import { unsupportedPdfCharacters } from '@/lib/pdf-text-support';
 
 // Both exports take the report in whatever shape it was stored and shape it
 // first (sweep S8-073): a missing list prints nothing instead of throwing.
@@ -86,8 +87,112 @@ const addBulletPoint = (doc: jsPDF, text: string, y: number, bulletColor?: [numb
   return addText(doc, text, y, { indent: 28, maxWidth: 162 });
 };
 
-export const exportCareerSnapshotPDF = (stored: unknown): void => {
+
+// TEXT jsPDF CANNOT DRAW GOES TO THE PRINT DIALOG (RC-S12-029). Both reports
+// were drawn in helvetica whatever they held, so a Hindi, Russian, Chinese or
+// Polish report came out as letter-spaced garbage after a warning toast. A
+// report with a character the built-in fonts cannot draw is now printed by the
+// browser instead ("Save as PDF"), which draws every script with the system's
+// fonts, as the Interview and Career Path guides already are.
+
+export type PdfExportDeps = { print?: (html: string) => void; lang?: string };
+export type PdfExportMethod = { method: 'pdf' | 'print' };
+
+/** Every string the shaped report holds, at any depth. */
+const reportStrings = (value: unknown, out: string[] = []): string[] => {
+  if (typeof value === 'string') out.push(value);
+  else if (Array.isArray(value)) value.forEach((v) => reportStrings(v, out));
+  else if (value && typeof value === 'object') Object.values(value).forEach((v) => reportStrings(v, out));
+  return out;
+};
+const needsPrint = (shaped: unknown) => unsupportedPdfCharacters(reportStrings(shaped).join('\n')).length > 0;
+
+/** True when jsPDF's fonts cannot draw some character of this Career Snapshot. */
+export const careerSnapshotNeedsPrint = (stored: unknown): boolean => needsPrint(shapeCareerSnapshot(stored).data);
+
+/** True when jsPDF's fonts cannot draw some character of this Game Plan. */
+export const gamePlanNeedsPrint = (stored: unknown): boolean => needsPrint(shapeGamePlan(stored).data);
+
+const esc = (s: unknown) => String(s ?? '')
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+const items = (list: unknown[]) => list.map((v) => `<li>${esc(v)}</li>`).join('');
+const pageLang = (deps: PdfExportDeps) =>
+  deps.lang ?? (typeof document !== 'undefined' ? document.documentElement.lang || 'en' : 'en');
+
+/** A standalone printable page, marked data-rb-print, every value escaped. */
+const printPage = (title: string, subtitle: string, body: string, lang: string) =>
+  `<!doctype html><html lang="${esc(lang)}" data-rb-print><head><meta charset="utf-8"><title>${esc(title)}</title>
+<style>body{font-family:system-ui,"Noto Sans","Noto Sans Devanagari","Noto Sans SC",sans-serif;margin:18mm;color:#111;font-size:11pt;line-height:1.45}h1{font-size:18pt;margin:0 0 2mm}h2{font-size:13pt;margin:7mm 0 2mm;border-top:1px solid #ccc;padding-top:2mm}h3{font-size:11pt;margin:3mm 0 1mm}.muted{color:#555}</style>
+</head><body><h1>${esc(title)}</h1><p class="muted">${esc(subtitle)}</p>${body}</body></html>`;
+
+/** The Career Snapshot as a printable page. */
+export function careerSnapshotHtml(stored: unknown, lang = 'en'): string {
+  const d: CareerSnapshotShape = shapeCareerSnapshot(stored).data;
+  const s = d.careerSignalScore;
+  const signals = [
+    ['Performance Signal', s.performanceSignal.score, s.performanceSignal.summary],
+    ['Trajectory Signal', s.trajectorySignal.score, s.trajectorySignal.summary],
+    ['Credibility Signal', s.credibilitySignal.score, s.credibilitySignal.summary],
+    ['Seniority Alignment', s.seniorityAlignment.targetFit, s.seniorityAlignment.summary],
+  ].map(([label, score, summary]) => `<h3>${esc(label)}: ${esc(score)}</h3><p class="muted">${esc(summary)}</p>`).join('');
+  const p = d.positioningGuidance;
+  const body = `<h2>Career Signal Score</h2><p><strong>Overall: ${esc(s.overall)}</strong></p>${signals}
+<h2>Recruiter Perception</h2><p>“${esc(d.recruiterPerception.summary)}”</p>
+<h2>Top Strengths</h2>${d.topStrengths.map((x) => `<h3>${esc(x.strength)}</h3><p class="muted">${esc(x.evidence)}</p>`).join('')}
+<h2>Career Risks &amp; Mitigation</h2>${d.careerRisks.map((r, i) => `<h3>${i + 1}. ${esc(r.risk)}</h3><p class="muted">Recruiter may ask: “${esc(r.recruiterQuestion)}”</p><p>How to address: ${esc(r.mitigation)}</p>`).join('')}
+<h2>Positioning Guidance</h2><p><strong>${esc(p.idealPositioning)}</strong></p><h3>Roles to Target</h3><ul>${items(p.rolesToTarget)}</ul><h3>Roles to Avoid</h3><ul>${items(p.rolesToAvoid)}</ul><h3>Ideal Company Stages</h3><p>${esc(p.companyStages.join(', '))}</p><h3>Story Framing</h3><p>${esc(p.storyFraming)}</p>
+<h2>Priority Fixes</h2>${d.priorityFixes.map((f, i) => `<h3>${i + 1}. ${esc(f.fix)}</h3><p class="muted">Impact: ${esc(f.impact)} · Time: ${esc(f.timeEstimate)}</p>`).join('')}`;
+  return printPage('Career Snapshot Report', 'Your complete career signal analysis', body, lang);
+}
+
+/** The Graduate Game Plan as a printable page. */
+export function gamePlanHtml(stored: unknown, lang = 'en'): string {
+  const d: GamePlanShape = shapeGamePlan(stored).data;
+  const g = d.resumeReadinessGate;
+  const a = d.applicationStrategy;
+  const n = d.networkingPlaybook;
+  const iv = d.interviewReadiness;
+  const weeks = [d.thirtyDayPlan.week1, d.thirtyDayPlan.week2, d.thirtyDayPlan.week3, d.thirtyDayPlan.week4]
+    .map((w, i) => `<h3>Week ${i + 1}: ${esc(w.focus)}</h3><ul>${items(w.tasks)}</ul>`).join('');
+  const body = `<h2>Resume Readiness</h2><p><strong>${esc(g.verdict)}</strong></p><p>${esc(g.summary)}</p>${g.quickFixes?.length ? `<h3>Quick Fixes</h3><ul>${items(g.quickFixes)}</ul>` : ''}
+<h2>Role Targeting Map</h2><p class="muted">${esc(d.roleTargetingMap.summary)}</p><h3>Priority Roles</h3><ul>${d.roleTargetingMap.priorityRoles.map((r) => `<li><strong>${esc(r.title)}</strong>: ${esc(r.whyFit)}</li>`).join('')}</ul><h3>Roles to Avoid</h3><ul>${d.roleTargetingMap.rolesToAvoid.map((r) => `<li><strong>${esc(r.title)}</strong>: ${esc(r.reason)}</li>`).join('')}</ul>
+<h2>Application Strategy</h2><p><strong>Weekly Target: ${esc(a.weeklyTarget)}</strong></p><h3>Where to Apply</h3><ul>${a.whereToApply.map((c) => `<li>[${esc(c.priority)}] ${esc(c.channel)}: ${esc(c.tip)}</li>`).join('')}</ul><h3>What to Avoid</h3><ul>${items(a.whatToAvoid)}</ul><p class="muted">Key Insight: ${esc(a.keyInsight)}</p>
+<h2>Networking Playbook</h2><p class="muted">${esc(n.approach)}</p><h3>Outreach Script (${esc(n.outreachScript.scenario)})</h3><p>${esc(n.outreachScript.script)}</p><h3>LinkedIn Tips</h3><ul>${items(n.linkedInTips)}</ul>
+<h2>Interview Readiness</h2><p class="muted">${esc(iv.summary)}</p><h3>Stories to Prepare (STAR Method)</h3><ul>${iv.storiesToPrepare.map((x) => `<li>${esc(x.type)}: ${esc(x.prompt)}</li>`).join('')}</ul><h3>How to answer “Why this role?”</h3><p>${esc(iv.whyThisRole)}</p><h3>Project Talking Points</h3><ol>${items(iv.projectTalkingPoints)}</ol>
+<h2>30-Day Action Plan</h2>${weeks}`;
+  return printPage('Graduate Game Plan', 'Your personalized 30-day career launch guide', body, lang);
+}
+
+/** Print an HTML page through a hidden frame, so the browser's "Save as PDF" draws it. */
+function printHtml(html: string): void {
+  const frame = document.createElement('iframe');
+  frame.setAttribute('aria-hidden', 'true');
+  frame.style.position = 'fixed';
+  frame.style.width = '0';
+  frame.style.height = '0';
+  frame.style.border = '0';
+  document.body.appendChild(frame);
+  const doc = frame.contentDocument;
+  if (!doc || !frame.contentWindow) { frame.remove(); throw new Error('print frame unavailable'); }
+  doc.open();
+  doc.write(html);
+  doc.close();
+  frame.contentWindow.focus();
+  frame.contentWindow.print();
+  setTimeout(() => frame.remove(), 60_000);
+}
+
+/**
+ * The Career Snapshot as a PDF: drawn by jsPDF when its fonts can draw every
+ * character, else handed to the browser's print dialog. Answers which way it
+ * went, so the page can say so.
+ */
+export const exportCareerSnapshotPDF = (stored: unknown, deps: PdfExportDeps = {}): PdfExportMethod => {
   const data = shapeCareerSnapshot(stored).data;
+  if (needsPrint(data)) {
+    (deps.print ?? printHtml)(careerSnapshotHtml(data, pageLang(deps)));
+    return { method: 'print' };
+  }
   const doc = new jsPDF();
   let y = addHeader(doc, 'Career Snapshot Report', 'Your complete career signal analysis');
   
@@ -187,10 +292,16 @@ export const exportCareerSnapshotPDF = (stored: unknown): void => {
   doc.text('ResumeFixer Career Snapshot', 150, 290);
   
   doc.save('career-snapshot-report.pdf');
+  return { method: 'pdf' };
 };
 
-export const exportGraduateGamePlanPDF = (stored: unknown): void => {
+/** The Graduate Game Plan as a PDF, or the print dialog when jsPDF cannot draw it. */
+export const exportGraduateGamePlanPDF = (stored: unknown, deps: PdfExportDeps = {}): PdfExportMethod => {
   const data = shapeGamePlan(stored).data;
+  if (needsPrint(data)) {
+    (deps.print ?? printHtml)(gamePlanHtml(data, pageLang(deps)));
+    return { method: 'print' };
+  }
   const doc = new jsPDF();
   let y = addHeader(doc, 'Graduate Game Plan', 'Your personalized 30-day career launch guide');
   
@@ -320,4 +431,5 @@ export const exportGraduateGamePlanPDF = (stored: unknown): void => {
   doc.text('ResumeFixer Graduate Game Plan', 140, 290);
   
   doc.save('graduate-game-plan.pdf');
+  return { method: 'pdf' };
 };

@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useReportEnumLabel } from "@/hooks/use-report-enum-label";
+import { writingToolToast } from "@/lib/writing-refusal";
+import type { InterviewPrepLabels } from "@/lib/career-tools-export";
 
 interface InterviewCoachProps {
   resumeText: string;
@@ -23,6 +25,9 @@ interface InterviewCoachProps {
   // allowance instead of the free tool's shared hourly one, which strangers
   // can spend: a buyer must not be told the tool is busy.
   sessionId?: string | null;
+  // A copy already made and saved (a past buyer's delivery): shown as it is,
+  // never generated again (RC-S12-042).
+  savedCopy?: unknown;
 }
 
 interface Question {
@@ -74,11 +79,18 @@ const categoryColors: Record<string, string> = {
   "Culture Fit": "bg-green-500/10 text-green-700",
 };
 
-export function InterviewCoach({ resumeText, industry, currentRole, isPremium, sessionId }: InterviewCoachProps) {
-  const { t } = useTranslation();
+/** A saved prep set, as the function's data or its whole reply ({ data }); null when it is neither. */
+export function savedInterviewData(saved: unknown): InterviewData | null {
+  const outer = saved && typeof saved === "object" ? (saved as Record<string, unknown>) : null;
+  const inner = outer && Array.isArray(outer.questions) ? outer : outer?.data && typeof outer.data === "object" ? (outer.data as Record<string, unknown>) : null;
+  return inner && Array.isArray(inner.questions) && inner.questions.length > 0 ? (inner as unknown as InterviewData) : null;
+}
+
+export function InterviewCoach({ resumeText, industry, currentRole, isPremium, sessionId, savedCopy }: InterviewCoachProps) {
+  const { t, i18n } = useTranslation();
   // Difficulty and category arrive in English (the colours key on them); shown in the reader's language.
   const enumLabel = useReportEnumLabel();
-  const [data, setData] = useState<InterviewData | null>(null);
+  const [data, setData] = useState<InterviewData | null>(() => savedInterviewData(savedCopy));
   const [isLoading, setIsLoading] = useState(false);
   const [activeQuestion, setActiveQuestion] = useState<number | null>(null);
   // One draft per question (S13-125): a single shared draft showed question
@@ -93,21 +105,49 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium, s
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const { toast } = useToast();
 
+  /**
+   * A failed call said in the reader's language (S14X-058): a sign-in, an
+   * allowance or a limit with when it ends; anything else the tool's own
+   * sentence. Never the client library's English "non-2xx" message.
+   */
+  const failed = async (error: unknown, fallback: string) => {
+    const status = (error as { context?: { status?: number } } | null)?.context?.status;
+    if (status === 401 || status === 429) {
+      const said = await writingToolToast("coach", error, (k, d, v) => t(k, d, v), i18n.language);
+      toast({ title: said.title, description: said.description, variant: "destructive" });
+      return;
+    }
+    toast({ title: t('interviewCoach.error'), description: fallback, variant: "destructive" });
+  };
+
   const generate = async () => {
     setIsLoading(true);
     try {
       const { data: result, error } = await supabase.functions.invoke("generate-interview-coach", {
         body: { resumeText, industry, currentRole, targetRole: currentRole, isPremium, sessionId: sessionId || undefined, language: localStorage.getItem('i18nextLng') },
       });
-      if (error) throw error;
-      if (!result?.success) throw new Error(result?.error || "Generation failed");
+      if (error) return await failed(error, t('interviewCoach.generateFailed'));
+      if (!result?.success) throw new Error("generation failed");
       setData(result.data);
-    } catch (err: any) {
-      toast({ title: t('interviewCoach.error'), description: err.message || t('interviewCoach.generateFailed'), variant: "destructive" });
+    } catch {
+      toast({ title: t('interviewCoach.error'), description: t('interviewCoach.generateFailed'), variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
+
+  /** The guide's labels in the reader's language (RC-S12-114). */
+  const prepLabels = (): InterviewPrepLabels => ({
+    title: t('writingTools.export.prepTitle', 'Interview Prep Guide'),
+    whyAsked: t('writingTools.export.whyAsked', 'Why they ask:'),
+    opener: t('writingTools.export.opener', 'Strong opener:'),
+    modelAnswer: t('writingTools.export.modelAnswer', 'Model Answer (STAR method):'),
+    tips: t('writingTools.export.tips', 'Tips:'),
+    avoid: t('writingTools.export.avoid', 'Avoid:'),
+    before: t('writingTools.export.before', 'Before the Interview'),
+    during: t('writingTools.export.during', 'During the Interview'),
+    askThem: t('writingTools.export.askThem', 'Questions to Ask Them'),
+  });
 
   const handleExportPdf = async () => {
     if (!data) return;
@@ -118,7 +158,7 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium, s
       // browser's print dialog, which draws every script, and the person is
       // told to choose "Save as PDF" there.
       const { exportInterviewPrepPDF } = await import("@/lib/career-tools-export");
-      const saved = await exportInterviewPrepPDF(data);
+      const saved = await exportInterviewPrepPDF(data, prepLabels(), { lang: i18n.language });
       if (saved?.method === "print") {
         toast({
           title: t('interviewCoach.toast.printTitle', 'Opened in your print dialog'),
@@ -141,12 +181,12 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium, s
       const { data: result, error } = await supabase.functions.invoke("generate-interview-coach", {
         body: { resumeText, question: q.question, answer, category: q.category, mode: "evaluate", sessionId: sessionId || undefined, language: localStorage.getItem('i18nextLng') },
       });
-      if (error) throw error;
-      if (!result?.success) throw new Error(result?.error || "Evaluation failed");
+      if (error) return await failed(error, t('interviewCoach.evaluateFailed'));
+      if (!result?.success) throw new Error("evaluation failed");
       setEvaluations(prev => ({ ...prev, [q.id]: result.data }));
       setAnswerFor(q.id, "");
-    } catch (err: any) {
-      toast({ title: t('interviewCoach.error'), description: err.message || t('interviewCoach.evaluateFailed'), variant: "destructive" });
+    } catch {
+      toast({ title: t('interviewCoach.error'), description: t('interviewCoach.evaluateFailed'), variant: "destructive" });
     } finally {
       setEvaluatingId(null);
     }

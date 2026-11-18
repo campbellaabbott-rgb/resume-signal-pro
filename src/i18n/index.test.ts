@@ -3,6 +3,26 @@ import { readFileSync, readdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { normalizeLanguageCode, languages } from "./index";
+import { readLocale, stringLeaves } from "../test/helpers/locale-strings";
+
+/**
+ * A SENTENCE LEFT IN ENGLISH IN A FILE THAT IS NOT. A value reads as English
+ * when three or more of its words are English glue words and they make up
+ * over 8% of it: product names, abbreviations and a quoted English label do
+ * not reach that, a sentence does. Used over every string a non-English
+ * reader is served and over the changelog files.
+ */
+const ENGLISH_GLUE = new Set(["the", "and", "your", "you", "with", "for", "that", "this", "from", "are", "were", "which", "when", "now", "our", "into", "they", "their"]);
+function readsAsEnglish(text: string): boolean {
+  const words = text
+    .replace(/\{\{[^}]*\}\}/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w.toLowerCase().replace(/^[^\p{L}]+|[^\p{L}]+$/gu, ""));
+  const glue = words.filter((w) => ENGLISH_GLUE.has(w)).length;
+  return glue >= 3 && glue / words.length > 0.08;
+}
+const NON_ENGLISH = ["de", "es", "fr", "hi", "nl", "pt", "tl"] as const;
 
 describe("normalizeLanguageCode", () => {
   it("returns an exact match unchanged", () => {
@@ -242,6 +262,50 @@ describe("locale files", () => {
       expect(extra, `${file} has keys not present in en.json (likely a typo, or en.json itself is missing this key)`).toEqual([]);
     });
   }
+});
+
+describe("no non-English reader is served an English sentence", () => {
+  it("the detector tells an English sentence from a translated one", () => {
+    expect(readsAsEnglish("Too many scans from this network for now — try again in an hour, or sign in.")).toBe(true);
+    expect(readsAsEnglish("Demasiados análisis desde esta red por ahora: inténtalo de nuevo en una hora o inicia sesión.")).toBe(false);
+    expect(readsAsEnglish("Resume Booster")).toBe(false);
+  });
+
+  // The main locale with its shards merged, and the sign-in strings: every
+  // value a reader of the language can be shown (S14X-178, its copy half).
+  it.each(NON_ENGLISH)("%s: no served string reads as English", (lng) => {
+    const authPath = join(dirname(fileURLToPath(import.meta.url)), "auth", `${lng}.json`);
+    const leaves = [
+      ...stringLeaves(readLocale(`${lng}.json`)),
+      ...stringLeaves(JSON.parse(readFileSync(authPath, "utf8"))).map(([k, v]) => [`auth file: ${k}`, v] as [string, string]),
+    ];
+    const english = leaves.filter(([, v]) => readsAsEnglish(v)).map(([k, v]) => `${k}: ${v.slice(0, 90)}`);
+    expect(english, `${lng} serves these in English`).toEqual([]);
+  });
+});
+
+/**
+ * S14X-291, its copy half: the fit badge's tooltip on the apply copilot and the
+ * board's coverage tooltip printed the fit SCORE as "{{pct}}% of the posting's
+ * recognized keywords are in your resume". The score is a 0-100 keyword fit,
+ * not a share of the posting's keywords, so no language may print it with a
+ * percent sign; the board's own tooltip moved to the board's string shard, so
+ * its old key is gone from every main locale.
+ */
+describe("a keyword fit score is never printed as a share of keywords", () => {
+  const dir = join(dirname(fileURLToPath(import.meta.url)), "locales");
+  const files = readdirSync(dir).filter((f) => f.endsWith(".json"));
+  const pctSign = /\{\{pct\}\}\s?%|%\s?\{\{pct\}\}/;
+
+  it.each(files)("%s: the copilot's fit tooltip, if it is still a key, prints no percent sign", (file) => {
+    const d = JSON.parse(readFileSync(join(dir, file), "utf8")) as { accountPage?: Record<string, unknown>; jobsPage?: Record<string, unknown> };
+    const tip = d.accountPage?.acFitTitle;
+    if (tip !== undefined) {
+      expect(String(tip)).toContain("{{pct}}");
+      expect(String(tip)).not.toMatch(pctSign);
+    }
+    expect(d.jobsPage ?? {}, `${file} still carries the board's retired coverage tooltip`).not.toHaveProperty("matchCoverage");
+  });
 });
 
 // Changelog strings live OUTSIDE the eagerly-bundled locale files (2026-07-26:

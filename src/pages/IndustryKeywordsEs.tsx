@@ -11,7 +11,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { INDUSTRY_KEYWORDS } from "../../supabase/functions/free-keyword-scan/industry-detection";
 
-import { ES_INDUSTRIES, isSpanish } from "@/data/es-industries";
+import { ES_INDUSTRIES, capitalizeFirst, esIndustryTerms } from "@/data/es-industries";
 import { INDUSTRY_TO_CATEGORY } from "@/lib/job-board-categories";
 
 export default function IndustryKeywordsEs() {
@@ -22,15 +22,15 @@ export default function IndustryKeywordsEs() {
   const data = slug ? INDUSTRY_KEYWORDS[slug] : undefined;
   if (!slug || !name || !data) return <Navigate to="/industries" replace />;
 
-  const esKeywords = [...new Set(data.primary.filter(isSpanish))].slice(0, 20);
-  const esTitles = [...new Set(data.titles.filter(isSpanish))].slice(0, 14);
-  const enKeywords = [...new Set(data.primary.filter((t) => !isSpanish(t)))].slice(0, 14);
+  // Every Spanish term and title the engine knows, from the copy of its own
+  // table (S14X-214), not an accent guess over the merged lists.
+  const { esKeywords, esTitles, enKeywords } = esIndustryTerms(slug, data);
 
   return (
     <div className="min-h-screen bg-background">
       <SEO
         title={`Palabras Clave para Currículum de ${name} — Qué Buscan los ATS`}
-        description={`${esKeywords.slice(0, 5).join(", ")} y más: las palabras clave, títulos y certificaciones que nuestro escáner de currículums busca en el sector de ${name.toLowerCase()}. Escaneo gratis incluido.`}
+        description={`${capitalizeFirst(esKeywords.slice(0, 5).join(", "))} y más: las palabras clave, títulos y certificaciones que nuestro escáner de currículums busca en el sector de ${name.toLowerCase()}. Escaneo gratis incluido.`}
         path={`/es/industrias/${slug}`}
       />
       <link rel="alternate" hrefLang="en" href={`https://resumebooster.work/industries/${slug}`} />
