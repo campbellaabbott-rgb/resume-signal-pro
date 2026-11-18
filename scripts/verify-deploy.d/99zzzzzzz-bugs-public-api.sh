@@ -37,7 +37,18 @@
 #        (NB-30) and country=EU (NB-27);
 #   O    the owner-gated keys (OD14-REDIST-2, OD14-ASHBY-2) print INFO owner
 #        pending until docs/deploy-ledger.json reservations['bug-round']
-#        .ownerDecided names them; then each judges what its decision ships.
+#        .ownerDecided names them; then each judges what its decision ships;
+#   SH1  (lane SH, the shared half of OD14-ASHBY, keyed) one Ashby posting
+#        /v1/jobs?source=ashby serves, asked for its application form,
+#        answers form.source not-read-on-this-surface with no read (readAt
+#        null, no questions), and the same response's x-fn-build is at or
+#        above the public-api build that first carries the shared stop
+#        (VDBA_SH_DAY and VDBA_SH_N below). The stop itself cannot be seen
+#        from outside: /v1's own vendor list already leaves Ashby out on the
+#        build before it, so only the build tells the two apart. That is why
+#        the shared stop has a build of its own: round B's integration branch
+#        carries the build before it without the stop. Until the build is
+#        live the line prints INFO.
 #
 # WHAT THIS SECTION CANNOT SEE: a POST. The give-back on each unscored
 # outcome and the noLog flag on a résumé-read query (GP-NOLOG-2) are proven
@@ -52,6 +63,8 @@ echo "== 99zzzzzzz. bug round A public-api: the build, the give-back migration, 
 VDBA_PA="$B/functions/v1/public-api"
 VDBA_FRESH="${RB_API_KEY_FRESH:-}"
 VDBA_REV="${RB_REVOKED_KEY:-${RB:-}}"
+# SH1 waits for this public-api build: the first one that carries the shared stop.
+VDBA_SH_DAY=2026-11-18; VDBA_SH_N=2
 
 # B: the build.
 VDBA_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$VDBA_PA/v1/stats" -H "apikey: $K" \
@@ -148,7 +161,7 @@ NODE
 echo "INFO  GP-NOLOG-2 and the give-back on each unscored outcome are POSTs: proven on the shipped handler in the suite (a-fit-query-read-from-a-resume-is-not-logged, a-fit-call-that-scored-nothing-gives-its-allowance-back), never here"
 
 if [ -z "$VDBA_FRESH" ]; then
-  echo "INFO  K RB_API_KEY_FRESH is not set: the keyed lines (S14X-160, S14X-192, S14X-277, NB-32, S14X-274, S14X-276, S14X-065, S14X-132, S14X-037, NB-30, NB-27) are not run. OWNER: mint a confirmed free key at https://resumebooster.work/data-api and export it as RB_API_KEY_FRESH (the .env.local key is revoked)"
+  echo "INFO  K RB_API_KEY_FRESH is not set: the keyed lines (S14X-160, S14X-192, S14X-277, NB-32, S14X-274, S14X-276, S14X-065, S14X-132, S14X-037, NB-30, NB-27, SH1) are not run. OWNER: mint a confirmed free key at https://resumebooster.work/data-api and export it as RB_API_KEY_FRESH (the .env.local key is revoked)"
 else
   vdba_v1() { curl -s -m 60 -o "$2" -w '%{http_code}' "$VDBA_PA$1" -H "Authorization: Bearer $VDBA_FRESH" -H "apikey: $K"; }
   vdba_rpc() { curl -s -m 60 -o "$2" "$B/rest/v1/rpc/$1" -H "apikey: $K" -H "Authorization: Bearer $K"; }
@@ -272,6 +285,35 @@ judge(c1s === "200" && c2s === "200" && Number(t2) <= Math.max(3 * Number(t1), 3
 const e30 = j("nb30"), e27 = j("nb27");
 judge(process.env.VDBA_NB30 === "400" && e30 && e30.error && e30.error.code === "bad_cursor", "NB-30 a closure cursor carrying an OR branch -> 400 bad_cursor", `NB-30 a closure cursor carrying an OR branch -> HTTP ${process.env.VDBA_NB30} ${e30 && e30.error ? e30.error.code : ""}`);
 judge(process.env.VDBA_NB27 === "400" && e27 && e27.error && /"EU"/.test(e27.error.message || ""), "NB-27 country=EU -> 400 naming EU", `NB-27 country=EU -> HTTP ${process.env.VDBA_NB27}`);
+NODE
+  # SH1: one served Ashby posting's form, asked of /v1, judged by the build that answered.
+  vdba_v1 "/v1/jobs?source=ashby&limit=1" /tmp/vdba_ashbylist.json >/dev/null
+  VDBA_SHID=$(node -e 'try{const r=(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).data||[]).find((x)=>x&&typeof x.id==="string"&&x.id.startsWith("ashby:"));process.stdout.write(r?encodeURIComponent(r.id):"")}catch{}' /tmp/vdba_ashbylist.json)
+  VDBA_SHC=""; VDBA_SHB=""
+  if [ -n "$VDBA_SHID" ]; then
+    VDBA_SHC=$(curl -s -m 60 -o /tmp/vdba_ashbyform.json -D /tmp/vdba_ashbyform.h -w '%{http_code}' "$VDBA_PA/v1/jobs/$VDBA_SHID/application" -H "Authorization: Bearer $VDBA_FRESH" -H "apikey: $K")
+    VDBA_SHB=$(tr -d '\r' < /tmp/vdba_ashbyform.h | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//; s/[[:space:]]+//g')
+  fi
+  VDBA_SHLIVE=0
+  if [ -n "$VDBA_SHB" ] && build_ge public-api "$VDBA_SHB" "$VDBA_SH_DAY" "$VDBA_SH_N"; then VDBA_SHLIVE=1; fi
+  VDBA_SHLIVE="$VDBA_SHLIVE" VDBA_SHC="$VDBA_SHC" VDBA_SHB="$VDBA_SHB" VDBA_SHMIN="public-api.$VDBA_SH_DAY.$VDBA_SH_N" node - /tmp <<'NODE'
+const fs = require("fs"); const T = process.argv[2];
+const j = (f) => { try { return JSON.parse(fs.readFileSync(`${T}/vdba_${f}.json`, "utf8")); } catch { return null; } };
+const say = (v, m) => console.log(`${v}  ${m}`);
+const live = process.env.VDBA_SHLIVE === "1", min = process.env.VDBA_SHMIN;
+const list = j("ashbylist");
+const row = list && Array.isArray(list.data) ? list.data.find((x) => x && typeof x.id === "string" && x.id.startsWith("ashby:")) : null;
+if (!row) say("INFO", `SH1 /v1/jobs?source=ashby served no Ashby posting to ask for its form (${JSON.stringify(list).slice(0, 120)}): nothing judged`);
+else {
+  const f = j("ashbyform"), form = f && f.data && f.data.form;
+  const unread = !!form && form.source === "not-read-on-this-surface" && form.vendor === "ashby" && form.readAt === null
+    && Array.isArray(form.questions) && form.questions.length === 0;
+  const what = `SH1 ${row.id}: /v1 application -> HTTP ${process.env.VDBA_SHC || "none"}, form.source ${form ? form.source : "none"}, readAt ${form ? form.readAt : "none"}, x-fn-build ${process.env.VDBA_SHB || "none"}`;
+  if (unread && live) say("PASS", `${what}: not read, on ${min} or later, the build whose shared form reader stops Ashby whatever list a caller passes`);
+  else if (unread) say("INFO", `${what}: /v1's own list leaves Ashby out, and the shared stop ships in ${min} or later, which is not live yet`);
+  else if (live) say("FAIL", `${what}: want form.source not-read-on-this-surface with no read (readAt null, no questions) on the build that carries the shared stop`);
+  else say("INFO", `${what}: want form.source not-read-on-this-surface with no read once ${min} or later is live (not pasted yet)`);
+}
 NODE
 fi
 echo "INFO  owner read-only SQL after the paste (needs the service role, which this script never holds): S14X-132 SELECT day, endpoint, count(*), sum(calls) FROM api_fit_unscored GROUP BY 1, 2 ORDER BY 1 DESC -- rows appear once a free key's fit call scores nothing, and no row's calls exceed api_usage's for the same key, day and endpoint"
