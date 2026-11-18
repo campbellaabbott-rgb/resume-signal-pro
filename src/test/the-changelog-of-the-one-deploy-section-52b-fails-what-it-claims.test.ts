@@ -241,6 +241,24 @@ describe("newer entries above these are the healthy case", () => {
     expect(has(lines, "PASS", /^\/changelog's description names the newest entry, "A newer entry"$/), show(lines)).toBe(true);
   });
 
+  // The bake clamps a description to 160 characters at a word boundary and ends
+  // it with an ellipsis (scripts/prerender-seo.mjs). On 2026-11-18 the newest
+  // title was long enough to be clamped, and 52b read the opening words as a
+  // different title than the page's first: a FAIL with nothing wrong.
+  const LONG = "The free scan no longer scores a résumé in one of eight other languages as if it were English";
+  const clamped = (named: string) => `<html><head><meta name="description" content="What changed and when, newest first — including honest postmortems. Latest (2026-12-01): ${named}"></head><body><main><h1>Changelog</h1><div class="space-y-4">${article("2026-12-01", LONG)}${changelogPage().split('<div class="space-y-4">')[1]}`;
+
+  it("a description clamped at 160 characters names a long newest title by its opening words, and 52b passes it", () => {
+    const { lines } = run({ changelog: clamped("The free scan no longer scores a résumé in one of eight other…") });
+    expect(fails(lines), show(lines)).toEqual([]);
+    expect(has(lines, "PASS", /^\/changelog's description names the newest entry by its opening words, "The free scan no longer scores a résumé in one of eight other…" \(the description is clamped at 160 characters; the page lists "The free scan no longer scores/), show(lines)).toBe(true);
+  });
+
+  it("TEETH: a clamped description whose opening words begin another title is still the bake not rebuilding both", () => {
+    const { lines } = run({ changelog: clamped("Several employers whose job lists were too big for us now show…") });
+    expect(has(lines, "FAIL", /^\/changelog's description names "Several employers whose job lists were too big for us now show…" as the newest entry, but the first entry the page lists is "The free scan/), show(lines)).toBe(true);
+  });
+
   it("thirty newer entries push the seventeen off the page: each title is judged in the US strings and passes, and the date is INFO", () => {
     const { lines } = run({ changelog: page("2026-12-01") });
     expect(fails(lines), show(lines)).toEqual([]);
