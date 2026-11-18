@@ -38,7 +38,9 @@
 #       file byte for byte, and _shared/paid-session.ts is untouched;
 #   O   the owner-gated keys (S14X-143, S14X-225) print INFO owner pending
 #       until docs/deploy-ledger.json reservations['bug-round'].ownerDecided
-#       names them; then each judges what its decision ships.
+#       names them; then each judges what its decision ships. S14X-225's
+#       yes ships in round B: its FAIL waits for round B's paste (the
+#       send-product-email build), and before it the line is INFO.
 #
 # WHAT THIS SECTION CANNOT SEE: every write the lane changed needs a paid
 # order, a model call or the service role. Those are proven on the shipped
@@ -57,13 +59,23 @@ vdpb_build() {
 VDPB_FNS="generate-keyword-fix generate-cover-letter generate-premium-package generate-career-snapshot generate-graduate-gameplan generate-ats-defense generate-freelance-boost admin-regenerate-delivery verify-product-purchase send-product-email"
 VDPB_NEW=""
 VDPB_OLD=""
+VDPB_SPE=""
 for VDPB_F in $VDPB_FNS; do
   VDPB_H=$(vdpb_build "$VDPB_F")
+  [ "$VDPB_F" = send-product-email ] && VDPB_SPE="$VDPB_H"
   if [ -n "$VDPB_H" ] && build_ge "$VDPB_F" "$VDPB_H" 2026-11-12 1; then VDPB_NEW="$VDPB_NEW $VDPB_F=$VDPB_H"
   else VDPB_OLD="$VDPB_OLD $VDPB_F=${VDPB_H:-none}"; fi
 done
 VDPB_LIVE=0
 [ -n "$VDPB_NEW" ] && VDPB_LIVE=1
+# Round B's paste. The owner's S14X-225 yes of 2026-11-18 ships in round B,
+# not in round A, whose builds above are already live. Round B restamps
+# send-product-email (it bundles _shared/product-cuts.ts) and applies its
+# migrations before its functions, so once send-product-email serves round
+# B's build the S14X-225 line below is judged; before that it prints INFO
+# (not pasted yet), never a FAIL on round A's live builds.
+VDPB_RB=0
+[ -n "$VDPB_SPE" ] && build_ge send-product-email "$VDPB_SPE" 2026-11-13 1 && VDPB_RB=1
 for VDPB_P in $VDPB_NEW; do echo "PASS  B ${VDPB_P%%=*} preflight x-fn-build = ${VDPB_P#*=} (2026-11-12.1 or later)"; done
 for VDPB_P in $VDPB_OLD; do
   VDPB_F=${VDPB_P%%=*}; VDPB_H=${VDPB_P#*=}
@@ -223,7 +235,7 @@ else
   VDPB_DIGEST=$(node -e 'let j;try{j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))}catch{process.stdout.write("UNREADABLE");process.exit(0)}if(!Array.isArray(j)){process.stdout.write("UNREADABLE");process.exit(0)}process.stdout.write(j.filter((r)=>r&&/^send-agent-digest(-morning)?$/.test(r.ch_jobname)).map((r)=>r.ch_jobname).join(" "))' /tmp/vd_bpb_cron.json)
   if [ "$VDPB_DIGEST" = UNREADABLE ]; then echo "FAIL  S14X-225 decided ($VDPB_O225), but get_cron_health did not answer a list, so the digest jobs cannot be judged"
   elif [ -z "$VDPB_DIGEST" ]; then echo "PASS  S14X-225 decided ($VDPB_O225): neither send-agent-digest nor send-agent-digest-morning is scheduled"
-  elif [ "$VDPB_LIVE" = 1 ]; then echo "FAIL  S14X-225 decided ($VDPB_O225), but get_cron_health still lists $VDPB_DIGEST while the lane's functions serve 2026-11-12.1"
-  else echo "INFO  S14X-225 decided ($VDPB_O225); get_cron_health still lists $VDPB_DIGEST: the round has not pasted"; fi
+  elif [ "$VDPB_RB" = 1 ]; then echo "FAIL  S14X-225 decided ($VDPB_O225), but get_cron_health still lists $VDPB_DIGEST while send-product-email serves $VDPB_SPE: round B is pasted, so 20261112153000 did not apply"
+  else echo "INFO  S14X-225 decided ($VDPB_O225); get_cron_health still lists $VDPB_DIGEST: round B, which carries 20261112153000, is not pasted yet (send-product-email serves ${VDPB_SPE:-none}; judged once it serves 2026-11-13.1)"; fi
 fi
 rm -f /tmp/vd_bpb_cron.json

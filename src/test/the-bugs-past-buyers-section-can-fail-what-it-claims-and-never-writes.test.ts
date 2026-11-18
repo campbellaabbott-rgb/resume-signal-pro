@@ -21,7 +21,9 @@
  *     inactive, untimed or failing closer, a failing purge and an unpublished
  *     page each fail;
  *   - each repo line fails when its claim is false;
- *   - a decided owner key judges what its decision ships;
+ *   - a decided owner key judges what its decision ships, and a key that
+ *     ships in round B (S14X-225 yes) prints INFO while only round A is live
+ *     and is judged once round B's send-product-email build serves;
  *   - every call is an OPTIONS or a GET, no body is sent, and the key is
  *     never printed.
  */
@@ -145,7 +147,12 @@ const site = (opts: { ps?: string; shape?: string; entryStrings?: boolean; pageS
 const PUBLISHED = { ps: PS_NEW, shape: SHAPE_NEW, pageStrings: true };
 
 const before = (): Route[] => [...preflights(OLD), lease("missing"), cron([OLD_PURGE, ...DIGESTS]), ...site()];
+/** Round A pasted: every lane function at 2026-11-12.1 (production since round A's deploy). */
 const after = (): Route[] => [...preflights(NEW), lease("locked"), cron([NEW_PURGE, job("agent-pass-close"), ...DIGESTS]), ...site(PUBLISHED)];
+/** Round B's builds of the functions it restamps in this lane (the owner keys of 2026-11-18 ship with them). */
+const ROUND_B: Record<string, string> = { "send-product-email": "send-product-email.2026-11-13.1" };
+/** Round B pasted on top of round A. */
+const afterB = (): Route[] => [...preflights((fn) => ROUND_B[fn] ?? NEW(fn)), ...after().slice(FNS.length + OWNER_FNS.length)];
 const fails = (lines: string[]) => lines.filter((l) => l.startsWith("FAIL"));
 const swap = (routes: Route[], match: string, to: Route): Route[] => routes.map((r) => (r.match === match ? to : r));
 const CRON_MATCH = cron([]).match;
@@ -318,19 +325,38 @@ describe("the bug round past-buyers section", () => {
     expect(fails(neither.lines), neither.out).toEqual(["FAIL  S14X-143 ownerDecided reads 'C', neither A (enforce) nor B (drop the promise): nothing says what must ship"]);
   });
 
-  it("S14X-225 decided yes fails while a digest job is still scheduled after the paste, passes once both are gone, and a 'no' ships nothing", () => {
+  it("S14X-225 decided yes: INFO while only round A is live, a FAIL once round B is pasted with a digest job still scheduled, a PASS once both are gone; a 'no' ships nothing", () => {
     const yes = { ownerDecided: { "S14X-225": { choice: "yes: unschedule both", date: "2026-11-16" } } };
-    const still = run(after(), yes);
-    expect(fails(still.lines), still.out).toEqual(["FAIL  S14X-225 decided (yes: unschedule both), but get_cron_health still lists send-agent-digest send-agent-digest-morning while the lane's functions serve 2026-11-12.1"]);
+    // Round A is live (every lane function at 2026-11-12.1); the yes ships in round B, not pasted yet.
+    const roundA = run(after(), yes);
+    expect(fails(roundA.lines), roundA.out).toEqual([]);
+    expect(roundA.lines, roundA.out).toContain("INFO  S14X-225 decided (yes: unschedule both); get_cron_health still lists send-agent-digest send-agent-digest-morning: round B, which carries 20261112153000, is not pasted yet (send-product-email serves send-product-email.2026-11-12.1; judged once it serves 2026-11-13.1)");
     const early = run(before(), yes);
     expect(fails(early.lines), early.out).toEqual([]);
-    expect(early.lines.some((l) => l.startsWith("INFO  S14X-225 decided (yes: unschedule both); get_cron_health still lists")), early.out).toBe(true);
-    const gone = run(swap(after(), CRON_MATCH, cron([NEW_PURGE, job("agent-pass-close")])), yes);
-    expect(fails(gone.lines), gone.out).toEqual([]);
-    expect(gone.lines.some((l) => l.startsWith("PASS  S14X-225 decided (yes: unschedule both): neither send-agent-digest nor send-agent-digest-morning is scheduled")), gone.out).toBe(true);
-    const no = run(after(), { ownerDecided: { "S14X-225": "no" } });
+    expect(early.lines.some((l) => l.startsWith("INFO  S14X-225 decided (yes: unschedule both); get_cron_health still lists") && l.includes("is not pasted yet")), early.out).toBe(true);
+    const still = run(afterB(), yes);
+    expect(fails(still.lines), still.out).toEqual(["FAIL  S14X-225 decided (yes: unschedule both), but get_cron_health still lists send-agent-digest send-agent-digest-morning while send-product-email serves send-product-email.2026-11-13.1: round B is pasted, so 20261112153000 did not apply"]);
+    const one = run(swap(afterB(), CRON_MATCH, cron([NEW_PURGE, job("agent-pass-close"), job("send-agent-digest-morning", { ch_timeout: null })])), yes);
+    expect(fails(one.lines), one.out).toEqual([expect.stringMatching(/^FAIL {2}S14X-225 decided \(yes: unschedule both\), but get_cron_health still lists send-agent-digest-morning while/)]);
+    for (const routes of [afterB(), after()]) {
+      const gone = run(swap(routes, CRON_MATCH, cron([NEW_PURGE, job("agent-pass-close")])), yes);
+      expect(fails(gone.lines), gone.out).toEqual([]);
+      expect(gone.lines.some((l) => l.startsWith("PASS  S14X-225 decided (yes: unschedule both): neither send-agent-digest nor send-agent-digest-morning is scheduled")), gone.out).toBe(true);
+    }
+    const no = run(afterB(), { ownerDecided: { "S14X-225": "no" } });
     expect(fails(no.lines), no.out).toEqual([]);
     expect(no.lines.some((l) => l.startsWith("INFO  S14X-225 decided (no): both agent-digest jobs stay")), no.out).toBe(true);
+  });
+
+  it("the answers docs/deploy-ledger.json records print no FAIL while only round A is live, and each is judged, never 'owner pending', once round B is", () => {
+    const ledger = JSON.parse(readFileSync(resolve(ROOT, "docs/deploy-ledger.json"), "utf8")) as { reservations: Record<string, { ownerDecided?: Record<string, unknown> }> };
+    const ownerDecided = ledger.reservations["bug-round"].ownerDecided ?? {};
+    expect(ownerDecided["S14X-225"], "the owner's yes of 2026-11-18 is recorded").toMatchObject({ choice: "yes" });
+    const roundA = run(after(), { ownerDecided });
+    expect(fails(roundA.lines), roundA.out).toEqual([]);
+    expect(roundA.lines.some((l) => l.startsWith("INFO  S14X-225 owner pending")), roundA.out).toBe(false);
+    const roundB = run(afterB(), { ownerDecided });
+    expect(fails(roundB.lines), roundB.out).toContain("FAIL  S14X-225 decided (yes), but get_cron_health still lists send-agent-digest send-agent-digest-morning while send-product-email serves send-product-email.2026-11-13.1: round B is pasted, so 20261112153000 did not apply");
   });
 
   it("every call is an OPTIONS or a GET with no body, and the key is never printed", () => {
