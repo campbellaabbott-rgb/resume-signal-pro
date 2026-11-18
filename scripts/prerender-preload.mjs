@@ -44,19 +44,27 @@ export const modulepreloadTag = (file) => `<link rel="modulepreload" href="/asse
 
 /**
  * THE PAGES WHOSE ROUTE CHUNKS START AFTER THE FIRST PAINT (SEO audit
- * 2026-11-18, PERFORMANCE-1): the board's own pages, /jobs, a field, an
- * employer and a posting. Each paints from its own HTML and one
- * render-blocking stylesheet, and its twelve head hints shared the line with
- * that stylesheet: in 4 interleaved phone rounds (verify-performance-raw/
- * ab.jsonl) /jobs LCP was 2,402 ms as served and 1,876 with the hints written
- * after first paint, the field page 2,040 and 1,598, and React's board came no
- * later. The homepage's hints are already added by a script that waits for
- * the stylesheet (fallbackPreloadHtml), and /pricing and the scanner's pages
- * keep theirs in the head: they were not measured.
+ * 2026-11-18, PERFORMANCE-1): /jobs and a field page, the two the audit's lab
+ * measured. Each paints from its own HTML and one render-blocking stylesheet,
+ * and its twelve head hints shared the line with that stylesheet: in 4
+ * interleaved phone rounds (verify-performance-raw/ab.jsonl, 24 loads of
+ * /jobs and /jobs/field/engineering only) /jobs LCP was 2,402 ms as served and
+ * 1,876 with the hints written after first paint, the field page 2,040 and
+ * 1,598, and React's board came no later. The homepage's hints are already
+ * added by a script that waits for the stylesheet (fallbackPreloadHtml).
+ *
+ * An employer page and a posting page keep their low-priority head hints, as
+ * /pricing and the scanner's pages do: the lab never loaded one, and verify
+ * section 99zz (scripts/verify-deploy.d/99zz-trusted-pages.sh) finds the app
+ * chunk that carries the employer names only through a posting page's and an
+ * employer page's head (a script src or a modulepreload href). With those
+ * hints moved into the loader it read the entry alone, which carries no name,
+ * and printed every page claim as INFO (lane A review, 2026-11-18). Moving
+ * them waits until that section reads the loader too.
  */
 export function defersRouteHints(path) {
   const p = String(path ?? "");
-  return p === "/jobs" || p.startsWith("/jobs/field/") || p.startsWith("/jobs/company/") || p.startsWith("/jobs/posting/");
+  return p === "/jobs" || p.startsWith("/jobs/field/");
 }
 
 /**
@@ -66,20 +74,25 @@ export function defersRouteHints(path) {
  * entry asks for them (a hint, not a dependency: a stale name costs one
  * ignored request). The shape is the one the audit's lab measured (ov-defer),
  * the file names read from the build and never anything a quote could break.
+ *
+ * Each file is written as its full address, /assets/<name>: a reader of the
+ * served /jobs page that looks for the Jobs chunk by that address
+ * (scripts/verify-deploy.sh, "the served frontend knows the board budget
+ * refusal") still finds it, where a bare name left it nothing to read.
  */
 export function deferredPreloadHtml(files) {
-  const ok = (files ?? []).filter((f) => /^[\w.-]+\.js$/.test(f));
+  const ok = (files ?? []).filter((f) => /^[\w.-]+\.js$/.test(f)).map((f) => `/assets/${f}`);
   if (!ok.length) return "";
-  const add = 'function(f){var l=document.createElement("link");l.rel="modulepreload";l.href="/assets/"+f;document.head.appendChild(l);}';
+  const add = 'function(f){var l=document.createElement("link");l.rel="modulepreload";l.href=f;document.head.appendChild(l);}';
   return `<script data-route-preload="1">requestAnimationFrame(function(){setTimeout(function(){${JSON.stringify(ok)}.forEach(${add});},0);});</script>`;
 }
 
-/** The file names a deferred loader adds, in its order (empty when the page has none). */
+/** The file names a deferred loader adds, in its order, without their /assets/ (empty when the page has none). */
 export function deferredPreloadFiles(html) {
   const body = (/<script data-route-preload="1">([\s\S]*?)<\/script>/.exec(String(html ?? "")) || [])[1] ?? "";
   const list = (/(\[[^\]]*\])\.forEach\(/.exec(body) || [])[1];
   if (!list) return [];
-  try { const xs = JSON.parse(list); return Array.isArray(xs) ? xs.filter((x) => typeof x === "string") : []; } catch { return []; }
+  try { const xs = JSON.parse(list); return Array.isArray(xs) ? xs.filter((x) => typeof x === "string").map((x) => x.replace(/^\/assets\//, "")) : []; } catch { return []; }
 }
 
 /**

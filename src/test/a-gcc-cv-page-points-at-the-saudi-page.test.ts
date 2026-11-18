@@ -11,11 +11,16 @@
  * page's title names the group; the llms files count 52 countries plus four
  * GCC states that follow the Saudi rules. Which pages follow another is
  * worked out here from the data, independently of the bake.
+ *
+ * The bake is handed a stale llms.txt saying "56 countries", as 9c9234e9a
+ * committed it: a bake of this branch's file, already rewritten, served the
+ * right count whether or not the bake restated it (lane A review,
+ * 2026-11-18).
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { createElement as h } from "react";
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { render } from "@testing-library/react";
@@ -34,11 +39,18 @@ const SAUDI = `${SITE}/cv-standards/saudi-arabia`;
 const GCC = ["kuwait", "qatar", "bahrain", "oman"];
 const COUNT = "52 countries plus four GCC states that follow the Saudi rules";
 
+const COMMITTED_LLMS = readFileSync(join(ROOT, "public/llms.txt"), "utf8");
+/** A line no restatement touches: the served file carries it only if the bake read the stale copy. */
+const SEEDED = "Seeded stale copy, lane A review 2026-11-18.";
+const STALE_LLMS = `${COMMITTED_LLMS.replace(`norms for ${COUNT}`, "norms for 56 countries")}\n${SEEDED}\n`;
+
 let OUT = "";
 function bake(): string {
   if (OUT) return join(OUT, "dist");
   OUT = mkdtempSync(join(tmpdir(), "gcc-cv-"));
   mkdirSync(join(OUT, "dist"), { recursive: true });
+  mkdirSync(join(OUT, "public"), { recursive: true });
+  writeFileSync(join(OUT, "public", "llms.txt"), STALE_LLMS);
   copyFileSync(join(ROOT, "index.html"), join(OUT, "dist", "index.html"));
   execFileSync("node", [join(ROOT, "scripts/prerender-seo.mjs")], {
     cwd: ROOT,
@@ -95,8 +107,10 @@ describe("the baked pages", () => {
     expect(sitemapLocs().filter((l) => l.startsWith(`${SITE}/cv-standards/`))).toHaveLength(52);
   }, 120_000);
 
-  it("the llms files count 52 countries plus four GCC states", () => {
+  it("the llms files count 52 countries plus four GCC states, from a stale llms.txt too", () => {
+    expect(STALE_LLMS, "the bake is handed the old count").toContain("norms for 56 countries —");
     const dist = bake();
+    expect(readFileSync(join(dist, "llms.txt"), "utf8"), "the bake read the stale copy").toContain(SEEDED);
     for (const [name, text] of [
       ["dist/llms.txt", readFileSync(join(dist, "llms.txt"), "utf8")],
       ["dist/llms-full.txt", readFileSync(join(dist, "llms-full.txt"), "utf8")],

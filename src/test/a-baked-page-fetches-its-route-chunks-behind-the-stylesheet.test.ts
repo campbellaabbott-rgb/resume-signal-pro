@@ -15,12 +15,23 @@
  * phone rounds), /jobs LCP went from 2,402 to 1,876 ms and a field page from
  * 2,040 to 1,598, with React's board no later.
  *
- * So on the board's own pages (/jobs, a field, an employer, a posting) the
- * head names no route chunk, and one inline script at the end of <body>
- * adds the same files once a frame has been painted (requestAnimationFrame,
- * then a task). A hint still starts its chunk before the entry asks for it.
- * The homepage's hints were already added by a script; /pricing and the
- * scanner's pages, not measured, keep their low-priority head hints.
+ * So on /jobs and a field page, the two the lab measured, the head names no
+ * route chunk, and one inline script at the end of <body> adds the same
+ * files, each by its /assets/ address, once a frame has been painted
+ * (requestAnimationFrame, then a task). A hint still starts its chunk before
+ * the entry asks for it. The homepage's hints were already added by a script;
+ * /pricing, the scanner's pages, an employer page and a posting page, none of
+ * them measured, keep their low-priority head hints.
+ *
+ * WHAT READS THOSE NAMES OUTSIDE THE BAKE (lane A review, 2026-11-18). Two
+ * verify readers this lane does not own find the app's chunks in served
+ * pages: scripts/verify-deploy.sh looks for /assets/Jobs-*.js in /jobs, and
+ * section 99zz reads the script src and head modulepreload hrefs of a
+ * posting page and an employer page for the chunk that carries the employer
+ * names. With every board page deferred and the loader naming bare files,
+ * the first found nothing (its PASS/FAIL line became INFO) and the second
+ * read the entry alone (pub=false, every page claim INFO). Both readers are
+ * run below, as their files spell them, on an offline bake.
  *
  * The faces named the public/fonts copies, which the host serves with no
  * Cache-Control and never a 304, so every full page load fetched them again.
@@ -121,36 +132,64 @@ describe("the loader written after the first paint", () => {
     expect(deferredPreloadFiles(deferredPreloadHtml(['x".js', "ok-1.js", "../up.js"]))).toEqual(["ok-1.js"]);
   });
 
-  it("is read by verify section 98-seo-round's P3, which fails a posting page that still names its chunks in the head", () => {
+  /** One function of verify section 98-seo-round, as the section spells it. */
+  const sectionFn = (sec: string, head: string) => {
+    const from = sec.indexOf(head);
+    expect(from, `98-seo-round carries ${head}`).toBeGreaterThan(-1);
+    const end = head.endsWith("{") ? sec.indexOf("\n  };", from) + 5 : sec.indexOf("\n", from);
+    return sec.slice(from, end);
+  };
+
+  it("is read by verify section 98-seo-round's P3, which fails a /jobs that still names its chunks in the head", () => {
     const sec = readFileSync(resolve(ROOT, "scripts/verify-deploy.d/98-seo-round.sh"), "utf8");
-    const from = sec.indexOf("const afterPaint = (h) => {");
-    expect(from, "P3 reads the after-paint loader").toBeGreaterThan(-1);
-    const fn = sec.slice(from, sec.indexOf("\n  };", from) + 5);
-    const afterPaint = new Function(`${fn}; return afterPaint;`)() as (h: string) => string[];
+    const fns = ["const pre = (h) =>", "const afterPaint = (h) => {", "const jobsHints = (status, h) => {"].map((h) => sectionFn(sec, h)).join("\n");
+    const { afterPaint, jobsHints } = new Function(`${fns}; return { afterPaint, jobsHints };`)() as {
+      afterPaint: (h: string) => string[];
+      jobsHints: (status: number, h: string) => [string, string];
+    };
     const html = `<html><head></head><body>${deferredPreloadHtml(["Footer-f.js", "JobPosting-p.js"])}</body></html>`;
     expect(afterPaint(html)).toEqual(deferredPreloadFiles(html));
+    expect(afterPaint(html)).toEqual(["Footer-f.js", "JobPosting-p.js"]);
     expect(afterPaint("<html><head></head><body></body></html>")).toEqual([]);
-    expect(sec).toMatch(/names its route chunks in the head/);
+    // /jobs as this branch writes it, as 9c9234e9a wrote it, and with a loader that names no Jobs chunk
+    const deferred = `<html><head></head><body>${deferredPreloadHtml(["Footer-f.js", "Jobs-j.js", "board-b.js"])}</body></html>`;
+    expect(jobsHints(200, deferred)[0], jobsHints(200, deferred)[1]).toBe("PASS");
+    expect(jobsHints(200, deferred)[1]).toContain("Jobs-j.js");
+    const inHead = `<html><head>${["Footer-f.js", "Jobs-j.js"].map(modulepreloadTag).join("")}</head><body></body></html>`;
+    expect(jobsHints(200, inHead)).toEqual(["FAIL", expect.stringMatching(/^P3 \/jobs names its route chunks in the head \(Footer-f\.js, Jobs-j\.js\)/)]);
+    const noJobs = `<html><head></head><body>${deferredPreloadHtml(["Footer-f.js"])}</body></html>`;
+    expect(jobsHints(200, noJobs)[0]).toBe("FAIL");
+    expect(jobsHints(503, deferred)[0]).toBe("FAIL");
   });
 
-  it("is used on the board's own pages and nowhere else", () => {
-    for (const p of ["/jobs", "/jobs/field/engineering", "/jobs/company/acme", "/jobs/posting/greenhouse/acme/1"]) expect(defersRouteHints(p), p).toBe(true);
-    for (const p of ["/", "/pricing", "/resume-checker", "/es/revisar-curriculum", "/jobsearch", "/guides/x"]) expect(defersRouteHints(p), p).toBe(false);
+  it("is used on /jobs and a field page, the two the lab measured, and nowhere else", () => {
+    for (const p of ["/jobs", "/jobs/field/engineering"]) expect(defersRouteHints(p), p).toBe(true);
+    for (const p of ["/jobs/company/acme", "/jobs/posting/greenhouse/acme/1", "/", "/pricing", "/resume-checker", "/es/revisar-curriculum", "/jobsearch", "/guides/x"]) expect(defersRouteHints(p), p).toBe(false);
+  });
+
+  it("names each file by its full /assets/ address", () => {
+    const html = deferredPreloadHtml(["Jobs-a.js", "Footer-z.js"]);
+    expect(html).toContain('["/assets/Jobs-a.js","/assets/Footer-z.js"]');
+    expect(html.match(/assets\/Jobs-[A-Za-z0-9_-]+\.js/)?.[0]).toBe("assets/Jobs-a.js");
   });
 });
 
 /**
  * THE PAGES AN OFFLINE BAKE WRITES, over route chunks named as Vite names
- * them: the board's pages carry no route-chunk hint in the head and a loader
- * naming the same files the head named before; /pricing keeps its head hints.
+ * them: /jobs and a field page carry no route-chunk hint in the head and a
+ * loader naming the same files the head named before; an employer page, a
+ * posting page and /pricing keep their head hints.
  */
 describe("the baked pages", () => {
   let OUT = "";
   const CHUNKS: Record<string, string> = {
-    "Jobs-j1.js": 'import{a}from"./board-x1.js";import"./Footer-f1.js";',
+    "Jobs-j1.js": 'import{a}from"./board-x1.js";import"./Footer-f1.js";import{n}from"./company-display-c1.js";',
     "board-x1.js": "",
     "Footer-f1.js": "",
-    "JobPosting-p1.js": 'import{a}from"./posting-p2.js";',
+    // the chunk that carries the employer names, as the real build splits it
+    // (src/lib/company-display.ts, imported by the board and the posting page)
+    "company-display-c1.js": "",
+    "JobPosting-p1.js": 'import{a}from"./posting-p2.js";import{n}from"./company-display-c1.js";',
     "posting-p2.js": "",
     "PricingPage-pp1.js": "",
     "HomePage-h1.js": 'import{a}from"./HomeSearchHero-h2.js";',
@@ -191,22 +230,67 @@ describe("the baked pages", () => {
     return walk(join(dist, dir));
   };
 
-  it("/jobs, a field, an employer and a posting name no route chunk in the head, and their loader names the chunks the route runs", () => {
+  const pageFile = (dist: string, name: string) =>
+    ({
+      "/jobs": join(dist, "jobs", "index.html"),
+      "a field": join(dist, "jobs", "field", "engineering", "index.html"),
+      "an employer": firstPage(dist, "jobs/company") ?? "",
+      "a posting": firstPage(dist, "jobs/posting") ?? "",
+    })[name] ?? "";
+
+  it("/jobs and a field name no route chunk in the head, and their loader names the chunks the route runs", () => {
     const dist = bake();
-    const pages: Array<[string, string, string]> = [
-      ["/jobs", join(dist, "jobs", "index.html"), "Jobs-j1.js"],
-      ["a field", join(dist, "jobs", "field", "engineering", "index.html"), "Jobs-j1.js"],
-      ["an employer", firstPage(dist, "jobs/company") ?? "", "Jobs-j1.js"],
-      ["a posting", firstPage(dist, "jobs/posting") ?? "", "JobPosting-p1.js"],
-    ];
-    for (const [name, file, chunk] of pages) {
+    for (const name of ["/jobs", "a field"]) {
+      const file = pageFile(dist, name);
       expect(existsSync(file), `${name}: ${file}`).toBe(true);
       const html = readFileSync(file, "utf8");
       expect(hints(head(html)), `${name}: head hints`).toEqual([]);
-      expect(deferredPreloadFiles(html), name).toEqual(routeFiles(chunk));
+      expect(deferredPreloadFiles(html), name).toEqual(routeFiles("Jobs-j1.js"));
       // the loader is the last thing in <body>
       expect(html, name).toMatch(/<script data-route-preload="1">[\s\S]*?<\/script><\/body>/);
     }
+  }, 120_000);
+
+  it("an employer and a posting keep the chunks the route runs in the head, at low priority, and carry no loader", () => {
+    const dist = bake();
+    for (const [name, chunk] of [["an employer", "Jobs-j1.js"], ["a posting", "JobPosting-p1.js"]]) {
+      const file = pageFile(dist, name);
+      expect(existsSync(file), `${name}: ${file}`).toBe(true);
+      const html = readFileSync(file, "utf8");
+      expect(hints(head(html)), `${name}: head hints`).toEqual(routeFiles(chunk).map(modulepreloadTag));
+      expect(competing(html), name).toEqual([]);
+      expect(deferredPreloadFiles(html), name).toEqual([]);
+    }
+  }, 120_000);
+
+  /**
+   * THE READERS OUTSIDE THIS LANE, as their files spell them today: the
+   * board-budget line of scripts/verify-deploy.sh (the Jobs chunk named in
+   * /jobs) and section 99zz's asset reader (script src and modulepreload
+   * href on a posting page and an employer page). If either reader changes
+   * to read the after-paint loader, an employer and a posting page may defer
+   * their hints too, and this case changes with it.
+   */
+  const readerSource = (file: string, re: RegExp) => {
+    const m = re.exec(readFileSync(resolve(ROOT, file), "utf8"));
+    expect(m, `${file} still reads the chunks the way this case runs it`).not.toBeNull();
+    return m![1];
+  };
+
+  it("verify-deploy.sh's board-budget line finds the Jobs chunk in the baked /jobs", () => {
+    const src = readerSource("scripts/verify-deploy.sh", /const m=html\.match\(\/(assets\\\/Jobs-[^\n]*?)\/\);if\(!m\)return console\.log\("INFO {2}\/jobs served no Jobs/);
+    const html = readFileSync(pageFile(bake(), "/jobs"), "utf8");
+    expect(html.match(new RegExp(src))?.[0]).toBe("assets/Jobs-j1.js");
+  }, 120_000);
+
+  it("section 99zz's asset reader finds every chunk a posting and an employer page run, the employer-name chunk among them", () => {
+    const src = readerSource("scripts/verify-deploy.d/99zz-trusted-pages.sh", /h\.matchAll\(\/(<\(\?:script[^\n]*?)\/g\)\)out\.add/);
+    const dist = bake();
+    const found = new Set<string>();
+    for (const name of ["a posting", "an employer"]) for (const m of readFileSync(pageFile(dist, name), "utf8").matchAll(new RegExp(src, "g"))) found.add(m[1]);
+    const want = [...new Set([...routeFiles("JobPosting-p1.js"), ...routeFiles("Jobs-j1.js")])].map((f) => `/assets/${f}`);
+    expect([...found].sort()).toEqual(expect.arrayContaining(want));
+    expect(found.has("/assets/company-display-c1.js")).toBe(true);
   }, 120_000);
 
   it("/pricing keeps its low-priority head hints and carries no loader", () => {

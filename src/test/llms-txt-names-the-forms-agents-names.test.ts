@@ -11,11 +11,16 @@
  * ship the old five. The unkeyed allowances print with a thousands
  * separator (10,000 and 20,000, not 10000 and 20000).
  *
- * Judged on the files an offline bake writes.
+ * Judged on the files an offline bake writes. The bake is handed a stale
+ * llms.txt, the five-vendor sentence 9c9234e9a committed and a ChatGPT list
+ * that is not the server's: a bake of this branch's file, already rewritten,
+ * served the right sentences whether or not the bake restated them, so
+ * deleting the restatement left every case green (lane A review,
+ * 2026-11-18).
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { formVendorPhrase, MCP_ANON_CAPS, MCP_FORM_VENDORS, MCP_FORM_VENDORS_ON_CHATGPT } from "@/config/mcp-tools";
@@ -23,11 +28,21 @@ import { formVendorPhrase, MCP_ANON_CAPS, MCP_FORM_VENDORS, MCP_FORM_VENDORS_ON_
 vi.setConfig({ testTimeout: 120_000 });
 
 const ROOT = resolve(__dirname, "../..");
+const COMMITTED = readFileSync(join(ROOT, "public/llms.txt"), "utf8");
+const STALE_FORMS = "Greenhouse, Ashby, Recruitee, Breezy or Pinpoint";
+const STALE_CHATGPT = "Greenhouse, Ashby or Recruitee";
+/** A line no restatement touches: the served file carries it only if the bake read the stale copy. */
+const SEEDED = "Seeded stale copy, lane A review 2026-11-18.";
+const STALE = `${COMMITTED
+  .replace(/(When the employer uses )[^.;]*?(, your AI can read the employer's published application form)/, (_, a, b) => `${a}${STALE_FORMS}${b}`)
+  .replace(/(Inside ChatGPT, your AI reads the application form only when the employer uses )[^.;]*?(\.)/, (_, a, b) => `${a}${STALE_CHATGPT}${b}`)}\n${SEEDED}\n`;
 let OUT = "";
 function bake(): string {
   if (OUT) return join(OUT, "dist");
   OUT = mkdtempSync(join(tmpdir(), "llms-forms-"));
   mkdirSync(join(OUT, "dist"), { recursive: true });
+  mkdirSync(join(OUT, "public"), { recursive: true });
+  writeFileSync(join(OUT, "public", "llms.txt"), STALE);
   copyFileSync(join(ROOT, "index.html"), join(OUT, "dist", "index.html"));
   execFileSync("node", [join(ROOT, "scripts/prerender-seo.mjs")], {
     cwd: ROOT,
@@ -49,6 +64,15 @@ const ALL = MCP_FORM_VENDORS.map((v) => v.label).sort();
 const ON_CHATGPT = MCP_FORM_VENDORS.filter((v) => MCP_FORM_VENDORS_ON_CHATGPT.includes(v.key)).map((v) => v.label).sort();
 
 describe("the llms.txt form sentences", () => {
+  it("are handed to the bake stale", () => {
+    expect(FORM_SENTENCE.exec(STALE)?.[1]).toBe(STALE_FORMS);
+    expect(CHATGPT_SENTENCE.exec(STALE)?.[1]).toBe(STALE_CHATGPT);
+    expect(STALE_FORMS).not.toBe(formVendorPhrase("en"));
+    expect(STALE_CHATGPT).not.toBe(formVendorPhrase("en", MCP_FORM_VENDORS_ON_CHATGPT));
+    // and the bake read that copy, not the checkout's
+    expect(readFileSync(join(bake(), "llms.txt"), "utf8")).toContain(SEEDED);
+  });
+
   for (const [name, read] of [
     ["the baked llms.txt", () => readFileSync(join(bake(), "llms.txt"), "utf8")],
     ["the committed public/llms.txt", () => readFileSync(join(ROOT, "public/llms.txt"), "utf8")],

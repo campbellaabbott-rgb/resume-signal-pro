@@ -229,8 +229,9 @@ export const composeHtml = (
   // A PAGE THAT NEVER CALLS SUPABASE OPENS NO CONNECTION TO IT (PERFORMANCE-M2):
   // the template's preconnect goes, its dns-prefetch stays.
   if (!isFallback && dropsSupabasePreconnect(path)) html = withoutSupabasePreconnect(html);
-  // THE BOARD'S ROUTE CHUNKS START AFTER THE FIRST PAINT (PERFORMANCE-1): the
-  // loader goes at the end of <body>, and preloadFor wrote no head hint for it.
+  // /JOBS' AND A FIELD PAGE'S ROUTE CHUNKS START AFTER THE FIRST PAINT
+  // (PERFORMANCE-1): the loader goes at the end of <body>, and preloadFor
+  // wrote no head hint for it.
   const routeTail = !isFallback && typeof routeTailFor === "function" ? routeTailFor(path) : "";
   if (routeTail) html = putVerbatim(html, "</body>", `${routeTail}</body>`);
   // A scanner address of "/" ("/#upload", "/?ref=<code>", the mails'
@@ -1641,10 +1642,11 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     if (FOOTER_CHUNK && !files.includes(FOOTER_CHUNK)) files.unshift(FOOTER_CHUNK);
     return files;
   };
-  // PERFORMANCE-1 (SEO audit 2026-11-18): on the board's own pages
-  // (defersRouteHints) the same files are written by a loader at the end of
-  // <body> that runs after the first paint (routeTailFor), and the head
-  // carries none of them.
+  // PERFORMANCE-1 (SEO audit 2026-11-18): on /jobs and a field page
+  // (defersRouteHints, the two the lab measured) the same files are written
+  // by a loader at the end of <body> that runs after the first paint
+  // (routeTailFor), and the head carries none of them. Employer and posting
+  // pages keep their head hints (see defersRouteHints for why).
   const routeTailFor = (path) => {
     if (!defersRouteHints(path)) return "";
     const key = `${routeChunkPrefix(path)}|tail`;
@@ -5434,7 +5436,15 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     // count to "31,000+" one file away: it had no pattern at all. A miss now
     // WARNS on stderr rather than passing silently.
     try {
-      let lt = readFileSync(join(root, "public/llms.txt"), "utf8");
+      // THE FILE IS READ WHERE THE BAKE WRITES IT: public/llms.txt in a
+      // checkout (publicOut is root/public there, so nothing changes), and in
+      // a PRERENDER_OUT bake its public/llms.txt when one is there, else the
+      // checkout's. A test can then hand the bake a stale file and judge
+      // whether the restatements below correct it: a bake of the committed
+      // file, already rewritten, served the right sentence whether or not
+      // they ran (lane A review, 2026-11-18).
+      const llmsSource = existsSync(join(publicOut, "llms.txt")) ? join(publicOut, "llms.txt") : join(root, "public/llms.txt");
+      let lt = readFileSync(llmsSource, "utf8");
       // The paid line and the Pricing line name only what the pages have on
       // sale: the owner's switches (PRICING_GATES; both on, as on main), never
       // the seller, whose name gates no sale (sales stay on, the owner,

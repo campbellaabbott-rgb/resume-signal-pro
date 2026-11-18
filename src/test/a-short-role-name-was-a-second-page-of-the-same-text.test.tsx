@@ -28,7 +28,7 @@
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { render } from "@testing-library/react";
@@ -355,15 +355,27 @@ describe("links between keyword pages", () => {
 
 /**
  * THE SERVED FILES (SEO audit 2026-11-18, CONTENT-2): an offline bake writes
- * every role page, so the short name's canonical and the sitemap are read from
- * the files a crawler is served, not from the source.
+ * every role page, so the short name's canonical, the sitemap, the links
+ * between keyword pages and the llms files' count are read from the files a
+ * crawler is served, not from the source.
+ *
+ * The bake is handed the llms.txt 9c9234e9a committed ("Role keyword pages
+ * (174)"), not this branch's: a bake of a file already saying 166 serves 166
+ * whether or not the bake restates the count (lane A review, 2026-11-18).
  */
+const COMMITTED_LLMS = readFileSync(resolve(__dirname, "../../public/llms.txt"), "utf8");
+/** A line no restatement touches: the served file carries it only if the bake read the stale copy. */
+const SEEDED = "Seeded stale copy, lane A review 2026-11-18.";
+const STALE_LLMS = `${COMMITTED_LLMS.replace(/Role keyword pages \(\d+\)/, "Role keyword pages (174)")}\n${SEEDED}\n`;
+
 describe("the baked role pages", () => {
   let OUT = "";
   const bake = () => {
     if (OUT) return join(OUT, "dist");
     OUT = mkdtempSync(join(tmpdir(), "roles-canonical-"));
     mkdirSync(join(OUT, "dist"), { recursive: true });
+    mkdirSync(join(OUT, "public"), { recursive: true });
+    writeFileSync(join(OUT, "public", "llms.txt"), STALE_LLMS);
     copyFileSync(resolve(__dirname, "../../index.html"), join(OUT, "dist", "index.html"));
     execFileSync("node", [resolve(__dirname, "../../scripts/prerender-seo.mjs")], {
       cwd: resolve(__dirname, "../.."),
@@ -394,5 +406,39 @@ describe("the baked role pages", () => {
     const roles = locs.filter((l) => l.startsWith(`${SITE}/roles/`));
     expect(roles).toHaveLength(166);
     for (const r of Object.values(ROLE_PAGES)) expect(roles.includes(`${SITE}/roles/${r.slug}`), r.slug).toBe(!deferTo(r.slug));
+  }, 120_000);
+
+  it("no baked role or industry page links a role page that defers to another", () => {
+    const dist = bake();
+    const deferring = new Set(Object.values(ROLE_PAGES).filter((r) => deferTo(r.slug)).map((r) => r.slug));
+    expect(deferring.size).toBe(8);
+    const files = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? files(join(dir, e.name)) : e.name.endsWith(".html") ? [join(dir, e.name)] : []));
+    const pages = [...files(join(dist, "roles")), ...files(join(dist, "industries"))];
+    // every role page and every industry page, each read
+    expect(pages.filter((f) => f.endsWith(`${join("roles", "registered-nurse", "index.html")}`))).toHaveLength(1);
+    expect(pages.filter((f) => f.endsWith(`${join("industries", "healthcare", "index.html")}`))).toHaveLength(1);
+    let linksRead = 0;
+    const bad: string[] = [];
+    for (const f of pages) {
+      for (const m of readFileSync(f, "utf8").matchAll(/<a\b[^>]*\shref="(?:https:\/\/resumebooster\.work)?\/roles\/([a-z0-9-]+)\/?(?:[?#][^"]*)?"/g)) {
+        linksRead++;
+        if (deferring.has(m[1])) bad.push(`${f.slice(dist.length)} -> /roles/${m[1]}`);
+      }
+    }
+    expect(linksRead, "the baked pages link role pages at all").toBeGreaterThan(500);
+    expect(bad).toEqual([]);
+  }, 120_000);
+
+  it("the llms files count the 166 role pages an engine can cite, from a stale llms.txt too", () => {
+    expect(STALE_LLMS, "the bake is handed the old count").toContain("Role keyword pages (174)");
+    const dist = bake();
+    expect(readFileSync(join(dist, "llms.txt"), "utf8"), "the bake read the stale copy").toContain(SEEDED);
+    for (const f of ["llms.txt", "llms-full.txt"]) {
+      const text = readFileSync(join(dist, f), "utf8");
+      expect(text, f).toContain("Role keyword pages (166)");
+      expect(text, f).not.toMatch(/Role keyword pages \((?!166\))\d+\)/);
+    }
+    expect(COMMITTED_LLMS, "the committed public/llms.txt").toContain("Role keyword pages (166)");
   }, 120_000);
 });
