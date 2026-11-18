@@ -2,17 +2,21 @@
 # Search and AI indexes still hold some of these with retired titles (/privacy as "Zero Ghost Jobs",
 # company URLs as old job-board copies). Each now serves its own page: a live page, or a noindex
 # page saying it no longer has a page of its own, or a tombstone. The list is the five pages the
-# SEO report names plus every path in published-company-paths.txt and published-posting-paths.txt.
+# SEO report names plus every path in published-company-paths.txt and published-posting-paths.txt,
+# which since 2026-11-18 carries every company path in seen-in-search-indexes.txt as well (the
+# readable index held /jobs/company/0ebd29d1-d85b-444e-b36b-430da3d7bc58, SEO audit OFFSITE-M1).
 #
-# IT IS A SUBMISSION. Run it only with the owner's go-ahead, after the deploy is verified:
+# IT IS A SUBMISSION. Run it only with the owner's go-ahead, after the deploy is verified. Without
+# INDEXNOW_SEND=1 every run only lists (the owner's rule of 2026-11-07), so list first, then send:
 #   node scripts/indexnow-ping.mjs --urls scripts/seo-seed/indexnow-historical-urls.txt --dry-run   (lists, sends nothing)
-#   node scripts/indexnow-ping.mjs --urls scripts/seo-seed/indexnow-historical-urls.txt             (the submission)
-# 2925 paths.
+#   INDEXNOW_SEND=1 node scripts/indexnow-ping.mjs --urls scripts/seo-seed/indexnow-historical-urls.txt   (the submission)
+# 2926 paths.
 /
 /privacy
 /terms
 /ghost-job-index
 /research/ats-score-benchmarks
+/jobs/company/0ebd29d1-d85b-444e-b36b-430da3d7bc58
 /jobs/company/10kbi
 /jobs/company/1800gotjunk
 /jobs/company/1komma5grad
