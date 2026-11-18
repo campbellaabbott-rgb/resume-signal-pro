@@ -73,7 +73,7 @@ const FN_NAME = "create-pass-checkout";
 // 2026-10-11.17: the retirement sentence's apply-yourself line says that inside ChatGPT the AI reads the application form only for Greenhouse or Recruitee, the server's public-API pair (the second recheck of the descope, 2026-10-25); nothing else changed.
 // 2026-11-03.1 (S9-001, fix/audit-rest-abuse): a connected app's token is refused with the signed-out answer before the auth server is asked.
 // 2026-11-12.1 (bug round of 2026-11-08, part A, payments lane, RC-S13-063, through the shared buyer-record module): the record can carry the buyer's network key; this function still answers retired and hands it no address.
-const FN_BUILD = `${FN_NAME}.2026-11-12.1`;
+const FN_BUILD = `${FN_NAME}.2026-11-18.1`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

@@ -353,7 +353,7 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
 // 2026-11-09.2 (fix/cost-wave, the integration): the 2026-11-08.1 code above (connect W1, W3, W4 and W5) with the ci-edge lane's Max-Age; cost/ci-edge stamped 2026-11-09.1 on a copy without the connect changes, so the merged code takes the next sequence (DEPLOY-LEDGER §3).
 // 2026-11-12.1 (bug round of 2026-11-08, part A, connector lane): the keyless and own-connection allowances are named where they apply, the keyed steps remove the keyless entry first, the fit tool gives back a call that scored nothing, the job tool says when the board last read the feed, a location word is searched as typed, a form body cut off mid-read is never cached, a Greenhouse heading is the next question's section, the bundled ChatGPT egress list is OpenAI's of 2026-11-06, and the federal feed is said to be withheld by our own choice.
 // 2026-11-12.2 (the round's integration, S14X-052): fit_resume's unscored names a third reason job-fit 2026-11-12.2 sends, no_resume_terms (none of the terms the scorer reads were found in the résumé).
-const FN_BUILD = "agent-mcp.2026-11-12.2";
+const FN_BUILD = "agent-mcp.2026-11-18.1";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
