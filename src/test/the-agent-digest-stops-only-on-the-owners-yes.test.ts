@@ -13,10 +13,14 @@
  *
  * Run against a pg_cron stand-in that starts from Supabase's default grants.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
+
+// Each case starts its own pglite: five seconds is enough alone, not beside a
+// full run, where all four timed out on 2026-11-18.
+vi.setConfig({ testTimeout: 60_000 });
 
 const DIR = resolve(__dirname, "../../supabase/migrations");
 const M = readFileSync(resolve(DIR, readdirSync(DIR).find((f) => f.startsWith("20261112153000_"))!), "utf8");
