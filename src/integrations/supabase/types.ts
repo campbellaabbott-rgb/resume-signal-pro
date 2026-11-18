@@ -6106,6 +6106,7 @@ export type Database = {
       cleanup_old_rate_limits: { Args: never; Returns: number }
       client_callable_census: { Args: never; Returns: Json }
       client_callable_unlisted_names: { Args: never; Returns: Json }
+      client_table_grants: { Args: never; Returns: Json }
       client_write_allowed: {
         Args: {
           p_ceiling: number
@@ -7870,6 +7871,7 @@ export type Database = {
         Args: { p_credits: number; p_email: string }
         Returns: number
       }
+      privacy_retention_nightly: { Args: never; Returns: Json }
       pro_entitlement_rows: {
         Args: { p_user_id: string }
         Returns: {

@@ -1709,6 +1709,27 @@
       "when": 1794940002008,
       "tag": "0243_ghost_index_hourly_before_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 244,
+      "version": "7",
+      "when": 1794962443177,
+      "tag": "0244_a_log_keeps_no_address_past_ninety_days",
+      "breakpoints": true
+    },
+    {
+      "idx": 245,
+      "version": "7",
+      "when": 1794962500889,
+      "tag": "0245_a_deleted_account_takes_its_not_subscribed_rows",
+      "breakpoints": true
+    },
+    {
+      "idx": 246,
+      "version": "7",
+      "when": 1794962535322,
+      "tag": "0246_a_table_only_the_server_reads_answers_only_the_server",
+      "breakpoints": true
     }
   ]
 }
