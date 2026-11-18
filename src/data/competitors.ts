@@ -23,6 +23,20 @@ export interface Competitor {
       required for competitors where that claim would be false (e.g. chatbots
       with generous free tiers). */
   pricingNote?: string;
+  /** The name is two products ("ChatGPT & Claude"): it takes "are" (CONTENT-6). */
+  plural?: boolean;
+}
+
+/**
+ * THE WORDS A COMPETITOR'S NAME TAKES (SEO audit 2026-11-18, CONTENT-6).
+ * "ChatGPT & Claude" names two products with two owners, and the /vs page
+ * said it "is genuinely stronger" and "is a trademark of its owner". The bake
+ * and the React page both read their verbs from here.
+ */
+export function competitorWords(c: Pick<Competitor, "plural">) {
+  return c.plural
+    ? { is: "are", uses: "use", product: "public products", productChanges: "public products change", trademark: "are trademarks of their owners" }
+    : { is: "is", uses: "uses", product: "public product", productChanges: "public product changes", trademark: "is a trademark of its owner" };
 }
 
 // The allowance is the scanner's own (S13-094), read from the module the
@@ -44,6 +58,7 @@ export const COMPETITORS: Record<string, Competitor> = {
   chatgpt: {
     slug: "chatgpt",
     name: "ChatGPT & Claude",
+    plural: true,
     intro:
       "ChatGPT and Claude are what we're most often compared to — fairly, because they're genuinely excellent at resume advice. The honest difference is category: they are conversationalists, this is an instrument. Ask a chatbot to rate your resume five times and you'll get five different answers; an instrument returns the same report for the same file and posting (within the 7 days a report is kept) and tells you where that reading sits among real ones.",
     pricingNote:

@@ -28,15 +28,18 @@
 //
 // Usage:
 //   node scripts/posting-closure-check.mjs [--site URL] [--history FILE]
-//        [--out FILE] [--budget-ms N] [--date YYYY-MM-DD] [--json]
+//        [--out FILE] [--closed-out FILE] [--budget-ms N] [--date YYYY-MM-DD] [--json]
+// --closed-out writes today's closed pages as lines for
+// scripts/seo-seed/closed-at-employer.txt (empty on a re-read), and under
+// GitHub Actions the run's summary lists the counts and every closed path.
 // Exit: 0 judged and the rule did not fire; 3 the rule fired; 4 not judged
 // (over 20% unknown, or nothing to check); 2 the sitemap or ledger could not
 // be read.
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, realpathSync } from "node:fs";
+import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync, realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { idFromPostingPath, idParts, readEmployers, summarizeEmployerReads, wilson95 } from "./employer-reads.mjs";
+import { idFromPostingPath, idParts, readEmployers, summarizeEmployerReads, whyPhrase, wilson95 } from "./employer-reads.mjs";
 
 /** The owner's line: a closed share over this is "over". */
 export const STOP_SHARE = 0.05;
@@ -86,6 +89,67 @@ export function unknownBoardsByVendor(list) {
     boards.set(r.vendor, set);
   }
   return Object.fromEntries([...boards].map(([v, set]) => [v, set.size]));
+}
+
+/**
+ * ONE LINE PER VENDOR, with why its unknown answers are unknown (SEO audit
+ * 2026-11-18, STRUCTURED-M2): a Cloudflare challenge ("challenge") and the
+ * rows not asked after three of them ("vendor challenged") are counted apart
+ * from the budget, a timeout or an HTTP status, so a refusal never reads as a
+ * slow network.
+ */
+export function closureVendorLines(record) {
+  return Object.entries(record?.byVendor ?? {})
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([v, c]) => `${v.padEnd(16)} open ${c.open ?? 0}, closed ${c.closed ?? 0}, unknown ${c.unknown ?? 0}${c.why && c.unknown ? ` (${whyPhrase(c.why)})` : ""}`);
+}
+
+/** Challenges per vendor in a record ({ workday: { challenge: 3, "vendor challenged": 292 } }), vendors with none left out. */
+export function closureChallenges(record) {
+  const out = {};
+  for (const [v, c] of Object.entries(record?.byVendor ?? {})) {
+    const n = c?.why?.challenge ?? 0;
+    const m = c?.why?.["vendor challenged"] ?? 0;
+    if (n || m) out[v] = { challenge: n, "vendor challenged": m };
+  }
+  return out;
+}
+
+/**
+ * THE PAGES CLOSED AT THE EMPLOYER, as lines for scripts/seo-seed/
+ * closed-at-employer.txt (SEO audit 2026-11-18, CRAWL-M2): "<path> <date>
+ * employer", one per closed path. The check writes nothing to the site: the
+ * workflow puts these lines in one standing issue, a person commits them, and
+ * the next bake retires each listed page with the employer's "no longer
+ * listed" page.
+ */
+export function closedListLines(record) {
+  const date = typeof record?.date === "string" ? record.date : "";
+  return (Array.isArray(record?.closedPaths) ? record.closedPaths : []).map((p) => `${p} ${date} employer`);
+}
+
+/** The run's job summary (GitHub's step summary), in Markdown: the counts, why the unknowns are unknown, and every closed path. */
+export function closureSummaryMarkdown(record, verdict) {
+  const r = record ?? {};
+  const pct = (x) => (x === null || x === undefined ? "n/a" : `${(x * 100).toFixed(1)}%`);
+  const lines = [
+    `## Posting closure check, ${r.date ?? "no date"}`,
+    "",
+    `${r.checked ?? 0} live posting pages checked: ${r.open ?? 0} open, ${r.closed ?? 0} closed at the employer, ${r.unknown ?? 0} unknown. Closed share ${pct(r.closedShare)}, unknown ${pct(r.unknownShare)}.`,
+    "",
+    verdict?.message ? `**Verdict:** ${verdict.message}` : "",
+    "",
+    "| vendor | open | closed | unknown | why unknown |",
+    "| --- | --- | --- | --- | --- |",
+    ...Object.entries(r.byVendor ?? {}).sort((a, b) => a[0].localeCompare(b[0])).map(([v, c]) => `| ${v} | ${c.open ?? 0} | ${c.closed ?? 0} | ${c.unknown ?? 0} | ${c.why ? whyPhrase(c.why) : ""} |`),
+    "",
+  ];
+  const closed = Array.isArray(r.closedPaths) ? r.closedPaths : [];
+  lines.push(closed.length ? `### ${closed.length} page(s) closed at the employer` : "No live page was closed at its employer.");
+  if (closed.length) {
+    lines.push("", "Lines for scripts/seo-seed/closed-at-employer.txt (the next bake retires each listed page):", "", "```", ...closedListLines(r), "```");
+  }
+  return lines.filter((l, i, a) => !(l === "" && a[i - 1] === "")).join("\n") + "\n";
 }
 
 /** Whether a record was judged: something checked, and no more than 20% unknown. */
@@ -209,11 +273,20 @@ if (isMain) {
   if (out.record) {
     const r = out.record;
     console.log(`posting closure: ${r.date} checked ${r.checked}: ${r.open} open, ${r.closed} closed, ${r.unknown} unknown; closed share ${r.closedShare === null ? "n/a" : `${(r.closedShare * 100).toFixed(1)}%`} (95% CI ${(r.wilson95[0] * 100).toFixed(1)}-${(r.wilson95[1] * 100).toFixed(1)}%), unknown ${r.unknownShare === null ? "n/a" : `${(r.unknownShare * 100).toFixed(1)}%`}`);
-    for (const [v, c] of Object.entries(r.byVendor)) console.log(`posting closure:   ${v.padEnd(16)} open ${c.open}, closed ${c.closed}, unknown ${c.unknown}`);
+    for (const line of closureVendorLines(r)) console.log(`posting closure:   ${line}`);
+    const challenges = closureChallenges(r);
+    if (Object.keys(challenges).length) console.log(`posting closure: bot challenges (not retried; a vendor stops being asked after three): ${Object.entries(challenges).map(([v, c]) => `${v} ${c.challenge} challenged, ${c["vendor challenged"]} not asked`).join("; ")}`);
     for (const p of r.closedPaths) console.log(`posting closure:   closed at the employer: ${p}`);
     if (argv.includes("--json")) console.log(`POSTING_CLOSURE_JSON ${JSON.stringify(r)}`);
     if (outFile) { mkdirSync(dirname(outFile), { recursive: true }); writeFileSync(outFile, JSON.stringify(r, null, 2)); }
     if (historyFile) { mkdirSync(dirname(historyFile), { recursive: true }); writeFileSync(historyFile, JSON.stringify(out.history, null, 2)); }
+    // THE CLOSED PAGES, MEASURED TODAY (CRAWL-M2): written only by a run that
+    // measured, so a later slot re-reading the same date names nothing twice.
+    const closedOut = arg(argv, "--closed-out");
+    if (closedOut) { mkdirSync(dirname(closedOut), { recursive: true }); writeFileSync(closedOut, already && judged(already) ? "" : closedListLines(r).join("\n") + (r.closedPaths.length ? "\n" : "")); }
+    if (process.env.GITHUB_STEP_SUMMARY) {
+      try { appendFileSync(process.env.GITHUB_STEP_SUMMARY, closureSummaryMarkdown(r, out.verdict)); } catch { /* a summary is a convenience */ }
+    }
   }
   console.log(`posting closure: ${out.verdict.message}`);
   process.exit(out.code);

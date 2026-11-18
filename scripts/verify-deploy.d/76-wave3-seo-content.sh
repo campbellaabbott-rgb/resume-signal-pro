@@ -256,7 +256,7 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   // 2026-10-25)". The date alone is the wording before the SEO round. The n
   // must be the decided count the sentence names.
   const g = await get("/ghost-job-index");
-  if (/Daily re-check: \d+(?:\.\d+)?% of ([\d,]+) decided sample postings still live at the source \((?:n = \1(?:, 95% interval [^,)]+)?, )?\d{4}-\d{2}-\d{2}\)/.test(textOf(g.body))) out("PASS", "/ghost-job-index prints its dated daily re-check (S2)");
+  if (/(?:Daily r|R)e-check: \d+(?:\.\d+)?% of ([\d,]+) decided sample postings still live at the source \((?:n = \1(?:, 95% interval [^,)]+)?, )?\d{4}-\d{2}-\d{2}\)/.test(textOf(g.body))) out("PASS", "/ghost-job-index prints its dated daily re-check (S2)");
   else out("FAIL", "/ghost-job-index prints no dated daily re-check line (S2; or the audit was unread at bake time)");
   const ds = lds(g.body).find((j) => j["@type"] === "Dataset");
   if (ds && ds.dateModified) out("PASS", `/ghost-job-index is Dataset markup dated ${ds.dateModified}${ds.license ? `, license ${ds.license}` : ", no license named (owner TODO)"}`);
