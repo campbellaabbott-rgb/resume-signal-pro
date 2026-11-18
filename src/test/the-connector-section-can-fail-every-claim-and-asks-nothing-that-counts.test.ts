@@ -40,7 +40,7 @@ import type { EdgeHandler } from "./helpers/edge-harness";
 import { AUTHORIZATION_SERVER_METADATA_URL } from "../../supabase/functions/agent-mcp/as-probe";
 import { AUTH_ISSUER } from "../../supabase/functions/agent-mcp/oauth";
 import { BUNDLED_CHATGPT_EGRESS_AT, BUNDLED_CHATGPT_EGRESS_V4 } from "../../supabase/functions/agent-mcp/chatgpt-egress";
-import { MCP_ADDRESS_GLOSS, MCP_FORM_VENDORS, MCP_HOSTS, MCP_MORE_HOSTS, MCP_OWN_CONNECTION_GLOSS, MCP_TOOLS, MCP_TROUBLESHOOTING, MCP_WITHHELD_NOTE } from "../config/mcp-tools";
+import { MCP_ADDRESS_GLOSS, MCP_CLAUDE_AUTH_CHOICE, MCP_FORM_VENDORS, MCP_HOSTS, MCP_MORE_HOSTS, MCP_OWN_CONNECTION_GLOSS, MCP_TOOLS, MCP_TROUBLESHOOTING, MCP_WITHHELD_NOTE } from "../config/mcp-tools";
 
 vi.setConfig({ testTimeout: 600_000, hookTimeout: 300_000 });
 
@@ -87,7 +87,7 @@ afterAll(() => { for (const d of dirs) { try { rmSync(d, { recursive: true, forc
  * and a good deploy is judged with them recorded, as the integrator records
  * them before merging that commit.
  */
-const OWNER_SHIPPED: Record<string, string> = {};
+const OWNER_SHIPPED: Record<string, string> = { "OD14-ASHBY-1": "stop", "HO-1": MCP_CLAUDE_AUTH_CHOICE };
 
 function run(routes: Route[], o: { keylessCalls?: boolean; decided?: Record<string, string> } = {}): { lines: string[]; calls: string[]; out: string } {
   const dir = mkdtempSync(join(tmpdir(), "vd99bc-"));
@@ -437,10 +437,17 @@ const KEEP_STEP = "Claude shows the authentication settings it detected. Keep th
 const naming = (s: string, choice: string) => s.split("Keep them as they are").join(`Choose **${choice}**`);
 
 describe("the owner keys", () => {
+  it("OD14-REDIST-1 \"keep\" (the owner's 2026-11-18 answer) is reported, never judged as a withhold", () => {
+    const r = run(routes(OFF, { mt: NEW_MT }), { decided: { ...OWNER_SHIPPED, "OD14-REDIST-1": "keep" } });
+    expect(lineOf(r.lines, "OD14-REDIST-1"), r.out).toMatch(/^INFO  OD14-REDIST-1 decided \(keep\): the connector keeps handing UKG, ADP and Breezy on/);
+    expect(r.lines.some((l) => /^FAIL  OD14-REDIST-1/.test(l)), r.out).toBe(false);
+  });
+
   it("OD14-REDIST-1 \"withhold\": PASS on answers that withhold UKG, ADP and Breezy, and SEO-F15 then wants no Breezy reader", () => {
     const r = run(routes(OFF, { a: withRedist(OFF), mt: dropLabel(NEW_MT, "Breezy") }), { decided: { ...OWNER_SHIPPED, "OD14-REDIST-1": "withhold" } });
     expect(lineOf(r.lines, "OD14-REDIST-1"), r.out).toMatch(/^PASS  OD14-REDIST-1 decided \(withhold\)/);
-    expect(lineOf(r.lines, "SEO-F15", /form readers the connector uses/), r.out).toMatch(/^PASS .* of the 9 form readers/);
+    // Nine readers less any other choice this branch carries (OD14-ASHBY-1 takes Ashby out too).
+    expect(lineOf(r.lines, "SEO-F15", /form readers the connector uses/), r.out).toMatch(new RegExp(`^PASS .* of the ${"OD14-ASHBY-1" in OWNER_SHIPPED ? 8 : 9} form readers`));
   });
 
   it.each([

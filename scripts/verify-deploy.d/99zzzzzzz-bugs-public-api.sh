@@ -131,10 +131,14 @@ const claims = /terms[^.]*(forbid|prohibit|do not permit|bar)|forbid[^.]*redistr
 judge(!claims, "U the withholding reason claims nothing about the federal feed's terms (USAJOBS-COPY-2)",
   `U the withholding reason still says the federal feed's terms forbid handing it on: "${String(r.reason).slice(0, 140)}"`);
 if (!process.env.VDBA_REDIST) say("INFO", "OD14-REDIST-2 owner pending: UKG, ADP and Breezy rows are still handed on by /v1 until the owner decides");
-else {
+else if (/withh/i.test(process.env.VDBA_REDIST)) {
   const want = ["ukg", "adp", "breezy"].filter((s) => !r.excludedSources.includes(s));
   judge(want.length === 0, `OD14-REDIST-2 (${process.env.VDBA_REDIST}) /v1 withholds ukg, adp and breezy`, `OD14-REDIST-2 (${process.env.VDBA_REDIST}) /v1 still hands on ${want.join(", ")}`);
-}
+} else if (/^keep\b/i.test(process.env.VDBA_REDIST)) {
+  // The owner kept them (2026-11-18): the claim is that /v1 still hands on all three.
+  const gone = ["ukg", "adp", "breezy"].filter((s) => r.excludedSources.includes(s));
+  judge(gone.length === 0, `OD14-REDIST-2 (${process.env.VDBA_REDIST}) /v1 still hands on ukg, adp and breezy`, `OD14-REDIST-2 (${process.env.VDBA_REDIST}) /v1 withholds ${gone.join(", ")} although the owner kept them`);
+} else say("INFO", `OD14-REDIST-2 recorded as "${process.env.VDBA_REDIST}", which names neither withhold nor keep: nothing is judged`);
 if (!process.env.VDBA_ASHBY) say("INFO", "OD14-ASHBY-2 owner pending: /v1's application-form route still reads Ashby's form endpoint until the owner decides");
 else {
   const d = String((ix.modes || {}).applicationForm || "");

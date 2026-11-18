@@ -36,11 +36,12 @@ export type McpToolTier = "read" | "paid" | "apply";
  * label for each) by src/test/the-agents-page-sells-nothing-and-sends-nothing
  * .test.tsx. Everywhere else the AI reads the posting and the person fills in
  * the employer's form. Order: the spec's (Greenhouse first, by volume).
- * Declared above the tool list, whose apply_myself sentence reads it.
+ * Declared above the tool list, whose apply_myself sentence reads it. Nor is
+ * a reader the connector stopped named (MCP_FORM_NOT_READ_HERE): Ashby left
+ * with OD14-ASHBY-1.
  */
 export const MCP_FORM_VENDORS: ReadonlyArray<{ key: string; label: string }> = [
   { key: "greenhouse", label: "Greenhouse" },
-  { key: "ashby", label: "Ashby" },
   { key: "recruitee", label: "Recruitee" },
   { key: "breezy", label: "Breezy" },
   { key: "pinpoint", label: "Pinpoint" },
@@ -62,6 +63,14 @@ export const MCP_FORM_VENDORS: ReadonlyArray<{ key: string; label: string }> = [
  * the-page-says-six fails while a vendor waits here past its build.
  */
 export const MCP_FORM_VENDORS_AFTER_DEPLOY: ReadonlyArray<{ key: string; label: string }> = [];
+
+/**
+ * Shared form readers the connector does not use although it hands their
+ * postings on: agent-mcp's FORM_NOT_READ_HERE, pinned equal by
+ * the-page-says-six. OD14-ASHBY-1 (owner option "stop", 2026-11-16): Ashby
+ * publishes its form only under a path its robots file disallows.
+ */
+export const MCP_FORM_NOT_READ_HERE: readonly string[] = ["ashby"];
 
 /**
  * The form vendors read inside ChatGPT: only the two with published public
@@ -494,15 +503,27 @@ export const claudeInstallLink = (url: string) => `${MCP_CLAUDE_CONNECTORS_URL}$
 export const claudeAdminInstallLink = (url: string) => `${MCP_CLAUDE_ADMIN_CONNECTORS_URL}${claudeInstallQuery(url)}`;
 
 /**
- * THE FLAG BEHIND "ADD TO CLAUDE". Off until the owner's 5-minute check
- * (connect spec, owner action 1) has shown, on a signed-in Claude account,
- * that the link opens prefilled and that "Sign in when needed" connects and
- * searches. Claude's authentication choice cannot be changed after a
- * connector is added, so a button that sent people through an untested
- * dialog could strand every early install. Flip to true after that check;
- * nothing else changes — the Claude steps and the button both read it.
+ * THE AUTHENTICATION CHOICE THE CLAUDE STEPS NAME (HO-1, owner option: the
+ * one-click link on). TO-CONFIRM: the owner's five-minute check of the
+ * documented install link (mcp-upgrade spec, section 6 step 2) records which
+ * setting in Claude's dialog saves the connector and searches with no key
+ * while this server's sign-in is off. The first setting is the recommended
+ * one, because a sign-in switched on later then needs no second add; if the
+ * check shows it does not save or search, this becomes the second. Claude
+ * cannot change a connector's authentication after it is added, so every
+ * Claude route, the host line and the deploy check read this one constant.
+ * MCP_CLAUDE_STEPS_CHECKED moves to the check's date with it.
  */
-export const MCP_ADD_TO_CLAUDE_LIVE = false;
+export const MCP_CLAUDE_AUTH_CHOICE: "Sign in when needed" | "No sign in" = "Sign in when needed";
+
+/**
+ * THE FLAG BEHIND "ADD TO CLAUDE" (HO-1): on. The documented install link
+ * opens Claude's dialog prefilled, and it connects and searches with the
+ * choice /agents names (MCP_CLAUDE_AUTH_CHOICE). The Claude steps and the
+ * button both read it; turning it off puts the manual steps first again and
+ * changes nothing else.
+ */
+export const MCP_ADD_TO_CLAUDE_LIVE = true;
 
 /** The day the Claude and ChatGPT steps were last read against the vendors' own pages. */
 export const MCP_STEPS_CHECKED = "2026-10-11";
@@ -746,19 +767,18 @@ const addressStep = (ctx: McpCtx, into: string): McpStep => ({
 });
 
 /**
- * Claude's authentication step, ONE spelling for both routes, in the labels
- * of Claude's help article (MCP_CLAUDE_HELP_URL): after **Continue**, Claude
- * shows the authentication settings it detected; the person keeps them and
- * presses **Continue** again. It once told everyone to pick "Sign in when
- * needed" + "Register automatically" while also saying "leave the detected
- * ones" — two instructions that part whenever No sign-in is what Claude
- * detects, which it is while the server never asks for a sign-in. Until the
- * server's sign-in ships, the detected setting is the one that works; the
- * owner's check of the dialog (connect owner action 1) changes this once.
+ * Claude's authentication step, ONE spelling for both routes: after
+ * **Continue**, Claude's dialog asks how the connector authenticates, and the
+ * step names the one setting the owner's check of the dialog recorded
+ * (MCP_CLAUDE_AUTH_CHOICE, HO-1). It used to tell people to accept whatever
+ * Claude detected, a setting nobody had checked and that cannot be changed
+ * after the connector is added.
  */
 const CLAUDE_AUTH_STEP: McpStep = {
-  text: "Claude shows the authentication settings it detected. Keep them as they are and click **Continue**.",
-  note: "Searching, reading postings and applying yourself need no sign-in, so there is nothing to change. Claude cannot change a connector's authentication after it is added, so when this server's sign-in is switched on, you may need to remove the connector and add it again to use the tools that need your account.",
+  text: `Under authentication, choose **${MCP_CLAUDE_AUTH_CHOICE}** and click **Continue**.`,
+  note: MCP_CLAUDE_AUTH_CHOICE === "Sign in when needed"
+    ? "Searching, reading postings and applying yourself need no sign-in, so Claude asks for none. Once this server's sign-in is switched on, Claude asks you to sign in the first time you use a tool that needs your account; you do not add the connector again."
+    : "Searching, reading postings and applying yourself need no sign-in. Claude cannot change a connector's authentication after it is added, so when this server's sign-in is switched on, you may need to remove the connector and add it again to use the tools that need your account.",
 };
 const CLAUDE_SWITCH_ON_STEP: McpStep = {
   text: `In a chat, click **+**, open **Connectors**, and switch **${MCP_CONNECTOR_NAME}** on.`,
@@ -821,7 +841,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
     small: "claude.ai, Claude Desktop, Claude on your phone",
     header: false,
     oauth: true,
-    how: "paste the address as a custom connector and keep the authentication settings Claude detects; the dialog has no field for a key (a static header is an org-admin beta). The unkeyed tools answer with no sign-in. Claude cannot change a connector's authentication after it is added, so once the server's sign-in is switched on, a connector added before then may need adding again before you can sign in to the tools that need your account",
+    how: `paste the address as a custom connector and choose ${MCP_CLAUDE_AUTH_CHOICE} under authentication; the dialog has no field for a key (a static header is an org-admin beta). The unkeyed tools answer with no sign-in. Claude cannot change a connector's authentication after it is added, so a connector added with another setting may need adding again before you can sign in to the tools that need your account`,
     docs: [MCP_CLAUDE_HELP_URL, "https://claude.com/docs/connectors/custom/remote-mcp", "https://claude.com/docs/connectors/building/directory-vs-custom"],
     checked: MCP_CLAUDE_STEPS_CHECKED,
     phone: { site: "claude.ai", app: "Claude" },

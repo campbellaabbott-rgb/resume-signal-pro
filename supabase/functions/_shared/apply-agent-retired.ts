@@ -42,7 +42,7 @@ type Lines = { agent_plan: string; agent_pass: string; apply_assistant: string; 
  * MCP_FORM_VENDORS_ON_CHATGPT; owner decision R2). A test holds both equal to
  * those lists, so no sentence below types a name.
  */
-export const RETIRED_FORM_VENDORS: readonly string[] = ["Greenhouse", "Ashby", "Recruitee", "Breezy", "Pinpoint"];
+export const RETIRED_FORM_VENDORS: readonly string[] = ["Greenhouse", "Recruitee", "Breezy", "Pinpoint"];
 export const RETIRED_FORM_VENDORS_ON_CHATGPT: readonly string[] = ["Greenhouse", "Recruitee"];
 
 /** "a, b or c", with the language's own word for "or". */

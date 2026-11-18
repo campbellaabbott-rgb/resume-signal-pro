@@ -5,7 +5,7 @@ import {
   MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_TOOL_NAMES,
   MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_FORM_VENDORS, MCP_FORM_VENDORS_AFTER_DEPLOY, MCP_FORM_VENDORS_ON_CHATGPT,
   MCP_FIT_FREE_PER_DAY, MCP_FIT_FULL_PER_DAY,
-  MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_MORE_HOSTS, MCP_INSTALL_REPO_URL,
+  MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_MORE_HOSTS, MCP_INSTALL_REPO_URL, MCP_WITHHELD_SOURCES, MCP_FORM_NOT_READ_HERE,
 } from "../config/mcp-tools";
 import {
   MCP_URL, OAUTH_SCOPE, PRM_PATH, RESOURCE_METADATA_URL, isProtectedResourceMetadataPath, unauthorized,
@@ -242,7 +242,9 @@ describe("the caps are named constants, mirrored, and the only numbers the keyle
     // Connect W5: the mirror shows what the server read before the 2026-11-08.1
     // deploy, and the after-deploy list the five it adds (rendered by the next
     // frontend publish); together they are the server's readers.
-    expect([...MCP_FORM_VENDORS, ...MCP_FORM_VENDORS_AFTER_DEPLOY].map((v) => v.key).sort()).toEqual([...FORM_READER_VENDORS].sort());
+    // Less any system whose postings the connector withholds (its form is never read here),
+    // and less any reader the connector stopped (OD14-ASHBY-1).
+    expect([...MCP_FORM_VENDORS, ...MCP_FORM_VENDORS_AFTER_DEPLOY].map((v) => v.key).sort()).toEqual(FORM_READER_VENDORS.filter((v) => !MCP_WITHHELD_SOURCES.includes(v) && !MCP_FORM_NOT_READ_HERE.includes(v)).sort());
     expect([...MCP_FORM_VENDORS_ON_CHATGPT].sort()).toEqual([...PUBLIC_API_FORM_VENDORS].sort());
     expect([MCP_FIT_FREE_PER_DAY, MCP_FIT_FULL_PER_DAY]).toEqual([FIT_FREE_PER_DAY, FIT_FULL_PER_DAY]);
   });
