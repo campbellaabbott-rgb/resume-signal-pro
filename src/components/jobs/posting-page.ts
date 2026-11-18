@@ -428,6 +428,125 @@ export function postingRequisitionIdentity(job: Pick<PostingRow, "id">): string 
   return `${p.source}:${employer}:${p.key}`.toLowerCase();
 }
 
+/** The employer segment of a board token, as the bake's bakeEmployerKey (scripts/prerender-pages.mjs) reads it. */
+function postingEmployerKey(token: string | null | undefined): string {
+  const t = String(token ?? "").trim();
+  const parts = t.split("~");
+  const first = parts[0];
+  if ((first === "recruiting" || first === "recruiting2") && parts.length >= 2) return `ukg:${first}~${parts[1]}`;
+  if (first === "eu" && parts.length >= 2) return `eu:${t}`;
+  if (parts.length >= 3 && /^wd\d+$/.test(parts[1])) return `workday:${first}`;
+  if (parts.length >= 3) return `tenant3:${first}`;
+  if (parts.length === 2) return `tenant2:${first}`;
+  return `slug:${t}`;
+}
+
+/** A word that ends a company's name without naming a different company ("think-cell Software" is think-cell). */
+const CORPORATE_SUFFIX = /\s+(?:inc|incorporated|llc|l\.l\.c|ltd|limited|plc|gmbh|ag|se|sa|s\.a|sas|sarl|bv|b\.v|nv|n\.v|ab|a\/s|oy|spa|s\.p\.a|srl|co|company|corp|corporation|group|holdings?|software|technologies|technology|systems|solutions)\.?$/i;
+function companyCore(name: string | null | undefined): string {
+  let s = decodeNameEntities(String(name ?? "")).replace(/[,]/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+  for (let i = 0; i < 3 && CORPORATE_SUFFIX.test(s); i++) s = s.replace(CORPORATE_SUFFIX, "").trim();
+  return s;
+}
+
+/** Levenshtein distance, stopping once it passes `max`. */
+function editDistanceWithin(a: string, b: string, max: number): boolean {
+  if (Math.abs(a.length - b.length) > max) return false;
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    let best = i;
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (cur[j] < best) best = cur[j];
+    }
+    if (best > max) return false;
+    prev = cur;
+  }
+  return prev[b.length] <= max;
+}
+
+/** The description as a set of six-word runs, the audit's measure of two texts being one. */
+const SHINGLE_WORDS = 6;
+const shingleCache = new Map<string, Set<string>>();
+function descriptionShingles(description: string): Set<string> {
+  const hit = shingleCache.get(description);
+  if (hit) return hit;
+  const words = jdTextOnce(description).toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+  const out = new Set<string>();
+  if (words.length < SHINGLE_WORDS) out.add(words.join(" "));
+  for (let i = 0; i + SHINGLE_WORDS <= words.length; i++) out.add(words.slice(i, i + SHINGLE_WORDS).join(" "));
+  if (shingleCache.size > 4000) shingleCache.clear();
+  shingleCache.set(description, out);
+  return out;
+}
+/** Jaccard similarity of two descriptions' six-word runs. */
+export function descriptionSimilarity(a: string, b: string): number {
+  const x = descriptionShingles(a);
+  const y = descriptionShingles(b);
+  const [small, big] = x.size <= y.size ? [x, y] : [y, x];
+  let both = 0;
+  for (const s of small) if (big.has(s)) both++;
+  const either = x.size + y.size - both;
+  return either ? both / either : 0;
+}
+
+/** The most two titles may differ by and still be one job's: a typo fixed ("Develper"). */
+export const SAME_JOB_TITLE_EDITS = 2;
+
+/**
+ * Two titles of one job: the same, or a typo apart inside one long word. A
+ * changed number or a short word is another job, however close the
+ * spelling: Suddath's "Equipment Operator - 2nd. Shift" and "- 3rd. Shift"
+ * are two edits apart with descriptions 0.99 the same, and are two openings
+ * at two rates of pay; "Engineer I" and "Engineer II" are two levels.
+ */
+function sameJobTitle(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (!editDistanceWithin(a, b, SAME_JOB_TITLE_EDITS)) return false;
+  const wa = a.split(" ");
+  const wb = b.split(" ");
+  if (wa.length !== wb.length) return false;
+  return wa.every((w, i) => w === wb[i] || (!/\d/.test(w + wb[i]) && Math.min(w.length, wb[i].length) >= 5));
+}
+/** How much of two descriptions must be the same text for them to be one job's. */
+export const SAME_JOB_DESCRIPTION_SHARE = 0.95;
+
+/**
+ * ONE JOB UNDER TWO URLS THE EXACT IDENTITY MISSES (SEO audit 2026-11-18,
+ * CONTENT-9). postingIdentity compares the printed company, title and place
+ * exactly, and postingRequisitionIdentity the requisition key under one
+ * employer, so two pairs went out as four indexable pages: think-cell's
+ * "Customer Success Manager (m/f/d), Strategic Accounts" in Berlin under two
+ * Greenhouse boards ("think-cell Software" and "think-cell", 5013527101 and
+ * 5008812101, descriptions 0.97 the same), and ABB's "R&D Lead Software
+ * Develper" and "... Developer" in Hangzhou under two requisitions
+ * (JR00050697-3 and JR00050703, the same description). Two rows are one job
+ * when all four hold: the same employer (the bake's employer segment of the
+ * token, or the same name once a corporate suffix is dropped), the same
+ * place, titles at most SAME_JOB_TITLE_EDITS edits apart inside one long
+ * word (sameJobTitle: never a number or a level), and descriptions
+ * at least SAME_JOB_DESCRIPTION_SHARE the same six-word runs. Measured over
+ * every pair of the 500 served posting pages
+ * (src/test/fixtures/served-postings-2026-11-18.json.gz): of the 34 pairs
+ * whose descriptions are 0.6 or more the same by this measure (the audit's
+ * scan counted 37 on its own text), exactly those two are one job.
+ */
+export function postingSameJob(
+  a: { job: Pick<PostingRow, "token" | "company" | "title" | "location" | "country">; description: string },
+  b: { job: Pick<PostingRow, "token" | "company" | "title" | "location" | "country">; description: string },
+): boolean {
+  const ja = a.job;
+  const jb = b.job;
+  const sameEmployer = (!!ja.token && postingEmployerKey(ja.token) === postingEmployerKey(jb.token))
+    || (companyCore(ja.company).length >= 2 && companyCore(ja.company) === companyCore(jb.company));
+  if (!sameEmployer) return false;
+  if (String(ja.country ?? "").toUpperCase() !== String(jb.country ?? "").toUpperCase()) return false;
+  if (postingText(ja.location).toLowerCase() !== postingText(jb.location).toLowerCase()) return false;
+  if (!sameJobTitle(postingText(ja.title).toLowerCase(), postingText(jb.title).toLowerCase())) return false;
+  return descriptionSimilarity(a.description, b.description) >= SAME_JOB_DESCRIPTION_SHARE;
+}
+
 /** A title or a name as one line: an employer's double space is not part of the job. */
 export const postingText = (s: string | null | undefined): string => decodeNameEntities(String(s ?? "")).replace(/\s+/g, " ").trim();
 

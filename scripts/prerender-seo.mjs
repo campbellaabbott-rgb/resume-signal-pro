@@ -299,6 +299,34 @@ export function employerStatedCountry(stated, D) {
  * this bake retired (a duplicate, the ceiling, the window's end)
  * (src/test/a-job-page-writes-its-job-markup-only-when-the-bake-would.test.tsx).
  */
+/**
+ * RULE 4'S CLAIMS: ONE PAGE PER JOB (OBS-1, CONTENT-9). The exact keys
+ * (D.postingIdentity: company, title and place; D.postingRequisitionIdentity:
+ * the requisition key under one employer) are claimed for every row; a row
+ * claimed with its description is also compared, by D.postingSameJob, with
+ * every row that comes after it with one. `takenBy` answers the path that
+ * claimed a row's job first, or null.
+ */
+export function postingIdentityClaims(D) {
+  const takenIdentity = new Map();
+  const claimedJobs = [];
+  const identityKeys = (job) => [D.postingIdentity(job), D.postingRequisitionIdentity(job)].filter(Boolean);
+  const sameJobAs = (job, description) => {
+    if (typeof description !== "string") return null;
+    for (const c of claimedJobs) if (D.postingSameJob({ job, description }, c)) return c.path;
+    return null;
+  };
+  const takenBy = (job, description = null) => {
+    for (const k of identityKeys(job)) if (takenIdentity.has(k)) return takenIdentity.get(k);
+    return sameJobAs(job, description);
+  };
+  const claimIdentity = (job, path, description = null) => {
+    for (const k of identityKeys(job)) takenIdentity.set(k, path);
+    if (typeof description === "string") claimedJobs.push({ job, description, path });
+  };
+  return { takenBy, claimIdentity, sameJobAs, claimedJobs };
+}
+
 export function bakePostingPage(row, description, { D, SITE, carried }) {
   const named = D.postingNameVerdict(row);
   // SEO-006: the repaired employer name is the one every part of a posting
@@ -568,7 +596,7 @@ export { applyYourselfBakeHtml } from "../src/components/agents/apply-yourself-c
 export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
 export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingEmployer, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle, postingPageTitleAvoiding, postingPathParts } from "../src/components/jobs/posting-page";
 export { ldEmploymentType, postingJsonLdShape } from "../src/components/jobs/posting-page";
-export { jdTextOnce, openApplicationTitle, postingMarkupTitle, postingTitleText } from "../src/components/jobs/posting-page";
+export { jdTextOnce, openApplicationTitle, postingMarkupTitle, postingSameJob, postingTitleText } from "../src/components/jobs/posting-page";
 export { JOB_POSTING_MARKUP } from "../src/config/seo-switches";
 export { boardName, employerName, isCodeShapedName, isUnreviewedTenantName, possessive } from "../src/lib/company-display";
 export { systemLabel } from "../src/lib/listing/apply-url";
@@ -2931,21 +2959,25 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       // pages with one title. The requisition key under one employer is the
       // second key: the same key under the same employer is one posting,
       // across the carried pages and the new ones alike.
-      const takenIdentity = new Map();
-      const identityKeys = (job) => [D.postingIdentity(job), D.postingRequisitionIdentity(job)].filter(Boolean);
-      const takenBy = (job) => { for (const k of identityKeys(job)) if (takenIdentity.has(k)) return takenIdentity.get(k); return null; };
-      const claimIdentity = (job, path) => { for (const k of identityKeys(job)) takenIdentity.set(k, path); };
+      //
+      // AND ONE JOB THE EXACT KEYS MISS (CONTENT-9): think-cell's one Berlin
+      // opening under two Greenhouse boards, ABB's one Hangzhou opening under
+      // two requisitions with a typo fixed in the title. A row read with its
+      // description is also compared with every page claimed with one
+      // (D.postingSameJob: same employer, same place, a title a typo apart,
+      // descriptions 0.95 the same), and the page claimed first keeps it.
+      const { takenBy, claimIdentity, sameJobAs, claimedJobs } = postingIdentityClaims(D);
       const detailed = [];
       const stubs = [];
       for (const c of carriedChecks) {
         const path = D.postingPagePath(c.id);
         if (c.state === "found" && eligibleRow(c.job) && describedEnough(c.description)) {
-          const twin = takenBy(c.job);
+          const twin = takenBy(c.job, c.description);
           if (twin) {
             stubs.push({ ...c, path, state: "retired", duplicateOf: twin });
             continue;
           }
-          claimIdentity(c.job, path);
+          claimIdentity(c.job, path, c.description);
           detailed.push({ job: c.job, description: c.description, first: firstSeen(path), carried: true });
         } else {
           stubs.push({ ...c, path, state: c.state === "found" ? "retired" : c.state });
@@ -3091,6 +3123,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       };
       let freshAt = 0;
       let freshFromCache = 0;
+      let freshSameJob = 0;
       const freshFound = [];
       // Two passes at most: the second tops up from pool rows when the first
       // came back short (a cached opening the board no longer serves, or one
@@ -3117,6 +3150,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
             claimIdentity(c.job, D.postingPagePath(c.job.id));
             freshFromCache++;
           }
+          // CONTENT-9: the same job as a page already claimed with its text.
+          if (sameJobAs(c.job, c.description)) { freshSameJob++; continue; }
+          claimedJobs.push({ job: c.job, description: c.description, path: D.postingPagePath(c.job.id) });
           freshFound.push({ job: c.job, description: c.description, first: TODAY, carried: false });
         }
       }
@@ -3300,6 +3336,8 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           </section>`;
       }
       console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new (${freshFromCache} read from company pages' cached openings) from a pool of ${pool.length} over ${poolPagesRead} list page${poolPagesRead === 1 ? "" : "s"}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed, ${freshNameUnreviewed} new refused for a name no one wrote (the board's own code)) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} show employer-stated pay on the page (none in the markup); ${titlesDisambiguated} title${titlesDisambiguated === 1 ? "" : "s"} took its town, its stated date or a short reference to stay unique; fresh budget ${freshBudget} (carried live ${carriedLive}, ceiling ${POSTING_PAGE_CEILING}; ${retiredExpiring} expiring within ${POSTING_EXPIRY_NEAR_DAYS} days gave way to the reserve); ${countryMismatch} with a location ending in another country (job markup withheld; a carried one keeps its page under D7 and is on the dry run); ${nameWithheld} carried with an employer name the gate refuses (job markup withheld, "the employer" printed, on the dry run); carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}; job markup ${D.JOB_POSTING_MARKUP === false ? "OFF by the owner's STOP switch (src/config/seo-switches.ts): every live page kept, none marked up" : "on"}`);
+      // CONTENT-9: new postings left out as the same job as a page claimed before them.
+      console.log(`[prerender-seo] posting pages: ${freshSameJob} new posting${freshSameJob === 1 ? "" : "s"} left out as the same job as a page already claimed (same employer and place, a title a typo apart, descriptions 0.95 the same); a carried duplicate is a retired stub naming its twin`);
       // A carried page the board did not answer for is the symptom to look at
       // first: it is an "unchecked" noindex page until a later bake reaches it.
       // THE EMPLOYER READS, IN ONE LINE (B01): a large unknown share means the
