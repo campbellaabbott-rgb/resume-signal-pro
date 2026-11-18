@@ -45,8 +45,10 @@
 #      three or more days before /posting-pages.json's bake day), neither
 #      /ghost-job-index nor /data-api says "daily" except as "scheduled
 #      daily". INFO when the run was fresh at bake time.
-#   R11 (CONTENT-4, OFFSITE-9) the served llms.txt names the same form
-#      vendors as /agents, in both of its form sentences' places; and
+#   R11 (CONTENT-4, OFFSITE-9) the served llms.txt's first form sentence
+#      ("When the employer uses ...") names the same form vendors as
+#      /agents' (the ChatGPT sentence is section 92's line, pinned to its
+#      two vendors, and is not compared here); and
 #      llms-full.txt carries each data page's figures, the line equal to the
 #      description that page serves (INFO when no data page serves one).
 #   R12 (PERFORMANCE-M2) no sampled guide, /roles, /industries, CV-standards

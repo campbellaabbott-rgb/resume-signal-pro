@@ -14,7 +14,8 @@
  * the machine): once with the audit 44 hours old, once 10 hours old. A
  * stale build may say the re-check is "scheduled daily" beside the latest
  * run's date, and nothing else daily; a fresh build keeps the daily wording
- * (and verify section 76's S2 line, which reads "Daily re-check:").
+ * (and verify section 76's S2 line, which reads the dated line in either
+ * of its forms: "Daily re-check:" for a fresh run, "Re-check:" for a stale one).
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";

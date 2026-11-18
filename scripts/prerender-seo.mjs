@@ -5401,7 +5401,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       .filter(([, , f]) => f && f.read && f.desc && f.modified && Number.isFinite(new Date(f.modified).getTime()))
       .map(([name, path, f]) => `- ${name} (${SITE}${path}), measured ${new Date(f.modified).toISOString().slice(0, 16).replace("T", " ")} UTC: ${f.desc}`);
     if (boardFigureLines.length) {
-      lines.push("## Board figures (from the board's own lifecycle log, each with the moment it was measured)");
+      lines.push("## Board figures (each line is its data page's own description, with the moment it was measured)");
       lines.push(...boardFigureLines);
       lines.push("");
     }
