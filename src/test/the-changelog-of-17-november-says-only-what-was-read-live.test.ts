@@ -123,11 +123,16 @@ describe("the six entries", () => {
     }
   });
 
-  it("each shard lists them last, in this order, after the 15 November entries", () => {
+  it("each shard lists them in this order right after the 15 November entries, with only newer batches after them", () => {
+    // The changelog step appends each batch at the end of every shard, so a
+    // later batch (18 November's twelve) follows these; nothing older may.
+    const later = new Set(changelog.slice(0, AT).map((e) => e.id));
     for (const l of LOCALES) {
       const keys = Object.keys(SHARDS[l]);
-      expect(keys.slice(-IDS.length), l).toEqual(IDS);
-      expect(keys[keys.length - IDS.length - 1], l).toBe("theFooterLinksOurDataPages");
+      const at = keys.indexOf(IDS[0]);
+      expect(keys.slice(at, at + IDS.length), l).toEqual(IDS);
+      expect(keys[at - 1], l).toBe("theFooterLinksOurDataPages");
+      for (const k of keys.slice(at + IDS.length)) expect(later.has(k), `${l}: ${k} follows the 17 November entries but is not newer`).toBe(true);
     }
   });
 

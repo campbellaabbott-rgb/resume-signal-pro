@@ -1,0 +1,1 @@
+SELECT public._mig_exec(sql) FROM public._mig_stage WHERE name = '20261112120000_an_affiliate_signs_in_with_a_hashed_session_and_a_proven_address.sql';

@@ -1,0 +1,1 @@
+SELECT public._mig_exec(sql) FROM public._mig_stage WHERE name = '20261112211000_an_employer_deletes_a_shortlist_candidate_or_role_and_what_is_four_years_old_is_deleted.sql';

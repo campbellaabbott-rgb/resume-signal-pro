@@ -42,17 +42,21 @@ const get = async (url) => { try { const r = await fetch(url, { signal: AbortSig
   let graph = jobsJs;
   const depNames = [];
   for (const d of deps) { const js = await get(`${SITE}/assets/${d}`); if (js) { graph += "\n" + js; depNames.push(d); } }
-  // The English strings: en.json rides in the entry; en-GB and the English
-  // shards are lazy chunks named en-* / en-GB-*. A chunk named en-* that is
-  // not a locale (the changelog entries in English are one) is left out: it is
-  // read by content, a locale module carries the jobsPage, listing or
-  // companyProfile family.
-  const enNames = [...new Set([...mainJs.matchAll(/"\.\/(en(?:-GB)?-[A-Za-z0-9_-]+\.js)"/g)].map((m) => m[1]))].slice(0, 12);
+  // The English strings: en.json ships a namespace at a time (rb-en_ns_<ns>-*
+  // chunks, named in the entry as assets/...); en-GB and the English shards are
+  // lazy chunks named en-* / en-GB-*. A chunk named en-* that is not a locale
+  // (the changelog entries in English are one) is left out: it is read by
+  // content, a locale module carries the jobsPage, listing or companyProfile
+  // family. The cap was 12 until the twelve new shards of round A pushed the whole
+  // en-GB chunk to the twentieth name and 87d read no title (2026-11-18). The
+  // whole-English fallback chunk is never read here: it carries retired agent
+  // page copy that wave 4 judges, and 87c would read it as copy of this page.
+  const enNames = [...new Set([...mainJs.matchAll(/"\.\/(en(?:-GB)?-[A-Za-z0-9_-]+\.js)"/g), ...mainJs.matchAll(/assets\/(rb-en_ns_[A-Za-z0-9_-]+\.js)/g)].map((m) => m[1]))].slice(0, 60);
   let en = mainJs;
   const localeNames = [];
   for (const d of enNames) {
     const js = await get(`${SITE}/assets/${d}`);
-    if (/\bjobsPage:|\blisting:|\bcompanyProfile:/.test(js)) { en += "\n" + js; localeNames.push(d); }
+    if (/\bjobsPage:|\blisting:|\bcompanyProfile:|"(?:jobsPage|listing|companyProfile)":/.test(js)) { en += "\n" + js; localeNames.push(d); }
   }
   const all = graph + "\n" + en;
   out("INFO", `graph: ${jobsName} + ${depNames.length} imported chunks (${graph.length.toLocaleString()} chars); English locale chunks beside the entry: ${localeNames.length} of ${enNames.length} en-* chunks`);

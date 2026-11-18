@@ -567,24 +567,40 @@ describe("section 52c judges the seven entries", () => {
     expect(calls.some((c) => c.includes("en-GB-"))).toBe(false);
   });
 
+  // The page this batch published: the seven on top of the 23 entries before
+  // them. The tree's own newest 30 no longer lists them (18 November's twelve
+  // pushed all seven past it), so the cases that read a title on the page
+  // read this one, and the tree's page is judged on its own below.
+  const BATCH_PAGE = crawler(rowsOf(AT, AT + 30));
+
   it("after the publish each title passes on the crawler page, dated 2 November, and the correction is served", () => {
-    const { lines } = run(S52C);
+    const { lines } = run(S52C, { changelog: BATCH_PAGE });
     expect(fails(lines), show(lines)).toEqual([]);
     for (const t of TITLES) expect(lines, show(lines)).toContain(`PASS  /changelog serves crawlers "${t}", dated 2026-11-02`);
     expect(lines.some((l) => /^PASS .*now carry the new name/.test(l)), show(lines)).toBe(true);
     for (const l of lines) expect(l, l).toMatch(/^(PASS|FAIL|INFO|==) /);
   });
 
+  it("the tree's own newest 30, with later batches on top, prints no FAIL: each title passes as listed or as past the newest 30", () => {
+    const { lines } = run(S52C);
+    expect(fails(lines), show(lines)).toEqual([]);
+    for (const t of TITLES) {
+      expect(lines, show(lines)).toContain(HEALTHY.includes(`>${esc(t)}<`)
+        ? `PASS  /changelog serves crawlers "${t}", dated 2026-11-02`
+        : `PASS  "${t}" is past the newest 30 entries the crawler page lists, and the US English changelog strings carry it`);
+    }
+  });
+
   it("a wrong date FAILs: an entry is dated the day its functions went live", () => {
-    const { lines } = run(S52C, { changelog: crawler(rowsOf(0, 30).map((r) => (TITLES.includes(r.title) ? { ...r, date: "2026-11-05" } : r))) });
+    const { lines } = run(S52C, { changelog: crawler(rowsOf(AT, AT + 30).map((r) => (TITLES.includes(r.title) ? { ...r, date: "2026-11-05" } : r))) });
     expect(lines.some((l) => new RegExp(`^FAIL  /changelog dates "${rx(TITLES[0])}" 2026-11-05, want 2026-11-02`).test(l)), show(lines)).toBe(true);
   });
 
   it("a title the crawler page lost FAILs, and so does one dropped from both", () => {
-    const lost = run(S52C, { changelog: crawler(rowsOf(0, 30).filter((r) => r.title !== TITLES[3])) }).lines;
+    const lost = run(S52C, { changelog: crawler(rowsOf(AT, AT + 30).filter((r) => r.title !== TITLES[3])) }).lines;
     expect(lost, show(lost)).toContain(`FAIL  the US English changelog strings carry "${TITLES[3]}", but the crawler copy of /changelog does not (the prerender did not rebuild)`);
     const without = chunkOf(Object.fromEntries(Object.entries(TREE_EN).filter(([k]) => k !== IDS[2])));
-    const gone = run(S52C, { chunk: without, changelog: crawler(rowsOf(0, 30).filter((r) => r.title !== TITLES[2])) }).lines;
+    const gone = run(S52C, { chunk: without, changelog: crawler(rowsOf(AT, AT + 30).filter((r) => r.title !== TITLES[2])) }).lines;
     expect(gone, show(gone)).toContain(`FAIL  the 2 November entries are published, but neither /changelog nor the US English changelog strings carry "${TITLES[2]}" (an entry was dropped or retitled when it landed)`);
   });
 

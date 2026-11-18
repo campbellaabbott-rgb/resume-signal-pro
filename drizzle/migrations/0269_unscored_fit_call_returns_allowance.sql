@@ -1,0 +1,1 @@
+SELECT public._mig_exec(sql) FROM public._mig_stage WHERE name = '20261112200000_a_fit_call_that_scored_nothing_gives_its_allowance_back.sql';
