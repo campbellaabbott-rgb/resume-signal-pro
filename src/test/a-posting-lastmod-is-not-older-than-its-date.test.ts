@@ -32,6 +32,11 @@ describe("MGM 281193, re-dated 11-12, its text otherwise the same", () => {
     expect(d.changed).toBe("2026-11-08");
   });
 
+  it("pageDates takes the floor itself", () => {
+    expect(pageDates({ fp, prior: PRIOR, today: "2026-11-18", floor: "2026-11-12" }).lastmod).toBe("2026-11-12");
+    expect(pageDates({ fp, prior: PRIOR, today: "2026-11-18" }).lastmod).toBe("2026-11-08");
+  });
+
   it("a floor never moves a lastmod back, nor past today", () => {
     expect(withLastmodFloor(pageDates({ fp, prior: { ...PRIOR, changed: "2026-11-15", lastmod: "2026-11-15" }, today: "2026-11-18" }), "2026-11-12", "2026-11-18").lastmod).toBe("2026-11-15");
     expect(withLastmodFloor(pageDates({ fp, prior: PRIOR, today: "2026-11-18" }), "2026-11-30", "2026-11-18").lastmod).toBe("2026-11-18");
@@ -43,6 +48,8 @@ describe("MGM 281193, re-dated 11-12, its text otherwise the same", () => {
     const src = readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8");
     expect(src).toMatch(/lastmodFloor: String\(job\.postedAt\)\.slice\(0, 10\),/);
     expect(src).toMatch(/floor: typeof page\.lastmodFloor === "string" \? page\.lastmodFloor : null,/);
-    expect(src.match(/withLastmodFloor\(pageDates\(\{[^}]*\}\), (?:fpEntry|fp)\.floor, TODAY\)/g)).toHaveLength(2);
+    // write() hands the floor to pageDates; the ledger's re-read wraps it.
+    expect(src).toMatch(/const dates = pageDates\(\{[^}]*exact: fpEntry\.exact, floor: fpEntry\.floor \}\);/);
+    expect(src).toMatch(/withLastmodFloor\(pageDates\(\{[^}]*\}\), fp\.floor, TODAY\)/);
   });
 });

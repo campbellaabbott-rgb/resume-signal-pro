@@ -920,7 +920,7 @@ export const FINGERPRINT_VERSION = 2;
  * version existed, so the switch itself re-dates nothing. With `exact`, a
  * stated date is the lastmod itself (a data page's measurement day).
  */
-export function pageDates({ fp, legacyFp, prior, today, stated = null, exact = false }) {
+export function pageDates({ fp, legacyFp, prior, today, stated = null, exact = false, floor = null }) {
   const p = prior && typeof prior === "object" ? prior : null;
   const same = !!p && (p.fpv === FINGERPRINT_VERSION ? p.fp === fp : p.fp === legacyFp);
   const priorChanged = p && typeof p.changed === "string" ? p.changed : p && typeof p.lastmod === "string" ? p.lastmod : null;
@@ -932,7 +932,9 @@ export function pageDates({ fp, legacyFp, prior, today, stated = null, exact = f
   // states: the sitemap says that day and no other, whatever the count-blind
   // fingerprint did.
   const lastmod = st ? (exact || !p ? st : (st > changed ? st : changed)) : changed;
-  return { lastmod, changed: st && !p ? st : changed, fp, fpv: FINGERPRINT_VERSION };
+  // CRAWL-9: `floor` is a day the lastmod may not be earlier than (see
+  // withLastmodFloor below).
+  return withLastmodFloor({ lastmod, changed: st && !p ? st : changed, fp, fpv: FINGERPRINT_VERSION }, floor, today);
 }
 
 /**

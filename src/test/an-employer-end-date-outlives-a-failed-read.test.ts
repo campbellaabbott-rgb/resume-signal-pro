@@ -11,7 +11,7 @@
  * served validThrough 2026-12-15 (datePosted + 30) and no employmentType: from
  * 11-19 a posting past its employer's own end, with live markup.
  *
- * The live ledger entry now carries the statements (livePostingEntry), a
+ * The live ledger entry now carries the statements (withStatedEntry), a
  * later bake whose read fails applies them (askEmployersAbout's carriedOf),
  * validThrough never moves past the carried end without a fresh read stating
  * a later one, and a bake after that end retires the page with basis
@@ -24,7 +24,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { askEmployersAbout, employerEndedStub, livePostingEntry } from "../../scripts/prerender-seo.mjs";
+import { readFileSync as readSource } from "node:fs";
+import { askEmployersAbout, employerEndedStub, withStatedEntry } from "../../scripts/prerender-seo.mjs";
 import { postingStubEntry, postingStubPage } from "../../scripts/prerender-pages.mjs";
 import * as statements from "../../scripts/employer-statements.mjs";
 import * as postingPage from "@/components/jobs/posting-page";
@@ -78,6 +79,8 @@ async function bake(today: string, table: Record<string, Reply>, carried: unknow
   });
   return { ...out, asked: f.asked };
 }
+/** The live entry the bake writes (its literal, then withStatedEntry). */
+const liveEntry = (job: typeof ROW, stated: unknown) => withStatedEntry({ state: "live", since: "2026-11-15", first: "2026-11-15", carried: true, title: ROW.title, company: "Marriott", token: job.token ?? null, applyUrl: job.applyUrl }, stated);
 const markupOn = (job: unknown, day: string) => D.postingJsonLd(job as never, DESCRIPTION, { site: "https://resumebooster.work", now: new Date(`${day}T12:00:00Z`) }) as Record<string, unknown> | null;
 
 describe("Marriott 26110535 across three bakes", () => {
@@ -87,14 +90,17 @@ describe("Marriott 26110535 across three bakes", () => {
     const ld = markupOn(b1.keep[0].job, "2026-11-15");
     expect(String(ld?.validThrough)).toMatch(/^2026-11-18/);
     expect(ld?.employmentType).toBe("FULL_TIME");
-    const entry = livePostingEntry({ today: "2026-11-15", first: "2026-11-15", carried: true, title: ROW.title, company: "Marriott", job: b1.keep[0].job, stated: b1.keep[0].stated });
+    const entry = liveEntry(b1.keep[0].job, b1.keep[0].stated);
     expect(entry.stated).toEqual({ employerValidThrough: "2026-11-18", employmentType: "Full time" });
     expect(entry).toMatchObject({ state: "live", applyUrl: ROW.applyUrl, token: ROW.token });
+    // The bake writes its entry through withStatedEntry.
+    const src = readSource(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8");
+    expect(src).toMatch(/postingLedger\[path\] = withStatedEntry\(postingLedger\[path\], stated\);/);
   });
 
   it("bake 2 (11-18) cannot read Oracle and keeps validThrough 11-18 and FULL_TIME from the ledger", async () => {
     const b1 = await bake("2026-11-15", ORACLE_OPEN, null);
-    const entry = livePostingEntry({ today: "2026-11-15", first: "2026-11-15", carried: true, title: ROW.title, company: "Marriott", job: b1.keep[0].job, stated: b1.keep[0].stated });
+    const entry = liveEntry(b1.keep[0].job, b1.keep[0].stated);
     const b2 = await bake("2026-11-18", UNREAD, JSON.parse(JSON.stringify(entry)).stated);
     expect(b2.asked.length).toBeGreaterThan(0);
     expect(b2.keep).toHaveLength(1);
@@ -103,7 +109,7 @@ describe("Marriott 26110535 across three bakes", () => {
     expect(String(ld?.validThrough)).not.toMatch(/^2026-12-15/);
     expect(ld?.employmentType).toBe("FULL_TIME");
     // And the statements ride on to the next ledger entry.
-    expect(livePostingEntry({ today: "2026-11-18", first: "2026-11-15", carried: true, title: ROW.title, company: "Marriott", job: b2.keep[0].job, stated: b2.keep[0].stated }).stated)
+    expect(liveEntry(b2.keep[0].job, b2.keep[0].stated).stated)
       .toEqual({ employerValidThrough: "2026-11-18", employmentType: "Full time" });
   });
 

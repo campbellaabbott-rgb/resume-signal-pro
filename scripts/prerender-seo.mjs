@@ -439,19 +439,14 @@ export function closedAtEmployerList(text, today, { maxAgeDays = CLOSED_LIST_MAX
 }
 
 /**
- * A LIVE POSTING'S LEDGER ENTRY. `carried` says which side of rule 3 the page
- * came from; `markupWithheld` why it carries no JobPosting; `applyUrl` rides
- * along for the daily closure check; `stated` (STRUCTURED-M1) is what its
- * employer stated that the next bake keeps when its own read fails.
+ * A LIVE POSTING'S LEDGER ENTRY WITH WHAT ITS EMPLOYER STATED (STRUCTURED-M1):
+ * the end date, time type and remote flag (carriedStatementsOf) the next bake
+ * applies when its own read fails. Returns a new entry; with nothing stated,
+ * the entry as it came.
  */
-export function livePostingEntry({ today, first, carried, title, company, job, withheld = null, stated = null }) {
+export function withStatedEntry(entry, stated) {
   const keep = carriedStatementsOf(stated);
-  return {
-    state: "live", since: today, first, carried, title, company, token: job.token ?? null,
-    ...(job.applyUrl ? { applyUrl: String(job.applyUrl) } : {}),
-    ...(withheld ? { markupWithheld: withheld } : {}),
-    ...(keep ? { stated: keep } : {}),
-  };
+  return keep ? { ...entry, stated: keep } : entry;
 }
 
 /**
@@ -1837,7 +1832,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       // never of a count that moved.
       th: contentFingerprint(String(page.title ?? ""), { blindCounts: COUNT_BEARING(page.path) }),
     };
-    const dates = withLastmodFloor(pageDates({ fp: fpEntry.fp, legacyFp: fpEntry.legacyFp, prior: priorPages[page.path], today: TODAY, stated: fpEntry.stated, exact: fpEntry.exact }), fpEntry.floor, TODAY);
+    const dates = pageDates({ fp: fpEntry.fp, legacyFp: fpEntry.legacyFp, prior: priorPages[page.path], today: TODAY, stated: fpEntry.stated, exact: fpEntry.exact, floor: fpEntry.floor });
     const built = typeof page.jsonLd === "function" ? { ...page, jsonLd: page.jsonLd(dates.lastmod) } : page;
     renderFile(built);
     // Not the posting pages (the employer's own text) and not /changelog (a
@@ -3268,7 +3263,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         // `applyUrl` rides along for the daily closure check, which reads each
         // live posting at its employer from the ledger alone (B01).
         const withheld = postingMarkupWithheld(page);
-        postingLedger[path] = livePostingEntry({ today: TODAY, first, carried, title, company: nm, job, withheld, stated });
+        postingLedger[path] = { state: "live", since: TODAY, first, carried, title, company: nm, token: job.token ?? null, ...(job.applyUrl ? { applyUrl: String(job.applyUrl) } : {}), ...(withheld ? { markupWithheld: withheld } : {}) };
+        // What the employer stated rides to the next bake (STRUCTURED-M1).
+        postingLedger[path] = withStatedEntry(postingLedger[path], stated);
       }
 
       // The URLs this site published that get no live page: each keeps a
