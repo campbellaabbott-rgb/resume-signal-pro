@@ -497,9 +497,9 @@ describe("the mill screen reads robots.txt first, paces each host, and sends no 
     const code = strip(readFileSync(SCREEN, "utf8"));
     expect(code).toMatch(/export const HOST_SPACING_MS = 1100;/);
     const get = /async function get\(url, asText = false\) \{[\s\S]*?\n\}/.exec(code)?.[0] ?? "";
-    expect(get).toMatch(/const robots = await robotsFor\(u\);\s*if \(!robotsAllow\(robots\.parsed, u\.pathname \+ u\.search\)\) \{[^\n]*return null; \}\s*await paced\(u\.host\);\s*try \{\s*const res = await fetch\(url/);
+    expect(get).toMatch(/if \(hostClosed\(u\)\) return null;\s*const robots = await robotsFor\(u\);\s*if \(hostClosed\(u\)\) return null;\s*if \(!robotsAllow\(robots\.parsed, u\.pathname \+ u\.search\)\) \{[^\n]*return null; \}\s*await paced\(u\.host\);\s*try \{\s*const res = await fetch\(url, \{ headers: UA \}\);\s*if \(isRefusal\(res\)\) \{ closeHost\(u\.host, res\.status\);/);
     const post = /async function postJson\(url, body\) \{[\s\S]*?\n\}/.exec(code)?.[0] ?? "";
-    expect(post).toMatch(/if \(!ALLOW_POST\) \{ refusedReads\.push\([^\n]*return null; \}[\s\S]*await paced\(u\.host\);[\s\S]*await fetch\(url/);
+    expect(post).toMatch(/if \(!ALLOW_POST\) \{ refusedReads\.push\([^\n]*return null; \}\s*if \(hostClosed\(u\)\) return null;[\s\S]*await paced\(u\.host\);[\s\S]*await fetch\(url[\s\S]*?\}\);\s*if \(isRefusal\(res\)\) \{ closeHost\(u\.host, res\.status\);/);
     expect(code).toMatch(/robotsFor\(u\) \{[\s\S]*?await paced\(u\.host\);[\s\S]*?\/robots\.txt/);
   });
 

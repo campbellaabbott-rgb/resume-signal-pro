@@ -11,9 +11,11 @@
 // A THIRD PARTY'S SITE IS READ ON ITS OWN TERMS (2026-11-08). Every host's
 // robots.txt is read before anything else on it, and a path it disallows for
 // this agent is not read (the board HOLDs, saying why); a robots.txt that
-// cannot be read at all (a 5xx or no answer) disallows the host, while a 4xx
-// means the site set no rules. Requests to one host start at least 1.1 s
-// apart. Only GETs run: a vendor whose list is a POST (ukg) is held unless
+// cannot be read at all (a 5xx, no answer, a 401/403/429 or a bot challenge)
+// disallows the host, while any other 4xx (404, 410) means the site set no
+// rules. A host that answers any read with a 429 or a challenge is closed for
+// the rest of the run: nothing else is sent to it, by this client or another
+// (owner rule, 2026-11-17). Requests to one host start at least 1.1 s apart. Only GETs run: a vendor whose list is a POST (ukg) is held unless
 // --allow-post names the owner's say-so.
 //
 // The repeated-title flag (one advert across many cities or languages, or
@@ -84,15 +86,39 @@ async function paced(host) {
   if (wait > 0) await sleep(wait);
   lastStart.set(host, Date.now());
 }
+/** Hosts that answered a 429 or a bot challenge this run, and what they said. */
+const closedHosts = new Map();
+/** A response that is a refusal of automated reading: a 429, or a challenge page by its header. */
+export function isRefusal(res) {
+  return res.status === 429 || String(res.headers?.get?.("cf-mitigated") ?? "").toLowerCase() === "challenge";
+}
+/**
+ * What a robots.txt answer means for its host. 401, 403 and 429 are the site
+ * refusing us, not a site without rules, so they disallow the host like a 5xx.
+ */
+export function robotsVerdict(res) {
+  const deny = (why) => ({ parsed: { agent: "*", rules: [{ allow: false, path: "/" }] }, said: why });
+  if (isRefusal(res)) return deny(`robots.txt ${res.status}${res.status === 429 ? "" : " (a challenge)"}: refused, so the host is not read`);
+  if (res.status === 401 || res.status === 403) return deny(`robots.txt ${res.status}: refused, so the host is not read`);
+  if (res.status >= 400 && res.status < 500) return { parsed: { agent: "*", rules: [] }, said: `robots.txt ${res.status}: the site sets no rules` };
+  if (!res.ok) return deny(`robots.txt ${res.status}: unreadable, so the host is not read`);
+  return null; // 2xx: parse the body
+}
+/** Closes a host for the rest of the run after it refused a read; says so once. */
+function closeHost(host, status) {
+  if (closedHosts.has(host)) return;
+  closedHosts.set(host, status);
+  console.log(`  ${host}: answered ${status}, closed for the rest of this run`);
+}
 async function robotsFor(u) {
   if (robotsByHost.has(u.host)) return robotsByHost.get(u.host);
   await paced(u.host);
   let r;
   try {
     const res = await fetch(`${u.protocol}//${u.host}/robots.txt`, { headers: UA, redirect: "follow" });
-    if (res.status >= 400 && res.status < 500) r = { parsed: { agent: "*", rules: [] }, said: `robots.txt ${res.status}: the site sets no rules` };
-    else if (!res.ok) r = { parsed: { agent: "*", rules: [{ allow: false, path: "/" }] }, said: `robots.txt ${res.status}: unreadable, so the host is not read` };
-    else { const parsed = parseRobots(await res.text()); r = { parsed, said: `robots.txt read: ${parsed.rules.length} rule(s) for ${parsed.agent}` }; }
+    r = robotsVerdict(res);
+    if (isRefusal(res)) closeHost(u.host, res.status);
+    if (!r) { const parsed = parseRobots(await res.text()); r = { parsed, said: `robots.txt read: ${parsed.rules.length} rule(s) for ${parsed.agent}` }; }
   } catch {
     r = { parsed: { agent: "*", rules: [{ allow: false, path: "/" }] }, said: "robots.txt unreachable, so the host is not read" };
   }
@@ -153,13 +179,23 @@ const MILL_TEXT = new RegExp([
 ].join("|"), "i");
 const strip = (h) => String(h ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 
+/** True (and the board's HOLD line says why) when the host is closed for this run. */
+function hostClosed(u) {
+  if (!closedHosts.has(u.host)) return false;
+  refusedReads.push(`${u.host} answered ${closedHosts.get(u.host)} earlier this run, so it is not read again`);
+  return true;
+}
+
 async function get(url, asText = false) {
   const u = new URL(url);
+  if (hostClosed(u)) return null;
   const robots = await robotsFor(u);
+  if (hostClosed(u)) return null;
   if (!robotsAllow(robots.parsed, u.pathname + u.search)) { refusedReads.push(`robots.txt disallows ${u.host}${u.pathname}`); return null; }
   await paced(u.host);
   try {
     const res = await fetch(url, { headers: UA });
+    if (isRefusal(res)) { closeHost(u.host, res.status); hostClosed(u); return null; }
     if (!res.ok) return null;
     return asText ? await res.text() : await res.json();
   } catch { return null; }
@@ -352,7 +388,9 @@ async function sampleTexts(vendor, token) {
 async function postJson(url, body) {
   const u = new URL(url);
   if (!ALLOW_POST) { refusedReads.push(`a POST to ${u.host} (run with --allow-post only on the owner's say-so)`); return null; }
+  if (hostClosed(u)) return null;
   const robots = await robotsFor(u);
+  if (hostClosed(u)) return null;
   if (!robotsAllow(robots.parsed, u.pathname + u.search)) { refusedReads.push(`robots.txt disallows ${u.host}${u.pathname}`); return null; }
   await paced(u.host);
   try {
@@ -361,6 +399,7 @@ async function postJson(url, body) {
       headers: { ...UA, "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(body),
     });
+    if (isRefusal(res)) { closeHost(u.host, res.status); hostClosed(u); return null; }
     if (!res.ok) return null;
     return await res.json();
   } catch { return null; }

@@ -26,6 +26,9 @@
 import fs from "node:fs";
 import { ORACLE_HOST_RE } from "./oracle-host.mjs";
 import { REPO_SOURCES, readCatalogue, tenantSet } from "./catalogue-reader.mjs";
+import { refuseArchiveListing } from "./od-cc.mjs";
+
+refuseArchiveListing(import.meta.url);
 
 const OUT = process.argv[2] || "oracle-verified.json";
 const PROBE_CAP = Number(process.env.OC_PROBE_CAP) || 0;

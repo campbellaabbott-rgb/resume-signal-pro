@@ -14,6 +14,9 @@
 import fs from "node:fs";
 import { REPO_SOURCES, readCatalogue, tokensOf } from "./catalogue-reader.mjs";
 import { execFileSync } from "node:child_process";
+import { refuseArchiveListing } from "./od-cc.mjs";
+
+refuseArchiveListing(import.meta.url);
 
 const MODE = process.argv[2];
 const DATA = "https://data.commoncrawl.org";

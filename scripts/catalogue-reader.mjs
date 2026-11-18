@@ -177,7 +177,7 @@ export async function readBoardStatus({ env = anonEnv(), fetchImpl = fetch } = {
   try {
     const res = await fetchImpl(`${env.url}/functions/v1/job-board`, {
       method: "POST",
-      headers: { apikey: env.key, Authorization: `Bearer ${env.key}`, "Content-Type": "application/json", "x-rb-budget": "probe" },
+      headers: { apikey: env.key, Authorization: `Bearer ${env.key}`, "Content-Type": "application/json", "x-rb-budget": "probe", "x-rb-caller": "maintenance" },
       body: JSON.stringify({ action: "status" }),
       signal: AbortSignal.timeout(30_000),
     });
@@ -196,7 +196,7 @@ export async function readCarrierRows({ source, token }, { env = anonEnv(), fetc
   try {
     const res = await fetchImpl(`${env.url}/functions/v1/job-board`, {
       method: "POST",
-      headers: { apikey: env.key, Authorization: `Bearer ${env.key}`, "Content-Type": "application/json", "x-rb-budget": "probe" },
+      headers: { apikey: env.key, Authorization: `Bearer ${env.key}`, "Content-Type": "application/json", "x-rb-budget": "probe", "x-rb-caller": "maintenance" },
       body: JSON.stringify({ action: "list", companies: [token], vendor: [source], groupSimilar: false, includeFacets: false, limit: 100 }),
       signal: AbortSignal.timeout(30_000),
     });

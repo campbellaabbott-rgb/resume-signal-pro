@@ -10,6 +10,9 @@
 
 import fs from "node:fs";
 import { REPO_SOURCES, readCatalogue, tokensOf } from "./catalogue-reader.mjs";
+import { refuseArchiveListing } from "./od-cc.mjs";
+
+refuseArchiveListing(import.meta.url);
 
 const OUT = process.argv[2] || "workday-verified.json";
 const SKIP = Number(process.argv[3]) || 0;

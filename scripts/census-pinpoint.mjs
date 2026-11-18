@@ -61,6 +61,9 @@
 
 import fs from "node:fs";
 import { CWD_SOURCES, readCatalogue, tokensOf } from "./catalogue-reader.mjs";
+import { refuseArchiveListing } from "./od-cc.mjs";
+
+refuseArchiveListing(import.meta.url);
 
 const OUT = process.argv[2] || "pinpoint-census.json";
 const CDX = "https://index.commoncrawl.org";

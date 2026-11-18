@@ -8,6 +8,9 @@
 // Usage: node scripts/census-rung3.mjs <output.json>
 
 import fs from "node:fs";
+import { refuseArchiveListing } from "./od-cc.mjs";
+
+refuseArchiveListing(import.meta.url);
 
 const OUT = process.argv[2] || "rung3-census.json";
 const CDX = "https://index.commoncrawl.org";

@@ -13,6 +13,9 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { refuseArchiveListing } from "./od-cc.mjs";
+
+refuseArchiveListing(import.meta.url);
 const execFileP = promisify(execFile);
 
 const args = process.argv.slice(2);
