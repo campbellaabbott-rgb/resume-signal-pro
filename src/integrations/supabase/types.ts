@@ -3977,6 +3977,24 @@ export type Database = {
         }
         Relationships: []
       }
+      lca_refused_tokens: {
+        Row: {
+          company_token: string
+          evidence: string
+          refused_at: string
+        }
+        Insert: {
+          company_token: string
+          evidence: string
+          refused_at?: string
+        }
+        Update: {
+          company_token?: string
+          evidence?: string
+          refused_at?: string
+        }
+        Relationships: []
+      }
       lifecycle_reads: {
         Row: {
           day: string
@@ -7334,6 +7352,7 @@ export type Database = {
           last_heartbeat_status: string
           last_heartbeat_time: string
           last_successful_scan: string
+          model_fallback_last_hour: number
           scans_last_hour: number
           status: string
           success_rate_last_hour: number
@@ -7436,7 +7455,7 @@ export type Database = {
       get_transparency_coverage: { Args: never; Returns: Json }
       get_transparent_employers: { Args: { p_limit?: number }; Returns: Json }
       get_trending_categories: {
-        Args: never
+        Args: { p_watch_days?: number }
         Returns: {
           category: string
           last7: number
@@ -7490,6 +7509,10 @@ export type Database = {
           successful_webhooks: number
           total_webhooks: number
         }[]
+      }
+      give_back_scan_day: {
+        Args: { p_function: string; p_ip: string }
+        Returns: boolean
       }
       increment_free_scan_count: { Args: never; Returns: undefined }
       job_board_anon_check: {
@@ -7550,6 +7573,21 @@ export type Database = {
         }[]
       }
       layoff_norm: { Args: { p_raw: string }; Returns: string }
+      layoff_warn_retire_unseen: {
+        Args: {
+          p_feed: string
+          p_from: string
+          p_seen: string[]
+          p_state: string
+          p_to: string
+        }
+        Returns: {
+          lr_active: number
+          lr_candidates: number
+          lr_refused: boolean
+          lr_retired: number
+        }[]
+      }
       load_category_anchors: {
         Args: {
           p_anchors_sha256?: string
@@ -8118,6 +8156,7 @@ export type Database = {
         Args: { p_email: string; p_session_hash?: string }
         Returns: boolean
       }
+      scan_industry_known: { Args: { p_label: string }; Returns: boolean }
       scrub_emails: { Args: { p_text: string }; Returns: string }
       search_digest_claim_batch: {
         Args: { p_limit: number }

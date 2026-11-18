@@ -1,10 +1,11 @@
-# Deployment checklist 18744c65d
+# Deployment checklist 9c9234e9a — resumed round A
 - [x] Confirm requested commit is included; re-run deployment ledger on HEAD 66f895a6. Ledger agrees with all 29 pre-deploy migrations, 64 functions and four gated migrations; no order, late-migration, unreachable or build conflicts.
 - [x] Apply first 14 pre-deploy migrations individually in uploaded order (drizzle 0244–0257); source files untouched. Applied 0245 differs from source by two indentation spaces on one self-check line, with no SQL behavior difference; every other applied copy is byte-identical.
-- [ ] STOPPED at step 1.15, 20261112170000: tool refused revoking authenticated EXECUTE on public.is_scan_industry as a possible RLS helper. Read-only pg_policies check found no references, but tool says it still will not apply the revoke. No retry or later deployment step executed; owner SQL-editor execution or a platform validation change is required.
-- [ ] Apply remaining pre-deploy migrations (1.16–1.29), blocked by step 1.15 refusal.
-- [ ] Deploy 64 listed functions and verify every OPTIONS x-fn-build, blocked by pre-deploy migrations.
+- [x] Confirm HEAD is exactly requested commit 9c9234e9a; corrected unapplied source now names scan_industry_known. Owner accepts applied 0245 whitespace difference.
+- [x] Apply steps 1.1–1.7 in order: 20261112170000, 180000, 181000, 182000, 190000, 191000, 191500. Six schema migrations applied as drizzle 0258–0263, all byte-exact against source. Data-only 20261112190000 ran unchanged through the data query tool, passed its self-check, and is recorded in appliedOutsideDrizzle. Live read-back confirmed scan refund/helper, four refused wage tokens, retention, first-read preservation, revenue corrections, and both trend watch gates.
+- [ ] Continue at 1.8, 20261112192000, then through 20261112211000. Paused before submission: next files are 85,341 and 77,377 bytes; migration tool has inline SQL only, no file-input option. No existing staged copies. Restaging is explicitly forbidden by this checklist. No migration failed; do not treat this as a SQL failure or apply later steps out of order. Need a file-based submission method or owner execution of the unchanged large files.
+- [ ] Deploy 64 listed functions and verify every OPTIONS x-fn-build, blocked by remaining pre-deploy migrations; none deployed this turn.
 - [ ] Apply four gated migrations in order after required build verification, blocked by function deployment.
-- [ ] Verify live frontend commit; publish only if the requested commit is not already served, blocked by preceding steps.
+- [ ] Verify live frontend commit; publish only if the requested commit is not already served, blocked by preceding steps; no publish this turn.
 - [x] Resolve existing preview test typing error; six Unicode upload tests and four account-erasure tests passed, latest preview build OK. Read-back confirms retention and grants readers, grant expiry and narrowed saved-search access; refused migration's give_back_scan_day function is absent.
 - [x] Never-apply files excluded; preserve migration files and function sources.

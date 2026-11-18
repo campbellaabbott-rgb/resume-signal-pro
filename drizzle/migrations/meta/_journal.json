@@ -1807,6 +1807,48 @@
       "when": 1794962956408,
       "tag": "0257_an_account_writes_only_the_fields_of_its_saved_search_it_chose",
       "breakpoints": true
+    },
+    {
+      "idx": 258,
+      "version": "7",
+      "when": 1795015644125,
+      "tag": "0258_a_scan_that_delivered_nothing_gives_its_day_back_and_a_stranger_names_no_new_industry",
+      "breakpoints": true
+    },
+    {
+      "idx": 259,
+      "version": "7",
+      "when": 1795015689859,
+      "tag": "0259_a_wage_filing_under_a_refused_or_unplaced_employer_is_never_served",
+      "breakpoints": true
+    },
+    {
+      "idx": 260,
+      "version": "7",
+      "when": 1795015719156,
+      "tag": "0260_a_pruned_month_is_never_written_to_again",
+      "breakpoints": true
+    },
+    {
+      "idx": 261,
+      "version": "7",
+      "when": 1795015752064,
+      "tag": "0261_a_state_notice_keeps_the_day_we_first_read_it_and_an_edited_one_retires_its_old_reading",
+      "breakpoints": true
+    },
+    {
+      "idx": 262,
+      "version": "7",
+      "when": 1795015888708,
+      "tag": "0262_trending_fields_read_only_boards_watched_through_both_weeks",
+      "breakpoints": true
+    },
+    {
+      "idx": 263,
+      "version": "7",
+      "when": 1795015941850,
+      "tag": "0263_the_weekly_series_reads_the_same_boards_and_keeps_a_relist_in_its_week",
+      "breakpoints": true
     }
   ]
 }

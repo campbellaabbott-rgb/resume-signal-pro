@@ -15,7 +15,7 @@
   "retypedRead": {
     "20261103100000": "drizzle 0208 carries 'AND d.stripe_session_id <> p_stripe_session_id' twice in the first-paid-Pro-month EXISTS, where the repo file has it once; the same condition twice in one AND chain selects the same rows, so what ran means what the file means (read 2026-11-07)"
   },
-  "appliedOutsideDrizzle": ["20261014100000"],
+  "appliedOutsideDrizzle": ["20261014100000", "20261112190000"],
   "_appliedOutsideDrizzleNote": "Applied, but no staged-runner stub names them, and production cannot show it to the ledger. Prefer appliedByBehaviour, which the ledger checks on every run. 20261008125000 and 20261008128000 sat here from 2026-10-11 (released after wave 2 step 1 verified; Lovable applied them without writing a stub) until 2026-10-12 (S12-162), when they moved to appliedByBehaviour. 20261014100000 (R1) is here from PR #37 (ledger/r1-verified): verified 2026-10-17 with no stub.",
   "appliedByBehaviour": {
     "_note": "Per migration stamp, what production must show for a migration with no staged-runner stub to count as applied (S12-162): cronJobs, the pg_cron jobs it schedules, each listed active by get_cron_health (anon-readable aggregates; the ledger reads it with a GET), and cronTimeouts, { job: timeout }, for a job another applied file also schedules: the statement_timeout only this file's command begins with, which get_cron_health reports as ch_timeout (2026-10-31). Unreadable, missing or another timeout, the migration stays pending with the reason, and section 49 FAILs it.",
