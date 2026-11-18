@@ -27,8 +27,16 @@
  *
  * HOW THE ROUTER IS READ. index.ts serves on import and keeps its constants
  * private, so they are read out of its source with LINE-LEADING comments
- * removed (a mid-line slash pair is often inside a URL). The parse is then
- * proven not vacuous by the shipped handler's own answers: its index, the
+ * removed (a mid-line slash pair is often inside a URL). The dispatch is read
+ * statement by statement, with strings and regex bodies blanked: a statement
+ * that tests path is its route's, however the answer is written (inline, an
+ * awaited handler, a handler returned without await). The first reading
+ * registered a route only where it found an awaited handler, so an inline
+ * answer or an un-awaited one passed unseen (review of 2026-11-18). Now every
+ * read of path must be a test or a read the guard knows does not route, and a
+ * statement that answers anything but a refusal under no test stops the guard.
+ * The parse is then proven not vacuous by the shipped handler's own answers:
+ * its index, every route read answering short of the unknown-path refusal, the
  * parameter list its 400 names, the offset it refuses, the caps it refuses
  * past, and the 451 for a withheld system.
  */
@@ -148,6 +156,123 @@ const failCalls = (body: string) =>
     const to = body.indexOf(");\n", from);
     return { pair: `${m[1]} ${m[2]}`, code: m[2], text: body.slice(from, to === -1 ? undefined : to) };
   });
+
+/**
+ * The code alone: the inside of every string, the text of every template (its
+ * ${...} kept), the body of every regex literal and every mid-line comment
+ * turned to spaces, newlines kept. Same length, same offsets, so a shape found
+ * here is read back out of the source at the same place, and a word inside a
+ * message is never taken for code.
+ */
+function codeOnly(src: string): string {
+  const out = src.split("");
+  const blank = (a: number, b: number) => { for (let k = a; k < b; k++) if (out[k] !== "\n") out[k] = " "; };
+  /** For each open ${, the brace depth at which its closing brace returns to the template's text. */
+  const reopen: number[] = [];
+  let braces = 0;
+  let last = "";
+  let i = 0;
+  const templateText = () => {
+    const from = i;
+    for (; i < src.length; i++) {
+      if (src[i] === "\\") { i++; continue; }
+      if (src[i] === "`") { blank(from, i); i++; last = "`"; return; }
+      if (src[i] === "$" && src[i + 1] === "{") { blank(from, i); i += 2; reopen.push(braces); braces++; last = "{"; return; }
+    }
+    blank(from, i);
+  };
+  while (i < src.length) {
+    const c = src[i];
+    if (c === "\"" || c === "'") {
+      let j = i + 1;
+      while (j < src.length && src[j] !== c && src[j] !== "\n") j += src[j] === "\\" ? 2 : 1;
+      blank(i + 1, j);
+      i = j + 1;
+      last = c;
+      continue;
+    }
+    if (c === "`") { i++; templateText(); continue; }
+    if (c === "/" && (src[i + 1] === "/" || src[i + 1] === "*")) {
+      const j = src[i + 1] === "/" ? src.indexOf("\n", i) : src.indexOf("*/", i + 2);
+      const end = j === -1 ? src.length : src[i + 1] === "/" ? j : j + 2;
+      blank(i, end);
+      i = end;
+      continue;
+    }
+    if (c === "/" && (last === "" || /^[(,=:[!&|?{};+\-*%<>~^]$/.test(last) || /^(?:return|typeof|case)$/.test(last))) {
+      let j = i + 1;
+      let inClass = false;
+      for (; j < src.length && src[j] !== "\n"; j++) {
+        if (src[j] === "\\") { j++; continue; }
+        if (src[j] === "[") inClass = true;
+        else if (src[j] === "]") inClass = false;
+        else if (src[j] === "/" && !inClass) break;
+      }
+      blank(i + 1, j);
+      i = j + 1;
+      while (i < src.length && /[a-z]/.test(src[i])) i++;
+      last = "/";
+      continue;
+    }
+    if (c === "{") braces++;
+    else if (c === "}") {
+      if (reopen.length && reopen[reopen.length - 1] === braces - 1) { reopen.pop(); braces--; i++; templateText(); continue; }
+      braces--;
+    }
+    if (/\s/.test(c)) { i++; continue; }
+    if (/[\w$]/.test(c)) {
+      let j = i;
+      while (j < src.length && /[\w$]/.test(src[j])) j++;
+      last = src.slice(i, j);
+      i = j;
+      continue;
+    }
+    last = c;
+    i++;
+  }
+  return out.join("");
+}
+
+/** The index of the bracket that closes the one at `open`, in code-only text. */
+function closerOf(cs: string, open: number): number {
+  let depth = 0;
+  for (let i = open; i < cs.length; i++) {
+    if ("([{".includes(cs[i])) depth++;
+    else if (")]}".includes(cs[i]) && --depth === 0) return i;
+  }
+  throw new Error(`the bracket at offset ${open} never closes`);
+}
+
+type Span = { start: number; end: number };
+
+/** The statements of the block whose braces sit at `open` and `close`, in code-only text. */
+function statementsOf(cs: string, open: number, close: number): Span[] {
+  const out: Span[] = [];
+  let depth = 0;
+  let start = -1;
+  for (let i = open + 1; i < close; i++) {
+    const c = cs[i];
+    if (start === -1) {
+      if (/\s/.test(c)) continue;
+      start = i;
+    }
+    if ("([{".includes(c)) depth++;
+    else if (")]}".includes(c)) {
+      depth--;
+      // A block that closes at statement level ends the statement, unless an
+      // else, catch or finally, or more of an expression, follows it.
+      if (depth === 0 && c === "}" && !/^\s*(?:else\b|catch\b|finally\b|[.,;)?:])/.test(cs.slice(i + 1, close))) {
+        out.push({ start, end: i + 1 });
+        start = -1;
+      }
+    } else if (c === ";" && depth === 0) {
+      out.push({ start, end: i + 1 });
+      start = -1;
+    }
+  }
+  if (start !== -1) out.push({ start, end: close });
+  return out;
+}
 
 type RouteFacts = {
   keyed: boolean;
@@ -272,54 +397,129 @@ function readRouter(indexSrc: string, lastVerifiedSrc: string): Router {
     return [...seen];
   };
 
-  // The dispatch: where each route is tested, and which handler answers it.
-  const authAt = serve.indexOf("const auth = req.headers");
-  const tryAt = serve.indexOf("try {", authAt);
-  const catchAt = serve.indexOf("} catch (e)", tryAt);
-  if (authAt < 0 || tryAt < 0 || catchAt < 0) throw new Error("the router's key check or its try/catch moved");
+  // THE DISPATCH, STATEMENT BY STATEMENT, read in code-only text so a word in
+  // a message is never a test. Each statement of the handler, and of its try
+  // block, tests path for one route; or carries on the route before it by
+  // reading a name that route's statements declared; or only declares; or
+  // answers nothing but a refusal (or the preflight). A statement that answers
+  // anything else answers a route this guard cannot see, so it stops the guard.
+  // A route is a route however its answer is written: inline, through an
+  // awaited handler, or through one returned without await.
+  const cs = codeOnly(serve);
+  const serveStart = decls.get("Deno.serve")!.start;
+  const lineOf = (at: number) => code.slice(0, serveStart + at).split("\n").length;
+  const bodyOpen = cs.indexOf("{", cs.indexOf("=>"));
+  const bodyClose = closerOf(cs, bodyOpen);
+  const authAt = cs.indexOf("const auth = req.headers");
+  const tryAt = authAt < 0 ? -1 : cs.indexOf("try {", authAt);
+  const tryClose = tryAt < 0 ? -1 : closerOf(cs, tryAt + 4);
+  if (authAt < 0 || tryAt < 0 || !cs.startsWith("} catch (e)", tryClose)) throw new Error("the router's key check or its try/catch moved");
+
   const norm = (p: string) => (p === "/" ? "/v1" : p.replace(/\/+$/, ""));
-  const tests: Array<{ at: number; path: string }> = [];
-  for (const m of serve.matchAll(/path === ("[^"]+"|[A-Z_]+)/g)) {
-    const lit = m[1].startsWith("\"") ? m[1].slice(1, -1) : PATH_CONSTANTS[m[1]];
-    if (lit === undefined) throw new Error(`the router compares path with ${m[1]}, which this guard cannot resolve`);
-    tests.push({ at: m.index ?? 0, path: norm(lit) });
+  /** The literal (or path constant) a match's first group stands for, read out of the source at the same offset. */
+  const pathOf = (m: RegExpMatchArray) => {
+    const token = m[1];
+    const at = (m.index ?? 0) + m[0].lastIndexOf(token);
+    if (token.startsWith("\"")) return serve.slice(at + 1, at + token.length - 1);
+    const v = PATH_CONSTANTS[token];
+    if (v === undefined) throw new Error(`index.ts line ${lineOf(at)} compares path with ${token}, which this guard cannot resolve`);
+    return v;
+  };
+  type Test = { at: number; end: number; path: string };
+  const tests: Test[] = [];
+  const testShapes: Array<[RegExp, (m: RegExpMatchArray) => string]> = [
+    [/(?<![\w$.])path === ("[^"\n]*"|[A-Z_]+)/g, (m) => norm(pathOf(m))],
+    // The POST gate compares the path with its trailing slash stripped.
+    [/(?<![\w$.])path\.replace\(\/ *\/, ""\) === ("[^"\n]*"|[A-Z_]+)/g, (m) => norm(pathOf(m))],
+    [/(?<![\w$.])path\.startsWith\(("[^"\n]*")\)/g, (m) => `${pathOf(m)}{id}`],
+    [/(?<![\w$.])applicationIdSegment\(path\)/g, () => APPLICATION_ENDPOINT],
+    [/(?<![\w$.])meteredEndpoint\(path\) === ([A-Z_]+)/g, (m) => norm(pathOf(m))],
+  ];
+  for (const [re, pathFor] of testShapes) {
+    for (const m of cs.matchAll(re)) tests.push({ at: m.index ?? 0, end: (m.index ?? 0) + m[0].length, path: pathFor(m) });
   }
-  for (const m of serve.matchAll(/path\.startsWith\("([^"]+)"\)/g)) tests.push({ at: m.index ?? 0, path: `${m[1]}{id}` });
-  for (const m of serve.matchAll(/applicationIdSegment\(path\)/g)) tests.push({ at: m.index ?? 0, path: APPLICATION_ENDPOINT });
-  for (const m of serve.matchAll(/meteredEndpoint\(path\) === ([A-Z_]+)/g)) tests.push({ at: m.index ?? 0, path: norm(PATH_CONSTANTS[m[1]]) });
   tests.sort((a, b) => a.at - b.at);
   const postPaths = new Set([...serve.matchAll(/req\.method === "POST"[^;]*?=== "([^"]+)"/g)].map((m) => norm(m[1])));
   const keyOf = (path: string) => `${postPaths.has(path) ? "POST" : "GET"} ${path}`;
 
-  const authPairs = failPairs(serve.slice(authAt, tryAt));
-  const catchPairs = failPairs(serve.slice(catchAt));
-  const routes = new Map<string, RouteFacts>();
-  const routed = new Set<string>();
-  for (const m of serve.slice(tryAt, catchAt).matchAll(/await (\w+)\(/g)) {
-    if (!names.includes(m[1])) continue;
-    const at = tryAt + (m.index ?? 0);
-    const test = [...tests].reverse().find((t) => t.at < at);
-    if (!test) throw new Error(`${m[1]} is called before any route test`);
-    const key = keyOf(test.path);
-    routed.add(test.path);
-    const handlerFns = closure(m[1]);
-    const codes = new Set<string>([...authPairs, ...catchPairs, ...failPairs(serve.slice(test.at, at))]);
-    for (const fn of handlerFns) for (const p of failPairs(decls.get(fn)!.body)) codes.add(p);
-    let params: string[] | null = null;
-    for (const fn of handlerFns) {
-      for (const r of decls.get(fn)!.body.matchAll(/rejectUnknownParams\(url,\s*(\[\]|[A-Z_]+)/g)) {
-        params = r[1] === "[]" ? [] : constStrings(code, r[1]);
-      }
+  // Every read of path is a route test, or one of the reads this guard knows
+  // do not route: its declaration, the name the key check meters, a posting
+  // id sliced off a prefix a route tests, and the path quoted in a refusal.
+  const prefixes = new Set(tests.filter((t) => t.path.endsWith("{id}")).map((t) => t.path.slice(0, -"{id}".length)));
+  const failSpans = [...cs.matchAll(/(?<![\w$.])fail\(/g)].map((m) => [m.index ?? 0, closerOf(cs, (m.index ?? 0) + 4)] as const);
+  const placed: Array<readonly [number, number]> = tests.map((t) => [t.at, t.end] as const);
+  const place = (re: RegExp, ok: (m: RegExpMatchArray) => boolean = () => true) => {
+    for (const m of cs.matchAll(re)) if (ok(m)) placed.push([m.index ?? 0, (m.index ?? 0) + m[0].length]);
+  };
+  place(/\bconst path = /g);
+  place(/\bconst \w+ = meteredEndpoint\(path\);/g);
+  place(/(?<![\w$.])path\.slice\(("[^"\n]*")\.length\)/g, (m) => prefixes.has(pathOf(m)));
+  place(/\$\{path\}/g, (m) => failSpans.some(([a, b]) => (m.index ?? 0) > a && (m.index ?? 0) < b));
+  for (const m of cs.matchAll(/(?<![\w$.])path(?![\w$])/g)) {
+    const at = m.index ?? 0;
+    if (!placed.some(([a, b]) => at >= a && at < b)) {
+      throw new Error(`index.ts line ${lineOf(at)} reads path in a shape this guard does not read as a route test; teach readRouter which route it is`);
     }
-    const conditional = new RegExp(`conditional\\(await ${m[1]}\\(`).test(serve);
-    routes.set(key, { keyed: true, conditional, params, codes: new Set([...codes].filter((p) => p !== "405 method_not_allowed")) });
   }
-  // A route answered before the key check, by no handler of its own (the index).
+
+  type Stmt = Span & { inTry: boolean };
+  const top = statementsOf(cs, bodyOpen, bodyClose);
+  const tryStmt = top.find((s) => s.start === tryAt);
+  if (!tryStmt) throw new Error("the router's try block is not a statement of its handler");
+  const stmts = top.flatMap((s): Stmt[] => (s === tryStmt ? statementsOf(cs, tryAt + 4, tryClose).map((x) => ({ ...x, inTry: true })) : [{ ...s, inTry: false }]));
+  const catchPairs = failPairs(serve.slice(tryClose, tryStmt.end));
+  const textOf = (s: Span) => cs.slice(s.start, s.end);
+  const isDeclaration = (s: Span) => /^(?:const|let|var)\b/.test(textOf(s));
+  const declaredName = (s: Span) => /^(?:const|let|var)\s+([\w$]+)/.exec(textOf(s))?.[1];
+  const readsName = (s: Span, n: string) => new RegExp(`(?<![\\w$.])${n.replace(/\$/g, "\\$")}(?![\\w$])`).test(textOf(s));
+  /** True when the statement returns something other than a refusal. */
+  const answers = (s: Span) => /(?<![\w$.])return\b(?!\s+fail\()/.test(textOf(s));
+
+  const owned = new Map<string, Stmt[]>();
+  /** Statements every later route passes through: declarations, refusals, the preflight. */
+  const universal: Stmt[] = [];
+  let carry: { route: string; names: string[] } | null = null;
+  for (const s of stmts) {
+    const keys = new Set(tests.filter((t) => t.at >= s.start && t.at < s.end).map((t) => keyOf(t.path)));
+    if (keys.size > 1) throw new Error(`index.ts line ${lineOf(s.start)} tests path for ${[...keys].join(" and ")} in one statement; this guard reads one route per statement`);
+    const route = keys.size === 1 ? [...keys][0] : carry && carry.names.some((n) => readsName(s, n)) ? carry.route : null;
+    const name = declaredName(s);
+    if (route) {
+      owned.set(route, [...(owned.get(route) ?? []), s]);
+      carry = { route, names: [...(carry?.route === route ? carry.names : []), ...(name ? [name] : [])] };
+      continue;
+    }
+    carry = null;
+    if (!isDeclaration(s) && answers(s) && !/\breq\.method === "OPTIONS"/.test(serve.slice(s.start, s.end))) {
+      throw new Error(`index.ts line ${lineOf(s.start)} answers under no route test this guard reads: ${serve.slice(s.start, s.end).trim().slice(0, 100)}`);
+    }
+    universal.push(s);
+  }
   for (const t of tests) {
-    if (t.at > authAt || routed.has(t.path) || routes.has(keyOf(t.path))) continue;
-    const next = tests.find((u) => u.at > t.at);
-    const stretch = serve.slice(t.at, Math.min(next ? next.at : authAt, authAt));
-    routes.set(keyOf(t.path), { keyed: false, conditional: false, params: null, codes: new Set(failPairs(stretch).filter((p) => p !== "405 method_not_allowed")) });
+    if (!stmts.some((s) => t.at >= s.start && t.at < s.end)) throw new Error(`index.ts line ${lineOf(t.at)} tests path for ${t.path} outside the statements this guard reads as the dispatch`);
+  }
+
+  const callsIn = (s: Span) => names.filter((n) => new RegExp(`(?<![\\w.$])${n.replace(/\$/g, "\\$")}\\s*[(<]`).test(textOf(s)));
+  const routes = new Map<string, RouteFacts>();
+  for (const [key, own] of owned) {
+    const last = own[own.length - 1];
+    const fns = [...new Set(own.flatMap(callsIn).flatMap(closure))];
+    const codes = new Set<string>();
+    for (const u of universal) if (u.start < last.start) for (const p of failPairs(serve.slice(u.start, u.end))) codes.add(p);
+    for (const s of own) for (const p of failPairs(serve.slice(s.start, s.end))) codes.add(p);
+    if (last.inTry) for (const p of catchPairs) codes.add(p);
+    for (const fn of fns) for (const p of failPairs(decls.get(fn)!.body)) codes.add(p);
+    let params: string[] | null = null;
+    for (const text of [...own.map((s) => serve.slice(s.start, s.end)), ...fns.map((fn) => decls.get(fn)!.body)]) {
+      for (const r of text.matchAll(/rejectUnknownParams\(url,\s*(\[\]|[A-Z_]+)/g)) params = r[1] === "[]" ? [] : constStrings(code, r[1]);
+    }
+    routes.set(key, {
+      // Answered before the key check: the route needs no key.
+      keyed: !own.some((s) => s.start < authAt && answers(s)),
+      conditional: own.some((s) => /(?<![\w$.])conditional\(/.test(textOf(s))),
+      params,
+      codes: new Set([...codes].filter((p) => p !== "405 method_not_allowed")),
+    });
   }
 
   // Every fail() in the file is a literal status and code, or the catalogue could miss one.
@@ -640,6 +840,20 @@ describe("the shipped handler agrees with what was read out of its source", () =
     expect(r.status).toBe(404);
     expect(DOC["x-errors"]).toContainEqual({ status: 404, code: errorOf(r).code });
   });
+
+  it("answers every route the guard read short of that unknown-path refusal", async () => {
+    const unknown = errorOf(await keyed("/v1/no-such-route")).code;
+    expect(ROUTER.routes.size).toBeGreaterThanOrEqual(9);
+    for (const key of ROUTER.routes.keys()) {
+      const [method, path] = key.split(" ");
+      const db = new RecordingDb();
+      db.rpcs.api_key_check = () => ({ data: ALLOWED, error: null });
+      installDb(db);
+      const r = await callApi(handler, path.replace("{id}", "greenhouse%3Aacme%3A1"), method === "POST" ? { method, body: {} } : {});
+      const code = (r.body.error as { code?: string } | undefined)?.code;
+      expect(r.status === 404 && code === unknown, `${key} answered ${r.status} ${code}`).toBe(false);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -735,5 +949,87 @@ describe("teeth", () => {
     const doc = clone(DOC);
     doc.components.schemas.Job.properties.ghost_field = { type: "string" };
     expect(problemsOf(doc, ROUTER)).toContain("Job names ghost_field, which the router never writes");
+  });
+
+  it("code-only text keeps every offset and blanks strings, template text, regex bodies and mid-line comments", () => {
+    const src = 'const a = "path === \\"/x\\""; const b = `t ${path} u`; const r = /"/; x(); // path === "/y"\nconst c = 1;';
+    const cs = codeOnly(src);
+    expect(cs.length).toBe(src.length);
+    expect(cs).not.toMatch(/path ===/);
+    expect(cs).toContain("${path}");
+    expect(cs).toContain("const c = 1;");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TEETH ON THE READING: the shipped router's own source with one line added,
+// read the way the guard reads it. The file on disk is never touched.
+// ---------------------------------------------------------------------------
+
+/** index.ts with `line` added first in the dispatch's try block, just before its last line, or in its catch. */
+function withLine(line: string, where: "first" | "last" | "catch"): string {
+  const tryAt = INDEX_SRC.indexOf("try {", INDEX_SRC.indexOf("const auth = req.headers"));
+  const catchAt = INDEX_SRC.indexOf("} catch (e) {", tryAt);
+  if (tryAt < 0 || catchAt < 0) throw new Error("the dispatch's try block moved");
+  const at = where === "first" ? INDEX_SRC.indexOf("\n", tryAt) + 1
+    : where === "catch" ? INDEX_SRC.indexOf("\n", catchAt) + 1
+    : INDEX_SRC.lastIndexOf("\n", INDEX_SRC.lastIndexOf("\n", catchAt) - 1) + 1;
+  return `${INDEX_SRC.slice(0, at)}    ${line}\n${INDEX_SRC.slice(at)}`;
+}
+
+describe("teeth: a route is read however its answer is written", () => {
+  const routerOf = (src: string) => readRouter(src, LAST_VERIFIED_SRC);
+
+  it("the shipped source reads the same through the mutation helper's anchors", () => {
+    expect([...routerOf(INDEX_SRC).routes.keys()].sort()).toEqual([...ROUTER.routes.keys()].sort());
+  });
+
+  for (const where of ["first", "last"] as const) {
+    it(`a route answered inline (${where} in the dispatch) is a route the document must describe`, () => {
+      const router = routerOf(withLine('if (path === "/v1/ping") return json({ ok: true }, 200, rateHeaders);', where));
+      expect(router.routes.get("GET /v1/ping")).toMatchObject({ keyed: true, conditional: false, params: null });
+      const problems = problemsOf(DOC, router);
+      expect(problems).toContain("the router answers GET /v1/ping and the document does not describe it");
+      expect(problems).toContain("the router answers GET /v1/ping and its index does not list it");
+    });
+
+    it(`a handler returned without await (${where} in the dispatch) is a route the document must describe`, () => {
+      const router = routerOf(withLine('if (path === "/v1/ghost") return stats(client, rateHeaders);', where));
+      expect(router.routes.get("GET /v1/ghost")?.codes).toEqual(router.routes.get("GET /v1/stats")?.codes);
+      expect(problemsOf(DOC, router)).toContain("the router answers GET /v1/ghost and the document does not describe it");
+    });
+  }
+
+  it("an awaited handler, the shape the router uses today, reads as the route it copies", () => {
+    const router = routerOf(withLine('if (path === "/v1/ghost") return await conditional(await stats(client, rateHeaders));', "first"));
+    expect(router.routes.get("GET /v1/ghost")).toEqual(router.routes.get("GET /v1/stats"));
+  });
+
+  it("a path test in a shape the guard cannot read stops it, naming the line", () => {
+    expect(() => routerOf(withLine('if (path.endsWith("/ping")) return json({ ok: true }, 200, rateHeaders);', "first")))
+      .toThrow(/index\.ts line \d+ reads path in a shape this guard does not read/);
+  });
+
+  it("an answer under no path test stops the guard, naming the line", () => {
+    expect(() => routerOf(withLine('if (url.searchParams.has("ping")) return json({ ok: true }, 200, rateHeaders);', "first")))
+      .toThrow(/index\.ts line \d+ answers under no route test/);
+  });
+
+  it("a path test outside the dispatch's statements stops the guard", () => {
+    expect(() => routerOf(withLine('if (path === "/v1/late") return json({}, 200, rateHeaders);', "catch")))
+      .toThrow(/tests path for \/v1\/late outside the statements/);
+  });
+
+  it("one statement that tests two routes stops the guard", () => {
+    expect(() => routerOf(withLine('if (path === "/v1/a" || path === "/v1/b") return json({}, 200, rateHeaders);', "first")))
+      .toThrow(/tests path for GET \/v1\/a and GET \/v1\/b in one statement/);
+  });
+
+  it("a refusal every later route passes through is a code each of them can answer, and not one an earlier route can", () => {
+    const router = routerOf(withLine('if (url.searchParams.has("zz")) return fail(400, "ghost_refusal", "x", rateHeaders);', "first"));
+    expect(router.routes.get("GET /v1/jobs")?.codes.has("400 ghost_refusal")).toBe(true);
+    expect(router.routes.get("GET /v1/usage")?.codes.has("400 ghost_refusal")).toBe(true);
+    expect(router.routes.get("GET /v1")?.codes.has("400 ghost_refusal")).toBe(false);
+    expect(problemsOf(DOC, router)).toContain("GET /v1/jobs: the router can answer 400 ghost_refusal and the document does not say so");
   });
 });
