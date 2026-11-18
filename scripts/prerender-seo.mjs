@@ -31,7 +31,7 @@ import {
 // The once-published pages, the ceiling, the dates and the duplicate groups
 // (SEO-002, SEO-025, SEO-036 and decision 5 of the design upgrade's README).
 import {
-  pageDates, postingCeilingSplit, capPostingEntries, seedPostingLedger, tombstoneHtml,
+  pageDates, withLastmodFloor, postingCeilingSplit, capPostingEntries, seedPostingLedger, tombstoneHtml,
   COUNT_BEARING, companyTokenOf, onceCompanyPaths, companyCarryState, companyLedgerEntry, companyStubPage, duplicateSkeletonGroups, resolveDuplicateGroups,
 } from "./prerender-pages.mjs";
 import { bakeEmployerName, repairEmployerName } from "./prerender-names.mjs";
@@ -48,8 +48,8 @@ import {
 import { legalBodyFromTsx, legalText } from "./prerender-legal.mjs";
 import { routeChunkPrefix, preloadClosure, fallbackPreloadHtml, fontHeadProblems, modulepreloadTag } from "./prerender-preload.mjs";
 // The employer's own answer for each posting, GET only (B01, B06).
-import { EMPLOYER_READ_BUDGET_MS, applyEmployerStatements, distrustImplausibleClosures, employerReadLine, readEmployers, summarizeEmployerReads } from "./employer-reads.mjs";
-import { EMPLOYER_STATED_META, POSTING_CLOSED_META, employerStatedOf, postingClosedOf } from "./employer-statements.mjs";
+import { EMPLOYER_READ_BUDGET_MS, applyEmployerStatements, distrustImplausibleClosures, employerReadAlarms, employerReadLine, readEmployers, summarizeEmployerReads, withoutObligedRemote } from "./employer-reads.mjs";
+import { EMPLOYER_STATED_META, POSTING_CLOSED_META, carriedStatementsOf, employerStatedOf, postingClosedOf, statedEndPassed, withCarriedStatements } from "./employer-statements.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 // A BAKE CAN BE POINTED AWAY FROM THE CHECKOUT. PRERENDER_OUT names a
@@ -366,32 +366,113 @@ export function withEmployerCountry(page, stated, { D, carried }) {
  * `deadline`), an implausible run of closures is not trusted, and every answer
  * is recorded in `results`. Returns the items to keep, each job carrying what
  * its employer states (applyEmployerStatements) and each item the statements
- * themselves (`stated`, which the page's head hands to the React page), and the
- * items whose employer closed the posting. `readOpts` reaches readEmployers (a
- * test's fetchImpl).
+ * themselves (`stated`, which the page's head hands to the React page), the
+ * items whose employer closed the posting, and the items past the end date
+ * their employer stated (`ended`). `readOpts` reaches readEmployers (a test's
+ * fetchImpl).
+ *
+ * WHAT AN EARLIER READ STATED OUTLIVES A FAILED ONE (SEO audit 2026-11-18,
+ * STRUCTURED-M1): `carriedOf(job)` is the live ledger entry's statements
+ * (carriedStatementsOf), put under today's answer by withCarriedStatements,
+ * so an unknown read keeps the employer's end date, time type and remote
+ * flag, and validThrough never moves past a stated end without a fresh read
+ * stating a later one. A row whose stated end is before `today` is `ended`:
+ * its page retires with basis "employer-stated end".
+ *
+ * THE DAILY CHECK'S CLOSED PAGES (CRAWL-M2): a row whose page is on
+ * `closedAtEmployer` (closedAtEmployerList, from scripts/seo-seed/
+ * closed-at-employer.txt) is closed without a read.
  */
-export async function askEmployersAbout(list, { D, deadline, results = new Map(), readOpts = {} }) {
-  const raw = await readEmployers(list.map((d) => d.job), { deadline, ...readOpts });
+export async function askEmployersAbout(list, { D, deadline, results = new Map(), readOpts = {}, carriedOf = () => null, closedAtEmployer = null, today = null }) {
+  const listed = [];
+  const asking = [];
+  for (const d of list) (closedAtEmployer && closedAtEmployer.has(D.postingPagePath(d.job.id)) ? listed : asking).push(d);
+  const raw = await readEmployers(asking.map((d) => d.job), { deadline, ...readOpts });
   const answers = distrustImplausibleClosures(raw);
   for (const [k, v] of answers) results.set(k, v);
   const keep = [];
   const closed = [];
-  for (const d of list) {
+  const ended = [];
+  for (const d of asking) {
     const r = answers.get(d.job.id);
     if (r?.state === "closed") { closed.push(d); continue; }
-    const stated = employerStatedOf(r?.stated);
+    // A remote flag the posting's own text contradicts is not stated
+    // (STRUCTURED-6): "onsite expectation of 3-4 days per month" is not
+    // worked from anywhere, whatever the vendor's field says.
+    const stated = employerStatedOf(withoutObligedRemote(withCarriedStatements(r?.stated, carriedOf(d.job), r?.state ?? "unknown"), d.description));
     if (stated) {
       d.job = applyEmployerStatements(d.job, stated, { employmentTypeOf: D.ldEmploymentType });
       d.stated = stated;
     }
+    if (statedEndPassed(stated, today)) { ended.push(d); continue; }
     keep.push(d);
   }
-  return { keep, closed };
+  for (const d of listed) { d.closedBy = "list"; closed.push(d); }
+  return { keep, closed, ended };
+}
+
+/**
+ * THE PAGES THE DAILY CHECK FOUND CLOSED (SEO audit 2026-11-18, CRAWL-M2), as
+ * a person committed them to scripts/seo-seed/closed-at-employer.txt from the
+ * check's standing issue: one "<path> <YYYY-MM-DD> <basis>" a line, "#" for a
+ * comment. CI writes nothing to the site, so this list is how a closure the
+ * check saw reaches the next bake. An entry older than `maxAgeDays` (or dated
+ * after `today`) is ignored: by then the bake's own read has had two weeks to
+ * see it, and a stale line must not retire a page a reposted job reuses.
+ * Returns a Map of path to { date, basis }.
+ */
+export const CLOSED_LIST_MAX_AGE_DAYS = 14;
+export function closedAtEmployerList(text, today, { maxAgeDays = CLOSED_LIST_MAX_AGE_DAYS } = {}) {
+  const out = new Map();
+  const t = Date.parse(`${today}T00:00:00Z`);
+  if (!Number.isFinite(t)) return out;
+  for (const raw of String(text ?? "").split("\n")) {
+    const line = raw.replace(/#.*$/, "").trim();
+    if (!line) continue;
+    const [path, date, basis = "employer"] = line.split(/\s+/);
+    if (!path || !path.startsWith("/jobs/posting/") || !/^\d{4}-\d{2}-\d{2}$/.test(date ?? "")) continue;
+    const age = (t - Date.parse(`${date}T00:00:00Z`)) / 86_400_000;
+    if (!(age >= 0 && age <= maxAgeDays)) continue;
+    out.set(path, { date, basis });
+  }
+  return out;
+}
+
+/**
+ * A LIVE POSTING'S LEDGER ENTRY. `carried` says which side of rule 3 the page
+ * came from; `markupWithheld` why it carries no JobPosting; `applyUrl` rides
+ * along for the daily closure check; `stated` (STRUCTURED-M1) is what its
+ * employer stated that the next bake keeps when its own read fails.
+ */
+export function livePostingEntry({ today, first, carried, title, company, job, withheld = null, stated = null }) {
+  const keep = carriedStatementsOf(stated);
+  return {
+    state: "live", since: today, first, carried, title, company, token: job.token ?? null,
+    ...(job.applyUrl ? { applyUrl: String(job.applyUrl) } : {}),
+    ...(withheld ? { markupWithheld: withheld } : {}),
+    ...(keep ? { stated: keep } : {}),
+  };
+}
+
+/**
+ * THE LIVE POSTING PAGES THE SITEMAP NAMES, as /posting-pages.json (SEO audit
+ * 2026-11-18, CRAWL-M1): { at, live }, the bake's date and the posting paths
+ * of the sitemap's final entries, in its order. Other lanes read this rather
+ * than the sitemap, and a stub (noindex) never enters it because it never
+ * enters the sitemap.
+ */
+export function postingPagesManifest(entries, { today, isPosting, href = (p) => p }) {
+  return { at: today, live: (Array.isArray(entries) ? entries : []).filter((e) => isPosting(e)).map((e) => href(e.path)) };
 }
 
 /** The "no longer listed" page a posting its employer closed gets: state "gone", basis "employer" (B01). */
 export function employerClosedStub(job, D) {
   return { id: job.id, path: D.postingPagePath(job.id), state: "gone", basis: "employer", job, title: job.title, company: job.company };
+}
+
+/** The page a posting past its employer's own stated end date gets (STRUCTURED-M1): state "gone", basis "employer-stated end". */
+export function employerEndedStub(job, D) {
+  return { id: job.id, path: D.postingPagePath(job.id), state: "gone", basis: "employer-stated end", job, title: job.title, company: job.company };
 }
 
 /**
@@ -1747,12 +1828,16 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       legacyFp: contentFingerprint(said),
       stated: typeof page.lastmod === "string" ? page.lastmod : null,
       exact: page.lastmodExact === true,
+      // CRAWL-9: a posting page's lastmod is never before the date its
+      // employer states (the fingerprint is blind to dates, so a re-dated
+      // posting kept the lastmod of its first text).
+      floor: typeof page.lastmodFloor === "string" ? page.lastmodFloor : null,
       // SEO-012: the title, count-blind on a page whose numbers are measured
       // at the build, so IndexNow is told of a page whose title changed and
       // never of a count that moved.
       th: contentFingerprint(String(page.title ?? ""), { blindCounts: COUNT_BEARING(page.path) }),
     };
-    const dates = pageDates({ fp: fpEntry.fp, legacyFp: fpEntry.legacyFp, prior: priorPages[page.path], today: TODAY, stated: fpEntry.stated, exact: fpEntry.exact });
+    const dates = withLastmodFloor(pageDates({ fp: fpEntry.fp, legacyFp: fpEntry.legacyFp, prior: priorPages[page.path], today: TODAY, stated: fpEntry.stated, exact: fpEntry.exact }), fpEntry.floor, TODAY);
     const built = typeof page.jsonLd === "function" ? { ...page, jsonLd: page.jsonLd(dates.lastmod) } : page;
     renderFile(built);
     // Not the posting pages (the employer's own text) and not /changelog (a
@@ -2707,6 +2792,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   const SEEN_IN_SEARCH = seedList("seen-in-search-indexes.txt");
   const SEED_COMPANY_PATHS = [...new Set([...seedList("published-company-paths.txt"), ...SEEN_IN_SEARCH.filter((p) => p.startsWith("/jobs/company/"))])];
   const SEED_POSTING_PATHS = [...new Set([...seedList("published-posting-paths.txt"), ...SEEN_IN_SEARCH.filter((p) => p.startsWith("/jobs/posting/"))])];
+  // CRAWL-M2: the pages the daily check found closed at their employer, as
+  // committed from its standing issue; entries over two weeks old are ignored.
+  const CLOSED_AT_EMPLOYER = closedAtEmployerList(seedList("closed-at-employer.txt").join("\n"), TODAY);
   {
     const envText5 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
     const grab5 = (k) => OFFLINE ? undefined : process.env[k] || (envText5.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
@@ -2881,10 +2969,18 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       // date, time type, a fully remote posting, its original date and its
       // address), put into the row's own fields before the page is decided.
       const employerDeadline = Date.now() + EMPLOYER_READ_BUDGET_MS;
-      const askEmployers = (list) => askEmployersAbout(list, { D, deadline: employerDeadline, results: employerResults });
+      // An unknown read keeps what the live ledger entry carried (STRUCTURED-M1),
+      // and a page the daily check found closed retires unread (CRAWL-M2).
+      const askEmployers = (list) => askEmployersAbout(list, {
+        D, deadline: employerDeadline, results: employerResults, today: TODAY, closedAtEmployer: CLOSED_AT_EMPLOYER,
+        carriedOf: (job) => priorPostingOf(D.postingPagePath(job.id)).stated ?? null,
+      });
       {
-        const { keep, closed } = await askEmployers(detailed);
+        const { keep, closed, ended } = await askEmployers(detailed);
         for (const d of closed) stubs.push(employerClosedStub(d.job, D));
+        for (const d of ended) stubs.push(employerEndedStub(d.job, D));
+        const fromList = closed.filter((d) => d.closedBy === "list").length;
+        if (fromList || ended.length) console.log(`[prerender-seo] employer closures: ${fromList} live page(s) retired from scripts/seo-seed/closed-at-employer.txt (the daily check), ${ended.length} past the end date their employer stated`);
         detailed.length = 0;
         detailed.push(...keep);
       }
@@ -3033,8 +3129,8 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       // never published, so it simply gets no page.
       let freshEmployerClosed = 0;
       {
-        const { keep, closed } = await askEmployers(freshFound);
-        freshEmployerClosed = closed.length;
+        const { keep, closed, ended } = await askEmployers(freshFound);
+        freshEmployerClosed = closed.length + ended.length;
         detailed.push(...keep);
         freshWritten = keep.length;
       }
@@ -3116,6 +3212,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           path,
           ...(lang && lang !== "en" ? { lang } : {}),
           ...(stated ? { employerStated: stated } : {}),
+          lastmodFloor: String(job.postedAt).slice(0, 10),
           // The page's own sentences, for the banned-phrase check; never the employer's text.
           ownText: `${D.postingPageDescription(job)} ${ownSentence} the application happens on ${possessive(nm)} own hiring system; this board only links to it.`,
           title: (() => {
@@ -3171,7 +3268,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         // `applyUrl` rides along for the daily closure check, which reads each
         // live posting at its employer from the ledger alone (B01).
         const withheld = postingMarkupWithheld(page);
-        postingLedger[path] = { state: "live", since: TODAY, first, carried, title, company: nm, token: job.token ?? null, ...(job.applyUrl ? { applyUrl: String(job.applyUrl) } : {}), ...(withheld ? { markupWithheld: withheld } : {}) };
+        postingLedger[path] = livePostingEntry({ today: TODAY, first, carried, title, company: nm, job, withheld, stated });
       }
 
       // The URLs this site published that get no live page: each keeps a
@@ -3212,6 +3309,11 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         const summary = summarizeEmployerReads(employerResults);
         console.log(`[prerender-seo] ${employerReadLine(summary)}; ${freshEmployerClosed} of them new postings the employer had already closed (no page)`);
         if (summary.checked && summary.unknown / summary.checked > 0.2) console.warn(`[prerender-seo] employer reads: ${summary.unknown} of ${summary.checked} answers unknown (over 20%) — pages kept as they were; the daily closure check is the backstop`);
+        // THE FAIL TIER, PER VENDOR (STRUCTURED-1): a vendor with 20 or more
+        // pages, over half of them unknown, is named with why (budget,
+        // challenge, timeout...). The publish goes on; the line is for the
+        // person reading the build log and for section 98-r2 G1b.
+        for (const line of employerReadAlarms(summary)) console.error(`[prerender-seo] ${line}`);
       }
       if (stubCount("unchecked")) {
         console.warn(`[prerender-seo] posting pages: ${stubCount("unchecked")} published posting URL(s) could not be re-checked (board refusal, error or the call budget) — each carries a noindex "could not re-check" page until a bake reaches it`);
@@ -5300,7 +5402,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     const pageDatesOf = (path) => {
       if (datesOf.has(path)) return datesOf.get(path);
       const fp = pageFingerprints.get(path);
-      const d = fp ? pageDates({ fp: fp.fp, legacyFp: fp.legacyFp, prior: priorPages[path], today: TODAY, stated: fp.stated, exact: fp.exact }) : null;
+      const d = fp ? withLastmodFloor(pageDates({ fp: fp.fp, legacyFp: fp.legacyFp, prior: priorPages[path], today: TODAY, stated: fp.stated, exact: fp.exact }), fp.floor, TODAY) : null;
       datesOf.set(path, d);
       return d;
     };
@@ -5424,6 +5526,12 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     ].join("\n");
     writeFileSync(join(publicOut, "sitemap.xml"), xml);
     writeFileSync(join(dist, "sitemap.xml"), xml);
+    // CRAWL-M1: the live posting pages, as the sitemap names them, beside /landers.json.
+    {
+      const manifest = postingPagesManifest(entries, { today: TODAY, isPosting: (e) => e.path.startsWith(`${D.POSTING_PATH_PREFIX}/`), href: publicHref });
+      writeFileSync(join(dist, "posting-pages.json"), JSON.stringify(manifest));
+      console.log(`[prerender-seo] /posting-pages.json written: ${manifest.live.length} live posting page(s), the sitemap's own`);
+    }
     console.log(`[prerender-seo] sitemap.xml regenerated: ${entries.length} URLs (public/ + dist/), ${new Set(entries.map((e) => lastmodOf(e.path))).size} distinct lastmod dates`);
 
   }

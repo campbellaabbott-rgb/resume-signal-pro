@@ -1,0 +1,21 @@
+{
+ "items": [
+  {
+   "Id": "26110535",
+   "Title": "F&B Service Expert (Executive Lounge)",
+   "Category": "Food and Beverage & Culinary",
+   "JobSchedule": "Full time",
+   "ExternalPostedStartDate": "2026-11-15T05:51:15+00:00",
+   "ExternalPostedEndDate": "2026-11-19T05:51:00+00:00",
+   "WorkplaceTypeCode": null,
+   "WorkplaceType": "",
+   "PrimaryLocation": "Doha, Qatar",
+   "PrimaryLocationCountry": "QA",
+   "JobFunction": "Food and Beverage Services"
+  }
+ ],
+ "count": 1,
+ "hasMore": false,
+ "limit": 499,
+ "offset": 0
+}

@@ -19,6 +19,15 @@
 #       read once per board (BOARD_LIST_VENDORS: Ashby, Breezy, Recruitee)
 #       FAILs only when its unknown pages come from two boards or more: one
 #       failed list GET makes a whole board unknown (review of 2026-11-15).
+#   G1b (SEO audit 2026-11-18, STRUCTURED-1) the publish bake's own employer
+#       reads, as the served /prerender-ledger.json records them
+#       (employerReads.byVendor): a vendor the reader checks (not
+#       STATED_ONLY_VENDORS) with over 20% of its pages unknown and two
+#       unknown pages or more FAILs, named with why (budget, challenge,
+#       timeout, an HTTP status...). Bot challenges ("challenge", and "vendor
+#       challenged" for the rows not asked after three) are printed on their
+#       own line. A ledger whose reads carry no why counts is a bake from
+#       before the fix, and FAILs.
 #   G2  (B01) the STOP switch as served: with JOB_POSTING_MARKUP true in
 #       src/config/seo-switches.ts every sitemap posting page serves exactly
 #       one JobPosting (a page the ledger says D7 keeps without markup serves
@@ -47,7 +56,7 @@
 #
 # Read-only: GETs of the site's sitemap, ledger and posting pages, and GETs of
 # the employers' own endpoints. Nothing is sent or written.
-echo "== 98-r2. the SEO round of 2026-11-07: closed-but-baked share, the STOP switch, employer-closed stubs, employer names, system names, internal-only postings, survey ads =="
+echo "== 98-r2. the SEO round of 2026-11-07: closed-but-baked share, the bake's own employer reads, the STOP switch, employer-closed stubs, employer names, system names, internal-only postings, survey ads =="
 
 VD98R2_SWITCH=$(/usr/bin/grep -Eo '^export const JOB_POSTING_MARKUP = (true|false);' src/config/seo-switches.ts 2>/dev/null | /usr/bin/grep -Eo '(true|false)' || echo "")
 
@@ -111,6 +120,27 @@ const jobBlocks = (h) => [...String(h).matchAll(/<script type="application\/ld\+
     if (judgedRun && !overShare.some(([v]) => !statedOnly.includes(v))) {
       out("PASS", `G1 every vendor checked at the employer is at most 20% unknown (${checked.map(([v, u, n]) => `${v} ${u} of ${n}`).join(", ")})`);
     }
+  }
+}
+
+// G1b: the employer reads of the publish bake, as its ledger records them.
+{
+  let reads = null;
+  try { reads = JSON.parse((await get("/prerender-ledger.json")).body)?.employerReads ?? null; } catch { reads = null; }
+  let statedOnly = [];
+  try { statedOnly = [...((await import(`${process.cwd()}/scripts/employer-reads.mjs`)).STATED_ONLY_VENDORS ?? [])]; } catch { statedOnly = []; }
+  const phrase = (why) => Object.entries(why ?? {}).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k, n]) => `${k} ${n}`).join(", ");
+  if (!reads || typeof reads.byVendor !== "object") out("INFO", "G1b the served ledger records no employer reads (a bake that wrote no posting pages)");
+  else {
+    const rows = Object.entries(reads.byVendor).map(([v, c]) => ({ v, u: c.unknown ?? 0, n: (c.open ?? 0) + (c.closed ?? 0) + (c.unknown ?? 0), why: c.why ?? null }));
+    const missingWhy = rows.filter((r) => r.u > 0 && !r.why);
+    if (missingWhy.length) out("FAIL", `G1b the ledger of ${reads.at ?? "?"} counts unknown employer answers with no reason (${missingWhy.map((r) => `${r.v} ${r.u}`).join(", ")}): a bake from before STRUCTURED-1`);
+    const challenged = rows.filter((r) => r.why && ((r.why.challenge ?? 0) + (r.why["vendor challenged"] ?? 0)) > 0);
+    for (const r of challenged) out("INFO", `G1b ${r.v}: bot challenges in the bake of ${reads.at ?? "?"}: ${r.why.challenge ?? 0} answered with a challenge, ${r.why["vendor challenged"] ?? 0} not asked after three (never retried, never worked around)`);
+    const over = rows.filter((r) => !statedOnly.includes(r.v) && r.n > 0 && r.u / r.n > 0.2 && r.u >= 2);
+    for (const r of over) out("FAIL", `G1b ${r.v}: ${r.u} of ${r.n} posting pages unknown at the employer in the bake of ${reads.at ?? "?"} (${(100 * r.u / r.n).toFixed(1)}%, over 20%)${r.why ? `: ${phrase(r.why)}` : ""}; its closures are not being seen`);
+    for (const r of rows.filter((x) => statedOnly.includes(x.v) && x.u > 0)) out("INFO", `G1b ${r.v}: ${r.u} of ${r.n} read for their statements only (not checked for closure)`);
+    if (!over.length && !missingWhy.length) out("PASS", `G1b every vendor the bake of ${reads.at ?? "?"} checked at the employer is at most 20% unknown (${rows.filter((r) => !statedOnly.includes(r.v)).map((r) => `${r.v} ${r.u} of ${r.n}`).join(", ") || "none read"})`);
   }
 }
 

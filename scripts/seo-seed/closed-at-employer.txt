@@ -1,0 +1,12 @@
+# POSTING PAGES THE DAILY CLOSURE CHECK FOUND CLOSED AT THEIR EMPLOYER
+# (SEO audit 2026-11-18, CRAWL-M2).
+#
+# The check (.github/workflows/posting-closure.yml) writes nothing to the
+# site. When it finds a live page closed at its employer it puts the lines in
+# its standing issue (label posting-closure-closed); at a publish they are
+# pasted here, and the bake (scripts/prerender-seo.mjs, closedAtEmployerList)
+# retires each listed live page with the employer's "no longer listed" page:
+# noindex, no JobPosting, out of the sitemap.
+#
+# One line per page: <path> <YYYY-MM-DD the check found it closed> <basis>
+# A line older than 14 days is ignored, so old lines may stay until tidied.
