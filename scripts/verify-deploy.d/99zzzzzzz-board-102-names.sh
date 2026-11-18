@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # ── 99zzzzzzz-board-102-names. THE WORKDAY NAMES (board/102-names; owner
-# decision OD9 (a), board program BB-02). Migration 20261111150000 writes 417
-# company_name_overrides keys over 357 Workday tenants that print their tenant
+# decision OD9 (a), board program BB-02). Migration 20261111150000 writes 414
+# company_name_overrides keys over 354 Workday tenants that print their tenant
 # code, each with its evidence from the 2026-11-08 capture, and re-arms
 # job-board's name-sync lane, which renames the stored rows a board at a time
 # from the next pass end (job-board 2026-09-09.102, NAME_SYNC_VERSION 7). It
@@ -39,7 +39,7 @@
 #
 # READ-ONLY. One OPTIONS preflight; job-board status and list reads sent with
 # x-rb-budget: probe (J); git and file reads. Nothing is written anywhere.
-echo "== 99zzzzzzz. board .102 names: 417 Workday names print the brand on their own career site once the name-sync lane has walked (20261111150000, job-board .102) =="
+echo "== 99zzzzzzz. board .102 names: 414 Workday names print the brand on their own career site once the name-sync lane has walked (20261111150000, job-board .102) =="
 
 rm -f /tmp/vd_102n_*
 VD102N_JB=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/job-board" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+:[[:space:]]*//')

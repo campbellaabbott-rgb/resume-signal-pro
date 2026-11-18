@@ -9,9 +9,10 @@
  * 20261111150000 ships the stratum the re-check measured above the bar (high
  * confidence, hand-reviewed), less every key a pattern rule flags, plus the
  * rows the re-check judged, each wrong one corrected, less the 14 keys whose
- * name was read on a page the tenant's robots.txt disallows: 417 keys over 357
- * tenants. Every name and every evidence row rests on the employer's own words
- * in the 2026-11-08 capture; none on the re-check's 2026-11-17 reads. A fresh
+ * name was read on a page the tenant's robots.txt disallows and the 3 that name
+ * a board whose own site path it disallows: 414 keys over 354 tenants. Every
+ * name and every evidence row rests on the employer's own words in the
+ * 2026-11-08 capture; none on the re-check's 2026-11-17 reads. A fresh
  * sample of the list on 2026-11-18 (50 keys, three judges each, the 11-08
  * captures only, no live read) found 50/50 right by majority, a Wilson 95%
  * lower bound of 92.9% against the 85% bar fixed before the judging, so the
@@ -52,15 +53,15 @@ const TABLE_SQL = readFileSync(resolve(MIGRATIONS, FILES.find((f) => f.startsWit
 const FINAL = resolve(homedir(), ".config/resumebooster/push-all-2026-11-17/names/final-names.json");
 
 /** The counts final-names.json gives: keys, tenants, rows the boards served on 2026-11-08. */
-const KEYS = 417;
-const TENANTS = 357;
-const ROWS = 28_524;
+const KEYS = 414;
+const TENANTS = 354;
+const ROWS = 28_357;
 /**
  * sha256 of the file's key=name pairs, one per line, sorted: the names build's list, pinned in the
  * repository, so a name changed in both the file and the mirror fails on every machine, not only on
  * the one that holds final-names.json. A deliberate change re-pins it from the names build.
  */
-const PIN = "4b2e7fb3c37db41b53adf300bf241eaaa884a49aba65afce7294b235033d066c";
+const PIN = "5324391dc590110c7e76574cf80dd02bbab2f221f69b68eec604d1df3cc6cafe";
 
 const lit = (s: string) => s.slice(1, -1).replace(/''/g, "'");
 const STR = "'(?:[^']|'')*'";
@@ -107,6 +108,9 @@ const LEFT_OUT: Record<string, string[]> = {
   "code-unresolved in the corpus": ["onehealthineers", "mmc", "ncr", "campbellsoup", "blackstone", "suffolkcountyny"],
   // lumaenergy's corrected name (LUMA, not the corpus's "New LUMA") goes with these.
   "its name was read on a page the tenant's robots.txt disallows": ["citicclsa", "dallascollege", "davispolk", "eset", "fimc", "lumaenergy", "massmutual", "pepperlfuchs", "rbs", "rgare", "sdguthrie~wd3~NBPOL", "sdguthrie~wd3~SDGUTHRIEMINAMAS", "situsamc", "ucf~wd1~careers"],
+  // Read on an allowed page, but a board each names sits under a Disallow: mbda's MBDA-DE and
+  // MBDA-Italy sites, synchronyfinancial's careers site, vertexinc's referrals site (/Referrals/).
+  "robots.txt disallows the board's own site path": ["mbda", "synchronyfinancial", "vertexinc"],
 };
 
 describe("the file holds the names build's list, and only new keys", () => {
@@ -198,6 +202,15 @@ describe("what the re-check found wrong, and every class left out, stays out", (
       }
     });
   }
+
+  it("the self-check refuses a write to any key robots.txt reaches, by either class", () => {
+    const m = /WHERE o\.added_at = now\(\) AND \(o\.slug = ANY \(v_multi\) OR o\.slug IN \(([^)]*)\)\);/.exec(SQL);
+    expect(m, "the self-check's list of keys it refuses to write moved").not.toBeNull();
+    const refused = [...m![1].matchAll(new RegExp(STR, "g"))].map((x) => lit(x[0]));
+    const robots = [...LEFT_OUT["its name was read on a page the tenant's robots.txt disallows"], ...LEFT_OUT["robots.txt disallows the board's own site path"]];
+    expect(robots).toHaveLength(17);
+    expect(robots.filter((k) => !refused.includes(k))).toEqual([]);
+  });
 
   it("a tenant named board by board takes no tenant key, so a site added later keeps its own name", () => {
     const byBoard = new Set(OVERRIDES.filter(([k]) => k.includes("~")).map(([k]) => tenantOf(k)));

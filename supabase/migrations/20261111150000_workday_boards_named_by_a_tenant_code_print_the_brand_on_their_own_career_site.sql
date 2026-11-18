@@ -7,15 +7,16 @@
 -- the legal hiring entity only where the site states no brand. The names
 -- corpus of 2026-11-08 (board program BB-02, wave W8) found 1,430 tenants
 -- printing their code ("Nghs", "Owensminor", "Beigene") on 82,757 served rows.
--- This file names 357 of them: 417 company_name_overrides keys over 28,524
+-- This file names 354 of them: 414 company_name_overrides keys over 28,357
 -- rows served on 2026-11-08, each with its evidence row.
 --
 -- WHERE EVERY NAME CAME FROM. The employer's own words for itself on its own
 -- Workday career site, as the corpus read it on 2026-11-08 (GET only,
 -- robots.txt read first, at most one request a second per host, never logged
--- in; a key whose page that robots.txt disallows is left out): the page title
--- and og tags, the CXS sidebar (/wday/cxs/<tenant>/<site>/sidebar) and one to
--- three postings (their hiringOrganization). Each row of
+-- in; a key whose page that robots.txt disallows is left out, and so is a key
+-- naming a board whose own site path it disallows): the page title and og
+-- tags, the CXS sidebar (/wday/cxs/<tenant>/<site>/sidebar) and one to three
+-- postings (their hiringOrganization). Each row of
 -- public.company_name_evidence (20261025100000 made it; only the service role
 -- reads it) carries the page the words were read on, the words themselves
 -- holding the name letter for letter, and the day of the read, 2026-11-08 for
@@ -97,8 +98,8 @@
 -- reads), vcuhealth (the 11-08 site never names itself), hss (the site writes
 -- only HSS; the expansion stands only in Workday's coded label, as mfs's did)
 -- and gcu's GCU board (the same shape); lumaenergy (corrected to LUMA) leaves
--- with the robots.txt keys below. The stratum itself adds 275 tenant keys
--- (19,113 rows) and 73 board keys on 29 tenants of several employers (2,072
+-- with the robots.txt keys below. The stratum itself adds 272 tenant keys
+-- (18,946 rows) and 73 board keys on 29 tenants of several employers (2,072
 -- rows).
 --
 -- TENANTS OF SEVERAL EMPLOYERS are named board by board, by the exact token
@@ -114,18 +115,23 @@
 -- page the tenant's robots.txt, as the 2026-11-08 capture holds it, disallows
 -- (citicclsa, dallascollege, davispolk, eset, fimc, lumaenergy, massmutual,
 -- pepperlfuchs, rbs, rgare, sdguthrie~wd3~NBPOL,
--- sdguthrie~wd3~SDGUTHRIEMINAMAS, situsamc and ucf~wd1~careers); the strata
--- under the bar (high confidence machine-reviewed 263 tenants, medium
--- hand-reviewed 417, medium machine-reviewed 235, low 33); 108 keys a rule
--- flagged (5,113 rows); the 27 code-unresolved tenants and the 7 unread ones,
--- which the corpus never proposed; tenants the re-check found with no single
--- right name or a name in motion (gi carries TYLin, Introba and Landrum &
--- Brown; warnerbros read Warner Bros. on 2026-11-08 and Skydance on
--- 2026-11-17), and the four re-checked keys above whose name the 11-08 capture
--- does not support; 9 keys main already names; and 10 names that fold equal to
--- another catalogued employer's shown name ("Deloitte", "BDO", "Goodwin"),
--- which the company suggest and the clusters would merge (S11-134). The list,
--- every left-out key and its reason are in the names build's final-names.json.
+-- sdguthrie~wd3~SDGUTHRIEMINAMAS, situsamc and ucf~wd1~careers); as a class of
+-- their own, 3 keys (167 rows) whose name was read on a page that robots.txt
+-- allows but which name a board whose own site path it disallows (mbda,
+-- synchronyfinancial and vertexinc: mbda's MBDA-DE and MBDA-Italy sites,
+-- synchronyfinancial's careers site, and vertexinc's referrals site, whose
+-- path differs from its Disallow /Referrals/ only in case); the strata under
+-- the bar (high confidence machine-reviewed 263 tenants, medium hand-reviewed
+-- 417, medium machine-reviewed 235, low 33); 108 keys a rule flagged (5,113
+-- rows); the 27 code-unresolved tenants and the 7 unread ones, which the
+-- corpus never proposed; tenants the re-check found with no single right name
+-- or a name in motion (gi carries TYLin, Introba and Landrum & Brown;
+-- warnerbros read Warner Bros. on 2026-11-08 and Skydance on 2026-11-17), and
+-- the four re-checked keys above whose name the 11-08 capture does not
+-- support; 9 keys main already names; and 10 names that fold equal to another
+-- catalogued employer's shown name ("Deloitte", "BDO", "Goodwin"), which the
+-- company suggest and the clusters would merge (S11-134). The list, every
+-- left-out key and its reason are in the names build's final-names.json.
 --
 -- A NAME ALREADY SET IS KEPT. ON CONFLICT DO NOTHING: a key the table
 -- already holds, from an earlier file or set by hand, keeps its name, and
@@ -133,7 +139,7 @@
 --
 -- THE LANE'S ONE READ. job-board's name-sync lane reads company_name_overrides
 -- in one PostgREST answer, which returns at most 1,000 rows. The migrations
--- leave 505 rows before this file and 922 after it; the self-check
+-- leave 505 rows before this file and 919 after it; the self-check
 -- raises above 1,000, and the next names file waits until the lane pages
 -- that read.
 --
@@ -145,7 +151,7 @@
 -- name_sync_progress after the names exist.
 --
 -- ORDER: after 20261108100000 (applied) and after the frontend publish that
--- carries src/lib/employer-names.ts with the same 417 rows, so the bake and
+-- carries src/lib/employer-names.ts with the same 414 rows, so the bake and
 -- the app print a name the moment the lane writes it. No function deploys
 -- with it.
 --
@@ -411,7 +417,6 @@ INSERT INTO public.company_name_overrides (slug, display_name) VALUES
   ('marywashingtonhealthcare', 'Mary Washington Healthcare'),
   ('mattressfirm', 'Mattress Firm'),
   ('maxar~wd1~Vantor', 'Vantor'),
-  ('mbda', 'MBDA'),
   ('mc', 'Montgomery College'),
   ('mchapusa', 'Marketplace Chaplains'),
   ('mechanicsbank', 'Mechanics Bank'),
@@ -533,7 +538,6 @@ INSERT INTO public.company_name_overrides (slug, display_name) VALUES
   ('svha~wd3~SVHA_SVHA', 'St Vincent''s Health Australia'),
   ('svha~wd3~broadbean_external', 'St Vincent''s Health Australia'),
   ('svha~wd3~svha_svphm', 'St Vincent''s Private Melbourne'),
-  ('synchronyfinancial', 'Synchrony'),
   ('taskus', 'TaskUs'),
   ('taylormorrison', 'Taylor Morrison'),
   ('tcsedsystem~wd1~KHSC', 'Kansas Health Science University'),
@@ -569,7 +573,6 @@ INSERT INTO public.company_name_overrides (slug, display_name) VALUES
   ('uva', 'University of Virginia'),
   ('veitusa', 'Veit'),
   ('veoliauki', 'Veolia'),
-  ('vertexinc', 'Vertex'),
   ('vst', 'Vistra'),
   ('vwr', 'Avantor'),
   ('walshgroup', 'Walsh Group'),
@@ -834,7 +837,6 @@ SELECT v.slug, v.display_name, v.evidence, v.quote, v.read_on
   ('marywashingtonhealthcare', 'Mary Washington Healthcare', ARRAY['https://marywashingtonhealthcare.wd5.myworkdayjobs.com/Externalcareers'], 'og:description: "Working at Mary Washington Healthcare Whether you are a new grad, experienced clinical professional or wanting to begin a..."', DATE '2026-11-08'),
   ('mattressfirm', 'Mattress Firm', ARRAY['https://mattressfirm.wd1.myworkdayjobs.com/MattressFirmCareers'], 'og:description: "...for making a difference every day. In just under 40 years, Mattress Firm has grown to more than 2,400 stores nationwide, supported by a team of more than 6,000..."', DATE '2026-11-08'),
   ('maxar~wd1~Vantor', 'Vantor', ARRAY['https://maxar.wd1.myworkdayjobs.com/Vantor'], 'og:description: "Vantor is forging the new frontier of spatial intelligence, helping decision makers and..."', DATE '2026-11-08'),
-  ('mbda', 'MBDA', ARRAY['https://mbda.wd3.myworkdayjobs.com/MBDA-UK'], 'og:description: "...Whatever your background, we welcome your application to MBDA UK and look forward to speaking with you soon."', DATE '2026-11-08'),
   ('mc', 'Montgomery College', ARRAY['https://mc.wd1.myworkdayjobs.com/external'], 'og:description: "Thank you for your interest in working at Montgomery College! Montgomery College respects the privacy of candidates for employment. When you use this..."', DATE '2026-11-08'),
   ('mchapusa', 'Marketplace Chaplains', ARRAY['https://mchapusa.wd5.myworkdayjobs.com/MCHAP_External'], 'og:description: "Marketplace Chaplains is the largest and longest continuing provider of workplace chaplains to corporate..."', DATE '2026-11-08'),
   ('mechanicsbank', 'Mechanics Bank', ARRAY['https://mechanicsbank.wd5.myworkdayjobs.com/MechanicsBank'], 'og:description: "About Mechanics Bank Backed by exceptional capital strength and substantial assets, we are a resilient and..."', DATE '2026-11-08'),
@@ -956,7 +958,6 @@ SELECT v.slug, v.display_name, v.evidence, v.quote, v.read_on
   ('svha~wd3~SVHA_SVHA', 'St Vincent''s Health Australia', ARRAY['https://svha.wd3.myworkdayjobs.com/SVHA_SVHA'], 'og:description: "...users can click Create Account from the Sign-in screen. St Vincent''s Health Australia has been serving Australians with compassionate health and aged care since our first..."', DATE '2026-11-08'),
   ('svha~wd3~broadbean_external', 'St Vincent''s Health Australia', ARRAY['https://svha.wd3.myworkdayjobs.com/broadbean_external'], 'og:description: "...users can click Create Account from the Sign-in screen. St Vincent''s Health Australia has been serving Australians with compassionate health and aged care since our first..."', DATE '2026-11-08'),
   ('svha~wd3~svha_svphm', 'St Vincent''s Private Melbourne', ARRAY['https://svha.wd3.myworkdayjobs.com/svha_svphm'], 'og:description: "St Vincent''s Private Melbourne is a facility of St Vincent''s Health Australia under the stewardship of Mary Aikenhead..."', DATE '2026-11-08'),
-  ('synchronyfinancial', 'Synchrony', ARRAY['https://synchronyfinancial.wd5.myworkdayjobs.com/university'], 'og:description: "Synchrony is a premier consumer financial services company delivering customized financing programs..."', DATE '2026-11-08'),
   ('taskus', 'TaskUs', ARRAY['https://taskus.wd1.myworkdayjobs.com/Careers'], 'og:title: "TaskUs Careers"', DATE '2026-11-08'),
   ('taylormorrison', 'Taylor Morrison', ARRAY['https://taylormorrison.wd1.myworkdayjobs.com/TaylorMorrisonCareers'], 'og:description: "Welcome to the Taylor Morrison, Inc. Career Portal In order to be the best in the industry, you have to surround..."', DATE '2026-11-08'),
   ('tcsedsystem~wd1~KHSC', 'Kansas Health Science University', ARRAY['https://tcsedsystem.wd1.myworkdayjobs.com/KHSC'], 'og:title: "Kansas Health Science University Careers"', DATE '2026-11-08'),
@@ -992,7 +993,6 @@ SELECT v.slug, v.display_name, v.evidence, v.quote, v.read_on
   ('uva', 'University of Virginia', ARRAY['https://uva.wd1.myworkdayjobs.com/UVAStudentJobs'], 'og:description: "In 1819, Thomas Jefferson founded the University of Virginia and inaugurated a bold experiment. Two centuries later, Jefferson''s vision thrives...."', DATE '2026-11-08'),
   ('veitusa', 'Veit', ARRAY['https://veitusa.wd503.myworkdayjobs.com/Veit'], 'og:description: "Veit is one of the country''s leading specialty contractors, with nearly a century of..."', DATE '2026-11-08'),
   ('veoliauki', 'Veolia', ARRAY['https://veoliauki.wd3.myworkdayjobs.com/VESCareers'], 'og:description: "Ready to see the world as we do? Who is Veolia? Where other people see waste, our community here at Veolia see opportunity. We''re..."', DATE '2026-11-08'),
-  ('vertexinc', 'Vertex', ARRAY['https://vertexinc.wd1.myworkdayjobs.com/VertexInc'], 'og:description: "...news, and events tailored to your career interests. Vertex is an Affirmative Action and Equal Opportunity Employer. All qualified applicants will..."', DATE '2026-11-08'),
   ('vst', 'Vistra', ARRAY['https://vst.wd5.myworkdayjobs.com/vistra_careers'], 'og:description: "Vistra (NYSE: VST) is a leading Fortune 500 integrated retail electricity and power generation..."', DATE '2026-11-08'),
   ('vwr', 'Avantor', ARRAY['https://vwr.wd1.myworkdayjobs.com/avantorjobs'], 'og:title: "Careers at Avantor"', DATE '2026-11-08'),
   ('walshgroup', 'Walsh Group', ARRAY['https://walshgroup.wd12.myworkdayjobs.com/walshgroup'], 'og:title: "The Walsh Group"', DATE '2026-11-08'),
@@ -1035,15 +1035,16 @@ BEGIN
 END $$;
 
 -- SELF-CHECK. Raises, and so undoes every statement above, unless:
---   1. each of the 417 keys has its override, and each override this run
+--   1. each of the 414 keys has its override, and each override this run
 --      wrote has its evidence row naming the same employer, read on
 --      2026-11-08 (no row may rest on a later read), with an https link and
 --      the words read; a key the table already held keeps its own name and
 --      is only reported;
 --   2. none of the re-check's twelve wrong names stands on its key, and no
 --      key it left out (gi, warnerbros, travelhrportal, vcuhealth, hss, gcu's
---      GCU board) and none of the 14 keys robots.txt reaches was
---      written here;
+--      GCU board) and none of the 17 keys robots.txt reaches was written
+--      here: the 14 whose name was read on a disallowed page and the 3
+--      whose board's own site path is disallowed (mbda, synchronyfinancial, vertexinc);
 --   3. no tenant of several employers took a tenant key in this run;
 --   4. the table holds at most 1,000 rows, all the lane's one read returns;
 --   5. no client role holds a privilege on the evidence, row level security
@@ -1098,7 +1099,7 @@ DECLARE
     'leecompany', 'lendingclub', 'lfb', 'lifefitness', 'livanova', 'llbean', 'loewshotels',
     'loganhealth', 'lplfinancial', 'luriechildrens', 'madrigalpharma', 'mainegeneral', 'manh',
     'marathonhealth', 'maryfreebed', 'marywashingtonhealthcare', 'mattressfirm', 'maxar~wd1~Vantor',
-    'mbda', 'mc', 'mchapusa', 'mechanicsbank', 'medimpact', 'merceruniversity~wd1~external',
+    'mc', 'mchapusa', 'mechanicsbank', 'medimpact', 'merceruniversity~wd1~external',
     'merceruniversity~wd1~student', 'methodisthealthsystem', 'mfs', 'miamioh', 'michelinhr',
     'minnstate', 'missionaustralia', 'modernatx', 'monolithicpower', 'morganlewis', 'msiexpress',
     'msssecurity', 'msudenver', 'mwaa', 'myhana', 'myhrhome', 'nationalchurchresidences',
@@ -1121,14 +1122,14 @@ DECLARE
     'sierraspace', 'silgancontainers', 'silvercross', 'simmonsbank', 'skbs', 'slc', 'smithnephew',
     'snapchat', 'snc', 'sonyglobal', 'soterahealth', 'spinmaster', 'starrcompanies', 'stjude',
     'storaenso', 'stormontvail', 'sumitomopharma', 'svb', 'svha~wd3~SVHA_SVHA',
-    'svha~wd3~broadbean_external', 'svha~wd3~svha_svphm', 'synchronyfinancial', 'taskus',
-    'taylormorrison', 'tcsedsystem~wd1~KHSC', 'tcsedsystem~wd1~TCSES', 'tcsedsystem~wd1~TCSPP',
-    'tcsedsystem~wd1~UWS', 'texascapitalbank', 'theapexgroup', 'theirc', 'thejacksonlaboratory',
+    'svha~wd3~broadbean_external', 'svha~wd3~svha_svphm', 'taskus', 'taylormorrison',
+    'tcsedsystem~wd1~KHSC', 'tcsedsystem~wd1~TCSES', 'tcsedsystem~wd1~TCSPP', 'tcsedsystem~wd1~UWS',
+    'texascapitalbank', 'theapexgroup', 'theirc', 'thejacksonlaboratory',
     'thgrp~wd12~TheHeritageGroup', 'thgrp~wd12~monumentchemical', 'tiaa', 'tigerbrands',
     'tihinsurance', 'towerloan', 'transformingage', 'transunion', 'tscfl', 'tucsonaz', 'ukib',
     'umb', 'umphysicians', 'unimelb', 'uofl', 'upenn~wd1~PSOM', 'upenn~wd1~careers-at-penn', 'upm',
-    'uq', 'usaa', 'usyd', 'utaustin', 'uva', 'veitusa', 'veoliauki', 'vertexinc', 'vst', 'vwr',
-    'walshgroup', 'wasatchproperty~wd1~BlendtecCareers', 'wasatchproperty~wd1~MarketStarCareers',
+    'uq', 'usaa', 'usyd', 'utaustin', 'uva', 'veitusa', 'veoliauki', 'vst', 'vwr', 'walshgroup',
+    'wasatchproperty~wd1~BlendtecCareers', 'wasatchproperty~wd1~MarketStarCareers',
     'wasatchproperty~wd1~PDK', 'wasatchproperty~wd1~marketstarcareersemea',
     'wasatchproperty~wd1~marketstarcareersnamer', 'waynefarms', 'wellsky',
     'westernalliancebank~wd5~AMH', 'westernalliancebank~wd5~WAB', 'wework', 'wexinc', 'wgu',
@@ -1143,14 +1144,14 @@ DECLARE
   v_n int;
   v_left text;
 BEGIN
-  IF cardinality(v_slugs) <> 417 OR (SELECT count(DISTINCT s) FROM unnest(v_slugs) s) <> 417 THEN
-    RAISE EXCEPTION 'self-check 20261111150000: the key list holds % keys, not 417 distinct ones', cardinality(v_slugs);
+  IF cardinality(v_slugs) <> 414 OR (SELECT count(DISTINCT s) FROM unnest(v_slugs) s) <> 414 THEN
+    RAISE EXCEPTION 'self-check 20261111150000: the key list holds % keys, not 414 distinct ones', cardinality(v_slugs);
   END IF;
   SELECT array_agg(s ORDER BY s) INTO v_missing
     FROM unnest(v_slugs) AS s
    WHERE NOT EXISTS (SELECT 1 FROM public.company_name_overrides o WHERE o.slug = s);
   IF v_missing IS NOT NULL THEN
-    RAISE EXCEPTION 'self-check 20261111150000: % of the 417 keys have no override (first: %)', cardinality(v_missing), array_to_string(v_missing[1:3], ', ');
+    RAISE EXCEPTION 'self-check 20261111150000: % of the 414 keys have no override (first: %)', cardinality(v_missing), array_to_string(v_missing[1:3], ', ');
   END IF;
   -- An override this run wrote carries this transaction's added_at.
   SELECT array_agg(o.slug ORDER BY o.slug) INTO v_bad
@@ -1184,7 +1185,7 @@ BEGIN
   END IF;
   SELECT array_agg(o.slug ORDER BY o.slug) INTO v_bad
     FROM public.company_name_overrides o
-   WHERE o.added_at = now() AND (o.slug = ANY (v_multi) OR o.slug IN ('warnerbros', 'gi', 'travelhrportal', 'vcuhealth', 'hss', 'gcu~wd1~GCU', 'citicclsa', 'dallascollege', 'davispolk', 'eset', 'fimc', 'lumaenergy', 'massmutual', 'pepperlfuchs', 'rbs', 'rgare', 'sdguthrie~wd3~NBPOL', 'sdguthrie~wd3~SDGUTHRIEMINAMAS', 'situsamc', 'ucf~wd1~careers'));
+   WHERE o.added_at = now() AND (o.slug = ANY (v_multi) OR o.slug IN ('warnerbros', 'gi', 'travelhrportal', 'vcuhealth', 'hss', 'gcu~wd1~GCU', 'citicclsa', 'dallascollege', 'davispolk', 'eset', 'fimc', 'lumaenergy', 'massmutual', 'pepperlfuchs', 'rbs', 'rgare', 'sdguthrie~wd3~NBPOL', 'sdguthrie~wd3~SDGUTHRIEMINAMAS', 'situsamc', 'ucf~wd1~careers', 'mbda', 'synchronyfinancial', 'vertexinc'));
   IF v_bad IS NOT NULL THEN
     RAISE EXCEPTION 'self-check 20261111150000: this run wrote a key for a tenant it names board by board, or one it leaves out: %', array_to_string(v_bad, ', ');
   END IF;
@@ -1211,5 +1212,5 @@ BEGIN
   IF v_left IS NOT NULL THEN
     RAISE EXCEPTION 'self-check 20261111150000: job_board_meta still holds %, so job-board''s name-sync lane would not walk these boards', v_left;
   END IF;
-  RAISE NOTICE 'self-check 20261111150000: 417 keys present (% rows in the table); the name-sync lane renames their stored rows from the next pass-end', v_n;
+  RAISE NOTICE 'self-check 20261111150000: 414 keys present (% rows in the table); the name-sync lane renames their stored rows from the next pass-end', v_n;
 END $$;
