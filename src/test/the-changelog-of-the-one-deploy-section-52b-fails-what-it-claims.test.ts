@@ -67,6 +67,13 @@ const OURS = new Set(THIS_DEPLOY.map((e) => e.id));
 const ENTRIES = PENDING ? [...THIS_DEPLOY, ...TREE] : TREE;
 const EN: Record<string, Text> = PENDING ? { ...TREE_EN, ...Object.fromEntries(PENDING.entries.map((e) => [e.key, e.en])) } : TREE_EN;
 const PUBLISHED_DAY = PENDING ? DAY : THIS_DEPLOY[0].date;
+/**
+ * Where the seventeen start in ENTRIES: the page their publish served began
+ * there. Later batches sit above them in the tree (18 November's twelve pushed
+ * all seventeen past its newest 30), so a case that reads one of their titles
+ * or dates on the page builds the page their batch published.
+ */
+const BATCH_AT = PENDING ? 0 : THIS_AT;
 const TITLES = THIS_DEPLOY.map((e) => EN[e.id].title);
 
 const FAKE_CURL = `#!/usr/bin/env node
@@ -94,8 +101,9 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 const TAG = { new: "New", improved: "Improved", fixed: "Fixed" } as Record<string, string>;
 
 /** The crawler /changelog as the bake writes it (scripts/prerender-seo.mjs): its description and the newest 30 articles. */
-function changelogPage(over: { titles?: (t: string) => string | null; date?: string; first?: string } = {}): string {
-  const items = ENTRIES.slice(0, 30).map((e) => ({ ...e, title: OURS.has(e.id) && over.titles ? over.titles(EN[e.id].title) : EN[e.id]?.title, date: OURS.has(e.id) && over.date ? over.date : e.date }));
+function changelogPage(over: { titles?: (t: string) => string | null; date?: string; first?: string; from?: number } = {}): string {
+  const from = over.from ?? 0;
+  const items = ENTRIES.slice(from, from + 30).map((e) => ({ ...e, title: OURS.has(e.id) && over.titles ? over.titles(EN[e.id].title) : EN[e.id]?.title, date: OURS.has(e.id) && over.date ? over.date : e.date }));
   const shown = items.filter((e) => e.title);
   const first = over.first ?? `${shown[0].date}): ${shown[0].title}`;
   return `<html><head><meta name="description" content="What changed and when, newest first — including honest postmortems. Latest (${esc(first)}."></head><body><main><h1>Changelog</h1><div class="space-y-4">${shown
@@ -205,11 +213,11 @@ describe("the premise: the seventeen entries 52b names wait for the deploy, or f
 
 describe("section 52b on a healthy deploy, after the publish", () => {
   it("prints no FAIL, passes every title, the date, the description and each precondition, and only sends GET and OPTIONS", () => {
-    const { lines, calls } = run();
+    // The page this deploy's publish served: the seventeen on top.
+    const { lines, calls } = run({ changelog: changelogPage({ from: BATCH_AT }) });
     expect(fails(lines), show(lines)).toEqual([]);
     expect(has(lines, "PASS", /^the US English changelog chunk \(en-CHLG0001\.js\) carries this deploy's entries/), show(lines)).toBe(true);
-    // Newer batches (6 and 8 November) push the last of the seventeen past the newest 30 the page lists.
-    const listed = new Set(ENTRIES.slice(0, 30).map((e) => e.id));
+    const listed = new Set(ENTRIES.slice(BATCH_AT, BATCH_AT + 30).map((e) => e.id));
     expect(THIS_DEPLOY.some((e) => listed.has(e.id)), "none of the seventeen is left on the healthy page, so no title is read as served").toBe(true);
     for (const e of THIS_DEPLOY) {
       const t = EN[e.id].title, q = t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -227,6 +235,21 @@ describe("section 52b on a healthy deploy, after the publish", () => {
     for (const l of lines) expect(l, l).toMatch(/^(PASS|FAIL|INFO|==) /);
     expect(calls.some((c) => c.includes("en-GB-")), "the section read the British chunk").toBe(false);
     for (const c of calls) expect(c, c).toMatch(/^(GET|OPTIONS) /);
+  });
+
+  it("the tree's own newest 30 today, with later batches on top, prints no FAIL: each title passes as listed or as past the newest 30, and a date the page no longer lists is INFO", () => {
+    const { lines } = run();
+    expect(fails(lines), show(lines)).toEqual([]);
+    const listed = new Set(ENTRIES.slice(0, 30).map((e) => e.id));
+    for (const e of THIS_DEPLOY) {
+      const t = EN[e.id].title, q = t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const want = listed.has(e.id)
+        ? new RegExp(`^/changelog serves crawlers "${q}"$`)
+        : new RegExp(`^"${q}" is past the newest 30 entries the crawler page lists, and the US English changelog strings carry it$`);
+      expect(has(lines, "PASS", want), `${t}${show(lines)}`).toBe(true);
+    }
+    if (!listed.has(THIS_DEPLOY[0].id)) expect(has(lines, "INFO", /^"The home page is now the job search" is past the newest 30 entries the crawler page lists, so its date cannot be read there$/), show(lines)).toBe(true);
+    expect(has(lines, "PASS", /^\/changelog's description names the newest entry/), show(lines)).toBe(true);
   });
 });
 
@@ -315,31 +338,32 @@ describe("each claim can FAIL after the publish", () => {
   });
 
   it("a title the crawler page lost (the prerender did not rebuild), and a title dropped from both", () => {
-    // The page can lose only a title it still lists: newer batches (17 November's
-    // six) pushed all but the first few of the seventeen past its newest 30.
-    const listed = new Set(ENTRIES.slice(0, 30).map((e) => e.id));
+    // The page can lose only a title it still lists: newer batches pushed all
+    // seventeen past the tree's newest 30, so this is the page their publish served.
+    const listed = new Set(ENTRIES.slice(BATCH_AT, BATCH_AT + 30).map((e) => e.id));
     const onPage = TITLES[THIS_DEPLOY.map((e) => listed.has(e.id)).lastIndexOf(true)];
     expect(onPage, "none of the seventeen is left on the page to lose").toBeTruthy();
-    const lost = run({ changelog: changelogPage({ titles: (t) => (t === onPage ? null : t) }) }).lines;
+    const lost = run({ changelog: changelogPage({ from: BATCH_AT, titles: (t) => (t === onPage ? null : t) }) }).lines;
     expect(has(lost, "FAIL", new RegExp(`carry "${onPage.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}", but the crawler copy of /changelog does not`)), show(lost)).toBe(true);
     const dropped = Object.fromEntries(Object.entries(EN).filter(([k]) => k !== THIS_DEPLOY[8].id));
-    const gone = run({ chunk: chunkOf(dropped), changelog: changelogPage({ titles: (t) => (t === TITLES[8] ? null : t) }) }).lines;
+    const gone = run({ chunk: chunkOf(dropped), changelog: changelogPage({ from: BATCH_AT, titles: (t) => (t === TITLES[8] ? null : t) }) }).lines;
     expect(has(gone, "FAIL", new RegExp(`neither /changelog nor the US English changelog strings carry "${TITLES[8]}"`)), show(gone)).toBe(true);
   });
 
   it("the placeholder date, a date before land/all's last change, a date after the record, no record, and a description naming another entry", () => {
-    const ph = run({ changelog: changelogPage({ date: "DATE_OF_DEPLOY" }) }).lines;
+    // Each read on the page this deploy's publish served, where its dates are listed.
+    const ph = run({ changelog: changelogPage({ from: BATCH_AT, date: "DATE_OF_DEPLOY" }) }).lines;
     expect(has(ph, "FAIL", /^\/changelog prints the placeholder DATE_OF_DEPLOY/), show(ph)).toBe(true);
-    const early = run({ changelog: changelogPage({ date: "2026-10-30" }), recorded: "2026-11-02" }).lines;
+    const early = run({ changelog: changelogPage({ from: BATCH_AT, date: "2026-10-30" }), recorded: "2026-11-02" }).lines;
     expect(has(early, "FAIL", /^\/changelog dates this deploy's entries 2026-10-30, before land\/all's last change \(2026-10-31\)/), show(early)).toBe(true);
     // The finding: entries dated 2026-10-31 on a deploy that went live later passed.
-    const late = run({ changelog: changelogPage({ date: "2026-11-05" }), recorded: "2026-11-02" }).lines;
+    const late = run({ changelog: changelogPage({ from: BATCH_AT, date: "2026-11-05" }), recorded: "2026-11-02" }).lines;
     expect(has(late, "FAIL", /^\/changelog dates this deploy's entries 2026-11-05, after the deploy was recorded \(2026-11-02\)/), show(late)).toBe(true);
-    const unrecorded = run({ recorded: null }).lines;
+    const unrecorded = run({ changelog: changelogPage({ from: BATCH_AT }), recorded: null }).lines;
     expect(has(unrecorded, "FAIL", /verifiedDeploys records no deploy serving job-board 2026-09-09\.96 or later: the entries went out before the deploy was verified and recorded$/), show(unrecorded)).toBe(true);
-    const sameDayAsLanding = run({ changelog: changelogPage({ date: "2026-10-31" }), recorded: "2026-11-02" }).lines;
+    const sameDayAsLanding = run({ changelog: changelogPage({ from: BATCH_AT, date: "2026-10-31" }), recorded: "2026-11-02" }).lines;
     expect(has(sameDayAsLanding, "PASS", /^\/changelog dates this deploy's entries 2026-10-31 \(the deploy was recorded 2026-11-02\)$/), show(sameDayAsLanding)).toBe(true);
-    const other = run({ changelog: changelogPage({ first: `${PUBLISHED_DAY}): Jobs filed in the wrong country` }) }).lines;
+    const other = run({ changelog: changelogPage({ from: BATCH_AT, first: `${PUBLISHED_DAY}): Jobs filed in the wrong country` }) }).lines;
     expect(has(other, "FAIL", /^\/changelog's description names "Jobs filed in the wrong country" as the newest entry, but the first entry the page lists is "/), show(other)).toBe(true);
     expect(has(other, "PASS", /^\/changelog's description names the newest entry/), show(other)).toBe(false);
   });
