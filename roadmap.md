@@ -7,5 +7,5 @@
 - [ ] Deploy 64 listed functions and verify every OPTIONS x-fn-build, blocked by remaining pre-deploy migrations; none deployed this turn.
 - [ ] Apply four gated migrations in order after required build verification, blocked by function deployment.
 - [ ] Verify live frontend commit; publish only if the requested commit is not already served, blocked by preceding steps; no publish this turn.
-- [x] Resolve existing preview test typing error; six Unicode upload tests and four account-erasure tests passed, latest preview build OK. Read-back confirms retention and grants readers, grant expiry and narrowed saved-search access; refused migration's give_back_scan_day function is absent.
+- [x] Previous-turn preview test typing fix retained; current preview build OK. The previously refused give_back_scan_day function now exists, confirmed by live read-back this turn.
 - [x] Never-apply files excluded; preserve migration files and function sources.
