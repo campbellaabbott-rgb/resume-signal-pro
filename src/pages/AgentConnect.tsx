@@ -22,9 +22,9 @@
 // this page, the prerender and the install repo render one list. Nothing
 // above the fold names a key, a header, a transport or an HTTP status.
 //
-// ADD TO CLAUDE is a button behind MCP_ADD_TO_CLAUDE_LIVE (off until the
-// owner's check of the documented install link). While it is off the Claude
-// panel carries the manual steps; once on, the one-click steps lead and the
+// ADD TO CLAUDE is a button behind MCP_ADD_TO_CLAUDE_LIVE (on since the
+// owner's check of the documented install link, HO-1). While it is off the
+// Claude panel carries the manual steps; on, the one-click steps lead and the
 // manual ones sit collapsed beneath them. The flag is read here and handed to
 // the builders as `addToClaude`, so a surface that hands nothing in (the
 // prerender) keeps the manual steps that work either way.

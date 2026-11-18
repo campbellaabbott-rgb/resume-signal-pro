@@ -40,7 +40,7 @@ vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: null, session
 import { HostPanel } from "../pages/AgentConnect";
 import { ApplyYourself } from "../components/agents/ApplyYourself";
 import {
-  MCP_ADD_TO_CLAUDE_LIVE, MCP_ANON_CAPS, MCP_CLAUDE_HELP_URL, MCP_CLAUDE_STEPS_CHECKED, MCP_CONNECTOR_NAME, MCP_FORMS_ALLOWANCE,
+  MCP_ADD_TO_CLAUDE_LIVE, MCP_CLAUDE_AUTH_CHOICE, MCP_ANON_CAPS, MCP_CLAUDE_HELP_URL, MCP_CLAUDE_STEPS_CHECKED, MCP_CONNECTOR_NAME, MCP_FORMS_ALLOWANCE,
   MCP_HOSTS, MCP_MORE_HOSTS, MCP_STEPS_CHECKED, MCP_TROUBLESHOOTING, SIGN_IN_UNKNOWN, type McpHost,
 } from "../config/mcp-tools";
 
@@ -82,9 +82,9 @@ describe("Claude Code says a connector added in Claude is already there (PLT-110
   });
 });
 
-describe("Claude's steps use the dialog's own labels and keep the detected setting (CJ-02 copy)", () => {
+describe("Claude's steps use the dialog's own labels and name the recorded choice (CJ-02 copy, HO-1)", () => {
   const claude = host("claude");
-  it("the manual route walks + Add, Add custom connector, the name, the URL, Continue, the detected settings, Continue, Add", () => {
+  it("the manual route walks + Add, Add custom connector, the name, the URL, Continue, the recorded choice, Continue, Add", () => {
     const texts = claude.steps({ url: URL }).map((s) => s.text);
     expect(texts.slice(0, 7)).toEqual([
       "In Claude, open **Customize**, then **Connectors**.",
@@ -92,23 +92,26 @@ describe("Claude's steps use the dialog's own labels and keep the detected setti
       "Enter the name:",
       expect.stringMatching(/server URL field/),
       "Click **Continue**.",
-      "Claude shows the authentication settings it detected. Keep them as they are and click **Continue**.",
+      `Under authentication, choose **${MCP_CLAUDE_AUTH_CHOICE}** and click **Continue**.`,
       "Click **Add**.",
     ]);
   });
-  it("no route tells anyone to override what Claude detects, or says two things about it", () => {
+  it("every route names the one recorded choice and says nothing else about it", () => {
+    const other = MCP_CLAUDE_AUTH_CHOICE === "Sign in when needed" ? "No sign in" : "Sign in when needed";
     for (const on of [false, true]) {
       const w = words(claude, on);
-      expect(w).not.toMatch(/Sign in when needed|Register automatically|leave them|Do not choose \*\*No sign-in\*\*/);
-      expect(w).toMatch(/Keep them as they are/);
+      expect(w).toContain(`**${MCP_CLAUDE_AUTH_CHOICE}**`);
+      expect(w).not.toContain(other);
+      expect(w).not.toMatch(/Register automatically|leave them|Keep them as they are|settings it detected/);
     }
-    expect(claude.how).not.toMatch(/Sign in when needed/);
+    expect(claude.how).toContain(MCP_CLAUDE_AUTH_CHOICE);
+    expect(claude.how).not.toContain(other);
   });
-  it("the labels are dated by the help article they are read from; the owner's flag and date stay as they were", () => {
+  it("the labels are dated by the help article they are read from; the flag is on, and the dates wait for the owner's recorded check", () => {
     expect(claude.docs[0]).toBe(MCP_CLAUDE_HELP_URL);
     expect(claude.checked).toBe(MCP_CLAUDE_STEPS_CHECKED);
     expect(MCP_CLAUDE_STEPS_CHECKED).toBe("2026-11-08");
-    expect(MCP_ADD_TO_CLAUDE_LIVE).toBe(false);
+    expect(MCP_ADD_TO_CLAUDE_LIVE).toBe(true);
     expect(MCP_STEPS_CHECKED).toBe("2026-10-11");
   });
 });
