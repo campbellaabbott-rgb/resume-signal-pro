@@ -4482,6 +4482,7 @@ export type Database = {
           product_id: string
           product_name: string | null
           product_type: string | null
+          redeem_until: string | null
           resume_session_id: string | null
           revoked_at: string | null
           target_roles: string | null
@@ -4499,6 +4500,7 @@ export type Database = {
           product_id: string
           product_name?: string | null
           product_type?: string | null
+          redeem_until?: string | null
           resume_session_id?: string | null
           revoked_at?: string | null
           target_roles?: string | null
@@ -4516,6 +4518,7 @@ export type Database = {
           product_id?: string
           product_name?: string | null
           product_type?: string | null
+          redeem_until?: string | null
           resume_session_id?: string | null
           revoked_at?: string | null
           target_roles?: string | null
@@ -4577,6 +4580,10 @@ export type Database = {
           max_retries: number
           metadata: Json | null
           next_retry_at: string | null
+          notice_given_up: string | null
+          notice_owed: string | null
+          notice_tried_at: string | null
+          notice_tries: number
           payment_completed_at: string | null
           product_name: string | null
           product_type: string
@@ -4608,6 +4615,10 @@ export type Database = {
           max_retries?: number
           metadata?: Json | null
           next_retry_at?: string | null
+          notice_given_up?: string | null
+          notice_owed?: string | null
+          notice_tried_at?: string | null
+          notice_tries?: number
           payment_completed_at?: string | null
           product_name?: string | null
           product_type: string
@@ -4639,6 +4650,10 @@ export type Database = {
           max_retries?: number
           metadata?: Json | null
           next_retry_at?: string | null
+          notice_given_up?: string | null
+          notice_owed?: string | null
+          notice_tried_at?: string | null
+          notice_tries?: number
           payment_completed_at?: string | null
           product_name?: string | null
           product_type?: string
@@ -5651,6 +5666,7 @@ export type Database = {
     }
     Functions: {
       _mig_exec: { Args: { p_sql: string }; Returns: undefined }
+      ab_purchase_known: { Args: { p_session_id: string }; Returns: boolean }
       account_erase_personal_data: {
         Args: { p_email: string; p_email_proven: boolean; p_user_id: string }
         Returns: Json
@@ -7718,8 +7734,9 @@ export type Database = {
         }
         Returns: boolean
       }
+      mail_lists_prune: { Args: { p_now?: string }; Returns: Json }
       market_pulse_claim_batch: {
-        Args: { p_limit: number }
+        Args: { p_limit: number; p_now?: string }
         Returns: {
           cl_confirmed_at: string
           cl_email: string
@@ -8248,6 +8265,19 @@ export type Database = {
           p_stripe_session_id: string
         }
         Returns: string
+      }
+      take_delivery_lease_status: {
+        Args: {
+          p_email?: string
+          p_minutes?: number
+          p_product_type?: string
+          p_seen_status: string
+          p_stripe_session_id: string
+        }
+        Returns: {
+          refusal: string
+          token: string
+        }[]
       }
       take_writing_tools: {
         Args: {

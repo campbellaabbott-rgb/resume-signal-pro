@@ -1730,6 +1730,83 @@
       "when": 1794962535322,
       "tag": "0246_a_table_only_the_server_reads_answers_only_the_server",
       "breakpoints": true
+    },
+    {
+      "idx": 247,
+      "version": "7",
+      "when": 1794962585604,
+      "tag": "0247_the_weekly_tips_addresses_are_deleted_and_none_is_kept_again",
+      "breakpoints": true
+    },
+    {
+      "idx": 248,
+      "version": "7",
+      "when": 1794962621826,
+      "tag": "0248_a_pro_grant_keeps_the_month_that_paid_for_it",
+      "breakpoints": true
+    },
+    {
+      "idx": 249,
+      "version": "7",
+      "when": 1794962652439,
+      "tag": "0249_an_unopened_pro_grant_stops_counting_against_the_days_ten_after_an_hour",
+      "breakpoints": true
+    },
+    {
+      "idx": 250,
+      "version": "7",
+      "when": 1794962682896,
+      "tag": "0250_a_spent_orders_refused_notice_is_owed_until_it_is_sent",
+      "breakpoints": true
+    },
+    {
+      "idx": 251,
+      "version": "7",
+      "when": 1794962736023,
+      "tag": "0251_a_returning_buyers_second_purchase_is_its_own_row",
+      "breakpoints": true
+    },
+    {
+      "idx": 252,
+      "version": "7",
+      "when": 1794962771527,
+      "tag": "0252_a_spent_pro_grant_lives_as_long_as_its_saved_copy",
+      "breakpoints": true
+    },
+    {
+      "idx": 253,
+      "version": "7",
+      "when": 1794962799509,
+      "tag": "0253_a_refused_delivery_lease_says_why",
+      "breakpoints": true
+    },
+    {
+      "idx": 254,
+      "version": "7",
+      "when": 1794962837377,
+      "tag": "0254_a_run_out_pass_closes_and_gives_back_what_it_never_sent",
+      "breakpoints": true
+    },
+    {
+      "idx": 255,
+      "version": "7",
+      "when": 1794962897270,
+      "tag": "0255_a_mailing_list_forgets_what_it_no_longer_needs_and_mails_once_a_month",
+      "breakpoints": true
+    },
+    {
+      "idx": 256,
+      "version": "7",
+      "when": 1794962936143,
+      "tag": "0256_an_account_cannot_set_the_clock_that_throttles_its_agent_kick",
+      "breakpoints": true
+    },
+    {
+      "idx": 257,
+      "version": "7",
+      "when": 1794962956408,
+      "tag": "0257_an_account_writes_only_the_fields_of_its_saved_search_it_chose",
+      "breakpoints": true
     }
   ]
 }

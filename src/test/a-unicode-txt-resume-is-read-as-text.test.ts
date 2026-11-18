@@ -31,7 +31,7 @@ function utf16(text: string, bigEndian: boolean): Uint8Array {
   }
   return out;
 }
-const file = (bytes: Uint8Array | string, name = "resume.txt") => new File([bytes], name, { type: "text/plain" });
+const file = (bytes: Uint8Array | string, name = "resume.txt") => new File([typeof bytes === "string" ? bytes : new Uint8Array(bytes)], name, { type: "text/plain" });
 
 describe("readTextFile", () => {
   it("reads UTF-16 little-endian and big-endian files by their mark", async () => {
