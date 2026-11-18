@@ -26,6 +26,14 @@
  *     employer name is the posting's are kept; if the reply held anyone
  *     else's row, the "see every open role" link is left out too (the token's
  *     page is not one employer's), and with no row left the section goes.
+ *
+ * A CARD LINKS A POSTING PAGE ONLY WHERE THE BAKE WROTE ONE (CRAWL-M1). The
+ * four rows are almost never among the ~500 postings the bake writes, and an
+ * unwritten posting address serves the fallback file and then renders a
+ * self-canonical page with job markup the bake never checked. So a card links
+ * its posting page only when /posting-pages.json names it live
+ * (src/lib/seo/posting-manifest.ts); otherwise, and until that file has
+ * loaded, it links the employer's page, as the "see every open role" link does.
  */
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -33,6 +41,7 @@ import { useTranslation } from "react-i18next";
 import { boardBudgetRefusal, markBoardBudgetRefused, readBoardBudgetRefusal } from "@/lib/board-budget";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
+import { useBakedPostingPath } from "@/lib/seo/posting-manifest";
 import { postingPagePath } from "@/components/jobs/posting-page";
 import { moreRolesAllowed, sameEmployerRows } from "@/lib/listing/more-roles";
 import type { ListingJob } from "@/lib/listing/types";
@@ -52,6 +61,8 @@ export function MoreRolesAtEmployer({ token, employer, excludeId, source = null 
   // SEO-010: an employer link goes to its written company page, or to the
   // live board filtered to the board when the bake wrote none.
   const companyHref = useCompanyBoardHref();
+  // CRAWL-M1: a card's posting page only when the bake wrote it and it is live.
+  const bakedPath = useBakedPostingPath();
   const ref = useRef<HTMLElement | null>(null);
   const [rows, setRows] = useState<ListingJob[] | null>(null);
   const [mixed, setMixed] = useState(false);
@@ -114,7 +125,7 @@ export function MoreRolesAtEmployer({ token, employer, excludeId, source = null 
             <JobCard
               key={job.id}
               job={job}
-              href={postingPagePath(job.id) ?? companyHref(token)}
+              href={bakedPath(postingPagePath(job.id)) ?? companyHref(token)}
               ctx={{ surface: "posting", density: "compact", hideEmployer: true, selected: false }}
             />
           ))}
