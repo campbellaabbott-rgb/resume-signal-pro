@@ -88,6 +88,9 @@ describe("text typed into the baked homepage search", () => {
     const container = bakedHome();
     typeInto("home-location", "Leeds", false);
     typeInto("home-q", "nurse");
+    // The caret mid-word: at the end is where the browser leaves it anyway,
+    // so only a caret elsewhere shows the restore ran.
+    (document.getElementById("home-q") as HTMLInputElement).setSelectionRange(2, 2);
     const mount = mountBesidePrerendered(document, container);
     root = createRoot(mount);
     root.render(hero());
@@ -97,7 +100,7 @@ describe("text typed into the baked homepage search", () => {
     expect(q.value).toBe("nurse");
     expect(reactField(mount, "home-location").value).toBe("Leeds");
     expect(document.activeElement).toBe(q);
-    expect([q.selectionStart, q.selectionEnd]).toEqual([5, 5]);
+    expect([q.selectionStart, q.selectionEnd]).toEqual([2, 2]);
   });
 
   it("is kept when the baked form left with an earlier commit, and the focus comes back while nothing else took it", async () => {

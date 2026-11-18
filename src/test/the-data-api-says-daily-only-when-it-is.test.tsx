@@ -154,6 +154,9 @@ describe("the Ghost Job Index", () => {
     ghost();
     await waitFor(() => expect(body()).toContain("The re-check is scheduled daily. Each run draws ~100 served postings"));
     expect(body()).not.toMatch(/Every day we draw/);
+    expect(body()).toContain("The latest self-audit could not be loaded");
+    expect(body()).toContain("The accuracy check is scheduled daily, but we could not read its latest result");
+    expect(body()).not.toMatch(/Today's self-audit|daily accuracy check runs/);
     expect(auditCadence(null)).toEqual({ kind: "unknown" });
   });
 

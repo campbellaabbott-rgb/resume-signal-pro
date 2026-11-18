@@ -1224,10 +1224,10 @@ export default function GhostJobIndex() {
         {!audit && auditUnavailable && (
           <div className="rounded-2xl border border-border bg-muted/20 p-5 mb-8">
             <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">
-              <ShieldCheck className="w-4 h-4 text-muted-foreground" /> Today's self-audit could not be loaded
+              <ShieldCheck className="w-4 h-4 text-muted-foreground" /> The latest self-audit could not be loaded
             </h2>
             <p className="text-sm text-muted-foreground">
-              The daily accuracy check runs regardless, but we could not read its result to show you just now.
+              The accuracy check is scheduled daily, but we could not read its latest result to show you just now.
               We would rather say that than print a number we have not verified — so this space stays empty
               until the real one is available.
             </p>
