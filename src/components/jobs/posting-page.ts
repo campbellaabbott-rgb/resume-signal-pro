@@ -442,6 +442,76 @@ export const postingText = (s: string | null | undefined): string => decodeNameE
  */
 export const postingTitleText = (s: string | null | undefined): string => titleFromCapitals(postingText(s));
 
+/** A separator between the parts of a title: a dash or a bar, spaced, or a dash before a number. */
+const TITLE_SEP_RE = String.raw`\s+[-–—|]\s+`;
+/** Pay as a whole: "$23 per hour", "$17.00", "$15.50/hr", "£12-£14 an hour". */
+const TITLE_PAY = String.raw`(?:up to |from |starting at )?[$£€]\s?\d[\d,]*(?:\.\d{1,2})?(?:\s?(?:-|–|to)\s?[$£€]?\s?\d[\d,]*(?:\.\d{1,2})?)?(?:\s?(?:\/\s?(?:hr|hour|h|yr|year)|per hour|an hour|hourly|per year|a year))?\+?`;
+/** A street address as a whole: a number, at most five words, and a street word. */
+const TITLE_STREET = String.raw`\d+[A-Za-z]?\s+(?:[\w.'-]+\s+){0,5}?(?:Street|St|Avenue|Ave|Road|Rd|Highway|Hwy|Boulevard|Blvd|Drive|Dr|Lane|Ln|Parkway|Pkwy|Way|Court|Ct|Place|Pl|Pike|Circle|Cir|Trail|Route|Rte)\.?(?:\s+\d+)?(?:\s+(?:N|S|E|W|NE|NW|SE|SW)\.?)?(?:,?\s+(?:Suite|Ste|Unit)\.?\s*[\w-]+)?`;
+const reEscape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * THE JOB TITLE THE MARKUP NAMES: the job and nothing else (SEO audit
+ * 2026-11-18, STRUCTURED-5). Google's JobPosting title guidance asks for no
+ * job codes, addresses, dates, salaries or company names in the title, and
+ * 20 of the 492 served titles carried one: Domino's store codes and streets
+ * ("General Manager (05867) - 602 11th Avenue NW"), pay ("$15.50/hr ... -
+ * Regal King of Prussia", "- $23 per hour"), a ZIP ("Seasonal Sales
+ * Associate-106 Marlton, NJ 08053"), the employer's name after a separator
+ * (" - Johnson & Johnson MedTech, Orthopaedics") and the row's own
+ * requisition key ("(N134928)"). Each is taken off the title the markup
+ * names, and only there: the page's heading and <title> keep the employer's
+ * words, which contain it. Only a whole part goes: a store code in brackets
+ * (a year never), pay that is the whole part, a street or a town with a
+ * state and a ZIP that is the last part, a part that opens with the
+ * employer's own name and runs to the end (balanced brackets inside it), and
+ * the requisition key the posting's own address carries. A company name
+ * inside the job's own words ("Prodejní Asistent v Prodejně JYSK Olomouc",
+ * "Becas Alcoa") is left, since no part can go without taking words of the
+ * job with it. A title the rules would empty keeps its own text. Measured on
+ * the 492 served titles (src/test/fixtures/served-postings-2026-11-18.json.gz):
+ * it changes the 18 read by hand and no other.
+ */
+export function postingMarkupTitle(job: Pick<PostingRow, "id" | "title" | "company">): string {
+  const own = postingTitleText(job.title);
+  let t = own;
+  // The row's own requisition key, in brackets or as a whole word.
+  const key = postingPathParts(job.id)?.key ?? "";
+  if (key.length >= 4 && !/^\d{1,4}$/.test(key)) {
+    t = t.replace(new RegExp(String.raw`\s*[([]\s*${reEscape(key)}\s*[)\]]|(?<![\w-])${reEscape(key)}(?![\w-])`, "g"), "");
+  }
+  // A store code in brackets, and a street address after it.
+  t = t.replace(new RegExp(String.raw`\s*\((?!(?:19|20)\d{2}\))\d{4,5}\)(?:\s*(?:[-–—]\s*)?${TITLE_STREET})?(?=$|\s)`, "g"), "");
+  // The employer's own name opening a part, to the end.
+  const names = [...new Set([postingText(job.company), postingEmployer(job as PostingRow) ?? ""].filter((n) => n.length >= 2))];
+  for (const n of names) {
+    t = t.replace(new RegExp(String.raw`${TITLE_SEP_RE}${reEscape(n)}(?![\w&])(?:[^()]|\([^()]*\))*$`, "i"), "");
+  }
+  // Pay: a leading figure, or a part that is only pay.
+  t = t.replace(new RegExp(String.raw`^${TITLE_PAY}\s+(?=\p{L})`, "iu"), "");
+  t = t.replace(new RegExp(String.raw`${TITLE_SEP_RE}${TITLE_PAY}(?=${TITLE_SEP_RE}|$)`, "gi"), "");
+  // A last part that is a street, or a town with a state and a ZIP.
+  t = t.replace(new RegExp(String.raw`${TITLE_SEP_RE}${TITLE_STREET}$`, "i"), "");
+  // The separator is spaced, or a dash before a store number ("Associate-106 Marlton, NJ 08053"):
+  // never the hyphen inside a word ("Co-op").
+  t = t.replace(/(?:\s+[-–—|]\s+|\s*[-–—]\s*(?=\d))\d*\s*\p{L}[^-–—|]*,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?$/u, "");
+  t = t.replace(/(?:\s*[-–—|,:])+\s*$/, "").replace(/^\s*[-–—|,:]+\s*/, "").replace(/\s+/g, " ").trim();
+  return (t.match(/\p{L}/gu)?.length ?? 0) >= 3 ? t : own;
+}
+
+/**
+ * A SPONTANEOUS OR OPEN APPLICATION, OR A TALENT POOL, IS NOT A JOB (SEO
+ * audit 2026-11-18, STRUCTURED-5). Google's policy for job postings:
+ * "Publishers may solicit resume collections for open positions only", and
+ * santander Req0843024 "Candidatura Spontanea per Internship" was served with
+ * a JobPosting. Read from the title alone: a real job's description may well
+ * mention a talent pool. The only such title among the 492 served.
+ */
+const OPEN_APPLICATION_TITLE = /\b(?:spontaneous|unsolicited|speculative|open|general)\s+application\b|\bcandidatura\s+(?:spontanea|espont[aá]nea|spont[aâ]nea)\b|\bcandidature\s+spontan[ée]e\b|\bsolicitud\s+espont[aá]nea\b|\b(?:initiativ|spontan|blind)bewerbung\b|\bopen\s+sollicitatie\b|\btalent\s+(?:pool|community)\b/i;
+export function openApplicationTitle(title: string | null | undefined): boolean {
+  return OPEN_APPLICATION_TITLE.test(postingText(title));
+}
+
 /** UTC calendar day of an ISO stamp. */
 const day = (iso: string): string => iso.slice(0, 10);
 
@@ -1440,6 +1510,9 @@ export function postingMarkupGate(
   if (!postingDescribedEnough(description)) return null;
   const ownText = `${job.title ?? ""}\n${jdText(String(description))}`;
   if (internalOnlyTextReason(ownText) || paidSurveyAdReason(ownText)) return null;
+  // A spontaneous or open application, or a talent pool, solicits resumes
+  // for no open position (STRUCTURED-5): no markup, on any board.
+  if (openApplicationTitle(job.title)) return null;
   const named = postingNameVerdict(job);
   if (named.reason && !opts.ignoreNameGate) return null;
   return named.repaired ? { ...job, company: named.name } : job;
@@ -1533,7 +1606,9 @@ export function postingJsonLdShape(
     "@type": "JobPosting",
     // A title its employer typed in capitals is marked up in title case, as
     // the page prints it (postingTitleText, F12).
-    title: postingTitleText(job.title),
+    // The job and nothing else: no store code, street, pay, employer's name
+    // or requisition key (postingMarkupTitle, STRUCTURED-5).
+    title: postingMarkupTitle(job),
     // THE WHOLE DESCRIPTION, BECAUSE THAT IS WHAT THE PROPERTY IS FOR. This was
     // cut at 4,000 characters, which fired on 300 of the 399 pages the bake
     // wrote — their visible text ran to a median 7,273 characters and a maximum

@@ -568,6 +568,7 @@ export { applyYourselfBakeHtml } from "../src/components/agents/apply-yourself-c
 export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
 export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingEmployer, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle, postingPageTitleAvoiding, postingPathParts } from "../src/components/jobs/posting-page";
 export { ldEmploymentType, postingJsonLdShape } from "../src/components/jobs/posting-page";
+export { jdTextOnce, openApplicationTitle, postingMarkupTitle, postingTitleText } from "../src/components/jobs/posting-page";
 export { JOB_POSTING_MARKUP } from "../src/config/seo-switches";
 export { boardName, employerName, isCodeShapedName, isUnreviewedTenantName, possessive } from "../src/lib/company-display";
 export { systemLabel } from "../src/lib/listing/apply-url";
@@ -3177,7 +3178,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         if (mismatchOnly) nameGateDryRun.push({ path, kind: "posting", token: job.token ?? null, name: D.postingEmployer(rawJob), shown: job.location ?? null, reason: page.statedCountry ? `the employer's own page states ${page.statedCountry}, the row ${job.country}` : `the location ends in another country's name than the row's (${job.country})`, would: "be marked noindex (its job markup is already withheld)" });
         if (job.salary) withPay++;
         const paras = D.jdParagraphs(description);
-        const title = D.postingText(job.title);
+        // The heading prints the title as the markup's casing does (F12,
+        // STRUCTURED-5): a title typed in capitals in title case.
+        const title = D.postingTitleText(job.title);
         const place = job.location ? D.postingText(job.location) : "";
         const lander = landerFor(job.token);
         // The page says Remote where the row is remote and names no place
