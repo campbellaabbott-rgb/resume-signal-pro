@@ -72,9 +72,10 @@ export const ROLE_ALIASES: Record<string, string[]> = {
 };
 
 // SEARCH REACH (job-board .103): "back end developer" found 32 jobs and "backend developer" 281.
+// Not "mobile": a facilities "Mobile Engineer" is a travelling HVAC technician; ios, android, swift and kotlin carry apps.
 // Rationale: docs/job-board-index-notes.md#n1600-one-role-word-in-every-spelling
 const SOFTWARE_FAMILY: ReadonlySet<string> = new Set([
-  "software", "backend", "frontend", "fullstack", "devops", "devsecops", "web", "mobile", "ios", "android",
+  "software", "backend", "frontend", "fullstack", "devops", "devsecops", "web", "ios", "android",
   "java", "javascript", "typescript", "js", "python", "react", "angular", "vue", "node", "nodejs", "php",
   "ruby", "rails", "golang", "rust", "kotlin", "swift", "scala", "salesforce", "wordpress", "ai", "ml",
 ]);

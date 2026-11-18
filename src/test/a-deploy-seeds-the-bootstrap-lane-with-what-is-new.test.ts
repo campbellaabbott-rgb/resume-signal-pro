@@ -186,9 +186,11 @@ describe("the lane, run against a recording client", () => {
     expect(seq.filter((s) => s === "bootstrap_queue_take")).toHaveLength(1);
   });
 
-  it("a version change replaces the queue with the seed, commits it, then takes with the version stamped", async () => {
+  it("a version change replaces the queue with the seed, takes with the version stamped, then commits it", async () => {
     const { seq, calls, boards } = await lane({ stored: "B1", queueAfterTake: { taken: ["toogoodtogo", "w1"], drained: 2, remaining: 0 } });
-    expect(seq).toEqual(["job_board_meta.select", "SEED", "job_board_meta.upsert:bootstrap", "bootstrap_queue_append", "COMMIT", "bootstrap_queue_take", "bootstrap_queue_stamp"]);
+    // The commit waits for the take: a take that fails leaves the version unstamped, and the next slice's re-seed
+    // must still read this build's repointed tokens as new (a-failed-take-keeps-the-repointed-boards-in-the-lane).
+    expect(seq).toEqual(["job_board_meta.select", "SEED", "job_board_meta.upsert:bootstrap", "bootstrap_queue_append", "bootstrap_queue_take", "COMMIT", "bootstrap_queue_stamp"]);
     const reset = calls.find((c) => (op(c, "upsert")?.[1][0] as { k?: string } | undefined)?.k === "bootstrap");
     expect((op(reset!, "upsert")![1][0] as { v: unknown }).v).toEqual({ queue: [], version: "B1" });
     expect(calls.find((c) => c.rpc === "bootstrap_queue_append")!.ops[0][1][0]).toEqual({ p_tokens: ["toogoodtogo", "w1"] });

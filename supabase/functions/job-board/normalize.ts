@@ -1065,6 +1065,8 @@ export interface GreenhousePayRange {
   title?: string;
 }
 
+/** ISO 4217 currencies with no minor unit, plus HUF, which Greenhouse stores in whole forints (Elastic's 15805300 is 15,805,300 Ft). */
+const ZERO_DECIMAL_CURRENCY = /^(?:JPY|KRW|VND|CLP|ISK|HUF|UGX|PYG|XOF|XAF|RWF|KMF|GNF|DJF|BIF|VUV|XPF)$/;
 /**
  * The pay a Greenhouse board states (S9-010), through the one formatter whose
  * output the parser reads back to the same figures. The first range that reads
@@ -1076,13 +1078,23 @@ export interface GreenhousePayRange {
  * figures are read.
  * Rationale: docs/job-board-index-notes.md#n1602-the-pay-a-greenhouse-board-states
  */
-export function greenhouseSalary(ranges: readonly GreenhousePayRange[] | null | undefined): string | null {
+export function greenhouseSalary(ranges: readonly GreenhousePayRange[] | null | undefined, location = ""): string | null {
   if (!Array.isArray(ranges)) return null;
-  for (const r of ranges) {
+  // A board that labels each zone by its cities ("Zone 2 (Denver, CO; Westlake, TX)"): the range naming the
+  // posting's own city is read first, so a Westlake posting is not handed Zone 1's band.
+  const cities = location.split(/[;|/]/).map((p) => p.split(",")[0].trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).filter((c) => c.length >= 3 && !/^(?:remote|hybrid|anywhere|united states|usa)$/i.test(c));
+  const names = (r: GreenhousePayRange | null) => cities.some((c) => new RegExp(`(?<!\\p{L})${c}(?!\\p{L})`, "iu").test(String(r?.title ?? "")));
+  for (const r of cities.length ? [...ranges.filter(names), ...ranges.filter((x) => !names(x))] : ranges) {
     if (!r || typeof r !== "object") continue;
-    const min = typeof r.min_cents === "number" && r.min_cents > 0 ? r.min_cents / 100 : null;
-    const max = typeof r.max_cents === "number" && r.max_cents > 0 ? r.max_cents / 100 : null;
+    const cur = String(r.currency_type ?? "").toUpperCase();
+    // A zero-decimal currency's "cents" are whole units (Duolingo's min_cents 17178000 JPY is ¥17,178,000).
+    const unit = ZERO_DECIMAL_CURRENCY.test(cur) ? 1 : 100;
+    const min = typeof r.min_cents === "number" && r.min_cents > 0 ? r.min_cents / unit : null;
+    const max = typeof r.max_cents === "number" && r.max_cents > 0 ? r.max_cents / unit : null;
     if (min === null || (max !== null && (max < min || max / min > 5))) continue;
+    // "€32.000 – €33.000" typed into the pay form is stored as 32.00 - 33.00: a whole-euro range under
+    // 1,000 with no period on its label is a salary that lost its thousands, never an hourly wage.
+    if (cur === "EUR" && vendorPayPeriod(r.title) === null && (max ?? min) < 1_000 && Number.isInteger(min) && Number.isInteger(max ?? min)) continue;
     const stated = statedPayText(vendorPayPeriod(r.title), min, max, r.currency_type ?? null, null);
     if (stated !== null) return stated;
   }
@@ -1138,7 +1150,7 @@ export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: st
       // Rationale: docs/job-board-index-notes.md#n998-postedat-j-first_published-null
       postedAt: j.first_published ?? null,
       category: categorize(j.title ?? "", j.departments?.[0]?.name),
-      salary: greenhouseSalary(j.pay_input_ranges),
+      salary: greenhouseSalary(j.pay_input_ranges, location),
       applyUrl: safeUrl(indexUrl ? `https://${pageHost}/${pageToken}/jobs/${j.id}` : j.absolute_url),
     };
   }).filter((j) => j.applyUrl !== "");

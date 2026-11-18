@@ -85,7 +85,9 @@ type Calls = Array<{ method: string; url: string; data: string | null; probe: bo
 
 const STATUS = (o: Record<string, unknown> = {}): Record<string, unknown> => ({
   version: "2026-09-09.103",
-  sliceStats: { build: "2026-09-09.103", buildSince: SINCE, at: iso(MIN) },
+  sliceStats: { build: "2026-09-09.103", buildSince: SINCE, at: iso(MIN), hop: 41, workAt: iso(MIN + 12_000), workHop: 41 },
+  bootstrapQueue: { pending: 0, forVersion: "2026-09-09.103", lastSlice: null },
+  freshness: { p50_min: 210, p95_min: 480, computed_at: iso(10 * MIN) },
   passEnd: { startedAt: iso(2 * H), hop0At: iso(2 * H - 30_000), doneAt: iso(2 * H - 6 * MIN) },
   pacing: { "api.lever.co": { reads: 512, minGapMs: 1_050, since: SINCE }, "careers.84lumber.com": { reads: 3, minGapMs: 5_050, since: SINCE } },
   inst: { lastStamps: [], countThisBuild: 0, lastHeartbeat: { hop: 3 } },
@@ -96,7 +98,14 @@ const STATUS = (o: Record<string, unknown> = {}): Record<string, unknown> => ({
   lastWrapMin: 430, lastWrapAt: iso(H),
   ...o,
 });
-const STATE = { build: "2026-09-09.103", passEnds: [{ startedAt: iso(12 * H), hop0At: iso(12 * H - 40_000), doneAt: iso(12 * H - 5 * MIN) }], unblockedAt: iso(30 * H) };
+const STATE = {
+  build: "2026-09-09.103", passEnds: [{ startedAt: iso(12 * H), hop0At: iso(12 * H - 40_000), doneAt: iso(12 * H - 5 * MIN) }], unblockedAt: iso(30 * H),
+  // [read ms, pending, catalogSize]: the seed drained to 0 at this build.
+  boot: [[NOW - 30 * H, 120, 44_157], [NOW - 20 * H, 0, 44_157]],
+  // [computed_at ms, p50, p95] and [wrap end ms, wrap min]: one judged wrap seen before this run.
+  fresh: [[NOW - 36 * H, 250, 520], [NOW - 20 * H, 230, 500], [NOW - 10 * H, 220, 490]],
+  wraps: [[NOW - 30 * H, 420]],
+};
 const FIXTURE = {
   pruned: [["greenhouse:deadone", "404"], ["ashby:deadtwo", "404"]],
   repointed: [{ from: "greenhouse:amplitude", to: "ashby:amplitude", inWindow: 29 }],
@@ -115,6 +124,8 @@ const SEARCH = (): Record<string, unknown> => ({
   nurse: sr(10_000), "registered nurse": sr(10_000), "customer success": sr(2_341), privacy: sr(378),
   "product designer": sr(1_365), "data analyst": sr(1_948), pharmacist: sr(3_293),
 });
+// Description pay the miner read before .103 (Databricks' prose): not the board's stated range.
+const ghMined = (n: number, paid: number) => Array.from({ length: n }, (_, i) => ({ id: `g:${i}`, recheckedAt: iso(3 * H), salary: i < paid ? "$180,000 — $247,500 USD" : null }));
 const gh = (n: number, paid: number) => Array.from({ length: n }, (_, i) => ({ id: `g:${i}`, recheckedAt: iso(3 * H), ...(i < paid ? { salary: "USD 100,000.00 – 120,000.00 per year" } : { salary: null }) }));
 const ROWS = (): Record<string, unknown[]> => ({
   "greenhouse:coinbase": gh(40, 37), "greenhouse:airbnb": gh(40, 32), "greenhouse:databricks": gh(40, 21),
@@ -148,7 +159,7 @@ function run(world: World, opts: Opts = {}): { lines: string[]; calls: Calls; ou
     PATH: `${join(dir, "bin")}:${dirname(process.execPath)}:${process.env.PATH ?? ""}`,
     VD_WORLD: join(dir, "world.json"), VD_CALLS: join(dir, "calls.log"),
     VD103_STATE: statePath, VD103_FIXTURE: join(dir, "fixture.json"), VD103_LAPS: join(dir, "laps.json"),
-    VD103_TALLY: "4427516", VD103_READS: "1", VD103_CATALOG_SIZE: "44157",
+    VD103_TALLY: "4427516", VD103_READS: "1", VD103_CATALOG_SIZE: "44157", VD103_M6: "200",
     ...opts.env,
   };
   let out = "";
@@ -164,7 +175,7 @@ const fails = (lines: string[]) => lines.filter((l) => l.startsWith("FAIL"));
 const failTags = (lines: string[]) => fails(lines).map((l) => l.slice(6, l.indexOf(":", 6)));
 const verdict = (lines: string[], tag: string) => lines.filter((l) => l.slice(6).startsWith(tag + ":")).map((l) => l.slice(0, 4));
 
-const SLICE_TAGS = ["P1", "T1", "PC1", "A1", "PR1", "H1", "PR2", "RT1", "RP1", "AG1", "GH coinbase", "GH airbnb", "GH databricks", "GH robinhood", "GH figma", "Lap"];
+const SLICE_TAGS = ["P1", "T1", "PC1", "SA1", "B1", "B2", "F1", "FR1", "A1", "PR1", "H1", "PR2", "RT1", "RP1", "AG1", "GH coinbase", "GH airbnb", "GH databricks", "GH robinhood", "GH figma", "Lap"];
 const SR_TAGS = ["SR back end developer", "SR nurse", "SR software engineer", "SR front end developer", "SR registered nurse", "SR ai engineer", "SR customer success", "SR privacy", "SR product designer", "SR data analyst", "SR devops engineer", "SR full stack developer", "SR pharmacist"];
 
 describe("section 99zzzzzzzz-board-103: before .103 serves", () => {
@@ -178,6 +189,11 @@ describe("section 99zzzzzzzz-board-103: before .103 serves", () => {
   it("ROOM fails over the 4,450,000 guard whatever is serving", () => {
     const r = run(WORLD({ build: "2026-09-09.102" }), { env: { VD103_TALLY: "4450001" } });
     expect(failTags(r.lines)).toEqual(["ROOM"]);
+  });
+  it("ROOM fails over the 4,440,000 trigger too (spec section 3.2), not only over the guard", () => {
+    const r = run(WORLD({ build: "2026-09-09.102" }), { env: { VD103_TALLY: "4445000" } });
+    expect(failTags(r.lines)).toEqual(["ROOM"]);
+    expect(verdict(run(WORLD({ build: "2026-09-09.102" }), { env: { VD103_TALLY: "4440000" } }).lines, "ROOM")).toEqual(["INFO"]);
   });
   it("judges the search as soon as .103 answers, and waits for a slice for everything else", () => {
     const r = run(WORLD({ status: STATUS({ sliceStats: { build: "2026-09-09.102", buildSince: iso(9 * 24 * H) } }) }), { state: null });
@@ -195,7 +211,13 @@ describe("section 99zzzzzzzz-board-103: a good .103, two days in", () => {
     for (const p of ["back end developer / backend developer", "front end developer / frontend developer", "full stack developer / full-stack developer", "devops engineer / dev ops engineer"]) {
       expect(verdict(r.lines, `SR pair ${p}`), p).toEqual(["PASS"]);
     }
-    for (const t of ["PROBE", "IN1", "SA1", "DS1", "clock", "ROOM"]) expect(verdict(r.lines, t), t).toEqual(["INFO"]);
+    for (const t of ["PROBE", "IN1", "DS1", "clock", "ROOM"]) expect(verdict(r.lines, t), t).toEqual(["INFO"]);
+    // The lines spec section 3.6 leaves to the T3 poller say so, every run.
+    for (const t of ["SMP", "B3", "L1", "FR", "SU1", "D1", "VR1", "R1", "AS1"]) {
+      expect(verdict(r.lines, t), t).toEqual(["INFO"]);
+      expect(r.lines.find((l) => l.slice(6).startsWith(`${t}:`)), t).toContain("unverified");
+    }
+    expect(r.lines.find((l) => l.startsWith("PASS  PC1:"))).toContain("the gate is wired");
     // The state keeps both pass ends, so the next run can judge two in a row.
     expect((r.state as { passEnds: unknown[] }).passEnds).toHaveLength(2);
   });
@@ -243,6 +265,28 @@ describe("section 99zzzzzzzz-board-103: each claim fails alone", () => {
     ["status lost dbBand", () => { const s = STATUS(); delete s.dbBand; return { world: WORLD({ status: s }) }; }, ["DS1"]],
     ["dbBand stale 26 h after cost2 applied", () => ({ world: WORLD(), opts: { env: { VD103_COST2_APPLIED_AT: iso(40 * H) } } }), ["DS1"]],
     ["the lap ran over the bar", () => ({ world: WORLD({ status: STATUS({ lastWrapMin: 700 }) }) }), ["Lap"]],
+    ["two chains advanced within 10 minutes (hop 120 sampled 28 s before hop 41)", () => ({
+      world: WORLD(), opts: { state: { ...STATE, hops: [[NOW - 100_000, 120]] } },
+    }), ["SA1"]],
+    ["the bootstrap queue was seeded again at this build (pending rose)", () => ({
+      world: WORLD({ status: STATUS({ bootstrapQueue: { pending: 40, forVersion: "2026-09-09.103" } }) }),
+      opts: { state: { ...STATE, boot: [[NOW - 2 * H, 10, 44_157]] } },
+    }), ["B1"]],
+    ["the first seed at this build holds more than M6 + 15", () => ({
+      world: WORLD({ status: STATUS({ bootstrapQueue: { pending: 400, forVersion: "2026-09-09.103" } }) }), opts: { state: { ...STATE, boot: [] } },
+    }), ["B1"]],
+    ["an emptied queue grew again at an unchanged version", () => ({
+      world: WORLD({ status: STATUS({ bootstrapQueue: { pending: 25, forVersion: "2026-09-09.103" } }) }),
+    }), ["B1", "B2"]],
+    ["freshness p50 over 300 minutes on a judged lap", () => ({
+      world: WORLD({ status: STATUS({ freshness: { p50_min: 320, p95_min: 500, computed_at: iso(10 * MIN) } }) }),
+    }), ["F1"]],
+    ["freshness was not recomputed in 35 minutes", () => ({
+      world: WORLD({ status: STATUS({ freshness: { p50_min: 210, p95_min: 480, computed_at: iso(50 * MIN) } }) }),
+    }), ["FR1"]],
+    ["the old build: Databricks rows carry only pay mined from the description", () => ({
+      world: WORLD({ rows: { ...ROWS(), "greenhouse:databricks": ghMined(60, 20) } }),
+    }), ["GH databricks"]],
   ];
   it.each(cases)("%s", (_name, make, want) => {
     const { world, opts } = make();

@@ -15,25 +15,52 @@
 # (status.sliceStats.build is the serving build) and runs from its buildSince.
 #
 # THE CLAIMS, one tagged line each:
-#   ROOM     job-board/** + _shared/** at HEAD is under the 4,450,000 guard
-#            (INFO: the room to the 4,440,000 trigger; VD103_TALLY overrides).
+#   ROOM     job-board/** + _shared/** at HEAD is at or under the 4,440,000
+#            trigger (spec section 3.2: ROOM fails at the trigger, not at the
+#            4,450,000 guard; VD103_TALLY overrides).
 #   build    the preflight answers job-board.2026-09-09.103 or later.
 #   P1       W4-2: a pass end of this build chains into hop 0 within 90 s
 #            (passEnd.hop0At - passEnd.startedAt). FAIL on two consecutive
 #            recorded pass ends over 90 s, or with no hop0At 10 min after start.
 #   T1       W4-3: a pass-end tail is done within 10 min of its start. FAIL on
 #            two consecutive recorded tails that were not.
-#   PC1      item 18: for every paced host in status.pacing, minGapMs is at
-#            least the host's delay (the checkout's _shared/host-gate.ts table;
-#            an unnamed host is an iCIMS tenant at 5,000 ms). 12 h after
-#            buildSince, api.lever.co must show reads (else the gate is blind).
+#   PC1      item 18: the gate is WIRED. For every paced host in
+#            status.pacing, minGapMs is at least the host's delay (the
+#            checkout's _shared/host-gate.ts table; an unnamed host is an iCIMS
+#            tenant at 5,000 ms), and 12 h after buildSince api.lever.co shows
+#            reads (else the gate is blind). minGapMs is the gap between two
+#            slots the gate granted, so it cannot see a request that bypasses
+#            the gate or starts late: PC1 proves the gate is in the path, not
+#            the spacing on the wire.
 #   IN1      INST: status carries inst; INFO its stamps and reasons.
-#   SA1      SUP-a: INFO the last chain kick (outcome, rekicked).
+#   SA1      SUP-a / W4-2: no double chain. Each status read's slice_stats
+#            (at, hop) and (workAt, workHop) are kept in VD103_STATE across
+#            runs. FAIL when two samples within 10 min cannot sit on one hop
+#            sequence: a later hop that a fresh hop-0 chain could not have
+#            reached since the earlier sample (at most one hop per 3 s, +2),
+#            arriving after a fall or a climb faster than that. INFO the last
+#            chain kick.
+#   B1       W4-1: bootstrapQueue.pending never rises between two reads while
+#            forVersion is this build and catalogSize is unchanged; and the
+#            first pending at this build is at most VD103_M6 + 15 (INFO when
+#            VD103_M6, the never-read token count, is not given).
+#   B2       W4-1: once pending reached 0 at this build, it stays 0.
+#   F1       S2: no freshness sample since the first wrap that began after
+#            buildSince reads p50 over 300 min or p95 over 600 min. PASS needs
+#            two such wraps and four samples; FAIL needs one sample over.
+#   FR1      every status read's freshness.computed_at is at most 35 min old
+#            (else F1 is unverified, never PASS).
+#   DEFERRED spec section 3.6's SMP, B3, L1, FR, SU1, D1, VR1, R1 and AS1 need
+#            the T3 one-minute poller's series (or inputs this section does not
+#            have): each prints INFO "unverified" so its absence is visible,
+#            and .104 is gated on the owner's reading of them, not on this
+#            section's exit code.
 #   A1       NB-35: status carries audit; 48 h after buildSince its startedAt is
 #            at most 26 h old.
-#   DS1      status carries dbBand (null until cost2's ring holds wal_bytes).
-#            With VD103_COST2_APPLIED_AT set, 26 h after it: a band no older
-#            than 26 h.
+#   DS1      status carries dbBand (null until cost2's ring exists; a stamp
+#            with no wal_bytes is banded with the max_wal_size bound). With
+#            VD103_COST2_APPLIED_AT set, 26 h after it: a band no older than
+#            26 h.
 #   H1       H8: once a pass end of this build has finished after a run saw the
 #            orphan prune unblocked (stamped in VD103_STATE), no held Workable
 #            board serves a row (pre-paste weekday-1 153,
@@ -62,7 +89,10 @@
 #            dev ops/devops developer or engineer read the same total (within
 #            2%): one search in every spelling.
 #   GH <token>  Greenhouse stated pay: of the newest 60 rows this build read on
-#            each of the five measured boards, the share with pay is at least
+#            each of the five measured boards, the share whose pay is the
+#            board's own stated range (the formatter's "USD 1,000.00" shape;
+#            pay the miner read from the description before .103 does not
+#            count, so a pre-.103 read cannot pass) is at least
 #            0.6 x the share measured on 2026-11-17 (Coinbase 236/259, Airbnb
 #            157/200, Databricks 467/902; Robinhood and Figma had pay before and
 #            are the control). Judged with 20 or more re-read rows; FAIL when a
@@ -86,6 +116,7 @@ VD103_GUARD=4450000; VD103_TRIGGER=4440000
 VD103_TALLY="${VD103_TALLY:-$(git ls-tree -r -l HEAD -- supabase/functions/job-board supabase/functions/_shared 2>/dev/null | awk '{s+=$4} END {print s+0}')}"
 if ! [ "${VD103_TALLY:-0}" -gt 0 ] 2>/dev/null; then echo "INFO  ROOM: no checkout here to measure the upload against the 4,450,000-byte guard"
 elif [ "$VD103_TALLY" -gt "$VD103_GUARD" ]; then echo "FAIL  ROOM: job-board/** + _shared/** at HEAD is $VD103_TALLY bytes, over the 4,450,000 guard: Lovable refuses the upload and the old build keeps serving"
+elif [ "$VD103_TALLY" -gt "$VD103_TRIGGER" ]; then echo "FAIL  ROOM: job-board/** + _shared/** at HEAD is $VD103_TALLY bytes, over the 4,440,000 trigger ($((VD103_GUARD - VD103_TALLY)) under the guard): a room step comes before this build ships"
 else echo "INFO  ROOM: job-board/** + _shared/** at HEAD is $VD103_TALLY bytes, $((VD103_TRIGGER - VD103_TALLY)) to the 4,440,000 trigger, $((VD103_GUARD - VD103_TALLY)) under the 4,450,000 guard"; fi
 
 rm -f /tmp/vd_103_opt.txt
@@ -154,7 +185,7 @@ console.log(out.join("\n"))' "$VD103_FIXTURE" 2>/dev/null)"
   VD103_DELAYS="${VD103_DELAYS:-$(node -e 'try{const s=require("fs").readFileSync("supabase/functions/_shared/host-gate.ts","utf8");const b=/HOST_DELAY_MS[^=]*=\s*\{([\s\S]*?)\};/.exec(s);const o={};for(const m of (b?b[1]:"").matchAll(/"([a-z0-9.-]+)"\s*:\s*([0-9_]+)/g))o[m[1]]=Number(m[2].replace(/_/g,""));const d=/ICIMS_DEFAULT_DELAY_MS\s*=\s*([0-9_]+)/.exec(s);o["*"]=d?Number(d[1].replace(/_/g,"")):5000;process.stdout.write(JSON.stringify(o))}catch{}')}"
 
   VD103_H="$VD103_H" VD103_N="$VD103_N" VD103_STATE="$VD103_STATE" VD103_HELD="$VD103_HELD" VD103_GH="$VD103_GH" VD103_SIZE="$VD103_SIZE" VD103_DELAYS="$VD103_DELAYS" \
-  VD103_FIXTURE="$VD103_FIXTURE" VD103_NONCE="$VD103_NONCE" VD103_COST2_APPLIED_AT="${VD103_COST2_APPLIED_AT:-}" VD103_LAP_BAR="${VD103_LAP_BAR:-}" \
+  VD103_FIXTURE="$VD103_FIXTURE" VD103_NONCE="$VD103_NONCE" VD103_COST2_APPLIED_AT="${VD103_COST2_APPLIED_AT:-}" VD103_LAP_BAR="${VD103_LAP_BAR:-}" VD103_M6="${VD103_M6:-}" \
   VD103_LAPS="${VD103_LAPS:-$HOME/.config/resumebooster/verify-state/cold-wraps.json}" node -e '
 const fs=require("fs");const E=process.env;const H=3600000,MIN=60000,now=Date.now();
 const read=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
@@ -163,7 +194,8 @@ const say=(v,tag,s)=>console.log(v+"  "+tag+": "+s);
 const num=(x)=>(typeof x==="number"&&Number.isFinite(x)?x:null);
 const ms=(x)=>(typeof x==="string"?Date.parse(x):NaN);
 const serving=String(E.VD103_H||"").replace(/^job-board\./,"");
-const reads=[];for(let i=0;i<Number(E.VD103_N);i++){const st=read("/tmp/vd_103_st_"+i+".json");if(st&&typeof st==="object"&&!Array.isArray(st))reads.push({st,ss:st.sliceStats&&typeof st.sliceStats==="object"?st.sliceStats:null})}
+const tOf=(i)=>{try{const t=Number(fs.readFileSync("/tmp/vd_103_st_"+i+".t","utf8").trim())*1000;return Number.isFinite(t)&&t>0?t:now}catch{return now}};
+const reads=[];for(let i=0;i<Number(E.VD103_N);i++){const st=read("/tmp/vd_103_st_"+i+".json");if(st&&typeof st==="object"&&!Array.isArray(st))reads.push({st,t:tOf(i),ss:st.sliceStats&&typeof st.sliceStats==="object"?st.sliceStats:null})}
 let state={};try{state=JSON.parse(fs.readFileSync(E.VD103_STATE,"utf8"))||{}}catch{}
 const save=()=>{try{fs.mkdirSync(require("path").dirname(E.VD103_STATE),{recursive:true});fs.writeFileSync(E.VD103_STATE,JSON.stringify(state,null,1)+"\n")}catch{}};
 const total=(x)=>(x&&typeof x.total==="number"?x.total:null);
@@ -205,9 +237,10 @@ const since=lo?ms(lo.ss.buildSince):NaN;const ageH=Number.isFinite(since)?(now-s
 const clock=!reads[reads.length-1].ss?"status carries no sliceStats":!lo?"sliceStats.build is "+reads[reads.length-1].ss.build+", not the serving "+serving+": no slice of this build has run yet":ageH===null?"status states no sliceStats.buildSince":"the first slice of this build was "+ageH.toFixed(1)+" h ago";
 say("INFO","clock",clock+"; "+reads.length+" status read(s), "+ours.length+" from a slice of this build");
 const wait=(tag)=>say("INFO",tag,"waits for a slice of this build ("+clock+")");
-if(!lo){for(const t of ["P1","T1","PC1","IN1","A1","DS1","H1","PR1","PR2","RT1","RP1","AG1","Lap"])wait(t);for(const t of String(E.VD103_GH).split(" "))wait("GH "+t);save();process.exit(0)}
+if(!lo){for(const t of ["P1","T1","PC1","IN1","SA1","B1","B2","F1","FR1","A1","DS1","H1","PR1","PR2","RT1","RP1","AG1","Lap"])wait(t);for(const t of String(E.VD103_GH).split(" "))wait("GH "+t);save();process.exit(0)}
 if(state.build!==serving)state={build:serving,passEnds:[],unblockedAt:null};
 if(!Array.isArray(state.passEnds))state.passEnds=[];
+for(const k of ["hops","boot","fresh","wraps"])if(!Array.isArray(state[k]))state[k]=[];
 
 // The pass ends this build has run, recorded across runs (two consecutive ones decide P1 and T1).
 const pe=S.passEnd&&typeof S.passEnd==="object"?S.passEnd:null;
@@ -235,12 +268,56 @@ const PE=state.passEnds;
     if(bad.length)say("FAIL",tag,bad.length+" host(s) read closer than their stated delay: "+JSON.stringify(bad.slice(0,5).map(([h,v])=>[h,v.minGapMs,D[h]??D["*"]])));
     else if(blind)say("FAIL",tag,"12 h after buildSince api.lever.co shows no paced read: the gate is blind to Lever ("+s+")");
     else if(!Object.values(P).some((v)=>v&&num(v.reads)>0))say("INFO",tag,"no paced read recorded yet ("+s+")");
-    else say("PASS",tag,s+"; none under its delay");}}
+    else say("PASS",tag,s+"; none under its delay: the gate is wired (it grants slots a delay apart; a read that bypasses it is not seen here)");}}
 
 // IN1, SA1, A1, DS1: the status fields this build adds.
 {const I=S.inst;if(!I||typeof I!=="object")say("FAIL","IN1","status carries no inst: the crash stamps are not readable");
   else say("INFO","IN1","inst: "+num(I.countThisBuild)+" stamp(s) on this build; reasons "+JSON.stringify((Array.isArray(I.lastStamps)?I.lastStamps:[]).slice(0,5).map((x)=>x&&[x.reason,x.build,x.at]))+"; heartbeat "+String(JSON.stringify(I.lastHeartbeat)).slice(0,120));}
-say("INFO","SA1","last chain kick: "+String(JSON.stringify(S.chainKick??null)).slice(0,200)+" (a re-kick names rekicked)");
+// SA1: one hop sequence. Hops climb at most one per 3 s (+2 for stamps written seconds apart), and every reset
+// starts a fresh chain at hop 0, so two samples within 10 min that no single sequence could join are two chains.
+{const tag="SA1";const add=(t,h)=>{if(Number.isFinite(t)&&t>=since+10*MIN&&typeof h==="number"&&!state.hops.some(([x,y])=>x===t&&y===h))state.hops.push([t,h])};
+  for(const r of reads)if(r.ss&&r.ss.build===serving){add(ms(r.ss.at),r.ss.hop);add(ms(r.ss.workAt),r.ss.workHop)}
+  state.hops=state.hops.filter(([t])=>now-t<=24*H).sort((a,b)=>a[0]-b[0]).slice(-200);
+  const Hs=state.hops;let two=null,pairs=0;
+  for(let i=0;i<Hs.length&&!two;i++)for(let j=i+1;j<Hs.length&&Hs[j][0]-Hs[i][0]<=10*MIN;j++){pairs++;const [ti,hi]=Hs[i],[tj,hj]=Hs[j];const room=(tj-ti)/3000+2;
+    if((hj>=hi&&hj-hi>room)||(hj<hi&&hj>room)){two=[Hs[i],Hs[j]];break}}
+  const fmt=(x)=>"hop "+x[1]+" at "+new Date(x[0]).toISOString();const kick="last chain kick "+String(JSON.stringify(S.chainKick??null)).slice(0,160);
+  if(two)say("FAIL",tag,fmt(two[0])+" then "+fmt(two[1])+": no one hop sequence holds both, so two chains were advancing within 10 min (a double chain); "+kick);
+  else if(!pairs)say("INFO",tag,Hs.length+" hop sample(s), none two within 10 min yet; "+kick);
+  else say("PASS",tag,Hs.length+" hop sample(s), "+pairs+" pair(s) within 10 min, one sequence; "+kick);}
+// B1 and B2: the bootstrap queue at this build only drains.
+{const cs=num(S.catalogSize);for(const r of reads){const b=r.st.bootstrapQueue;if(b&&b.forVersion===serving&&typeof b.pending==="number"&&!state.boot.some((x)=>x[0]===r.t))state.boot.push([r.t,b.pending,num(r.st.catalogSize)])}
+  state.boot=state.boot.sort((a,b)=>a[0]-b[0]).slice(-200);const Bs=state.boot;
+  let rise=null,regrow=null,zero=null;
+  for(let i=0;i<Bs.length;i++){if(zero===null&&Bs[i][1]===0)zero=Bs[i];if(i&&Bs[i][2]===Bs[i-1][2]){if(!rise&&Bs[i][1]>Bs[i-1][1])rise=[Bs[i-1],Bs[i]];if(!regrow&&zero&&Bs[i][0]>zero[0]&&Bs[i][1]>0)regrow=Bs[i]}}
+  const m6=Number(E.VD103_M6||"NaN");const first=Bs.length?Bs[0][1]:null;const f=(x)=>x[1]+" at "+new Date(x[0]).toISOString();
+  const s1="first pending at this build "+first+(Number.isFinite(m6)?" (bar M6 "+m6+" + 15)":"")+"; "+Bs.length+" read(s) at forVersion "+serving+", catalogSize "+cs;
+  if(!Bs.length)say("INFO","B1","no read yet shows the queue at forVersion "+serving+" (bootstrapQueue "+String(JSON.stringify(S.bootstrapQueue??null)).slice(0,120)+")");
+  else if(rise)say("FAIL","B1","pending rose from "+f(rise[0])+" to "+f(rise[1])+" at an unchanged version and catalogue: the queue was seeded again");
+  else if(Number.isFinite(m6)&&first>m6+15)say("FAIL","B1",s1+": the seed holds more than what is new");
+  else say(Number.isFinite(m6)?"PASS":"INFO","B1",s1+(Number.isFinite(m6)?"":" (VD103_M6 unset: the bound is unjudged)"));
+  if(regrow)say("FAIL","B2","pending reached 0 at "+new Date(zero[0]).toISOString()+" and was "+f(regrow)+": an empty queue was seeded again at an unchanged version");
+  else if(zero)say("PASS","B2","pending reached 0 at "+new Date(zero[0]).toISOString()+" and stayed 0 over "+Bs.filter((x)=>x[0]>zero[0]).length+" later read(s)");
+  else say("INFO","B2","pending has not reached 0 at this build yet ("+(Bs.length?Bs[Bs.length-1][1]:"no read")+")");}
+// F1 and FR1: freshness on the judged laps (the wraps that began after buildSince).
+{const w=num(S.lastWrapMin),wa=ms(S.lastWrapAt);if(w!==null&&Number.isFinite(wa)&&wa-w*MIN>=since&&!state.wraps.some((x)=>x[0]===wa))state.wraps.push([wa,w]);
+  state.wraps=state.wraps.sort((a,b)=>a[0]-b[0]).slice(-10);
+  const stale=[];for(const r of reads){const fr=r.st.freshness;const c=fr&&ms(fr.computed_at);
+    if(!fr||!Number.isFinite(c)||r.t-c>35*MIN)stale.push(fr&&fr.computed_at||null);
+    else if(typeof fr.p50_min==="number"&&typeof fr.p95_min==="number"&&!state.fresh.some((x)=>x[0]===c))state.fresh.push([c,fr.p50_min,fr.p95_min])}
+  state.fresh=state.fresh.filter(([t])=>t>=since).sort((a,b)=>a[0]-b[0]).slice(-400);
+  if(stale.length)say("FAIL","FR1","freshness.computed_at is over 35 min old (or missing) at "+stale.length+" read(s): "+JSON.stringify(stale.slice(0,3))+"; F1 is unverified, never PASS");
+  else say("PASS","FR1","freshness.computed_at within 35 min at each of "+reads.length+" read(s)");
+  const from=state.wraps.length?state.wraps[0][0]-state.wraps[0][1]*MIN:null;const J=from===null?[]:state.fresh.filter(([t])=>t>=from);
+  const over=J.filter(([,p50,p95])=>p50>300||p95>600);const mx=(k)=>J.length?Math.max(...J.map((x)=>x[k])):null;
+  const s2=J.length+" sample(s) since the first judged lap began, max p50 "+mx(1)+" min, max p95 "+mx(2)+" min, "+state.wraps.length+" judged wrap(s) seen";
+  if(over.length)say("FAIL","F1",s2+": "+over.length+" over p50 300 or p95 600, first "+JSON.stringify([new Date(over[0][0]).toISOString(),over[0][1],over[0][2]])+" (S2 fails: the tranches hold and .104 is the contingency)");
+  else if(from===null)say("INFO","F1","no wrap that began after buildSince yet, so no judged lap ("+state.fresh.length+" sample(s) kept)");
+  else if(stale.length||state.wraps.length<2||J.length<4)say("INFO","F1",s2+" (unverified: PASS needs two judged wraps, four samples and FR1 PASS)");
+  else say("PASS","F1",s2);}
+// Spec section 3.6 lines this section does not judge: the T3 poller series (or an input not here) decides them.
+for(const [t,why] of [["SMP","the T3 poll series"],["B3","each repointed token\x27s recheckedAt against M6 / 45 per min + 30 min"],["L1","active slice-minutes against M1 over two judged laps"],["FR","the slice-minute delta against M1"],["SU1","recovery after each 546 or RateLimitError from the one-minute poll"],["D1","deaths per 1,000 boards against M1"],["VR1","floored vendors\x27 cold visits a day against M1"],["R1","the T2 robots ledger"],["AS1","the Ashby questions probe (bug round A owns the stop)"]])
+  say("INFO",t,"unverified: needs "+why+"; this section does not judge it, so the owner reads it before .104");
 {const A=S.audit;if(!A||typeof A!=="object")say("FAIL","A1","status carries no audit stamps");
   else{const st=ms(A.startedAt);const s="audit startedAt "+(A.startedAt??null)+", doneAt "+(A.doneAt??null);
     if(ageH<48)say("INFO","A1",s+" (judged 48 h after buildSince)");
@@ -304,8 +381,8 @@ else{
 const GHM={coinbase:[236,259],airbnb:[157,200],databricks:[467,902],robinhood:[157,166],figma:[92,139]};
 for(const t of String(E.VD103_GH).split(" ")){const tag="GH "+t;const L=rows(read("/tmp/vd_103_gh_"+t+".json"));const [p,n]=GHM[t]||[0,1];const want=p/n;
   if(!L){say("FAIL",tag,"the list is unreadable: "+peek("/tmp/vd_103_gh_"+t+".json"));continue}
-  const fresh=L.filter((r)=>ms(r.recheckedAt)>since||ms(r.lastSeen)>since);const paid=fresh.filter((r)=>typeof r.salary==="string"&&r.salary.trim()).length;
-  const s=paid+" of "+fresh.length+" rows this build read carry pay ("+L.length+" listed); measured share "+(want*100).toFixed(0)+"%"+(t==="robinhood"||t==="figma"?" (control: pay before .103 too)":"");
+  const fresh=L.filter((r)=>ms(r.recheckedAt)>since||ms(r.lastSeen)>since);const paid=fresh.filter((r)=>typeof r.salary==="string"&&/^[A-Z]{3} \d[\d,]*\.\d{2}\b/.test(r.salary)).length;
+  const s=paid+" of "+fresh.length+" rows this build read carry the board\x27s stated range ("+L.length+" listed; pay mined from the description does not count); measured share "+(want*100).toFixed(0)+"%"+(t==="robinhood"||t==="figma"?" (control: pay before .103 too)":"");
   if(fresh.length<20)say(ageH>=48?"FAIL":"INFO",tag,s+(ageH>=48?": under 20 rows re-read 48 h after buildSince":" (judged with 20 re-read rows)"));
   else if(paid/fresh.length<0.6*want)say("FAIL",tag,s+": under 0.6 x the measured share, so the stated range does not reach the row");
   else say("PASS",tag,s);}

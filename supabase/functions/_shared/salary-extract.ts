@@ -700,8 +700,9 @@ const decodeLegacyEntities = (s: string) =>
 // read whole: cut there, "Average deal size $30,000 - $60,000. Sign-on bonus: ..." read the deal as
 // pay. A range a pay label names ("Annual base salary range (excluding equity and bonus): $166,345 -
 // $195,700") is the pay whatever follows the label, unless the label is a bonus's ("bonus pay range")
-// or a word that is not pay stands between it and the figure. A rejected range no longer ends the
-// search: the next range is read.
+// or a word that is not pay stands between it and the figure. A range refused for the words around it
+// no longer ends the search: the next range is read. A range refused for its figures still ends it, since
+// the next one is then another place's band or an earnings claim (Gusto's Denver posting, Andersen's 1099).
 // Rationale: docs/job-board-index-notes.md#n1601-the-figures-own-clause
 const RANGE_ALL = new RegExp(RANGE_RE.source, "gi");
 const CLAUSE_STOP = /[.!?](?=\s)|[;•|·]/g;
@@ -741,9 +742,13 @@ export function extractSalary(text: string | null | undefined): string | null {
     const firstPeriod = RANGE_FIRST_PERIOD.exec(range[0])?.[1] ?? "";
     const hourly = /hour|hr|hourly/i.test(`${range[3] ?? ""} ${firstPeriod}`) ||
       (lo !== null && hi !== null && lo < 1_000 && hi < 1_000 && !/[kK]\s*$/.test(range[1] + range[2]));
-    if (lo !== null && hi !== null && plausible(lo, hi, hourly)) {
+    // "€32 — €33" with no hour word near it is a salary written 32.000 that lost its thousands, not a wage.
+    const euroLost = /€/.test(range[0]) && Number.isInteger(lo) && Number.isInteger(hi) && lo! < 100 && hi! < 100 &&
+      !/hour|\bhr\b|\/\s?h\b|stunde|heure|\bora\b|\buur\b/i.test(`${clauseBefore(hay, at, 40)}${hay.slice(at, end + 20)}`);
+    if (lo !== null && hi !== null && !euroLost && plausible(lo, hi, hourly)) {
       return range[0].replace(/\s+/g, " ").trim().slice(0, 200);
     }
+    break;
   }
   // Every money range failed the pay guards (bonus context, absurd spread,
   // wage-floor). The text is ambiguous — do NOT let the single-figure

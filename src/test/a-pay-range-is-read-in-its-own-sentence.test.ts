@@ -17,8 +17,9 @@
  * So NOT_PAY reads the text before a figure only from the start of its own
  * sentence; a range a pay label names (pay range, salary range, base salary,
  * base pay) is pay whatever follows the label, unless the label is a bonus's
- * or a word that is not pay stands between it and the figure; and a rejected
- * range no longer ends the search. The 20 characters after a figure are still
+ * or a word that is not pay stands between it and the figure; and a range
+ * refused for the words around it no longer ends the search (one refused for
+ * its figures still does: the next is then another place's band). The 20 characters after a figure are still
  * read whole: cut at the full stop, "Average deal size $30,000 - $60,000.
  * Sign-on bonus: ..." read the deal size as pay.
  *
@@ -89,7 +90,9 @@ describe("the shipped miner against main", () => {
     const nowRight = weigh(FX.cases.filter((c) => c.pay.length && right(c, now.get(c.id)!)));
     expect(mainRight).toBe(749 + 5);
     // Coinbase 23 -> 225 of 230, Airbnb 13 -> 152 of 155; Databricks, Robinhood and Figma were already read.
-    expect(nowRight, `${mainRight} -> ${nowRight}`).toBe(1096);
+    // 1,095, not 1,096: a range refused for its figures ends the search (review 103), so Databricks' typo'd
+    // Zone 1 posting no longer takes Zone 2's band, which may be another place's pay (Gusto's Denver posting).
+    expect(nowRight, `${mainRight} -> ${nowRight}`).toBe(1095);
     expect(FX.cases.filter((c) => now.get(c.id) !== null && !right(c, now.get(c.id)!)).map((c) => `${c.id}: ${now.get(c.id)}`)).toEqual([]);
   });
 });
@@ -106,9 +109,10 @@ describe("the clause, the label and the next range", () => {
     expect(extractSalary("Salary Range: $95,000 - $120,000 plus deal bonuses")).toBe("$95,000 - $120,000");
   });
 
-  it("a rejected range no longer ends the search", () => {
-    expect(extractSalary("Zone 1 Pay Range $311 — $325,000 USD Zone 2 Pay Range $330,000 — $350,000 USD")).toBe("$330,000 — $350,000");
+  it("a range refused for the words around it no longer ends the search; one refused for its figures still does", () => {
     expect(extractSalary("Annual bonus potential of $20,000 - $30,000. Salary: $120,000 - $140,000.")).toBe("$120,000 - $140,000");
+    // The next range after a typo'd one is another zone's band: nothing, rather than another place's pay (review 103).
+    expect(extractSalary("Zone 1 Pay Range $311 — $325,000 USD Zone 2 Pay Range $330,000 — $350,000 USD")).toBeNull();
   });
 
   it("still refuses what is not pay", () => {

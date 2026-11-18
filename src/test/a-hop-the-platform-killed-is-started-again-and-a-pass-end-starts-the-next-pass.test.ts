@@ -34,6 +34,8 @@ function chainWorld(opts: {
   answers: Array<{ status: number; body?: string } | Error>;
   stamps?: string[];
   bornAgoMs?: number;
+  /** The hop refresh_progress names as its writer (default: the kicking hop itself, so the child was never admitted). */
+  atHop?: number;
 }) {
   let clock = Date.parse("2026-11-18T06:01:00Z");
   class FakeDate extends Date {
@@ -46,10 +48,11 @@ function chainWorld(opts: {
   const reads = [...(opts.stamps ?? [U0, U0, U0, U0, U0, U0])];
   const background: Promise<unknown>[] = [];
   const answers = [...opts.answers];
+  let runHop = 0;
   const client = stubClient((c: Call) => {
     const ups = op(c, "upsert");
     if (ups) { stamps.push(((ups[1][0] as { v: Stamp }).v)); return { error: null }; }
-    if (op(c, "select") && eqOf(c, "k") === "refresh_progress") return { data: { updated_at: reads.shift() ?? U0 }, error: null };
+    if (op(c, "select") && eqOf(c, "k") === "refresh_progress") return { data: { v: { hot: 0, hop: opts.atHop ?? runHop }, updated_at: reads.shift() ?? U0 }, error: null };
     return { data: null, error: null };
   });
   const deps: Record<string, unknown> = {
@@ -74,6 +77,7 @@ function chainWorld(opts: {
     ISOLATE_BORN: clock - (opts.bornAgoMs ?? 30_000),
   };
   const run = async (hop: number, cas?: { after: string; passEnd?: string }) => {
+    runHop = hop;
     const chainNextSlice = await compile(fnSource("chainNextSlice"), "return chainNextSlice;")(deps) as (...a: unknown[]) => void;
     chainNextSlice(hop, client, 120, cas);
     await Promise.all(background);
@@ -158,7 +162,7 @@ describe("W4-2: the pass end starts the next pass's hop 0 itself, through the CA
     expect(calls).toEqual(["chainHop, client, undefined, { after: progAt, passEnd: passEndStartedAt }"]);
     expect(block.indexOf("chainNextSlice(")).toBeGreaterThan(block.indexOf("kickPassEndStep(PASS_END_STEPS[0], passEndStartedAt);"));
     const rr = fnSource("runRefresh");
-    expect(rr, "progAt must be the stamp the slice-end refresh_progress write used").toMatch(/const progAt = new Date\(\)\.toISOString\(\);\s*await client\.from\("job_board_meta"\)\.upsert\(\s*\{ k: "refresh_progress", v: progressAfter, updated_at: progAt \}/);
+    expect(rr, "progAt must be the stamp the slice-end refresh_progress write used").toMatch(/const progAt = new Date\(\)\.toISOString\(\);\s*await client\.from\("job_board_meta"\)\.upsert\(\s*\{ k: "refresh_progress", v: \{ \.\.\.progressAfter, hop: chainHop \}, updated_at: progAt \}/);
   });
 
   it("a kick's stamp check: the stamp it was sent against must still stand, read to the millisecond", async () => {

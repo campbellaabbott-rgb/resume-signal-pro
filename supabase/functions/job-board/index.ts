@@ -2496,7 +2496,7 @@ function chainNextSlice(hop: number, client?: SupabaseClient, nextBoards?: numbe
           method: "POST",
           headers: { "Content-Type": "application/json" },
           // A kick that names a refresh_progress stamp is admitted only through admitSlice's CAS on it, never the force upsert.
-          body: JSON.stringify({ action: "refresh", ...(after ? { after } : { force: true }), chain: child, chainKey: key, ...(nextBoards ? { boards: nextBoards } : {}), ...(cas?.passEnd && !rekicked ? { passEnd: cas.passEnd } : {}) }),
+          body: JSON.stringify({ action: "refresh", ...(after ? { after } : { force: true }), chain: child, chainKey: key, ...(nextBoards ? { boards: nextBoards } : {}), ...(cas?.passEnd ? { passEnd: cas.passEnd } : {}) }),
         }), SELF_RESPONSE_BYTES);
         const body = (await r.text()).slice(0, 300);
         // A 200 is not proof the chain continued. The child returns 200 for every
@@ -2518,8 +2518,12 @@ function chainNextSlice(hop: number, client?: SupabaseClient, nextBoards?: numbe
       }
       // SUP-a: at most REKICKS_PER_HOP re-kicks, and none the isolate's wall clock would cut off.
       if (!wait || !client || rekicked >= REKICKS_PER_HOP || Date.now() - ISOLATE_BORN + wait > REKICK_AGE_MS) return;
-      const { data: was } = await client.from("job_board_meta").select("updated_at").eq("k", "refresh_progress").maybeSingle();
+      const { data: was } = await client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle();
       if (!was?.updated_at) return;
+      // The stamp names the hop that wrote it: this hop (the child was never admitted) or the child (admitted, then
+      // killed). A later hop means the child handed the chain on before it died: a re-kick would run beside it.
+      const atHop = (was.v as { hop?: unknown } | null)?.hop;
+      if (atHop !== hop && atHop !== child) { await stamp({ outcome: "declined", detail: `re-kick: hop ${String(atHop)} holds the stamp`, rekicked: rekicked + 1 }); return; }
       await new Promise((res) => setTimeout(res, wait));
       const { data: now } = await client.from("job_board_meta").select("updated_at").eq("k", "refresh_progress").maybeSingle();
       // The watchdog or another kick moved the chain on during the wait: this re-kick would be a second chain.
@@ -2884,6 +2888,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         if (!verErr) {
           const storedVersion = (verRow as { version?: string } | null)?.version ?? "";
           let appendDone = true;
+          let commitSeed: (() => Promise<unknown>) | null = null;
           try {
             if (storedVersion !== BUILD_VERSION) {
               // W4-1: the queue is REPLACED by what is new (bootstrap-seed.ts). An empty queue at an unchanged version stays empty.
@@ -2893,7 +2898,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
                 if (rsErr) throw rsErr;
                 const { data: len, error: apErr } = await client.rpc("bootstrap_queue_append", { p_tokens: seed.queue });
                 if (apErr) throw apErr;
-                await seed.commit();
+                commitSeed = seed.commit;
                 console.log(`[JOB-BOARD] bootstrap: version change — queue replaced server-side (now ${len})`);
               } catch (e) {
                 if (rpcAbsent(e as { code?: string; message?: string })) throw e;
@@ -2904,6 +2909,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             const takeArgs = { p_n: bootstrapTake, p_skip: [...sliceTokens], p_version: BUILD_VERSION, p_stamp_version: appendDone };
             const take = await client.rpc("bootstrap_queue_take", takeArgs);
             if (take.error) throw take.error;
+            // W4-1: what was seeded is committed only once the take stamped the version. A take that fails leaves
+            // the version unstamped, and the next slice's re-seed must still name this build's repointed tokens.
+            // A commit that fails costs a re-seed of the same tokens at the next version, never this slice's boards.
+            if (commitSeed) await commitSeed().catch(() => {});
             const res = take.data as { taken?: string[]; drained?: number; remaining?: number } | null;
             const taken = Array.isArray(res?.taken) ? (res!.taken as string[]) : [];
             bootstrapBoards = taken
@@ -3176,6 +3185,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // Rationale: docs/job-board-index-notes.md#n569-block
   {
     const { next } = advanceProgress({ prev: progressBefore, ...advanceArgs });
+    // SUP-a: the admitted stamp names its hop, so a parent's re-kick can tell its dead child's stamp from a later hop's.
+    next.hop = chainHop;
     // Rationale: docs/job-board-index-notes.md#n074-await-admitslice-client-next-force
     if (!(await admitSlice(client, next, { force, prog: (prog as { updated_at: string } | null) ?? null }))) {
       return { ok: true, detail: "skipped — a slice was admitted moments ago" };
@@ -3185,8 +3196,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   currentHop = chainHop;
   sliceCpuMs = 0;
   instSlice = { at: sliceWallStart, boardsDone: 0, fetched: 0 };
-  // W4-2: the pass end's own kick started this pass; P1 reads the gap (status passEnd.hop0At).
-  if (passEndAt) await client.from("job_board_meta").upsert({ k: "pass_chain", v: { startedAt: passEndAt, hop0At: new Date().toISOString() }, updated_at: new Date().toISOString() }, { onConflict: "k" }).then(() => {}, () => {});
+  // W4-2: the pass end's own kick started this pass; P1 reads the gap (status passEnd.hop0At). The first hop 0
+  // admitted for a pass end stamps it; a re-kicked hop 0 (SUP-a) keeps that stamp.
+  if (passEndAt) await (async () => {
+    const { data: pc } = await client.from("job_board_meta").select("v").eq("k", "pass_chain").maybeSingle();
+    if ((pc?.v as { startedAt?: string } | null)?.startedAt === passEndAt) return;
+    await client.from("job_board_meta").upsert({ k: "pass_chain", v: { startedAt: passEndAt, hop0At: new Date().toISOString() }, updated_at: new Date().toISOString() }, { onConflict: "k" });
+  })().catch(() => {});
   // The demand board this admitted slice took starts its cooldown and counts
   // against the hour, in the row only the refresh writes.
   if (demandTaken.length) await stampDemandServed(client, demandTaken, Date.now()).catch(() => {});
@@ -4424,7 +4440,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // W4-2: the stamp the pass end's own hop-0 kick is admitted against.
   const progAt = new Date().toISOString();
   await client.from("job_board_meta").upsert(
-    { k: "refresh_progress", v: progressAfter, updated_at: progAt },
+    { k: "refresh_progress", v: { ...progressAfter, hop: chainHop }, updated_at: progAt },
     { onConflict: "k" },
   );
 
@@ -8181,7 +8197,7 @@ async function handleRequest(req: Request): Promise<Response> {
       const { data: rows, error: readErr } = await client
         .from("job_board_postings")
         // Rationale: docs/job-board-index-notes.md#n782-select-id-country-title
-        .select("id, country, title")
+        .select("id, country, title, salary")
         .eq("company_token", s.token)
         .eq("source", s.source)
         .is("description", null)
@@ -8201,7 +8217,8 @@ async function handleRequest(req: Request): Promise<Response> {
           const text = job.content ? clean(htmlToText(String(job.content).slice(0, RAW_HTML_CAP)).trim()).slice(0, STORED_DESC_CAP) : "";
           if (text) {
             // Rationale: docs/job-board-index-notes.md#n783-const-minedsalary-extractsalary-text
-            const minedSalary = extractSalary(text);
+            // The board's stated pay (a refresh read it with pay_transparency) outranks the miner, as at refresh.
+            const minedSalary = (row as { salary?: string | null }).salary ? null : extractSalary(text);
             const minedParse = minedSalary ? parseSalaryStructured(minedSalary, (row as { country?: string | null }).country ?? undefined, { title: (row as { title?: string | null }).title ?? null, description: text }) : null;
             const { error } = await client.from("job_board_postings")
               .update({
