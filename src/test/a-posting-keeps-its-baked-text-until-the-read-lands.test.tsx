@@ -25,6 +25,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { clearBoardBudgetRefusal } from "@/lib/board-budget";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 
 const invoke = vi.fn();
 vi.mock("@/integrations/supabase/client", () => ({
@@ -35,6 +36,11 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: null, session: null }) }));
+
+// A whole page mounts here: waits name the condition they wait for, under the
+// suite's one budget (helpers/mount-budget.ts), never a fixed sleep a loaded
+// machine can outrun.
+vi.setConfig(MOUNT_TEST_BUDGET);
 
 import JobPosting from "@/pages/JobPosting";
 import {
@@ -120,9 +126,9 @@ describe("a baked posting page while its detail read is in flight", () => {
     record(container);
     root = createRoot(mount);
     root.render(app());
-    await settle(80);
+    await vi.waitFor(() => expect(invoke, "the detail read was asked").toHaveBeenCalled(), SLOW);
+    await vi.waitFor(() => expect(mount.querySelector(`main[${ROUTE_PENDING_ATTRIBUTE}]`), "the page drew its marked main").not.toBeNull(), SLOW);
 
-    expect(invoke, "the detail read was asked").toHaveBeenCalled();
     expect(container.textContent, "the baked posting is still on screen while the read is pending").toContain(BAKED_DESC);
     expect(container.querySelector("header.baked")).not.toBeNull();
     expect(container.querySelector("footer.baked")).not.toBeNull();
@@ -135,7 +141,7 @@ describe("a baked posting page while its detail read is in flight", () => {
     expect(prerenderedPageShowing(document)).toBe(true);
 
     read.resolve(detail());
-    await settle(150);
+    await vi.waitFor(() => expect(container.textContent).toContain("We are hiring a staff accountant"), SLOW);
 
     expect(container.textContent).not.toContain(BAKED_DESC);
     expect(container.querySelector(".baked")).toBeNull();
@@ -156,9 +162,8 @@ describe("a baked posting page while its detail read is in flight", () => {
     root = createRoot(mount);
     root.render(app());
     // The page retries once after 1.2 s before it says it could not load.
-    await settle(1600);
+    await vi.waitFor(() => expect(container.textContent).toMatch(/We couldn't load this posting just now/), SLOW);
     expect(container.querySelector(".baked")).toBeNull();
-    expect(container.textContent).toMatch(/We couldn't load this posting just now/);
   });
 });
 
