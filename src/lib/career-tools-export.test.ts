@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { exportInterviewPrepPDF, exportCareerPathPDF } from "./career-tools-export";
+import { EN_LABELS } from "@/test/helpers/export-labels";
 
 function buildInterviewData(overrides?: Record<string, unknown>) {
   return {
@@ -54,7 +55,7 @@ beforeEach(() => {
 
 describe("exportInterviewPrepPDF", () => {
   it("generates a PDF without throwing for a normal report", async () => {
-    await expect(exportInterviewPrepPDF(buildInterviewData() as never)).resolves.not.toThrow();
+    await expect(exportInterviewPrepPDF(buildInterviewData() as never, EN_LABELS.prep)).resolves.not.toThrow();
   });
 
   it("handles many questions without throwing (multi-page pagination)", async () => {
@@ -67,13 +68,13 @@ describe("exportInterviewPrepPDF", () => {
       sampleOpener: `A sample opening sentence for answering question ${i + 1} in an interview setting.`,
       difficulty: "Medium",
     }));
-    await expect(exportInterviewPrepPDF(buildInterviewData({ questions }) as never)).resolves.not.toThrow();
+    await expect(exportInterviewPrepPDF(buildInterviewData({ questions }) as never, EN_LABELS.prep)).resolves.not.toThrow();
   });
 });
 
 describe("exportCareerPathPDF", () => {
   it("generates a PDF without throwing for a normal report", async () => {
-    await expect(exportCareerPathPDF(buildCareerPathData() as never)).resolves.not.toThrow();
+    await expect(exportCareerPathPDF(buildCareerPathData() as never, EN_LABELS.path)).resolves.not.toThrow();
   });
 
   it("handles multiple career paths with long timelines without throwing (multi-page pagination)", async () => {
@@ -92,6 +93,6 @@ describe("exportCareerPathPDF", () => {
       probability: "Medium",
       actionPlan90Days: ["Action 1", "Action 2", "Action 3"],
     }));
-    await expect(exportCareerPathPDF(buildCareerPathData({ paths }) as never)).resolves.not.toThrow();
+    await expect(exportCareerPathPDF(buildCareerPathData({ paths }) as never, EN_LABELS.path)).resolves.not.toThrow();
   });
 });

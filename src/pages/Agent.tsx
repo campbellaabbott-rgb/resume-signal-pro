@@ -176,12 +176,12 @@ export default function Agent() {
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          {t("agent.backToAccount", "Back to account")}
+          {t("accountView.agentBackToAccount", "Back to account")}
         </Link>
 
         <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            {t("agent.title", "Apply agent")}
+            {t("accountView.agentTitle", "Apply agent")}
           </h1>
           {/* THE WAY OUT OF "what is this actually going to do".
               Every explanation on this page is a fragment attached to the
@@ -192,7 +192,7 @@ export default function Agent() {
             to="/guides/how-the-apply-agent-works"
             className="text-sm text-primary hover:underline"
           >
-            {t("agent.howItWorks", "How it works")}
+            {t("accountView.agentHowItWorks", "How it works")}
           </Link>
         </div>
 
@@ -226,7 +226,7 @@ export default function Agent() {
         {!isMobile && (
           <nav
             className="mt-6 inline-flex rounded-lg border border-border bg-muted/40 p-1"
-            aria-label={t("agent.sections", "Agent sections")}
+            aria-label={t("accountView.agentSections", "Agent sections")}
           >
             {TABS.map(({ id, icon: Icon, key, fallback }) => (
               <button
@@ -300,7 +300,7 @@ export default function Agent() {
       {isMobile && (
         <nav
           className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
-          aria-label={t("agent.sections", "Agent sections")}
+          aria-label={t("accountView.agentSections", "Agent sections")}
         >
           <div className="mx-auto flex max-w-md">
             {TABS.map(({ id, icon: Icon, key, fallback }) => (

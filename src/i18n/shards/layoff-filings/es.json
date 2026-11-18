@@ -1,0 +1,8 @@
+{
+  "layoffFilings": {
+    "readVia": "de {{sourceName}} a través de Big Local News, leído {{readAgo}}",
+    "tipVia": "{{filer}} presentó esta declaración el {{eventDate}}. Es un hecho sobre el empleador en esa fecha, no sobre esta vacante. Está junto a la insignia de contratación a propósito: esa insignia es solo lo que observamos en este portal — vacantes retiradas y no repuestas, o más vacantes publicadas — y una declaración presentada en otro sitio no la cambia. Ninguna de las dos dice que alguien fuera contratado. De {{sourceName}} a través de Big Local News, leído {{readAgo}}.",
+    "lineWarnFirstRead": "{{filer}} presentó un aviso de despidos ante {{state}} con fecha {{noticeDate}}: {{workers}} puestos en {{site}}{{effectiveClause}}{{kindClause}} · leído por nosotros por primera vez el {{visibleDate}} · {{sourceName}} ↗",
+    "lcaChip": "Salarios LCA presentados (H-1B, H-1B1, E-3) · {{quarter}}"
+  }
+}

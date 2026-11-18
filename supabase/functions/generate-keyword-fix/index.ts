@@ -6,7 +6,8 @@ import { callAIWithModelFallback, chainFrom, logAiUsage } from "../_shared/ai-fa
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
-import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { keepPastBuyerCopy } from "../_shared/past-buyer-copy.ts";
+import { clipField, clipText, isServiceCaller, modelSpendGate } from "../_shared/model-spend-gate.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -31,7 +32,8 @@ import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate
 // 2026-11-10.3 (fix/cost-wave, the integration): both lanes' changes above together.
 // cost/ai and cost/ci-edge each stamped 2026-11-10.2 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "generate-keyword-fix.2026-11-10.3";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, past-buyers lane, RC-S12-007; writing-tools lane, S14X-109): the recovery form's copy is kept, recorded and mailed once, and a gateway out of credits is a retryable 503.
+const FN_BUILD = "generate-keyword-fix.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -192,6 +194,13 @@ Provide a comprehensive keyword analysis with actionable suggestions.`;
       keywordCount: result.missingKeywords?.length,
       score: result.overallScore 
     });
+
+    // A COPY MADE FOR A BROWSER IS KEPT (RC-S12-007): the recovery form is the
+    // only maker of a sale with no résumé bound, and its copy was never saved,
+    // recorded or mailed. Our own servers keep what they make themselves.
+    if (!isServiceCaller(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))) {
+      await keepPastBuyerCopy(supabase, { sessionId, productType: "basic_keyword_fix", productName: "Keyword Fix", content: result });
+    }
 
     return new Response(
       JSON.stringify({ success: true, data: result }),

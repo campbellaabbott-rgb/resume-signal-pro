@@ -74,7 +74,7 @@ describe("Pro's Stripe page says what Pro is, and a referral earns the first-mon
   it("the description names no cut product and says everything in a free account plus the writing tools", async () => {
     await buy();
     const description = String((world.stripe.created[0].line_items as Array<{ price_data: { product_data: { description: string } } }>)[0].price_data.product_data.description);
-    expect(description).toMatch(/^Everything in a free account, plus the writing tools/);
+    expect(description).toMatch(/^Everything in a free account, which already has one of each writing tool a day/);
     for (const cut of [/premium package/i, /keyword fix/i, /career simulator/i, /interview coach/i, /every new tool/i, /every resume booster tool/i, /freelance/i, /transition pro/i, /unlimited/i]) {
       expect(description, String(cut)).not.toMatch(cut);
     }

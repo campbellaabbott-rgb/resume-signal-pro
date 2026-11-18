@@ -7,6 +7,7 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 import { SITE_ORIGIN } from "../_shared/purchase-links.ts";
 import { isKeptProduct, isNeedsReason, MAIL_COPY, mailLanguageOf, type MailLanguage, type NeedsReason } from "./copy.ts";
 import { CUT_PRODUCTS } from "../_shared/product-cuts.ts";
+import { scanProductMailInfo } from "./retired-copy.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -18,7 +19,8 @@ import { CUT_PRODUCTS } from "../_shared/product-cuts.ts";
 // the job search.
 // 2026-10-31.1 (land/all carries the homepage switch-over): both 2026-10-27.1
 // builds named different code; this bundle carries both changes.
-const FN_BUILD = "send-product-email.2026-10-31.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, past-buyers lane, S14X-224, RC-S12-113): a scan order mailed again names the credits it bought, and Spanish and Hindi ready verdicts read as Ready to Apply.
+const FN_BUILD = "send-product-email.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -109,38 +111,8 @@ const productInfo: Record<string, {
       "Submit your application with confidence"
     ]
   },
-  career_bundle: {
-    emoji: "📦",
-    tagline: "75 full resume analyses to power your job search",
-    howItWorks: [
-      "75 full resume analyses have been added to your account",
-      "Each analysis includes complete ATS scoring and optimization",
-      "Use them across multiple job applications",
-      "Credits never expire - use at your own pace"
-    ],
-    nextSteps: [
-      "Go to the home page to start using your credits",
-      "Upload your resume for each job application",
-      "Track your remaining credits in the header",
-      "Share with friends or family if you'd like"
-    ]
-  },
-  scan_pack: {
-    emoji: "⚡",
-    tagline: "30 resume scans to optimize every application",
-    howItWorks: [
-      "30 scan credits have been added to your account",
-      "Each scan analyzes your resume against a specific job",
-      "Compare unlimited job descriptions with your credits",
-      "Credits never expire"
-    ],
-    nextSteps: [
-      "Go to the home page to start scanning",
-      "Each scan uses one credit from your balance",
-      "View remaining credits in the header",
-      "Optimize for each job you apply to"
-    ]
-  },
+  // career_bundle, scan_pack and scan_credits: ./retired-copy.ts, which says
+  // the count the order bought (S14X-224).
   ats_defense: {
     emoji: "🛡️",
     tagline: "Full ATS compatibility audit with before/after optimization",
@@ -321,7 +293,7 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
   // the English copy their past buyers were sold with.
   const info = isKeptProduct(productType)
     ? { emoji: productInfo[productType].emoji, ...copy.kept[productType] }
-    : productInfo[productType] || productInfo.basic_keyword_fix;
+    : scanProductMailInfo(productType, generatedContent) ?? productInfo[productType] ?? productInfo.basic_keyword_fix;
   // BACK TO WHAT WAS BOUGHT, never the homepage (commercial-readiness
   // 2026-10-08, item 3): the page Checkout returned the buyer to, with the
   // purchase on it, and the reference the recovery form takes.
@@ -655,7 +627,7 @@ Deno.serve(async (req) => {
     const language = mailLanguageOf(requestData.language);
     const rendered = kind === "purchase"
       ? {
-        subject: `${productInfo[productType]?.emoji || "✨"} ${subjectFor(productType, productName, language)}`,
+        subject: `${productInfo[productType]?.emoji || scanProductMailInfo(productType, null)?.emoji || "✨"} ${subjectFor(productType, productName, language)}`,
         html: generateProductEmailHtml(requestData),
         logSubject: subjectFor(productType, productName, language),
       }

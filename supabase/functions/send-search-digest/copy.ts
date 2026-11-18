@@ -47,6 +47,8 @@ export interface DigestCopy {
   fitMatch: (pctHtml: string) => string;
   subjectFirstMatch: (count: string, n: number, name: string) => string;
   subjectStrong: (count: string, n: number, name: string) => string;
+  /** A fit bar below the strong one ("Possible fit+"): never called strong (S14X-171). */
+  subjectPossible: (count: string, n: number, name: string) => string;
   /** `what` is the search's category in words, or the words searched for; null when it has neither. */
   subjectPlain: (count: string, n: number, what: string | null, name: string) => string;
   category: Record<string, string>;
@@ -66,6 +68,7 @@ const EN: DigestCopy = {
   fitMatch: (p) => `${p}% match`,
   subjectFirstMatch: (c, n, name) => `We found it: ${c} ${n === 1 ? "match" : "matches"} for “${name}”`,
   subjectStrong: (c, n, name) => `${c} new strong ${n === 1 ? "match" : "matches"} for you — ${name}`,
+  subjectPossible: (c, n, name) => `${c} new possible ${n === 1 ? "match" : "matches"} for you — ${name}`,
   subjectPlain: (c, n, what, name) => `${c} new ${what ?? "job"} ${n === 1 ? "match" : "matches"} — ${name}`,
   category: {
     engineering: "engineering", data_ai: "data & AI", design: "design", product: "product",
@@ -98,6 +101,7 @@ export const DIGEST_COPY: Record<MailLanguage, DigestCopy> = {
     fitMatch: (p) => `${p} % Passung`,
     subjectFirstMatch: (c, _n, name) => `Gefunden: ${c} Treffer für „${name}“`,
     subjectStrong: (c, n, name) => `${c} ${n === 1 ? "neuer starker" : "neue starke"} Treffer für Sie — ${name}`,
+    subjectPossible: (c, n, name) => `${c} ${n === 1 ? "neuer möglicher" : "neue mögliche"} Treffer für Sie — ${name}`,
     subjectPlain: (c, n, what, name) => `${c} ${n === 1 ? "neuer" : "neue"} Treffer${what ? ` für ${what}` : ""} — ${name}`,
     category: {
       engineering: "Engineering", data_ai: "Daten & KI", design: "Design", product: "Produkt",
@@ -123,6 +127,7 @@ export const DIGEST_COPY: Record<MailLanguage, DigestCopy> = {
     fitMatch: (p) => `${p} % de encaje`,
     subjectFirstMatch: (c, n, name) => `Lo encontramos: ${c} ${n === 1 ? "coincidencia" : "coincidencias"} para “${name}”`,
     subjectStrong: (c, n, name) => `${c} ${n === 1 ? "nueva coincidencia fuerte" : "nuevas coincidencias fuertes"} para ti — ${name}`,
+    subjectPossible: (c, n, name) => `${c} ${n === 1 ? "nueva posible coincidencia" : "nuevas posibles coincidencias"} para ti — ${name}`,
     subjectPlain: (c, n, what, name) => `${c} ${n === 1 ? "nueva coincidencia" : "nuevas coincidencias"}${what ? ` de ${what}` : ""} — ${name}`,
     category: {
       engineering: "ingeniería", data_ai: "datos e IA", design: "diseño", product: "producto",
@@ -148,6 +153,7 @@ export const DIGEST_COPY: Record<MailLanguage, DigestCopy> = {
     fitMatch: (p) => `${p} % d'adéquation`,
     subjectFirstMatch: (c, n, name) => `Trouvé : ${c} ${n > 1 ? "correspondances" : "correspondance"} pour « ${name} »`,
     subjectStrong: (c, n, name) => `${c} ${n > 1 ? "nouvelles correspondances fortes" : "nouvelle correspondance forte"} pour vous — ${name}`,
+    subjectPossible: (c, n, name) => `${c} ${n > 1 ? "nouvelles correspondances possibles" : "nouvelle correspondance possible"} pour vous — ${name}`,
     subjectPlain: (c, n, what, name) => `${c} ${n > 1 ? "nouvelles correspondances" : "nouvelle correspondance"}${what ? ` pour ${what}` : ""} — ${name}`,
     category: {
       engineering: "ingénierie", data_ai: "data et IA", design: "design", product: "produit",
@@ -173,6 +179,7 @@ export const DIGEST_COPY: Record<MailLanguage, DigestCopy> = {
     fitMatch: (p) => `${p}% मिलान`,
     subjectFirstMatch: (c, _n, name) => `मिल गया: “${name}” के लिए ${c} मिलान`,
     subjectStrong: (c, n, name) => `आपके लिए ${c} ${n === 1 ? "नया मज़बूत मिलान" : "नए मज़बूत मिलान"} — ${name}`,
+    subjectPossible: (c, n, name) => `आपके लिए ${c} ${n === 1 ? "नया संभावित मिलान" : "नए संभावित मिलान"} — ${name}`,
     subjectPlain: (c, n, what, name) => `${what ? `${what} के ` : ""}${c} ${n === 1 ? "नया मिलान" : "नए मिलान"} — ${name}`,
     category: {
       engineering: "इंजीनियरिंग", data_ai: "डेटा और AI", design: "डिज़ाइन", product: "प्रोडक्ट",
@@ -198,6 +205,7 @@ export const DIGEST_COPY: Record<MailLanguage, DigestCopy> = {
     fitMatch: (p) => `${p}% match`,
     subjectFirstMatch: (c, n, name) => `Gevonden: ${c} ${n === 1 ? "match" : "matches"} voor “${name}”`,
     subjectStrong: (c, n, name) => `${c} ${n === 1 ? "nieuwe sterke match" : "nieuwe sterke matches"} voor jou — ${name}`,
+    subjectPossible: (c, n, name) => `${c} ${n === 1 ? "nieuwe mogelijke match" : "nieuwe mogelijke matches"} voor jou — ${name}`,
     subjectPlain: (c, n, what, name) => `${c} ${n === 1 ? "nieuwe match" : "nieuwe matches"}${what ? ` voor ${what}` : ""} — ${name}`,
     category: {
       engineering: "engineering", data_ai: "data & AI", design: "design", product: "product",
@@ -223,6 +231,7 @@ export const DIGEST_COPY: Record<MailLanguage, DigestCopy> = {
     fitMatch: (p) => `${p}% de encaixe`,
     subjectFirstMatch: (c, n, name) => `Encontramos: ${c} ${n === 1 ? "correspondência" : "correspondências"} para “${name}”`,
     subjectStrong: (c, n, name) => `${c} ${n === 1 ? "nova correspondência forte" : "novas correspondências fortes"} para você — ${name}`,
+    subjectPossible: (c, n, name) => `${c} ${n === 1 ? "nova possível correspondência" : "novas possíveis correspondências"} para você — ${name}`,
     subjectPlain: (c, n, what, name) => `${c} ${n === 1 ? "nova correspondência" : "novas correspondências"}${what ? ` de ${what}` : ""} — ${name}`,
     category: {
       engineering: "engenharia", data_ai: "dados e IA", design: "design", product: "produto",
@@ -248,6 +257,7 @@ export const DIGEST_COPY: Record<MailLanguage, DigestCopy> = {
     fitMatch: (p) => `${p}% tugma`,
     subjectFirstMatch: (c, _n, name) => `Nahanap namin: ${c} tugma para sa “${name}”`,
     subjectStrong: (c, _n, name) => `${c} bagong malakas na tugma para sa iyo — ${name}`,
+    subjectPossible: (c, _n, name) => `${c} bagong posibleng tugma para sa iyo — ${name}`,
     subjectPlain: (c, _n, what, name) => `${c} bagong tugma${what ? ` sa ${what}` : ""} — ${name}`,
     category: {
       engineering: "engineering", data_ai: "data at AI", design: "design", product: "product",

@@ -1,5 +1,5 @@
 // Saved job searches with "new since your last visit" counts. Counts come
-// from the job-board list action (countOnly + postedAfter watermark) — one
+// from the job-board list action (countOnly + newSince watermark) — one
 // cheap SQL count per search, no AI. Opening a search advances the
 // watermark and lands on /jobs with the filters applied.
 
@@ -71,7 +71,12 @@ export function SavedSearchesCard() {
               // board does not read — so the employer scope vanished and this
               // badge counted the whole corpus. Watching one employer showed
               // thousands of "new since your last visit".
-              body: { action: "list", ...searchToBoardBody(s.params as JobSearchParams), countOnly: true, postedAfter: s.last_seen_at },
+              // NEW BY THE DIGEST'S RULE (NB-21): newSince counts a posting the
+              // employer dated after the watermark OR one the board first saw
+              // after it, as the alert mail does. postedAfter read the
+              // employer's date alone, so the badge missed postings the mail
+              // counted (an older-dated posting the board only just found).
+              body: { action: "list", ...searchToBoardBody(s.params as JobSearchParams), countOnly: true, newSince: s.last_seen_at },
             });
             // countCapped means "at least this many" — the badge shows 10,000+
             // rather than passing the board's cap off as an exact figure.
@@ -113,11 +118,24 @@ export function SavedSearchesCard() {
     await writeWithDigestLocale(i18n.language, (lang) => table().update({ fit_threshold: value, ...lang }).eq("id", s.id)).then(() => {}, () => {});
   };
 
+  // THE RHYTHM CAN BE CHANGED WHERE IT IS SHOWN (RC-S13-083): daily or
+  // weekly, the two values user_job_searches.digest_cadence admits. A refused
+  // write puts the row back as it was.
+  const setCadence = async (s: SavedSearch, value: "daily" | "weekly") => {
+    const was = s.digest_cadence ?? null;
+    setSearches((prev) => prev.map((x) => (x.id === s.id ? { ...x, digest_cadence: value } : x)));
+    const undo = () => setSearches((prev) => prev.map((x) => (x.id === s.id ? { ...x, digest_cadence: was } : x)));
+    await writeWithDigestLocale(i18n.language, (lang) => table().update({ digest_cadence: value, ...lang }).eq("id", s.id))
+      .then((r: { error?: unknown } | null | undefined) => { if (r?.error) undo(); }, undo);
+  };
+
   if (!loaded || searches.length === 0) return null;
 
   // Aggregate the per-search "new since last visit" counts into one headline —
   // the strongest reason to come back is knowing there's something new waiting.
   const totalNew = Object.values(newCounts).reduce((sum, c) => sum + c.n, 0);
+  // A capped count is "at least" (NB-21): the headline says so, as the badge does.
+  const anyCapped = Object.values(newCounts).some((c) => c.capped);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 mb-6">
@@ -136,8 +154,10 @@ export function SavedSearchesCard() {
           className="w-full flex items-center gap-2 mb-3 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2.5 text-left hover:bg-primary/10 transition-colors"
         >
           <BellRing className="w-4 h-4 text-primary shrink-0" />
-          <span className="text-sm text-foreground font-medium">
-            {t("accountPage.ssNewHeadline", "{{count}} new jobs match your saved searches since your last visit", { count: totalNew })}
+          <span className="text-sm text-foreground font-medium" data-new-headline={anyCapped ? "capped" : "exact"}>
+            {anyCapped
+              ? t("mailPrefs.newHeadlineCapped", "{{n}} new jobs match your saved searches since your last visit", { n: `${new Intl.NumberFormat(i18n.language).format(totalNew)}+` })
+              : t("accountPage.ssNewHeadline", "{{count}} new jobs match your saved searches since your last visit", { count: totalNew })}
           </span>
           <span className="ml-auto text-[11px] text-primary font-semibold shrink-0 whitespace-nowrap">{t("accountPage.ssView", "View →")}</span>
         </button>
@@ -155,6 +175,18 @@ export function SavedSearchesCard() {
               <span className="shrink-0 text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
                 {t("accountPage.ssNewBadge", "{{n}} new", { n: `${newCounts[s.id].n.toLocaleString()}${newCounts[s.id].capped ? "+" : ""}` })}
               </span>
+            )}
+            {s.digest_opt_in && (
+              <select
+                value={isDaily(s) ? "daily" : "weekly"}
+                onChange={(e) => setCadence(s, e.target.value === "daily" ? "daily" : "weekly")}
+                aria-label={t("mailPrefs.cadenceAria", "How often to email about {{name}}", { name: s.name })}
+                data-cadence-select
+                className="shrink-0 text-[11px] rounded-md border border-border bg-background px-1.5 py-1 text-muted-foreground"
+              >
+                <option value="daily">{t("accountPage.notifDaily", "daily digest")}</option>
+                <option value="weekly">{t("accountPage.notifWeekly", "weekly digest")}</option>
+              </select>
             )}
             {s.digest_opt_in && (
               <select

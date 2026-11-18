@@ -14,6 +14,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { boardDisplayName, employerDisplayName, MULTI_EMPLOYER_BOARD_NAMES } from "../lib/employer-names";
@@ -25,7 +26,7 @@ const FILE = "20261009100200_federal_jobs_were_credited_to_whichever_agency_sort
 const SQL = readFileSync(resolve(__dirname, "../../supabase/migrations", FILE), "utf8");
 
 const SCHEMA = `
-  CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+  ${SUPABASE_DEFAULTS}
   CREATE TABLE public.job_board_postings (
     id text PRIMARY KEY, company_token text, company text, source text, category text,
     missing_since timestamptz, effective_posted timestamptz NOT NULL DEFAULT now());

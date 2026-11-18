@@ -519,7 +519,7 @@ describe("20261012110100: the census, re-issued with the perk reader", () => {
     const all = await import("./helpers/client-callable-allowlist");
     const { CLOSED_BY_CENSUS, CLOSED_TABLES, OWNED_ELSEWHERE } = all;
     // The rows this re-issue knew: a later re-issue's rows are not in its lists.
-    const CLIENT_CALLABLE = all.CLIENT_CALLABLE.filter((a) => !a.since || a.since <= "20261012110100");
+    const CLIENT_CALLABLE = all.listedAt("20261012110100");
     const db = await boot();
     let ddl = "";
     const stub = (sig: string) => `CREATE FUNCTION ${sig} RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$ BEGIN END $$;\n`;

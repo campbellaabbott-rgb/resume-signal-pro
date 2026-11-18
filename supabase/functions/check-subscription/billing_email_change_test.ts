@@ -116,11 +116,18 @@ class FakeQuery {
   insert(p: Row) { this.op = "insert"; this.payload = p; return this; }
   delete() { this.op = "delete"; return this; }
   eq(c: string, v: unknown) { this.filters.push([c, v]); return this; }
+  // The cache refresh updates only a row older than its read (S14X-080):
+  // Postgres's <, so a row with no timestamp is never matched.
+  private olderThan: Array<[string, string]> = [];
+  lt(c: string, v: string) { this.olderThan.push([c, v]); return this; }
   order() { return this; }
   limit() { return this; }
   maybeSingle() { return this.run(true); }
   then<A>(ok: (v: { data: unknown; error: unknown }) => A, no?: (e: unknown) => A) { return this.run(false).then(ok, no); }
-  private hit(r: Row) { return this.filters.every(([c, v]) => (r[c] ?? null) === (v ?? null)); }
+  private hit(r: Row) {
+    return this.filters.every(([c, v]) => (r[c] ?? null) === (v ?? null))
+      && this.olderThan.every(([c, v]) => typeof r[c] === "string" && Date.parse(r[c] as string) < Date.parse(v));
+  }
   private async run(one: boolean): Promise<{ data: unknown; error: { code: string; message: string } | null }> {
     await Promise.resolve();
     const rows = this.db.rows(this.t);
@@ -261,7 +268,8 @@ Deno.test("an unbound row is never moved, and a row the new address holds for an
 
 Deno.test("a row the new address already holds stays, and the member's own row is still refreshed by its customer", async () => {
   const { f, stripe, db } = boughtPro();
-  db.rows("pro_subscribers").push({ email: M.newBillingEmail, stripe_customer_id: null, status: "inactive", current_period_end: null, updated_at: new Date().toISOString(), user_id: null });
+  // check-subscription wrote this "not subscribed" row before the webhook's read began: a row newer than the read keeps its own (S14X-080).
+  db.rows("pro_subscribers").push({ email: M.newBillingEmail, stripe_customer_id: null, status: "inactive", current_period_end: null, updated_at: new Date(Date.now() - 60_000).toISOString(), user_id: null });
   await webhookHears(f.events["customer.updated"], stripe, db);
   const at = (e: string) => db.rows("pro_subscribers").find((r) => r.email === e);
   assertEquals(at(M.signInEmail)?.user_id, M.userId);

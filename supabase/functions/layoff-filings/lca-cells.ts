@@ -219,16 +219,28 @@ export async function decodeLcaCells(
 /**
  * THE REJECTED-PAIR LEDGER: board tokens a name match joined to another
  * company's federal filings, verified by reading the board's own postings.
- * Their cells are never posted. Add a token with the evidence, never remove
- * one without it.
+ * Their cells are never posted, and the reader refuses them whatever is
+ * loaded: the same keys are seeded into public.lca_refused_tokens
+ * (20261112180000; a cross-runtime guard keeps the two equal). Add a token
+ * with the evidence, in both places, never remove one without it.
  */
 export const LCA_REFUSED_TOKENS: Readonly<Record<string, string>> = {
   // "SOCIAL FINANCE LLC" (SoFi, 186 applications) joined greenhouse:socialfinance,
   // a Boston nonprofit with four roles; SoFi's own board (sofi) got nothing.
   socialfinance: "SoFi's filings on a Boston nonprofit's board",
-  // "SIGMA SOFTWARE LLC/INC" (US consultancies) joined smartrecruiters:sigmasoftware2,
-  // a Ukrainian and Polish firm with zero US postings.
+  // "SIGMA SOFTWARE LLC" and "SIGMA SOFTWARE INC" -- two US filers behind one
+  // name (two legal forms) -- joined smartrecruiters:sigmasoftware2, a
+  // Ukrainian and Polish firm. The evidence is the name match on two legal
+  // forms, not the board's postings: it has carried one live US posting
+  // since 2026-11-02, which reopened the reader's US-posting gate (RC-OI-21).
   sigmasoftware2: "US consultancies' filings on a Ukrainian firm's board",
+  // A Missouri health network's filings (MO cells, among them dentists) joined
+  // a same-named paylocity board whose postings are all California care
+  // facilities in San Luis Obispo County (S14X-068).
+  "ebb9e98a-78f1-47eb-a562-c52b36b09dd3": "a Missouri health network's filings on a California care provider's board",
+  // A Minnesota distributor's filings (MN/TX cells) joined a same-named
+  // paylocity board whose postings are in Florida (S14X-068).
+  "32d78507-2175-47fb-8427-a89a691203be": "a Minnesota distributor's filings on a Florida employer's board",
 };
 
 /**

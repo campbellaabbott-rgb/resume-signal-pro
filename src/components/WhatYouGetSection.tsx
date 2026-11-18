@@ -1,6 +1,7 @@
 import { ScanSearch, FileSearch, ListChecks, Users, MessageSquare, ShieldCheck, BarChart3, GitCompare, Globe2 } from "lucide-react";
 import { TEMP_RESUME_HOURS } from "@/lib/resume-retention";
 import { LANGUAGE_COUNT } from "@/i18n";
+import { FREE_SCANS_PER_DAY, SIGNED_IN_SCANS_PER_DAY } from "@/config/scan-allowance";
 
 // Pre-scan expectation setter: exactly what the free report contains, shown
 // before anyone uploads. Every item here must correspond to a real report
@@ -51,7 +52,7 @@ export function WhatYouGetSection() {
           <span>·</span>
           <span>Career-change and new-grad aware</span>
           <span>·</span>
-          <span>7 free scans/day (15 with a free account)</span>
+          <span>{FREE_SCANS_PER_DAY} free scans/day ({SIGNED_IN_SCANS_PER_DAY} with a free account)</span>
         </div>
       </div>
     </section>

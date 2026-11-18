@@ -104,7 +104,8 @@ describe("S13-085: the Shortlist audit CSV", () => {
   });
 
   it("the ordinary row is unchanged apart from its quotes", () => {
-    expect(rows[2]).toEqual(["cand-2", "jane-doe.pdf", "64", "80", "no", "Senior", "advanced", "", "m", "2", "2026-11-03T10:05:00Z"]);
+    // The last cell is role_notice_sent_at (S14X-163): empty when no notice was passed.
+    expect(rows[2]).toEqual(["cand-2", "jane-doe.pdf", "64", "80", "no", "Senior", "advanced", "", "m", "2", "2026-11-03T10:05:00Z", ""]);
   });
 });
 

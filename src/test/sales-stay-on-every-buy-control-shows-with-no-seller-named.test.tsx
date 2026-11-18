@@ -14,8 +14,9 @@
  *     with no free scan are there;
  *   - the homepage comparison's priced call to action is there;
  *   - the free report offers the Full Analysis;
- *   - the report's email capture offers the monthly pulse and the fix-plan
- *     emails, and a ticked box asks for them.
+ *   - the report's email capture offers the monthly pulse, and a ticked box
+ *     asks for it (the fix-plan emails are withdrawn: S14X-012, the owner's
+ *     option B of 2026-11-15).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -164,22 +165,24 @@ describe("the report's email capture", () => {
     applicationPassRate: null, redFlags: [], fixRoadmap: null, industry: "technology",
   };
 
-  it("offers the monthly pulse and the fix-plan emails, both unticked", () => {
+  // The fix-plan box is gone (S14X-012, the owner's option B of 2026-11-15):
+  // the pulse is the one box, and the report request carries no sequence choice.
+  it("offers the monthly pulse, unticked, and no fix-plan emails", () => {
     render(<EmailReportCapture payload={payload} />);
     const boxes = screen.getAllByRole("checkbox") as HTMLInputElement[];
-    expect(boxes).toHaveLength(2);
+    expect(boxes).toHaveLength(1);
     expect(boxes.every((b) => !b.checked)).toBe(true);
     expect(screen.getByText(/monthly market pulse/i)).toBeInTheDocument();
-    expect(screen.getByText(/short email sequence/i)).toBeInTheDocument();
+    expect(screen.queryByText(/short email sequence/i)).toBeNull();
   });
 
-  it("a ticked fix-plan box asks for the sequence, and a ticked pulse box asks send-market-pulse", async () => {
+  it("a ticked pulse box asks send-market-pulse, and the report request asks for no sequence", async () => {
     render(<EmailReportCapture payload={payload} />);
     fireEvent.change(screen.getByPlaceholderText("you@example.com"), { target: { value: "seeker@example.org" } });
     for (const b of screen.getAllByRole("checkbox")) fireEvent.click(b);
     fireEvent.click(screen.getByRole("button", { name: /send/i }));
     await waitFor(() => expect(invoke.mock.calls.map((c) => c[0])).toContain("send-market-pulse"));
     const report = invoke.mock.calls.find((c) => c[0] === "send-scan-report")!;
-    expect((report[1] as { body: Record<string, unknown> }).body.dripOptIn).toBe(true);
+    expect((report[1] as { body: Record<string, unknown> }).body).not.toHaveProperty("dripOptIn");
   });
 });

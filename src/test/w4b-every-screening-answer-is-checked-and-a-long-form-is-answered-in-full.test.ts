@@ -19,7 +19,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EdgeHandler } from "./helpers/edge-harness";
 import { chatReply, FREE_USER, loadWriter, post, tokenFor, WritingWorld } from "./helpers/writing-harness";
-import { ANSWER_CAP, ANSWER_CHUNK, groundAnswers } from "../../supabase/functions/generate-application-answers/answers";
+import { ANSWER_CAP, ANSWER_CHUNK, TOKENS_PER_QUESTION, groundAnswers } from "../../supabase/functions/generate-application-answers/answers";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 180_000 });
 
@@ -81,7 +81,14 @@ describe("generate-application-answers, run as shipped", () => {
     expect(r.status, JSON.stringify(r.body)).toBe(200);
     expect((r.body.answers as unknown[]).length).toBe(15);
     expect(world.ai.length).toBe(Math.ceil(15 / ANSWER_CHUNK));
-    for (const c of world.ai) expect(Number(c.body.max_tokens ?? c.body.max_completion_tokens)).toBeGreaterThanOrEqual(4000);
+    // Each chunk has room for every answer it asks for, and never past the
+    // flat 4,000 a chunk once had (S14X-090 sizes the cap from the chunk).
+    for (const c of world.ai) {
+      const asked = QUESTIONS.filter((q) => JSON.stringify(c.body.messages).includes(q.label)).length;
+      const cap = Number(c.body.max_tokens ?? c.body.max_completion_tokens);
+      expect(cap).toBeGreaterThanOrEqual(asked * TOKENS_PER_QUESTION);
+      expect(cap).toBeLessThanOrEqual(4000);
+    }
     expect(r.body.undrafted).toBeUndefined();
   });
 
@@ -114,14 +121,16 @@ describe("generate-application-answers, run as shipped", () => {
     expect((r.body.answers as Array<{ question: string }>).map((a) => a.question)).toEqual([QUESTIONS[0].label]);
   });
 
-  it("one chunk failing while another answers names the failed chunk's questions back", async () => {
+  it("one chunk failing while another answers names the failed chunk's questions back to draft again (S14X-119)", async () => {
     let n = 0;
     const good = answerEverything();
     world.reply = (call) => (n++ === 0 ? good(call) : new Response("{}", { status: 500 }));
     const r = await post(handlers.get("generate-application-answers")!, "generate-application-answers", body, SIGNED_IN);
     expect(r.status).toBe(200);
     expect((r.body.answers as unknown[]).length).toBe(ANSWER_CHUNK);
-    expect((r.body.undrafted as string[]).length).toBe(15 - ANSWER_CHUNK);
+    expect((r.body.retryable as string[]).length).toBe(15 - ANSWER_CHUNK);
+    // undrafted is the cap's overflow only, never a failed chunk.
+    expect(r.body.undrafted).toBeUndefined();
     // The failed chunk walked the whole model chain, retries and their
     // one-second pauses included (_shared/ai-fallback.ts), hence the budget.
   }, 15_000);

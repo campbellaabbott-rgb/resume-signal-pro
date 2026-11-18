@@ -10,6 +10,7 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
 import { purchaseSpendGate } from "../_shared/model-spend-gate.ts";
 import { isServiceRoleCaller } from "../_shared/service-caller.ts";
+import { simulateAtsParse } from "./ats-parse-simulator.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -36,7 +37,8 @@ import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 // 2026-11-10.3 (fix/cost-wave, the integration): both lanes' changes above together.
 // cost/ai and cost/ci-edge each stamped 2026-11-10.2 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "generate-ats-defense.2026-11-10.3";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, past-buyers lane, RC-S12-007, RC-S12-031): the recovery form's copy is kept, recorded and mailed once, with its saved parse checks.
+const FN_BUILD = "generate-ats-defense.2026-11-12.1";
 /** Reports one purchase may generate in a day (regenerations included). */
 const ATS_DEFENSE_PER_PURCHASE_DAY = 10;
 
@@ -613,6 +615,14 @@ Analyze this resume for ATS compatibility and provide a complete ATS Defense rep
     if (!response.ok) {
       const errorText = await response.text();
       console.error("[ATS-DEFENSE] AI gateway error:", response.status, errorText);
+      // The gateway out of credits is our outage, not the buyer's payment
+      // (S14X-109): a retryable 503, not the 500 every refusal got.
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "The writing service is temporarily unavailable. Your purchase is safe, please try again later.", code: "ai_unavailable", retryable: true }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '300' } }
+        );
+      }
       return new Response(
         JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -645,6 +655,17 @@ Analyze this resume for ATS compatibility and provide a complete ATS Defense rep
         JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // THE PARSE SIMULATION IS KEPT WITH THE REPORT (RC-S12-031). The page ran
+    // it from the résumé its own tab held, so a buyer who opened the report
+    // later, from the mail or another device, got a report without it, and
+    // so did its PDF. Its checks and confidence are saved; the résumé they
+    // were run on is not. A copy of src/lib/ats-parse-simulator.ts, byte for
+    // byte, so the saved checks are the page's.
+    if (analysis && typeof analysis === 'object') {
+      const simulation = simulateAtsParse(cleanedResume, { multiColumnDetected: requestBody.multiColumnDetected === true });
+      analysis.parseSimulation = { overallConfidence: simulation.overallConfidence, checks: simulation.checks };
     }
 
     const duration = Date.now() - startTime;

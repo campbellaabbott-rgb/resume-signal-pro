@@ -17,6 +17,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { setLanderManifestForTests } from "@/lib/seo/lander-manifest";
 import { companiesOf, searchToBoardBody, searchToQuery } from "@/lib/job-search-params";
+import { buildLanderModel, recordBoardLabel, type LanderInput } from "@/lib/company/lander-model";
+import { HiringRecordCard, type HiringRecordInput } from "@/components/jobs/company/HiringRecordCard";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -153,5 +155,63 @@ describe("the saved watch reaches the digest and the account as every board", ()
     expect(src).not.toMatch(/companies:\s*p\.company \? \[p\.company\]/);
     expect(src).toMatch(/qs\.set\("company", boards\.join\(","\)\)/);
     expect(src).toMatch(/Array\.isArray\(p\.companies\)[\s\S]{0,160}\.slice\(0, 12\)/);
+  });
+});
+
+describe("a filtered search saved on the pooled page covers every board (RC-S12-021)", () => {
+  it("an alert asked for under a filter stores the pool as `companies` beside the filter", async () => {
+    setLanderManifestForTests(POOL);
+    // No remote role on any of the three boards: the page offers the alert.
+    const base = invoke.getMockImplementation()!;
+    invoke.mockImplementation(async (fn: string, o: { body?: Record<string, unknown> } | undefined) => {
+      const b = o?.body ?? {};
+      if (fn === "job-board" && b.action === "list" && b.workMode === "remote" && !b.facetCounts) {
+        return b.countOnly ? { data: { total: 0 } } : { data: { jobs: [], total: 0, totalAllCompanies: 0, companies: [], companiesCount: 3, categories: {}, failedSources: [], failedCount: 0, refreshedAt: null, hasMore: false, unknownCompanies: [] } };
+      }
+      return base(fn, o);
+    });
+    mountAt(`/jobs/company/${A}?mode=remote`);
+    const save = await screen.findByRole("button", { name: "Alert me when this exists" }, SLOW);
+    fireEvent.click(save);
+    await waitFor(() => expect(inserts.filter((i) => i.table === "user_job_searches").length).toBeGreaterThan(0), SLOW);
+    const saved = inserts.find((i) => i.table === "user_job_searches")!.row;
+    expect((saved.params as Record<string, unknown>).companies, "the saved search mails one board of three").toEqual([A, B, C]);
+    expect(saved.params).toMatchObject({ company: A, workMode: "remote" });
+  });
+});
+
+describe("the hiring record on a pooled page names the one board it reads (S14X-161)", () => {
+  const input = (o: Partial<LanderInput> = {}): LanderInput => ({
+    token: A, storedName: "PwC", bakedName: null, cachedName: null,
+    listTotal: 2202, listFloor: false, feedTotal: 1042, feedFloor: false, feedAsOf: null,
+    boardReadAt: null, source: "workday", agency: false, collision: null, isUsajobs: false,
+    loading: false, error: false, budgetRefusal: false, gated: { verdict: "closes", withheld: null },
+    verdict: "positive", growth: "grew", layoffRows: 0, visitorFilters: [], ...o,
+  });
+  const RECORD: HiringRecordInput = {
+    curve: { open_roles: 1042, filled_roles_90d: 42, relisted_roles_90d: 3, tracking_days: 60, observability_bucket: "full_read", sufficient: true, dated_coverage: 0.9 },
+    gated: { verdict: "closes", withheld: null }, actively: "positive", admitted: "closes", relistCaution: false,
+    growth: { verdict: "grew", row: null, why: null },
+    bars: { growthMinRatePct: 25, growthWindowDays: 7, closedWindowDays: 90, shareDays: 14, supportDays: 30 },
+  };
+
+  it("the model names the record's board when the page pools more than one, and nothing with one", () => {
+    expect(buildLanderModel(input({ pooledBoards: 3 })).recordBoard).toBe("Global Experienced Careers");
+    expect(buildLanderModel(input({ pooledBoards: 1 })).recordBoard).toBeNull();
+    expect(buildLanderModel(input()).recordBoard).toBeNull();
+    expect(recordBoardLabel("acme")).toBe("acme");
+  });
+
+  it("the card says so above the record; a one-board page prints no such line", () => {
+    const { unmount } = render(<MemoryRouter><HiringRecordCard input={{ ...RECORD, oneBoardOf: { n: 3, board: "Global Experienced Careers" } }} /></MemoryRouter>);
+    expect(document.querySelector("[data-record-one-board]")?.textContent).toBe("Hiring record for one of this employer's 3 boards: Global Experienced Careers");
+    unmount();
+    render(<MemoryRouter><HiringRecordCard input={RECORD} /></MemoryRouter>);
+    expect(document.querySelector("[data-record-one-board]")).toBeNull();
+  });
+
+  it("the page hands the model's board to the card", () => {
+    const code = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
+    expect(code).toMatch(/oneBoardOf: landerModel\?\.recordBoard && landerModel\.pooledBoards \? \{ n: landerModel\.pooledBoards, board: landerModel\.recordBoard \} : null,/);
   });
 });

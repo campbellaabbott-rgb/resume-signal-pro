@@ -56,6 +56,7 @@ function landAt(entry: string): string {
       <Routes>
         <Route path="/" element={<ScannerAddressRedirect><p data-testid="home">home</p></ScannerAddressRedirect>} />
         <Route path="/resume-checker" element={<Where />} />
+        <Route path="/pricing" element={<Where />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -74,13 +75,26 @@ describe("every address that meant the scanner lands on /resume-checker, query a
     ["/?ref=0a1b2c3d4e5f&utm_source=x", "/resume-checker?ref=0a1b2c3d4e5f&utm_source=x"],
     ["/?utm_source=email&utm_medium=scan_report&utm_campaign=rescan", "/resume-checker?utm_source=email&utm_medium=scan_report&utm_campaign=rescan"],
     ["/?utm_source=email&utm_medium=market_pulse&utm_campaign=rescan", "/resume-checker?utm_source=email&utm_medium=market_pulse&utm_campaign=rescan"],
-    ["/?utm_source=email&utm_medium=scan_report&utm_campaign=free_scan#pricing", "/resume-checker?utm_source=email&utm_medium=scan_report&utm_campaign=free_scan#pricing"],
+    ["/?utm_source=email&utm_medium=scan_report&utm_campaign=rescan#upload", "/resume-checker?utm_source=email&utm_medium=scan_report&utm_campaign=rescan#upload"],
+    ["/?market=GB#upload", "/resume-checker?market=GB#upload"],
+    ["/?market=DE", "/resume-checker?market=DE"],
   ];
   for (const [from, to] of cases) {
     it(`${from} -> ${to}`, () => {
       expect(landAt(from)).toBe(to);
     });
   }
+
+  // S13-099: four months of scan-report mail linked "Get the full analysis"
+  // to "/?…utm_medium=scan_report…#pricing". /resume-checker has no #pricing,
+  // so the button opened the scanner instead of the $5 card it names.
+  it("a sent report mail's \"Get the full analysis\" opens the Full Analysis card on /pricing, query kept", () => {
+    expect(landAt("/?utm_source=email&utm_medium=scan_report&utm_campaign=free_scan#pricing"))
+      .toBe("/pricing?utm_source=email&utm_medium=scan_report&utm_campaign=free_scan#full-analysis");
+    expect(scannerAddressFor("?utm_medium=scan_report", "#pricing")).toBe("/pricing?utm_medium=scan_report#full-analysis");
+    // Only the report mail's own button: another campaign's #pricing is not it.
+    expect(scannerAddressFor("?utm_campaign=rescan", "#pricing")).toBe("/resume-checker?utm_campaign=rescan#pricing");
+  });
 
   it("a directory's own ?ref= tag is not an affiliate code: it stays on the homepage", () => {
     expect(landAt("/?ref=producthunt")).toBe("home");

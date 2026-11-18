@@ -4,7 +4,6 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { buyerEmailOf } from "../_shared/buyer-email.ts";
-import { clientAddressOr } from "../_shared/client-address.ts";
 import { maskEmail } from "../_shared/mailbox-proof.ts";
 import { networkBucket } from "../_shared/network-bucket.ts";
 
@@ -21,7 +20,8 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 // the buyer out; and the session's metadata, which carries the buyer's
 // address, is no longer written to the log.
 // 2026-11-10.2 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "verify-scan-pack-purchase.2026-11-10.2";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, full-analysis lane, S14X-042): a named claim stores no address.
+const FN_BUILD = "verify-scan-pack-purchase.2026-11-12.1";
 
 /** A Stripe Checkout session id, as the other paid doors accept one. */
 const CHECKOUT_SESSION = /^cs_[A-Za-z0-9_]{1,250}$/;
@@ -282,7 +282,9 @@ serve(async (req) => {
       .from('used_stripe_sessions')
       .insert({
         session_id: sessionId,
-        ip_address: clientAddressOr(req.headers),
+        // No address on a claim that names its product (S14X-042): only an
+        // old unnamed claim is ever judged by who wrote it.
+        ip_address: null,
         product_type: productType,
       });
 

@@ -166,7 +166,7 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
                 one-off tool (the one rule, _shared/pro-standing.ts). */}
             {pro.trialing
               ? t("proPlan.trialingNoCap", "Your trial is on: scans have no daily cap now. The $5 Full Analysis is included from your first payment.")
-              : t("proPlan.activeMember", "You're a Pro member: the writing tools are unlocked.")}
+              : t("payments.pro.activeMemberPackages", "You're a Pro member: 5 writing packages a day (60 a month) on a stronger model.")}
             {periodEnd && (
               <span className="text-muted-foreground font-normal" data-testid={pro.cancelAtPeriodEnd ? "pro-ends" : "pro-renews"}>
                 {pro.cancelAtPeriodEnd
@@ -182,6 +182,8 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
           <p className="text-sm font-medium text-destructive">
             {t("proPlan.owing", "Your last payment didn't go through. Update your card to keep your plan — no new subscription needed.")}
           </p>
+          {/* Pro's tools are off while it owes (pro-standing.ts), and the retry bills the whole month (S14X-077). */}
+          <p className="text-sm text-muted-foreground">{t("payments.pro.pausedUntilPaid")}</p>
           {manageButton(t("proPlan.updatePayment", "Update payment method"), CreditCard, "default")}
         </div>
       ) : pro.linkPending ? (

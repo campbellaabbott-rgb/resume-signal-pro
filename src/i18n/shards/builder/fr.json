@@ -1,0 +1,33 @@
+{
+  "builderPage": {
+    "importFailed": {
+      "title": "Votre CV n'a pas été importé",
+      "busy": "L'import est saturé pour le moment. Réessayez dans quelques minutes.",
+      "dailyLimit": "Vous avez atteint la limite d'imports pour aujourd'hui. Réessayez demain, ou remplissez vous-même les sections ci-dessous.",
+      "paused": "L'import est suspendu pour le moment. Remplissez vous-même les sections ci-dessous, ou réessayez plus tard.",
+      "tooLong": "La lecture de votre CV a pris trop de temps. Un nouvel essai fonctionne généralement.",
+      "generic": "Un problème est survenu pendant la lecture de votre CV. Réessayez.",
+      "retry": "Réessayer",
+      "fixesWaiting": "Les corrections du rapport seront appliquées quand l'import aura fonctionné."
+    },
+    "importTruncated": "Seuls les {{imported}} premiers caractères sur {{total}} de votre CV ont été importés. Ajoutez la suite ci-dessous.",
+    "importLatest": "Importer ma dernière analyse",
+    "importedNoneMatchedTitle": "CV importé",
+    "importedNoneMatchedDescription_one": "La reformulation du rapport ne correspondait à aucun point, elle n'a donc pas été appliquée. Elle reste dans votre rapport.",
+    "importedNoneMatchedDescription_many": "Aucune des {{count}} reformulations du rapport ne correspondait à un point, aucune n'a donc été appliquée. Elles restent dans votre rapport.",
+    "importedNoneMatchedDescription_other": "Aucune des {{count}} reformulations du rapport ne correspondait à un point, aucune n'a donc été appliquée. Elles restent dans votre rapport.",
+    "otherTab": {
+      "changed": "Ce brouillon a été modifié dans un autre onglet.",
+      "load": "Charger cette version",
+      "keep": "Garder la mienne",
+      "cleared": "Ce brouillon a été effacé dans un autre onglet ou à la déconnexion."
+    },
+    "storageBlocked": "Ce navigateur n'enregistre pas votre brouillon. Exportez-le avant de partir.",
+    "moveUp": "Monter",
+    "moveDown": "Descendre",
+    "removeEntry": "Supprimer cette entrée",
+    "removeBullet": "Supprimer ce point",
+    "bullet": "Point {{num}}",
+    "dismiss": "Masquer"
+  }
+}

@@ -1,0 +1,335 @@
+// Deterministic, rule-based simulation of how a real ATS text parser would read
+// this resume — NOT an AI judgment call. Every check here is a mechanical pattern
+// match against the same extracted text the AI analysis also sees, so results are
+// reproducible and explainable: "we found 0 date patterns" is a fact, not a guess.
+// This exists specifically to give a more honest signal than an LLM's holistic ATS
+// score, which estimates compatibility but can't actually tell you what a real
+// parser extracted.
+
+export type ParseCheckStatus = "pass" | "warning" | "fail";
+
+export interface ParseCheckResult {
+  id: string;
+  label: string;
+  status: ParseCheckStatus;
+  detail: string;
+  /**
+   * The same finding as translation keys (S14X-057): the free report says it
+   * in the reader's language from `key` (the check) and `detailKey` (which
+   * branch fired) with `vars`; a section list in vars is a list of section
+   * ids. `label` and `detail` stay English for the paid report and the
+   * server copy of this file.
+   */
+  key: string;
+  detailKey: string;
+  vars?: Record<string, string | number | string[]>;
+}
+
+export interface AtsParseSimulationResult {
+  overallConfidence: number; // 0-100, deterministic — see computeOverallConfidence
+  checks: ParseCheckResult[];
+}
+
+const SECTION_PATTERNS: { id: string; label: string; pattern: RegExp }[] = [
+  { id: "summary", label: "Summary / Objective", pattern: /\b(summary|profile|objective|about me)\b/i },
+  { id: "experience", label: "Experience", pattern: /\b(experience|employment history|work history|professional experience)\b/i },
+  { id: "education", label: "Education", pattern: /\b(education|academic background)\b/i },
+  { id: "skills", label: "Skills", pattern: /\b(skills|technical skills|core competencies|key skills)\b/i },
+];
+
+const EMAIL_PATTERN = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
+const PHONE_PATTERN = /(\+?\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/;
+const LINKEDIN_PATTERN = /linkedin\.com\/in\/[A-Za-z0-9-]+/i;
+
+// Matches "Jan 2020", "January 2020", "01/2020", "2020-2023", "2020 - Present", etc.
+const DATE_PATTERN = /\b(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{4}|\d{1,2}\/\d{4}|\d{4}\s*[-–—to]+\s*(?:present|current|\d{4})|\b(19|20)\d{2}\b)/gi;
+
+// U+FFFD (replacement character) appears when a PDF's font encoding can't be
+// mapped to a real Unicode codepoint — the same failure mode a real ATS text
+// extractor would hit, since most use the same category of PDF text layer.
+const BROKEN_ENCODING_PATTERN = /�/g;
+
+// Private Use Area codepoints (U+E000–U+F8FF) are where icon fonts (FontAwesome,
+// Material Icons, etc.) map their glyphs. Many resume templates — Canva's in
+// particular — use an icon font to render the phone/email/LinkedIn icons next to
+// contact info. A real text extractor doesn't render the glyph, it emits the raw
+// codepoint, which shows up as nothing, a tofu box, or a stray character right
+// next to your contact details. Distinct from BROKEN_ENCODING_PATTERN: this is a
+// valid Unicode codepoint, so it never produces U+FFFD — it just isn't text.
+const PRIVATE_USE_AREA_PATTERN = /[\uE000-\uF8FF]/g;
+
+function checkSections(text: string): ParseCheckResult {
+  const found = SECTION_PATTERNS.filter((s) => s.pattern.test(text));
+  const missing = SECTION_PATTERNS.filter((s) => !s.pattern.test(text));
+
+  if (missing.length === 0) {
+    return {
+      id: "sections",
+      label: "Section Headers",
+      status: "pass",
+      key: "sections",
+      detailKey: "sectionsAll",
+      vars: { n: SECTION_PATTERNS.length, found: found.map((s) => s.id) },
+      detail: `All ${SECTION_PATTERNS.length} standard section headers detected (${found.map((s) => s.label).join(", ")}).`,
+    };
+  }
+
+  if (found.length === 0) {
+    return {
+      id: "sections",
+      label: "Section Headers",
+      status: "fail",
+      key: "sections",
+      detailKey: "sectionsNone",
+      detail: "No standard section headers detected. Most ATS parsers segment a resume by recognizing labels like \"Experience\" or \"Education\" — without them, your content may get dumped into one unstructured block.",
+    };
+  }
+
+  return {
+    id: "sections",
+    label: "Section Headers",
+    status: "warning",
+    key: "sections",
+    detailKey: "sectionsSome",
+    vars: { found: found.map((s) => s.id), missing: missing.map((s) => s.id) },
+    detail: `Detected: ${found.map((s) => s.label).join(", ")}. Missing a recognizable header for: ${missing.map((s) => s.label).join(", ")}.`,
+  };
+}
+
+function checkContactInfo(text: string, contactOnlyInHeader?: boolean): ParseCheckResult {
+  const hasEmail = EMAIL_PATTERN.test(text);
+  const hasPhone = PHONE_PATTERN.test(text);
+  const hasLinkedIn = LINKEDIN_PATTERN.test(text);
+
+  // A DOCX whose email and phone sit only in the page header (RC-S13-036):
+  // our reader merges header lines into the text, so they were found here,
+  // but some ATS skip headers and footers entirely. A warning, not a pass.
+  if (contactOnlyInHeader && (hasEmail || hasPhone)) {
+    return {
+      id: "contact",
+      label: "Contact Info Extraction",
+      status: "warning",
+      key: "contact",
+      detailKey: "contactHeaderOnly",
+      detail: "Your contact details sit only in the page header, which some ATS skip. Put your email and phone in the body of the first page too.",
+    };
+  }
+
+  if (hasEmail && hasPhone) {
+    return {
+      id: "contact",
+      label: "Contact Info Extraction",
+      status: "pass",
+      key: "contact",
+      detailKey: hasLinkedIn ? "contactBothLinkedIn" : "contactBoth",
+      detail: `Email and phone number were both extractable via standard pattern matching.${hasLinkedIn ? " LinkedIn URL also found." : ""}`,
+    };
+  }
+
+  if (!hasEmail && !hasPhone) {
+    return {
+      id: "contact",
+      label: "Contact Info Extraction",
+      status: "fail",
+      key: "contact",
+      detailKey: "contactNone",
+      detail: "No email or phone number could be extracted from the text. If these are present in your file but not detected, they may be in an image, text box, or header/footer that text extraction skips.",
+    };
+  }
+
+  return {
+    id: "contact",
+    label: "Contact Info Extraction",
+    status: "warning",
+    key: "contact",
+    detailKey: hasEmail ? "contactEmailOnly" : "contactPhoneOnly",
+    detail: `${hasEmail ? "Email" : "Phone number"} was extractable, but ${hasEmail ? "no phone number" : "no email"} was found in a standard format.`,
+  };
+}
+
+function checkDateParsing(text: string): ParseCheckResult {
+  const matches = text.match(DATE_PATTERN) || [];
+  const uniqueDates = new Set(matches.map((m) => m.toLowerCase()));
+
+  if (uniqueDates.size >= 2) {
+    return {
+      id: "dates",
+      label: "Date Parsing",
+      status: "pass",
+      key: "dates",
+      detailKey: "datesMany",
+      vars: { n: uniqueDates.size },
+      detail: `Found ${uniqueDates.size} distinct date patterns — an ATS can likely determine your employment timeline and tenure at each role.`,
+    };
+  }
+
+  if (uniqueDates.size === 0) {
+    return {
+      id: "dates",
+      label: "Date Parsing",
+      status: "fail",
+      key: "dates",
+      detailKey: "datesNone",
+      detail: "No recognizable date patterns (e.g. \"Jan 2020\", \"2020-2023\") were found. ATS systems use dates to calculate experience duration and gaps — without them, that calculation fails silently.",
+    };
+  }
+
+  return {
+    id: "dates",
+    label: "Date Parsing",
+    status: "warning",
+    key: "dates",
+    detailKey: "datesOne",
+    vars: { n: uniqueDates.size },
+    detail: `Only ${uniqueDates.size} date pattern found. If you have multiple roles, most of them may be missing parseable start/end dates.`,
+  };
+}
+
+function checkEncoding(text: string): ParseCheckResult {
+  const matches = text.match(BROKEN_ENCODING_PATTERN);
+  if (!matches || matches.length === 0) {
+    return {
+      id: "encoding",
+      label: "Character Encoding",
+      status: "pass",
+      key: "encoding",
+      detailKey: "encodingOk",
+      detail: "No broken character encoding detected in the extracted text.",
+    };
+  }
+
+  return {
+    id: "encoding",
+    label: "Character Encoding",
+    status: "fail",
+    key: "encoding",
+    detailKey: "encodingBroken",
+    vars: { n: matches.length },
+    detail: `${matches.length} character(s) failed to decode during text extraction (shown as replacement characters). This usually means an embedded font in your PDF isn't mapped to standard Unicode — likely from a template with custom icon fonts or unusual symbols, and a real ATS using the same extraction method would see the same garbled text.`,
+  };
+}
+
+function checkIconFontGlyphs(text: string): ParseCheckResult {
+  const matches = text.match(PRIVATE_USE_AREA_PATTERN);
+  if (!matches || matches.length === 0) {
+    return {
+      id: "icon-glyphs",
+      label: "Icon Font Glyphs",
+      status: "pass",
+      key: "iconGlyphs",
+      detailKey: "iconsNone",
+      detail: "No icon-font characters detected in the extracted text.",
+    };
+  }
+
+  return {
+    id: "icon-glyphs",
+    label: "Icon Font Glyphs",
+    status: "warning",
+    key: "iconGlyphs",
+    detailKey: "iconsFound",
+    vars: { n: matches.length },
+    detail: `${matches.length} icon-font character(s) found in the extracted text — common in templates that use an icon font for the phone/email/LinkedIn symbols next to your contact info. A real ATS sees the raw codepoint, not the icon, which can leave stray characters or gaps right where your contact details should be.`,
+  };
+}
+
+function checkTextFlattening(text: string): ParseCheckResult | null {
+  const trimmed = text.trim();
+  if (trimmed.length < 200) {
+    return null; // Too short to reliably assess line structure either way.
+  }
+
+  const lineBreaks = (trimmed.match(/\n/g) || []).length;
+  const charsPerLine = trimmed.length / (lineBreaks + 1);
+
+  if (charsPerLine <= 120) {
+    return {
+      id: "flattening",
+      label: "Line Structure",
+      status: "pass",
+      key: "lines",
+      detailKey: "linesNormal",
+      vars: { chars: Math.round(charsPerLine) },
+      detail: `Text extracted with normal line breaks (~${Math.round(charsPerLine)} characters per line) — content is segmented the way it visually appears.`,
+    };
+  }
+
+  if (charsPerLine <= 250) {
+    return {
+      id: "flattening",
+      label: "Line Structure",
+      status: "warning",
+      key: "lines",
+      detailKey: "linesLong",
+      vars: { chars: Math.round(charsPerLine) },
+      detail: `Text extracted with unusually long lines (~${Math.round(charsPerLine)} characters per line). This can happen when a table or text box collapses multiple visual lines into one — worth double-checking that your bullet points aren't running together.`,
+    };
+  }
+
+  return {
+    id: "flattening",
+    label: "Line Structure",
+    status: "fail",
+    key: "lines",
+    detailKey: "linesFlat",
+    vars: { chars: Math.round(charsPerLine) },
+    detail: `Text extracted with almost no line breaks (~${Math.round(charsPerLine)} characters per line). This is the signature of a table-based layout or text boxes being flattened into one block — a real ATS parser would likely see your entire resume as one undifferentiated wall of text, losing all section and bullet structure.`,
+  };
+}
+
+function checkLayout(multiColumnDetected: boolean | undefined): ParseCheckResult | null {
+  if (multiColumnDetected === undefined) {
+    return null; // Not applicable — only computed for PDF uploads with position data.
+  }
+
+  if (!multiColumnDetected) {
+    return {
+      id: "layout",
+      label: "Column Layout",
+      status: "pass",
+      key: "layout",
+      detailKey: "layoutSingle",
+      detail: "No multi-column layout detected — text extracts in a single, linear reading order.",
+    };
+  }
+
+  return {
+    id: "layout",
+    label: "Column Layout",
+    status: "fail",
+    key: "layout",
+    detailKey: "layoutColumns",
+    detail: "A multi-column layout was detected in your PDF. Text extractors (including most ATS systems) read PDFs in the order content appears in the file, not visual reading order — a two-column resume often gets its columns interleaved or read out of sequence, scrambling your actual content.",
+  };
+}
+
+function computeOverallConfidence(checks: ParseCheckResult[]): number {
+  if (checks.length === 0) return 0;
+  const weights: Record<ParseCheckStatus, number> = { pass: 100, warning: 55, fail: 0 };
+  const total = checks.reduce((sum, c) => sum + weights[c.status], 0);
+  return Math.round(total / checks.length);
+}
+
+export function simulateAtsParse(
+  resumeText: string,
+  options?: { multiColumnDetected?: boolean; contactOnlyInHeader?: boolean }
+): AtsParseSimulationResult {
+  const checks: ParseCheckResult[] = [
+    checkSections(resumeText),
+    checkContactInfo(resumeText, options?.contactOnlyInHeader),
+    checkDateParsing(resumeText),
+    checkEncoding(resumeText),
+    checkIconFontGlyphs(resumeText),
+  ];
+
+  const flatteningCheck = checkTextFlattening(resumeText);
+  if (flatteningCheck) checks.push(flatteningCheck);
+
+  const layoutCheck = checkLayout(options?.multiColumnDetected);
+  if (layoutCheck) checks.push(layoutCheck);
+
+  return {
+    overallConfidence: computeOverallConfidence(checks),
+    checks,
+  };
+}

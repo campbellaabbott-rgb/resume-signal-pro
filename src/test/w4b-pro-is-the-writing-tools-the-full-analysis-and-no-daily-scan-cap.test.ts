@@ -42,13 +42,17 @@ beforeAll(async () => {
 describe("the list says exactly what Pro is", () => {
   it("the writing tools with their numbers, the Full Analysis included, no daily cap on scans, cancel anytime", () => {
     expect(PRO_PERKS).toEqual([
-      "Everything in a free account, plus the writing tools",
+      // NB-11: a free account has one of each writing tool a day, so the list never calls them Pro's alone.
+      "Everything in a free account, which already has one of each writing tool a day",
       "A tailored résumé, cover letter and interview prep for your jobs: up to 5 packages a day and 60 a month",
       "The $5 Full Analysis included",
+      // The cap pro_grants_cap enforces (owner decision D7), named where Pro is sold (S14X-079).
+      "Up to 10 Full Analyses a day and 60 a month",
       "No daily cap on scans",
       "Cancel anytime from your account",
     ]);
-    expect(PRO_SUMMARY.text).toBe("Everything in a free account, plus the writing tools, the $5 Full Analysis included and no daily cap on scans");
+    expect(PRO_SUMMARY.text).toBe("Everything in a free account, plus 5 writing packages a day (60 a month) on a stronger model, the $5 Full Analysis included and no daily cap on scans");
+    expect([...PRO_PERKS, PRO_SUMMARY.text].join(" ")).not.toContain("plus the writing tools");
   });
 
   it("never says unlimited, and names no product Pro does not include", () => {

@@ -29,6 +29,7 @@ import {
 import { SignedInAsInterstitial } from "@/components/auth/SignedInAsInterstitial";
 import { LinkSignInBanner } from "@/components/auth/LinkSignInBanner";
 import { loadAuthStrings } from "@/i18n/auth/load";
+import { confirmRedirect } from "@/i18n/auth/mail-language";
 
 /**
  * A MEMBER SIGNED IN ON THIS BROWSER, FOR THE CHECKOUT'S ONE QUESTION
@@ -133,10 +134,11 @@ function clearThisTabsPersonalData(): void {
   clearStash();
 }
 
-export function clearPersonalBrowserData(): void {
+/** keepWork: the person chose to keep the builder and Freelance Boost drafts on this device (S14X-097). */
+export function clearPersonalBrowserData(opts?: { keepWork?: boolean }): void {
   try { for (const k of PERSONAL_LOCAL_KEYS) localStorage.removeItem(k); } catch { /* storage blocked: nothing kept */ }
   clearThisTabsPersonalData();
-  clearLocalResumeCopies();
+  clearLocalResumeCopies({ keepWork: opts?.keepWork === true });
   clearPendingSignIn();
 }
 
@@ -164,6 +166,9 @@ function forgetSessionTraces(): void {
  * never blocks the app, and is awaited only by the password reset, which must
  * not set a new password the guard could then clear. signedOut: the guard
  * had to end every session, this one included (the person signs in again).
+ * keysRevoked: the prefixes of the account's API and connector keys made
+ * before the proven sign-in, which the guard turned off with the password
+ * (S14X-228); empty from a guard that predates it.
  */
 export type GuardResult = {
   state: "idle" | "pending" | "done" | "failed";
@@ -172,8 +177,10 @@ export type GuardResult = {
   signedOut: boolean;
   reason: string | null;
   status: number | null;
+  keysRevoked: string[];
 };
-export const GUARD_IDLE: GuardResult = { state: "idle", proven: false, passwordCleared: false, signedOut: false, reason: null, status: null };
+export const GUARD_IDLE: GuardResult = { state: "idle", proven: false, passwordCleared: false, signedOut: false, reason: null, status: null, keysRevoked: [] };
+const prefixes = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, 20) : []);
 const GUARD_CACHE_KEY = "rb_guard_seen";
 const GUARD_RECHECK_MS = 60 * 60 * 1000;      // a "not proven" answer is asked again after an hour
 const GUARD_FAILED_RECHECK_MS = 10 * 60 * 1000; // a failed ask, after ten minutes
@@ -193,7 +200,7 @@ function readGuardCache(key: string, now = Date.now()): GuardCache | null {
   try {
     const c = JSON.parse(localStorage.getItem(GUARD_CACHE_KEY) ?? "null") as GuardCache | null;
     if (!c || c.key !== key || typeof c.at !== "number") return null;
-    const r = { ...c, signedOut: c.signedOut === true };
+    const r = { ...c, signedOut: c.signedOut === true, keysRevoked: prefixes(c.keysRevoked) };
     if (r.state === "done" && (r.proven || now - r.at < GUARD_RECHECK_MS)) return r;
     if (r.state === "failed" && now - r.at < GUARD_FAILED_RECHECK_MS) return r;
     return null;
@@ -213,9 +220,9 @@ async function askGuard(accessToken: string): Promise<GuardResult> {
       // This session's own token, never whatever the client holds by the time the call leaves.
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    const d = data as { proven?: unknown; passwordCleared?: unknown; signedOut?: unknown; reason?: unknown } | null;
+    const d = data as { proven?: unknown; passwordCleared?: unknown; signedOut?: unknown; reason?: unknown; keysRevoked?: unknown } | null;
     if (!error && d && typeof d.proven === "boolean") {
-      return { state: "done", proven: d.proven, passwordCleared: d.passwordCleared === true, signedOut: d.signedOut === true, reason: typeof d.reason === "string" ? d.reason : null, status: 200 };
+      return { state: "done", proven: d.proven, passwordCleared: d.passwordCleared === true, signedOut: d.signedOut === true, reason: typeof d.reason === "string" ? d.reason : null, status: 200, keysRevoked: prefixes(d.keysRevoked) };
     }
     const ctx = (error as { context?: { status?: number; clone?: () => { json: () => Promise<unknown> } } } | null)?.context;
     let reason: string | null = error ? "error" : "unreadable_answer";
@@ -223,21 +230,25 @@ async function askGuard(accessToken: string): Promise<GuardResult> {
     // pre-proof password, and the body says so: that is explained like a 200's.
     let passwordCleared = false;
     let signedOut = false;
+    let keysRevoked: string[] = [];
     try {
-      const body = ctx?.clone ? (await ctx.clone().json()) as { reason?: unknown; error?: unknown; passwordCleared?: unknown; signedOut?: unknown } : null;
+      const body = ctx?.clone ? (await ctx.clone().json()) as { reason?: unknown; error?: unknown; passwordCleared?: unknown; signedOut?: unknown; keysRevoked?: unknown } : null;
       if (typeof body?.reason === "string") reason = body.reason;
       else if (typeof body?.error === "string") reason = body.error;
       passwordCleared = body?.passwordCleared === true;
       signedOut = body?.signedOut === true;
+      keysRevoked = prefixes(body?.keysRevoked);
     } catch { /* no body */ }
-    return { state: "failed", proven: false, passwordCleared, signedOut, reason, status: typeof ctx?.status === "number" ? ctx.status : null };
+    return { state: "failed", proven: false, passwordCleared, signedOut, reason, status: typeof ctx?.status === "number" ? ctx.status : null, keysRevoked };
   } catch {
-    return { state: "failed", proven: false, passwordCleared: false, signedOut: false, reason: "network", status: null };
+    return { ...GUARD_IDLE, state: "failed", reason: "network" };
   }
 }
 
-function tr(key: string, fallback: string): string {
-  try { return i18next.isInitialized ? i18next.t(key, fallback) : fallback; } catch { return fallback; }
+function tr(key: string, fallback: string, vars?: Record<string, string>): string {
+  let s = fallback;
+  try { if (i18next.isInitialized) s = i18next.t(key, fallback); } catch { /* the English default */ }
+  return vars ? s.replace(/\{\{\s*(\w+)\s*\}\}/g, (m, k: string) => vars[k] ?? m) : s;
 }
 
 // ── a session that arrived in the URL ───────────────────────────────────────
@@ -259,6 +270,11 @@ function tr(key: string, fallback: string): string {
  * network failure, a timeout, a 5xx). The tokens and the marker are KEPT and
  * the page offers Try again (retryStashedSession): a still-valid session is
  * never thrown away by a blip (second recheck of R1).
+ *
+ * adoptRetry: the auth server vouched for the tokens, and handing them to the
+ * site's client then failed for a network reason (S14X-208). The resolved
+ * session is KEPT in memory and Try again hands it over once more: the link
+ * was good, so it is never called expired.
  */
 export type StashState =
   | { kind: "none" }
@@ -266,8 +282,27 @@ export type StashState =
   | { kind: "adopted"; next: string | null; type: string | null }
   | { kind: "interstitial"; email: string; type: string | null }
   | { kind: "unreachable"; next: string | null; type: string | null }
+  | { kind: "adoptRetry"; next: string | null; type: string | null; banner: boolean }
   | { kind: "failed"; type: string | null; email?: string | null }
   | { kind: "error"; code: string | null; description: string | null; email?: string | null };
+
+/**
+ * An auth answer the next try may pass: unreachable, a 5xx, a 408 or a 429
+ * (the rule of src/lib/auth-probe.ts's transientAuthFailure, kept here so the
+ * context does not depend on the probe module for it).
+ */
+function retryable(e: unknown): boolean {
+  const status = (e as { status?: unknown } | null)?.status;
+  if (typeof status === "number") return status === 0 || status >= 500 || status === 408 || status === 429;
+  return /fetch|network|timeout|timed out|load failed|aborted|ECONN|socket/i.test(String((e as { message?: unknown } | null)?.message ?? e));
+}
+
+/**
+ * What handing a resolved session to the site's client came to (S14X-208):
+ * "transient" is a network failure, a 5xx or a throw, after which the same
+ * session may well be adopted on a second try; "refused" is a definite answer.
+ */
+export type AdoptResult = "ok" | "refused" | "transient";
 
 const STASH_MAX_AGE_MS = 60 * 60 * 1000;
 
@@ -304,11 +339,14 @@ interface AuthContextValue {
   /**
    * This device only unless a scope is named. A deliberate sign-out clears
    * what the person left in this browser; keepLocalWork (a session a link put
-   * here, turned away) clears only what that session wrote.
+   * here, turned away) clears only what that session wrote; keepLocalDrafts
+   * (the person chose "keep it on this device") clears everything but the
+   * builder and Freelance Boost drafts. This device is signed out even when
+   * the auth server cannot be reached, and the person is told (S14X-098).
    */
-  signOut: (opts?: { scope?: "local" | "others" | "global"; keepLocalWork?: boolean }) => Promise<void>;
+  signOut: (opts?: { scope?: "local" | "others" | "global"; keepLocalWork?: boolean; keepLocalDrafts?: boolean }) => Promise<void>;
   /** Every device this account is signed in on. */
-  signOutEverywhere: () => Promise<void>;
+  signOutEverywhere: (opts?: { keepLocalDrafts?: boolean }) => Promise<void>;
   /** True when a previously-active session disappeared (token expiry/revocation) */
   sessionExpired: boolean;
   /** The account guard's answer for the current session. */
@@ -317,13 +355,18 @@ interface AuthContextValue {
   ensureGuard: (session?: Session | null, opts?: { fresh?: boolean }) => Promise<GuardResult>;
   /** A password reset is on screen: the guard's "password cleared" notice would only confuse it. */
   setResetUnderway: (on: boolean) => void;
-  /** Hand a session resolved by src/lib/auth-probe.ts to the site's client (the person said yes, or started it). */
-  adoptSession: (p: Probed, opts?: { recovery?: boolean; banner?: boolean }) => Promise<boolean>;
+  /**
+   * Hand a session resolved by src/lib/auth-probe.ts to the site's client (the
+   * person said yes, or started it). A session of ANOTHER account than the one
+   * signed in here first clears what that account left in this browser
+   * (S14X-099).
+   */
+  adoptSession: (p: Probed, opts?: { recovery?: boolean; banner?: boolean }) => Promise<AdoptResult>;
   /** A session that arrived in the URL, and what became of it. */
   stashState: StashState;
   /** The sign-in page showed the stash's error or failure: it is not shown again. */
   clearStashOutcome: () => void;
-  /** The auth server could not be asked about the stashed tokens: ask again (they were kept). */
+  /** The stashed tokens could not be checked, or their session could not be handed over: try again (both were kept). */
   retryStashedSession: () => void;
   /** The "Is this your account?" prompt's Continue. */
   acceptStashedSession: () => Promise<void>;
@@ -344,7 +387,7 @@ const AuthContext = createContext<AuthContextValue>({
   guardResult: GUARD_IDLE,
   ensureGuard: async () => GUARD_IDLE,
   setResetUnderway: () => {},
-  adoptSession: async () => false,
+  adoptSession: async () => "refused",
   stashState: { kind: "none" },
   clearStashOutcome: () => {},
   retryStashedSession: () => {},
@@ -438,6 +481,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             title: tr("auth.guard.passwordClearedTitle", "Your old password was cleared"),
             description: tr("auth.guard.passwordCleared", "We cleared a password set on this address before you proved you own it. Set a new one in your account settings if you want one."),
           });
+        });
+      }
+      // The keys go with the password, and are named whatever screen is up.
+      if (r.keysRevoked.length) {
+        const keys = r.keysRevoked.map((p) => `${p}…`).join(", ");
+        void loadAuthStrings().then(() => {
+          toast({ description: tr("auth.guard.keysRevoked", "We also turned off the API and connector keys made on this account before you proved the address ({{keys}}). Make a new one in your account if you need it.", { keys }) });
         });
       }
       return r;
@@ -559,16 +609,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** Hand a resolved session to the site's own client. */
-  const adoptSession = useCallback(async (p: Probed, opts?: { recovery?: boolean; banner?: boolean }): Promise<boolean> => {
+  /**
+   * Hand a resolved session to the site's own client. ANOTHER ACCOUNT'S LINK
+   * (S14X-099): when this browser holds a session of a different account, what
+   * that account left here goes first, as its deliberate sign-out would clear
+   * it (in every tab, through the mark), so the new account never inherits
+   * the first one's credits, addresses or résumé copies. The same account
+   * clears nothing.
+   */
+  const adoptSession = useCallback(async (p: Probed, opts?: { recovery?: boolean; banner?: boolean }): Promise<AdoptResult> => {
     if (opts?.recovery) resetUnderway.current = true;
     try {
+      let here: User | null = null;
+      try { here = (await supabase.auth.getSession())?.data?.session?.user ?? null; } catch { /* nothing readable here */ }
+      const id = p.session.user?.id;
+      if (here && (id ? here.id !== id : (here.email ?? "").toLowerCase() !== p.email)) {
+        mark(SIGN_OUT_MARK_KEY);
+        clearPersonalBrowserData();
+      }
       const { error } = await supabase.auth.setSession({ access_token: p.session.access_token, refresh_token: p.session.refresh_token });
-      if (error) return false;
+      // A blip after the link was verified is not an expired link (S14X-208).
+      if (error) return retryable(error) ? "transient" : "refused";
       if (opts?.banner) setBanner({ email: p.email });
-      return true;
+      return "ok";
     } catch {
-      return false;
+      return "transient";
     }
   }, [setBanner]);
 
@@ -608,8 +673,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // the link type says or does not say: a crafted token pair carries no
       // type at all (lead decision E).
       const banner = !pending?.email;
-      const ok = await adoptSession(r, { recovery: type === "recovery", banner });
-      setStashState(ok ? { kind: "adopted", next: pending?.next ?? null, type } : { kind: "failed", type });
+      const res = await adoptSession(r, { recovery: type === "recovery", banner });
+      if (res === "transient") { resolved.current = r; setStashState({ kind: "adoptRetry", next: pending?.next ?? null, type, banner }); return; }
+      setStashState(res === "ok" ? { kind: "adopted", next: pending?.next ?? null, type } : { kind: "failed", type });
     })();
   }, [stashState, adoptSession]);
 
@@ -622,8 +688,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!r) { setStashState({ kind: "failed", type }); return; }
     setInterstitialBusy(true);
     try {
-      const ok = await adoptSession(r, { recovery: type === "recovery" });
-      setStashState(ok ? { kind: "adopted", next: null, type } : { kind: "failed", type });
+      const res = await adoptSession(r, { recovery: type === "recovery" });
+      if (res === "transient") { resolved.current = r; setStashState({ kind: "adoptRetry", next: null, type, banner: false }); return; }
+      setStashState(res === "ok" ? { kind: "adopted", next: null, type } : { kind: "failed", type });
     } finally {
       setInterstitialBusy(false);
     }
@@ -643,10 +710,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const retryStashedSession = useCallback(() => {
-    if (stashState.kind !== "unreachable") return;
-    adoptStarted.current = false;
-    setStashState({ kind: "adopting", next: stashState.next, type: stashState.type });
-  }, [stashState]);
+    if (stashState.kind === "unreachable") {
+      adoptStarted.current = false;
+      setStashState({ kind: "adopting", next: stashState.next, type: stashState.type });
+      return;
+    }
+    if (stashState.kind !== "adoptRetry") return;
+    // The session the auth server vouched for, handed over once more.
+    const { next, type, banner: withBanner } = stashState;
+    const r = resolved.current;
+    if (!r) { setStashState({ kind: "failed", type }); return; }
+    adoptStarted.current = true;
+    setStashState({ kind: "adopting", next, type });
+    void adoptSession(r, { recovery: type === "recovery", banner: withBanner }).then((res) => {
+      if (res === "transient") { setStashState({ kind: "adoptRetry", next, type, banner: withBanner }); return; }
+      resolved.current = null;
+      setStashState(res === "ok" ? { kind: "adopted", next, type } : { kind: "failed", type });
+    });
+  }, [stashState, adoptSession]);
 
   const signUp = async (email: string, password: string, next?: string) => {
     const { data, error } = await supabase.auth.signUp({
@@ -682,7 +763,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: result.error?.message ?? null };
   };
 
-  const signOut = async (opts?: { scope?: "local" | "others" | "global"; keepLocalWork?: boolean }) => {
+  /**
+   * SIGNED OUT HERE EVEN WHEN THE SERVER DID NOT HEAR IT (S14X-098). auth-js
+   * keeps the stored session when /logout fails with anything but a
+   * 401/403/404 (a 503, a dropped connection) and fires no SIGNED_OUT, so the
+   * page used to move on as if signed out while the session stayed. A failed
+   * call is followed by removing this device's stored session through the
+   * client's own storage, and a local sign-out that then has no token to send
+   * and only clears. Answers whether the server heard it.
+   */
+  const endHere = async (scope: "local" | "global"): Promise<boolean> => {
+    try {
+      const r = await supabase.auth.signOut({ scope });
+      if (!r?.error) return true;
+    } catch { /* read as an error answer */ }
+    try {
+      const a = supabase.auth as unknown as { storage?: { removeItem?: (k: string) => unknown }; storageKey?: string };
+      if (a.storageKey) await a.storage?.removeItem?.(a.storageKey);
+    } catch { /* storage blocked: the local sign-out below still ends it */ }
+    try { await supabase.auth.signOut({ scope: "local" }); } catch { /* nothing left to end */ }
+    return false;
+  };
+
+  /** The notice for a sign-out the server did not hear; "everywhere" can be asked again with the old token, held in memory only. */
+  const tellNotHeard = (scope: "local" | "global", token: string | null) => {
+    void loadAuthStrings().then(() => {
+      const everywhere = scope === "global";
+      toast({
+        title: tr("auth.signOut.offlineTitle", "Signed out on this device"),
+        description: everywhere
+          ? tr("auth.signOut.offlineEverywhere", "You're signed out on this device, but we couldn't reach the server, so your other devices may still be signed in.")
+          : tr("auth.signOut.offlineHere", "You're signed out on this device, but we couldn't reach the server to end the session there too."),
+        ...(everywhere && token ? { action: { label: tr("auth.signOut.retry", "Try again"), onClick: () => { void endEverywhere(token); } } } : {}),
+      });
+    });
+  };
+
+  const endEverywhere = async (token: string) => {
+    let status = 0;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/logout?scope=global`, {
+        method: "POST",
+        headers: { apikey: String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ""), Authorization: `Bearer ${token}` },
+      });
+      status = res.status;
+    } catch { /* unreachable again */ }
+    if (status >= 200 && status < 300) toast({ description: tr("auth.signOut.everywhereDone", "You're signed out on every device.") });
+    else if (retryable({ status })) tellNotHeard("global", token);
+    else toast({ description: tr("auth.signOut.signInAgain", "We couldn't sign out your other devices from here. Sign in again and choose Sign out everywhere.") });
+  };
+
+  const signOut = async (opts?: { scope?: "local" | "others" | "global"; keepLocalWork?: boolean; keepLocalDrafts?: boolean }) => {
     const scope = opts?.scope ?? "local";
     if (scope === "others") {
       // Not a sign-out of this device: nothing here is cleared.
@@ -696,7 +827,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mark(QUIET_SIGN_OUT_MARK_KEY);
       forgetSessionTraces();
       try {
-        await supabase.auth.signOut({ scope: "local" });
+        await endHere("local");
       } finally {
         forgetSessionTraces();
         setStashState({ kind: "none" });
@@ -704,19 +835,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return;
     }
+    const token = scope === "global" ? session?.access_token ?? null : null;
+    const keepWork = opts?.keepLocalDrafts === true;
     mark(SIGN_OUT_MARK_KEY);
-    clearPersonalBrowserData();
+    clearPersonalBrowserData({ keepWork });
+    let heard = true;
     try {
-      await supabase.auth.signOut({ scope });
+      heard = await endHere(scope);
     } finally {
       // The SIGNED_OUT listener runs inside that call; clear once more after it.
-      clearPersonalBrowserData();
+      clearPersonalBrowserData({ keepWork });
       setStashState({ kind: "none" });
       setBanner(null);
     }
+    if (!heard) tellNotHeard(scope, token);
   };
 
-  const signOutEverywhere = () => signOut({ scope: "global" });
+  const signOutEverywhere = (opts?: { keepLocalDrafts?: boolean }) => signOut({ scope: "global", keepLocalDrafts: opts?.keepLocalDrafts });
 
   return (
     <AuthContext.Provider value={{
@@ -744,25 +879,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/** Where an emailed confirmation or sign-in link lands: the confirm step, which acts only on a press. */
-export function confirmRedirect(next?: string | null): string {
-  const safe = safeNextPath(next);
-  const tail = safe === DEFAULT_AFTER_AUTH ? "" : `&next=${encodeURIComponent(safe)}`;
-  return `${window.location.origin}/auth?mode=confirm${tail}${mailLanguageParam()}`;
-}
-
-/**
- * THE LANGUAGE THE AUTH MAIL IS WRITTEN IN (S12-180). The mail is built by the
- * auth hook from the auth server's payload, which carries no locale, only the
- * link the page asked for. So the page names its language in that link, and
- * the hook reads it back from the redirect. English needs no parameter.
- */
-export const MAIL_LANGUAGES: readonly string[] = ["en-GB", "de", "es", "fr", "hi", "nl", "pt", "tl"];
-export function mailLanguageParam(lng: string | null | undefined = i18next.language): string {
-  const want = String(lng ?? "");
-  const code = MAIL_LANGUAGES.includes(want) ? want : MAIL_LANGUAGES.includes(want.split("-")[0]) ? want.split("-")[0] : null;
-  return code ? `&lng=${encodeURIComponent(code)}` : "";
-}
+// The auth mail's language and the confirm link (S12-180), kept in their own
+// module for the account page's security card (S14X-236).
+// eslint-disable-next-line react-refresh/only-export-components
+export { MAIL_LANGUAGES, confirmRedirect, mailLanguageParam } from "@/i18n/auth/mail-language";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {

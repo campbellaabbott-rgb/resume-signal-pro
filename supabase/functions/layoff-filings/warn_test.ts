@@ -3,7 +3,8 @@
 // map's newest public date is held to within a day of the newest date in
 // the state's own file; the two direct feeds are held to the same bar
 // where Big Local News' copy is weeks behind (the reason they exist); the
-// maps without a saved sample are held to refusing a file they cannot read.
+// four states that publish no stamp of their own are read from their saved
+// files and dated by our first read; every map refuses a file it cannot read.
 //
 // Run: deno test --allow-read --allow-env --allow-net supabase/functions/layoff-filings/
 // (--allow-net only for the one-time esm.sh download of the xlsx reader;
@@ -14,7 +15,8 @@ import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 import { buildWarnRows, extractFailuresFrom, feedVerdict, isStale, latestRunJobsUrl, mapTable, tableFromCsv } from "./warn.ts";
 import { tableFromGrid, tableFromTwcXlsx } from "./tx-xlsx.ts";
 import { cellLines, pagerPages, tableFromFlHtml } from "./fl-html.ts";
-import { ALL_STATE_MAPS, AZ, CA, FL, GA, IA, IL, MA, MD, NY, OH, OR, TX, VA, WA } from "./warn-maps/index.ts";
+import { ALL_STATE_MAPS, AZ, CA, FL, GA, IA, IL, MA, MD, NOT_READ, NY, OH, OR, TX, VA, WA } from "./warn-maps/index.ts";
+import { texasFilerCell } from "./warn-maps/tx.ts";
 import { resolveHeaders } from "./warn-maps/types.ts";
 import type { StateMap } from "./warn-maps/types.ts";
 import {
@@ -59,6 +61,7 @@ Deno.test("CA: Big Local News' raw copy is at parity with EDD's own warn_report1
   const kinds = new Set(r.records.map((x) => x.eventType));
   assert(kinds.has("closure") && kinds.has("layoff"));
   assert(r.records.some((x) => x.isTemporary === true) && r.records.some((x) => x.isTemporary === false));
+  // EDD's own file calls the date "Processed Date" (Big Local News renames it received_date): the agency's word labels it.
   assert(r.records.every((x) => x.noticeDate != null && x.visibleBasis === "state_processed"));
 });
 
@@ -188,14 +191,18 @@ Deno.test("FL: the REACT listing read directly is at the day's newest notificati
   assertEquals(cellLines("<b>Acme</b> </br>1 Main St</br></br>TOWN, FL, 33000"), ["Acme", "1 Main St", "", "TOWN, FL, 33000"]);
 });
 
-// ── the maps without a saved sample refuse what they cannot read ───────────
+// ── every map is pinned to a saved file and refuses what it cannot read ────
 
-Deno.test("every map without a saved sample says so, and refuses a file whose header it does not recognise", () => {
+Deno.test("every state map read is pinned to a saved file, Georgia is named as not read, and a map refuses a file whose header it does not recognise", () => {
   const unverified = ALL_STATE_MAPS.filter((m) => !m.verifiedAgainstSample).map((m) => m.state).sort();
-  assertEquals(unverified, ["AZ", "GA", "IA", "MA", "MD", "VA"]);
+  assertEquals(unverified, [], "a map read every night with no saved file behind it");
   const verified = ALL_STATE_MAPS.filter((m) => m.verifiedAgainstSample).map((m) => m.state).sort();
-  // OR pinned from Big Local News' own raw or.csv on 2026-10-10 (S8-106).
-  assertEquals(verified, ["CA", "FL", "IL", "NY", "OH", "OR", "TX", "WA"]);
+  // OR pinned from Big Local News' own raw or.csv on 2026-10-10 (S8-106);
+  // AZ, IA, MA, MD and VA from their raw files saved 2026-11-15 (S14X-036).
+  assertEquals(verified, ["AZ", "CA", "FL", "IA", "IL", "MA", "MD", "NY", "OH", "OR", "TX", "VA", "WA"]);
+  // Georgia publishes no notice, received or posted date: not read, and said so.
+  assert(!ALL_STATE_MAPS.includes(GA), "Georgia is read with no date to read");
+  assertStringIncludes(NOT_READ.GA ?? "", "separation");
   const caTable = tableFromCsv(sampleText("bln-raw-ca.csv"), CA);
   for (const m of [AZ, GA, IA, MA, MD, VA]) {
     const r = mapTable(m, caTable, "bln_raw");
@@ -209,31 +216,78 @@ Deno.test("every map without a saved sample says so, and refuses a file whose he
   assert(ok.ok);
   const bad = resolveHeaders(MA, ["EMPLOYER", "CITY/TOWN"]);
   assert(!bad.ok && bad.missing.includes("visible"));
-  // An unverified map whose COUNT resolves to nothing is refused too (S8-106):
-  // Oregon's guessed candidates once stored every notice with workers NULL.
+  // A map whose COUNT resolves to nothing is refused too (S8-106): Oregon's
+  // guessed candidates once stored every notice with workers NULL.
   const noCount = resolveHeaders(MA, ["RECEIVED", "EMPLOYER", "CITY/TOWN", "REGION", "DATE(S) OF LAYOFFS"]);
   assert(!noCount.ok && noCount.missing.includes("workers"));
-  // Twelve raw maps plus the two direct states, one file each, no duplicates.
-  assertEquals(new Set(ALL_STATE_MAPS.map((m) => m.state)).size, 14);
+  // Eleven raw maps plus the two direct states, one file each, no duplicates.
+  assertEquals(new Set(ALL_STATE_MAPS.map((m) => m.state)).size, 13);
 });
 
-Deno.test("the employer's notice date never stands in for the state's stamp: a header with Notice Date and no received/posted column resolves for NO map, and no visible slot names a notice-date spelling", () => {
+Deno.test("the employer's notice date never stands in for a state's stamp: a stamp map refuses a notice-only header, and a state that publishes no stamp is dated by our first read, never by a stamp column", () => {
   const noticeOnly = ["Company", "Company Name", "Employer", "Notice Date", "WARN Date", "Date of Notice", "notice_date", "WARN Notice Date", "Effective Date", "Layoff Date", "Number of Employees", "Type", "Location", "City", "County"];
+  const firstRead = ALL_STATE_MAPS.filter((m) => m.visibleBasis === "our_first_fetch").map((m) => m.state).sort();
+  assertEquals(firstRead, ["AZ", "IA", "MD", "VA"]);
   for (const m of ALL_STATE_MAPS) {
+    if (m.visibleBasis === "our_first_fetch") {
+      // No stamp column is named at all, so no notice-date spelling can sit in one.
+      assertEquals(m.columns.visible, undefined, `${m.state} names a stamp column it does not publish`);
+      assert((m.columns.noticeDate ?? []).length > 0, `${m.state} has no date to read`);
+      continue;
+    }
     const r = resolveHeaders(m, noticeOnly);
     assert(!r.ok && r.missing.includes("visible"), `${m.state} must refuse a file whose only date is the employer's notice date`);
-    for (const c of m.columns.visible) {
+    for (const c of m.columns.visible ?? []) {
       assert(!/notice/i.test(c), `${m.state}: ${JSON.stringify(c)} is a notice-date spelling in the visible slot`);
     }
   }
-  // The same header plus a received stamp (and a count each unverified map
-  // can read, which it now requires) resolves for the maps that name one.
-  const withReceived = [...noticeOnly, "Date Received", "Number of Employees Affected", "Employees Affected"];
-  for (const m of [MD, AZ, VA, IA, GA]) {
-    const r = resolveHeaders(m, withReceived);
-    assert(r.ok, `${m.state} resolves once the state's own stamp is present`);
-    assertEquals(r.ok ? r.pick.visible : null, "Date Received");
+  // A first-read map refuses a file without its notice date: it would have no date at all.
+  const noDate = resolveHeaders(MD, ["Company", "Location", "Total Employees", "Effective Date", "Type"]);
+  assert(!noDate.ok && noDate.missing.includes("noticeDate"));
+});
+
+Deno.test("S14X-036: Maryland, Virginia, Arizona and Iowa's saved files are read, each notice dated by its notice date and published as the day of our first read", async () => {
+  const readAt = new Date("2026-11-15T12:00:00Z");
+  const cases: Array<[StateMap, string, number, string]> = [
+    [MD, "bln-raw-md.csv", 1443, "2026-11-12"],
+    [VA, "bln-raw-va.csv", 1139, "2026-10-30"],
+    [AZ, "bln-raw-az.csv", 562, "2026-09-15"],
+    [IA, "bln-raw-ia.csv", 446, "2026-11-10"],
+  ];
+  for (const [m, file, records, newestNotice] of cases) {
+    const r = mapTable(m, tableFromCsv(sampleText(file), m), "bln_raw", undefined, readAt);
+    assert(r.ok, `${m.state}: ${r.ok ? "" : r.reason}`);
+    assertEquals(r.records.length, records, m.state);
+    assert(r.records.filter((x) => x.workers != null).length >= records * 0.9, `${m.state}: the count column reads for nine notices in ten`);
+    const b = await buildWarnRows(r.records, readAt, 365);
+    assert(b.rows.length > 0, m.state);
+    for (const row of b.rows) {
+      assertEquals(row.public_basis, "our_first_fetch", m.state);
+      assertEquals(row.public_date, "2026-11-15", `${m.state}: the public date is our read, not a state stamp`);
+      assertEquals(row.event_basis, "warn_notice_date", m.state);
+    }
+    // The stale rule reads the newest NOTICE: our read is always tonight.
+    assertEquals(b.latestPublicDate, newestNotice, m.state);
+    assertEquals(b.noticeAfterStamp, 0, m.state);
   }
+  // Arizona lists its non-WARN notices beside the WARN ones; they are not kept.
+  const az = mapTable(AZ, tableFromCsv(sampleText("bln-raw-az.csv"), AZ), "bln_raw", undefined, readAt);
+  assertEquals(az.ok ? az.dropped.notWarn : -1, 96);
+  // Winnebago Industries' Iowa notice of 2026-10-09: 51 workers in Forest City.
+  const ia = mapTable(IA, tableFromCsv(sampleText("bln-raw-ia.csv"), IA), "bln_raw", undefined, readAt);
+  assert(ia.ok);
+  const win = ia.records.filter((x) => /^Winnebago Industries$/.test(x.filerRaw) && x.noticeDate === "2026-10-09");
+  assertEquals(win.map((x) => [x.workers, x.siteCity]), [[51, "Forest City"]]);
+  const tonight = await buildWarnRows(ia.records, readAt, 365);
+  const row = tonight.rows.find((x) => x.event_date === "2026-10-09" && /winnebago/i.test(String(x.filer_raw ?? x.filer_name ?? "")));
+  assertEquals(row?.workers, 51);
+  assertEquals(row?.status, "active");
+  // The next night's read keys the same notice the same way: the key never carries the night.
+  const tomorrow = await buildWarnRows(
+    (() => { const t = mapTable(IA, tableFromCsv(sampleText("bln-raw-ia.csv"), IA), "bln_raw", undefined, new Date("2026-11-16T12:00:00Z")); return t.ok ? t.records : []; })(),
+    new Date("2026-11-16T12:00:00Z"), 365,
+  );
+  assert(tomorrow.rows.some((x) => x.filing_id === row?.filing_id), "the same notice read a night later is a different filing");
 });
 
 // ── rows for the upsert ────────────────────────────────────────────────────
@@ -379,7 +433,7 @@ Deno.test("the Big Local News run reader: failed extracts per state, the jobs UR
   assertEquals(isStale(null, false, READ_ISO, 21), true);
 });
 
-Deno.test("a refused unverified map is a note on the slice, never a failed read; a verified map's refusal and every error are failures", () => {
+Deno.test("a refused header fails the night's read for every state map now that each is pinned to a saved file; only a map with no saved file would make it a note", () => {
   const unverified = { verifiedAgainstSample: false };
   const verified = { verifiedAgainstSample: true };
   assertEquals(feedVerdict({ ok: true, refused: false }, unverified), "ok");
@@ -387,10 +441,47 @@ Deno.test("a refused unverified map is a note on the slice, never a failed read;
   assertEquals(feedVerdict({ ok: false, refused: true }, verified), "failed", "a verified map that no longer recognises its state's header is a real failure");
   assertEquals(feedVerdict({ ok: false, refused: false }, unverified), "failed", "a fetch or write error on an unverified map is a failure");
   assertEquals(feedVerdict({ ok: false, refused: false }, verified), "failed");
-  // The six maps still unverified all answer "refused" on California's header, so the slice's ok is untouched by them.
+  // The five maps once unverified refuse California's header, and that is now a failed read (S14X-036).
   const caTable = tableFromCsv(sampleText("bln-raw-ca.csv"), CA);
-  for (const m of [AZ, GA, IA, MA, MD, VA]) {
+  for (const m of [AZ, IA, MA, MD, VA]) {
     const r = mapTable(m, caTable, "bln_raw");
-    assertEquals(feedVerdict({ ok: r.ok, refused: !r.ok }, m), "refused", m.state);
+    assertEquals(feedVerdict({ ok: r.ok, refused: !r.ok }, m), "failed", m.state);
+  }
+});
+
+Deno.test("S14X-151: Texas' bare and dated update markers are amendments, and the update shares its original's filer and site", () => {
+  const cases: Array<[string, string, string | null]> = [
+    ["Tyson Foods, Inc (Amarillo B-Shift Operations) Updated", "Tyson Foods, Inc", "Amarillo B-Shift Operations"],
+    ["Congo, LLC (Updated March 2026)", "Congo, LLC", null],
+    ["Yang Ming (America) Corporation Updated", "Yang Ming", "America Corporation"],
+    ["Zachry Industrial, Inc. (Baytown) Updated", "Zachry Industrial, Inc.", "Baytown"],
+  ];
+  for (const [raw, filer, site] of cases) {
+    assertEquals(amendKind(raw), "update", raw);
+    const c = texasFilerCell(raw);
+    assertEquals(c.filerRaw, raw, "the stored filer stays verbatim");
+    assertEquals(c.filerForNorm, filer, raw);
+    assertEquals(c.siteFromCell, site, raw);
+  }
+  // The originals split the same way.
+  assertEquals(texasFilerCell("Yang Ming (America) Corporation").siteFromCell, "America Corporation");
+  assertEquals(texasFilerCell("Congo, LLC").siteFromCell, null);
+  assertEquals(texasFilerCell("Zachry Industrial, Inc. (Baytown)").siteFromCell, "Baytown");
+  // An employer whose name starts with the word keeps it; a cut-short parenthetical opens no name.
+  assertEquals(amendKind("Updated Living LLC"), null);
+  assertEquals(warnPrePass("Acme Corp (Dallas"), "Acme Corp");
+});
+
+Deno.test("S14X-151: the saved Texas file's Congo and Yang Ming updates supersede their originals instead of standing beside them", async () => {
+  const r = mapTable(TX, tableFromCsv(sampleText("bln-raw-tx.csv"), TX), "bln_raw");
+  assert(r.ok, r.ok ? "" : r.reason);
+  for (const [name, oldDate, newDate] of [["congo", "2025-10-28", "2026-01-09"], ["yang ming", "2025-10-01", "2025-12-02"]]) {
+    const recs = r.records.filter((x) => keyNorm(x.filerForNorm) === name);
+    assertEquals(recs.length, 2, name);
+    const b = await buildWarnRows(recs, new Date("2026-09-18T15:40:00Z"), 365);
+    const byDate = Object.fromEntries(b.rows.map((x) => [x.event_date, x]));
+    assertEquals(byDate[oldDate]?.status, "superseded", `${name}: the original stayed active beside its update`);
+    assertEquals(byDate[newDate]?.status, "active", name);
+    assertEquals(byDate[newDate]?.supersedes_id, byDate[oldDate]?.filing_id, name);
   }
 });

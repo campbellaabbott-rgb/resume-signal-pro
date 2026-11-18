@@ -10,6 +10,7 @@ import { BadgeCheck, Building2, Loader2, Mail } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { peekStashed, stashedValueFor, takeStashed } from "@/lib/auth-fragment";
 
 interface Props {
   companyToken: string;
@@ -59,18 +60,26 @@ export function CompanyClaim({ companyToken, companyName, variant = "inline", op
     return () => { cancelled = true; };
   }, [companyToken]);
 
-  // Email-link landing: /jobs/company/:token?claim_verify=<uuid>. The token
-  // is read and taken out of the address bar; nothing is sent until the
-  // visitor presses the confirm button (every other confirmation in this
-  // lane works the same way, because mail scanners open links).
+  // Email-link landing: /jobs/company/:token/?claim_verify=<uuid>. The first
+  // script in index.html moves the token into this tab's stash before the
+  // host's analytics records the address (S14X-103, src/lib/auth-fragment.ts),
+  // so it is read from the address when it is still there (an in-app
+  // navigation, or storage that could not be written), else from the stash
+  // for this page. Nothing is sent until the visitor presses the confirm
+  // button (every other confirmation in this lane works the same way,
+  // because mail scanners open links).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const token = params.get("claim_verify");
+    // The path as the first script records it: without a trailing slash.
+    const path = window.location.pathname.replace(/\/+$/, "") || "/";
+    const { value: token } = stashedValueFor("claim_verify", path, params.get("claim_verify"));
     if (!token) return;
-    params.delete("claim_verify");
-    const qs = params.toString();
-    // Keeps the entry's state: the board stamps its own entries (see Jobs).
-    window.history.replaceState(window.history.state, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+    if (params.has("claim_verify")) {
+      params.delete("claim_verify");
+      const qs = params.toString();
+      // Keeps the entry's state: the board stamps its own entries (see Jobs).
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+    }
     setPendingVerify(token);
   }, [companyToken]);
 
@@ -93,6 +102,11 @@ export function CompanyClaim({ companyToken, companyName, variant = "inline", op
     } catch {
       toast({ title: t("jobsPage.claim.verifyFail", "That verification link didn't work — it may be stale. Request a fresh one below."), variant: "destructive" });
     } finally {
+      // Spent: a reload must not offer the same token again.
+      if (peekStashed("claim_verify") === pendingVerify) {
+        takeStashed("claim_verify");
+        takeStashed("claim_verify_path");
+      }
       setConfirming(false);
       setPendingVerify(null);
     }

@@ -215,7 +215,8 @@ describe("the H-1B line on an employer page is the working reader, read from its
 
   it("names the quarter, the file, its published date and the cell's occupation, from the row", async () => {
     mount("acme", { curve: FULL, lca: LCA_ROW });
-    await waitFor(() => expect(text()).toContain("Filed H-1B wages · FY2026 Q3"), SLOW);
+    // The chip names every visa class the LCA file holds (S14X-184, layoff-filings lane).
+    await waitFor(() => expect(text()).toContain("Filed LCA wages (H-1B, H-1B1, E-3) · FY2026 Q3"), SLOW);
     expect(text()).toContain("Acme filed 12 certified labor condition applications for Software Developers in CA in FY2026 Q3");
     expect(text()).toContain("LCA_Disclosure_Data_FY2026_Q3.xlsx, published 2026-08-25");
     // No posting is in view on the employer page, so the unasked cell is
@@ -230,7 +231,7 @@ describe("the H-1B line on an employer page is the working reader, read from its
     mount("acme", { curve: FULL, lca: NULL_LCA });
     await waitFor(() => expect(text()).toContain("Hiring record"), SLOW);
     await waitFor(() => expect(rpc.mock.calls.some(([fn]) => fn === "get_employer_lca_wages")).toBe(true), SLOW);
-    expect(text()).not.toContain("Filed H-1B wages");
+    expect(text()).not.toContain("Filed LCA wages");
     expect(text()).not.toMatch(/sponsor/i);
     expect(document.querySelector("[data-lca-context]")).toBeNull();
   });

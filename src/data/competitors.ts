@@ -5,6 +5,7 @@
 
 import { oneTimePriceRangeUsd } from "../config/products";
 import { LANGUAGE_COUNT } from "../i18n/languages";
+import { FREE_SCANS_PER_DAY, SIGNED_IN_SCANS_PER_DAY } from "../config/scan-allowance";
 
 export interface CompetitorRow {
   dim: string;
@@ -24,8 +25,10 @@ export interface Competitor {
   pricingNote?: string;
 }
 
-const US_FREE = "Full diagnostic report — score with audit trail, bullets graded and rewritten, recruiter panel, interview questions, per-vendor ATS checks. 7 scans/day (15 with a free account).";
-const US_HONESTY = "Score shown with its modeling band, a point-by-point audit trail, and a report ID that a rescan of the same file within 7 days returns again; every quoted line verified against your actual resume.";
+// The allowance is the scanner's own (S13-094), read from the module the
+// scanners are held equal to. Relative import: the bake bundles this file.
+const US_FREE = `Full diagnostic report — score with audit trail, bullets graded and rewritten, recruiter panel, interview questions, per-vendor ATS checks. ${FREE_SCANS_PER_DAY} scans/day (${SIGNED_IN_SCANS_PER_DAY} with a free account).`;
+const US_HONESTY = "Score shown with its modeling band, a point-by-point audit trail, and a report ID that a rescan of the same file within 7 days returns again; every rewritten bullet, and the line it quotes, checked against your actual resume.";
 // L4-08: the range is the catalogue's own (it said "$3–29" while /pricing
 // ran $2 to $59). Relative import: the bake bundles this with esbuild.
 // Since 2026-10-17 the catalogue sells one one-off (the Full Analysis), so a
@@ -48,7 +51,7 @@ export const COMPETITORS: Record<string, Competitor> = {
     rows: [
       { dim: "Reproducible score", us: US_HONESTY, them: "Ask five times, get five different numbers — chat output isn't calibrated or repeatable, and there is no fixed score to track between edits.", usWins: true },
       { dim: "Real benchmarks", us: "Your score is placed against a live corpus of real scans — published medians and quartiles per industry, with sample sizes.", them: "No corpus. A chatbot can estimate what a 'good' resume looks like, but it cannot place yours in a real distribution.", usWins: true },
-      { dim: "Verified claims", us: "Every quoted line is checked against your actual document before it reaches the report; nothing invented survives.", them: "Chatbots routinely misquote resumes — flagging 'missing' items that are present, or praising things that aren't there.", usWins: true },
+      { dim: "Verified claims", us: "Every rewritten bullet, and the original line it quotes, is checked against your actual document before it reaches the report; an invented one is dropped.", them: "Chatbots routinely misquote resumes — flagging 'missing' items that are present, or praising things that aren't there.", usWins: true },
       { dim: "Deterministic checks", us: "Per-vendor ATS parsing checks (Workday, Greenhouse, Lever, iCIMS), structure parsing, per-country CV rules (photo norms, data laws), keyword provenance (posting > O*NET > model).", them: "General advice recalled from training data — it cannot run your file through parser or format checks.", usWins: true },
       { dim: "Conversation & iteration", us: "Focused reports and grounded rewrites — deliberately not a chat.", them: "Genuinely excellent: brainstorming, endless rewrites, tone changes, follow-up questions. Use them for this — many of our users do both.", usWins: false },
       { dim: "Breadth beyond resumes", us: "Resume-scoped by design: scanning, rewrites, cover letters, interview prep.", them: "Everything else too — salary negotiation scripts, company research, mock interviews on any topic.", usWins: false },
@@ -87,7 +90,7 @@ export const COMPETITORS: Record<string, Competitor> = {
     intro: "Rezi is an AI resume builder — generation-first, with ATS-friendly templates.",
     rows: [
       { dim: "Diagnostic depth on YOUR resume", us: US_FREE, them: "Focused on generating new content in its builder; analysis of an uploaded resume is secondary.", usWins: true },
-      { dim: "Verified output", us: "Every quoted line checked against your document; nothing invented survives to the report.", them: "AI-generated content without an equivalent verification claim.", usWins: true },
+      { dim: "Verified output", us: "Every rewritten bullet, and the line it quotes, checked against your document; an invented one is dropped before the report.", them: "AI-generated content without an equivalent verification claim.", usWins: true },
       { dim: "Template library", us: "One clean, ATS-safe format in the builder.", them: "Larger template selection — their strength.", usWins: false },
       { dim: "Pricing model", us: US_PRICING, them: "Subscription with a lifetime-purchase option (as of mid-2026).", usWins: true },
       { dim: "Score honesty", us: US_HONESTY, them: "A single Rezi Score number.", usWins: true },

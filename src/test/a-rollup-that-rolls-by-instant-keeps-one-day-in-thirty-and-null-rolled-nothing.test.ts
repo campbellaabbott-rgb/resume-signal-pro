@@ -20,6 +20,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { definitionAt, migFile } from "./helpers/fixed-clock-sql";
 
 vi.setConfig({ hookTimeout: 120_000, testTimeout: 60_000 });
@@ -34,7 +35,7 @@ const NEW_LAYOFF = "20261008113500_a_filing_month_is_rolled_whole_and_counted_on
 
 const SCHEMA = `
   SET TIME ZONE 'UTC';
-  CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+  ${SUPABASE_DEFAULTS}
   CREATE TABLE public.job_board_closures (
     posting_id text, company_token text NOT NULL, company text, category text NOT NULL DEFAULT '',
     posted_at timestamptz, closed_at timestamptz NOT NULL, superseded boolean NOT NULL DEFAULT false,

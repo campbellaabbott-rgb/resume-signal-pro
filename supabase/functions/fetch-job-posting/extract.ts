@@ -24,12 +24,19 @@ export interface Posting {
   company: string | null;
   /** The description as plain text, paragraphs on their own lines. */
   text: string;
+  /** True when the description was longer than MAX_DESCRIPTION_CHARS and its end was cut. */
+  truncated?: boolean;
 }
 
 /** Shorter than this is a teaser, not a job description. */
 export const MIN_DESCRIPTION_CHARS = 200;
-/** The most text handed back; the scan reads less than this. */
-export const MAX_DESCRIPTION_CHARS = 20_000;
+/**
+ * The most text handed back (S14X-270). The uploader puts a header before it
+ * (title and company up to 300 characters each, the link up to 2,048, and
+ * their labels), and the scan reads 20,000 characters in all: 17,000 leaves
+ * that header room, so the posting's own end is what is cut, and said.
+ */
+export const MAX_DESCRIPTION_CHARS = 17_000;
 
 const NAMED: Readonly<Record<string, string>> = {
   nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", rsquo: "’", lsquo: "‘",
@@ -90,7 +97,7 @@ function posting(title: unknown, company: unknown, html: string): Posting | null
   const text = htmlToText(html);
   if (text.length < MIN_DESCRIPTION_CHARS) return null;
   const str = (x: unknown) => (typeof x === "string" && x.trim() ? htmlToText(x).slice(0, 300) : null);
-  return { title: str(title), company: str(company), text: clip(text) };
+  return { title: str(title), company: str(company), text: clip(text), ...(text.length > MAX_DESCRIPTION_CHARS ? { truncated: true } : {}) };
 }
 
 const isJobPosting = (t: unknown): boolean =>

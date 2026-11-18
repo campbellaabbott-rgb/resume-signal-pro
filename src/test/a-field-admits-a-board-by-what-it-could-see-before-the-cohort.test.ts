@@ -17,6 +17,7 @@
  *   LAPP   a lap_pending board: in the old 14-day pool, not in the new one.
  */
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -28,7 +29,7 @@ const OLD = read("20261008110500_a_field_pools_a_posting_seen_again_after_a_dark
 
 const SCHEMA = `
   SET TIME ZONE 'UTC';
-  CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
+  ${SUPABASE_DEFAULTS}
   CREATE TABLE public.job_board_postings (
     id text PRIMARY KEY, source text, company_token text, category text NOT NULL DEFAULT 'other',
     posted_at timestamptz, effective_posted timestamptz, first_seen timestamptz NOT NULL DEFAULT now(),

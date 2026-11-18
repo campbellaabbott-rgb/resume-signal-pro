@@ -37,6 +37,9 @@
  *   analysis, so what it names replaces the pair the stash held for /success
  *   (S13-002: a second purchase in one tab was shown the first one's
  *   analysis, and the new one was never generated);
+ * - claim_verify on a company page (/jobs/company/<token>, one segment): the
+ *   company-claim mail's token, which confirms a claim, with
+ *   claim_verify_path (S14X-103);
  * - fragment, with fragment_path: the whole fragment on /email/unsubscribe,
  *   /market-pulse/confirm and /fix-plan/confirm, whose pages parse it
  *   themselves, and "#confirm=..." on /data-api (the API key link);
@@ -108,12 +111,12 @@ export function discardStashedSession(): void {
 const sessionKeyFor = (path: string) => `session_id:${path}`;
 
 /**
- * A path-bound value a page uses (session_id, share). One still in the
- * address wins: the first script strips it on every load, so one that is
- * there was written after the load (an in-app navigation) or could not be
+ * A path-bound value a page uses (session_id, share, claim_verify). One still
+ * in the address wins: the first script strips it on every load, so one that
+ * is there was written after the load (an in-app navigation) or could not be
  * stashed. Otherwise the stash's, when it was captured on this same path.
  */
-export function stashedValueFor(key: "session_id" | "share", path: string, urlValue: string | null | undefined): { value: string | null; fromStash: boolean } {
+export function stashedValueFor(key: "session_id" | "share" | "claim_verify", path: string, urlValue: string | null | undefined): { value: string | null; fromStash: boolean } {
   if (urlValue) return { value: urlValue, fromStash: false };
   const v = peekStashed(key);
   if (v && peekStashed(`${key}_path`) === path) return { value: v, fromStash: true };

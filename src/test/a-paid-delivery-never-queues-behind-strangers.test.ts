@@ -252,8 +252,12 @@ describe("the success page names the purchase on every call it makes to a free g
   });
 
   it("the paid Interview Coach and Career Path panels are handed the session, and send it on every call", () => {
-    expect(page).toMatch(/<InterviewCoach [^>]*sessionId=\{sessionId\}/);
-    expect(page).toMatch(/<CareerPathSimulator [^>]*sessionId=\{sessionId\}/);
+    // The page mounts each widget under a name that also takes its saved copy
+    // (RC-S12-042); the name must be the widget itself.
+    expect(page).toMatch(/const CoachWithCopy = InterviewCoach as /);
+    expect(page).toMatch(/const PathWithCopy = CareerPathSimulator as /);
+    expect(page).toMatch(/<(InterviewCoach|CoachWithCopy) [^>]*sessionId=\{sessionId\}/);
+    expect(page).toMatch(/<(CareerPathSimulator|PathWithCopy) [^>]*sessionId=\{sessionId\}/);
     const coachCalls = [...coach.matchAll(/invoke\("generate-interview-coach", \{([\s\S]*?)\}\);/g)].map((m) => m[1]);
     expect(coachCalls.length).toBe(2);
     for (const c of coachCalls) expect(c).toMatch(/\bsessionId\b/);

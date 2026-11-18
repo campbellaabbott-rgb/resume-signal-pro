@@ -61,6 +61,8 @@ const ELSEWHERE: Record<string, string> = {
   "create-pass-checkout": "retired: answers 410; the site names it only in the affiliate commission list",
   "public-api": "no page of the site calls it: /data-api and /api-address print its address for curl and agents",
   "stripe-webhook": "Stripe's servers call it; the site names it only in the circuit-breaker table",
+  "affiliate-account": "the bug round's affiliate lane: born with Max-Age 7200 on the round's build day, held by an-affiliate-resets-a-password-by-mail-and-proves-the-address.test.ts",
+  "layoff-filings": "no page calls it: the site names it only as the layoff-filings string-shard directory in src/i18n/merge-shards.ts; a cron runs the function",
 };
 
 /** Function names written as a string anywhere in the site's own (non-test) code. */
@@ -147,6 +149,9 @@ describe("each one's real preflight says a browser may keep it for two hours", (
     expect(res.status).toBeLessThan(300);
     expect(res.headers.get("access-control-max-age")).toBe("7200");
     expect(res.headers.get("access-control-allow-origin")).toBeTruthy();
-    expect(res.headers.get("x-fn-build") ?? "").toMatch(new RegExp(`^${fn}\\.2026-11-(09|10)\\.\\d+$`));
+    // The cost wave's build or a later one: a later round restamps the function, never to an earlier day.
+    const stamp = new RegExp(`^${fn}\\.(\\d{4}-\\d{2}-\\d{2})\\.\\d+$`).exec(res.headers.get("x-fn-build") ?? "");
+    expect(stamp, `${fn}'s x-fn-build`).not.toBeNull();
+    expect(stamp![1] >= "2026-11-09", `${fn} answers ${stamp![0]}, a day before the cost wave`).toBe(true);
   }, 30_000);
 });

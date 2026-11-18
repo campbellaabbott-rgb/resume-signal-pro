@@ -1,0 +1,29 @@
+{
+  "siteShell": {
+    "crashHome": "Pumunta sa homepage",
+    "newVersion": {
+      "loading": "Nilo-load ang bagong bersyon…",
+      "reload": "I-reload ngayon"
+    },
+    "notFound": {
+      "title": "Hindi nahanap ang pahina",
+      "jobs": "Tingnan ang mga bukas na trabaho",
+      "pricing": "Tingnan ang presyo"
+    },
+    "titles": {
+      "account": "Ang iyong account",
+      "auth": "Mag-sign in",
+      "shortlist": "Shortlist para sa mga employer",
+      "success": "Ang iyong buong pagsusuri",
+      "productSuccess": "Ang iyong binili",
+      "paymentFailed": "Hindi natapos ang bayad",
+      "affiliates": "Affiliate program",
+      "affiliateRedirect": "Nire-redirect…",
+      "agent": "Mag-apply gamit ang sarili mong AI",
+      "analytics": "Analytics",
+      "errors": "Log ng mga error",
+      "healthCheck": "Pagsusuri ng sistema",
+      "scanMetrics": "Mga sukatan ng scan"
+    }
+  }
+}

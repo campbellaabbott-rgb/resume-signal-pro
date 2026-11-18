@@ -2,7 +2,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { assertPaidSession } from "../_shared/paid-session.ts";
-import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { keepPastBuyerCopy } from "../_shared/past-buyer-copy.ts";
+import { clipField, clipText, isServiceCaller, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
 import { CHAIN_DEADLINE_MS, callAIForUsableReply, chainRanOutOfTime, looksLikeBrokenJson, UnusableModelOutput, type UsableReply } from "../_shared/ai-fallback.ts";
 import { autoFixContent, validateContent } from "./auto-fix.ts";
@@ -48,7 +49,8 @@ import { restoreUnsupportedLines, rewrittenResumeFigureIssues, validateProseClai
 // 2026-11-10.3 (fix/cost-wave, the integration): both lanes' changes above together.
 // cost/ai and cost/ci-edge each stamped 2026-11-10.2 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
-const FN_BUILD = "generate-premium-package.2026-11-10.3";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, past-buyers lane, RC-S12-007): the recovery form's copy is kept, recorded and mailed once.
+const FN_BUILD = "generate-premium-package.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -56,6 +58,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "x-fn-build": FN_BUILD,
 };
+
+/**
+ * The gateway out of credits is our outage, not the buyer's payment
+ * (S14X-109): a retryable 503 with code ai_unavailable, never a 402 the page
+ * reads as a purchase refusal.
+ */
+const aiUnavailable = () => new Response(
+  JSON.stringify({ error: "The writing service is temporarily unavailable. Your purchase is safe, please try again later.", code: "ai_unavailable", retryable: true }),
+  { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "300" } },
+);
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[GENERATE-PREMIUM-PACKAGE] ${step}`, details ? JSON.stringify(details) : '');
@@ -464,12 +476,7 @@ Write a cover letter that sounds like it was written by this specific person - c
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (resumeResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI service credits depleted. Please contact support.", retryable: false }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      if (resumeResponse.status === 402) return aiUnavailable();
       throw new Error(`Resume AI API error: ${resumeResponse.status}`);
     }
 
@@ -483,6 +490,7 @@ Write a cover letter that sounds like it was written by this specific person - c
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      if (coverLetterResponse.status === 402) return aiUnavailable();
       throw new Error(`Cover letter AI API error: ${coverLetterResponse.status}`);
     }
 
@@ -676,6 +684,13 @@ Write a cover letter that sounds like it was written by this specific person - c
       resumeLength: resumeResult.rewrittenResume?.length,
       coverLetterLength: coverLetterResult.coverLetter?.length
     });
+
+    // A COPY MADE FOR A BROWSER IS KEPT (RC-S12-007): the recovery form is the
+    // only maker of a sale with no résumé bound, and its copy was never saved,
+    // recorded or mailed. Our own servers keep what they make themselves.
+    if (!isServiceCaller(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))) {
+      await keepPastBuyerCopy(supabase, { sessionId, productType: "premium_package", productName: "Premium Package", content: premiumPackageResult });
+    }
 
     return new Response(
       JSON.stringify({ success: true, data: premiumPackageResult }),

@@ -20,6 +20,14 @@
 // lines about what the agent fills in and does overnight, and renders nothing
 // at all for a person who has no packet. A past buyer still sees every packet
 // they had, and can still stop one or record what happened to it.
+//
+// AND NO UNSENT ROW READS AS ABOUT TO GO (S14X-165). With the agent off a
+// ready packet still said "Ready — nothing needs you", a blocked one "Needs
+// you", and the headline counted them as ready, for applications nothing will
+// ever send. Each unsent row (ready, blocked, preparing) now says it was not
+// sent and to apply from the link; one whose pass application was given back
+// says that too; the counts go. An unconfirmed send and a sent one keep their
+// own honest lines, and "Don't send this" stays.
 import { useCallback, useEffect, useState } from "react";
 import { ApplicationReceipt } from "./ApplicationReceipt";
 import { useTranslation } from "react-i18next";
@@ -31,6 +39,7 @@ import { packetState, needsAttention as packetNeedsAttention } from "@/lib/packe
 import { isSendableVendor } from "../../../supabase/functions/_shared/apply-automation";
 import { APPROVABLE_REFUSALS } from "../../../supabase/functions/_shared/apply-release";
 import { APPLY_AGENT_ON } from "../../../supabase/functions/_shared/apply-agent-switch";
+import { date as fmtDate } from "@/lib/format";
 
 const sb = supabase as unknown as {
   from: (t: string) => any;
@@ -79,6 +88,8 @@ interface Packet {
   released_at: string | null;
   /** Released, but no worker may take it before this — the cancel window. */
   claimable_at?: string | null;
+  /** The pass application this packet held was given back (20260917100000). */
+  pass_refunded_at?: string | null;
 }
 
 const TONE: Record<Status, string> = {
@@ -91,7 +102,7 @@ const TONE: Record<Status, string> = {
 };
 
 export function ApplyQueuePanel({ userId }: { userId: string }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [rows, setRows] = useState<Packet[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<number | null>(null);
@@ -103,7 +114,7 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
         "questions_are_real,blockers,fit_pct,prepared_at,submitted_at,submitted_via," +
         "release_refusal,attempts,claimed_at,released_at,claimable_at," +
         // The receipt. Recorded since 2026-08-01 and read by nothing until now.
-        "sent_answers,sent_evidence")
+        "sent_answers,sent_evidence,pass_refunded_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -224,7 +235,7 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap gap-3 mb-4 text-xs">
+          {APPLY_AGENT_ON && <div className="flex flex-wrap gap-3 mb-4 text-xs">
             <span className="text-success font-semibold">
               {t("applyQueue.cReady", "{{n}} ready", { n: counts.ready })}
             </span>
@@ -233,17 +244,21 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
             </span>
             {counts.unconfirmed > 0 && (
               <span className="text-warning font-semibold">
-                {t("applyQueue.cUnconfirmed", "{{n}} unconfirmed", { n: counts.unconfirmed })}
+                {t("accountView.queueUnconfirmed", "{{n}} unconfirmed", { n: counts.unconfirmed })}
               </span>
             )}
             <span className="text-muted-foreground">
               {t("applyQueue.cSent", "{{n}} sent", { n: counts.sent })}
             </span>
-          </div>
+          </div>}
 
           <ul className="space-y-3">
             {rows.map((p) => {
               const isOpen = open === p.id;
+              // Unsent and never going, while the agent is off (S14X-165).
+              const phase = packetState(p).phase;
+              const retired = !APPLY_AGENT_ON && (p.status === "ready" || p.status === "preparing"
+                || (p.status === "blocked" && phase !== "uncertain"));
               return (
                 <li key={p.id} className={`rounded-lg border p-3 ${TONE[p.status] ?? "border-border"}`}>
                   <div className="flex items-start justify-between gap-3">
@@ -251,7 +266,13 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
                       <div className="font-medium text-foreground truncate">{p.title}</div>
                       <div className="text-sm text-muted-foreground truncate">{p.company}</div>
 
-                      <div className="mt-1.5 text-xs flex items-center gap-1.5">
+                      {retired && (
+                        <div className="mt-1.5 text-xs text-muted-foreground" data-queue-retired>
+                          <p>{t("accountView.queueRetired", "Not sent: the agent is switched off. Apply yourself from the link.")}</p>
+                          {p.pass_refunded_at && <p className="mt-0.5">{t("accountView.queueGivenBack", "This application was given back to your pass.")}</p>}
+                        </div>
+                      )}
+                      {!retired && <div className="mt-1.5 text-xs flex items-center gap-1.5">
                         {p.status === "ready" && (
                           <><CheckCircle2 className="w-3.5 h-3.5 text-success" />
                             <span className="text-success font-medium">
@@ -273,7 +294,7 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
                         {p.status === "blocked" && packetState(p).phase === "uncertain" && (
                           <><HelpCircle className="w-3.5 h-3.5 text-warning" />
                             <span className="text-warning font-medium">
-                              {t("applyQueue.sUncertain", "Sent — but we could not confirm it")}
+                              {t("accountView.queueUncertain", "Sent — but we could not confirm it")}
                             </span></>
                         )}
                         {p.status === "blocked" && packetState(p).phase !== "uncertain" && (
@@ -286,7 +307,7 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
                           <><Send className="w-3.5 h-3.5 text-muted-foreground" />
                             <span className="text-muted-foreground">
                               {t("applyQueue.sSent", "Sent {{when}}", {
-                                when: p.submitted_at ? new Date(p.submitted_at).toLocaleDateString() : "",
+                                when: p.submitted_at ? fmtDate(p.submitted_at, { lng: i18n.language }) : "",
                               })}
                             </span></>
                         )}
@@ -304,7 +325,7 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
                             {t("applyQueue.sFailed", "Couldn't prepare this one")}
                           </span>
                         )}
-                      </div>
+                      </div>}
 
                       {/* WHY IT HAS NOT GONE OUT — the decideRelease reason.
                           Distinct from `status`: a packet can be perfectly READY
@@ -329,6 +350,7 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
                       {(() => {
                         const st = packetState(p);
                         if (st.phase !== "exhausted" && st.phase !== "uncertain" && st.phase !== "not-arrived") return null;
+                        if (retired && st.phase === "exhausted") return null;
                         return (
                           <div className="mt-1.5 flex items-start gap-1.5 text-xs text-warning">
                             <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-[1px]" aria-hidden />
@@ -360,7 +382,7 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
                       })()}
 
                       {(() => {
-                        const face = refusalFace(p.release_refusal);
+                        const face = retired ? null : refusalFace(p.release_refusal);
                         if (!face) return null;
                         const Icon = face.severity === "needs-you" ? AlertTriangle
                           : face.severity === "on-us" ? PauseCircle : Info;
@@ -405,7 +427,7 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
 
                       {/* Every blocker in full. A queue that says something is
                           stuck without saying why is a queue people stop reading. */}
-                      {p.blockers?.length > 0 && (
+                      {!retired && p.blockers?.length > 0 && (
                         <ul className="mt-2 space-y-1">
                           {p.blockers.map((b, i) => (
                             <li key={i} className="text-xs text-foreground/80">• {b.detail}</li>
@@ -457,7 +479,7 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
                           a fact from a generated sentence at a glance. */}
                       <div className="text-xs font-semibold text-foreground mb-2">
                         {p.status === "submitted"
-                          ? t("applyQueue.wasPrepared", "What was prepared")
+                          ? t("accountView.queueWasPrepared", "What was prepared")
                           : t("applyQueue.willSend", "What would be sent")}
                       </div>
                       <dl className="space-y-1.5 mb-3">

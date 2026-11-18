@@ -1,0 +1,101 @@
+{
+  "affiliateProgram": {
+    "updates": {
+      "click_one": "Nouveau clic sur votre lien d'affiliation !",
+      "click_many": "{{count}} nouveaux clics sur votre lien d'affiliation !",
+      "click_other": "{{count}} nouveaux clics sur votre lien d'affiliation !",
+      "earned": "Vous avez gagné {{amount}} !",
+      "earnedDescription": "Nouvelle conversion grâce à votre parrainage. Une commission est versée une fois approuvée."
+    },
+    "cookieLine": "Cookie de 30 jours • Paiement sur demande une fois approuvé",
+    "tiles": {
+      "clicks": "Clics",
+      "conversions": "Conversions",
+      "rate": "Taux de {{rate}} %",
+      "commission": "{{amount}} de commission",
+      "allTime": "Depuis le début",
+      "payable": "Payable maintenant",
+      "awaitingApproval": "En attente d'approbation",
+      "awaitingCount_one": "{{count}} commission, payable une fois approuvée",
+      "awaitingCount_many": "{{count}} commissions, payables une fois approuvées",
+      "awaitingCount_other": "{{count}} commissions, payables une fois approuvées",
+      "totalPaid": "Total versé",
+      "range": {
+        "d7": "7 derniers jours",
+        "d30": "30 derniers jours",
+        "d90": "90 derniers jours",
+        "d365": "Dernière année"
+      }
+    },
+    "revenue": {
+      "description": "Ventes issues de vos parrainages, chaque devise sur sa propre ligne",
+      "unknownCurrency": "{{amount}} (devise non enregistrée)",
+      "none": "Aucune vente sur cette période"
+    },
+    "conversions": {
+      "heldForReview": "Retenue pour vérification"
+    },
+    "payout": {
+      "timing": "Nous vous écrivons pour organiser le paiement une fois la demande examinée",
+      "notNotified": "Votre demande est enregistrée, mais l'avis qui devait nous en informer n'est pas parti. Elle reste dans nos registres : nous la verrons en examinant les paiements.",
+      "awaitingNote": "{{amount}} de plus attendent une approbation et deviendront payables une fois approuvés.",
+      "openSince": "Demandé le {{date}} pour {{amount}}"
+    },
+    "history": {
+      "requested": "Demandé",
+      "paid": "Versé",
+      "rejected": "Refusé",
+      "requestedOn": "Demandé le {{date}}",
+      "paidOn": "Versé le {{date}}",
+      "rejectedOn": "Refusé le {{date}}",
+      "paidToDate": "Versé à ce jour"
+    },
+    "howItWorks": {
+      "getPaid": "Une commission attend une approbation avant de pouvoir être versée. Quand vos commissions approuvées atteignent le minimum, demandez un paiement depuis l'onglet « Payouts » et nous vous écrivons pour l'organiser. Nous vous écrivons aussi quand un parrainage vous rapporte une commission."
+    },
+    "auth": {
+      "forgot": "Mot de passe oublié ?",
+      "email": "Adresse e-mail",
+      "password": "Mot de passe (8 caractères min.)",
+      "pleaseWait": "Veuillez patienter…",
+      "resetTitle": "Réinitialiser votre mot de passe",
+      "resetIntro": "Saisissez l'adresse utilisée à l'inscription. Si un compte d'affilié l'utilise, nous envoyons un lien valable une fois pendant 30 minutes.",
+      "sendLink": "M'envoyer un lien",
+      "resetSent": "Si un compte d'affilié utilise cette adresse, un lien est en route. Il fonctionne une fois pendant 30 minutes.",
+      "backToSignIn": "Retour à la connexion",
+      "newPasswordTitle": "Choisissez un nouveau mot de passe",
+      "newPasswordIntro": "L'enregistrer déconnecte tous les appareils qui étaient connectés.",
+      "newPassword": "Nouveau mot de passe (8 caractères min.)",
+      "savePassword": "Enregistrer le nouveau mot de passe",
+      "passwordChanged": "Mot de passe modifié et tous les appareils déconnectés. Connectez-vous avec le nouveau mot de passe.",
+      "linkExpired": "Ce lien a expiré ou a déjà servi. Demandez-en un nouveau.",
+      "weakPassword": "Choisissez un mot de passe de 8 à 200 caractères.",
+      "addressConfirmed": "Votre adresse e-mail est confirmée.",
+      "emailChanged": "Votre adresse e-mail est modifiée. La prochaine fois, connectez-vous avec la nouvelle adresse.",
+      "emailTaken": "Un autre compte d'affilié utilise déjà cette adresse.",
+      "failed": "Un problème est survenu. Veuillez réessayer."
+    },
+    "confirm": {
+      "bannerTitle": "Confirmez votre adresse e-mail pour être payé",
+      "bannerBody": "Les commissions sont retenues pour vérification et aucun paiement ne peut être demandé tant que vous n'avez pas prouvé que cette adresse est la vôtre.",
+      "send": "Envoyer le lien de confirmation",
+      "sent": "Nous avons envoyé un lien de confirmation à {{email}}. Il fonctionne une fois pendant 30 minutes."
+    },
+    "account": {
+      "title": "Votre compte",
+      "description": "Déconnectez-vous de tous les appareils, téléchargez une copie de vos données, changez d'adresse ou fermez le compte.",
+      "signOutEverywhere": "Se déconnecter partout",
+      "signedOutEverywhere": "Tous les appareils sont déconnectés, celui-ci compris.",
+      "export": "Télécharger mes données",
+      "exported": "Vos données sont téléchargées.",
+      "newEmail": "Nouvelle adresse e-mail",
+      "sendChangeLink": "Envoyer un lien à la nouvelle adresse",
+      "changeSent": "Nous avons envoyé un lien à {{email}}. Le changement se fait quand vous l'ouvrez.",
+      "eraseTitle": "Fermer le compte",
+      "eraseWarning": "Cela supprime votre adresse, votre mot de passe, vos sessions et votre historique de clics, sans retour possible. Tapez ERASE pour confirmer.",
+      "eraseConfirmLabel": "Tapez ERASE pour confirmer",
+      "eraseButton": "Fermer le compte définitivement",
+      "erased": "Votre compte d'affilié est fermé."
+    }
+  }
+}

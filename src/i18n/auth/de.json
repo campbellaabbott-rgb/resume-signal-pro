@@ -26,6 +26,7 @@
       "wrongAddress": "Falsche Adresse?"
     },
     "confirm": {
+      "adoptFailed": "Wir haben Ihren Link bestätigt, konnten die Anmeldung aber nicht abschließen. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
       "body": "Drücken Sie auf „Weiter“, um die Anmeldung abzuschließen. Der Link funktioniert nur einmal.",
       "emailChangeBody": "Drücken Sie auf „Weiter“, um Ihre neue E-Mail-Adresse zu bestätigen.",
       "emailChanged": "Ihre E-Mail-Änderung ist bestätigt. Falls auch Ihre andere Adresse einen Link erhalten hat, verwenden Sie diesen ebenfalls.",
@@ -49,6 +50,7 @@
       "label": "E-Mail",
       "placeholder": "sie@beispiel.de",
       "remembered": "Weiter als {{email}}",
+      "rememberedMismatch": "Wir konnten Sie nicht als {{email}} anmelden. Geben Sie Ihre Adresse ein, um es erneut zu versuchen.",
       "useDifferent": "Andere Adresse verwenden"
     },
     "footnote": "Ein Konto speichert Ihre Bewertungen, Guthaben und Käufe – und einen Lebenslauf nur, wenn Sie einen speichern.",
@@ -59,6 +61,7 @@
       "onlyGoogle": "Dieses Konto meldet sich mit Google an und hat daher hier kein Passwort zum Ändern. Melden Sie sich über Google an."
     },
     "guard": {
+      "keysRevoked": "Außerdem haben wir die API- und Connector-Schlüssel deaktiviert, die für dieses Konto erstellt wurden, bevor Sie die Adresse nachgewiesen haben ({{keys}}). Erstellen Sie bei Bedarf in Ihrem Konto einen neuen.",
       "passwordCleared": "Wir haben ein Passwort gelöscht, das für diese Adresse festgelegt wurde, bevor Sie nachgewiesen haben, dass sie Ihnen gehört. Wenn Sie möchten, legen Sie in Ihren Kontoeinstellungen ein neues fest.",
       "passwordClearedTitle": "Ihr altes Passwort wurde gelöscht",
       "signedOut": "Wir haben ein Passwort gelöscht, das für diese Adresse festgelegt wurde, bevor Sie nachgewiesen haben, dass sie Ihnen gehört. Dadurch wurden alle Geräte abgemeldet, auch dieses.",
@@ -94,7 +97,7 @@
       "done": "Ihr neues Passwort ist festgelegt.",
       "doneOthers": "Ihr neues Passwort ist festgelegt, und alle anderen Geräte wurden abgemeldet.",
       "emailSupport": "Support per E-Mail kontaktieren",
-      "expired": "Dieser Link zum Zurücksetzen ist abgelaufen oder wurde bereits verwendet, daher wurde kein Passwort festgelegt. Fordern Sie einen neuen an.",
+      "expired": "Dieser Link zum Zurücksetzen ist abgelaufen oder wurde bereits verwendet. Wenn Sie mit dem Code aus dieser E-Mail schon ein neues Passwort festgelegt haben, melden Sie sich damit an; andernfalls fordern Sie einen neuen Link an.",
       "intro": "Geben Sie Ihre E-Mail-Adresse ein. Wenn es dazu ein Konto gibt, erhalten Sie per E-Mail einen Link (oder einen 6-stelligen Code), mit dem Sie ein neues Passwort wählen können.",
       "newLink": "Neuen Link zum Zurücksetzen senden",
       "newPassword": "Neues Passwort",
@@ -118,8 +121,33 @@
       "failed": "Die Anmeldung wurde nicht abgeschlossen. Bitte versuchen Sie es erneut."
     },
     "samePassword": "Wählen Sie ein Passwort, das Sie hier noch nicht verwendet haben.",
+    "security": {
+      "askCode": "Noch kein Passwort oder vergessen? Stattdessen einen Code per E-Mail anfordern",
+      "codeFailed": "Wir konnten gerade keinen Code anfordern. Versuchen Sie es in einer Minute erneut.",
+      "codeField": "Code aus der E-Mail zum Zurücksetzen des Passworts",
+      "codeOnItsWay": "Wenn Ihre Adresse E-Mails empfangen kann, ist eine E-Mail zum Zurücksetzen des Passworts mit einem 6-stelligen Code an {{email}} unterwegs. Geben Sie den Code hier ein.",
+      "codeRefused": "Dieser Code hat nicht funktioniert, daher wurde Ihr Passwort nicht geändert. Prüfen Sie ihn oder fordern Sie einen neuen an.",
+      "guardBlocked": "Wir konnten Ihre Adresse gerade nicht bestätigen, daher wurde Ihr Passwort nicht geändert. Versuchen Sie es in ein paar Minuten erneut.",
+      "guardRefused": "Mit diesem Code konnten wir Ihre Adresse nicht bestätigen, daher wurde Ihr Passwort nicht geändert. Fordern Sie einen neuen Code an.",
+      "signedOut": "Zu Ihrer Sicherheit wurden alle Geräte abgemeldet, auch dieses. Setzen Sie Ihr Passwort auf der Anmeldeseite zurück, um den Vorgang abzuschließen."
+    },
     "sendFailed": "Das konnten wir gerade nicht senden. Versuchen Sie es in einer Minute erneut, oder schreiben Sie an {{support}}.",
     "sessionExpired": "Ihre Sitzung ist abgelaufen. Melden Sie sich wieder an, um dort weiterzumachen, wo Sie aufgehört haben.",
+    "signOut": {
+      "builder": "Ihr Lebenslauf aus dem Lebenslauf-Editor ist nur in diesem Browser gespeichert, und beim Abmelden wird er gelöscht.",
+      "cancel": "Abbrechen",
+      "delete": "Löschen und abmelden",
+      "everywhereDone": "Sie sind auf allen Geräten abgemeldet.",
+      "freelance": "Ihre Angaben für Freelance Boost sind nur in diesem Browser gespeichert, und beim Abmelden werden sie gelöscht.",
+      "keep": "Auf diesem Gerät behalten und abmelden",
+      "offlineEverywhere": "Sie sind auf diesem Gerät abgemeldet, aber wir konnten den Server nicht erreichen, daher sind Ihre anderen Geräte möglicherweise noch angemeldet.",
+      "offlineHere": "Sie sind auf diesem Gerät abgemeldet, aber wir konnten den Server nicht erreichen, um die Sitzung auch dort zu beenden.",
+      "offlineTitle": "Auf diesem Gerät abgemeldet",
+      "openBuilder": "Lebenslauf-Editor öffnen, um ihn herunterzuladen",
+      "retry": "Erneut versuchen",
+      "signInAgain": "Wir konnten Ihre anderen Geräte von hier aus nicht abmelden. Melden Sie sich erneut an und wählen Sie „Überall abmelden“.",
+      "title": "Bevor Sie sich abmelden"
+    },
     "subtitle": "Verfolgen Sie Ihre Lebenslauf-Bewertungen über die Zeit, behalten Sie Ihren Scan-Verlauf und sehen Sie Guthaben und Käufe an einem Ort. Für immer kostenlos.",
     "title": "Anmelden oder kostenloses Konto erstellen",
     "usePassword": "Stattdessen ein Passwort verwenden",

@@ -49,7 +49,8 @@ const FN_NAME = "agent-pass-status";
 // 2026-10-11.15 (recheck 3, 2026-10-26): while the agent products are off sale, a success-page repair of a paid session grants nothing and answers a terminal "retired", as stripe-webhook does.
 // 2026-11-03.1 (S9-001, fix/audit-rest-abuse): a connected app's token is refused with the signed-out answer before the auth server is asked.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = `${FN_NAME}.2026-11-09.1`;
+// 2026-11-12.1 (bug round of 2026-11-08, part A, payments lane, RC-S13-063, through the shared buyer-record module): the record can carry the buyer's network key; this function hands it no address, so what it does is unchanged.
+const FN_BUILD = `${FN_NAME}.2026-11-12.1`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

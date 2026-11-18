@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import i18n from '@/i18n';
 
 /**
  * NEW CLICKS AND SALES, BY ASKING (register L3-10).
@@ -15,6 +16,15 @@ import { toast } from 'sonner';
  * (get_affiliate_dashboard) every POLL_MS while the page is open and visible,
  * and announces what grew since the last read. The callbacks live in refs, so
  * the timer is set up once.
+ *
+ * A SALE IS A NEW CONVERSION, AND ITS COMMISSION COUNTS WHILE IT AWAITS
+ * APPROVAL (S14X-085). A referred sale is recorded pending; Pending Payout
+ * counts approved conversions only, so the toast that waited for Pending
+ * Payout to grow never fired for a new commission. Now a sale is
+ * total_conversions growing, and what it earned is the growth of
+ * awaiting_approval plus pending_payout (a commission moving from one to the
+ * other is not a sale). Before the dashboard answers awaiting_approval
+ * (20261112122000), pending_payout alone is read, as it was.
  */
 export const AFFILIATE_POLL_MS = 30_000;
 
@@ -22,6 +32,7 @@ interface AffiliateStatsLike {
   total_clicks?: number;
   total_conversions?: number;
   pending_payout?: number;
+  awaiting_approval?: number;
 }
 
 interface UseAffiliateUpdatesOptions {
@@ -34,6 +45,9 @@ interface UseAffiliateUpdatesOptions {
 }
 
 const usd = (cents: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
+
+/** What the affiliate has earned and not yet been paid: awaiting approval plus payable. */
+const owed = (s: AffiliateStatsLike) => (s.awaiting_approval ?? 0) + (s.pending_payout ?? 0);
 
 export function useAffiliateUpdates({ enabled, stats, refresh, intervalMs = AFFILIATE_POLL_MS }: UseAffiliateUpdatesOptions) {
   const refreshRef = useRef(refresh);
@@ -48,12 +62,12 @@ export function useAffiliateUpdates({ enabled, stats, refresh, intervalMs = AFFI
     if (!prev) return;
     const clicks = (stats.total_clicks ?? 0) - (prev.total_clicks ?? 0);
     const sales = (stats.total_conversions ?? 0) - (prev.total_conversions ?? 0);
-    const earned = (stats.pending_payout ?? 0) - (prev.pending_payout ?? 0);
+    const earned = owed(stats) - owed(prev);
     if (clicks > 0) {
-      toast.success(clicks === 1 ? 'New click on your affiliate link!' : `${clicks} new clicks on your affiliate link!`, { icon: '🖱️', duration: 5000 });
+      toast.success(i18n.t('affiliateProgram.updates.click', { count: clicks }), { icon: '🖱️', duration: 5000 });
     }
     if (sales > 0 && earned > 0) {
-      toast.success(`You earned ${usd(earned)}!`, { description: 'New conversion from your referral', icon: '💰', duration: 8000 });
+      toast.success(i18n.t('affiliateProgram.updates.earned', { amount: usd(earned) }), { description: i18n.t('affiliateProgram.updates.earnedDescription'), icon: '💰', duration: 8000 });
     }
   }, [stats]);
 

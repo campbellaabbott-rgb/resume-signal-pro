@@ -10,7 +10,8 @@
  *     prefix, with when it was made and last used, and Revoke, which stops it
  *     at once. Never the key itself: it is shown once, when minted.
  *   - Email preferences (#mail): the market pulse rows under the account's
- *     proven address, each with Stop. Saved-search alerts are switched on
+ *     proven address, each with Stop, and a plain sentence when that address
+ *     is on the do-not-mail list (S14X-107). Saved-search alerts are switched on
  *     their own card; every other mail we send carries its own unsubscribe
  *     link. While the address is unproven the card says so instead of listing
  *     a list that may be a stranger's.
@@ -27,10 +28,13 @@ import { MAILBOX_PROOF_LIVE } from "@/components/account/CreditsAndPurchases";
 
 export type Connector = { id: string; prefix: string; name: string; createdAt: string; lastUsedAt: string | null };
 export type PulseRow = { industry: string | null; state: "subscribed" | "awaiting_confirmation" | "off" };
+/** The proven address is on the do-not-mail list (S14X-107); absent from a server that predates it. */
+export type MailStopped = { reason: string; accountDeleted: boolean };
 export type AccountSettings = {
   connectors: Connector[];
   mail: { marketPulse: PulseRow[] } | null;
   mailboxProven: boolean;
+  mailStopped?: MailStopped | null;
 };
 
 async function errorText(error: unknown): Promise<string | undefined> {
@@ -81,8 +85,21 @@ export function ConnectedAIsCard({ connectors, busy, onRevoke }: { connectors: C
   );
 }
 
-export function EmailPreferencesCard({ mail, mailboxProven, busy, onPulseOff }: { mail: AccountSettings["mail"]; mailboxProven: boolean; busy: boolean; onPulseOff: () => void }) {
+export function EmailPreferencesCard({ mail, mailboxProven, mailStopped, busy, onPulseOff }: { mail: AccountSettings["mail"]; mailboxProven: boolean; mailStopped?: MailStopped | null; busy: boolean; onPulseOff: () => void }) {
   const { t } = useTranslation();
+  // WHY NO MAIL REACHES THIS ADDRESS (S14X-107). An address on the
+  // do-not-mail list gets no saved-search alert, scan report or pulse, and
+  // the card used to show its switches as if they worked. A bounce and a spam
+  // report each say so; anything else is the address's own request (or a
+  // deleted account's).
+  const stoppedSentence = !mailStopped ? null
+    : mailStopped.reason === "bounce"
+      ? t("mailPrefs.stoppedBounce", "Mail to this address bounced, so we stopped sending to it: saved-search alerts, scan reports and the market pulse do not reach it.")
+      : mailStopped.reason === "complaint"
+        ? t("mailPrefs.stoppedComplaint", "This address marked one of our emails as spam, so we stopped sending to it: saved-search alerts, scan reports and the market pulse do not reach it.")
+        : mailStopped.accountDeleted
+          ? t("mailPrefs.stoppedAccountDeleted", "When an account at this address was deleted, it asked us to stop all our emails, so saved-search alerts, scan reports and the market pulse are not sent to it.")
+          : t("mailPrefs.stoppedUnsubscribe", "This address asked us to stop all our emails, so saved-search alerts, scan reports and the market pulse are not sent to it.");
   const pulse = mail?.marketPulse ?? [];
   const live = pulse.filter((p) => p.state !== "off");
   const stateLabel: Record<PulseRow["state"], string> = {
@@ -106,6 +123,11 @@ export function EmailPreferencesCard({ mail, mailboxProven, busy, onPulseOff }: 
         </p>
       ) : (
         <>
+          {mailStopped && (
+            <p className="text-xs text-foreground mb-2" data-mail-stopped={mailStopped.reason}>
+              {stoppedSentence}
+            </p>
+          )}
           <div className="text-xs flex flex-wrap items-center gap-2" data-pulse>
             <span className="text-foreground font-medium">{t("accountMail.pulse", "Market pulse")}</span>
             {pulse.length === 0
@@ -182,6 +204,7 @@ export function AccountSettingsCards() {
       <EmailPreferencesCard
         mail={settings.mail}
         mailboxProven={settings.mailboxProven}
+        mailStopped={settings.mailStopped ?? null}
         busy={busy}
         onPulseOff={() => void act({ action: "pulse_off" }, t("accountMail.pulseStopped", "The market pulse is stopped."))}
       />

@@ -46,8 +46,14 @@ export function tableFromCsv(text: string, map: StateMap): Table {
   return all;
 }
 
-/** Apply one state map to a header-keyed table. */
-export function mapTable(map: StateMap, table: Table, feed: WarnRecord["feed"], sourceUrl?: string): MapResult {
+/**
+ * Apply one state map to a header-keyed table. `readAt` is the read's own
+ * instant: for a state that publishes no stamp of its own (visibleBasis
+ * our_first_fetch) it dates the notice's public moment, and a row without
+ * a notice date there is dropped (counted as no visible date), so a notice's
+ * dedupe key never depends on the night it was read.
+ */
+export function mapTable(map: StateMap, table: Table, feed: WarnRecord["feed"], sourceUrl?: string, readAt: Date = new Date()): MapResult {
   const header = table.header.map(normHeader);
   const res = resolveHeaders(map, header);
   if (res.ok === false) return { ok: false, reason: `header_mismatch:${res.missing.join("+")}`, header };
@@ -70,12 +76,14 @@ export function mapTable(map: StateMap, table: Table, feed: WarnRecord["feed"], 
     const filerRaw = stripAmendAffix(cell.filerRaw);
     const filerForNorm = warnPrePass(cell.filerForNorm);
     if (filerForNorm === "") { dropped.noFiler += 1; continue; }
-    const visibleDate = readDate(get("visible", row));
-    if (visibleDate == null) { dropped.noVisibleDate += 1; continue; }
     // A cell that lists several dates: the map says which is the notice's
     // (Illinois' is the earliest); otherwise the first.
     const noticeCell = p.noticeDate ? get("noticeDate", row) : "";
     const noticeDate = !p.noticeDate ? null : map.noticeDateCell ? map.noticeDateCell(noticeCell) : firstDateIn(noticeCell);
+    const firstFetch = map.visibleBasis === "our_first_fetch";
+    if (firstFetch && noticeDate == null) { dropped.noVisibleDate += 1; continue; }
+    const visibleDate = firstFetch ? readAt.toISOString().slice(0, 10) : readDate(get("visible", row));
+    if (visibleDate == null) { dropped.noVisibleDate += 1; continue; }
     let workers: number | null = null;
     for (const h of map.columns.workers ?? []) {
       if (!header.includes(h)) continue;
@@ -159,7 +167,9 @@ export async function buildWarnRows(
     // newest re-notification read as the notice put UnityPoint's May notice
     // at 2026-08-10, kept it past the 90-day window and published negative
     // lags. Such a date is refused as the notice date; the stamp dates it.
-    const late = r0.noticeDate != null && r0.noticeDate > r0.visibleDate;
+    // Where the stamp is our own read (our_first_fetch) there is no state
+    // stamp to prefer: a notice dated after our read is future-dated below.
+    const late = r0.visibleBasis !== "our_first_fetch" && r0.noticeDate != null && r0.noticeDate > r0.visibleDate;
     if (late) noticeAfterStamp += 1;
     const r = late ? { ...r0, noticeDate: null } : r0;
     const key = await dedupeKey({
@@ -174,7 +184,11 @@ export async function buildWarnRows(
   const kept: FoldedRecord[] = [];
   for (const r of folded) {
     const eventDate = r.noticeDate ?? r.visibleDate;
-    if (r.visibleDate <= readIso && (latest == null || r.visibleDate > latest)) latest = r.visibleDate;
+    // The feed's newest public date, for the stale rule. Where the public
+    // date is our own read it is always tonight, so the newest NOTICE date
+    // stands in: a state that stopped publishing still reads as stale.
+    const own = r.visibleBasis === "our_first_fetch" ? (r.noticeDate ?? r.visibleDate) : r.visibleDate;
+    if (own <= readIso && (latest == null || own > latest)) latest = own;
     if (eventDate > readIso || r.visibleDate > readIso) { futureDated += 1; continue; }
     if (eventDate < floor) { tooOld += 1; continue; }
     kept.push(r);
@@ -265,7 +279,9 @@ export function latestRunJobsUrl(runsJson: unknown): string | null {
  * verified against a saved file that refuses the header it meets has done
  * what it promised (nothing stored, the header in the health note): a note,
  * not a failed read. A verified map that refuses -- the state changed its
- * header -- and every fetch or write error are failures.
+ * header -- and every fetch or write error are failures. Every map is now
+ * verified (S14X-036), so every refusal fails the night's read and the
+ * heartbeat's layoff_feeds check sees it.
  */
 export function feedVerdict(r: { ok: boolean; refused: boolean }, map: Pick<StateMap, "verifiedAgainstSample">): "ok" | "refused" | "failed" {
   if (r.ok) return "ok";

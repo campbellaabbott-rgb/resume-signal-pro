@@ -23,6 +23,7 @@ import {
 } from "../lib/resume-builder-export";
 import { hasUnsupportedPdfCharacters, unsupportedPdfCharacters } from "../lib/pdf-text-support";
 import { careerPathHtml, careerPathNeedsPrint, exportCareerPathPDF, exportInterviewPrepPDF, interviewPrepHtml, interviewPrepNeedsPrint } from "../lib/career-tools-export";
+import { EN_LABELS } from "./helpers/export-labels";
 import { normalizeBuilderResume } from "../types/resume-builder";
 
 const resumeOf = (over: Record<string, unknown> = {}, contact: Record<string, string> = {}) => normalizeBuilderResume({
@@ -116,9 +117,9 @@ describe("a Hindi interview-prep guide is printed by the browser (S12-029)", () 
 
   it("hands the guide to the print dialog with the Devanagari intact, escaped", async () => {
     const data = guide("अपनी सबसे बड़ी उपलब्धि के बारे में बताइए <script>");
-    expect(interviewPrepNeedsPrint(data)).toBe(true);
+    expect(interviewPrepNeedsPrint(data, EN_LABELS.prep)).toBe(true);
     const print = vi.fn();
-    expect(await exportInterviewPrepPDF(data, { print, lang: "hi" })).toEqual({ method: "print" });
+    expect(await exportInterviewPrepPDF(data, EN_LABELS.prep, { print, lang: "hi" })).toEqual({ method: "print" });
     const html = print.mock.calls[0][0] as string;
     expect(html).toContain("अपनी सबसे बड़ी उपलब्धि");
     expect(html).toContain('lang="hi"');
@@ -128,8 +129,8 @@ describe("a Hindi interview-prep guide is printed by the browser (S12-029)", () 
   it("an English guide is still drawn as a PDF", () => {
     const data = guide("Tell me about a time you led a project.");
     data.interviewProfile.targetRole = "Data Analyst";
-    expect(interviewPrepNeedsPrint(data)).toBe(false);
-    expect(interviewPrepHtml(data)).toContain("Tell me about a time you led a project.");
+    expect(interviewPrepNeedsPrint(data, EN_LABELS.prep)).toBe(false);
+    expect(interviewPrepHtml(data, EN_LABELS.prep)).toContain("Tell me about a time you led a project.");
   });
 });
 
@@ -142,16 +143,16 @@ describe("a past buyer's Hindi career roadmap is printed by the browser too (S12
 
   it("hands a Devanagari roadmap to the print dialog, escaped", async () => {
     const data = roadmap("प्रबंधन की ओर <b>");
-    expect(careerPathNeedsPrint(data)).toBe(true);
+    expect(careerPathNeedsPrint(data, EN_LABELS.path)).toBe(true);
     const print = vi.fn();
-    expect(await exportCareerPathPDF(data, { print, lang: "hi" })).toEqual({ method: "print" });
+    expect(await exportCareerPathPDF(data, EN_LABELS.path, { print, lang: "hi" })).toEqual({ method: "print" });
     const html = print.mock.calls[0][0] as string;
     expect(html).toContain("प्रबंधन की ओर");
     expect(html).not.toContain("<b>");
   });
 
   it("an English roadmap is still drawn as a PDF", () => {
-    expect(careerPathNeedsPrint(roadmap("Toward management"))).toBe(false);
-    expect(careerPathHtml(roadmap("Toward management"))).toContain("Toward management");
+    expect(careerPathNeedsPrint(roadmap("Toward management"), EN_LABELS.path)).toBe(false);
+    expect(careerPathHtml(roadmap("Toward management"), EN_LABELS.path)).toContain("Toward management");
   });
 });

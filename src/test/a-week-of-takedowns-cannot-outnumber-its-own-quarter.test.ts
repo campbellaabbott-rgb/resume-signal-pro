@@ -42,6 +42,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import {
   CLOSURE_RECORD_WINDOW_DAYS,
   CLOSURE_WEEK_PLAUSIBILITY,
@@ -134,7 +135,7 @@ const mutant = (sql: string, from: string | RegExp, to: string): { sql: string; 
 const APPLIED = "the mutation did not apply -- the teeth would be testing the fixed body";
 
 const SCHEMA = `
-  CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+  ${SUPABASE_DEFAULTS}
   CREATE TABLE public.showcase_excluded (company_token text PRIMARY KEY);
   CREATE TABLE public.job_board_postings (
     id text PRIMARY KEY, company_token text NOT NULL, posted_at timestamptz,
@@ -143,6 +144,22 @@ const SCHEMA = `
     event_id bigserial PRIMARY KEY, posting_id text NOT NULL, company_token text NOT NULL,
     posted_at timestamptz, first_seen timestamptz, closed_at timestamptz NOT NULL,
     superseded boolean NOT NULL DEFAULT false, suspect boolean, absence_basis text);
+  -- The weekly series counts only boards watched since its first week
+  -- (20261112191500, S14X-038): every board this ledger writes was watched a
+  -- year before it, so the flagged-batch rules below are judged alone.
+  CREATE TABLE public.job_board_board_watch (
+    company_token text PRIMARY KEY, first_observed_on date NOT NULL, first_observed_basis text NOT NULL,
+    is_censored boolean NOT NULL DEFAULT false, updated_at timestamptz NOT NULL DEFAULT now());
+  CREATE FUNCTION public.fixture_board_watched_long_before() RETURNS trigger LANGUAGE plpgsql AS $$
+  BEGIN
+    INSERT INTO public.job_board_board_watch (company_token, first_observed_on, first_observed_basis)
+    VALUES (NEW.company_token, current_date - 365, 'fixture') ON CONFLICT DO NOTHING;
+    RETURN NEW;
+  END $$;
+  CREATE TRIGGER fixture_watch_closures AFTER INSERT ON public.job_board_closures
+    FOR EACH ROW EXECUTE FUNCTION public.fixture_board_watched_long_before();
+  CREATE TRIGGER fixture_watch_postings AFTER INSERT ON public.job_board_postings
+    FOR EACH ROW EXECUTE FUNCTION public.fixture_board_watched_long_before();
 `;
 const boot = async (): Promise<PGlite> => {
   const db = new PGlite();

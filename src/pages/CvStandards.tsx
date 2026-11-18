@@ -63,9 +63,10 @@ export default function CvStandards({ locale }: CvStandardsProps) {
       <Header />
       <main className="pt-20 pb-20">
         <div className="container max-w-3xl">
+          {/* In the page's language, as the bake shows and marks it up (SEO-F18). */}
           <nav className="text-xs text-muted-foreground mb-4">
-            <Link to="/" className="hover:text-foreground">Home</Link> /{" "}
-            <Link to="/cv-standards" className="hover:text-foreground">CV Standards</Link> /{" "}
+            <Link to="/" className="hover:text-foreground">{t.breadcrumbHome}</Link> /{" "}
+            <Link to="/cv-standards" className="hover:text-foreground">{t.breadcrumbIndex}</Link> /{" "}
             <span className="text-foreground">{name}</span>
           </nav>
           <h1 className="text-3xl md:text-4xl font-bold mb-3">{cvFill(t.h1, vars, locale)}</h1>
@@ -155,7 +156,8 @@ export default function CvStandards({ locale }: CvStandardsProps) {
             <h2 className="text-xl font-bold mb-2">{t.ctaTitle}</h2>
             <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">{cvFill(t.ctaText, vars, locale)}</p>
             <Button asChild className="gap-2">
-              <Link to={locale === "es" ? "/es/revisar-curriculum" : "/resume-checker"}>
+              {/* The scan opens on this page's market (S14X-032). */}
+              <Link to={`${locale === "es" ? "/es/revisar-curriculum" : "/resume-checker"}?market=${iso}`}>
                 {t.ctaButton}
                 <ArrowRight className="w-4 h-4" />
               </Link>

@@ -29,6 +29,7 @@
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { sqlCodeOf } from "./helpers/strip-comments";
@@ -57,7 +58,7 @@ async function boot(withMigration: boolean | "additive") {
   const db = new PGlite();
   OPEN.push(db);
   await db.exec(`
-    CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN BYPASSRLS;
+    ${SUPABASE_DEFAULTS}
     CREATE SCHEMA auth;
     CREATE TABLE auth.users (id uuid PRIMARY KEY, email text);
     CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
@@ -164,7 +165,7 @@ describe("with 20261009111000 alone: the deploy window (S11-056)", () => {
     await expect(db.exec(THIS)).resolves.toBeDefined();
     const bare = new PGlite();
     OPEN.push(bare);
-    await bare.exec(`CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN BYPASSRLS;
+    await bare.exec(`${SUPABASE_DEFAULTS}
       CREATE SCHEMA auth; CREATE TABLE auth.users (id uuid PRIMARY KEY, email text);
       CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT NULL::uuid $$;`);
     await bare.exec(BASE);

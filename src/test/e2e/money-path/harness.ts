@@ -27,6 +27,8 @@
  * Each scenario asserts per order: model calls, mails, and the final status.
  */
 import type { PGlite } from "@electric-sql/pglite";
+import { readdirSync } from "node:fs";
+import { resolve } from "node:path";
 import { agentDb, migration } from "../../helpers/agent-db";
 import { liveDefinitionOf } from "../../helpers/live-sql";
 import { PgSupabase } from "../../helpers/pglite-supabase";
@@ -185,12 +187,22 @@ const MIGRATIONS = [
   "20261008132000_a_closed_pass_gives_back_every_application_it_never_sent.sql",
 ];
 
+/**
+ * A migration found by its name after the stamp: the stamp is the
+ * integrator's to set at the round's merge, the name is the lane's.
+ */
+const byName = (slug: string): string =>
+  readdirSync(resolve(__dirname, "../../../../supabase/migrations")).find((f) => f.endsWith(`_${slug}.sql`)) ?? `missing_${slug}.sql`;
+
 /** This round's migrations that act on the path, when present (absent on a base without them). */
 export const ROUND_MIGRATIONS = [
   "20261011140000_a_closed_paid_order_stays_closed.sql",
   "20261011143000_a_paid_order_made_but_never_mailed_is_mailed_from_its_copy.sql",
   "20261011143500_a_paid_order_whose_mail_never_left_counts_as_stuck.sql",
   "20261011144000_a_generation_in_progress_is_leased_and_a_stale_maker_is_refused.sql",
+  // The bug round's notice marker (RC-S13-110): retry-failed-deliveries
+  // writes and reads product_deliveries.notice_owed.
+  byName("a_spent_orders_refused_notice_is_owed_until_it_is_sent"),
 ];
 
 const TABLES_TO_CLEAR = [

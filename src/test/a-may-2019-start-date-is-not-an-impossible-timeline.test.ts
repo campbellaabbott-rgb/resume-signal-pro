@@ -88,3 +88,18 @@ describe("the fallback reads dates with the primary's reader", () => {
       .toBe(readFileSync(resolve(root, "free-keyword-scan/employment-gaps.ts"), "utf8"));
   });
 });
+
+describe("RC-S13-022: every way a résumé heads its education ends the experience section", () => {
+  const taDuringDegree = (heading: string) => `EXPERIENCE\nTeaching Assistant, State University | 2015 - 2018\n${heading}\nBA English, State University, 2014 - 2018`;
+  for (const heading of ["Educational Background", "Education History", "Formación Académica", "• Education"]) {
+    it(`'${heading}': a TA job held during the degree is no timeline overlap`, () => {
+      expect(types(taDuringDegree(heading))).toEqual([]);
+    });
+  }
+  it("the two employment-gaps.ts copies are byte-identical", () => {
+    const fn = resolve(__dirname, "../../supabase/functions");
+    const a = readFileSync(resolve(fn, "free-keyword-scan/employment-gaps.ts"), "utf8");
+    const b = readFileSync(resolve(fn, "free-keyword-scan-stream/employment-gaps.ts"), "utf8");
+    expect(a === b).toBe(true);
+  });
+});

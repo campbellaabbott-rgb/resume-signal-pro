@@ -682,6 +682,46 @@ export function employerBoardsOf(landers, token) {
 }
 
 /**
+ * THE BOARDS AN EMPLOYER RUNS BELOW THE CUT (RC-S12-021). The ceiling chooses
+ * boards one by one, so an employer's smaller board that missed the cut was
+ * left out of its employer's pooled count, and /landers.json named no page for
+ * it: the live PwC page said "across 3 hiring-system boards" while PwC's US
+ * Experienced Careers board sat in the companies facet unpooled and unmapped
+ * (2026-11-15). A board in the facet that shares a chosen employer's group
+ * key (bakeEmployerKey and the printed name, as selectLanders groups them) and
+ * was not chosen itself is a pooled member: it gets no page of its own, so the
+ * ceiling still counts pages and not members, but its openings are summed on
+ * its employer's page and the manifest maps it there. A board whose open count
+ * is read as zero has nothing to pool and is left out. Pure.
+ */
+export function pooledMembersOf(companyFacet, landers, { openOf, displayName = (c) => c.name.trim() }) {
+  const chosen = new Map((Array.isArray(landers) ? landers : []).map((c) => [c.token, c]));
+  const nameKey = (s) => String(s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+  const ownerOf = new Map();
+  for (const c of chosen.values()) {
+    const own = c.employerPrimary ?? c.primary;
+    if (own === c.token) ownerOf.set(`${bakeEmployerKey(c.token)}\u0000${nameKey(c.name)}`, c);
+  }
+  const out = [];
+  const seen = new Set();
+  for (const c of Array.isArray(companyFacet) ? companyFacet : []) {
+    if (!c || typeof c.token !== "string" || !/^[A-Za-z0-9._~-]+$/.test(c.token)) continue;
+    if (typeof c.name !== "string" || !c.name.trim() || chosen.has(c.token) || seen.has(c.token)) continue;
+    const name = displayName(c);
+    const owner = ownerOf.get(`${bakeEmployerKey(c.token)}\u0000${nameKey(name)}`);
+    if (!owner) continue;
+    const open = openOf(c);
+    if (typeof open === "number" && open <= 0) continue;
+    seen.add(c.token);
+    out.push({
+      token: c.token, name, stored: c.name.trim(), open: typeof open === "number" ? open : null, count: typeof c.count === "number" ? c.count : null,
+      employerKey: owner.employerKey ?? bakeEmployerKey(owner.token), employerPrimary: owner.token, primary: owner.primary, sameEmployer: owner.sameEmployer, member: true,
+    });
+  }
+  return out;
+}
+
+/**
  * The employer page a board's postings link as their employer's own: the page
  * it canonicalises to, unless that page belongs to a different employer
  * sharing its name, in which case there is none (null) and the caller links

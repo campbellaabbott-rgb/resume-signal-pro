@@ -16,12 +16,10 @@ import {
   type ParsedForm,
 } from "./form-readers-extra.ts";
 
-/** The hiring systems this module can read a form from. */
+/** The readers, the form's shapes ... docs/shared-notes.md#s122 */
 export const FORM_READER_VENDORS: readonly string[] = ["ashby", "bamboohr", "breezy", "greenhouse", "lever", "paylocity", "pinpoint", "recruitee", "teamtailor", "workable"];
-/** The ones read through a published public API: the only ones read for the ChatGPT surface (owner decision R2). */
 export const PUBLIC_API_FORM_VENDORS: readonly string[] = ["greenhouse", "recruitee"];
 
-/** How long a read is believed. */
 export const FORM_CACHE_MS = 24 * 3600_000;
 const DEFAULT_TIMEOUT_MS = 6_000;
 const MAX_QUESTIONS = 100;
@@ -29,18 +27,17 @@ const MAX_QUESTIONS = 100;
 export type FormQuestion = {
   label: string;
   required: boolean;
-  /** The vendor's own control type. */
   type: string;
   options?: string[];
   hint?: string;
   /** The employer set this question to ... docs/shared-notes.md#s68 */
   screens?: true;
+  section?: string;
 };
 export type FormDocument = { name: string; required: boolean };
 export type VendorForm = {
   questions: FormQuestion[];
   documents: FormDocument[];
-  /** Parts of the form outside the question list (EEO self-identification, data-protection consent). */
   alsoOnForm: string[];
 };
 
@@ -48,14 +45,12 @@ export type FormRead =
   | { kind: "read"; vendor: string; readAt: string; cached: boolean; form: VendorForm }
   | {
     kind: "absent"; vendor: string; readAt: string; cached: boolean; pageRead?: true;
-    /** What an apply page with no questions still showed: the CV it asks for, an equality block, a consent. */
     documents?: FormDocument[]; alsoOnForm?: string[];
   }
   | { kind: "no-reader"; vendor: string }
   | { kind: "withheld"; vendor: string }
   | { kind: "unreachable"; vendor: string };
 
-/** The posting as its row states it. */
 export type PostingRef = { id: string; source: string; token: string; applyUrl: string | null };
 
 export type FormCacheRow = { vendor: string; ok: boolean; form: unknown; read_at: string };
@@ -69,11 +64,9 @@ export type ReadOptions = {
   cache?: FormCache | null;
   now?: () => number;
   timeoutMs?: number;
-  /** The vendors this surface reads; defaults to every reader. */
   vendors?: readonly string[];
 };
 
-/** A transient failure: not cached, and answered as unreachable. */
 class Transient extends Error {}
 
 /** The external id: everything after `source:token:`, when the id and the row agree on both. */
@@ -87,19 +80,13 @@ export function externalIdOf(p: PostingRef): string | null {
 const strip = (s: unknown): string =>
   cleanQuestionLabel(String(s ?? "")).slice(0, 500);
 
-async function get(o: ReadOptions, url: string, init?: RequestInit): Promise<Response | null> {
-  let res: Response;
-  try {
-    res = await o.fetch(url, { ...init, signal: AbortSignal.timeout(o.timeoutMs ?? DEFAULT_TIMEOUT_MS) });
-  } catch {
-    throw new Transient("fetch failed");
-  }
-  if (res.status === 429 || res.status >= 500) throw new Transient(`vendor answered ${res.status}`);
+async function get(o: ReadOptions, url: string, init: RequestInit = {}): Promise<Response | null> {
+  const res = await getPinned(o, url, init);
   return res.ok ? res : null;
 }
 
 async function jsonOf(res: Response): Promise<unknown> {
-  try { return await res.json(); } catch { return null; }
+  try { return await res.json(); } catch { throw new Transient(); }
 }
 
 const isFile = (type: string) => /file|upload|attachment|document/i.test(type);
@@ -128,6 +115,7 @@ async function readGreenhouse(o: ReadOptions, p: PostingRef, ext: string): Promi
     questions?: unknown[]; location_questions?: unknown[]; compliance?: unknown[]; data_compliance?: unknown[]; demographic_questions?: unknown;
   } | null;
   if (!gh || typeof gh !== "object") return null;
+  let section = "";
   const toQ = (raw: unknown): FormQuestion | null => {
     const q = raw as { label?: unknown; required?: unknown; description?: unknown; fields?: Array<{ type?: unknown; values?: unknown }> };
     const label = strip(q?.label);
@@ -137,8 +125,11 @@ async function readGreenhouse(o: ReadOptions, p: PostingRef, ext: string): Promi
     if (fields.length && fields.every((f) => isHiddenType(String(f?.type ?? "")))) return null;
     const type = String(fields[0]?.type ?? "");
     const options = fields.map((f) => optionsOf(f?.values)).find(Boolean);
-    const hint = strip(q?.description);
-    return { label, required: q?.required === true, type, ...(options ? { options } : {}), ...(hint ? { hint } : {}) };
+    // A description that is only a heading titles the next question (S14X-264).
+    const head = /^\s*<h[1-6][^>]*>((?:(?!<\/h[1-6])[\s\S])*)<\/h[1-6]>\s*$/i.exec(String(q?.description ?? ""));
+    const hint = head ? "" : strip(q?.description), s = section;
+    section = head ? strip(head[1]) : "";
+    return { label, required: q?.required === true, type, ...(options ? { options } : {}), ...(hint ? { hint } : {}), ...(s ? { section: s } : {}) };
   };
   const questions = [...(gh.questions ?? []), ...(gh.location_questions ?? [])].map(toQ).filter((q): q is FormQuestion => !!q);
   const also: string[] = [];
@@ -246,7 +237,7 @@ async function readHtmlForm(o: ReadOptions, p: PostingRef, vendor: "breezy" | "p
   const res = await get(o, url);
   if (!res) return null;
   let html = "";
-  try { html = await res.text(); } catch { return null; }
+  try { html = await res.text(); } catch { throw new Transient(); }
   const raw = vendor === "breezy" ? parseBreezyQuestions(html) : parsePinpointQuestions(html);
   // What the page says beside its ... docs/shared-notes.md#s73
   const extras = vendor === "breezy" ? parseBreezyFormConfig(html) : parsePinpointExtras(html);
@@ -265,11 +256,11 @@ async function readHtmlForm(o: ReadOptions, p: PostingRef, vendor: "breezy" | "p
 
 // Each fetch is pinned to the vendor's ... docs/shared-notes.md#s75
 
-/** A fetch that follows no redirect: a 3xx is returned to the caller, never followed. */
-async function getPinned(o: ReadOptions, url: string): Promise<Response | null> {
+/** A fetch that follows no redirect unless init says so: a 3xx is returned to the caller, never followed. */
+async function getPinned(o: ReadOptions, url: string, init: RequestInit = { redirect: "manual" }): Promise<Response> {
   let res: Response;
   try {
-    res = await o.fetch(url, { redirect: "manual", signal: AbortSignal.timeout(o.timeoutMs ?? DEFAULT_TIMEOUT_MS) });
+    res = await o.fetch(url, { ...init, signal: AbortSignal.timeout(o.timeoutMs ?? DEFAULT_TIMEOUT_MS) });
   } catch {
     throw new Transient("fetch failed");
   }
@@ -280,7 +271,7 @@ async function getPinned(o: ReadOptions, url: string): Promise<Response | null> 
 async function textOfPinned(o: ReadOptions, url: string): Promise<string | null> {
   const res = await getPinned(o, url);
   if (!res || res.status !== 200) return null;
-  try { return await res.text(); } catch { return null; }
+  try { return await res.text(); } catch { throw new Transient(); }
 }
 
 /** The parsed form, its labels and hints cleaned as every reader's are. */
@@ -349,7 +340,7 @@ async function readTeamtailor(o: ReadOptions, p: PostingRef, ext: string): Promi
   }
   if (!res || res.status !== 200) return null;
   let html = "";
-  try { html = await res.text(); } catch { return null; }
+  try { html = await res.text(); } catch { throw new Transient(); }
   return cleaned(parseTeamtailorForm(html));
 }
 
@@ -357,6 +348,8 @@ async function readTeamtailor(o: ReadOptions, p: PostingRef, ext: string): Promi
 function formOfRow(row: FormCacheRow): VendorForm | null {
   const f = row.form as Partial<VendorForm> | null;
   if (!f || !Array.isArray(f.questions) || !Array.isArray(f.documents)) return null;
+  // A Greenhouse row read before headings became sections holds them as hints (S14X-264).
+  if (row.vendor === "greenhouse" && !(f as { sectioned?: true }).sectioned) return null;
   // A row cached before hidden fields were dropped still holds them (S12-173).
   const questions = f.questions.filter((q) => !isHiddenType(String(q?.type ?? "")));
   return { questions, documents: f.documents, alsoOnForm: Array.isArray(f.alsoOnForm) ? f.alsoOnForm : [] };
@@ -410,8 +403,7 @@ export async function readApplicationForm(p: PostingRef, o: ReadOptions): Promis
       : await readHtmlForm(o, p, vendor as "breezy" | "pinpoint");
     page = got && "pageRead" in got ? got : null;
     form = got && !("pageRead" in got) ? got : null;
-  } catch (e) {
-    if (e instanceof Transient) return { kind: "unreachable", vendor };
+  } catch {
     return { kind: "unreachable", vendor };
   }
   const readAt = new Date(now()).toISOString();
@@ -420,7 +412,8 @@ export async function readApplicationForm(p: PostingRef, o: ReadOptions): Promis
     ...(page.extras.alsoOnForm.length ? { alsoOnForm: page.extras.alsoOnForm } : {}),
   } : {};
   if (o.cache) {
-    try { await o.cache.put(p.id, vendor, !!form, form ?? (page ? { pageRead: true, ...seen } : {})); } catch { /* the answer stands without the cache */ }
+    const kept = form && { ...form, sectioned: true as const };
+    try { await o.cache.put(p.id, vendor, !!form, kept || (page ? { pageRead: true, ...seen } : {})); } catch { /* the answer stands without the cache */ }
   }
   if (form) return { kind: "read", vendor, readAt, cached: false, form };
   return { kind: "absent", vendor, readAt, cached: false, ...(page ? { pageRead: true as const, ...seen } : {}) };

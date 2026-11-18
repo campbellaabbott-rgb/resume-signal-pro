@@ -13,13 +13,13 @@ import { timelineGapOf } from "./employment-gaps.ts";
 import { resolveLanguageName } from "../_shared/language-instruction.ts";
 import { FIXED_CHOICES_STAY_ENGLISH, normalizeScanReport } from "../_shared/scan-report-shape.ts";
 import { applyScoreProjection, buildScoreProjection } from './score-projection.ts';
-import { functionCeiling } from "../_shared/model-spend-gate.ts";
+import { functionCeiling, spendNetworkKey } from "../_shared/model-spend-gate.ts";
 import { attachScanMailSeal } from "../_shared/scan-mail-seal.ts";
 import { accountProStanding } from "../_shared/pro-standing.ts";
 import { attachMailCopy } from "./seal-safe.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
 import { websiteSessionOf } from "../_shared/website-session.ts";
-import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
+import { computeParseQuality, hasPhoneNumber, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
 import { detectResumeLanguage, languageNoticeOf } from "./resume-language.ts";
 import { aiUsageLine } from "./ai-usage.ts";
 const serve = Deno.serve;
@@ -6468,7 +6468,8 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // reply and the streamed analysis each print one [AI-USAGE] line of token
 // counts (ai-usage.ts, the primary's copy byte for byte). A stream that
 // carried no usage chunk prints its counts as '-', the owner's one format.
-const FN_BUILD = "free-keyword-scan-stream.2026-11-10.3";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, free-scan-engine lane): a scan that delivers no full report gives the visitor's day back, the backup scan stops when the page gives up, each market is judged by its own norms and page bounds, and the nine report languages are read in their own section words.
+const FN_BUILD = "free-keyword-scan-stream.2026-11-12.1";
 
 /** The primary's report id formula (free-keyword-scan/report-meta.ts reportIdFor): this report's cache key and its score. */
 async function streamReportId(cacheKey: string, score: unknown): Promise<string> {
@@ -6562,32 +6563,76 @@ async function resolveCountry(req: Request, clientIp: string): Promise<string | 
   }
 }
 
-// SSE helper to send events
-function createSSEStream() {
+// SSE helper to send events. `onCancel` runs when the reader goes away (the
+// page gave up on this backup scan, S14X-144); after that nothing is sent.
+function createSSEStream(onCancel?: () => void) {
   const encoder = new TextEncoder();
   let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+  let cancelled = false;
   
   const stream = new ReadableStream<Uint8Array>({
     start(c) {
       controller = c;
     },
+    cancel() {
+      cancelled = true;
+      onCancel?.();
+    },
   });
 
   const send = (event: string, data: any) => {
-    if (controller) {
+    if (controller && !cancelled) {
       const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-      controller.enqueue(encoder.encode(message));
+      try { controller.enqueue(encoder.encode(message)); } catch { /* the reader has gone */ }
     }
   };
 
   const close = () => {
-    if (controller) {
-      controller.close();
+    if (controller && !cancelled) {
+      try { controller.close(); } catch { /* already closed */ }
     }
   };
 
   return { stream, send, close };
 }
+
+/**
+ * True when the caller's day row already holds the day's scans (S14X-011),
+ * read without counting, as the primary reads it. Any read error is false.
+ */
+// deno-lint-ignore no-explicit-any
+async function dayRowIsSpent(supabase: any, dailyKey: string, limit: number): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from('rate_limits')
+      .select('request_count, window_start')
+      .eq('function_name', FUNCTION_NAME)
+      .eq('ip_address', dailyKey)
+      .maybeSingle();
+    if (error || !data) return false;
+    const started = Date.parse(String(data.window_start ?? ''));
+    if (!Number.isFinite(started) || started <= Date.now() - 24 * 60 * 60 * 1000) return false;
+    return Number(data.request_count) >= limit;
+  } catch {
+    return false;
+  }
+}
+
+/** One of the day's scans back (S14X-043/144); before its migration the day stays spent, as it was. */
+// deno-lint-ignore no-explicit-any
+async function giveBackScanDay(supabase: any, dailyKey: string): Promise<void> {
+  try {
+    const { error } = await supabase.rpc('give_back_scan_day', { p_ip: dailyKey, p_function: FUNCTION_NAME });
+    if (error) console.warn(`[FREE-KEYWORD-SCAN-STREAM] Day give-back not recorded: ${error.code ?? ''} ${error.message ?? ''}`);
+    else console.log('[FREE-KEYWORD-SCAN-STREAM] No report delivered: the day\'s scan was given back');
+  } catch (e) {
+    console.warn('[FREE-KEYWORD-SCAN-STREAM] Day give-back failed:', e);
+  }
+}
+
+// The least time a backup scan needs to be worth starting (S14X-144): a page
+// that will stop listening sooner gets a refusal, not a scan it never reads.
+const STREAM_DEADLINE_FLOOR_MS = 12_000;
 
 // ==================== INDUSTRY-SPECIFIC KEYWORD SUGGESTIONS ====================
 // Provides tailored keyword recommendations based on detected industry
@@ -7381,8 +7426,25 @@ serve(async (req) => {
   const clientIp = getClientIp(req);
   const requestStartTime = Date.now();
 
+  // THE PAGE MAY STOP LISTENING (S14X-144): its own clock runs out, or the
+  // visitor leaves. This fork used to scan on regardless, mail the owner,
+  // count the scan, log it completed and cache it for a page that was gone.
+  // Now the request's abort and the stream's cancel both mark it gone, the
+  // model calls are aborted with it, and a gone run has no completion side
+  // effects; the day's scan goes back (the finally, below).
+  const gone = new AbortController();
+  const markGone = (why: string) => {
+    if (gone.signal.aborted) return;
+    console.log(`[FREE-KEYWORD-SCAN-STREAM] Client gone (${why}): the scan stops`);
+    gone.abort();
+  };
+  req.signal?.addEventListener?.('abort', () => markGone('request aborted'));
+  // The day's slot once counted, and whether a report reached the page.
+  // deno-lint-ignore no-explicit-any
+  const run: { dayCountedFor: string | null; db: any; delivered: boolean; deadlineTimer: ReturnType<typeof setTimeout> | null } = { dayCountedFor: null, db: null, delivered: false, deadlineTimer: null };
+
   // Create SSE stream
-  const { stream, send, close } = createSSEStream();
+  const { stream, send, close } = createSSEStream(() => markGone('stream cancelled'));
 
   // Start response immediately with SSE headers
   const response = new Response(stream, {
@@ -7401,7 +7463,18 @@ serve(async (req) => {
   // Process in background while streaming progress
   EdgeRuntime.waitUntil((async () => {
     try {
-      const { resumeText, jobDescriptionText: askedJobDescription, honeypot, skipCache, skipAdminEmail, language, targetCountry } = await req.json();
+      const { resumeText, jobDescriptionText: askedJobDescription, honeypot, skipCache, skipAdminEmail, language, targetCountry, deadlineAt, userContext } = await req.json();
+      // The page's own deadline for this scan, epoch milliseconds (S14X-144).
+      const pageDeadlineAt = typeof deadlineAt === 'number' && Number.isFinite(deadlineAt) ? deadlineAt : null;
+      // What the reader confirmed on the page, clipped as the primary clips it
+      // (S14X-118): an industry the scanner knows, an experience level.
+      const ctx = (userContext && typeof userContext === 'object') ? userContext as Record<string, unknown> : {};
+      const confirmedIndustry = typeof ctx.confirmedIndustry === 'string'
+        && VALID_INDUSTRIES.includes(ctx.confirmedIndustry.trim().toLowerCase())
+        && ctx.confirmedIndustry.trim().toLowerCase() !== 'general'
+        ? ctx.confirmedIndustry.trim().toLowerCase() : null;
+      const confirmedExperience = typeof ctx.confirmedExperience === 'string' && ['entry', 'mid', 'senior', 'executive'].includes(ctx.confirmedExperience)
+        ? ctx.confirmedExperience : null;
       // A link is not a posting (_shared/job-description-input.ts, S11-032).
       const jobDescriptionText = scannableJobDescription(askedJobDescription);
       // Target market the candidate is applying TO (ISO-2). Optional; when the
@@ -7556,7 +7629,10 @@ serve(async (req) => {
       // the résumé the IP country decides it, so it is part of the key
       // (sweep S8-070; the wave 2 notes' open follow-up).
       const keyCountry = effectiveCountryOf(validTargetCountry, detectCountryFromResume(resumeText), ipCountry);
-      const cacheInput = `v8|${normalizedResume}|${normalizedJob}|${keyCountry}|${languageKey}`;
+      // A confirmed industry or level changes the report, so it keys apart;
+      // a request without one keys exactly as before (S14X-118).
+      const contextKey = confirmedIndustry || confirmedExperience ? `|ctx:${confirmedIndustry ?? ''}:${confirmedExperience ?? ''}` : '';
+      const cacheInput = `v8|${normalizedResume}|${normalizedJob}|${keyCountry}|${languageKey}${contextKey}`;
       const cacheKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cacheInput))
         .then(hash => Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''))
         .then(hex => hex.substring(0, 32));
@@ -7580,6 +7656,8 @@ serve(async (req) => {
           const cachedServerDetection = detectIndustryFromResume(resumeText);
           const cachedHybridResult = hybridIndustryDetection(cachedServerDetection, cachedResponse.industry, resumeText);
           
+          // The reader's confirmed industry wins, as in the primary (S14X-118).
+          if (confirmedIndustry) cachedHybridResult.industry = confirmedIndustry;
           if (cachedHybridResult.industry !== cachedResponse.industry) {
             console.log(`[FREE-KEYWORD-SCAN-STREAM] Cache industry CORRECTED: "${cachedResponse.industry}" -> "${cachedHybridResult.industry}" (${cachedHybridResult.confidence})`);
             cachedResponse.industry = cachedHybridResult.industry;
@@ -7638,6 +7716,43 @@ serve(async (req) => {
       // one hour. Past it (or when it cannot be counted) this fork asks for a
       // retry, as it does past the concurrency slot. Read BEFORE the day's
       // slot, so a refused scan spends none of the person's day (S12-066).
+      // A page that will stop listening before a scan can finish is refused
+      // before anything is counted (S14X-144). A later deadline shortens the
+      // model clock to it (below).
+      if (pageDeadlineAt !== null && pageDeadlineAt - Date.now() < STREAM_DEADLINE_FLOOR_MS) {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Page deadline too close (${pageDeadlineAt - Date.now()}ms): refused before counting`);
+        send('error', { error: 'There was not enough time left for a backup scan. Please try again.', code: 'deadline_passed', retryable: true });
+        close();
+        return;
+      }
+      if (pageDeadlineAt !== null) {
+        run.deadlineTimer = setTimeout(() => markGone('page deadline'), Math.max(0, pageDeadlineAt - Date.now()));
+      }
+
+      // A CALLER THE DAY HAS ALREADY REFUSED SPENDS NO ONE'S HOUR (S14X-011),
+      // as in the primary: the day's row is read first, without counting, and
+      // only a Pro account, which goes on to scan, spends the hour.
+      const dailyKey = authedUserId ? `user:${authedUserId}`.slice(0, 45) : clientIp;
+      const refuseTheDay = () => {
+        send('error', {
+          error: isAuthedUser
+            ? `You've used all ${dailyScanLimit} free scans for today. Your limit resets within 24 hours; Pro has no daily cap on scans.`
+            : `You've used all ${dailyScanLimit} free scans for today. Create a free account for ${SIGNED_IN_SCANS_PER_DAY}/day, or come back within 24 hours.`,
+          rateLimited: true,
+          code: 'daily_scan_limit',
+          scansLimit: dailyScanLimit
+        });
+        close();
+      };
+      if (await dayRowIsSpent(supabase, dailyKey, dailyScanLimit)) {
+        const proToo = !!authedUserId && (await accountProStanding(supabase, authedUserId).catch(() => null))?.pro === true;
+        if (!proToo) {
+          console.log(`[FREE-KEYWORD-SCAN-STREAM] DAY REFUSED net=${spendNetworkKey(req.headers)} before_hour=true`);
+          refuseTheDay();
+          return;
+        }
+      }
+
       const ceiling = await functionCeiling(supabase, req, FUNCTION_NAME, SCAN_CEILING);
       if (ceiling) {
         console.log(`[FREE-KEYWORD-SCAN-STREAM] Function ceiling refused (${ceiling.code}, limit ${ceiling.limit})`);
@@ -7648,8 +7763,8 @@ serve(async (req) => {
 
       // The day's scan slot, counted only once the cache has missed: a
       // rescan of the same text is a replay (sweep S8-068, as in the primary).
-      // A signed-in account is counted by itself, as in the primary (S12-143).
-      const dailyKey = authedUserId ? `user:${authedUserId}`.slice(0, 45) : clientIp;
+      // A signed-in account is counted by itself, as in the primary (S12-143),
+      // under dailyKey (above).
       const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
         p_function: FUNCTION_NAME,
         p_ip: dailyKey,
@@ -7666,17 +7781,11 @@ serve(async (req) => {
       // told "Daily limit, upgrade" by the fork it falls back to (S12-144).
       const proPastTheDay = !allowed && !!authedUserId && (await accountProStanding(supabase, authedUserId).catch(() => null))?.pro === true;
       if (!allowed && !proPastTheDay) {
-        send('error', {
-          error: isAuthedUser
-            ? `You've used all ${dailyScanLimit} free scans for today. Your limit resets within 24 hours; Pro has no daily cap on scans.`
-            : `You've used all ${dailyScanLimit} free scans for today. Create a free account for ${SIGNED_IN_SCANS_PER_DAY}/day, or come back within 24 hours.`,
-          rateLimited: true,
-          code: 'daily_scan_limit',
-          scansLimit: dailyScanLimit
-        });
-        close();
+        refuseTheDay();
         return;
       }
+      // Counted: a run that delivers no report gives it back (the finally).
+      if (allowed) { run.dayCountedFor = dailyKey; run.db = supabase; }
 
       // The primary's concurrency ceiling (2.05). Past it the primary serves
       // its instant rule-based report; this fork has none, so it asks for a
@@ -7724,7 +7833,12 @@ serve(async (req) => {
           if (Array.isArray(corrections) && corrections.length > 0) {
             // Build hint string from frequent corrections
             const relevantCorrections = (corrections as Array<{ detected?: string; corrected?: string; corrections?: number | string }>)
-              .filter((c) => Number(c.corrections) >= 2 && c.detected && c.corrected)
+              // Only labels the scanner knows, and a real change (S14X-046):
+              // anyone can log a correction, and an invented label reached
+              // the prompt as a "known pattern".
+              .filter((c) => Number(c.corrections) >= 2 && !!c.detected && !!c.corrected
+                && VALID_INDUSTRIES.includes(c.detected.trim().toLowerCase()) && VALID_INDUSTRIES.includes(c.corrected.trim().toLowerCase())
+                && c.detected.trim().toLowerCase() !== c.corrected.trim().toLowerCase())
               .slice(0, 5)
               .map((c) => `"${c.detected}" is often corrected to "${c.corrected}"`)
               .join('; ');
@@ -7801,8 +7915,9 @@ What is the PRIMARY industry of this candidate's own experience? Reply with only
             max_tokens: 400,
             temperature: 0,
           }),
-          // A short classification: it never holds the scan past 15 seconds.
-          signal: AbortSignal.timeout(15_000),
+          // A short classification: it never holds the scan past 15 seconds,
+          // nor past the page leaving (S14X-144).
+          signal: AbortSignal.any([AbortSignal.timeout(15_000), gone.signal]),
         });
 
         if (verifyResponse.ok) {
@@ -8061,14 +8176,19 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
 
       // Deterministic structure scaffold — grounds the model so it can't
       // hallucinate a missing section/contact/role the raw text contains.
-      const structureHint = formatStructureForPrompt(parseResumeStructure(resumeText));
+      const structureHint = formatStructureForPrompt(parseResumeStructure(resumeText, detectedResumeLanguage.language));
       // The whole résumé, as the primary sends it (S13-008): this fork cut at
       // 15,000 characters with no notice. The request is refused above
       // MAX_RESUME_LENGTH, so nothing is cut; resumeTruncated would say so.
       const resumeForPrompt = resumeText.slice(0, MAX_RESUME_LENGTH);
+      // The level the reader confirmed on the page (S14X-118), as the primary
+      // tells its model.
+      const confirmedLevelHint = confirmedExperience
+        ? `\n\n<user_context>The candidate confirmed their experience level: ${confirmedExperience}. Judge the resume at that level.</user_context>`
+        : '';
       const userPrompt = hasJobDescription
-        ? `Analyze this ${resumeType.label} for the target job:\n\n<resume>\n${resumeForPrompt}\n</resume>${structureHint}\n\n<job_description>\n${truncatedJobDescription}\n</job_description>`
-        : `Analyze this ${resumeType.label}:\n\n<resume>\n${resumeForPrompt}\n</resume>${structureHint}`;
+        ? `Analyze this ${resumeType.label} for the target job:\n\n<resume>\n${resumeForPrompt}\n</resume>${structureHint}\n\n<job_description>\n${truncatedJobDescription}\n</job_description>${confirmedLevelHint}`
+        : `Analyze this ${resumeType.label}:\n\n<resume>\n${resumeForPrompt}\n</resume>${structureHint}${confirmedLevelHint}`;
 
       // AI request with retry logic. Flash-first to match the primary
       // scanner: the pro-first order made this path's p50 latency 32s vs the
@@ -8085,12 +8205,13 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       // Each attempt, its streamed body included, is bounded by what is left of
       // the scan's clock (register L5-10: these fetches had no timeout, so a
       // stalled gateway held the stream until the platform killed it).
-      const aiDeadlineAt = requestStartTime + STREAM_AI_DEADLINE_MS;
+      // The page's deadline, when it sent one, is the clock's end (S14X-144).
+      const aiDeadlineAt = Math.min(requestStartTime + STREAM_AI_DEADLINE_MS, pageDeadlineAt ?? Infinity);
       const makeAIRequest = async (model: string): Promise<Response> => {
         const left = aiDeadlineAt - Date.now();
         if (left < 8_000) throw new Error('scan deadline reached before the model answered');
         return fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          signal: AbortSignal.timeout(Math.min(STREAM_ATTEMPT_TIMEOUT_MS, left)),
+          signal: AbortSignal.any([AbortSignal.timeout(Math.min(STREAM_ATTEMPT_TIMEOUT_MS, left)), gone.signal]),
           method: "POST",
           headers: {
             Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -8205,6 +8326,8 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       
       // Try with retries and model fallbacks
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        // No further model is asked for a page that has gone (S14X-144).
+        if (gone.signal.aborted) break;
         const modelIndex = Math.min(attempt, AI_MODELS.length - 1);
         modelUsed = AI_MODELS[modelIndex];
         
@@ -8253,6 +8376,12 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         }
       }
       
+      if (!aiResponse && gone.signal.aborted) {
+        // The page left: not a model failure, and nothing to send (S14X-144).
+        console.log('[FREE-KEYWORD-SCAN-STREAM] Page gone before the model answered: no report, the day goes back');
+        close();
+        return;
+      }
       if (!aiResponse) {
         logScanMetric(metricCtx, 'failed', {
           errorCode: 'AI_ALL_RETRIES_FAILED',
@@ -8479,6 +8608,17 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       
       const industryDetectionDuration = Date.now() - industryDetectionStart;
       
+      // The reader's confirmed industry wins, as in the primary (S14X-118):
+      // the page's fallback used to drop it, so a person who had corrected
+      // the industry was scored against the one they corrected.
+      if (confirmedIndustry && confirmedIndustry !== hybridResult.industry) {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] User-confirmed industry override: "${hybridResult.industry}" -> "${confirmedIndustry}"`);
+        hybridResult.industry = confirmedIndustry;
+        hybridResult.parentIndustry = INDUSTRY_PARENTS[confirmedIndustry] || hybridResult.parentIndustry;
+        hybridResult.confidence = 'high';
+        (hybridResult as { detectionSource?: string }).detectionSource = 'user_confirmed';
+      }
+
       // Apply hybrid result
       analysis.industry = hybridResult.industry;
       
@@ -8709,9 +8849,14 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         // Country-specific resume standards + geo resolution (computed above)
         countryStandards: countryStandardsResult,
         geo: geoResult,
+        // This fork writes no posting comparison (match score, matching
+        // skills): with a posting sent it says so, and the page names the
+        // missing comparison instead of showing none (S14X-118).
+        postingComparison: truncatedJobDescription ? 'not_available' : undefined,
         // Extraction-quality gate — parity with the primary path so fallback
         // scans also warn when a mangled PDF makes the report unreliable.
-        parseQuality: computeParseQuality(resumeText),
+        // In the résumé's own language too (NB-6).
+        parseQuality: computeParseQuality(resumeText, detectResumeLanguage(resumeText).language),
         // The primary's language notice (S13-024): null when the report is
         // built for the résumé's language.
         languageNotice: languageNoticeOf(detectResumeLanguage(resumeText)),
@@ -8754,7 +8899,8 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
           // Filter 1: Only flag "missing contact info" if 2+ elements are actually missing
           if (combined.includes('contact') || combined.includes('email') || combined.includes('phone') || combined.includes('missing') && combined.includes('information')) {
             const hasEmail = /@[\w\.-]+\.\w+/.test(resumeText);
-            const hasPhone = /\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/.test(resumeText);
+            // The primary's matcher (NB-8): "+44 7700 900123" is a phone.
+            const hasPhone = hasPhoneNumber(resumeText);
             const hasLinkedIn = /linkedin\.com|linkedin/i.test(resumeText);
             const hasLocation = /\b(city|state|[A-Z][a-z]+,\s*[A-Z]{2}|\d{5})\b/i.test(resumeText);
             const contactCount = [hasEmail, hasPhone, hasLinkedIn, hasLocation].filter(Boolean).length;
@@ -8899,6 +9045,15 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         }).slice(0, 3),
       };
 
+      // A page that stopped listening gets nothing, and nothing is recorded
+      // as delivered to it (S14X-144/145): no owner note, no scan count, no
+      // 'completed' row, no cache entry. The day goes back in the finally.
+      if (gone.signal.aborted) {
+        console.log('[FREE-KEYWORD-SCAN-STREAM] Report built for a page that has gone: not delivered, not counted');
+        close();
+        return;
+      }
+
       // OWNER NOTES GO THROUGH notify-owner ONLY (S11-019). This fork mailed
       // the owner directly through Resend on every scan, a per-scan send any
       // address pool could multiply against the quota paid deliveries share.
@@ -8913,7 +9068,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
               type: 'scan',
               score: analysis.atsScoreEstimate,
               industry: analysis.industry ?? null,
-              country: requestCountry ?? null,
+              // No country: an owner note carries counts or a reference only (S14X-101).
               authed: isAuthedUser,
             }),
           }).then(() => {}, (e) => console.warn('[FREE-KEYWORD-SCAN-STREAM] Owner notify failed:', e))
@@ -9012,6 +9167,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       await attachScanMailSeal(attachMailCopy(responseData, resumeText), Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
       send('progress', { stage: 'complete', message: 'Analysis complete!', progress: 100 });
       send('complete', responseData);
+      run.delivered = !gone.signal.aborted;
       close();
 
     } catch (error) {
@@ -9019,10 +9175,16 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       send('error', { error: 'An error occurred. Please try again.' });
       close();
     } finally {
+      if (run.deadlineTimer) clearTimeout(run.deadlineTimer);
       // The concurrency slot is released on every exit (its TTL is the
       // backstop for a crash).
       if (scanSlot.id && scanSlot.client) {
         await scanSlot.client.rpc('release_scan_slot', { p_id: scanSlot.id }).then(() => {}, () => {});
+      }
+      // A counted day whose report never reached the page goes back
+      // (S14X-043/144): an error, a refusal after counting, a gone page.
+      if (run.dayCountedFor && run.db && !run.delivered) {
+        await giveBackScanDay(run.db, run.dayCountedFor);
       }
     }
   })());

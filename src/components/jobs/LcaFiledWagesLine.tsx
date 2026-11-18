@@ -250,7 +250,8 @@ export function LcaFiledWagesView({ row, companyName, context = "posting", class
     <div className={`${bare ? "" : "rounded-lg border border-border bg-card p-3 max-w-xl "}text-left${className ? ` ${className}` : ""}`} data-lca-context={context}>
       <div className="flex items-center gap-1.5 mb-1 text-meta font-medium text-foreground">
         <FileText className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
-        {t("jobsPage.lcaChip", "Filed H-1B wages · {{quarter}}", { quarter: employer.fiscalQuarter })}
+        {/* The run kept every class of the LCA Programs file (LCA_VISA_CLASSES is null in lca-payload.ts), so the chip names each (S14X-184). */}
+        {t("layoffFilings.lcaChip", "Filed LCA wages (H-1B, H-1B1, E-3) · {{quarter}}", { quarter: employer.fiscalQuarter })}
       </div>
 
       {wages && (

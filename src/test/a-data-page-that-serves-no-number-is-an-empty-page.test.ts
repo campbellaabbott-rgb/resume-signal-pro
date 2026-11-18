@@ -403,17 +403,19 @@ END $$;`;
     expect(newestScheduleOf("refresh-ghost-stats", [another])).toBe("15 * * * *");
   });
 
-  it("the API's stats basis says how often the rollup it reads is recomputed", () => {
-    // THE SAME CLAIM IN A THIRD RUNTIME. /v1/stats tells a paying customer
-    // that feedFreshness and bySource come from "a rollup recomputed every N
-    // minutes"; the job is job-board-stats-rollup, re-timed by migration.
+  it("the API's stats basis names the rollup it reads and types no cadence for it (NB-32)", () => {
+    // THE SAME CLAIM IN A THIRD RUNTIME. /v1/stats told a paying customer that
+    // feedFreshness and bySource came from "a rollup recomputed every N
+    // minutes", while a migration re-times job-board-stats-rollup and a
+    // function deploy moves the basis, so the two went out of step. The basis
+    // now names no cadence and each block carries its own asOf
+    // (the-stats-basis-types-no-cadence-the-cron-can-change runs the handler).
     const api = readFileSync(resolve(ROOT, "supabase/functions/public-api/index.ts"), "utf8");
-    const basis = /basis:\s*"([^"]*from a rollup recomputed[^"]*)"/.exec(api)?.[1] ?? "";
-    expect(basis, "the /v1/stats basis no longer names the rollup's cadence -- re-anchor this guard").not.toBe("");
-    const sqls = readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort().map((f) => readFileSync(resolve(MIGRATIONS, f), "utf8"));
-    const expr = newestScheduleOf("job-board-stats-rollup", sqls);
-    expect(expr).toBeTruthy();
-    expect(basis, `the rollup runs on "${expr}"`).toContain(`a rollup ${phraseFor(expr!)}`);
+    const basis = /basis:\s*"([^"]*feedFreshness and bySource come from a rollup[^"]*)"/.exec(api)?.[1] ?? "";
+    expect(basis, "the /v1/stats basis no longer names the rollup -- re-anchor this guard").not.toBe("");
+    const rollupClause = basis.slice(basis.indexOf("feedFreshness and bySource"));
+    expect(rollupClause).toMatch(/each carries its own asOf/);
+    expect(rollupClause, "a typed cadence goes false the day a migration re-times the cron").not.toMatch(/recomputed|every\s+~?\d+\s*minutes|hourly|twice an hour/i);
   });
 
   it("the four pages actually render what the builder returns", () => {

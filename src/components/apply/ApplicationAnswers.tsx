@@ -9,6 +9,8 @@ import { Loader2, Copy, AlertTriangle, MessageSquare, ShieldCheck, ClipboardList
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
+import { heldBoardPass } from "@/lib/board-pass";
+import { dateTime } from "@/lib/format";
 import { toast } from "sonner";
 
 export interface DraftedAnswer { question: string; answer: string; supported: boolean; note: string; anticipated?: boolean; }
@@ -78,6 +80,8 @@ export function answersFailureMessage(
   body: Record<string, unknown> | null,
   retryAfterSeconds: number | null,
   t: TFn,
+  /** The reader's language, for the time an allowance comes back (S14X-255). */
+  locale?: string,
 ): string {
   const code = typeof body?.code === "string" ? body.code : typeof body?.error === "string" ? body.error : "";
   const serverSentence = typeof body?.message === "string" && body.message.trim() ? body.message : null;
@@ -87,7 +91,7 @@ export function answersFailureMessage(
   if (code === "daily_limit" || code === "monthly_limit") {
     if (serverSentence) return serverSentence;
     const at = typeof body?.resetsAt === "string" ? new Date(body.resetsAt) : null;
-    const when = at && Number.isFinite(at.getTime()) ? at.toLocaleString(undefined, { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" }) : null;
+    const when = at && Number.isFinite(at.getTime()) ? dateTime(at, { lng: locale }) : null;
     return when
       ? t("applyAnswers.limitUntil", "You've used this allowance. You can draft more after {{when}}.", { when })
       : t("applyAnswers.limit", "You've used this allowance for now. Please try again later.");
@@ -95,11 +99,23 @@ export function answersFailureMessage(
   if (status === 429 && code === "model_busy") {
     return t("applyAnswers.modelBusy", "The AI service is busy. Please try again in a minute.");
   }
+  // EVERYONE'S CEILING, NOT THIS PERSON'S (S14X-205): the spend gate's
+  // all-callers and per-network hours are reached by other people, so no
+  // limit of theirs is named.
+  if (status === 429 && code === "rate_limited_global") {
+    return t("writingRefusal.busyEveryone", "This tool is busy for everyone right now. This is not your own limit. Try again later.");
+  }
+  if (status === 429 && code === "rate_limited_network") {
+    return t("writingRefusal.busyNetwork", "This tool is busy for your network right now. This is not your own limit. Try again later.");
+  }
   if (status === 429) {
     const minutes = Math.max(1, Math.round((retryAfterSeconds ?? 3600) / 60));
     return minutes >= 120
       ? t("applyAnswers.limitHours", "You've reached the drafting limit for now. Please try again in about {{hours}} hours.", { hours: Math.round(minutes / 60) })
       : t("applyAnswers.limitMinutes", "You've reached the drafting limit for now. Please try again in about {{minutes}} minutes.", { minutes });
+  }
+  if (status === 503 && code === "ai_unavailable") {
+    return t("writingTools.answersAiUnavailable", "The AI service can't take requests right now. Please try again in a few minutes.");
   }
   if (status === 503) {
     return t("applyAnswers.unavailable", "Drafting is unavailable for a minute. Please try again shortly.");
@@ -136,10 +152,26 @@ type KeptDraft = {
   inferred: boolean;
   skipped: Array<{ question: string; class: string }>;
   undrafted: string[];
+  /** Questions in a chunk that failed: a draft again asks for them (S14X-119). */
+  retryable: string[];
   requirements: string[];
 };
 const keptDrafts = new Map<string, KeptDraft>();
 const KEPT_DRAFTS_MAX = 20;
+
+/**
+ * A DRAFT STILL BEING WRITTEN, KEPT WHILE IT RUNS (RC-S12-052). Closing
+ * Prepare mid-draft and opening it again mounted a fresh panel that drafted
+ * the same job a second time. A reopen with the same résumé, posting and
+ * language now waits for the running draft and shows its answers.
+ */
+type RunningDraft = { resumeText: string; language: string; jobDescription: string; promise: Promise<KeptDraft | null> };
+const runningDrafts = new Map<string, RunningDraft>();
+
+function runningDraftFor(key: string, resumeText: string | null, language: string, jobDescription: string): RunningDraft | null {
+  const run = runningDrafts.get(key);
+  return run && resumeText && run.resumeText === resumeText && run.language === language && run.jobDescription === jobDescription ? run : null;
+}
 
 const draftKeyOf = (jobId: string | null | undefined, jobTitle: string, jobCompany: string) =>
   jobId ? `id:${jobId}` : `job:${jobTitle}\u0000${jobCompany}`;
@@ -158,6 +190,7 @@ function keepDraft(key: string, draft: KeptDraft): void {
 /** Forgets every kept draft (tests start from none). */
 export function forgetKeptDrafts(): void {
   keptDrafts.clear();
+  runningDrafts.clear();
 }
 
 export function ApplicationAnswers({
@@ -192,17 +225,28 @@ export function ApplicationAnswers({
   const [answers, setAnswers] = useState<DraftedAnswer[] | null>(kept?.answers ?? null);
   const [inferred, setInferred] = useState(kept?.inferred ?? false);
   const [skipped, setSkipped] = useState<Array<{ question: string; class: string }>>(kept?.skipped ?? []);
-  /** Questions past the drafting cap, or in a chunk that failed: named back for the person (S12-148). */
+  /** Questions past the drafting cap: named back for the person (S12-148). */
   const [undrafted, setUndrafted] = useState<string[]>(kept?.undrafted ?? []);
+  /** Questions in a chunk that failed: a draft again asks for them (S14X-119). */
+  const [retryable, setRetryable] = useState<string[]>(kept?.retryable ?? []);
+  /** Waiting for a draft this job started before this panel opened (RC-S12-052). */
+  const [joining, setJoining] = useState(false);
   /** Documents the real form demands (from the ATS form config) — shown as a
    *  pre-flight so the candidate has them ready before they start. */
   const [requirements, setRequirements] = useState<string[]>(kept?.requirements ?? []);
   const started = useRef(!!kept);
 
-  const draft = async () => {
-    if (loading || !resumeText) return;
-    setLoading(true);
-    const askedWith = { resumeText, language: i18n.language, jobDescription: jobDescription ?? "" };
+  const show = (next: KeptDraft) => {
+    setAnswers(next.answers);
+    setUndrafted(next.undrafted);
+    setRetryable(next.retryable);
+    setInferred(next.inferred);
+    setSkipped(next.skipped);
+    setRequirements(next.requirements);
+  };
+
+  /** One request for this job's answers: the draft, or null when it failed (and said so). */
+  const requestDraft = async (askedWith: { resumeText: string; language: string; jobDescription: string }): Promise<KeptDraft | null> => {
     let formRequirements: string[] = requirements;
     try {
       // For Greenhouse/Ashby/Recruitee postings we can fetch the posting's REAL
@@ -236,19 +280,22 @@ export function ApplicationAnswers({
       }
       // The reader's language goes with the request (S12-026): answers follow
       // the posting's language, the notes the person reads follow this one.
+      // A held board pass counts this caller by the pass (S14X-205).
       const { data, error } = await supabase.functions.invoke("generate-application-answers", {
-        body: { resumeText, jobTitle, jobCompany, jobDescription, questions, jobCategory, experienceBand, language: i18n.language },
+        body: { resumeText, jobTitle, jobCompany, jobDescription, questions, jobCategory, experienceBand, language: askedWith.language, boardPass: heldBoardPass() ?? undefined },
       });
       if (error || !data) {
         const failure = await readInvokeFailure(error);
-        toast.error(answersFailureMessage(failure.status, failure.body, failure.retryAfter, t as unknown as TFn));
-        return;
+        toast.error(answersFailureMessage(failure.status, failure.body, failure.retryAfter, t as unknown as TFn, askedWith.language));
+        return null;
       }
-      const d = data as { answers?: DraftedAnswer[]; inferred?: boolean; skipped?: Array<{ question?: string; class?: string }>; undrafted?: unknown };
+      const d = data as { answers?: DraftedAnswer[]; inferred?: boolean; skipped?: Array<{ question?: string; class?: string }>; undrafted?: unknown; retryable?: unknown };
+      const labels = (v: unknown) => (Array.isArray(v) ? v.filter((q): q is string => typeof q === "string" && !!q.trim()) : []);
       const next: KeptDraft = {
         ...askedWith,
         answers: Array.isArray(d.answers) ? d.answers : [],
-        undrafted: Array.isArray(d.undrafted) ? d.undrafted.filter((q): q is string => typeof q === "string" && !!q.trim()) : [],
+        undrafted: labels(d.undrafted),
+        retryable: labels(d.retryable),
         inferred: !!d.inferred,
         skipped: Array.isArray(d.skipped)
           ? d.skipped
@@ -257,14 +304,26 @@ export function ApplicationAnswers({
           : [],
         requirements: formRequirements,
       };
-      setAnswers(next.answers);
-      setUndrafted(next.undrafted);
-      setInferred(next.inferred);
-      setSkipped(next.skipped);
-      keepDraft(draftKey, next);
+      // A draft with questions still to retry is not kept: a reopen asks again.
+      if (next.retryable.length === 0) keepDraft(draftKey, next);
+      return next;
     } catch {
       toast.error(t("applyAnswers.failed", "Couldn't draft answers right now."));
+      return null;
+    }
+  };
+
+  const draft = async () => {
+    if (loading || joining || !resumeText) return;
+    setLoading(true);
+    const askedWith = { resumeText, language: i18n.language, jobDescription: jobDescription ?? "" };
+    const promise = requestDraft(askedWith);
+    runningDrafts.set(draftKey, { ...askedWith, promise });
+    try {
+      const next = await promise;
+      if (next) show(next);
     } finally {
+      if (runningDrafts.get(draftKey)?.promise === promise) runningDrafts.delete(draftKey);
       setLoading(false);
     }
   };
@@ -277,11 +336,15 @@ export function ApplicationAnswers({
     const found = keptDraftFor(draftKey, resumeText, i18n.language, jobDescription ?? "");
     if (found) {
       started.current = true;
-      setAnswers(found.answers);
-      setInferred(found.inferred);
-      setSkipped(found.skipped);
-      setUndrafted(found.undrafted);
-      setRequirements(found.requirements);
+      show(found);
+      return;
+    }
+    // A draft this job started before the panel opened: wait for it, never ask twice.
+    const running = runningDraftFor(draftKey, resumeText, i18n.language, jobDescription ?? "");
+    if (running) {
+      started.current = true;
+      setJoining(true);
+      void running.promise.then((next) => { if (next) show(next); }).finally(() => setJoining(false));
       return;
     }
     if (autoStart) {
@@ -330,19 +393,25 @@ export function ApplicationAnswers({
             </ul>
           </div>
         )}
-        <button
-          onClick={draft}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-full border border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-60"
-        >
-          {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <MessageSquare className="w-3 h-3" />}
-          {t("applyAnswers.draftButton", "Draft this application's questions")}
-        </button>
+        {joining ? (
+          <p data-testid="answers-joined-draft" className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <Loader2 className="w-3 h-3 animate-spin" /> {t("writingTools.answersJoined", "Still drafting the answers you started. They will appear here.")}
+          </p>
+        ) : (
+          <button
+            onClick={draft}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-full border border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-60"
+          >
+            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <MessageSquare className="w-3 h-3" />}
+            {t("applyAnswers.draftButton", "Draft this application's questions")}
+          </button>
+        )}
       </div>
     );
   }
 
-  if (answers.length === 0 && skipped.length === 0 && undrafted.length === 0) {
+  if (answers.length === 0 && skipped.length === 0 && undrafted.length === 0 && retryable.length === 0) {
     return (
       <div className="mt-3 flex items-start justify-between gap-2">
         <p className="text-[11px] text-muted-foreground">{t("applyAnswers.nothingDraftable", "No auto-draftable questions — the rest are yours to complete honestly.")}</p>
@@ -352,6 +421,9 @@ export function ApplicationAnswers({
   }
 
   const gaps = answers.filter((a) => !a.supported).length;
+  // A letter, essay or résumé rewrite is handed back as its own kind (S14X-090).
+  const writing = skipped.filter((s) => s.class === "writing");
+  const yours = skipped.filter((s) => s.class !== "writing");
 
   return (
     <div className="mt-3 space-y-2">
@@ -433,12 +505,37 @@ export function ApplicationAnswers({
           </ul>
         </div>
       )}
-      {skipped.length > 0 && (
+      {retryable.length > 0 && (
+        <div className="rounded-lg border border-warning/40 bg-warning/5 p-2.5" data-testid="answers-retryable">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-[11px] font-medium text-foreground">{t("writingTools.answersRetryTitle", "We couldn't draft these just now")}</p>
+            {answers.length === 0 && draftAgain}
+          </div>
+          <p className="text-[11px] text-muted-foreground">{t("writingTools.answersRetryBody", "Something went wrong while drafting them. Draft again to try these questions again.")}</p>
+          <ul className="mt-1.5 space-y-0.5">
+            {retryable.map((q, i) => (
+              <li key={i} className="text-[11px] text-muted-foreground">• {q}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {writing.length > 0 && (
+        <div className="rounded-lg border border-border/60 bg-muted/40 p-2.5" data-testid="answers-writing">
+          <p className="text-[11px] font-medium text-foreground">{t("writingTools.answersWritingTitle", "Longer writing, not drafted here")}</p>
+          <p className="text-[11px] text-muted-foreground">{t("writingTools.answersWritingBody", "These ask for a letter, an essay or a rewritten résumé, which this step doesn't write. Use the cover letter or tailored résumé tools, or write them yourself.")}</p>
+          <ul className="mt-1.5 space-y-0.5">
+            {writing.map((s, i) => (
+              <li key={i} className="text-[11px] text-muted-foreground">• {s.question}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {yours.length > 0 && (
         <div className="rounded-lg border border-border/60 bg-muted/40 p-2.5">
           <p className="text-[11px] font-medium text-foreground">{t("applyAnswers.yoursTitle", "You'll answer these yourself")}</p>
           <p className="text-[11px] text-muted-foreground">{t("applyAnswers.yoursBody", "These look like questions about you — your identity, work authorization, salary or demographics — so we left them for you. The check reads the words and can miss a question about you, even a plainly worded one: read every answer before you send.")}</p>
           <ul className="mt-1.5 space-y-0.5">
-            {skipped.map((s, i) => (
+            {yours.map((s, i) => (
               <li key={i} className="text-[11px] text-muted-foreground">• {s.question}</li>
             ))}
           </ul>

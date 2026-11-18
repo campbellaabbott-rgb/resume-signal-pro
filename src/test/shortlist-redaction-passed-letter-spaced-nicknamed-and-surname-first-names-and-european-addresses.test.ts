@@ -22,7 +22,7 @@ import { describe, expect, it } from "vitest";
 import { jsPDF } from "jspdf";
 import { resolvePDFJS } from "pdfjs-serverless";
 import { pageTextFromItems, type PdfTextItem } from "../../supabase/functions/parse-pdf/page-text";
-import { redactForScoring } from "../../supabase/functions/_shared/redaction";
+import { redactForScoring } from "../../supabase/functions/shortlist-evaluate/redaction";
 
 const feature = (r: ReturnType<typeof redactForScoring>, f: string) =>
   r.exclusionsApplied.find((e) => e.feature === f)?.count ?? 0;

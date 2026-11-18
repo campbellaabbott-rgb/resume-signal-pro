@@ -42,7 +42,7 @@ import { join, resolve } from "node:path";
 import { anonCan, authenticatedCan, migrationReplay, arrayLiteralAt, replayMigrations, type FnState } from "./helpers/function-acl";
 import { access, tableReplay } from "./helpers/table-acl";
 import {
-  ADMIN_READERS_CREATED_CLOSED, CLIENT_CALLABLE, CLOSED_BY_CENSUS, CLOSED_TABLES, CREATED_CLOSED, OPEN_TABLES, OWNED_ELSEWHERE, UNCAPPED_TOKEN_ARRAYS,
+  ADMIN_READERS_CREATED_CLOSED, CLIENT_CALLABLE, CLOSED_BY_CENSUS, CLOSED_TABLES, CREATED_CLOSED, OPEN_TABLES, OWNED_ELSEWHERE, REPLACED_AFTER_CENSUS, UNCAPPED_TOKEN_ARRAYS,
 } from "./helpers/client-callable-allowlist";
 import { codeOf } from "./helpers/strip-comments";
 
@@ -467,8 +467,14 @@ describe("the migration carries exactly these lists and checks every one", () =>
 
   it("20261004110000 lists every row but the ones a re-issue added, and each of those names a re-issue that lists it", () => {
     const first = censusLists(code);
-    expect(first.anon).toEqual(CLIENT_CALLABLE.filter((a) => a.roles === "anon" && !a.since).map((a) => a.sig).sort());
-    expect(first.auth).toEqual(CLIENT_CALLABLE.filter((a) => a.roles === "authenticated" && !a.since).map((a) => a.sig).sort());
+    const kept = (sigs: string[]) => sigs.filter((s) => !REPLACED_AFTER_CENSUS[s]);
+    expect(kept(first.anon)).toEqual(CLIENT_CALLABLE.filter((a) => a.roles === "anon" && !a.since).map((a) => a.sig).sort());
+    expect(kept(first.auth)).toEqual(CLIENT_CALLABLE.filter((a) => a.roles === "authenticated" && !a.since).map((a) => a.sig).sort());
+    for (const [was, now] of Object.entries(REPLACED_AFTER_CENSUS)) {
+      expect([...first.anon, ...first.auth], `20261004110000 does not list ${was}`).toContain(was);
+      expect(CLIENT_CALLABLE.find((a) => a.sig === now)?.since, `${now} is not stamped since the re-issue that replaced ${was}`).toBeTruthy();
+      expect(CLIENT_CALLABLE.some((a) => a.sig === was), `${was} was replaced, yet the allowlist still names it`).toBe(false);
+    }
     for (const a of CLIENT_CALLABLE.filter((x) => x.since)) {
       const f = readdirSync(MIG_DIR).find((n) => n.startsWith(`${a.since}_`));
       expect(f, `${a.sig}: no migration ${a.since}_*.sql`).toBeTruthy();
@@ -635,9 +641,38 @@ describe("every anonymous writer on the list is bounded, and the budget is keyed
    * function answers but never how much a stranger may write.
    *   record_scan_feedback: answers true/false instead of void, so the page
    *   can tell a stored vote from one the budget skipped (S13-057).
+   *   log_industry_correction, both overloads: refuses a label the scanner
+   *   does not know, or an unchanged one, before the budget (S14X-046).
    */
   const REDEFINED_AFTER_CENSUS: Record<string, string> = {
     "public.record_scan_feedback(text,boolean,text,integer,boolean,integer,text)": "20261101150000_a_feedback_vote_the_budget_skipped_is_never_thanked.sql",
+    // Bug round 2026-11-08, lane affiliate: the click stores a keyed address
+    // hash (S14X-021) and the sign-in readers compare token hashes (S14X-093).
+    "public.track_affiliate_click(text,text,text,text)": "20261112121000_an_affiliate_click_keeps_a_keyed_address_hash_for_ninety_days.sql",
+    "public.login_affiliate(text,text)": "20261112120000_an_affiliate_signs_in_with_a_hashed_session_and_a_proven_address.sql",
+    "public.register_affiliate(text,text)": "20261112120000_an_affiliate_signs_in_with_a_hashed_session_and_a_proven_address.sql",
+    // Bug round 2026-11-08, lane free-scan-engine: the correction log takes only
+    // labels the scanner knows.
+    "public.log_industry_correction(text,text,text,text)": "20261112170000_a_scan_that_delivered_nothing_gives_its_day_back_and_a_stranger_names_no_new_industry.sql",
+    "public.log_industry_correction(text,text,text,text,integer,text[],text,text,text)": "20261112170000_a_scan_that_delivered_nothing_gives_its_day_back_and_a_stranger_names_no_new_industry.sql",
+  };
+
+  /**
+   * A re-definition that changes the budget itself, each with the budget it
+   * spends now, letter for letter, and why. Without an entry here the census's
+   * own budget is the only one a re-definition may spend.
+   *   login_affiliate (S14X-092): the census charged every attempt to the
+   *   email, so a stranger's 20 wrong guesses locked the affiliate out for an
+   *   hour. The address budget stays; only failures are charged to the email
+   *   (10 an hour per address and email, 200 an hour per email).
+   *   register_affiliate (S14X-092): 3 an address and 50 in all a day let one
+   *   network close sign-up for everyone. Now 10 a day per /24 or /48 network
+   *   under 1000 in all, safe because an unproven address earns nothing
+   *   payable and cannot request a payout (S14X-115).
+   */
+  const REBUDGETED_AFTER_CENSUS: Record<string, string[]> = {
+    "public.login_affiliate(text,text)": ["client_write_allowed('affiliate-login',20,1000,60)", "client_write_allowed(v_fail_scope,10,200,60)"],
+    "public.register_affiliate(text,text)": ["client_write_allowed('affiliate-register-net:'||coalesce(v_net,'no-address')", "client_write_allowed('affiliate-register',10,1000,1440)"],
   };
   const censusBody = (sig: string): string => {
     const name = sig.slice("public.".length, sig.indexOf("("));
@@ -655,7 +690,7 @@ describe("every anonymous writer on the list is bounded, and the budget is keyed
       if (UNBUDGETED[a.sig] || a.since) continue; // a writer opened after the census: the next test
       if (!/\bclient_write_allowed\s*\(/.test(f.body)) bad.push(`${a.sig} (${f.file}) writes with no budget`);
       if (f.file === REDEFINED_AFTER_CENSUS[a.sig]) {
-        const was = budgetCalls(censusBody(a.sig));
+        const was = REBUDGETED_AFTER_CENSUS[a.sig] ?? budgetCalls(censusBody(a.sig));
         if (was.length === 0 || JSON.stringify(budgetCalls(f.body)) !== JSON.stringify(was)) {
           bad.push(`${a.sig}: ${f.file} spends ${JSON.stringify(budgetCalls(f.body))}, not the census's ${JSON.stringify(was)}`);
         }

@@ -124,6 +124,7 @@ describe("nothing the auth client would adopt survives the script (review of R1:
     try {
       expect(load("/auth?mode=return#access_token=AT4&refresh_token=RT4&type=magiclink")).toBe("/auth?mode=return");
       expect(load("/?access_token=AT5&refresh_token=RT5&session_id=cs_test_kept")).toBe("/?session_id=cs_test_kept");
+      expect(load("/jobs/company/acme?access_token=AT6&refresh_token=RT6&claim_verify=claim_kept")).toBe("/jobs/company/acme?claim_verify=claim_kept");
       expect(leftForAuthJs().access_token).toBeUndefined();
     } finally {
       if (real) Object.defineProperty(window, "sessionStorage", real);
@@ -160,6 +161,18 @@ describe("every credential-bearing URL the sweep lists (S12-090)", () => {
     expect(stashedFragment("", "/market-pulse/confirm"), "a fragment stashed on one page is not another page's").toBe("");
   });
 
+  it("the company-claim token on a company page, with the path it came from (a trailing slash is not part of it) (S14X-103)", () => {
+    const tok = "3f2a1b4c-5d6e-4f70-8a9b-0c1d2e3f4a5b";
+    expect(load(`/jobs/company/acme?claim_verify=${tok}`)).toBe("/jobs/company/acme");
+    expect(stash()).toMatchObject({ claim_verify: tok, claim_verify_path: "/jobs/company/acme" });
+    expect(stashedValueFor("claim_verify", "/jobs/company/acme", null)).toEqual({ value: tok, fromStash: true });
+    expect(stashedValueFor("claim_verify", "/jobs/company/globex", null).value, "a claim stashed on one company's page is not another's").toBeNull();
+    expect(stashedValueFor("claim_verify", "/jobs/company/acme", "in-url")).toEqual({ value: "in-url", fromStash: false });
+    sessionStorage.clear();
+    expect(load(`/jobs/company/careers.amd.com/?from=explore&claim_verify=${tok}`)).toBe("/jobs/company/careers.amd.com/?from=explore");
+    expect(stash()).toMatchObject({ claim_verify: tok, claim_verify_path: "/jobs/company/careers.amd.com" });
+  });
+
   it("a page that learns a share after the load keeps it in the stash, not the address", () => {
     expect(stashValueFor("share", "/success", "late-share")).toBe(true);
     expect(stashedValueFor("share", "/success", null).value).toBe("late-share");
@@ -174,6 +187,9 @@ describe("what the script leaves alone", () => {
     ["/data-api#pricing"],
     ["/jobs?share=board"],
     ["/jobs?error=none"],
+    ["/jobs?claim_verify=not-a-company-page"],
+    ["/jobs/company?claim_verify=no-company-named"],
+    ["/jobs/company/acme/more?claim_verify=two-segments"],
     ["/"],
   ])("%s", (url) => {
     expect(load(url)).toBe(url);
@@ -224,6 +240,7 @@ describe("one tab's stash across loads", () => {
     Object.defineProperty(window, "sessionStorage", { value: blocked, configurable: true });
     try {
       expect(load("/product-success?session_id=cs_test_blocked&product=scanPack")).toBe("/product-success?session_id=cs_test_blocked&product=scanPack");
+      expect(load("/jobs/company/acme?claim_verify=claim_blocked"), "the claim token left an address no stash could hold").toBe("/jobs/company/acme?claim_verify=claim_blocked");
     } finally {
       if (real) Object.defineProperty(window, "sessionStorage", real);
       else delete (window as unknown as Record<string, unknown>).sessionStorage;

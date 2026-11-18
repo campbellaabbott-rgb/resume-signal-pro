@@ -13,6 +13,9 @@
  * model the paid deliverables use. freeChainFrom(primary) keeps the primary
  * and follows it with flash and gpt-5-mini only.
  *
+ * The product preview has since been retired (NB-10): it answers 410 and asks
+ * no model (the-product-preview-endpoint-is-retired-and-no-page-asks-it).
+ *
  * WHAT THIS HOLDS, against each shipped handler with only its network faked:
  *   - when flash answers, flash is the only model asked (the primary did not
  *     move);
@@ -54,7 +57,6 @@ const SIGNED_IN = `${b64url({ alg: "HS256" })}.${b64url({ role: "authenticated",
 
 type Tool = { fn: string; build: [string, number]; labels: string[]; bearer: string; body: Record<string, unknown> };
 const TOOLS: Tool[] = [
-  { fn: "generate-product-preview", build: ["2026-11-09", 1], labels: ["PRODUCT-PREVIEW"], bearer: "anon_harness", body: { productId: "freelance_transition_pro", resumeText: RESUME } },
   { fn: "generate-application-answers", build: ["2026-11-10", 2], labels: ["APPLICATION-ANSWERS", "COVER-NOTE"], bearer: SIGNED_IN, body: { resumeText: RESUME, jobTitle: "Engineer", jobDescription: POSTING } },
   { fn: "import-freelance-profile", build: ["2026-11-10", 2], labels: ["IMPORT-FREELANCE"], bearer: "anon_harness", body: { profileText: RESUME, sessionId: PAID } },
 ];

@@ -69,7 +69,8 @@ describe("Greenhouse: what the person fills in, and only the consent the form as
   );
 
   it("a form cached before the fix is served without its hidden fields", async () => {
-    const form = { questions: [{ label: "Location (City)", required: true, type: "input_text" }, { label: "Latitude", required: true, type: "input_hidden" }], documents: [], alsoOnForm: [] };
+    // A Greenhouse row is served from the cache only with the sectioned mark (S14X-264); the hidden filter still runs over it.
+    const form = { questions: [{ label: "Location (City)", required: true, type: "input_text" }, { label: "Latitude", required: true, type: "input_hidden" }], documents: [], alsoOnForm: [], sectioned: true };
     const rows: Record<string, FormCacheRow> = { "greenhouse:xai:4567": { vendor: "greenhouse", ok: true, form, read_at: new Date(NOW - 3600_000).toISOString() } };
     const cache: FormCache = { get: async (id) => rows[id] ?? null, put: async () => {} };
     const r = await readApplicationForm(ref("greenhouse:xai:4567"), { fetch: answer({}), cache, now: () => NOW });

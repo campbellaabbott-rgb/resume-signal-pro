@@ -71,8 +71,11 @@ describe("the owner's lead alert prints nothing a caller wrote as markup", () =>
     expect(m.html).not.toContain("evil.example");
     expect(m.html).toContain("Not detected");
     expect(m.html, "the caller's first hop was printed as the lead's address").not.toContain("6.6.6.6");
-    expect(m.html).toContain("203.0.113.9");
+    // Since S14X-101 (the owner's answer 'remove', 2026-11-15) the alert
+    // carries no IP at all, the platform's address included, and no country.
+    expect(m.html, "the platform's address was printed in the owner's alert").not.toContain("203.0.113.9");
     expect(m.html, "a country header was printed").not.toContain("<b>US</b>");
+    expect(m.html, "the lead's address was printed in the owner's alert").not.toContain("lead@example.com");
     expect(m.subject).not.toMatch(/[<>\u0000-\u001f]/);
     // Since S13-067 the bound counts the platform's address's network, as a keyed
     // hash: another forged first hop from that network lands in the same bucket.

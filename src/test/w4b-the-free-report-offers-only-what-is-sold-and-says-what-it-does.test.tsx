@@ -166,7 +166,7 @@ describe("the two offers say what they are", () => {
     const { getByTestId } = await mount();
     const pro = getByTestId("report-next-steps").querySelector('[data-offer="pro"]')!;
     expect(pro.textContent).toContain(PRO_SUMMARY.text);
-    expect(pro.textContent).toContain("Everything in a free account, plus the writing tools");
+    expect(pro.textContent).toContain("Everything in a free account, plus 5 writing packages a day");
     expect(pro.textContent).not.toMatch(/every paid tool|unlimited/i);
   });
 });

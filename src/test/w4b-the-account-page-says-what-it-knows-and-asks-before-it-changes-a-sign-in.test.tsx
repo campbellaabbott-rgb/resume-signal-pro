@@ -172,14 +172,20 @@ describe("S12-060: a sign-in changes only after the account proves it is the acc
     expect(calls).toEqual(["ensureGuard", "signInWithPassword", "updateUser:password"]);
   });
 
-  it("with no password, a mailed confirmation code goes with the change", async () => {
+  it("with no password, the code from a password-reset email is checked by the auth server, and a wrong one changes nothing (S14X-087)", async () => {
+    // Added here, inside this block, so the file's shared mock stays as it is.
+    const { supabase } = await import("@/integrations/supabase/client");
+    const auth = supabase.auth as unknown as Record<string, unknown>;
+    auth.resetPasswordForEmail = async () => { calls.push("resetPasswordForEmail"); return { data: {}, error: null }; };
+    auth.verifyOtp = async (p: { type: string }) => { calls.push(`verifyOtp:${p.type}`); return { data: { session: null }, error: { message: "Token has expired or is invalid" } }; };
     page(<SecurityCard />);
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Email me a confirmation code instead/ })); });
-    expect(calls).toEqual(["reauthenticate"]);
-    fireEvent.change(screen.getByLabelText("Confirmation code from the email"), { target: { value: "123456" } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Email me a code instead/ })); });
+    expect(calls).toEqual(["resetPasswordForEmail"]);
+    fireEvent.change(screen.getByLabelText("Code from the password-reset email"), { target: { value: "123456" } });
     fireEvent.change(screen.getByLabelText("New password"), { target: { value: "a-new-password" } });
     await act(async () => { fireEvent.click(screen.getAllByRole("button", { name: "Update" })[0]); });
-    expect(calls).toEqual(["reauthenticate", "ensureGuard", "updateUser:nonce,password"]);
+    expect(calls).toEqual(["resetPasswordForEmail", "verifyOtp:recovery"]);
+    expect(calls).not.toContain("reauthenticate");
   });
 
   it("signs out of this device, or everywhere", async () => {

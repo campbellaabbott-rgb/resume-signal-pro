@@ -51,14 +51,14 @@ export default function EmailUnsubscribe() {
     : target?.list === "market-pulse"
       ? t("emailUnsubscribe.marketPulse", "Stop the monthly market pulse emails to this address.")
       : target?.list === "agent-digest"
-        ? t("emailUnsubscribe.agentDigest", "Stop the morning shortlist emails. Your agent keeps running, and its picks stay in your account.")
+        ? t("emailUnsubscribe.agentDigest", "Stop the morning shortlist emails. The apply agent has been retired and applies nowhere; this stops any of its emails still scheduled to this address.")
         : t("emailUnsubscribe.scanReport", "Stop all emails from Resume Booster to this address, including any fix-plan emails still to come.");
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <SEO
-        title="Unsubscribe | Resume Booster"
-        description="Turn off emails from Resume Booster."
+        title={t("emailUnsubscribe.metaTitle", "Unsubscribe | Resume Booster")}
+        description={t("emailUnsubscribe.metaDescription", "Turn off emails from Resume Booster.")}
         path="/email/unsubscribe"
         noIndex
       />

@@ -87,7 +87,8 @@ import { commissionCentsFor } from "../_shared/affiliate-commission.ts";
 // that names its customer, whatever address the row is kept under; and
 // _shared/pro.ts no longer nulls a row's customer when an address search
 // finds nothing.
-const FN_BUILD = "stripe-webhook.2026-11-10.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, payments lane, S14X-076, S14X-081, S14X-084, S14X-152, S14X-042): a second live Pro plan alerts the owner, a redelivered expired or failed checkout is one row and one mail, an abandoned checkout keeps no address, a refunded first invoice reaches its commission, and a paid session records one conversion.
+const FN_BUILD = "stripe-webhook.2026-11-12.1";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // HOW LONG A MAKER HOLDS AN ORDER (20261011144000, CP-019). The lease
@@ -233,6 +234,88 @@ async function recordDeclineOnce(supabase: SupabaseClient<any, any, any>, key: s
     }
   } catch { /* recorded below */ }
   await supabase.from('payment_failures').insert(row);
+}
+
+/**
+ * ONE ROW, AND ONE BUYER MAIL, PER CHECKOUT SESSION (S14X-081). Stripe
+ * delivers an event more than once, and an expired or failed-async session
+ * wrote a payment_failures row (and mailed the buyer) each time. "new" when
+ * this delivery opened the door, "seen" when an earlier one did, "unknown"
+ * when it could not be asked: then the row is recorded and the mail sent, as
+ * before (a rare repeat beats a notice never sent).
+ */
+// deno-lint-ignore no-explicit-any
+async function sessionDoor(supabase: SupabaseClient<any, any, any>, door: string, sessionId: string): Promise<"new" | "seen" | "unknown"> {
+  try {
+    const { data, error } = await supabase.rpc("mail_door_take", { p_door: door, p_bucket: sessionId.slice(0, 64), p_max: 1, p_window_minutes: 43200 });
+    return error ? "unknown" : data === true ? "new" : "seen";
+  } catch {
+    return "unknown";
+  }
+}
+
+/**
+ * THE PAYMENT IS THE CONVERSION (S14X-152). product_conversion counted only
+ * what a Success page reported, so a buyer who closed the tab (and every Pro
+ * subscription, whose return is /account) was a sale with no conversion. One
+ * 'conversion' per paid live session, under the visitor checkout_starts holds
+ * for it (a stand-in from the session when it holds none) and the variant the
+ * page uses ('pro', else the product id). The row names its Checkout session
+ * (stripeSessionId), as the Success page's own event does (sessionId): the
+ * writer counts a conversion naming a session as a repeat only of a row naming
+ * that session (20261112140517), so the page's event and a redelivery are the
+ * same purchase whichever arrives first, and a returning buyer's next purchase
+ * is a row of its own. Before that writer, its 90-day visitor rule holds both.
+ */
+// deno-lint-ignore no-explicit-any
+async function recordPaidConversion(supabase: SupabaseClient<any, any, any>, session: Stripe.Checkout.Session): Promise<void> {
+  try {
+    const { data: start } = await supabase.from("checkout_starts").select("visitor_id, product_id, product_type").eq("stripe_session_id", session.id).maybeSingle();
+    const productType = start?.product_type ?? session.metadata?.product_type ?? null;
+    const variant = productType === "pro_subscription" ? "pro" : start?.product_id ?? session.metadata?.product_id ?? null;
+    if (!variant) return;
+    const visitor = typeof start?.visitor_id === "string" && start.visitor_id ? start.visitor_id : `session:${session.id.slice(-48)}`;
+    const { error } = await supabase.rpc("track_ab_event_optimized", {
+      p_test_name: "product_conversion", p_variant: variant, p_event_type: "conversion", p_visitor_id: visitor,
+      p_metadata: { source: "stripe-webhook", productType, stripeSessionId: session.id }, p_client_ip: "stripe-webhook", p_max_requests: 100000, p_window_minutes: 60,
+    });
+    if (error) logStep("Paid conversion not recorded", { error: error.message });
+  } catch (e) {
+    logStep("Paid conversion threw", { error: String(e).slice(0, 200) });
+  }
+}
+
+/**
+ * TWO PRO PLANS FOR ONE BUYER ARE THE OWNER'S TO SEE (S14X-076). A second tab
+ * left open sold a second plan. The checkout now closes older open pages, and
+ * a completed Pro session whose customer (or account, by the plan's
+ * metadata) now holds two live Pro plans mails the owner once per session.
+ * Nothing is cancelled or refunded here: that is the owner's call.
+ */
+// deno-lint-ignore no-explicit-any
+async function alertSecondProPlan(stripe: Stripe, supabase: SupabaseClient<any, any, any>, session: Stripe.Checkout.Session): Promise<void> {
+  try {
+    const live = new Set(["active", "trialing", "past_due"]);
+    const plans = new Map<string, Stripe.Subscription>();
+    const keep = (list: Stripe.Subscription[] | undefined) => {
+      for (const sub of list ?? []) {
+        if (live.has(sub.status) && !isAgentPriced(sub.items?.data as ReadonlyArray<{ price?: unknown }> | undefined)) plans.set(sub.id, sub);
+      }
+    };
+    const customer = refId(session.customer);
+    if (customer) keep((await stripe.subscriptions.list({ customer, status: "all", limit: 20 })).data);
+    const userId = session.client_reference_id ?? session.metadata?.user_id ?? null;
+    if (userId && UUID_RE.test(userId)) keep((await stripe.subscriptions.search({ query: `metadata['user_id']:'${userId}'`, limit: 20 })).data);
+    if (plans.size < 2) return;
+    const ids = [...plans.keys()];
+    await ownerAlertOnce(supabase, "owner-alert:second-pro-plan", session.id,
+      `Two live Pro plans for one buyer (${plans.size})`,
+      `<p>A completed Pro checkout left one buyer with ${plans.size} live Pro plans. Nothing was cancelled or refunded.</p>
+       <p>Session: ${escapeText(session.id)}</p>
+       <ul>${ids.map((id) => `<li><a href="https://dashboard.stripe.com/subscriptions/${encodeURIComponent(id)}">${escapeText(id)}</a></li>`).join("")}</ul>`);
+  } catch (e) {
+    logStep("Second-plan check threw", { error: String(e).slice(0, 200) });
+  }
 }
 
 // Send email alert for payment failures (non-blocking)
@@ -885,8 +968,17 @@ async function revocationTarget(
     const subscriptionId = refId(invoice.parent?.subscription_details?.subscription)
       ?? refId((invoice as unknown as { subscription?: unknown }).subscription);
     const sub = subscriptionId ? await stripe.subscriptions.retrieve(subscriptionId) : null;
+    // A PLAN'S FIRST INVOICE IS ITS CHECKOUT (S14X-084): named, so payment_revoke
+    // stamps the session and the first month's affiliate commission is
+    // rejected (affiliate_commission_revoked). A renewal names none.
+    let sessionId: string | null = null;
+    if (subscriptionId && (invoice as { billing_reason?: string | null }).billing_reason === "subscription_create") {
+      try {
+        sessionId = (await stripe.checkout.sessions.list({ subscription: subscriptionId, limit: 1 })).data?.[0]?.id ?? null;
+      } catch (_) { /* the revocation goes ahead without it, as before */ }
+    }
     return {
-      sessionId: null,
+      sessionId,
       productType: sub && isAgentPriced(sub.items?.data as ReadonlyArray<{ price?: unknown }> | undefined) ? "apply_agent" : "pro_subscription",
       email: invoice.customer_email ?? charge?.billing_details?.email ?? null,
       userId: sub ? subscriptionBuyer(sub) : null,
@@ -1709,6 +1801,9 @@ serve(async (req) => {
           // A retired plan's subscriber was sent the plan-ends notice above
           // instead: a confirmation would promise a renewal that never comes.
           const subId = refId(session.subscription);
+          if (subId && !retiredPlan && session.metadata?.product_type === "pro_subscription") {
+            EdgeRuntime.waitUntil(alertSecondProPlan(stripe, supabase, session));
+          }
           if (subId && !retiredPlan) {
             try {
               const sub = await stripe.subscriptions.retrieve(subId);
@@ -1777,6 +1872,7 @@ serve(async (req) => {
           try {
             const result = await triggerProductDelivery(session, supabase, supabaseUrl, passGrant);
             logStep("Delivery result", result);
+            if (!testMode && session.livemode !== false) EdgeRuntime.waitUntil(recordPaidConversion(supabase, session));
             
             // Affiliate conversion (background)
             const referralCode = session.metadata?.referral_code;
@@ -1917,14 +2013,17 @@ serve(async (req) => {
       case "checkout.session.expired": {
         const session = event.data.object as Stripe.Checkout.Session;
         
+        // Once per session (S14X-081), and no address (S14X-042): nothing reads
+        // an abandon's address, and the buyer never paid.
         EdgeRuntime.waitUntil((async () => {
+          if (await sessionDoor(supabase, "checkout-expired-row", session.id) === "seen") return;
           await supabase.from('payment_failures').insert({
             payment_intent_id: session.payment_intent as string || session.id,
             amount: session.amount_total || 0,
             currency: session.currency || 'usd',
             failure_code: 'checkout_expired',
             failure_message: 'Checkout abandoned',
-            customer_email: session.customer_email,
+            customer_email: null,
             metadata: { session_id: session.id, product_type: session.metadata?.product_type }
           });
         })());
@@ -2085,17 +2184,21 @@ serve(async (req) => {
       case "checkout.session.async_payment_failed": {
         const session = event.data.object as Stripe.Checkout.Session;
         const email = buyerEmailOf(session);
+        // One row and one mail per session (S14X-081); a mail no sender took
+        // gives its door back, so the next delivery mails it.
         EdgeRuntime.waitUntil((async () => {
-          await supabase.from('payment_failures').insert({
-            payment_intent_id: refId(session.payment_intent) ?? session.id,
-            amount: session.amount_total || 0,
-            currency: session.currency || 'usd',
-            failure_code: 'async_payment_failed',
-            failure_message: 'A delayed payment did not complete',
-            customer_email: email,
-            metadata: { session_id: session.id, product_type: session.metadata?.product_type },
-          });
-          if (!email) return;
+          if (await sessionDoor(supabase, "checkout-async-failed-row", session.id) !== "seen") {
+            await supabase.from('payment_failures').insert({
+              payment_intent_id: refId(session.payment_intent) ?? session.id,
+              amount: session.amount_total || 0,
+              currency: session.currency || 'usd',
+              failure_code: 'async_payment_failed',
+              failure_message: 'A delayed payment did not complete',
+              customer_email: email,
+              metadata: { session_id: session.id, product_type: session.metadata?.product_type },
+            });
+          }
+          if (!email || await sessionDoor(supabase, "checkout-async-failed-mail", session.id) === "seen") return;
           const r = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
@@ -2106,7 +2209,10 @@ serve(async (req) => {
               ...(session.metadata?.language ? { language: session.metadata.language } : {}),
             }),
           }).catch((e) => { logStep("Failed-payment mail threw", { error: String(e).slice(0, 200) }); return null; });
-          if (r && !r.ok) logStep("Failed-payment mail refused", { status: r.status });
+          if (!r || !r.ok) {
+            logStep("Failed-payment mail refused", { status: r?.status ?? null });
+            await supabase.from("mail_door_counts").delete().eq("door", "checkout-async-failed-mail").eq("bucket", session.id.slice(0, 64));
+          }
         })());
         break;
       }

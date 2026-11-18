@@ -145,6 +145,7 @@
       "writingFree": "{{perDay}} sa bawat isa bawat araw",
       "writingPro": "{{perDay}} sa bawat isa bawat araw, {{perMonth}} bawat buwan",
       "faEach": "{{price}} bawat isa",
+      "faProCapped": "Kasama: {{perDay}} bawat araw, {{perMonth}} bawat buwan",
       "faNotOnSale": "Hindi pa ibinebenta",
       "sharedAllowance": "Shared na limitasyon bawat araw",
       "codeSearch": "Shared na limitasyon, o {{perDay}} bawat araw gamit ang libreng key",

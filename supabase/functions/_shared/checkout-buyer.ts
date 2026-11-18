@@ -1,19 +1,4 @@
-// WHO IS BUYING, AND THE RECORD THAT THEY DID (wave 4 round 2,
-// checkout-catalogue; critical-path CP-022 and CP-025).
-//
-// THREE ANSWERS, NOT TWO. A checkout asked the auth server who the bearer
-// was and read any failure as "anonymous". A token the server REFUSED is an
-// anonymous buyer; but when the auth server itself failed (a network error,
-// a 5xx), a Pro member was sent to a paid Stripe page for a tool their plan
-// includes. checkoutCaller tells the three apart, and a checkout answers
-// "unavailable" with a 503 and no Stripe url.
-//
-// THE BUYER IS RECORDED. A one-time purchase made while signed in named no
-// account, so it could never be listed under that account. A checkout now
-// stamps the account on the session (client_reference_id, metadata.user_id)
-// and writes checkout_buyers (20261011150000) before the browser has the url.
-// A failed write is logged and the purchase goes ahead: the account join is
-// a convenience, never a reason to refuse a sale.
+// WHO IS BUYING, THE RECORD THAT THEY DID, AND THE NETWORK THEY BOUGHT FROM (RC-S13-063): docs/shared-notes.md#s1122
 //
 // A GRANT OVER THE CAP (owner decision D7) is a fair-use answer, never a
 // charge: pro_grants_cap refuses the 11th grant in a day and the 61st in 30
@@ -121,9 +106,20 @@ export function buyerMetadata(caller: CheckoutCaller): Record<string, string> {
 }
 
 // deno-lint-ignore no-explicit-any
-type TableClient = { from: (table: string) => any };
+type TableClient = { from: (table: string) => any; rpc?: (fn: string, args: Record<string, unknown>) => any };
 
 export const CHECKOUT_BUYER_TIMEOUT_MS = 2000;
+
+/** The affiliate helper's keyed hash of the buyer's network (RC-S13-063); null when absent or on error. */
+async function networkKeyOf(db: TableClient, address: string | null | undefined): Promise<string | null> {
+  if (!address || !db.rpc) return null;
+  try {
+    const { data, error } = await db.rpc("affiliate_network_key", { p_addr: address });
+    return !error && typeof data === "string" && /^[0-9a-f]{64}$/.test(data) ? data : null;
+  } catch (_) {
+    return null;
+  }
+}
 
 /**
  * Record the account behind a Stripe session. Never throws; "skipped" for an
@@ -131,19 +127,26 @@ export const CHECKOUT_BUYER_TIMEOUT_MS = 2000;
  */
 export async function recordCheckoutBuyer(
   db: TableClient,
-  row: { stripeSessionId: string; caller: CheckoutCaller; checkoutFunction: string; productType: string | null },
+  row: { stripeSessionId: string; caller: CheckoutCaller; checkoutFunction: string; productType: string | null; address?: string | null },
 ): Promise<"recorded" | "skipped" | "failed"> {
-  if (row.caller.kind !== "signed_in") return "skipped";
+  const caller = row.caller;
+  if (caller.kind !== "signed_in") return "skipped";
   if (!/^cs_[A-Za-z0-9_]{8,250}$/.test(row.stripeSessionId)) return "failed";
   try {
-    const write = Promise.resolve(
-      db.from("checkout_buyers").upsert({
-        stripe_session_id: row.stripeSessionId,
-        user_id: row.caller.id,
-        checkout_function: row.checkoutFunction,
-        product_type: row.productType,
-      }, { onConflict: "stripe_session_id", ignoreDuplicates: true }),
-    ) as Promise<{ error?: { message?: string } | null }>;
+    const base = {
+      stripe_session_id: row.stripeSessionId,
+      user_id: caller.id,
+      checkout_function: row.checkoutFunction,
+      product_type: row.productType,
+    };
+    const upsert = (r: Record<string, unknown>) =>
+      Promise.resolve(db.from("checkout_buyers").upsert(r, { onConflict: "stripe_session_id", ignoreDuplicates: true })) as Promise<{ error?: { message?: string } | null }>;
+    const write = (async () => {
+      const key = await networkKeyOf(db, row.address);
+      const res = await upsert(key ? { ...base, network_key: key } : base);
+      // No network_key column yet: the row without it.
+      return key && res?.error ? await upsert(base) : res;
+    })();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timed = new Promise<{ error: { message: string } }>((resolve) => {
       timer = setTimeout(() => resolve({ error: { message: "timed out" } }), CHECKOUT_BUYER_TIMEOUT_MS);

@@ -19,6 +19,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -44,7 +45,7 @@ beforeAll(async () => {
   expect(FILE, "migration 20261103130000 is missing").toBeTruthy();
   db = new PGlite();
   await db.exec(`
-    CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+    ${SUPABASE_DEFAULTS}
     CREATE TABLE public.resume_analyses (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), analysis_result jsonb NOT NULL, resume_text text,
       created_at timestamptz NOT NULL DEFAULT now(), expires_at timestamptz DEFAULT now() + interval '90 days', share_id text NOT NULL UNIQUE);
     CREATE TABLE public.purchased_content (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), stripe_session_id text NOT NULL UNIQUE, customer_email text NOT NULL,

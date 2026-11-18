@@ -42,6 +42,20 @@ export interface Financials {
 
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
+/**
+ * A revenue the card may print: a finite figure that is not below a positive
+ * net income in the same year (S14X-026). A company cannot earn more than it
+ * took in, so such a figure is a part of revenue filed under a narrower
+ * concept, and the year shows no revenue rather than that part. A loss larger
+ * than revenue is genuine (an impairment, a company with no sales yet) and is
+ * printed as filed.
+ */
+export function printableRevenue(revenue: unknown, netIncome: unknown): number | null {
+  if (!finite(revenue)) return null;
+  if (finite(netIncome) && netIncome > 0 && revenue < netIncome) return null;
+  return revenue;
+}
+
 /** The reader's answer, or null for 'null' and anything without a ticker or a year. */
 export function readFinancials(data: unknown): Financials | null {
   if (!data || typeof data !== "object" || Array.isArray(data)) return null;
@@ -50,7 +64,7 @@ export function readFinancials(data: unknown): Financials | null {
   const series = Array.isArray(d.series)
     ? (d.series as Array<Record<string, unknown>>)
         .filter((s) => s && finite(s.fy))
-        .map((s) => ({ fy: s.fy as number, revenue: finite(s.revenue) ? s.revenue : null, net_income: finite(s.net_income) ? s.net_income : null }))
+        .map((s) => ({ fy: s.fy as number, revenue: printableRevenue(s.revenue, s.net_income), net_income: finite(s.net_income) ? s.net_income : null }))
     : [];
   if (series.length === 0) return null;
   return {

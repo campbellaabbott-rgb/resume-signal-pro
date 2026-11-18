@@ -1,0 +1,9 @@
+{
+  "pastBuyers": {
+    "closedNoCopy": "Für diese Bestellung wird nichts mehr erstellt, und diese Seite bewahrt keine Kopie davon auf. Wenn sie dir per E-Mail geschickt wurde, gehört dir diese Kopie weiterhin. Füge unten deinen Lebenslauf hinzu, um sie hier jetzt zu erstellen.",
+    "openedInPrint": "Dein Bericht enthält Zeichen, die die PDF-Schrift nicht darstellen kann, deshalb wurde er im Druckdialog geöffnet. Wähle dort „Als PDF speichern“, um eine Kopie zu behalten.",
+    "parseSimulationSaved": "Geprüft, als dieser Bericht erstellt wurde. Dein Lebenslauf selbst wird nicht gespeichert.",
+    "parseSimulationMissing": "Dieser Bericht wurde gespeichert, bevor seine Parse-Prüfungen mit ihm aufbewahrt wurden. Scanne deinen Lebenslauf erneut, um zu sehen, wie ein ATS ihn liest.",
+    "downloadLetter": "Herunterladen"
+  }
+}

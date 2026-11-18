@@ -13,6 +13,19 @@
  * ships, against Postgres (pglite) with the live mail_door_take, Resend, the
  * auth client and DNS-over-HTTPS faked, and the two cron readers fed from
  * fixtures (pglite has no pg_cron and no pg_net).
+ *
+ * AND THE BUG ROUND (2026-11-08):
+ *   S14X-242  each failing member has its own door: a second unmailed order an
+ *             hour after the first is mailed by name, and the same set stays
+ *             quiet for six hours;
+ *   NB-9      R6 resolves every include of the 'send' SPF and names one that
+ *             does not exist; healthchecks.io hears success from every
+ *             completed run whose alarms reached the owner, and /fail only
+ *             when an alarm reached no sender, so a standing alarm cannot
+ *             blind the dead-man check;
+ *   NB-37     R11 reads the run stamps the scheduled mail classes write
+ *             (mail_run:<class>) and rings for a class that stopped running or
+ *             that had mail due and sent none on two runs in a row.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
@@ -33,18 +46,21 @@ const env: Record<string, string> = {
 let db: PGlite;
 let client: PgSupabase;
 let watch: EdgeHandler;
-const ownerMails: Array<{ from: string; to: string[]; subject: string }> = [];
+const ownerMails: Array<{ from: string; to: string[]; subject: string; html?: string }> = [];
 /** Everything Resend was asked to send, less the canary itself. */
 const alerts = () => ownerMails.filter((m) => !/mail canary/i.test(m.subject));
 const canaryMails = () => ownerMails.filter((m) => /mail canary/i.test(m.subject));
 const pings: string[] = [];
 let ownerStatus = 200;
 let dns: Record<string, string[] | null> = {};
+/** Names the DNS answers NXDOMAIN for. */
+let nx = new Set<string>();
 const otpRequests: string[] = [];
 let otpAnswer: { error: { message: string } | null } = { error: null };
 
 const GOOD_DNS = {
   "send.resumebooster.work": ['"v=spf1 include:amazonses.com ~all"'],
+  "amazonses.com": ['"v=spf1 ip4:199.255.192.0/22 ip4:199.127.232.0/22 -all"'],
   "resend._domainkey.resumebooster.work": ['"p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQ"'],
   "_dmarc.resumebooster.work": ['"v=DMARC1; p=quarantine; adkim=r; aspf=r"'],
 };
@@ -59,7 +75,7 @@ beforeAll(async () => {
       email_type text NOT NULL, recipient text NOT NULL, subject text, status text NOT NULL DEFAULT 'pending', error_message text, metadata jsonb);
     CREATE TABLE public.product_deliveries (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), created_at timestamptz NOT NULL DEFAULT now(),
       stripe_session_id text NOT NULL, product_type text NOT NULL, status text NOT NULL DEFAULT 'payment_received', email_sent_at timestamptz,
-      email_success boolean, generation_error text, customer_email text);
+      email_success boolean, generation_error text, customer_email text, content_generation_completed_at timestamptz);
     CREATE TABLE public.job_board_meta (k text PRIMARY KEY, v jsonb, updated_at timestamptz);
     CREATE TABLE public.mail_door_counts (door text NOT NULL, bucket text NOT NULL, window_start timestamptz NOT NULL DEFAULT now(),
       hits integer NOT NULL DEFAULT 1, PRIMARY KEY (door, bucket));
@@ -96,6 +112,7 @@ beforeAll(async () => {
       const name = new URL(url).searchParams.get("name")!;
       const answer = dns[name];
       if (answer === null) return new Response("busy", { status: 503 });
+      if (nx.has(name)) return new Response(JSON.stringify({ Status: 3 }), { status: 200 });
       return new Response(JSON.stringify({ Status: 0, Answer: (answer ?? []).map((data) => ({ data })) }), { status: 200 });
     }
     if (url.startsWith("https://hc-ping.com/")) { pings.push(url); return new Response("OK", { status: 200 }); }
@@ -115,6 +132,7 @@ beforeEach(async () => {
   pings.length = 0;
   ownerStatus = 200;
   dns = { ...GOOD_DNS };
+  nx = new Set();
   otpRequests.length = 0;
   otpAnswer = { error: null };
   env.CANARY_EMAIL = CANARY;
@@ -143,7 +161,8 @@ describe("a quiet, healthy day", () => {
     await db.exec("INSERT INTO public.email_logs (email_type, recipient, status) VALUES ('product_full_analysis', 'buyer@example.com', 'sent')");
     await db.exec("INSERT INTO public.product_deliveries (stripe_session_id, product_type, status) VALUES ('cs_live_x', 'full_analysis', 'payment_received')");
     const r = await run();
-    expect(r.json.rules.map((x) => [x.id, x.state])).toEqual([["R1", "ok"], ["R2", "ok"], ["R3", "ok"], ["R4", "ok"], ["R5", "ok"], ["R6", "ok"], ["R7", "ok"], ["R8", "ok"], ["R9", "ok"], ["R10", "ok"]]);
+    // R11 is unknown until a scheduled mail class stamps its runs (NB-37).
+    expect(r.json.rules.map((x) => [x.id, x.state])).toEqual([["R1", "ok"], ["R2", "ok"], ["R3", "ok"], ["R4", "ok"], ["R5", "ok"], ["R6", "ok"], ["R7", "ok"], ["R8", "ok"], ["R9", "ok"], ["R10", "ok"], ["R11", "unknown"]]);
     expect(alerts()).toEqual([]);
     expect(pings).toEqual(["https://hc-ping.com/abc-123"]);
     const stamp = (await db.query<{ v: Record<string, unknown> }>("SELECT v FROM public.job_board_meta WHERE k = 'mail_watch_run'")).rows[0].v;
@@ -160,7 +179,8 @@ describe("each rule rings for what it watches", () => {
     expect(first.json.alerted).toContain("R1");
     expect(ownerMails.filter((m) => /Mail watch R1/.test(m.subject))).toHaveLength(1);
     expect(alerts()[0].from).toContain("@resumebooster.work");
-    expect(pings.at(-1)).toBe("https://hc-ping.com/abc-123/fail");
+    // The owner has the alarm by mail: the dead-man check hears a completed run (NB-9).
+    expect(pings.at(-1)).toBe("https://hc-ping.com/abc-123");
     await run();
     expect(ownerMails.filter((m) => /Mail watch R1/.test(m.subject)), "the owner was mailed every 15 minutes").toHaveLength(1);
   });
@@ -202,6 +222,25 @@ describe("each rule rings for what it watches", () => {
     expect(stateOf(drift, "R6")).toBe("alarm");
     expect(drift.json.rules.find((x) => x.id === "R6")?.detail).toMatch(/amazonses/);
     dns["send.resumebooster.work"] = null;
+    expect(stateOf(await run(), "R6")).toBe("unknown");
+  });
+
+  it("R6: an SPF include that does not exist is named, though the record also includes amazonses.com (NB-9)", async () => {
+    const gone = "dc-fd741b8612._spfm.send.resumebooster.work";
+    dns["send.resumebooster.work"] = [`"v=spf1 include:amazonses.com include:${gone} ~all"`];
+    nx.add(gone);
+    const r = await run();
+    expect(stateOf(r, "R6")).toBe("alarm");
+    const detail = r.json.rules.find((x) => x.id === "R6")!.detail;
+    expect(detail).toContain(`includes ${gone}, which does not exist (NXDOMAIN)`);
+    expect(detail).not.toMatch(/does not include amazonses/);
+    // An include that answers but publishes no SPF record is the same permerror.
+    nx.clear();
+    const empty = await run();
+    expect(stateOf(empty, "R6")).toBe("alarm");
+    expect(empty.json.rules.find((x) => x.id === "R6")?.detail).toContain(`includes ${gone}, which publishes no SPF record`);
+    // An include that could not be looked up is unknown, never ok.
+    dns[gone] = null;
     expect(stateOf(await run(), "R6")).toBe("unknown");
   });
 
@@ -340,5 +379,120 @@ describe("the owner's mail", () => {
     expect((await db.query("SELECT 1 FROM public.mail_door_counts WHERE door = 'owner-alert:mail-watch'")).rows).toHaveLength(0);
     ownerStatus = 200;
     expect((await run()).json.alerted).toEqual(["R2"]);
+  });
+});
+
+describe("each failing member has its own door (S14X-242)", () => {
+  const A = "aaaaaaaa-0000-4000-8000-000000000001";
+  const B = "bbbbbbbb-0000-4000-8000-000000000002";
+  const unmailed = (id: string, email: string) => db.query(
+    "INSERT INTO public.product_deliveries (id, stripe_session_id, product_type, customer_email, created_at) VALUES ($1, $2, 'freelance_boost', $3, now() - interval '1 hour')",
+    [id, `cs_live_${id.slice(0, 8)}`, email]);
+  const r2Mails = () => ownerMails.filter((m) => /Mail watch R2/.test(m.subject)).map((m) => ({ subject: m.subject, html: String(m.html ?? "") }));
+
+  it("a second order left unmailed an hour after the first is mailed by name, and the same set is quiet", async () => {
+    delete env.CANARY_EMAIL;
+    await unmailed(A, "a@example.com");
+    await run();
+    expect(r2Mails()).toHaveLength(1);
+    expect(r2Mails()[0].html).toContain("aaaaaaaa");
+
+    await unmailed(B, "b@example.com");
+    const second = await run();
+    expect(second.json.alerted).toEqual(["R2"]);
+    expect(r2Mails(), "the second buyer's missing mail waited behind the first's six-hour door").toHaveLength(2);
+    expect(r2Mails()[1].subject).toMatch(/^Mail watch R2 \(1 new of 2\): 2 of 2 paid order/);
+    expect(r2Mails()[1].html).toContain("New since this rule last mailed: freelance_boost order bbbbbbbb");
+    expect(r2Mails()[1].html).not.toMatch(/New since[^<]*aaaaaaaa/);
+
+    await run();
+    expect(r2Mails(), "an unchanged failing set mailed again inside six hours").toHaveLength(2);
+    // The doors hold hashes, never an order's id or address.
+    const buckets = (await db.query<{ bucket: string }>("SELECT bucket FROM public.mail_door_counts WHERE door = 'owner-alert:mail-watch'")).rows.map((x) => x.bucket);
+    expect(buckets.filter((b) => b.startsWith("R2:"))).toHaveLength(2);
+    for (const b of buckets) expect(b).toMatch(/^R\d+(:[0-9a-f]{16})?$/);
+  });
+
+  it("the response and the run stamp carry no member", async () => {
+    delete env.CANARY_EMAIL;
+    await unmailed(A, "a@example.com");
+    const r = await run();
+    expect(JSON.stringify(r.json)).not.toContain("aaaaaaaa");
+    const stamp = (await db.query<{ v: Record<string, unknown> }>("SELECT v FROM public.job_board_meta WHERE k = 'mail_watch_run'")).rows[0].v;
+    expect(JSON.stringify(stamp)).not.toContain("aaaaaaaa");
+  });
+});
+
+describe("healthchecks.io hears a completed run, and /fail only when an alarm reached nobody (NB-9)", () => {
+  it("a standing alarm the owner was mailed pings success, then and on the quiet runs after it", async () => {
+    delete env.CANARY_EMAIL;
+    await db.exec("INSERT INTO public.email_send_log (message_id, template_name, recipient_email, status, error_message) VALUES ('m9', 'auth_emails', 'x@example.com', 'dlq', 'gave up')");
+    const first = await run();
+    expect(first.json.alerted).toEqual(["R4"]);
+    expect(pings).toEqual(["https://hc-ping.com/abc-123"]);
+    await run();
+    expect(pings).toEqual(["https://hc-ping.com/abc-123", "https://hc-ping.com/abc-123"]);
+  });
+
+  it("an alarm no sender accepted pings /fail, so the owner hears of it from outside Supabase and Resend", async () => {
+    delete env.CANARY_EMAIL;
+    ownerStatus = 503;
+    await db.exec("INSERT INTO public.email_send_log (message_id, template_name, recipient_email, status, error_message) VALUES ('m9', 'auth_emails', 'x@example.com', 'dlq', 'gave up')");
+    const r = await run();
+    expect(r.json.alerted).toEqual([]);
+    expect(pings).toEqual(["https://hc-ping.com/abc-123/fail"]);
+    const stamp = (await db.query<{ v: Record<string, unknown> }>("SELECT v FROM public.job_board_meta WHERE k = 'mail_watch_run'")).rows[0].v;
+    expect(stamp).toMatchObject({ alarms: 1, alerted: 0, unmailed: 1 });
+  });
+});
+
+describe("R11: a scheduled mail class that stops (NB-37)", () => {
+  const stamp = (cls: string, v: Record<string, unknown>) => db.query(
+    "INSERT INTO public.job_board_meta (k, v, updated_at) VALUES ($1, $2::jsonb, now()) ON CONFLICT (k) DO UPDATE SET v = EXCLUDED.v, updated_at = now()",
+    [`mail_run:${cls}`, JSON.stringify(v)]);
+  const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
+  const r11 = (r: Awaited<ReturnType<typeof run>>) => r.json.rules.find((x) => x.id === "R11")!;
+
+  beforeEach(() => { delete env.CANARY_EMAIL; });
+
+  it("no stamp at all is unknown, never an alarm", async () => {
+    const r = r11(await run());
+    expect(r.state).toBe("unknown");
+    expect(r.detail).toMatch(/no scheduled mail class stamps its runs yet/);
+  });
+
+  it("a daily class whose last run is 27 hours old rings, naming it", async () => {
+    await stamp("search_digest", { at: ago(27 * 60), due: 3, sent: 3, givenBack: 0, refused: 0 });
+    await stamp("market_pulse", { at: ago(60), due: 0, sent: 0, givenBack: 0, refused: 0 });
+    const r = await run();
+    expect(r11(r).state).toBe("alarm");
+    expect(r11(r).detail).toMatch(/search_digest has not run in 27 h \(it runs every 24 h\)/);
+    expect(r11(r).detail).not.toMatch(/market_pulse/);
+    expect(ownerMails.filter((m) => /Mail watch R11/.test(m.subject))).toHaveLength(1);
+  });
+
+  it("a stamp that says its own cadence is judged by it", async () => {
+    await stamp("market_pulse", { at: ago(30 * 60), everyHours: 168, due: 0, sent: 0 });
+    expect(r11(await run()).state).toBe("ok");
+  });
+
+  it("mail due and none sent rings on the second run in a row, not the first, and a run that sent clears it", async () => {
+    await stamp("search_digest", { at: ago(60), due: 5, sent: 0, givenBack: 5, refused: 5 });
+    expect(r11(await run()).state, "one empty run is not yet a stopped class").toBe("ok");
+    expect(r11(await run()).state, "the same run seen twice is not two runs").toBe("ok");
+    await stamp("search_digest", { at: ago(5), due: 4, sent: 0, givenBack: 4, refused: 4 });
+    const second = r11(await run());
+    expect(second.state).toBe("alarm");
+    expect(second.detail).toMatch(/search_digest \(4 due, none sent on its last 2 runs; 4 refused, 4 given back\)/);
+    expect(r11(await run()).state, "still the same two runs").toBe("alarm");
+    await stamp("search_digest", { at: ago(1), due: 4, sent: 4, givenBack: 0, refused: 0 });
+    expect(r11(await run()).state).toBe("ok");
+  });
+
+  it("nothing due is not an empty run", async () => {
+    await stamp("agent_digest", { at: ago(60), due: 0, sent: 0 });
+    await run();
+    await stamp("agent_digest", { at: ago(5), due: 0, sent: 0 });
+    expect(r11(await run()).state).toBe("ok");
   });
 });

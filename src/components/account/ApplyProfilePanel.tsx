@@ -12,6 +12,15 @@
 // candidate is not authorised to work when they simply never said. The database
 // column is nullable for the same reason. Unknown is a real value here, and the
 // whole packet pipeline treats it as one.
+//
+// WHILE THE AGENT IS SWITCHED OFF THE PANEL ONLY SHOWS AND DELETES (S14X-199).
+// It used to stay a live form: a CV upload whose toast said "the agent can
+// start", an "apply for me automatically" mode with a daily cap, and consent
+// and diversity switches, all for an agent that sends nothing. The page went
+// on collecting new CVs for a retired product. Now, with the switch off, it
+// says the agent is off and nothing is sent, shows the answers already stored
+// as text, and offers one control: delete the stored CV and those answers,
+// after a confirm.
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ShieldCheck, Loader2, AlertTriangle } from "lucide-react";
@@ -170,6 +179,123 @@ export async function saveTolerantly(
   return { error: { message: "too many unknown columns", code: "42703" } };
 }
 
+/** Tri as words, for the read-only view. */
+function triText(t: (k: string, d: string) => string, v: Tri): string {
+  return v === true ? t("applyProfile.yes", "Yes") : v === false ? t("applyProfile.no", "No") : t("applyProfile.unset", "Not stated");
+}
+
+/**
+ * The stored answers, read-only, and the one way to remove them, while the
+ * agent is switched off (S14X-199). The CV files under resumes/<user id>/ go
+ * first, then the answers are cleared; either failing says so.
+ */
+function RetiredProfile({ userId, profile, exists, onCleared }: {
+  userId: string; profile: ApplyProfile; exists: boolean; onCleared: () => void;
+}) {
+  const { t } = useTranslation();
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const p = profile;
+  const rows: Array<[string, string]> = ([
+    [t("applyProfile.name", "Full name"), p.full_name],
+    [t("applyProfile.phone", "Phone"), p.phone],
+    [t("applyProfile.linkedin", "LinkedIn"), p.linkedin],
+    [t("applyProfile.website", "Website or portfolio"), p.website],
+    [t("applyProfile.city", "City"), p.city],
+    [t("applyProfile.country", "Country"), p.country],
+    [t("applyProfile.address", "Street address"), p.address],
+    [t("applyProfile.postcode", "Postcode / ZIP"), p.postcode],
+    [t("applyProfile.coverNote", "A short note to go with your applications"), p.cover_note],
+    [t("applyProfile.salary", "Salary expectation"), p.salary_expectation],
+    [t("applyProfile.start", "Earliest start"), p.earliest_start],
+    [t("applyProfile.otherCountries", "Anywhere else you may work without sponsorship"), (p.work_authorized_countries ?? []).join(", ")],
+    [t("accountView.profileCvFile", "Stored CV file"), (p.resume_file_url ?? "").split("/").slice(1).join("/")],
+  ] as Array<[string, string | null | undefined]>).filter(([, v]) => String(v ?? "").trim() !== "") as Array<[string, string]>;
+  const tri: Array<[string, Tri]> = ([
+    [t("applyProfile.authorizedHome", "Are you authorised to work in the country you live in?"), p.work_authorized],
+    [t("applyProfile.sponsorship", "Will you need visa sponsorship?"), p.requires_sponsorship],
+    [t("applyProfile.relocate", "Are you willing to relocate?"), p.willing_to_relocate],
+  ] as Array<[string, Tri]>).filter(([, v]) => v !== null && v !== undefined);
+  const nothing = rows.length === 0 && tri.length === 0;
+
+  const remove = async () => {
+    setDeleting(true);
+    try {
+      const { data: kept, error: listError } = await sb.storage.from("resumes").list(userId, { limit: 100 });
+      if (listError) throw listError;
+      const paths = (kept ?? []).map((f: { name: string }) => `${userId}/${f.name}`);
+      if (paths.length) {
+        const { error } = await sb.storage.from("resumes").remove(paths);
+        if (error) throw error;
+      }
+      if (exists) {
+        // The answers go; the account address stays, since the same row
+        // carries the morning list's mandate and its mail goes there.
+        const { email: _keep, ...answers } = EMPTY;
+        const { error } = await saveTolerantly(
+          (v) => sb.from("agent_mandates").update(v).eq("user_id", userId) as unknown as PromiseLike<{ error: SaveError }>,
+          { ...answers } as Record<string, unknown>,
+        );
+        if (error) throw error;
+      }
+      toast.success(t("accountView.deleteStoredDone", "Deleted: your stored CV and answers are gone."));
+      setConfirming(false);
+      onCleared();
+    } catch {
+      toast.error(t("accountView.deleteStoredFailed", "Could not delete them. Try again in a minute."));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-border p-6" data-profile-retired>
+      <div className="flex items-center gap-2 mb-1">
+        <ShieldCheck className="w-5 h-5 text-primary" />
+        <h3 className="text-lg font-semibold text-foreground">{t("applyProfile.title", "Apply profile")}</h3>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        {t("accountView.agentProfileRetired", "The apply agent is switched off, so nothing here is sent to any employer. These are the answers you stored for it. You can delete them, with your stored CV, below.")}
+      </p>
+      {nothing ? (
+        <p className="text-sm text-muted-foreground">{t("accountView.profileNothingStored", "Nothing is stored for the agent.")}</p>
+      ) : (
+        <>
+          <dl className="grid sm:grid-cols-2 gap-x-4 gap-y-2 mb-5 text-sm">
+            {[...rows, ...tri.map(([k, v]) => [k, triText(t, v)] as [string, string])].map(([k, v]) => (
+              <div key={k} className="min-w-0">
+                <dt className="text-xs text-muted-foreground">{k}</dt>
+                <dd className="text-foreground break-words">{v}</dd>
+              </div>
+            ))}
+          </dl>
+          {!confirming ? (
+            <button type="button" onClick={() => setConfirming(true)}
+              className="px-3.5 py-2 rounded-lg border border-destructive/30 text-destructive text-xs font-semibold hover:bg-destructive/10 transition-colors">
+              {t("accountView.deleteStoredStart", "Delete my stored CV and answers")}
+            </button>
+          ) : (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/[0.03] p-3">
+              <p className="text-xs text-foreground mb-2">{t("accountView.deleteStoredConfirmBody", "This removes your stored CV file and every answer above. It cannot be undone.")}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={() => void remove()} disabled={deleting}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-destructive text-white text-xs font-semibold hover:bg-destructive/90 disabled:opacity-60">
+                  {deleting && <Loader2 className="w-3 h-3 animate-spin" />}
+                  {t("accountView.deleteStoredConfirm", "Yes, delete them")}
+                </button>
+                <button type="button" onClick={() => setConfirming(false)} disabled={deleting}
+                  className="px-3.5 py-2 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground">
+                  {t("accountView.deleteStoredCancel", "Keep them")}
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export function ApplyProfilePanel({ userId }: { userId: string }) {
   const { t } = useTranslation();
   const [p, setP] = useState<ApplyProfile>(EMPTY);
@@ -316,8 +442,8 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
     toast.success(Object.keys(unsure).length
       ? t("applyProfile.uploadedCheck", "Saved. Check what we read from your CV below before the agent uses it.")
       : filled.length
-      ? t("applyProfile.uploadedAndRead", "Saved. We filled in {{count}} details from your CV — check them below.", { count: filled.length })
-      : t("applyProfile.uploadedSaved", "Saved. Your CV is attached and the agent can start."));
+      ? t("accountView.profileUploadedAndRead", "Saved. We filled in {{count}} details from your CV — check them below.", { count: filled.length })
+      : t("accountView.profileUploadedSaved", "Saved. Your CV is attached and the agent can start."));
   }, [userId, t, p, persist]);
 
   const save = useCallback(async () => {
@@ -342,6 +468,10 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
         {t("applyProfile.loading", "Loading your apply profile…")}
       </div>
     );
+  }
+
+  if (!APPLY_AGENT_ON) {
+    return <RetiredProfile userId={userId} profile={p} exists={exists} onCleared={() => setP((prev) => ({ ...EMPTY, email: prev.email }))} />;
   }
 
   return (

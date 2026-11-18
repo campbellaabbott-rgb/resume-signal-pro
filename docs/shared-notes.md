@@ -1809,3 +1809,121 @@ wake-sender's default body is a human-readable reason GitHub will not accept.
 So a GitHub host with `body: "default"` is misconfigured in a way that only
 shows up as a failed wake.
 ```
+
+## s122
+
+`supabase/functions/_shared/application-form.ts`, The readers, the form's shapes ... Above: `export const FORM_READER_VENDORS: readonly string[] = [`
+
+```text
+The one-line docs of this module's constants and types, moved here together
+on 2026-11-16 (bug round, connector lane) so the file grew by nothing while
+S14X-134 and S14X-264 added code. Each line names what it stood above.
+
+FORM_READER_VENDORS: The hiring systems this module can read a form from.
+PUBLIC_API_FORM_VENDORS: The ones read through a published public API: the
+  only ones read for the ChatGPT surface (owner decision R2).
+FORM_CACHE_MS: How long a read is believed.
+FormQuestion.type: The vendor's own control type.
+FormQuestion.section: The heading the employer set above this question
+  (Greenhouse: a description that is only an <h1>-<h6> heading, carried onto
+  the question after it, S14X-264). Never a hint, so it sets no topic and
+  blocks no draft. A Greenhouse cache row written before sections existed
+  (no `sectioned` mark) is read as a miss.
+VendorForm.alsoOnForm: Parts of the form outside the question list (EEO
+  self-identification, data-protection consent).
+FormRead, absent, documents and alsoOnForm: What an apply page with no
+  questions still showed: the CV it asks for, an equality block, a consent.
+PostingRef: The posting as its row states it.
+ReadOptions.vendors: The vendors this surface reads; defaults to every reader.
+Transient: A transient failure: not cached, and answered as unreachable. A
+  body cut off mid-read, or a 200 whose body is not JSON, is one too
+  (S14X-134): it was read as no form and cached for a day.
+```
+
+## s123
+
+`supabase/functions/_shared/self-apply.ts`, One question in, and who answers it ... Above: `export type SelfApplyInput = {`
+
+```text
+The field docs of SelfApplyInput and SelfApplyQuestion, moved here together on
+2026-11-16 (bug round, connector lane) so the file grew by nothing when
+`section` was added (S14X-264).
+
+SelfApplyInput.screens: The employer screens applications on this answer
+  (never which answer passes).
+SelfApplyInput.section: The heading the employer set above this question
+  (application-form.ts). Carried through and printed as a heading; never read
+  for the topic or for whether the AI may draft.
+SelfApplyQuestion.topic: For a factual question: what it asks about, so the
+  AI can say why it is asking.
+SelfApplyQuestion.aboutCountry: ISO-2 codes the label names, for a work-right
+  or location question.
+SelfApplyQuestion.voluntary: A demographic question: answering it is the
+  person's choice, and so is declining.
+SelfApplyQuestion.cvMayHelp: The person answers, and their CV may help them
+  do it.
+```
+
+## s1121
+
+`supabase/functions/_shared/pro.ts`, checkProByEmail: the most significant plan, no row for an address with none, a bound row. Above: `export async function checkProByEmail(`
+
+```text
+Look up the subscription state for an email directly in Stripe and refresh
+the pro_subscribers cache. `supabase` must be a service-role client.
+
+The answer is the MOST SIGNIFICANT subscription the address holds: a live
+one, else one that owes money (past_due, unpaid...), else whatever ended.
+It used to keep the first non-live status it met, so a past_due plan could
+read as "canceled" because a canceled one was listed first, and the card
+that should have said "update your card" said "Go Pro".
+
+NO ROW IS CREATED FOR AN ADDRESS STRIPE HAS NO SUBSCRIPTION FOR. The upsert
+used to run whatever the answer, so the checkout's own pre-check wrote an
+"inactive" row for every first-time buyer minutes before they paid, and
+check-subscription served that row as the truth for an hour after they had
+(platform sweep L6-28). An existing row is still downgraded (see
+ProRefreshOptions); a missing one stays missing until the webhook writes it
+when the payment lands.
+
+A ROW BOUND TO AN ACCOUNT IS NEVER CLEARED BECAUSE THE ADDRESS FOUND
+NOTHING (S14, M-S14-002): it is refreshed by the customer it names, and the
+answer is that customer's plan (matchedBy "customer"). So is an unbound
+row whose plan names its buyer: the write binds it to that account. Any
+other unbound row (one pro_entitlement_rows hands to whoever proves the
+address) whose customer has left the address is downgraded as it was read,
+the customer kept on it, and so is a row naming no customer.
+```
+
+## s1122
+
+`supabase/functions/_shared/checkout-buyer.ts`, the module: who is buying, the record that they did, the buyer's network. Above: `// A GRANT OVER THE CAP (owner decision D7) is a fair-use answer, never a`
+
+```text
+WHO IS BUYING, AND THE RECORD THAT THEY DID (wave 4 round 2,
+checkout-catalogue; critical-path CP-022 and CP-025).
+
+THREE ANSWERS, NOT TWO. A checkout asked the auth server who the bearer
+was and read any failure as "anonymous". A token the server REFUSED is an
+anonymous buyer; but when the auth server itself failed (a network error,
+a 5xx), a Pro member was sent to a paid Stripe page for a tool their plan
+includes. checkoutCaller tells the three apart, and a checkout answers
+"unavailable" with a 503 and no Stripe url.
+
+THE BUYER IS RECORDED. A one-time purchase made while signed in named no
+account, so it could never be listed under that account. A checkout now
+stamps the account on the session (client_reference_id, metadata.user_id)
+and writes checkout_buyers (20261011150000) before the browser has the url.
+A failed write is logged and the purchase goes ahead: the account join is
+a convenience, never a reason to refuse a sale.
+
+THE BUYER'S NETWORK (RC-S13-063, the checkout half). The checkout hands
+recordCheckoutBuyer the address the platform states (create-checkout and
+create-subscription-checkout read it with client-address.ts, which this
+module never imports: job-board owns that file), and recordCheckoutBuyer
+asks the affiliate lane's affiliate_network_key for its keyed /24 or /48 and
+writes that as checkout_buyers.network_key, so a conversion bought from the
+affiliate's own network can be flagged. The address itself is never stored.
+Before either affiliate migration the helper or the column is absent and the
+row is written as before.
+```

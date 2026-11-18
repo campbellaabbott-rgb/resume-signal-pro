@@ -11,6 +11,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ts from "typescript";
@@ -22,7 +23,7 @@ const SQL = readFileSync(resolve(__dirname, "../../supabase/migrations", FILE), 
 const FN = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
 
 const SCHEMA = `
-  CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+  ${SUPABASE_DEFAULTS}
   CREATE TABLE public.job_board_closures (
     event_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     posting_id text, source text, company_token text, closed_at timestamptz NOT NULL DEFAULT now(),

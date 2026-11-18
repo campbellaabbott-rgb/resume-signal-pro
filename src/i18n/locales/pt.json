@@ -1138,7 +1138,9 @@
       "fontUnreadable": "Não é possível ler as letras deste PDF",
       "fontUnreadableDescription": "O tipo de letra não corresponde a caracteres reais. Carregue antes um .docx ou cole o texto do seu currículo.",
       "unreadCharacters": "Não foi possível ler alguns caracteres",
-      "unreadCharactersDescription": "Ignorámos {{count}} caracteres que este PDF não identifica. Para a análise mais precisa, carregue um .docx ou cole o texto do seu currículo.",
+      "unreadCharactersDescription_one": "Ignoramos {{count}} caractere que este PDF não identifica. Para a análise mais precisa, envie um .docx ou cole o texto do seu currículo.",
+      "unreadCharactersDescription_many": "Ignoramos {{count}} caracteres que este PDF não identifica. Para a análise mais precisa, envie um .docx ou cole o texto do seu currículo.",
+      "unreadCharactersDescription_other": "Ignoramos {{count}} caracteres que este PDF não identifica. Para a análise mais precisa, envie um .docx ou cole o texto do seu currículo.",
       "checkoutRefusedTitle": "Não foi possível iniciar o pagamento",
       "resumeTooLong": "Currículo longo demais para a verificação",
       "resumeTooLongDescription": "Este currículo tem {{length}} caracteres; a verificação gratuita lê até {{max}}. Encurte-o (primeiro os cargos antigos e as listas longas) e verifique de novo."
@@ -1435,7 +1437,9 @@
       "subtitle": "Seções editáveis, visualização ao vivo, exportar para PDF ou Word"
     },
     "actionBanner": {
-      "issuesFound": "{{count}} problemas encontrados — corrija-os agora",
+      "issuesFound_one": "{{count}} problema encontrado — corrija-o agora",
+      "issuesFound_many": "{{count}} problemas encontrados — corrija-os agora",
+      "issuesFound_other": "{{count}} problemas encontrados — corrija-os agora",
       "keyImprovements": "Principais melhorias disponíveis",
       "withRole": "Correções específicas de {{industry}} para o seu currículo de {{role}}",
       "withoutRole": "Correções específicas do setor com marcadores reescritos",
@@ -1563,7 +1567,9 @@
       "careerBrand": "• Avaliação de marca pessoal: posicionamento atual vs. ideal",
       "careerDescWithRole": "Orientação para negociação salarial, caminhos de próximo cargo e pontos de conversa para entrevistas para seu background de {{role}}",
       "careerDescDefault": "Orientação para negociação salarial, caminhos de próximo cargo e pontos de conversa para entrevistas para {{industry}}",
-      "kwDescWithStats": "{{count}} palavras-chave faltando encontradas específicas de {{industry}} que os sistemas ATS procuram",
+      "kwDescWithStats_one": "{{count}} palavra-chave faltando encontrada específica de {{industry}} que os sistemas ATS procuram",
+      "kwDescWithStats_many": "{{count}} palavras-chave faltando encontradas específicas de {{industry}} que os sistemas ATS procuram",
+      "kwDescWithStats_other": "{{count}} palavras-chave faltando encontradas específicas de {{industry}} que os sistemas ATS procuram",
       "kwDescGood": "Forte cobertura de palavras-chave para {{industry}} — obtenha dicas de formulação e colocação para fazê-las contar ainda mais",
       "kwDescDefault": "Palavras-chave faltando específicas de {{industry}} que os sistemas ATS procuram",
       "kwHard_many": "• {{count}} habilidades técnicas críticas faltando no seu currículo",
@@ -1641,7 +1647,8 @@
       "openBoardFallbackLive": "Abra o mural de vagas ao vivo — {{n}}+ vagas no ar agora, ordenadas pelo seu currículo",
       "openBoardFallbackPlain": "Abra o mural de vagas ao vivo — vagas no ar, ordenadas pelo seu currículo",
       "openBoardNoteLive": "{{n}}+ vagas no ar agora · salve buscas, acompanhe empresas e candidaturas",
-      "openBoardNotePlain": "Vagas no ar · salve buscas, acompanhe empresas e candidaturas"
+      "openBoardNotePlain": "Vagas no ar · salve buscas, acompanhe empresas e candidaturas",
+      "openBoard": "Abra seu quadro ordenado — cada vaga pontuada com base neste currículo"
     },
     "nextSteps": {
       "eyebrow": "Próximos passos",
@@ -2776,7 +2783,7 @@
         "browserLocal": {
           "what": "Um currículo que cria no site (no criador ou no Freelance Boost), um histórico das suas análises recentes (nome, função e pontuações) e os seus relatórios recentes",
           "where": "O armazenamento local deste navegador, no seu dispositivo",
-          "howLong": "Até ser limpo: o botão para limpar os dados do navegador numa página de resultados paga limpa tudo, tal como limpar os dados deste site no seu navegador"
+          "howLong": "Até ser limpo: sair da conta neste dispositivo o limpa (se um currículo que você criou ou seus dados do Freelance Boost estiverem só aqui, perguntamos antes e você pode mantê-los), assim como o botão “Limpar dados do navegador” em uma página de resultados paga e limpar os dados deste site no seu navegador"
         },
         "ai": {
           "what": "O texto do seu currículo, enquanto um relatório é escrito",
@@ -2784,9 +2791,9 @@
           "howLong": "Enviado apenas para produzir o seu relatório, nos termos desse fornecedor"
         },
         "email": {
-          "what": "Um relatório que envia para si por e-mail, a análise paga que lhe enviamos e os e-mails do plano de correções que aceitar",
-          "where": "A sua caixa de entrada, através do nosso fornecedor de e-mail; os e-mails agendados do plano aguardam na nossa fila de envio",
-          "howLong": "Os e-mails agendados saem ao longo de 14 dias; cancelar a subscrição cancela os restantes"
+          "what": "Um relatório que você envia para si mesmo por e-mail e a análise paga que enviamos para você",
+          "where": "Sua caixa de entrada, por meio do nosso provedor de e-mail",
+          "howLong": "Na sua caixa de entrada, enquanto você guardar"
         },
         "paid": {
           "what": "Uma análise paga, que cita o seu currículo",
@@ -2804,9 +2811,9 @@
           "howLong": "Até eliminar a sua conta"
         },
         "agent": {
-          "what": "O CV que entrega ao agente de candidaturas: o ficheiro e o seu texto",
+          "what": "O CV que você entrega ao agente de candidaturas: o arquivo e o texto dele",
           "where": "Armazenamento privado que só você e o agente podem ler",
-          "howLong": "O agente de candidaturas está desligado e não o envia a ninguém. Um CV que lhe entregou antes fica guardado até eliminar a conta ou pedir que o apaguemos: eliminar a conta apaga o texto; envie um e-mail para {{email}} para apagar o ficheiro."
+          "howLong": "O agente de candidaturas está desligado e não o envia a ninguém. Um CV que você entregou a ele antes fica guardado até você excluir sua conta, o que apaga o texto e o arquivo; para apagá-los sem excluir sua conta, envie um e-mail para {{email}}."
         },
         "payment": {
           "what": "O seu pagamento",
@@ -2816,7 +2823,7 @@
         "shortlist": {
           "what": "Currículos de candidatos que um empregador avalia com o Shortlist",
           "where": "A conta desse empregador, como texto anonimizado",
-          "howLong": "Até o empregador os eliminar"
+          "howLong": "Até o empregador excluir o candidato, a vaga ou a conta dele; o que ainda estiver guardado quatro anos após o envio é excluído"
         }
       },
       "footnote": "A eliminação corre a cada 15 minutos no armazenamento temporário e a cada hora na cache de relatórios, na cache de IA e nas análises pagas. Para apagar algo mais cedo, envie um e-mail para {{email}}."
@@ -3380,7 +3387,9 @@
     "gapsByCategory": "Lacunas por Categoria",
     "gapCount_one": "({{count}} lacuna)",
     "gapCount_other": "({{count}} lacunas)",
-    "topActions": "{{count}} Principais Ações para Melhorar sua Correspondência",
+    "topActions_one": "{{count}} Ação Principal para Melhorar sua Correspondência",
+    "topActions_many": "{{count}} Principais Ações para Melhorar sua Correspondência",
+    "topActions_other": "{{count}} Principais Ações para Melhorar sua Correspondência",
     "addSkill": "Adicionar \"{{skill}}\"",
     "copySuggestion": "Copiar sugestão",
     "technical": "Habilidades Técnicas",
@@ -3890,7 +3899,6 @@
     "matchStrong": "Boa correspondência",
     "matchPossible": "Correspondência possível",
     "matchStretch": "Pouco provável",
-    "matchCoverage": "{{pct}}% das palavras-chave reconhecidas desta vaga já estão no seu currículo",
     "allCountries": "Todos os países",
     "countryTip": "País lido do texto de localização de cada vaga — as que não conseguimos localizar ficam de fora com este filtro ativo, nunca adivinhadas.",
     "freshHint": "Conta apenas datas de publicação informadas pela empresa",
@@ -4004,7 +4012,7 @@
     "verdictGo": "Vale aplicar agora",
     "verdictCaution": "Aplique com expectativas",
     "verdictNeutral": "O que os dados dizem",
-    "takedownsLast24h": "{{n}} vagas preenchidas ou fechadas nas últimas 24 horas",
+    "takedownsLast24h": "{{n}} vagas retiradas do ar nas últimas 24 horas",
     "recheckLine": "feed mediano re-verificado há {{m}} min",
     "chipWeek": "Esta semana",
     "chipRemote": "Remoto",
@@ -4189,7 +4197,9 @@
     "discWorkMode2": "{{shown}} destes empregadores informam onde o trabalho acontece. Outras {{hidden}} vagas atendem a todo o resto mas não têm modelo declarado — o empregador não disse nada, ou disse duas coisas diferentes e não escolhemos por ele. Por isso este filtro as oculta.",
     "discShowAll": "Mostrar essas também",
     "discCategory": "Além disso, {{hidden}} vagas em todo o quadro têm um título que nunca diz a qual área pertencem, então nenhum filtro de área as alcança.",
-    "fuzzyExtraLine": "Poucas correspondências exatas para “{{q}}” — {{count}} títulos aproximados incluídos abaixo, identificados.",
+    "fuzzyExtraLine_one": "Poucas correspondências exatas para “{{q}}” — {{count}} título aproximado incluído abaixo, identificado.",
+    "fuzzyExtraLine_many": "Poucas correspondências exatas para “{{q}}” — {{count}} títulos aproximados incluídos abaixo, identificados.",
+    "fuzzyExtraLine_other": "Poucas correspondências exatas para “{{q}}” — {{count}} títulos aproximados incluídos abaixo, identificados.",
     "closeMatchChip": "correspondência aproximada",
     "zeroAlertHint": "Novas vagas chegam todos os dias. Receba um e-mail quando surgirem vagas que correspondam a esta pesquisa:",
     "zeroAlertCta": "Avisar-me quando existir",
@@ -4312,8 +4322,12 @@
     "skillUnlockPlain": "está em falta em {{n}} destes anúncios.",
     "skillUnlockCta": "Tem esta competência? Acrescente-a ao currículo com honestidade →",
     "updating": "a atualizar…",
-    "hiddenCount": "{{count}} ocultos",
-    "hiddenByViews": "{{count}} ocultas por {{views}}",
+    "hiddenCount_one": "{{count}} oculta",
+    "hiddenCount_many": "{{count}} ocultas",
+    "hiddenCount_other": "{{count}} ocultas",
+    "hiddenByViews_one": "{{count}} oculta por {{views}}",
+    "hiddenByViews_many": "{{count}} ocultas por {{views}}",
+    "hiddenByViews_other": "{{count}} ocultas por {{views}}",
     "restoreHidden": "repor",
     "benchmarkTip": "Mediana dos limites inferiores anualizados que as próprias empresas publicam (valores à hora e ao mês anualizados), calculada apenas na moeda dominante indicada nesta área — nunca convertida, nunca misturada. Em direto desta plataforma — não é um inquérito nem uma estimativa.",
     "benchmarkLine": "Salário anunciado nesta área: mediana dos mínimos {{symbol}}{{median}} ({{currency}}) — com base em {{n}} anúncios daqui que indicam salário",
@@ -4463,7 +4477,9 @@
     "a11yLoading": "Carregando vagas…",
     "a11yError": "Não foi possível carregar as vagas. Tente novamente.",
     "a11yNoResults": "Nenhuma vaga corresponde a estes filtros.",
-    "a11yResults": "{{count}} vagas exibidas.",
+    "a11yResults_one": "{{count}} vaga exibida.",
+    "a11yResults_many": "{{count}} vagas exibidas.",
+    "a11yResults_other": "{{count}} vagas exibidas.",
     "experienceFieldLabel": "Nível de experiência",
     "salaryFieldLabel": "Remuneração mínima informada",
     "companyFieldLabel": "Empregador",
@@ -4698,7 +4714,9 @@
     "laneAll": "Todas",
     "advanceTip": "Avançar para {{stage}}",
     "statusLabel": "Status da candidatura",
-    "tracked": "{{count}} registradas",
+    "tracked_one": "{{count}} registrada",
+    "tracked_many": "{{count}} registradas",
+    "tracked_other": "{{count}} registradas",
     "tracker": "Rastreador de candidaturas",
     "scoreHistory": "Histórico de pontuações",
     "targetScore": "Pontuação alvo",
@@ -4810,7 +4828,7 @@
     "acPrepAll_other": "Preparar {{count}} candidaturas adaptadas",
     "acGoPro_one": "Assine o Pro para preparar {{count}} vaga salva",
     "acGoPro_other": "Assine o Pro para preparar {{count}} vagas salvas",
-    "acFitTitle": "{{pct}}% das palavras-chave reconhecidas da vaga estão no seu currículo",
+    "acFitTitle": "Pontuação de afinidade por palavras-chave: {{pct}} de 100. Mede quanto as palavras-chave reconhecidas desta vaga e seu currículo se sobrepõem. Não é a parcela das palavras-chave da vaga que você já tem.",
     "acApply": "Candidatar-se",
     "acToggleKit": "Mostrar/ocultar kit",
     "acKitUnreadable": "Este kit não pôde ser lido — gere novamente na linha do tracker abaixo.",
@@ -5000,7 +5018,9 @@
     "acPrepAll_many": "Preparar {{count}} candidaturas adaptadas",
     "acGoPro_many": "Assine o Pro para preparar {{count}} vagas salvas",
     "acAiUnavailable": "O serviço de IA não pode atender pedidos agora. O que foi preparado até aqui está salvo; tente o restante mais tarde.",
-    "acSavedNoLetter": "Currículos adaptados salvos: {{count}}. As cartas de apresentação não puderam ser escritas desta vez; prepare de novo para adicioná-las."
+    "acSavedNoLetter": "Currículos adaptados salvos: {{count}}. As cartas de apresentação não puderam ser escritas desta vez; prepare de novo para adicioná-las.",
+    "notifAgentEmail": "E-mail da seleção da manhã do agente de candidaturas",
+    "notifAgentPaused": "(mandato pausado — sem envios)"
   },
   "applyAgent": {
     "badge": "Seu agente de IA para candidaturas",
@@ -5182,7 +5202,55 @@
     "searchLimitHit": "Você pode ter até 10 buscas ativas. Pause uma para adicionar outra.",
     "searchLastRun": "Última execução: {{scanned}} analisadas, {{picked}} na fila.",
     "passFunds": "O seu Agent Pass financia este agente: restam {{left}} candidaturas. Ative o agente abaixo e a sua IA conectada poderá pedir candidaturas.",
-    "trackerFull": "Guardado, mas o seu acompanhamento está cheio (2000 entradas). Remova entradas antigas para adicionar mais."
+    "trackerFull": "Guardado, mas o seu acompanhamento está cheio (2000 entradas). Remova entradas antigas para adicionar mais.",
+    "countryAny": "Países — qualquer um (o agente se candidata onde seus cargos e locais coincidirem)",
+    "countryPicked": "Países em que o agente pode se candidatar",
+    "countryNote": "Lê o país de cada vaga, não o texto — então escolher a Alemanha encontra cargos que só dizem “Berlim”. Deixe todos desmarcados para buscar em todo lugar.",
+    "needResumeHere": "Adicione seu currículo primeiro — envie ou cole logo abaixo, e o agente pode começar.",
+    "keptTracked": "Mantida — adicionada ao seu acompanhamento abaixo.",
+    "cvTooShort": "Parece curto demais para comparar — envie o currículo completo ou cole o texto.",
+    "cvSaveError": "Não foi possível salvar — tente novamente.",
+    "cvSaved": "Currículo salvo — o agente vai pontuar cada vaga com base nele.",
+    "cvParseFailed": "Não foi possível ler esse arquivo — cole o texto no lugar e vai funcionar.",
+    "sumSalary": "{{n}}+",
+    "sumRemote": "só remoto",
+    "sumAge": "publicadas em até {{n}} d",
+    "sumUncat": "+ sem categoria",
+    "sumDaily": "{{n}}/manhã",
+    "fromCvTitle": "Do seu currículo",
+    "fromCvUseAll": "Usar estes",
+    "fromCvRoles": "Cargos:",
+    "fromCvEvidence": "Lido de: {{line}}",
+    "fromCvAlso": "Também costuma combinar:",
+    "fromCvAdjacentTip": "Um cargo próximo da sua carreira — sugestão nossa, não algo que seu currículo diz",
+    "fromCvPlaces": "Locais:",
+    "fromCvNote": "São só sugestões — nada roda até você ativar. Tiramos de propósito a palavra de senioridade (“Senior”): as vagas dão ao mesmo cargo uma dúzia de títulos, e o termo mais curto encontra todos.",
+    "startFromCv": "Iniciar o agente com estes",
+    "fewerOptions": "Menos opções",
+    "moreOptions": "Mais opções",
+    "advancedActive": "Também aplicado:",
+    "fieldMaxAge": "Publicada nos últimos",
+    "ageAny": "Qualquer data",
+    "age1": "24 horas",
+    "age3": "3 dias",
+    "age7": "7 dias",
+    "age14": "14 dias",
+    "age30": "30 dias",
+    "ageNote": "Com base na data que cada empregador informa no próprio feed. Vagas sem data ficam de fora — nunca adivinhamos a idade de uma vaga.",
+    "fieldUncategorised": "Buscar também vagas sem categoria — cerca de um quarto do quadro, em que a área do cargo não pôde ser lida pelo título.",
+    "uncategorisedNoTerms": "Sem cargos acima, isso amplia muito a busca. Adicione cargos e quase não custa nada.",
+    "needResumeTitle": "Adicione seu currículo para começar",
+    "needResumeWhy": "O agente pontua cada vaga com base nele e lê dele seus cargos e locais — é a única coisa que não conseguimos descobrir por você.",
+    "cvReading": "Lendo…",
+    "cvUpload": "Enviar currículo",
+    "cvPasteHide": "Ocultar a caixa de texto",
+    "cvPaste": "ou cole o texto",
+    "cvPastePlaceholder": "Cole aqui o texto do seu currículo…",
+    "cvPasteSave": "Salvar currículo",
+    "cvPasteCount": "{{n}} caracteres — são necessários 100",
+    "statusAwaiting": "Ativo — aguardando assinatura",
+    "summaryAge": "publicadas em até {{d}} d",
+    "summaryUncat": "+ sem categoria"
   },
   "applyProfile": {
     "authorized": "Tens autorização para trabalhar onde te candidatas?",
@@ -5324,7 +5392,7 @@
     "confirming": "A confirmar a sua assinatura com a Stripe. Demora alguns segundos.",
     "notConfirmedYet": "Ainda não conseguimos confirmar a sua assinatura. Atualize esta página daqui a um minuto ou contacte o suporte se o seu plano não aparecer.",
     "activeMember": "É membro Pro: as ferramentas de escrita estão desbloqueadas.",
-    "badge": "Ferramentas de escrita",
+    "badge": "Pro",
     "checkoutRefusedTitle": "Não foi possível iniciar o pagamento",
     "endsOn": "Termina a {{date}}: cancelado, não será renovado",
     "goPro": "Passar a Pro — ${{price}}/mês",
@@ -5374,7 +5442,12 @@
     "heading": "Feito para os sistemas que os empregadores usam mesmo",
     "sub": "Lemos as vagas diretamente de {{count}} sistemas de gestão de candidaturas — não de um motor de busca.",
     "readTitle": "Lidas diretamente do próprio sistema do empregador",
-    "readBlurb": "Cada vaga do quadro vem de um destes sistemas, e você se candidata no site do empregador. Nunca enviamos uma candidatura por você."
+    "readBlurb": "Cada vaga do quadro vem de um destes sistemas, e você se candidata no site do empregador. Nunca enviamos uma candidatura por você.",
+    "asOf": "Contagens ao vivo das vagas abertas agora, medidas em {{time}}.",
+    "stripHeading": "Cada vaga aqui vem direto destes sistemas",
+    "stripSub": "Lidas direto de todos os {{count}} — nunca copiadas de um buscador.",
+    "eyebrow": "De onde vêm nossas vagas",
+    "subCounted": "{{total}} vagas abertas, lidas direto dos {{count}} sistemas de gestão de candidaturas abaixo — não de um motor de busca."
   },
   "pendingQ": {
     "title": "Perguntas em que o agente parou",
@@ -5679,16 +5752,6 @@
     "home": "Voltar para o Resume Booster"
   },
   "fixPlanConfirm": {
-    "title": "Inicie os e-mails do seu plano de ajustes",
-    "body": "Quatro e-mails curtos em duas semanas: os ajustes principais no dia 2, o resto no dia 4, um lembrete de nova análise no dia 6 e uma pergunta no dia 14. Cada e-mail traz um link para cancelar a inscrição.",
-    "button": "Sim, iniciar os e-mails",
-    "done": "Pronto. O primeiro e-mail chega em dois dias.",
-    "already": "Uma sequência do plano já foi iniciada para este endereço este mês, então nada mais foi agendado.",
-    "optedOut": "Este endereço cancelou nossos e-mails antes, então nada foi agendado.",
-    "invalid": "Este link expirou ou não é válido. Envie para você um novo relatório na próxima análise para receber outro.",
-    "missing": "Esta página precisa do botão do e-mail do seu relatório.",
-    "error": "Não foi possível iniciar agora. Tente o botão de novo em instantes.",
-    "errorFinal": "Não foi possível iniciar a sequência completa, e tocar no botão de novo não vai reiniciá-la este mês.",
     "home": "Voltar para o Resume Booster"
   },
   "emailUnsubscribe": {
@@ -5702,7 +5765,9 @@
     "missing": "Esta página precisa do link para cancelar a inscrição de um dos nossos e-mails.",
     "error": "Não foi possível cancelar agora. Tente o botão novamente daqui a pouco.",
     "home": "Voltar ao Resume Booster",
-    "agentDigest": "Parar os e-mails da seleção da manhã. O seu agente continua a funcionar e as escolhas dele ficam na sua conta."
+    "agentDigest": "Parar os e-mails da seleção da manhã. O agente de candidaturas foi desativado e não se candidata a nada; isso interrompe qualquer e-mail dele ainda programado para este endereço.",
+    "metaTitle": "Cancelar inscrição | Resume Booster",
+    "metaDescription": "Deixe de receber e-mails do Resume Booster."
   },
   "purchaseTerms": {
     "finalSale": "Todas as vendas são definitivas.",
@@ -6235,5 +6300,183 @@
       "minor_other": "{{count}} menores",
       "minor_many": "{{count}} menores"
     }
+  },
+  "edgeErrors": {
+    "rateLimited": {
+      "title": "Limite de solicitações atingido",
+      "description": "Você fez solicitações demais. Aguarde alguns minutos e tente novamente."
+    },
+    "aiUnavailable": {
+      "title": "Serviço de IA ocupado",
+      "description": "Nosso serviço de IA está temporariamente indisponível. Tente novamente em instantes."
+    },
+    "serviceUnavailable": {
+      "title": "Serviço indisponível",
+      "description": "O serviço está temporariamente indisponível. Tente novamente em breve."
+    },
+    "paymentRequired": {
+      "title": "Pagamento necessário",
+      "description": "Conclua o pagamento para acessar este recurso."
+    },
+    "sessionUsed": {
+      "title": "Sessão expirada",
+      "description": "Esta sessão de compra já foi usada. Fale com o suporte se precisar de ajuda."
+    },
+    "invalidInput": {
+      "title": "Dados inválidos",
+      "description": "Confira os dados informados e tente novamente."
+    },
+    "aiTimeout": {
+      "title": "Tempo da IA esgotado",
+      "description": "A IA demorou mais que o esperado. Uma nova tentativa costuma funcionar: clique no botão abaixo para tentar novamente."
+    },
+    "aiBusy": {
+      "title": "IA ocupada",
+      "description": "Nosso serviço de IA está com alta demanda. Aguarde um momento e tente novamente."
+    },
+    "aiOutage": {
+      "title": "Serviço de IA ocupado",
+      "description": "Nosso serviço de IA não consegue atender solicitações agora. O problema é nosso, não do seu pagamento. Tente novamente em alguns minutos."
+    },
+    "busyShort": {
+      "title": "Ocupado agora",
+      "description": "O problema é nosso, não um limite que você atingiu. Tente novamente em alguns minutos."
+    },
+    "busyLong": {
+      "title": "Solicitações demais por enquanto",
+      "description": "Esta ferramenta recebeu solicitações demais por enquanto. Tente novamente mais tarde."
+    },
+    "status400": {
+      "title": "Solicitação inválida",
+      "description": "Houve um problema com a sua solicitação. Confira os dados informados e tente novamente."
+    },
+    "status401": {
+      "title": "Autenticação necessária",
+      "description": "Confirme sua compra ou entre na sua conta para continuar."
+    },
+    "status403": {
+      "title": "Acesso negado",
+      "description": "Você não tem permissão para acessar este recurso."
+    },
+    "status404": {
+      "title": "Não encontrado",
+      "description": "O recurso solicitado não foi encontrado."
+    },
+    "status409": {
+      "title": "Já processado",
+      "description": "Esta solicitação já foi processada."
+    },
+    "status422": {
+      "title": "Não foi possível processar",
+      "description": "Não conseguimos processar o que foi enviado. Se era um arquivo, tente um .docx ou cole o texto do seu currículo."
+    },
+    "status429": {
+      "title": "Solicitações demais",
+      "description": "Você atingiu o limite por hora. Tente novamente mais tarde ou cole o texto do seu currículo."
+    },
+    "status500": {
+      "title": "Erro no servidor",
+      "description": "Algo deu errado do nosso lado. Tente novamente."
+    },
+    "status502": {
+      "title": "Serviço indisponível",
+      "description": "Nosso serviço está temporariamente indisponível. Tente novamente em instantes."
+    },
+    "status503": {
+      "title": "Serviço ocupado",
+      "description": "Nosso serviço de IA está ocupado no momento. Tente novamente em alguns instantes."
+    },
+    "status504": {
+      "title": "Tempo de resposta da IA esgotado",
+      "description": "A IA demorou mais que o esperado para responder. Uma nova tentativa costuma funcionar: tente novamente."
+    },
+    "unknown": {
+      "title": "Algo deu errado",
+      "description": "Ocorreu um erro inesperado. Tente novamente."
+    },
+    "network": {
+      "title": "Erro de conexão",
+      "description": "Não foi possível conectar ao servidor. Verifique sua conexão com a internet e tente novamente."
+    },
+    "relay": {
+      "title": "Erro no serviço",
+      "description": "Houve um problema ao conectar ao nosso serviço. Tente novamente."
+    },
+    "non2xx": {
+      "title": "Falha na solicitação",
+      "description": "Não foi possível concluir a solicitação. Tente novamente."
+    },
+    "plain": {
+      "title": "Erro"
+    }
+  },
+  "agentControls": {
+    "saveError": "Não foi possível salvar — tente novamente.",
+    "blocklist": {
+      "title": "Nunca se candidatar a estes empregadores",
+      "help": "Adicione primeiro seu empregador atual. O agente vai pular todas as vagas dessas empresas e reconhece o nome independentemente de maiúsculas e minúsculas.",
+      "placeholder": "Nome da empresa",
+      "remove": "Remover {{name}}"
+    },
+    "add": "Adicionar",
+    "pause": {
+      "title": "Pausar, com uma data de retorno",
+      "active": "Pausado até {{when}}. Ele volta sozinho — não precisa lembrar de nada.",
+      "help": "Vai sair de férias ou já está fazendo entrevistas em algum lugar? Pause e ele volta a ligar sozinho.",
+      "resumeNow": "Retomar agora",
+      "1w": "1 semana",
+      "2w": "2 semanas",
+      "1m": "1 mês"
+    },
+    "cooldown": {
+      "title": "Dias entre candidaturas para o mesmo empregador",
+      "help": "Evita que várias candidaturas cheguem à mesa do mesmo recrutador em uma semana. 0 desativa."
+    }
+  },
+  "agentNight": {
+    "title": "Desde ontem",
+    "sent": "candidaturas feitas",
+    "waiting": "esperando por você",
+    "unconfirmed": "enviadas sem confirmação",
+    "skipped": "puladas",
+    "ourFault": "Falha nossa:"
+  },
+  "agent": {
+    "reach": {
+      "title": "Onde o agente pode se candidatar por você",
+      "body": "Ele envia automaticamente para {{drivable}} das {{total}} vagas do quadro ({{pct}}%). As demais protegem o formulário contra bots, então o agente prepara tudo e você clica em enviar.",
+      "vendors": "Envia automaticamente em: {{vendors}}. Contado no quadro ao vivo, não é uma estimativa.",
+      "vendorsCount": "Envia automaticamente em {{n}} sistemas de candidatura. Contado no quadro ao vivo, não é uma estimativa."
+    }
+  },
+  "agentSetup": {
+    "profile": {
+      "title": "Envie seu currículo",
+      "why": "Essa é toda a configuração. Lemos seu nome e seus dados de contato direto dele e só perguntamos sobre o resto quando um formulário realmente precisa."
+    },
+    "exclusions": {
+      "title": "Opcional: indique empregadores a evitar",
+      "why": "Principalmente seu empregador atual. Vale um momento agora — é a única coisa que não pode ser desfeita depois."
+    },
+    "mandate": {
+      "title": "Diga a ele o que você procura",
+      "why": "Cargos, local e quantas por dia. Comece com uma por dia até ver o trabalho dele."
+    },
+    "title": "Duas coisas antes de ele poder começar",
+    "progress": "{{done}} de {{total}}",
+    "continue": "Continuar",
+    "howItWorks": "O que acontece depois →"
+  },
+  "receipt": {
+    "title": "O que enviamos por você",
+    "noRecord": "Esta candidatura foi enviada antes de começarmos a guardar registros por campo, então não podemos mostrar o texto exato.",
+    "changedAtSend": "atualizado no envio (preparado: “{{was}}”)",
+    "evidence": "A confirmação do empregador",
+    "noEvidence": "O formulário aceitou, mas não devolveu nenhum texto de confirmação que pudéssemos registrar.",
+    "via": "Enviado via {{via}}."
+  },
+  "morningQueue": {
+    "qPlaceholder": "Gerente de produto, Gerente de programa",
+    "locPlaceholder": "São Paulo, Rio de Janeiro, Remoto"
   }
 }

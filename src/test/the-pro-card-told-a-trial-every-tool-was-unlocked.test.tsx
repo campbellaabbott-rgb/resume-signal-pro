@@ -58,10 +58,10 @@ describe("the Pro card says what the plan unlocks", () => {
 
   // The product line (2026-10-12): Pro is the writing tools, so a paid plan
   // is told those are unlocked, never "every tool".
-  it("a paid plan is told the writing tools are unlocked", () => {
+  it("a paid plan is told what its plan gives: five writing packages a day (NB-11)", () => {
     Object.assign(pro, { status: "active", trialing: false });
     mount();
-    expect(screen.getByText(/the writing tools are unlocked/i)).toBeTruthy();
+    expect(screen.getByText(/^You're a Pro member: 5 writing packages a day \(60 a month\)/)).toBeTruthy();
     expect(screen.queryByText(/every tool is unlocked/i)).toBeNull();
     expect(screen.queryByText(en.proPlan.trialing)).toBeNull();
   });

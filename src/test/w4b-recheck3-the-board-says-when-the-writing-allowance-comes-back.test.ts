@@ -20,6 +20,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { writingToolToast, type WritingTool } from "@/lib/writing-refusal";
 import EN from "@/i18n/locales/en.json";
+import WRITING from "@/i18n/shards/writing-tools/en.json";
 import { codeOf } from "./helpers/strip-comments";
 
 const en = EN as unknown as Record<string, Record<string, string>>;
@@ -56,10 +57,10 @@ describe("a daily allowance spent is said as a daily allowance, with when it com
   });
 });
 
-describe("positive control: a 429 that is not the allowance keeps main's copy", () => {
-  it("tailor: the hourly copy; cover and coach: the busy copy", async () => {
+describe("positive control: a 429 that is not the allowance keeps each tool's busy copy", () => {
+  it("tailor, cover and coach: the busy copy (S14X-265: tailor's is no longer an hourly limit)", async () => {
     const spend = invokeError(429, { error: "Too many requests right now." });
-    expect((await writingToolToast("tailor", spend, t, "en-US")).title).toBe(en.jobsPage.tailorLimitTitle);
+    expect((await writingToolToast("tailor", spend, t, "en-US")).description).toBe(WRITING.writingTools.tailorBusy);
     expect((await writingToolToast("cover", spend, t, "en-US")).description).toBe(en.jobsPage.coverBusy);
     expect((await writingToolToast("coach", spend, t, "en-US")).description).toBe(en.jobsPage.coachBusy);
   });

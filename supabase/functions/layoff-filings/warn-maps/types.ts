@@ -24,10 +24,14 @@ export interface StateMap {
   visibleBasis: VisibleBasis;
   columns: {
     filer: HeaderCandidates;
-    /** The employer's notice date; absent for states that publish none. */
+    /** The employer's notice date; absent for states that publish none.
+     *  Required when visibleBasis is our_first_fetch: it is then the only
+     *  date the notice carries. */
     noticeDate?: HeaderCandidates;
-    /** The state's received / processed / posted stamp. Required. */
-    visible: HeaderCandidates;
+    /** The state's received / processed / posted stamp. Required, except for
+     *  a state that publishes none (visibleBasis our_first_fetch): there the
+     *  read stamps the day it first saw the notice and no column is named. */
+    visible?: HeaderCandidates;
     effective?: HeaderCandidates;
     workers?: HeaderCandidates;
     /** The closure/layoff wording cell(s). */
@@ -65,21 +69,34 @@ export interface UnresolvedHeaders {
   header: string[];
 }
 
-/** Resolve each role to the first candidate present in the header; `filer` and `visible` are required. */
+/**
+ * Resolve each role to the first candidate present in the header. `filer`
+ * is required, and the date the public date comes from: `visible` (the
+ * state's stamp), or for an our_first_fetch map `noticeDate` (S14X-036).
+ */
 export function resolveHeaders(map: StateMap, header: string[]): ResolvedHeaders | UnresolvedHeaders {
   const set = new Set(header.map((h) => h.replace(/\s+/g, " ").trim()));
   const pick = {} as Record<keyof StateMap["columns"], string | null>;
   const missing: string[] = [];
+  const firstFetch = map.visibleBasis === "our_first_fetch";
+  for (const role of ["filer", "visible", "noticeDate"] as const) {
+    if (!(role in map.columns)) {
+      pick[role] = null;
+      if (role === "filer" || (role === "visible" && !firstFetch) || (role === "noticeDate" && firstFetch)) missing.push(role);
+    }
+  }
   for (const role of Object.keys(map.columns) as Array<keyof StateMap["columns"]>) {
     const cands = map.columns[role] ?? [];
     const hit = cands.find((c) => set.has(c)) ?? null;
     pick[role] = hit;
-    if (hit == null && (role === "filer" || role === "visible")) missing.push(role);
-    // AN UNVERIFIED MAP WHOSE COUNT RESOLVES TO NOTHING IS REFUSED (S8-106).
-    // Oregon's candidates matched none of its live headers ("Laid Off") while
-    // filer and visible did, so every notice was stored with workers NULL,
-    // the 50-worker bar hid all of them, and the feed reported ok.
-    if (hit == null && role === "workers" && cands.length > 0 && !map.verifiedAgainstSample) missing.push(role);
+    if (hit == null && (role === "filer" || (role === "visible" && !firstFetch) || (role === "noticeDate" && firstFetch))) missing.push(role);
+    // A MAP WHOSE COUNT RESOLVES TO NOTHING IS REFUSED (S8-106). Oregon's
+    // candidates matched none of its live headers ("Laid Off") while filer
+    // and visible did, so every notice was stored with workers NULL, the
+    // 50-worker bar hid all of them, and the feed reported ok. Every map is
+    // now pinned to a saved file (S14X-036), so a count column the state
+    // renamed is a refusal, and the night's read fails.
+    if (hit == null && role === "workers" && cands.length > 0) missing.push(role);
   }
   if (missing.length > 0) return { ok: false, missing, header };
   return { ok: true, pick };

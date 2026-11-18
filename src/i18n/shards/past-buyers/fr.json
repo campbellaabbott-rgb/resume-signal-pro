@@ -1,0 +1,9 @@
+{
+  "pastBuyers": {
+    "closedNoCopy": "Plus rien n’est en préparation pour cette commande, et cette page n’en garde aucune copie. Si elle vous a été envoyée par e-mail, cette copie reste la vôtre. Ajoutez votre CV ci-dessous pour la créer ici maintenant.",
+    "openedInPrint": "Votre rapport contient des caractères que la police du PDF ne peut pas afficher, il s’est donc ouvert dans la fenêtre d’impression. Choisissez « Enregistrer au format PDF » pour en garder une copie.",
+    "parseSimulationSaved": "Vérifié lors de la création de ce rapport. Votre CV lui-même n’est pas conservé.",
+    "parseSimulationMissing": "Ce rapport a été enregistré avant que ses vérifications d’analyse soient conservées avec lui. Analysez à nouveau votre CV pour voir comment un ATS le lit.",
+    "downloadLetter": "Télécharger"
+  }
+}

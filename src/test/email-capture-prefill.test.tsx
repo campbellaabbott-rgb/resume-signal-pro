@@ -48,12 +48,15 @@ describe("EmailReportCapture prefill", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("consent copy names the day-14 outcome question (four emails, opt-in)", () => {
+  // The fix-plan sequence and its day-14 question are withdrawn (S14X-012,
+  // the owner's option B of 2026-11-15): no consent copy offers them.
+  it("consent copy offers no fix-plan emails, and the pulse box stays unticked", () => {
     render(<EmailReportCapture payload={payload} />);
-    expect(screen.getByText(/one question on day 14/i)).toBeInTheDocument();
-    expect(screen.getByText(/Four short emails, cancel anytime/i)).toBeInTheDocument();
-    // The drip stays off by default — prefill must not flip consent defaults.
+    expect(screen.queryByText(/one question on day 14/i)).toBeNull();
+    expect(screen.queryByText(/Four short emails, cancel anytime/i)).toBeNull();
+    // Prefill must not flip consent defaults.
     const checkboxes = screen.getAllByRole("checkbox");
-    expect((checkboxes[1] as HTMLInputElement).checked).toBe(false);
+    expect(checkboxes).toHaveLength(1);
+    expect((checkboxes[0] as HTMLInputElement).checked).toBe(false);
   });
 });

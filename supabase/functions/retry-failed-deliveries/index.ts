@@ -8,7 +8,8 @@ import { purchaseLinkFor } from "../_shared/purchase-links.ts";
 
 // Provable from outside without running a sweep: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "retry-failed-deliveries.2026-10-11.22";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, full-analysis lane, S14X-220, RC-S13-110): a finished analysis whose mail was refused is resent from its stored copy, and a refused owner alarm or buyer notice is sent first on a later run; only a 400 or 422 from send-product-email gives a buyer's notice up at once.
+const FN_BUILD = "retry-failed-deliveries.2026-11-12.1";
 
 // HOW LONG THIS SWEEP HOLDS AN ORDER IT MAKES (20261011144000, CP-019). The
 // row is leased before the generator is called: a maker that lost its lease
@@ -110,7 +111,9 @@ async function recordFailedTry(
     const { data: row } = await supabase.from('product_deliveries')
       .select('retry_count, max_retries, next_retry_at').eq('id', delivery.id).maybeSingle();
     if (!row || Number(row.retry_count) < Number(row.max_retries)) return;
-    await alertDeliverySpent(supabase, delivery, args.p_error);
+    // Refused, the alarm is owed on the order and a later run sends it
+    // (RC-S13-110): this row has no tries left, so no later try would.
+    if (await alertDeliverySpent(supabase, delivery, args.p_error) === 'refused') await owe(supabase, delivery.id, 'owner');
   } catch (e) {
     logStep("Could not read the row back for the spent-delivery alarm", { id: delivery.id, error: e instanceof Error ? e.message : String(e) });
   }
@@ -154,41 +157,149 @@ async function sendOwnerMail(subject: string, html: string): Promise<boolean> {
 }
 
 /**
+ * WHAT BECAME OF A NOTICE (RC-S13-110): sent; already sent, or being sent, by
+ * another run (its door is taken); refused, so it is owed to a later run;
+ * rejected (send-product-email answered 400 or 422: an address or a request
+ * it will never take, so no later run tries it); or nobody to send it to.
+ * Any other answer (a 401 or 403 from its caller check, a 404, a 429, a 5xx)
+ * is about the run, not the message, and leaves the notice refused.
+ */
+type NoticeOutcome = 'sent' | 'not-first' | 'refused' | 'rejected' | 'nobody';
+type NoticeOwed = 'owner' | 'buyer' | 'both';
+const owedOf = (buyer: NoticeOutcome, owner: NoticeOutcome): NoticeOwed | null =>
+  buyer === 'refused' ? (owner === 'refused' ? 'both' : 'buyer') : owner === 'refused' ? 'owner' : null;
+
+/**
+ * A BUYER'S NOTICE IS NOT OWED FOREVER (RC-S13-110). One the mail service
+ * refused outright is given up on that run, and one refused on this many
+ * runs is given up then: an address that bounces for good was retried on
+ * every run, wrote a failed log row naming the address each time, and kept
+ * one of the run's few owed-notice slots. The owner is told once, by a mail
+ * of its own, that the buyer was not asked.
+ */
+const OWED_BUYER_TRIES = 6;
+const GIVEN_UP_OUTRIGHT = 'the mail service refused the address outright';
+const givenUpAfter = (tries: number) => `the mail service refused it on ${tries} runs`;
+const buyerNotToldLine = (why: string) => `The buyer was not told what is missing (${why}). Write to them yourself at the address above.`;
+
+/**
+ * THE NOTICE A SPENT ORDER STILL OWES, WRITTEN ON THE ORDER (RC-S13-110,
+ * 20261112130000). A refused notice gave its door back "so the next run tries
+ * again", but no next run looked: a spent order is never selected again. A
+ * write of its own, so a database without the column (before the migration)
+ * fails only this write and is logged. Never throws.
+ */
+async function owe(supabase: Db, id: string, owed: NoticeOwed | null, buyer: { tries?: number; givenUp?: string | null } = {}): Promise<void> {
+  try {
+    // notice_tried_at orders the next run's read (oldest first); the try count
+    // and the reason a buyer's notice was given up ride in the same write.
+    const { error } = await supabase.from('product_deliveries').update({
+      notice_owed: owed,
+      notice_tried_at: new Date().toISOString(),
+      ...(buyer.tries !== undefined ? { notice_tries: buyer.tries } : {}),
+      ...(buyer.givenUp !== undefined ? { notice_given_up: buyer.givenUp } : {}),
+    }).eq('id', id);
+    if (error) logStep("The notice this order owes could not be written", { id, owed, error: String(error.message ?? error).slice(0, 200) });
+  } catch (e) {
+    logStep("The notice this order owes could not be written", { id, owed, error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/**
  * One mail per spent delivery, to the owner, naming what to do for THIS
  * product (S12-061). The door (held 30 days) is taken before the send so two
- * runs cannot both mail, and given back when no sender accepted it, so the
- * next run tries again (CP-027: the door used to be spent on a refused send).
- * Never throws.
+ * runs cannot both mail, and given back when no sender accepted it (CP-027:
+ * the door used to be spent on a refused send). Says what became of it, so a
+ * refused alarm is owed on the order (RC-S13-110). With `buyerNotTold` (why
+ * the buyer's notice was given up) it is the mail saying so, through a door
+ * of its own, since the spent-order alarm has usually gone already. Never
+ * throws.
  */
-async function alertDeliverySpent(supabase: Db, delivery: DeliveryRow, lastError: string, buyerTold: string | null = null): Promise<void> {
-  const door = 'owner-alert:delivery';
+async function alertDeliverySpent(supabase: Db, delivery: DeliveryRow, lastError: string, buyerTold: string | null = null, buyerNotTold: string | null = null): Promise<NoticeOutcome> {
+  const door = buyerNotTold ? 'owner-alert:buyer-not-told' : 'owner-alert:delivery';
   const bucket = String(delivery.id).slice(0, 64);
   try {
     const { data: first, error } = await supabase.rpc('mail_door_take', {
       p_door: door, p_bucket: bucket, p_max: 1, p_window_minutes: 43200,
     });
-    if (error || first !== true) return;
+    if (error) return 'refused';
+    if (first !== true) return 'not-first';
     const sent = await sendOwnerMail(
-      `Paid delivery ran out of retries: ${String(delivery.product_type).slice(0, 40)}`,
+      buyerNotTold
+        ? `Buyer of a spent order could not be told: ${String(delivery.product_type).slice(0, 40)}`
+        : `Paid delivery ran out of retries: ${String(delivery.product_type).slice(0, 40)}`,
       `<div style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#111">
           <p>A paid order was not delivered, and the retry sweep has stopped trying.</p>
           <p>Product: <b>${escapeHtml(delivery.product_type)}</b><br>Buyer: ${escapeHtml(delivery.customer_email ?? '(no address on the row)')}<br>Checkout session: ${escapeHtml(delivery.stripe_session_id)}<br>Last error: ${escapeHtml(String(lastError).slice(0, 300))}</p>
           ${buyerTold ? `<p>The buyer was mailed: ${escapeHtml(buyerTold)}</p>` : ''}
+          ${buyerNotTold ? `<p><b>${escapeHtml(buyerNotToldLine(buyerNotTold))}</b></p>` : ''}
           <p>What to do: ${escapeHtml(remedyFor(delivery.product_type, delivery.stripe_session_id))}</p>
           <p>Once it is delivered, set the order's status to delivered so the monitors stop counting it.</p>
         </div>`,
     );
-    if (!sent) await supabase.from('mail_door_counts').delete().eq('door', door).eq('bucket', bucket);
+    if (sent) return 'sent';
+    await supabase.from('mail_door_counts').delete().eq('door', door).eq('bucket', bucket);
+    return 'refused';
   } catch (e) {
     console.warn('[RETRY-FAILED-DELIVERIES] spent-delivery alarm not sent:', e instanceof Error ? e.message.slice(0, 120) : String(e));
+    return 'refused';
   }
 }
 
 /**
+ * The buyer's one mail saying what is missing (through send-product-email,
+ * which knows the purchase link), held to one per order by its own door and
+ * given back when the mail was refused. Never throws.
+ */
+async function mailBuyerNeedsInput(
+  supabase: Db, supabaseUrl: string, supabaseServiceKey: string, delivery: DeliveryRow, reason: Terminal['reason'],
+): Promise<NoticeOutcome> {
+  if (!delivery.customer_email) return 'nobody';
+  const door = 'buyer-needs-input';
+  const bucket = String(delivery.stripe_session_id).slice(0, 64);
+  try {
+    const { data: first, error } = await supabase.rpc('mail_door_take', { p_door: door, p_bucket: bucket, p_max: 1, p_window_minutes: 43200 });
+    if (error) return 'refused';
+    if (first !== true) return 'not-first';
+  } catch {
+    return 'refused';
+  }
+  let sent = false;
+  let status = 0;
+  try {
+    const language = (delivery.metadata as { language?: unknown } | null)?.language;
+    const res = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseServiceKey}` },
+      body: JSON.stringify({
+        kind: 'needs_input', reason, email: delivery.customer_email,
+        productType: delivery.product_type, productName: delivery.product_name || delivery.product_type,
+        sessionId: delivery.stripe_session_id, ...(typeof language === 'string' ? { language } : {}),
+      }),
+    });
+    sent = res.ok;
+    status = res.status;
+  } catch { /* given back below */ }
+  if (sent) return 'sent';
+  try {
+    await supabase.from('mail_door_counts').delete().eq('door', door).eq('bucket', bucket);
+  } catch { /* the door expires on its own */ }
+  // Only a refusal of the message itself is given up at once: send-product-
+  // email answers 400 for an address its pattern rejects, a missing product
+  // or an unknown reason (422 is read the same way), and no later run would
+  // fare better. A 401 or 403 is its service-role check refusing this caller
+  // (a key that rotated), a 404 a function not deployed, a 429 a rate limit
+  // and a 5xx an outage: each is about this run, so the notice stays owed and
+  // a later run tries it (OWED_BUYER_TRIES runs at most).
+  return status === 400 || status === 422 ? 'rejected' : 'refused';
+}
+
+const buyerAskedLine = (reason: Terminal['reason']) => `${TERMINAL_DETAIL[reason]}; they were asked for it.`;
+
+/**
  * A FAILURE NO RETRY CAN CURE: spend the row now, tell the buyer once what is
- * missing (through send-product-email, which knows the purchase link), and
- * tell the owner once. The buyer mail is held to one per order by its own
- * door, given back when the mail was refused so the next run tries again.
+ * missing, and tell the owner once. A notice the provider refused is owed on
+ * the order (RC-S13-110), and a later run sends it.
  */
 async function spendTerminal(
   supabase: Db, supabaseUrl: string, supabaseServiceKey: string, delivery: DeliveryRow, terminal: Terminal,
@@ -197,30 +308,83 @@ async function spendTerminal(
   await supabase.from('product_deliveries')
     .update({ status: 'generation_failed', generation_success: false, generation_error: detail, last_retry_error: detail, max_retries: 0, next_retry_at: null })
     .eq('id', delivery.id);
-  let buyerMailed = false;
-  if (delivery.customer_email) {
-    const door = 'buyer-needs-input';
-    const bucket = String(delivery.stripe_session_id).slice(0, 64);
-    const { data: first } = await supabase.rpc('mail_door_take', { p_door: door, p_bucket: bucket, p_max: 1, p_window_minutes: 43200 });
-    if (first === true) {
-      try {
-        const language = (delivery.metadata as { language?: unknown } | null)?.language;
-        const res = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseServiceKey}` },
-          body: JSON.stringify({
-            kind: 'needs_input', reason: terminal.reason, email: delivery.customer_email,
-            productType: delivery.product_type, productName: delivery.product_name || delivery.product_type,
-            sessionId: delivery.stripe_session_id, ...(typeof language === 'string' ? { language } : {}),
-          }),
-        });
-        buyerMailed = res.ok;
-      } catch { /* given back below */ }
-      if (!buyerMailed) await supabase.from('mail_door_counts').delete().eq('door', door).eq('bucket', bucket);
+  const buyer = await mailBuyerNeedsInput(supabase, supabaseUrl, supabaseServiceKey, delivery, terminal.reason);
+  const givenUp = buyer === 'rejected' ? GIVEN_UP_OUTRIGHT : null;
+  const owner = await alertDeliverySpent(supabase, delivery, detail, buyer === 'sent' ? buyerAskedLine(terminal.reason) : null, givenUp);
+  const owed = owedOf(buyer, owner);
+  if (owed || givenUp) await owe(supabase, delivery.id, owed, { tries: buyer === 'refused' || buyer === 'rejected' ? 1 : 0, givenUp });
+  return { buyerMailed: buyer === 'sent' };
+}
+
+/**
+ * THE NOTICES STILL OWED, SENT FIRST ON EVERY RUN (RC-S13-110). A spent order
+ * is never selected for a retry again, so the run that spent it was the only
+ * one that ever tried its alarm and its buyer mail. Now a refused one is owed
+ * on the order (notice_owed) and every run reads a few such orders, whatever
+ * their tries, the ones tried longest ago first (notice_tried_at), sends what
+ * is owed through the same doors (so nothing is sent twice), and writes what
+ * is still owed, or nothing. A buyer's notice rejected outright, or refused
+ * on OWED_BUYER_TRIES runs, is given up and the owner told once. Nothing is
+ * made again. Before 20261112130000 the read fails on the missing columns and
+ * is skipped. Never throws.
+ */
+const OWED_NOTICES_PER_RUN = 5;
+async function sendOwedNotices(supabase: Db, supabaseUrl: string, supabaseServiceKey: string): Promise<number> {
+  try {
+    const { data, error } = await supabase.from('product_deliveries')
+      .select('id, status, stripe_session_id, product_type, product_name, customer_email, metadata, generation_error, last_retry_error, notice_owed, notice_tries, notice_given_up')
+      .in('notice_owed', ['owner', 'buyer', 'both'])
+      .order('notice_tried_at', { ascending: true, nullsFirst: true })
+      .limit(OWED_NOTICES_PER_RUN);
+    if (error) {
+      logStep("Owed notices not read", { error: String(error.message ?? error).slice(0, 200) });
+      return 0;
     }
+    let handled = 0;
+    for (const row of (data ?? []) as Array<DeliveryRow & { status?: string; notice_owed?: string; generation_error?: string | null; last_retry_error?: string | null; notice_tries?: number | null; notice_given_up?: string | null }>) {
+      // An order made good since (delivered by hand, or refunded) owes nobody a notice.
+      if (row.status === 'delivered' || row.status === 'refunded') {
+        await owe(supabase, row.id, null);
+        continue;
+      }
+      const reason = /^(job_posting_required|resume_missing|resume_expired):/.exec(String(row.generation_error ?? ''))?.[1] as Terminal['reason'] | undefined;
+      const buyerOwed = (row.notice_owed === 'buyer' || row.notice_owed === 'both') && !!reason && !row.notice_given_up;
+      const tried: NoticeOutcome = buyerOwed
+        ? await mailBuyerNeedsInput(supabase, supabaseUrl, supabaseServiceKey, row, reason!)
+        : 'nobody';
+      const tries = Number(row.notice_tries ?? 0) + (tried === 'refused' || tried === 'rejected' ? 1 : 0);
+      const givenUp = row.notice_given_up
+        ?? (tried === 'rejected' ? GIVEN_UP_OUTRIGHT : tried === 'refused' && tries >= OWED_BUYER_TRIES ? givenUpAfter(tries) : null);
+      // A notice given up on this run is the owner's to hear, once.
+      const newlyGivenUp = !!givenUp && !row.notice_given_up;
+      const buyer: NoticeOutcome = givenUp ? 'nobody' : tried;
+      const owner: NoticeOutcome = row.notice_owed === 'owner' || row.notice_owed === 'both' || newlyGivenUp
+        ? await alertDeliverySpent(supabase, row, String(row.last_retry_error ?? row.generation_error ?? 'not recorded'), buyer === 'sent' && reason ? buyerAskedLine(reason) : null, givenUp)
+        : 'nobody';
+      await owe(supabase, row.id, owedOf(buyer, owner), { tries, givenUp });
+      handled++;
+      logStep("Owed notice", { id: row.id, owed: row.notice_owed, buyer: tried, owner, tries, givenUp: !!givenUp });
+    }
+    return handled;
+  } catch (e) {
+    logStep("Owed notices not sent", { error: e instanceof Error ? e.message : String(e) });
+    return 0;
   }
-  await alertDeliverySpent(supabase, delivery, detail, buyerMailed ? `${TERMINAL_DETAIL[terminal.reason]}; they were asked for it.` : null);
-  return { buyerMailed };
+}
+
+/**
+ * THE FINISHED FULL ANALYSIS BEHIND AN ORDER (S14X-220): the share id its
+ * redemption points at, or null when the analysis was never made (the order
+ * is waiting for the buyer's page, and its failed mail was the purchase link).
+ */
+async function finishedAnalysisOf(supabase: Db, sessionId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc('get_purchased_content_by_session', { p_session_id: sessionId });
+  if (error) throw new Error(`Content lookup failed: ${String(error.message ?? error).slice(0, 200)}`);
+  const row = Array.isArray(data)
+    ? data.find((r: { product_type?: unknown; generated_content?: { shareId?: unknown } | null }) =>
+      r?.product_type === FULL_ANALYSIS_PRODUCT_TYPE && typeof r?.generated_content?.shareId === 'string')
+    : null;
+  return row ? String(row.generated_content.shareId) : null;
 }
 
 serve(async (req) => {
@@ -255,6 +419,10 @@ serve(async (req) => {
         status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // What earlier runs owe first (RC-S13-110): a few orders whose alarm or
+    // buyer mail the provider refused, sent before anything is made.
+    await sendOwedNotices(supabase, supabaseUrl, supabaseServiceKey);
 
     // Get failed deliveries that need retry. This build handles a 'generating'
     // row nobody finished, so it asks for them; the old build did not
@@ -322,6 +490,12 @@ serve(async (req) => {
           results.push({ id: delivery.id, status: delivery.status, success: false, error: 'no address on the order' });
           continue;
         }
+
+        // A FINISHED FULL ANALYSIS WHOSE MAIL WAS REFUSED (S14X-220): resent
+        // below from its stored copy, never made again.
+        const finishedShareId = delivery.status === 'email_failed' && delivery.product_type === FULL_ANALYSIS_PRODUCT_TYPE
+          ? await finishedAnalysisOf(supabase, delivery.stripe_session_id)
+          : null;
 
         // Handle based on current status. A 'generating' row reaches here only
         // when its generation began 15+ minutes ago and never finished
@@ -691,6 +865,48 @@ serve(async (req) => {
             results.push({ id: delivery.id, status: 'content_generated', success: true });
           }
 
+        } else if (finishedShareId) {
+          // THE FINISHED ANALYSIS, RESENT (S14X-220). analyze-resume made and
+          // stored it, showed it on the page, and the provider refused its
+          // mail: the order waits here as email_failed. The stored copy is
+          // mailed through send-analysis-email (never the purchase link, never
+          // a new model call), and the write names the status it saw.
+          if (!delivery.customer_email) {
+            await supabase.from('product_deliveries')
+              .update({ next_retry_at: 'infinity', last_retry_error: 'The analysis mail failed and the order carries no address to resend it to (the buyer saw it on the page)' })
+              .eq('id', delivery.id).eq('status', 'email_failed');
+            results.push({ id: delivery.id, status: 'email_failed', success: false, error: 'no address on the order' });
+            continue;
+          }
+          const { data: stored, error: storedError } = await supabase.rpc('get_analysis_by_share_id', { share_id_param: finishedShareId });
+          if (storedError) throw new Error(`get_analysis_by_share_id unavailable: ${String(storedError.message ?? storedError).slice(0, 200)}`);
+          const analysisData = Array.isArray(stored) ? stored[0]?.analysis_result : null;
+          if (!analysisData || typeof analysisData !== 'object') {
+            // Deleted by its buyer, or expired: nothing is left to mail, and
+            // the buyer saw it on the page, which is what was bought.
+            await supabase.from('product_deliveries')
+              .update({ status: 'delivered', last_retry_error: 'The analysis is no longer stored (its buyer deleted it, or it expired) before its mail was resent; the buyer saw it on the page' })
+              .eq('id', delivery.id).eq('status', 'email_failed');
+            results.push({ id: delivery.id, status: 'delivered', success: true });
+            continue;
+          }
+          const language = (metadata as { language?: unknown }).language;
+          const analysisMail = await fetch(`${supabaseUrl}/functions/v1/send-analysis-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseServiceKey}` },
+            body: JSON.stringify({
+              email: delivery.customer_email,
+              analysisData,
+              shareId: finishedShareId,
+              ...(typeof language === 'string' ? { language } : {}),
+            }),
+          });
+          if (!analysisMail.ok) throw new Error(`send-analysis-email answered ${analysisMail.status}`);
+          await supabase.from('product_deliveries')
+            .update({ status: 'delivered', email_success: true, email_sent_at: new Date().toISOString(), email_error: null })
+            .eq('id', delivery.id).eq('status', 'email_failed');
+          results.push({ id: delivery.id, status: 'delivered', success: true });
+          logStep("Finished analysis resent", { id: delivery.id });
         } else if (delivery.status === 'email_failed' && MADE_ON_ITS_PAGE.includes(delivery.product_type)) {
           // THE PURCHASE LINK, RESENT (S12-104). For a product made on its own
           // page the failed mail was the link back to it; nothing is made

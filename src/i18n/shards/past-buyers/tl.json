@@ -1,0 +1,9 @@
+{
+  "pastBuyers": {
+    "closedNoCopy": "Wala nang ginagawa para sa order na ito, at walang kopyang itinatago ang page na ito. Kung naipadala ito sa email mo, sa iyo pa rin ang kopyang iyon. Idagdag ang iyong resume sa ibaba para gawin ito rito ngayon.",
+    "openedInPrint": "May mga titik sa report mo na hindi kayang iguhit ng font ng PDF, kaya binuksan ito sa print dialog. Piliin doon ang \"Save as PDF\" para magtago ng kopya.",
+    "parseSimulationSaved": "Sinuri noong ginawa ang report na ito. Hindi itinatago ang mismong resume mo.",
+    "parseSimulationMissing": "Na-save ang report na ito bago itinago kasama nito ang mga parse check. I-scan muli ang iyong resume para makita kung paano ito binabasa ng isang ATS.",
+    "downloadLetter": "I-download"
+  }
+}

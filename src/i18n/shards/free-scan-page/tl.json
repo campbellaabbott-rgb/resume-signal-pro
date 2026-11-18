@@ -1,0 +1,304 @@
+{
+  "freeScanPage": {
+    "a11y": {
+      "resumeText": "Text ng iyong résumé",
+      "emailAddress": "Iyong email address"
+    },
+    "jobUrl": {
+      "truncated": "Mas mahaba ang posting na ito kaysa sa kaya naming basahin, kaya ang unang bahagi lang nito ang nasa box."
+    },
+    "checkout": {
+      "postingOverCap": "Binabasa ng Buong Analysis ang unang {{max}} character ng job posting na ito. Hindi kasama ang natitira.",
+      "linkedInOverCap": "Binabasa ng Buong Analysis ang unang {{max}} character ng iyong LinkedIn text. Hindi kasama ang natitira."
+    },
+    "hero": {
+      "dropzone": "O i-drop dito ang iyong résumé: PDF, DOCX o TXT",
+      "dropzoneActive": "I-drop dito: ilang segundo na lang ang scan"
+    },
+    "parseCheck": {
+      "fromYourFile": "Ginawa ang mga check na ito sa text na nakuha namin mula sa iyong file. May sariling reader ang bawat ATS, kaya maaaring iba ang pagbasa nito sa ilang bahagi.",
+      "section": {
+        "summary": "Buod",
+        "experience": "Karanasan",
+        "education": "Edukasyon",
+        "skills": "Kasanayan"
+      },
+      "label": {
+        "sections": "Mga heading ng seksyon",
+        "contact": "Mga contact detail",
+        "dates": "Mga petsa",
+        "encoding": "Encoding ng mga character",
+        "iconGlyphs": "Mga character mula sa icon font",
+        "lines": "Istruktura ng mga linya",
+        "layout": "Layout na may column"
+      },
+      "detail": {
+        "sectionsAll": "Nakita ang lahat ng {{n}} standard na heading ng seksyon ({{found}}).",
+        "sectionsNone": "Walang nakitang standard na heading ng seksyon. Hinahati ng karamihan ng ATS ang résumé ayon sa mga heading gaya ng Experience o Education; kung wala ang mga ito, maaaring mapunta sa iisang block ang iyong content.",
+        "sectionsSome": "Nakita: {{found}}. Walang makilalang heading para sa: {{missing}}.",
+        "contactHeaderOnly": "Nasa header lang ng page ang iyong email at phone, na nilalaktawan ng ilang ATS. Ilagay din ang mga ito sa body ng unang page.",
+        "contactBoth": "Nakita sa text ang iyong email at phone number.",
+        "contactBothLinkedIn": "Nakita sa text ang iyong email, phone number at LinkedIn address.",
+        "contactNone": "Walang nakitang email o phone number sa text. Kung mayroon ang iyong file, maaaring nasa isang image, text box o header ang mga ito na nilalaktawan ng text extraction.",
+        "contactEmailOnly": "Nakita ang iyong email, pero walang phone number na nasa standard na format.",
+        "contactPhoneOnly": "Nakita ang iyong phone number, pero walang email address na nasa standard na format.",
+        "datesMany": "{{n}} magkakaibang petsa ang nakita, kaya malamang na mabubuo ng ATS ang iyong timeline at ang tagal mo sa bawat role.",
+        "datesNone": "Walang nakitang petsa na nasa makikilalang anyo (gaya ng Jan 2020 o 2020-2023). Ginagamit ng ATS ang mga petsa para kalkulahin ang iyong karanasan at anumang gap.",
+        "datesOne": "Isang petsa lang ang nakita. Kung ilang role ang nakalista, maaaring kulang ang karamihan sa mga ito ng start at end date na mababasa ng ATS.",
+        "encodingOk": "Walang nakitang sirang character sa nakuhang text.",
+        "encodingBroken": "Mga character na hindi ma-decode: {{n}}. Malamang na hindi naka-map sa standard Unicode ang isang font sa iyong PDF, at ang ATS na babasa nito sa parehong paraan ay makakakita ng parehong magulong text.",
+        "iconsNone": "Walang nakitang character mula sa icon font sa nakuhang text.",
+        "iconsFound": "Mga character mula sa icon font na nakita: {{n}}. Madalas iguhit ng mga template ang mga simbolo ng phone, email at LinkedIn gamit ang icon font; ligaw na character ang nakikita ng ATS doon, hindi ang icon.",
+        "linesNormal": "Lumabas ang text na may normal na line break (mga {{chars}} character bawat linya).",
+        "linesLong": "Lumabas ang text na may di-pangkaraniwang mahahabang linya (mga {{chars}} character bawat linya). Maaaring pinagsama ng isang table o text box ang ilang linya; tingnan kung hindi nagdudugtong ang iyong mga bullet.",
+        "linesFlat": "Lumabas ang text na halos walang line break (mga {{chars}} character bawat linya), senyales ng table layout o mga text box na pinatag sa iisang block. Maaaring mawala sa ATS ang iyong mga seksyon at bullet.",
+        "layoutSingle": "Walang nakitang multi-column layout: iisang pagkakasunod ang pagbasa sa text.",
+        "layoutColumns": "May nakitang multi-column layout sa iyong PDF. Nagbabasa ang mga text extractor ayon sa pagkakasunod sa file, hindi sa nakikitang ayos, kaya madalas maghalo ang mga column o mabasa nang wala sa pagkakasunod."
+      }
+    },
+    "industry": {
+      "cybersecurity": "Cybersecurity",
+      "logistics": "Logistics",
+      "real_estate": "Real estate",
+      "insurance": "Insurance",
+      "nonprofit": "Nonprofit",
+      "biotech": "Biotech",
+      "aviation": "Abyasyon",
+      "energy": "Enerhiya",
+      "skilled_trades": "Mga skilled trade",
+      "customer_success": "Customer success",
+      "pharmacy": "Parmasya",
+      "dental": "Dental",
+      "veterinary": "Beterinaryo",
+      "fitness": "Fitness",
+      "media": "Media",
+      "telecom": "Telekomunikasyon",
+      "agriculture": "Agrikultura",
+      "sports_management": "Sports management",
+      "entertainment": "Entertainment",
+      "academia": "Akademya",
+      "construction_management": "Construction management",
+      "architecture": "Arkitektura",
+      "social_work": "Social work",
+      "childcare": "Pag-aalaga ng bata",
+      "beauty": "Beauty",
+      "culinary": "Pagluluto",
+      "law_enforcement": "Pagpapatupad ng batas",
+      "environmental": "Kapaligiran",
+      "gaming": "Gaming",
+      "ecommerce": "E-commerce",
+      "translation": "Pagsasalin",
+      "event_planning": "Event planning",
+      "administrative": "Administratibo",
+      "library": "Aklatan",
+      "clergy": "Ministeryo ng simbahan",
+      "mining": "Pagmimina",
+      "maritime": "Maritime",
+      "landscaping": "Landscaping",
+      "janitorial": "Paglilinis",
+      "general": "Pangkalahatan / Iba pa"
+    },
+    "confidence": {
+      "high": "mataas",
+      "medium": "katamtaman",
+      "low": "mababa"
+    },
+    "diagnostic": {
+      "title": "Diagnostic report ng résumé",
+      "report": "Ulat",
+      "date": "Petsa",
+      "subject": "Paksa",
+      "candidate": "Kandidato",
+      "industry": "Industriya",
+      "benchmarks": "Mga benchmark",
+      "benchmarksMeasured": "sinukat mula sa totoong scan",
+      "benchmarksEstimated": "mga tantiya ng industriya",
+      "engine": "Engine",
+      "footer": "Kapag ini-scan ulit ang eksaktong dokumentong ito, ibabalik ang report ID na ito. Deterministic ang mga resulta kung saan may marka, at bawat binagong bullet ay sinusuri laban sa dokumento."
+    },
+    "band": {
+      "ats": {
+        "excellent": "Napakahusay: dapat itong mabasa nang malinis ng mga job portal.",
+        "good": "Mahusay: mababasa ito nang malinis ng karamihan ng job portal.",
+        "fair": "Katamtaman: maaaring mali ang basa ng ilang portal sa ilang bahagi nito.",
+        "weak": "Mahina: maaaring mali ang basa o malaktawan ng mga portal ang mahahalagang bahagi."
+      },
+      "recruiter": {
+        "excellent": "Napakahusay: malinaw at napatunayang impact ang nakikita ng recruiter.",
+        "good": "Mahusay: solidong impact ang nakikita ng recruiter; mas marami pang maipapakita ng ilang linya.",
+        "fair": "Katamtaman: makakatulong sa recruiter ang mas maraming numero at resulta.",
+        "weak": "Mahina: mas maraming tungkulin kaysa resulta ang nakikita ng recruiter."
+      }
+    },
+    "enhanced": {
+      "locatedIn": "Nakita sa: {{places}}"
+    },
+    "share": {
+      "yourResults": "Iyong mga resulta"
+    },
+    "metric": {
+      "formatA": "Kayang basahin ito nang maayos ng ATS",
+      "formatB": "Kailangan ng kaunting ayos sa formatting",
+      "formatC": "Maaaring magdulot ng error sa pagbasa",
+      "formatD": "Maaaring guluhin ng ATS ang iyong mga detalye",
+      "readEasy": "Madaling basahin nang mabilis",
+      "readSome": "May ilang seksyon na mahirap basahin nang mabilis",
+      "readHard": "Mahirap basahin nang mabilis",
+      "quantStrong": "Malakas ang mga numero sa kabuuan",
+      "quantOlder": "Kailangan ng mas maraming numero sa mga lumang trabaho",
+      "quantAdd": "Magdagdag ng mas maraming numero, porsiyento at halaga",
+      "verbsA": "Malalakas at iba-ibang action verb",
+      "verbsB": "Magandang iba't ibang pandiwa",
+      "verbsC": "Gumamit ng mas malalakas na pandiwa",
+      "verbsD": "Pinahihina ng mahihinang pandiwa ang iyong impact",
+      "lengthRight": "Tamang haba para sa iyong antas",
+      "lengthShort": "Magdagdag ng mas maraming nagawa",
+      "lengthLong": "Maaaring laktawan ng mga recruiter ang mahabang résumé",
+      "wordsIdeal": "Pinakamainam: {{min}}-{{max}} na salita",
+      "wordsFew": "Mukhang kulang: magdagdag ng nilalaman",
+      "wordsMany": "Masyadong siksik: paikliin",
+      "sectionsAll": "Kumpleto ang mahahalagang seksyon",
+      "sectionsAdd": "Idagdag: {{section}}",
+      "contactAll": "Madali kang makokontak ng mga recruiter",
+      "contactAdd": "Idagdag ang {{item}}",
+      "impactStrong": "Nagpapakita ng resulta, hindi lang gawain",
+      "impactEarlier": "Mga tungkulin ang nakalista sa mga naunang trabaho",
+      "impactFocus": "Ituon sa resulta sa halip na tungkulin",
+      "densityDense": "Mahahanap ng ATS ang iyong mga skill",
+      "densityModerate": "Magdagdag ng mas maraming termino ng industriya",
+      "densitySparse": "Kulang ang mahahalagang search term",
+      "levelDense": "Siksik",
+      "levelModerate": "Katamtaman",
+      "levelSparse": "Kaunti",
+      "learnAbout": "Alamin ang tungkol sa {{title}}"
+    },
+    "keywordImpact": {
+      "critical": "Kailangang-kailangan",
+      "high": "Malaking impact",
+      "medium": "Nakakatulong",
+      "countCritical": "Kailangang-kailangan: {{n}}",
+      "countHigh": "Mataas ang impact: {{n}}",
+      "showAll": "Ipakita ang lahat ng keyword para sa {{industry}} (+{{n}})"
+    },
+    "keywordCategory": {
+      "certification": "Sertipikasyon",
+      "tool": "Tool",
+      "skill": "Kasanayan",
+      "methodology": "Pamamaraan",
+      "metric": "Sukatan",
+      "regulation": "Regulasyon"
+    },
+    "xray": {
+      "legendIntro": "Ang iyong résumé ayon sa pagbasa namin, may anotasyon:",
+      "legendWeak": "pulang underline: mahinang bullet (i-hover para malaman kung bakit)",
+      "legendAmber": "amber: walang numero",
+      "legendGreen": "berde: malakas na action word",
+      "showLess": "Ipakita nang mas kaunti",
+      "showAll": "Ipakita lahat ng linya ({{n}})",
+      "flagged_one": "{{count}} linyang na-flag",
+      "flagged_other": "{{count}} linyang na-flag"
+    },
+    "email": {
+      "invalid": "Maglagay ng valid na email address.",
+      "failed": "Hindi maipadala ngayon. Gumagana offline ang PDF download sa itaas."
+    },
+    "pulse": {
+      "notAsked": "Hindi namin naipadala ngayon ang confirmation link para sa buwanang market pulse. I-tick ulit ang box sa susunod mong report."
+    },
+    "pdf": {
+      "title": "DIAGNOSTIC REPORT NG RÉSUMÉ",
+      "meta": "Ulat #{{id}}  ·  {{date}}  ·  Engine {{engine}}",
+      "subject": "Paksa: {{name}}  ·  Industriya: {{industry}}  ·  Mga benchmark: {{benchmarks}}",
+      "score": "Iskor sa ATS: {{score}}/100",
+      "band": "(saklaw ng modelo: {{low}}-{{high}})",
+      "projected": "mga {{score}} pagkatapos ng mga ayos (magaspang na gabay)",
+      "breakdown": "Hati ng iskor: mga keyword {{keywords}}  ·  format {{format}}  ·  mga numero {{quantification}}",
+      "findings": "Mga natuklasan: {{critical}} kritikal  ·  {{warnings}} babala  ·  {{passed}} pasado",
+      "fixPlan": "Ang iyong {{minutes}}-minutong plano ng pag-aayos:",
+      "stepCost": "(mga {{minutes}} min, +{{points}} pts)",
+      "sourceOnet": "Mga inaasahang keyword mula sa O*NET {{code}} (U.S. Department of Labor: {{occupation}}).",
+      "sourcePosting": "Mga keyword na itinugma sa job posting na ibinigay mo.",
+      "footer": "Sa Buong Analysis, bawat binagong bullet at ang linyang sinisipi nito ay sinusuri laban sa iyong résumé. Buong detalye: resumebooster.work"
+    },
+    "report": {
+      "scoreBand": "Ang score na {{score}} ay nasa modeling band na {{low}}–{{high}}. Sinasaklaw ng band ang aming rule-based na kalkulasyon at ang tantiya ng AI: ang iisang eksaktong numero ay mag-aangkin ng higit na katumpakan kaysa sa totoo.",
+      "preparing": "Inihahanda ang iyong report…"
+    },
+    "market": {
+      "title": "Market intelligence: {{country}}",
+      "hotSkills": "Mga in-demand na kasanayan (manwal na tinipon)",
+      "risingKeywords": "Mga sumisikat na keyword (manwal na tinipon)",
+      "cvNorms": "Mga pamantayan ng CV: {{country}}"
+    },
+    "ats": {
+      "target": "Target na ATS:",
+      "detected": "Natukoy naming gumagamit ang kumpanyang ito ng {{name}}. Iniangkop sa system na iyon ang payo sa formatting sa itaas."
+    },
+    "execScope": {
+      "title": "Pagsusuri ng executive scope",
+      "signals": "{{n}}/{{total}} senyales ng saklaw",
+      "intro": "Sa antas na ito, ebidensya ng saklaw ang unang hinahanap ng mga recruiter.",
+      "teamSize": "Laki ng team",
+      "budget": "Pananagutan sa budget o P&L",
+      "impact": "Nasukat na epekto sa negosyo",
+      "board": "Exposure sa board o governance",
+      "strategy": "Wika ng estratehikong saklaw",
+      "addNext": "Idagdag sunod:"
+    },
+    "sectionAudit": {
+      "title": "Audit ng haba ng seksyon",
+      "good": "Mabuti",
+      "tooLong": "Masyadong mahaba",
+      "missing": "Wala",
+      "tooShort": "Masyadong maikli",
+      "words": "{{n}} salita",
+      "target": "(layunin: {{min}}–{{max}})"
+    },
+    "parsePreview": {
+      "title": "Preview ng pagbasa ng ATS",
+      "subtitle": "Ang binabasa ng ATS",
+      "note": "Tinatanggal ang formatting (bold, column, icon). Kung hindi malinaw na lumalabas dito ang iyong pangalan, titulo o mahahalagang seksyon, maaaring hindi ito mapansin ng ATS."
+    },
+    "questions": {
+      "triggeredBy": "Dahil sa:",
+      "prepare": "Ihanda:"
+    },
+    "toast": {
+      "creditUsedTitle": "Nagamit ang scan credit",
+      "creditUsed": "Lampas ka na sa libreng limit ngayong araw, kaya 1 biniling credit ang ginamit sa scan na ito.",
+      "creditUsedRemaining": "Lampas ka na sa libreng limit ngayong araw, kaya 1 biniling credit ang ginamit sa scan na ito. Natitirang credit: {{remaining}}.",
+      "budgetTitle": "Masyadong maraming request ngayon",
+      "budgetBody": "Masyadong maraming scan ang nanggaling sa iyong koneksyon ngayong oras. Subukan ulit pagkalipas ng mga {{minutes}} min. Hindi ito ang iyong daily limit.",
+      "busyTitle": "Abala ang mga analyzer",
+      "busyBody": "Abala ang aming mga analyzer ngayon. Subukan ulit pagkalipas ng isang minuto."
+    },
+    "intent": {
+      "heading": "Gawing para sa iyo ang iyong scan",
+      "optional": "(opsyonal, 5 segundo)",
+      "situation": {
+        "actively_applying": "Aktibong nag-a-apply",
+        "exploring": "Tumitingin ng mga opsyon",
+        "career_change": "Nagpapalit ng career",
+        "first_job": "Unang trabaho",
+        "freelance": "Nagfi-freelance"
+      },
+      "targetRoleLabel": "Target na role",
+      "targetRolePlaceholder": "Target na role (hal. Senior Data Engineer): pinatatalas ang mga keyword at benchmark",
+      "countryLabel": "Bansang pinag-a-apply-an mo",
+      "countryAuto": "Nag-a-apply sa… (awtomatikong tukuyin ang pamantayan ng bansa)"
+    },
+    "parse": {
+      "poorTitle": "Maaaring hindi nabasa nang tama ang résumé na ito.",
+      "fairTitle": "Isang paalala tungkol sa kung paano nabasa ang iyong file.",
+      "found": "Nakita namin: {{issues}}.",
+      "poorAdvice": "Maaaring hindi maaasahan ang mga score sa ibaba. Subukang mag-upload ng DOCX, o i-paste nang direkta ang text.",
+      "fairAdvice": "Kung mukhang mali ang report, subukang i-paste nang direkta ang text.",
+      "issue": {
+        "fewWords": "{{n}} salita lang ang nakuha",
+        "lowLetters": "di-pangkaraniwang mababang bahagi ng letra kumpara sa simbolo",
+        "garbled": "magulong character",
+        "noSections": "walang standard na seksyon ng résumé"
+      }
+    }
+  }
+}

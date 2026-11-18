@@ -14,7 +14,10 @@ import {
   BUDGET_WINDOW_MINUTES,
   GLOBAL_BUDGET_SCOPE,
   GLOBAL_CEILING_PER_HOUR,
+  addressKey,
   metadataTooLarge,
+  PURCHASE_BUDGET_SCOPE,
+  PURCHASE_CEILING_PER_HOUR,
   RATE_LIMIT_KEY_MAX,
   VISITOR_BUDGET_FUNCTION,
   VISITOR_BUDGET_PER_HOUR,
@@ -168,4 +171,85 @@ Deno.test("the address bucket is a 32-hex keyed hash: one per address, another p
   assertEquals(await addressBucket(ADDRESS, "k1"), a);
   assert((await addressBucket("203.0.113.8", "k1")) !== a);
   assert((await addressBucket(ADDRESS, "k2")) !== a);
+});
+
+// ---------------------------------------------------------------------------
+// A purchase is one the payment side knows (S14X-154), with an hour of its own
+// (S14X-155), and an IPv6 subscriber is one address (S14X-155).
+// ---------------------------------------------------------------------------
+
+const purchase = (session: string | undefined, over: Record<string, unknown> = {}) => ({
+  ...event(),
+  variant: "purchase_completed",
+  eventType: "conversion",
+  metadata: session === undefined ? { productId: "fullAnalysis" } : { productId: "fullAnalysis", stripeSessionId: session },
+  ...over,
+});
+
+Deno.test("a purchase whose Stripe session the site never minted is unverified, and the writer never runs", async () => {
+  const { rpc, calls } = fakeRpc({ check_rate_limit: allowed, mail_door_take: allowed, ab_purchase_known: refused, client_write_allowed: allowed, track_ab_event_optimized: wrote("recorded") });
+  assertEquals((await recordEvent(rpc, purchase("cs_test_unknown"))).status, "unverified");
+  assertEquals(calls.map((c) => c.fn), ["check_rate_limit", "mail_door_take", "ab_purchase_known"]);
+  assertEquals(calls[2].args, { p_session_id: "cs_test_unknown" });
+});
+
+Deno.test("a purchase that names no Stripe session is unverified without a call", async () => {
+  for (const ev of [
+    purchase(undefined),
+    purchase("pro_123"),
+    // The funnel's sessionId is its own tab id, never a purchase.
+    purchase(undefined, { metadata: { sessionId: "cs_test_tab" } }),
+  ]) {
+    const { rpc, calls } = fakeRpc({ check_rate_limit: allowed, mail_door_take: allowed, ab_purchase_known: allowed, client_write_allowed: allowed, track_ab_event_optimized: wrote("recorded") });
+    assertEquals((await recordEvent(rpc, ev)).status, "unverified");
+    assertEquals(calls.map((c) => c.fn), ["check_rate_limit", "mail_door_take"]);
+  }
+});
+
+Deno.test("a known purchase is recorded, in its own hour; product and A/B conversions are read from sessionId", async () => {
+  const { rpc, calls } = fakeRpc({ check_rate_limit: allowed, mail_door_take: allowed, ab_purchase_known: allowed, client_write_allowed: allowed, track_ab_event_optimized: wrote("recorded") });
+  assertEquals((await recordEvent(rpc, purchase("cs_live_known"))).status, "recorded");
+  assertEquals(calls.map((c) => c.fn), ["check_rate_limit", "mail_door_take", "ab_purchase_known", "client_write_allowed", "track_ab_event_optimized"]);
+  assertEquals(calls[3].args.p_scope, PURCHASE_BUDGET_SCOPE);
+  assertEquals(calls[3].args.p_ceiling, PURCHASE_CEILING_PER_HOUR);
+  for (const ev of [
+    { ...event(), testName: "product_conversion", variant: "fullAnalysis", eventType: "conversion", metadata: { sessionId: "cs_test_p" } },
+    { ...event(), testName: "hero_layout", variant: "compact", eventType: "conversion", metadata: { productId: "fullAnalysis", sessionId: "cs_test_ab" } },
+  ]) {
+    const f = fakeRpc({ check_rate_limit: allowed, mail_door_take: allowed, ab_purchase_known: allowed, client_write_allowed: allowed, track_ab_event_optimized: wrote("recorded") });
+    assertEquals((await recordEvent(f.rpc, ev)).status, "recorded");
+    assertEquals(f.calls[2].args, { p_session_id: (ev.metadata as { sessionId: string }).sessionId });
+  }
+});
+
+Deno.test("a failed purchase check fails open to the writer, like every tier", async () => {
+  const { rpc, calls } = fakeRpc({ check_rate_limit: allowed, mail_door_take: allowed, ab_purchase_known: { data: null, error: { message: "Could not find the function" } }, client_write_allowed: allowed, track_ab_event_optimized: wrote("recorded") });
+  assertEquals((await recordEvent(rpc, purchase("cs_test_any"))).status, "recorded");
+  assertEquals(calls.at(-1)?.fn, "track_ab_event_optimized");
+});
+
+Deno.test("a full site hour refuses a view but not a known purchase, which never touches the site's bucket", async () => {
+  const siteFull: Rpc = (fn, args) => {
+    if (fn === "client_write_allowed") return Promise.resolve(args.p_scope === GLOBAL_BUDGET_SCOPE ? refused : allowed);
+    return Promise.resolve(({ check_rate_limit: allowed, mail_door_take: allowed, ab_purchase_known: allowed, track_ab_event_optimized: wrote("recorded") } as Record<string, RpcResult>)[fn]);
+  };
+  assertEquals((await recordEvent(siteFull, event())).status, "rate_limited_global");
+  assertEquals((await recordEvent(siteFull, purchase("cs_test_known"))).status, "recorded");
+  // A conversion anyone can send (a sign-in) stays in the site's hour.
+  assertEquals((await recordEvent(siteFull, { ...event(), testName: "auth_funnel", variant: "signin_success", eventType: "conversion" })).status, "rate_limited_global");
+});
+
+Deno.test("an IPv6 subscriber's /64 is one address; IPv4 addresses are counted as before", async () => {
+  assertEquals(await addressBucket("2001:db8:1:2::1", "k"), await addressBucket("2001:db8:1:2:ffff::9", "k"));
+  assertEquals(await addressBucket("2001:0db8:0001:0002:0000:0000:0000:0001", "k"), await addressBucket("2001:db8:1:2::1", "k"));
+  assert((await addressBucket("2001:db8:1:3::1", "k")) !== (await addressBucket("2001:db8:1:2::1", "k")));
+  assertEquals(addressKey("2001:db8:1:2::1"), "2001:db8:1:2::/64");
+  assertEquals(addressKey("::ffff:203.0.113.7"), "203.0.113.7");
+  assertEquals(addressKey("203.0.113.7"), "203.0.113.7");
+  assertEquals(addressKey("unknown"), "unknown");
+  assertEquals(addressKey("fe80::1%eth0"), "fe80:0:0:0::/64");
+  // An IPv4 bucket is the hash it always was.
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`k:${ADDRESS_DOOR}:${ADDRESS}`));
+  const before = Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+  assertEquals(await addressBucket(ADDRESS, "k"), before);
 });

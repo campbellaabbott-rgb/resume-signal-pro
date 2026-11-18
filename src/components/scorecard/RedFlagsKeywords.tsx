@@ -6,6 +6,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { scanIndustryLabel } from "@/config/scan-industries";
 
 // --- Types ---
 
@@ -62,17 +63,18 @@ const severityConfig = {
   },
 };
 
+// Labels are translation keys, said in the reader's language (S14X-057).
 const impactConfig = {
   critical: {
-    label: "Must have",
+    label: "freeScanPage.keywordImpact.critical",
     badge: "bg-destructive/15 text-destructive border-destructive/20",
   },
   high: {
-    label: "High impact",
+    label: "freeScanPage.keywordImpact.high",
     badge: "bg-warning/15 text-warning border-warning/20",
   },
   medium: {
-    label: "Helpful",
+    label: "freeScanPage.keywordImpact.medium",
     badge: "bg-muted text-muted-foreground border-border",
   },
 };
@@ -197,6 +199,8 @@ export function KeywordsSection({
   });
 
   const visibleCount = expanded ? sorted.length : Math.min(sorted.length, 3);
+  // The industry by its label in the reader's language, never its id (S14X-057).
+  const industryName = scanIndustryLabel(industry, t);
   const hiddenCount = sorted.length - 3;
 
   // Group counts
@@ -213,8 +217,8 @@ export function KeywordsSection({
           </div>
           <h4 className="font-bold text-base">{t('freeScan.missingKeywords')}</h4>
         </div>
-        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary capitalize">
-          {industry.replace(/_/g, " ")}
+        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+          {industryName}
         </span>
       </div>
 
@@ -223,12 +227,12 @@ export function KeywordsSection({
         <div className="flex items-center gap-2 mb-3 mt-2">
           {criticalKw > 0 && (
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-destructive/15 text-destructive">
-              {criticalKw} must-have
+              {t('freeScanPage.keywordImpact.countCritical', { n: criticalKw })}
             </span>
           )}
           {highKw > 0 && (
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-warning/15 text-warning">
-              {highKw} high impact
+              {t('freeScanPage.keywordImpact.countHigh', { n: highKw })}
             </span>
           )}
         </div>
@@ -259,11 +263,11 @@ export function KeywordsSection({
                   <span className="font-semibold text-foreground text-sm">{item.keyword}</span>
                   {cat && (
                     <span className={cn("text-[9px] font-medium px-1.5 py-0.5 rounded-full", cat.className)}>
-                      {cat.label}
+                      {t(`freeScanPage.keywordCategory.${item.category}`)}
                     </span>
                   )}
                   <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full border", impact.badge)}>
-                    {impact.label}
+                    {t(impact.label)}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">{item.reason}</p>
@@ -280,7 +284,7 @@ export function KeywordsSection({
           className="flex items-center gap-2 w-full p-2.5 mt-2 rounded-xl border border-dashed border-muted-foreground/25 text-sm text-muted-foreground hover:text-foreground hover:border-muted-foreground/40 transition-colors"
         >
           <Lock className="w-3.5 h-3.5" />
-          <span>+{hiddenCount} more {industry.replace(/_/g, " ")} keywords</span>
+          <span>{t('freeScanPage.keywordImpact.showAll', { n: hiddenCount, industry: industryName })}</span>
           <ChevronDown className="w-3.5 h-3.5 ml-auto" />
         </button>
       )}
@@ -290,7 +294,7 @@ export function KeywordsSection({
           className="flex items-center justify-center gap-1.5 w-full p-2 mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           <ChevronUp className="w-3.5 h-3.5" />
-          Show less
+          {t('freeScanPage.xray.showLess')}
         </button>
       )}
     </div>

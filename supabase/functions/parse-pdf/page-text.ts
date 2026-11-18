@@ -22,10 +22,16 @@
  * word; only a real gap is a space. The page text is NFKC-normalized, so a
  * ligature character (U+FB01) reads as the two letters it stands for.
  *
+ * The bug round of 2026-11-08 adds: a right-to-left line read in the order
+ * it is written (S14X-044), a lone control-character item read as the space
+ * it stands for (S14X-123), CJK radical forms read as the ideographs they are
+ * (S14X-146), the link line (S14X-147) and the per-page scanned verdict
+ * (S14X-282).
+ *
  * Plain TypeScript with no imports, so the Node test suite runs it against
  * real pdf.js output.
  */
-export type PdfTextItem = { str?: string; transform?: number[]; hasEOL?: boolean; height?: number; width?: number };
+export type PdfTextItem = { str?: string; transform?: number[]; hasEOL?: boolean; height?: number; width?: number; dir?: string };
 
 const yOf = (it: PdfTextItem): number | null =>
   Array.isArray(it.transform) && typeof it.transform[5] === "number" ? it.transform[5] : null;
@@ -54,17 +60,119 @@ export function untrack(str: string): string {
   return str.split(/( {2,})/).map((part) => (TRACKED_RUN.test(part) ? part.replace(/ /g, "") : part)).join("");
 }
 
-export function pageTextFromItems(items: PdfTextItem[]): string {
+/**
+ * S14X-123: AN ITEM THAT IS ONE CONTROL CHARACTER IS A SPACE. Chrome on macOS
+ * prints the space of a Korean or Japanese line as its own glyph that pdf.js
+ * can only name U+0001, so every word gap was a control byte and the upload
+ * was refused as a broken font. A lone C0 control (tab, line feed and
+ * carriage return aside) in an item of its own is read as the space it
+ * stands in for.
+ */
+// eslint-disable-next-line no-control-regex -- the lone control an item can be
+const LONE_CONTROL = /^[\x01-\x08\x0B\x0C\x0E-\x1F]$/;
+
+/**
+ * S14X-044: RIGHT-TO-LEFT LINES. pdf.js gives each Hebrew or Arabic run's
+ * text in reading order but the line's items in the order Chrome drew them,
+ * left to right, so a Hebrew sentence with a number came out in pieces
+ * reversed: ".25%אנשים … ב- 10 הובלתי צוות של". On a page whose letters are
+ * mostly right-to-left (or a line where they are), a line holding a
+ * right-to-left run or no letters at all is read right to left: its items in
+ * descending x, each stretch holding Latin letters (an email, "SQL, Figma")
+ * kept as one left-to-right unit, a number on its own, and a sentence mark a
+ * number carried at its left (".25%") moved after it. Pages with no
+ * right-to-left letters are joined exactly as before.
+ */
+const RTL_LETTER = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFC]/;
+const RTL_LETTERS = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFC]/g;
+const countRtl = (s: string) => (s.match(RTL_LETTERS) ?? []).length;
+const countLetters = (s: string) => (s.match(/\p{L}/gu) ?? []).length;
+
+type Piece = { it: PdfTextItem; str: string; sep: string };
+type Unit = { str: string; left: number; right: number; h: number; space: boolean };
+
+const touching = (gap: number, h: number) => h > 0 && gap <= h * TOUCH_SHARE && gap >= -h * 0.5;
+/** A sentence mark Chrome drew at a number's left belongs after it: ".25%" is "25%.". */
+const markAfter = (s: string) => s.replace(/^([.,:;!?]+)(.+)$/su, "$2$1");
+
+function rtlLine(pieces: Piece[]): string | null {
+  const placed: Array<Unit & { kind: "R" | "L" | "W" | "S" }> = [];
+  for (const p of pieces) {
+    if (p.str === "") continue;
+    const x = xOf(p.it);
+    if (x === null) return null;
+    const r = countRtl(p.str);
+    const l = countLetters(p.str) - r;
+    const kind = p.str.trim() === "" ? "S" : r > 0 && r >= l ? "R" : l > 0 ? "L" : "W";
+    const h = typeof p.it.height === "number" && p.it.height > 0 ? p.it.height : 0;
+    placed.push({ str: p.str, left: x, right: endOf(p.it) ?? x, h, space: kind === "S", kind });
+  }
+  placed.sort((a, b) => b.left - a.left);
+  const units: Unit[] = [];
+  let run: typeof placed = [];
+  const flush = () => {
+    if (run.some((u) => u.kind === "L")) {
+      // One left-to-right unit, its edge spaces kept as spaces.
+      let a = 0;
+      let b = run.length;
+      while (a < b && run[a].kind === "S") units.push(run[a++]);
+      const tail: Unit[] = [];
+      while (b > a && run[b - 1].kind === "S") tail.unshift(run[--b]);
+      const core = run.slice(a, b).reverse();
+      let str = "";
+      core.forEach((u, i) => {
+        const prev = core[i - 1];
+        if (prev && !u.space && !prev.space && !touching(u.left - prev.right, Math.max(u.h, prev.h))) str += " ";
+        str += u.str;
+      });
+      units.push({ str: markAfter(str), left: core[0].left, right: Math.max(...core.map((u) => u.right)), h: Math.max(...core.map((u) => u.h)), space: false }, ...tail);
+    } else {
+      for (const u of run) units.push(u.kind === "W" ? { ...u, str: markAfter(u.str) } : u);
+    }
+    run = [];
+  };
+  for (const u of placed) {
+    if (u.kind === "R") { flush(); units.push(u); } else run.push(u);
+  }
+  flush();
   let out = "";
+  units.forEach((u, i) => {
+    const prev = units[i - 1];
+    if (prev && !u.space && !prev.space && !touching(prev.left - u.right, Math.max(u.h, prev.h))) out += " ";
+    out += u.str;
+  });
+  return out;
+}
+
+/**
+ * S14X-146: CJK RADICAL FORMS ARE THE IDEOGRAPHS THEY STAND FOR. A Chinese
+ * PDF from macOS names some glyphs by their CJK Radicals Supplement form
+ * (U+2E80-U+2EF3), which NFKC leaves alone, so 增长 read as 增⻓ and a
+ * keyword search for it failed. Each radical with a single unified
+ * equivalent (Unicode's EquivalentUnifiedIdeograph.txt) is read as that
+ * ideograph. The Kangxi radicals are folded by NFKC already.
+ */
+const RADICAL_PAIRS = "⺁厂⺂乛⺃乚⺄乙⺅亻⺆冂⺇𠘨⺈刀⺉刂⺊卜⺋㔾⺌小⺍小⺎兀⺏尣⺐尢⺑𡯂⺒巳⺓幺⺔彑⺕𫜹⺖忄⺗心⺘扌⺙攵⺛旡⺜日⺝月⺞歺⺟母⺠民⺡氵⺢氺⺣灬⺤爫⺥爫⺦丬⺧牛⺨犭⺩王⺪𤴔⺫目⺬示⺭礻⺮𥫗⺯糹⺰纟⺱罓⺲罒⺳㓁⺴冗⺵𦉫⺶羊⺷𦍌⺸𦍋⺹耂⺺肀⺻聿⺼肉⺽𦥑⺾艹⺿艹⻀艹⻁虎⻂衤⻃覀⻄西⻅见⻆角⻇𧢲⻈讠⻉贝⻊𧾷⻋车⻌辶⻍辶⻎辶⻏邑⻐钅⻑長⻒镸⻓长⻔门⻕𨸏⻖阝⻗雨⻘青⻙韦⻚页⻛风⻜飞⻝食⻞𩙿⻟飠⻠饣⻡𩠐⻢马⻣骨⻤鬼⻥鱼⻦鸟⻧卤⻨麦⻩黄⻪黾⻫斉⻬齐⻭歯⻮齿⻯竜⻰龙⻱龜⻲亀⻳龟";
+const RADICALS = new Map<string, string>();
+{
+  const cps = [...RADICAL_PAIRS];
+  for (let i = 0; i + 1 < cps.length; i += 2) RADICALS.set(cps[i], cps[i + 1]);
+}
+const RADICAL = /[\u2E80-\u2EFF]/g;
+export const unifiedRadicals = (text: string) => text.replace(RADICAL, (c) => RADICALS.get(c) ?? c);
+
+export function pageTextFromItems(items: PdfTextItem[]): string {
+  const pieces: Piece[] = [];
   let prevY: number | null = null;
   let prevHeight = 0;
   let prevEnd: number | null = null;
   let pendingSeparator = "";
   for (const it of items) {
-    const str = untrack(it.str ?? "");
+    const raw = it.str ?? "";
+    const str = LONE_CONTROL.test(raw) ? " " : untrack(raw);
     const y = yOf(it);
-    if (pendingSeparator) {
-      let separator = pendingSeparator;
+    let separator = pendingSeparator;
+    if (separator) {
       if (separator === " " && str !== "" && str.trim() === "") {
         // A space item is itself the space.
         separator = "";
@@ -82,9 +190,8 @@ export function pageTextFromItems(items: PdfTextItem[]): string {
           }
         }
       }
-      out += separator;
     }
-    out += str;
+    pieces.push({ it, str, sep: separator });
     pendingSeparator = it.hasEOL ? "\n" : " ";
     const end = endOf(it);
     if (end !== null && str !== "") prevEnd = end;
@@ -93,12 +200,101 @@ export function pageTextFromItems(items: PdfTextItem[]): string {
       prevHeight = typeof it.height === "number" && it.height > 0 ? it.height : prevHeight;
     }
   }
-  return out
-    .normalize("NFKC")
+  const all = pieces.map((p) => p.str).join("");
+  const rtl = countRtl(all);
+  let out = "";
+  if (rtl === 0) {
+    for (const p of pieces) out += p.sep + p.str;
+  } else {
+    const rtlPage = rtl * 2 >= countLetters(all);
+    const lines: Piece[][] = [];
+    for (const p of pieces) {
+      if (lines.length === 0 || p.sep === "\n") lines.push([p]);
+      else lines[lines.length - 1].push(p);
+    }
+    for (const line of lines) {
+      const text = line.map((p) => p.str).join("");
+      const r = countRtl(text);
+      const l = countLetters(text) - r;
+      const ordered = r > l || (rtlPage && (r > 0 || l === 0)) ? rtlLine(line) : null;
+      out += ordered === null ? line.map((p) => p.sep + p.str).join("") : line[0].sep + ordered;
+    }
+  }
+  return unifiedRadicals(out.normalize("NFKC"))
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n[ \t]+/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+/** Arabic letters' share of all letters: pdf.js breaks Arabic ligatures, so past 30% the visitor is told (S14X-044). */
+export function arabicShare(text: string): number {
+  const letters = countLetters(text);
+  return letters === 0 ? 0 : (text.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFC]/g) ?? []).length / letters;
+}
+
+/**
+ * S14X-123, inside items: when every control character in the text is the
+ * same one and the text is mostly Hangul, Kana or Han, a control between two
+ * letters is a word gap. Any other mix is left for looksGarbled, so a broken
+ * font is still refused.
+ */
+// eslint-disable-next-line no-control-regex -- the bytes this function exists to judge
+const CONTROLS = /[\x01-\x08\x0B\x0C\x0E-\x1F]/g;
+const CJK = /[\u1100-\u11FF\u3040-\u30FF\u3130-\u318F\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF]/g;
+
+export function cjkControlsAsSpaces(text: string): { text: string; spaced: number } {
+  const controls = text.match(CONTROLS) ?? [];
+  const only = controls[0];
+  if (only === undefined || controls.some((c) => c !== only)) return { text, spaced: 0 };
+  const letters = countLetters(text);
+  if (letters === 0 || (text.match(CJK) ?? []).length / letters < 0.5) return { text, spaced: 0 };
+  const hex = only.charCodeAt(0).toString(16).padStart(2, "0");
+  let spaced = 0;
+  const out = text.replace(new RegExp(`(?<=\\p{L})\\x${hex}(?=\\p{L})`, "gu"), () => { spaced++; return " "; });
+  return { text: out, spaced };
+}
+
+/**
+ * S14X-282: A RÉSUMÉ FOLLOWED BY IMAGE PAGES. The scanned-PDF test wanted 200
+ * characters for every page, so a one-page résumé followed by scanned
+ * certificates was refused as "a scanned image". It is refused only when no
+ * page carries a résumé's worth of text; pages with next to nothing on them
+ * are counted so the visitor can be told they were skipped.
+ */
+export const MIN_PAGE_CHARS = 200;
+export const IMAGE_PAGE_CHARS = 20;
+export function scannedVerdict(pageLengths: number[]): { refuse: boolean; imagePages: number } {
+  if (Math.max(0, ...pageLengths) < MIN_PAGE_CHARS) return { refuse: true, imagePages: 0 };
+  return { refuse: false, imagePages: pageLengths.filter((n) => n < IMAGE_PAGE_CHARS).length };
+}
+
+/**
+ * S14X-147: one trailing line, "Links: a | b", of the link targets (pdf.js
+ * Link annotations) the text does not already show: mailto, http and https
+ * only, mailto: dropped, each address once, at most ten and 1,000
+ * characters. The same rule as parse-docx's docx-text.ts.
+ */
+export function linksLine(urls: string[], text: string): string {
+  const shown = text.toLowerCase();
+  const seen = new Set<string>();
+  const out: string[] = [];
+  let length = 7;
+  for (const u of urls.map((x) => x.trim())) {
+    let item = "";
+    if (/^mailto:/i.test(u)) {
+      try { item = decodeURIComponent(u.slice(7).split("?")[0]).trim(); } catch { item = ""; }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(item)) continue;
+    } else if (/^https?:\/\/[^\s]+$/i.test(u)) item = u;
+    else continue;
+    const key = item.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "");
+    if (!key || item.length > 200 || seen.has(key) || shown.includes(key)) continue;
+    if (out.length >= 10 || length + item.length + 3 > 1000) break;
+    seen.add(key);
+    out.push(item);
+    length += item.length + 3;
+  }
+  return out.length ? `Links: ${out.join(" | ")}` : "";
 }
 
 /**

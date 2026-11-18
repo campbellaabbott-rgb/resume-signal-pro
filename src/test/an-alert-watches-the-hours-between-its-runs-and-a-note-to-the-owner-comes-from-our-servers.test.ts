@@ -122,7 +122,9 @@ describe("notify-owner answers our own servers only", () => {
     db.rpcs.mail_door_take = (a) => { counted.push(a); return { data: true, error: null }; };
     expect((await post({ "x-email-cron": CRON_KEY }, { type: "INSERT", record: { email: "new@example.com", created_at: "2026-10-08T00:00:00Z" } })).status).toBe(200);
     expect((await post({ authorization: `Bearer ${SERVICE}` }, { type: "scan", score: 70, industry: "technology" })).status).toBe(200);
-    expect(mail.map((m) => m.subject)).toEqual(["🎉 New account: new@example.com", "📄 New scan: 70/100 (technology)"]);
+    // The new-account note names no address since S14X-101 (the owner's answer
+    // 'remove', 2026-11-15: owner alerts carry counts or a reference only).
+    expect(mail.map((m) => m.subject)).toEqual(["🎉 New account", "📄 New scan: 70/100 (technology)"]);
     expect(counted.map((c) => [c.p_door, c.p_max, c.p_window_minutes])).toEqual([["notify-owner", 100, 60], ["notify-owner", 100, 60]]);
   });
 

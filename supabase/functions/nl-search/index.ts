@@ -39,7 +39,8 @@ import { ParseMemo, normaliseQuery } from "./memo.ts";
 // platform's 150 s. A sentence asked twice is parsed once per isolate
 // (memo.ts). Browsers keep the preflight for two hours. The usage line of
 // every reply is logged (numbers only).
-const FN_BUILD = "nl-search.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, board-ui lane, S14X-293, NB-23, NB-24): an unreadable reply goes down the chain, an empty answer is not remembered, and no upstream text reaches the reader.
+const FN_BUILD = "nl-search.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -68,16 +69,22 @@ const NL_PARSE_BUDGET_MS = 8_000;
 
 const memo = new ParseMemo<string>();
 
-/** The tool call's arguments, {} when they do not parse (as before), or null when the reply made no tool call. */
+/**
+ * The tool call's arguments, or null when the reply made no tool call or its
+ * arguments do not parse as an object. Null sends the chain to the next
+ * model, and past the last one the page gets 502 "No parse" (NB-23): an
+ * unreadable reply used to read as {}, which validated to no filters at all,
+ * so the board cleared every filter the reader had set.
+ */
 function readToolArguments(data: unknown): Record<string, unknown> | null {
   const toolCall = (data as { choices?: Array<{ message?: { tool_calls?: Array<{ function?: { arguments?: unknown } }> } }> } | null)
     ?.choices?.[0]?.message?.tool_calls?.[0];
   if (!toolCall) return null;
   try {
     const args = JSON.parse(String(toolCall.function?.arguments ?? ""));
-    return args && typeof args === "object" && !Array.isArray(args) ? args as Record<string, unknown> : {};
+    return args && typeof args === "object" && !Array.isArray(args) ? args as Record<string, unknown> : null;
   } catch {
-    return {};
+    return null;
   }
 }
 
@@ -149,9 +156,9 @@ serve(async (req) => {
       const errText = await reply.response.text().catch(() => "");
       console.error("[NL-SEARCH] gateway error:", reply.response.status, errText.slice(0, 300));
       const status = reply.response.status === 429 ? 429 : 502;
-      // Surface the gateway status so failures are diagnosable from the client
-      // (the detail is a status code + short reason, never sensitive).
-      return json({ error: "Parse unavailable", gatewayStatus: reply.response.status, detail: errText.slice(0, 200) }, status);
+      // The gateway's own text stays in the log above (NB-24): an anonymous
+      // caller gets the status and a fixed reason, never the upstream body.
+      return json({ error: "Parse unavailable", gatewayStatus: reply.response.status, reason: status === 429 ? "busy" : "unavailable" }, status);
     }
     const parsed = reply.value;
 
@@ -166,9 +173,13 @@ serve(async (req) => {
     const { filters, applied, dropped, interpreted, notMapped } = validateParse(parsed);
 
     const answer = JSON.stringify({ filters, applied, dropped, interpreted, notMapped });
-    memo.set(memoKey, answer);
+    // An answer that binds nothing is not remembered (NB-23): the next ask
+    // of the same sentence goes to the model again instead of being told
+    // "no filters" for six hours.
+    if (Object.keys(filters).length > 0) memo.set(memoKey, answer);
     return new Response(answer, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
-    return json({ error: "Parse failed", detail: String(e).slice(0, 200) }, 500);
+    console.error("[NL-SEARCH] parse failed:", String(e).slice(0, 300));
+    return json({ error: "Parse failed", reason: "unavailable" }, 500);
   }
 });

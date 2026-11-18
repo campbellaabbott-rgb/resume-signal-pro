@@ -1,0 +1,8 @@
+{
+  "layoffFilings": {
+    "readVia": "mula sa {{sourceName}} sa pamamagitan ng Big Local News, binasa {{readAgo}}",
+    "tipVia": "Inihain ng {{filer}} ang paghahaing ito noong {{eventDate}}. Isa itong naitalang pangyayari tungkol sa employer sa petsang iyon, hindi tungkol sa posisyong ito. Sadyang katabi ito ng hiring badge: ang badge na iyon ay ang naobserbahan lang namin sa board na ito — mga posisyong inalis at hindi na ibinalik, o mas maraming posisyong ipinaskil — at hindi ito binabago ng paghahaing ginawa sa ibang lugar. Wala sa dalawa ang nagsasabing may natanggap sa trabaho. Mula sa {{sourceName}} sa pamamagitan ng Big Local News, binasa {{readAgo}}.",
+    "lineWarnFirstRead": "{{filer}} ay naghain ng abiso ng tanggalan sa {{state}} na may petsang {{noticeDate}}: {{workers}} posisyon sa {{site}}{{effectiveClause}}{{kindClause}} · unang binasa namin noong {{visibleDate}} · {{sourceName}} ↗",
+    "lcaChip": "Mga isinumiteng sahod sa LCA (H-1B, H-1B1, E-3) · {{quarter}}"
+  }
+}

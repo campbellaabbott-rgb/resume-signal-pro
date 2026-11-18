@@ -2,6 +2,24 @@
 // application tracker, credits, and purchases. Scans/profile/applications come
 // straight from RLS-protected tables; credits and purchases key by email in
 // service-role tables and are fetched through the get-account-data function.
+//
+// The 2026-11-08 bug round (account lane):
+//   S14X-258  a failed read of the scans or the tracker says so, with Try
+//             again, and keeps what the page held; it no longer reads as an
+//             empty tracker, nor offers every local scan for re-import.
+//   S14X-200  "Apply now" is never offered on a saved row whose posting the
+//             closure log says came down or is coming down.
+//   S14X-201  the closed-postings count is postings that came down and stayed
+//             down: a re-listed, live posting is not counted closed.
+//   S14X-203  a tracked posting the lifecycle read did not answer reads "Not
+//             checked yet", never "Posting still open".
+//   S14X-204  the fit check's hourly limit is said as the hourly limit.
+//   RC-S12-185 the reply-window line quotes only a share the employer page
+//             itself states: fills, never every takedown, and the censored
+//             line only where the employer page says it.
+//   S14X-100  the download carries what only the server can read.
+//   S14X-230  a refused delete links the billing page it names.
+//   S14X-255  dates and counts print in the reader's language.
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
@@ -50,16 +68,19 @@ import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
 import { CreditsAndPurchases, type AccountPass } from "@/components/account/CreditsAndPurchases";
 import type { AccountOrder } from "@/components/account/OrdersList";
 import { SecurityCard, type MailboxProofSummary } from "@/components/account/SecurityCard";
+import { SignOutChoice } from "@/components/auth/SignOutChoice";
 import { DataPrivacyCard } from "@/components/account/DataPrivacyCard";
 import { AccountSettingsCards } from "@/components/account/ConnectedAIsCard";
 import { lastScanResumeToOffer, localScansToOffer } from "@/lib/account-history-import";
 import { LocalHistoryOffer } from "@/components/account/LocalHistoryOffer";
 import type { ScanHistoryEntry } from "@/hooks/use-scan-history";
 import { WithdrawalPanel } from "@/components/account/WithdrawalPanel";
-import { collectAccountExport, type ExportClient } from "@/lib/account-export";
-import { deleteRefusalKeys, type DeleteRefusal } from "@/lib/account-delete";
+import { collectAccountExport, collectServerExport, type ExportClient } from "@/lib/account-export";
+import { deleteRefusalView, type DeleteRefusal, type DeleteRefusalView } from "@/lib/account-delete";
 import { trackedEmployerChip } from "@/lib/tracked-employer-chip";
 import { hiringRecordGate, type HiringRecordRow } from "@/lib/hiring-record-gate";
+import { trackedPostingState } from "@/lib/interviewAttribution";
+import { count as fmtCount, date as fmtDate } from "@/lib/format";
 
 interface FixItem { step: string; done: boolean }
 
@@ -168,7 +189,7 @@ const FILL_HORIZON_DAYS = 14;
 
 // Display name for a saved scan acting as a resume version.
 const versionName = (s: UserScan) =>
-  s.label ?? `${(s.industry ?? "resume").replace(/_/g, " ")} · ${new Date(s.created_at).toLocaleDateString()}`;
+  s.label ?? `${(s.industry ?? "resume").replace(/_/g, " ")} · ${fmtDate(s.created_at)}`;
 
 interface AccountData {
   credits: number;
@@ -223,8 +244,20 @@ const STATUS_STYLES: Record<string, string> = {
   no_response: "bg-muted text-muted-foreground",
 };
 
+/** A posting the closure log says is gone or going: nothing offers to apply to it (S14X-200). */
+const POSTING_GONE = new Set(["came_down", "going_down"]);
+
+/** The fit check refused for its hourly limit (429, or a body saying so), not for an outage (S14X-204). */
+async function fitCheckRateLimited(data: unknown, error: unknown): Promise<boolean> {
+  if ((data as { rateLimited?: unknown } | null)?.rateLimited === true) return true;
+  const ctx = (error as { context?: { status?: number; clone?: () => { json: () => Promise<unknown> } } } | null)?.context;
+  if (ctx?.status === 429) return true;
+  try { return ((await ctx?.clone?.().json()) as { rateLimited?: unknown } | undefined)?.rateLimited === true; } catch { return false; }
+}
+
 export default function Account() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lng = i18n.language;
   const { session, user, loading, signOut } = useAuth();
   const { pro } = useProSubscription();
   const navigate = useNavigate();
@@ -235,6 +268,8 @@ export default function Account() {
   // S12-155: a failed get-account-data read is said, never shown as "0 credits".
   const [accountFailed, setAccountFailed] = useState(false);
   const [applications, setApplications] = useState<Application[]>([]);
+  // S14X-258: the scans or the tracker could not be read on the last load.
+  const [trackerFailed, setTrackerFailed] = useState(false);
   // Employer lifecycle facts (fills vs re-listing churn) for tracked rows —
   // most actionable exactly where you're waiting to hear back. Token comes
   // from the board posting id embedded in job_id (source:token:externalId).
@@ -390,7 +425,7 @@ export default function Account() {
       .sort((a, b) => daysQuiet(b) - daysQuiet(a));
     for (const a of quiet) items.push({ kind: "followup", app: a, n: daysQuiet(a) });
     const agingSaved = applications
-      .filter((a) => a.status === "saved" && daysQuiet(a) >= SAVED_STALE_DAYS)
+      .filter((a) => a.status === "saved" && daysQuiet(a) >= SAVED_STALE_DAYS && !POSTING_GONE.has(trackedPostingState(a)))
       .sort((a, b) => daysQuiet(b) - daysQuiet(a));
     for (const a of agingSaved) items.push({ kind: "saved", app: a, n: daysQuiet(a) });
     return items.slice(0, 3);
@@ -428,7 +463,9 @@ export default function Account() {
         body: { jobPosting: fitPosting, resumeText: version.resume_text },
       });
       if (error || !data?.success) {
-        toast.error(t("accountPage.fitCheckFailed", "Fit check failed. Try again shortly."));
+        toast.error(await fitCheckRateLimited(data, error)
+          ? t("accountView.fitCheckHourly", "Hourly limit reached: you can check fit again within the hour.")
+          : t("accountPage.fitCheckFailed", "Fit check failed. Try again shortly."));
         return;
       }
       const { pct, missing } = data.data as { pct: number | null; missing: string[] };
@@ -490,24 +527,30 @@ export default function Account() {
       (supabase as unknown as { from: (t: string) => any }).from("user_profiles")
         .select("target_score, matching_scan_id, matching_resume_text").eq("user_id", session.user.id).maybeSingle(),
     ]);
+    // S14X-258: a read that failed is said, and what the page held stays. An
+    // empty list here would offer every local scan for re-import and show the
+    // empty tracker, so nothing below runs on a failed read.
+    const failed = !!scansRes.error || !!appsRes.error;
+    setTrackerFailed(failed);
     const cloudScans = scansRes.data?.map(mapScanRow) ?? [];
-
-    // Local scan history from before the account existed, and the résumé this
-    // tab scanned last (S12-025): offered on the page, added or saved only
-    // when the person says so (lib/account-history-import).
-    const offeredScans = localScansToOffer(session.user.id, cloudScans);
-    const offeredResume = lastScanResumeToOffer(session.user.id);
-    setLocalOffer(offeredScans.length || offeredResume ? { scans: offeredScans, resume: offeredResume } : null);
-
-    setScans(cloudScans);
     const apps = (appsRes.data as unknown as Application[] | null) ?? [];
-    setApplications(apps);
+    if (!failed) {
+      // Local scan history from before the account existed, and the résumé this
+      // tab scanned last (S12-025): offered on the page, added or saved only
+      // when the person says so (lib/account-history-import).
+      const offeredScans = localScansToOffer(session.user.id, cloudScans);
+      const offeredResume = lastScanResumeToOffer(session.user.id);
+      setLocalOffer(offeredScans.length || offeredResume ? { scans: offeredScans, resume: offeredResume } : null);
+
+      setScans(cloudScans);
+      setApplications(apps);
+    }
     const prof = profileRes.data as { target_score?: number; matching_scan_id?: string | null; matching_resume_text?: string | null } | null;
     setTargetScore(prof?.target_score ?? null);
     setMatching({ scanId: prof?.matching_scan_id ?? null, text: prof?.matching_resume_text ?? null });
     applyAccount(accountRes);
     setFetching(false);
-    void checkPostingFreshness(apps);
+    if (!failed) void checkPostingFreshness(apps);
   }, [session]);
 
   // Feature 7: tell the user which tracked postings are still open. A job_id
@@ -674,7 +717,13 @@ export default function Account() {
     // its own id, all rows, and the stored CV files (L3-14; lib/account-export).
     const uid = user?.id ?? "";
     if (!uid) return;
-    const records = await collectAccountExport(supabase as unknown as ExportClient, uid);
+    const [records, serverRecords] = await Promise.all([
+      collectAccountExport(supabase as unknown as ExportClient, uid),
+      // What only the server can read (S14X-100): the documents made for the
+      // purchases, Pro grants, keys by prefix, mailbox proofs and the lists
+      // the address is on. Named as not included, with why, when it fails.
+      collectServerExport((fn, o) => supabase.functions.invoke(fn, o)),
+    ]);
     const payload = {
       exportedAt: new Date().toISOString(),
       account: { email: user?.email, memberSince: user?.created_at },
@@ -682,6 +731,7 @@ export default function Account() {
       ...records,
       credits: account?.credits ?? 0,
       purchases: account?.purchases ?? [],
+      serverRecords,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -699,8 +749,8 @@ export default function Account() {
     await supabase.from("user_scans").update({ label }).eq("id", scanId);
   };
 
-  /** The delete; answers the refusal's message keys, or null when the account is gone (lib/account-delete). */
-  const deleteAccount = async (): Promise<string[] | null> => {
+  /** The delete; answers the refusal as the card shows it, or null when the account is gone (lib/account-delete). */
+  const deleteAccount = async (): Promise<DeleteRefusalView | null> => {
     const { data, error } = await supabase.functions.invoke("delete-account").catch(() => ({ data: null, error: true }));
     if (!error && (data as { success?: boolean })?.success) {
       await signOut();
@@ -712,7 +762,7 @@ export default function Account() {
       const ctx = (error as { context?: { clone?: () => { json: () => Promise<unknown> } } } | null)?.context;
       refusal = ((await ctx?.clone?.().json()) as DeleteRefusal) ?? null;
     } catch { /* body unreadable */ }
-    return deleteRefusalKeys(refusal);
+    return deleteRefusalView(refusal);
   };
 
   if (loading || !session) {
@@ -763,18 +813,24 @@ export default function Account() {
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold text-foreground truncate">{user?.email}</h1>
             <p className="text-xs text-muted-foreground">
-              {t("accountPage.memberSince", "Member since {{when}}", { when: user?.created_at ? new Date(user.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" }) : t("accountPage.memberToday", "today") })}
+              {t("accountPage.memberSince", "Member since {{when}}", { when: user?.created_at ? fmtDate(user.created_at, { lng }) : t("accountPage.memberToday", "today") })}
             </p>
           </div>
-          <button
-            onClick={async () => { await signOut(); navigate("/"); }}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-          >
+          {/* Asks before a sign-out deletes a résumé kept only in this browser, as the security card's two do (S14X-097). */}
+          <SignOutChoice className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors">
             <LogOut className="w-3.5 h-3.5" /> {t("accountPage.signOut", "Sign out")}
-          </button>
+          </SignOutChoice>
         </div>
 
         <AccountNav />
+        {trackerFailed && (
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/[0.03] p-4 mb-6 flex flex-wrap items-center gap-3" role="alert" data-tracker-load-failed>
+            <p className="text-sm text-foreground flex-1 min-w-0">{t("accountView.trackerLoadFailed", "We couldn't load your scans and applications. Nothing is lost.")}</p>
+            <button type="button" onClick={() => void loadAll()} className="px-3.5 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-secondary/40">
+              {t("accountView.trackerRetry", "Try again")}
+            </button>
+          </div>
+        )}
         <div id="hq" className="scroll-mt-28" />
         {/* Job Search HQ: the pipeline at a glance — the account is mission
             control for a daily ritual, not a list of features. Tiles read
@@ -837,7 +893,7 @@ export default function Account() {
 
         {/* First-visit activation checklist — an empty dashboard should feel
             like a starting line, not a broken page */}
-        {scans.length === 0 && !fetching && (
+        {scans.length === 0 && !fetching && !trackerFailed && (
           <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 to-transparent p-6 mb-6">
             <h2 className="text-lg font-bold text-foreground mb-1">{t("accountPage.welcome", "Welcome! Let's get your first score 🎯")}</h2>
             <p className="text-xs text-muted-foreground mb-4">{t("accountPage.welcomeSteps", "Three steps and your dashboard comes alive:")}</p>
@@ -932,7 +988,7 @@ export default function Account() {
                 {t("accountPage.fixDoneCount", "{{done}}/{{total}} done", { done: doneFixes, total: latestFixPlan.fix_plan.length })}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground mb-3">{t("accountPage.fixFrom", "From your scan on {{date}}. Check items off as you fix them, then rescan to see the lift.", { date: new Date(latestFixPlan.created_at).toLocaleDateString() })}</p>
+            <p className="text-xs text-muted-foreground mb-3">{t("accountPage.fixFrom", "From your scan on {{date}}. Check items off as you fix them, then rescan to see the lift.", { date: fmtDate(latestFixPlan.created_at, { lng }) })}</p>
             <div className="space-y-1.5">
               {(latestFixPlan.fix_plan ?? []).map((f, i) => (
                 <label key={i} className="flex items-start gap-2.5 p-2.5 rounded-lg border border-border/50 cursor-pointer hover:bg-muted/20 transition-colors">
@@ -961,7 +1017,7 @@ export default function Account() {
             <h2 className="font-semibold text-foreground text-sm">{t("accountPage.scoreHistory", "Score history")}</h2>
             <span className="ml-auto text-xs text-muted-foreground">{scans.length === 1 ? t("accountPage.scanCountOne", "1 scan") : t("accountPage.scanCountMany", "{{count}} scans", { count: scans.length })}</span>
           </div>
-          {scans.length === 0 ? (
+          {scans.length === 0 && trackerFailed ? null : scans.length === 0 ? (
             <div className="text-center py-8">
               <ScanSearch className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
               <p className="text-sm text-muted-foreground mb-3">{t("accountPage.noScans", "No scans saved yet. Run a free scan while signed in and it lands here automatically.")}</p>
@@ -1052,7 +1108,7 @@ export default function Account() {
                         {matching.scanId === s.id ? t("accountPage.matchingOn", "✓ matching") : t("accountPage.matchingOff", "pin for matching")}
                       </button>
                     )}
-                    <span className="text-[11px] text-muted-foreground shrink-0">{new Date(s.created_at).toLocaleDateString()}</span>
+                    <span className="text-[11px] text-muted-foreground shrink-0">{fmtDate(s.created_at, { lng })}</span>
                   </label>
                 ))}
               </div>
@@ -1068,7 +1124,7 @@ export default function Account() {
                 return (
                   <div className="mt-3 rounded-xl border border-primary/25 bg-primary/5 p-4">
                     <p className="text-xs font-semibold text-foreground mb-2">
-                      {new Date(a.created_at).toLocaleDateString()} → {new Date(b.created_at).toLocaleDateString()}
+                      {fmtDate(a.created_at, { lng })} → {fmtDate(b.created_at, { lng })}
                     </p>
                     <div className="space-y-1.5">
                       {rows.map((r, i) => {
@@ -1111,9 +1167,9 @@ export default function Account() {
             <h2 className="font-semibold text-foreground text-sm">{t("accountPage.matchingResume", "Matching résumé")}</h2>
             <span className="text-xs text-muted-foreground truncate">
               {matching.text
-                ? t("accountPage.matchingPasted", "Pasted résumé ({{n}} characters)", { n: matching.text.length.toLocaleString() })
+                ? t("accountPage.matchingPasted", "Pasted résumé ({{n}} characters)", { n: fmtCount(matching.text.length, { lng }) })
                 : matching.scanId
-                ? (() => { const s = scans.find((x) => x.id === matching.scanId); return s ? t("accountPage.matchingPinnedScan", "Pinned: {{name}} · {{date}}", { name: s.label ?? (s.industry ?? t("accountPage.matchingScan", "scan")).replace(/_/g, " "), date: new Date(s.created_at).toLocaleDateString() }) : t("accountPage.matchingPinnedGone", "Pinned scan (no longer in your history)"); })()
+                ? (() => { const s = scans.find((x) => x.id === matching.scanId); return s ? t("accountPage.matchingPinnedScan", "Pinned: {{name}} · {{date}}", { name: s.label ?? (s.industry ?? t("accountPage.matchingScan", "scan")).replace(/_/g, " "), date: fmtDate(s.created_at, { lng }) }) : t("accountPage.matchingPinnedGone", "Pinned scan (no longer in your history)"); })()
                 : t("accountPage.matchingLatest", "Latest scan (default)")}
             </span>
             <div className="ml-auto flex items-center gap-2">
@@ -1165,7 +1221,7 @@ export default function Account() {
             className="mb-4 flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4 transition-colors hover:bg-muted/60"
           >
             <span className="text-sm font-medium">
-              {t("account.openAgent", "Open the apply agent")}
+              {t("accountView.openAgent", "Open the apply agent")}
             </span>
             <span aria-hidden="true" className="text-muted-foreground">→</span>
           </Link>
@@ -1238,17 +1294,17 @@ export default function Account() {
                           /* Grounded in stored fields only — company, role,
                              and the tracked date; nothing invented (2026-07-25
                              audit upgrade). */
-                          const when = app.status_changed_at ? new Date(app.status_changed_at).toLocaleDateString() : "";
-                          const draft = t("accountPage.followUpDraft",
+                          const when = app.status_changed_at ? fmtDate(app.status_changed_at, { lng }) : "";
+                          const draft = t("accountView.followUpDraft",
                             "Subject: Following up on my {{role}} application\n\nHi {{company}} team,\n\nI applied for the {{role}} role{{when}} and remain very interested. I'd welcome any update on where the process stands — and I'm happy to provide anything further that would be useful.\n\nThank you for your time.",
-                            { role: app.role ?? "", company: app.company ?? "", when: when ? ` on ${when}` : "" });
+                            { role: app.role ?? "", company: app.company ?? "", when: when ? t("accountView.followUpWhen", " on {{date}}", { date: when }) : "" });
                           void navigator.clipboard.writeText(draft).then(
-                            () => toast.success(t("accountPage.followUpCopied", "Follow-up draft copied — paste it into your email.")),
-                            () => toast.error(t("accountPage.followUpCopyFailed", "Couldn't copy — select and copy manually.")),
+                            () => toast.success(t("accountView.followUpCopied", "Follow-up draft copied — paste it into your email.")),
+                            () => toast.error(t("accountView.followUpCopyFailed", "Couldn't copy — select and copy manually.")),
                           );
                         }}
                       >
-                        {t("accountPage.draftFollowUp", "Copy follow-up draft")}
+                        {t("accountView.draftFollowUp", "Copy follow-up draft")}
                       </button>
                       <button
                         type="button"
@@ -1309,8 +1365,9 @@ export default function Account() {
           </div>
         )}
         {(() => {
-          // Saved-but-never-applied rows are not "applied jobs" (audit).
-          const closed = applications.filter((a) => a.posting_closed_at && a.status !== "saved");
+          // Saved-but-never-applied rows are not "applied jobs" (audit), and a
+          // posting that came down and went back up is live again (S14X-201).
+          const closed = applications.filter((a) => a.status !== "saved" && trackedPostingState(a) === "came_down");
           const rolesKey = [...new Set(closed.map((a) => a.role).filter(Boolean))].slice(0, 3).join("|");
           const trackedIds = applications.map((a) => a.job_id).filter(Boolean).join("|");
           return <ClosedReplacementsPanel closedCount={closed.length} rolesKey={rolesKey} excludeKey={trackedIds} />;
@@ -1409,7 +1466,7 @@ export default function Account() {
               </p>
             </div>
           )}
-          {applications.length === 0 ? (
+          {applications.length === 0 && trackerFailed ? null : applications.length === 0 ? (
             <div className="text-center py-4">
               <p className="text-xs text-muted-foreground mb-2">{t("accountPage.trackerEmpty", "Track where you've applied — status, dates, and the score you applied with, all in one place.")}</p>
               <Link to="/jobs" className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-primary/40 text-primary hover:bg-primary/10 transition-colors">
@@ -1435,10 +1492,10 @@ export default function Account() {
                 <Link
                   to={`/agent?seedTitles=${encodeURIComponent(savedRoles.join("|"))}`}
                   className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline mb-3"
-                  title={t("accountPage.seedMandateTip", "Prefills the apply agent's search with these role titles. Nothing starts until you activate it there.")}
+                  title={t("accountView.seedMandateTip", "Prefills the apply agent's search with these role titles. Nothing starts until you activate it there.")}
                 >
                   <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                  {t("accountPage.seedMandate", "Have the agent hunt for jobs like these ({{titles}})", { titles: savedRoles.slice(0, 2).join(", ") + (savedRoles.length > 2 ? "…" : "") })}
+                  {t("accountView.seedMandate", "Have the agent hunt for jobs like these ({{titles}})", { titles: savedRoles.slice(0, 2).join(", ") + (savedRoles.length > 2 ? "…" : "") })}
                 </Link>
               ) : null;
             })()}
@@ -1463,7 +1520,7 @@ export default function Account() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{a.company}{a.role ? <span className="text-muted-foreground font-normal"> · {a.role}</span> : null}</p>
                     <p className="text-[11px] text-muted-foreground">
-                      {new Date(a.applied_at).toLocaleDateString()}
+                      {fmtDate(a.applied_at, { lng })}
                       {version ? ` · sent "${versionName(version)}" (score ${a.scan_score ?? version.ats_score})` : (a.scan_score ? ` · applied with score ${a.scan_score}` : "")}
                     </p>
                     {/* SAVED, AND THE AGENT COULD FINISH IT. A saved row is a
@@ -1480,10 +1537,10 @@ export default function Account() {
                       <Link
                         to="/agent"
                         className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline mt-0.5"
-                        title={t("accountPage.agentCanApplyTip", "This employer's form is one the apply agent can fill and submit on its own. It still hands it back to you if the employer asks something we can't answer from your profile.")}
+                        title={t("accountView.agentCanApplyTip", "This employer's form is one the apply agent can fill and submit on its own. It still hands it back to you if the employer asks something we can't answer from your profile.")}
                       >
                         <Sparkles className="w-3 h-3 shrink-0" />
-                        {t("accountPage.agentCanApply", "The agent can apply to this one for you")}
+                        {t("accountView.agentCanApply", "The agent can apply to this one for you")}
                       </Link>
                     )}
                     {/* What ACTUALLY happened to this exact posting, from the
@@ -1513,7 +1570,7 @@ export default function Account() {
                       // before this page can distinguish the two cases), the
                       // honest rendering is the floor, said as a floor.
                       const days = typeof a.days_standing === "number" ? Math.round(a.days_standing) : null;
-                      const when = a.posting_closed_at ? new Date(a.posting_closed_at).toLocaleDateString() : null;
+                      const when = a.posting_closed_at ? fmtDate(a.posting_closed_at, { lng }) || null : null;
                       // THE DATE IS A CEILING TOO, ON THE ROWS WHERE IT IS ONE.
                       //
                       // The floor wording above covers days_standing and the
@@ -1587,12 +1644,22 @@ export default function Account() {
                           </p>
                         );
                       }
-                      if (outcome === "still_standing" || !a.posting_closed_at) {
+                      if (outcome === "still_standing") {
                         return (
                           <p className="text-[11px] text-success/80 mt-0.5">
                             {days != null
                               ? t("accountPage.lifecycleStanding", "● Still posted — {{d}}+ days", { d: days })
-                              : t("accountPage.postingOpen", "● Posting still open")}
+                              : t("accountView.postingOpen", "● Posting still open")}
+                          </p>
+                        );
+                      }
+                      // No answer for this row (S14X-203): the read failed, the
+                      // day's allowance ran out, or it has not landed yet. Not
+                      // an answer is not "still open".
+                      if (!a.posting_closed_at) {
+                        return (
+                          <p className="text-[11px] text-muted-foreground/70 mt-0.5" data-lifecycle-unchecked>
+                            {t("accountView.lifecycleNotChecked", "Not checked yet")}
                           </p>
                         );
                       }
@@ -1645,7 +1712,8 @@ export default function Account() {
                       // page refuses (a board read in laps, a read we have not
                       // proven, a share outside its own interval) is not
                       // quoted on the tracker either.
-                      if (!hiringRecordGate(hh).share14.ok) return null;
+                      const g = hiringRecordGate(hh);
+                      if (!g.share14.ok) return null;
                       // AND THE OBSERVATION WINDOW, WHICH `sufficient` DOES NOT
                       // IMPLY. It counts roles at risk, observed fills and
                       // interval width — the sample, never the depth of the
@@ -1659,8 +1727,6 @@ export default function Account() {
                       // and /explore, imported from the one declaration.
                       if (typeof hh.tracking_days !== "number"
                         || hh.tracking_days < FILL_RATE_MIN_TRACKING_DAYS) return null;
-                      const rate = hh.fill_rate_14;
-                      if (typeof rate !== "number") return null;
                       const coverage = hh.dated_coverage;
                       // Below the floor the duration claim is suppressed
                       // outright: a rate computed on under a third of the
@@ -1668,12 +1734,21 @@ export default function Account() {
                       if (typeof coverage !== "number" || coverage < FILL_COVERAGE_QUALIFY) return null;
                       const daysIn = Math.floor((Date.now() - new Date(a.applied_at).getTime()) / 86_400_000);
                       if (daysIn < 1) return null;
-                      const pct = Math.round(rate * 100);
                       const past = daysIn > FILL_HORIZON_DAYS;
+                      // THE SAME SENTENCES THE EMPLOYER PAGE ALLOWS (RC-S12-185).
                       // Past 30 days with a censored median, the honest thing
-                      // to say is the censoring itself, not a rate the reader
-                      // has already outlived.
-                      const line = daysIn > 30 && hh.median_censored
+                      // to say is the censoring itself, and only where the
+                      // employer page says it: its median and its "never half
+                      // down by day 30" gates both pass. Otherwise the line
+                      // quotes the gate's own ceiling, and only while that
+                      // ceiling counts fills: where the re-post test is
+                      // unreliable it counts every takedown, and "taken down
+                      // for good, not re-listed" would not be true of it.
+                      const censoredLine = daysIn > 30 && hh.median_censored === true;
+                      if (censoredLine && !(g.median.ok && g.neverHalf.ok)) return null;
+                      if (!censoredLine && (g.ceilingBasis !== "fills" || typeof g.ceiling14 !== "number")) return null;
+                      const pct = Math.round((g.ceiling14 ?? 0) * 100);
+                      const line = censoredLine
                         ? t("accountPage.replyWindowFillCensored", "applied {{d}}d ago — more than half of this employer's roles were still up 30 days after being posted", { d: daysIn })
                         : past
                           ? t("accountPage.replyWindowFillPast", "applied {{d}}d ago — past the {{h}}-day mark by which {{pct}}% of this employer's roles had been taken down for good; a follow-up is reasonable", { d: daysIn, h: FILL_HORIZON_DAYS, pct })
@@ -1701,7 +1776,7 @@ export default function Account() {
                     )}
                     {a.status === "applied" && a.followed_up_at && daysQuiet(a) < QUIET_NUDGE_DAYS && (
                       <p className="text-[11px] text-muted-foreground/80 mt-0.5">
-                        {t("accountPage.followedUpOn", "followed up {{date}}", { date: new Date(a.followed_up_at).toLocaleDateString() })}
+                        {t("accountPage.followedUpOn", "followed up {{date}}", { date: fmtDate(a.followed_up_at, { lng }) })}
                       </p>
                     )}
                     {/* Interview date: only meaningful at the interviewing/offer
@@ -1725,12 +1800,12 @@ export default function Account() {
                          (2026-07-25 audit upgrade). Rejected keeps the
                          interview in the stats via interview_at. */
                       <p className="text-[11px] mt-1 flex items-center gap-2.5">
-                        <span className="text-muted-foreground">{t("accountPage.ivOutcomeQ", "How did the interview go?")}</span>
+                        <span className="text-muted-foreground">{t("accountView.ivOutcomeQ", "How did the interview go?")}</span>
                         <button onClick={() => void updateAppStatus(a.id, "offer")} className="text-success font-medium hover:underline">
-                          {t("accountPage.ivOutcomeOffer", "Got an offer")}
+                          {t("accountView.ivOutcomeOffer", "Got an offer")}
                         </button>
                         <button onClick={() => void updateAppStatus(a.id, "rejected")} className="text-muted-foreground hover:underline">
-                          {t("accountPage.ivOutcomeNo", "No offer")}
+                          {t("accountView.ivOutcomeNo", "No offer")}
                         </button>
                       </p>
                     )}

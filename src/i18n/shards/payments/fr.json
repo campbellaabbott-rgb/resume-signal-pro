@@ -1,0 +1,14 @@
+{
+  "payments": {
+    "pro": {
+      "pausedUntilPaid": "Les outils Pro sont en pause jusqu'à ce que ce paiement passe. Le paiement couvre le mois entier à partir de votre date de renouvellement, y compris les jours où les outils étaient en pause.",
+      "activeMemberPackages": "Vous êtes membre Pro : 5 lots de rédaction par jour (60 par mois) avec un modèle plus puissant."
+    },
+    "perks": {
+      "fullAnalysisCap": "Jusqu'à 10 Analyses complètes par jour et 60 par mois",
+      "everythingFreeOneEach": "Tout ce qu'offre un compte gratuit, qui inclut déjà chaque outil de rédaction une fois par jour",
+      "summaryPackages": "Tout ce qu'offre un compte gratuit, plus 5 lots de rédaction par jour (60 par mois) avec un modèle plus puissant, l'Analyse complète à 5 $ incluse et aucun plafond quotidien d'analyses",
+      "summaryPackagesWithoutAnalysis": "Tout ce qu'offre un compte gratuit, plus 5 lots de rédaction par jour (60 par mois) avec un modèle plus puissant et aucun plafond quotidien d'analyses"
+    }
+  }
+}

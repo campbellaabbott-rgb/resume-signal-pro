@@ -107,14 +107,17 @@ const deployed = (fn: string) => ({ build: want(fn), age: "7200" });
 const fails = (lines: string[]) => lines.filter((l) => l.startsWith("FAIL"));
 
 describe("the cost ci-edge section", () => {
-  it("names every function this lane stamped, at the build its source names", () => {
+  it("names every function this lane stamped, at the build its source names or a later one", () => {
     expect(FNS.length).toBe(55);
     for (const fn of FNS) {
       const dir = resolve(ROOT, "supabase/functions", fn, "index.ts");
       const src = readFileSync(dir, "utf8");
       const [d, n] = WANT.get(fn)!;
-      const named = new RegExp(`(?:${fn}|\\$\\{FN_NAME\\})\\.${d}\\.${n}\\b|BUILD_VERSION = ["']${d}\\.${n}["']`).test(src);
-      expect(named, `${fn} does not name ${d}.${n}`).toBe(true);
+      // A later round restamps the function (the bug round's 2026-11-12.1), and the section passes a later build.
+      const named = [...src.matchAll(new RegExp(`(?:${fn}|\\$\\{FN_NAME\\})\\.(\\d{4}-\\d{2}-\\d{2})\\.(\\d+)\\b|BUILD_VERSION = ["'](\\d{4}-\\d{2}-\\d{2})\\.(\\d+)["']`, "g"))]
+        .map((m) => [m[1] ?? m[3], Number(m[2] ?? m[4])] as const)
+        .some(([bd, bn]) => bd > d || (bd === d && bn >= n));
+      expect(named, `${fn} names no build at or after ${d}.${n}`).toBe(true);
     }
   });
 

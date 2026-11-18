@@ -1,0 +1,538 @@
+{
+ "id": 5474869008,
+ "title": "Registered Nurse",
+ "updated_at": "2026-11-05T16:04:25-05:00",
+ "first_published": "2026-11-05T16:04:25-05:00",
+ "absolute_url": "https://job-boards.greenhouse.io/sonobello/jobs/5474869008",
+ "questions": [
+  {
+   "description": null,
+   "label": "First Name",
+   "required": true,
+   "fields": [
+    {
+     "name": "first_name",
+     "type": "input_text",
+     "values": []
+    }
+   ]
+  },
+  {
+   "description": null,
+   "label": "Last Name",
+   "required": true,
+   "fields": [
+    {
+     "name": "last_name",
+     "type": "input_text",
+     "values": []
+    }
+   ]
+  },
+  {
+   "description": null,
+   "label": "Email",
+   "required": true,
+   "fields": [
+    {
+     "name": "email",
+     "type": "input_text",
+     "values": []
+    }
+   ]
+  },
+  {
+   "description": null,
+   "label": "Phone",
+   "required": false,
+   "fields": [
+    {
+     "name": "phone",
+     "type": "input_text",
+     "values": []
+    }
+   ]
+  },
+  {
+   "description": null,
+   "label": "Resume/CV",
+   "required": true,
+   "fields": [
+    {
+     "name": "resume",
+     "type": "input_file",
+     "values": []
+    },
+    {
+     "name": "resume_text",
+     "type": "textarea",
+     "values": []
+    }
+   ]
+  },
+  {
+   "description": "<h2>Schedule &amp; Compensation</h2>",
+   "label": "LinkedIn Profile",
+   "required": false,
+   "fields": [
+    {
+     "name": "question_19205515008",
+     "type": "input_text",
+     "values": []
+    }
+   ]
+  },
+  {
+   "description": null,
+   "label": "Are you available to work a Monday - Friday schedule on a regular basis?\n",
+   "required": false,
+   "fields": [
+    {
+     "name": "question_19205516008",
+     "type": "multi_value_single_select",
+     "values": [
+      {
+       "label": "Yes",
+       "value": 1
+      },
+      {
+       "label": "No",
+       "value": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "description": null,
+   "label": "Are you available to work rotating Saturdays?",
+   "required": false,
+   "fields": [
+    {
+     "name": "question_19205517008",
+     "type": "multi_value_single_select",
+     "values": [
+      {
+       "label": "Yes",
+       "value": 1
+      },
+      {
+       "label": "No",
+       "value": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "description": "<h2 style=\"text-align: left;\">Licensure&nbsp;</h2>",
+   "label": "What is your desired compensation range?",
+   "required": false,
+   "fields": [
+    {
+     "name": "question_19205518008",
+     "type": "input_text",
+     "values": []
+    }
+   ]
+  },
+  {
+   "description": "<h2>Employment Eligibility</h2>",
+   "label": "Do you have the following License or Certification:",
+   "required": false,
+   "fields": [
+    {
+     "name": "question_19205519008",
+     "type": "multi_value_single_select",
+     "values": [
+      {
+       "label": "Registered Nurse",
+       "value": 46563075008
+      },
+      {
+       "label": "Licensed Practical Nurse",
+       "value": 46563076008
+      },
+      {
+       "label": "Licensed Vocational Nurse",
+       "value": 46563077008
+      },
+      {
+       "label": "Medical Assistant",
+       "value": 46563078008
+      },
+      {
+       "label": "Surgical Technician",
+       "value": 46563079008
+      },
+      {
+       "label": "Currently Enrolled/Completing Program",
+       "value": 46563080008
+      },
+      {
+       "label": "N/A",
+       "value": 46563081008
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "description": null,
+   "label": "Have you ever been employed by Sono Bello in the past?",
+   "required": true,
+   "fields": [
+    {
+     "name": "question_19205520008",
+     "type": "multi_value_single_select",
+     "values": [
+      {
+       "label": "Yes",
+       "value": 1
+      },
+      {
+       "label": "No",
+       "value": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "description": null,
+   "label": "If you have previously been employed by Sono Bello, please list the location, dates employed, position title, and your previous manager:",
+   "required": false,
+   "fields": [
+    {
+     "name": "question_19205521008",
+     "type": "input_text",
+     "values": []
+    }
+   ]
+  },
+  {
+   "description": null,
+   "label": "Do you currently have any relatives employed at Sono Bello?",
+   "required": true,
+   "fields": [
+    {
+     "name": "question_19205522008",
+     "type": "multi_value_single_select",
+     "values": [
+      {
+       "label": "Yes",
+       "value": 1
+      },
+      {
+       "label": "No",
+       "value": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "description": "<h2>Work Authorization&nbsp;</h2>",
+   "label": "If yes, please list the name(s) and department(s). If no, please add N/A.",
+   "required": true,
+   "fields": [
+    {
+     "name": "question_19205523008",
+     "type": "input_text",
+     "values": []
+    }
+   ]
+  },
+  {
+   "description": null,
+   "label": "Are you authorized to work in the US?",
+   "required": true,
+   "fields": [
+    {
+     "name": "question_19205524008",
+     "type": "multi_value_single_select",
+     "values": [
+      {
+       "label": "Yes",
+       "value": 1
+      },
+      {
+       "label": "No",
+       "value": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "description": null,
+   "label": "Will you now, or in the future, require sponsorship for employment visa status (e.g. H-1B visa status)?",
+   "required": true,
+   "fields": [
+    {
+     "name": "question_19205525008",
+     "type": "multi_value_single_select",
+     "values": [
+      {
+       "label": "Yes",
+       "value": 1
+      },
+      {
+       "label": "No",
+       "value": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "description": "<h2><!--StartFragment-->Company Culture &amp; Values <!--EndFragment--></h2>",
+   "label": "Acknowledgment of Job Description:\n\nHave you reviewed the job description? Can you perform the essential duties as outlined, with or without reasonable accommodation?",
+   "required": true,
+   "fields": [
+    {
+     "name": "question_19205526008",
+     "type": "multi_value_single_select",
+     "values": [
+      {
+       "label": "Yes",
+       "value": 1
+      },
+      {
+       "label": "No",
+       "value": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "description": null,
+   "label": "Tell us about a time you took on something difficult with an aggressive timeline or unclear path. How did you approach it, what obstacles came up, and what happened in the end? What did you learn about yourself from that experience?",
+   "required": false,
+   "fields": [
+    {
+     "name": "question_19205527008",
+     "type": "textarea",
+     "values": []
+    }
+   ]
+  },
+  {
+   "description": "<h2>Employment History&nbsp;</h2>",
+   "label": "What kind of work energizes you so much that you naturally go above and beyond — and how do you celebrate wins with the people around you? What did you learn about yourself from that experience?",
+   "required": false,
+   "fields": [
+    {
+     "name": "question_19205528008",
+     "type": "textarea",
+     "values": []
+    }
+   ]
+  },
+  {
+   "description": null,
+   "label": "How many years of experience do you have practicing under your current professional license or certification?",
+   "required": true,
+   "fields": [
+    {
+     "name": "question_19205529008",
+     "type": "input_text",
+     "values": []
+    }
+   ]
+  },
+  {
+   "description": "<p>Examples: Hospital, Specialty Clinic, Primary Care Clinic, Urgent Care, Skilled Nursing Facility, Long-Term Care, Plasma Donation Center, Home Health, Hospice, Behavioral Health, Ambulatory Surgery Center, etc.</p>",
+   "label": "Within your most recent position what type of healthcare setting did you work in?",
+   "required": true,
+   "fields": [
+    {
+     "name": "question_19205530008",
+     "type": "input_text",
+     "values": []
+    }
+   ]
+  },
+  {
+   "description": "<p>Examples: Emergency Department (ER), ICU, Medical-Surgical, Oncology, Family Practice, Pediatrics, Cardiology, Orthopedics, Plasma Collection, Donor Screening, Women's Health, Dialysis, Infusion, etc.</p>",
+   "label": "Within your most recent position what department, specialty, or practice area did you primarily work in?",
+   "required": true,
+   "fields": [
+    {
+     "name": "question_19205531008",
+     "type": "input_text",
+     "values": []
+    }
+   ]
+  },
+  {
+   "description": null,
+   "label": "Within your previous position, what type of healthcare setting did you work in at this employer?",
+   "required": true,
+   "fields": [
+    {
+     "name": "question_19205532008",
+     "type": "input_text",
+     "values": []
+    }
+   ]
+  },
+  {
+   "description": null,
+   "label": "Within your previous position, what department, specialty, or practice area did you primarily work in at this employer?",
+   "required": true,
+   "fields": [
+    {
+     "name": "question_19205533008",
+     "type": "input_text",
+     "values": []
+    }
+   ]
+  },
+  {
+   "description": null,
+   "label": "Within the position before your previous employer, what type of healthcare setting did you work in at this employer?",
+   "required": true,
+   "fields": [
+    {
+     "name": "question_19205534008",
+     "type": "input_text",
+     "values": []
+    }
+   ]
+  },
+  {
+   "description": null,
+   "label": "Within the position before your previous employer, what department, specialty, or practice area did you primarily work in at this employer?",
+   "required": true,
+   "fields": [
+    {
+     "name": "question_19205535008",
+     "type": "input_text",
+     "values": []
+    }
+   ]
+  }
+ ],
+ "location_questions": [],
+ "compliance": [
+  {
+   "type": "eeoc",
+   "questions": [
+    {
+     "required": false,
+     "label": "VeteranStatus",
+     "fields": [
+      {
+       "name": "veteran_status",
+       "type": "multi_value_single_select",
+       "values": [
+        {
+         "label": "I don't wish to answer",
+         "value": "3"
+        },
+        {
+         "label": "I identify as one or more of the classifications of a protected veteran",
+         "value": "2"
+        },
+        {
+         "label": "I am not a protected veteran",
+         "value": "1"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "description": "&lt;p&gt;\n  If you believe you belong to any of the categories of protected veterans listed below, please indicate by making the appropriate selection.\n  As a government contractor subject to the Vietnam Era Veterans&#39; Readjustment Assistance Act (VEVRAA), we request this information in order to measure\n  the effectiveness of the outreach and positive recruitment efforts we undertake pursuant to VEVRAA. Classification of protected categories\n  is as follows:\n&lt;/p&gt;\n&lt;p&gt;A &quot;disabled veteran&quot; is one of the following: a veteran of the U.S. military, ground, naval or air service who is entitled to compensation (or who but for the receipt of military retired pay would be entitled to compensation) under laws administered by the Secretary of Veterans Affairs; or a person who was discharged or released from active duty because of a service-connected disability.&lt;/p&gt;\n&lt;p&gt;A &quot;recently separated veteran&quot; means any veteran during the three-year period beginning on the date of such veteran&#39;s discharge or release from active duty in the U.S. military, ground, naval, or air service.&lt;/p&gt;\n&lt;p&gt;An &quot;active duty wartime or campaign badge veteran&quot; means a veteran who served on active duty in the U.S. military, ground, naval or air service during a war, or in a campaign or expedition for which a campaign badge has been authorized under the laws administered by the Department of Defense.&lt;/p&gt;\n&lt;p&gt;An &quot;Armed forces service medal veteran&quot; means a veteran who, while serving on active duty in the U.S. military, ground, naval or air service, participated in a United States military operation for which an Armed Forces service medal was awarded pursuant to Executive Order 12985.&lt;/p&gt;\n"
+  },
+  {
+   "type": "eeoc",
+   "questions": [
+    {
+     "required": false,
+     "label": "Race",
+     "fields": [
+      {
+       "name": "race",
+       "type": "multi_value_single_select",
+       "values": [
+        {
+         "label": "Decline To Self Identify",
+         "value": "8"
+        },
+        {
+         "label": "Two or More Races",
+         "value": "7"
+        },
+        {
+         "label": "Native Hawaiian or Other Pacific Islander",
+         "value": "6"
+        },
+        {
+         "label": "White",
+         "value": "5"
+        },
+        {
+         "label": "Hispanic or Latino",
+         "value": "4"
+        },
+        {
+         "label": "Black or African American",
+         "value": "3"
+        },
+        {
+         "label": "Asian",
+         "value": "2"
+        },
+        {
+         "label": "American Indian or Alaskan Native",
+         "value": "1"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "required": false,
+     "label": "Gender",
+     "fields": [
+      {
+       "name": "gender",
+       "type": "multi_value_single_select",
+       "values": [
+        {
+         "label": "Decline To Self Identify",
+         "value": "3"
+        },
+        {
+         "label": "Female",
+         "value": "2"
+        },
+        {
+         "label": "Male",
+         "value": "1"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "description": "&lt;h3&gt;&lt;strong&gt;Voluntary Self-Identification&lt;/strong&gt;&lt;/h3&gt;&lt;br/&gt;&lt;p&gt;For government reporting purposes, we ask candidates to respond to the below self-identification survey.\nCompletion of the form is entirely voluntary. Whatever your decision, it will not be considered in the hiring\nprocess or thereafter. Any information that you do provide will be recorded and maintained in a\nconfidential file.&lt;/p&gt;\n\n&lt;p&gt;As set forth in Sono Bello’s Equal Employment Opportunity policy,\nwe do not discriminate on the basis of any protected group status under any applicable law.&lt;/p&gt;\n"
+  }
+ ],
+ "data_compliance": [
+  {
+   "type": "gdpr",
+   "requires_consent": false,
+   "requires_processing_consent": false,
+   "requires_retention_consent": false,
+   "retention_period": null,
+   "demographic_data_consent_applies": false
+  }
+ ],
+ "demographic_questions": null,
+ "content": "",
+ "_fixture": "GET https://boards-api.greenhouse.io/v1/boards/sonobello/jobs/5474869008?questions=true on 2026-11-16; content (the posting text) emptied, every other kept field as served."
+}

@@ -49,7 +49,7 @@ function AnimatedResultPreview() {
 // Every number here is checkable in the product itself (industry list, scan
 // report, language picker), which is what actually builds credibility.
 export function HeroStatsBar() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const totals = useScanTotals();
 
   return (
@@ -93,7 +93,7 @@ export function HeroStatsBar() {
               <ScanSearch className="w-4 h-4 text-primary" />
             </div>
             <div className="text-left">
-              <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{totals.total_scans.toLocaleString()}</p>
+              <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{totals.total_scans.toLocaleString(i18n.language)}</p>
               <p className="text-xs text-muted-foreground">{t('hero.stats.resumesScanned', 'Resumes scanned')}</p>
             </div>
           </div>
@@ -105,7 +105,7 @@ export function HeroStatsBar() {
                   <Globe2 className="w-4 h-4 text-success" />
                 </div>
                 <div className="text-left">
-                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{totals.countries.toLocaleString()}</p>
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{totals.countries.toLocaleString(i18n.language)}</p>
                   <p className="text-xs text-muted-foreground">{t('hero.stats.countries', 'Countries')}</p>
                 </div>
               </div>
@@ -272,7 +272,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
     return (
       <>
       <label
-        className={`mt-3 flex w-full sm:max-w-md mx-auto cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-3 text-xs sm:text-sm transition-colors ${
+        className={`mt-3 flex w-full sm:max-w-md mx-auto cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-3 text-xs sm:text-sm transition-colors focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-background ${
           isDragOver
             ? 'border-success bg-success/10 text-foreground'
             : 'border-border text-muted-foreground hover:border-success/60 hover:text-foreground'
@@ -287,13 +287,14 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
       >
         <FileText className="w-4 h-4 shrink-0" />
         <span>
-          {isDragOver
-            ? t('hero.dropzoneActive', 'Drop it — scanning is seconds away')
-            : t('hero.dropzone', 'Or drop your resume here — PDF, DOCX, or TXT')}
+          {/* In the reader's language (S14X-253): no locale had these keys. */}
+          {isDragOver ? t('freeScanPage.hero.dropzoneActive') : t('freeScanPage.hero.dropzone')}
         </span>
         <input
           type="file"
-          accept=".pdf,.docx,.doc,.txt,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          // The scanner reads PDF, DOCX and TXT; an old .doc is refused after
+          // the pick, so the picker does not offer it (S14X-257).
+          accept=".pdf,.docx,.txt,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           className="sr-only"
           onChange={(e) => {
             handleHeroFile(e.target.files?.[0]);

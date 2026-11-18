@@ -26,6 +26,7 @@
       "wrongAddress": "Endereço errado?"
     },
     "confirm": {
+      "adoptFailed": "Verificamos seu link, mas não conseguimos concluir o login. Verifique sua conexão e tente novamente.",
       "body": "Toque em Continuar para concluir o login. O link funciona uma única vez.",
       "emailChangeBody": "Toque em Continuar para confirmar seu novo endereço de e-mail.",
       "emailChanged": "A alteração do e-mail foi confirmada. Se o seu outro endereço também recebeu um link, use-o também.",
@@ -49,6 +50,7 @@
       "label": "E-mail",
       "placeholder": "voce@exemplo.com",
       "remembered": "Continuar como {{email}}",
+      "rememberedMismatch": "Não conseguimos fazer seu login como {{email}}. Digite seu endereço para tentar de novo.",
       "useDifferent": "Usar outro endereço"
     },
     "footnote": "Uma conta guarda suas pontuações, créditos e compras, e um currículo só se você salvar um.",
@@ -59,6 +61,7 @@
       "onlyGoogle": "Esta conta entra com o Google, por isso não tem aqui uma palavra-passe para alterar. Continue com o Google para entrar."
     },
     "guard": {
+      "keysRevoked": "Também desativamos as chaves de API e de conector criadas nesta conta antes de você provar o endereço ({{keys}}). Se precisar, crie uma nova na sua conta.",
       "passwordCleared": "Apagamos uma senha definida para este endereço antes de você provar que ele é seu. Se quiser, crie uma nova nas configurações da sua conta.",
       "passwordClearedTitle": "Sua senha antiga foi apagada",
       "signedOut": "Apagamos uma senha definida para este endereço antes de você provar que ele é seu, e isso desconectou todos os dispositivos, inclusive este.",
@@ -94,7 +97,7 @@
       "done": "Sua nova senha foi definida.",
       "doneOthers": "Sua nova senha foi definida, e todos os outros dispositivos foram desconectados.",
       "emailSupport": "Escrever ao suporte",
-      "expired": "Este link de reposição expirou ou já foi usado, por isso nenhuma palavra-passe foi definida. Peça um novo.",
+      "expired": "Este link de redefinição expirou ou já foi usado. Se você já escolheu uma nova senha com o código deste e-mail, entre com ela; caso contrário, peça um novo link.",
       "intro": "Introduza o seu e-mail. Se tiver uma conta, enviaremos um link (ou um código de 6 dígitos) com o qual pode escolher uma nova palavra-passe.",
       "newLink": "Enviar um novo link de reposição",
       "newPassword": "Nova senha",
@@ -118,8 +121,33 @@
       "failed": "O login não foi concluído. Tente novamente."
     },
     "samePassword": "Escolha uma senha que você ainda não usou aqui.",
+    "security": {
+      "askCode": "Ainda não tem senha ou esqueceu? Envie um código para o meu e-mail",
+      "codeFailed": "Não conseguimos pedir um código agora. Tente de novo em um minuto.",
+      "codeField": "Código do e-mail de redefinição de senha",
+      "codeOnItsWay": "Se o seu endereço puder receber e-mails, um e-mail de redefinição de senha com um código de 6 dígitos está a caminho de {{email}}. Digite o código aqui.",
+      "codeRefused": "Esse código não funcionou, então sua senha não foi alterada. Confira-o ou peça um novo.",
+      "guardBlocked": "Não conseguimos confirmar seu endereço agora, então sua senha não foi alterada. Tente de novo em alguns minutos.",
+      "guardRefused": "Não conseguimos confirmar seu endereço com esse código, então sua senha não foi alterada. Peça um novo código.",
+      "signedOut": "Para sua segurança, todos os dispositivos foram desconectados, inclusive este. Redefina sua senha na página de login para concluir."
+    },
     "sendFailed": "Não conseguimos enviar agora. Tente de novo em um minuto ou escreva para {{support}}.",
     "sessionExpired": "Sua sessão expirou. Entre novamente para continuar de onde parou.",
+    "signOut": {
+      "builder": "Seu currículo do criador de currículo está salvo só neste navegador, e sair o apaga.",
+      "cancel": "Cancelar",
+      "delete": "Apagar e sair",
+      "everywhereDone": "Você saiu em todos os dispositivos.",
+      "freelance": "Seus dados do Freelance Boost estão salvos só neste navegador, e sair os apaga.",
+      "keep": "Manter neste dispositivo e sair",
+      "offlineEverywhere": "Você saiu neste dispositivo, mas não conseguimos falar com o servidor, então seus outros dispositivos ainda podem estar conectados.",
+      "offlineHere": "Você saiu neste dispositivo, mas não conseguimos falar com o servidor para encerrar a sessão lá também.",
+      "offlineTitle": "Sessão encerrada neste dispositivo",
+      "openBuilder": "Abrir o criador de currículo para baixá-lo",
+      "retry": "Tentar novamente",
+      "signInAgain": "Não conseguimos desconectar seus outros dispositivos daqui. Entre de novo e escolha “Terminar sessão em todo o lado”.",
+      "title": "Antes de sair"
+    },
     "subtitle": "Acompanhe as pontuações do seu currículo ao longo do tempo, guarde seu histórico de análises e veja seus créditos e compras em um só lugar. Grátis para sempre.",
     "title": "Entre ou crie sua conta grátis",
     "usePassword": "Usar uma senha",

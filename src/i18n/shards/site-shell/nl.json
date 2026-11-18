@@ -1,0 +1,29 @@
+{
+  "siteShell": {
+    "crashHome": "Naar de homepage",
+    "newVersion": {
+      "loading": "De nieuwe versie wordt geladen…",
+      "reload": "Nu opnieuw laden"
+    },
+    "notFound": {
+      "title": "Pagina niet gevonden",
+      "jobs": "Bekijk openstaande vacatures",
+      "pricing": "Bekijk de prijzen"
+    },
+    "titles": {
+      "account": "Je account",
+      "auth": "Inloggen",
+      "shortlist": "Shortlist voor werkgevers",
+      "success": "Je volledige analyse",
+      "productSuccess": "Je aankoop",
+      "paymentFailed": "Betaling niet voltooid",
+      "affiliates": "Partnerprogramma",
+      "affiliateRedirect": "Doorsturen…",
+      "agent": "Solliciteer met je eigen AI",
+      "analytics": "Statistieken",
+      "errors": "Foutenlogboek",
+      "healthCheck": "Systeemcontrole",
+      "scanMetrics": "Scanstatistieken"
+    }
+  }
+}

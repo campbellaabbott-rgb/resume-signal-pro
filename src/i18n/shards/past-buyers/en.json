@@ -1,0 +1,9 @@
+{
+  "pastBuyers": {
+    "closedNoCopy": "Nothing more is being made for this order, and this page keeps no copy of it. If it was emailed to you, that copy is still yours. Add your résumé below to make it here now.",
+    "openedInPrint": "Your report uses letters the PDF font cannot draw, so it opened in your print dialog. Choose \"Save as PDF\" there to keep a copy.",
+    "parseSimulationSaved": "Checked when this report was made. Your résumé itself is not kept.",
+    "parseSimulationMissing": "This report was saved before its parse checks were kept with it. Scan your résumé again to see how an ATS reads it.",
+    "downloadLetter": "Download"
+  }
+}

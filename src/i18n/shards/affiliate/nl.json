@@ -1,0 +1,99 @@
+{
+  "affiliateProgram": {
+    "updates": {
+      "click_one": "Nieuwe klik op je affiliatelink!",
+      "click_other": "{{count}} nieuwe klikken op je affiliatelink!",
+      "earned": "Je hebt {{amount}} verdiend!",
+      "earnedDescription": "Nieuwe conversie via je verwijzing. Een commissie wordt uitbetaald zodra ze is goedgekeurd."
+    },
+    "cookieLine": "Cookie van 30 dagen • Uitbetaling op verzoek na goedkeuring",
+    "tiles": {
+      "clicks": "Klikken",
+      "conversions": "Conversies",
+      "rate": "{{rate}}% conversie",
+      "commission": "{{amount}} aan commissie",
+      "allTime": "Altijd",
+      "payable": "Nu uit te betalen",
+      "awaitingApproval": "Wacht op goedkeuring",
+      "awaitingCount_one": "{{count}} commissie, uit te betalen na goedkeuring",
+      "awaitingCount_other": "{{count}} commissies, uit te betalen na goedkeuring",
+      "totalPaid": "Totaal uitbetaald",
+      "range": {
+        "d7": "Afgelopen 7 dagen",
+        "d30": "Afgelopen 30 dagen",
+        "d90": "Afgelopen 90 dagen",
+        "d365": "Afgelopen jaar"
+      }
+    },
+    "revenue": {
+      "description": "Verkopen via je verwijzingen, elke valuta op een eigen regel",
+      "unknownCurrency": "{{amount}} (valuta niet vastgelegd)",
+      "none": "Geen verkopen in deze periode"
+    },
+    "conversions": {
+      "heldForReview": "Vastgehouden voor controle"
+    },
+    "payout": {
+      "timing": "We mailen je om de betaling te regelen zodra we het verzoek hebben bekeken",
+      "notNotified": "Je verzoek is vastgelegd, maar het bericht dat ons erover informeert is niet verstuurd. Het staat wel in onze administratie, dus we zien het wanneer we uitbetalingen bekijken.",
+      "awaitingNote": "Nog {{amount}} wacht op goedkeuring en wordt daarna uit te betalen.",
+      "openSince": "Aangevraagd op {{date}} voor {{amount}}"
+    },
+    "history": {
+      "requested": "Aangevraagd",
+      "paid": "Uitbetaald",
+      "rejected": "Afgewezen",
+      "requestedOn": "Aangevraagd op {{date}}",
+      "paidOn": "Uitbetaald op {{date}}",
+      "rejectedOn": "Afgewezen op {{date}}",
+      "paidToDate": "Tot nu toe uitbetaald"
+    },
+    "howItWorks": {
+      "getPaid": "Een commissie wacht op goedkeuring voordat ze kan worden uitbetaald. Zodra je goedgekeurde commissies het minimum bereiken, vraag je via het tabblad 'Payouts' een uitbetaling aan en mailen we je om de betaling te regelen. We mailen je ook wanneer een verwijzing een commissie oplevert."
+    },
+    "auth": {
+      "forgot": "Wachtwoord vergeten?",
+      "email": "E-mailadres",
+      "password": "Wachtwoord (min. 8 tekens)",
+      "pleaseWait": "Even geduld…",
+      "resetTitle": "Je wachtwoord opnieuw instellen",
+      "resetIntro": "Vul het adres in waarmee je je hebt aangemeld. Als een affiliateaccount het gebruikt, mailen we een link die één keer werkt binnen 30 minuten.",
+      "sendLink": "Mail me een link",
+      "resetSent": "Als een affiliateaccount dat adres gebruikt, is er een link onderweg. Die werkt één keer binnen 30 minuten.",
+      "backToSignIn": "Terug naar inloggen",
+      "newPasswordTitle": "Kies een nieuw wachtwoord",
+      "newPasswordIntro": "Opslaan logt elk apparaat uit dat ingelogd was.",
+      "newPassword": "Nieuw wachtwoord (min. 8 tekens)",
+      "savePassword": "Nieuw wachtwoord opslaan",
+      "passwordChanged": "Wachtwoord gewijzigd en elk apparaat uitgelogd. Log in met het nieuwe wachtwoord.",
+      "linkExpired": "Deze link is verlopen of al gebruikt. Vraag een nieuwe aan.",
+      "weakPassword": "Kies een wachtwoord van 8 tot 200 tekens.",
+      "addressConfirmed": "Je e-mailadres is bevestigd.",
+      "emailChanged": "Je e-mailadres is gewijzigd. Log de volgende keer in met het nieuwe adres.",
+      "emailTaken": "Een ander affiliateaccount gebruikt dat adres al.",
+      "failed": "Er ging iets mis. Probeer het opnieuw."
+    },
+    "confirm": {
+      "bannerTitle": "Bevestig je e-mailadres om uitbetaald te worden",
+      "bannerBody": "Commissies worden vastgehouden voor controle en je kunt geen uitbetaling aanvragen tot je hebt laten zien dat dit adres van jou is.",
+      "send": "Bevestigingslink sturen",
+      "sent": "We hebben een bevestigingslink naar {{email}} gestuurd. Die werkt één keer binnen 30 minuten."
+    },
+    "account": {
+      "title": "Je account",
+      "description": "Log uit op elk apparaat, download een kopie van je gegevens, wijzig je adres of sluit het account.",
+      "signOutEverywhere": "Overal uitloggen",
+      "signedOutEverywhere": "Elk apparaat is uitgelogd, ook dit.",
+      "export": "Mijn gegevens downloaden",
+      "exported": "Je gegevens zijn gedownload.",
+      "newEmail": "Nieuw e-mailadres",
+      "sendChangeLink": "Link naar het nieuwe adres sturen",
+      "changeSent": "We hebben een link naar {{email}} gestuurd. De wijziging gaat in wanneer je hem opent.",
+      "eraseTitle": "Account sluiten",
+      "eraseWarning": "Dit verwijdert je adres, wachtwoord, sessies en klikgeschiedenis, en kan niet ongedaan worden gemaakt. Typ ERASE om te bevestigen.",
+      "eraseConfirmLabel": "Typ ERASE om te bevestigen",
+      "eraseButton": "Account definitief sluiten",
+      "erased": "Je affiliateaccount is gesloten."
+    }
+  }
+}

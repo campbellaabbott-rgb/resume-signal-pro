@@ -29,6 +29,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { buildIsAtLeast } from "./helpers/fn-build";
 import { withdrawalRefundCents, withinWithdrawalPeriod } from "../../supabase/functions/_shared/withdrawal";
@@ -279,7 +280,7 @@ describe("the rules", () => {
 describe("the ledger (20261009133000) in a real Postgres", () => {
   it("accepts a withdrawal once, still refuses an unknown kind, and runs twice", async () => {
     const pg = new PGlite();
-    await pg.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;");
+    await pg.exec(SUPABASE_DEFAULTS);
     const dir = resolve(__dirname, "../../supabase/migrations");
     await pg.exec(readFileSync(resolve(dir, "20261009130000_a_subscription_notice_is_sent_once_per_subscription_and_kind.sql"), "utf8"));
     const sql = readFileSync(resolve(dir, "20261009133000_a_withdrawal_is_acknowledged_once_per_subscription.sql"), "utf8");
@@ -293,7 +294,7 @@ describe("the ledger (20261009133000) in a real Postgres", () => {
 
   it("20261009134000: a row can wait unsent and be stamped by service_role only, and the file runs twice", async () => {
     const pg = new PGlite();
-    await pg.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;");
+    await pg.exec(SUPABASE_DEFAULTS);
     const dir = resolve(__dirname, "../../supabase/migrations");
     await pg.exec(readFileSync(resolve(dir, "20261009130000_a_subscription_notice_is_sent_once_per_subscription_and_kind.sql"), "utf8"));
     await pg.exec(readFileSync(resolve(dir, "20261009133000_a_withdrawal_is_acknowledged_once_per_subscription.sql"), "utf8"));

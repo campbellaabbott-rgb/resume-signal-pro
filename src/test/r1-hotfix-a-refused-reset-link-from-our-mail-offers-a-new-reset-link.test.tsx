@@ -94,7 +94,8 @@ const stashed = () => JSON.parse(sessionStorage.getItem("rb_url_stash") ?? "{}")
 const marker = (next: string, email?: string) => localStorage.setItem(PENDING_KEY, JSON.stringify({ at: Date.now(), next, ...(email ? { email } : {}) }));
 const press = async (name: RegExp | string) => { await act(async () => { fireEvent.click(screen.getByRole("button", { name })); }); };
 
-const RESET_EXPIRED = "This reset link has expired or was already used, so no password was set. Ask for a new one.";
+// S14X-206: a spent link may be the one whose code already set the password.
+const RESET_EXPIRED = "This reset link has expired or was already used. If you already chose a new password with this email's code, sign in with it; otherwise ask for a new link.";
 const GENERIC_EXPIRED = "This link has expired or was already used. Sign in again to get a new one.";
 const REFUSED = { error: "Email link is invalid or has expired", transient: false };
 

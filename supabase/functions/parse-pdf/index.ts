@@ -2,14 +2,24 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolvePDFJS } from "https://esm.sh/pdfjs-serverless@0.4.1?target=deno";
-import { isDamagedPdfError, looksGarbled } from "../_shared/text-validation.ts";
-import { detectMultiColumnRisk, dropUnnamedIndicGlyphs, pageTextFromItems, type PdfTextItem } from "./page-text.ts";
+import { isDamagedPdfError, looksGarbled, normalizeIntakeText } from "../_shared/text-validation.ts";
+import {
+  arabicShare,
+  cjkControlsAsSpaces,
+  detectMultiColumnRisk,
+  dropUnnamedIndicGlyphs,
+  linksLine,
+  pageTextFromItems,
+  scannedVerdict,
+  type PdfTextItem,
+} from "./page-text.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Provable from outside without an upload: every response, the CORS preflight
 // included, carries this in x-fn-build.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "parse-pdf.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, ingest-parsers lane): right-to-left lines read as written, a Mac CJK PDF keeps its spaces and ideographs, hidden link targets are kept, image pages after the résumé are skipped and counted, and every refusal carries a code.
+const FN_BUILD = "parse-pdf.2026-11-12.1";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -45,7 +55,8 @@ async function sendAlert(alertType: string, subject: string, details: Record<str
   } catch (e) { console.error("[ALERT] Error:", e); }
 }
 
-const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>, clientIp?: string) => {
+// The owner's alert says what happened, never who sent the file: no uploader address (S14X-101).
+const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>) => {
   const duration = Date.now() - startTime;
   const level = duration > VERY_SLOW_THRESHOLD ? 'CRITICAL' : duration > SLOW_REQUEST_THRESHOLD ? 'SLOW' : 'OK';
   console.log(`[PERF] ${operation} | ${duration}ms | ${level} | success=${success}${details ? ` | ${JSON.stringify(details)}` : ''}`);
@@ -54,7 +65,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
     EdgeRuntime.waitUntil(sendAlert(
       success ? `${operation}_slow` : `${operation}_error`,
       success ? `${operation} CRITICAL (${duration}ms)` : `${operation} Error`,
-      { operation, duration, level, success, ip: clientIp || 'unknown', ...details }
+      { operation, duration, level, success, ...details }
     ));
   }
 };
@@ -163,9 +174,9 @@ serve(async (req) => {
     const arrayBuffer = await file.arrayBuffer();
 
     if (arrayBuffer.byteLength === 0) {
-      trackPerformance(requestStartTime, 'parse-pdf', false, { reason: 'empty_file' }, clientIp);
+      trackPerformance(requestStartTime, 'parse-pdf', false, { reason: 'empty_file' });
       return new Response(
-        JSON.stringify({ success: false, error: "This file appears to be empty. Please check the file and try again." }),
+        JSON.stringify({ success: false, code: "empty_file", error: "This file appears to be empty. Please check the file and try again." }),
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -199,7 +210,7 @@ serve(async (req) => {
       // looks-right-but-isn't bug this session already found once with mammoth.
       const errorName = (loadError as { name?: string })?.name;
       if (errorName === 'PasswordException') {
-        trackPerformance(requestStartTime, 'parse-pdf', false, { reason: 'password_protected' }, clientIp);
+        trackPerformance(requestStartTime, 'parse-pdf', false, { reason: 'password_protected' });
         EdgeRuntime.waitUntil(
           (async () => {
             await supabase.rpc('log_parse_failure', {
@@ -213,13 +224,14 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({
             success: false,
+            code: "password_protected",
             error: "This PDF is password-protected. Please remove the password (or export an unprotected copy) and try again.",
           }),
           { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
       if (errorName === 'InvalidPDFException') {
-        trackPerformance(requestStartTime, 'parse-pdf', false, { reason: 'invalid_pdf' }, clientIp);
+        trackPerformance(requestStartTime, 'parse-pdf', false, { reason: 'invalid_pdf' });
       EdgeRuntime.waitUntil(
         (async () => {
           await supabase.rpc('log_parse_failure', {
@@ -233,6 +245,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({
             success: false,
+            code: "invalid_pdf",
             error: "This file doesn't appear to be a valid PDF (it may be corrupted or a different file type renamed to .pdf). Please try re-exporting it or upload a different file.",
           }),
           { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -247,10 +260,13 @@ serve(async (req) => {
     // of failing fast with a clear message.
     const MAX_PAGES = 50;
     if (doc.numPages > MAX_PAGES) {
-      trackPerformance(requestStartTime, 'parse-pdf', false, { pages: doc.numPages, reason: 'too_many_pages' }, clientIp);
+      trackPerformance(requestStartTime, 'parse-pdf', false, { pages: doc.numPages, reason: 'too_many_pages' });
       return new Response(
         JSON.stringify({
           success: false,
+          code: "too_many_pages",
+          pages: doc.numPages,
+          max: MAX_PAGES,
           error: `This PDF has ${doc.numPages} pages, which is more than we support (${MAX_PAGES} max). Please upload just your resume, not a combined document.`,
         }),
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -262,6 +278,8 @@ serve(async (req) => {
     // Extract text from all pages
     let fullText = "";
     let multiColumnDetected = false;
+    const pageLengths: number[] = [];
+    const linkTargets: string[] = [];
     for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);
       const textContent = await page.getTextContent();
@@ -269,6 +287,17 @@ serve(async (req) => {
       // Lines kept (register L5-01): the scanner reads a résumé line by line.
       const pageText = pageTextFromItems(items);
       fullText += pageText + "\n\n";
+      pageLengths.push(pageText.trim().length);
+      // A contact block written as links keeps its addresses only in them
+      // (S14X-147). A page whose links cannot be read still reads its text.
+      try {
+        for (const a of (await page.getAnnotations()) as Array<{ subtype?: string; url?: unknown; unsafeUrl?: unknown }>) {
+          const url = typeof a.url === "string" ? a.url : typeof a.unsafeUrl === "string" ? a.unsafeUrl : null;
+          if (a.subtype === "Link" && url) linkTargets.push(url);
+        }
+      } catch (e) {
+        console.warn("[PARSE-PDF] Link read skipped:", e instanceof Error ? e.message : String(e));
+      }
 
       if (!multiColumnDetected) {
         // The page's own size: the column tests measure in shares of it.
@@ -283,18 +312,20 @@ serve(async (req) => {
     // S11-035) are removed before the corruption test, and the visitor is told
     // a .docx or pasted text reads them exactly.
     const unnamed = dropUnnamedIndicGlyphs(fullText.trim());
-    const text = unnamed.text.trim();
+    // A Korean or Japanese word gap pdf.js could only name as one control
+    // character, inside an item (S14X-123); then the hyphens and invisible
+    // marks a keyword search trips on (S14X-280).
+    const text = normalizeIntakeText(cjkControlsAsSpaces(unnamed.text).text).trim();
 
     // PDF.js only extracts text that's actually embedded in the file. A scanned/
-    // image-based PDF (or one with only a couple of selectable characters, e.g.
-    // a page number) "succeeds" here with little-to-no text, which would otherwise
-    // silently flow into analysis as garbage input. Treat that as a parse failure
-    // with specific, actionable guidance instead of pretending it worked.
-    const MIN_CHARS_PER_PAGE = 200;
-    const looksLikeScannedPdf = text.length < Math.max(200, doc.numPages * MIN_CHARS_PER_PAGE);
+    // image-based PDF "succeeds" here with little-to-no text, which would
+    // otherwise flow into analysis as garbage input. It is refused when no page
+    // carries a résumé's worth of text; pages with next to nothing on them
+    // (scanned certificates after a résumé) are counted and named (S14X-282).
+    const verdict = scannedVerdict(pageLengths);
 
-    if (looksLikeScannedPdf) {
-      trackPerformance(requestStartTime, 'parse-pdf', false, { pages: doc.numPages, textLength: text.length, reason: 'scanned_or_empty' }, clientIp);
+    if (verdict.refuse) {
+      trackPerformance(requestStartTime, 'parse-pdf', false, { pages: doc.numPages, textLength: text.length, reason: 'scanned_or_empty' });
       console.log("[PARSE-PDF] Extracted text too short relative to page count — likely a scanned/image-based PDF. Length:", text.length, "Pages:", doc.numPages);
 
       EdgeRuntime.waitUntil(
@@ -311,6 +342,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: false,
+          code: "scanned_or_empty",
           error: "This PDF appears to be a scanned image with little or no selectable text. Please upload a text-based PDF (exported from Word/Google Docs), or paste your resume text directly.",
         }),
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -322,7 +354,7 @@ serve(async (req) => {
     // failure mode than the scanned-PDF check above. Language-agnostic — does
     // not assume English or any specific script.
     if (looksGarbled(text)) {
-      trackPerformance(requestStartTime, 'parse-pdf', false, { pages: doc.numPages, textLength: text.length, reason: 'garbled_text' }, clientIp);
+      trackPerformance(requestStartTime, 'parse-pdf', false, { pages: doc.numPages, textLength: text.length, reason: 'garbled_text' });
       console.log("[PARSE-PDF] Extracted text looks garbled (broken encoding).");
 
       EdgeRuntime.waitUntil(
@@ -348,16 +380,27 @@ serve(async (req) => {
       );
     }
 
-    trackPerformance(requestStartTime, 'parse-pdf', true, { pages: doc.numPages, textLength: text.length }, clientIp);
+    trackPerformance(requestStartTime, 'parse-pdf', true, { pages: doc.numPages, textLength: text.length });
     console.log("[PARSE-PDF] PDF parsed successfully. Text length:", text.length);
+
+    const links = linksLine(linkTargets, text);
+    // One notice, the most useful first: characters left out, Arabic whose
+    // joined letters pdf.js cannot rebuild (S14X-044), image pages skipped.
+    const notice = unnamed.dropped > 0
+      ? { notice: "unread_characters", unreadCharacters: unnamed.dropped }
+      : arabicShare(text) >= 0.3
+        ? { notice: "rtl_unreliable" }
+        : verdict.imagePages > 0
+          ? { notice: "image_pages_skipped", skippedPages: verdict.imagePages }
+          : {};
 
     return new Response(
       JSON.stringify({
         success: true,
-        text,
+        text: links ? `${text}\n\n${links}` : text,
         pages: doc.numPages,
         multiColumnDetected,
-        ...(unnamed.dropped > 0 ? { notice: "unread_characters", unreadCharacters: unnamed.dropped } : {}),
+        ...notice,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
@@ -369,7 +412,7 @@ serve(async (req) => {
     // say "PDF Parser Unavailable" and refuse the visitor's NEXT, valid file
     // for 30 seconds. They are a 422 that says what is wrong with the file.
     const damaged = isDamagedPdfError(error);
-    trackPerformance(requestStartTime, 'parse-pdf', false, { error: error instanceof Error ? error.message : 'Unknown', damaged }, clientIp);
+    trackPerformance(requestStartTime, 'parse-pdf', false, { error: error instanceof Error ? error.message : 'Unknown', damaged });
     console.error("[PARSE-PDF] Error:", error);
 
     // Log parse failure to database

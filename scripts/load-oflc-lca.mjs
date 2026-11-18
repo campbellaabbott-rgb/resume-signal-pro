@@ -905,6 +905,9 @@ if (isMain) {
   const fiscalQuarter = opt("--quarter");
   const sourceUrl = opt("--url") ?? defaultSourceUrl(file);
   const visaClasses = opts("--visa");
+  // The class set this run keeps, printed so the run record can state it
+  // (S14X-184): "all" is every VISA_CLASS in the LCA Programs file.
+  console.error(`[load-oflc-lca] visa_classes=${visaClasses.length > 0 ? visaClasses.join(",") : "all"}`);
   const { index, mirror } = await buildIndexFromCatalogue({ withFacetNames: !flag("--no-facet-names") });
   console.error(`[load-oflc-lca] mirror rows=${mirror.rows.length} catalogue=${mirror.catalogue} facet=${mirror.facet} comparable_norms=${index.byNorm.size} held_non_ascii_names=${index.heldNonAscii}`);
 
@@ -917,6 +920,7 @@ if (isMain) {
 
   console.error(`[load-oflc-lca] sheet_rows=${counts.sheetRows} data_rows=${counts.dataRows}`);
   console.error(`[load-oflc-lca] certified_by_equality=${counts.certified} other_status=${counts.notCertified} of_which_certified_prefix_refused=${counts.certifiedWithdrawnPrefix}`);
+  console.error(`[load-oflc-lca] visa_filtered=${counts.visaFiltered}`);
   console.error(`[load-oflc-lca] refused: single_token=${counts.refusedSingleToken} ambiguous=${counts.refusedAmbiguous} unmatched=${counts.unmatchedEmployer} held_non_ascii=${counts.heldNonAsciiEmployer} two_filers_one_name=${counts.refusedTwoFilers}`);
   console.error(`[load-oflc-lca] held: no_soc=${counts.heldNoSoc} no_state=${counts.heldNoState} no_decision_date=${counts.heldNoDecisionDate} no_readable_wage=${counts.heldNoWage} wage_not_filed_yearly=${counts.heldNonAnnualUnit} wage_outside_plausible_band=${counts.heldWageOutOfBand}`);
   // cell_writes is not matched_rows: an employer with two board tokens contributes its application

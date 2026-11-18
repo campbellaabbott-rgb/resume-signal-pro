@@ -44,6 +44,11 @@
 // And a repeat request re-sends only after 10 minutes from the LAST send
 // (last_sent_at): the guard keyed on created_at, so after a row's first 10
 // minutes every request re-sent (L10-12).
+// S14X-061 (bug round, 2026-11-12): both mails link the company page in the
+// form this host serves (./public-href.ts: a dotted token needs its trailing
+// slash, or the link is a 9-byte "Not found"), and a request for an address
+// suppressed for a bounce or a complaint is answered "sent" with nothing
+// written, counted or mailed, as api_key_request_open answers one.
 // S13-071 and S13-098 (2026-11-03): the registrable domain comes from the full
 // Public Suffix List (domain-proof.ts). A send the mail provider refused, or
 // that threw, hands the inbox's and the day's counts back (mail_door_give,
@@ -60,6 +65,7 @@ import { alertOwnerOnce } from "../_shared/owner-alert.ts";
 import { domainProven, employerDomains } from "./domain-proof.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 import { CLAIM_COPY, mailLanguageOf, storedLanguage } from "./copy.ts";
+import { companyLanderPath } from "./public-href.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -69,7 +75,8 @@ import { CLAIM_COPY, mailLanguageOf, storedLanguage } from "./copy.ts";
 // kept on the claim (company_claims.locale, 20261103195000) for the
 // "verified" notice the owner's decision sends later.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "company-claim.2026-11-09.1";
+// 2026-11-12.1 (bug round of 2026-11-08, part A, site-shell lane, S14X-061): both mails link the company page in the form this host serves, and an inbox that bounced or complained is answered sent with nothing written, counted or mailed.
+const FN_BUILD = "company-claim.2026-11-12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -212,7 +219,7 @@ Deno.serve(async (req) => {
       // name is escaped here too.
       if (decision === "verified" && claim.status !== "verified" && RESEND_API_KEY) {
         const displayName = String(claim.company_name || claim.company_token);
-        const pageUrl = `${SITE}/jobs/company/${encodeURIComponent(claim.company_token)}`;
+        const pageUrl = `${SITE}${companyLanderPath(String(claim.company_token))}`;
         // The claimant's language (S13-102), read on its own so a missing
         // column (before 20261103195000) costs only the translation.
         let locale: unknown = null;
@@ -321,6 +328,22 @@ Deno.serve(async (req) => {
         return json({ status: "sent" });
       }
 
+      // AN INBOX THAT BOUNCED OR COMPLAINED IS NOT MAILED AGAIN (S14X-061).
+      // Answered like a send, so the answer tells a caller nothing about the
+      // address; nothing is written, counted or sent. An unsubscribe does not
+      // stop this transactional mail, and a read that fails falls through to
+      // the path below, where the inbox's two a day still bound it.
+      try {
+        const { data: sup, error: supErr } = await supabase
+          .from("suppressed_emails").select("reason").eq("email", workEmail).maybeSingle();
+        const reason = supErr ? null : (sup as { reason?: unknown } | null)?.reason;
+        if (reason === "bounce" || reason === "complaint") {
+          console.log(`[COMPANY-CLAIM] request for ${companyToken} not mailed: the address is suppressed (${reason})`);
+          return json({ status: "sent" });
+        }
+        if (supErr) console.warn("[COMPANY-CLAIM] suppression read failed:", supErr.message?.slice(0, 120));
+      } catch { /* read failed: the counts below still bound the inbox */ }
+
       // THE COUNTS, before anything is written or sent: this network's day,
       // this inbox's day (whatever company is named), and everyone's day.
       const atNetDay = await take(supabase, "company-claim:request", net, REQUESTS_PER_NETWORK_PER_DAY, 1440);
@@ -373,7 +396,7 @@ Deno.serve(async (req) => {
       }
       const resend = new Resend(RESEND_API_KEY);
 
-      const verifyUrl = `${SITE}/jobs/company/${encodeURIComponent(companyToken)}?claim_verify=${encodeURIComponent(String(verifyToken))}`;
+      const verifyUrl = `${SITE}${companyLanderPath(companyToken, `claim_verify=${encodeURIComponent(String(verifyToken))}`)}`;
       let sendError: unknown = null;
       // The claiming page's language (S13-102, ./copy.ts).
       const lang = mailLanguageOf(body, req.headers.get("accept-language"));

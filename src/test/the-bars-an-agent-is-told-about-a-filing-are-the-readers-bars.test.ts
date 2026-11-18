@@ -220,15 +220,12 @@ function fieldsOfReader(sql: string): string[] {
 }
 
 /**
- * Reader columns the MCP field does not carry YET, each named with why.
- * workforce (20261009160000, sweep S8-026): whether an 8-K's Item 2.05
- * section describes a workforce event. The site prints neutral copy without
- * it; the connector's field and schema are the agents-api group's to extend
- * (handed off in docs/wave3/board-data-ingest.md). Until then the MCP
- * schema already calls the source "an SEC 8-K Item 2.05 disclosure", never a
- * reduction.
+ * Reader columns the MCP field does not carry YET, each named with why. Empty
+ * since S14X-135: workforce (20261009160000, sweep S8-026, whether an 8-K's
+ * Item 2.05 section describes a workforce event) is carried, so every reader
+ * column is held here.
  */
-const NOT_YET_ON_THE_CONNECTOR = ["workforce"];
+const NOT_YET_ON_THE_CONNECTOR: string[] = [];
 
 /** The fields the server's filing schema declares, and the ones it requires. */
 function fieldsOfSchema(schemaSrc: string): { declared: string[]; required: string[] } {

@@ -2,7 +2,7 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { execSync } from "child_process";
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readdirSync, readFileSync } from "fs";
 import { componentTagger } from "lovable-tagger";
 
 // After every production build, render the ~260 data-driven SEO routes to
@@ -62,10 +62,53 @@ const prerenderSeo = (): Plugin => ({
 // shard, loads nothing.
 const EN_LOCALE_FILE = path.resolve(__dirname, "src/i18n/locales/en.json");
 const SRC_DIR = path.resolve(__dirname, "src") + path.sep;
+const SHARDS_DIR = path.resolve(__dirname, "src/i18n/shards");
 export const EN_REGISTRY_ID = "\0rb-en:registry";
 export const EN_CORE_ID = "\0rb-en:core";
 export const EN_ALL_ID = "\0rb-en:all";
 export const EN_NAMESPACE_ID = "\0rb-en:ns:";
+export const EN_SHARD_EMPTY_ID = "\0rb-en:shard-empty:";
+
+// ---- The English shards travel the same way (the bug round's review, 2026-11-16) ----
+//
+// The bug round gave twelve lanes a shard each (src/i18n/shards, see
+// src/i18n/merge-shards.ts), and src/i18n/index.ts globbed every English one
+// into the entry: about 17 KB gzip of strings for the account page, the
+// affiliate page, the scanner, the board and the rest, carried to every page,
+// and the entry went over SEO-040's 220 KB budget (239,740 B gzip). Each
+// shard writes under one root key of its own, so a shard root is a namespace
+// like any of en.json's: in the built app the glob's import of a deferred
+// shard reads as an empty bundle, and the module that names the root imports
+// the root's strings first. Each deferred shard's strings ship as a chunk of
+// their own, rb-en_ns_<root>-<hash>.js, named in the dependency list of every
+// chunk that loads them. Development and tests glob every shard as before.
+//
+// Kept in the glob: the homepage's and the pricing page's (their own modules,
+// src/i18n/home-strings.ts and pricing-strings.ts, already load them with
+// those pages) and the site shell's, which the entry renders itself (the
+// crash screen and the route titles); a chunk of its own would import the
+// registry from the entry that imports it.
+export const EN_SHARDS_IN_THE_ENTRY: ReadonlySet<string> = new Set(["home", "pricing", "site-shell"]);
+
+/** The English shards that load with the code naming them: their directory, their file and their one root key. */
+export function deferredEnglishShards(shardsDir = SHARDS_DIR): Array<{ dir: string; file: string; root: string; strings: unknown }> {
+  if (!existsSync(shardsDir)) return [];
+  return readdirSync(shardsDir).sort().flatMap((dir) => {
+    const file = path.join(shardsDir, dir, "en.json");
+    if (EN_SHARDS_IN_THE_ENTRY.has(dir) || !existsSync(file)) return [];
+    const bundle = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+    const roots = Object.keys(bundle);
+    if (roots.length !== 1) throw new Error(`src/i18n/shards/${dir}/en.json writes ${roots.length} top-level keys; a shard writes exactly one`);
+    return [{ dir, file, root: roots[0], strings: bundle[roots[0]] }];
+  });
+}
+
+/** The chunk a deferred shard's English strings ship in, or undefined for every other module. */
+export function shardChunkFor(id: string, roots: ReadonlySet<string>): string | undefined {
+  if (!id.startsWith(EN_NAMESPACE_ID)) return undefined;
+  const ns = id.slice(EN_NAMESPACE_ID.length);
+  return roots.has(ns) ? `rb-en_ns_${ns}` : undefined;
+}
 /** Above this size a namespace ships as JSON.parse of a string, which V8 parses faster than an object literal. */
 const JSON_PARSE_ABOVE = 10 * 1024;
 
@@ -109,9 +152,12 @@ export function registryModule(names: readonly string[]): string {
   ].join("\n");
 }
 
-export const enNamespaces = (localeFile = EN_LOCALE_FILE, srcDir = SRC_DIR): Plugin => {
+export const enNamespaces = (localeFile = EN_LOCALE_FILE, srcDir = SRC_DIR, shardsDir = SHARDS_DIR): Plugin => {
   let en: Record<string, unknown> = {};
   let names = new Set<string>();
+  let shardRoots = new Set<string>();
+  let shardFiles = new Map<string, string>();
+  const i18nDir = path.join(srcDir, "i18n") + path.sep;
   return {
     name: "rb-en-namespaces",
     apply: "build",
@@ -119,11 +165,28 @@ export const enNamespaces = (localeFile = EN_LOCALE_FILE, srcDir = SRC_DIR): Plu
     enforce: "pre",
     buildStart() {
       en = JSON.parse(readFileSync(localeFile, "utf8"));
+      const shards = deferredEnglishShards(shardsDir);
+      for (const s of shards) {
+        if (s.root in en) this.error(`shard ${s.dir} writes under "${s.root}", which en.json already holds`);
+        en[s.root] = s.strings;
+        this.addWatchFile(s.file);
+      }
+      // en.json's namespaces first, in its order, then the shard roots.
       names = new Set(Object.keys(en));
+      shardRoots = new Set(shards.map((s) => s.root));
+      shardFiles = new Map(shards.map((s) => [s.file, s.dir]));
       this.addWatchFile(localeFile);
     },
     resolveId(source, importer) {
-      if (source === EN_REGISTRY_ID || source === EN_CORE_ID || source === EN_ALL_ID || source.startsWith(EN_NAMESPACE_ID)) return source;
+      if (source === EN_REGISTRY_ID || source === EN_CORE_ID || source === EN_ALL_ID || source.startsWith(EN_NAMESPACE_ID) || source.startsWith(EN_SHARD_EMPTY_ID)) return source;
+      // The entry's glob of a deferred English shard: its strings arrive with
+      // the code that names its root, so the glob reads an empty bundle.
+      if (importer && /\.json$/.test(source) && /[\\/]src[\\/]i18n[\\/]index\.ts$/.test(importer)) {
+        const bare = source.split("?")[0];
+        const file = bare.startsWith("/") && !existsSync(bare) ? path.join(srcDir, "..", bare) : path.resolve(path.dirname(importer), bare);
+        const dir = shardFiles.get(file);
+        if (dir) return EN_SHARD_EMPTY_ID + dir;
+      }
       // Only the app's i18n module receives the registry in place of the file.
       if (importer && /\.json$/.test(source) && path.resolve(path.dirname(importer), source) === localeFile && /[\\/]src[\\/]i18n[\\/]index\.ts$/.test(importer)) {
         return EN_CORE_ID;
@@ -134,6 +197,7 @@ export const enNamespaces = (localeFile = EN_LOCALE_FILE, srcDir = SRC_DIR): Plu
       if (id === EN_REGISTRY_ID) return registryModule([...names]);
       if (id === EN_CORE_ID) return `import { EN } from ${JSON.stringify(EN_REGISTRY_ID)};\nexport default EN;\n`;
       if (id === EN_ALL_ID) return namespaceModule(en);
+      if (id.startsWith(EN_SHARD_EMPTY_ID)) return "export default {};\n";
       if (id.startsWith(EN_NAMESPACE_ID)) {
         const ns = id.slice(EN_NAMESPACE_ID.length);
         if (!names.has(ns)) this.error(`en.json has no namespace "${ns}"`);
@@ -143,7 +207,10 @@ export const enNamespaces = (localeFile = EN_LOCALE_FILE, srcDir = SRC_DIR): Plu
     },
     transform(code, id) {
       if (!id.startsWith(srcDir) || !/\.[cm]?[jt]sx?$/.test(id)) return null;
-      const used = namespacesNamedIn(code, names);
+      // src/i18n names every shard root as data (merge-shards.ts's table);
+      // only the code that renders a root's strings brings them.
+      const inI18n = id.startsWith(i18nDir);
+      const used = namespacesNamedIn(code, names).filter((ns) => !(inI18n && shardRoots.has(ns)));
       if (used.length === 0) return null;
       const imports = used.map((ns) => `import ${JSON.stringify(EN_NAMESPACE_ID + ns)};`).join("");
       return { code: imports + code, map: null };

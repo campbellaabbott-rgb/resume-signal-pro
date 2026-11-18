@@ -1131,7 +1131,8 @@
       "fontUnreadable": "Die Buchstaben in diesem PDF lassen sich nicht lesen",
       "fontUnreadableDescription": "Die Schrift ist keinen echten Zeichen zugeordnet. Lade stattdessen eine .docx-Datei hoch oder füge den Text deines Lebenslaufs ein.",
       "unreadCharacters": "Einige Zeichen ließen sich nicht lesen",
-      "unreadCharactersDescription": "Wir haben {{count}} Zeichen ausgelassen, die dieses PDF nicht benennt. Für den genauesten Scan lade eine .docx-Datei hoch oder füge den Text deines Lebenslaufs ein.",
+      "unreadCharactersDescription_one": "Wir haben {{count}} Zeichen ausgelassen, das dieses PDF nicht benennt. Für den genauesten Scan lade eine .docx-Datei hoch oder füge den Text deines Lebenslaufs ein.",
+      "unreadCharactersDescription_other": "Wir haben {{count}} Zeichen ausgelassen, die dieses PDF nicht benennt. Für den genauesten Scan lade eine .docx-Datei hoch oder füge den Text deines Lebenslaufs ein.",
       "checkoutRefusedTitle": "Der Bezahlvorgang konnte nicht gestartet werden",
       "resumeTooLong": "Lebenslauf zu lang für den Scan",
       "resumeTooLongDescription": "Dieser Lebenslauf hat {{length}} Zeichen; der kostenlose Scan liest bis zu {{max}}. Kürze ihn (zuerst ältere Stationen und lange Listen) und scanne erneut."
@@ -1428,7 +1429,8 @@
       "subtitle": "Bearbeitbare Abschnitte, Live-Vorschau, Export als PDF oder Word"
     },
     "actionBanner": {
-      "issuesFound": "{{count}} Probleme gefunden — jetzt beheben",
+      "issuesFound_one": "{{count}} Problem gefunden — jetzt beheben",
+      "issuesFound_other": "{{count}} Probleme gefunden — jetzt beheben",
       "keyImprovements": "Wichtige Verbesserungen verfügbar",
       "withRole": "{{industry}}-spezifische Korrekturen für deinen {{role}}-Lebenslauf",
       "withoutRole": "Branchenspezifische Korrekturen mit neu formulierten Stichpunkten",
@@ -1556,7 +1558,8 @@
       "careerBrand": "• Persönliche Markenbewertung: aktuell vs. ideal",
       "careerDescWithRole": "Gehaltsverhandlungsführung, nächste Karriereschritte und Interview-Gesprächspunkte für deinen {{role}}-Hintergrund",
       "careerDescDefault": "Gehaltsverhandlungsführung, nächste Karriereschritte und Interview-Gesprächspunkte für {{industry}}",
-      "kwDescWithStats": "{{count}} fehlende Keywords gefunden, die spezifisch für {{industry}} sind und von ATS-Systemen gesucht werden",
+      "kwDescWithStats_one": "{{count}} fehlendes Keyword gefunden, das spezifisch für {{industry}} ist und von ATS-Systemen gesucht wird",
+      "kwDescWithStats_other": "{{count}} fehlende Keywords gefunden, die spezifisch für {{industry}} sind und von ATS-Systemen gesucht werden",
       "kwDescGood": "Starke Keyword-Abdeckung für {{industry}} — erhalte Formulierungs- und Platzierungstipps, um sie noch wirkungsvoller zu machen",
       "kwDescDefault": "Fehlende Keywords spezifisch für {{industry}}, die von ATS-Systemen gesucht werden"
     },
@@ -1630,7 +1633,8 @@
       "openBoardFallbackLive": "Öffne die Live-Jobbörse — {{n}}+ Stellen jetzt online, nach deinem Lebenslauf sortiert",
       "openBoardFallbackPlain": "Öffne die Live-Jobbörse — aktuelle Stellen, nach deinem Lebenslauf sortiert",
       "openBoardNoteLive": "{{n}}+ Stellen jetzt online · Suchen speichern, Unternehmen beobachten, Bewerbungen verfolgen",
-      "openBoardNotePlain": "Aktuelle Stellen · Suchen speichern, Unternehmen beobachten, Bewerbungen verfolgen"
+      "openBoardNotePlain": "Aktuelle Stellen · Suchen speichern, Unternehmen beobachten, Bewerbungen verfolgen",
+      "openBoard": "Öffne dein sortiertes Board — jede Stelle an diesem Lebenslauf bewertet"
     },
     "nextSteps": {
       "eyebrow": "Nächste Schritte",
@@ -2756,7 +2760,7 @@
         "browserLocal": {
           "what": "Ein Lebenslauf, den du hier erstellst (im Builder oder in Freelance Boost), ein Verlauf deiner letzten Scans (Name, Rolle und Punktzahlen) und deine letzten Berichte",
           "where": "Der lokale Speicher dieses Browsers, auf deinem Gerät",
-          "howLong": "Bis er geleert wird: Die Schaltfläche zum Löschen der Browserdaten auf einer bezahlten Ergebnisseite leert alles, ebenso das Löschen der Website-Daten in deinem Browser"
+          "howLong": "Bis er geleert wird: Abmelden auf diesem Gerät leert ihn (wenn ein selbst erstellter Lebenslauf oder deine Freelance-Boost-Angaben nur hier liegen, wirst du vorher gefragt und kannst sie behalten), ebenso die Schaltfläche „Browserdaten löschen“ auf einer bezahlten Ergebnisseite und das Löschen der Website-Daten in deinem Browser"
         },
         "ai": {
           "what": "Der Text deines Lebenslaufs, während ein Bericht geschrieben wird",
@@ -2764,9 +2768,9 @@
           "howLong": "Nur zur Erstellung deines Berichts gesendet, zu den Bedingungen dieses Anbieters"
         },
         "email": {
-          "what": "Ein Bericht, den du dir selbst mailst, die bezahlte Analyse, die wir dir mailen, und Fix-Plan-E-Mails, die du abonnierst",
-          "where": "Dein Postfach, versendet über unseren E-Mail-Anbieter; geplante Fix-Plan-E-Mails warten in unserer Versandwarteschlange",
-          "howLong": "Die geplanten E-Mails gehen über 14 Tage hinweg raus; eine Abmeldung storniert den Rest"
+          "what": "Ein Bericht, den du dir selbst mailst, und die bezahlte Analyse, die wir dir mailen",
+          "where": "Dein Postfach, versendet über unseren E-Mail-Anbieter",
+          "howLong": "In deinem Postfach, solange du sie behältst"
         },
         "paid": {
           "what": "Eine bezahlte Analyse, die deinen Lebenslauf zitiert",
@@ -2786,7 +2790,7 @@
         "agent": {
           "what": "Der Lebenslauf, den du dem Bewerbungsagenten gibst: die Datei und ihr Text",
           "where": "Privater Speicher, den nur du und der Agent lesen können",
-          "howLong": "Der Bewerbungsagent ist abgeschaltet und sendet ihn an niemanden. Ein Lebenslauf, den du ihm früher gegeben hast, bleibt gespeichert, bis du dein Konto löschst oder die Löschung verlangst: Das Löschen deines Kontos entfernt den Text; schreib an {{email}}, um die Datei löschen zu lassen."
+          "howLong": "Der Bewerbungsagent ist abgeschaltet und sendet ihn an niemanden. Ein Lebenslauf, den du ihm früher gegeben hast, bleibt gespeichert, bis du dein Konto löschst; das entfernt den Text und die Datei. Um beides löschen zu lassen, ohne dein Konto zu löschen, schreib an {{email}}."
         },
         "payment": {
           "what": "Deine Zahlung",
@@ -2796,7 +2800,7 @@
         "shortlist": {
           "what": "Lebensläufe von Kandidaten, die ein Arbeitgeber mit Shortlist prüft",
           "where": "Das Konto dieses Arbeitgebers, als geschwärzter Text",
-          "howLong": "Bis der Arbeitgeber sie löscht"
+          "howLong": "Bis der Arbeitgeber die Kandidatin oder den Kandidaten, die Stelle oder sein Konto löscht; was vier Jahre nach dem Hochladen noch gespeichert ist, wird gelöscht"
         }
       },
       "footnote": "Gelöscht wird alle 15 Minuten im Zwischenspeicher und stündlich im Bericht-Cache, im KI-Cache und bei bezahlten Analysen. Wenn etwas früher gelöscht werden soll, schreib an {{email}}."
@@ -3353,7 +3357,8 @@
     "gapsByCategory": "Lücken nach Kategorie",
     "gapCount_one": "({{count}} Lücke)",
     "gapCount_other": "({{count}} Lücken)",
-    "topActions": "Top {{count}} Maßnahmen zur Verbesserung deiner Übereinstimmung",
+    "topActions_one": "Top {{count}} Maßnahme zur Verbesserung deiner Übereinstimmung",
+    "topActions_other": "Top {{count}} Maßnahmen zur Verbesserung deiner Übereinstimmung",
     "addSkill": "\"{{skill}}\" hinzufügen",
     "copySuggestion": "Vorschlag kopieren",
     "technical": "Technische Fähigkeiten",
@@ -3857,7 +3862,6 @@
     "matchStrong": "Starke Übereinstimmung",
     "matchPossible": "Mögliche Übereinstimmung",
     "matchStretch": "Unwahrscheinlich",
-    "matchCoverage": "{{pct}} % der erkannten Schlüsselbegriffe dieser Stelle stehen bereits in deinem Lebenslauf",
     "allCountries": "Alle Länder",
     "countryTip": "Land aus dem Standorttext der Anzeige gelesen — nicht zuordenbare Anzeigen werden bei aktivem Filter ausgeschlossen, nie geraten.",
     "freshHint": "Zählt nur vom Unternehmen angegebene Veröffentlichungsdaten",
@@ -3971,7 +3975,7 @@
     "verdictGo": "Jetzt bewerben lohnt sich",
     "verdictCaution": "Mit Erwartungsmanagement bewerben",
     "verdictNeutral": "Was die Daten sagen",
-    "takedownsLast24h": "{{n}} Stellen in den letzten 24 Stunden besetzt oder geschlossen",
+    "takedownsLast24h": "{{n}} Stellenanzeigen in den letzten 24 Stunden entfernt",
     "recheckLine": "Median-Feed vor {{m}} Min. re-geprüft",
     "chipWeek": "Diese Woche",
     "chipRemote": "Remote",
@@ -4156,7 +4160,8 @@
     "discWorkMode2": "{{shown}} dieser Arbeitgeber geben an, wo gearbeitet wird. Weitere {{hidden}} Stellen erfüllen alle anderen Kriterien, tragen aber keine angegebene Arbeitsform – der Arbeitgeber hat nichts gesagt oder zwei verschiedene Dinge, und wir wählen dann nicht aus. Dieser Filter blendet sie daher aus.",
     "discShowAll": "Diese ebenfalls anzeigen",
     "discCategory": "Außerdem haben {{hidden}} Stellen im gesamten Board einen Titel, der den Bereich nie nennt – kein Bereichsfilter kann sie erreichen.",
-    "fuzzyExtraLine": "Nur wenige exakte Treffer für „{{q}}“ — {{count}} ähnliche Titel sind unten enthalten, gekennzeichnet.",
+    "fuzzyExtraLine_one": "Nur wenige exakte Treffer für „{{q}}“ — {{count}} ähnlicher Titel ist unten enthalten, gekennzeichnet.",
+    "fuzzyExtraLine_other": "Nur wenige exakte Treffer für „{{q}}“ — {{count}} ähnliche Titel sind unten enthalten, gekennzeichnet.",
     "closeMatchChip": "ähnlicher Treffer",
     "zeroAlertHint": "Täglich kommen neue Stellen dazu. Erhalte eine E-Mail, sobald passende Stellen zu dieser Suche erscheinen:",
     "zeroAlertCta": "Benachrichtigen, sobald es das gibt",
@@ -4279,8 +4284,10 @@
     "skillUnlockPlain": "fehlt in {{n}} dieser Anzeigen.",
     "skillUnlockCta": "Hast du das drauf? Dann ehrlich in den Lebenslauf damit →",
     "updating": "wird aktualisiert…",
-    "hiddenCount": "{{count}} ausgeblendet",
-    "hiddenByViews": "{{count}} ausgeblendet durch {{views}}",
+    "hiddenCount_one": "{{count}} ausgeblendet",
+    "hiddenCount_other": "{{count}} ausgeblendet",
+    "hiddenByViews_one": "{{count}} ausgeblendet durch {{views}}",
+    "hiddenByViews_other": "{{count}} ausgeblendet durch {{views}}",
     "restoreHidden": "wiederherstellen",
     "benchmarkTip": "Median der aufs Jahr gerechneten Untergrenzen, die Unternehmen selbst veröffentlichen (Stunden- und Monatssätze annualisiert), berechnet nur über die dominierende angegebene Währung dieses Berufsfelds — nie umgerechnet, nie gemischt. Live von diesem Board — keine Umfrage, keine Schätzung.",
     "benchmarkLine": "Ausgeschriebene Gehälter in diesem Berufsfeld: Median-Untergrenze {{symbol}}{{median}} ({{currency}}) — aus {{n}} Anzeigen hier mit Gehaltsangabe",
@@ -4429,7 +4436,8 @@
     "a11yLoading": "Stellen werden geladen …",
     "a11yError": "Stellen konnten nicht geladen werden. Bitte erneut versuchen.",
     "a11yNoResults": "Keine Stellen entsprechen diesen Filtern.",
-    "a11yResults": "{{count}} Stellen angezeigt.",
+    "a11yResults_one": "{{count}} Stelle angezeigt.",
+    "a11yResults_other": "{{count}} Stellen angezeigt.",
     "experienceFieldLabel": "Erfahrungsniveau",
     "salaryFieldLabel": "Mindestangegebene Vergütung",
     "companyFieldLabel": "Arbeitgeber",
@@ -4660,7 +4668,8 @@
     "laneAll": "Alle",
     "advanceTip": "Weiter zu {{stage}}",
     "statusLabel": "Bewerbungsstatus",
-    "tracked": "{{count}} erfasst",
+    "tracked_one": "{{count}} erfasst",
+    "tracked_other": "{{count}} erfasst",
     "tracker": "Bewerbungs-Tracker",
     "scoreHistory": "Score-Verlauf",
     "targetScore": "Ziel-Score",
@@ -4772,7 +4781,7 @@
     "acPrepAll_other": "{{count}} zugeschnittene Bewerbungen vorbereiten",
     "acGoPro_one": "Pro holen und {{count}} gespeicherte Stelle vorbereiten",
     "acGoPro_other": "Pro holen und {{count}} gespeicherte Stellen vorbereiten",
-    "acFitTitle": "{{pct}} % der erkannten Stichwörter der Ausschreibung stehen in Ihrem Lebenslauf",
+    "acFitTitle": "Keyword-Passungswert {{pct}} von 100: wie stark sich die erkannten Schlüsselwörter dieser Anzeige und Ihr Lebenslauf überschneiden. Es ist nicht der Anteil der Schlüsselwörter der Anzeige, die Sie schon haben.",
     "acApply": "Bewerben",
     "acToggleKit": "Kit ein-/ausblenden",
     "acKitUnreadable": "Dieses Kit war nicht lesbar — unten in der Tracker-Zeile neu generieren.",
@@ -4954,7 +4963,9 @@
     "acLimitHours": "Generierungslimit erreicht. Die bisher vorbereiteten sind gespeichert. Versuchen Sie den Rest in etwa {{hours}} Stunden.",
     "acLimitMinutes": "Generierungslimit erreicht. Die bisher vorbereiteten sind gespeichert. Versuchen Sie den Rest in etwa {{minutes}} Minuten.",
     "acAiUnavailable": "Der KI-Dienst nimmt gerade keine Anfragen an. Was bisher vorbereitet wurde, ist gespeichert; versuchen Sie den Rest später.",
-    "acSavedNoLetter": "Zugeschnittene Lebensläufe gespeichert: {{count}}. Die Anschreiben dazu konnten diesmal nicht geschrieben werden; starten Sie die Vorbereitung erneut, um sie hinzuzufügen."
+    "acSavedNoLetter": "Zugeschnittene Lebensläufe gespeichert: {{count}}. Die Anschreiben dazu konnten diesmal nicht geschrieben werden; starten Sie die Vorbereitung erneut, um sie hinzuzufügen.",
+    "notifAgentEmail": "Morgendliche Shortlist-E-Mail des Bewerbungsagenten",
+    "notifAgentPaused": "(Mandat pausiert — kein Versand)"
   },
   "applyAgent": {
     "badge": "Ihr KI-Bewerbungsagent",
@@ -5136,7 +5147,55 @@
     "searchLimitHit": "Du kannst bis zu 10 aktive Suchen haben. Pausiere eine, um eine weitere hinzuzufügen.",
     "searchLastRun": "Letzter Lauf: {{scanned}} geprüft, {{picked}} eingereiht.",
     "passFunds": "Dein Agent Pass finanziert diesen Agenten: noch {{left}} Bewerbungen. Schalte den Agenten unten ein, dann kann deine verbundene KI Bewerbungen anfordern.",
-    "trackerFull": "Behalten, aber dein Tracker ist voll (2.000 Einträge). Entferne alte Einträge, um neue hinzuzufügen."
+    "trackerFull": "Behalten, aber dein Tracker ist voll (2.000 Einträge). Entferne alte Einträge, um neue hinzuzufügen.",
+    "countryAny": "Länder — alle (der Agent bewirbt sich überall, wo deine Rollen und Orte passen)",
+    "countryPicked": "Länder, in denen der Agent sich bewerben darf",
+    "countryNote": "Liest das Land jeder Stelle, nicht ihren Wortlaut — wer Deutschland wählt, findet also auch Stellen, die nur „Berlin“ nennen. Lass alle aus, um überall zu suchen.",
+    "needResumeHere": "Füge zuerst deinen Lebenslauf hinzu — lade ihn direkt unten hoch oder füge ihn ein, dann kann der Agent starten.",
+    "keptTracked": "Behalten — unten zu deinem Tracker hinzugefügt.",
+    "cvTooShort": "Das wirkt zu kurz für einen Abgleich — bitte lade den vollständigen Lebenslauf hoch oder füge den Text ein.",
+    "cvSaveError": "Das konnte nicht gespeichert werden — bitte versuch es noch einmal.",
+    "cvSaved": "Lebenslauf gespeichert — der Agent bewertet jede Stelle daran.",
+    "cvParseFailed": "Die Datei konnte nicht gelesen werden — füge stattdessen den Text ein, dann klappt es.",
+    "sumSalary": "{{n}}+",
+    "sumRemote": "nur remote",
+    "sumAge": "in den letzten {{n}} T. veröffentlicht",
+    "sumUncat": "+ ohne Kategorie",
+    "sumDaily": "{{n}}/Morgen",
+    "fromCvTitle": "Aus deinem Lebenslauf",
+    "fromCvUseAll": "Diese verwenden",
+    "fromCvRoles": "Rollen:",
+    "fromCvEvidence": "Gelesen aus: {{line}}",
+    "fromCvAlso": "Passt oft auch:",
+    "fromCvAdjacentTip": "Eine benachbarte Rolle — unser Vorschlag, nicht etwas, das in deinem Lebenslauf steht",
+    "fromCvPlaces": "Orte:",
+    "fromCvNote": "Nur Vorschläge — nichts läuft, bevor du aktivierst. Das Senioritätswort („Senior“) lassen wir bewusst weg: Stellen benennen denselben Job auf ein Dutzend Arten, und der kürzere Begriff findet sie alle.",
+    "startFromCv": "Agent mit diesen starten",
+    "fewerOptions": "Weniger Optionen",
+    "moreOptions": "Mehr Optionen",
+    "advancedActive": "Ebenfalls aktiv:",
+    "fieldMaxAge": "Veröffentlicht innerhalb von",
+    "ageAny": "Beliebiges Alter",
+    "age1": "24 Stunden",
+    "age3": "3 Tage",
+    "age7": "7 Tage",
+    "age14": "14 Tage",
+    "age30": "30 Tage",
+    "ageNote": "Beruht auf dem Datum, das jeder Arbeitgeber in seinem eigenen Feed angibt. Stellen ohne Datum werden weggelassen — wir schätzen nie ein Alter.",
+    "fieldUncategorised": "Auch Stellen ohne Kategorie durchsuchen — etwa ein Viertel des Boards, bei dem sich das Fachgebiet nicht aus dem Titel lesen ließ.",
+    "uncategorisedNoTerms": "Ohne Jobtitel oben erweitert das die Suche stark. Füge Titel hinzu, dann kostet es dich fast nichts.",
+    "needResumeTitle": "Füge deinen Lebenslauf hinzu, um zu starten",
+    "needResumeWhy": "Der Agent bewertet jede Stelle daran und liest deine Rollen und Orte daraus — es ist das Einzige, was wir nicht für dich herausfinden können.",
+    "cvReading": "Wird gelesen…",
+    "cvUpload": "Lebenslauf hochladen",
+    "cvPasteHide": "Einfügefeld ausblenden",
+    "cvPaste": "oder den Text einfügen",
+    "cvPastePlaceholder": "Füge hier den Text deines Lebenslaufs ein…",
+    "cvPasteSave": "Lebenslauf speichern",
+    "cvPasteCount": "{{n}} Zeichen — 100 nötig",
+    "statusAwaiting": "Aktiv — wartet auf Abonnement",
+    "summaryAge": "in den letzten {{d}} T. veröffentlicht",
+    "summaryUncat": "+ ohne Kategorie"
   },
   "applyProfile": {
     "authorized": "Bist du berechtigt, dort zu arbeiten, wo du dich bewirbst?",
@@ -5278,7 +5337,7 @@
     "confirming": "Ihr Abonnement wird bei Stripe bestätigt. Das dauert ein paar Sekunden.",
     "notConfirmedYet": "Wir konnten Ihr Abonnement noch nicht bestätigen. Laden Sie diese Seite in einer Minute neu, oder wenden Sie sich an den Support, falls Ihr Abo nicht erscheint.",
     "activeMember": "Sie sind Pro-Mitglied: Die Schreibwerkzeuge sind freigeschaltet.",
-    "badge": "Schreibwerkzeuge",
+    "badge": "Pro",
     "checkoutRefusedTitle": "Der Bezahlvorgang konnte nicht gestartet werden",
     "endsOn": "Endet am {{date}}: gekündigt, verlängert sich nicht",
     "goPro": "Pro holen — ${{price}}/Monat",
@@ -5328,7 +5387,12 @@
     "heading": "Gebaut für die Systeme, die Arbeitgeber wirklich nutzen",
     "sub": "Wir lesen Stellen direkt aus {{count}} Bewerbermanagement-Systemen – nicht aus einer Suchmaschine.",
     "readTitle": "Direkt aus dem eigenen System des Arbeitgebers gelesen",
-    "readBlurb": "Jede Stellenanzeige auf der Jobbörse stammt aus einem dieser Systeme, und du bewirbst dich auf der Website des Arbeitgebers. Wir senden niemals eine Bewerbung für dich ab."
+    "readBlurb": "Jede Stellenanzeige auf der Jobbörse stammt aus einem dieser Systeme, und du bewirbst dich auf der Website des Arbeitgebers. Wir senden niemals eine Bewerbung für dich ab.",
+    "asOf": "Live-Zahlen der aktuell offenen Stellen, gemessen am {{time}}.",
+    "stripHeading": "Jede Stelle hier kommt direkt aus diesen Systemen",
+    "stripSub": "Direkt aus allen {{count}} gelesen — nie aus einer Suchmaschine abgegriffen.",
+    "eyebrow": "Woher unsere Stellen kommen",
+    "subCounted": "{{total}} offene Stellen, direkt aus den {{count}} Bewerbermanagement-Systemen unten gelesen – nicht aus einer Suchmaschine."
   },
   "pendingQ": {
     "title": "Fragen, bei denen der Agent gestoppt hat",
@@ -5633,16 +5697,6 @@
     "home": "Zurück zu Resume Booster"
   },
   "fixPlanConfirm": {
-    "title": "Starten Sie Ihre Fix-Plan-E-Mails",
-    "body": "Vier kurze E-Mails über zwei Wochen: die wichtigsten Fixes an Tag 2, der Rest an Tag 4, eine Rescan-Erinnerung an Tag 6 und eine Frage an Tag 14. Jede E-Mail enthält einen Abmeldelink.",
-    "button": "Ja, E-Mails starten",
-    "done": "Erledigt. Die erste E-Mail kommt in zwei Tagen.",
-    "already": "Für diese Adresse wurde diesen Monat bereits eine Fix-Plan-Sequenz gestartet, daher wurde nichts weiter eingeplant.",
-    "optedOut": "Diese Adresse hat sich früher von unseren E-Mails abgemeldet, daher wurde nichts eingeplant.",
-    "invalid": "Dieser Link ist abgelaufen oder ungültig. Senden Sie sich beim nächsten Scan einen neuen Bericht, um einen neuen zu erhalten.",
-    "missing": "Diese Seite benötigt den Button aus Ihrer Bericht-E-Mail.",
-    "error": "Start gerade nicht möglich. Versuchen Sie den Button gleich noch einmal.",
-    "errorFinal": "Die Serie konnte nicht vollständig gestartet werden, und ein erneuter Klick startet sie diesen Monat nicht neu.",
     "home": "Zurück zu Resume Booster"
   },
   "emailUnsubscribe": {
@@ -5656,7 +5710,9 @@
     "missing": "Diese Seite braucht den Abmeldelink aus einer unserer E-Mails.",
     "error": "Das Abbestellen hat gerade nicht geklappt. Versuchen Sie es gleich noch einmal.",
     "home": "Zurück zu Resume Booster",
-    "agentDigest": "Die morgendlichen Shortlist-E-Mails beenden. Ihr Agent läuft weiter, und seine Vorschläge bleiben in Ihrem Konto."
+    "agentDigest": "Die morgendlichen Shortlist-E-Mails beenden. Der Bewerbungsagent wurde eingestellt und bewirbt sich nirgendwo; damit enden auch alle seine E-Mails, die an diese Adresse noch geplant sind.",
+    "metaTitle": "Abbestellen | Resume Booster",
+    "metaDescription": "E-Mails von Resume Booster abbestellen."
   },
   "purchaseTerms": {
     "finalSale": "Alle Käufe sind endgültig.",
@@ -6175,5 +6231,183 @@
       "minor_one": "{{count}} gering",
       "minor_other": "{{count}} gering"
     }
+  },
+  "edgeErrors": {
+    "rateLimited": {
+      "title": "Anfragelimit erreicht",
+      "description": "Du hast zu viele Anfragen gestellt. Bitte warte ein paar Minuten und versuche es dann erneut."
+    },
+    "aiUnavailable": {
+      "title": "KI-Dienst ausgelastet",
+      "description": "Unser KI-Dienst ist vorübergehend nicht verfügbar. Bitte versuche es gleich noch einmal."
+    },
+    "serviceUnavailable": {
+      "title": "Dienst nicht verfügbar",
+      "description": "Der Dienst ist vorübergehend nicht verfügbar. Bitte versuche es in Kürze erneut."
+    },
+    "paymentRequired": {
+      "title": "Zahlung erforderlich",
+      "description": "Bitte schließe die Zahlung ab, um diese Funktion zu nutzen."
+    },
+    "sessionUsed": {
+      "title": "Sitzung abgelaufen",
+      "description": "Diese Kaufsitzung wurde bereits verwendet. Wende dich an den Support, wenn du Hilfe brauchst."
+    },
+    "invalidInput": {
+      "title": "Ungültige Eingabe",
+      "description": "Bitte prüfe deine Eingabe und versuche es erneut."
+    },
+    "aiTimeout": {
+      "title": "KI-Zeitüberschreitung",
+      "description": "Die KI hat länger gebraucht als erwartet. Ein neuer Versuch klappt meistens – klicke unten auf die Schaltfläche, um es erneut zu versuchen."
+    },
+    "aiBusy": {
+      "title": "KI ausgelastet",
+      "description": "Unser KI-Dienst ist gerade stark gefragt. Bitte warte einen Moment und versuche es erneut."
+    },
+    "aiOutage": {
+      "title": "KI-Dienst ausgelastet",
+      "description": "Unser KI-Dienst nimmt gerade keine Anfragen an. Das liegt an uns, nicht an deiner Zahlung. Bitte versuche es in ein paar Minuten erneut."
+    },
+    "busyShort": {
+      "title": "Gerade ausgelastet",
+      "description": "Das liegt an uns, nicht an einem Limit, das du erreicht hast. Bitte versuche es in ein paar Minuten erneut."
+    },
+    "busyLong": {
+      "title": "Vorerst zu viele Anfragen",
+      "description": "Dieses Werkzeug hat vorerst zu viele Anfragen erhalten. Bitte versuche es später erneut."
+    },
+    "status400": {
+      "title": "Ungültige Anfrage",
+      "description": "Bei deiner Anfrage ist ein Problem aufgetreten. Bitte prüfe deine Eingabe und versuche es erneut."
+    },
+    "status401": {
+      "title": "Anmeldung erforderlich",
+      "description": "Bitte bestätige deinen Kauf oder melde dich an, um fortzufahren."
+    },
+    "status403": {
+      "title": "Zugriff verweigert",
+      "description": "Du hast keine Berechtigung, das zu öffnen."
+    },
+    "status404": {
+      "title": "Nicht gefunden",
+      "description": "Das Angeforderte wurde nicht gefunden."
+    },
+    "status409": {
+      "title": "Bereits verarbeitet",
+      "description": "Diese Anfrage wurde bereits verarbeitet."
+    },
+    "status422": {
+      "title": "Konnte nicht verarbeitet werden",
+      "description": "Wir konnten das Gesendete nicht verarbeiten. Falls es eine Datei war, versuche es mit einer .docx-Datei oder füge den Text deines Lebenslaufs ein."
+    },
+    "status429": {
+      "title": "Zu viele Anfragen",
+      "description": "Du hast das stündliche Limit erreicht. Bitte versuche es später erneut oder füge stattdessen den Text deines Lebenslaufs ein."
+    },
+    "status500": {
+      "title": "Serverfehler",
+      "description": "Bei uns ist etwas schiefgelaufen. Bitte versuche es erneut."
+    },
+    "status502": {
+      "title": "Dienst nicht verfügbar",
+      "description": "Unser Dienst ist vorübergehend nicht verfügbar. Bitte versuche es gleich noch einmal."
+    },
+    "status503": {
+      "title": "Dienst ausgelastet",
+      "description": "Unser KI-Dienst ist gerade ausgelastet. Bitte versuche es in ein paar Augenblicken erneut."
+    },
+    "status504": {
+      "title": "Zeitüberschreitung der KI",
+      "description": "Die KI hat länger als erwartet für die Antwort gebraucht. Ein neuer Versuch klappt meistens – bitte versuche es erneut."
+    },
+    "unknown": {
+      "title": "Etwas ist schiefgelaufen",
+      "description": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut."
+    },
+    "network": {
+      "title": "Verbindungsfehler",
+      "description": "Keine Verbindung zum Server. Bitte prüfe deine Internetverbindung und versuche es erneut."
+    },
+    "relay": {
+      "title": "Dienstfehler",
+      "description": "Bei der Verbindung zu unserem Dienst ist ein Problem aufgetreten. Bitte versuche es erneut."
+    },
+    "non2xx": {
+      "title": "Anfrage fehlgeschlagen",
+      "description": "Die Anfrage konnte nicht abgeschlossen werden. Bitte versuche es erneut."
+    },
+    "plain": {
+      "title": "Fehler"
+    }
+  },
+  "agentControls": {
+    "saveError": "Das konnte nicht gespeichert werden — bitte versuch es noch einmal.",
+    "blocklist": {
+      "title": "Nie bei diesen Arbeitgebern bewerben",
+      "help": "Füge zuerst deinen aktuellen Arbeitgeber hinzu. Der Agent überspringt jede Stelle dieser Unternehmen und erkennt den Namen unabhängig von Groß- und Kleinschreibung.",
+      "placeholder": "Name des Unternehmens",
+      "remove": "{{name}} entfernen"
+    },
+    "add": "Hinzufügen",
+    "pause": {
+      "title": "Pausieren, mit einem Datum, an dem es weitergeht",
+      "active": "Pausiert bis {{when}}. Es geht von selbst weiter — du musst an nichts denken.",
+      "help": "Fährst du in den Urlaub oder hast du schon irgendwo Vorstellungsgespräche? Pausiere es, und es schaltet sich von selbst wieder ein.",
+      "resumeNow": "Jetzt fortsetzen",
+      "1w": "1 Woche",
+      "2w": "2 Wochen",
+      "1m": "1 Monat"
+    },
+    "cooldown": {
+      "title": "Tage zwischen Bewerbungen beim selben Arbeitgeber",
+      "help": "Verhindert, dass in einer Woche mehrere Bewerbungen auf dem Schreibtisch desselben Recruiters landen. 0 schaltet es aus."
+    }
+  },
+  "agentNight": {
+    "title": "Seit gestern",
+    "sent": "beworben",
+    "waiting": "warten auf dich",
+    "unconfirmed": "gesendet, aber unbestätigt",
+    "skipped": "übersprungen",
+    "ourFault": "Unser Fehler:"
+  },
+  "agent": {
+    "reach": {
+      "title": "Wo der Agent sich für dich bewerben kann",
+      "body": "Er reicht bei {{drivable}} der {{total}} Stellen auf dem Board ({{pct}} %) automatisch ein. Die übrigen schützen ihr Bewerbungsformular gegen Bots, deshalb bereitet der Agent alles vor und du klickst auf Absenden.",
+      "vendors": "Reicht automatisch ein bei: {{vendors}}. Gezählt auf dem Live-Board, keine Schätzung.",
+      "vendorsCount": "Reicht automatisch bei {{n}} Bewerbungssystemen ein. Gezählt auf dem Live-Board, keine Schätzung."
+    }
+  },
+  "agentSetup": {
+    "profile": {
+      "title": "Lade deinen Lebenslauf hoch",
+      "why": "Das ist die ganze Einrichtung. Name und Kontaktdaten lesen wir direkt daraus, und nach allem anderen fragen wir nur, wenn ein Formular es wirklich braucht."
+    },
+    "exclusions": {
+      "title": "Optional: Arbeitgeber nennen, die übersprungen werden",
+      "why": "Vor allem deinen aktuellen Arbeitgeber. Das ist jetzt einen Moment wert — es ist das Einzige, was sich hinterher nicht rückgängig machen lässt."
+    },
+    "mandate": {
+      "title": "Sag ihm, was du suchst",
+      "why": "Jobtitel, Ort und wie viele pro Tag. Fang mit einer pro Tag an, bis du seine Arbeit gesehen hast."
+    },
+    "title": "Zwei Dinge, bevor es losgehen kann",
+    "progress": "{{done}} von {{total}}",
+    "continue": "Weiter",
+    "howItWorks": "Was danach passiert →"
+  },
+  "receipt": {
+    "title": "Was wir für dich eingereicht haben",
+    "noRecord": "Diese Bewerbung wurde eingereicht, bevor wir Aufzeichnungen pro Feld geführt haben, daher können wir den genauen Wortlaut nicht zeigen.",
+    "changedAtSend": "beim Senden aktualisiert (vorbereitet: „{{was}}“)",
+    "evidence": "Die Bestätigung des Arbeitgebers",
+    "noEvidence": "Das Formular hat dies angenommen, aber keinen Bestätigungstext zurückgegeben, den wir festhalten konnten.",
+    "via": "Eingereicht über {{via}}."
+  },
+  "morningQueue": {
+    "qPlaceholder": "Produktmanager, Programmmanager",
+    "locPlaceholder": "Berlin, München, Remote"
   }
 }

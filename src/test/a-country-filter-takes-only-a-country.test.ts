@@ -1,0 +1,59 @@
+// @vitest-environment node
+/**
+ * A COUNTRY FILTER TAKES ONLY A COUNTRY (NB-27).
+ *
+ * /v1/jobs checked country codes for shape alone, so country=EU (a union,
+ * not a country), ZZ or any other two letters bound a filter no posting can
+ * match and answered an empty 200: a statement that a market has no jobs, in
+ * answer to a code that names no market. The board validates against ISO
+ * 3166-1 alpha-2 (job-board/filters.ts ISO_ALPHA2); /v1 now checks the same
+ * list, held equal to the board's by this test, and refuses the rest by name.
+ */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { ISO_ALPHA2 } from "../../supabase/functions/job-board/filters";
+import { ALLOWED, RecordingDb, callApi, loadPublicApi, useDb } from "./helpers/public-api-harness";
+import type { EdgeHandler } from "./helpers/edge-harness";
+
+vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
+
+const API = readFileSync(resolve(__dirname, "../../supabase/functions/public-api/index.ts"), "utf8");
+
+describe("the /v1 country list is the board's", () => {
+  it("holds exactly the codes job-board validates against", () => {
+    const m = /const V1_COUNTRY_CODES: ReadonlySet<string> = new Set\(\s*\(([\s\S]*?)\)\.split\(" "\),?\s*\);/.exec(API);
+    expect(m, "public-api declares its own copy of the code list").toBeTruthy();
+    const codes = (new Function(`return (${m![1]});`)() as string).split(" ");
+    expect(new Set(codes)).toEqual(new Set(ISO_ALPHA2));
+    expect(codes).toHaveLength(ISO_ALPHA2.size);
+  });
+});
+
+let handler: EdgeHandler;
+let db: RecordingDb;
+beforeAll(async () => {
+  ({ handler } = await loadPublicApi(() => new Response("{}", { status: 404 })));
+}, 120_000);
+beforeEach(() => {
+  db = new RecordingDb();
+  db.rpcs.api_key_check = () => ({ data: ALLOWED, error: null });
+  useDb(db);
+});
+
+describe("GET /v1/jobs?country=, as shipped", () => {
+  it("refuses a two-letter code that names no country, by name", async () => {
+    for (const c of ["EU", "ZZ"]) {
+      const r = await callApi(handler, `/v1/jobs?country=US,${c}`);
+      expect(r.status, c).toBe(400);
+      const e = r.body.error as { code: string; message: string };
+      expect(e.code).toBe("invalid_value");
+      expect(e.message).toContain(`"${c}"`);
+      expect(e.message).not.toContain('"US"');
+    }
+  });
+
+  it("still takes a real code, Kosovo, and the UK spelling", async () => {
+    for (const c of ["GB", "XK", "UK", "us"]) expect((await callApi(handler, `/v1/jobs?country=${c}`)).status, c).toBe(200);
+  });
+});

@@ -176,7 +176,9 @@ describe("every caller of an internal mailer is one of our servers, carrying the
     const names = [...new Set(callers.map(([f]) => f.split("/supabase/functions/")[1].split("/")[0]))].sort();
     // account-order (wave 4 round 2): "Email it again" mails an order's saved
     // copy to that order's own address, for the account that owns it.
-    expect(names).toEqual(["account-order", "analyze-resume", "retry-failed-deliveries", "stripe-webhook", "verify-product-purchase"]);
+    // _shared (bug round A, past buyers): _shared/past-buyer-copy.ts mails the
+    // copy a recovery-form writer made to the order's own address, once.
+    expect(names).toEqual(["_shared", "account-order", "analyze-resume", "retry-failed-deliveries", "stripe-webhook", "verify-product-purchase"]);
   });
 
   for (const fn of INTERNAL) {

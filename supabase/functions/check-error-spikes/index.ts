@@ -17,10 +17,19 @@ import { keyMatches } from '../_shared/admin-key.ts';
 
 // Provable from outside without the key: every response, the preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = 'check-error-spikes.2026-10-08.1';
+// 2026-11-12.1 (bug round of 2026-11-08, part A, ops-alerts lane): the spike mail is sent from our own domain first and Resend's onboarding sender second, and one nobody accepted gives its six-hour door back.
+const FN_BUILD = 'check-error-spikes.2026-11-12.1';
 
 /** At most one spike mail per this many minutes, however often it runs. */
 const MAIL_COOLDOWN_MINUTES = 360;
+/** The cooldown's door: given back when no sender accepted the mail, so the next run tries again. */
+const MAIL_DOOR = 'check-error-spikes:owner';
+/**
+ * WHO THE MAIL COMES FROM (NB-36). It went from alerts@resend.dev only, which
+ * the account may not be allowed to send from. Our own domain first, then
+ * Resend's onboarding sender, which reaches the account's own address.
+ */
+const SPIKE_SENDERS = ['Resume Booster Alerts <alerts@resumebooster.work>', 'Resume Booster Alerts <onboarding@resend.dev>'];
 
 const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -133,7 +142,7 @@ Deno.serve(async (req) => {
     if (!mailSkipped && (!adminEmail || !resendApiKey)) mailSkipped = 'ADMIN_EMAIL or RESEND_API_KEY not set';
     if (!mailSkipped) {
       const { data: due, error: doorErr } = await supabase.rpc('mail_door_take', {
-        p_door: 'check-error-spikes:owner', p_bucket: 'all', p_max: 1, p_window_minutes: MAIL_COOLDOWN_MINUTES,
+        p_door: MAIL_DOOR, p_bucket: 'all', p_max: 1, p_window_minutes: MAIL_COOLDOWN_MINUTES,
       });
       if (doorErr) mailSkipped = 'cooldown count unavailable';
       else if (due !== true) mailSkipped = 'cooldown: a spike mail went out in the last 6 hours';
@@ -178,31 +187,45 @@ ${diagnosticSummary || 'No errors in the last hour'}
 Resume Booster error monitoring (check-error-spikes): at most one mail every 6 hours.
       `.trim();
 
-      try {
-        const emailRes = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${resendApiKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            from: 'Resume Booster Alerts <alerts@resend.dev>',
-            to: adminEmail,
-            subject: `[Error spike] ${activeSpikes.length} visitor(s) | ${allRecentErrors.length} error(s) in 15 min`,
-            text: emailBody
-          })
-        });
+      // Each sender in turn until one is accepted; the last refusal is the one said.
+      for (const from of SPIKE_SENDERS) {
+        try {
+          const emailRes = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${resendApiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              from,
+              to: adminEmail,
+              subject: `[Error spike] ${activeSpikes.length} visitor(s) | ${allRecentErrors.length} error(s) in 15 min`,
+              text: emailBody
+            })
+          });
 
-        if (!emailRes.ok) {
-          mailSkipped = `send refused: HTTP ${emailRes.status}`;
-          console.error('Failed to send alert email:', (await emailRes.text()).slice(0, 200));
-        } else {
-          mailed = true;
-          console.log('Alert email sent successfully');
+          if (!emailRes.ok) {
+            mailSkipped = `send refused: HTTP ${emailRes.status}`;
+            console.error(`Alert email refused from ${from}:`, (await emailRes.text()).slice(0, 200));
+          } else {
+            mailed = true;
+            mailSkipped = null;
+            console.log('Alert email sent successfully');
+            break;
+          }
+        } catch (emailError) {
+          mailSkipped = 'send threw';
+          console.error('Email sending error:', emailError);
         }
-      } catch (emailError) {
-        mailSkipped = 'send threw';
-        console.error('Email sending error:', emailError);
+      }
+      // Nobody got it: the door goes back, so the next run tries again rather
+      // than keeping quiet for six hours about a mail that never left.
+      if (!mailed) {
+        try {
+          await supabase.from('mail_door_counts').delete().eq('door', MAIL_DOOR).eq('bucket', 'all');
+        } catch (doorError) {
+          console.error('Could not give the cooldown door back:', doorError);
+        }
       }
     }
 

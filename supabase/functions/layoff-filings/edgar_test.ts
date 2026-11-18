@@ -8,8 +8,8 @@
 
 import { assert, assertEquals, assertRejects, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
-  atomPageUrl, buildSecRow, columnarToRows, fetchFiling, filingIndexUrl, ftsUrl, keep205, parseAtom, parseFtsHits,
-  parseSubmissions, primaryDocUrl, resolveAmends, submissionsUrl,
+  atomPageUrl, auditRereadPick, buildSecRow, columnarToRows, fetchFiling, filingIndexUrl, ftsUrl, keep205, parseAtom, parseFtsHits,
+  parseSubmissions, primaryDocUrl, rereadCandidates, resolveAmends, submissionsUrl,
 } from "./edgar.ts";
 import { Http } from "./http.ts";
 import { PARSER_VERSION } from "./parse205.ts";
@@ -271,4 +271,53 @@ Deno.test("the body cap: an oversize response is refused, never buffered", async
     fetchImpl: () => Promise.resolve(new Response(big, { status: 200, headers: { "content-length": "3000" } })),
   });
   await assertRejects(() => http.request("https://example.invalid/x", { maxBytes: 1000 }), Error, "oversize");
+});
+
+Deno.test("S14X-278: a 403 from sec.gov on the primary document is a read to retry, never a row that says the document was not read", async () => {
+  const adsh = "0001234567-26-000050";
+  const docs: string[] = [];
+  const fetchImpl: typeof fetch = (input) => {
+    const url = String(input);
+    if (url === submissionsUrl(4242)) return Promise.resolve(new Response(subsJson(4242, "Acme Corp", ["ACME"], adsh, "2026-08-31"), { status: 200 }));
+    if (url.endsWith("/x_8k.htm")) { docs.push(url); return Promise.resolve(new Response("Your request has been identified as part of a network of automated tools", { status: 403 })); }
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  };
+  const http = new Http({ userAgent: "t", defaultIntervalMs: 0, fetchImpl });
+  const f = await fetchFiling(http, 4242, adsh, READ_AT);
+  assertEquals(docs.length, 1);
+  assertEquals(f.row, null, "a fair-access block was stored as a placeholder row no run reads again");
+  assertEquals(f.note, "document_403_retry");
+  // A 404 is still the document's own answer: a row with its link, read as nothing.
+  const gone: typeof fetch = (input) => {
+    const url = String(input);
+    if (url === submissionsUrl(4242)) return Promise.resolve(new Response(subsJson(4242, "Acme Corp", ["ACME"], adsh, "2026-08-31"), { status: 200 }));
+    return Promise.resolve(new Response("not found", { status: 404 }));
+  };
+  const g = await fetchFiling(new Http({ userAgent: "t", defaultIntervalMs: 0, fetchImpl: gone }), 4242, adsh, READ_AT);
+  assert(g.row);
+  assertEquals(g.note, "document_404");
+});
+
+Deno.test("S14X-149: a row an older parser read is a re-read candidate; a row this parser read, or one with no section found, is not", () => {
+  const rows = [
+    { filing_id: "sec:a", section_text: "Item 2.05 No employees will be terminated.", parse_confidence: 0.5, is_workforce_event: true, parser_version: "parse205_v2_ts" },
+    { filing_id: "sec:b", section_text: "Item 2.05 The Company reduced its workforce by 120 employees.", parse_confidence: 1, is_workforce_event: true, parser_version: PARSER_VERSION },
+    { filing_id: "sec:c", section_text: "(document not read)", parse_confidence: 0, is_workforce_event: null, parser_version: PARSER_VERSION },
+    { filing_id: "sec:d", section_text: "ANNUAL REPORT head of the document", parse_confidence: 0, is_workforce_event: false, parser_version: "parse205_v2_ts" },
+  ];
+  assertEquals(rereadCandidates(rows, "").map((r) => r.filing_id), ["sec:a", "sec:c"]);
+});
+
+Deno.test("S14X-278: the daily audit re-reads at most ten stored rows, and the window turns by day so a document that never reads holds nothing up", () => {
+  const rows = Array.from({ length: 25 }, (_, i) => ({
+    filing_id: `sec:${String(i).padStart(3, "0")}`, section_text: "(document not read)", parse_confidence: 0, is_workforce_event: null,
+    parser_version: PARSER_VERSION,
+  }));
+  const day1 = auditRereadPick(rows, "2026-11-15").map((r) => r.filing_id);
+  const day2 = auditRereadPick(rows, "2026-11-16").map((r) => r.filing_id);
+  assertEquals(day1.length, 10);
+  assertEquals(day2.length, 10);
+  assert(day1.join() !== day2.join(), "the same ten every day");
+  assertEquals(auditRereadPick(rows.slice(0, 3), "2026-11-15").length, 3);
+  assertEquals(auditRereadPick([], "2026-11-15").length, 0);
 });

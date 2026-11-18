@@ -356,8 +356,16 @@ export function getVisitorId(): string {
 // ── The visitor's choice (S12-011) ──────────────────────────────────────────
 
 /**
- * Remove every visitor id this browser holds, the legacy keys included, and
- * every stored A/B assignment. Never throws.
+ * The affiliate referral a yes let the page store (src/hooks/use-affiliate-auth.ts
+ * writes it to localStorage and to a cookie of the same name). A no takes it
+ * back with the visitor ids (S14X-021).
+ */
+const AFFILIATE_REFERRAL_KEY = "affiliate_ref";
+
+/**
+ * Remove every visitor id this browser holds, the legacy keys included,
+ * every stored A/B assignment, and a stored affiliate referral in both its
+ * copies. Never throws.
  */
 export function forgetVisitorIds(): void {
   // The funnel and cohort hooks' tab state too (src/lib/analytics-session-store.ts).
@@ -365,6 +373,7 @@ export function forgetVisitorIds(): void {
   try {
     localStorage.removeItem(VISITOR_ID_KEY);
     for (const k of LEGACY_VISITOR_ID_KEYS) localStorage.removeItem(k);
+    localStorage.removeItem(AFFILIATE_REFERRAL_KEY);
     const ab: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
@@ -373,6 +382,11 @@ export function forgetVisitorIds(): void {
     for (const k of ab) localStorage.removeItem(k);
   } catch {
     /* nothing stored, or nothing we can reach */
+  }
+  try {
+    document.cookie = "affiliate_ref=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax";
+  } catch {
+    /* no document (a worker) or cookies blocked */
   }
 }
 

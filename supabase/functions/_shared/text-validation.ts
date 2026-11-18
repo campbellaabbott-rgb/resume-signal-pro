@@ -1,55 +1,47 @@
-// Pure, dependency-free validation helpers shared by parse-pdf and parse-docx.
-// No imports on purpose — this lets the exact same file be imported both by the
-// Deno edge functions (relative import) and by Node/vitest regression tests, so
-// the logic under test is the literal logic running in production, not a copy
-// that can silently drift from it.
+// Pure validation helpers for parse-pdf, parse-docx and the page's .txt
+// reader. No imports, so Deno, the browser and vitest run this very file.
 
 /**
- * Detects text that "parsed" without throwing but isn't actually readable
- * language — e.g. a wall of mis-decoded glyphs from a broken embedded font.
- * Deliberately language-agnostic (this product accepts resumes in any
- * language, not just the UI's supported locales) — relies on signals that are
- * abnormal in genuinely garbled text regardless of language, rather than
- * checking for specific scripts/character sets that would false-positive on
- * legitimate non-English resumes.
+ * Text that parsed without throwing but is not readable language: a wall of
+ * glyphs from a broken embedded font. Language-agnostic on purpose (résumés
+ * come in any language): it reads only signals that are abnormal in garbled
+ * text whatever the script.
  */
 export function looksGarbled(text: string): boolean {
-  if (text.length < 40) return false; // Too short to judge either way — handled by a separate length check.
+  if (text.length < 40) return false; // Too short to judge; the length check handles it.
 
-  const replacementCharCount = (text.match(/�/g) || []).length;
+  const replacementCharCount = (text.match(/\uFFFD/g) || []).length;
   // eslint-disable-next-line no-control-regex -- deliberately detecting raw control bytes as a corruption signal
   const controlCharCount = (text.match(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g) || []).length; // excludes \t \n \r
   const whitespaceCount = (text.match(/\s/g) || []).length;
 
-  const replacementRatio = replacementCharCount / text.length;
-  const controlRatio = controlCharCount / text.length;
-  const whitespaceRatio = whitespaceCount / text.length;
+  // Replacement characters and raw control bytes: the surest signs.
+  if (replacementCharCount / text.length > 0.02) return true;
+  if (controlCharCount / text.length > 0.01) return true;
 
-  // Real decoded text, in any language, essentially never contains the
-  // Unicode replacement character or raw control bytes in any volume — these
-  // are the highest-confidence, lowest false-positive signals of corruption.
-  if (replacementRatio > 0.02) return true;
-  if (controlRatio > 0.01) return true;
-
-  // Backstop only: a wall of glued-together garbage typically has almost no
-  // whitespace at all. Threshold is deliberately very lenient (not a normal
-  // "is this well-formatted" check) so it doesn't trigger on legitimate dense
-  // text — resumes in any language still have line breaks from sections,
-  // dates, and Latin-script contact info (email, phone) mixed in.
-  if (whitespaceRatio < 0.01) return true;
+  // Backstop, deliberately lenient: glued garbage has almost no whitespace,
+  // while a résumé in any script has line breaks, dates and contact details.
+  if (whitespaceCount / text.length < 0.01) return true;
 
   return false;
 }
 
 /**
- * A FILE THAT IS BROKEN IS NOT AN OUTAGE (register S11-033).
- *
- * pdf.js names what it could not read: a damaged stream, page tree or
- * cross-reference table surfaces as one of these error names (a worker-side
- * FormatError reaches the caller as UnknownErrorException). parse-pdf answers
- * them with a 422 that says the file is damaged; any other error is ours and
- * stays a 500. The names are checked, never `instanceof`: pdfjs-serverless
- * does not export the classes (see parse-pdf's PasswordException note).
+ * The same text at intake (C-S14-129): the hyphens Word and PDFs write as
+ * U+2010-U+2012 are "-", soft hyphens and zero-width marks go, and a word a
+ * line break split after its hyphen ("cross-" / "functional") is one word
+ * again, so a keyword is found however the file spelled it.
+ */
+export function normalizeIntakeText(text: string): string {
+  return text.replace(/[\u2010-\u2012]/g, "-").replace(/[\u00AD\u200B\u2060\uFEFF]/g, "").replace(/(\p{L})-\r?\n(?=\p{Ll})/gu, "$1-");
+}
+
+/**
+ * A BROKEN FILE IS NOT AN OUTAGE (S11-033): the error names pdf.js gives a
+ * damaged stream, page tree or cross-reference table (a worker-side
+ * FormatError arrives as UnknownErrorException) are a 422 about the file;
+ * anything else is ours, a 500. Names, never `instanceof`: pdfjs-serverless
+ * does not export the classes.
  */
 const DAMAGED_PDF_ERRORS = new Set([
   "InvalidPDFException",
@@ -65,13 +57,9 @@ export function isDamagedPdfError(error: unknown): boolean {
 }
 
 /**
- * Legacy .doc (pre-2007, OLE Compound File binary format) is not a ZIP at all,
- * so mammoth/JSZip can't read it — it would fail deep inside JSZip with a
- * confusing, generic error instead of a clear "convert to .docx" message.
- * A password-encrypted .docx (Word's "Encrypt with Password") is ALSO wrapped
- * in this same OLE container per the MS-OFFCRYPTO spec, so this check
- * deliberately covers both cases rather than asserting it must be the legacy
- * format specifically.
+ * An OLE compound file: a legacy .doc, or a password-encrypted .docx (Word
+ * wraps those in the same container, MS-OFFCRYPTO). Neither is a zip mammoth
+ * can open, so the caller names both.
  */
 export function isOleCompoundFile(buffer: ArrayBuffer): boolean {
   const header = new Uint8Array(buffer.slice(0, 4));

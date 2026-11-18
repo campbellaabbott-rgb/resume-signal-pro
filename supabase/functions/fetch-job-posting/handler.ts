@@ -126,5 +126,7 @@ export async function handleFetchJobPosting(req: Request, deps: HandlerDeps): Pr
     title: out.posting.title,
     company: out.posting.company,
     text: out.posting.text,
+    // The posting's end was cut to fit the scan (S14X-270); the page may say so.
+    ...(out.posting.truncated ? { truncated: true } : {}),
   });
 }

@@ -53,7 +53,7 @@ describe("the FAQ", () => {
     // Pro's summary as a page may print it today: without the included Full
     // Analysis while that is not on sale (gate G2).
     expect(answer).toContain(proSummaryOnSale().text);
-    expect(answer).toMatch(/Everything in a free account, plus the writing tools/);
+    expect(answer).toMatch(/Everything in a free account, plus 5 writing packages a day/);
     expect(answer).toMatch(/\$45\/month/);
     expect(answer).toMatch(/Nothing else upgrades you automatically/);
   });

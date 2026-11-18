@@ -199,3 +199,40 @@ describe("the page keeps no allowance of its own", () => {
     expect(src).toMatch(/from "@\/config\/scan-allowance"/);
   });
 });
+
+/**
+ * The landing pages, the comparison pages and the "what you get" strip typed
+ * "7 scans a day (15 with a free account)" in English and Spanish (S13-094's
+ * last four sentences). The bake renders them, so a changed allowance would
+ * have left /resume-checker, /es/revisar-curriculum and every /vs/ page false.
+ */
+describe("the landing, comparison and what-you-get sentences read the module", () => {
+  const FILES = ["src/data/competitors.ts", "src/data/tool-landings.ts", "src/components/WhatYouGetSection.tsx"];
+  for (const f of FILES) {
+    it(`${f} imports scan-allowance and types no figure`, () => {
+      const src = read(f);
+      expect(src).toMatch(/from "(?:\.\.|@)\/config\/scan-allowance"/);
+      for (const typed of ["7 scans", "7 free scans", "7 escaneos", "(15 "]) expect(src, `${f} types "${typed}"`).not.toContain(typed);
+    });
+  }
+
+  it("with the module at 9 and 19, the landing answers and the strip say 9 and 19", async () => {
+    vi.resetModules();
+    vi.doMock("@/config/scan-allowance", () => ({ FREE_SCANS_PER_DAY: 9, SIGNED_IN_SCANS_PER_DAY: 19, scansPerDayFor: (s: boolean) => (s ? 19 : 9) }));
+    try {
+      const { TOOL_LANDINGS } = await import("@/data/tool-landings");
+      const answers = Object.values(TOOL_LANDINGS).flatMap((l) => l.faqs.map((q) => q.a)).join("\n");
+      expect(answers).toContain("9 scans a day (19 with a free account)");
+      expect(answers).toContain("9 escaneos al día (19 con una cuenta gratuita)");
+      const { COMPETITORS } = await import("@/data/competitors");
+      expect(JSON.stringify(COMPETITORS)).toContain("9 scans/day (19 with a free account)");
+      const React = await import("react");
+      const { WhatYouGetSection } = await import("@/components/WhatYouGetSection");
+      const { container } = render(React.createElement(WhatYouGetSection));
+      expect(container.textContent).toContain("9 free scans/day (19 with a free account)");
+    } finally {
+      vi.doUnmock("@/config/scan-allowance");
+      vi.resetModules();
+    }
+  });
+});

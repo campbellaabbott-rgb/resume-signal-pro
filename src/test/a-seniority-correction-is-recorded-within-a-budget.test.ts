@@ -19,7 +19,10 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { definitionOf, migFile, migFiles } from "./helpers/fixed-clock-sql";
-import { CLIENT_CALLABLE, CLOSED_BY_CENSUS, CLOSED_TABLES, OWNED_ELSEWHERE } from "./helpers/client-callable-allowlist";
+import { CLOSED_BY_CENSUS, CLOSED_TABLES, OWNED_ELSEWHERE, listedAt } from "./helpers/client-callable-allowlist";
+
+/** The rows 20261101110000's census lists: a later re-issue's rows, and what they replaced, as it knew them. */
+const CLIENT_CALLABLE = listedAt("20261101110000");
 
 vi.setConfig({ hookTimeout: 120_000, testTimeout: 60_000 });
 

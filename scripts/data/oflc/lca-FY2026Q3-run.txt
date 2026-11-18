@@ -52,6 +52,15 @@ source_url=https://www.dol.gov/media/LCA_Disclosure_Data_FY2026_Q3.xlsx
 bytes=251850891
 sha256=f8ca8448a528671f784d3692923775a13741c99caec2816b2fe30c8885bd28b3
 
+# THE VISA CLASSES KEPT. The run passed no --visa, so every VISA_CLASS in the
+# LCA Programs file was kept: H-1B, H-1B1 and E-3. The loader of 2026-09-25 did
+# not print the set (it does now), so it is stated from the arithmetic below,
+# where a filtered class would show as a gap: certified_by_equality 401,412 =
+# refused 387,510 (103,772 + 196 + 283,231 + 311) + matched 12,851 + held 1,051
+# (1,048 + 3), so no certified row was dropped by class. "all" is emitted into
+# lca-payload.ts as LCA_VISA_CLASSES = null (S14X-184).
+visa_classes=all
+
 [load-oflc-lca] mirror rows=44663 catalogue=44519 facet=144 comparable_norms=23066 held_non_ascii_names=406
 [load-oflc-lca] data_rows=50000 certified=44844 matched=1455
 [load-oflc-lca] data_rows=100000 certified=89420 matched=2825

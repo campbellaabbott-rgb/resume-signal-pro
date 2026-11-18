@@ -14,6 +14,9 @@
  * packetState already ranked `uncertain` above `blocked` and already owned the
  * honest sentence. The model was right the whole time — two render paths simply
  * were not asking it.
+ *
+ * The two strings are read under accountView (S14X-254): the keys they had
+ * before were held by no locale, so every language read the English default.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -63,7 +66,7 @@ describe("and now the queue asks it", () => {
       code.indexOf('packetState(p).phase === "uncertain"'),
       code.indexOf('packetState(p).phase !== "uncertain"'),
     );
-    expect(uncertainBranch).toMatch(/applyQueue\.sUncertain/);
+    expect(uncertainBranch).toMatch(/accountView\.queueUncertain/);
     expect(uncertainBranch).not.toMatch(/applyQueue\.sBlocked/);
   });
 
@@ -129,7 +132,7 @@ describe("the summary agrees with the rows it summarises", () => {
     // Excluding them from `blocked` without counting them anywhere would make
     // applications vanish from the summary entirely — quieter, and worse.
     expect(code).toMatch(/unconfirmed: rows\.filter\(\(r\) => packetState\(r\)\.phase === "uncertain"\)/);
-    expect(code).toMatch(/applyQueue\.cUnconfirmed/);
+    expect(code).toMatch(/accountView\.queueUnconfirmed/);
   });
 
   it("counts come from packetState, so there is ONE definition of these words", () => {

@@ -126,4 +126,43 @@ describe("S12-049: no unverified claim, and the processors named", () => {
     expect(text).toMatch(/Deleting your account erases them all, including the uploaded CV files/);
     fireEvent.click(document.querySelector("[data-change-consent]")!);
   });
+
+  // S14X-181 (privacy-retention): the third-party list named Google for
+  // "AI models and fonts" while the processors list says no font host is
+  // asked; the sign-in line named Mailgun only, though process-email-queue
+  // sends a sign-in email Lovable cannot send through Resend.
+  it("the third-party list names no font, and the sign-in line names the Resend fallback", async () => {
+    const Privacy = (await import("@/pages/Privacy")).default;
+    render(<HelmetProvider><MemoryRouter><Privacy /></MemoryRouter></HelmetProvider>);
+    const text = document.body.textContent ?? "";
+    expect(text).not.toMatch(/AI models and fonts/);
+    expect(text).toMatch(/Google \(AI models, reached through Lovable's AI gateway\)/);
+    const items = [...document.querySelectorAll("li")].map((li) => li.textContent ?? "");
+    expect(items.filter((t) => /font/i.test(t) && /Google/.test(t) && !/No font host/.test(t))).toEqual([]);
+    const signIn = document.querySelector("[data-signin-mail]")?.textContent ?? "";
+    expect(signIn).toMatch(/Mailgun from the EU/);
+    expect(signIn).toMatch(/Resend, from the United States/);
+  });
+
+  // S14X-097 (the Privacy half): signing out deletes the builder resume, the
+  // scan history and the reports kept in this browser, and the page said only
+  // the Clear Browser Data button or clearing site data did.
+  it("the In Your Browser item says signing out clears what this browser keeps", async () => {
+    const Privacy = (await import("@/pages/Privacy")).default;
+    render(<HelmetProvider><MemoryRouter><Privacy /></MemoryRouter></HelmetProvider>);
+    const item = [...document.querySelectorAll("li")].map((li) => li.textContent ?? "").find((t) => t.startsWith("In Your Browser:")) ?? "";
+    expect(item).toMatch(/Signing out on this device clears them too, apart from anything you choose to keep on this device/);
+  });
+
+  // NB-38: the board's searches and clicks are kept 180 days and then only as
+  // daily totals (roll_up_and_prune_search_demand(180), nightly), and only
+  // the connector row of the AI table said so.
+  it("section 6 says how long the board's searches are kept, and Usage Data names them", async () => {
+    const Privacy = (await import("@/pages/Privacy")).default;
+    render(<HelmetProvider><MemoryRouter><Privacy /></MemoryRouter></HelmetProvider>);
+    const line = document.querySelector("[data-search-retention]")?.textContent ?? "";
+    expect(line).toMatch(/kept for 180 days with no account, address or visitor id attached, then only as daily totals/);
+    const usage = [...document.querySelectorAll("li")].map((li) => li.textContent ?? "").find((t) => t.startsWith("Usage Data:")) ?? "";
+    expect(usage).toMatch(/searches run on the job board/);
+  });
 });

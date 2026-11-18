@@ -17,7 +17,9 @@
          shown the first one's analysis, and a share is stored with the
          purchase it belongs to. Each path keeps its own session id
          ("session_id:" + path), so a payment return on one page never evicts
-         another page's purchase that is paid and not yet delivered.
+         another page's purchase that is paid and not yet delivered. A
+         company page (/jobs/company/<token>, one segment) moves the claim
+         mail's claim_verify token, which confirms a claim (S14X-103).
          src/lib/auth-fragment.ts reads them back; the keys are listed there,
          and src/test/r1-signin-stash.test.ts runs this script. */
       (function () {
@@ -39,6 +41,7 @@
           if (any(q, T) || any(q, ["error_code", "error_description"]) || (P === "/auth" && any(q, ["type", "error"]))) qh = cut(q, q2);
           v = q.get("session_id"); if (v !== null) { S.session_id = v; S.session_id_path = P; S["session_id:" + P] = v; q["delete"]("session_id"); qs = 1; }
           v = q.get("share"); if (P === "/success" && v !== null) { S.share = v; S.share_path = P; q["delete"]("share"); qs = 1; }
+          v = q.get("claim_verify"); if (/^\/jobs\/company\/[^\/]+$/.test(P) && v !== null) { S.claim_verify = v; S.claim_verify_path = P; q["delete"]("claim_verify"); qs = 1; }
           if (!qh && !qs && !fh && !fs) return;
           try {
             W = window.sessionStorage;

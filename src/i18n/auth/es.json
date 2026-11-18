@@ -26,6 +26,7 @@
       "wrongAddress": "¿Dirección equivocada?"
     },
     "confirm": {
+      "adoptFailed": "Verificamos tu enlace, pero no pudimos terminar de iniciar sesión. Revisa tu conexión e inténtalo de nuevo.",
       "body": "Pulsa Continuar para terminar de iniciar sesión. El enlace solo funciona una vez.",
       "emailChangeBody": "Pulsa Continuar para confirmar tu nueva dirección de correo.",
       "emailChanged": "El cambio de correo está confirmado. Si tu otra dirección también recibió un enlace, úsalo también.",
@@ -49,6 +50,7 @@
       "label": "Correo electrónico",
       "placeholder": "tu@ejemplo.com",
       "remembered": "Continuar como {{email}}",
+      "rememberedMismatch": "No pudimos iniciar tu sesión como {{email}}. Escribe tu dirección para intentarlo de nuevo.",
       "useDifferent": "Usar otra dirección"
     },
     "footnote": "Una cuenta guarda tus puntuaciones, créditos y compras, y un currículum solo si guardas uno.",
@@ -59,6 +61,7 @@
       "onlyGoogle": "Esta cuenta inicia sesión con Google, así que aquí no tiene contraseña que cambiar. Continúa con Google para iniciar sesión."
     },
     "guard": {
+      "keysRevoked": "También desactivamos las claves de API y de conector creadas en esta cuenta antes de que demostraras que la dirección es tuya ({{keys}}). Si necesitas una, crea una nueva en tu cuenta.",
       "passwordCleared": "Borramos una contraseña que se había puesto a esta dirección antes de que demostraras que es tuya. Si quieres, crea una nueva en los ajustes de tu cuenta.",
       "passwordClearedTitle": "Tu contraseña anterior se ha borrado",
       "signedOut": "Borramos una contraseña que se había puesto a esta dirección antes de que demostraras que es tuya, y eso cerró la sesión en todos los dispositivos, también en este.",
@@ -94,7 +97,7 @@
       "done": "Tu nueva contraseña está lista.",
       "doneOthers": "Tu nueva contraseña está lista y se cerró la sesión en todos los demás dispositivos.",
       "emailSupport": "Escribir al soporte",
-      "expired": "Este enlace de restablecimiento ha caducado o ya se usó, así que no se estableció ninguna contraseña. Pide uno nuevo.",
+      "expired": "Este enlace de restablecimiento ha caducado o ya se usó. Si ya elegiste una contraseña nueva con el código de este correo, inicia sesión con ella; si no, pide un enlace nuevo.",
       "intro": "Escribe tu correo. Si tiene una cuenta, te enviaremos un enlace (o un código de 6 dígitos) con el que podrás elegir una nueva contraseña.",
       "newLink": "Enviar un nuevo enlace de restablecimiento",
       "newPassword": "Nueva contraseña",
@@ -118,8 +121,33 @@
       "failed": "El inicio de sesión no se completó. Inténtalo de nuevo."
     },
     "samePassword": "Elige una contraseña que no hayas usado aquí antes.",
+    "security": {
+      "askCode": "¿Aún no tienes contraseña o la olvidaste? Envíame un código por correo",
+      "codeFailed": "No pudimos pedir un código en este momento. Inténtalo de nuevo en un minuto.",
+      "codeField": "Código del correo de restablecimiento de contraseña",
+      "codeOnItsWay": "Si tu dirección puede recibir correo, va en camino a {{email}} un correo de restablecimiento de contraseña con un código de 6 dígitos. Escribe el código aquí.",
+      "codeRefused": "Ese código no funcionó, así que tu contraseña no cambió. Revísalo o pide uno nuevo.",
+      "guardBlocked": "No pudimos confirmar tu dirección en este momento, así que tu contraseña no cambió. Inténtalo de nuevo en unos minutos.",
+      "guardRefused": "No pudimos confirmar tu dirección con ese código, así que tu contraseña no cambió. Pide un código nuevo.",
+      "signedOut": "Por tu seguridad, se cerró la sesión en todos los dispositivos, también en este. Restablece tu contraseña desde la página de inicio de sesión para terminar."
+    },
     "sendFailed": "No pudimos enviarlo ahora mismo. Inténtalo de nuevo en un minuto o escribe a {{support}}.",
     "sessionExpired": "Tu sesión ha caducado. Vuelve a iniciar sesión para seguir donde lo dejaste.",
+    "signOut": {
+      "builder": "El currículum que hiciste en el creador de currículum solo está guardado en este navegador, y al cerrar sesión se borra.",
+      "cancel": "Cancelar",
+      "delete": "Borrarlo y cerrar sesión",
+      "everywhereDone": "Cerraste sesión en todos los dispositivos.",
+      "freelance": "Tus datos de Freelance Boost solo están guardados en este navegador, y al cerrar sesión se borran.",
+      "keep": "Conservarlo en este dispositivo y cerrar sesión",
+      "offlineEverywhere": "Cerraste sesión en este dispositivo, pero no pudimos conectar con el servidor, así que tus otros dispositivos podrían seguir con la sesión iniciada.",
+      "offlineHere": "Cerraste sesión en este dispositivo, pero no pudimos conectar con el servidor para cerrar la sesión también allí.",
+      "offlineTitle": "Sesión cerrada en este dispositivo",
+      "openBuilder": "Abrir el creador de currículum para descargarlo",
+      "retry": "Intentar de nuevo",
+      "signInAgain": "No pudimos cerrar la sesión de tus otros dispositivos desde aquí. Vuelve a iniciar sesión y elige «Cerrar sesión en todas partes».",
+      "title": "Antes de cerrar sesión"
+    },
     "subtitle": "Sigue la evolución de las puntuaciones de tu currículum, guarda tu historial de análisis y consulta tus créditos y compras en un solo lugar. Gratis para siempre.",
     "title": "Inicia sesión o crea tu cuenta gratuita",
     "usePassword": "Usar una contraseña",

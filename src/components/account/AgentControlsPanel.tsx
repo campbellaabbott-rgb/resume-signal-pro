@@ -19,6 +19,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { date as fmtDate } from "@/lib/format";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -160,7 +161,7 @@ export function AgentControlsPanel({ userId }: { userId: string }) {
           {paused
             ? t("agentControls.pause.active", {
                 defaultValue: "Paused until {{when}}. It resumes on its own — nothing to remember.",
-                when: new Date(c.paused_until!).toLocaleDateString(undefined, { dateStyle: "medium" }),
+                when: fmtDate(c.paused_until!),
               })
             : t("agentControls.pause.help",
                 "Going on holiday, or interviewing somewhere already? Pause it and it switches itself back on.")}

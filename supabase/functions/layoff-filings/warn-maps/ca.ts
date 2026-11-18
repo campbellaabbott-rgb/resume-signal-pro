@@ -10,6 +10,10 @@ export const CA: StateMap = {
   sourceName: "California EDD",
   sourceUrl: "https://edd.ca.gov/en/Jobs_and_Training/Layoff_Services_WARN",
   blnRawUrl: "https://raw.githubusercontent.com/biglocalnews/warn-github-flow/transformer/data/warn-transformer/raw/ca.csv",
+  // EDD's own warn_report1.xlsx names this date "Processed Date"; Big Local
+  // News' copy renames the column received_date. The agency's own word is
+  // the label (S14X-279 asked for "received" from the courier's column name:
+  // declined, the saved xlsx header says Processed).
   visibleBasis: "state_processed",
   columns: {
     filer: ["company"],

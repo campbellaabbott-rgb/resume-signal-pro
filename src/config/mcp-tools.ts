@@ -44,25 +44,24 @@ export const MCP_FORM_VENDORS: ReadonlyArray<{ key: string; label: string }> = [
   { key: "recruitee", label: "Recruitee" },
   { key: "breezy", label: "Breezy" },
   { key: "pinpoint", label: "Pinpoint" },
-];
-
-/**
- * The form vendors the server reads from agent-mcp 2026-11-08.1 on (connect
- * W5, owner decision 2026-11-07: Claude, Claude Code, keys and /v1; ChatGPT
- * stays Greenhouse and Recruitee). Rendered NOWHERE yet: merging publishes
- * the frontend before the functions deploy, and until that deploy the server
- * reads only MCP_FORM_VENDORS. Once the deploy verifies, the next frontend
- * publish moves these into MCP_FORM_VENDORS (with the /agents phrase,
- * llms.txt and the retired line). Meanwhile a guard holds the two lists,
- * together, equal to the server's FORM_READER_VENDORS.
- */
-export const MCP_FORM_VENDORS_AFTER_DEPLOY: ReadonlyArray<{ key: string; label: string }> = [
+  // The five connect W5 added, read live since agent-mcp 2026-11-08.1 (SEO-F15).
   { key: "paylocity", label: "Paylocity" },
   { key: "workable", label: "Workable" },
   { key: "teamtailor", label: "Teamtailor" },
   { key: "lever", label: "Lever" },
   { key: "bamboohr", label: "BambooHR" },
 ];
+
+/**
+ * The form vendors waiting for their reader to deploy: none. Connect W5's
+ * five (Paylocity, Workable, Teamtailor, Lever, BambooHR) waited here,
+ * rendered nowhere, until agent-mcp 2026-11-08.1 shipped them; live is past
+ * that build (agent-mcp.2026-11-09.2, read 2026-11-16), so they moved into
+ * MCP_FORM_VENDORS (SEO-F15). Kept, empty, because the guards still hold
+ * the two lists together equal to the server's FORM_READER_VENDORS, and
+ * the-page-says-six fails while a vendor waits here past its build.
+ */
+export const MCP_FORM_VENDORS_AFTER_DEPLOY: ReadonlyArray<{ key: string; label: string }> = [];
 
 /**
  * The form vendors read inside ChatGPT: only the two with published public
@@ -178,7 +177,7 @@ export const MCP_TOOLS: readonly McpTool[] = [
   {
     name: "get_job",
     tier: "read",
-    body: "Full detail for one job id, including the complete description text and when the employer's feed last confirmed it open. A dead id answers with what the board knows — a watched closure or an aged-out stub — never a stale card.",
+    body: "Full detail for one job id, including the complete description text and when the board last read the employer's feed (a large board is read in windows, so that read may not have included this posting). A dead id answers with what the board knows — a watched closure or an aged-out stub — never a stale card.",
   },
   {
     name: "get_jobs",
@@ -203,7 +202,7 @@ export const MCP_TOOLS: readonly McpTool[] = [
   {
     name: "employer_hiring_record",
     tier: "read",
-    body: "An employer's record on its own board, from the closure ledger no other board keeps: roles open now, roles watched coming down in the last 90 days with re-lists counted separately, medians from the employer's own stated dates, and how long that board has been watched — per board, never summed across an employer's boards, and a takedown is never called a hire; a board with no closure observed answers unknown with the reason, never a verdict.",
+    body: "An employer's record on its own board, from the closure ledger no other board keeps, as the employer's page on this site prints it: roles open now and how long that board has been watched, and, only where our read of that board supports them, roles taken down in the last 90 days and left down, re-lists counted separately, and the day by which half came down, from the employer's own stated dates. A figure our read cannot support is left out with the reason, in the page's words — per board, never summed across an employer's boards, and a takedown is never called a hire; a board name two hiring systems share gets no record, and a board with no closure observed answers unknown with the reason, never a verdict.",
   },
   {
     name: "employer_growth",
@@ -367,13 +366,27 @@ export const MCP_ADDRESS_GLOSS =
   "Free with no key and no account, within a daily allowance that resets at midnight UTC; every answer says how many free calls are left. Claude's servers carry every Claude user, so Claude users share one allowance.";
 
 /**
+ * The gloss for an app on the person's own machine (S14X-259): Claude Code,
+ * Cursor, VS Code and the rest call from the person's own internet
+ * connection, so Claude's shared line was the wrong one under them. The
+ * server counts them in its "other" partition: a connection's own day,
+ * inside a day and a minute shared by every caller outside Claude's and
+ * ChatGPT's servers, the limits that refuse them (allowance.ts). These
+ * figures are printed, unlike the chat gloss's, because they are the ones
+ * such a caller meets; each is MCP_ANON_CAPS, which the first-call guard
+ * pins to the server, so none can drift from it.
+ */
+export const MCP_OWN_CONNECTION_GLOSS =
+  `Free with no key and no account, within a daily allowance that resets at midnight UTC; every answer says how many free calls are left. Your calls come from your own internet connection: ${MCP_ANON_CAPS.otherPerConnection} a day for each connection, within ${MCP_ANON_CAPS.shares.other.toLocaleString("en-US")} a day and ${MCP_ANON_CAPS.perMinute.other} a minute shared by every caller outside Claude's and ChatGPT's servers.`;
+
+/**
  * The hiring systems the connector and /v1 do not hand on: NO_REDISTRIBUTION_SOURCES
  * in agent-mcp and public-api (owner decision 4, 2026-10-08), mirrored and pinned by
  * src/test/the-connector-page-never-said-which-systems-it-withholds.test.tsx.
  */
 export const MCP_WITHHELD_SOURCES: readonly string[] = ["usajobs", "smartrecruiters"];
 export const MCP_WITHHELD_NOTE =
-  "Two hiring systems on the job board are not handed on by this server or the data API: the U.S. federal job feed, whose terms forbid redistributing it as a data feed, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. Their postings stay on the job board, where you can open them yourself.";
+  "Two hiring systems on the job board are not handed on by this server or the data API: the U.S. federal job feed, which we choose not to redistribute for now, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. Their postings stay on the job board, where you can open them yourself.";
 
 /** "a, b and c" for prose; items carrying their own " and " are joined with semicolons so no list reads "and … and". Declared above every sentence built with it (a const cannot be read above its line). */
 export const andList = (xs: readonly string[]): string => {
@@ -631,6 +644,8 @@ export interface McpHost {
    * (agentConnect.claudeConnectorCarriesOver).
    */
   fromClaude?: boolean;
+  /** The allowance sentence under the steps; unset, MCP_ADDRESS_GLOSS (Claude's shared allowance). */
+  allowance?: string;
   /** The sign-in sentence for this host, by the server's fact. */
   signIn: (state: SignInState) => string;
   /** How you know it worked — judged by the server's own answer, never a pixel. */
@@ -685,7 +700,20 @@ const ASK_STATS = "call board_stats";
 const ASK_KEY = "call key_status";
 
 const anonNames = () => MCP_ANON_TOOL_NAMES.join(", ");
-const keyOnlyNames = () => MCP_KEY_ONLY_READ_TOOLS.map((t) => t.name).join(", ");
+
+/** The tools the server never lists to anyone (agent-mcp NEVER_LISTED), pinned by the-page-says-six. */
+export const MCP_NEVER_LISTED: readonly string[] = ["debug_search"];
+/**
+ * What a key adds, as a keyed host is shown it (S14X-260): the read tools
+ * outside the unkeyed set that the server lists, and the fit tool. Built
+ * from the lists, never typed: the title once promised debug_search, which
+ * the server lists to nobody, and never named fit_resume.
+ */
+export const MCP_KEY_ADDS: readonly string[] = [
+  ...MCP_KEY_ONLY_READ_TOOLS.map((t) => t.name).filter((n) => !MCP_NEVER_LISTED.includes(n)),
+  ...MCP_PAID_TOOLS.map((t) => t.name),
+];
+const KEYED_TITLE = `With a free key (optional — adds ${andList(MCP_KEY_ADDS)}; ${MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day)`;
 
 /**
  * Where a chat user scores a CV today. The board's own fit check is free on
@@ -766,10 +794,10 @@ const claudeOneClickSteps = (ctx: McpCtx): McpStep[] => [
   CLAUDE_ASK_STEP,
 ];
 
-/** The "with a free key" sub-steps for the CLI hosts: mint, paste, export, add with the variable, verify. */
-const cliKeyed = (add: (url: string) => string, reconnect: string): McpKeyed => ({
+/** The "with a free key" sub-steps for the CLI hosts: mint, paste, export, remove the keyless entry, add with the variable, verify. */
+const cliKeyed = (add: (url: string) => string, remove: string, reconnect: string): McpKeyed => ({
   takesKey: true,
-  title: `With a free key (optional — opens every read tool: ${keyOnlyNames()}; ${MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day)`,
+  title: KEYED_TITLE,
   steps: (ctx) => [
     { text: `Get a free key at ${MCP_MINT_PATH} — it emails you a single-use link, and the page that link opens shows the key once.` },
     {
@@ -778,6 +806,8 @@ const cliKeyed = (add: (url: string) => string, reconnect: string): McpKeyed => 
       copyLabel: "the export line",
       note: ctx.key ? undefined : PASTE_KEY_NOTE,
     },
+    // S14X-260: the add refuses a name already in user config, so the keyless entry goes first.
+    { text: "If you added it without a key, remove that entry first (otherwise the add answers that the server already exists):", copy: remove, copyLabel: "the remove command" },
     { text: "Then add the server with the key's variable in the header:", copy: `${add(ctx.url)} ${shellHeader}`, copyLabel: "the add command with the key header" },
     { text: `${reconnect}, then ask: \`${ASK_KEY}\` — it names your tier and calls left.` },
   ],
@@ -807,7 +837,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
       : []),
     signIn: (s) =>
       s === "on"
-        ? `The first time Claude needs your account — to open a posting in full or to check a shortlist — a **Connect** card appears in the chat. Click it, sign in to ${MCP_CONNECTOR_NAME}, press **Allow**, and Claude continues where it stopped.`
+        ? `The first time Claude needs your account — to score your CV against postings or to show your key's status — a **Connect** card appears in the chat. Click it, sign in to ${MCP_CONNECTOR_NAME}, press **Allow**, and Claude continues where it stopped.`
         : s === "off" ? chatOff("Claude", CV_SCORING_CLAUDE) : UNKNOWN_LINE,
     verify: `Under **+ → Connectors**, ${MCP_CONNECTOR_NAME} is on. Ask the first question: ${MCP_ANON_CAPS.searchRows} results with ids come back, and the answer's note begins "keyless:" and says how many free lookups are left today.`,
   },
@@ -867,7 +897,8 @@ export const MCP_HOSTS: readonly McpHost[] = [
       { text: `Start \`claude\` and type \`/mcp\` — \`${MCP_SERVER_KEY}\` is listed as connected.` },
       { text: `Ask: \`${ASK_STATS}\` — the answer names the number of open postings (board_stats is never counted against the free allowance).` },
     ],
-    keyed: cliKeyed(claudeCodeAdd, "Type `/mcp` and reconnect"),
+    keyed: cliKeyed(claudeCodeAdd, `claude mcp remove ${MCP_SERVER_KEY} -s user`, "Type `/mcp` and reconnect"),
+    allowance: MCP_OWN_CONNECTION_GLOSS,
     signIn: (s) =>
       s === "on"
         ? `Without a key, the first tool that needs your account makes \`/mcp\` show \`! Needs authentication\`; type \`/mcp\` and sign in in the browser (Claude Code 2.1.186 or newer can also run \`claude mcp login ${MCP_SERVER_KEY}\`).`
@@ -876,6 +907,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
   },
   {
     id: "cursor",
+    allowance: MCP_OWN_CONNECTION_GLOSS,
     page: false,
     name: "Cursor",
     header: true,
@@ -889,7 +921,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
     ],
     keyed: {
       takesKey: true,
-      title: `With a free key (optional — opens every read tool: ${keyOnlyNames()}; ${MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day)`,
+      title: KEYED_TITLE,
       steps: (ctx) => [
         { text: `Get a free key at ${MCP_MINT_PATH} — it emails you a single-use link, and the page that link opens shows the key once.` },
         { text: "Paste the key in the field above; set it in your shell (nothing is sent anywhere):", copy: exportLine(ctx.key), copyLabel: "the export line", note: ctx.key ? undefined : PASTE_KEY_NOTE },
@@ -908,6 +940,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
   },
   {
     id: "vscode",
+    allowance: MCP_OWN_CONNECTION_GLOSS,
     page: false,
     name: "VS Code",
     header: true,
@@ -921,7 +954,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
     ],
     keyed: {
       takesKey: false,
-      title: `With a free key (optional — opens every read tool: ${keyOnlyNames()}; ${MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day)`,
+      title: KEYED_TITLE,
       steps: () => [
         { text: `Get a free key at ${MCP_MINT_PATH} — it emails you a single-use link, and the page that link opens shows the key once.` },
         { text: "When VS Code asks for the key at start (the block above declares it as a hidden input), paste it there — it is never written into the file." },
@@ -943,6 +976,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
   },
   {
     id: "more",
+    allowance: MCP_OWN_CONNECTION_GLOSS,
     page: false,
     name: "More…",
     small: "Gemini CLI, Codex CLI, Cline, Zed, Windsurf, anything else",
@@ -991,7 +1025,7 @@ export const MCP_MORE_HOSTS: readonly McpMoreHost[] = [
       { text: "Run:", copy: geminiAdd(ctx.url), copyLabel: "the Gemini CLI add command", note: MCP_SERVER_ADDRESS_NOTE },
       { text: `Ask: \`${ASK_STATS}\`.` },
     ],
-    keyed: cliKeyed(geminiAdd, "Restart the CLI"),
+    keyed: cliKeyed(geminiAdd, `gemini mcp remove --scope user ${MCP_SERVER_KEY}`, "Restart the CLI"),
     signInOn: `\`/mcp auth ${MCP_SERVER_KEY}\` starts the sign-in.`,
   },
   {
@@ -1252,7 +1286,7 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
     id: "quota-used",
     see: `"Daily quota of ${MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} requests used."`,
     why: "The free key's day is spent.",
-    fix: "Wait for midnight UTC; the unkeyed tools still answer.",
+    fix: "Remove the key from your app and the unkeyed tools answer again, or wait for midnight UTC.",
     source: { kind: "server", pin: "Daily quota of", file: "index.ts" },
   },
   {

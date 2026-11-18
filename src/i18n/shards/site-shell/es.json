@@ -1,0 +1,29 @@
+{
+  "siteShell": {
+    "crashHome": "Ir a la página de inicio",
+    "newVersion": {
+      "loading": "Cargando la nueva versión…",
+      "reload": "Recargar ahora"
+    },
+    "notFound": {
+      "title": "Página no encontrada",
+      "jobs": "Ver ofertas de empleo",
+      "pricing": "Ver precios"
+    },
+    "titles": {
+      "account": "Tu cuenta",
+      "auth": "Iniciar sesión",
+      "shortlist": "Lista de candidatos para empresas",
+      "success": "Tu análisis completo",
+      "productSuccess": "Tu compra",
+      "paymentFailed": "Pago no completado",
+      "affiliates": "Programa de afiliados",
+      "affiliateRedirect": "Redirigiendo…",
+      "agent": "Postúlate con tu propia IA",
+      "analytics": "Analítica",
+      "errors": "Registro de errores",
+      "healthCheck": "Estado del sistema",
+      "scanMetrics": "Métricas de análisis"
+    }
+  }
+}

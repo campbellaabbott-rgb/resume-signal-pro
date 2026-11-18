@@ -73,6 +73,10 @@ let pending: Promise<unknown>[];
 let ceilingAnswer: (a: Args) => { data: unknown; error: unknown };
 let ceilingCalls: Args[];
 let fetched: string[];
+/** Every owner-bound request a scanner made (a direct alert mail or a notify-owner note), with its body. */
+let toOwner: Array<{ url: string; body: string }>;
+/** When set, the primary's first database call inside its try throws (an unexpected failure: its 500 and its alert). */
+let breakPrimary = false;
 let streamDb: FakeDb;
 const spies: Array<ReturnType<typeof vi.spyOn>> = [];
 
@@ -85,20 +89,23 @@ function rateLimit(a: Args) {
   return { data: true, error: null };
 }
 
+/** The caller's day row as the primary reads it before the hour (S14X-011); null = no row. */
+let dayRow: Record<string, unknown> | null = null;
+
 function primaryClient() {
   const rpc = async (name: string, args: Args = {}) => {
     switch (name) {
-      case "check_global_rate_limit": return { data: true, error: null };
+      case "check_global_rate_limit": if (breakPrimary) throw new Error("database unreachable"); return { data: true, error: null };
       case "check_rate_limit": return rateLimit(args);
       case "acquire_scan_slot": return { data: "slot-1", error: null };
       default: return { data: null, error: null };
     }
   };
-  const from = () => {
+  const from = (table: string) => {
     const builder: Record<string, unknown> = new Proxy({}, {
       get(_t, prop: string) {
         if (prop === "then") return (ok: (r: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(ok);
-        if (prop === "maybeSingle" || prop === "single") return async () => ({ data: null, error: null });
+        if (prop === "maybeSingle" || prop === "single") return async () => ({ data: table === "rate_limits" ? dayRow : null, error: null });
         return () => builder;
       },
     });
@@ -114,6 +121,7 @@ beforeAll(async () => {
   g.fetch = async (url: string, init?: { body?: string }) => {
     const u = String(url);
     fetched.push(u);
+    if (u.includes("api.resend.com") || u.includes("/functions/v1/notify-owner")) toOwner.push({ url: u, body: String(init?.body ?? "") });
     if (u.includes("ai.gateway.lovable.dev")) {
       const body = JSON.parse(init?.body ?? "{}") as { stream?: boolean };
       const args = JSON.stringify(ANALYSIS);
@@ -137,7 +145,10 @@ beforeAll(async () => {
 beforeEach(() => {
   pending = [];
   fetched = [];
+  toOwner = [];
+  breakPrimary = false;
   ceilingCalls = [];
+  dayRow = null;
   ceilingAnswer = () => ({ data: true, error: null });
   (globalThis as Record<string, unknown>).__scanClient = primaryClient();
   streamDb = new FakeDb();
@@ -236,5 +247,98 @@ describe("the stream fork", () => {
     const r = await scanStream();
     expect(r.error?.code).toBe("busy");
     expect(modelCalls()).toBe(0);
+  });
+});
+
+describe("S14X-011: a caller the day has already refused spends no one's hour", () => {
+  /** Every check of an hour: the function's strangers' or proven hour, a network's, a caller's own. */
+  let hourChecks: Args[];
+  const atTheDayLimit = (a: Args) => {
+    if (a.p_window_minutes === 1440) return { data: false, error: null };
+    hourChecks.push(a);
+    return rateLimit(a);
+  };
+  const fromTheNetwork = (i: number) => ({ ...HEADERS, "cf-connecting-ip": `198.51.100.${10 + i}` });
+
+  it("thirteen exhausted addresses on one /24 leave the network's and the strangers' hours untouched, and each gets the day's refusal (primary)", async () => {
+    hourChecks = [];
+    dayRow = { request_count: 7, window_start: new Date().toISOString() };
+    (globalThis as Record<string, unknown>).__scanClient = { ...primaryClient(), rpc: async (name: string, args: Args = {}) => (
+      name === "check_rate_limit" ? atTheDayLimit(args) : name === "check_global_rate_limit" ? { data: true, error: null } : { data: null, error: null }) };
+    for (let i = 0; i < 13; i++) {
+      const res = await primary(new Request("https://harness.supabase.co/functions/v1/free-keyword-scan", { method: "POST", headers: fromTheNetwork(i), body: JSON.stringify({ resumeText: RESUME }) }));
+      const json = await res.json() as Record<string, unknown>;
+      expect(res.status).toBe(429);
+      expect(json.rateLimited).toBe(true);
+    }
+    expect(hourChecks).toEqual([]);
+    expect(modelCalls()).toBe(0);
+  });
+
+  it("the same thirteen against the backup scan (stream fork)", async () => {
+    hourChecks = [];
+    streamDb.rpcs.check_rate_limit = (a) => atTheDayLimit(a) as { data: unknown; error: { message: string } | null };
+    for (let i = 0; i < 13; i++) {
+      streamDb.rows("rate_limits").push({ ip_address: `198.51.100.${10 + i}`, function_name: "free-keyword-scan", request_count: 7, window_start: new Date().toISOString() });
+    }
+    for (let i = 0; i < 13; i++) {
+      const res = await stream(new Request("https://harness.supabase.co/functions/v1/free-keyword-scan-stream", { method: "POST", headers: fromTheNetwork(i), body: JSON.stringify({ resumeText: RESUME }) }));
+      const text = await res.text();
+      const error = [...text.matchAll(/event: (\w+)\ndata: (.*)\n/g)].map((m) => ({ event: m[1], data: JSON.parse(m[2]) as Record<string, unknown> })).find((e) => e.event === "error")?.data;
+      expect(error?.code).toBe("daily_scan_limit");
+    }
+    expect(hourChecks).toEqual([]);
+    expect(modelCalls()).toBe(0);
+  });
+
+  it("control: a caller with day left still spends the hour first", async () => {
+    hourChecks = [];
+    (globalThis as Record<string, unknown>).__scanClient = { ...primaryClient(), rpc: async (name: string, args: Args = {}) => {
+      if (name === "check_rate_limit") { if (args.p_window_minutes !== 1440) hourChecks.push(args); return rateLimit(args); }
+      return name === "check_global_rate_limit" ? { data: true, error: null } : name === "acquire_scan_slot" ? { data: "slot-1", error: null } : { data: null, error: null };
+    } };
+    await scanPrimary();
+    expect(hourChecks.map((c) => c.p_ip)).toContain(GLOBAL_BUCKET);
+  });
+});
+
+describe("S14X-101: nothing a scanner sends the owner names the visitor", () => {
+  // The owner's answer (2026-11-15): owner alerts carry counts or a reference
+  // only, no subscriber email, no raw IP, no country. The primary's failure
+  // alert mailed { ip: <the visitor's address> }, and both scanners' scan
+  // notes named the visitor's country.
+  const VISITOR = HEADERS["cf-connecting-ip"];
+  const namesTheVisitor = (body: string) => body.includes(VISITOR) || /"ip"\s*:/.test(body) || /"country"\s*:/.test(body) || /Country:/.test(body);
+
+  it("the primary's failure alert names the failure and its numbers, never the address", async () => {
+    breakPrimary = true;
+    const { status } = await scanPrimary();
+    expect(status).toBe(500);
+    const alerts = toOwner.filter((m) => m.url.includes("api.resend.com"));
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].body).toContain("free-keyword-scan_error");
+    expect(alerts[0].body).toContain("database unreachable");
+    expect(namesTheVisitor(alerts[0].body)).toBe(false);
+  });
+
+  it("the primary's scan note to notify-owner carries the score and industry, not the address or the country", async () => {
+    await scanPrimary();
+    const notes = toOwner.filter((m) => m.url.includes("/functions/v1/notify-owner"));
+    expect(notes).toHaveLength(1);
+    const note = JSON.parse(notes[0].body) as Record<string, unknown>;
+    expect(note.type).toBe("scan");
+    expect(typeof note.score).toBe("number");
+    expect(namesTheVisitor(notes[0].body)).toBe(false);
+  });
+
+  it("the backup scan's note to notify-owner carries the score and industry, not the address or the country", async () => {
+    const r = await scanStream();
+    expect(r.complete?.success).toBe(true);
+    const notes = toOwner.filter((m) => m.url.includes("/functions/v1/notify-owner"));
+    expect(notes).toHaveLength(1);
+    const note = JSON.parse(notes[0].body) as Record<string, unknown>;
+    expect(note.type).toBe("scan");
+    expect(typeof note.score).toBe("number");
+    expect(namesTheVisitor(notes[0].body)).toBe(false);
   });
 });

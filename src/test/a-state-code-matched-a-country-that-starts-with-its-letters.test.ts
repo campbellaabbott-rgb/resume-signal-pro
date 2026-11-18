@@ -15,6 +15,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -55,7 +56,7 @@ async function boot(): Promise<PGlite> {
   const db = new PGlite({ extensions: { pg_trgm } });
   await db.exec(`
     CREATE EXTENSION IF NOT EXISTS pg_trgm;
-    CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+    ${SUPABASE_DEFAULTS}
     CREATE TABLE public.job_board_postings (
       id text PRIMARY KEY, source text, company_token text, company text, title text,
       location text, country text, remote boolean, work_mode text, employment_type text,

@@ -1,0 +1,8 @@
+{
+  "layoffFilings": {
+    "readVia": "de {{sourceName}} via Big Local News, lu {{readAgo}}",
+    "tipVia": "{{filer}} a déposé cette déclaration le {{eventDate}}. C'est un fait sur l'employeur à cette date, pas sur ce poste. Elle figure à dessein à côté du badge de recrutement : ce badge n'est que ce que nous avons observé sur ce site — des postes retirés et non republiés, ou davantage de postes affichés — et une déclaration déposée ailleurs ne le modifie pas. Aucun des deux ne dit que quelqu'un a été embauché. De {{sourceName}} via Big Local News, lu {{readAgo}}.",
+    "lineWarnFirstRead": "{{filer}} a déposé un avis de licenciement auprès de {{state}} daté du {{noticeDate}} : {{workers}} postes à {{site}}{{effectiveClause}}{{kindClause}} · lu par nous pour la première fois le {{visibleDate}} · {{sourceName}} ↗",
+    "lcaChip": "Salaires LCA déposés (H-1B, H-1B1, E-3) · {{quarter}}"
+  }
+}

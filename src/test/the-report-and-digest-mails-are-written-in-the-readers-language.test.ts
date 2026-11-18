@@ -156,6 +156,8 @@ beforeAll(async () => {
   g.__lRepDb = reportDb;
   g.Deno = { env: { get: (k: string) => env[k] }, serve: (h: unknown) => { g.__edgeHandler = h; } };
   report = await loadEdgeHandler("send-scan-report", {
+    // The sequence is withdrawn as shipped (S14X-012, option B); its own code is run switched on here.
+    "./sequence-offered.ts": "export const FIX_PLAN_SEQUENCE_OFFERED = true;",
     ...SELLER_SET_STUB,
     "https://esm.sh/@supabase/supabase-js@2": "export const createClient = () => globalThis.__lRepDb;",
     "https://esm.sh/resend@2.0.0": "export class Resend { constructor() { this.emails = { send: async (m) => { globalThis.__lRepSent.push(m); return { data: { id: 'em' }, error: null }; } }; } }",

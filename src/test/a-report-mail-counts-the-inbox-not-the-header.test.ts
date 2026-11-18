@@ -129,6 +129,8 @@ beforeAll(async () => {
   g.Deno = { env: { get: (k: string) => env[k] }, serve: (h: unknown) => { g.__edgeHandler = h; } };
   handler = await loadEdgeHandler("send-scan-report", {
     ...SELLER_SET_STUB,
+    // The sequence is withdrawn as shipped (S14X-012, option B); its own code is run switched on here.
+    "./sequence-offered.ts": "export const FIX_PLAN_SEQUENCE_OFFERED = true;",
     "https://esm.sh/@supabase/supabase-js@2": "export const createClient = () => globalThis.__fakeSupabase;",
     "https://esm.sh/resend@2.0.0":
       "export class Resend { constructor() { this.emails = { send: async (m) => { globalThis.__reportSent.push(m); return { data: { id: 'em' }, error: null }; } }; } }",
@@ -472,7 +474,8 @@ describe("a sentence reaches the mail only under the scan's seal", () => {
     expect(scan).toMatch(/await attachScanMailSeal\(attachMailCopy\(responseData, resumeText\), .*\);\n\s*return new Response\(\s*JSON\.stringify\(responseData\)/);
     const page = read("src/components/FreeKeywordResults.tsx");
     expect(page).toMatch(/const emailReportPayload = withMailSentences\(\{[\s\S]*?mailSeal: reportMeta\?\.mailSeal \?\? null,[\s\S]*?\}, reportMeta\?\.mailSentences\);/);
-    expect(read("src/components/EmailReportCapture.tsx")).toMatch(/body: \{ email: trimmed, dripOptIn, language: i18n\.language, \.\.\.payload \}/);
+    // The request carries no sequence choice since S14X-012 option B (the owner, 2026-11-15).
+    expect(read("src/components/EmailReportCapture.tsx")).toMatch(/body: \{ email: trimmed, language: i18n\.language, \.\.\.payload \}/);
   });
 });
 
@@ -540,11 +543,11 @@ describe("the fix-plan sequence starts only when the inbox's owner presses its b
     for (const m of sent) expect(linkIn(m.html)).toBeNull();
   });
 
-  it("the button's page is a button, not a page load, and is wired and kept out of the index", () => {
+  it("the button's page, now the sequence is withdrawn (S14X-012 option B), starts nothing, and is wired and kept out of the index", () => {
     const page = read("src/pages/FixPlanConfirm.tsx");
-    expect(page).toMatch(/onClick=\{confirm\}/);
-    expect(page).toMatch(/invoke\("send-scan-report", \{ body: \{ action: "confirm-drip", token, language: i18n\.language \} \}\)/);
-    expect(page).not.toMatch(/useEffect\(\(\) => \{\s*(?:void )?confirm\(\)/);
+    expect(page).not.toMatch(/invoke\(/);
+    expect(page).not.toMatch(/<button/);
+    expect(page).toContain('data-fix-plan="withdrawn"');
     expect(read("src/App.tsx")).toMatch(/<Route path="\/fix-plan\/confirm" element=\{<FixPlanConfirm \/>\} \/>/);
     expect(read("public/robots.txt").match(/^Disallow: \/fix-plan\/confirm$/gm)?.length).toBe(read("public/robots.txt").match(/^Disallow: \/market-pulse\/confirm$/gm)?.length);
   });
