@@ -60,9 +60,11 @@
 #       allows the whole site, and every group, named and *, disallows
 #       /admin/claims, /auth and /account read both by the longest match
 #       (Google, Bing, RFC 9309) and by the first match (simpler readers).
-#       A 200 with no User-agent group is a FAIL; a robots.txt that does
-#       not answer 200 is INFO here, since no group can be judged (section
-#       63 FAILs a robots.txt that does not disallow /email/unsubscribe).
+#       A 200 with no User-agent group is a FAIL, and so is one with no *
+#       group (a reader no group names may then read every path); a
+#       robots.txt that does not answer 200 is INFO here, since no group
+#       can be judged (section 63 FAILs a robots.txt that does not
+#       disallow /email/unsubscribe).
 #   N10 (OFFSITE-2) the homepage's one WebSite node gives the site's own
 #       host as an alternateName, the backup Google's site-name rules ask
 #       for. Two WebSite nodes, or a block that does not parse and hides
@@ -404,6 +406,7 @@ const answered = pages.filter((p) => p.status === 200);
   else {
     const groups = groupsOf(read("robots.txt") ?? "");
     if (!groups.length) out("FAIL", "N9 robots.txt answered 200 with no User-agent group in it, so it tells no reader anything (is it the app's page?)");
+    else if (!groups.some((g) => g.agents.includes("*"))) out("FAIL", `N9 robots.txt: none of its ${groups.length} group(s) names *, so a reader no group names may read ${PROBES.join(", ")} and the whole site (RFC 9309: with no * group, every path is allowed)`);
     else {
       const opens = [];
       const leaks = [];

@@ -22,7 +22,7 @@
  *       language with no alternates FAILs;
  *   N9  robots.txt, read by the longest match and by the first, opens no
  *       group with the whole site allowed and disallows /admin/claims, /auth
- *       and /account in every group;
+ *       and /account in every group, and holds a * group;
  *   N10 the homepage's one WebSite node names the site's host as its
  *       alternateName.
  * Run here against a fake curl, with the repo's own public/robots.txt and the
@@ -270,6 +270,14 @@ describe("N9 FAILs a robots.txt that lets a reader in", () => {
     expect(noAdmin).not.toBe(ROBOTS);
     const l = line(run(goodSite({ robots: noAdmin })).lines, "N9");
     expect(l).toMatch(/^FAIL {2}N9 robots\.txt: 0 of its 16 groups .*2 reading\(s\) .*\* allows \/admin\/claims by the longest match; \* allows \/admin\/claims by the first match$/);
+  });
+  it("a robots.txt with no * group FAILs, though every group it does hold is sound", () => {
+    const at = ROBOTS.indexOf("User-agent: *\n");
+    expect(at).toBeGreaterThan(0);
+    const noStar = ROBOTS.slice(0, at);
+    expect(line(run(goodSite({ robots: noStar })).lines, "N9")).toMatch(/^FAIL {2}N9 robots\.txt: none of its 15 group\(s\) names \*, so a reader no group names may read \/admin\/claims, \/auth, \/account/);
+    const oneBot = "User-agent: meta-externalagent\nDisallow: /\n";
+    expect(line(run(goodSite({ robots: oneBot })).lines, "N9")).toMatch(/^FAIL {2}N9 robots\.txt: none of its 1 group\(s\) names \*/);
   });
   it("a 200 with no User-agent group (the app's page) FAILs; a 404 is INFO, with section 63 named", () => {
     const html = withPage("/robots.txt", { body: page("/robots.txt") });
