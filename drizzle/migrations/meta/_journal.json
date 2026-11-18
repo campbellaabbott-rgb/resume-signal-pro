@@ -1709,6 +1709,223 @@
       "when": 1794940002008,
       "tag": "0243_ghost_index_hourly_before_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 244,
+      "version": "7",
+      "when": 1794962443177,
+      "tag": "0244_a_log_keeps_no_address_past_ninety_days",
+      "breakpoints": true
+    },
+    {
+      "idx": 245,
+      "version": "7",
+      "when": 1794962500889,
+      "tag": "0245_a_deleted_account_takes_its_not_subscribed_rows",
+      "breakpoints": true
+    },
+    {
+      "idx": 246,
+      "version": "7",
+      "when": 1794962535322,
+      "tag": "0246_a_table_only_the_server_reads_answers_only_the_server",
+      "breakpoints": true
+    },
+    {
+      "idx": 247,
+      "version": "7",
+      "when": 1794962585604,
+      "tag": "0247_the_weekly_tips_addresses_are_deleted_and_none_is_kept_again",
+      "breakpoints": true
+    },
+    {
+      "idx": 248,
+      "version": "7",
+      "when": 1794962621826,
+      "tag": "0248_a_pro_grant_keeps_the_month_that_paid_for_it",
+      "breakpoints": true
+    },
+    {
+      "idx": 249,
+      "version": "7",
+      "when": 1794962652439,
+      "tag": "0249_an_unopened_pro_grant_stops_counting_against_the_days_ten_after_an_hour",
+      "breakpoints": true
+    },
+    {
+      "idx": 250,
+      "version": "7",
+      "when": 1794962682896,
+      "tag": "0250_a_spent_orders_refused_notice_is_owed_until_it_is_sent",
+      "breakpoints": true
+    },
+    {
+      "idx": 251,
+      "version": "7",
+      "when": 1794962736023,
+      "tag": "0251_a_returning_buyers_second_purchase_is_its_own_row",
+      "breakpoints": true
+    },
+    {
+      "idx": 252,
+      "version": "7",
+      "when": 1794962771527,
+      "tag": "0252_a_spent_pro_grant_lives_as_long_as_its_saved_copy",
+      "breakpoints": true
+    },
+    {
+      "idx": 253,
+      "version": "7",
+      "when": 1794962799509,
+      "tag": "0253_a_refused_delivery_lease_says_why",
+      "breakpoints": true
+    },
+    {
+      "idx": 254,
+      "version": "7",
+      "when": 1794962837377,
+      "tag": "0254_a_run_out_pass_closes_and_gives_back_what_it_never_sent",
+      "breakpoints": true
+    },
+    {
+      "idx": 255,
+      "version": "7",
+      "when": 1794962897270,
+      "tag": "0255_a_mailing_list_forgets_what_it_no_longer_needs_and_mails_once_a_month",
+      "breakpoints": true
+    },
+    {
+      "idx": 256,
+      "version": "7",
+      "when": 1794962936143,
+      "tag": "0256_an_account_cannot_set_the_clock_that_throttles_its_agent_kick",
+      "breakpoints": true
+    },
+    {
+      "idx": 257,
+      "version": "7",
+      "when": 1794962956408,
+      "tag": "0257_an_account_writes_only_the_fields_of_its_saved_search_it_chose",
+      "breakpoints": true
+    },
+    {
+      "idx": 258,
+      "version": "7",
+      "when": 1795015644125,
+      "tag": "0258_a_scan_that_delivered_nothing_gives_its_day_back_and_a_stranger_names_no_new_industry",
+      "breakpoints": true
+    },
+    {
+      "idx": 259,
+      "version": "7",
+      "when": 1795015689859,
+      "tag": "0259_a_wage_filing_under_a_refused_or_unplaced_employer_is_never_served",
+      "breakpoints": true
+    },
+    {
+      "idx": 260,
+      "version": "7",
+      "when": 1795015719156,
+      "tag": "0260_a_pruned_month_is_never_written_to_again",
+      "breakpoints": true
+    },
+    {
+      "idx": 261,
+      "version": "7",
+      "when": 1795015752064,
+      "tag": "0261_a_state_notice_keeps_the_day_we_first_read_it_and_an_edited_one_retires_its_old_reading",
+      "breakpoints": true
+    },
+    {
+      "idx": 262,
+      "version": "7",
+      "when": 1795015888708,
+      "tag": "0262_trending_fields_read_only_boards_watched_through_both_weeks",
+      "breakpoints": true
+    },
+    {
+      "idx": 263,
+      "version": "7",
+      "when": 1795015941850,
+      "tag": "0263_the_weekly_series_reads_the_same_boards_and_keeps_a_relist_in_its_week",
+      "breakpoints": true
+    },
+    {
+      "idx": 264,
+      "version": "7",
+      "when": 1795024757828,
+      "tag": "0264_a_role_that_came_back_is_no_fill_in_the_chain",
+      "breakpoints": true
+    },
+    {
+      "idx": 265,
+      "version": "7",
+      "when": 1795024776849,
+      "tag": "0265_a_role_that_came_back_is_no_fill_in_the_field_pool",
+      "breakpoints": true
+    },
+    {
+      "idx": 266,
+      "version": "7",
+      "when": 1795024800504,
+      "tag": "0266_ghost_index_uses_board_window_and_names_carried_data",
+      "breakpoints": true
+    },
+    {
+      "idx": 267,
+      "version": "7",
+      "when": 1795024811697,
+      "tag": "0267_scan_floor_covers_every_band",
+      "breakpoints": true
+    },
+    {
+      "idx": 268,
+      "version": "7",
+      "when": 1795024820969,
+      "tag": "0268_actively_hiring_list_excludes_staffing_boards",
+      "breakpoints": true
+    },
+    {
+      "idx": 269,
+      "version": "7",
+      "when": 1795024831983,
+      "tag": "0269_unscored_fit_call_returns_allowance",
+      "breakpoints": true
+    },
+    {
+      "idx": 270,
+      "version": "7",
+      "when": 1795024845457,
+      "tag": "0270_shortlist_notice_sent_only_after_employer_confirmation",
+      "breakpoints": true
+    },
+    {
+      "idx": 271,
+      "version": "7",
+      "when": 1795024860601,
+      "tag": "0271_employer_shortlist_deletion_and_four_year_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 272,
+      "version": "7",
+      "when": 1795025058203,
+      "tag": "0272_affiliate_hashed_sessions_and_proven_addresses",
+      "breakpoints": true
+    },
+    {
+      "idx": 273,
+      "version": "7",
+      "when": 1795025069363,
+      "tag": "0273_affiliate_keyed_click_hashes_and_ninety_day_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 274,
+      "version": "7",
+      "when": 1795025079793,
+      "tag": "0274_affiliate_currency_ranges_and_reviewed_earnings",
+      "breakpoints": true
     }
   ]
 }

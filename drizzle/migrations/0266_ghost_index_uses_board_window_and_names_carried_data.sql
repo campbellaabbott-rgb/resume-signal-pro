@@ -1,0 +1,1 @@
+SELECT public._mig_exec(sql) FROM public._mig_stage WHERE name = '20261112194000_the_ghost_index_counts_by_the_boards_30_day_rule_and_names_what_it_carried.sql';
