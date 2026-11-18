@@ -127,7 +127,7 @@ describe("3. the write choke point refuses a month already rolled up", () => {
     g.__layoffDb = db;
     handler = await loadEdgeHandler("layoff-filings", {
       "https://deno.land/std@0.190.0/http/server.ts": "export const serve = (h) => { globalThis.__edgeHandler = h; };",
-      "https://esm.sh/xlsx@0.18.5": "export const read = () => ({ Sheets: {}, SheetNames: [] }); export const utils = { sheet_to_json: () => [] };",
+      "npm:xlsx@0.18.5": "export const read = () => ({ Sheets: {}, SheetNames: [] }); export const utils = { sheet_to_json: () => [] };",
       "_shared/supabase-client.ts": "export const getServiceClient = () => globalThis.__layoffDb;",
     });
     vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-12-03T12:00:00Z") });

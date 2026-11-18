@@ -183,6 +183,14 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --legacy-peer-deps
+      # NO CACHED DENO_DIR, ON PURPOSE (2026-11-18). Each run fetches the
+      # remote imports fresh, as a deploy does, and checks them against
+      # supabase/functions/deno.lock, so a module that changes under a URL the
+      # lock pins fails here before it ships. That is how esm.sh's 2026-10-21
+      # rebuild of xlsx 0.18.5 surfaced (run 44163605289). Laptops passed
+      # because their caches still held the old bytes, and a cache keyed on
+      # the lock would have done the same until an unrelated change to the
+      # lock. The fetch costs seconds of a step that takes about ten.
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x

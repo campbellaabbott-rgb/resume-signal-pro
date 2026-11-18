@@ -9,8 +9,15 @@
 // TWC content is non-commercial by its policy page: the rows are cited to
 // TWC as the source and stored as fields; the file itself is never
 // republished and no PDF is fetched.
+//
+// SheetJS comes from the npm registry, not a CDN build of it. The registry
+// never changes the bytes of a published version, so a fresh cache, CI and
+// the deploy bundler all get the tarball deno.lock pins. esm.sh does not hold
+// to that: on 2026-10-21 it rebuilt its xlsx 0.18.5 module under the same URL
+// (a newer minifier; the same code), and CI failed the lock's integrity check
+// on whichever runs reached a CDN edge serving the new build.
 
-import * as XLSX from "https://esm.sh/xlsx@0.18.5";
+import * as XLSX from "npm:xlsx@0.18.5";
 import type { Http } from "./http.ts";
 import type { Table } from "./warn.ts";
 import { TX } from "./warn-maps/tx.ts";
