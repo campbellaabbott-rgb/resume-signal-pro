@@ -14,7 +14,7 @@
 --    and only for the free scan's own name. The service role alone runs it:
 --    a stranger who could call it would have an unlimited day.
 --
--- 2. is_scan_industry and both log_industry_correction overloads (S14X-046).
+-- 2. scan_industry_known and both log_industry_correction overloads (S14X-046).
 --    The correction log is open to the publishable key, and it took any label
 --    of fifty characters or fewer: "zz-not-an-industry" was stored, the
 --    primary scanner loaded thirty days of rows unfiltered and introduced the
@@ -25,7 +25,13 @@
 --    correction-menu-industries.ts, compared in lower case because the
 --    four-argument call stores lower case), and the two labels differ; a
 --    call that fails either returns before client_write_allowed, so it writes
---    nothing, the address's budget included.
+--    nothing, the address's budget included. scan_industry_known is not a
+--    row-security helper: no policy calls it, only the three SECURITY DEFINER
+--    functions below and this file's own self-check, so it is closed to
+--    every client role and the service role alone may run it. (Its first
+--    name began with is_, which Lovable's tool reads as a policy helper's;
+--    it refused the file on 2026-11-18 before any of it ran, and the
+--    function was renamed, nothing else.)
 --
 -- 3. get_industry_correction_stats leaves out the rows it should never have
 --    counted: unknown labels, original = corrected, and detection_source
@@ -86,7 +92,7 @@ GRANT EXECUTE ON FUNCTION public.give_back_scan_day(text, text) TO service_role;
 
 -- 2. The labels a correction may name ---------------------------------------
 
-CREATE OR REPLACE FUNCTION public.is_scan_industry(p_label text)
+CREATE OR REPLACE FUNCTION public.scan_industry_known(p_label text)
 RETURNS boolean
 LANGUAGE sql
 IMMUTABLE
@@ -114,12 +120,12 @@ AS $$
   ]::text[]);
 $$;
 
-COMMENT ON FUNCTION public.is_scan_industry(text) IS
+COMMENT ON FUNCTION public.scan_industry_known(text) IS
   'True for an industry the scanner (src/config/scan-industries.ts) or the correction menu '
   '(_shared/correction-menu-industries.ts) can name, in lower case (20261112170000, S14X-046).';
 
-REVOKE ALL ON FUNCTION public.is_scan_industry(text) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.is_scan_industry(text) TO service_role;
+REVOKE ALL ON FUNCTION public.scan_industry_known(text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.scan_industry_known(text) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.log_industry_correction(
   p_detected text,
@@ -138,7 +144,7 @@ BEGIN
     RETURN;
   END IF;
   -- Known labels that differ, before the budget is spent (S14X-046).
-  IF NOT public.is_scan_industry(p_detected) OR NOT public.is_scan_industry(p_corrected)
+  IF NOT public.scan_industry_known(p_detected) OR NOT public.scan_industry_known(p_corrected)
      OR lower(btrim(p_detected)) = lower(btrim(p_corrected)) THEN
     RETURN;
   END IF;
@@ -177,7 +183,7 @@ BEGIN
     RETURN NULL;
   END IF;
   -- Known labels that differ, before the budget is spent (S14X-046).
-  IF NOT public.is_scan_industry(p_original_industry) OR NOT public.is_scan_industry(p_corrected_industry)
+  IF NOT public.scan_industry_known(p_original_industry) OR NOT public.scan_industry_known(p_corrected_industry)
      OR lower(btrim(p_original_industry)) = lower(btrim(p_corrected_industry)) THEN
     RETURN NULL;
   END IF;
@@ -227,8 +233,8 @@ AS $$
          max(created_at) AS last_seen
   FROM public.industry_corrections
   WHERE created_at > now() - make_interval(days => p_days)
-    AND public.is_scan_industry(original_industry)
-    AND public.is_scan_industry(corrected_industry)
+    AND public.scan_industry_known(original_industry)
+    AND public.scan_industry_known(corrected_industry)
     AND lower(btrim(original_industry)) <> lower(btrim(corrected_industry))
     AND detection_source IS DISTINCT FROM 'user_confirmed'
   GROUP BY original_industry, corrected_industry
@@ -391,7 +397,7 @@ GRANT EXECUTE ON FUNCTION public.get_scan_health_status() TO anon, authenticated
 DO $verify$
 DECLARE
   v_give regprocedure := to_regprocedure('public.give_back_scan_day(text, text)');
-  v_known regprocedure := to_regprocedure('public.is_scan_industry(text)');
+  v_known regprocedure := to_regprocedure('public.scan_industry_known(text)');
   v_log4 regprocedure := to_regprocedure('public.log_industry_correction(text, text, text, text)');
   v_log9 regprocedure := to_regprocedure('public.log_industry_correction(text, text, text, text, integer, text[], text, text, text)');
   v_stats regprocedure := to_regprocedure('public.get_industry_correction_stats(integer)');
@@ -417,7 +423,7 @@ BEGIN
     RAISE EXCEPTION 'give_back_scan_day is not service-role only';
   END IF;
   IF has_function_privilege('anon', v_known, 'EXECUTE') OR has_function_privilege('authenticated', v_known, 'EXECUTE') THEN
-    RAISE EXCEPTION 'is_scan_industry is open to a client role';
+    RAISE EXCEPTION 'scan_industry_known is open to a client role';
   END IF;
   IF NOT has_function_privilege('anon', v_log4, 'EXECUTE') OR NOT has_function_privilege('anon', v_log9, 'EXECUTE')
      OR NOT has_function_privilege('anon', v_stats, 'EXECUTE') OR NOT has_function_privilege('anon', v_totals, 'EXECUTE')
@@ -429,9 +435,9 @@ BEGIN
      OR v_src NOT LIKE '%cache_hit%' OR v_src NOT LIKE '%''basis''%' THEN
     RAISE EXCEPTION 'get_scan_totals: not the definition this file wrote';
   END IF;
-  IF NOT public.is_scan_industry('technology') OR NOT public.is_scan_industry('humanResources')
-     OR public.is_scan_industry('zz-not-an-industry') OR public.is_scan_industry(NULL) THEN
-    RAISE EXCEPTION 'is_scan_industry: wrong answer for a known or an unknown label';
+  IF NOT public.scan_industry_known('technology') OR NOT public.scan_industry_known('humanResources')
+     OR public.scan_industry_known('zz-not-an-industry') OR public.scan_industry_known(NULL) THEN
+    RAISE EXCEPTION 'scan_industry_known: wrong answer for a known or an unknown label';
   END IF;
 
   BEGIN
@@ -469,7 +475,7 @@ BEGIN
     INSERT INTO public.industry_corrections (original_industry, corrected_industry, detection_source)
     VALUES ('technology', 'zz-not-an-industry', 'fse-verify'), ('technology', 'technology', 'fse-verify'), ('janitorial', 'clergy', 'user_confirmed');
     SELECT count(*) INTO v_stats_unknown FROM public.get_industry_correction_stats(1) s
-     WHERE NOT public.is_scan_industry(s.detected) OR NOT public.is_scan_industry(s.corrected)
+     WHERE NOT public.scan_industry_known(s.detected) OR NOT public.scan_industry_known(s.corrected)
         OR lower(btrim(s.detected)) = lower(btrim(s.corrected));
     SELECT coalesce(sum(s.corrections), 0) INTO v_pair_after FROM public.get_industry_correction_stats(1) s
      WHERE s.detected = 'janitorial' AND s.corrected = 'clergy';

@@ -1,9 +1,10 @@
-# Deployment checklist 6dff19e95
-- [x] Checkout matches 6dff19e95f457fb74d97365eae8237323497a323; replacement checklist supersedes earlier requests.
-- [ ] STOPPED at first file, 20261109120000_the_facets_cron_rebuilds_only_a_row_the_board_pass_left_old.sql: unchanged SQL including its full marker block was refused. Tool requires the exact first-line format `-- lovable-cron-fallback-reviewed: <reason>`; owner forbids editing. No migration applied or later step executed.
-- [ ] Verify required cron-health and read-only cost checks; leave the owner-only aggregate writer unscheduled.
-- [ ] Deploy free-keyword-scan, job-board, and layoff-filings and verify their expected OPTIONS x-fn-build values.
-- [ ] Verify job-board status sliceStats.build is 2026-09-09.102 or later, then apply 20261111110000 and 20261111120000 in order under their supplied conditions.
-- [ ] Verify live frontend commit; publish only if it does not serve this commit.
-- [ ] Apply 20261109122000 only after frontend verification.
-- [x] Previously applied 0226–0227 and never-apply files are excluded; preserve all committed migration and function sources.
+# Deployment checklist 18744c65d
+- [x] Confirm requested commit is included; re-run deployment ledger on HEAD 66f895a6. Ledger agrees with all 29 pre-deploy migrations, 64 functions and four gated migrations; no order, late-migration, unreachable or build conflicts.
+- [x] Apply first 14 pre-deploy migrations individually in uploaded order (drizzle 0244–0257); source files untouched. Applied 0245 differs from source by two indentation spaces on one self-check line, with no SQL behavior difference; every other applied copy is byte-identical.
+- [ ] STOPPED at step 1.15, 20261112170000: tool refused revoking authenticated EXECUTE on public.is_scan_industry as a possible RLS helper. Read-only pg_policies check found no references, but tool says it still will not apply the revoke. No retry or later deployment step executed; owner SQL-editor execution or a platform validation change is required.
+- [ ] Apply remaining pre-deploy migrations (1.16–1.29), blocked by step 1.15 refusal.
+- [ ] Deploy 64 listed functions and verify every OPTIONS x-fn-build, blocked by pre-deploy migrations.
+- [ ] Apply four gated migrations in order after required build verification, blocked by function deployment.
+- [ ] Verify live frontend commit; publish only if the requested commit is not already served, blocked by preceding steps.
+- [x] Resolve existing preview test typing error; six Unicode upload tests and four account-erasure tests passed, latest preview build OK. Read-back confirms retention and grants readers, grant expiry and narrowed saved-search access; refused migration's give_back_scan_day function is absent.
+- [x] Never-apply files excluded; preserve migration files and function sources.
