@@ -328,3 +328,17 @@ describe("section 99zzzzzzzz-board-103: what it sends and writes", () => {
     expect(readdirSync(r.dir).some((f) => f.startsWith("vd_103_st_"))).toBe(true);
   });
 });
+
+describe("the lines spec section 3.6 leaves to the T3 poller are declared deferred where the owner reads them", () => {
+  // Review finding (ship lens): .104 is gated on .103 passing S2/F1, so a line
+  // this section cannot judge must say so in its header, the deploy notes and
+  // the ledger reservation, and the gate must be the owner's reading of it.
+  const NOTES = readFileSync(resolve(ROOT, "docs/job-board-deploy-notes.md"), "utf8");
+  const STATUS = (JSON.parse(readFileSync(resolve(ROOT, "docs/deploy-ledger.json"), "utf8")) as { reservations: Record<string, { status: string }> }).reservations["board-103"].status;
+  const HEADER = SECTION.slice(0, SECTION.indexOf("\necho "));
+  const DEFERRED = "SMP, B3, L1, FR, SU1, D1, VR1, R1 and AS1";
+  it.each([["the section header", HEADER], ["the deploy notes", NOTES], ["the board-103 reservation", STATUS]])("%s names every deferred line and gates .104 on the owner's reading", (_, text) => {
+    expect(text.replace(/\s*\n#\s*/g, " ")).toContain(DEFERRED);
+    expect(text.replace(/\s*\n#\s*/g, " ")).toMatch(/\.104 is gated on the owner's reading of (them|those)/);
+  });
+});
