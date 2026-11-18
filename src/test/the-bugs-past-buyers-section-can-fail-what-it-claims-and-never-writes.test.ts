@@ -22,8 +22,10 @@
  *     page each fail;
  *   - each repo line fails when its claim is false;
  *   - a decided owner key judges what its decision ships, and a key that
- *     ships in round B (S14X-225 yes) prints INFO while only round A is live
- *     and is judged once round B's send-product-email build serves;
+ *     ships in round B (S14X-225 yes, S14X-143 B) prints INFO while only
+ *     round A is live and is judged once round B's send-product-email build
+ *     serves; B asks each product-cuts function for its own round B build,
+ *     so a round A build (or the owner branch's 2026-11-18.1) never passes;
  *   - every call is an OPTIONS or a GET, no body is sent, and the key is
  *     never printed.
  */
@@ -150,7 +152,11 @@ const before = (): Route[] => [...preflights(OLD), lease("missing"), cron([OLD_P
 /** Round A pasted: every lane function at 2026-11-12.1 (production since round A's deploy). */
 const after = (): Route[] => [...preflights(NEW), lease("locked"), cron([NEW_PURGE, job("agent-pass-close"), ...DIGESTS]), ...site(PUBLISHED)];
 /** Round B's builds of the functions it restamps in this lane (the owner keys of 2026-11-18 ship with them). */
-const ROUND_B: Record<string, string> = { "send-product-email": "send-product-email.2026-11-13.1" };
+const ROUND_B: Record<string, string> = {
+  "send-product-email": "send-product-email.2026-11-13.1",
+  "create-scan-pack-checkout": "create-scan-pack-checkout.2026-11-13.1",
+  "create-product-checkout": "create-product-checkout.2026-11-18.2",
+};
 /** Round B pasted on top of round A. */
 const afterB = (): Route[] => [...preflights((fn) => ROUND_B[fn] ?? NEW(fn)), ...after().slice(FNS.length + OWNER_FNS.length)];
 const fails = (lines: string[]) => lines.filter((l) => l.startsWith("FAIL"));
@@ -311,17 +317,35 @@ describe("the bug round past-buyers section", () => {
     expect(fails(behind.lines), behind.out).toContain("FAIL  S14X-143 import-freelance-profile preflight x-fn-build = import-freelance-profile.2026-11-10.3 while the lane's functions serve 2026-11-12.1 (want 2026-11-12.1 or later: it enforces the window)");
   });
 
-  it("S14X-143 decided B judges the cut sentence and the two checkouts' builds; another answer fails", () => {
+  it("S14X-143 decided B judges the cut sentence and each product-cuts function at its round B build; round A's builds never pass it, and another answer fails", () => {
     const decided = { ownerDecided: { "S14X-143": "B" } };
-    const promised = run(after(), { ...decided, repo: fixtureRepo() });
+    const promised = run(afterB(), { ...decided, repo: fixtureRepo() });
     expect(fails(promised.lines), promised.out).toEqual(["FAIL  S14X-143 decided (B), but _shared/product-cuts.ts still promises the link for PAST_BUYER_DAYS days in a pastBuyers sentence"]);
     const dropped = fixtureRepo((put) => put("supabase/functions/_shared/product-cuts.ts", "  pastBuyers: \"If you bought it before, your link keeps working.\",\n"));
-    const shipped = run(after(), { ...decided, repo: dropped });
+    const shipped = run(afterB(), { ...decided, repo: dropped });
     expect(fails(shipped.lines), shipped.out).toEqual([]);
-    expect(shipped.lines.filter((l) => l.startsWith("PASS  S14X-143")), shipped.out).toHaveLength(3);
-    const behind = run([...preflights((fn) => (fn === "create-scan-pack-checkout" ? "create-scan-pack-checkout.2026-10-27.1" : NEW(fn))), ...after().slice(FNS.length + OWNER_FNS.length)], { ...decided, repo: dropped });
-    expect(fails(behind.lines), behind.out).toEqual(["FAIL  S14X-143 create-scan-pack-checkout preflight x-fn-build = create-scan-pack-checkout.2026-10-27.1 while the lane's functions serve 2026-11-12.1 (want 2026-11-12.1 or later: it bundles product-cuts.ts)"]);
-    const neither = run(after(), { ownerDecided: { "S14X-143": "C" }, repo: dropped });
+    expect(shipped.lines.filter((l) => l.startsWith("PASS  S14X-143")), shipped.out).toEqual([
+      "PASS  S14X-143 decided (B): no cut-product sentence promises a day count nothing enforces",
+      "PASS  S14X-143 create-product-checkout preflight x-fn-build = create-product-checkout.2026-11-18.2 (2026-11-18.2 or later: it answers the new sentence)",
+      "PASS  S14X-143 create-scan-pack-checkout preflight x-fn-build = create-scan-pack-checkout.2026-11-13.1 (2026-11-13.1 or later: it answers the new sentence)",
+      "PASS  S14X-143 send-product-email preflight x-fn-build = send-product-email.2026-11-13.1 (2026-11-13.1 or later: it answers the new sentence)",
+    ]);
+    // Round A is live and round B is not: round A's builds still carry the old sentence, so no build line passes, and none fails yet.
+    const roundA = run(after(), { ...decided, repo: dropped });
+    expect(fails(roundA.lines), roundA.out).toEqual([]);
+    expect(roundA.lines.filter((l) => l.startsWith("PASS  S14X-143")), roundA.out).toEqual(["PASS  S14X-143 decided (B): no cut-product sentence promises a day count nothing enforces"]);
+    expect(roundA.lines.filter((l) => l.startsWith("INFO  S14X-143")), roundA.out).toEqual([
+      "INFO  S14X-143 create-product-checkout preflight x-fn-build = create-product-checkout.2026-11-12.1: round B, which carries the new sentence, is not pasted yet (want 2026-11-18.2 or later)",
+      "INFO  S14X-143 create-scan-pack-checkout preflight x-fn-build = create-scan-pack-checkout.2026-11-12.1: round B, which carries the new sentence, is not pasted yet (want 2026-11-13.1 or later)",
+      "INFO  S14X-143 send-product-email preflight x-fn-build = send-product-email.2026-11-12.1: round B, which carries the new sentence, is not pasted yet (want 2026-11-13.1 or later)",
+    ]);
+    const rest = afterB().slice(FNS.length + OWNER_FNS.length);
+    // The owner branch's create-product-checkout build carries the old sentence: once round B is pasted it fails.
+    const ownerBranch = run([...preflights((fn) => (fn === "create-product-checkout" ? "create-product-checkout.2026-11-18.1" : ROUND_B[fn] ?? NEW(fn))), ...rest], { ...decided, repo: dropped });
+    expect(fails(ownerBranch.lines), ownerBranch.out).toEqual(["FAIL  S14X-143 create-product-checkout preflight x-fn-build = create-product-checkout.2026-11-18.1 while send-product-email serves send-product-email.2026-11-13.1: round B is pasted (want create-product-checkout.2026-11-18.2 or later: it bundles product-cuts.ts)"]);
+    const behind = run([...preflights((fn) => (fn === "create-scan-pack-checkout" ? "create-scan-pack-checkout.2026-10-27.1" : ROUND_B[fn] ?? NEW(fn))), ...rest], { ...decided, repo: dropped });
+    expect(fails(behind.lines), behind.out).toEqual(["FAIL  S14X-143 create-scan-pack-checkout preflight x-fn-build = create-scan-pack-checkout.2026-10-27.1 while send-product-email serves send-product-email.2026-11-13.1: round B is pasted (want create-scan-pack-checkout.2026-11-13.1 or later: it bundles product-cuts.ts)"]);
+    const neither = run(afterB(), { ownerDecided: { "S14X-143": "C" }, repo: dropped });
     expect(fails(neither.lines), neither.out).toEqual(["FAIL  S14X-143 ownerDecided reads 'C', neither A (enforce) nor B (drop the promise): nothing says what must ship"]);
   });
 
@@ -352,11 +376,13 @@ describe("the bug round past-buyers section", () => {
     const ledger = JSON.parse(readFileSync(resolve(ROOT, "docs/deploy-ledger.json"), "utf8")) as { reservations: Record<string, { ownerDecided?: Record<string, unknown> }> };
     const ownerDecided = ledger.reservations["bug-round"].ownerDecided ?? {};
     expect(ownerDecided["S14X-225"], "the owner's yes of 2026-11-18 is recorded").toMatchObject({ choice: "yes" });
+    expect(ownerDecided["S14X-143"], "the owner's B of 2026-11-18 is recorded").toMatchObject({ choice: "B" });
     const roundA = run(after(), { ownerDecided });
     expect(fails(roundA.lines), roundA.out).toEqual([]);
-    expect(roundA.lines.some((l) => l.startsWith("INFO  S14X-225 owner pending")), roundA.out).toBe(false);
+    expect(roundA.lines.some((l) => /^INFO {2}S14X-(225|143) owner pending/.test(l)), roundA.out).toBe(false);
     const roundB = run(afterB(), { ownerDecided });
-    expect(fails(roundB.lines), roundB.out).toContain("FAIL  S14X-225 decided (yes), but get_cron_health still lists send-agent-digest send-agent-digest-morning while send-product-email serves send-product-email.2026-11-13.1: round B is pasted, so 20261112153000 did not apply");
+    expect(fails(roundB.lines), roundB.out).toEqual(["FAIL  S14X-225 decided (yes), but get_cron_health still lists send-agent-digest send-agent-digest-morning while send-product-email serves send-product-email.2026-11-13.1: round B is pasted, so 20261112153000 did not apply"]);
+    expect(roundB.lines.filter((l) => l.startsWith("PASS  S14X-143")), roundB.out).toHaveLength(4);
   });
 
   it("every call is an OPTIONS or a GET with no body, and the key is never printed", () => {

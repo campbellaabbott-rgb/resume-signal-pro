@@ -20,7 +20,8 @@ import { scanProductMailInfo } from "./retired-copy.ts";
 // 2026-10-31.1 (land/all carries the homepage switch-over): both 2026-10-27.1
 // builds named different code; this bundle carries both changes.
 // 2026-11-12.1 (bug round of 2026-11-08, part A, past-buyers lane, S14X-224, RC-S12-113): a scan order mailed again names the credits it bought, and Spanish and Hindi ready verdicts read as Ready to Apply.
-const FN_BUILD = "send-product-email.2026-11-12.1";
+// 2026-11-13.1 (bug round part B, the owner's S14X-143 pick B of 2026-11-18): _shared/product-cuts.ts's sentences name no day count; this function reads only its product list (CUT_PRODUCTS), so nothing it sends changed.
+const FN_BUILD = "send-product-email.2026-11-13.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

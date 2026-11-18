@@ -208,7 +208,9 @@ describe("a buyer back from Stripe with a paid Freelance Boost (L3-16)", () => {
     at("/freelance-boost", <FreelanceBoost />);
     const note = document.querySelector("[data-no-longer-sold]");
     expect(note?.textContent).toMatch(/Freelance Boost and Transition Pro are no longer sold, and they are not part of Pro/);
-    expect(note?.textContent).toMatch(/keeps working for 90 days/);
+    // A past buyer's link keeps working, and no day count is promised (S14X-143, owner pick B of 2026-11-18).
+    expect(note?.textContent).toMatch(/open the link in your purchase email: it keeps working\./);
+    expect(note?.textContent).not.toMatch(/\d+ days/);
     expect(seo.at(-1)).toMatchObject({ noIndex: true });
     expect(screen.queryByRole("button", { name: /boost my experience/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /full transition kit/i })).toBeNull();

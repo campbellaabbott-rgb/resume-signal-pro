@@ -5783,7 +5783,7 @@
     "startNewPurchase": "¿Compras para otro puesto? Empieza una compra nueva.",
     "boughtHereTitle": "3. Tu sección de experiencia: ya comprada en este dispositivo",
     "openYourLink": "Para verla o generarla, abre el enlace de tu correo de compra. No se te cobrará de nuevo.",
-    "noLongerSoldBody": "Freelance Boost y Transition Pro ya no se venden y no forman parte de Pro. Si compraste alguno, abre el enlace de tu correo de compra: sigue funcionando durante 90 días. Ahora una cuenta gratuita redacta cada día un currículum adaptado, una carta de presentación y una preparación de entrevista para un empleo.",
+    "noLongerSoldBody": "Freelance Boost y Transition Pro ya no se venden y no forman parte de Pro. Si compraste alguno, abre el enlace de tu correo de compra: sigue funcionando. Ahora una cuenta gratuita redacta cada día un currículum adaptado, una carta de presentación y una preparación de entrevista para un empleo.",
     "noLongerSoldMeta": "Freelance Boost y Transition Pro ya no se venden. Si compraste alguno, el enlace de tu correo de compra sigue funcionando.",
     "noLongerSoldTitle": "Freelance Boost ya no se vende",
     "regenerate": "Regenerar",
@@ -5993,7 +5993,7 @@
     "autoRenewTitle": "Marca la casilla de renovación",
     "fairUseTitle": "Has alcanzado el límite de uso razonable de Pro",
     "planUnpaidTitle": "Tu plan aún no está pagado",
-    "retiredBody": "Este producto ya no se vende y no se cobró nada. Si lo compraste antes, tu enlace sigue funcionando durante 90 días.",
+    "retiredBody": "Este producto ya no se vende y no se cobró nada. Si lo compraste antes, tu enlace sigue funcionando.",
     "retiredTitle": "Ya no se vende"
   },
   "consent": {
