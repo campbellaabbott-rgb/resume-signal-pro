@@ -20,6 +20,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { migrationText } from "./helpers/mail-lists-db";
+import { SLOW } from "./helpers/mount-budget";
 import { signDripLink } from "../../supabase/functions/_shared/scan-drip-link";
 import { FIX_PLAN_SEQUENCE_OFFERED } from "../../supabase/functions/send-scan-report/sequence-offered";
 
@@ -91,14 +92,18 @@ describe("send-scan-report, as shipped", () => {
 
 describe("migration 20261112163000", () => {
   let pg: PGlite;
-  beforeAll(async () => { pg = new PGlite(); }, 60_000);
+  // The database starts inside beforeAll's minute, not inside the first test's
+  // five seconds: on a loaded machine the cold start alone overran it (the
+  // 2026-11-18 pre-push, 5,329 ms), and the test then failed for no reason of
+  // its own.
+  beforeAll(async () => { pg = new PGlite(); await pg.waitReady; }, 60_000);
   afterAll(async () => { await pg?.close(); });
   const PREFIX = "20261112163000_";
   const labels = async (t: string) => (await pg.query<{ l: string }>(`SELECT message->>'label' AS l FROM pgmq.${t} ORDER BY msg_id`)).rows.map((r) => r.l);
 
   it("on a database with no queue, takes out nothing and does not fail", async () => {
     await expect(pg.exec(migrationText(PREFIX))).resolves.toBeTruthy();
-  });
+  }, SLOW.timeout);
 
   it("takes every fix-plan mail out of the queue and its dead-letter queue, and nothing else", async () => {
     await pg.exec(`
