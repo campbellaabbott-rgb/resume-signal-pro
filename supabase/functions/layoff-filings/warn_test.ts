@@ -6,12 +6,13 @@
 // four states that publish no stamp of their own are read from their saved
 // files and dated by our first read; every map refuses a file it cannot read.
 //
-// Run: deno test --allow-read --allow-env --allow-net supabase/functions/layoff-filings/
-// (--allow-net only for the one-time esm.sh download of the xlsx reader;
-//  nothing in these tests touches sec.gov or a state site.)
+// Run: deno test --allow-read --allow-env supabase/functions/layoff-filings/
+// (no --allow-net: the xlsx reader is fetched from the npm registry while the
+//  module graph loads, which no permission governs, and nothing in these
+//  tests touches sec.gov or a state site.)
 
 import { assert, assertEquals, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import * as XLSX from "https://esm.sh/xlsx@0.18.5";
+import * as XLSX from "npm:xlsx@0.18.5";
 import { buildWarnRows, extractFailuresFrom, feedVerdict, isStale, latestRunJobsUrl, mapTable, tableFromCsv } from "./warn.ts";
 import { tableFromGrid, tableFromTwcXlsx } from "./tx-xlsx.ts";
 import { cellLines, pagerPages, tableFromFlHtml } from "./fl-html.ts";
