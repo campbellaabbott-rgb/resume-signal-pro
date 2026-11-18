@@ -7,7 +7,12 @@
  * aiTrain false where the system's content signal forbids training. The design
  * first called this `rights: "clear"`, which promised republication the legal
  * ledger never cleared and dropped the ai-train=no signal Workable and
- * Teamtailor publish (critique-api B-7). The corrected labels live in
+ * Teamtailor publish (critique-api B-7). The first cut of the corrected labels
+ * then dropped it again for Lever: Lever is conditional, not permissive, yet
+ * its posting host declares the same ai-train=no, and /v1 serves its rows by
+ * default, so a Lever row that said aiTrain null told an AI builder no ban
+ * had been read when one had. Training is its own question, answered for
+ * conditional systems too. The corrected labels live in
  * supabase/functions/public-api/source-terms.ts, and the site needs the same
  * answers for the data-API docs, the embed builder and the open-data page. A
  * page cannot import a Deno module, so src/config/source-terms.ts is a copy,
@@ -133,12 +138,25 @@ describe("one list, two runtimes", () => {
     expect([...SITE.SOURCE_TERMS]).toEqual([...DENO.SOURCE_TERMS]);
   });
 
-  it("the lists are the program's: five permissive systems, two of them barred from training", () => {
-    // The owner-approved API4 list (spec 4.10, row A1). Changing it is a
+  it("the lists are the program's: five permissive systems, and three systems barred from training", () => {
+    // The owner-approved API4 permissive list (spec 4.10, row A1), and every
+    // carried system whose content signal says ai-train=no (the legal ledger
+    // of 2026-11-16: Workable, Teamtailor and Lever). Changing either is a
     // decision, so it is changed here on purpose or not at all.
     expect([...DENO.PERMISSIVE_SOURCES].sort()).toEqual(["ashby", "greenhouse", "personio", "teamtailor", "workable"]);
-    expect([...DENO.AI_TRAIN_BARRED].sort()).toEqual(["teamtailor", "workable"]);
+    expect([...DENO.AI_TRAIN_BARRED].sort()).toEqual(["lever", "teamtailor", "workable"]);
     expect([...DENO.SOURCE_TERMS]).toEqual(["permissive", "conditional"]);
+  });
+
+  it("a Lever row is conditional and barred from training, in both runtimes", () => {
+    // The barred list is not a subset of the permissive one: whether our use
+    // is permissive and whether a model may train on the row are separate.
+    for (const m of [DENO, SITE]) {
+      expect(m.sourceTermsOf("lever")).toEqual({ sourceTerms: "conditional", aiTrain: false });
+      expect(m.sourceTermsOf(" Lever ")).toEqual({ sourceTerms: "conditional", aiTrain: false });
+      expect(m.sourceTermsOf("workable")).toEqual({ sourceTerms: "permissive", aiTrain: false });
+      expect(m.sourceTermsOf("greenhouse")).toEqual({ sourceTerms: "permissive", aiTrain: null });
+    }
   });
 
   it("each file declares its own literal list, and the declaration read is the value the module exports", () => {
@@ -171,9 +189,11 @@ describe("one list, two runtimes", () => {
       for (const s of m.AI_TRAIN_BARRED) expect(m.sourceTermsOf(s).aiTrain, s).toBe(false);
       expect(trainingClaims(m)).toEqual([]);
     }
-    // Positive control: the answers are not all one value.
+    // Positive control: every combination occurs on a real vendor key, so the
+    // checks are not passing over one value (permissive or conditional, each
+    // with a ban and without one).
     const answers = new Set(BOARD_VENDORS.map((v) => JSON.stringify(DENO.sourceTermsOf(v))));
-    expect(answers.size).toBeGreaterThanOrEqual(3);
+    expect(answers.size).toBe(4);
   });
 
   it("the wording and the credit are one constant in both runtimes", () => {
@@ -215,6 +235,29 @@ describe("TEETH: each check fails when the runtimes drift", () => {
     };
     expect(disagreements(DENO, strict)).toContain('"GREENHOUSE"');
     expect(disagreements(DENO, strict)).toContain('"  workable "');
+  });
+
+  it("notices a copy that bars training only on permissive systems", () => {
+    const permissiveOnly: TermsModule = {
+      ...SITE,
+      sourceTermsOf: (s) => {
+        const key = String(s ?? "").trim().toLowerCase();
+        const permissive = SITE.PERMISSIVE_SOURCES.includes(key);
+        return {
+          sourceTerms: permissive ? "permissive" : "conditional",
+          aiTrain: permissive && SITE.AI_TRAIN_BARRED.includes(key) ? false : null,
+        };
+      },
+    };
+    expect(disagreements(DENO, permissiveOnly)).toContain('"lever"');
+    expect(selfContradictions(permissiveOnly)).toContain('"lever"');
+  });
+
+  it("notices a training-barred list that lost Lever", () => {
+    const shorter = SITE_CODE.replace('"teamtailor", "lever"] as const;', '"teamtailor"] as const;');
+    expect(shorter, "the mutation did not apply -- RE-ANCHOR this tooth").not.toBe(SITE_CODE);
+    expect(listOf(shorter, "AI_TRAIN_BARRED")).not.toEqual(listOf(DENO_CODE, "AI_TRAIN_BARRED"));
+    expect(listOf(shorter, "AI_TRAIN_BARRED").sort()).not.toEqual(["lever", "teamtailor", "workable"]);
   });
 
   it("notices a row that says training is allowed", () => {

@@ -16,8 +16,8 @@
 /** Systems whose terms, as read on 2026-11-16, permit our use or say nothing to a reader. */
 export const PERMISSIVE_SOURCES = ["greenhouse", "workable", "ashby", "teamtailor", "personio"] as const;
 
-/** Systems whose published content signal forbids using their pages to train a model. */
-export const AI_TRAIN_BARRED = ["workable", "teamtailor"] as const;
+/** Systems whose published content signal forbids using their pages to train a model, permissive or not. */
+export const AI_TRAIN_BARRED = ["workable", "teamtailor", "lever"] as const;
 
 /** The two answers a row can carry, in the order the API documents them. */
 export const SOURCE_TERMS = ["permissive", "conditional"] as const;
@@ -31,7 +31,7 @@ export const SOURCE_TERMS_MEANING = {
   permissive: "The hiring system's terms, as we read them, permit this use or say nothing to readers. This is not a grant of republication rights.",
   conditional: "Our use of this hiring system carries a condition or an open question (counsel, pacing or terms we could not read).",
   aiTrainFalse: "The hiring system publishes a signal that its pages must never be used to train a model.",
-  aiTrainNull: "The hiring system published no training signal that we read. That is not permission to train.",
+  aiTrainNull: "We read no training signal from this hiring system. That is not permission to train.",
 } as const;
 
 const norm = (v: unknown): string => String(v ?? "").trim().toLowerCase();
