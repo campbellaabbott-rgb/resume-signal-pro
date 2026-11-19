@@ -353,7 +353,8 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
 // 2026-11-09.2 (fix/cost-wave, the integration): the 2026-11-08.1 code above (connect W1, W3, W4 and W5) with the ci-edge lane's Max-Age; cost/ci-edge stamped 2026-11-09.1 on a copy without the connect changes, so the merged code takes the next sequence (DEPLOY-LEDGER §3).
 // 2026-11-12.1 (bug round of 2026-11-08, part A, connector lane): the keyless and own-connection allowances are named where they apply, the keyed steps remove the keyless entry first, the fit tool gives back a call that scored nothing, the job tool says when the board last read the feed, a location word is searched as typed, a form body cut off mid-read is never cached, a Greenhouse heading is the next question's section, the bundled ChatGPT egress list is OpenAI's of 2026-11-06, and the federal feed is said to be withheld by our own choice.
 // 2026-11-12.2 (the round's integration, S14X-052): fit_resume's unscored names a third reason job-fit 2026-11-12.2 sends, no_resume_terms (none of the terms the scorer reads were found in the résumé).
-const FN_BUILD = "agent-mcp.2026-11-12.2";
+// 2026-11-18.2 (lane SH, OD14-ASHBY shared half, 2026-11-18): apply_myself carries the shared form reader that answers an Ashby posting "withheld" before its cache or any request whatever vendor list is passed, with its Ashby reader deleted; the connector already left Ashby out of its own list in 2026-11-18.1, which round B's integration branch carries without the shared stop.
+const FN_BUILD = "agent-mcp.2026-11-18.2";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -934,8 +935,18 @@ const CARD_STRUCTURED_FIELDS = [
   "experienceBand", "minYears", "department",
 ] as const;
 
+/**
+ * Shared readers this connector does not use although it hands the postings
+ * on. OD14-ASHBY-1, owner option "stop" (2026-11-16): Ashby publishes its form
+ * only under a path its robots file disallows, so an Ashby posting gets the
+ * apply link and what the posting asks for, as on a system with no reader.
+ * Mirrored on /agents by MCP_FORM_NOT_READ_HERE.
+ */
+const FORM_NOT_READ_HERE: readonly string[] = ["ashby"];
+/** The shared readers this connector uses: none for a system it does not hand on, whose postings are refused before any form is read, and none it stopped. */
+const CONNECTOR_FORM_VENDORS: readonly string[] = FORM_READER_VENDORS.filter((v) => !isNoRedistributionSource(v) && !FORM_NOT_READ_HERE.includes(v));
 /** The vendors whose application form apply_myself reads for this caller (owner decision R2: the public-API pair only inside ChatGPT). */
-const formVendorsFor = (edition: Edition): readonly string[] => edition === "chatgpt" ? PUBLIC_API_FORM_VENDORS : FORM_READER_VENDORS;
+const formVendorsFor = (edition: Edition): readonly string[] => edition === "chatgpt" ? PUBLIC_API_FORM_VENDORS : CONNECTOR_FORM_VENDORS;
 
 /**
  * THE SLIM CARD A MODEL READS — not the 40-field row the site renders.

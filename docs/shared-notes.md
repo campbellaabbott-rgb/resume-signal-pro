@@ -975,11 +975,13 @@ AN EMPLOYER'S REAL APPLICATION FORM, READ FROM WHERE THE EMPLOYER PUBLISHED IT.
 The apply_myself tool (agent-mcp) hands a person's own AI the form the
 employer will actually show them, so the AI can ask the person every factual
 question and draft only the open-ended ones. Ten hiring systems publish the
-form somewhere a server can read it:
+form somewhere a server can read it; nine are read:
 
   greenhouse  the public board API, ?questions=true (an EU tenant on its own host)
   recruitee   the public offers API: open_questions plus the document config
-  ashby       the public GraphQL the hosted job page itself calls
+  ashby       NOT READ since the owner's decision of 2026-11-18 (OD14-ASHBY):
+              the shared reader answers an Ashby posting "withheld" before its
+              cache or any request (FORM_STOPPED_VENDORS), and its reader is gone
   breezy      the /apply page, which server-renders the questionnaire as JSON,
               and the position's field config (is a CV asked for)
   pinpoint    the /applications/new page, one react-on-rails script per

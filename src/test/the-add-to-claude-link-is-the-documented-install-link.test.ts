@@ -10,13 +10,13 @@
  *
  * plus the same query on /admin-settings/connectors for a Team or Enterprise
  * Owner. It only prefills — the person confirms, and a signed-out person
- * signs in first. The button that carries it stays behind
- * MCP_ADD_TO_CLAUDE_LIVE, OFF until the owner's check of that dialog (owner
- * action 1), because Claude's authentication choice cannot be changed after a
- * connector is added. Pinned here, by behaviour: the exact link, no key in it
- * ever, the admin variant, the flag's default, the flag gating every surface
- * that would print it, and the first question being the one both chat
- * tiles ask.
+ * signs in first. The button that carries it sits behind
+ * MCP_ADD_TO_CLAUDE_LIVE, ON since the owner's check of that dialog (HO-1),
+ * with the Claude steps naming the authentication choice that check recorded,
+ * because Claude's choice cannot be changed after a connector is added.
+ * Pinned here, by behaviour: the exact link, no key in it ever, the admin
+ * variant, the flag's default, the flag gating every surface that would print
+ * it, and the first question being the one both chat tiles ask.
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -54,8 +54,8 @@ describe("the install link", () => {
 });
 
 describe("the flag", () => {
-  it("is off until the owner's check of the dialog", () => {
-    expect(MCP_ADD_TO_CLAUDE_LIVE).toBe(false);
+  it("is on: the owner's check of the dialog recorded the choice the steps name (HO-1)", () => {
+    expect(MCP_ADD_TO_CLAUDE_LIVE).toBe(true);
   });
 
   it("gates the Claude panel: no one-click links and the manual steps while off; both links and the one-click steps while on", () => {
@@ -74,7 +74,8 @@ describe("the flag", () => {
   });
 
   it("gates the hand-off's install link, and only Claude has one", () => {
-    expect(installLinkFor("Claude")).toBeNull();
+    expect(installLinkFor("Claude", false)).toBeNull();
+    expect(installLinkFor("Claude")).toBe(claudeInstallLink(MCP_URL));
     expect(installLinkFor("Claude", true)).toBe(claudeInstallLink(MCP_URL));
     for (const h of MCP_HOSTS.filter((x) => x.name !== "Claude")) expect(installLinkFor(h.name, true), h.name).toBeNull();
   });

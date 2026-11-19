@@ -279,7 +279,10 @@ describe("section 90 judges the .90 claims", () => {
       expect(l).toMatch(/want at most 393/);
       expect(l, "the lane rollback is not the response: the laps were long because no slice ran").not.toMatch(/DEEP_LANE_TAKE/);
       expect(l, "the cause is only partly established, and the line says so").toMatch(/partly established.*chain stops.*next job-board build/);
-      expect(l, "the withdrawn figure stays out").not.toMatch(/455/);
+      // The line prints the wrap's end time, which is a real clock reading, so
+      // its milliseconds read ".455" about once in a thousand runs (the
+      // 2026-11-18 pre-push). The withdrawn figure is looked for outside it.
+      expect(l.replace(ENDED, ""), "the withdrawn figure stays out").not.toMatch(/455/);
       expect(out.filter((x) => /^PASS .*cold rotation/.test(x)), out.join("\n")).toEqual([]);
     });
     it("the words about .100's fix are printed on .100 only: a later build's long wrap still FAILs, and does not say the fix has yet to ship", () => {

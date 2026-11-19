@@ -40,7 +40,20 @@ import { FIT_FREE_DAILY, FIT_PAID_DAILY, fitGate, fitStandingFrom, type FitGate 
 import { APPLICATION_ENDPOINT, FIT_ENDPOINT, applicationIdSegment, meteredEndpoint } from "./endpoint.ts";
 // THE APPLY-MYSELF TWIN: the /v1 shape around the shared form reader and the
 // shared default-deny who-answers rule (./application.ts), deciding nothing.
-import { ANSWERED_BY_MEANS, APPLICATION_DESCRIPTION, APPLICATION_NOTE, FORM_UNREACHABLE_RETRY_S, applicationData, formBlock, readV1Form } from "./application.ts";
+import { ANSWERED_BY_MEANS, APPLICATION_DESCRIPTION, APPLICATION_NOTE, FORM_UNREACHABLE_RETRY_S, V1_FORM_VENDORS, applicationData, formBlock, formCacheFor, postingRefOf } from "./application.ts";
+import { readApplicationForm } from "../_shared/application-form.ts";
+/**
+ * ASHBY'S FORM IS NOT READ BY /v1 (OD14-ASHBY-2, owner option "stop",
+ * 2026-11-16). The shared reader POSTs to jobs.ashbyhq.com/api/, a path
+ * Ashby's robots file disallows. /v1 reads every other system's form as
+ * before; an Ashby posting answers form.source "not-read-on-this-surface"
+ * beside its apply_url and Ashby is sent nothing. Every sentence that lists
+ * the systems whose forms /v1 reads is said without Ashby, held so by
+ * the-data-api-sends-nothing-to-ashbys-form-endpoint.test.ts.
+ */
+const V1_FORM_READS: readonly string[] = V1_FORM_VENDORS.filter((v) => v !== "ashby");
+const withoutAshby = (s: string): string => s.split("Ashby, ").join("");
+const V1_APPLICATION_DESCRIPTION = withoutAshby(APPLICATION_DESCRIPTION);
 import { fillCurveFromCache } from "./fill-curve-cache.ts";
 import { intParam as intQ, isInvalid, isoParam as isoQ, numParam as numQ, type Parsed, secondsToMidnightUtc } from "./params.ts";
 import { companyPage } from "./company-walk.ts";
@@ -421,7 +434,8 @@ const LIST_FILTERS = [
 // 2026-11-08.1 (connect W4 and W5, 2026-11-08): GET /v1/jobs/{id}/application reads ten hiring systems' forms (Paylocity, Workable, Teamtailor, Lever and BambooHR added; _shared/form-readers-extra.ts, host-pinned GETs, a Paylocity answer key never read) and a Pinpoint posting on the employer's own domain from its pinpointhq.com page; a Breezy page's CV and cover-letter settings and a Pinpoint page's equality block and consent are listed; a written question that mentions a CV is not a file, and a consent is marked consent and never cvMayHelp (a 563-label corpus, never worse than main); route carries captcha (visible, invisible or none) with iCIMS and UKG measured as account-first and Paylocity as neither; a form not read says why it was not read; postingTerms leave out equal-opportunity, benefits and legal sentences (a 1,833-posting corpus).
 // 2026-11-09.1 (cost wave, the integration; cost audit 2026-11-08 Do first #6): the /v1/stats basis says the rollup behind feedFreshness and bySource is recomputed every 30 minutes, the schedule migration 20261109121000 gives job-board-stats-rollup, which applies after this build.
 // 2026-11-12.1 (bug round of 2026-11-08, part A, public-api lane, S14X-132, S14X-275, S14X-065, S14X-037, NB-27, NB-30, NB-32, S14X-274, S14X-276, S14X-160, S14X-277, S14X-192, GP-NOLOG-2, USAJOBS-COPY-2; connector lane, S14X-134, S14X-264, through the shared form modules): a non-POST fit call is refused before it is metered, a fit call that scored nothing gives its allowance back, cursors and pages hold their bounds, every figure is dated by the run that counted it, and a form body cut off mid-read is never cached.
-const FN_BUILD = "public-api.2026-11-12.1";
+// 2026-11-18.2 (lane SH, OD14-ASHBY shared half, 2026-11-18): the shared form reader answers an Ashby posting "withheld" before its cache or any request whatever vendor list a caller passes, and its Ashby reader is deleted; /v1 answers form.source "not-read-on-this-surface" for Ashby as 2026-11-18.1 did through its own list. A build of its own, because round B's integration branch already carries 2026-11-18.1 without the shared stop, and the verifier tells the two apart only by this stamp.
+const FN_BUILD = "public-api.2026-11-18.2";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -545,7 +559,7 @@ Deno.serve(async (req) => {
         // The two descriptions below are what the routes do, written from
         // the code that answers them (fit-allowance.ts; applicationForm).
         fit: FIT_DESCRIPTION,
-        applicationForm: APPLICATION_DESCRIPTION,
+        applicationForm: V1_APPLICATION_DESCRIPTION,
       },
       // WHAT A FREE KEY INCLUDES, beside what it does not. The per-minute and
       // daily limits are the key's own (api_keys), so they are reported on
@@ -1753,8 +1767,14 @@ async function applicationForm(client: SupabaseClient, url: URL, id: string, hea
     return fail(404, "not_found", "No live posting with that id. It may have been withdrawn by the employer or aged past the 30-day window, so there is no form to read.", headers);
   }
   const row = posting as unknown as Record<string, unknown>;
-  const [, read] = await Promise.all([attachLastVerified(client, [row]), readV1Form(row, client)]);
-  const form = formBlock(read);
+  const [, read] = await Promise.all([
+    attachLastVerified(client, [row]),
+    // Every reader but Ashby's (OD14-ASHBY-2): an Ashby posting reads as
+    // "withheld" before the cache or the network is touched.
+    readApplicationForm(postingRefOf(row), { fetch, cache: formCacheFor(client), vendors: V1_FORM_READS }),
+  ]);
+  const block = formBlock(read);
+  const form = block && block.note ? { ...block, note: withoutAshby(block.note) } : block;
   // NOT READ IS NOT "ASKS NOTHING". The hiring system did not answer (a
   // timeout, a 429 or a 5xx, none of them cached), so there is no form to
   // serve and no honest empty one: the client retries.

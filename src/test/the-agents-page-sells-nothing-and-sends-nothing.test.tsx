@@ -25,7 +25,7 @@
 // @vitest-environment jsdom
 // @vitest-environment-options { "url": "https://resumebooster.work/agents" }
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import i18n from "@/i18n";
@@ -157,10 +157,14 @@ describe("the seeker-facing copy names only the owner's three hosts", () => {
 });
 
 describe("Add to Claude", () => {
-  it("is absent while the flag is off", () => {
-    expect(MCP_ADD_TO_CLAUDE_LIVE).toBe(false);
+  it("is on the page now the flag is on (HO-1), and absent from a panel handed the flag off", () => {
+    expect(MCP_ADD_TO_CLAUDE_LIVE).toBe(true);
     mount();
-    document.querySelector<HTMLButtonElement>('[data-host="claude"]')!.click();
+    fireEvent.click(document.querySelector<HTMLButtonElement>('[data-host="claude"]')!);
+    expect(document.querySelector('[data-deeplink="Add to Claude"]')!.getAttribute("href")).toBe(claudeInstallLink(MCP_URL));
+    cleanup();
+    const claude = MCP_HOSTS.find((h) => h.id === "claude")!;
+    render(<MemoryRouter><HostPanel host={claude} url={MCP_URL} fact={SIGN_IN_UNKNOWN} keyValue="" onKey={() => {}} addToClaude={false} /></MemoryRouter>);
     expect(document.querySelector('[data-deeplink="Add to Claude"]')).toBeNull();
     expect(document.body.innerHTML).not.toContain("modal=add-custom-connector");
   });

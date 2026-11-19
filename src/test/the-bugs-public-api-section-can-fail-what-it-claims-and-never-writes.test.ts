@@ -15,6 +15,10 @@
  *   - after the paste each broken claim fails, and a migration callable by
  *     anon or a withheld feed handed on fails even before it;
  *   - a decided owner key judges what its decision ships;
+ *   - SH1 (the shared Ashby stop) passes only on the build that carries it:
+ *     the same unread Ashby form on the build before it is INFO, a read or
+ *     an unreachable form on it is a FAIL, and no served Ashby posting is
+ *     reported, not judged;
  *   - every call is an OPTIONS or a GET, except job-board list reads under
  *     x-rb-budget: probe, and no key is ever printed.
  */
@@ -104,6 +108,15 @@ const GHOST_AT = ago(80), ROOT_AT = ago(58), PASS_AT = ago(30), COUNTED_AT = ago
 const OLD_REASON = "Two hiring systems are shown on resumebooster.work but not handed on by this API: the U.S. federal job feed, whose terms of use forbid redistributing it as a data feed, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it.";
 const NEW_REASON = "Two hiring systems are shown on resumebooster.work but are not available through this API: the U.S. federal job feed (USAJOBS), which this API does not hand on at present, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it.";
 const FORMS_WITH_ASHBY = "GET /v1/jobs/{id}/application — the employer's own application form (Ashby, BambooHR, Breezy or Greenhouse).";
+const ASHBY_ID = "ashby:acme:5f2c9a1e-1b2c-4d3e-8f90-0a1b2c3d4e5f";
+const ASHBY_LIST = { data: [{ id: ASHBY_ID, source: "ashby", title: "Platform Engineer" }] };
+const ashbyForm = (form: Record<string, unknown>) => ({ data: { id: ASHBY_ID, source: "ashby",
+  form: { vendor: "ashby", readAt: null, questions: [], documents: [], alsoOnForm: [], ...form } } });
+// What the shared stop serves: nothing read, on this surface.
+const ASHBY_NOT_READ: [number, Record<string, unknown>] = [200, ashbyForm({ source: "not-read-on-this-surface", note: "This surface does not read this hiring system's form. Apply at apply_url." })];
+// What round A serves today: /v1 reads Ashby's form.
+const ASHBY_READ: [number, Record<string, unknown>] = [200, ashbyForm({ source: "employer-published", readAt: ago(60),
+  questions: [{ label: "Do you require visa sponsorship?", required: true, answeredBy: "you" }] })];
 
 type World = {
   build: string | null;
@@ -113,6 +126,7 @@ type World = {
   changes: Record<string, unknown>; usage: [number, number]; fitKeyed: number;
   page1: string; deep: [number, string]; nb30: [number, Record<string, unknown>]; nb27: [number, Record<string, unknown>];
   cron: string;
+  ashbyList: Record<string, unknown>; ashbyForm: [number, Record<string, unknown>];
 };
 
 const cache = { computed_at: ROOT_AT, stale_parts: [], ghost_stats: { closed_90d: 9, computed_at: GHOST_AT },
@@ -128,7 +142,7 @@ const OLD_STATS = () => ({ basis: "feedFreshness and bySource come from a rollup
     fillCurve: { basis: "Aalen-Johansen cumulative incidence of a genuine fill by day 14 ...", data: [{ category: "nursing" }] } } } });
 
 const after = (): World => ({
-  build: "public-api.2026-11-12.1",
+  build: "public-api.2026-11-18.2",
   m1: { match: "", status: 401, body: JSON.stringify({ code: "42501", message: "permission denied for function api_key_fit_unscored" }) },
   m2: { match: "", status: 401, body: JSON.stringify({ code: "42501", message: "permission denied for table api_fit_unscored" }) },
   m3: { match: "", status: 401, body: JSON.stringify({ code: "42501", message: "permission denied for function api_key_fit_allowance" }) },
@@ -142,6 +156,7 @@ const after = (): World => ({
   usage: [3, 3], fitKeyed: 405, page1: "0.5", deep: [200, "0.9"],
   nb30: [400, { error: { code: "bad_cursor" } }], nb27: [400, { error: { code: "invalid_value", message: 'country takes ISO-3166-1 alpha-2 codes. Not a code: "EU".' } }],
   cron: "*/15 * * * *",
+  ashbyList: ASHBY_LIST, ashbyForm: ASHBY_NOT_READ,
 });
 const before = (): World => ({
   ...after(),
@@ -157,6 +172,7 @@ const before = (): World => ({
   changes: { closed: [closure(1, 90), closure(2, 3)], page: { closedReturned: 2, closed: { hasMore: false, nextCursor: null } } },
   usage: [3, 4], fitKeyed: 405, deep: [200, "4.8"],
   nb30: [500, { error: { code: "query_failed" } }], nb27: [200, { data: [] }],
+  ashbyForm: ASHBY_READ,
 });
 
 function routes(w: World): Route[] {
@@ -182,6 +198,8 @@ function routes(w: World): Route[] {
     { match: `^GET ${PA}/v1/jobs\\?limit=25 WHO:FRESH$`, time: w.page1, body: "{}" },
     { match: `^GET ${PA}/v1/jobs\\?limit=25&cursor=\\S+ WHO:FRESH$`, status: w.deep[0], time: w.deep[1], body: "{}" },
     { match: `^GET ${PA}/v1/jobs\\?country=EU&limit=1 WHO:FRESH$`, status: w.nb27[0], body: JSON.stringify(w.nb27[1]) },
+    { match: `^GET ${PA}/v1/jobs\\?source=ashby&limit=1 WHO:FRESH$`, body: JSON.stringify(w.ashbyList) },
+    { match: `^GET ${PA}/v1/jobs/ashby%3A[^/ ]+/application WHO:FRESH$`, status: w.ashbyForm[0], headers: w.build ? { "x-fn-build": w.build } : {}, body: JSON.stringify(w.ashbyForm[1]) },
   ];
 }
 
@@ -204,7 +222,7 @@ describe("the bug round public-api section", () => {
       expect(has(lines, /^INFO {2}OD14-ASHBY-2 owner pending/), out).toBe(true);
       if (!fresh) expect(has(lines, /^INFO {2}K RB_API_KEY_FRESH is not set/), out).toBe(true);
       else {
-        for (const k of ["S14X-160", "S14X-192", "S14X-277", "NB-32", "S14X-274", "S14X-276", "S14X-065", "S14X-132", "S14X-037", "NB-30", "NB-27"]) {
+        for (const k of ["S14X-160", "S14X-192", "S14X-277", "NB-32", "S14X-274", "S14X-276", "S14X-065", "S14X-132", "S14X-037", "NB-30", "NB-27", "SH1"]) {
           expect(has(lines, new RegExp(`^INFO {2}${k} .*\\(not pasted yet\\)$`)), `${k}\n${out}`).toBe(true);
         }
       }
@@ -214,7 +232,7 @@ describe("the bug round public-api section", () => {
   it("after a good paste every claim passes", () => {
     const { lines, out } = run(routes(after()), { fresh: true });
     expect(fails(lines), out).toEqual([]);
-    for (const id of ["B", "M1", "M2", "M3", "R", "F", "U", "S14X-160", "S14X-192", "S14X-277", "NB-32", "S14X-274", "S14X-276", "S14X-065", "S14X-132", "S14X-037", "NB-30", "NB-27"]) {
+    for (const id of ["B", "M1", "M2", "M3", "R", "F", "U", "S14X-160", "S14X-192", "S14X-277", "NB-32", "S14X-274", "S14X-276", "S14X-065", "S14X-132", "S14X-037", "NB-30", "NB-27", "SH1"]) {
       expect(has(lines, new RegExp(`^PASS {2}${id} `)), `${id}\n${out}`).toBe(true);
     }
   });
@@ -227,9 +245,10 @@ describe("the bug round public-api section", () => {
       index: before().index, stats: OLD_STATS(), companies: { asOf: ago(5), countsCarried: false },
       jobsal: { coverage: { statedPayShare: 0.237, statedPayShareAt: COV_AT } },
       changes: before().changes, usage: [3, 4], fitKeyed: 200, deep: [200, "4.8"], nb30: before().nb30, nb27: before().nb27,
+      ashbyForm: ASHBY_READ,
     };
     const { lines, out } = run(routes(broken), { fresh: true });
-    for (const id of ["M1", "M2", "R", "F", "U", "S14X-160", "S14X-192", "S14X-277", "NB-32", "S14X-274", "S14X-276", "S14X-065", "S14X-132", "S14X-037", "NB-30", "NB-27"]) {
+    for (const id of ["M1", "M2", "R", "F", "U", "S14X-160", "S14X-192", "S14X-277", "NB-32", "S14X-274", "S14X-276", "S14X-065", "S14X-132", "S14X-037", "NB-30", "NB-27", "SH1"]) {
       expect(has(lines, new RegExp(`^FAIL {2}${id} `)), `${id}\n${out}`).toBe(true);
     }
   });
@@ -263,6 +282,56 @@ describe("the bug round public-api section", () => {
     expect(has(r.lines, /^PASS {2}OD14-ASHBY-2 /), r.out).toBe(true);
     r = run(routes(before()), { ownerDecided: decided });
     expect(fails(r.lines), "a decision is judged only once the round is live").toEqual([]);
+  });
+
+  it("an owner who kept UKG, ADP and Breezy is judged on /v1 still handing them on, never as a withhold", () => {
+    // 2026-11-18 the owner kept them (no letters will be sent). Before this
+    // case the judge read ANY recorded choice as withhold, so recording
+    // "keep" would have printed a FAIL against the owner's own decision.
+    const kept = { "OD14-REDIST-2": "keep" };
+    let r = run(routes(after()), { ownerDecided: kept });
+    expect(has(r.lines, /^PASS {2}OD14-REDIST-2 \(keep\) \/v1 still hands on ukg, adp and breezy/), r.out).toBe(true);
+    expect(r.lines.some((l) => /^FAIL {2}OD14-REDIST-2/.test(l)), r.out).toBe(false);
+    // TEETH: a build that withholds one of them anyway fails the kept decision.
+    const w = after();
+    w.index = { restrictions: { excludedSources: ["usajobs", "smartrecruiters", "breezy"], reason: NEW_REASON }, modes: (after().index as { modes?: unknown }).modes };
+    r = run(routes(w), { ownerDecided: kept });
+    expect(has(r.lines, /^FAIL {2}OD14-REDIST-2 \(keep\) \/v1 withholds breezy although the owner kept them/), r.out).toBe(true);
+    // A choice naming neither is reported, not judged.
+    r = run(routes(after()), { ownerDecided: { "OD14-REDIST-2": "later" } });
+    expect(has(r.lines, /^INFO {2}OD14-REDIST-2 recorded as "later"/), r.out).toBe(true);
+  });
+
+  it("SH1 passes only on the build that carries the shared stop, asking for the form by its encoded id under the fresh key", () => {
+    // The build before the shared stop answers the same unread form through
+    // /v1's own list (round B's integration branch carries it without the
+    // stop): the stamp is all that tells them apart, so it is INFO there.
+    const w = after();
+    w.build = "public-api.2026-11-18.1";
+    let r = run(routes(w), { fresh: true });
+    expect(has(r.lines, /^INFO {2}SH1 ashby:acme:\S+: \/v1 application -> HTTP 200, form\.source not-read-on-this-surface, readAt null, x-fn-build public-api\.2026-11-18\.1: .*not live yet$/), r.out).toBe(true);
+    expect(r.lines.some((l) => /^(PASS|FAIL) {2}SH1 /.test(l)), r.out).toBe(false);
+    // On the build that carries it, the form must be unread.
+    r = run(routes(after()), { fresh: true });
+    expect(has(r.lines, /^PASS {2}SH1 ashby:acme:\S+: .*x-fn-build public-api\.2026-11-18\.2: not read, on public-api\.2026-11-18\.2 or later/), r.out).toBe(true);
+    expect(r.calls.filter((c) => /\/application /.test(c))).toEqual([`GET https://p.supabase.co/functions/v1/public-api/v1/jobs/${encodeURIComponent(ASHBY_ID)}/application WHO:FRESH`]);
+  });
+
+  it("SH1 fails a read or an unreachable form on the build that carries the stop, and reports an empty Ashby list without asking for a form", () => {
+    let w = after();
+    w.ashbyForm = [503, { error: { code: "form_unreachable" } }];
+    let r = run(routes(w), { fresh: true });
+    expect(has(r.lines, /^FAIL {2}SH1 ashby:acme:\S+: \/v1 application -> HTTP 503, form\.source none/), r.out).toBe(true);
+    w = after();
+    w.ashbyForm = [200, ashbyForm({ source: "not-read-on-this-surface", readAt: ago(5) })];
+    r = run(routes(w), { fresh: true });
+    expect(has(r.lines, /^FAIL {2}SH1 .*readAt \d{4}-/), "an unread source with a read time is a read").toBe(true);
+    // No served Ashby posting: reported, not judged, and no form is asked for.
+    w = after();
+    w.ashbyList = { data: [] };
+    r = run(routes(w), { fresh: true });
+    expect(has(r.lines, /^INFO {2}SH1 \/v1\/jobs\?source=ashby served no Ashby posting/), r.out).toBe(true);
+    expect(r.calls.some((c) => /\/application /.test(c)), r.calls.join("\n")).toBe(false);
   });
 
   it("sends only OPTIONS and GETs, and job-board list reads under the probe budget, and never prints a key", () => {

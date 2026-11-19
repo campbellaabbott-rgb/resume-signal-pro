@@ -7,8 +7,10 @@
  *     2026-07-30;
  *   - whether the Apply Agent can SUBMIT, from src/config/sendable-vendors.ts;
  *   - whether we read the posting's own screening questions, from the shared
- *     automation table (supabase/functions/_shared/apply-automation.ts), which
- *     REAL_QUESTION_PREFIXES in ApplicationAnswers mirrors under its own test.
+ *     automation table (supabase/functions/_shared/apply-automation.ts) less
+ *     the vendors the owner stopped (MCP_FORM_NOT_READ_HERE; Ashby since
+ *     OD14-ASHBY, 2026-11-18), the same set REAL_QUESTION_PREFIXES in
+ *     ApplicationAnswers mirrors under its own test.
  *
  * Deliberately absent: whether the employer requires an account. We hold no
  * data on it, so no sentence claims it either way.
@@ -21,6 +23,7 @@
  */
 import { ATS_VENDORS, type AtsTier } from "@/config/ats-vendors";
 import { SENDABLE_VENDOR_KEYS } from "@/config/sendable-vendors";
+import { MCP_FORM_NOT_READ_HERE } from "@/config/mcp-tools";
 import { automationFor } from "../../supabase/functions/_shared/apply-automation";
 
 /** The measurement behind every tier sentence. */
@@ -49,6 +52,16 @@ export interface ApplyMechanics {
 const TIER = new Map<string, AtsTier>(ATS_VENDORS.map((v) => [v.key, v.tier]));
 const SENDABLE = new Set(SENDABLE_VENDOR_KEYS);
 
+/**
+ * The site reads this system's screening questions: the board has a reader
+ * for it, and the owner has not stopped that reader. A stopped vendor keeps
+ * its flag in the shared table until the board's own build drops the branch,
+ * so the flag alone would print How applying works' questions line on a
+ * posting whose form nobody asks for.
+ */
+const readsQuestions = (key: string): boolean =>
+  automationFor(key).realQuestions === true && !MCP_FORM_NOT_READ_HERE.includes(key);
+
 export function applyMechanics(systemKey: string | null | undefined): ApplyMechanics {
   const key = String(systemKey ?? "").trim().toLowerCase() || null;
   if (!key) return { systemKey: null, tier: "unknown", captcha: "not-stated", agent: "none", readsScreeningQuestions: false };
@@ -60,10 +73,10 @@ export function applyMechanics(systemKey: string | null | undefined): ApplyMecha
   // The agent prepares answers on every measured ATS it cannot send on; on a
   // system outside ATS_VENDORS (USAJOBS, an unmeasured ATS) it says nothing.
   const agent: AgentRole = SENDABLE.has(key) ? "submits" : TIER.has(key) ? "prepares" : "none";
-  return { systemKey: key, tier, captcha, agent, readsScreeningQuestions: fact.realQuestions === true };
+  return { systemKey: key, tier, captcha, agent, readsScreeningQuestions: readsQuestions(key) };
 }
 
 /** The vendors whose screening questions are read: for the mirror test. */
 export function screeningQuestionVendors(): string[] {
-  return ATS_VENDORS.map((v) => v.key).filter((k) => automationFor(k).realQuestions).sort();
+  return ATS_VENDORS.map((v) => v.key).filter(readsQuestions).sort();
 }
