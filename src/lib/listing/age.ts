@@ -10,8 +10,11 @@
  * SOME SYSTEMS MOVE THE DATE. Measured in the job-listings audit (2026-10-11):
  * on Breezy, Paylocity and UKG the feed's date is rewritten when a posting is
  * edited, and 7 of 127 sampled cards from those systems showed an age up to
- * 248 days younger than the posting. Their date is printed as a FEED date with
- * the hedge beside it, and never as a "posted N days ago" age on a card.
+ * 248 days younger than the posting. USAJOBS re-dates an open-continuous
+ * announcement each time it is reposted (OD16, measured 2026-11-18: TSA
+ * announcements with ids from 850.1M to 881.7M carried dates of 11-09 to
+ * 11-18). Their date is printed as a FEED date with the hedge beside it, and
+ * never as a "posted N days ago" age on a card.
  *
  * A FUTURE DATE READS TODAY. A date-only stamp from an APAC tenant is a future
  * UTC midnight for the western half of the world; the employer's "tomorrow" is,
@@ -33,8 +36,8 @@
 import { postingDatePosted } from "@/components/jobs/posting-page";
 import type { ListingJob } from "./types";
 
-/** Hiring systems whose feed date moves when a posting is edited (audit JL2). */
-export const REDATING_SOURCES: readonly string[] = ["breezy", "paylocity", "ukg"];
+/** Hiring systems whose feed date moves when a posting is edited (audit JL2) or reposted (USAJOBS, OD16). */
+export const REDATING_SOURCES: readonly string[] = ["breezy", "paylocity", "ukg", "usajobs"];
 
 export function isRedatingSource(source: string | null | undefined): boolean {
   return typeof source === "string" && REDATING_SOURCES.includes(source.trim().toLowerCase());

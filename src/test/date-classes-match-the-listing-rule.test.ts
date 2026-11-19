@@ -9,7 +9,10 @@
  * is edited (audit JL2: up to 248 days younger than the posting), and prints
  * their date as a feed date, never as an age. A copy that forgot one system,
  * or counted days its own way, would print "posted 3 days ago" on the check
- * for a posting the card refuses to age.
+ * for a posting the card refuses to age. USAJOBS joined both lists on
+ * 2026-11-19 (OD16): it re-dates an open-continuous announcement each time it
+ * is reposted, so its date is a feed date, never an age, on the card and on
+ * the check alike.
  *
  * THE PROPERTY.
  *   - The date-moving systems are the listing's REDATING_SOURCES, exactly.
@@ -39,7 +42,7 @@ import {
 const SOURCES = [
   "greenhouse", "lever", "ashby", "workday", "oracle", "icims", "smartrecruiters", "workable", "teamtailor",
   "personio", "recruitee", "breezy", "paylocity", "ukg", "adp", "bamboohr", "pinpoint", "rippling", "jazzhr", "usajobs",
-  "Breezy", " UKG ",
+  "Breezy", " UKG ", " USAJOBS ",
 ];
 const STAMPS: Array<string | null> = [
   null, "", "not a date", "2026-13-45",
@@ -97,6 +100,8 @@ describe("date classes match the listing rule", () => {
     expect(dateClassOf("ashby", "2026-12-01")).toBe("republish_moves_date");
     expect(dateClassOf("greenhouse", "2026-12-01")).toBe("employer");
     expect(dateClassOf("paylocity", "2026-12-01")).toBe("feed_date_moves_on_edit");
+    expect(dateClassOf("usajobs", "2026-12-01")).toBe("feed_date_moves_on_edit");
+    expect(DATE_CLASS_NOTE.feed_date_moves_on_edit).toMatch(/reposted/);
     expect(dateClassOf("greenhouse", null)).toBe("none");
   });
 
@@ -114,6 +119,16 @@ describe("teeth", () => {
         : a;
     };
     expect(disagreements(forgetsUkg).some((d) => d.includes("the card prints a feed date, the check an age"))).toBe(true);
+  });
+
+  it("a copy that still ages a USAJOBS announcement disagrees with the card", () => {
+    const agesFederal: Compare = (source, stamp, now) => {
+      const a = postingAge(source, stamp, now);
+      return source.trim().toLowerCase() === "usajobs" && a.dateClass === "feed_date_moves_on_edit"
+        ? { ...a, dateClass: "employer", days: 3 }
+        : a;
+    };
+    expect(disagreements(agesFederal).some((d) => d.startsWith("usajobs ") && d.includes("the card prints a feed date, the check an age"))).toBe(true);
   });
 
   it("a copy that counts from the timestamp, not the employer's day, disagrees with the card", () => {

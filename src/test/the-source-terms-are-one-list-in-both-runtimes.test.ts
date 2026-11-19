@@ -19,7 +19,13 @@
  * and a copy is what drifts: the site would tell a builder a system is
  * permissive while the API labels its rows conditional, or the reverse.
  *
- * THE PROPERTY. The two modules are one list: the same permissive systems,
+ * A THIRD CLASS (OD16, owner 2026-11-18). USAJOBS rows answer "licensed":
+ * OPM's own API terms license reuse outright, on conditions every federal row
+ * carries. It is its own list (LICENSED_SOURCES) and never on the permissive
+ * one, and both runtimes answer it the same.
+ *
+ * THE PROPERTY. The two modules are one list: the same licensed systems, the
+ * same permissive systems,
  * the same training-barred systems, the same answer from sourceTermsOf for
  * every vendor key and every odd spelling, the same wording and the same
  * credit. Every name on either list is a vendor key the board really carries,
@@ -40,6 +46,7 @@ import * as siteTerms from "../config/source-terms";
 import { BOARD_VENDORS } from "../../supabase/functions/_shared/board-domains";
 
 type TermsModule = {
+  LICENSED_SOURCES: readonly string[];
   PERMISSIVE_SOURCES: readonly string[];
   AI_TRAIN_BARRED: readonly string[];
   SOURCE_TERMS: readonly string[];
@@ -102,7 +109,7 @@ function selfContradictions(m: TermsModule, inputs: unknown[] = INPUTS): string[
   return inputs.filter((v) => {
     const key = String(v ?? "").trim().toLowerCase();
     const want = {
-      sourceTerms: m.PERMISSIVE_SOURCES.includes(key) ? "permissive" : "conditional",
+      sourceTerms: m.LICENSED_SOURCES.includes(key) ? "licensed" : m.PERMISSIVE_SOURCES.includes(key) ? "permissive" : "conditional",
       aiTrain: m.AI_TRAIN_BARRED.includes(key) ? false : null,
     };
     return JSON.stringify(m.sourceTermsOf(v)) !== JSON.stringify(want);
@@ -132,20 +139,32 @@ const DENO_CODE = stripLeadingComments(read(DENO_PATH));
 const SITE_CODE = stripLeadingComments(read(SITE_PATH));
 
 describe("one list, two runtimes", () => {
-  it("both modules name the same permissive and training-barred systems, in the same order", () => {
+  it("both modules name the same licensed, permissive and training-barred systems, in the same order", () => {
+    expect([...SITE.LICENSED_SOURCES]).toEqual([...DENO.LICENSED_SOURCES]);
     expect([...SITE.PERMISSIVE_SOURCES]).toEqual([...DENO.PERMISSIVE_SOURCES]);
     expect([...SITE.AI_TRAIN_BARRED]).toEqual([...DENO.AI_TRAIN_BARRED]);
     expect([...SITE.SOURCE_TERMS]).toEqual([...DENO.SOURCE_TERMS]);
   });
 
-  it("the lists are the program's: five permissive systems, and three systems barred from training", () => {
+  it("the lists are the program's: one licensed system, five permissive systems, and three systems barred from training", () => {
     // The owner-approved API4 permissive list (spec 4.10, row A1), and every
     // carried system whose content signal says ai-train=no (the legal ledger
     // of 2026-11-16: Workable, Teamtailor and Lever). Changing either is a
     // decision, so it is changed here on purpose or not at all.
     expect([...DENO.PERMISSIVE_SOURCES].sort()).toEqual(["ashby", "greenhouse", "personio", "teamtailor", "workable"]);
     expect([...DENO.AI_TRAIN_BARRED].sort()).toEqual(["lever", "teamtailor", "workable"]);
-    expect([...DENO.SOURCE_TERMS]).toEqual(["permissive", "conditional"]);
+    // OD16 (owner 2026-11-18): USAJOBS, whose publisher licenses reuse outright.
+    expect([...DENO.LICENSED_SOURCES]).toEqual(["usajobs"]);
+    expect([...DENO.SOURCE_TERMS]).toEqual(["licensed", "permissive", "conditional"]);
+    expect(DENO.LICENSED_SOURCES.filter((s) => DENO.PERMISSIVE_SOURCES.includes(s)), "licensed and permissive are two classes").toEqual([]);
+  });
+
+  it("a USAJOBS row is licensed, with no training signal read, in both runtimes", () => {
+    for (const m of [DENO, SITE]) {
+      expect(m.sourceTermsOf("usajobs")).toEqual({ sourceTerms: "licensed", aiTrain: null });
+      expect(m.sourceTermsOf(" USAJOBS ")).toEqual({ sourceTerms: "licensed", aiTrain: null });
+      expect(m.SOURCE_TERMS_MEANING.licensed).toMatch(/publisher's own terms license reuse/);
+    }
   });
 
   it("a Lever row is conditional and barred from training, in both runtimes", () => {
@@ -160,7 +179,7 @@ describe("one list, two runtimes", () => {
   });
 
   it("each file declares its own literal list, and the declaration read is the value the module exports", () => {
-    for (const name of ["PERMISSIVE_SOURCES", "AI_TRAIN_BARRED", "SOURCE_TERMS"] as const) {
+    for (const name of ["LICENSED_SOURCES", "PERMISSIVE_SOURCES", "AI_TRAIN_BARRED", "SOURCE_TERMS"] as const) {
       expect(listOf(DENO_CODE, name), `${DENO_PATH} ${name}`).toEqual([...DENO[name]]);
       expect(listOf(SITE_CODE, name), `${SITE_PATH} ${name}`).toEqual([...SITE[name]]);
     }
@@ -168,6 +187,8 @@ describe("one list, two runtimes", () => {
 
   it("every name on either list is a vendor key the board carries, and no list repeats a name", () => {
     for (const m of [DENO, SITE]) {
+      expect(notVendorKeys(m.LICENSED_SOURCES)).toEqual([]);
+      expect(new Set(m.LICENSED_SOURCES).size).toBe(m.LICENSED_SOURCES.length);
       expect(notVendorKeys(m.PERMISSIVE_SOURCES)).toEqual([]);
       expect(notVendorKeys(m.AI_TRAIN_BARRED)).toEqual([]);
       expect(new Set(m.PERMISSIVE_SOURCES).size).toBe(m.PERMISSIVE_SOURCES.length);
@@ -191,9 +212,9 @@ describe("one list, two runtimes", () => {
     }
     // Positive control: every combination occurs on a real vendor key, so the
     // checks are not passing over one value (permissive or conditional, each
-    // with a ban and without one).
+    // with a ban and without one, and licensed with none read).
     const answers = new Set(BOARD_VENDORS.map((v) => JSON.stringify(DENO.sourceTermsOf(v))));
-    expect(answers.size).toBe(4);
+    expect(answers.size).toBe(5);
   });
 
   it("the wording and the credit are one constant in both runtimes", () => {
@@ -223,6 +244,21 @@ describe("TEETH: each check fails when the runtimes drift", () => {
     };
     expect(disagreements(DENO, drifted)).toContain('"personio"');
     expect(selfContradictions(drifted)).toContain('"personio"');
+  });
+
+  it("notices a copy that lost the licensed class and answers USAJOBS conditional", () => {
+    const twoClass: TermsModule = {
+      ...SITE,
+      sourceTermsOf: (s) => {
+        const key = String(s ?? "").trim().toLowerCase();
+        return {
+          sourceTerms: SITE.PERMISSIVE_SOURCES.includes(key) ? "permissive" : "conditional",
+          aiTrain: SITE.AI_TRAIN_BARRED.includes(key) ? false : null,
+        };
+      },
+    };
+    expect(disagreements(DENO, twoClass)).toContain('"usajobs"');
+    expect(selfContradictions(twoClass)).toContain('"usajobs"');
   });
 
   it("notices a copy that forgot to normalise case and spaces", () => {

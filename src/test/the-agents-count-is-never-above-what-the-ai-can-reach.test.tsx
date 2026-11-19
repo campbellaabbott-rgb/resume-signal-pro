@@ -12,6 +12,12 @@
  * prints no figure. Judged on the rendered page, the executed bake and the
  * committed llms.txt.
  *
+ * OD16 (2026-11-19): USAJOBS left the withheld list, so the line subtracts
+ * SmartRecruiters alone. The connector hands on only the federal rows whose
+ * who-may-apply statement is stored, so until every federal row carries one
+ * the figure counts some federal rows the AI is not yet handed (lane
+ * api4/od16-federal reports it; job-board's USAJOBS-PART closes it).
+ *
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -62,11 +68,11 @@ describe("the React /agents hero", () => {
     mount();
     await waitFor(() => expect(document.querySelector("[data-agents-reach]")).not.toBeNull(), SLOW);
     const hero = document.querySelector("[data-agents-hero-sub]")!.textContent!;
-    expect(hero).toContain("908,491 live postings");
+    expect(hero).toContain("926,285 live postings");
     expect(hero).not.toMatch(/\d\+/);
     for (const n of numbers(hero)) expect(n, "the hero prints a figure above what the AI can reach").toBeLessThanOrEqual(REACH.searchable);
     const line = document.querySelector("[data-agents-reach]")!.textContent!;
-    expect(line).toBe("Your AI searches 908,491 of the 998,218 open postings: USAJOBS and SmartRecruiters postings (89,727) stay on this website. Counted 8 Nov 2026, 09:52 UTC.");
+    expect(line).toBe("Your AI searches 926,285 of the 998,218 open postings: SmartRecruiters postings (71,933) stay on this website. Counted 8 Nov 2026, 09:52 UTC.");
     expect(document.querySelector("[data-agents-reach] time")!.getAttribute("datetime")).toBe("2026-11-08T09:52:00.000Z");
   });
 
@@ -90,9 +96,9 @@ describe("the baked /agents", () => {
   it("prints the same reach, dated, in the lede, the description and the structured data, and never the whole board", async () => {
     const page = await bakeAgents();
     const text = bakedText(page.content);
-    expect(text).toContain("908,491 live postings (counted 8 Nov 2026)");
-    expect(text).toContain("Your AI searches 908,491 of the 998,218 open postings: USAJOBS and SmartRecruiters postings (89,727) stay on this website. Counted 8 Nov 2026, 09:52 UTC.");
-    expect(page.description).toContain("908,491 live postings");
+    expect(text).toContain("926,285 live postings (counted 8 Nov 2026)");
+    expect(text).toContain("Your AI searches 926,285 of the 998,218 open postings: SmartRecruiters postings (71,933) stay on this website. Counted 8 Nov 2026, 09:52 UTC.");
+    expect(page.description).toContain("926,285 live postings");
     // The harness hands the block a board total of 1,024,524 and a floor
     // that prints "N+": neither may reach the page.
     expect(text).not.toMatch(/1024524|1,024,524|\d\+ live postings/);
@@ -111,7 +117,7 @@ describe("the baked /agents", () => {
   });
 
   it("teeth: a read whose withheld systems are missing is unmeasured, and bakes no figure rather than the whole board", async () => {
-    const { usajobs: _u, ...rest } = SAMPLE_VENDOR_READ.counts;
+    const { smartrecruiters: _s, ...rest } = SAMPLE_VENDOR_READ.counts;
     const page = await bakeAgents({ read: { ...SAMPLE_VENDOR_READ, counts: rest } });
     expect(bakedText(page.content)).not.toMatch(/\d[\d,]* live postings/);
   });
@@ -120,7 +126,8 @@ describe("the baked /agents", () => {
 describe("the committed llms.txt", () => {
   it("states the reach as the page does, and its numbers add up: reachable plus withheld is the total", () => {
     const llms = readFileSync(resolve(ROOT, "public/llms.txt"), "utf8");
-    const m = /Your AI searches ([\d,]+) of the ([\d,]+) open postings: USAJOBS and SmartRecruiters postings \(([\d,]+)\) stay on this website\. Counted [^.]+ UTC\./.exec(llms);
+    // Before the first bake after OD16 the committed file still names USAJOBS beside SmartRecruiters.
+    const m = /Your AI searches ([\d,]+) of the ([\d,]+) open postings: (?:USAJOBS and )?SmartRecruiters postings \(([\d,]+)\) stay on this website\. Counted [^.]+ UTC\./.exec(llms);
     expect(m, "llms.txt lost the reach sentence the bake refreshes").not.toBeNull();
     const [reach, total, withheld] = m!.slice(1, 4).map((x) => Number(x.replace(/,/g, "")));
     expect(reach + withheld).toBe(total);

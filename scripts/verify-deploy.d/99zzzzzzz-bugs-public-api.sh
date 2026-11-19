@@ -25,7 +25,9 @@
 #   F    GET /v1/fit with no key answers 405 (M-S14-106: refused before the
 #        key is metered);
 #   U    the keyless /v1 index still withholds the federal feed and its
-#        reason claims no prohibition in the feed's terms (USAJOBS-COPY-2);
+#        reason claims no prohibition in the feed's terms (USAJOBS-COPY-2).
+#        From public-api 2026-11-19.1 on (OD16) both U lines print INFO:
+#        the federal rows are handed on and section 99zzzzzzzzzz judges them;
 #   K*   the keyed lines, run only with RB_API_KEY_FRESH (a live confirmed
 #        free key the owner mints at /data-api): lifecycle dated by its own
 #        run and carriedForward (S14X-160), closure events (S14X-192), the
@@ -131,7 +133,11 @@ vdba_decided() {
 const d=((l.reservations||{})["bug-round"]||{}).ownerDecided||{};const v=d[process.argv[2]];
 process.stdout.write(v==null?"":typeof v==="object"?String(v.choice??v.option??JSON.stringify(v)):String(v))' "${VDBA_LEDGER:-docs/deploy-ledger.json}" "$1"
 }
-VDBA_LIVE="$VDBA_LIVE" VDBA_REDIST="$(vdba_decided OD14-REDIST-2)" VDBA_ASHBY="$(vdba_decided OD14-ASHBY-2)" node - /tmp/vdba_index.json <<'NODE'
+# OD16 (owner 2026-11-18): from public-api 2026-11-19.1 on, /v1 hands on the
+# federal rows whose who-may-apply statement is stored, so both U lines print
+# INFO there; section 99zzzzzzzzzz-api4-od16-federal judges the federal rows.
+VDBA_OD16=0; [ -n "$VDBA_H" ] && build_ge public-api "$VDBA_H" 2026-11-19 1 && VDBA_OD16=1
+VDBA_OD16="$VDBA_OD16" VDBA_LIVE="$VDBA_LIVE" VDBA_REDIST="$(vdba_decided OD14-REDIST-2)" VDBA_ASHBY="$(vdba_decided OD14-ASHBY-2)" node - /tmp/vdba_index.json <<'NODE'
 const fs = require("fs");
 const live = process.env.VDBA_LIVE === "1";
 const say = (v, m) => console.log(`${v}  ${m}`);
@@ -139,10 +145,15 @@ const judge = (ok, pass, fail) => (ok ? say("PASS", pass) : live ? say("FAIL", f
 let ix = null; try { ix = JSON.parse(fs.readFileSync(process.argv[2], "utf8")); } catch { /* below */ }
 const r = ix && ix.restrictions;
 if (!r || !Array.isArray(r.excludedSources)) { say("FAIL", `U the /v1 index answered no restrictions block: ${JSON.stringify(ix).slice(0, 160)}`); process.exit(0); }
-if (!r.excludedSources.includes("usajobs")) say("FAIL", "U the /v1 index no longer withholds usajobs (the owner's decision keeps it withheld)");
 const claims = /terms[^.]*(forbid|prohibit|do not permit|bar)|forbid[^.]*redistribut/i.test(String(r.reason || ""));
-judge(!claims, "U the withholding reason claims nothing about the federal feed's terms (USAJOBS-COPY-2)",
-  `U the withholding reason still says the federal feed's terms forbid handing it on: "${String(r.reason).slice(0, 140)}"`);
+if (process.env.VDBA_OD16 === "1") {
+  say("INFO", `U the /v1 index lists ${JSON.stringify(r.excludedSources)} as withheld: public-api 2026-11-19.1 or later hands on labelled federal rows (OD16), so section 99zzzzzzzzzz judges this, not round A`);
+  say("INFO", `U the withholding reason ${claims ? "says a feed's terms forbid handing it on" : "claims nothing about a feed's terms"}: "${String(r.reason || "").slice(0, 120)}" (OD16: section 99zzzzzzzzzz judges it)`);
+} else {
+  if (!r.excludedSources.includes("usajobs")) say("FAIL", "U the /v1 index no longer withholds usajobs (the owner's decision keeps it withheld)");
+  judge(!claims, "U the withholding reason claims nothing about the federal feed's terms (USAJOBS-COPY-2)",
+    `U the withholding reason still says the federal feed's terms forbid handing it on: "${String(r.reason).slice(0, 140)}"`);
+}
 if (!process.env.VDBA_REDIST) say("INFO", "OD14-REDIST-2 owner pending: UKG, ADP and Breezy rows are still handed on by /v1 until the owner decides");
 else if (/withh/i.test(process.env.VDBA_REDIST)) {
   const want = ["ukg", "adp", "breezy"].filter((s) => !r.excludedSources.includes(s));

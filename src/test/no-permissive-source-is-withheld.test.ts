@@ -1,12 +1,17 @@
 // @vitest-environment node
 /**
- * NO PERMISSIVE SOURCE IS WITHHELD.
+ * NO PERMISSIVE OR LICENSED SOURCE IS WITHHELD.
  *
  * WHAT HAPPENED. The legal ledger of 2026-11-16 read the USAJOBS API terms as
- * an open licence, the same reading that puts five other systems on API4's
- * permissive list. Yet /v1 and the connector withhold USAJOBS by owner
- * decision (OD16), as they withhold SmartRecruiters, and the site says so on
- * the data-API page, the pricing facts and the homepage. API4 now adds an
+ * an open licence. /v1 and the connector withheld USAJOBS anyway, by owner
+ * decision, until OD16 (owner 2026-11-18: yes) handed its labelled rows on.
+ * Its rows now answer "licensed", a third class: the publisher's own terms
+ * grant the licence, on conditions every federal row carries (OPM's notice,
+ * the official link, the retrieval date). It is deliberately NOT on the
+ * permissive list: an embed or filter built from that list would hand on
+ * federal rows without the who-may-apply gate and the notice. SmartRecruiters
+ * stays withheld, and the site says so on the data-API page, the pricing
+ * facts and the homepage. API4 now adds an
  * opt-in `source_terms=permissive` filter to /v1 and an embed that serves
  * permissive systems only, both built from the permissive list. A system on
  * that list and on a withheld list at once would make the API contradict
@@ -14,11 +19,13 @@
  * with 451 on every other path, and the embed (which never passes through
  * /v1's withholding) would hand on rows the owner withheld.
  *
- * THE PROPERTY. The permissive list, in both runtimes, shares no member with
- * any withheld list in use today: NO_REDISTRIBUTION_SOURCES in public-api and
- * in agent-mcp (Deno), and MCP_WITHHELD_SOURCES, WITHHELD_SOURCES (pricing)
- * and HOME_WITHHELD_SOURCES (homepage) on the site. And sourceTermsOf answers
- * "conditional" for every withheld system, in both runtimes.
+ * THE PROPERTY. The permissive list and the licensed list, in both runtimes,
+ * share no member with any withheld list in use today:
+ * NO_REDISTRIBUTION_SOURCES in public-api and in agent-mcp (Deno), and
+ * MCP_WITHHELD_SOURCES, WITHHELD_SOURCES (pricing) and HOME_WITHHELD_SOURCES
+ * (homepage) on the site, nor each other. sourceTermsOf answers
+ * "conditional" for every withheld system and "licensed" for USAJOBS, in both
+ * runtimes.
  *
  * HOW IT IS CHECKED. The Deno lists are read off each function's source with
  * line-leading comments removed (neither index.ts can be imported: they call
@@ -38,6 +45,7 @@ import { WITHHELD_SOURCES } from "../components/pricing/plan-facts";
 import { HOME_WITHHELD_SOURCES } from "../lib/home/board-figures";
 
 type Terms = {
+  LICENSED_SOURCES: readonly string[];
   PERMISSIVE_SOURCES: readonly string[];
   sourceTermsOf: (source: unknown) => { sourceTerms: string; aiTrain: boolean | null };
 };
@@ -103,6 +111,24 @@ describe("the permissive list and the withheld lists never meet", () => {
     }
   });
 
+  it("no licensed system, in either runtime, is on any withheld list or on the permissive list", () => {
+    for (const [runtime, t] of RUNTIMES) {
+      expect(t.LICENSED_SOURCES.length, runtime).toBeGreaterThan(0);
+      for (const [where, list] of WITHHELD) expect(overlap(t.LICENSED_SOURCES, list), `${runtime} vs ${where}`).toEqual([]);
+      expect(overlap(t.LICENSED_SOURCES, t.PERMISSIVE_SOURCES), `${runtime}: licensed and permissive are two classes`).toEqual([]);
+      expect(unreadable(t.LICENSED_SOURCES), runtime).toEqual([]);
+    }
+  });
+
+  it("USAJOBS is licensed, handed on and withheld nowhere (OD16)", () => {
+    for (const [runtime, t] of RUNTIMES) {
+      expect([...t.LICENSED_SOURCES], runtime).toEqual(["usajobs"]);
+      expect(t.sourceTermsOf("usajobs"), runtime).toEqual({ sourceTerms: "licensed", aiTrain: null });
+      expect(t.sourceTermsOf(" USAJOBS "), runtime).toEqual({ sourceTerms: "licensed", aiTrain: null });
+    }
+    for (const [where, list] of WITHHELD) expect(list, where).not.toContain("usajobs");
+  });
+
   it("every withheld system's rows would be labelled conditional, in both runtimes", () => {
     for (const [runtime, t] of RUNTIMES) {
       for (const [where, list] of WITHHELD) expect(labelledPermissive(t, list), `${runtime} vs ${where}`).toEqual([]);
@@ -111,10 +137,10 @@ describe("the permissive list and the withheld lists never meet", () => {
 
   it("a system on every withheld list is labelled conditional, whatever its terms read as", () => {
     // Positive control on real members: the systems every list agrees on
-    // (USAJOBS, read as open, among them) exist and are labelled conditional,
-    // so the checks above are not passing over an empty case.
+    // (SmartRecruiters, since OD16 took USAJOBS off) exist and are labelled
+    // conditional, so the checks above are not passing over an empty case.
     const both = WITHHELD.map(([, list]) => list).reduce((a, b) => a.filter((s) => b.includes(s)));
-    expect(both.length).toBeGreaterThan(0);
+    expect(both).toEqual(["smartrecruiters"]);
     for (const [, t] of RUNTIMES) for (const s of both) expect(t.sourceTermsOf(s).sourceTerms, s).toBe("conditional");
   });
 });
@@ -135,8 +161,20 @@ describe("TEETH: each check fails when a withheld system turns permissive", () =
     expect(overlap(denoTerms.PERMISSIVE_SOURCES, withheldIn(widened))).toEqual([denoTerms.PERMISSIVE_SOURCES[0]]);
   });
 
+  it("notices a licensed system put back on a withheld list, or onto the permissive one", () => {
+    const api = stripLeadingComments(read(API_PATH));
+    const reverted = api.replace(
+      /const NO_REDISTRIBUTION_SOURCES = \[([^\]]*)\] as const;/,
+      'const NO_REDISTRIBUTION_SOURCES = ["usajobs", $1] as const;',
+    );
+    expect(reverted, "the mutation did not apply -- RE-ANCHOR this tooth").not.toBe(api);
+    expect(overlap(denoTerms.LICENSED_SOURCES, withheldIn(reverted))).toEqual(["usajobs"]);
+    expect(overlap(denoTerms.LICENSED_SOURCES, [...denoTerms.PERMISSIVE_SOURCES, "usajobs"])).toEqual(["usajobs"]);
+  });
+
   it("notices a runtime that labels a withheld system permissive", () => {
     const leaky: Terms = {
+      LICENSED_SOURCES: siteTerms.LICENSED_SOURCES,
       PERMISSIVE_SOURCES: siteTerms.PERMISSIVE_SOURCES,
       sourceTermsOf: (s) => ({ sourceTerms: "permissive", aiTrain: siteTerms.sourceTermsOf(s).aiTrain }),
     };

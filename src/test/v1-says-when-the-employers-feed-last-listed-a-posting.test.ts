@@ -129,7 +129,12 @@ describe("a job object says when its feed last listed it (S12-121)", () => {
 
   it("the ranked engine reads the board's recheckedAt, never its lastSeen", () => {
     const API = codeOf(readFileSync(resolve(__dirname, "../../supabase/functions/public-api/index.ts"), "utf8"));
-    const toV1 = API.slice(API.indexOf("const toV1 = (j: Record<string, unknown>) => ({"), API.indexOf("const total = typeof r.total"));
+    // Since OD16 the ranked rows pass through v1Row (the federal shape), so the
+    // object literal opens inside its call: anchored on the declaration alone.
+    const at = API.indexOf("const toV1 = (j: Record<string, unknown>) =>");
+    expect(at, "toV1 moved -- RE-ANCHOR this guard").toBeGreaterThan(-1);
+    const toV1 = API.slice(at, API.indexOf("const total = typeof r.total", at));
+    expect(toV1.length).toBeGreaterThan(200);
     expect(toV1).not.toMatch(/j\.lastSeen/);
     expect(toV1).toMatch(/last_verified_at: typeof j\.recheckedAt === "string" \? j\.recheckedAt : null/);
     expect(toV1).toMatch(/last_seen: typeof j\.recheckedAt === "string" \? j\.recheckedAt : null/);

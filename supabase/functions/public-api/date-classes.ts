@@ -15,8 +15,11 @@
  *   feed_date_moves_on_edit  Breezy, Paylocity and UKG rewrite the date when
  *                            a posting is edited (audit JL2, 2026-10-11:
  *                            7 of 127 cards up to 248 days younger than the
- *                            posting). The listing rule prints it as a feed
- *                            date and never as an age, so `days` is null.
+ *                            posting), and USAJOBS when an open-continuous
+ *                            announcement is reposted (OD16: TSA ids from
+ *                            850.1M to 881.7M dated 11-09 to 11-18). The
+ *                            listing rule prints it as a feed date and never
+ *                            as an age, so `days` is null.
  *   republish_moves_date     Ashby moves the date when the employer
  *                            republishes the same posting, under the same id.
  *   none                     no employer date: no age at all.
@@ -38,8 +41,8 @@ export const DATE_CLASSES: readonly DateClass[] = [
   "employer", "employer_relative", "feed_date_moves_on_edit", "republish_moves_date", "none",
 ];
 
-/** Systems whose feed date moves when a posting is edited: the listing's REDATING_SOURCES. */
-export const FEED_DATE_MOVES_ON_EDIT: readonly string[] = ["breezy", "paylocity", "ukg"];
+/** Systems whose feed date moves when a posting is edited or reposted: the listing's REDATING_SOURCES. */
+export const FEED_DATE_MOVES_ON_EDIT: readonly string[] = ["breezy", "paylocity", "ukg", "usajobs"];
 /** Systems that state a posting's date as a count of days ago. */
 export const EMPLOYER_RELATIVE: readonly string[] = ["workday"];
 /** Systems that move the date when the same posting is republished. */
@@ -51,7 +54,7 @@ export const DATE_CLASS_NOTE: Record<DateClass, string> = {
   employer_relative:
     "The employer's hiring system gives this date as a number of days ago, so it is right to within about a day.",
   feed_date_moves_on_edit:
-    "This hiring system rewrites the date whenever the posting is edited, so the posting can be older than its date; we give no age from it.",
+    "This hiring system rewrites the date whenever the posting is edited or reposted, so the posting can be older than its date; we give no age from it.",
   republish_moves_date:
     "This hiring system moves the date when the employer republishes the posting, so the posting can be older than its date.",
   none: "The employer's hiring system gives this posting no date, so we give no age.",

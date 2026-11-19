@@ -29,6 +29,16 @@ import { BOARD_VENDORS } from "../../supabase/functions/_shared/board-domains";
  * board has shipped a missing serving fence five separate times on paths that
  * looked right when they were written.
  *
+ * WHAT IT GUARDS NOW (OD16, owner 2026-11-18). The federal feed this file was
+ * written for turned out to permit redistribution (the USAJOBS API terms, read
+ * 2026-11-16 and 2026-11-18), and OD16 hands its labelled rows on, each with
+ * OPM's notice (a-federal-row-reaches-the-api-with-its-notice-agency-and-who-
+ * may-apply holds that side). The boundary itself is unchanged and still
+ * holds one system: SmartRecruiters, withheld until SmartRecruiters (SAP)
+ * permits it. Every assertion below runs against that system now; the
+ * federal vendor code is pinned OUT of the list, so a revert that put it back
+ * without an owner decision fails here too.
+ *
  * THE PROPERTY, stated once: no public redistribution surface can return a
  * posting row whose source is on the no-redistribution list, and asking for
  * one by name is refused with the reason rather than answered with an empty
@@ -167,8 +177,12 @@ function shippedApplySupport(code: string) {
     decls,
     'const SENDABLE_VENDORS: string[] = ["greenhouse", "lever"];',
     "let boardCalls = 0;",
-    'const board = async (_b: unknown): Promise<Record<string, unknown>> => { boardCalls += 1; return { job: { applyUrl: "https://federal.example/apply/912345" } }; };',
+    'const board = async (_b: unknown): Promise<Record<string, unknown>> => { boardCalls += 1; return { job: { applyUrl: "https://employer.example/apply/912345" } }; };',
     'const applyRequirements = (): string[] => ["an account-linked key"];',
+    // The federal gate (OD16) sits after the board call; a non-federal id is
+    // not its business, so the stub answers "not federal" (undefined).
+    'const federalLabelOf = async (_id: string): Promise<undefined> => undefined;',
+    'const FEDERAL_UNLABELLED_NOTE = "not handed on yet";',
     fnBody(code, "async function runCheckApplySupport("),
     "const boardCallCount = () => boardCalls;",
   ].join("\n");
@@ -207,9 +221,11 @@ const RAW_MCP = readFileSync(resolve(ROOT, MCP_PATH), "utf8");
 const API = stripComments(RAW_API);
 const MCP = stripComments(RAW_MCP);
 
-/** The vendor code this whole file exists for. Named HERE, in the test, so the
- *  guard specifies the boundary rather than reading it back off the code it is
+/** The vendor code the boundary holds. Named HERE, in the test, so the guard
+ *  specifies the boundary rather than reading it back off the code it is
  *  checking — two files that both dropped it would otherwise still agree. */
+const RESTRICTED = "smartrecruiters";
+/** The vendor code OD16 took off the list: handed on, with its labels, since 2026-11-19. */
 const FEDERAL = "usajobs";
 
 describe("a feed we may only display must not leave by the API", () => {
@@ -218,7 +234,8 @@ describe("a feed we may only display must not leave by the API", () => {
     const mcp = listOf(MCP, "NO_REDISTRIBUTION_SOURCES");
     expect(api.length, "the list is empty — every assertion below would be vacuous").toBeGreaterThan(0);
     expect(mcp, "the MCP server's list has drifted from the public API's").toEqual(api);
-    expect(api, "the federal feed is the source this boundary exists for").toContain(FEDERAL);
+    expect(api, "SmartRecruiters is the source this boundary holds").toContain(RESTRICTED);
+    expect(api, "the federal feed is handed on since OD16; putting it back is an owner decision, not a revert").not.toContain(FEDERAL);
   });
 
   it("every source on the list is a vendor the board actually carries", () => {
@@ -257,27 +274,31 @@ describe("a feed we may only display must not leave by the API", () => {
     // each function verbatim and executed; nothing here reads a spelling.
     const rows = [
       { id: "greenhouse:acme:1", source: "greenhouse" },
-      { id: `${FEDERAL}:${FEDERAL}:2`, source: FEDERAL },
+      { id: `${RESTRICTED}:acme:2`, source: RESTRICTED },
       { id: "lever:acme:3", source: "lever" },
       // Case and whitespace are the shapes a vendor string arrives in when it
       // has been round-tripped through a query string or a tool argument.
-      { id: "x:y:4", source: ` ${FEDERAL.toUpperCase()} ` },
+      { id: "x:y:4", source: ` ${RESTRICTED.toUpperCase()} ` },
       { id: "z:w:5", source: null },
+      // A federal row is not this filter's to drop since OD16: its own gate
+      // (who may apply) decides, in federal-rows.ts.
+      { id: `${FEDERAL}:${FEDERAL}:881700000`, source: FEDERAL },
     ];
     for (const [name, code] of [["public-api", API], ["agent-mcp", MCP]] as const) {
       const f = shippedFilter(code);
       const kept = f.withoutNoRedistribution(rows);
       expect(kept.map((r) => r.id), `${name}: a restricted row survived the filter`)
-        .toEqual(["greenhouse:acme:1", "lever:acme:3", "z:w:5"]);
-      expect(f.isNoRedistributionSource(FEDERAL), `${name}: the predicate does not recognise its own list`).toBe(true);
+        .toEqual(["greenhouse:acme:1", "lever:acme:3", "z:w:5", `${FEDERAL}:${FEDERAL}:881700000`]);
+      expect(f.isNoRedistributionSource(RESTRICTED), `${name}: the predicate does not recognise its own list`).toBe(true);
+      expect(f.isNoRedistributionSource(FEDERAL), `${name}: the predicate still withholds the federal feed`).toBe(false);
       expect(f.isNoRedistributionSource("greenhouse"), `${name}: the predicate excludes a vendor it must serve`).toBe(false);
     }
   });
 
   it("asking for an excluded source by name is refused, never answered with an empty page", () => {
     // 451 is the status whose entire meaning is a legal restriction. An empty
-    // 200 here would be the API stating that the board carries no federal
-    // roles, which is a claim about the world and not about our licence.
+    // 200 here would be the API stating that the board carries no
+    // SmartRecruiters roles, a claim about the world and not about our licence.
     expect(API, "the source filter does not test the restricted list at all")
       .toMatch(/asked\.filter\(\(x\) => isNoRedistributionSource\(x\)/);
     expect(API, "the refusal is not a 451 naming its own code")
@@ -350,15 +371,15 @@ describe("a feed we may only display must not leave by the API", () => {
     // that the id is live, which is more than the liveness tool hands back —
     // and it sat outside the boundary while eight siblings were inside it.
     const f = shippedApplySupport(MCP);
-    const out = await f.runCheckApplySupport(null, { id: `${FEDERAL}:${FEDERAL}:912345` });
+    const out = await f.runCheckApplySupport(null, { id: `${RESTRICTED}:acme:912345` });
     expect(out.applyUrl, "the restricted posting's apply URL left by the apply-support tool").toBeUndefined();
     expect(out.restricted, "the refusal does not name itself as one").toBe(true);
-    expect(String(out.note ?? ""), "the refusal states no reason").toMatch(/redistribut/i);
+    expect(String(out.note ?? ""), "the refusal states no reason").toMatch(/withheld until SmartRecruiters \(SAP\) permits it/);
     expect(f.boardCallCount(), "the board was asked about a restricted id before the refusal").toBe(0);
 
     // The control, so the refusal cannot be "this tool answers nothing".
     const ok = await f.runCheckApplySupport(null, { id: "greenhouse:acme:1" });
-    expect(ok.applyUrl).toBe("https://federal.example/apply/912345");
+    expect(ok.applyUrl).toBe("https://employer.example/apply/912345");
     expect(ok.agentReady).toBe(true);
     expect(f.boardCallCount()).toBe(1);
   });
@@ -379,10 +400,12 @@ describe("a feed we may only display must not leave by the API", () => {
     // Executed, not asserted about: the id-prefix reader is what the detail
     // refusal stands on, so a change to id shapes has to fail here.
     const f = shippedFilter(MCP, ["vendorOfId"]);
+    expect(f.vendorOfId!(`${RESTRICTED}:acme:912345`)).toBe(RESTRICTED);
     expect(f.vendorOfId!(`${FEDERAL}:${FEDERAL}:912345`)).toBe(FEDERAL);
     expect(f.vendorOfId!("greenhouse:acme:1")).toBe("greenhouse");
     expect(f.vendorOfId!("")).toBe("");
-    expect(f.isNoRedistributionSource(f.vendorOfId!(`${FEDERAL}:x:1`))).toBe(true);
+    expect(f.isNoRedistributionSource(f.vendorOfId!(`${RESTRICTED}:x:1`))).toBe(true);
+    expect(f.isNoRedistributionSource(f.vendorOfId!(`${FEDERAL}:x:1`))).toBe(false);
     expect(f.isNoRedistributionSource(f.vendorOfId!("lever:x:1"))).toBe(false);
   });
 
@@ -428,12 +451,19 @@ describe("the guard above fails when the boundary is broken", () => {
     expect(listOf(drifted, "NO_REDISTRIBUTION_SOURCES")).not.toEqual(listOf(API, "NO_REDISTRIBUTION_SOURCES"));
   });
 
+  it("notices the federal feed put back on the list without an owner decision", () => {
+    const reverted = API.replace(/const NO_REDISTRIBUTION_SOURCES = \[[^\]]*\]/, `const NO_REDISTRIBUTION_SOURCES = ["${FEDERAL}", "${RESTRICTED}"]`);
+    expect(reverted, "the mutation did not apply — RE-ANCHOR this tooth").not.toBe(API);
+    expect(listOf(reverted, "NO_REDISTRIBUTION_SOURCES")).toContain(FEDERAL);
+    expect(shippedFilter(reverted).isNoRedistributionSource(FEDERAL)).toBe(true);
+  });
+
   it("notices an emptied list", () => {
     const emptied = API.replace(/const NO_REDISTRIBUTION_SOURCES = \[[^\]]*\]/, "const NO_REDISTRIBUTION_SOURCES = []");
     expect(listOf(emptied, "NO_REDISTRIBUTION_SOURCES")).toEqual([]);
     // And the executed filter then keeps the row it exists to drop.
     const f = shippedFilter(emptied);
-    expect(f.withoutNoRedistribution([{ id: "a", source: FEDERAL }])).toHaveLength(1);
+    expect(f.withoutNoRedistribution([{ id: "a", source: RESTRICTED }])).toHaveLength(1);
   });
 
   it("notices a filter turned into a pass-through", () => {
@@ -443,7 +473,7 @@ describe("the guard above fails when the boundary is broken", () => {
     );
     expect(neutered, "the mutation did not apply — RE-ANCHOR this tooth").not.toBe(API);
     const f = shippedFilter(neutered);
-    expect(f.withoutNoRedistribution([{ id: "a", source: FEDERAL }])).toHaveLength(1);
+    expect(f.withoutNoRedistribution([{ id: "a", source: RESTRICTED }])).toHaveLength(1);
   });
 
   it("notices one corpus read that lost its SQL exclusion", () => {
@@ -489,8 +519,8 @@ describe("the guard above fails when the boundary is broken", () => {
     );
     expect(unguarded, "the mutation did not apply — RE-ANCHOR this tooth").not.toBe(MCP);
     const f = shippedApplySupport(unguarded);
-    const out = await f.runCheckApplySupport(null, { id: `${FEDERAL}:${FEDERAL}:912345` });
-    expect(out.applyUrl, "the pre-fix runner should hand back the restricted apply URL").toBe("https://federal.example/apply/912345");
+    const out = await f.runCheckApplySupport(null, { id: `${RESTRICTED}:acme:912345` });
+    expect(out.applyUrl, "the pre-fix runner should hand back the restricted apply URL").toBe("https://employer.example/apply/912345");
     expect(f.boardCallCount()).toBe(1);
   });
 

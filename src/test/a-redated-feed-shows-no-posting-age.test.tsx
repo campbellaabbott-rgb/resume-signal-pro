@@ -39,15 +39,18 @@ beforeAll(() => { i18n.addResourceBundle("en", "translation", enListing, true, t
 afterEach(cleanup);
 
 describe("the measured re-daters", () => {
-  it("are exactly Breezy, Paylocity and UKG, matched on the source or the id", () => {
-    expect([...REDATING_SOURCES].sort()).toEqual(["breezy", "paylocity", "ukg"]);
+  it("are exactly Breezy, Paylocity, UKG and USAJOBS, matched on the source or the id", () => {
+    // USAJOBS joined 2026-11-19 (OD16): it re-dates an open-continuous
+    // announcement each time it is reposted, so its date is a feed date too.
+    expect([...REDATING_SOURCES].sort()).toEqual(["breezy", "paylocity", "ukg", "usajobs"]);
     expect(isRedatingSource("Breezy ")).toBe(true);
     expect(isRedatingSource("greenhouse")).toBe(false);
     expect(listingAge({ id: "ukg:acme:R1", source: null, postedAt: "2026-10-09" }, NOW)).toEqual({ kind: "redated", day: "2026-10-09" });
+    expect(listingAge({ id: "usajobs:usajobs:881700000", source: null, postedAt: "2026-10-09" }, NOW)).toEqual({ kind: "redated", day: "2026-10-09" });
   });
 });
 
-for (const source of ["breezy", "paylocity", "ukg"]) {
+for (const source of ["breezy", "paylocity", "ukg", "usajobs"]) {
   describe(`${source}`, () => {
     it("the card prints no posting age", () => {
       card(row(source));
@@ -58,7 +61,7 @@ for (const source of ["breezy", "paylocity", "ukg"]) {
       facts(row(source));
       const posted = document.querySelector("[data-fact='posted']")?.textContent ?? "";
       expect(posted).toMatch(new RegExp(`^Feed date ${D("2026-10-09")}; .+ can move this date when a posting is edited, so it may be older$`));
-      expect(posted).toMatch(source === "ukg" ? /UKG Pro Recruiting/ : source === "breezy" ? /Breezy/ : /Paylocity/);
+      expect(posted).toMatch(source === "ukg" ? /UKG Pro Recruiting/ : source === "breezy" ? /Breezy/ : source === "usajobs" ? /USAJOBS/ : /Paylocity/);
     });
   });
 }

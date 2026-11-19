@@ -396,10 +396,12 @@ export const MCP_OWN_CONNECTION_GLOSS =
  * The hiring systems the connector and /v1 do not hand on: NO_REDISTRIBUTION_SOURCES
  * in agent-mcp and public-api (owner decision 4, 2026-10-08), mirrored and pinned by
  * src/test/the-connector-page-never-said-which-systems-it-withholds.test.tsx.
+ * The U.S. federal feed left the list with OD16 (owner, 2026-11-18): its rows are
+ * handed on once the agency's who-may-apply statement is stored, with OPM's notice.
  */
-export const MCP_WITHHELD_SOURCES: readonly string[] = ["usajobs", "smartrecruiters"];
+export const MCP_WITHHELD_SOURCES: readonly string[] = ["smartrecruiters"];
 export const MCP_WITHHELD_NOTE =
-  "Two hiring systems on the job board are not handed on by this server or the data API: the U.S. federal job feed, which we choose not to redistribute for now, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. Their postings stay on the job board, where you can open them yourself.";
+  "One hiring system on the job board is not handed on by this server or the data API: SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. Its postings stay on the job board, where you can open them yourself. U.S. federal announcements are handed on once the agency's statement of who may apply is stored, each with OPM's notice that this is not an official copy.";
 
 /** "a, b and c" for prose; items carrying their own " and " are joined with semicolons so no list reads "and … and". Declared above every sentence built with it (a const cannot be read above its line). */
 export const andList = (xs: readonly string[]): string => {

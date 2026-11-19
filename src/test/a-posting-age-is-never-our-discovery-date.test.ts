@@ -25,6 +25,10 @@
  *   - The same id, come back after its takedown and stamped missing again,
  *     is going down with no duration and no closure date, as the check says
  *     (20261009131000 gave it the old takedown, and Account stored it).
+ *   - A U.S. federal row (OD16, 2026-11-19) is handed on with our first
+ *     sighting only as on_board_since, a stamp and never a day count, and its
+ *     feed date is a feed date: USAJOBS re-dates reposted announcements, so
+ *     the check and the shaper give it no age either.
  * The teeth: the pre-fix definition, run over the same rows, gives the
  * undated posting forty days from our first sighting, and the static checks
  * catch it in that file's text.
@@ -35,6 +39,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { SUPABASE_DEFAULTS } from "./helpers/supabase-defaults";
 import { truthFromRow, type PostingTruthRow } from "../../supabase/functions/public-api/posting-truth";
+import { postingAge } from "../../supabase/functions/public-api/date-classes";
+import { federalFacts } from "../../supabase/functions/public-api/federal-rows";
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 120_000 });
 
@@ -119,6 +125,30 @@ describe("no age is built from our discovery date (the text)", () => {
     expect(truthFromRow(row.pt_id, row, opts).age).toMatchObject({ postedAt: null, day: null, days: null, dateClass: "none" });
     const dated = truthFromRow(row.pt_id, { ...row, pt_posted_at: "2026-12-01T08:00:00Z" }, opts);
     expect(dated.age).toMatchObject({ day: "2026-12-01", days: 5, dateClass: "employer" });
+  });
+
+  it("a federal row prints on_board_since, never an age, and its feed date gives no age either", () => {
+    const now = new Date("2026-12-06T12:00:00Z");
+    // USAJOBS re-dates a reposted announcement: its date is a feed date.
+    expect(postingAge("usajobs", "2026-12-05", now)).toMatchObject({ day: "2026-12-05", days: null, dateClass: "feed_date_moves_on_edit" });
+    const row: PostingTruthRow = {
+      pt_id: "usajobs:usajobs:881700000", pt_source: "usajobs", pt_token: "usajobs", pt_title: "Transportation Security Officer", pt_company: "Transportation Security Administration",
+      pt_row_found: true, pt_listed: true, pt_in_window: true, pt_missing_since: null, pt_posted_at: "2026-12-05T00:00:00Z",
+      pt_has_closure: false, pt_closed_at: null, pt_seen_gone_at: null, pt_closures: 0, pt_untrusted_gone_at: null,
+      pt_untrusted_kind: null, pt_aged_at: null, pt_board_known: true,
+      pt_bucket: "full_read", pt_read_at: "2026-12-06T09:00:00Z", pt_read_state: "ok", pt_capped: false,
+    };
+    expect(truthFromRow(row.pt_id, row, { now, withheldSources: [], withheldReason: "withheld" }).age).toMatchObject({ days: null, dateClass: "feed_date_moves_on_edit" });
+    // The first sighting is handed on verbatim as on_board_since: no field of
+    // the federal block is a number of days.
+    const facts = federalFacts({
+      id: row.pt_id, source: "usajobs", company: row.pt_company, whoMayApply: "Open to the public", hiringPaths: ["public"],
+      closesAt: "2026-12-20T23:59:59Z", firstSeen: "2026-09-01T03:00:00Z", applyUrl: null,
+    })!;
+    expect(facts.onBoardSince).toBe("2026-09-01T03:00:00Z");
+    expect(Object.values(facts).filter((v) => typeof v === "number")).toEqual([]);
+    // No key names an age or a day count ("agency" is the employer, not an age).
+    expect(Object.keys(facts).filter((k) => /^(age|days)$|Age$|Days$/.test(k))).toEqual([]);
   });
 
   it("teeth: the same checks find the defect in the pre-fix definition", () => {

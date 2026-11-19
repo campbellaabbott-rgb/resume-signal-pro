@@ -6,8 +6,9 @@
  * so a date-only or midnight posting mailed at 14:23 UTC on its own day read
  * "posted yesterday" (0.6 of a day rounds up), and a posting from Breezy,
  * Paylocity or UKG, whose feed date moves when the employer edits it, read
- * "posted today" when it may be months old. The board's cards count whole
- * calendar days and print no age for those three systems
+ * "posted today" when it may be months old (USAJOBS joined them 2026-11-19:
+ * it re-dates a reposted announcement). The board's cards count whole
+ * calendar days and print no age for those systems
  * (src/lib/listing/age.ts); this is the same rule for a mail that runs with no
  * reader's clock in hand, so it counts UTC calendar days.
  *
@@ -15,8 +16,12 @@
  * and a test pins REDATING_SOURCES to the board's list so the two cannot drift.
  */
 
-/** Hiring systems whose feed date moves when a posting is edited (the board's list). */
-export const REDATING_SOURCES: readonly string[] = ["breezy", "paylocity", "ukg"];
+/**
+ * Hiring systems whose feed date moves when a posting is edited, or (USAJOBS,
+ * OD16 2026-11-18) when an open-continuous announcement is reposted: the
+ * board's list.
+ */
+export const REDATING_SOURCES: readonly string[] = ["breezy", "paylocity", "ukg", "usajobs"];
 
 /** The system a posting was read from: its own source, else its id's first segment. */
 export function postingSource(job: { id?: unknown; source?: unknown }): string | null {

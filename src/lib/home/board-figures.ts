@@ -13,8 +13,8 @@
  */
 import { systemLabel } from "@/lib/listing/apply-url";
 
-/** Systems the AI connector and the data API never hand on (MCP_WITHHELD_SOURCES). */
-export const HOME_WITHHELD_SOURCES: readonly string[] = ["usajobs", "smartrecruiters"];
+/** Systems the AI connector and the data API never hand on (MCP_WITHHELD_SOURCES). USAJOBS left with OD16 (2026-11-18). */
+export const HOME_WITHHELD_SOURCES: readonly string[] = ["smartrecruiters"];
 
 /** The federal listing site: always its own row in the table, with its note. */
 export const FEDERAL_SOURCE = "usajobs";

@@ -9,6 +9,11 @@
  * withheld until SAP permits, owner decision in force). The answer now says
  * which hiring systems were held back and gives the site's own search for the
  * same arguments, where they open. Nothing withheld, no note.
+ *
+ * OD16 (2026-11-19): USAJOBS is no longer a withheld system. A federal row is
+ * handed on once its who-may-apply statement is stored; one without it is
+ * held back, and the note says so by name. (This harness answers no
+ * statement, so its federal row is held back.)
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { bootKeylessMcp, type KeylessMcp } from "./helpers/keyless-mcp";
@@ -38,13 +43,27 @@ describe("a page with withheld rows says what and where", () => {
     expect(out.withheldNote).toContain("https://resumebooster.work/jobs?location=Manchester&country=GB");
   });
 
-  it("USAJOBS by its own name, and the query in the site search", async () => {
+  it("a USAJOBS announcement without its who-may-apply statement, by its own name and why, and the query in the site search", async () => {
     mcp.board = () => new Response(JSON.stringify({
-      jobs: [row("usajobs:federal:800001", "Nurse"), row("greenhouse:acme:1", "Nurse")],
+      jobs: [row("usajobs:usajobs:800001", "Nurse"), row("greenhouse:acme:1", "Nurse")],
       total: 2, hasMore: false,
     }), { status: 200 });
     const out = JSON.parse((await mcp.call({ query: "nurse" })).text);
-    expect(out.withheldNote).toMatch(/^1 more posting is on this page only on resumebooster\.work \(USAJOBS, which this server may not hand on\): https:\/\/resumebooster\.work\/jobs\?q=nurse$/);
+    expect(out.jobs).toHaveLength(1);
+    expect(out.withheld).toBe(1);
+    expect(out.withheldNote).toMatch(/^1 more posting is on this page only on resumebooster\.work \(USAJOBS announcements whose statement of who may apply is not stored yet, which this server does not hand on yet\): https:\/\/resumebooster\.work\/jobs\?q=nurse$/);
+    // It is not called a withheld system: the federal feed is handed on (OD16).
+    expect(out.withheldNote).not.toMatch(/USAJOBS, which this server may not hand on/);
+  });
+
+  it("both reasons in one note when a SmartRecruiters row and an unlabelled federal row are held back", async () => {
+    mcp.board = () => new Response(JSON.stringify({
+      jobs: [row("smartrecruiters:sixt:744000000000001", "Nurse"), row("usajobs:usajobs:800002", "Nurse"), row("greenhouse:acme:1", "Nurse")],
+      total: 3, hasMore: false,
+    }), { status: 200 });
+    const out = JSON.parse((await mcp.call({ query: "nurse" })).text);
+    expect(out.withheld).toBe(2);
+    expect(out.withheldNote).toMatch(/^2 more postings are on this page only on resumebooster\.work \(SmartRecruiters, which this server may not hand on; USAJOBS announcements whose statement of who may apply is not stored yet, which this server does not hand on yet\): /);
   });
 
   it("nothing withheld, no note", async () => {

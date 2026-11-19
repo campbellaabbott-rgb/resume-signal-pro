@@ -109,6 +109,10 @@ import { parseJobId } from "./job-link.ts";
 import { BUNDLED_CHATGPT_EGRESS_V4 } from "./chatgpt-egress.ts";
 // The hiring record as the site prints it, through the site's own gate (M2-01).
 import { NOT_JUDGED, SHARED_TOKEN, SHARED_TOKEN_COPY, UNREAD, gatedRecord, sharedTokenBoards } from "./hiring-record-view.ts";
+// OD16 (owner, 2026-11-18): U.S. federal rows are handed on with OPM's notice,
+// the agency as employer and its who-may-apply statement, once that statement
+// is stored. A byte-identical copy of public-api's module.
+import { FEDERAL_SOURCE, FEDERAL_UNLABELLED_NOTE, federalCredit, federalFacts, isFederal, whoMayApplyOf } from "./federal-rows.ts";
 // The keyless allowance: who pays (by verified address only), and what a
 // refusal says (by edition).
 import {
@@ -354,7 +358,8 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
 // 2026-11-12.1 (bug round of 2026-11-08, part A, connector lane): the keyless and own-connection allowances are named where they apply, the keyed steps remove the keyless entry first, the fit tool gives back a call that scored nothing, the job tool says when the board last read the feed, a location word is searched as typed, a form body cut off mid-read is never cached, a Greenhouse heading is the next question's section, the bundled ChatGPT egress list is OpenAI's of 2026-11-06, and the federal feed is said to be withheld by our own choice.
 // 2026-11-12.2 (the round's integration, S14X-052): fit_resume's unscored names a third reason job-fit 2026-11-12.2 sends, no_resume_terms (none of the terms the scorer reads were found in the résumé).
 // 2026-11-18.2 (lane SH, OD14-ASHBY shared half, 2026-11-18): apply_myself carries the shared form reader that answers an Ashby posting "withheld" before its cache or any request whatever vendor list is passed, with its Ashby reader deleted; the connector already left Ashby out of its own list in 2026-11-18.1, which round B's integration branch carries without the shared stop.
-const FN_BUILD = "agent-mcp.2026-11-18.2";
+// 2026-11-19.1 (OD16, lane api4/od16-federal, owner's yes of 2026-11-18): U.S. federal rows leave the withheld list; search, debug, fit, get_job, get_jobs, apply_myself and check_apply_support hand on a federal posting only once the agency's who-may-apply statement is stored (read beside the page, fenced), each card carrying a federal block (agency, who may apply, closing date, on our board since, official link, OPM's notice) and no postedAt, and each result federalAttribution with the date the board last read the feed; check_jobs_open checks federal ids. Needs job-board .104's migration 20261119110000 (who_may_apply) applied first.
+const FN_BUILD = "agent-mcp.2026-11-19.1";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -822,41 +827,39 @@ async function board(body: Record<string, unknown>, ctx: Ctx = KEYED_CTX): Promi
 
 
 /**
- * THE HIRING SYSTEMS THIS SERVER READS AND DOES NOT HAND ON.
+ * THE HIRING SYSTEM THIS SERVER READS AND DOES NOT HAND ON: SMARTRECRUITERS.
  *
- * The federal feed was kept here because its terms of use were read as
- * forbidding republishing the data as a feed. The API terms read on
- * 2026-11-16 say its Public Data may be redistributed without prior OPM
- * approval (USAJOBS-COPY-1), so it is withheld by our own choice for now;
- * handing it on is the owner's decision (OD16). An MCP tool result is a feed
- * — the rows leave this runtime into a third-party host that stores them,
- * re-presents them and may hand them on again — so this surface stays on the
- * same side as the public API, not the website.
+ * An MCP tool result is a feed: the rows leave this runtime into a
+ * third-party host that stores them, re-presents them and may hand them on
+ * again, so this surface stays on the same side as the public API, not the
+ * website.
  *
  * IT IS THE SAME LIST, DELIBERATELY, AND A GUARD HOLDS THE TWO TOGETHER.
  * These vendor codes are declared identically in public-api's index.ts; a
  * cross-file test reads both files' comment-stripped code and fails when they
  * disagree, because a second list that drifts is how every filter defect on
- * this board has started. A shared module under _shared/ would be better
- * still and is the next step.
+ * this board has started.
  *
- * WHY THIS REMOVES NOTHING TODAY. job-board's federal adapter skips every
- * visit unless the owner sets USAJOBS_API_KEY and USAJOBS_USER_AGENT (free
- * registration at developer.usajobs.gov; the user agent is the registered
- * e-mail address), so the board currently holds no federal postings at all
- * and zero rows is the expected reading, not a fault. The same registration
- * caps a query at 10,000 results, so even armed the feed is a bounded slice
- * and never a census of federal hiring.
+ * THE U.S. FEDERAL FEED LEFT THIS LIST ON 2026-11-19 (OD16, the owner's yes of
+ * 2026-11-18). The board holds about 18,500 announcements from USAJOBS, and
+ * OPM's API terms (read 2026-11-16 and 2026-11-18) let anyone redistribute
+ * that public data without prior approval. They are handed on under the
+ * conditions ./federal-rows.ts states for both servers: OPM's notice, the
+ * agency as employer, the official link, the date we retrieved them, "open
+ * until the agency's closing date", and none before the agency's
+ * who-may-apply statement is stored (servableJobs and federalLabels below).
+ * One query of that feed returns at most 10,000 results, so it is a bounded
+ * slice and never a census of federal hiring.
  */
 // SMARTRECRUITERS, 2026-10-09 (owner decision 4 of 2026-10-08): withheld from
-// this connector and from /v1 until SmartRecruiters (SAP) grants permission,
-// as the federal feed is; they stay on the public board. The board has no
-// exclusion filter, so their rows are dropped on the way out (servableJobs)
-// and `total` still counts them: excludedSources says so on every search.
-const NO_REDISTRIBUTION_SOURCES = ["usajobs", "smartrecruiters"] as const;
+// this connector and from /v1 until SmartRecruiters (SAP) grants permission;
+// they stay on the public board. The board has no exclusion filter, so their
+// rows are dropped on the way out (servableJobs) and `total` still counts
+// them: excludedSources says so on every search.
+const NO_REDISTRIBUTION_SOURCES = ["smartrecruiters"] as const;
 /** Said in every refusal this file makes about it. One wording, like /v1's. */
 const NO_REDISTRIBUTION_REASON =
-  "Two hiring systems are shown on resumebooster.work but not handed on by this connector: the U.S. federal job feed, which we choose not to redistribute for now, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. No tool here returns their rows; open the posting on the site instead.";
+  "One hiring system is shown on resumebooster.work but not handed on by this connector: SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. No tool here returns its rows; open the posting on the site instead.";
 const isNoRedistributionSource = (v: unknown): boolean =>
   (NO_REDISTRIBUTION_SOURCES as readonly string[]).includes(String(v ?? "").trim().toLowerCase());
 /** A job id is `vendor:employer:externalId`, so its vendor is its first field. */
@@ -900,9 +903,82 @@ async function refuseWithheldEmployers(tokens: string[], param: string): Promise
     );
   }
 }
-/** The rows of a board `list` answer, with the unredistributable ones dropped. */
-const servableJobs = (r: Record<string, unknown>): Array<Record<string, unknown>> =>
-  withoutNoRedistribution((Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>);
+/** What a federal id's statement read returns. */
+type FederalLabel = { id: string; who_may_apply: unknown; hiring_paths: unknown; closes_at: unknown; first_seen: unknown };
+/**
+ * THE FEDERAL GATE (OD16). The board's rows do not carry the agency's
+ * who-may-apply statement, so it is read here for a page's federal ids, over
+ * the serving fences, and a federal row without one is not handed on: an
+ * assistant must not suggest a job the person cannot apply for. null when the
+ * read failed, and then no federal row is handed on.
+ */
+async function federalLabels(ids: readonly unknown[]): Promise<Map<string, FederalLabel> | null> {
+  const fed = [...new Set(ids.map((x) => String(x ?? "")).filter((id) => isFederal(vendorOfId(id))))].slice(0, 200);
+  if (!fed.length) return new Map();
+  // A lookup BY ID, never a search: the ids came off the board's own answer.
+  const { data, error } = await applyServingFences(
+    db().from("job_board_postings")
+      .select("id,who_may_apply,hiring_paths,closes_at,first_seen")
+      .in("id", fed),
+  ).not("who_may_apply", "is", null);
+  if (error || !Array.isArray(data)) {
+    console.warn("[AGENT-MCP] federal labels unavailable:", String(error?.message ?? "not an array").slice(0, 120));
+    return null;
+  }
+  const out = new Map<string, FederalLabel>();
+  for (const r of data as FederalLabel[]) if (whoMayApplyOf(r.who_may_apply) !== null) out.set(String(r.id), r);
+  return out;
+}
+/** A board row with its federal statement attached in the table's column names. */
+const withLabel = (j: Record<string, unknown>, l: FederalLabel): Record<string, unknown> =>
+  ({ ...j, who_may_apply: l.who_may_apply, hiring_paths: l.hiring_paths, closes_at: l.closes_at, first_seen: l.first_seen });
+/**
+ * The rows of a board `list` answer this server hands on: the withheld
+ * systems dropped, and each federal row only with its statement (attached).
+ */
+async function servableJobs(r: Record<string, unknown>): Promise<Array<Record<string, unknown>>> {
+  const rows = withoutNoRedistribution((Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>);
+  if (!rows.some((j) => isFederal(j.source))) return rows;
+  const labels = await federalLabels(rows.map((j) => j.id));
+  const out: Array<Record<string, unknown>> = [];
+  for (const j of rows) {
+    if (!isFederal(j.source)) { out.push(j); continue; }
+    const l = labels?.get(String(j.id ?? ""));
+    if (l) out.push(withLabel(j, l));
+  }
+  return out;
+}
+/** The statement of one federal id, read for a detail or apply tool: undefined when the id is not federal, null when not handed on. */
+async function federalLabelOf(id: string): Promise<FederalLabel | null | undefined> {
+  if (!isFederal(vendorOfId(id))) return undefined;
+  return (await federalLabels([id]))?.get(id) ?? null;
+}
+/**
+ * The federal block a card carries (OD16): the agency as employer, who may
+ * apply, the closing date, when it first appeared on our board (never an
+ * age), the official announcement and OPM's notice. The card drops postedAt
+ * for a federal row: USAJOBS moves that date when an announcement is
+ * reposted, so it is not the announcement's age.
+ */
+function federalCardBlock(j: Record<string, unknown>): Record<string, unknown> | null {
+  const f = federalFacts({
+    id: j.id, source: j.source, company: j.company, whoMayApply: j.who_may_apply, hiringPaths: j.hiring_paths,
+    closesAt: j.closes_at, firstSeen: j.first_seen, applyUrl: j.applyUrl,
+  });
+  if (!f) return null;
+  return {
+    agency: f.agency, whoMayApply: f.whoMayApply, ...(f.hiringPaths ? { hiringPaths: f.hiringPaths } : {}),
+    closesAt: f.closesAt, onBoardSince: f.onBoardSince, officialUrl: f.officialUrl, openUntil: f.openUntil, notice: f.notice,
+    dateNote: "USAJOBS moves an announcement's date when it is reposted, so no posting date or age is given; onBoardSince is when it first appeared on our board, not its age.",
+  };
+}
+/** OPM's credit for a result carrying federal cards, with the date the board last read the feed; nothing otherwise. */
+function federalAttribution(rows: ReadonlyArray<Record<string, unknown>>): Record<string, unknown> {
+  const fed = rows.filter((j) => isFederal(j.source));
+  if (!fed.length) return {};
+  const reads = fed.map((j) => (typeof j.recheckedAt === "string" ? j.recheckedAt : null)).filter((x): x is string => !!x).sort();
+  return { federalAttribution: federalCredit(reads[0] ?? null) };
+}
 
 /**
  * THE STRUCTURED FIELDS THE ROW ALREADY CARRIES.
@@ -959,13 +1035,16 @@ const formVendorsFor = (edition: Edition): readonly string[] => edition === "cha
  */
 function compactJob(j: Record<string, unknown>, ctx: Ctx = KEYED_CTX, detail = false): Record<string, unknown> {
   const out: Record<string, unknown> = { id: j.id };
+  // A federal row's date moves when USAJOBS reposts it: no postedAt, and the
+  // federal block below says why (OD16).
+  const federal = isFederal(j.source) ? federalCardBlock(j) : null;
   for (const [k, v] of [
     ["title", j.title], ["company", j.company],
     // The employer handle, because `companies` scopes a search by it and the
     // employer tools take it; /v1 emits it as company_token, the board as token.
     ["companyToken", j.token],
     ["location", j.location], ["country", j.country], ["workMode", j.workMode], ["employmentType", j.employmentType],
-    ["salary", j.salary], ["postedAt", j.postedAt], ["applyUrl", j.applyUrl],
+    ["salary", j.salary], ["postedAt", isFederal(j.source) ? null : j.postedAt], ["applyUrl", j.applyUrl],
   ] as const) {
     if (v !== undefined && v !== null && v !== "") out[k] = v;
   }
@@ -987,6 +1066,7 @@ function compactJob(j: Record<string, unknown>, ctx: Ctx = KEYED_CTX, detail = f
   // The posting's own page on the site, tagged with the host it came from
   // (plain inside ChatGPT).
   if (typeof j.id === "string" && j.id) out.siteUrl = SITE_JOB_URL_TRACKED(j.id, "search", ctx.edition);
+  if (federal) out.federal = federal;
   return out;
 }
 
@@ -1107,6 +1187,11 @@ const JOB_CARD_SCHEMA = {
     applyForm: { type: "boolean", description: "Present and true when apply_myself can read this employer's application form." },
     agency: { type: "boolean", description: "Present and true for a staffing or recruiting agency's posting." },
     recheckedAt: { type: "string", description: "When the board last read this employer's feed; a large board is read in windows, so that read may not have included this posting." },
+    // A U.S. federal card's `federal` block (OD16) is NOT declared here: this
+    // schema rides on three tools in one listing, which has a byte budget of
+    // 25,000 (the-connector-lists-only-what-its-caller-can-call), and the
+    // listing had 19 bytes left. additionalProperties admits it, and the
+    // guide (guideText) says what each of its fields means.
   },
   required: ["id"],
   additionalProperties: true,
@@ -2189,7 +2274,8 @@ function guideText(edition: Edition, keyed: boolean): string {
     `- \`total\` counts postings whose TITLE matches; \`relatedTotal\` counts those that only mention the words in their description, and rows past the title matches are those (\`matchScope: "description"\`; \`matchNote\` when a whole page is). Say which you mean.`,
     `- \`postedAt\` is the date the employer's own hiring system gives for the posting, not when this board first saw it; it is absent when the feed states none, which does not make a posting old.`,
     `- \`locationInterpreted\` says what was read out of the query into a filter (a place, remote, a date window, an employer) and \`from\` the words as typed; \`sponsorshipNote\` means this board cannot filter by visa sponsorship, so never say a posting sponsors unless its own text does. \`notSearched\` means the search named nothing the board can look for (only sponsorship words): ask the person for a role or a place.`,
-    `- \`withheld\` counts postings on the page this server may not hand on (SmartRecruiters, USAJOBS); \`withheldNote\` gives the site search where they open. \`locationHint\` means a place was not read: places go by name, never a ZIP code. \`locationNote\` means a whole country or a remote word was matched as words in each posting's location: relay it and offer the search again with the filter it names.`,
+    `- \`federal\` on a card marks a U.S. federal announcement from USAJOBS: the agency is the employer, \`whoMayApply\` is the agency's own statement of who may apply (some are only for current federal staff, veterans or another group: say so before suggesting it), it is open until the agency's closing date (\`closesAt\`), and it has no \`postedAt\` because USAJOBS moves that date when it reposts an announcement; \`onBoardSince\` is when it reached this board, never its age. Apply only through the announcement's own instructions at \`officialUrl\`, and pass on \`notice\`: this is not an official copy.`,
+    `- \`withheld\` counts postings on the page this server may not hand on (SmartRecruiters, and U.S. federal announcements whose who-may-apply statement is not stored yet); \`withheldNote\` gives the site search where they open. \`locationHint\` means a place was not read: places go by name, never a ZIP code. \`locationNote\` means a whole country or a remote word was matched as words in each posting's location: relay it and offer the search again with the filter it names.`,
     `- \`unknownCompanies\` names an employer this board does not carry under that name, and \`companiesUnresolved\` a name that matched no single employer, or only a board with under 10 open roles, which we carry, with candidates to ask about before you use one: neither is an employer with no openings.`,
     `- Pay and seniority arrive parsed (\`salaryMinAnnual\`, \`salaryMaxAnnual\`, \`experienceBand\`, \`minYears\`) and are ABSENT when the posting states none: absence is not zero.`,
     `- \`applyForm: true\` on a card means \`${tool("apply_myself")}\` can read that employer's form for you.`,
@@ -2540,7 +2626,7 @@ function searchBody(args: Record<string, unknown>): Record<string, unknown> {
   // ASKED FOR BY NAME, AND REFUSED BY NAME. A vendor filter naming a system
   // this server may not redistribute would bind a filter that can only ever
   // select rows the runners then drop, and the agent would read the empty
-  // result as "there are no federal jobs" — a false statement about the world
+  // result as "there are no such jobs" — a false statement about the world
   // in place of a true one about our licence. Thrown as an argument error, so
   // it comes back in band with the fix, exactly like every other bad argument.
   const barredVendors = String(args.vendor ?? "").split(",").map((x) => x.trim()).filter(Boolean)
@@ -2551,10 +2637,10 @@ function searchBody(args: Record<string, unknown>): Record<string, unknown> {
       "Drop it from `vendor` and the rest of the search is answered normally.",
     );
   }
-  // THE SAME REFUSAL THROUGH THE OTHER DOOR. A restricted feed's rows all
-  // carry ONE employer token, which is the source's own name (the agency
-  // travels in `company`), so `companies` reaches the same population by a
-  // parameter the vendor check never looked at. The runners still drop the
+  // THE SAME REFUSAL THROUGH THE OTHER DOOR. A withheld system's own name
+  // given as an employer token reaches the same population by a parameter
+  // the vendor check never looked at. (The federal feed's one token, usajobs,
+  // is the vendor code itself; since OD16 it is searched, not refused.) The runners still drop the
   // rows, so the leak is not data — it is the empty answer, which says "this
   // employer has no openings" when what is true is that we may not hand them
   // on. Refused by name, like the vendor argument beside it.
@@ -2834,9 +2920,9 @@ async function runSearchJobs(input: Record<string, unknown>, ctx: Ctx = KEYED_CT
   // How many rows the board answered, before the redistribution filter: a
   // count only, never the rows.
   const answered = Number((r.jobs as unknown[] | undefined)?.length ?? 0);
-  const jobs = servableJobs(r);
+  const jobs = await servableJobs(r);
   const offset = Math.max(0, Number(args.offset ?? 0) || 0);
-  const out: Record<string, unknown> = { jobs: jobs.map((j) => compactJob(j, ctx)), ...disclosures(r) };
+  const out: Record<string, unknown> = { jobs: jobs.map((j) => compactJob(j, ctx)), ...disclosures(r), ...federalAttribution(jobs) };
   if (reading) out.locationInterpreted = reading;
   if (locationNote) out.locationNote = locationNote;
   if (employerNotes) Object.assign(out, employerNotes);
@@ -2846,9 +2932,19 @@ async function runSearchJobs(input: Record<string, unknown>, ctx: Ctx = KEYED_CT
   if (answered > jobs.length) {
     const n = answered - jobs.length;
     out.withheld = n;
-    const from = [...new Set(((r.jobs as Array<Record<string, unknown>> | undefined) ?? []).map((j) => String(j.source ?? "")).filter(isNoRedistributionSource))]
+    const kept = new Set(jobs.map((j) => String(j.id ?? "")));
+    const dropped = ((r.jobs as Array<Record<string, unknown>> | undefined) ?? []).filter((j) => !kept.has(String(j.id ?? "")));
+    const from = [...new Set(dropped.map((j) => String(j.source ?? "")).filter(isNoRedistributionSource))]
       .map((src) => SOURCE_NAMES[src] ?? src);
-    out.withheldNote = `${n} more posting${n === 1 ? " is" : "s are"} on this page only on resumebooster.work${from.length ? ` (${from.join(", ")}, which this server may not hand on)` : ""}: ${siteSearchUrl(args)}`;
+    const federalHeld = dropped.some((j) => isFederal(j.source));
+    // Why each held-back row is held back, in one parenthesis: a withheld
+    // system by name, and a federal announcement whose statement of who may
+    // apply is not stored yet (OD16).
+    const why = [
+      ...(from.length ? [`${from.join(", ")}, which this server may not hand on`] : []),
+      ...(federalHeld ? ["USAJOBS announcements whose statement of who may apply is not stored yet, which this server does not hand on yet"] : []),
+    ];
+    out.withheldNote = `${n} more posting${n === 1 ? " is" : "s are"} on this page only on resumebooster.work${why.length ? ` (${why.join("; ")})` : ""}: ${siteSearchUrl(args)}`;
   }
   // A page of description-only matches says so (connect W1, BR-05): total 0
   // beside ten rows read as "no such jobs", and forty "marketing" rows were
@@ -2896,7 +2992,7 @@ async function runDebugSearch(args: Record<string, unknown>): Promise<unknown> {
   const out = outcome as Record<string, unknown>;
   // The DEBUG tool most of all: rowsServed has to be the rows an agent would
   // actually have received, or the trace explains a search nobody was served.
-  const jobs = servableJobs(out);
+  const jobs = await servableJobs(out);
   return {
     decision,
     outcome: {
@@ -2922,7 +3018,7 @@ async function runDebugSearch(args: Record<string, unknown>): Promise<unknown> {
  */
 type DetailOutcome =
   | { ok: true; card: Record<string, unknown> }
-  | { ok: false; id: string; reason: "closed" | "agedOut" | "notFound" | "restricted"; detail?: unknown };
+  | { ok: false; id: string; reason: "closed" | "agedOut" | "notFound" | "restricted"; detail?: unknown; note?: string };
 
 async function detailOf(id: string, descCap: number, truncNote: string, ctx: Ctx = KEYED_CTX): Promise<DetailOutcome> {
   // REFUSED BEFORE THE BOARD IS ASKED, and refused as its own reason rather
@@ -2956,12 +3052,18 @@ async function detailOf(id: string, descCap: number, truncNote: string, ctx: Ctx
     if (r.agedOut) return { ok: false, id, reason: "agedOut", detail: r.agedOut };
     return { ok: false, id, reason: "notFound" };
   }
-  const j = r.job as Record<string, unknown>;
+  let j = r.job as Record<string, unknown>;
+  // THE FEDERAL GATE (OD16): a live federal posting is handed on only with
+  // the agency's who-may-apply statement, read here and carried on its card.
+  const label = await federalLabelOf(id);
+  if (label === null) return { ok: false, id, reason: "restricted", note: FEDERAL_UNLABELLED_NOTE };
+  if (label) j = withLabel({ ...j, source: j.source ?? FEDERAL_SOURCE }, label);
   const desc = String(r.description ?? j.description ?? "");
   return {
     ok: true,
     card: {
       ...compactJob(j, ctx, true),
+      ...federalAttribution([j]),
       // Bounded: an agent context does not want a 200KB scraped page. The cap is
       // generous enough for every honest description.
       ...(descCap > 0 ? { description: desc.length > descCap ? desc.slice(0, descCap) + truncNote : desc } : {}),
@@ -2986,7 +3088,7 @@ async function runGetJob(args: Record<string, unknown>, ctx: Ctx = KEYED_CTX): P
       id,
       job: null,
       restricted: true,
-      note: NO_REDISTRIBUTION_REASON,
+      note: out.note ?? NO_REDISTRIBUTION_REASON,
       fix: `Open ${SITE_JOB_URL(id)} to read this posting on the site, or search without this hiring system.`,
     };
   }
@@ -3043,7 +3145,7 @@ async function runGetJobs(args: Record<string, unknown>, ctx: Ctx = KEYED_CTX): 
           ...(out.reason === "notFound" ? { note: "Not a posting this board carries — check the id came from search_jobs." } : {}),
           // A DIFFERENT REASON FROM notFound: the posting may well be live,
           // and the agent can still send the person to the page for it.
-          ...(out.reason === "restricted" ? { note: NO_REDISTRIBUTION_REASON, url: SITE_JOB_URL(out.id) } : {}),
+          ...(out.reason === "restricted" ? { note: (out as { note?: string }).note ?? NO_REDISTRIBUTION_REASON, url: SITE_JOB_URL(out.id) } : {}),
           ...(out.reason === "error" ? { note: "The board did not answer for this id. Retry it on its own with get_job." } : {}),
         });
       }
@@ -3145,9 +3247,11 @@ async function runCheckJobsOpen(args: Record<string, unknown>, ctx: Ctx = KEYED_
   // no job is listed as unknown, never as closed.
   const { ids: sent, asSent, unknown } = readIds(idsArg(args.ids, cap));
   // HELD OUT OF THE CHECK, AND NAMED. A liveness answer is thinner than a row,
-  // but a caller holding federal ids from the website could walk them here and
-  // rebuild a live/dead federal feed one boolean at a time — which is the thing
-  // the licence forbids, assembled a column at a time instead of a row. They
+  // but a caller holding SmartRecruiters ids from the website could walk them
+  // here and rebuild a live/dead feed one boolean at a time — the extraction
+  // SAP's policy bars, assembled a column at a time instead of a row. (A
+  // federal id is checked like any other since OD16: a liveness answer
+  // suggests no job, so the who-may-apply gate does not apply to it.) They
   // are listed back so an agent knows its shortlist was not fully verified,
   // rather than silently reading them as closed. Held out BEFORE the cap, so a
   // restricted id cannot consume one of the slots a checkable id needs.
@@ -3212,7 +3316,7 @@ async function runFitResume(args: Record<string, unknown>, apiKeyId: string, ctx
   // Dropped BEFORE scoring: this tool returns a job card per row exactly as
   // search_jobs does, so it redistributes the same way — and filtering here
   // also means the scorer's budget is never spent on a row nobody receives.
-  const jobs = servableJobs(r);
+  const jobs = await servableJobs(r);
   const ids = jobs.map((j) => String(j.id)).slice(0, 20);
   let fits: Record<string, number | null> = {}, matched: Record<string, string[]> = {}, missing: Record<string, string[]> = {};
   // Why a posting got no fit, per id, where the scorer says (S14X-052);
@@ -3246,6 +3350,7 @@ async function runFitResume(args: Record<string, unknown>, apiKeyId: string, ctx
       return { ...compactJob(j), fit, ...why, matched: matched[id] ?? [], missing: missing[id] ?? [] };
     }),
     ...disclosures(r),
+    ...federalAttribution(jobs),
   };
 }
 
@@ -3385,11 +3490,16 @@ async function runApplyMyself(client: SupabaseClient, args: Record<string, unkno
     };
   }
   const j = r.job as Record<string, unknown>;
+  // THE FEDERAL GATE (OD16): no application help for a federal announcement
+  // whose who-may-apply statement is not stored, and no postedAt for one at
+  // all (USAJOBS moves that date when it reposts an announcement).
+  const fedLabel = await federalLabelOf(id);
+  if (fedLabel === null) return { jobId: id, state: "restricted", note: FEDERAL_UNLABELLED_NOTE, siteUrl: SITE_JOB_URL(id) };
   const text = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v : null);
   const posting: ApplyPosting = {
     id,
     title: text(j.title), company: text(j.company), location: text(j.location), pay: text(j.salary),
-    postedAt: text(j.postedAt), applyUrl: text(j.applyUrl),
+    postedAt: fedLabel ? null : text(j.postedAt), applyUrl: text(j.applyUrl),
     siteUrl: SITE_JOB_URL_TRACKED(id, "apply", ctx.edition),
   };
   const read = await readApplicationForm(
@@ -3406,9 +3516,15 @@ async function runApplyMyself(client: SupabaseClient, args: Record<string, unkno
   const { form, route, postingTerms, postingExcerpt, id: _id, ...rest } = answer;
   const summary = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== null));
   if (read.kind !== "read") console.log(`[AGENT-MCP] apply_myself ${read.vendor}: ${read.kind}`);
+  // A federal announcement carries what every federal card carries (OD16):
+  // the agency, who may apply, the closing date and the official link, and
+  // OPM's credit with the date the board last read the feed.
+  const fedJob = fedLabel ? withLabel({ ...j, source: j.source ?? FEDERAL_SOURCE }, fedLabel) : null;
+  const fedBlock = fedJob ? federalCardBlock(fedJob) : null;
+  const fedExtra = fedJob && fedBlock ? { federal: fedBlock, ...federalAttribution([fedJob]) } : {};
   return markdown
-    ? { ...summary, jobId: id, state: "open", form: { source: form.source, vendor: form.vendor, readAt: form.readAt }, route, postingTerms, postingExcerpt, markdown: applyMyselfMarkdown(answer) }
-    : { ...summary, jobId: id, state: "open", form, route, postingTerms, postingExcerpt };
+    ? { ...summary, jobId: id, state: "open", form: { source: form.source, vendor: form.vendor, readAt: form.readAt }, route, postingTerms, postingExcerpt, ...fedExtra, markdown: applyMyselfMarkdown(answer) }
+    : { ...summary, jobId: id, state: "open", form, route, postingTerms, postingExcerpt, ...fedExtra };
 }
 
 /**
@@ -3744,6 +3860,19 @@ async function runCheckApplySupport(client: SupabaseClient, args: Record<string,
     };
   }
   const r = await board({ action: "detail", id }).catch(() => null);
+  // THE FEDERAL GATE (OD16): a federal announcement without its who-may-apply
+  // statement is held back here too.
+  if (r?.job && (await federalLabelOf(id)) === null) {
+    return {
+      jobId: id,
+      agentReady: false,
+      vendor: source || null,
+      restricted: true,
+      requirements: [`This posting is not handed on to an agent yet (${FEDERAL_UNLABELLED_NOTE}) — the human reads it and applies at ${SITE_JOB_URL(id)}.`],
+      note: FEDERAL_UNLABELLED_NOTE,
+      fix: `Open ${SITE_JOB_URL(id)} to read this posting on the site and apply from there.`,
+    };
+  }
   const applyUrl = r ? String((r.job as Record<string, unknown> | undefined)?.applyUrl ?? r.applyUrl ?? "") : "";
   return {
     jobId: id,
@@ -4926,7 +5055,7 @@ function instructionsFor(edition: Edition): string {
     `${tool("apply_myself")} reads the employer's application form where its hiring system publishes one (${formVendorsFor(edition).map((v) => VENDOR_NAMES[v] ?? v).join(", ")}) and otherwise returns the apply link; we never submit anything. ` +
     `A resumebooster.work/jobs?job=<id> link's id is the argument to every job tool. A resumebooster.work/jobs/posting/ page is read as its id too. ` +
     `Without a key these tools share a daily allowance; each answer says what is left and that it resets at midnight UTC. ` +
-    `SmartRecruiters and USAJOBS postings are not served here. ` +
+    `SmartRecruiters postings are not served here. ` +
     `This board watches postings come down and, where its read of a board supports it, says which employers take roles down and leave them down: ${tool("employer_hiring_record")} and ${tool("employer_growth")} carry that record per employer board, every figure it cannot support named with why. ` +
     (edition === "other" ? `A free key (${MINT_URL}) raises the allowance to ${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day and opens ${tool("fit_resume")}. ` : "") +
     `When helping someone apply: ${HONESTY_RULES} Guide: ${GUIDE_URI}.`

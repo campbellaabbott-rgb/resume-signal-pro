@@ -9,6 +9,12 @@
  * and the crawler copy of /data-api named neither system, so a reader learned
  * of the gap only by meeting the refusal.
  *
+ * OD16 (owner 2026-11-18): the federal feed is handed on since 2026-11-19,
+ * once each announcement's who-may-apply statement is stored, with OPM's
+ * notice. The note now names SmartRecruiters as the one withheld system and
+ * says how federal rows are handed on, so a reader still learns both before
+ * meeting either.
+ *
  * The page is mounted and the list it names is held to both servers' own
  * lists; the guide is read the way an agent reads it in the connector's
  * harness test (the-connector-handed-on-smartrecruiters-...).
@@ -56,14 +62,16 @@ describe("the systems the connector withholds are named where it is sold and whe
   it("the page's list is the connector's and the data API's own", () => {
     expect([...MCP_WITHHELD_SOURCES]).toEqual(listIn(read("supabase/functions/agent-mcp/index.ts")));
     expect([...MCP_WITHHELD_SOURCES]).toEqual(listIn(read("supabase/functions/public-api/index.ts")));
-    expect(MCP_WITHHELD_SOURCES).toContain("smartrecruiters");
+    expect([...MCP_WITHHELD_SOURCES]).toEqual(["smartrecruiters"]);
   });
 
-  it("/agents says it, naming SmartRecruiters and the federal feed", () => {
+  it("/agents says it, naming SmartRecruiters as withheld and how federal announcements are handed on", () => {
     render(<HelmetProvider><MemoryRouter initialEntries={["/agents"]}><AgentConnect /></MemoryRouter></HelmetProvider>);
     const note = screen.getByText(MCP_WITHHELD_NOTE);
-    expect(note.textContent).toMatch(/SmartRecruiters/);
-    expect(note.textContent).toMatch(/federal/);
+    expect(note.textContent).toMatch(/SmartRecruiters, withheld until SmartRecruiters \(SAP\) permits it/);
+    expect(note.textContent).toMatch(/federal announcements are handed on once the agency's statement of who may apply is stored/);
+    // The note no longer says the federal feed is withheld.
+    expect(note.textContent).not.toMatch(/federal job feed, which we choose not to redistribute/);
   });
 
   it("the crawler copy of /agents and /data-api carries the same sentence", () => {

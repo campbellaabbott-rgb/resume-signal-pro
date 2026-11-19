@@ -8,7 +8,8 @@
  * "posted yesterday" in every mail sent after noon UTC, the 14:23 run
  * included. And it printed an age for Breezy, Paylocity and UKG postings,
  * whose feed date moves whenever the employer edits them, where the board's
- * cards print none.
+ * cards print none. USAJOBS joined both lists on 2026-11-19 (OD16): it
+ * re-dates an open-continuous announcement each time it is reposted.
  *
  * WHAT HOLDS NOW: send-search-digest/posted.ts counts whole UTC calendar days
  * and prints no age for the re-dating systems; its list of those systems is
@@ -40,6 +41,10 @@ describe("posted.ts", () => {
     expect(postedDaysAgo({ id: "x:1", source: "Paylocity", postedAt: "2026-11-01" }, AT_RUN)).toBeNull();
     expect(postedDaysAgo({ id: "ukg:acme~client:R1", postedAt: "2026-11-01" }, AT_RUN)).toBeNull();
     expect(postedDaysAgo({ id: "breezy:veev:abc", source: null, postedAt: "2026-11-01" }, AT_RUN)).toBeNull();
+    // USAJOBS re-dates an open-continuous announcement each time it is
+    // reposted (OD16, 2026-11-19), so the digest prints it no age either.
+    expect(postedDaysAgo({ id: "usajobs:usajobs:881700000", source: "usajobs", postedAt: "2026-11-08" }, AT_RUN)).toBeNull();
+    expect(postedDaysAgo({ id: "usajobs:usajobs:881700000", source: null, postedAt: "2026-11-01" }, AT_RUN)).toBeNull();
   });
 
   it("prints no age for a stamp that is not a date", () => {
