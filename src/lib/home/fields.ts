@@ -6,6 +6,13 @@
  * BoardCategorySlug (src/lib/job-board-categories.ts, the list the field
  * landers and the bake share), so a typo fails the typecheck, and the label is
  * the board's own translated category name (jobsPage.categories.<slug>).
+ *
+ * THE LARGEST FIELDS (CONTENT-N5, SEO audit 2026-11-18b). The six skipped
+ * the largest field on the board: Operations & Logistics, 166,215 open roles
+ * on the bake's 2026-11-19 field count, while Education, ninth at 13,492, had
+ * a link. Education gives its place to Operations. The bake prints the same
+ * list on its "/" (scripts/prerender-seo.mjs reads HOME_FIELD_SLUGS), and
+ * each label is copied into the home shard (home.rail.fields.<slug>).
  */
 import { BOARD_CATEGORY_SLUGS, type BoardCategorySlug } from "@/lib/job-board-categories";
 
@@ -14,7 +21,7 @@ export const HOME_FIELD_SLUGS = [
   "engineering",
   "sales",
   "finance",
-  "education",
+  "operations",
   "hospitality_retail",
 ] as const satisfies readonly BoardCategorySlug[];
 

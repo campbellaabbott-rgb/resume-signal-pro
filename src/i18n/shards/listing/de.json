@@ -98,12 +98,16 @@
     },
     "page": {
       "breadcrumb": "Brotkrümelnavigation",
-      "jobs": "Jobs"
+      "jobs": "Jobs",
+      "moreFieldJobs": "Weitere Stellen in {{field}}"
     },
     "more": {
       "heading": "Weitere Stellen bei {{employer}}",
       "seeAll": "Alle offenen Stellen bei {{employer}} ansehen",
       "loading": "Weitere Stellen werden geladen …"
+    },
+    "bakedPostings": {
+      "title": "Stellen mit eigener Seite"
     }
   }
 }

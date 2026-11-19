@@ -98,12 +98,16 @@
     },
     "page": {
       "breadcrumb": "Breadcrumb",
-      "jobs": "Jobs"
+      "jobs": "Jobs",
+      "moreFieldJobs": "More {{field}} jobs"
     },
     "more": {
       "heading": "More roles at {{employer}}",
       "seeAll": "See every open role at {{employer}}",
       "loading": "Loading more roles…"
+    },
+    "bakedPostings": {
+      "title": "Openings with a page of their own"
     }
   }
 }
