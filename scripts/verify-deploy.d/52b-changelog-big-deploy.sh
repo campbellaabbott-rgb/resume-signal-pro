@@ -117,10 +117,15 @@ elif [ "$VD52B_PUB" = 1 ]; then
   elif [ "$VD52B_DATE" \< "2026-10-31" ]; then echo "FAIL  /changelog dates this deploy's entries $VD52B_DATE, before land/all's last change (2026-10-31): nothing they describe was live then"
   elif [ "$VD52B_DATE" \> "$VD52B_REC" ]; then echo "FAIL  /changelog dates this deploy's entries $VD52B_DATE, after the deploy was recorded ($VD52B_REC): an entry is dated by the day its change went live, which comes before the record"
   else echo "PASS  /changelog dates this deploy's entries $VD52B_DATE (the deploy was recorded $VD52B_REC)"; fi
-  VD52B_LATEST=$(printf '%s' "$VD52B_CL" | grep -oE 'Latest \([0-9]{4}-[0-9]{2}-[0-9]{2}\): [^"]*"' | head -1 | sed -E 's/^Latest \([^)]*\): //; s/\."$//')
+  VD52B_LATEST=$(printf '%s' "$VD52B_CL" | grep -oE 'Latest \([0-9]{4}-[0-9]{2}-[0-9]{2}\): [^"]*"' | head -1 | sed -E 's/^Latest \([^)]*\): //; s/\."$//; s/"$//')
   VD52B_FIRST=$(printf '%s' "$VD52B_CL" | grep -oE '</p><h2[^>]*>[^<]*<' | head -1 | sed -E 's/^<\/p><h2[^>]*>//; s/<$//')
+  # The bake clamps every description to 160 characters at a word boundary and
+  # ends a clamped one with an ellipsis, so a long newest title is named by its
+  # opening words: that prefix of the first title the page lists is the match.
+  VD52B_CLAMP=${VD52B_LATEST%…}
   if [ -z "$VD52B_LATEST" ]; then echo "FAIL  /changelog's description names no newest entry (the bake fell back to its no-entries sentence, or its markup moved)"
   elif [ "$VD52B_LATEST" = "$VD52B_FIRST" ]; then echo "PASS  /changelog's description names the newest entry, \"$VD52B_LATEST\""
+  elif [ "$VD52B_CLAMP" != "$VD52B_LATEST" ] && [ -n "$VD52B_CLAMP" ] && [ "${VD52B_FIRST#"$VD52B_CLAMP"}" != "$VD52B_FIRST" ]; then echo "PASS  /changelog's description names the newest entry by its opening words, \"$VD52B_LATEST\" (the description is clamped at 160 characters; the page lists \"$VD52B_FIRST\")"
   else echo "FAIL  /changelog's description names \"$VD52B_LATEST\" as the newest entry, but the first entry the page lists is \"$VD52B_FIRST\" (the bake did not rebuild both)"; fi
 else
   echo "INFO  the entries' date and the page description are judged after the publish"

@@ -8,9 +8,10 @@
  * injected fetch and cache:
  *
  *   - the answer options the employer wrote come through (Greenhouse
- *     `fields[].values`, Ashby `selectableValues` and booleans, Recruitee
- *     options, Breezy options, Pinpoint yes/no labels), and Greenhouse's
- *     compliance blocks are named in alsoOnForm;
+ *     `fields[].values`, Recruitee options, Breezy options, Pinpoint yes/no
+ *     labels), and Greenhouse's compliance blocks are named in alsoOnForm;
+ *     an Ashby form is never read (the owner stopped it, 2026-11-18: the
+ *     shared stop is held by the-shared-form-reader-sends-nothing-to-ashby);
  *   - it fails closed: a payload that does not parse is "absent", a vendor
  *     that is down is "unreachable" and is NOT cached, a host the posting does
  *     not name is never fetched;
@@ -110,18 +111,6 @@ describe("each reader returns the form as the employer wrote it", () => {
     expect(r.form.questions[3].hint).toBe("A few sentences.");
     expect(r.form.documents).toEqual([{ name: "Resume/CV", required: true }]);
     expect(r.form.alsoOnForm).toEqual(["Voluntary self-identification (EEO) questions", "Data-protection consent (GDPR)"]);
-  });
-
-  it("Ashby: the public GraphQL with the tenant and posting, a boolean as Yes/No, selectable values as options", async () => {
-    const payload = { data: { jobPosting: { applicationForm: { sections: [{ fieldEntries: [
-      { isRequired: true, field: { title: "Do you require visa sponsorship?", type: "Boolean" } },
-      { isRequired: false, field: { title: "Preferred office", type: "ValueSelect", selectableValues: [{ label: "London" }, { label: "Remote" }] } },
-    ] }] } } } };
-    const { f, calls } = fetchFrom(() => json(payload));
-    const r = await readApplicationForm(ref("ashby:acme:uuid-9"), { fetch: f, now: () => NOW });
-    expect(JSON.parse(calls[0].body!).variables).toEqual({ organizationHostedJobsPageName: "acme", jobPostingId: "uuid-9" });
-    if (r.kind !== "read") throw new Error(r.kind);
-    expect(r.form.questions.map((q) => q.options)).toEqual([["Yes", "No"], ["London", "Remote"]]);
   });
 
   it("Recruitee: open questions with their options and the document slots; a tenant that is not a plain subdomain is never fetched", async () => {

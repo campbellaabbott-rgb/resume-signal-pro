@@ -9,8 +9,8 @@
  *     measurement's own note, and a sample under 10 pages is too thin;
  *   - "can submit" only on a vendor the agent sends on; "prepares" on the rest
  *     of the measured systems; nothing on USAJOBS or an unmeasured ATS;
- *   - screening questions only where the reader exists, the same set as
- *     REAL_QUESTION_PREFIXES;
+ *   - screening questions only where the reader exists and the owner has not
+ *     stopped it (Ashby, OD14-ASHBY), the same set as REAL_QUESTION_PREFIXES;
  *   - the re-check only when the caller's Apply handler re-checks;
  *   - never a claim about accounts: we hold no data on it.
  */

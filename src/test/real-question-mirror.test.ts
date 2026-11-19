@@ -23,6 +23,15 @@
  * kit for that vendor and yields nothing.
  *
  * Neither shows up as an error. That is exactly why it needs a test.
+ *
+ * A READER THE OWNER STOPPED IS NOT MIRRORED (OD14-ASHBY, 2026-11-18). The
+ * table still flags Ashby, because job-board keeps its Ashby branch until the
+ * board's own build removes it, but that branch POSTs to a path Ashby's
+ * robots file disallows. The kit's list is therefore the table LESS the
+ * stopped vendors, read from MCP_FORM_NOT_READ_HERE (the connector's list,
+ * one list for every surface), and it is still held equal in both directions:
+ * a reader the table adds, or one the stop list lifts, fails here until the
+ * kit lists it, and a vendor the table drops fails here until the kit drops it.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -30,11 +39,20 @@ import { resolve } from "node:path";
 import { realQuestionVendors } from "../../supabase/functions/_shared/apply-automation.ts";
 import { REAL_QUESTION_PREFIXES, stripLabelMarkup } from "../components/apply/ApplicationAnswers";
 import { cleanQuestionLabel } from "../../supabase/functions/_shared/application-questions.ts";
+import { MCP_FORM_NOT_READ_HERE } from "../config/mcp-tools";
 
-describe("the kit's vendor list mirrors the deployed automation table", () => {
-  it("lists exactly the vendors with a question reader", () => {
-    const fromTable = realQuestionVendors().map((v) => `${v}:`).sort();
+describe("the kit's vendor list mirrors the deployed automation table, less the stopped vendors", () => {
+  it("lists exactly the vendors with a question reader the owner has not stopped", () => {
+    const fromTable = realQuestionVendors().filter((v) => !MCP_FORM_NOT_READ_HERE.includes(v)).map((v) => `${v}:`).sort();
+    expect(fromTable.length, "no reader read from the table: the comparison would pass on an empty list").toBeGreaterThan(2);
     expect([...REAL_QUESTION_PREFIXES].sort()).toEqual(fromTable);
+  });
+
+  it("names no stopped vendor, whatever the table still flags", () => {
+    expect(MCP_FORM_NOT_READ_HERE.length, "the stop list is empty: this case would check nothing").toBeGreaterThan(0);
+    for (const v of MCP_FORM_NOT_READ_HERE) {
+      expect(REAL_QUESTION_PREFIXES.filter((p) => p === `${v}:`), `${v} is stopped, so the kit never asks for its questions`).toEqual([]);
+    }
   });
 
   it("every prefix is a vendor prefix, not a bare name", () => {

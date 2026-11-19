@@ -5918,7 +5918,7 @@
     "draftButton": "De vragen van deze sollicitatie opstellen",
     "draftAgain": "Opnieuw opstellen",
     "failed": "We konden nu geen antwoorden opstellen.",
-    "inferredIntro": "Waarschijnlijke vragen voor deze functie (dit ATS publiceert zijn formulier niet), gebaseerd op je cv. Controleer ze voordat je ze plakt.",
+    "inferredIntro": "Waarschijnlijke vragen voor deze functie (het formulier van deze werkgever hebben we niet gelezen), gebaseerd op je cv. Controleer ze voordat je ze plakt.",
     "limit": "Je hebt dit tegoed voorlopig opgebruikt. Probeer het later opnieuw.",
     "limitHours": "Je hebt de opstellimiet voorlopig bereikt. Probeer het over ongeveer {{hours}} uur opnieuw.",
     "limitMinutes": "Je hebt de opstellimiet voorlopig bereikt. Probeer het over ongeveer {{minutes}} minuten opnieuw.",

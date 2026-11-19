@@ -1,14 +1,16 @@
 // The apply agent's screening-answer step, shared by the account co-pilot and the
 // live board. Drafts grounded answers to an application's questions — the REAL ones
-// when the ATS exposes them (Greenhouse, Ashby, Recruitee), else the likely questions
-// inferred from the JD (clearly labeled). Every answer is grounded strictly in the
-// resume; unsupported ones are flagged for the candidate, never fabricated. The human
-// reviews, edits, and pastes into the company's own form — we never auto-submit.
+// where job-board reads the vendor's form (REAL_QUESTION_PREFIXES, less any vendor
+// the owner stopped), else the likely questions inferred from the JD (clearly
+// labeled). Every answer is grounded strictly in the resume; unsupported ones are
+// flagged for the candidate, never fabricated. The human reviews, edits, and
+// pastes into the company's own form — we never auto-submit.
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Copy, AlertTriangle, MessageSquare, ShieldCheck, ClipboardList, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
+import { MCP_FORM_NOT_READ_HERE } from "@/config/mcp-tools";
 import { heldBoardPass } from "@/lib/board-pass";
 import { dateTime } from "@/lib/format";
 import { toast } from "sonner";
@@ -38,9 +40,30 @@ export interface DraftedAnswer { question: string; answer: string; supported: bo
 // teamtailor: left 2026-10-05 with the table's flag (L9-15): job-board's
 // application-questions has no Teamtailor branch, so the fetch always
 // answered unsupported and cost a round trip per kit.
-export const REAL_QUESTION_PREFIXES = [
-  "ashby:", "breezy:", "greenhouse:", "pinpoint:", "recruitee:",
+// Ashby left 2026-11-18 with the owner's stop (OD14-ASHBY): job-board reads an
+// Ashby form only by POSTing to a path Ashby's robots file disallows. The
+// table still flags it, so the mirror test holds this list to the table LESS
+// the stopped vendors (MCP_FORM_NOT_READ_HERE).
+export const REAL_QUESTION_PREFIXES: readonly string[] = [
+  "breezy:", "greenhouse:", "pinpoint:", "recruitee:",
 ];
+
+/**
+ * WHETHER THE KIT ASKS job-board FOR THIS POSTING'S REAL QUESTIONS: its id
+ * opens with a reader's prefix, and its vendor is not one the owner stopped.
+ *
+ * The stop is read from MCP_FORM_NOT_READ_HERE, the list the connector's
+ * mirror already holds equal to agent-mcp's, so the site, the connector and
+ * /agents stop the same vendors from one list. A stopped vendor's posting
+ * gets what every unread vendor's gets: no request for its form, and, where
+ * a kit is drafted, questions inferred from the posting and labelled so.
+ */
+export function asksForRealQuestions(jobId: string | null | undefined): boolean {
+  if (!jobId) return false;
+  const vendor = jobId.slice(0, Math.max(0, jobId.indexOf(":")));
+  if (!vendor || MCP_FORM_NOT_READ_HERE.includes(vendor)) return false;
+  return REAL_QUESTION_PREFIXES.some((p) => jobId.startsWith(p));
+}
 
 /**
  * Mirror of `cleanQuestionLabel` in
@@ -207,8 +230,8 @@ export function ApplicationAnswers({
   jobTitle: string;
   jobCompany: string;
   jobDescription?: string | null;
-  /** Board posting id (e.g. "greenhouse:stripe:123"). Greenhouse/Ashby/Recruitee
-   *  ids unlock the posting's REAL questions; anything else falls back to
+  /** Board posting id (e.g. "greenhouse:stripe:123"). An id asksForRealQuestions
+   *  accepts unlocks the posting's REAL questions; anything else falls back to
    *  JD-inference. */
   jobId?: string | null;
   /** Board category slug — steers role-aware drafting emphasis server-side. */
@@ -249,13 +272,13 @@ export function ApplicationAnswers({
   const requestDraft = async (askedWith: { resumeText: string; language: string; jobDescription: string }): Promise<KeptDraft | null> => {
     let formRequirements: string[] = requirements;
     try {
-      // For Greenhouse/Ashby/Recruitee postings we can fetch the posting's REAL
+      // Where job-board reads the vendor's form we fetch the posting's REAL
       // application form (question labels, required flags, document demands)
-      // and draft to those exact questions. Other vendors don't publish their
-      // forms, so we pass no questions and the function infers likely ones
-      // from the JD.
+      // and draft to those exact questions. Everywhere else, a stopped vendor
+      // included, we pass no questions and the function infers likely ones
+      // from the JD: job-board is asked nothing, so the vendor is sent nothing.
       let questions: Array<{ label: string; required?: boolean; type?: string }> | undefined;
-      if (jobId && REAL_QUESTION_PREFIXES.some((p) => jobId.startsWith(p))) {
+      if (jobId && asksForRealQuestions(jobId)) {
         try {
           const { data: q } = await invokeJobBoard({
             body: { action: "application-questions", id: jobId },
@@ -458,7 +481,7 @@ export function ApplicationAnswers({
           <div className="flex items-start justify-between gap-2">
             <p className="text-[11px] text-muted-foreground">
               {inferred
-                ? t("applyAnswers.inferredIntro", "Likely questions for this role (this ATS doesn't publish its form) — grounded in your résumé. Review before you paste.")
+                ? t("applyAnswers.inferredIntro", "Likely questions for this role (we did not read this employer's form) — grounded in your résumé. Review before you paste.")
                 : t("applyAnswers.realIntro", "This application's real questions, drafted from your résumé. Review before you paste.")}
             </p>
             <div className="shrink-0 flex flex-col items-end gap-1">
