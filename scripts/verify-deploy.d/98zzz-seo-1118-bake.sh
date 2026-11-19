@@ -14,6 +14,14 @@
 #   R4 (CRAWL-M2) no path on scripts/seo-seed/closed-at-employer.txt dated in
 #      the last 14 days is in the sitemap, and each such path the site serves
 #      is noindex with no JobPosting. INFO when the list names none.
+#   R4b (STRUCTURED-B1, 2026-11-19) every page the newest completed
+#      posting-closure run names closed at its employer (gh run list, then
+#      gh run view --log) is out of the sitemap, and the site serves it
+#      noindex with no JobPosting, or not at all. R4 judges only the committed
+#      list, so a list nobody filled passed it while that run named 7 live
+#      pages; R4b reads the run itself. INFO only when the run measured a day
+#      and named no page; a run gh cannot read, or one that printed no
+#      measured day, FAILs.
 #   R5 (STRUCTURED-3, -5, -7, CONTENT-9) every JobPosting a sitemap posting
 #      page serves: its title carries no store code in brackets, no pay
 #      figure and no open application or talent pool; its addressLocality is
@@ -57,12 +65,14 @@
 #
 # Read-only: GETs of the site's sitemap, /posting-pages.json,
 # /prerender-ledger.json, the sitemap's posting pages and the pages named
-# above, and reads of the committed list and field-roles file in this
-# checkout. Nothing is sent or written.
-echo "== 98zzz. the SEO audit of 2026-11-18, the bake: the live posting pages manifest, carried end dates, the closed-at-employer list, job titles, places, one job one page, lastmod against datePosted; role canonicals, /explore roles, GCC CV pages, /vs grammar and the changelog snippet, the re-check cadence, llms vendors and figures, preconnects =="
+# above, reads of the committed list and field-roles file in this checkout,
+# and two GitHub reads for R4b (gh run list and gh run view --log of the
+# posting-closure workflow). Nothing is sent or written.
+echo "== 98zzz. the SEO audit of 2026-11-18, the bake: the live posting pages manifest, carried end dates, the closed-at-employer list and the newest closure run, job titles, places, one job one page, lastmod against datePosted; role canonicals, /explore roles, GCC CV pages, /vs grammar and the changelog snippet, the re-check cadence, llms vendors and figures, preconnects =="
 
 SITE="$SITE" UA="$UA" VD98ZZZ_LIST="${VD98ZZZ_LIST:-scripts/seo-seed/closed-at-employer.txt}" VD98ZZZ_FIELD_ROLES="${VD98ZZZ_FIELD_ROLES:-src/data/field-roles.ts}" node --input-type=module -e '
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 const { SITE, UA, VD98ZZZ_LIST, VD98ZZZ_FIELD_ROLES } = process.env;
 const out = (s, m) => console.log(`${s.padEnd(5)} ${m}`);
 const get = async (path, ms = 30000) => {
@@ -160,6 +170,46 @@ const marked = pages.flatMap((p) => p.blocks.map((b) => ({ path: p.path, b })));
       }
       out(bad.length ? "FAIL" : "PASS", `R4 ${listed.length} page(s) the daily check found closed at the employer: ${bad.length ? bad.slice(0, 3).join("; ") : "none in the sitemap, none served with a JobPosting or without noindex"}`);
     }
+  }
+}
+
+// R4b: the pages the newest posting-closure run found closed (STRUCTURED-B1).
+// R4 reads the committed list, so an empty list passed it while run
+// 44431382185 named 7 live pages closed. This reads the run itself, through
+// the two gh reads the header names and nothing else.
+{
+  const gh = (args) => {
+    try { return execFileSync("gh", args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 60000, maxBuffer: 64 * 1024 * 1024 }); } catch { return null; }
+  };
+  let runs = null;
+  try { runs = JSON.parse(gh(["run", "list", "--workflow", "posting-closure.yml", "--limit", "5", "--json", "databaseId,createdAt,status,conclusion"]) ?? ""); } catch { runs = null; }
+  const run = Array.isArray(runs) ? runs.find((r) => r && r.status === "completed" && r.databaseId) ?? null : null;
+  const log = run ? gh(["run", "view", String(run.databaseId), "--log"]) : null;
+  const name = run ? `run ${run.databaseId} (${String(run.createdAt ?? "").slice(0, 16).replace("T", " ")}Z, ${run.conclusion || "no conclusion"})` : "";
+  if (!Array.isArray(runs)) out("FAIL", "R4b gh run list answered nothing (gh is not installed, not signed in, or GitHub did not answer), so the pages the daily check found closed are not judged");
+  else if (!run) out("FAIL", `R4b gh lists no completed posting-closure run (${runs.length} listed), so the pages the daily check found closed are not judged`);
+  else if (!log) out("FAIL", `R4b gh run view ${run.databaseId} --log answered nothing, so the pages the daily check found closed are not judged`);
+  else {
+    const day = (/posting closure: (\d{4}-\d{2}-\d{2}) checked \d+:/.exec(log) ?? [])[1] ?? null;
+    const closed = [...new Set([...log.matchAll(/posting closure:\s+closed at the employer: (\/jobs\/posting\/\S+)/g)].map((m) => m[1].replace(/\/+$/, "")))];
+    if (!day) out("FAIL", `R4b the newest posting-closure ${name} printed no measured day, so it judged no page`);
+    else if (!closed.length) out("INFO", `R4b the newest posting-closure ${name} measured ${day} and named no page closed at its employer (nothing to judge)`);
+    else {
+      const bad = [];
+      for (const p of closed) {
+        const why = [];
+        if (paths.includes(p)) why.push("is in the sitemap");
+        const r = await get(p);
+        if (r.status === 200) {
+          const robots = (/<meta name="robots" content="([^"]+)"/.exec(r.body) ?? [])[1] ?? "";
+          if (!/noindex/.test(robots)) why.push("serves no noindex");
+          if (jobBlocks(r.body).length) why.push("serves a JobPosting");
+        } else if (r.status !== 404 && r.status !== 410) why.push(`answered HTTP ${r.status}`);
+        if (why.length) bad.push(`${p} ${why.join(", ")}`);
+      }
+      out(bad.length ? "FAIL" : "PASS", `R4b the newest posting-closure ${name} measured ${day} and named ${closed.length} page(s) closed at the employer: ${bad.length ? `${bad.length} still served as open; ${bad.slice(0, 3).join("; ")}` : "none in the sitemap, none served with a JobPosting or without noindex"}`);
+    }
+    if (day && daysBetween(day, TODAY) > 2) out("INFO", `R4b the newest run measured ${day}, ${daysBetween(day, TODAY)} days before today: the daily check may have stopped running`);
   }
 }
 
