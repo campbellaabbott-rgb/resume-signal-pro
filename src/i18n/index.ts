@@ -142,7 +142,11 @@ export async function loadChangelogStrings(lng?: string): Promise<void> {
   if (i18n.language === target) i18n.emit('languageChanged', target);
 }
 
-async function loadLocale(lng: string): Promise<void> {
+// Exported for the header and footer of a translated page (SEO audit
+// 2026-11-18, CONTENT-N4, src/lib/locale-from-path.ts): they speak the page's
+// language, which may not be the reader's, so they load its strings the one
+// way every language loads, main bundle and shards together.
+export async function loadLocale(lng: string): Promise<void> {
   if (lng === 'en' || i18n.hasResourceBundle(lng, 'translation')) return;
 
   const loader = lazyLocaleLoaders[lng];
