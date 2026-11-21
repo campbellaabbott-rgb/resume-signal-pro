@@ -1,73 +1,78 @@
 #!/usr/bin/env node
-// Census round-3 mass verification: probe every candidate against the vendor's
-// OFFICIAL public API, drop tokens already in sources.ts (case-insensitive),
-// and keep only live boards with ≥3 postings. SmartRecruiters candidates must
-// additionally pass the corporate role-mix rule (proFrac≥0.50, retailFrac≤0.20)
-// — the rung-1 decision that keeps staffing/retail-mill inventory off the board.
-// Captures display name + posting count for HOT selection and the ≥100-posting
-// staffing-mill screen at merge time.
+// Census mass verification: probe every candidate against the vendor's
+// OFFICIAL public API, drop the boards the catalogue already carries
+// (vendor:token, case-insensitive, read through scripts/catalogue-reader.mjs),
+// and keep only live boards with >=3 postings. Every hit carries its
+// in-window count (postings dated within 30 days, by the date field ingest
+// itself reads) and the date basis it was counted on, so the merge gate can
+// judge what a board serves today; a sample of up to 100 titles rides along
+// for the repeated-title flag. Display name + posting count feed HOT
+// selection and the >=100-posting mill screen at merge time.
 //
-// Usage: node scripts/verify-all.mjs <census.json> <verified-out.json>
+// The SmartRecruiters role-mix rule (professional share >= 0.5, retail share
+// <= 0.2) is retired (OD8, 2026-11-08): it was English-only and failed boards
+// on their language. What stands is what every vendor meets: the census name
+// rule, and at merge time the junk, mill and demo screens.
+//
+// SmartRecruiters is NOT probed unless --allow-sr is given (OD2, 2026-11-08):
+// a new company's /v1/companies/ list is disallowed by its robots.txt for
+// every agent but LinkedInBot, and OD2 allows reading only the boards we carry.
+//
+// Usage: node scripts/verify-all.mjs <census.json> <verified-out.json> [--allow-sr]
 
 import fs from "node:fs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { oracleHost } from "./oracle-host.mjs";
 import { LABEL_NAMED_VENDORS, adpWelcomeName, ashbyOrganizationName, censusNameReason, pickAshbyName, sameSiteRedirect, ukgName } from "./census-names.mjs";
+import { REPO_SOURCES, boardKey, keySet, readCatalogue } from "./catalogue-reader.mjs";
 const execFileP = promisify(execFile);
 
-const [, , CENSUS_PATH, OUT] = process.argv;
-// Resume sidecars: every probed token is appended to .progress, every hit to
-// .hits (JSONL) — a killed run resumes where it stopped instead of re-probing.
-const PROGRESS_PATH = `${OUT}.progress`;
-const HITS_PATH = `${OUT}.hits`;
-const probed = new Set(fs.existsSync(PROGRESS_PATH) ? fs.readFileSync(PROGRESS_PATH, "utf8").split("\n").filter(Boolean) : []);
-const priorHits = fs.existsSync(HITS_PATH) ? fs.readFileSync(HITS_PATH, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
-if (probed.size) console.log(`resuming: ${probed.size} already probed, ${priorHits.length} prior hits`);
-const census = JSON.parse(fs.readFileSync(CENSUS_PATH, "utf8"));
-// EU tenants arrive from the census under their own keys carrying BARE tenant
-// slugs, because discovery reads hostnames and the hostname is the only place
-// the region shows. The catalog has no EU vendor — an EU board is the same
-// vendor routed to its EU hosts via the compound-token prefix — so the keys
-// fold into their vendor's candidate list here, prefixed. Folding BEFORE the
-// catalog dedupe is the point: the catalog stores EU boards under the
-// prefixed token, and an unprefixed candidate would never match its own entry
-// and be probed (and merged) twice.
-for (const [euKey, vendor] of [["greenhouse-eu", "greenhouse"], ["lever-eu", "lever"]]) {
-  const bare = census[euKey] ?? [];
-  if (!bare.length) continue;
-  const have = new Set(census[vendor] ?? []);
-  census[vendor] = [...(census[vendor] ?? [])];
-  for (const t of bare) {
-    const tok = t.startsWith("eu~") ? t : `eu~${t}`;
-    if (!have.has(tok)) { census[vendor].push(tok); have.add(tok); }
-  }
-  console.log(`${euKey}: folded ${bare.length} candidates into ${vendor} under the routing prefix`);
-}
+// Set by main(): the census file (personio hosts ride it) and the resume sidecars.
+let census = {};
+let PROGRESS_PATH = "";
+let HITS_PATH = "";
 const MIN_POSTINGS = 3;
 const UA = { "User-Agent": "resumebooster.work job board (contact: support@resumebooster.work)" };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// ── existing catalog: never re-verify what we already serve ────────────────
-const srcText = fs.readFileSync(new URL("../supabase/functions/job-board/sources.ts", import.meta.url), "utf8");
-// BOTH parses below deliberately stop at the token and never touch the
-// closing brace. Catalog entries grew optional suffixes twice on 2026-08-31
-// (the per-board window override, then the agency disclosure flag), and every
-// parser that anchored past the token went blind to the suffixed entries —
-// the catalog-invariants regex lost PetSmart that way. A dedupe that
-// unmatches on a suffix re-probes (and re-merges) boards the catalog already
-// carries, which is the ~2.7k-wasted-probes failure with a duplicate-entry
-// chaser. Keep them prefix-anchored.
-const existing = new Set();
-for (const m of srcText.matchAll(/s\("(?:[^"\\]|\\.)*",\s*"([a-z]+)",\s*"([^"]+)"/g)) {
-  existing.add(`${m[1]}:${m[2].toLowerCase()}`);
+// ── what a hit says about today: the in-window count and a title sample ────
+const DAY_MS = 86_400_000;
+/** A date the vendor states: an ISO string, a YYYY-MM-DD, or epoch milliseconds (lever). */
+const instantOf = (v) => (typeof v === "number" ? v : Date.parse(String(v ?? "")));
+/**
+ * The postings a list dates inside the last 30 days, by the field ingest
+ * reads for that vendor (normalize.ts), and the basis it was counted on. A
+ * list that is one page of a larger board says so: its count is a floor.
+ */
+export function windowOf(items, dateOf, basis, { now = Date.now(), page = false } = {}) {
+  const cut = now - 30 * DAY_MS;
+  let n = 0;
+  for (const it of Array.isArray(items) ? items : []) {
+    const t = instantOf(dateOf(it));
+    if (Number.isFinite(t) && t >= cut) n++;
+  }
+  return { inWindow30: n, dateBasis: page ? `${basis}, first page only` : basis };
 }
-// Object-literal entries (rung 3 + census merges) — missing this format cost
-// ~2.7k wasted probes in round 3.
-for (const m of srcText.matchAll(/source:\s*"(\w+)",\s*token:\s*"([^"]+)"/g)) {
-  existing.add(`${m[1]}:${m[2].toLowerCase()}`);
+/** A vendor whose list states no date: the merge gate falls back to the posting count. */
+export const UNDATED = Object.freeze({ inWindow30: null, dateBasis: "none" });
+/** Up to 100 { t: title, c: city, l: the language the vendor states } for the repeated-title flag; never a guess. */
+export function sampleOf(items, titleOf, cityOf = () => "", langOf = () => "") {
+  const out = [];
+  for (const it of (Array.isArray(items) ? items : []).slice(0, 100)) {
+    const t = String(titleOf(it) ?? "").trim();
+    if (!t) continue;
+    const row = { t: t.slice(0, 120) };
+    const c = String(cityOf(it) ?? "").trim();
+    if (c) row.c = c.slice(0, 60);
+    const l = String(langOf(it) ?? "").trim();
+    if (l) row.l = l.slice(0, 12);
+    out.push(row);
+  }
+  return out;
 }
-console.log(`catalog holds ${existing.size} boards — deduping candidates against it`);
 
 const prettify = (t) => t.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()).trim().slice(0, 60);
 
@@ -118,18 +123,6 @@ async function probe(url, asText = false, tries = 3) {
     } catch { await sleep(1500); }
   }
   return null;
-}
-
-// SmartRecruiters corporate role-mix rule (rung-1 decision, re-derived):
-// classify posting titles; a board qualifies only when professional roles
-// dominate and retail/hourly roles are a small minority.
-const PRO = /\b(engineer|developer|manager|director|analyst|designer|architect|scientist|consultant|accountant|counsel|attorney|marketing|product|program|finance|hr\b|recruiter|specialist|coordinator|administrator|executive|officer|lead|principal|strateg|research|data|software|devops|security|nurse practitioner|physician|therapist|pharmacist)\b/i;
-const RETAIL = /\b(cashier|crew|stocker|barista|server|bartender|dishwasher|housekeep|janitor|custodian|retail associate|sales associate|store associate|team member|warehouse operative|picker|packer|delivery driver|courier|line cook|prep cook|host(?:ess)?|cleaner|laborer|groundskeeper)\b/i;
-function roleMixOk(titles) {
-  if (titles.length === 0) return false;
-  const pro = titles.filter((t) => PRO.test(t)).length / titles.length;
-  const retail = titles.filter((t) => RETAIL.test(t)).length / titles.length;
-  return pro >= 0.5 && retail <= 0.2;
 }
 
 // Paylocity self-names are page headings the employer typed into a text box,
@@ -210,7 +203,11 @@ const verifiers = {
     const jobs = d?.jobs;
     if (!Array.isArray(jobs) || jobs.length < MIN_POSTINGS) return null;
     const meta = await probe(`https://${host}/v1/boards/${tok}`);
-    return { name: (meta?.name || prettify(tok)).slice(0, 60), count: jobs.length };
+    return {
+      name: (meta?.name || prettify(tok)).slice(0, 60), count: jobs.length,
+      ...windowOf(jobs, (j) => j?.first_published, "first_published"),
+      sample: sampleOf(jobs, (j) => j?.title, (j) => j?.location?.name),
+    };
   },
   // The posting API carries no organization name; the hosted jobs page embeds
   // the organization record, whose name field is the vendor's own. When that
@@ -225,29 +222,40 @@ const verifiers = {
     if (!Array.isArray(jobs) || jobs.length < MIN_POSTINGS) return null;
     const page = await politeText(`https://jobs.ashbyhq.com/${encodeURIComponent(t)}`);
     const pick = pickAshbyName(ashbyOrganizationName(page), t);
-    return { name: pick.name, count: jobs.length, nameFrom: pick.from };
+    return {
+      name: pick.name, count: jobs.length, nameFrom: pick.from,
+      ...windowOf(jobs, (j) => j?.publishedAt, "publishedAt"),
+      sample: sampleOf(jobs, (j) => j?.title, (j) => j?.location),
+    };
   },
   smartrecruiters: async (t) => {
     const d = await probe(`https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(t)}/postings?limit=100`);
     const content = d?.content;
     const total = Number(d?.totalFound) || (Array.isArray(content) ? content.length : 0);
     if (!Array.isArray(content) || total < MIN_POSTINGS) return null;
-    const titles = content.map((p) => String(p?.name ?? "")).filter(Boolean);
-    if (!roleMixOk(titles)) return null; // corporate-only rule
-    return { name: (content[0]?.company?.name || prettify(t)).slice(0, 60), count: total };
+    return {
+      name: (content[0]?.company?.name || prettify(t)).slice(0, 60), count: total,
+      ...windowOf(content, (p) => p?.releasedDate, "releasedDate", { page: total > content.length }),
+      sample: sampleOf(content, (p) => p?.name, (p) => p?.location?.city, (p) => p?.language?.code),
+    };
   },
   workable: async (t) => {
     const d = await probe(`https://apply.workable.com/api/v1/widget/accounts/${t}?details=false`);
     const jobs = d?.jobs;
     const total = Number(d?.total) || (Array.isArray(jobs) ? jobs.length : 0);
     if (!Array.isArray(jobs) || total < MIN_POSTINGS) return null;
-    return { name: (d?.name || prettify(t)).slice(0, 60), count: total };
+    return {
+      name: (d?.name || prettify(t)).slice(0, 60), count: total,
+      ...windowOf(jobs, (j) => j?.published_on ?? j?.created_at, "published_on or created_at", { page: total > jobs.length }),
+      sample: sampleOf(jobs, (j) => j?.title, (j) => j?.city),
+    };
   },
   bamboohr: async (t) => {
     const d = await probe(`https://${t}.bamboohr.com/careers/list`);
     const rows = d?.result;
     if (!Array.isArray(rows) || rows.length < MIN_POSTINGS) return null;
-    return { name: prettify(t), count: rows.length };
+    // BambooHR's list states no date: the merge gate falls back to the count.
+    return { name: prettify(t), count: rows.length, ...UNDATED, sample: sampleOf(rows, (j) => j?.jobOpeningName, (j) => j?.location?.city) };
   },
   // Oracle Fusion. Token is tenant~region~site, exactly as sources.ts stores
   // it, so a verified hit merges without translation.
@@ -266,7 +274,7 @@ const verifiers = {
     const [tenant, , site] = String(t).split("~");
     const host = oracleHost(t);
     if (!host) return null;
-    const finder = `findReqs;siteNumber=${site},limit=1`;
+    const finder = `findReqs;siteNumber=${site},limit=25,sortBy=POSTING_DATES_DESC`;
     const d = await probe(
       `https://${host}/hcmRestApi/resources/latest/` +
       `recruitingCEJobRequisitions?onlyData=true&expand=requisitionList&finder=${encodeURIComponent(finder)}`,
@@ -274,15 +282,24 @@ const verifiers = {
     const item = Array.isArray(d?.items) ? d.items[0] : null;
     const total = Number(item?.TotalJobsCount) || 0;
     if (total < MIN_POSTINGS) return null;
-    const first = Array.isArray(item?.requisitionList) ? item.requisitionList[0] : null;
-    const name = String(first?.EmployerName || prettify(tenant)).slice(0, 60);
-    return { name, count: total };
+    const reqs = Array.isArray(item?.requisitionList) ? item.requisitionList : [];
+    const name = String(reqs[0]?.EmployerName || prettify(tenant)).slice(0, 60);
+    // The newest 25 by posting date: a window count of 25 is a floor.
+    return {
+      name, count: total,
+      ...windowOf(reqs, (r) => r?.PostedDate, "PostedDate", { page: total > reqs.length }),
+      sample: sampleOf(reqs, (r) => r?.Title, (r) => r?.PrimaryLocation),
+    };
   },
   recruitee: async (t) => {
     const d = await probe(`https://${t}.recruitee.com/api/offers/`);
     const offers = d?.offers;
     if (!Array.isArray(offers) || offers.length < MIN_POSTINGS) return null;
-    return { name: (offers[0]?.company_name || prettify(t)).slice(0, 60), count: offers.length };
+    return {
+      name: (offers[0]?.company_name || prettify(t)).slice(0, 60), count: offers.length,
+      ...windowOf(offers, (o) => o?.published_at ?? o?.created_at, "published_at or created_at"),
+      sample: sampleOf(offers, (o) => o?.title, (o) => o?.city),
+    };
   },
   teamtailor: async (t) => {
     const x = await probe(`https://${t}.teamtailor.com/jobs.rss`, true);
@@ -291,7 +308,15 @@ const verifiers = {
     if (items < MIN_POSTINGS) return null;
     const chTitle = (x.split("<item>")[0].match(/<title>([\s\S]*?)<\/title>/) || [])[1] ?? "";
     const name = chTitle.replace(/<!\[CDATA\[|\]\]>/g, "").replace(/^\s*(jobs?|careers?)\s+(at|@)\s+/i, "").trim();
-    return { name: (name || prettify(t)).slice(0, 60), count: items };
+    const rows = x.split("<item>").slice(1).map((b) => ({
+      title: ((b.match(/<title>([\s\S]*?)<\/title>/) || [])[1] ?? "").replace(/<!\[CDATA\[|\]\]>/g, ""),
+      pubDate: (b.match(/<pubDate>([\s\S]*?)<\/pubDate>/) || [])[1] ?? "",
+    }));
+    return {
+      name: (name || prettify(t)).slice(0, 60), count: items,
+      ...windowOf(rows, (r) => r.pubDate, "pubDate"),
+      sample: sampleOf(rows, (r) => r.title),
+    };
   },
   personio: async (t) => {
     const host = census.personio_hosts?.[t] ?? "jobs.personio.de";
@@ -303,19 +328,30 @@ const verifiers = {
     }
     const n = (x.match(/<position>/g) || []).length;
     if (n < MIN_POSTINGS) return null;
-    return { name: prettify(t), count: n };
+    const field = (b, k) => ((b.match(new RegExp(`<${k}>([\\s\\S]*?)<\\/${k}>`)) || [])[1] ?? "").replace(/<!\[CDATA\[|\]\]>/g, "").trim();
+    const rows = x.split("<position>").slice(1).map((b) => ({ name: field(b, "name"), office: field(b, "office"), createdAt: field(b, "createdAt") }));
+    return {
+      name: prettify(t), count: n,
+      ...windowOf(rows, (r) => r.createdAt, "createdAt"),
+      sample: sampleOf(rows, (r) => r.name, (r) => r.office),
+    };
   },
   breezy: async (t) => {
     const d = await probe(`https://${t}.breezy.hr/json`);
     if (!Array.isArray(d) || d.length < MIN_POSTINGS) return null;
     const cn = d[0]?.company?.name;
-    return { name: ((typeof cn === "string" && cn) || prettify(t)).slice(0, 60), count: d.length };
+    return {
+      name: ((typeof cn === "string" && cn) || prettify(t)).slice(0, 60), count: d.length,
+      ...windowOf(d, (p) => p?.published_date ?? p?.creation_date, "published_date or creation_date"),
+      sample: sampleOf(d, (p) => p?.name, (p) => p?.location?.city),
+    };
   },
   pinpoint: async (t) => {
     const d = await probe(`https://${t}.pinpointhq.com/postings.json`);
     const data = d?.data;
     if (!Array.isArray(data) || data.length < MIN_POSTINGS) return null;
-    return { name: prettify(t), count: data.length };
+    // Pinpoint's feed states no date: the merge gate falls back to the count.
+    return { name: prettify(t), count: data.length, ...UNDATED, sample: sampleOf(data, (j) => j?.title, (j) => j?.location?.city) };
   },
   lever: async (t) => {
     // Same EU routing as greenhouse above: a tenant lives on exactly one side,
@@ -327,7 +363,11 @@ const verifiers = {
     const tok = eu ? t.slice(3) : t;
     const d = await probe(`https://${host}/v0/postings/${encodeURIComponent(tok)}?mode=json`);
     if (!Array.isArray(d) || d.length < MIN_POSTINGS) return null;
-    return { name: prettify(tok), count: d.length };
+    return {
+      name: prettify(tok), count: d.length,
+      ...windowOf(d, (j) => j?.createdAt, "createdAt"),
+      sample: sampleOf(d, (j) => j?.text, (j) => j?.categories?.location),
+    };
   },
   rippling: async (t) => {
     // Embedded __NEXT_DATA__ payload (same extraction the board fetcher uses).
@@ -339,7 +379,9 @@ const verifiers = {
       const q = (d?.props?.pageProps?.dehydratedState?.queries ?? []).find((x) => Array.isArray(x.queryKey) && x.queryKey[2] === "job-posts");
       const total = Number(q?.state?.data?.totalItems) || 0;
       if (total < MIN_POSTINGS) return null;
-      return { name: (d?.props?.pageProps?.board?.name || prettify(t)).slice(0, 60), count: total };
+      // Rippling's board payload states no date: the merge gate falls back to the count.
+      const items = Array.isArray(q?.state?.data?.items) ? q.state.data.items : [];
+      return { name: (d?.props?.pageProps?.board?.name || prettify(t)).slice(0, 60), count: total, ...UNDATED, sample: sampleOf(items, (j) => j?.name) };
     } catch { return null; }
   },
   // Paylocity has no public list API: the board page embeds its entire posting
@@ -391,7 +433,11 @@ const verifiers = {
     const links = await probe(`${base}/content-links/career-center?${qs}`);
     let name = adpWelcomeName(links?.contentLinks);
     if (headingOnly(name)) name = "";
-    return { name: name.slice(0, 60), count, nameFrom: "welcome prose" };
+    return {
+      name: name.slice(0, 60), count, nameFrom: "welcome prose",
+      ...windowOf(external, (r) => r?.postDate, "postDate", { page: total > reqs.length }),
+      sample: sampleOf(external, (r) => r?.requisitionTitle),
+    };
   },
   ukg: async (t) => {
     // Token is pod~TENANT~guid; all three come from the crawled URL, so the
@@ -400,7 +446,7 @@ const verifiers = {
     if (!pod || !tenant || !board) return null;
     const base = `https://${pod}.ultipro.com/${tenant}/JobBoard/${board}`;
     const d = await probePost(`${base}/JobBoardView/LoadSearchResults`,
-      { opportunitySearch: { Top: 1, Skip: 0, QueryString: "", OrderBy: [], Filters: [] } });
+      { opportunitySearch: { Top: 50, Skip: 0, QueryString: "", OrderBy: [], Filters: [] } });
     if (!d || !Array.isArray(d.opportunities)) return null;
     const count = Number(d.totalCount) || d.opportunities.length;
     if (count < MIN_POSTINGS) return null;
@@ -416,7 +462,12 @@ const verifiers = {
     const read = await ukgName(base, (url) => (url === base ? probe(url, true, 2) : politeText(url, { sameSiteRedirects: true })));
     if (!read) return null;
     const name = headingOnly(read.name) ? "" : read.name;
-    return { name: name.slice(0, 60), count, nameFrom: read.evidence };
+    const ops = d.opportunities;
+    return {
+      name: name.slice(0, 60), count, nameFrom: read.evidence,
+      ...windowOf(ops, (o) => o?.PostedDate, "PostedDate", { page: count > ops.length }),
+      sample: sampleOf(ops, (o) => o?.Title),
+    };
   },
   paylocity: async (t) => {
     const html = await probe(`https://recruiting.paylocity.com/recruiting/jobs/All/${t}`, true);
@@ -438,7 +489,11 @@ const verifiers = {
       } catch { /* heading stands; merge hygiene holds it */ }
     }
     if (!name) return null;
-    return { name: name.slice(0, 60), count: jobs.length };
+    return {
+      name: name.slice(0, 60), count: jobs.length,
+      ...windowOf(jobs, (j) => j?.PublishedDate, "PublishedDate"),
+      sample: sampleOf(jobs, (j) => j?.JobTitle, (j) => j?.JobLocation?.City),
+    };
   },
 };
 
@@ -481,22 +536,72 @@ async function run(vendor, tokens) {
   return verified;
 }
 
-const out = {};
-await Promise.all(Object.keys(verifiers).map(async (vendor) => {
-  const fresh = (census[vendor] ?? []).filter((t) => !existing.has(`${vendor}:${t.toLowerCase()}`) && !probed.has(`${vendor}:${t}`));
-  console.log(`${vendor}: ${census[vendor]?.length ?? 0} candidates, ${fresh.length} to probe (after catalog dedupe + resume)`);
-  const freshHits = await run(vendor, fresh);
-  // Fold in prior-run hits so the output is complete regardless of restarts.
-  const seen = new Set(freshHits.map((h) => h.token));
-  for (const h of priorHits) {
-    if (h.vendor === vendor && !seen.has(h.token)) { freshHits.push(refuseLabelName(vendor, { token: h.token, name: h.name, count: h.count, ...(h.nameFrom ? { nameFrom: h.nameFrom } : {}) })); seen.add(h.token); }
+async function main() {
+  const args = process.argv.slice(2);
+  const [CENSUS_PATH, OUT] = args.filter((a) => !a.startsWith("--"));
+  const ALLOW_SR = args.includes("--allow-sr");
+  // Resume sidecars: every probed token is appended to .progress, every hit to
+  // .hits (JSONL) — a killed run resumes where it stopped instead of re-probing.
+  PROGRESS_PATH = `${OUT}.progress`;
+  HITS_PATH = `${OUT}.hits`;
+  const probed = new Set(fs.existsSync(PROGRESS_PATH) ? fs.readFileSync(PROGRESS_PATH, "utf8").split("\n").filter(Boolean) : []);
+  const priorHits = fs.existsSync(HITS_PATH) ? fs.readFileSync(HITS_PATH, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
+  if (probed.size) console.log(`resuming: ${probed.size} already probed, ${priorHits.length} prior hits`);
+  census = JSON.parse(fs.readFileSync(CENSUS_PATH, "utf8"));
+  // EU tenants arrive from the census under their own keys carrying BARE tenant
+  // slugs, because discovery reads hostnames and the hostname is the only place
+  // the region shows. The catalog has no EU vendor — an EU board is the same
+  // vendor routed to its EU hosts via the compound-token prefix — so the keys
+  // fold into their vendor's candidate list here, prefixed. Folding BEFORE the
+  // catalog dedupe is the point: the catalog stores EU boards under the
+  // prefixed token, and an unprefixed candidate would never match its own entry
+  // and be probed (and merged) twice.
+  for (const [euKey, vendor] of [["greenhouse-eu", "greenhouse"], ["lever-eu", "lever"]]) {
+    const bare = census[euKey] ?? [];
+    if (!bare.length) continue;
+    const have = new Set(census[vendor] ?? []);
+    census[vendor] = [...(census[vendor] ?? [])];
+    for (const t of bare) {
+      const tok = t.startsWith("eu~") ? t : `eu~${t}`;
+      if (!have.has(tok)) { census[vendor].push(tok); have.add(tok); }
+    }
+    console.log(`${euKey}: folded ${bare.length} candidates into ${vendor} under the routing prefix`);
   }
-  out[vendor] = freshHits.sort((a, b) => b.count - a.count);
-  const postings = out[vendor].reduce((s, x) => s + x.count, 0);
-  console.log(`${vendor}: ${out[vendor].length} verified NEW boards, ${postings} postings visible`);
-}));
-out.personio_hosts = census.personio_hosts ?? {};
-fs.writeFileSync(OUT, JSON.stringify(out, null, 1));
-const totals = Object.entries(out).filter(([k]) => k !== "personio_hosts")
-  .map(([k, v]) => `${k}=${v.length}/${v.reduce((s, x) => s + x.count, 0)}p`);
-console.log(`\nWrote ${OUT}: ${totals.join(", ")}`);
+
+  // ── the catalogue: never re-verify what we already serve ──────────────────
+  // Read by import (catalogue-reader.mjs), every entry form included: the
+  // regexes this replaced saw 496 of 44,523 boards and re-probed 15,844 we carry.
+  const existing = keySet(await readCatalogue(REPO_SOURCES));
+  console.log(`catalog holds ${existing.size} boards — deduping candidates against it`);
+
+  const out = {};
+  await Promise.all(Object.keys(verifiers).map(async (vendor) => {
+    if (vendor === "smartrecruiters" && !ALLOW_SR && (census[vendor] ?? []).length) {
+      console.log(`smartrecruiters: ${census[vendor].length} candidates HELD, not probed (OD2: run with --allow-sr only on the owner's say-so)`);
+      out[vendor] = [];
+      return;
+    }
+    const fresh = (census[vendor] ?? []).filter((t) => !existing.has(boardKey(vendor, t)) && !probed.has(`${vendor}:${t}`));
+    console.log(`${vendor}: ${census[vendor]?.length ?? 0} candidates, ${fresh.length} to probe (after catalog dedupe + resume)`);
+    const freshHits = await run(vendor, fresh);
+    // Fold in prior-run hits so the output is complete regardless of restarts.
+    const seen = new Set(freshHits.map((h) => h.token));
+    for (const h of priorHits) {
+      if (h.vendor !== vendor || seen.has(h.token)) continue;
+      const { vendor: _v, ...hit } = h;
+      freshHits.push(refuseLabelName(vendor, hit));
+      seen.add(h.token);
+    }
+    out[vendor] = freshHits.sort((a, b) => b.count - a.count);
+    const postings = out[vendor].reduce((s, x) => s + x.count, 0);
+    console.log(`${vendor}: ${out[vendor].length} verified NEW boards, ${postings} postings visible`);
+  }));
+  out.personio_hosts = census.personio_hosts ?? {};
+  fs.writeFileSync(OUT, JSON.stringify(out, null, 1));
+  const totals = Object.entries(out).filter(([k]) => k !== "personio_hosts")
+    .map(([k, v]) => `${k}=${v.length}/${v.reduce((s, x) => s + x.count, 0)}p`);
+  console.log(`\nWrote ${OUT}: ${totals.join(", ")}`);
+}
+
+const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain) await main();

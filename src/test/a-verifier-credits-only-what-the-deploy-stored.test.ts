@@ -346,6 +346,52 @@ describe("section 90 judges the .90 claims", () => {
       run90(aged(120), { VD90_WRAPS: same });
       expect((JSON.parse(readFileSync(same, "utf8")) as { wraps: unknown[] }).wraps).toEqual([]);
     });
+
+    // THE BOUND IS COMPUTED (W2, 2026-11-08): 1.1 x reference lap x (cold boards now / at the reference).
+    const sized = (age: number, coldBoards: number, version = VERSION) => { const fx = aged(age, 32, version); for (const s of [fx.status0, fx.status1]) s.coldBoards = coldBoards; return fx; };
+    it("the default reference is .89's 357 minutes over 44,399 boards, which gives 393, and the bound is printed beside the lap", () => {
+      const out = run90(sized(2, 44399), { VD90_WRAPS: ledger({ wraps: [wrap(350)] }) });
+      expect(line(out, /^INFO  lap bound/)).toBe("INFO  lap bound 393 = 1.1 x 357 min x (44399 / 44399 cold boards; reference 2026-09-09.89, the default until W4 verifies)");
+      expect(line(out, /last completed cold rotation/)).toMatch(/^PASS .*took 350 min .*want at most 393 = 1\.1 x 357 min x \(44399 \/ 44399 cold boards/);
+    });
+    it("a larger catalogue earns a proportionally longer lap and no more: 420 minutes PASSes at 48,000 boards and FAILs at 44,399", () => {
+      const big = line(run90(sized(2, 48000), { VD90_WRAPS: ledger({ wraps: [wrap(420)] }) }), /last completed cold rotation/);
+      expect(big).toMatch(/^PASS .*took 420 min .*want at most 425 = 1\.1 x 357 min x \(48000 \/ 44399 cold boards/);
+      expect(line(run90(sized(2, 44399), { VD90_WRAPS: ledger({ wraps: [wrap(420)] }) }), /last completed cold rotation/)).toMatch(/^FAIL .*took 420 min .*want at most 393 /);
+      expect(line(run90(sized(2, 48000), { VD90_WRAPS: ledger({ wraps: [wrap(430)] }) }), /last completed cold rotation/)).toMatch(/^FAIL .*want at most 425 /);
+    });
+    it("the judging clock and the running-rotation line read the same bound", () => {
+      const fx = healthy(2);
+      const ent = { token: "liquidpersonnel", key: "liquidpersonnel", source: "greenhouse", mb: 4, at: iso(H) };
+      for (const s of [fx.status0, fx.status1]) { s.coldBoards = 48000; s.oversizeBoards = [...s.oversizeBoards, ent]; }
+      expect(line(run90(fx), /deferred as oversize on a \.90 visit: liquidpersonnel/)).toMatch(/FAIL if still registered 425 min after/);
+      const running = sized(410, 48000); for (const s of [running.status0, running.status1]) s.cursor = { ...s.cursor, cold: 47000 };
+      const out = run90(running);
+      expect(out.some((x) => /cold rotation running on \.100 is 410 min old/.test(x)), out.join("\n")).toBe(false);
+      const small = sized(410, 44399); for (const s of [small.status0, small.status1]) s.cursor = { ...s.cursor, cold: 43000 };
+      expect(line(run90(small), /cold rotation running on \.100 is 410 min old/)).toMatch(/^FAIL .*want at most 393 = /);
+    });
+    it("only a reference W4 records on .103 or later moves the bound; an earlier one is named and ignored", () => {
+      const early = run90(sized(2, 44399), { VD90_WRAPS: ledger({ wraps: [wrap(590)], reference: { lapMin: 600, coldBoards: 44399, build: "2026-09-09.101", how: "two laps by list position" } }) });
+      expect(line(early, /^INFO  lap bound/)).toMatch(/^INFO  lap bound 393 = .*the default until W4 verifies\); the ledger reference .* is ignored: only a 2026-09-09\.103 or later build may move it/);
+      expect(line(early, /last completed cold rotation/)).toMatch(/^FAIL .*took 590 min/);
+      const w4 = run90(sized(2, 44399), { VD90_WRAPS: ledger({ wraps: [wrap(320)], reference: { lapMin: 300, coldBoards: 44399, build: "2026-09-09.103", how: "two laps by list position" } }) });
+      expect(line(w4, /^INFO  lap bound/)).toBe("INFO  lap bound 330 = 1.1 x 300 min x (44399 / 44399 cold boards; reference 2026-09-09.103, two laps by list position)");
+      expect(line(w4, /last completed cold rotation/)).toMatch(/^PASS .*took 320 min .*want at most 330 /);
+    });
+  });
+
+  describe("the catalogue the census reads is the catalogue the board reports", () => {
+    const withSize = (catalogSize: number | undefined, version = "2026-09-09.100") => { const fx = healthy(36); for (const s of [fx.status0, fx.status1]) Object.assign(s, { version, catalogSize }); return fx; };
+    it("on this checkout's build, equal lengths PASS and a difference FAILs", () => {
+      expect(line(run90(withSize(44523), { VD90_CAT: "44523", VD90_BV: "2026-09-09.100" }), /the catalogue the census reads/)).toMatch(/^PASS .*2026-09-09\.100\) holds 44523 boards; status\.catalogSize = 44523/);
+      expect(line(run90(withSize(44400), { VD90_CAT: "44523", VD90_BV: "2026-09-09.100" }), /the catalogue the census reads/)).toMatch(/^FAIL .*holds 44523 boards; status\.catalogSize = 44400/);
+    });
+    it("on another build, or with either length unread, it is INFO", () => {
+      expect(line(run90(withSize(44400, "2026-09-09.99"), { VD90_CAT: "44523", VD90_BV: "2026-09-09.100" }), /the census reads 44523 boards at this checkout/)).toMatch(/^INFO .*on 2026-09-09\.99: compared once the deployed build is this checkout/);
+      expect(line(run90(withSize(44523), { VD90_CAT: "", VD90_BV: "2026-09-09.100" }), /census reader printed no catalogue length/)).toMatch(/^INFO/);
+      expect(line(run90(withSize(undefined), { VD90_CAT: "44523", VD90_BV: "2026-09-09.100" }), /status\.catalogSize is unread/)).toMatch(/^INFO/);
+    });
   });
 
   it("pg below its feed is INFO for two rotations, FAIL after; the bootstrap take above 24 FAILs", () => {

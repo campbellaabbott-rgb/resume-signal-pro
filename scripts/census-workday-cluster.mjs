@@ -12,7 +12,11 @@
 //   node census-workday-cluster.mjs verify <cands.json> <out.json> [maxProbe]
 
 import fs from "node:fs";
+import { REPO_SOURCES, readCatalogue, tokensOf } from "./catalogue-reader.mjs";
 import { execFileSync } from "node:child_process";
+import { refuseArchiveListing } from "./od-cc.mjs";
+
+refuseArchiveListing(import.meta.url);
 
 const MODE = process.argv[2];
 const DATA = "https://data.commoncrawl.org";
@@ -81,10 +85,8 @@ if (MODE === "enumerate") {
 } else if (MODE === "verify") {
   const [, , , CANDS, OUT, MAXP] = process.argv;
   const all = JSON.parse(fs.readFileSync(CANDS, "utf8"));
-  const srcText = fs.readFileSync(new URL("../supabase/functions/job-board/sources.ts", import.meta.url), "utf8");
-  const existing = new Set([
-    ...[...srcText.matchAll(/source:\s*"workday",\s*token:\s*"([^"]+)"/g)].map((m) => m[1].toLowerCase()),
-  ]);
+  // Every carried workday token, by importing the catalogue (packed rows included).
+  const existing = tokensOf(await readCatalogue(REPO_SOURCES), "workday");
   const verified = [];
   try { for (const b of (JSON.parse(fs.readFileSync(OUT, "utf8")).workday ?? [])) verified.push(b); } catch { /* first */ }
   const done = new Set(verified.map((v) => v.token.toLowerCase()));
@@ -97,9 +99,14 @@ if (MODE === "enumerate") {
     const body = curlGet(`https://${tenant}.${dc}.myworkdayjobs.com/wday/cxs/${tenant}/${site}/jobs`, "POST", JSON.stringify({ limit: 20, offset: 0, searchText: "", appliedFacets: {} }));
     if (body) {
       try {
-        const items = JSON.parse(body).jobPostings ?? [];
+        const parsed = JSON.parse(body);
+        const items = parsed.jobPostings ?? [];
+        // fresh is a page estimate (20 newest rows, a floor); the size is the
+        // response's total. Gate: at least 3 fresh, as census-workday does.
         const fresh = items.filter((j) => { const s = String(j.postedOn ?? "").toLowerCase(); if (/30\+\s*days/.test(s)) return false; const m = s.match(/posted\s+(\d+)\s+days?\s+ago/); return !(m && Number(m[1]) > 30); });
-        if (items.length >= 3) verified.push({ token: tok, name: prettify(tenant), count: items.length, fresh: fresh.length });
+        const total = Number(parsed.total);
+        const count = Number.isFinite(total) && total >= items.length ? total : items.length;
+        if (fresh.length >= 3) verified.push({ token: tok, name: prettify(tenant), count, inWindow30: fresh.length, dateBasis: "postedOn, first page only", fresh: fresh.length });
       } catch { /* not json */ }
     }
     if (++n % 100 === 0) { console.log(`  ${n}/${queue.length}, ${verified.length} verified`); fs.writeFileSync(OUT, JSON.stringify({ workday: verified.sort((a, b) => b.count - a.count) }, null, 1)); }

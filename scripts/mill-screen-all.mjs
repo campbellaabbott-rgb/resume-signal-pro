@@ -8,13 +8,126 @@
 // are screened on titles + posting-name patterns — weaker, so borderline
 // cases print for eyeballing rather than silently passing.
 //
-// Usage: node scripts/mill-screen-all.mjs round3-mill-worklist.json
+// A THIRD PARTY'S SITE IS READ ON ITS OWN TERMS (2026-11-08). Every host's
+// robots.txt is read before anything else on it, and a path it disallows for
+// this agent is not read (the board HOLDs, saying why); a robots.txt that
+// cannot be read at all (a 5xx, no answer, a 401/403/429 or a bot challenge)
+// disallows the host, while any other 4xx (404, 410) means the site set no
+// rules. A host that answers any read with a 429 or a challenge is closed for
+// the rest of the run: nothing else is sent to it, by this client or another
+// (owner rule, 2026-11-17). Requests to one host start at least 1.1 s apart. Only GETs run: a vendor whose list is a POST (ukg) is held unless
+// --allow-post names the owner's say-so.
+//
+// The repeated-title flag (one advert across many cities or languages, or
+// distinct titles at most a tenth of the sample) is printed for every screened
+// board and written to --out; it excludes nothing.
+//
+// Usage: node scripts/mill-screen-all.mjs round3-mill-worklist.json [--out verdicts.json] [--allow-post]
 
 import fs from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { repeatedTitleFlag } from "./catalogue-reader.mjs";
 
-const worklist = JSON.parse(fs.readFileSync(process.argv[2] ?? "round3-mill-worklist.json", "utf8"));
+const UA_TOKEN = "resumebooster";
 const UA = { "User-Agent": "resumebooster.work job board (contact: support@resumebooster.work)" };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/** The least time between the starts of two requests to one host. */
+export const HOST_SPACING_MS = 1100;
+let ALLOW_POST = false;
+
+// ── robots.txt ──────────────────────────────────────────────────────────────
+
+/**
+ * The rules robots.txt gives one agent: the group naming it (by a
+ * case-insensitive product token), else the * group, as [{ allow, path }].
+ */
+export function parseRobots(text, agent = UA_TOKEN) {
+  const groups = [];
+  let cur = null;
+  let lastWasAgent = false;
+  for (const raw of String(text ?? "").split(/\r?\n/)) {
+    const line = raw.replace(/#.*$/, "").trim();
+    const m = /^([A-Za-z-]+)\s*:\s*(.*)$/.exec(line);
+    if (!m) continue;
+    const key = m[1].toLowerCase();
+    const val = m[2].trim();
+    if (key === "user-agent") {
+      if (!lastWasAgent || !cur) { cur = { agents: [], rules: [] }; groups.push(cur); }
+      cur.agents.push(val.toLowerCase());
+      lastWasAgent = true;
+    } else {
+      lastWasAgent = false;
+      if (cur && (key === "allow" || key === "disallow")) cur.rules.push({ allow: key === "allow", path: val });
+    }
+  }
+  const mine = groups.filter((g) => g.agents.some((a) => a !== "*" && agent.toLowerCase().includes(a)));
+  const chosen = mine.length ? mine : groups.filter((g) => g.agents.includes("*"));
+  // An empty Disallow allows everything and an empty Allow says nothing: neither is a rule.
+  return { agent: mine.length ? agent : "*", rules: chosen.flatMap((g) => g.rules).filter((r) => r.path !== "") };
+}
+
+/** Longest matching rule wins, Allow on a tie; * matches any run, a trailing $ anchors the end. */
+export function robotsAllow(parsed, pathAndQuery) {
+  let best = null;
+  for (const r of parsed.rules) {
+    const re = new RegExp("^" + r.path.replace(/[.+?^{}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\$(?!$)/g, "\\$"));
+    if (!re.test(pathAndQuery)) continue;
+    if (!best || r.path.length > best.path.length || (r.path.length === best.path.length && r.allow)) best = r;
+  }
+  return !best || best.allow;
+}
+
+const lastStart = new Map();
+const robotsByHost = new Map();
+/** Wait for this host's next slot: HOST_SPACING_MS after the last request started. */
+async function paced(host) {
+  const wait = (lastStart.get(host) ?? -Infinity) + HOST_SPACING_MS - Date.now();
+  if (wait > 0) await sleep(wait);
+  lastStart.set(host, Date.now());
+}
+/** Hosts that answered a 429 or a bot challenge this run, and what they said. */
+const closedHosts = new Map();
+/** A response that is a refusal of automated reading: a 429, or a challenge page by its header. */
+export function isRefusal(res) {
+  return res.status === 429 || String(res.headers?.get?.("cf-mitigated") ?? "").toLowerCase() === "challenge";
+}
+/**
+ * What a robots.txt answer means for its host. 401, 403 and 429 are the site
+ * refusing us, not a site without rules, so they disallow the host like a 5xx.
+ */
+export function robotsVerdict(res) {
+  const deny = (why) => ({ parsed: { agent: "*", rules: [{ allow: false, path: "/" }] }, said: why });
+  if (isRefusal(res)) return deny(`robots.txt ${res.status}${res.status === 429 ? "" : " (a challenge)"}: refused, so the host is not read`);
+  if (res.status === 401 || res.status === 403) return deny(`robots.txt ${res.status}: refused, so the host is not read`);
+  if (res.status >= 400 && res.status < 500) return { parsed: { agent: "*", rules: [] }, said: `robots.txt ${res.status}: the site sets no rules` };
+  if (!res.ok) return deny(`robots.txt ${res.status}: unreadable, so the host is not read`);
+  return null; // 2xx: parse the body
+}
+/** Closes a host for the rest of the run after it refused a read; says so once. */
+function closeHost(host, status) {
+  if (closedHosts.has(host)) return;
+  closedHosts.set(host, status);
+  console.log(`  ${host}: answered ${status}, closed for the rest of this run`);
+}
+async function robotsFor(u) {
+  if (robotsByHost.has(u.host)) return robotsByHost.get(u.host);
+  await paced(u.host);
+  let r;
+  try {
+    const res = await fetch(`${u.protocol}//${u.host}/robots.txt`, { headers: UA, redirect: "follow" });
+    r = robotsVerdict(res);
+    if (isRefusal(res)) closeHost(u.host, res.status);
+    if (!r) { const parsed = parseRobots(await res.text()); r = { parsed, said: `robots.txt read: ${parsed.rules.length} rule(s) for ${parsed.agent}` }; }
+  } catch {
+    r = { parsed: { agent: "*", rules: [{ allow: false, path: "/" }] }, said: "robots.txt unreachable, so the host is not read" };
+  }
+  robotsByHost.set(u.host, r);
+  console.log(`  ${u.host}: ${r.said}`);
+  return r;
+}
+/** Why the current board's reads were refused (robots.txt or a POST), for its HOLD line. */
+let refusedReads = [];
 
 // ENGLISH ONLY WAS A BLIND SPOT, and the board is mostly European now.
 //
@@ -66,9 +179,23 @@ const MILL_TEXT = new RegExp([
 ].join("|"), "i");
 const strip = (h) => String(h ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 
+/** True (and the board's HOLD line says why) when the host is closed for this run. */
+function hostClosed(u) {
+  if (!closedHosts.has(u.host)) return false;
+  refusedReads.push(`${u.host} answered ${closedHosts.get(u.host)} earlier this run, so it is not read again`);
+  return true;
+}
+
 async function get(url, asText = false) {
+  const u = new URL(url);
+  if (hostClosed(u)) return null;
+  const robots = await robotsFor(u);
+  if (hostClosed(u)) return null;
+  if (!robotsAllow(robots.parsed, u.pathname + u.search)) { refusedReads.push(`robots.txt disallows ${u.host}${u.pathname}`); return null; }
+  await paced(u.host);
   try {
     const res = await fetch(url, { headers: UA });
+    if (isRefusal(res)) { closeHost(u.host, res.status); hostClosed(u); return null; }
     if (!res.ok) return null;
     return asText ? await res.text() : await res.json();
   } catch { return null; }
@@ -133,8 +260,15 @@ async function sampleTexts(vendor, token) {
   // workable / bamboohr / rippling: list feeds carry no posting text —
   // titles-only screen (weaker; flagged in output).
   if (vendor === "workable") {
+    // The widget lists every job with its city, so the repeated-title flag
+    // reads title and city here, and the board's size is the list's length.
     const d = await get(`https://apply.workable.com/api/v1/widget/accounts/${token}?details=false`);
-    return (d?.jobs ?? []).slice(0, 20).map((j) => String(j.title ?? ""));
+    const jobs = Array.isArray(d?.jobs) ? d.jobs : [];
+    return {
+      texts: jobs.slice(0, 20).map((j) => String(j.title ?? "")),
+      rows: jobs.slice(0, 100).map((j) => ({ t: String(j.title ?? ""), c: String(j.city ?? "") })),
+      total: d ? jobs.length : null,
+    };
   }
   if (vendor === "bamboohr") {
     const d = await get(`https://${token}.bamboohr.com/careers/list`);
@@ -252,26 +386,50 @@ async function sampleTexts(vendor, token) {
 // every board. The screen then held all 193 as unreadable, which is the right
 // failure direction and exactly why nothing was cleared on a broken read.
 async function postJson(url, body) {
+  const u = new URL(url);
+  if (!ALLOW_POST) { refusedReads.push(`a POST to ${u.host} (run with --allow-post only on the owner's say-so)`); return null; }
+  if (hostClosed(u)) return null;
+  const robots = await robotsFor(u);
+  if (hostClosed(u)) return null;
+  if (!robotsAllow(robots.parsed, u.pathname + u.search)) { refusedReads.push(`robots.txt disallows ${u.host}${u.pathname}`); return null; }
+  await paced(u.host);
   try {
     const res = await fetch(url, {
       method: "POST",
       headers: { ...UA, "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(body),
     });
+    if (isRefusal(res)) { closeHost(u.host, res.status); hostClosed(u); return null; }
     if (!res.ok) return null;
     return await res.json();
   } catch { return null; }
 }
 
 const TITLE_ONLY = new Set(["workable", "bamboohr", "rippling"]);
+
+async function main() {
+const args = process.argv.slice(2);
+ALLOW_POST = args.includes("--allow-post");
+const outIdx = args.indexOf("--out");
+const OUT = outIdx >= 0 ? args[outIdx + 1] : null;
+const worklistPath = args.find((a, k) => !a.startsWith("--") && args[k - 1] !== "--out") ?? "round3-mill-worklist.json";
+const worklist = JSON.parse(fs.readFileSync(worklistPath, "utf8"));
 const cleared = [];
 const excluded = [];
+const verdicts = [];
 let i = 0;
-for (const b of worklist) {
+for (const b0 of worklist) {
   i++;
-  const texts = await sampleTexts(b.vendor, b.token);
+  refusedReads = [];
+  const sampled = await sampleTexts(b0.vendor, b0.token);
+  const texts = Array.isArray(sampled) ? sampled : sampled.texts;
+  const rows = Array.isArray(sampled) ? texts.map((t) => ({ t: String(t).split("\n")[0].trim() })) : sampled.rows;
+  const b = { ...b0, count: Number.isFinite(Number(b0.count)) ? Number(b0.count) : (Array.isArray(sampled) ? texts.length : sampled.total ?? 0) };
   const hits = texts.filter((t) => MILL_TEXT.test(t)).length;
   const weak = TITLE_ONLY.has(b.vendor);
+  const repeatedTitle = repeatedTitleFlag(rows);
+  if (repeatedTitle) console.log(`flag    ${b.vendor}:${b.token} "${b.name ?? ""}" — repeated titles: ${repeatedTitle} (review only; excludes nothing)`);
+  const record = (verdict, reason, extra = {}) => verdicts.push({ vendor: b.vendor, token: b.token, name: b.name ?? null, count: b.count, verdict, reason, sampled: texts.length, hits, repeatedTitle, ...extra });
 
   // ONE LISTING, POSTED A THOUSAND TIMES, IS NOT A THOUSAND OPENINGS.
   //
@@ -308,8 +466,9 @@ for (const b of worklist) {
   // Re-run when the vendor is not throttling and it gets a real verdict.
   if (texts.length < 3) {
     excluded.push({ ...b, hits: 0, sampled: texts.length, reason: "not-sampled" });
-    console.log(`HOLD    ${b.vendor}:${b.token} "${b.name}" (${b.count}p) — only ${texts.length} postings readable; NOT cleared`);
-    await sleep(250);
+    const why = refusedReads.length ? ` (not read: ${[...new Set(refusedReads)].join("; ")})` : "";
+    record("HOLD", `only ${texts.length} postings readable${why}`);
+    console.log(`HOLD    ${b.vendor}:${b.token} "${b.name}" (${b.count}p) — only ${texts.length} postings readable; NOT cleared${why}`);
     continue;
   }
 
@@ -319,6 +478,7 @@ for (const b of worklist) {
 
   if (dupSpam) {
     excluded.push({ ...b, hits, sampled: texts.length, reason: "duplicate-titles" });
+    record("EXCLUDE", `${distinct} distinct title(s) across ${firstLines.length} sampled of ${b.count} postings`, { distinct });
     console.log(`EXCLUDE ${b.vendor}:${b.token} "${b.name}" — ${distinct} distinct title(s) across ${firstLines.length} sampled of ${b.count} postings`);
   } else if (hits > 0) {
     // CHARTER CHANGE 2026-08-31: phrase evidence no longer excludes — the
@@ -330,13 +490,23 @@ for (const b of worklist) {
     // the conviction ledger exists to prevent. Only duplicate-title spam and
     // unreadable boards still fail this screen.
     cleared.push({ vendor: b.vendor, token: b.token, agency: true });
+    record("clear~", `${hits}/${texts.length} agency-evidence postings: carried, with the disclosure flag`, { distinct });
     console.log(`clear~  ${b.vendor}:${b.token} "${b.name}" — ${hits}/${texts.length} agency-evidence postings (carried under the 2026-08-31 charter)`);
   } else {
     cleared.push({ vendor: b.vendor, token: b.token });
+    record(weak ? "clear*" : "clear", weak ? "titles-only screen: no phrase evidence is possible, the name is for review" : "no agency evidence in the sampled text", { distinct });
     if (weak) console.log(`clear*  ${b.vendor}:${b.token} "${b.name}" (${b.count}p) — titles-only screen, review name above`);
     else if (i % 10 === 0) console.log(`  …${i}/${worklist.length} screened`);
   }
-  await sleep(250);
 }
 fs.writeFileSync("round3-mill-cleared.json", JSON.stringify(cleared, null, 1));
 console.log(`\nCleared ${cleared.length}/${worklist.length}; excluded ${excluded.length}. Wrote round3-mill-cleared.json`);
+if (OUT) {
+  const robots = Object.fromEntries([...robotsByHost].map(([h, r]) => [h, r.said]));
+  fs.writeFileSync(OUT, JSON.stringify({ screenedAt: new Date().toISOString(), userAgent: UA["User-Agent"], hostSpacingMs: HOST_SPACING_MS, postsAllowed: ALLOW_POST, robots, boards: verdicts }, null, 1));
+  console.log(`Wrote ${OUT}: ${verdicts.length} verdicts`);
+}
+}
+
+const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain) await main();

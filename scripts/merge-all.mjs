@@ -6,16 +6,34 @@
 // (posting-TEXT sampling) → dupe check (case-insensitive per vendor, BOTH
 // sources.ts entry formats) → battery → publish → live-verify.
 //
+// The catalogue is read by importing it (scripts/catalogue-reader.mjs), from
+// the working directory's supabase/functions/job-board/sources.ts: the file
+// this merge appends to, which a test points at a scratch copy.
+//
 // Usage: node scripts/merge-all.mjs <verified.json> [more.json…] [--apply]
+//          [--carrier-counts <token-to-served.json>] [--carrier-postings <rows.json>]
+//          [--status <status.json>|live] [--lap-min <minutes>] [--tranche-ok]
+//
+// --carrier-counts and --carrier-postings answer D6's two reads from a file
+// instead of production (a token absent from the file is unread, so held).
 
 import fs from "node:fs";
 import { LABEL_NAMED_VENDORS, agencyScreenText, censusNameReason } from "./census-names.mjs";
+import {
+  CWD_SOURCES, LAP_GROWTH_LIMIT, MIN_IN_WINDOW, OVERLAP_HOLD_SHARE, ROOM_FACTOR, boardKey, collisionIdentity,
+  inWindowOf, keySet, nameIndex, nameKey as nameKeyOf, overlapShare, projectBatch, projectionLines,
+  readBoardStatus, readCarrierRows, readCatalogue, readServedCounts, repeatedTitleFlag, runGeneratedChecks,
+  sizeVerdict, windowGate,
+} from "./catalogue-reader.mjs";
 
 const args = process.argv.slice(2);
 const APPLY = args.includes("--apply");
-const files = args.filter((a) => a !== "--apply");
-const SOURCES = "supabase/functions/job-board/sources.ts";
+const VALUE_FLAGS = new Set(["--carrier-counts", "--carrier-postings", "--status", "--lap-min"]);
+const flagValue = (f) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : undefined; };
+const files = args.filter((a, i) => !a.startsWith("--") && !VALUE_FLAGS.has(args[i - 1]));
+const SOURCES = CWD_SOURCES;
 const src = fs.readFileSync(SOURCES, "utf8");
+const catalogue = await readCatalogue(SOURCES);
 
 const VENDORS = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr", "recruitee", "teamtailor", "personio", "breezy", "rippling", "workday", "pinpoint", "paylocity", "adp", "icims", "ukg", "jazzhr"];
 const verified = Object.fromEntries(VENDORS.map((v) => [v, []]));
@@ -71,11 +89,12 @@ const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talents?|headhunt|person
 // verifier read from a company-name field (its nameFrom says so) is screened
 // as it stands (the review, 2026-10-26).
 const AGENCY_NAME = /\b(staffing|recruit(ing|ment|er)?s?|headhunt|personnel|manpower|employment\s+(agency|services)|placements?\b|temp\s|outsourc|bpo\b|int[eé]rim|travail\s+temporaire|trabajo\s+temporal)\b|\b(uitzend|zeitarbeit|personaldienst|jobandtalent)/i;
-// Corporate-only policy: public-sector entities never enter the catalog
-// (mobile audit 2026-07-18 found City of Baltimore et al. had slipped in
-// through census waves — 22 boards curated out, these patterns keep the
-// door shut). Word-boundary specific to avoid nuking "Gibson County Coal
-// LLC"-style private names: require the GOVERNMENTAL phrase, not the word.
+// Public-sector names. These once kept government employers out (mobile audit
+// 2026-07-18: City of Baltimore et al., 22 boards curated out); since the
+// 2026-08-31 charter public employers are carried and this gate refuses no
+// board. It stays defined for the tooling that reads it. Word-boundary
+// specific so "Gibson County Coal LLC" is not a government: it needs the
+// GOVERNMENTAL phrase, not the word.
 const GOV_BLOCK = /\b(city of|county of|state of|commonwealth of|government of|unified school|school district|public schools|public library|court of appeals|county commissioners|conservation district|health district|sheriff|police department|fire department|township of|municipality)\b/i;
 const JUNK_NAME = /\b(demo|test|sample|sandbox|placeholder)\b/i;
 const TOKEN_BLOCK = /(demo|test|sample|sandbox|staging|-dev\d*\b)/i;
@@ -159,37 +178,14 @@ async function isPinpointDemoSandbox(token) {
   } catch { return false; }
 }
 
-// Existing catalog in BOTH entry formats: object literals ({ name, source,
-// token }) from rung 3+, and the legacy s("Name", "vendor", "token") helper.
-// The round-3 verify pass missed the object format and re-verified ~3k known
-// boards — this dedupe is the backstop that keeps them out twice.
-//
-// Every regex here stops at the field it reads and never anchors on the
-// closing brace: object entries carry optional suffixes now (the per-board
-// window override, then the agency disclosure flag — both added 2026-08-31),
-// and a brace-anchored parse goes blind to exactly the entries that carry
-// one. A dedupe blind to a suffixed entry re-merges the board it already
-// holds, which the catalog-invariants duplicate guard then has to catch —
-// and that guard was itself the first parser to fall into this trap.
-const existingTokens = new Set([
-  ...[...src.matchAll(/source:\s*"(\w+)",\s*token:\s*"([^"]+)"/g)].map((m) => `${m[1]}:${m[2].toLowerCase()}`),
-  ...[...src.matchAll(/s\("(?:[^"\\]|\\.)*",\s*"(\w+)",\s*"([^"]+)"/g)].map((m) => `${m[1]}:${m[2].toLowerCase()}`),
-]);
-const existingNames = new Set([
-  ...[...src.matchAll(/name:\s*"((?:[^"\\]|\\.)*)"/g)].map((m) => m[1].toLowerCase().trim()),
-  ...[...src.matchAll(/s\("((?:[^"\\]|\\.)*)"/g)].map((m) => m[1].toLowerCase().trim()),
-]);
-
-// WHICH VENDOR EACH EXISTING NAME IS CARRIED ON, so a collision can be judged
-// rather than just counted.
-const nameVendors = new Map();
-const noteName = (n, v) => {
-  const k = n.toLowerCase().trim();
-  if (!nameVendors.has(k)) nameVendors.set(k, new Set());
-  nameVendors.get(k).add(v);
-};
-for (const m of src.matchAll(/name:\s*"((?:[^"\\]|\\.)*)",\s*source:\s*"(\w+)"/g)) noteName(m[1], m[2]);
-for (const m of src.matchAll(/s\("((?:[^"\\]|\\.)*)",\s*"(\w+)"/g)) noteName(m[1], m[2]);
+// The existing catalogue, every entry whatever its form. Twelve regexes once
+// did this and saw 496 of 44,523 boards after the catalogue was packed: the
+// round-3 verify pass had already shown what a blind dedupe costs (~3k known
+// boards re-verified), and a blind collision guard merged employers twice.
+const existingTokens = keySet(catalogue);
+// WHICH BOARDS CARRY EACH EXISTING NAME, so a collision can be judged rather
+// than just counted: name key -> [{ source, token, index }].
+const carriersByName = nameIndex(catalogue);
 
 /**
  * THE FOUR VENDORS THE APPLY AGENT CAN ACTUALLY DRIVE.
@@ -207,7 +203,15 @@ for (const m of src.matchAll(/s\("((?:[^"\\]|\\.)*)",\s*"(\w+)"/g)) noteName(m[1
 // never reaches a submit, so a collision sent to an Oracle carrier bought the
 // agent no reach at all.
 const DRIVABLE = new Set(["breezy", "teamtailor", "personio", "pinpoint"]);
-console.log(`catalog: ${existingTokens.size} tokens, ${existingNames.size} names`);
+
+// OD2 (2026-11-08): NO NEW SMARTRECRUITERS BOARD MERGES WHILE THIS IS SET. A
+// new company's /v1/companies/ list is disallowed by its robots.txt for every
+// agent but LinkedInBot, and the owner's decision allows reading only the
+// boards we already carry. verify-all no longer probes new SR candidates
+// without --allow-sr; this holds any that arrive here anyway, printed, never
+// appended. The date is the decision's: clear it only on the owner's word.
+const SR_MERGE_HELD = "2026-11-08";
+console.log(`catalog: ${existingTokens.size} tokens, ${carriersByName.size} names`);
 
 // NUMERIC ENTITIES COME IN TWO SPELLINGS AND ONLY ONE WAS HANDLED.
 //
@@ -227,6 +231,35 @@ const decodeEntities = (s) => String(s)
   .replace(/&nbsp;/g, " ")
   .replace(/&amp;/g, "&");
 
+// D6's two reads, made from production unless a file answers them: what each
+// carrier of a colliding name serves (get_company_fill_curve's open_roles),
+// and up to 100 of its served postings for the overlap check. A carrier the
+// read does not answer for is UNREAD, and an unread carrier holds the board.
+const readJson = (f) => JSON.parse(fs.readFileSync(f, "utf8"));
+const countsFile = flagValue("--carrier-counts");
+const postingsFile = flagValue("--carrier-postings");
+const collidingCarriers = [];
+for (const v of VENDORS) for (const b of verified[v]) collidingCarriers.push(...(carriersByName.get(nameKeyOf(decodeEntities(String(b.name ?? "")))) ?? []));
+const served = countsFile
+  ? new Map(Object.entries(readJson(countsFile)).map(([t, n]) => [t.toLowerCase(), Number(n)]))
+  : await readServedCounts(collidingCarriers.map((c) => c.token));
+const carrierPostings = postingsFile ? new Map(Object.entries(readJson(postingsFile)).map(([k, rows]) => [k.toLowerCase(), rows])) : null;
+async function overlapWithCarriers(b, carrierBoards) {
+  if (!Array.isArray(b.sample) || !b.sample.length) return { hold: "no sample of its own postings to compare" };
+  const rows = [];
+  for (const c of carrierBoards) {
+    const r = carrierPostings ? carrierPostings.get(boardKey(c.source, c.token)) : await readCarrierRows(c);
+    if (!Array.isArray(r)) return { hold: `${c.source}:${c.token}'s served postings unread` };
+    rows.push(...r);
+  }
+  const o = overlapShare(b.sample, rows);
+  const said = `${Math.round(100 * o.share)}% of ${o.n} sampled postings already served (by ${o.by})`;
+  return o.share > OVERLAP_HOLD_SHARE ? { hold: `${said}: one employer's postings on two vendors is for a person to read` } : { said };
+}
+const collisionHeld = [];
+const srHeld = [];
+let undatedPassed = 0;
+
 const keep = {};
 const dropped = { blockedName: 0, blockedToken: 0, dupe: 0, nameCollision: 0 };
 const millWorklist = [];
@@ -234,9 +267,10 @@ for (const vendor of VENDORS) {
   keep[vendor] = [];
   const seen = new Set();
   for (const b of verified[vendor]) {
-    const name = decodeEntities(String(b.name ?? "")).trim();
+    let name = decodeEntities(String(b.name ?? "")).trim();
     const tokenKey = `${vendor}:${b.token.toLowerCase()}`;
-    const nameKey = name.toLowerCase();
+    const nameKey = nameKeyOf(name);
+    if (vendor === "smartrecruiters" && SR_MERGE_HELD) { srHeld.push(`${b.token} "${name}"`); continue; }
     if (TOKEN_BLOCK.test(b.token)) { dropped.blockedToken++; continue; }
     if (MILL_BLOCK.has(tokenKey)) { dropped.confirmedMill = (dropped.confirmedMill ?? 0) + 1; continue; }
     // Content fingerprint, small pinpoint boards only (sandboxes measured
@@ -260,6 +294,13 @@ for (const vendor of VENDORS) {
       dropped.headingOnlyName = (dropped.headingOnlyName ?? 0) + 1; continue;
     }
     if (seen.has(tokenKey) || existingTokens.has(tokenKey)) { dropped.dupe++; continue; }
+    // AT LEAST 3 POSTINGS DATED WITHIN 30 DAYS (2026-11-08). A posting count
+    // says a board exists; the in-window count says it is hiring now, by the
+    // date field ingest itself reads. A vendor that states no date is judged
+    // by its count and tallied apart, so the share judged blind is visible.
+    const gate = windowGate(b);
+    if (!gate.pass) { dropped[gate.dated ? "underThreeInWindow" : "underThreePostings"] = (dropped[gate.dated ? "underThreeInWindow" : "underThreePostings"] ?? 0) + 1; continue; }
+    if (!gate.dated) undatedPassed++;
     // COLLISION, BUT NOT ALL COLLISIONS ARE EQUAL.
     //
     // The guard exists so one employer does not appear twice. That is right for
@@ -280,11 +321,43 @@ for (const vendor of VENDORS) {
     // hundreds against Pinpoint's handful — the board would shrink to make the
     // agent look better, which is the wrong trade and would trip the catalog
     // high-water guard besides.
-    if (existingNames.has(nameKey)) {
-      const carriers = nameVendors.get(nameKey) ?? new Set();
-      const buysReach = DRIVABLE.has(vendor) && [...carriers].every((v) => !DRIVABLE.has(v));
-      if (!buysReach) { dropped.nameCollision++; continue; }
-      dropped.collisionAdmittedForReach = (dropped.collisionAdmittedForReach ?? 0) + 1;
+    //
+    // D6 (2026-11-08): A COLLISION THAT BUYS NO REACH MAY STILL BUY SIZE, AND
+    // A SHARED NAME IS NOT ALWAYS A SHARED EMPLOYER. In this order:
+    //   1. the board's own data names it apart (b.distinctName: a legal-entity
+    //      name or careers heading the employer wrote, never one we invent):
+    //      it is a different employer and merges under that name;
+    //   2. a generic name with nothing to tell it apart is held for a person;
+    //   3. reach, as above;
+    //   4. size: admitted when its in-window count is at least twice what the
+    //      carriers serve, every carrier's count printed; a count that cannot
+    //      be read holds, never reads as zero;
+    //   5. a size admission whose sampled postings the carriers already serve
+    //      above 30% is held: two copies of one board are not a bigger board.
+    // The smaller board is never retired, for the reason above.
+    const carrierBoards = carriersByName.get(nameKey);
+    if (carrierBoards) {
+      const id = collisionIdentity({ name, distinctName: b.distinctName, nameTaken: (n) => carriersByName.has(nameKeyOf(n)) });
+      if (id.hold) { collisionHeld.push(`${vendor}:${b.token} "${name}": ${id.hold}`); continue; }
+      if (id.different) {
+        console.log(`collision: "${name}" (${vendor}:${b.token}) names itself "${id.name}" in its own data: merged under that name`);
+        name = id.name;
+        dropped.collisionAdmittedUnderOwnName = (dropped.collisionAdmittedUnderOwnName ?? 0) + 1;
+      } else {
+        const carriers = new Set(carrierBoards.map((c) => c.source));
+        const buysReach = DRIVABLE.has(vendor) && [...carriers].every((v) => !DRIVABLE.has(v));
+        const forSize = buysReach ? null : sizeVerdict({ inWindow: inWindowOf(b), carriers: carrierBoards, served });
+        const overlap = forSize?.admit ? await overlapWithCarriers(b, carrierBoards) : null;
+        if (forSize) {
+          const verdict = forSize.hold || overlap?.hold ? "held" : forSize.admit ? `admitted for size (${overlap.said})` : "dropped";
+          console.log(`collision: "${name}" (${vendor}:${b.token}) in-window ${inWindowOf(b)} against ${forSize.shown}: ${verdict}`);
+        }
+        const why = forSize?.hold ?? overlap?.hold;
+        if (why) { collisionHeld.push(`${vendor}:${b.token} "${name}": ${why}`); continue; }
+        if (forSize?.admit) dropped.collisionAdmittedForSize = (dropped.collisionAdmittedForSize ?? 0) + 1;
+        else if (!buysReach) { dropped.nameCollision++; continue; }
+        else dropped.collisionAdmittedForReach = (dropped.collisionAdmittedForReach ?? 0) + 1;
+      }
     }
     seen.add(tokenKey);
     keep[vendor].push({ ...b, name });
@@ -295,11 +368,81 @@ for (const vendor of VENDORS) {
 const totals = Object.entries(keep).filter(([, l]) => l.length)
   .map(([v, list]) => `${v}=${list.length} boards/${list.reduce((s, x) => s + x.count, 0)}p`);
 console.log("Post-filter:", totals.join(", "));
+if (collisionHeld.length) dropped.collisionHeld = collisionHeld.length;
+if (srHeld.length) dropped.smartrecruitersHeld = srHeld.length;
 console.log("Dropped:", JSON.stringify(dropped));
+if (collisionHeld.length) {
+  console.log(`Held for review, name collisions (D6): ${collisionHeld.length}`);
+  for (const h of collisionHeld) console.log(`  ${h}`);
+}
+console.log(`Window gate: >=${MIN_IN_WINDOW} postings dated within 30 days; ${undatedPassed} kept boards state no date and were judged by posting count`);
+if (srHeld.length) console.log(`Held, smartrecruiters (OD2, SR_MERGE_HELD ${SR_MERGE_HELD}): ${srHeld.length} not merged: ${srHeld.slice(0, 10).join("; ")}${srHeld.length > 10 ? " ..." : ""}`);
 console.log(`Mill-screen worklist (>=100 postings): ${millWorklist.length} boards`);
 fs.writeFileSync("round3-mill-worklist.json", JSON.stringify(millWorklist, null, 1));
 
+// THE REPEATED-TITLE FLAG (2026-11-08) is for a person to read and excludes
+// nothing: one advert posted across many cities or languages is not many
+// openings (EUTALENTS: 6 distinct titles in its first 60 served rows), but a
+// rule that excluded would first need a labelled corpus of 300 boards or more.
+// It reads each hit's sample (verify-all's up to 100 { title, city, language }).
+const repeated = [];
+for (const vendor of VENDORS) for (const b of keep[vendor]) {
+  const why = repeatedTitleFlag(b.sample);
+  if (why) repeated.push(`${vendor}:${b.token} "${b.name}" (${b.count}p): ${why}`);
+}
+console.log(`Repeated-title flag (printed for review, excludes nothing): ${repeated.length} kept boards`);
+for (const r of repeated) console.log(`  ${r}`);
+
+// The lines a merge appends, and the banner above them. Built for the dry
+// run's projection too, so bytes per posting is measured, not guessed.
+const esc = (s) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+const banner = `  // ── Census round 3 + Rippling (merged ${new Date().toISOString().slice(0, 10)}): all vendors, official-API verified ≥3 postings, mill-screened ──\n`;
+function entryLines(agencyEvidence) {
+  const lines = [];
+  let taggedAgencies = 0;
+  for (const vendor of VENDORS) {
+    for (const b of keep[vendor]) {
+      // AGENCY DISCLOSURE rides the entry from the moment it merges: a staffing
+      // name, or phrase evidence the mill screen carried through the cleared
+      // file, stamps the flag that ingest copies onto every posting row. This
+      // merge never emits a pages override, so the flag is the last field —
+      // when a board later gains one, the override goes BEFORE the flag, the
+      // one suffix order every catalog parser tolerates.
+      const isAgency = AGENCY_NAME.test(agencyScreenText(vendor, b.name, { nameFrom: b.nameFrom })) || agencyEvidence.has(`${vendor}:${b.token}`);
+      if (isAgency) taggedAgencies++;
+      lines.push(`  { name: "${esc(b.name)}", source: "${vendor}", token: "${esc(b.token)}"${isAgency ? ", agency: true" : ""} },`);
+    }
+  }
+  return { lines, taggedAgencies };
+}
+
+// CAP-6 / CAP-11: WHAT THIS BATCH WOULD COST, printed before anything is
+// written. Fetched volume per lap, lap growth (10,000 boards cost about 80
+// minutes), in-window rows against the room under the corpus target, and the
+// catalogue bytes per projected posting. --apply is refused when the lap
+// would grow more than 10% (unless --tranche-ok), or when status was read and
+// the room does not hold 1.5x the batch's rows (no flag overrides that: merge
+// a smaller tranche). Status comes from --status <file> or --status live (a
+// job-board status read at the probe budget); unread, the room is printed as
+// unjudged.
+const TRANCHE_OK = args.includes("--tranche-ok");
+const statusArg = flagValue("--status");
+const status = statusArg === "live" ? await readBoardStatus() : statusArg ? readJson(statusArg) : null;
+if (statusArg && !status) console.log("status: --status live could not be read, so the room guard is unjudged");
+function project(agencyEvidence) {
+  const { lines } = entryLines(agencyEvidence);
+  const linesBytes = Buffer.byteLength(banner + lines.join("\n") + "\n", "utf8");
+  const p = projectBatch(keep, { status, lapMin: flagValue("--lap-min"), linesBytes });
+  console.log("Projection (CAP-6, CAP-11):");
+  for (const l of projectionLines(p)) console.log(l);
+  const refusals = [];
+  if (p.lapGrowthShare > LAP_GROWTH_LIMIT && !TRANCHE_OK) refusals.push(`the lap grows ${(100 * p.lapGrowthShare).toFixed(1)}% (> ${100 * LAP_GROWTH_LIMIT}%): pass --tranche-ok to accept it`);
+  if (p.roomOk === false) refusals.push(`the room under the corpus target (${p.room}) does not hold ${ROOM_FACTOR} x ${p.inWindowRows} in-window rows: merge a smaller tranche`);
+  return refusals;
+}
+
 if (!APPLY) {
+  for (const r of project(new Set())) console.log(`--apply would be refused: ${r}`);
   console.log("\nDry run only. Run mill-screen-all.mjs, then re-run with --apply.");
   process.exit(0);
 }
@@ -325,25 +468,19 @@ if (cleared) {
   }
 }
 
-const esc = (s) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-const lines = [];
-let taggedAgencies = 0;
-for (const vendor of VENDORS) {
-  for (const b of keep[vendor]) {
-    // AGENCY DISCLOSURE rides the entry from the moment it merges: a staffing
-    // name, or phrase evidence the mill screen carried through the cleared
-    // file, stamps the flag that ingest copies onto every posting row. This
-    // merge never emits a pages override, so the flag is the last field —
-    // when a board later gains one, the override goes BEFORE the flag, the
-    // one suffix order every catalog parser tolerates.
-    const isAgency = AGENCY_NAME.test(agencyScreenText(vendor, b.name, { nameFrom: b.nameFrom })) || agencyEvidence.has(`${vendor}:${b.token}`);
-    if (isAgency) taggedAgencies++;
-    lines.push(`  { name: "${esc(b.name)}", source: "${vendor}", token: "${esc(b.token)}"${isAgency ? ", agency: true" : ""} },`);
-  }
+const refusals = project(agencyEvidence);
+if (refusals.length) {
+  for (const r of refusals) console.error(`REFUSING to apply: ${r}`);
+  process.exit(1);
 }
+const { lines, taggedAgencies } = entryLines(agencyEvidence);
 const marker = src.lastIndexOf("];");
 if (marker === -1) { console.error("sources.ts: JOB_SOURCES closing not found"); process.exit(1); }
-const banner = `  // ── Census round 3 + Rippling (merged ${new Date().toISOString().slice(0, 10)}): all vendors, official-API verified ≥3 postings, mill-screened ──\n`;
 const next = src.slice(0, marker) + banner + lines.join("\n") + "\n" + src.slice(marker);
 fs.writeFileSync(SOURCES, next);
 console.log(`\nAPPLIED: ${lines.length} boards appended to sources.ts (${taggedAgencies} carry the agency disclosure flag)`);
+// The generated modules that read the catalogue must be regenerated in the
+// same commit as the merge, or the board ships a collision table and a
+// multi-site list that describe the catalogue before it.
+const checks = runGeneratedChecks(SOURCES);
+if (checks.stale.length) { console.error(`STALE after the merge: ${checks.stale.join(", ")}. Regenerate before committing.`); process.exit(1); }

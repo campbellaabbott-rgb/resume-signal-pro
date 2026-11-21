@@ -9,6 +9,10 @@
 // Usage: node scripts/census-workday.mjs <verified-out.json> [skipIndexes]
 
 import fs from "node:fs";
+import { REPO_SOURCES, readCatalogue, tokensOf } from "./catalogue-reader.mjs";
+import { refuseArchiveListing } from "./od-cc.mjs";
+
+refuseArchiveListing(import.meta.url);
 
 const OUT = process.argv[2] || "workday-verified.json";
 const SKIP = Number(process.argv[3]) || 0;
@@ -88,11 +92,8 @@ for (const idx of indexes) {
 console.log(`census: ${candidates.size} candidate tenant/site combos`);
 
 // dedupe against catalog
-const srcText = fs.readFileSync(new URL("../supabase/functions/job-board/sources.ts", import.meta.url), "utf8");
-const existing = new Set([
-  ...[...srcText.matchAll(/source:\s*"workday",\s*token:\s*"([^"]+)"/g)].map((m) => m[1].toLowerCase()),
-  ...[...srcText.matchAll(/s\("(?:[^"\\]|\\.)*",\s*"workday",\s*"([^"]+)"/g)].map((m) => m[1].toLowerCase()),
-]);
+// Every carried workday token, by importing the catalogue (packed rows included).
+const existing = tokensOf(await readCatalogue(REPO_SOURCES), "workday");
 
 const prettify = (t) => t.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 60);
 // Accumulate across slices: seed from any existing output so foreground runs add up.
@@ -118,13 +119,19 @@ await Promise.all(Array.from({ length: 10 }, async () => {
         const body = await res.json();
         const items = Array.isArray(body.jobPostings) ? body.jobPostings : [];
         // Count fresh (≤30d) postings by the relative age, matching ingest.
+        // It is a PAGE ESTIMATE: 20 rows of the newest postings, so a floor.
         const fresh = items.filter((j) => {
           const s = String(j.postedOn ?? "").toLowerCase();
           if (/30\+\s*days/.test(s)) return false;
           const m = s.match(/posted\s+(\d+)\s+days?\s+ago/);
           return !(m && Number(m[1]) > 30);
         });
-        if (items.length >= MIN_POSTINGS) verified.push({ token: tok, name: prettify(tenant), count: items.length, fresh: fresh.length });
+        // The board's size is the response's total, never the page length
+        // (every board read as at most 20). It merges only with at least 3
+        // fresh postings: merge-all's window gate, applied where it is read.
+        const total = Number(body.total);
+        const count = Number.isFinite(total) && total >= items.length ? total : items.length;
+        if (fresh.length >= MIN_POSTINGS) verified.push({ token: tok, name: prettify(tenant), count, inWindow30: fresh.length, dateBasis: "postedOn, first page only", fresh: fresh.length });
       }
     } catch { /* dead tenant — skip */ }
     done++;

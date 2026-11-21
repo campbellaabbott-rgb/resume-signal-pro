@@ -10,12 +10,14 @@
 //   worklist. With --apply: appends entries to sources.ts.
 
 import fs from "node:fs";
+import { CWD_SOURCES, keySet, nameIndex, nameKey as nameKeyOf, readCatalogue } from "./catalogue-reader.mjs";
 
 const [, , VERIFIED_PATH, applyFlag] = process.argv;
 const APPLY = applyFlag === "--apply";
 const verified = JSON.parse(fs.readFileSync(VERIFIED_PATH, "utf8"));
-const SOURCES = "supabase/functions/job-board/sources.ts";
+const SOURCES = CWD_SOURCES;
 const src = fs.readFileSync(SOURCES, "utf8");
+const catalogue = await readCatalogue(SOURCES);
 
 // ── quality filters ──────────────────────────────────────────────────────────
 // Names that indicate a staffing mill / agency / placeholder rather than a
@@ -24,13 +26,10 @@ const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talent\s|talents\b|headh
 const TOKEN_BLOCK = /(demo|test|sample|sandbox|staging)/i;
 
 // Existing catalog: tokens per vendor (dupe guard) + display names (collision
-// guard — the same company live on an old vendor AND a new one double-lists).
-const existingTokens = new Set(
-  [...src.matchAll(/source:\s*"(\w+)",\s*token:\s*"([^"]+)"/g)].map((m) => `${m[1]}:${m[2].toLowerCase()}`),
-);
-const existingNames = new Set(
-  [...src.matchAll(/name:\s*"((?:[^"\\]|\\.)*)"/g)].map((m) => m[1].toLowerCase().trim()),
-);
+// guard — the same company live on an old vendor AND a new one double-lists),
+// by importing the catalogue: every entry, packed or not.
+const existingTokens = keySet(catalogue);
+const existingNames = new Set(nameIndex(catalogue).keys());
 
 const keep = {};
 const dropped = { blockedName: 0, blockedToken: 0, dupe: 0, nameCollision: 0 };
@@ -41,7 +40,7 @@ for (const vendor of ["recruitee", "teamtailor", "breezy", "personio"]) {
   const seen = new Set();
   for (const b of verified[vendor] ?? []) {
     const tokenKey = `${vendor}:${b.token.toLowerCase()}`;
-    const nameKey = b.name.toLowerCase().trim();
+    const nameKey = nameKeyOf(b.name);
     if (TOKEN_BLOCK.test(b.token)) { dropped.blockedToken++; continue; }
     if (NAME_BLOCK.test(b.name)) { dropped.blockedName++; continue; }
     if (seen.has(tokenKey) || existingTokens.has(tokenKey)) { dropped.dupe++; continue; }
