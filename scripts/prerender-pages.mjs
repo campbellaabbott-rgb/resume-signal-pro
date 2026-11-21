@@ -57,9 +57,10 @@ export function postingCheckState(status, body) {
  * ANY state is the ledger's to decide, never re-added from a sitemap: an
  * expired gone path still named by a stale sitemap was re-read on every bake.
  */
-export function postingCarryBase({ ledger, sitemaps = [], idFromPath, today, keepDays = POSTING_STUB_KEEP_DAYS }) {
+export function postingCarryBase({ ledger, sitemaps = [], idFromPath, today, keepDays = POSTING_STUB_KEEP_DAYS, ceiling = null, reserve = null }) {
   const recheck = new Map();
   const stubs = new Map();
+  let held = 0;
   // PAST THE KEEP WINDOW A PAGE BECOMES A TOMBSTONE, NOT THE HOMEPAGE (SEO
   // report 2026-10-12, SEO-002). A gone page past the window used to be
   // dropped, and its address fell back to index.html: an indexable copy of the
@@ -68,10 +69,18 @@ export function postingCarryBase({ ledger, sitemaps = [], idFromPath, today, kee
   const tombstones = new Map();
   const postings = ledger && typeof ledger === "object" && ledger.postings && typeof ledger.postings === "object" ? ledger.postings : {};
   const named = new Set();
+  // The previous publish's live set, which the ceiling hold reads (CRAWL18B-2).
+  let liveCount = 0;
+  for (const e of Object.values(postings)) if (e && typeof e === "object" && e.state === "live") liveCount++;
   for (const [path, e] of Object.entries(postings)) {
     if (!idFromPath(path) || !e || typeof e !== "object") continue;
     named.add(path);
     if (e.state === "tombstone") { tombstones.set(path, { ...e }); continue; }
+    // A page this site just retired at the ceiling or for its expiry stays
+    // retired, without a board read, for its hold (postingRetiredHeld): it
+    // was re-read and re-admitted at the next bake, and its index and markup
+    // flipped within two days.
+    if (ceiling !== null && postingRetiredHeld(e, { today, liveCount, ceiling, reserve: reserve ?? 0 })) { stubs.set(path, { ...e }); held++; continue; }
     // A seeded entry (a URL published before the ledger existed, never re-read)
     // keeps its "no longer has a page of its own" page without a board read,
     // exactly as a gone one does: re-checking 459 of them a bake would spend the
@@ -91,7 +100,42 @@ export function postingCarryBase({ ledger, sitemaps = [], idFromPath, today, kee
       recheck.set(path, today);
     }
   }
-  return { recheck, stubs, tombstones };
+  return { recheck, stubs, tombstones, held, liveCount };
+}
+
+/**
+ * HOW LONG A RETIRED PAGE STAYS RETIRED (SEO audit 2026-11-18, CRAWL18B-2).
+ * Every retired page used to be re-read and re-admitted at the next bake, so
+ * five pages went index, noindex, index within two days at the ceiling and
+ * expiry edges (Insulet REQ-2026-18592: retired as expiring on 11-19, re-read,
+ * retired again at the ceiling). Now a page retired as expiring stays retired
+ * for POSTING_EXPIRY_NEAR_DAYS + 1 days, past the end it was retired for, and
+ * one retired at the ceiling for POSTING_CEILING_HOLD_DAYS while the previous
+ * publish's live set is at or above ceiling - reserve (below it there is room,
+ * and the page competes again). The day is the entry's lastRetired, the day
+ * it last went from a served page to a retired one (postingStubEntry).
+ */
+export const POSTING_CEILING_HOLD_DAYS = 7;
+export function postingRetiredHeld(e, { today, liveCount, ceiling, reserve = 0 }) {
+  if (!e || typeof e !== "object" || e.state !== "retired" || e.seed === true) return false;
+  const age = dayDiff(typeof e.lastRetired === "string" ? e.lastRetired : e.since, today);
+  if (age === null || age < 0) return false;
+  if (e.basis === "expiring") return age < POSTING_EXPIRY_HOLD_DAYS;
+  if (e.basis === "ceiling") return age < POSTING_CEILING_HOLD_DAYS && Number.isFinite(liveCount) && liveCount >= ceiling - reserve;
+  return false;
+}
+
+/**
+ * The retirement a ledger entry remembers (CRAWL18B-2): `lastRetired` is the
+ * day the page last went from a served page to a retired one, and
+ * `lastRetiredBasis` why. A retired entry keeps the day it was first retired
+ * while it stays retired; a live entry carries both forward, so a page that
+ * came back is visible as one.
+ */
+export function withRetiredMark(entry, prior) {
+  const p = prior && typeof prior === "object" ? prior : {};
+  if (typeof p.lastRetired !== "string") return entry;
+  return { ...entry, lastRetired: p.lastRetired, ...(typeof p.lastRetiredBasis === "string" ? { lastRetiredBasis: p.lastRetiredBasis } : {}) };
 }
 
 /**
@@ -158,6 +202,8 @@ export function postingCeilingSplit(carried, { ceiling, dateOf }) {
 // within a few days anyway, to the honest "retired" page, until the carried
 // set leaves room for the reserve. The ceiling is never broken.
 export const POSTING_EXPIRY_NEAR_DAYS = 3;
+/** A page retired as expiring stays retired this long (postingRetiredHeld). */
+export const POSTING_EXPIRY_HOLD_DAYS = POSTING_EXPIRY_NEAR_DAYS + 1;
 
 /**
  * The carried live pages that give up their page so the fresh reserve fits:
@@ -515,6 +561,14 @@ export function postingStubEntry({ stub, prior, today, first = null, employerNam
   // The twin a duplicate canonicalises to rides in the ledger (SEO-039): the
   // carry dropped it, and every carried duplicate entry read duplicateOf null.
   if (state === "retired" && typeof stub.duplicateOf === "string" && stub.duplicateOf.startsWith("/")) out.duplicateOf = stub.duplicateOf;
+  // The day it last went from a served page to a retired one (CRAWL18B-2):
+  // kept while it stays retired, today when it was served at the last publish.
+  if (state === "retired" && out.seed !== true) {
+    const stays = p.state === "retired";
+    out.lastRetired = stays ? (typeof p.lastRetired === "string" ? p.lastRetired : since) : today;
+    const basis = stays && typeof p.lastRetiredBasis === "string" ? p.lastRetiredBasis : out.basis;
+    if (typeof basis === "string") out.lastRetiredBasis = basis;
+  }
   return out;
 }
 

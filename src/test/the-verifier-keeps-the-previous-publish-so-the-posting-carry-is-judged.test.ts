@@ -195,35 +195,43 @@ const site = (extra: Route[] = []) => [
 ];
 const SEO = ".config/resumebooster/seo";
 
-describe("section 76 F2a judges the carry from the saved previous sitemap", () => {
+// Since CRAWL18B-3 (SEO audit 2026-11-18) F2a judges from the live ledger
+// alone; the saved sitemap adds the posting URLs it named that the ledger
+// does not, and its going missing is a FAIL of its own.
+const PREV = "the previous publish's saved sitemap named that the ledger does not";
+const ledgerNaming = (postings: Record<string, { state: string; since: string }>) => route("/prerender-ledger.json", JSON.stringify({ builtAt: "2026-11-08", postings, pages: {} }));
+
+describe("section 76 F2a judges the carry from the live ledger, and the saved previous sitemap adds to it", () => {
   it("a carried URL that now serves the homepage copy is a FAIL that names it", () => {
     const lines = runSection76(site([route(CARRIED, HOME), route(KEPT, posting("Northwind", "noindex, follow"))]), { [`${SEO}/last-sitemap.xml`]: sitemap([CARRIED, KEPT], "2026-11-01") });
-    expect(f2a(lines).some((l) => l.startsWith("FAIL  2 posting URLs from the previous publish's sitemap: 1 homepage copies, 0 non-200") && l.includes(`${CARRIED} serves the homepage copy`)), show(lines)).toBe(true);
+    expect(f2a(lines).some((l) => l.startsWith("FAIL  2 posting URLs from the live ledger") && l.includes(`and 2 ${PREV}): 1 homepage copies, 0 non-200`) && l.includes(`${CARRIED} serves the homepage copy`)), show(lines)).toBe(true);
     expect(f2a(lines).some((l) => l.includes(KEPT) && l.startsWith("FAIL")), show(lines)).toBe(false);
   });
 
   it("positive control: every carried URL serving a page of its own passes", () => {
     const lines = runSection76(site([route(CARRIED, posting("Northwind")), route(KEPT, posting("Northwind", "noindex, follow"))]), { [`${SEO}/last-sitemap.xml`]: sitemap([CARRIED, KEPT], "2026-11-01") });
-    expect(f2a(lines).some((l) => l.startsWith('PASS  2 posting URLs from the previous publish\'s sitemap: 1 live pages, 1 noindex "no longer listed" pages, 0 homepage copies (F2a)')), show(lines)).toBe(true);
+    expect(f2a(lines).some((l) => l.startsWith("PASS  2 posting URLs from the live ledger") && l.includes(`and 2 ${PREV}): 1 live pages, 1 noindex "no longer listed" pages, 0 homepage copies (F2a)`)), show(lines)).toBe(true);
   });
 
-  it("when the last save is this publish's own (an earlier run saved it), F2a judges the publish before it", () => {
+  it("when the last save is this publish's own (an earlier run saved it), the publish before it adds its URLs", () => {
     const lines = runSection76(site([route(CARRIED, HOME)]), {
       [`${SEO}/last-sitemap.xml`]: LIVE_SITEMAP,
       [`${SEO}/prev-sitemap.xml`]: sitemap([CARRIED], "2026-11-01"),
       [`${SEO}/saves.log`]: "x\n",
     });
-    expect(f2a(lines).some((l) => l.startsWith("FAIL  1 posting URLs from the previous publish's sitemap: 1 homepage copies") && l.includes("read from prev-sitemap.xml") && l.includes(CARRIED)), show(lines)).toBe(true);
+    expect(f2a(lines).some((l) => l.startsWith("FAIL  1 posting URLs from the live ledger") && l.includes(`and 1 ${PREV}): 1 homepage copies`) && l.includes(CARRIED)), show(lines)).toBe(true);
   });
 
   it("a saved sitemap gone missing after this machine saved one is a FAIL, not an INFO", () => {
     const lines = runSection76(site(), { [`${SEO}/saves.log`]: "2026-11-07T00:00:00.000Z\tbuilt 2026-11-07\t2 URLs\tfirst save\n" });
-    expect(f2a(lines).some((l) => /^FAIL {2}F2a cannot judge the previous publish's posting URLs: no saved sitemap at .*last-sitemap\.xml, although saves\.log says this machine saved one/.test(l)), show(lines)).toBe(true);
+    expect(lines.some((l) => /^FAIL {2}the verifier's saved sitemap is missing at .*last-sitemap\.xml, although saves\.log says this machine saved one/.test(l)), show(lines)).toBe(true);
   });
 
-  it("a machine that never saved one is told the run saves it, as INFO", () => {
-    const lines = runSection76(site());
-    expect(f2a(lines).some((l) => /^INFO {2}F2a cannot judge the previous publish's posting URLs: no saved sitemap at .*last-sitemap\.xml yet\. verify-deploy\.sh saves the live sitemap and ledger at the end of every run that reaches its end/.test(l)), show(lines)).toBe(true);
-    expect(f2a(lines).some((l) => l.startsWith("FAIL")), show(lines)).toBe(false);
+  it("a machine that never saved one still judges every URL the live ledger names", () => {
+    const good = runSection76([ledgerNaming({ [LIVE_POSTING]: { state: "live", since: "2026-11-08" }, [KEPT]: { state: "gone", since: "2026-11-07" } }), route(KEPT, posting("Northwind", "noindex, follow")), ...site()]);
+    expect(f2a(good).some((l) => l.startsWith('PASS  2 posting URLs from the live ledger (1 live, 1 that changed state in the 7 days to 2026-11-08, 0 of 0 older ones): 1 live pages, 1 noindex "no longer listed" pages, 0 homepage copies (F2a)')), show(good)).toBe(true);
+    expect(good.some((l) => /F2a cannot judge/.test(l)), show(good)).toBe(false);
+    const bad = runSection76([ledgerNaming({ [LIVE_POSTING]: { state: "live", since: "2026-11-08" }, [KEPT]: { state: "gone", since: "2026-11-07" } }), route(KEPT, HOME), ...site()]);
+    expect(f2a(bad).some((l) => l.startsWith("FAIL  2 posting URLs from the live ledger") && l.includes(`${KEPT} serves the homepage copy`)), show(bad)).toBe(true);
   });
 });

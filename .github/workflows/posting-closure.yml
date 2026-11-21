@@ -28,6 +28,15 @@
 # check could not judge), so a schedule GitHub stopped running is noticed.
 #
 # Nothing here writes to any employer or to the site: every request is a GET.
+#
+# THE PROPOSAL (SEO audit 2026-11-18, STRUCTURED-B1 part 2 and B2; owner yes,
+# 2026-11-19). The pages a measuring run finds closed at their employer, and
+# what each employer stated about the others (end dates, time types, whether
+# it still serves the posting), are committed to ONE standing branch,
+# posting-closure/next-publish, rebuilt on main each run, and ONE pull request
+# from it is opened or updated. That is the only write this workflow makes to
+# the repository: never to main, never to the site. A person merges, and the
+# next bake retires the closed pages and applies the statements.
 name: posting-closure
 on:
   schedule:
@@ -35,8 +44,9 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: read
+  contents: write
   issues: write
+  pull-requests: write
 
 concurrency:
   group: posting-closure
@@ -68,7 +78,7 @@ jobs:
           set -u
           mkdir -p .posting-closure
           set +e
-          node scripts/posting-closure-check.mjs --history .posting-closure/history.json --out .posting-closure/latest.json --closed-out .posting-closure/closed-today.txt
+          node scripts/posting-closure-check.mjs --history .posting-closure/history.json --out .posting-closure/latest.json --closed-out .posting-closure/closed-today.txt --stated-out .posting-closure/employer-stated.txt
           CODE=$?
           set -e
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
@@ -165,6 +175,44 @@ jobs:
               --body "$BODY
 
           Opened by .github/workflows/posting-closure.yml. Each daily run that finds a live page closed at its employer comments here instead of opening another issue."
+          fi
+
+      # THE PULL REQUEST (STRUCTURED-B1 part 2, B2). Only a run that measured
+      # today has anything to propose: a later slot re-reading the same date
+      # writes neither file. The branch is rebuilt on main each time, carrying
+      # the closed lines of the proposal a person has not merged yet.
+      - name: Propose the closed pages and the employers' statements as a pull request
+        if: always() && steps.check.outputs.code != '2'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_LABEL: run ${{ github.run_id }}
+        run: |
+          set -u
+          BRANCH=posting-closure/next-publish
+          CLOSED=.posting-closure/closed-today.txt
+          STATED=.posting-closure/employer-stated.txt
+          if [ ! -s "$CLOSED" ] && [ ! -s "$STATED" ]; then echo "nothing measured this run, so nothing to propose"; exit 0; fi
+          git fetch --no-tags origin main
+          EARLIER=.posting-closure/earlier-closed.txt
+          : > "$EARLIER"
+          if git fetch --no-tags origin "$BRANCH" 2>/dev/null; then
+            git show "origin/$BRANCH:scripts/seo-seed/closed-at-employer.txt" > "$EARLIER" 2>/dev/null || : > "$EARLIER"
+          fi
+          git checkout -B "$BRANCH" origin/main
+          node scripts/posting-closure-check.mjs --propose --closed-today "$CLOSED" --stated-today "$STATED" --earlier-closed "$EARLIER" --run-label "$RUN_LABEL"
+          if git diff --quiet -- scripts/seo-seed/closed-at-employer.txt scripts/seo-seed/employer-stated.txt; then echo "the proposal matches main"; exit 0; fi
+          git add scripts/seo-seed/closed-at-employer.txt scripts/seo-seed/employer-stated.txt
+          git -c user.name="posting-closure check" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "The daily closure check proposes its closed pages and what each employer stated ($RUN_LABEL)"
+          git push -q --force origin "HEAD:refs/heads/$BRANCH"
+          BODY="Opened by .github/workflows/posting-closure.yml ($RUN_LABEL). It appends the pages the daily check found closed at their employer to scripts/seo-seed/closed-at-employer.txt and rewrites scripts/seo-seed/employer-stated.txt from the newest measuring run. Nothing reaches the site until this is merged and published: the next bake then retires each closed page and applies each employer's stated end date and time type."
+          EXISTING=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state open --json number --jq '.[0].number' || echo "")
+          if [ -n "$EXISTING" ]; then
+            gh pr comment "$EXISTING" --repo "$GITHUB_REPOSITORY" --body "$(date -u +'%Y-%m-%d %H:%M UTC') — updated from $RUN_LABEL."
+          else
+            gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$BRANCH" \
+              --title "Posting closure: retire the pages closed at their employer and carry what each employer stated" \
+              --body "$BODY"
           fi
 
       - name: Fail the run while the check needs attention

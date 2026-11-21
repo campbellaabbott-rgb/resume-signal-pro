@@ -50,15 +50,18 @@ describe("eppr 203746", () => {
 });
 
 describe("the 492 served JobPosting titles", () => {
-  it("gain INTERN on the internships only: every other title's markup type is as served", () => {
+  it("gain INTERN on the internships only: every other title's markup type is as served, or gains only its title's contract or season (STRUCTURED-B11)", () => {
     const gained: string[] = [];
     for (const r of SERVED.filter((x) => x.jp)) {
       const ld = postingPage.postingJsonLdShape(rowOf(r), r.description, { site: SITE });
       if (!ld) continue;
       const before = typeof r.jp!.employmentType === "string" ? [r.jp!.employmentType] : [];
       const now = typesOf(ld);
-      if (JSON.stringify(now) !== JSON.stringify(before)) {
-        expect(now, r.path).toEqual([...before, "INTERN"]);
+      // A contract or a seasonal title adds CONTRACTOR or TEMPORARY after the stated type.
+      const fromTitle = postingPage.postingTitleEmploymentTypes(r.title).filter((t) => !before.includes(t));
+      const expected = [...before, ...fromTitle];
+      if (JSON.stringify(now) !== JSON.stringify(expected)) {
+        expect(now, r.path).toEqual([...expected, "INTERN"]);
         gained.push(r.path);
       }
     }

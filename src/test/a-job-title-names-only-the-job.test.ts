@@ -53,6 +53,7 @@ const markupTitle = (r: Served): string => {
 
 const REGAL = "ukg/recruiting~REG1000REGAL~1bbca4e6-7b2d-4f4f-bb34-681fc9385364";
 const SANTANDER = "workday/santander~wd3~SantanderCareers/Req0843024";
+const CHERRY_HILL = "ukg/recruiting~CHE1023CRRY~f99546c8-1543-437d-b13b-ac58c6e27205";
 /** Every served title the markup no longer names as served, and what it names. */
 const CLEANED: Record<string, string> = {
   "workday/fivebelow~wd1~fivebelowcareers/JR96028": "Seasonal Sales Associate",
@@ -73,6 +74,16 @@ const CLEANED: Record<string, string> = {
   "icims/careers.heb.com/253831": "Certified Medical Assistant",
   "workday/jj~wd5~JJ/R-108845-1": "Sales Associate, Trauma - Dallas, TX",
   "workday/jj~wd5~JJ/R-108850-1": "Regional Clinical Sales Specialist, Trauma – Dallas, TX",
+  // The residual shapes (STRUCTURED-B5), each read by hand.
+  "oracle/ibmwjb~ocs~CX_1/25033733": "Cook",
+  "greenhouse/coupang/8287891": "물류부동산 개발 및 투자 전문가 채용",
+  "workday/jdgroupnam~wd1~JDFL_Store_Careers/JR120879": "Macy's Store Management",
+  "smartrecruiters/LeCollectionist/744000160225984": "Senior Product Manager (H/F/X) - Ops Squad",
+  "smartrecruiters/LeCollectionist/744000160223801": "Senior Product Manager (H/F/X) - Supply Squad",
+  "smartrecruiters/LeCollectionist/744000160226909": "Senior Web & Mobile Developer (H/F/X) - Squad XP",
+  "smartrecruiters/BoschGroup/744000160437899": "Executive Assistant",
+  [`${CHERRY_HILL}/ad9a6ceb-9739-45f6-ba97-074f62f25c31`]: "Seasonal Holiday Retail Manager",
+  [`${CHERRY_HILL}/b6d07358-aef5-49ad-9f7e-5140133a64a0`]: "Seasonal Holiday Retail Manager",
 };
 
 describe("the titles the audit names", () => {
@@ -121,13 +132,33 @@ describe("the titles the audit names", () => {
   });
 });
 
+describe("the residual shapes the 2026-11-18 audit names (STRUCTURED-B5)", () => {
+  const title = (t: string, company: string, location: string | null = null, id = "workday:acme~wd1~Careers:R-1") =>
+    (postingPage as unknown as { postingMarkupTitle: (j: unknown) => string }).postingMarkupTitle({ id, title: t, company, location });
+  it("takes off a site named by the brand, a leading bracket tag, a mall, a brand lead, a contract code and a list of places", () => {
+    expect(title("Cook - Brookdale Memorial Oaks", "Brookdale Senior Living")).toBe("Cook");
+    expect(title("[쿠팡] 물류부동산 개발 및 투자 전문가 채용", "Coupang")).toBe("물류부동산 개발 및 투자 전문가 채용");
+    expect(title("Seasonal Holiday Sales Associate - Wenatchee Valley Mall", "Cherry Hill Programs")).toBe("Seasonal Holiday Sales Associate");
+    expect(title("Finish Line Macy's Store Management - Micronesia, Dededo, GU", "JD Finish Line", "FM: 02468 Dededo, Guam (Microneisa)")).toBe("Macy's Store Management");
+    expect(title("Senior Product Manager (H/F/X) - Ops Squad - CDI - Marseille / Paris / Remote", "Le Collectionist", "Paris, Région Île-de-France, France")).toBe("Senior Product Manager (H/F/X) - Ops Squad");
+  });
+  it("leaves a whole employer name that opens a title, a job's own place words and a service center alone", () => {
+    expect(title("Cineplex Strawberry Hill - Cast Member", "Cineplex")).toBe("Cineplex Strawberry Hill - Cast Member");
+    expect(title("Tencent Cloud – Senior Strategic Sales Executive", "Tencent")).toBe("Tencent Cloud – Senior Strategic Sales Executive");
+    expect(title("U-Haul Moving Center General Manager", "U-Haul")).toBe("U-Haul Moving Center General Manager");
+    expect(title("Customer Service Representative - Call Center", "Acme")).toBe("Customer Service Representative - Call Center");
+    expect(title("Principal, Real Estate [L6-II] (CREF_Development & Investment)", "Coupang Internal")).toBe("Principal, Real Estate [L6-II] (CREF_Development & Investment)");
+    expect(title("Sales Associate, Trauma - Dallas, TX", "Acme", "Dallas, TX")).toBe("Sales Associate, Trauma - Dallas, TX");
+  });
+});
+
 describe("the 492 served JobPosting titles", () => {
   const withMarkup = SERVED.filter((r) => r.jp);
   it("is the corpus the audit read", () => {
     expect(withMarkup).toHaveLength(492);
   });
 
-  it("changes exactly the 18 read by hand, as labelled, and no other title (never worse)", () => {
+  it("changes exactly the 27 read by hand, as labelled, and no other title (never worse)", () => {
     const changed: Record<string, string> = {};
     for (const r of withMarkup) {
       const t = markupTitle(r);

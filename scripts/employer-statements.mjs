@@ -116,6 +116,77 @@ export function withCarriedStatements(fresh, carried, read) {
   return Object.keys(out).length ? out : null;
 }
 
+/**
+ * THE EARLIER OF TWO CARRIED STATEMENTS (SEO audit 2026-11-18, STRUCTURED-B2):
+ * the daily check's (`check`, the fresher) and the live ledger's (`ledger`).
+ * The end date is the earlier of the two, so validThrough never moves later
+ * on a carry; the time type and the remote flag are the check's where it
+ * states them, else the ledger's. Returns carriedStatementsOf's shape, or null.
+ */
+export function earlierCarried(check, ledger) {
+  const a = carriedStatementsOf(check);
+  const b = carriedStatementsOf(ledger);
+  if (!a) return b;
+  if (!b) return a;
+  const out = { ...b, ...a };
+  if (a.employerValidThrough && b.employerValidThrough) out.employerValidThrough = a.employerValidThrough < b.employerValidThrough ? a.employerValidThrough : b.employerValidThrough;
+  return out;
+}
+
+/**
+ * WHAT THE DAILY CHECK READ AT EACH PAGE'S EMPLOYER, FOR THE NEXT BAKE (SEO
+ * audit 2026-11-18, STRUCTURED-B2 and the owner's unread-Workday rule). The
+ * bake's own Workday read answered 39 of 297 pages on 2026-11-18 while the
+ * daily check, from GitHub's network, answered 285 of 289: the check's
+ * answers never reached the bake, so a Workday page whose bake read failed
+ * served validThrough at datePosted + 30 (AstraZeneca R-243632: 12-06 against
+ * its employer's 11-20) and no employment type.
+ *
+ * scripts/seo-seed/employer-stated.txt carries them, one page a line:
+ *   <path> <read at, YYYY-MM-DDTHH:MMZ> <open|unknown> <statements as JSON, or ->
+ * The check writes the whole file from its newest measuring run, into the
+ * pull request it proposes (posting-closure.yml); a person merges it. Pages it
+ * found closed go to closed-at-employer.txt instead.
+ */
+export const STATED_LIST_MAX_AGE_DAYS = 14;
+/** A daily check's "open" counts for the unread-Workday rule for this long after its read. */
+export const OPEN_READ_FRESH_HOURS = 36;
+
+/** One line of employer-stated.txt. `at` is an ISO instant (cut to the minute), `state` "open" or "unknown". */
+export function employerStatedLine(path, at, state, stated) {
+  const s = employerStatedOf(stated);
+  const when = `${String(at ?? "").slice(0, 16)}Z`;
+  return `${path} ${when} ${state === "open" ? "open" : "unknown"} ${s ? JSON.stringify(s) : "-"}`;
+}
+
+/**
+ * employer-stated.txt as a Map of path to { at (epoch ms), state, stated }.
+ * A line older than STATED_LIST_MAX_AGE_DAYS before `nowMs`, dated after it,
+ * or malformed is left out; "#" starts a comment.
+ */
+export function employerStatedList(text, nowMs, { maxAgeDays = STATED_LIST_MAX_AGE_DAYS } = {}) {
+  const out = new Map();
+  if (!Number.isFinite(nowMs)) return out;
+  for (const raw of String(text ?? "").split("\n")) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    const m = /^(\/jobs\/posting\/\S+)\s+(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z)\s+(open|unknown)\s+(.+)$/.exec(line);
+    if (!m) continue;
+    const at = Date.parse(m[2].replace("Z", ":00Z"));
+    if (!Number.isFinite(at) || at > nowMs || nowMs - at > maxAgeDays * 86_400_000) continue;
+    let stated = null;
+    if (m[4] !== "-") {
+      try { stated = employerStatedOf(JSON.parse(m[4])); } catch { stated = null; }
+    }
+    out.set(m[1], { at, state: m[3], stated });
+  }
+  return out;
+}
+
+/** Whether a check entry read the page as open within `hours` before `nowMs`. */
+export const checkReadOpenWithin = (entry, nowMs, hours = OPEN_READ_FRESH_HOURS) =>
+  !!entry && entry.state === "open" && Number.isFinite(entry.at) && nowMs - entry.at <= hours * 3_600_000 && entry.at <= nowMs;
+
 /** Whether statements put the employer's own end date before `today` (YYYY-MM-DD): the posting is past it. */
 export const statedEndPassed = (stated, today) => {
   const end = employerStatedOf(stated)?.employerValidThrough;

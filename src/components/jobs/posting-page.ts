@@ -30,6 +30,8 @@ import { JOB_POSTING_MARKUP } from "../../config/seo-switches";
 import { titleFromCapitals } from "../../lib/seo/display-case";
 // What a posting's employer states, applied by the bake and again here (B06).
 import { applyEmployerStatements } from "../../../scripts/employer-statements.mjs";
+// The board's own labels for a job type, which the posting page prints (STRUCTURED-B18).
+import { EMPLOYMENT_TYPE_FALLBACK } from "../../lib/listing/types";
 
 /**
  * THE BOARD'S OWN SERVING WINDOW, MIRRORED — and the mirror is the point.
@@ -591,9 +593,13 @@ const reEscape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  * the 492 served titles (src/test/fixtures/served-postings-2026-11-18.json.gz):
  * it changes the 18 read by hand and no other.
  */
-export function postingMarkupTitle(job: Pick<PostingRow, "id" | "title" | "company">): string {
+export function postingMarkupTitle(job: Pick<PostingRow, "id" | "title" | "company"> & { location?: string | null }): string {
   const own = postingTitleText(job.title);
   let t = own;
+  // RESIDUAL SHAPES (SEO audit 2026-11-18, STRUCTURED-B5), each a whole part:
+  // a leading tag in square brackets ("[쿠팡] 물류부동산 ..." is Coupang's own
+  // name in Hangul), read before anything else.
+  t = t.replace(/^\s*\[[^\]]{1,24}\]\s*(?=\p{L})/u, "");
   // The row's own requisition key, in brackets or as a whole word.
   const key = postingPathParts(job.id)?.key ?? "";
   if (key.length >= 4 && !/^\d{1,4}$/.test(key)) {
@@ -606,6 +612,35 @@ export function postingMarkupTitle(job: Pick<PostingRow, "id" | "title" | "compa
   for (const n of names) {
     t = t.replace(new RegExp(String.raw`${TITLE_SEP_RE}${reEscape(n)}(?![\w&])(?:[^()]|\([^()]*\))*$`, "i"), "");
   }
+  // STRUCTURED-B5: the employer's brand opening the title where the brand is
+  // its name with a short group prefix dropped ("Finish Line Macy's Store
+  // Management" at "JD Finish Line"), when two words are left after it. Its
+  // whole name opening a title is left alone: "Cineplex Strawberry Hill -
+  // Cast Member", "Regal Cinemas Northampton - ..." and "Tencent Cloud - ..."
+  // would lead with a place or a product once it went. And a last part naming
+  // one of its sites by the name's first word ("Cook - Brookdale Memorial
+  // Oaks" at "Brookdale Senior Living").
+  for (const n of names) {
+    const brandLead = n.replace(/^[A-Z]{1,3}\s+(?=\p{L}{3,})/u, "");
+    if (brandLead !== n && brandLead.length >= 4) {
+      const rest = t.replace(new RegExp(String.raw`^${reEscape(brandLead)}\s+(?=\p{L})`, "iu"), "");
+      if (rest !== t && (rest.match(/\p{L}+/gu)?.length ?? 0) >= 2) t = rest;
+    }
+    const brand = /^\p{L}{5,}/u.exec(n)?.[0];
+    if (brand && brand.toLowerCase() !== n.toLowerCase()) t = t.replace(new RegExp(String.raw`${TITLE_SEP_RE}${reEscape(brand)}(?:\s+[\p{Lu}][\p{L}'.&-]*){1,4}$`, "u"), "");
+  }
+  // STRUCTURED-B5: a last part that is a shopping mall ("- Wenatchee Valley
+  // Mall"); a French contract code standing as a part ("- CDI -"); a last part
+  // listing places with slashes where one is remote or the row's own town
+  // ("Marseille / Paris / Remote"); and a last part "Region, Town, ST" whose
+  // town the row's own location names ("- Micronesia, Dededo, GU").
+  t = t.replace(/\s+[-–—|]\s+(?:[\p{Lu}][\p{L}.'&-]*\s+){1,4}(?:Mall|Galleria|Outlets?|Shopping (?:Center|Centre))(?:,\s*[\p{L} ]+)?$/u, "");
+  t = t.replace(/\s+[-–—|]\s+(?:CDI|CDD)(?=\s+[-–—|]\s+|$)/g, "");
+  const where = postingText(job.location).toLowerCase();
+  const places = /\s+[-–—|]\s+((?:[\p{Lu}][\p{L}'-]+(?:\s[\p{Lu}][\p{L}'-]+)?\s*\/\s*){1,5}[\p{Lu}][\p{L}'-]+(?:\s[\p{Lu}][\p{L}'-]+)?)$/u.exec(t);
+  if (places && places[1].split("/").map((x) => x.trim().toLowerCase()).some((x) => /^(?:remote|hybrid|t[ée]l[ée]travail)$/.test(x) || (!!where && where.includes(x)))) t = t.slice(0, places.index);
+  const regionTown = /\s+[-–—|]\s+[\p{L} .'-]+,\s*([\p{L} .'-]+),\s*[A-Z]{2}$/u.exec(t);
+  if (regionTown && where && where.includes(regionTown[1].trim().toLowerCase())) t = t.slice(0, regionTown.index);
   // Pay: a leading figure, or a part that is only pay.
   t = t.replace(new RegExp(String.raw`^${TITLE_PAY}\s+(?=\p{L})`, "iu"), "");
   t = t.replace(new RegExp(String.raw`${TITLE_SEP_RE}${TITLE_PAY}(?=${TITLE_SEP_RE}|$)`, "gi"), "");
@@ -1322,7 +1357,12 @@ export function postingPostalAddress(job: PostingRow): Record<string, unknown> |
   const country = (job.country ?? "").trim().toUpperCase();
   if (!country) return null;
   // Entities decoded once, and the zero-width marks some feeds leave in.
-  const whole = decodeNameEntities(String(job.location ?? "")).replace(/[\u200b-\u200d\ufeff]/g, "").trim();
+  const raw0 = decodeNameEntities(String(job.location ?? "")).replace(/[\u200b-\u200d\ufeff]/g, "").trim();
+  // THE COUNTRY AFTER A COLON (SEO audit 2026-11-18, STRUCTURED-B7): Suddath's
+  // "Jessup,Maryland: United States of America" named no region. A colon
+  // whose whole tail is the row's own country is the comma before it.
+  const colon = /^([^:]+):\s*([^:,]+)$/.exec(raw0);
+  const whole = colon && namesOwnCountry(colon[2].trim(), country) ? `${colon[1].trim()}, ${colon[2].trim()}` : raw0;
   const one = whole ? onePlaceOf(whole, country) : "";
   const address = postalAddressOf(one === null ? "" : one.replace(STREET_NOTE, "").trim() || one, country, job);
   if (!address.addressLocality && CITY_STATES[country] && one !== null && whole) {
@@ -1612,6 +1652,85 @@ export const ldEmploymentType = (stated: string | null | undefined): string | un
   stated ? LD_EMPLOYMENT_TYPE[String(stated).toLowerCase().replace(/\s+/g, " ").trim()] : undefined;
 
 /**
+ * A TITLE THAT SAYS THE JOB IS A CONTRACT, OR TEMPORARY (SEO audit
+ * 2026-11-18, STRUCTURED-B11). AMD's "Talent Acquisition Operations
+ * Specialist (Contract)" was marked PART_TIME only, so Google for Jobs'
+ * Contractor filter never found it. The employer's own title is read for:
+ *   CONTRACTOR  "(Contract)", "(Contractor)", "(6 month contract)", "12 Month
+ *               Contract", and "Contract" standing alone as a part of the
+ *               title ("Engineer - Contract", "| Contract");
+ *   TEMPORARY   "Temporary", "Seasonal", and "Temp" as a word (never "temp to
+ *               perm" or "temp to hire", which are not settled as temporary).
+ * The job area is not the job's terms: "Contracts Manager", "Sales Contracts",
+ * "Contract Operations Specialist" and "Supplier/Contractor Qualification
+ * Specialist" name the work, so a bare "contract" word inside a title never
+ * counts. Built against the 1,507 titles the bake has served or retired
+ * (src/test/fixtures/served-posting-titles-2026-11-21.json, labelled by
+ * hand): it marks every labelled contract and temporary title and no other.
+ */
+const CONTRACT_TITLE: RegExp[] = [
+  /\(\s*(?:\d+[\s-]*(?:months?|mos?|weeks?|years?)\s+)?contract(?:or)?\s*\)/i,
+  /\b\d+[\s-]*(?:months?|mos?|weeks?|years?)\s+contract\b/i,
+  /(?:^|[-–—|,:]\s*)contract(?:or)?\s*(?:$|[-–—|,)])/i,
+];
+const TEMPORARY_TITLE: RegExp[] = [
+  /\bseasonal\b/i,
+  /\btemporary\b/i,
+  /\btemp\b(?![-\s]+to[-\s]+(?:perm|permanent|hire)\b)(?!\s+(?:agency|staffing)\b)/i,
+];
+export function postingTitleEmploymentTypes(title: string | null | undefined): string[] {
+  const t = postingText(title);
+  if (!t) return [];
+  const out: string[] = [];
+  if (CONTRACT_TITLE.some((re) => re.test(t))) out.push("CONTRACTOR");
+  if (TEMPORARY_TITLE.some((re) => re.test(t))) out.push("TEMPORARY");
+  return out;
+}
+
+/**
+ * THE JOB TYPES A POSTING'S MARKUP STATES, IN ORDER: the employer's stated
+ * type first (ldEmploymentType), then what its own title says (a contract, a
+ * temporary or seasonal job: STRUCTURED-B11; an internship: STRUCTURED-9).
+ * Empty when neither states one: a type is never guessed.
+ */
+export function postingEmploymentTypes(job: Pick<PostingRow, "employmentType" | "title">, description = ""): string[] {
+  const out: string[] = [];
+  const stated = ldEmploymentType(job.employmentType);
+  if (stated) out.push(stated);
+  for (const t of postingTitleEmploymentTypes(job.title)) if (!out.includes(t)) out.push(t);
+  if (postingInternshipTitle(job.title, description) && !out.includes("INTERN")) out.push("INTERN");
+  return out;
+}
+
+/** The board's label for each schema job type (PostingFacts' "Job type" labels, and the three it does not offer). */
+export const EMPLOYMENT_TYPE_LABEL: Record<string, string> = {
+  FULL_TIME: EMPLOYMENT_TYPE_FALLBACK.full_time,
+  PART_TIME: EMPLOYMENT_TYPE_FALLBACK.part_time,
+  CONTRACTOR: EMPLOYMENT_TYPE_FALLBACK.contract,
+  TEMPORARY: EMPLOYMENT_TYPE_FALLBACK.temporary,
+  INTERN: EMPLOYMENT_TYPE_FALLBACK.internship,
+  VOLUNTEER: "Volunteer",
+  PER_DIEM: "Per diem",
+};
+
+/**
+ * THE JOB TYPE THE MARKUP STATES, PRINTED ON THE PAGE (SEO audit 2026-11-18,
+ * STRUCTURED-B18). Eight of eight marked-up pages sampled carried an
+ * employmentType that the served page printed nowhere (React printed it only
+ * after a call), and Google's content policy asks that what the markup says
+ * be visible. Read from the markup itself (`ld`, as postingJsonLd wrote it),
+ * so the line and the markup can never disagree: "Job type: Part-time,
+ * Contract, as the employer's own posting states it." Empty when the markup
+ * states no type or there is no markup.
+ */
+export function postingEmploymentTypeLine(ld: Record<string, unknown> | null | undefined): string {
+  const v = ld?.employmentType;
+  const types = (Array.isArray(v) ? v : typeof v === "string" ? [v] : []).filter((x): x is string => typeof x === "string");
+  const labels = types.map((t) => EMPLOYMENT_TYPE_LABEL[t]).filter(Boolean);
+  return labels.length ? `Job type: ${labels.join(", ")}, as the employer's own posting states it.` : "";
+}
+
+/**
  * THE ROW WITH WHAT ITS EMPLOYER STATED WHEN ITS PAGE WAS BAKED (B06). The
  * bake read the posting at its employer and put the employer's own end date,
  * time type, fully remote field, original date and address into the row it
@@ -1852,11 +1971,12 @@ export function postingJsonLdShape(
     ld.jobLocation = { "@type": "Place", address };
   }
 
-  const empType = ldEmploymentType(job.employmentType);
-  if (empType) ld.employmentType = empType;
-  // AN INTERNSHIP SAYS INTERN (STRUCTURED-9): the employer's own title names
-  // it ("Emerging Technology & AI Internship" was FULL_TIME only).
-  if (postingInternshipTitle(job.title, desc) && empType !== "INTERN") ld.employmentType = empType ? [empType, "INTERN"] : "INTERN";
+  // THE STATED TYPE, THEN WHAT THE EMPLOYER'S OWN TITLE SAYS: an internship
+  // says INTERN (STRUCTURED-9: "Emerging Technology & AI Internship" was
+  // FULL_TIME only), a contract CONTRACTOR and a seasonal or temporary job
+  // TEMPORARY (STRUCTURED-B11), as an array beside the stated type.
+  const empTypes = postingEmploymentTypes(job, desc);
+  if (empTypes.length) ld.employmentType = empTypes.length === 1 ? empTypes[0] : empTypes;
 
   return ld;
 }

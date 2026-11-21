@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
   PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
-  bakeLanders, D7_TRUSTED_COMPANY_TOKENS, employerBoardsOf, employerPageOf, pooledMembersOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, freshPoolOrder, postingFreshNameReason, postingPoolWalksOn, postingRowEligible, postingStubEntry, postingStubPage, keptPostingStub, postingStubPageBasis,
+  bakeLanders, D7_TRUSTED_COMPANY_TOKENS, employerBoardsOf, employerPageOf, pooledMembersOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, freshPoolOrder, postingFreshNameReason, postingPoolWalksOn, postingRowEligible, postingStubEntry, postingStubPage, keptPostingStub, postingStubPageBasis, withRetiredMark,
   LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, LLMS_TXT_COMPANIES, companiesLlmsLine, readCompanyIntel, llmsTxtCompaniesCount, duplicateSkeletons, landerBreakers, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
 } from "./prerender-pages.mjs";
 // The once-published pages, the ceiling, the dates and the duplicate groups
@@ -49,7 +49,7 @@ import { legalBodyFromTsx, legalText } from "./prerender-legal.mjs";
 import { routeChunkPrefix, preloadClosure, fallbackPreloadHtml, fontHeadProblems, modulepreloadTag, defersRouteHints, deferredPreloadHtml, dropsSupabasePreconnect, withoutSupabasePreconnect } from "./prerender-preload.mjs";
 // The employer's own answer for each posting, GET only (B01, B06).
 import { EMPLOYER_READ_BUDGET_MS, applyEmployerStatements, distrustImplausibleClosures, employerReadAlarms, employerReadLine, readEmployers, summarizeEmployerReads, withoutObligedRemote } from "./employer-reads.mjs";
-import { EMPLOYER_STATED_META, POSTING_CLOSED_META, carriedStatementsOf, employerStatedOf, postingClosedOf, statedEndPassed, withCarriedStatements } from "./employer-statements.mjs";
+import { EMPLOYER_STATED_META, POSTING_CLOSED_META, OPEN_READ_FRESH_HOURS, carriedStatementsOf, checkReadOpenWithin, earlierCarried, employerStatedList, employerStatedOf, postingClosedOf, statedEndPassed, withCarriedStatements } from "./employer-statements.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 // A BAKE CAN BE POINTED AWAY FROM THE CHECKOUT. PRERENDER_OUT names a
@@ -422,8 +422,27 @@ export function withEmployerCountry(page, stated, { D, carried }) {
  * THE DAILY CHECK'S CLOSED PAGES (CRAWL-M2): a row whose page is on
  * `closedAtEmployer` (closedAtEmployerList, from scripts/seo-seed/
  * closed-at-employer.txt) is closed without a read.
+ *
+ * THE DAILY CHECK'S OTHER ANSWERS (SEO audit 2026-11-18, STRUCTURED-B2):
+ * `checkReads` (employerStatedList, from scripts/seo-seed/employer-stated.txt)
+ * maps a page to what the check last read at its employer. Its statements
+ * join the ledger's under a failed read (earlierCarried: the end date is the
+ * earlier of the two, so validThrough never moves later), and a stated end
+ * already past retires the page as any other.
+ *
+ * A WORKDAY PAGE NOBODY READ AS OPEN CARRIES NO JOB MARKUP (owner decision
+ * 2026-11-19, after B2): when neither this bake's read nor a check read from
+ * the last OPEN_READ_FRESH_HOURS (at `nowMs`) said open, the item is marked
+ * `unread`; the page stays live and indexed, and its JobPosting is withheld
+ * (markupWithheld "unread"). Workday closes most of the board's pages and is
+ * the vendor the bake's own network reads worst. The rule stands only once
+ * the check's answers have reached the bake (the owner's condition): with no
+ * line in employer-stated.txt, `checkReads` is empty and nothing is withheld.
+ *
+ * Each kept item records this bake's answer as `read` ("open", "unknown"),
+ * which the posting page's own sentence reports (GEO-10).
  */
-export async function askEmployersAbout(list, { D, deadline, results = new Map(), readOpts = {}, carriedOf = () => null, closedAtEmployer = null, today = null }) {
+export async function askEmployersAbout(list, { D, deadline, results = new Map(), readOpts = {}, carriedOf = () => null, closedAtEmployer = null, today = null, checkReads = null, nowMs = Date.now() }) {
   const listed = [];
   const asking = [];
   for (const d of list) (closedAtEmployer && closedAtEmployer.has(D.postingPagePath(d.job.id)) ? listed : asking).push(d);
@@ -436,10 +455,14 @@ export async function askEmployersAbout(list, { D, deadline, results = new Map()
   for (const d of asking) {
     const r = answers.get(d.job.id);
     if (r?.state === "closed") { closed.push(d); continue; }
+    const check = checkReads ? checkReads.get(D.postingPagePath(d.job.id)) ?? null : null;
     // A remote flag the posting's own text contradicts is not stated
     // (STRUCTURED-6): "onsite expectation of 3-4 days per month" is not
     // worked from anywhere, whatever the vendor's field says.
-    const stated = employerStatedOf(withoutObligedRemote(withCarriedStatements(r?.stated, carriedOf(d.job), r?.state ?? "unknown"), d.description));
+    const carried = earlierCarried(check?.stated ?? null, carriedOf(d.job));
+    const stated = employerStatedOf(withoutObligedRemote(withCarriedStatements(r?.stated, carried, r?.state ?? "unknown"), d.description));
+    d.read = r?.state === "open" ? "open" : "unknown";
+    if (checkReads && checkReads.size > 0 && String(d.job.id ?? "").startsWith("workday:") && d.read !== "open" && !checkReadOpenWithin(check, nowMs, OPEN_READ_FRESH_HOURS)) d.unread = true;
     if (stated) {
       d.job = applyEmployerStatements(d.job, stated, { employmentTypeOf: D.ldEmploymentType });
       d.stated = stated;
@@ -540,7 +563,31 @@ export function employerEndedStub(job, D) {
 export function postingMarkupWithheld(page) {
   if (page.ld) return null;
   if (page.switchedOff) return "switch";
+  if (page.unread) return "unread";
   return page.nameRefused ? "name" : "country";
+}
+
+/**
+ * A LIVE PAGE WHOSE WORKDAY POSTING NOBODY READ AS OPEN (owner decision
+ * 2026-11-19; askEmployersAbout's `unread`): the page stays, indexable, and
+ * its JobPosting is withheld, with reason "unread" in its ledger entry. Any
+ * other page comes back as it was.
+ */
+export function withUnreadWithheld(page, unread) {
+  if (!unread || !page || !page.live || !page.ld) return page;
+  return { ...page, ld: null, unread: true };
+}
+
+/**
+ * THE POSTING PAGE'S OWN SENTENCE ABOUT HOW IT WAS CHECKED (GEO-10). Every
+ * page said only that it "was checked against the board when it was built";
+ * where this bake's read of the employer's own hiring system answered open, it
+ * says so, dated. `possessiveName` is possessive(nm), `read` the bake's answer.
+ */
+export function postingCheckedClause(possessiveName, read, today) {
+  return read === "open"
+    ? `this page was built ${today}, when the posting was open on ${possessiveName} own hiring system`
+    : `this page was checked against the board when it was built, ${today}`;
 }
 
 /**
@@ -630,7 +677,7 @@ export { formVendorPhrase, MCP_FORM_VENDORS_ON_CHATGPT } from "../src/config/mcp
 export { applyYourselfBakeHtml } from "../src/components/agents/apply-yourself-copy";
 export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
 export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingEmployer, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle, postingPageTitleAvoiding, postingPathParts } from "../src/components/jobs/posting-page";
-export { ldEmploymentType, postingJsonLdShape } from "../src/components/jobs/posting-page";
+export { ldEmploymentType, postingJsonLdShape, postingEmploymentTypeLine } from "../src/components/jobs/posting-page";
 export { jdTextOnce, openApplicationTitle, postingMarkupTitle, postingSameJob, postingTitleText } from "../src/components/jobs/posting-page";
 export { JOB_POSTING_MARKUP } from "../src/config/seo-switches";
 export { boardName, employerName, isCodeShapedName, isUnreviewedTenantName, possessive } from "../src/lib/company-display";
@@ -2917,6 +2964,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   // CRAWL-M2: the pages the daily check found closed at their employer, as
   // committed from its standing issue; entries over two weeks old are ignored.
   const CLOSED_AT_EMPLOYER = closedAtEmployerList(seedList("closed-at-employer.txt").join("\n"), TODAY);
+  // STRUCTURED-B2: what the daily check read at each page's employer, as
+  // committed from its pull request; lines over two weeks old are ignored.
+  const CHECK_READS = employerStatedList(seedList("employer-stated.txt").join("\n"), Date.now());
   {
     const envText5 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
     const grab5 = (k) => OFFLINE ? undefined : process.env[k] || (envText5.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
@@ -2967,6 +3017,10 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       sitemaps: carrySitemapsNow,
       idFromPath: D.postingIdFromPath,
       today: TODAY,
+      // A page just retired at the ceiling or as expiring stays retired for
+      // its hold, unread (postingRetiredHeld, CRAWL18B-2).
+      ceiling: POSTING_PAGE_CEILING,
+      reserve: POSTING_FRESH_RESERVE,
     });
     const priorPostingOf = (path) => (seededPostings.ledger.postings && seededPostings.ledger.postings[path]) || {};
     const writeStub = (s0) => {
@@ -3100,6 +3154,8 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       const askEmployers = (list) => askEmployersAbout(list, {
         D, deadline: employerDeadline, results: employerResults, today: TODAY, closedAtEmployer: CLOSED_AT_EMPLOYER,
         carriedOf: (job) => priorPostingOf(D.postingPagePath(job.id)).stated ?? null,
+        // STRUCTURED-B2: what the daily check read, as a person merged it.
+        checkReads: CHECK_READS,
       });
       {
         const { keep, closed, ended } = await askEmployers(detailed);
@@ -3280,6 +3336,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       for (const d of detailed) {
         d.page = bakePostingPage(d.job, d.description, { D, SITE, carried: d.carried });
         d.page = withEmployerCountry(d.page, d.stated, { D, carried: d.carried });
+        d.page = withUnreadWithheld(d.page, d.unread);
         const { named } = d.page;
         if (named.reason) {
           nameGateDryRun.push({ path: D.postingPagePath(d.job.id), kind: "posting", token: d.job.token ?? null, name: named.name, shown: named.shown, reason: named.reason, would: "be marked noindex (its job markup is already withheld and its head names no employer)" });
@@ -3298,7 +3355,8 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       const postingTitlesTaken = new Set();
       let titlesDisambiguated = 0;
       let nameWithheld = 0;
-      for (const { description, first, carried, page, stated } of detailed) {
+      let unreadWithheld = 0;
+      for (const { description, first, carried, page, stated, read } of detailed) {
         // What bakePostingPage decided for this row (above): the page's path,
         // the row its page prints (a refused name blanked), its markup, and
         // whether it keeps a live page.
@@ -3339,7 +3397,11 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           if ("baseSalary" in ld) wrong.push("baseSalary");
           if (wrong.length) markupFound.push({ path, wrong });
         }
-        const ownSentence = `${postingSourceSentence(possessive(nm))} A dated posting is served for at most ${D.BOARD_FRESH_WINDOW_DAYS} days from the date the employer states, and this page was checked against the board when it was built, ${TODAY}; the board itself ${RECHECK_CLAUSE}.`;
+        // THE JOB TYPE THE MARKUP STATES IS PRINTED (STRUCTURED-B18), read
+        // from the markup itself so the two never disagree.
+        const typeLine = D.postingEmploymentTypeLine(ld);
+        if (page.unread) unreadWithheld++;
+        const ownSentence = `${postingSourceSentence(possessive(nm))} A dated posting is served for at most ${D.BOARD_FRESH_WINDOW_DAYS} days from the date the employer states, and ${postingCheckedClause(possessive(nm), read, TODAY)}; the board itself ${RECHECK_CLAUSE}.`;
         write({
           path,
           ...(lang && lang !== "en" ? { lang } : {}),
@@ -3358,6 +3420,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
             <p><a href="/jobs">All openings</a></p>
             <h1>${esc(title)}</h1>
             <p>${esc(nameRefused ? "The employer" : nm)}${place ? ` — ${esc(place)}` : ""}${remoteShown ? " — Remote" : ""}</p>
+            ${typeLine ? `<p>${esc(typeLine)}</p>` : ""}
             <p>Posted ${esc(String(job.postedAt).slice(0, 10))}, as stated by the employer. ${job.salary
               ? `Pay, in the employer's own words and neither converted nor estimated: ${esc(String(job.salary))}.`
               : "We found no pay figure on this posting. That is our reading, not a statement by the employer — the description may still name one."}</p>
@@ -3400,7 +3463,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         // `applyUrl` rides along for the daily closure check, which reads each
         // live posting at its employer from the ledger alone (B01).
         const withheld = postingMarkupWithheld(page);
-        postingLedger[path] = { state: "live", since: TODAY, first, carried, title, company: nm, token: job.token ?? null, ...(job.applyUrl ? { applyUrl: String(job.applyUrl) } : {}), ...(withheld ? { markupWithheld: withheld } : {}) };
+        postingLedger[path] = withRetiredMark({ state: "live", since: TODAY, first, carried, title, company: nm, token: job.token ?? null, ...(job.applyUrl ? { applyUrl: String(job.applyUrl) } : {}), ...(withheld ? { markupWithheld: withheld } : {}) }, priorPostingOf(path));
         // What the employer stated rides to the next bake (STRUCTURED-M1).
         postingLedger[path] = withStatedEntry(postingLedger[path], stated);
       }
@@ -3433,7 +3496,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
             </ul>
           </section>`;
       }
-      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new (${freshFromCache} read from company pages' cached openings) from a pool of ${pool.length} over ${poolPagesRead} list page${poolPagesRead === 1 ? "" : "s"}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed, ${freshNameUnreviewed} new refused for a name no one wrote (the board's own code)) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} show employer-stated pay on the page (none in the markup); ${titlesDisambiguated} title${titlesDisambiguated === 1 ? "" : "s"} took its town, its stated date or a short reference to stay unique; fresh budget ${freshBudget} (carried live ${carriedLive}, ceiling ${POSTING_PAGE_CEILING}; ${retiredExpiring} expiring within ${POSTING_EXPIRY_NEAR_DAYS} days gave way to the reserve); ${countryMismatch} with a location ending in another country (job markup withheld; a carried one keeps its page under D7 and is on the dry run); ${nameWithheld} carried with an employer name the gate refuses (job markup withheld, "the employer" printed, on the dry run); carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}; job markup ${D.JOB_POSTING_MARKUP === false ? "OFF by the owner's STOP switch (src/config/seo-switches.ts): every live page kept, none marked up" : "on"}`);
+      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new (${freshFromCache} read from company pages' cached openings) from a pool of ${pool.length} over ${poolPagesRead} list page${poolPagesRead === 1 ? "" : "s"}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed, ${freshNameUnreviewed} new refused for a name no one wrote (the board's own code)) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} show employer-stated pay on the page (none in the markup); ${titlesDisambiguated} title${titlesDisambiguated === 1 ? "" : "s"} took its town, its stated date or a short reference to stay unique; fresh budget ${freshBudget} (carried live ${carriedLive}, ceiling ${POSTING_PAGE_CEILING}; ${retiredExpiring} expiring within ${POSTING_EXPIRY_NEAR_DAYS} days gave way to the reserve); ${countryMismatch} with a location ending in another country (job markup withheld; a carried one keeps its page under D7 and is on the dry run); ${nameWithheld} carried with an employer name the gate refuses (job markup withheld, "the employer" printed, on the dry run); ${unreadWithheld} Workday page${unreadWithheld === 1 ? "" : "s"} neither this bake nor a daily check from the last ${OPEN_READ_FRESH_HOURS} h read as open (${CHECK_READS.size} check read${CHECK_READS.size === 1 ? "" : "s"} in scripts/seo-seed/employer-stated.txt; job markup withheld, the page kept); carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}; job markup ${D.JOB_POSTING_MARKUP === false ? "OFF by the owner's STOP switch (src/config/seo-switches.ts): every live page kept, none marked up" : "on"}`);
       // CONTENT-9: new postings left out as the same job as a page claimed before them.
       console.log(`[prerender-seo] posting pages: ${freshSameJob} new posting${freshSameJob === 1 ? "" : "s"} left out as the same job as a page already claimed (same employer and place, a title a typo apart, descriptions 0.95 the same); a carried duplicate is a retired stub naming its twin`);
       // A carried page the board did not answer for is the symptom to look at
@@ -3469,7 +3532,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       try {
         writeKeptPostingPages();
         for (const path of carryBase.recheck.keys()) if (!postingLedger[path]) postingLedger[path] = { ...priorPostingOf(path) };
-        console.log(`[prerender-seo] posting ledger carried forward: ${carryBase.recheck.size} to re-check next bake, ${carryBase.stubs.size} kept pages, ${carryBase.tombstones.size} tombstones (${seededPostings.added} seeded this bake)`);
+        console.log(`[prerender-seo] posting ledger carried forward: ${carryBase.recheck.size} to re-check next bake, ${carryBase.stubs.size} kept pages (${carryBase.held} retired at the ceiling or as expiring and held, unread, the previous publish's live set ${carryBase.liveCount}), ${carryBase.tombstones.size} tombstones (${seededPostings.added} seeded this bake)`);
       } catch (e2) { console.warn(`[prerender-seo] posting ledger carry-forward failed: ${e2?.message || e2}`); }
     }
   }

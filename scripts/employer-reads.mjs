@@ -68,9 +68,13 @@ export const EMPLOYER_READ_BUDGET_MS = 150_000;
 export const EMPLOYER_READ_USER_AGENT = "Mozilla/5.0 (compatible; resumebooster-posting-check/1.0; +https://resumebooster.work/jobs)";
 
 /** The vendors whose answer can say open or closed. */
-export const READ_VENDORS = Object.freeze(["workday", "greenhouse", "lever", "smartrecruiters", "ashby", "icims", "paylocity", "teamtailor", "personio", "oracle", "adp", "breezy", "recruitee"]);
-/** Vendors read only for what the employer states (their answer never says closed). */
-export const STATED_ONLY_VENDORS = Object.freeze(["ukg"]);
+export const READ_VENDORS = Object.freeze(["workday", "greenhouse", "lever", "smartrecruiters", "ashby", "icims", "paylocity", "teamtailor", "personio", "oracle", "adp", "breezy", "recruitee", "ukg"]);
+/**
+ * Vendors read only for what the employer states (their answer never says
+ * closed). None since STRUCTURED-B14 (SEO audit 2026-11-18): UKG's
+ * opportunity page states whether the opportunity is closed.
+ */
+export const STATED_ONLY_VENDORS = Object.freeze([]);
 /**
  * Vendors read with one list request per board (employerReadPlan kind
  * "board"): one failed GET makes every page of that board unknown, so the
@@ -116,7 +120,7 @@ const ADP_DEFAULT_CAREER_CENTER = "19000101_000001";
  * per board: Ashby, Breezy, Recruitee), "page" (the employer's page and its
  * own JobPosting markup), "oracle" (the tenant's requisition finder), "adp"
  * (Workforce Now's public requisition detail) or "ukg" (the opportunity detail
- * page, read for its stated date only).
+ * page and the opportunity's own script, which says whether it is closed).
  */
 export function employerReadPlan(row) {
   const p = idParts(row?.id);
@@ -209,7 +213,7 @@ export function employerReadPlan(row) {
     case "ukg": {
       const u = httpsUrl(row.applyUrl);
       if (!u || !/\.ultipro\.com$/i.test(u.hostname)) return { vendor: source, url: null, why: "no UKG opportunity address" };
-      return { vendor: source, kind: "ukg", url: u.href, accept: "text/html", statedOnly: true };
+      return { vendor: source, kind: "ukg", url: u.href, accept: "text/html" };
     }
     default:
       return { vendor: source, url: null, why: "a vendor this reader does not read" };
@@ -600,15 +604,24 @@ export function employerVerdict(plan, res, row, siteRes) {
       return blocks.length ? { state: "open", why: "200 with its JobPosting", stated: pageStated(plan.vendor, blocks[0]) } : unknown("200 without a JobPosting");
     }
     case "ukg": {
-      // READ FOR ITS DATE ONLY: what a closed opportunity's page serves was not
-      // measured, so no UKG answer ever says open or closed.
+      // THE OPPORTUNITY SAYS WHETHER IT IS CLOSED (STRUCTURED-B14, measured
+      // 2026-11-21, robots.txt allowing */JobBoard/): the opportunity page's
+      // script carries the opportunity, and on Ollie's 7dd954be, gone from the
+      // board since 2026-11-06, it read "OpportunityIsClosed":true
+      // (PublishingStatus 4), where 5 open ones read false (PublishingStatus
+      // 1). Only the opportunity this row names is read; a 200 without it
+      // (the job board shell, as 3 other pages gone from the board served) or
+      // without the field stays unknown, its page as it was.
       const stated = {};
-      if (status === 200 && body.includes(`"Id":"${key}"`)) {
-        const m = /"PostedDate":"([^"]+)"/.exec(body);
-        const posted = m ? statedInstant(m[1]) : null;
-        if (posted) stated.postedAt = posted;
-      }
-      return { state: "unknown", why: "UKG is read for its stated date only", stated };
+      if (status !== 200) return unknown(`HTTP ${status}`);
+      if (!body.includes(`"Id":"${key}"`)) return unknown("200 without the opportunity");
+      const m = /"PostedDate":"([^"]+)"/.exec(body);
+      const posted = m ? statedInstant(m[1]) : null;
+      if (posted) stated.postedAt = posted;
+      const closed = /"OpportunityIsClosed":(true|false)\b/.exec(body)?.[1];
+      if (closed === "true") return { state: "closed", why: "UKG says the opportunity is closed", stated: {} };
+      if (closed === "false") return { state: "open", why: "200", stated };
+      return { state: "unknown", why: "200 without OpportunityIsClosed", stated };
     }
     default:
       return unknown("a vendor this reader does not read");

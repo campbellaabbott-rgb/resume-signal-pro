@@ -48,6 +48,9 @@ const HIGHMARK = "workday/highmarkhealth~wd1~highmark/J280717";
 const HYVEE = "workday/hyvee~wd1~HyVeeCareers/R251130";
 const ADVENTURELAND = "workday/hfecorp~wd503~palace_jobs/JR107927";
 const CINEMARK = "workday/cinemark~wd1~cinemark/R39293";
+// STRUCTURED-B7: "Jessup,Maryland: United States of America" named no region.
+const SUDDATH_2 = "workday/suddath~wd5~Suddath/R12265-1";
+const SUDDATH_3 = "workday/suddath~wd5~Suddath/R12268-1";
 /** What each address is now, in full. */
 const NOW: Record<string, Record<string, unknown>> = {
   [SYNEOS]: { "@type": "PostalAddress", addressCountry: "CN" },
@@ -57,6 +60,8 @@ const NOW: Record<string, Record<string, unknown>> = {
   [HYVEE]: { "@type": "PostalAddress", addressCountry: "US", addressRegion: "IA", addressLocality: "Fort Madison", streetAddress: "Ave L" },
   [ADVENTURELAND]: { "@type": "PostalAddress", addressCountry: "US", addressRegion: "IA", addressLocality: "Altoona", streetAddress: "3200 Adventureland drive", postalCode: "50009" },
   [CINEMARK]: { "@type": "PostalAddress", addressCountry: "US", addressRegion: "CA", addressLocality: "Rialto" },
+  [SUDDATH_2]: { "@type": "PostalAddress", addressCountry: "US", addressRegion: "MD", addressLocality: "Jessup" },
+  [SUDDATH_3]: { "@type": "PostalAddress", addressCountry: "US", addressRegion: "MD", addressLocality: "Jessup" },
 };
 
 describe("the addresses the audit names", () => {
@@ -86,6 +91,10 @@ describe("the addresses the audit names", () => {
     expect(postingPostalAddress({ id: "x:t:1", location: "1 Presidents Choice Circle, Brampton, ON", country: "CA" } as unknown as PostingRow)?.streetAddress).toBe("1 Presidents Choice Circle");
   });
 
+  it("Suddath's 'Jessup,Maryland: United States of America' is Jessup in MD (STRUCTURED-B7)", () => {
+    expect(addressOf(SUDDATH_3)).toMatchObject({ addressLocality: "Jessup", addressRegion: "MD" });
+  });
+
   it("a town named after its county keeps its whole name", () => {
     expect(postingPostalAddress({ id: "x:t:1", location: "Târgu Mures, Mures, Romania", country: "RO" } as unknown as PostingRow)?.addressLocality).toBe("Târgu Mures");
   });
@@ -97,7 +106,7 @@ describe("the 491 served JobPosting addresses", () => {
     expect(located.length).toBe(491);
   });
 
-  it("changes exactly the 7 labelled, as labelled, and serves every other address byte for byte (never worse)", () => {
+  it("changes exactly the 9 labelled, as labelled, and serves every other address byte for byte (never worse)", () => {
     const changed: Record<string, unknown> = {};
     for (const r of located) {
       const now = postingPostalAddress(rowOf(r));

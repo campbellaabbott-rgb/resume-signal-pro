@@ -90,7 +90,7 @@ describe("the bake's FAIL-tier line names a vendor whose closures are not being 
     expect(lines).toHaveLength(1);
     expect(lines[0]).toMatch(/^EMPLOYER READS FAIL: workday answered for 26 of 302 pages \(276 unknown, 91%: vendor challenged 273, challenge 3\)/);
   });
-  it("names no vendor read for its statements only, none under 20 pages, none at half or under", () => {
+  it("names no vendor under 20 pages, and none at half or under", () => {
     const text = reads.employerReadAlarms(summary).join("\n");
     for (const v of ["ukg", "icims", "paylocity", "oracle", "lever"]) expect(text).not.toMatch(new RegExp(`: ${v} `));
   });
@@ -155,7 +155,8 @@ describe("section 98-r2 G1b judges the bake's own employer reads", () => {
     expect(has(bad, "FAIL", /G1b workday: 276 of 302 posting pages unknown at the employer in the bake of 2026-11-18 \(91\.4%, over 20%\): vendor challenged 273, challenge 3/), show(bad)).toBe(true);
     expect(has(bad, "FAIL", /G1b greenhouse: 8 of 28 .*budget 8/), show(bad)).toBe(true);
     expect(has(bad, "INFO", /G1b workday: bot challenges in the bake of 2026-11-18: 3 answered with a challenge, 273 not asked after three/), show(bad)).toBe(true);
-    expect(has(bad, "FAIL", /G1b ukg/), show(bad)).toBe(false);
+    // UKG is checked for closure since STRUCTURED-B14, so its unknowns are judged like any checked vendor's.
+    expect(has(bad, "FAIL", /G1b ukg: 15 of 15 posting pages unknown/), show(bad)).toBe(true);
     expect(has(bad, "PASS", /G1b /), show(bad)).toBe(false);
   });
   it("FAILs a ledger whose unknown answers carry no reason", () => {
