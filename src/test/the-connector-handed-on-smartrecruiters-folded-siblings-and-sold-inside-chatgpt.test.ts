@@ -138,7 +138,18 @@ describe("a SmartRecruiters employer named by its own token is refused, not answ
   it("another employer in the same search is still answered", async () => {
     const r = await call("search_jobs", { query: "engineer", companies: ["acme"] });
     expect(r.raw).not.toMatch(/cannot be served/);
-    expect(boardBodies).toHaveLength(1);
+    // The page read first. Its SmartRecruiters row was dropped with more to
+    // come, so a refill read for the shortfall and a count read follow (lane
+    // fix/1121-connector-errors, item 1): the refill repeats the fixture's ids
+    // and is discarded, and the count answer carries a jobs array and is not
+    // used. Every read is scoped to the employer that was asked for.
+    expect(boardBodies[0]).not.toHaveProperty("countOnly");
+    expect(boardBodies[0]).not.toHaveProperty("offset");
+    expect(boardBodies.length).toBeGreaterThanOrEqual(1);
+    expect(boardBodies.length).toBeLessThanOrEqual(3);
+    for (const body of boardBodies) expect(body).toMatchObject({ companies: ["acme"] });
+    const refill = boardBodies.find((b) => b.offset === 20);
+    expect(refill).toMatchObject({ offset: 20, limit: 8 });
   });
 
   it.each(["employer_hiring_record", "employer_growth"])("%s refuses it rather than publishing its SmartRecruiters figures", async (tool) => {

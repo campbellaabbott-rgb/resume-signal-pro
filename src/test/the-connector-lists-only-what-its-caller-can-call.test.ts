@@ -130,6 +130,17 @@ describe("tools/list shows a caller only what it can call", () => {
     }
   });
 
+  it("a bearer that is no key (Supabase's publishable key, a gateway's token) is listed the keyless ten while sign-in is off; a key in x-api-key beside it is a key", async () => {
+    // Lane fix/1121-connector-errors, item 6: 'Bearer not-a-key' was listed
+    // twelve tools, two of which then refused it.
+    for (const o of [{ key: "not-a-key" }, { key: "sb_publishable_abc" }] as Opts[]) {
+      expect((await toolsFor(o)).tools.map((t) => t.name).sort()).toEqual([...KEYLESS].sort());
+    }
+    const both = await toolsFor({ key: "sb_publishable_abc", xApiKey: "rb_live_x" });
+    expect(both.tools.map((t) => t.name).sort()).toEqual([...KEYLESS, "key_status", "fit_resume"].sort());
+    expect(both.bytes).toBeLessThanOrEqual(25_000);
+  });
+
   it("inside ChatGPT, even with a key: never fit_resume, key_status or debug_search, and the form reader names only Greenhouse and Recruitee", async () => {
     const { tools } = await toolsFor({ key: "rb_live_x", ua: "openai-mcp/1.0 (ChatGPT)" });
     const names = tools.map((t) => t.name);

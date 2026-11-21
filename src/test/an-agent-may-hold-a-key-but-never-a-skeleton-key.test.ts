@@ -174,8 +174,13 @@ describe("the MCP transport is spec-honest under hostile input", () => {
   it("a notification never receives a response, before any method branch", () => {
     expect(MCP).toMatch(/if \(isNotification && method !== "notifications\/initialized"/);
   });
-  it("advertises only the batch-free protocol revision it actually implements", () => {
-    expect(MCP).toMatch(/const MCP_PROTOCOL_VERSIONS = \["2025-06-18"\];/);
+  it("advertises the handshake revisions it implements, and reads a batch only where 2025-03-26 allows one", () => {
+    const PROTOCOL = stripped(readFileSync(resolve(__dirname, "../../supabase/functions/agent-mcp/protocol.ts"), "utf8"));
+    expect(PROTOCOL).toMatch(/export const MCP_PROTOCOL_VERSIONS: readonly string\[\] = \["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"\];/);
+    // An array body is read only with no header or a 2025-03-26 one; a header
+    // of 2025-06-18 or later keeps the old 400 (that revision removed batching).
+    expect(PROTOCOL).toMatch(/return v === "" \|\| v === "2025-03-26";/);
+    expect(stripped(MCP)).toMatch(/if \(Array\.isArray\(parsed\)\) \{\s*if \(!batchAllowed\(req\.headers\.get\("mcp-protocol-version"\)\)\) \{\s*return json\(rpcError\(null, -32600, "batching not supported; send one message per request"\), 400\);\s*\}\s*return await answerBatch\(parsed, \(m\) => answer\(req, \{ message: m \}\)\);/);
   });
   it("deny responses carry rate headers and an honest Retry-After", () => {
     expect(MCP).toMatch(/secondsToMidnightUtc\(\)/);

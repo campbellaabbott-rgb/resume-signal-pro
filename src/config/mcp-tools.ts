@@ -215,12 +215,12 @@ export const MCP_TOOLS: readonly McpTool[] = [
   {
     name: "employer_hiring_record",
     tier: "read",
-    body: "An employer's record on its own board, from the closure ledger no other board keeps, as the employer's page on this site prints it: roles open now and how long that board has been watched, and, only where our read of that board supports them, roles taken down in the last 90 days and left down, re-lists counted separately, and the day by which half came down, from the employer's own stated dates. A figure our read cannot support is left out with the reason, in the page's words — per board, never summed across an employer's boards, and a takedown is never called a hire; a board name two hiring systems share gets no record, and a board with no closure observed answers unknown with the reason, never a verdict.",
+    body: "An employer's record on its own board, asked by companyToken values from job cards, or employer names (five names a call are looked up), from the closure ledger no other board keeps, as the employer's page on this site prints it: roles open now and how long that board has been watched, and, only where our read of that board supports them, roles taken down in the last 90 days and left down, re-lists counted separately, and the day by which half came down, from the employer's own stated dates. A figure our read cannot support is left out with the reason, in the page's words — per board, never summed across an employer's boards, and a takedown is never called a hire; a board name two hiring systems share gets no record, and a board with no closure observed answers unknown with the reason, never a verdict.",
   },
   {
     name: "employer_growth",
     tier: "read",
-    body: "Whether an employer's board served more roles than a week earlier, judged by the board itself from our own daily observation and passed through untouched: grew, no-growth, or unknown with the gate that refused named — an unknown is never a no, one board is never summed with another, and nothing here ranks employers.",
+    body: "Whether an employer's board served more roles than a week earlier, asked by companyToken values from job cards, or employer names (five names a call are looked up), judged by the board itself from our own daily observation and passed through untouched: grew, no-growth, or unknown with the gate that refused named — an unknown is never a no, one board is never summed with another, and nothing here ranks employers.",
   },
   {
     name: "key_status",
@@ -331,7 +331,7 @@ export function readSignInFact(initializeResult: unknown): SignInFact {
 
 // ───────────────────────── THE WORDS EVERY SURFACE SHARES ─────────────────
 
-/** The protocol revision the server advertises (its MCP_PROTOCOL_VERSIONS[0]); sent as the mcp-protocol-version header. */
+/** The protocol revision the site's own clients send as the mcp-protocol-version header. The server speaks four (agent-mcp/protocol.ts MCP_PROTOCOL_VERSIONS) and answers this one as asked. */
 export const MCP_PROTOCOL_VERSION = "2025-06-18";
 /** The display name a person types into a connector dialog. */
 export const MCP_CONNECTOR_NAME = "Resume Booster";

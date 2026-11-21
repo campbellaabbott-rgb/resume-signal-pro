@@ -167,13 +167,36 @@ import {
   type SignInVerdict,
 } from "./as-probe.ts";
 
-// One version, honestly. Advertising 2025-03-26 / 2024-11-05 — whose specs
-// REQUIRE receivers to accept JSON-RPC batches — while this stateless server
-// rejects batches was a conformance lie. All the clients we document
-// (Claude Code, Claude Desktop, Cursor) speak 2025-06-18, which removed
-// batching. A client that only speaks an older revision still gets a clean
-// negotiation: we answer initialize with this version and it decides.
-const MCP_PROTOCOL_VERSIONS = ["2025-06-18"];
+// THE REVISIONS THIS SERVER SPEAKS (lane fix/1121-connector-errors, item 8):
+// the four handshake revisions, each answered as itself, batches accepted
+// where 2025-03-26 requires them, and a client of the stateless 2026-07-28
+// revision told to fall back to initialize. The lists and the fixed answers
+// are in ./protocol.ts.
+import {
+  BATCH_MAX,
+  INITIALIZE_IN_BATCH,
+  MCP_PROTOCOL_VERSIONS,
+  MODERN_FALLBACK_STATUS,
+  SSE_TRANSPORT_SENTENCE,
+  batchAllowed,
+  batchSizeError,
+  isModernRequest,
+  modernFallback,
+  negotiatedVersion,
+  wantsEventStream,
+} from "./protocol.ts";
+// A tool's arguments read as the caller meant them, or refused by name; a
+// value left empty is not sent (items 2, 11 and 12).
+import { BACKSTOPPED_FILTERS, dropUnsent, isSent, readFilterValues, readToolArgs, splitIds, type ArgNotes, type DeclaredArg } from "./tool-args.ts";
+// A country given by name, read as its code from a fixed table (item 3). A
+// byte-identical copy of public-api's module.
+import { COUNTRY_FIX, countryArg } from "./country-names.ts";
+// A page filled with rows this server may hand on (item 1). A byte-identical
+// copy of public-api's module.
+import { fillPage, totalWithoutWithheld, withheldCount, type DroppedCounts, type FillResult } from "./board-page-fill.ts";
+// How fresh the data is, on every search answer (item 9). A byte-identical
+// copy of public-api's module.
+import { freshnessCache, freshnessWithin } from "./feed-freshness.ts";
 // 08-29.2: debug_search tool; .3: search filter parity (department, pay
 // ceiling/basis/stated, maxYears, vendor); 09-04.1: fit_resume paid-gated like
 // POST /v1/fit, per-key scorer bucket, honest scorer 429; 09-04.2: structured
@@ -359,7 +382,8 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
 // 2026-11-12.2 (the round's integration, S14X-052): fit_resume's unscored names a third reason job-fit 2026-11-12.2 sends, no_resume_terms (none of the terms the scorer reads were found in the résumé).
 // 2026-11-18.2 (lane SH, OD14-ASHBY shared half, 2026-11-18): apply_myself carries the shared form reader that answers an Ashby posting "withheld" before its cache or any request whatever vendor list is passed, with its Ashby reader deleted; the connector already left Ashby out of its own list in 2026-11-18.1, which round B's integration branch carries without the shared stop.
 // 2026-11-19.1 (OD16, lane api4/od16-federal, owner's yes of 2026-11-18): U.S. federal rows leave the withheld list; search, debug, fit, get_job, get_jobs, apply_myself and check_apply_support hand on a federal posting only once the agency's who-may-apply statement is stored (read beside the page, fenced), each card carrying a federal block (agency, who may apply, closing date, on our board since, official link, OPM's notice) and no postedAt, and each result federalAttribution with the date the board last read the feed; check_jobs_open checks federal ids. Needs job-board .104's migration 20261119110000 (who_may_apply) applied first.
-const FN_BUILD = "agent-mcp.2026-11-19.1";
+// 2026-11-21.1 (lane fix/1121-connector-errors, the owner's "people are getting errors when using the mcp and API - lets fix it"): a search page refills past withheld rows (at most two more reads, the shortfall only, 3 s to start and 6 s to answer) and its total leaves them out only when a count read proves the same search; a wrong argument name is read as the one meant or refused naming the names the tool takes, and an empty value is not sent; a country is read by name (USA, UK, Ireland) or refused naming both readings; a keyless limit above the cap says the page it got; both employer tools take an employer's name and resolve it in one board call, a name they cannot place being a row with candidates; key_status answers with no key; a revoked key on a keyless tool gets its answer, keyless; full-time, junior and on-site reach the board as its values and posted today is not every posting; ids in one comma string are checked one by one; a refused call is counted under its tool or under unknown; the card keeps the employer match label and the guide says total counts title, employer-name and department matches; every search answer carries feedFreshness; initialize answers 2025-11-25, 2025-06-18, 2025-03-26 and 2024-11-05 as asked, a 2025-03-26 batch is read, a 2026-07-28 request is told to fall back to initialize, and an SSE client is told the transport.
+const FN_BUILD = "agent-mcp.2026-11-21.1";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -577,7 +601,7 @@ const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Max-Age": "7200",
   "Access-Control-Allow-Headers":
-    "authorization, x-api-key, x-client-info, apikey, content-type, mcp-protocol-version, mcp-session-id, last-event-id",
+    "authorization, x-api-key, x-client-info, apikey, content-type, mcp-protocol-version, mcp-session-id, last-event-id, mcp-method, mcp-name",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
   "Access-Control-Expose-Headers":
     `Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining, X-Quota-Limit, X-Quota-Remaining, X-Unkeyed-Remaining, ${CHALLENGE_HEADER}, Mcp-Session-Id`,
@@ -798,12 +822,15 @@ const KEYED_CTX: Ctx = { edition: "other", noLog: false, keyless: false };
  * credential: this is the public serving path, and the MCP layer must never
  * hold more search power than the site does.
  */
-async function board(body: Record<string, unknown>, ctx: Ctx = KEYED_CTX): Promise<Record<string, unknown>> {
+async function board(body: Record<string, unknown>, ctx: Ctx = KEYED_CTX, signal?: AbortSignal): Promise<Record<string, unknown>> {
   const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   let res: Response;
   try {
     res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`, {
       method: "POST",
+      // Only a refill or count read passes a signal (item 1): it is abandoned
+      // when its page's time is up; every other read runs as it always has.
+      ...(signal ? { signal } : {}),
       headers: {
         "Content-Type": "application/json", Authorization: `Bearer ${anon}`, apikey: anon, ...searchCallerHeader("mcp"),
         ...(await boardReaderHeader(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")),
@@ -815,6 +842,7 @@ async function board(body: Record<string, unknown>, ctx: Ctx = KEYED_CTX): Promi
       body: JSON.stringify(ctx.noLog ? { ...body, noLog: true } : body),
     });
   } catch (e) {
+    if (signal?.aborted) throw e;
     throw new BoardTransportError(`board unreachable: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
   }
   // A gateway that never reached the board (502, 503) is transport; a 504 is
@@ -937,16 +965,37 @@ const withLabel = (j: Record<string, unknown>, l: FederalLabel): Record<string, 
  * systems dropped, and each federal row only with its statement (attached).
  */
 async function servableJobs(r: Record<string, unknown>): Promise<Array<Record<string, unknown>>> {
-  const rows = withoutNoRedistribution((Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>);
-  if (!rows.some((j) => isFederal(j.source))) return rows;
+  return (await withFederalLabels(withoutNoRedistribution((Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>))).kept;
+}
+/** Rows already past the withheld systems: each federal row kept only with its statement (attached), and the rest counted. */
+async function withFederalLabels(rows: Array<Record<string, unknown>>): Promise<{ kept: Array<Record<string, unknown>>; federalUnlabelled: number }> {
+  if (!rows.some((j) => isFederal(j.source))) return { kept: rows, federalUnlabelled: 0 };
   const labels = await federalLabels(rows.map((j) => j.id));
-  const out: Array<Record<string, unknown>> = [];
+  const kept: Array<Record<string, unknown>> = [];
+  let federalUnlabelled = 0;
   for (const j of rows) {
-    if (!isFederal(j.source)) { out.push(j); continue; }
+    if (!isFederal(j.source)) { kept.push(j); continue; }
     const l = labels?.get(String(j.id ?? ""));
-    if (l) out.push(withLabel(j, l));
+    if (l) kept.push(withLabel(j, l));
+    else federalUnlabelled++;
   }
-  return out;
+  return { kept, federalUnlabelled };
+}
+/**
+ * servableJobs' twin for a page that may be refilled (item 1): the rows kept,
+ * and what was dropped as COUNTS BY REASON (a withheld system by its code; a
+ * federal announcement whose who-may-apply statement is not stored), never
+ * the dropped rows themselves.
+ */
+async function servableWithCounts(all: Array<Record<string, unknown>>): Promise<{ kept: Array<Record<string, unknown>>; dropped: DroppedCounts }> {
+  const bySource: Record<string, number> = {};
+  for (const j of all) {
+    if (!isNoRedistributionSource(j.source)) continue;
+    const src = String(j.source ?? "").trim().toLowerCase();
+    bySource[src] = (bySource[src] ?? 0) + 1;
+  }
+  const { kept, federalUnlabelled } = await withFederalLabels(withoutNoRedistribution(all));
+  return { kept, dropped: { bySource, federalUnlabelled } };
 }
 /** The statement of one federal id, read for a detail or apply tool: undefined when the id is not federal, null when not handed on. */
 async function federalLabelOf(id: string): Promise<FederalLabel | null | undefined> {
@@ -1060,8 +1109,9 @@ function compactJob(j: Record<string, unknown>, ctx: Ctx = KEYED_CTX, detail = f
   // duty, so it is never dropped from the slim card.
   if (j.agency === true) out.agency = true;
   // Which tier matched the row (S8-077): a description-only match is not a
-  // title match.
-  if (j.matchScope === "title" || j.matchScope === "description") out.matchScope = j.matchScope;
+  // title match. "employer" (the employer's name or department matched, the
+  // board's third label, item 14) passes through beside the two.
+  if (j.matchScope === "title" || j.matchScope === "description" || j.matchScope === "employer") out.matchScope = j.matchScope;
   if (formVendorsFor(ctx.edition).includes(String(j.source ?? ""))) out.applyForm = true;
   // The posting's own page on the site, tagged with the host it came from
   // (plain inside ChatGPT).
@@ -1079,11 +1129,13 @@ function disclosures(r: Record<string, unknown>): Record<string, unknown> {
       "ignoredFilters", "excludedTerms", "intentFilters", "aliases", "didYouMean",
       "droppedTerms", "locationSplit", "coverage", "fuzzyExtra", "semanticExtra",
       "locationExpandedFrom", "locationSearched", "maxAgeClampedTo", "searchRoute",
-      // total counts TITLE matches; relatedTotal the description-only ones
-      // (S8-077). filterCoverage is the live share each applied filter can
+      // total counts postings whose title, employer name or department
+      // matched; relatedTotal the description-only ones (S8-077); titleTotal
+      // and employerTotal split total once the board publishes them (hand-in
+      // H6, item 14). filterCoverage is the live share each applied filter can
       // see, dated by filterCoverageAt (S8-079): the figure the descriptions
       // used to hand-type.
-      "relatedTotal", "relatedCapped", "relatedUnavailable", "filterCoverage", "filterCoverageAt",
+      "relatedTotal", "relatedCapped", "relatedUnavailable", "filterCoverage", "filterCoverageAt", "titleTotal", "employerTotal",
       // salaryStatedOnly is ROW-SELECTING, not cosmetic: a pay-sorted search
       // drops the ~76% of the board carrying no annualised figure in approximate
       // dollars (100 - 23.7, live 2026-09-27T03:29:32Z — the old ~87% here
@@ -1130,7 +1182,7 @@ function disclosures(r: Record<string, unknown>): Record<string, unknown> {
 const SEARCH_PROPERTIES = {
   query: { type: "string", description: "Job titles or skills, never CV text; the place goes in location. Exclude with a minus: 'engineer -senior'." },
   location: { type: "string", description: "City, state or metro by name: 'texas', 'NYC', 'Austin, TX'. Not a ZIP or postal code." },
-  country: { type: "string", description: "ISO-2 codes, comma list, max 5." },
+  country: { type: "string", description: "ISO-2 codes or names, comma list, max 5." },
   remote: { type: "boolean" },
   workMode: { type: "string", description: "Comma list: remote, hybrid, onsite." },
   employmentType: { type: "string", description: "Comma list: full_time, part_time, contract, temporary, internship." },
@@ -1180,7 +1232,7 @@ const JOB_CARD_SCHEMA = {
     salaryCurrency: { type: "string" },
     experienceBand: { type: "string", enum: ["entry", "mid", "senior", "expert"] },
     minYears: { type: "integer" },
-    matchScope: { type: "string", enum: ["title", "description"] },
+    matchScope: { type: "string", description: "title, employer or description" },
     postedAt: { type: "string", description: "The employer's own date; absent when the feed carries none, never the date we first saw it." },
     applyUrl: { type: "string", description: "The employer's own page for the posting." },
     siteUrl: { type: "string", description: "Opens the posting on resumebooster.work in a browser." },
@@ -1202,7 +1254,7 @@ const DISCLOSURE_SCHEMA = {
   // NOT "exact" (sweep S12-041): a broad search stops counting at the board's
   // ceiling and says countCapped, which this schema never declared, so "how
   // many nurse jobs" came back as "exactly" the ceiling.
-  total: { type: ["integer", "null"], description: "The board's match count: exact, unless countCapped says it is where counting stopped (a floor). Absent with countUnavailable:true when the board refuses to guess." },
+  total: { type: ["integer", "null"], description: "Postings matched in title, employer name or department: exact, unless countCapped says counting stopped there (a floor). Absent with countUnavailable:true." },
   countCapped: { type: "boolean", description: "total is the board's counting ceiling, not the number: report 'at least' total, never 'exactly'." },
   totalAtLeast: { type: "integer", description: "A floor on the count when paging went past the exact total." },
   countUnavailable: { type: "boolean", description: "Do not report a total." },
@@ -1219,7 +1271,7 @@ const DISCLOSURE_SCHEMA = {
   didYouMean: { type: "string" },
   salaryStatedOnly: { type: "boolean", description: "Row-selecting: postings with no annualised USD figure are excluded from this page." },
   agenciesExcluded: { type: "boolean", description: "Row-selecting: agency postings are hidden from this page." },
-  withheld: { type: "integer", description: "Rows on this page the connector may not hand on (the board's total still counts them)." },
+  withheld: { type: "integer", description: "Rows on this page not handed on; total counts them only when totalIncludesWithheld is true." },
   locationInterpreted: { type: "object", description: "What was read out of the query: the place moved to location or country, a trailing remote, and the words moved." },
   locationNote: { type: "string", description: "The location was a whole country or a remote word, matched as words: names the country or remote filter that searches the board's own field." },
   rankedFellBack: { type: "boolean", description: "The ranked search failed and the board answered with its fallback search: the order may be less relevant." },
@@ -1325,6 +1377,23 @@ const HIRING_RECORD_UNKNOWN = {
     "unknown, not a verdict about the employer.",
 } as const;
 
+/**
+ * AN EMPLOYER ASKED FOR BY NAME (lane fix/1121-connector-errors, item 5): the
+ * three readings of an entry the reader had never seen and the board was asked
+ * to place. Facts about our lookup, never about the employer, and kept apart
+ * from the ledger's own vocabulary above (which its guard pins to the RPC).
+ */
+const EMPLOYER_NAMES_PER_CALL = 5;
+const EMPLOYER_NAME_UNKNOWN = {
+  name_not_resolved:
+    "No employer this board carries goes by this name. candidates are the nearest it carries, each with its companyToken: ask the person which they mean and send that token.",
+  name_not_looked_up:
+    `Not looked up as an employer name: ${EMPLOYER_NAMES_PER_CALL} entries a call are. If it is a companyToken, this board has no record of it; send it again in a call of its own.`,
+  not_served_here: NO_REDISTRIBUTION_REASON,
+} as const;
+type EmployerNameReason = keyof typeof EMPLOYER_NAME_UNKNOWN;
+const EMPLOYER_NAME_REASONS = Object.keys(EMPLOYER_NAME_UNKNOWN) as EmployerNameReason[];
+
 /** What the site's gate said of each half of a row: ok or its reason, and its words for each refusal. */
 const HIRING_RECORD_GATE_SCHEMA = {
   type: "object",
@@ -1414,7 +1483,7 @@ const HIRING_RECORD_ROW_SCHEMA = {
       type: "string", enum: ["observed", "unknown"],
       description: "observed: the ledger holds at least one closure for this board in the window. unknown: it holds none, or the token is shared; unknown_reason says why that is not a finding.",
     },
-    unknown_reason: { type: ["string", "null"], enum: [...Object.keys(HIRING_RECORD_UNKNOWN), SHARED_TOKEN, null] },
+    unknown_reason: { type: ["string", "null"], enum: [...Object.keys(HIRING_RECORD_UNKNOWN), SHARED_TOKEN, null].concat(EMPLOYER_NAME_REASONS) },
     open_roles: { type: "integer", description: "Postings served from this board right now, under the same two serving rules as search." },
     tracking_days: { type: ["integer", "null"], description: "Days this board has been watched, capped." },
     feed_total: { type: ["integer", "null"], description: "What the employer's feed advertised at the last verification. Null when never verified." },
@@ -1441,7 +1510,7 @@ const GROWTH_ROW_SCHEMA = {
       description: "The board's own judgement, passed through untouched. unknown is NOT no-growth: it is a reading we could not take, and unknown_reason says why.",
     },
     unknown_reason: {
-      type: ["string", "null"], enum: [...GROWTH_UNKNOWN_REASONS, SHARED_TOKEN, null],
+      type: ["string", "null"], enum: [...GROWTH_UNKNOWN_REASONS, SHARED_TOKEN, null].concat(EMPLOYER_NAME_REASONS),
       description: `Null for grew and no-growth. Otherwise the gate that refused, in the migration's own words; ${SHARED_TOKEN}: two hiring systems carry the token.`,
     },
     window_days: { type: "integer" },
@@ -1802,7 +1871,7 @@ const TOOLS = [
       properties: {
         companyTokens: {
           type: "array", items: { type: "string" }, minItems: 1, maxItems: EMPLOYER_TOKENS_MAX,
-          description: `companyToken values from job cards or search_jobs (a vendor tenant, e.g. 'acme' or 'gici~wd5~Careers'). Up to ${EMPLOYER_TOKENS_MAX}; more is refused with the count named.`,
+          description: `companyToken values from job cards, or employer names (five names a call are looked up). Up to ${EMPLOYER_TOKENS_MAX}.`,
         },
       },
       required: ["companyTokens"],
@@ -1837,7 +1906,7 @@ const TOOLS = [
       properties: {
         companyTokens: {
           type: "array", items: { type: "string" }, minItems: 1, maxItems: EMPLOYER_TOKENS_MAX,
-          description: `companyToken values from job cards or search_jobs. Up to ${EMPLOYER_TOKENS_MAX}; more is refused with the count named.`,
+          description: `companyToken values from job cards, or employer names (five names a call are looked up). Up to ${EMPLOYER_TOKENS_MAX}.`,
         },
       },
       required: ["companyTokens"],
@@ -1899,7 +1968,7 @@ const TOOLS = [
         counted: { type: "string" },
         docs: { type: "string" },
       },
-      required: ["key", "rate", "quota", "features"],
+      required: ["key"],
       additionalProperties: true,
     },
   },
@@ -2271,7 +2340,10 @@ function guideText(edition: Edition, keyed: boolean): string {
     ``,
     `- \`countUnavailable\` means the board refuses to guess a total; \`ignoredFilters\` names any filter it could not apply, so the results answer a wider question than was asked.`,
     `- \`countCapped\` means \`total\` is where the board stopped counting: say "at least" that many, never "exactly".`,
-    `- \`total\` counts postings whose TITLE matches; \`relatedTotal\` counts those that only mention the words in their description, and rows past the title matches are those (\`matchScope: "description"\`; \`matchNote\` when a whole page is). Say which you mean.`,
+    `- \`total\` counts postings whose title, employer name or department matched the words; \`relatedTotal\` counts those matched only in their description. A row's \`matchScope\` says where it matched (\`title\`, \`employer\` or \`description\`; many rows carry none), and \`titleTotal\` and \`employerTotal\` split \`total\` when the board gives them. \`matchNote\` means every row on the page says it matched somewhere other than its title. Say which you mean.`,
+    `- \`withheldTotal\` is how many of the board's matches this server may not hand on, already taken out of \`total\`; \`totalIncludesWithheld\` means \`total\` still counts them. \`refillReads\` counts the extra board reads that topped a page up after rows were withheld, and \`pageShortBecause\` says why a page holds fewer rows than its limit; page on with \`nextOffset\` as given.`,
+    `- \`feedFreshness\` is how recently the employer feeds behind live postings were re-read (half within \`p50Minutes\`, 95% within \`p95Minutes\`, measured at \`asOf\`): our re-check cadence, never a posting's age.`,
+    `- \`argumentsRead\` says which argument was read as which (a \`keyword\` as \`query\`), and \`ignoredArguments\` names any not used, with why. \`countryRead\` and \`valuesRead\` say how a country name or a filter value was read (USA as US, full-time as full_time), and \`countryNote\` adds what a name stood for. \`limitAsked\`, \`limitApplied\` and \`limitNote\` mean the page was cut to its cap: ask for the next one with \`nextOffset\`.`,
     `- \`postedAt\` is the date the employer's own hiring system gives for the posting, not when this board first saw it; it is absent when the feed states none, which does not make a posting old.`,
     `- \`locationInterpreted\` says what was read out of the query into a filter (a place, remote, a date window, an employer) and \`from\` the words as typed; \`sponsorshipNote\` means this board cannot filter by visa sponsorship, so never say a posting sponsors unless its own text does. \`notSearched\` means the search named nothing the board can look for (only sponsorship words): ask the person for a role or a place.`,
     `- \`federal\` on a card marks a U.S. federal announcement from USAJOBS: the agency is the employer, \`whoMayApply\` is the agency's own statement of who may apply (some are only for current federal staff, veterans or another group: say so before suggesting it), it is open until the agency's closing date (\`closesAt\`), and it has no \`postedAt\` because USAJOBS moves that date when it reposts an announcement; \`onBoardSince\` is when it reached this board, never its age. Apply only through the announcement's own instructions at \`officialUrl\`, and pass on \`notice\`: this is not an official copy.`,
@@ -2283,6 +2355,8 @@ function guideText(edition: Edition, keyed: boolean): string {
     `## The ledger`,
     ``,
     `This board watches postings come down. \`${tool("employer_hiring_record")}\` and \`${tool("employer_growth")}\` carry that record per employer board: a takedown is a takedown, never an outcome (the board cannot tell why a role came down), one board is never summed with another, and an unknown always names its reason. No list of growing employers exists here or anywhere on the board.`,
+    ``,
+    `Both take an employer's name as well as a \`companyToken\`. A row read from a name carries \`asked\` (the name as sent) and \`resolvedFrom: "name"\`; \`name_not_resolved\` lists \`candidates\`, each with its token, to ask the person about; \`name_not_looked_up\` means the name was past the fifth in one call.`,
     ``,
     `## If something refuses`,
     ``,
@@ -2575,7 +2649,12 @@ function jobIdArg(v: unknown, toolName: string): string {
 
 /** A list of job ids or links, de-duplicated in order, or the argument error. Never capped here: each runner names what it did not read. */
 function idsArg(v: unknown, cap: number): string[] {
-  const ids = [...new Set((Array.isArray(v) ? v : [v]).map((x) => String(x ?? "").trim()).filter(Boolean))];
+  // ONE STRING OF SEVERAL IDS IS SEVERAL IDS (item 12): "a:b:1, c:d:2" was
+  // checked as one id and reported closed, telling a person two live postings
+  // were gone. Split only when every piece reads as a job id or link, so an id
+  // that itself holds a comma or a space is never broken; a string that starts
+  // with [ is read as a JSON array.
+  const ids = [...new Set(splitIds(v, (x) => parseJobId(x) !== null))];
   if (!ids.length) throw new ToolArgumentError(`ids is required — an array of job ids from search_jobs (up to ${cap}).`, "Send {ids: [...]}.");
   return ids;
 }
@@ -2660,7 +2739,10 @@ function searchBody(args: Record<string, unknown>): Record<string, unknown> {
   // for the whole-number filters, not a whole number) is refused here in band,
   // because the board binds those to integer columns and answers a fraction
   // with a 500 the agent was told to retry (2.26).
-  const present = (v: unknown) => v !== undefined && v !== null && v !== "";
+  // 'SENT' is the argument reader's one rule (isSent): undefined, null, a
+  // blank string and an empty array are not sent (item 2), so "  " is no
+  // filter, never 0.
+  const present = (v: unknown) => v !== undefined && v !== null && v !== "" && isSent(v);
   const num = (name: string, v: unknown, whole: boolean): number | undefined => {
     if (!present(v)) return undefined;
     const n = Number(v);
@@ -2673,6 +2755,14 @@ function searchBody(args: Record<string, unknown>): Record<string, unknown> {
     return n;
   };
   const maxAgeDays = num("maxAgeDays", args.maxAgeDays, true);
+  // POSTED TODAY IS NOT EVERY POSTING (item 11): the board neither applies nor
+  // names a maxAgeDays of 0, so it answered the whole board.
+  if (maxAgeDays !== undefined && maxAgeDays < 1) {
+    throw new ToolArgumentError(
+      "maxAgeDays must be 1 or more; for today's postings send postedAfter with today's date.",
+      "Send maxAgeDays: 1 or more, or postedAfter: an ISO date such as 2026-11-21.",
+    );
+  }
   const salaryMin = num("salaryMin", args.salaryMin, false);
   const salaryMax = num("salaryMax", args.salaryMax, false);
   const maxYears = num("maxYears", args.maxYears, true);
@@ -2703,7 +2793,14 @@ function searchBody(args: Record<string, unknown>): Record<string, unknown> {
   // said "jobs the agent can submit to"); still honoured for an old client, as
   // the vendor filter it always was. The board itself reads no such flag since
   // .101 (S13-118), so it travels as the vendor list.
-  let vendor = args.vendor ? String(args.vendor) : "";
+  // A COUNTRY BY NAME, AND EVERY CLOSED-SET VALUE, READ OR REFUSED BY NAME
+  // (items 3 and 11): the board keeps only what it knows and searches the rest
+  // of the board for what it drops, so nothing it would drop is sent.
+  const countries = countryArg(args.country);
+  if (countries.errors.length) throw new ToolArgumentError(countries.errors.join(" "), COUNTRY_FIX);
+  const values = readFilterValues(args);
+  if (!values.ok) throw new ToolArgumentError(values.message, values.fix);
+  let vendor = values.values.vendor ?? "";
   if (args.agentReadyOnly === true) {
     const asked = vendor ? vendor.split(",").map((v) => v.trim().toLowerCase()) : SENDABLE_VENDORS;
     const both = asked.filter((v) => SENDABLE_VENDORS.includes(v));
@@ -2724,14 +2821,14 @@ function searchBody(args: Record<string, unknown>): Record<string, unknown> {
     groupSimilar: false,
     ...(args.query ? { q: String(args.query) } : {}),
     ...(args.location ? { location: String(args.location) } : {}),
-    ...(args.country ? { country: String(args.country) } : {}),
+    ...(countries.codes.length ? { country: countries.codes.join(",") } : {}),
     ...(args.remote === true ? { remote: true } : {}),
-    ...(args.workMode ? { workMode: String(args.workMode) } : {}),
-    ...(args.employmentType ? { employmentType: String(args.employmentType) } : {}),
-    ...(args.category ? { category: String(args.category) } : {}),
+    ...(values.values.workMode ? { workMode: values.values.workMode } : {}),
+    ...(values.values.employmentType ? { employmentType: values.values.employmentType } : {}),
+    ...(values.values.category ? { category: values.values.category } : {}),
     ...(args.department ? { department: String(args.department) } : {}),
     ...(companies.length ? { companies } : {}),
-    ...(args.experience ? { experience: String(args.experience) } : {}),
+    ...(values.values.experience ? { experience: values.values.experience } : {}),
     ...(maxAgeDays !== undefined ? { maxAgeDays } : {}),
     ...(postedAfter !== undefined ? { postedAfter } : {}),
     ...(salaryMin !== undefined ? { salaryFloor: salaryMin } : {}),
@@ -2747,6 +2844,9 @@ function searchBody(args: Record<string, unknown>): Record<string, unknown> {
     ...(args.excludeAgencies === true ? { excludeAgencies: true } : {}),
     ...(args.sort === "newest" ? { sort: "newest" } : args.sort === "salary" ? { sort: "salary" } : {}),
     ...(offset !== undefined && offset > 0 ? { offset } : {}),
+    // READY FOR THE BOARD'S OWN FENCE (hand-in H1): today's board ignores a
+    // key it does not know; servableJobs stays the last guard whatever it says.
+    excludeSources: [...NO_REDISTRIBUTION_SOURCES],
   };
 }
 
@@ -2892,7 +2992,13 @@ function unboundScope(asked: readonly string[], r: Record<string, unknown>): Rec
  * employer name it did not resolve, carried onto the answer searched as typed.
  */
 async function runSearchJobs(input: Record<string, unknown>, ctx: Ctx = KEYED_CTX, employerNotes: Record<string, unknown> | null = null): Promise<unknown> {
-  const { args, reading, locationNote } = searchAsMeant(input, employerNotes ? { employer: false } : {});
+  // THE COUNTRY AS ITS CODES BEFORE ANYTHING READS IT (item 3): "Ireland" was
+  // sent to the board as typed, dropped there, and the search ran over every
+  // country. The reading of the query and of "City, <country>" get the codes.
+  const countries = countryArg(input.country);
+  if (countries.errors.length) throw new ToolArgumentError(countries.errors.join(" "), COUNTRY_FIX);
+  const asked = isSent(input.country) ? { ...input, country: countries.codes.join(",") } : input;
+  const { args, reading, locationNote } = searchAsMeant(asked, employerNotes ? { employer: false } : {});
   // NOTHING LEFT BUT SPONSORSHIP WORDS (connect W1 recheck, 2026-11-08): with
   // them taken out, "visa sponsorship" sent no query and the board answered
   // its whole catalogue beside the sponsorship note. With no role, place,
@@ -2906,37 +3012,82 @@ async function runSearchJobs(input: Record<string, unknown>, ctx: Ctx = KEYED_CT
       locationInterpreted: reading,
     };
   }
+  // How fresh the data is (item 9): one remembered read, started beside the board's.
+  const fresh = feedFreshness.get();
+  const startedAt = Date.now();
   const r = await board(await servableSearchBody(args), ctx);
+  // The body that page was read with, for its refills: searchBody is pure, so
+  // the same arguments give the same body (the withheld-employer check passed).
+  const body = searchBody(args);
+  const offset = Math.max(0, Number(args.offset ?? 0) || 0);
+  const scope = companyTokens(args.companies);
+  // A PAGE OF ROWS THIS SERVER MAY HAND ON (item 1): refilled, at most twice,
+  // only for rows actually dropped; see board-page-fill.ts for every bound.
+  const fill = await fillPage({
+    read: (b, signal) => board(b, ctx, signal),
+    gate: servableWithCounts,
+    body,
+    first: r,
+    startedAt,
+    limit: Number(body.limit),
+    offset,
+    deepestOffset: ctx.keyless ? ANON_ALLOWANCE.maxOffset : ANON_ALLOWANCE.keyedMaxOffset,
+    countRead: true,
+    // A page this call will not serve is never refilled.
+    proceed: (first) =>
+      !(!employerNotes && reading?.companies && employerUnread(first, scope)) && !unboundScope(scope, first) && !ignoredSentFilter(body, first),
+  });
   // "jobs at <Name>" that the board resolved to no employer is searched again
   // as typed (connect W1, BR-09), inside the same counted call, and the
   // board's own words about the name ride along.
-  if (!employerNotes && reading?.companies && employerUnread(r, companyTokens(args.companies))) {
+  if (!employerNotes && reading?.companies && employerUnread(r, scope)) {
     const notes: Record<string, unknown> = Object.fromEntries(SCOPE_NOTES.filter((k) => r[k] !== undefined && r[k] !== null).map((k) => [k, r[k]]));
     notes.employerNote = `${reading.companies.map((n) => JSON.stringify(n)).join(", ")} matched no single employer this board carries, so the query was searched as typed.`;
     return await runSearchJobs(input, ctx, notes);
   }
-  const unbound = unboundScope(companyTokens(args.companies), r);
+  const unbound = unboundScope(scope, r);
   if (unbound) return { ...unbound, ...(reading ? { locationInterpreted: reading } : {}) };
-  // How many rows the board answered, before the redistribution filter: a
-  // count only, never the rows.
-  const answered = Number((r.jobs as unknown[] | undefined)?.length ?? 0);
-  const jobs = await servableJobs(r);
-  const offset = Math.max(0, Number(args.offset ?? 0) || 0);
+  // NEVER A WIDER QUESTION THAN WAS ASKED (items 3 and 11): a filter the board
+  // could not apply to a value that was sent answers nothing searched.
+  const unapplied = ignoredSentFilter(body, r);
+  if (unapplied) {
+    return {
+      jobs: [], hasMore: false, countUnavailable: true, notSearched: true,
+      notSearchedNote: `The board could not apply ${unapplied.map((f) => `${f} ${JSON.stringify(body[f])}`).join(" and ")}, so nothing was searched rather than every posting. Send the value as the filter's description names it.`,
+      ignoredFilters: r.ignoredFilters,
+      ...(reading ? { locationInterpreted: reading } : {}),
+    };
+  }
+  // How many rows the board answered across the reads kept, before the
+  // redistribution filter: a count only, never the rows.
+  const answered = fill.answered;
+  const jobs = fill.rows;
   const out: Record<string, unknown> = { jobs: jobs.map((j) => compactJob(j, ctx)), ...disclosures(r), ...federalAttribution(jobs) };
+  // The next page is the one after the last read kept (item 1).
+  if (fill.last !== r) {
+    if (fill.last.hasMore !== undefined) out.hasMore = fill.last.hasMore;
+    if (typeof fill.last.nextOffset === "number") out.nextOffset = fill.last.nextOffset;
+    else delete out.nextOffset;
+  }
+  if (fill.refillReads) out.refillReads = fill.refillReads;
+  if (fill.pageShortBecause) out.pageShortBecause = fill.pageShortBecause;
   if (reading) out.locationInterpreted = reading;
   if (locationNote) out.locationNote = locationNote;
   if (employerNotes) Object.assign(out, employerNotes);
   if (reading?.sponsorship) out.sponsorshipNote = SPONSORSHIP_NOTE;
-  // The board's `total` beside them still counts what it counted, so rows
-  // dropped on the way out are NAMED, with where they open (connect W3, BR-12).
-  if (answered > jobs.length) {
-    const n = answered - jobs.length;
+  // WHAT WAS READ (items 3 and 11): a country by name, a value by its spelling.
+  if (Object.keys(countries.read).length) out.countryRead = countries.read;
+  if (countries.notes.length) out.countryNote = countries.notes.join(" ");
+  const values = readFilterValues(args);
+  if (values.ok && Object.keys(values.valuesRead).length) out.valuesRead = values.valuesRead;
+  // Rows dropped on the way out are NAMED, with where they open (connect W3,
+  // BR-12), counted across every read kept.
+  const n = withheldCount(fill.dropped);
+  if (n > 0) {
     out.withheld = n;
-    const kept = new Set(jobs.map((j) => String(j.id ?? "")));
-    const dropped = ((r.jobs as Array<Record<string, unknown>> | undefined) ?? []).filter((j) => !kept.has(String(j.id ?? "")));
-    const from = [...new Set(dropped.map((j) => String(j.source ?? "")).filter(isNoRedistributionSource))]
+    const from = Object.keys(fill.dropped.bySource).filter((src) => (fill.dropped.bySource[src] ?? 0) > 0 && isNoRedistributionSource(src))
       .map((src) => SOURCE_NAMES[src] ?? src);
-    const federalHeld = dropped.some((j) => isFederal(j.source));
+    const federalHeld = fill.dropped.federalUnlabelled > 0;
     // Why each held-back row is held back, in one parenthesis: a withheld
     // system by name, and a federal announcement whose statement of who may
     // apply is not stored yet (OD16).
@@ -2945,12 +3096,24 @@ async function runSearchJobs(input: Record<string, unknown>, ctx: Ctx = KEYED_CT
       ...(federalHeld ? ["USAJOBS announcements whose statement of who may apply is not stored yet, which this server does not hand on yet"] : []),
     ];
     out.withheldNote = `${n} more posting${n === 1 ? " is" : "s are"} on this page only on resumebooster.work${why.length ? ` (${why.join("; ")})` : ""}: ${siteSearchUrl(args)}`;
+    // TOTAL WITHOUT THE WITHHELD ROWS, only when the count read is provably
+    // the same search; otherwise the board's total, said to include them.
+    const counted = fill.count.state === "answered" ? totalWithoutWithheld(r, fill.count.answer) : null;
+    if (counted && typeof r.total === "number") {
+      out.total = counted.total;
+      out.withheldTotal = counted.withheldTotal;
+      if (counted.relatedTotal !== undefined) out.relatedTotal = counted.relatedTotal;
+    } else if (typeof r.total === "number") {
+      out.totalIncludesWithheld = true;
+    }
   }
-  // A page of description-only matches says so (connect W1, BR-05): total 0
-  // beside ten rows read as "no such jobs", and forty "marketing" rows were
-  // drywallers.
-  if (jobs.length && jobs.every((j) => j.matchScope === "description")) {
-    out.matchNote = "No posting's title matches these words: every row here only mentions them in its description, so it may be a different kind of role. total counts title matches; relatedTotal counts these.";
+  // A page whose rows ALL say they matched somewhere other than the title says
+  // so (connect W1, BR-05; item 14). An unlabelled row is never read as "not a
+  // title match": the board leaves routed and newest-first rows unlabelled
+  // although they match the title by construction.
+  const scopes = jobs.map((j) => j.matchScope);
+  if (isSent(args.query) && jobs.length && scopes.every((m) => typeof m === "string" && m) && !scopes.includes("title")) {
+    out.matchNote = "No posting's title matches these words: each row here matched in the employer's name or department, or only in its description, so it may be a different kind of role. total counts title, employer-name and department matches; relatedTotal counts description-only ones.";
   }
   // A count the board gave and the page has already passed is a floor, not
   // the number: say so rather than print a total smaller than what was paged.
@@ -2961,8 +3124,8 @@ async function runSearchJobs(input: Record<string, unknown>, ctx: Ctx = KEYED_CT
   // more jobs").
   // An exhausted search has no next page (connect W1, BR-04): the board's
   // nextOffset beside hasMore:false named none, and read as a page limit.
-  if (r.hasMore === false) delete out.nextOffset;
-  if (ctx.keyless && r.hasMore !== false && typeof out.nextOffset === "number" && out.nextOffset > ANON_ALLOWANCE.maxOffset) {
+  if (fill.last.hasMore === false) delete out.nextOffset;
+  if (ctx.keyless && fill.last.hasMore !== false && typeof out.nextOffset === "number" && out.nextOffset > ANON_ALLOWANCE.maxOffset) {
     delete out.nextOffset;
     out.pageLimitReached = true;
     out.pageLimitNote = `A keyless search pages to offset ${ANON_ALLOWANCE.maxOffset}. Narrow it with a place, a filter or newer postings to see the rest.`;
@@ -2977,22 +3140,56 @@ async function runSearchJobs(input: Record<string, unknown>, ctx: Ctx = KEYED_CT
       if (hint.didYouMean) out.locationDidYouMean = hint.didYouMean;
     }
   }
+  const freshness = await freshnessWithin(fresh);
+  if (freshness) out.feedFreshness = freshness;
   return out;
 }
+
+/**
+ * The filters a board answer names in ignoredFilters for a value this server
+ * sent (items 3 and 11's backstop): null when every sent filter held.
+ */
+function ignoredSentFilter(body: Record<string, unknown>, r: Record<string, unknown>): string[] | null {
+  const ignored = Array.isArray(r.ignoredFilters) ? (r.ignoredFilters as unknown[]).map(String) : [];
+  const hit = BACKSTOPPED_FILTERS.filter((f) => isSent(body[f]) && ignored.includes(f));
+  return hit.length ? hit : null;
+}
+
+/**
+ * HOW FRESH THE DATA IS (item 9): the stats rollup's freshness row, one
+ * primary-key read per isolate per five minutes, shared while in flight.
+ */
+const feedFreshness = freshnessCache(async () => {
+  const { data, error } = await db().from("job_board_stats_rollup").select("v, computed_at").eq("k", "freshness").maybeSingle();
+  if (error) throw new Error(String(error.message ?? "freshness unreadable"));
+  return (data ?? null) as { v: unknown; computed_at?: unknown } | null;
+});
 
 async function runDebugSearch(args: Record<string, unknown>): Promise<unknown> {
   const base = await servableSearchBody(args);
   // Decision (no SQL) and outcome (the real run) in parallel — the board's own
   // trace plus what actually happened, so an agent sees BOTH why the board
   // decided and what it then served.
-  const [decision, outcome] = await Promise.all([
+  const startedAt = Date.now();
+  const [decision, first] = await Promise.all([
     board({ ...base, explain: true }),
     board(base),
   ]);
-  const out = outcome as Record<string, unknown>;
+  // The page an agent would get (item 1): the same filler, with its refills.
+  const fill = await fillPage({
+    read: (b, signal) => board(b, KEYED_CTX, signal),
+    gate: servableWithCounts,
+    body: base,
+    first,
+    startedAt,
+    limit: Number(base.limit),
+    offset: Math.max(0, Number(base.offset ?? 0) || 0),
+    deepestOffset: ANON_ALLOWANCE.keyedMaxOffset,
+  });
+  const out = fill.first;
   // The DEBUG tool most of all: rowsServed has to be the rows an agent would
   // actually have received, or the trace explains a search nobody was served.
-  const jobs = await servableJobs(out);
+  const jobs = fill.rows;
   return {
     decision,
     outcome: {
@@ -3003,6 +3200,8 @@ async function runDebugSearch(args: Record<string, unknown>): Promise<unknown> {
       rowsServed: jobs.length,
       topTitles: jobs.slice(0, 5).map((j) => j.title),
       ...disclosures(out),
+      boardReads: 1 + fill.refillReads,
+      ...(fill.pageShortBecause ? { pageShortBecause: fill.pageShortBecause } : {}),
       phaseMs: out.phaseMs ?? null,
       tookMs: out.tookMs ?? null,
       rankedFellBack: out.rankedFellBack ?? null,
@@ -3309,14 +3508,27 @@ async function runFitResume(args: Record<string, unknown>, apiKeyId: string, ctx
   // A title read out of the CV is not written to the board's search log
   // (GP-NOLOG-1): nothing taken from the CV goes into any log. A title the
   // caller typed is searched as any other search is.
-  const r = await board(await servableSearchBody({ ...args, query, limit }), typed ? ctx : { ...ctx, noLog: true });
+  const body = await servableSearchBody({ ...args, query, limit });
+  const scope = companyTokens(args.companies);
+  // Refilled as search_jobs is (item 1), with no count read: a full page of
+  // rows this server may hand on is what gets scored.
+  const fill = await fillPage({
+    read: (b, signal) => board(b, typed ? ctx : { ...ctx, noLog: true }, signal),
+    gate: servableWithCounts,
+    body,
+    limit,
+    offset: Math.max(0, Number(body.offset ?? 0) || 0),
+    deepestOffset: ANON_ALLOWANCE.keyedMaxOffset,
+    proceed: (first) => !unboundScope(scope, first),
+  });
+  const r = fill.first;
   // An employer scope the board could not apply is never scored as the whole board (S12-080).
-  const unbound = unboundScope(companyTokens(args.companies), r);
+  const unbound = unboundScope(scope, r);
   if (unbound) return { terms, query, ...unbound };
   // Dropped BEFORE scoring: this tool returns a job card per row exactly as
   // search_jobs does, so it redistributes the same way — and filtering here
   // also means the scorer's budget is never spent on a row nobody receives.
-  const jobs = await servableJobs(r);
+  const jobs = fill.rows;
   const ids = jobs.map((j) => String(j.id)).slice(0, 20);
   let fits: Record<string, number | null> = {}, matched: Record<string, string[]> = {}, missing: Record<string, string[]> = {};
   // Why a posting got no fit, per id, where the scorer says (S14X-052);
@@ -3350,6 +3562,10 @@ async function runFitResume(args: Record<string, unknown>, apiKeyId: string, ctx
       return { ...compactJob(j), fit, ...why, matched: matched[id] ?? [], missing: missing[id] ?? [] };
     }),
     ...disclosures(r),
+    ...(fill.last !== r ? { hasMore: fill.last.hasMore, ...(typeof fill.last.nextOffset === "number" ? { nextOffset: fill.last.nextOffset } : {}) } : {}),
+    ...(fill.refillReads ? { refillReads: fill.refillReads } : {}),
+    ...(fill.pageShortBecause ? { pageShortBecause: fill.pageShortBecause } : {}),
+    ...(withheldCount(fill.dropped) ? { withheld: withheldCount(fill.dropped) } : {}),
     ...federalAttribution(jobs),
   };
 }
@@ -3601,14 +3817,16 @@ async function runBoardStats(): Promise<unknown> {
  * The token list both employer tools take: an array (or a comma list — agents
  * type them), trimmed, de-duplicated, order kept, and REFUSED past the cap
  * rather than trimmed. A silently shortened list is an employer the agent
- * believes it asked about.
+ * believes it asked about. An entry may be an employer's name (item 5): the
+ * argument reader maps company, employer, name and their plurals here, and
+ * withEmployerNames resolves a name the reader has never seen.
  */
 function employerTokensArg(args: Record<string, unknown>, tool: string): string[] {
   const tokens = [...new Set(companyTokens(args.companyTokens))];
   if (!tokens.length) {
     throw new ToolArgumentError(
-      `${tool} needs companyTokens — an array of companyToken values from job cards (up to ${EMPLOYER_TOKENS_MAX}).`,
-      "Take companyToken off any search_jobs card, or from the site's employer pages.",
+      `${tool} needs companyTokens: employer names or companyToken values (up to ${EMPLOYER_TOKENS_MAX}).`,
+      "Send the employer's name, e.g. companyTokens: [\"Anthropic\"], or companyToken off any search_jobs card.",
     );
   }
   if (tokens.length > EMPLOYER_TOKENS_MAX) {
@@ -3636,9 +3854,11 @@ function employerTokensArg(args: Record<string, unknown>, tool: string): string[
  * this surface and the site's employer pages cannot start disagreeing about
  * what a number is called.
  */
-async function runEmployerHiringRecord(client: SupabaseClient, args: Record<string, unknown>): Promise<unknown> {
-  const tokens = employerTokensArg(args, "employer_hiring_record");
-  await refuseWithheldEmployers(tokens, "companyTokens");
+async function runEmployerHiringRecord(client: SupabaseClient, args: Record<string, unknown>, resolvedTokens?: string[]): Promise<unknown> {
+  // The second pass (item 5) reads the tokens a name resolved to, already
+  // cleared of withheld systems; the first reads the list as sent.
+  const tokens = resolvedTokens ?? employerTokensArg(args, "employer_hiring_record");
+  if (!resolvedTokens) await refuseWithheldEmployers(tokens, "companyTokens");
   const { data, error } = await client.rpc("get_company_hiring_health", { p_tokens: tokens });
   if (error) throw new Error(`get_company_hiring_health: ${error.message}`);
   const rows = new Map<string, Record<string, unknown>>();
@@ -3702,7 +3922,14 @@ async function runEmployerHiringRecord(client: SupabaseClient, args: Record<stri
       layoff_filing: filings.get(tok) ?? null,
     };
   });
-  return { employers, asked: tokens.length, window_days: HIRING_RECORD_WINDOW_DAYS, basis: HIRING_RECORD_BASIS, layoff_basis: LAYOFF_FILING_BASIS, layoff_read: layoffRead };
+  const answer = { employers, asked: tokens.length, window_days: HIRING_RECORD_WINDOW_DAYS, basis: HIRING_RECORD_BASIS, layoff_basis: LAYOFF_FILING_BASIS, layoff_read: layoffRead };
+  if (resolvedTokens) return answer;
+  return await withEmployerNames(answer, "no_record",
+    async (t) => await runEmployerHiringRecord(client, args, t) as Record<string, unknown>,
+    (asked, reason) => ({
+      company_token: asked, record: "unknown", unknown_reason: reason, gate: NOT_JUDGED,
+      basis: HIRING_RECORD_ROW_BASIS, note: EMPLOYER_NAME_UNKNOWN[reason], layoff_filing: null,
+    }));
 }
 
 /**
@@ -3800,9 +4027,9 @@ function layoffFilingOf(r: Record<string, unknown>): LayoffFiling | null {
  * The RPC answers a row for every token (a token with no daily series is
  * unknown/no_series), so a missing row is a fault in the read and is thrown.
  */
-async function runEmployerGrowth(client: SupabaseClient, args: Record<string, unknown>): Promise<unknown> {
-  const tokens = employerTokensArg(args, "employer_growth");
-  await refuseWithheldEmployers(tokens, "companyTokens");
+async function runEmployerGrowth(client: SupabaseClient, args: Record<string, unknown>, resolvedTokens?: string[]): Promise<unknown> {
+  const tokens = resolvedTokens ?? employerTokensArg(args, "employer_growth");
+  if (!resolvedTokens) await refuseWithheldEmployers(tokens, "companyTokens");
   const { data, error } = await client.rpc("get_company_growth", { p_tokens: tokens });
   if (error) throw new Error(`get_company_growth: ${error.message}`);
   const rows = new Map<string, Record<string, unknown>>();
@@ -3814,7 +4041,7 @@ async function runEmployerGrowth(client: SupabaseClient, args: Record<string, un
     if (!r) throw new Error(`get_company_growth answered no row for ${tok}`);
     return { ...r, verdict: r.verdict, unknown_reason: r.unknown_reason ?? null };
   });
-  return {
+  const answer = {
     employers,
     asked: tokens.length,
     bars: {
@@ -3830,6 +4057,125 @@ async function runEmployerGrowth(client: SupabaseClient, args: Record<string, un
       "of roles that came down: not a headcount, not a hire. unknown carries its reason and is a reading we could not take, " +
       "never a no. The verdict is the board's own and is passed through untouched; the bars beside it are what it measured " +
       "against, for reading a row and never for re-judging one. Employers are never ranked by this.",
+  };
+  if (resolvedTokens) return answer;
+  return await withEmployerNames(answer, "no_series",
+    async (t) => await runEmployerGrowth(client, args, t) as Record<string, unknown>,
+    (asked, reason) => ({ company_token: asked, verdict: "unknown", unknown_reason: reason, note: EMPLOYER_NAME_UNKNOWN[reason] }));
+}
+
+/** A name as the board placed it: its tokens, or the nearest employers it carries. */
+type BoardNameReading =
+  | { kind: "resolved"; tokens: string[] }
+  | { kind: "unresolved"; candidates: Array<Record<string, unknown>>; ambiguous?: true; held?: string }
+  | { kind: "skipped" };
+
+/**
+ * AN EMPLOYER ASKED FOR BY NAME (item 5). Both employer tools read the list
+ * as sent; an entry their reader has never seen (`neverSeen`: no_record,
+ * no_series) may be an employer's name. Up to EMPLOYER_NAMES_PER_CALL of them
+ * go to the board in ONE list call with explain: true: the board resolves
+ * names at the top of a list, and an explain answers its decision trace
+ * before any posting query runs. Then:
+ *   - a resolved name is read once more under its tokens (never more than
+ *     EMPLOYER_TOKENS_MAX tokens in the answer; the rest are named in
+ *     notLookedUp), each row carrying asked and resolvedFrom: "name";
+ *   - a resolved token of a withheld hiring system is not read: not_served_here;
+ *   - an unresolved name is a row with the board's candidates, never an error;
+ *   - an entry past the fifth, or every entry when the lookup failed, is
+ *     name_not_looked_up;
+ *   - an entry the board kept as a token it carries keeps the reader's row.
+ * A token the reader knows makes no board call. Hard bound: one board call,
+ * five names, two reader passes.
+ */
+async function withEmployerNames(
+  first: Record<string, unknown>,
+  neverSeen: string,
+  reread: (tokens: string[]) => Promise<Record<string, unknown>>,
+  unknownRow: (asked: string, reason: EmployerNameReason) => Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const rows = (first.employers ?? []) as Array<Record<string, unknown>>;
+  const unseen = rows.filter((r) => r.unknown_reason === neverSeen).map((r) => String(r.company_token));
+  if (!unseen.length) return first;
+  const looked = unseen.slice(0, EMPLOYER_NAMES_PER_CALL);
+  const readings = new Map<string, BoardNameReading>();
+  let lookupFailed = false;
+  try {
+    const r = await board({ action: "list", explain: true, limit: 1, includeFacets: false, companies: looked, noLog: true });
+    for (const x of (Array.isArray(r.companiesResolved) ? r.companiesResolved : []) as Array<Record<string, unknown>>) {
+      const tokens = (Array.isArray(x.tokens) ? x.tokens : []).map((t) => String(t)).filter(Boolean);
+      if (typeof x.asked === "string" && tokens.length) readings.set(x.asked, { kind: "resolved", tokens });
+    }
+    for (const x of (Array.isArray(r.companiesUnresolved) ? r.companiesUnresolved : []) as Array<Record<string, unknown>>) {
+      if (typeof x.asked !== "string") continue;
+      const candidates = (Array.isArray(x.candidates) ? x.candidates : []) as Array<Record<string, unknown>>;
+      readings.set(x.asked, {
+        kind: "unresolved", candidates,
+        ...(x.ambiguous === true ? { ambiguous: true as const } : {}),
+        ...(typeof x.held === "string" ? { held: x.held } : {}),
+      });
+    }
+    for (const x of (Array.isArray(r.companiesNotLookedUp) ? r.companiesNotLookedUp : [])) readings.set(String(x), { kind: "skipped" });
+  } catch (e) {
+    lookupFailed = true;
+    console.warn(`[agent-mcp] employer name lookup failed: ${String(e instanceof Error ? e.message : e).slice(0, 200)}`);
+  }
+  const withheld = readings.size ? await withheldCompanyTokens() : null;
+  const barred = (t: string) => isNoRedistributionSource(t) || (withheld?.has(t) ?? false);
+  // The token budget: every row the answer keeps as sent, then the resolved
+  // tokens in the order their names were asked.
+  const kept = rows.filter((r) => readings.get(String(r.company_token))?.kind !== "resolved").length;
+  let budget = Math.max(0, EMPLOYER_TOKENS_MAX - kept);
+  const firstByToken = new Map(rows.map((r) => [String(r.company_token), r]));
+  const plan = new Map<string, { read: string[]; withheld: string[] }>();
+  const toRead: string[] = [];
+  const notLookedUp: string[] = [];
+  for (const name of looked) {
+    const reading = readings.get(name);
+    if (reading?.kind !== "resolved") continue;
+    const p = { read: [] as string[], withheld: [] as string[] };
+    for (const t of reading.tokens) {
+      if (barred(t)) { p.withheld.push(t); continue; }
+      if (firstByToken.has(t) && firstByToken.get(t)!.unknown_reason !== neverSeen) { p.read.push(t); continue; }
+      if (toRead.includes(t)) { p.read.push(t); continue; }
+      if (budget <= 0) { notLookedUp.push(t); continue; }
+      budget--;
+      toRead.push(t);
+      p.read.push(t);
+    }
+    plan.set(name, p);
+  }
+  const second = toRead.length ? await reread(toRead) : null;
+  const secondByToken = new Map(((second?.employers ?? []) as Array<Record<string, unknown>>).map((r) => [String(r.company_token), r]));
+  const named = { resolvedFrom: "name" };
+  const employers = rows.flatMap((row) => {
+    const asked = String(row.company_token);
+    if (row.unknown_reason !== neverSeen) return [row];
+    if (lookupFailed || !looked.includes(asked)) return [unknownRow(asked, "name_not_looked_up")];
+    const reading = readings.get(asked);
+    if (!reading) return [row];
+    if (reading.kind === "skipped") return [unknownRow(asked, "name_not_looked_up")];
+    if (reading.kind === "unresolved") {
+      const candidates = reading.candidates.filter((c) => !barred(String(c.token ?? ""))).slice(0, 5);
+      return [{
+        ...unknownRow(asked, "name_not_resolved"), asked, candidates,
+        ...(reading.ambiguous ? { ambiguous: true } : {}), ...(reading.held ? { held: reading.held } : {}),
+      }];
+    }
+    const p = plan.get(asked)!;
+    const out = [
+      ...p.read.map((t) => secondByToken.get(t) ?? firstByToken.get(t)).filter((r): r is Record<string, unknown> => !!r)
+        .map((r) => ({ ...r, asked, ...named })),
+      ...p.withheld.map((t) => ({ ...unknownRow(t, "not_served_here"), asked, ...named })),
+    ];
+    return out.length ? out : [{ ...unknownRow(asked, "name_not_looked_up"), asked }];
+  });
+  return {
+    ...first,
+    employers,
+    ...(notLookedUp.length ? { notLookedUp } : {}),
+    // A filing read that failed on the second pass is said, never hidden by the first pass's "ok".
+    ...(second && typeof second.layoff_read === "string" && second.layoff_read !== "ok" ? { layoff_read: second.layoff_read } : {}),
   };
 }
 
@@ -4896,6 +5242,30 @@ async function answerUnkeyed(
     };
   }
 
+  if (toolName === "key_status") {
+    // NO KEY, NO REFUSAL (item 6): what this caller has without one, uncounted,
+    // held to board_stats' per-minute gate in this isolate. No database read.
+    const perMinute = boardStatsPerMinuteFor(lookups);
+    if (!boardStatsAllowed(lookups.bucket, perMinute)) {
+      const secs = secondsLeftInMinute();
+      return {
+        rpc: rpcResult(rpcId, toolErr(`Too many key_status calls this minute ${lookups.owner}.`, `Try again in ${secs} seconds.`)),
+        headers: { "Retry-After": String(secs) },
+      };
+    }
+    countCall(client, partition, "keyless", toolName, "cached");
+    return {
+      rpc: rpcResult(rpcId, toolOk({
+        key: { tier: "none", paid: false, accountLinked: false, id: null },
+        keyless: keylessBlock(edition, lookups),
+        ...(edition === "other" ? { getAKey: GET_A_KEY } : {}),
+        counted: "key_status with no key is never counted.",
+        docs: DOCS_URL,
+      })),
+      headers: {},
+    };
+  }
+
   // A TURN FIRST: a call waits for one before it is counted, so a call
   // turned away from a busy isolate costs nothing.
   const release = await keylessTurn();
@@ -5036,6 +5406,167 @@ function withUnkeyedNote(rpc: unknown, note: string): unknown {
   const data = { ...sc, unkeyed: { ...(unkeyed as Record<string, unknown>), keyNote: note } };
   const rebuilt = toolOk(data);
   return { ...r, result: { ...r.result, ...rebuilt } };
+}
+
+/** Carried in the unkeyed block when a revoked key was sent to a tool that answers with no key (item 10). */
+const REVOKED_KEY_NOTE =
+  `The key sent has been revoked (a newer key replaced it, it went unused for 30 days, or it was issued before keys needed a confirmed email); this call ran without it. A new key comes from ${MINT_URL}.`;
+
+/**
+ * The key-check refusals a keyless tool answers through, keyless, and the
+ * sentence each says: an unrecognised key (since .7) and a revoked one (item
+ * 10). Empty for the rest: a rate or quota refusal is a live key's, and stands.
+ */
+function keylessDenialNote(reason: unknown): string {
+  return reason === "unknown_key" ? UNKNOWN_KEY_NOTE : reason === "revoked" ? REVOKED_KEY_NOTE : "";
+}
+
+/** When a refused key may try again: the minute for a rate refusal, midnight UTC for a quota one. */
+function retryAfterOf(reason: unknown): Record<string, string> {
+  return reason === "rate_limited"
+    ? { "Retry-After": "60" }
+    : reason === "quota_exceeded"
+    ? { "Retry-After": String(secondsToMidnightUtc()) }
+    : {};
+}
+
+/**
+ * The answer with the reader's notes added at its top level (items 2 and 4):
+ * rebuilt through toolOk, as withUnkeyedNote rebuilds one, so the text block
+ * and structuredContent agree. A refusal, or no note, is returned as it is.
+ */
+function withArgNotes(rpc: unknown, notes: Record<string, unknown>): unknown {
+  if (!Object.keys(notes).length) return rpc;
+  const r = rpc as { result?: { content?: unknown[]; structuredContent?: Record<string, unknown>; isError?: boolean } };
+  const sc = r.result?.structuredContent;
+  if (!sc || r.result?.isError) return rpc;
+  return { ...r, result: { ...r.result, ...toolOk({ ...sc, ...notes }) } };
+}
+
+/** The names a tool accepts, read off the registry (item 2): its declared ones, plus what its runner also reads. */
+function acceptedArgsOf(toolName: string): Record<string, DeclaredArg> {
+  const t = TOOLS.find((x) => x.name === toolName) as { inputSchema?: { properties?: Record<string, DeclaredArg> } } | undefined;
+  const declared = { ...(t?.inputSchema?.properties ?? {}) };
+  // agentReadyOnly is undeclared since the apply agent was retired and still
+  // read by searchBody; fit_resume hands every argument to the search and
+  // guards an employer scope by name, so it takes every search name too.
+  if (toolName === "search_jobs" || toolName === "debug_search") return { ...declared, agentReadyOnly: { type: "boolean" } };
+  if (toolName === "fit_resume") return { ...(SEARCH_PROPERTIES as Record<string, DeclaredArg>), agentReadyOnly: { type: "boolean" }, ...declared };
+  return declared;
+}
+/** The tools whose unknown names are refused, and which read `page`. */
+const STRICT_ARG_TOOLS: readonly string[] = ["search_jobs", "debug_search", "search", "fit_resume"];
+function argSpecOf(toolName: string) {
+  return {
+    tool: toolName,
+    accepted: acceptedArgsOf(toolName),
+    strict: STRICT_ARG_TOOLS.includes(toolName),
+    pages: STRICT_ARG_TOOLS.includes(toolName),
+    ...(toolName === "search" ? { searchJobsNames: [...Object.keys(SEARCH_PROPERTIES), "agentReadyOnly"] } : {}),
+    ...(toolName === "employer_hiring_record" || toolName === "employer_growth" ? { employerArg: "companyTokens" } : {}),
+  };
+}
+
+/**
+ * A LIMIT ABOVE THE CAP IS CUT, AND SAID (item 4): a keyless limit of 50
+ * answered 9 or 10 rows with nothing said, which reads as the board running
+ * out. A sent limit above the cap, or one that is not a positive number, gets
+ * limitAsked, limitApplied and limitNote; an unsent one, or one within the
+ * cap, adds nothing. No cap changes.
+ */
+function limitNotesOf(toolName: string, args: Record<string, unknown>, keyless: boolean, edition: Edition): Record<string, unknown> {
+  if (!isSent(args.limit)) return {};
+  const fit = toolName === "fit_resume";
+  if (!fit && toolName !== "search_jobs" && toolName !== "debug_search") return {};
+  const cap = fit ? 20 : keyless ? ANON_SEARCH_LIMIT : KEYED_SEARCH_LIMIT;
+  const fallback = fit ? 20 : keyless ? ANON_SEARCH_LIMIT : 20;
+  const n = Number(args.limit);
+  const usable = Number.isFinite(n) && n >= 1;
+  if (usable && n <= cap) return {};
+  const note = fit
+    ? "fit_resume scores at most 20 postings a call."
+    : keyless
+    ? `A search with no key returns ${ANON_SEARCH_LIMIT} rows a page; ask for the next page with offset = nextOffset.${edition === "other" ? ` (${KEYED_SEARCH_LIMIT} a page with a free key from ${MINT_URL})` : ""}`
+    : `A page holds at most ${KEYED_SEARCH_LIMIT} rows; ask for the next with offset = nextOffset.`;
+  return { limitAsked: args.limit, limitApplied: usable ? cap : fallback, limitNote: note };
+}
+
+/**
+ * A REFUSED CALL, COUNTED BY WHAT REFUSED IT (item 13): outcome "argument"
+ * under the tool's own name, or under "unknown" for a tool that does not
+ * exist. No argument text, address or invented name is stored. At most
+ * REFUSALS_COUNTED_PER_MINUTE such writes a minute in one isolate; past that
+ * the refusal is still answered and nothing is written.
+ */
+const REFUSALS_COUNTED_PER_MINUTE = 60;
+const refusalsThisMinute = { minute: -1, n: 0 };
+function countRefusal(client: SupabaseClient, req: Request, params: Record<string, unknown>, surface: "keyless" | "key", tool: string): void {
+  const minute = Math.floor(Date.now() / 60_000);
+  if (refusalsThisMinute.minute !== minute) {
+    refusalsThisMinute.minute = minute;
+    refusalsThisMinute.n = 0;
+  }
+  if (++refusalsThisMinute.n > REFUSALS_COUNTED_PER_MINUTE) return;
+  background((async () => {
+    const host: Partition = (await egressHost(callerAddress(req.headers), isChatGptCaller(req.headers, params))) ?? "other";
+    await client.rpc("mcp_count_call", { p_host: host, p_surface: surface, p_tool: tool, p_outcome: "argument" });
+  })());
+}
+
+/**
+ * KEY_STATUS FOR A KEY THE CHECK REFUSED (item 6): the key's state as an
+ * answer. An unrecognised key and a revoked one carry today's sentence and
+ * fix and what the keyless tools give; a key over its minute or its day
+ * carries the block that refused it with remaining 0 (the day's figures only
+ * when the check read them).
+ */
+function refusedKeyStatus(d: Decision | null, edition: Edition): Record<string, unknown> {
+  const reason = d?.deny_reason ?? "unknown_key";
+  const base = { tier: d?.key_tier ?? "none", paid: false, accountLinked: false, id: d?.api_key_id ?? null };
+  if (reason === "rate_limited" && d) {
+    return {
+      key: { ...base, recognised: true },
+      rate: { limit: d.rate_limit, used: d.rate_used, remaining: 0, window: "the current UTC clock minute", resetsInSeconds: secondsToNextMinute() },
+      ...(quotaWasRead(d) ? { quota: { limit: d.quota_limit, used: d.quota_used, remaining: Math.max(0, d.quota_limit - d.quota_used), window: "one UTC day", resetsInSeconds: secondsToMidnightUtc() } } : {}),
+      refusedBy: "rate", note: KEY_REFUSALS.rate_limited(d.rate_limit).join(" "),
+    };
+  }
+  if (reason === "quota_exceeded" && d) {
+    return {
+      key: { ...base, recognised: true },
+      quota: { limit: d.quota_limit, ...(quotaWasRead(d) ? { used: d.quota_used } : {}), remaining: 0, window: "one UTC day", resetsInSeconds: secondsToMidnightUtc() },
+      refusedBy: "quota", note: KEY_REFUSALS.quota_exceeded(d.quota_limit).join(" "),
+    };
+  }
+  const [message, fix] = reason === "revoked" ? KEY_REFUSALS.revoked : KEY_REFUSALS.unknown_key;
+  return {
+    key: { ...base, tier: "none", id: null, ...(reason === "revoked" ? { revoked: true } : { recognised: false }) },
+    note: message, fix,
+    keyless: keylessBlock(edition),
+    ...(edition === "other" ? { getAKey: GET_A_KEY } : {}),
+  };
+}
+
+/** Where a free key comes from, for a caller outside Claude and ChatGPT (their hosts have no field for one). */
+const GET_A_KEY = {
+  url: MINT_URL,
+  gives: `${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day, pages of ${KEYED_SEARCH_LIMIT} and fit_resume`,
+  send: "Authorization: Bearer <key>, or x-api-key: <key>",
+};
+
+/** What every keyless caller has, read off the allowance (no database read). */
+function keylessBlock(edition: Edition, lookups?: AllowanceBucket): Record<string, unknown> {
+  return {
+    tools: [...ANON_TOOLS],
+    ...(lookups ? { lookupsPerDay: lookups.bucketCap, whose: lookups.owner, sharedPerDay: lookups.shareCap, perMinute: lookups.minuteCap } : {}),
+    searchRowsPerPage: ANON_ALLOWANCE.searchRows,
+    deepestOffset: ANON_ALLOWANCE.maxOffset,
+    idsPerOpenCheck: ANON_ALLOWANCE.checkJobsOpenIds,
+    resetsInSeconds: secondsToMidnightUtc(),
+    note: edition === "other"
+      ? "Each counted answer says what is left in unkeyed.callsLeftToday."
+      : "Every listed tool answers without a key; each counted answer says what is left in unkeyed.callsLeftToday.",
+  };
 }
 
 /**
@@ -5197,32 +5728,50 @@ function pastKeylessPage(toolName: string, args: Record<string, unknown>): Recor
   };
 }
 
-Deno.serve(browserGated(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
-  if (req.method === "GET") {
-    // The protected-resource metadata — matched on the pathname AFTER the
-    // runtime's function prefix is stripped (project_edge_path_prefix). Served
-    // only while sign-in is on: while it is off, the document would send a
-    // host into a sign-in that cannot finish, so it answers 404 (spec D2 §2.1).
-    if (isProtectedResourceMetadataPath(new URL(req.url).pathname)) {
-      const { state } = await probeSignIn();
-      if (state === "on") return protectedResourceResponse(cors);
-      return json({ error: "Sign-in through this server is not switched on yet; every listed tool answers with no key.", docs: DOCS_URL }, 404);
-    }
-    // No SSE stream to offer — spec-legal for a stateless server. The body
-    // is for the human who opened the address in a browser.
-    return json({ error: NOT_A_WEB_PAGE, docs: DOCS_URL }, 405);
-  }
-  if (req.method !== "POST") return json({ error: NOT_A_WEB_PAGE, docs: DOCS_URL }, 405);
-
+/**
+ * The transport, then one JSON-RPC message answered: the whole of a
+ * single-message POST, and (called again with `element`) each message of a
+ * 2025-03-26 batch, whose transport was read once for the whole POST.
+ */
+Deno.serve(browserGated(async function answer(req: Request, element?: { message: unknown }): Promise<Response> {
   let parsed: unknown;
-  try {
-    parsed = await req.json();
-  } catch {
-    return json(rpcError(null, -32700, "The request body is not JSON. Send one JSON-RPC 2.0 message per POST."), 400);
+  if (element) {
+    parsed = element.message;
+  } else {
+    if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+    if (req.method === "GET") {
+      // The protected-resource metadata — matched on the pathname AFTER the
+      // runtime's function prefix is stripped (project_edge_path_prefix). Served
+      // only while sign-in is on: while it is off, the document would send a
+      // host into a sign-in that cannot finish, so it answers 404 (spec D2 §2.1).
+      if (isProtectedResourceMetadataPath(new URL(req.url).pathname)) {
+        const { state } = await probeSignIn();
+        if (state === "on") return protectedResourceResponse(cors);
+        return json({ error: "Sign-in through this server is not switched on yet; every listed tool answers with no key.", docs: DOCS_URL }, 404);
+      }
+      // A client set to the old sse transport asks for an event stream: told
+      // which transport this is (item 8d), never the web-page sentence.
+      if (wantsEventStream(req.headers.get("accept"))) return json({ error: SSE_TRANSPORT_SENTENCE, docs: DOCS_URL }, 405);
+      // No SSE stream to offer — spec-legal for a stateless server. The body
+      // is for the human who opened the address in a browser.
+      return json({ error: NOT_A_WEB_PAGE, docs: DOCS_URL }, 405);
+    }
+    if (req.method !== "POST") return json({ error: NOT_A_WEB_PAGE, docs: DOCS_URL }, 405);
+
+    try {
+      parsed = await req.json();
+    } catch {
+      return json(rpcError(null, -32700, "The request body is not JSON. Send one JSON-RPC 2.0 message per POST."), 400);
+    }
+    // BATCHES (item 8b): 2025-03-26 requires a server to accept them, 2025-06-18
+    // removed them. Read while the request names no revision or names 2025-03-26.
+    if (Array.isArray(parsed)) {
+      if (!batchAllowed(req.headers.get("mcp-protocol-version"))) {
+        return json(rpcError(null, -32600, "batching not supported; send one message per request"), 400);
+      }
+      return await answerBatch(parsed, (m) => answer(req, { message: m }));
+    }
   }
-  // Batches are removed in 2025-06-18; a stateless server declines them.
-  if (Array.isArray(parsed)) return json(rpcError(null, -32600, "batching not supported; send one message per request"), 400);
   // A null or non-object body is an invalid request, never a bare 500.
   if (!parsed || typeof parsed !== "object") {
     return json(rpcError(null, -32600, "Invalid request: send one JSON-RPC 2.0 message object per POST."), 400);
@@ -5242,15 +5791,26 @@ Deno.serve(browserGated(async (req) => {
   if (isNotification && method !== "notifications/initialized" && method !== "notifications/cancelled") {
     return new Response(null, { status: 202, headers: cors });
   }
-  // A credential in either slot: Authorization: Bearer, or x-api-key.
+  // THE STATELESS REVISION (2026-07-28), NOT SPOKEN BY THIS BUILD (item 8c,
+  // cut): HTTP 400 with -32600, none of that revision's modern errors, so a
+  // client that speaks both eras falls back to initialize. See protocol.ts.
+  if (isModernRequest(method, params)) return json(modernFallback(id), MODERN_FALLBACK_STATUS);
+  // A CREDENTIAL IN EITHER SLOT (item 6): the first of the Authorization bearer
+  // and x-api-key that looks like a key; else the bearer as sent (a sign-in
+  // token); else x-api-key as sent. A caller following Supabase's recipe
+  // (Authorization: Bearer <publishable key>) with its key in x-api-key had
+  // the key ignored.
   const auth = req.headers.get("authorization") ?? "";
-  const bearer = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : (req.headers.get("x-api-key") ?? "").trim();
+  const fromAuth = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
+  const fromHeader = (req.headers.get("x-api-key") ?? "").trim();
+  const bearer = looksLikeApiKey(fromAuth) ? fromAuth : looksLikeApiKey(fromHeader) ? fromHeader : fromAuth || fromHeader;
 
   // Discovery runs unauthenticated: an agent must be able to see what is here
   // before its human decides anything.
   if (method === "initialize") {
     const asked = String((params as { protocolVersion?: unknown }).protocolVersion ?? "");
-    const protocolVersion = MCP_PROTOCOL_VERSIONS.includes(asked) ? asked : MCP_PROTOCOL_VERSIONS[0];
+    // The revision asked, when this server speaks it; else its latest (item 8a).
+    const protocolVersion = negotiatedVersion(asked);
     // MEASUREMENT (spec D2 §2.2): which client, which version, from which
     // platform, whether it sends an Origin, a protocol header or a session
     // id. clientInfo is a hint, never a credential; no address is logged.
@@ -5278,20 +5838,27 @@ Deno.serve(browserGated(async (req) => {
     return new Response(null, { status: 202, headers: cors });
   }
   if (method === "ping") return json(rpcResult(id, {}));
+  // WHO HOLDS A CREDENTIAL (item 6): a key, or a sign-in token while sign-in
+  // is on. A bearer that is neither (Supabase's publishable key sent by its
+  // usual function-call recipe, a gateway's own token, a stale sign-in token)
+  // was listed the keyed tools, each of which then refused it.
+  const credentialHeld = (signInOn: boolean) => looksLikeApiKey(bearer) || (signInOn && !!bearer);
   if (method === "tools/list") {
     const { state } = await probeSignIn();
-    return json(rpcResult(id, { tools: listedTools(!!bearer, edition, state === "on") }));
+    return json(rpcResult(id, { tools: listedTools(credentialHeld(state === "on"), edition, state === "on") }));
   }
   // The listings: free, unmetered, one page each, and only what this caller can use.
   if (method === "prompts/list") {
+    const held = credentialHeld(cachedSignIn()?.state === "on");
     return json(rpcResult(id, {
-      prompts: PROMPTS.filter((p) => !p.keyed || !!bearer)
+      prompts: PROMPTS.filter((p) => !p.keyed || held)
         .map(({ name, title, description, arguments: args }) => ({ name, title, description, arguments: args })),
     }));
   }
   if (method === "resources/list") {
+    const held = credentialHeld(cachedSignIn()?.state === "on");
     return json(rpcResult(id, {
-      resources: RESOURCES.filter((r) => !r.keyed || !!bearer)
+      resources: RESOURCES.filter((r) => !r.keyed || held)
         .map(({ uri, name, title, mimeType, description }) => ({ uri, name, title, mimeType, description })),
     }));
   }
@@ -5320,7 +5887,7 @@ Deno.serve(browserGated(async (req) => {
     try {
       if (read.resource.uri === GUIDE_URI) {
         await probeSignIn();
-        return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition, !!bearer))));
+        return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition, credentialHeld(cachedSignIn()?.state === "on")))));
       }
     } catch (e) {
       return readFailed(id, read, e, {});
@@ -5357,7 +5924,6 @@ Deno.serve(browserGated(async (req) => {
 
   // ── tools/call, and a credentialed resources/read ─────────────────────────
   const toolName = read ? meteredNameOf(read.endpoint) : String((params as { name?: unknown }).name ?? "");
-  const toolArgs = read ? {} : ((params as { arguments?: unknown }).arguments ?? {}) as Record<string, unknown>;
   // RETIRED with the apply agent: answered for every caller, keyed or not,
   // with what replaced it, and never metered.
   if (!read && RETIRED_TOOLS.includes(toolName)) {
@@ -5365,16 +5931,51 @@ Deno.serve(browserGated(async (req) => {
     return json(rpcResult(id, retiredAnswer(toolName)));
   }
   if (!read && !TOOLS.some((t) => t.name === toolName)) {
+    // Counted under "unknown", never under the name the caller made up (item 13).
+    countRefusal(client, req, params, bearer ? "key" : "keyless", "unknown");
     return json(rpcError(id, -32602, `unknown tool: ${toolName} — call tools/list for the names`));
   }
 
-  // THE ARGUMENTS, BEFORE ANY COUNT: a wrong argument costs nothing.
+  // THE ARGUMENTS, BEFORE ANY COUNT: a wrong argument costs nothing. A name
+  // the tool does not declare is read under its obvious name or refused by
+  // name, never dropped; a value left empty is not sent (item 2). A refusal
+  // is counted by what refused it, never by who (item 13).
+  let toolArgs: Record<string, unknown> = {};
+  let argNotes: ArgNotes = {};
   if (!read) {
+    const sentArgs = (params as { arguments?: unknown }).arguments;
+    if (toolName === "fit_resume" && !bearer) {
+      // With no credential the answer is the key or sign-in (checkArgs below): nothing is refused here.
+      toolArgs = sentArgs && typeof sentArgs === "object" && !Array.isArray(sentArgs) ? dropUnsent(sentArgs as Record<string, unknown>) : {};
+    } else {
+      const reading = readToolArgs(argSpecOf(toolName), sentArgs);
+      if (!reading.ok) {
+        countRefusal(client, req, params, bearer ? "key" : "keyless", toolName);
+        return json(rpcResult(id, toolErr(reading.message, reading.fix)));
+      }
+      toolArgs = reading.args;
+      argNotes = reading.notes;
+    }
     try {
       checkArgs(toolName, toolArgs, !bearer);
     } catch (e) {
-      if (e instanceof ToolArgumentError) return json(rpcResult(id, toolErr(e.message, e.fix)));
+      if (e instanceof ToolArgumentError) {
+        countRefusal(client, req, params, bearer ? "key" : "keyless", toolName);
+        return json(rpcResult(id, toolErr(e.message, e.fix)));
+      }
       throw e;
+    }
+  }
+
+  // KEY_STATUS WITH NO KEY (item 6): what a keyless caller has and where a
+  // free key comes from, as an answer, uncounted, while sign-in is not on
+  // (while it is on, the challenge below stands: it is how the host shows its
+  // Connect card). A bearer that is no key is no key here.
+  if (!read && toolName === "key_status" && !looksLikeApiKey(bearer)) {
+    const { state } = await probeSignIn();
+    if (state !== "on") {
+      const { rpc, headers } = await answerUnkeyed(client, req, id, toolName, toolArgs, params);
+      return json(withArgNotes(rpc, argNotes), 200, headers);
     }
   }
 
@@ -5471,14 +6072,22 @@ Deno.serve(browserGated(async (req) => {
             : {}),
         }
       : {};
-    // A key the check does not recognise, on a tool that answers with NO
-    // key: the call runs keyless and says the key was not recognised.
-    // Rate, quota and revoked refusals stay refusals: those keys ARE
-    // recognised.
-    if (d && !d.is_allowed && d.deny_reason === "unknown_key" && ANON_TOOLS.includes(toolName)) {
-      unknownKeyNote = UNKNOWN_KEY_NOTE;
+    // A key the check does not recognise, or one that was revoked (item 10:
+    // keys are revoked wholesale by design, so a client still holding one was
+    // refused calls that answer with no key at all), on a tool that answers
+    // with NO key: the call runs keyless and says what was wrong with the key.
+    // Rate and quota refusals stay refusals: those keys are live.
+    const keylessNote = d && !d.is_allowed && ANON_TOOLS.includes(toolName) ? keylessDenialNote(d.deny_reason) : "";
+    if (keylessNote) {
+      unknownKeyNote = keylessNote;
       d = null;
       rateHeaders = {};
+    }
+    // KEY_STATUS REPORTS THE CREDENTIAL IT WAS SENT (item 6): the four
+    // refusals are its answer, said as the key's state, never an error.
+    if (!read && toolName === "key_status" && (!d || !d.is_allowed)) {
+      countCall(client, (await egressHost(callerAddress(req.headers), isChatGptCaller(req.headers, params))) ?? "other", "key", toolName, "refused_key");
+      return json(withArgNotes(rpcResult(id, toolOk(refusedKeyStatus(d, edition))), argNotes), 200, { ...rateHeaders, ...retryAfterOf(d?.deny_reason) });
     }
     if (!unknownKeyNote && (!d || !d.is_allowed)) {
       const reason = d?.deny_reason ?? "unknown_key";
@@ -5510,7 +6119,9 @@ Deno.serve(browserGated(async (req) => {
       // No key, one of ANON_TOOLS: counted by mcp_anon_check_v2, then
       // answered with the allowance in its unkeyed block. See answerUnkeyed.
       const { rpc, headers } = await answerUnkeyed(client, req, id, toolName, toolArgs, params);
-      return json(unknownKeyNote ? withUnkeyedNote(rpc, unknownKeyNote) : rpc, 200, headers);
+      // What the argument reader read, and a limit cut to the keyless page (items 2 and 4).
+      const noted = withArgNotes(rpc, { ...argNotes, ...limitNotesOf(toolName, toolArgs, true, edition) });
+      return json(unknownKeyNote ? withUnkeyedNote(noted, unknownKeyNote) : noted, 200, headers);
     }
     // A live pass on a key: record how it was activated, once.
     await noteActivatedVia(client, d, oauthSub ? oauthVia(oauthClient) : "key", req.headers.get("user-agent") ?? "");
@@ -5524,7 +6135,7 @@ Deno.serve(browserGated(async (req) => {
       : await callTool(client, d.api_key_id ?? "", d.key_tier, toolName, toolArgs, ctx);
     if (result === null) return json(rpcError(id, -32602, `unknown tool: ${toolName} — call tools/list for the names`));
     countCall(client, host, "key", toolName, (result as { isError?: boolean }).isError ? "refused_key" : "ok");
-    return json(rpcResult(id, result), 200, rateHeaders);
+    return json(withArgNotes(rpcResult(id, result), { ...argNotes, ...limitNotesOf(toolName, toolArgs, false, edition) }), 200, rateHeaders);
   } catch (e) {
     if (e instanceof ScorerLimited) {
       // Not an internal error, and not retryable in a minute: the scorer's
@@ -5548,3 +6159,33 @@ Deno.serve(browserGated(async (req) => {
     return json(rpcResult(id, toolErr(`The ${toolName} tool hit an internal error. Try again shortly.`)), 200, rateHeaders);
   }
 }));
+
+/**
+ * A 2025-03-26 batch: up to BATCH_MAX messages, each answered in order by the
+ * same single-message handler and metered on its own; the answers go back as
+ * one array (a notification adds none; a batch of notifications answers 202).
+ * initialize may not be batched. Per-message headers are not merged.
+ */
+async function answerBatch(messages: unknown[], answerOne: (message: unknown) => Promise<Response>): Promise<Response> {
+  const tooMany = batchSizeError(messages.length);
+  if (tooMany) return json(rpcError(null, -32600, tooMany), 400);
+  const answers: unknown[] = [];
+  for (const m of messages.slice(0, BATCH_MAX)) {
+    const asMsg = m && typeof m === "object" && !Array.isArray(m) ? m as RpcReq : null;
+    if (asMsg?.method === "initialize") {
+      answers.push(rpcError(asMsg.id ?? null, -32600, INITIALIZE_IN_BATCH));
+      continue;
+    }
+    const res = await answerOne(m);
+    if (res.status === 202) continue;
+    const text = await res.text();
+    if (!text) continue;
+    try {
+      answers.push(JSON.parse(text));
+    } catch {
+      answers.push(rpcError(asMsg?.id ?? null, -32603, "This message's answer could not be read back."));
+    }
+  }
+  return answers.length ? json(answers) : new Response(null, { status: 202, headers: cors });
+}
+
