@@ -16,6 +16,7 @@ import { chmodSync, cpSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, 
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { MCP_FORM_VENDORS } from "@/config/mcp-tools";
 
 vi.setConfig({ testTimeout: 90_000 });
 
@@ -311,8 +312,19 @@ describe("phase A2, with each defect the audit found", () => {
   it("R10 FAILs 'daily' said of a stale re-check", () => {
     expect(has(badLines, "FAIL", /^FAIL\s+R10 the re-check of \d{4}-\d{2}-\d{2} was over 36 hours old at bake time \(the page says so\): "daily" is said 1 time\(s\): \/data-api: ".*a daily sample is re-checked/), show(badLines)).toBe(true);
   });
-  it("R11 FAILs five vendors against ten, and an llms-full with no board figures", () => {
-    expect(has(badLines, "FAIL", /^FAIL\s+R11 llms\.txt names 5 form vendors, \/agents 10: llms\.txt lacks .*Paylocity/), show(badLines)).toBe(true);
+  it("R11 FAILs the stale five vendors against the ones /agents names, and an llms-full with no board figures", () => {
+    // /agents prints MCP_FORM_VENDORS, so both lists are read from it and not
+    // typed here: the page named ten when lane A was built and names nine on
+    // main, where round B stopped one vendor's form (seo/1121-integration).
+    const stale = ["Greenhouse", "Ashby", "Recruitee", "Breezy", "Pinpoint"];
+    const served = MCP_FORM_VENDORS.map((v) => v.label);
+    const r11 = badLines.find((l) => /^FAIL\s+R11 llms\.txt names /.test(l)) ?? "";
+    const m = /^FAIL\s+R11 llms\.txt names (\d+) form vendors, \/agents (\d+): llms\.txt lacks (.+), \/agents lacks (.+)$/.exec(r11);
+    expect(m, show(badLines)).not.toBeNull();
+    expect([Number(m![1]), Number(m![2])]).toEqual([stale.length, served.length]);
+    expect(m![3].split(", ").sort()).toEqual(served.filter((v) => !stale.includes(v)).sort());
+    expect(m![3]).toContain("Paylocity");
+    expect(m![4].split(", ").sort()).toEqual(stale.some((v) => !served.includes(v)) ? stale.filter((v) => !served.includes(v)).sort() : ["none"]);
     expect(has(badLines, "FAIL", /^FAIL\s+R11 llms-full carries 0 of 4 data pages' figures/), show(badLines)).toBe(true);
   });
   it("R12 FAILs a sampled role page that preconnects", () => {
