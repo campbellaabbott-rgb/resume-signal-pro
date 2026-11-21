@@ -22,9 +22,14 @@
 #   B4  MATCH-09: the fit header names the résumé (orderFitNoResumeTerms).
 #   S1  the board-ui strings carry the new header key in English (the Jobs
 #       chunk or a chunk it imports) and in each of the eight lazy shards.
-#   N1  the Jobs chunk holds neither 'Half of these roles are filled by day'
-#       nor 'Deterministic keyword coverage' (the English fallbacks, this
-#       lane's half of S11-064 and S14X-291).
+#   N1  the Jobs chunk does not hold 'Deterministic keyword coverage' (the
+#       fitRankingNote English fallback, this lane's half of S14X-291).
+#       The jobsPage.fieldMedian fallback (S11-064's English half) is NOT
+#       reworded by this lane: src/test/published-claims.test.ts, lane
+#       ci-tooling's, still requires main's sentence in Jobs.tsx, so the
+#       fallback keeps it until site-copy and ci-tooling land. Its presence
+#       is INFO here, never a FAIL. Visitors read the locale value, which
+#       overrides the fallback in every language.
 #   N2  no jobsPage namespace bundle holds either: the locale values are lane
 #       site-copy's, so this is INFO until that lane's own section is in this
 #       checkout (it merged), and a FAIL from then on.
@@ -46,7 +51,8 @@
 # resume-drop-spends-no-fit-call-on-the-page-it-replaces, a-posting-already-
 # being-scored-is-not-sent-again, a-query-typed-while-the-resume-terms-load-
 # is-kept) and the pass refusals (a-slow-pass-does-not-blank-the-counts-and-a-
-# background-refusal-does-not-lock-the-board), because each needs a mounted
+# background-refusal-does-not-lock-the-board, and a-link-opened-while-the-
+# browser-check-is-refused-offers-a-retry-for-that-posting), because each needs a mounted
 # page, a session or a board pass this read-only section never holds.
 #
 # READ-ONLY. GETs of the homepage, its entry, the Jobs chunk and every chunk
@@ -152,9 +158,12 @@ else say("PASS", "S1 the board-ui strings carry the new no_resume_terms header k
 
 // ---- N1 / N2 the retired English (S11-064, S14X-291) ----
 const RETIRED = ["Half of these roles are filled by day", "Deterministic keyword coverage"];
-const inJobs = RETIRED.filter((s) => JOBS.includes(s));
-if (!inJobs.length) say(FE ? "PASS" : "INFO", "N1 " + E.VDF19BU_JOBSN + " holds neither " + RETIRED.map((s) => JSON.stringify(s)).join(" nor ") + (FE ? "" : ", but the lane has not published, so nothing is proved yet"));
+const RETIRED_HERE = ["Deterministic keyword coverage"];
+const HELD_FALLBACK = "Half of these roles are filled by day";
+const inJobs = RETIRED_HERE.filter((s) => JOBS.includes(s));
+if (!inJobs.length) say(FE ? "PASS" : "INFO", "N1 " + E.VDF19BU_JOBSN + " does not hold " + RETIRED_HERE.map((s) => JSON.stringify(s)).join(" or ") + (FE ? "" : ", but the lane has not published, so nothing is proved yet"));
 else verdict(false, "N1 " + E.VDF19BU_JOBSN + " still holds " + inJobs.map((s) => JSON.stringify(s)).join(" and ") + " as an English fallback");
+say("INFO", "N1 the jobsPage.fieldMedian English fallback is " + (JOBS.includes(HELD_FALLBACK) ? "held at main'"'"'s wording " + JSON.stringify(HELD_FALLBACK) : "no longer main'"'"'s " + JSON.stringify(HELD_FALLBACK)) + " in " + E.VDF19BU_JOBSN + ": this lane does not reword it until lanes site-copy (S11-064) and ci-tooling (the published-claims guard) land; the locale value is what visitors read");
 const nsNames = (E.VDF19BU_NSN || "").trim().split(/\s+/).filter(Boolean);
 if (!nsNames.length || !NS.trim()) say("INFO", "N2 neither the entry nor " + E.VDF19BU_JOBSN + " names a jobsPage namespace bundle (rb-<lng>_ns_jobsPage-*.js): the locale values cannot be read here");
 else {

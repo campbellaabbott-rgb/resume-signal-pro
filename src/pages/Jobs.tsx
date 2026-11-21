@@ -5372,6 +5372,9 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // The ?job= id whose read FAILED (not the server's answer about the posting):
   // a retry is offered and nothing is claimed about the posting.
   const [deepLinkFailed, setDeepLinkFailed] = useState<string | null>(null);
+  // That failed read was a "pass" refusal (the browser check), so its Try
+  // again asks for a new check before it reads the posting again.
+  const deepLinkPassRefused = useRef(false);
   /** Take ?job= off the address once its banner is dismissed, so the dead or
    *  failed link stops holding back desktop auto-select. */
   const dropJobParam = useCallback(() => {
@@ -5401,6 +5404,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // failed-read banner's Try again runs the same path the mount did.
   const resolveDeepLink = useCallback(async (id: string) => {
         setDeepLinkFailed(null);
+        deepLinkPassRefused.current = false;
         // Owns the panel from here — stamp the sequence so no concurrent
         // openDetail can paint its description under this posting.
         const seq = ++detailSeq.current;
@@ -5417,11 +5421,25 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
           // and "no longer available" plus noindex on a LIVE posting is a false
           // claim to the reader and to every crawler that renders the URL. A
           // 404 is the answer "no such posting HERE" — no closure was recorded,
-          // so it is unlisted, never "filled or taken down". A refusal leaves
-          // the board as it is (the budget notice speaks for it); any other
-          // failure offers a retry rather than silence.
+          // so it is unlisted, never "filled or taken down". A refusal that
+          // stands page-wide leaves the board as it is (the budget notice
+          // speaks for it); any other failure offers a retry rather than
+          // silence.
+          //
+          // A "pass" REFUSAL OF THIS READ STANDS NOWHERE: invokeBoard keeps
+          // every call's pass refusal out of the page-wide store (S10-164), so
+          // no notice speaks for it. The reader opened this link and is
+          // waiting on this read (a fit-alert mail's View link lands here), so
+          // it gets the link's own retry, which asks for a new check first.
           if (linkErr || !res) {
-            if (await readBoardBudgetRefusal(linkErr)) return;
+            const refused = await readBoardBudgetRefusal(linkErr);
+            if (refused) {
+              if (seq === detailSeq.current && refused.code === "pass" && !boardBudgetRefusal()) {
+                deepLinkPassRefused.current = true;
+                setDeepLinkFailed(id);
+              }
+              return;
+            }
             if (httpStatusOf(linkErr) === 404) setDeadLink({ kind: "unlisted", description: null });
             else setDeepLinkFailed(id);
             return;
@@ -5467,6 +5485,19 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
         }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // The failed link's Try again. After a "pass" refusal a new browser check
+  // is asked for first (a person asked, so board-pass.ts's cooldown does not
+  // hold it back), then the posting is read again either way, as the board's
+  // own pass Retry does for the list.
+  const [deepLinkRetrying, setDeepLinkRetrying] = useState(false);
+  const retryDeepLink = async (id: string) => {
+    if (deepLinkRetrying) return;
+    if (deepLinkPassRefused.current) {
+      setDeepLinkRetrying(true);
+      try { await requestFreshBoardPass(); } catch { /* the read below is refused again and says so */ } finally { setDeepLinkRetrying(false); }
+    }
+    await resolveDeepLink(id);
+  };
   useEffect(() => {
     if (deepLinkTried.current) return;
     const id = new URLSearchParams(window.location.search).get("job");
@@ -8860,7 +8891,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                         {field.median_censored ? (
                           <> {t("jobsPage.fieldMedianCensored", "We did not see half of them come down inside {{d}} days, so there is no typical figure to give.", { d: FILL_SUPPORT_MAX_DAYS })}</>
                         ) : (
-                          <> {t("jobsPage.fieldMedian", "Half of these roles were taken down for good by day {{d}}.", { d: Math.round(field.median_days_to_fill ?? 0) })}</>
+                          <> {t("jobsPage.fieldMedian", "Half of these roles are filled by day {{d}}.", { d: Math.round(field.median_days_to_fill ?? 0) })}</>
                         )}
                         {/* THE TABLE'S OWN DATE, on every clause drawn from it:
                             the stamp of the run that computed the map, and
@@ -9442,7 +9473,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                 {fieldCurve!.median_censored ? (
                   <> {t("jobsPage.fieldMedianCensored", "We did not see half of them come down inside {{d}} days, so there is no typical figure to give.", { d: FILL_SUPPORT_MAX_DAYS })}</>
                 ) : (
-                  <> {t("jobsPage.fieldMedian", "Half of these roles were taken down for good by day {{d}}.", { d: Math.round(fieldCurve!.median_days_to_fill ?? 0) })}</>
+                  <> {t("jobsPage.fieldMedian", "Half of these roles are filled by day {{d}}.", { d: Math.round(fieldCurve!.median_days_to_fill ?? 0) })}</>
                 )}
                 {coverageBand(fieldCurve!.dated_coverage) === "qualified" && (
                   <> {t("jobsPage.fillCoverageQualifier", "Across the {{pct}}% of these roles that carry a posting date from the company itself.", { pct: asPct(fieldCurve!.dated_coverage) })}</>
@@ -11683,7 +11714,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
               <div className="text-[13px] min-w-0">
                 <p className="text-foreground">{t("jobsPage.deepLinkFailed", "We couldn't load the posting in that link just now.")}</p>
                 <div className="mt-1 flex flex-wrap gap-3">
-                  <button type="button" className="text-[13px] font-semibold text-primary hover:underline" onClick={() => void resolveDeepLink(deepLinkFailed)}>
+                  <button type="button" className="text-[13px] font-semibold text-primary hover:underline" disabled={deepLinkRetrying} onClick={() => void retryDeepLink(deepLinkFailed)}>
                     {t("jobsPage.retry", "Try again")}
                   </button>
                   <button type="button" className="text-[13px] text-muted-foreground hover:underline" onClick={() => { setDeepLinkFailed(null); dropJobParam(); }}>
