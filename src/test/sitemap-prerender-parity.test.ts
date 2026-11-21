@@ -486,7 +486,7 @@ describe.skipIf(skipWithoutDist(built))("B04 (b, c) and B09: what the built page
     if (inWindow.length) expect(rows.length, `${inWindow.length} posting pages dated inside the window, none on the homepage`).toBeGreaterThan(0);
   });
 
-  it("B09: a page's sitemap lastmod is the day its own Article or Dataset says it was modified", () => {
+  it("B09: a page's sitemap lastmod is the day its own Article or Dataset says it was modified (a guide's, never earlier than it)", () => {
     const lastmods = sitemapLastmods();
     const off: string[] = [];
     let dated = 0;
@@ -496,7 +496,10 @@ describe.skipIf(skipWithoutDist(built))("B04 (b, c) and B09: what the built page
       for (const b of jsonLdOf(readFileSync(f, "utf8"))) {
         if ((b["@type"] === "Article" || b["@type"] === "Dataset") && typeof b.dateModified === "string") {
           dated++;
-          if (b.dateModified.slice(0, 10) !== lm) off.push(`${p}: ${b["@type"]} ${b.dateModified} vs sitemap ${lm}`);
+          const day = b.dateModified.slice(0, 10);
+          // STRUCTURED-B10: a guide states the day it prints; the sitemap may date its page later.
+          const ok = p.startsWith("/guides/") ? lm >= day : day === lm;
+          if (!ok) off.push(`${p}: ${b["@type"]} ${b.dateModified} vs sitemap ${lm}`);
         }
       }
     }

@@ -232,7 +232,7 @@ describe("llms-full says what /companies lists", () => {
     expect(companiesLlmsLine({ site: SITE, count: null }), "no number when the bake counted none").not.toMatch(/\d+ employers/);
   });
   it("the bake writes that line into llms-full", () => {
-    expect(codeOf(readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8"))).toMatch(/lines\.push\(companiesLlmsLine\(\{ site: SITE, count: COMPANY_PAGE_COUNT \}\)\);/);
+    expect(codeOf(readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8"))).toMatch(/lines\.push\(companiesLlmsLine\(\{ site: SITE, count: COMPANY_PAGE_COUNT, \.\.\.\(COMPANY_PAGE_OTHERS \?\? \{\}\) \}\)\);/);
   });
 });
 

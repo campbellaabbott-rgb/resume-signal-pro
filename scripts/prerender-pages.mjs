@@ -1199,8 +1199,21 @@ export function duplicateSkeletons(items) {
  * of their own, counted, never "every employer with open roles" (about 470
  * of some 31,000 boards; register L4-11).
  */
-export const companiesLlmsLine = ({ site, count }) =>
-  `- Companies with a page of their own: ${site}/companies — ${typeof count === "number" ? `the ${count.toLocaleString("en-US")} employers` : "the employers"} this site gives a page, A–Z, each linked with the open-role count measured when the index was built. The board itself carries far more employers, every one searchable at ${site}/jobs.`;
+export const companiesLlmsLine = ({ site, count, agencies = 0, federal = false }) =>
+  `- Companies with a page of their own: ${site}/companies — ${typeof count === "number" ? `the ${count.toLocaleString("en-US")} employers` : "the employers"} this site gives a page${companiesOthersPhrase({ agencies, federal })}, A–Z, each linked with the open-role count measured when the index was built. The board itself carries far more employers, every one searchable at ${site}/jobs.`;
+
+/**
+ * WHAT /companies LISTS BESIDE THE EMPLOYERS (SEO audit 2026-11-18, GEO-9):
+ * the llms files said "490 employers" where /companies said 487, plus the
+ * federal listing site and 2 staffing agencies, labelled. The count is the
+ * employers' (landerKindOf), and the others are named apart.
+ */
+export function companiesOthersPhrase({ agencies = 0, federal = false } = {}) {
+  const parts = [];
+  if (federal) parts.push("the federal listing site");
+  if (agencies > 0) parts.push(`${agencies} staffing ${agencies === 1 ? "agency" : "agencies"}`);
+  return parts.length ? `, plus ${parts.join(" and ")}, labelled` : "";
+}
 
 /**
  * The /companies line of the hand-written public/llms.txt, which said "each

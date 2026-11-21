@@ -27,7 +27,8 @@ const RECORDED: Record<string, { hash: string; updated: string }> = {
   "what-resume-score-means": { hash: "3b87cd6327e2fd30", updated: "2026-10-10" },
   // 2026-11-16 (SEO-F15): the form vendors it names grew from five to the ten the server reads;
   // 2026-11-18 Ashby left the list, its form no longer read by the connector (OD14-ASHBY-1).
-  "how-the-apply-agent-works": { hash: "0eb01bee26753f9d", updated: "2026-11-18" },
+  // 2026-11-21 (SEO audit 2026-11-18, GEO-1b): the form is read "where we read that hiring system's form".
+  "how-the-apply-agent-works": { hash: "023fed5005762f61", updated: "2026-11-21" },
 };
 
 /** What a guide says: everything a reader or a crawler reads of it. */

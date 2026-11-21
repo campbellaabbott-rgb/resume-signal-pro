@@ -584,6 +584,97 @@ export function withUnreadWithheld(page, unread) {
  * where this bake's read of the employer's own hiring system answered open, it
  * says so, dated. `possessiveName` is possessive(nm), `read` the bake's answer.
  */
+/**
+ * TWO BOARD TOTALS READ TOGETHER AGREE (SEO audit 2026-11-18, GEO-5). One
+ * publish printed 1,024,613 open roles on the Ghost Job Index (the stats
+ * cache) beside 1,005,326 elsewhere (the facets snapshot): each stamped, each
+ * literally true, and two board sizes for one moment to an answer engine.
+ * Returns the warning, or null when the two agree within 1%, when either is
+ * missing, or when they were not read within 30 minutes of each other (then
+ * they measure two moments, and a difference is the board moving).
+ */
+export function boardTotalsWarning({ ghostTotal, ghostAt, boardTotal, boardAt, maxShare = 0.01, windowMs = 30 * 60_000 }) {
+  const a = typeof ghostTotal === "number" && ghostTotal > 0 ? ghostTotal : null;
+  const b = typeof boardTotal === "number" && boardTotal > 0 ? boardTotal : null;
+  const ta = ghostAt == null ? NaN : typeof ghostAt === "number" ? ghostAt : Date.parse(String(ghostAt));
+  const tb = boardAt == null ? NaN : typeof boardAt === "number" ? boardAt : Date.parse(String(boardAt));
+  if (a === null || b === null || !Number.isFinite(ta) || !Number.isFinite(tb)) return null;
+  if (Math.abs(ta - tb) > windowMs) return null;
+  const share = Math.abs(a - b) / Math.max(a, b);
+  if (share <= maxShare) return null;
+  return `two board totals read ${Math.round(Math.abs(ta - tb) / 60_000)} min apart differ by ${(share * 100).toFixed(1)}%: the Ghost Job Index's ${a.toLocaleString("en-US")} open roles (stats cache, ${new Date(ta).toISOString()}) against ${b.toLocaleString("en-US")} (board facets, ${new Date(tb).toISOString()})`;
+}
+
+/**
+ * WHAT THE LLMS FILES SAY THE GHOST JOB INDEX SHOWS, SECTION BY SECTION
+ * (SEO audit 2026-11-18, GEO-4). They promised "how long postings stay up"
+ * and "which employers are actively hiring", which the served page does not
+ * print (the leaderboard is drawn after the page loads). Each clause is now
+ * tied to the H2 the baked page prints for it.
+ */
+export const GHOST_LLMS_SECTIONS = Object.freeze([
+  { clause: "how many roles are open and how old they are by the employer's own date", h2: "What the board holds right now" },
+  { clause: "the closure events its log recorded over 90 days", h2: "What the closure record says" },
+  { clause: "how far behind the re-check of each company's feed runs", h2: "How far behind the re-check rotation is" },
+]);
+export const GHOST_LLMS_CLAUSE = `${GHOST_LLMS_SECTIONS.slice(0, -1).map((x) => x.clause).join(", ")}, and ${GHOST_LLMS_SECTIONS[GHOST_LLMS_SECTIONS.length - 1].clause}`;
+/** The sections GHOST_LLMS_SECTIONS names whose H2 the baked page's figures do not carry. */
+export function ghostSectionsMissing(html) {
+  const text = String(html ?? "");
+  return GHOST_LLMS_SECTIONS.filter((x) => !text.includes(`>${x.h2}</h2>`)).map((x) => x.h2);
+}
+
+/** The benchmarks page's description with no figures to state. */
+export const BENCHMARK_DESCRIPTION_FALLBACK = "Real ATS score benchmarks from our scan log: the overall median and quartiles, per-industry distributions and experience-level medians, not folklore thresholds.";
+/**
+ * THE BENCHMARKS DESCRIPTION LEADS WITH ITS MEDIAN (SEO audit 2026-11-18,
+ * GEO-8): "Median ATS score 55 (middle half 45-58) across 190 scans, as of
+ * <date>", the figures the page's short answer prints, under 160 characters;
+ * the static description when the figures are missing.
+ */
+export function benchmarkDescription(o, asOf) {
+  const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const [median, p25, p75, n] = [num(o?.median), num(o?.p25), num(o?.p75), num(o?.n)];
+  if (median === null || p25 === null || p75 === null || !n) return BENCHMARK_DESCRIPTION_FALLBACK;
+  const day = typeof asOf === "string" && /^\d{4}-\d{2}-\d{2}/.test(asOf) ? asOf.slice(0, 10) : null;
+  const lead = `Median ATS score ${median} (middle half ${p25}-${p75}) across ${n.toLocaleString("en-US")} real resume scans${day ? `, as of ${day}` : ""}.`;
+  const tail = " Per-industry and experience-level benchmarks, not folklore thresholds.";
+  return (lead + tail).length <= 160 ? lead + tail : lead;
+}
+
+/**
+ * THE ONE-STEP ADD TO CLAUDE LINK, IN THE BYTES A CRAWLER READS (SEO audit
+ * 2026-11-18, GEO-12; owner yes). Claude's documented install link opens its
+ * custom-connector dialog with the name and the address filled in; the person
+ * still confirms. Printed only while MCP_ADD_TO_CLAUDE_LIVE is on, and only
+ * with an address; the manual steps stay below it.
+ */
+export function addToClaudeLinkHtml({ live, href, name, esc }) {
+  if (!live || !href) return "";
+  return `<p class="text-sm mb-2"><a href="${esc(href)}" class="text-primary underline font-semibold">Add to Claude</a>: opens Claude's custom-connector dialog with ${esc(name)} and its address filled in; you confirm it there. The steps below do the same by hand.</p>`;
+}
+export function addToClaudeLlms(href) {
+  return href ? ` Add to Claude in one step: ${href} opens Claude's custom-connector dialog with the name and the address filled in; you confirm it there.` : "";
+}
+/** llms.txt with the Add to Claude sentence once, after the server address's sentence; none when `add` is empty. */
+export function withAddToClaudeLine(lt, add) {
+  const out = String(lt).replace(/ Add to Claude in one step: \S+ opens Claude's custom-connector dialog with the name and the address filled in; you confirm it there\./g, "");
+  return add ? out.replace(/(MCP server address \(Streamable HTTP\): \S+ — registry name [^.\s]+(?:\.[^.\s]+)*\.)/, (m) => `${m}${add}`) : out;
+}
+
+/**
+ * THE LICENCE THE PUBLISHED FIGURES CARRY, SAID WHERE A PERSON CITES THEM
+ * (SEO audit 2026-11-18, GEO-6). CC BY 4.0 rode only in the Dataset markup;
+ * the visible "How to cite" lines and the llms-full citation policy now say
+ * it too. Nothing is said until the owner sets a licence.
+ */
+export function citeLicenceHtml(licence) {
+  return licence ? ` Figures on this page: <a href="${licence}" rel="license">CC BY 4.0</a>.` : "";
+}
+export function citeLicenceText(licence) {
+  return licence ? ` The figures on the data pages (the Ghost Job Index, pay transparency, entry-level and hiring-trends pages and the ATS score benchmarks) are published under CC BY 4.0 (${licence}); bulk data through the API is licensed separately.` : "";
+}
+
 export function postingCheckedClause(possessiveName, read, today) {
   return read === "open"
     ? `this page was built ${today}, when the posting was open on ${possessiveName} own hiring system`
@@ -672,7 +763,7 @@ export { BOARD_SOURCE_LIST, SERVING_SOURCE_LIST, SERVING_SOURCES, DORMANT_SOURCE
 export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_TIER_BADGE, MCP_FIT_ALLOWANCE, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../src/config/mcp-tools";
 export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, troubleFix, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_WITHHELD_NOTE, MCP_INSTALL_REPO_URL, MCP_REGISTRY_ENTRY_URL, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, stepSegments, curlInitialize, andList } from "../src/config/mcp-tools";
 export { MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT } from "../src/config/mcp-tools";
-export { MCP_FORMS_ALLOWANCE, MCP_CONNECTOR_NAME } from "../src/config/mcp-tools";
+export { MCP_FORMS_ALLOWANCE, MCP_CONNECTOR_NAME, MCP_ADD_TO_CLAUDE_LIVE, claudeInstallLink } from "../src/config/mcp-tools";
 export { formVendorPhrase, MCP_FORM_VENDORS_ON_CHATGPT } from "../src/config/mcp-tools";
 export { applyYourselfBakeHtml } from "../src/components/agents/apply-yourself-copy";
 export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
@@ -796,6 +887,8 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   // whole point of which was to stop being stale silently goes stale in the
   // other direction. Live read or no rewrite.
   let facetsSource = null;
+  /** When the facets answered (GEO-5), or the instant their payload states. */
+  let FACETS_READ_AT = null;
   // THE DAY THE COUNTS THIS BAKE PRINTS WERE TAKEN. A live read is today's; a
   // snapshot-fed build is the day that snapshot was written, and the /explore
   // document says which — a count printed to a crawler with no date basis is
@@ -834,7 +927,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           });
           if (fr.ok) {
             const j = await fr.json();
-            if (j && typeof j.total === "number" && Array.isArray(j.companiesFacet)) { boardFacets = j; facetsSource = "rpc"; }
+            if (j && typeof j.total === "number" && Array.isArray(j.companiesFacet)) { boardFacets = j; facetsSource = "rpc"; FACETS_READ_AT = Date.now(); }
           }
         } catch { /* retry; offline/slow build ships landers with fallback counts */ }
       }
@@ -907,6 +1000,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
             categoriesFacet: j.categories ?? {},
           };
           facetsSource = "board-function";
+          FACETS_READ_AT = Date.now();
           console.log("[prerender-seo] facets RPC unavailable — using the board function's cached facets");
         } else if (j && Array.isArray(j.companies) && j.companies.length > 100 && !rung2Numbered) {
           console.log("[prerender-seo] board function answered but its facet pass carried no servable per-employer count — falling through to the committed snapshot rather than building count-free selection from nothing");
@@ -1205,6 +1299,20 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       ? P.companyHref
       : (token, query) => `/jobs?company=${encodeURIComponent(String(token ?? ""))}${query ? `&${query}` : ""}`;
     const fieldLabel = typeof P.fieldLabel === "function" ? P.fieldLabel : (slug) => String(slug).replace(/_/g, " ");
+    // RANKED UNDER A SYSTEM CODE (SEO audit 2026-11-18, GEO-11): leaderboard
+    // rows printed "Shusa", "Bne" and "Lapoflove", the boards' own codes. A
+    // row whose printed name is still its board's code (the rule a new
+    // posting page is refused by, with its allowlist of real one-word names)
+    // is left out of the ranking until the names stream names it, and the
+    // bake says which at the WARN tier.
+    const codeNamed = typeof P.codeNamed === "function" ? P.codeNamed : () => false;
+    const codeNamedRows = Array.isArray(P.codeNamedSeen) ? P.codeNamedSeen : [];
+    const codeNamedRow = (c, page) => {
+      const printed = companyName(c.company_token, c.company);
+      if (!codeNamed(c.company_token, printed)) return false;
+      codeNamedRows.push(`${page}: ${printed} (${c.company_token})`);
+      return true;
+    };
     // THE CACHE PUBLISHES WHICH OF ITS OWN PARTS IT COULD NOT RECOMPUTE, and a
     // figure standing on a previous run's value under a fresh "measured at"
     // stamp is a stale claim wearing a current date. When the row says a part
@@ -1377,6 +1485,8 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       // above 106 above 139 and leave them to guess the rule.
       const rows = leaders
         .filter((c) => c && typeof c.company === "string" && num(c.entry_roles) !== null && num(c.open_roles) > 0)
+        // GEO-11: no row is ranked under its board's system code.
+        .filter((c) => !codeNamedRow(c, "/entry-level-index"))
         .slice(0, 15)
         .map((c) => [
           `<a href="${esc(companyHref(c.company_token, "experience=entry"))}">${esc(companyName(c.company_token, c.company))}</a>`,
@@ -1534,7 +1644,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
             `${basis} One row per hiring system the board actually has postings from, taken from the board's own per-source count — a system we can read but hold no rows from has no row here.`)
         : "";
       const companyRows = Array.isArray(p?.top_companies)
-        ? p.top_companies.filter((c) => isObj(c) && typeof c.company === "string" && num(c.pay_pct) !== null).slice(0, 15)
+        ? p.top_companies.filter((c) => isObj(c) && typeof c.company === "string" && num(c.pay_pct) !== null).filter((c) => !codeNamedRow(c, "/pay-transparency")).slice(0, 15)
             .map((c) => [`<a href="${esc(companyHref(c.company_token))}">${esc(companyName(c.company_token, c.company))}</a>`, `${c.pay_pct}%`, fmt(c.total) ?? "—"])
         : [];
       // ONE ROW PER JOB BOARD, AND THE TABLE SAYS SO (S13-049): it ranks per
@@ -1836,6 +1946,11 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     "@type": "BreadcrumbList",
     itemListElement: items.map((it, i) => ({ "@type": "ListItem", position: i + 1, name: it.name, item: `${SITE}${it.path}` })),
   });
+  // STRUCTURED-B12 (SEO audit 2026-11-18): the four data pages and
+  // /companies carry Home > page, as a visible trail and as its markup, as
+  // the guides do, so the BreadcrumbList describes a breadcrumb a person sees.
+  const dataPageCrumbs = (name) => breadcrumbNav([{ name: "Home", href: "/" }, { name }]);
+  const dataPageCrumbsLd = (name, path) => breadcrumbLd([{ name: "Home", path: "/" }, { name, path }]);
   const faqLd = (faqs) => ({
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -2222,18 +2337,21 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     });
 
     for (const g of guides) {
-      // dateModified is the sitemap's lastmod for this page (write() hands
-      // it in): the later of the guide's committed `updated` and the day its
-      // text last changed (B09, DATE-09: the two disagreed on all nine).
-      const jsonLd = (lastmod) => [{
+      // dateModified is the guide's own `updated`, the day the page prints
+      // beside "Updated" (STRUCTURED-B10: it had been the sitemap's lastmod,
+      // which moves when the page's shell changes, so the markup and the
+      // printed day disagreed on all nine). The sitemap keeps the page-change
+      // day; a guide whose own text changes moves `updated` (the RECORDED
+      // hashes in the guide test).
+      const jsonLd = () => [{
         "@context": "https://schema.org",
         "@type": "Article",
         headline: g.h1,
         description: g.description,
-        // First published, and last changed by the same pageDates result the
-        // sitemap prints, and the share card the page already carries (SD-09).
+        // First published, last changed as the page prints it, and the
+        // share card the page already carries (SD-09).
         datePublished: g.published,
-        dateModified: lastmod,
+        dateModified: g.updated,
         image: `${SITE}${D.GUIDE_ARTICLE_IMAGE_PATH}`,
         // The site's one Organization, by @id (SEO-011a).
         author: orgRef(SITE),
@@ -2315,7 +2433,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       ...(ins?.as_of ? { lastmod: String(ins.as_of).slice(0, 10), lastmodExact: true } : {}),
       title: "What's a Good ATS Score? Live Benchmarks From Real Scans",
       // Under 160 at the source (OBS-2): it was 175 and the clamp cut it.
-      description: "Real ATS score benchmarks from our scan log: the overall median and quartiles, per-industry distributions and experience-level medians, not folklore thresholds.",
+      // GEO-8 (SEO audit 2026-11-18): it leads with the median the page
+      // prints, so a snippet quotes the number that answers the question.
+      description: benchmarkDescription(o, ins?.as_of),
       jsonLd: [
         {
           "@context": "https://schema.org",
@@ -2387,7 +2507,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           <p class="text-sm text-muted-foreground leading-relaxed mb-3">Two caveats we insist on. First, this sample self-selects: people scan resumes when they suspect a problem, so the distribution likely sits below the true population of working professionals. Second, any resume score — ours included — is a model with error bars, not a measurement; <a href="/guides/what-resume-score-means" class="text-primary">what a resume score actually means</a> explains how to read one without being fooled by false precision.</p>
           <p class="text-sm text-muted-foreground leading-relaxed">What the data is good for: ranking yourself against real peers instead of a made-up "75 is passing" threshold, and seeing that industry context matters — the same resume quality scores differently against different keyword expectations. Our <a href="/methodology" class="text-primary">methodology</a> covers how the score itself is computed.</p></section>
         <section class="mb-10"><h2 class="text-xl font-bold mb-4">Common questions</h2><div class="space-y-3">${studyFaqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-4"><h3 class="font-semibold text-foreground text-sm mb-1.5">${esc(f.q)}</h3><p class="text-xs text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</div></section>
-        <p class="text-xs text-muted-foreground mb-8"><strong>How to cite:</strong> Resume Booster, “ATS score benchmarks from real scans”, ${SITE}/research/ats-score-benchmarks${ins?.as_of ? `, figures as of ${esc(String(ins.as_of).slice(0, 10))}` : ""}.</p>
+        <p class="text-xs text-muted-foreground mb-8"><strong>How to cite:</strong> Resume Booster, “ATS score benchmarks from real scans”, ${SITE}/research/ats-score-benchmarks${ins?.as_of ? `, figures as of ${esc(String(ins.as_of).slice(0, 10))}` : ""}.${citeLicenceHtml(DATA_LICENSE)}</p>
         ${cta("See where your resume lands in this distribution — free", "The full diagnostic within 90 seconds: your score with an audit trail, missing keywords, and per-vendor parsing checks. No signup; your resume is deleted within 7 days.", "Run the free scan")}
         <nav class="mt-6 flex flex-wrap gap-2 text-xs">${pill("/guides/what-resume-score-means", "What a resume score actually means →")}${pill("/guides/why-resumes-get-rejected", "Why resumes get rejected →")}${pill("/industries", "Keywords by industry →")}</nav>
         </article>`,
@@ -2930,6 +3050,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   const homeStripCandidates = [];
   /** How many company pages this bake made indexable, for /companies and llms.txt. */
   let COMPANY_PAGE_COUNT = null;
+  let COMPANY_PAGE_OTHERS = null;
   /** Each employer page's board listing, carried in the ledger (S1); the previous one until the lander block replaces it. */
   let landerOpeningsCache = ledgerIn && ledgerIn.openings && typeof ledgerIn.openings === "object" ? ledgerIn.openings : {};
   /** Every posting path this bake accounted for and its state, published as the ledger. */
@@ -3553,6 +3674,17 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   // inline so a page cannot silently render a different payload from the one
   // the guard exercises; after the employer-page set, so its tables link an
   // employer page only where this bake writes one.
+  // GEO-5 (SEO audit 2026-11-18): the Ghost Job Index's open total (the stats
+  // cache) and the board total the other pages print (the facets) are two
+  // readings of one board; read within 30 minutes of each other, more than 1%
+  // apart is said at the WARN tier, with both stamps.
+  {
+    const g = statsCache && typeof statsCache === "object" ? statsCache.ghost_stats : null;
+    const facetsAt = boardFacets && typeof boardFacets === "object" ? (boardFacets.computedAt ?? boardFacets.computed_at ?? boardFacets.asOf ?? FACETS_READ_AT) : null;
+    const warn = boardTotalsWarning({ ghostTotal: g?.total_open, ghostAt: g?.computed_at, boardTotal: BOARD_TOTAL, boardAt: facetsAt });
+    if (warn) console.warn(`[prerender-seo] WARN ${warn}`);
+  }
+  const CODE_NAMED_ROWS = [];
   const DATA_FIGURES = dataPageFigures({
     stats: statsCache, transparency: transparencyCache, freshness: freshnessRow, audit: auditRow,
     // The live cron schedules the cadence words follow (NB-32), and the
@@ -3565,12 +3697,15 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       return query ? `${href}${href.includes("?") ? "&" : "?"}${query}` : href;
     },
     companyName: (token, stored) => D.employerName(token, stored),
+    codeNamed: (token, printed) => D.isUnreviewedTenantName(token, printed),
+    codeNamedSeen: CODE_NAMED_ROWS,
     systemName: (source) => D.systemLabel(source) ?? String(source ?? ""),
     fieldLabel: (slug) => (slug === "other" ? "Roles we could not sort into a field" : CATEGORY_LANDERS.find(([s]) => s === slug)?.[1] ?? String(slug).replace(/_/g, " ")),
   });
   for (const [k, v] of Object.entries(DATA_FIGURES)) {
     if (!v.read) console.warn(`[prerender-seo] /${k} data page: figures UNREAD — it ships its prose and says so`);
   }
+  if (CODE_NAMED_ROWS.length) console.warn(`[prerender-seo] WARN ${CODE_NAMED_ROWS.length} leaderboard row(s) left out of their ranking, named by their board's system code until the names stream names them: ${CODE_NAMED_ROWS.join("; ")}`);
   // THE RE-CHECK'S CADENCE, IN THE SENTENCES OUTSIDE THE BUILDER (SEO audit
   // 2026-11-18, CONTENT-7): the builder's 36-hour rule (SEO-F07) said "daily"
   // only for a run younger than 36 hours, while the Ghost Job Index's intro and
@@ -3610,9 +3745,13 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     ...(variables.length ? { variableMeasured: variables } : {}),
     isPartOf: websiteRef(SITE),
   });
-  /** The visible citation line every data page carries (SEO-028), with the day its figures were measured. */
+  /**
+   * The visible citation line every data page carries (SEO-028), with the day
+   * its figures were measured and, once the owner set DATA_LICENSE, the
+   * licence its figures carry (GEO-6: it was in the Dataset markup only).
+   */
   const howToCite = (name, path, modified) =>
-    `<p class="text-xs text-muted-foreground"><strong>How to cite:</strong> Resume Booster, “${esc(name)}”, ${SITE}${path}${modified ? `, figures measured ${esc(String(modified).slice(0, 10))}` : ""}.</p>`;
+    `<p class="text-xs text-muted-foreground"><strong>How to cite:</strong> Resume Booster, “${esc(name)}”, ${SITE}${path}${modified ? `, figures measured ${esc(String(modified).slice(0, 10))}` : ""}.${citeLicenceHtml(DATA_LICENSE)}</p>`;
 
   // ---- Job-board category landers: the queries people actually type are
   // "healthcare jobs", not "job board". 17 crawlable pages, counts baked
@@ -4101,7 +4240,10 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
               return `<li><a href="${landerPath(c.token)}" class="text-primary hover:underline">${esc(c.name)}</a>${kind ? ` <span class="text-muted-foreground">(${kind})</span>` : ""}${typeof o === "number" ? ` <span class="text-muted-foreground">— ${fmt(pooledRow ? pooledRow.open : o)} open roles</span>` : ""}</li>`;
             }).join("\n            ")}
           </ul>`).join("\n");
-        COMPANY_PAGE_COUNT = primaries.length;
+        // GEO-9 (SEO audit 2026-11-18): the llms files count the employers
+        // /companies counts, with the federal site and the agencies apart.
+        COMPANY_PAGE_COUNT = employersListed;
+        COMPANY_PAGE_OTHERS = { agencies: agenciesListed, federal: federalListed };
         write({
           path: "/companies",
           title: `${fmt(employersListed)} Companies Hiring Now, From Their Own Hiring Systems`,
@@ -4111,9 +4253,11 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
             `${fmt(employersListed)} employers read from their own hiring systems${othersListed ? `, plus ${othersListed}, labelled` : ""}.`,
           ),
           content: `
+            ${dataPageCrumbs("Companies")}
             <h1 class="text-2xl font-bold mb-3">Companies hiring on the board</h1>
             <p class="text-muted-foreground mb-6">The ${fmt(employersListed)} employers with a page of their own${othersListed ? `, and ${othersListed}` : ""}, listed A–Z; the board itself carries far more (${boardCompanies ? `${fmt(boardCompanies)} company job boards with roles open now` : "every one is searchable"} on <a href="/jobs" class="text-primary underline">the live board</a>). Every posting is read from the hiring system that published it: ${kindsSentence}, never copied from another job board. Where a count is shown it means postings the employer has not taken down whose date falls inside the last 30 days (the employer's own date, or for a posting with no date, the day we last saw it): the same rule the linked page serves, measured when this index was last built${COUNTED_ON ? `, ${esc(COUNTED_ON)}` : ""}.</p>
             ${sections}`,
+          jsonLd: [dataPageCrumbsLd("Companies", "/companies")],
         });
       }
     }
@@ -4197,6 +4341,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           ? "How many roles are open, how long postings stay up, how often they come down, and a daily re-check against employers' own systems."
           : `How many roles are open, how long postings stay up, how often they come down, and a re-check against employers' own systems, ${RECHECK_SCHEDULE}.`),
         content: `
+          ${dataPageCrumbs("Ghost Job Index")}
           <h1>Resume Booster Ghost Job Index</h1>
           ${DATA_FIGURES.ghost.answer ? `<p class="text-lg mb-3" data-answer="">${DATA_FIGURES.ghost.answer}</p>` : ""}
           <p>Ghost jobs — postings that are stale, already filled, or never real — waste job seekers' time everywhere. This page is our live, honest measure of the opposite: how fresh the postings on this board are, read from companies' own hiring systems, and how often they come down.</p>
@@ -4213,8 +4358,15 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           description: `A live measure of job-posting freshness computed from official company job boards: open roles, posting age by the employer's stated date, takedowns logged over 90 days (a takedown is never called a hire), and ${RECHECK_FRESH ? "a daily re-check of sampled postings against the employers' own systems" : `a re-check of sampled postings against the employers' own systems, ${RECHECK_SCHEDULE}`}.`,
           path: "/ghost-job-index",
           modified: DATA_FIGURES.ghost.modified,
-        })],
+        }), dataPageCrumbsLd("Ghost Job Index", "/ghost-job-index")],
       });
+    }
+
+    // GEO-4: every section the llms files name for this page has its own
+    // baked H2; a section the bake stopped printing is said at the WARN tier.
+    {
+      const missing = ghostSectionsMissing(DATA_FIGURES.ghost.html);
+      if (missing.length) console.warn(`[prerender-seo] WARN the llms files name Ghost Job Index sections the baked page does not print: ${missing.join("; ")} (GHOST_LLMS_SECTIONS)`);
     }
 
     // The Entry-Level Index — live ranking of who's hiring early-career.
@@ -4227,6 +4379,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         title: "The Entry-Level Index — who's actually hiring entry-level right now?",
         description: DATA_FIGURES.entry.desc ?? "Job boards ranked by the share of their open roles that are early-career, counted from the postings' own titles and stated requirements.",
         content: `
+          ${dataPageCrumbs("Entry-Level Index")}
           <h1>The Entry-Level Index</h1>
           <p>"Entry-level, 5 years' experience required" is a running joke for a reason. This page counts the real thing: openings whose own titles and requirements say early-career — internships, junior, graduate, and 0–2 year roles — and ranks each job board by the SHARE of its open roles that are early-career, with the raw count as the tie-break. Not by who posts the most, which only ever ranks the largest boards. One row per board, so an employer running several counts once per board.</p>
           <p>Every count comes live from companies' official job boards (${D.SERVING_SOURCE_LIST}), each posting ${SOURCE_SENTENCE}, and no dated posting older than 30 days (undated ones show no age rather than a guessed one). A role counts as entry-level when its own title or stated requirements say so; we never guess.</p>
@@ -4241,7 +4394,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           description: "Early-career openings counted from official company job boards, by our classification of each posting's own title and stated requirements, with the job boards ranked by the share of their open roles that are early-career.",
           path: "/entry-level-index",
           modified: DATA_FIGURES.entry.modified,
-        })],
+        }), dataPageCrumbsLd("Entry-Level Index", "/entry-level-index")],
       });
     }
 
@@ -4254,6 +4407,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         title: "Weekly Hiring Trends — how many jobs were really posted this week?",
         description: DATA_FIGURES.trends.desc ?? "Roles employers dated each week, the fields they are in, and the closure events logged each week, counted from employers' own job boards.",
         content: `
+          ${dataPageCrumbs("Weekly Hiring Trends")}
           <h1>Weekly Hiring Trends</h1>
           <p>Is hiring up or down this week? This page answers with counted postings, not vibes: every new role companies dated this week on their own boards, which fields they're in, and how many closure events the lifecycle log recorded. A posting coming down is never called a hire — a hire, a withdrawal, a cancelled requisition and a retitle are indistinguishable from a feed.</p>
           <p>Counts use each posting's own stated date from the company's official applicant-tracking feed. Postings from companies newly added to our catalog are excluded from weekly counts, so growth in our coverage never shows up as a fake hiring spike. Closure counts come from our lifecycle log. We record a takedown when the next read of that company's feed finds the posting gone; the <a href="/ghost-job-index" class="text-primary underline">Ghost Job Index</a> prints how far behind those re-reads run.</p>
@@ -4268,7 +4422,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           description: "Weekly hiring data computed from official company job boards: roles employers dated each week, the fields they are in, and the closure events logged each week, where a posting coming down is never called a hire.",
           path: "/hiring-trends",
           modified: DATA_FIGURES.trends.modified,
-        })],
+        }), dataPageCrumbsLd("Weekly Hiring Trends", "/hiring-trends")],
       });
     }
 
@@ -4282,12 +4436,13 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         title: "Pay Transparency Index — who actually states salaries?",
         description: DATA_FIGURES.pay.desc ?? "The share of postings that state pay, by field, hiring system and large job board, counted from the employers' own words; nothing modelled.",
         content: `
+          ${dataPageCrumbs("Pay Transparency Index")}
           <h1>The Pay Transparency Index</h1>
           <p>Which employers actually state salaries? This page counts it: the share of postings whose own text or ATS compensation field states pay, ranked by field, by hiring system, and across large job boards, one row per board. Every figure is the company's verbatim words — never an estimate, never a modeled range.</p>
           <p>The same rules apply to work modes: a posting is tagged remote, hybrid, or on-site only when the employer's own ATS field or explicit posting text says so. Postings that don't say carry no tag — we show nothing rather than a guess.</p>
           ${DATA_FIGURES.pay.html}
           ${howToCite("Pay Transparency Index", "/pay-transparency", DATA_FIGURES.pay.modified)}
-          <p>Placement on this page cannot be bought. Browse <a href="/jobs?mode=remote">remote roles</a>, check the <a href="/ghost-job-index">Ghost Job Index</a>, or license the underlying data at <a href="/data-api">Hiring Data &amp; API</a>.</p>
+          <p>Placement on this page cannot be bought. Browse <a href="/jobs?mode=remote">remote roles</a>, check the <a href="/ghost-job-index">Ghost Job Index</a>, or license bulk data through the API at <a href="/data-api">Hiring Data &amp; API</a>.</p>
         `,
         jsonLd: [datasetLd({
           name: "Resume Booster Pay Transparency Index",
@@ -4296,7 +4451,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           description: "The share of job postings that state pay, by field, by hiring system and across large job boards (one row per board), counted from the employers' own posting text and applicant-tracking fields; nothing estimated or modelled.",
           path: "/pay-transparency",
           modified: DATA_FIGURES.pay.modified,
-        })],
+        }), dataPageCrumbsLd("Pay Transparency Index", "/pay-transparency")],
       });
     }
 
@@ -4321,7 +4476,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           <ul>
             <li><code>GET /v1/jobs</code> — live postings, newest first; every result is still open in the employer's own feed and dated within the last 30 days. Filters for country, category, company, work mode, source system, experience band, department, pay basis and floor, posting date; paginate with <code>cursor=</code>, never a deep offset. <code>explain=1</code> names every filter that bound; <code>engine=ranked</code> (paid) swaps the title match for the site's full relevance engine.</li>
             <li><code>GET /v1/jobs/{id}</code> — one posting with its description; a 404 once the employer withdraws it, never a stale 200.</li>
-            <li><code>GET /v1/jobs/{id}/application</code> — the employer's own application form for a live posting, when its hiring system publishes one: each question with who should answer it (the person, by default), cached for 24 hours. It never fills or submits anything; the person answers and presses submit on the employer's own site. Metered as one call.</li>
+            <li><code>GET /v1/jobs/{id}/application</code> — the employer's own application form for a live posting, where we read that hiring system's form: each question with who should answer it (the person, by default), cached for 24 hours. It never fills or submits anything; the person answers and presses submit on the employer's own site. Metered as one call.</li>
             <li><code>GET /v1/changes</code> — what opened and what closed since a timestamp, and for each close whether the role genuinely came down or was re-listed under a new id. Opened reaches back 30 days on any key; closed reaches back 72 hours on a free key and 180 days on a paid one, and leaves out batches our own collector flagged as a possible failed read unless you ask for them with <code>include_suspect=true</code>. Closures written before the collector began assessing its batches were never assessed: they carry <code>suspectBatch: null</code> and no walk filters them. Both lists are ordered oldest first and page on their own: follow <code>page.opened.nextCursor</code> as <code>opened_cursor</code> and <code>page.closed.nextCursor</code> as <code>closed_cursor</code> until <code>hasMore</code> is false. When a list carries <code>settledThrough</code> (<code>page.opened.settledThrough</code>, <code>page.closed.settledThrough</code>), it reads only up to that settled horizon, because a closure's row can be written minutes after the time it is stamped with; such a list also carries <code>resumeCursor</code>, and a reader resumes by sending it back as <code>opened_cursor</code> or <code>closed_cursor</code>, never by moving <code>since</code>. A response without them runs each list up to the moment it was read.</li>
             <li><code>GET /v1/companies</code> — employers ranked by open postings, from the same cached facet the board renders, with the as-of stamp and its basis.</li>
             <li><code>GET /v1/stats</code> — headline counts, the closure log, feed freshness (p50/p95/max minutes since each feed was last re-read) and per-system coverage, each figure with its own as-of and basis.</li>
@@ -4634,9 +4789,14 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         host.phone ? `<p class="text-sm text-muted-foreground mb-2">${h(fillAC("phoneNote", { site: host.phone.site, app: host.phone.app }))}</p>` : "",
         host.fromClaude ? `<p class="text-sm text-muted-foreground mb-2">${h(fillAC("claudeConnectorCarriesOver", { name: D.MCP_CONNECTOR_NAME }))}</p>` : "",
       ].filter(Boolean).join("\n            ");
+      // THE ONE-STEP LINK, PLAIN, ABOVE THE MANUAL STEPS (SEO audit
+      // 2026-11-18, GEO-12; owner yes): a crawler and an answer engine read
+      // only these bytes, and they gave the manual steps alone. The steps stay.
+      const addToClaudeHtml = (host) => (host.id === "claude" ? addToClaudeLinkHtml({ live: D.MCP_ADD_TO_CLAUDE_LIVE, href: mcpUrl ? D.claudeInstallLink(mcpUrl) : null, name: D.MCP_CONNECTOR_NAME, esc: h }) : "");
       const hostPanel = (host) => `
           <section id="${host.id}" class="mb-8 p-4 rounded-2xl border border-border">
             <h3 class="text-lg font-semibold mb-2">${h(host.name)}${host.small ? ` <span class="text-sm font-normal text-muted-foreground">— ${h(host.small)}</span>` : ""}</h3>
+            ${addToClaudeHtml(host)}
             ${deeplinksHtml(host)}
             ${hostNotes(host)}
             ${stepsHtml(host.steps(ctx))}
@@ -5443,14 +5603,14 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       : "";
     lines.push("## The live job board and its data pages (from the board's own lifecycle log)");
     lines.push(`- Live job board: ${SITE}/jobs — every posting ${SOURCE_SENTENCE} (${D.SERVING_SOURCE_LIST}); no dated posting older than 30 days, undated ones shown with no age rather than a guessed one. Per-field pages at /jobs/field/{slug}, per-employer pages at /jobs/company/{token}.`);
-    lines.push(`- Ghost Job Index: ${SITE}/ghost-job-index — the board's live measure of posting reality: how many roles are open, how long postings stay up, how fast they come down, and which employers are actively hiring, from the closure log the board keeps for every posting it has watched. A posting coming down is never called a hire — a hire, a withdrawal, a cancelled requisition and a retitle are indistinguishable from the feed.`);
+    lines.push(`- Ghost Job Index: ${SITE}/ghost-job-index — the board's live measure of posting reality: ${GHOST_LLMS_CLAUSE}, from the closure log the board keeps for every posting it has watched. A posting coming down is never called a hire — a hire, a withdrawal, a cancelled requisition and a retitle are indistinguishable from the feed.`);
     lines.push(`- Weekly Hiring Trends: ${SITE}/hiring-trends — counted postings per week by each posting's own stated date, which fields are hiring, entry-level and remote counts as floors (they are counted over a narrower population than the weekly total, so they are never divided into it), and closure events per week from the lifecycle log; newly catalogued employers are excluded from weekly counts so coverage growth never reads as a hiring spike.`);
     lines.push(`- Entry-Level Index: ${SITE}/entry-level-index — employers ranked by real early-career openings (internships, junior, graduate, 0–2 year roles), counted only where the posting's own title or stated requirements say so.`);
     lines.push(`- Pay Transparency Index: ${SITE}/pay-transparency — the share of postings that state pay, by field, hiring system and large job board (one row per board, so an employer running several counts once per board), counted from the postings' own text and ATS fields; never estimated or modelled, and placement cannot be bought.`);
-    lines.push(companiesLlmsLine({ site: SITE, count: COMPANY_PAGE_COUNT }));
+    lines.push(companiesLlmsLine({ site: SITE, count: COMPANY_PAGE_COUNT, ...(COMPANY_PAGE_OTHERS ?? {}) }));
     lines.push(`- About: ${SITE}/about — what resumebooster.work is, what the board is, and how its counts are made and dated.`);
     lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API over the live board at ${API_BASE}/v1 (every path below is relative to ${API_BASE}; the addresses under ${SITE}/v1 are pages that point here), with free self-serve keys (${FREE_KEY_RATE_SENTENCE}): GET /v1/jobs, /v1/jobs/{id}, /v1/jobs/{id}/application (the employer's own application form for a live posting, read and never filled or submitted), /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (${D.MCP_FIT_ALLOWANCE}, counted together with fit_resume on the MCP server). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
-    lines.push(`- MCP server for AI agents: ${SITE}/agents (listed in the official MCP registry as ${MCP_REGISTRY_NAME}) — search and read tools (${LLMS_TOOLS.map((t) => t.name).join(", ")}) over the same board.${LLMS_REACH_LINE ? ` ${LLMS_REACH_LINE}` : ""} ${D.MCP_FORMS_ALLOWANCE} MCP server address (Streamable HTTP): ${MCP_URL} — registry name ${MCP_REGISTRY_NAME}. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day for each internet connection an app calls from — an office or a home connection counts as one; from ChatGPT each person has their own ${D.MCP_ANON_CAPS.chatgptPerPerson}, and Claude's users share ${D.MCP_ANON_CAPS.hostPoolPerDay.toLocaleString("en-US")} a day first — ${D.MCP_ANON_CAPS.globalPerDay.toLocaleString("en-US")} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, and ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} ${D.MCP_PAID_TOOLS.length === 1 ? "gives" : "give"} ${D.MCP_FIT_ALLOWANCE}. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.page && x.header).map((x) => x.name))}, and any other app that can send a header, with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => x.page && !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; the page's own steps are at ${SITE}/agents#<host> for ${D.MCP_PAGE_HOSTS.map((x) => x.id).join(", ")}; setup for every other app is in the install repository's README at ${D.MCP_INSTALL_REPO_URL}. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}`);
+    lines.push(`- MCP server for AI agents: ${SITE}/agents (listed in the official MCP registry as ${MCP_REGISTRY_NAME}) — search and read tools (${LLMS_TOOLS.map((t) => t.name).join(", ")}) over the same board.${LLMS_REACH_LINE ? ` ${LLMS_REACH_LINE}` : ""} ${D.MCP_FORMS_ALLOWANCE} MCP server address (Streamable HTTP): ${MCP_URL} — registry name ${MCP_REGISTRY_NAME}.${addToClaudeLlms(D.MCP_ADD_TO_CLAUDE_LIVE && MCP_URL ? D.claudeInstallLink(MCP_URL) : null)} ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day for each internet connection an app calls from — an office or a home connection counts as one; from ChatGPT each person has their own ${D.MCP_ANON_CAPS.chatgptPerPerson}, and Claude's users share ${D.MCP_ANON_CAPS.hostPoolPerDay.toLocaleString("en-US")} a day first — ${D.MCP_ANON_CAPS.globalPerDay.toLocaleString("en-US")} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, and ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} ${D.MCP_PAID_TOOLS.length === 1 ? "gives" : "give"} ${D.MCP_FIT_ALLOWANCE}. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.page && x.header).map((x) => x.name))}, and any other app that can send a header, with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => x.page && !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; the page's own steps are at ${SITE}/agents#<host> for ${D.MCP_PAGE_HOSTS.map((x) => x.id).join(", ")}; setup for every other app is in the install repository's README at ${D.MCP_INSTALL_REPO_URL}. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}`);
     lines.push("");
     // THE BOARD'S OWN FIGURES, DATED (SEO audit 2026-11-18, OFFSITE-9): this
     // file carried the scan benchmark's figures (a few hundred self-selected
@@ -5487,7 +5647,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       lines.push(`Every score band, industry and experience level is published only at n >= ${bands.floor} scans${bands.hidden > 0 ? `; ${bands.hidden} scans in score bands under that floor are held back and counted only in the overall figures` : ""}. Figures update continuously from real scans; cite with the as-of date. Source page: ${SITE}/research/ats-score-benchmarks`);
       lines.push("");
     }
-    lines.push("Citation policy: everything above is publishable product truth — keyword tables are the scanner's real detection data, O*NET data is U.S. public domain, and vendor behaviors are the documented checks the scanner runs. Cite freely with a link.");
+    lines.push(`Citation policy: everything above is publishable product truth — keyword tables are the scanner's real detection data, O*NET data is U.S. public domain, and vendor behaviors are the documented checks the scanner runs. Cite freely with a link.${citeLicenceText(DATA_LICENSE)}`);
     writeFileSync(join(dist, "llms-full.txt"), lines.join("\n"));
     checkRetired("/llms-full.txt", lines.join("\n"));
 
@@ -5574,10 +5734,14 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       // THE TWO ADDRESSES (SEO-014, SEO-015), restated from the bake's own
       // constants so the file and /agents and /data-api cannot disagree.
       sub(/MCP server address \(Streamable HTTP\): \S+/, `MCP server address (Streamable HTTP): ${MCP_URL}`);
+      // GEO-12: the one-step Add to Claude link, after the address's sentence, once.
+      lt = withAddToClaudeLine(lt, addToClaudeLlms(D.MCP_ADD_TO_CLAUDE_LIVE && MCP_URL ? D.claudeInstallLink(MCP_URL) : null));
       // WHAT THE CONNECTOR REACHES (CJ-11): the /agents sentence, restated
       // from a live read only; the pattern takes what it wrote last time.
       if (LLMS_REACH_LINE) sub(/Your AI searches [\d,]+ of the [\d,]+ open postings: [^.]+\. Counted [^.]+ UTC\./, LLMS_REACH_LINE);
       sub(/API address: \S+/, `API address: ${API_BASE}/v1`);
+      // GEO-4: the Ghost line names only the sections the served page has.
+      if (/how long postings stay up, how fast they come down, and which employers are actively hiring/.test(lt)) sub(/how many roles are open, how long postings stay up, how fast they come down, and which employers are actively hiring/, GHOST_LLMS_CLAUSE);
       // THE FORM VENDORS (SEO audit 2026-11-18, CONTENT-4): the file named five
       // of the ten vendors whose forms the server reads. Both sentences are
       // restated from the list /agents and the server read (formVendorPhrase).

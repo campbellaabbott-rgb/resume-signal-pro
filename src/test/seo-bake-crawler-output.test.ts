@@ -244,9 +244,10 @@ describe("SD-09: every guide's Article states when it was first published, and i
       const art = (jsonLdBlocks(html) as Array<Record<string, unknown>>).find((b) => b["@type"] === "Article")!;
       expect(art, g.slug).toBeTruthy();
       expect(art.datePublished, g.slug).toBe(g.published);
-      // B09 (DATE-09): the day the sitemap prints for this page, never earlier than the guide's own stated date.
-      expect(art.dateModified, g.slug).toBe(lastmodOf(`/guides/${g.slug}`));
-      expect(String(art.dateModified) >= g.updated, g.slug).toBe(true);
+      // STRUCTURED-B10: the day the guide prints beside "Updated"; the sitemap may date the page later, never earlier.
+      expect(art.dateModified, g.slug).toBe(g.updated);
+      expect(html, g.slug).toContain(`Updated ${g.updated}`);
+      expect(lastmodOf(`/guides/${g.slug}`) >= g.updated, g.slug).toBe(true);
       expect(art.image, g.slug).toBe(`${SITE}/og-image.png`);
       expect(meta(html, /<meta property="og:image" content="([^"]*)"/), g.slug).toBe(`${SITE}/og-image.png`);
     }
@@ -508,7 +509,7 @@ describe("B09 / GEO-1107-04 / GEO-1107-05: what the data pages say and when they
     // Offline the figures are unread, so there is no answer sentence to print.
     expect(h).not.toContain("data-answer");
   });
-  it("every sitemap page's lastmod is the day its own Article or Dataset says it changed", () => {
+  it("every sitemap page's lastmod is the day its own Article or Dataset says it changed; a guide's is never earlier", () => {
     const off: string[] = [];
     let dated = 0;
     for (const p of sitemapPaths()) {
@@ -517,7 +518,9 @@ describe("B09 / GEO-1107-04 / GEO-1107-05: what the data pages say and when they
       for (const b of jsonLdBlocks(h) as Array<Record<string, unknown>>) {
         if ((b["@type"] === "Article" || b["@type"] === "Dataset") && typeof b.dateModified === "string") {
           dated++;
-          if (b.dateModified.slice(0, 10) !== lastmodOf(p)) off.push(`${p}: ${b.dateModified} vs ${lastmodOf(p)}`);
+          const day = b.dateModified.slice(0, 10);
+          const ok = p.startsWith("/guides/") ? lastmodOf(p) >= day : day === lastmodOf(p);
+          if (!ok) off.push(`${p}: ${b.dateModified} vs ${lastmodOf(p)}`);
         }
       }
     }

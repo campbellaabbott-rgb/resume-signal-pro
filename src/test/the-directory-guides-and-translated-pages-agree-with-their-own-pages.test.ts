@@ -30,7 +30,7 @@ const from = (start: string, end: string) => {
 
 describe("/companies (SEO-F17)", () => {
   it("states the count its linked page states: pooled when the page pools, else the board's own", () => {
-    const rows = from("// ---- /companies: the directory", "COMPANY_PAGE_COUNT = primaries.length;");
+    const rows = from("// ---- /companies: the directory", "COMPANY_PAGE_COUNT = employersListed;");
     expect(rows).toContain("const pooledRow = pooledOpen(c);");
     expect(rows).toContain("— ${fmt(pooledRow ? pooledRow.open : o)} open roles");
     expect(rows).not.toContain("— ${fmt(o)} open roles");
