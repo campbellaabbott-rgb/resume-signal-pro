@@ -175,7 +175,7 @@ fi
 
 # ── What the entries claim, on today's production. ──────────────────────────
 # B1: job-board's build, from its preflight (no database is touched).
-curl -s -m 30 -X OPTIONS -D /tmp/vd_52i_jb.hdr -o /dev/null "$B/functions/v1/job-board"
+curl -s -m 30 -X OPTIONS -D /tmp/vd_52i_jb.hdr -o /dev/null "$B/functions/v1/job-board" -H "x-rb-budget: probe"
 VD52I_BUILD=$(grep -i '^x-fn-build:' /tmp/vd_52i_jb.hdr 2>/dev/null | head -1 | cut -d: -f2- | tr -d ' \r')
 if build_ge job-board "$VD52I_BUILD" 2026-09-09 103; then
   echo "PASS  B1 job-board answers ${VD52I_BUILD} (2026-09-09.103 or later): the search serving the board reads back end, front end, full stack and dev ops as one word in either spelling, and lets developer find engineer inside a software family"
