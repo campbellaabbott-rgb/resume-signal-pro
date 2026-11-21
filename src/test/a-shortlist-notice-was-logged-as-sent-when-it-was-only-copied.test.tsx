@@ -35,9 +35,14 @@ let notices: Array<Record<string, unknown>> = [];
 let insertAnswers: Answer[] = [];
 
 const inserts = () => shortlistFake.chains.filter((c) => c.table === "shortlist_notices" && argsOf(c, "insert"));
+// The day whose businessDaysSince() is exactly `weekdays` today: the weekdays counted are those AFTER the
+// day returned, up to and including today. Stepping back first and counting the day landed on (the old
+// helper) is one business day short whenever today is a Saturday or Sunday, because today then counts for
+// nothing: on Saturday 21 November 2026 it returned Monday the 9th, nine business days before, and "ten
+// business days ago" still warned.
 const isoDaysAgo = (weekdays: number) => {
   const d = new Date();
-  for (let n = 0; n < weekdays;) { d.setUTCDate(d.getUTCDate() - 1); if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) n++; }
+  for (let n = 0; n < weekdays;) { if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) n++; d.setUTCDate(d.getUTCDate() - 1); }
   return d.toISOString();
 };
 

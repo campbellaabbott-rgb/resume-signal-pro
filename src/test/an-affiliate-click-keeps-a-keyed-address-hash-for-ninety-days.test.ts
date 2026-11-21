@@ -45,10 +45,18 @@ beforeAll(async () => {
 }, 180_000);
 afterAll(async () => { try { await db.close(); } catch { /* best effort */ } });
 
+// Each click carries its own referrer and is read back by it. Reading "the newest row" instead
+// (ORDER BY created_at DESC, id DESC LIMIT 1) reads another click's row whenever two clicks land inside
+// one tick of pglite's millisecond clock: created_at ties and the id is a random uuid, so two different
+// addresses could come back with one hash (seen on the push gate, 2026-11-21).
+let clicks = 0;
 const click = async (ip: string | null, clientHash: string | null = "fingerprint-from-the-browser") => {
   await fromAddress(db, ip);
-  await q(db, "SELECT public.track_affiliate_click($1, $2, 'Mozilla/5.0', 'https://example.com/')", [code, clientHash]);
-  return (await one<{ ip_hash: string | null }>(db, "SELECT ip_hash FROM public.affiliate_clicks ORDER BY created_at DESC, id DESC LIMIT 1")).ip_hash;
+  const referrer = `https://example.com/?click=${++clicks}`;
+  await q(db, "SELECT public.track_affiliate_click($1, $2, 'Mozilla/5.0', $3)", [code, clientHash, referrer]);
+  const rows = await q<{ ip_hash: string | null }>(db, "SELECT ip_hash FROM public.affiliate_clicks WHERE referrer = $1", [referrer]);
+  expect(rows, `click ${clicks} from ${ip} stored ${rows.length} rows`).toHaveLength(1);
+  return rows[0].ip_hash;
 };
 const md5 = async (s: string) => (await one<{ h: string }>(db, "SELECT md5($1) AS h", [s])).h;
 
