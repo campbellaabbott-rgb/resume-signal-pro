@@ -234,9 +234,59 @@ export function jdText(description: string): string {
   return decodeJdEntities(description).replace(/^[ \t]*undefined[ \t]*(?:\r?\n|$)/gm, "");
 }
 
-/** The description as display paragraphs: decoded, blank-line split, empties dropped. */
+/** A line this long that repeats an earlier one is a duplicated paragraph, not a repeated heading or bullet. */
+const JD_REPEAT_MIN_CHARS = 80;
+/** A line its text carries this many times or more is a list's recurring item, never a pasted copy. */
+const JD_RECURRING_TIMES = 3;
+
+/** A line as a repeat is recognised: one space for each run, case folded, typographic quotes as plain ones. */
+const jdLineKey = (line: string): string =>
+  line.replace(/\s+/g, " ").trim().toLowerCase().replace(/[\u2018\u2019\u02bc]/g, "'").replace(/[\u201c\u201d]/g, '"');
+
+/**
+ * THE DESCRIPTION WITH EACH OF THE EMPLOYER'S PARAGRAPHS ONCE (SEO audit
+ * 2026-11-18, STRUCTURED-3). Some feeds hand the board one body twice: iCIMS
+ * repeats whole sections (keo 12843 printed its paragraphs 6-30 again as
+ * 40-63) and Lever joins its body to its lists (Mobileye 0d17f0b5 printed its
+ * whole body twice), and the bake printed every copy on the page and in the
+ * markup's description; 25 of the 500 served descriptions were a tenth or
+ * more repeated text. A later copy of a line of JD_REPEAT_MIN_CHARS or more
+ * with a letter in it is dropped, compared with its whitespace collapsed, its
+ * case folded and a curly apostrophe read as a straight one (iCIMS's second
+ * copy of keo's "Project’s" is "Project's"). It is the rule the board's pane
+ * applies (src/lib/listing/description.ts collapseRepeatedParagraphs, which
+ * counts what it drops and so reads jdText, not this), with two lines it
+ * leaves alone: a rule of underscores is not a paragraph, and a line carried
+ * JD_RECURRING_TIMES times or more is the employer's own list repeating an
+ * item under each heading (WVU Medicine JR24-50138 requires the same
+ * competency at levels 3, 4, 5 and 6). Shorter lines ("Requirements:",
+ * "• Python") repeat legitimately and stay. A text with nothing dropped is
+ * jdText's own, byte for byte: 465 of the 500 served descriptions.
+ */
+export function jdTextOnce(description: string): string {
+  const text = jdText(description);
+  const lines = text.split("\n");
+  const keys = lines.map(jdLineKey);
+  const times = new Map<string, number>();
+  for (const k of keys) times.set(k, (times.get(k) ?? 0) + 1);
+  const seen = new Set<string>();
+  const kept: string[] = [];
+  let dropped = 0;
+  lines.forEach((line, i) => {
+    const key = keys[i];
+    if (key.length >= JD_REPEAT_MIN_CHARS && /\p{L}/u.test(key) && (times.get(key) ?? 0) < JD_RECURRING_TIMES) {
+      if (seen.has(key)) { dropped++; return; }
+      seen.add(key);
+    }
+    kept.push(line);
+  });
+  // A dropped block leaves its blank-line padding behind.
+  return dropped ? kept.join("\n").replace(/\n{3,}/g, "\n\n") : text;
+}
+
+/** The description as display paragraphs: decoded, each repeat dropped (jdTextOnce), blank-line split, empties dropped. */
 export function jdParagraphs(description: string): string[] {
-  return jdText(description)
+  return jdTextOnce(description)
     .split(/\n\s*\n/)
     .map((p) => p.replace(/[ \t]+\n/g, "\n").trim())
     .filter((p) => p.length > 0);
@@ -378,6 +428,125 @@ export function postingRequisitionIdentity(job: Pick<PostingRow, "id">): string 
   return `${p.source}:${employer}:${p.key}`.toLowerCase();
 }
 
+/** The employer segment of a board token, as the bake's bakeEmployerKey (scripts/prerender-pages.mjs) reads it. */
+function postingEmployerKey(token: string | null | undefined): string {
+  const t = String(token ?? "").trim();
+  const parts = t.split("~");
+  const first = parts[0];
+  if ((first === "recruiting" || first === "recruiting2") && parts.length >= 2) return `ukg:${first}~${parts[1]}`;
+  if (first === "eu" && parts.length >= 2) return `eu:${t}`;
+  if (parts.length >= 3 && /^wd\d+$/.test(parts[1])) return `workday:${first}`;
+  if (parts.length >= 3) return `tenant3:${first}`;
+  if (parts.length === 2) return `tenant2:${first}`;
+  return `slug:${t}`;
+}
+
+/** A word that ends a company's name without naming a different company ("think-cell Software" is think-cell). */
+const CORPORATE_SUFFIX = /\s+(?:inc|incorporated|llc|l\.l\.c|ltd|limited|plc|gmbh|ag|se|sa|s\.a|sas|sarl|bv|b\.v|nv|n\.v|ab|a\/s|oy|spa|s\.p\.a|srl|co|company|corp|corporation|group|holdings?|software|technologies|technology|systems|solutions)\.?$/i;
+function companyCore(name: string | null | undefined): string {
+  let s = decodeNameEntities(String(name ?? "")).replace(/[,]/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+  for (let i = 0; i < 3 && CORPORATE_SUFFIX.test(s); i++) s = s.replace(CORPORATE_SUFFIX, "").trim();
+  return s;
+}
+
+/** Levenshtein distance, stopping once it passes `max`. */
+function editDistanceWithin(a: string, b: string, max: number): boolean {
+  if (Math.abs(a.length - b.length) > max) return false;
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    let best = i;
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (cur[j] < best) best = cur[j];
+    }
+    if (best > max) return false;
+    prev = cur;
+  }
+  return prev[b.length] <= max;
+}
+
+/** The description as a set of six-word runs, the audit's measure of two texts being one. */
+const SHINGLE_WORDS = 6;
+const shingleCache = new Map<string, Set<string>>();
+function descriptionShingles(description: string): Set<string> {
+  const hit = shingleCache.get(description);
+  if (hit) return hit;
+  const words = jdTextOnce(description).toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+  const out = new Set<string>();
+  if (words.length < SHINGLE_WORDS) out.add(words.join(" "));
+  for (let i = 0; i + SHINGLE_WORDS <= words.length; i++) out.add(words.slice(i, i + SHINGLE_WORDS).join(" "));
+  if (shingleCache.size > 4000) shingleCache.clear();
+  shingleCache.set(description, out);
+  return out;
+}
+/** Jaccard similarity of two descriptions' six-word runs. */
+export function descriptionSimilarity(a: string, b: string): number {
+  const x = descriptionShingles(a);
+  const y = descriptionShingles(b);
+  const [small, big] = x.size <= y.size ? [x, y] : [y, x];
+  let both = 0;
+  for (const s of small) if (big.has(s)) both++;
+  const either = x.size + y.size - both;
+  return either ? both / either : 0;
+}
+
+/** The most two titles may differ by and still be one job's: a typo fixed ("Develper"). */
+export const SAME_JOB_TITLE_EDITS = 2;
+
+/**
+ * Two titles of one job: the same, or a typo apart inside one long word. A
+ * changed number or a short word is another job, however close the
+ * spelling: Suddath's "Equipment Operator - 2nd. Shift" and "- 3rd. Shift"
+ * are two edits apart with descriptions 0.99 the same, and are two openings
+ * at two rates of pay; "Engineer I" and "Engineer II" are two levels.
+ */
+function sameJobTitle(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (!editDistanceWithin(a, b, SAME_JOB_TITLE_EDITS)) return false;
+  const wa = a.split(" ");
+  const wb = b.split(" ");
+  if (wa.length !== wb.length) return false;
+  return wa.every((w, i) => w === wb[i] || (!/\d/.test(w + wb[i]) && Math.min(w.length, wb[i].length) >= 5));
+}
+/** How much of two descriptions must be the same text for them to be one job's. */
+export const SAME_JOB_DESCRIPTION_SHARE = 0.95;
+
+/**
+ * ONE JOB UNDER TWO URLS THE EXACT IDENTITY MISSES (SEO audit 2026-11-18,
+ * CONTENT-9). postingIdentity compares the printed company, title and place
+ * exactly, and postingRequisitionIdentity the requisition key under one
+ * employer, so two pairs went out as four indexable pages: think-cell's
+ * "Customer Success Manager (m/f/d), Strategic Accounts" in Berlin under two
+ * Greenhouse boards ("think-cell Software" and "think-cell", 5013527101 and
+ * 5008812101, descriptions 0.97 the same), and ABB's "R&D Lead Software
+ * Develper" and "... Developer" in Hangzhou under two requisitions
+ * (JR00050697-3 and JR00050703, the same description). Two rows are one job
+ * when all four hold: the same employer (the bake's employer segment of the
+ * token, or the same name once a corporate suffix is dropped), the same
+ * place, titles at most SAME_JOB_TITLE_EDITS edits apart inside one long
+ * word (sameJobTitle: never a number or a level), and descriptions
+ * at least SAME_JOB_DESCRIPTION_SHARE the same six-word runs. Measured over
+ * every pair of the 500 served posting pages
+ * (src/test/fixtures/served-postings-2026-11-18.json.gz): of the 34 pairs
+ * whose descriptions are 0.6 or more the same by this measure (the audit's
+ * scan counted 37 on its own text), exactly those two are one job.
+ */
+export function postingSameJob(
+  a: { job: Pick<PostingRow, "token" | "company" | "title" | "location" | "country">; description: string },
+  b: { job: Pick<PostingRow, "token" | "company" | "title" | "location" | "country">; description: string },
+): boolean {
+  const ja = a.job;
+  const jb = b.job;
+  const sameEmployer = (!!ja.token && postingEmployerKey(ja.token) === postingEmployerKey(jb.token))
+    || (companyCore(ja.company).length >= 2 && companyCore(ja.company) === companyCore(jb.company));
+  if (!sameEmployer) return false;
+  if (String(ja.country ?? "").toUpperCase() !== String(jb.country ?? "").toUpperCase()) return false;
+  if (postingText(ja.location).toLowerCase() !== postingText(jb.location).toLowerCase()) return false;
+  if (!sameJobTitle(postingText(ja.title).toLowerCase(), postingText(jb.title).toLowerCase())) return false;
+  return descriptionSimilarity(a.description, b.description) >= SAME_JOB_DESCRIPTION_SHARE;
+}
+
 /** A title or a name as one line: an employer's double space is not part of the job. */
 export const postingText = (s: string | null | undefined): string => decodeNameEntities(String(s ?? "")).replace(/\s+/g, " ").trim();
 
@@ -391,6 +560,76 @@ export const postingText = (s: string | null | undefined): string => decodeNameE
  * F12). Any other title is the employer's own casing.
  */
 export const postingTitleText = (s: string | null | undefined): string => titleFromCapitals(postingText(s));
+
+/** A separator between the parts of a title: a dash or a bar, spaced, or a dash before a number. */
+const TITLE_SEP_RE = String.raw`\s+[-–—|]\s+`;
+/** Pay as a whole: "$23 per hour", "$17.00", "$15.50/hr", "£12-£14 an hour". */
+const TITLE_PAY = String.raw`(?:up to |from |starting at )?[$£€]\s?\d[\d,]*(?:\.\d{1,2})?(?:\s?(?:-|–|to)\s?[$£€]?\s?\d[\d,]*(?:\.\d{1,2})?)?(?:\s?(?:\/\s?(?:hr|hour|h|yr|year)|per hour|an hour|hourly|per year|a year))?\+?`;
+/** A street address as a whole: a number, at most five words, and a street word. */
+const TITLE_STREET = String.raw`\d+[A-Za-z]?\s+(?:[\w.'-]+\s+){0,5}?(?:Street|St|Avenue|Ave|Road|Rd|Highway|Hwy|Boulevard|Blvd|Drive|Dr|Lane|Ln|Parkway|Pkwy|Way|Court|Ct|Place|Pl|Pike|Circle|Cir|Trail|Route|Rte)\.?(?:\s+\d+)?(?:\s+(?:N|S|E|W|NE|NW|SE|SW)\.?)?(?:,?\s+(?:Suite|Ste|Unit)\.?\s*[\w-]+)?`;
+const reEscape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * THE JOB TITLE THE MARKUP NAMES: the job and nothing else (SEO audit
+ * 2026-11-18, STRUCTURED-5). Google's JobPosting title guidance asks for no
+ * job codes, addresses, dates, salaries or company names in the title, and
+ * 20 of the 492 served titles carried one: Domino's store codes and streets
+ * ("General Manager (05867) - 602 11th Avenue NW"), pay ("$15.50/hr ... -
+ * Regal King of Prussia", "- $23 per hour"), a ZIP ("Seasonal Sales
+ * Associate-106 Marlton, NJ 08053"), the employer's name after a separator
+ * (" - Johnson & Johnson MedTech, Orthopaedics") and the row's own
+ * requisition key ("(N134928)"). Each is taken off the title the markup
+ * names, and only there: the page's heading and <title> keep the employer's
+ * words, which contain it. Only a whole part goes: a store code in brackets
+ * (a year never), pay that is the whole part, a street or a town with a
+ * state and a ZIP that is the last part, a part that opens with the
+ * employer's own name and runs to the end (balanced brackets inside it), and
+ * the requisition key the posting's own address carries. A company name
+ * inside the job's own words ("Prodejní Asistent v Prodejně JYSK Olomouc",
+ * "Becas Alcoa") is left, since no part can go without taking words of the
+ * job with it. A title the rules would empty keeps its own text. Measured on
+ * the 492 served titles (src/test/fixtures/served-postings-2026-11-18.json.gz):
+ * it changes the 18 read by hand and no other.
+ */
+export function postingMarkupTitle(job: Pick<PostingRow, "id" | "title" | "company">): string {
+  const own = postingTitleText(job.title);
+  let t = own;
+  // The row's own requisition key, in brackets or as a whole word.
+  const key = postingPathParts(job.id)?.key ?? "";
+  if (key.length >= 4 && !/^\d{1,4}$/.test(key)) {
+    t = t.replace(new RegExp(String.raw`\s*[([]\s*${reEscape(key)}\s*[)\]]|(?<![\w-])${reEscape(key)}(?![\w-])`, "g"), "");
+  }
+  // A store code in brackets, and a street address after it.
+  t = t.replace(new RegExp(String.raw`\s*\((?!(?:19|20)\d{2}\))\d{4,5}\)(?:\s*(?:[-–—]\s*)?${TITLE_STREET})?(?=$|\s)`, "g"), "");
+  // The employer's own name opening a part, to the end.
+  const names = [...new Set([postingText(job.company), postingEmployer(job as PostingRow) ?? ""].filter((n) => n.length >= 2))];
+  for (const n of names) {
+    t = t.replace(new RegExp(String.raw`${TITLE_SEP_RE}${reEscape(n)}(?![\w&])(?:[^()]|\([^()]*\))*$`, "i"), "");
+  }
+  // Pay: a leading figure, or a part that is only pay.
+  t = t.replace(new RegExp(String.raw`^${TITLE_PAY}\s+(?=\p{L})`, "iu"), "");
+  t = t.replace(new RegExp(String.raw`${TITLE_SEP_RE}${TITLE_PAY}(?=${TITLE_SEP_RE}|$)`, "gi"), "");
+  // A last part that is a street, or a town with a state and a ZIP.
+  t = t.replace(new RegExp(String.raw`${TITLE_SEP_RE}${TITLE_STREET}$`, "i"), "");
+  // The separator is spaced, or a dash before a store number ("Associate-106 Marlton, NJ 08053"):
+  // never the hyphen inside a word ("Co-op").
+  t = t.replace(/(?:\s+[-–—|]\s+|\s*[-–—]\s*(?=\d))\d*\s*\p{L}[^-–—|]*,\s*[A-Z]{2}\s+\d{5}(?:-\d{4})?$/u, "");
+  t = t.replace(/(?:\s*[-–—|,:])+\s*$/, "").replace(/^\s*[-–—|,:]+\s*/, "").replace(/\s+/g, " ").trim();
+  return (t.match(/\p{L}/gu)?.length ?? 0) >= 3 ? t : own;
+}
+
+/**
+ * A SPONTANEOUS OR OPEN APPLICATION, OR A TALENT POOL, IS NOT A JOB (SEO
+ * audit 2026-11-18, STRUCTURED-5). Google's policy for job postings:
+ * "Publishers may solicit resume collections for open positions only", and
+ * santander Req0843024 "Candidatura Spontanea per Internship" was served with
+ * a JobPosting. Read from the title alone: a real job's description may well
+ * mention a talent pool. The only such title among the 492 served.
+ */
+const OPEN_APPLICATION_TITLE = /\b(?:spontaneous|unsolicited|speculative|open|general)\s+application\b|\bcandidatura\s+(?:spontanea|espont[aá]nea|spont[aâ]nea)\b|\bcandidature\s+spontan[ée]e\b|\bsolicitud\s+espont[aá]nea\b|\b(?:initiativ|spontan|blind)bewerbung\b|\bopen\s+sollicitatie\b|\btalent\s+(?:pool|community)\b/i;
+export function openApplicationTitle(title: string | null | undefined): boolean {
+  return OPEN_APPLICATION_TITLE.test(postingText(title));
+}
 
 /** UTC calendar day of an ISO stamp. */
 const day = (iso: string): string => iso.slice(0, 10);
@@ -581,8 +820,13 @@ const SITE_WORD = /\b(?:mall|plaza|plasma|casino|hotel|resort|chophouse|restaura
  * Africa", "New England - MA", "HK, HKSAR" and "United States Of America, New
  * Mexico, Other" each read one into the town slot).
  */
-const NOT_A_TOWN =/^(?:remote|hybrid|onsite|on-site|office|various|multiple|flexible|anywhere|home|work from home|wfh|virtual|field|nationwide|n\/a|tbd|apac|emea|latam|amer|americas|europe|asia|asia pacific|africa|oceania|middle east|mena|benelux|dach|nordics|caribbean|(?:north|south|central|latin) america|new england|midwest|pacific northwest|(?:east|west|gulf) coast|bay area|tri-?state(?: area)?|global|international|worldwide|other|others|unknown|sar|hksar|macao sar|macau sar)$/i;
+const NOT_A_TOWN =/^(?:remote|hybrid|onsite|on-site|office|various|multiple|flexible|anywhere|home|work from home|wfh|virtual|field|nationwide|n\/a|tbd|apac|emea|latam|amer|americas|europe|asia|asia pacific|africa|oceania|middle east|mena|benelux|dach|nordics|caribbean|(?:north|south|central|latin) america|new england|midwest|pacific northwest|(?:east|west|gulf) coast|bay area|tri-?state(?: area)?|global|international|worldwide|other|others|unknown|sar|hksar|macao sar|macau sar|clients?|client sites?|customer sites?)$/i;
 
+/**
+ * "Client" is no town either (SEO audit 2026-11-18, STRUCTURED-7): Syneos
+ * Health's "CHN-Client" (the client's site, in China) was served as
+ * addressLocality "Client".
+ */
 /** A country written where a town should be. Three letters is the shortest town we will publish. */
 const NOT_A_TOWN_BUT_A_COUNTRY = /^(?:usa|u\.?s\.?a?\.?|uk|u\.?k\.?|eu)$/i;
 
@@ -1025,6 +1269,38 @@ function regionProblem(region: string): string | null {
   return localityProblem(region);
 }
 
+/**
+ * A STREET LINE NAMES A STREET (SEO audit 2026-11-18, STRUCTURED-7). What is
+ * left in front of the town was published as streetAddress whenever it
+ * opened with a digit, and "01147 - Cinemark Renaissance Marketplace and XD"
+ * (a theatre's number and name) was a street. A street line now carries a
+ * street word as well.
+ */
+const STREET_WORD = /\b(?:st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|way|pkwy|parkway|hwy|highway|rte|route|circle|cir|court|ct|place|pl|pike|trail|square|terrace|crescent|suite|ste|floor|fl|unit|bldg|building)\b/i;
+
+/**
+ * A FIRST SEGMENT THAT IS NOT THE TOWN, BEFORE ONE THAT IS (STRUCTURED-7): a
+ * German district ("Rheingau-Taunus-Kreis, Idstein, Deutschland" is Idstein)
+ * or a store named after its town with more words after the town's name
+ * ("LS FIRENZE SPEZIALI, Firenze, Italy" is Firenze). Each was served as
+ * addressLocality. Read only when the segment after it is itself a town, and
+ * held to the reviewed corpus (fixtures/posting-locations.json), so it is
+ * narrow on purpose: a town named after its county ("Târgu Mures, Mures"),
+ * an employer's site ("OCBC Malaysia, Kulaijaya") and a district written in
+ * English before its city ("Yeongdeungpo District, Seoul") keep main's
+ * reading there.
+ */
+const DISTRICT_SEGMENT = /(?:^|[\s-])(?:kreis|landkreis|regierungsbezirk|bezirk)$/i;
+function notTheTownBefore(first: string, next: string): boolean {
+  const f = ` ${first.replace(/\s+/g, " ").trim().toLowerCase()} `;
+  const n = next.replace(/\s+/g, " ").trim().toLowerCase();
+  if (DISTRICT_SEGMENT.test(first.trim())) return true;
+  // The town's name inside the store's, with a word after it: never a town
+  // named after its county, whose county's name ends it.
+  const at = f.indexOf(` ${n} `);
+  return n.length >= 3 && at >= 0 && f.slice(at + n.length + 2).trim().length > 0;
+}
+
 /** A trailing bracket holding an address line or a number ("(1361 Heather Street)", "(10178)"): a note, not the place. */
 const STREET_NOTE = /\s*\((?=[^)]*\d)[^)]*\)\s*$/;
 
@@ -1263,7 +1539,13 @@ function postalAddressOf(raw: string, country: string, job: PostingRow): Record<
       const t = rest[rest.length - 1];
       if ((rest.length === 1 || (rest.length === 2 && /^[A-Z]{2,3}$/.test(rest[0]))) && town(t)) return put(null, t.trim(), null, postal);
     }
+    // A district, a road or a store before the town (STRUCTURED-7).
+    if (segs.length >= 2 && notTheTownBefore(segs[0], segs[1]) && town(segs[1])) return put(null, segs[1].trim(), null, postal);
     const candidate = segs[0] ?? "";
+    // "<Town> <ST>" with more after it ("Pittsburgh PA, 15222, FAP, 5th
+    // Avenue Place"): the town and its state, as when it stands alone.
+    const stated = segs.length > 1 && /^(.+?)\s+([A-Z]{2})$/.test(candidate) ? townBeside(candidate) : null;
+    if (stated?.region && stated.locality) return put(stated.region, stated.locality, null, postal);
     const beside = segs.length === 1 ? townBeside(candidate) : null;
     if (beside) return put(beside.region, beside.locality, null, postal);
     if (town(candidate)) locality = candidate.trim();
@@ -1274,8 +1556,33 @@ function postalAddressOf(raw: string, country: string, job: PostingRow): Record<
     return put(null, locality, null, postal);
   }
 
-  const street = segs.join(", ").trim();
-  return put(region, locality, street && STREETISH.test(street) ? street : null, postal);
+  // THE STREET LINE (STRUCTURED-7): a leading "<town>, " that repeats the
+  // locality is not part of it ("Fort Madison, Ave L, Fort Madison, IA" is
+  // Ave L), nor is a venue before the street number ("Adventureland, 3200
+  // Adventureland drive"), and it names a street (STREET_WORD).
+  const lines = [...segs];
+  while (lines.length > 1 && locality && lines[0].trim().toLowerCase() === locality.toLowerCase()) lines.shift();
+  const numbered = lines.findIndex((x) => /^\d/.test(x.trim()));
+  if (numbered > 0 && lines.slice(0, numbered).every((x) => !/\d/.test(x))) lines.splice(0, numbered);
+  const street = lines.join(", ").trim();
+  return put(region, locality, street && STREETISH.test(street) && STREET_WORD.test(street) ? street : null, postal);
+}
+
+/**
+ * A TITLE THAT NAMES AN INTERNSHIP (SEO audit 2026-11-18, STRUCTURED-9), in
+ * the employer's own word for it: intern or internship, tirocinio, Praktikum
+ * or Praktikant, stagiaire, and "stage" only in a description written in a
+ * language whose word for an internship it is and never before a number
+ * (Levi's Italian "Sales Stylist - Stage" is one; Blue Origin's "New Glenn
+ * Stage 2" is a rocket's). "Internal" and "International" are not. Measured
+ * on the 492 served titles: five name one, and no other title does.
+ */
+const INTERNSHIP_TITLE = /\b(?:interns?|internships?|tirocini[oa]|tirocinante|praktikum|praktikant(?:in)?|stagiaire)\b/i;
+const STAGE_LANGS = new Set(["fr", "it", "nl", "pt", "es"]);
+export function postingInternshipTitle(title: string | null | undefined, description = ""): boolean {
+  const t = postingText(title);
+  if (INTERNSHIP_TITLE.test(t)) return true;
+  return /\bstage\b(?!\s*\d)/i.test(t) && STAGE_LANGS.has(postingLanguage(description) ?? "");
 }
 
 /** schema.org's own enumeration. Anything outside it is ignored by Google, so it is never guessed. */
@@ -1390,6 +1697,9 @@ export function postingMarkupGate(
   if (!postingDescribedEnough(description)) return null;
   const ownText = `${job.title ?? ""}\n${jdText(String(description))}`;
   if (internalOnlyTextReason(ownText) || paidSurveyAdReason(ownText)) return null;
+  // A spontaneous or open application, or a talent pool, solicits resumes
+  // for no open position (STRUCTURED-5): no markup, on any board.
+  if (openApplicationTitle(job.title)) return null;
   const named = postingNameVerdict(job);
   if (named.reason && !opts.ignoreNameGate) return null;
   return named.repaired ? { ...job, company: named.name } : job;
@@ -1450,7 +1760,7 @@ export function postingJsonLdShape(
   const job = postingMarkupGate(row, description, { now, ignoreNameGate: opts.ignoreNameGate });
   if (!job) return null;
   const path = postingPagePath(job.id);
-  const desc = typeof description === "string" ? jdText(description).trim() : "";
+  const desc = typeof description === "string" ? jdTextOnce(description).trim() : "";
   // TELECOMMUTE ONLY ON THE HIRING SYSTEM'S OWN REMOTE FIELD (SEO-003's rule).
   // A place-free remote label ("Remote - US", "China - Remote") is marked up
   // as its country: the round's bake shipped TELECOMMUTE on a medical
@@ -1483,7 +1793,9 @@ export function postingJsonLdShape(
     "@type": "JobPosting",
     // A title its employer typed in capitals is marked up in title case, as
     // the page prints it (postingTitleText, F12).
-    title: postingTitleText(job.title),
+    // The job and nothing else: no store code, street, pay, employer's name
+    // or requisition key (postingMarkupTitle, STRUCTURED-5).
+    title: postingMarkupTitle(job),
     // THE WHOLE DESCRIPTION, BECAUSE THAT IS WHAT THE PROPERTY IS FOR. This was
     // cut at 4,000 characters, which fired on 300 of the 399 pages the bake
     // wrote — their visible text ran to a median 7,273 characters and a maximum
@@ -1542,6 +1854,9 @@ export function postingJsonLdShape(
 
   const empType = ldEmploymentType(job.employmentType);
   if (empType) ld.employmentType = empType;
+  // AN INTERNSHIP SAYS INTERN (STRUCTURED-9): the employer's own title names
+  // it ("Emerging Technology & AI Internship" was FULL_TIME only).
+  if (postingInternshipTitle(job.title, desc) && empType !== "INTERN") ld.employmentType = empType ? [empType, "INTERN"] : "INTERN";
 
   return ld;
 }

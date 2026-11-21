@@ -415,8 +415,12 @@ export function postingStubPage({ path, id, state, since, title, company, compan
   // CLOSED AT THE EMPLOYER (B01): the bake asked the employer's own system
   // and it answered that it no longer serves the posting, so this page says
   // that, and only that.
+  // PAST THE EMPLOYER'S OWN END DATE (STRUCTURED-M1): an earlier read of the
+  // employer's system stated when the posting closes, and that day passed.
   const lead = state === "gone" && basis === "employer"
     ? `${what} is no longer listed. When this page was built${since ? ` (${esc(since)})` : ""}, the employer's own hiring system answered that it no longer serves this posting, so this page states nothing more about it.`
+    : state === "gone" && basis === "employer-stated end"
+    ? `${what} is past the closing date its employer stated. When this page was built${since ? ` (${esc(since)})` : ""}, the end date the employer's own hiring system gave this posting had passed, so this page states nothing more about it.`
     : state === "gone"
     ? `${what} is no longer listed on this board${since ? ` (recorded ${esc(since)})` : ""}. That is a statement about this board, not about the employer: the posting may have been taken down, or the date the employer put on it passed the board's ${windowDays}-day window.`
     : state === "retired"
@@ -437,6 +441,12 @@ export function postingStubPage({ path, id, state, since, title, company, compan
         `${t ? `${t}${c ? ` at ${c}` : ""}` : "This posting"} is no longer listed by its employer. Browse the live openings instead.`,
         `${t ?? "This posting"} is no longer listed by its employer.`,
         "This posting is no longer listed by its employer. Browse the live openings instead.",
+      ].find((d) => d.length <= 160)
+      : state === "gone" && basis === "employer-stated end"
+      ? [
+        `${t ? `${t}${c ? ` at ${c}` : ""}` : "This posting"} is past the closing date its employer stated. Browse the live openings instead.`,
+        `${t ?? "This posting"} is past the closing date its employer stated.`,
+        "This posting is past the closing date its employer stated. Browse the live openings instead.",
       ].find((d) => d.length <= 160)
       : state === "gone"
       ? [
@@ -910,7 +920,7 @@ export const FINGERPRINT_VERSION = 2;
  * version existed, so the switch itself re-dates nothing. With `exact`, a
  * stated date is the lastmod itself (a data page's measurement day).
  */
-export function pageDates({ fp, legacyFp, prior, today, stated = null, exact = false }) {
+export function pageDates({ fp, legacyFp, prior, today, stated = null, exact = false, floor = null }) {
   const p = prior && typeof prior === "object" ? prior : null;
   const same = !!p && (p.fpv === FINGERPRINT_VERSION ? p.fp === fp : p.fp === legacyFp);
   const priorChanged = p && typeof p.changed === "string" ? p.changed : p && typeof p.lastmod === "string" ? p.lastmod : null;
@@ -922,7 +932,24 @@ export function pageDates({ fp, legacyFp, prior, today, stated = null, exact = f
   // states: the sitemap says that day and no other, whatever the count-blind
   // fingerprint did.
   const lastmod = st ? (exact || !p ? st : (st > changed ? st : changed)) : changed;
-  return { lastmod, changed: st && !p ? st : changed, fp, fpv: FINGERPRINT_VERSION };
+  // CRAWL-9: `floor` is a day the lastmod may not be earlier than (see
+  // withLastmodFloor below).
+  return withLastmodFloor({ lastmod, changed: st && !p ? st : changed, fp, fpv: FINGERPRINT_VERSION }, floor, today);
+}
+
+/**
+ * A PAGE'S DATES WITH A DAY ITS LASTMOD MAY NOT BE EARLIER THAN (SEO audit
+ * 2026-11-18, CRAWL-9): a posting page's employer-stated date. The
+ * fingerprint is blind to dates, so MGM 281193, re-dated by its employer to
+ * 11-12, kept the lastmod 11-08 of its first text, a sitemap date saying the
+ * page had not changed since before it was posted. `dates` is pageDates'
+ * answer (or null); a floor after `today` counts as today; `changed`, the day
+ * the text last moved, is left as it was.
+ */
+export function withLastmodFloor(dates, floor, today) {
+  if (!dates || typeof floor !== "string" || !/^\d{4}-\d{2}-\d{2}/.test(floor)) return dates;
+  const f = floor.slice(0, 10) > today ? today : floor.slice(0, 10);
+  return f > dates.lastmod ? { ...dates, lastmod: f } : dates;
 }
 
 /**

@@ -75,6 +75,54 @@ export function employerStatedOf(v) {
 }
 
 /**
+ * WHAT A LIVE LEDGER ENTRY CARRIES TO THE NEXT BAKE (SEO audit 2026-11-18,
+ * STRUCTURED-M1): the employer's stated end date, its time type and a fully
+ * remote flag, or null. The ledger kept none of them, so a later bake whose
+ * read failed served validThrough at datePosted + 30 and no employmentType:
+ * Marriott 26110535's Oracle end date is 2026-11-19T05:51Z, the 11-15 bake
+ * served validThrough 11-18, and the 11-18 bake, its read unknown, 12-15.
+ */
+export function carriedStatementsOf(stated) {
+  const s = employerStatedOf(stated);
+  if (!s) return null;
+  const out = {};
+  if (s.employerValidThrough) out.employerValidThrough = s.employerValidThrough;
+  if (s.employmentType) out.employmentType = s.employmentType;
+  if (s.remote === true) out.remote = true;
+  return Object.keys(out).length ? out : null;
+}
+
+/**
+ * TODAY'S STATEMENTS WITH WHAT AN EARLIER READ STATED (STRUCTURED-M1).
+ * `fresh` is this bake's read, `carried` the ledger entry's statements and
+ * `read` this bake's answer ("open", "closed" or "unknown"). The end date is
+ * today's when today's read states one, earlier or later, and the carried one
+ * otherwise: validThrough never moves past an end date the employer stated
+ * unless a fresh read states a later one. When today's read did not answer,
+ * the carried time type and remote flag stand too; when it did, today's
+ * answer is the employer's word on them. Returns statements in
+ * employerStatedOf's shape, or null.
+ */
+export function withCarriedStatements(fresh, carried, read) {
+  const f = employerStatedOf(fresh);
+  const c = carriedStatementsOf(carried);
+  if (!c) return f;
+  const out = { ...(f ?? {}) };
+  if (!out.employerValidThrough && c.employerValidThrough) out.employerValidThrough = c.employerValidThrough;
+  if (read !== "open") {
+    if (!out.employmentType && c.employmentType) out.employmentType = c.employmentType;
+    if (out.remote !== true && c.remote === true) out.remote = true;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+/** Whether statements put the employer's own end date before `today` (YYYY-MM-DD): the posting is past it. */
+export const statedEndPassed = (stated, today) => {
+  const end = employerStatedOf(stated)?.employerValidThrough;
+  return !!end && typeof today === "string" && /^\d{4}-\d{2}-\d{2}$/.test(today) && end < today;
+};
+
+/**
  * THE ROW WITH WHAT ITS EMPLOYER STATES, in the fields the page already reads.
  * Never lengthens anything: an end date only ever shortens the window, and a
  * posting date is taken only when it is EARLIER than the board's (a republish

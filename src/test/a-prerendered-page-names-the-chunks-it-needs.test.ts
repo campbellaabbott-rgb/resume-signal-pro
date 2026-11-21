@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { skipWithoutDist } from "./helpers/built-output";
+import { deferredPreloadFiles } from "../../scripts/prerender-preload.mjs";
 
 /**
  * A PRERENDERED PAGE NAMED ONE SCRIPT AND NEEDED THREE.
@@ -16,6 +17,11 @@ import { skipWithoutDist } from "./helpers/built-output";
  * behaviour change: a stale or wrong filename costs one ignored request and
  * never a broken page, which is why the filenames are read from the build
  * output rather than written down.
+ *
+ * Since the SEO audit of 2026-11-18 (PERFORMANCE-1) the board's own pages
+ * write those hints from a small script at the end of <body> once the first
+ * frame is painted, not in the head, where they shared the line with the
+ * render-blocking stylesheet; the files they name are the same.
  */
 const ROOT = resolve(__dirname, "../..");
 const SCRIPT = readFileSync(resolve(ROOT, "scripts/prerender-seo.mjs"), "utf8");
@@ -39,8 +45,9 @@ describe("a prerendered page names the chunks it needs", () => {
     expect(SCRIPT).toMatch(/preload hint skipped/);
   });
 
-  it("the hints are actually injected into the head", () => {
+  it("the hints are actually injected: into the head, or, on the board's pages, at the end of <body>", () => {
     expect(SCRIPT).toMatch(/headExtra \+= preloadFor\(path, \{ fallback: isFallback \}\);/);
+    expect(SCRIPT).toMatch(/html = putVerbatim\(html, "<\/body>", `\$\{routeTail\}<\/body>`\);/);
   });
 
   // Only meaningful after a build; skipped rather than failed on a clean tree,
@@ -48,7 +55,8 @@ describe("a prerendered page names the chunks it needs", () => {
   const jobsHtml = resolve(ROOT, "dist/jobs/index.html");
   it.skipIf(skipWithoutDist(existsSync(jobsHtml)))("the built /jobs page carries both hints", () => {
     const html = readFileSync(jobsHtml, "utf8");
-    const hints = [...html.matchAll(/<link rel="modulepreload" href="\/assets\/([^"]+)"/g)].map((m) => m[1]);
+    // In the head, or written after the first paint (PERFORMANCE-1).
+    const hints = [...[...html.matchAll(/<link rel="modulepreload" href="\/assets\/([^"]+)"/g)].map((m) => m[1]), ...deferredPreloadFiles(html)];
     expect(hints.some((h) => h.startsWith("Jobs-")), `hints were ${JSON.stringify(hints)}`).toBe(true);
     expect(hints.some((h) => h.startsWith("Footer-")), `hints were ${JSON.stringify(hints)}`).toBe(true);
     // Every hinted file must exist, or the browser wastes a request.

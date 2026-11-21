@@ -21,6 +21,30 @@ import { cvFill, cvStandardsFaqs } from "@/lib/cv-country-phrase";
 
 const SITE = "https://resumebooster.work";
 
+/**
+ * A COUNTRY WHOSE RULES ARE ANOTHER'S (SEO audit 2026-11-18, CONTENT-3): the
+ * scanner's data gives Kuwait, Qatar, Bahrain and Oman the Saudi entry field
+ * for field, so each page names the first country with the same rules as its
+ * canonical, as its baked file does (scripts/prerender-seo.mjs reads the data
+ * the same way), and that country's title names the group.
+ */
+const rulesKey = (std: (typeof COUNTRY_STANDARDS)[string]) => {
+  const { iso: _iso, name: _name, ...rules } = std;
+  return JSON.stringify(rules);
+};
+const FOLLOWS: Record<string, string> = (() => {
+  const out: Record<string, string> = {};
+  const first = new Map<string, string>();
+  for (const iso of Object.keys(COUNTRY_STANDARDS)) {
+    const k = rulesKey(COUNTRY_STANDARDS[iso]);
+    const seen = first.get(k);
+    if (seen) out[iso] = seen;
+    else first.set(k, iso);
+  }
+  return out;
+})();
+const followedBy = (iso: string) => Object.keys(COUNTRY_SLUGS).some((f) => COUNTRY_STANDARDS[f] && FOLLOWS[f] === iso);
+
 interface CvStandardsProps {
   locale?: string; // undefined = English
 }
@@ -52,14 +76,18 @@ export default function CvStandards({ locale }: CvStandardsProps) {
 
   const cluster = hreflangCluster(iso);
   const path = locale ? `/${cfg!.pathBase}/${country}` : `/cv-standards/${country}`;
+  // English only: no translated page exists for the states that follow another's rules.
+  const follows = !locale ? FOLLOWS[iso] : undefined;
+  const canonicalPath = follows ? `/cv-standards/${COUNTRY_SLUGS[follows]}` : undefined;
+  const titleName = !locale && followedBy(iso) && /\s*\(GCC\)$/.test(name) ? name.replace(/\s*\(GCC\)$/, " & the GCC") : name;
 
   return (
     <div className="min-h-screen bg-background">
-      <SEO title={cvFill(t.title, vars, locale)} description={cvFill(t.metaDescription, vars, locale)} path={path} />
-      {Object.entries(cluster).map(([lang, href]) => (
+      <SEO title={cvFill(t.title, { ...vars, name: titleName }, locale)} description={cvFill(t.metaDescription, vars, locale)} path={path} canonicalPath={canonicalPath} />
+      {!follows && Object.entries(cluster).map(([lang, href]) => (
         <link key={lang} rel="alternate" hrefLang={lang} href={`${SITE}${href}`} />
       ))}
-      <link rel="alternate" hrefLang="x-default" href={`${SITE}${cluster.en}`} />
+      {!follows && <link rel="alternate" hrefLang="x-default" href={`${SITE}${cluster.en}`} />}
       <Header />
       <main className="pt-20 pb-20">
         <div className="container max-w-3xl">
