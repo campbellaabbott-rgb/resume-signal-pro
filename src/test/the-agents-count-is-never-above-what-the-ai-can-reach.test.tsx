@@ -12,11 +12,15 @@
  * prints no figure. Judged on the rendered page, the executed bake and the
  * committed llms.txt.
  *
- * OD16 (2026-11-19): USAJOBS left the withheld list, so the line subtracts
- * SmartRecruiters alone. The connector hands on only the federal rows whose
- * who-may-apply statement is stored, so until every federal row carries one
- * the figure counts some federal rows the AI is not yet handed (lane
- * api4/od16-federal reports it; job-board's USAJOBS-PART closes it).
+ * OD16 (2026-11-19): USAJOBS left the withheld lists, but the connector hands
+ * a federal posting on only once its who-may-apply statement is stored (none
+ * before agent-mcp 2026-11-19.1 and job-board .104 serve, at most 10,000 a
+ * lap until .105), and this page cannot count the labelled ones. The first
+ * cut of the lane subtracted SmartRecruiters alone and so printed every
+ * federal posting as reachable: 926,285 here, 17,794 above what the AI could
+ * reach. The line still subtracts every federal posting and names USAJOBS
+ * (REACH_LEAVES_OUT) until FEDERAL_ROWS_IN_REACH flips, which the OD16 verify
+ * section's FED6 judges.
  *
  * @vitest-environment jsdom
  */
@@ -47,7 +51,8 @@ function stubTable() {
 }
 
 import AgentConnect from "../pages/AgentConnect";
-import { aiReach } from "../lib/home/board-figures";
+import { FEDERAL_ROWS_IN_REACH, HOME_WITHHELD_SOURCES, REACH_LEAVES_OUT, aiReach } from "../lib/home/board-figures";
+import { MCP_WITHHELD_NOTE } from "../config/mcp-tools";
 
 vi.setConfig({ testTimeout: 30_000 });
 const SLOW = { timeout: 4000 } as const;
@@ -68,11 +73,11 @@ describe("the React /agents hero", () => {
     mount();
     await waitFor(() => expect(document.querySelector("[data-agents-reach]")).not.toBeNull(), SLOW);
     const hero = document.querySelector("[data-agents-hero-sub]")!.textContent!;
-    expect(hero).toContain("926,285 live postings");
+    expect(hero).toContain("908,491 live postings");
     expect(hero).not.toMatch(/\d\+/);
     for (const n of numbers(hero)) expect(n, "the hero prints a figure above what the AI can reach").toBeLessThanOrEqual(REACH.searchable);
     const line = document.querySelector("[data-agents-reach]")!.textContent!;
-    expect(line).toBe("Your AI searches 926,285 of the 998,218 open postings: SmartRecruiters postings (71,933) stay on this website. Counted 8 Nov 2026, 09:52 UTC.");
+    expect(line).toBe("Your AI searches 908,491 of the 998,218 open postings: USAJOBS and SmartRecruiters postings (89,727) stay on this website. Counted 8 Nov 2026, 09:52 UTC.");
     expect(document.querySelector("[data-agents-reach] time")!.getAttribute("datetime")).toBe("2026-11-08T09:52:00.000Z");
   });
 
@@ -96,9 +101,9 @@ describe("the baked /agents", () => {
   it("prints the same reach, dated, in the lede, the description and the structured data, and never the whole board", async () => {
     const page = await bakeAgents();
     const text = bakedText(page.content);
-    expect(text).toContain("926,285 live postings (counted 8 Nov 2026)");
-    expect(text).toContain("Your AI searches 926,285 of the 998,218 open postings: SmartRecruiters postings (71,933) stay on this website. Counted 8 Nov 2026, 09:52 UTC.");
-    expect(page.description).toContain("926,285 live postings");
+    expect(text).toContain("908,491 live postings (counted 8 Nov 2026)");
+    expect(text).toContain("Your AI searches 908,491 of the 998,218 open postings: USAJOBS and SmartRecruiters postings (89,727) stay on this website. Counted 8 Nov 2026, 09:52 UTC.");
+    expect(page.description).toContain("908,491 live postings");
     // The harness hands the block a board total of 1,024,524 and a floor
     // that prints "N+": neither may reach the page.
     expect(text).not.toMatch(/1024524|1,024,524|\d\+ live postings/);
@@ -120,14 +125,40 @@ describe("the baked /agents", () => {
     const { smartrecruiters: _s, ...rest } = SAMPLE_VENDOR_READ.counts;
     const page = await bakeAgents({ read: { ...SAMPLE_VENDOR_READ, counts: rest } });
     expect(bakedText(page.content)).not.toMatch(/\d[\d,]* live postings/);
+    // ... and so is a read without the federal count, while the line subtracts it.
+    const { usajobs: _u, ...noFederal } = SAMPLE_VENDOR_READ.counts;
+    const page2 = await bakeAgents({ read: { ...SAMPLE_VENDOR_READ, counts: noFederal } });
+    expect(bakedText(page2.content)).not.toMatch(/\d[\d,]* live postings/);
+  });
+});
+
+describe("the federal postings stay out of the reach until the connector hands on about all of them (OD16 review)", () => {
+  const counts = SAMPLE_VENDOR_READ.counts;
+  const total = SAMPLE_VENDOR_READ.openTotal;
+
+  it("the line subtracts every federal posting and SmartRecruiters, and names both", () => {
+    expect(FEDERAL_ROWS_IN_REACH, "flip it only once the OD16 section's FED6 passes with the labelled rows at the federal count").toBe(false);
+    expect([...REACH_LEAVES_OUT]).toEqual(["usajobs", ...HOME_WITHHELD_SOURCES]);
+    expect(aiReach(counts, total)).toEqual({ searchable: total - counts.usajobs - counts.smartrecruiters, withheld: counts.usajobs + counts.smartrecruiters, names: ["USAJOBS", "SmartRecruiters"] });
+  });
+
+  it("TEETH: subtracting the withheld list alone (the first cut of OD16) prints every federal posting as reachable", () => {
+    const withheldOnly = total - HOME_WITHHELD_SOURCES.reduce((n, s) => n + (counts as Record<string, number>)[s], 0);
+    expect(withheldOnly).toBe(926_285);
+    expect(withheldOnly - REACH.searchable, "the federal postings the AI was said to search and could not").toBe(counts.usajobs);
+    expect(REACH.searchable).toBeLessThan(withheldOnly);
+  });
+
+  it("the connector note says the count leaves the federal postings out, as the line does", () => {
+    // The note says it exactly while the flag is off, and must stop saying it the day the flag flips.
+    expect(/the count of postings your AI searches leaves them all out/.test(MCP_WITHHELD_NOTE)).toBe(!FEDERAL_ROWS_IN_REACH);
   });
 });
 
 describe("the committed llms.txt", () => {
   it("states the reach as the page does, and its numbers add up: reachable plus withheld is the total", () => {
     const llms = readFileSync(resolve(ROOT, "public/llms.txt"), "utf8");
-    // Before the first bake after OD16 the committed file still names USAJOBS beside SmartRecruiters.
-    const m = /Your AI searches ([\d,]+) of the ([\d,]+) open postings: (?:USAJOBS and )?SmartRecruiters postings \(([\d,]+)\) stay on this website\. Counted [^.]+ UTC\./.exec(llms);
+    const m = /Your AI searches ([\d,]+) of the ([\d,]+) open postings: USAJOBS and SmartRecruiters postings \(([\d,]+)\) stay on this website\. Counted [^.]+ UTC\./.exec(llms);
     expect(m, "llms.txt lost the reach sentence the bake refreshes").not.toBeNull();
     const [reach, total, withheld] = m!.slice(1, 4).map((x) => Number(x.replace(/,/g, "")));
     expect(reach + withheld).toBe(total);

@@ -84,9 +84,13 @@ import { BOARD_VENDORS, EMPLOYMENT_TYPES, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK
 // body names in meta.attribution (./source-terms.ts).
 import { ATTRIBUTION } from "./source-terms.ts";
 import {
-  FEDERAL_GATE_OR, FEDERAL_NOT_FOUND_NOTE, FEDERAL_SOURCE, FEDERAL_UNLABELLED_NOTE, earliestRead, federalCredit, federalFacts, isFederal,
-  passesFederalGate, vendorOfPostingId, whoMayApplyOf,
+  FEDERAL_GATE_OR, FEDERAL_NOT_FOUND_NOTE, FEDERAL_SOURCE, FEDERAL_UNLABELLED_NOTE, OPM_NOTICE, earliestRead, federalCredit, federalFacts,
+  isFederal, officialUrlOf, passesFederalGate, vendorOfPostingId, whoMayApplyOf,
 } from "./federal-rows.ts";
+// Every read of job_board_postings goes through this wrapper (db() below): a
+// build deployed before 20261119110000 is applied serves every other vendor
+// and no federal row, instead of a 500 on every row read.
+import { federalColumnTolerant } from "./federal-columns.ts";
 
 // 2026-09-30.1 — BUMPED FOR A NARROWING, the second of that kind. The FREE
 // closure window falls from thirty days to seventy-two hours
@@ -367,6 +371,70 @@ function federalMeta(rows: ReadonlyArray<Record<string, unknown>>): Record<strin
 }
 
 /**
+ * WHAT A /v1/jobs PAGE PROMISES ABOUT "LIVE" (coverage.note), AND THE ONE FEED
+ * IT CANNOT PROMISE IT OF (OD16 review, 2026-11-19).
+ *
+ * The note said every posting was "still live in the employer's own feed",
+ * and every page carrying a federal row repeated it. The more-good-jobs
+ * report (OD16, fix 3) measured that false for the federal feed: one read of
+ * USAJOBS returns at most 10,000 announcements, and a federal row's last
+ * sighting had a median age of 4.6 days and a maximum of 26.7. What holds for
+ * a federal row is the agency's closing date, so the note says that, on every
+ * page, ranked and listed alike.
+ */
+const COVERAGE_NOTE =
+  "Only postings still live in the employer's own feed within the last 30 days, except U.S. federal announcements (source usajobs): one read of that feed returns at most 10,000 of them, so our last read may not have listed a federal row, and each is open until the agency's closing date (closes_at) unless the agency withdraws it sooner.";
+
+/**
+ * meta.attribution for a body whose rows carry no read stamp (the change
+ * feed): the stamp is read for the federal rows' boards (every federal row
+ * shares one, usajobs), so the credit names the date we retrieved them, as
+ * OPM's terms ask. Nothing for a body without a federal row.
+ */
+async function federalMetaRead(client: SupabaseClient, rows: ReadonlyArray<Record<string, unknown>>): Promise<Record<string, unknown>> {
+  const fed = rows.filter((r) => isFederal(r.source));
+  if (!fed.length) return {};
+  const boards = [...new Map(fed.map((r) => [`${String(r.source ?? "")}:${String(r.company_token ?? "")}`, { source: r.source, company_token: r.company_token } as Record<string, unknown>])).values()];
+  await attachLastVerified(client, boards);
+  return federalMeta(boards);
+}
+
+/**
+ * A FEDERAL CLOSURE, SHAPED AS A FEDERAL ROW IS (OD16 review, 2026-11-19).
+ * A closure carries the announcement's agency, title and dates. The agency is
+ * the employer (company), the official announcement is linked, OPM's notice
+ * rides on the row, and our first sighting moves to federal.on_board_since
+ * with first_seen null, because it is not an age. No who-may-apply statement
+ * is needed: a closed announcement is suggested to nobody.
+ */
+function v1Closure(c: Record<string, unknown>): Record<string, unknown> {
+  if (!isFederal(c.source)) return c;
+  const company = typeof c.company === "string" ? c.company.trim() : "";
+  const seen = typeof c.first_seen === "string" && /^\d{4}-\d{2}-\d{2}/.test(c.first_seen) ? c.first_seen : null;
+  return {
+    ...c,
+    first_seen: null,
+    federal: {
+      agency: company && !isFederal(company) ? company : null,
+      official_url: officialUrlOf(c.posting_id, null),
+      on_board_since: seen,
+      notice: OPM_NOTICE,
+    },
+  };
+}
+
+/**
+ * Said in every /v1/changes body (OD16 review): what the feed shows of U.S.
+ * federal announcements, and the opened backlog it cannot show.
+ */
+const FEDERAL_COVERAGE = {
+  opened:
+    "A U.S. federal announcement (source usajobs) is in opened[] only once the agency's who-may-apply statement is stored, and opened[] is keyed on first_seen, when it first appeared on our board, not when its statement was stored. So an announcement whose statement was stored after a sync's cursor passed its first_seen never appears in opened[]: that is every federal announcement the board held before it began storing the statement (about 18,500, measured 2026-11-18) and any whose statement arrives on a later read. Read those with /v1/jobs?source=usajobs; closed[] can carry closures of announcements opened[] never showed.",
+  closed:
+    "closed[] carries every U.S. federal closure, including announcements never handed on for want of a who-may-apply statement, since a closure suggests no job. Each has company = the hiring agency, first_seen null and a federal block (agency, official_url, on_board_since, OPM's notice), and the body names meta.attribution.federal with the date our board last read the USAJOBS feed.",
+} as const;
+
+/**
  * The company_tokens whose postings come from a withheld source, read once an
  * hour per isolate through v1_withheld_company_tokens (20261009122000). null
  * when the read failed or the function is not there yet: the caller then
@@ -428,8 +496,9 @@ const JOB_FIELDS = [
   "agency",
   // OD16: the closing date an agency states (20261111100000), and the
   // agency's who-may-apply statement and hiring paths (20261119110000, job-board
-  // .104). Null off the federal feed. The federal gate reads who_may_apply, so
-  // this select needs that migration applied before this build deploys.
+  // .104). Null off the federal feed. The federal gate reads who_may_apply;
+  // until that migration is applied, db()'s wrapper (./federal-columns.ts)
+  // sends this select again without the three columns and with no federal row.
   "closes_at", "who_may_apply", "hiring_paths",
 ].join(",");
 
@@ -553,7 +622,7 @@ const LIST_FILTERS = [
 // 2026-11-09.1 (cost wave, the integration; cost audit 2026-11-08 Do first #6): the /v1/stats basis says the rollup behind feedFreshness and bySource is recomputed every 30 minutes, the schedule migration 20261109121000 gives job-board-stats-rollup, which applies after this build.
 // 2026-11-12.1 (bug round of 2026-11-08, part A, public-api lane, S14X-132, S14X-275, S14X-065, S14X-037, NB-27, NB-30, NB-32, S14X-274, S14X-276, S14X-160, S14X-277, S14X-192, GP-NOLOG-2, USAJOBS-COPY-2; connector lane, S14X-134, S14X-264, through the shared form modules): a non-POST fit call is refused before it is metered, a fit call that scored nothing gives its allowance back, cursors and pages hold their bounds, every figure is dated by the run that counted it, and a form body cut off mid-read is never cached.
 // 2026-11-18.2 (lane SH, OD14-ASHBY shared half, 2026-11-18): the shared form reader answers an Ashby posting "withheld" before its cache or any request whatever vendor list a caller passes, and its Ashby reader is deleted; /v1 answers form.source "not-read-on-this-surface" for Ashby as 2026-11-18.1 did through its own list. A build of its own, because round B's integration branch already carries 2026-11-18.1 without the shared stop, and the verifier tells the two apart only by this stamp.
-// 2026-11-19.1 (OD16, lane api4/od16-federal, owner's yes of 2026-11-18): U.S. federal rows leave the withheld list and are served once the agency's who-may-apply statement is stored (FEDERAL_GATE_OR in SQL, and in memory on the proxied paths), with closes_at, who_may_apply, hiring_paths, a federal block (agency, official link, on_board_since, open until the agency's closing date, OPM's notice) and first_seen null on /v1/jobs; meta.attribution names OPM's credit and our retrieval date; /v1/companies credits each agency in federalAgencies; apiVersion 2026-11-19.1. Needs job-board .104's migration 20261119110000 (who_may_apply) applied first.
+// 2026-11-19.1 (OD16, lane api4/od16-federal, owner's yes of 2026-11-18): U.S. federal rows leave the withheld list and are served once the agency's who-may-apply statement is stored (FEDERAL_GATE_OR in SQL, and in memory on the proxied paths), with closes_at, who_may_apply, hiring_paths, a federal block (agency, official link, on_board_since, open until the agency's closing date, OPM's notice) and first_seen null on /v1/jobs; meta.attribution names OPM's credit and our retrieval date; /v1/companies credits each agency in federalAgencies; apiVersion 2026-11-19.1. /v1/changes shapes and credits a federal closure as it does an opened row (federal block, first_seen null, meta.attribution.federal with the read date) and names the opened backlog it cannot show in federalCoverage, which the keyless index repeats in federal.changes; coverage.note on /v1/jobs says a federal row is open until the agency's closing date, not that our last read listed it. Before job-board .104's migration 20261119110000 (who_may_apply) is applied, every postings read is sent again without the federal columns and with no federal row (./federal-columns.ts), so this build may deploy first and serves every other vendor as before.
 const FN_BUILD = "public-api.2026-11-19.1";
 
 const cors = {
@@ -613,8 +682,13 @@ async function sha256Hex(s: string): Promise<string> {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// THROUGH THE COLUMN WRAPPER (./federal-columns.ts, OD16 review): a read of
+// job_board_postings that names closes_at, who_may_apply or hiring_paths
+// before the table has them is sent again without them and with no federal
+// row, so the deploy order of this build and job-board .104's migration
+// cannot take /v1 down.
 const db = (): SupabaseClient =>
-  createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+  federalColumnTolerant(createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""));
 
 /** Freshness fence, applied to every listing query. */
 const freshCutoff = () => new Date(Date.now() - FRESH_WINDOW_DAYS * 86_400_000).toISOString();
@@ -720,8 +794,12 @@ Deno.serve(async (req) => {
         const { retrievedAt: _at, retrievedAtBasis: _basis, ...credit } = federalCredit(null);
         return {
           ...credit,
-          gate: "A U.S. federal announcement is served only once the agency's who-may-apply statement (who_may_apply) is stored, so no caller is handed a job the person may not be eligible to apply for. Until then it is absent from every row endpoint, /v1/jobs/{id} answers 404 for it, and a ranked page counts it in disclosures.federalWithheld; it opens on resumebooster.work and on USAJOBS meanwhile.",
+          gate: "A U.S. federal announcement is served only once the agency's who-may-apply statement (who_may_apply) is stored, so no caller is handed a job the person may not be eligible to apply for. Until then it is absent from /v1/jobs, opened[] of /v1/changes and POST /v1/fit, /v1/jobs/{id} answers 404 for it, and a ranked page counts it in disclosures.federalWithheld; it opens on resumebooster.work and on USAJOBS meanwhile. Once it closes, its closure is in closed[] of /v1/changes whether or not it was ever served (changes, below).",
           employers: "The hiring agency is the employer, named in company; every federal row shares company_token usajobs, and /v1/companies credits each agency in federalAgencies.",
+          // What /v1/changes shows of the federal feed and the opened backlog
+          // it cannot (OD16 review): the sentences every change-feed body
+          // carries in federalCoverage, said here too.
+          changes: FEDERAL_COVERAGE,
         };
       })(),
     });
@@ -1209,7 +1287,7 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
     },
     coverage: {
       freshnessWindowDays: FRESH_WINDOW_DAYS,
-      note: "Only postings still live in the employer's own feed within the last 30 days.",
+      note: COVERAGE_NOTE,
     },
     // The board's own honesty, verbatim — filters it could not honour, words it
     // read as filters, spelling suggestions, the route it took — plus OUR
@@ -1741,7 +1819,7 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     total: { value: count, basis: countBasis },
     coverage: {
       freshnessWindowDays: FRESH_WINDOW_DAYS,
-      note: "Only postings still live in the employer's own feed within the last 30 days. Withdrawn postings are excluded, never re-dated.",
+      note: `${COVERAGE_NOTE} Withdrawn postings are excluded, never re-dated.`,
       // THIS BLOCK IS EMITTED UNDER A SALARY FLOOR, SO IT MUST QUOTE THE
       // FLOOR'S OWN COLUMN: the share of servable postings carrying
       // salary_rank_usd, the converted figure the floor binds, never the wider
@@ -2194,33 +2272,40 @@ async function changes(
     const shaped = v1Row(r);
     return isFederal(r.source) ? { ...shaped, first_seen: r.first_seen ?? null } : shaped;
   });
+  // A FEDERAL CLOSURE IS SHAPED AND CREDITED TOO (OD16 review). Closures are
+  // not gated (a closed announcement is suggested to nobody), so closed[] can
+  // carry federal rows on a page whose opened[] has none: each is shaped by
+  // v1Closure, and the credit, with the date we read the feed, is built from
+  // both lists, so no body carries a federal row without it.
+  const closedServed = closedRows.map(({ suspect, batch_live_before, ...c }: Record<string, unknown>) => v1Closure({
+    ...c,
+    // Named, not left as a bare boolean: `superseded` means the posting was
+    // re-listed under a new id rather than genuinely closing, and a consumer
+    // counting "roles filled" must not count those.
+    outcome: (c as { superseded?: boolean }).superseded ? "relisted" : "closed",
+    // TRUE only on an include_suspect=true walk: the row was written in a
+    // batch the collector doubted (see the select above). FALSE: the
+    // collector sized the batch and did not doubt it. NULL: written before
+    // it sized batches at all (batch_live_before IS NULL), so suspect=false
+    // there is a column default, not a verdict, and no filter removed it.
+    // A repair can mark such a row suspect, hence suspect is read first.
+    suspectBatch: suspect === true ? true : batch_live_before == null ? null : false,
+    // TRUE means closed_at is the date WE COULD FINALLY SEE the posting was
+    // gone, not the date it went. It is set on boards over the page cap whose
+    // first complete pass backfilled a window of takedowns at once, so the
+    // error is one-directional (always late) and bounded by the freshness
+    // window rather than unbounded. A consumer computing time-to-close or a
+    // daily-takedown series must exclude these; a consumer asking "is this
+    // role still open?" can use them exactly as they are.
+    closedAtIsObservation: (c as { absence_basis?: string }).absence_basis === "lap_backfill",
+  }));
+  const credit = await federalMetaRead(client, [...openedServed, ...closedServed]);
   return json({
     apiVersion: API_VERSION,
-    ...federalMeta(openedServed),
+    ...credit,
     since: sinceIso,
     opened: openedServed,
-    closed: closedRows.map(({ suspect, batch_live_before, ...c }: Record<string, unknown>) => ({
-      ...c,
-      // Named, not left as a bare boolean: `superseded` means the posting was
-      // re-listed under a new id rather than genuinely closing, and a consumer
-      // counting "roles filled" must not count those.
-      outcome: (c as { superseded?: boolean }).superseded ? "relisted" : "closed",
-      // TRUE only on an include_suspect=true walk: the row was written in a
-      // batch the collector doubted (see the select above). FALSE: the
-      // collector sized the batch and did not doubt it. NULL: written before
-      // it sized batches at all (batch_live_before IS NULL), so suspect=false
-      // there is a column default, not a verdict, and no filter removed it.
-      // A repair can mark such a row suspect, hence suspect is read first.
-      suspectBatch: suspect === true ? true : batch_live_before == null ? null : false,
-      // TRUE means closed_at is the date WE COULD FINALLY SEE the posting was
-      // gone, not the date it went. It is set on boards over the page cap whose
-      // first complete pass backfilled a window of takedowns at once, so the
-      // error is one-directional (always late) and bounded by the freshness
-      // window rather than unbounded. A consumer computing time-to-close or a
-      // daily-takedown series must exclude these; a consumer asking "is this
-      // role still open?" can use them exactly as they are.
-      closedAtIsObservation: (c as { absence_basis?: string }).absence_basis === "lap_backfill",
-    })),
+    closed: closedServed,
     page: {
       limit,
       openedReturned: openedRows.length,
@@ -2262,7 +2347,12 @@ async function changes(
     // against the site would otherwise find SmartRecruiters roles opening and
     // closing on the page and never here, and read that as dropped events.
     excludedSources: { sources: [...NO_REDISTRIBUTION_SOURCES], reason: NO_REDISTRIBUTION_REASON },
-    note: "opened = first seen in the employer's feed since `since`. closed = gone from it. outcome distinguishes a genuine close from a re-list under a new id. closedAtIsObservation=true means closed_at is when we could first SEE the posting was gone, not when it went (a board over the page cap backfilling its first complete pass) -- the error is always late and bounded by the freshness window; exclude those rows from any time-to-close or per-day takedown series. By default closed[] leaves out batches our collector flagged as a possible failed read of its own (one pass that removed so much of a board that the takedown may be ours, not the employer's); include_suspect=true returns them too, each marked suspectBatch:true, and suspectBatchesIncluded says which you got. suspectBatch:false means the collector assessed the batch and did not doubt it; suspectBatch:null means the closure was written before the collector began assessing its batches, so it was never assessed and neither walk filters it -- a paid walk reaching that far back can still contain a failed read of ours served as outcome closed. A default walk, with outcome relisted and closedAtIsObservation rows dropped, is counted on the same rules as our published daily takedown figure, except that the figure also counts the hiring systems in excludedSources: this feed can count lower than it by those, never higher. Both lists are ordered OLDEST FIRST and page independently: follow page.opened.nextCursor as ?opened_cursor= and page.closed.nextCursor as ?closed_cursor= until hasMore is false. Each list reads only up to its settledThrough (closed[] a quarter of an hour behind now, opened[] two minutes), because a closure is stamped before it is written and a later stamp can be written first. To keep a sync going, store page.opened.resumeCursor and page.closed.resumeCursor, which every page carries, and pass them back with the same since: resume by cursor, never by moving since to the last stamp you saw, which skips rows written late under an earlier stamp.",
+    // AND THE ONE FEED IT COVERS IN PART (OD16 review): a federal
+    // announcement opens here only once labelled, keyed on when we first saw
+    // it, so the backlog labelled later never opens here; said in every body,
+    // because a sync that never sees one cannot learn it from a row.
+    federalCoverage: FEDERAL_COVERAGE,
+    note: "opened = first seen in the employer's feed since `since`. closed = gone from it. outcome distinguishes a genuine close from a re-list under a new id. closedAtIsObservation=true means closed_at is when we could first SEE the posting was gone, not when it went (a board over the page cap backfilling its first complete pass) -- the error is always late and bounded by the freshness window; exclude those rows from any time-to-close or per-day takedown series. By default closed[] leaves out batches our collector flagged as a possible failed read of its own (one pass that removed so much of a board that the takedown may be ours, not the employer's); include_suspect=true returns them too, each marked suspectBatch:true, and suspectBatchesIncluded says which you got. suspectBatch:false means the collector assessed the batch and did not doubt it; suspectBatch:null means the closure was written before the collector began assessing its batches, so it was never assessed and neither walk filters it -- a paid walk reaching that far back can still contain a failed read of ours served as outcome closed. A default walk, with outcome relisted and closedAtIsObservation rows dropped, is counted on the same rules as our published daily takedown figure, except that the figure also counts the hiring systems in excludedSources: this feed can count lower than it by those, never higher. Both lists are ordered OLDEST FIRST and page independently: follow page.opened.nextCursor as ?opened_cursor= and page.closed.nextCursor as ?closed_cursor= until hasMore is false. Each list reads only up to its settledThrough (closed[] a quarter of an hour behind now, opened[] two minutes), because a closure is stamped before it is written and a later stamp can be written first. To keep a sync going, store page.opened.resumeCursor and page.closed.resumeCursor, which every page carries, and pass them back with the same since: resume by cursor, never by moving since to the last stamp you saw, which skips rows written late under an earlier stamp. U.S. federal announcements (source usajobs) are covered in part: federalCoverage says which, and why some never appear in opened[].",
   }, 200, headers);
 }
 

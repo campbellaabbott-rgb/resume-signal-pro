@@ -33,14 +33,44 @@
 #         federal.whoMayApply and no postedAt, and federalAttribution with
 #         OPM's notice; get_job on a SmartRecruiters id answers restricted;
 #   INFO  (keyed) the labelled federal rows /v1 serves (federalAgencies on
-#         /v1/companies) against the 18,505 the 2026-11-18 report measured.
+#         /v1/companies) against the 18,505 the 2026-11-18 report measured;
+#   FED6  the site's AI line ("Your AI searches N of M open postings: ...") in
+#         the live llms.txt counts no federal posting the AI cannot reach. It
+#         names USAJOBS among what stays on this website (the site subtracts
+#         every federal posting while FEDERAL_ROWS_IN_REACH is false in
+#         src/lib/home/board-figures.ts): PASS once OD16 serves, INFO before,
+#         and an INFO saying the flag may flip once the labelled rows reach
+#         about the board's federal count. A line that counts federal
+#         postings FAILs before OD16 serves (the AI reaches none of them, so
+#         this line runs even before FED0 passes), and after it unless the
+#         labelled rows (keyed, complete) are at least 98% of the federal
+#         count the homepage bake prints;
+#   FED7  (keyed, on FED2's page: no further call) coverage.note on /v1/jobs
+#         no longer promises every row is live in the feed's last read: it
+#         names the federal exception and the agency's closing date;
+#   FED8  (keyed) /v1/changes since two days ago: the body says which federal
+#         announcements opened[] can never show (federalCoverage), and every
+#         federal closure has first_seen null and a federal block with OPM's
+#         notice and a usajobs.gov link, every opened federal row its
+#         who_may_apply, and the body OPM's credit with a retrieval date.
+#         A page with no federal row is INFO for the shape and the credit;
+#   FED9  the /agents page as crawlers are served it says federal
+#         announcements are handed on (MCP_WITHHELD_NOTE) only while OD16 is
+#         serving. Saying it before FED0 passes FAILs: the site was published
+#         before the two functions, and agent-mcp still refuses every federal
+#         posting (the claim moved runtimes ahead of its subject). A page
+#         that still says the feed is withheld by our own choice is INFO: it
+#         waits for the frontend publish.
 #
 # The keyed lines need RB_API_KEY_FRESH (a live confirmed free key the owner
 # mints at /data-api; the .env.local key is revoked). Without it they print
 # INFO.
 #
-# READ-ONLY. Two OPTIONS preflights, a GET of the keyless /v1 index, keyed
-# GETs of /v1 (each metered like any customer call), job-board list reads
+# READ-ONLY. Two OPTIONS preflights, GETs of the live llms.txt, the homepage
+# bake and the /agents bake (as Googlebot, which is served the bake), a GET of the
+# keyless /v1 index, keyed GETs of /v1 (the federal page, up to four ids, the
+# companies count and one change-feed page, each metered like any customer
+# call), job-board list reads
 # under x-rb-budget: probe, and, only with VERIFY_KEYLESS_CALLS=1, two
 # agent-mcp tool calls (search_jobs and get_job), which read. Keys are sent as
 # headers and never printed.
@@ -90,11 +120,11 @@ judge(!!fed && /not operated, sponsored, approved or endorsed by OPM/.test(notic
 NODE
 
 if [ "$VDFED_LIVE" != 1 ]; then
-  echo "INFO  FED2-FED5 not run: OD16 is not serving (FED0), so no keyed or keyless call is spent"
+  echo "INFO  FED2-FED5, FED7 and FED8 not run: OD16 is not serving (FED0), so no keyed or keyless call is spent"
 else
   # ── FED2-FED4 and the count: keyed ──
   if [ -z "$VDFED_KEY" ]; then
-    echo "INFO  FED2, FED3, FED4 and the labelled count are not run: RB_API_KEY_FRESH is not set. OWNER: mint a confirmed free key at https://resumebooster.work/data-api and export it as RB_API_KEY_FRESH"
+    echo "INFO  FED2, FED3, FED4, FED7, FED8 and the labelled count are not run: RB_API_KEY_FRESH is not set. OWNER: mint a confirmed free key at https://resumebooster.work/data-api and export it as RB_API_KEY_FRESH"
   else
     vdfed_v1() { curl -s -m 60 -o "$2" -w '%{http_code}' "$VDFED_PA$1" -H "Authorization: Bearer $VDFED_KEY" -H "apikey: $K"; }
     VDFED_PAGE=$(vdfed_v1 "/v1/jobs?source=usajobs&limit=25" /tmp/vd_od16_page.json)
@@ -112,7 +142,10 @@ process.stdout.write(ids.join(" "))' /tmp/vd_od16_page.json /tmp/vd_od16_board.j
       printf '%s %s\n' "$VDFED_C" "$VDFED_ID" >> /tmp/vd_od16_ones.txt
     done
     vdfed_v1 "/v1/companies?q=usajobs&limit=1" /tmp/vd_od16_companies.json >/dev/null
-    VDFED_PAGE="$VDFED_PAGE" VDFED_MEASURED="$VDFED_MEASURED" node - /tmp/vd_od16_ <<'NODE'
+    # The change feed since two days ago: a free key reaches three days of closures.
+    VDFED_SINCE=$(node -e 'process.stdout.write(new Date(Date.now()-2*86400000).toISOString().slice(0,19)+"Z")')
+    VDFED_CH=$(vdfed_v1 "/v1/changes?since=$VDFED_SINCE&limit=100" /tmp/vd_od16_changes.json)
+    VDFED_PAGE="$VDFED_PAGE" VDFED_CH="$VDFED_CH" VDFED_MEASURED="$VDFED_MEASURED" node - /tmp/vd_od16_ <<'NODE'
 const fs = require("fs");
 const P = process.argv[2];
 const say = (v, m) => console.log(`${v}  ${m}`);
@@ -162,6 +195,60 @@ if (code !== "200" || !rows) {
   }
   if (aged.length) say("FAIL", `FED3 ${aged.length} of ${rows.length} federal rows print our first sighting as a field or an age: ${aged.slice(0, 2).join("; ")}`);
   else say("PASS", `FED3 none of ${rows.length} federal rows prints an age: first_seen null, on_board_since a date (e.g. ${rows[0].federal.on_board_since})`);
+}
+
+// FED7: what the page promises about "live" names the federal exception.
+if (code !== "200" || !page) say("INFO", "FED7 not judged: the federal page did not answer");
+else {
+  const note = String((page.coverage && page.coverage.note) || "");
+  if (/U\.S\. federal announcements/.test(note) && /agency's closing date/.test(note)) {
+    say("PASS", "FED7 the /v1/jobs coverage note says a federal row is open until the agency's closing date, not that our last read of the feed listed it");
+  } else {
+    say("FAIL", `FED7 the /v1/jobs coverage note names no federal exception to "still live in the employer's own feed": "${note.slice(0, 160)}"`);
+  }
+}
+
+// FED8: the change feed says what it cannot open, and shapes and credits a federal row.
+const OPM_RE = /not operated, sponsored, approved or endorsed by OPM/;
+const ch = rd("changes.json");
+const chCode = process.env.VDFED_CH;
+if (chCode !== "200" || !ch || !Array.isArray(ch.opened) || !Array.isArray(ch.closed)) {
+  say("FAIL", `FED8 /v1/changes answered HTTP ${chCode} ${JSON.stringify(ch).slice(0, 160)} (want 200 with opened and closed)`);
+} else {
+  const cov = ch.federalCoverage || {};
+  if (/never appears in opened\[\]/.test(String(cov.opened || "")) && /federal closure/.test(String(cov.closed || ""))) {
+    say("PASS", "FED8 the change feed says which federal announcements opened[] can never show, and what closed[] carries of them (federalCoverage)");
+  } else {
+    say("FAIL", `FED8 the change feed does not say which federal announcements opened[] cannot show: federalCoverage ${JSON.stringify(ch.federalCoverage || null).slice(0, 160)}`);
+  }
+  const fc = ch.closed.filter((c) => c && c.source === "usajobs");
+  const fo = ch.opened.filter((o) => o && o.source === "usajobs");
+  if (!fc.length && !fo.length) {
+    say("INFO", `FED8 the change feed since ${ch.since} carried no federal row: the closure's shape and the credit are not judged`);
+  } else {
+    const bad = [];
+    for (const c of fc) {
+      const f = c.federal || {};
+      const why = [];
+      if (c.first_seen !== null) why.push(`first_seen ${JSON.stringify(c.first_seen)}`);
+      if (!OPM_RE.test(String(f.notice || ""))) why.push("no OPM notice");
+      if (!/^https:\/\/(www\.)?usajobs\.gov\//.test(String(f.official_url || ""))) why.push(`official_url ${JSON.stringify(f.official_url)}`);
+      if (why.length) bad.push(`closed ${c.posting_id}: ${why.join(", ")}`);
+    }
+    for (const o of fo) {
+      const why = [];
+      if (typeof o.who_may_apply !== "string" || !o.who_may_apply.trim()) why.push("no who_may_apply");
+      if (!o.federal || !OPM_RE.test(String(o.federal.notice || ""))) why.push("no OPM notice");
+      if (why.length) bad.push(`opened ${o.id}: ${why.join(", ")}`);
+    }
+    const fa = ch.meta && ch.meta.attribution && ch.meta.attribution.federal;
+    const credit = !!fa && OPM_RE.test(String(fa.notice || "")) && ISO.test(String(fa.retrievedAt || ""));
+    if (bad.length || !credit) {
+      say("FAIL", `FED8 ${fc.length} federal closures and ${fo.length} opened federal rows: ${bad.length ? bad.slice(0, 3).join("; ") : "each shaped"}; meta.attribution.federal ${fa ? JSON.stringify({ notice: String(fa.notice || "").slice(0, 60), retrievedAt: fa.retrievedAt }) : "absent"}`);
+    } else {
+      say("PASS", `FED8 ${fc.length} federal closures (first_seen null, OPM's notice, the usajobs.gov link) and ${fo.length} opened federal rows (each with who_may_apply); the body names OPM's credit with retrievedAt ${fa.retrievedAt}`);
+    }
+  }
 }
 
 // FED4: the board's own federal ids, one by one.
@@ -245,3 +332,61 @@ NODE
     echo "INFO  FED5 the connector calls are not run: VERIFY_KEYLESS_CALLS=1 runs them, two of today's shared keyless allowance"
   fi
 fi
+
+# ── FED6: the site's AI line counts no federal posting the AI cannot reach ──
+# Run whether or not OD16 serves: a site publish that counts federal postings
+# before the connector hands them on is the failure this line exists for.
+curl -s -m 30 -A "$UA" -o /tmp/vd_od16_llms.txt "$SITE/llms.txt"
+curl -s -m 30 -A "$UA" -o /tmp/vd_od16_home.html "$SITE/"
+VDFED_LIVE="$VDFED_LIVE" node - /tmp/vd_od16_ <<'NODE'
+const fs = require("fs");
+const P = process.argv[2];
+const live = process.env.VDFED_LIVE === "1";
+const say = (v, m) => console.log(`${v}  ${m}`);
+const raw = (f) => { try { return fs.readFileSync(P + f, "utf8"); } catch { return ""; } };
+const rd = (f) => { try { return JSON.parse(raw(f)); } catch { return null; } };
+const num = (s) => Number(String(s).replace(/,/g, ""));
+const fmt = (n) => n.toLocaleString("en-US");
+const line = /Your AI searches ([\d,]+) of the ([\d,]+) open postings: (.+?) postings \(([\d,]+)\) stay on this website\./.exec(raw("llms.txt"));
+if (!line) { say("INFO", "FED6 the live llms.txt carries no AI reach line: nothing to judge"); process.exit(0); }
+const [, reach, total, names] = line;
+// The board's federal count, as the homepage bake prints it (the same read the line subtracts).
+const row = /USAJOBS <span[^>]*>\([^)]*\)<\/span><\/td><td[^>]*>([\d,]+)<\/td>/.exec(raw("home.html"));
+const board = row ? num(row[1]) : null;
+// The labelled federal rows /v1 serves (keyed, OD16 serving), when FED count read them.
+const co = rd("companies.json");
+const fa = co && co.federalAgencies && Array.isArray(co.federalAgencies.agencies) ? co.federalAgencies : null;
+const labelled = fa ? fa.agencies.reduce((n, a) => n + Number(a.open_postings || 0), 0) : null;
+const caughtUp = live && fa && fa.complete === true && board !== null && board > 0 && labelled >= 0.98 * board;
+if (/\bUSAJOBS\b/.test(names)) {
+  say(live ? "PASS" : "INFO", `FED6 the live AI line (${reach} of ${total}) subtracts every federal posting and names USAJOBS among what stays on this website: never above what the AI can reach${live ? "" : " (OD16 not serving yet)"}`);
+  if (caughtUp) say("INFO", `FED6 the labelled federal rows /v1 serves (${fmt(labelled)}) are at least 98% of the board's federal count (${fmt(board)}): the AI line may now count them (set FEDERAL_ROWS_IN_REACH in src/lib/home/board-figures.ts and drop the clause about it from MCP_WITHHELD_NOTE)`);
+  process.exit(0);
+}
+if (!live) {
+  say("FAIL", `FED6 the live AI line (${reach} of ${total}, naming only ${names}) counts every federal posting as searchable while OD16 is not serving (FED0): the AI reaches none of them`);
+} else if (caughtUp) {
+  say("PASS", `FED6 the live AI line counts the federal postings, and the labelled rows /v1 serves (${fmt(labelled)}) are at least 98% of the board's federal count (${fmt(board)})`);
+} else if (labelled === null || board === null) {
+  say("INFO", `FED6 the live AI line counts the federal postings, and ${labelled === null ? "the labelled rows /v1 serves were not read (RB_API_KEY_FRESH)" : "the homepage bake printed no federal count"}: not judged`);
+} else {
+  say("FAIL", `FED6 the live AI line counts every federal posting as searchable, but /v1 serves ${fmt(labelled)} labelled of the board's ${fmt(board)}${fa.complete === true ? "" : " (the count stopped early)"}: the line is about ${fmt(Math.max(0, board - labelled))} above what the AI can reach`);
+}
+NODE
+
+# ── FED9: the site says federal announcements are handed on only once they are ──
+# Run whether or not OD16 serves, as FED6 is: a site published before the two
+# functions says the connector hands on postings it still refuses.
+curl -s -m 30 -A "$UA" -o /tmp/vd_od16_agents.html "$SITE/agents"
+VDFED_LIVE="$VDFED_LIVE" node - /tmp/vd_od16_agents.html <<'NODE'
+const fs = require("fs");
+const live = process.env.VDFED_LIVE === "1";
+const say = (v, m) => console.log(`${v}  ${m}`);
+let bake = ""; try { bake = fs.readFileSync(process.argv[2], "utf8"); } catch { /* below */ }
+const handedOn = bake.includes("U.S. federal announcements are handed on once");
+const byChoice = bake.includes("which we choose not to redistribute for now");
+if (handedOn && live) say("PASS", "FED9 /agents says U.S. federal announcements are handed on once who may apply is stored, and OD16 is serving");
+else if (handedOn) say("FAIL", "FED9 /agents already says U.S. federal announcements are handed on, but OD16 is not serving (FED0): the connector still refuses every federal posting. Publish the site after public-api and agent-mcp");
+else if (byChoice) say("INFO", `FED9 /agents still says the federal feed is withheld by our own choice${live ? ": it waits for the frontend publish, while the connector already hands on labelled announcements" : ", as the connector still does (OD16 not serving yet)"}`);
+else say("INFO", "FED9 the /agents bake carries neither federal wording: not judged");
+NODE

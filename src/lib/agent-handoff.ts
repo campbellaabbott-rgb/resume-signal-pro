@@ -32,6 +32,7 @@
 // it has no documented fallback.
 import { MCP_PAGE_HOSTS, MCP_TOOL_NAMES, MCP_ADD_TO_CLAUDE_LIVE, MCP_WITHHELD_SOURCES, andList, claudeInstallLink } from "@/config/mcp-tools";
 import { systemLabel } from "@/lib/listing/apply-url";
+import { FEDERAL_ROWS_IN_REACH, FEDERAL_SOURCE } from "@/lib/home/board-figures";
 import { MCP_URL } from "@/lib/mcp-test";
 
 /**
@@ -216,9 +217,31 @@ export type SearchSort = "relevance" | "newest" | "salary";
  * THE SYSTEMS THE CONNECTOR DOES NOT HAND ON (S14X-054). agent-mcp refuses
  * every row of MCP_WITHHELD_SOURCES (NO_REDISTRIBUTION_SOURCES), so a posting
  * from one is not handed to an agent, and a search's `vendor` loses them.
+ *
+ * AND, UNTIL THE REACH COUNTS THEM, THE FEDERAL FEED (OD16 review,
+ * 2026-11-19). USAJOBS left MCP_WITHHELD_SOURCES, which made the board offer
+ * every federal posting to the person's AI. The connector hands one on only
+ * once the agency's who-may-apply statement is stored: none before agent-mcp
+ * 2026-11-19.1 serves (that build refuses the id outright), none before
+ * job-board .104 stores a statement, and the board's rows do not carry the
+ * statement, so this page cannot tell a labelled posting from the rest. A
+ * hand-off the server then refuses is the defect S14X-054 closed. So the
+ * board keeps federal postings on the page while the AI line says they stay
+ * on this website, on the one flag that line turns on (FEDERAL_ROWS_IN_REACH,
+ * src/lib/home/board-figures.ts): it can only understate what the AI reaches.
  */
 export function isWithheldSource(source: string | null | undefined): boolean {
-  return typeof source === "string" && MCP_WITHHELD_SOURCES.includes(source.trim().toLowerCase());
+  return handoffWithholds(source, FEDERAL_ROWS_IN_REACH);
+}
+/**
+ * The rule isWithheldSource applies, with the reach flag as an argument, so
+ * the guard holds both of its states: a withheld system always, and the
+ * federal feed until the reach counts it.
+ */
+export function handoffWithholds(source: string | null | undefined, federalInReach: boolean): boolean {
+  if (typeof source !== "string") return false;
+  const s = source.trim().toLowerCase();
+  return MCP_WITHHELD_SOURCES.includes(s) || (!federalInReach && s === FEDERAL_SOURCE);
 }
 const vendorList = (v: unknown): string[] =>
   (Array.isArray(v) ? v.map(String) : String(v ?? "").split(",")).map((s) => s.trim()).filter(Boolean);

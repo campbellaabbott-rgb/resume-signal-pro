@@ -20,7 +20,22 @@
  *     a federal card with a posting date, a SmartRecruiters posting handed
  *     on, and the federal feed still refused;
  *   - a page with no labelled row yet is INFO, not FAIL;
- *   - every call is an OPTIONS or a GET, a job-board list read under
+ *   - FED6, the site's AI line in the live llms.txt: naming USAJOBS among
+ *     what stays on the website passes (INFO before the deploy), and says
+ *     when it may stop; counting the federal postings fails before the
+ *     deploy, and after it unless the labelled rows are at the board's
+ *     federal count;
+ *   - FED7, the /v1/jobs coverage note: the old promise that every row is
+ *     live in the employer's feed fails; FED8, the change feed: a body
+ *     without federalCoverage fails, and so do a federal closure served raw
+ *     (first_seen kept, no federal block), a federal row with no credit in
+ *     the body and a credit with no retrieval date; a page with no federal
+ *     row is INFO for the shape and never a pass of it;
+ *   - FED9, the /agents bake: saying federal announcements are handed on
+ *     before OD16 serves fails (the site published ahead of the functions);
+ *     the old wording is INFO in both states, never a pass;
+ *   - every call is an OPTIONS or a GET (the site's llms.txt, homepage and
+ *     /agents among them), a job-board list read under
  *     x-rb-budget: probe, or (only with VERIFY_KEYLESS_CALLS=1) a search_jobs
  *     or get_job tool call; no key is ever printed.
  */
@@ -29,6 +44,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { MCP_WITHHELD_NOTE } from "../config/mcp-tools";
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -116,16 +132,59 @@ const fedRow = (id: string, company: string, extra: Record<string, unknown> = {}
 
 type World = {
   apiBuild: string; mcpBuild: string;
+  /** The live llms.txt and the homepage bake, for FED6. */
+  llms: string; home: string;
+  /** The /agents bake, for FED9. */
+  agents: string;
   index: Record<string, unknown>;
   page: [number, Record<string, unknown>];
+  /** The change-feed page, for FED8. */
+  changes: [number, Record<string, unknown>];
   one: Record<string, [number, Record<string, unknown>]>;
   search: Record<string, unknown>;
   srJob: Record<string, unknown>;
 };
 
+/** The AI line as the site prints it: every federal posting subtracted and named (FEDERAL_ROWS_IN_REACH false). */
+const LLMS_HELD = "- [Connect your agent](https://resumebooster.work/agents): Your AI searches 908,491 of the 998,218 open postings: USAJOBS and SmartRecruiters postings (89,727) stay on this website. Counted 8 Nov 2026, 09:52 UTC. MCP server address ...";
+/** The line once the flag flips: the federal postings counted as searchable. */
+const LLMS_COUNTED = "- [Connect your agent](https://resumebooster.work/agents): Your AI searches 926,285 of the 998,218 open postings: SmartRecruiters postings (71,933) stay on this website. Counted 8 Nov 2026, 09:52 UTC. MCP server address ...";
+/** The homepage bake's hiring-system table, with the board's federal count. */
+const homeWith = (federal: number) => `<table><tr><td class="py-1.5">Workday</td><td class="py-1.5 text-right">400,000</td></tr><tr><td class="py-1.5">USAJOBS <span class="text-muted-foreground">(the federal government&#39;s listing site)</span></td><td class="py-1.5 text-right">${federal.toLocaleString("en-US")}</td></tr></table>`;
+
+/** coverage.note as public-api 2026-11-19.1 says it (COVERAGE_NOTE), and as every build before it did. */
+const NOTE_NEW = "Only postings still live in the employer's own feed within the last 30 days, except U.S. federal announcements (source usajobs): one read of that feed returns at most 10,000 of them, so our last read may not have listed a federal row, and each is open until the agency's closing date (closes_at) unless the agency withdraws it sooner. Withdrawn postings are excluded, never re-dated.";
+const NOTE_OLD = "Only postings still live in the employer's own feed within the last 30 days. Withdrawn postings are excluded, never re-dated.";
+const FED_COVERAGE = {
+  opened: "A U.S. federal announcement (source usajobs) is in opened[] only once the agency's who-may-apply statement is stored, and opened[] is keyed on first_seen. So an announcement whose statement was stored after a sync's cursor passed its first_seen never appears in opened[].",
+  closed: "closed[] carries every U.S. federal closure, including announcements never handed on for want of a who-may-apply statement.",
+};
+/** A federal closure as /v1/changes shapes it (v1Closure): no first_seen, the federal block. */
+const fedClosure = (extra: Record<string, unknown> = {}) => ({
+  event_id: 7001, posting_id: "usajobs:usajobs:881700002", source: "usajobs", company_token: "usajobs", company: "Veterans Health Administration",
+  title: "Police Officer", category: "security", first_seen: null, posted_at: ago(60 * 24 * 9), closed_at: ago(60 * 20), superseded: false, absence_basis: null,
+  outcome: "closed", suspectBatch: false, closedAtIsObservation: false,
+  federal: { agency: "Veterans Health Administration", official_url: "https://www.usajobs.gov/job/881700002", on_board_since: ago(60 * 24 * 9), notice: OPM },
+  ...extra,
+});
+const GH_CLOSURE = { event_id: 7002, posting_id: "greenhouse:acme:9", source: "greenhouse", company_token: "acme", company: "Acme", title: "Nurse", first_seen: ago(60 * 24 * 12), closed_at: ago(60 * 19), outcome: "closed" };
+const GH_OPENED = { id: "greenhouse:acme:1", source: "greenhouse", company_token: "acme", company: "Acme", title: "Security Officer", first_seen: ago(60 * 30), who_may_apply: null };
+const changesWith = (opened: unknown[], closed: unknown[], credit: boolean): Record<string, unknown> => ({
+  apiVersion: "2026-11-19.1",
+  ...(credit ? { meta: { attribution: { required: true, federal: { source: "usajobs", notice: OPM, officialSite: "https://www.usajobs.gov", retrievedAt: ago(45) } } } } : {}),
+  since: ago(60 * 48), opened, closed, federalCoverage: FED_COVERAGE,
+});
+
+/** The /agents bake's withheld note: as this lane publishes it (MCP_WITHHELD_NOTE), and as the live page said it on 2026-11-19. */
+const AGENTS_NEW = `<html><body><h1>Connect your AI</h1><p>${MCP_WITHHELD_NOTE}</p></body></html>`;
+const AGENTS_OLD = "<html><body><h1>Connect your AI</h1><p>Two hiring systems on the job board are not handed on by this server or the data API: the U.S. federal job feed, which we choose not to redistribute for now, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it.</p></body></html>";
+
 const GOOD = (): World => ({
   apiBuild: "public-api.2026-11-19.1",
   mcpBuild: "agent-mcp.2026-11-19.1",
+  llms: LLMS_HELD,
+  home: homeWith(17_794),
+  agents: AGENTS_NEW,
   index: {
     apiVersion: "2026-11-19.1",
     restrictions: { excludedSources: ["smartrecruiters"], reason: "One hiring system is shown on resumebooster.work but is not available through this API: SmartRecruiters." },
@@ -135,7 +194,10 @@ const GOOD = (): World => ({
     apiVersion: "2026-11-19.1",
     meta: { attribution: { required: true, federal: { source: "usajobs", notice: OPM, officialSite: "https://www.usajobs.gov", retrievedAt: ago(45) } } },
     data: [fedRow(IDS.a, "Transportation Security Administration"), fedRow(IDS.b, "Veterans Health Administration")],
+    coverage: { freshnessWindowDays: 30, note: NOTE_NEW },
   }],
+  // An opened federal row keeps first_seen here: it is the event's own stamp, never an age.
+  changes: [200, changesWith([GH_OPENED, fedRow(IDS.a, "Transportation Security Administration", { first_seen: ago(60 * 20) })], [fedClosure(), GH_CLOSURE], true)],
   one: {
     // Asked for only when the page did not serve them.
     [IDS.a]: [200, { data: { id: IDS.a, who_may_apply: "United States Citizens" } }],
@@ -156,6 +218,7 @@ const BEFORE = (): World => ({
   ...GOOD(),
   apiBuild: "public-api.2026-11-18.2",
   mcpBuild: "agent-mcp.2026-11-18.2",
+  agents: AGENTS_OLD,
   index: { apiVersion: "2026-10-11.1", restrictions: { excludedSources: ["usajobs", "smartrecruiters"], reason: "Two hiring systems..." } },
   page: [451, { error: { code: "source_not_redistributable", message: "withheld" } }],
 });
@@ -169,7 +232,11 @@ function routes(w: World): Route[] {
     { match: `^OPTIONS ${esc(PA)}/v1 `, headers: { "x-fn-build": w.apiBuild } },
     { match: `^OPTIONS ${esc(P)}/functions/v1/agent-mcp `, headers: { "x-fn-build": w.mcpBuild } },
     { match: `^GET ${esc(PA)}/v1 WHO:NONE$`, body: JSON.stringify(w.index) },
+    { match: "^GET https://site\\.test/llms\\.txt WHO:NONE$", body: w.llms },
+    { match: "^GET https://site\\.test/ WHO:NONE$", body: w.home },
+    { match: "^GET https://site\\.test/agents WHO:NONE$", body: w.agents },
     { match: `^GET ${esc(PA)}/v1/jobs\\?source=usajobs&limit=25 WHO:FRESH$`, status: w.page[0], body: JSON.stringify(w.page[1]) },
+    { match: `^GET ${esc(PA)}/v1/changes\\?since=\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z&limit=100 WHO:FRESH$`, status: w.changes[0], body: JSON.stringify(w.changes[1]) },
     { match: `^GET ${esc(PA)}/v1/companies\\?q=usajobs&limit=1 WHO:FRESH$`, body: JSON.stringify({ data: [], federalAgencies: { agencies: [{ company: "Transportation Security Administration", open_postings: 4100 }, { company: "Veterans Health Administration", open_postings: 2200 }], complete: true, asOf: ago(20) } }) },
     { match: `^POST ${esc(P)}/functions/v1/job-board \\{"action":"list","vendor":"usajobs","limit":40\\} WHO:ANON$`, body: JSON.stringify(BOARD_FED) },
     { match: `^POST ${esc(P)}/functions/v1/job-board \\{"action":"list","vendor":"smartrecruiters","limit":1\\} WHO:ANON$`, body: JSON.stringify(BOARD_SR) },
@@ -203,13 +270,17 @@ describe("before the deploy: INFO only, and nothing spent", () => {
       expect(verdicts(r.lines, "PASS"), r.out).toEqual([]);
       expect(has(r.lines, "INFO", "FED0")).toBe(true);
       expect(r.lines.some((l) => /^INFO  FED1 .*\["usajobs","smartrecruiters"\]/.test(l))).toBe(true);
-      // No keyed /v1 call, no board read, no tool call.
-      expect(r.calls.filter((c) => !/^OPTIONS /.test(c) && !/^GET https:\/\/p\.supabase\.co\/functions\/v1\/public-api\/v1 WHO:NONE$/.test(c)), r.calls.join("\n")).toEqual([]);
+      expect(has(r.lines, "INFO", "FED6"), r.out).toBe(true);
+      // No keyed /v1 call, no board read, no tool call: the keyless index and the site's own pages only.
+      const SITE_READ = /^GET https:\/\/site\.test\/(llms\.txt|agents)? WHO:NONE$/;
+      expect(r.lines.some((l) => /^INFO  FED9 .*withheld by our own choice, as the connector still does/.test(l)), r.out).toBe(true);
+      expect(r.calls.filter((c) => !/^OPTIONS /.test(c) && !/^GET https:\/\/p\.supabase\.co\/functions\/v1\/public-api\/v1 WHO:NONE$/.test(c) && !SITE_READ.test(c)), r.calls.join("\n")).toEqual([]);
     });
   }
 
   it("one of the two builds serving is still INFO, and still spends nothing", () => {
-    const r = run(routes({ ...GOOD(), mcpBuild: "agent-mcp.2026-11-18.2" }), { fresh: true, keyless: true });
+    // The site is not published yet (the functions go first), so its page still says the old wording.
+    const r = run(routes({ ...GOOD(), mcpBuild: "agent-mcp.2026-11-18.2", agents: AGENTS_OLD }), { fresh: true, keyless: true });
     expect(verdicts(r.lines, "FAIL"), r.out).toEqual([]);
     expect(has(r.lines, "INFO", "FED0")).toBe(true);
     expect(r.calls.some((c) => /WHO:FRESH|agent-mcp WHO:NONE DATA|job-board/.test(c))).toBe(false);
@@ -217,10 +288,17 @@ describe("before the deploy: INFO only, and nothing spent", () => {
 });
 
 describe("after a good deploy every claim passes", () => {
-  it("FED0 to FED5 pass with a key and keyless calls, the count is INFO, and nothing FAILs", () => {
+  it("FED0 to FED8 pass with a key and keyless calls, the count is INFO, and nothing FAILs", () => {
     const r = run(routes(GOOD()), { fresh: true, keyless: true });
     expect(verdicts(r.lines, "FAIL"), r.out).toEqual([]);
-    for (const id of ["FED0", "FED1", "FED2", "FED3", "FED4", "FED5"]) expect(has(r.lines, "PASS", id), `${id}\n${r.out}`).toBe(true);
+    for (const id of ["FED0", "FED1", "FED2", "FED3", "FED4", "FED5", "FED6", "FED7", "FED8", "FED9"]) expect(has(r.lines, "PASS", id), `${id}\n${r.out}`).toBe(true);
+    // FED8 is two claims: what the feed says it cannot open, and the shape and credit of the federal rows it carries.
+    expect(r.lines.filter((l) => l.startsWith("PASS  FED8 "))).toHaveLength(2);
+    expect(r.lines.some((l) => /^PASS  FED8 1 federal closures .* and 1 opened federal rows/.test(l)), r.out).toBe(true);
+    // One change-feed page, asked for once, with the fresh key.
+    expect(r.calls.filter((c) => /\/v1\/changes\?/.test(c))).toHaveLength(1);
+    // The labelled rows are far below the board's federal count: no word about flipping the line.
+    expect(r.lines.some((l) => /^INFO  FED6 .*may now count them/.test(l)), r.out).toBe(false);
     expect(r.lines.filter((l) => l.startsWith("PASS  FED1 "))).toHaveLength(2);
     expect(r.lines.filter((l) => l.startsWith("PASS  FED5 "))).toHaveLength(2);
     expect(r.lines.some((l) => /^INFO  FED count 6,300 labelled federal rows served across 2 agencies .*18,505/.test(l)), r.out).toBe(true);
@@ -237,18 +315,108 @@ describe("after a good deploy every claim passes", () => {
   it("without a key or keyless calls the live section says what it skipped, and fails nothing", () => {
     const r = run(routes(GOOD()));
     expect(verdicts(r.lines, "FAIL"), r.out).toEqual([]);
-    expect(r.lines.some((l) => /^INFO  FED2, FED3, FED4 .*RB_API_KEY_FRESH/.test(l))).toBe(true);
+    expect(r.lines.some((l) => /^INFO  FED2, FED3, FED4, FED7, FED8 .*RB_API_KEY_FRESH/.test(l))).toBe(true);
     expect(r.lines.some((l) => /^INFO  FED5 .*VERIFY_KEYLESS_CALLS=1/.test(l))).toBe(true);
     expect(r.calls.some((c) => /WHO:FRESH|agent-mcp WHO:NONE DATA/.test(c))).toBe(false);
   });
 
   it("a page with no labelled row yet is INFO for FED2 and FED3, not FAIL", () => {
     const w = GOOD();
-    w.page = [200, { apiVersion: "2026-11-19.1", data: [] }];
+    w.page = [200, { apiVersion: "2026-11-19.1", data: [], coverage: { freshnessWindowDays: 30, note: NOTE_NEW } }];
     const r = run(routes(w), { fresh: true });
     expect(verdicts(r.lines, "FAIL"), r.out).toEqual([]);
     expect(has(r.lines, "INFO", "FED2")).toBe(true);
     expect(has(r.lines, "INFO", "FED3")).toBe(true);
+    // The note is said on every page, so it is judged on an empty one too.
+    expect(has(r.lines, "PASS", "FED7"), r.out).toBe(true);
+  });
+
+  it("a change-feed page with no federal row passes what it says and is INFO, never a pass, for the shape and the credit", () => {
+    const w = GOOD();
+    w.changes = [200, changesWith([GH_OPENED], [GH_CLOSURE], false)];
+    const r = run(routes(w), { fresh: true });
+    expect(verdicts(r.lines, "FAIL"), r.out).toEqual([]);
+    expect(r.lines.filter((l) => l.startsWith("PASS  FED8 "))).toHaveLength(1);
+    expect(r.lines.some((l) => /^INFO  FED8 .*carried no federal row/.test(l)), r.out).toBe(true);
+  });
+
+  it("a page holding only a federal closure is judged, and passes with the credit and its retrieval date", () => {
+    const w = GOOD();
+    w.changes = [200, changesWith([GH_OPENED], [fedClosure()], true)];
+    const r = run(routes(w), { fresh: true });
+    expect(verdicts(r.lines, "FAIL"), r.out).toEqual([]);
+    expect(r.lines.some((l) => /^PASS  FED8 1 federal closures .* and 0 opened federal rows/.test(l)), r.out).toBe(true);
+  });
+});
+
+describe("FED6: the site's AI line never counts a federal posting the AI cannot reach", () => {
+  it("a site that counts the federal postings before OD16 serves fails, even before the deploy", () => {
+    const r = run(routes({ ...BEFORE(), llms: LLMS_COUNTED }));
+    expect(has(r.lines, "FAIL", "FED6"), r.out).toBe(true);
+    expect(verdicts(r.lines, "FAIL").every((l) => l.startsWith("FAIL  FED6 ")), r.out).toBe(true);
+    expect(r.lines.some((l) => /^FAIL  FED6 .*926,285 of 998,218.*the AI reaches none of them/.test(l)), r.out).toBe(true);
+  });
+
+  it("after the deploy, counting them fails while the labelled rows are short of the board's federal count", () => {
+    const r = run(routes({ ...GOOD(), llms: LLMS_COUNTED, home: homeWith(18_505) }), { fresh: true });
+    expect(r.lines.some((l) => /^FAIL  FED6 .*6,300 labelled of the board's 18,505.*about 12,205 above what the AI can reach/.test(l)), r.out).toBe(true);
+    expect(verdicts(r.lines, "FAIL").every((l) => l.startsWith("FAIL  FED6 ")), r.out).toBe(true);
+  });
+
+  it("after the deploy, counting them passes once the labelled rows are at least 98% of the board's federal count", () => {
+    const r = run(routes({ ...GOOD(), llms: LLMS_COUNTED, home: homeWith(6_400) }), { fresh: true });
+    expect(has(r.lines, "PASS", "FED6"), r.out).toBe(true);
+    expect(verdicts(r.lines, "FAIL"), r.out).toEqual([]);
+  });
+
+  it("counting them without a key to read the labelled rows is INFO, not a pass", () => {
+    const r = run(routes({ ...GOOD(), llms: LLMS_COUNTED }));
+    expect(r.lines.some((l) => /^INFO  FED6 .*RB_API_KEY_FRESH/.test(l)), r.out).toBe(true);
+    expect(has(r.lines, "PASS", "FED6")).toBe(false);
+    expect(verdicts(r.lines, "FAIL"), r.out).toEqual([]);
+  });
+
+  it("a line that still subtracts them passes, and says it may stop once the labelled rows catch up", () => {
+    const r = run(routes({ ...GOOD(), home: homeWith(6_400) }), { fresh: true });
+    expect(has(r.lines, "PASS", "FED6"), r.out).toBe(true);
+    expect(r.lines.some((l) => /^INFO  FED6 .*6,300.*6,400.*may now count them \(set FEDERAL_ROWS_IN_REACH/.test(l)), r.out).toBe(true);
+  });
+
+  it("a site with no AI line is INFO, never a pass", () => {
+    const r = run(routes({ ...GOOD(), llms: "# Resume Booster" }), { fresh: true });
+    expect(r.lines.some((l) => /^INFO  FED6 .*no AI reach line/.test(l)), r.out).toBe(true);
+    expect(has(r.lines, "PASS", "FED6")).toBe(false);
+  });
+});
+
+describe("FED9: the site says federal announcements are handed on only while the connector hands them on", () => {
+  it("the note this lane publishes is the wording the line looks for", () => {
+    expect(MCP_WITHHELD_NOTE).toContain("U.S. federal announcements are handed on once");
+    expect(MCP_WITHHELD_NOTE).not.toContain("which we choose not to redistribute for now");
+  });
+
+  it("a site published before the two functions fails: it says the connector hands on what it still refuses", () => {
+    const r = run(routes({ ...BEFORE(), agents: AGENTS_NEW }));
+    expect(r.lines.some((l) => /^FAIL  FED9 .*OD16 is not serving \(FED0\).*Publish the site after public-api and agent-mcp/.test(l)), r.out).toBe(true);
+    expect(verdicts(r.lines, "FAIL").every((l) => l.startsWith("FAIL  FED9 ")), r.out).toBe(true);
+  });
+
+  it("one of the two builds serving is not enough: the published note still fails", () => {
+    const r = run(routes({ ...GOOD(), mcpBuild: "agent-mcp.2026-11-18.2" }));
+    expect(has(r.lines, "FAIL", "FED9"), r.out).toBe(true);
+  });
+
+  it("after the functions and before the site publish, the old wording is INFO and says what it waits for", () => {
+    const r = run(routes({ ...GOOD(), agents: AGENTS_OLD }), { fresh: true });
+    expect(r.lines.some((l) => /^INFO  FED9 .*waits for the frontend publish/.test(l)), r.out).toBe(true);
+    expect(has(r.lines, "PASS", "FED9")).toBe(false);
+    expect(verdicts(r.lines, "FAIL"), r.out).toEqual([]);
+  });
+
+  it("a bake with neither wording is INFO, never a pass", () => {
+    const r = run(routes({ ...GOOD(), agents: "<html><body>Connect your AI</body></html>" }), { fresh: true });
+    expect(r.lines.some((l) => /^INFO  FED9 .*neither federal wording/.test(l)), r.out).toBe(true);
+    expect(has(r.lines, "PASS", "FED9")).toBe(false);
   });
 });
 
@@ -264,6 +432,15 @@ describe("after the deploy each broken claim fails", () => {
     ["FED2", "an official link off usajobs.gov", (w) => { ((w.page[1].data as Array<Record<string, unknown>>)[0].federal as Record<string, unknown>).official_url = "https://jobs.example/850123456"; }],
     ["FED3", "our first sighting handed on as first_seen", (w) => { (w.page[1].data as Array<Record<string, unknown>>)[0].first_seen = ago(60 * 24 * 12); }],
     ["FED3", "an age field on the row", (w) => { (w.page[1].data as Array<Record<string, unknown>>)[0].posted_days_ago = 3; }],
+    ["FED7", "the old promise that every row is live in the employer's feed", (w) => { w.page[1].coverage = { freshnessWindowDays: 30, note: NOTE_OLD }; }],
+    ["FED7", "no coverage note at all", (w) => { delete w.page[1].coverage; }],
+    ["FED8", "a change feed that never says what opened[] cannot show", (w) => { delete w.changes[1].federalCoverage; }],
+    ["FED8", "a federal closure served raw: our first sighting as first_seen and no federal block", (w) => { w.changes = [200, changesWith([GH_OPENED], [{ ...fedClosure(), first_seen: ago(60 * 24 * 9), federal: undefined }, GH_CLOSURE], true)]; }],
+    ["FED8", "a federal closure with no link to the official announcement", (w) => { w.changes = [200, changesWith([], [fedClosure({ federal: { agency: "Veterans Health Administration", official_url: null, on_board_since: ago(600), notice: OPM } })], true)]; }],
+    ["FED8", "a page whose only federal row is a closure, with no credit in the body", (w) => { w.changes = [200, changesWith([GH_OPENED], [fedClosure()], false)]; }],
+    ["FED8", "a credit with no retrieval date", (w) => { ((w.changes[1].meta as Record<string, Record<string, Record<string, unknown>>>).attribution.federal).retrievedAt = null; }],
+    ["FED8", "an opened federal row with no who_may_apply", (w) => { w.changes = [200, changesWith([fedRow(IDS.a, "Transportation Security Administration", { who_may_apply: null })], [], true)]; }],
+    ["FED8", "the change feed answering an error", (w) => { w.changes = [500, { error: { code: "query_failed", message: "The query could not be completed." } }]; }],
     ["FED4", "an unlabelled id served without its statement", (w) => { w.one[IDS.held] = [200, { data: { id: IDS.held, who_may_apply: null } }]; }],
     ["FED4", "a 404 that says nothing about who may apply", (w) => { w.one[IDS.held] = [404, { error: { code: "not_found", message: "No live posting with that id." } }]; }],
     ["FED5", "a federal card with a posting date", (w) => { (w.search.jobs as Array<Record<string, unknown>>)[0].postedAt = ago(600); }],
@@ -285,7 +462,7 @@ describe("after the deploy each broken claim fails", () => {
 
 describe("the section never writes and never prints a key", () => {
   it("every call is a read, a probe-budget board list, or a reading tool call asked for", () => {
-    for (const w of [BEFORE(), GOOD()]) {
+    for (const w of [BEFORE(), GOOD(), { ...GOOD(), llms: LLMS_COUNTED }, { ...BEFORE(), agents: AGENTS_NEW }]) {
       for (const opts of [{}, { fresh: true }, { fresh: true, keyless: true }]) {
         const r = run(routes(w), opts);
         expect(writes(r.calls), r.calls.join("\n")).toEqual([]);
