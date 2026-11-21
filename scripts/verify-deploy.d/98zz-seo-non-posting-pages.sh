@@ -20,6 +20,10 @@
 #     name (its URL ends in a slash: the S14X-061 shape);
 #   - two pages of every other group (/industries, /cv-standards, /es, /fr,
 #     /de, /pt, /nl, /jobs/field, /vs, /ats, /guides, /research, ...).
+# Then, only when pages were chosen (SEO audit 2026-11-18, CRAWL-8): the
+# site's robots.txt, once, and every hreflang alternate the sampled pages
+# name on this host that the sample did not already read, once each, at
+# most 60.
 # Five unanswered requests in a row stop the reading (the site is down); the
 # pages not read are reported as unanswered.
 #
@@ -43,9 +47,33 @@
 #   N6  (INFO) the day /ghost-job-index dates its re-check, and its age (over
 #       36 hours, the page's "once a day" is not true: SEO check F07).
 #   N7  no two sampled pages share a title.
+#   N8  (SEO audit 2026-11-18, CRAWL-8: no post-publish check read hreflang)
+#       every sampled page in an hreflang cluster names itself and an
+#       x-default, gives each language one address, and names no other
+#       host; every alternate answers 200 itself, names one canonical, its
+#       own URL, says the language its code says in <html lang>, and lists
+#       the same set of (hreflang, address) pairs (Google ignores an
+#       annotation the other page does not return). A sampled page in
+#       another language with no alternates at all is a FAIL; with no page
+#       in a cluster and none in another language it is INFO.
+#   N9  (CRAWL-6 and CRAWL-4) robots.txt: no group opens with a line that
+#       allows the whole site, and every group, named and *, disallows
+#       /admin/claims, /auth and /account read both by the longest match
+#       (Google, Bing, RFC 9309) and by the first match (simpler readers).
+#       A 200 with no User-agent group is a FAIL, and so is one with no *
+#       group (a reader no group names may then read every path); a
+#       robots.txt that does not answer 200 is INFO here, since no group
+#       can be judged (section 63 FAILs a robots.txt that does not
+#       disallow /email/unsubscribe).
+#   N10 (OFFSITE-2) the homepage's one WebSite node gives the site's own
+#       host as an alternateName, the backup Google's site-name rules ask
+#       for. Two WebSite nodes, or a block that does not parse and hides
+#       it, are a FAIL; a / with no WebSite node is INFO here (98-seo-round
+#       G1 FAILs a page without its WebSite).
 #
-# Read-only: GETs of the site's own pages. Nothing is sent or written; the
-# files it keeps are under /tmp/vd_98zz, removed before each run.
+# Read-only: GETs of the site's own pages and its robots.txt. Nothing is
+# sent or written; the files it keeps are under /tmp/vd_98zz, removed before
+# each run.
 echo "== 98zz. the sitemap's non-posting pages, read as a crawler: 200, their own canonical, indexable, a body, data pages with figures =="
 
 rm -rf /tmp/vd_98zz
@@ -118,6 +146,58 @@ while IFS="$(printf '\t')" read -r VD98ZZ_N VD98ZZ_P; do
   if [ -s "/tmp/vd_98zz/h$VD98ZZ_N" ]; then VD98ZZ_DEAD=0; else VD98ZZ_DEAD=$((VD98ZZ_DEAD + 1)); fi
 done < /tmp/vd_98zz/pick.tsv
 
+# N8's alternates: every hreflang address on this host that a page read above
+# names and the sample did not read, once each, at most 60.
+: > /tmp/vd_98zz/alts.tsv
+SITE="$SITE" VD98ZZ_DIR=/tmp/vd_98zz node - <<'VD98ZZ_ALTS'
+const fs = require("fs");
+const DIR = process.env.VD98ZZ_DIR;
+const SITE = String(process.env.SITE || "").replace(/\/+$/, "");
+const CAP = 60;
+const read = (f) => { try { return fs.readFileSync(`${DIR}/${f}`, "utf8"); } catch { return ""; } };
+const decode = (s) => String(s).replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&apos;|&#0?39;|&#x27;/gi, "'").replace(/&amp;/g, "&");
+const attrs = (tag) => {
+  const a = {};
+  for (const m of tag.matchAll(/([a-zA-Z:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>"']+))/g)) a[m[1].toLowerCase()] = m[2] ?? m[3] ?? m[4] ?? "";
+  return a;
+};
+const rows = read("pick.tsv").split("\n").filter(Boolean).map((l) => l.split("\t"));
+const sampled = new Set(rows.map(([, p]) => p));
+const want = [];
+for (const [n] of rows) {
+  if (!read(`h${n}`)) continue;
+  const doc = read(`b${n}`);
+  const cut = doc.search(/<body[\s>]/i);
+  const head = cut >= 0 ? doc.slice(0, cut) : doc;
+  for (const m of head.matchAll(/<link\b[^>]*>/gi)) {
+    const a = attrs(m[0]);
+    if (!/(^|\s)alternate(\s|$)/i.test(a.rel || "") || !("hreflang" in a)) continue;
+    const href = decode(a.href || "");
+    if (href !== SITE && !href.startsWith(`${SITE}/`)) continue; // another host: N8 judges it, nobody reads it
+    const p = href.slice(SITE.length) || "/";
+    if (!sampled.has(p) && !want.includes(p)) want.push(p);
+  }
+}
+fs.writeFileSync(`${DIR}/alts.tsv`, want.slice(0, CAP).map((p, i) => `${i + 1}\t${p}\n`).join(""));
+fs.writeFileSync(`${DIR}/alts-meta.json`, JSON.stringify({ wanted: want.length, cap: CAP, notRead: want.slice(CAP) }));
+VD98ZZ_ALTS
+
+# N9's robots.txt, then N8's alternates: only when pages were chosen, and
+# under the same stop after five unanswered requests in a row. A file aa<n>
+# marks an alternate that was asked for, so an unanswered one is told apart
+# from one the stop left unread.
+if [ -s /tmp/vd_98zz/pick.tsv ] && [ "$VD98ZZ_DEAD" -lt 5 ]; then
+  curl -s -m 30 -A "$UA" -D /tmp/vd_98zz/robots.h -o /tmp/vd_98zz/robots.txt "$SITE/robots.txt"
+  if [ -s /tmp/vd_98zz/robots.h ]; then VD98ZZ_DEAD=0; else VD98ZZ_DEAD=$((VD98ZZ_DEAD + 1)); fi
+fi
+while IFS="$(printf '\t')" read -r VD98ZZ_N VD98ZZ_P; do
+  [ -n "$VD98ZZ_P" ] || continue
+  [ "$VD98ZZ_DEAD" -ge 5 ] && break
+  : > "/tmp/vd_98zz/aa$VD98ZZ_N"
+  curl -s -m 30 -A "$UA" -D "/tmp/vd_98zz/ah$VD98ZZ_N" -o "/tmp/vd_98zz/ab$VD98ZZ_N" "$SITE$VD98ZZ_P"
+  if [ -s "/tmp/vd_98zz/ah$VD98ZZ_N" ]; then VD98ZZ_DEAD=0; else VD98ZZ_DEAD=$((VD98ZZ_DEAD + 1)); fi
+done < /tmp/vd_98zz/alts.tsv
+
 SITE="$SITE" VD98ZZ_DIR=/tmp/vd_98zz node - <<'VD98ZZ_JUDGE'
 const fs = require("fs");
 const DIR = process.env.VD98ZZ_DIR;
@@ -152,9 +232,8 @@ const attrs = (tag) => {
   for (const m of tag.matchAll(/([a-zA-Z:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>"']+))/g)) a[m[1].toLowerCase()] = m[2] ?? m[3] ?? m[4] ?? "";
   return a;
 };
-const pages = rows.map(([n, path]) => {
-  const h = read(`h${n}`) ?? "";
-  const doc = read(`b${n}`) ?? "";
+/** One page as a crawler reads it, from its saved headers and body. */
+const parse = (path, h, doc) => {
   const status = [...h.matchAll(/^HTTP\/[\d.]+\s+(\d{3})/gm)].map((m) => Number(m[1])).pop() ?? 0;
   const xRobots = [...h.matchAll(/^x-robots-tag:\s*(.*)$/gim)].map((m) => m[1].trim());
   const cut = doc.search(/<body[\s>]/i);
@@ -165,9 +244,15 @@ const pages = rows.map(([n, path]) => {
   const text = decode(body.replace(/<!--[\s\S]*?-->/g, " ").replace(/<(script|style|noscript|template)\b[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
   const ld = [...doc.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]).join("\n");
   const title = decode((/<title[^>]*>([\s\S]*?)<\/title>/i.exec(head) || [])[1] || "").replace(/\s+/g, " ").trim();
-  return { path, status, xRobots, canon, robots, text, title, dataset: /"@type"\s*:\s*(?:"Dataset"|\[[^\]]*"Dataset")/.test(ld) };
-});
-if (!pages.length) { out("INFO", "N1-N5 no page was chosen, so none was read (N0 says why)"); process.exit(0); }
+  // N8: the page's language and its hreflang alternates, each code lower-cased.
+  const lang = String(attrs((/<html\b[^>]*>/i.exec(doc) || [""])[0]).lang || "").toLowerCase();
+  const hreflang = [...head.matchAll(/<link\b[^>]*>/gi)].map((m) => attrs(m[0]))
+    .filter((a) => /(^|\s)alternate(\s|$)/i.test(a.rel || "") && "hreflang" in a)
+    .map((a) => ({ code: String(a.hreflang).toLowerCase(), href: decode(a.href || "") }));
+  return { path, status, xRobots, canon, robots, text, title, dataset: /"@type"\s*:\s*(?:"Dataset"|\[[^\]]*"Dataset")/.test(ld), lang, hreflang, doc };
+};
+const pages = rows.map(([n, path]) => parse(path, read(`h${n}`) ?? "", read(`b${n}`) ?? ""));
+if (!pages.length) { out("INFO", "N1-N10 no page was chosen, so none was read (N0 says why)"); process.exit(0); }
 const n = pages.length;
 
 // N1: 200, itself.
@@ -230,5 +315,133 @@ const answered = pages.filter((p) => p.status === 200);
   const untitled = answered.filter((p) => !p.title).map((p) => `${p.path} (no title)`);
   if (!answered.length) out("INFO", "N7 no sampled page answered 200, so no title could be read");
   else out(dup.length || untitled.length ? "FAIL" : "PASS", `N7 ${answered.length} pages that answered carry ${by.size} different titles${eg([...dup, ...untitled])}`);
+}
+// N8: every hreflang cluster the sample touches is whole (SEO audit 2026-11-18, CRAWL-8).
+{
+  const altRows = (read("alts.tsv") ?? "").split("\n").filter(Boolean).map((l) => l.split("\t"));
+  let altMeta = null;
+  try { altMeta = JSON.parse(read("alts-meta.json") ?? ""); } catch { altMeta = null; }
+  const byPath = new Map(pages.map((p) => [p.path, p]));
+  let altsRead = 0;
+  for (const [k, path] of altRows) {
+    if (read(`aa${k}`) === null) continue; // never asked for: the stop came first
+    byPath.set(path, parse(path, read(`ah${k}`) ?? "", read(`ab${k}`) ?? ""));
+    altsRead++;
+  }
+  const primary = (code) => String(code || "").split("-")[0];
+  const onHost = (href) => href === SITE || href.startsWith(`${SITE}/`);
+  const pathOf = (href) => href.slice(SITE.length) || "/";
+  const pairs = (p) => [...new Set(p.hreflang.map((a) => `${a.code} ${a.href}`))].sort();
+  const cluster = answered.filter((p) => p.hreflang.length || (p.lang && primary(p.lang) !== "en"));
+  const bad = new Set();
+  const unread = new Set();
+  for (const p of cluster) {
+    if (!p.hreflang.length) { bad.add(`${p.path} (in "${p.lang}" with no hreflang alternates)`); continue; }
+    const self = SITE + p.path;
+    const codes = new Map();
+    for (const a of p.hreflang) codes.set(a.code, [...new Set([...(codes.get(a.code) || []), a.href])]);
+    if (!codes.has("x-default")) bad.add(`${p.path} (no x-default)`);
+    for (const [c, hs] of codes) if (hs.length > 1) bad.add(`${p.path} (hreflang ${c} names ${hs.length} addresses)`);
+    if (!p.hreflang.some((a) => a.href === self)) bad.add(`${p.path} (does not name itself among its alternates)`);
+    const mine = pairs(p);
+    for (const a of p.hreflang) {
+      if (!onHost(a.href)) { bad.add(`${p.path} (names an alternate on another host: ${a.href})`); continue; }
+      const q = a.href === self ? p : byPath.get(pathOf(a.href));
+      if (!q) { unread.add(pathOf(a.href)); continue; }
+      const where = `${q.path} (hreflang ${a.code} of ${p.path})`;
+      if (q.status !== 200) { bad.add(`${where} answered HTTP ${q.status || "no answer"}`); continue; }
+      if (q.canon.length !== 1 || q.canon[0] !== a.href) bad.add(`${where} names ${q.canon.length ? `canonical ${q.canon.join(" + ")}` : "no canonical"}`);
+      if (a.code !== "x-default" && primary(q.lang) !== primary(a.code)) bad.add(`${where} says <html lang="${q.lang}">`);
+      if (q !== p) {
+        const theirs = pairs(q);
+        const missing = mine.filter((x) => !theirs.includes(x));
+        const extra = theirs.filter((x) => !mine.includes(x));
+        if (missing.length || extra.length) bad.add(`${where} does not return the same alternates${missing.length ? `, lacks ${missing.join(", ")}` : ""}${extra.length ? `, adds ${extra.join(", ")}` : ""}`);
+      }
+    }
+  }
+  // One broken page shows up from every page of its cluster, so ten examples, not five.
+  const eg10 = (xs) => (xs.length ? `; e.g. ${xs.slice(0, 10).join("; ")}` : "");
+  if (!cluster.length) out("INFO", "N8 no sampled page carries hreflang alternates or is in another language, so no cluster was judged");
+  else out(bad.size ? "FAIL" : "PASS", `N8 ${cluster.length} sampled page(s) in hreflang clusters, ${altsRead} alternate(s) read beside them${bad.size ? `: ${bad.size} problem(s)${eg10([...bad])}` : ": each names itself and an x-default, and every alternate answers 200 with its own canonical, the language its code says and the same set of alternates"}`);
+  if (unread.size) out("INFO", `N8 ${unread.size} alternate(s) not read (the read stops at ${altMeta?.cap ?? 60}, or the site stopped answering), so not judged${eg([...unread])}`);
+}
+// N9: robots.txt read the two ways readers read it (SEO audit 2026-11-18, CRAWL-6 and CRAWL-4).
+{
+  /** RFC 9309 groups: consecutive User-agent lines share the rules after them; comments are not rules. */
+  const groupsOf = (txt) => {
+    const groups = [];
+    let agentRun = false;
+    for (const raw of String(txt).split("\n")) {
+      const m = /^\s*([A-Za-z-]+)\s*:\s*(.*?)\s*$/.exec(raw.replace(/#.*$/, ""));
+      if (!m) continue;
+      const key = m[1].toLowerCase();
+      if (key === "user-agent") {
+        if (!agentRun) groups.push({ agents: [], rules: [] });
+        groups[groups.length - 1].agents.push(m[2]);
+        agentRun = true;
+      } else {
+        agentRun = false;
+        if ((key === "allow" || key === "disallow") && groups.length && m[2]) groups[groups.length - 1].rules.push({ allow: key === "allow", path: m[2] });
+      }
+    }
+    return groups;
+  };
+  const matches = (rule, path) => {
+    const end = rule.endsWith("$");
+    const body = (end ? rule.slice(0, -1) : rule).split("*").map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*");
+    return new RegExp(`^${body}${end ? "$" : ""}`).test(path);
+  };
+  const longest = (rules, path) => {
+    let best = null;
+    for (const r of rules) if (matches(r.path, path) && (!best || r.path.length > best.path.length || (r.path.length === best.path.length && r.allow))) best = r;
+    return best ? best.allow : true;
+  };
+  const first = (rules, path) => { const r = rules.find((x) => matches(x.path, path)); return r ? r.allow : true; };
+  const PROBES = ["/admin/claims", "/auth", "/account"];
+  const h = read("robots.h");
+  const st = h === null ? null : ([...h.matchAll(/^HTTP\/[\d.]+\s+(\d{3})/gm)].map((m) => Number(m[1])).pop() ?? 0);
+  if (st === null) out("INFO", "N9 robots.txt was not read: the site stopped answering before it was asked for (N1 says why)");
+  else if (st !== 200) out("INFO", `N9 robots.txt answered HTTP ${st || "no answer"}, so no group could be judged here (section 63 FAILs a robots.txt that does not disallow /email/unsubscribe)`);
+  else {
+    const groups = groupsOf(read("robots.txt") ?? "");
+    if (!groups.length) out("FAIL", "N9 robots.txt answered 200 with no User-agent group in it, so it tells no reader anything (is it the app's page?)");
+    else if (!groups.some((g) => g.agents.includes("*"))) out("FAIL", `N9 robots.txt: none of its ${groups.length} group(s) names *, so a reader no group names may read ${PROBES.join(", ")} and the whole site (RFC 9309: with no * group, every path is allowed)`);
+    else {
+      const opens = [];
+      const leaks = [];
+      for (const g of groups) {
+        const who = g.agents.join(", ");
+        if (g.rules.some((r) => r.allow && r.path === "/")) opens.push(who);
+        for (const p of PROBES) for (const [name, allows] of [["longest", longest], ["first", first]]) if (allows(g.rules, p)) leaks.push(`${who} allows ${p} by the ${name} match`);
+      }
+      if (opens.length || leaks.length) out("FAIL", `N9 robots.txt: ${opens.length} of its ${groups.length} groups open with a line allowing the whole site${opens.length ? ` (${opens.slice(0, 6).join(", ")}${opens.length > 6 ? ", ..." : ""})` : ""}, and ${leaks.length} reading(s) of ${PROBES.join(", ")} come out allowed${eg(leaks)}`);
+      else out("PASS", `N9 robots.txt: none of its ${groups.length} groups opens with a line allowing the whole site, and every one disallows ${PROBES.join(", ")} by the longest match (Google, Bing, RFC 9309) and by the first match`);
+    }
+  }
+}
+// N10: the homepage's WebSite node gives the domain as its backup name (SEO audit 2026-11-18, OFFSITE-2).
+{
+  const home = pages.find((p) => p.path === "/");
+  const host = (() => { try { return new URL(SITE).hostname; } catch { return ""; } })();
+  if (!home || home.status !== 200) out("INFO", `N10 / was not read${home ? ` (HTTP ${home.status || "no answer"})` : ""}, so its site name could not be judged (N1 says why)`);
+  else {
+    const nodes = [];
+    let unparsed = 0;
+    const walk = (x) => {
+      if (Array.isArray(x)) x.forEach(walk);
+      else if (x && typeof x === "object") { if (Array.isArray(x["@graph"])) walk(x["@graph"]); else nodes.push(x); }
+    };
+    for (const m of home.doc.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
+      try { walk(JSON.parse(m[1])); } catch { unparsed++; }
+    }
+    const sites = nodes.filter((x) => [].concat(x["@type"] ?? []).includes("WebSite"));
+    const names = [].concat(sites[0]?.alternateName ?? []).filter((x) => typeof x === "string");
+    if (!sites.length && unparsed) out("FAIL", `N10 / carries ${unparsed} JSON-LD block(s) that do not parse, and no WebSite node in the rest`);
+    else if (!sites.length) out("INFO", "N10 / carries no WebSite node, so its name could not be judged here (98-seo-round G1 FAILs a page without its WebSite)");
+    else if (sites.length > 1) out("FAIL", `N10 / carries ${sites.length} WebSite nodes; one URL is one entity`);
+    else if (!names.includes(host)) out("FAIL", `N10 /'s WebSite node gives no alternateName naming ${host} (it has ${JSON.stringify(sites[0].alternateName ?? null)}), so the site name has no domain to fall back on`);
+    else out("PASS", `N10 /'s one WebSite node, "${sites[0].name}", gives ${host} as its alternateName, the backup Google's site-name rules ask for`);
+  }
 }
 VD98ZZ_JUDGE

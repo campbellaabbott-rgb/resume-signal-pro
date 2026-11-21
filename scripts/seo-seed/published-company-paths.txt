@@ -1,7 +1,11 @@
-# Company pages this site has published, one path a line (1513).
+# Company pages this site has published, one path a line (1514).
 # Written by scripts/prerender-seed-history.mjs from 118 committed versions of public/sitemap.xml
 # and 4 live sitemap capture file(s). The bake (scripts/prerender-seo.mjs) gives each
 # path the ledger has never named a noindex page of its own (SEO-002). Never fetched; never pinged.
+# Plus one path added by hand on 2026-11-18 (SEO audit OFFSITE-M1), which no committed sitemap held:
+# /jobs/company/0ebd29d1-d85b-444e-b36b-430da3d7bc58, an address a search index holds (seen-in-search-indexes.txt). A re-run of the
+# script drops it; src/test/every-url-an-index-holds-is-on-the-resubmission-list.test.ts then fails until it is back.
+/jobs/company/0ebd29d1-d85b-444e-b36b-430da3d7bc58
 /jobs/company/10kbi
 /jobs/company/1800gotjunk
 /jobs/company/1komma5grad
