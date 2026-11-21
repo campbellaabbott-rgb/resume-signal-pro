@@ -30,9 +30,10 @@
 #                      whose day count cannot cast answers 42501, not 22P02.
 #   F1  S14X-195       the company header and Pay card read whose roles the
 #                      intel counts: their two keys in the code, the English
-#                      label in the entry.
+#                      label in the US English strings.
 #   F2  RC-OI-42/header  a board with no name is headed by its hiring system,
-#                      never its token: the two headings and the menu label.
+#                      never its token: the two headings and the menu label,
+#                      and the English heading in the US English strings.
 #   F3  S14X-161/header  the hiring chip names the board its record reads:
 #                      its key and its data attribute.
 #   B1  S14X-215       the German Austria page names the formal titles (Mag.)
@@ -46,10 +47,21 @@
 # prints-a-system-code-as-its-name), the chip's title (the-hiring-chip-names-
 # the-board-its-record-reads), and the migration's own DO block.
 #
-# READ-ONLY. GETs of the homepage, its entry, the Jobs chunk and the chunks
-# it imports, one baked page, and one PostgREST column probe of a table anon
-# is denied; one POST to a read RPC whose argument cannot cast, so the curve
-# never runs (D2). Nothing is written.
+# WHERE THE ENGLISH LABEL AND HEADING ARE READ. Not in the entry: since the
+# English strings travel with the pages that read them, the entry carries
+# neither, and the published site carries both in its US English strings
+# chunk (rb-en_all) and, as the t() call's default, in the Jobs chunk. F1 and
+# F2 read the label and the heading from the first chunk
+# scripts/verify-us-english.sh prints that carries the company shard's
+# countriesLabel key (rb-en_all, else the entry, else another US en-* chunk;
+# never en-GB), as sections 52g, 62 and 72 find their strings. At main
+# 4a3c2a0bd (2026-11-21) both lines FAILed on a site that carried both
+# strings, because they looked in the entry alone.
+#
+# READ-ONLY. GETs of the homepage, its entry, the US English strings chunks,
+# the Jobs chunk and the chunks it imports, one baked page, and one PostgREST
+# column probe of a table anon is denied; one POST to a read RPC whose
+# argument cannot cast, so the curve never runs (D2). Nothing is written.
 echo "== 99zzzzzzz-bugs-data-pages-b. bug round part B, data-pages-b: a suspect takedown has its own column, the field curve answers only the service role, a pooled fact says so, no system code is a heading, the chip names its board, Austria in German says what English says =="
 
 rm -f /tmp/vd_bdpb_*
@@ -60,6 +72,20 @@ VDDPB_MIGDIR="${VDDPB_MIGDIR:-supabase/migrations}"
 curl -s -m 30 "$SITE/" -o /tmp/vd_bdpb_home.html
 VDDPB_MAIN=$(grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' /tmp/vd_bdpb_home.html 2>/dev/null | head -1)
 if [ -n "$VDDPB_MAIN" ]; then curl -s -m 60 "$SITE$VDDPB_MAIN" -o /tmp/vd_bdpb_entry.js; else : > /tmp/vd_bdpb_entry.js; fi
+# The US English strings: the first chunk verify-us-english.sh prints that
+# carries the company shard's countriesLabel key (never en-GB).
+: > /tmp/vd_bdpb_en.js
+VDDPB_ENCH=""
+if [ -n "$VDDPB_MAIN" ]; then
+  for VDDPB_C in $(bash scripts/verify-us-english.sh "$SITE$VDDPB_MAIN"); do
+    rm -f /tmp/vd_bdpb_encand.js
+    curl -s -m 60 "$SITE/assets/$VDDPB_C" -o /tmp/vd_bdpb_encand.js
+    grep -q 'countriesLabel' /tmp/vd_bdpb_encand.js 2>/dev/null || continue
+    cp /tmp/vd_bdpb_encand.js /tmp/vd_bdpb_en.js
+    VDDPB_ENCH=$VDDPB_C
+    break
+  done
+fi
 : > /tmp/vd_bdpb_board.js
 VDDPB_JOBSN=$(grep -oE 'assets/Jobs-[A-Za-z0-9_-]+\.js' /tmp/vd_bdpb_entry.js 2>/dev/null | head -1 | sed 's#^assets/##')
 if [ -n "$VDDPB_JOBSN" ]; then
@@ -88,7 +114,7 @@ curl -s -m 30 "$B/rest/v1/job_board_closure_rollup?select=suspect_n&limit=0" -H 
 # not do: it casts the query string first and answers 22P02 either way.
 curl -s -m 30 -X POST "$B/rest/v1/rpc/get_category_fill_curve" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{"p_days":"x","p_min_n":300}' -o /tmp/vd_bdpb_curve.json
 
-VDDPB_P=/tmp/vd_bdpb_ VDDPB_DRIZZLE="$VDDPB_DRIZZLE" VDDPB_MIGDIR="$VDDPB_MIGDIR" SITE="$SITE" node -e '
+VDDPB_P=/tmp/vd_bdpb_ VDDPB_DRIZZLE="$VDDPB_DRIZZLE" VDDPB_MIGDIR="$VDDPB_MIGDIR" VDDPB_ENCH="$VDDPB_ENCH" SITE="$SITE" node -e '
 const fs = require("fs");
 const P = process.env.VDDPB_P;
 const txt = (f) => { try { return fs.readFileSync(P + f, "utf8"); } catch { return ""; } };
@@ -119,6 +145,11 @@ const appliedFile = (name) => {
 const applied = appliedFile(FILE);
 const curveApplied = appliedFile(CURVE_FILE);
 const ENTRY = txt("entry.js"), BOARD = txt("board.js"), CODE = ENTRY + "\n" + BOARD;
+// The US English strings verify-us-english.sh found, and where.
+const EN = txt("en.js"), ENCH = process.env.VDDPB_ENCH || "";
+const LABEL = "Most roles across the {{company}} hiring system in";
+const HEADING = "Roles on a {{system}} board";
+const inEnglish = (what, needle) => ENCH ? "the English " + what + " in the US English strings (" + ENCH + ") x" + count(EN, needle) : "the English " + what + " x0 (no US English strings chunk the entry names carries countriesLabel)";
 const MARKS = {
   F1: ["companyProfile.facts.countriesLabelPooled", "companyProfile.pay.floorPooled"],
   F2: ["companyProfile.h1SystemBoard", "companyProfile.h1ThisBoard", "companyProfile.actions.moreThis"],
@@ -153,11 +184,9 @@ const feVerdict = (good, m) => say(good ? "PASS" : FE ? "FAIL" : "INFO", m + (go
 {
   const miss = (k) => MARKS[k].filter((m) => !CODE.includes(m));
   const f1 = miss("F1");
-  const label = "Most roles across the {{company}} hiring system in";
-  feVerdict(!f1.length && ENTRY.includes(label), "F1 S14X-195 the header and Pay card say whose roles the intel counts: " + MARKS.F1.map((m) => m + " x" + count(CODE, m)).join(", ") + ", the English label in the entry x" + count(ENTRY, label));
+  feVerdict(!f1.length && EN.includes(LABEL), "F1 S14X-195 the header and Pay card say whose roles the intel counts: " + MARKS.F1.map((m) => m + " x" + count(CODE, m)).join(", ") + ", " + inEnglish("label", LABEL));
   const f2 = miss("F2");
-  const heading = "Roles on a {{system}} board";
-  feVerdict(!f2.length && ENTRY.includes(heading), "F2 RC-OI-42/header a board with no name is headed by its hiring system: " + MARKS.F2.map((m) => m + " x" + count(CODE, m)).join(", ") + ", the English heading in the entry x" + count(ENTRY, heading));
+  feVerdict(!f2.length && EN.includes(HEADING), "F2 RC-OI-42/header a board with no name is headed by its hiring system: " + MARKS.F2.map((m) => m + " x" + count(CODE, m)).join(", ") + ", " + inEnglish("heading", HEADING));
   const f3 = miss("F3");
   feVerdict(!f3.length, "F3 S14X-161/header the hiring chip names the board its record reads: " + MARKS.F3.map((m) => m + " x" + count(CODE, m)).join(", "));
 }
