@@ -68,7 +68,7 @@ jobs:
           set -u
           mkdir -p .posting-closure
           set +e
-          node scripts/posting-closure-check.mjs --history .posting-closure/history.json --out .posting-closure/latest.json
+          node scripts/posting-closure-check.mjs --history .posting-closure/history.json --out .posting-closure/latest.json --closed-out .posting-closure/closed-today.txt
           CODE=$?
           set -e
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
@@ -131,6 +131,40 @@ jobs:
               --body "$STAMP — $NOTE
 
           This issue was opened by .github/workflows/posting-closure.yml, which asks each live posting page's employer system (GET only) whether it still serves the posting. The record of each run is an artifact of that run. Close this once it is dealt with; the check comments here instead of opening duplicates while it stays open."
+          fi
+
+      # THE PAGES CLOSED AT THEIR EMPLOYER, FOR THE NEXT PUBLISH (SEO audit
+      # 2026-11-18, CRAWL-M2). Nothing here writes to the site: today's closed
+      # pages go into ONE standing issue as lines for
+      # scripts/seo-seed/closed-at-employer.txt, which a publish commits and
+      # the bake reads. Only a run that measured today writes them, so a later
+      # slot re-reading the same date adds nothing.
+      - name: Name the pages closed at their employer
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          FILE=.posting-closure/closed-today.txt
+          if [ ! -s "$FILE" ]; then echo "no page closed at its employer in a run that measured today"; exit 0; fi
+          N=$(grep -c . "$FILE" || true)
+          gh label create posting-closure-closed --repo "$GITHUB_REPOSITORY" --color FBCA04 \
+            --description "Pages the daily posting-closure check found closed at their employer" --force >/dev/null 2>&1 || true
+          BODY="$(date -u +'%Y-%m-%d %H:%M UTC') — $N live posting page(s) closed at their employer. Add these lines to scripts/seo-seed/closed-at-employer.txt at the next publish; the bake retires each one (lines over 14 days old are ignored):
+
+          \`\`\`
+          $(cat "$FILE")
+          \`\`\`"
+          EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --label posting-closure-closed --state open --json number --jq '.[0].number' || echo "")
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "$GITHUB_REPOSITORY" --body "$BODY"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "Posting closure: pages closed at their employer, for the next publish" \
+              --label posting-closure-closed \
+              --body "$BODY
+
+          Opened by .github/workflows/posting-closure.yml. Each daily run that finds a live page closed at its employer comments here instead of opening another issue."
           fi
 
       - name: Fail the run while the check needs attention
