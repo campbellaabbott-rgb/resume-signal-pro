@@ -18,6 +18,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 import { MoreRolesAtEmployer, MORE_ROLES_SHOWN } from "./MoreRolesAtEmployer";
 import { setLanderManifestForTests } from "@/lib/seo/lander-manifest";
+import { setPostingManifestForTests } from "@/lib/seo/posting-manifest";
 
 type Watcher = { cb: IntersectionObserverCallback; disconnected: boolean };
 let watchers: Watcher[] = [];
@@ -36,10 +37,13 @@ const rows = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `greenhou
 const mount = () => render(<MemoryRouter><MoreRolesAtEmployer token="acme" employer="Acme" excludeId="greenhouse:acme:0" /></MemoryRouter>);
 
 beforeAll(() => { i18n.addResourceBundle("en", "translation", enListing, true, true); });
-// Every board has a written page here (SEO-010): this file holds the read, not which
-// boards the bake wrote.
-beforeEach(() => { invoke.mockReset(); watchers = []; clearBoardBudgetRefusal(); setLanderManifestForTests("*"); });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); clearBoardBudgetRefusal(); });
+// Every board has a written page here (SEO-010), and so does every posting
+// (SEO audit 2026-11-18, CRAWL-M1): this file holds the read, not which boards
+// or postings the bake wrote (more-roles-links-only-baked-postings.test.tsx
+// holds which postings a card may link).
+const ALL_POSTING_PAGES = Array.from({ length: 50 }, (_, i) => `/jobs/posting/greenhouse/acme/${i}`);
+beforeEach(() => { invoke.mockReset(); watchers = []; clearBoardBudgetRefusal(); setLanderManifestForTests("*"); setPostingManifestForTests(ALL_POSTING_PAGES); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); clearBoardBudgetRefusal(); setPostingManifestForTests(null); });
 
 describe("one lazy read", () => {
   it("asks nothing until the section is in view, then asks once for this employer, and leaves this posting out", async () => {
