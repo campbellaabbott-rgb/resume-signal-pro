@@ -1643,6 +1643,14 @@
     "theNinetyDayLimitOnLogDataIsNowEnforced": {
       "title": "The 90-day limit the Privacy page sets on log data is now enforced",
       "description": "The Privacy page says log data, which includes your IP address, is kept for up to 90 days, but several of our records, such as the logs of scans and of files we could not read, kept the visitor's address with no end date. A task now runs every night that deletes those records once they are 90 days old, or takes the address out of the ones we keep to count things such as scans. Addresses stored before this change are cleared in batches, so clearing them can take more than one night. The Privacy page now also says that searches on the job board are kept for 180 days with no account, address or visitor id attached, then only as daily totals, that a sign-in email our usual provider cannot send goes through Resend, from the United States, and how the affiliate programme's referral cookie and click records work."
+    },
+    "addToClaudeOpensClaudesConnectorDialogFilledIn": {
+      "title": "Add to Claude opens Claude's connector dialogue with our name and address filled in",
+      "description": "On the “Connect your agent” page, the steps for Claude now begin with an “Add to Claude” button, which opens Claude's dialogue for adding a custom connector with our name, Resume Booster, and our connector's address already filled in. If Claude asks, you sign in to it first; then you check both and add the connector yourself. The steps also now name the setting to choose under authentication, “Sign in when needed”, where they told you to keep whatever settings Claude detected. The steps for adding the connector by hand are still on the page, folded beneath the new ones."
+    },
+    "ashbyApplicationFormsAreNoLongerReadOrAskedFor": {
+      "title": "Our connector and data API no longer read Ashby application forms, and our site no longer asks for them",
+      "description": "Ashby's job site asks automated readers to keep out of the part of it that an Ashby job's application questions come from. So when you apply yourself with Claude or Claude Code through our connector, it no longer reads the questions of a job whose employer uses Ashby, our data API no longer reads them either, and both now leave Ashby out when they name the hiring systems whose forms they read. On our job board, such a job no longer offers to prepare answers to its form's questions, and its page no longer says we read its screening questions: the site no longer asks for them. You answer those questions on the employer's own application page, as for a hiring system whose form we do not read. Where an application kit drafts likely questions from the posting instead, its note now says we did not read the employer's form, where it said the hiring system does not publish one."
     }
   }
 }
