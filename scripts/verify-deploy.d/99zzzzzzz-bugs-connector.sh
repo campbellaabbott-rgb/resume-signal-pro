@@ -51,6 +51,17 @@
 #        paid. The owner pushes it: INFO owner pending until
 #        docs/deploy-ledger.json reservations['bug-round'].ownerDecided names
 #        S14X-056, FAIL after that while it still says so;
+#   GEO-2   (SEO audit 2026-11-18b) the install README agrees with /agents as
+#        crawlers are served it: its apply_myself sentence names no form
+#        reader the page's apply_myself sentence does not (Ashby left with
+#        OD14-ASHBY-1), and it carries the page's Claude authentication step
+#        word for word (HO-1's choice), never the step that kept the detected
+#        settings unless the page still says it. FAIL while it does not (the
+#        owner pushes the install repo: its main is protected); INFO while
+#        the README or the page cannot be read, or the bake is still the one
+#        this round replaced. It reads the form sentence, not every line
+#        that names apply_myself: the job-id sentence rightly says
+#        apply_myself takes an Ashby posting link;
 #   O    the owner-gated keys, each INFO owner pending until ownerDecided
 #        names it, INFO when the choice ships nothing, and judged once the
 #        build (or the frontend publish) that carries the choice is live:
@@ -305,6 +316,8 @@ else{
   if(HO1){const said=HO1_WANT.filter((x)=>has(mt,x));line(!has(mt,KEEP)&&said.length>0,"HO-1 decided ("+HO1+"): the Claude steps on /agents "+(has(mt,KEEP)?"still say to keep the detected authentication settings":"no longer say to keep the detected settings")+" and "+(said.length?"name "+JSON.stringify(said[0]):"name no authentication choice ("+HO1_WANT.join(" or ")+")"));}
   line(has(js,"which we choose not to redistribute for now")&&!has(js,"whose terms forbid redistributing"),"USAJOBS-COPY-1 /agents says the federal feed is withheld "+(has(js,"whose terms forbid redistributing")?"because its terms forbid it":has(js,"which we choose not to redistribute for now")?"by our own choice, for now":"with no reason"));
 }
+// GEO-2 below compares the install README with this bake, and waits as these lines do while it is the old one.
+try{fs.writeFileSync(P+"bake_old",bake.includes("<")&&OLD_BAKE.every((x)=>has(bake,x))?"1":"0")}catch{}
 if(!bake.includes("<"))console.log("FAIL  C the /agents bake answered no page");
 else if(OLD_BAKE.every((x)=>has(bake,x))){for(const k of ["S14X-260","S14X-261","SEO-F15","USAJOBS-COPY-1"].concat(HO1?["HO-1"]:[]))console.log("INFO  "+k+" (bake) waits for the frontend publish: the /agents bake still carries every string this round replaced");}
 else{
@@ -327,4 +340,31 @@ if(process.env.VDBC_RM!=="200"||!/resumebooster/i.test(md))console.log("INFO  S1
 else if(!n)console.log("PASS  S14X-056-install the install README says nothing of paid applying (0 of \"Applying is paid\")");
 else if(decided)console.log("FAIL  S14X-056-install the install README still says \"Applying is paid\" "+n+" time(s), and the owner\x27s decision is recorded: push the re-synced branch and republish server.json");
 else console.log("INFO  S14X-056-install owner pending: the install README still says \"Applying is paid\" "+n+" time(s) until the owner pushes the re-synced branch (ownerDecided names no S14X-056)");
+'
+
+# ── GEO-2: the install README against /agents as crawlers are served it ──
+VDBC_RM="$VDBC_RM" VDBC_P=/tmp/vd_99bc_ node -e '
+const fs=require("fs");const P=process.env.VDBC_P;const raw=(f)=>{try{return fs.readFileSync(P+f,"utf8")}catch{return ""}};
+const md=raw("readme.md"),bake=raw("bake.html");
+// One reading for both: tags, bold marks and code ticks out, entities in, spaces collapsed, no space before a stop.
+const flat=(s)=>s.replace(/<[^>]+>/g," ").replace(/\*\*|`/g,"").replace(/&#x27;|&#39;/g,"\x27").replace(/&quot;/g,"\"").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&").replace(/\s+/g," ").replace(/ ([.,;:])/g,"$1");
+const page=flat(bake),readme=flat(md);
+const list=(re,s)=>{const m=re.exec(s);return m?m[1].split(/, or |, | or /).map((x)=>x.trim()).filter(Boolean):null};
+const pv=list(/When the employer uses ([^.:;]+?), it returns the employer\x27s real application form/,page);
+const rv=list(/when the posting\x27s hiring system is ([^.:;]+?), it returns the employer\x27s real application form/,readme);
+const KEEP="Keep them as they are and click Continue.";
+const step=(/Under authentication, choose [^.]+? and click Continue\./.exec(page)||[])[0]||(page.includes(KEEP)?KEEP:null);
+const fix="the owner pushes the install repo\x27s re-synced branch (its main is protected)";
+if(process.env.VDBC_RM!=="200"||!/resumebooster/i.test(md))console.log("INFO  GEO-2 the install README could not be read (HTTP "+process.env.VDBC_RM+"): not compared with /agents");
+else if(!bake.includes("<"))console.log("INFO  GEO-2 the /agents bake answered no page: the install README is not compared with it");
+else if(raw("bake_old")==="1")console.log("INFO  GEO-2 waits for the frontend publish: the /agents bake still carries every string this round replaced, so the install README is not compared with it");
+else{
+  if(!pv)console.log("INFO  GEO-2 form readers: the /agents bake names no apply_myself reader list (SEO-F15 (bake) judges that), so the install README\x27s is not compared");
+  else if(!rv)console.log("FAIL  GEO-2 form readers: the install README\x27s apply_myself sentence names no reader list, where /agents names "+pv.length+" ("+pv.join(", ")+")");
+  else{const extra=rv.filter((v)=>!pv.includes(v)),missing=pv.filter((v)=>!rv.includes(v));
+    console.log((extra.length?"FAIL":"PASS")+"  GEO-2 form readers: the install README\x27s apply_myself sentence names "+rv.length+" ("+rv.join(", ")+")"+(extra.length?", among them "+extra.join(", ")+", which /agents does not name as a reader: "+fix:", none that /agents does not")+(missing.length?"; it leaves out "+missing.join(", ")+", which /agents names":""));}
+  if(!step)console.log("INFO  GEO-2 Claude step: the /agents bake names no authentication step, so the install README\x27s is not compared");
+  else{const has=readme.includes(step),kept=step!==KEEP&&readme.includes(KEEP);
+    console.log((has&&!kept?"PASS":"FAIL")+"  GEO-2 Claude step: /agents says "+JSON.stringify(step)+"; the install README "+(has?"says it too":"does not")+(kept?" and still says "+JSON.stringify(KEEP):"")+(has&&!kept?"":": "+fix));}
+}
 '
