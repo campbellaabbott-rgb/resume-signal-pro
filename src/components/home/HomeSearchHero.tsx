@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useLayoutEffect, useRef, useState, type FormEvent, type RefObject } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import "@/i18n/home-strings";
@@ -8,6 +8,7 @@ import { count as fmtCount } from "@/lib/format";
 import { utcStamp } from "@/lib/home/stamps";
 import { searchHref, TRY_CHIPS } from "@/lib/home/search";
 import { HOME_H1_CLASS, HOME_SUB_CLASS } from "@/lib/home/hero-classes";
+import { bakedField, claimBakedField } from "@/lib/keep-prerendered-page";
 
 /**
  * 4.1 THE SEARCH IS THE HERO. One filled button on the page: "Search jobs".
@@ -21,11 +22,47 @@ export interface HomeSearchHeroProps {
   asOf: Date | null;
 }
 
+/** The baked form's two fields (scripts/prerender-seo.mjs writes the same ids). */
+const HOME_FIELD_IDS = { q: "home-q", location: "home-location" } as const;
+
+/**
+ * WHAT WAS TYPED BEFORE THE APP LOADED STAYS TYPED (PERFORMANCE-M1). The baked
+ * form is a working search from the first paint, and the fields used to start
+ * empty when React swapped the page in, about three seconds later on a phone,
+ * taking the reader's words and their focus. Each field starts from the baked
+ * field's value (src/lib/keep-prerendered-page.ts bakedField), and the focus
+ * and caret come back to the field that had them: at once while the baked
+ * field is still on screen, or, once it has gone, only while nothing else has
+ * taken the focus since.
+ */
+function useCarriedFocus(fields: Array<[string, RefObject<HTMLInputElement>]>) {
+  useLayoutEffect(() => {
+    const doc = fields[0]?.[1].current?.ownerDocument;
+    for (const [id, ref] of fields) {
+      const baked = bakedField(id);
+      claimBakedField(id);
+      const input = ref.current;
+      if (!baked?.focused || !input || !doc) continue;
+      const active = doc.activeElement;
+      if (!baked.live && active && active !== doc.body) continue;
+      input.focus({ preventScroll: true });
+      if (baked.selection) {
+        try { input.setSelectionRange(baked.selection[0], baked.selection[1]); } catch { /* a field type with no caret */ }
+      }
+    }
+    // Once, on the first commit: the baked fields are offered once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
+
 export function HomeSearchHero({ openTotal, asOf }: HomeSearchHeroProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const [q, setQ] = useState("");
-  const [location, setLocation] = useState("");
+  const [q, setQ] = useState(() => bakedField(HOME_FIELD_IDS.q)?.value ?? "");
+  const [location, setLocation] = useState(() => bakedField(HOME_FIELD_IDS.location)?.value ?? "");
+  const qRef = useRef<HTMLInputElement>(null);
+  const locationRef = useRef<HTMLInputElement>(null);
+  useCarriedFocus([[HOME_FIELD_IDS.q, qRef], [HOME_FIELD_IDS.location, locationRef]]);
   const lng = i18n.language || "en";
   const stamp = openTotal !== null ? utcStamp(asOf, lng) : null;
 
@@ -55,7 +92,8 @@ export function HomeSearchHero({ openTotal, asOf }: HomeSearchHeroProps) {
             <div className="relative">
               <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-foreground" />
               <input
-                id="home-q"
+                ref={qRef}
+                id={HOME_FIELD_IDS.q}
                 name="q"
                 type="search"
                 autoComplete="off"
@@ -71,7 +109,8 @@ export function HomeSearchHero({ openTotal, asOf }: HomeSearchHeroProps) {
             <div className="relative">
               <MapPin aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-foreground" />
               <input
-                id="home-location"
+                ref={locationRef}
+                id={HOME_FIELD_IDS.location}
                 name="location"
                 type="text"
                 autoComplete="off"

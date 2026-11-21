@@ -73,6 +73,7 @@ import { postingLiveness, shownPosting } from "@/lib/listing/liveness";
 import { listingEmployer } from "@/lib/listing/employer";
 import { PostingDetail } from "@/components/jobs/listing/PostingDetail";
 import { moreRolesAllowed } from "@/lib/listing/more-roles";
+import { ROUTE_PENDING_ATTRIBUTE, prerenderedPageShowing } from "@/lib/keep-prerendered-page";
 
 // BELOW THE FOLD, SO NOT IN THE FIRST LOAD. The section and the card it
 // prints are fetched only when their place nears the viewport (MoreRolesSlot).
@@ -405,6 +406,20 @@ export default function JobPosting() {
           "jobPostingPage.goneMeta",
           "This opening is no longer served by the employer's own job board. Search the live board for openings like it.",
         );
+
+  // THE BAKED POSTING STAYS UNTIL THE READ LANDS (PERFORMANCE-5). The first
+  // commit used to be the header, the breadcrumb and a spinner, and that
+  // commit took the baked posting off the screen for the length of the detail
+  // read. While a baked page is still on screen and the read is in flight,
+  // the page draws only an empty, hidden, marked <main> (no header, no footer:
+  // either would be drawn above the baked page; no id: the skip link's target
+  // stays the baked main), so main.tsx keeps the baked nodes; the commit that
+  // brings the answer drops the mark, and they leave in the same task. After
+  // a client-side navigation nothing baked is left and the spinner shows as
+  // before. The head is untouched either way.
+  if (state === "loading" && prerenderedPageShowing()) {
+    return <main hidden {...{ [ROUTE_PENDING_ATTRIBUTE]: "" }} className="min-h-screen" />;
+  }
 
   return (
     <>

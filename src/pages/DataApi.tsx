@@ -39,6 +39,55 @@ const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocal
 
 const CONTACT = "resumeboostersupp@gmail.com";
 
+/**
+ * "DAILY" ONLY WHILE THE RUN RECORD SAYS SO (CONTENT-7). The accuracy re-check
+ * is scheduled once a day, and in the ten scheduled days from 7 November 2026
+ * it wrote a result once; this page said "every day" and "audited against them
+ * daily" regardless. It reads the newest run (get_audit_result, the Ghost Job
+ * Index's own accessor) and says "daily" only while that run is under 36 hours
+ * old; past that, "scheduled daily; latest run <date>"; with no run read, only
+ * "scheduled daily".
+ *
+ * These are COPIES of auditAgeHours, AUDIT_DAILY_MAX_HOURS and auditRunDate in
+ * src/pages/GhostJobIndex.tsx, which this page may not import: that module
+ * imports the board's page (src/pages/Jobs.tsx) and would put both in this
+ * page's first load. src/test/the-data-api-says-daily-only-when-it-is.test.tsx
+ * holds each copy equal to its original.
+ */
+export const DATA_API_AUDIT_DAILY_MAX_HOURS = 36;
+export const dataApiAuditAgeHours = (at: string | null | undefined, now: number = Date.now()): number | null => {
+  const t = typeof at === "string" ? new Date(at).getTime() : NaN;
+  return Number.isFinite(t) ? (now - t) / 3_600_000 : null;
+};
+export const dataApiAuditRunDate = (at: string): string =>
+  new Date(at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+
+/** The words for the re-check's cadence in each place this page states it. */
+export interface AuditCadenceCopy {
+  cardTitle: string;
+  cardBody: string;
+  hero: string;
+  description: string;
+}
+export function dataApiAuditCopy(at: string | null | undefined, now: number = Date.now()): AuditCadenceCopy {
+  const h = dataApiAuditAgeHours(at, now);
+  if (h !== null && h <= DATA_API_AUDIT_DAILY_MAX_HOURS) {
+    return {
+      cardTitle: "Daily accuracy audits",
+      cardBody: "We sample random live postings every day and re-check them against the companies' own systems, stratified per hiring system. The audit trail ships with the data.",
+      hero: "audited against them daily",
+      description: "daily accuracy audits",
+    };
+  }
+  const when = h === null ? "scheduled daily" : `scheduled daily; latest run ${dataApiAuditRunDate(at as string)}`;
+  return {
+    cardTitle: "Accuracy audits",
+    cardBody: `Accuracy audits are ${when}. Each run samples random live postings and re-checks them against the companies' own systems, stratified per hiring system. The audit trail ships with the data.`,
+    hero: `audited against them (${when})`,
+    description: `accuracy audits (${when})`,
+  };
+}
+
 // Read from the same env the client is built with, so the documented base URL
 // cannot drift from the project these docs are served by, and spelled by the
 // one builder the bake and both llms files use (SEO-015), which falls back to
@@ -320,6 +369,8 @@ function BuilderCard() {
 export default function DataApi() {
   const { t } = useTranslation();
   const [stats, setStats] = useState<{ total_open?: number; total_companies?: number; total_company_names?: number; closed_90d?: number; tracking_days?: number; observed_days?: number } | null>(null);
+  /** When the newest accuracy re-check ran; null until read, and on a failed read. */
+  const [auditAt, setAuditAt] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -329,7 +380,15 @@ export default function DataApi() {
         if (cache?.ghost_stats) setStats(cache.ghost_stats);
       } catch { /* stats are decorative here; the page stands without them */ }
     })();
+    (async () => {
+      try {
+        const { data } = await Promise.resolve(rpc("get_audit_result")).catch(() => ({ data: null }));
+        const at = (data as { at?: unknown } | null)?.at;
+        if (typeof at === "string") setAuditAt(at);
+      } catch { /* no run read: the copy says only "scheduled daily" */ }
+    })();
   }, []);
+  const auditCopy = dataApiAuditCopy(auditAt);
 
   // THE TILE PRINTED THE LEDGER'S AGE AS THE COUNT'S WINDOW. closed_90d counts
   // the last 90 days; observed_days is the age of the whole closure ledger,
@@ -358,7 +417,7 @@ export default function DataApi() {
     { title: "Lifecycle-tracked postings", body: `Every opening from companies' official applicant-tracking feeds (${servingSourceSummary(5)}) — with first-seen, company-stated post date where the vendor provides one, and the exact close date when it comes down.` },
     { title: "Takedowns vs. re-listing churn", body: "When a posting closes we record whether it genuinely came down or was re-listed under a new ID. A takedown is never called a hire: a hire, a withdrawal and a cancelled requisition look the same from a feed." },
     { title: "Stated salary ranges", body: "Salary ranges extracted from posting text where the company itself states them, normalized by currency and period. Never estimated, never modeled." },
-    { title: "Daily accuracy audits", body: "We sample random live postings every day and re-check them against the companies' own systems, stratified per hiring system. The audit trail ships with the data." },
+    { title: auditCopy.cardTitle, body: auditCopy.cardBody },
   ];
 
   const notInDataset = [
@@ -401,7 +460,7 @@ export default function DataApi() {
     <>
       <SEO
         title="Hiring Data & API — lifecycle-tracked job posting data | Resume Booster"
-        description="License the dataset behind our live board: lifecycle-tracked postings from official company career sites, genuine takedowns vs re-listing churn, stated salary ranges, and daily accuracy audits. Free for journalists with attribution."
+        description={`License the dataset behind our live board: lifecycle-tracked postings from official company career sites, genuine takedowns vs re-listing churn, stated salary ranges, and ${auditCopy.description}. Free for journalists with attribution.`}
         path="/data-api"
       />
       <Header />
@@ -421,7 +480,7 @@ export default function DataApi() {
               <p className="text-xl text-muted-foreground mb-8">
                 Most job data stops at "posted." Ours follows every posting to the end: when it closed, whether it was
                 genuinely taken down or quietly re-listed, and what the company said it paid — collected only from
-                companies' own official career sites and audited against them daily.
+                companies' own official career sites and {auditCopy.hero}.
               </p>
               <div className="flex flex-wrap justify-center gap-4 text-sm">
                 <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border">

@@ -35,6 +35,14 @@
 // mark's description. It stays while the pointer is on the mark or the card,
 // and Escape dismisses it (WCAG 1.4.13).
 //
+// THE POSTING LINK IS DRAWN ONLY WHILE ITS PANEL IS OPEN. A closed panel
+// stays in the DOM (its count is the mark's description), and a crawler reads
+// the rendered DOM and opens nothing: a link held in every closed panel put
+// the quoted posting's address, almost never one of the ~500 the bake writes,
+// on every company page with perks. Such an address serves the fallback file
+// and then renders job markup the bake never checked (CRAWL-M1, SEO audit
+// 2026-11-18). A reader who opens the panel still gets the posting itself.
+//
 // ONE PANEL AT A TIME, IN THE FLOW. The open mark is held by the list, not by
 // each item, so opening one closes any other. The panel sits in normal flow
 // at every width and pushes the list down: it never covers another mark.
@@ -252,9 +260,11 @@ function PerkItem({
           <blockquote lang="en" className="border-l-2 border-border-strong pl-2 italic text-foreground break-words">“{claim.quote}”</blockquote>
         </figure>
         {claim.postingId ? (
-          <Link to={perkPostingHref(claim.postingId)} className="inline-block text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary">
-            {t("jobsPage.perks.postingLink", "See the posting this line comes from")}
-          </Link>
+          open && (
+            <Link to={perkPostingHref(claim.postingId)} className="inline-block text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary">
+              {t("jobsPage.perks.postingLink", "See the posting this line comes from")}
+            </Link>
+          )
         ) : (
           <p className="text-muted-foreground">{t("jobsPage.perks.postingGone", "The posting this line was quoted from is no longer on the board.")}</p>
         )}
