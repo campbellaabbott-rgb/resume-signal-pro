@@ -7,9 +7,11 @@
  * are held to that by
  * every-cost-wave-migration-lovable-applies-says-whether-it-runs-a-job-more-than-hourly.test.ts;
  * this file holds board .102's four migrations to the same rules, in a file of
- * its own so the two waves never edit one list.
+ * its own so the two waves never edit one list, and board/102-names' one file
+ * (20261111150000, the Workday names, reviewed in the names build on
+ * 2026-11-17) beside them.
  *
- * None of the four schedules a job, so each one's reason says so and its code
+ * None of the five schedules a job, so each one's reason says so and its code
  * may carry no cron expression at all.
  */
 import { readdirSync, readFileSync } from "node:fs";
@@ -17,7 +19,12 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const MIG = resolve(__dirname, "../../supabase/migrations");
-const BOARD_102 = ["20261111100000", "20261111110000", "20261111120000", "20261111130000"];
+const BOARD_102 = ["20261111100000", "20261111110000", "20261111120000", "20261111130000", "20261111150000"];
+/** Each file's first line: the integration reviewed four, the names build its one. */
+const REVIEW_LINE: Record<string, RegExp> = {
+  "20261111150000": /^-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing \(reviewed 2026-11-17 in the names build\)\.\n/,
+};
+const BOARD_102_LINE = /^-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing \(reviewed 2026-11-16 in the board \.102 integration\)\.\n/;
 
 const fileFor = (stamp: string): string => {
   const hit = readdirSync(MIG).filter((f) => f.startsWith(`${stamp}_`) && f.endsWith(".sql"));
@@ -30,7 +37,7 @@ const code = (sql: string): string =>
   sql.split("\n").filter((l) => !/^\s*--/.test(l)).join("\n");
 
 describe("every board .102 migration opens with Lovable's cron review line", () => {
-  it("the four files are every 20261111 migration the tree carries", () => {
+  it("the five files are every 20261111 migration the tree carries", () => {
     const all = readdirSync(MIG).filter((f) => /^20261111\d{6}_.*\.sql$/.test(f)).map((f) => f.slice(0, 14)).sort();
     expect(all).toEqual(BOARD_102);
   });
@@ -39,7 +46,9 @@ describe("every board .102 migration opens with Lovable's cron review line", () 
     const sql = fileFor(stamp);
 
     it(`${stamp} says the review is not required, first line`, () => {
-      expect(sql).toMatch(/^-- lovable-cron-fallback-reviewed: no cron; this file schedules nothing \(reviewed 2026-11-16 in the board \.102 integration\)\.\n/);
+      expect(sql).toMatch(REVIEW_LINE[stamp] ?? BOARD_102_LINE);
+      // The line Lovable's agent reads is the first line, and a bare comment line closes it.
+      expect(sql.split("\n")[1]).toBe("--");
     });
 
     it(`${stamp} schedules nothing: no cron call and no five-field expression in its code`, () => {

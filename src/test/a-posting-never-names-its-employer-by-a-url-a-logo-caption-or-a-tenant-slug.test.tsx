@@ -108,9 +108,10 @@ describe("a posting whose name nobody wrote gets no new page", () => {
     // Single-segment boards named by their token, title-cased (the audit's two).
     ["ashby:creatoriq:6a1", "Creatoriq"],
     ["ashby:harmattan-ai:fbf01ce6-af2c-4049-9fb2-f32eb28085a0", "Harmattan Ai"],
-    // A Workday site whose tenant hosts several companies: only the one read
-    // took a name (ebi~wd5~ebadcareers is Ensign-Bickford Aerospace & Defense).
-    ["workday:ebi~wd5~afbcareers:R1", "Ebi"],
+    // A Workday site whose tenant hosts several companies: only the sites read
+    // took a name (20261111150000 names Comfort Systems USA's own site and five
+    // of its companies' by exact token; EAScareers was not among them).
+    ["workday:comfortsystemsusa~wd1~EAScareers:R1", "Comfortsystemsusa"],
   ])("%s named %s", (id, company) => {
     expect(postingFreshNameReason(row(id, company), D)).toBe("unreviewed tenant name");
   });
@@ -139,7 +140,7 @@ describe("a posting whose name nobody wrote gets no new page", () => {
     expect(isUnreviewedTenantName("liquid-ai", "Liquid AI")).toBe(false);
     expect(isUnreviewedTenantName("liquid-ai", "Liquid Ai")).toBe(true);
     // A tenant code a company page prints stays printable there (S11-013).
-    expect(isCodeShapedName("ebi~wd5~afbcareers", "Ebi")).toBe(false);
+    expect(isCodeShapedName("comfortsystemsusa~wd1~EAScareers", "Comfortsystemsusa")).toBe(false);
   });
 });
 
