@@ -233,6 +233,7 @@ export type Database = {
       affiliate_conversions: {
         Row: {
           affiliate_id: string
+          approved_at: string | null
           commission_amount: number
           created_at: string
           currency: string | null
@@ -246,6 +247,7 @@ export type Database = {
         }
         Insert: {
           affiliate_id: string
+          approved_at?: string | null
           commission_amount: number
           created_at?: string
           currency?: string | null
@@ -259,6 +261,7 @@ export type Database = {
         }
         Update: {
           affiliate_id?: string
+          approved_at?: string | null
           commission_amount?: number
           created_at?: string
           currency?: string | null
@@ -5899,6 +5902,10 @@ export type Database = {
         Returns: boolean
       }
       affiliate_address_key: { Args: { p_email: string }; Returns: string }
+      affiliate_approve_held_commissions: {
+        Args: { p_hold_days?: number }
+        Returns: number
+      }
       affiliate_clicks_roll_up_and_prune: {
         Args: { p_keep_days?: number }
         Returns: number

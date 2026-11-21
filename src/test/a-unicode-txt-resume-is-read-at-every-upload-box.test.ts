@@ -106,7 +106,7 @@ import { ResumeRecovery } from "@/components/ResumeRecovery";
 const RESUME = "Jane Doe, ingénieure logiciel à Lyon. Neuf ans de Python, de Kubernetes et de données; une équipe de cinq. ".repeat(2).trim();
 
 /** The bytes Notepad's "Unicode" writes: FF FE, then UTF-16 little-endian. */
-function utf16le(text: string): Uint8Array {
+function utf16le(text: string): Uint8Array<ArrayBuffer> {
   const out = new Uint8Array(2 + text.length * 2);
   out.set([0xff, 0xfe]);
   for (let i = 0; i < text.length; i++) {

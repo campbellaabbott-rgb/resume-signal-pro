@@ -1926,6 +1926,20 @@
       "when": 1795025079793,
       "tag": "0274_affiliate_currency_ranges_and_reviewed_earnings",
       "breakpoints": true
+    },
+    {
+      "idx": 275,
+      "version": "7",
+      "when": 1795278241994,
+      "tag": "0275_a_commission_is_approved_only_after_its_hold_with_no_refund_or_flag",
+      "breakpoints": true
+    },
+    {
+      "idx": 276,
+      "version": "7",
+      "when": 1795278261163,
+      "tag": "0276_the_agent_digest_schedules_are_removed_by_name_on_the_owners_yes",
+      "breakpoints": true
     }
   ]
 }

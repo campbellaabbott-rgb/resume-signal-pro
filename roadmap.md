@@ -1,4 +1,11 @@
-# Deployment checklist 9c9234e9a — resumed round A
+# Deployment checklist dce1abd09
+- [ ] Apply eight unchanged migrations in uploaded order; stop on any failure.
+- [ ] Deploy 14 functions and verify every requested OPTIONS build.
+- [ ] Verify job-board status sliceStats.build is 2026-09-09.103 or later, then apply 20261117110000 unchanged.
+- [ ] Check live frontend commit; publish only if requested commit is not served.
+- [ ] Resolve carried-over preview test typing error and run its test.
+
+# Previous deployment checklist 9c9234e9a — resumed round A
 - [x] Confirm requested commit is included; re-run deployment ledger on HEAD 66f895a6. Ledger agrees with all 29 pre-deploy migrations, 64 functions and four gated migrations; no order, late-migration, unreachable or build conflicts.
 - [x] Apply first 14 pre-deploy migrations individually in uploaded order (drizzle 0244–0257); source files untouched. Applied 0245 differs from source by two indentation spaces on one self-check line, with no SQL behavior difference; every other applied copy is byte-identical.
 - [x] Confirm HEAD is exactly requested commit 9c9234e9a; corrected unapplied source now names scan_industry_known. Owner accepts applied 0245 whitespace difference.
