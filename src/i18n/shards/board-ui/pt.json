@@ -24,6 +24,12 @@
     "unscoredResumeTerms": "Sem pontuação — não reconhecemos nenhuma habilidade nem ferramenta no seu currículo",
     "unscoredResumeTermsBody": "O avaliador lê apenas palavras-chave em inglês e não encontrou nenhuma no seu currículo, então não havia nada para comparar com esta vaga. Não há porcentagem aqui; é a ausência de uma medição, não uma medição fraca.",
     "unscoredResumeTermsTip": "Sem pontuação: o avaliador não reconheceu nenhuma habilidade nem ferramenta no seu currículo (ele lê apenas palavras-chave em inglês), então não havia nada para comparar. Não é uma pontuação baixa — é a falta de pontuação.",
-    "matchesNoneForRole": "Não encontramos vagas abertas para {{role}} agora, então estas são vagas da sua área — pontuadas com base no seu currículo, não encontradas por ele."
+    "matchesNoneForRole": "Não encontramos vagas abertas para {{role}} agora, então estas são vagas da sua área — pontuadas com base no seu currículo, não encontradas por ele.",
+    "loadMoreTooDeep": "O quadro não pagina mais abaixo nesta lista. Restrinja-a com um cargo, um local ou uma área para chegar às vagas que ficam abaixo.",
+    "orderFitNoResumeTerms": "sem ordenação — não reconhecemos nenhuma habilidade nem ferramenta no seu currículo, então não havia nada com que pontuar estas vagas. O avaliador lê apenas palavras-chave em inglês.",
+    "orderFitScoring": "pontuando estas vagas com o seu currículo…",
+    "orderFitLimited": "ainda sem ordenação — a cota de pontuação de afinidade está esgotada por enquanto, então estas vagas não foram pontuadas.",
+    "orderFitFailed": "sem ordenação — o avaliador não respondeu para estas vagas agora mesmo.",
+    "orderFitUnreadable": "sem ordenação — o avaliador não conseguiu ler estas vagas: ele lê apenas palavras-chave em inglês e não reconheceu nenhuma habilidade nem ferramenta nas descrições que temos."
   }
 }

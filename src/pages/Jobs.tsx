@@ -39,7 +39,7 @@ import { SERVING_SOURCE_LIST } from "@/config/ats-vendors";
 import { MultiSelectFilter } from "@/components/board/MultiSelectFilter";
 import { markDeadForRobots, clearDeadForRobots } from "@/lib/seo-robots";
 import { writeWithDigestLocale } from "@/lib/saved-search-locale";
-import { BOARD_BUDGET_ERROR, boardBudgetRefusal, httpStatusOf, markBoardBudgetRefused, readBoardBudgetRefusal, useBoardBudgetRefusal } from "@/lib/board-budget";
+import { BOARD_BUDGET_ERROR, boardBudgetRefusal, httpStatusOf, liftBoardPassRefusal, markBoardBudgetRefused, readBoardBudgetRefusal, useBoardBudgetRefusal } from "@/lib/board-budget";
 import { BoardBudgetNotice } from "@/components/jobs/BoardBudgetNotice";
 import { Link, useLocation, useNavigate, useNavigationType, useParams } from "react-router-dom";
 import { companyLanderPath } from "@/lib/public-href";
@@ -87,7 +87,7 @@ import { FilterBar, type FilterBarValue } from "@/components/jobs/FilterBar";
 import { HowApplyingWorks } from "@/components/jobs/HowApplyingWorks";
 import { applySystem, cleanApplyUrl } from "@/lib/listing/apply-url";
 import { listingEmployer } from "@/lib/listing/employer";
-import { listingAge } from "@/lib/listing/age";
+import { listingAge, readerTimeZone } from "@/lib/listing/age";
 import { displayLocation as listingDisplayLocation } from "@/lib/listing/location";
 import { postingJsonLd } from "@/components/jobs/posting-page";
 import { LcaFiledWagesLine } from "@/components/jobs/LcaFiledWagesLine";
@@ -107,7 +107,7 @@ const TailoredResumeModal = lazy(() => import("@/components/TailoredResumeModal"
 import { supabase } from "@/integrations/supabase/client";
 import { isAutomatedAgent, isSearchRenderer } from "@/lib/home/automation";
 import { boardStripFreshnessData } from "@/lib/home/use-board-freshness";
-import { invokeJobBoard } from "@/lib/invoke-job-board";
+import { invokeJobBoard, requestFreshBoardPass } from "@/lib/invoke-job-board";
 import { heldBoardPass } from "@/lib/board-pass";
 import { readBoardFacets } from "@/lib/board-facets";
 import { readCachedFillCurve } from "@/lib/fill-curve-cache";
@@ -1342,6 +1342,19 @@ export function countryCountsStillTrue(body: Record<string, unknown>): boolean {
 }
 
 /**
+ * MAY AN EMPLOYER OPTION STILL PRINT ITS COUNT? (BOARD-04)
+ *
+ * The same rule, on the employer typeahead. An option's `open` is that
+ * employer's roles on the whole board; under a field, a place or a search
+ * the option produces fewer, so "(1,204)" beside a name was a promise the
+ * click did not keep. The names stay under every filter; the numbers print
+ * only while the employer selection is the only thing narrowing the board.
+ */
+export function companyCountsStillTrue(body: Record<string, unknown>): boolean {
+  return Object.keys(body).every((k) => k === "companies");
+}
+
+/**
  * Which filters are narrowing the board right now — derived MECHANICALLY from
  * the body above rather than re-listed by hand.
  *
@@ -1862,6 +1875,58 @@ async function refusalOf(error: unknown): Promise<{ status: number | null; body:
   return { status, body };
 }
 
+/** The board's refusal of a page too deep to serve by offset: a 400 whose body says offset_too_deep. */
+async function isOffsetTooDeep(error: unknown): Promise<boolean> {
+  if (!error) return false;
+  const { status, body } = await refusalOf(error);
+  return status === 400 && body?.error === "offset_too_deep";
+}
+
+/**
+ * WHY NOT ONE POSTING ON THE PAGE HAS A SCORE (MATCH-09).
+ *
+ * The header over a fit-ranked page with nothing scored said one thing, that
+ * none of the postings has a description we can score, whatever the cause. It
+ * said it of a résumé the scorer read no skill in (every posting null, and
+ * none of them the reason), of an hourly allowance already spent, of a scorer
+ * that did not answer, and of scores still on their way. The cause is read
+ * from the same state the cards and the open posting read:
+ *   - "resume": job-fit named the résumé (no_resume_terms) for any posting.
+ *     One is enough: it is true of every posting that résumé is scored with;
+ *   - "scoring": an id is still unanswered and nothing is holding it back;
+ *   - "limit" / "failed": an unanswered id is held by the allowance or by a
+ *     failed call (the allowance first: it is the one a retry cannot lift);
+ *   - "descriptions": every id is answered, and each is a posting we hold no
+ *     description for. The one case the old sentence was true of;
+ *   - "unreadable": every id is answered and at least one description is held
+ *     but could not be read (no_recognised_terms).
+ */
+export type FitHeaderCause = "resume" | "scoring" | "limit" | "failed" | "descriptions" | "unreadable";
+export function fitHeaderCause(
+  ids: string[],
+  fits: Record<string, number | null>,
+  why: Record<string, string | undefined>,
+  heldOf: (id: string) => "limit" | "failed" | null,
+): FitHeaderCause {
+  if (ids.some((id) => why[id] === "no_resume_terms")) return "resume";
+  const waiting = ids.filter((id) => !(id in fits));
+  if (waiting.length > 0) {
+    const held = waiting.map(heldOf);
+    if (held.includes("limit")) return "limit";
+    if (held.every((h) => h === "failed")) return "failed";
+    return "scoring";
+  }
+  return ids.some((id) => why[id] === "no_recognised_terms") ? "unreadable" : "descriptions";
+}
+
+/** The one reason for an undecided live check that is the employer's feed's doing (job-board's verify, `uncheckable[id]`). */
+const PAGE_CAPPED = "page-capped";
+
+/** Why a posting has no fit score: job-fit's own reasons, and this page's for an id job-fit did not answer. */
+type BoardFitWhy = UnscoredFitReason | "not_found";
+/** The reason a card is given: job-fit's own, or none (the card's plain "not scored") for one it does not know. */
+const cardFitWhy = (why: BoardFitWhy | undefined): UnscoredFitReason | undefined => (why === "not_found" ? undefined : why);
+
 /**
  * THE PANE'S AGE IS THE CARD'S (NB-22): src/lib/listing/age.ts, the rule the
  * card prints, so the two cannot disagree about one posting. Null for an
@@ -1869,8 +1934,36 @@ async function refusalOf(error: unknown): Promise<{ status: number | null; body:
  * edited, whose date is not the day the employer posted it.
  */
 function paneAgeDays(job: Pick<BoardJob, "id" | "postedAt"> & { source?: string | null }): number | null {
-  const age = listingAge(job as Parameters<typeof listingAge>[0]);
+  // In the reader's own day, as the card counts it: undefined (a runtime that
+  // names no zone) is the UTC count.
+  const age = listingAge(job as Parameters<typeof listingAge>[0], new Date(), readerTimeZone());
   return age.kind === "dated" ? age.days : null;
+}
+
+/**
+ * A held employer watch, widened to cover `boards` as well (S10-157), or null
+ * when there is nothing to write: the watch already covers them, or the row
+ * is not a plain employer watch (it carries any filter besides its boards),
+ * which this never rewrites.
+ */
+export function widenedWatchParams(held: unknown, boards: string[]): { company?: string; companies: string[] } | null {
+  if (!held || typeof held !== "object" || Array.isArray(held)) return null;
+  const h = held as { company?: unknown; companies?: unknown };
+  if (Object.keys(h).some((k) => k !== "company" && k !== "companies")) return null;
+  const own = typeof h.company === "string" && h.company ? [h.company] : [];
+  const list = Array.isArray(h.companies) ? h.companies.filter((x): x is string => typeof x === "string" && !!x) : [];
+  const covered = new Set([...own, ...list]);
+  const before = covered.size;
+  if (before === 0) return null;
+  for (const b of boards) if (b) covered.add(b);
+  if (covered.size === before) return null;
+  return { ...(own.length ? { company: own[0] } : {}), companies: [...covered] };
+}
+
+/** The reader's own calendar day, YYYY-MM-DD: what an Apply click is dated (S10-159). */
+function localCalendarDay(now: Date = new Date()): string {
+  const two = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}`;
 }
 
 function daysAgo(iso: string | null): number | null {
@@ -2574,6 +2667,11 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // Deep-linkable filters: /jobs?q=nurse&category=healthcare&remote=1&company=oscar
   const initial = new URLSearchParams(window.location.search);
   const [q, setQ] = useState(initial.get("q") ?? "");
+  // WHAT THE SEARCH BOX HOLDS NOW (S10-067). An await that began under one
+  // render reads that render's `q` when it resumes; the reader may have typed
+  // since. Written on every render, so a resumed await reads the box as it is.
+  const qRef = useRef(q);
+  qRef.current = q;
   const [location, setLocation] = useState(initial.get("location") ?? "");
   const [remoteOnly, setRemoteOnly] = useState(initial.get("remote") === "1");
   // Definitive work-mode filter (remote/hybrid/onsite; "" = any). A legacy
@@ -3216,6 +3314,9 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // the URL carries none.
   const [searchNewestFirst, setSearchNewestFirst] = useState(() => initial.get("sort") === "newest" && !!initial.get("q"));
   const [fitRanking, setFitRanking] = useState(false);
+  // Whether ranking is on NOW, for the awaits that switch it on (see awaitFitPage).
+  const fitRankingRef = useRef(fitRanking);
+  fitRankingRef.current = fitRanking;
   // Role titles read out of the dropped résumé. Shown, never hidden: the board
   // searched for something the reader did not type, so it has to say what.
   const [fitTerms, setFitTerms] = useState<string[]>([]);
@@ -3234,7 +3335,9 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // WHY A NULL IS A NULL (S14X-052): job-fit's `unscored` reason beside each
   // null. A job-fit that sends none leaves this empty, and a null reads as
   // it always did.
-  const [fitWhy, setFitWhy] = useState<Record<string, UnscoredFitReason>>({});
+  // not_found is this page's own (MATCH-01): an id the scorer was asked for
+  // and did not answer at all, which is a posting it does not hold.
+  const [fitWhy, setFitWhy] = useState<Record<string, BoardFitWhy>>({});
   // THE HOURLY ALLOWANCE IS NOT A BLIP (S14X-294). job-fit's 429 names the
   // allowance and its window; it was counted with every other failure and
   // printed as "usually temporary", with a Try again that asked again inside
@@ -3261,6 +3364,14 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   const [misses, setMisses] = useState<Record<string, string[]>>({});
   const [hits, setHits] = useState<Record<string, string[]>>({});
   const [fitLoading, setFitLoading] = useState(false);
+  // IDS ASKED OF THE SCORER AND NOT YET ANSWERED (MATCH-M1). The scoring effect
+  // re-runs whenever the list changes, and "unscored" meant "not in fits", so
+  // a Load more during a run sent the first run's ids a second time, against
+  // an hourly allowance; and the first run to finish switched the spinner off
+  // over the second. An id in this set is not asked again, and the spinner
+  // stays while the set holds anything. One set per résumé: a replaced résumé
+  // starts an empty one (adoptFitResume), so its run asks for every row.
+  const fitInFlight = useRef<Set<string>>(new Set());
   // True once we've checked for a resume on mount, so the auto-enable only
   // fires once and never fights a user who deliberately toggled fit off.
   const fitAutoChecked = useRef(false);
@@ -3316,6 +3427,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     // did not also change the query (a second résumé for the same role, or any
     // résumé arriving while the reader has typed a query of their own — in
     // both cases `jobs` never changes, and `jobs` was the only trigger).
+    fitInFlight.current = new Set(); // nothing of the new résumé's is in flight
     setFits({});
     setFitWhy({});
     setFitHeld({});
@@ -3332,6 +3444,20 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // moment the drop sets the query and cleared when that fetch settles, so
   // the fit effect waits for the page the reader asked for.
   const fitAwaitingPage = useRef(false);
+  /**
+   * RANKING IS ABOUT TO SWITCH ON OVER A BROWSE (no query, no employer) with
+   * nothing searched for it: the switch itself refetches the list for rows
+   * that can be scored (fitBrowseNeedsDescriptions), so the page on screen is
+   * about to be replaced and the scorer waits for its successor. Called by
+   * every door that switches ranking on, the résumé drop included (MATCH-12:
+   * its filter-kept and no-role branches spent a fit call on the old page).
+   * Read from the refs, never a closure: only a switch that is really
+   * happening, on the box as it is now, opens the gap, or nothing would
+   * ever close it.
+   */
+  const awaitFitPage = (searched: string) => {
+    if (!fitRankingRef.current && !searched && !qRef.current.trim() && !company && !landerCompany) fitAwaitingPage.current = true;
+  };
   // Inline résumé drop on the board (Batch 1): parse state + drag highlight.
   const [parsingResume, setParsingResume] = useState(false);
   const [resumeDragOver, setResumeDragOver] = useState(false);
@@ -3526,6 +3652,10 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // shows an inline retry under it, rather than replacing a full page of
   // results with an error card.
   const [loadMoreError, setLoadMoreError] = useState(false);
+  // The board refused the next page as too deep (400 offset_too_deep): no
+  // retry can serve it, so Load more leaves and the page says to narrow
+  // (BOARD-02). Cleared by the next first page.
+  const [loadMoreTooDeep, setLoadMoreTooDeep] = useState(false);
   const reqSeq = useRef(0);
   // WHICH FILTER SET THE VISIBLE LIST WAS BUILT FROM.
   //
@@ -3909,9 +4039,20 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       await appsTable().update({ job_posting: description.slice(0, 20000) }).eq("user_id", session.user.id).eq("job_id", job.id);
       // Auto fit-check: deterministic keyword coverage of the resume they'd
       // send — the tracker becomes a ranked queue, not just a list.
-      if (latestScan?.resume_text) {
+      //
+      // THE RÉSUMÉ THE BOARD RANKED WITH (MATCH-11, the save path). This sent
+      // the latest scan whatever the board was scoring against: a résumé
+      // dropped on the board, or the one pinned for matching, gave the card
+      // one fit and the tracker row another, for a different document. The
+      // board's own choice (resolveFitResume: dropped, pinned, this session's
+      // scan, then the latest scan) is what is scored; the latest scan is
+      // only what it falls back to.
+      let fitText: string | null = null;
+      try { fitText = await resolveFitResume(); } catch { /* the latest scan below */ }
+      fitText = fitText ?? latestScan?.resume_text ?? null;
+      if (fitText) {
         const { data: fit } = await supabase.functions.invoke("application-fit", {
-          body: { jobPosting: description, resumeText: latestScan.resume_text },
+          body: { jobPosting: description, resumeText: fitText },
         });
         if ((fit as { success?: boolean })?.success) {
           const { pct, missing } = (fit as { data: { pct: number | null; missing: string[] } }).data;
@@ -3954,21 +4095,34 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   const promoteApplied = async (job: BoardJob) => {
     if (!session) return;
     appliedNotice.current = { company: job.company, role: job.title, ts: Date.now() };
-    if (savedIds.has(job.id)) {
-      await appsTable().update({ status: "applied", applied_at: new Date().toISOString().slice(0, 10) })
-        .eq("user_id", session.user.id).eq("job_id", job.id).eq("status", "saved");
-    } else {
-      setSavedIds((prev) => new Set(prev).add(job.id));
-      await appsTable().insert({
-        user_id: session.user.id,
-        company: job.company,
-        role: job.title,
-        status: "applied",
-        job_id: job.id,
-        apply_url: job.applyUrl,
-        location: job.location,
-      }).then(() => {}, () => {});
-    }
+    // THE DAY THE READER CLICKED, ON THEIR OWN CALENDAR (S10-159). The update
+    // wrote the UTC day and the insert took the database's current_date (UTC
+    // too), so an evening click in the Americas was dated tomorrow.
+    const appliedOn = localCalendarDay();
+    // THE CARD KNOWS AT ONCE (S10-156). appliedIds was filled at mount and
+    // never again, so the Applied mark and "Hide applied" ignored the click
+    // until the page was reloaded. Only after the write landed.
+    const markApplied = () => setAppliedIds((prev) => (prev.has(job.id) ? prev : new Set(prev).add(job.id)));
+    try {
+      if (savedIds.has(job.id)) {
+        const { error: upErr } = await appsTable().update({ status: "applied", applied_at: appliedOn })
+          .eq("user_id", session.user.id).eq("job_id", job.id).eq("status", "saved");
+        if (!upErr) markApplied();
+      } else {
+        setSavedIds((prev) => new Set(prev).add(job.id));
+        const { error: insErr } = await appsTable().insert({
+          user_id: session.user.id,
+          company: job.company,
+          role: job.title,
+          status: "applied",
+          applied_at: appliedOn,
+          job_id: job.id,
+          apply_url: job.applyUrl,
+          location: job.location,
+        });
+        if (!insErr) markApplied();
+      }
+    } catch { /* the tracker is a convenience: a failed write never blocks the click */ }
   };
 
   // `alert` = the caller promised the user an email ("Alert me when this
@@ -4056,17 +4210,47 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     // read: the same search is the one on screen; a different one is not, so
     // this search is saved beside it under a numbered name and the other
     // row is left as it was. A row that cannot be read keeps the old answer.
+    //
+    // AND A NUMBERED ROW IS READ BEFORE IT IS WRITTEN PAST (BOARD-05). The
+    // numbered names were tried by inserting: saved once as "name (2)", the
+    // same search collided there, went on to "name (3)" and landed, a second
+    // row of one search; and when every numbered name was taken the alert
+    // below was switched on for the base-name row, which is the OTHER search.
+    // Each numbered row's filters are read first: the one that holds this
+    // search is this search's row (no insert; an alert goes to it), another
+    // search's row is left as it was, and a free name takes the insert. When
+    // no row holds this search and none could be added, nothing is alerted.
     if (err && err.code === "23505") {
-      let held: unknown = undefined;
-      try {
-        const { data: row } = await searchesTable().select("params").eq("user_id", session.user.id).eq("name", name).maybeSingle();
-        held = (row as { params?: unknown } | null)?.params;
-      } catch { /* unreadable: the old answer stands */ }
-      if (held && typeof held === "object" && searchToQuery(held as Parameters<typeof searchToQuery>[0]) !== searchToQuery(params)) {
-        for (let n = 2; n <= 9 && err?.code === "23505"; n++) {
+      const heldAt = async (as: string): Promise<unknown> => {
+        try {
+          const { data: row } = await searchesTable().select("params").eq("user_id", session.user.id).eq("name", as).maybeSingle();
+          return (row as { params?: unknown } | null)?.params;
+        } catch { return undefined; /* unreadable: the old answer stands */ }
+      };
+      const isObject = (v: unknown): v is Parameters<typeof searchToQuery>[0] => !!v && typeof v === "object";
+      const thisSearch = searchToQuery(params);
+      const held = await heldAt(name);
+      if (isObject(held) && searchToQuery(held) !== thisSearch) {
+        let placed = false;
+        // While the collision stands and no row is this search's: a free
+        // name ends it (err cleared), and so does any other failure (break).
+        for (let n = 2; n <= 9 && err?.code === "23505" && !placed; n++) {
           const numbered = `${name} (${n})`;
+          const row = await heldAt(numbered);
+          if (isObject(row)) {
+            // This search, saved earlier under this number: its row, no new one.
+            if (searchToQuery(row) === thisSearch) { name = numbered; placed = true; }
+            continue;
+          }
           err = await insertAs(numbered);
-          if (!err) name = numbered;
+          if (!err) { name = numbered; placed = true; }
+          else if (err.code !== "23505") break; // a real failure, said as one below
+        }
+        if (!placed && err?.code === "23505") {
+          // Every name is another search's: this one is not saved, and no
+          // other row is told it is.
+          toast({ title: t("jobsPage.saveFailed", "Couldn't save — try again.") });
+          return;
         }
       }
     }
@@ -4166,6 +4350,12 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // call short-circuits here (no request at all) until the reset, and the page
   // says why instead of looking broken. (A missing board pass is the one
   // refusal a retry can lift; invokeJobBoard does that once, before this sees it.)
+  //
+  // EVERY CALL THROUGH HERE IS A BACKGROUND ONE to the page-wide store
+  // (S10-164): a description, a live check, a count, a suggestion. Its "pass"
+  // refusal is that call's own failure and is shown where the call is shown;
+  // only the list itself (fetchJobs) may pause the whole board for a pass.
+  // An allowance refusal is recorded whoever meets it.
   const invokeBoard = async <T,>(
     body: Record<string, unknown>,
     { retry = true }: { retry?: boolean } = {},
@@ -4174,13 +4364,13 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     const first = await invokeJobBoard({ body });
     if (!first.error && first.data != null) return first as { data: T; error: null };
     const refusedFirst = await readBoardBudgetRefusal(first.error);
-    if (refusedFirst) { markBoardBudgetRefused(refusedFirst); return first as { data: T | null; error: { message?: string } | null }; }
+    if (refusedFirst) { markBoardBudgetRefused(refusedFirst, { background: true }); return first as { data: T | null; error: { message?: string } | null }; }
     if (!retry) return first as { data: T | null; error: { message?: string } | null };
     await new Promise((r) => setTimeout(r, 1200));
     if (boardBudgetRefusal()) return { data: null, error: { message: BOARD_BUDGET_ERROR } };
     const second = await invokeJobBoard({ body }) as { data: T | null; error: { message?: string } | null };
     const refusedSecond = await readBoardBudgetRefusal(second.error);
-    if (refusedSecond) markBoardBudgetRefused(refusedSecond);
+    if (refusedSecond) markBoardBudgetRefused(refusedSecond, { background: true });
     return second;
   };
 
@@ -4286,6 +4476,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       offset === 0 ? (jobsCount.current > 0 ? setRefreshing(true) : setLoading(true)) : setLoadingMore(true);
       setError(false);
       setLoadMoreError(false);
+      if (offset === 0) setLoadMoreTooDeep(false);
       try {
         const body = {
           action: "list",
@@ -4354,6 +4545,16 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
           // A budget refusal is never retried: it cannot clear before 00:00 UTC.
           const refused = await readBoardBudgetRefusal(err);
           if (refused) { markBoardBudgetRefused(refused); throw new Error(BOARD_BUDGET_ERROR); }
+          // PAST THE DEPTH THE BOARD SERVES, NOTHING IS RETRIED (BOARD-02). A
+          // list not paged by its cursor (newest first, a search, the pay
+          // order) is refused past the offset ceiling with 400
+          // offset_too_deep. It was retried here, failed again, and offered
+          // "Try again" under the list for ever. The rows stay; the button
+          // goes; the page says what does reach the rest.
+          if (offset > 0 && await isOffsetTooDeep(err)) {
+            if (seq === reqSeq.current) setLoadMoreTooDeep(true);
+            return;
+          }
           // One quiet retry: a refresh slice hitting the function's resource
           // ceiling can bounce a single request; the next instance serves fine.
           await new Promise((r) => setTimeout(r, 1200));
@@ -4471,6 +4672,33 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     },
     [filterState, q, sortMode, searchNewestFirst, fitBrowseNeedsDescriptions, discoveredView, noIntent],
   );
+
+  /**
+   * THE RETRY A PAUSE FOR THE BROWSER CHECK OFFERS (S10-164). A "pass" refusal
+   * stood until the page was reloaded, and reloading was the only advice. It
+   * keeps its cause, so this is offered for it and for no other refusal: a
+   * new check is asked for now (a person asked, so the cooldown does not
+   * apply), then the refusal is lifted and the list is read again, for the
+   * filters on screen by then. A check that fails again is refused again,
+   * and the notice returns with this beside it.
+   */
+  const [boardPassRetrying, setBoardPassRetrying] = useState(false);
+  const retryBoardPass = async () => {
+    if (boardPassRetrying || budgetRefusal?.code !== "pass") return;
+    setBoardPassRetrying(true);
+    try { await requestFreshBoardPass(); } finally { setBoardPassRetrying(false); }
+    if (!liftBoardPassRefusal()) return;
+    // The first page itself was refused: the skeleton, not the generic error
+    // card, while the read is on its way.
+    if (error && errorKind === "budget") { setError(false); setLoading(true); }
+    setListResync((n) => n + 1);
+  };
+  const boardPassRetry = budgetRefusal?.code === "pass" ? (
+    <Button variant="outline" size="sm" className="gap-2 mb-4" data-board-pass-retry="" disabled={boardPassRetrying} onClick={() => { void retryBoardPass(); }}>
+      {boardPassRetrying && <Loader2 className="w-4 h-4 animate-spin" />}
+      {t("jobsPage.retry", "Try again")}
+    </Button>
+  ) : null;
 
   // THE SURVIVING HISTORY ENTRY CAN BE STALE. Opening the detail panel pushes
   // a ?job= entry; every filter change made while it is open is written by
@@ -4755,9 +4983,18 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   const verifyJobOutcome = async (job: BoardJob): Promise<"live" | "closed" | "uncheckable" | "error"> => {
     try {
       const { data, error: verifyErr } = await invokeBoard<unknown>({ action: "verify", ids: [job.id] }, { retry: false });
-      const live = (data as { live?: Record<string, boolean | null> } | null)?.live;
+      const answer = data as { live?: Record<string, boolean | null>; uncheckable?: Record<string, unknown> } | null;
+      const live = answer?.live;
       if (verifyErr || !live || !(job.id in live)) return "error"; // no answer is not a confirmation, and not a fact about their feed
-      if (live[job.id] === null) return "uncheckable";             // the board answered; our read could not reach the posting
+      // A NULL IS NOT A FACT ABOUT THEIR FEED EITHER (L2-15), unless the board
+      // says so. The server answers null when its own fetch threw, when the
+      // employer's system answered anything but found or not found, when the
+      // board read failed and when the posting's board left the catalogue, as
+      // well as when a feed pages short of its total. Only the last is the
+      // sentence "their feed lists more roles than it lets us read", so only
+      // a null the board names as that (uncheckable[id]) is told as that; any
+      // other null is our check not going through.
+      if (live[job.id] === null) return answer?.uncheckable?.[job.id] === PAGE_CAPPED ? "uncheckable" : "error";
       if (live[job.id] === false) {
         setJobs((prev) => prev.filter((j) => j.id !== job.id));
         toast({
@@ -5371,6 +5608,19 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       })));
     }
     if (err && err.code === "23505") {
+      // THE WATCH ALREADY HELD MAY COVER FEWER BOARDS THAN THIS PAGE (S10-157).
+      // A secondary board's page saves {company: its token} under the same
+      // name the employer's page uses; watched first, it made this click
+      // answer "already watching" and return, and the alerts went on
+      // covering one board. The held watch is read and widened to the union
+      // of its boards and this page's. Only a watch that is nothing but an
+      // employer scope is touched; a row that cannot be read is left as it was.
+      try {
+        const { data: row } = await searchesTable().select("params").eq("user_id", session.user.id).eq("name", watchName).maybeSingle();
+        const held = (row as { params?: unknown } | null)?.params;
+        const widened = widenedWatchParams(held, landerScope ?? [landerCompany]);
+        if (widened) await searchesTable().update({ params: widened }).eq("user_id", session.user.id).eq("name", watchName);
+      } catch { /* the watch that exists still stands */ }
       toast({ title: boardsNamed
         ? t("jobsPage.watchExistsBoards", "You're already watching boards named “{{token}}”.", { token: landerCompany })
         : t("jobsPage.watchExists", "You're already watching {{company}}.", { company: landerCompanyName }) });
@@ -5431,11 +5681,15 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       let alreadyApplied = false;
       try {
         const { data: existing } = await appsTable()
-          .select("status, applied_at")
+          .select("status")
           .eq("user_id", session.user.id)
           .eq("job_id", job.id)
           .limit(1);
-        alreadyApplied = Array.isArray(existing) && existing.some((r: { status?: string; applied_at?: string | null }) => r.status === "applied" || !!r.applied_at);
+        // BY ITS STATUS, NEVER ITS DATE (S10-155). applied_at is NOT NULL with
+        // a default of today on every tracker row, a saved one included, so
+        // reading it told a reader who had only bookmarked the posting that
+        // they had already applied. Any status past "saved" is an application.
+        alreadyApplied = Array.isArray(existing) && existing.some((r: { status?: string }) => !!r.status && r.status !== "saved");
       } catch { /* dedup is advisory — never block on it */ }
       // The JD gives grounding context (and, for non-Greenhouse, the inferred
       // questions). Best-effort — drafting still works from the resume alone.
@@ -5708,8 +5962,11 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       // typed over by the résumé's title. Kept, the filtered page is read with
       // descriptions (fitBrowseNeedsDescriptions) and ranked by fit, and the
       // caller says so.
+      // THE BOX AS IT IS NOW, not as it was when this call began (S10-067):
+      // a query typed while the terms loaded was typed over by the résumé's
+      // title, because the closure still held the empty box.
       const filtered = Object.keys(boardFilterBody(filterState)).length > 0;
-      if (terms.length > 0 && !q.trim() && !company && !landerCompany) {
+      if (terms.length > 0 && !qRef.current.trim() && !company && !landerCompany) {
         if (filtered) {
           fitKeptFilters.current = true;
           return "";
@@ -5782,6 +6039,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       // scoring zero 7-14 of 20 -> 0-1.
       const searched = await retrieveForResume(text);
 
+      awaitFitPage(searched);
       setFitRanking(true);
       if (!searched && fitKeptFiltersToast()) return;
       toast({
@@ -5793,7 +6051,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       const reason = e instanceof Error ? e.message : "";
       toast({
         title: reason === "rate_limited"
-          ? t("jobsPage.dropRateLimited", "Too many scans from this network for now — try again in an hour, or sign in.")
+          ? t("jobsPage.dropRateLimited", "Too many scans from this network for now — try again in an hour.")
           : reason === "no_text"
             ? t("jobsPage.dropTooShort", "We couldn't read enough text from that file — try the full scanner instead.")
             : t("jobsPage.dropFailed", "Couldn't parse that file. The full free scan handles trickier formats."),
@@ -5890,7 +6148,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     // rows instead (hasDescription, below), and the fit effect must wait for
     // THAT page rather than spending a scoring call on the recency page still
     // on screen — the same wasted call the drop measured and fixed.
-    if (!searched && !q.trim() && !company && !landerCompany) fitAwaitingPage.current = true;
+    awaitFitPage(searched);
     setFitRanking(true);
     // The search box visibly changes under the reader's hands, so say why.
     if (searched) {
@@ -5909,11 +6167,25 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     // true from the moment the offset-0 fetch starts until it lands, so this
     // waits for the page the reader actually asked for; the arrival of that
     // page changes `jobs`, which re-runs the effect.
-    if (!fitRanking || jobs.length === 0 || refreshing || fitAwaitingPage.current) return;
+    //
+    // THE OPEN POSTING IS SCORED WITH THE LIST (MATCH-01). A posting opened by
+    // its link (a fit-alert mail's View, a shared ?job=) is the detail job and
+    // is in no loaded page, so it was in no batch: its panel said "Scoring
+    // this posting against your resume…" for as long as it stayed open. Its
+    // id leads the batch, and the effect re-runs when the open posting changes.
+    const linked = detailJob && !jobs.some((j) => j.id === detailJob.id) ? detailJob.id : null;
+    if (!fitRanking || (jobs.length === 0 && !linked) || refreshing || fitAwaitingPage.current) return;
     // Inside the allowance's window nothing is asked (S14X-294).
     if (fitLimited && Date.now() < fitLimited.until) return;
-    const unscored = jobs.filter((j) => !(j.id in fits)).map((j) => j.id);
+    // Not scored, and not already asked for (MATCH-M1, at fitInFlight).
+    const flight = fitInFlight.current;
+    const answeredOrAsked = (id: string) => id in fits || flight.has(id);
+    const unscored = jobs.filter((j) => !answeredOrAsked(j.id)).map((j) => j.id);
+    // The open posting leads the first batch: it is the one being read.
+    if (linked && !answeredOrAsked(linked)) unscored.unshift(linked);
     if (unscored.length === 0) return;
+    // Claimed before the first await, so a re-run in the same tick sees them.
+    for (const id of unscored) flight.add(id);
     (async () => {
       setFitLoading(true);
       try {
@@ -5982,15 +6254,22 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
             setFitHeld((prev) => { const n = { ...prev }; for (const id of ids) n[id] = "failed"; return n; });
             continue;
           }
-          if (payload?.fits) setFits((prev) => ({ ...prev, ...payload.fits }));
+          // AN ID THE SCORER LEFT OUT IS ANSWERED TOO (MATCH-01). job-fit
+          // answers only for the rows it finds; an id it holds no row for was
+          // in neither map, stayed undefined, and was asked for again on
+          // every later run while its panel went on spinning. It is a null
+          // with its own reason: no score, and none coming.
+          const answered: Record<string, number | null> = { ...payload.fits };
+          const why: Record<string, BoardFitWhy> = {};
           if (payload.unscored && typeof payload.unscored === "object") {
-            const why: Record<string, UnscoredFitReason> = {};
             for (const [id, r] of Object.entries(payload.unscored)) if (r === "no_description" || r === "no_recognised_terms" || r === "no_resume_terms") why[id] = r;
-            setFitWhy((prev) => ({ ...prev, ...why }));
           }
+          for (const id of ids) if (!(id in answered)) { answered[id] = null; why[id] = "not_found"; }
+          setFits((prev) => ({ ...prev, ...answered }));
+          if (Object.keys(why).length > 0) setFitWhy((prev) => ({ ...prev, ...why }));
           setFitHeld((prev) => {
             const n = { ...prev };
-            for (const id of Object.keys(payload.fits!)) delete n[id];
+            for (const id of Object.keys(answered)) delete n[id];
             return n;
           });
           if (payload?.missing) setMisses((prev) => ({ ...prev, ...payload.missing }));
@@ -5999,7 +6278,10 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
         if (fitResume.current !== resume) return;
         setFitFailedCount(failed);
       } finally {
-        setFitLoading(false);
+        // Answered, refused or abandoned: no longer in flight. The spinner
+        // stays for any other run's ids (the set is the current résumé's).
+        for (const id of unscored) flight.delete(id);
+        setFitLoading(fitInFlight.current.size > 0);
       }
     })();
     // fitResumeGen is what makes a SECOND résumé re-score. `jobs` used to be
@@ -6008,7 +6290,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     // file while the reader has typed a query of their own, left the whole
     // board scored against the file they had replaced.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitRanking, jobs, refreshing, fitRetry, fitResumeGen, fitLimited]);
+  }, [fitRanking, jobs, refreshing, fitRetry, fitResumeGen, fitLimited, detailJob?.id]);
 
   // Fit-first by default: the moment we can tell there's a resume to score
   // against (a fresh scan stashed this session, or the signed-in user's latest
@@ -6038,7 +6320,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       // unreachable to exactly the people this effect serves.
       const searched = await retrieveForResume(resume);
       if (cancelled) return;
-      if (!searched && !q.trim() && !company && !landerCompany) fitAwaitingPage.current = true;
+      awaitFitPage(searched);
       setFitRanking(true);
       // The search box fills itself as they land, so say why.
       if (searched) {
@@ -6425,6 +6707,11 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     () => countryCountsStillTrue(boardFilterBody(filterState)),
     [filterState],
   );
+  // The employer typeahead's twin of it (companyCountsStillTrue).
+  const companyCountsShown = useMemo(
+    () => companyCountsStillTrue(boardFilterBody(filterState)),
+    [filterState],
+  );
 
   /**
    * Weave employers together on the DEFAULT browse only.
@@ -6704,6 +6991,12 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       // An open shortcuts card or palette owns the keyboard (NB-26): Enter
       // there opened the selected posting's apply page and marked it Applied.
       if (helpOpen || paletteOpen) return;
+      // A CHORD IS SOMEBODY ELSE'S KEY (S10-154). Cmd+K opens the palette,
+      // and this handler, still holding the render in which it was closed,
+      // also moved the selected posting up; Ctrl+J was swallowed whole. A key
+      // pressed with Cmd, Ctrl or Alt, or while an input method is composing,
+      // is never j, k, an arrow or Enter here.
+      if (e.metaKey || e.ctrlKey || e.altKey || e.isComposing) return;
       const el = e.target as HTMLElement;
       if (["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable) return;
       // Enter on a focused CONTROL belongs to that control. Without this the
@@ -8567,7 +8860,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                         {field.median_censored ? (
                           <> {t("jobsPage.fieldMedianCensored", "We did not see half of them come down inside {{d}} days, so there is no typical figure to give.", { d: FILL_SUPPORT_MAX_DAYS })}</>
                         ) : (
-                          <> {t("jobsPage.fieldMedian", "Half of these roles are filled by day {{d}}.", { d: Math.round(field.median_days_to_fill ?? 0) })}</>
+                          <> {t("jobsPage.fieldMedian", "Half of these roles were taken down for good by day {{d}}.", { d: Math.round(field.median_days_to_fill ?? 0) })}</>
                         )}
                         {/* THE TABLE'S OWN DATE, on every clause drawn from it:
                             the stamp of the run that computed the map, and
@@ -9149,7 +9442,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                 {fieldCurve!.median_censored ? (
                   <> {t("jobsPage.fieldMedianCensored", "We did not see half of them come down inside {{d}} days, so there is no typical figure to give.", { d: FILL_SUPPORT_MAX_DAYS })}</>
                 ) : (
-                  <> {t("jobsPage.fieldMedian", "Half of these roles are filled by day {{d}}.", { d: Math.round(fieldCurve!.median_days_to_fill ?? 0) })}</>
+                  <> {t("jobsPage.fieldMedian", "Half of these roles were taken down for good by day {{d}}.", { d: Math.round(fieldCurve!.median_days_to_fill ?? 0) })}</>
                 )}
                 {coverageBand(fieldCurve!.dated_coverage) === "qualified" && (
                   <> {t("jobsPage.fillCoverageQualifier", "Across the {{pct}}% of these roles that carry a posting date from the company itself.", { pct: asPct(fieldCurve!.dated_coverage) })}</>
@@ -9611,8 +9904,10 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                             there is no number: `open` is counted under the same
                             two predicates the filter applies, and an option
                             whose count the server could not state renders as a
-                            bare name rather than as a promise. */}
-                        {c.name}{typeof c.open === "number" ? <span className="text-muted-foreground"> ({c.open})</span> : null}
+                            bare name rather than as a promise. Under any other
+                            filter it is the whole board's figure, so it is not
+                            printed (BOARD-04, companyCountsStillTrue). */}
+                        {c.name}{companyCountsShown && typeof c.open === "number" ? <span className="text-muted-foreground"> ({c.open})</span> : null}
                       </button>
                     ))}
                 </div>
@@ -10328,7 +10623,28 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                     // value overrides an inline default, so nine translated
                     // copies of the old wording would have gone on rendering
                     // (the agentPitchScope lesson).
-                    ? t("jobsPage.orderFitNoDescriptions", "not ranked — none of these postings has a description we can score yet. Search a job title and the roles it finds can be ranked by fit.")
+                    //
+                    // AND ONLY WHEN THAT IS THE CAUSE (MATCH-09, fitHeaderCause):
+                    // the résumé, the allowance, a failed call and scores still
+                    // on their way each have their own sentence.
+                    ? (() => {
+                        const cause = fitHeaderCause(jobs.map((j) => j.id), fits, fitWhy, fitHeldOf);
+                        return (
+                          <span data-fit-header={cause}>
+                            {cause === "resume"
+                              ? t("boardUi.orderFitNoResumeTerms", "not ranked — we recognised no skill or tool in your résumé, so there was nothing to score these postings against. The scorer reads English keywords only.")
+                              : cause === "scoring"
+                                ? t("boardUi.orderFitScoring", "scoring these postings against your résumé…")
+                                : cause === "limit"
+                                  ? t("boardUi.orderFitLimited", "not ranked yet — the fit-scoring allowance is used up for now, so these postings have not been scored.")
+                                  : cause === "failed"
+                                    ? t("boardUi.orderFitFailed", "not ranked — the scorer did not answer for these postings just now.")
+                                    : cause === "unreadable"
+                                      ? t("boardUi.orderFitUnreadable", "not ranked — the scorer could not read these postings: it reads English keywords only, and found no skill or tool it knows in the descriptions we hold.")
+                                      : t("jobsPage.orderFitNoDescriptions", "not ranked — none of these postings has a description we can score yet. Search a job title and the roles it finds can be ranked by fit.")}
+                          </span>
+                        );
+                      })()
                     : scoredCount < jobs.length
                       ? t("jobsPage.orderFitPartial", "ordered by fit — {{n}} of {{m}} scored", { n: scoredCount, m: jobs.length })
                       : t("jobsPage.orderFit", "ordered by fit to your résumé"))
@@ -10708,7 +11024,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
             )}
             {fitRanking && (
               <span className="text-[11px] text-muted-foreground">
-                {t("jobsPage.fitRankingNote", "Deterministic keyword coverage vs your scanned resume — postings without stored descriptions show no score.")}
+                {t("jobsPage.fitRankingNote", "Ordered by keyword fit score against your scanned résumé — postings without stored descriptions show no score.")}
               </span>
             )}
             {/* A SCORING FAILURE IS RETRYABLE, AND SAYING SO IS THE DIFFERENCE
@@ -11280,7 +11596,10 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
               will load until the reset. The error branch below carries its
               own notice when the first page itself was refused. */}
           {budgetRefusal && !(error && errorKind === "budget") && (
-            <BoardBudgetNotice refusal={budgetRefusal} variant="banner" />
+            <>
+              <BoardBudgetNotice refusal={budgetRefusal} variant="banner" />
+              {boardPassRetry}
+            </>
           )}
           {/* Dead deep link. Say what it was (when we know) and offer live
               siblings — a visible answer where there used to be silence.
@@ -11396,9 +11715,13 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
               ))}
             </ul>
           ) : error && errorKind === "budget" && budgetRefusal ? (
-            // NO RETRY: the allowance resets at 00:00 UTC and a retry before
-            // then is a second refused request.
-            <BoardBudgetNotice refusal={budgetRefusal} />
+            // NO RETRY OF AN ALLOWANCE: it resets at 00:00 UTC and a retry
+            // before then is a second refused request. A browser check that
+            // did not finish is the one refusal with a retry (boardPassRetry).
+            <>
+              <BoardBudgetNotice refusal={budgetRefusal} />
+              {boardPassRetry && <div className="text-center">{boardPassRetry}</div>}
+            </>
           ) : error ? (
             <div className="py-16 text-center">
               <p className="text-sm text-muted-foreground mb-3">
@@ -12012,8 +12335,14 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                   </p>
                 ) : null;
               })()}
-              {category && benchmarks?.[category] && (
+              {/* THE FIELD'S FIGURE, ONLY OVER THE FIELD'S PAGE (BOARD-01). The
+                  benchmark is one median per field across the whole board;
+                  under a place, a band, an employer or a search it went on
+                  printing that board-wide figure over a page it does not
+                  describe. Shown while the field is the only thing bound. */}
+              {category && categoryOnly && benchmarks?.[category] && (
                 <p
+                  data-field-pay-line=""
                   className="text-xs text-muted-foreground mb-3 -mt-2"
                   title={t("jobsPage.benchmarkTip", "Median of the annualized lower bounds companies publish themselves (hourly and monthly rates annualized), computed over this field's dominant stated currency only — never converted, never mixed. Live from this board — not a survey or an estimate.")}
                 >
@@ -12166,7 +12495,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                         selected: detailJob?.id === job.id,
                       }}
                       href={jobDetailHref(job.id)}
-                      fit={fit === null ? { kind: "unscored", reason: fitWhy[job.id] } : typeof fit === "number" ? { kind: "score", pct: fit } : null}
+                      fit={fit === null ? { kind: "unscored", reason: cardFitWhy(fitWhy[job.id]) } : typeof fit === "number" ? { kind: "score", pct: fit } : null}
                       fitKeywords={fitRanking ? { have: strengths, missing: gaps } : undefined}
                       saved={savedIds.has(job.id)}
                       applied={appliedIds.has(job.id)}
@@ -12440,11 +12769,19 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                   decides only when the server is silent on hasMore. */}
               {data && data.hasMore !== false && (data.hasMore === true || typeof data.total !== "number" || jobs.length < pageTotalCount) && (
                 <div className="text-center mt-6">
+                  {/* TOO DEEP IS NOT A FAILURE TO RETRY (BOARD-02): the board
+                      does not serve this list any further down, so the button
+                      is gone and the sentence says what reaches the rest. */}
+                  {loadMoreTooDeep && (
+                    <p className="text-sm text-muted-foreground" data-load-more-too-deep="">
+                      {t("boardUi.loadMoreTooDeep", "The board does not page any further down this list. Narrow it with a job title, a place or a field to reach the roles below.")}
+                    </p>
+                  )}
                   {/* A failed "Load more" keeps every job already on screen and
                       retries in place. It used to replace the whole list with
                       an error card — one flaky request on a phone wiping out
                       several minutes of scrolling, with no way back to it. */}
-                  {loadMoreError && (
+                  {!loadMoreTooDeep && loadMoreError && (
                     <p className="text-sm text-muted-foreground mb-2">
                       {t("jobsPage.loadMoreFailed", "Couldn't load more just now — your results are still here.")}
                     </p>
@@ -12459,10 +12796,12 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                       then dead for good. `refreshing` now covers the debounce
                       as well as the request in flight, so this disables for
                       exactly as long as the offer would be false. */}
+                  {!loadMoreTooDeep && (
                   <Button variant="outline" disabled={loadingMore || refreshing} onClick={() => fetchJobs(data?.nextOffset ?? jobs.length)} className="gap-2">
                     {(loadingMore || refreshing) && <Loader2 className="w-4 h-4 animate-spin" />}
                     {loadMoreError ? t("jobsPage.loadMoreRetry", "Try again") : t("jobsPage.loadMore", "Load more")}
                   </Button>
+                  )}
                 </div>
               )}
               {/* THE END OF A LIST IS A STATE, NOT AN ABSENCE. Under the gate

@@ -24,6 +24,12 @@
     "unscoredResumeTerms": "Sin puntuar — no reconocimos ninguna habilidad ni herramienta en tu currículum",
     "unscoredResumeTermsBody": "El evaluador solo lee palabras clave en inglés y no encontró ninguna en tu currículum, así que no había nada que comparar con esta oferta. Aquí no hay porcentaje; es la ausencia de una medición, no una medición baja.",
     "unscoredResumeTermsTip": "Sin puntuar: el evaluador no reconoció ninguna habilidad ni herramienta en tu currículum (solo lee palabras clave en inglés), así que no había nada que comparar. No es una puntuación baja: no hay puntuación.",
-    "matchesNoneForRole": "No encontramos ofertas activas para {{role}} en este momento, así que estas son ofertas de tu sector: puntuadas con tu currículum, no encontradas a partir de él."
+    "matchesNoneForRole": "No encontramos ofertas activas para {{role}} en este momento, así que estas son ofertas de tu sector: puntuadas con tu currículum, no encontradas a partir de él.",
+    "loadMoreTooDeep": "El tablón no pagina más abajo en esta lista. Acótala con un puesto, un lugar o un sector para llegar a las vacantes que quedan debajo.",
+    "orderFitNoResumeTerms": "sin ordenar: no reconocimos ninguna habilidad ni herramienta en tu currículum, así que no había nada con qué puntuar estas ofertas. El evaluador solo lee palabras clave en inglés.",
+    "orderFitScoring": "puntuando estas ofertas con tu currículum…",
+    "orderFitLimited": "sin ordenar todavía: el cupo de puntuación de afinidad está agotado por ahora, así que estas ofertas no se han puntuado.",
+    "orderFitFailed": "sin ordenar: el evaluador no respondió para estas ofertas ahora mismo.",
+    "orderFitUnreadable": "sin ordenar: el evaluador no pudo leer estas ofertas; solo lee palabras clave en inglés y no reconoció ninguna habilidad ni herramienta en las descripciones que tenemos."
   }
 }

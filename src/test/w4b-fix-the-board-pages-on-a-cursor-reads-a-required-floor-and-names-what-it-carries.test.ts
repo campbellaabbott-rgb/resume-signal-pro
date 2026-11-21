@@ -19,8 +19,17 @@
  *     tells the person's AI means "this board does not carry".
  *
  * WHAT HOLDS NOW (the shipped handler where a route is involved).
+ *
+ * Edited 2026-11-21 (sweep BOARD-02, the page's half): the refusal a list
+ * gets past the ceiling is now READ by the page, which stops offering Load
+ * more and says to narrow the list instead of retrying the same refused page
+ * for ever. So the refusal's shape is a contract between two runtimes, and
+ * the last case below holds the two to one spelling and one status.
  */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { codeOf } from "./helpers/strip-comments";
 import { detectExperience, parseMinYears } from "../../supabase/functions/job-board/experience";
 import { ANON, bootBoardHandler, type BoardHandler } from "./helpers/board-handler";
 import { row } from "./helpers/board-list";
@@ -68,6 +77,26 @@ describe("through the shipped handler", () => {
       h.reset();
       expect(await h.post(body, anon), JSON.stringify(body)).toMatchObject({ error: "offset_too_deep" });
     }
+  });
+
+  it("the refusal is the one the page reads: a 400 named offset_too_deep, which ends its Load more", () => {
+    const root = resolve(__dirname, "../..");
+    const board = codeOf(readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8"));
+    const page = codeOf(readFileSync(resolve(root, "src/pages/Jobs.tsx"), "utf8"));
+    // The board's side: the refusal's name and its status, in one answer.
+    expect(board).toMatch(/error: "offset_too_deep",[\s\S]{0,400}?\}, 400\)/);
+    // The page's side: the same status and the same name, read off the
+    // refused next page, before the quiet retry that used to re-ask it.
+    const reader = page.match(/async function isOffsetTooDeep\([^)]*\)[^{]*\{([\s\S]*?)\n\}/);
+    expect(reader, "the page does not read the board's too-deep refusal at all").not.toBeNull();
+    expect(reader![1]).toMatch(/status === 400 && body\?\.error === "offset_too_deep"/);
+    const RETRY = "({ data: res, error: err } = await invokeJobBoard({ body }))";
+    const retry = page.indexOf(RETRY);
+    expect(retry, "the list fetch's retry moved: re-anchor this case").toBeGreaterThan(0);
+    expect(page.indexOf(RETRY, retry + 1), "two retries: re-anchor this case").toBe(-1);
+    const deep = page.lastIndexOf("await isOffsetTooDeep(err)", retry);
+    expect(deep, "the list fetch never asks whether the next page was refused as too deep").toBeGreaterThan(0);
+    expect(retry - deep, "the too-deep check is not the list fetch's own, just before its retry").toBeLessThan(800);
   });
 
   it("a name two carried employers share is not listed as one the board does not carry", async () => {
