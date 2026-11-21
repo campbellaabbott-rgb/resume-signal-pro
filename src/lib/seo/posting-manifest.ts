@@ -16,8 +16,11 @@
  * reads /landers.json.
  *
  * Until the file has loaded, when it is missing, and for any path it does not
- * name, a caller links the employer's page instead (companyBoardHref): a page
- * the bake wrote, or the live board filtered to the board.
+ * name, a card still links the role it names, with rel="nofollow"
+ * (MoreRolesAtEmployer): a person who picks a role opens that role, and a
+ * crawler is asked to follow only the pages the bake wrote. The first version
+ * sent such a card to the employer's page, which handed the person a list of
+ * roles in place of the one they chose (review of 2026-11-21).
  *
  * This module may load on "/": it imports nothing from the posting page's
  * module (src/test/hp-fix-the-homepage-loads-no-posting-page-module.test.ts),
@@ -145,7 +148,7 @@ export function parsePostingManifest(json: unknown): Set<string> | null {
   return out;
 }
 
-/** Fetches the manifest once per page session. A failed read keeps every link on the employer's page. */
+/** Fetches the manifest once per page session. A failed read leaves no posting link followed. */
 export function loadPostingManifest(fetcher: typeof fetch = fetch): Promise<void> {
   if (live || pending) return pending ?? Promise.resolve();
   pending = (async () => {
@@ -163,7 +166,7 @@ export function loadPostingManifest(fetcher: typeof fetch = fetch): Promise<void
         notify();
       }
     } catch {
-      /* no manifest: every link stays on the employer's page */
+      /* no manifest: no posting link is followed */
     }
   })();
   return pending;
@@ -189,7 +192,8 @@ const snapshot = () => version;
 
 /**
  * For a component: loads the manifest and re-renders when it arrives.
- * Returns bakedPostingPath, so a link reads `bakedPostingPath(path) ?? companyHref(token)`.
+ * Returns bakedPostingPath: the path when the bake wrote it, so a link to it
+ * is followed, and null when the link keeps its address and says nofollow.
  */
 export function useBakedPostingPath(): (path: string | null | undefined) => string | null {
   useSyncExternalStore(subscribe, snapshot, snapshot);

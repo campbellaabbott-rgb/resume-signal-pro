@@ -1,29 +1,36 @@
 // @vitest-environment jsdom
 // @vitest-environment-options { "url": "https://resumebooster.work/" }
 /**
- * "MORE ROLES AT {EMPLOYER}" LINKS A POSTING PAGE ONLY WHERE THE BAKE WROTE ONE
- * (CRAWL-M1, SEO audit 2026-11-18).
+ * A "MORE ROLES AT {EMPLOYER}" CARD OPENS ITS OWN ROLE, AND ONLY A PAGE THE
+ * BAKE WROTE IS FOLLOWED (CRAWL-M1, SEO audit 2026-11-18; review of
+ * 2026-11-21).
  *
  * The section under every posting page makes one list call (this employer's
  * newest roles) and linked each card to /jobs/posting/<id> whether or not the
  * bake wrote that page. Live, for four employers' posting pages, the four
  * other rows were unbaked in every case but one row: an unbaked posting
- * address serves the fallback file (the homepage's copy, index, follow,
- * canonical "/") and then renders a self-canonical page with job markup the
- * bake never checked (no employer read, no ceiling, no sitemap, no closure
- * check).
+ * address serves the fallback file and then renders a page the bake never
+ * checked (no employer read, no ceiling, no sitemap, no closure check).
  *
- * Held here: a card links its posting page only when /posting-pages.json
- * (the bake's list of live posting pages) names it; otherwise, and while that
- * file has not loaded or is missing, it links the employer's page, the same
- * address the section's "see every open role" link uses. On 9c9234e9a the
- * unlisted card links /jobs/posting/<id>.
+ * The first fix linked a card's posting page only when /posting-pages.json
+ * named it and the employer's page otherwise. Production's sitemap listed 429
+ * posting pages on 2026-11-21, so nearly every card a person clicked opened
+ * the employer's list of roles in place of the role they chose, and after a
+ * mixed reply the card was no link at all.
+ *
+ * Held here: every card links the role it names. The link is followed only
+ * when /posting-pages.json (the bake's list of live posting pages) names its
+ * page; otherwise, and while that file has not loaded or is missing, the same
+ * address carries rel="nofollow". No card links the employer's page, so none
+ * links the token's page after a mixed reply either.
  *
  * Also held (review of lane B, 2026-11-18): the mounted section reads the
- * file itself; after a mixed reply no card links the token's page (the
- * see-all link is withheld there for that reason); and the company page's
- * perk panel, closed but still in the DOM, holds no posting address until a
- * reader opens it.
+ * file itself; and the company page's perk panel, closed but still in the
+ * DOM, holds no posting address until a reader opens it.
+ *
+ * The same rule with no manifest module in reach, so that it can be run
+ * against the code before the manifest existed, is in
+ * a-more-roles-card-with-no-written-page-still-opens-its-role.test.tsx.
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
@@ -92,8 +99,16 @@ async function section(extra: ListingJob[] = []) {
   await waitFor(() => expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(4));
 }
 const cardHref = (title: string) => screen.getByRole("link", { name: title }).getAttribute("href");
+const cardRel = (title: string) => screen.getByRole("link", { name: title }).getAttribute("rel");
 const seeAllHref = () => document.querySelector("[data-more-roles-all]")!.getAttribute("href");
 const sectionHrefs = () => [...document.querySelectorAll("[data-more-roles] a")].map((a) => a.getAttribute("href"));
+/** The four cards' own posting pages, by title (ROWS above, the posting on screen left out). */
+const OWN: Record<string, string> = {
+  "Payroll Specialist": "/jobs/posting/greenhouse/acme/1002",
+  "Tax Manager": "/jobs/posting/greenhouse/acme/1003",
+  "Audit Senior": "/jobs/posting/greenhouse/acme/10.04/",
+  "Controller": "/jobs/posting/greenhouse/acme/1005",
+};
 /** A fetch answer as loadPostingManifest reads it. */
 const jsonResponse = (body: unknown, type = "application/json", ok = true) =>
   ({ ok, headers: { get: (h: string) => (h.toLowerCase() === "content-type" ? type : null) }, json: async () => body }) as unknown as Response;
@@ -115,95 +130,111 @@ afterEach(() => {
 });
 
 describe("a More roles card", () => {
-  it("links the employer's page when the manifest does not name its posting page (main linked /jobs/posting/<id>)", async () => {
+  it("opens its own role when the manifest does not name its page, and asks crawlers not to follow (the first fix opened the employer's page)", async () => {
     setPostingManifestForTests(["/jobs/posting/greenhouse/acme/1003"]);
     await section();
-    expect(cardHref("Payroll Specialist")).toBe("/jobs?company=acme");
-    expect(cardHref("Controller")).toBe("/jobs?company=acme");
-    expect(cardHref("Audit Senior")).toBe("/jobs?company=acme");
-    expect(cardHref("Payroll Specialist"), "the same page the see-all link opens").toBe(seeAllHref());
-    for (const a of document.querySelectorAll("[data-more-roles] a")) {
-      expect(a.getAttribute("href"), "no unbaked posting address is linked").not.toMatch(/^\/jobs\/posting\/greenhouse\/acme\/(1002|1005|10\.04)/);
+    for (const title of ["Payroll Specialist", "Audit Senior", "Controller"]) {
+      expect(cardHref(title), title).toBe(OWN[title]);
+      expect(cardRel(title), `${title}: an unwritten page is not followed`).toBe("nofollow");
+      expect(cardHref(title), `${title} does not open the page the see-all link opens`).not.toBe(seeAllHref());
     }
+    expect(seeAllHref()).toBe("/jobs?company=acme");
   });
 
-  it("links its posting page when the manifest names it live", async () => {
+  it("is followed to its posting page when the manifest names it live, and only then", async () => {
     setPostingManifestForTests(["/jobs/posting/greenhouse/acme/1003", "/jobs/posting/greenhouse/acme/10.04/"]);
     await section();
     expect(cardHref("Tax Manager")).toBe("/jobs/posting/greenhouse/acme/1003");
+    expect(cardRel("Tax Manager"), "a page the bake wrote is followed").toBeNull();
     // A dotted key's page path ends in a slash; the manifest may spell it either way.
     expect(cardHref("Audit Senior")).toBe(postingPagePath("greenhouse:acme:10.04"));
     expect(cardHref("Audit Senior")).toBe("/jobs/posting/greenhouse/acme/10.04/");
-    expect(cardHref("Payroll Specialist")).toBe("/jobs?company=acme");
+    expect(cardRel("Audit Senior")).toBeNull();
+    expect(cardHref("Payroll Specialist")).toBe(OWN["Payroll Specialist"]);
+    expect(cardRel("Payroll Specialist")).toBe("nofollow");
   });
 
-  it("with no manifest (not loaded, or missing) every card links the employer's page", async () => {
+  it("with no manifest (not loaded, or missing) every card opens its own role and none is followed", async () => {
     await section();
-    for (const title of ["Payroll Specialist", "Tax Manager", "Audit Senior", "Controller"]) {
-      expect(cardHref(title), title).toBe("/jobs?company=acme");
+    for (const title of Object.keys(OWN)) {
+      expect(cardHref(title), title).toBe(OWN[title]);
+      expect(cardRel(title), title).toBe("nofollow");
     }
   });
 
-  it("the employer's page is the written company page when the bake wrote one", async () => {
+  it("opens its own role where the bake wrote the employer a page: only the see-all link goes there", async () => {
     setLanderManifestForTests({ acme: "/jobs/company/acme" });
     await section();
-    expect(cardHref("Controller")).toBe("/jobs/company/acme");
     expect(seeAllHref()).toBe("/jobs/company/acme");
+    for (const title of Object.keys(OWN)) expect(cardHref(title), title).toBe(OWN[title]);
+    expect(sectionHrefs().filter((h) => h === "/jobs/company/acme"), "the employer's page is linked once, by the see-all link").toHaveLength(1);
   });
 
-  it("re-renders when the manifest arrives after the cards", async () => {
+  it("keeps its address and drops nofollow when the manifest arrives after the cards", async () => {
     await section();
-    expect(cardHref("Tax Manager")).toBe("/jobs?company=acme");
+    expect(cardHref("Tax Manager")).toBe(OWN["Tax Manager"]);
+    expect(cardRel("Tax Manager")).toBe("nofollow");
     act(() => { setPostingManifestForTests(["/jobs/posting/greenhouse/acme/1003"]); });
-    await waitFor(() => expect(cardHref("Tax Manager")).toBe("/jobs/posting/greenhouse/acme/1003"));
-    expect(cardHref("Controller")).toBe("/jobs?company=acme");
+    await waitFor(() => expect(cardRel("Tax Manager")).toBeNull());
+    expect(cardHref("Tax Manager")).toBe(OWN["Tax Manager"]);
+    expect(cardHref("Controller")).toBe(OWN["Controller"]);
+    expect(cardRel("Controller")).toBe("nofollow");
   });
 });
 
 describe("the section asks for the manifest itself", () => {
   // Every case above presets the manifest or leaves it unread. In production
   // the one caller is useBakedPostingPath's effect: with it gone, the file is
-  // never read and every card links the employer's page forever, with every
-  // case above still green (review of lane B, 2026-11-18).
-  it("with nothing preset, the mounted section fetches /posting-pages.json and links the page the file names", async () => {
+  // never read and no card is ever followed, with every case above still
+  // green (review of lane B, 2026-11-18).
+  it("with nothing preset, the mounted section fetches /posting-pages.json and follows the page the file names", async () => {
     const fetcher = vi.fn(async (input: RequestInfo | URL) =>
       String(input) === "/posting-pages.json"
         ? jsonResponse({ at: "2026-11-18", live: ["/jobs/posting/greenhouse/acme/1003"] })
         : jsonResponse(null, "application/json", false));
     vi.stubGlobal("fetch", fetcher);
     await section();
-    await waitFor(() => expect(cardHref("Tax Manager")).toBe("/jobs/posting/greenhouse/acme/1003"));
+    await waitFor(() => expect(cardRel("Tax Manager")).toBeNull());
+    expect(cardHref("Tax Manager")).toBe("/jobs/posting/greenhouse/acme/1003");
     expect(fetcher).toHaveBeenCalledWith("/posting-pages.json", expect.anything());
-    expect(cardHref("Controller")).toBe("/jobs?company=acme");
+    expect(cardHref("Controller")).toBe(OWN["Controller"]);
+    expect(cardRel("Controller")).toBe("nofollow");
   });
 });
 
 describe("after a mixed reply (another employer's row under the same token)", () => {
   // The see-all link is withheld there because the token's page also lists
   // the other employer's roles; a card must not send the reader to that page
-  // either (review of lane B, 2026-11-18). Main linked these cards to their
-  // unbaked posting pages.
+  // either (review of lane B, 2026-11-18). The first fix did that by taking
+  // the link off the card, so a role a person could read was a role they
+  // could not open. A card's own address is this employer's role and nothing
+  // else, so it stays a link.
   const OTHER: ListingJob = { id: "greenhouse:acme:2001", source: "greenhouse", token: "acme", company: "Acme Staffing Partner", title: "Recruiting Coordinator" };
 
   it.each([
     ["no company page written", null],
     ["a written company page", { acme: "/jobs/company/acme" }],
-  ] as const)("with %s, no card links the token's page or an unbaked posting page, and the role is still listed", async (_, landers) => {
+  ] as const)("with %s, every card still opens its own role, unfollowed, and none links the token's page", async (_, landers) => {
     if (landers) setLanderManifestForTests({ ...landers });
     await section([OTHER]);
     expect(document.querySelector("[data-more-roles-all]"), "the see-all link is withheld").toBeNull();
     expect(screen.queryByText("Recruiting Coordinator"), "the other employer's row is not printed").toBeNull();
-    expect(sectionHrefs()).toEqual([]);
-    for (const title of ["Payroll Specialist", "Tax Manager", "Audit Senior", "Controller"]) {
-      expect(screen.getByRole("heading", { level: 3, name: title })).toBeInTheDocument();
+    expect(sectionHrefs().sort()).toEqual(Object.values(OWN).sort());
+    for (const title of Object.keys(OWN)) {
+      expect(cardHref(title), title).toBe(OWN[title]);
+      expect(cardRel(title), title).toBe("nofollow");
     }
+    const listed = [...document.querySelectorAll("[data-more-roles] li")];
+    expect(listed).toHaveLength(4);
+    expect(listed.filter((li) => !li.querySelector("a[href]")), "no role is listed without a link").toEqual([]);
   });
 
-  it("a card whose page the bake wrote still links it, and only it", async () => {
+  it("a card whose page the bake wrote is the only one followed", async () => {
     setPostingManifestForTests(["/jobs/posting/greenhouse/acme/1003"]);
     await section([OTHER]);
-    expect(sectionHrefs()).toEqual(["/jobs/posting/greenhouse/acme/1003"]);
-    expect(cardHref("Tax Manager")).toBe("/jobs/posting/greenhouse/acme/1003");
+    expect(sectionHrefs().sort()).toEqual(Object.values(OWN).sort());
+    expect(cardRel("Tax Manager")).toBeNull();
+    for (const title of ["Payroll Specialist", "Audit Senior", "Controller"]) expect(cardRel(title), title).toBe("nofollow");
   });
 });
 

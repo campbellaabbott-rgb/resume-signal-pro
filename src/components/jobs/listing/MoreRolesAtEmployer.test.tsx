@@ -39,8 +39,9 @@ const mount = () => render(<MemoryRouter><MoreRolesAtEmployer token="acme" emplo
 beforeAll(() => { i18n.addResourceBundle("en", "translation", enListing, true, true); });
 // Every board has a written page here (SEO-010), and so does every posting
 // (SEO audit 2026-11-18, CRAWL-M1): this file holds the read, not which boards
-// or postings the bake wrote (more-roles-links-only-baked-postings.test.tsx
-// holds which postings a card may link).
+// or postings the bake wrote
+// (a-more-roles-card-opens-its-own-role-and-only-a-baked-page-is-followed.test.tsx
+// holds where a card sends its reader and which links a crawler may follow).
 const ALL_POSTING_PAGES = Array.from({ length: 50 }, (_, i) => `/jobs/posting/greenhouse/acme/${i}`);
 beforeEach(() => { invoke.mockReset(); watchers = []; clearBoardBudgetRefusal(); setLanderManifestForTests("*"); setPostingManifestForTests(ALL_POSTING_PAGES); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); clearBoardBudgetRefusal(); setPostingManifestForTests(null); });

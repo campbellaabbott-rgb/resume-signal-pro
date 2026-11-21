@@ -27,17 +27,23 @@
  *     else's row, the "see every open role" link is left out too (the token's
  *     page is not one employer's), and with no row left the section goes.
  *
- * A CARD LINKS A POSTING PAGE ONLY WHERE THE BAKE WROTE ONE (CRAWL-M1). The
- * four rows are almost never among the ~500 postings the bake writes, and an
- * unwritten posting address serves the fallback file and then renders a
- * self-canonical page with job markup the bake never checked. So a card links
- * its posting page only when /posting-pages.json names it live
+ * A CARD OPENS THE ROLE IT NAMES, AND ONLY A PAGE THE BAKE WROTE IS FOLLOWED
+ * (CRAWL-M1). The four rows are almost never among the postings the bake
+ * writes (429 in the sitemap production served on 2026-11-21), and an
+ * unwritten posting address serves the fallback file and then renders a page
+ * the bake never checked. The first fix sent every such card to the
+ * employer's page, so a person who picked a role was handed a list of roles,
+ * and after a mixed reply the card was no link at all (review of 2026-11-21).
+ * A card now always links its own role: its posting page, or the board's
+ * address for it when its id cannot be a page path. The link is followed only
+ * when /posting-pages.json names the page live
  * (src/lib/seo/posting-manifest.ts); otherwise, and until that file has
- * loaded, it links the employer's page, as the "see every open role" link does.
- * After a mixed reply that page is the token's, which also lists the other
- * employer's roles, and the see-all link is left out for that reason; so
- * there a card with no written page prints its title and place and links
- * nowhere (review of lane B, 2026-11-18).
+ * loaded, it carries rel="nofollow". People reach the role, and crawlers are
+ * asked to follow only the pages the bake wrote: the rule the employer's name
+ * keeps (companyProfileLink, SEO-010). An unwritten address is noindex from
+ * the fallback's first script (SEO-F10). No card links the employer's page,
+ * so a mixed reply, where that page is the token's and also lists the other
+ * employer's roles, changes nothing a card links.
  */
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -48,26 +54,25 @@ import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
 import { useBakedPostingPath } from "@/lib/seo/posting-manifest";
 import { postingPagePath } from "@/components/jobs/posting-page";
 import { moreRolesAllowed, sameEmployerRows } from "@/lib/listing/more-roles";
-import { countryToName, displayLocation } from "@/lib/listing/location";
-import { listingTitle } from "@/lib/listing/text";
 import type { ListingJob } from "@/lib/listing/types";
 import { JobCard } from "./JobCard";
 
 /** Roles shown; one more is asked for so the current posting can be dropped without leaving a gap. */
 export const MORE_ROLES_SHOWN = 4;
 
-/** A card with no page it may link: the compact card's title and place, and no address. */
-function UnlinkedRole({ job }: { job: ListingJob }) {
-  const { i18n } = useTranslation();
-  const loc = displayLocation(job.location);
-  const country = countryToName(loc.text, job.country, i18n.language || "en");
-  const place = [loc.text, country].filter(Boolean).join(" · ");
-  return (
-    <li data-job-id={job.id} data-more-roles-unlinked="" className="min-w-0 rounded-lg border border-border bg-card px-4 py-2.5">
-      <h3 className="line-clamp-2 min-w-0 break-words text-base font-semibold leading-snug text-foreground sm:text-sm">{listingTitle(job.title)}</h3>
-      {place && <p className="mt-0.5 text-sm text-muted-foreground">{place}</p>}
-    </li>
-  );
+/**
+ * Where a card sends its reader, and whether a crawler may follow: the
+ * role's own address always, followed only when `baked` (the manifest's
+ * answer for a path) names its posting page.
+ */
+function cardLink(
+  id: string,
+  baked: (path: string | null | undefined) => string | null,
+): { href: string; rel?: "nofollow" } {
+  const own = postingPagePath(id);
+  const written = baked(own);
+  if (written) return { href: written };
+  return { href: own ?? `/jobs?job=${encodeURIComponent(id)}`, rel: "nofollow" };
 }
 
 export function MoreRolesAtEmployer({ token, employer, excludeId, source = null }: {
@@ -81,7 +86,7 @@ export function MoreRolesAtEmployer({ token, employer, excludeId, source = null 
   // SEO-010: an employer link goes to its written company page, or to the
   // live board filtered to the board when the bake wrote none.
   const companyHref = useCompanyBoardHref();
-  // CRAWL-M1: a card's posting page only when the bake wrote it and it is live.
+  // CRAWL-M1: a card's link is followed only when the bake wrote its page and it is live.
   const bakedPath = useBakedPostingPath();
   const ref = useRef<HTMLElement | null>(null);
   const [rows, setRows] = useState<ListingJob[] | null>(null);
@@ -142,14 +147,13 @@ export function MoreRolesAtEmployer({ token, employer, excludeId, source = null 
       {rows && rows.length > 0 && (
         <ul className="mb-4 space-y-2">
           {rows.map((job) => {
-            const baked = bakedPath(postingPagePath(job.id));
-            // The token's page is not this employer's after a mixed reply (see the header).
-            if (!baked && mixed) return <UnlinkedRole key={job.id} job={job} />;
+            const link = cardLink(job.id, bakedPath);
             return (
               <JobCard
                 key={job.id}
                 job={job}
-                href={baked ?? companyHref(token)}
+                href={link.href}
+                hrefRel={link.rel}
                 ctx={{ surface: "posting", density: "compact", hideEmployer: true, selected: false }}
               />
             );
