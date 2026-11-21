@@ -34,7 +34,8 @@ const num = (n: string) => Number(CODE.match(new RegExp(`const ${n} = ([0-9_]+)`
 
 describe("a cap that finds its own ceiling", () => {
   it("the floor is what a chain with no budget starts from", () => {
-    expect(CODE).toMatch(/async function runRefresh\(client: SupabaseClient, force = false, chainHop = 0, boardBudget = MIN_BOARDS_PER_SLICE\)/);
+    // Board .103 (W4-2, SUP-a) appends the stamp a kick was sent against and the pass end it closes; the floor default is unchanged.
+    expect(CODE).toMatch(/async function runRefresh\(client: SupabaseClient, force = false, chainHop = 0, boardBudget = MIN_BOARDS_PER_SLICE, after = "", passEndAt = ""\)/);
     expect(CODE).toMatch(/const boards = Number\.isFinite\(Number\(body\.boards\)\)/);
     expect(CODE, "no budget on the wire means the floor, which is how a death resets the ramp")
       .toMatch(/: MIN_BOARDS_PER_SLICE;/);

@@ -19,6 +19,8 @@ export interface RefreshProgress {
    * travels beside it.
    */
   failedTotal?: number;
+  /** SUP-a: the chain hop whose admission or slice end wrote this stamp (runRefresh adds it; advanceProgress never carries it). */
+  hop?: number;
 }
 
 // NOTE FOR THE NEXT FIELD ADDED HERE: advanceProgress builds `next` as an

@@ -694,28 +694,66 @@ export function parseSalaryStructured(
 const decodeLegacyEntities = (s: string) =>
   s.replace(/&mdash;/gi, "\u2014").replace(/&ndash;/gi, "\u2013").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&");
 
+// A figure's own clause (job-board .103): NOT_PAY reads the same -40/+20 window, but the text before
+// the figure starts at its own sentence, so "eligible for bonus, equity and Employee Travel Credits.
+// Pay Range $168,000 - $203,000" no longer loses the pay to the sentence before it. The 20 after are
+// read whole: cut there, "Average deal size $30,000 - $60,000. Sign-on bonus: ..." read the deal as
+// pay. A range a pay label names ("Annual base salary range (excluding equity and bonus): $166,345 -
+// $195,700") is the pay whatever follows the label, unless the label is a bonus's ("bonus pay range")
+// or a word that is not pay stands between it and the figure. A range refused for the words around it
+// no longer ends the search: the next range is read. A range refused for its figures still ends it, since
+// the next one is then another place's band or an earnings claim (Gusto's Denver posting, Andersen's 1099).
+// Rationale: docs/job-board-index-notes.md#n1601-the-figures-own-clause
+const RANGE_ALL = new RegExp(RANGE_RE.source, "gi");
+const CLAUSE_STOP = /[.!?](?=\s)|[;•|·]/g;
+const PAY_LABEL = /\b(?:base\s+(?:salary|pay)(?:\s+range)?|(?:pay|salary)\s+range)\b(?:\s*\([^)]{0,80}\))?/gi;
+
+/** The text before a figure, from the start of its clause. */
+function clauseBefore(hay: string, at: number, reach: number): string {
+  const pre = hay.slice(Math.max(0, at - reach), at);
+  let cut = 0;
+  for (const m of pre.matchAll(CLAUSE_STOP)) cut = m.index! + m[0].length;
+  return pre.slice(cut);
+}
+/** A pay label stands in the figure's clause: not a bonus's label, and nothing that is not pay between it and the figure. */
+function labelledPay(hay: string, at: number): boolean {
+  const pre = clauseBefore(hay, at, 150);
+  let label: RegExpExecArray | null = null;
+  for (const m of pre.matchAll(PAY_LABEL)) label = m;
+  if (!label) return false;
+  const twoWordsBefore = pre.slice(0, label.index).match(/(?:\S+\s+){0,2}$/)?.[0] ?? "";
+  return !NOT_PAY.test(twoWordsBefore) && !NOT_PAY.test(pre.slice(label.index + label[0].length));
+}
+const notPayNear = (hay: string, at: number, end: number) =>
+  NOT_PAY.test(`${clauseBefore(hay, at, 40)}${hay.slice(at, end + 20)}`);
+
 export function extractSalary(text: string | null | undefined): string | null {
   if (!text) return null;
   const hay = decodeLegacyEntities(text.slice(0, 12_000)).replace(/\s+/g, " ");
 
-  const range = hay.match(RANGE_RE);
-  if (range && range.index !== undefined) {
-    const ctx = hay.slice(Math.max(0, range.index - 40), range.index + range[0].length + 20);
-    if (!NOT_PAY.test(ctx)) {
-      const lo = parseMoney(range[1]);
-      const hi = parseMoney(range[2]);
-      const firstPeriod = RANGE_FIRST_PERIOD.exec(range[0])?.[1] ?? "";
-      const hourly = /hour|hr|hourly/i.test(`${range[3] ?? ""} ${firstPeriod}`) ||
-        (lo !== null && hi !== null && lo < 1_000 && hi < 1_000 && !/[kK]\s*$/.test(range[1] + range[2]));
-      if (lo !== null && hi !== null && plausible(lo, hi, hourly)) {
-        return range[0].replace(/\s+/g, " ").trim().slice(0, 200);
-      }
+  let sawRange = false;
+  for (const range of hay.matchAll(RANGE_ALL)) {
+    sawRange = true;
+    const at = range.index!;
+    const end = at + range[0].length;
+    if (notPayNear(hay, at, end) && !labelledPay(hay, at)) continue;
+    const lo = parseMoney(range[1]);
+    const hi = parseMoney(range[2]);
+    const firstPeriod = RANGE_FIRST_PERIOD.exec(range[0])?.[1] ?? "";
+    const hourly = /hour|hr|hourly/i.test(`${range[3] ?? ""} ${firstPeriod}`) ||
+      (lo !== null && hi !== null && lo < 1_000 && hi < 1_000 && !/[kK]\s*$/.test(range[1] + range[2]));
+    // "€32 — €33" with no hour word near it is a salary written 32.000 that lost its thousands, not a wage.
+    const euroLost = /€/.test(range[0]) && Number.isInteger(lo) && Number.isInteger(hi) && lo! < 100 && hi! < 100 &&
+      !/hour|\bhr\b|\/\s?h\b|stunde|heure|\bora\b|\buur\b/i.test(`${clauseBefore(hay, at, 40)}${hay.slice(at, end + 20)}`);
+    if (lo !== null && hi !== null && !euroLost && plausible(lo, hi, hourly)) {
+      return range[0].replace(/\s+/g, " ").trim().slice(0, 200);
     }
-    // A money range matched but failed the pay guards (bonus context, absurd
-    // spread, wage-floor). The text is ambiguous — do NOT let the single-figure
-    // fallback cherry-pick one end of a rejected range. Conservative null.
-    return null;
+    break;
   }
+  // Every money range failed the pay guards (bonus context, absurd spread,
+  // wage-floor). The text is ambiguous — do NOT let the single-figure
+  // fallback cherry-pick one end of a rejected range. Conservative null.
+  if (sawRange) return null;
 
   // Single figure only when explicitly tied to a pay period ("$95,000 per year").
   const single = hay.match(SINGLE_RE);

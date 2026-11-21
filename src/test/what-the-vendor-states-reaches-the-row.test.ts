@@ -309,8 +309,11 @@ describe("our reading changed: the first fill is unlogged for a dated window (n1
   // "employer edit" lines; dropping them early is the harmful direction. So
   // the builds already cut with them may carry them; the first build after
   // .102 may not. A list, not a compare: as strings ".99" sorts after ".102".
-  const BUILDS_THAT_MAY_CARRY = ["2026-09-09.101", "2026-09-09.102"];
-  it(`the entries are removed by ${REMOVE_AFTER}, in the first job-board build after .102`, () => {
+  // .103 (board-103) was cut on 2026-11-17, inside the window, so dropping
+  // the entries there would be the early, harmful direction: .103 may carry
+  // them and the first build after it may not.
+  const BUILDS_THAT_MAY_CARRY = ["2026-09-09.101", "2026-09-09.102", "2026-09-09.103"];
+  it(`the entries are removed by ${REMOVE_AFTER}, in the first job-board build after .103`, () => {
     const today = new Date().toISOString().slice(0, 10);
     const present = ENTRIES.some((e) => codeOf(line).includes(`"${e}"`));
     const build = /const BUILD_VERSION = "([^"]+)"/.exec(RAW)?.[1];

@@ -81,6 +81,7 @@ function shipped(): Shipped {
     MAX_RESPONSE_BYTES: 4_000_000,
     OVERSIZE_MARKER: strConst("OVERSIZE_MARKER"),
     BODY_LATE_MARKER: strConst("BODY_LATE_MARKER"),
+    hostSlot: async () => true, // item 18's host gate: the stand-in host is not paced
     ...requestHeaders,
   };
   const fns = ["discardBody", "boundBody", "bodyDeadline", "fetchWithTimeout", "readChunkPage"].filter(has);

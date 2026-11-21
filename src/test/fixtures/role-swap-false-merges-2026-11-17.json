@@ -1,0 +1,330 @@
+{
+ "about": "Real titles read from production job-board .102 on 2026-11-17 with labelled probes (x-rb-budget: probe, x-rb-caller: maintenance, noLog), review-103 search-pay lens: jobs that are NOT the software role the query names.",
+ "measuredAt": "2026-11-17T18:2xZ (prod job-board .102, labelled probes x-rb-budget: probe, x-rb-caller: maintenance, noLog)",
+ "mobileFacilities": [
+  {
+   "t": "Mobile Engineer",
+   "c": "MultiCare",
+   "d": null
+  },
+  {
+   "t": "Mobile Engineer",
+   "c": "JLL",
+   "d": null
+  },
+  {
+   "t": "Mobile Engineer",
+   "c": "Cushman & Wakefield",
+   "d": null
+  },
+  {
+   "t": "Reliability Engineer - Mobile",
+   "c": "Asante Gold Corporation",
+   "d": "Processing"
+  },
+  {
+   "t": "Mobile Building Engineer I",
+   "c": "Lincoln Property Company",
+   "d": null
+  },
+  {
+   "t": "Lead Mechanical Engineer - Mobile Machines",
+   "c": "Aurecongroup",
+   "d": null
+  },
+  {
+   "t": "Senior Controls Engineer- Mobile Machinery",
+   "c": "Federal Signal",
+   "d": "06.8 Engineering Other"
+  },
+  {
+   "t": "Mobilny Technik Serwisu / Mobile Service Engineer - Łódź",
+   "c": "KION Group",
+   "d": null
+  },
+  {
+   "t": "Mobile Engineer Technician",
+   "c": "JLL",
+   "d": null
+  },
+  {
+   "t": "Mobile Engineer (Union)",
+   "c": "JLL",
+   "d": null
+  },
+  {
+   "t": "Mobile Engineer-6",
+   "c": "JLL",
+   "d": null
+  },
+  {
+   "t": "Mobile Engineer/HVAC Technician",
+   "c": "Cushman & Wakefield",
+   "d": null
+  },
+  {
+   "t": "Mobile Engineer (Houston, TX)",
+   "c": "Cushman & Wakefield",
+   "d": null
+  },
+  {
+   "t": "Union Mobile Engineer",
+   "c": "JLL",
+   "d": null
+  },
+  {
+   "t": "Mobile Operating Engineer",
+   "c": "Cushman & Wakefield",
+   "d": null
+  },
+  {
+   "t": "Mobile Engineering Manager",
+   "c": "JLL",
+   "d": null
+  },
+  {
+   "t": "Mobile Engineering Operations Manager",
+   "c": "JLL",
+   "d": null
+  },
+  {
+   "t": "Mobile Service Engineer",
+   "c": "Veoliauki",
+   "d": null
+  },
+  {
+   "t": "Mobile Electrical Engineer",
+   "c": "JLL",
+   "d": null
+  },
+  {
+   "t": "Mobile Building Engineer",
+   "c": "Lincoln Property Company",
+   "d": null
+  },
+  {
+   "t": "Mobile HVAC Engineer",
+   "c": "Cushman & Wakefield",
+   "d": null
+  },
+  {
+   "t": "Mobile Building Engineer",
+   "c": "Cushman & Wakefield",
+   "d": null
+  },
+  {
+   "t": "Mobile HVAC/R Engineer",
+   "c": "JLL",
+   "d": null
+  },
+  {
+   "t": "Mobile HVAC Engineer - Wichita Falls, TX",
+   "c": "JLL",
+   "d": null
+  },
+  {
+   "t": "Mobile Facilities Engineer",
+   "c": "Cushman & Wakefield",
+   "d": null
+  },
+  {
+   "t": "Mobile Electrical Engineer",
+   "c": "ABM UK",
+   "d": "Technical Solutions"
+  },
+  {
+   "t": "Mobile Plant Maintenance Engineer",
+   "c": "Finning",
+   "d": null
+  },
+  {
+   "t": "Electrical Engineer",
+   "c": "Harmar Mobility LLC",
+   "d": null
+  },
+  {
+   "t": "Senior Electrical Engineer (Part Time)",
+   "c": "TechFlow, Inc.",
+   "d": "Energy & Mobility Solutions"
+  }
+ ],
+ "frontEndHardware": [
+  {
+   "t": "Manufacturing Design Engineer (Front End)",
+   "c": "KLA",
+   "d": null
+  },
+  {
+   "t": "ASIC Front End Implementation Engineer",
+   "c": "Ciena",
+   "d": null
+  },
+  {
+   "t": "Principal Engineer (Front End Process)",
+   "c": "Nexperia",
+   "d": null
+  },
+  {
+   "t": "TS - Senior Front-End Process Engineer",
+   "c": "T.EN",
+   "d": null
+  },
+  {
+   "t": "Senior ASIC Front End Infrastructure Engineer",
+   "c": "NVIDIA",
+   "d": null
+  },
+  {
+   "t": "Senior/Staff Front-End Engineer (RTL Design)",
+   "c": "Bitdeer Technologies Group",
+   "d": "IC Lab"
+  },
+  {
+   "t": "Senior/ Staff Engineer, Front End Labor Productivity",
+   "c": "Micron",
+   "d": null
+  },
+  {
+   "t": "Senior/Staff Front-End Engineer (RISC Processor Integration)",
+   "c": "Bitdeer Technologies Group",
+   "d": "IC Lab"
+  },
+  {
+   "t": "Principal Antenna/RF Front End Design Engineer",
+   "c": "RTX",
+   "d": null
+  },
+  {
+   "t": "Senior/Staff Front-End Design Engineer (RTL Design - RiscV)",
+   "c": "Bitdeer Technologies Group",
+   "d": "IC Lab"
+  },
+  {
+   "t": "SENIOR ENGINEER FRONT END(FE) CENTRAL PROCESS INTEGRATION ENGINEERING (CPIE)  PI",
+   "c": "Micron",
+   "d": null
+  },
+  {
+   "t": "Front End Central Product Integration Engineer – Test & Product Yield Integration (Senior / Staff / Principal)",
+   "c": "Micron",
+   "d": null
+  },
+  {
+   "t": "Fronted End Central Process Integration Engineer/Senior Engineer",
+   "c": "Micron",
+   "d": null
+  }
+ ],
+ "aiBusinessDevelopment": [
+  {
+   "t": "Regional Business Development Manager (Artificial Intelligence) - Singapore",
+   "c": "Fortinet",
+   "d": null
+  },
+  {
+   "t": "AI Business Development Intern",
+   "c": "Roche",
+   "d": null
+  },
+  {
+   "t": "Business Development & Partnerships Manager – AI",
+   "c": "Giotto.ai",
+   "d": "Business Development"
+  },
+  {
+   "t": "Sales Development Manager – AI SaaS",
+   "c": "Podium",
+   "d": "Sales"
+  },
+  {
+   "t": "Intern - Talent Development AI Strategy",
+   "c": "Alliancedata",
+   "d": null
+  },
+  {
+   "t": "AI Solution Business Development Manager",
+   "c": "SmartDev",
+   "d": "Business Development"
+  },
+  {
+   "t": "Sales Development Representative, Enterprise AI",
+   "c": "CodeNinja",
+   "d": "Sales"
+  },
+  {
+   "t": "Business Development Manager - AI & Application Security",
+   "c": "Fortinet",
+   "d": null
+  },
+  {
+   "t": "Senior Associate, Corporate Development & AI Investment",
+   "c": "Crypto.com",
+   "d": "Corporate Development"
+  },
+  {
+   "t": "Sales Development Representative (SDR), AI Live Insight",
+   "c": "Vidizmo",
+   "d": "Business"
+  },
+  {
+   "t": "Business Development Representative (BDR), AI Live Insight",
+   "c": "Vidizmo",
+   "d": "Business"
+  },
+  {
+   "t": "Business Development Executive (Data, AI &amp; Consulting)",
+   "c": "Keyrus Colombia",
+   "d": "Sales"
+  },
+  {
+   "t": "AI Project Manager - M&A and Business Development",
+   "c": "BP",
+   "d": null
+  },
+  {
+   "t": "Senior Managing Consultant, Services Business Development, Tech & AI",
+   "c": "Mastercard",
+   "d": null
+  },
+  {
+   "t": "Senior Business Development Executive (Data &amp; AI - Mexico)",
+   "c": "Keyrus Colombia",
+   "d": "Sales"
+  },
+  {
+   "t": "Business Development Manager (w/m/d) – Conversational AI",
+   "c": "A1group",
+   "d": null
+  },
+  {
+   "t": "Summer 2027 Business Development, Physical & Edge AI Internship",
+   "c": "T-Mobile",
+   "d": null
+  },
+  {
+   "t": "Business Development Manager Nvidia & AI Solutions (m/w/d)",
+   "c": "Synnex",
+   "d": null
+  },
+  {
+   "t": "[AI Frontier Div.] AI Business Development (10년 이상)",
+   "c": "KRAFTON",
+   "d": "Business & Service"
+  },
+  {
+   "t": "AI Software Business Development Manager",
+   "c": "HP",
+   "d": null
+  },
+  {
+   "t": "Business Development Manager (BDM), AI Live Insight",
+   "c": "Vidizmo",
+   "d": "Business"
+  },
+  {
+   "t": "Business Development Manager (Artificial Intelligence) - Sydney/Melbourne",
+   "c": "Fortinet",
+   "d": null
+  }
+ ]
+}

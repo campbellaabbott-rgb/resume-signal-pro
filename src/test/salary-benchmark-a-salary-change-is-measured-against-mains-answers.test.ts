@@ -28,6 +28,15 @@
  *
  * The other versions' results and the resweep labels in the fixture are the
  * wave 4 rounds' history, kept for that project. They are not read here.
+ *
+ * RE-PINNED 2026-11-17 (job-board .103, a-pay-range-is-read-in-its-own-sentence):
+ * the miner reads the text before a figure from its own sentence, takes a
+ * range a pay label names, and reads past a refused range. 14 answers moved,
+ * every one from main's safe-miss null to the stated pay (live-134, live-348,
+ * recheck1-03, recheck2-bonus-01/02, prior-test-02, rc3-s093/094/095/096/162,
+ * r4-live-01/02/04), each read by hand; none moved from a figure, and the
+ * count right by reading stays 844. Its own corpus of 1,123 Greenhouse
+ * postings: right 773 -> 1,115, never a wrong figure.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";

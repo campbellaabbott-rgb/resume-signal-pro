@@ -56,9 +56,15 @@ export const SLIM_SPECS: Record<string, SlimSpec> = {
   },
   // The light list only (index.ts streams no greenhouse content list), so no text; metadata (~7.5 KB a posting) is dropped.
   // Rationale: docs/job-board-index-notes.md#n424-greenhouse-streamed-light-read
+  // The stated pay ranges stay; each range's blurb and description (HTML prose) do not (n1602).
   greenhouse: {
     arrayKey: "jobs",
-    keep: ["id", "title", "location", "departments", "absolute_url", "first_published", "updated_at", "requisition_id", "internal_job_id", "company_name", "language"],
+    keep: ["id", "title", "location", "departments", "absolute_url", "first_published", "updated_at", "requisition_id", "internal_job_id", "company_name", "language", "pay_input_ranges"],
+    reduce: (o) => {
+      const p = o.pay_input_ranges;
+      if (Array.isArray(p)) o.pay_input_ranges = p.filter((r) => r && typeof r === "object").map((r) => pick(r as J, ["min_cents", "max_cents", "currency_type", "title"]));
+      else delete o.pay_input_ranges;
+    },
     postedAt: (j) => (typeof j.first_published === "string" ? j.first_published : null),
     text: () => "",
   },

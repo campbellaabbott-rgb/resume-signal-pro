@@ -71,7 +71,7 @@ import { METRO_ALIASES, sanitizeTerm, STATE_ALIASES } from "../_shared/location-
 // The board's place terms: _shared's aliases, and "City, ST" as the city in that state (query-place.ts).
 import { COUNTRY_NAMES, liftTrailingPlace, negatedTrailingPlace, placeTerms as locationTerms, rankedPlaceParam as rankedLocationParam } from "./query-place.ts";
 import { askedByName, resolveCompanyNames, type CompanyScope } from "./company-names.ts";
-import { nextPassEndStep, PASS_END_RETRIES, PASS_END_STEPS, stalledPassEndStep, withStepReceipt, isPassEndStep, type PassEndRow, type PassEndStep, type StepReceipt } from "./pass-end.ts";
+import { nextPassEndStep, namesOutOfTime, PASS_END_NAME_HOPS, PASS_END_RETRIES, PASS_END_STEPS, stalledPassEndStep, withStepReceipt, isPassEndStep, type PassEndRow, type PassEndStep, type StepReceipt } from "./pass-end.ts";
 import {
   POSTED_BACKFILL_VERSION,
   postedBackfillDue,
@@ -82,6 +82,10 @@ import { boardKey, classifyDormancy, DB_FAIL_ALARM_VISITS, dbFailingBoards, drop
 import { STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, keysOf, readStaleTries, selectStaleLane, staleExclusion, unresolvedTokens, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict } from "./stale-lane.ts";
 import { tokenMapFromRecord, tokenMapToRecord } from "./token-map.ts";
 import { decideRekick } from "./chain-watchdog.ts";
+import { awaitHostSlot, hostDelayOf, ICIMS_DEFAULT_DELAY_MS, metaGateStore, pacingOf, type GateDeps } from "../_shared/host-gate.ts";
+import { bootstrapSeed, clearRepointedFailures, readersChanged, repointedTokens } from "./bootstrap-seed.ts";
+import { rateCap } from "./rate-cap.ts";
+import { dbBandOf } from "./disk-band.ts";
 import { advanceProgress, baseConsumedPrefix, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
@@ -91,14 +95,14 @@ import { planRankedPage, RANKED_WINDOW, RING_WINDOW, rowsReached, symbolLiteralR
 import { collapseClusters, continuePastSeam, GROUP_OVERFETCH, interleaveByCompany, rowClusterKey, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
 import { ROUTE_BRANDS } from "./route-brands.ts";
-import { expandQuery, ROLE_ALIASES } from "./search-alias.ts";
+import { expandQuery, joinCompoundRoleWords, ROLE_ALIASES, roleAliasesFor } from "./search-alias.ts";
 import { rankedWithDeadline } from "./ranked-deadline.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
 import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
 import { realQuestionVendors, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { beforeDeadline, SLIM_SPECS, streamSlim } from "./slim-stream.ts";
 import { withWorkdayLanguage } from "./request-headers.ts";
-import { ANON_OFFSET_CEILING, anonBudgetGate, anonBudgetStatus, budgetEcho, callerAddress, exemptKind, METERED_ACTIONS, offsetCeiling, pageCeiling } from "./anon-budget.ts";
+import { ANON_OFFSET_CEILING, anonBudgetGate, anonBudgetStatus, BOARD_BUDGET_HEADER, budgetEcho, callerAddress, exemptKind, METERED_ACTIONS, offsetCeiling, pageCeiling } from "./anon-budget.ts";
 import { boardPassAction } from "./board-pass.ts";
 import {
   addressAllowance, admitDemand, CLICK_PER_ADDRESS_HOUR, DEMAND_QUEUE_KEY, demandLaneStatus, FIT_PER_ADDRESS_HOUR, incidentRows, readDemand,
@@ -144,7 +148,7 @@ const json = (body: unknown, status = 200) =>
 // a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.102"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.103"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // Rationale: docs/job-board-index-notes.md#n483-const-name_sync_version
@@ -278,6 +282,8 @@ const DESC_SWEEP_PER_HOP = 120;
 const STORED_DESC_CAP = 12_000;
 const RAW_HTML_CAP = 24_000;
 const DESC_SWEEP_CONCURRENCY = 8;
+/** W4-17: SmartRecruiters posting reads, whichever lane asks: at most 4 at once and 5 started a second, per isolate. */
+const SR_DETAIL_CAP = rateCap({ concurrent: 4, perSecond: 5 });
 // Rationale: docs/job-board-index-notes.md#n007-structured-sweep-sources
 const STRUCTURED_SWEEP_SOURCES: readonly string[] = ["workday"];
 // Rationale: docs/job-board-index-notes.md#n008-structured-sweep-per-hop
@@ -526,8 +532,10 @@ const boardByKey = (key: string): JobSource | undefined => {
 };
 /** Every catalogued board's key, once: the stale lane's 'uncatalogued' test (n428). */
 const CATALOGUE_KEYS: ReadonlySet<string> = new Set(JOB_SOURCES.map(boardKeyOf));
-/** Retired vendor:token boards whose token another vendor still carries, so the token-keyed orphan prune never reaches them (board .102). */
-const RETIRED_TWIN_KEYS: readonly string[] = ["pinpoint:helsing", "greenhouse:wayve", "greenhouse:clickhouse", "lever:swordhealth", "greenhouse:lovable", "greenhouse:kalshi", "greenhouse:webflow", "greenhouse:worldlabs"];
+/** Retired vendor:token boards whose token another vendor still carries, so the token-keyed orphan prune never reaches them (board .102; .103 adds its repoints' old keys). */
+const RETIRED_TWIN_KEYS: readonly string[] = ["pinpoint:helsing", "greenhouse:wayve", "greenhouse:clickhouse", "lever:swordhealth", "greenhouse:lovable", "greenhouse:kalshi", "greenhouse:webflow", "greenhouse:worldlabs", "ashby:stay22", "bamboohr:everstand", "bamboohr:couriernewsroom", "rippling:droneshield"];
+/** W4-1: bump a vendor's entry when its reader changes what an empty board can yield, and the next deploy seeds that vendor's empties (bootstrap-seed.ts). */
+const READER_VERSION: Readonly<Record<string, number>> = {};
 /** One cold hop's stale-lane run, as persisted under meta k = "stale_lane" beside `tries`, and as status reads it. */
 interface StaleLaneRun {
   at: string;
@@ -750,7 +758,8 @@ const listUrl = (s: JobSource, startOffset = 0, details = !isLight(s)) =>
   s.source === "greenhouse"
     // content=true costs a bigger payload but delivers every description in
     // ONE call — fit-ranking coverage for GH boards, plus real departments.
-    ? (({ host, token }) => `https://${host}/v1/boards/${token}/jobs${isLight(s) ? "" : "?content=true"}`)(greenhouseApi(s.token))
+    // pay_transparency=true adds the board's own stated pay ranges, light or not (S9-010, n1602).
+    ? (({ host, token }) => `https://${host}/v1/boards/${token}/jobs?${isLight(s) ? "" : "content=true&"}pay_transparency=true`)(greenhouseApi(s.token))
     : s.source === "lever"
       ? (({ host, token }) => `https://${host}/v0/postings/${token}?mode=json`)(leverApi(s.token))
       : s.source === "ashby"
@@ -1013,8 +1022,21 @@ function boundBody(src: Response | Request, limit = MAX_RESPONSE_BYTES): Respons
   return out;
 }
 
+/** Item 18: an iCIMS tenant is paced at the default until a robots ledger states its own delay. */
+let icimsHosts: Set<string> | null = null;
+const icimsDelay = (host: string) => (icimsHosts ??= new Set(JOB_SOURCES.filter((s) => s.source === "icims").map((s) => s.token.toLowerCase()))).has(host) ? ICIMS_DEFAULT_DELAY_MS : undefined;
+let gateDeps: GateDeps | null = null;
+/** Item 18: a request's slot on a paced host (_shared/host-gate.ts), shared by every isolate and lane; false past 15 s, so the board is deferred. */
+function hostSlot(url: string): Promise<boolean> {
+  if (!hostDelayOf(url, icimsDelay)) return Promise.resolve(true);
+  gateDeps ??= { store: metaGateStore(db()), now: Date.now, sleep: (ms) => new Promise((r) => setTimeout(r, ms)), local: new Map(), queue: new Map(), maxWaitMs: 15_000, extra: icimsDelay };
+  return awaitHostSlot(url, gateDeps);
+}
+
 async function fetchWithTimeout(url: string, init?: RequestInit, limit = MAX_RESPONSE_BYTES, bodyMs = FETCH_TIMEOUT_MS): Promise<Response> {
   const send = async (lang: Record<string, string>) => {
+    // Item 18: every request to a paced host takes its slot first; one the slot did not reach in time is a deferral, never retried here.
+    if (!(await hostSlot(url))) return new Response(null, { status: 429, headers: { "x-rb-gate": "deferred" } });
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     let res: Response;
@@ -1032,6 +1054,7 @@ async function fetchWithTimeout(url: string, init?: RequestInit, limit = MAX_RES
   // Workday: English only where the runtime's language is refused (S8-003, n437).
   const once = () => withWorkdayLanguage(url, init?.headers, send, discardBody, init?.body);
   const res = await once();
+  if (res.headers.has("x-rb-gate")) return boundBody(res, limit);
   // Rationale: docs/job-board-index-notes.md#n500-if-res-status
   // BB-09: a 503 that names a Retry-After is the same refusal for load.
   const busy = (x: Response) => x.status === 429 || (x.status === 503 && x.headers.has("retry-after"));
@@ -1436,8 +1459,9 @@ const ICIMS_SIZE_HINT = new Map<string, number>();
 
 // Rationale: docs/job-board-index-notes.md#n516-async-function-fetchicims-s-jobsource-st
 async function fetchIcims(s: JobSource, startOffset: number, pageSize: number): Promise<{ items: unknown[]; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
-  // A chunk asks only for pages the visit can keep (S13-035, n1432).
-  const ICIMS_MAX_PAGES = Math.max(1, s.pages ?? 12), ICIMS_CHUNK = Math.min(5, Math.ceil(MAX_POSTINGS_PER_VISIT / pageSize));
+  // Item 18: every iCIMS tenant is paced (its stated Crawl-delay, or the default until its robots is read), so its pages
+  // are asked one at a time and a short page ends the walk before another is asked (S13-035, n1432).
+  const ICIMS_MAX_PAGES = Math.max(1, s.pages ?? 12), ICIMS_CHUNK = 1;
   const startPage = Math.floor(startOffset / pageSize) + 1;
   // Where the first page really starts: a cursor from another page size may fall inside one.
   const base = (startPage - 1) * pageSize;
@@ -1641,8 +1665,8 @@ async function readOversizeBoard(s: JobSource, deadlineAt: number, freshCutoffMs
   }
 }
 
-/** D7: held until a mill screen and an owner call (OD1: nogigiddy; weekday-1 unscreened; hire-resolve names itself an agency). */
-const WORKABLE_OVERSIZE_HELD: ReadonlySet<string> = new Set(["nogigiddy", "weekday-1", "hire-resolve-the-top-recruitment-agency"]);
+/** D7, H8: held until OD1. No lane reads a held board, whatever its size, and the pass-end prune removes its rows. */
+const WORKABLE_OVERSIZE_HELD: ReadonlySet<string> = new Set(["nogigiddy", "weekday-1", "hire-resolve-the-top-recruitment-agency", "mercier-consultancy", "mercier-consultancy-group"]);
 /** A Workable list with details=false (listUrl's third argument). Not light mode: the board stays out of DYNAMIC_LIGHT (n017). */
 async function readWorkableBare(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unknown } | null> {
   try {
@@ -2008,6 +2032,8 @@ function resolveCaller(req: Request, body: Record<string, unknown>): string | nu
   // A LABEL, not an authorisation decision — the platform already
   // authenticated whatever this token is before the request reached us.
   if (svc && (auth === `Bearer ${svc}` || req.headers.get("apikey") === svc)) return "maintenance";
+  // Our verify and diagnostic probes send x-rb-budget: probe; their searches are not visitors' (push-all plan).
+  if ((req.headers.get(BOARD_BUDGET_HEADER) ?? "").trim().toLowerCase() === "probe") return "maintenance";
   if (req.headers.get("origin") || req.headers.get("referer")) return "web";
   return null;
 }
@@ -2431,8 +2457,16 @@ async function isIngestPaused(client: SupabaseClient): Promise<boolean> {
   return false;
 }
 
+/** SUP-a: re-kicks per hop after a 546 or a RateLimitError, and the isolate age past which none is tried (legal-max plan 3.3). */
+const REKICKS_PER_HOP = 2;
+const REKICK_AGE_MS = 120_000;
+/** This isolate's birth: a re-kick's wait must end inside its wall clock. */
+const ISOLATE_BORN = Date.now();
+/** W4-2 / SUP-a: a kick that names the refresh_progress stamp it was sent against is admitted only while that stamp stands. */
+const kickStale = (after: string, prog: { updated_at: string } | null) => !!after && Date.parse(prog?.updated_at ?? "") !== Date.parse(after);
+
 // Rationale: docs/job-board-index-notes.md#n1174-function-chainnextslice-hop-number-clien
-function chainNextSlice(hop: number, client?: SupabaseClient, nextBoards?: number) {
+function chainNextSlice(hop: number, client?: SupabaseClient, nextBoards?: number, cas?: { after: string; passEnd?: string }) {
   const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
   const stamp = async (v: Record<string, unknown>) => {
     if (!client) return;
@@ -2452,25 +2486,50 @@ function chainNextSlice(hop: number, client?: SupabaseClient, nextBoards?: numbe
     // Rationale: docs/job-board-index-notes.md#n543-await-stamp-outcome-kicked
     await stamp({ outcome: "kicked" });
     const key = await chainKey();
-    try {
-      const r = boundBody(await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "refresh", force: true, chain: hop + 1, chainKey: key, ...(nextBoards ? { boards: nextBoards } : {}) }),
-      }), SELF_RESPONSE_BYTES);
-      const body = (await r.text()).slice(0, 300);
-      // A 200 is not proof the chain continued. The child returns 200 for every
-      // early exit, so the DETAIL is what says whether a slice actually ran.
-      const declined = /skipped|paused|unknown action|chainkey|not authori/i.test(body);
-      const outcome = !r.ok ? "http_error" : declined ? "declined" : "continued";
-      if (outcome !== "continued") {
-        console.error(`[JOB-BOARD] chain did NOT continue past hop ${hop}: ${outcome} status=${r.status} body=${body}`);
+    // W4-2: the pass end starts the next pass's hop 0; every other kick is the next hop.
+    const child = cas?.passEnd ? 0 : hop + 1;
+    let after = cas?.after ?? "";
+    for (let rekicked = 0; ; rekicked++) {
+      let wait = 0;
+      try {
+        const r = boundBody(await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          // A kick that names a refresh_progress stamp is admitted only through admitSlice's CAS on it, never the force upsert.
+          body: JSON.stringify({ action: "refresh", ...(after ? { after } : { force: true }), chain: child, chainKey: key, ...(nextBoards ? { boards: nextBoards } : {}), ...(cas?.passEnd ? { passEnd: cas.passEnd } : {}) }),
+        }), SELF_RESPONSE_BYTES);
+        const body = (await r.text()).slice(0, 300);
+        // A 200 is not proof the chain continued. The child returns 200 for every
+        // early exit, so the DETAIL is what says whether a slice actually ran.
+        const declined = /skipped|paused|unknown action|chainkey|not authori/i.test(body);
+        const outcome = !r.ok ? "http_error" : declined ? "declined" : "continued";
+        if (outcome !== "continued") {
+          console.error(`[JOB-BOARD] chain did NOT continue past hop ${hop}: ${outcome} status=${r.status} body=${body}`);
+        }
+        await stamp({ outcome, status: r.status, detail: body, ...(rekicked ? { rekicked } : {}) });
+        // SUP-a: the platform killed the child (WORKER_RESOURCE_LIMIT). Not 503, 429 or a silent death: those need SUP-b's epoch.
+        if (r.status === 546) wait = 3_000 + Math.round(Math.random() * 2_000);
+      } catch (e) {
+        const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+        console.error(`[JOB-BOARD] chain kick threw at hop ${hop}: ${msg}`);
+        await stamp({ outcome: "threw", detail: msg.slice(0, 300), ...(rekicked ? { rekicked } : {}) });
+        // SUP-a: the runtime refused the self-call ("RateLimitError: ... Retry after N s").
+        if (/RateLimitError/.test(msg)) wait = Math.min(1_000 * (Number(/retry after (\d+(?:\.\d+)?)/i.exec(msg)?.[1]) || 5), 40_000);
       }
-      await stamp({ outcome, status: r.status, detail: body });
-    } catch (e) {
-      const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
-      console.error(`[JOB-BOARD] chain kick threw at hop ${hop}: ${msg}`);
-      await stamp({ outcome: "threw", detail: msg.slice(0, 300) });
+      // SUP-a: at most REKICKS_PER_HOP re-kicks, and none the isolate's wall clock would cut off.
+      if (!wait || !client || rekicked >= REKICKS_PER_HOP || Date.now() - ISOLATE_BORN + wait > REKICK_AGE_MS) return;
+      const { data: was } = await client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle();
+      if (!was?.updated_at) return;
+      // The stamp names the hop that wrote it: this hop (the child was never admitted) or the child (admitted, then
+      // killed). A later hop means the child handed the chain on before it died: a re-kick would run beside it.
+      const atHop = (was.v as { hop?: unknown } | null)?.hop;
+      if (atHop !== hop && atHop !== child) { await stamp({ outcome: "declined", detail: `re-kick: hop ${String(atHop)} holds the stamp`, rekicked: rekicked + 1 }); return; }
+      await new Promise((res) => setTimeout(res, wait));
+      const { data: now } = await client.from("job_board_meta").select("updated_at").eq("k", "refresh_progress").maybeSingle();
+      // The watchdog or another kick moved the chain on during the wait: this re-kick would be a second chain.
+      if (now?.updated_at !== was.updated_at) { await stamp({ outcome: "declined", detail: "re-kick: refresh_progress moved during the wait", rekicked: rekicked + 1 }); return; }
+      after = was.updated_at;
+      await stamp({ outcome: "rekicked", waitMs: wait, rekicked: rekicked + 1 });
     }
   })().catch((e) => {
     // Was `() => {}`. A swallowed rejection here is the failure mode that made
@@ -2548,11 +2607,22 @@ let currentHop = 0;
 let sliceStampError: string | null = null;
 // Rationale: docs/job-board-index-notes.md#n052-traceseq
 let traceSeq = 0;
+// INST: the running slice (set once admitted, cleared at its record), for a shutdown stamp.
+let instSlice = { at: 0, boardsDone: 0, fetched: 0 };
+// INST: cpuProxyMs, performance.now() summed over each board's description and row building this slice (a proxy: CPU is unreadable).
+let sliceCpuMs = 0;
+// XR-6 (W4-4): a per-board mark writes at most once per TRACE_GAP_MS per isolate; the phase marks always write.
+const TRACE_GAP_MS = 2_000;
+let traceWroteAt = 0;
 async function breadcrumb(client: SupabaseClient, mark: string, extra?: Record<string, unknown>): Promise<void> {
+  if (typeof extra?.boardsDone === "number") instSlice.boardsDone = extra.boardsDone;
+  if (typeof extra?.fetched === "number") instSlice.fetched = extra.fetched;
+  if (mark.startsWith("board-") && Date.now() - traceWroteAt < TRACE_GAP_MS) return;
+  traceWroteAt = Date.now();
   const write = (async () => {
     await client.from("job_board_meta").upsert({
       k: "slice_trace",
-      v: { at: new Date().toISOString(), hop: currentHop, seq: ++traceSeq, mark, ...memStamp(), ...(extra ?? {}) },
+      v: { at: new Date().toISOString(), hop: currentHop, seq: ++traceSeq, mark, ...memStamp(), cpuProxyMs: Math.round(sliceCpuMs), ...(extra ?? {}) },
       updated_at: new Date().toISOString(),
     }, { onConflict: "k" });
   })().catch(() => { /* never break the thing it measures */ });
@@ -2569,6 +2639,26 @@ async function stampPassEnd(client: SupabaseClient, v: Record<string, unknown>):
   })().catch(() => { /* never break the thing it measures */ });
   await Promise.race([write, new Promise<void>((r) => setTimeout(r, 2_000))]);
 }
+/** INST: five rotating job_board_meta slots for shutdown stamps; status.inst reads them. */
+const INST_SLOTS = ["inst:0", "inst:1", "inst:2", "inst:3", "inst:4"];
+/** INST: a slice the platform shuts down says why: always in the log, and on a slot when the write lands (best effort). */
+function instOnUnload(ev: Event): void {
+  if (!instSlice.at || Date.now() - instSlice.at > 400_000) return;
+  const line = { at: new Date().toISOString(), build: BUILD_VERSION, reason: String((ev as CustomEvent).detail?.reason ?? ev.type), hop: currentHop, boardsDone: instSlice.boardsDone, fetched: instSlice.fetched, heapMb: memStamp().heapMb ?? null, elapsedMs: Date.now() - instSlice.at, cpuProxyMs: Math.round(sliceCpuMs) };
+  console.error(`[JOB-BOARD] INST shutdown ${JSON.stringify(line)}`);
+  Promise.resolve(db().from("job_board_meta").upsert({ k: INST_SLOTS[Math.floor(Date.now() / 1000) % INST_SLOTS.length], v: line, updated_at: line.at }, { onConflict: "k" })).catch(() => {});
+}
+// Optional: the node bundle harness that runs this module in vitest has no global listener.
+globalThis.addEventListener?.("beforeunload", instOnUnload);
+/** status.inst: the slots' stamps newest first, how many name this build, and the last pre-emptive heartbeat (slice_trace). */
+function instStatus(rows: Map<string, Record<string, unknown>>, heartbeat: unknown): Record<string, unknown> {
+  const st = INST_SLOTS.map((k) => rows.get(k)).filter((x): x is Record<string, unknown> => !!x).sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  return { lastStamps: st, countThisBuild: st.filter((x) => x.build === BUILD_VERSION).length, lastHeartbeat: heartbeat };
+}
+/** status.passEnd, with W4-2's hop0At when the pass_chain row names this pass end. */
+function passEndWithHop0(pe: Record<string, unknown> | null, pc: Record<string, unknown> | undefined): Record<string, unknown> | null {
+  return pe && pc && pc.startedAt === pe.startedAt ? { ...pe, hop0At: pc.hop0At } : pe;
+}
 function memStamp(): { heapMb?: number; rssMb?: number } {
   try {
     const mu = (Deno as unknown as { memoryUsage?: () => { heapUsed?: number; rss?: number } }).memoryUsage;
@@ -2583,6 +2673,7 @@ function memStamp(): { heapMb?: number; rssMb?: number } {
 
 async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, inHotPhase: boolean): Promise<void> {
   const sliceMs = Date.now() - sliceWallStart;
+  instSlice.at = 0;
   const phase = inHotPhase ? "hot" : "cold";
   const mem = memStamp();
   // Rationale: docs/job-board-index-notes.md#n548-const-write-async
@@ -2618,6 +2709,7 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
         ...(sliceDbFailNote ? { dbFailed: sliceDbFailNote } : {}),
         ...(sliceLightReread ? { lightReread: addLightReread((pv as { lightReread?: unknown }).lightReread, sliceLightReread, new Date().toISOString()) } : {}),
         streamed: sliceReads.streamed,
+        cpuProxyMs: Math.round(sliceCpuMs),
         rateLimited: sliceReads.rateLimited.slice(0, 50),
         rawNoRows: sliceReads.rawNoRows.slice(0, 50),
         srPartial: sliceReads.srPartial.slice(0, 50),
@@ -2656,7 +2748,7 @@ async function admitSlice(
   return true;
 }
 
-async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, boardBudget = MIN_BOARDS_PER_SLICE): Promise<{ ok: boolean; detail: string }> {
+async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, boardBudget = MIN_BOARDS_PER_SLICE, after = "", passEndAt = ""): Promise<{ ok: boolean; detail: string }> {
   // Checked at the ENTRY too, not only at the hop: pausing must also stop a
   // fresh chain started by pg_cron, a manual refresh, or any other trigger.
   // `force` does NOT override this — force exists to bypass the slice lock, and
@@ -2665,7 +2757,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     return { ok: true, detail: "ingest paused — set job_board_meta.ingest_paused.paused=false to resume" };
   }
   const { data: prog } = await client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle();
-  if (!force && prog && Date.now() - new Date(prog.updated_at).getTime() < SLICE_LOCK_MS) {
+  // W4-2 / SUP-a: a kick sent against a stamp skips the lock but only while the stamp stands; admitSlice then CASes on it.
+  if (kickStale(after, prog as { updated_at: string } | null)) return { ok: true, detail: "skipped — the chain moved on before this kick (declined)" };
+  if (!force && !after && prog && Date.now() - new Date(prog.updated_at).getTime() < SLICE_LOCK_MS) {
     return { ok: true, detail: "skipped — a slice ran moments ago" };
   }
   // Rationale: docs/job-board-index-notes.md#n549-const-slicewallstart-date-now
@@ -2794,32 +2888,32 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         if (!verErr) {
           const storedVersion = (verRow as { version?: string } | null)?.version ?? "";
           let appendDone = true;
-          const seed = async (why: string) => {
-            const { data: empty, error: ebErr } = await client.rpc("get_empty_boards", { p_tokens: JOB_SOURCES.map((s) => s.token) });
-            if (ebErr) throw new Error(ebErr.message ?? "get_empty_boards error");
-            const { data: len, error: apErr } = await client.rpc("bootstrap_queue_append", { p_tokens: Array.isArray(empty) ? empty : [] });
-            if (apErr) throw apErr;
-            console.log(`[JOB-BOARD] bootstrap: ${why} — appended empties server-side (queue now ${len})`);
-          };
+          let commitSeed: (() => Promise<unknown>) | null = null;
           try {
             if (storedVersion !== BUILD_VERSION) {
-              try { await seed("version change"); } catch (e) {
+              // W4-1: the queue is REPLACED by what is new (bootstrap-seed.ts). An empty queue at an unchanged version stays empty.
+              try {
+                const seed = await bootstrapSeedFor(client);
+                const { error: rsErr } = await client.from("job_board_meta").upsert({ k: "bootstrap", v: { queue: [], version: storedVersion }, updated_at: new Date().toISOString() }, { onConflict: "k" });
+                if (rsErr) throw rsErr;
+                const { data: len, error: apErr } = await client.rpc("bootstrap_queue_append", { p_tokens: seed.queue });
+                if (apErr) throw apErr;
+                commitSeed = seed.commit;
+                console.log(`[JOB-BOARD] bootstrap: version change — queue replaced server-side (now ${len})`);
+              } catch (e) {
                 if (rpcAbsent(e as { code?: string; message?: string })) throw e;
                 appendDone = false;
-                console.error(`[JOB-BOARD] bootstrap version-append failed (will retry next slice): ${e instanceof Error ? e.message.slice(0, 120) : e}`);
+                console.error(`[JOB-BOARD] bootstrap seed failed (will retry next slice): ${e instanceof Error ? e.message.slice(0, 120) : String((e as { message?: string })?.message ?? e).slice(0, 120)}`);
               }
             }
             const takeArgs = { p_n: bootstrapTake, p_skip: [...sliceTokens], p_version: BUILD_VERSION, p_stamp_version: appendDone };
-            let take = await client.rpc("bootstrap_queue_take", takeArgs);
+            const take = await client.rpc("bootstrap_queue_take", takeArgs);
             if (take.error) throw take.error;
-            let res = take.data as { taken?: string[]; drained?: number; remaining?: number } | null;
-            if ((res?.drained ?? 0) === 0 && (res?.remaining ?? 0) === 0 && storedVersion === BUILD_VERSION) {
-              // Empty on an unchanged version: seed once, take again.
-              await seed("empty queue");
-              take = await client.rpc("bootstrap_queue_take", takeArgs);
-              if (take.error) throw take.error;
-              res = take.data as { taken?: string[]; drained?: number; remaining?: number } | null;
-            }
+            // W4-1: what was seeded is committed only once the take stamped the version. A take that fails leaves
+            // the version unstamped, and the next slice's re-seed must still name this build's repointed tokens.
+            // A commit that fails costs a re-seed of the same tokens at the next version, never this slice's boards.
+            if (commitSeed) await commitSeed().catch(() => {});
+            const res = take.data as { taken?: string[]; drained?: number; remaining?: number } | null;
             const taken = Array.isArray(res?.taken) ? (res!.taken as string[]) : [];
             bootstrapBoards = taken
               .map((t) => JOB_SOURCES.find((s) => s.token === t))
@@ -2836,28 +2930,18 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       const { data: bsMeta } = await client.from("job_board_meta").select("v").eq("k", "bootstrap").maybeSingle();
       const bs = (bsMeta?.v ?? {}) as { queue?: string[]; version?: string };
       let queue = Array.isArray(bs.queue) ? bs.queue : [];
-      // Rationale: docs/job-board-index-notes.md#n062-queue-length-0
-      if (queue.length === 0) {
-        const { data: empty, error } = await client.rpc("get_empty_boards", { p_tokens: JOB_SOURCES.map((s) => s.token) });
-        if (error) throw error;
-        queue = Array.isArray(empty) ? empty : [];
-      }
       let bootstrapAppendDone = true;
-      if (queue.length > 0 && bs.version !== BUILD_VERSION) {
-        // Rationale: docs/job-board-index-notes.md#n063-try
+      let commitSeed: (() => Promise<unknown>) | null = null;
+      // W4-1: a version change REPLACES the queue with what is new; an empty queue at an unchanged version stays empty.
+      if (bs.version !== BUILD_VERSION) {
         try {
-          const { data: empty, error: ebErr } = await client.rpc("get_empty_boards", { p_tokens: JOB_SOURCES.map((s) => s.token) });
-          if (ebErr) throw new Error(ebErr.message ?? "get_empty_boards error");
-          const have = new Set(queue);
-          const fresh = (Array.isArray(empty) ? (empty as string[]) : []).filter((t) => !have.has(t));
-          if (fresh.length > 0) {
-            queue = [...queue, ...fresh];
-            console.log(`[JOB-BOARD] bootstrap: appended ${fresh.length} empty board(s) on version change (queue ${have.size} -> ${queue.length})`);
-          }
+          const seed = await bootstrapSeedFor(client);
+          queue = seed.queue;
+          commitSeed = seed.commit;
         } catch (e) {
           // Rationale: docs/job-board-index-notes.md#n559-bootstrapappenddone-false
           bootstrapAppendDone = false;
-          console.error(`[JOB-BOARD] bootstrap version-append failed (will retry next slice): ${e instanceof Error ? e.message.slice(0, 120) : e}`);
+          console.error(`[JOB-BOARD] bootstrap seed failed (will retry next slice): ${e instanceof Error ? e.message.slice(0, 120) : e}`);
         }
       }
       if (queue.length > 0) {
@@ -2868,9 +2952,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           .map((t) => JOB_SOURCES.find((s) => s.token === t))
           .filter((s): s is JobSource => !!s);
       }
-      if (queue.length > 0) {
+      if (queue.length > 0 || bs.version !== BUILD_VERSION) {
         // Rationale: docs/job-board-index-notes.md#n064-await-client-from-job-board-meta-upsert
-        await client.from("job_board_meta").upsert(
+        const { error: bsErr } = await client.from("job_board_meta").upsert(
           {
             k: "bootstrap",
             v: {
@@ -2887,6 +2971,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           },
           { onConflict: "k" },
         );
+        if (!bsErr && commitSeed) await commitSeed();
       }
       } // !bootstrapViaRpc
     } catch { /* bootstrap is an accelerator — on any error the rotation still reaches every board */ }
@@ -3079,6 +3164,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     const eligible = baseSlice.map(boardKeyOf).filter((k) => !demandSet.has(k));
     ({ skip: skipTokens, recheck: recheckTokens } = classifyDormancy(eligible, boardFailures.dormant, Date.now(), DORMANT_RECHECK_MS));
   }
+  // H8: a held board is read by no lane, hot or cold; weekday-1 fit and served 153 rows on 11-17.
+  for (const s of slice) if (s.source === "workable" && WORKABLE_OVERSIZE_HELD.has(s.token)) skipTokens.add(boardKeyOf(s));
   // Rationale: docs/job-board-index-notes.md#n073-the-cursor-rule-advanceprogress-is-shared-w
 
   // Rationale: docs/job-board-index-notes.md#n567-const-advanceargs
@@ -3098,6 +3185,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // Rationale: docs/job-board-index-notes.md#n569-block
   {
     const { next } = advanceProgress({ prev: progressBefore, ...advanceArgs });
+    // SUP-a: the admitted stamp names its hop, so a parent's re-kick can tell its dead child's stamp from a later hop's.
+    next.hop = chainHop;
     // Rationale: docs/job-board-index-notes.md#n074-await-admitslice-client-next-force
     if (!(await admitSlice(client, next, { force, prog: (prog as { updated_at: string } | null) ?? null }))) {
       return { ok: true, detail: "skipped — a slice was admitted moments ago" };
@@ -3105,6 +3194,15 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   }
   // UPK-3: a kick the pause or the lock refused never relabels the running hop.
   currentHop = chainHop;
+  sliceCpuMs = 0;
+  instSlice = { at: sliceWallStart, boardsDone: 0, fetched: 0 };
+  // W4-2: the pass end's own kick started this pass; P1 reads the gap (status passEnd.hop0At). The first hop 0
+  // admitted for a pass end stamps it; a re-kicked hop 0 (SUP-a) keeps that stamp.
+  if (passEndAt) await (async () => {
+    const { data: pc } = await client.from("job_board_meta").select("v").eq("k", "pass_chain").maybeSingle();
+    if ((pc?.v as { startedAt?: string } | null)?.startedAt === passEndAt) return;
+    await client.from("job_board_meta").upsert({ k: "pass_chain", v: { startedAt: passEndAt, hop0At: new Date().toISOString() }, updated_at: new Date().toISOString() }, { onConflict: "k" });
+  })().catch(() => {});
   // The demand board this admitted slice took starts its cooldown and counts
   // against the hour, in the row only the refresh writes.
   if (demandTaken.length) await stampDemandServed(client, demandTaken, Date.now()).catch(() => {});
@@ -3409,6 +3507,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           budgetSkipped.push(s.token);
           continue;
         }
+        const cpu0 = performance.now();
         const descs = new Map<string, string>();
         // Rationale: docs/job-board-index-notes.md#n580-let-descsdeferred-false
         let descsDeferred = bareRead;
@@ -3541,6 +3640,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           });
         }
         const rows = [...rowsById.values()];
+        sliceCpuMs += performance.now() - cpu0;
 
         // Rationale: docs/job-board-index-notes.md#n593-let-boardok-true
         let boardOk = true;
@@ -3890,7 +3990,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         const VENDOR_FIELD_FIRST_READ = new Set(["personio:salary"]);
         const OUR_READING_CHANGED = new Set([
           // Remove after 2026-11-30 (n1426).
-          "lever:employment_type", "bamboohr:employment_type", "recruitee:employment_type", "breezy:employment_type", "personio:employment_type", "breezy:salary", "lever:salary"]);
+          "lever:employment_type", "bamboohr:employment_type", "recruitee:employment_type", "breezy:employment_type", "personio:employment_type", "breezy:salary", "lever:salary",
+          // Remove after 2026-12-31 (n1602): a greenhouse board's own stated pay replaces our mined reading on its first lap.
+          "greenhouse:salary"]);
         const FIELD_CHANGES_PER_VISIT = 500;
         const VALUE_CAP = 1_000; // salary strings and titles both fit generously
         const changeLog: Array<Record<string, unknown>> = [];
@@ -4335,8 +4437,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   }
   const passDone = isPassDone(progressAfter, HOT_LIST.length, COLD_SLICES_PER_PASS);
 
+  // W4-2: the stamp the pass end's own hop-0 kick is admitted against.
+  const progAt = new Date().toISOString();
   await client.from("job_board_meta").upsert(
-    { k: "refresh_progress", v: progressAfter, updated_at: new Date().toISOString() },
+    { k: "refresh_progress", v: { ...progressAfter, hop: chainHop }, updated_at: progAt },
     { onConflict: "k" },
   );
 
@@ -4482,6 +4586,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     await breadcrumb(client, "pass-end", { elapsedMs: Date.now() - sliceWallStart });
     await stampPassEnd(client, { startedAt: passEndStartedAt, hop: chainHop, refreshedAt: startIso, steps: {}, next: PASS_END_STEPS[0], nextKickedAt: passEndStartedAt });
     kickPassEndStep(PASS_END_STEPS[0], passEndStartedAt);
+    // W4-2: the next pass's hop 0 starts now, not at the next cron tick (4.7 min a pass); a cron kick racing it loses the CAS.
+    chainNextSlice(chainHop, client, undefined, { after: progAt, passEnd: passEndStartedAt });
     await recordSliceStats(client, sliceWallStart, inHotPhase);
     return { ok: true, detail: `pass complete — cold rotation at ${cold}/${COLD_LIST.length}; the pass-end tail runs as its own hops from "${PASS_END_STEPS[0]}"${lastUpsertError ? ` — last upsert error: ${String(lastUpsertError).slice(0, 120)}` : ""}` };
   }
@@ -4495,6 +4601,46 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // The shed level rides the summary, because a rotation that is deliberately
   // running small must not look like a rotation that is mysteriously slow.
   return { ok: true, detail: `slice done (${sliceTotal} postings, ${failed.length} failed) — ${phase}${shedLevel > 0 ? ` [shedding L${shedLevel}]` : ""}${budgetSkipped.length ? ` [budget: ${fetchedInSlice} fetched, ${budgetSkipped.length} deferred]` : ""}` };
+}
+
+/** W4-1: the version change's queue (bootstrap-seed.ts) and its commit; throws on any failed read, so the next slice retries. */
+async function bootstrapSeedFor(client: SupabaseClient): Promise<{ queue: string[]; commit: () => Promise<unknown> }> {
+  const { data: seenRow, error: seenErr } = await client.from("job_board_meta").select("v").eq("k", "bootstrap_seen").maybeSingle();
+  if (seenErr) throw seenErr;
+  const seen = (seenRow?.v ?? {}) as { readers?: Record<string, number>; twins?: string[] };
+  const repointed = repointedTokens(RETIRED_TWIN_KEYS, seen.twins, JOB_SOURCES);
+  const { data: empty, error: ebErr } = await client.rpc("get_empty_boards", { p_tokens: JOB_SOURCES.map((s) => s.token) });
+  if (ebErr) throw ebErr;
+  const tokens = Array.isArray(empty) ? (empty as string[]) : [];
+  const verified = new Set<string>();
+  const chunks: string[][] = [];
+  for (let i = 0; i < tokens.length; i += 200) chunks.push(tokens.slice(i, i + 200));
+  for (let i = 0; i < chunks.length; i += 4) {
+    await Promise.all(chunks.slice(i, i + 4).map(async (c) => {
+      const { data, error } = await client.from("job_board_verifications").select("company_token").in("company_token", c);
+      if (error) throw error;
+      for (const r of (data ?? []) as Array<{ company_token: string }>) verified.add(r.company_token);
+    }));
+  }
+  const byToken = new Map<string, string[]>();
+  for (const s of JOB_SOURCES) byToken.set(s.token, [...(byToken.get(s.token) ?? []), s.source]);
+  const vendorsOf = (t: string) => byToken.get(t) ?? [];
+  const q = bootstrapSeed({ repointed, empty: tokens, verified, vendorsOf, changedReaders: readersChanged(seen.readers, READER_VERSION) });
+  if (repointed.length) {
+    const { data: bf, error: bfErr } = await client.from("job_board_meta").select("v").eq("k", "board_failures").maybeSingle();
+    if (bfErr) throw bfErr;
+    const cleared = clearRepointedFailures((bf?.v ?? {}) as Record<string, unknown>, repointed, vendorsOf);
+    if (cleared) {
+      const { error } = await client.from("job_board_meta").upsert({ k: "board_failures", v: cleared, updated_at: new Date().toISOString() }, { onConflict: "k" });
+      if (error) throw error;
+    }
+  }
+  const note = { repointed: q.repointed, unread: q.unread, readerChanged: q.readerChanged, empty: tokens.length };
+  console.log(`[JOB-BOARD] bootstrap: version change seeds ${q.queue.length} ${JSON.stringify(note)}`);
+  return {
+    queue: q.queue,
+    commit: () => Promise.resolve(client.from("job_board_meta").upsert({ k: "bootstrap_seen", v: { readers: READER_VERSION, twins: RETIRED_TWIN_KEYS, build: BUILD_VERSION, at: new Date().toISOString(), ...note }, updated_at: new Date().toISOString() }, { onConflict: "k" })),
+  };
 }
 
 // ── THE PASS-END TAIL, ONE HOP PER STEP (S11-001, .93; pass-end.ts) ─────────
@@ -4521,6 +4667,7 @@ async function passEndReceipt(client: SupabaseClient, startedAt: string, step: P
     if (Date.parse(String(v.startedAt)) > Date.parse(startedAt)) return { superseded: true, prior: {} };
     v = { startedAt, steps: {} }; // the pass's opening receipt never landed: open it here
   }
+  if (v.steps?.[step]?.resumable) return { superseded: true, prior: {} }; // W4-3: closed on its own clock
   await stampPassEnd(client, withStepReceipt(v, step, patch, top));
   return { superseded: false, prior: v.steps?.[step] ?? {} };
 }
@@ -4553,12 +4700,13 @@ async function runPassEndStep(client: SupabaseClient, step: PassEndStep, started
   const hops = step === "sweep" || step === "names" ? (begun.prior.hops ?? 0) + 1 : undefined;
   const next = nextPassEndStep(step, hops !== undefined && r.stop !== undefined ? { stop: r.stop, hops } : undefined);
   const doneAt = new Date().toISOString();
-  await passEndReceipt(
+  const ended = await passEndReceipt(
     client, startedAt, step,
     { doneAt, ms: Date.now() - t0, ok: r.ok, detail: r.detail.slice(0, 200), ...(hops !== undefined ? { hops, ...(step === "sweep" ? { dropped: (begun.prior.dropped ?? 0) + (r.swept ?? 0), statedClosed: ((begun.prior as { statedClosed?: number }).statedClosed ?? 0) + (r.statedClosed ?? 0) } : {}) } : {}) },
     next ? { next, nextKickedAt: doneAt } : { next: null, refreshedAt: ctx.refreshedAt, doneAt, ms: Date.now() - Date.parse(startedAt) },
   );
-  console.log(`[JOB-BOARD] pass-end ${step}: ${r.detail}${next ? ` -> ${next}` : " (tail finished)"}`);
+  console.log(`[JOB-BOARD] pass-end ${step}: ${r.detail}${ended.superseded ? " (the tail was closed meanwhile)" : next ? ` -> ${next}` : " (tail finished)"}`);
+  if (ended.superseded) return { ok: r.ok, step, next: null, detail: r.detail };
   if (next) kickPassEndStep(next, startedAt);
   else await maybeKickMaintenance(client);
   return { ok: r.ok, step, next, detail: r.detail };
@@ -4572,6 +4720,13 @@ async function maybeResumePassEnd(client: SupabaseClient): Promise<void> {
   try {
     const row = await readMetaRow(client, "pass_end");
     const v = (row.read ? row.v : null) as PassEndRow | null;
+    if (v && typeof v.startedAt === "string" && namesOutOfTime(v, Date.now(), NAME_SYNC_UNTIL_MS)) {
+      const doneAt = new Date().toISOString();
+      const detail = `closed on its own clock (${PASS_END_NAME_HOPS} x ${NAME_SYNC_UNTIL_MS / 1000}s); the next tail resumes from its cursor`;
+      await stampPassEnd(client, withStepReceipt(v, "names", { doneAt, ok: false, resumable: true, detail }, { next: null, doneAt, ms: Date.now() - Date.parse(v.startedAt) }));
+      console.warn(`[JOB-BOARD] pass-end names ${detail}`);
+      return;
+    }
     const step = stalledPassEndStep(v, Date.now());
     if (!step || !v || typeof v.startedAt !== "string") return;
     const tries = (v.steps?.[step]?.tries ?? 0) + 1;
@@ -4700,7 +4855,10 @@ async function passEndServe(client: SupabaseClient, ctx: PassEndCtx, sliceWallSt
       const [src, tk] = [k.slice(0, k.indexOf(":")), k.slice(k.indexOf(":") + 1)];
       if (!JOB_SOURCES.some((s) => s.source === src && s.token === tk)) twinsLogged += (await pruneWholeBoard(client, tk, "untracked", src)).logged;
     }
-    await breadcrumb(client, "pass-end-pruned", { orphans: orphanTokens.length, twinsLogged, elapsedMs: Date.now() - sliceWallStart });
+    // H8: what a held board still serves leaves by its own vendor and token.
+    let heldLogged = 0;
+    for (const tk of WORKABLE_OVERSIZE_HELD) heldLogged += (await pruneWholeBoard(client, tk, "untracked", "workable")).logged;
+    await breadcrumb(client, "pass-end-pruned", { orphans: orphanTokens.length, twinsLogged, heldLogged, elapsedMs: Date.now() - sliceWallStart });
   }
 
   // Rationale: docs/job-board-index-notes.md#n149-coverage
@@ -4958,6 +5116,17 @@ async function passEndKicks(client: SupabaseClient): Promise<{ ok: boolean; deta
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "filter-audit", chainKey: key }),
       })
+    ).then((r) => discardBody(r)).catch(() => {}));
+  }
+
+  // NB-35: the daily accuracy audit starts here, with the chain key, once its
+  // result is 20 hours old (the 04:23 cron sends no key and only reads it now).
+  const { data: auRow } = await client.from("job_board_meta").select("updated_at").eq("k", "audit").maybeSingle();
+  const auAge = auRow?.updated_at ? Date.now() - Date.parse(auRow.updated_at) : Infinity;
+  if (!(auAge < 20 * 3600_000)) {
+    const auUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+    waitUntil(chainKey().then((key) =>
+      fetch(auUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "audit", chainKey: key }) })
     ).then((r) => discardBody(r)).catch(() => {}));
   }
 
@@ -5256,11 +5425,19 @@ async function passEndNames(client: SupabaseClient, sliceWallStart: number): Pro
     // A retry the clock never reached sorts at or before `after`: carried, or it is never visited again.
     const unreachedRetries: string[] = [];
     let after = queue.resumeAfter;
+    // W4-3: the cursor is written as the hop goes (every 10 s), so a hop that dies is resumed near where it got to.
+    const retryLeft = new Set(queue.retry);
+    let cursorAt = Date.now();
     for (const tk of queue.tokens) {
       if (Date.now() >= nameSyncUntil) {
         waiting += JOB_SOURCES.filter((s) => s.token === tk).length || 1;
         if (queue.retry.has(tk)) unreachedRetries.push(tk);
         continue;
+      }
+      if (Date.now() - cursorAt >= 10_000) {
+        cursorAt = Date.now();
+        const mid: NameSyncProgress = { version: NAME_SYNC_VERSION, after, retry: [...failedTokens, ...retryLeft].slice(0, 200), at: new Date(cursorAt).toISOString() };
+        await client.from("job_board_meta").upsert({ k: "name_sync_progress", v: mid, updated_at: mid.at }, { onConflict: "k" });
       }
       let tokenFailed = false;
       // Each board on the token, by its own vendor: a twin never takes the
@@ -5295,6 +5472,7 @@ async function passEndNames(client: SupabaseClient, sliceWallStart: number): Pro
         } else fixed++;
       }
       if (tokenFailed) failedTokens.push(tk);
+      retryLeft.delete(tk);
       if (!queue.retry.has(tk) && tk > after) after = tk;
     }
     const doneAt = new Date().toISOString();
@@ -5805,13 +5983,14 @@ async function fetchVendorDetail(
   // two vendors whose page carries the structured node (see the return type).
   let pay: string | null = null;
   if (src.source === "smartrecruiters") {
-    const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${src.token}/postings/${externalId}`);
-    if (res.ok) {
+    text = await SR_DETAIL_CAP(async () => {
+      const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${src.token}/postings/${externalId}`);
+      if (!res.ok) return null;
       const j = await res.json();
       const s = j.jobAd?.sections ?? {};
       const html = [s.jobDescription?.text, s.qualifications?.text, s.additionalInformation?.text].filter(Boolean).join("\n");
-      text = htmlToText(html).slice(0, DESC_CAP) || null;
-    }
+      return htmlToText(html).slice(0, DESC_CAP) || null;
+    });
   } else if (src.source === "workable") {
     // D7: the one posting (about 5 KB), never the account's whole details=true widget.
     const res = await fetchWithTimeout(`https://apply.workable.com/api/v2/accounts/${src.token}/jobs/${encodeURIComponent(externalId)}`);
@@ -6613,6 +6792,16 @@ async function handleRequest(req: Request): Promise<Response> {
       const passEndRead = Promise.resolve(
         client.from("job_board_meta").select("v").eq("k", "pass_end").maybeSingle(),
       ).catch(() => null);
+      // W4-2's hop0At (pass_chain) and INST's stamps (inst:0..4), read beside the pass end.
+      const instRead = Promise.resolve(
+        client.from("job_board_meta").select("k, v").in("k", ["pass_chain", ...INST_SLOTS]),
+      ).catch(() => null);
+      // Item 18: each paced host's gate row (_shared/host-gate.ts).
+      const pacingRead = Promise.resolve(client.from("job_board_meta").select("k, v").like("k", "host_gate:%")).catch(() => null);
+      // NB-35: when an audit run last started (audit_run) and last finished (audit); the stamps only.
+      const auditRead = Promise.resolve(client.from("job_board_meta").select("k, updated_at").in("k", ["audit", "audit_run"])).catch(() => null);
+      // The disk band (disk-band.ts): the ring's newest stamp only, never the ring.
+      const ringRead = Promise.resolve(client.from("job_board_meta").select("head:v->entries->0").eq("k", "storage_size_ring").maybeSingle()).catch(() => null);
       const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop, oracleRepair, staleMeta, freshRow] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
@@ -6674,6 +6863,7 @@ async function handleRequest(req: Request): Promise<Response> {
       const anonBudgetRow = await anonBudgetRead;
       const demandRow = await demandRead;
       const passEndRow = await passEndRead;
+      const instRows = new Map((((await instRead) as { data?: Array<{ k: string; v: Record<string, unknown> }> } | null)?.data ?? []).map((r) => [r.k, r.v]));
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number; wrapMin?: number };
       const rfV = { total: (refreshMeta.data as { total?: unknown } | null)?.total as number | undefined };
@@ -7049,7 +7239,14 @@ async function handleRequest(req: Request): Promise<Response> {
         sliceTrace: ((traceRow as { data?: { v?: unknown } } | null)?.data?.v ?? null) as Record<string, unknown> | null,
         // The pass-end tail's receipt (S11-001): a startedAt with no later doneAt
         // past half an hour is a tail that died (scan-heartbeat job_board_pass_end).
-        passEnd: ((passEndRow as { data?: { v?: unknown } } | null)?.data?.v ?? null) as Record<string, unknown> | null,
+        passEnd: passEndWithHop0(((passEndRow as { data?: { v?: unknown } } | null)?.data?.v ?? null) as Record<string, unknown> | null, instRows.get("pass_chain")),
+        inst: instStatus(instRows, (traceRow as { data?: { v?: unknown } } | null)?.data?.v ?? null),
+        pacing: pacingOf(((await pacingRead) as { data?: Array<{ k: string; v: unknown }> } | null)?.data),
+        audit: await auditRead.then((r) => {
+          const at = new Map(((r as { data?: Array<{ k: string; updated_at: string }> } | null)?.data ?? []).map((x) => [x.k, x.updated_at]));
+          return { startedAt: at.get("audit_run") ?? null, doneAt: at.get("audit") ?? null };
+        }),
+        dbBand: dbBandOf(((await ringRead) as { data?: { head?: unknown } } | null)?.data?.head),
         // Rationale: docs/job-board-index-notes.md#n741-oversizeboards-oversizestatusrows-overme
         oversizeBoards: oversizeStatusRows((overMeta as { data?: { v?: { boards?: unknown } } } | null)?.data?.v?.boards),
         oversizeBoardCount: Object.keys(((overMeta as { data?: { v?: { boards?: Record<string, unknown> } } } | null)?.data?.v?.boards) ?? {}).length,
@@ -7786,13 +7983,15 @@ async function handleRequest(req: Request): Promise<Response> {
         );
         return json({ ok: true, detail: `catalog high-water reset to ${JOB_SOURCES.length}` });
       }
-      const force = body.force === true && keyOk;
+      // W4-2 / SUP-a: a chain kick that names a refresh_progress stamp is admitted by CAS on it, never forced.
+      const after = keyOk && typeof body.after === "string" ? body.after : "";
+      const force = body.force === true && keyOk && !after;
       // Clamped on the way in: the budget arrives over the wire from a sibling
       // isolate, and an unbounded one would undo the bound entirely.
       const boards = Number.isFinite(Number(body.boards))
         ? Math.min(MAX_BOARDS_PER_SLICE, Math.max(MIN_BOARDS_PER_SLICE, Math.floor(Number(body.boards))))
         : MIN_BOARDS_PER_SLICE;
-      const r = await runRefresh(client, force, force ? hop : 0, force ? boards : MIN_BOARDS_PER_SLICE);
+      const r = await runRefresh(client, force, force || after ? hop : 0, force || after ? boards : MIN_BOARDS_PER_SLICE, after, after && typeof body.passEnd === "string" ? body.passEnd : "");
       return json(r, r.ok ? 200 : 502);
     }
 
@@ -7998,7 +8197,7 @@ async function handleRequest(req: Request): Promise<Response> {
       const { data: rows, error: readErr } = await client
         .from("job_board_postings")
         // Rationale: docs/job-board-index-notes.md#n782-select-id-country-title
-        .select("id, country, title")
+        .select("id, country, title, salary")
         .eq("company_token", s.token)
         .eq("source", s.source)
         .is("description", null)
@@ -8018,7 +8217,8 @@ async function handleRequest(req: Request): Promise<Response> {
           const text = job.content ? clean(htmlToText(String(job.content).slice(0, RAW_HTML_CAP)).trim()).slice(0, STORED_DESC_CAP) : "";
           if (text) {
             // Rationale: docs/job-board-index-notes.md#n783-const-minedsalary-extractsalary-text
-            const minedSalary = extractSalary(text);
+            // The board's stated pay (a refresh read it with pay_transparency) outranks the miner, as at refresh.
+            const minedSalary = (row as { salary?: string | null }).salary ? null : extractSalary(text);
             const minedParse = minedSalary ? parseSalaryStructured(minedSalary, (row as { country?: string | null }).country ?? undefined, { title: (row as { title?: string | null }).title ?? null, description: text }) : null;
             const { error } = await client.from("job_board_postings")
               .update({
@@ -8710,10 +8910,14 @@ async function handleRequest(req: Request): Promise<Response> {
       const prevAge = prevAudit ? Date.now() - new Date(prevAudit.updated_at).getTime() : Infinity;
       // force (100 live probes and the demotions they write) is maintenance
       // only (.88); an expired cache starts one audit, not one per caller.
-      const auditForced = body.force === true && await isMaintenance(req, body);
+      const maint = body.force === true || prevAge >= 20 * 3600_000 ? await isMaintenance(req, body) : false;
+      const auditForced = body.force === true && maint;
       if (prevAge < 20 * 3600_000 && !auditForced) {
         return json({ ...(prevAudit?.v as Record<string, unknown>), cached: true });
       }
+      // NB-35: only maintenance starts a run (the pass end kicks it with the
+      // chain key); anyone else past the 20 hours reads the cache, marked stale.
+      if (!maint) return json({ ...((prevAudit?.v ?? {}) as Record<string, unknown>), cached: true, stale: true });
       if (!auditForced && !(await claimRun(client, "audit_run", 30 * 60_000))) {
         return json({ ...((prevAudit?.v ?? {}) as Record<string, unknown>), cached: true, running: true });
       }
@@ -9732,14 +9936,15 @@ async function serveList(
   const qt = queryTerms(body.q);
   // phraseText, not a plain join: a quoted phrase is one term here and must
   // reach the tsquery parser back inside its quotes, or the tip is a lie.
-  const qText = phraseText(qt.terms).slice(0, 200) || (qt.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
+  // "back end" / "back-end" / "backend" are one word to every title tier (search-alias.ts, n1600).
+  const qText = joinCompoundRoleWords(phraseText(qt.terms).slice(0, 200) || (qt.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200)));
   // S13-104: a search our servers ask not to log reaches no log line, its words or an error's text, which can quote them.
   const qLog = noLog ? "(not logged)" : JSON.stringify(qText);
   const errLog = (text: string) => (noLog ? "(not logged)" : text);
   // The router's employer keys: the table, plus the live employer list's (S12-014).
   const routeAliases = qText ? routeAliasesFor(client) : ROUTE_TABLE;
   /** The SIMPLE route's split title match, with an employer's boards beside its key (S12-014). */
-  const simpleSplit = (q: string) => simpleRouteFilters(ftsSafe(q), ROLE_ALIASES, routeAliases);
+  const simpleSplit = (q: string) => simpleRouteFilters(ftsSafe(q), roleAliasesFor(q), routeAliases);
 
   if (body.facetCounts === true) {
     // Rationale: docs/job-board-index-notes.md#n865-const-facetroute-qtext-pickroute-qtext-r
@@ -9868,7 +10073,7 @@ async function serveList(
     }
     // Rationale: docs/job-board-index-notes.md#n322-qtc
     const qtC = queryTerms(body.q);
-    const qTextC = phraseText(qtC.terms).slice(0, 200) || (qtC.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
+    const qTextC = joinCompoundRoleWords(phraseText(qtC.terms).slice(0, 200) || (qtC.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200)));
     // Rationale: docs/job-board-index-notes.md#n323-qtextc-body-sort-salary-rpc
     if (qTextC && body.sort !== "salary" && !rpcBlindFilters(applied).length) {
       try {

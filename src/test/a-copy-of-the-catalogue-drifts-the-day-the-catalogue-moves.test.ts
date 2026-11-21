@@ -79,12 +79,49 @@ describe("a copy of the catalogue drifts the day the catalogue moves", () => {
     for (const [, copy] of PAIRS) h.update(readFileSync(resolve(FN, copy)));
     const copyHash = h.digest("hex").slice(0, 16);
     const version = /export const BUILD_VERSION = "([^"]+)"/.exec(readFileSync(resolve(FN, "layoff-filings/index.ts"), "utf8"))?.[1];
-    const PINNED = { copyHash: "932a4203590a35b4", version: "2026-11-12.1" };
+    const PINNED = { copyHash: "d76fea3b98f2c72b", version: "2026-11-17.2" };
     expect(
       { copyHash, version },
       copyHash !== PINNED.copyHash && version === PINNED.version
         ? "the catalogue copy changed and layoff-filings' BUILD_VERSION did not: bump it, so the deploy ledger lists layoff-filings for redeploy, then update PINNED"
         : "update PINNED to the copy's hash and the BUILD_VERSION that ships it",
+    ).toEqual(PINNED);
+  });
+
+  /**
+   * EVERY FILE THE FUNCTION DEPLOYS MOVES WITH ITS BUILD (board .103 review,
+   * 2026-11-18). The pin above hashes only the two copies. The .103 merge
+   * added one comment line to layoff-filings/index.ts under the lane's stamp
+   * 2026-11-17.1, so the lane's tip and the integration shipped two bundles
+   * under one build string, which deploy-ledger.mjs --against refuses (exit 3)
+   * but which no test saw. The ledger counts every file in the function's
+   * folder, comments included, so this pin does too: when it fails with the
+   * bump message, bump BUILD_VERSION, then update both values.
+   */
+  it("every file in layoff-filings' folder and its BUILD_VERSION are pinned together", () => {
+    const { createHash } = require("node:crypto") as typeof import("node:crypto");
+    const { readdirSync, statSync } = require("node:fs") as typeof import("node:fs");
+    const dir = resolve(FN, "layoff-filings");
+    const files: string[] = [];
+    const walk = (rel: string) => {
+      for (const name of readdirSync(resolve(dir, rel)).sort()) {
+        const p = rel ? `${rel}/${name}` : name;
+        if (statSync(resolve(dir, p)).isDirectory()) walk(p);
+        else files.push(p);
+      }
+    };
+    walk("");
+    const h = createHash("sha256");
+    for (const p of files) h.update(p).update("\0").update(readFileSync(resolve(dir, p))).update("\0");
+    const folderHash = h.digest("hex").slice(0, 16);
+    const version = /export const BUILD_VERSION = "([^"]+)"/.exec(readFileSync(resolve(dir, "index.ts"), "utf8"))?.[1];
+    expect(files.length, "the walk found the function's files").toBeGreaterThan(10);
+    const PINNED = { folderHash: "76f4d971e3108411", version: "2026-11-17.2" };
+    expect(
+      { folderHash, version },
+      folderHash !== PINNED.folderHash && version === PINNED.version
+        ? "a file in layoff-filings/ changed and its BUILD_VERSION did not: bump it, so no two bundles ship under one build string, then update PINNED"
+        : "update PINNED to the folder's hash and the BUILD_VERSION that ships it",
     ).toEqual(PINNED);
   });
 

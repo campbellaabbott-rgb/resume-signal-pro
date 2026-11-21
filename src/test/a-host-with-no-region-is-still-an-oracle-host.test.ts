@@ -285,8 +285,22 @@ describe("the catalogue", () => {
       "ashby:temporal": ["greenhouse", "temporaltechnologies"], "ashby:worldlabs": ["greenhouse", "worldlabs"], "greenhouse:machindustries": ["ashby", "mach"],
       "greenhouse:swordhealth": ["lever", "swordhealth"],
     };
-    const before = CATALOG.slice(0, jpmc[0]?.index ?? 0);
-    expect(before.length).toBe(44_519 - RETIRED_102.length);
+    // job-board .103 (catalogue lane) removed 342 boards, 336 of them before JPMorgan (dead on a second
+    // read, the paid-survey feed, five held Workable boards: left102 holds each at its .102 index), and
+    // rewrote 34 in place under the vendor their employer now posts on. They go back the same way first,
+    // which rebuilds .102's order exactly, so the .102 step below runs on what it was written for.
+    const F103 = JSON.parse(readFileSync(resolve(__dirname, "fixtures/board-103-catalogue-2026-11-17.json"), "utf8")) as {
+      left102: Array<[number, string]>; repointed: Array<{ from: string; to: string }>;
+    };
+    const WAS_103 = new Map(F103.repointed.map((r) => [r.to, r.from]));
+    const asEntry = (k: string) => ({ source: k.slice(0, k.indexOf(":")), token: k.slice(k.indexOf(":") + 1) });
+    const at103 = CATALOG.slice(0, jpmc[0]?.index ?? 0);
+    const JPMC_102 = 44_519 - RETIRED_102.length;
+    const left = F103.left102.filter(([i]) => i < JPMC_102);
+    expect(at103.length).toBe(JPMC_102 - left.length);
+    const before = at103.map((e) => { const was = WAS_103.get(`${e.source}:${e.token}`); return was ? asEntry(was) : { source: e.source, token: e.token }; });
+    for (const [i, key] of left) before.splice(i, 0, asEntry(key));
+    expect(before.length).toBe(JPMC_102);
     const wave4: Array<[string, string]> = before.map((e) => D13_WAS[`${e.source}:${e.token}`] ?? [e.source, e.token]);
     expect(Object.keys(D13_WAS).filter((k) => !before.some((e) => `${e.source}:${e.token}` === k)), "a D13 key is not where wave 4's board was").toEqual([]);
     for (const [i, source, token] of RETIRED_102) wave4.splice(i, 0, [source, token]);
