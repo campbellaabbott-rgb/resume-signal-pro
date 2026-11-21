@@ -105,6 +105,7 @@ esac
 LLMS72=$(curl -s -m 30 -A "$UA" "$SITE/llms.txt")
 if printf '%s' "$LLMS72" | grep -qF "same document → same report ID"; then echo "FAIL  llms.txt still says \"reproducible (same document → same report ID)\" with no cache window"
 elif printf '%s' "$LLMS72" | grep -qF "same job posting within 7 days returns the same report"; then echo "PASS  llms.txt: a rescan of the same file against the same job posting within 7 days returns the same report"
+elif printf '%s' "$LLMS72" | grep -qF "same job posting within 7 days returns the same full report"; then echo "PASS  llms.txt: a rescan of the same file against the same job posting within 7 days returns the same full report (the data-pages lane's wording, 2026-11-12: a partial report is not kept)"
 elif printf '%s' "$LLMS72" | grep -qF "same file within 7 days returns the same report"; then echo "FAIL  llms.txt promises the same report for the same file alone (the cache is keyed on the posting too)"
 else echo "FAIL  llms.txt carries neither sentence (${#LLMS72} bytes)"; fi
 

@@ -5918,7 +5918,7 @@
     "draftButton": "I-draft ang mga tanong ng application na ito",
     "draftAgain": "I-draft ulit",
     "failed": "Hindi makapag-draft ng mga sagot ngayon.",
-    "inferredIntro": "Mga malamang na tanong para sa role na ito (hindi inilalathala ng ATS na ito ang form nito) — nakabatay sa resume mo. Suriin bago i-paste.",
+    "inferredIntro": "Mga malamang na tanong para sa role na ito (hindi namin binasa ang form ng employer na ito) — nakabatay sa resume mo. Suriin bago i-paste.",
     "limit": "Nagamit mo na ang allowance na ito sa ngayon. Pakisubukan ulit mamaya.",
     "limitHours": "Naabot mo na ang limit sa pag-draft sa ngayon. Pakisubukan ulit pagkalipas ng mga {{hours}} oras.",
     "limitMinutes": "Naabot mo na ang limit sa pag-draft sa ngayon. Pakisubukan ulit pagkalipas ng mga {{minutes}} minuto.",

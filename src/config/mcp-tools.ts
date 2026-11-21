@@ -69,6 +69,10 @@ export const MCP_FORM_VENDORS_AFTER_DEPLOY: ReadonlyArray<{ key: string; label: 
  * postings on: agent-mcp's FORM_NOT_READ_HERE, pinned equal by
  * the-page-says-six. OD14-ASHBY-1 (owner option "stop", 2026-11-16): Ashby
  * publishes its form only under a path its robots file disallows.
+ * The website stops the same vendors from this list (OD14-ASHBY, 2026-11-18):
+ * the answers kit asks job-board for none of their questions
+ * (asksForRealQuestions in ApplicationAnswers), and How applying works says
+ * none of their forms is read (src/lib/apply-mechanics.ts).
  */
 export const MCP_FORM_NOT_READ_HERE: readonly string[] = ["ashby"];
 

@@ -43,7 +43,11 @@
 #       B's paste (the send-product-email build), and before it each line is
 #       INFO. B's build lines ask each function that bundles product-cuts.ts
 #       for its own round B build, so round A's builds, which still carry the
-#       old sentence, never pass them.
+#       old sentence, never pass them. B's code half: this checkout's
+#       generate-career-path imports no Stripe module (its past-buyer path,
+#       which asked Stripe about a session with no claim and counted days, is
+#       deleted, so the claim is its only proof), and its preflight serves
+#       round B's 2026-11-13.1, the build without that path.
 #
 # WHAT THIS SECTION CANNOT SEE: every write the lane changed needs a paid
 # order, a model call or the service role. Those are proven on the shipped
@@ -223,15 +227,26 @@ case "$VDPB_O143" in
     if grep -qE 'pastBuyers:.*PAST_BUYER_DAYS' supabase/functions/_shared/product-cuts.ts 2>/dev/null; then echo "FAIL  S14X-143 decided ($VDPB_O143), but _shared/product-cuts.ts still promises the link for PAST_BUYER_DAYS days in a pastBuyers sentence"
     elif ! grep -qE 'pastBuyers:' supabase/functions/_shared/product-cuts.ts 2>/dev/null; then echo "FAIL  S14X-143 decided ($VDPB_O143), but _shared/product-cuts.ts has no pastBuyers sentence to judge"
     else echo "PASS  S14X-143 decided ($VDPB_O143): no cut-product sentence promises a day count nothing enforces"; fi
+    # B's code half, offline: generate-career-path asked Stripe about a
+    # session with no claim and refused it past a day count. With that path
+    # deleted the function imports no Stripe module at all.
+    VDPB_CP=supabase/functions/generate-career-path/index.ts
+    if [ ! -f "$VDPB_CP" ]; then echo "FAIL  S14X-143 decided ($VDPB_O143), but $VDPB_CP is not in this checkout, so its past-buyer path cannot be judged"
+    elif grep -qE 'esm\.sh/stripe@' "$VDPB_CP"; then echo "FAIL  S14X-143 decided ($VDPB_O143), but generate-career-path still imports Stripe: its past-buyer path, which counts days since the purchase, is not deleted"
+    else echo "PASS  S14X-143 decided ($VDPB_O143): generate-career-path imports no Stripe module, so a claim is its only proof and no day count refuses a past buyer"; fi
     # Each function that bundles product-cuts.ts, at the build that carries
     # the new sentence: round A's 2026-11-12.1 and the owner branch's
-    # create-product-checkout 2026-11-18.1 still name the day count.
-    for VDPB_P in create-product-checkout:2026-11-18:2 create-scan-pack-checkout:2026-11-13:1 send-product-email:2026-11-13:1; do
+    # create-product-checkout 2026-11-18.1 still name the day count. And
+    # generate-career-path at the build without its past-buyer path: round
+    # A's 2026-11-12.1 still asks Stripe and counts days.
+    for VDPB_P in create-product-checkout:2026-11-18:2 create-scan-pack-checkout:2026-11-13:1 send-product-email:2026-11-13:1 generate-career-path:2026-11-13:1; do
       VDPB_F=${VDPB_P%%:*}; VDPB_R=${VDPB_P#*:}; VDPB_D=${VDPB_R%%:*}; VDPB_N=${VDPB_R#*:}
+      VDPB_WHY="it answers the new sentence"; VDPB_WHYF="it bundles product-cuts.ts"; VDPB_SHIPS="carries the new sentence"
+      if [ "$VDPB_F" = generate-career-path ]; then VDPB_WHY="it counts no days since a purchase"; VDPB_WHYF="the build before it asks Stripe and counts days"; VDPB_SHIPS="deletes its Stripe past-buyer path"; fi
       VDPB_H=$(vdpb_build "$VDPB_F")
-      if [ -n "$VDPB_H" ] && build_ge "$VDPB_F" "$VDPB_H" "$VDPB_D" "$VDPB_N"; then echo "PASS  S14X-143 $VDPB_F preflight x-fn-build = $VDPB_H ($VDPB_D.$VDPB_N or later: it answers the new sentence)"
-      elif [ "$VDPB_RB" = 1 ]; then echo "FAIL  S14X-143 $VDPB_F preflight x-fn-build = ${VDPB_H:-none} while send-product-email serves $VDPB_SPE: round B is pasted (want $VDPB_F.$VDPB_D.$VDPB_N or later: it bundles product-cuts.ts)"
-      else echo "INFO  S14X-143 $VDPB_F preflight x-fn-build = ${VDPB_H:-none}: round B, which carries the new sentence, is not pasted yet (want $VDPB_D.$VDPB_N or later)"; fi
+      if [ -n "$VDPB_H" ] && build_ge "$VDPB_F" "$VDPB_H" "$VDPB_D" "$VDPB_N"; then echo "PASS  S14X-143 $VDPB_F preflight x-fn-build = $VDPB_H ($VDPB_D.$VDPB_N or later: $VDPB_WHY)"
+      elif [ "$VDPB_RB" = 1 ]; then echo "FAIL  S14X-143 $VDPB_F preflight x-fn-build = ${VDPB_H:-none} while send-product-email serves $VDPB_SPE: round B is pasted (want $VDPB_F.$VDPB_D.$VDPB_N or later: $VDPB_WHYF)"
+      else echo "INFO  S14X-143 $VDPB_F preflight x-fn-build = ${VDPB_H:-none}: round B, which $VDPB_SHIPS, is not pasted yet (want $VDPB_D.$VDPB_N or later)"; fi
     done;;
   *) echo "FAIL  S14X-143 ownerDecided reads '$VDPB_O143', neither A (enforce) nor B (drop the promise): nothing says what must ship";;
 esac

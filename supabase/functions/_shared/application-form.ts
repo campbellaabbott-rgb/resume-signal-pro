@@ -19,6 +19,8 @@ import {
 /** The readers, the form's shapes ... docs/shared-notes.md#s122 */
 export const FORM_READER_VENDORS: readonly string[] = ["ashby", "bamboohr", "breezy", "greenhouse", "lever", "paylocity", "pinpoint", "recruitee", "teamtailor", "workable"];
 export const PUBLIC_API_FORM_VENDORS: readonly string[] = ["greenhouse", "recruitee"];
+/** Forms the owner stopped reading (OD14-ASHBY, 2026-11-18): "withheld" before the cache or any request. */
+export const FORM_STOPPED_VENDORS: readonly string[] = ["ashby"];
 
 export const FORM_CACHE_MS = 24 * 3600_000;
 const DEFAULT_TIMEOUT_MS = 6_000;
@@ -146,39 +148,6 @@ async function readGreenhouse(o: ReadOptions, p: PostingRef, ext: string): Promi
   }
   if (gh.demographic_questions) also.push("Voluntary demographic questions");
   return finish(questions, [], [...new Set(also)]);
-}
-
-const ASHBY_QUERY =
-  "query ApiJobPosting($organizationHostedJobsPageName: String!, $jobPostingId: String!) { jobPosting(organizationHostedJobsPageName: $organizationHostedJobsPageName, jobPostingId: $jobPostingId) { id applicationForm { sections { title fieldEntries { isRequired field } } } } }";
-
-async function readAshby(o: ReadOptions, p: PostingRef, ext: string): Promise<VendorForm | null> {
-  const res = await get(o, "https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobPosting", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      operationName: "ApiJobPosting",
-      variables: { organizationHostedJobsPageName: p.token, jobPostingId: ext },
-      query: ASHBY_QUERY,
-    }),
-  });
-  if (!res) return null;
-  const gql = await jsonOf(res) as { data?: { jobPosting?: { applicationForm?: { sections?: unknown } } } } | null;
-  const sections = gql?.data?.jobPosting?.applicationForm?.sections;
-  if (!Array.isArray(sections)) return null;
-  const questions: FormQuestion[] = [];
-  for (const s of sections) {
-    for (const fe of (Array.isArray((s as { fieldEntries?: unknown })?.fieldEntries) ? (s as { fieldEntries: unknown[] }).fieldEntries : [])) {
-      const e = fe as { isRequired?: unknown; field?: Record<string, unknown> };
-      const f = e?.field ?? {};
-      const label = strip(f.title);
-      if (!label) continue;
-      const type = String(f.type ?? "");
-      const options = /^boolean$/i.test(type) ? ["Yes", "No"] : optionsOf(f.selectableValues);
-      const hint = strip(f.descriptionPlain ?? f.description);
-      questions.push({ label, required: e?.isRequired === true, type, ...(options ? { options } : {}), ...(hint ? { hint } : {}) });
-    }
-  }
-  return finish(questions);
 }
 
 async function readRecruitee(o: ReadOptions, p: PostingRef, ext: string): Promise<VendorForm | null> {
@@ -366,6 +335,7 @@ function extrasOfRow(form: unknown): Partial<PageExtras> {
 /** The posting's application form, or the ... docs/shared-notes.md#s79 */
 export async function readApplicationForm(p: PostingRef, o: ReadOptions): Promise<FormRead> {
   const vendor = p.source;
+  if (FORM_STOPPED_VENDORS.includes(vendor)) return { kind: "withheld", vendor };
   if (!FORM_READER_VENDORS.includes(vendor)) return { kind: "no-reader", vendor };
   if (!(o.vendors ?? FORM_READER_VENDORS).includes(vendor)) return { kind: "withheld", vendor };
   const ext = externalIdOf(p);
@@ -393,14 +363,13 @@ export async function readApplicationForm(p: PostingRef, o: ReadOptions): Promis
   let page: PageWithoutQuestions | null = null;
   try {
     const got = vendor === "greenhouse" ? await readGreenhouse(o, p, ext)
-      : vendor === "ashby" ? await readAshby(o, p, ext)
       : vendor === "recruitee" ? await readRecruitee(o, p, ext)
       : vendor === "paylocity" ? await readPaylocity(o, ext)
       : vendor === "workable" ? await readWorkable(o, ext)
       : vendor === "teamtailor" ? await readTeamtailor(o, p, ext)
       : vendor === "lever" ? await readLever(o, p, ext)
       : vendor === "bamboohr" ? await readBamboo(o, p, ext)
-      : await readHtmlForm(o, p, vendor as "breezy" | "pinpoint");
+      : vendor === "breezy" || vendor === "pinpoint" ? await readHtmlForm(o, p, vendor) : null;
     page = got && "pageRead" in got ? got : null;
     form = got && !("pageRead" in got) ? got : null;
   } catch {

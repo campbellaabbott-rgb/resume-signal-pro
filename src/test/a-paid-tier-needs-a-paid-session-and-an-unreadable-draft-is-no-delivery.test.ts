@@ -32,10 +32,6 @@ const STUBS: Record<string, string> = {
   "https://deno.land/std@0.190.0/http/server.ts": SERVE,
   "https://esm.sh/@supabase/supabase-js@2": CLIENT,
   "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT,
-  // generate-career-path reads a past buyer's session from Stripe once the
-  // 30-day claim row is gone: an unpaid session here, so nothing is opened.
-  "https://esm.sh/stripe@18.5.0":
-    "export default class Stripe { constructor() { this.checkout = { sessions: { retrieve: async (id) => ({ id, created: Math.floor(Date.now() / 1000), payment_status: 'unpaid', metadata: {} }) } }; } }",
 };
 
 const RESUME = "Jane Doe -- Senior software engineer with ten years of TypeScript, Postgres and payments work. Led a team of five. ".repeat(3);

@@ -5918,7 +5918,7 @@
     "draftButton": "Fragen dieser Bewerbung entwerfen",
     "draftAgain": "Neu entwerfen",
     "failed": "Antworten konnten gerade nicht entworfen werden.",
-    "inferredIntro": "Wahrscheinliche Fragen für diese Stelle (dieses ATS veröffentlicht sein Formular nicht), gestützt auf Ihren Lebenslauf. Prüfen Sie sie, bevor Sie sie einfügen.",
+    "inferredIntro": "Wahrscheinliche Fragen für diese Stelle (das Formular dieses Arbeitgebers haben wir nicht gelesen), gestützt auf Ihren Lebenslauf. Prüfen Sie sie, bevor Sie sie einfügen.",
     "limit": "Sie haben dieses Kontingent vorerst aufgebraucht. Bitte versuchen Sie es später erneut.",
     "limitHours": "Sie haben das Entwurfslimit vorerst erreicht. Bitte versuchen Sie es in etwa {{hours}} Stunden erneut.",
     "limitMinutes": "Sie haben das Entwurfslimit vorerst erreicht. Bitte versuchen Sie es in etwa {{minutes}} Minuten erneut.",

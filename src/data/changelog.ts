@@ -23,6 +23,20 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "addToClaudeOpensClaudesConnectorDialogFilledIn", date: "2026-11-19", tags: ["new", "improved"] },
+  { id: "ashbyApplicationFormsAreNoLongerReadOrAskedFor", date: "2026-11-19", tags: ["fixed"] },
+  { id: "theBoardKeepsYourFiltersAndSaysWhyAJobHasNoFitScore", date: "2026-11-18", tags: ["fixed", "improved"] },
+  { id: "aFreeScanThatFailsNoLongerCountsAgainstYourDay", date: "2026-11-18", tags: ["fixed", "improved"] },
+  { id: "moreOfTheFreeScanIsInYourLanguageAndMoreFilesAreRead", date: "2026-11-18", tags: ["improved", "fixed"] },
+  { id: "savedSearchAlertsNoLongerCallAPossibleMatchStrong", date: "2026-11-18", tags: ["fixed"] },
+  { id: "companyPagesShowTotalRevenueAndCorrectedFilings", date: "2026-11-18", tags: ["fixed"] },
+  { id: "ourDataPagesCountTheWayTheySay", date: "2026-11-18", tags: ["fixed"] },
+  { id: "theBuilderSaysWhyAnImportFailedAndTheTailoredResumeIsChecked", date: "2026-11-18", tags: ["fixed", "improved"] },
+  { id: "errorMessagesComeInYourLanguageAndAnOpenTabLoadsTheNewVersion", date: "2026-11-18", tags: ["fixed", "improved"] },
+  { id: "signingOutAsksBeforeItDeletesWorkAndEachOrderIsListedOnce", date: "2026-11-18", tags: ["fixed"] },
+  { id: "theFullAnalysisPageSaysWhyAPurchaseCannotOpen", date: "2026-11-18", tags: ["fixed", "improved"] },
+  { id: "shortlistHidesPersonalDetailsInMoreLanguagesAndEmployersCanDelete", date: "2026-11-18", tags: ["new", "improved"] },
+  { id: "theNinetyDayLimitOnLogDataIsNowEnforced", date: "2026-11-18", tags: ["fixed"] },
   { id: "aResumeInAnotherLanguageIsNoLongerScoredAsEnglish", date: "2026-11-17", tags: ["fixed"] },
   { id: "severalEmployersWhoseListsWereTooBigNowShowTheirJobs", date: "2026-11-17", tags: ["new"] },
   { id: "boardsThatPostedInBulkAndSecondCopiesOfJobsLeaveTheBoard", date: "2026-11-17", tags: ["fixed"] },
