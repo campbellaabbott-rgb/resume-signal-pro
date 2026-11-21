@@ -1,9 +1,9 @@
 # Deployment checklist dce1abd09
-- [ ] Apply eight unchanged migrations in uploaded order; stop on any failure.
-- [ ] Deploy 14 functions and verify every requested OPTIONS build.
-- [ ] Verify job-board status sliceStats.build is 2026-09-09.103 or later, then apply 20261117110000 unchanged.
-- [ ] Check live frontend commit; publish only if requested commit is not served.
-- [ ] Resolve carried-over preview test typing error and run its test.
+- [x] Apply eight unchanged migrations in uploaded order (drizzle 0275–0282); all self-checks passed, every copy byte-exact, no retries or staging. Never-apply list untouched.
+- [x] Deploy all 14 functions and verify every requested OPTIONS build (all 200, all exact matches).
+- [x] Status first reported sliceStats.build 2026-09-09.103 at 16:33 UTC; applied unchanged data-only 20261117110000 through the data query tool and recorded it in appliedOutsideDrizzle. Live read-back: catalogSize = catalogHighwater = 44163, orphanPruneBlocked = false.
+- [x] Live homepage serves dce1abd09b80f9a0c5ae9c5165cd6a08eac90511; no redundant frontend publish. Checkout started at exactly requested commit; no fetch or pull needed.
+- [x] Resolve carried-over preview test typing error; upload test passed 7 tests, six existing deployment-rule test files passed 39 tests. Latest preview build OK. Function and source migration folders unchanged.
 
 # Previous deployment checklist 9c9234e9a — resumed round A
 - [x] Confirm requested commit is included; re-run deployment ledger on HEAD 66f895a6. Ledger agrees with all 29 pre-deploy migrations, 64 functions and four gated migrations; no order, late-migration, unreachable or build conflicts.

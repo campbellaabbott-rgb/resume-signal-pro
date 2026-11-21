@@ -2841,6 +2841,7 @@ export type Database = {
           p75_days_open: number | null
           relists: number
           rolled_at: string
+          suspect_n: number
         }
         Insert: {
           backfill_n?: number | null
@@ -2856,6 +2857,7 @@ export type Database = {
           p75_days_open?: number | null
           relists?: number
           rolled_at?: string
+          suspect_n?: number
         }
         Update: {
           backfill_n?: number | null
@@ -2871,6 +2873,7 @@ export type Database = {
           p75_days_open?: number | null
           relists?: number
           rolled_at?: string
+          suspect_n?: number
         }
         Relationships: []
       }
@@ -7837,6 +7840,10 @@ export type Database = {
         }[]
       }
       layoff_norm: { Args: { p_raw: string }; Returns: string }
+      layoff_site_text: {
+        Args: { p_city: string; p_site: string }
+        Returns: string
+      }
       layoff_warn_retire_unseen: {
         Args: {
           p_feed: string
