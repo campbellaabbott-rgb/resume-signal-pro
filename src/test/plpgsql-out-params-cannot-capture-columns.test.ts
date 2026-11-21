@@ -148,6 +148,26 @@ const COLUMNS_BY_TABLE: Record<string, string[]> = {
   // get_board_anon_networks reads it.
   job_board_anon_net_hourly: ["hour_utc", "net", "kind", "pass", "within_cap", "over_cap"],
   job_board_meta: ["k", "v", "updated_at"],
+  // The posting check and the employer facts (20261206100000). posting_truth
+  // reads the two ledgers above plus the tombstones and the board's
+  // verification stamp; company_facts writes its cache through ON CONFLICT
+  // and reads two set-returning functions with FROM, so their OUT columns
+  // are mapped the way a table's are; api_expensive_take upserts its meter.
+  company_fact_cache: ["kind", "company_token", "facts", "computed_at"],
+  api_expensive_meter: ["endpoint", "subject", "span", "window_start", "used"],
+  job_board_aged_out: ["id", "source", "company_token", "posted_at", "aged_at"],
+  job_board_verifications: ["company_token", "verified_at", "feed_total"],
+  api_expensive_take: ["et_granted", "et_bound", "et_retry_after_s", "et_minute_left", "et_day_left"],
+  get_company_fill_curve: [
+    "company_token", "n_at_risk_14", "fills_le_14", "fill_rate_14", "fill_rate_14_lo", "fill_rate_14_hi", "relist_rate_14",
+    "still_open_14", "fill_rate_7", "fill_rate_30", "median_days_to_fill", "median_censored", "dated_coverage", "dated_n",
+    "undated_n", "open_roles", "fills_90d", "relists_90d", "ageouts_90d", "fill_through", "churn", "absorption",
+    "tracking_days", "sufficient", "observability_bucket", "still_open_30", "still_open_30_lo", "still_open_30_hi",
+    "taken_down_30", "relist_rate_30", "n_at_risk_30", "ageouts_at_30", "sum_check_30", "cohort_from", "cohort_to",
+    "sufficient_30", "events_30", "fills_30", "relists_30", "watched_from", "insufficient_reason_30", "filled_roles_90d",
+    "relisted_roles_90d", "multi_site_title_share", "multi_site_n", "feed_total", "feed_read_at", "feed_state",
+    "feed_capped", "late_sighted_30", "undated_open",
+  ],
 };
 
 /**
@@ -369,7 +389,27 @@ const STRICT_FUNCTIONS = [
   "layoff_matches_rebuild", "refresh_layoff_partition",
   // The anonymous board meter and its readers (20261002140000, 20261003180000).
   "job_board_anon_check", "get_board_anon_hourly", "get_board_anon_networks",
+  // The posting check, the employer facts and their meter (20261206100000).
+  // posting_truth is LANGUAGE sql and could not be captured today, but a
+  // rewrite to plpgsql is how get_board_flow broke, so its names are held to
+  // the same rule; the other two upsert through ON CONFLICT.
+  "posting_truth", "company_facts", "api_expensive_take",
 ];
+
+/** What the strict rule reads of one function: its OUT names, unmapped tables, and collisions. */
+function strictCheck(fn: string, sql: string): { outNames: string[]; unmapped: string[]; tablesTouched: string[]; colliding: string[] } {
+  const defAt = sql.indexOf(`FUNCTION public.${fn}(`);
+  const outs = /RETURNS TABLE \(([\s\S]*?)\)\s*\nLANGUAGE/.exec(sql.slice(defAt))?.[1] ?? "";
+  const outNames = outs.split("\n").map((l) => l.trim().split(/\s+/)[0].replace(/,$/, "")).filter(Boolean);
+  // The function's OWN body, not the rest of the file: a migration that
+  // defines two functions must not have the second one's tables read as
+  // the first one's.
+  const body = bodyOfFunction(sql, fn);
+  const unmapped = body.length > 100 ? unmappedTablesIn(body, fn) : ["(body not found)"];
+  const tablesTouched = Object.keys(COLUMNS_BY_TABLE).filter((t) => new RegExp(`public\\.${t}\\b`).test(body));
+  const colliding = outNames.filter((n) => tablesTouched.some((t) => COLUMNS_BY_TABLE[t].includes(n)));
+  return { outNames, unmapped, tablesTouched, colliding };
+}
 
 describe("the API key functions do not name a column in their return shape", () => {
   // mcp_anon_check (20260915100000) meters the MCP server's unkeyed tier
@@ -379,25 +419,13 @@ describe("the API key functions do not name a column in their return shape", () 
     it(`${fn}: no OUT parameter shares a name with a column it touches`, () => {
       const { file, sql } = newestDefining(fn);
       expect(file, `no migration defines ${fn}`).toBeTruthy();
-      const defAt = sql.indexOf(`FUNCTION public.${fn}(`);
-      const outs = /RETURNS TABLE \(([\s\S]*?)\)\s*\nLANGUAGE/.exec(sql.slice(defAt))?.[1] ?? "";
-      expect(outs, "RETURNS TABLE not found").not.toBe("");
-      const outNames = outs.split("\n").map((l) => l.trim().split(/\s+/)[0].replace(/,$/, "")).filter(Boolean);
+      const { outNames, unmapped, tablesTouched, colliding } = strictCheck(fn, sql);
       expect(outNames.length, "parsed no OUT names — the check would be vacuous").toBeGreaterThan(3);
-
-      // The function's OWN body, not the rest of the file: a migration that
-      // defines two functions must not have the second one's tables read as
-      // the first one's.
-      const body = bodyOfFunction(sql, fn);
-      expect(body.length, "body not found").toBeGreaterThan(100);
       expect(
-        unmappedTablesIn(body, fn),
+        unmapped,
         `${fn} references a table absent from COLUMNS_BY_TABLE — an unmapped table is a silent skip; add its columns:`,
       ).toEqual([]);
-      const tablesTouched = Object.keys(COLUMNS_BY_TABLE).filter((t) => new RegExp(`public\\.${t}\\b`).test(body));
       expect(tablesTouched.length, "body touches no known table — update COLUMNS_BY_TABLE").toBeGreaterThan(0);
-
-      const colliding = outNames.filter((n) => tablesTouched.some((t) => COLUMNS_BY_TABLE[t].includes(n)));
       expect(
         colliding,
         `${fn} declares OUT parameter(s) that are also columns of ${tablesTouched.join(", ")}. ` +
@@ -442,5 +470,36 @@ describe("teeth: an unmapped table is a failure, not a skip", () => {
     for (const t of ["api_keys", "api_usage", "mcp_anon_rate", "agent_passes", "job_board_search_events"]) {
       expect(reader, `agent_adoption_metrics no longer reads public.${t}`).toMatch(new RegExp(`public\\.${t}\\b`));
     }
+  });
+});
+
+describe("teeth: the posting check's names are held to the rule", () => {
+  const { sql } = newestDefining("company_facts");
+
+  it("each of the three reads every table it touches, and the map knows them all", () => {
+    expect(strictCheck("posting_truth", sql).tablesTouched.sort()).toEqual([
+      "job_board_aged_out", "job_board_board_observability", "job_board_board_state", "job_board_closures",
+      "job_board_postings", "job_board_verifications",
+    ]);
+    expect(strictCheck("company_facts", sql).tablesTouched.sort()).toEqual(["api_expensive_take", "company_fact_cache", "get_company_fill_curve"]);
+    expect(strictCheck("api_expensive_take", sql).tablesTouched).toEqual(["api_expensive_meter"]);
+  });
+
+  it("an OUT name renamed to the cache's own column is caught", () => {
+    const mutated = sql.replace("  cf_token text,\n", "  company_token text,\n");
+    expect(mutated).not.toBe(sql);
+    expect(strictCheck("company_facts", mutated).colliding).toEqual(["company_token"]);
+  });
+
+  it("an OUT name renamed to a meter column is caught", () => {
+    const mutated = sql.replace("  et_bound text,\n", "  span text,\n");
+    expect(mutated).not.toBe(sql);
+    expect(strictCheck("api_expensive_take", mutated).colliding).toEqual(["span"]);
+  });
+
+  it("the fill curve read with FROM is a mapped read, and unmapping it is reported", () => {
+    const body = bodyOfFunction(sql, "company_facts");
+    expect(unmappedTablesIn(body.replace("public.get_company_fill_curve(", "public.get_company_fill_curve_v2("), "company_facts"))
+      .toEqual(["get_company_fill_curve_v2"]);
   });
 });
