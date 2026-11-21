@@ -47,6 +47,10 @@
     "agentBackToAccount": "Terug naar account",
     "agentTitle": "Sollicitatieagent",
     "agentHowItWorks": "Hoe het werkt",
-    "agentSections": "Onderdelen van de agent"
+    "agentSections": "Onderdelen van de agent",
+    "trackerShowing": "Je nieuwste {{shown}} van {{total}}",
+    "trackerLoadMore": "Oudere sollicitaties laden",
+    "trackerLoadMoreFailed": "We konden je oudere sollicitaties niet laden. Probeer het opnieuw.",
+    "digestSaveFailed": "Die wijziging aan je e-mailalert kon niet worden opgeslagen, dus hij staat weer zoals hij was. Probeer het opnieuw."
   }
 }

@@ -47,6 +47,10 @@
     "agentBackToAccount": "Retour au compte",
     "agentTitle": "Agent de candidature",
     "agentHowItWorks": "Comment ça marche",
-    "agentSections": "Sections de l'agent"
+    "agentSections": "Sections de l'agent",
+    "trackerShowing": "Vos {{shown}} plus récentes sur {{total}}",
+    "trackerLoadMore": "Charger les candidatures plus anciennes",
+    "trackerLoadMoreFailed": "Impossible de charger vos candidatures plus anciennes. Réessayez.",
+    "digestSaveFailed": "Impossible d'enregistrer cette modification de votre alerte e-mail : elle est revenue à son état précédent. Réessayez."
   }
 }
