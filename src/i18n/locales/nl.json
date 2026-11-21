@@ -798,7 +798,7 @@
   },
   "scanProgress": {
     "title": "AI-analyse bezig",
-    "subtitle": "Gemini Pro voor maximale nauwkeurigheid",
+    "subtitle": "Je cv wordt stap voor stap gelezen",
     "complete": "{{percent}}% voltooid",
     "live": "Live",
     "securityNote": "Je cv wordt binnen 7 dagen verwijderd en nooit verkocht",
@@ -3195,11 +3195,11 @@
     "crafting": "Gepersonaliseerde feedback wordt gemaakt..."
   },
   "aiGenerationProgress": {
-    "title": "GPT-5 werkt",
+    "title": "De AI is bezig",
     "generating": "{{productName}} genereren",
     "steps": {
       "analyzingTitle": "CV analyseren",
-      "analyzingDesc": "GPT-5 leest je ervaring en vaardigheden",
+      "analyzingDesc": "Je ervaring en vaardigheden worden gelezen",
       "optimizingTitle": "Optimaliseren voor ATS",
       "optimizingDesc": "Zoekwoorden toevoegen en opmaak verbeteren",
       "generatingTitle": "Inhoud genereren",
@@ -3208,7 +3208,7 @@
       "finalizingDesc": "Kwaliteitscontroles en opmaak"
     },
     "complete": "{{progress}}% voltooid",
-    "quality": "GPT-5 voor maximale kwaliteit",
+    "quality": "Geschreven met AI",
     "secure": "Je gegevens worden veilig verwerkt"
   },
   "atsDefenseResults": {
@@ -3509,7 +3509,7 @@
     "copied": "Gekopieerd",
     "error": "Generatiefout",
     "waiting": "Wachten op inhoud...",
-    "gpt5Writing": "GPT-5 schrijft..."
+    "gpt5Writing": "De AI schrijft..."
   },
   "notFound": {
     "code": "404",
@@ -5728,7 +5728,7 @@
     "startNewPurchase": "Koop je voor een andere functie? Begin een nieuwe aankoop.",
     "boughtHereTitle": "3. Je ervaringssectie — al gekocht op dit apparaat",
     "openYourLink": "Open de link in je aankoopmail om hem te bekijken of te maken. Je betaalt niet opnieuw.",
-    "noLongerSoldBody": "Freelance Boost en Transition Pro worden niet meer verkocht en maken geen deel uit van Pro. Als je er een hebt gekocht, open dan de link in je aankoopmail: die blijft nog 90 dagen werken. Een gratis account schrijft nu elke dag een aangepast cv, een motivatiebrief en een gespreksvoorbereiding voor één vacature.",
+    "noLongerSoldBody": "Freelance Boost en Transition Pro worden niet meer verkocht en maken geen deel uit van Pro. Als je er een hebt gekocht, open dan de link in je aankoopmail: die blijft werken. Een gratis account schrijft nu elke dag een aangepast cv, een motivatiebrief en een gespreksvoorbereiding voor één vacature.",
     "noLongerSoldMeta": "Freelance Boost en Transition Pro worden niet meer verkocht. Als je er een hebt gekocht, blijft de link in je aankoopmail werken.",
     "noLongerSoldTitle": "Freelance Boost wordt niet meer verkocht",
     "regenerate": "Opnieuw genereren",
@@ -5938,7 +5938,7 @@
     "autoRenewTitle": "Vink het vakje voor verlenging aan",
     "fairUseTitle": "Je hebt de fair-use-limiet van Pro bereikt",
     "planUnpaidTitle": "Je abonnement is nog niet betaald",
-    "retiredBody": "Dit product wordt niet meer verkocht en er is niets afgeschreven. Als je het eerder hebt gekocht, blijft je link nog 90 dagen werken.",
+    "retiredBody": "Dit product wordt niet meer verkocht en er is niets afgeschreven. Als je het eerder hebt gekocht, blijft je link werken.",
     "retiredTitle": "Niet meer te koop"
   },
   "consent": {

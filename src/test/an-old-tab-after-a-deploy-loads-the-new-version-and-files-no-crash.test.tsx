@@ -16,7 +16,8 @@
  *     in the reader's language and files nothing;
  *   - a chunk the browser could not fetch is treated the same, in Chrome's,
  *     Firefox's and Safari's words, with or without the mark;
- *   - an ordinary crash is still the crash screen, and still filed;
+ *   - an ordinary crash is still the crash screen, and still filed (to the
+ *     error log since NB-42, src/lib/client-crash-report.ts; never the funnel);
  *   - main.tsx hands the event to the handler and cancels nothing itself.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -36,6 +37,8 @@ async function readIn(lng: string): Promise<void> {
 
 const posted = vi.fn();
 vi.mock("@/lib/track-transport", () => ({ postTrackEvent: (...a: unknown[]) => posted(...a), getVisitorId: () => "v" }));
+const rpc = vi.fn(async (..._a: unknown[]) => ({ data: true, error: null }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: (...a: unknown[]) => rpc(...a) } }));
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
@@ -45,19 +48,26 @@ import {
   reloadForNewVersion,
   resetNewVersionReloadForTests,
 } from "@/lib/new-version-reload";
+import { resetCrashReportsForTests } from "@/lib/client-crash-report";
 
 function Boom({ error }: { error: Error }): JSX.Element {
   throw error;
 }
 const crashWith = (error: Error) => render(<ErrorBoundary><Boom error={error} /></ErrorBoundary>);
 const preloadError = () => new Event("vite:preloadError", { cancelable: true });
-const crashesFiled = () => posted.mock.calls.filter(([b]) => (b as { testName?: string }).testName === "client_error");
+/** A crash filed anywhere: the error log (where one goes), or the funnel (where one must not). */
+const crashesFiled = () => [
+  ...rpc.mock.calls.filter(([fn]) => fn === "log_error_telemetry"),
+  ...posted.mock.calls.filter(([b]) => (b as { testName?: string }).testName === "client_error"),
+];
 const NOW = 1_800_000_000_000;
 
 beforeEach(() => {
   sessionStorage.clear();
   resetNewVersionReloadForTests();
   posted.mockReset();
+  rpc.mockClear();
+  resetCrashReportsForTests();
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
@@ -126,10 +136,11 @@ describe("the error boundary during a deploy", () => {
     expect(screen.getByRole("status").textContent).not.toContain("Loading the new version");
   });
 
-  it("an ordinary crash is still the crash screen, and still filed", () => {
+  it("an ordinary crash is still the crash screen, and still filed, to the error log", () => {
     crashWith(new Error("Cannot read properties of undefined (reading 'map')"));
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Something went wrong");
     expect(crashesFiled()).toHaveLength(1);
+    expect(rpc.mock.calls.filter(([fn]) => fn === "log_error_telemetry")).toHaveLength(1);
   });
 });
 

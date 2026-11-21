@@ -2,14 +2,13 @@
 // degrade to nothing (or a small notice) — never blank the other 25 sections.
 
 import { Component, type ReactNode } from "react";
-import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
-import { crashVariant } from "@/lib/crash-variant";
+import { reportClientCrash } from "@/lib/client-crash-report";
 
 interface Props {
   children: ReactNode;
   /** Shown instead of the crashed section; omit to render nothing */
   fallback?: ReactNode;
-  /** Name used in the console and telemetry */
+  /** Name used in the console and the error log */
   section?: string;
 }
 
@@ -27,23 +26,8 @@ export class CardErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
     console.error(`[CardErrorBoundary] section "${this.props.section ?? 'unknown'}" crashed:`, error);
-    try {
-      const visitorId = getVisitorId();
-      postTrackEvent({
-        testName: "client_error",
-        // The section and the crash, within track-ab-event's 30 characters
-        // (S8-121: "section: message" was refused with a 400 nobody saw).
-        variant: crashVariant(this.props.section ?? "section", error?.message ?? "unknown"),
-        eventType: "view",
-        visitorId,
-        metadata: {
-          message: (error?.message ?? "unknown").slice(0, 300),
-          stack: (error?.stack ?? "").slice(0, 600),
-          componentStack: (info?.componentStack ?? "").slice(0, 600),
-          path: window.location.pathname,
-        },
-      });
-    } catch { /* telemetry must never crash the boundary */ }
+    // To the error log, with its section; never to the A/B list (NB-42).
+    reportClientCrash({ source: "card", place: this.props.section ?? "section", error, componentStack: info?.componentStack });
   }
 
   render() {

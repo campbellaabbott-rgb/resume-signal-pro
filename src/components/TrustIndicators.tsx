@@ -2,6 +2,7 @@ import { Lock, Clock, CloudOff, BookOpen, ExternalLink, Users, Zap } from "lucid
 import { Link } from "react-router-dom";
 import { useSafeTranslation } from "@/hooks/use-safe-translation";
 import { useScanTotals } from "@/hooks/use-scan-totals";
+import { count as fmtCount } from "@/lib/format";
 import { SCAN_RESULTS_WITHIN_SECONDS } from "@/config/scan-timing";
 
 export function TrustIndicators() {
@@ -16,7 +17,7 @@ export function TrustIndicators() {
       icon: Users,
       labelKey: "trustIndicators.badges.resumes.label",
       descriptionKey: "trustIndicators.badges.resumes.description",
-      values: { total: totals.total_scans.toLocaleString() },
+      values: { total: fmtCount(totals.total_scans) },
     }] : []),
     {
       icon: Lock,

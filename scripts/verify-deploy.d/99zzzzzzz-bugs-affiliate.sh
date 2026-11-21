@@ -20,10 +20,11 @@
 #              round applies its migrations before its functions).
 #   frontend   the published Affiliates chunk reads stats_by_range: the merge
 #              published. Until then the old page and the old hook are INFO.
-#   owner      the one line that depends on an owner's answer (O1, S14X-085's
-#              approval rule) prints INFO 'owner pending' until
+#   owner      the lines that depend on an owner's answer (O1 and O2,
+#              S14X-085's approval rule) print INFO 'owner pending' until
 #              reservations['bug-round'].ownerDecided in docs/deploy-ledger.json
-#              names S14X-085. The click privacy lines (M6, C1, P2, P3,
+#              names S14X-085, and then wait for round B, which ships the
+#              answer, instead of round A. The click privacy lines (M6, C1, P2, P3,
 #              S14X-021) judge code the round ships, so they wait for the paste
 #              and the publish, never for an owner; S14X-021's owner half is
 #              the privacy notice's entry, judged by privacy-retention PR5a.
@@ -64,7 +65,14 @@
 #   P3  the chunk holding forgetVisitorIds (the one that removes the ab_ keys)
 #       also clears the affiliate_ref cookie (S14X-021).
 #   O1  the approval job (S14X-085, owner-gated): once the owner answers, it
-#       is scheduled and its last run succeeded.
+#       is scheduled and its last run succeeded. The answer (the 30-day
+#       hold, 2026-11-18) ships in round B, so a missing job is a FAIL only
+#       once send-affiliate-commission-email serves round B's build; before
+#       that it is INFO.
+#   O2  with S14X-085 answered: send-affiliate-commission-email serves round
+#       B's build, whose mail names the 30-day hold instead of a monthly
+#       payout. Before round B's paste INFO; a FAIL once the approval job is
+#       scheduled (its migration applied) while the mail is older.
 #   H1  INFO only: the /affiliates bake's 'any date range you pick', which
 #       the data-pages lane rewrites to the four ranges (its section judges).
 #
@@ -82,7 +90,7 @@
 # a grant is wrong.
 #
 # READ-ONLY. GETs of the homepage, its entry and two chunks, and the
-# /affiliates bake; two OPTIONS preflights; anon GETs that select one named
+# /affiliates bake; two OPTIONS preflights (a third once S14X-085 is answered); anon GETs that select one named
 # column of a closed table (the revoke answers before any row); two GET probes
 # of revoked functions (a read-only transaction); GETs of two anon readers
 # (get_cron_health, client_callable_census). Nothing is posted.
@@ -211,7 +219,22 @@ console.log("PASS  "+c+" "+e.VDAF_J+" ran "+runs+" time(s) in 26 h, last succeed
 }
 vdaf_job C1 affiliate-clicks-prune "23 4 * * *" "$VDAF_CLICKS" "clicks older than ninety days are rolled into daily counts and deleted, with their keyed hashes (S14X-021)"
 if [ "$VDAF_O085" != yes ]; then echo "INFO  O1 owner pending: reservations['bug-round'].ownerDecided does not name S14X-085 (the commission approval rule)"
-else vdaf_job O1 affiliate-commission-approval "47 4 * * *" pending "a commission is approved only after its hold, with no refund, no flag and a proven address (S14X-085)"; fi
+else
+  # The owner's answer of 2026-11-18 ships in round B, not in round A, whose
+  # builds (F1) are already live: round B applies 20261112123000 and then
+  # deploys send-affiliate-commission-email at its round B build. So the job
+  # is judged against that build, never against round A's.
+  VDAF_CB=$(vdaf_build send-affiliate-commission-email)
+  VDAF_RB=pending
+  [ -n "$VDAF_CB" ] && build_ge send-affiliate-commission-email "$VDAF_CB" 2026-11-13 1 && VDAF_RB=live
+  VDAF_FNS_A="$VDAF_FNS"; VDAF_FNS="$VDAF_RB"
+  vdaf_job O1 affiliate-commission-approval "47 4 * * *" pending "a commission is approved only after its hold, with no refund, no flag and a proven address (S14X-085)"
+  VDAF_FNS="$VDAF_FNS_A"
+  VDAF_APPR=$(node -e 'let r=null;try{r=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))}catch{}console.log(Array.isArray(r)&&r.some((x)=>x&&x.ch_jobname==="affiliate-commission-approval")?"yes":"no")' /tmp/vd_baf_cron.json)
+  if [ "$VDAF_RB" = live ]; then echo "PASS  O2 send-affiliate-commission-email x-fn-build = $VDAF_CB (2026-11-13.1 or later): the commission mail says a commission is approved 30 days after the sale and requested at \$25, not paid out monthly (S14X-085)"
+  elif [ "$VDAF_APPR" = yes ]; then echo "FAIL  O2 send-affiliate-commission-email x-fn-build = ${VDAF_CB:-none} while affiliate-commission-approval is scheduled (20261112123000 applied): the commission mail still promises a monthly payout (want send-affiliate-commission-email.2026-11-13.1 or later)"
+  else echo "INFO  O2 send-affiliate-commission-email x-fn-build = ${VDAF_CB:-none}: round B, which carries the 30-day hold, is not pasted yet (judged once it serves 2026-11-13.1)"; fi
+fi
 
 # K1: the census, by GET (an anon reader).
 curl -s -m 30 "$B/rest/v1/rpc/client_callable_census" -H "apikey: $K" -H "Authorization: Bearer $K" > /tmp/vd_baf_census.json

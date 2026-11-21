@@ -315,7 +315,7 @@ export function useProductCheckout() {
       purchaseTermsUnused();
       toast({
         title: refusalTitle('retired'),
-        description: i18n.t('checkoutRefusal.retiredBody', 'This product is no longer sold, and nothing was charged. If you bought it before, your link keeps working for 90 days.'),
+        description: i18n.t('checkoutRefusal.retiredBody', 'This product is no longer sold, and nothing was charged. If you bought it before, your link keeps working.'),
       });
       return null;
     }

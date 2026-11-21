@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { count as fmtCount, date as fmtDate } from "@/lib/format";
 import { SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention";
 import { analysisEnumLabel, namedCompany, type AnalysisEnumGroup } from "@/lib/analysis-enums";
 import { Progress } from "@/components/ui/progress";
@@ -510,7 +511,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
           {/* Print-only header */}
           <div className="hidden print:block print-header">
             <h1 className="text-2xl font-bold mb-2">{t('analysisResults.printTitle')}</h1>
-            <p className="text-sm text-gray-600">{t('analysisResults.generatedOn', { date: new Date().toLocaleDateString() })}</p>
+            <p className="text-sm text-gray-600">{t('analysisResults.generatedOn', { date: fmtDate(new Date()) })}</p>
           </div>
 
           {/* Header with stats */}
@@ -519,10 +520,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             {(data.inputsClipped?.jobDescription || data.inputsClipped?.linkedIn) && (
               <div className="mx-auto max-w-2xl rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-left text-sm text-foreground space-y-1" data-testid="inputs-clipped" role="note">
                 {data.inputsClipped?.jobDescription && (
-                  <p>{t('paidAnalysis.clipped.posting', { max: data.inputsClipped.jobDescription.to.toLocaleString() })}</p>
+                  <p>{t('paidAnalysis.clipped.posting', { max: fmtCount(data.inputsClipped.jobDescription.to) })}</p>
                 )}
                 {data.inputsClipped?.linkedIn && (
-                  <p>{t('paidAnalysis.clipped.linkedIn', { max: data.inputsClipped.linkedIn.to.toLocaleString() })}</p>
+                  <p>{t('paidAnalysis.clipped.linkedIn', { max: fmtCount(data.inputsClipped.linkedIn.to) })}</p>
                 )}
               </div>
             )}

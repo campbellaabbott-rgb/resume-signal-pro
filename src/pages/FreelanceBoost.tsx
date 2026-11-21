@@ -388,7 +388,7 @@ export default function FreelanceBoost() {
             <div role="note" data-no-longer-sold className="rounded-2xl border border-border bg-muted/40 p-5 mb-8 text-center">
               <p className="font-semibold text-foreground mb-1">{t("freelanceBoost.noLongerSoldTitle", "Freelance Boost is no longer sold")}</p>
               <p className="text-sm text-muted-foreground max-w-xl mx-auto">
-                {t("freelanceBoost.noLongerSoldBody", "Freelance Boost and Transition Pro are no longer sold, and they are not part of Pro. If you bought one, open the link in your purchase email: it keeps working for 90 days. A free account now writes a tailored résumé, cover letter and interview prep for a job each day.")}
+                {t("freelanceBoost.noLongerSoldBody", "Freelance Boost and Transition Pro are no longer sold, and they are not part of Pro. If you bought one, open the link in your purchase email: it keeps working. A free account now writes a tailored résumé, cover letter and interview prep for a job each day.")}
               </p>
               <Link to="/pricing" className="inline-block mt-3 text-sm text-primary hover:underline">{t("freelanceBoost.seePricing", "See what is on sale")}</Link>
             </div>

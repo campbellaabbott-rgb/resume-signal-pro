@@ -17,6 +17,8 @@
       "noTextDescription": "Kung nasa loob ng larawan o text box ang iyong resume, i-paste na lang ang teksto.",
       "docxGarbled": "Hindi mabasa ang mga titik ng dokumentong ito",
       "docxGarbledDescription": "Sira ang lumabas na teksto, kadalasan dahil sa sira o naka-embed na font. I-save ulit ang dokumento, o i-paste ang teksto ng iyong resume.",
+      "txtUnreadable": "Walang tekstong mababasa namin sa file na ito",
+      "txtUnreadableDescription": "Maaaring ibang uri ito ng file na pinalitan ng pangalan na .txt. I-save ulit ang iyong resume bilang plain text, mag-upload ng PDF o .docx, o i-paste ang teksto ng iyong resume.",
       "webExport": "Na-save ang dokumentong ito bilang web content",
       "webExportDescription": "Hindi namin ito mabasa nang direkta. Buksan ito sa Word at piliin ang File > Save As > Word Document (.docx), o i-paste ang teksto ng iyong resume.",
       "rateLimited": "Masyadong maraming upload ngayon",

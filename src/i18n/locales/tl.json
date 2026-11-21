@@ -798,7 +798,7 @@
   },
   "scanProgress": {
     "title": "AI Analysis na Ginagawa",
-    "subtitle": "Gumagamit ng Gemini Pro para sa pinakamataas na katumpakan",
+    "subtitle": "Binabasa ang iyong resume, hakbang-hakbang",
     "complete": "{{percent}}% kumpleto",
     "live": "Live",
     "securityNote": "Binubura ang resume mo sa loob ng 7 araw at hindi kailanman ibinebenta",
@@ -3195,11 +3195,11 @@
     "crafting": "Ginagawa ang personalisadong feedback..."
   },
   "aiGenerationProgress": {
-    "title": "Nagtatrabaho ang GPT-5",
+    "title": "Nagtatrabaho ang AI",
     "generating": "Ginagawa ang {{productName}}",
     "steps": {
       "analyzingTitle": "Sinusuri ang Resume",
-      "analyzingDesc": "Binabasa ng GPT-5 ang iyong karanasan at kasanayan",
+      "analyzingDesc": "Binabasa ang iyong karanasan at kasanayan",
       "optimizingTitle": "Ino-optimize para sa ATS",
       "optimizingDesc": "Nagdadagdag ng mga keyword at nagpapabuti ng formatting",
       "generatingTitle": "Ginagawa ang Nilalaman",
@@ -3208,7 +3208,7 @@
       "finalizingDesc": "Mga quality check at formatting"
     },
     "complete": "{{progress}}% kumpleto",
-    "quality": "Gumagamit ng GPT-5 para sa pinakamataas na kalidad",
+    "quality": "Isinulat gamit ang AI",
     "secure": "Ang iyong data ay pinoproseso nang ligtas"
   },
   "atsDefenseResults": {
@@ -3509,7 +3509,7 @@
     "copied": "Nakopya",
     "error": "Error sa Pagbuo",
     "waiting": "Naghihintay ng nilalaman...",
-    "gpt5Writing": "Sumusulat ang GPT-5..."
+    "gpt5Writing": "Sumusulat ang AI..."
   },
   "notFound": {
     "code": "404",
@@ -5728,7 +5728,7 @@
     "startNewPurchase": "Bibili para sa ibang posisyon? Magsimula ng bagong pagbili.",
     "boughtHereTitle": "3. Ang iyong experience section — nabili na sa device na ito",
     "openYourLink": "Para makita o mabuo ito, buksan ang link sa iyong purchase email. Hindi ka na sisingilin ulit.",
-    "noLongerSoldBody": "Hindi na ibinebenta ang Freelance Boost at Transition Pro, at hindi sila bahagi ng Pro. Kung bumili ka ng isa, buksan ang link sa purchase email mo: gagana pa ito nang 90 araw. Ang libreng account ay sumusulat na ngayon ng tailored resume, cover letter at interview prep para sa isang trabaho bawat araw.",
+    "noLongerSoldBody": "Hindi na ibinebenta ang Freelance Boost at Transition Pro, at hindi sila bahagi ng Pro. Kung bumili ka ng isa, buksan ang link sa purchase email mo: gagana pa rin ito. Ang libreng account ay sumusulat na ngayon ng tailored resume, cover letter at interview prep para sa isang trabaho bawat araw.",
     "noLongerSoldMeta": "Hindi na ibinebenta ang Freelance Boost at Transition Pro. Kung bumili ka ng isa, gumagana pa rin ang link sa purchase email mo.",
     "noLongerSoldTitle": "Hindi na ibinebenta ang Freelance Boost",
     "regenerate": "Gawin ulit",
@@ -5938,7 +5938,7 @@
     "autoRenewTitle": "Pakilagyan ng tsek ang renewal box",
     "fairUseTitle": "Naabot mo na ang fair-use limit ng Pro",
     "planUnpaidTitle": "Hindi pa bayad ang plan mo",
-    "retiredBody": "Hindi na ibinebenta ang produktong ito, at walang siningil. Kung binili mo ito dati, gagana pa ang link mo nang 90 araw.",
+    "retiredBody": "Hindi na ibinebenta ang produktong ito, at walang siningil. Kung binili mo ito dati, gagana pa rin ang link mo.",
     "retiredTitle": "Hindi na ibinebenta"
   },
   "consent": {

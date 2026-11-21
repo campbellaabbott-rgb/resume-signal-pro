@@ -18,6 +18,7 @@
       "copied": "Enlace copiado",
       "copyLink": "Copiar enlace",
       "more": "Más acciones para {{name}}",
+      "moreThis": "Más acciones para este portal",
       "watchBoards": "Seguir los portales llamados «{{token}}»",
       "watchGeneric": "Seguir el portal «{{label}}»",
       "watchThis": "Seguir este portal"
@@ -65,6 +66,7 @@
     },
     "facts": {
       "countriesLabel": "La mayoría de las vacantes en",
+      "countriesLabelPooled": "La mayoría de las vacantes de todo el sistema de contratación de {{company}} en",
       "payLabel": "Salario indicado en",
       "payValue": "{{k}} de {{n}}",
       "systemLabel": "Sistema de contratación",
@@ -75,6 +77,8 @@
     "factsLabel": "Sobre este portal",
     "h1Generic": "Vacantes en el portal «{{label}}»",
     "h1GenericSystem": "Vacantes en el portal «{{label}}» ({{system}})",
+    "h1SystemBoard": "Vacantes en un portal de {{system}}",
+    "h1ThisBoard": "Vacantes en este portal",
     "mix": {
       "basis": "Los grupos más grandes entre las vacantes abiertas que leímos el {{date}}; las vacantes de ningún campo que reconozcamos quedan fuera.",
       "basisUndated": "Los grupos más grandes entre las vacantes abiertas que leímos; las vacantes de ningún campo que reconozcamos quedan fuera.",
@@ -99,6 +103,9 @@
       "floor_one": "Parte baja típica del rango salarial indicado: {{amount}} · mediana de {{m}} oferta en {{currency}}",
       "floor_other": "Parte baja típica del rango salarial indicado: {{amount}} · mediana de {{m}} ofertas en {{currency}}",
       "floor_many": "Parte baja típica del rango salarial indicado: {{amount}} · mediana de {{m}} ofertas en {{currency}}",
+      "floorPooled_one": "Parte baja típica del rango salarial indicado: {{amount}} · mediana de {{m}} oferta en {{currency}} en todo el sistema de contratación de esta empresa",
+      "floorPooled_many": "Parte baja típica del rango salarial indicado: {{amount}} · mediana de {{m}} ofertas en {{currency}} en todo el sistema de contratación de esta empresa",
+      "floorPooled_other": "Parte baja típica del rango salarial indicado: {{amount}} · mediana de {{m}} ofertas en {{currency}} en todo el sistema de contratación de esta empresa",
       "read": "leído el {{date}}",
       "stated": "Salario indicado en {{k}} de {{n}} ofertas",
       "title": "Salario"
@@ -198,6 +205,7 @@
     "boardTotal_one": "Su portal listaba {{total}} vacante en total cuando lo leímos {{ago}}.",
     "boardTotal_other": "Su portal listaba {{total}} vacantes en total cuando lo leímos {{ago}}.",
     "boardTotal_many": "Su portal listaba {{total}} vacantes en total cuando lo leímos {{ago}}.",
-    "pooledBoards": "Contadas en {{n}} portales del sistema de contratación de esta empresa"
+    "pooledBoards": "Contadas en {{n}} portales del sistema de contratación de esta empresa",
+    "employerChipOneBoard": "Historial de contratación de una de las {{n}} bolsas de empleo de este empleador: {{board}}"
   }
 }

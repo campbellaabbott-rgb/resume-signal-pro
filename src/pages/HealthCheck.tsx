@@ -16,6 +16,8 @@ import { HealthHistoryChart } from '@/components/dashboard/HealthHistoryChart';
 import { GeoPerformanceChart } from '@/components/dashboard/GeoPerformanceChart';
 import { IndustryDetectionChart } from '@/components/dashboard/IndustryDetectionChart';
 import { AdminAuthGate } from '@/components/dashboard/AdminAuthGate';
+import { PanelUnavailable } from '@/components/dashboard/PanelUnavailable';
+import { useVisibleInterval } from '@/hooks/use-visible-interval';
 
 interface CheckResult {
   status: 'ok' | 'slow' | 'error';
@@ -246,18 +248,11 @@ const serviceIcons = {
  * A PANEL WHOSE READER FAILED SAYS SO (S12-158). Nine fetchers dropped their
  * error: with a wrong admin key, or admin-ops answering 502, every panel
  * printed its quiet state ("No orders in last 24h", "No function errors"), so
- * a broken dashboard looked like a calm day. A failed read now renders this in
- * the panel's place, with the reason, and never the empty state.
+ * a broken dashboard looked like a calm day. A failed read now renders
+ * PanelUnavailable in the panel's place, with the reason, and never the empty
+ * state; the three trend cards use the same component (S14X-156).
  */
 type Panel = 'product' | 'email' | 'functionErrors' | 'rateLimits' | 'payments' | 'delivery' | 'aiQuality' | 'checkoutFunnel' | 'webhooks' | 'parseFailures';
-
-function PanelUnavailable({ why }: { why: string }) {
-  return (
-    <p className="text-sm text-destructive text-center py-4" role="status" data-panel-unavailable="true">
-      Unavailable: this panel's reader did not answer ({why.slice(0, 140)}). That is not the same as no activity: check the admin key, or try again.
-    </p>
-  );
-}
 
 const serviceLabels = {
   database: 'Database',
@@ -632,10 +627,10 @@ function HealthCheckContent() {
 
   useEffect(() => {
     refreshAll();
-    
-    const interval = setInterval(refreshAll, 30000);
-    return () => clearInterval(interval);
   }, []);
+  // Every 30 s while the tab is shown, and nothing while it is hidden: each
+  // refresh is a dozen edge calls, a gateway probe and a Stripe call (CW2-HB1).
+  useVisibleInterval(refreshAll, 30_000);
 
   const StatusIcon = data ? statusConfig[data.status].icon : Activity;
 

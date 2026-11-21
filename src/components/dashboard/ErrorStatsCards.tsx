@@ -14,52 +14,83 @@ interface ErrorTelemetry {
   http_status: number | null;
 }
 
-interface ErrorStatsCardsProps {
-  errors: ErrorTelemetry[];
+/** get-error-telemetry's exact counts over the whole range (S14X-157). */
+export interface ErrorRangeCounts {
+  total: number;
+  lastHour: number;
+  previousHour: number;
+  serverErrors: number;
 }
 
-export function ErrorStatsCards({ errors }: ErrorStatsCardsProps) {
+interface ErrorStatsCardsProps {
+  /** The rows the page holds: the whole range, or its newest rows when the range holds more. */
+  errors: ErrorTelemetry[];
+  /** The range the owner picked, as its selector names it. */
+  rangeLabel?: string;
+  /** The reader's counts over the whole range; absent from a reader built before them. */
+  counts?: ErrorRangeCounts | null;
+}
+
+const fmt = (n: number) => n.toLocaleString('en-US');
+
+/**
+ * THE OVERVIEW COUNTS THE RANGE, NOT THE SAMPLE (S14X-157). Total Errors was
+ * errors.length, the newest 1,000 rows at most, under a label that read "Last
+ * 24 hours" for every range; the 5xx and last-hour cards counted the same
+ * sample. The reader's range counts are used when it sends them, and the label
+ * is the range picked. Unique users and functions stay the sample's, since no
+ * count travels for them.
+ */
+export function ErrorStatsCards({ errors, rangeLabel = 'Selected range', counts }: ErrorStatsCardsProps) {
   const stats = useMemo(() => {
     const now = new Date();
     const oneHourAgo = subHours(now, 1);
     const twoHoursAgo = subHours(now, 2);
-    
-    const lastHourErrors = errors.filter(e => new Date(e.created_at) >= oneHourAgo);
-    const previousHourErrors = errors.filter(e => {
+
+    const lastHourRows = errors.filter(e => new Date(e.created_at) >= oneHourAgo).length;
+    const previousHourRows = errors.filter(e => {
       const date = new Date(e.created_at);
       return date >= twoHoursAgo && date < oneHourAgo;
-    });
-    
+    }).length;
+
     const uniqueUsers = new Set(errors.map(e => e.visitor_id).filter(Boolean)).size;
     const uniqueFunctions = new Set(errors.map(e => e.function_name).filter(Boolean)).size;
-    
-    const rateChange = previousHourErrors.length > 0 
-      ? ((lastHourErrors.length - previousHourErrors.length) / previousHourErrors.length) * 100
-      : lastHourErrors.length > 0 ? 100 : 0;
-    
-    const criticalErrors = errors.filter(e => 
+
+    const criticalRows = errors.filter(e =>
       e.http_status && e.http_status >= 500
     ).length;
-    
+
     return {
-      totalErrors: errors.length,
-      lastHourErrors: lastHourErrors.length,
-      rateChange,
+      totalErrors: counts ? counts.total : errors.length,
+      lastHourErrors: counts ? counts.lastHour : lastHourRows,
+      previousHourErrors: counts ? counts.previousHour : previousHourRows,
       uniqueUsers,
       uniqueFunctions,
-      criticalErrors
+      criticalErrors: counts ? counts.serverErrors : criticalRows,
     };
-  }, [errors]);
+  }, [errors, counts]);
 
-  const getTrendIcon = (change: number) => {
-    if (change > 0) return <TrendingUp className="h-4 w-4 text-destructive" />;
-    if (change < 0) return <TrendingDown className="h-4 w-4 text-green-500" />;
+  // A change is a percentage only from an hour that had errors. From none it
+  // is new: "+100%" read as a doubling when nothing came before it.
+  const change = stats.previousHourErrors > 0
+    ? Math.round(((stats.lastHourErrors - stats.previousHourErrors) / stats.previousHourErrors) * 100)
+    : null;
+  const direction = change !== null ? Math.sign(change) : stats.lastHourErrors > 0 ? 1 : 0;
+  const changeText = change !== null
+    ? `${change > 0 ? '+' : ''}${change}% vs prev hour`
+    : stats.lastHourErrors > 0
+      ? 'new this hour (none the hour before)'
+      : 'none this hour or the hour before';
+
+  const getTrendIcon = (d: number) => {
+    if (d > 0) return <TrendingUp className="h-4 w-4 text-destructive" />;
+    if (d < 0) return <TrendingDown className="h-4 w-4 text-green-500" />;
     return <Minus className="h-4 w-4 text-muted-foreground" />;
   };
 
-  const getTrendColor = (change: number) => {
-    if (change > 0) return 'text-destructive';
-    if (change < 0) return 'text-green-500';
+  const getTrendColor = (d: number) => {
+    if (d > 0) return 'text-destructive';
+    if (d < 0) return 'text-green-500';
     return 'text-muted-foreground';
   };
 
@@ -73,11 +104,11 @@ export function ErrorStatsCards({ errors }: ErrorStatsCardsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold">{stats.totalErrors}</div>
-          <p className="text-xs text-muted-foreground">Last 24 hours</p>
+          <div className="text-3xl font-bold">{fmt(stats.totalErrors)}</div>
+          <p className="text-xs text-muted-foreground">{rangeLabel}</p>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -86,14 +117,14 @@ export function ErrorStatsCards({ errors }: ErrorStatsCardsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold">{stats.lastHourErrors}</div>
-          <div className={`flex items-center gap-1 text-xs ${getTrendColor(stats.rateChange)}`}>
-            {getTrendIcon(stats.rateChange)}
-            <span>{stats.rateChange > 0 ? '+' : ''}{stats.rateChange.toFixed(0)}% vs prev hour</span>
+          <div className="text-3xl font-bold">{fmt(stats.lastHourErrors)}</div>
+          <div className={`flex items-center gap-1 text-xs ${getTrendColor(direction)}`}>
+            {getTrendIcon(direction)}
+            <span>{changeText}</span>
           </div>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -102,11 +133,11 @@ export function ErrorStatsCards({ errors }: ErrorStatsCardsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-destructive">{stats.criticalErrors}</div>
+          <div className="text-3xl font-bold text-destructive">{fmt(stats.criticalErrors)}</div>
           <p className="text-xs text-muted-foreground">Server errors</p>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -114,9 +145,9 @@ export function ErrorStatsCards({ errors }: ErrorStatsCardsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold">{stats.uniqueUsers}</div>
+          <div className="text-3xl font-bold">{fmt(stats.uniqueUsers)}</div>
           <p className="text-xs text-muted-foreground">
-            Across {stats.uniqueFunctions} functions
+            Across {stats.uniqueFunctions} functions{counts && counts.total > errors.length ? ', in the rows shown' : ''}
           </p>
         </CardContent>
       </Card>

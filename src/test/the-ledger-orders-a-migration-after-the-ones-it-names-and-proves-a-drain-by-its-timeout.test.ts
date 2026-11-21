@@ -105,7 +105,9 @@ describe("afterMigrations: a migration ordered after the ones it names", () => {
   it("the report hands migrationPhases every migration file on disk", () => {
     const src = codeOf(readFileSync(resolve(ROOT, "scripts/deploy-ledger.mjs"), "utf8"));
     expect(src).toMatch(/const onDisk = \[\.\.\.mig\.applied, \.\.\.mig\.pending, \.\.\.mig\.hold, \.\.\.mig\.neverApplyPresent\];/);
-    expect(src).toMatch(/migrationPhases\(mig\.pending, POLICY, rows, onDisk\)/);
+    // Through messagePlan, which leaves out only the owner steps (OI-47b).
+    expect(src).toMatch(/messagePlan\(\{ pending: mig\.pending, hold: mig\.hold, policy: POLICY, rows, onDisk, sqlOf \}\)/);
+    expect(src).toMatch(/migrationPhases\(pending\.filter\(\(f\) => !ownerFiles\.includes\(f\)\), policy, rows, onDisk\)/);
   });
 });
 

@@ -23,7 +23,7 @@ import type { EdgeHandler } from "./helpers/edge-harness";
 import { freshWorld, installDeno, loadCheckouts, post, type W4bWorld } from "./helpers/w4b-checkout-harness";
 import { buildIsAtLeast } from "./helpers/fn-build";
 import { codeOf } from "./helpers/strip-comments";
-import { CUT_PRODUCT_IDS, CUT_PRODUCTS, cutSentence, PAST_BUYER_DAYS } from "../../supabase/functions/_shared/product-cuts";
+import { CUT_PRODUCT_IDS, CUT_PRODUCTS, cutSentence } from "../../supabase/functions/_shared/product-cuts";
 import { getAllProducts, HIDDEN_PRODUCT_IDS, oneTimePriceRangeUsd, PRODUCTS, type ProductId } from "@/config/products";
 
 let h: Record<string, EdgeHandler>;
@@ -46,7 +46,9 @@ describe("create-product-checkout refuses every cut product before anything is c
     const body = await res.json();
     expect(body).toMatchObject({ retired: true, cut: true, reason: "product_retired", language: "en" });
     expect(body.error).toBe(cutSentence(productId, "en"));
-    expect(body.error).toContain(`${PAST_BUYER_DAYS} days`);
+    // An earlier purchase keeps working, and no day count is promised (S14X-143, pick B).
+    expect(body.error).toContain("your link keeps working.");
+    expect(body.error).not.toMatch(/\d+ days/);
     expect(body.pricing).toBe("https://resumebooster.work/pricing");
     expect(body).not.toHaveProperty("url");
     expect(limiterAsked, "the refusal counted the caller").toBe(false);

@@ -18,6 +18,14 @@
  *   - `gh issue create --label board-health` fails when the label does not
  *     exist, and nothing created it.
  *
+ * And one gap behind those (S14X-243): the probe read only the total and the
+ * two slice stamps, so the board could serve and slice while recording no
+ * closure at all. Nothing scheduled read the lap proofs (deepCursor.laps), the
+ * closure population's age, or the takedown count, though all three are
+ * public. The probe now fails when the last lap proof is over 24 h old, the
+ * closure population over 3 h old, or the last 24 hours hold no takedown, and
+ * its healthy line prints the first and the last.
+ *
  * So this file parses the workflow as GitHub would, and then RUNS its two
  * scripts in bash against a fake curl and a fake gh, asserting what each one
  * writes. It needs bash and jq, which every GitHub runner and this repo's Macs
@@ -70,13 +78,14 @@ describe("the workflow is a workflow GitHub can read", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Running the scripts. A fake `curl` answers the board request and the status
-// request from two fixture files; a fake `gh` records its argv. GITHUB_OUTPUT
-// is a real file, read back as key=value lines.
+// Running the scripts. A fake `curl` answers the board request, the status
+// request and the takedown count from three fixture files; a fake `gh` records
+// its argv. GITHUB_OUTPUT is a real file, read back as key=value lines.
 // ─────────────────────────────────────────────────────────────────────────────
 
 let dir = "";
 const FAKE_CURL = `#!/bin/bash
+for a in "$@"; do case "$a" in */rest/v1/rpc/get_takedowns_today) cat "$FIX_TAKEDOWNS"; exit 0;; esac; done
 for a in "$@"; do case "$a" in *'"action":"status"'*) cat "$FIX_STATUS"; exit 0;; esac; done
 cat "$FIX_BOARD"
 `;
@@ -97,17 +106,26 @@ beforeAll(() => {
 afterAll(() => { if (dir) rmSync(dir, { recursive: true, force: true }); });
 
 const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
-const HEALTHY_STATUS = { lastSliceAgeMin: 0, sliceStats: { workAt: minutesAgo(4) } };
+/** A timestamptz as PostgREST serialises it: microseconds and +00:00. */
+const pgMinutesAgo = (m: number) => minutesAgo(m).replace(/\.(\d{3})Z$/, ".$1456+00:00");
+const HEALTHY_STATUS = {
+  lastSliceAgeMin: 0,
+  sliceStats: { workAt: minutesAgo(4) },
+  deepCursor: { laps: { tracking: 1099, proven: 1051, disarmed: 0, lastProvenAt: minutesAgo(12), firstLapAt: minutesAgo(90 * 24 * 60) } },
+  closurePopulation: { as_of: pgMinutesAgo(20), boards_lap_pending: 46 },
+};
+const withLaps = (lastProvenAt: string | null) => ({ ...HEALTHY_STATUS, deepCursor: { laps: { ...HEALTHY_STATUS.deepCursor.laps, lastProvenAt } } });
 
-function runProbe(board: string, status: string, env = 'VITE_SUPABASE_PUBLISHABLE_KEY="pk_test"\n') {
+function runProbe(board: string, status: string, env = 'VITE_SUPABASE_PUBLISHABLE_KEY="pk_test"\n', takedowns = "17520") {
   const run = stepNamed(/probe the board/i)?.run;
   if (!run) throw new Error("no probe script in the parsed workflow");
   const case_ = mkdtempSync(join(dir, "case-"));
   writeFileSync(join(case_, ".env"), env);
   writeFileSync(join(case_, "board.json"), board);
   writeFileSync(join(case_, "status.json"), status);
+  writeFileSync(join(case_, "takedowns.json"), takedowns);
   writeFileSync(join(case_, "out"), "");
-  execFileSync("bash", ["-c", run], {
+  const stdout = execFileSync("bash", ["-c", run], {
     cwd: case_,
     encoding: "utf8",
     env: {
@@ -116,9 +134,10 @@ function runProbe(board: string, status: string, env = 'VITE_SUPABASE_PUBLISHABL
       SB_URL: "https://example.invalid",
       FIX_BOARD: join(case_, "board.json"),
       FIX_STATUS: join(case_, "status.json"),
+      FIX_TAKEDOWNS: join(case_, "takedowns.json"),
     },
   });
-  const out: Record<string, string> = {};
+  const out: Record<string, string> = { stdout };
   for (const line of readFileSync(join(case_, "out"), "utf8").split("\n")) {
     const i = line.indexOf("=");
     if (i > 0) out[line.slice(0, i)] = line.slice(i + 1);
@@ -172,6 +191,55 @@ describe("the probe fails on every state that is not a breathing board", () => {
   it("a missing key is a loud misconfiguration, never a silent pass", () => {
     const out = runProbe(JSON.stringify({ total: 1 }), JSON.stringify(HEALTHY_STATUS), "OTHER=1\n");
     expect(out.failed).toBe("config");
+  });
+});
+
+describe("the probe fails when the board stops recording closures (S14X-243)", () => {
+  const BOARD = JSON.stringify({ total: 712_232 });
+  const ENV = 'VITE_SUPABASE_PUBLISHABLE_KEY="pk_test"\n';
+
+  it("positive control: the healthy line names the lap proofs and the takedown count", () => {
+    const out = runProbe(BOARD, JSON.stringify(HEALTHY_STATUS));
+    expect(out.failed, out.note).toBe("");
+    expect(out.stdout).toMatch(/laps last proven 12 min ago/);
+    expect(out.stdout).toMatch(/takedowns in 24 h = 17520/);
+  });
+
+  it("a last lap proof 30 hours old fails, naming the lap proofs", () => {
+    const out = runProbe(BOARD, JSON.stringify(withLaps(minutesAgo(30 * 60))));
+    expect(out.failed).toBe("probe");
+    expect(out.note).toMatch(/lap proof/);
+    expect(out.note).toMatch(/1800 minutes/);
+  });
+
+  it("a status with no lap proof at all fails, never passes", () => {
+    expect(runProbe(BOARD, JSON.stringify(withLaps(null))).failed).toBe("probe");
+    expect(runProbe(BOARD, JSON.stringify({ ...HEALTHY_STATUS, deepCursor: {} })).failed).toBe("probe");
+  });
+
+  it("a closure population four hours old fails", () => {
+    const out = runProbe(BOARD, JSON.stringify({ ...HEALTHY_STATUS, closurePopulation: { as_of: pgMinutesAgo(240) } }));
+    expect(out.failed).toBe("probe");
+    expect(out.note).toMatch(/closure population/);
+    expect(out.note).toMatch(/240 minutes/);
+  });
+
+  it("a status whose closure population is null fails", () => {
+    const out = runProbe(BOARD, JSON.stringify({ ...HEALTHY_STATUS, closurePopulation: null }));
+    expect(out.failed).toBe("probe");
+    expect(out.note).toMatch(/closure population/);
+  });
+
+  it("a day with no takedown fails", () => {
+    const out = runProbe(BOARD, JSON.stringify(HEALTHY_STATUS), ENV, "0");
+    expect(out.failed).toBe("probe");
+    expect(out.note).toMatch(/takedown/);
+  });
+
+  it("a takedown count that answers an error, or nothing, fails", () => {
+    const timeout = JSON.stringify({ code: "57014", message: "canceling statement due to statement timeout" });
+    expect(runProbe(BOARD, JSON.stringify(HEALTHY_STATUS), ENV, timeout).failed).toBe("probe");
+    expect(runProbe(BOARD, JSON.stringify(HEALTHY_STATUS), ENV, "").failed).toBe("probe");
   });
 });
 

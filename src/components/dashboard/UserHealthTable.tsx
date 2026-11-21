@@ -17,6 +17,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { adminRpc } from '@/lib/admin-auth';
+import { useVisibleInterval } from '@/hooks/use-visible-interval';
 import {
   Collapsible,
   CollapsibleContent,
@@ -113,9 +114,9 @@ export function UserHealthTable() {
 
   useEffect(() => {
     fetchUserSpikes();
-    const interval = setInterval(fetchUserSpikes, 60000); // Refresh every minute
-    return () => clearInterval(interval);
   }, [fetchUserSpikes]);
+  // Every minute while the tab is shown, nothing while it is hidden (CW2-HB1).
+  useVisibleInterval(fetchUserSpikes, 60_000);
 
   const toggleExpand = (visitorId: string) => {
     const newExpanded = new Set(expandedUsers);

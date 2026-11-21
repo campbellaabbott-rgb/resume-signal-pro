@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { count } from "@/lib/format";
 
 // Homepage transparency section: the real score statistics, fetched live
 // from the same k-anonymous aggregate RPC that powers
@@ -22,6 +23,10 @@ interface Insights {
   } | null;
   histogram: Array<{ bucket: number; n: number }>;
 }
+
+// The section's words are English, so are its counts (S14X-255): with no
+// locale they followed the browser, "1.234 scans" beside an English sentence.
+const EN = { lng: "en" } as const;
 
 // Below this, quoting medians would be noise, not transparency.
 const MIN_CORPUS_N = 25;
@@ -58,7 +63,7 @@ export function LiveScanStats() {
     ...(o.pct_80_plus != null
       ? [{ label: "Scored 80+", value: `${o.pct_80_plus}%`, detail: "a score in the 80s is genuinely strong" }]
       : []),
-    { label: "Completed scans", value: o.n.toLocaleString(), detail: `rolling ${insights.window_days}-day window` },
+    { label: "Completed scans", value: count(o.n, EN), detail: `rolling ${insights.window_days}-day window` },
   ];
 
   return (
@@ -93,7 +98,7 @@ export function LiveScanStats() {
                   <div
                     className="w-full rounded-t bg-primary/70"
                     style={{ height: `${Math.max((h.n / maxBar) * 80, 2)}px` }}
-                    title={`${h.bucket}–${h.bucket + 9}: ${h.n.toLocaleString()} scans`}
+                    title={`${h.bucket}–${h.bucket + 9}: ${count(h.n, EN)} scans`}
                   />
                   <span className="text-[10px] text-muted-foreground">{h.bucket}</span>
                 </div>

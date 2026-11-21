@@ -21,6 +21,11 @@
  *     (S14X-021's owner half is the privacy notice, judged by the
  *     privacy-retention section);
  *   - a good deploy with both owner answers prints PASS for every claim;
+ *   - S14X-085's answer ships in round B: with round A live and round B not
+ *     pasted (the commission mail still at its old build, no approval job)
+ *     O1 and O2 print INFO, never a FAIL; once round B's mail build serves, a
+ *     missing approval job fails, and an approval job scheduled beside the
+ *     old mail fails O2;
  *   - each regression prints FAIL, the key table answering rows at any stage;
  *   - every request is a GET or an OPTIONS, and the key is never printed.
  */
@@ -113,7 +118,7 @@ const CENSUS = (notCallable: string[] = []) => JSON.stringify({ closed: 56, clos
 
 type R = { status: number; body: string };
 type Over = Partial<{
-  payout: string | null; account: string | null;
+  payout: string | null; account: string | null; commission: string | null;
   sessions: R; affiliates: Record<string, R>; conversions: Record<string, R>;
   budget: R; alias: R; keys: R; days: R;
   cron: unknown[] | string; census: string;
@@ -126,10 +131,13 @@ function routes(o: Over = {}, deployed = true): Route[] {
   const conversions = { created_at: EMPTY, review_flags: deployed ? EMPTY : NOCOL("affiliate_conversions", "review_flags"), currency: deployed ? EMPTY : NOCOL("affiliate_conversions", "currency") };
   const payout = o.payout === undefined ? (deployed ? "affiliate-payout-request.2026-11-12.1" : "affiliate-payout-request.2026-11-09.1") : o.payout;
   const account = o.account === undefined ? (deployed ? "affiliate-account.2026-11-12.2" : null) : o.account;
+  // deployed: rounds A and B (round B's mail build); not deployed: the build production served before both.
+  const commission = o.commission === undefined ? (deployed ? "send-affiliate-commission-email.2026-11-13.1" : "send-affiliate-commission-email.2026-10-09.2") : o.commission;
   const cron = o.cron ?? (deployed ? [OTHER_JOB, PRUNE, APPROVAL] : [OTHER_JOB]);
   return [
     { match: `^OPTIONS ${P}/functions/v1/affiliate-payout-request$`, headers: payout ? { "x-fn-build": payout } : {} },
     { match: `^OPTIONS ${P}/functions/v1/affiliate-account$`, status: account ? 200 : 404, headers: account ? { "x-fn-build": account } : {} },
+    { match: `^OPTIONS ${P}/functions/v1/send-affiliate-commission-email$`, headers: commission ? { "x-fn-build": commission } : {} },
     { match: `^GET ${P}/rest/v1/affiliate_sessions\\?select=token_hash&`, ...(o.sessions ?? (deployed ? DENIED("affiliate_sessions") : NOCOL("affiliate_sessions", "token_hash"))) },
     ...cols("affiliates", affiliates, o.affiliates),
     ...cols("affiliate_conversions", conversions, o.conversions),
@@ -151,7 +159,7 @@ const OWNERS = { "S14X-021": "approved-full", "S14X-085": "30-day hold" };
 const has = (lines: string[], verdict: string, re: RegExp) => lines.some((l) => l.startsWith(verdict) && re.test(l));
 const show = (lines: string[]) => lines.join("\n");
 const fails = (lines: string[]) => lines.filter((l) => l.startsWith("FAIL"));
-const CLAIMS = ["F1", "F2", "M1", "M2", "M3", "M4", "M5", "M6", "C1", "K1", "P1", "P2", "P3", "O1"];
+const CLAIMS = ["F1", "F2", "M1", "M2", "M3", "M4", "M5", "M6", "C1", "K1", "P1", "P2", "P3", "O1", "O2"];
 
 describe("today's production, before the merge and the paste", () => {
   const { lines, out } = run(routes({}, false));
@@ -187,7 +195,35 @@ describe("a good deploy", () => {
     const pending = run(routes()).lines;
     expect(fails(pending), show(pending)).toEqual([]);
     expect(has(pending, "INFO", /^INFO {2}O1 owner pending/), show(pending)).toBe(true);
-    for (const c of CLAIMS.filter((x) => x !== "O1")) expect(has(pending, "PASS", new RegExp(`^PASS {2}${c} `)), `${c}\n${show(pending)}`).toBe(true);
+    for (const c of CLAIMS.filter((x) => x !== "O1" && x !== "O2")) expect(has(pending, "PASS", new RegExp(`^PASS {2}${c} `)), `${c}\n${show(pending)}`).toBe(true);
+    expect(pending.some((l) => /^(PASS|FAIL|INFO) {2}O2 /.test(l)), "O2 judges only an answered key").toBe(false);
+  });
+});
+
+describe("round A live, round B not pasted (production after round A's deploy)", () => {
+  // Round A's builds and migrations are live; the owner's S14X-085 answer ships in round B.
+  const roundA = (o: Over = {}) => routes({ commission: "send-affiliate-commission-email.2026-10-09.2", cron: [OTHER_JOB, PRUNE], ...o });
+  it("with S14X-085 answered, the approval job and the mail print INFO (not pasted yet), and nothing fails", () => {
+    const { lines } = run(roundA(), OWNERS);
+    expect(fails(lines), show(lines)).toEqual([]);
+    expect(lines, show(lines)).toContain("INFO  O1 the affiliate-commission-approval job is not scheduled yet: its migration has not applied");
+    expect(lines, show(lines)).toContain("INFO  O2 send-affiliate-commission-email x-fn-build = send-affiliate-commission-email.2026-10-09.2: round B, which carries the 30-day hold, is not pasted yet (judged once it serves 2026-11-13.1)");
+    for (const c of CLAIMS.filter((x) => x !== "O1" && x !== "O2")) expect(has(lines, "PASS", new RegExp(`^PASS {2}${c} `)), `${c}\n${show(lines)}`).toBe(true);
+  });
+  it("the answer the ledger records is judged as answered, and prints no FAIL against round A", () => {
+    const ledger = JSON.parse(readFileSync(resolve(ROOT, "docs/deploy-ledger.json"), "utf8")) as { reservations: Record<string, { ownerDecided?: Record<string, { choice: string }> }> };
+    const decided = ledger.reservations["bug-round"].ownerDecided ?? {};
+    expect(decided["S14X-085"], "the owner's answer of 2026-11-18 is recorded").toMatchObject({ choice: "30-day hold" });
+    const answered = Object.fromEntries(Object.entries(decided).map(([k, v]) => [k, v.choice]));
+    const { lines } = run(roundA(), answered);
+    expect(fails(lines), show(lines)).toEqual([]);
+    expect(has(lines, "INFO", /^INFO {2}O1 owner pending/), show(lines)).toBe(false);
+    expect(has(lines, "INFO", /^INFO {2}O2 .*is not pasted yet/), show(lines)).toBe(true);
+  });
+  it("a missing commission build header before round B is INFO too: nothing says round B is live", () => {
+    const { lines } = run(roundA({ commission: null }), OWNERS);
+    expect(fails(lines), show(lines)).toEqual([]);
+    expect(lines, show(lines)).toContain("INFO  O2 send-affiliate-commission-email x-fn-build = none: round B, which carries the 30-day hold, is not pasted yet (judged once it serves 2026-11-13.1)");
   });
 });
 
@@ -232,7 +268,12 @@ describe("each regression prints FAIL", () => {
     expect(has(run(routes({ cron: [OTHER_JOB, cronRow("affiliate-clicks-prune", "23 4 * * *", { ch_failed: 1, ch_last_status: "failed" }), APPROVAL] }), OWNERS).lines, "FAIL", /^FAIL {2}C1 affiliate-clicks-prune: 1 run\(s\) in 26 h, 1 failed/)).toBe(true);
     expect(has(run(routes({ cron: [OTHER_JOB, APPROVAL] }), OWNERS).lines, "FAIL", /^FAIL {2}C1 the affiliate-clicks-prune job is not scheduled, though the migration that schedules it applied/)).toBe(true);
     expect(has(run(routes({ cron: [OTHER_JOB, cronRow("affiliate-clicks-prune", "*/5 * * * *"), APPROVAL] }), OWNERS).lines, "FAIL", /^FAIL {2}C1 .*want active, 23 4 \* \* \*/)).toBe(true);
-    expect(has(run(routes({ cron: [OTHER_JOB, PRUNE] }), OWNERS).lines, "FAIL", /^FAIL {2}O1 the affiliate-commission-approval job is not scheduled/)).toBe(true);
+    expect(has(run(routes({ cron: [OTHER_JOB, PRUNE] }), OWNERS).lines, "FAIL", /^FAIL {2}O1 the affiliate-commission-approval job is not scheduled, though the functions of this round are live/)).toBe(true);
+    // Round B's mail never deployed, though its migration scheduled the job: the mail still promises a monthly payout.
+    const oldMail = run(routes({ commission: "send-affiliate-commission-email.2026-10-09.2" }), OWNERS).lines;
+    expect(fails(oldMail), show(oldMail)).toEqual(["FAIL  O2 send-affiliate-commission-email x-fn-build = send-affiliate-commission-email.2026-10-09.2 while affiliate-commission-approval is scheduled (20261112123000 applied): the commission mail still promises a monthly payout (want send-affiliate-commission-email.2026-11-13.1 or later)"]);
+    expect(has(run(routes({ commission: null }), OWNERS).lines, "FAIL", /^FAIL {2}O2 send-affiliate-commission-email x-fn-build = none while affiliate-commission-approval is scheduled/)).toBe(true);
+    expect(has(run(routes({ cron: [OTHER_JOB, PRUNE, cronRow("affiliate-commission-approval", "47 4 * * *", { ch_failed: 1, ch_last_status: "failed" })] }), OWNERS).lines, "FAIL", /^FAIL {2}O1 affiliate-commission-approval: 1 run\(s\) in 26 h, 1 failed/)).toBe(true);
     expect(has(run(routes({ cron: "<html>Bad gateway</html>" }), OWNERS).lines, "FAIL", /^FAIL {2}C1 get_cron_health is unreadable/)).toBe(true);
   });
 

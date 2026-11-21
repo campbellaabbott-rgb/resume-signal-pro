@@ -8,11 +8,20 @@
 // only when the page has both numbers measured; today's readers return no
 // such pair, so that line waits for one. Money and counts are formatted in
 // the reader's language, and the line carries the time it was read.
+//
+// WHOSE POSTINGS (S14X-195). The intel reader pools every career site an
+// employer runs on one hiring system, so on one site's page "median across
+// 285 USD postings" counted more postings than the page serves (PwC US, 282).
+// When the company lander judges the reader's counts pooled
+// (IntelScopeContext, pooled-scope.ts), the line says the median covers the
+// employer's whole hiring system.
+import { useContext } from "react";
 import { useTranslation } from "react-i18next";
 import type { CompanyIntel } from "@/components/jobs/CompanyIntelPanel";
 import { count as fmtCount, date as fmtDate, money as fmtMoney } from "@/lib/format";
 import { tPlural } from "@/lib/company/plural";
 import { ProfileSection } from "./parts";
+import { IntelScopeContext } from "./pooled-scope";
 
 /** The plan's bar: a pay figure needs at least this many postings stating pay (plan section 8, D7). */
 export const PAY_MEDIAN_MIN_POSTINGS = 5;
@@ -39,6 +48,7 @@ export function payFacts(intel: CompanyIntel | null | undefined, readAt: string 
 
 export function PaySummary({ facts, headingLevel = 2 }: { facts: PayFacts | null; headingLevel?: 2 | 3 }) {
   const { t, i18n } = useTranslation();
+  const pooled = useContext(IntelScopeContext) === "pooled";
   if (!facts) return null;
   const lang = i18n.language || "en";
   const when = facts.asOf ? fmtDate(facts.asOf, { lng: lang }) : null;
@@ -51,14 +61,22 @@ export function PaySummary({ facts, headingLevel = 2 }: { facts: PayFacts | null
         </p>
       )}
       {facts.floor && (
-        <p className="text-foreground" data-pay-floor="">
-          {tPlural(t, "companyProfile.pay.floor", facts.floor.m, {
-            amount: fmtMoney(Math.round(facts.floor.amount), facts.floor.currency, { lng: lang }),
-            m: fmtCount(facts.floor.m, { lng: lang }),
-            currency: facts.floor.currency,
-          },
-          "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} posting",
-          "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} postings")}
+        <p className="text-foreground" data-pay-floor={pooled ? "pooled" : ""}>
+          {pooled
+            ? tPlural(t, "companyProfile.pay.floorPooled", facts.floor.m, {
+              amount: fmtMoney(Math.round(facts.floor.amount), facts.floor.currency, { lng: lang }),
+              m: fmtCount(facts.floor.m, { lng: lang }),
+              currency: facts.floor.currency,
+            },
+            "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} posting on this employer's whole hiring system",
+            "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} postings on this employer's whole hiring system")
+            : tPlural(t, "companyProfile.pay.floor", facts.floor.m, {
+              amount: fmtMoney(Math.round(facts.floor.amount), facts.floor.currency, { lng: lang }),
+              m: fmtCount(facts.floor.m, { lng: lang }),
+              currency: facts.floor.currency,
+            },
+            "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} posting",
+            "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} postings")}
           {when && !facts.stated ? <> · {t("companyProfile.pay.read", "read {{date}}", { date: when })}</> : null}
         </p>
       )}

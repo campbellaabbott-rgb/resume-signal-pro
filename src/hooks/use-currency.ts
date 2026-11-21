@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { count as fmtCount } from "@/lib/format";
 
 interface CurrencyInfo {
   code: string;
@@ -350,7 +351,7 @@ export function useCurrency(): UseCurrencyResult {
     let formatted: string;
     if (currency.rate >= 100) {
       // Large numbers - no decimals
-      formatted = `${currency.symbol}${localAmount.toLocaleString()}`;
+      formatted = `${currency.symbol}${fmtCount(localAmount)}`;
     } else if (currency.rate >= 1) {
       // Medium - maybe 1 decimal for non-round numbers
       formatted = `${currency.symbol}${localAmount}`;

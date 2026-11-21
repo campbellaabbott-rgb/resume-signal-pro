@@ -17,6 +17,7 @@
       "copied": "Link gekopieerd",
       "copyLink": "Link kopiëren",
       "more": "Meer acties voor {{name}}",
+      "moreThis": "Meer acties voor dit vacaturebord",
       "watchBoards": "Vacatureborden met de naam ‘{{token}}’ volgen",
       "watchGeneric": "Het vacaturebord ‘{{label}}’ volgen",
       "watchThis": "Dit vacaturebord volgen"
@@ -59,6 +60,7 @@
     },
     "facts": {
       "countriesLabel": "De meeste vacatures in",
+      "countriesLabelPooled": "De meeste vacatures binnen het hele wervingssysteem van {{company}} in",
       "payLabel": "Salaris vermeld bij",
       "payValue": "{{k}} van {{n}}",
       "systemLabel": "Wervingssysteem",
@@ -69,6 +71,8 @@
     "factsLabel": "Over dit vacaturebord",
     "h1Generic": "Vacatures op het vacaturebord ‘{{label}}’",
     "h1GenericSystem": "Vacatures op het vacaturebord ‘{{label}}’ ({{system}})",
+    "h1SystemBoard": "Vacatures op een {{system}}-vacaturebord",
+    "h1ThisBoard": "Vacatures op dit vacaturebord",
     "mix": {
       "basis": "De grootste groepen onder de open vacatures die we op {{date}} lazen; vacatures in een vakgebied dat we niet herkennen, tellen niet mee.",
       "basisUndated": "De grootste groepen onder de open vacatures die we lazen; vacatures in een vakgebied dat we niet herkennen, tellen niet mee.",
@@ -91,6 +95,8 @@
       "basis": "Jaarbedragen uit de salarisschalen die hun open vacatures vermelden; vacatures zonder salaris tellen niet mee.",
       "floor_one": "Gangbare onderkant van de vermelde salarisschaal: {{amount}} · mediaan over {{m}} vacature in {{currency}}",
       "floor_other": "Gangbare onderkant van de vermelde salarisschaal: {{amount}} · mediaan over {{m}} vacatures in {{currency}}",
+      "floorPooled_one": "Gangbare onderkant van de vermelde salarisschaal: {{amount}} · mediaan over {{m}} vacature in {{currency}} in het hele wervingssysteem van deze werkgever",
+      "floorPooled_other": "Gangbare onderkant van de vermelde salarisschaal: {{amount}} · mediaan over {{m}} vacatures in {{currency}} in het hele wervingssysteem van deze werkgever",
       "read": "gelezen op {{date}}",
       "stated": "Salaris vermeld bij {{k}} van {{n}} vacatures",
       "title": "Salaris"
@@ -182,6 +188,7 @@
     "undatedMore": "({{u}} meer zonder datum)",
     "boardTotal_one": "Hun vacaturebord toonde in totaal {{total}} vacature toen we het {{ago}} lazen.",
     "boardTotal_other": "Hun vacaturebord toonde in totaal {{total}} vacatures toen we het {{ago}} lazen.",
-    "pooledBoards": "Geteld over {{n}} vacatureborden in het wervingssysteem van deze werkgever"
+    "pooledBoards": "Geteld over {{n}} vacatureborden in het wervingssysteem van deze werkgever",
+    "employerChipOneBoard": "Wervingsoverzicht voor een van de {{n}} vacatureborden van deze werkgever: {{board}}"
   }
 }

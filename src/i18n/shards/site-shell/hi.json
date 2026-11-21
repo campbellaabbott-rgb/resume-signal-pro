@@ -1,5 +1,6 @@
 {
   "siteShell": {
+    "skipToMain": "मुख्य सामग्री पर जाएँ",
     "crashHome": "होमपेज पर जाएं",
     "newVersion": {
       "loading": "नया संस्करण लोड हो रहा है…",

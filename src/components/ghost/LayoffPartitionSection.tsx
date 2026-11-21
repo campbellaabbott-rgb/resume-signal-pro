@@ -203,8 +203,12 @@ function uncontrolledReason(a: LayoffPartitionArm): LayoffInsufficientReason {
 type Rpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data?: unknown; error?: unknown } | undefined>;
 const rpc: Rpc = (fn, args) => (supabase as unknown as { rpc: Rpc }).rpc(fn, args);
 
-const fmtN = (n: number) => n.toLocaleString();
-const stamp = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : "");
+// en-US, as the rest of the Ghost Job Index prints its figures and stamps
+// (S14X-255): with no locale they followed the browser, so this section's
+// stamps read differently from the page around it.
+const EN = "en-US";
+const fmtN = (n: number) => n.toLocaleString(EN);
+const stamp = (iso: string | null) => (iso ? new Date(iso).toLocaleString(EN) : "");
 
 export function LayoffPartitionSection() {
   const { t } = useTranslation();

@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { writeWithDigestLocale } from "@/lib/saved-search-locale";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { searchToQuery, searchToBoardBody, type JobSearchParams } from "@/lib/job-search-params";
+import { count as fmtCount } from "@/lib/format";
 
 interface SavedSearch {
   id: string;
@@ -173,7 +174,7 @@ export function SavedSearchesCard() {
             </button>
             {(newCounts[s.id]?.n ?? 0) > 0 && (
               <span className="shrink-0 text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
-                {t("accountPage.ssNewBadge", "{{n}} new", { n: `${newCounts[s.id].n.toLocaleString()}${newCounts[s.id].capped ? "+" : ""}` })}
+                {t("accountPage.ssNewBadge", "{{n}} new", { n: `${fmtCount(newCounts[s.id].n)}${newCounts[s.id].capped ? "+" : ""}` })}
               </span>
             )}
             {s.digest_opt_in && (

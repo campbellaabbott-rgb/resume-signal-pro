@@ -17,6 +17,7 @@
       "copied": "Nakopya ang link",
       "copyLink": "Kopyahin ang link",
       "more": "Iba pang aksyon para sa {{name}}",
+      "moreThis": "Iba pang aksyon para sa board na ito",
       "watchBoards": "Bantayan ang mga board na may pangalang “{{token}}”",
       "watchGeneric": "Bantayan ang board na “{{label}}”",
       "watchThis": "Bantayan ang board na ito"
@@ -59,6 +60,7 @@
     },
     "facts": {
       "countriesLabel": "Karamihan ng role sa",
+      "countriesLabelPooled": "Karamihan ng role sa buong hiring system ng {{company}} ay nasa",
       "payLabel": "May sahod sa",
       "payValue": "{{k}} sa {{n}}",
       "systemLabel": "Hiring system",
@@ -69,6 +71,8 @@
     "factsLabel": "Tungkol sa board na ito",
     "h1Generic": "Mga role sa board na “{{label}}”",
     "h1GenericSystem": "Mga role sa board na “{{label}}” ({{system}})",
+    "h1SystemBoard": "Mga role sa isang {{system}} board",
+    "h1ThisBoard": "Mga role sa board na ito",
     "mix": {
       "basis": "Ang pinakamalalaking grupo sa mga bukas na role na nabasa namin noong {{date}}; hindi kasama ang mga role sa larangang hindi namin nakikilala.",
       "basisUndated": "Ang pinakamalalaking grupo sa mga bukas na role na nabasa namin; hindi kasama ang mga role sa larangang hindi namin nakikilala.",
@@ -91,6 +95,8 @@
       "basis": "Taunang halaga mula sa mga saklaw ng sahod na nakasaad sa mga bukas nilang posting; hindi binibilang ang mga posting na walang sahod.",
       "floor_one": "Karaniwang pinakamababa sa nakasaad na saklaw ng sahod: {{amount}} · median sa {{m}} posting na {{currency}}",
       "floor_other": "Karaniwang pinakamababa sa nakasaad na saklaw ng sahod: {{amount}} · median sa {{m}} posting na {{currency}}",
+      "floorPooled_one": "Karaniwang pinakamababa sa nakasaad na saklaw ng sahod: {{amount}} · median sa {{m}} posting na {{currency}} sa buong hiring system ng employer na ito",
+      "floorPooled_other": "Karaniwang pinakamababa sa nakasaad na saklaw ng sahod: {{amount}} · median sa {{m}} posting na {{currency}} sa buong hiring system ng employer na ito",
       "read": "nabasa noong {{date}}",
       "stated": "May sahod sa {{k}} sa {{n}} posting",
       "title": "Sahod"
@@ -182,6 +188,7 @@
     "undatedMore": "({{u}} pa ang walang petsa)",
     "boardTotal_one": "{{total}} role ang nakalista sa kabuuan sa board nila nang basahin namin ito {{ago}}.",
     "boardTotal_other": "{{total}} role ang nakalista sa kabuuan sa board nila nang basahin namin ito {{ago}}.",
-    "pooledBoards": "Binilang sa {{n}} board sa hiring system ng employer na ito"
+    "pooledBoards": "Binilang sa {{n}} board sa hiring system ng employer na ito",
+    "employerChipOneBoard": "Rekord ng pag-hire para sa isa sa {{n}} board ng employer na ito: {{board}}"
   }
 }

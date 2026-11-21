@@ -32,7 +32,8 @@ import { logAiUsage } from "../_shared/ai-fallback.ts";
 // regular expression.
 // 2026-11-09.2 (cost wave review 2026-11-15: the usage line beside the reply it parses, over the ci-edge lane's 2026-11-09.1). 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
 // 2026-11-12.1 (bug round of 2026-11-08, part A, shortlist lane, RC-S13-073, S14X-022, S14X-023, S14X-024, S14X-025, S14X-105, S14X-106, S14X-162, S14X-197, S14X-288, S14X-289): the redactor, now beside this function, reads personal fields in seven more languages and one neutral mark replaces them, no caller blocklist is read, a candidate whose attestation note cannot be written is removed, every refusal has a code, and a scorer outage is a 503 with Retry-After.
-const FN_BUILD = "shortlist-evaluate.2026-11-12.1";
+// 2026-11-13.1 (bug round of 2026-11-08, part B, shortlist-b lane, S14X-164): the planted-instruction check (_shared/planted-instructions.ts) also flags an attempt to steer the scorer written in German, French, Spanish, Portuguese, Dutch, Hindi, Tagalog, Chinese or Japanese; it still never changes a score or blocks an evaluation.
+const FN_BUILD = "shortlist-evaluate.2026-11-13.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
