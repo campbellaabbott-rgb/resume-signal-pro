@@ -21,3 +21,42 @@
 /jobs/posting/workday/massgeneralbrigham~wd1~MGBExternal/RQ4084036-1 2026-11-19 employer
 /jobs/posting/workday/pnc~wd5~External/R217438-1 2026-11-19 employer
 /jobs/posting/workday/rsmaus~wd105~RSMCareers/JR101377 2026-11-19 employer
+
+# posting-closure run 44893188830 (scheduled 2026-11-21 10:12Z): 36 of the 455
+# pages with a definite employer answer were closed at the employer. The 7
+# above are among them; these are the other 29, each dated the day the check
+# first named it (run 44649560402 measured 2026-11-20 and named 14 of them).
+# Read at 2026-11-21 17:15Z as a crawler is served them: 27 of the 29 were
+# already retired by the bake's own read, and advanceauto R-0597662, cw
+# R342972 and tapestry JR20800 were still in the sitemap with their markup,
+# carried by a bake that could not read their employer. A later publish
+# re-reads the newest run and adds what it names.
+/jobs/posting/adp/6f977557-f6eb-4f25-922c-96f9b3a3ee19/9201318551534_35 2026-11-21 employer
+/jobs/posting/icims/careers.orlandohealth.com/331442 2026-11-21 employer
+/jobs/posting/icims/careers.primehealthcare.com/284056 2026-11-20 employer
+/jobs/posting/icims/careers.publicisgroupe.com/178383 2026-11-21 employer
+/jobs/posting/oracle/ekeq~em2~CX_1/N134928 2026-11-21 employer
+/jobs/posting/oracle/evac~us2~CX_1/466791 2026-11-20 employer
+/jobs/posting/workday/abcfinancial~wd5~ABCFinancialServices/REQ-1646 2026-11-20 employer
+/jobs/posting/workday/advanceauto~wd5~AdvanceExternalCareers/R-0597662 2026-11-20 employer
+/jobs/posting/workday/agilent~wd5~Agilent_Careers/4039388 2026-11-21 employer
+/jobs/posting/workday/astrazeneca~wd3~Careers/R-243632 2026-11-21 employer
+/jobs/posting/workday/cardinalhealth~wd1~EXT/20190776 2026-11-20 employer
+/jobs/posting/workday/cw~wd1~External/R333764 2026-11-20 employer
+/jobs/posting/workday/cw~wd1~External/R342972 2026-11-21 employer
+/jobs/posting/workday/imh~wd108~IntermountainCareers/R189569 2026-11-21 employer
+/jobs/posting/workday/jci~wd5~JCI/WD30269842 2026-11-20 employer
+/jobs/posting/workday/jci~wd5~JCI/WD30283078 2026-11-20 employer
+/jobs/posting/workday/jci~wd5~JCI/WD30283079 2026-11-20 employer
+/jobs/posting/workday/jci~wd5~JCI/WD30284213 2026-11-20 employer
+/jobs/posting/workday/jci~wd5~JCI/WD30284378 2026-11-20 employer
+/jobs/posting/workday/jj~wd5~JJ/R-107893-1 2026-11-21 employer
+/jobs/posting/workday/jj~wd5~JJ/R-108845-1 2026-11-21 employer
+/jobs/posting/workday/jj~wd5~JJ/R-108850-1 2026-11-21 employer
+/jobs/posting/workday/labcorp~wd1~External/2635915 2026-11-20 employer
+/jobs/posting/workday/mmc~wd1~MMC/323776 2026-11-21 employer
+/jobs/posting/workday/myview~wd3~paradox_careers/R2000730515 2026-11-21 employer
+/jobs/posting/workday/rbnz~wd3~RBNZ/JR101848 2026-11-21 employer
+/jobs/posting/workday/sbdinc~wd1~Stanley_Black_Decker_Career_Site/REQ-1000050575 2026-11-20 employer
+/jobs/posting/workday/tapestry~wd108~Tapestry_Careers/JR20800 2026-11-21 employer
+/jobs/posting/workday/townepark~wd5~ext/REQ26-71466 2026-11-20 employer
