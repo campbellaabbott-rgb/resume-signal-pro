@@ -12,7 +12,7 @@
  * audit found written back into them.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { cpSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -25,6 +25,26 @@ const TODAY = new Date().toISOString().slice(0, 10);
 const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
 const dirs: string[] = [];
 afterAll(() => { for (const d of dirs) { try { rmSync(d, { recursive: true, force: true }); } catch { /* best effort */ } } });
+
+// R4b reads the newest posting-closure run through gh. A fake gh goes first on
+// PATH so this harness never asks GitHub: its run measured yesterday and
+// names the one closed page (CLOSED) these sites serve. R4b's own cases are in
+// the-closure-line-fails-when-the-newest-run-names-a-live-page.test.ts.
+let GH_DIR = "";
+function ghDir(): string {
+  if (GH_DIR) return GH_DIR;
+  GH_DIR = mkdtempSync(join(tmpdir(), "vd-98zzz-gh-"));
+  dirs.push(GH_DIR);
+  const day = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  writeFileSync(join(GH_DIR, "runs.json"), JSON.stringify([{ databaseId: 1, createdAt: `${day}T00:44:08Z`, status: "completed", conclusion: "success" }]));
+  writeFileSync(join(GH_DIR, "run.log"), [
+    `check\tMeasure the closed share and apply the rule\t${day}T00:45:29.0Z posting closure: ${day} checked 2: 1 open, 1 closed, 0 unknown; closed share 50.0% (95% CI 9.5-90.5%), unknown 0.0%`,
+    `check\tMeasure the closed share and apply the rule\t${day}T00:45:29.1Z posting closure:   closed at the employer: ${CLOSED}`,
+  ].join("\n"));
+  writeFileSync(join(GH_DIR, "gh"), `#!/bin/sh\nif [ "$1 $2" = "run list" ]; then cat "${join(GH_DIR, "runs.json")}"; exit 0; fi\nif [ "$1 $2 $3" = "run view 1" ]; then cat "${join(GH_DIR, "run.log")}"; exit 0; fi\nexit 1\n`);
+  chmodSync(join(GH_DIR, "gh"), 0o755);
+  return GH_DIR;
+}
 
 const FETCH_STUB = `const fs=require("fs");
 const routes=JSON.parse(fs.readFileSync(process.env.VD_ROUTES,"utf8"));
@@ -44,7 +64,7 @@ function runSection(routes: Route[], list: string): string[] {
   writeFileSync(join(dir, "run.sh"), `set -u\nSITE=${SITE}; UA=ua\n. ${JSON.stringify(resolve(ROOT, "scripts/verify-deploy.d/98zzz-seo-1118-bake.sh"))}\n`);
   const env: NodeJS.ProcessEnv = {
     ...process.env,
-    PATH: `${dirname(process.execPath)}:${process.env.PATH ?? ""}`,
+    PATH: `${ghDir()}:${dirname(process.execPath)}:${process.env.PATH ?? ""}`,
     VD_ROUTES: join(dir, "routes.json"),
     VD98ZZZ_LIST: join(dir, "closed.txt"),
     NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --require ${join(dir, "fetch.cjs")}`.trim(),
@@ -92,9 +112,9 @@ const closedStub: Route = { url: `${SITE}${CLOSED}`, body: pageHtml({ path: CLOS
 
 describe("as the bake now serves it", () => {
   const lines = runSection(site(GOOD, { ledger: goodLedger, extra: [closedStub] }), `# closed\n${CLOSED} ${daysAgo(1)} employer\n`);
-  it("PASSes R1, R2, R4, R5 and R7, and FAILs none of them (this site serves no page phase A2 reads)", () => {
-    for (const r of ["R1", "R2", "R4", "R5", "R7"]) expect(has(lines, "PASS", new RegExp(`^PASS\\s+${r} `)), `${r}\n${show(lines)}`).toBe(true);
-    expect(lines.filter((l) => /^FAIL\s+(?:R[12457] |98zzz)/.test(l)), show(lines)).toEqual([]);
+  it("PASSes R1, R2, R4, R4b, R5 and R7, and FAILs none of them (this site serves no page phase A2 reads)", () => {
+    for (const r of ["R1", "R2", "R4", "R4b", "R5", "R7"]) expect(has(lines, "PASS", new RegExp(`^PASS\\s+${r} `)), `${r}\n${show(lines)}`).toBe(true);
+    expect(lines.filter((l) => /^FAIL\s+(?:R[12457] |R4b |98zzz)/.test(l)), show(lines)).toEqual([]);
     expect(has(lines, "INFO", /R5 0 of 2 JobPosting descriptions are HTML paragraphs/), show(lines)).toBe(true);
   });
 });
@@ -128,6 +148,9 @@ describe("with each defect the audit found", () => {
   it("R4 FAILs a listed page still in the sitemap, and ignores a line over 14 days old", () => {
     expect(has(lines, "FAIL", /^FAIL\s+R4 1 page\(s\) the daily check found closed at the employer: \/jobs\/posting\/workday\/asml~wd3~asmlext1\/J-00348204 is in the sitemap/), show(lines)).toBe(true);
   });
+  it("R4b FAILs the page the newest closure run named, still in the sitemap with its JobPosting", () => {
+    expect(has(lines, "FAIL", /^FAIL\s+R4b the newest posting-closure run 1 \(.*\) measured \d{4}-\d{2}-\d{2} and named 1 page\(s\) closed at the employer: 1 still served as open; \/jobs\/posting\/workday\/asml~wd3~asmlext1\/J-00348204 is in the sitemap, serves no noindex, serves a JobPosting$/), show(lines)).toBe(true);
+  });
   it("R5 FAILs each title, place, repeated paragraph and duplicate", () => {
     const r5 = lines.find((l) => /^FAIL\s+R5 /.test(l)) ?? "";
     expect(r5, show(lines)).toMatch(/R5 7 JobPostings: 6 problem\(s\)/);
@@ -147,7 +170,7 @@ describe("with each defect the audit found", () => {
     expect(has(lines, "FAIL", new RegExp(`^FAIL\\s+R7 .*acme/9 lastmod ${daysAgo(10)}, datePosted ${posted}`)), show(lines)).toBe(true);
   });
   it("PASSes none of them", () => {
-    for (const r of ["R1", "R2", "R4", "R5", "R7"]) expect(has(lines, "PASS", new RegExp(`^PASS\\s+${r} `)), `${r}\n${show(lines)}`).toBe(false);
+    for (const r of ["R1", "R2", "R4", "R4b", "R5", "R7"]) expect(has(lines, "PASS", new RegExp(`^PASS\\s+${r} `)), `${r}\n${show(lines)}`).toBe(false);
   });
 });
 
@@ -176,7 +199,7 @@ function runOnDist(dist: string): string[] {
   writeFileSync(join(dir, "run.sh"), `set -u\nSITE=${SITE}; UA=ua\n. ${JSON.stringify(resolve(ROOT, "scripts/verify-deploy.d/98zzz-seo-1118-bake.sh"))}\n`);
   const env: NodeJS.ProcessEnv = {
     ...process.env,
-    PATH: `${dirname(process.execPath)}:${process.env.PATH ?? ""}`,
+    PATH: `${ghDir()}:${dirname(process.execPath)}:${process.env.PATH ?? ""}`,
     VD_DIST: dist,
     VD98ZZZ_LIST: join(dir, "closed.txt"),
     NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --require ${join(dir, "fetch.cjs")}`.trim(),

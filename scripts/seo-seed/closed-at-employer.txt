@@ -10,3 +10,14 @@
 #
 # One line per page: <path> <YYYY-MM-DD the check found it closed> <basis>
 # A line older than 14 days is ignored, so old lines may stay until tidied.
+
+# posting-closure run 44431382185 (scheduled 2026-11-19 00:44Z): 7 of the 474
+# pages with a definite employer answer were closed at the employer. Run
+# 44508464373 (10:44Z) re-read the same day's verdict and named the same 7.
+/jobs/posting/workday/fivebelow~wd1~fivebelowcareers/JR103021 2026-11-19 employer
+/jobs/posting/workday/freseniusmedicalcare~wd3~fme/R0217655 2026-11-19 employer
+/jobs/posting/workday/gdit~wd5~External_Career_Site/RQ230851-1 2026-11-19 employer
+/jobs/posting/workday/knitwellgroup~wd1~US_Retail_Jobs/R-2038250 2026-11-19 employer
+/jobs/posting/workday/massgeneralbrigham~wd1~MGBExternal/RQ4084036-1 2026-11-19 employer
+/jobs/posting/workday/pnc~wd5~External/R217438-1 2026-11-19 employer
+/jobs/posting/workday/rsmaus~wd105~RSMCareers/JR101377 2026-11-19 employer
