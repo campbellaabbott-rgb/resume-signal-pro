@@ -86,7 +86,7 @@ describe("a company page carries what the board knows about that employer and no
 
   it("drops the catch-all bucket and empty rows from the facts", () => {
     const f = factsOf({ countries: [{ n: 0, country: "FR" }], categories: [{ n: 9, category: "other" }] });
-    expect(f).toEqual({ countries: [], fields: [] });
+    expect(f).toEqual({ countries: [], fields: [], pay: null });
     expect(landerHasOwnContent({ openings: [] })).toBe(false);
   });
 });

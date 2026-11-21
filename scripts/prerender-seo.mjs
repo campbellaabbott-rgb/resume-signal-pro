@@ -112,7 +112,7 @@ export const setContent = (html, prefix, value) => putVerbatim(html, new RegExp(
 // (an auth wall, say) and should never be indexed at all.
 export const composeHtml = (
   { path, title, description, content, jsonLd = [], hreflang = null, lang = null, isFallback = false, canonical = null, robots = null, employerStated = null, postingClosed = null },
-  { template, D, esc, shell, preloadFor, publicHref, onTruncated, routeTailFor = null },
+  { template, D, esc, shell, preloadFor, publicHref, onTruncated, routeTailFor = null, skipLinkFor = null },
 ) => {
   // SERP snippets truncate ~160 chars; clamp at a word boundary so no page
   // (current or future) ships an overlong description.
@@ -248,6 +248,10 @@ export const composeHtml = (
     ? `<script>if(location.pathname!=="/"||${D.scannerAddressScript()}){var r=document.getElementById("root");if(r)r.innerHTML="";var c=document.querySelector('link[rel="canonical"]');if(c)c.remove();document.querySelectorAll('script[data-home-only]').forEach(function(s){s.remove();});}if(location.pathname!=="/"){var m=document.querySelector('meta[name="robots"]');if(m)m.setAttribute("content","noindex, follow");}</script>`
     : "";
   html = putVerbatim(html, '<div id="root"></div>', `<div id="root">${shell(content, lang)}</div>${clearScript}`);
+  // CONTENT-N4: the template's skip link in the page's own language, marked
+  // with it, as SkipLinkFallback marks the words it puts there.
+  const skip = lang && typeof skipLinkFor === "function" ? skipLinkFor(lang) : null;
+  if (skip) html = html.replace(/(<a href="#main-content"[^>]*)>\s*Skip to main content\s*<\/a>/, (all, open) => `${open} lang="${esc(lang)}">${esc(skip)}</a>`);
   return html;
 };
 
@@ -540,8 +544,23 @@ export function changelogDescription(latest, max = 160) {
   return cut.length >= 30 && cut.length <= room ? `${lead}${cut}…` : CHANGELOG_DESC_LEAD;
 }
 
-export function postingPagesManifest(entries, { today, isPosting, href = (p) => p }) {
-  return { at: today, live: (Array.isArray(entries) ? entries : []).filter((e) => isPosting(e)).map((e) => href(e.path)) };
+export function postingPagesManifest(entries, { today, isPosting, href = (p) => p, about = () => null }) {
+  const live = (Array.isArray(entries) ? entries : []).filter((e) => isPosting(e));
+  // CRAWL18B-4 (SEO audit 2026-11-18): each live page also as a row with the
+  // title and company it prints and its board field, so a rendered hub (the
+  // homepage, /jobs, a field or company page) can link the baked pages by
+  // name. A row has exactly the sitemap's paths; a field the bake did not
+  // sort is null, and a title or company it does not know is left out.
+  const rows = live.map((e) => {
+    const a = about(e.path) ?? {};
+    return {
+      path: href(e.path),
+      ...(typeof a.title === "string" && a.title ? { title: a.title } : {}),
+      ...(typeof a.company === "string" && a.company ? { company: a.company } : {}),
+      field: typeof a.field === "string" && a.field ? a.field : null,
+    };
+  });
+  return { at: today, live: live.map((e) => href(e.path)), rows };
 }
 
 /** The "no longer listed" page a posting its employer closed gets: state "gone", basis "employer" (B01). */
@@ -675,6 +694,45 @@ export function citeLicenceText(licence) {
   return licence ? ` The figures on the data pages (the Ghost Job Index, pay transparency, entry-level and hiring-trends pages and the ATS score benchmarks) are published under CC BY 4.0 (${licence}); bulk data through the API is licensed separately.` : "";
 }
 
+/**
+ * THE ROLES A FIELD LANDER NAMES (SEO audit 2026-11-18, OPP-2): the field's
+ * FIELD_ROLES names in their own order, each with the first baked posting
+ * page (newest first) whose title names the role as whole words; a name with
+ * no such page is left out. At most 8, with no counts.
+ */
+export function landerRoleLinks(roles, postings, most = 8) {
+  const words = (t) => ` ${String(t ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()} `;
+  const newestFirst = [...postings].filter((p) => p && p.path && p.title)
+    .sort((a, b) => String(b.postedAt ?? "").localeCompare(String(a.postedAt ?? "")));
+  const out = [];
+  const used = new Set();
+  for (const role of roles) {
+    const want = words(role);
+    if (want.trim() === "") continue;
+    const p = newestFirst.find((x) => !used.has(x.path) && words(x.title).includes(want));
+    if (!p) continue;
+    used.add(p.path);
+    out.push({ role, path: p.path });
+    if (out.length >= most) break;
+  }
+  return out;
+}
+
+/**
+ * THE OTHER BAKED POSTINGS A POSTING PAGE LINKS (SEO audit 2026-11-18,
+ * CONTENT-N2): up to three other live pages, the same employer's first and
+ * then the same field's, newest first within each (ties by path); never the
+ * page itself, never one twice. A posting with neither an employer token nor
+ * a field links none.
+ */
+export function relatedPostingLinks(self, live, most = 3) {
+  const others = (Array.isArray(live) ? live : []).filter((p) => p && p.path && p.title && p.path !== self?.path);
+  const newest = (a, b) => String(b.postedAt ?? "").localeCompare(String(a.postedAt ?? "")) || String(a.path).localeCompare(String(b.path));
+  const sameEmployer = self?.token ? others.filter((p) => p.token === self.token).sort(newest) : [];
+  const sameField = self?.category ? others.filter((p) => p.category === self.category && !(self.token && p.token === self.token)).sort(newest) : [];
+  return [...sameEmployer, ...sameField].slice(0, most);
+}
+
 export function postingCheckedClause(possessiveName, read, today) {
   return read === "open"
     ? `this page was built ${today}, when the posting was open on ${possessiveName} own hiring system`
@@ -729,11 +787,15 @@ export { onetForRole } from "../src/lib/onet-match";
 export { roleListCopy } from "../src/lib/role-page-copy";
 export { ROLE_PAGES, rolesForIndustry, indexableRolesForIndustry, siblingRolePages } from "../src/data/roles";
 export { displayKeyword, industryLabel, inSentence, withArticle } from "../src/lib/seo/display-case";
-export { industryKeywordsHead, roleKeywordsHead } from "../src/lib/seo/keyword-pages";
+export { descriptionKeywords, industryKeywordsHead, roleKeywordsHead } from "../src/lib/seo/keyword-pages";
 export { TOOL_LANDINGS } from "../src/data/tool-landings";
 export { SCAN_RESULTS_WITHIN_SECONDS } from "../src/config/scan-timing";
 export { COMPETITORS, competitorWords } from "../src/data/competitors";
 export { FIELD_ROLES } from "../src/data/field-roles";
+export { DEMAND_EMPLOYER_TOKENS, DEMAND_EMPLOYER_MIN_OPEN, DEMAND_EMPLOYER_CAP } from "../src/data/demand-employers";
+export { BOARD_CATEGORY_SLUGS, INDUSTRY_TO_CATEGORY } from "../src/lib/job-board-categories";
+export { BOARD_CATEGORY_LABELS } from "../src/lib/board-category-labels";
+export { relatedIndustries } from "../src/lib/seo/related-industries";
 export { VENDORS } from "../src/data/ats-vendors";
 export { ES_INDUSTRIES, isSpanish, esIndustryTerms, capitalizeFirst } from "../src/data/es-industries";
 export { SCREENER_NOTES } from "../src/data/screener-notes";
@@ -1299,6 +1361,13 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       ? P.companyHref
       : (token, query) => `/jobs?company=${encodeURIComponent(String(token ?? ""))}${query ? `&${query}` : ""}`;
     const fieldLabel = typeof P.fieldLabel === "function" ? P.fieldLabel : (slug) => String(slug).replace(/_/g, " ");
+    // CONTENT-N2 (SEO audit 2026-11-18): a field a table names links its
+    // lander when the board has one (P.fieldHref), in the bytes a crawler reads.
+    const fieldHref = typeof P.fieldHref === "function" ? P.fieldHref : () => null;
+    const fieldCell = (slug) => {
+      const href = fieldHref(slug);
+      return href ? `<a href="${esc(href)}">${esc(fieldLabel(slug))}</a>` : esc(fieldLabel(slug));
+    };
     // RANKED UNDER A SYSTEM CODE (SEO audit 2026-11-18, GEO-11): leaderboard
     // rows printed "Shusa", "Bne" and "Lapoflove", the boards' own codes. A
     // row whose printed name is still its board's code (the rule a new
@@ -1473,7 +1542,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         : [];
       const fields = byCat.length
         ? table("Where the early-career openings are", ["Field", "Openings"],
-            byCat.map(([slug, n]) => [`<a href="/jobs?category=${encodeURIComponent(slug)}&amp;experience=entry">${esc(fieldLabel(slug))}</a>`, fmt(n)]),
+            // CONTENT-N2: the field's name links its lander; the count keeps
+            // the board's entry-level facet for that field.
+            byCat.map(([slug, n]) => [fieldCell(slug), `<a href="/jobs?category=${encodeURIComponent(slug)}&amp;experience=entry">${fmt(n)}</a>`]),
             basis)
         : "";
       // THE COLUMN IT IS RANKED ON IS A COLUMN ON THE TABLE. The RPC orders
@@ -1581,7 +1652,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         .slice(0, 10)
         .map((c) => {
           const d = deltasMature && num(c.prior7) >= 20 ? Math.round((100 * (c.last7 - c.prior7)) / c.prior7) : null;
-          return [esc(fieldLabel(String(c.category))), fmt(c.last7), d === null ? "—" : `${d > 0 ? "+" : ""}${d}%`];
+          return [fieldCell(String(c.category)), fmt(c.last7), d === null ? "—" : `${d > 0 ? "+" : ""}${d}%`];
         });
       const fields = catRows.length
         ? table("Which fields are hiring, last 7 days", ["Field", "New postings", "vs the 7 days before"], catRows,
@@ -1628,7 +1699,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       ], basis);
       const catRows = Array.isArray(p?.categories)
         ? p.categories.filter((c) => isObj(c) && num(c.pay_pct) !== null).slice(0, 10)
-            .map((c) => [esc(fieldLabel(String(c.category))), `${c.pay_pct}%`, fmt(c.total) ?? "—"])
+            .map((c) => [fieldCell(String(c.category)), `${c.pay_pct}%`, fmt(c.total) ?? "—"])
         : [];
       const fields = catRows.length
         ? table("By field", ["Field", "State pay", "Postings"], catRows, `${basis} Fields with fewer than 200 postings are left out rather than shown on a sample too small to read.`)
@@ -1890,25 +1961,10 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   const UI_LANGUAGES = new Set(readdirSync(join(root, "src/i18n/locales")).filter((f) => f.endsWith(".json")).map((f) => f.split(/[-.]/)[0])).size;
   // Hoisted from the jobs-lander block: the /explore prerender links the same
   // field pages.
-  const CATEGORY_LANDERS = [
-    ["engineering", "Engineering & IT"],
-    ["data_ai", "Data & AI"],
-    ["design", "Design"],
-    ["product", "Product"],
-    ["marketing", "Marketing & Comms"],
-    ["sales", "Sales & Partnerships"],
-    ["customer", "Customer Success & Support"],
-    ["finance", "Finance & Accounting"],
-    ["legal", "Legal & Compliance"],
-    ["people_hr", "People & Recruiting"],
-    ["operations", "Operations & Logistics"],
-    ["healthcare", "Healthcare & Clinical"],
-    ["science", "Science & Research"],
-    ["education", "Education"],
-    ["hospitality_retail", "Hospitality & Retail"],
-    ["security", "Security & Trust"],
-    ["admin", "Administrative"],
-  ];
+  // The board's own English names for its fields (BOARD_CATEGORY_LABELS,
+  // held equal to the English locale's jobsPage.categories), in the board's
+  // order, so the landers and every page that links them name a field one way.
+  const CATEGORY_LANDERS = D.BOARD_CATEGORY_SLUGS.map((s) => [s, D.BOARD_CATEGORY_LABELS[s]]);
 
   const chip = (text, cls = "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-foreground capitalize") =>
     `<span class="${cls}">${esc(text)}</span>`;
@@ -1968,14 +2024,56 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   // too, each label in the app's English (the main locale). The two typed
   // lists had drifted until the crawler's footer linked none of /guides, the
   // ATS guides, /builder, /data-api or the legal pages.
-  const siteLinkHtml = (link, cls) => `<a href="${link.to}" class="${cls}">${esc(D.siteLinkLabel(link, D.EN_LOCALE))}</a>`;
+  //
+  // A TRANSLATED PAGE'S SHELL IS IN ITS OWN LANGUAGE (SEO audit 2026-11-18,
+  // CONTENT-N4): /fr/normes-cv/france printed "Companies hiring" and
+  // "Pricing" around French text, 19 to 31% of a translated page's words in
+  // English. A page with a `lang` takes that locale's labels (a key it lacks
+  // keeps the English one), as React's Header and Footer now do on the same
+  // addresses (src/lib/locale-from-path.ts).
+  const siteLinkHtml = (link, cls, locale = D.EN_LOCALE) => `<a href="${link.to}" class="${cls}">${esc(D.siteLinkLabel(link, locale))}</a>`;
+  const localeFiles = new Map();
+  const readLocaleJson = (dir, lang) => {
+    const key = `${dir}/${lang}`;
+    if (!localeFiles.has(key)) {
+      let v = null;
+      for (const name of [lang, String(lang).split("-")[0]]) {
+        const f = join(root, dir, `${name}.json`);
+        if (v === null && existsSync(f)) { try { v = JSON.parse(readFileSync(f, "utf8")); } catch { v = null; } }
+      }
+      localeFiles.set(key, v);
+    }
+    return localeFiles.get(key);
+  };
+  const shellLocale = (lang) => (!lang || lang === "en" ? D.EN_LOCALE : readLocaleJson("src/i18n/locales", lang) ?? D.EN_LOCALE);
   const SHELL_HEADER_NAV = D.BAKED_HEADER_LINKS.map((l) => siteLinkHtml(l, "hover:text-foreground")).join("\n          ");
   const SHELL_FOOTER_NAV = D.BAKED_FOOTER_LINKS.map((l) => siteLinkHtml(l, "hover:text-foreground")).join("\n          ");
+  const shellNavs = new Map([["en", { SHELL_HEADER_NAV, SHELL_FOOTER_NAV }]]);
+  /** The header and footer link rows in a page's language (English for a page with none). */
+  const shellNavFor = (lang) => {
+    const k = lang || "en";
+    if (!shellNavs.has(k)) {
+      const loc = shellLocale(lang);
+      shellNavs.set(k, {
+        SHELL_HEADER_NAV: D.BAKED_HEADER_LINKS.map((l) => siteLinkHtml(l, "hover:text-foreground", loc)).join("\n          "),
+        SHELL_FOOTER_NAV: D.BAKED_FOOTER_LINKS.map((l) => siteLinkHtml(l, "hover:text-foreground", loc)).join("\n          "),
+      });
+    }
+    return shellNavs.get(k);
+  };
+  /** The skip link's words in a translated page's language (the site-shell shard), or null to keep the template's English. */
+  const skipLinkFor = (lang) => {
+    if (!lang || lang === "en") return null;
+    const v = readLocaleJson("src/i18n/shards/site-shell", lang)?.siteShell?.skipToMain;
+    return typeof v === "string" && v.trim() ? v : null;
+  };
   // Static shell around page content: simple header/footer so crawlers see
   // site-wide internal links. The SPA replaces all of it on hydration. The
   // header's links wrap: in one row they made every baked page 10-13 px
   // wider than a 320 px phone (review round 2026-10-26).
-  const shell = (contentHtml, lang) => `
+  const shell = (contentHtml, lang) => {
+    const { SHELL_HEADER_NAV, SHELL_FOOTER_NAV } = shellNavFor(lang);
+    return `
     <div class="min-h-screen bg-background" ${lang ? `lang="${lang}"` : ""}>
       <header class="py-4 border-b border-border"><div class="container flex items-center justify-between gap-4">
         <a href="/" class="font-bold text-foreground">Resume Booster</a>
@@ -1991,12 +2089,13 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         ${SELLER_LINE}
       </div></footer>
     </div>`;
+  };
 
   // ---- Write one page ----
   // composeHtml (top of file) does the head and body surgery; this hands it
   // the bake's template and helpers and writes what comes back.
   const renderFile = (page) => {
-    const html = composeHtml(page, { template, D, esc, shell, preloadFor, publicHref, routeTailFor, onTruncated: (t) => truncatedDescriptions.push(t) });
+    const html = composeHtml(page, { template, D, esc, shell, preloadFor, publicHref, routeTailFor, skipLinkFor, onTruncated: (t) => truncatedDescriptions.push(t) });
 
     if (page.isFallback) {
       writeFileSync(join(dist, "index.html"), html);
@@ -2127,7 +2226,10 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     // the field links the full-name page, as React's /industries page does.
     const roles = D.indexableRolesForIndustry(slug);
     const note = D.SCREENER_NOTES[slug];
-    const related = Object.keys(D.INDUSTRY_KEYWORDS).filter((s) => s !== slug).sort().slice(0, 8);
+    // CONTENT-N1: the shared helper, so every industry page is linked by its siblings.
+    const related = D.relatedIndustries(slug, D.INDUSTRY_KEYWORDS, D.INDUSTRY_TO_CATEGORY);
+    // CONTENT-N8: the field lander React links, in the bytes a crawler reads.
+    const fieldSlug = D.INDUSTRY_TO_CATEGORY[slug] ?? null;
     const industryFaqs = D.buildIndustryFaqs({ name, keywords, certifications: certs, screenerNote: note });
     const head = D.industryKeywordsHead(slug, keywords);
     const lower = inSentence(name);
@@ -2148,6 +2250,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Industries", href: "/industries" }, { name }])}
         <h1 class="text-3xl font-bold mb-3">${esc(name)} Resume Keywords &amp; ATS Expectations</h1>
         <p class="text-muted-foreground mb-8">This isn't an article — it's the live data our resume scanner uses to analyze ${esc(lower)} resumes. When the engine improves, this page updates with it.</p>
+        ${fieldSlug ? `<p class="mb-8 -mt-4"><a href="/jobs/field/${fieldSlug}" class="text-primary font-medium">See live ${esc(lower)} openings on the job board →</a> <span class="text-xs text-muted-foreground">pulled from companies' official job boards, re-read through the day</span></p>` : ""}
         ${onetBlock(onet)}
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">Keywords ATS systems expect on ${esc(lower)} resumes</h2>${kwChips(keywords, slug)}</section>
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">Job titles recruiters recognize in this field</h2>${chips(titles.map((t) => displayKeyword(t, slug)), "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>
@@ -2195,6 +2298,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Industries", href: "/industries" }, { name: indName, href: `/industries/${role.industry}` }, { name: role.title }])}
         <h1 class="text-3xl font-bold mb-3">${esc(role.title)} Resume Keywords &amp; ATS Expectations</h1>
         <p class="text-muted-foreground mb-8">${esc(copy.intro)}</p>
+        ${D.INDUSTRY_TO_CATEGORY[role.industry] ? `<p class="mb-8 -mt-4"><a href="/jobs/field/${D.INDUSTRY_TO_CATEGORY[role.industry]}" class="text-primary font-medium">Live ${esc(D.BOARD_CATEGORY_LABELS[D.INDUSTRY_TO_CATEGORY[role.industry]])} jobs on the board →</a></p>` : ""}
         ${onetBlock(onet)}
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">${esc(copy.keywordsHeading)}</h2>${kwChips(keywords, role.industry)}</section>
         ${certs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">${esc(copy.certsHeading)}</h2>${chips(certs, "px-2.5 py-1 rounded-lg bg-success/5 border border-success/25 text-sm text-foreground uppercase")}</section>` : ""}
@@ -2279,7 +2383,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       hreflang: { en: `/industries/${slug}`, es: `/es/industrias/${slug}` },
       title: `Palabras Clave para Currículum de ${name} — Qué Buscan los ATS`.length > 68 ? `Palabras Clave para CV de ${name} — Guía ATS` : `Palabras Clave para Currículum de ${name} — Qué Buscan los ATS`,
       // A snippet opens with a capital (SEO-F16).
-      description: listDesc(esKeywords.slice(0, 5).map((k, i) => (i === 0 ? D.capitalizeFirst(k) : k)), " y más: ", `las palabras clave, títulos y certificaciones que nuestro escáner busca en ${name.toLowerCase()}. Escaneo gratis.`),
+      description: listDesc(D.descriptionKeywords(esKeywords, slug).slice(0, 5).map((k, i) => (i === 0 ? D.capitalizeFirst(k) : k)), " y más: ", `las palabras clave, títulos y certificaciones que nuestro escáner busca en ${name.toLowerCase()}. Escaneo gratis.`),
       // The Spanish pages carried no breadcrumb markup while the English
       // twins did (SEO-034).
       jsonLd: [breadcrumbLd([{ name: "Inicio", path: "/" }, { name: "Industrias", path: "/industries" }, { name, path: `/es/industrias/${slug}` }])],
@@ -2290,6 +2394,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">Términos en español que nuestro motor reconoce</h2>${chips(esKeywords)}</section>
         ${esTitles.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Títulos profesionales reconocidos</h2>${chips(esTitles, "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>` : ""}
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">Términos en inglés que los ATS también esperan</h2>${chips(enKeywords)}</section>
+        ${D.INDUSTRY_TO_CATEGORY[slug] ? `<p class="mb-8"><a href="/jobs/field/${D.INDUSTRY_TO_CATEGORY[slug]}" class="text-primary font-medium">Ver empleos activos de este campo en el tablón →</a> <span class="text-xs text-muted-foreground">extraídos de las bolsas oficiales de las empresas, reverificados todo el día</span></p>` : ""}
         ${cta("Escanea tu currículum gratis — también en español", "Informe diagnóstico completo en segundos: palabras clave faltantes, cómo leen tu archivo los sistemas ATS, tus viñetas más débiles reescritas y un plan de mejoras. Sin registro; tu currículum se borra en un máximo de 7 días.", "Escanear mi currículum gratis", "/es/revisar-curriculum")}
         <nav class="mt-8 flex flex-wrap gap-2 text-xs">${Object.entries(D.ES_INDUSTRIES).filter(([s]) => s !== slug).map(([s, n]) => pill(`/es/industrias/${s}`, `${n} →`)).join("")}${pill("/es/revisar-curriculum", "Revisar mi currículum gratis →")}${pill(`/industries/${slug}`, "English version →")}</nav>`,
     });
@@ -2879,12 +2984,17 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   // cut and whether or not the live sitemap still lists them (Martin Brower
   // went noindex on 2026-10-31 at 107 roles against a cut of 299). The name
   // gate, the duplicate rule and the thin rule still judge them below.
+  const DEMAND_BOARDS = new Set(D.DEMAND_EMPLOYER_TOKENS ?? []);
   const LANDERS = bakeLanders(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], {
     D, openOf: openRolesOf, nameOf: (c) => bakeEmployerName(c.token, c.name, NAME_PARTS).name,
-    keep: INDEXABLE_TODAY_TOKENS, pin: new Set(D7_TRUSTED_COMPANY_TOKENS),
+    keep: INDEXABLE_TODAY_TOKENS, pin: new Set(D7_TRUSTED_COMPANY_TOKENS), demand: DEMAND_BOARDS,
   });
   {
-    const plain = new Set(bakeLanders(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], { D, openOf: openRolesOf, nameOf: (c) => bakeEmployerName(c.token, c.name, NAME_PARTS).name }).map((c) => c.token));
+    const plain = new Set(bakeLanders(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], { D, openOf: openRolesOf, nameOf: (c) => bakeEmployerName(c.token, c.name, NAME_PARTS).name, demand: DEMAND_BOARDS }).map((c) => c.token));
+    // OPP-1: the demand boards chosen above the ceiling, and the ones named that did not make their floor.
+    const demandChosen = LANDERS.filter((c) => c.demand).map((c) => c.token);
+    const demandShort = [...DEMAND_BOARDS].filter((t) => !LANDERS.some((c) => c.token === t));
+    console.log(`[prerender-seo] demand employers (src/data/demand-employers.ts): ${demandChosen.length} of ${DEMAND_BOARDS.size} chosen above the ceiling${demandChosen.length ? ` (${demandChosen.join(", ")})` : ""}; ${demandShort.length} under ${D.DEMAND_EMPLOYER_MIN_OPEN} open roles or not in the facets${demandShort.length ? ` (${demandShort.join(", ")})` : ""}`);
     const pinnedHeld = LANDERS.filter((c) => !plain.has(c.token) && D7_TRUSTED_COMPANY_TOKENS.includes(c.token)).map((c) => c.token);
     const held = LANDERS.filter((c) => !plain.has(c.token) && !D7_TRUSTED_COMPANY_TOKENS.includes(c.token)).map((c) => c.token);
     const displaced = [...plain].filter((t) => !LANDERS.some((c) => c.token === t));
@@ -2919,6 +3029,14 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       ...(cp.usajobs?.cap ? { usajobsCap: cp.usajobs.cap } : {}),
       usajobsCapValue: D.FEDERAL_LISTING_RESULT_CAP,
       ...(cp.agency?.banner ? { agencyBanner: cp.agency.banner } : {}),
+      // GEO-3: the Pay card's own English, so the bake's pay line is React's.
+      ...(cp.pay?.title ? { payTitle: cp.pay.title } : {}),
+      ...(cp.pay?.floor_one ? { payFloorOne: cp.pay.floor_one } : {}),
+      ...(cp.pay?.floor_other ? { payFloorOther: cp.pay.floor_other } : {}),
+      ...(cp.pay?.floorPooled_one ? { payFloorPooledOne: cp.pay.floorPooled_one } : {}),
+      ...(cp.pay?.floorPooled_other ? { payFloorPooledOther: cp.pay.floorPooled_other } : {}),
+      ...(cp.pay?.read ? { payRead: cp.pay.read } : {}),
+      ...(cp.pay?.basis ? { payBasis: cp.pay.basis } : {}),
     };
   })();
   const wasIndexable = (token) => INDEXABLE_TODAY.has(`/jobs/company/${token}`);
@@ -3477,6 +3595,16 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       let titlesDisambiguated = 0;
       let nameWithheld = 0;
       let unreadWithheld = 0;
+      // CONTENT-N2: every page this loop writes as live, so a posting page can
+      // link the others of its employer and its field.
+      const liveBaked = detailed.filter((d) => d.page.live).map((d) => ({
+        path: d.page.path,
+        title: D.postingTitleText(d.page.job.title),
+        company: d.page.nameRefused ? null : d.page.nm,
+        token: d.page.job.token ?? null,
+        category: typeof d.page.job.category === "string" ? d.page.job.category : null,
+        postedAt: typeof d.page.job.postedAt === "string" ? d.page.job.postedAt : null,
+      }));
       for (const { description, first, carried, page, stated, read } of detailed) {
         // What bakePostingPage decided for this row (above): the page's path,
         // the row its page prints (a refused name blanked), its markup, and
@@ -3548,7 +3676,16 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
             ${job.applyUrl ? `<p><a href="${esc(String(job.applyUrl))}" rel="noopener noreferrer nofollow">Apply on ${esc(possessive(nm))} own site</a> — the application happens on ${esc(possessive(nm))} own hiring system; this board only links to it.</p>` : ""}
             <h2>The employer's own description</h2>
             ${paras.map((p) => `<p>${esc(p)}</p>`).join("\n            ")}
-            <p>${companyLinkHtml(job.token, nm)} · <a href="/jobs">Search the live board</a> · <a href="/resume-checker">Check your resume against this posting free</a></p>
+            <p>${companyLinkHtml(job.token, nm)} · ${(() => {
+              // CONTENT-N2: the posting's field lander, where the board has one.
+              const f = typeof job.category === "string" ? CATEGORY_LANDERS.find(([s]) => s === job.category) : null;
+              return f ? `<a href="/jobs/field/${f[0]}">More ${esc(f[1])} jobs</a> · ` : "";
+            })()}<a href="/jobs">Search the live board</a> · <a href="/resume-checker">Check your resume against this posting free</a></p>
+            ${(() => {
+              const more = relatedPostingLinks({ path, token: job.token ?? null, category: typeof job.category === "string" ? job.category : null }, liveBaked);
+              return more.length ? `<h2>Other openings with a page of their own</h2>
+            <ul>${more.map((p) => `<li><a href="${p.path}">${esc(p.title)}</a>${p.company ? ` — ${esc(p.company)}` : ""}</li>`).join("")}</ul>` : "";
+            })()}
             <p>${esc(ownSentence)}</p>
           `,
           jsonLd: [...(ld ? [ld] : []), {
@@ -3584,7 +3721,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         // `applyUrl` rides along for the daily closure check, which reads each
         // live posting at its employer from the ledger alone (B01).
         const withheld = postingMarkupWithheld(page);
-        postingLedger[path] = withRetiredMark({ state: "live", since: TODAY, first, carried, title, company: nm, token: job.token ?? null, ...(job.applyUrl ? { applyUrl: String(job.applyUrl) } : {}), ...(withheld ? { markupWithheld: withheld } : {}) }, priorPostingOf(path));
+        postingLedger[path] = { state: "live", since: TODAY, first, carried, title, company: nm, token: job.token ?? null, ...(job.applyUrl ? { applyUrl: String(job.applyUrl) } : {}), ...(withheld ? { markupWithheld: withheld } : {}) };
+        // A page retired at the ceiling keeps its mark for a week (B08).
+        postingLedger[path] = withRetiredMark(postingLedger[path], priorPostingOf(path));
         // What the employer stated rides to the next bake (STRUCTURED-M1).
         postingLedger[path] = withStatedEntry(postingLedger[path], stated);
       }
@@ -3701,6 +3840,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     codeNamedSeen: CODE_NAMED_ROWS,
     systemName: (source) => D.systemLabel(source) ?? String(source ?? ""),
     fieldLabel: (slug) => (slug === "other" ? "Roles we could not sort into a field" : CATEGORY_LANDERS.find(([s]) => s === slug)?.[1] ?? String(slug).replace(/_/g, " ")),
+    fieldHref: (slug) => (CATEGORY_LANDERS.some(([s]) => s === slug) ? `/jobs/field/${slug}` : null),
   });
   for (const [k, v] of Object.entries(DATA_FIGURES)) {
     if (!v.read) console.warn(`[prerender-seo] /${k} data page: figures UNREAD — it ships its prose and says so`);
@@ -3812,6 +3952,13 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         const newest = [...(fieldPostings.get(slug) ?? [])]
           .sort((a, b) => String(b.postedAt ?? "").localeCompare(String(a.postedAt ?? "")))
           .slice(0, 8);
+        // CONTENT-N8: the resume-keyword pages of the industries this field
+        // holds (INDUSTRY_TO_CATEGORY, the map the industry pages link up by).
+        const fieldIndustries = Object.keys(D.INDUSTRY_TO_CATEGORY).filter((ind) => D.INDUSTRY_TO_CATEGORY[ind] === slug && D.INDUSTRY_KEYWORDS[ind]).sort();
+        // OPP-2: the roles we name in this field (FIELD_ROLES), each linked to
+        // a baked posting page whose title names it; a name with no page here
+        // is left out, so no name stands unlinked and no count is claimed.
+        const roleLinks = landerRoleLinks(D.FIELD_ROLES[slug] ?? [], fieldPostings.get(slug) ?? []);
         write({
           path: `/jobs/field/${slug}`,
           // L13-37: the "+" is a promise, so it takes the churn margin like every
@@ -3837,6 +3984,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           ${newest.length ? `<h2>Newest ${label} openings with a page of their own</h2>
           <ul>${newest.map((p) => `<li><a href="${p.path}">${esc(p.title)}</a> — ${esc(p.company ?? "")}${p.place ? `, ${esc(p.place)}` : ""}</li>`).join("")}</ul>` : ""}
           <p>The largest boards are re-read most often, and how far behind the rotation is right now is published on the <a href="/ghost-job-index">Ghost Job Index</a> as a measurement, not a promise. A posting a company takes down leaves the board when the rotation next re-reads that company's feed, and the live board ${RECHECK_CLAUSE}. The counts on this page were ${esc(COUNTS_BASIS)}; the board's own count refreshes through the day.</p>
+          ${roleLinks.length ? `<h2>Roles in this field</h2>
+          <p>Roles we name in ${label}, each linked to one opening with a page of its own: ${roleLinks.map((r) => `<a href="${r.path}">${esc(r.role)}</a>`).join(" · ")}.</p>` : ""}
+          ${fieldIndustries.length ? `<p>Resume keywords for this field: ${fieldIndustries.map((ind) => `<a href="/industries/${ind}">${esc(D.industryLabel(ind))} resume keywords</a>`).join(" · ")}.</p>` : ""}
           <p><a href="/jobs/field/${slug}">Browse ${label} openings on the live board</a> — filter by keyword, location, remote, and company; save searches with a free account; and check any posting against your resume with the <a href="/resume-checker">free resume scan</a> before you spend an application on it.</p>
           <p>Other fields: ${siblings} — or see <a href="/jobs">the full job board</a>.</p>
         `,
@@ -4008,7 +4158,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         const nameShared = c.primary !== c.token && c.sameEmployer === false;
         return companyLanderPage({
           token: c.token, name: c.name, primaryToken: info.primary.token, robots, canonicalTo, openN: pooled ? pooled.open : openN, boards: pooled ? pooled.boards : 1,
-          countedOn: COUNTED_ON, facts: info.facts, openings: info.openings, openingsAt: info.at, vendor: vendorOfToken(c.token), nameShared, collision: collisionOf(c.token), boardCompanies,
+          countedOn: COUNTED_ON, intelOn: TODAY, facts: info.facts, openings: info.openings, openingsAt: info.at, vendor: vendorOfToken(c.token), nameShared, collision: collisionOf(c.token), boardCompanies,
           site: SITE, esc, possessive, fmt: (n) => fmt(n), href: landerPath, kind: landerKindOf(c.token), copy: KIND_COPY,
         });
       };
@@ -5963,7 +6113,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     writeFileSync(join(dist, "sitemap.xml"), xml);
     // CRAWL-M1: the live posting pages, as the sitemap names them, beside /landers.json.
     {
-      const manifest = postingPagesManifest(entries, { today: TODAY, isPosting: (e) => e.path.startsWith(`${D.POSTING_PATH_PREFIX}/`), href: publicHref });
+      const postingAbout = new Map();
+      for (const list of postingsByToken.values()) for (const p of list) postingAbout.set(p.path, { title: p.title, company: p.company, field: p.category && CATEGORY_LANDERS.some(([s]) => s === p.category) ? p.category : null });
+      const manifest = postingPagesManifest(entries, { today: TODAY, isPosting: (e) => e.path.startsWith(`${D.POSTING_PATH_PREFIX}/`), href: publicHref, about: (path) => postingAbout.get(path) ?? (postingLedger[path] ? { title: postingLedger[path].title, company: postingLedger[path].company, field: null } : null) });
       writeFileSync(join(dist, "posting-pages.json"), JSON.stringify(manifest));
       console.log(`[prerender-seo] /posting-pages.json written: ${manifest.live.length} live posting page(s), the sitemap's own`);
     }

@@ -50,13 +50,14 @@ describe("the one list", () => {
     const page = readFileSync(join(ROOT, "src/pages/Explore.tsx"), "utf8");
     expect(page).toMatch(/import \{ FIELD_ROLES \} from "@\/data\/field-roles";/);
     expect(page).not.toMatch(/const FIELD_ROLES\b/);
-    expect(ALL).toHaveLength(116);
-    expect(new Set(ALL).size).toBe(116);
+    // 116, and the five searched roles OPP-6 added on 2026-11-21.
+    expect(ALL).toHaveLength(121);
+    expect(new Set(ALL).size).toBe(121);
   });
 });
 
 describe("the served /explore", () => {
-  it("names all 116 roles, each under its own field's link and label, in the list's order", () => {
+  it("names every role, each under its own field's link and label, in the list's order", () => {
     const html = readFileSync(join(bake(), "explore", "index.html"), "utf8");
     const section = /<section[^>]*data-field-roles=""[^>]*>([\s\S]*?)<\/section>/.exec(html)?.[1] ?? "";
     expect(section, "the baked /explore carries the field-roles section").not.toBe("");

@@ -87,6 +87,6 @@ describe("lastRetired in the ledger", () => {
     const src = readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8");
     const call = src.slice(src.indexOf("const carryBase = postingCarryBase({"), src.indexOf("const priorPostingOf ="));
     expect(call).toMatch(/ceiling: POSTING_PAGE_CEILING,\s*reserve: POSTING_FRESH_RESERVE,/);
-    expect(src).toMatch(/postingLedger\[path\] = withRetiredMark\(\{ state: "live",[^\n]*\}, priorPostingOf\(path\)\);/);
+    expect(src).toMatch(/postingLedger\[path\] = \{ state: "live",[^\n]*\};\n(?:\s*\/\/[^\n]*\n)*\s*postingLedger\[path\] = withRetiredMark\(postingLedger\[path\], priorPostingOf\(path\)\);/);
   });
 });

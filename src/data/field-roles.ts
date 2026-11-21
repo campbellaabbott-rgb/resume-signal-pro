@@ -28,15 +28,15 @@
  *  representative", so the FULL spellings here are the ones that match the most
  *  postings and the shorthand a reader types still reaches them. */
 export const FIELD_ROLES: Record<string, readonly string[]> = {
-  engineering: ["software engineer", "mechanical engineer", "electrical engineer", "project engineer", "devops engineer", "quality engineer", "systems engineer", "maintenance technician"],
-  data_ai: ["data analyst", "data engineer", "data scientist", "machine learning engineer", "business intelligence analyst", "database administrator", "analytics manager"],
+  engineering: ["software engineer", "mechanical engineer", "electrical engineer", "project engineer", "devops engineer", "quality engineer", "systems engineer", "maintenance technician", "backend engineer", "frontend engineer", "full stack engineer"],
+  data_ai: ["data analyst", "data engineer", "data scientist", "machine learning engineer", "business intelligence analyst", "database administrator", "analytics manager", "ai engineer"],
   design: ["graphic designer", "product designer", "ux designer", "interior designer", "ui designer", "design manager"],
   product: ["product manager", "product owner", "program manager", "technical program manager", "product analyst", "business analyst"],
   marketing: ["marketing manager", "digital marketing specialist", "content writer", "social media manager", "brand manager", "communications specialist", "marketing coordinator"],
   sales: ["account executive", "sales representative", "sales manager", "account manager", "business development representative", "inside sales representative", "sales engineer"],
   customer: ["customer service representative", "customer success manager", "technical support specialist", "call center representative", "client services manager", "support engineer"],
   finance: ["accountant", "financial analyst", "controller", "accounts payable specialist", "auditor", "bookkeeper", "payroll specialist", "tax accountant"],
-  legal: ["paralegal", "attorney", "compliance officer", "legal counsel", "contracts manager", "legal assistant"],
+  legal: ["paralegal", "attorney", "compliance officer", "legal counsel", "contracts manager", "legal assistant", "privacy analyst"],
   people_hr: ["recruiter", "human resources generalist", "talent acquisition specialist", "human resources manager", "hr business partner", "benefits specialist"],
   operations: ["operations manager", "warehouse associate", "logistics coordinator", "supply chain analyst", "production supervisor", "truck driver", "forklift operator", "inventory specialist"],
   healthcare: ["registered nurse", "medical assistant", "certified nursing assistant", "physical therapist", "pharmacist", "nurse practitioner", "licensed practical nurse", "medical technologist"],

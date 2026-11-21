@@ -17,6 +17,7 @@ import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { MCP_FORM_VENDORS } from "@/config/mcp-tools";
+import { FIELD_ROLES } from "@/data/field-roles";
 
 vi.setConfig({ testTimeout: 90_000 });
 
@@ -298,7 +299,10 @@ describe("phase A2, with each defect the audit found", () => {
     expect(r3).toMatch(/\/roles\/registered-nurse say recruiters search/);
   });
   it("R6 FAILs an /explore that names no role", () => {
-    expect(has(badLines, "FAIL", /^FAIL\s+R6 \/explore serves no field-roles section: 0 of the 116 role names/), show(badLines)).toBe(true);
+    // The section counts the checkout's own list, which grows (OPP-6 added five), so the count is read from it.
+    const total = Object.values(FIELD_ROLES).reduce((n, names) => n + names.length, 0);
+    expect(total).toBeGreaterThan(100);
+    expect(has(badLines, "FAIL", new RegExp(`^FAIL\\s+R6 \\/explore serves no field-roles section: 0 of the ${total} role names`)), show(badLines)).toBe(true);
   });
   it("R8 FAILs a GCC page that names itself and sits in the sitemap", () => {
     expect(has(badLines, "FAIL", /^FAIL\s+R8 \/cv-standards\/qatar names \/cv-standards\/qatar; \/cv-standards\/qatar is in the sitemap/), show(badLines)).toBe(true);

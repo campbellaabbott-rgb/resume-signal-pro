@@ -18,6 +18,8 @@ import { PageJsonLd } from "@/components/seo/PageJsonLd";
 // Letter case by what a word is (SEO-019): "RN", "HR", "SOPs"; never "Rn" or "WIND".
 import { displayKeyword, industryLabel, inSentence } from "@/lib/seo/display-case";
 import { roleKeywordsHead } from "@/lib/seo/keyword-pages";
+import { INDUSTRY_TO_CATEGORY } from "@/lib/job-board-categories";
+import { BOARD_CATEGORY_LABELS } from "@/lib/board-category-labels";
 
 export default function RoleKeywords() {
   const { slug } = useParams();
@@ -80,6 +82,14 @@ export default function RoleKeywords() {
 
           <h1 className="text-3xl md:text-4xl font-bold mb-3">{role.title} Resume Keywords & ATS Expectations</h1>
           <p className="text-muted-foreground mb-8">{copy.intro}</p>
+          {INDUSTRY_TO_CATEGORY[role.industry] && (
+            // CONTENT-N8 (SEO audit 2026-11-18): the role's field on the live board, as the bake prints it.
+            <p className="mb-8 -mt-4">
+              <Link to={`/jobs/field/${INDUSTRY_TO_CATEGORY[role.industry]}`} className="text-primary font-medium">
+                Live {BOARD_CATEGORY_LABELS[INDUSTRY_TO_CATEGORY[role.industry]]} jobs on the board →
+              </Link>
+            </p>
+          )}
 
           {onet && (
             <section className="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-6">

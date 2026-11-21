@@ -653,7 +653,7 @@ export const D7_TRUSTED_COMPANY_TOKENS = Object.freeze([
   "jobportal.martinbrower.com", // Martin Brower
 ]);
 
-export function selectLanders(companyFacet, { openOf, displayName = (c) => c.name.trim(), unreadable = () => false, max = 500, min = 8, keep = null, keepRatio = 0.5, pin = null }) {
+export function selectLanders(companyFacet, { openOf, displayName = (c) => c.name.trim(), unreadable = () => false, max = 500, min = 8, keep = null, keepRatio = 0.5, pin = null, demand = null, demandMin = 50, demandCap = 40 }) {
   const size = (c) => (typeof c.open === "number" ? c.open : (c.count ?? 0));
   const ranked = (Array.isArray(companyFacet) ? companyFacet : [])
     // Tilde is allowed: Oracle/Workday compound tokens (tenant~dc~site) are
@@ -695,11 +695,23 @@ export function selectLanders(companyFacet, { openOf, displayName = (c) => c.nam
         .sort((a, b) => (openOf(b) ?? b.count ?? 0) - (openOf(a) ?? a.count ?? 0));
     }
   }
+  // DEMAND BOARDS ABOVE THE CEILING (SEO audit 2026-11-18, OPP-1;
+  // src/data/demand-employers.ts): a board in `demand` that the volume cut
+  // left out joins with at least `demandMin` open roles, at most `demandCap`
+  // of them, the largest first. They are added after the cut and the D7
+  // holds, so no board chosen above loses its place; every later rule (the
+  // name gate, the duplicate and thin rules) judges them as any other.
+  const isDemand = (c) => inSet(demand, c);
+  if (demand && demand.size) {
+    const have = new Set(chosen.map((c) => c.token));
+    const extra = ranked.filter((c) => isDemand(c) && !have.has(c.token) && (openOf(c) ?? c.count ?? 0) >= demandMin).slice(0, Math.max(0, demandCap));
+    if (extra.length) chosen = [...chosen, ...extra].sort((a, b) => (openOf(b) ?? b.count ?? 0) - (openOf(a) ?? a.count ?? 0));
+  }
   const top = chosen
     .map((c) => {
       const open = openOf(c);
       const name = displayName(c);
-      return { token: c.token, name, stored: c.name.trim(), open: typeof open === "number" ? open : null, count: typeof c.count === "number" ? c.count : null, unreadable: !!unreadable(c, name) };
+      return { token: c.token, name, stored: c.name.trim(), open: typeof open === "number" ? open : null, count: typeof c.count === "number" ? c.count : null, unreadable: !!unreadable(c, name), ...(isDemand(c) ? { demand: true } : {}) };
     });
   const nameKey = (c) => c.name.toLowerCase().replace(/\s+/g, " ").trim();
   const groupKey = (c) => `${bakeEmployerKey(c.token)}\u0000${nameKey(c)}`;
@@ -803,7 +815,7 @@ export function employerPageOf(landers, token) {
  * and a board whose printed name is still its tenant code gets a page that is
  * never indexable.
  */
-export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null, keep = null, pin = null }) => selectLanders(companyFacet, {
+export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null, keep = null, pin = null, demand = null }) => selectLanders(companyFacet, {
   openOf,
   // SEO-006: `nameOf` is the bake's repaired name (scripts/prerender-names.mjs
   // bakeEmployerName: "Chubb External" prints as "Chubb"); the code-shape test
@@ -814,6 +826,8 @@ export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null, 
   ...(min ? { min } : {}),
   ...(keep ? { keep } : {}),
   ...(pin ? { pin } : {}),
+  // OPP-1: the demand boards, with their own floor and cap (src/data/demand-employers.ts).
+  ...(demand ? { demand, demandMin: D.DEMAND_EMPLOYER_MIN_OPEN ?? 50, demandCap: D.DEMAND_EMPLOYER_CAP ?? 40 } : {}),
 });
 
 /**
@@ -1084,7 +1098,24 @@ export function landerFacts(intel, { countryName, fieldLabel }) {
     .filter((r) => r.category !== "other")
     .map((r) => ({ slug: r.category, label: fieldLabel(r.category) }))
     .filter((r) => r.label);
-  return { countries, fields };
+  return { countries, fields, pay: landerPayFloor(intel) };
+}
+
+/**
+ * THE PAY LINE A COMPANY PAGE PRINTS (SEO audit 2026-11-18, GEO-3), as React's
+ * PaySummary decides it (payFacts, intelScope): the median of the bottom of
+ * each stated USD pay range, only when at least LANDER_PAY_MIN_POSTINGS
+ * postings state one, and `pooled` when the reader's own totals count more
+ * roles than the page serves (`openN`, an exact count; none judges nothing).
+ * Visible text only: the page's markup carries no baseSalary.
+ */
+export const LANDER_PAY_MIN_POSTINGS = 5;
+export function landerPayFloor(intel) {
+  const m = typeof intel?.usd_n === "number" && Number.isFinite(intel.usd_n) ? intel.usd_n : 0;
+  const amount = typeof intel?.median_usd_floor === "number" && Number.isFinite(intel.median_usd_floor) ? intel.median_usd_floor : null;
+  if (amount === null || amount <= 0 || m < LANDER_PAY_MIN_POSTINGS) return null;
+  const sum = (v) => (Array.isArray(v) ? v : []).reduce((t, r) => t + (r && typeof r.n === "number" && Number.isFinite(r.n) && r.n > 0 ? r.n : 0), 0);
+  return { amount: Math.round(amount), m, atLeast: Math.max(sum(intel.countries), sum(intel.categories), m) };
 }
 
 /** The rows of one company-filtered board list read, or null when the answer cannot be read. */
@@ -1261,9 +1292,34 @@ export const LANDER_KIND_COPY = {
   usajobsCap: "Up to {{cap}} results per query; not every federal opening.",
   usajobsCapValue: 10000,
   agencyBanner: "This is a staffing agency's board. Roles here are usually for its clients.",
+  payTitle: "Pay",
+  payFloorOne: "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} posting",
+  payFloorOther: "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} postings",
+  payFloorPooledOne: "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} posting on this employer's whole hiring system",
+  payFloorPooledOther: "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} postings on this employer's whole hiring system",
+  payRead: "read {{date}}",
+  payBasis: "Yearly figures from the pay ranges their open postings state; postings that state no pay are not counted.",
 };
 
-export function companyLanderPage({ token, name, primaryToken, robots = null, canonicalTo = null, openN, countedOn = null, facts, openings = [], openingsAt = null, vendor = null, boards = 1, nameShared = false, collision = null, boardCompanies, site, esc, possessive, fmt, href: hrefOf, kind = "employer", copy = LANDER_KIND_COPY }) {
+const fill = (template, vars) => String(template).replace(/\{\{\s*(\w+)\s*\}\}/g, (all, k) => (k in vars ? String(vars[k]) : all));
+const usd = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
+const dayEnGb = (day) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${day}T00:00:00Z`));
+
+/** The pay section React's PaySummary prints, in the same words, or "" with no pay line to print. */
+export function landerPayHtml(pay, { openN = null, readOn = null, esc, copy = LANDER_KIND_COPY }) {
+  if (!pay) return "";
+  const C = { ...LANDER_KIND_COPY, ...(copy ?? {}) };
+  const pooled = typeof openN === "number" && Number.isFinite(openN) && pay.atLeast > openN;
+  const line = fill(pooled ? (pay.m === 1 ? C.payFloorPooledOne : C.payFloorPooledOther) : (pay.m === 1 ? C.payFloorOne : C.payFloorOther), {
+    amount: usd(pay.amount), m: pay.m.toLocaleString("en-US"), currency: "USD",
+  });
+  const read = typeof readOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(readOn) ? ` · ${fill(C.payRead, { date: dayEnGb(readOn) })}` : "";
+  return `<h2>${esc(C.payTitle)}</h2>
+            <p data-company-pay="">${esc(line)}${esc(read)}</p>
+            <p>${esc(C.payBasis)}</p>`;
+}
+
+export function companyLanderPage({ token, name, primaryToken, robots = null, canonicalTo = null, openN, countedOn = null, intelOn = null, facts, openings = [], openingsAt = null, vendor = null, boards = 1, nameShared = false, collision = null, boardCompanies, site, esc, possessive, fmt, href: hrefOf, kind = "employer", copy = LANDER_KIND_COPY }) {
   const C = { ...LANDER_KIND_COPY, ...(copy ?? {}) };
   const nm = name;
   const isPrimary = primaryToken === token;
@@ -1308,8 +1364,11 @@ export function companyLanderPage({ token, name, primaryToken, robots = null, ca
       : "",
     facts?.fields?.length
       ? `<h2>${fieldsHead}</h2>
-            <p>The fields holding the most of its roles ${factsScope}: ${facts.fields.map((x) => `<a href="${href}?category=${encodeURIComponent(x.slug)}">${esc(x.label)}</a>`).join(", ")}. Fields are our own sorting of each posting's title, never a label the employer applied.</p>`
+            <p>The fields holding the most of its roles ${factsScope}: ${facts.fields.map((x) => `<a href="${href}?category=${encodeURIComponent(x.slug)}">${esc(x.label)}</a>`).join(", ")}. Fields are our own sorting of each posting's title, never a label the employer applied.</p>
+            <p>Every employer's openings in ${facts.fields.length === 1 ? "that field" : "those fields"}: ${facts.fields.map((x) => `<a href="/jobs/field/${encodeURIComponent(x.slug)}">${esc(x.label)} jobs</a>`).join(" · ")}.</p>`
       : "",
+    // GEO-3: React's pay line, under its gate and in its words, dated the day the bake read it.
+    landerPayHtml(facts?.pay ?? null, { openN: hasN ? openN : null, readOn: intelOn, esc, copy: C }),
     openings.length
       ? `<h2>${usajobs ? "Openings listed on USAJOBS" : collided ? "Openings on these boards" : agency ? `Roles listed by ${esc(nm)}` : `Openings at ${esc(nm)}`}</h2>
             <p>${openingsAt ? `From ${collided ? "these boards' listing" : `${esc(poss)} listing`} on this board, read ${esc(openingsAt)}, newest first` : `${collided ? "Openings" : `${esc(poss)} openings`} with a page of their own on this site`}; the live board ${RECHECK_CLAUSE}. A role with a page of its own on this site is linked; every role opens on <a href="${href}">the live board</a>.</p>

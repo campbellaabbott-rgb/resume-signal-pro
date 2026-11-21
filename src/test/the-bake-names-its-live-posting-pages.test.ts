@@ -62,6 +62,8 @@ describe("postingPagesManifest", () => {
     expect(postingPagesManifest(entries, { today: "2026-11-18", isPosting })).toEqual({
       at: "2026-11-18",
       live: ["/jobs/posting/greenhouse/acme/2", "/jobs/posting/workday/asml~wd3~asmlext1/J-00348204"],
+      // CRAWL18B-4: the same paths as rows; with nothing known of a page, its path and a null field.
+      rows: [{ path: "/jobs/posting/greenhouse/acme/2", field: null }, { path: "/jobs/posting/workday/asml~wd3~asmlext1/J-00348204", field: null }],
     });
   });
 
@@ -85,7 +87,8 @@ describe("the bake writes /posting-pages.json beside /landers.json", () => {
     expect(existsSync(file), LOG.split("\n").filter((l) => /posting/.test(l)).join("\n")).toBe(true);
     expect(existsSync(join(DIST, "landers.json"))).toBe(true);
     const m = JSON.parse(readFileSync(file, "utf8"));
-    expect(Object.keys(m).sort()).toEqual(["at", "live"]);
+    expect(Object.keys(m).sort()).toEqual(["at", "live", "rows"]);
+    expect(m.rows.map((r: { path: string }) => r.path)).toEqual(m.live);
     expect(m.at).toBe(TODAY);
     const locs = [...readFileSync(join(DIST, "sitemap.xml"), "utf8").matchAll(/<loc>([^<]+)<\/loc>/g)].map((x) => x[1].replace(SITE, "")).filter((p) => p.startsWith("/jobs/posting/"));
     expect(m.live).toEqual(locs);
