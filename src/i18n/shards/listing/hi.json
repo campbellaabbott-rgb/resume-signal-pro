@@ -98,12 +98,16 @@
     },
     "page": {
       "breadcrumb": "ब्रेडक्रम्ब",
-      "jobs": "नौकरियाँ"
+      "jobs": "नौकरियाँ",
+      "moreFieldJobs": "{{field}} में और नौकरियाँ"
     },
     "more": {
       "heading": "{{employer}} में और भूमिकाएँ",
       "seeAll": "{{employer}} की हर खुली भूमिका देखें",
       "loading": "और भूमिकाएँ लोड हो रही हैं…"
+    },
+    "bakedPostings": {
+      "title": "जिन नौकरियों का अपना पेज है"
     }
   }
 }

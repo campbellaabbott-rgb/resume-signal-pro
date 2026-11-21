@@ -7,6 +7,7 @@ import { count as fmtCount } from "@/lib/format";
 import { HOME_LIST_BOX_PHONE_REM, HOME_LIST_BOX_WIDE_REM, HOME_ROWS_MAX, HOME_ROWS_WINDOW_DAYS } from "@/lib/home/rows-box";
 import type { HomeRowsState } from "@/lib/home/use-home-rows";
 import { utcStamp } from "@/lib/home/stamps";
+import { BakedPostingLinks } from "@/components/seo/BakedPostingLinks";
 
 type CardsModule = typeof import("./HomeBoardRowCards");
 let cardsModule: CardsModule | null = null;
@@ -35,7 +36,20 @@ const loadCards = (): Promise<CardsModule> => {
  * Until both the rows and the cards' chunk are in, the box holds its
  * skeletons. If the list cannot be shown (or the cards' chunk cannot load),
  * the box goes and "See all postings" stays.
+ *
+ * WITH THE ROWS OFF, THE BAKED POSTINGS (CRAWL18B-1, SEO audit 2026-11-18b).
+ * A crawler or a driven browser gets no list call ("off", use-home-rows.ts),
+ * and the baked page's eight posting links left with the baked page when
+ * React committed, so Googlebot's renderer indexed a homepage linking no
+ * posting at all. Under "off" the column ends with the first
+ * HOME_BAKED_POSTING_LINKS rows of /posting-pages.json (BakedPostingLinks):
+ * pages the bake wrote and still lists, never a live row. It draws nothing
+ * until those rows have loaded, or at all when the file has none, and it
+ * sits after "See all postings", so nothing above it moves when it lands.
+ * A person's visit never takes this path and never reads the file.
  */
+export const HOME_BAKED_POSTING_LINKS = 8;
+
 export interface HomeBoardRowsProps {
   state: HomeRowsState;
   openTotal: number | null;
@@ -114,6 +128,8 @@ export function HomeBoardRows({ state, openTotal, asOf }: HomeBoardRowsProps) {
           <p className="text-meta text-muted-foreground">{t("home.board.applyNote")}</p>
         </div>
       </div>
+
+      {state.status === "off" && <BakedPostingLinks limit={HOME_BAKED_POSTING_LINKS} headingLevel={3} className="mt-5" />}
     </div>
   );
 }

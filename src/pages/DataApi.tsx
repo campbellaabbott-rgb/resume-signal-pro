@@ -114,9 +114,14 @@ const ENDPOINTS: Array<{ path: string; body: string; params?: string; notes?: st
   { path: "GET /v1/jobs/{id}", body: "One posting, description included. Returns 404 once the employer withdraws it — never a stale 200, so you can tell 'gone' from 'we stopped looking'." },
   // EVERY PUBLIC ROUTE IS LISTED (RC-S13-105): the application route was served
   // and metered for weeks while no page an agent reads named it.
+  // A FORM ONLY WHERE WE READ ONE (GEO-1b, SEO audit 2026-11-18b). "When its
+  // hiring system publishes one" promised a form for every system that has
+  // one, and /v1 does not read every such system's form (an Ashby posting
+  // answers "not-read-on-this-surface", owner decision of 2026-11-16). The
+  // route promises the form only where we read that system's form.
   {
     path: "GET /v1/jobs/{id}/application",
-    body: "The employer's own application form for a live posting, when its hiring system publishes one: each question with who should answer it (the person, by default), read from the employer's page and cached for 24 hours. A posting whose system publishes no form answers form.source \"not-published\" beside its apply link. It never fills or submits anything — the person answers and presses submit on the employer's own site. Metered as one call.",
+    body: "The employer's own application form for a live posting, where we read that hiring system's form: each question with who should answer it (the person, by default), read from the employer's page and cached for 24 hours. A posting whose form we do not read, or whose system publishes none, answers with a form.source that says so (\"not-published\" or \"not-read-on-this-surface\") beside its apply link. It never fills or submits anything — the person answers and presses submit on the employer's own site. Metered as one call.",
   },
   {
     path: "GET /v1/changes",

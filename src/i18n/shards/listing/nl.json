@@ -98,12 +98,16 @@
     },
     "page": {
       "breadcrumb": "Kruimelpad",
-      "jobs": "Vacatures"
+      "jobs": "Vacatures",
+      "moreFieldJobs": "Meer vacatures in {{field}}"
     },
     "more": {
       "heading": "Meer functies bij {{employer}}",
       "seeAll": "Bekijk elke open functie bij {{employer}}",
       "loading": "Meer functies laden…"
+    },
+    "bakedPostings": {
+      "title": "Vacatures met een eigen pagina"
     }
   }
 }
