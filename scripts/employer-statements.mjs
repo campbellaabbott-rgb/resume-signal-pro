@@ -187,6 +187,28 @@ export function employerStatedList(text, nowMs, { maxAgeDays = STATED_LIST_MAX_A
 export const checkReadOpenWithin = (entry, nowMs, hours = OPEN_READ_FRESH_HOURS) =>
   !!entry && entry.state === "open" && Number.isFinite(entry.at) && nowMs - entry.at <= hours * 3_600_000 && entry.at <= nowMs;
 
+/**
+ * WHETHER THE CHECK'S FILE IS FRESH ENOUGH TO WITHHOLD BY (review of
+ * 2026-11-21; the owner's condition on the unread-Workday rule). The file
+ * keeps a line for STATED_LIST_MAX_AGE_DAYS, but an "open" in it counts for
+ * only OPEN_READ_FRESH_HOURS. The daily pull request is merged by a person and
+ * a publish can come days later: a file read on the 20th at 00:44 and baked on
+ * the 21st at 18:00 clears no page, and the rule would withhold JobPosting
+ * from every Workday page whose own bake read failed (the bake read 39 of 297
+ * on 2026-11-18, so about half of all posting pages), where the owner said
+ * yes to a handful. `reads` is employerStatedList's Map; returns the newest
+ * line's instant (epoch ms, or null when there is none) and `fresh`, true
+ * only when that line was read within `hours` before `nowMs`.
+ */
+export function checkReadsFreshness(reads, nowMs, hours = OPEN_READ_FRESH_HOURS) {
+  let newest = null;
+  if (reads && typeof reads.values === "function") {
+    for (const e of reads.values()) if (e && Number.isFinite(e.at) && (newest === null || e.at > newest)) newest = e.at;
+  }
+  const fresh = newest !== null && Number.isFinite(nowMs) && newest <= nowMs && nowMs - newest <= hours * 3_600_000;
+  return { newest, fresh };
+}
+
 /** Whether statements put the employer's own end date before `today` (YYYY-MM-DD): the posting is past it. */
 export const statedEndPassed = (stated, today) => {
   const end = employerStatedOf(stated)?.employerValidThrough;

@@ -49,7 +49,7 @@ import { legalBodyFromTsx, legalText } from "./prerender-legal.mjs";
 import { routeChunkPrefix, preloadClosure, fallbackPreloadHtml, fontHeadProblems, modulepreloadTag, defersRouteHints, deferredPreloadHtml, dropsSupabasePreconnect, withoutSupabasePreconnect } from "./prerender-preload.mjs";
 // The employer's own answer for each posting, GET only (B01, B06).
 import { EMPLOYER_READ_BUDGET_MS, applyEmployerStatements, distrustImplausibleClosures, employerReadAlarms, employerReadLine, readEmployers, summarizeEmployerReads, withoutObligedRemote } from "./employer-reads.mjs";
-import { EMPLOYER_STATED_META, POSTING_CLOSED_META, OPEN_READ_FRESH_HOURS, carriedStatementsOf, checkReadOpenWithin, earlierCarried, employerStatedList, employerStatedOf, postingClosedOf, statedEndPassed, withCarriedStatements } from "./employer-statements.mjs";
+import { EMPLOYER_STATED_META, POSTING_CLOSED_META, OPEN_READ_FRESH_HOURS, carriedStatementsOf, checkReadOpenWithin, checkReadsFreshness, earlierCarried, employerStatedList, employerStatedOf, postingClosedOf, statedEndPassed, withCarriedStatements } from "./employer-statements.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 // A BAKE CAN BE POINTED AWAY FROM THE CHECKOUT. PRERENDER_OUT names a
@@ -442,11 +442,20 @@ export function withEmployerCountry(page, stated, { D, carried }) {
  * the vendor the bake's own network reads worst. The rule stands only once
  * the check's answers have reached the bake (the owner's condition): with no
  * line in employer-stated.txt, `checkReads` is empty and nothing is withheld.
+ * AND ONLY WHILE THEY ARE FRESH (review of 2026-11-21): the file keeps a line
+ * for two weeks but an "open" counts for 36 hours, so a file merged days
+ * before the publish would clear no page and withhold the markup of about
+ * half of all posting pages, not the handful the owner said yes to. When the
+ * file's newest line was read more than OPEN_READ_FRESH_HOURS before
+ * `nowMs` (checkReadsFreshness), no page is marked: every page keeps the
+ * markup it had before the rule, and the bake says so at the WARN tier
+ * (unreadRuleOffNotice).
  *
  * Each kept item records this bake's answer as `read` ("open", "unknown"),
  * which the posting page's own sentence reports (GEO-10).
  */
 export async function askEmployersAbout(list, { D, deadline, results = new Map(), readOpts = {}, carriedOf = () => null, closedAtEmployer = null, today = null, checkReads = null, nowMs = Date.now() }) {
+  const unreadRuleOn = checkReadsFreshness(checkReads, nowMs, OPEN_READ_FRESH_HOURS).fresh;
   const listed = [];
   const asking = [];
   for (const d of list) (closedAtEmployer && closedAtEmployer.has(D.postingPagePath(d.job.id)) ? listed : asking).push(d);
@@ -466,7 +475,7 @@ export async function askEmployersAbout(list, { D, deadline, results = new Map()
     const carried = earlierCarried(check?.stated ?? null, carriedOf(d.job));
     const stated = employerStatedOf(withoutObligedRemote(withCarriedStatements(r?.stated, carried, r?.state ?? "unknown"), d.description));
     d.read = r?.state === "open" ? "open" : "unknown";
-    if (checkReads && checkReads.size > 0 && String(d.job.id ?? "").startsWith("workday:") && d.read !== "open" && !checkReadOpenWithin(check, nowMs, OPEN_READ_FRESH_HOURS)) d.unread = true;
+    if (unreadRuleOn && String(d.job.id ?? "").startsWith("workday:") && d.read !== "open" && !checkReadOpenWithin(check, nowMs, OPEN_READ_FRESH_HOURS)) d.unread = true;
     if (stated) {
       d.job = applyEmployerStatements(d.job, stated, { employmentTypeOf: D.ldEmploymentType });
       d.stated = stated;
@@ -595,6 +604,19 @@ export function postingMarkupWithheld(page) {
 export function withUnreadWithheld(page, unread) {
   if (!unread || !page || !page.live || !page.ld) return page;
   return { ...page, ld: null, unread: true };
+}
+
+/**
+ * WHAT THE BAKE SAYS WHEN THE CHECK'S FILE IS TOO OLD TO WITHHOLD BY (review
+ * of 2026-11-21): the sentence for its WARN line, or null when the file is
+ * fresh or holds no line (no rule to switch off). `reads` is
+ * employerStatedList's Map, read at `nowMs`.
+ */
+export function unreadRuleOffNotice(reads, nowMs, hours = OPEN_READ_FRESH_HOURS) {
+  const { newest, fresh } = checkReadsFreshness(reads, nowMs, hours);
+  if (fresh || newest === null) return null;
+  const age = Math.round((nowMs - newest) / 3_600_000);
+  return `the unread-Workday rule is OFF for this bake: the newest line in scripts/seo-seed/employer-stated.txt was read ${new Date(newest).toISOString().slice(0, 16)}Z, ${age} h before the bake and past the ${hours} h an open read counts for, so every Workday page keeps the job markup it had before the rule. Merge the daily closure check's newest proposal (branch posting-closure/next-publish) just before a publish to switch it back on.`;
 }
 
 /**
@@ -3205,7 +3227,15 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   const CLOSED_AT_EMPLOYER = closedAtEmployerList(seedList("closed-at-employer.txt").join("\n"), TODAY);
   // STRUCTURED-B2: what the daily check read at each page's employer, as
   // committed from its pull request; lines over two weeks old are ignored.
-  const CHECK_READS = employerStatedList(seedList("employer-stated.txt").join("\n"), Date.now());
+  // The unread-Workday rule judges by the same instant, and stands only while
+  // the file's newest line is within OPEN_READ_FRESH_HOURS of it.
+  const CHECK_READS_AT = Date.now();
+  const CHECK_READS = employerStatedList(seedList("employer-stated.txt").join("\n"), CHECK_READS_AT);
+  const CHECK_READS_FRESH = checkReadsFreshness(CHECK_READS, CHECK_READS_AT).fresh;
+  {
+    const off = unreadRuleOffNotice(CHECK_READS, CHECK_READS_AT);
+    if (off) console.warn(`[prerender-seo] WARN ${off}`);
+  }
   {
     const envText5 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
     const grab5 = (k) => OFFLINE ? undefined : process.env[k] || (envText5.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
@@ -3395,6 +3425,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         carriedOf: (job) => priorPostingOf(D.postingPagePath(job.id)).stated ?? null,
         // STRUCTURED-B2: what the daily check read, as a person merged it.
         checkReads: CHECK_READS,
+        nowMs: CHECK_READS_AT,
       });
       {
         const { keep, closed, ended } = await askEmployers(detailed);
@@ -3756,7 +3787,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
             </ul>
           </section>`;
       }
-      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new (${freshFromCache} read from company pages' cached openings) from a pool of ${pool.length} over ${poolPagesRead} list page${poolPagesRead === 1 ? "" : "s"}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed, ${freshNameUnreviewed} new refused for a name no one wrote (the board's own code)) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} show employer-stated pay on the page (none in the markup); ${titlesDisambiguated} title${titlesDisambiguated === 1 ? "" : "s"} took its town, its stated date or a short reference to stay unique; fresh budget ${freshBudget} (carried live ${carriedLive}, ceiling ${POSTING_PAGE_CEILING}; ${retiredExpiring} expiring within ${POSTING_EXPIRY_NEAR_DAYS} days gave way to the reserve); ${countryMismatch} with a location ending in another country (job markup withheld; a carried one keeps its page under D7 and is on the dry run); ${nameWithheld} carried with an employer name the gate refuses (job markup withheld, "the employer" printed, on the dry run); ${unreadWithheld} Workday page${unreadWithheld === 1 ? "" : "s"} neither this bake nor a daily check from the last ${OPEN_READ_FRESH_HOURS} h read as open (${CHECK_READS.size} check read${CHECK_READS.size === 1 ? "" : "s"} in scripts/seo-seed/employer-stated.txt; job markup withheld, the page kept); carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}; job markup ${D.JOB_POSTING_MARKUP === false ? "OFF by the owner's STOP switch (src/config/seo-switches.ts): every live page kept, none marked up" : "on"}`);
+      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new (${freshFromCache} read from company pages' cached openings) from a pool of ${pool.length} over ${poolPagesRead} list page${poolPagesRead === 1 ? "" : "s"}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed, ${freshNameUnreviewed} new refused for a name no one wrote (the board's own code)) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} show employer-stated pay on the page (none in the markup); ${titlesDisambiguated} title${titlesDisambiguated === 1 ? "" : "s"} took its town, its stated date or a short reference to stay unique; fresh budget ${freshBudget} (carried live ${carriedLive}, ceiling ${POSTING_PAGE_CEILING}; ${retiredExpiring} expiring within ${POSTING_EXPIRY_NEAR_DAYS} days gave way to the reserve); ${countryMismatch} with a location ending in another country (job markup withheld; a carried one keeps its page under D7 and is on the dry run); ${nameWithheld} carried with an employer name the gate refuses (job markup withheld, "the employer" printed, on the dry run); ${unreadWithheld} Workday page${unreadWithheld === 1 ? "" : "s"} neither this bake nor a daily check from the last ${OPEN_READ_FRESH_HOURS} h read as open (${CHECK_READS.size} check read${CHECK_READS.size === 1 ? "" : "s"} in scripts/seo-seed/employer-stated.txt; job markup withheld, the page kept; the rule ${CHECK_READS_FRESH ? "on" : `OFF, the file's newest line ${CHECK_READS.size ? `older than ${OPEN_READ_FRESH_HOURS} h` : "missing"}`}); carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}; job markup ${D.JOB_POSTING_MARKUP === false ? "OFF by the owner's STOP switch (src/config/seo-switches.ts): every live page kept, none marked up" : "on"}`);
       // CONTENT-9: new postings left out as the same job as a page claimed before them.
       console.log(`[prerender-seo] posting pages: ${freshSameJob} new posting${freshSameJob === 1 ? "" : "s"} left out as the same job as a page already claimed (same employer and place, a title a typo apart, descriptions 0.95 the same); a carried duplicate is a retired stub naming its twin`);
       // A carried page the board did not answer for is the symptom to look at
