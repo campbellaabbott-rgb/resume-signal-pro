@@ -1,8 +1,8 @@
-# Deployment checklist 2026-11-22 — waiting for requested source
-- [ ] Make source from owner-identified GitHub branch `ship/1122-connector-and-fixes` available in the synced checkout. Branch is not present locally and the public GitHub API returned 404; waiting for the owner to merge it into the synced main branch and provide the merged commit.
-- [ ] Apply 20261121130000, 20261206100000, 20261206110000, and 20261206130000 individually in that order. Blocked: all four source files are absent from checkout f95e92c582e5d2816805f2dbb94062898f6156cc; no migration attempted.
-- [ ] Deploy agent-mcp, analyze-resume, generate-interview-coach, public-api, reconcile-stripe, recover-purchase, retry-failed-deliveries, and send-search-digest; verify the eight requested OPTIONS build markers. Blocked: checkout carries older function builds; do not deploy them in place of the requested versions.
-- [ ] Check whether the live frontend serves the deployment commit; publish only if needed after migrations and function verification. Blocked: requested deployment source is not yet available.
+# Deployment checklist 55ea9bc59 — 2026-11-22
+- [x] Synced checkout is exactly 55ea9bc59120d189b1e1fbdb6c6d85501da81ff2; all requested source files are present.
+- [ ] Apply 20261121130000, 20261206100000, 20261206110000, and 20261206130000 unchanged, individually in that order. First applied as drizzle 0283.
+- [ ] Deploy agent-mcp, analyze-resume, generate-interview-coach, public-api, reconcile-stripe, recover-purchase, retry-failed-deliveries, and send-search-digest; verify the eight requested OPTIONS build markers.
+- [ ] Check whether the live frontend serves 55ea9bc59; publish only if needed after migrations and function verification.
 
 # Deployment checklist dce1abd09
 - [x] Apply eight unchanged migrations in uploaded order (drizzle 0275–0282); all self-checks passed, every copy byte-exact, no retries or staging. Never-apply list untouched.
