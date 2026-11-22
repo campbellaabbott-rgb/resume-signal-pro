@@ -101,12 +101,16 @@
     },
     "page": {
       "breadcrumb": "Fil d'Ariane",
-      "jobs": "Offres"
+      "jobs": "Offres",
+      "moreFieldJobs": "Autres offres en {{field}}"
     },
     "more": {
       "heading": "Autres postes chez {{employer}}",
       "seeAll": "Voir tous les postes ouverts chez {{employer}}",
       "loading": "Chargement d'autres postes…"
+    },
+    "bakedPostings": {
+      "title": "Offres ayant leur propre page"
     }
   }
 }

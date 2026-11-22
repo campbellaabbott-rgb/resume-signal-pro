@@ -47,6 +47,10 @@
     "agentBackToAccount": "खाते पर वापस जाएँ",
     "agentTitle": "आवेदन एजेंट",
     "agentHowItWorks": "यह कैसे काम करता है",
-    "agentSections": "एजेंट के सेक्शन"
+    "agentSections": "एजेंट के सेक्शन",
+    "trackerShowing": "{{total}} में से आपके सबसे नए {{shown}} दिखाए जा रहे हैं",
+    "trackerLoadMore": "पुराने आवेदन लोड करें",
+    "trackerLoadMoreFailed": "आपके पुराने आवेदन लोड नहीं हो सके। फिर से कोशिश करें।",
+    "digestSaveFailed": "आपके ईमेल अलर्ट में यह बदलाव सहेजा नहीं जा सका, इसलिए वह पहले जैसा कर दिया गया है। फिर से कोशिश करें।"
   }
 }

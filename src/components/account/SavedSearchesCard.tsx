@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { BellRing, ExternalLink, Search, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { writeWithDigestLocale } from "@/lib/saved-search-locale";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
@@ -102,21 +103,39 @@ export function SavedSearchesCard() {
     await table().delete().eq("id", id);
   };
 
+  // A REFUSED WRITE IS SAID, AND THE CONTROL GOES BACK (S10-160). The write
+  // resolves with {error} when the database refuses it; it rejects only when
+  // the network fails. Both put the row back as it was and say so, so a bell
+  // never shows an email alert that is not on, or a bar that was not saved.
+  const settle = (write: PromiseLike<{ error?: unknown } | null | undefined>, undo: () => void) => {
+    const back = () => {
+      undo();
+      toast.error(t("accountView.digestSaveFailed", "Couldn't save that change to your email alert, so it is back as it was. Try again."));
+    };
+    return write.then((r) => { if (r?.error) back(); }, back);
+  };
+
   // Feature 4: opt a saved search into its email digest. Off by
   // default — we never email without an explicit toggle.
   const toggleDigest = async (s: SavedSearch) => {
-    const next = !s.digest_opt_in;
+    const was = s.digest_opt_in;
+    const next = !was;
     setSearches((prev) => prev.map((x) => (x.id === s.id ? { ...x, digest_opt_in: next } : x)));
     // The digest is written in the language the page is read in (S13-102).
-    await writeWithDigestLocale(i18n.language, (lang) => table().update({ digest_opt_in: next, ...lang }).eq("id", s.id)).then(() => {}, () => {
-      setSearches((prev) => prev.map((x) => (x.id === s.id ? { ...x, digest_opt_in: !next } : x)));
-    });
+    await settle(
+      writeWithDigestLocale(i18n.language, (lang) => table().update({ digest_opt_in: next, ...lang }).eq("id", s.id)),
+      () => setSearches((prev) => prev.map((x) => (x.id === s.id ? { ...x, digest_opt_in: was } : x))),
+    );
   };
 
   // Fit-threshold alert: only email about roles that clear this résumé-fit bar.
   const setThreshold = async (s: SavedSearch, value: number) => {
+    const was = s.fit_threshold;
     setSearches((prev) => prev.map((x) => (x.id === s.id ? { ...x, fit_threshold: value } : x)));
-    await writeWithDigestLocale(i18n.language, (lang) => table().update({ fit_threshold: value, ...lang }).eq("id", s.id)).then(() => {}, () => {});
+    await settle(
+      writeWithDigestLocale(i18n.language, (lang) => table().update({ fit_threshold: value, ...lang }).eq("id", s.id)),
+      () => setSearches((prev) => prev.map((x) => (x.id === s.id ? { ...x, fit_threshold: was } : x))),
+    );
   };
 
   // THE RHYTHM CAN BE CHANGED WHERE IT IS SHOWN (RC-S13-083): daily or
@@ -125,9 +144,10 @@ export function SavedSearchesCard() {
   const setCadence = async (s: SavedSearch, value: "daily" | "weekly") => {
     const was = s.digest_cadence ?? null;
     setSearches((prev) => prev.map((x) => (x.id === s.id ? { ...x, digest_cadence: value } : x)));
-    const undo = () => setSearches((prev) => prev.map((x) => (x.id === s.id ? { ...x, digest_cadence: was } : x)));
-    await writeWithDigestLocale(i18n.language, (lang) => table().update({ digest_cadence: value, ...lang }).eq("id", s.id))
-      .then((r: { error?: unknown } | null | undefined) => { if (r?.error) undo(); }, undo);
+    await settle(
+      writeWithDigestLocale(i18n.language, (lang) => table().update({ digest_cadence: value, ...lang }).eq("id", s.id)),
+      () => setSearches((prev) => prev.map((x) => (x.id === s.id ? { ...x, digest_cadence: was } : x))),
+    );
   };
 
   if (!loaded || searches.length === 0) return null;

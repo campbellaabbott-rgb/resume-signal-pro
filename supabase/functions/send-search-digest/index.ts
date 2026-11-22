@@ -54,7 +54,8 @@ import { postedDaysAgo } from "./posted.ts";
 // the mail speaks the language kept on the saved search (S13-102).
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
 // 2026-11-12.1 (bug round of 2026-11-08, part A, mail lane): each recipient is checked against the do-not-mail list, a saved search's name and query carry no link, domain, address or phone number, a possible fit is called possible, and every run is stamped.
-const FN_BUILD = "send-search-digest.2026-11-12.1";
+// 2026-11-19.1 (OD16, lane api4/od16-federal): a USAJOBS announcement prints no age, like the board's cards, because USAJOBS re-dates an open-continuous announcement each time it is reposted (posted.ts REDATING_SOURCES, pinned to src/lib/listing/age.ts).
+const FN_BUILD = "send-search-digest.2026-11-19.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

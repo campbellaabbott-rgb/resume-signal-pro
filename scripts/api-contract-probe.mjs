@@ -387,7 +387,7 @@ console.log("\n[/v1] MCP-parity filters");
 console.log("\n[/v1] 2026-09-03 upgrades");
 {
   const root = await api("/v1");
-  ok(root.body?.apiVersion === "2026-10-11.1", "apiVersion is 2026-10-11.1", root.body?.apiVersion ?? "none");
+  ok(root.body?.apiVersion === "2026-11-21.1", "apiVersion is 2026-11-21.1", root.body?.apiVersion ?? "none");
   ok((root.body?.endpoints ?? []).includes("POST /v1/fit"), "root advertises POST /v1/fit");
   const loc = await api("/v1/jobs?location=London&limit=10");
   ok(loc.status === 200, "location is ACCEPTED on the default engine now", `HTTP ${loc.status} ${loc.body?.error?.code ?? ""}`);
@@ -414,9 +414,11 @@ console.log("\n[/v1] 2026-09-03 upgrades");
 
 // ── 2026-09-23: a feed we may only DISPLAY must not leave by the API ──────
 //
-// The board carries a hiring system whose terms permit showing its results to
-// a person and forbid republishing them as a data feed. Its rows are absent
-// from every /v1 row, and naming it in ?source= is refused with the reason.
+// The board carries a hiring system whose rows /v1 does not hand on:
+// SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. Its rows
+// are absent from every /v1 row, and naming it in ?source= is refused with
+// the reason. (Until 2026-11-19 the U.S. federal feed was withheld too; OD16,
+// owner 2026-11-18, hands its labelled rows on, checked below.)
 //
 // THE FAILURE THIS CATCHES IS AN HTTP 200. An empty page for that source would
 // be this API making a false statement about the world — "there are no such
@@ -429,8 +431,8 @@ console.log("\n[/v1] 2026-09-03 upgrades");
 // first check and mean the filter had swallowed the endpoint.
 console.log("\n[/v1] display-only sources never leave by the API");
 {
-  const barred = await api("/v1/jobs?source=usajobs&limit=1");
-  ok(barred.status === 451, "a display-only source is refused with 451, not answered", `HTTP ${barred.status}`);
+  const barred = await api("/v1/jobs?source=smartrecruiters&limit=1");
+  ok(barred.status === 451, "a withheld source is refused with 451, not answered", `HTTP ${barred.status}`);
   ok(barred.body?.error?.code === "source_not_redistributable",
     "the refusal names the reason rather than the input", barred.body?.error?.code ?? "none");
   ok(barred.status !== 200 && (barred.body?.data ?? null) === null,
@@ -438,26 +440,39 @@ console.log("\n[/v1] display-only sources never leave by the API");
 
   const root = await api("/v1");
   const excluded = root.body?.restrictions?.excludedSources ?? [];
-  ok(Array.isArray(excluded) && excluded.includes("usajobs"),
-    "/v1 declares the excluded source rather than hiding it", JSON.stringify(excluded));
+  ok(Array.isArray(excluded) && excluded.length === 1 && excluded[0] === "smartrecruiters",
+    "/v1 declares the one excluded source rather than hiding it (federal rows are handed on since OD16)", JSON.stringify(excluded));
   ok(typeof root.body?.restrictions?.reason === "string" && root.body.restrictions.reason.length > 20,
     "/v1 states WHY it is excluded");
 
-  // THE SAME POPULATION BY A DIFFERENT PARAMETER. Every row of the restricted
-  // feed carries one company_token, and it is the source's own name, so this
-  // reaches what ?source= just refused. company_token is deliberately NOT
-  // domain-checked (a caller may legitimately ask about an employer the board
-  // does not carry, and an empty page is the true answer to that) — which is
-  // exactly why the one token value naming a restricted source has to be
-  // refused explicitly rather than left to answer an empty 200.
-  const barredToken = await api("/v1/jobs?company_token=usajobs&limit=1");
-  ok(barredToken.status === 451, "the restricted source's own token is refused too, not answered empty", `HTTP ${barredToken.status}`);
+  // THE SAME POPULATION BY A DIFFERENT PARAMETER. company_token is
+  // deliberately NOT domain-checked (a caller may legitimately ask about an
+  // employer the board does not carry, and an empty page is the true answer
+  // to that), which is exactly why a token value naming a withheld source has
+  // to be refused explicitly rather than left to answer an empty 200.
+  const barredToken = await api("/v1/jobs?company_token=smartrecruiters&limit=1");
+  ok(barredToken.status === 451, "the withheld source's own name as a token is refused too, not answered empty", `HTTP ${barredToken.status}`);
   ok(barredToken.body?.error?.code === "source_not_redistributable",
     "the company_token refusal names the same reason", barredToken.body?.error?.code ?? "none");
   const openToken = await api("/v1/jobs?company_token=not-an-employer-we-carry&limit=1");
   ok(openToken.status === 200 && Array.isArray(openToken.body?.data) && openToken.body.data.length === 0,
     "control: an unknown employer token still answers an honest empty page, not a 451",
     `HTTP ${openToken.status} ${openToken.body?.error?.code ?? `${openToken.body?.data?.length ?? "?"} rows`}`);
+
+  // OD16: a federal row is answered, and only with its labels. Every row
+  // carries the agency's who-may-apply statement, the agency as employer, no
+  // first sighting posing as an age, and the body carries OPM's notice.
+  const fed = await api("/v1/jobs?source=usajobs&limit=5");
+  ok(fed.status === 200, "the federal feed answers 200 since OD16 (451 = the build before it)", `HTTP ${fed.status} ${fed.body?.error?.code ?? ""}`);
+  const fr = Array.isArray(fed.body?.data) ? fed.body.data : [];
+  ok(fr.every((x) => typeof x.who_may_apply === "string" && x.who_may_apply.trim() !== ""),
+    "every federal row carries who_may_apply (a row without it is withheld)", `${fr.length} rows`);
+  ok(fr.every((x) => x.first_seen === null && x.federal && "on_board_since" in x.federal),
+    "no federal row carries first_seen; on_board_since is not an age", `${fr.length} rows`);
+  ok(fr.every((x) => typeof x.company === "string" && x.company.toLowerCase() !== "usajobs"),
+    "the agency is the employer on every federal row", fr.slice(0, 3).map((x) => x.company).join(" | "));
+  ok(fr.length === 0 || /not operated, sponsored, approved or endorsed by OPM/.test(fed.body?.meta?.attribution?.federal?.notice ?? ""),
+    "a body with federal rows carries OPM's notice", fed.body?.meta?.attribution?.federal?.notice ?? "none");
 
   const serving = await api("/v1/jobs?source=greenhouse&limit=1");
   ok(serving.status === 200, "control: a source we may redistribute still answers 200", `HTTP ${serving.status} ${serving.body?.error?.code ?? ""}`);
@@ -762,16 +777,20 @@ let mcpToken = null;
   ok(!/paid feature|Upgrade the key/i.test(`${j?.error ?? ""} ${j?.fix ?? ""}`), "no refusal sends a free key to buy an upgrade", j?.fix);
 }
 {
-  // With no key (wave 4): board_stats answers and is never counted, and a
-  // keyed tool (key_status) is refused in the MCP way — a result the agent can
-  // read — not a transport error it cannot.
+  // With no key (wave 4): board_stats answers and is never counted. Since
+  // agent-mcp.2026-11-21.1 (lane fix/1121-connector-errors, item 6) key_status
+  // with no key is an ANSWER, not a refusal: what a keyless caller has
+  // (key.tier none) and where a free key comes from. While sign-in is on the
+  // challenge stands (it is how the host shows its Connect card).
   const r = await mcp("tools/call", { name: "board_stats", arguments: {} }, { key: null });
   const j = toolJson(r.body);
   ok(r.status < 500, "unkeyed tool call is not a server error", `HTTP ${r.status}`);
   ok(Number.isFinite(j?.servablePostings) && j?.unkeyed?.counted === false, "unkeyed board_stats answers and is never counted", JSON.stringify(j?.unkeyed ?? null));
   const k = await mcp("tools/call", { name: "key_status", arguments: {} }, { key: null });
   const kj = toolJson(k.body);
-  ok(k.status < 500 && (k.status === 401 || k.body?.result?.isError === true || Boolean(kj?.error)), "an unkeyed keyed tool is refused in-band (or with a sign-in challenge while sign-in is on)", `HTTP ${k.status}`);
+  ok(k.status < 500 && (k.status === 401 || (k.body?.result?.isError !== true && kj?.key?.tier === "none" && Number.isFinite(kj?.keyless?.lookupsPerDay))),
+    "key_status with no key says what a keyless caller has (key.tier none, keyless.lookupsPerDay), or answers the sign-in challenge while sign-in is on",
+    `HTTP ${k.status} ${kj?.key?.tier ?? kj?.error ?? ""}`);
 }
 
 console.log("\n" + "=".repeat(68));

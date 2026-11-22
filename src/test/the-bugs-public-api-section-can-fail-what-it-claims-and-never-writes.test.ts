@@ -15,6 +15,9 @@
  *   - after the paste each broken claim fails, and a migration callable by
  *     anon or a withheld feed handed on fails even before it;
  *   - a decided owner key judges what its decision ships;
+ *   - from public-api 2026-11-19.1 on (OD16) both U lines print INFO, since
+ *     the federal rows are handed on and section 99zzzzzzzzzz judges them;
+ *     the same index on the build before it still fails U;
  *   - SH1 (the shared Ashby stop) passes only on the build that carries it:
  *     the same unread Ashby form on the build before it is INFO, a read or
  *     an unreachable form on it is a FAIL, and no served Ashby posting is
@@ -107,6 +110,7 @@ const ago = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
 const GHOST_AT = ago(80), ROOT_AT = ago(58), PASS_AT = ago(30), COUNTED_AT = ago(400), COV_AT = ago(30);
 const OLD_REASON = "Two hiring systems are shown on resumebooster.work but not handed on by this API: the U.S. federal job feed, whose terms of use forbid redistributing it as a data feed, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it.";
 const NEW_REASON = "Two hiring systems are shown on resumebooster.work but are not available through this API: the U.S. federal job feed (USAJOBS), which this API does not hand on at present, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it.";
+const OD16_REASON = "One hiring system is shown on resumebooster.work but is not available through this API: SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. No /v1 endpoint returns its rows on any tier.";
 const FORMS_WITH_ASHBY = "GET /v1/jobs/{id}/application — the employer's own application form (Ashby, BambooHR, Breezy or Greenhouse).";
 const ASHBY_ID = "ashby:acme:5f2c9a1e-1b2c-4d3e-8f90-0a1b2c3d4e5f";
 const ASHBY_LIST = { data: [{ id: ASHBY_ID, source: "ashby", title: "Platform Engineer" }] };
@@ -266,6 +270,23 @@ describe("the bug round public-api section", () => {
     const { lines, out } = run(routes(b));
     expect(has(lines, /^FAIL {2}M1 .*answered anon HTTP 200/), out).toBe(true);
     expect(has(lines, /^FAIL {2}U the \/v1 index no longer withholds usajobs/), out).toBe(true);
+  });
+
+  it("from the OD16 build on, both U lines print INFO, and the same index on the build before it still fails U", () => {
+    const w = after();
+    w.build = "public-api.2026-11-19.1";
+    w.index = { restrictions: { excludedSources: ["smartrecruiters"], reason: OD16_REASON }, modes: { applicationForm: FORMS_WITH_ASHBY } };
+    let r = run(routes(w), { fresh: true });
+    expect(r.lines.filter((l) => /^(PASS|FAIL) {2}U /.test(l)), r.out).toEqual([]);
+    expect(has(r.lines, /^INFO {2}U the \/v1 index lists \["smartrecruiters"\] as withheld: public-api 2026-11-19\.1 or later hands on labelled federal rows \(OD16\)/), r.out).toBe(true);
+    expect(has(r.lines, /^INFO {2}U the withholding reason claims nothing about a feed's terms: .*\(OD16: section 99zzzzzzzzzz judges it\)$/), r.out).toBe(true);
+    // The rest of the round still judges as before on the later build.
+    expect(fails(r.lines), r.out).toEqual([]);
+    for (const id of ["B", "F", "SH1"]) expect(has(r.lines, new RegExp(`^PASS {2}${id} `)), `${id}\n${r.out}`).toBe(true);
+    // TEETH: the build before OD16 serving the same index fails U.
+    w.build = "public-api.2026-11-18.2";
+    r = run(routes(w), { fresh: true });
+    expect(has(r.lines, /^FAIL {2}U the \/v1 index no longer withholds usajobs/), r.out).toBe(true);
   });
 
   it("a decided owner key judges what its decision ships", () => {

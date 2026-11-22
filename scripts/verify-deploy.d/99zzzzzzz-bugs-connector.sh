@@ -51,6 +51,17 @@
 #        paid. The owner pushes it: INFO owner pending until
 #        docs/deploy-ledger.json reservations['bug-round'].ownerDecided names
 #        S14X-056, FAIL after that while it still says so;
+#   GEO-2   (SEO audit 2026-11-18b) the install README agrees with /agents as
+#        crawlers are served it: its apply_myself sentence names no form
+#        reader the page's apply_myself sentence does not (Ashby left with
+#        OD14-ASHBY-1), and it carries the page's Claude authentication step
+#        word for word (HO-1's choice), never the step that kept the detected
+#        settings unless the page still says it. FAIL while it does not (the
+#        owner pushes the install repo: its main is protected); INFO while
+#        the README or the page cannot be read, or the bake is still the one
+#        this round replaced. It reads the form sentence, not every line
+#        that names apply_myself: the job-id sentence rightly says
+#        apply_myself takes an Ashby posting link;
 #   O    the owner-gated keys, each INFO owner pending until ownerDecided
 #        names it, INFO when the choice ships nothing, and judged once the
 #        build (or the frontend publish) that carries the choice is live:
@@ -112,7 +123,11 @@ VDBC_O_HO1=$(vdbc_decided HO-1)
 if [ "$VDBC_AM" = 1 ]; then
   MC -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"verify-deploy","version":"1"}}}' > /tmp/vd_99bc_init.json
   MC -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' > /tmp/vd_99bc_tools.json
-  MC -H "Authorization: Bearer x" -d '{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}' > /tmp/vd_99bc_tools_keyed.json
+  # The keyed listing: a bearer in the shape of a key. From agent-mcp.2026-11-21.1
+  # (lane fix/1121-connector-errors, item 6) a bearer that is neither a key nor,
+  # while sign-in is on, a sign-in token is listed the keyless tools only; tools/list
+  # reads only the shape and never looks the key up, so this one is no key at all.
+  MC -H "Authorization: Bearer rb_live_listing_shape_only_not_a_key" -d '{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}' > /tmp/vd_99bc_tools_keyed.json
   MC -d '{"jsonrpc":"2.0","id":4,"method":"prompts/get","params":{"name":"browse_jobs","arguments":{"what":"nurse","where":"United States"}}}' > /tmp/vd_99bc_prompt.json
   MC -d '{"jsonrpc":"2.0","id":5,"method":"resources/read","params":{"uri":"resumebooster://guide"}}' > /tmp/vd_99bc_guide.json
   VDBC_FIT_CODE=$(MC -D /tmp/vd_99bc_fit.h -o /tmp/vd_99bc_fit.json -w '%{http_code}' -d '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"fit_resume","arguments":{}}}')
@@ -176,7 +191,7 @@ const want=["gate","filled_roles_90d","relisted_roles_90d","median_days_to_fill"
 ok(!!rowp&&!gone.length&&!want.length,"M2-01 employer_hiring_record\x27s rows "+(rowp?"carry "+(gone.length?"the retired "+JSON.stringify(gone):"no event count or retired median")+" and "+(want.length?"lack "+JSON.stringify(want):"gate with the role counts"):"are not described: "+why("tools.json")));
 
 // USAJOBS-COPY-1: the guide says the choice is ours.
-ok(/which we choose not to redistribute for now/.test(guide)&&!/forbid redistribut/.test(guide),"USAJOBS-COPY-1 the guide says the federal feed is withheld "+(/forbid redistribut/.test(guide)?"because its terms forbid it":/which we choose not to redistribute for now/.test(guide)?"by our own choice, for now":"with no reason it names"));
+ok(/which we choose not to redistribute for now|federal announcements whose who-may-apply statement is not stored/.test(guide)&&!/forbid redistribut/.test(guide),"USAJOBS-COPY-1 the guide says the federal feed is "+(/forbid redistribut/.test(guide)?"withheld because its terms forbid it":/federal announcements whose who-may-apply statement is not stored/.test(guide)?"handed on once who may apply is stored (OD16), never that its terms forbid it":/which we choose not to redistribute for now/.test(guide)?"withheld by our own choice, for now":"withheld with no reason it names"));
 '
 
   # ── NB-31: the bundled ChatGPT egress against OpenAI's live list ──
@@ -303,8 +318,10 @@ else{
   const named=NOT_READ.filter((v)=>has(mt,"label:\""+v+"\""));
   line(!missing.length&&!named.length&&!has(mt,"label:\"Pinpoint\"}]"),"SEO-F15 the page names "+(VENDORS.length-missing.length)+" of the "+VENDORS.length+" form readers the connector uses"+(missing.length?" (missing "+missing.join(", ")+")":"")+(named.length?", and names "+named.join(", ")+", whose form the owner\x27s choice stops it reading":"")+(has(mt,"label:\"Pinpoint\"}]")?", and its list still ends at Pinpoint":""));
   if(HO1){const said=HO1_WANT.filter((x)=>has(mt,x));line(!has(mt,KEEP)&&said.length>0,"HO-1 decided ("+HO1+"): the Claude steps on /agents "+(has(mt,KEEP)?"still say to keep the detected authentication settings":"no longer say to keep the detected settings")+" and "+(said.length?"name "+JSON.stringify(said[0]):"name no authentication choice ("+HO1_WANT.join(" or ")+")"));}
-  line(has(js,"which we choose not to redistribute for now")&&!has(js,"whose terms forbid redistributing"),"USAJOBS-COPY-1 /agents says the federal feed is withheld "+(has(js,"whose terms forbid redistributing")?"because its terms forbid it":has(js,"which we choose not to redistribute for now")?"by our own choice, for now":"with no reason"));
+  line((has(js,"which we choose not to redistribute for now")||has(js,"U.S. federal announcements are handed on once"))&&!has(js,"whose terms forbid redistributing"),"USAJOBS-COPY-1 /agents says the federal feed is "+(has(js,"whose terms forbid redistributing")?"withheld because its terms forbid it":has(js,"U.S. federal announcements are handed on once")?"handed on once who may apply is stored (OD16)":has(js,"which we choose not to redistribute for now")?"withheld by our own choice, for now":"withheld with no reason"));
 }
+// GEO-2 below compares the install README with this bake, and waits as these lines do while it is the old one.
+try{fs.writeFileSync(P+"bake_old",bake.includes("<")&&OLD_BAKE.every((x)=>has(bake,x))?"1":"0")}catch{}
 if(!bake.includes("<"))console.log("FAIL  C the /agents bake answered no page");
 else if(OLD_BAKE.every((x)=>has(bake,x))){for(const k of ["S14X-260","S14X-261","SEO-F15","USAJOBS-COPY-1"].concat(HO1?["HO-1"]:[]))console.log("INFO  "+k+" (bake) waits for the frontend publish: the /agents bake still carries every string this round replaced");}
 else{
@@ -312,7 +329,7 @@ else{
   line(!has(bake,"last confirmed it open")&&has(bake,"when the board last read the employer"),"S14X-261 (bake) get_job as crawlers read it says "+(has(bake,"last confirmed it open")?"the feed last confirmed it open":has(bake,"when the board last read the employer")?"when the board last read the feed":"neither"));
   line(has(bake,"Lever or BambooHR")&&!has(bake,"Breezy or Pinpoint"),"SEO-F15 (bake) apply_myself as crawlers read it names "+(has(bake,"Lever or BambooHR")?"its form readers":has(bake,"Breezy or Pinpoint")?"five form readers":"no reader list"));
   if(HO1){const said=HO1_WANT.filter((x)=>has(bake,x));line(!has(bake,KEEP)&&said.length>0,"HO-1 (bake) decided ("+HO1+"): the Claude steps as crawlers read them "+(has(bake,KEEP)?"still say to keep the detected settings":"no longer say to keep the detected settings")+" and "+(said.length?"name "+JSON.stringify(said[0]):"name no authentication choice"));}
-  line(has(bake,"which we choose not to redistribute for now")&&!has(bake,"whose terms forbid redistributing"),"USAJOBS-COPY-1 (bake) the withheld note as crawlers read it says "+(has(bake,"whose terms forbid redistributing")?"the terms forbid it":has(bake,"which we choose not to redistribute for now")?"we choose not to, for now":"nothing"));
+  line((has(bake,"which we choose not to redistribute for now")||has(bake,"U.S. federal announcements are handed on once"))&&!has(bake,"whose terms forbid redistributing"),"USAJOBS-COPY-1 (bake) the federal note as crawlers read it says "+(has(bake,"whose terms forbid redistributing")?"the terms forbid it":has(bake,"U.S. federal announcements are handed on once")?"they are handed on once who may apply is stored (OD16)":has(bake,"which we choose not to redistribute for now")?"we choose not to, for now":"nothing"));
 }
 if(!HO1)console.log("INFO  HO-1 owner pending: /agents keeps the Add to Claude button off and tells Claude users to keep the detected authentication settings, until the owner\x27s install-link check records which choice saves and searches (the one-click option is a commit on bugs/a-connector-owner)");
 '
@@ -327,4 +344,31 @@ if(process.env.VDBC_RM!=="200"||!/resumebooster/i.test(md))console.log("INFO  S1
 else if(!n)console.log("PASS  S14X-056-install the install README says nothing of paid applying (0 of \"Applying is paid\")");
 else if(decided)console.log("FAIL  S14X-056-install the install README still says \"Applying is paid\" "+n+" time(s), and the owner\x27s decision is recorded: push the re-synced branch and republish server.json");
 else console.log("INFO  S14X-056-install owner pending: the install README still says \"Applying is paid\" "+n+" time(s) until the owner pushes the re-synced branch (ownerDecided names no S14X-056)");
+'
+
+# ── GEO-2: the install README against /agents as crawlers are served it ──
+VDBC_RM="$VDBC_RM" VDBC_P=/tmp/vd_99bc_ node -e '
+const fs=require("fs");const P=process.env.VDBC_P;const raw=(f)=>{try{return fs.readFileSync(P+f,"utf8")}catch{return ""}};
+const md=raw("readme.md"),bake=raw("bake.html");
+// One reading for both: tags, bold marks and code ticks out, entities in, spaces collapsed, no space before a stop.
+const flat=(s)=>s.replace(/<[^>]+>/g," ").replace(/\*\*|`/g,"").replace(/&#x27;|&#39;/g,"\x27").replace(/&quot;/g,"\"").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&").replace(/\s+/g," ").replace(/ ([.,;:])/g,"$1");
+const page=flat(bake),readme=flat(md);
+const list=(re,s)=>{const m=re.exec(s);return m?m[1].split(/, or |, | or /).map((x)=>x.trim()).filter(Boolean):null};
+const pv=list(/When the employer uses ([^.:;]+?), it returns the employer\x27s real application form/,page);
+const rv=list(/when the posting\x27s hiring system is ([^.:;]+?), it returns the employer\x27s real application form/,readme);
+const KEEP="Keep them as they are and click Continue.";
+const step=(/Under authentication, choose [^.]+? and click Continue\./.exec(page)||[])[0]||(page.includes(KEEP)?KEEP:null);
+const fix="the owner pushes the install repo\x27s re-synced branch (its main is protected)";
+if(process.env.VDBC_RM!=="200"||!/resumebooster/i.test(md))console.log("INFO  GEO-2 the install README could not be read (HTTP "+process.env.VDBC_RM+"): not compared with /agents");
+else if(!bake.includes("<"))console.log("INFO  GEO-2 the /agents bake answered no page: the install README is not compared with it");
+else if(raw("bake_old")==="1")console.log("INFO  GEO-2 waits for the frontend publish: the /agents bake still carries every string this round replaced, so the install README is not compared with it");
+else{
+  if(!pv)console.log("INFO  GEO-2 form readers: the /agents bake names no apply_myself reader list (SEO-F15 (bake) judges that), so the install README\x27s is not compared");
+  else if(!rv)console.log("FAIL  GEO-2 form readers: the install README\x27s apply_myself sentence names no reader list, where /agents names "+pv.length+" ("+pv.join(", ")+")");
+  else{const extra=rv.filter((v)=>!pv.includes(v)),missing=pv.filter((v)=>!rv.includes(v));
+    console.log((extra.length?"FAIL":"PASS")+"  GEO-2 form readers: the install README\x27s apply_myself sentence names "+rv.length+" ("+rv.join(", ")+")"+(extra.length?", among them "+extra.join(", ")+", which /agents does not name as a reader: "+fix:", none that /agents does not")+(missing.length?"; it leaves out "+missing.join(", ")+", which /agents names":""));}
+  if(!step)console.log("INFO  GEO-2 Claude step: the /agents bake names no authentication step, so the install README\x27s is not compared");
+  else{const has=readme.includes(step),kept=step!==KEEP&&readme.includes(KEEP);
+    console.log((has&&!kept?"PASS":"FAIL")+"  GEO-2 Claude step: /agents says "+JSON.stringify(step)+"; the install README "+(has?"says it too":"does not")+(kept?" and still says "+JSON.stringify(KEEP):"")+(has&&!kept?"":": "+fix));}
+}
 '

@@ -6,7 +6,7 @@
 import type { TFunction } from "i18next";
 import { possessive } from "@/lib/company-display";
 import { ago as fmtAgo, date as fmtDate } from "@/lib/format";
-import { listingAge, listingSource } from "@/lib/listing/age";
+import { listingAge, listingSource, readerTimeZone } from "@/lib/listing/age";
 import { systemLabel } from "@/lib/listing/apply-url";
 import type { ListingJob } from "@/lib/listing/types";
 import type { PayBasisKey } from "@/lib/listing/pay";
@@ -30,9 +30,15 @@ export function periodSuffix(t: TFunction, period: PayBasisKey): string {
   return t(`listing.period.${period}`, fallback[period]);
 }
 
-/** The card's age clause: only for an employer-stated date from a system that does not move it. */
-export function cardAgeText(t: TFunction, job: Pick<ListingJob, "id" | "source" | "postedAt">, now?: Date): string | null {
-  const age = listingAge(job, now);
+/**
+ * The card's age clause: only for an employer-stated date from a system that
+ * does not move it. Counted in the reader's own day (NB-22): `timeZone` is the
+ * reader's zone unless a caller names another, so a posting made this evening
+ * does not read "1 day ago" to the person reading it this evening. null is no
+ * zone at all: the UTC count.
+ */
+export function cardAgeText(t: TFunction, job: Pick<ListingJob, "id" | "source" | "postedAt">, now?: Date, timeZone: string | null = readerTimeZone() ?? null): string | null {
+  const age = listingAge(job, now, timeZone ?? undefined);
   if (age.kind !== "dated") return null;
   return age.days === 0
     ? t("listing.card.postedToday", "posted today")
@@ -43,9 +49,14 @@ export function cardAgeText(t: TFunction, job: Pick<ListingJob, "id" | "source" 
       });
 }
 
-/** The pane's and page's Posted row: dated, re-dated (hedged) or undated — never a first-seen date. */
-export function postedFactText(t: TFunction, job: Pick<ListingJob, "id" | "source" | "postedAt">, lng: string, now?: Date): string {
-  const age = listingAge(job, now);
+/**
+ * The pane's and page's Posted row: dated, re-dated (hedged) or undated — never
+ * a first-seen date. The day is the one the card's age counts from (NB-22):
+ * the reader's local date of a full timestamp, the employer's own calendar
+ * date for a date-only stamp. null is no zone at all: the UTC day.
+ */
+export function postedFactText(t: TFunction, job: Pick<ListingJob, "id" | "source" | "postedAt">, lng: string, now?: Date, timeZone: string | null = readerTimeZone() ?? null): string {
+  const age = listingAge(job, now, timeZone ?? undefined);
   if (age.kind === "undated") return t("listing.facts.postedUndated", "The employer's system states no posting date");
   const date = fmtDate(age.day, { lng });
   if (age.kind === "dated") return t("listing.facts.postedDated", { defaultValue: "{{date}}, as the employer's system states it", date });

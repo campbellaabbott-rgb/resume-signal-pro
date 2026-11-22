@@ -12,6 +12,7 @@ import { Footer } from "@/components/Footer";
 import { INDUSTRY_KEYWORDS } from "../../supabase/functions/free-keyword-scan/industry-detection";
 
 import { ES_INDUSTRIES, capitalizeFirst, esIndustryTerms } from "@/data/es-industries";
+import { descriptionKeywords } from "@/lib/seo/keyword-pages";
 import { INDUSTRY_TO_CATEGORY } from "@/lib/job-board-categories";
 
 export default function IndustryKeywordsEs() {
@@ -30,7 +31,7 @@ export default function IndustryKeywordsEs() {
     <div className="min-h-screen bg-background">
       <SEO
         title={`Palabras Clave para Currículum de ${name} — Qué Buscan los ATS`}
-        description={`${capitalizeFirst(esKeywords.slice(0, 5).join(", "))} y más: las palabras clave, títulos y certificaciones que nuestro escáner de currículums busca en el sector de ${name.toLowerCase()}. Escaneo gratis incluido.`}
+        description={`${capitalizeFirst(descriptionKeywords(esKeywords, slug).slice(0, 5).join(", "))} y más: las palabras clave, títulos y certificaciones que nuestro escáner de currículums busca en el sector de ${name.toLowerCase()}. Escaneo gratis incluido.`}
         path={`/es/industrias/${slug}`}
       />
       <link rel="alternate" hrefLang="en" href={`https://resumebooster.work/industries/${slug}`} />

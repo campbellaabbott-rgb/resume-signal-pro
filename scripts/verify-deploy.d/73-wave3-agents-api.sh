@@ -44,20 +44,27 @@ for PAIR in "agent-mcp|2026-10-09|71" "public-api|2026-10-09|71" "apply-agent|20
   W73_FN=${PAIR%%|*}; W73_REST=${PAIR#*|}; W73_D=${W73_REST%%|*}; W73_N=${W73_REST#*|}
   W73_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$W73_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   [ "$W73_FN" = "agent-mcp" ] && W73_MCP_H="$W73_H"
+  [ "$W73_FN" = "public-api" ] && W73_API_H="$W73_H"
   if [ -z "$W73_H" ]; then echo "FAIL  $W73_FN preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"
   elif build_ge "$W73_FN" "$W73_H" "$W73_D" "$W73_N"; then echo "PASS  $W73_FN preflight x-fn-build = $W73_H ($W73_FN.$W73_D.$W73_N or later)"
   else echo "FAIL  $W73_FN preflight x-fn-build = $W73_H (want $W73_FN.$W73_D.$W73_N or later: the previous bundle is still serving)"; fi
 done
 
 curl -s -m 30 -o /tmp/vd_73_v1.json "$B/functions/v1/public-api/v1" -H "apikey: $K" -H "Authorization: Bearer $K"
-node -e '
+# OD16 (owner 2026-11-18): from public-api 2026-11-19.1 on, /v1 hands on the
+# federal rows whose who-may-apply statement is stored, so "usajobs is
+# withheld" stops being this section's claim. Its withheld line then prints
+# INFO; section 99zzzzzzzzzz-api4-od16-federal judges the federal rows.
+W73_OD16=0; build_ge public-api "${W73_API_H:-}" "2026-11-19" "1" && W73_OD16=1
+W73_OD16="$W73_OD16" node -e '
 const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
 let j=null;try{j=JSON.parse(require("fs").readFileSync("/tmp/vd_73_v1.json","utf8"))}catch{}
 if(!j){console.log("FAIL  /v1 index did not answer JSON");process.exit(0)}
 const v=String(j.apiVersion||"none");
 ok(/^2026-10-(09\.[1-9]|1[0-9]|2[0-9]|3[01])/.test(v)||/^2026-1[12]-|^202[7-9]-/.test(v),"/v1 apiVersion = "+v+" (want 2026-10-09.1 or later; 2026-10-08.1 = wave 2 only, 2026-09-30.1 = neither)");
 const ex=((j.restrictions||{}).excludedSources)||[];
-ok(ex.includes("smartrecruiters")&&ex.includes("usajobs"),"/v1 restrictions.excludedSources = "+JSON.stringify(ex)+" (want usajobs and smartrecruiters)");'
+if(process.env.W73_OD16==="1")console.log("INFO  /v1 restrictions.excludedSources = "+JSON.stringify(ex)+": public-api 2026-11-19.1 or later hands on labelled federal rows (OD16), so section 99zzzzzzzzzz judges this list, not wave 3");
+else ok(ex.includes("smartrecruiters")&&ex.includes("usajobs"),"/v1 restrictions.excludedSources = "+JSON.stringify(ex)+" (want usajobs and smartrecruiters)");'
 
 if [ -z "${RB:-}" ]; then
   echo "INFO  RB_API_KEY missing from .env.local -- the keyed /v1 reads (source=smartrecruiters -> 451, employment_type=zzz -> 400) are skipped"

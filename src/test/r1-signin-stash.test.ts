@@ -35,9 +35,11 @@ beforeEach(() => { sessionStorage.clear(); localStorage.clear(); });
 afterEach(() => { window.history.replaceState(null, "", "/"); });
 
 describe("the stash script's place in index.html", () => {
-  it("is the first child of <head>, inline and classic (no src, module, defer or async)", () => {
+  it("is the first script in <head>, after only the charset, inline and classic (no src, module, defer or async)", () => {
     expect(FIRST, "index.html has no <script> in <head>").toBeTruthy();
-    expect(/^\s*<script\b/i.test(HEAD), "something precedes the stash script in <head>").toBe(true);
+    // PERF-B3 (SEO audit 2026-11-18): the charset comes first, in the first
+    // 1,024 bytes; it runs nothing, so the stash still runs before any script.
+    expect(/^\s*(?:<meta charset="UTF-8" \/>\s*)?<script\b/i.test(HEAD), "something other than the charset precedes the stash script in <head>").toBe(true);
     expect(FIRST![1]).not.toMatch(/\bsrc\s*=|\btype\s*=|\bdefer\b|\basync\b/i);
     expect(SCRIPT).toContain("rb_url_stash");
     expect(SCRIPT).toContain("history.replaceState");

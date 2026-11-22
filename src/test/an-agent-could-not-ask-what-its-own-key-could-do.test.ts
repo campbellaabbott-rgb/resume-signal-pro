@@ -130,8 +130,14 @@ describe("the card carries what the board already parsed", () => {
     expect(ok).toMatch(/content: \[\{ type: "text", text: JSON\.stringify\(data\) \}\]/);
     expect(ok).toMatch(/structuredContent: data as Record<string, unknown>/);
     expect(ok, "structuredContent is an object in the schema").toMatch(/typeof data === "object" && !Array\.isArray\(data\)/);
-    expect(MCP, "outputSchema and structuredContent are 2025-06-18 features — the one revision this server speaks")
-      .toMatch(/const MCP_PROTOCOL_VERSIONS = \["2025-06-18"\];/);
+    // Four handshake revisions since lane fix/1121-connector-errors (item 8):
+    // initialize answers the one asked; the two older ones simply ignore the
+    // structured half they predate, and the text block carries the same JSON.
+    expect(strip(read("supabase/functions/agent-mcp/protocol.ts")), "the revisions initialize answers as asked")
+      .toMatch(/export const MCP_PROTOCOL_VERSIONS: readonly string\[\] = \["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"\];/);
+    expect(MCP).toMatch(/import \{[^}]*\bMCP_PROTOCOL_VERSIONS\b[^}]*\} from "\.\/protocol\.ts";/);
+    // key_status answers with no key (item 6): only `key` is always there.
+    expect(block("key_status")).toMatch(/\n      required: \["key"\],\n      additionalProperties: true,\n    \},\n  \},/);
   });
 });
 
@@ -310,7 +316,9 @@ describe("a shortlist costs one call, not twenty", () => {
 describe("the four filters the board served and the agent could not ask for", () => {
   it("map to the board's own parameter names", () => {
     const body = between(MCP, "function searchBody(args: Record<string, unknown>)", "\n}");
-    expect(body).toMatch(/\.\.\.\(args\.experience \? \{ experience: String\(args\.experience\) \} : \{\}\)/);
+    // Since lane fix/1121-connector-errors (item 11) the value is the board's
+    // own spelling ("junior" as entry), read by readFilterValues or refused.
+    expect(body).toMatch(/\.\.\.\(values\.values\.experience \? \{ experience: values\.values\.experience \} : \{\}\)/);
     // Since 2026-10-05 postedAfter is checked as an ISO date and sent
     // normalised (2.26: '2026-09' passed Date.parse and 500'd on timestamptz).
     expect(body).toMatch(/\.\.\.\(postedAfter !== undefined \? \{ postedAfter \} : \{\}\)/);

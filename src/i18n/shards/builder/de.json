@@ -27,6 +27,7 @@
     "removeEntry": "Diesen Eintrag entfernen",
     "removeBullet": "Diesen Aufzählungspunkt entfernen",
     "bullet": "Aufzählungspunkt {{num}}",
-    "dismiss": "Ausblenden"
+    "dismiss": "Ausblenden",
+    "removeTag": "{{tag}} entfernen"
   }
 }

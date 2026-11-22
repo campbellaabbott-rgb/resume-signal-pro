@@ -86,7 +86,9 @@ export function SavedSearchPills() {
             });
             if (probeErr) {
               const refused = await readBoardBudgetRefusal(probeErr);
-              if (refused) { markBoardBudgetRefused(refused); break; }
+              // A badge count nobody is waiting on: its "pass" refusal never
+              // pauses the board (S10-164); an allowance refusal still does.
+              if (refused) { markBoardBudgetRefused(refused, { background: true }); break; }
               continue;
             }
             const n = (res as { total?: number | null } | null)?.total;

@@ -1,0 +1,40 @@
+check	Measure the closed share and apply the rule	﻿2026-11-19T00:44:21.6790966Z ##[group]Run set -u
+check	Measure the closed share and apply the rule	2026-11-19T00:44:21.6791332Z ^[[36;1mset -u^[[0m
+check	Measure the closed share and apply the rule	2026-11-19T00:44:21.6791607Z ^[[36;1mmkdir -p .posting-closure^[[0m
+check	Measure the closed share and apply the rule	2026-11-19T00:44:21.6791882Z ^[[36;1mset +e^[[0m
+check	Measure the closed share and apply the rule	2026-11-19T00:44:21.6792404Z ^[[36;1mnode scripts/posting-closure-check.mjs --history .posting-closure/history.json --out .posting-closure/latest.json^[[0m
+check	Measure the closed share and apply the rule	2026-11-19T00:44:21.6793050Z ^[[36;1mCODE=$?^[[0m
+check	Measure the closed share and apply the rule	2026-11-19T00:44:21.6793266Z ^[[36;1mset -e^[[0m
+check	Measure the closed share and apply the rule	2026-11-19T00:44:21.6793510Z ^[[36;1mecho "code=$CODE" >> "$GITHUB_OUTPUT"^[[0m
+check	Measure the closed share and apply the rule	2026-11-19T00:44:21.6794092Z ^[[36;1mcase "$CODE" in^[[0m
+check	Measure the closed share and apply the rule	2026-11-19T00:44:21.6794378Z ^[[36;1m  0) echo "failed=" >> "$GITHUB_OUTPUT";;^[[0m
+check	Measure the closed share and apply the rule	2026-11-19T00:44:21.6795333Z ^[[36;1m  3) echo "failed=fired" >> "$GITHUB_OUTPUT"; echo "note=the STOP rule fired: two consecutive daily checks over 5% closed at the employer. Set JOB_POSTING_MARKUP to false in src/config/seo-switches.ts and publish." >> "$GITHUB_OUTPUT";;^[[0m
+check	Measure the closed share and apply the rule	2026-11-19T00:44:21.6796695Z ^[[36;1m  4) echo "failed=unjudged" >> "$GITHUB_OUTPUT"; echo "note=the check could not judge today (more than 20% of employer answers unknown, or nothing to check)" >> "$GITHUB_OUTPUT";;^[[0m
+check	Measure the closed share and apply the rule	2026-11-19T00:44:21.6798034Z ^[[36;1m  *) echo "failed=unreadable" >> "$GITHUB_OUTPUT"; echo "note=the check could not read the live sitemap or ledger (exit $CODE)" >> "$GITHUB_OUTPUT";;^[[0m
+check	Measure the closed share and apply the rule	2026-11-19T00:44:21.6798645Z ^[[36;1mesac^[[0m
+check	Measure the closed share and apply the rule	2026-11-19T00:44:21.6852848Z shell: /usr/bin/bash -e {0}
+check	Measure the closed share and apply the rule	2026-11-19T00:44:21.6853143Z ##[endgroup]
+check	Measure the closed share and apply the rule	2026-11-19T00:44:22.6676568Z posting closure: checking 497 live posting pages at their employers
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6921982Z posting closure: 2026-11-19 checked 497: 467 open, 7 closed, 23 unknown; closed share 1.5% (95% CI 0.7-3.0%), unknown 4.6%
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6923284Z posting closure:   workday          open 278, closed 7, unknown 4
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6924502Z posting closure:   ukg              open 0, closed 0, unknown 15
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6925453Z posting closure:   paylocity        open 13, closed 0, unknown 1
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6926071Z posting closure:   breezy           open 7, closed 0, unknown 0
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6926712Z posting closure:   adp              open 14, closed 0, unknown 0
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6927352Z posting closure:   greenhouse       open 23, closed 0, unknown 0
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6928014Z posting closure:   recruitee        open 3, closed 0, unknown 0
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6928654Z posting closure:   smartrecruiters  open 38, closed 0, unknown 0
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6929248Z posting closure:   icims            open 33, closed 0, unknown 1
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6929830Z posting closure:   personio         open 2, closed 0, unknown 0
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6930418Z posting closure:   lever            open 10, closed 0, unknown 0
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6931305Z posting closure:   teamtailor       open 5, closed 0, unknown 1
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6932354Z posting closure:   ashby            open 7, closed 0, unknown 0
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6933301Z posting closure:   oracle           open 34, closed 0, unknown 1
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6934811Z posting closure:   closed at the employer: /jobs/posting/workday/fivebelow~wd1~fivebelowcareers/JR103021
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6936626Z posting closure:   closed at the employer: /jobs/posting/workday/freseniusmedicalcare~wd3~fme/R0217655
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6938023Z posting closure:   closed at the employer: /jobs/posting/workday/gdit~wd5~External_Career_Site/RQ230851-1
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6939081Z posting closure:   closed at the employer: /jobs/posting/workday/knitwellgroup~wd1~US_Retail_Jobs/R-2038250
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6940015Z posting closure:   closed at the employer: /jobs/posting/workday/massgeneralbrigham~wd1~MGBExternal/RQ4084036-1
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6940801Z posting closure:   closed at the employer: /jobs/posting/workday/pnc~wd5~External/R217438-1
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6941529Z posting closure:   closed at the employer: /jobs/posting/workday/rsmaus~wd105~RSMCareers/JR101377
+check	Measure the closed share and apply the rule	2026-11-19T00:45:29.6942307Z posting closure: 2026-11-19: 1.5% closed (7 of 474 with a definite answer; 95% CI 0.7-3.0%), under the line

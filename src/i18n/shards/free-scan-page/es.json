@@ -2,7 +2,12 @@
   "freeScanPage": {
     "a11y": {
       "resumeText": "Texto de tu currículum",
-      "emailAddress": "Tu dirección de correo electrónico"
+      "emailAddress": "Tu dirección de correo electrónico",
+      "closeIndustryList": "Cerrar la lista de sectores",
+      "removeJob": "Quitar el empleo seleccionado",
+      "removeSpreadsheet": "Quitar esta hoja de cálculo",
+      "clearPosting": "Borrar la oferta de empleo",
+      "removeProfilePdf": "Quitar este PDF del perfil"
     },
     "jobUrl": {
       "truncated": "Esta oferta era más larga de lo que podemos leer, así que en el cuadro solo está su primera parte."
@@ -170,7 +175,19 @@
       "levelDense": "Alta",
       "levelModerate": "Moderada",
       "levelSparse": "Baja",
-      "learnAbout": "Más sobre {{title}}"
+      "learnAbout": "Más sobre {{title}}",
+      "section": {
+        "contact": "datos de contacto",
+        "summary": "resumen",
+        "experience": "experiencia",
+        "education": "formación",
+        "skills": "habilidades"
+      },
+      "contact": {
+        "email": "un correo electrónico",
+        "phone": "un número de teléfono",
+        "linkedIn": "un perfil de LinkedIn"
+      }
     },
     "keywordImpact": {
       "critical": "Imprescindible",
@@ -223,7 +240,17 @@
     },
     "report": {
       "scoreBand": "La puntuación {{score}} está en una banda de modelo de {{low}}–{{high}}. La banda abarca nuestro cálculo basado en reglas y la estimación de la IA: una sola cifra exacta aparentaría más precisión de la que hay.",
-      "preparing": "Preparando tu informe…"
+      "preparing": "Preparando tu informe…",
+      "skillsFreshness": "Lo actuales que son tus habilidades",
+      "careerTrajectory": "Tu trayectoria profesional",
+      "levelKeywords": "Palabras clave esperadas para tu nivel",
+      "employmentTimeline": "Cronología de tu experiencia laboral",
+      "gapFound": "Un periodo sin empleo entre dos puestos",
+      "breakdown": "De qué se compone la puntuación",
+      "breakdownKeywords": "Palabras clave",
+      "breakdownFormat": "Formato",
+      "breakdownQuantification": "Cifras en tus viñetas",
+      "estImpact": "Impacto estimado: {{impact}}"
     },
     "market": {
       "title": "Inteligencia de mercado: {{country}}",
@@ -300,6 +327,36 @@
         "garbled": "caracteres ilegibles",
         "noSections": "ninguna sección estándar de currículum"
       }
+    },
+    "fallback": {
+      "automated_review_only": "Solo revisión automática del formato: la revisión con IA no estaba disponible para este análisis.",
+      "duty_not_result": "Una viñeta describe una tarea, no un resultado",
+      "add_numbers": "Añade cifras a las viñetas que no tienen ninguna: es la forma más rápida de subir la puntuación",
+      "rewrite_passive_openers": "Reescribe las viñetas que empiezan con una frase pasiva",
+      "number_top_three": "Añade una cifra concreta a cada una de tus tres viñetas principales",
+      "numberTopThreeWhy": "Un resultado medible es de lo que más buscan quienes hacen la primera criba",
+      "numberTopThreeImpact": "+5 a 8 puntos",
+      "startsWith": "empieza por «{{opener}}»"
+    },
+    "insights": {
+      "lengthExact_one": "Extensión recomendada del currículum para este mercado: {{count}} página",
+      "lengthExact_many": "Extensión recomendada del currículum para este mercado: {{count}} páginas",
+      "lengthExact_other": "Extensión recomendada del currículum para este mercado: {{count}} páginas",
+      "lengthRange": "Extensión recomendada del currículum para este mercado: de {{min}} a {{max}} páginas"
+    },
+    "partial": {
+      "noPostingComparison": "No se comparó con la oferta de empleo que añadiste: vuelve a analizarlo para cotejarlo con la oferta."
+    },
+    "since": {
+      "title": "Desde tu último análisis: {{before}} → {{after}}",
+      "flags": "Señales de alerta {{before}} → {{after}}.",
+      "up": "Más alta que la última vez. Los hallazgos de abajo explican cada punto.",
+      "down": "Más baja que la última vez, a menudo por un objetivo distinto o por contenido recortado. Los hallazgos de abajo explican cada punto.",
+      "same": "La puntuación no ha cambiado. Los hallazgos de abajo muestran qué la movería."
+    },
+    "detection": {
+      "title": "Sector detectado automáticamente: ¿es correcto?",
+      "body": "Leímos este currículum como {{industry}} a partir de pocas señales. Si no es así, elige tu campo en el selector de sector de arriba: las listas de palabras clave, los consejos y la práctica de entrevista de este informe lo siguen al instante. La puntuación, los hallazgos y la recomendación de formato son de este análisis, escritos para {{industry}}; analiza de nuevo y se escribirán para el campo que elegiste."
     }
   }
 }

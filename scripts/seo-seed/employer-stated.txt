@@ -1,0 +1,11 @@
+# WHAT THE DAILY CLOSURE CHECK READ AT EACH LIVE POSTING PAGE'S EMPLOYER
+# (SEO audit 2026-11-18, STRUCTURED-B2). Written whole by
+# scripts/posting-closure-check.mjs --propose from its newest measuring run,
+# into the pull request .github/workflows/posting-closure.yml keeps open; a
+# person merges it. The bake (scripts/prerender-seo.mjs) applies each line's
+# statements when its own read of the page fails (the end date only ever
+# shortens the window, and a past one retires the page), and a Workday page
+# that neither the bake nor a line here from the last 36 hours read as open
+# carries no job markup (owner decision 2026-11-19).
+#
+# One line per page: <path> <read at, UTC> <open|unknown> <statements JSON or ->

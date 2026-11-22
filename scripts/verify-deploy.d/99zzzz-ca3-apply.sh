@@ -154,10 +154,15 @@ else ok(code==="200"&&(w.form||{}).source==="employer-published"&&((w.form||{}).
 fi
 
 # The share of AI-servable postings whose form is read: a catalogue figure.
+# From agent-mcp 2026-11-19.1 on (OD16, owner 2026-11-18) the connector hands
+# on federal rows once their who-may-apply statement is stored, so USAJOBS
+# leaves the withheld list here and its whole facet count joins the base (an
+# upper bound: unlabelled federal rows are still not served).
+VD99CA_OD16=0; build_ge agent-mcp "${VD99CA_MCP:-}" "2026-11-19" "1" && VD99CA_OD16=1
 J '{"action":"facets"}' > /tmp/vd_99ca_facets.json
-node -e '
+VD99CA_OD16="$VD99CA_OD16" node -e '
 const fs=require("fs");let j=null;try{j=JSON.parse(fs.readFileSync("/tmp/vd_99ca_facets.json","utf8"))}catch{}
 const s=j&&j.sources;if(!s||typeof s!=="object"){console.log("INFO  the board answered no source facet; the form-read share is not computed");process.exit(0)}
-const READ=["ashby","bamboohr","breezy","greenhouse","lever","paylocity","pinpoint","recruitee","teamtailor","workable"];const WITHHELD=["smartrecruiters","usajobs"];
+const READ=["ashby","bamboohr","breezy","greenhouse","lever","paylocity","pinpoint","recruitee","teamtailor","workable"];const OD16=process.env.VD99CA_OD16==="1";const WITHHELD=OD16?["smartrecruiters"]:["smartrecruiters","usajobs"];
 const all=Object.entries(s).filter(([k])=>!WITHHELD.includes(k)).reduce((a,[,v])=>a+Number(v||0),0);const read=READ.reduce((a,k)=>a+Number(s[k]||0),0);
-console.log("INFO  form-read share of AI-servable postings: "+read+" of "+all+" ("+(all?(100*read/all).toFixed(1):"?")+"%; the five connect W5 readers add "+["bamboohr","lever","paylocity","teamtailor","workable"].reduce((a,k)=>a+Number(s[k]||0),0)+"; facet of "+j.sourcesAt+")")'
+console.log("INFO  form-read share of AI-servable postings: "+read+" of "+all+" ("+(all?(100*read/all).toFixed(1):"?")+"%; the five connect W5 readers add "+["bamboohr","lever","paylocity","teamtailor","workable"].reduce((a,k)=>a+Number(s[k]||0),0)+"; withheld "+WITHHELD.join(", ")+(OD16?", and the "+Number(s.usajobs||0)+" federal rows count whole although only those with who-may-apply stored are served (OD16)":"")+"; facet of "+j.sourcesAt+")")'

@@ -515,7 +515,8 @@ describe("a keyless call to a keyed tool answers the sign-in challenge while the
   });
 
   it("the dispatch routes an unkeyed call to the unkeyed branch inside the metered try, and keyed calls unchanged", () => {
-    expect(MCP).toMatch(/if \(!d\) \{\s*const \{ rpc, headers \} = await answerUnkeyed\(client, req, id, toolName, toolArgs, params\);/);
+    // The reader's outcome rides along (owner D3: an answered call is counted ok, corrected or would_refuse).
+    expect(MCP).toMatch(/if \(!d\) \{\s*const \{ rpc, headers \} = await answerUnkeyed\(client, req, id, toolName, toolArgs, params, argOutcome\);/);
     expect(MCP).toMatch(/callTool\(client, d\.api_key_id \?\? "", d\.key_tier, toolName, toolArgs, ctx\)/);
   });
 });

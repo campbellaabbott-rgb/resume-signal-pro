@@ -24,6 +24,12 @@
     "unscoredResumeTerms": "Not scored — we recognised no skill or tool in your résumé",
     "unscoredResumeTermsBody": "The scorer reads English keywords only, and found none in your résumé, so there was nothing to compare against this posting. There is no percentage here; that is the absence of a measurement, not a weak one.",
     "unscoredResumeTermsTip": "Not scored: the scorer recognised no skill or tool in your résumé (it reads English keywords only), so there was nothing to compare. This is not a low score — it is no score.",
-    "matchesNoneForRole": "We found no live openings for {{role}} right now, so these are openings in your field — scored against your CV, not found by it."
+    "matchesNoneForRole": "We found no live openings for {{role}} right now, so these are openings in your field — scored against your CV, not found by it.",
+    "loadMoreTooDeep": "The board does not page any further down this list. Narrow it with a job title, a place or a field to reach the roles below.",
+    "orderFitNoResumeTerms": "not ranked — we recognised no skill or tool in your CV, so there was nothing to score these postings against. The scorer reads English keywords only.",
+    "orderFitScoring": "scoring these postings against your CV…",
+    "orderFitLimited": "not ranked yet — the fit-scoring allowance is used up for now, so these postings have not been scored.",
+    "orderFitFailed": "not ranked — the scorer did not answer for these postings just now.",
+    "orderFitUnreadable": "not ranked — the scorer could not read these postings: it reads English keywords only, and found no skill or tool it knows in the descriptions we hold."
   }
 }

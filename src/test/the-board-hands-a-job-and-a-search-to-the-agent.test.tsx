@@ -772,11 +772,117 @@ describe("3. the private routes are disallowed in every robots.txt block", () =>
     expect(blocks(ROBOTS).some((b) => b.ua === "*")).toBe(true);
   });
   it("teeth: one Disallow line removed from one block is one offence", () => {
-    const mutated = ROBOTS.replace("User-agent: Googlebot\nAllow: /\nDisallow: /auth\n", "User-agent: Googlebot\nAllow: /\n");
+    // Since 2026-11-18 no group opens with an allow line (CRAWL-6, below), so
+    // the Googlebot group starts at its first Disallow.
+    const mutated = ROBOTS.replace("User-agent: Googlebot\nDisallow: /auth\n", "User-agent: Googlebot\n");
     expect(mutated).not.toBe(ROBOTS);
     expect(offences(mutated)).toEqual(["Googlebot lacks /auth"]);
     const noConsent = ROBOTS.replace(/Disallow: \/oauth\/consent\n/, "");
     expect(offences(noConsent).length).toBe(1);
+  });
+});
+
+describe("3. every private route is disallowed whichever matching rule a reader obeys (SEO audit 2026-11-18, CRAWL-6, CRAWL-4)", () => {
+  // CRAWL-6: 15 of the 16 groups opened with a line allowing the whole site.
+  // Google, Bing and RFC 9309 take the LONGEST matching rule and so read the
+  // private routes as disallowed; a reader that takes the FIRST matching rule
+  // (Python's urllib.robotparser) stopped at that line and read every private
+  // route as allowed. CRAWL-4: the owner-only /admin/claims served the
+  // homepage copy, indexable, to a reader that runs no JavaScript, and no
+  // group named /admin/. Judged by parsing the file both ways, never by
+  // looking for a line.
+  const ROBOTS = read("public/robots.txt");
+  const parity = read("src/test/sitemap-prerender-parity.test.ts");
+  const PRIVATE = [...(/const PRIVATE_ROUTES = \[([\s\S]*?)\];/.exec(parity)?.[1] ?? "").matchAll(/"(\/[^"]+)"/g)].map((m) => m[1]);
+  const PREFIXES = [...(/const PRIVATE_PREFIXES = \[([^\]]*)\]/.exec(parity)?.[1] ?? "").matchAll(/"(\/[^"]+)"/g)].map((m) => m[1]);
+  // Every route the router declares under /admin/, read from App.tsx with its comments out.
+  const ADMIN = [...strip(read("src/App.tsx")).matchAll(/<Route\s+path="(\/admin\/[^"]+)"/g)].map((m) => m[1]);
+  // Each private route, a path under it, and each admin route.
+  const PROBES = [...PRIVATE.flatMap((r) => [r, `${r}/x`]), ...ADMIN];
+  // Pages every group but meta-externalagent must still read (the dev tool
+  // stays readable so its noindex can be read: seo-fix-copy-says-one-thing).
+  const PUBLIC = ["/", "/jobs", "/jobs/company/dominos", "/agents", "/dev/checkout-test"];
+
+  type Rule = { allow: boolean; path: string };
+  /** RFC 9309 groups: consecutive User-agent lines share the rules after them; comments are not rules. */
+  const groupsOf = (txt: string) => {
+    const out: Array<{ agents: string[]; rules: Rule[] }> = [];
+    let agentRun = false;
+    for (const raw of txt.split("\n")) {
+      const m = /^\s*([A-Za-z-]+)\s*:\s*(.*?)\s*$/.exec(raw.replace(/#.*$/, ""));
+      if (!m) continue;
+      const key = m[1].toLowerCase();
+      if (key === "user-agent") {
+        if (!agentRun) out.push({ agents: [], rules: [] });
+        out[out.length - 1].agents.push(m[2]);
+        agentRun = true;
+      } else {
+        agentRun = false;
+        if ((key === "allow" || key === "disallow") && out.length && m[2]) out[out.length - 1].rules.push({ allow: key === "allow", path: m[2] });
+      }
+    }
+    return out;
+  };
+  /** A rule's path against a URL path: a prefix, with * for any run and a closing $ for the end. */
+  const matches = (rule: string, path: string) => {
+    const end = rule.endsWith("$");
+    const body = (end ? rule.slice(0, -1) : rule).split("*").map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*");
+    return new RegExp(`^${body}${end ? "$" : ""}`).test(path);
+  };
+  /** Google, Bing, RFC 9309: the longest matching rule wins, an allow on a tie; no match allows. */
+  const longest = (rules: Rule[], path: string) => {
+    let best: Rule | null = null;
+    for (const r of rules) {
+      if (matches(r.path, path) && (!best || r.path.length > best.path.length || (r.path.length === best.path.length && r.allow))) best = r;
+    }
+    return best ? best.allow : true;
+  };
+  /** urllib.robotparser: the first matching rule in file order wins; no match allows. */
+  const first = (rules: Rule[], path: string) => rules.find((r) => matches(r.path, path))?.allow ?? true;
+  const READERS = [["longest", longest], ["first", first]] as const;
+  const offences = (txt: string) => groupsOf(txt).flatMap((g) => {
+    const who = g.agents.join(", ");
+    const out: string[] = [];
+    if (g.rules.some((r) => r.allow && r.path === "/")) out.push(`${who} opens with the whole site allowed`);
+    for (const p of PROBES) for (const [name, allows] of READERS) if (allows(g.rules, p)) out.push(`${who} allows ${p} (${name} match)`);
+    return out;
+  });
+
+  it("reads the router's /admin/ routes, the /admin/ prefix and a non-trivial robots.txt", () => {
+    expect(ADMIN).toContain("/admin/claims");
+    expect(PREFIXES).toContain("/admin/");
+    expect(PRIVATE.length).toBeGreaterThan(8);
+    const groups = groupsOf(ROBOTS);
+    expect(groups.length).toBeGreaterThan(10);
+    expect(groups.some((g) => g.agents.includes("*"))).toBe(true);
+    expect(groups.some((g) => g.agents.includes("Googlebot"))).toBe(true);
+  });
+  it("every group, named and *, disallows every private and /admin/ route by the longest match and by the first, and none opens with the whole site allowed", () => {
+    expect(offences(ROBOTS)).toEqual([]);
+  });
+  it("the public pages stay readable to every group but meta-externalagent, which reads none", () => {
+    for (const g of groupsOf(ROBOTS)) {
+      const blocked = g.agents.includes("meta-externalagent");
+      for (const p of PUBLIC) for (const [name, allows] of READERS) {
+        expect(allows(g.rules, p), `${g.agents.join(", ")} ${p} (${name} match)`).toBe(!blocked);
+      }
+    }
+  });
+  it("teeth: an allow-everything line at the top of one group, or one group without /admin/, is caught and named", () => {
+    const opened = ROBOTS.replace("User-agent: Googlebot\n", "User-agent: Googlebot\nAllow: /\n");
+    expect(opened).not.toBe(ROBOTS);
+    const o = offences(opened);
+    expect(o).toContain("Googlebot opens with the whole site allowed");
+    expect(o).toContain("Googlebot allows /auth (first match)");
+    expect(o).not.toContain("Googlebot allows /auth (longest match)");
+    expect(o.every((x) => x.startsWith("Googlebot "))).toBe(true);
+    const at = ROBOTS.indexOf("User-agent: *\n");
+    expect(at).toBeGreaterThan(-1);
+    const noAdmin = ROBOTS.slice(0, at) + ROBOTS.slice(at).replace("Disallow: /admin/\n", "");
+    expect(noAdmin).not.toBe(ROBOTS);
+    expect(offences(noAdmin)).toEqual(["* allows /admin/claims (longest match)", "* allows /admin/claims (first match)"]);
+    // Two User-agent lines in a row are one group (RFC 9309), so both are judged.
+    expect(groupsOf("User-agent: a\nUser-agent: b\nDisallow: /auth\n")).toEqual([{ agents: ["a", "b"], rules: [{ allow: false, path: "/auth" }] }]);
   });
 });
 

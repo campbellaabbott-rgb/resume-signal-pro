@@ -548,13 +548,29 @@ export function readToolReply(data: unknown): Record<string, unknown> | null {
 }
 
 /**
+ * The ATS score a core reply gives, as a number, or null when it gives none
+ * (S11-069): no atsScore, no score in it, or a score that is not a finite
+ * number. A string holding a number ("72") is that number.
+ */
+export function atsScoreOf(reply: Record<string, unknown>): number | null {
+  const ats = reply.atsScore;
+  if (!isObject(ats)) return null;
+  const raw = ats.score;
+  const n = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() !== "" ? Number(raw) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
  * Whether a part's reply can be delivered. The core needs the four fields the
- * old call was refused without; a section's part needs its section, since
- * that is all it writes. Refused, the next model in the chain is asked with
- * the time that is left.
+ * old call was refused without, and a real ATS score: a reply without one was
+ * given a score of 0 and sold as 0/100 (S11-069). A section's part needs its
+ * section, since that is all it writes. Refused, the next model in the chain
+ * is asked with the time that is left.
  */
 export function usablePart(part: AnalysisPart, reply: Record<string, unknown>): boolean {
-  if (part.label === "core") return !!(reply.optimizedBullets && reply.actionVerbs && reply.keywords && reply.redFlags);
+  if (part.label === "core") {
+    return !!(reply.optimizedBullets && reply.actionVerbs && reply.keywords && reply.redFlags) && atsScoreOf(reply) !== null;
+  }
   return part.keys.every((k) => isObject(reply[k]));
 }
 

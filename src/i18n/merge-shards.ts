@@ -43,6 +43,9 @@ export const SHARD_ROOT_KEYS: Readonly<Record<string, string>> = {
   "ingest-parsers": "ingestParsers",
   "past-buyers": "pastBuyers",
   "site-shell": "siteShell",
+  // The bug round of 2026-11-19: the homepage scan's tailoring notes and
+  // outcome card (fix/1119-home-scan).
+  "home-scan": "homeScan",
 };
 
 export interface Shard {

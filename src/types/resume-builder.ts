@@ -95,15 +95,23 @@ export function createEmptyResume(): BuilderResume {
 // as a real BuilderResume without each call site re-implementing the same
 // normalization (and risking forgetting the id injection, which causes duplicate-
 // key React warnings since every entry would otherwise share `undefined`).
+// A list the model wrote, kept to its strings (S11-068): a null, a number or an
+// object among the bullets reached the preview's b.trim() and threw, and took
+// the paid page that showed the résumé with it.
+const stringsOf = (v: unknown): string[] => (Array.isArray(v) ? v.filter((s): s is string => typeof s === "string") : []);
+
 export function normalizeBuilderResume(data: Record<string, unknown> | undefined | null): BuilderResume {
   const raw = data || {};
 
   const experience = Array.isArray(raw.experience)
-    ? (raw.experience as Record<string, unknown>[]).map((entry) => ({
-        ...createEmptyExperienceEntry(),
-        ...entry,
-        bullets: Array.isArray(entry.bullets) && entry.bullets.length > 0 ? entry.bullets as string[] : [""],
-      }))
+    ? (raw.experience as Record<string, unknown>[]).map((entry) => {
+        const bullets = stringsOf(entry?.bullets);
+        return {
+          ...createEmptyExperienceEntry(),
+          ...entry,
+          bullets: bullets.length > 0 ? bullets : [""],
+        };
+      })
     : [];
 
   const education = Array.isArray(raw.education)
@@ -118,7 +126,7 @@ export function normalizeBuilderResume(data: Record<string, unknown> | undefined
     summary: typeof raw.summary === "string" ? raw.summary : "",
     experience: experience.length > 0 ? experience : [createEmptyExperienceEntry()],
     education: education.length > 0 ? education : [createEmptyEducationEntry()],
-    skills: Array.isArray(raw.skills) ? raw.skills as string[] : [],
-    certifications: Array.isArray(raw.certifications) ? raw.certifications as string[] : [],
+    skills: stringsOf(raw.skills),
+    certifications: stringsOf(raw.certifications),
   };
 }

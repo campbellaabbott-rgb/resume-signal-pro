@@ -156,7 +156,9 @@ describe("ranking is not finding", () => {
     // Clobbering it would fix this bug by introducing a ruder one.
     const i = JOBS.indexOf("const retrieveForResume");
     const handler = JOBS.slice(i, JOBS.indexOf("const resolveFitResume", i));
-    expect(handler).toMatch(/!q\.trim\(\)/);
+    // Re-pointed 2026-11-21 (S10-067): read through the ref, so a query typed
+    // while the résumé's terms were loading counts as stated.
+    expect(handler).toMatch(/!qRef\.current\.trim\(\)/);
     expect(handler).toMatch(/!company/);
   });
 

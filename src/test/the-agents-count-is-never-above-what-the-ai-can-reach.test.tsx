@@ -12,6 +12,16 @@
  * prints no figure. Judged on the rendered page, the executed bake and the
  * committed llms.txt.
  *
+ * OD16 (2026-11-19): USAJOBS left the withheld lists, but the connector hands
+ * a federal posting on only once its who-may-apply statement is stored (none
+ * before agent-mcp 2026-11-19.1 and job-board .104 serve, at most 10,000 a
+ * lap until .105), and this page cannot count the labelled ones. The first
+ * cut of the lane subtracted SmartRecruiters alone and so printed every
+ * federal posting as reachable: 926,285 here, 17,794 above what the AI could
+ * reach. The line still subtracts every federal posting and names USAJOBS
+ * (REACH_LEAVES_OUT) until FEDERAL_ROWS_IN_REACH flips, which the OD16 verify
+ * section's FED6 judges.
+ *
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -41,7 +51,8 @@ function stubTable() {
 }
 
 import AgentConnect from "../pages/AgentConnect";
-import { aiReach } from "../lib/home/board-figures";
+import { FEDERAL_ROWS_IN_REACH, HOME_WITHHELD_SOURCES, REACH_LEAVES_OUT, aiReach } from "../lib/home/board-figures";
+import { MCP_WITHHELD_NOTE } from "../config/mcp-tools";
 
 vi.setConfig({ testTimeout: 30_000 });
 const SLOW = { timeout: 4000 } as const;
@@ -111,9 +122,36 @@ describe("the baked /agents", () => {
   });
 
   it("teeth: a read whose withheld systems are missing is unmeasured, and bakes no figure rather than the whole board", async () => {
-    const { usajobs: _u, ...rest } = SAMPLE_VENDOR_READ.counts;
+    const { smartrecruiters: _s, ...rest } = SAMPLE_VENDOR_READ.counts;
     const page = await bakeAgents({ read: { ...SAMPLE_VENDOR_READ, counts: rest } });
     expect(bakedText(page.content)).not.toMatch(/\d[\d,]* live postings/);
+    // ... and so is a read without the federal count, while the line subtracts it.
+    const { usajobs: _u, ...noFederal } = SAMPLE_VENDOR_READ.counts;
+    const page2 = await bakeAgents({ read: { ...SAMPLE_VENDOR_READ, counts: noFederal } });
+    expect(bakedText(page2.content)).not.toMatch(/\d[\d,]* live postings/);
+  });
+});
+
+describe("the federal postings stay out of the reach until the connector hands on about all of them (OD16 review)", () => {
+  const counts = SAMPLE_VENDOR_READ.counts;
+  const total = SAMPLE_VENDOR_READ.openTotal;
+
+  it("the line subtracts every federal posting and SmartRecruiters, and names both", () => {
+    expect(FEDERAL_ROWS_IN_REACH, "flip it only once the OD16 section's FED6 passes with the labelled rows at the federal count").toBe(false);
+    expect([...REACH_LEAVES_OUT]).toEqual(["usajobs", ...HOME_WITHHELD_SOURCES]);
+    expect(aiReach(counts, total)).toEqual({ searchable: total - counts.usajobs - counts.smartrecruiters, withheld: counts.usajobs + counts.smartrecruiters, names: ["USAJOBS", "SmartRecruiters"] });
+  });
+
+  it("TEETH: subtracting the withheld list alone (the first cut of OD16) prints every federal posting as reachable", () => {
+    const withheldOnly = total - HOME_WITHHELD_SOURCES.reduce((n, s) => n + (counts as Record<string, number>)[s], 0);
+    expect(withheldOnly).toBe(926_285);
+    expect(withheldOnly - REACH.searchable, "the federal postings the AI was said to search and could not").toBe(counts.usajobs);
+    expect(REACH.searchable).toBeLessThan(withheldOnly);
+  });
+
+  it("the connector note says the count leaves the federal postings out, as the line does", () => {
+    // The note says it exactly while the flag is off, and must stop saying it the day the flag flips.
+    expect(/the count of postings your AI searches leaves them all out/.test(MCP_WITHHELD_NOTE)).toBe(!FEDERAL_ROWS_IN_REACH);
   });
 });
 

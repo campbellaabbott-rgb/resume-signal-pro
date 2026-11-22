@@ -13,6 +13,7 @@ import { Footer } from "@/components/Footer";
 import { INDUSTRY_KEYWORDS } from "../../supabase/functions/free-keyword-scan/industry-detection";
 import { ONET_EXPECTATIONS } from "../../supabase/functions/free-keyword-scan/onet-expectations";
 import { INDUSTRY_TO_CATEGORY } from "@/lib/job-board-categories";
+import { relatedIndustries } from "@/lib/seo/related-industries";
 import { SUB_INDUSTRY_TAXONOMY } from "../../supabase/functions/free-keyword-scan/industry-detection";
 import { indexableRolesForIndustry } from "@/data/roles";
 import { PageJsonLd } from "@/components/seo/PageJsonLd";
@@ -213,7 +214,7 @@ export default function IndustryKeywords() {
           )}
 
           <nav className="mt-8 flex flex-wrap gap-2 text-xs" aria-label="Related industries">
-            {Object.keys(INDUSTRY_KEYWORDS).filter((s2) => s2 !== slug).sort().slice(0, 8).map((s2) => (
+            {relatedIndustries(slug ?? "", INDUSTRY_KEYWORDS, INDUSTRY_TO_CATEGORY).map((s2) => (
               <Link key={s2} to={`/industries/${s2}`} className="px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors capitalize">
                 {label(s2)} keywords →
               </Link>

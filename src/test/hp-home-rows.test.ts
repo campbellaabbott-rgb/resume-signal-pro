@@ -47,7 +47,9 @@ describe("which rows the homepage keeps", () => {
   });
 
   it("drops every system that moves its dates (REDATING_SOURCES), even with a fresh date", () => {
-    expect([...REDATING_SOURCES].sort()).toEqual(["breezy", "paylocity", "ukg"]);
+    // USAJOBS joined 2026-11-19 (OD16): it re-dates a reposted announcement,
+    // so a fresh date on one is not a fresh announcement either.
+    expect([...REDATING_SOURCES].sort()).toEqual(["breezy", "paylocity", "ukg", "usajobs"]);
     const jobs = [
       ...REDATING_SOURCES.map((s, i) => row({ token: `redate${i}`, source: s, id: `${s}:redate${i}:1`, postedAt: iso(0) })),
       row({ token: "acme" }),

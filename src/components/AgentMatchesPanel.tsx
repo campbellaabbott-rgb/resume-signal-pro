@@ -45,8 +45,13 @@ export function AgentMatchesPanel({ currentRole, keywords }: Props) {
   const [capped, setCapped] = useState(false);
   const [q, setQ] = useState<string>("");
 
+  // ONE SEARCH PER QUERY, NOT ONE PER RENDER (S11-084). The page builds the
+  // keywords prop inline, a new array on every render, and the effect used to
+  // depend on that array: each re-render of the homepage (a toast, any state
+  // change) sent the board the same search again. The effect now depends on
+  // the search string itself, so only a different query searches again.
+  const query = (currentRole ?? "").trim() || (keywords ?? []).slice(0, 2).join(" ").trim();
   useEffect(() => {
-    const query = (currentRole ?? "").trim() || (keywords ?? []).slice(0, 2).join(" ").trim();
     if (query.length < 3) return; // nothing credible to search with — no panel
     setQ(query);
     let dead = false;
@@ -62,7 +67,7 @@ export function AgentMatchesPanel({ currentRole, keywords }: Props) {
       setCapped(d.countCapped === true);
     }).catch(() => { /* panel stays absent */ });
     return () => { dead = true; };
-  }, [currentRole, keywords]);
+  }, [query]);
 
   if (!jobs) return null;
 

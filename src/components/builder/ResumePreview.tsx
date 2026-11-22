@@ -3,6 +3,9 @@ import { BuilderResume } from "@/types/resume-builder";
 import { educationEntryHasContent, experienceEntryHasContent } from "@/lib/builder-import";
 import { resumeSectionLabels } from "@/lib/resume-section-labels";
 
+/** The lines of a list that hold text (S11-068): a saved or imported list can carry a null or a number. */
+const textLines = (v: unknown): string[] => (Array.isArray(v) ? v.filter((s): s is string => typeof s === "string" && s.trim() !== "") : []);
+
 function formatDateRange(startDate: string, endDate: string): string {
   if (!startDate && !endDate) return "";
   if (!startDate) return endDate;
@@ -23,8 +26,8 @@ export function ResumePreview({ resume }: { resume: BuilderResume }) {
   const labels = resumeSectionLabels(resume, { uiLanguage: i18n.language });
   const experience = (resume.experience ?? []).filter(experienceEntryHasContent);
   const education = (resume.education ?? []).filter(educationEntryHasContent);
-  const skills = (resume.skills ?? []).filter((s) => s.trim());
-  const certifications = (resume.certifications ?? []).filter((s) => s.trim());
+  const skills = textLines(resume.skills);
+  const certifications = textLines(resume.certifications);
   const contactLine = [
     resume.contact.email,
     resume.contact.phone,
@@ -54,7 +57,7 @@ export function ResumePreview({ resume }: { resume: BuilderResume }) {
           <div className="space-y-4">
             {experience.map((entry) => {
               const companyLine = [entry.title ? entry.company : "", entry.location].filter(Boolean).join(" — ");
-              const bullets = (entry.bullets ?? []).filter((b) => b.trim());
+              const bullets = textLines(entry.bullets);
               return (
                 <div key={entry.id}>
                   <div className="flex items-baseline justify-between gap-2">

@@ -357,7 +357,9 @@ describe("both challenge sites probe first and answer in band unless the fact is
     const list = functionText(MCP, "listedTools");
     expect(list).toMatch(/if \(!signInOn\) return listed;/);
     expect(list).toMatch(/const securitySchemes = ANON_TOOLS\.includes\(t\.name\) \? \[\{ type: "noauth" \}, withToken\] : \[withToken\];/);
-    expect(between(MCP, 'if (method === "tools/list") {', "\n  }\n")).toMatch(/const \{ state \} = await probeSignIn\(\);[\s\S]*listedTools\(!!bearer, edition, state === "on"\)/);
+    expect(between(MCP, 'if (method === "tools/list") {', "\n  }\n")).toMatch(/const \{ state \} = await probeSignIn\(\);[\s\S]*listedTools\(credentialHeld\(state === "on"\), edition, state === "on"\)/);
+    // A bearer that is no key is no credential while sign-in is off (lane fix/1121-connector-errors, item 6).
+    expect(MCP).toMatch(/const credentialHeld = \(signInOn: boolean\) => looksLikeApiKey\(bearer\) \|\| \(signInOn && !!bearer\);/);
   });
 });
 
@@ -423,7 +425,7 @@ describe("initialize carries the fact and one sentence for it, under the truncat
     // Both guide reads warm the cache before the synchronous render.
     // The second argument is whether the caller is offered the keyed prompt
     // and resource (connect W3, BR-18): true after a key check, !!bearer before.
-    const reads = [...MCP.matchAll(/guideText\((?:ctx\.)?edition, (?:true|!!bearer)\)\)/g)];
+    const reads = [...MCP.matchAll(/guideText\((?:ctx\.)?edition, (?:true|!!bearer|credentialHeld\(cachedSignIn\(\)\?\.state === "on"\))\)\)/g)];
     expect(reads.length).toBe(2);
     for (const site of reads) {
       const before = MCP.slice(Math.max(0, site.index! - 160), site.index!);
@@ -489,6 +491,13 @@ describe("every keyed tool says what it needs, a shortlist read with no ids is a
     const src = `
       const ANON_TOOLS = ${JSON.stringify(anonOf(MCP))};
       const UNKNOWN_KEY_NOTE = "NOTE";
+      const REVOKED_KEY_NOTE = "REVOKED";
+      ${functionText(MCP, "keylessDenialNote")}
+      ${functionText(MCP, "retryAfterOf")}
+      const refusedKeyStatus = (d) => ({ keyState: d ? d.deny_reason : "none" });
+      const toolOk = (data) => ({ ok: data });
+      const withArgNotes = (rpc) => rpc;
+      const limitNotesOf = () => ({});
       const FREE_KEY_DAILY_QUOTA = 1000;
       const FREE_KEY_RATE_PER_MIN = 60;
       const KEY_REFUSALS = { rate_limited: (l) => ["rate " + l, "wait"], quota_exceeded: (l) => ["quota " + l, "wait"], revoked: ["revoked", "mint"], unknown_key: ["That key is not recognised.", "fix"] };
@@ -505,7 +514,7 @@ describe("every keyed tool says what it needs, a shortlist read with no ids is a
       const callerAddress = () => "";
       const isChatGptCaller = () => false;
       return async function run(toolName, decision) {
-        const id = 1, read = false, toolArgs = {}, params = {}, keyHash = "hash", edition = "other";
+        const id = 1, read = false, toolArgs = {}, params = {}, keyHash = "hash", edition = "other", argNotes = {}, argOutcome = "ok";
         const client = { rpc() { return { maybeSingle: async () => ({ data: decision, error: null }) }; } };
         const req = { headers: { get() { return ""; } } };
         let d = null;
@@ -520,17 +529,25 @@ describe("every keyed tool says what it needs, a shortlist read with no ids is a
   }
   const deny = (reason: string) => ({ is_allowed: false, deny_reason: reason, rate_limit: 60, rate_used: 61, quota_limit: 1000, quota_used: 0 });
 
-  it("an unrecognised key on an unkeyed tool runs unkeyed and says so; on a keyed tool, and for rate, quota and revoked, the refusal stands — the gate executed, not read", async () => {
+  it("an unrecognised or revoked key on an unkeyed tool runs unkeyed and says so, key_status answers every refusal as the key's state, and a rate or quota refusal stands — the gate executed, not read", async () => {
     // The unkeyed tool reaches the unkeyed answer with the note; nothing was refused.
     const ran = await runKeyGate("search_jobs", deny("unknown_key")) as { body: { note?: string; unkeyed?: boolean; isError?: boolean }; status: number };
     expect(ran.body.isError).toBeUndefined();
     expect(ran.body).toEqual({ unkeyed: true, note: "NOTE" });
     expect(ran.status).toBe(200);
-    // The same bad key on a keyed tool is refused with the unknown-key string.
-    const refusedKeyed = await runKeyGate("key_status", deny("unknown_key")) as { body: { message: string } };
-    expect(refusedKeyed.body.message).toBe("That key is not recognised.");
-    // Recognised keys that are over their limits are refused on the unkeyed tools too.
-    for (const reason of ["rate_limited", "quota_exceeded", "revoked"]) {
+    // A revoked key on an unkeyed tool the same way, with its own sentence (item 10).
+    const revoked = await runKeyGate("search_jobs", deny("revoked")) as { body: Record<string, unknown>; status: number };
+    expect(revoked.body).toEqual({ unkeyed: true, note: "REVOKED" });
+    expect(revoked.status).toBe(200);
+    // key_status reports the credential it was sent (item 6): an answer, never an error.
+    for (const reason of ["unknown_key", "revoked", "rate_limited", "quota_exceeded"]) {
+      const status = await runKeyGate("key_status", deny(reason)) as { body: Record<string, unknown>; status: number; headers: Record<string, string> };
+      expect(status.body, reason).toEqual({ ok: { keyState: reason } });
+      expect(status.status, reason).toBe(200);
+      if (reason === "rate_limited") expect(status.headers["Retry-After"]).toBe("60");
+    }
+    // Live keys over their limits are refused on the unkeyed tools too.
+    for (const reason of ["rate_limited", "quota_exceeded"]) {
       const refused = await runKeyGate("search_jobs", deny(reason)) as { body: { isError?: boolean; message: string } };
       expect(refused.body.isError, reason).toBe(true);
       expect(refused.body.message, reason).not.toBe("That key is not recognised.");
@@ -540,7 +557,9 @@ describe("every keyed tool says what it needs, a shortlist read with no ids is a
     const gate = between(MCP, "let unknownKeyNote = \"\";", "const friendly: Record<string, [string, string]> = {");
     expect(gate).not.toMatch(/"rate_limited"|"quota_exceeded"|"revoked"/);
     expect(MCP).toMatch(/const UNKNOWN_KEY_NOTE = "The key sent was not recognised \(keys start with rb_live_\); this call ran without it\.";/);
-    expect(MCP).toMatch(/return json\(unknownKeyNote \? withUnkeyedNote\(rpc, unknownKeyNote\) : rpc, 200, headers\);/);
+    // The reader's notes ride on the unkeyed answer LAST (lane fix/1121-connector-errors, items 2 and 4):
+    // withUnkeyedNote rebuilds the result, and a not-applied line (owner D3) must stay its first text block.
+    expect(MCP).toMatch(/const keyNoted = unknownKeyNote \? withUnkeyedNote\(rpc, unknownKeyNote\) : rpc;\s*return json\(withArgNotes\(keyNoted, \{ \.\.\.argNotes, \.\.\.limitNotesOf\(toolName, toolArgs, true, edition\) \}, toolName\), 200, headers\);/);
     // The note lands in the unkeyed block of a real answer, and a refusal is untouched: run the builder itself.
     const src = `${between(MCP, "const toolOk = (data: unknown) =>", "\nconst toolErr")}\n${functionText(MCP, "withUnkeyedNote")}\nreturn withUnkeyedNote;`;
     const js = ts.transpileModule(src, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
@@ -558,6 +577,10 @@ describe("every keyed tool says what it needs, a shortlist read with no ids is a
   it("the transport edge: a browser gets the not-a-web-page line on GET and any other method; a non-JSON body, an unknown tool and an unknown method each say what to do", () => {
     expect(MCP).toMatch(/const NOT_A_WEB_PAGE = `This is an MCP server for AI agents, not a web page\. Paste this address into your agent; the how-to is at \$\{DOCS_URL\}\.`;/);
     expect(MCP.match(/json\(\{ error: NOT_A_WEB_PAGE, docs: DOCS_URL \}, 405\)/g)?.length).toBe(2);
+    // A third 405 names the transport, to a client set to the old sse type (item 8).
+    expect(MCP).toMatch(/if \(wantsEventStream\(req\.headers\.get\("accept"\)\)\) return json\(\{ error: SSE_TRANSPORT_SENTENCE, docs: DOCS_URL \}, 405\);/);
+    // key_status with no key answers, uncounted, while sign-in is not on (item 6).
+    expect(MCP).toMatch(/if \(!read && toolName === "key_status" && !looksLikeApiKey\(bearer\)\) \{\s*const \{ state \} = await probeSignIn\(\);\s*if \(state !== "on"\) \{\s*const \{ rpc, headers \} = await answerUnkeyed\(/);
     expect(MCP).not.toMatch(/POST-only|"method not allowed"/);
     expect(MCP).toMatch(/rpcError\(null, -32700, "The request body is not JSON\. Send one JSON-RPC 2\.0 message per POST\."\), 400\)/);
     expect(MCP).not.toMatch(/-32700, "parse error"/);
@@ -638,11 +661,11 @@ describe("teeth: each property fails on a copy that reintroduces the old behavio
   });
 
   it("a guide read that renders before probing is caught", () => {
-    const warmed = "await probeSignIn();\n        return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition, !!bearer))));";
+    const warmed = "await probeSignIn();\n        return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition, credentialHeld(cachedSignIn()?.state === \"on\")))));";
     expect(MCP).toContain(warmed);
-    const cold = MCP.replace(warmed, "return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition, !!bearer))));");
+    const cold = MCP.replace(warmed, "return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition, credentialHeld(cachedSignIn()?.state === \"on\")))));");
     expect(cold).not.toBe(MCP);
-    const site = cold.indexOf("contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition, !!bearer))");
+    const site = cold.indexOf("contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition, credentialHeld(cachedSignIn()?.state === \"on\")))");
     expect(cold.slice(Math.max(0, site - 160), site)).not.toMatch(/await probeSignIn\(\);/);
   });
 });

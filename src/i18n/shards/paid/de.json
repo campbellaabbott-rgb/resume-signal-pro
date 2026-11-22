@@ -27,6 +27,7 @@
       "jobDescription": "Diese Analyse konnte Ihren Lebenslauf diesmal nicht mit der Stellenanzeige vergleichen, daher fehlt dieser Teil. Alles andere in der Analyse ist vollständig.",
       "linkedIn": "Diese Analyse konnte Ihr LinkedIn-Profil diesmal nicht prüfen, daher fehlt dieser Teil. Alles andere in der Analyse ist vollständig."
     },
+    "alsoAskedInPosting": "Außerdem in der Stellenanzeige verlangt",
     "page": {
       "emailSentTitle": "E-Mail gesendet",
       "emailSentBody": "Eine Kopie wurde an Ihre E-Mail-Adresse gesendet",

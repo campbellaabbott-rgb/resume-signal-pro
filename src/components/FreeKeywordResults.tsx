@@ -21,7 +21,6 @@ import { InterviewCoach } from "./InterviewCoach";
 import { useAuth } from "@/contexts/AuthContext";
 import { JobKeywordMatcher } from "./JobKeywordMatcher";
 import { ATSParseSimulator } from "./ATSParseSimulator";
-import { ReturningUserInsights } from "./ReturningUserInsights";
 import { IndustryKeywordSuggestions } from "./IndustryKeywordSuggestions";
 import { RoleKeywordSuggestions } from "./RoleKeywordSuggestions";
 import { analyzeKeywordPresence } from "@/config/industry-keywords";
@@ -211,6 +210,8 @@ interface RedFlag {
   issue: string;
   impact: string;
   severity?: "critical" | "moderate" | "minor";
+  /** The backup scanner's fixed finding (NB-18): see FALLBACK_CODES. */
+  code?: unknown;
 }
 
 interface ReadabilityScore {
@@ -261,6 +262,8 @@ interface QuickWin {
   impact: "low" | "medium" | "high";
   scoreImpact?: number;
   category?: string;
+  /** The backup scanner's fixed finding (NB-18): see FALLBACK_CODES. */
+  code?: unknown;
 }
 
 interface SampleRewrite {
@@ -402,6 +405,8 @@ export interface FreeKeywordResultsProps {
   industryScoreInsight?: IndustryScoreInsight;
   formatGrade: string;
   formatIssue: string;
+  /** The backup scanner's code for formatIssue (NB-18): see FALLBACK_CODES. */
+  formatIssueCode?: string | null;
   resumeLength: ResumeLength;
   wordCount?: WordCount;
   experienceLevel?: ExperienceLevel;
@@ -513,7 +518,7 @@ export interface FreeKeywordResultsProps {
   // 10 reporting improvements (batch 1)
   scoreBreakdown?: { keywords: number; format: number; quantification: number };
   additionalRewrites?: Array<{ before: string; after: string; improvement: string }>;
-  nextBestAction?: { action: string; why: string; estimatedImpact: string };
+  nextBestAction?: { action: string; why: string; estimatedImpact: string; code?: unknown };
   recruiterFirstPassSummary?: string;
   formatGradeDrivers?: Array<{ driver: string; impact: string }>;
   // 10 reporting improvements (batch 2)
@@ -613,6 +618,16 @@ export interface FreeKeywordResultsProps {
   openInterviewPrep?: boolean;
 }
 
+/**
+ * THE BACKUP SCANNER'S FINDINGS IN THE READER'S LANGUAGE (NB-18). When every
+ * model fails, free-keyword-scan writes a report from rules alone, and its
+ * fixed sentences are English whatever the résumé's language; each carries
+ * one of these codes, and the page says it from freeScanPage.fallback.*.
+ */
+export const FALLBACK_CODES = ["automated_review_only", "duty_not_result", "add_numbers", "rewrite_passive_openers", "number_top_three"] as const;
+export type FallbackCode = (typeof FALLBACK_CODES)[number];
+export const isFallbackCode = (v: unknown): v is FallbackCode => typeof v === "string" && (FALLBACK_CODES as readonly string[]).includes(v);
+
 /** One line of the PDF summary: text, size and colour, or a gap in points. */
 export interface SummaryLine { text: string; size: number; bold: boolean; color: [number, number, number]; gap?: number }
 
@@ -656,6 +671,7 @@ export function FreeKeywordResults({
   industryScoreInsight,
   formatGrade,
   formatIssue,
+  formatIssueCode,
   resumeLength: resumeLengthProp,
   wordCount: wordCountProp,
   experienceLevel: experienceLevelProp,
@@ -767,7 +783,6 @@ export function FreeKeywordResults({
   reportMeta,
   parseQuality,
   scoreBand,
-  hadJobDescription,
   sourceWasFile,
   keywordSource,
   detectedLanguage,
@@ -830,6 +845,11 @@ export function FreeKeywordResults({
 
   // Use corrected industry if set, otherwise use detected
   const effectiveIndustry = correctedIndustry || industry;
+  // The industry the scan read, in the reader's words, not as a raw id. The
+  // format recommendation was written by the scan for it, and a correction
+  // does not rewrite it, so the format copy names this one, not the
+  // corrected one; the detection note says so (S10-147).
+  const formatIndustry = scanIndustryLabel(industry, t);
   // The ATS score's one set of bands (src/lib/score-bands.ts, S13-019).
   const atsTone = scoreTone(atsScoreEstimate);
 
@@ -891,11 +911,11 @@ export function FreeKeywordResults({
   useEffect(() => {
     if (!hasRecordedScan && atsScoreEstimate) {
       const checklist = generateChecklist({
-        quickWins: quickWinsProp,
+        quickWins,
         formatGrade,
-        formatIssue,
+        formatIssue: isFallbackCode(formatIssueCode) ? t(`freeScanPage.fallback.${formatIssueCode}`) : formatIssue,
         keywords,
-        redFlags: redFlagsProp,
+        redFlags,
       });
       
       addScanEntry({
@@ -1179,13 +1199,20 @@ export function FreeKeywordResults({
     missingSections: sectionCheckProp?.missingSections ?? [],
   };
 
-  const contactInfo = {
-    hasEmail: true,
-    hasPhone: true,
-    hasLinkedIn: false,
-    ...contactInfoProp,
-    missingItems: contactInfoProp?.missingItems ?? [],
-  };
+  // Contact facts only from a scan that read them (SCAN-M1, the S11-147
+  // rule). A report with no contactInfo (the backup scanner's) used to show
+  // an email and a phone as present: it now shows no Contact card and
+  // raises no contact finding. A field the scan sent as anything but true is
+  // not present.
+  const contactInfo: ContactInfo | null = contactInfoProp && typeof contactInfoProp === "object"
+    && typeof contactInfoProp.hasEmail === "boolean" && typeof contactInfoProp.hasPhone === "boolean"
+    ? {
+        hasEmail: contactInfoProp.hasEmail,
+        hasPhone: contactInfoProp.hasPhone,
+        hasLinkedIn: contactInfoProp.hasLinkedIn === true,
+        missingItems: Array.isArray(contactInfoProp.missingItems) ? contactInfoProp.missingItems : [],
+      }
+    : null;
 
   // ABSENT IS HIDDEN, NOT INVENTED (register S11-147). A report the model left
   // thin used to show "Clear Experience", a 2-year average tenure, "steady"
@@ -1206,12 +1233,24 @@ export function FreeKeywordResults({
     ({ score: 0, verdict: "balanced" as const, tip: "Bullet impact could not be detected from this text." } satisfies BulletImpactScore);
   const keywordDensity = keywordDensityProp || null;
   const improvementPotential = improvementPotentialProp || null;
-  const redFlags = redFlagsProp || [];
+  // A backup report's coded findings are said in the reader's language
+  // (NB-18); every other flag and win is the scan's own sentence, as sent.
+  // The bullet a duty_not_result flag quotes stays as written; only the
+  // scanner's English reason after it is said again.
+  const redFlags: RedFlag[] = (redFlagsProp || []).map((f) => {
+    if (!f || !isFallbackCode(f.code)) return f;
+    const quoted = typeof f.impact === 'string' ? /^("[\s\S]*")\s+—\s+starts with "([^"]*)"$/.exec(f.impact) : null;
+    return {
+      ...f,
+      issue: t(`freeScanPage.fallback.${f.code}`),
+      impact: quoted ? `${quoted[1]} — ${t('freeScanPage.fallback.startsWith', { opener: quoted[2] })}` : f.impact,
+    };
+  });
   const topSkipReasons = topSkipReasonsProp || [];
   const powerWords = powerWordsProp || [];
   const weakPhrases = weakPhrasesProp || [];
   const timelineAnalysis = timelineAnalysisProp ?? null;
-  const quickWins = quickWinsProp || [];
+  const quickWins: QuickWin[] = (quickWinsProp || []).map((w) => (w && isFallbackCode(w.code) ? { ...w, fix: t(`freeScanPage.fallback.${w.code}`) } : w));
   // The simulator's fixes are the scanner's one fix list (S13-058), so every
   // box ticked lands on the hero's projected score, the Fix Plan's last step
   // and Improvement Potential: the quick wins served plus the bullets and
@@ -1352,25 +1391,6 @@ export function FreeKeywordResults({
     return "bg-destructive/10 border-destructive/20";
   };
 
-  const contactItemsPresent = useMemo(
-    () => [contactInfo.hasEmail, contactInfo.hasPhone, contactInfo.hasLinkedIn].filter(Boolean).length,
-    [contactInfo.hasEmail, contactInfo.hasPhone, contactInfo.hasLinkedIn]
-  );
-
-  const getContactScore = () => `${contactItemsPresent}/3`;
-
-  const getContactColor = () => {
-    if (contactItemsPresent === 3) return "text-success";
-    if (contactItemsPresent >= 2) return "text-warning";
-    return "text-destructive";
-  };
-
-  const getContactBgColor = () => {
-    if (contactItemsPresent === 3) return "bg-success/10 border-success/20";
-    if (contactItemsPresent >= 2) return "bg-warning/10 border-warning/20";
-    return "bg-destructive/10 border-destructive/20";
-  };
-
   const getReadabilityColor = (verdict: string) => {
     if (verdict === "easy_to_scan") return "text-success";
     if (verdict === "readable") return "text-warning";
@@ -1444,13 +1464,18 @@ export function FreeKeywordResults({
     const item = (key: string, opts?: Record<string, unknown>) => t(`reportInsights.findings.items.${key}`, opts);
     if (parseQuality?.verdict === 'poor') out.push({ severity: 'critical', label: item('parsePoor') });
     else if (parseQuality?.verdict === 'fair') out.push({ severity: 'warning', label: item('parseFair') });
+    // The scan sends each red flag's sentence as `issue` (SCAN-01): reading
+    // only title or flag, every free report's summary, Findings index, PDF
+    // and mailed counts said 0 critical. title and flag stay as fallbacks.
     for (const flag of (redFlags || []).slice(0, 3)) {
       const sev = (flag as { severity?: string }).severity === 'critical' ? 'critical' : 'warning';
-      const title = (flag as { title?: string; flag?: string }).title || (flag as { flag?: string }).flag;
-      if (title) out.push({ severity: sev, label: title });
+      const f = flag as { issue?: unknown; title?: unknown; flag?: unknown };
+      const label = [f.issue, f.title, f.flag].find((v): v is string => typeof v === 'string' && v.trim() !== '');
+      if (label) out.push({ severity: sev, label });
     }
-    if (!contactInfo.hasEmail) out.push({ severity: 'critical', label: item('noEmail') });
-    if (!contactInfo.hasPhone) out.push({ severity: 'warning', label: item('noPhone') });
+    // No contact finding from a scan that read no contact facts (SCAN-M1).
+    if (contactInfo && !contactInfo.hasEmail) out.push({ severity: 'critical', label: item('noEmail') });
+    if (contactInfo && !contactInfo.hasPhone) out.push({ severity: 'warning', label: item('noPhone') });
     for (const check of industrySpecificChecks?.items || []) {
       out.push(check.present ? { severity: 'pass', label: check.label } : { severity: 'warning', label: item('fieldMissing', { label: check.label }) });
     }
@@ -1468,8 +1493,13 @@ export function FreeKeywordResults({
       const rewritten = weakestBullets!.filter((b) => shownRewrite(b.rewrite) !== null).length;
       out.push({ severity: 'warning', label: item(rewritten === n ? 'weakBulletsAll' : rewritten > 0 ? 'weakBulletsSome' : 'weakBulletsNone', { count: n, rewritten }) });
     }
-    if (typeof quantificationScore === 'number' && quantificationScore < 40) out.push({ severity: 'warning', label: item('lowQuantification') });
-    else if (typeof quantificationScore === 'number' && quantificationScore >= 60) out.push({ severity: 'pass', label: item('quantified') });
+    // The scan's quantificationScore is an object (SCAN-05); its score is the
+    // share of bullets with a number. The placeholder used when neither the
+    // scan nor the text gave one is no measurement and raises nothing.
+    const quantShare = typeof quantificationScoreProp?.score === 'number' ? quantificationScoreProp.score
+      : typeof computedQuantificationScore?.score === 'number' ? computedQuantificationScore.score : null;
+    if (quantShare !== null && quantShare < 40) out.push({ severity: 'warning', label: item('lowQuantification') });
+    else if (quantShare !== null && quantShare >= 60) out.push({ severity: 'pass', label: item('quantified') });
     if (sectionCheck.hasExperience && sectionCheck.hasEducation && sectionCheck.hasSkills) out.push({ severity: 'pass', label: item('coreSections') });
     return out;
   })();
@@ -1495,7 +1525,9 @@ export function FreeKeywordResults({
     // neither (review round 2026-10-26).
     peerPercentile: null,
     applicationPassRate: null,
-    redFlags: redFlags.map(f => ({ issue: f.issue })),
+    // The scan's own issue lines: the sealed mail copy replaces them by
+    // position, so the page's translations of coded ones are not sent.
+    redFlags: (redFlagsProp || []).map(f => ({ issue: f.issue })),
     fixRoadmap: fixRoadmap ?? null,
     industry: effectiveIndustry,
     reportId: reportMeta?.reportId ?? null,
@@ -1697,21 +1729,23 @@ export function FreeKeywordResults({
         const flagsNow = redFlagsProp?.length ?? null;
         return (
           <div className={`rounded-2xl border p-4 mb-6 ${delta > 0 ? "border-success/40 bg-success/5" : delta < 0 ? "border-warning/40 bg-warning/5" : "border-border bg-card/60"}`}>
-            <p className="text-sm font-semibold text-foreground">
-              Since your last scan: {prev.atsScore} → {atsScoreEstimate}
+            {/* Live once a scan is recorded beside the earlier ones (S10-056),
+                so it is said in the reader's language. */}
+            <p data-since-last-scan className="text-sm font-semibold text-foreground">
+              {t('freeScanPage.since.title', { before: prev.atsScore, after: atsScoreEstimate })}
               {delta !== 0 && (
                 <span className={delta > 0 ? "text-success" : "text-warning"}> ({delta > 0 ? "+" : ""}{delta})</span>
               )}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
               {prevFlags != null && flagsNow != null && prevFlags !== flagsNow
-                ? `Red flags ${prevFlags} → ${flagsNow}. `
+                ? `${t('freeScanPage.since.flags', { before: prevFlags, after: flagsNow })} `
                 : ""}
               {delta > 0
-                ? "The fixes registered — this is the measured improvement, same rubric both times."
+                ? t('freeScanPage.since.up')
                 : delta < 0
-                  ? "Lower than last time — usually a different target or trimmed content. The findings below explain each point."
-                  : "No score change — the findings below show what would move it."}
+                  ? t('freeScanPage.since.down')
+                  : t('freeScanPage.since.same')}
             </p>
           </div>
         );
@@ -1901,9 +1935,12 @@ export function FreeKeywordResults({
         </p>
       )}
 
-      {/* Realism nudge: modeled vs exact expectations */}
-      {!hadJobDescription && (
-        <div className="rounded-xl border border-primary/25 bg-primary/5 p-3.5 mb-4 flex flex-col sm:flex-row sm:items-center gap-2.5">
+      {/* Realism nudge: modeled vs exact expectations. Shown unless the
+          keywords really were matched against a posting (SCAN-09): a posting
+          the re-check refused, or one too short to read, leaves the keywords
+          modeled, and pasting one still makes them exact. */}
+      {keywordSource?.source !== 'job_description' && (
+        <div data-realism-nudge className="rounded-xl border border-primary/25 bg-primary/5 p-3.5 mb-4 flex flex-col sm:flex-row sm:items-center gap-2.5">
           <p className="text-xs text-muted-foreground flex-1">
             <span className="font-semibold text-foreground">This scan modeled expectations for {effectiveIndustry.replace(/_/g, ' ')} generally.</span>{' '}
             Paste a real job posting and the keyword analysis becomes exact — matched against what that employer actually asked for, not an industry model.
@@ -1981,9 +2018,14 @@ export function FreeKeywordResults({
         <div className="rounded-2xl border border-warning/30 bg-warning/5 p-4 mb-5 flex items-start gap-3">
           <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-foreground mb-0.5">Industry auto-detected — does this look right?</p>
-            <p className="text-xs text-muted-foreground">
-              We detected <span className="font-medium text-foreground">{effectiveIndustry.replace(/_/g, ' ')}</span> based on limited signals. If that's wrong, use the industry selector above — it changes every recommendation below.
+            {/* What a correction changes, said as it is (S10-147): the
+                keyword lists, the tips and the interview practice follow the
+                selector; the score, the findings and the format advice are
+                the scan's, written for the industry it read, until the next
+                scan, which is sent the reader's choice. */}
+            <p className="text-sm font-semibold text-foreground mb-0.5">{t('freeScanPage.detection.title')}</p>
+            <p data-detection-note className="text-xs text-muted-foreground">
+              {t('freeScanPage.detection.body', { industry: formatIndustry })}
             </p>
           </div>
         </div>
@@ -2045,11 +2087,13 @@ export function FreeKeywordResults({
         </div>
       )}
 
-      {/* Returning User Insights - shown for users who have scanned before */}
-      <ReturningUserInsights
-        currentScore={atsScoreEstimate}
-        currentIndustry={effectiveIndustry}
-      />
+      {/* The earlier scan is told once, by the since-last-scan banner above,
+          with this candidate's numbers in the reader's language. The
+          returning-reader card that stood here read the history before this
+          scan was recorded (its scan number and change one scan behind),
+          checked no candidate and spoke English only; it never showed while
+          every scan overwrote the history (S10-056), and it is not shown now
+          that the history keeps the earlier scans. */}
 
       {/* Industry & Role Keyword Suggestions */}
       <CollapsibleSection
@@ -2348,12 +2392,19 @@ export function FreeKeywordResults({
         defaultOpen={false}
       >
         <div className="p-4 rounded-xl bg-card/50 border border-border/50">
+          {/* The industry the reader confirmed, not only the one detected
+              (S10-147), and the page count of the market the scan used
+              (S10-148), so the tip agrees with the country card above. */}
           <PersonalizedInsights
-            industry={industry}
+            industry={effectiveIndustry}
             experienceLevel={experienceLevel}
             atsScore={atsScoreEstimate}
             hasJobDescription={!!jobMatchScore}
             currentRole={currentRole}
+            pageRange={(() => {
+              const range = countryStandards as { pagesMin?: unknown; pagesMax?: unknown } | null | undefined;
+              return typeof range?.pagesMin === "number" && typeof range.pagesMax === "number" ? { min: range.pagesMin, max: range.pagesMax } : null;
+            })()}
           />
         </div>
       </CollapsibleSection>
@@ -2375,7 +2426,7 @@ export function FreeKeywordResults({
           {user ? (
             <InterviewCoach
               resumeText={resumeText}
-              industry={industry}
+              industry={effectiveIndustry}
               currentRole={currentRole}
             />
           ) : (
@@ -2471,7 +2522,7 @@ export function FreeKeywordResults({
           candidateName={candidateName}
           atsScore={atsScoreEstimate}
           formatGrade={formatGrade}
-          industry={industry}
+          industry={effectiveIndustry}
           experienceLevel={getExperienceLevelLabel(experienceLevel.level)}
           topStrength={topStrength?.title ?? ""}
           improvementPotential={improvementPotential?.estimatedScoreIncrease}
@@ -2900,7 +2951,7 @@ export function FreeKeywordResults({
         <CollapsibleSection
           id="format-recommendation"
           title={t('freeResults.formatRecommendationSection.title')}
-          subtitle={t('freeResults.formatRecommendationSection.subtitle', { style: formatRecommendation.recommendedStyle, industry })}
+          subtitle={t('freeResults.formatRecommendationSection.subtitle', { style: formatRecommendation.recommendedStyle, industry: formatIndustry })}
           icon={<LayoutList className="w-4 h-4" />}
           defaultOpen={false}
           badge={
@@ -2914,7 +2965,7 @@ export function FreeKeywordResults({
         >
         <div className="rounded-xl bg-card border border-border p-4">
           <p className="text-xs text-muted-foreground mb-4">
-            {t('freeResults.formatRecommendationSection.basedOnStandards', { industry })}
+            {t('freeResults.formatRecommendationSection.basedOnStandards', { industry: formatIndustry })}
           </p>
 
           {/* Current Format Assessment */}
@@ -2982,7 +3033,7 @@ export function FreeKeywordResults({
           {/* Industry Norms */}
           {formatRecommendation.industryNorms && formatRecommendation.industryNorms?.length > 0 && (
             <div className="mb-4">
-              <p className="text-sm font-semibold mb-3">{t('freeResults.formatRecommendationSection.whatTopResumesDo', { industry })}</p>
+              <p className="text-sm font-semibold mb-3">{t('freeResults.formatRecommendationSection.whatTopResumesDo', { industry: formatIndustry })}</p>
               <div className="space-y-2">
                 {(formatRecommendation.industryNorms ?? []).map((norm, index) => (
                   <div key={index} className="flex items-start gap-2">
@@ -3004,7 +3055,7 @@ export function FreeKeywordResults({
           {/* Things to Avoid */}
           {formatRecommendation.avoidList && formatRecommendation.avoidList?.length > 0 && (
             <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20 mb-4">
-              <p className="text-xs font-semibold text-destructive mb-2">{t('freeResults.formatRecommendationSection.avoidForIndustry', { industry })}</p>
+              <p className="text-xs font-semibold text-destructive mb-2">{t('freeResults.formatRecommendationSection.avoidForIndustry', { industry: formatIndustry })}</p>
               <div className="flex flex-wrap gap-2">
                 {(formatRecommendation.avoidList ?? []).map((item, index) => (
                   <span key={index} className="text-xs px-2 py-1 rounded-full bg-destructive/10 text-destructive">
@@ -3270,7 +3321,7 @@ export function FreeKeywordResults({
         )}>
           <div className="flex items-center gap-2 mb-3">
             <RefreshCw className={cn("w-4 h-4", skillsRecency.hasAgingSignals ? "text-warning" : "text-success")} />
-            <h4 className="font-semibold text-foreground">Skills Freshness</h4>
+            <h4 className="font-semibold text-foreground">{t('freeScanPage.report.skillsFreshness')}</h4>
           </div>
           {skillsRecency.agingSkills?.length > 0 && (
             <div className="mb-3">
@@ -3304,7 +3355,7 @@ export function FreeKeywordResults({
         <div className="rounded-2xl border border-border bg-card p-5 mb-5">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-4 h-4 text-primary" />
-            <h4 className="font-semibold text-foreground">Career Trajectory</h4>
+            <h4 className="font-semibold text-foreground">{t('freeScanPage.report.careerTrajectory')}</h4>
             <span className={cn(
               "ml-auto text-xs px-2 py-0.5 rounded-full font-medium",
               careerTrajectory.trajectory === 'upward' ? "bg-success/15 text-success" :
@@ -3342,7 +3393,7 @@ export function FreeKeywordResults({
         <div className="rounded-2xl border border-destructive/20 bg-card p-5 mb-5">
           <div className="flex items-center gap-2 mb-3">
             <Target className="w-4 h-4 text-destructive" />
-            <h4 className="font-semibold text-foreground">Keywords Expected at Your Level</h4>
+            <h4 className="font-semibold text-foreground">{t('freeScanPage.report.levelKeywords')}</h4>
             <span className={cn(
               "ml-auto text-xs px-2 py-0.5 rounded-full font-semibold",
               competitiveGap.gapScore >= 70 ? "bg-success/15 text-success" :
@@ -3393,7 +3444,7 @@ export function FreeKeywordResults({
         <div className="rounded-2xl border border-warning/30 bg-warning/5 p-5 mb-5">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="w-4 h-4 text-warning" />
-            <h4 className="font-semibold text-foreground">Employment Timeline</h4>
+            <h4 className="font-semibold text-foreground">{t('freeScanPage.report.employmentTimeline')}</h4>
             {resumeTimeline.rolesDetected > 0 && (
               <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-warning/15 text-warning font-medium">
                 {resumeTimeline.rolesDetected} role{resumeTimeline.rolesDetected !== 1 ? 's' : ''} detected
@@ -3402,7 +3453,7 @@ export function FreeKeywordResults({
           </div>
           {resumeTimeline.hasSignificantGap && (
             <div className="mb-2 p-2.5 rounded-lg bg-warning/10 border border-warning/20">
-              <p className="text-xs font-semibold text-warning mb-0.5">Employment gap detected</p>
+              <p className="text-xs font-semibold text-warning mb-0.5">{t('freeScanPage.report.gapFound')}</p>
               <p className="text-xs text-muted-foreground">
                 Your timeline shows a gap of more than six months between roles. A brief explanation in your summary (freelance consulting, caregiving, upskilling) or a short consulting/contract entry answers the question before anyone asks it.
               </p>
@@ -3581,14 +3632,18 @@ export function FreeKeywordResults({
         </CardErrorBoundary>
       )}
 
-      {/* ── Score Breakdown ─────────────────────────────────────────────────── */}
+      {/* ── The score's three parts, in the reader's language (S14X-057) ── */}
       {scoreBreakdown && (
-        <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-          <h4 className="font-semibold text-foreground text-sm">Score Breakdown</h4>
+        <div data-score-breakdown className="rounded-2xl border border-border bg-card p-5 space-y-3">
+          <h4 className="font-semibold text-foreground text-sm">{t('freeScanPage.report.breakdown')}</h4>
           {(["keywords", "format", "quantification"] as const).map((key) => {
             const val = scoreBreakdown[key];
             const colors = { keywords: "bg-primary", format: "bg-warning", quantification: "bg-success" };
-            const labels = { keywords: "Keyword Match", format: "Format", quantification: "Quantification" };
+            const labels = {
+              keywords: t('freeScanPage.report.breakdownKeywords'),
+              format: t('freeScanPage.report.breakdownFormat'),
+              quantification: t('freeScanPage.report.breakdownQuantification'),
+            };
             return (
               <div key={key} className="space-y-1">
                 <div className="flex justify-between text-xs text-muted-foreground">
@@ -4004,29 +4059,37 @@ export function FreeKeywordResults({
             <Zap className="w-4 h-4 text-primary" />
             <h4 className="font-semibold text-primary text-sm uppercase tracking-wide">{t('freeResults.enterprise.nextActionLabel', 'Your #1 Next Action')}</h4>
           </div>
-          <p className="text-base font-semibold text-foreground mb-1">{nextBestAction.action}</p>
-          {nextBestAction.why && (
-            <p className="text-xs text-muted-foreground mb-2">{nextBestAction.why}</p>
-          )}
-          {nextBestAction.estimatedImpact && (
-            <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
-              Est. impact: {nextBestAction.estimatedImpact}
-            </span>
-          )}
+          {/* The backup scan's coded step is said in the reader's language
+              (NB-18); any other step is the scan's own words. */}
+          {(() => {
+            const coded = isFallbackCode(nextBestAction.code);
+            const why = coded ? t('freeScanPage.fallback.numberTopThreeWhy') : nextBestAction.why;
+            const impact = coded ? t('freeScanPage.fallback.numberTopThreeImpact') : nextBestAction.estimatedImpact;
+            return (
+              <>
+                <p data-next-action className="text-base font-semibold text-foreground mb-1">{coded ? t(`freeScanPage.fallback.${nextBestAction.code}`) : nextBestAction.action}</p>
+                {why && <p className="text-xs text-muted-foreground mb-2">{why}</p>}
+                {impact && (
+                  <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
+                    {t('freeScanPage.report.estImpact', { impact })}
+                  </span>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
 
       {/* Shareable score card */}
       <div className="mb-5">
+        {/* The score card only: its before/after image is drawn in English
+            and says the two scans used the same rubric, which the since
+            banner no longer claims. It was never reached while every scan
+            overwrote the history (S10-056), and the report does not reach it
+            now that the history keeps the earlier scan. */}
         <ShareScoreCard
           atsScore={atsScoreEstimate}
           industry={effectiveIndustry}
-          previousScore={(() => {
-            // Same-candidate guard as the delta banner: a household member's
-            // earlier scan must not produce a bogus before/after card.
-            const prev = getPreviousScan();
-            return prev && (prev.candidateName ?? null) === (candidateName ?? null) ? prev.atsScore : undefined;
-          })()}
         />
       </div>
 

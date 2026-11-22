@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Mail } from "lucide-react";
 import { SellerIdentity } from "@/components/SellerIdentity";
 import { ThemeSwitch } from "@/components/ui/theme-switch";
 import { FOOTER_BOTTOM, FOOTER_RESOURCES } from "@/lib/site-links";
+import { useSiteShellT } from "@/lib/locale-from-path";
 
 /**
  * The footer: support address, the resources index, legal links, language.
@@ -15,17 +15,18 @@ import { FOOTER_BOTTOM, FOOTER_RESOURCES } from "@/lib/site-links";
  * src/lib/site-links.ts, which the bake's own footer renders too, so the
  * footer a crawler reads cannot drift from this one (B04). Every label is a
  * locale key. The theme switch renders only behind the QA flag
- * (src/lib/theme.ts).
+ * (src/lib/theme.ts). On a translated page the labels are the page's
+ * language, not the reader's (CONTENT-N4, src/lib/locale-from-path.ts).
  */
 
 const linkClass =
   "rounded-sm py-1 text-muted-foreground underline-offset-2 transition-colors duration-fast hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export function Footer() {
-  const { t } = useTranslation();
+  const { t, pageLocale } = useSiteShellT();
 
   return (
-    <footer className="border-t border-border py-10 safe-bottom sm:py-12" role="contentinfo">
+    <footer className="border-t border-border py-10 safe-bottom sm:py-12" role="contentinfo" lang={pageLocale ?? undefined}>
       <div className="container">
         <div className="mb-8 flex flex-col items-center gap-2 border-b border-border pb-8">
           <p className="text-sm text-muted-foreground">{t("footer.questions")}</p>

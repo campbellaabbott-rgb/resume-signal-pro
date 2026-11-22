@@ -219,7 +219,8 @@ describe("the two shared files R1 declared are R1's where it says, and the code 
   it("index.html: owned by critical-path, whose part is the first child of <head>: the classic stash script", () => {
     expect(L.sharedOwner(POLICY.sharedFiles, "index.html")).toBe("critical-path");
     const html = readFileSync(resolve(ROOT, "index.html"), "utf8");
-    const head = /<head>\s*(<[^>]+>)/.exec(html);
+    // PERF-B3 (SEO audit 2026-11-18): only the charset may come before the stash, and it runs nothing.
+    const head = /<head>\s*(?:<meta charset="UTF-8" \/>\s*)?(<[^>]+>)/.exec(html);
     expect(head?.[1]).toBe("<script>");
     const first = codeOf(html.slice(html.indexOf("<script>") + "<script>".length, html.indexOf("</script>")));
     expect(first).toContain('K = "rb_url_stash"');

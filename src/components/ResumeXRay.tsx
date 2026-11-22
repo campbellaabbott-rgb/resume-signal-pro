@@ -28,11 +28,15 @@ function normalize(s: string): string {
   return s.toLowerCase().replace(/[^\p{L}\p{N} ]/gu, "").replace(/\s+/g, " ").trim();
 }
 
-function lineMatches(line: string, snippet: string): boolean {
+export function lineMatches(line: string, snippet: string): boolean {
   const nl = normalize(line);
   const ns = normalize(snippet);
   if (!nl || !ns || ns.length < 12) return false;
-  return nl.includes(ns) || ns.includes(nl);
+  // One way only (S10-149): the line holds the snippet. The other way, a
+  // short line held inside a flagged bullet (a heading such as "Experience",
+  // a one-word skill) was underlined as the weak bullet itself. The scan's
+  // snippets are whole résumé lines, so a bullet still finds its own line.
+  return nl.includes(ns);
 }
 
 export function ResumeXRay({ resumeText, weakBullets = [], unquantifiedBullets = [], powerWords = [], className }: ResumeXRayProps) {

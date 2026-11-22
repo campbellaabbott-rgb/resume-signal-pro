@@ -244,9 +244,10 @@ describe("SD-09: every guide's Article states when it was first published, and i
       const art = (jsonLdBlocks(html) as Array<Record<string, unknown>>).find((b) => b["@type"] === "Article")!;
       expect(art, g.slug).toBeTruthy();
       expect(art.datePublished, g.slug).toBe(g.published);
-      // B09 (DATE-09): the day the sitemap prints for this page, never earlier than the guide's own stated date.
-      expect(art.dateModified, g.slug).toBe(lastmodOf(`/guides/${g.slug}`));
-      expect(String(art.dateModified) >= g.updated, g.slug).toBe(true);
+      // STRUCTURED-B10: the day the guide prints beside "Updated"; the sitemap may date the page later, never earlier.
+      expect(art.dateModified, g.slug).toBe(g.updated);
+      expect(html, g.slug).toContain(`Updated ${g.updated}`);
+      expect(lastmodOf(`/guides/${g.slug}`) >= g.updated, g.slug).toBe(true);
       expect(art.image, g.slug).toBe(`${SITE}/og-image.png`);
       expect(meta(html, /<meta property="og:image" content="([^"]*)"/), g.slug).toBe(`${SITE}/og-image.png`);
     }
@@ -508,7 +509,7 @@ describe("B09 / GEO-1107-04 / GEO-1107-05: what the data pages say and when they
     // Offline the figures are unread, so there is no answer sentence to print.
     expect(h).not.toContain("data-answer");
   });
-  it("every sitemap page's lastmod is the day its own Article or Dataset says it changed", () => {
+  it("every sitemap page's lastmod is the day its own Article or Dataset says it changed; a guide's is never earlier", () => {
     const off: string[] = [];
     let dated = 0;
     for (const p of sitemapPaths()) {
@@ -517,7 +518,9 @@ describe("B09 / GEO-1107-04 / GEO-1107-05: what the data pages say and when they
       for (const b of jsonLdBlocks(h) as Array<Record<string, unknown>>) {
         if ((b["@type"] === "Article" || b["@type"] === "Dataset") && typeof b.dateModified === "string") {
           dated++;
-          if (b.dateModified.slice(0, 10) !== lastmodOf(p)) off.push(`${p}: ${b.dateModified} vs ${lastmodOf(p)}`);
+          const day = b.dateModified.slice(0, 10);
+          const ok = p.startsWith("/guides/") ? lastmodOf(p) >= day : day === lastmodOf(p);
+          if (!ok) off.push(`${p}: ${b.dateModified} vs ${lastmodOf(p)}`);
         }
       }
     }
@@ -552,5 +555,63 @@ describe("GEO-1107-06: both llms files state the prices and limits", () => {
       expect(t, f).toContain("from ChatGPT, 200 calls a day for each person ChatGPT's call names");
     }
     expect(readFileSync(join(DIST, "llms-full.txt"), "utf8")).toContain("from ChatGPT each person has their own 200");
+  });
+});
+
+// ---- SEO audit 2026-11-18, phase 2 links (CONTENT-N1, N2, N8; STRUCTURED-B12) in the served bytes ----
+describe("the links a crawler is served between keyword pages, field landers and data pages", () => {
+  const hrefs = (h: string) => [...h.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
+  const body = (h: string) => h.slice(h.indexOf("<body"));
+
+  it("an industry page mapped to a board field links its lander, in English and in Spanish", () => {
+    expect(hrefs(body(page("/industries/technology")))).toContain("/jobs/field/engineering");
+    expect(hrefs(body(page("/industries/healthcare")))).toContain("/jobs/field/healthcare");
+    expect(hrefs(body(page("/es/industrias/healthcare")))).toContain("/jobs/field/healthcare");
+  });
+
+  it("a field lander links the resume-keyword pages of its industries", () => {
+    const h = hrefs(body(page("/jobs/field/data_ai")));
+    for (const ind of ["machine_learning", "data_science", "data_engineering"]) expect(h).toContain(`/industries/${ind}`);
+  });
+
+  it("a role page links its field's lander", () => {
+    expect(hrefs(body(page("/roles/registered-nurse")))).toContain("/jobs/field/healthcare");
+  });
+
+  it("every industry page receives at least 4 sibling links from the others", () => {
+    const sibs = sitemapPaths().filter((p) => /^\/industries\/[^/]+$/.test(p));
+    const incoming = new Map(sibs.map((p) => [p, 0]));
+    for (const p of sibs) {
+      const nav = /<nav class="mt-8 flex flex-wrap gap-2 text-xs">([\s\S]*?)<\/nav>/.exec(page(p))?.[1] ?? "";
+      for (const h of hrefs(nav)) if (incoming.has(h) && h !== p) incoming.set(h, (incoming.get(h) ?? 0) + 1);
+    }
+    expect([...incoming].filter(([, n]) => n < 4 || n > 16)).toEqual([]);
+  });
+
+  it("a translated page's shell: its header, footer and skip link in its own language (CONTENT-N4)", () => {
+    const shard = (l: string) => JSON.parse(readFileSync(join(ROOT, "src/i18n/shards/site-shell", `${l}.json`), "utf8")).siteShell.skipToMain as string;
+    const loc = (l: string) => JSON.parse(readFileSync(join(ROOT, "src/i18n/locales", `${l}.json`), "utf8"));
+    const fr = page("/fr/normes-cv/france");
+    expect(fr).toContain(`>${loc("fr").footer.links.companies}</a>`);
+    expect(fr).not.toContain(">Companies hiring</a>");
+    expect(fr).toMatch(new RegExp(`<a href="#main-content"[^>]* lang="fr">${shard("fr")}</a>`));
+    const es = page("/es/industrias/healthcare");
+    expect(es).toContain(`>${loc("es").footer.links.companies}</a>`);
+    expect(es).toMatch(new RegExp(`<a href="#main-content"[^>]* lang="es">${shard("es")}</a>`));
+    // An English page keeps the English shell and the template's skip link.
+    const en = page("/industries/healthcare");
+    expect(en).toContain(">Companies hiring</a>");
+    expect(en).toMatch(/<a href="#main-content"[^>]*>\s*Skip to main content\s*<\/a>/);
+  });
+
+  it("/companies and the four data pages show and mark up a Home trail to themselves", () => {
+    for (const p of ["/companies", "/ghost-job-index", "/entry-level-index", "/hiring-trends", "/pay-transparency"]) {
+      let h = "";
+      try { h = page(p); } catch { continue; }
+      const crumbs = (jsonLdBlocks(h) as Array<Record<string, unknown>>).find((b) => b["@type"] === "BreadcrumbList") as { itemListElement: Array<{ item: string }> } | undefined;
+      expect(crumbs, p).toBeTruthy();
+      expect(crumbs!.itemListElement.map((x) => x.item)).toEqual([`${SITE}/`, `${SITE}${p}`]);
+      expect(body(h), p).toMatch(/<nav class="text-xs text-muted-foreground mb-4"><a href="\/"[^>]*>Home<\/a>/);
+    }
   });
 });

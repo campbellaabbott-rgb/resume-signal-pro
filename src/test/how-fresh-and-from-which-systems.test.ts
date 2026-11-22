@@ -57,6 +57,13 @@ const newestWith = (needle: string) => {
   return f ? readFileSync(resolve(dir, f), "utf8") : "";
 };
 const ROLLUP_SQL = newestWith("CREATE OR REPLACE FUNCTION public.refresh_job_board_stats");
+/**
+ * Since lane fix/1121-connector-errors (item 9) stats() builds feedFreshness
+ * through ./feed-freshness.ts, the module the search answers read the same row
+ * through, so the block's words are read there whenever stats() calls it.
+ */
+const FRESH_MODULE = strip(read("supabase/functions/public-api/feed-freshness.ts"));
+const STATS_FRESH = /feedFreshness: statsFeedFreshness\(freshRow\)/.test(STATS) ? `${STATS}\n${FRESH_MODULE}` : STATS;
 
 describe("how fresh, and from which systems", () => {
   it("the numbers the board measures reach the endpoint that is sold", () => {
@@ -111,10 +118,10 @@ describe("how fresh, and from which systems", () => {
     // The 2.8d incident in one sentence: a stat about us, published under a
     // noun about the employer. The field name and the basis both say which.
     expect(STATS).toMatch(/feedFreshness:/);
-    expect(STATS).toMatch(/last re-verified against the employer's own system/);
-    expect(STATS).toMatch(/NOT how long ago a role was posted/);
+    expect(STATS_FRESH).toMatch(/last re-verified against the employer's own system/);
+    expect(STATS_FRESH).toMatch(/NOT how long ago a role was posted/);
     // Minutes, in the unit the rollup stores, with no unit-free number.
-    for (const f of ["p50Minutes", "p95Minutes", "maxMinutes"]) expect(STATS).toContain(f);
+    for (const f of ["p50Minutes", "p95Minutes", "maxMinutes"]) expect(STATS_FRESH).toContain(f);
     expect(ROLLUP_SQL, "the rollup no longer stores p95_min — the mapping moved").toMatch(/'p95_min'/);
   });
 
@@ -167,7 +174,7 @@ describe("how fresh, and from which systems", () => {
     // live is not, and a 0 would read as "no source carries descriptions".
     expect(STATS).toMatch(/asOf: descRaw\.asOf,/);
     expect(STATS).toMatch(/asOf: dateRaw\.asOf,/);
-    expect(STATS).toMatch(/asOf: freshRow\?\.computed_at \?\? null,/);
+    expect(STATS_FRESH).toMatch(/asOf: (freshRow|row)\?\.computed_at \?\? null,/);
     expect(STATS).toMatch(/descriptionCoverage: descRaw\s*\n?\s*\?/);
     expect(STATS).toMatch(/: null,/);
     expect(STATS, "a failed read must be logged, not served as an empty board")

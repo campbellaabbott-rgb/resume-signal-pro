@@ -259,11 +259,12 @@ describe("a reply a part cannot deliver asks the next model with the time that i
     expect(h.db.rows("purchased_content")).toHaveLength(1);
   });
 
-  it("when no model's reply is usable, the old answer: a 500 and nothing redeemed", async () => {
+  it("when no model's reply is usable, a retryable 503 and nothing redeemed (S11-069: it was a bare 500)", async () => {
     buy("cs_none");
     reply = async (opts) => toolReply({ industry: "technology" }, opts.models?.[0] ?? "?");
     const r = await h.call({ resumeText: RESUME, sessionId: "cs_none" });
-    expect(r.status).toBe(500);
+    expect(r.status).toBe(503);
+    expect(r.json).toMatchObject({ retryable: true, code: "analysis_unusable" });
     expect(calls).toHaveLength(3);
     expect(h.db.rows("purchased_content")).toHaveLength(0);
   });

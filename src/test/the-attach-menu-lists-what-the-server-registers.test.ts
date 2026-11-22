@@ -323,10 +323,14 @@ describe("listing is free, a credentialed read is metered under its own family, 
     const lists = listingsOf(MCP);
     // Wave 4: a listing shows only what the caller can use, so it reads
     // whether a credential is PRESENT (never verified, never metered).
-    expect(lists).toMatch(/prompts: PROMPTS\.filter\(\(p\) => !p\.keyed \|\| !!bearer\)/);
-    expect(lists).toMatch(/resources: RESOURCES\.filter\(\(r\) => !r\.keyed \|\| !!bearer\)/);
+    // Since lane fix/1121-connector-errors (item 6) a credential is a key, or
+    // a sign-in token while sign-in is on: a bearer that is neither (the
+    // publishable key Supabase's recipe sends) is offered nothing keyed.
+    expect(lists).toMatch(/const held = credentialHeld\(cachedSignIn\(\)\?\.state === "on"\);\s*return json\(rpcResult\(id, \{\s*prompts: PROMPTS\.filter\(\(p\) => !p\.keyed \|\| held\)/);
+    expect(lists).toMatch(/const held = credentialHeld\(cachedSignIn\(\)\?\.state === "on"\);\s*return json\(rpcResult\(id, \{\s*resources: RESOURCES\.filter\(\(r\) => !r\.keyed \|\| held\)/);
+    expect(MCP).toMatch(/const credentialHeld = \(signInOn: boolean\) => looksLikeApiKey\(bearer\) \|\| \(signInOn && !!bearer\);/);
     expect(lists).not.toMatch(/api_key_check|mcp_anon_check|unauthorized\(|answerUnkeyed|verifyOAuthBearer|body:/);
-    expect(lists.replace(/!!bearer/g, "")).not.toMatch(/bearer/);
+    expect(lists).not.toMatch(/bearer/);
   });
 
   it("prompts/get is free for every caller: answered before the bearer is consulted, through neither meter, with no prompt endpoint family anywhere on the server", () => {
@@ -352,7 +356,7 @@ describe("listing is free, a credentialed read is metered under its own family, 
   it("an unkeyed guide read is free; the statistics and a job link spend the unkeyed allowance; the key's status is challenged like the tool it wraps", () => {
     const pre = between(MCP, "const read: MeteredRead | null = resolved;", 'if (method !== "tools/call") {');
     expect(pre).toMatch(/if \(read && !bearer\) \{/);
-    expect(pre).toMatch(/contentsOf\(GUIDE_URI, read\.resource\.mimeType, guideText\(edition, !!bearer\)\)/);
+    expect(pre).toMatch(/contentsOf\(GUIDE_URI, read\.resource\.mimeType, guideText\(edition, credentialHeld\(cachedSignIn\(\)\?\.state === "on"\)\)\)/);
     expect(pre).toMatch(/answerUnkeyed\(client, req, id, tool\("board_stats"\), \{\}, params\)/);
     expect(pre).not.toMatch(/api_key_check|unauthorized\(/);
     // The keyed resource has no branch here: it falls through to the gate,
@@ -472,7 +476,7 @@ describe("the in-band sign-in hedge is the HTTP challenge's own string, in the t
     const list = between(MCP, "function listedTools(", "\n}\n");
     expect(list).toMatch(/if \(!signInOn\) return listed;/);
     expect(list).toMatch(/return \{ \.\.\.listed, securitySchemes, _meta: \{ securitySchemes \} \};/);
-    expect(between(MCP, 'if (method === "tools/list")', 'if (method === "prompts/list")')).toMatch(/listedTools\(!!bearer, edition, state === "on"\)/);
+    expect(between(MCP, 'if (method === "tools/list")', 'if (method === "prompts/list")')).toMatch(/listedTools\(credentialHeld\(state === "on"\), edition, state === "on"\)/);
   });
 
   it("serverInfo names the bump, a title, the human page and an icon that exists", () => {

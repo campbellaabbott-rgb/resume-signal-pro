@@ -60,6 +60,11 @@ export async function bakeAgents(opts: {
 } = {}): Promise<BakedPage> {
   const block = slice("      const envText3 = ", '      write({\n        path: "/mcp",');
   const { APPLY_YOURSELF_LINE } = await import("../../../scripts/prerender-retired.mjs");
+  // The bake's own module-level renderer for the one-step link (GEO-12), the
+  // real export rather than a stand-in, so the page run here is the page served.
+  const { addToClaudeLinkHtml } = (await import("../../../scripts/prerender-seo.mjs")) as unknown as {
+    addToClaudeLinkHtml: (o: { live: boolean; href: string | null; name: string; esc: (s: unknown) => string }) => string;
+  };
   const D = await bakeD(opts.mutate ?? ((d) => d));
   const read = opts.read === undefined ? SAMPLE_VENDOR_READ : opts.read;
   const VENDOR_TOTAL = read ? read.openTotal : null;
@@ -67,7 +72,7 @@ export async function bakeAgents(opts: {
   const written: BakedPage[] = [];
   const fn = new Function(
     "D", "write", "readFileSync", "join", "root", "process", "BOARD_TOTAL", "plusClaim", "breadcrumbLd", "breadcrumbNav", "FREE_KEY_RATE_SENTENCE", "APPLY_YOURSELF_LINE",
-    "SITE", "MCP_URL", "BOARD_AS_OF", "BOARD_VENDOR", "VENDOR_TOTAL", "VENDOR_STAMP",
+    "SITE", "MCP_URL", "BOARD_AS_OF", "BOARD_VENDOR", "VENDOR_TOTAL", "VENDOR_STAMP", "addToClaudeLinkHtml",
     `${block}; return true;`,
   );
   fn(
@@ -75,7 +80,7 @@ export async function bakeAgents(opts: {
     () => "", (...xs: string[]) => xs.join("/"), ROOT, { env: { VITE_SUPABASE_URL: "https://example.invalid" } },
     1_024_524, (n: number) => `${n}+`, () => ({}), () => "", "the rate sentence", APPLY_YOURSELF_LINE,
     "https://resumebooster.work", "https://example.invalid/functions/v1/agent-mcp", "as of 2026-11-08",
-    read, VENDOR_TOTAL, VENDOR_STAMP,
+    read, VENDOR_TOTAL, VENDOR_STAMP, addToClaudeLinkHtml,
   );
   if (written.length !== 1 || written[0].path !== "/agents") throw new Error(`agents-bake: /agents wrote ${written.map((w) => w.path).join(", ")}`);
   return written[0];

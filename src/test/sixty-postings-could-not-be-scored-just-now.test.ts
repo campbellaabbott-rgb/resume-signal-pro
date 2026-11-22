@@ -73,7 +73,10 @@ describe("sixty postings could not be scored just now", () => {
     // request hook after .31 deployed — one batch scored the stale page (3 of
     // 20) before the résumé's list arrived. `refreshing` covers exactly the
     // window between the new fetch starting and landing.
-    expect(J).toMatch(/if \(!fitRanking \|\| jobs\.length === 0 \|\| refreshing \|\| fitAwaitingPage\.current\) return;/);
+    // Re-pointed 2026-11-21 (MATCH-01): an empty list still scores a posting
+    // opened by its link, so the emptiness test names that posting too. The
+    // two waits this test is about are unchanged.
+    expect(J).toMatch(/if \(!fitRanking \|\| \(jobs\.length === 0 && !linked\) \|\| refreshing \|\| fitAwaitingPage\.current\) return;/);
     // MEMBERSHIP, NOT THE WHOLE LIST — pinning the array by its exact contents
     // made a test about stale pages fail when a fifth dependency was added for
     // an unrelated reason (a replaced résumé must re-score).

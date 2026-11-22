@@ -24,6 +24,12 @@
     "unscoredResumeTerms": "Niet beoordeeld — we herkenden geen vaardigheid of tool in je cv",
     "unscoredResumeTermsBody": "De beoordelaar leest alleen Engelse trefwoorden en vond er geen in je cv, dus er was niets om met deze vacature te vergelijken. Er staat hier geen percentage; dat is het ontbreken van een meting, geen zwakke meting.",
     "unscoredResumeTermsTip": "Niet beoordeeld: de beoordelaar herkende geen vaardigheid of tool in je cv (hij leest alleen Engelse trefwoorden), dus er was niets te vergelijken. Dit is geen lage score — het is geen score.",
-    "matchesNoneForRole": "We vonden op dit moment geen openstaande vacatures voor {{role}}, dus dit zijn vacatures in je vakgebied — beoordeeld aan de hand van je cv, niet erdoor gevonden."
+    "matchesNoneForRole": "We vonden op dit moment geen openstaande vacatures voor {{role}}, dus dit zijn vacatures in je vakgebied — beoordeeld aan de hand van je cv, niet erdoor gevonden.",
+    "loadMoreTooDeep": "Verder omlaag bladert het bord in deze lijst niet. Verfijn de lijst met een functietitel, een plaats of een vakgebied om bij de functies daaronder te komen.",
+    "orderFitNoResumeTerms": "niet gerangschikt — we herkenden geen vaardigheid of tool in je cv, dus er was niets om deze vacatures mee te beoordelen. De beoordelaar leest alleen Engelse trefwoorden.",
+    "orderFitScoring": "deze vacatures worden vergeleken met je cv…",
+    "orderFitLimited": "nog niet gerangschikt — het tegoed voor matchbeoordeling is voorlopig op, dus deze vacatures zijn niet beoordeeld.",
+    "orderFitFailed": "niet gerangschikt — de beoordelaar gaf voor deze vacatures zojuist geen antwoord.",
+    "orderFitUnreadable": "niet gerangschikt — de beoordelaar kon deze vacatures niet lezen: hij leest alleen Engelse trefwoorden en herkende geen vaardigheid of tool in de beschrijvingen die we hebben."
   }
 }

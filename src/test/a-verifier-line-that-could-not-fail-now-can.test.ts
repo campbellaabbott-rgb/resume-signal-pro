@@ -88,7 +88,8 @@ const company = (name: string, robots: string | null, openings: number) => `<htm
 const MS = "/jobs/posting/workday/ms~wd5~external/R1";
 const INTEL = "/jobs/posting/workday/intel~wd1~External/R2";
 const sitemap = (urls: [string, string][]) => `<?xml version="1.0"?><urlset>${urls.map(([p, d]) => `<url><loc>${SITE}${p}</loc><lastmod>${d}</lastmod></url>`).join("")}</urlset>`;
-const ledger = (pages: Record<string, string>, builtAt = "2026-10-11") => JSON.stringify({ builtAt, postings: {}, pages: Object.fromEntries(Object.entries(pages).map(([p, d]) => [p, { fp: "x", lastmod: d }])) });
+// Every posting URL a fixture sitemap names is a live ledger entry (F2a reads the ledger, CRAWL18B-3).
+const ledger = (pages: Record<string, string>, builtAt = "2026-10-11", postings: Record<string, { state: string; since: string }> = Object.fromEntries(Object.keys(pages).filter((p) => p.startsWith("/jobs/posting/")).map((p) => [p, { state: "live", since: builtAt }]))) => JSON.stringify({ builtAt, postings, pages: Object.fromEntries(Object.entries(pages).map(([p, d]) => [p, { fp: "x", lastmod: d }])) });
 const esc = (p: string) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const route = (path: string, body: string, status = 200): Route => ({ match: `^${esc(SITE + path)}$`, status, body });
 
@@ -149,29 +150,29 @@ describe("S11-151 in section 76: the typed '10 languages' on /vs, the Spanish la
   });
 });
 
-describe("S11-154: F2a judges the previous publish's URLs or says it cannot; S3 ignores guide dates", () => {
+describe("S11-154: F2a judges every published posting URL from the live ledger; S3 ignores guide dates", () => {
   const LAST = ".config/resumebooster/seo/last-sitemap.xml";
 
-  it("without a saved sitemap F2a prints INFO 'cannot judge' and no F2a PASS", () => {
+  it("without a saved sitemap F2a still judges, from the live ledger, and never stands aside", () => {
     const lines = runSection("76-wave3-seo-content.sh", { routes: site76() });
-    expect(has(lines, "INFO", /F2a cannot judge the previous publish's posting URLs: no saved sitemap at .*last-sitemap\.xml yet\. verify-deploy\.sh saves the live sitemap and ledger at the end of every run/), show(lines)).toBe(true);
-    expect(lines.some((l) => l.startsWith("PASS") && /\(F2a\)/.test(l)), show(lines)).toBe(false);
+    expect(has(lines, "PASS", /^PASS {2}2 posting URLs from the live ledger \(2 live, .*\): 2 live pages, 0 noindex "no longer listed" pages, 0 homepage copies \(F2a\)/), show(lines)).toBe(true);
+    expect(lines.some((l) => /F2a cannot judge/.test(l)), show(lines)).toBe(false);
   });
 
-  it("a saved sitemap identical to the live one is this publish's own: still cannot judge", () => {
+  it("a saved sitemap identical to the live one adds nothing, and F2a still judges the ledger", () => {
     const routes = site76();
     const live = (routes.find((r) => r.match.includes("sitemap"))?.body) ?? "";
     const lines = runSection("76-wave3-seo-content.sh", { routes, home: { [LAST]: live } });
-    expect(has(lines, "INFO", /F2a cannot judge.*the saved sitemap is this publish's own/), show(lines)).toBe(true);
+    expect(has(lines, "PASS", /2 posting URLs from the live ledger .*\(F2a\)/), show(lines)).toBe(true);
   });
 
   it("a previous URL that now serves the homepage copy FAILs F2a; one that serves a page passes", () => {
     const old = "/jobs/posting/greenhouse/acme/9";
     const prev = sitemap([[old, "2026-10-01"], [MS, "2026-10-01"]]);
     const bad = runSection("76-wave3-seo-content.sh", { routes: [route(old, HOME), ...site76()], home: { [LAST]: prev } });
-    expect(has(bad, "FAIL", /2 posting URLs from the previous publish's sitemap: 1 homepage copies, 0 non-200 .*\(F2a; F2a was 364 of 371\)/), show(bad)).toBe(true);
+    expect(has(bad, "FAIL", /3 posting URLs from the live ledger \(2 live, .*, and 1 the previous publish's saved sitemap named that the ledger does not\): 1 homepage copies, 0 non-200 .*\(F2a; F2a was 364 of 371\)/), show(bad)).toBe(true);
     const good = runSection("76-wave3-seo-content.sh", { routes: [route(old, posting("Acme", "noindex, follow")), ...site76()], home: { [LAST]: prev } });
-    expect(has(good, "PASS", /2 posting URLs from the previous publish's sitemap: 1 live pages, 1 noindex "no longer listed" pages, 0 homepage copies \(F2a\)/), show(good)).toBe(true);
+    expect(has(good, "PASS", /3 posting URLs from the live ledger .*: 2 live pages, 1 noindex "no longer listed" pages, 0 homepage copies \(F2a\)/), show(good)).toBe(true);
   });
 
   it("S3: two guide dates over pages all dated this bake is not a PASS", () => {

@@ -491,6 +491,28 @@ describe("the wave-3 agent lines judge what replaced the agent once a wave-4 bui
     expect(has(blank, "FAIL", /\/agents crawler copy states the host allowance/), show(blank)).toBe(true);
   });
 
+  it("73: from public-api 2026-11-19.1 on (OD16) the withheld-list line is INFO; on the build before it a list without usajobs still FAILs", () => {
+    const base = (apiBuild: string): Route[] => [
+      { match: `^OPTIONS ${esc(MCP)} `, headers: { "x-fn-build": "agent-mcp.2026-11-19.1" } },
+      { match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/public-api ", headers: { "x-fn-build": apiBuild } },
+      { match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/([a-z-]+) ", headers: { "x-fn-build": "x.2026-10-11.99" } },
+      { match: "^GET https://p\\.supabase\\.co/functions/v1/public-api/v1 ", body: JSON.stringify({ apiVersion: "2026-11-19.1", restrictions: { excludedSources: ["smartrecruiters"] } }) },
+      fromReal("init", `^POST ${esc(MCP)} ua= .*"method":"initialize"`),
+      fromReal("tools", `^POST ${esc(MCP)} ua= .*"method":"tools/list"`),
+      fromReal("guide", `^POST ${esc(MCP)} ua=[^ ]* .*"method":"resources/read".*guide`),
+      fromReal("search", tool("search_jobs")),
+      { match: "^POST https://p\\.supabase\\.co/functions/v1/job-board ", body: JSON.stringify({ jobs: [] }) },
+      { match: "^GET https://p\\.supabase\\.co/rest/v1/rpc/", status: 401, body: JSON.stringify({ code: "42501" }) },
+    ];
+    const od16 = run(["73-wave3-agents-api.sh"], base("public-api.2026-11-19.1")).lines;
+    expect(has(od16, "INFO", /\/v1 restrictions\.excludedSources = \["smartrecruiters"\]: public-api 2026-11-19\.1 or later hands on labelled federal rows \(OD16\)/), show(od16)).toBe(true);
+    expect(has(od16, "FAIL", /restrictions\.excludedSources/), show(od16)).toBe(false);
+    expect(has(od16, "PASS", /public-api preflight x-fn-build = public-api\.2026-11-19\.1/), show(od16)).toBe(true);
+    // TEETH: the build before OD16 with the same list is the wave-3 claim broken.
+    const pre = run(["73-wave3-agents-api.sh"], base("public-api.2026-11-18.2")).lines;
+    expect(has(pre, "FAIL", /\/v1 restrictions\.excludedSources = \["smartrecruiters"\] \(want usajobs and smartrecruiters\)/), show(pre)).toBe(true);
+  });
+
   /** The 5n block, cut from the verifier and run in bash against the fake curl. */
   const run5n = (routes: Route[], rb = ""): string[] => {
     const block = /echo "== 5n\/5q\.[\s\S]*?(?=\necho "== 5p\.)/.exec(SCRIPT)?.[0] ?? "";

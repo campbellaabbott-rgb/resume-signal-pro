@@ -49,11 +49,15 @@ export const FREE_KEY_DAILY_QUOTA = 1000;
 export const MCP_FIT_FREE_PER_DAY = 25;
 export const MCP_FIT_FULL_PER_DAY = 1000;
 
-/** The source keys the data API and the AI connector leave out, and the names a reader knows them by. */
-export const WITHHELD_SOURCES: readonly string[] = ["usajobs", "smartrecruiters"];
+/**
+ * The source keys the data API and the AI connector leave out, and the names a
+ * reader knows them by. USAJOBS left with OD16 (2026-11-18). The limits date
+ * below is not moved by this: no figure in the limits table changed, and the
+ * committed llms files print that date (lane api4/od16-federal).
+ */
+export const WITHHELD_SOURCES: readonly string[] = ["smartrecruiters"];
 export const WITHHELD_SOURCE_NAMES: Readonly<Record<string, string>> = {
   smartrecruiters: "SmartRecruiters",
-  usajobs: "USAJOBS",
 };
 
 export const FREE_REPORT_DAYS: number = REPORT_CACHE_DAYS;

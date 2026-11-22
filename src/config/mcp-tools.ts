@@ -215,12 +215,12 @@ export const MCP_TOOLS: readonly McpTool[] = [
   {
     name: "employer_hiring_record",
     tier: "read",
-    body: "An employer's record on its own board, from the closure ledger no other board keeps, as the employer's page on this site prints it: roles open now and how long that board has been watched, and, only where our read of that board supports them, roles taken down in the last 90 days and left down, re-lists counted separately, and the day by which half came down, from the employer's own stated dates. A figure our read cannot support is left out with the reason, in the page's words — per board, never summed across an employer's boards, and a takedown is never called a hire; a board name two hiring systems share gets no record, and a board with no closure observed answers unknown with the reason, never a verdict.",
+    body: "An employer's record on its own board, asked by companyToken values from job cards, or employer names (five names a call are looked up), from the closure ledger no other board keeps, as the employer's page on this site prints it: roles open now and how long that board has been watched, and, only where our read of that board supports them, roles taken down in the last 90 days and left down, re-lists counted separately, and the day by which half came down, from the employer's own stated dates. A figure our read cannot support is left out with the reason, in the page's words — per board, never summed across an employer's boards, and a takedown is never called a hire; a board name two hiring systems share gets no record, and a board with no closure observed answers unknown with the reason, never a verdict.",
   },
   {
     name: "employer_growth",
     tier: "read",
-    body: "Whether an employer's board served more roles than a week earlier, judged by the board itself from our own daily observation and passed through untouched: grew, no-growth, or unknown with the gate that refused named — an unknown is never a no, one board is never summed with another, and nothing here ranks employers.",
+    body: "Whether an employer's board served more roles than a week earlier, asked by companyToken values from job cards, or employer names (five names a call are looked up), judged by the board itself from our own daily observation and passed through untouched: grew, no-growth, or unknown with the gate that refused named — an unknown is never a no, one board is never summed with another, and nothing here ranks employers.",
   },
   {
     name: "key_status",
@@ -331,7 +331,7 @@ export function readSignInFact(initializeResult: unknown): SignInFact {
 
 // ───────────────────────── THE WORDS EVERY SURFACE SHARES ─────────────────
 
-/** The protocol revision the server advertises (its MCP_PROTOCOL_VERSIONS[0]); sent as the mcp-protocol-version header. */
+/** The protocol revision the site's own clients send as the mcp-protocol-version header. The server speaks four (agent-mcp/protocol.ts MCP_PROTOCOL_VERSIONS) and answers this one as asked. */
 export const MCP_PROTOCOL_VERSION = "2025-06-18";
 /** The display name a person types into a connector dialog. */
 export const MCP_CONNECTOR_NAME = "Resume Booster";
@@ -396,10 +396,12 @@ export const MCP_OWN_CONNECTION_GLOSS =
  * The hiring systems the connector and /v1 do not hand on: NO_REDISTRIBUTION_SOURCES
  * in agent-mcp and public-api (owner decision 4, 2026-10-08), mirrored and pinned by
  * src/test/the-connector-page-never-said-which-systems-it-withholds.test.tsx.
+ * The U.S. federal feed left the list with OD16 (owner, 2026-11-18): its rows are
+ * handed on once the agency's who-may-apply statement is stored, with OPM's notice.
  */
-export const MCP_WITHHELD_SOURCES: readonly string[] = ["usajobs", "smartrecruiters"];
+export const MCP_WITHHELD_SOURCES: readonly string[] = ["smartrecruiters"];
 export const MCP_WITHHELD_NOTE =
-  "Two hiring systems on the job board are not handed on by this server or the data API: the U.S. federal job feed, which we choose not to redistribute for now, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. Their postings stay on the job board, where you can open them yourself.";
+  "One hiring system on the job board is not handed on by this server or the data API: SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. Its postings stay on the job board, where you can open them yourself. U.S. federal announcements are handed on once the agency's statement of who may apply is stored, each with OPM's notice that this is not an official copy; until about every one has that statement, the count of postings your AI searches leaves them all out.";
 
 /** "a, b and c" for prose; items carrying their own " and " are joined with semicolons so no list reads "and … and". Declared above every sentence built with it (a const cannot be read above its line). */
 export const andList = (xs: readonly string[]): string => {

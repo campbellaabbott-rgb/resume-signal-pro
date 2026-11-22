@@ -269,7 +269,10 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
     void (async () => {
       const [{ data: prof }, { data: scan }] = await Promise.all([
         sb.from("user_profiles").select("matching_resume_text").eq("user_id", userId).maybeSingle(),
-        sb.from("user_scans").select("resume_text").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        // The newest scan that holds its text (S10-066): a homepage rescan
+        // stores none, and the newest row alone left the queue with no CV.
+        sb.from("user_scans").select("resume_text").not("resume_text", "is", null)
+          .order("created_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
       if (!live) return;
       setOwnResume(prof?.matching_resume_text ?? scan?.resume_text ?? null);
@@ -845,6 +848,7 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
           {editingId != null && (
             <input value={label} onChange={(e) => setLabel(e.target.value)} maxLength={60}
               placeholder={t("agentQueue.searchLabelPlaceholder", "Name this search — e.g. Product Manager, NYC")}
+              aria-label={t("agentQueue.searchLabelPlaceholder", "Name this search — e.g. Product Manager, NYC")}
               className="sm:col-span-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold" />
           )}
 
@@ -949,10 +953,12 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
           )}
           <input value={form.q} onChange={(e) => setForm((f) => ({ ...f, q: e.target.value }))}
             placeholder={t("morningQueue.qPlaceholder", "Product Manager, Programme Manager")}
+            aria-label={t("morningQueue.qPlaceholder", "Product Manager, Programme Manager")}
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
           <TermChips raw={form.q} label="Roles being searched" />
           <input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
             placeholder={t("morningQueue.locPlaceholder", "London, Manchester, Remote")}
+            aria-label={t("morningQueue.locPlaceholder", "London, Manchester, Remote")}
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
           <TermChips raw={form.location} label="Locations being searched" />
           {/* COUNTRY, beneath the place box because it answers the same
@@ -1006,6 +1012,7 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
           </select>
           <input value={form.salary_min} onChange={(e) => setForm((f) => ({ ...f, salary_min: e.target.value.replace(/\D/g, "") }))}
             placeholder={t("agentQueue.fieldSalary", "Salary floor, annual (only stated-pay postings match)")}
+            aria-label={t("agentQueue.fieldSalary", "Salary floor, annual (only stated-pay postings match)")}
             className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
           {/* POSTING AGE, ON THE DATE THE EMPLOYER STATED.
               The runner's 36-hour window is about when WE first saw a posting,
@@ -1136,6 +1143,7 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
                     onChange={(e) => setPasteDraft(e.target.value)}
                     rows={6}
                     placeholder={t("agentQueue.cvPastePlaceholder", "Paste your CV text here…")}
+                    aria-label={t("agentQueue.cvPastePlaceholder", "Paste your CV text here…")}
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
                   />
                   <div className="mt-1.5 flex items-center gap-2">

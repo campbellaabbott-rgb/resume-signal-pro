@@ -68,9 +68,13 @@ export const EMPLOYER_READ_BUDGET_MS = 150_000;
 export const EMPLOYER_READ_USER_AGENT = "Mozilla/5.0 (compatible; resumebooster-posting-check/1.0; +https://resumebooster.work/jobs)";
 
 /** The vendors whose answer can say open or closed. */
-export const READ_VENDORS = Object.freeze(["workday", "greenhouse", "lever", "smartrecruiters", "ashby", "icims", "paylocity", "teamtailor", "personio", "oracle", "adp", "breezy", "recruitee"]);
-/** Vendors read only for what the employer states (their answer never says closed). */
-export const STATED_ONLY_VENDORS = Object.freeze(["ukg"]);
+export const READ_VENDORS = Object.freeze(["workday", "greenhouse", "lever", "smartrecruiters", "ashby", "icims", "paylocity", "teamtailor", "personio", "oracle", "adp", "breezy", "recruitee", "ukg"]);
+/**
+ * Vendors read only for what the employer states (their answer never says
+ * closed). None since STRUCTURED-B14 (SEO audit 2026-11-18): UKG's
+ * opportunity page states whether the opportunity is closed.
+ */
+export const STATED_ONLY_VENDORS = Object.freeze([]);
 /**
  * Vendors read with one list request per board (employerReadPlan kind
  * "board"): one failed GET makes every page of that board unknown, so the
@@ -116,7 +120,7 @@ const ADP_DEFAULT_CAREER_CENTER = "19000101_000001";
  * per board: Ashby, Breezy, Recruitee), "page" (the employer's page and its
  * own JobPosting markup), "oracle" (the tenant's requisition finder), "adp"
  * (Workforce Now's public requisition detail) or "ukg" (the opportunity detail
- * page, read for its stated date only).
+ * page and the opportunity's own script, which says whether it is closed).
  */
 export function employerReadPlan(row) {
   const p = idParts(row?.id);
@@ -209,7 +213,7 @@ export function employerReadPlan(row) {
     case "ukg": {
       const u = httpsUrl(row.applyUrl);
       if (!u || !/\.ultipro\.com$/i.test(u.hostname)) return { vendor: source, url: null, why: "no UKG opportunity address" };
-      return { vendor: source, kind: "ukg", url: u.href, accept: "text/html", statedOnly: true };
+      return { vendor: source, kind: "ukg", url: u.href, accept: "text/html" };
     }
     default:
       return { vendor: source, url: null, why: "a vendor this reader does not read" };
@@ -260,6 +264,84 @@ const statedEndDay = (v) => {
   const t = Date.parse(s);
   return Number.isFinite(t) ? new Date(t - 86_399_000).toISOString().slice(0, 10) : null;
 };
+/**
+ * WHAT A DESCRIPTION SAYS ABOUT BEING ON SITE (SEO audit 2026-11-18,
+ * STRUCTURED-6). Google's TELECOMMUTE is for a job worked remotely 100% of the
+ * time. Turner & Townsend 744000161597359 was marked TELECOMMUTE because
+ * SmartRecruiters set location.remote, while its own description asks for an
+ * "onsite expectation of 3-4 days per month minimum" at the Frederick, MD
+ * project site. A vendor's remote flag is stated only when the description
+ * carries no on-site obligation: a number of days a week or a month on site,
+ * in the office, in person or travelling to a site; an on-site expectation,
+ * presence or requirement; daily on-site work; a hybrid schedule; travel to
+ * the project or client site. A sentence that offers fully remote work as the
+ * alternative ("one or two days a week in the office, or fully remote
+ * anywhere in Australia") is not an obligation, and neither is travel that
+ * "may be required" or a technical word ("hybrid cloud").
+ *
+ * Built against 865 vendor-flagged remote postings with their own text (847
+ * Lever workplaceType remote, 18 SmartRecruiters location.remote, read
+ * 2026-11-01; src/test/fixtures/remote-flag-corpus-2026-11-18.json, labelled
+ * by hand): it refuses none labelled fully remote, so it is never worse than
+ * the flag alone. Returns the phrase that obliges, or null.
+ */
+const NUM = "(?:\\d+|one|two|three|four|five)";
+const DAYS_PER = new RegExp(`\\b${NUM}(?:\\s*(?:-|–|to|or)\\s*${NUM})?\\s+days?\\s+(?:per|a|each|every)\\s+(?:week|month)\\b|\\b${NUM}(?:\\s*(?:-|–|to|or)\\s*${NUM})?\\s+days?\\s+(?:on-?\\s?site|in (?:the |our )?office|in-office|in person|in-person)\\b`, "i");
+// "on site" as two words only where it is not "based on site requirements".
+const ON_SITE = "(?<!\\bbased )on-?\\s?site";
+const PRESENCE_WORD = new RegExp(`\\b(?:${ON_SITE}|in (?:the |our )?office|in-office|in person|in-person|travel\\w*|visits?|commute)\\b`, "i");
+const OBLIGATION = [
+  new RegExp(`\\b${ON_SITE} (?:expectation|presence|requirement|attendance)s?\\b`, "i"),
+  new RegExp(`\\b(?:daily|weekly|regular) ${ON_SITE} (?:support|presence|work|attendance)\\b`, "i"),
+  /\bhybrid (?:work(?:ing)? )?(?:schedule|model|arrangement|setting)\b/i,
+  // "hybrid role" also names a role that mixes two disciplines ("a hybrid role
+  // that spans product management and product delivery"): it is a work
+  // arrangement only beside a place or a count of days, or standing alone.
+  /\bhybrid (?:role|position)\b(?=[^.]{0,60}\b(?:based|office|days?|week|on-?site|in-person|location|requir\w*)\b)/i,
+  /^\W*hybrid (?:role|position)\W*$/i,
+  /\bhybride werken\b/i,
+  /\btravel to (?:the |our |a )?(?:project|client|customer|job) sites?\b/i,
+  new RegExp(`\\b(?:required|expected|must be able) to (?:work|be|report) (?:${ON_SITE}|in (?:the |our )?office)\\b`, "i"),
+];
+/** A sentence that gives fully remote work as the other choice states no obligation. */
+const REMOTE_ALTERNATIVE = /\bor (?:fully |100% )?remote(?:ly)?\b/i;
+/** Presence the text calls occasional or possible is not an obligation ("occasional travel or on-site presence may be required"). */
+const OCCASIONAL = /\b(?:occasional(?:ly)?|may be (?:required|needed|requested)|if (?:needed|required)|from time to time)\b/i;
+export function onSiteObligation(text) {
+  const t = String(text ?? "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ");
+  if (!t.trim()) return null;
+  for (const raw of t.split(/(?<=[.!?;])\s+|\n+/)) {
+    const s = raw.replace(/\s+/g, " ").trim();
+    if (!s || REMOTE_ALTERNATIVE.test(s)) continue;
+    // A count of days a week or a month at a place is an obligation however
+    // the sentence is hedged ("five days a week, with occasional off-shift support").
+    if (DAYS_PER.test(s) && PRESENCE_WORD.test(s)) return s.slice(0, 160);
+    if (OCCASIONAL.test(s)) continue;
+    for (const re of OBLIGATION) if (re.test(s)) return s.slice(0, 160);
+  }
+  return null;
+}
+/** A vendor's remote flag, kept only when its own text obliges no time on site. */
+const remoteUnlessObliged = (flag, text) => flag === true && !onSiteObligation(text);
+/** The text fields of an answer, joined, for onSiteObligation. */
+const textOf = (...parts) => parts.flat().filter((x) => typeof x === "string" && x).join("\n");
+
+/**
+ * THE STATEMENTS WITHOUT A REMOTE FLAG THE PAGE'S OWN TEXT CONTRADICTS
+ * (STRUCTURED-6). The vendor's answer is read against its own text where it
+ * carries one; the bake reads the stored description too, because a list
+ * answer (Ashby's, Paylocity's page) may carry none. Returns the statements
+ * unchanged, or a copy without `remote` and with `remoteRefused` naming the
+ * sentence that obliged.
+ */
+export function withoutObligedRemote(stated, text) {
+  if (!stated || typeof stated !== "object" || stated.remote !== true) return stated;
+  const why = onSiteObligation(text);
+  if (!why) return stated;
+  const { remote: _remote, ...rest } = stated;
+  return { ...rest, remoteRefused: why };
+}
+
 /** A two-letter country code a vendor stated, or null. */
 const statedCountry = (v) => {
   const s = typeof v === "string" ? v.trim().toUpperCase() : "";
@@ -285,7 +367,7 @@ function workdayStated(info) {
   // '80-100%' is the hours of the job, and its text offers the office or home,
   // so only the whole value "100%" (or "100% remote") is read as remote.
   const rt = label(info?.remoteType);
-  if (rt && /^(?:fully\s+remote|100\s*%(?:\s+remote)?)$/i.test(rt)) out.remote = true;
+  if (rt && /^(?:fully\s+remote|100\s*%(?:\s+remote)?)$/i.test(rt) && remoteUnlessObliged(true, textOf(info?.jobDescription))) out.remote = true;
   // THE COUNTRY WORKDAY FILES THE REQUISITION'S LOCATION UNDER (F08). The
   // board read "AR - BUENOS AIRES (ARBUO)" as Arkansas, US; Workday's own
   // answer says Argentina. The code is stated so the page can see when it
@@ -335,7 +417,8 @@ function oracleStated(item) {
   const schedule = label(item?.JobSchedule);
   if (schedule) out.employmentType = schedule;
   const workplace = label(item?.WorkplaceType);
-  if (item?.WorkplaceTypeCode === "ORA_REMOTE" && workplace && /\bremote\b/i.test(workplace) && !/\b(?:hybrid|partial|partly|flex\w*|field|on-?site|office)\b/i.test(workplace)) out.remote = true;
+  const oracleText = textOf(item?.ExternalDescriptionStr, item?.ExternalResponsibilitiesStr, item?.ExternalQualificationsStr, item?.CorporateDescriptionStr, item?.OrganizationDescriptionStr);
+  if (item?.WorkplaceTypeCode === "ORA_REMOTE" && workplace && /\bremote\b/i.test(workplace) && !/\b(?:hybrid|partial|partly|flex\w*|field|on-?site|office)\b/i.test(workplace) && remoteUnlessObliged(true, oracleText)) out.remote = true;
   const country = statedCountry(item?.PrimaryLocationCountry);
   if (country) out.country = country;
   return out;
@@ -359,11 +442,13 @@ function apiStated(vendor, j) {
   } else if (vendor === "lever") {
     const c = label(j?.categories?.commitment);
     if (c) out.employmentType = c;
-    if (String(j?.workplaceType ?? "").toLowerCase() === "remote") out.remote = true;
+    const leverText = textOf(j?.descriptionPlain, j?.openingPlain, (Array.isArray(j?.lists) ? j.lists : []).map((l) => `${l?.text ?? ""}\n${l?.content ?? ""}`), j?.additionalPlain, j?.descriptionBodyPlain);
+    if (String(j?.workplaceType ?? "").toLowerCase() === "remote" && remoteUnlessObliged(true, leverText)) out.remote = true;
   } else if (vendor === "smartrecruiters") {
     const t = label(j?.typeOfEmployment?.label);
     if (t) out.employmentType = t;
-    if (j?.location?.remote === true && j?.location?.hybrid !== true) out.remote = true;
+    const sections = j?.jobAd?.sections && typeof j.jobAd.sections === "object" ? Object.values(j.jobAd.sections).map((x) => x?.text) : [];
+    if (j?.location?.remote === true && j?.location?.hybrid !== true && remoteUnlessObliged(true, textOf(sections))) out.remote = true;
   }
   return out;
 }
@@ -374,7 +459,7 @@ function ashbyStated(job) {
   const t = label(job?.employmentType);
   if (t) out.employmentType = t;
   const wt = String(job?.workplaceType ?? "").toLowerCase();
-  if (wt === "remote" || (job?.isRemote === true && !wt)) out.remote = true;
+  if ((wt === "remote" || (job?.isRemote === true && !wt)) && remoteUnlessObliged(true, textOf(job?.descriptionPlain, job?.descriptionHtml))) out.remote = true;
   return out;
 }
 
@@ -393,7 +478,7 @@ function pageStated(vendor, node) {
     }
     if (address.addressLocality) out.address = address;
   }
-  if (node?.jobLocationType === "TELECOMMUTE") out.remote = true;
+  if (node?.jobLocationType === "TELECOMMUTE" && remoteUnlessObliged(true, textOf(node?.description))) out.remote = true;
   return out;
 }
 
@@ -405,6 +490,7 @@ function pageStated(vendor, node) {
 function oracleSiteLists(siteRes, key) {
   if (!siteRes) return "its own site's list was not read";
   if (siteRes.error) return `its own site's list did not answer (${siteRes.error})`;
+  if (siteRes.challenge) return "challenge";
   if (siteRes.status !== 200) return `its own site's list answered HTTP ${siteRes.status}`;
   const list = parseJson(String(siteRes.body ?? ""))?.items?.[0]?.requisitionList;
   if (!Array.isArray(list)) return "its own site's list is not one";
@@ -429,6 +515,8 @@ export function employerVerdict(plan, res, row, siteRes) {
   const unknown = (why) => ({ state: "unknown", why, stated: {} });
   if (!plan?.url) return unknown(plan?.why ?? "nothing to read");
   if (!res || res.error) return unknown(`no answer (${res?.error ?? "network"})`);
+  // A bot challenge says nothing about the posting (STRUCTURED-M2).
+  if (res.challenge) return unknown("challenge");
   const { status } = res;
   const body = String(res.body ?? "");
   const key = idParts(row?.id)?.key ?? "";
@@ -516,15 +604,24 @@ export function employerVerdict(plan, res, row, siteRes) {
       return blocks.length ? { state: "open", why: "200 with its JobPosting", stated: pageStated(plan.vendor, blocks[0]) } : unknown("200 without a JobPosting");
     }
     case "ukg": {
-      // READ FOR ITS DATE ONLY: what a closed opportunity's page serves was not
-      // measured, so no UKG answer ever says open or closed.
+      // THE OPPORTUNITY SAYS WHETHER IT IS CLOSED (STRUCTURED-B14, measured
+      // 2026-11-21, robots.txt allowing */JobBoard/): the opportunity page's
+      // script carries the opportunity, and on Ollie's 7dd954be, gone from the
+      // board since 2026-11-06, it read "OpportunityIsClosed":true
+      // (PublishingStatus 4), where 5 open ones read false (PublishingStatus
+      // 1). Only the opportunity this row names is read; a 200 without it
+      // (the job board shell, as 3 other pages gone from the board served) or
+      // without the field stays unknown, its page as it was.
       const stated = {};
-      if (status === 200 && body.includes(`"Id":"${key}"`)) {
-        const m = /"PostedDate":"([^"]+)"/.exec(body);
-        const posted = m ? statedInstant(m[1]) : null;
-        if (posted) stated.postedAt = posted;
-      }
-      return { state: "unknown", why: "UKG is read for its stated date only", stated };
+      if (status !== 200) return unknown(`HTTP ${status}`);
+      if (!body.includes(`"Id":"${key}"`)) return unknown("200 without the opportunity");
+      const m = /"PostedDate":"([^"]+)"/.exec(body);
+      const posted = m ? statedInstant(m[1]) : null;
+      if (posted) stated.postedAt = posted;
+      const closed = /"OpportunityIsClosed":(true|false)\b/.exec(body)?.[1];
+      if (closed === "true") return { state: "closed", why: "UKG says the opportunity is closed", stated: {} };
+      if (closed === "false") return { state: "open", why: "200", stated };
+      return { state: "unknown", why: "200 without OpportunityIsClosed", stated };
     }
     default:
       return unknown("a vendor this reader does not read");
@@ -533,7 +630,34 @@ export function employerVerdict(plan, res, row, siteRes) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** One GET with a timeout, and one retry on 429 or a 5xx. Never throws. */
+/**
+ * A BOT CHALLENGE IS A REFUSAL, NOT A SLOW ANSWER (SEO audit 2026-11-18,
+ * STRUCTURED-M2). From 2026-11-17 Workday's edge answered the bake's Node
+ * fetch with a Cloudflare challenge: HTTP 429, "Security Check ... Enable
+ * JavaScript and cookies to continue", a script setting window._cf_chl_opt.
+ * The reader retried it after 1.5 s and recorded a plain "HTTP 429", so about
+ * 300 Workday rows each spent two seconds of the shared budget and the log
+ * read as a flaky network. A 403, 429 or 503 that carries Cloudflare's
+ * cf-mitigated: challenge header, or a body with the challenge's script or its
+ * cookie sentence, is named "challenge" and never asked again. Nothing here
+ * changes the client, the user agent or the runtime to get past one: a
+ * challenge means stop asking that vendor (CHALLENGES_BEFORE_STOP).
+ */
+export const CHALLENGE_STATUSES = Object.freeze([403, 429, 503]);
+/** Challenges from one vendor in one run after which its remaining rows are not requested at all. */
+export const CHALLENGES_BEFORE_STOP = 3;
+const headerOf = (r, name) => {
+  try { return typeof r?.headers?.get === "function" ? r.headers.get(name) : null; } catch { return null; }
+};
+/** Whether one answer is a bot challenge: status, Cloudflare's header, or the challenge page's own markers. */
+export function isChallenge(status, body, cfMitigated = null) {
+  if (!CHALLENGE_STATUSES.includes(status)) return false;
+  if (typeof cfMitigated === "string" && cfMitigated.trim().toLowerCase() === "challenge") return true;
+  const b = String(body ?? "");
+  return b.includes("_cf_chl_opt") || /Enable JavaScript and cookies/i.test(b);
+}
+
+/** One GET with a timeout, and one retry on 429 or a 5xx that is not a challenge. Never throws. */
 export async function employerGet(url, { fetchImpl = globalThis.fetch, timeoutMs = EMPLOYER_READ_TIMEOUT_MS, accept = "*/*", retryDelayMs = 1500 } = {}) {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
@@ -544,13 +668,14 @@ export async function employerGet(url, { fetchImpl = globalThis.fetch, timeoutMs
         signal: AbortSignal.timeout(timeoutMs),
       });
       const status = r.status;
+      let body = "";
+      try { body = await r.text(); } catch { body = ""; }
+      // A challenge is answered once and never retried (STRUCTURED-M2).
+      if (isChallenge(status, body, headerOf(r, "cf-mitigated"))) return { status, url: r.url || url, body: "", challenge: true };
       if ((status === 429 || status >= 500) && attempt === 0) {
-        try { await r.text(); } catch { /* drained */ }
         await sleep(retryDelayMs);
         continue;
       }
-      let body = "";
-      try { body = await r.text(); } catch { body = ""; }
       return { status, url: r.url || url, body };
     } catch (e) {
       return { error: String(e?.name === "TimeoutError" ? "timeout" : e?.message ?? e).slice(0, 80) };
@@ -582,12 +707,18 @@ export async function readEmployers(rows, opts = {}) {
   const until = typeof deadline === "number" ? deadline : now() + budgetMs;
   const out = new Map();
   const boards = new Map();
+  /** Challenges seen per vendor this run (STRUCTURED-M2): past CHALLENGES_BEFORE_STOP its rows are not requested. */
+  const challenged = new Map();
   const list = Array.isArray(rows) ? rows.filter((r) => r && typeof r.id === "string") : [];
   let next = 0;
   const one = async (row) => {
     const plan = employerReadPlan(row);
     if (!plan.url || (plan.statedOnly && !wantStated)) {
       out.set(row.id, { id: row.id, vendor: plan.vendor, state: "unknown", why: plan.url ? "not read for state" : plan.why, stated: {} });
+      return;
+    }
+    if ((challenged.get(plan.vendor) ?? 0) >= CHALLENGES_BEFORE_STOP) {
+      out.set(row.id, { id: row.id, vendor: plan.vendor, state: "unknown", why: "vendor challenged", stated: {} });
       return;
     }
     if (now() >= until) {
@@ -597,10 +728,16 @@ export async function readEmployers(rows, opts = {}) {
     const left = Math.max(1, Math.min(timeoutMs, until - now()));
     let res;
     if (plan.kind === "board") {
-      if (!boards.has(plan.url)) boards.set(plan.url, employerGet(plan.url, { fetchImpl, timeoutMs: left, accept: plan.accept, retryDelayMs }));
+      if (!boards.has(plan.url)) {
+        const p = employerGet(plan.url, { fetchImpl, timeoutMs: left, accept: plan.accept, retryDelayMs });
+        boards.set(plan.url, p);
+        // One board's challenge counts once, however many rows share its list.
+        p.then((r) => { if (r?.challenge) challenged.set(plan.vendor, (challenged.get(plan.vendor) ?? 0) + 1); });
+      }
       res = await boards.get(plan.url);
     } else {
       res = await employerGet(plan.url, { fetchImpl, timeoutMs: left, accept: plan.accept, retryDelayMs });
+      if (res?.challenge) challenged.set(plan.vendor, (challenged.get(plan.vendor) ?? 0) + 1);
     }
     // An Oracle requisition the finder returned is asked of the row's own site.
     let siteRes;
@@ -608,6 +745,7 @@ export async function readEmployers(rows, opts = {}) {
       siteRes = now() >= until
         ? { error: "budget" }
         : await employerGet(plan.siteUrl, { fetchImpl, timeoutMs: Math.max(1, Math.min(timeoutMs, until - now())), accept: plan.accept, retryDelayMs });
+      if (siteRes?.challenge) challenged.set(plan.vendor, (challenged.get(plan.vendor) ?? 0) + 1);
     }
     const v = employerVerdict(plan, res, row, siteRes);
     out.set(row.id, { id: row.id, vendor: plan.vendor, ...v });
@@ -668,25 +806,100 @@ export function distrustImplausibleClosures(results, { minDefinite = 8, maxShare
   return out;
 }
 
-/** Counts by state, overall and by vendor. */
+/**
+ * WHY AN ANSWER IS UNKNOWN, as one of a few named reasons (SEO audit
+ * 2026-11-18, STRUCTURED-1). The ledger kept counts only, so the 18 Nov
+ * publish bake's 276 unknown Workday answers of 302 could not say whether the
+ * budget ran out, a vendor refused, or a challenge stood in the way, and the
+ * fixes were aimed at the budget. The reasons: "budget" (the row was never
+ * reached), "challenge" (a bot challenge answered), "vendor challenged" (not
+ * asked: its vendor had already challenged CHALLENGES_BEFORE_STOP times),
+ * "timeout", "network", "429", "403", "404", "5xx", "other HTTP",
+ * "implausible closure", "not listed" (an Oracle requisition its own site
+ * does not list), "stated only" (UKG), "no plan" (no address this reader can
+ * ask, or a vendor it does not read) and "other".
+ */
+export function unknownReason(why) {
+  const w = String(why ?? "");
+  if (w === "budget" || /\(budget\)$/.test(w)) return "budget";
+  if (w === "challenge") return "challenge";
+  if (w === "vendor challenged") return "vendor challenged";
+  if (/^no answer \(timeout\)/.test(w) || /did not answer \(timeout\)/.test(w)) return "timeout";
+  if (/^no answer\b/.test(w) || /did not answer/.test(w)) return "network";
+  if (/^implausible\b/.test(w)) return "implausible closure";
+  if (w === "not listed on this site") return "not listed";
+  if (/stated date only|not read for state/.test(w)) return "stated only";
+  // "HTTP 503", "board HTTP 403", "its own site's list answered HTTP 429", and
+  // Workday's "404 (the applyUrl slug may be wrong)"; a 200 that carried no
+  // answer ("200 without jobPostingInfo") is "other".
+  const status = /\bHTTP (\d{3})\b/.exec(w)?.[1] ?? (/^(404)\b/.exec(w)?.[1] ?? null);
+  if (status === "429") return "429";
+  if (status === "403") return "403";
+  if (status === "404") return "404";
+  if (status && status.startsWith("5")) return "5xx";
+  if (status) return "other HTTP";
+  if (/^(?:not a |no |applyUrl |a vendor this reader|nothing to read)/.test(w)) return "no plan";
+  return "other";
+}
+
+/**
+ * Counts by state, overall and by vendor, and for every unknown answer its
+ * reason (unknownReason), overall and per vendor (`why`).
+ */
 export function summarizeEmployerReads(results) {
-  const s = { checked: 0, open: 0, closed: 0, unknown: 0, byVendor: {} };
+  const s = { checked: 0, open: 0, closed: 0, unknown: 0, why: {}, byVendor: {} };
   for (const r of results instanceof Map ? results.values() : results ?? []) {
     s.checked++;
     s[r.state] = (s[r.state] ?? 0) + 1;
     const v = (s.byVendor[r.vendor] ??= { open: 0, closed: 0, unknown: 0 });
     v[r.state] = (v[r.state] ?? 0) + 1;
+    if (r.state === "unknown") {
+      const reason = unknownReason(r.why);
+      s.why[reason] = (s.why[reason] ?? 0) + 1;
+      v.why ??= {};
+      v.why[reason] = (v.why[reason] ?? 0) + 1;
+    }
   }
   return s;
 }
+
+/** A why-count map as one short phrase ("budget 3, challenge 2"), largest first. */
+export const whyPhrase = (why) => Object.entries(why ?? {})
+  .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+  .map(([k, n]) => `${k} ${n}`)
+  .join(", ");
 
 /** The bake log's one line. */
 export function employerReadLine(summary) {
   const vendors = Object.entries(summary.byVendor ?? {})
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([v, c]) => `${v} ${c.open}/${c.closed}/${c.unknown}`)
+    .map(([v, c]) => `${v} ${c.open}/${c.closed}/${c.unknown}${c.why && c.unknown ? ` (${whyPhrase(c.why)})` : ""}`)
     .join(", ");
   return `employer reads: ${summary.open} open, ${summary.closed} closed (retired), ${summary.unknown} unknown of ${summary.checked}${vendors ? `; open/closed/unknown by vendor: ${vendors}` : ""}`;
+}
+
+/** A vendor with at least this many pages read in one bake is judged by EMPLOYER_READ_ALARM_SHARE. */
+export const EMPLOYER_READ_ALARM_MIN_PAGES = 20;
+/** Over this share unknown, such a vendor's closures are not being seen, and the bake says so at the FAIL tier. */
+export const EMPLOYER_READ_ALARM_SHARE = 0.5;
+
+/**
+ * THE BAKE'S FAIL-TIER LINES (STRUCTURED-1): one per vendor with at least
+ * EMPLOYER_READ_ALARM_MIN_PAGES pages of which more than half came back
+ * unknown, naming the vendor and why. A vendor read for its statements only
+ * (STATED_ONLY_VENDORS) is never checked, so it is not named here. The bake
+ * prints these with console.error and goes on: a publish is never blocked, and
+ * an unknown answer keeps its page as it was.
+ */
+export function employerReadAlarms(summary) {
+  const lines = [];
+  for (const [v, c] of Object.entries(summary?.byVendor ?? {}).sort((a, b) => a[0].localeCompare(b[0]))) {
+    if (STATED_ONLY_VENDORS.includes(v)) continue;
+    const n = (c.open ?? 0) + (c.closed ?? 0) + (c.unknown ?? 0);
+    if (n < EMPLOYER_READ_ALARM_MIN_PAGES || (c.unknown ?? 0) / n <= EMPLOYER_READ_ALARM_SHARE) continue;
+    lines.push(`EMPLOYER READS FAIL: ${v} answered for ${n - c.unknown} of ${n} pages (${c.unknown} unknown, ${Math.round((c.unknown / n) * 100)}%: ${whyPhrase(c.why) || "no reason recorded"}); its closures are not being seen, and its pages keep their job markup as they were`);
+  }
+  return lines;
 }
 
 /** Wilson score interval at 95% for k of n, as [low, high]; [0, 1] for n = 0. */

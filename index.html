@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <meta charset="UTF-8" />
     <script>
       /* THE FIRST SCRIPT ON EVERY PAGE, AND IT MUST STAY FIRST: inline, classic
          (no src, no module, no defer, no async), so it runs before the host's
@@ -66,7 +67,6 @@
         } catch (e) { /* no URLSearchParams or no history: the address keeps its parts */ }
       })();
     </script>
-    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0c1222" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#0c1222" media="(prefers-color-scheme: light)" />
@@ -179,6 +179,7 @@
       "@context": "https://schema.org",
       "@type": "WebSite",
       "name": "Resume Booster",
+      "alternateName": ["resumebooster.work"],
       "url": "https://resumebooster.work",
       "potentialAction": {
         "@type": "SearchAction",
@@ -198,6 +199,26 @@
       Skip to main content
     </a>
     <div id="root"></div>
+    <script data-fallback-noindex>
+      /* SEO-F10, the owner's choice: the fallback says noindex on every path
+         but the root. The host serves the baked root page for every address
+         with no baked page of its own (an unbaked live posting, a mistyped
+         address), and its robots tag said index, follow. Every baked page
+         keeps a canonical; the fallback's own script, just above this one in
+         the baked file, removes the fallback's canonical on any path but the
+         root. So a baked document with no canonical, on any other path, is
+         the fallback, and it tells search engines noindex. The template
+         itself, served when the bake did not run, has no bake marker and is
+         left alone, so a failed bake never takes the site out of search. */
+      (function () {
+        try {
+          var P = location.pathname.replace(/\/+$/, "") || "/", H = document.head, m, i;
+          if (P === "/" || !H.querySelector('meta[name="x-prerendered"]') || H.querySelector('link[rel="canonical"]')) return;
+          m = H.querySelectorAll('meta[name="robots"]');
+          for (i = 0; i < m.length; i++) m[i].setAttribute("content", "noindex, follow");
+        } catch (e) { /* the head keeps what it was served */ }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

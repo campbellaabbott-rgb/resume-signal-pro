@@ -2,11 +2,46 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { purchaseReferenceIn } from "../_shared/purchase-links.ts";
+import { REFUNDED_PURCHASE_MESSAGE, paymentRevocationState } from "../_shared/payment-revocation.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "recover-purchase.2026-11-09.1";
+// 2026-11-21.1 (bug round of 2026-11-19, lane payments-delivery, S9-030): a refunded or disputed purchase, and a Pro grant its refund took back, is refused here as everywhere else that delivers: its saved copy is no longer handed back.
+const FN_BUILD = "recover-purchase.2026-11-21.1";
+
+/** The code a refused recovery answers, the one analyze-resume answers for the same refusal. */
+const REFUNDED_CODE = "purchase_refunded";
+
+/**
+ * WAS THIS PURCHASE TAKEN BACK? (S9-030). stripe-webhook records every full
+ * refund and every dispute in payment_revocations, and a refunded month of
+ * the plan revokes the Pro grants it paid for. This function read only the
+ * saved copy, so a refunded purchase was handed back here after every
+ * generator had stopped delivering it. A read that fails answers "not taken
+ * back", as sessionWasRefunded does at the success page: a refund is a rare
+ * correction, and a database hiccup must not refuse an honest buyer the copy
+ * they already received.
+ */
+// deno-lint-ignore no-explicit-any
+async function purchaseTakenBack(db: any, reference: string): Promise<boolean> {
+  if (reference.startsWith("pro_")) {
+    try {
+      const { data, error } = await db.from("pro_grants").select("revoked_at").eq("id", reference.slice(4)).maybeSingle();
+      if (error) {
+        logStep("Grant revocation unreadable; answering from the saved copy", { error: error.message });
+        return false;
+      }
+      return !!data?.revoked_at;
+    } catch (e) {
+      logStep("Grant revocation unreadable; answering from the saved copy", { error: e instanceof Error ? e.message : String(e) });
+      return false;
+    }
+  }
+  const state = await paymentRevocationState(db, { sessionId: reference });
+  if (state === "unreadable") logStep("Payment revocation unreadable; answering from the saved copy");
+  return state === "revoked";
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,6 +88,15 @@ serve(async (req) => {
     let purchases: unknown[] = [];
 
     if (sessionId) {
+      // A purchase taken back is refused before its copy is read (S9-030).
+      if (await purchaseTakenBack(supabase, sessionId)) {
+        logStep("Refused: the purchase was refunded or its grant taken back");
+        return new Response(
+          JSON.stringify({ error: REFUNDED_PURCHASE_MESSAGE, code: REFUNDED_CODE, refunded: true }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       // Recover by session ID
       const { data, error } = await supabase.rpc('get_purchased_content_by_session', {
         p_session_id: sessionId

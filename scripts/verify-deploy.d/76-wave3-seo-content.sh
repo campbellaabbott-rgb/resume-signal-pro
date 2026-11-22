@@ -5,16 +5,15 @@
 # Read-only: GETs of public pages, the sitemap, the ledger, llms files and a
 # static image. Nothing is sent or written. Pre-deploy the new claims FAIL by
 # design; nothing here may crash.
-# F2a judges the URLs the PREVIOUS publish named, eight at a time. Their list
-# is the sitemap saved in ~/.config/resumebooster/seo/, which verify-deploy.sh
-# keeps by itself since B10 (SEO/GEO audit 2026-11-07, F10): its last step
-# saves the live sitemap and ledger at the end of every run that reaches its
-# end and rotates the pair before it to prev-* (scripts/seo-previous-
-# publish.mjs). F2a reads the newest saved sitemap that is not the live one.
-# With none, F2a prints INFO "cannot judge" on a machine that never saved one
-# and FAIL once saves.log says one was saved, and only the live sitemap's own
-# posting URLs are checked (S11-154: a sitemap the new bake wrote cannot show
-# what became of the old one's URLs).
+# F2a judges what became of every posting URL this site published from the
+# live ledger alone (SEO audit 2026-11-18, CRAWL18B-3): each live one, each
+# that changed state in the 7 days before the ledger was built, and 120 older
+# ones by a hash of the path serve a page of their own, never the homepage
+# copy, with the robots their state says. It never stands aside as unjudged:
+# an unreadable ledger, or one naming no posting URL, is a FAIL. The sitemap
+# verify-deploy.sh saves (B10, scripts/seo-previous-publish.mjs) adds the
+# posting URLs it named that the ledger does not, and a saved sitemap gone
+# missing after this machine saved one is a FAIL of its own.
 # L9-11 FAILs llms-full.txt on the retired pass's own copy, its names and 83
 # C1's retired list. A paraphrase in new words passes it whatever it says.
 # Beside it, a sentence prints as INFO for a person to read when one of its
@@ -140,41 +139,55 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   else if (offLedger.length) out("FAIL", `${offLedger.length} of ${dated.length} sitemap URLs carry a lastmod that is not their ledger date, e.g. ${offLedger.slice(0, 3).map((u) => `${pathOf(u.loc)} ${u.lastmod} vs ${pages[pathOf(u.loc)].lastmod}`).join("; ")} (S3)`);
   else if (s3dates.size > 1) out("PASS", `${dated.length} non-guide sitemap URLs carry ${s3dates.size} distinct lastmod dates, each its page\x27s ledger date (S3: was one publish date on all)`);
   else out("INFO", `S3 not judged: all ${dated.length} non-guide pages the ledger dates carry ${[...s3dates][0]}${[...s3dates][0] === ledger.builtAt ? ", this bake\x27s date (a first bake with a ledger, or every page changed)" : ""}; a later bake that carries unchanged pages forward can show lastmod by content`);
-  // F2a: what became of the URLs the PREVIOUS publish named. The live sitemap
-  // is the new bake\x27s own, so it cannot answer that (S11-154). The saved
-  // copy is picked by the module that saves it, so the file names and the
-  // pick (the newest saved sitemap that is not the live one) cannot drift.
+  // F2a: what became of every posting URL this site published, judged from
+  // the live ledger alone (SEO audit 2026-11-18, CRAWL18B-3). It used to read
+  // a sitemap verify-deploy.sh had saved, which was at least one publish
+  // behind and absent on a machine that had not run the verifier since, so
+  // a publish nobody verified was never judged at all. The ledger
+  // names every posting URL in every state: each live one, each that changed
+  // state in the 7 days before the ledger was built (the carry the newest
+  // publishes made), and 120 older ones, chosen by a hash of the path, must
+  // serve a page of its own (never the homepage copy) whose robots agree with
+  // its state. A saved previous sitemap, where there is one, adds the posting
+  // URLs it named that the ledger does not.
   const PP = await import(`${REPO_ROOT}/scripts/seo-previous-publish.mjs`).catch(() => null);
   const LAST_SITEMAP = PP ? PP.pairPaths(SEO_DIR).sitemap : `${SEO_DIR}/last-sitemap.xml`;
   const pick = PP ? PP.previousSitemap({ dir: SEO_DIR, liveSitemapXml: sm.body }) : { raw: "", from: "", reason: "unread", everSaved: false };
-  const prevRaw = pick.raw;
-  const prevPostings = [...prevRaw.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].trim()).filter((u) => u.includes("/jobs/posting/"));
-  const judgePrev = prevPostings.length > 0;
-  if (!judgePrev) {
-    const why = !PP ? "this checkout cannot read scripts/seo-previous-publish.mjs"
-      : pick.reason === "missing" ? `no saved sitemap at ${LAST_SITEMAP}, although saves.log says this machine saved one`
-        : pick.reason === "none" ? `no saved sitemap at ${LAST_SITEMAP} yet`
-          : pick.reason === "own" ? "the saved sitemap is this publish\x27s own and no earlier one is kept"
-            : "the saved sitemap names no posting URL";
-    out(!PP || pick.reason === "missing" ? "FAIL" : "INFO", `F2a cannot judge the previous publish\x27s posting URLs: ${why}. verify-deploy.sh saves the live sitemap and ledger at the end of every run that reaches its end, so the next publish is judged against this one (by hand: curl -s ${SITE}/sitemap.xml > ${LAST_SITEMAP})`);
-  }
-  const basis = judgePrev ? "the previous publish\x27s sitemap" : "the live sitemap\x27s own";
-  const sample = judgePrev ? prevPostings : locs.filter((u) => u.includes("/jobs/posting/"));
+  if (PP && pick.reason === "missing") out("FAIL", `the verifier\x27s saved sitemap is missing at ${LAST_SITEMAP}, although saves.log says this machine saved one (B10: verify-deploy.sh saves the live sitemap and ledger at the end of every run that reaches its end)`);
+  const ledgerPostings = ledgerOk ? Object.entries(ledger.postings || {}).filter(([p, e]) => p.startsWith("/jobs/posting/") && e && typeof e === "object") : [];
+  const builtDay = ledgerOk ? Date.parse(`${ledger.builtAt.slice(0, 10)}T00:00:00Z`) : NaN;
+  const changedLately = (e) => typeof e.since === "string" && Number.isFinite(builtDay) && builtDay - Date.parse(`${e.since.slice(0, 10)}T00:00:00Z`) <= 7 * 86400000;
+  const f2Live = ledgerPostings.filter(([, e]) => e.state === "live");
+  const f2Recent = ledgerPostings.filter(([, e]) => e.state !== "live" && changedLately(e));
+  const f2Older = ledgerPostings.filter(([, e]) => e.state !== "live" && !changedLately(e));
+  const f2OlderPick = [...f2Older].sort(([a], [b]) => (md5(a) < md5(b) ? -1 : 1)).slice(0, 120);
+  const stateOf = new Map([...f2Live, ...f2Recent, ...f2OlderPick].map(([p, e]) => [p, e.state]));
+  const prevPostings = [...String(pick.raw || "").matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => pathOf(m[1].trim())).filter((p) => p.startsWith("/jobs/posting/") && !(ledgerOk && ledger.postings && ledger.postings[p]));
+  for (const p of prevPostings) stateOf.set(p, null);
+  const sample = [...stateOf.keys()];
   let homeCopies = 0, stubs = 0, live = 0, failed = 0;
   const carryBad = [];
+  const disagree = [];
   for (let i = 0; i < sample.length; i += 8) {
-    await Promise.all(sample.slice(i, i + 8).map(async (u) => {
-      const r = await get(u, 20000);
-      if (r.status !== 200) { failed++; carryBad.push(`${pathOf(u)} answered ${r.status}`); return; }
-      if (isHomeCopy(r.body)) { homeCopies++; carryBad.push(`${pathOf(u)} serves the homepage copy`); }
-      else if (/noindex/.test(robotsOf(r.body))) stubs++;
-      else live++;
+    await Promise.all(sample.slice(i, i + 8).map(async (p) => {
+      const r = await get(p, 20000);
+      if (r.status !== 200) { failed++; carryBad.push(`${p} answered ${r.status}`); return; }
+      if (isHomeCopy(r.body)) { homeCopies++; carryBad.push(`${p} serves the homepage copy`); return; }
+      const noindex = /noindex/.test(robotsOf(r.body));
+      if (noindex) stubs++; else live++;
+      const st = stateOf.get(p);
+      if (st && (st === "live") === noindex) disagree.push(`${p} is ${st} in the ledger and serves ${noindex ? "noindex" : "an indexable page"}`);
     }));
   }
-  const claim = !judgePrev ? "the new bake\x27s URLs; F2a itself not judged" : pick.from && pick.from !== LAST_SITEMAP ? "F2a, read from prev-sitemap.xml: an earlier run saved this publish" : "F2a";
-  if (!sample.length) out("INFO", `no posting URL to check (${basis} sitemap names none)`);
-  else if (homeCopies === 0 && failed === 0) out("PASS", `${sample.length} posting URLs from ${basis}: ${live} live pages, ${stubs} noindex "no longer listed" pages, 0 homepage copies (${claim})`);
-  else out("FAIL", `${sample.length} posting URLs from ${basis}: ${homeCopies} homepage copies, ${failed} non-200 (${live} live, ${stubs} noindex) (${claim}; F2a was 364 of 371): ${carryBad.sort().slice(0, 8).join("; ")}${carryBad.length > 8 ? `; and ${carryBad.length - 8} more` : ""}`);
+  const basis = `the live ledger (${f2Live.length} live, ${f2Recent.length} that changed state in the 7 days to ${ledgerOk ? ledger.builtAt : "?"}, ${f2OlderPick.length} of ${f2Older.length} older ones${prevPostings.length ? `, and ${prevPostings.length} the previous publish\x27s saved sitemap named that the ledger does not` : ""})`;
+  if (!ledgerOk) out("FAIL", `F2a: the live ledger answered ${led.status}, so what became of the published posting URLs is not judged (CRAWL18B-3)`);
+  else if (!sample.length) out("FAIL", "F2a: the live ledger names no posting URL, so what became of the published ones is not judged (CRAWL18B-3)");
+  else if (homeCopies === 0 && failed === 0) out("PASS", `${sample.length} posting URLs from ${basis}: ${live} live pages, ${stubs} noindex "no longer listed" pages, 0 homepage copies (F2a)`);
+  else out("FAIL", `${sample.length} posting URLs from ${basis}: ${homeCopies} homepage copies, ${failed} non-200 (${live} live, ${stubs} noindex) (F2a; F2a was 364 of 371): ${carryBad.sort().slice(0, 8).join("; ")}${carryBad.length > 8 ? `; and ${carryBad.length - 8} more` : ""}`);
+  if (ledgerOk && sample.length) {
+    if (disagree.length) out("FAIL", `F2a: ${disagree.length} posting URL(s) serve robots their ledger state contradicts: ${disagree.sort().slice(0, 5).join("; ")}${disagree.length > 5 ? `; and ${disagree.length - 5} more` : ""}`);
+    else out("PASS", `F2a: every posting URL read serves the robots its ledger state says (live indexable, every other state noindex)`);
+  }
   // F2b / F2c: the company links on a few posting pages
   const postPages = locs.filter((u) => u.includes("/jobs/posting/")).slice(0, 8);
   const hrefs = new Set();
@@ -256,7 +269,7 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   // 2026-10-25)". The date alone is the wording before the SEO round. The n
   // must be the decided count the sentence names.
   const g = await get("/ghost-job-index");
-  if (/Daily re-check: \d+(?:\.\d+)?% of ([\d,]+) decided sample postings still live at the source \((?:n = \1(?:, 95% interval [^,)]+)?, )?\d{4}-\d{2}-\d{2}\)/.test(textOf(g.body))) out("PASS", "/ghost-job-index prints its dated daily re-check (S2)");
+  if (/(?:Daily r|R)e-check: \d+(?:\.\d+)?% of ([\d,]+) decided sample postings still live at the source \((?:n = \1(?:, 95% interval [^,)]+)?, )?\d{4}-\d{2}-\d{2}\)/.test(textOf(g.body))) out("PASS", "/ghost-job-index prints its dated daily re-check (S2)");
   else out("FAIL", "/ghost-job-index prints no dated daily re-check line (S2; or the audit was unread at bake time)");
   const ds = lds(g.body).find((j) => j["@type"] === "Dataset");
   if (ds && ds.dateModified) out("PASS", `/ghost-job-index is Dataset markup dated ${ds.dateModified}${ds.license ? `, license ${ds.license}` : ", no license named (owner TODO)"}`);

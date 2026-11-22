@@ -62,10 +62,11 @@ import { checkoutRefusalOfBody } from "@/lib/checkout-refusal";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/use-currency";
 import { useScanCredits, creditSessions, CREDITS_UPDATED_EVENT } from "@/hooks/use-scan-credits";
-import { rememberPreStoredResume, forgetPreStoredResume } from "@/hooks/use-product-checkout";
+import { rememberPreStoredResume, forgetPreStoredResume, askToSignInFirst, checkoutPrefillEmail } from "@/hooks/use-product-checkout";
+import { loadAuthStrings } from "@/i18n/auth/load";
 import { supabase } from "@/integrations/supabase/client";
 import { checkoutContext, getVisitorId } from "@/lib/track-transport";
-import { consentWasRequired, purchaseTerms } from "@/lib/purchase-terms";
+import { consentWasRequired, purchaseTerms, purchaseTermsUnused } from "@/lib/purchase-terms";
 import { useBackForwardRestore } from "@/hooks/use-back-forward-restore";
 import { resilientCallers, callEdgeFunctionWithRetry, scanFailureKind, shouldRetryScan } from "@/lib/resilient-edge-function";
 import { writingToolToast } from "@/lib/writing-refusal";
@@ -109,6 +110,137 @@ const ScanFeedback = lazy(() =>
 // count lives here and a test holds it equal to the table itself:
 // src/test/the-homepage-states-the-scanners-own-industry-count.test.ts.
 const DETECTED_INDUSTRY_COUNT = 58;
+
+/**
+ * THE BOARD RANKS THE NEWEST SCAN (sweep MATCH-08). A résumé dropped on the
+ * board is kept in this tab and outranks the homepage's scan stash in the
+ * board's search for a résumé to rank by. A visitor who dropped an older
+ * résumé there, then scanned a newer one here, had the board rank jobs
+ * against the older one. A fresh scan here takes the board's drop out of the
+ * tab, so the board reads this scan's stash next. Tab storage only, in the
+ * visitor's own browser: nothing the platform keeps changes, and the newer
+ * résumé is still in the tab under the scan's own key.
+ */
+const BOARD_DROP_KEY = "rb_board_resume";
+function boardRanksTheNewestScan(): void {
+  try { sessionStorage.removeItem(BOARD_DROP_KEY); } catch { /* storage blocked: nothing to take out */ }
+}
+
+/**
+ * THE MAIL'S OUTCOME LINK ASKS BEFORE IT RECORDS (S10-153). The scan-report
+ * email links here with ?outcome=&rid=, and the page used to record that
+ * answer as it loaded. Mail scanners and link previews open every link in a
+ * message, so a scanner's visit was stored as the person's answer. The link
+ * now only picks the answer; it is stored when the person presses the button
+ * below, as the market-pulse confirmation does. The person's own answer is
+ * still recorded, and can be changed before it is.
+ */
+const EMAILED_OUTCOMES = [
+  { id: "interview", labelKey: "scanOutcome.interview" },
+  { id: "no_response", labelKey: "scanOutcome.noResponse" },
+  { id: "rejected", labelKey: "scanOutcome.rejected" },
+] as const;
+type EmailedOutcome = { reportId: string; outcome: string };
+
+/**
+ * The only report ids the scan-report mail writes into its links: it checks
+ * each one against this same shape before it builds a link
+ * (send-scan-report/index.ts, where it reads the report id). The card prints
+ * the id in its title, so anything else in the address is text a stranger
+ * wrote, and such a link shows no card at all.
+ */
+const EMAILED_REPORT_ID = /^[A-Za-z0-9]{6,32}$/;
+
+/** The answer an outcome link carries, or null when the address carries none the mail could have written. */
+function emailedOutcomeFrom(search: string): EmailedOutcome | null {
+  const params = new URLSearchParams(search);
+  const outcome = params.get("outcome");
+  const reportId = params.get("rid") ?? "";
+  if (!outcome || !EMAILED_REPORT_ID.test(reportId) || !EMAILED_OUTCOMES.some((o) => o.id === outcome)) return null;
+  return { reportId, outcome };
+}
+
+/** The link's two parameters leave the address once the person has answered or declined. */
+function forgetOutcomeLink(): void {
+  const params = new URLSearchParams(window.location.search);
+  params.delete("outcome");
+  params.delete("rid");
+  window.history.replaceState({}, "", window.location.pathname + (params.toString() ? `?${params}` : ""));
+}
+
+function EmailedOutcomeConfirm({ asked, onDone }: { asked: EmailedOutcome; onDone: () => void }) {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const [outcome, setOutcome] = useState(asked.outcome);
+  const [busy, setBusy] = useState(false);
+
+  const save = () => {
+    setBusy(true);
+    // The one visitor id, from the chokepoint, as the in-report buttons send it.
+    const visitor = getVisitorId();
+    // The thanks is for a stored answer only (S13-057): a refusal or an error
+    // says nothing was recorded, in the visitor's language, and the card stays.
+    (supabase.rpc as unknown as (fn: string, args: object) => PromiseLike<unknown>)(
+      "record_scan_outcome",
+      { p_report_id: asked.reportId, p_outcome: outcome, p_ip: visitor },
+    ).then(
+      (res) => {
+        toast(outcomeWasStored(res as ScanOutcomeRpcAnswer)
+          ? { title: t("scanOutcome.recorded") }
+          : { title: t("scanOutcome.notSaved"), variant: "destructive" });
+        if (outcomeWasStored(res as ScanOutcomeRpcAnswer)) onDone();
+      },
+      () => toast({ title: t("scanOutcome.notSaved"), variant: "destructive" }),
+    ).then(() => setBusy(false));
+  };
+
+  return (
+    <section className="container max-w-2xl pt-4" data-emailed-outcome>
+      <div className="rounded-2xl border border-primary/30 bg-card p-4">
+        <p className="text-sm font-semibold text-foreground mb-0.5">
+          {t("homeScan.outcome.title", { reportId: asked.reportId })}
+        </p>
+        <p className="text-xs text-muted-foreground mb-3">{t("homeScan.outcome.body")}</p>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {EMAILED_OUTCOMES.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              disabled={busy}
+              aria-pressed={outcome === o.id}
+              onClick={() => setOutcome(o.id)}
+              className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                outcome === o.id
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+              }`}
+            >
+              {t(o.labelKey)}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={save}
+            className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors"
+          >
+            {t("homeScan.outcome.save")}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onDone}
+            className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {t("homeScan.outcome.dismiss")}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 interface FreeKeywordResult {
   detectedLanguage?: { code: string; name: string } | null;
@@ -604,33 +736,14 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Outcome links from the scan-report email land here (?outcome=&rid=).
-  // Record via the same anonymous RPC the in-report buttons use, say whether
-  // it was kept, and clean the URL so refreshes don't re-record. The thanks
-  // is for a stored answer only (S13-057): a refusal or an error says
-  // nothing was recorded, in the visitor's language.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const outcome = params.get("outcome");
-    const rid = params.get("rid");
-    if (!outcome || !rid || !["interview", "no_response", "rejected"].includes(outcome)) return;
-    // The one visitor id, from the chokepoint: this effect runs before the
-    // tracking hooks mount, and minting here used to split a returning
-    // browser that carried only a legacy key.
-    const visitor = getVisitorId();
-    (supabase.rpc as unknown as (fn: string, args: object) => PromiseLike<unknown>)(
-      "record_scan_outcome",
-      { p_report_id: rid, p_outcome: outcome, p_ip: visitor },
-    ).then(
-      (res) => toast(outcomeWasStored(res as ScanOutcomeRpcAnswer)
-        ? { title: t("scanOutcome.recorded") }
-        : { title: t("scanOutcome.notSaved"), variant: "destructive" }),
-      () => toast({ title: t("scanOutcome.notSaved"), variant: "destructive" }),
-    );
-    params.delete("outcome");
-    params.delete("rid");
-    window.history.replaceState({}, "", window.location.pathname + (params.toString() ? `?${params}` : ""));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Outcome links from the scan-report email land here (?outcome=&rid=). The
+  // link only picks the answer: loading the page stores nothing, and the card
+  // at the top stores it when the person confirms (EmailedOutcomeConfirm above).
+  const [emailedOutcome, setEmailedOutcome] = useState<EmailedOutcome | null>(() =>
+    typeof window === "undefined" ? null : emailedOutcomeFrom(window.location.search));
+  const closeEmailedOutcome = useCallback(() => {
+    forgetOutcomeLink();
+    setEmailedOutcome(null);
   }, []);
   const { verifyPurchase } = useScanCredits();
   const { trackButtonClick } = useConversionTracking();
@@ -1358,7 +1471,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
 
         // Track if this was a cached result
         setIsCachedResult(!!result.cached);
-        
+
+        // This scan, not an older résumé dropped on the board, is what the board ranks by.
+        boardRanksTheNewestScan();
         setFreeKeywordResult({
           // Spread the raw scan result FIRST so every backend-emitted field
           // flows through; the curated keys below then override with their
@@ -1589,6 +1704,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           });
           window.dispatchEvent(new CustomEvent(CREDITS_UPDATED_EVENT));
         }
+        boardRanksTheNewestScan();
         setFreeKeywordResult({
           // Spread raw result first (same rationale as the primary path) so no
           // backend field is silently dropped.
@@ -1734,9 +1850,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       const data = result.data as { success?: boolean; error?: string } | null;
       if (!result.error && data?.success) {
         setTailoredResumeContent(data);
+        // Notes to copy into the person's own résumé, not a résumé to send (S10-063).
         toast({
-          title: t('homepage.toast.tailoredResumeGenerated'),
-          description: t('homepage.toast.tailoredResumeGeneratedDescription'),
+          title: t('homeScan.tailoringNotes.readyTitle'),
+          description: t('homeScan.tailoringNotes.readyBody'),
         });
       } else {
         setShowTailoredResumeModal(false);
@@ -1912,6 +2029,25 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         title: t('homepage.toast.resumeRequired'),
         description: t('homepage.toast.resumeRequiredDescription'),
         variant: "destructive",
+      });
+      return;
+    }
+
+    // A PRO MEMBER WHOSE SESSION ENDED IS ASKED BEFORE STRIPE CHARGES THEM
+    // (S10-070). Pro includes the Full Analysis, and this press is its only
+    // checkout, but the ask (S12-087) was wired only into the product hook,
+    // whose products Pro does not include: a member signed out here was
+    // charged $5. The same ask now comes first here: when a member signed in
+    // on this browser and no session is held now, the first press says so and
+    // starts nothing; the next press buys as a guest. Once per tab, and the
+    // press gives back the Terms box it read.
+    if (askToSignInFirst(!!session?.user || !!(await checkoutPrefillEmail()))) {
+      purchaseTermsUnused();
+      // The auth strings load lazily; they are in before the notice is worded.
+      await loadAuthStrings();
+      toast({
+        title: t("auth.checkout.signInFirstTitle", "Have Pro? Sign in first"),
+        description: t("auth.checkout.signInFirst", "Your session here ended. If you have a Pro plan, sign in and this tool is included at no charge. To buy it without signing in, press the button again."),
       });
       return;
     }
@@ -2210,6 +2346,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       <Header />
 
       <main id="main-content" className="pt-16" role="main">
+        {emailedOutcome && <EmailedOutcomeConfirm asked={emailedOutcome} onDone={closeEmailedOutcome} />}
         {/* THE PROVENANCE STRIP SURVIVES EVERY PAGE STATE.
             The fifteen platforms and their live counts are not pitch: they
             are the answer to "where do these jobs come from", which is the first question a
@@ -2664,6 +2801,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
             }}
             content={tailoredResumeContent}
             isLoading={isGeneratingTailored}
+            originalName={freeKeywordResult?.candidateName}
           />
         </Suspense>
       )}

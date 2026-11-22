@@ -28,15 +28,27 @@
 //
 // Usage:
 //   node scripts/posting-closure-check.mjs [--site URL] [--history FILE]
-//        [--out FILE] [--budget-ms N] [--date YYYY-MM-DD] [--json]
+//        [--out FILE] [--closed-out FILE] [--budget-ms N] [--date YYYY-MM-DD] [--json]
+// --closed-out writes today's closed pages as lines for
+// scripts/seo-seed/closed-at-employer.txt (empty on a re-read), --stated-out
+// what each employer answered for the other pages as
+// scripts/seo-seed/employer-stated.txt (not written on a re-read), and under
+// GitHub Actions the run's summary lists the counts and every closed path.
+//
+// THE PROPOSAL (SEO audit 2026-11-18, STRUCTURED-B1 part 2 and B2; owner yes,
+// 2026-11-19): `--propose --closed-today F --stated-today F [--earlier-closed F]`
+// rewrites the two seed files in the checkout, and posting-closure.yml commits
+// them to one standing branch and opens or updates one pull request. CI writes
+// nothing to the site and nothing to main: a person merges.
 // Exit: 0 judged and the rule did not fire; 3 the rule fired; 4 not judged
 // (over 20% unknown, or nothing to check); 2 the sitemap or ledger could not
 // be read.
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, realpathSync } from "node:fs";
+import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync, realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { idFromPostingPath, idParts, readEmployers, summarizeEmployerReads, wilson95 } from "./employer-reads.mjs";
+import { idFromPostingPath, idParts, readEmployers, summarizeEmployerReads, whyPhrase, wilson95 } from "./employer-reads.mjs";
+import { employerStatedLine } from "./employer-statements.mjs";
 
 /** The owner's line: a closed share over this is "over". */
 export const STOP_SHARE = 0.05;
@@ -86,6 +98,124 @@ export function unknownBoardsByVendor(list) {
     boards.set(r.vendor, set);
   }
   return Object.fromEntries([...boards].map(([v, set]) => [v, set.size]));
+}
+
+/**
+ * ONE LINE PER VENDOR, with why its unknown answers are unknown (SEO audit
+ * 2026-11-18, STRUCTURED-M2): a Cloudflare challenge ("challenge") and the
+ * rows not asked after three of them ("vendor challenged") are counted apart
+ * from the budget, a timeout or an HTTP status, so a refusal never reads as a
+ * slow network.
+ */
+export function closureVendorLines(record) {
+  return Object.entries(record?.byVendor ?? {})
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([v, c]) => `${v.padEnd(16)} open ${c.open ?? 0}, closed ${c.closed ?? 0}, unknown ${c.unknown ?? 0}${c.why && c.unknown ? ` (${whyPhrase(c.why)})` : ""}`);
+}
+
+/** Challenges per vendor in a record ({ workday: { challenge: 3, "vendor challenged": 292 } }), vendors with none left out. */
+export function closureChallenges(record) {
+  const out = {};
+  for (const [v, c] of Object.entries(record?.byVendor ?? {})) {
+    const n = c?.why?.challenge ?? 0;
+    const m = c?.why?.["vendor challenged"] ?? 0;
+    if (n || m) out[v] = { challenge: n, "vendor challenged": m };
+  }
+  return out;
+}
+
+/**
+ * THE PAGES CLOSED AT THE EMPLOYER, as lines for scripts/seo-seed/
+ * closed-at-employer.txt (SEO audit 2026-11-18, CRAWL-M2): "<path> <date>
+ * employer", one per closed path. The check writes nothing to the site: the
+ * workflow puts these lines in one standing issue, a person commits them, and
+ * the next bake retires each listed page with the employer's "no longer
+ * listed" page.
+ */
+export function closedListLines(record) {
+  const date = typeof record?.date === "string" ? record.date : "";
+  return (Array.isArray(record?.closedPaths) ? record.closedPaths : []).map((p) => `${p} ${date} employer`);
+}
+
+/**
+ * WHAT EACH EMPLOYER ANSWERED FOR THE PAGES IT DID NOT CLOSE, as the text of
+ * scripts/seo-seed/employer-stated.txt (STRUCTURED-B2): the open answers with
+ * the end date, time type and remote flag the employer stated, and the
+ * unknown answers that still stated something. `reads` maps a path to
+ * { state, stated }; `at` is the run's ISO instant. The bake reads it back
+ * with employerStatedList (scripts/employer-statements.mjs).
+ */
+export const EMPLOYER_STATED_HEADER = [
+  "# WHAT THE DAILY CLOSURE CHECK READ AT EACH LIVE POSTING PAGE'S EMPLOYER",
+  "# (SEO audit 2026-11-18, STRUCTURED-B2). Written whole by",
+  "# scripts/posting-closure-check.mjs --propose from its newest measuring run,",
+  "# into the pull request .github/workflows/posting-closure.yml keeps open; a",
+  "# person merges it. The bake (scripts/prerender-seo.mjs) applies each line's",
+  "# statements when its own read of the page fails (the end date only ever",
+  "# shortens the window, and a past one retires the page), and a Workday page",
+  "# that neither the bake nor a line here from the last 36 hours read as open",
+  "# carries no job markup (owner decision 2026-11-19).",
+  "#",
+  "# One line per page: <path> <read at, UTC> <open|unknown> <statements JSON or ->",
+];
+export function employerStatedFileText(reads, at) {
+  const lines = [];
+  for (const [path, r] of [...(reads instanceof Map ? reads : new Map())].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+    if (!r || r.state === "closed") continue;
+    const stated = r.stated && typeof r.stated === "object" && Object.keys(r.stated).length ? r.stated : null;
+    if (r.state !== "open" && !stated) continue;
+    lines.push(employerStatedLine(path, at, r.state, stated));
+  }
+  return [...EMPLOYER_STATED_HEADER, "", ...lines].join("\n") + "\n";
+}
+
+/** The page paths a closed-at-employer.txt text lists (comments and blank lines skipped). */
+export const closedListPaths = (text) => String(text ?? "").split("\n").map((l) => l.replace(/#.*$/, "").trim().split(/\s+/)[0]).filter((p) => p && p.startsWith("/jobs/posting/"));
+
+/**
+ * closed-at-employer.txt WITH THE CHECK'S NEW LINES APPENDED (STRUCTURED-B1
+ * part 2): `lines` are "<path> <date> employer" lines, from today's run and
+ * from the earlier proposal a person has not merged yet; a path the file
+ * already lists, or one repeated, is added once. Returns the text unchanged
+ * when nothing is new.
+ */
+export function withClosedLines(seedText, lines, { runLabel = "" } = {}) {
+  const have = new Set(closedListPaths(seedText));
+  const add = [];
+  for (const raw of Array.isArray(lines) ? lines : []) {
+    const line = String(raw ?? "").replace(/#.*$/, "").trim();
+    const path = line.split(/\s+/)[0];
+    if (!path || !path.startsWith("/jobs/posting/") || have.has(path) || !/^\S+ \d{4}-\d{2}-\d{2} \S+$/.test(line)) continue;
+    have.add(path);
+    add.push(line);
+  }
+  if (!add.length) return String(seedText ?? "");
+  const base = String(seedText ?? "").replace(/\n*$/, "\n");
+  return `${base}\n# Proposed by the daily closure check${runLabel ? ` (${runLabel})` : ""}: ${add.length} page(s) closed at the employer.\n${add.join("\n")}\n`;
+}
+
+/** The run's job summary (GitHub's step summary), in Markdown: the counts, why the unknowns are unknown, and every closed path. */
+export function closureSummaryMarkdown(record, verdict) {
+  const r = record ?? {};
+  const pct = (x) => (x === null || x === undefined ? "n/a" : `${(x * 100).toFixed(1)}%`);
+  const lines = [
+    `## Posting closure check, ${r.date ?? "no date"}`,
+    "",
+    `${r.checked ?? 0} live posting pages checked: ${r.open ?? 0} open, ${r.closed ?? 0} closed at the employer, ${r.unknown ?? 0} unknown. Closed share ${pct(r.closedShare)}, unknown ${pct(r.unknownShare)}.`,
+    "",
+    verdict?.message ? `**Verdict:** ${verdict.message}` : "",
+    "",
+    "| vendor | open | closed | unknown | why unknown |",
+    "| --- | --- | --- | --- | --- |",
+    ...Object.entries(r.byVendor ?? {}).sort((a, b) => a[0].localeCompare(b[0])).map(([v, c]) => `| ${v} | ${c.open ?? 0} | ${c.closed ?? 0} | ${c.unknown ?? 0} | ${c.why ? whyPhrase(c.why) : ""} |`),
+    "",
+  ];
+  const closed = Array.isArray(r.closedPaths) ? r.closedPaths : [];
+  lines.push(closed.length ? `### ${closed.length} page(s) closed at the employer` : "No live page was closed at its employer.");
+  if (closed.length) {
+    lines.push("", "Lines for scripts/seo-seed/closed-at-employer.txt (the next bake retires each listed page):", "", "```", ...closedListLines(r), "```");
+  }
+  return lines.filter((l, i, a) => !(l === "" && a[i - 1] === "")).join("\n") + "\n";
 }
 
 /** Whether a record was judged: something checked, and no more than 20% unknown. */
@@ -172,19 +302,37 @@ export async function runClosureCheck({ site = "https://resumebooster.work", dat
     })));
   }
   log(`checking ${rows.length} live posting pages at their employers`);
-  const results = await readEmployers(rows, { fetchImpl, budgetMs, stated: false });
+  // UKG is read too (STRUCTURED-B14): its opportunity page answers for itself.
+  const results = await readEmployers(rows, { fetchImpl, budgetMs });
   const answers = new Map(rows.map((r) => [r.path, results.get(r.id) ?? { vendor: "?", state: "unknown", why: "unread" }]));
   const record = closureRecord(date, answers);
   const next = withRecord(history, record);
   const verdict = stopRuleVerdict(next, date);
-  return { code: verdict.code, record, verdict, history: next };
+  // What each employer stated rides out beside the record (STRUCTURED-B2).
+  const reads = new Map([...answers].map(([path, r]) => [path, { state: r.state, stated: r.stated ?? null }]));
+  return { code: verdict.code, record, verdict, history: next, reads };
 }
 
 const isMain = (() => {
   try { return !!process.argv[1] && realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
 })();
 
-if (isMain) {
+if (isMain && process.argv.includes("--propose")) {
+  // THE PROPOSAL'S TWO FILES, WRITTEN IN THE CHECKOUT (STRUCTURED-B1 part 2,
+  // B2). The workflow commits them to its standing branch; nothing is pushed
+  // to main and nothing reaches the site until a person merges.
+  const argv = process.argv.slice(2);
+  const read = (f) => { try { return f && existsSync(f) ? readFileSync(f, "utf8") : ""; } catch { return ""; } };
+  const seedDir = resolve(dirname(fileURLToPath(import.meta.url)), "seo-seed");
+  const closedSeed = resolve(seedDir, "closed-at-employer.txt");
+  const lines = [...read(arg(argv, "--earlier-closed")).split("\n"), ...read(arg(argv, "--closed-today")).split("\n")];
+  const next = withClosedLines(read(closedSeed), lines, { runLabel: arg(argv, "--run-label") ?? "" });
+  writeFileSync(closedSeed, next);
+  const stated = read(arg(argv, "--stated-today"));
+  if (stated.trim()) writeFileSync(resolve(seedDir, "employer-stated.txt"), stated);
+  console.log(`posting closure: proposal written (${closedListPaths(next).length} closed line(s) listed; employer statements ${stated.trim() ? "rewritten" : "unchanged"})`);
+  process.exit(0);
+} else if (isMain) {
   const argv = process.argv.slice(2);
   const site = (arg(argv, "--site") ?? process.env.CLOSURE_SITE ?? "https://resumebooster.work").replace(/\/+$/, "");
   const historyFile = arg(argv, "--history");
@@ -209,11 +357,24 @@ if (isMain) {
   if (out.record) {
     const r = out.record;
     console.log(`posting closure: ${r.date} checked ${r.checked}: ${r.open} open, ${r.closed} closed, ${r.unknown} unknown; closed share ${r.closedShare === null ? "n/a" : `${(r.closedShare * 100).toFixed(1)}%`} (95% CI ${(r.wilson95[0] * 100).toFixed(1)}-${(r.wilson95[1] * 100).toFixed(1)}%), unknown ${r.unknownShare === null ? "n/a" : `${(r.unknownShare * 100).toFixed(1)}%`}`);
-    for (const [v, c] of Object.entries(r.byVendor)) console.log(`posting closure:   ${v.padEnd(16)} open ${c.open}, closed ${c.closed}, unknown ${c.unknown}`);
+    for (const line of closureVendorLines(r)) console.log(`posting closure:   ${line}`);
+    const challenges = closureChallenges(r);
+    if (Object.keys(challenges).length) console.log(`posting closure: bot challenges (not retried; a vendor stops being asked after three): ${Object.entries(challenges).map(([v, c]) => `${v} ${c.challenge} challenged, ${c["vendor challenged"]} not asked`).join("; ")}`);
     for (const p of r.closedPaths) console.log(`posting closure:   closed at the employer: ${p}`);
     if (argv.includes("--json")) console.log(`POSTING_CLOSURE_JSON ${JSON.stringify(r)}`);
     if (outFile) { mkdirSync(dirname(outFile), { recursive: true }); writeFileSync(outFile, JSON.stringify(r, null, 2)); }
     if (historyFile) { mkdirSync(dirname(historyFile), { recursive: true }); writeFileSync(historyFile, JSON.stringify(out.history, null, 2)); }
+    // THE CLOSED PAGES, MEASURED TODAY (CRAWL-M2): written only by a run that
+    // measured, so a later slot re-reading the same date names nothing twice.
+    const closedOut = arg(argv, "--closed-out");
+    if (closedOut) { mkdirSync(dirname(closedOut), { recursive: true }); writeFileSync(closedOut, already && judged(already) ? "" : closedListLines(r).join("\n") + (r.closedPaths.length ? "\n" : "")); }
+    // WHAT EACH EMPLOYER STATED (STRUCTURED-B2): only a run that measured has
+    // reads to hand on; a re-read writes nothing, so the proposal keeps them.
+    const statedOut = arg(argv, "--stated-out");
+    if (statedOut && out.reads) { mkdirSync(dirname(statedOut), { recursive: true }); writeFileSync(statedOut, employerStatedFileText(out.reads, new Date().toISOString())); }
+    if (process.env.GITHUB_STEP_SUMMARY) {
+      try { appendFileSync(process.env.GITHUB_STEP_SUMMARY, closureSummaryMarkdown(r, out.verdict)); } catch { /* a summary is a convenience */ }
+    }
   }
   console.log(`posting closure: ${out.verdict.message}`);
   process.exit(out.code);

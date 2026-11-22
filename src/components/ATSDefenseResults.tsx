@@ -100,6 +100,46 @@ export interface ATSDefenseData {
   parseSimulation?: AtsParseSimulationResult;
 }
 
+/**
+ * WHAT HELVETICA CAN DRAW (S10-062). jsPDF writes its standard fonts in
+ * WinAnsi (Windows-1252): a character outside it is printed as other glyphs or
+ * none, and the report's own status marks and arrows were four of them. Each
+ * is written in ASCII where the report prints it, and the model's text passes
+ * through here: a sign with an ASCII meaning becomes that, a letter with an
+ * accent WinAnsi lacks loses the accent, other symbols are left out and
+ * anything else is a "?". Code points, not glyphs, so the published chunk's
+ * PDF writer carries none of them.
+ */
+const WIN_ANSI_ABOVE_LATIN1 = new Set([
+  0x0152, 0x0153, 0x0160, 0x0161, 0x0178, 0x017d, 0x017e, 0x0192, 0x02c6, 0x02dc, 0x2013, 0x2014, 0x2018,
+  0x2019, 0x201a, 0x201c, 0x201d, 0x201e, 0x2020, 0x2021, 0x2022, 0x2026, 0x2030, 0x2039, 0x203a, 0x20ac, 0x2122,
+]);
+const PDF_ASCII: Readonly<Record<number, string>> = {
+  0x2713: "OK", 0x2714: "OK", 0x2705: "OK", 0x2717: "X", 0x2718: "X", 0x274c: "X", 0x26a0: "!",
+  0x2192: "->", 0x2190: "<-", 0x2194: "<->", 0x21d2: "=>", 0x2264: "<=", 0x2265: ">=", 0x2260: "!=", 0x2248: "~",
+  0x2212: "-", 0x2010: "-", 0x2011: "-", 0x2012: "-", 0x2015: "-", 0x2032: "'", 0x2033: "\"",
+  0x2009: " ", 0x200a: " ", 0x202f: " ", 0x2007: " ", 0x2002: " ", 0x2003: " ", 0x0009: " ",
+  0x2028: "\n", 0x2029: "\n",
+  // Latin letters with no accent to drop: a Polish or Croatian name keeps its letters.
+  0x0141: "L", 0x0142: "l", 0x0110: "D", 0x0111: "d", 0x0131: "i", 0x0126: "H", 0x0127: "h",
+};
+const inWinAnsi = (cp: number) => cp === 0x0a || (cp >= 0x20 && cp <= 0x7e) || (cp >= 0xa0 && cp <= 0xff) || WIN_ANSI_ABOVE_LATIN1.has(cp);
+
+/** `text` as helvetica can draw it. Exported for the test. */
+export function pdfText(text: unknown): string {
+  let out = "";
+  for (const ch of String(text ?? "")) {
+    const cp = ch.codePointAt(0) ?? 0;
+    if (inWinAnsi(cp)) { out += ch; continue; }
+    if (PDF_ASCII[cp] !== undefined) { out += PDF_ASCII[cp]; continue; }
+    const bare = ch.normalize("NFKD").replace(/\p{M}/gu, "");
+    if (bare && [...bare].every((c) => inWinAnsi(c.codePointAt(0) ?? 0))) { out += bare; continue; }
+    if (/[\p{S}\p{M}\p{Cf}\p{Cc}\p{Zl}\p{Zp}]/u.test(ch)) continue;
+    out += "?";
+  }
+  return out;
+}
+
 /** The saved checks, when the saved copy holds a readable set; null otherwise. */
 export function savedParseSimulation(data: { parseSimulation?: unknown }): AtsParseSimulationResult | null {
   const sim = data.parseSimulation as Partial<AtsParseSimulationResult> | undefined;
@@ -264,12 +304,20 @@ export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATS
         }
       };
 
-      const addText = (text: string, x: number, yPos: number, options?: { fontSize?: number; fontStyle?: 'normal' | 'bold'; color?: [number, number, number]; maxWidth?: number }) => {
-        const { fontSize = 10, fontStyle = 'normal', color = [0, 0, 0], maxWidth = contentWidth } = options || {};
+      type TextOptions = { fontSize?: number; fontStyle?: 'normal' | 'bold'; color?: [number, number, number]; maxWidth?: number };
+      // The lines `text` wraps to, in the font it is drawn in, as helvetica can draw them.
+      const linesOf = (text: string, options?: TextOptions): string[] => {
+        const { fontSize = 10, fontStyle = 'normal', maxWidth = contentWidth } = options || {};
         pdf.setFontSize(fontSize);
         pdf.setFont('helvetica', fontStyle);
+        return pdf.splitTextToSize(pdfText(text), maxWidth);
+      };
+      // How far down `text` reaches once wrapped: what the line after it moves by.
+      const heightOf = (text: string, options?: TextOptions) => linesOf(text, options).length * ((options?.fontSize ?? 10) * 0.4);
+      const addText = (text: string, x: number, yPos: number, options?: TextOptions) => {
+        const { fontSize = 10, color = [0, 0, 0] } = options || {};
+        const lines = linesOf(text, options);
         pdf.setTextColor(color[0], color[1], color[2]);
-        const lines = pdf.splitTextToSize(text, maxWidth);
         pdf.text(lines, x, yPos);
         return lines.length * (fontSize * 0.4);
       };
@@ -284,7 +332,7 @@ export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATS
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
       // The report is English, and helvetica draws Latin only: its date is too (S14X-255).
-      pdf.text(`Generated: ${fmtDate(new Date(), { lng: "en" })}`, margin, 28);
+      pdf.text(pdfText(`Generated: ${fmtDate(new Date(), { lng: "en" })}`), margin, 28);
       y = 45;
 
       // Score Summary
@@ -306,11 +354,13 @@ export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATS
         addText(`Overall parse confidence: ${simulation.overallConfidence}%`, margin, y, { fontSize: 10, fontStyle: 'bold' });
         y += 7;
         simulation.checks.forEach((check) => {
-          addPageIfNeeded(15);
           const statusColor: [number, number, number] = check.status === 'pass' ? [34, 197, 94] : check.status === 'warning' ? [234, 179, 8] : [220, 38, 38];
-          addText(`${check.status === 'pass' ? '✓' : check.status === 'warning' ? '!' : '✗'} ${check.label}`, margin + 3, y, { fontSize: 10, fontStyle: 'bold', color: statusColor });
-          y += 5;
-          y += addText(check.detail, margin + 3, y, { fontSize: 9, color: [80, 80, 80] });
+          const head = `${check.status === 'pass' ? 'OK' : check.status === 'warning' ? '!' : 'X'} ${check.label}`;
+          const headStyle: TextOptions = { fontSize: 10, fontStyle: 'bold', color: statusColor, maxWidth: contentWidth - 3 };
+          const detailStyle: TextOptions = { fontSize: 9, color: [80, 80, 80], maxWidth: contentWidth - 3 };
+          addPageIfNeeded(heightOf(head, headStyle) + heightOf(check.detail, detailStyle) + 5);
+          y += addText(head, margin + 3, y, headStyle) + 1;
+          y += addText(check.detail, margin + 3, y, detailStyle);
           y += 4;
         });
         y += 5;
@@ -320,13 +370,18 @@ export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATS
       addPageIfNeeded(30);
       addText('Priority Action Plan', margin, y, { fontSize: 14, fontStyle: 'bold' });
       y += 8;
+      // Each line moves the next down by as far as it wrapped (S10-062): a
+      // fixed 5 mm under an action that wrapped printed its time line over
+      // the action's second line.
       data.actionPlan.sort((a, b) => a.priority - b.priority).forEach((action) => {
-        addPageIfNeeded(15);
         const impactColor: [number, number, number] = action.impact === 'critical' ? [220, 38, 38] : action.impact === 'high' ? [234, 179, 8] : [100, 100, 100];
-        addText(`${action.priority}. ${action.action}`, margin + 3, y, { fontSize: 10 });
-        y += 5;
-        addText(`   Time: ${action.timeEstimate} | Impact: ${action.impact}`, margin + 3, y, { fontSize: 9, color: impactColor });
-        y += 7;
+        const step = `${action.priority}. ${action.action}`;
+        const when = `   Time: ${action.timeEstimate} | Impact: ${action.impact}`;
+        const stepStyle: TextOptions = { fontSize: 10, maxWidth: contentWidth - 3 };
+        const whenStyle: TextOptions = { fontSize: 9, color: impactColor, maxWidth: contentWidth - 3 };
+        addPageIfNeeded(heightOf(step, stepStyle) + heightOf(when, whenStyle) + 5);
+        y += addText(step, margin + 3, y, stepStyle) + 1;
+        y += addText(when, margin + 3, y, whenStyle) + 3.4;
       });
       y += 5;
 
@@ -336,7 +391,7 @@ export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATS
       y += 8;
       addText(`Primary Role: ${data.keywordOptimization.primaryRole.roleName}`, margin, y, { fontSize: 11, fontStyle: 'bold' });
       y += 6;
-      addText(`Current Match: ${data.keywordOptimization.primaryRole.currentKeywordMatch}% → Target: ${data.keywordOptimization.primaryRole.targetKeywordMatch}%`, margin, y, { fontSize: 10 });
+      addText(`Current Match: ${data.keywordOptimization.primaryRole.currentKeywordMatch}% -> Target: ${data.keywordOptimization.primaryRole.targetKeywordMatch}%`, margin, y, { fontSize: 10 });
       y += 8;
       addText('Missing Keywords:', margin, y, { fontSize: 10, fontStyle: 'bold' });
       y += 5;
@@ -366,7 +421,8 @@ export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATS
       addText('Optimized Professional Summary', margin, y, { fontSize: 14, fontStyle: 'bold' });
       y += 8;
       pdf.setFillColor(230, 255, 230);
-      const summaryHeight = pdf.splitTextToSize(data.optimizedResumeSections.professionalSummary, contentWidth - 10).length * 4 + 10;
+      // Measured in the font it is drawn in, not the heading's 14 pt left set above it.
+      const summaryHeight = linesOf(data.optimizedResumeSections.professionalSummary, { fontSize: 9, maxWidth: contentWidth - 10 }).length * 4 + 10;
       pdf.roundedRect(margin, y - 3, contentWidth, summaryHeight, 2, 2, 'F');
       y += addText(data.optimizedResumeSections.professionalSummary, margin + 5, y + 3, { fontSize: 9, maxWidth: contentWidth - 10 });
       y += 15;
@@ -393,11 +449,13 @@ export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATS
         addText('Red Flags to Fix', margin, y, { fontSize: 14, fontStyle: 'bold', color: [220, 38, 38] });
         y += 8;
         data.redFlagsSummary.forEach((flag) => {
-          addPageIfNeeded(20);
-          addText(`⚠ ${flag.flag}`, margin, y, { fontSize: 10, fontStyle: 'bold' });
-          y += 5;
-          addText(`Fix: ${flag.howToFix}`, margin + 5, y, { fontSize: 9, color: [34, 197, 94] });
-          y += 8;
+          const head = `! ${flag.flag}`;
+          const fix = `Fix: ${flag.howToFix}`;
+          const headStyle: TextOptions = { fontSize: 10, fontStyle: 'bold' };
+          const fixStyle: TextOptions = { fontSize: 9, color: [34, 197, 94], maxWidth: contentWidth - 5 };
+          addPageIfNeeded(heightOf(head, headStyle) + heightOf(fix, fixStyle) + 5);
+          y += addText(head, margin, y, headStyle) + 1;
+          y += addText(fix, margin + 5, y, fixStyle) + 4.4;
         });
       }
 

@@ -1,0 +1,24 @@
+{
+  "homeScan": {
+    "tailoringNotes": {
+      "download": "Descargar notas de adaptación",
+      "readyTitle": "Notas de adaptación listas",
+      "readyBody": "Notas para este puesto: un resumen, habilidades y viñetas para copiar en tu propio currículum. No son un currículum para enviar tal cual.",
+      "downloadedTitle": "Notas de adaptación descargadas",
+      "downloadedBody": "Copia en tu propio currículum lo que sea cierto sobre ti antes de postularte."
+    },
+    "keywordCoverage": {
+      "title": "Palabras clave de la oferta en este texto",
+      "summary": "{{found}} de {{total}} palabras clave de la oferta aparecen en el resumen, las habilidades o las viñetas adaptadas.",
+      "found": "En el texto",
+      "notFoundLabel": "No está en el texto",
+      "notFound": "No están en el texto adaptado: {{n}}. Añade a tu propio currículum las que sean ciertas sobre ti."
+    },
+    "outcome": {
+      "title": "¿Cómo te fue con el informe #{{reportId}}?",
+      "body": "El enlace de tu correo eligió la respuesta de abajo. No se guarda nada hasta que la confirmes aquí, y puedes cambiarla antes.",
+      "save": "Guardar mi respuesta",
+      "dismiss": "Ahora no"
+    }
+  }
+}

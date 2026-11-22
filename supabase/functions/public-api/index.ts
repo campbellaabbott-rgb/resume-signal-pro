@@ -37,7 +37,13 @@ import { isPaidKeyTier } from "../_shared/key-tier.ts";
 // key's ACCOUNT through the one rule every other gate uses (import-free).
 import { accountProStanding } from "../_shared/pro-standing.ts";
 import { FIT_FREE_DAILY, FIT_PAID_DAILY, fitGate, fitStandingFrom, type FitGate } from "./fit-allowance.ts";
-import { APPLICATION_ENDPOINT, FIT_ENDPOINT, applicationIdSegment, meteredEndpoint } from "./endpoint.ts";
+import { APPLICATION_ENDPOINT, FIT_ENDPOINT, applicationIdSegment, meteredEndpoint, oneTrailingSlashOff, routeOf } from "./endpoint.ts";
+// Lane fix/1121-connector-errors: byte-identical copies of agent-mcp's modules
+// (a test holds each pair equal), and the document from pull request #84.
+import { COUNTRY_FIX, countryArg } from "./country-names.ts";
+import { fillPage, type DroppedCounts, type FillResult } from "./board-page-fill.ts";
+import { freshnessCache, freshnessWithin, statsFeedFreshness } from "./feed-freshness.ts";
+import { GET_A_KEY_STEP, KEYLESS_SAMPLE, OPENAPI_PATH, openApiDocument, publicApiServer, type RouterFacts } from "./openapi.ts";
 // THE APPLY-MYSELF TWIN: the /v1 shape around the shared form reader and the
 // shared default-deny who-answers rule (./application.ts), deciding nothing.
 import { ANSWERED_BY_MEANS, APPLICATION_DESCRIPTION, APPLICATION_NOTE, FORM_UNREACHABLE_RETRY_S, V1_FORM_VENDORS, applicationData, formBlock, formCacheFor, postingRefOf } from "./application.ts";
@@ -78,6 +84,19 @@ import { countedAt, countsCarried } from "./facet-stamp.ts";
 // +11KB, and no catalogue entry in the output. Re-measure if that import ever
 // stops being type-only.
 import { BOARD_VENDORS, EMPLOYMENT_TYPES, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK_MODES } from "../_shared/board-domains.ts";
+// OD16 (owner, 2026-11-18): U.S. federal rows are handed on with OPM's
+// notice, the agency as employer and its who-may-apply statement, once that
+// statement is stored. Pure modules: ./federal-rows.ts and the credit every
+// body names in meta.attribution (./source-terms.ts).
+import { ATTRIBUTION } from "./source-terms.ts";
+import {
+  FEDERAL_GATE_OR, FEDERAL_NOT_FOUND_NOTE, FEDERAL_SOURCE, FEDERAL_UNLABELLED_NOTE, OPM_NOTICE, earliestRead, federalCredit, federalFacts,
+  isFederal, officialUrlOf, passesFederalGate, vendorOfPostingId, whoMayApplyOf,
+} from "./federal-rows.ts";
+// Every read of job_board_postings goes through this wrapper (db() below): a
+// build deployed before 20261119110000 is applied serves every other vendor
+// and no federal row, instead of a 500 on every row read.
+import { federalColumnTolerant } from "./federal-columns.ts";
 
 // 2026-09-30.1 — BUMPED FOR A NARROWING, the second of that kind. The FREE
 // closure window falls from thirty days to seventy-two hours
@@ -132,7 +151,27 @@ import { BOARD_VENDORS, EMPLOYMENT_TYPES, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK
 // live posting, with the same who-answers-what rule the MCP apply_myself flow
 // uses; POST /v1/fit scores 25 calls a day on a confirmed free key instead of
 // answering 402. Paid-tier refusals now name the planned Builder API card.
-const API_VERSION = "2026-10-11.1";
+//
+// 2026-11-19.1 WIDENS (OD16, owner decision 2026-11-18): U.S. federal rows
+// (USAJOBS) are handed on, each once the agency's who-may-apply statement is
+// stored, and ?source=usajobs and ?company_token=usajobs are answered rather
+// than refused. Every row gains closes_at, who_may_apply and hiring_paths
+// (null off the federal feed); a federal row also carries a `federal` block
+// (the agency, the official announcement link, on_board_since, and the
+// open-until-closing-date wording) and first_seen null, because our first
+// sighting is never its age; a body carrying one names OPM's notice, the
+// official site and the date we retrieved the rows in meta.attribution.
+// /v1/companies credits each agency in federalAgencies. SmartRecruiters is
+// still withheld everywhere, as before.
+//
+// 2026-11-21.1 SAYS WHERE A KEY COMES FROM AND SERVES ITS OWN DESCRIPTION (lane
+// fix/1121-connector-errors): GET /v1/openapi.json answers the OpenAPI 3.1
+// document with no key; a path this API does not have answers 404 before any
+// key is read; HEAD is answered as GET; the key may ride in x-api-key; the
+// 401s carry getAKey and WWW-Authenticate; country takes a name; a capped
+// limit is said; engine=ranked and POST /v1/fit refill a page the withheld
+// systems thinned; /v1/jobs says how fresh the data is.
+const API_VERSION = "2026-11-21.1";
 
 /** Where every paid-tier refusal points: the planned Builder API card (owner decision 2026-10-11). */
 const BUILDER_URL = "https://resumebooster.work/data-api#builder";
@@ -191,19 +230,7 @@ const DEFAULT_LIMIT = 25;
 const MAX_OFFSET = 10_000;
 
 /**
- * THE ONE HIRING SYSTEM THIS API READS AND MAY NOT HAND ON.
- *
- * The board carries a USAJOBS adapter (job-board's fetcher, keyed on the
- * vendor code below). It reads the U.S. federal government's own job API,
- * which is free and open to read. /v1 does not hand those rows on, by the
- * owner's decision (OD16), and says only that.
- *
- * IT USED TO GIVE A REASON THE TERMS DO NOT (USAJOBS-COPY-2). This block and
- * the reason below said the feed's terms of use forbid republishing it as a
- * data feed. The terms, read at developer.usajobs.gov/guides/terms-of-service
- * on 2026-11-16, say the feed's Public Data may be redistributed. Withholding
- * is a choice this API makes, so the reason names it as one and claims no
- * prohibition on the publisher's behalf.
+ * THE HIRING SYSTEM THIS API READS AND DOES NOT HAND ON: SMARTRECRUITERS.
  *
  * SO THE EXCLUSION IS STRUCTURAL, NOT A FILTER SOMEONE REMEMBERS TO APPLY.
  * Every path that can emit a posting row applies it: the two /v1/jobs engines,
@@ -214,34 +241,38 @@ const MAX_OFFSET = 10_000;
  *
  * AND ASKING FOR IT BY NAME IS REFUSED, NOT SILENTLY EMPTIED. `?source=` with
  * this vendor answers HTTP 451 with the reason below. An empty 200 would be
- * this API telling a machine there are no federal jobs, which is a false
+ * this API telling a machine there are no such jobs, which is a false
  * statement about the world rather than a true one about what we hand on --
  * the same failure mode the unknown-vendor 400 above exists to prevent.
  *
- * WHY THIS READS ZERO ROWS TODAY, AND WHY THAT IS NOT A BUG. The adapter
- * skips every visit with a console warning unless the owner sets two secrets,
- * USAJOBS_API_KEY and USAJOBS_USER_AGENT, obtained by free registration at
- * developer.usajobs.gov (the user agent is the registered e-mail address).
- * Until then the board holds one catalogue entry and no federal postings at
- * all, so this exclusion removes nothing. It exists so that the day those two
- * secrets are set is not the day /v1 quietly starts republishing federal data.
- * The same registration caps any single query at 10,000 results, so even armed
- * the federal feed is a bounded slice and never a census of federal hiring --
- * a second reason not to sell it as one.
+ * SMARTRECRUITERS, 2026-10-09 (owner decision 4 of 2026-10-08). About 79,000
+ * SmartRecruiters postings are collected in bulk, and SAP's API policy, which
+ * governs SmartRecruiters, bars large-scale extraction. They stay on the public
+ * board and are withheld from every /v1 row (and the MCP connector) until
+ * SmartRecruiters/SAP grants permission. A SmartRecruiters employer has its own
+ * company_token, so /v1/companies drops those through withheldCompanyTokens()
+ * below.
+ *
+ * THE U.S. FEDERAL FEED LEFT THIS LIST ON 2026-11-19 (OD16, the owner's yes of
+ * 2026-11-18). The board has read USAJOBS since its two secrets were set and
+ * holds about 18,500 federal announcements. OPM's API terms
+ * (developer.usajobs.gov/guides/terms-of-service, read 2026-11-16 and
+ * 2026-11-18) let anyone copy, publish and redistribute that public data
+ * without prior approval, so the rows are handed on, under the conditions
+ * ./federal-rows.ts states once for both runtimes: OPM's notice, the agency as
+ * employer, the official link, the date we retrieved them, the agency's
+ * closing date as what "open" means, and no row before the agency's
+ * who-may-apply statement is stored (the federal gate, FEDERAL_GATE_OR, bound
+ * beside this list on every path). One query of that feed returns at most
+ * 10,000 results, so the federal rows are a bounded slice of federal hiring
+ * and never a census of it.
  */
-// SMARTRECRUITERS, 2026-10-09 (owner decision 4 of 2026-10-08). About 79,000
-// SmartRecruiters postings are collected in bulk, and SAP's API policy, which
-// governs SmartRecruiters, bars large-scale extraction. They stay on the public
-// board and are withheld from every /v1 row (and the MCP connector) until
-// SmartRecruiters/SAP grants permission. Unlike the federal feed, a
-// SmartRecruiters employer has its own company_token, so /v1/companies drops
-// those through withheldCompanyTokens() below.
-const NO_REDISTRIBUTION_SOURCES = ["usajobs", "smartrecruiters"] as const;
+const NO_REDISTRIBUTION_SOURCES = ["smartrecruiters"] as const;
 /** The `in` list PostgREST takes, built from the array so the two cannot drift. */
 const NO_REDISTRIBUTION_IN = `(${NO_REDISTRIBUTION_SOURCES.join(",")})`;
 /** Said in the refusal, in /v1's own index, and in /v1/stats. One wording. */
 const NO_REDISTRIBUTION_REASON =
-  "Two hiring systems are shown on resumebooster.work but are not available through this API: the U.S. federal job feed (USAJOBS), which this API does not hand on at present, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. No /v1 endpoint returns their rows on any tier.";
+  "One hiring system is shown on resumebooster.work but is not available through this API: SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. No /v1 endpoint returns its rows on any tier.";
 const isNoRedistributionSource = (v: unknown): boolean =>
   (NO_REDISTRIBUTION_SOURCES as readonly string[]).includes(String(v ?? "").trim().toLowerCase());
 /**
@@ -252,6 +283,170 @@ const isNoRedistributionSource = (v: unknown): boolean =>
  */
 const withoutNoRedistribution = <T extends Record<string, unknown>>(rows: T[]): T[] =>
   rows.filter((r) => !isNoRedistributionSource(r.source));
+
+// ── THE FEDERAL GATE AND THE FEDERAL ROW (OD16) ─────────────────────────────
+//
+// A federal row is handed on only once the agency's who-may-apply statement
+// is stored (job-board .104, migration 20261119110000). The direct reads bind
+// FEDERAL_GATE_OR in SQL beside NO_REDISTRIBUTION_IN, on the row query and the
+// count alike, and drop any federal row without the statement in memory too.
+// The paths that proxy job-board get rows that do not carry the statement, so
+// they read it for their federal ids from the table and keep only the
+// labelled ones; a read that fails keeps none of them.
+
+/** What a federal row's statement read returns. */
+type FederalLabel = { id: string; who_may_apply: unknown; hiring_paths: unknown; closes_at: unknown; first_seen: unknown };
+
+/** The stored who-may-apply statements of a page's federal ids; null when the read failed (keep no federal row). */
+async function federalLabels(client: SupabaseClient, ids: readonly unknown[]): Promise<Map<string, FederalLabel> | null> {
+  const fed = [...new Set(ids.map((x) => String(x ?? "")).filter((id) => vendorOfPostingId(id) === FEDERAL_SOURCE))].slice(0, 200);
+  if (!fed.length) return new Map();
+  const { data, error } = await client
+    .from("job_board_postings")
+    .select("id,who_may_apply,hiring_paths,closes_at,first_seen")
+    .in("id", fed)
+    .not("source", "in", NO_REDISTRIBUTION_IN)       // fence: the redistribution boundary
+    .is("missing_since", null)                       // fence: withdrawn by the agency
+    .gte("effective_posted", freshCutoff())          // fence: past the serving window
+    .not("who_may_apply", "is", null);               // fence: the federal gate
+  if (error || !Array.isArray(data)) {
+    console.warn("[PUBLIC-API] federal labels unavailable:", String(error?.message ?? "not an array").slice(0, 120));
+    return null;
+  }
+  const out = new Map<string, FederalLabel>();
+  for (const r of data as FederalLabel[]) if (whoMayApplyOf(r.who_may_apply) !== null) out.set(String(r.id), r);
+  return out;
+}
+
+/**
+ * A proxied page through the federal gate: every row that is not federal, and
+ * each federal row whose statement was read, with that statement attached in
+ * the table's own column names. `withheldFederal` counts the rest.
+ */
+async function gateProxiedFederal<T extends Record<string, unknown>>(
+  client: SupabaseClient, rows: T[],
+): Promise<{ rows: T[]; withheldFederal: number }> {
+  if (!rows.some((r) => isFederal(r.source))) return { rows, withheldFederal: 0 };
+  const labels = await federalLabels(client, rows.map((r) => r.id));
+  const kept: T[] = [];
+  for (const r of rows) {
+    if (!isFederal(r.source)) { kept.push(r); continue; }
+    const l = labels?.get(String(r.id ?? ""));
+    if (!l) continue;
+    kept.push({ ...r, who_may_apply: l.who_may_apply, hiring_paths: l.hiring_paths, closes_at: l.closes_at, first_seen: l.first_seen });
+  }
+  return { rows: kept, withheldFederal: rows.length - kept.length };
+}
+
+/**
+ * A /v1 row with what a federal row carries. Every row has closes_at,
+ * who_may_apply and hiring_paths (null off the federal feed). A federal row's
+ * employer is its agency, our first sighting moves to federal.on_board_since
+ * (first_seen null: never an age), and it names its official announcement and
+ * what "open" means for it. Called only on rows the gate passed.
+ */
+function v1Row(r: Record<string, unknown>): Record<string, unknown> {
+  if (!isFederal(r.source)) return { ...r, closes_at: r.closes_at ?? null, who_may_apply: null, hiring_paths: null };
+  const f = federalFacts({
+    id: r.id, source: r.source, company: r.company, whoMayApply: r.who_may_apply, hiringPaths: r.hiring_paths,
+    closesAt: r.closes_at, firstSeen: r.first_seen, applyUrl: r.apply_url,
+  });
+  if (!f) return { ...r, closes_at: r.closes_at ?? null, who_may_apply: null, hiring_paths: null };
+  return {
+    ...r,
+    first_seen: null,
+    closes_at: f.closesAt,
+    who_may_apply: f.whoMayApply,
+    hiring_paths: f.hiringPaths,
+    federal: {
+      agency: f.agency,
+      official_url: f.officialUrl,
+      on_board_since: f.onBoardSince,
+      open_until: f.openUntil,
+      notice: f.notice,
+    },
+  };
+}
+
+/** Drop any federal row without a stored statement: the in-memory half of the gate the SQL binds. */
+const federalGated = <T extends Record<string, unknown>>(rows: T[]): T[] =>
+  rows.filter((r) => passesFederalGate(r.source, r.who_may_apply));
+
+/**
+ * meta.attribution for a body that carries a federal row: our own credit, and
+ * OPM's as its terms ask (USAJOBS named, the official site, the notice, the
+ * date we retrieved the rows: the earliest board read among them). Nothing
+ * for a body without one.
+ */
+function federalMeta(rows: ReadonlyArray<Record<string, unknown>>): Record<string, unknown> {
+  const fed = rows.filter((r) => isFederal(r.source));
+  if (!fed.length) return {};
+  return { meta: { attribution: { ...ATTRIBUTION, federal: federalCredit(earliestRead(fed.map((r) => r.last_verified_at))) } } };
+}
+
+/**
+ * WHAT A /v1/jobs PAGE PROMISES ABOUT "LIVE" (coverage.note), AND THE ONE FEED
+ * IT CANNOT PROMISE IT OF (OD16 review, 2026-11-19).
+ *
+ * The note said every posting was "still live in the employer's own feed",
+ * and every page carrying a federal row repeated it. The more-good-jobs
+ * report (OD16, fix 3) measured that false for the federal feed: one read of
+ * USAJOBS returns at most 10,000 announcements, and a federal row's last
+ * sighting had a median age of 4.6 days and a maximum of 26.7. What holds for
+ * a federal row is the agency's closing date, so the note says that, on every
+ * page, ranked and listed alike.
+ */
+const COVERAGE_NOTE =
+  "Only postings still live in the employer's own feed within the last 30 days, except U.S. federal announcements (source usajobs): one read of that feed returns at most 10,000 of them, so our last read may not have listed a federal row, and each is open until the agency's closing date (closes_at) unless the agency withdraws it sooner.";
+
+/**
+ * meta.attribution for a body whose rows carry no read stamp (the change
+ * feed): the stamp is read for the federal rows' boards (every federal row
+ * shares one, usajobs), so the credit names the date we retrieved them, as
+ * OPM's terms ask. Nothing for a body without a federal row.
+ */
+async function federalMetaRead(client: SupabaseClient, rows: ReadonlyArray<Record<string, unknown>>): Promise<Record<string, unknown>> {
+  const fed = rows.filter((r) => isFederal(r.source));
+  if (!fed.length) return {};
+  const boards = [...new Map(fed.map((r) => [`${String(r.source ?? "")}:${String(r.company_token ?? "")}`, { source: r.source, company_token: r.company_token } as Record<string, unknown>])).values()];
+  await attachLastVerified(client, boards);
+  return federalMeta(boards);
+}
+
+/**
+ * A FEDERAL CLOSURE, SHAPED AS A FEDERAL ROW IS (OD16 review, 2026-11-19).
+ * A closure carries the announcement's agency, title and dates. The agency is
+ * the employer (company), the official announcement is linked, OPM's notice
+ * rides on the row, and our first sighting moves to federal.on_board_since
+ * with first_seen null, because it is not an age. No who-may-apply statement
+ * is needed: a closed announcement is suggested to nobody.
+ */
+function v1Closure(c: Record<string, unknown>): Record<string, unknown> {
+  if (!isFederal(c.source)) return c;
+  const company = typeof c.company === "string" ? c.company.trim() : "";
+  const seen = typeof c.first_seen === "string" && /^\d{4}-\d{2}-\d{2}/.test(c.first_seen) ? c.first_seen : null;
+  return {
+    ...c,
+    first_seen: null,
+    federal: {
+      agency: company && !isFederal(company) ? company : null,
+      official_url: officialUrlOf(c.posting_id, null),
+      on_board_since: seen,
+      notice: OPM_NOTICE,
+    },
+  };
+}
+
+/**
+ * Said in every /v1/changes body (OD16 review): what the feed shows of U.S.
+ * federal announcements, and the opened backlog it cannot show.
+ */
+const FEDERAL_COVERAGE = {
+  opened:
+    "A U.S. federal announcement (source usajobs) is in opened[] only once the agency's who-may-apply statement is stored, and opened[] is keyed on first_seen, when it first appeared on our board, not when its statement was stored. So an announcement whose statement was stored after a sync's cursor passed its first_seen never appears in opened[]: that is every federal announcement the board held before it began storing the statement (about 18,500, measured 2026-11-18) and any whose statement arrives on a later read. Read those with /v1/jobs?source=usajobs; closed[] can carry closures of announcements opened[] never showed.",
+  closed:
+    "closed[] carries every U.S. federal closure, including announcements never handed on for want of a who-may-apply statement, since a closure suggests no job. Each has company = the hiring agency, first_seen null and a federal block (agency, official_url, on_board_since, OPM's notice), and the body names meta.attribution.federal with the date our board last read the USAJOBS feed.",
+} as const;
 
 /**
  * The company_tokens whose postings come from a withheld source, read once an
@@ -313,6 +508,12 @@ const JOB_FIELDS = [
   // staffing agency. Disclosed on every job object because an API consumer
   // republishing these rows inherits the disclosure duty with the data.
   "agency",
+  // OD16: the closing date an agency states (20261111100000), and the
+  // agency's who-may-apply statement and hiring paths (20261119110000, job-board
+  // .104). Null off the federal feed. The federal gate reads who_may_apply;
+  // until that migration is applied, db()'s wrapper (./federal-columns.ts)
+  // sends this select again without the three columns and with no federal row.
+  "closes_at", "who_may_apply", "hiring_paths",
 ].join(",");
 
 // OPT-IN FIELDS ON THE LIST ROUTE, via ?include=. Everything in JOB_FIELDS is
@@ -435,17 +636,20 @@ const LIST_FILTERS = [
 // 2026-11-09.1 (cost wave, the integration; cost audit 2026-11-08 Do first #6): the /v1/stats basis says the rollup behind feedFreshness and bySource is recomputed every 30 minutes, the schedule migration 20261109121000 gives job-board-stats-rollup, which applies after this build.
 // 2026-11-12.1 (bug round of 2026-11-08, part A, public-api lane, S14X-132, S14X-275, S14X-065, S14X-037, NB-27, NB-30, NB-32, S14X-274, S14X-276, S14X-160, S14X-277, S14X-192, GP-NOLOG-2, USAJOBS-COPY-2; connector lane, S14X-134, S14X-264, through the shared form modules): a non-POST fit call is refused before it is metered, a fit call that scored nothing gives its allowance back, cursors and pages hold their bounds, every figure is dated by the run that counted it, and a form body cut off mid-read is never cached.
 // 2026-11-18.2 (lane SH, OD14-ASHBY shared half, 2026-11-18): the shared form reader answers an Ashby posting "withheld" before its cache or any request whatever vendor list a caller passes, and its Ashby reader is deleted; /v1 answers form.source "not-read-on-this-surface" for Ashby as 2026-11-18.1 did through its own list. A build of its own, because round B's integration branch already carries 2026-11-18.1 without the shared stop, and the verifier tells the two apart only by this stamp.
-const FN_BUILD = "public-api.2026-11-18.2";
+// 2026-11-19.1 (OD16, lane api4/od16-federal, owner's yes of 2026-11-18): U.S. federal rows leave the withheld list and are served once the agency's who-may-apply statement is stored (FEDERAL_GATE_OR in SQL, and in memory on the proxied paths), with closes_at, who_may_apply, hiring_paths, a federal block (agency, official link, on_board_since, open until the agency's closing date, OPM's notice) and first_seen null on /v1/jobs; meta.attribution names OPM's credit and our retrieval date; /v1/companies credits each agency in federalAgencies; apiVersion 2026-11-19.1. /v1/changes shapes and credits a federal closure as it does an opened row (federal block, first_seen null, meta.attribution.federal with the read date) and names the opened backlog it cannot show in federalCoverage, which the keyless index repeats in federal.changes; coverage.note on /v1/jobs says a federal row is open until the agency's closing date, not that our last read listed it. Before job-board .104's migration 20261119110000 (who_may_apply) is applied, every postings read is sent again without the federal columns and with no federal row (./federal-columns.ts), so this build may deploy first and serves every other vendor as before.
+// 2026-11-21.1 (lane fix/1121-connector-errors, items 1, 3, 4, 7, 9 and 14, the /v1 half): GET /v1/openapi.json (and /openapi.json) answers the OpenAPI document from ./openapi.ts with no key and unmetered, built once per isolate from the router's own constants; an unknown path answers 404 no_such_endpoint before the key is read (./endpoint.ts routeOf), one trailing slash is stripped, and HEAD is GET without a body; the key is read from Authorization or x-api-key (an rb_live_ key in either wins), CORS allows x-api-key, and the root, the 401s and the document carry getAKey and keylessSample {offered: false}, the 401s with WWW-Authenticate; ?country= takes a name or alpha-3 through ./country-names.ts and says disclosures.countryRead, and POST /v1/fit refuses a country it cannot read; disclosures.limitCapped and page.maxLimit on every list route; engine=ranked and POST /v1/fit refill a page the withheld systems thinned (./board-page-fill.ts, at most two reads), page.returned and openedReturned count only rows served; coverage.feedFreshness on /v1/jobs (./feed-freshness.ts, which /v1/stats' feedFreshness now comes from too); match_scope passes employer through.
+// 2026-11-21.2 (lane fix/1121-connector-errors, the review of 2026-11-22): POST /v1/fit reads a country sent as a list of codes or names, and refuses any other shape that is not a string (it was scored with no country, unsaid); engine=ranked and POST /v1/fit keep refilling a page that withheld rows while it is short, says more and has a refill read left, so engine=ranked names page.pageShortBecause whenever such a page is short; a country typed with punctuation (N/A, n.a.) is a 400, never the code its letters spell (./board-page-fill.ts and ./country-names.ts, the connector's copies).
+const FN_BUILD = "public-api.2026-11-21.2";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, if-none-match",
+  "Access-Control-Allow-Headers": "authorization, x-api-key, x-client-info, apikey, content-type, if-none-match",
   // POST because /v1/fit takes one: a browser's preflight for a JSON POST was
   // refused by a list naming only GET, so no page could call the one route
   // a free key now scores on.
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Expose-Headers":
-    "ETag, Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining, X-Quota-Limit, X-Quota-Remaining, X-Api-Version",
+    "ETag, Retry-After, WWW-Authenticate, X-RateLimit-Limit, X-RateLimit-Remaining, X-Quota-Limit, X-Quota-Remaining, X-Api-Version",
   "x-fn-build": FN_BUILD,
 };
 
@@ -469,8 +673,45 @@ const json = (body: unknown, status = 200, extra: Record<string, string> = {}) =
   });
 
 /** Errors are a contract too: a machine reads `code`, a human reads `message`. */
-const fail = (status: number, code: string, message: string, extra: Record<string, string> = {}) =>
-  json({ error: { code, message }, apiVersion: API_VERSION }, status, extra);
+const fail = (status: number, code: string, message: string, extra: Record<string, string> = {}, more: Record<string, unknown> = {}) =>
+  json({ error: { code, message }, apiVersion: API_VERSION, ...more }, status, extra);
+
+// HOW TO GET A KEY, IN ONE STEP (lane fix/1121-connector-errors, item 7c/7d).
+// Said on the root, beside both 401s and in the document, so a caller who met
+// the refusal has the page, the step and both headers in the same answer.
+const DATA_API_URL = "https://resumebooster.work/data-api";
+const GET_A_KEY = {
+  url: DATA_API_URL,
+  step: GET_A_KEY_STEP,
+  free: { perDay: FREE_KEY_ISSUED.perDay, perMinute: FREE_KEY_ISSUED.perMinute },
+  send: ["Authorization: Bearer <key>", "x-api-key: <key>"],
+};
+const KEY_HELP = { getAKey: GET_A_KEY, keylessSample: KEYLESS_SAMPLE, openapi: OPENAPI_PATH };
+const WWW_AUTHENTICATE = { "WWW-Authenticate": 'Bearer realm="resumebooster data API"' };
+
+/**
+ * THE KEY, FROM EITHER SLOT (item 7c): the first of the Authorization bearer
+ * and x-api-key that is a key (rb_live_); else the bearer as sent, so a
+ * publishable key there is still invalid_key; else x-api-key as sent. A caller
+ * following Supabase's recipe (Authorization: Bearer <publishable key>) with
+ * its own key in x-api-key is served. The connector reads the same rule.
+ */
+function keyFrom(authorization: string, xApiKey: string): string {
+  const bearer = authorization.toLowerCase().startsWith("bearer ") ? authorization.slice(7).trim() : "";
+  const header = xApiKey.trim();
+  if (bearer.startsWith("rb_live_")) return bearer;
+  if (header.startsWith("rb_live_")) return header;
+  return bearer || header;
+}
+
+/** HEAD is answered as GET with no body (item 7a): same status and headers, metered like the GET. */
+function headAsGet(handler: (req: Request) => Promise<Response>): (req: Request) => Promise<Response> {
+  return async (req: Request) => {
+    if (req.method !== "HEAD") return handler(req);
+    const res = await handler(new Request(req.url, { method: "GET", headers: req.headers }));
+    return new Response(null, { status: res.status, headers: res.headers });
+  };
+}
 
 // Whole numbers, numbers and ISO dates from the query string: parsed, or
 // refused with the same invalid_value 400 every other parameter gives, never
@@ -494,8 +735,13 @@ async function sha256Hex(s: string): Promise<string> {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// THROUGH THE COLUMN WRAPPER (./federal-columns.ts, OD16 review): a read of
+// job_board_postings that names closes_at, who_may_apply or hiring_paths
+// before the table has them is sent again without them and with no federal
+// row, so the deploy order of this build and job-board .104's migration
+// cannot take /v1 down.
 const db = (): SupabaseClient =>
-  createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+  federalColumnTolerant(createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""));
 
 /** Freshness fence, applied to every listing query. */
 const freshCutoff = () => new Date(Date.now() - FRESH_WINDOW_DAYS * 86_400_000).toISOString();
@@ -525,12 +771,13 @@ function raceCount<T>(p: PromiseLike<T>, ms: number): Promise<T | { count: null;
   ]);
 }
 
-Deno.serve(async (req) => {
+Deno.serve(headAsGet(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   const url = new URL(req.url);
   // Supabase serves functions at /functions/v1/<name>/<rest>. Strip both so the
-  // documented path is what callers actually type.
-  const path = url.pathname.replace(/^\/functions\/v1/, "").replace(/^\/public-api/, "") || "/";
+  // documented path is what callers actually type. And one trailing slash
+  // (item 7a): /v1/companies/ was a 404 while /v1/fit/ was answered.
+  const path = oneTrailingSlashOff(url.pathname.replace(/^\/functions\/v1/, "").replace(/^\/public-api/, "") || "/");
   // Read-only, with one exception: a résumé cannot ride a query string, so
   // /v1/fit takes a POST body. Everything else stays GET. Judged on the SAME
   // stripped path the router uses: the first deploy compared the raw pathname,
@@ -544,13 +791,27 @@ Deno.serve(async (req) => {
   if (meteredEndpoint(path) === FIT_ENDPOINT && req.method !== "POST") {
     return fail(405, "method_not_allowed", "POST a JSON body to /v1/fit — a résumé cannot ride a query string.", { Allow: "POST, OPTIONS" });
   }
+  // ROUTE FIRST (item 7a): a path this API does not have is answered 404 for
+  // everyone, before any key is read, and is not metered. A keyed call to
+  // /v1/nope used to spend a call of the key's quota to learn the path was wrong.
+  const route = routeOf(path);
+  if (route === null) return fail(404, "no_such_endpoint", `Unknown path ${path}. See /v1 for the endpoint list, or ${OPENAPI_PATH} for the full description.`);
 
   if (path === "/" || path === "/v1" || path === "/v1/") {
     return json({
       apiVersion: API_VERSION,
       docs: "https://resumebooster.work/data-api",
+      // The machine-readable description, with no key (item 7b). Named here
+      // in its own field and not in `endpoints`: that list is held, route by
+      // route, to llms.txt, llms-full, the /data-api bake and the DataApi page
+      // (every-v1-endpoint-is-listed-where-agents-read.test.ts), which this
+      // lane does not own. The docs lane moves it into the list when those
+      // pages name it.
+      openapi: OPENAPI_PATH,
       endpoints: ["/v1/jobs", "/v1/jobs/{id}", APPLICATION_ENDPOINT, "/v1/changes", "/v1/companies", "/v1/stats", "/v1/usage", "POST /v1/fit"],
-      auth: "Authorization: Bearer <your key>",
+      auth: "Authorization: Bearer <your key>, or x-api-key: <your key>",
+      getAKey: GET_A_KEY,
+      keylessSample: KEYLESS_SAMPLE,
       modes: {
         explain: "/v1/jobs?explain=1 — appends a diagnostics block explaining what the query did.",
         rankedEngine: `/v1/jobs?engine=ranked (paid) — the site's full relevance/rescue engine instead of the default title match. On a free key it answers 402 naming the planned Builder API (${BUILDER_URL}).`,
@@ -594,13 +855,31 @@ Deno.serve(async (req) => {
         reason: NO_REDISTRIBUTION_REASON,
         note: `Rows from these hiring systems are absent from /v1/jobs, /v1/jobs/{id}, ${APPLICATION_ENDPOINT}, /v1/changes and POST /v1/fit. Naming one in ?source=, or asking for the application form of one of their postings, answers HTTP 451 rather than an empty page.`,
       },
+      // OD16: how a U.S. federal row is handed on, said once where a consumer
+      // looks first. Each body carrying one repeats the credit in
+      // meta.attribution with the date we retrieved its rows.
+      federal: (() => {
+        const { retrievedAt: _at, retrievedAtBasis: _basis, ...credit } = federalCredit(null);
+        return {
+          ...credit,
+          gate: "A U.S. federal announcement is served only once the agency's who-may-apply statement (who_may_apply) is stored, so no caller is handed a job the person may not be eligible to apply for. Until then it is absent from /v1/jobs, opened[] of /v1/changes and POST /v1/fit, /v1/jobs/{id} answers 404 for it, and a ranked page counts it in disclosures.federalWithheld; it opens on resumebooster.work and on USAJOBS meanwhile. Once it closes, its closure is in closed[] of /v1/changes whether or not it was ever served (changes, below).",
+          employers: "The hiring agency is the employer, named in company; every federal row shares company_token usajobs, and /v1/companies credits each agency in federalAgencies.",
+          // What /v1/changes shows of the federal feed and the opened backlog
+          // it cannot (OD16 review): the sentences every change-feed body
+          // carries in federalCoverage, said here too.
+          changes: FEDERAL_COVERAGE,
+        };
+      })(),
     });
   }
+  // THE API'S OWN DESCRIPTION, WITH NO KEY (item 7b): unmetered, built once
+  // per isolate from the router's own constants (openApiDoc, below).
+  if (path === OPENAPI_PATH || path === "/openapi.json") return json(openApiDoc());
 
   const auth = req.headers.get("authorization") ?? "";
-  const raw = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
+  const raw = keyFrom(auth, req.headers.get("x-api-key") ?? "");
   if (!raw) {
-    return fail(401, "missing_key", "Send your key as: Authorization: Bearer <key>. Request one at https://resumebooster.work/data-api");
+    return fail(401, "missing_key", `Send your key as Authorization: Bearer <key> or x-api-key: <key>. ${GET_A_KEY_STEP} (${DATA_API_URL})`, WWW_AUTHENTICATE, KEY_HELP);
   }
 
   const client = db();
@@ -635,7 +914,7 @@ Deno.serve(async (req) => {
     // for 30 days, or when it was issued before keys needed a confirmed
     // mailbox (2026-10-04); in every case the fix is a new key from the page.
     if (reason === "revoked") return fail(403, "key_revoked", "This key has been revoked. Get a new one at https://resumebooster.work/data-api (we email you a link).", headers);
-    return fail(401, "invalid_key", "That key is not recognised.");
+    return fail(401, "invalid_key", `That key is not recognised. ${GET_A_KEY_STEP} (${DATA_API_URL})`, WWW_AUTHENTICATE, KEY_HELP);
   }
 
   const rateHeaders = {
@@ -711,23 +990,55 @@ Deno.serve(async (req) => {
     // it is most likely to be looking at.
     return fail(500, "internal_error", "The request could not be completed.", rateHeaders);
   }
-});
+}));
 
 /**
- * ISO 3166-1 alpha-2: the 249 assigned codes, plus XK (Kosovo, in common use).
- * A copy of job-board/filters.ts ISO_ALPHA2, held equal to it by
- * a-country-filter-takes-only-a-country.test.ts, so this function imports no
- * board code and the two surfaces accept the same countries.
+ * The router's own constants, passed by value to ./openapi.ts (its header
+ * says why they are not imported). The OpenAPI guard builds the document from
+ * these same constants read out of this file, and holds the served document
+ * equal to it, so a constant that moves moves both.
  */
-const V1_COUNTRY_CODES: ReadonlySet<string> = new Set(
-  ("AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ " +
-    "CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR " +
-    "GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP " +
-    "KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT " +
-    "MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW " +
-    "SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG " +
-    "UM US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW").split(" "),
-);
+function routerFacts(): RouterFacts {
+  return {
+    apiVersion: API_VERSION,
+    docsUrl: DATA_API_URL,
+    // The index's list as it answers it (the document's own path is added by
+    // servedRoutes, beside GET /v1).
+    endpoints: ["/v1/jobs", "/v1/jobs/{id}", APPLICATION_ENDPOINT, "/v1/changes", "/v1/companies", "/v1/stats", "/v1/usage", "POST /v1/fit"],
+    jobsParams: JOBS_PARAMS,
+    changesParams: CHANGES_PARAMS,
+    companiesParams: COMPANIES_PARAMS,
+    listFilterCaps: Object.fromEntries(LIST_FILTERS.map((f) => [f.param, f.cap])),
+    includableFields: INCLUDABLE_FIELDS,
+    jobFields: JOB_FIELDS.split(","),
+    changesOpenedFields: CHANGES_OPENED_COLUMNS.split(","),
+    changesClosedFields: CHANGES_CLOSED_COLUMNS.split(","),
+    defaultLimit: DEFAULT_LIMIT,
+    maxLimit: MAX_LIMIT,
+    maxLimitWithDescription: MAX_LIMIT_WITH_DESCRIPTION,
+    maxOffset: MAX_OFFSET,
+    companiesDefaultLimit: COMPANIES_DEFAULT_LIMIT,
+    freshWindowDays: FRESH_WINDOW_DAYS,
+    closuresMaxDaysFree: CLOSURES_MAX_DAYS_FREE,
+    changesMaxDaysPaid: CHANGES_MAX_DAYS_PAID,
+    freeKeyIssued: FREE_KEY_ISSUED,
+    builderProposed: BUILDER_PROPOSED,
+    builderUrl: BUILDER_URL,
+    withheldSources: NO_REDISTRIBUTION_SOURCES,
+    withheldReason: NO_REDISTRIBUTION_REASON,
+    exposedHeaders: cors["Access-Control-Expose-Headers"].split(",").map((x) => x.trim()),
+    // fitResumeScored's body and bounds, as it reads them.
+    fit: { bodyFields: ["resumeText", "q", "limit", "country", "remote"], resumeTextMinChars: 100, resumeTextMaxChars: 50000, limitMax: 20, limitDefault: 20 },
+  };
+}
+
+let openApiBuilt: unknown = null;
+/** The document, built on its first request in this isolate and kept. */
+function openApiDoc(): unknown {
+  openApiBuilt ??= openApiDocument(routerFacts(), publicApiServer(Deno.env.get("SUPABASE_URL") ?? ""));
+  return openApiBuilt;
+}
+
 
 /** Opaque to the caller by construction: base64url of the sort key it encodes.
  *  Opaque so the ordering can change later without breaking anyone who stored
@@ -831,13 +1142,18 @@ const JOBS_PARAMS = [
 // changes()); "false" or absent leaves them out.
 const CHANGES_PARAMS = ["since", "limit", "opened_cursor", "closed_cursor", "include_suspect"] as const;
 const COMPANIES_PARAMS = ["limit", "q", "cursor"] as const;
+/** The columns /v1/changes reads for opened[] and closed[]; the OpenAPI document is built from the same two. */
+const CHANGES_OPENED_COLUMNS = "id,source,company_token,company,title,location,country,category,posted_at,first_seen,apply_url,closes_at,who_may_apply,hiring_paths";
+const CHANGES_CLOSED_COLUMNS = "event_id,posting_id,source,company_token,company,title,category,first_seen,posted_at,closed_at,superseded,absence_basis,suspect,batch_live_before";
+/** The page /v1/companies gives when none is asked for. */
+const COMPANIES_DEFAULT_LIMIT = 100;
 
 /**
  * Call the job-board function's ranked `list` — the SAME engine the site and
  * the MCP use. The anon key is the right credential: this is the public serving
  * path, and /v1 must hold no more search power than the site does.
  */
-async function board(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+async function board(body: Record<string, unknown>, signal?: AbortSignal): Promise<Record<string, unknown>> {
   const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`, {
     method: "POST",
@@ -849,11 +1165,56 @@ async function board(body: Record<string, unknown>): Promise<Record<string, unkn
       ...(await boardReaderHeader(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")),
     },
     body: JSON.stringify(body),
+    // A refill read (./board-page-fill.ts) is abandoned at its deadline.
+    ...(signal ? { signal } : {}),
   });
   const out = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(String((out as { error?: string }).error ?? `board ${res.status}`));
   return out as Record<string, unknown>;
 }
+
+/**
+ * THE GATE A PROXIED PAGE IS FILLED THROUGH (lane fix/1121-connector-errors,
+ * item 1): the withheld hiring systems, then the federal gate, counted by
+ * reason and never handed on. engine=ranked and POST /v1/fit refill through it.
+ */
+async function proxiedPageGate(rows: Array<Record<string, unknown>>): Promise<{ kept: Array<Record<string, unknown>>; dropped: DroppedCounts }> {
+  const bySource: Record<string, number> = {};
+  for (const j of rows) {
+    if (!isNoRedistributionSource(j.source)) continue;
+    const v = String(j.source ?? "").trim().toLowerCase();
+    bySource[v] = (bySource[v] ?? 0) + 1;
+  }
+  // The rows of one board read, as the board answered them. Every proxied row
+  // list in this file is read in this one shape, inside withoutNoRedistribution
+  // (a-feed-we-may-only-display-must-not-leave-by-the-api.test.ts holds each
+  // such site to it), and this gate is now the only one: engine=ranked and
+  // POST /v1/fit serve no row that did not pass it.
+  const r: Record<string, unknown> = { jobs: rows };
+  const { rows: kept, withheldFederal } = await gateProxiedFederal(db(), withoutNoRedistribution(
+    (Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>,
+  ));
+  return { kept, dropped: { bySource, federalUnlabelled: withheldFederal } };
+}
+
+/** A proxied page filled to its limit when the board has the rows within two more reads (no count read: /v1's total.note already says withheld rows are counted). */
+const fillProxiedPage = (body: Record<string, unknown>, first: Record<string, unknown>, startedAt: number, limit: number, offset: number): Promise<FillResult> =>
+  fillPage({ read: board, gate: proxiedPageGate, body, first, startedAt, limit, offset, deepestOffset: MAX_OFFSET });
+
+/** A limit above the route's cap, said (item 4): {requested, applied, reason}, or null when the ask was within it. */
+const limitCappedOf = (asked: number | null, applied: number, cap: number): Record<string, unknown> | null =>
+  asked !== null && asked > cap ? { requested: asked, applied, reason: "max_limit" } : null;
+
+/**
+ * HOW FRESH THE DATA IS, ON EVERY SEARCH (item 9): the stats rollup's
+ * freshness row (the one /v1/stats reads), one primary-key read per isolate
+ * per five minutes, and waited for at most 250 ms past the page.
+ */
+const feedFreshness = freshnessCache(async () => {
+  const { data, error } = await db().from("job_board_stats_rollup").select("v, computed_at").eq("k", "freshness").maybeSingle();
+  if (error) throw new Error(String(error.message ?? "freshness unreadable"));
+  return (data ?? null) as { v: unknown; computed_at?: unknown } | null;
+});
 
 /**
  * engine=ranked: the site's full relevance/rescue engine, translated into the
@@ -862,7 +1223,7 @@ async function board(body: Record<string, unknown>): Promise<Record<string, unkn
  * rather than silently dropped. Every honesty disclosure the board emits is
  * passed through, so the ranked API is exactly as candid as the site.
  */
-async function listJobsRanked(url: URL, headers: Record<string, string>, lists: Record<string, string[]>) {
+async function listJobsRanked(url: URL, headers: Record<string, string>, lists: Record<string, string[]>, countryRead: Record<string, unknown> | null = null) {
   const p = url.searchParams;
   if ((p.get("cursor") ?? "").trim()) {
     return fail(400, "unsupported_param", "engine=ranked pages by offset, not cursor. Use ?offset= and follow page.nextOffset.", headers);
@@ -984,6 +1345,8 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
     return fail(400, "invalid_value", `exclude_agencies must be "true" or "false", got "${exclRaw}".`, headers);
   }
 
+  const freshP = feedFreshness.get();
+  const startedAt = Date.now();
   let r: Record<string, unknown>;
   try {
     r = noRowCanMatch ? { jobs: [], total: 0, hasMore: false } : await board(body);
@@ -998,10 +1361,18 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
   // `returned` is what a caller actually received, and the disclosure below
   // says which sources were withheld, so the two cannot be silently subtracted
   // from each other.
-  const jobs = withoutNoRedistribution(
-    (Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>,
-  );
-  const toV1 = (j: Record<string, unknown>) => ({
+  // AND THE FEDERAL GATE (OD16): the board's rows do not carry the
+  // who-may-apply statement, so it is read for the page's federal ids and an
+  // unlabelled federal row is dropped like a withheld one, counted in
+  // disclosures.federalWithheld.
+  // A PAGE THE GATE THINNED IS REFILLED (item 1): at most two more reads at
+  // the board's nextOffset, each for exactly the rows still missing, so a
+  // limit of 10 answers 10 servable rows whenever the board has them.
+  const fill = await fillProxiedPage(body, r, startedAt, limit, offset);
+  const jobs = fill.rows;
+  const withheldFederal = fill.dropped.federalUnlabelled;
+  const last = fill.last;
+  const toV1 = (j: Record<string, unknown>) => v1Row({
     id: j.id, source: j.source, company_token: j.token, company: j.company,
     title: j.title, location: j.location, country: j.country, remote: j.remote,
     work_mode: j.workMode ?? null, department: j.department ?? null, category: j.category ?? null,
@@ -1009,7 +1380,9 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
     // The ranked engine does not carry first_seen; null rather than a guess.
     // When the board last read the employer's feed is the board's
     // recheckedAt, never its lastSeen, which is the insert time (S12-121).
-    first_seen: null,
+    // A federal row's first_seen is the one the gate read beside the page,
+    // and v1Row moves it to federal.on_board_since (never an age).
+    first_seen: isFederal(j.source) ? (j.first_seen ?? null) : null,
     last_verified_at: typeof j.recheckedAt === "string" ? j.recheckedAt : null,
     last_seen: typeof j.recheckedAt === "string" ? j.recheckedAt : null,
     apply_url: j.applyUrl, salary: j.salary ?? null,
@@ -1020,10 +1393,14 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
     // board's own honesty rule); null here means "not stated by this path",
     // never "not an agency".
     agency: typeof j.agency === "boolean" ? j.agency : null,
-    // "title" or "description": which tier matched the row (S8-077). null when
-    // the board's path did not say; description-only rows were otherwise
-    // indistinguishable from title ones.
-    match_scope: j.matchScope === "title" || j.matchScope === "description" ? j.matchScope : null,
+    // "title", "employer" or "description": which tier matched the row
+    // (S8-077; employer, the board's third label, passes through, item 14).
+    // null when the board's path did not say, which is never a claim that the
+    // title did not match.
+    match_scope: j.matchScope === "title" || j.matchScope === "employer" || j.matchScope === "description" ? j.matchScope : null,
+    // OD16: read beside the page by the federal gate (the board carries no
+    // statement); null off the federal feed, and v1Row shapes a federal row.
+    closes_at: j.closes_at ?? null, who_may_apply: j.who_may_apply ?? null, hiring_paths: j.hiring_paths ?? null,
   });
   const total = typeof r.total === "number" ? r.total : null;
   // total.value is the TITLE-match count; the description tier's matches are
@@ -1042,16 +1419,32 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
   // The ranked search failed and the board answered with its fallback: said
   // as a flag, never the board's internal error text.
   if (r.rankedFellBack) disc.rankedFellBack = true;
+  // Federal rows the gate held back on this page (no who-may-apply statement
+  // stored yet), named beside the withheld systems.
+  if (withheldFederal > 0) {
+    disc.federalWithheld = { count: withheldFederal, reason: FEDERAL_UNLABELLED_NOTE };
+  }
+  const capped = limitCappedOf(limitAsked, limit, MAX_LIMIT);
+  if (capped) disc.limitCapped = capped;
+  if (countryRead) disc.countryRead = countryRead;
+  const rows = jobs.map(toV1);
+  const fresh = await freshnessWithin(freshP);
   return json({
     apiVersion: API_VERSION,
     engine: "ranked",
-    data: jobs.map(toV1),
+    ...federalMeta(rows),
+    data: rows,
     page: {
       limit,
+      maxLimit: MAX_LIMIT,
       offset,
-      returned: jobs.length,
+      returned: rows.length,
       nextCursor: null,
-      nextOffset: r.hasMore === true && typeof r.nextOffset === "number" && (r.nextOffset as number) <= MAX_OFFSET ? r.nextOffset : null,
+      nextOffset: last.hasMore === true && typeof last.nextOffset === "number" && (last.nextOffset as number) <= MAX_OFFSET ? last.nextOffset : null,
+      // How many more board reads filled this page, and why it is short when
+      // it is (refill_limit, deepest_offset, time_budget, board_moved, ...).
+      refillReads: fill.refillReads,
+      ...(fill.pageShortBecause ? { pageShortBecause: fill.pageShortBecause } : {}),
     },
     total: {
       value: r.countUnavailable === true ? null : total,
@@ -1059,11 +1452,14 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
       ...(r.relatedCapped === true ? { relatedCapped: true } : {}),
       ...(typeof r.totalAtLeast === "number" ? { atLeast: r.totalAtLeast } : {}),
       basis: r.countUnavailable === true ? "unavailable" : (r.countCapped === true ? "capped" : "ranked"),
-      note: "value counts postings whose title matched; related counts the further postings matched in the description only (null when the board did not count them). Each row says which in match_scope. Postings from the withheld hiring systems are counted here and not returned.",
+      ...(typeof r.titleTotal === "number" ? { titleTotal: r.titleTotal } : {}),
+      ...(typeof r.employerTotal === "number" ? { employerTotal: r.employerTotal } : {}),
+      note: "value counts postings whose title, employer name or department matched; related counts the further postings matched in the description only (null when the board did not count them). When the board splits value, titleTotal and employerTotal say how many matched in the title and how many in the employer's name or department. A row's match_scope says where it matched, and is null when the board does not say. Postings from the withheld hiring systems, and federal announcements whose who-may-apply statement is not stored yet, are counted here and not returned.",
     },
     coverage: {
       freshnessWindowDays: FRESH_WINDOW_DAYS,
-      note: "Only postings still live in the employer's own feed within the last 30 days.",
+      note: COVERAGE_NOTE,
+      ...(fresh ? { feedFreshness: fresh } : {}),
     },
     // The board's own honesty, verbatim — filters it could not honour, words it
     // read as filters, spelling suggestions, the route it took — plus OUR
@@ -1115,6 +1511,8 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
   // carry, and an empty page IS the true answer to that. Same split the board
   // makes between `vendor` and `companies`.
   const lists: Record<string, string[]> = {};
+  // Each country entry that was not already its code, and the code it bound.
+  let countryRead: Record<string, unknown> | null = null;
   for (const f of LIST_FILTERS) {
     const raw = p.get(f.param);
     // An empty value is "not set", exactly as it was when this bound `if (v)`.
@@ -1146,19 +1544,15 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     // this API may not republish is a KNOWN member of the domain above, so it
     // passes the unknown-value check and would otherwise bind a filter that
     // can only ever match rows the query below has already excluded -- an
-    // empty 200 saying "no such federal jobs" instead of "we may not sell you
-    // these". 451 is the status whose whole meaning is a legal restriction,
-    // and the code and message both name the reason.
-    // AND THROUGH THE OTHER DOOR, WHICH IS NOT DOMAIN-CHECKED. Every row of a
-    // restricted feed carries ONE company_token, and that token is the
-    // source's own name -- the agency travels in `company` -- so
-    // ?company_token= reaches exactly the population ?source= just refused, by
-    // a parameter deliberately left open because ~23,400 tokens cannot be a
-    // closed set. The SQL below already excludes the rows, so what came back
-    // was an empty 200: the same false statement about the world that the 451
-    // above exists to avoid making, wearing a different parameter name. Only
-    // the handful of token values that ARE restricted source names are
-    // refused; every other unknown token still answers an honest empty page.
+    // empty 200 saying "no such jobs" instead of "we may not sell you these".
+    // 451 is the status whose whole meaning is a legal restriction, and the
+    // code and message both name the reason.
+    // AND THROUGH THE OTHER DOOR, WHICH IS NOT DOMAIN-CHECKED: ?company_token=
+    // is deliberately left open because ~23,400 tokens cannot be a closed set,
+    // so a withheld vendor's code given as a token, and a withheld employer's
+    // own token, are refused here too; every other unknown token still answers
+    // an honest empty page. (The federal feed's one token, usajobs, is the
+    // vendor code itself; since OD16 it is answered, not refused.)
     if (f.param === "source" || f.param === "company_token") {
       // A SmartRecruiters employer has its own token, so the withheld set is
       // read too: an empty 200 for it would say the employer is not hiring.
@@ -1170,18 +1564,25 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
           headers);
       }
     }
-    // ISO-3166-1 alpha-2, the same list normalizeFilters validates against.
-    // "USA" is not a country code this board stores, and binding it would
-    // answer an empty page to a request that was merely misspelt. NOR IS EU
-    // (NB-27): a shape test let any two letters through, so country=EU bound
-    // a filter no posting can match and answered an empty 200 about a market.
+    // ISO-3166-1 alpha-2 is what the board stores, the same list
+    // normalizeFilters validates against, and only a code in it is ever
+    // bound: binding a literal the board does not store (the raw "USA") would
+    // answer an empty page to a request that was merely spelt another way.
+    // NOR IS EU (NB-27): a shape test let any two letters through, so
+    // country=EU bound a filter no posting can match and answered an empty 200
+    // about a market. A COUNTRY BY NAME, FROM ONE FIXED TABLE (lane
+    // fix/1121-connector-errors, item 3; ./country-names.ts, the connector's
+    // own copy): Ireland, IRL and Eire bind IE, USA binds US, and each is said
+    // back in disclosures.countryRead. A name with two readings (Georgia), a
+    // region (EU) or no reading (ZZ) keeps the 400, naming the entry and the
+    // readings. The code set is job-board's ISO_ALPHA2, held equal by a test,
+    // so the two surfaces take one list.
     if (f.param === "country") {
-      const malformed = asked.filter((x) => !/^[A-Z]{2}$/.test(x) || !V1_COUNTRY_CODES.has(x));
-      if (malformed.length) {
-        return fail(400, "invalid_value",
-          `country takes ISO-3166-1 alpha-2 codes, e.g. country=US,GB. Not a code: ${malformed.map((x) => `"${x}"`).join(", ")}.`,
-          headers);
-      }
+      const c = countryArg(raw ?? "");
+      if (c.errors.length) return fail(400, "invalid_value", `${c.errors.join(" ")} ${COUNTRY_FIX}`, headers);
+      lists.country = c.codes;
+      if (Object.keys(c.read).length || c.notes.length) countryRead = { read: c.read, ...(c.notes.length ? { notes: c.notes } : {}) };
+      continue;
     }
     lists[f.param] = asked;
   }
@@ -1196,7 +1597,7 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     if (!paid) {
       return fail(402, "upgrade_required", `engine=ranked is a paid feature — the site's full relevance/rescue engine. The default engine stays available on your key. Ranked search is part of the planned Builder API, which is not on sale yet: ${BUILDER_URL}`, headers);
     }
-    return await listJobsRanked(url, headers, lists);
+    return await listJobsRanked(url, headers, lists, countryRead);
   }
   // THE CAP MOVES WITH THE PAYLOAD, and the move is SAID. Clamping silently is
   // what makes a caller who asked for 100 rows conclude the board only had 25.
@@ -1363,7 +1764,10 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
       // fence: never redistribute a feed we are only licensed to display.
       // Bound on BOTH the row query and the count, because a total that counts
       // rows the caller can never reach is the same lie as serving them.
-      .not("source", "in", NO_REDISTRIBUTION_IN);
+      .not("source", "in", NO_REDISTRIBUTION_IN)
+      // fence: the federal gate (OD16), on the row query and the count alike:
+      // a federal row only once its who-may-apply statement is stored.
+      .or(FEDERAL_GATE_OR);
     // ONE VALUE IS .eq(), SEVERAL ARE .in() — the board's own choice, and it is
     // about the index, not about tidiness: a widened `.in()` on a large bucket
     // loses the date index the ordering rides on, so a single-value request
@@ -1468,6 +1872,8 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
   // total.value is stable for a given query across every cursor page. head:true
   // means the count query returns no rows — just the count.
   const salaryFloorAsked = Number.isFinite(salaryMin) && salaryMin > 0;
+  // Started beside the page, waited for at most 250 ms past it (item 9).
+  const freshP = feedFreshness.get();
   const [rowRes, countRes, payShare] = await Promise.all([
     rowQuery
       .order("effective_posted", { ascending: false, nullsFirst: false })
@@ -1526,12 +1932,15 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
 
   // Strip the ordering column back off. Done once, here, rather than in the
   // select, because the cursor above needs it and the contract does not.
-  const publicRows = ((data ?? []) as Array<Record<string, unknown>>).map((r) => {
+  const strippedRows = federalGated((data ?? []) as Array<Record<string, unknown>>).map((r) => {
     const { effective_posted: _sortKey, ...rest } = r;
     return rest;
   });
   // When the board last read each employer's feed (S12-121).
-  await attachLastVerified(client, publicRows);
+  await attachLastVerified(client, strippedRows);
+  // A federal row as OD16 hands it on (v1Row); every other row gains the
+  // three federal columns as null.
+  const publicRows = strippedRows.map(v1Row);
   // An empty page for employers the board has never read is not their hiring
   // (S12-040): named, as the board's own list names them.
   const unknownCompanies = publicRows.length === 0 && offset === 0 && !cursor && lists.company_token.length
@@ -1547,7 +1956,9 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
           note: `Descriptions average ~5.7KB per posting, so pages carrying them are capped at ${MAX_LIMIT_WITH_DESCRIPTION} rows. Page with cursor= to walk the same set.`,
         },
       }
-      : {}),
+      // Above MAX_LIMIT itself, said the same way (item 4).
+      : askedLimit > MAX_LIMIT ? { limitCapped: { requested: askedLimit, applied: limit, reason: "max_limit" } } : {}),
+    ...(countryRead ? { countryRead } : {}),
     ...(unknownCompanies && unknownCompanies.length
       ? {
         unknownCompanies,
@@ -1556,8 +1967,10 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
       : {}),
   };
 
+  const fresh = await freshnessWithin(freshP);
   return json({
     apiVersion: API_VERSION,
+    ...federalMeta(publicRows),
     data: publicRows,
     page: (() => {
       const rows = (data ?? []) as Array<Record<string, unknown>>;
@@ -1575,7 +1988,11 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
         // from "that is all you may have".
         maxLimit,
         ...(cursor ? {} : { offset }),
-        returned: rows.length,
+        // THE ROWS SERVED (item 1): the in-memory federal belt can drop a row
+        // the SQL gate let through, and returned counted the rows read. The
+        // cursor and the full-page test still read the raw rows, where the
+        // walk stands.
+        returned: publicRows.length,
         nextCursor: full && typeof ep === "string" && typeof last?.id === "string" ? encodeCursor(ep, last.id as string) : null,
         // Kept for callers already paging by offset, and null once they are past
         // the cap so the field cannot walk them off the cliff.
@@ -1592,7 +2009,10 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     total: { value: count, basis: countBasis },
     coverage: {
       freshnessWindowDays: FRESH_WINDOW_DAYS,
-      note: "Only postings still live in the employer's own feed within the last 30 days. Withdrawn postings are excluded, never re-dated.",
+      note: `${COVERAGE_NOTE} Withdrawn postings are excluded, never re-dated.`,
+      // How long ago the employer feeds behind live postings were re-read,
+      // measured (item 9); left out when the rollup row is unread or unsound.
+      ...(fresh ? { feedFreshness: fresh } : {}),
       // THIS BLOCK IS EMITTED UNDER A SALARY FLOOR, SO IT MUST QUOTE THE
       // FLOOR'S OWN COLUMN: the share of servable postings carrying
       // salary_rank_usd, the converted figure the floor binds, never the wider
@@ -1707,20 +2127,28 @@ async function oneJob(client: SupabaseClient, id: string, headers: Record<string
     // "a fence" is present.
     .gte("effective_posted", freshCutoff())           // fence: past the serving window
     // fence: a licence boundary, not a coverage gap. A caller who already
-    // holds a federal id (from the website, say) gets the same 404 a withdrawn
-    // posting gets, and the note below names redistribution as one of the
-    // reasons an id can be absent so the 404 is not read as "we lost it".
+    // holds a SmartRecruiters id (from the website, say) gets the same 404 a
+    // withdrawn posting gets, and the note below names redistribution as one
+    // of the reasons an id can be absent so the 404 is not read as "we lost it".
     .not("source", "in", NO_REDISTRIBUTION_IN)
+    // fence: the federal gate (OD16). A federal id whose who-may-apply
+    // statement is not stored yet answers the same 404, and the note says why.
+    .or(FEDERAL_GATE_OR)
     .maybeSingle();
   if (error) {
     console.error("[PUBLIC-API] /v1/jobs/{id} failed:", error.message?.slice(0, 160));
     return fail(500, "query_failed", "The query could not be completed.", headers);
   }
+  const row = data ? federalGated([data as unknown as Record<string, unknown>])[0] ?? null : null;
   // A withdrawn posting is 404 and NOT a stale 200. The difference is the whole
   // product: a caller must be able to tell "gone" from "we stopped looking".
-  if (!data) return fail(404, "not_found", `No live posting with that id. It may have been withdrawn by the employer, aged past the 30-day window, or come from a hiring system this API may not redistribute (${NO_REDISTRIBUTION_SOURCES.join(", ")}; see /v1 restrictions).`, headers);
-  await attachLastVerified(client, [data as unknown as Record<string, unknown>]);
-  return json({ apiVersion: API_VERSION, data }, 200, headers);
+  if (!row) {
+    const federal = vendorOfPostingId(id) === FEDERAL_SOURCE ? ` ${FEDERAL_NOT_FOUND_NOTE}` : "";
+    return fail(404, "not_found", `No live posting with that id. It may have been withdrawn by the employer, aged past the 30-day window, or come from a hiring system this API may not redistribute (${NO_REDISTRIBUTION_SOURCES.join(", ")}; see /v1 restrictions).${federal}`, headers);
+  }
+  await attachLastVerified(client, [row]);
+  const shaped = v1Row(row);
+  return json({ apiVersion: API_VERSION, ...federalMeta([shaped]), data: shaped }, 200, headers);
 }
 
 /**
@@ -1758,15 +2186,18 @@ async function applicationForm(client: SupabaseClient, url: URL, id: string, hea
     .is("missing_since", null)                        // fence: withdrawn by the employer
     .gte("effective_posted", freshCutoff())           // fence: past the serving window
     .not("source", "in", NO_REDISTRIBUTION_IN)        // fence: the redistribution boundary
+    .or(FEDERAL_GATE_OR)                              // fence: the federal gate (OD16)
     .maybeSingle();
   if (error) {
     console.error("[PUBLIC-API] /v1/jobs/{id}/application failed:", error.message?.slice(0, 160));
     return fail(500, "query_failed", "The query could not be completed.", headers);
   }
-  if (!posting) {
-    return fail(404, "not_found", "No live posting with that id. It may have been withdrawn by the employer or aged past the 30-day window, so there is no form to read.", headers);
+  const gated = posting ? federalGated([posting as unknown as Record<string, unknown>])[0] ?? null : null;
+  if (!gated) {
+    const federal = isFederal(vendor) ? ` ${FEDERAL_NOT_FOUND_NOTE}` : "";
+    return fail(404, "not_found", `No live posting with that id. It may have been withdrawn by the employer or aged past the 30-day window, so there is no form to read.${federal}`, headers);
   }
-  const row = posting as unknown as Record<string, unknown>;
+  const row = gated;
   const [, read] = await Promise.all([
     attachLastVerified(client, [row]),
     // Every reader but Ashby's (OD14-ASHBY-2): an Ashby posting reads as
@@ -1783,9 +2214,13 @@ async function applicationForm(client: SupabaseClient, url: URL, id: string, hea
       `The employer's hiring system (${String(row.source ?? "")}) did not answer just now, so the form could not be read. Retry shortly, or apply at the posting's apply_url.`,
       { ...headers, "Retry-After": String(FORM_UNREACHABLE_RETRY_S) });
   }
+  // The posting half spreads the row, so a federal one is shaped as /v1/jobs
+  // shapes it (v1Row) and the body carries its credit.
+  const posted = v1Row(row);
   return json({
     apiVersion: API_VERSION,
-    data: applicationData(row, form),
+    ...federalMeta([posted]),
+    data: applicationData(posted, form),
     answeredByMeans: ANSWERED_BY_MEANS,
     note: APPLICATION_NOTE,
   }, 200, headers);
@@ -1881,6 +2316,7 @@ async function changes(
   const limitAsked = intParam(p, "limit", headers);
   if (limitAsked instanceof Response) return limitAsked;
   const limit = Math.min(Math.max(limitAsked || DEFAULT_LIMIT, 1), MAX_LIMIT);
+  const limitCapped = limitCappedOf(limitAsked, limit, MAX_LIMIT);
 
   // Held to the shapes this API issues (NB-30): the keysets below splice
   // both halves into a PostgREST or() unquoted.
@@ -1914,7 +2350,7 @@ async function changes(
   const openedSettled = settledThrough(nowMs, OPENED_SETTLE_MS);
 
   let openedQ = client.from("job_board_postings")
-    .select("id,source,company_token,company,title,location,country,category,posted_at,first_seen,apply_url")
+    .select(CHANGES_OPENED_COLUMNS)
     .is("missing_since", null)                       // fence: withdrawn by the employer
     // THE THIRD READ PATH TO MISS THIS, caught by the guard rather than by a
     // person. `first_seen` is when WE first saw the posting; effective_posted
@@ -1928,6 +2364,10 @@ async function changes(
     // so a feed that excluded these from /v1/jobs and announced them here
     // would be republishing the same data one endpoint over.
     .not("source", "in", NO_REDISTRIBUTION_IN)
+    // fence: the federal gate (OD16). A federal announcement opens here once
+    // its who-may-apply statement is stored, as on /v1/jobs. Closures below
+    // are not gated: a closed announcement is suggested to nobody.
+    .or(FEDERAL_GATE_OR)
     .gte("first_seen", sinceIso)
     // SETTLED ONLY (S14X-065): see closedQ below. first_seen is the insert
     // statement's own now(), so a row stamped this long ago has committed.
@@ -1974,7 +2414,7 @@ async function changes(
   // sources this feed may not redistribute, so the feed counts LOWER by those
   // and never higher.
   let closedQ = client.from("job_board_closures")
-    .select("event_id,posting_id,source,company_token,company,title,category,first_seen,posted_at,closed_at,superseded,absence_basis,suspect,batch_live_before")
+    .select(CHANGES_CLOSED_COLUMNS)
     // Same fence, same reason: a closure row carries the posting's title,
     // employer and dates. The closure LOG is ours, but the posting it
     // describes is still the vendor's data.
@@ -2018,35 +2458,53 @@ async function changes(
   const closedResume = resumeCursorOf(closedRows as Array<{ closed_at?: string; event_id?: unknown }>,
     (r) => (r.closed_at && r.event_id != null ? { ep: r.closed_at, id: String(r.event_id) } : null), closedAfter);
 
+  // The page and its cursors stay on the rows read; what is served is gated
+  // and shaped. An opened federal row keeps first_seen, because here it is
+  // the event's own stamp (and the cursor's key), never an age, and carries
+  // it again as federal.on_board_since.
+  const openedServed = federalGated(openedRows as Array<Record<string, unknown>>).map((r) => {
+    const shaped = v1Row(r);
+    return isFederal(r.source) ? { ...shaped, first_seen: r.first_seen ?? null } : shaped;
+  });
+  // A FEDERAL CLOSURE IS SHAPED AND CREDITED TOO (OD16 review). Closures are
+  // not gated (a closed announcement is suggested to nobody), so closed[] can
+  // carry federal rows on a page whose opened[] has none: each is shaped by
+  // v1Closure, and the credit, with the date we read the feed, is built from
+  // both lists, so no body carries a federal row without it.
+  const closedServed = closedRows.map(({ suspect, batch_live_before, ...c }: Record<string, unknown>) => v1Closure({
+    ...c,
+    // Named, not left as a bare boolean: `superseded` means the posting was
+    // re-listed under a new id rather than genuinely closing, and a consumer
+    // counting "roles filled" must not count those.
+    outcome: (c as { superseded?: boolean }).superseded ? "relisted" : "closed",
+    // TRUE only on an include_suspect=true walk: the row was written in a
+    // batch the collector doubted (see the select above). FALSE: the
+    // collector sized the batch and did not doubt it. NULL: written before
+    // it sized batches at all (batch_live_before IS NULL), so suspect=false
+    // there is a column default, not a verdict, and no filter removed it.
+    // A repair can mark such a row suspect, hence suspect is read first.
+    suspectBatch: suspect === true ? true : batch_live_before == null ? null : false,
+    // TRUE means closed_at is the date WE COULD FINALLY SEE the posting was
+    // gone, not the date it went. It is set on boards over the page cap whose
+    // first complete pass backfilled a window of takedowns at once, so the
+    // error is one-directional (always late) and bounded by the freshness
+    // window rather than unbounded. A consumer computing time-to-close or a
+    // daily-takedown series must exclude these; a consumer asking "is this
+    // role still open?" can use them exactly as they are.
+    closedAtIsObservation: (c as { absence_basis?: string }).absence_basis === "lap_backfill",
+  }));
+  const credit = await federalMetaRead(client, [...openedServed, ...closedServed]);
   return json({
     apiVersion: API_VERSION,
+    ...credit,
     since: sinceIso,
-    opened: openedRows,
-    closed: closedRows.map(({ suspect, batch_live_before, ...c }: Record<string, unknown>) => ({
-      ...c,
-      // Named, not left as a bare boolean: `superseded` means the posting was
-      // re-listed under a new id rather than genuinely closing, and a consumer
-      // counting "roles filled" must not count those.
-      outcome: (c as { superseded?: boolean }).superseded ? "relisted" : "closed",
-      // TRUE only on an include_suspect=true walk: the row was written in a
-      // batch the collector doubted (see the select above). FALSE: the
-      // collector sized the batch and did not doubt it. NULL: written before
-      // it sized batches at all (batch_live_before IS NULL), so suspect=false
-      // there is a column default, not a verdict, and no filter removed it.
-      // A repair can mark such a row suspect, hence suspect is read first.
-      suspectBatch: suspect === true ? true : batch_live_before == null ? null : false,
-      // TRUE means closed_at is the date WE COULD FINALLY SEE the posting was
-      // gone, not the date it went. It is set on boards over the page cap whose
-      // first complete pass backfilled a window of takedowns at once, so the
-      // error is one-directional (always late) and bounded by the freshness
-      // window rather than unbounded. A consumer computing time-to-close or a
-      // daily-takedown series must exclude these; a consumer asking "is this
-      // role still open?" can use them exactly as they are.
-      closedAtIsObservation: (c as { absence_basis?: string }).absence_basis === "lap_backfill",
-    })),
+    opened: openedServed,
+    closed: closedServed,
     page: {
       limit,
-      openedReturned: openedRows.length,
+      maxLimit: MAX_LIMIT,
+      // The rows served (item 1), as on /v1/jobs: the cursors read the rows read.
+      openedReturned: openedServed.length,
       closedReturned: closedRows.length,
       opened: {
         hasMore: openedMore,
@@ -2082,10 +2540,17 @@ async function changes(
     suspectBatchesIncluded: includeSuspect,
     // A CHANGE FEED IS WALKED FOR COMPLETENESS, so the one population it does
     // not cover has to be stated inside it -- a consumer reconciling this feed
-    // against the site would otherwise find federal roles opening and closing
-    // on the page and never here, and read that as dropped events.
+    // against the site would otherwise find SmartRecruiters roles opening and
+    // closing on the page and never here, and read that as dropped events.
     excludedSources: { sources: [...NO_REDISTRIBUTION_SOURCES], reason: NO_REDISTRIBUTION_REASON },
-    note: "opened = first seen in the employer's feed since `since`. closed = gone from it. outcome distinguishes a genuine close from a re-list under a new id. closedAtIsObservation=true means closed_at is when we could first SEE the posting was gone, not when it went (a board over the page cap backfilling its first complete pass) -- the error is always late and bounded by the freshness window; exclude those rows from any time-to-close or per-day takedown series. By default closed[] leaves out batches our collector flagged as a possible failed read of its own (one pass that removed so much of a board that the takedown may be ours, not the employer's); include_suspect=true returns them too, each marked suspectBatch:true, and suspectBatchesIncluded says which you got. suspectBatch:false means the collector assessed the batch and did not doubt it; suspectBatch:null means the closure was written before the collector began assessing its batches, so it was never assessed and neither walk filters it -- a paid walk reaching that far back can still contain a failed read of ours served as outcome closed. A default walk, with outcome relisted and closedAtIsObservation rows dropped, is counted on the same rules as our published daily takedown figure, except that the figure also counts the hiring systems in excludedSources: this feed can count lower than it by those, never higher. Both lists are ordered OLDEST FIRST and page independently: follow page.opened.nextCursor as ?opened_cursor= and page.closed.nextCursor as ?closed_cursor= until hasMore is false. Each list reads only up to its settledThrough (closed[] a quarter of an hour behind now, opened[] two minutes), because a closure is stamped before it is written and a later stamp can be written first. To keep a sync going, store page.opened.resumeCursor and page.closed.resumeCursor, which every page carries, and pass them back with the same since: resume by cursor, never by moving since to the last stamp you saw, which skips rows written late under an earlier stamp.",
+    // AND THE ONE FEED IT COVERS IN PART (OD16 review): a federal
+    // announcement opens here only once labelled, keyed on when we first saw
+    // it, so the backlog labelled later never opens here; said in every body,
+    // because a sync that never sees one cannot learn it from a row.
+    federalCoverage: FEDERAL_COVERAGE,
+    // A limit above the cap, said (item 4).
+    ...(limitCapped ? { disclosures: { limitCapped } } : {}),
+    note: "opened = first seen in the employer's feed since `since`. closed = gone from it. outcome distinguishes a genuine close from a re-list under a new id. closedAtIsObservation=true means closed_at is when we could first SEE the posting was gone, not when it went (a board over the page cap backfilling its first complete pass) -- the error is always late and bounded by the freshness window; exclude those rows from any time-to-close or per-day takedown series. By default closed[] leaves out batches our collector flagged as a possible failed read of its own (one pass that removed so much of a board that the takedown may be ours, not the employer's); include_suspect=true returns them too, each marked suspectBatch:true, and suspectBatchesIncluded says which you got. suspectBatch:false means the collector assessed the batch and did not doubt it; suspectBatch:null means the closure was written before the collector began assessing its batches, so it was never assessed and neither walk filters it -- a paid walk reaching that far back can still contain a failed read of ours served as outcome closed. A default walk, with outcome relisted and closedAtIsObservation rows dropped, is counted on the same rules as our published daily takedown figure, except that the figure also counts the hiring systems in excludedSources: this feed can count lower than it by those, never higher. Both lists are ordered OLDEST FIRST and page independently: follow page.opened.nextCursor as ?opened_cursor= and page.closed.nextCursor as ?closed_cursor= until hasMore is false. Each list reads only up to its settledThrough (closed[] a quarter of an hour behind now, opened[] two minutes), because a closure is stamped before it is written and a later stamp can be written first. To keep a sync going, store page.opened.resumeCursor and page.closed.resumeCursor, which every page carries, and pass them back with the same since: resume by cursor, never by moving since to the last stamp you saw, which skips rows written late under an earlier stamp. U.S. federal announcements (source usajobs) are covered in part: federalCoverage says which, and why some never appear in opened[].",
   }, 200, headers);
 }
 
@@ -2123,6 +2588,86 @@ async function usage(client: SupabaseClient, keyId: string | null, headers: Reco
 }
 
 /**
+ * THE FEDERAL AGENCIES, EACH CREDITED AS AN EMPLOYER (OD16).
+ *
+ * Every federal posting carries the one board token "usajobs" and its agency
+ * in `company`, so the board's per-token facet cannot credit an agency. This
+ * counts the agencies over exactly the rows /v1/jobs serves from the federal
+ * feed (not withdrawn, inside the 30-day window, who-may-apply stored), a
+ * keyset walk of the `company` column in pages of 1,000, kept an hour per
+ * isolate. A walk cut off at FEDERAL_AGENCY_PAGES says complete: false; a
+ * read that fails gives null, and the caller says so.
+ */
+type FederalAgencies = { counts: Array<{ company: string; open_postings: number }>; countedAt: string; complete: boolean };
+const FEDERAL_AGENCY_PAGES = 30;
+// EVERY FEDERAL ID IS "usajobs:usajobs:<control number>", so the federal rows
+// are one contiguous range of the primary key, and the walk reads that range
+// by the key instead of ordering the whole table by id from its first row
+// (an unbounded first page would scan every vendor that sorts before
+// usajobs). Both bounds are spelled with letters, so they hold under a C
+// collation and a linguistic one alike: the floor is a prefix of every
+// federal id, and the ceiling differs from them at a letter.
+const FEDERAL_ID_FLOOR = `${FEDERAL_SOURCE}:${FEDERAL_SOURCE}:`;
+const FEDERAL_ID_CEILING = `${FEDERAL_SOURCE}:usajobt`;
+let federalAgencyCache: { at: number; value: FederalAgencies } | null = null;
+async function federalAgencies(client: SupabaseClient): Promise<FederalAgencies | null> {
+  if (federalAgencyCache && Date.now() - federalAgencyCache.at < 3_600_000) return federalAgencyCache.value;
+  const counts = new Map<string, number>();
+  let last = FEDERAL_ID_FLOOR;
+  let complete = false;
+  for (let page = 0; page < FEDERAL_AGENCY_PAGES; page++) {
+    const { data, error } = await client
+      .from("job_board_postings")
+      .select("id,company")
+      .eq("source", FEDERAL_SOURCE)
+      .gt("id", last)                                // the keyset, inside the federal id range
+      .lt("id", FEDERAL_ID_CEILING)
+      .not("source", "in", NO_REDISTRIBUTION_IN)     // fence: the redistribution boundary
+      .is("missing_since", null)                     // fence: withdrawn by the agency
+      .gte("effective_posted", freshCutoff())        // fence: past the serving window
+      .not("who_may_apply", "is", null)              // fence: the federal gate
+      .order("id", { ascending: true })
+      .limit(1000);
+    if (error || !Array.isArray(data)) {
+      console.warn("[PUBLIC-API] federal agencies unavailable:", String(error?.message ?? "not an array").slice(0, 120));
+      return null;
+    }
+    for (const r of data as Array<{ id?: unknown; company?: unknown }>) {
+      const name = typeof r.company === "string" ? r.company.trim() : "";
+      if (name && !isFederal(name)) counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    if (data.length < 1000) { complete = true; break; }
+    last = String((data[data.length - 1] as { id?: unknown }).id ?? "");
+    if (!last) break;
+  }
+  const value: FederalAgencies = {
+    counts: [...counts].map(([company, open_postings]) => ({ company, open_postings }))
+      .sort((a, b) => b.open_postings - a.open_postings || (a.company < b.company ? -1 : a.company > b.company ? 1 : 0)),
+    countedAt: new Date().toISOString(),
+    complete,
+  };
+  federalAgencyCache = { at: Date.now(), value };
+  return value;
+}
+
+/** The federalAgencies block of /v1/companies, narrowed by the walk's q. */
+function federalAgencyBlock(a: FederalAgencies, term: string): Record<string, unknown> {
+  // q names an agency, or the feed itself ("usajobs", "federal"), which lists them all.
+  const wholeFeed = term.length >= 3 && (FEDERAL_SOURCE.startsWith(term) || "federal".startsWith(term));
+  const matched = term && !wholeFeed ? a.counts.filter((c) => c.company.toLowerCase().includes(term)) : a.counts;
+  return {
+    company_token: FEDERAL_SOURCE,
+    source: FEDERAL_SOURCE,
+    agencies: matched,
+    matched: matched.length,
+    asOf: a.countedAt,
+    complete: a.complete,
+    basis: "open_postings = U.S. federal announcements not withdrawn, dated within the last 30 days and with the agency's who-may-apply statement stored (the federal rows /v1/jobs serves), counted by agency by this API at asOf and kept for up to an hour. complete is false when the count stopped early.",
+    note: "Every U.S. federal announcement shares one company_token, usajobs, and names its hiring agency, the employer, in company. Read them with /v1/jobs?company_token=usajobs (add q= for a title). Each is open until the agency's closing date (closes_at).",
+  };
+}
+
+/**
  * /v1/companies — SEARCHABLE AND PAGEABLE, because company_token is the join key.
  *
  * company_token is what every other endpoint filters by, and it was only
@@ -2140,7 +2685,8 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
   if (bad) return bad;
   const limitAsked = intParam(url.searchParams, "limit", headers);
   if (limitAsked instanceof Response) return limitAsked;
-  const limit = Math.min(Math.max(limitAsked || 100, 1), MAX_LIMIT);
+  const limit = Math.min(Math.max(limitAsked || COMPANIES_DEFAULT_LIMIT, 1), MAX_LIMIT);
+  const limitCapped = limitCappedOf(limitAsked, limit, MAX_LIMIT);
   const term = (url.searchParams.get("q") ?? "").trim().toLowerCase().slice(0, 100);
   const cursorRaw = (url.searchParams.get("cursor") ?? "").trim();
   const cursor = cursorRaw ? decodeCursor(cursorRaw) : null;
@@ -2160,18 +2706,21 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
   };
   // THE DIRECTORY HAS TO AGREE WITH THE ROWS, or it is the irreconcilable
   // pair this endpoint already shipped once (open_postings 33,986 beside a
-  // /v1/jobs page serving a fraction of it). The facet carries no `source`
-  // column, only a token — but the federal feed is the board's one
-  // SINGLE-SOURCE vendor: job-board's adapter gives every federal posting the
-  // fixed company_token equal to the vendor code itself, with the hiring
-  // agency travelling in each row's `company`. So the vendor codes ARE the
-  // tokens to drop here, and dropping them is what keeps a customer from
-  // joining this endpoint to a /v1/jobs query that can only return zero.
-  // SmartRecruiters employers carry their own tokens, so those are dropped by
-  // the withheld set (20261009122000) rather than by the vendor code.
+  // /v1/jobs page serving a fraction of it). SmartRecruiters employers carry
+  // their own tokens, so those are dropped by the withheld set
+  // (20261009122000), and a vendor code given as a token by the vendor code.
+  //
+  // THE FEDERAL FEED IS NOT AN EMPLOYER (OD16). job-board gives every federal
+  // posting one fixed company_token, the vendor code itself, with the hiring
+  // agency in each row's `company`. A directory row for that token would
+  // credit "USAJOBS" as the employer of 18,000 announcements, and its count
+  // would include the announcements the federal gate does not serve yet. So
+  // the token's row leaves the directory, and each agency is credited by name
+  // in federalAgencies, counted from the rows /v1/jobs serves.
   const withheld = await withheldCompanyTokens(client);
   const facet = (Array.isArray(v.companiesFacet) ? v.companiesFacet : [])
-    .filter((c) => !isNoRedistributionSource(c.token) && !(withheld?.has(String(c.token ?? "")) ?? false));
+    .filter((c) => !isNoRedistributionSource(c.token) && !isFederal(c.token) && !(withheld?.has(String(c.token ?? "")) ?? false));
+  const agencies = cursor ? null : await federalAgencies(client);
   // `open_postings` NOW MEANS OPEN. This is a FIX, not a breaking change: the
   // field kept its name, its type and its position, and the name was always
   // the promise. What it carried was companiesFacet.count — count(*) GROUP BY
@@ -2210,6 +2759,7 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
       .map((c) => ({ company_token: c.token ?? null, company: c.name ?? null, open_postings: openOf(c.token) })),
     page: {
       limit,
+      maxLimit: MAX_LIMIT,
       returned: window.length,
       matched: pg.matched,
       hasMore: more,
@@ -2227,6 +2777,13 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
     // employers of a withheld system that have their own tokens; false means
     // the list of them could not be read, so some may still appear.
     excludedSources: { sources: [...NO_REDISTRIBUTION_SOURCES], reason: NO_REDISTRIBUTION_REASON, employersOmitted: withheld !== null },
+    // A limit above the cap, said (item 4).
+    ...(limitCapped ? { disclosures: { limitCapped } } : {}),
+    // OD16: the U.S. federal agencies, each credited as the employer of its
+    // announcements, on a walk's first page (null on a later one, and null
+    // with federalAgenciesUnavailable when they could not be counted).
+    federalAgencies: agencies ? federalAgencyBlock(agencies, term) : null,
+    ...(cursor || agencies ? {} : { federalAgenciesUnavailable: true }),
     // The figure's age is published rather than implied. This facet refreshes
     // at the end of a rotation pass, so it is minutes-to-hours old by design.
     // DATED BY THE PASS THAT COUNTED IT (S14X-274, ./facet-stamp.ts), never by
@@ -2309,22 +2866,41 @@ async function fitResumeScored(
       { status: 200, headers: { "Content-Type": "application/json", ...headers } });
   }
   const limit = Math.max(1, Math.min(20, Number(body.limit ?? 20) || 20));
-  const r = await board({ action: "list", limit, includeFacets: false, q,
+  // A COUNTRY IT CANNOT READ IS REFUSED (item 3), never a search scored
+  // without it; a name binds its code from the same table as /v1/jobs. A
+  // list of names or codes is read as one (["IE", "Germany"]), as the
+  // connector reads it; any other shape (a number, an object, a list holding
+  // one) is refused naming what it takes. Review 2026-11-22: country ["IE"]
+  // was scored with no country at all, and no word said so.
+  const sentCountry = body.country;
+  if (
+    sentCountry !== undefined && sentCountry !== null && typeof sentCountry !== "string" &&
+    !(Array.isArray(sentCountry) && sentCountry.every((x) => typeof x === "string"))
+  ) {
+    return fail(400, "invalid_value", `country takes a code or a name as a string ("IE", "Ireland" or "IE,GB"), or a list of them; got ${JSON.stringify(sentCountry).slice(0, 60)}. ${COUNTRY_FIX}`, headers);
+  }
+  const fitCountry = sentCountry === undefined || sentCountry === null ? null : countryArg(sentCountry);
+  if (fitCountry && fitCountry.errors.length) return fail(400, "invalid_value", `${fitCountry.errors.join(" ")} ${COUNTRY_FIX}`, headers);
+  const startedAt = Date.now();
+  const fitBody: Record<string, unknown> = { action: "list", limit, includeFacets: false, q,
     // A QUERY READ OUT OF A RÉSUMÉ IS NOT LOGGED (GP-NOLOG-2). The board
     // writes typed searches to its search log; a term taken from someone's CV
     // is not a search they typed, and Privacy says the CV is never stored.
     // job-board honours noLog only from a reader that proves it (x-rb-reader,
     // which board() sends). A query the caller typed keeps today's body.
     ...(typedQ ? {} : { noLog: true }),
-    ...(typeof body.country === "string" ? { country: body.country } : {}),
-    ...(body.remote === true ? { remote: true } : {}) });
+    ...(fitCountry && fitCountry.codes.length ? { country: fitCountry.codes.join(",") } : {}),
+    ...(body.remote === true ? { remote: true } : {}) };
+  const r = await board(fitBody);
   // DROPPED BEFORE SCORING, not after. This endpoint returns a job card per
   // row (title, employer, apply URL) exactly as /v1/jobs does, so it is a
   // redistribution path like any other; filtering here also means we never
   // spend the scorer's budget on a row the caller will not receive.
-  const jobs = withoutNoRedistribution(
-    (Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>,
-  );
+  // The federal gate too (OD16): an unlabelled federal row is neither scored
+  // nor returned.
+  // AND REFILLED (item 1): a page the gate thinned is read on, so the scorer
+  // is handed `limit` servable postings whenever the board has them.
+  const { rows: jobs } = await fillProxiedPage(fitBody, r, startedAt, limit, 0);
   const ids = jobs.map((j) => String(j.id)).slice(0, 20);
   let fits: Record<string, number | null> = {}, matched: Record<string, string[]> = {}, missing: Record<string, string[]> = {};
   if (ids.length) {
@@ -2351,10 +2927,20 @@ async function fitResumeScored(
     // The scorer answered for these rows: this call is spent.
     markScored();
   }
+  // A federal row carries what /v1/jobs gives it (v1Row), and the body names
+  // OPM's credit with the date the board last read the feed.
+  const fedOf = (j: Record<string, unknown>) => {
+    if (!isFederal(j.source)) return {};
+    const v = v1Row({ id: j.id, source: j.source, company: j.company, apply_url: j.applyUrl, first_seen: j.first_seen ?? null,
+      closes_at: j.closes_at ?? null, who_may_apply: j.who_may_apply ?? null, hiring_paths: j.hiring_paths ?? null });
+    return { closes_at: v.closes_at, who_may_apply: v.who_may_apply, hiring_paths: v.hiring_paths, federal: v.federal };
+  };
+  const credit = federalMeta(jobs.map((j) => ({ source: j.source, last_verified_at: typeof j.recheckedAt === "string" ? j.recheckedAt : null })));
   return new Response(JSON.stringify({
     apiVersion: API_VERSION, terms, query: q,
+    ...credit,
     data: jobs.map((j) => ({ id: j.id, title: j.title, company: j.company, company_token: j.token, location: j.location,
-      apply_url: j.applyUrl, fit: fits[String(j.id)] ?? null, matched: matched[String(j.id)] ?? [], missing: missing[String(j.id)] ?? [] })),
+      apply_url: j.applyUrl, fit: fits[String(j.id)] ?? null, matched: matched[String(j.id)] ?? [], missing: missing[String(j.id)] ?? [], ...fedOf(j) })),
     // Which allowance scored this call, and what is left of it today. null
     // limits mean the scorer's own per-key ceiling rather than the free one.
     allowance: fitAllowanceBody(gate),
@@ -2551,7 +3137,6 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
   const descRaw = cov<{ source: string; total: number; described: number }>("desc_coverage");
   const dateRaw = cov<{ source: string; total: number; dated: number }>("date_coverage");
   const freshRow = rollup("freshness");
-  const freshV = (freshRow?.v ?? null) as { boards?: unknown; p50_min?: unknown; p95_min?: unknown; max_min?: unknown } | null;
   const quarantined = (((meta("vendor_breaker")?.v ?? {}) as { quarantined?: unknown }).quarantined ?? []) as unknown[];
 
   return json({
@@ -2593,7 +3178,7 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
         sources: [...NO_REDISTRIBUTION_SOURCES],
         reason: NO_REDISTRIBUTION_REASON,
         appliesTo: ["/v1/jobs", "/v1/jobs/{id}", "/v1/changes", "POST /v1/fit"],
-        note: "These sources are counted in every figure on this endpoint, because these are the board's own statistics, and are absent from every row the endpoints above return. Naming one in ?source= answers HTTP 451.",
+        note: "These sources are counted in every figure on this endpoint, because these are the board's own statistics, and are absent from every row the endpoints above return. Naming one in ?source= answers HTTP 451. U.S. federal announcements (usajobs) are counted here too and served by those endpoints once the agency's who-may-apply statement is stored, so a row walk can also fall short by the federal announcements not yet labelled.",
       },
       // THE CLOSURE LOG, PUBLISHED. Every figure here is the one the site shows,
       // read from the same cache, so an API customer and a reader of the page
@@ -2738,16 +3323,10 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
       // posting's own age is posted_at, which the coverage block below reports
       // per source; conflating the two is how "2.8 days" once got published as
       // the median age of an open posting.
-      feedFreshness: freshV && typeof freshV.p95_min === "number"
-        ? {
-            boards: num(freshV.boards),
-            p50Minutes: num(freshV.p50_min),
-            p95Minutes: num(freshV.p95_min),
-            maxMinutes: num(freshV.max_min),
-            asOf: freshRow?.computed_at ?? null,
-            basis: "minutes since each employer feed behind a live posting was last re-verified against the employer's own system. This measures our re-check cadence, NOT how long ago a role was posted.",
-          }
-        : null,
+      // Built by ./feed-freshness.ts (item 9), which answers byte for byte
+      // what this block answered, so the search answers and this one share
+      // one reading of the row.
+      feedFreshness: statsFeedFreshness(freshRow),
       // FROM WHICH SYSTEMS, and how complete each one is. Null, never an empty
       // array, when the rollup row is missing: [] would read as "no sources".
       bySource: {

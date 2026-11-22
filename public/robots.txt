@@ -20,9 +20,19 @@
 # The developer tool at /dev/checkout-test is NOT disallowed: a crawler that
 # may not fetch it can never read its noindex (the app's, and the small page
 # the bake writes there), and a linked URL could still be indexed address-only.
+# Every route under /admin/ is the owner's (today /admin/claims, the claims
+# review): no page links one, and each served the homepage copy, indexable, to
+# a reader that runs no JavaScript (SEO audit 2026-11-18, CRAWL-4), so every
+# group disallows the folder. It is the /admin/ entry of PRIVATE_PREFIXES in
+# src/test/sitemap-prerender-parity.test.ts.
+# No group opens with a line that allows the whole site. Allowing is the
+# default, so the line added nothing, and a reader that obeys the FIRST rule
+# that matches (Python's urllib.robotparser, and small crawlers built on it)
+# stopped there and read every private route below it as allowed. Google,
+# Bing and RFC 9309 take the longest match, which these groups satisfy too;
+# the guard parses this file both ways (SEO audit 2026-11-18, CRAWL-6).
 
 User-agent: Googlebot
-Allow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -37,9 +47,9 @@ Disallow: /oauth/consent
 Disallow: /market-pulse/confirm
 Disallow: /fix-plan/confirm
 Disallow: /email/unsubscribe
+Disallow: /admin/
 
 User-agent: Bingbot
-Allow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -54,6 +64,7 @@ Disallow: /oauth/consent
 Disallow: /market-pulse/confirm
 Disallow: /fix-plan/confirm
 Disallow: /email/unsubscribe
+Disallow: /admin/
 
 # AI / answer engines — explicitly welcome. Our pages are prerendered static
 # HTML with cited sources; being read and cited by these is the point. The
@@ -62,7 +73,6 @@ Disallow: /email/unsubscribe
 # See also: /llms.txt (overview) and /llms-full.txt (full guide text).
 
 User-agent: GPTBot
-Allow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -77,9 +87,9 @@ Disallow: /oauth/consent
 Disallow: /market-pulse/confirm
 Disallow: /fix-plan/confirm
 Disallow: /email/unsubscribe
+Disallow: /admin/
 
 User-agent: OAI-SearchBot
-Allow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -94,9 +104,9 @@ Disallow: /oauth/consent
 Disallow: /market-pulse/confirm
 Disallow: /fix-plan/confirm
 Disallow: /email/unsubscribe
+Disallow: /admin/
 
 User-agent: ChatGPT-User
-Allow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -111,9 +121,9 @@ Disallow: /oauth/consent
 Disallow: /market-pulse/confirm
 Disallow: /fix-plan/confirm
 Disallow: /email/unsubscribe
+Disallow: /admin/
 
 User-agent: ClaudeBot
-Allow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -128,9 +138,9 @@ Disallow: /oauth/consent
 Disallow: /market-pulse/confirm
 Disallow: /fix-plan/confirm
 Disallow: /email/unsubscribe
+Disallow: /admin/
 
 User-agent: Claude-Web
-Allow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -145,9 +155,9 @@ Disallow: /oauth/consent
 Disallow: /market-pulse/confirm
 Disallow: /fix-plan/confirm
 Disallow: /email/unsubscribe
+Disallow: /admin/
 
 User-agent: anthropic-ai
-Allow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -162,9 +172,9 @@ Disallow: /oauth/consent
 Disallow: /market-pulse/confirm
 Disallow: /fix-plan/confirm
 Disallow: /email/unsubscribe
+Disallow: /admin/
 
 User-agent: PerplexityBot
-Allow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -179,9 +189,9 @@ Disallow: /oauth/consent
 Disallow: /market-pulse/confirm
 Disallow: /fix-plan/confirm
 Disallow: /email/unsubscribe
+Disallow: /admin/
 
 User-agent: Google-Extended
-Allow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -196,9 +206,9 @@ Disallow: /oauth/consent
 Disallow: /market-pulse/confirm
 Disallow: /fix-plan/confirm
 Disallow: /email/unsubscribe
+Disallow: /admin/
 
 User-agent: Applebot-Extended
-Allow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -213,9 +223,9 @@ Disallow: /oauth/consent
 Disallow: /market-pulse/confirm
 Disallow: /fix-plan/confirm
 Disallow: /email/unsubscribe
+Disallow: /admin/
 
 User-agent: CCBot
-Allow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -230,11 +240,11 @@ Disallow: /oauth/consent
 Disallow: /market-pulse/confirm
 Disallow: /fix-plan/confirm
 Disallow: /email/unsubscribe
+Disallow: /admin/
 
 # Social preview fetchers
 
 User-agent: Twitterbot
-Allow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -249,9 +259,9 @@ Disallow: /oauth/consent
 Disallow: /market-pulse/confirm
 Disallow: /fix-plan/confirm
 Disallow: /email/unsubscribe
+Disallow: /admin/
 
 User-agent: facebookexternalhit
-Allow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -266,6 +276,7 @@ Disallow: /oauth/consent
 Disallow: /market-pulse/confirm
 Disallow: /fix-plan/confirm
 Disallow: /email/unsubscribe
+Disallow: /admin/
 
 # Meta's AI training crawler. On 2026-10-03 it rendered /jobs as an app from
 # 57.141.0.0/16 and read the job board about 2,400 times an hour, about 85% of
@@ -292,9 +303,9 @@ Disallow: /oauth/consent
 Disallow: /market-pulse/confirm
 Disallow: /fix-plan/confirm
 Disallow: /email/unsubscribe
+Disallow: /admin/
 
 User-agent: *
-Allow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -309,6 +320,7 @@ Disallow: /oauth/consent
 Disallow: /market-pulse/confirm
 Disallow: /fix-plan/confirm
 Disallow: /email/unsubscribe
+Disallow: /admin/
 
 Sitemap: https://resumebooster.work/sitemap.xml
 

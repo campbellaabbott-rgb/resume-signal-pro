@@ -28,8 +28,27 @@ describe("auth and metering ride the existing rails", () => {
     expect(MCP).toMatch(/functions\/v1\/job-board/);
     expect(stripped(MCP), "the MCP layer must hold no more search power than the site: anon key, not service, for the board call")
       .toMatch(/SUPABASE_ANON_KEY/);
-    const reads = stripped(MCP).match(/from\("job_board_postings"\)/g) ?? [];
-    expect(reads.length, "exactly ONE direct corpus read exists — the apply seam's fence-checked posting fetch; search must never grow one").toBe(1);
+    // TWO direct corpus reads, both lookups BY ID behind the serving fences:
+    // the apply seam's posting fetch, and (OD16, 2026-11-19) the federal label
+    // read, which fetches who-may-apply for ids the board itself returned.
+    // Neither may ever filter on text: search stays the board's.
+    const code = stripped(MCP);
+    const sites = [...code.matchAll(/from\("job_board_postings"\)/g)].map((m) => code.slice(m.index ?? 0, (m.index ?? 0) + 260));
+    expect(sites.length, "exactly TWO direct corpus reads exist — the apply seam's posting fetch and the federal label read; search must never grow one").toBe(2);
+    for (const s of sites) {
+      expect(s, "a direct corpus read that is not a lookup by id").toMatch(/\.(eq|in)\("id",/);
+      expect(s, "a direct corpus read that filters on text is a second search engine").not.toMatch(/ilike|textSearch|\.or\(|\.like\(/);
+    }
+    const labels = sites.find((s) => /who_may_apply/.test(s)) ?? "";
+    expect(labels, "the second read is not the federal label read").toMatch(/\.in\("id", fed\)/);
+  });
+
+  it("TEETH: a third read, or a read that searches text, fails the count and the shape", () => {
+    const grown = `${MCP}\nconst q = db().from("job_board_postings").select("id").ilike("title", "%nurse%");\n`;
+    const code = stripped(grown);
+    const sites = [...code.matchAll(/from\("job_board_postings"\)/g)].map((m) => code.slice(m.index ?? 0, (m.index ?? 0) + 260));
+    expect(sites.length).toBe(3);
+    expect(sites.some((s) => /ilike|textSearch|\.or\(|\.like\(/.test(s) && !/\.(eq|in)\("id",/.test(s))).toBe(true);
   });
 
   it("the honesty disclosures pass through — an agent hears what the site hears", () => {
@@ -155,8 +174,13 @@ describe("the MCP transport is spec-honest under hostile input", () => {
   it("a notification never receives a response, before any method branch", () => {
     expect(MCP).toMatch(/if \(isNotification && method !== "notifications\/initialized"/);
   });
-  it("advertises only the batch-free protocol revision it actually implements", () => {
-    expect(MCP).toMatch(/const MCP_PROTOCOL_VERSIONS = \["2025-06-18"\];/);
+  it("advertises the handshake revisions it implements, and reads a batch only where 2025-03-26 allows one", () => {
+    const PROTOCOL = stripped(readFileSync(resolve(__dirname, "../../supabase/functions/agent-mcp/protocol.ts"), "utf8"));
+    expect(PROTOCOL).toMatch(/export const MCP_PROTOCOL_VERSIONS: readonly string\[\] = \["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"\];/);
+    // An array body is read only with no header or a 2025-03-26 one; a header
+    // of 2025-06-18 or later keeps the old 400 (that revision removed batching).
+    expect(PROTOCOL).toMatch(/return v === "" \|\| v === "2025-03-26";/);
+    expect(stripped(MCP)).toMatch(/if \(Array\.isArray\(parsed\)\) \{\s*if \(!batchAllowed\(req\.headers\.get\("mcp-protocol-version"\)\)\) \{\s*return json\(rpcError\(null, -32600, "batching not supported; send one message per request"\), 400\);\s*\}\s*return await answerBatch\(parsed, \(m\) => answer\(req, \{ message: m \}\)\);/);
   });
   it("deny responses carry rate headers and an honest Retry-After", () => {
     expect(MCP).toMatch(/secondsToMidnightUtc\(\)/);

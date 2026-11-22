@@ -9,7 +9,8 @@ import { purchaseLinkFor } from "../_shared/purchase-links.ts";
 // Provable from outside without running a sweep: every response, the CORS
 // preflight included, carries this in x-fn-build.
 // 2026-11-12.1 (bug round of 2026-11-08, part A, full-analysis lane, S14X-220, RC-S13-110): a finished analysis whose mail was refused is resent from its stored copy, and a refused owner alarm or buyer notice is sent first on a later run; only a 400 or 422 from send-product-email gives a buyer's notice up at once.
-const FN_BUILD = "retry-failed-deliveries.2026-11-12.1";
+// 2026-11-21.1 (bug round of 2026-11-19, lane payments-delivery, S10-077): built against the selector that claims what it hands out (20261121130000): two runs at once, the cron's and a visitor's, no longer both mail a saved copy or a failed mail's resend. The selector's call is unchanged; this build is the one the claim was proven with.
+const FN_BUILD = "retry-failed-deliveries.2026-11-21.1";
 
 // HOW LONG THIS SWEEP HOLDS AN ORDER IT MAKES (20261011144000, CP-019). The
 // row is leased before the generator is called: a maker that lost its lease
@@ -428,7 +429,10 @@ serve(async (req) => {
     // row nobody finished, so it asks for them; the old build did not
     // (20261009140000, S11-146). It also handles an order made and never
     // mailed ('generated' or 'content_generated' with no mail sent, 15
-    // minutes on), so it asks for those too (20261011143000, CP-021).
+    // minutes on), so it asks for those too (20261011143000, CP-021). The
+    // rows it is handed are this run's for twenty minutes (20261121130000,
+    // S10-077); whatever it writes on each (delivered, the next try's time,
+    // infinity) replaces that claim.
     const { data: failedDeliveries, error: fetchError } = await supabase
       // Two rows a run (CP-031): each paid generation can take a minute, and
       // five one after another ran past the function's wall clock.
@@ -644,8 +648,12 @@ serve(async (req) => {
           // whose lease is live belongs to another maker (the webhook still
           // making it, or the success page): it is left to them. A row whose
           // lease expired, or that was never leased, is this sweep's now, and
-          // the finish below carries the token. A saved copy needs no lease:
-          // nothing is made, and the mail write names the status it saw.
+          // the finish below carries the token. A saved copy takes no lease,
+          // since nothing is made: what keeps a second run from mailing it
+          // too is the selector's claim (20261121130000, S10-077). The read
+          // that handed this run the row held it for twenty minutes, so a run
+          // started meanwhile, by the cron or by a visitor's POST, is not
+          // handed it.
           if (!savedCopy) {
             const { data: token, error: leaseError } = await supabase.rpc('take_delivery_lease', {
               p_stripe_session_id: delivery.stripe_session_id, p_seen_status: delivery.status, p_minutes: LEASE_MINUTES,

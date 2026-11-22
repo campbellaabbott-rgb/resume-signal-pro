@@ -251,7 +251,7 @@ describe("the route and the generator agree about where a posting lives", () => 
  * Returns the problem, or null.
  */
 type PostingLedgerEntry = { state?: string; carried?: boolean; markupWithheld?: string } | undefined;
-const WITHHELD_REASONS = new Set(["name", "country", "switch"]);
+const WITHHELD_REASONS = new Set(["name", "country", "switch", "unread"]);
 function postingPageProblem(path: string, html: string, entry: PostingLedgerEntry): string | null {
   if (!/<h1>[^<]+<\/h1>/.test(html)) return "no heading";
   // ATTRIBUTES ALLOWED ON THE TAG. The JobPosting block carries the id the
@@ -266,6 +266,9 @@ function postingPageProblem(path: string, html: string, entry: PostingLedgerEntr
     // THE OWNER'S STOP SWITCH (B01) takes the markup off every page, new or
     // carried, and leaves the page: such a page must serve none at all.
     if (withheld === "switch") return blocks.length ? `the ledger says the STOP switch is off and the page serves ${blocks.length} job entities` : null;
+    // A WORKDAY PAGE NOBODY READ AS OPEN (owner decision 2026-11-19) keeps its
+    // page, new or carried, with no job markup at all.
+    if (withheld === "unread") return blocks.length ? `the ledger says no read found it open and the page serves ${blocks.length} job entities` : null;
     if (entry?.carried !== true) return `the ledger withholds its markup (${withheld}) on a page that was not carried: D7 keeps only pages indexable today`;
     if (blocks.length !== 0) return `the ledger says its markup is withheld (${withheld}) and the page serves ${blocks.length} job entities`;
     if (withheld === "name" && !/<p>The employer\b/.test(html)) return "the ledger withholds its markup for the employer's name, and the page still prints a name";
@@ -305,6 +308,8 @@ describe("a posting page is judged by its own heading and markup, or by the reas
 
   it("passes any page, new or carried, that the owner's STOP switch keeps without markup, and fails one that still serves it", () => {
     expect(postingPageProblem(P, page(crumbs, "<p>ThePlace — Lagos</p>"), { state: "live", carried: false, markupWithheld: "switch" })).toBeNull();
+    expect(postingPageProblem(P, page(crumbs, "<p>ThePlace — Lagos</p>"), { state: "live", carried: false, markupWithheld: "unread" })).toBeNull();
+    expect(postingPageProblem(P, page(ld(`${SITE}${P}`) + crumbs, "<p>ThePlace — Lagos</p>"), { state: "live", carried: true, markupWithheld: "unread" })).toMatch(/no read found it open/);
     expect(postingPageProblem(P, page(ld(`${SITE}${P}`) + crumbs, "<p>ThePlace — Lagos</p>"), { state: "live", carried: true, markupWithheld: "switch" })).toMatch(/STOP switch is off and the page serves 1/);
   });
 

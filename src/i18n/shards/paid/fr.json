@@ -27,6 +27,7 @@
       "jobDescription": "Cette fois, l'analyse n'a pas pu comparer votre CV à l'offre d'emploi : cette partie est donc absente. Tout le reste de l'analyse est complet.",
       "linkedIn": "Cette fois, l'analyse n'a pas pu examiner votre profil LinkedIn : cette partie est donc absente. Tout le reste de l'analyse est complet."
     },
+    "alsoAskedInPosting": "Également demandé dans l'offre",
     "page": {
       "emailSentTitle": "E-mail envoyé",
       "emailSentBody": "Une copie a été envoyée à votre adresse e-mail",

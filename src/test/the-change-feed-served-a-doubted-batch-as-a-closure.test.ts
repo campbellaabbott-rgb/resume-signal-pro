@@ -63,6 +63,14 @@ class Query implements PromiseLike<{ data: Row[]; error: null }> {
     return this;
   }
   or(expr: string) {
+    // The federal gate opened[] binds since OD16 (public-api 2026-11-19.1):
+    // a row not from that vendor, or one whose statement column is stored.
+    const gate = /^(\w+)\.neq\.([\w-]+),(\w+)\.not\.is\.null$/.exec(expr);
+    if (gate) {
+      const [, col, vendor, stored] = gate;
+      this.preds.push((r) => (r[col] != null && String(r[col]) !== vendor) || (r[stored] ?? null) !== null);
+      return this;
+    }
     const m = /^(\w+)\.gt\.(.+?),and\(\1\.eq\.\2,(\w+)\.gt\.(.+)\)$/.exec(expr);
     if (!m) throw new Error(`fake: or(${expr})`);
     const [, a, av, b, bv] = m;

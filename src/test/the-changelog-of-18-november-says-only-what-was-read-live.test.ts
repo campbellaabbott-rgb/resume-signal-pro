@@ -718,15 +718,18 @@ describe("the same numbers and the live labels in every language", () => {
 });
 
 describe("what the entries name is what the code holds", () => {
-  it("the free scan's list offers 52 countries, the CV standards pages cover four more, and a kept report lives 30 minutes in the tab", () => {
+  // The entry's 52 were the list on 18 November. The four wider-GCC pages it
+  // left on auto-detect (Kuwait, Qatar, Bahrain, Oman) joined the list later
+  // (S14X-032 recheck, 2026-11-21), so every page now opens on its market.
+  it("the free scan's list offers the entry's 52 countries and now every CV standards page's market, and a kept report lives 30 minutes in the tab", () => {
     const markets = source("src/config/scan-markets.ts");
     const list = /const MARKETS[^=]*=\s*\[([\s\S]*?)\n\];/.exec(markets)?.[1] ?? "";
     const codes = [...list.matchAll(/\["([A-Z]{2})",/g)].map((m) => m[1]);
-    expect(codes).toHaveLength(52);
+    expect(codes).toHaveLength(56);
     const slugs = /export const COUNTRY_SLUGS[^{]*\{([\s\S]*?)\n\};/.exec(source("src/data/cv-standards-content.ts"))?.[1] ?? "";
     const pages = [...slugs.matchAll(/\b([A-Z]{2}):\s*"/g)].map((m) => m[1]);
     expect(pages).toHaveLength(56);
-    expect(pages.filter((c) => !codes.includes(c)).sort(), "the pages that open the scan on auto-detect").toEqual(["BH", "KW", "OM", "QA"]);
+    expect(pages.filter((c) => !codes.includes(c)).sort(), "the pages that open the scan on auto-detect").toEqual([]);
     const index = source("src/pages/Index.tsx");
     expect(index).toMatch(/const PENDING_REPORT_MAX_MS = 30 \* 60 \* 1000;/);
     expect(index).toMatch(/sessionStorage\.setItem\(PENDING_REPORT_KEY/);
