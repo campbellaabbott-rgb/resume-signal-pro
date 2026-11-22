@@ -134,10 +134,20 @@ describe("the selector hands a stuck generation only to a sweep that asks (S11-1
       INSERT INTO public.product_deliveries (stripe_session_id, product_type, status, created_at, content_generation_started_at) VALUES
         ('gen_stuck', 'cover_letter', 'generating', now() - interval '3 hours', now() - interval '3 hours'),
         ('real_failure', 'cover_letter', 'generation_failed', now() - interval '1 hour', NULL);`);
-    const live = await pg.query<{ stripe_session_id: string }>("SELECT stripe_session_id FROM public.get_failed_deliveries_for_retry(p_limit => 5)");
-    expect(live.rows.map((r) => r.stripe_session_id), "the live sweep would hold its batch with a row it cannot finish").toEqual(["real_failure"]);
-    const next = await pg.query<{ stripe_session_id: string }>("SELECT stripe_session_id FROM public.get_failed_deliveries_for_retry(p_limit => 5, p_include_generating => true)");
-    expect(next.rows.map((r) => r.stripe_session_id)).toEqual(["gen_stuck", "real_failure"]);
+    // Each call is asked of the same rows: the selector claims what it hands
+    // out (20261121130000, S10-077), so each runs in a transaction rolled back.
+    const ask = async (sql: string) => {
+      await pg.exec("BEGIN");
+      try {
+        return (await pg.query<{ stripe_session_id: string }>(sql)).rows.map((r) => r.stripe_session_id);
+      } finally {
+        await pg.exec("ROLLBACK");
+      }
+    };
+    const live = await ask("SELECT stripe_session_id FROM public.get_failed_deliveries_for_retry(p_limit => 5)");
+    expect(live, "the live sweep would hold its batch with a row it cannot finish").toEqual(["real_failure"]);
+    const next = await ask("SELECT stripe_session_id FROM public.get_failed_deliveries_for_retry(p_limit => 5, p_include_generating => true)");
+    expect(next).toEqual(["gen_stuck", "real_failure"]);
     await pg.close();
   });
 });

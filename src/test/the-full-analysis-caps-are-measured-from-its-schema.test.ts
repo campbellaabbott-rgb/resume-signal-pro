@@ -188,8 +188,10 @@ describe("the split is the old schema, cut once", () => {
 
   it("a part's reply is deliverable only with what that part was asked for", () => {
     const [core, linkedin, posting] = analysisParts(true, true);
-    expect(usablePart(core, { optimizedBullets: [1], actionVerbs: [1], keywords: [1], redFlags: [] })).toBe(true);
-    expect(usablePart(core, { optimizedBullets: [1], actionVerbs: [1], keywords: [1] })).toBe(false);
+    // The core also needs a real ATS score (S11-069; an-analysis-without-a-score-is-not-delivered-as-zero).
+    expect(usablePart(core, { optimizedBullets: [1], actionVerbs: [1], keywords: [1], redFlags: [], atsScore: { score: 70 } })).toBe(true);
+    expect(usablePart(core, { optimizedBullets: [1], actionVerbs: [1], keywords: [1], redFlags: [] })).toBe(false);
+    expect(usablePart(core, { optimizedBullets: [1], actionVerbs: [1], keywords: [1], atsScore: { score: 70 } })).toBe(false);
     expect(usablePart(linkedin, { linkedInAnalysis: {} })).toBe(true);
     expect(usablePart(linkedin, { jobDescriptionAlignment: {} })).toBe(false);
     expect(usablePart(posting, { jobDescriptionAlignment: {} })).toBe(true);

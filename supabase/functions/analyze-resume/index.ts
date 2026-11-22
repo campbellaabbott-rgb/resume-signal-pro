@@ -6,6 +6,7 @@ import {
   ANALYSIS_TOOL_NAME,
   PRO_ATTEMPT_MS,
   analysisParts,
+  atsScoreOf,
   mergeParts,
   readToolReply,
   usablePart,
@@ -132,7 +133,8 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 // cost/ai and cost/ci-edge each stamped 2026-11-10.3 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
 // 2026-11-12.1 (bug round of 2026-11-08, part A, full-analysis lane, S14X-220, RC-S13-048, S14X-110, S14X-041, S14X-042; payments lane, S14X-078, through the shared plan module): the order closes only once its mail is sent or refused, every refusal has a code and every outage is a retryable 503, a missing section is named, a named claim stores no address, the résumé's language is read by the free scanner's detector, and a grant minted in a paid month stays redeemable.
-const FN_BUILD = "analyze-resume.2026-11-12.1";
+// 2026-11-21.1 (bug round of 2026-11-19, lane payments-delivery, S9-030, S11-069): a Pro grant that was taken back no longer hands back its stored analysis, and a core reply with no real ATS score is not delivered as 0/100: the next model is asked, and when none gives one the answer is a retryable 503 with nothing redeemed.
+const FN_BUILD = "analyze-resume.2026-11-21.1";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -331,6 +333,27 @@ async function analysisAlreadyDelivered(supabase: any, shareId: string | null): 
   );
 }
 
+/**
+ * Was this Pro grant taken back (a refunded or disputed month of the plan
+ * behind it)? Asked before a grant's stored analysis is handed back (S9-030).
+ * A read that fails answers false, as sessionWasRefunded does for a session:
+ * a refund is a rare correction, and a database hiccup must not refuse every
+ * member opening what they already received.
+ */
+async function proGrantRevoked(supabase: any, grantId: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.from('pro_grants').select('revoked_at').eq('id', grantId).maybeSingle();
+    if (error) {
+      console.error("[ANALYZE-RESUME] The grant's revocation could not be read; answering from the stored copy:", error);
+      return false;
+    }
+    return !!data?.revoked_at;
+  } catch (e) {
+    console.error("[ANALYZE-RESUME] The grant's revocation could not be read; answering from the stored copy:", e);
+    return false;
+  }
+}
+
 // Retry helper for API calls with exponential backoff
 const MAX_AI_RETRIES = 3;
 const INITIAL_RETRY_DELAY_MS = 1000;
@@ -499,7 +522,10 @@ async function askPart(apiKey: string, part: AnalysisPart, systemPrompt: string,
     i = models.indexOf(modelUsed) + 1;
     if (i <= 0) break;
   }
-  throw new PartAnswer(answer(500, ERROR_MESSAGES.INTERNAL));
+  // EVERY MODEL ANSWERED, NONE USABLY (S11-069): a retryable 503, nothing
+  // redeemed, so the page asks again. It was a bare 500 the page read as an
+  // error to report, for a purchase a second try delivers.
+  throw new PartAnswer(unavailable('analysis_unusable'));
 }
 
 const failureNote = (failure: unknown): string =>
@@ -665,6 +691,18 @@ serve(async (req) => {
     }
     const prior = priorRedemptionOf(deliveredLookup.data, claimLookup.data);
     if (prior.state === 'delivered') {
+      // A PRO GRANT TAKEN BACK HANDS BACK NOTHING (S9-030). sessionWasRefunded
+      // reads only Checkout session and payment ids, so a pro_ grant read as
+      // clear and its stored analysis was handed back after a refund of the
+      // month behind it revoked the grant. The grant's own revoked_at is
+      // asked here, before the stored copy is.
+      if (ref.kind === "pro" && await proGrantRevoked(supabase, ref.grantId)) {
+        console.log(`[ANALYZE-RESUME] Grant ${ref.grantId} was revoked; its stored analysis is not handed back`);
+        return new Response(
+          JSON.stringify({ error: REFUNDED_PURCHASE_MESSAGE, code: REFUSED.refunded }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       console.log(`[ANALYZE-RESUME] Session ${sessionId} already has its analysis; returning it`);
       return await analysisAlreadyDelivered(supabase, prior.shareId);
     }
@@ -1445,10 +1483,13 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
     }
     console.log("[ANALYZE-RESUME] AI response received");
 
-    // Ensure all fields have defaults
+    // Ensure all fields have defaults. The ATS score has none (S11-069): the
+    // core part is delivered only with a real one (usablePart), and a reply
+    // without it was given 0 and sold as 0/100. A score written as a string
+    // goes out as the number it holds.
     analysis.industry = analysis.industry || "General";
     analysis.experienceLevel = analysis.experienceLevel || "mid";
-    analysis.atsScore = analysis.atsScore || { score: 0, breakdown: { keywordMatch: 0, formatting: 0, structure: 0, relevance: 0 }, improvements: [] };
+    analysis.atsScore = { ...analysis.atsScore, score: atsScoreOf(analysis) };
     analysis.readabilityMetrics = analysis.readabilityMetrics || { grade: "C", bulletPointClarity: "", jargonLevel: "moderate", suggestions: [] };
     analysis.formatRecommendations = analysis.formatRecommendations || { currentIssues: [], recommendations: [], sectionOrder: [] };
     analysis.atsParsingIssues = analysis.atsParsingIssues || { detectedIssues: [], severity: "low", criticalFixes: [] };

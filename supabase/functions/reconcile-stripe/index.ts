@@ -70,7 +70,10 @@ import { buyerEmailOf } from "../_shared/buyer-email.ts";
 // order row, never from the claim marker alone.
 // Also 2026-11-03.1 (audit-rest held mail): the run keeps a clock, so its mail
 // and its stamp always happen and what is left waits for the next run.
-const BUILD_VERSION = "2026-11-03.1";
+// 2026-11-21.1 (bug round of 2026-11-19, lane payments-delivery, S10-082):
+// the marker read's error is read, the ids go 100 at a time, and a run whose
+// read failed judges no orphan (no false alarm, no re-delivery) and says so.
+const BUILD_VERSION = "2026-11-21.1";
 const FN_BUILD = `reconcile-stripe.${BUILD_VERSION}`;
 
 const MAX_PAGES = 20;
@@ -92,6 +95,8 @@ const RUN_BUDGET_MS = 90_000;
 const RUN_HARD_MS = 105_000;
 /** One attempt at the owner's mail; the SDK's send takes no signal. */
 const MAIL_ATTEMPT_MS = 10_000;
+/** Session ids per marker read: one list of every id grows the request past what one read carries. */
+const MARKER_READ_CHUNK = 100;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -192,18 +197,36 @@ serve(async (req) => {
       startingAfter = res.data[res.data.length - 1].id;
     }
 
-    // Which of those paid sessions have a fulfilment marker?
+    // Which of those paid sessions have a fulfilment marker? (S10-082.) The
+    // read's error was dropped, and every id went in one list, which 48
+    // hours of sales can grow past what one request carries: a read that
+    // failed left no marker, every paid session in the lookback counted as
+    // an orphan, each was re-sent to the webhook and the owner was mailed a
+    // false alarm. Now the ids go MARKER_READ_CHUNK at a time, and a run
+    // with any read that failed judges no orphan at all: it says so in its
+    // answer and its stamp, and the next run reads them again.
     const markers = new Set<string>();
-    if (paid.length > 0) {
-      const ids = paid.map((p) => p.id);
-      const { data: rows } = await supabase
-        .from("used_stripe_sessions")
-        .select("session_id")
-        .in("session_id", ids);
-      for (const r of (rows ?? []) as Array<{ session_id: string }>) markers.add(r.session_id);
+    let markerReadFailed = false;
+    const ids = paid.map((p) => p.id);
+    for (let i = 0; i < ids.length && !markerReadFailed; i += MARKER_READ_CHUNK) {
+      try {
+        const { data: rows, error: markerError } = await supabase
+          .from("used_stripe_sessions")
+          .select("session_id")
+          .in("session_id", ids.slice(i, i + MARKER_READ_CHUNK));
+        if (markerError) {
+          markerReadFailed = true;
+          console.error("[RECONCILE-STRIPE] marker read failed; no orphan is judged this run:", String(markerError.message ?? markerError).slice(0, 160));
+          break;
+        }
+        for (const r of (rows ?? []) as Array<{ session_id: string }>) markers.add(r.session_id);
+      } catch (e) {
+        markerReadFailed = true;
+        console.error("[RECONCILE-STRIPE] marker read failed; no orphan is judged this run:", e);
+      }
     }
 
-    const orphans = findOrphanSessions(paid, markers);
+    const orphans = markerReadFailed ? [] : findOrphanSessions(paid, markers);
 
     // RE-DELIVER EACH ORPHAN (S13-028). What happened to each, for the mail.
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
@@ -314,7 +337,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`[RECONCILE-STRIPE] ${paid.length} paid sessions over ${lookbackHours}h, ${orphans.length} orphan(s), ${redelivered} delivered, ${failedAfterClaim} failed after the claim, ${inProgress} still generating, ${deferred} left for the next run, list cut: ${listCut}, ${elapsed()} ms`);
+    console.log(`[RECONCILE-STRIPE] ${paid.length} paid sessions over ${lookbackHours}h, ${orphans.length} orphan(s), ${redelivered} delivered, ${failedAfterClaim} failed after the claim, ${inProgress} still generating, ${deferred} left for the next run, list cut: ${listCut}, marker read failed: ${markerReadFailed}, ${elapsed()} ms`);
 
     // WHAT THE LAST SWEEP SAW, so a healthy result stops being indistinguishable
     // from no result. Counts only — session ids, addresses and amounts stay in
@@ -329,7 +352,7 @@ serve(async (req) => {
       await supabase.from("job_board_meta").upsert({
         k: "reconcile_stripe_run",
         v: { at: stampedAt, buildVersion: BUILD_VERSION, checkedPaid: paid.length,
-             orphans: orphans.length, redelivered, inProgress, failedAfterClaim, deferred, listCut, alerted, lookbackHours },
+             orphans: orphans.length, redelivered, inProgress, failedAfterClaim, deferred, listCut, alerted, lookbackHours, markerReadFailed },
         updated_at: stampedAt,
       }, { onConflict: "k" });
     } catch (e) {
@@ -338,9 +361,10 @@ serve(async (req) => {
       console.error("[RECONCILE-STRIPE] run stamp failed:", e);
     }
 
-    // Counts only — never PII.
+    // Counts only — never PII. A run that could not read the markers judged
+    // nothing, so it answers 503: the cron's refusal count sees it.
     return json({ checkedPaid: paid.length, orphans: orphans.length, redelivered, inProgress, failedAfterClaim, deferred, listCut, alerted, lookbackHours,
-                  buildVersion: BUILD_VERSION, at: stampedAt });
+                  markerReadFailed, buildVersion: BUILD_VERSION, at: stampedAt }, markerReadFailed ? 503 : 200);
   } catch (e) {
     console.error("[RECONCILE-STRIPE] error:", e);
     return json({ error: "reconciliation failed" }, 500);
