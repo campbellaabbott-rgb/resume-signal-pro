@@ -1,3 +1,5 @@
+-- lovable-cron-fallback-reviewed: no cron; this file schedules no job and changes none (reviewed 2026-11-21 in the connector-errors lane).
+--
 -- A CALL COUNT NAMES A CORRECTED OR REFUSABLE SEARCH.
 --
 -- WHAT WAS MISSING. Owner decision D3 (mcp-upgrade-3-2026-11-16, recorded
