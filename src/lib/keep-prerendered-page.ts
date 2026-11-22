@@ -38,15 +38,29 @@
 export const APP_MOUNT_ATTRIBUTE = "data-app-mount";
 
 /**
+ * A ROUTE THAT IS STILL WAITING FOR ITS PAGE (PERFORMANCE-5). The posting
+ * page's first commit was its header, its breadcrumb and a spinner while its
+ * one detail read was in flight, and that commit took the baked posting off
+ * the screen: the text went from 7,871 characters to 669 and back for 0.6 to
+ * 1.6 s, and a slow or refused read left the reader less than the file they
+ * were sent. A route that renders this attribute on an element of its tree
+ * (the posting page puts it on a hidden <main>) has not committed its page,
+ * whatever else it drew, and the baked page stays until the attribute goes.
+ */
+export const ROUTE_PENDING_ATTRIBUTE = "data-route-pending";
+
+/**
  * True once React's tree holds a page: a route's first real commit, or the
  * error boundary's screen. That is a <main>, <h1> or <header> anywhere in it,
  * or any element of its own in the flow with a height: a page whose first
  * commit is a loading spinner (the affiliate dashboard's) counts, so React's
  * page never sits above a baked one. The chrome outside the route boundary
  * never counts: the toaster region has no height and the help button and the
- * sign-in banners are fixed.
+ * sign-in banners are fixed. A tree holding the pending mark is not a page
+ * yet, and that is asked first: a pending route may also hold a header.
  */
 export function routeHasCommitted(mount: Element): boolean {
+  if (mount.querySelector(`[${ROUTE_PENDING_ATTRIBUTE}]`)) return false;
   if (mount.querySelector("main, h1, header")) return true;
   const view = mount.ownerDocument?.defaultView;
   for (const child of Array.from(mount.children)) {
@@ -55,6 +69,85 @@ export function routeHasCommitted(mount: Element): boolean {
     if (child.getBoundingClientRect().height > 0) return true;
   }
   return false;
+}
+
+/**
+ * True while a baked page is on screen beside React's mount: the route that
+ * draws over it may hold it there (ROUTE_PENDING_ATTRIBUTE). False on a page
+ * the bake did not write, and after a client-side navigation, where nothing
+ * baked is left to keep and a route shows its own loading state.
+ */
+export function prerenderedPageShowing(doc: Document = document): boolean {
+  const mount = doc.querySelector(`[${APP_MOUNT_ATTRIBUTE}]`);
+  const parent = mount?.parentNode;
+  if (!mount || !parent) return false;
+  return Array.from(parent.childNodes).some((n) => n !== mount && n.nodeType === 1);
+}
+
+/**
+ * WHAT WAS TYPED INTO THE BAKED PAGE (PERFORMANCE-M1). The homepage's baked
+ * search form works before the app has loaded, and anything typed into it
+ * between the first paint (about 2 s on a phone) and React's commit (about
+ * 4.8 s) went with the baked nodes, with its focus. A field is read while the
+ * baked page is still on screen, or from the record taken in the same task
+ * that removes it (a route may draw its form later, after its strings land),
+ * until the route that seeds from it claims it.
+ */
+export interface BakedField {
+  value: string;
+  /** The baked field had the focus. */
+  focused: boolean;
+  /** The caret or selection in it, where the field type keeps one. */
+  selection: [number, number] | null;
+  /** Read from the baked node itself, which is still on screen. */
+  live: boolean;
+}
+
+let bakedNow: ChildNode[] = [];
+const recorded = new Map<string, BakedField>();
+const claimed = new Set<string>();
+
+const FIELD_SELECTOR = "input[id], textarea[id]";
+
+function fieldsIn(nodes: ChildNode[]): Array<HTMLInputElement | HTMLTextAreaElement> {
+  const out: Array<HTMLInputElement | HTMLTextAreaElement> = [];
+  for (const n of nodes) {
+    if (n.nodeType !== 1) continue;
+    const el = n as Element;
+    if (el.matches(FIELD_SELECTOR)) out.push(el as HTMLInputElement);
+    out.push(...Array.from(el.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(FIELD_SELECTOR)));
+  }
+  return out;
+}
+
+function readField(el: HTMLInputElement | HTMLTextAreaElement, live: boolean): BakedField {
+  let selection: [number, number] | null = null;
+  try {
+    if (el.selectionStart !== null && el.selectionEnd !== null) selection = [el.selectionStart, el.selectionEnd];
+  } catch { /* a field type with no caret */ }
+  return { value: el.value, focused: el.ownerDocument.activeElement === el, selection, live };
+}
+
+/** The baked field with this id: what it holds now, or what it held when the baked page left. Null once claimed. */
+export function bakedField(id: string): BakedField | null {
+  if (claimed.has(id)) return null;
+  const el = fieldsIn(bakedNow).find((f) => f.id === id);
+  if (el) return readField(el, true);
+  return recorded.get(id) ?? null;
+}
+
+/** The route has taken the field over: it is never offered again (a later visit to the route starts empty). */
+export function claimBakedField(id: string): void {
+  claimed.add(id);
+  recorded.delete(id);
+}
+
+function recordFields(nodes: ChildNode[]): void {
+  for (const el of fieldsIn(nodes)) {
+    if (!el.id || claimed.has(el.id)) continue;
+    const f = readField(el, false);
+    if (f.value !== "" || f.focused) recorded.set(el.id, f);
+  }
 }
 
 /** The prerendered nodes in `container`: none unless the bake marked the page and wrote markup into it. */
@@ -80,12 +173,19 @@ export function mountBesidePrerendered(
   mount.setAttribute(APP_MOUNT_ATTRIBUTE, "");
   mount.style.display = "contents";
   container.insertBefore(mount, container.firstChild);
+  // One document, one baked page: its fields are offered afresh.
+  bakedNow = baked;
+  recorded.clear();
+  claimed.clear();
   const Observer = doc.defaultView?.MutationObserver ?? MutationObserver;
   const observer = new Observer(() => {
     if (!isReady(mount)) return;
     observer.disconnect();
+    recordFields(baked);
+    bakedNow = [];
     for (const node of baked) if (node.parentNode === container) container.removeChild(node);
   });
-  observer.observe(mount, { childList: true, subtree: true });
+  // The pending mark can leave on its own (an attribute change, no new node).
+  observer.observe(mount, { childList: true, subtree: true, attributes: true, attributeFilter: [ROUTE_PENDING_ATTRIBUTE] });
   return mount;
 }

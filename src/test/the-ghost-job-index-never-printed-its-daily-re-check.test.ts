@@ -99,7 +99,7 @@ describe("verify section 76's S2 line passes the re-check the bake prints", () =
   const page = (body: string) => `<!doctype html><html><head><title>Ghost Job Index</title></head><body><main>${body}</main></body></html>`;
 
   it("the line and the text reader were found in the section", () => {
-    expect(s2Source, "S2's pattern moved: this test no longer reads it").toMatch(/Daily re-check/);
+    expect(s2Source, "S2's pattern moved: this test no longer reads it").toContain("(?:Daily r|R)e-check");
     expect(textOfSource, "76's textOf moved: this test no longer reads it").toMatch(/replace/);
   });
 
@@ -115,6 +115,11 @@ describe("verify section 76's S2 line passes the re-check the bake prints", () =
 
   it("passes the line the live page serves until this round publishes (the date alone)", () => {
     expect(s2(page("<p>Daily re-check: 100% of 117 decided sample postings still live at the source (2026-10-18), drawn evenly across hiring systems.</p>"))).toBe(true);
+  });
+
+  it("passes the line a stale run prints (Re-check:, the run's own date), which the page keeps without the word daily", () => {
+    expect(s2(page("<p>Re-check: 99.1% of 113 decided sample postings still live at the source (n = 113, 95% interval 95.1–99.9%, 2026-10-07), drawn evenly across hiring systems.</p>"))).toBe(true);
+    expect(s2(page("<p>Re-check: 99.1% of 113 decided sample postings still live at the source (n = 113, 95% interval 95.1–99.9%).</p>"))).toBe(false);
   });
 
   it("fails a page with no re-check, an undated one, and one whose n is not the decided count", () => {

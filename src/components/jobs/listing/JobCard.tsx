@@ -75,6 +75,12 @@ export interface JobCardProps {
   ctx: CardContext;
   /** The crawlable address of this posting (the board's /jobs?job=…, or the posting page). */
   href: string;
+  /**
+   * Set when `href` is the posting's own address but the bake wrote no page
+   * for it: a person still opens the posting, and a crawler is asked not to
+   * follow (the rule the employer's name already keeps, SEO-010).
+   */
+  hrefRel?: "nofollow";
   fit?: JobCardFit | null;
   fitKeywords?: { have: string[]; missing: string[] };
   saved?: boolean;
@@ -118,7 +124,7 @@ function Dotted({ items, className }: { items: ReactNode[]; className: string })
 }
 
 export function JobCard({
-  job, ctx, href, fit, fitKeywords, saved, applied, viewed, slots = {}, onOpen, onToggleSave, onCheckFit, checkFitBusy,
+  job, ctx, href, hrefRel, fit, fitKeywords, saved, applied, viewed, slots = {}, onOpen, onToggleSave, onCheckFit, checkFitBusy,
   menu, liProps, now,
 }: JobCardProps) {
   const { t, i18n } = useTranslation();
@@ -190,6 +196,7 @@ export function JobCard({
               <Link
                 to={href}
                 onClick={open}
+                rel={hrefRel}
                 title={title}
                 className={`line-clamp-2 break-words hover:underline focus-visible:underline ${viewed && !ctx.selected ? "text-muted-foreground" : "text-foreground"}`}
               >

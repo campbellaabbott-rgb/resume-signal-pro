@@ -7,6 +7,7 @@ import { APP_FOOTER_LINKS, BAKED_FOOTER_LINKS, BAKED_HEADER_LINKS, DATA_PAGE_LIN
 import { HOME_ROWS_WINDOW_DAYS } from "@/lib/home/rows";
 import { REDATING_SOURCES } from "@/lib/listing/age";
 import { bracketsBalanced } from "../../scripts/prerender-copy.mjs";
+import { EMPLOYMENT_TYPE_LABEL } from "@/components/jobs/posting-page";
 
 /**
  * EVERY URL WE SUBMIT FOR INDEXING MUST SERVE ITS OWN HTML.
@@ -485,7 +486,7 @@ describe.skipIf(skipWithoutDist(built))("B04 (b, c) and B09: what the built page
     if (inWindow.length) expect(rows.length, `${inWindow.length} posting pages dated inside the window, none on the homepage`).toBeGreaterThan(0);
   });
 
-  it("B09: a page's sitemap lastmod is the day its own Article or Dataset says it was modified", () => {
+  it("B09: a page's sitemap lastmod is the day its own Article or Dataset says it was modified (a guide's, never earlier than it)", () => {
     const lastmods = sitemapLastmods();
     const off: string[] = [];
     let dated = 0;
@@ -495,7 +496,10 @@ describe.skipIf(skipWithoutDist(built))("B04 (b, c) and B09: what the built page
       for (const b of jsonLdOf(readFileSync(f, "utf8"))) {
         if ((b["@type"] === "Article" || b["@type"] === "Dataset") && typeof b.dateModified === "string") {
           dated++;
-          if (b.dateModified.slice(0, 10) !== lm) off.push(`${p}: ${b["@type"]} ${b.dateModified} vs sitemap ${lm}`);
+          const day = b.dateModified.slice(0, 10);
+          // STRUCTURED-B10: a guide states the day it prints; the sitemap may date its page later.
+          const ok = p.startsWith("/guides/") ? lm >= day : day === lm;
+          if (!ok) off.push(`${p}: ${b["@type"]} ${b.dateModified} vs sitemap ${lm}`);
         }
       }
     }
@@ -525,5 +529,27 @@ describe.skipIf(skipWithoutDist(built))("B04 (b, c) and B09: what the built page
     expect(h).toMatch(/<meta name="robots" content="noindex/);
     expect(/<title>([\s\S]*?)<\/title>/.exec(h)?.[1]).not.toBe(/<title>([\s\S]*?)<\/title>/.exec(readFileSync(FALLBACK_FILE, "utf8"))?.[1]);
     expect(sitemapPaths().map(norm)).not.toContain(stray);
+  });
+});
+
+// STRUCTURED-B18 (SEO audit 2026-11-18): a job type the markup states is a
+// job type the page prints. Google asks that structured data describe what
+// the page shows; 8 of 8 served pages with an employmentType printed none.
+describe.skipIf(skipWithoutDist(built))("STRUCTURED-B18: every built posting page prints the job type its markup states", () => {
+  it("each employmentType's label is in the page's tag-stripped body", () => {
+    const missing: string[] = [];
+    let typed = 0;
+    for (const p of sitemapPaths().map(norm).filter((x) => x.startsWith("/jobs/posting/"))) {
+      const f = servedFile(p);
+      if (!f) continue;
+      const html = readFileSync(f, "utf8");
+      const job = jsonLdOf(html).find((b) => b["@type"] === "JobPosting");
+      const types = Array.isArray(job?.employmentType) ? job!.employmentType as string[] : typeof job?.employmentType === "string" ? [job.employmentType] : [];
+      if (!types.length) continue;
+      typed++;
+      const body = (/<body[^>]*>([\s\S]*)<\/body>/.exec(html)?.[1] ?? html).replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>]+>/g, " ");
+      for (const t of types) if (!body.includes(EMPLOYMENT_TYPE_LABEL[t] ?? t)) missing.push(`${p}: ${t}`);
+    }
+    if (typed) expect(missing).toEqual([]);
   });
 });

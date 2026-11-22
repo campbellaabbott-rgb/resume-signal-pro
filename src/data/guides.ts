@@ -587,8 +587,8 @@ export const GUIDES: Record<string, Guide> = {
     description:
       "Resume Booster switched its Apply Agent off and sends nothing in your name. Here is how to apply yourself with Claude, ChatGPT or Claude Code instead.",
     tldr:
-      "We switched our Apply Agent off and stopped selling the products built around it: Resume Booster does not send applications for anyone. To apply, connect Claude, ChatGPT or Claude Code at resumebooster.work/agents. Your AI reads the posting and, where the employer's hiring system publishes it, the application form; Resume Booster tells it to ask you the questions that look like they are about you and to draft open answers about your work from your CV. That check reads the question's words and can miss a question about you, even a plainly worded one, so you read every answer before you send and press submit on the employer's own site.",
-    updated: "2026-11-18",
+      "We switched our Apply Agent off and stopped selling the products built around it: Resume Booster does not send applications for anyone. To apply, connect Claude, ChatGPT or Claude Code at resumebooster.work/agents. Your AI reads the posting and, where we read that hiring system's form, the employer's application form; Resume Booster tells it to ask you the questions that look like they are about you and to draft open answers about your work from your CV. That check reads the question's words and can miss a question about you, even a plainly worded one, so you read every answer before you send and press submit on the employer's own site.",
+    updated: "2026-11-21",
     published: "2026-08-05",
     minutes: 5,
     grounding: "Describes what changed, and the apply-yourself flow the connector serves today",
@@ -670,7 +670,7 @@ export const GUIDES: Record<string, Guide> = {
       },
       {
         q: "Can my AI read every employer's application form?",
-        a: "No. It reads the form only where the employer's hiring system publishes it. Everywhere else it reads the posting and gives you the employer's apply link.",
+        a: "No. It reads the form only where we read that hiring system's form, and the guide above names those systems. Everywhere else it reads the posting and gives you the employer's apply link.",
       },
     ],
     related: [

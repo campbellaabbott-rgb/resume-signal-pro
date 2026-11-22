@@ -7,3 +7,7 @@
 # Never fetched by the bake; never pinged.
 # 2026-11-07: listed by WebSearch; 200, homepage copy, index,follow, canonical "/".
 /jobs/company/0ebd29d1-d85b-444e-b36b-430da3d7bc58
+# 2026-11-18 (SEO audit OFFSITE-M1): the same index still lists it, titled 'Roles on the "0ebd29d1-..." board';
+# it now serves a noindex page of its own. The sweep of the index's other company addresses (JSHeldLLC,
+# transperfect, encora10, hpe~wd5~Jobsathpe, recruiting2~SAL1016SALO~3347ce03-ba60-4bdc-8af2-26369c80b18f)
+# found each already in published-company-paths.txt, so none is added here.

@@ -25,13 +25,13 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
   PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
-  bakeLanders, D7_TRUSTED_COMPANY_TOKENS, employerBoardsOf, employerPageOf, pooledMembersOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, freshPoolOrder, postingFreshNameReason, postingPoolWalksOn, postingRowEligible, postingStubEntry, postingStubPage, keptPostingStub, postingStubPageBasis,
+  bakeLanders, D7_TRUSTED_COMPANY_TOKENS, employerBoardsOf, employerPageOf, pooledMembersOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, freshPoolOrder, postingFreshNameReason, postingPoolWalksOn, postingRowEligible, postingStubEntry, postingStubPage, keptPostingStub, postingStubPageBasis, withRetiredMark,
   LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, LLMS_TXT_COMPANIES, companiesLlmsLine, readCompanyIntel, llmsTxtCompaniesCount, duplicateSkeletons, landerBreakers, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
 } from "./prerender-pages.mjs";
 // The once-published pages, the ceiling, the dates and the duplicate groups
 // (SEO-002, SEO-025, SEO-036 and decision 5 of the design upgrade's README).
 import {
-  pageDates, postingCeilingSplit, capPostingEntries, seedPostingLedger, tombstoneHtml,
+  pageDates, withLastmodFloor, postingCeilingSplit, capPostingEntries, seedPostingLedger, tombstoneHtml,
   COUNT_BEARING, companyTokenOf, onceCompanyPaths, companyCarryState, companyLedgerEntry, companyStubPage, duplicateSkeletonGroups, resolveDuplicateGroups,
 } from "./prerender-pages.mjs";
 import { bakeEmployerName, repairEmployerName } from "./prerender-names.mjs";
@@ -46,10 +46,10 @@ import {
   bannedSourcePhrasesIn, orgNode, orgRef, websiteRef, withWebsiteGraph, boardSnapshot, asOfPhrase, ORG_ID, fitSentence,
 } from "./prerender-copy.mjs";
 import { legalBodyFromTsx, legalText } from "./prerender-legal.mjs";
-import { routeChunkPrefix, preloadClosure, fallbackPreloadHtml, fontHeadProblems, modulepreloadTag } from "./prerender-preload.mjs";
+import { routeChunkPrefix, preloadClosure, fallbackPreloadHtml, fontHeadProblems, modulepreloadTag, defersRouteHints, deferredPreloadHtml, dropsSupabasePreconnect, withoutSupabasePreconnect } from "./prerender-preload.mjs";
 // The employer's own answer for each posting, GET only (B01, B06).
-import { EMPLOYER_READ_BUDGET_MS, applyEmployerStatements, distrustImplausibleClosures, employerReadLine, readEmployers, summarizeEmployerReads } from "./employer-reads.mjs";
-import { EMPLOYER_STATED_META, POSTING_CLOSED_META, employerStatedOf, postingClosedOf } from "./employer-statements.mjs";
+import { EMPLOYER_READ_BUDGET_MS, applyEmployerStatements, distrustImplausibleClosures, employerReadAlarms, employerReadLine, readEmployers, summarizeEmployerReads, withoutObligedRemote } from "./employer-reads.mjs";
+import { EMPLOYER_STATED_META, POSTING_CLOSED_META, OPEN_READ_FRESH_HOURS, carriedStatementsOf, checkReadOpenWithin, checkReadsFreshness, earlierCarried, employerStatedList, employerStatedOf, postingClosedOf, statedEndPassed, withCarriedStatements } from "./employer-statements.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 // A BAKE CAN BE POINTED AWAY FROM THE CHECKOUT. PRERENDER_OUT names a
@@ -112,7 +112,7 @@ export const setContent = (html, prefix, value) => putVerbatim(html, new RegExp(
 // (an auth wall, say) and should never be indexed at all.
 export const composeHtml = (
   { path, title, description, content, jsonLd = [], hreflang = null, lang = null, isFallback = false, canonical = null, robots = null, employerStated = null, postingClosed = null },
-  { template, D, esc, shell, preloadFor, publicHref, onTruncated },
+  { template, D, esc, shell, preloadFor, publicHref, onTruncated, routeTailFor = null, skipLinkFor = null },
 ) => {
   // SERP snippets truncate ~160 chars; clamp at a word boundary so no page
   // (current or future) ships an overlong description.
@@ -226,16 +226,32 @@ export const composeHtml = (
   // above them if the template shape ever shifts.
   headExtra += preloadFor(path, { fallback: isFallback });
   html = putVerbatim(html, "</head>", `${headExtra}</head>`);
+  // A PAGE THAT NEVER CALLS SUPABASE OPENS NO CONNECTION TO IT (PERFORMANCE-M2):
+  // the template's preconnect goes, its dns-prefetch stays.
+  if (!isFallback && dropsSupabasePreconnect(path)) html = withoutSupabasePreconnect(html);
+  // /JOBS' AND A FIELD PAGE'S ROUTE CHUNKS START AFTER THE FIRST PAINT
+  // (PERFORMANCE-1): the loader goes at the end of <body>, and preloadFor
+  // wrote no head hint for it.
+  const routeTail = !isFallback && typeof routeTailFor === "function" ? routeTailFor(path) : "";
+  if (routeTail) html = putVerbatim(html, "</body>", `${routeTail}</body>`);
   // A scanner address of "/" ("/#upload", "/?ref=<code>", the mails'
   // outcome and rescan links) is not the homepage either: React sends it to
   // /resume-checker, so the baked board must not stay on screen under the
   // scanner's address, and its home-only blocks must not stay in the
   // scanner's head (review round 2026-10-26). The rule is the route's own
   // (src/lib/scanner-address.ts scannerAddressScript).
+  // SEO-F10 (the owner's option: an address with no baked file is not
+  // indexable): any path other than "/" is told noindex, follow before the
+  // app writes its own head, so an unknown address, a case variant or an
+  // unbaked posting is never an indexable copy of the homepage.
   const clearScript = isFallback
-    ? `<script>if(location.pathname!=="/"||${D.scannerAddressScript()}){var r=document.getElementById("root");if(r)r.innerHTML="";var c=document.querySelector('link[rel="canonical"]');if(c)c.remove();document.querySelectorAll('script[data-home-only]').forEach(function(s){s.remove();});}</script>`
+    ? `<script>if(location.pathname!=="/"||${D.scannerAddressScript()}){var r=document.getElementById("root");if(r)r.innerHTML="";var c=document.querySelector('link[rel="canonical"]');if(c)c.remove();document.querySelectorAll('script[data-home-only]').forEach(function(s){s.remove();});}if(location.pathname!=="/"){var m=document.querySelector('meta[name="robots"]');if(m)m.setAttribute("content","noindex, follow");}</script>`
     : "";
   html = putVerbatim(html, '<div id="root"></div>', `<div id="root">${shell(content, lang)}</div>${clearScript}`);
+  // CONTENT-N4: the template's skip link in the page's own language, marked
+  // with it, as SkipLinkFallback marks the words it puts there.
+  const skip = lang && typeof skipLinkFor === "function" ? skipLinkFor(lang) : null;
+  if (skip) html = html.replace(/(<a href="#main-content"[^>]*)>\s*Skip to main content\s*<\/a>/, (all, open) => `${open} lang="${esc(lang)}">${esc(skip)}</a>`);
   return html;
 };
 
@@ -299,6 +315,34 @@ export function employerStatedCountry(stated, D) {
  * this bake retired (a duplicate, the ceiling, the window's end)
  * (src/test/a-job-page-writes-its-job-markup-only-when-the-bake-would.test.tsx).
  */
+/**
+ * RULE 4'S CLAIMS: ONE PAGE PER JOB (OBS-1, CONTENT-9). The exact keys
+ * (D.postingIdentity: company, title and place; D.postingRequisitionIdentity:
+ * the requisition key under one employer) are claimed for every row; a row
+ * claimed with its description is also compared, by D.postingSameJob, with
+ * every row that comes after it with one. `takenBy` answers the path that
+ * claimed a row's job first, or null.
+ */
+export function postingIdentityClaims(D) {
+  const takenIdentity = new Map();
+  const claimedJobs = [];
+  const identityKeys = (job) => [D.postingIdentity(job), D.postingRequisitionIdentity(job)].filter(Boolean);
+  const sameJobAs = (job, description) => {
+    if (typeof description !== "string") return null;
+    for (const c of claimedJobs) if (D.postingSameJob({ job, description }, c)) return c.path;
+    return null;
+  };
+  const takenBy = (job, description = null) => {
+    for (const k of identityKeys(job)) if (takenIdentity.has(k)) return takenIdentity.get(k);
+    return sameJobAs(job, description);
+  };
+  const claimIdentity = (job, path, description = null) => {
+    for (const k of identityKeys(job)) takenIdentity.set(k, path);
+    if (typeof description === "string") claimedJobs.push({ job, description, path });
+  };
+  return { takenBy, claimIdentity, sameJobAs, claimedJobs };
+}
+
 export function bakePostingPage(row, description, { D, SITE, carried }) {
   const named = D.postingNameVerdict(row);
   // SEO-006: the repaired employer name is the one every part of a posting
@@ -366,32 +410,199 @@ export function withEmployerCountry(page, stated, { D, carried }) {
  * `deadline`), an implausible run of closures is not trusted, and every answer
  * is recorded in `results`. Returns the items to keep, each job carrying what
  * its employer states (applyEmployerStatements) and each item the statements
- * themselves (`stated`, which the page's head hands to the React page), and the
- * items whose employer closed the posting. `readOpts` reaches readEmployers (a
- * test's fetchImpl).
+ * themselves (`stated`, which the page's head hands to the React page), the
+ * items whose employer closed the posting, and the items past the end date
+ * their employer stated (`ended`). `readOpts` reaches readEmployers (a test's
+ * fetchImpl).
+ *
+ * WHAT AN EARLIER READ STATED OUTLIVES A FAILED ONE (SEO audit 2026-11-18,
+ * STRUCTURED-M1): `carriedOf(job)` is the live ledger entry's statements
+ * (carriedStatementsOf), put under today's answer by withCarriedStatements,
+ * so an unknown read keeps the employer's end date, time type and remote
+ * flag, and validThrough never moves past a stated end without a fresh read
+ * stating a later one. A row whose stated end is before `today` is `ended`:
+ * its page retires with basis "employer-stated end".
+ *
+ * THE DAILY CHECK'S CLOSED PAGES (CRAWL-M2): a row whose page is on
+ * `closedAtEmployer` (closedAtEmployerList, from scripts/seo-seed/
+ * closed-at-employer.txt) is closed without a read.
+ *
+ * THE DAILY CHECK'S OTHER ANSWERS (SEO audit 2026-11-18, STRUCTURED-B2):
+ * `checkReads` (employerStatedList, from scripts/seo-seed/employer-stated.txt)
+ * maps a page to what the check last read at its employer. Its statements
+ * join the ledger's under a failed read (earlierCarried: the end date is the
+ * earlier of the two, so validThrough never moves later), and a stated end
+ * already past retires the page as any other.
+ *
+ * A WORKDAY PAGE NOBODY READ AS OPEN CARRIES NO JOB MARKUP (owner decision
+ * 2026-11-19, after B2): when neither this bake's read nor a check read from
+ * the last OPEN_READ_FRESH_HOURS (at `nowMs`) said open, the item is marked
+ * `unread`; the page stays live and indexed, and its JobPosting is withheld
+ * (markupWithheld "unread"). Workday closes most of the board's pages and is
+ * the vendor the bake's own network reads worst. The rule stands only once
+ * the check's answers have reached the bake (the owner's condition): with no
+ * line in employer-stated.txt, `checkReads` is empty and nothing is withheld.
+ * AND ONLY WHILE THEY ARE FRESH (review of 2026-11-21): the file keeps a line
+ * for two weeks but an "open" counts for 36 hours, so a file merged days
+ * before the publish would clear no page and withhold the markup of about
+ * half of all posting pages, not the handful the owner said yes to. When the
+ * file's newest line was read more than OPEN_READ_FRESH_HOURS before
+ * `nowMs` (checkReadsFreshness), no page is marked: every page keeps the
+ * markup it had before the rule, and the bake says so at the WARN tier
+ * (unreadRuleOffNotice).
+ *
+ * Each kept item records this bake's answer as `read` ("open", "unknown"),
+ * which the posting page's own sentence reports (GEO-10).
  */
-export async function askEmployersAbout(list, { D, deadline, results = new Map(), readOpts = {} }) {
-  const raw = await readEmployers(list.map((d) => d.job), { deadline, ...readOpts });
+export async function askEmployersAbout(list, { D, deadline, results = new Map(), readOpts = {}, carriedOf = () => null, closedAtEmployer = null, today = null, checkReads = null, nowMs = Date.now() }) {
+  const unreadRuleOn = checkReadsFreshness(checkReads, nowMs, OPEN_READ_FRESH_HOURS).fresh;
+  const listed = [];
+  const asking = [];
+  for (const d of list) (closedAtEmployer && closedAtEmployer.has(D.postingPagePath(d.job.id)) ? listed : asking).push(d);
+  const raw = await readEmployers(asking.map((d) => d.job), { deadline, ...readOpts });
   const answers = distrustImplausibleClosures(raw);
   for (const [k, v] of answers) results.set(k, v);
   const keep = [];
   const closed = [];
-  for (const d of list) {
+  const ended = [];
+  for (const d of asking) {
     const r = answers.get(d.job.id);
     if (r?.state === "closed") { closed.push(d); continue; }
-    const stated = employerStatedOf(r?.stated);
+    const check = checkReads ? checkReads.get(D.postingPagePath(d.job.id)) ?? null : null;
+    // A remote flag the posting's own text contradicts is not stated
+    // (STRUCTURED-6): "onsite expectation of 3-4 days per month" is not
+    // worked from anywhere, whatever the vendor's field says.
+    const carried = earlierCarried(check?.stated ?? null, carriedOf(d.job));
+    const stated = employerStatedOf(withoutObligedRemote(withCarriedStatements(r?.stated, carried, r?.state ?? "unknown"), d.description));
+    d.read = r?.state === "open" ? "open" : "unknown";
+    if (unreadRuleOn && String(d.job.id ?? "").startsWith("workday:") && d.read !== "open" && !checkReadOpenWithin(check, nowMs, OPEN_READ_FRESH_HOURS)) d.unread = true;
     if (stated) {
       d.job = applyEmployerStatements(d.job, stated, { employmentTypeOf: D.ldEmploymentType });
       d.stated = stated;
     }
+    if (statedEndPassed(stated, today)) { ended.push(d); continue; }
     keep.push(d);
   }
-  return { keep, closed };
+  for (const d of listed) { d.closedBy = "list"; closed.push(d); }
+  return { keep, closed, ended };
+}
+
+/**
+ * THE PAGES THE DAILY CHECK FOUND CLOSED (SEO audit 2026-11-18, CRAWL-M2), as
+ * a person committed them to scripts/seo-seed/closed-at-employer.txt from the
+ * check's standing issue: one "<path> <YYYY-MM-DD> <basis>" a line, "#" for a
+ * comment. CI writes nothing to the site, so this list is how a closure the
+ * check saw reaches the next bake. An entry older than `maxAgeDays` (or dated
+ * after `today`) is ignored: by then the bake's own read has had two weeks to
+ * see it, and a stale line must not retire a page a reposted job reuses.
+ * Returns a Map of path to { date, basis }.
+ */
+export const CLOSED_LIST_MAX_AGE_DAYS = 14;
+export function closedAtEmployerList(text, today, { maxAgeDays = CLOSED_LIST_MAX_AGE_DAYS } = {}) {
+  const out = new Map();
+  const t = Date.parse(`${today}T00:00:00Z`);
+  if (!Number.isFinite(t)) return out;
+  for (const raw of String(text ?? "").split("\n")) {
+    const line = raw.replace(/#.*$/, "").trim();
+    if (!line) continue;
+    const [path, date, basis = "employer"] = line.split(/\s+/);
+    if (!path || !path.startsWith("/jobs/posting/") || !/^\d{4}-\d{2}-\d{2}$/.test(date ?? "")) continue;
+    const age = (t - Date.parse(`${date}T00:00:00Z`)) / 86_400_000;
+    if (!(age >= 0 && age <= maxAgeDays)) continue;
+    out.set(path, { date, basis });
+  }
+  return out;
+}
+
+/**
+ * A LIVE POSTING'S LEDGER ENTRY WITH WHAT ITS EMPLOYER STATED (STRUCTURED-M1):
+ * the end date, time type and remote flag (carriedStatementsOf) the next bake
+ * applies when its own read fails. Returns a new entry; with nothing stated,
+ * the entry as it came.
+ */
+export function withStatedEntry(entry, stated) {
+  const keep = carriedStatementsOf(stated);
+  return keep ? { ...entry, stated: keep } : entry;
+}
+
+/**
+ * THE LIVE POSTING PAGES THE SITEMAP NAMES, as /posting-pages.json (SEO audit
+ * 2026-11-18, CRAWL-M1): { at, live }, the bake's date and the posting paths
+ * of the sitemap's final entries, in its order. Other lanes read this rather
+ * than the sitemap, and a stub (noindex) never enters it because it never
+ * enters the sitemap.
+ */
+/**
+ * /changelog's description, built to fit (SEO audit 2026-11-18, CONTENT-6):
+ * the newest entry's title is clipped first, at a word boundary, so the
+ * 160-character clamp in composeHtml never cuts the sentence mid-clause, and
+ * the "Latest" clause is dropped when fewer than 30 characters of the title
+ * would be left. `latest` is { date, title } or null.
+ */
+export const CHANGELOG_DESC_LEAD = "What changed and when, newest first — including honest postmortems.";
+export function changelogDescription(latest, max = 160) {
+  if (!latest || !latest.title) return "What changed and when, newest first — features, fixes, and honest postmortems.";
+  const lead = `${CHANGELOG_DESC_LEAD} Latest (${latest.date}): `;
+  const title = String(latest.title).replace(/\s+/g, " ").trim().replace(/[.!?…\s]+$/, "");
+  if (lead.length + title.length + 1 <= max) return `${lead}${title}.`;
+  // Room for the clipped title and its ellipsis; cut where a word ends.
+  const room = max - lead.length - 1;
+  let cut = title.slice(0, room + 1);
+  cut = /\s/.test(cut[cut.length - 1] ?? "") ? cut : cut.replace(/\s+\S*$/, "");
+  cut = cut.replace(/[\s,;:—–-]+$/, "");
+  return cut.length >= 30 && cut.length <= room ? `${lead}${cut}…` : CHANGELOG_DESC_LEAD;
+}
+
+export function postingPagesManifest(entries, { today, isPosting, href = (p) => p, about = () => null }) {
+  const live = (Array.isArray(entries) ? entries : []).filter((e) => isPosting(e));
+  // CRAWL18B-4 (SEO audit 2026-11-18): each live page also as a row with the
+  // title and company it prints, its employer board's token and its board
+  // field, so a rendered hub (the homepage, /jobs, a field or company page)
+  // can link the baked pages by name, and a company page its own (the reader,
+  // src/lib/seo/posting-manifest.ts, picks a company page's rows by `token`).
+  // A row has exactly the sitemap's paths; a field the bake did not sort is
+  // null, and a title, company or token it does not know is left out.
+  const rows = live.map((e) => {
+    const a = about(e.path) ?? {};
+    return {
+      path: href(e.path),
+      ...(typeof a.title === "string" && a.title ? { title: a.title } : {}),
+      ...(typeof a.company === "string" && a.company ? { company: a.company } : {}),
+      ...(typeof a.token === "string" && a.token ? { token: a.token } : {}),
+      field: typeof a.field === "string" && a.field ? a.field : null,
+    };
+  });
+  return { at: today, live: live.map((e) => href(e.path)), rows };
+}
+
+/**
+ * WHAT THE MANIFEST SAYS OF EACH PAGE (CRAWL18B-4; review of 2026-11-21: the
+ * rows carried no token, so a company page drew none of its own). A page this
+ * bake wrote is described from `postingsByToken` (its board token, then the
+ * pages under it), its field only when `isLanderField` says the field has a
+ * lander; a page only the ledger knows, from its ledger entry, with no field.
+ * Returns postingPagesManifest's `about`.
+ */
+export function postingManifestAbout(postingsByToken, ledger = {}, isLanderField = () => false) {
+  const about = new Map();
+  for (const [token, list] of postingsByToken ?? []) {
+    for (const p of list ?? []) about.set(p.path, { title: p.title, company: p.company, token, field: p.category && isLanderField(p.category) ? p.category : null });
+  }
+  return (path) => {
+    if (about.has(path)) return about.get(path);
+    const e = ledger?.[path];
+    return e ? { title: e.title, company: e.company, token: e.token ?? null, field: null } : null;
+  };
 }
 
 /** The "no longer listed" page a posting its employer closed gets: state "gone", basis "employer" (B01). */
 export function employerClosedStub(job, D) {
   return { id: job.id, path: D.postingPagePath(job.id), state: "gone", basis: "employer", job, title: job.title, company: job.company };
+}
+
+/** The page a posting past its employer's own stated end date gets (STRUCTURED-M1): state "gone", basis "employer-stated end". */
+export function employerEndedStub(job, D) {
+  return { id: job.id, path: D.postingPagePath(job.id), state: "gone", basis: "employer-stated end", job, title: job.title, company: job.company };
 }
 
 /**
@@ -403,7 +614,174 @@ export function employerClosedStub(job, D) {
 export function postingMarkupWithheld(page) {
   if (page.ld) return null;
   if (page.switchedOff) return "switch";
+  if (page.unread) return "unread";
   return page.nameRefused ? "name" : "country";
+}
+
+/**
+ * A LIVE PAGE WHOSE WORKDAY POSTING NOBODY READ AS OPEN (owner decision
+ * 2026-11-19; askEmployersAbout's `unread`): the page stays, indexable, and
+ * its JobPosting is withheld, with reason "unread" in its ledger entry. Any
+ * other page comes back as it was.
+ */
+export function withUnreadWithheld(page, unread) {
+  if (!unread || !page || !page.live || !page.ld) return page;
+  return { ...page, ld: null, unread: true };
+}
+
+/**
+ * WHAT THE BAKE SAYS WHEN THE CHECK'S FILE IS TOO OLD TO WITHHOLD BY (review
+ * of 2026-11-21): the sentence for its WARN line, or null when the file is
+ * fresh or holds no line (no rule to switch off). `reads` is
+ * employerStatedList's Map, read at `nowMs`.
+ */
+export function unreadRuleOffNotice(reads, nowMs, hours = OPEN_READ_FRESH_HOURS) {
+  const { newest, fresh } = checkReadsFreshness(reads, nowMs, hours);
+  if (fresh || newest === null) return null;
+  const age = Math.round((nowMs - newest) / 3_600_000);
+  return `the unread-Workday rule is OFF for this bake: the newest line in scripts/seo-seed/employer-stated.txt was read ${new Date(newest).toISOString().slice(0, 16)}Z, ${age} h before the bake and past the ${hours} h an open read counts for, so every Workday page keeps the job markup it had before the rule. Merge the daily closure check's newest proposal (branch posting-closure/next-publish) just before a publish to switch it back on.`;
+}
+
+/**
+ * THE POSTING PAGE'S OWN SENTENCE ABOUT HOW IT WAS CHECKED (GEO-10). Every
+ * page said only that it "was checked against the board when it was built";
+ * where this bake's read of the employer's own hiring system answered open, it
+ * says so, dated. `possessiveName` is possessive(nm), `read` the bake's answer.
+ */
+/**
+ * TWO BOARD TOTALS READ TOGETHER AGREE (SEO audit 2026-11-18, GEO-5). One
+ * publish printed 1,024,613 open roles on the Ghost Job Index (the stats
+ * cache) beside 1,005,326 elsewhere (the facets snapshot): each stamped, each
+ * literally true, and two board sizes for one moment to an answer engine.
+ * Returns the warning, or null when the two agree within 1%, when either is
+ * missing, or when they were not read within 30 minutes of each other (then
+ * they measure two moments, and a difference is the board moving).
+ */
+export function boardTotalsWarning({ ghostTotal, ghostAt, boardTotal, boardAt, maxShare = 0.01, windowMs = 30 * 60_000 }) {
+  const a = typeof ghostTotal === "number" && ghostTotal > 0 ? ghostTotal : null;
+  const b = typeof boardTotal === "number" && boardTotal > 0 ? boardTotal : null;
+  const ta = ghostAt == null ? NaN : typeof ghostAt === "number" ? ghostAt : Date.parse(String(ghostAt));
+  const tb = boardAt == null ? NaN : typeof boardAt === "number" ? boardAt : Date.parse(String(boardAt));
+  if (a === null || b === null || !Number.isFinite(ta) || !Number.isFinite(tb)) return null;
+  if (Math.abs(ta - tb) > windowMs) return null;
+  const share = Math.abs(a - b) / Math.max(a, b);
+  if (share <= maxShare) return null;
+  return `two board totals read ${Math.round(Math.abs(ta - tb) / 60_000)} min apart differ by ${(share * 100).toFixed(1)}%: the Ghost Job Index's ${a.toLocaleString("en-US")} open roles (stats cache, ${new Date(ta).toISOString()}) against ${b.toLocaleString("en-US")} (board facets, ${new Date(tb).toISOString()})`;
+}
+
+/**
+ * WHAT THE LLMS FILES SAY THE GHOST JOB INDEX SHOWS, SECTION BY SECTION
+ * (SEO audit 2026-11-18, GEO-4). They promised "how long postings stay up"
+ * and "which employers are actively hiring", which the served page does not
+ * print (the leaderboard is drawn after the page loads). Each clause is now
+ * tied to the H2 the baked page prints for it.
+ */
+export const GHOST_LLMS_SECTIONS = Object.freeze([
+  { clause: "how many roles are open and how old they are by the employer's own date", h2: "What the board holds right now" },
+  { clause: "the closure events its log recorded over 90 days", h2: "What the closure record says" },
+  { clause: "how far behind the re-check of each company's feed runs", h2: "How far behind the re-check rotation is" },
+]);
+export const GHOST_LLMS_CLAUSE = `${GHOST_LLMS_SECTIONS.slice(0, -1).map((x) => x.clause).join(", ")}, and ${GHOST_LLMS_SECTIONS[GHOST_LLMS_SECTIONS.length - 1].clause}`;
+/** The sections GHOST_LLMS_SECTIONS names whose H2 the baked page's figures do not carry. */
+export function ghostSectionsMissing(html) {
+  const text = String(html ?? "");
+  return GHOST_LLMS_SECTIONS.filter((x) => !text.includes(`>${x.h2}</h2>`)).map((x) => x.h2);
+}
+
+/** The benchmarks page's description with no figures to state. */
+export const BENCHMARK_DESCRIPTION_FALLBACK = "Real ATS score benchmarks from our scan log: the overall median and quartiles, per-industry distributions and experience-level medians, not folklore thresholds.";
+/**
+ * THE BENCHMARKS DESCRIPTION LEADS WITH ITS MEDIAN (SEO audit 2026-11-18,
+ * GEO-8): "Median ATS score 55 (middle half 45-58) across 190 scans, as of
+ * <date>", the figures the page's short answer prints, under 160 characters;
+ * the static description when the figures are missing.
+ */
+export function benchmarkDescription(o, asOf) {
+  const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const [median, p25, p75, n] = [num(o?.median), num(o?.p25), num(o?.p75), num(o?.n)];
+  if (median === null || p25 === null || p75 === null || !n) return BENCHMARK_DESCRIPTION_FALLBACK;
+  const day = typeof asOf === "string" && /^\d{4}-\d{2}-\d{2}/.test(asOf) ? asOf.slice(0, 10) : null;
+  const lead = `Median ATS score ${median} (middle half ${p25}-${p75}) across ${n.toLocaleString("en-US")} real resume scans${day ? `, as of ${day}` : ""}.`;
+  const tail = " Per-industry and experience-level benchmarks, not folklore thresholds.";
+  return (lead + tail).length <= 160 ? lead + tail : lead;
+}
+
+/**
+ * THE ONE-STEP ADD TO CLAUDE LINK, IN THE BYTES A CRAWLER READS (SEO audit
+ * 2026-11-18, GEO-12; owner yes). Claude's documented install link opens its
+ * custom-connector dialog with the name and the address filled in; the person
+ * still confirms. Printed only while MCP_ADD_TO_CLAUDE_LIVE is on, and only
+ * with an address; the manual steps stay below it.
+ */
+export function addToClaudeLinkHtml({ live, href, name, esc }) {
+  if (!live || !href) return "";
+  return `<p class="text-sm mb-2"><a href="${esc(href)}" class="text-primary underline font-semibold">Add to Claude</a>: opens Claude's custom-connector dialog with ${esc(name)} and its address filled in; you confirm it there. The steps below do the same by hand.</p>`;
+}
+export function addToClaudeLlms(href) {
+  return href ? ` Add to Claude in one step: ${href} opens Claude's custom-connector dialog with the name and the address filled in; you confirm it there.` : "";
+}
+/** llms.txt with the Add to Claude sentence once, after the server address's sentence; none when `add` is empty. */
+export function withAddToClaudeLine(lt, add) {
+  const out = String(lt).replace(/ Add to Claude in one step: \S+ opens Claude's custom-connector dialog with the name and the address filled in; you confirm it there\./g, "");
+  return add ? out.replace(/(MCP server address \(Streamable HTTP\): \S+ — registry name [^.\s]+(?:\.[^.\s]+)*\.)/, (m) => `${m}${add}`) : out;
+}
+
+/**
+ * THE LICENCE THE PUBLISHED FIGURES CARRY, SAID WHERE A PERSON CITES THEM
+ * (SEO audit 2026-11-18, GEO-6). CC BY 4.0 rode only in the Dataset markup;
+ * the visible "How to cite" lines and the llms-full citation policy now say
+ * it too. Nothing is said until the owner sets a licence.
+ */
+export function citeLicenceHtml(licence) {
+  return licence ? ` Figures on this page: <a href="${licence}" rel="license">CC BY 4.0</a>.` : "";
+}
+export function citeLicenceText(licence) {
+  return licence ? ` The figures on the data pages (the Ghost Job Index, pay transparency, entry-level and hiring-trends pages and the ATS score benchmarks) are published under CC BY 4.0 (${licence}); bulk data through the API is licensed separately.` : "";
+}
+
+/**
+ * THE ROLES A FIELD LANDER NAMES (SEO audit 2026-11-18, OPP-2): the field's
+ * FIELD_ROLES names in their own order, each with the first baked posting
+ * page (newest first) whose title names the role as whole words; a name with
+ * no such page is left out. At most 8, with no counts.
+ */
+export function landerRoleLinks(roles, postings, most = 8) {
+  const words = (t) => ` ${String(t ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()} `;
+  const newestFirst = [...postings].filter((p) => p && p.path && p.title)
+    .sort((a, b) => String(b.postedAt ?? "").localeCompare(String(a.postedAt ?? "")));
+  const out = [];
+  const used = new Set();
+  for (const role of roles) {
+    const want = words(role);
+    if (want.trim() === "") continue;
+    const p = newestFirst.find((x) => !used.has(x.path) && words(x.title).includes(want));
+    if (!p) continue;
+    used.add(p.path);
+    out.push({ role, path: p.path });
+    if (out.length >= most) break;
+  }
+  return out;
+}
+
+/**
+ * THE OTHER BAKED POSTINGS A POSTING PAGE LINKS (SEO audit 2026-11-18,
+ * CONTENT-N2): up to three other live pages, the same employer's first and
+ * then the same field's, newest first within each (ties by path); never the
+ * page itself, never one twice. A posting with neither an employer token nor
+ * a field links none.
+ */
+export function relatedPostingLinks(self, live, most = 3) {
+  const others = (Array.isArray(live) ? live : []).filter((p) => p && p.path && p.title && p.path !== self?.path);
+  const newest = (a, b) => String(b.postedAt ?? "").localeCompare(String(a.postedAt ?? "")) || String(a.path).localeCompare(String(b.path));
+  const sameEmployer = self?.token ? others.filter((p) => p.token === self.token).sort(newest) : [];
+  const sameField = self?.category ? others.filter((p) => p.category === self.category && !(self.token && p.token === self.token)).sort(newest) : [];
+  return [...sameEmployer, ...sameField].slice(0, most);
+}
+
+export function postingCheckedClause(possessiveName, read, today) {
+  return read === "open"
+    ? `this page was built ${today}, when the posting was open on ${possessiveName} own hiring system`
+    : `this page was checked against the board when it was built, ${today}`;
 }
 
 /**
@@ -452,12 +830,17 @@ export { INDUSTRY_KEYWORDS, SUB_INDUSTRY_TAXONOMY } from "../supabase/functions/
 export { ONET_EXPECTATIONS } from "../supabase/functions/free-keyword-scan/onet-expectations";
 export { onetForRole } from "../src/lib/onet-match";
 export { roleListCopy } from "../src/lib/role-page-copy";
-export { ROLE_PAGES, rolesForIndustry } from "../src/data/roles";
+export { ROLE_PAGES, rolesForIndustry, indexableRolesForIndustry, siblingRolePages } from "../src/data/roles";
 export { displayKeyword, industryLabel, inSentence, withArticle } from "../src/lib/seo/display-case";
-export { industryKeywordsHead, roleKeywordsHead } from "../src/lib/seo/keyword-pages";
+export { descriptionKeywords, industryKeywordsHead, roleKeywordsHead } from "../src/lib/seo/keyword-pages";
 export { TOOL_LANDINGS } from "../src/data/tool-landings";
 export { SCAN_RESULTS_WITHIN_SECONDS } from "../src/config/scan-timing";
-export { COMPETITORS } from "../src/data/competitors";
+export { COMPETITORS, competitorWords } from "../src/data/competitors";
+export { FIELD_ROLES } from "../src/data/field-roles";
+export { DEMAND_EMPLOYER_TOKENS, DEMAND_EMPLOYER_MIN_OPEN, DEMAND_EMPLOYER_CAP } from "../src/data/demand-employers";
+export { BOARD_CATEGORY_SLUGS, INDUSTRY_TO_CATEGORY } from "../src/lib/job-board-categories";
+export { BOARD_CATEGORY_LABELS } from "../src/lib/board-category-labels";
+export { relatedIndustries } from "../src/lib/seo/related-industries";
 export { VENDORS } from "../src/data/ats-vendors";
 export { ES_INDUSTRIES, isSpanish, esIndustryTerms, capitalizeFirst } from "../src/data/es-industries";
 export { SCREENER_NOTES } from "../src/data/screener-notes";
@@ -487,11 +870,13 @@ export { BOARD_SOURCE_LIST, SERVING_SOURCE_LIST, SERVING_SOURCES, DORMANT_SOURCE
 export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_TIER_BADGE, MCP_FIT_ALLOWANCE, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../src/config/mcp-tools";
 export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, troubleFix, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_WITHHELD_NOTE, MCP_INSTALL_REPO_URL, MCP_REGISTRY_ENTRY_URL, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, stepSegments, curlInitialize, andList } from "../src/config/mcp-tools";
 export { MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT } from "../src/config/mcp-tools";
-export { MCP_FORMS_ALLOWANCE, MCP_CONNECTOR_NAME } from "../src/config/mcp-tools";
+export { MCP_FORMS_ALLOWANCE, MCP_CONNECTOR_NAME, MCP_ADD_TO_CLAUDE_LIVE, claudeInstallLink } from "../src/config/mcp-tools";
+export { formVendorPhrase, MCP_FORM_VENDORS_ON_CHATGPT } from "../src/config/mcp-tools";
 export { applyYourselfBakeHtml } from "../src/components/agents/apply-yourself-copy";
 export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
 export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingEmployer, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle, postingPageTitleAvoiding, postingPathParts } from "../src/components/jobs/posting-page";
-export { ldEmploymentType, postingJsonLdShape } from "../src/components/jobs/posting-page";
+export { ldEmploymentType, postingJsonLdShape, postingEmploymentTypeLine } from "../src/components/jobs/posting-page";
+export { jdTextOnce, openApplicationTitle, postingMarkupTitle, postingSameJob, postingTitleText } from "../src/components/jobs/posting-page";
 export { JOB_POSTING_MARKUP } from "../src/config/seo-switches";
 export { boardName, employerName, isCodeShapedName, isUnreviewedTenantName, possessive } from "../src/lib/company-display";
 export { systemLabel } from "../src/lib/listing/apply-url";
@@ -584,12 +969,12 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   })();
   const MCP_URL = D.mcpServerUrl(PROJECT_URL);
   const API_BASE = D.publicApiBase(PROJECT_URL);
-  // THE LICENSE THE PUBLISHED NUMBERS ARE OFFERED UNDER: an owner decision
-  // not yet made (SEO-044; the SEO report recommends CC BY 4.0). Empty means
-  // the markup names none, which claims nothing. Declared up here because the
-  // research page's Dataset reads it before the four data pages do.
-  // TODO(owner): set to a license URL, e.g. "https://creativecommons.org/licenses/by/4.0/".
-  const DATA_LICENSE = "";
+  // THE LICENSE THE PUBLISHED NUMBERS ARE OFFERED UNDER: Creative Commons
+  // Attribution 4.0, the owner's option for SEO-F24 (SEO-044 recommended it).
+  // It covers the aggregate figures the five data pages publish, not the
+  // postings the API serves, whose terms /data-api states. Declared up here
+  // because the research page's Dataset reads it before the four data pages do.
+  const DATA_LICENSE = "https://creativecommons.org/licenses/by/4.0/";
   /** The day /research/ats-score-benchmarks first shipped (e39dc448), its Article's datePublished. */
   const RESEARCH_PUBLISHED = "2026-07-06";
   const FREE_KEY_RATE_SENTENCE = `${D.FREE_KEY_RATE_PER_MIN} requests a minute and ${D.MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day per key`;
@@ -609,6 +994,8 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   // whole point of which was to stop being stale silently goes stale in the
   // other direction. Live read or no rewrite.
   let facetsSource = null;
+  /** When the facets answered (GEO-5), or the instant their payload states. */
+  let FACETS_READ_AT = null;
   // THE DAY THE COUNTS THIS BAKE PRINTS WERE TAKEN. A live read is today's; a
   // snapshot-fed build is the day that snapshot was written, and the /explore
   // document says which — a count printed to a crawler with no date basis is
@@ -647,7 +1034,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           });
           if (fr.ok) {
             const j = await fr.json();
-            if (j && typeof j.total === "number" && Array.isArray(j.companiesFacet)) { boardFacets = j; facetsSource = "rpc"; }
+            if (j && typeof j.total === "number" && Array.isArray(j.companiesFacet)) { boardFacets = j; facetsSource = "rpc"; FACETS_READ_AT = Date.now(); }
           }
         } catch { /* retry; offline/slow build ships landers with fallback counts */ }
       }
@@ -720,6 +1107,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
             categoriesFacet: j.categories ?? {},
           };
           facetsSource = "board-function";
+          FACETS_READ_AT = Date.now();
           console.log("[prerender-seo] facets RPC unavailable — using the board function's cached facets");
         } else if (j && Array.isArray(j.companies) && j.companies.length > 100 && !rung2Numbered) {
           console.log("[prerender-seo] board function answered but its facet pass carried no servable per-employer count — falling through to the committed snapshot rather than building count-free selection from nothing");
@@ -1018,6 +1406,27 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       ? P.companyHref
       : (token, query) => `/jobs?company=${encodeURIComponent(String(token ?? ""))}${query ? `&${query}` : ""}`;
     const fieldLabel = typeof P.fieldLabel === "function" ? P.fieldLabel : (slug) => String(slug).replace(/_/g, " ");
+    // CONTENT-N2 (SEO audit 2026-11-18): a field a table names links its
+    // lander when the board has one (P.fieldHref), in the bytes a crawler reads.
+    const fieldHref = typeof P.fieldHref === "function" ? P.fieldHref : () => null;
+    const fieldCell = (slug) => {
+      const href = fieldHref(slug);
+      return href ? `<a href="${esc(href)}">${esc(fieldLabel(slug))}</a>` : esc(fieldLabel(slug));
+    };
+    // RANKED UNDER A SYSTEM CODE (SEO audit 2026-11-18, GEO-11): leaderboard
+    // rows printed "Shusa", "Bne" and "Lapoflove", the boards' own codes. A
+    // row whose printed name is still its board's code (the rule a new
+    // posting page is refused by, with its allowlist of real one-word names)
+    // is left out of the ranking until the names stream names it, and the
+    // bake says which at the WARN tier.
+    const codeNamed = typeof P.codeNamed === "function" ? P.codeNamed : () => false;
+    const codeNamedRows = Array.isArray(P.codeNamedSeen) ? P.codeNamedSeen : [];
+    const codeNamedRow = (c, page) => {
+      const printed = companyName(c.company_token, c.company);
+      if (!codeNamed(c.company_token, printed)) return false;
+      codeNamedRows.push(`${page}: ${printed} (${c.company_token})`);
+      return true;
+    };
     // THE CACHE PUBLISHES WHICH OF ITS OWN PARTS IT COULD NOT RECOMPUTE, and a
     // figure standing on a previous run's value under a fresh "measured at"
     // stamp is a stale claim wearing a current date. When the row says a part
@@ -1118,9 +1527,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       const aStale = aAgeH !== null && aAgeH > 36;
       const aAge = aStale ? (aAgeH >= 48 ? `${Math.floor(aAgeH / 24)} days` : `${Math.round(aAgeH)} hours`) : null;
       const audit = a && num(a.accuracyPct) !== null && num(a.sampled) !== null && aDecided !== null && aAt
-        ? group("The daily re-check", [
+        ? group("The re-check", [
             { value: `${a.accuracyPct}%`, label: `of ${fmt(aDecided)} sampled postings that could be decided were still live at the employer's own source${ciText ? ` (${ciText})` : ""} — ${fmt(a.sampled)} sampled on ${aAt}, ${weighting}` },
-          ], `Daily re-check: ${a.accuracyPct}% of ${fmt(aDecided)} decided sample postings still live at the source (n = ${fmt(aDecided)}${ciText ? `, ${ciText}` : ""}, ${aAt}), ${weighting}. A probe that could not be decided leaves the denominator rather than counting as a pass. ${aStale ? `The re-check is scheduled once a day, but this is the latest run on record, ${aAge} older than this page's build.` : "Run once a day; the live page shows the latest run."}`)
+          ], `${aStale ? "Re-check" : "Daily re-check"}: ${a.accuracyPct}% of ${fmt(aDecided)} decided sample postings still live at the source (n = ${fmt(aDecided)}${ciText ? `, ${ciText}` : ""}, ${aAt}), ${weighting}. A probe that could not be decided leaves the denominator rather than counting as a pass. ${aStale ? `The re-check is scheduled once a day, but this is the latest run on record, ${aAge} older than this page's build.` : "Run once a day; the live page shows the latest run."}`)
         : "";
       const html = stock + audit + lifecycle + fresh;
       if (!html) return unread();
@@ -1178,7 +1587,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         : [];
       const fields = byCat.length
         ? table("Where the early-career openings are", ["Field", "Openings"],
-            byCat.map(([slug, n]) => [`<a href="/jobs?category=${encodeURIComponent(slug)}&amp;experience=entry">${esc(fieldLabel(slug))}</a>`, fmt(n)]),
+            // CONTENT-N2: the field's name links its lander; the count keeps
+            // the board's entry-level facet for that field.
+            byCat.map(([slug, n]) => [fieldCell(slug), `<a href="/jobs?category=${encodeURIComponent(slug)}&amp;experience=entry">${fmt(n)}</a>`]),
             basis)
         : "";
       // THE COLUMN IT IS RANKED ON IS A COLUMN ON THE TABLE. The RPC orders
@@ -1190,6 +1601,8 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       // above 106 above 139 and leave them to guess the rule.
       const rows = leaders
         .filter((c) => c && typeof c.company === "string" && num(c.entry_roles) !== null && num(c.open_roles) > 0)
+        // GEO-11: no row is ranked under its board's system code.
+        .filter((c) => !codeNamedRow(c, "/entry-level-index"))
         .slice(0, 15)
         .map((c) => [
           `<a href="${esc(companyHref(c.company_token, "experience=entry"))}">${esc(companyName(c.company_token, c.company))}</a>`,
@@ -1284,7 +1697,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         .slice(0, 10)
         .map((c) => {
           const d = deltasMature && num(c.prior7) >= 20 ? Math.round((100 * (c.last7 - c.prior7)) / c.prior7) : null;
-          return [esc(fieldLabel(String(c.category))), fmt(c.last7), d === null ? "—" : `${d > 0 ? "+" : ""}${d}%`];
+          return [fieldCell(String(c.category)), fmt(c.last7), d === null ? "—" : `${d > 0 ? "+" : ""}${d}%`];
         });
       const fields = catRows.length
         ? table("Which fields are hiring, last 7 days", ["Field", "New postings", "vs the 7 days before"], catRows,
@@ -1331,7 +1744,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       ], basis);
       const catRows = Array.isArray(p?.categories)
         ? p.categories.filter((c) => isObj(c) && num(c.pay_pct) !== null).slice(0, 10)
-            .map((c) => [esc(fieldLabel(String(c.category))), `${c.pay_pct}%`, fmt(c.total) ?? "—"])
+            .map((c) => [fieldCell(String(c.category)), `${c.pay_pct}%`, fmt(c.total) ?? "—"])
         : [];
       const fields = catRows.length
         ? table("By field", ["Field", "State pay", "Postings"], catRows, `${basis} Fields with fewer than 200 postings are left out rather than shown on a sample too small to read.`)
@@ -1347,7 +1760,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
             `${basis} One row per hiring system the board actually has postings from, taken from the board's own per-source count — a system we can read but hold no rows from has no row here.`)
         : "";
       const companyRows = Array.isArray(p?.top_companies)
-        ? p.top_companies.filter((c) => isObj(c) && typeof c.company === "string" && num(c.pay_pct) !== null).slice(0, 15)
+        ? p.top_companies.filter((c) => isObj(c) && typeof c.company === "string" && num(c.pay_pct) !== null).filter((c) => !codeNamedRow(c, "/pay-transparency")).slice(0, 15)
             .map((c) => [`<a href="${esc(companyHref(c.company_token))}">${esc(companyName(c.company_token, c.company))}</a>`, `${c.pay_pct}%`, fmt(c.total) ?? "—"])
         : [];
       // ONE ROW PER JOB BOARD, AND THE TABLE SAYS SO (S13-049): it ranks per
@@ -1496,15 +1909,33 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   })();
   const readChunk = (f) => readFileSync(join(assetDir, f), "utf8");
   const preloadCache = new Map();
+  // The files a page's route needs: its route chunk and that chunk's static
+  // imports, and Footer, which renders on every prerendered page, so it is
+  // always on the critical path (a route chunk that imports it lists it anyway).
+  const routeFilesFor = (path) => {
+    const prefix = routeChunkPrefix(path);
+    const route = prefix ? chunkFor(prefix) : null;
+    const files = route ? preloadClosure(route, { readChunk, entry: ENTRY_CHUNK }) : [];
+    if (FOOTER_CHUNK && !files.includes(FOOTER_CHUNK)) files.unshift(FOOTER_CHUNK);
+    return files;
+  };
+  // PERFORMANCE-1 (SEO audit 2026-11-18): on /jobs and a field page
+  // (defersRouteHints, the two the lab measured) the same files are written
+  // by a loader at the end of <body> that runs after the first paint
+  // (routeTailFor), and the head carries none of them. Employer and posting
+  // pages keep their head hints (see defersRouteHints for why).
+  const routeTailFor = (path) => {
+    if (!defersRouteHints(path)) return "";
+    const key = `${routeChunkPrefix(path)}|tail`;
+    if (!preloadCache.has(key)) preloadCache.set(key, deferredPreloadHtml(routeFilesFor(path)));
+    return preloadCache.get(key);
+  };
   const preloadFor = (path, { fallback = false } = {}) => {
+    if (!fallback && defersRouteHints(path)) return "";
     const prefix = routeChunkPrefix(path);
     const key = `${prefix}|${fallback ? "fallback" : "page"}`;
     if (!preloadCache.has(key)) {
-      const route = prefix ? chunkFor(prefix) : null;
-      // Footer renders on every prerendered page, so it is always on the
-      // critical path; a route chunk that imports it lists it anyway.
-      const files = route ? preloadClosure(route, { readChunk, entry: ENTRY_CHUNK }) : [];
-      if (FOOTER_CHUNK && !files.includes(FOOTER_CHUNK)) files.unshift(FOOTER_CHUNK);
+      const files = routeFilesFor(path);
       // The root index.html is every unbaked address's page too: its static
       // head names Footer only, and the homepage's chunks are added on "/"
       // alone (fallbackPreloadHtml).
@@ -1575,25 +2006,10 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   const UI_LANGUAGES = new Set(readdirSync(join(root, "src/i18n/locales")).filter((f) => f.endsWith(".json")).map((f) => f.split(/[-.]/)[0])).size;
   // Hoisted from the jobs-lander block: the /explore prerender links the same
   // field pages.
-  const CATEGORY_LANDERS = [
-    ["engineering", "Engineering & IT"],
-    ["data_ai", "Data & AI"],
-    ["design", "Design"],
-    ["product", "Product"],
-    ["marketing", "Marketing & Comms"],
-    ["sales", "Sales & Partnerships"],
-    ["customer", "Customer Success & Support"],
-    ["finance", "Finance & Accounting"],
-    ["legal", "Legal & Compliance"],
-    ["people_hr", "People & Recruiting"],
-    ["operations", "Operations & Logistics"],
-    ["healthcare", "Healthcare & Clinical"],
-    ["science", "Science & Research"],
-    ["education", "Education"],
-    ["hospitality_retail", "Hospitality & Retail"],
-    ["security", "Security & Trust"],
-    ["admin", "Administrative"],
-  ];
+  // The board's own English names for its fields (BOARD_CATEGORY_LABELS,
+  // held equal to the English locale's jobsPage.categories), in the board's
+  // order, so the landers and every page that links them name a field one way.
+  const CATEGORY_LANDERS = D.BOARD_CATEGORY_SLUGS.map((s) => [s, D.BOARD_CATEGORY_LABELS[s]]);
 
   const chip = (text, cls = "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-foreground capitalize") =>
     `<span class="${cls}">${esc(text)}</span>`;
@@ -1631,6 +2047,11 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     "@type": "BreadcrumbList",
     itemListElement: items.map((it, i) => ({ "@type": "ListItem", position: i + 1, name: it.name, item: `${SITE}${it.path}` })),
   });
+  // STRUCTURED-B12 (SEO audit 2026-11-18): the four data pages and
+  // /companies carry Home > page, as a visible trail and as its markup, as
+  // the guides do, so the BreadcrumbList describes a breadcrumb a person sees.
+  const dataPageCrumbs = (name) => breadcrumbNav([{ name: "Home", href: "/" }, { name }]);
+  const dataPageCrumbsLd = (name, path) => breadcrumbLd([{ name: "Home", path: "/" }, { name, path }]);
   const faqLd = (faqs) => ({
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -1648,14 +2069,56 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   // too, each label in the app's English (the main locale). The two typed
   // lists had drifted until the crawler's footer linked none of /guides, the
   // ATS guides, /builder, /data-api or the legal pages.
-  const siteLinkHtml = (link, cls) => `<a href="${link.to}" class="${cls}">${esc(D.siteLinkLabel(link, D.EN_LOCALE))}</a>`;
+  //
+  // A TRANSLATED PAGE'S SHELL IS IN ITS OWN LANGUAGE (SEO audit 2026-11-18,
+  // CONTENT-N4): /fr/normes-cv/france printed "Companies hiring" and
+  // "Pricing" around French text, 19 to 31% of a translated page's words in
+  // English. A page with a `lang` takes that locale's labels (a key it lacks
+  // keeps the English one), as React's Header and Footer now do on the same
+  // addresses (src/lib/locale-from-path.ts).
+  const siteLinkHtml = (link, cls, locale = D.EN_LOCALE) => `<a href="${link.to}" class="${cls}">${esc(D.siteLinkLabel(link, locale))}</a>`;
+  const localeFiles = new Map();
+  const readLocaleJson = (dir, lang) => {
+    const key = `${dir}/${lang}`;
+    if (!localeFiles.has(key)) {
+      let v = null;
+      for (const name of [lang, String(lang).split("-")[0]]) {
+        const f = join(root, dir, `${name}.json`);
+        if (v === null && existsSync(f)) { try { v = JSON.parse(readFileSync(f, "utf8")); } catch { v = null; } }
+      }
+      localeFiles.set(key, v);
+    }
+    return localeFiles.get(key);
+  };
+  const shellLocale = (lang) => (!lang || lang === "en" ? D.EN_LOCALE : readLocaleJson("src/i18n/locales", lang) ?? D.EN_LOCALE);
   const SHELL_HEADER_NAV = D.BAKED_HEADER_LINKS.map((l) => siteLinkHtml(l, "hover:text-foreground")).join("\n          ");
   const SHELL_FOOTER_NAV = D.BAKED_FOOTER_LINKS.map((l) => siteLinkHtml(l, "hover:text-foreground")).join("\n          ");
+  const shellNavs = new Map([["en", { SHELL_HEADER_NAV, SHELL_FOOTER_NAV }]]);
+  /** The header and footer link rows in a page's language (English for a page with none). */
+  const shellNavFor = (lang) => {
+    const k = lang || "en";
+    if (!shellNavs.has(k)) {
+      const loc = shellLocale(lang);
+      shellNavs.set(k, {
+        SHELL_HEADER_NAV: D.BAKED_HEADER_LINKS.map((l) => siteLinkHtml(l, "hover:text-foreground", loc)).join("\n          "),
+        SHELL_FOOTER_NAV: D.BAKED_FOOTER_LINKS.map((l) => siteLinkHtml(l, "hover:text-foreground", loc)).join("\n          "),
+      });
+    }
+    return shellNavs.get(k);
+  };
+  /** The skip link's words in a translated page's language (the site-shell shard), or null to keep the template's English. */
+  const skipLinkFor = (lang) => {
+    if (!lang || lang === "en") return null;
+    const v = readLocaleJson("src/i18n/shards/site-shell", lang)?.siteShell?.skipToMain;
+    return typeof v === "string" && v.trim() ? v : null;
+  };
   // Static shell around page content: simple header/footer so crawlers see
   // site-wide internal links. The SPA replaces all of it on hydration. The
   // header's links wrap: in one row they made every baked page 10-13 px
   // wider than a 320 px phone (review round 2026-10-26).
-  const shell = (contentHtml, lang) => `
+  const shell = (contentHtml, lang) => {
+    const { SHELL_HEADER_NAV, SHELL_FOOTER_NAV } = shellNavFor(lang);
+    return `
     <div class="min-h-screen bg-background" ${lang ? `lang="${lang}"` : ""}>
       <header class="py-4 border-b border-border"><div class="container flex items-center justify-between gap-4">
         <a href="/" class="font-bold text-foreground">Resume Booster</a>
@@ -1671,12 +2134,13 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         ${SELLER_LINE}
       </div></footer>
     </div>`;
+  };
 
   // ---- Write one page ----
   // composeHtml (top of file) does the head and body surgery; this hands it
   // the bake's template and helpers and writes what comes back.
   const renderFile = (page) => {
-    const html = composeHtml(page, { template, D, esc, shell, preloadFor, publicHref, onTruncated: (t) => truncatedDescriptions.push(t) });
+    const html = composeHtml(page, { template, D, esc, shell, preloadFor, publicHref, routeTailFor, skipLinkFor, onTruncated: (t) => truncatedDescriptions.push(t) });
 
     if (page.isFallback) {
       writeFileSync(join(dist, "index.html"), html);
@@ -1747,12 +2211,16 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       legacyFp: contentFingerprint(said),
       stated: typeof page.lastmod === "string" ? page.lastmod : null,
       exact: page.lastmodExact === true,
+      // CRAWL-9: a posting page's lastmod is never before the date its
+      // employer states (the fingerprint is blind to dates, so a re-dated
+      // posting kept the lastmod of its first text).
+      floor: typeof page.lastmodFloor === "string" ? page.lastmodFloor : null,
       // SEO-012: the title, count-blind on a page whose numbers are measured
       // at the build, so IndexNow is told of a page whose title changed and
       // never of a count that moved.
       th: contentFingerprint(String(page.title ?? ""), { blindCounts: COUNT_BEARING(page.path) }),
     };
-    const dates = pageDates({ fp: fpEntry.fp, legacyFp: fpEntry.legacyFp, prior: priorPages[page.path], today: TODAY, stated: fpEntry.stated, exact: fpEntry.exact });
+    const dates = pageDates({ fp: fpEntry.fp, legacyFp: fpEntry.legacyFp, prior: priorPages[page.path], today: TODAY, stated: fpEntry.stated, exact: fpEntry.exact, floor: fpEntry.floor });
     const built = typeof page.jsonLd === "function" ? { ...page, jsonLd: page.jsonLd(dates.lastmod) } : page;
     renderFile(built);
     // Not the posting pages (the employer's own text) and not /changelog (a
@@ -1798,9 +2266,15 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     const certs = uniq(data.certifications).slice(0, 12);
     const onet = D.ONET_EXPECTATIONS[slug];
     const subs = D.SUB_INDUSTRY_TAXONOMY[slug] || [];
-    const roles = D.rolesForIndustry(slug);
+    // Only the field's role pages that stand as their own page (F06,
+    // CONTENT-2): a short spelling names its full-name page as canonical, so
+    // the field links the full-name page, as React's /industries page does.
+    const roles = D.indexableRolesForIndustry(slug);
     const note = D.SCREENER_NOTES[slug];
-    const related = Object.keys(D.INDUSTRY_KEYWORDS).filter((s) => s !== slug).sort().slice(0, 8);
+    // CONTENT-N1: the shared helper, so every industry page is linked by its siblings.
+    const related = D.relatedIndustries(slug, D.INDUSTRY_KEYWORDS, D.INDUSTRY_TO_CATEGORY);
+    // CONTENT-N8: the field lander React links, in the bytes a crawler reads.
+    const fieldSlug = D.INDUSTRY_TO_CATEGORY[slug] ?? null;
     const industryFaqs = D.buildIndustryFaqs({ name, keywords, certifications: certs, screenerNote: note });
     const head = D.industryKeywordsHead(slug, keywords);
     const lower = inSentence(name);
@@ -1821,6 +2295,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Industries", href: "/industries" }, { name }])}
         <h1 class="text-3xl font-bold mb-3">${esc(name)} Resume Keywords &amp; ATS Expectations</h1>
         <p class="text-muted-foreground mb-8">This isn't an article — it's the live data our resume scanner uses to analyze ${esc(lower)} resumes. When the engine improves, this page updates with it.</p>
+        ${fieldSlug ? `<p class="mb-8 -mt-4"><a href="/jobs/field/${fieldSlug}" class="text-primary font-medium">See live ${esc(lower)} openings on the job board →</a> <span class="text-xs text-muted-foreground">pulled from companies' official job boards, re-read through the day</span></p>` : ""}
         ${onetBlock(onet)}
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">Keywords ATS systems expect on ${esc(lower)} resumes</h2>${kwChips(keywords, slug)}</section>
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">Job titles recruiters recognize in this field</h2>${chips(titles.map((t) => displayKeyword(t, slug)), "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>
@@ -1849,10 +2324,18 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     const onet = D.onetForRole(role, D.ONET_EXPECTATIONS[role.industry]);
     const copy = D.roleListCopy(role.title, indName);
     const relatedTitles = uniq(data.titles).filter((t) => t.toLowerCase() !== role.title.toLowerCase()).slice(0, 10);
-    const siblings = D.rolesForIndustry(role.industry).filter((r) => r.slug !== role.slug);
+    // The field's indexable role pages, less this one and the page it defers
+    // to: two spellings of one page link the same set (F06, CONTENT-2).
+    const siblings = D.siblingRolePages(role);
     const head = D.roleKeywordsHead(role.title, role.industry, keywords);
     write({
       path: `/roles/${role.slug}`,
+      // A SHORT SPELLING OF A FULL-NAME PAGE IS THAT PAGE (SEO audit
+      // 2026-11-18, CONTENT-2; F06): /roles/rn printed /roles/registered-nurse's
+      // text word for word, both indexable and self-canonical. It keeps its
+      // address and names the full-name page; write() then keeps it out of the
+      // sitemap. RoleKeywords.tsx names the same canonical.
+      canonical: role.canonicalSlug ? `/roles/${role.canonicalSlug}` : null,
       title: head.title,
       description: head.description,
       jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Industries", path: "/industries" }, { name: indName, path: `/industries/${role.industry}` }, { name: role.title, path: `/roles/${role.slug}` }])],
@@ -1860,10 +2343,11 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Industries", href: "/industries" }, { name: indName, href: `/industries/${role.industry}` }, { name: role.title }])}
         <h1 class="text-3xl font-bold mb-3">${esc(role.title)} Resume Keywords &amp; ATS Expectations</h1>
         <p class="text-muted-foreground mb-8">${esc(copy.intro)}</p>
+        ${D.INDUSTRY_TO_CATEGORY[role.industry] ? `<p class="mb-8 -mt-4"><a href="/jobs/field/${D.INDUSTRY_TO_CATEGORY[role.industry]}" class="text-primary font-medium">Live ${esc(D.BOARD_CATEGORY_LABELS[D.INDUSTRY_TO_CATEGORY[role.industry]])} jobs on the board →</a></p>` : ""}
         ${onetBlock(onet)}
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">${esc(copy.keywordsHeading)}</h2>${kwChips(keywords, role.industry)}</section>
         ${certs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">${esc(copy.certsHeading)}</h2>${chips(certs, "px-2.5 py-1 rounded-lg bg-success/5 border border-success/25 text-sm text-foreground uppercase")}</section>` : ""}
-        ${relatedTitles.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Adjacent titles recruiters search alongside "${esc(role.title)}"</h2>${chips(relatedTitles.map((t) => displayKeyword(t, role.industry)), "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>` : ""}
+        ${relatedTitles.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">${esc(copy.relatedHeading)}</h2>${chips(relatedTitles.map((t) => displayKeyword(t, role.industry)), "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>` : ""}
         ${cta(`Scan your ${inSentence(role.title)} resume against this data — free`, "A full diagnostic report in seconds: missing keywords, ATS parsing, weakest bullets rewritten, and a fix plan. No signup; your resume is deleted within 7 days.", "Scan my resume free")}
         <nav class="mt-8 flex flex-wrap gap-2 text-xs">${siblings.map((r) => pill(`/roles/${r.slug}`, `${r.title} keywords →`)).join("")}${pill(`/industries/${role.industry}`, `All ${indName} keywords →`)}</nav>
         <p class="text-xs text-muted-foreground mt-8">Methodology: these lists come directly from the detection tables our scanner runs on every ${esc(inSentence(indName))} resume, validated by a pinned regression suite. See <a href="/methodology" class="underline">our methodology</a>.</p>`,
@@ -1872,26 +2356,28 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
 
   // ---- /vs/:slug (5) ----
   for (const c of Object.values(D.COMPETITORS)) {
+    // "ChatGPT & Claude" are two products (CONTENT-6): the verbs come from the data.
+    const w = D.competitorWords(c);
     const wins = c.rows.filter((r) => r.usWins);
     const losses = c.rows.filter((r) => !r.usWins);
     const faqs = [
-      { q: `Is Resume Booster a good free alternative to ${c.name}?`, a: `For resume analysis, yes: the free scan is a full diagnostic report with no sign-up. ${c.name} is stronger in other areas, so the honest answer depends on what you need most.` },
+      { q: `Is Resume Booster a good free alternative to ${c.name}?`, a: `For resume analysis, yes: the free scan is a full diagnostic report with no sign-up. ${c.name} ${w.is} stronger in other areas, so the honest answer depends on what you need most.` },
       { q: `Where does Resume Booster beat ${c.name}?`, a: wins.map((r) => `${r.dim}: ${r.us}`).join(" ") },
-      { q: `Where is ${c.name} better than Resume Booster?`, a: losses.length ? losses.map((r) => `${r.dim}: ${r.them}`).join(" ") : `${c.name}'s public product changes over time; run both free tiers and compare.` },
+      { q: `Where ${w.is} ${c.name} better than Resume Booster?`, a: losses.length ? losses.map((r) => `${r.dim}: ${r.them}`).join(" ") : `${c.name}'s ${w.productChanges} over time; run both free tiers and compare.` },
     ];
     write({
       path: `/vs/${c.slug}`,
       title: `Resume Booster vs ${c.name} — An Honest Comparison`,
       description: fitDesc(
-        `How Resume Booster's free diagnostic scan compares to ${c.name}: free-tier depth, score transparency, verified output — and where ${c.name} is genuinely stronger.`,
-        `How Resume Booster's free resume scan compares to ${c.name}: free-tier depth and score transparency, and where ${c.name} is genuinely stronger.`,
-        `How Resume Booster's free resume scan compares to ${c.name}, and where ${c.name} is genuinely stronger.`,
+        `How Resume Booster's free diagnostic scan compares to ${c.name}: free-tier depth, score transparency, verified output — and where ${c.name} ${w.is} genuinely stronger.`,
+        `How Resume Booster's free resume scan compares to ${c.name}: free-tier depth and score transparency, and where ${c.name} ${w.is} genuinely stronger.`,
+        `How Resume Booster's free resume scan compares to ${c.name}, and where ${c.name} ${w.is} genuinely stronger.`,
       ),
       jsonLd: [faqLd(faqs)],
       content: `
         <h1 class="text-3xl font-bold mb-3">Resume Booster vs ${esc(c.name)}</h1>
-        <p class="text-muted-foreground mb-2">${esc(c.intro)} An honest comparison — including the rows where ${esc(c.name)} is stronger. Every claim in our column is verifiable by running one free scan; claims about ${esc(c.name)} reflect their public product as of mid-2026 and may change.</p>
-        <p class="text-xs text-muted-foreground mb-8">${esc(c.name)} is a trademark of its owner; we're not affiliated.</p>
+        <p class="text-muted-foreground mb-2">${esc(c.intro)} An honest comparison — including the rows where ${esc(c.name)} ${w.is} stronger. Every claim in our column is verifiable by running one free scan; claims about ${esc(c.name)} reflect their ${w.product} as of mid-2026 and may change.</p>
+        <p class="text-xs text-muted-foreground mb-8">${esc(c.name)} ${w.trademark}; we're not affiliated.</p>
         <div class="space-y-3 mb-10">${c.rows.map((r) => `
           <div class="rounded-2xl border border-border bg-card p-4">
             <p class="text-xs font-semibold uppercase text-muted-foreground mb-2">${esc(r.dim)}</p>
@@ -1942,7 +2428,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       hreflang: { en: `/industries/${slug}`, es: `/es/industrias/${slug}` },
       title: `Palabras Clave para Currículum de ${name} — Qué Buscan los ATS`.length > 68 ? `Palabras Clave para CV de ${name} — Guía ATS` : `Palabras Clave para Currículum de ${name} — Qué Buscan los ATS`,
       // A snippet opens with a capital (SEO-F16).
-      description: listDesc(esKeywords.slice(0, 5).map((k, i) => (i === 0 ? D.capitalizeFirst(k) : k)), " y más: ", `las palabras clave, títulos y certificaciones que nuestro escáner busca en ${name.toLowerCase()}. Escaneo gratis.`),
+      description: listDesc(D.descriptionKeywords(esKeywords, slug).slice(0, 5).map((k, i) => (i === 0 ? D.capitalizeFirst(k) : k)), " y más: ", `las palabras clave, títulos y certificaciones que nuestro escáner busca en ${name.toLowerCase()}. Escaneo gratis.`),
       // The Spanish pages carried no breadcrumb markup while the English
       // twins did (SEO-034).
       jsonLd: [breadcrumbLd([{ name: "Inicio", path: "/" }, { name: "Industrias", path: "/industries" }, { name, path: `/es/industrias/${slug}` }])],
@@ -1953,6 +2439,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">Términos en español que nuestro motor reconoce</h2>${chips(esKeywords)}</section>
         ${esTitles.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Títulos profesionales reconocidos</h2>${chips(esTitles, "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>` : ""}
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">Términos en inglés que los ATS también esperan</h2>${chips(enKeywords)}</section>
+        ${D.INDUSTRY_TO_CATEGORY[slug] ? `<p class="mb-8"><a href="/jobs/field/${D.INDUSTRY_TO_CATEGORY[slug]}" class="text-primary font-medium">Ver empleos activos de este campo en el tablón →</a> <span class="text-xs text-muted-foreground">extraídos de las bolsas oficiales de las empresas, reverificados todo el día</span></p>` : ""}
         ${cta("Escanea tu currículum gratis — también en español", "Informe diagnóstico completo en segundos: palabras clave faltantes, cómo leen tu archivo los sistemas ATS, tus viñetas más débiles reescritas y un plan de mejoras. Sin registro; tu currículum se borra en un máximo de 7 días.", "Escanear mi currículum gratis", "/es/revisar-curriculum")}
         <nav class="mt-8 flex flex-wrap gap-2 text-xs">${Object.entries(D.ES_INDUSTRIES).filter(([s]) => s !== slug).map(([s, n]) => pill(`/es/industrias/${s}`, `${n} →`)).join("")}${pill("/es/revisar-curriculum", "Revisar mi currículum gratis →")}${pill(`/industries/${slug}`, "English version →")}</nav>`,
     });
@@ -2000,18 +2487,21 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     });
 
     for (const g of guides) {
-      // dateModified is the sitemap's lastmod for this page (write() hands
-      // it in): the later of the guide's committed `updated` and the day its
-      // text last changed (B09, DATE-09: the two disagreed on all nine).
-      const jsonLd = (lastmod) => [{
+      // dateModified is the guide's own `updated`, the day the page prints
+      // beside "Updated" (STRUCTURED-B10: it had been the sitemap's lastmod,
+      // which moves when the page's shell changes, so the markup and the
+      // printed day disagreed on all nine). The sitemap keeps the page-change
+      // day; a guide whose own text changes moves `updated` (the RECORDED
+      // hashes in the guide test).
+      const jsonLd = () => [{
         "@context": "https://schema.org",
         "@type": "Article",
         headline: g.h1,
         description: g.description,
-        // First published, and last changed by the same pageDates result the
-        // sitemap prints, and the share card the page already carries (SD-09).
+        // First published, last changed as the page prints it, and the
+        // share card the page already carries (SD-09).
         datePublished: g.published,
-        dateModified: lastmod,
+        dateModified: g.updated,
         image: `${SITE}${D.GUIDE_ARTICLE_IMAGE_PATH}`,
         // The site's one Organization, by @id (SEO-011a).
         author: orgRef(SITE),
@@ -2093,7 +2583,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       ...(ins?.as_of ? { lastmod: String(ins.as_of).slice(0, 10), lastmodExact: true } : {}),
       title: "What's a Good ATS Score? Live Benchmarks From Real Scans",
       // Under 160 at the source (OBS-2): it was 175 and the clamp cut it.
-      description: "Real ATS score benchmarks from our scan log: the overall median and quartiles, per-industry distributions and experience-level medians, not folklore thresholds.",
+      // GEO-8 (SEO audit 2026-11-18): it leads with the median the page
+      // prints, so a snippet quotes the number that answers the question.
+      description: benchmarkDescription(o, ins?.as_of),
       jsonLd: [
         {
           "@context": "https://schema.org",
@@ -2165,7 +2657,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           <p class="text-sm text-muted-foreground leading-relaxed mb-3">Two caveats we insist on. First, this sample self-selects: people scan resumes when they suspect a problem, so the distribution likely sits below the true population of working professionals. Second, any resume score — ours included — is a model with error bars, not a measurement; <a href="/guides/what-resume-score-means" class="text-primary">what a resume score actually means</a> explains how to read one without being fooled by false precision.</p>
           <p class="text-sm text-muted-foreground leading-relaxed">What the data is good for: ranking yourself against real peers instead of a made-up "75 is passing" threshold, and seeing that industry context matters — the same resume quality scores differently against different keyword expectations. Our <a href="/methodology" class="text-primary">methodology</a> covers how the score itself is computed.</p></section>
         <section class="mb-10"><h2 class="text-xl font-bold mb-4">Common questions</h2><div class="space-y-3">${studyFaqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-4"><h3 class="font-semibold text-foreground text-sm mb-1.5">${esc(f.q)}</h3><p class="text-xs text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</div></section>
-        <p class="text-xs text-muted-foreground mb-8"><strong>How to cite:</strong> Resume Booster, “ATS score benchmarks from real scans”, ${SITE}/research/ats-score-benchmarks${ins?.as_of ? `, figures as of ${esc(String(ins.as_of).slice(0, 10))}` : ""}.</p>
+        <p class="text-xs text-muted-foreground mb-8"><strong>How to cite:</strong> Resume Booster, “ATS score benchmarks from real scans”, ${SITE}/research/ats-score-benchmarks${ins?.as_of ? `, figures as of ${esc(String(ins.as_of).slice(0, 10))}` : ""}.${citeLicenceHtml(DATA_LICENSE)}</p>
         ${cta("See where your resume lands in this distribution — free", "The full diagnostic within 90 seconds: your score with an audit trail, missing keywords, and per-vendor parsing checks. No signup; your resume is deleted within 7 days.", "Run the free scan")}
         <nav class="mt-6 flex flex-wrap gap-2 text-xs">${pill("/guides/what-resume-score-means", "What a resume score actually means →")}${pill("/guides/why-resumes-get-rejected", "Why resumes get rejected →")}${pill("/industries", "Keywords by industry →")}</nav>
         </article>`,
@@ -2371,8 +2863,36 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   };
 
   // ---- /cv-standards: per-country CV norms (EN for all countries, localized per CV_LOCALES) ----
+  //
+  // A COUNTRY WHOSE RULES ARE ANOTHER'S (SEO audit 2026-11-18, CONTENT-3):
+  // the scanner's data gives Kuwait, Qatar, Bahrain and Oman the Saudi entry
+  // field for field (only the name differs), so their four pages printed the
+  // Saudi page's text with another name in it. Each such page now names the
+  // first country with the same rules as its canonical and leaves the
+  // sitemap; the first one's title names the group. Read from the data, never
+  // listed by hand (src/pages/CvStandards.tsx reads it the same way).
+  const cvRulesKey = (std) => { const { iso: _iso, name: _name, ...rules } = std; return JSON.stringify(rules); };
+  const CV_FOLLOWS = {};
   {
-    const isoList = Object.keys(D.COUNTRY_SLUGS).filter((iso) => D.COUNTRY_STANDARDS[iso]);
+    const first = new Map();
+    for (const iso of Object.keys(D.COUNTRY_STANDARDS)) {
+      const k = cvRulesKey(D.COUNTRY_STANDARDS[iso]);
+      if (first.has(k)) CV_FOLLOWS[iso] = first.get(k);
+      else first.set(k, iso);
+    }
+  }
+  const CV_ISOS = Object.keys(D.COUNTRY_SLUGS).filter((iso) => D.COUNTRY_STANDARDS[iso]);
+  const CV_FOLLOWERS = CV_ISOS.filter((iso) => CV_FOLLOWS[iso]);
+  const CV_COUNT_PHRASE = (() => {
+    const own = CV_ISOS.length - CV_FOLLOWERS.length;
+    if (!CV_FOLLOWERS.length) return `${own} countries`;
+    const word = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"][CV_FOLLOWERS.length] ?? String(CV_FOLLOWERS.length);
+    return CV_FOLLOWERS.every((iso) => CV_FOLLOWS[iso] === "SA")
+      ? `${own} countries plus ${word} GCC states that follow the Saudi rules`
+      : `${own} countries plus ${word} that follow another country's rules`;
+  })();
+  {
+    const isoList = CV_ISOS;
     const sorted = [...isoList].sort((a, b) => D.COUNTRY_STANDARDS[a].name.localeCompare(D.COUNTRY_STANDARDS[b].name));
     write({
       path: "/cv-standards",
@@ -2411,10 +2931,14 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       // SEO-032: the two questions the FAQ markup asks are on the page too,
       // from the one array React's page prints (src/lib/cv-country-phrase.ts).
       const faqs = D.cvStandardsFaqs("en", t, { name, docTerm: std.docTerm, photo: std.photo, photoNote: notes.photoNote, lengthNote: notes.lengthNote });
+      const follows = CV_FOLLOWS[iso];
+      const followed = CV_FOLLOWERS.some((f) => CV_FOLLOWS[f] === iso);
+      const titleName = followed && /\s*\(GCC\)$/.test(name) ? name.replace(/\s*\(GCC\)$/, " & the GCC") : name;
       write({
         path: `/cv-standards/${D.COUNTRY_SLUGS[iso]}`,
-        hreflang: D.hreflangCluster(iso),
-        title: D.cvFill(t.title, vars, "en"),
+        hreflang: follows ? null : D.hreflangCluster(iso),
+        canonical: follows ? `/cv-standards/${D.COUNTRY_SLUGS[follows]}` : null,
+        title: D.cvFill(t.title, { ...vars, name: titleName }, "en"),
         description: fitDesc(D.cvFill(t.metaDescription, vars, "en"), D.cvFill("Photo norms, expected length, and personal-data rules for a {docTerm} in {name}.", vars, "en")),
         jsonLd: [
           breadcrumbLd([{ name: "Home", path: "/" }, { name: "CV Standards", path: "/cv-standards" }, { name, path: `/cv-standards/${D.COUNTRY_SLUGS[iso]}` }]),
@@ -2505,12 +3029,17 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   // cut and whether or not the live sitemap still lists them (Martin Brower
   // went noindex on 2026-10-31 at 107 roles against a cut of 299). The name
   // gate, the duplicate rule and the thin rule still judge them below.
+  const DEMAND_BOARDS = new Set(D.DEMAND_EMPLOYER_TOKENS ?? []);
   const LANDERS = bakeLanders(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], {
     D, openOf: openRolesOf, nameOf: (c) => bakeEmployerName(c.token, c.name, NAME_PARTS).name,
-    keep: INDEXABLE_TODAY_TOKENS, pin: new Set(D7_TRUSTED_COMPANY_TOKENS),
+    keep: INDEXABLE_TODAY_TOKENS, pin: new Set(D7_TRUSTED_COMPANY_TOKENS), demand: DEMAND_BOARDS,
   });
   {
-    const plain = new Set(bakeLanders(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], { D, openOf: openRolesOf, nameOf: (c) => bakeEmployerName(c.token, c.name, NAME_PARTS).name }).map((c) => c.token));
+    const plain = new Set(bakeLanders(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], { D, openOf: openRolesOf, nameOf: (c) => bakeEmployerName(c.token, c.name, NAME_PARTS).name, demand: DEMAND_BOARDS }).map((c) => c.token));
+    // OPP-1: the demand boards chosen above the ceiling, and the ones named that did not make their floor.
+    const demandChosen = LANDERS.filter((c) => c.demand).map((c) => c.token);
+    const demandShort = [...DEMAND_BOARDS].filter((t) => !LANDERS.some((c) => c.token === t));
+    console.log(`[prerender-seo] demand employers (src/data/demand-employers.ts): ${demandChosen.length} of ${DEMAND_BOARDS.size} chosen above the ceiling${demandChosen.length ? ` (${demandChosen.join(", ")})` : ""}; ${demandShort.length} under ${D.DEMAND_EMPLOYER_MIN_OPEN} open roles or not in the facets${demandShort.length ? ` (${demandShort.join(", ")})` : ""}`);
     const pinnedHeld = LANDERS.filter((c) => !plain.has(c.token) && D7_TRUSTED_COMPANY_TOKENS.includes(c.token)).map((c) => c.token);
     const held = LANDERS.filter((c) => !plain.has(c.token) && !D7_TRUSTED_COMPANY_TOKENS.includes(c.token)).map((c) => c.token);
     const displaced = [...plain].filter((t) => !LANDERS.some((c) => c.token === t));
@@ -2545,6 +3074,14 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       ...(cp.usajobs?.cap ? { usajobsCap: cp.usajobs.cap } : {}),
       usajobsCapValue: D.FEDERAL_LISTING_RESULT_CAP,
       ...(cp.agency?.banner ? { agencyBanner: cp.agency.banner } : {}),
+      // GEO-3: the Pay card's own English, so the bake's pay line is React's.
+      ...(cp.pay?.title ? { payTitle: cp.pay.title } : {}),
+      ...(cp.pay?.floor_one ? { payFloorOne: cp.pay.floor_one } : {}),
+      ...(cp.pay?.floor_other ? { payFloorOther: cp.pay.floor_other } : {}),
+      ...(cp.pay?.floorPooled_one ? { payFloorPooledOne: cp.pay.floorPooled_one } : {}),
+      ...(cp.pay?.floorPooled_other ? { payFloorPooledOther: cp.pay.floorPooled_other } : {}),
+      ...(cp.pay?.read ? { payRead: cp.pay.read } : {}),
+      ...(cp.pay?.basis ? { payBasis: cp.pay.basis } : {}),
     };
   })();
   const wasIndexable = (token) => INDEXABLE_TODAY.has(`/jobs/company/${token}`);
@@ -2676,6 +3213,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   const homeStripCandidates = [];
   /** How many company pages this bake made indexable, for /companies and llms.txt. */
   let COMPANY_PAGE_COUNT = null;
+  let COMPANY_PAGE_OTHERS = null;
   /** Each employer page's board listing, carried in the ledger (S1); the previous one until the lander block replaces it. */
   let landerOpeningsCache = ledgerIn && ledgerIn.openings && typeof ledgerIn.openings === "object" ? ledgerIn.openings : {};
   /** Every posting path this bake accounted for and its state, published as the ledger. */
@@ -2707,6 +3245,20 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   const SEEN_IN_SEARCH = seedList("seen-in-search-indexes.txt");
   const SEED_COMPANY_PATHS = [...new Set([...seedList("published-company-paths.txt"), ...SEEN_IN_SEARCH.filter((p) => p.startsWith("/jobs/company/"))])];
   const SEED_POSTING_PATHS = [...new Set([...seedList("published-posting-paths.txt"), ...SEEN_IN_SEARCH.filter((p) => p.startsWith("/jobs/posting/"))])];
+  // CRAWL-M2: the pages the daily check found closed at their employer, as
+  // committed from its standing issue; entries over two weeks old are ignored.
+  const CLOSED_AT_EMPLOYER = closedAtEmployerList(seedList("closed-at-employer.txt").join("\n"), TODAY);
+  // STRUCTURED-B2: what the daily check read at each page's employer, as
+  // committed from its pull request; lines over two weeks old are ignored.
+  // The unread-Workday rule judges by the same instant, and stands only while
+  // the file's newest line is within OPEN_READ_FRESH_HOURS of it.
+  const CHECK_READS_AT = Date.now();
+  const CHECK_READS = employerStatedList(seedList("employer-stated.txt").join("\n"), CHECK_READS_AT);
+  const CHECK_READS_FRESH = checkReadsFreshness(CHECK_READS, CHECK_READS_AT).fresh;
+  {
+    const off = unreadRuleOffNotice(CHECK_READS, CHECK_READS_AT);
+    if (off) console.warn(`[prerender-seo] WARN ${off}`);
+  }
   {
     const envText5 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
     const grab5 = (k) => OFFLINE ? undefined : process.env[k] || (envText5.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
@@ -2757,6 +3309,10 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       sitemaps: carrySitemapsNow,
       idFromPath: D.postingIdFromPath,
       today: TODAY,
+      // A page just retired at the ceiling or as expiring stays retired for
+      // its hold, unread (postingRetiredHeld, CRAWL18B-2).
+      ceiling: POSTING_PAGE_CEILING,
+      reserve: POSTING_FRESH_RESERVE,
     });
     const priorPostingOf = (path) => (seededPostings.ledger.postings && seededPostings.ledger.postings[path]) || {};
     const writeStub = (s0) => {
@@ -2847,21 +3403,25 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       // pages with one title. The requisition key under one employer is the
       // second key: the same key under the same employer is one posting,
       // across the carried pages and the new ones alike.
-      const takenIdentity = new Map();
-      const identityKeys = (job) => [D.postingIdentity(job), D.postingRequisitionIdentity(job)].filter(Boolean);
-      const takenBy = (job) => { for (const k of identityKeys(job)) if (takenIdentity.has(k)) return takenIdentity.get(k); return null; };
-      const claimIdentity = (job, path) => { for (const k of identityKeys(job)) takenIdentity.set(k, path); };
+      //
+      // AND ONE JOB THE EXACT KEYS MISS (CONTENT-9): think-cell's one Berlin
+      // opening under two Greenhouse boards, ABB's one Hangzhou opening under
+      // two requisitions with a typo fixed in the title. A row read with its
+      // description is also compared with every page claimed with one
+      // (D.postingSameJob: same employer, same place, a title a typo apart,
+      // descriptions 0.95 the same), and the page claimed first keeps it.
+      const { takenBy, claimIdentity, sameJobAs, claimedJobs } = postingIdentityClaims(D);
       const detailed = [];
       const stubs = [];
       for (const c of carriedChecks) {
         const path = D.postingPagePath(c.id);
         if (c.state === "found" && eligibleRow(c.job) && describedEnough(c.description)) {
-          const twin = takenBy(c.job);
+          const twin = takenBy(c.job, c.description);
           if (twin) {
             stubs.push({ ...c, path, state: "retired", duplicateOf: twin });
             continue;
           }
-          claimIdentity(c.job, path);
+          claimIdentity(c.job, path, c.description);
           detailed.push({ job: c.job, description: c.description, first: firstSeen(path), carried: true });
         } else {
           stubs.push({ ...c, path, state: c.state === "found" ? "retired" : c.state });
@@ -2881,10 +3441,21 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       // date, time type, a fully remote posting, its original date and its
       // address), put into the row's own fields before the page is decided.
       const employerDeadline = Date.now() + EMPLOYER_READ_BUDGET_MS;
-      const askEmployers = (list) => askEmployersAbout(list, { D, deadline: employerDeadline, results: employerResults });
+      // An unknown read keeps what the live ledger entry carried (STRUCTURED-M1),
+      // and a page the daily check found closed retires unread (CRAWL-M2).
+      const askEmployers = (list) => askEmployersAbout(list, {
+        D, deadline: employerDeadline, results: employerResults, today: TODAY, closedAtEmployer: CLOSED_AT_EMPLOYER,
+        carriedOf: (job) => priorPostingOf(D.postingPagePath(job.id)).stated ?? null,
+        // STRUCTURED-B2: what the daily check read, as a person merged it.
+        checkReads: CHECK_READS,
+        nowMs: CHECK_READS_AT,
+      });
       {
-        const { keep, closed } = await askEmployers(detailed);
+        const { keep, closed, ended } = await askEmployers(detailed);
         for (const d of closed) stubs.push(employerClosedStub(d.job, D));
+        for (const d of ended) stubs.push(employerEndedStub(d.job, D));
+        const fromList = closed.filter((d) => d.closedBy === "list").length;
+        if (fromList || ended.length) console.log(`[prerender-seo] employer closures: ${fromList} live page(s) retired from scripts/seo-seed/closed-at-employer.txt (the daily check), ${ended.length} past the end date their employer stated`);
         detailed.length = 0;
         detailed.push(...keep);
       }
@@ -2999,6 +3570,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       };
       let freshAt = 0;
       let freshFromCache = 0;
+      let freshSameJob = 0;
       const freshFound = [];
       // Two passes at most: the second tops up from pool rows when the first
       // came back short (a cached opening the board no longer serves, or one
@@ -3025,6 +3597,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
             claimIdentity(c.job, D.postingPagePath(c.job.id));
             freshFromCache++;
           }
+          // CONTENT-9: the same job as a page already claimed with its text.
+          if (sameJobAs(c.job, c.description)) { freshSameJob++; continue; }
+          claimedJobs.push({ job: c.job, description: c.description, path: D.postingPagePath(c.job.id) });
           freshFound.push({ job: c.job, description: c.description, first: TODAY, carried: false });
         }
       }
@@ -3033,8 +3608,8 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       // never published, so it simply gets no page.
       let freshEmployerClosed = 0;
       {
-        const { keep, closed } = await askEmployers(freshFound);
-        freshEmployerClosed = closed.length;
+        const { keep, closed, ended } = await askEmployers(freshFound);
+        freshEmployerClosed = closed.length + ended.length;
         detailed.push(...keep);
         freshWritten = keep.length;
       }
@@ -3054,6 +3629,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       for (const d of detailed) {
         d.page = bakePostingPage(d.job, d.description, { D, SITE, carried: d.carried });
         d.page = withEmployerCountry(d.page, d.stated, { D, carried: d.carried });
+        d.page = withUnreadWithheld(d.page, d.unread);
         const { named } = d.page;
         if (named.reason) {
           nameGateDryRun.push({ path: D.postingPagePath(d.job.id), kind: "posting", token: d.job.token ?? null, name: named.name, shown: named.shown, reason: named.reason, would: "be marked noindex (its job markup is already withheld and its head names no employer)" });
@@ -3072,7 +3648,18 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       const postingTitlesTaken = new Set();
       let titlesDisambiguated = 0;
       let nameWithheld = 0;
-      for (const { description, first, carried, page, stated } of detailed) {
+      let unreadWithheld = 0;
+      // CONTENT-N2: every page this loop writes as live, so a posting page can
+      // link the others of its employer and its field.
+      const liveBaked = detailed.filter((d) => d.page.live).map((d) => ({
+        path: d.page.path,
+        title: D.postingTitleText(d.page.job.title),
+        company: d.page.nameRefused ? null : d.page.nm,
+        token: d.page.job.token ?? null,
+        category: typeof d.page.job.category === "string" ? d.page.job.category : null,
+        postedAt: typeof d.page.job.postedAt === "string" ? d.page.job.postedAt : null,
+      }));
+      for (const { description, first, carried, page, stated, read } of detailed) {
         // What bakePostingPage decided for this row (above): the page's path,
         // the row its page prints (a refused name blanked), its markup, and
         // whether it keeps a live page.
@@ -3086,7 +3673,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         if (mismatchOnly) nameGateDryRun.push({ path, kind: "posting", token: job.token ?? null, name: D.postingEmployer(rawJob), shown: job.location ?? null, reason: page.statedCountry ? `the employer's own page states ${page.statedCountry}, the row ${job.country}` : `the location ends in another country's name than the row's (${job.country})`, would: "be marked noindex (its job markup is already withheld)" });
         if (job.salary) withPay++;
         const paras = D.jdParagraphs(description);
-        const title = D.postingText(job.title);
+        // The heading prints the title as the markup's casing does (F12,
+        // STRUCTURED-5): a title typed in capitals in title case.
+        const title = D.postingTitleText(job.title);
         const place = job.location ? D.postingText(job.location) : "";
         const lander = landerFor(job.token);
         // The page says Remote where the row is remote and names no place
@@ -3111,11 +3700,16 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           if ("baseSalary" in ld) wrong.push("baseSalary");
           if (wrong.length) markupFound.push({ path, wrong });
         }
-        const ownSentence = `${postingSourceSentence(possessive(nm))} A dated posting is served for at most ${D.BOARD_FRESH_WINDOW_DAYS} days from the date the employer states, and this page was checked against the board when it was built, ${TODAY}; the board itself ${RECHECK_CLAUSE}.`;
+        // THE JOB TYPE THE MARKUP STATES IS PRINTED (STRUCTURED-B18), read
+        // from the markup itself so the two never disagree.
+        const typeLine = D.postingEmploymentTypeLine(ld);
+        if (page.unread) unreadWithheld++;
+        const ownSentence = `${postingSourceSentence(possessive(nm))} A dated posting is served for at most ${D.BOARD_FRESH_WINDOW_DAYS} days from the date the employer states, and ${postingCheckedClause(possessive(nm), read, TODAY)}; the board itself ${RECHECK_CLAUSE}.`;
         write({
           path,
           ...(lang && lang !== "en" ? { lang } : {}),
           ...(stated ? { employerStated: stated } : {}),
+          lastmodFloor: String(job.postedAt).slice(0, 10),
           // The page's own sentences, for the banned-phrase check; never the employer's text.
           ownText: `${D.postingPageDescription(job)} ${ownSentence} the application happens on ${possessive(nm)} own hiring system; this board only links to it.`,
           title: (() => {
@@ -3129,13 +3723,23 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
             <p><a href="/jobs">All openings</a></p>
             <h1>${esc(title)}</h1>
             <p>${esc(nameRefused ? "The employer" : nm)}${place ? ` — ${esc(place)}` : ""}${remoteShown ? " — Remote" : ""}</p>
+            ${typeLine ? `<p>${esc(typeLine)}</p>` : ""}
             <p>Posted ${esc(String(job.postedAt).slice(0, 10))}, as stated by the employer. ${job.salary
               ? `Pay, in the employer's own words and neither converted nor estimated: ${esc(String(job.salary))}.`
               : "We found no pay figure on this posting. That is our reading, not a statement by the employer — the description may still name one."}</p>
             ${job.applyUrl ? `<p><a href="${esc(String(job.applyUrl))}" rel="noopener noreferrer nofollow">Apply on ${esc(possessive(nm))} own site</a> — the application happens on ${esc(possessive(nm))} own hiring system; this board only links to it.</p>` : ""}
             <h2>The employer's own description</h2>
             ${paras.map((p) => `<p>${esc(p)}</p>`).join("\n            ")}
-            <p>${companyLinkHtml(job.token, nm)} · <a href="/jobs">Search the live board</a> · <a href="/resume-checker">Check your resume against this posting free</a></p>
+            <p>${companyLinkHtml(job.token, nm)} · ${(() => {
+              // CONTENT-N2: the posting's field lander, where the board has one.
+              const f = typeof job.category === "string" ? CATEGORY_LANDERS.find(([s]) => s === job.category) : null;
+              return f ? `<a href="/jobs/field/${f[0]}">More ${esc(f[1])} jobs</a> · ` : "";
+            })()}<a href="/jobs">Search the live board</a> · <a href="/resume-checker">Check your resume against this posting free</a></p>
+            ${(() => {
+              const more = relatedPostingLinks({ path, token: job.token ?? null, category: typeof job.category === "string" ? job.category : null }, liveBaked);
+              return more.length ? `<h2>Other openings with a page of their own</h2>
+            <ul>${more.map((p) => `<li><a href="${p.path}">${esc(p.title)}</a>${p.company ? ` — ${esc(p.company)}` : ""}</li>`).join("")}</ul>` : "";
+            })()}
             <p>${esc(ownSentence)}</p>
           `,
           jsonLd: [...(ld ? [ld] : []), {
@@ -3172,6 +3776,10 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         // live posting at its employer from the ledger alone (B01).
         const withheld = postingMarkupWithheld(page);
         postingLedger[path] = { state: "live", since: TODAY, first, carried, title, company: nm, token: job.token ?? null, ...(job.applyUrl ? { applyUrl: String(job.applyUrl) } : {}), ...(withheld ? { markupWithheld: withheld } : {}) };
+        // A page retired at the ceiling keeps its mark for a week (B08).
+        postingLedger[path] = withRetiredMark(postingLedger[path], priorPostingOf(path));
+        // What the employer stated rides to the next bake (STRUCTURED-M1).
+        postingLedger[path] = withStatedEntry(postingLedger[path], stated);
       }
 
       // The URLs this site published that get no live page: each keeps a
@@ -3202,7 +3810,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
             </ul>
           </section>`;
       }
-      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new (${freshFromCache} read from company pages' cached openings) from a pool of ${pool.length} over ${poolPagesRead} list page${poolPagesRead === 1 ? "" : "s"}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed, ${freshNameUnreviewed} new refused for a name no one wrote (the board's own code)) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} show employer-stated pay on the page (none in the markup); ${titlesDisambiguated} title${titlesDisambiguated === 1 ? "" : "s"} took its town, its stated date or a short reference to stay unique; fresh budget ${freshBudget} (carried live ${carriedLive}, ceiling ${POSTING_PAGE_CEILING}; ${retiredExpiring} expiring within ${POSTING_EXPIRY_NEAR_DAYS} days gave way to the reserve); ${countryMismatch} with a location ending in another country (job markup withheld; a carried one keeps its page under D7 and is on the dry run); ${nameWithheld} carried with an employer name the gate refuses (job markup withheld, "the employer" printed, on the dry run); carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}; job markup ${D.JOB_POSTING_MARKUP === false ? "OFF by the owner's STOP switch (src/config/seo-switches.ts): every live page kept, none marked up" : "on"}`);
+      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new (${freshFromCache} read from company pages' cached openings) from a pool of ${pool.length} over ${poolPagesRead} list page${poolPagesRead === 1 ? "" : "s"}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed, ${freshNameUnreviewed} new refused for a name no one wrote (the board's own code)) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} show employer-stated pay on the page (none in the markup); ${titlesDisambiguated} title${titlesDisambiguated === 1 ? "" : "s"} took its town, its stated date or a short reference to stay unique; fresh budget ${freshBudget} (carried live ${carriedLive}, ceiling ${POSTING_PAGE_CEILING}; ${retiredExpiring} expiring within ${POSTING_EXPIRY_NEAR_DAYS} days gave way to the reserve); ${countryMismatch} with a location ending in another country (job markup withheld; a carried one keeps its page under D7 and is on the dry run); ${nameWithheld} carried with an employer name the gate refuses (job markup withheld, "the employer" printed, on the dry run); ${unreadWithheld} Workday page${unreadWithheld === 1 ? "" : "s"} neither this bake nor a daily check from the last ${OPEN_READ_FRESH_HOURS} h read as open (${CHECK_READS.size} check read${CHECK_READS.size === 1 ? "" : "s"} in scripts/seo-seed/employer-stated.txt; job markup withheld, the page kept; the rule ${CHECK_READS_FRESH ? "on" : `OFF, the file's newest line ${CHECK_READS.size ? `older than ${OPEN_READ_FRESH_HOURS} h` : "missing"}`}); carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}; job markup ${D.JOB_POSTING_MARKUP === false ? "OFF by the owner's STOP switch (src/config/seo-switches.ts): every live page kept, none marked up" : "on"}`);
+      // CONTENT-9: new postings left out as the same job as a page claimed before them.
+      console.log(`[prerender-seo] posting pages: ${freshSameJob} new posting${freshSameJob === 1 ? "" : "s"} left out as the same job as a page already claimed (same employer and place, a title a typo apart, descriptions 0.95 the same); a carried duplicate is a retired stub naming its twin`);
       // A carried page the board did not answer for is the symptom to look at
       // first: it is an "unchecked" noindex page until a later bake reaches it.
       // THE EMPLOYER READS, IN ONE LINE (B01): a large unknown share means the
@@ -3212,6 +3822,11 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         const summary = summarizeEmployerReads(employerResults);
         console.log(`[prerender-seo] ${employerReadLine(summary)}; ${freshEmployerClosed} of them new postings the employer had already closed (no page)`);
         if (summary.checked && summary.unknown / summary.checked > 0.2) console.warn(`[prerender-seo] employer reads: ${summary.unknown} of ${summary.checked} answers unknown (over 20%) — pages kept as they were; the daily closure check is the backstop`);
+        // THE FAIL TIER, PER VENDOR (STRUCTURED-1): a vendor with 20 or more
+        // pages, over half of them unknown, is named with why (budget,
+        // challenge, timeout...). The publish goes on; the line is for the
+        // person reading the build log and for section 98-r2 G1b.
+        for (const line of employerReadAlarms(summary)) console.error(`[prerender-seo] ${line}`);
       }
       if (stubCount("unchecked")) {
         console.warn(`[prerender-seo] posting pages: ${stubCount("unchecked")} published posting URL(s) could not be re-checked (board refusal, error or the call budget) — each carries a noindex "could not re-check" page until a bake reaches it`);
@@ -3231,7 +3846,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       try {
         writeKeptPostingPages();
         for (const path of carryBase.recheck.keys()) if (!postingLedger[path]) postingLedger[path] = { ...priorPostingOf(path) };
-        console.log(`[prerender-seo] posting ledger carried forward: ${carryBase.recheck.size} to re-check next bake, ${carryBase.stubs.size} kept pages, ${carryBase.tombstones.size} tombstones (${seededPostings.added} seeded this bake)`);
+        console.log(`[prerender-seo] posting ledger carried forward: ${carryBase.recheck.size} to re-check next bake, ${carryBase.stubs.size} kept pages (${carryBase.held} retired at the ceiling or as expiring and held, unread, the previous publish's live set ${carryBase.liveCount}), ${carryBase.tombstones.size} tombstones (${seededPostings.added} seeded this bake)`);
       } catch (e2) { console.warn(`[prerender-seo] posting ledger carry-forward failed: ${e2?.message || e2}`); }
     }
   }
@@ -3252,6 +3867,17 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
   // inline so a page cannot silently render a different payload from the one
   // the guard exercises; after the employer-page set, so its tables link an
   // employer page only where this bake writes one.
+  // GEO-5 (SEO audit 2026-11-18): the Ghost Job Index's open total (the stats
+  // cache) and the board total the other pages print (the facets) are two
+  // readings of one board; read within 30 minutes of each other, more than 1%
+  // apart is said at the WARN tier, with both stamps.
+  {
+    const g = statsCache && typeof statsCache === "object" ? statsCache.ghost_stats : null;
+    const facetsAt = boardFacets && typeof boardFacets === "object" ? (boardFacets.computedAt ?? boardFacets.computed_at ?? boardFacets.asOf ?? FACETS_READ_AT) : null;
+    const warn = boardTotalsWarning({ ghostTotal: g?.total_open, ghostAt: g?.computed_at, boardTotal: BOARD_TOTAL, boardAt: facetsAt });
+    if (warn) console.warn(`[prerender-seo] WARN ${warn}`);
+  }
+  const CODE_NAMED_ROWS = [];
   const DATA_FIGURES = dataPageFigures({
     stats: statsCache, transparency: transparencyCache, freshness: freshnessRow, audit: auditRow,
     // The live cron schedules the cadence words follow (NB-32), and the
@@ -3264,12 +3890,26 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       return query ? `${href}${href.includes("?") ? "&" : "?"}${query}` : href;
     },
     companyName: (token, stored) => D.employerName(token, stored),
+    codeNamed: (token, printed) => D.isUnreviewedTenantName(token, printed),
+    codeNamedSeen: CODE_NAMED_ROWS,
     systemName: (source) => D.systemLabel(source) ?? String(source ?? ""),
     fieldLabel: (slug) => (slug === "other" ? "Roles we could not sort into a field" : CATEGORY_LANDERS.find(([s]) => s === slug)?.[1] ?? String(slug).replace(/_/g, " ")),
+    fieldHref: (slug) => (CATEGORY_LANDERS.some(([s]) => s === slug) ? `/jobs/field/${slug}` : null),
   });
   for (const [k, v] of Object.entries(DATA_FIGURES)) {
     if (!v.read) console.warn(`[prerender-seo] /${k} data page: figures UNREAD — it ships its prose and says so`);
   }
+  if (CODE_NAMED_ROWS.length) console.warn(`[prerender-seo] WARN ${CODE_NAMED_ROWS.length} leaderboard row(s) left out of their ranking, named by their board's system code until the names stream names them: ${CODE_NAMED_ROWS.join("; ")}`);
+  // THE RE-CHECK'S CADENCE, IN THE SENTENCES OUTSIDE THE BUILDER (SEO audit
+  // 2026-11-18, CONTENT-7): the builder's 36-hour rule (SEO-F07) said "daily"
+  // only for a run younger than 36 hours, while the Ghost Job Index's intro and
+  // Dataset markup and /data-api's two sentences said it of every build. Each
+  // now says "daily" only beside a run younger than 36 hours; past that it
+  // says the re-check is scheduled daily and names the latest run's date, and
+  // with no audit read it says only that it is scheduled.
+  const RECHECK_AT = auditRow && typeof auditRow.at === "string" && Number.isFinite(new Date(auditRow.at).getTime()) ? new Date(auditRow.at) : null;
+  const RECHECK_FRESH = !!RECHECK_AT && (Date.now() - RECHECK_AT.getTime()) / 3_600_000 <= 36;
+  const RECHECK_SCHEDULE = RECHECK_AT ? `scheduled daily (the latest run on record is from ${RECHECK_AT.toISOString().slice(0, 10)})` : "scheduled daily";
   /**
    * S2: each data page is a Dataset (it was a generic WebPage with no date),
    * dated by its own payload's stamp: no stamp, no dateModified.
@@ -3299,9 +3939,13 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     ...(variables.length ? { variableMeasured: variables } : {}),
     isPartOf: websiteRef(SITE),
   });
-  /** The visible citation line every data page carries (SEO-028), with the day its figures were measured. */
+  /**
+   * The visible citation line every data page carries (SEO-028), with the day
+   * its figures were measured and, once the owner set DATA_LICENSE, the
+   * licence its figures carry (GEO-6: it was in the Dataset markup only).
+   */
   const howToCite = (name, path, modified) =>
-    `<p class="text-xs text-muted-foreground"><strong>How to cite:</strong> Resume Booster, “${esc(name)}”, ${SITE}${path}${modified ? `, figures measured ${esc(String(modified).slice(0, 10))}` : ""}.</p>`;
+    `<p class="text-xs text-muted-foreground"><strong>How to cite:</strong> Resume Booster, “${esc(name)}”, ${SITE}${path}${modified ? `, figures measured ${esc(String(modified).slice(0, 10))}` : ""}.${citeLicenceHtml(DATA_LICENSE)}</p>`;
 
   // ---- Job-board category landers: the queries people actually type are
   // "healthcare jobs", not "job board". 17 crawlable pages, counts baked
@@ -3362,6 +4006,13 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         const newest = [...(fieldPostings.get(slug) ?? [])]
           .sort((a, b) => String(b.postedAt ?? "").localeCompare(String(a.postedAt ?? "")))
           .slice(0, 8);
+        // CONTENT-N8: the resume-keyword pages of the industries this field
+        // holds (INDUSTRY_TO_CATEGORY, the map the industry pages link up by).
+        const fieldIndustries = Object.keys(D.INDUSTRY_TO_CATEGORY).filter((ind) => D.INDUSTRY_TO_CATEGORY[ind] === slug && D.INDUSTRY_KEYWORDS[ind]).sort();
+        // OPP-2: the roles we name in this field (FIELD_ROLES), each linked to
+        // a baked posting page whose title names it; a name with no page here
+        // is left out, so no name stands unlinked and no count is claimed.
+        const roleLinks = landerRoleLinks(D.FIELD_ROLES[slug] ?? [], fieldPostings.get(slug) ?? []);
         write({
           path: `/jobs/field/${slug}`,
           // L13-37: the "+" is a promise, so it takes the churn margin like every
@@ -3387,6 +4038,9 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           ${newest.length ? `<h2>Newest ${label} openings with a page of their own</h2>
           <ul>${newest.map((p) => `<li><a href="${p.path}">${esc(p.title)}</a> — ${esc(p.company ?? "")}${p.place ? `, ${esc(p.place)}` : ""}</li>`).join("")}</ul>` : ""}
           <p>The largest boards are re-read most often, and how far behind the rotation is right now is published on the <a href="/ghost-job-index">Ghost Job Index</a> as a measurement, not a promise. A posting a company takes down leaves the board when the rotation next re-reads that company's feed, and the live board ${RECHECK_CLAUSE}. The counts on this page were ${esc(COUNTS_BASIS)}; the board's own count refreshes through the day.</p>
+          ${roleLinks.length ? `<h2>Roles in this field</h2>
+          <p>Roles we name in ${label}, each linked to one opening with a page of its own: ${roleLinks.map((r) => `<a href="${r.path}">${esc(r.role)}</a>`).join(" · ")}.</p>` : ""}
+          ${fieldIndustries.length ? `<p>Resume keywords for this field: ${fieldIndustries.map((ind) => `<a href="/industries/${ind}">${esc(D.industryLabel(ind))} resume keywords</a>`).join(" · ")}.</p>` : ""}
           <p><a href="/jobs/field/${slug}">Browse ${label} openings on the live board</a> — filter by keyword, location, remote, and company; save searches with a free account; and check any posting against your resume with the <a href="/resume-checker">free resume scan</a> before you spend an application on it.</p>
           <p>Other fields: ${siblings} — or see <a href="/jobs">the full job board</a>.</p>
         `,
@@ -3558,7 +4212,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         const nameShared = c.primary !== c.token && c.sameEmployer === false;
         return companyLanderPage({
           token: c.token, name: c.name, primaryToken: info.primary.token, robots, canonicalTo, openN: pooled ? pooled.open : openN, boards: pooled ? pooled.boards : 1,
-          countedOn: COUNTED_ON, facts: info.facts, openings: info.openings, openingsAt: info.at, vendor: vendorOfToken(c.token), nameShared, collision: collisionOf(c.token), boardCompanies,
+          countedOn: COUNTED_ON, intelOn: TODAY, facts: info.facts, openings: info.openings, openingsAt: info.at, vendor: vendorOfToken(c.token), nameShared, collision: collisionOf(c.token), boardCompanies,
           site: SITE, esc, possessive, fmt: (n) => fmt(n), href: landerPath, kind: landerKindOf(c.token), copy: KIND_COPY,
         });
       };
@@ -3790,7 +4444,10 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
               return `<li><a href="${landerPath(c.token)}" class="text-primary hover:underline">${esc(c.name)}</a>${kind ? ` <span class="text-muted-foreground">(${kind})</span>` : ""}${typeof o === "number" ? ` <span class="text-muted-foreground">— ${fmt(pooledRow ? pooledRow.open : o)} open roles</span>` : ""}</li>`;
             }).join("\n            ")}
           </ul>`).join("\n");
-        COMPANY_PAGE_COUNT = primaries.length;
+        // GEO-9 (SEO audit 2026-11-18): the llms files count the employers
+        // /companies counts, with the federal site and the agencies apart.
+        COMPANY_PAGE_COUNT = employersListed;
+        COMPANY_PAGE_OTHERS = { agencies: agenciesListed, federal: federalListed };
         write({
           path: "/companies",
           title: `${fmt(employersListed)} Companies Hiring Now, From Their Own Hiring Systems`,
@@ -3800,9 +4457,11 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
             `${fmt(employersListed)} employers read from their own hiring systems${othersListed ? `, plus ${othersListed}, labelled` : ""}.`,
           ),
           content: `
+            ${dataPageCrumbs("Companies")}
             <h1 class="text-2xl font-bold mb-3">Companies hiring on the board</h1>
             <p class="text-muted-foreground mb-6">The ${fmt(employersListed)} employers with a page of their own${othersListed ? `, and ${othersListed}` : ""}, listed A–Z; the board itself carries far more (${boardCompanies ? `${fmt(boardCompanies)} company job boards with roles open now` : "every one is searchable"} on <a href="/jobs" class="text-primary underline">the live board</a>). Every posting is read from the hiring system that published it: ${kindsSentence}, never copied from another job board. Where a count is shown it means postings the employer has not taken down whose date falls inside the last 30 days (the employer's own date, or for a posting with no date, the day we last saw it): the same rule the linked page serves, measured when this index was last built${COUNTED_ON ? `, ${esc(COUNTED_ON)}` : ""}.</p>
             ${sections}`,
+          jsonLd: [dataPageCrumbsLd("Companies", "/companies")],
         });
       }
     }
@@ -3882,12 +4541,15 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         // is another site's name too), and the title's question answered in
         // the first sentence under the H1, from the page's own figures.
         title: "Resume Booster Ghost Job Index: how many postings are real?",
-        description: DATA_FIGURES.ghost.desc ?? "How many roles are open, how long postings stay up, how often they come down, and a daily re-check against employers' own systems.",
+        description: DATA_FIGURES.ghost.desc ?? (RECHECK_FRESH
+          ? "How many roles are open, how long postings stay up, how often they come down, and a daily re-check against employers' own systems."
+          : `How many roles are open, how long postings stay up, how often they come down, and a re-check against employers' own systems, ${RECHECK_SCHEDULE}.`),
         content: `
+          ${dataPageCrumbs("Ghost Job Index")}
           <h1>Resume Booster Ghost Job Index</h1>
           ${DATA_FIGURES.ghost.answer ? `<p class="text-lg mb-3" data-answer="">${DATA_FIGURES.ghost.answer}</p>` : ""}
           <p>Ghost jobs — postings that are stale, already filled, or never real — waste job seekers' time everywhere. This page is our live, honest measure of the opposite: how fresh the postings on this board are, read from companies' own hiring systems, and how often they come down.</p>
-          <p>Every figure is computed from the full lifecycle of postings on companies' official job boards (${D.SERVING_SOURCE_LIST}), each ${SOURCE_SENTENCE}. Any posting whose company-stated date passes 30 days is dropped automatically, we log every takedown we see (a takedown is never called a hire: a hire, a withdrawal and a cancelled requisition look the same from a feed), and we sample listings daily and re-check them against the companies' own systems. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one.</p>
+          <p>Every figure is computed from the full lifecycle of postings on companies' official job boards (${D.SERVING_SOURCE_LIST}), each ${SOURCE_SENTENCE}. Any posting whose company-stated date passes 30 days is dropped automatically, we log every takedown we see (a takedown is never called a hire: a hire, a withdrawal and a cancelled requisition look the same from a feed), and ${RECHECK_FRESH ? "we sample listings daily and re-check them against the companies' own systems" : `we sample listings and re-check them against the companies' own systems, ${RECHECK_SCHEDULE}`}. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one.</p>
           ${DATA_FIGURES.ghost.html}
           ${howToCite("Ghost Job Index", "/ghost-job-index", DATA_FIGURES.ghost.modified)}
           <p><a href="/jobs">Browse the live board</a> — or check any posting against your resume with the <a href="/resume-checker">free resume scan</a> first.</p>
@@ -3896,12 +4558,19 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           // Brand-qualified (SEO-028): "The Ghost Job Index" is another site's name too.
           name: "Resume Booster Ghost Job Index",
           windowDays: 90,
-          variables: ["open roles", "employers with an open role", "median posting age (days, by the employer's stated date)", "closure events logged in 90 days", "median and 95th-percentile feed re-check age", "daily re-check share still live, with sample size"],
-          description: "A live measure of job-posting freshness computed from official company job boards: open roles, posting age by the employer's stated date, takedowns logged over 90 days (a takedown is never called a hire), and a daily re-check of sampled postings against the employers' own systems.",
+          variables: ["open roles", "employers with an open role", "median posting age (days, by the employer's stated date)", "closure events logged in 90 days", "median and 95th-percentile feed re-check age", `${RECHECK_FRESH ? "daily " : ""}re-check share still live, with sample size`],
+          description: `A live measure of job-posting freshness computed from official company job boards: open roles, posting age by the employer's stated date, takedowns logged over 90 days (a takedown is never called a hire), and ${RECHECK_FRESH ? "a daily re-check of sampled postings against the employers' own systems" : `a re-check of sampled postings against the employers' own systems, ${RECHECK_SCHEDULE}`}.`,
           path: "/ghost-job-index",
           modified: DATA_FIGURES.ghost.modified,
-        })],
+        }), dataPageCrumbsLd("Ghost Job Index", "/ghost-job-index")],
       });
+    }
+
+    // GEO-4: every section the llms files name for this page has its own
+    // baked H2; a section the bake stopped printing is said at the WARN tier.
+    {
+      const missing = ghostSectionsMissing(DATA_FIGURES.ghost.html);
+      if (missing.length) console.warn(`[prerender-seo] WARN the llms files name Ghost Job Index sections the baked page does not print: ${missing.join("; ")} (GHOST_LLMS_SECTIONS)`);
     }
 
     // The Entry-Level Index — live ranking of who's hiring early-career.
@@ -3914,6 +4583,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         title: "The Entry-Level Index — who's actually hiring entry-level right now?",
         description: DATA_FIGURES.entry.desc ?? "Job boards ranked by the share of their open roles that are early-career, counted from the postings' own titles and stated requirements.",
         content: `
+          ${dataPageCrumbs("Entry-Level Index")}
           <h1>The Entry-Level Index</h1>
           <p>"Entry-level, 5 years' experience required" is a running joke for a reason. This page counts the real thing: openings whose own titles and requirements say early-career — internships, junior, graduate, and 0–2 year roles — and ranks each job board by the SHARE of its open roles that are early-career, with the raw count as the tie-break. Not by who posts the most, which only ever ranks the largest boards. One row per board, so an employer running several counts once per board.</p>
           <p>Every count comes live from companies' official job boards (${D.SERVING_SOURCE_LIST}), each posting ${SOURCE_SENTENCE}, and no dated posting older than 30 days (undated ones show no age rather than a guessed one). A role counts as entry-level when its own title or stated requirements say so; we never guess.</p>
@@ -3928,7 +4598,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           description: "Early-career openings counted from official company job boards, by our classification of each posting's own title and stated requirements, with the job boards ranked by the share of their open roles that are early-career.",
           path: "/entry-level-index",
           modified: DATA_FIGURES.entry.modified,
-        })],
+        }), dataPageCrumbsLd("Entry-Level Index", "/entry-level-index")],
       });
     }
 
@@ -3941,6 +4611,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         title: "Weekly Hiring Trends — how many jobs were really posted this week?",
         description: DATA_FIGURES.trends.desc ?? "Roles employers dated each week, the fields they are in, and the closure events logged each week, counted from employers' own job boards.",
         content: `
+          ${dataPageCrumbs("Weekly Hiring Trends")}
           <h1>Weekly Hiring Trends</h1>
           <p>Is hiring up or down this week? This page answers with counted postings, not vibes: every new role companies dated this week on their own boards, which fields they're in, and how many closure events the lifecycle log recorded. A posting coming down is never called a hire — a hire, a withdrawal, a cancelled requisition and a retitle are indistinguishable from a feed.</p>
           <p>Counts use each posting's own stated date from the company's official applicant-tracking feed. Postings from companies newly added to our catalog are excluded from weekly counts, so growth in our coverage never shows up as a fake hiring spike. Closure counts come from our lifecycle log. We record a takedown when the next read of that company's feed finds the posting gone; the <a href="/ghost-job-index" class="text-primary underline">Ghost Job Index</a> prints how far behind those re-reads run.</p>
@@ -3955,7 +4626,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           description: "Weekly hiring data computed from official company job boards: roles employers dated each week, the fields they are in, and the closure events logged each week, where a posting coming down is never called a hire.",
           path: "/hiring-trends",
           modified: DATA_FIGURES.trends.modified,
-        })],
+        }), dataPageCrumbsLd("Weekly Hiring Trends", "/hiring-trends")],
       });
     }
 
@@ -3969,12 +4640,13 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         title: "Pay Transparency Index — who actually states salaries?",
         description: DATA_FIGURES.pay.desc ?? "The share of postings that state pay, by field, hiring system and large job board, counted from the employers' own words; nothing modelled.",
         content: `
+          ${dataPageCrumbs("Pay Transparency Index")}
           <h1>The Pay Transparency Index</h1>
           <p>Which employers actually state salaries? This page counts it: the share of postings whose own text or ATS compensation field states pay, ranked by field, by hiring system, and across large job boards, one row per board. Every figure is the company's verbatim words — never an estimate, never a modeled range.</p>
           <p>The same rules apply to work modes: a posting is tagged remote, hybrid, or on-site only when the employer's own ATS field or explicit posting text says so. Postings that don't say carry no tag — we show nothing rather than a guess.</p>
           ${DATA_FIGURES.pay.html}
           ${howToCite("Pay Transparency Index", "/pay-transparency", DATA_FIGURES.pay.modified)}
-          <p>Placement on this page cannot be bought. Browse <a href="/jobs?mode=remote">remote roles</a>, check the <a href="/ghost-job-index">Ghost Job Index</a>, or license the underlying data at <a href="/data-api">Hiring Data &amp; API</a>.</p>
+          <p>Placement on this page cannot be bought. Browse <a href="/jobs?mode=remote">remote roles</a>, check the <a href="/ghost-job-index">Ghost Job Index</a>, or license bulk data through the API at <a href="/data-api">Hiring Data &amp; API</a>.</p>
         `,
         jsonLd: [datasetLd({
           name: "Resume Booster Pay Transparency Index",
@@ -3983,7 +4655,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           description: "The share of job postings that state pay, by field, by hiring system and across large job boards (one row per board), counted from the employers' own posting text and applicant-tracking fields; nothing estimated or modelled.",
           path: "/pay-transparency",
           modified: DATA_FIGURES.pay.modified,
-        })],
+        }), dataPageCrumbsLd("Pay Transparency Index", "/pay-transparency")],
       });
     }
 
@@ -4000,7 +4672,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         description: "A read-only JSON API over the live board: lifecycle-tracked postings from official company career sites, genuine takedowns vs re-listing, stated pay. Free keys.",
         content: `
           <h1>Hiring Data &amp; API</h1>
-          <p>Most job data stops at "posted." Ours follows every posting to the end: when it closed, whether it was genuinely taken down or quietly re-listed under a new ID, and what the company itself said it paid. Everything is ${SOURCE_SENTENCE}, and a daily sample is re-checked against them.</p>
+          <p>Most job data stops at "posted." Ours follows every posting to the end: when it closed, whether it was genuinely taken down or quietly re-listed under a new ID, and what the company itself said it paid. Everything is ${SOURCE_SENTENCE}, and ${RECHECK_FRESH ? "a daily sample is re-checked against them" : `a sample is re-checked against them, ${RECHECK_SCHEDULE}`}.</p>
           <p>The dataset contains zero jobseeker data: no job seeker's résumé or profile is in it, at any tier, and that data is not for sale. And no license, at any price, changes what the data says about any company — including the licensee.</p>
           <h2>Query it yourself</h2>
           <p>A read-only JSON API over the live board: free tier, self-serve, no card. Request a key on this page with an email address: we email that address a single-use link, and the key is shown once, on the page the link opens. Only its hash is stored. A free key meters at ${FREE_KEY_RATE_SENTENCE}. Send it as <code>Authorization: Bearer rb_live_…</code>.</p>
@@ -4008,7 +4680,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           <ul>
             <li><code>GET /v1/jobs</code> — live postings, newest first; every result is still open in the employer's own feed and dated within the last 30 days. Filters for country, category, company, work mode, source system, experience band, department, pay basis and floor, posting date; paginate with <code>cursor=</code>, never a deep offset. <code>explain=1</code> names every filter that bound; <code>engine=ranked</code> (paid) swaps the title match for the site's full relevance engine.</li>
             <li><code>GET /v1/jobs/{id}</code> — one posting with its description; a 404 once the employer withdraws it, never a stale 200.</li>
-            <li><code>GET /v1/jobs/{id}/application</code> — the employer's own application form for a live posting, when its hiring system publishes one: each question with who should answer it (the person, by default), cached for 24 hours. It never fills or submits anything; the person answers and presses submit on the employer's own site. Metered as one call.</li>
+            <li><code>GET /v1/jobs/{id}/application</code> — the employer's own application form for a live posting, where we read that hiring system's form: each question with who should answer it (the person, by default), cached for 24 hours. It never fills or submits anything; the person answers and presses submit on the employer's own site. Metered as one call.</li>
             <li><code>GET /v1/changes</code> — what opened and what closed since a timestamp, and for each close whether the role genuinely came down or was re-listed under a new id. Opened reaches back 30 days on any key; closed reaches back 72 hours on a free key and 180 days on a paid one, and leaves out batches our own collector flagged as a possible failed read unless you ask for them with <code>include_suspect=true</code>. Closures written before the collector began assessing its batches were never assessed: they carry <code>suspectBatch: null</code> and no walk filters them. Both lists are ordered oldest first and page on their own: follow <code>page.opened.nextCursor</code> as <code>opened_cursor</code> and <code>page.closed.nextCursor</code> as <code>closed_cursor</code> until <code>hasMore</code> is false. When a list carries <code>settledThrough</code> (<code>page.opened.settledThrough</code>, <code>page.closed.settledThrough</code>), it reads only up to that settled horizon, because a closure's row can be written minutes after the time it is stamped with; such a list also carries <code>resumeCursor</code>, and a reader resumes by sending it back as <code>opened_cursor</code> or <code>closed_cursor</code>, never by moving <code>since</code>. A response without them runs each list up to the moment it was read.</li>
             <li><code>GET /v1/companies</code> — employers ranked by open postings, from the same cached facet the board renders, with the as-of stamp and its basis.</li>
             <li><code>GET /v1/stats</code> — headline counts, the closure log, feed freshness (p50/p95/max minutes since each feed was last re-read) and per-system coverage, each figure with its own as-of and basis.</li>
@@ -4025,7 +4697,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           "@context": "https://schema.org",
           "@type": "WebPage",
           name: "Hiring Data & API",
-          description: `A read-only JSON API at ${API_BASE}/v1 over the live board and the lifecycle-tracked dataset behind it: takedowns vs re-listing, stated pay, daily audits. Free self-serve keys; free for journalists with attribution.`,
+          description: `A read-only JSON API at ${API_BASE}/v1 over the live board and the lifecycle-tracked dataset behind it: takedowns vs re-listing, stated pay, ${RECHECK_FRESH ? "daily audits" : `audits ${RECHECK_SCHEDULE}`}. Free self-serve keys; free for journalists with attribution.`,
           url: `${SITE}/data-api`,
           isPartOf: websiteRef(SITE),
         }],
@@ -4285,7 +4957,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       // constants are pinned to (a-first-call-with-no-key guard), never typed.
       // DECLARED BEFORE THE TWO SENTENCES THAT READ THEM (the 2026-09-16 bake).
       const unkeyedNames = codes(D.MCP_ANON_TOOLS.filter(toolKept));
-      const unkeyedCaps = `${D.MCP_ANON_CAPS.perAddressPerDay} calls a day for each internet connection an app calls from (from ChatGPT, ${D.MCP_ANON_CAPS.chatgptPerPerson} for each person ChatGPT's call names; from Claude, a shared pool of ${D.MCP_ANON_CAPS.hostPoolPerDay} first), search capped at ${D.MCP_ANON_CAPS.searchRows} rows`;
+      const unkeyedCaps = `${D.MCP_ANON_CAPS.perAddressPerDay} calls a day for each internet connection an app calls from (from ChatGPT, ${D.MCP_ANON_CAPS.chatgptPerPerson} for each person ChatGPT's call names; from Claude, a shared pool of ${D.MCP_ANON_CAPS.hostPoolPerDay.toLocaleString("en-US")} first), search capped at ${D.MCP_ANON_CAPS.searchRows} rows`;
       const signInSentence = withSignIn
         ? ` From ${h(withSignIn)}: a sign-in instead of a key, while the server's sign-in service is on — the call then runs on your own account key (the same row and quota a pasted key would use); before sign-in, or while it is off, the unkeyed tools — ${unkeyedNames} — still answer, ${unkeyedCaps}.`
         : "";
@@ -4321,9 +4993,14 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         host.phone ? `<p class="text-sm text-muted-foreground mb-2">${h(fillAC("phoneNote", { site: host.phone.site, app: host.phone.app }))}</p>` : "",
         host.fromClaude ? `<p class="text-sm text-muted-foreground mb-2">${h(fillAC("claudeConnectorCarriesOver", { name: D.MCP_CONNECTOR_NAME }))}</p>` : "",
       ].filter(Boolean).join("\n            ");
+      // THE ONE-STEP LINK, PLAIN, ABOVE THE MANUAL STEPS (SEO audit
+      // 2026-11-18, GEO-12; owner yes): a crawler and an answer engine read
+      // only these bytes, and they gave the manual steps alone. The steps stay.
+      const addToClaudeHtml = (host) => (host.id === "claude" ? addToClaudeLinkHtml({ live: D.MCP_ADD_TO_CLAUDE_LIVE, href: mcpUrl ? D.claudeInstallLink(mcpUrl) : null, name: D.MCP_CONNECTOR_NAME, esc: h }) : "");
       const hostPanel = (host) => `
           <section id="${host.id}" class="mb-8 p-4 rounded-2xl border border-border">
             <h3 class="text-lg font-semibold mb-2">${h(host.name)}${host.small ? ` <span class="text-sm font-normal text-muted-foreground">— ${h(host.small)}</span>` : ""}</h3>
+            ${addToClaudeHtml(host)}
             ${deeplinksHtml(host)}
             ${hostNotes(host)}
             ${stepsHtml(host.steps(ctx))}
@@ -4802,9 +5479,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     write({
       path: "/changelog",
       title: "Changelog — Every Ship, Dated and Honest",
-      description: clItems[0]
-        ? `What changed and when, newest first — including honest postmortems. Latest (${clItems[0].date}): ${clItems[0].title}.`
-        : "What changed and when, newest first — features, fixes, and honest postmortems.",
+      description: changelogDescription(clItems[0] ? { date: clItems[0].date, title: clItems[0].title } : null),
       jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Changelog", path: "/changelog" }])],
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Changelog" }])}
@@ -4910,6 +5585,20 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
           <p class="text-xs text-muted-foreground mt-3">${basis} Seventeen fields plus the roles we could not sort into a field: a posting lands in that last bucket when no rule of ours matched its department or its title, which is a gap in our own vocabulary rather than something missing from what the employer published. Every posting we serve carries exactly one of these, so between them they reach the whole board — and the last one is not a residue, it is a large part of the inventory that no field page can see.</p>`;
           })()}
         </section>
+        ${(() => {
+          // THE ROLES THE PAGE PROMISES, SERVED (SEO audit 2026-11-18,
+          // CONTENT-1): the head says "the roles inside each" and the document
+          // named none. The names are the React page's own list
+          // (src/data/field-roles.ts), under each field's label, with no
+          // counts: the counts are live probes the page makes in a browser,
+          // and this bake reads nothing from the board to print a name.
+          const fields = CATEGORY_LANDERS.filter(([slug]) => (D.FIELD_ROLES[slug] ?? []).length);
+          if (!fields.length) return "";
+          return `<section class="mb-8" data-field-roles=""><h2 class="text-xl font-bold mb-3">The roles we name in each field</h2>
+          <p class="text-xs text-muted-foreground mb-3">Role names are ours, not the board's. In a browser each one is priced with a live count of exactly the search it opens, and a name that matches nothing is left out.</p>
+          <div class="grid sm:grid-cols-2 gap-3">${fields.map(([slug, l]) => `<div class="rounded-xl border border-border bg-card p-4"><h3 class="text-sm font-semibold text-foreground mb-1"><a href="/jobs/field/${slug}">${esc(l)}</a></h3><ul class="text-xs text-muted-foreground">${D.FIELD_ROLES[slug].map((r) => `<li>${esc(r)}</li>`).join("")}</ul></div>`).join("")}</div>
+        </section>`;
+        })()}
         <div class="space-y-3 mb-8">
           <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">The roles inside a field, priced</h2><p class="text-xs text-muted-foreground">Role names are ours, not the board's. The number beside one is a live count of exactly the search that row opens, so a role we named that matches nothing is left out rather than shown as zero.</p></div>
           <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Narrowings that state what they hide</h2><p class="text-xs text-muted-foreground">Remote, on-site, states the pay, a pay floor, open to beginners, full-time, posted this week, one-click apply — each with its live count, and one sentence beneath them saying how much of that field states a work mode, a pay figure, an experience level or an employment type at all. A filter can only search what employers published.</p></div>
@@ -5037,6 +5726,11 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     },
   );
 
+  // The role pages that stand as their own page: a short spelling names its
+  // full-name page as canonical and leaves the sitemap (CONTENT-2), so the
+  // llms files count the pages an engine can cite.
+  const ROLE_PAGES_INDEXABLE = Object.values(D.ROLE_PAGES).filter((r) => !r.canonicalSlug).length;
+
   // ---- /llms-full.txt: complete citable text in one fetch ----
   // Companion to the hand-written public/llms.txt overview. AI engines that
   // find llms.txt can pull this for full guide text and the data-page map
@@ -5082,10 +5776,10 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     lines.push("## Data pages (from the scanner's live detection tables)");
     lines.push(`- Live ATS score benchmarks: ${SITE}/research/ats-score-benchmarks — real score distributions (median, quartiles, per-industry, per-experience-level) computed from the scan corpus over a rolling 180-day window; k-anonymous aggregates only.`);
     lines.push(`- Industry keyword pages (${NIND}): ${SITE}/industries/{slug} — keywords, recognized titles, certifications, O*NET-sourced skills per industry. Index: ${SITE}/industries`);
-    lines.push(`- Role keyword pages (${Object.keys(D.ROLE_PAGES).length}): ${SITE}/roles/{slug} — per-job-title keyword and certification data.`);
+    lines.push(`- Role keyword pages (${ROLE_PAGES_INDEXABLE}): ${SITE}/roles/{slug} — per-job-title keyword and certification data.`);
     lines.push(`- Spanish industry pages (15): ${SITE}/es/industrias/{slug} — native Spanish keyword data with English ATS terms.`);
     lines.push(`- ATS vendor guides: ${Object.keys(D.VENDORS).map((v) => `${SITE}/ats/${v}`).join(", ")} — documented parsing behaviors.`);
-    lines.push(`- CV standards by country: ${SITE}/cv-standards — photo, length, and personal-data norms for ${Object.keys(D.COUNTRY_SLUGS).length} countries (the scanner's own market rules), with localized pages in Spanish, French, German, Portuguese, and Dutch.`);
+    lines.push(`- CV standards by country: ${SITE}/cv-standards — photo, length, and personal-data norms for ${CV_COUNT_PHRASE} (the scanner's own market rules), with localized pages in Spanish, French, German, Portuguese, and Dutch.`);
     lines.push(`- Honest comparisons: ${Object.values(D.COMPETITORS).map((c) => `${SITE}/vs/${c.slug}`).join(", ")} — each names where the competitor wins.`);
     lines.push("");
     // ---- The board's own data pages, the API and the MCP server ----
@@ -5113,15 +5807,35 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       : "";
     lines.push("## The live job board and its data pages (from the board's own lifecycle log)");
     lines.push(`- Live job board: ${SITE}/jobs — every posting ${SOURCE_SENTENCE} (${D.SERVING_SOURCE_LIST}); no dated posting older than 30 days, undated ones shown with no age rather than a guessed one. Per-field pages at /jobs/field/{slug}, per-employer pages at /jobs/company/{token}.`);
-    lines.push(`- Ghost Job Index: ${SITE}/ghost-job-index — the board's live measure of posting reality: how many roles are open, how long postings stay up, how fast they come down, and which employers are actively hiring, from the closure log the board keeps for every posting it has watched. A posting coming down is never called a hire — a hire, a withdrawal, a cancelled requisition and a retitle are indistinguishable from the feed.`);
+    lines.push(`- Ghost Job Index: ${SITE}/ghost-job-index — the board's live measure of posting reality: ${GHOST_LLMS_CLAUSE}, from the closure log the board keeps for every posting it has watched. A posting coming down is never called a hire — a hire, a withdrawal, a cancelled requisition and a retitle are indistinguishable from the feed.`);
     lines.push(`- Weekly Hiring Trends: ${SITE}/hiring-trends — counted postings per week by each posting's own stated date, which fields are hiring, entry-level and remote counts as floors (they are counted over a narrower population than the weekly total, so they are never divided into it), and closure events per week from the lifecycle log; newly catalogued employers are excluded from weekly counts so coverage growth never reads as a hiring spike.`);
     lines.push(`- Entry-Level Index: ${SITE}/entry-level-index — employers ranked by real early-career openings (internships, junior, graduate, 0–2 year roles), counted only where the posting's own title or stated requirements say so.`);
     lines.push(`- Pay Transparency Index: ${SITE}/pay-transparency — the share of postings that state pay, by field, hiring system and large job board (one row per board, so an employer running several counts once per board), counted from the postings' own text and ATS fields; never estimated or modelled, and placement cannot be bought.`);
-    lines.push(companiesLlmsLine({ site: SITE, count: COMPANY_PAGE_COUNT }));
+    lines.push(companiesLlmsLine({ site: SITE, count: COMPANY_PAGE_COUNT, ...(COMPANY_PAGE_OTHERS ?? {}) }));
     lines.push(`- About: ${SITE}/about — what resumebooster.work is, what the board is, and how its counts are made and dated.`);
     lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API over the live board at ${API_BASE}/v1 (every path below is relative to ${API_BASE}; the addresses under ${SITE}/v1 are pages that point here), with free self-serve keys (${FREE_KEY_RATE_SENTENCE}): GET /v1/jobs, /v1/jobs/{id}, /v1/jobs/{id}/application (the employer's own application form for a live posting, read and never filled or submitted), /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (${D.MCP_FIT_ALLOWANCE}, counted together with fit_resume on the MCP server). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
-    lines.push(`- MCP server for AI agents: ${SITE}/agents (listed in the official MCP registry as ${MCP_REGISTRY_NAME}) — search and read tools (${LLMS_TOOLS.map((t) => t.name).join(", ")}) over the same board.${LLMS_REACH_LINE ? ` ${LLMS_REACH_LINE}` : ""} ${D.MCP_FORMS_ALLOWANCE} MCP server address (Streamable HTTP): ${MCP_URL} — registry name ${MCP_REGISTRY_NAME}. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day for each internet connection an app calls from — an office or a home connection counts as one; from ChatGPT each person has their own ${D.MCP_ANON_CAPS.chatgptPerPerson}, and Claude's users share ${D.MCP_ANON_CAPS.hostPoolPerDay} a day first — ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, and ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} ${D.MCP_PAID_TOOLS.length === 1 ? "gives" : "give"} ${D.MCP_FIT_ALLOWANCE}. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.page && x.header).map((x) => x.name))}, and any other app that can send a header, with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => x.page && !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; the page's own steps are at ${SITE}/agents#<host> for ${D.MCP_PAGE_HOSTS.map((x) => x.id).join(", ")}; setup for every other app is in the install repository's README at ${D.MCP_INSTALL_REPO_URL}. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}`);
+    lines.push(`- MCP server for AI agents: ${SITE}/agents (listed in the official MCP registry as ${MCP_REGISTRY_NAME}) — search and read tools (${LLMS_TOOLS.map((t) => t.name).join(", ")}) over the same board.${LLMS_REACH_LINE ? ` ${LLMS_REACH_LINE}` : ""} ${D.MCP_FORMS_ALLOWANCE} MCP server address (Streamable HTTP): ${MCP_URL} — registry name ${MCP_REGISTRY_NAME}.${addToClaudeLlms(D.MCP_ADD_TO_CLAUDE_LIVE && MCP_URL ? D.claudeInstallLink(MCP_URL) : null)} ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day for each internet connection an app calls from — an office or a home connection counts as one; from ChatGPT each person has their own ${D.MCP_ANON_CAPS.chatgptPerPerson}, and Claude's users share ${D.MCP_ANON_CAPS.hostPoolPerDay.toLocaleString("en-US")} a day first — ${D.MCP_ANON_CAPS.globalPerDay.toLocaleString("en-US")} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, and ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} ${D.MCP_PAID_TOOLS.length === 1 ? "gives" : "give"} ${D.MCP_FIT_ALLOWANCE}. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.page && x.header).map((x) => x.name))}, and any other app that can send a header, with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => x.page && !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; the page's own steps are at ${SITE}/agents#<host> for ${D.MCP_PAGE_HOSTS.map((x) => x.id).join(", ")}; setup for every other app is in the install repository's README at ${D.MCP_INSTALL_REPO_URL}. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}`);
     lines.push("");
+    // THE BOARD'S OWN FIGURES, DATED (SEO audit 2026-11-18, OFFSITE-9): this
+    // file carried the scan benchmark's figures (a few hundred self-selected
+    // scans) and none of the board's, which the four data pages print in their
+    // own descriptions. Each line is that page's description value, the one
+    // its meta description serves, beside the moment its figures were
+    // measured; a page whose figures this bake did not read is left out
+    // rather than given a number.
+    const boardFigureLines = [
+      ["Ghost Job Index", "/ghost-job-index", DATA_FIGURES.ghost],
+      ["Weekly Hiring Trends", "/hiring-trends", DATA_FIGURES.trends],
+      ["Entry-Level Index", "/entry-level-index", DATA_FIGURES.entry],
+      ["Pay Transparency Index", "/pay-transparency", DATA_FIGURES.pay],
+    ]
+      .filter(([, , f]) => f && f.read && f.desc && f.modified && Number.isFinite(new Date(f.modified).getTime()))
+      .map(([name, path, f]) => `- ${name} (${SITE}${path}), measured ${new Date(f.modified).toISOString().slice(0, 16).replace("T", " ")} UTC: ${f.desc}`);
+    if (boardFigureLines.length) {
+      lines.push("## Board figures (each line is its data page's own description, with the moment it was measured)");
+      lines.push(...boardFigureLines);
+      lines.push("");
+    }
     if (insights?.overall?.n) {
       const o = insights.overall;
       const bands = scoreBandsOverFloor(insights);
@@ -5137,7 +5851,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       lines.push(`Every score band, industry and experience level is published only at n >= ${bands.floor} scans${bands.hidden > 0 ? `; ${bands.hidden} scans in score bands under that floor are held back and counted only in the overall figures` : ""}. Figures update continuously from real scans; cite with the as-of date. Source page: ${SITE}/research/ats-score-benchmarks`);
       lines.push("");
     }
-    lines.push("Citation policy: everything above is publishable product truth — keyword tables are the scanner's real detection data, O*NET data is U.S. public domain, and vendor behaviors are the documented checks the scanner runs. Cite freely with a link.");
+    lines.push(`Citation policy: everything above is publishable product truth — keyword tables are the scanner's real detection data, O*NET data is U.S. public domain, and vendor behaviors are the documented checks the scanner runs. Cite freely with a link.${citeLicenceText(DATA_LICENSE)}`);
     writeFileSync(join(dist, "llms-full.txt"), lines.join("\n"));
     checkRetired("/llms-full.txt", lines.join("\n"));
 
@@ -5153,7 +5867,15 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     // count to "31,000+" one file away: it had no pattern at all. A miss now
     // WARNS on stderr rather than passing silently.
     try {
-      let lt = readFileSync(join(root, "public/llms.txt"), "utf8");
+      // THE FILE IS READ WHERE THE BAKE WRITES IT: public/llms.txt in a
+      // checkout (publicOut is root/public there, so nothing changes), and in
+      // a PRERENDER_OUT bake its public/llms.txt when one is there, else the
+      // checkout's. A test can then hand the bake a stale file and judge
+      // whether the restatements below correct it: a bake of the committed
+      // file, already rewritten, served the right sentence whether or not
+      // they ran (lane A review, 2026-11-18).
+      const llmsSource = existsSync(join(publicOut, "llms.txt")) ? join(publicOut, "llms.txt") : join(root, "public/llms.txt");
+      let lt = readFileSync(llmsSource, "utf8");
       // The paid line and the Pricing line name only what the pages have on
       // sale: the owner's switches (PRICING_GATES; both on, as on main), never
       // the seller, whose name gates no sale (sales stay on, the owner,
@@ -5188,7 +5910,12 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
         // DATED (SEO-026): the figure carries the day of the reading it
         // restates. The pattern takes the date it wrote last time, so it
         // matches again on the next bake.
-        sub(/[\d,]+\+ openings from [\d,]+\+ (?:companies|company job boards)(?: \(as of [^)]*\))?/, `${plusClaim(BOARD_TOTAL, 50000)} openings from ${plusClaim(BOARD_COMPANIES, 1000)} company job boards (${BOARD_AS_OF})`);
+        // EXACT, BECAUSE IT IS DATED (SEO audit 2026-11-18, OFFSITE-12): the
+        // churn margin keeps an undated "N+" true between bakes, but this
+        // clause names its reading's day, and the floor under-stated the board
+        // by about 7% beside the exact count of the same day further down the
+        // same file. The pattern takes either form, so it matches again.
+        sub(/[\d,]+\+? openings from [\d,]+\+? (?:companies|company job boards)(?: \(as of [^)]*\))?/, `${Number(BOARD_TOTAL).toLocaleString("en-US")} openings from ${Number(BOARD_COMPANIES).toLocaleString("en-US")} company job boards (${BOARD_AS_OF})`);
         // Second corpus figure in the same file (the /explore line). It was
         // NOT on any pattern list, so it never refreshed — the exact defect
         // this whole finding is about, one file down from the sentence.
@@ -5196,6 +5923,11 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       }
       sub(/\b\d+ industries, an interface in \d+ languages\b/, `${NIND} industries, an interface in ${UI_LANGUAGES} languages`);
       sub(/\b\d+ industry pages\b/, `${NIND} industry pages`);
+      // The role pages an engine can cite (CONTENT-2), from the data.
+      sub(/Role keyword pages \(\d+\)/, `Role keyword pages (${ROLE_PAGES_INDEXABLE})`);
+      // The CV-standards count (CONTENT-3): the countries with rules of their
+      // own, and the states that follow another's, from the data.
+      sub(/norms for \d+ countries(?: plus [a-z]+ (?:GCC states that follow the Saudi rules|that follow another country's rules))?/, `norms for ${CV_COUNT_PHRASE}`);
       // The source list is a CONFIG fact, not a live count, so it refreshes
       // on every bake from the same constant the board's own source note
       // renders — the committed file had fourteen systems typed by hand while
@@ -5206,10 +5938,19 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       // THE TWO ADDRESSES (SEO-014, SEO-015), restated from the bake's own
       // constants so the file and /agents and /data-api cannot disagree.
       sub(/MCP server address \(Streamable HTTP\): \S+/, `MCP server address (Streamable HTTP): ${MCP_URL}`);
+      // GEO-12: the one-step Add to Claude link, after the address's sentence, once.
+      lt = withAddToClaudeLine(lt, addToClaudeLlms(D.MCP_ADD_TO_CLAUDE_LIVE && MCP_URL ? D.claudeInstallLink(MCP_URL) : null));
       // WHAT THE CONNECTOR REACHES (CJ-11): the /agents sentence, restated
       // from a live read only; the pattern takes what it wrote last time.
       if (LLMS_REACH_LINE) sub(/Your AI searches [\d,]+ of the [\d,]+ open postings: [^.]+\. Counted [^.]+ UTC\./, LLMS_REACH_LINE);
       sub(/API address: \S+/, `API address: ${API_BASE}/v1`);
+      // GEO-4: the Ghost line names only the sections the served page has.
+      if (/how long postings stay up, how fast they come down, and which employers are actively hiring/.test(lt)) sub(/how many roles are open, how long postings stay up, how fast they come down, and which employers are actively hiring/, GHOST_LLMS_CLAUSE);
+      // THE FORM VENDORS (SEO audit 2026-11-18, CONTENT-4): the file named five
+      // of the ten vendors whose forms the server reads. Both sentences are
+      // restated from the list /agents and the server read (formVendorPhrase).
+      sub(/(When the employer uses )[^.;]*?(, your AI can read the employer's published application form)/, (_, a, b) => `${a}${D.formVendorPhrase("en")}${b}`);
+      sub(/(Inside ChatGPT, your AI reads the application form only when the employer uses )[^.;]*?(\.)/, (_, a, b) => `${a}${D.formVendorPhrase("en", D.MCP_FORM_VENDORS_ON_CHATGPT)}${b}`);
       // THE RE-CHECK'S AGE (SEO-F07): the file says a sample is re-checked
       // daily; when the newest run on record is more than 36 hours older than
       // this build, the sentence names that run's date instead of "daily".
@@ -5300,7 +6041,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     const pageDatesOf = (path) => {
       if (datesOf.has(path)) return datesOf.get(path);
       const fp = pageFingerprints.get(path);
-      const d = fp ? pageDates({ fp: fp.fp, legacyFp: fp.legacyFp, prior: priorPages[path], today: TODAY, stated: fp.stated, exact: fp.exact }) : null;
+      const d = fp ? withLastmodFloor(pageDates({ fp: fp.fp, legacyFp: fp.legacyFp, prior: priorPages[path], today: TODAY, stated: fp.stated, exact: fp.exact }), fp.floor, TODAY) : null;
       datesOf.set(path, d);
       return d;
     };
@@ -5424,6 +6165,14 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     ].join("\n");
     writeFileSync(join(publicOut, "sitemap.xml"), xml);
     writeFileSync(join(dist, "sitemap.xml"), xml);
+    // CRAWL-M1: the live posting pages, as the sitemap names them, beside /landers.json.
+    {
+      const about = postingManifestAbout(postingsByToken, postingLedger, (field) => CATEGORY_LANDERS.some(([s]) => s === field));
+      const manifest = postingPagesManifest(entries, { today: TODAY, isPosting: (e) => e.path.startsWith(`${D.POSTING_PATH_PREFIX}/`), href: publicHref, about });
+      writeFileSync(join(dist, "posting-pages.json"), JSON.stringify(manifest));
+      const tokenless = manifest.rows.filter((r) => !r.token).length;
+      console.log(`[prerender-seo] /posting-pages.json written: ${manifest.live.length} live posting page(s), the sitemap's own; ${manifest.rows.length - tokenless} row(s) name their board token${tokenless ? `, ${tokenless} do not` : ""}`);
+    }
     console.log(`[prerender-seo] sitemap.xml regenerated: ${entries.length} URLs (public/ + dist/), ${new Set(entries.map((e) => lastmodOf(e.path))).size} distinct lastmod dates`);
 
   }

@@ -98,12 +98,16 @@
     },
     "page": {
       "breadcrumb": "Breadcrumb",
-      "jobs": "Mga trabaho"
+      "jobs": "Mga trabaho",
+      "moreFieldJobs": "Iba pang trabaho sa {{field}}"
     },
     "more": {
       "heading": "Iba pang trabaho sa {{employer}}",
       "seeAll": "Tingnan ang bawat bukas na trabaho sa {{employer}}",
       "loading": "Nilo-load ang iba pang trabaho…"
+    },
+    "bakedPostings": {
+      "title": "Mga trabahong may sariling pahina"
     }
   }
 }

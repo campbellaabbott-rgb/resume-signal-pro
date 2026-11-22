@@ -57,9 +57,10 @@ export function postingCheckState(status, body) {
  * ANY state is the ledger's to decide, never re-added from a sitemap: an
  * expired gone path still named by a stale sitemap was re-read on every bake.
  */
-export function postingCarryBase({ ledger, sitemaps = [], idFromPath, today, keepDays = POSTING_STUB_KEEP_DAYS }) {
+export function postingCarryBase({ ledger, sitemaps = [], idFromPath, today, keepDays = POSTING_STUB_KEEP_DAYS, ceiling = null, reserve = null }) {
   const recheck = new Map();
   const stubs = new Map();
+  let held = 0;
   // PAST THE KEEP WINDOW A PAGE BECOMES A TOMBSTONE, NOT THE HOMEPAGE (SEO
   // report 2026-10-12, SEO-002). A gone page past the window used to be
   // dropped, and its address fell back to index.html: an indexable copy of the
@@ -68,10 +69,18 @@ export function postingCarryBase({ ledger, sitemaps = [], idFromPath, today, kee
   const tombstones = new Map();
   const postings = ledger && typeof ledger === "object" && ledger.postings && typeof ledger.postings === "object" ? ledger.postings : {};
   const named = new Set();
+  // The previous publish's live set, which the ceiling hold reads (CRAWL18B-2).
+  let liveCount = 0;
+  for (const e of Object.values(postings)) if (e && typeof e === "object" && e.state === "live") liveCount++;
   for (const [path, e] of Object.entries(postings)) {
     if (!idFromPath(path) || !e || typeof e !== "object") continue;
     named.add(path);
     if (e.state === "tombstone") { tombstones.set(path, { ...e }); continue; }
+    // A page this site just retired at the ceiling or for its expiry stays
+    // retired, without a board read, for its hold (postingRetiredHeld): it
+    // was re-read and re-admitted at the next bake, and its index and markup
+    // flipped within two days.
+    if (ceiling !== null && postingRetiredHeld(e, { today, liveCount, ceiling, reserve: reserve ?? 0 })) { stubs.set(path, { ...e }); held++; continue; }
     // A seeded entry (a URL published before the ledger existed, never re-read)
     // keeps its "no longer has a page of its own" page without a board read,
     // exactly as a gone one does: re-checking 459 of them a bake would spend the
@@ -91,7 +100,42 @@ export function postingCarryBase({ ledger, sitemaps = [], idFromPath, today, kee
       recheck.set(path, today);
     }
   }
-  return { recheck, stubs, tombstones };
+  return { recheck, stubs, tombstones, held, liveCount };
+}
+
+/**
+ * HOW LONG A RETIRED PAGE STAYS RETIRED (SEO audit 2026-11-18, CRAWL18B-2).
+ * Every retired page used to be re-read and re-admitted at the next bake, so
+ * five pages went index, noindex, index within two days at the ceiling and
+ * expiry edges (Insulet REQ-2026-18592: retired as expiring on 11-19, re-read,
+ * retired again at the ceiling). Now a page retired as expiring stays retired
+ * for POSTING_EXPIRY_NEAR_DAYS + 1 days, past the end it was retired for, and
+ * one retired at the ceiling for POSTING_CEILING_HOLD_DAYS while the previous
+ * publish's live set is at or above ceiling - reserve (below it there is room,
+ * and the page competes again). The day is the entry's lastRetired, the day
+ * it last went from a served page to a retired one (postingStubEntry).
+ */
+export const POSTING_CEILING_HOLD_DAYS = 7;
+export function postingRetiredHeld(e, { today, liveCount, ceiling, reserve = 0 }) {
+  if (!e || typeof e !== "object" || e.state !== "retired" || e.seed === true) return false;
+  const age = dayDiff(typeof e.lastRetired === "string" ? e.lastRetired : e.since, today);
+  if (age === null || age < 0) return false;
+  if (e.basis === "expiring") return age < POSTING_EXPIRY_HOLD_DAYS;
+  if (e.basis === "ceiling") return age < POSTING_CEILING_HOLD_DAYS && Number.isFinite(liveCount) && liveCount >= ceiling - reserve;
+  return false;
+}
+
+/**
+ * The retirement a ledger entry remembers (CRAWL18B-2): `lastRetired` is the
+ * day the page last went from a served page to a retired one, and
+ * `lastRetiredBasis` why. A retired entry keeps the day it was first retired
+ * while it stays retired; a live entry carries both forward, so a page that
+ * came back is visible as one.
+ */
+export function withRetiredMark(entry, prior) {
+  const p = prior && typeof prior === "object" ? prior : {};
+  if (typeof p.lastRetired !== "string") return entry;
+  return { ...entry, lastRetired: p.lastRetired, ...(typeof p.lastRetiredBasis === "string" ? { lastRetiredBasis: p.lastRetiredBasis } : {}) };
 }
 
 /**
@@ -158,6 +202,8 @@ export function postingCeilingSplit(carried, { ceiling, dateOf }) {
 // within a few days anyway, to the honest "retired" page, until the carried
 // set leaves room for the reserve. The ceiling is never broken.
 export const POSTING_EXPIRY_NEAR_DAYS = 3;
+/** A page retired as expiring stays retired this long (postingRetiredHeld). */
+export const POSTING_EXPIRY_HOLD_DAYS = POSTING_EXPIRY_NEAR_DAYS + 1;
 
 /**
  * The carried live pages that give up their page so the fresh reserve fits:
@@ -415,8 +461,12 @@ export function postingStubPage({ path, id, state, since, title, company, compan
   // CLOSED AT THE EMPLOYER (B01): the bake asked the employer's own system
   // and it answered that it no longer serves the posting, so this page says
   // that, and only that.
+  // PAST THE EMPLOYER'S OWN END DATE (STRUCTURED-M1): an earlier read of the
+  // employer's system stated when the posting closes, and that day passed.
   const lead = state === "gone" && basis === "employer"
     ? `${what} is no longer listed. When this page was built${since ? ` (${esc(since)})` : ""}, the employer's own hiring system answered that it no longer serves this posting, so this page states nothing more about it.`
+    : state === "gone" && basis === "employer-stated end"
+    ? `${what} is past the closing date its employer stated. When this page was built${since ? ` (${esc(since)})` : ""}, the end date the employer's own hiring system gave this posting had passed, so this page states nothing more about it.`
     : state === "gone"
     ? `${what} is no longer listed on this board${since ? ` (recorded ${esc(since)})` : ""}. That is a statement about this board, not about the employer: the posting may have been taken down, or the date the employer put on it passed the board's ${windowDays}-day window.`
     : state === "retired"
@@ -437,6 +487,12 @@ export function postingStubPage({ path, id, state, since, title, company, compan
         `${t ? `${t}${c ? ` at ${c}` : ""}` : "This posting"} is no longer listed by its employer. Browse the live openings instead.`,
         `${t ?? "This posting"} is no longer listed by its employer.`,
         "This posting is no longer listed by its employer. Browse the live openings instead.",
+      ].find((d) => d.length <= 160)
+      : state === "gone" && basis === "employer-stated end"
+      ? [
+        `${t ? `${t}${c ? ` at ${c}` : ""}` : "This posting"} is past the closing date its employer stated. Browse the live openings instead.`,
+        `${t ?? "This posting"} is past the closing date its employer stated.`,
+        "This posting is past the closing date its employer stated. Browse the live openings instead.",
       ].find((d) => d.length <= 160)
       : state === "gone"
       ? [
@@ -505,6 +561,14 @@ export function postingStubEntry({ stub, prior, today, first = null, employerNam
   // The twin a duplicate canonicalises to rides in the ledger (SEO-039): the
   // carry dropped it, and every carried duplicate entry read duplicateOf null.
   if (state === "retired" && typeof stub.duplicateOf === "string" && stub.duplicateOf.startsWith("/")) out.duplicateOf = stub.duplicateOf;
+  // The day it last went from a served page to a retired one (CRAWL18B-2):
+  // kept while it stays retired, today when it was served at the last publish.
+  if (state === "retired" && out.seed !== true) {
+    const stays = p.state === "retired";
+    out.lastRetired = stays ? (typeof p.lastRetired === "string" ? p.lastRetired : since) : today;
+    const basis = stays && typeof p.lastRetiredBasis === "string" ? p.lastRetiredBasis : out.basis;
+    if (typeof basis === "string") out.lastRetiredBasis = basis;
+  }
   return out;
 }
 
@@ -589,7 +653,7 @@ export const D7_TRUSTED_COMPANY_TOKENS = Object.freeze([
   "jobportal.martinbrower.com", // Martin Brower
 ]);
 
-export function selectLanders(companyFacet, { openOf, displayName = (c) => c.name.trim(), unreadable = () => false, max = 500, min = 8, keep = null, keepRatio = 0.5, pin = null }) {
+export function selectLanders(companyFacet, { openOf, displayName = (c) => c.name.trim(), unreadable = () => false, max = 500, min = 8, keep = null, keepRatio = 0.5, pin = null, demand = null, demandMin = 50, demandCap = 40 }) {
   const size = (c) => (typeof c.open === "number" ? c.open : (c.count ?? 0));
   const ranked = (Array.isArray(companyFacet) ? companyFacet : [])
     // Tilde is allowed: Oracle/Workday compound tokens (tenant~dc~site) are
@@ -631,11 +695,23 @@ export function selectLanders(companyFacet, { openOf, displayName = (c) => c.nam
         .sort((a, b) => (openOf(b) ?? b.count ?? 0) - (openOf(a) ?? a.count ?? 0));
     }
   }
+  // DEMAND BOARDS ABOVE THE CEILING (SEO audit 2026-11-18, OPP-1;
+  // src/data/demand-employers.ts): a board in `demand` that the volume cut
+  // left out joins with at least `demandMin` open roles, at most `demandCap`
+  // of them, the largest first. They are added after the cut and the D7
+  // holds, so no board chosen above loses its place; every later rule (the
+  // name gate, the duplicate and thin rules) judges them as any other.
+  const isDemand = (c) => inSet(demand, c);
+  if (demand && demand.size) {
+    const have = new Set(chosen.map((c) => c.token));
+    const extra = ranked.filter((c) => isDemand(c) && !have.has(c.token) && (openOf(c) ?? c.count ?? 0) >= demandMin).slice(0, Math.max(0, demandCap));
+    if (extra.length) chosen = [...chosen, ...extra].sort((a, b) => (openOf(b) ?? b.count ?? 0) - (openOf(a) ?? a.count ?? 0));
+  }
   const top = chosen
     .map((c) => {
       const open = openOf(c);
       const name = displayName(c);
-      return { token: c.token, name, stored: c.name.trim(), open: typeof open === "number" ? open : null, count: typeof c.count === "number" ? c.count : null, unreadable: !!unreadable(c, name) };
+      return { token: c.token, name, stored: c.name.trim(), open: typeof open === "number" ? open : null, count: typeof c.count === "number" ? c.count : null, unreadable: !!unreadable(c, name), ...(isDemand(c) ? { demand: true } : {}) };
     });
   const nameKey = (c) => c.name.toLowerCase().replace(/\s+/g, " ").trim();
   const groupKey = (c) => `${bakeEmployerKey(c.token)}\u0000${nameKey(c)}`;
@@ -739,7 +815,7 @@ export function employerPageOf(landers, token) {
  * and a board whose printed name is still its tenant code gets a page that is
  * never indexable.
  */
-export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null, keep = null, pin = null }) => selectLanders(companyFacet, {
+export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null, keep = null, pin = null, demand = null }) => selectLanders(companyFacet, {
   openOf,
   // SEO-006: `nameOf` is the bake's repaired name (scripts/prerender-names.mjs
   // bakeEmployerName: "Chubb External" prints as "Chubb"); the code-shape test
@@ -750,6 +826,8 @@ export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null, 
   ...(min ? { min } : {}),
   ...(keep ? { keep } : {}),
   ...(pin ? { pin } : {}),
+  // OPP-1: the demand boards, with their own floor and cap (src/data/demand-employers.ts).
+  ...(demand ? { demand, demandMin: D.DEMAND_EMPLOYER_MIN_OPEN ?? 50, demandCap: D.DEMAND_EMPLOYER_CAP ?? 40 } : {}),
 });
 
 /**
@@ -910,7 +988,7 @@ export const FINGERPRINT_VERSION = 2;
  * version existed, so the switch itself re-dates nothing. With `exact`, a
  * stated date is the lastmod itself (a data page's measurement day).
  */
-export function pageDates({ fp, legacyFp, prior, today, stated = null, exact = false }) {
+export function pageDates({ fp, legacyFp, prior, today, stated = null, exact = false, floor = null }) {
   const p = prior && typeof prior === "object" ? prior : null;
   const same = !!p && (p.fpv === FINGERPRINT_VERSION ? p.fp === fp : p.fp === legacyFp);
   const priorChanged = p && typeof p.changed === "string" ? p.changed : p && typeof p.lastmod === "string" ? p.lastmod : null;
@@ -922,7 +1000,24 @@ export function pageDates({ fp, legacyFp, prior, today, stated = null, exact = f
   // states: the sitemap says that day and no other, whatever the count-blind
   // fingerprint did.
   const lastmod = st ? (exact || !p ? st : (st > changed ? st : changed)) : changed;
-  return { lastmod, changed: st && !p ? st : changed, fp, fpv: FINGERPRINT_VERSION };
+  // CRAWL-9: `floor` is a day the lastmod may not be earlier than (see
+  // withLastmodFloor below).
+  return withLastmodFloor({ lastmod, changed: st && !p ? st : changed, fp, fpv: FINGERPRINT_VERSION }, floor, today);
+}
+
+/**
+ * A PAGE'S DATES WITH A DAY ITS LASTMOD MAY NOT BE EARLIER THAN (SEO audit
+ * 2026-11-18, CRAWL-9): a posting page's employer-stated date. The
+ * fingerprint is blind to dates, so MGM 281193, re-dated by its employer to
+ * 11-12, kept the lastmod 11-08 of its first text, a sitemap date saying the
+ * page had not changed since before it was posted. `dates` is pageDates'
+ * answer (or null); a floor after `today` counts as today; `changed`, the day
+ * the text last moved, is left as it was.
+ */
+export function withLastmodFloor(dates, floor, today) {
+  if (!dates || typeof floor !== "string" || !/^\d{4}-\d{2}-\d{2}/.test(floor)) return dates;
+  const f = floor.slice(0, 10) > today ? today : floor.slice(0, 10);
+  return f > dates.lastmod ? { ...dates, lastmod: f } : dates;
 }
 
 /**
@@ -1003,7 +1098,24 @@ export function landerFacts(intel, { countryName, fieldLabel }) {
     .filter((r) => r.category !== "other")
     .map((r) => ({ slug: r.category, label: fieldLabel(r.category) }))
     .filter((r) => r.label);
-  return { countries, fields };
+  return { countries, fields, pay: landerPayFloor(intel) };
+}
+
+/**
+ * THE PAY LINE A COMPANY PAGE PRINTS (SEO audit 2026-11-18, GEO-3), as React's
+ * PaySummary decides it (payFacts, intelScope): the median of the bottom of
+ * each stated USD pay range, only when at least LANDER_PAY_MIN_POSTINGS
+ * postings state one, and `pooled` when the reader's own totals count more
+ * roles than the page serves (`openN`, an exact count; none judges nothing).
+ * Visible text only: the page's markup carries no baseSalary.
+ */
+export const LANDER_PAY_MIN_POSTINGS = 5;
+export function landerPayFloor(intel) {
+  const m = typeof intel?.usd_n === "number" && Number.isFinite(intel.usd_n) ? intel.usd_n : 0;
+  const amount = typeof intel?.median_usd_floor === "number" && Number.isFinite(intel.median_usd_floor) ? intel.median_usd_floor : null;
+  if (amount === null || amount <= 0 || m < LANDER_PAY_MIN_POSTINGS) return null;
+  const sum = (v) => (Array.isArray(v) ? v : []).reduce((t, r) => t + (r && typeof r.n === "number" && Number.isFinite(r.n) && r.n > 0 ? r.n : 0), 0);
+  return { amount: Math.round(amount), m, atLeast: Math.max(sum(intel.countries), sum(intel.categories), m) };
 }
 
 /** The rows of one company-filtered board list read, or null when the answer cannot be read. */
@@ -1118,8 +1230,21 @@ export function duplicateSkeletons(items) {
  * of their own, counted, never "every employer with open roles" (about 470
  * of some 31,000 boards; register L4-11).
  */
-export const companiesLlmsLine = ({ site, count }) =>
-  `- Companies with a page of their own: ${site}/companies — ${typeof count === "number" ? `the ${count.toLocaleString("en-US")} employers` : "the employers"} this site gives a page, A–Z, each linked with the open-role count measured when the index was built. The board itself carries far more employers, every one searchable at ${site}/jobs.`;
+export const companiesLlmsLine = ({ site, count, agencies = 0, federal = false }) =>
+  `- Companies with a page of their own: ${site}/companies — ${typeof count === "number" ? `the ${count.toLocaleString("en-US")} employers` : "the employers"} this site gives a page${companiesOthersPhrase({ agencies, federal })}, A–Z, each linked with the open-role count measured when the index was built. The board itself carries far more employers, every one searchable at ${site}/jobs.`;
+
+/**
+ * WHAT /companies LISTS BESIDE THE EMPLOYERS (SEO audit 2026-11-18, GEO-9):
+ * the llms files said "490 employers" where /companies said 487, plus the
+ * federal listing site and 2 staffing agencies, labelled. The count is the
+ * employers' (landerKindOf), and the others are named apart.
+ */
+export function companiesOthersPhrase({ agencies = 0, federal = false } = {}) {
+  const parts = [];
+  if (federal) parts.push("the federal listing site");
+  if (agencies > 0) parts.push(`${agencies} staffing ${agencies === 1 ? "agency" : "agencies"}`);
+  return parts.length ? `, plus ${parts.join(" and ")}, labelled` : "";
+}
 
 /**
  * The /companies line of the hand-written public/llms.txt, which said "each
@@ -1167,9 +1292,34 @@ export const LANDER_KIND_COPY = {
   usajobsCap: "Up to {{cap}} results per query; not every federal opening.",
   usajobsCapValue: 10000,
   agencyBanner: "This is a staffing agency's board. Roles here are usually for its clients.",
+  payTitle: "Pay",
+  payFloorOne: "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} posting",
+  payFloorOther: "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} postings",
+  payFloorPooledOne: "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} posting on this employer's whole hiring system",
+  payFloorPooledOther: "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} postings on this employer's whole hiring system",
+  payRead: "read {{date}}",
+  payBasis: "Yearly figures from the pay ranges their open postings state; postings that state no pay are not counted.",
 };
 
-export function companyLanderPage({ token, name, primaryToken, robots = null, canonicalTo = null, openN, countedOn = null, facts, openings = [], openingsAt = null, vendor = null, boards = 1, nameShared = false, collision = null, boardCompanies, site, esc, possessive, fmt, href: hrefOf, kind = "employer", copy = LANDER_KIND_COPY }) {
+const fill = (template, vars) => String(template).replace(/\{\{\s*(\w+)\s*\}\}/g, (all, k) => (k in vars ? String(vars[k]) : all));
+const usd = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
+const dayEnGb = (day) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${day}T00:00:00Z`));
+
+/** The pay section React's PaySummary prints, in the same words, or "" with no pay line to print. */
+export function landerPayHtml(pay, { openN = null, readOn = null, esc, copy = LANDER_KIND_COPY }) {
+  if (!pay) return "";
+  const C = { ...LANDER_KIND_COPY, ...(copy ?? {}) };
+  const pooled = typeof openN === "number" && Number.isFinite(openN) && pay.atLeast > openN;
+  const line = fill(pooled ? (pay.m === 1 ? C.payFloorPooledOne : C.payFloorPooledOther) : (pay.m === 1 ? C.payFloorOne : C.payFloorOther), {
+    amount: usd(pay.amount), m: pay.m.toLocaleString("en-US"), currency: "USD",
+  });
+  const read = typeof readOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(readOn) ? ` · ${fill(C.payRead, { date: dayEnGb(readOn) })}` : "";
+  return `<h2>${esc(C.payTitle)}</h2>
+            <p data-company-pay="">${esc(line)}${esc(read)}</p>
+            <p>${esc(C.payBasis)}</p>`;
+}
+
+export function companyLanderPage({ token, name, primaryToken, robots = null, canonicalTo = null, openN, countedOn = null, intelOn = null, facts, openings = [], openingsAt = null, vendor = null, boards = 1, nameShared = false, collision = null, boardCompanies, site, esc, possessive, fmt, href: hrefOf, kind = "employer", copy = LANDER_KIND_COPY }) {
   const C = { ...LANDER_KIND_COPY, ...(copy ?? {}) };
   const nm = name;
   const isPrimary = primaryToken === token;
@@ -1214,8 +1364,11 @@ export function companyLanderPage({ token, name, primaryToken, robots = null, ca
       : "",
     facts?.fields?.length
       ? `<h2>${fieldsHead}</h2>
-            <p>The fields holding the most of its roles ${factsScope}: ${facts.fields.map((x) => `<a href="${href}?category=${encodeURIComponent(x.slug)}">${esc(x.label)}</a>`).join(", ")}. Fields are our own sorting of each posting's title, never a label the employer applied.</p>`
+            <p>The fields holding the most of its roles ${factsScope}: ${facts.fields.map((x) => `<a href="${href}?category=${encodeURIComponent(x.slug)}">${esc(x.label)}</a>`).join(", ")}. Fields are our own sorting of each posting's title, never a label the employer applied.</p>
+            <p>Every employer's openings in ${facts.fields.length === 1 ? "that field" : "those fields"}: ${facts.fields.map((x) => `<a href="/jobs/field/${encodeURIComponent(x.slug)}">${esc(x.label)} jobs</a>`).join(" · ")}.</p>`
       : "",
+    // GEO-3: React's pay line, under its gate and in its words, dated the day the bake read it.
+    landerPayHtml(facts?.pay ?? null, { openN: hasN ? openN : null, readOn: intelOn, esc, copy: C }),
     openings.length
       ? `<h2>${usajobs ? "Openings listed on USAJOBS" : collided ? "Openings on these boards" : agency ? `Roles listed by ${esc(nm)}` : `Openings at ${esc(nm)}`}</h2>
             <p>${openingsAt ? `From ${collided ? "these boards' listing" : `${esc(poss)} listing`} on this board, read ${esc(openingsAt)}, newest first` : `${collided ? "Openings" : `${esc(poss)} openings`} with a page of their own on this site`}; the live board ${RECHECK_CLAUSE}. A role with a page of its own on this site is linked; every role opens on <a href="${href}">the live board</a>.</p>

@@ -84,6 +84,7 @@ describe("the page and the bake read the model, not the guess", () => {
   });
   it("a description opens with a capital (SEO-F16)", () => {
     expect(capitalizeFirst("enfermería, paciente")).toBe("Enfermería, paciente");
-    expect(page).toContain("capitalizeFirst(esKeywords.slice(0, 5).join(\", \"))");
+    // The five are the list with no word twice (CONTENT-N6), still opened with a capital.
+    expect(page).toContain("capitalizeFirst(descriptionKeywords(esKeywords, slug).slice(0, 5).join(\", \"))");
   });
 });

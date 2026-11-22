@@ -74,12 +74,17 @@ VDZZ_P bms "/jobs/posting/workday/bristolmyerssquibb~wd5~BMS/R1607072-1"
 VDZZ_P talent "/jobs/company/talent.reyesholdings.com/"
 VDZZ_P mb "/jobs/company/jobportal.martinbrower.com/"
 curl -s -m 60 -A "$UA" -o /tmp/vd_99zz_sitemap.xml "$SITE/sitemap.xml" 2>/dev/null
-# The app's own scripts those pages name: the mirror rides one of them.
+# The app's own scripts those pages name: the mirror rides one of them. A page
+# whose route hints are written after its first paint (scripts/prerender-preload.mjs,
+# defersRouteHints) names them in its loader script's list instead of its head,
+# so that list is read too (SEO audit 2026-11-18, PERFORMANCE-1).
 : > /tmp/vd_99zz_assets.txt
 node -e '
 const fs=require("fs");const out=new Set();
 for(const f of ["/tmp/vd_99zz_axia.html","/tmp/vd_99zz_honeywell.html"]){let h="";try{h=fs.readFileSync(f,"utf8")}catch{}
-  for(const m of h.matchAll(/<(?:script[^>]*\ssrc|link[^>]*\srel="modulepreload"[^>]*\shref)="(\/assets\/[A-Za-z0-9_.-]+\.js)"/g))out.add(m[1]);}
+  for(const m of h.matchAll(/<(?:script[^>]*\ssrc|link[^>]*\srel="modulepreload"[^>]*\shref)="(\/assets\/[A-Za-z0-9_.-]+\.js)"/g))out.add(m[1]);
+  const d=/<script data-route-preload="1">([\s\S]*?)<\/script>/.exec(h);const l=d?/(\[[^\]]*\])\.forEach\(/.exec(d[1]):null;
+  if(l){try{for(const u of JSON.parse(l[1]))if(typeof u==="string"&&/^\/assets\/[A-Za-z0-9_.-]+\.js$/.test(u))out.add(u)}catch{}}}
 fs.writeFileSync("/tmp/vd_99zz_assets.txt",[...out].slice(0,30).map((u)=>u+"\n").join(""));
 ' 2>/dev/null
 VDZZ_I=0

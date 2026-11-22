@@ -6,10 +6,11 @@
  * said 10-31 against its Dataset's 11-06, and the benchmarks page 11-02
  * against 11-06. Two answers to "when did this page change" from one bake.
  *
- * Now one pageDates result feeds both. A guide's Article takes the lastmod
- * the sitemap prints (its stated date, or the later day its text changed); a
- * data page states the day its figures were measured as an EXACT date, and
- * the sitemap prints that day and no other.
+ * Now one pageDates result feeds both for a data page: it states the day
+ * its figures were measured as an EXACT date, and the sitemap prints that day
+ * and no other. A guide's Article states the day the guide prints beside
+ * "Updated" (STRUCTURED-B10, 2026-11-21); the sitemap may date the page
+ * later when its shell changed, never earlier.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -50,8 +51,8 @@ describe("the bake prints one date in both places", () => {
     expect(code).toMatch(/exact: fp\.exact/);
   });
 
-  it("a guide's Article states that lastmod as its dateModified", () => {
-    expect(code).toMatch(/const jsonLd = \(lastmod\) => \[\{[\s\S]{0,600}dateModified: lastmod/);
+  it("a guide's Article states the day the guide prints as its dateModified", () => {
+    expect(code).toMatch(/const jsonLd = \(\) => \[\{[\s\S]{0,600}dateModified: g\.updated,/);
   });
 
   it("each data page states its figures' day as an exact date", () => {

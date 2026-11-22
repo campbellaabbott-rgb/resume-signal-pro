@@ -26,9 +26,11 @@
  * same lists. They are different names, so they are not collapsed here; what
  * to do with them waits on the Search Console duplicate list (F05).
  */
-import { describe, expect, it, vi } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { afterAll, describe, expect, it, vi } from "vitest";
+import { execFileSync } from "node:child_process";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { render } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
@@ -273,9 +275,8 @@ describe("a role page whose text is another's once its own name is set aside", (
  * write() call passes a canonical built from the role's canonicalSlug. Google's
  * JavaScript SEO guide asks that script never set a canonical other than the
  * one in the served HTML (review of 2026-11-15, F06), so the React page names
- * the full-name page only when the bake does, and each page names itself
- * until then. When the bake's half lands this reads true, and the head test
- * below fails until RoleKeywords names the same canonical, in the same publish.
+ * the full-name page exactly when the bake does. Both halves landed together
+ * (SEO audit 2026-11-18, CONTENT-2): the bake names it, and so does the page.
  */
 function bakeNamesRoleCanonical(): boolean {
   const src = readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8");
@@ -298,15 +299,15 @@ describe("what the rendered head says", () => {
     return { canonical, robots };
   };
 
-  it("every role page names the canonical its baked file names: itself, until the bake names the full-name page", async () => {
-    const baked = bakeNamesRoleCanonical();
+  it("every short-name role page names the full-name page as its canonical, as its baked file does", async () => {
+    expect(bakeNamesRoleCanonical(), "the bake's /roles write() passes a canonical built from canonicalSlug").toBe(true);
     const short = Object.values(ROLE_PAGES).filter((r) => deferTo(r.slug));
     expect(short.map((r) => r.slug).sort()).toEqual(["admin-assistant", "e-commerce-manager", "hr-manager", "lab-technician", "ml-engineer", "project-manager-construction", "rn", "vet-tech"]);
     const wrong: string[] = [];
     for (const r of short) {
-      const want = `${SITE}/roles/${baked ? deferTo(r.slug) : r.slug}`;
+      const want = `${SITE}/roles/${deferTo(r.slug)}`;
       const got = await head(r.slug);
-      if (got.canonical !== want || got.robots.length) wrong.push(`/roles/${r.slug}: canonical ${got.canonical}, robots ${got.robots.join(",") || "none"}; the bake ${baked ? "names the full-name page" : "names the page itself"}`);
+      if (got.canonical !== want || got.robots.length) wrong.push(`/roles/${r.slug}: canonical ${got.canonical}, robots ${got.robots.join(",") || "none"}; want ${want}`);
     }
     expect(wrong).toEqual([]);
     expect(await head("veterinary-technician")).toEqual({ canonical: `${SITE}/roles/veterinary-technician`, robots: [] });
@@ -350,4 +351,94 @@ describe("links between keyword pages", () => {
     }
     expect(bad).toEqual([]);
   });
+});
+
+/**
+ * THE SERVED FILES (SEO audit 2026-11-18, CONTENT-2): an offline bake writes
+ * every role page, so the short name's canonical, the sitemap, the links
+ * between keyword pages and the llms files' count are read from the files a
+ * crawler is served, not from the source.
+ *
+ * The bake is handed the llms.txt 9c9234e9a committed ("Role keyword pages
+ * (174)"), not this branch's: a bake of a file already saying 166 serves 166
+ * whether or not the bake restates the count (lane A review, 2026-11-18).
+ */
+const COMMITTED_LLMS = readFileSync(resolve(__dirname, "../../public/llms.txt"), "utf8");
+/** A line no restatement touches: the served file carries it only if the bake read the stale copy. */
+const SEEDED = "Seeded stale copy, lane A review 2026-11-18.";
+const STALE_LLMS = `${COMMITTED_LLMS.replace(/Role keyword pages \(\d+\)/, "Role keyword pages (174)")}\n${SEEDED}\n`;
+
+describe("the baked role pages", () => {
+  let OUT = "";
+  const bake = () => {
+    if (OUT) return join(OUT, "dist");
+    OUT = mkdtempSync(join(tmpdir(), "roles-canonical-"));
+    mkdirSync(join(OUT, "dist"), { recursive: true });
+    mkdirSync(join(OUT, "public"), { recursive: true });
+    writeFileSync(join(OUT, "public", "llms.txt"), STALE_LLMS);
+    copyFileSync(resolve(__dirname, "../../index.html"), join(OUT, "dist", "index.html"));
+    execFileSync("node", [resolve(__dirname, "../../scripts/prerender-seo.mjs")], {
+      cwd: resolve(__dirname, "../.."),
+      env: { ...process.env, PRERENDER_OUT: OUT, PRERENDER_OFFLINE: "1", VITE_SUPABASE_URL: "", VITE_SUPABASE_PUBLISHABLE_KEY: "" },
+      stdio: ["ignore", "pipe", "pipe"],
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    return join(OUT, "dist");
+  };
+  afterAll(() => {
+    if (OUT && OUT.startsWith(tmpdir())) rmSync(OUT, { recursive: true, force: true });
+  });
+  const canonicalOf = (html: string) => (/<link rel="canonical" href="([^"]+)"/.exec(html) || [])[1];
+
+  it("a short name's baked page names the full-name page; the full name names itself", () => {
+    const dist = bake();
+    for (const r of Object.values(ROLE_PAGES)) {
+      const file = join(dist, "roles", r.slug, "index.html");
+      expect(existsSync(file), file).toBe(true);
+      expect(canonicalOf(readFileSync(file, "utf8")), r.slug).toBe(`${SITE}/roles/${deferTo(r.slug) ?? r.slug}`);
+    }
+    expect(canonicalOf(readFileSync(join(dist, "roles", "rn", "index.html"), "utf8"))).toBe(`${SITE}/roles/registered-nurse`);
+  }, 120_000);
+
+  it("the sitemap lists the 166 role pages that name themselves, and none that defers", () => {
+    const dist = bake();
+    const locs = [...readFileSync(join(dist, "sitemap.xml"), "utf8").matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+    const roles = locs.filter((l) => l.startsWith(`${SITE}/roles/`));
+    expect(roles).toHaveLength(166);
+    for (const r of Object.values(ROLE_PAGES)) expect(roles.includes(`${SITE}/roles/${r.slug}`), r.slug).toBe(!deferTo(r.slug));
+  }, 120_000);
+
+  it("no baked role or industry page links a role page that defers to another", () => {
+    const dist = bake();
+    const deferring = new Set(Object.values(ROLE_PAGES).filter((r) => deferTo(r.slug)).map((r) => r.slug));
+    expect(deferring.size).toBe(8);
+    const files = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? files(join(dir, e.name)) : e.name.endsWith(".html") ? [join(dir, e.name)] : []));
+    const pages = [...files(join(dist, "roles")), ...files(join(dist, "industries"))];
+    // every role page and every industry page, each read
+    expect(pages.filter((f) => f.endsWith(`${join("roles", "registered-nurse", "index.html")}`))).toHaveLength(1);
+    expect(pages.filter((f) => f.endsWith(`${join("industries", "healthcare", "index.html")}`))).toHaveLength(1);
+    let linksRead = 0;
+    const bad: string[] = [];
+    for (const f of pages) {
+      for (const m of readFileSync(f, "utf8").matchAll(/<a\b[^>]*\shref="(?:https:\/\/resumebooster\.work)?\/roles\/([a-z0-9-]+)\/?(?:[?#][^"]*)?"/g)) {
+        linksRead++;
+        if (deferring.has(m[1])) bad.push(`${f.slice(dist.length)} -> /roles/${m[1]}`);
+      }
+    }
+    expect(linksRead, "the baked pages link role pages at all").toBeGreaterThan(500);
+    expect(bad).toEqual([]);
+  }, 120_000);
+
+  it("the llms files count the 166 role pages an engine can cite, from a stale llms.txt too", () => {
+    expect(STALE_LLMS, "the bake is handed the old count").toContain("Role keyword pages (174)");
+    const dist = bake();
+    expect(readFileSync(join(dist, "llms.txt"), "utf8"), "the bake read the stale copy").toContain(SEEDED);
+    for (const f of ["llms.txt", "llms-full.txt"]) {
+      const text = readFileSync(join(dist, f), "utf8");
+      expect(text, f).toContain("Role keyword pages (166)");
+      expect(text, f).not.toMatch(/Role keyword pages \((?!166\))\d+\)/);
+    }
+    expect(COMMITTED_LLMS, "the committed public/llms.txt").toContain("Role keyword pages (166)");
+  }, 120_000);
 });

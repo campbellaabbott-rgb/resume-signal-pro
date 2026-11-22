@@ -73,6 +73,8 @@ import { postingLiveness, shownPosting } from "@/lib/listing/liveness";
 import { listingEmployer } from "@/lib/listing/employer";
 import { PostingDetail } from "@/components/jobs/listing/PostingDetail";
 import { moreRolesAllowed } from "@/lib/listing/more-roles";
+import { isBoardCategory } from "@/lib/job-board-categories";
+import { ROUTE_PENDING_ATTRIBUTE, prerenderedPageShowing } from "@/lib/keep-prerendered-page";
 
 // BELOW THE FOLD, SO NOT IN THE FIRST LOAD. The section and the card it
 // prints are fetched only when their place nears the viewport (MoreRolesSlot).
@@ -406,6 +408,20 @@ export default function JobPosting() {
           "This opening is no longer served by the employer's own job board. Search the live board for openings like it.",
         );
 
+  // THE BAKED POSTING STAYS UNTIL THE READ LANDS (PERFORMANCE-5). The first
+  // commit used to be the header, the breadcrumb and a spinner, and that
+  // commit took the baked posting off the screen for the length of the detail
+  // read. While a baked page is still on screen and the read is in flight,
+  // the page draws only an empty, hidden, marked <main> (no header, no footer:
+  // either would be drawn above the baked page; no id: the skip link's target
+  // stays the baked main), so main.tsx keeps the baked nodes; the commit that
+  // brings the answer drops the mark, and they leave in the same task. After
+  // a client-side navigation nothing baked is left and the spinner shows as
+  // before. The head is untouched either way.
+  if (state === "loading" && prerenderedPageShowing()) {
+    return <main hidden {...{ [ROUTE_PENDING_ATTRIBUTE]: "" }} className="min-h-screen" />;
+  }
+
   return (
     <>
       {/* The crawl directive for a gone posting is set on the tag the bake
@@ -547,6 +563,27 @@ export default function JobPosting() {
                     days: BOARD_FRESH_WINDOW_DAYS,
                     hours: VERIFY_ON_VIEW_AFTER_HOURS,
                   })}
+                </p>
+              )}
+
+              {/* "MORE <FIELD> JOBS" (CONTENT-N2, SEO audit 2026-11-18b). The
+                  seventeen field pages were linked from about 20 of 1,370
+                  pages, and from no posting page. A live posting whose field
+                  has a field page links it, under the board's own name for
+                  the field; "other" and an unknown field have none, and
+                  link nothing. The page the bake writes gets the same link
+                  from the bake's own half of CONTENT-N2. */}
+              {isBoardCategory(shown.category ?? undefined) && (
+                <p className="mt-4 text-sm" data-field-lander-link="">
+                  <Link
+                    to={`/jobs/field/${shown.category}`}
+                    className="text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary"
+                  >
+                    {t("listing.page.moreFieldJobs", {
+                      defaultValue: "More {{field}} jobs",
+                      field: t(`jobsPage.categories.${shown.category}`),
+                    })}
+                  </Link>
                 </p>
               )}
 

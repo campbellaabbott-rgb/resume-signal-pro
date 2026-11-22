@@ -101,12 +101,16 @@
     },
     "page": {
       "breadcrumb": "Trilha de navegação",
-      "jobs": "Vagas"
+      "jobs": "Vagas",
+      "moreFieldJobs": "Mais vagas em {{field}}"
     },
     "more": {
       "heading": "Mais vagas na {{employer}}",
       "seeAll": "Ver todas as vagas abertas na {{employer}}",
       "loading": "Carregando mais vagas…"
+    },
+    "bakedPostings": {
+      "title": "Vagas com página própria"
     }
   }
 }

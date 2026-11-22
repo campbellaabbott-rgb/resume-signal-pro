@@ -1,6 +1,5 @@
 import { Bot, BookOpen, Briefcase, Building2, ChevronDown, Compass, CreditCard, Megaphone, Menu, Shield, User as UserIcon } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -17,6 +16,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ScanCreditsCounter } from "@/components/ScanCreditsCounter";
 import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
 import { cn } from "@/lib/utils";
+import { useSiteShellT } from "@/lib/locale-from-path";
 
 /**
  * THE SITE HEADER, BY BREAKPOINT (design spec 3.1).
@@ -136,14 +136,16 @@ function useSignInFits(row: RefObject<HTMLElement>, enabled: boolean, remeasureK
 }
 
 export function Header({ variant = "default" }: { variant?: "default" | "quiet" } = {}) {
-  const { t, i18n } = useTranslation();
+  // CONTENT-N4 (SEO audit 2026-11-18): on a translated page the header speaks
+  // the page's language (src/lib/locale-from-path.ts), elsewhere the reader's.
+  const { t, lng, pageLocale } = useSiteShellT();
   const navigate = useNavigate();
   const { session } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const quiet = variant === "quiet";
   const row = useRef<HTMLDivElement>(null);
-  const signInInRow = useSignInFits(row, quiet, `${i18n.language}|${session ? "account" : "signin"}`);
+  const signInInRow = useSignInFits(row, quiet, `${lng}|${session ? "account" : "signin"}`);
 
   // The menu closes on any navigation, and on Escape wherever focus is.
   useEffect(() => { setMenuOpen(false); }, [location.pathname, location.search, location.hash]);
@@ -192,7 +194,7 @@ export function Header({ variant = "default" }: { variant?: "default" | "quiet" 
   const isCurrent = (to: string) => location.pathname === to || (to !== "/" && location.pathname.startsWith(`${to}/`));
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40 border-b border-border bg-background/90 backdrop-blur-sm" role="banner">
+    <header className="fixed inset-x-0 top-0 z-40 border-b border-border bg-background/90 backdrop-blur-sm" role="banner" lang={pageLocale ?? undefined}>
       <div ref={row} data-header-row className="container flex h-14 items-center gap-2 lg:h-16 lg:gap-4">
         <Link
           to="/"

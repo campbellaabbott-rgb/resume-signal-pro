@@ -19,7 +19,9 @@
  *   - before agent-mcp.2026-11-12.1 no agent-mcp POST is made and its lines
  *     are INFO; before public-api.2026-11-12.1 the form reader's are; before
  *     the frontend publish the page's lines are INFO; the install README is
- *     INFO owner pending until ownerDecided names S14X-056;
+ *     INFO owner pending until ownerDecided names S14X-056; a README synced
+ *     to the page PASSes GEO-2 (the-install-readme-check-fails-on-a-stopped-
+ *     form-vendor-or-the-old-claude-step.test.ts proves each half can FAIL);
  *   - each owner key (OD14-REDIST-1, OD14-ASHBY-1, HO-1) is INFO owner
  *     pending until ownerDecided names it, INFO for a choice that ships
  *     nothing, waits for the build or publish that carries it, and then can
@@ -194,7 +196,10 @@ const OLD_AC = `function HostPanel(e){return n("p",{className:"text-xs",children
 const OLD_BAKE = `<html><body><p>Full detail for one job id, including the complete description text and when the employer's feed last confirmed it open.</p><p>When the employer uses Greenhouse, Ashby, Recruitee, Breezy or Pinpoint, it returns the employer's real application form</p><p>the U.S. federal job feed, whose terms forbid redistributing it as a data feed</p><h4>With a free key (optional — opens every read tool: key_status, debug_search; 1,000 calls a day)</h4><td>Wait for midnight UTC; the unkeyed tools still answer.</td></body></html>`;
 
 const OPENAI = (extra: string[] = []) => JSON.stringify({ creationTime: BUNDLED_CHATGPT_EGRESS_AT, prefixes: [...BUNDLED_CHATGPT_EGRESS_V4, ...extra].map((p) => ({ ipv4Prefix: p })) });
-const README_SYNCED = "# resumebooster-mcp\n\nThe Resume Booster job board for your AI. Applying stays with you: apply_myself reads the employer's form.\n";
+// A README re-synced to the page (GEO-2): its apply sentence names the page's readers and its Claude steps the page's authentication step.
+const README_READERS = MCP_FORM_VENDORS.map((v) => v.label);
+const README_AUTH_STEP = claude.fallbackSteps!(ctx).find((s) => s.text.startsWith("Under authentication"))!.text;
+const README_SYNCED = `# resumebooster-mcp\n\nThe Resume Booster job board for your AI. Applying stays with you: \`apply_myself\` is how a person applies, free and with no key: when the posting's hiring system is ${README_READERS.slice(0, -1).join(", ")} or ${README_READERS.at(-1)}, it returns the employer's real application form.\n\n6. ${README_AUTH_STEP}\n`;
 const README_PAID = "# resumebooster-mcp\n\nThe Resume Booster job board for your AI. Applying is paid: the apply agent sends it for you.\n";
 const HIRING = JSON.stringify({ jsonrpc: "2.0", id: 14, result: { content: [{ type: "text", text: "{}" }], structuredContent: { employers: [
   { company_token: "centriaautism", record: "observed", open_roles: 12, tracking_days: 80, feed_total: 12, gate: { counts: "lap_read", median: "lap_read", sentence: "Counts need a full read of this board." }, basis: "one board", layoff_filing: null },
@@ -279,6 +284,7 @@ describe("a good deploy, sign-in off", () => {
     ]);
     for (const id of Object.keys(OWNER_SHIPPED)) expect(v.some((l) => l.startsWith(`PASS  ${id} decided`)), `${id}\n${r.out}`).toBe(true);
     for (const id of [...MCP_LINES, ...RIDES, "S14X-056-install"]) expect(lineOf(v, id), `${id}\n${r.out}`).toMatch(/^PASS/);
+    expect(v.filter((l) => l.slice(6).startsWith("GEO-2 ")).map((l) => l.slice(0, 4)), r.out).toEqual(["PASS", "PASS"]);
     for (const id of PAGE) expect(v.some((l) => l.startsWith(`PASS  ${id} `) && !/\(bake\)/.test(l)), `${id} (chunk)\n${r.out}`).toBe(true);
     for (const id of ["S14X-260", "S14X-261", "SEO-F15", "USAJOBS-COPY-1"]) expect(v.some((l) => l.startsWith(`PASS  ${id} (bake)`)), `${id} (bake)\n${r.out}`).toBe(true);
     expect(lineOf(v, "V0", /agent-mcp/)).toMatch(/^PASS/);
