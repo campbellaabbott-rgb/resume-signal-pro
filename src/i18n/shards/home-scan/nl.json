@@ -1,0 +1,24 @@
+{
+  "homeScan": {
+    "tailoringNotes": {
+      "download": "Aanpassingsnotities downloaden",
+      "readyTitle": "Aanpassingsnotities klaar",
+      "readyBody": "Notities voor deze functie: een samenvatting, vaardigheden en opsommingspunten om in je eigen cv over te nemen. Het is geen cv om zo te versturen.",
+      "downloadedTitle": "Aanpassingsnotities gedownload",
+      "downloadedBody": "Neem wat op jou van toepassing is over in je eigen cv voordat je solliciteert."
+    },
+    "keywordCoverage": {
+      "title": "Trefwoorden uit de vacature in deze tekst",
+      "summary": "{{found}} van de {{total}} trefwoorden uit de vacature staan in de aangepaste samenvatting, vaardigheden of opsommingspunten.",
+      "found": "In de tekst",
+      "notFoundLabel": "Niet in de tekst",
+      "notFound": "Niet in de aangepaste tekst: {{n}}. Zet de trefwoorden die op jou van toepassing zijn in je eigen cv."
+    },
+    "outcome": {
+      "title": "Hoe ging het met rapport #{{reportId}}?",
+      "body": "De link in je e-mail heeft het antwoord hieronder gekozen. Er wordt niets opgeslagen tot je het hier bevestigt, en je kunt het eerst nog wijzigen.",
+      "save": "Mijn antwoord opslaan",
+      "dismiss": "Nu niet"
+    }
+  }
+}

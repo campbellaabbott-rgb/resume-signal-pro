@@ -1,0 +1,24 @@
+{
+  "homeScan": {
+    "tailoringNotes": {
+      "download": "Download tailoring notes",
+      "readyTitle": "Tailoring notes ready",
+      "readyBody": "Notes for this role: a summary, skills and bullet points to copy into your own résumé. They are not a résumé to send as they are.",
+      "downloadedTitle": "Tailoring notes downloaded",
+      "downloadedBody": "Copy what is true of you into your own résumé before you apply."
+    },
+    "keywordCoverage": {
+      "title": "Posting keywords in this text",
+      "summary": "{{found}} of {{total}} keywords from the posting appear in the tailored summary, skills or bullet points.",
+      "found": "In the text",
+      "notFoundLabel": "Not in the text",
+      "notFound": "Not in the tailored text: {{n}}. Add the ones that are true of you to your own résumé."
+    },
+    "outcome": {
+      "title": "How did it go with report #{{reportId}}?",
+      "body": "The link in your email picked the answer below. Nothing is saved until you confirm it here, and you can change it first.",
+      "save": "Save my answer",
+      "dismiss": "Not now"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "homeScan": {
+    "tailoringNotes": {
+      "download": "Télécharger les notes d'adaptation",
+      "readyTitle": "Notes d'adaptation prêtes",
+      "readyBody": "Des notes pour ce poste : un résumé, des compétences et des puces à reprendre dans votre propre CV. Ce n'est pas un CV à envoyer tel quel.",
+      "downloadedTitle": "Notes d'adaptation téléchargées",
+      "downloadedBody": "Reprenez dans votre propre CV ce qui est vrai pour vous avant de postuler."
+    },
+    "keywordCoverage": {
+      "title": "Mots-clés de l'offre dans ce texte",
+      "summary": "{{found}} mots-clés de l'offre sur {{total}} figurent dans le résumé, les compétences ou les puces adaptés.",
+      "found": "Dans le texte",
+      "notFoundLabel": "Absent du texte",
+      "notFound": "Absents du texte adapté : {{n}}. Ajoutez à votre propre CV ceux qui sont vrais pour vous."
+    },
+    "outcome": {
+      "title": "Comment ça s'est passé avec le rapport #{{reportId}} ?",
+      "body": "Le lien de votre e-mail a choisi la réponse ci-dessous. Rien n'est enregistré tant que vous ne la confirmez pas ici, et vous pouvez la modifier avant.",
+      "save": "Enregistrer ma réponse",
+      "dismiss": "Pas maintenant"
+    }
+  }
+}
