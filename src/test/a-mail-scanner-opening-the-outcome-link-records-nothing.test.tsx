@@ -97,9 +97,13 @@ afterEach(() => { cleanup(); window.history.replaceState({}, "", "/"); });
 describe("the outcome link in the scan-report email", () => {
   it("records nothing when the page is opened, as a mail scanner opens it", async () => {
     openTheLink("interview");
-    await screen.findByText(card.save, {}, SLOW);
+    await screen.findByText("uploader", {}, SLOW);
     await settle();
     expect(outcomeCalls(), "opening the link stored an answer before anyone pressed anything").toEqual([]);
+    // What the page offers instead: the answer, waiting for a press.
+    expect(await screen.findByText(card.save, {}, SLOW)).toBeTruthy();
+    await settle();
+    expect(outcomeCalls()).toEqual([]);
   });
 
   it("shows the link's answer picked, and stores it when the person confirms", async () => {

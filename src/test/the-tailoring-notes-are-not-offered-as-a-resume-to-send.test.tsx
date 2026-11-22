@@ -175,11 +175,12 @@ describe("the homepage's tailoring notes", () => {
 
   it("are never offered as a file to send or to apply with", async () => {
     const dialog = await openTheNotes();
-    const labels = within(dialog).getAllByRole("button", { name: /download/i }).map((b) => b.textContent?.trim());
-    expect(labels.length).toBeGreaterThan(0);
-    for (const label of labels) expect(label).toBe(shard.homeScan.tailoringNotes.download);
     const said = toast.mock.calls.map(([a]) => `${(a as { title?: string }).title ?? ""} ${(a as { description?: string }).description ?? ""}`).join("\n");
     expect(said, "the toast told the reader to download the file and apply with it").not.toMatch(/download[^.!]*\b(apply|send)\b/i);
+    const labels = within(dialog).getAllByRole("button", { name: /download/i }).map((b) => b.textContent?.trim() ?? "");
+    expect(labels.length).toBeGreaterThan(0);
+    for (const label of labels) expect(label, "a button offers the file to send").not.toMatch(/\bsend\b/i);
+    for (const label of labels) expect(label).toBe(shard.homeScan.tailoringNotes.download);
     expect(said).toContain(shard.homeScan.tailoringNotes.readyTitle);
     await download(dialog);
     const after = toast.mock.calls.map(([a]) => (a as { title?: string }).title ?? "");
