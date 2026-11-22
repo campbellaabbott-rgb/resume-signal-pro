@@ -22,9 +22,9 @@ const ENTRIES = [
   { path: "/industries/healthcare" },
   { path: "/jobs/posting/workday/insulet~wd5~insuletcareers/REQ-1.5" },
 ];
-const ABOUT: Record<string, { title: string; company: string; field: string | null }> = {
-  "/jobs/posting/greenhouse/acme/1": { title: "Registered Nurse", company: "Acme Health", field: "healthcare" },
-  "/jobs/posting/workday/insulet~wd5~insuletcareers/REQ-1.5": { title: "Supplier Engineer", company: "Insulet", field: null },
+const ABOUT: Record<string, { title: string; company: string; token: string; field: string | null }> = {
+  "/jobs/posting/greenhouse/acme/1": { title: "Registered Nurse", company: "Acme Health", token: "acme", field: "healthcare" },
+  "/jobs/posting/workday/insulet~wd5~insuletcareers/REQ-1.5": { title: "Supplier Engineer", company: "Insulet", token: "insulet~wd5~insuletcareers", field: null },
 };
 const isPosting = (e: { path: string }) => e.path.startsWith("/jobs/posting/");
 const href = (p: string) => (/\.[^/]*$/.test(p) ? `${p}/` : p);
@@ -37,10 +37,10 @@ describe("/posting-pages.json", () => {
     expect(m.live).toEqual(["/jobs/posting/greenhouse/acme/1", "/jobs/posting/workday/insulet~wd5~insuletcareers/REQ-1.5/"]);
   });
 
-  it("each row names the title and company the page prints, and its field or null", () => {
+  it("each row names the title and company the page prints, its board token, and its field or null", () => {
     expect(m.rows).toEqual([
-      { path: "/jobs/posting/greenhouse/acme/1", title: "Registered Nurse", company: "Acme Health", field: "healthcare" },
-      { path: "/jobs/posting/workday/insulet~wd5~insuletcareers/REQ-1.5/", title: "Supplier Engineer", company: "Insulet", field: null },
+      { path: "/jobs/posting/greenhouse/acme/1", title: "Registered Nurse", company: "Acme Health", token: "acme", field: "healthcare" },
+      { path: "/jobs/posting/workday/insulet~wd5~insuletcareers/REQ-1.5/", title: "Supplier Engineer", company: "Insulet", token: "insulet~wd5~insuletcareers", field: null },
     ]);
   });
 
@@ -49,9 +49,9 @@ describe("/posting-pages.json", () => {
     expect(bare.rows?.[0]).toEqual({ path: "/jobs/posting/greenhouse/acme/1", field: null });
   });
 
-  it("the bake hands it each page's title, company and lander field, the ledger's for a carried page", () => {
+  it("the bake hands it each page's title, company, token and lander field, the ledger's for a carried page", () => {
     const src = readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8");
-    expect(src).toMatch(/postingAbout\.set\(p\.path, \{ title: p\.title, company: p\.company, field: p\.category && CATEGORY_LANDERS\.some/);
-    expect(src).toMatch(/about: \(path\) => postingAbout\.get\(path\) \?\? \(postingLedger\[path\] \? \{ title: postingLedger\[path\]\.title, company: postingLedger\[path\]\.company, field: null \} : null\)/);
+    expect(src).toMatch(/const about = postingManifestAbout\(postingsByToken, postingLedger, \(field\) => CATEGORY_LANDERS\.some\(\(\[s\]\) => s === field\)\);/);
+    expect(src).toMatch(/postingPagesManifest\(entries, \{ today: TODAY, isPosting: [^\n]*, href: publicHref, about \}\)/);
   });
 });

@@ -20,7 +20,8 @@
 #       /jobs/field/data_ai links /industries/machine_learning, and
 #       /roles/registered-nurse links /jobs/field/healthcare.
 #   B8  (CRAWL18B-4) /posting-pages.json carries a row for each live page, the
-#       sitemap's posting set, each with a title, a company and a field key.
+#       sitemap's posting set, each with a title, a company, a field key and
+#       the board token of its own path (a company page picks rows by it).
 #   B9  (CONTENT-N4) /fr/normes-cv/france carries "Entreprises qui recrutent"
 #       and not "Companies hiring", and its skip link is French.
 #   B10 (STRUCTURED-B10) on every sitemap guide, the Article dateModified day
@@ -152,7 +153,10 @@ if (!locs.length) out("FAIL", "98zzzz", "the sitemap could not be read; every li
     const paths = rows.map((r) => String(r?.path ?? "").replace(/\/$/, ""));
     const same = paths.length === postingLocs.length && paths.every((p, i) => p === postingLocs[i]);
     const thin = rows.filter((r) => !(typeof r.title === "string" && r.title && typeof r.company === "string" && r.company && "field" in r));
-    out(same && !thin.length ? "PASS" : "FAIL", "B8", `${rows.length} row(s) against ${postingLocs.length} sitemap posting page(s)${same ? ", the same set in order" : ", NOT the sitemap set"}; ${thin.length} without a title, a company or a field key`);
+    // A company page picks its rows by token, so a row names its own board.
+    const boardOf = (p) => String(p ?? "").split("/")[4] ?? "";
+    const untokened = rows.filter((r) => !(typeof r.token === "string" && r.token && r.token === boardOf(r.path)));
+    out(same && !thin.length && !untokened.length ? "PASS" : "FAIL", "B8", `${rows.length} row(s) against ${postingLocs.length} sitemap posting page(s)${same ? ", the same set in order" : ", NOT the sitemap set"}; ${thin.length} without a title, a company or a field key; ${untokened.length} without the board token of its own path${untokened.length ? ` (e.g. ${untokened[0].path})` : ""}`);
   }
 }
 

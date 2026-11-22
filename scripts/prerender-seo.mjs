@@ -556,20 +556,43 @@ export function changelogDescription(latest, max = 160) {
 export function postingPagesManifest(entries, { today, isPosting, href = (p) => p, about = () => null }) {
   const live = (Array.isArray(entries) ? entries : []).filter((e) => isPosting(e));
   // CRAWL18B-4 (SEO audit 2026-11-18): each live page also as a row with the
-  // title and company it prints and its board field, so a rendered hub (the
-  // homepage, /jobs, a field or company page) can link the baked pages by
-  // name. A row has exactly the sitemap's paths; a field the bake did not
-  // sort is null, and a title or company it does not know is left out.
+  // title and company it prints, its employer board's token and its board
+  // field, so a rendered hub (the homepage, /jobs, a field or company page)
+  // can link the baked pages by name, and a company page its own (the reader,
+  // src/lib/seo/posting-manifest.ts, picks a company page's rows by `token`).
+  // A row has exactly the sitemap's paths; a field the bake did not sort is
+  // null, and a title, company or token it does not know is left out.
   const rows = live.map((e) => {
     const a = about(e.path) ?? {};
     return {
       path: href(e.path),
       ...(typeof a.title === "string" && a.title ? { title: a.title } : {}),
       ...(typeof a.company === "string" && a.company ? { company: a.company } : {}),
+      ...(typeof a.token === "string" && a.token ? { token: a.token } : {}),
       field: typeof a.field === "string" && a.field ? a.field : null,
     };
   });
   return { at: today, live: live.map((e) => href(e.path)), rows };
+}
+
+/**
+ * WHAT THE MANIFEST SAYS OF EACH PAGE (CRAWL18B-4; review of 2026-11-21: the
+ * rows carried no token, so a company page drew none of its own). A page this
+ * bake wrote is described from `postingsByToken` (its board token, then the
+ * pages under it), its field only when `isLanderField` says the field has a
+ * lander; a page only the ledger knows, from its ledger entry, with no field.
+ * Returns postingPagesManifest's `about`.
+ */
+export function postingManifestAbout(postingsByToken, ledger = {}, isLanderField = () => false) {
+  const about = new Map();
+  for (const [token, list] of postingsByToken ?? []) {
+    for (const p of list ?? []) about.set(p.path, { title: p.title, company: p.company, token, field: p.category && isLanderField(p.category) ? p.category : null });
+  }
+  return (path) => {
+    if (about.has(path)) return about.get(path);
+    const e = ledger?.[path];
+    return e ? { title: e.title, company: e.company, token: e.token ?? null, field: null } : null;
+  };
 }
 
 /** The "no longer listed" page a posting its employer closed gets: state "gone", basis "employer" (B01). */
@@ -6144,11 +6167,11 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
     writeFileSync(join(dist, "sitemap.xml"), xml);
     // CRAWL-M1: the live posting pages, as the sitemap names them, beside /landers.json.
     {
-      const postingAbout = new Map();
-      for (const list of postingsByToken.values()) for (const p of list) postingAbout.set(p.path, { title: p.title, company: p.company, field: p.category && CATEGORY_LANDERS.some(([s]) => s === p.category) ? p.category : null });
-      const manifest = postingPagesManifest(entries, { today: TODAY, isPosting: (e) => e.path.startsWith(`${D.POSTING_PATH_PREFIX}/`), href: publicHref, about: (path) => postingAbout.get(path) ?? (postingLedger[path] ? { title: postingLedger[path].title, company: postingLedger[path].company, field: null } : null) });
+      const about = postingManifestAbout(postingsByToken, postingLedger, (field) => CATEGORY_LANDERS.some(([s]) => s === field));
+      const manifest = postingPagesManifest(entries, { today: TODAY, isPosting: (e) => e.path.startsWith(`${D.POSTING_PATH_PREFIX}/`), href: publicHref, about });
       writeFileSync(join(dist, "posting-pages.json"), JSON.stringify(manifest));
-      console.log(`[prerender-seo] /posting-pages.json written: ${manifest.live.length} live posting page(s), the sitemap's own`);
+      const tokenless = manifest.rows.filter((r) => !r.token).length;
+      console.log(`[prerender-seo] /posting-pages.json written: ${manifest.live.length} live posting page(s), the sitemap's own; ${manifest.rows.length - tokenless} row(s) name their board token${tokenless ? `, ${tokenless} do not` : ""}`);
     }
     console.log(`[prerender-seo] sitemap.xml regenerated: ${entries.length} URLs (public/ + dist/), ${new Set(entries.map((e) => lastmodOf(e.path))).size} distinct lastmod dates`);
 

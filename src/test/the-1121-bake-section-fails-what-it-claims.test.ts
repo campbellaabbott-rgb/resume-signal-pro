@@ -98,7 +98,7 @@ function site(bad: Bad = {}): { routes: Record<string, string>; stated: string }
   r["/llms.txt"] = [`- Ghost Job Index: ${SITE}/ghost-job-index — the board's live measure: ${GHOST_LLMS_SECTIONS[0].clause}.`, `- Companies hiring: ${SITE}/companies — ${bad.B13 ? "600" : "512"} employers with a page of their own.`].join("\n");
   r["/llms-full.txt"] = bad.B12 ? "Cite us." : "Cite us. The figures are published under CC BY 4.0.";
   const posts = [P1, P2];
-  r["/posting-pages.json"] = JSON.stringify({ at: "2026-11-21", live: posts, ...(bad.B8 ? {} : { rows: posts.map((p) => ({ path: p, title: "Nurse", company: "Acme", field: "healthcare" })) }) });
+  r["/posting-pages.json"] = JSON.stringify({ at: "2026-11-21", live: posts, ...(bad.B8 ? {} : { rows: posts.map((p) => ({ path: p, title: "Nurse", company: "Acme", token: "acme", field: "healthcare" })) }) });
   const sitemapPaths = ["/jobs", ...posts, ...INDS.map((s) => `/industries/${s}`), "/guides/ats", ...(bad.B17 ? [] : ["/jobs/company/openai"])];
   r["/sitemap.xml"] = `<?xml version="1.0"?><urlset>${sitemapPaths.map((p) => `<url><loc>${SITE}${p}</loc></url>`).join("")}</urlset>`;
   const at = new Date(Date.now() - 3_600_000).toISOString().slice(0, 16);
@@ -132,6 +132,19 @@ describe("against each defect the audit found", () => {
     expect(line(lines, "B9")).toContain('"Companies hiring" PRESENT');
     expect(line(lines, "B13")).toContain(`prints no "${GHOST_LLMS_SECTIONS[0].h2}" heading`);
     expect(line(lines, "B19")).toContain('"SpaceX_Global"');
+  });
+});
+
+describe("a manifest whose rows name no board token, or another board's (review of 2026-11-21)", () => {
+  it("B8 FAILs and counts them", () => {
+    const { routes, stated } = site();
+    routes["/posting-pages.json"] = JSON.stringify({ at: "2026-11-21", live: [P1, P2], rows: [
+      { path: P1, title: "Nurse", company: "Acme", field: "healthcare" },
+      { path: P2, title: "Clerk", company: "Acme", token: "pnc~wd5~External", field: null },
+    ] });
+    const b8 = line(runSection(routes, stated), "B8");
+    expect(b8).toMatch(/^FAIL /);
+    expect(b8).toContain(`2 without the board token of its own path (e.g. ${P1})`);
   });
 });
 
