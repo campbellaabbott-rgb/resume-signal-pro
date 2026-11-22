@@ -143,7 +143,7 @@ async function answersOf(signIn: "on" | "off"): Promise<Answers> {
   const out = {
     init: await post(rpcBody(1, "initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "verify-deploy", version: "1" } })),
     tools: await post(rpcBody(2, "tools/list", {})),
-    keyed: await post(rpcBody(3, "tools/list", {}), { authorization: "Bearer x" }),
+    keyed: await post(rpcBody(3, "tools/list", {}), { authorization: "Bearer rb_live_listing_shape_only_not_a_key" }),
     prompt: await post(rpcBody(4, "prompts/get", { name: "browse_jobs", arguments: { what: "nurse", where: "United States" } })),
     guide: await post(rpcBody(5, "resources/read", { uri: "resumebooster://guide" })),
     fit: await post(rpcBody(6, "tools/call", { name: "fit_resume", arguments: {} })),
@@ -229,7 +229,7 @@ function routes(base: Answers, o: Over = {}): Route[] {
     { match: `^OPTIONS ${B}/functions/v1/public-api\\t`, status: 204, headers: pa ? { "x-fn-build": pa } : {} },
     { match: `${post('"method":"tools/list"')}[^\\t]*\\theaders:.*Content-Type: text/plain`, ...r(a.plain) },
     { match: `${post('"method":"tools/list"')}[^\\t]*\\theaders:.*Origin: https://evil\\.example`, ...r(a.foreign) },
-    { match: `${post('"method":"tools/list"')}[^\\t]*\\theaders:.*Authorization: Bearer x`, ...r(toolsListed("keyed", a)) },
+    { match: `${post('"method":"tools/list"')}[^\\t]*\\theaders:.*Authorization: Bearer rb_live_listing_shape_only_not_a_key`, ...r(toolsListed("keyed", a)) },
     { match: post('"method":"tools/list"'), ...r(toolsListed("tools", a)) },
     { match: post('"method":"initialize"'), ...r(a.init) },
     { match: post('"method":"prompts/get"'), ...r(a.prompt) },
@@ -358,7 +358,7 @@ describe("each claim can FAIL", () => {
     ["RC-S9-002", undefined, () => ({ a: { prompt: { ...OFF.prompt, body: OFF.prompt.body.split("locationNote").join("note") } } })],
     ["M2-01", undefined, () => ({ a: { tools: edit(OFF.tools, (j) => { ehrRow(j).closed_90d = { type: "integer" }; }) } })],
     ["M2-01", undefined, () => ({ a: { tools: edit(OFF.tools, (j) => { delete ehrRow(j).gate; }) } })],
-    ["USAJOBS-COPY-1", /the guide/, () => ({ a: { guide: { ...OFF.guide, body: OFF.guide.body.replace("which we choose not to redistribute for now", "whose terms of use forbid redistributing it as a data feed") } } })],
+    ["USAJOBS-COPY-1", /the guide/, () => ({ a: { guide: { ...OFF.guide, body: OFF.guide.body.replace("federal announcements whose who-may-apply statement is not stored", "federal announcements, whose terms of use forbid redistributing it as a data feed,") } } })],
     ["NB-31", undefined, () => ({ openai: { body: OPENAI(["203.0.113.0/24"]) } })],
   ] as Array<[string, RegExp | undefined, () => Over]>)("%s (%s)", (id, extra, over) => {
     const r = run(routes(OFF, over()));
@@ -384,7 +384,7 @@ describe("each claim can FAIL", () => {
     ["S14X-261", /get_job on \/agents/, () => `${NEW_MT}\nwhen the employer's feed last confirmed it open.`],
     ["S14X-262", /sign-in line/, () => NEW_MT.replace("to score your CV against postings or to show your key's status", "to open a posting in full or to check a shortlist")],
     ["SEO-F15", /form readers/, () => NEW_MT.replace(VENDOR_ARRAY, OLD_MT_STRINGS[4])],
-    ["USAJOBS-COPY-1", /\/agents says/, () => NEW_MT.replace("which we choose not to redistribute for now", "whose terms forbid redistributing it as a data feed")],
+    ["USAJOBS-COPY-1", /\/agents says/, () => NEW_MT.replace("U.S. federal announcements are handed on once", "U.S. federal announcements, whose terms forbid redistributing it as a data feed, are handed on once")],
   ] as Array<[string, RegExp, () => string]>)("%s on the chunk (%s)", (id, re, mt) => {
     const r = run(routes(OFF, { mt: mt() }));
     const v = verdicts(r.lines).filter((l) => !/\(bake\)/.test(l));
@@ -406,7 +406,7 @@ describe("each claim can FAIL", () => {
     ["S14X-260", () => NEW_BAKE.replace("</body>", "<td>Wait for midnight UTC; the unkeyed tools still answer.</td></body>")],
     ["S14X-261", () => NEW_BAKE.replace(getJob, "Full detail for one job id, including when the employer's feed last confirmed it open.")],
     ["SEO-F15", () => NEW_BAKE.replace(applyMyself, "When the employer uses Greenhouse, Ashby, Recruitee, Breezy or Pinpoint, it returns the form.")],
-    ["USAJOBS-COPY-1", () => NEW_BAKE.replace("which we choose not to redistribute for now", "whose terms forbid redistributing it as a data feed")],
+    ["USAJOBS-COPY-1", () => NEW_BAKE.replace("U.S. federal announcements are handed on once", "U.S. federal announcements, whose terms forbid redistributing it as a data feed, are handed on once")],
   ] as Array<[string, () => string]>)("%s on the bake", (id, bake) => {
     const r = run(routes(OFF, { bake: bake() }));
     expect(verdicts(r.lines).find((l) => l.startsWith(`FAIL  ${id} (bake)`)) ?? "", r.out).toMatch(/^FAIL/);
@@ -429,9 +429,9 @@ const withRedist = (a: Answers): Partial<Answers> => ({
   }),
   init: edit(a.init, (j) => {
     const r = j.result as { instructions: string };
-    r.instructions = r.instructions.split("Breezy, ").join("").replace("SmartRecruiters and USAJOBS postings are not served here", "SmartRecruiters, USAJOBS, UKG, ADP and Breezy postings are not served here");
+    r.instructions = r.instructions.split("Breezy, ").join("").replace("SmartRecruiters postings are not served here", "SmartRecruiters, UKG, ADP and Breezy postings are not served here");
   }),
-  guide: { ...a.guide, body: a.guide.body.replace("(SmartRecruiters, USAJOBS)", "(SmartRecruiters, USAJOBS, UKG, ADP, Breezy)") },
+  guide: { ...a.guide, body: a.guide.body.replace("(SmartRecruiters, and U.S. federal announcements", "(SmartRecruiters, UKG, ADP, Breezy, and U.S. federal announcements") },
 });
 /** The shipped answers as the "stop" option serves them. */
 const withoutAshby = (a: Answers): Partial<Answers> => ({
