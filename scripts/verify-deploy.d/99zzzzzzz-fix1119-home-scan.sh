@@ -37,14 +37,29 @@
 #            there), and the call's own function is not the one that reads
 #            the page address: loading the page records nothing. The line
 #            names the call site it read.
+#   S10-153a the scanner chunk checks the link's report id against the shape
+#            the mail writes (letters and digits, 6 to 32) before it shows the
+#            card, so a link cannot print its own sentence in the card's
+#            title (src holds that pattern only in the outcome link's check,
+#            so it is absent from the chunk before the lane).
+#   S10-153m the mail's copy: the scan-report mails say one anonymous click
+#            records the answer, and after this lane a click only picks it. A
+#            send-scan-report copy change (a click and a confirm, nine
+#            languages, FN_BUILD 2026-11-21) is handed to the lane that owns
+#            the function and must ship with or before this publish. The line
+#            reads send-scan-report's x-fn-build (an OPTIONS preflight): once
+#            the lane is live, a build older than 2026-11-21 is a FAIL; a
+#            newer one is INFO, as the words themselves are proved by that
+#            function's own test, not from outside.
 #   MATCH-08 the scanner chunk takes the board's résumé drop out on a scan
 #            (it names rb_board_resume, which it never did before).
 #   X1  INFO: what the browser does (one board search per query, coverage
 #       read from the tailored text, the PDF's contents, a confirm press
 #       before the answer is stored) is proved in the suite.
 #
-# READ-ONLY. GETs of /resume-checker and two chunks. Nothing is posted, no
-# scan is run and no answer is recorded.
+# READ-ONLY. GETs of /resume-checker and two chunks, and one OPTIONS
+# preflight of send-scan-report. Nothing is posted, no scan is run, no mail
+# is sent and no answer is recorded.
 echo "== 99zzzzzzz-fix1119-home-scan. bug reconcile, home-scan lane: tailoring notes, the Pro ask, keyword coverage, the outcome link, one board search, the newest scan =="
 
 rm -f /tmp/vd_fhs_page.html /tmp/vd_fhs_idx.js /tmp/vd_fhs_trm.js
@@ -53,8 +68,9 @@ VDFHS_IDX=$(grep -ao '/assets/Index-[A-Za-z0-9_-]*\.js' /tmp/vd_fhs_page.html | 
 [ -n "$VDFHS_IDX" ] && curl -s -m 60 "$SITE$VDFHS_IDX" > /tmp/vd_fhs_idx.js
 VDFHS_TRM=$( { [ -f /tmp/vd_fhs_idx.js ] && grep -ao 'TailoredResumeModal-[A-Za-z0-9_-]*\.js' /tmp/vd_fhs_idx.js; } | head -1)
 [ -n "$VDFHS_TRM" ] && curl -s -m 60 "$SITE/assets/$VDFHS_TRM" > /tmp/vd_fhs_trm.js
+VDFHS_SSR=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/send-scan-report" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
 
-VDFHS_N_IDX="$VDFHS_IDX" VDFHS_N_TRM="$VDFHS_TRM" node -e '
+VDFHS_N_IDX="$VDFHS_IDX" VDFHS_N_TRM="$VDFHS_TRM" VDFHS_N_SSR="$VDFHS_SSR" node -e '
 const fs = require("fs");
 const rd = (p) => { try { return fs.readFileSync(p, "utf8"); } catch { return ""; } };
 const E = process.env;
@@ -138,11 +154,31 @@ if (at < 0) {
     "the call to record_scan_outcome sits in the function that reads window.location.search, so loading the page records the link\x27s answer and a mail scanner writes it");
 }
 
+// S10-153a: the card shows only a report id the mail could have written.
+const shape = idx.includes("/^[A-Za-z0-9]{6,32}$/");
+judge("S10-153a", shape,
+  "the outcome card shows only a report id the mail could have written (letters and digits, 6 to 32): a link carrying any other text shows no card",
+  "the scanner chunk holds no check of the link\x27s report id against the mail\x27s shape, so any text in the link is taken as a report id, and the card prints it in its title under our name");
+
+// S10-153m: the mails stop promising that one click records the answer.
+const ssr = E.VDFHS_N_SSR || "";
+const ssrDay = (/\.(\d{4}-\d{2}-\d{2})\./.exec(ssr) || [])[1] || "";
+const ONE_CLICK = "the scan-report mails (outcomeAsk, day6Outcome, day14Intro, nine languages) still promise one anonymous click, and a click now only picks the answer: a person who clicks and closes the tab records nothing";
+if (!ssrDay) {
+  if (live) say("FAIL", "S10-153m", "send-scan-report\x27s preflight carries no readable x-fn-build (" + (ssr || "none") + "), so whether its mails still promise one anonymous click cannot be read");
+  else say("INFO", "S10-153m", "send-scan-report\x27s preflight carries no readable x-fn-build (" + (ssr || "none") + "): not yet published");
+} else if (ssrDay < "2026-11-21") {
+  if (live) say("FAIL", "S10-153m", "send-scan-report is still build " + ssr + ": " + ONE_CLICK + " (the hand-in\x27s copy change had to ship with or before this publish)");
+  else say("INFO", "S10-153m", "not yet published (today send-scan-report is build " + ssr + ", whose mails promise one anonymous click; its copy change, a click and a confirm, ships with or before this lane)");
+} else {
+  say("INFO", "S10-153m", "send-scan-report is build " + ssr + " (2026-11-21 or later), so the copy change asking for a click and a confirm may have shipped; its words are proved by that function\x27s own test, not by this line");
+}
+
 // MATCH-08.
 const drop = /rb_board_resume/.test(idx);
 judge("MATCH-08", drop,
   "a fresh scan on the scanner takes the board\x27s résumé drop out of the tab, so the board ranks by the newest scan (the scanner chunk names rb_board_resume)",
   "the scanner chunk never names rb_board_resume, so an older résumé dropped on the board keeps outranking the newest scan");
 
-say("INFO", "X1", "proved in the suite, not from outside: one board search per query (a-toast-on-the-homepage-does-not-search-the-board-again), coverage read from the tailored text (a-keyword-is-marked-covered-only-when-the-tailored-text-holds-it), the file\x27s contents (the-tailoring-notes-are-not-offered-as-a-resume-to-send), the confirm press (a-mail-scanner-opening-the-outcome-link-records-nothing), the ask (a-pro-member-who-is-signed-out-is-asked-to-sign-in-before-the-five-dollar-checkout) and the drop (the-newest-scan-is-the-resume-the-board-ranks)");
+say("INFO", "X1", "proved in the suite, not from outside: one board search per query (a-toast-on-the-homepage-does-not-search-the-board-again), coverage read from the tailored text (a-keyword-is-marked-covered-only-when-the-tailored-text-holds-it), the file\x27s contents (the-tailoring-notes-are-not-offered-as-a-resume-to-send), the confirm press and no card for a report id the mail never writes (a-mail-scanner-opening-the-outcome-link-records-nothing), the ask (a-pro-member-who-is-signed-out-is-asked-to-sign-in-before-the-five-dollar-checkout) and the drop (the-newest-scan-is-the-resume-the-board-ranks)");
 '

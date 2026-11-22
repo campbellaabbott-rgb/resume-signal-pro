@@ -142,12 +142,21 @@ const EMAILED_OUTCOMES = [
 ] as const;
 type EmailedOutcome = { reportId: string; outcome: string };
 
-/** The answer an outcome link carries, or null when the address carries none. */
+/**
+ * The only report ids the scan-report mail writes into its links: it checks
+ * each one against this same shape before it builds a link
+ * (send-scan-report/index.ts, where it reads the report id). The card prints
+ * the id in its title, so anything else in the address is text a stranger
+ * wrote, and such a link shows no card at all.
+ */
+const EMAILED_REPORT_ID = /^[A-Za-z0-9]{6,32}$/;
+
+/** The answer an outcome link carries, or null when the address carries none the mail could have written. */
 function emailedOutcomeFrom(search: string): EmailedOutcome | null {
   const params = new URLSearchParams(search);
   const outcome = params.get("outcome");
-  const reportId = (params.get("rid") ?? "").trim();
-  if (!outcome || !reportId || !EMAILED_OUTCOMES.some((o) => o.id === outcome)) return null;
+  const reportId = params.get("rid") ?? "";
+  if (!outcome || !EMAILED_REPORT_ID.test(reportId) || !EMAILED_OUTCOMES.some((o) => o.id === outcome)) return null;
   return { reportId, outcome };
 }
 

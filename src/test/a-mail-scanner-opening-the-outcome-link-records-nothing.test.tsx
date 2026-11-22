@@ -12,6 +12,11 @@
  * the person can change it, and it is stored when they press the card's save
  * button. Their own answer is still recorded, and "Not now" records nothing.
  *
+ * The card prints the link's report id in its title, so a link whose id the
+ * mail could never have written (the mail writes only letters and digits)
+ * shows no card: otherwise anyone could put their own sentence at the top of
+ * the scanner, under our name, beside a Save button.
+ *
  * Read on the whole homepage with the uploader and the report reduced to
  * stubs and the database faked.
  */
@@ -79,8 +84,8 @@ const REPORT = "RB7Q2K9X";
 const card = shard.homeScan.outcome;
 const outcomeCalls = () => rpc.mock.calls.filter(([fn]) => fn === "record_scan_outcome");
 
-function openTheLink(outcome = "interview") {
-  const path = `/?outcome=${outcome}&rid=${REPORT}`;
+function openTheLink(outcome = "interview", rid = REPORT) {
+  const path = `/?outcome=${outcome}&rid=${encodeURIComponent(rid)}`;
   window.history.replaceState({}, "", path);
   return render(<HelmetProvider><MemoryRouter initialEntries={[path]}><Index /></MemoryRouter></HelmetProvider>);
 }
@@ -142,6 +147,22 @@ describe("the outcome link in the scan-report email", () => {
     fireEvent.click(await screen.findByRole("button", { name: card.save }, SLOW));
     await waitFor(() => expect(toast).toHaveBeenCalledWith({ title: en.scanOutcome.notSaved, variant: "destructive" }));
     expect(screen.getByRole("button", { name: card.save })).toBeTruthy();
+  });
+
+  // The mail only writes letters and digits, 6 to 32 of them. Anything else
+  // came from whoever wrote the link, and the card would print it as ours.
+  it.each([
+    ["words a stranger wrote", "Your Pro plan is suspended, email billing@example.com"],
+    ["markup", "RB7Q2K9X<b>"],
+    ["too few characters", "RB7"],
+    ["a space", "RB7Q2K9X RB7Q2K9X"],
+  ])("shows no card, and stores nothing, for a link whose report id the mail never writes (%s)", async (_why, rid) => {
+    openTheLink("interview", rid);
+    await screen.findByText("uploader", {}, SLOW);
+    await settle();
+    expect(screen.queryByText(card.save), `a card was shown for the report id ${JSON.stringify(rid)}`).toBeNull();
+    expect(document.body.textContent ?? "").not.toContain(rid);
+    expect(outcomeCalls(), `an answer was stored for the report id ${JSON.stringify(rid)}`).toEqual([]);
   });
 
   it("shows no card for a link that names no answer the page knows", async () => {
