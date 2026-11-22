@@ -164,7 +164,8 @@ describe("the static head", () => {
 
   it("still opens with R1's stash script", () => {
     const head = /<head[^>]*>([\s\S]*?)<\/head>/i.exec(HTML)?.[1] ?? "";
-    expect(head).toMatch(/^\s*<script>\s*\/\*/);
+    // PERF-B3 (SEO audit 2026-11-18): the charset comes first; it runs nothing, so the stash is still the first script.
+    expect(head).toMatch(/^\s*(?:<meta charset="UTF-8" \/>\s*)?<script>\s*\/\*/);
     expect(/<script\b[^>]*>([\s\S]*?)<\/script>/.exec(head)?.[1]).toMatch(/rb_url_stash/);
   });
 

@@ -150,14 +150,19 @@ describe("section 98-r2 judges what it says it judges", () => {
  * every page was unknown passed whenever the others were many: Oracle, ADP,
  * Breezy and Recruitee were 100% unknown (72 pages) under an overall 15-16%.
  * Here eleven Greenhouse pages are open at the employer, and two more pages
- * belong to a vendor the reader does not read (unfixed) or to UKG, which it
- * reads for its statements only (fixed): 2 of 13 unknown overall either way.
+ * belong to a vendor the reader does not read ("unread") or to UKG ("ukg"):
+ * 2 of 13 unknown overall either way. "clean" is the eleven alone.
+ *
+ * UKG WAS READ FOR ITS STATEMENTS ONLY UNTIL seo/1121-bake, which checks it at
+ * the employer: STATED_ONLY_VENDORS is empty, so an unknown UKG page now FAILs
+ * like any checked vendor's. The section's not-checked (INFO) path has no
+ * vendor to show it until the list names one again.
  */
-function vendorSite(fixed: boolean): Route[] {
+function vendorSite(kind: "unread" | "ukg" | "clean"): Route[] {
   const gh = Array.from({ length: 11 }, (_, i) => `/jobs/posting/greenhouse/acme/${2001 + i}`);
-  const other = fixed
+  const other = kind === "ukg"
     ? ["/jobs/posting/ukg/recruiting~ACM1000ACME~0b1e/aa11", "/jobs/posting/ukg/recruiting~ACM1000ACME~0b1e/aa12"]
-    : ["/jobs/posting/jazzhr/acme/job_1", "/jobs/posting/jazzhr/acme/job_2"];
+    : kind === "unread" ? ["/jobs/posting/jazzhr/acme/job_1", "/jobs/posting/jazzhr/acme/job_2"] : [];
   const paths = [...gh, ...other];
   const ledger = { postings: Object.fromEntries(paths.map((p) => [p, { state: "live", applyUrl: p.includes("/greenhouse/") ? `https://job-boards.greenhouse.io/acme/jobs/${p.split("/").pop()}` : null }])) };
   return [
@@ -168,16 +173,20 @@ function vendorSite(fixed: boolean): Route[] {
 }
 
 describe("section 98-r2 G1 names a vendor whose pages are never checked", () => {
-  const bad = runSection(vendorSite(false));
-  const good = runSection(vendorSite(true));
+  const bad = runSection(vendorSite("unread"));
+  const ukg = runSection(vendorSite("ukg"));
+  const good = runSection(vendorSite("clean"));
 
   it("FAILs a vendor whose pages are all unknown, though the overall unknown share is under 20%", () => {
     expect(has(bad, "PASS", /G1 .*11 open, 0 closed, 2 unknown; closed share 0\.0%/), show(bad)).toBe(true);
     expect(has(bad, "FAIL", /G1 jazzhr: 2 of 2 live posting pages unknown at the employer \(100\.0%, over 20%\)/), show(bad)).toBe(true);
   });
 
-  it("names a vendor read for its statements only as not checked, without failing the section on it", () => {
-    expect(has(good, "INFO", /G1 ukg: 2 of 2 live posting pages NOT CHECKED at the employer/), show(good)).toBe(true);
+  it("FAILs UKG's unknown pages now that the reader checks UKG at the employer, and names no vendor as not checked", async () => {
+    const reads = await import("../../scripts/employer-reads.mjs");
+    expect(reads.STATED_ONLY_VENDORS, "a vendor is read for its statements only again: show the not-checked INFO here").toEqual([]);
+    expect(has(ukg, "FAIL", /G1 ukg: 2 of 2 live posting pages unknown at the employer \(100\.0%, over 20%\)/), show(ukg)).toBe(true);
+    expect(ukg.some((l) => /NOT CHECKED/.test(l)), show(ukg)).toBe(false);
     expect(good.filter((l) => l.startsWith("FAIL") && /^FAIL\s+G1/.test(l)), show(good)).toEqual([]);
   });
 

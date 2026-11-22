@@ -105,8 +105,12 @@ describe("a card that never says what kind of job it is", () => {
     };
     for (const k of TYPES) expect(ldEmploymentType(k), k).toBe(want[k]);
     for (const unstated of [null, undefined, "", "seasonal"]) expect(ldEmploymentType(unstated), String(unstated)).toBeUndefined();
-    expect(POSTING, "emitted only when the employer stated one")
-      .toMatch(/const empType = ldEmploymentType\(job\.employmentType\);\s*if \(empType\) ld\.employmentType = empType;/);
+    // STRUCTURED-B11 (seo/1121-bake): the markup's types are the employer's
+    // stated one first, then what its own title states; never a guess.
+    expect(POSTING, "the stated type is taken only when the employer stated one")
+      .toMatch(/const stated = ldEmploymentType\(job\.employmentType\);\s*if \(stated\) out\.push\(stated\);/);
+    expect(POSTING, "emitted only when a type was stated")
+      .toMatch(/const empTypes = postingEmploymentTypes\(job, desc\);\s*if \(empTypes\.length\) ld\.employmentType = /);
   });
 
   it("the five names and the provenance line exist in all nine locales", () => {

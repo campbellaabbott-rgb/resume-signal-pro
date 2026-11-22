@@ -93,7 +93,8 @@ const route = (path: string, body: string, status = 200): Route => ({ match: `^$
 
 // The stash script exactly as index.html ships it.
 const INDEX = readFileSync(resolve(ROOT, "index.html"), "utf8");
-const STASH = /<head[^>]*>\s*(<script>[\s\S]*?<\/script>)/i.exec(INDEX)?.[1] ?? "";
+// PERF-B3 (SEO audit 2026-11-18): only the charset may come before it.
+const STASH = /<head[^>]*>\s*(?:<meta charset="UTF-8" \/>\s*)?(<script>[\s\S]*?<\/script>)/i.exec(INDEX)?.[1] ?? "";
 const page = (head: string) => `<!doctype html><html><head>${head}<meta charset="UTF-8"><script type="module" crossorigin src="/assets/index-AAA.js"></script></head><body><div id="root"></div></body></html>`;
 const marks = (o: { google?: string; code?: string; recovery?: string; apple?: string } = {}) =>
   ["google", "code", "recovery", "apple"].map((k) => `"rb-auth:${k}=${(o as Record<string, string>)[k] ?? "off"}"`).join(",");
