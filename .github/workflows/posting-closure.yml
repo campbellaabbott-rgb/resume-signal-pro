@@ -37,6 +37,17 @@
 # from it is opened or updated. That is the only write this workflow makes to
 # the repository: never to main, never to the site. A person merges, and the
 # next bake retires the closed pages and applies the statements.
+#
+# WHEN GITHUB WILL NOT OPEN THE PULL REQUEST (review of 2026-11-21). This
+# repository's "Allow GitHub Actions to create and approve pull requests" is
+# off (default_workflow_permissions "read", can_approve_pull_request_reviews
+# false), and that refuses the workflow's token a new pull request whatever
+# the permissions below say. Turning it on is a repository-wide owner
+# decision, since it also lets workflows approve pull requests. Until then the
+# refusal is SAID, never failed: the branch is still committed, and the run
+# summary, a warning and the standing posting-closure-closed issue give the
+# link a person opens the pull request from. The run keeps failing only for
+# the check's own verdict.
 name: posting-closure
 on:
   schedule:
@@ -180,7 +191,10 @@ jobs:
       # THE PULL REQUEST (STRUCTURED-B1 part 2, B2). Only a run that measured
       # today has anything to propose: a later slot re-reading the same date
       # writes neither file. The branch is rebuilt on main each time, carrying
-      # the closed lines of the proposal a person has not merged yet.
+      # the closed lines of the proposal a person has not merged yet. A
+      # refusal to send the branch or to open or update the pull request is
+      # told (`tell`: a warning, the run summary and the standing issue) and
+      # the step still succeeds: the check's verdict alone fails the run.
       - name: Propose the closed pages and the employers' statements as a pull request
         if: always() && steps.check.outputs.code != '2'
         env:
@@ -191,6 +205,27 @@ jobs:
           BRANCH=posting-closure/next-publish
           CLOSED=.posting-closure/closed-today.txt
           STATED=.posting-closure/employer-stated.txt
+          COMPARE="https://github.com/$GITHUB_REPOSITORY/compare/main...$BRANCH?expand=1"
+          tell() {
+            MSG="$1"
+            echo "::warning title=Posting closure proposal::$MSG"
+            printf '### Posting closure proposal\n\n%s\n\n' "$MSG" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+            ISSUE=$(gh issue list --repo "$GITHUB_REPOSITORY" --label posting-closure-closed --state open --json number --jq '.[0].number' 2>/dev/null || echo "")
+            if [ -n "$ISSUE" ]; then
+              gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body "$(date -u +'%Y-%m-%d %H:%M UTC') — $MSG" >/dev/null 2>&1 \
+                || echo "::warning title=Posting closure proposal::the standing issue #$ISSUE could not be told either"
+            else
+              gh label create posting-closure-closed --repo "$GITHUB_REPOSITORY" --color FBCA04 \
+                --description "Pages the daily posting-closure check found closed at their employer" --force >/dev/null 2>&1 || true
+              gh issue create --repo "$GITHUB_REPOSITORY" \
+                --title "Posting closure: pages closed at their employer, for the next publish" \
+                --label posting-closure-closed \
+                --body "$(date -u +'%Y-%m-%d %H:%M UTC') — $MSG
+
+          Opened by .github/workflows/posting-closure.yml. Each daily run that finds a live page closed at its employer, or cannot open its proposal as a pull request, comments here instead of opening another issue." >/dev/null 2>&1 \
+                || echo "::warning title=Posting closure proposal::no standing issue could be opened either"
+            fi
+          }
           if [ ! -s "$CLOSED" ] && [ ! -s "$STATED" ]; then echo "nothing measured this run, so nothing to propose"; exit 0; fi
           git fetch --no-tags origin main
           EARLIER=.posting-closure/earlier-closed.txt
@@ -204,15 +239,22 @@ jobs:
           git add scripts/seo-seed/closed-at-employer.txt scripts/seo-seed/employer-stated.txt
           git -c user.name="posting-closure check" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -q -m "The daily closure check proposes its closed pages and what each employer stated ($RUN_LABEL)"
-          git push -q --force origin "HEAD:refs/heads/$BRANCH"
+          if ! git push -q --force origin "HEAD:refs/heads/$BRANCH"; then
+            tell "This run's proposal ($RUN_LABEL) could not be sent to branch $BRANCH, so it reaches no pull request; the lines are in this run's artifact (.posting-closure/closed-today.txt and employer-stated.txt)."
+            exit 0
+          fi
           BODY="Opened by .github/workflows/posting-closure.yml ($RUN_LABEL). It appends the pages the daily check found closed at their employer to scripts/seo-seed/closed-at-employer.txt and rewrites scripts/seo-seed/employer-stated.txt from the newest measuring run. Nothing reaches the site until this is merged and published: the next bake then retires each closed page and applies each employer's stated end date and time type."
-          EXISTING=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state open --json number --jq '.[0].number' || echo "")
+          EXISTING=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state open --json number --jq '.[0].number' 2>/dev/null || echo "")
           if [ -n "$EXISTING" ]; then
-            gh pr comment "$EXISTING" --repo "$GITHUB_REPOSITORY" --body "$(date -u +'%Y-%m-%d %H:%M UTC') — updated from $RUN_LABEL."
-          else
-            gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$BRANCH" \
+            gh pr comment "$EXISTING" --repo "$GITHUB_REPOSITORY" --body "$(date -u +'%Y-%m-%d %H:%M UTC') — updated from $RUN_LABEL." \
+              || tell "Branch $BRANCH carries this run's proposal ($RUN_LABEL), but pull request #$EXISTING could not be told."
+          elif ! OUT=$(gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$BRANCH" \
               --title "Posting closure: retire the pages closed at their employer and carry what each employer stated" \
-              --body "$BODY"
+              --body "$BODY" 2>&1); then
+            WHY=$(printf '%s' "$OUT" | tr '\r\n' '  ' | cut -c1-300)
+            tell "GitHub refused to open the pull request for this run's proposal ($RUN_LABEL: $WHY). The proposal is committed on branch $BRANCH: open the pull request by hand at $COMPARE and merge it before the next publish. Workflows here may not open pull requests while the repository setting 'Allow GitHub Actions to create and approve pull requests' is off; turning it on is the owner's decision, as it also lets workflows approve them."
+          else
+            echo "$OUT"
           fi
 
       - name: Fail the run while the check needs attention
