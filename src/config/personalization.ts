@@ -3458,6 +3458,18 @@ const EXECUTIVE_TITLE = /(?:^|[^\p{L}\p{N}])(?:vp|svp|evp|avp|vice president|dir
 /** The individual sellers' cards, which no EXECUTIVE_TITLE gets. */
 const SELLER_CARDS: ReadonlySet<RoleConfig> = new Set([ROLE_CONFIGS.sales_representative, ROLE_CONFIGS.insurance_agent, ROLE_CONFIGS.real_estate_agent]);
 
+/** The words that make a title a seller's, as the Sales Representative card reads them. */
+const SELLER_WORDS: readonly string[] = ['sales', 'business development', 'account executive', 'bdr', 'sdr'];
+
+/**
+ * Marketing joined to selling as one function a leader holds ("Director of
+ * Sales and Marketing", "Marketing & Business Development"), the job the
+ * Marketing Manager card's alias 'marketing director' already gives "Sales &
+ * Marketing Director". A comma joins no function: in "Sales Director,
+ * Marketing Solutions" marketing is what is sold.
+ */
+const SALES_AND_MARKETING = /(?:^|[^\p{L}\p{N}])(?:(?:sales|business development)\s*(?:and|&|\/|\+)\s*marketing|marketing\s*(?:and|&|\/|\+)\s*(?:sales|business development))(?=$|[^\p{L}\p{N}])/u;
+
 // Get role-specific advice
 export function getRoleAdvice(role: string): RoleConfig | null {
   if (!role) return null;
@@ -3467,17 +3479,25 @@ export function getRoleAdvice(role: string): RoleConfig | null {
   // ("ba") and "Head of Research" by a short alias inside "research".
   const has = (term: string) => hasRoleWord(normalizedRole, term);
 
+  // A sales leader's title (an EXECUTIVE_TITLE that names selling) stops
+  // here, before any alias or keyword can read it. Those read single words or
+  // phrases, and in such a title the word is often the market sold to, not
+  // the job: "Sales Director, Software Services" would get a software
+  // engineer's tips, "Sales Director - Nursing Homes" a nurse's, "Supply Chain
+  // Co-Founder / Head of Sales" a supply chain manager's and "Sales Director,
+  // Customer Success Platform" a customer success manager's. No card fits a
+  // sales leader ("Sales Director", "Director of Business Development" and
+  // "VP of Sales" alike), so it gets the generic tips, unless the title leads
+  // marketing with the selling (SALES_AND_MARKETING).
+  const executive = EXECUTIVE_TITLE.test(normalizedRole);
+  if (executive && SELLER_WORDS.some(has)) return SALES_AND_MARKETING.test(normalizedRole) ? ROLE_CONFIGS.marketing_manager : null;
+
   // Direct match or alias match. A term that names a rank or a relation, not
   // a job (GENERIC_ROLE_TERMS), picks no card on its own: "Senior
   // Associate, Business Lending" is not an attorney, and Portuguese "em"
-  // ("Especialista em Dados") is no engineering manager.
-  //
-  // A VP's, a director's, a head's or a chief's title is no individual
-  // seller's job, whichever of the card's words it holds: "Sales Director",
-  // "Director of Business Development" and "VP of Sales" get the generic
-  // tips, the keyword rules below included, and "Head, Business Development,
-  // <an insurance broker>" no insurance agent's.
-  const executive = EXECUTIVE_TITLE.test(normalizedRole);
+  // ("Especialista em Dados") is no engineering manager. An executive's
+  // title gets no individual seller's card even when it names none of the
+  // selling words: "Director, Commercial Real Estate" is no agent's job.
   for (const config of Object.values(ROLE_CONFIGS)) {
     if (executive && SELLER_CARDS.has(config)) continue;
     if (has(config.name.toLowerCase()) ||
@@ -3495,7 +3515,7 @@ export function getRoleAdvice(role: string): RoleConfig | null {
   if (has('data') && (has('scientist') || has('analyst'))) return ROLE_CONFIGS.data_scientist;
   if (has('nurse') || has('rn') || has('nursing')) return ROLE_CONFIGS.nurse;
   if (has('marketing')) return ROLE_CONFIGS.marketing_manager;
-  if (!executive && (has('sales') || has('account executive') || has('bdr') || has('sdr'))) return ROLE_CONFIGS.sales_representative;
+  if (has('sales') || has('account executive') || has('bdr') || has('sdr')) return ROLE_CONFIGS.sales_representative;
   if (has('project') && has('manager')) return ROLE_CONFIGS.project_manager;
   if (has('ux') || has('ui') || has('designer')) return ROLE_CONFIGS.ux_designer;
   if (has('accountant') || has('cpa') || has('controller')) return ROLE_CONFIGS.accountant;

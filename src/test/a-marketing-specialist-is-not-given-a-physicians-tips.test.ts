@@ -12,12 +12,16 @@
  * a relation, a shift or another language's preposition ("partner", "pt",
  * "pm", Portuguese "em") picked a card by accident too.
  *
- * Corpus first: src/test/fixtures/role-title-corpus-2026-11-21.json holds 424
+ * Corpus first: src/test/fixtures/role-title-corpus-2026-11-21.json holds 467
  * real posting titles with origin/main's card and the card that fits, read
  * by hand. Every title main got right stays right, and the build gets more
  * of them right than main did. A director's, a head's or a VP's title gets
  * no individual seller's card however it is written ("Sales Director" and
- * "Director of Sales" alike).
+ * "Director of Sales" alike), and no card from the market it sells to
+ * either: "Sales Director, Software Services (U.S Only)" (a real posting,
+ * recruitee:allshoretalent:2761686) once got a software engineer's tips by
+ * the word "software". The corpus holds every such title among the 20,361
+ * its sources carry.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -65,6 +69,35 @@ describe("the register's own examples", () => {
     expect(keyOf("Senior Account Executive")).toBe("sales_representative");
   });
 
+  it("a sales leader's title gets no card from the market it sells to", () => {
+    // The word after the selling names what is sold, not the job.
+    for (const title of [
+      "Sales Director, Software Services (U.S Only)",
+      "Software Sales Director",
+      "Sales Director - Software",
+      "Regional Sales Director, Software",
+      "Enterprise Software Sales Director",
+      "Sales Director - Nursing Homes",
+      "Supply Chain Co-Founder / Head of Sales",
+      "Sales Director, Logistics",
+      "Sales Director (Medical Devices)",
+      "VP of Sales, Kitchen Equipment",
+      "Head of Sales, Cybersecurity",
+      "Director of Sales - Pharmacy Services",
+      "Sales Director, Customer Success Platform",
+      "VP Sales - Teacher Training",
+      "Sales Director, Marketing Solutions",
+    ]) {
+      expect(keyOf(title), title).toBeNull();
+    }
+    // A leader of sales and marketing together leads marketing: the card the
+    // alias 'marketing director' gives "Sales & Marketing Director", whichever
+    // way the title is written.
+    for (const title of ["Sales & Marketing Director, Brazil", "Director of Sales and Marketing", "VP, Sales & Marketing", "Associate Director for Marketing and Business Development"]) {
+      expect(keyOf(title), title).toBe("marketing_manager");
+    }
+  });
+
   it("a Business Development Manager is in sales, not an engineering manager", () => {
     expect(keyOf("Business Development Manager")).toBe("sales_representative");
     expect(keyOf("Team Lead, Customer Service")).toBeNull();
@@ -97,6 +130,17 @@ describe("over the corpus of real titles", () => {
   it("every title main got right stays right", () => {
     const lost = corpus.rows.filter((r) => r.main === r.expected && keyOf(r.title) !== r.expected).map((r) => `${r.title}: ${keyOf(r.title)} (was ${r.main})`);
     expect(lost).toEqual([]);
+  });
+
+  it("every sales leader's title in the corpus gets the card its label names", () => {
+    // Read here on its own words, not the build's: a VP's, a director's, a
+    // head's or a chief's title that names selling.
+    const leader = /(?:^|[^\p{L}\p{N}])(?:vp|vice president|director|head|chief)(?=$|[^\p{L}\p{N}])/iu;
+    const selling = /(?:^|[^\p{L}\p{N}])(?:sales|business development)(?=$|[^\p{L}\p{N}])/iu;
+    const rows = corpus.rows.filter((r) => leader.test(r.title) && selling.test(r.title));
+    expect(rows.length).toBeGreaterThanOrEqual(70);
+    const wrong = rows.filter((r) => keyOf(r.title) !== r.expected).map((r) => `${r.title}: ${keyOf(r.title)} (label ${r.expected})`);
+    expect(wrong).toEqual([]);
   });
 
   it("no corpus title gets the physician's card unless it names a physician's job", () => {

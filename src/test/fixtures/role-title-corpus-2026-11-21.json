@@ -1,5 +1,5 @@
 {
- "about": "Role-title corpus for getRoleAdvice (OI-28), built 2026-11-21. Every title is a real job posting's own title, as the board served it, read from the fixtures named in each row's 'from' (public posting pages and feeds the board carries). Rows: every title among those fixtures' 4,068 English-script titles whose card changed between origin/main (4a3c2a0bd) and this build, and a seeded sample (seed 20261121) of 80 titles whose card did not change and 50 that get no card. 'main' is origin/main's card for the title, recorded by running its getRoleAdvice; 'expected' is the card whose tips fit the job, read by hand (null: no card fits, so the generic tips are right). A row main got right must stay right (the never-worse rule). Added at review (2026-11-21): every title in those fixtures, and every one of the board's 15,068 unique titles (the ops folder's free-scan-wave-corpora/review-_source/titles.json, public posting titles read 2026-11-01, and free-scan-wave-corpora/S13-092/corpus.json), whose card changed between the lane's first build and this one, with 'Software Development Manager, Integrations' from that folder's postings.json (lever:air-tek), and 'Python Team Lead - AI & Automation', which the lane's first build had dropped to no card. A title that names a director, a head or a VP is labelled null whatever its seller's word ('AI Sales Director' was labelled sales_representative beside 'Director of Sales' at null; both are null now).",
+ "about": "Role-title corpus for getRoleAdvice (OI-28), built 2026-11-21. Every title is a real job posting's own title, as the board served it, read from the fixtures named in each row's 'from' (public posting pages and feeds the board carries). Rows: every title among those fixtures' 4,068 English-script titles whose card changed between origin/main (4a3c2a0bd) and this build, and a seeded sample (seed 20261121) of 80 titles whose card did not change and 50 that get no card. 'main' is origin/main's card for the title, recorded by running its getRoleAdvice; 'expected' is the card whose tips fit the job, read by hand (null: no card fits, so the generic tips are right). A row main got right must stay right (the never-worse rule). Added at review (2026-11-21): every title in those fixtures, and every one of the board's 15,068 unique titles (the ops folder's free-scan-wave-corpora/review-_source/titles.json, public posting titles read 2026-11-01, and free-scan-wave-corpora/S13-092/corpus.json), whose card changed between the lane's first build and this one, with 'Software Development Manager, Integrations' from that folder's postings.json (lever:air-tek), and 'Python Team Lead - AI & Automation', which the lane's first build had dropped to no card. A title that names a director, a head or a VP is labelled null whatever its seller's word ('AI Sales Director' was labelled sales_representative beside 'Director of Sales' at null; both are null now). Added at the second review (2026-11-21): every title among the 20,361 those sources hold (the fixtures above, that folder's titles.json, postings.json and S13-092/corpus.json) that names a director, a VP, a head or a chief together with a seller's word (sales, business development, account executive, BDR, SDR) and was not yet here, 43 titles, among them the 7 postings.json titles whose card changed between the lane's first build and its second ('Sales Director, Software Services (U.S Only)', recruitee:allshoretalent:2761686, which the second build gave a software engineer's card), each with its posting id. A sales leader's title is labelled null; one that leads marketing with the selling ('Director of Sales and Marketing', 'Sales & Marketing Director, Brazil') is labelled marketing_manager, the card origin/main gave it.",
  "read": "2026-11-21",
  "baseCommit": "4a3c2a0bd",
  "rows": [
@@ -2546,6 +2546,277 @@
    "from": "free-scan-wave-corpora/review-_source/titles.json",
    "main": "engineering_manager",
    "expected": "engineering_manager"
+  },
+  {
+   "title": " Vice President of Sales, West",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "ashby:radai:5e23c415-b9bb-470b-a3ae-64b40a503930"
+  },
+  {
+   "title": "Assistant Director of Sales",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Assoc Director, Sales",
+   "from": "free-scan-wave-corpora/S13-092/corpus.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Associate Director - Sales Incentive Plan (SIP) Strategy & Execution Lead",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Associate Director, Sales Training - Hematology/Oncology",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Associate Director, Sales for Packaging Accounts",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Asst. Director of Sales (Corporate)",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Asst. Director of Sales (Group&Event)",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Business Development & Partnerships Director",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "lever:wintermute-trading:bb850148-6459-4fa1-9ce8-07bf53036804"
+  },
+  {
+   "title": "Business Development & Partnerships — Manager/Director",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "lever:wintermute-trading:4061bae9-2cde-4047-8fc2-eae2fb24c070"
+  },
+  {
+   "title": "Director Sales",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director of Sales & Marketing-B",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "marketing_manager",
+   "expected": "marketing_manager"
+  },
+  {
+   "title": "Director of Sales &amp; Partnerships",
+   "from": "free-scan-wave-corpora/S13-092/corpus.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director of Sales - Portuguese-Speaking  - London, UK",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director of Sales - Spanish -Speaking  - London, UK",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director of Sales and Marketing",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "marketing_manager",
+   "expected": "marketing_manager"
+  },
+  {
+   "title": "Director, Enterprise Sales (EMEA)",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director, Fidelity Digital Assets®, International Sales",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director, Global Field Sales Operations",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director, Liberty Business - Sales & Commercial Growth",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director, Sales Engineering",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "lever:paralleldomain:2c35a3e1-d57a-48e8-9c83-d67d6ef006f9"
+  },
+  {
+   "title": "Director, Sales Force Effectiveness",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Enterprise Account Director - New Business Sales - Strategic Accounts",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "lever:modeln:424cfd09-3067-42c8-9a9f-9058d58d519a"
+  },
+  {
+   "title": "Executive Director, Immunology Sales",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Executive Vice President, US Sales",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Head - Solutions and Pre-Sales",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Head of Digital Sales B2B (w/m/d)",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "personio:outdooractive:2815121"
+  },
+  {
+   "title": "Head of Sales (m/f/x)",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Head of Sales - Uzbekistan",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Head of Sales – Verteidigung &amp; Sicherheitsbehörden (all genders)",
+   "from": "free-scan-wave-corpora/S13-092/corpus.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Industrial Tech Co-Founder / Head of Sales (100 % remote) (m/f/d)",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "MedTech Co-Founder / Head of Sales (100 % remote) (m/f/d)",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "OEM Enterprise Sales Director",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "lever:paralleldomain:3205411e-ba76-4066-aa6c-f5e7996a3afc"
+  },
+  {
+   "title": "Provider Sales VP",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "greenhouse:garnerhealth:6217270004"
+  },
+  {
+   "title": "Sales & Marketing Director, Brazil",
+   "from": "model-queries-2026-11.json",
+   "main": "marketing_manager",
+   "expected": "marketing_manager"
+  },
+  {
+   "title": "Sales Associate Director Swiss/Austria",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Sales Director - Northeast",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "greenhouse:endorlabs:4744158005"
+  },
+  {
+   "title": "Sales Director EMEA (gn)",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "personio:zim-aircraft-seating-gmbh:2735591"
+  },
+  {
+   "title": "Sales Director France",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "personio:tsc-life:2740072"
+  },
+  {
+   "title": "Sales Director, Software Services (U.S Only)",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "recruitee:allshoretalent:2761686"
+  },
+  {
+   "title": "Supply Chain Co-Founder / Head of Sales (100 % remote) (m/f/d)",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Vice President, Sales",
+   "from": "free-scan-wave-corpora/S13-092/corpus.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Vice President, Sales (Hunter, Revenue Cycle) - REMOTE",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "lever:enablecomp:17aba49a-a00d-42c4-a285-49a512448235"
   }
  ]
 }
