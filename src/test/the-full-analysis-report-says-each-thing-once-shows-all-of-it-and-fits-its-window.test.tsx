@@ -8,8 +8,9 @@
  *     now open by itself only at 2xl, behind its toggle below that, and never
  *     taller than the window.
  *   - S13-051: the posting's requirements showed in green as found directly
- *     above the same terms in amber as missing. Green is now the posting's
- *     requirements less the missing ones.
+ *     above the same terms in amber as missing. The list is now the posting's
+ *     requirements less the missing ones, named as what else the posting
+ *     asks for, in neutral chips (2026-11-21: nothing reads the résumé).
  *   - S13-053: improvements, suggestions, issues and recommendations past the
  *     first two or three were cut from the page and so from its PDF.
  *   - S13-054: a score of 72 showed as "Resume Strength 72" and "ATS
@@ -83,7 +84,7 @@ describe("S13-053: everything the analysis wrote is on the page", () => {
   });
 });
 
-describe("S13-051: a requirement is green or amber, never both", () => {
+describe("S13-051: a requirement is named once, as missing or as asked for, and never as found", () => {
   const alignment = {
     matchScore: 55,
     extractedKeywords: ["SQL", "Python", "Excel", " tableau "],
@@ -91,14 +92,15 @@ describe("S13-051: a requirement is green or amber, never both", () => {
     suggestedEdits: [], roleMatchAnalysis: "Fits partly", gapAnalysis: "Some gaps",
   };
 
-  it("the green list leaves out what the amber list says is missing", () => {
+  it("the posting's other requirements leave out what the amber list says is missing, and none of them is green", () => {
     const { container } = render(<AnalysisResults data={{ ...BASE, jobDescriptionAlignment: alignment }} />);
+    // Neutral since the 2026-11-21 recheck: nothing reads the résumé, so none is shown as found on it.
+    const others = [...container.querySelectorAll("[data-testid=posting-also-asks] span.rounded-lg")].map((e) => e.textContent?.trim());
     const green = [...container.querySelectorAll("span.bg-success\\/10.text-success")].map((e) => e.textContent?.trim());
     const amber = [...container.querySelectorAll("span.bg-warning\\/10.text-warning")].map((e) => e.textContent?.trim());
     expect(amber).toEqual(expect.arrayContaining(["python", "Tableau"]));
-    expect(green).toEqual(expect.arrayContaining(["SQL", "Excel"]));
-    expect(green.map((g) => g?.toLowerCase())).not.toContain("python");
-    expect(green.map((g) => g?.toLowerCase())).not.toContain("tableau");
+    expect(others).toEqual(["SQL", "Excel"]);
+    expect(green).toEqual([]);
   });
 
   it("the comparison is the two lists the analysis wrote, case and spacing aside", () => {

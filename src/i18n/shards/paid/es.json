@@ -27,6 +27,7 @@
       "jobDescription": "Esta vez el análisis no pudo comparar tu currículum con la oferta de empleo, así que esa parte no está incluida. Todo lo demás del análisis está completo.",
       "linkedIn": "Esta vez el análisis no pudo revisar tu perfil de LinkedIn, así que esa parte no está incluida. Todo lo demás del análisis está completo."
     },
+    "alsoAskedInPosting": "También lo pide el anuncio",
     "page": {
       "emailSentTitle": "Correo enviado",
       "emailSentBody": "Se envió una copia a tu correo",

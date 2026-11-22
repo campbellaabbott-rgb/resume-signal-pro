@@ -10,12 +10,13 @@ import { count as fmtCount, date as fmtDate } from "@/lib/format";
 import { SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention";
 import { analysisEnumLabel, namedCompany, type AnalysisEnumGroup } from "@/lib/analysis-enums";
 import { Progress } from "@/components/ui/progress";
+import { CardErrorBoundary } from "@/components/CardErrorBoundary";
 import { useState, useEffect } from "react";
 
 export interface LinkedInAnalysis {
   profileScore?: {
     overall: number;
-    breakdown: {
+    breakdown?: {
       headline: number;
       about: number;
       experience: number;
@@ -235,9 +236,11 @@ function tellingWords(phrase: unknown): Set<string> {
  * The posting's requirements less those the analysis lists as missing from
  * the résumé (S13-051), and less those that share a word that names something
  * with anything listed as missing (RC-S13-051): the model words the two lists
- * apart, and "Experience with OKRs and roadmaps" was shown as on the résumé
- * above "OKRs" shown as missing. Leaving one out says less, never something
- * false. Exported for the test.
+ * apart, and "Experience with OKRs and roadmaps" sat above "OKRs" listed as
+ * missing. What is left is only what else the posting asks for: nothing here
+ * reads the résumé, so the report shows it as that, in neutral chips, and
+ * never as found on the résumé (S13-051 recheck, owner decision 12 of
+ * 2026-11-21). Exported for the test.
  */
 export function keywordsNotMissing(alignment: { extractedKeywords?: string[]; missingKeywords?: string[] } | undefined): string[] {
   const missingList = safeArray(alignment?.missingKeywords);
@@ -452,7 +455,12 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
   const redFlags = safeArray(data.redFlags);
   const actionPlan = safeArray(data.actionPlan);
   const linkedIn = data.linkedInAnalysis;
-  
+  // The five LinkedIn scores that are numbers (S11-068): the server checks
+  // only that the LinkedIn section is an object, and a profile score with no
+  // breakdown threw here and blanked the whole paid report.
+  const linkedInBreakdown = Object.entries(linkedIn?.profileScore?.breakdown ?? {})
+    .filter((e): e is [string, number] => typeof e[1] === "number" && Number.isFinite(e[1]));
+
   const stats = [
     { label: t('analysisResults.stats.bulletsImproved'), value: optimizedBullets.length, icon: TrendingUp },
     { label: t('analysisResults.stats.verbUpgrades'), value: actionVerbs.length, icon: Zap },
@@ -462,7 +470,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
   ];
 
   const resumeScore = calculateResumeScore(data);
-  const postingKeywordsOnResume = keywordsNotMissing(data.jobDescriptionAlignment);
+  const postingAlsoAsks = keywordsNotMissing(data.jobDescriptionAlignment);
   const sectionsMissing = sectionsMissingOf(data);
   
   // Build sections for navigation
@@ -589,7 +597,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 analysis has no ATS score of its own (S13-054). It returned that
                 score, so a 72 read as two metrics, "Resume Strength 72" and
                 "ATS Compatibility 72". */}
-            {!data.atsScore && (
+            {!data.atsScore && (<CardErrorBoundary section="full-analysis-resume-strength">
             <div className="max-w-md mx-auto animate-fade-in" style={{ animationDelay: "0.4s" }}>
               <div className="p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300">
                 <div className="flex items-center justify-between mb-4">
@@ -622,10 +630,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 </div>
               </div>
             </div>
-            )}
+            </CardErrorBoundary>)}
 
             {/* JD Match Score - Prominent Display */}
-            {data.jobDescriptionAlignment && (
+            {data.jobDescriptionAlignment && (<CardErrorBoundary section="full-analysis-posting-score">
               <div className="max-w-md mx-auto animate-fade-in" style={{ animationDelay: "0.45s" }}>
                 <div className={cn(
                   "p-6 rounded-2xl backdrop-blur-sm border transition-all duration-300",
@@ -680,10 +688,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   </p>
                 </div>
               </div>
-            )}
+            </CardErrorBoundary>)}
 
             {/* ATS Score Section */}
-            {data.atsScore && (
+            {data.atsScore && (<CardErrorBoundary section="full-analysis-ats-score">
               <div className="max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: "0.5s" }}>
                 <div className="p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300">
                   <div className="flex items-center justify-between mb-4">
@@ -740,10 +748,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   )}
                 </div>
               </div>
-            )}
+            </CardErrorBoundary>)}
 
             {/* Job Description Alignment Section */}
-            {data.jobDescriptionAlignment && (
+            {data.jobDescriptionAlignment && (<CardErrorBoundary section="full-analysis-posting-alignment">
               <div className="max-w-2xl mx-auto animate-fade-in" id="jdalignment" style={{ animationDelay: "0.52s" }}>
                 <div className="p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-success/30 hover:border-success/50 transition-all duration-300">
                   <div className="flex items-center justify-between mb-4">
@@ -762,16 +770,17 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   {/* Role Match Analysis */}
                   <p className="text-sm text-muted-foreground mb-4">{data.jobDescriptionAlignment.roleMatchAnalysis}</p>
                   
-                  {/* The posting's requirements the résumé already has (S13-051):
-                      extractedKeywords is every requirement the posting names,
-                      so those listed as missing are left out of the green list
-                      that sat directly above them in amber. */}
-                  {postingKeywordsOnResume.length > 0 && (
-                    <div className="mb-4">
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('analysisResults.jdKeywordsOnResume', 'From the posting, already on your résumé')}</span>
+                  {/* The posting's other requirements (S13-051): extractedKeywords
+                      is every requirement the posting names, less those listed
+                      as missing below. Nothing checks them against the résumé,
+                      so they are named as asked for, in neutral chips, never as
+                      already on it. */}
+                  {postingAlsoAsks.length > 0 && (
+                    <div className="mb-4" data-testid="posting-also-asks">
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('paidAnalysis.alsoAskedInPosting')}</span>
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {postingKeywordsOnResume.map((kw, i) => (
-                          <span key={i} className="px-2 py-1 rounded-lg bg-success/10 text-success text-xs font-medium">{kw}</span>
+                        {postingAlsoAsks.map((kw, i) => (
+                          <span key={i} className="px-2 py-1 rounded-lg bg-muted text-foreground text-xs font-medium">{kw}</span>
                         ))}
                       </div>
                     </div>
@@ -945,10 +954,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   )}
                 </div>
               </div>
-            )}
+            </CardErrorBoundary>)}
 
             {/* ATS Parsing Issues Section */}
-            {data.atsParsingIssues && safeArray(data.atsParsingIssues.detectedIssues).length > 0 && (
+            {data.atsParsingIssues && safeArray(data.atsParsingIssues.detectedIssues).length > 0 && (<CardErrorBoundary section="full-analysis-parsing">
               <div className="max-w-2xl mx-auto animate-fade-in" id="parsing" style={{ animationDelay: "0.55s" }}>
                 <div className="p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-warning/30 hover:border-warning/50 transition-all duration-300">
                   <div className="flex items-center justify-between mb-4">
@@ -1007,9 +1016,9 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   </div>
                 </div>
               </div>
-            )}
+            </CardErrorBoundary>)}
 
-            {data.resumeLength && (
+            {data.resumeLength && (<CardErrorBoundary section="full-analysis-length">
               <div className="max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: "0.6s" }}>
                 <div className="p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300">
                   <div className="flex items-center gap-2 mb-4">
@@ -1033,10 +1042,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   </div>
                 </div>
               </div>
-            )}
+            </CardErrorBoundary>)}
 
             {/* Readability & Format Grid */}
-            {(data.readabilityMetrics || data.formatRecommendations) && (
+            {(data.readabilityMetrics || data.formatRecommendations) && (<CardErrorBoundary section="full-analysis-readability">
               <div className="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto">
                 {/* Readability Metrics */}
                 {data.readabilityMetrics && (
@@ -1138,9 +1147,9 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   </div>
                 )}
               </div>
-            )}
+            </CardErrorBoundary>)}
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <CardErrorBoundary section="full-analysis-stats"><div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {stats.map((stat, index) => {
                 const StatIcon = stat.icon;
                 return (
@@ -1157,11 +1166,11 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   </div>
                 );
               })}
-            </div>
+            </div></CardErrorBoundary>
           </div>
 
           {/* LinkedIn Analysis Section */}
-          {linkedIn && (
+          {linkedIn && (<CardErrorBoundary section="full-analysis-linkedin">
             <div className="space-y-6" id="linkedin">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-3 rounded-xl bg-[#0A66C2]/10">
@@ -1174,7 +1183,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               </div>
 
               {/* Profile Score */}
-              {linkedIn.profileScore && (
+              {linkedIn.profileScore && (<CardErrorBoundary section="full-analysis-linkedin-score">
                 <div className="p-6 rounded-2xl bg-gradient-to-br from-[#0A66C2]/5 to-[#0A66C2]/10 border border-[#0A66C2]/20">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
@@ -1197,8 +1206,9 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   
                   {/* Two, then three, then five across (S13-055): five fixed
                       columns at 375 px ran "engagement" out of its card. */}
+                  {linkedInBreakdown.length > 0 && (
                   <div data-testid="linkedin-breakdown" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-                    {Object.entries(linkedIn.profileScore.breakdown).map(([key, value]) => (
+                    {linkedInBreakdown.map(([key, value]) => (
                       <div key={key} className="text-center p-2 rounded-lg bg-card/50 min-w-0">
                         <div className={cn(
                           "text-lg font-bold tabular-nums",
@@ -1210,11 +1220,12 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       </div>
                     ))}
                   </div>
+                  )}
                 </div>
-              )}
+              </CardErrorBoundary>)}
 
               {/* Completeness Checklist */}
-              {linkedIn.completenessChecklist && (
+              {linkedIn.completenessChecklist && (<CardErrorBoundary section="full-analysis-linkedin-completeness">
                 <ResultCard
                   icon={ListChecks}
                   title={t('analysisResults.profileCompleteness')}
@@ -1263,10 +1274,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     </div>
                   )}
                 </ResultCard>
-              )}
+              </CardErrorBoundary>)}
 
               {/* Content Strategy */}
-              {linkedIn.contentStrategy && (
+              {linkedIn.contentStrategy && (<CardErrorBoundary section="full-analysis-linkedin-content">
                 <ResultCard
                   icon={FileText}
                   title={t('analysisResults.contentStrategy')}
@@ -1357,10 +1368,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     )}
                   </div>
                 </ResultCard>
-              )}
+              </CardErrorBoundary>)}
 
               {/* Connection Strategy */}
-              {linkedIn.connectionStrategy && (
+              {linkedIn.connectionStrategy && (<CardErrorBoundary section="full-analysis-linkedin-connections">
                 <ResultCard
                   icon={Users}
                   title={t('analysisResults.connectionStrategy')}
@@ -1428,10 +1439,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     )}
                   </div>
                 </ResultCard>
-              )}
+              </CardErrorBoundary>)}
 
               {/* Headline Optimization */}
-              {linkedIn.headlineOptimization && (
+              {linkedIn.headlineOptimization && (<CardErrorBoundary section="full-analysis-linkedin-headline">
                 <ResultCard
                   icon={User}
                   title={t('analysisResults.headlineOptimization')}
@@ -1464,10 +1475,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     )}
                   </div>
                 </ResultCard>
-              )}
+              </CardErrorBoundary>)}
 
               {/* About Section Rewrite */}
-              {linkedIn.aboutSectionRewrite && (
+              {linkedIn.aboutSectionRewrite && (<CardErrorBoundary section="full-analysis-linkedin-about">
                 <ResultCard
                   icon={FileText}
                   title={t('analysisResults.aboutSectionRewrite')}
@@ -1486,10 +1497,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     </p>
                   </div>
                 </ResultCard>
-              )}
+              </CardErrorBoundary>)}
 
               {/* Experience Optimization */}
-              {safeArray(linkedIn.experienceOptimization).length > 0 && (
+              {safeArray(linkedIn.experienceOptimization).length > 0 && (<CardErrorBoundary section="full-analysis-linkedin-experience">
                 <ResultCard
                   icon={Briefcase}
                   title={t('analysisResults.experienceDescriptions')}
@@ -1519,10 +1530,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     ))}
                   </div>
                 </ResultCard>
-              )}
+              </CardErrorBoundary>)}
 
               {/* Skills Optimization */}
-              {(safeArray(linkedIn.skillsToAdd).length > 0 || safeArray(linkedIn.skillsToRemove).length > 0) && (
+              {(safeArray(linkedIn.skillsToAdd).length > 0 || safeArray(linkedIn.skillsToRemove).length > 0) && (<CardErrorBoundary section="full-analysis-linkedin-skills">
                 <ResultCard
                   icon={Star}
                   title={t('analysisResults.skillsOptimization')}
@@ -1564,10 +1575,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     )}
                   </div>
                 </ResultCard>
-              )}
+              </CardErrorBoundary>)}
 
               {/* SEO Keywords */}
-              {safeArray(linkedIn.seoKeywords).length > 0 && (
+              {safeArray(linkedIn.seoKeywords).length > 0 && (<CardErrorBoundary section="full-analysis-linkedin-seo">
                 <ResultCard
                   icon={Search}
                   title={t('analysisResults.seoKeywords')}
@@ -1587,10 +1598,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     {t('analysisResults.seoKeywordsTip')}
                   </p>
                 </ResultCard>
-              )}
+              </CardErrorBoundary>)}
 
               {/* Profile Visibility Tips */}
-              {safeArray(linkedIn.profileVisibilityTips).length > 0 && (
+              {safeArray(linkedIn.profileVisibilityTips).length > 0 && (<CardErrorBoundary section="full-analysis-linkedin-visibility">
                 <ResultCard
                   icon={Eye}
                   title={t('analysisResults.profileVisibilityTips')}
@@ -1610,10 +1621,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     ))}
                   </ul>
                 </ResultCard>
-              )}
+              </CardErrorBoundary>)}
 
               {/* Featured Section Ideas */}
-              {safeArray(linkedIn.featuredSectionIdeas).length > 0 && (
+              {safeArray(linkedIn.featuredSectionIdeas).length > 0 && (<CardErrorBoundary section="full-analysis-linkedin-featured">
                 <ResultCard
                   icon={Star}
                   title={t('analysisResults.featuredSectionIdeas')}
@@ -1631,10 +1642,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     ))}
                   </div>
                 </ResultCard>
-              )}
+              </CardErrorBoundary>)}
 
               {/* Recommendation Strategy */}
-              {linkedIn.recommendationStrategy && (
+              {linkedIn.recommendationStrategy && (<CardErrorBoundary section="full-analysis-linkedin-recommendations">
                 <ResultCard
                   icon={MessageSquare}
                   title={t('analysisResults.recommendationStrategy')}
@@ -1647,9 +1658,9 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     <p className="text-sm leading-relaxed text-foreground">{linkedIn.recommendationStrategy}</p>
                   </div>
                 </ResultCard>
-              )}
+              </CardErrorBoundary>)}
             </div>
-          )}
+          </CardErrorBoundary>)}
 
           {/* Divider between LinkedIn and Resume sections */}
           {linkedIn && (
@@ -1661,7 +1672,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
           )}
 
           {/* Summary & LinkedIn Rewrite */}
-          {data.summaryRewrite?.professionalSummary && (
+          {data.summaryRewrite?.professionalSummary && (<CardErrorBoundary section="full-analysis-summary">
             <div id="summary">
               <ResultCard
                 icon={User}
@@ -1700,10 +1711,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 </div>
               </ResultCard>
             </div>
-          )}
+          </CardErrorBoundary>)}
 
           {/* Industry Insights */}
-          {data.industryInsights?.whatRecruitersLookFor && (
+          {data.industryInsights?.whatRecruitersLookFor && (<CardErrorBoundary section="full-analysis-industry">
             <div id="industry">
               <ResultCard
                 icon={Target}
@@ -1747,10 +1758,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 </div>
               </ResultCard>
             </div>
-          )}
+          </CardErrorBoundary>)}
 
           {/* Skills Gap Analysis */}
-          {data.skillsGap && (safeArray(data.skillsGap.missingTechnical).length > 0 || safeArray(data.skillsGap.missingSoft).length > 0) && (
+          {data.skillsGap && (safeArray(data.skillsGap.missingTechnical).length > 0 || safeArray(data.skillsGap.missingSoft).length > 0) && (<CardErrorBoundary section="full-analysis-skills-gap">
             <div id="skills">
               <ResultCard
                 icon={Brain}
@@ -1810,11 +1821,11 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 </div>
               </ResultCard>
             </div>
-          )}
+          </CardErrorBoundary>)}
 
           {/* Quantification Opportunities: a section of its own, so the PDF,
               which captures the report section by section, includes it (M-S14-085). */}
-          {safeArray(data.quantificationOpportunities).length > 0 && (
+          {safeArray(data.quantificationOpportunities).length > 0 && (<CardErrorBoundary section="full-analysis-quantification">
             <div id="quantification">
             <ResultCard
               icon={BarChart3}
@@ -1842,10 +1853,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               </div>
             </ResultCard>
             </div>
-          )}
+          </CardErrorBoundary>)}
 
           {/* Achievement Metrics - Role-Specific Quantification Guide */}
-          {data.achievementMetrics && (
+          {data.achievementMetrics && (<CardErrorBoundary section="full-analysis-metrics">
             <div id="metrics">
               <ResultCard
                 icon={TrendingUp}
@@ -1924,10 +1935,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 </div>
               </ResultCard>
             </div>
-          )}
+          </CardErrorBoundary>)}
 
           {/* ATS-Optimized Bullets */}
-          {optimizedBullets.length > 0 && (
+          {optimizedBullets.length > 0 && (<CardErrorBoundary section="full-analysis-bullets">
             <div id="bullets">
               <ResultCard
                 icon={CheckCircle2}
@@ -1978,10 +1989,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 </div>
               </ResultCard>
             </div>
-          )}
+          </CardErrorBoundary>)}
 
           {/* Action Verbs */}
-          {actionVerbs.length > 0 && (
+          {actionVerbs.length > 0 && (<CardErrorBoundary section="full-analysis-verbs">
             <div id="verbs">
               <ResultCard
                 icon={Zap}
@@ -2009,10 +2020,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 </div>
               </ResultCard>
             </div>
-          )}
+          </CardErrorBoundary>)}
 
           {/* Keywords */}
-          {keywords.length > 0 && (
+          {keywords.length > 0 && (<CardErrorBoundary section="full-analysis-keywords">
             <div id="keywords">
               <ResultCard
                 icon={Lightbulb}
@@ -2037,10 +2048,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 </p>
               </ResultCard>
             </div>
-          )}
+          </CardErrorBoundary>)}
 
           {/* Red Flags */}
-          {redFlags.length > 0 && (
+          {redFlags.length > 0 && (<CardErrorBoundary section="full-analysis-red-flags">
             <div id="redflags">
               <ResultCard
                 icon={AlertTriangle}
@@ -2063,10 +2074,10 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 </ul>
             </ResultCard>
             </div>
-          )}
+          </CardErrorBoundary>)}
 
           {/* Action Plan / Sprint Checklist */}
-          {actionPlan.length > 0 && (
+          {actionPlan.length > 0 && (<CardErrorBoundary section="full-analysis-action-plan">
             <div id="actionplan">
               <ResultCard
                 icon={ListChecks}
@@ -2094,7 +2105,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 </p>
               </ResultCard>
             </div>
-          )}
+          </CardErrorBoundary>)}
 
           {/* Empty State - Show when no meaningful data */}
           {optimizedBullets.length === 0 && actionVerbs.length === 0 && keywords.length === 0 && redFlags.length === 0 && !data.summaryRewrite?.professionalSummary && (
