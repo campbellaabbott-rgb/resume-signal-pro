@@ -16,6 +16,7 @@ import { resolve } from "node:path";
 import * as seo from "../../scripts/prerender-seo.mjs";
 import { claudeInstallLink, MCP_ADD_TO_CLAUDE_LIVE, MCP_CONNECTOR_NAME } from "@/config/mcp-tools";
 import { codeOf } from "./helpers/strip-comments";
+import { bakeAgents } from "./helpers/agents-bake";
 
 const S = seo as unknown as {
   addToClaudeLinkHtml?: (o: { live: boolean; href: string | null; name: string; esc: (s: string) => string }) => string;
@@ -58,6 +59,28 @@ describe("the bake", () => {
     const panel = code.slice(code.indexOf("const hostPanel = (host) =>"), code.indexOf("const hostPanel = (host) =>") + 1200);
     expect(panel.indexOf("${addToClaudeHtml(host)}")).toBeGreaterThan(-1);
     expect(panel.indexOf("${addToClaudeHtml(host)}")).toBeLessThan(panel.indexOf("${stepsHtml(host.steps(ctx))}"));
+  });
+
+  it("the /agents page the bake writes, run, has it inside the Claude panel above the manual steps, and drops it when the switch is off", async () => {
+    // The address the agents-bake harness hands the block as MCP_URL, and the
+    // block's own escape (it leaves quotes alone).
+    const bakedMcp = "https://example.invalid/functions/v1/agent-mcp";
+    const h = (s: unknown) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const claudePanel = (html: string) => {
+      const from = html.indexOf('<section id="claude"');
+      expect(from).toBeGreaterThan(-1);
+      return html.slice(from, html.indexOf("</section>", from));
+    };
+    const link = S.addToClaudeLinkHtml!({ live: true, href: claudeInstallLink(bakedMcp), name: MCP_CONNECTOR_NAME, esc: h });
+    expect(link).not.toBe("");
+
+    const on = claudePanel((await bakeAgents({ mutate: (d) => ({ ...d, MCP_ADD_TO_CLAUDE_LIVE: true }) })).content);
+    expect(on).toContain(link);
+    expect(on.indexOf(link)).toBeLessThan(on.indexOf('<ol class="list-decimal'));
+
+    const off = claudePanel((await bakeAgents({ mutate: (d) => ({ ...d, MCP_ADD_TO_CLAUDE_LIVE: false }) })).content);
+    expect(off).not.toContain(link);
+    expect(off).not.toContain(h(claudeInstallLink(bakedMcp)));
   });
 
   it("adds it after the server address in llms-full.txt and in llms.txt", () => {
