@@ -456,7 +456,7 @@ const BROKEN: Break[] = [
   ["CE5", "the whole board's total", (w) => { w.s5 = reTool(w.s5, (s) => { s.total = 3525; }); }],
   ["CE5", "a limit cut without a word", (w) => { w.s5 = reTool(w.s5, (s) => { delete s.limitAsked; delete s.limitApplied; delete s.limitNote; }); }],
   ["CE5", "a SmartRecruiters posting handed on", (w) => { w.s5 = reTool(w.s5, (s) => { (s.jobs as Array<Record<string, unknown>>)[0] = { ...ieRow(0), id: "smartrecruiters:acme1:744000012345" }; }); }],
-  ["CE5", "a short page with more to come and no reason", (w) => { w.s5 = reTool(w.s5, (s) => { s.jobs = (s.jobs as unknown[]).slice(0, 7); }); }],
+  ["CE5", "a short page that withheld rows, with more to come and no reason", (w) => { w.s5 = reTool(w.s5, (s) => { s.jobs = (s.jobs as unknown[]).slice(0, 7); s.withheld = 3; }); }],
   ["CE5", "a null or an empty string sent on (an argument error)", (w) => { w.s5 = toolErr("sort takes one of: relevance, newest, salary; got \"\"."); }, ["CE5d"]],
   ["CE5d", "colour dropped without a word (today's answer)", (w) => { w.s5 = reTool(w.s5, (s) => { delete s.notApplied; delete s.ignoredArguments; }, null); }],
   ["CE5d", "colour said in the JSON but not on the first line", (w) => { w.s5 = reTool(w.s5, () => { /* the same answer, its lead line dropped */ }, null); }],
@@ -515,6 +515,17 @@ describe("what cannot be judged is INFO, never a pass", () => {
     const r = run(routes(w), { keyless: true });
     expect(has(r.lines, "INFO", "CE5"), r.out).toBe(true);
     expect(has(r.lines, "PASS", "CE5")).toBe(false);
+    expect(verdicts(r.lines, "FAIL"), r.out).toEqual([]);
+  });
+
+  it("a short Recruiter-in-Ireland page that withheld nothing passes CE5, since a first read that drops nothing is never refilled and owes no reason", () => {
+    // Review 2026-11-22: CE5 failed any short page with hasMore true and no
+    // pageShortBecause, though by design only a page that withheld rows is
+    // refilled or says why. CE6 already held that rule.
+    const w = GOOD();
+    w.s5 = reTool(w.s5, (s) => { s.jobs = (s.jobs as unknown[]).slice(0, 9); s.nextOffset = 9; });
+    const r = run(routes(w), { keyless: true });
+    expect(has(r.lines, "PASS", "CE5"), r.out).toBe(true);
     expect(verdicts(r.lines, "FAIL"), r.out).toEqual([]);
   });
 

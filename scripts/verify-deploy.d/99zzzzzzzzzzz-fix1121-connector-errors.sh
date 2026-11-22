@@ -27,8 +27,9 @@
 #   CE5   (VERIFY_KEYLESS_CALLS=1, one counted call) search_jobs {keyword:
 #         Recruiter, country: Ireland, limit: 50, location: null, sort: '',
 #         colour: red}: read as query, Ireland as IE on every card, total
-#         under 1,000, the limit cut to 10 and said, the page full or its
-#         shortness said, and no SmartRecruiters id;
+#         under 1,000, the limit cut to 10 and said, a page that withheld
+#         rows full or its shortness said (a first read that withheld nothing
+#         is never refilled and owes no reason), and no SmartRecruiters id;
 #   CE5d  (the same call; owner D3) colour, a name search_jobs does not take,
 #         is not refused: the answer's first line says it was not applied,
 #         notApplied leads the answer and ignoredArguments names it. The call
@@ -382,7 +383,10 @@ if (E.VDCE_KEYLESS !== "1") {
       if (off.length) why.push(`${off.length} of ${jobs.length} cards outside IE (${short(off[0] && off[0].country)})`);
       if (!(typeof d.total === "number" && d.total < 1000)) why.push(`total ${short(d.total)}`);
       if (d.limitApplied !== 10 || d.limitAsked !== 50 || !/nextOffset/.test(String(d.limitNote || ""))) why.push(`limitAsked ${short(d.limitAsked)}, limitApplied ${short(d.limitApplied)}, limitNote ${short(d.limitNote)}`);
-      if (!(jobs.length === 10 || d.hasMore !== true || d.pageShortBecause)) why.push(`${jobs.length} rows with hasMore true and no pageShortBecause`);
+      // A short page is owed a reason only when it withheld rows: a first read
+      // that drops nothing is never refilled and carries none (CE6's rule).
+      const withheld = Number(d.withheld || 0);
+      if (jobs.length < 10 && d.hasMore === true && withheld >= 1 && !d.pageShortBecause) why.push(`${jobs.length} rows with hasMore true and withheld ${withheld}, and no pageShortBecause`);
       const held = jobs.filter((j) => WITHHELD.test(String(j.id)));
       if (held.length) why.push(`withheld ids ${held.map((j) => j.id).slice(0, 2).join(", ")}`);
       if (why.length) say("FAIL", `CE5 the Recruiter-in-Ireland call: ${why.join("; ")}`);
