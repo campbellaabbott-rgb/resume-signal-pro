@@ -4,15 +4,18 @@
  * 2026-11-19, lane paid-results).
  *
  * WHAT WAS WRONG. generate-interview-coach read industry, currentRole and
- * targetRole and nothing else. A purchase's delivery (stripe-webhook), the
- * retry sweep and a past buyer's regeneration (ProductSuccess) send the
- * posting as jobTitle, jobCompany and jobDescription, so the set a person
- * bought to prepare for one interview was written for "the role matching
- * their background": the model never saw the job.
+ * targetRole and nothing else. A purchase's delivery (stripe-webhook) and the
+ * retry sweep send the posting as jobTitle, jobCompany and jobDescription, a
+ * past buyer's regeneration (ProductSuccess) as jobDescription, so the set a
+ * person bought to prepare for one interview was written for "the role
+ * matching their background": the model never saw the job.
  *
  * NOW the role is targetRole, else jobTitle; the company and the posting
  * (its first 4,000 characters) are in the prompt, marked as data. A call that
- * names none of them sends the user prompt it always did.
+ * names none of them sends the user prompt it always did. So does a delivery
+ * whose checkout named no job: the two delivery paths then send a stand-in
+ * title, which is no role, and a set prepared from the resume must not be
+ * told to prepare for the stand-in.
  *
  * The shipped handler, its network faked (helpers/edge-harness).
  */
@@ -145,5 +148,55 @@ Create questions that reference their ACTUAL experience from the resume.`);
     const [user] = userPrompts();
     expect(user).toContain("Target Role: the role matching their background");
     expect(user).not.toContain("<job_posting>");
+  });
+});
+
+// The body stripe-webhook and retry-failed-deliveries send for a coach
+// purchase whose checkout carried no job: their stand-in title, an empty
+// posting and an empty company, from our own servers, paid tier.
+const NO_JOB_PROMPT = `Generate interview questions for this candidate:
+
+<resume>
+${RESUME}
+</resume>
+
+
+Target Role: the role matching their background
+
+Create questions that reference their ACTUAL experience from the resume.`;
+
+describe("a paid delivery whose checkout named no job", () => {
+  for (const standIn of ["Target Position", "Professional Position", "  target position  "]) {
+    it(`a delivery's stand-in title (${JSON.stringify(standIn)}) is never the role, and both halves of the set keep the prompt they always had`, async () => {
+      const r = await post(
+        { resumeText: RESUME, jobDescription: "", jobTitle: standIn, jobCompany: "", isPremium: true, sessionId: "cs_live_coach_delivery_2", language: "en" },
+        `Bearer ${SERVICE}`,
+      );
+      expect(r.status, JSON.stringify(r.body).slice(0, 200)).toBe(200);
+      expect(ai.length, "the paid set is asked in two calls").toBe(2);
+      for (const user of userPrompts()) {
+        expect(user, "the stand-in title reached the model as the target role").not.toMatch(/Target Role: *(target|professional) position/i);
+        expect(user).toBe(NO_JOB_PROMPT);
+      }
+    });
+  }
+
+  it("a stand-in title beside a real posting still sends the posting, with the role from the resume", async () => {
+    const r = await post(
+      { resumeText: RESUME, jobDescription: POSTING, jobTitle: "Target Position", jobCompany: "Northwind Analytics", isPremium: true, sessionId: "cs_live_coach_delivery_3", language: "en" },
+      `Bearer ${SERVICE}`,
+    );
+    expect(r.status, JSON.stringify(r.body).slice(0, 200)).toBe(200);
+    for (const user of userPrompts()) {
+      expect(user).toContain("Target Role: the role matching their background");
+      expect(user).toContain("Company: Northwind Analytics");
+      expect(user).toContain("You will own our Airflow orchestration and the dbt models behind finance reporting.");
+    }
+  });
+
+  it("a title that only contains a stand-in's words is a real role", async () => {
+    await post({ resumeText: RESUME, jobTitle: "Target Position Analyst", jobDescription: POSTING, mode: "generate" });
+    const [user] = userPrompts();
+    expect(user).toContain("Target Role: Target Position Analyst");
   });
 });

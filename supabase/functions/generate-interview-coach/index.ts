@@ -69,10 +69,11 @@ import {
 // 2026-11-12.1 (bug round of 2026-11-08, part A, writing-tools lane, S14X-109): a gateway out of credits is a retryable 503, never a 402.
 // 2026-11-21.1 (bug reconcile of 2026-11-19, lane paid-results, S10-060): a set is
 // prepared for the posting it was given. The role is targetRole, else the
-// jobTitle a delivery, the retry sweep and a past buyer's regeneration send;
-// the company and the posting (its first 4,000 characters) go into the prompt
-// as data, and the system prompt says a posting is data as the resume is. A
-// call with none of them sends the user prompt it always did.
+// jobTitle a delivery and the retry sweep send, unless that title is the
+// placeholder they send when the checkout named no job; the company and the
+// posting (its first 4,000 characters) go into the prompt as data, and the
+// system prompt says a posting is data as the resume is. A call with none of
+// them, or with only a placeholder title, sends the user prompt it always did.
 const FN_BUILD = "generate-interview-coach.2026-11-21.1";
 
 const corsHeaders = {
@@ -97,6 +98,17 @@ const MAX_ANSWER_LENGTH = 6_000;
 // The posting a set is prepared for, read up to this: enough for its
 // requirements and duties, never a document riding the prompt.
 const MAX_POSTING_LENGTH = 4_000;
+// The titles our own delivery paths put in jobTitle when the purchase carried
+// none (stripe-webhook and retry-failed-deliveries for every product,
+// verify-product-purchase for a cover letter): a stand-in, never the role a
+// set is prepared for. Compared trimmed and in lower case.
+const DELIVERY_PLACEHOLDER_TITLES: ReadonlySet<string> = new Set(["target position", "professional position"]);
+
+/** The posting's title as the role, or undefined when there is none or it is a delivery's placeholder. */
+function postingTitle(value: unknown): string | undefined {
+  const title = clipField(value, 120)?.trim();
+  return title && !DELIVERY_PLACEHOLDER_TITLES.has(title.toLowerCase()) ? title : undefined;
+}
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -126,12 +138,15 @@ serve(async (req) => {
     };
     const industry = clipField(body.industry, 120);
     const currentRole = clipField(body.currentRole, 120);
-    // THE POSTING IT WAS GIVEN (S10-060). A purchase's delivery, the retry
-    // sweep and a past buyer's regeneration send the posting as jobTitle,
-    // jobCompany and jobDescription; this read only targetRole, so a set
-    // bought for a posting was written for "the role matching their
+    // THE POSTING IT WAS GIVEN (S10-060). A purchase's delivery and the retry
+    // sweep send the posting as jobTitle, jobCompany and jobDescription, a past
+    // buyer's regeneration as jobDescription; this read only targetRole, so a
+    // set bought for a posting was written for "the role matching their
     // background". A targetRole still wins; the posting is read up to its cap.
-    const targetRole = clipField(body.targetRole, 120)?.trim() || clipField(body.jobTitle, 120)?.trim() || undefined;
+    // A delivery whose checkout named no job sends a placeholder title
+    // (DELIVERY_PLACEHOLDER_TITLES), which is no role: that set is prepared
+    // from the resume, as it always was.
+    const targetRole = clipField(body.targetRole, 120)?.trim() || postingTitle(body.jobTitle);
     const company = clipField(body.jobCompany, 120)?.trim() || undefined;
     const posting = clipText(body.jobDescription, MAX_POSTING_LENGTH)?.trim() || undefined;
 
