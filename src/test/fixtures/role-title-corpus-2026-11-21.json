@@ -1,5 +1,5 @@
 {
- "about": "Role-title corpus for getRoleAdvice (OI-28), built 2026-11-21. Every title is a real job posting's own title, as the board served it, read from the fixtures named in each row's 'from' (public posting pages and feeds the board carries). Rows: every title among those fixtures' 4,068 English-script titles whose card changed between origin/main (4a3c2a0bd) and this build, and a seeded sample (seed 20261121) of 80 titles whose card did not change and 50 that get no card. 'main' is origin/main's card for the title, recorded by running its getRoleAdvice; 'expected' is the card whose tips fit the job, read by hand (null: no card fits, so the generic tips are right). A row main got right must stay right (the never-worse rule).",
+ "about": "Role-title corpus for getRoleAdvice (OI-28), built 2026-11-21. Every title is a real job posting's own title, as the board served it, read from the fixtures named in each row's 'from' (public posting pages and feeds the board carries). Rows: every title among those fixtures' 4,068 English-script titles whose card changed between origin/main (4a3c2a0bd) and this build, and a seeded sample (seed 20261121) of 80 titles whose card did not change and 50 that get no card. 'main' is origin/main's card for the title, recorded by running its getRoleAdvice; 'expected' is the card whose tips fit the job, read by hand (null: no card fits, so the generic tips are right). A row main got right must stay right (the never-worse rule). Added at review (2026-11-21): every title in those fixtures, and every one of the board's 15,068 unique titles (the ops folder's free-scan-wave-corpora/review-_source/titles.json, public posting titles read 2026-11-01, and free-scan-wave-corpora/S13-092/corpus.json), whose card changed between the lane's first build and this one, with 'Software Development Manager, Integrations' from that folder's postings.json (lever:air-tek), and 'Python Team Lead - AI & Automation', which the lane's first build had dropped to no card. A title that names a director, a head or a VP is labelled null whatever its seller's word ('AI Sales Director' was labelled sales_representative beside 'Director of Sales' at null; both are null now).",
  "read": "2026-11-21",
  "baseCommit": "4a3c2a0bd",
  "rows": [
@@ -1669,7 +1669,7 @@
    "title": "AI Sales Director",
    "from": "pay-text-miner-corpus-2026-11-17.json",
    "main": "sales_representative",
-   "expected": "sales_representative"
+   "expected": null
   },
   {
    "title": "Lead Process Safety Engineer (Offshore)",
@@ -2426,6 +2426,126 @@
    "from": "posting-titles-2026-11-08.json",
    "main": null,
    "expected": null
+  },
+  {
+   "title": "Sales Director - Texas",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Major Sales Director, New England",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Regional Sales Director, Carolina Region",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Sponsorship Sales Director",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Sales Director – Mid Market (Remote)",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director, Business Development - Government",
+   "from": "posting-terms-boilerplate-2026-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director of Business Development - Southeast Region",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Head of Business Development",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Software Development Manager",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "engineering_manager",
+   "expected": "engineering_manager"
+  },
+  {
+   "title": "Software Development Manager, Integrations",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "engineering_manager",
+   "expected": "engineering_manager"
+  },
+  {
+   "title": "Enterprise Sales Director",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Sales Director - CO, UT, NM",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Sales Director [Podads]",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Regional Sales Director, Nordics (Sweden)",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Head of Business Development and Partnerships",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Head, Business Development, Stanbic IBTC Insurance Brokers Limited",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Associate Director - Business Development & Program Set-Up | Advisory",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Associate Director for Marketing and Business Development",
+   "from": "free-scan-wave-corpora/S13-092/corpus.json",
+   "main": "sales_representative",
+   "expected": "marketing_manager"
+  },
+  {
+   "title": "Director of Business Development",
+   "from": "free-scan-wave-corpora/S13-092/corpus.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Python Team Lead - AI & Automation",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "engineering_manager",
+   "expected": "engineering_manager"
   }
  ]
 }

@@ -353,6 +353,10 @@
       "up": "Plus haut que la dernière fois. Les constats ci-dessous expliquent chaque point.",
       "down": "Plus bas que la dernière fois, souvent à cause d’une autre cible ou d’un contenu raccourci. Les constats ci-dessous expliquent chaque point.",
       "same": "Le score n’a pas changé. Les constats ci-dessous montrent ce qui le ferait bouger."
+    },
+    "detection": {
+      "title": "Secteur détecté automatiquement : est-ce le bon ?",
+      "body": "Nous avons lu ce CV comme {{industry}} à partir de peu d’indices. Si ce n’est pas le cas, choisissez votre domaine dans le sélecteur de secteur ci-dessus : les listes de mots-clés, les conseils et l’entraînement à l’entretien de ce rapport le suivent aussitôt. Le score, les constats et la recommandation de format sont ceux de cette analyse, écrits pour {{industry}} ; relancez une analyse et ils seront écrits pour le domaine choisi."
     }
   }
 }

@@ -1220,7 +1220,7 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
   },
   engineering_manager: {
     name: 'Engineering Manager',
-    aliases: ['em', 'software engineering manager', 'dev manager', 'engineering lead', 'director of engineering', 'engineering director', 'vp engineering', 'head of engineering'],
+    aliases: ['em', 'software engineering manager', 'software development manager', 'dev manager', 'engineering lead', 'director of engineering', 'engineering director', 'vp engineering', 'head of engineering'],
     keySkills: ['Team Leadership', 'Hiring & Retention', 'Performance Management', 'Technical Strategy', 'Agile/Scrum', 'Stakeholder Management', 'Career Development', 'Budget Management'],
     mustHaveKeywords: ['team', 'leadership', 'hiring', 'performance', 'delivery', 'engineers', 'roadmap', 'stakeholders', 'culture', 'growth'],
     resumeTips: [
@@ -1732,7 +1732,7 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
   },
   sales_representative: {
     name: 'Sales Representative',
-    aliases: ['account executive', 'sales manager', 'business development', 'bdr', 'sdr', 'account manager', 'sales director', 'regional sales manager'],
+    aliases: ['account executive', 'sales manager', 'business development', 'bdr', 'sdr', 'account manager', 'regional sales manager'],
     keySkills: ['Prospecting', 'Negotiation', 'CRM Management', 'Pipeline Management', 'Closing', 'Relationship Building', 'Territory Management'],
     mustHaveKeywords: ['quota', 'revenue', 'pipeline', 'closed', 'exceeded', 'accounts', 'deals', 'retention'],
     resumeTips: [
@@ -3455,6 +3455,9 @@ const GENERIC_ROLE_TERMS: ReadonlySet<string> = new Set(['partner', 'em', 'pt', 
 /** A vice president's, a director's, a head's or a chief's title. */
 const EXECUTIVE_TITLE = /(?:^|[^\p{L}\p{N}])(?:vp|svp|evp|avp|vice president|director|head|chief|cro)(?=$|[^\p{L}\p{N}])/u;
 
+/** The individual sellers' cards, which no EXECUTIVE_TITLE gets. */
+const SELLER_CARDS: ReadonlySet<RoleConfig> = new Set([ROLE_CONFIGS.sales_representative, ROLE_CONFIGS.insurance_agent, ROLE_CONFIGS.real_estate_agent]);
+
 // Get role-specific advice
 export function getRoleAdvice(role: string): RoleConfig | null {
   if (!role) return null;
@@ -3468,7 +3471,15 @@ export function getRoleAdvice(role: string): RoleConfig | null {
   // a job (GENERIC_ROLE_TERMS), picks no card on its own: "Senior
   // Associate, Business Lending" is not an attorney, and Portuguese "em"
   // ("Especialista em Dados") is no engineering manager.
+  //
+  // A VP's, a director's, a head's or a chief's title is no individual
+  // seller's job, whichever of the card's words it holds: "Sales Director",
+  // "Director of Business Development" and "VP of Sales" get the generic
+  // tips, the keyword rules below included, and "Head, Business Development,
+  // <an insurance broker>" no insurance agent's.
+  const executive = EXECUTIVE_TITLE.test(normalizedRole);
   for (const config of Object.values(ROLE_CONFIGS)) {
+    if (executive && SELLER_CARDS.has(config)) continue;
     if (has(config.name.toLowerCase()) ||
         config.aliases.some(alias => !GENERIC_ROLE_TERMS.has(alias.toLowerCase()) && has(alias.toLowerCase()))) {
       return config;
@@ -3476,17 +3487,15 @@ export function getRoleAdvice(role: string): RoleConfig | null {
   }
 
   // Keyword-based matching. "Team lead" alone names no field ("Team Lead -
-  // Compliance"); a team lead of software engineering leads engineers.
-  if ((has('team lead') || has('team leader')) && (has('software') || has('engineering'))) return ROLE_CONFIGS.engineering_manager;
+  // Compliance"); a team lead of software engineering, or of a language's
+  // developers ("Python Team Lead - AI & Automation"), leads engineers.
+  if ((has('team lead') || has('team leader')) && ['software', 'engineering', 'developer', 'python', 'java', 'frontend', 'backend', 'full stack'].some(has)) return ROLE_CONFIGS.engineering_manager;
   if (has('product') && has('manager')) return ROLE_CONFIGS.product_manager;
   if (has('software') || has('developer') || has('engineer')) return ROLE_CONFIGS.software_engineer;
   if (has('data') && (has('scientist') || has('analyst'))) return ROLE_CONFIGS.data_scientist;
   if (has('nurse') || has('rn') || has('nursing')) return ROLE_CONFIGS.nurse;
   if (has('marketing')) return ROLE_CONFIGS.marketing_manager;
-  // The word "sales" in a VP's, a director's or a head's title is no sales
-  // representative's job: such a title gets the generic tips.
-  if (has('sales') && !EXECUTIVE_TITLE.test(normalizedRole)) return ROLE_CONFIGS.sales_representative;
-  if (has('account executive') || has('bdr') || has('sdr')) return ROLE_CONFIGS.sales_representative;
+  if (!executive && (has('sales') || has('account executive') || has('bdr') || has('sdr'))) return ROLE_CONFIGS.sales_representative;
   if (has('project') && has('manager')) return ROLE_CONFIGS.project_manager;
   if (has('ux') || has('ui') || has('designer')) return ROLE_CONFIGS.ux_designer;
   if (has('accountant') || has('cpa') || has('controller')) return ROLE_CONFIGS.accountant;
@@ -3509,7 +3518,7 @@ export function getRoleAdvice(role: string): RoleConfig | null {
   if (has('supply chain') || has('logistics') || has('procurement')) return ROLE_CONFIGS.supply_chain_manager;
   if (has('attorney') || has('lawyer') || has('legal counsel') || has('litigator')) return ROLE_CONFIGS.attorney;
   if (has('chef') || has('culinary') || has('kitchen')) return ROLE_CONFIGS.chef;
-  if (has('real estate') || has('realtor') || has('property agent')) return ROLE_CONFIGS.real_estate_agent;
+  if (!executive && (has('real estate') || has('realtor') || has('property agent'))) return ROLE_CONFIGS.real_estate_agent;
   if (has('mechanical engineer') || has('hvac engineer') || has('manufacturing engineer')) return ROLE_CONFIGS.mechanical_engineer;
   if (has('robotics') || has('automation engineer') || has('controls engineer') || has('mechatronics')) return ROLE_CONFIGS.robotics_engineer;
   if (has('machine learning') || has('ml engineer') || has('ai engineer') || has('deep learning') || has('nlp engineer')) return ROLE_CONFIGS.ai_ml_engineer;
@@ -3521,7 +3530,7 @@ export function getRoleAdvice(role: string): RoleConfig | null {
   if (has('paralegal') || has('legal assistant') || has('law clerk')) return ROLE_CONFIGS.paralegal;
   if (has('event planner') || has('event coordinator') || has('wedding planner') || has('meeting planner')) return ROLE_CONFIGS.event_planner;
   if (has('electrician') || has('electrical technician')) return ROLE_CONFIGS.electrician;
-  if (has('insurance agent') || has('insurance broker') || has('insurance producer')) return ROLE_CONFIGS.insurance_agent;
+  if (!executive && (has('insurance agent') || has('insurance broker') || has('insurance producer'))) return ROLE_CONFIGS.insurance_agent;
   if (has('physician') || has('doctor') || has('md') || has('hospitalist')) return ROLE_CONFIGS.physician;
   if (has('flight attendant') || has('cabin crew') || has('inflight')) return ROLE_CONFIGS.flight_attendant;
   if (has('truck driver') || has('cdl driver') || has('commercial driver') || has('otr driver')) return ROLE_CONFIGS.truck_driver;

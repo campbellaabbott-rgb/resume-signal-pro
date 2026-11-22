@@ -351,6 +351,10 @@
       "up": "Mas mataas kaysa noong huli. Ipinapaliwanag ng mga natuklasan sa ibaba ang bawat punto.",
       "down": "Mas mababa kaysa noong huli, kadalasan dahil sa ibang target o pinaikling nilalaman. Ipinapaliwanag ng mga natuklasan sa ibaba ang bawat punto.",
       "same": "Walang pagbabago sa score. Ipinapakita ng mga natuklasan sa ibaba kung ano ang magpapagalaw dito."
+    },
+    "detection": {
+      "title": "Awtomatikong natukoy ang industriya — tama ba ito?",
+      "body": "Binasa namin ang resume na ito bilang {{industry}} mula sa kaunting palatandaan. Kung mali iyon, piliin ang iyong larangan sa industry selector sa itaas: agad na sumusunod dito ang mga listahan ng keyword, ang mga tip at ang pagsasanay sa interview sa report na ito. Ang score, ang mga natuklasan at ang payo sa format ay mula sa scan na ito, isinulat para sa {{industry}}; mag-scan muli at isusulat ang mga ito para sa larangang pinili mo."
     }
   }
 }

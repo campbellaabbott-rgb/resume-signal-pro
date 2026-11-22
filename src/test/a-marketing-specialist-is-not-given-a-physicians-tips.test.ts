@@ -12,10 +12,12 @@
  * a relation, a shift or another language's preposition ("partner", "pt",
  * "pm", Portuguese "em") picked a card by accident too.
  *
- * Corpus first: src/test/fixtures/role-title-corpus-2026-11-21.json holds 404
+ * Corpus first: src/test/fixtures/role-title-corpus-2026-11-21.json holds 424
  * real posting titles with origin/main's card and the card that fits, read
  * by hand. Every title main got right stays right, and the build gets more
- * of them right than main did.
+ * of them right than main did. A director's, a head's or a VP's title gets
+ * no individual seller's card however it is written ("Sales Director" and
+ * "Director of Sales" alike).
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -51,10 +53,26 @@ describe("the register's own examples", () => {
     expect(keyOf("Inside Sales Representative")).toBe("sales_representative");
   });
 
+  it("a Sales Director and a Director of Sales get the same tips, whichever way the title is written", () => {
+    for (const title of ["Sales Director", "Regional Sales Director", "Enterprise Sales Director", "AI Sales Director", "Director of Sales", "Director of Business Development", "Head of Business Development"]) {
+      expect(keyOf(title), title).toBeNull();
+    }
+    // The company's name is no job: a head of business development at an
+    // insurance broker is no insurance agent.
+    expect(keyOf("Head, Business Development, Stanbic IBTC Insurance Brokers Limited")).toBeNull();
+    // A sales manager carries a number and keeps the seller's card.
+    expect(keyOf("Regional Sales Manager")).toBe("sales_representative");
+    expect(keyOf("Senior Account Executive")).toBe("sales_representative");
+  });
+
   it("a Business Development Manager is in sales, not an engineering manager", () => {
     expect(keyOf("Business Development Manager")).toBe("sales_representative");
     expect(keyOf("Team Lead, Customer Service")).toBeNull();
     expect(keyOf("Team Lead Software Engineering")).toBe("engineering_manager");
+    // A software development manager leads engineers: no individual
+    // contributor's tips for the title that lost its generic alias.
+    expect(keyOf("Software Development Manager")).toBe("engineering_manager");
+    expect(keyOf("Sr. Software Development Manager")).toBe("engineering_manager");
   });
 
   it("a real physician, a nurse and an executive assistant keep their cards", () => {

@@ -21,7 +21,6 @@ import { InterviewCoach } from "./InterviewCoach";
 import { useAuth } from "@/contexts/AuthContext";
 import { JobKeywordMatcher } from "./JobKeywordMatcher";
 import { ATSParseSimulator } from "./ATSParseSimulator";
-import { ReturningUserInsights } from "./ReturningUserInsights";
 import { IndustryKeywordSuggestions } from "./IndustryKeywordSuggestions";
 import { RoleKeywordSuggestions } from "./RoleKeywordSuggestions";
 import { analyzeKeywordPresence } from "@/config/industry-keywords";
@@ -846,9 +845,10 @@ export function FreeKeywordResults({
 
   // Use corrected industry if set, otherwise use detected
   const effectiveIndustry = correctedIndustry || industry;
-  // The format recommendation was written by the scan for the industry it
-  // detected, and a correction does not rewrite it: its copy names that
-  // industry, in the reader's words, not as a raw id (S10-147).
+  // The industry the scan read, in the reader's words, not as a raw id. The
+  // format recommendation was written by the scan for it, and a correction
+  // does not rewrite it, so the format copy names this one, not the
+  // corrected one; the detection note says so (S10-147).
   const formatIndustry = scanIndustryLabel(industry, t);
   // The ATS score's one set of bands (src/lib/score-bands.ts, S13-019).
   const atsTone = scoreTone(atsScoreEstimate);
@@ -2018,9 +2018,14 @@ export function FreeKeywordResults({
         <div className="rounded-2xl border border-warning/30 bg-warning/5 p-4 mb-5 flex items-start gap-3">
           <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-foreground mb-0.5">Industry auto-detected — does this look right?</p>
-            <p className="text-xs text-muted-foreground">
-              We detected <span className="font-medium text-foreground">{effectiveIndustry.replace(/_/g, ' ')}</span> based on limited signals. If that's wrong, use the industry selector above — it changes every recommendation below.
+            {/* What a correction changes, said as it is (S10-147): the
+                keyword lists, the tips and the interview practice follow the
+                selector; the score, the findings and the format advice are
+                the scan's, written for the industry it read, until the next
+                scan, which is sent the reader's choice. */}
+            <p className="text-sm font-semibold text-foreground mb-0.5">{t('freeScanPage.detection.title')}</p>
+            <p data-detection-note className="text-xs text-muted-foreground">
+              {t('freeScanPage.detection.body', { industry: formatIndustry })}
             </p>
           </div>
         </div>
@@ -2082,11 +2087,13 @@ export function FreeKeywordResults({
         </div>
       )}
 
-      {/* Returning User Insights - shown for users who have scanned before */}
-      <ReturningUserInsights
-        currentScore={atsScoreEstimate}
-        currentIndustry={effectiveIndustry}
-      />
+      {/* The earlier scan is told once, by the since-last-scan banner above,
+          with this candidate's numbers in the reader's language. The
+          returning-reader card that stood here read the history before this
+          scan was recorded (its scan number and change one scan behind),
+          checked no candidate and spoke English only; it never showed while
+          every scan overwrote the history (S10-056), and it is not shown now
+          that the history keeps the earlier scans. */}
 
       {/* Industry & Role Keyword Suggestions */}
       <CollapsibleSection
@@ -4075,15 +4082,14 @@ export function FreeKeywordResults({
 
       {/* Shareable score card */}
       <div className="mb-5">
+        {/* The score card only: its before/after image is drawn in English
+            and says the two scans used the same rubric, which the since
+            banner no longer claims. It was never reached while every scan
+            overwrote the history (S10-056), and the report does not reach it
+            now that the history keeps the earlier scan. */}
         <ShareScoreCard
           atsScore={atsScoreEstimate}
           industry={effectiveIndustry}
-          previousScore={(() => {
-            // Same-candidate guard as the delta banner: a household member's
-            // earlier scan must not produce a bogus before/after card.
-            const prev = getPreviousScan();
-            return prev && (prev.candidateName ?? null) === (candidateName ?? null) ? prev.atsScore : undefined;
-          })()}
         />
       </div>
 

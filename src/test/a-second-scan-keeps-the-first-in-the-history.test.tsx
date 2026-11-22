@@ -9,10 +9,48 @@
  * had a last scan to show. updateChecklist and setUserEmail had the same
  * flaw. Each write now reads the stored history inside the call.
  */
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useEffect } from "react";
-import { act, cleanup, render } from "@testing-library/react";
+import { act, cleanup, render, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { useScanHistory, type ScanHistory } from "@/hooks/use-scan-history";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
+
+vi.mock("@/integrations/supabase/client", () => {
+  const chain: Record<string, unknown> = {};
+  const q = () => chain;
+  Object.assign(chain, {
+    select: q, eq: q, in: q, order: q, limit: q, gte: q, lte: q, insert: q, upsert: q, update: q,
+    maybeSingle: async () => ({ data: null, error: null }),
+    single: async () => ({ data: null, error: null }),
+    then: (r: (v: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(r),
+  });
+  return {
+    supabase: {
+      from: () => chain,
+      rpc: vi.fn(async () => ({ data: null, error: null })),
+      functions: { invoke: vi.fn(async () => ({ data: null, error: null })) },
+      auth: {
+        getSession: async () => ({ data: { session: null } }),
+        getUser: async () => ({ data: { user: null } }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      },
+    },
+  };
+});
+Element.prototype.scrollIntoView = vi.fn();
+if (!(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver) {
+  (globalThis as { IntersectionObserver?: unknown }).IntersectionObserver = class {
+    observe() {} unobserve() {} disconnect() {} takeRecords() { return []; }
+  };
+}
+
+import i18n from "@/i18n";
+import { FreeKeywordResults } from "@/components/FreeKeywordResults";
+
+vi.setConfig(MOUNT_TEST_BUDGET);
 
 const KEY = "rb_scan_history";
 const stored = (): ScanHistory => JSON.parse(localStorage.getItem(KEY) ?? "null");
@@ -94,5 +132,57 @@ describe("writes made before the load lands", () => {
     render(<Early run={(h) => h.updateChecklist(id, "quick_win_0", true)} />);
     expect(stored().entries[0].checklist?.[0].completed).toBe(true);
     expect(stored().entries[0].checklistCompletedCount).toBe(1);
+  });
+});
+
+/**
+ * THE REPORT TELLS THE EARLIER SCAN ONCE, AND RIGHT. With the history kept,
+ * the report's since-last-scan banner has a last scan to show. The
+ * returning-reader card beside it read its own copy of the history before
+ * the report recorded the scan, so on a third report it said "scan #2" and
+ * "+10" beside the banner's 60 -> 75 (+15), in English, for any candidate;
+ * the share card's before/after image says, in English, that both scans used
+ * the same rubric. Neither is in the report.
+ */
+describe("three reports for one candidate, read in French", () => {
+  const ROOT = resolve(__dirname, "../..");
+  const json = (p: string) => JSON.parse(readFileSync(resolve(ROOT, p), "utf8"));
+
+  const report = (score: number, bullet: string) => render(
+    <MemoryRouter>
+      <FreeKeywordResults
+        industry="general" atsScoreEstimate={score} formatGrade="B" formatIssue="ok" resumeLength={"good" as never}
+        candidateName="Camille Probe" currentRole="Gestionnaire de paie"
+        redFlags={[]} keywords={[]}
+        resumeText={`Camille Probe\nGestionnaire de paie\n- ${bullet}\n`.repeat(3)}
+        sectionCheck={{ hasContact: true, hasSummary: true, hasExperience: true, hasEducation: true, hasSkills: true } as never}
+        contactInfo={{ hasEmail: true, hasPhone: true, hasLinkedIn: false, missingItems: [] } as never}
+        onGetFullAnalysis={vi.fn()}
+      />
+    </MemoryRouter>,
+  );
+
+  it("the third shows 60 -> 75 (+15) once, and no English card with other numbers", async () => {
+    i18n.addResourceBundle("fr", "translation", json("src/i18n/locales/fr.json"), true, true);
+    i18n.addResourceBundle("fr", "translation", json("src/i18n/shards/free-scan-page/fr.json"), true, true);
+    await i18n.changeLanguage("fr");
+    try {
+      report(50, "Ran the weekly payroll");
+      cleanup();
+      report(60, "Ran the weekly payroll for 120 staff");
+      cleanup();
+      const { container } = report(75, "Ran the weekly payroll for 120 staff with zero late runs in 2025");
+      const since = i18n.t("freeScanPage.since.title", { before: 60, after: 75 });
+      await waitFor(() => expect(container.textContent).toContain(since), SLOW);
+      const text = container.textContent ?? "";
+      expect(text).toContain(`${since} (+15)`);
+      expect(text.split(since).length - 1, "the banner is shown once").toBe(1);
+      for (const english of ["Welcome back", "This is scan #", "vs. last scan", "Great work!", "Share your before/after", "same rubric"]) {
+        expect(text, english).not.toContain(english);
+      }
+      expect(stored().entries.map((e) => e.atsScore)).toEqual([75, 60, 50]);
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 });

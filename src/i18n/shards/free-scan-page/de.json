@@ -351,6 +351,10 @@
       "up": "Höher als beim letzten Mal. Die Befunde unten erklären jeden Punkt.",
       "down": "Niedriger als beim letzten Mal, oft wegen eines anderen Ziels oder gekürzter Inhalte. Die Befunde unten erklären jeden Punkt.",
       "same": "Die Punktzahl ist unverändert. Die Befunde unten zeigen, was sie bewegen würde."
+    },
+    "detection": {
+      "title": "Branche automatisch erkannt – stimmt das?",
+      "body": "Wir haben diesen Lebenslauf anhand weniger Signale als {{industry}} gelesen. Falls das nicht stimmt, wähle oben in der Branchenauswahl dein Feld: Die Keyword-Listen, die Tipps und das Interviewtraining in diesem Bericht folgen deiner Wahl sofort. Der Score, die Befunde und die Formatempfehlung stammen aus diesem Scan und wurden für {{industry}} geschrieben; scanne erneut, dann werden sie für das gewählte Feld geschrieben."
     }
   }
 }

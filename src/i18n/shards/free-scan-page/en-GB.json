@@ -351,6 +351,10 @@
       "up": "Higher than last time. The findings below explain each point.",
       "down": "Lower than last time, often because of a different target or trimmed content. The findings below explain each point.",
       "same": "No change in the score. The findings below show what would move it."
+    },
+    "detection": {
+      "title": "Industry auto-detected — does this look right?",
+      "body": "We read this CV as {{industry}} from few signals. If that's wrong, choose your field in the industry selector above: the keyword lists, the tips and the interview practice in this report follow it at once. The score, the findings and the format advice are this scan's, written for {{industry}}; scan again and they are written for the field you chose."
     }
   }
 }

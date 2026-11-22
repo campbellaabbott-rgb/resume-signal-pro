@@ -353,6 +353,10 @@
       "up": "Mais alta que da última vez. As constatações abaixo explicam cada ponto.",
       "down": "Mais baixa que da última vez, muitas vezes por um alvo diferente ou conteúdo cortado. As constatações abaixo explicam cada ponto.",
       "same": "A pontuação não mudou. As constatações abaixo mostram o que a faria mudar."
+    },
+    "detection": {
+      "title": "Setor detectado automaticamente: está certo?",
+      "body": "Lemos este currículo como {{industry}} a partir de poucos sinais. Se não for isso, escolha sua área no seletor de setor acima: as listas de palavras-chave, as dicas e o treino de entrevista deste relatório seguem a escolha na hora. A pontuação, as constatações e a recomendação de formato são desta análise, escritas para {{industry}}; analise de novo e elas serão escritas para a área que você escolheu."
     }
   }
 }

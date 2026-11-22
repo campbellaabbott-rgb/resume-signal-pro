@@ -353,6 +353,10 @@
       "up": "Más alta que la última vez. Los hallazgos de abajo explican cada punto.",
       "down": "Más baja que la última vez, a menudo por un objetivo distinto o por contenido recortado. Los hallazgos de abajo explican cada punto.",
       "same": "La puntuación no ha cambiado. Los hallazgos de abajo muestran qué la movería."
+    },
+    "detection": {
+      "title": "Sector detectado automáticamente: ¿es correcto?",
+      "body": "Leímos este currículum como {{industry}} a partir de pocas señales. Si no es así, elige tu campo en el selector de sector de arriba: las listas de palabras clave, los consejos y la práctica de entrevista de este informe lo siguen al instante. La puntuación, los hallazgos y la recomendación de formato son de este análisis, escritos para {{industry}}; analiza de nuevo y se escribirán para el campo que elegiste."
     }
   }
 }

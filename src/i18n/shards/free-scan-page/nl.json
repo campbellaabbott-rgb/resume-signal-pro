@@ -351,6 +351,10 @@
       "up": "Hoger dan de vorige keer. De bevindingen hieronder verklaren elk punt.",
       "down": "Lager dan de vorige keer, vaak door een ander doel of ingekorte inhoud. De bevindingen hieronder verklaren elk punt.",
       "same": "De score is niet veranderd. De bevindingen hieronder laten zien wat hem zou veranderen."
+    },
+    "detection": {
+      "title": "Sector automatisch herkend: klopt dit?",
+      "body": "We hebben dit cv op basis van weinig signalen gelezen als {{industry}}. Klopt dat niet, kies dan je vakgebied in de sectorkeuze hierboven: de trefwoordlijsten, de tips en de sollicitatietraining in dit rapport volgen je keuze meteen. De score, de bevindingen en het opmaakadvies zijn van deze scan en geschreven voor {{industry}}; scan opnieuw en ze worden geschreven voor het vakgebied dat je koos."
     }
   }
 }

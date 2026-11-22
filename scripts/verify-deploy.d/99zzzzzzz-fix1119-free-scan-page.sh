@@ -24,15 +24,28 @@
 #   L0  every chunk below can be read (FAIL when the layout moved).
 #   L1  the stage; FAIL when only one of the two marks is published.
 #   S14X-057  the report chunk holds none of the six English headings as text.
-#   OI-28     the Physician card's alias list has no bare "specialist".
+#   OI-28     the Physician card's alias list has no bare "specialist", the
+#             Sales Representative card's no "sales director", and the
+#             Engineering Manager card's holds "software development manager".
 #   S14X-032  the scanner chunk's market list holds Kuwait, Qatar, Bahrain and
 #             Oman (KW, QA, BH, OM).
 #   NB-45     the builder's tag input has an aria-label beside its placeholder.
 #   SCAN-01   the findings builder reads a red flag's issue before its title
 #             and flag fields.
-#   SCAN-05   the quantification finding reads the scan's score field, and
-#             the bare-number branch that compared the object is gone.
+#   SCAN-05   the quantification finding reads the scan's score field, in
+#             the lowered form the production build ships too, and the
+#             bare-number branch that compared the object is gone.
+#   S10-147   the note under a low-confidence detection is the reader's
+#             language and no longer promises "every recommendation".
 #   X1  INFO: the rest is proved in the suite (the tests named below).
+#
+# THE RECORD, as built (for the deploy message and the changelog): the
+# corrected industry reaches the personal tips, the interview coach, the
+# share card and the keyword lists. The four lines of format advice keep
+# naming the industry the scan read, in the reader's words, because the scan
+# wrote that advice for it; the note under a low-confidence detection now
+# says so in nine languages. The report shows one since-last-scan line; the
+# returning-reader card and the before/after share image are not shown.
 #
 # READ-ONLY. GETs of /resume-checker, the home page and their chunks. Nothing
 # is posted and no scan is run.
@@ -118,12 +131,23 @@ const HEADINGS = ["Skills Freshness", "Career Trajectory", "Keywords Expected at
 const left = HEADINGS.filter((h) => fkr.includes(h));
 verdict("S14X-057", left.length === 0, "the report\x27s deeper cards and its score breakdown head themselves in the reader\x27s language", "the report chunk still holds " + left.map((h) => JSON.stringify(h)).join(", "));
 
-// OI-28: the Physician card\x27s aliases.
-const physician = roles.match(/name:"Physician",aliases:\[([^\]]*)\]/);
-if (!physician) say("FAIL", "OI-28", "the Physician card has no alias list the check can read in " + E.VDF19_N_ROLES + ": the card moved, so the claim cannot be judged");
+// OI-28: the alias lists of three cards. The Physician card holds no bare
+// "specialist"; the Sales Representative card no director\x27s title; the
+// Engineering Manager card the software development manager the generic
+// "development manager" used to catch.
+const aliasesOf = (name) => {
+  const m = roles.match(new RegExp("name:\"" + name + "\",aliases:\\[([^\\]]*)\\]"));
+  return m ? (m[1].match(/"([^"]*)"/g) || []).map((s) => s.slice(1, -1)) : null;
+};
+const physician = aliasesOf("Physician"), seller = aliasesOf("Sales Representative"), em = aliasesOf("Engineering Manager");
+const unreadCards = [["Physician", physician], ["Sales Representative", seller], ["Engineering Manager", em]].filter(([, a]) => !a).map(([n]) => n);
+if (unreadCards.length) say("FAIL", "OI-28", "no alias list the check can read for " + unreadCards.join(", ") + " in " + E.VDF19_N_ROLES + ": the cards moved, so the claim cannot be judged");
 else {
-  const aliases = (physician[1].match(/"([^"]*)"/g) || []).map((s) => s.slice(1, -1));
-  verdict("OI-28", !aliases.includes("specialist"), "a Marketing, HR or Payroll Specialist is not handed the Physician card: its aliases (" + aliases.length + ") hold no bare \"specialist\"", "the Physician card\x27s aliases still hold \"specialist\"");
+  const wrong = [];
+  if (physician.includes("specialist")) wrong.push("the Physician card\x27s aliases still hold \"specialist\"");
+  if (seller.includes("sales director")) wrong.push("the Sales Representative card\x27s aliases still hold \"sales director\"");
+  if (!em.includes("software development manager")) wrong.push("the Engineering Manager card\x27s aliases lack \"software development manager\"");
+  verdict("OI-28", wrong.length === 0, "a Marketing, HR or Payroll Specialist is not handed the Physician card (" + physician.length + " aliases, no bare \"specialist\"), a Sales Director no sales representative\x27s, and a Software Development Manager keeps the engineering manager\x27s", wrong.join("; "));
 }
 
 // S14X-032: the GCC four in the market list.
@@ -141,15 +165,30 @@ const after = tags.slice(at, at + 160);
 const named = /^[^}]*"aria-label":/.test(after);
 verdict("NB-45", named, "the builder\x27s skills and certifications inputs are named by their section heading, not by their placeholder", "the tag input in " + E.VDF19_N_TAGS + " has a placeholder and no aria-label");
 
-// SCAN-01: the findings builder reads issue first.
-const oldRead = /(\w+)\.title\|\|\1\.flag/.test(fkr) || /(\w+)\.title\|\|(\w+)\.flag\b/.test(fkr);
-const newRead = /\[(\w+)\.issue,\1\.title,\1\.flag\]/.test(fkr);
+// SCAN-01: the findings builder reads issue first. A minified name can hold
+// "$", so every name below is [\w$]+.
+const oldRead = /([\w$]+)\.title\|\|\1\.flag/.test(fkr) || /([\w$]+)\.title\|\|([\w$]+)\.flag\b/.test(fkr);
+const newRead = /\[([\w$]+)\.issue,\1\.title,\1\.flag\]/.test(fkr);
 verdict("SCAN-01", newRead && !oldRead, "a red flag the scanner sends (its sentence in issue) is counted in the summary, the Findings index, the PDF and the mail", oldRead ? "the findings builder still reads title||flag with no issue before it" : "the findings builder\x27s read of issue, title and flag is not in the report chunk");
 
-// SCAN-05: the quantification finding reads .score.
-const dead = /typeof (\w+)=="number"&&\1<40/.test(fkr);
-const reads = /typeof (\w+)\?\.score=="number"/.test(fkr);
+// SCAN-05: the quantification finding reads .score. The production build
+// lowers optional chaining (the live chunk of 2026-11-21 holds no "?." and
+// ships typeof range?.pagesMin as typeof(j==null?void 0:j.pagesMin)), so the
+// read is found in either form, and in the one TypeScript itself emits.
+const dead = /typeof ([\w$]+)=="number"&&\1<40/.test(fkr);
+const reads = /typeof ([\w$]+)\?\.score=="number"/.test(fkr)
+  || /typeof\s*\(\s*([\w$]+)\s*==\s*null\s*\?\s*void 0\s*:\s*\1\.score\s*\)\s*==\s*"number"/.test(fkr)
+  || /typeof\s*\(\s*([\w$]+)\s*===\s*null\s*\|\|\s*\1\s*===\s*void 0\s*\?\s*void 0\s*:\s*\1\.score\s*\)\s*===?\s*"number"/.test(fkr);
 verdict("SCAN-05", !dead && reads, "the quantification finding reads the scan\x27s score field", dead ? "the report chunk still compares the quantification object as a bare number (typeof X==\"number\"&&X<40)" : "no read of a quantification score field was found in the report chunk");
 
-say("INFO", "X1", "proved in the suite, not from outside: a second scan keeps the first (a-second-scan-keeps-the-first-in-the-history), the corrected industry reaches the tips, the coach and the share card, the length tip follows the market, a heading is not flagged by a bullet, a fallback report in French prints no English finding, the backup report names the posting it did not compare, the contact card never ticks a missing phone, a report with no contact facts claims none, and every icon-only button has a name");
+// S10-147: the note under a low-confidence detection says what a correction
+// changes (the keyword lists, the tips, the interview practice) and that the
+// score, the findings and the format advice stay the scan\x27s until the next
+// scan, in the reader\x27s language. The format advice keeps naming the
+// industry the scan read: it was written for that one.
+const noteKey = fkr.includes("freeScanPage.detection.body");
+const oldPromise = fkr.includes("it changes every recommendation below");
+verdict("S10-147", noteKey && !oldPromise, "the note under a low-confidence detection says, in the reader\x27s language, what a corrected industry changes and what stays the scan\x27s", oldPromise ? "the report chunk still promises, in English, that the selector changes every recommendation" : "the report chunk holds no freeScanPage.detection.body key");
+
+say("INFO", "X1", "proved in the suite, not from outside: a second scan keeps the first, and a third report shows one since-last-scan line with this candidate\x27s numbers and no English returning-reader card or before/after share image (a-second-scan-keeps-the-first-in-the-history), the corrected industry reaches the tips, the coach and the share card while the format advice names the industry the scan read, the length tip follows the market, a heading is not flagged by a bullet, a fallback report in French prints no English finding, the backup report names the posting it did not compare, the contact card never ticks a missing phone, a report with no contact facts claims none, and every icon-only button has a name");
 '
