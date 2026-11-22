@@ -1651,6 +1651,26 @@
     "ashbyApplicationFormsAreNoLongerReadOrAskedFor": {
       "title": "Our connector and data API no longer read Ashby application forms, and our site no longer asks for them",
       "description": "Ashby's job site asks automated readers to keep out of the part of it that an Ashby job's application questions come from. So when you apply yourself with Claude or Claude Code through our connector, it no longer reads the questions of a job whose employer uses Ashby, our data API no longer reads them either, and both now leave Ashby out when they name the hiring systems whose forms they read. On our job board, such a job no longer offers to prepare answers to its form's questions, and its page no longer says we read its screening questions: the site no longer asks for them. You answer those questions on the employer's own application page, as for a hiring system whose form we do not read. Where an application kit drafts likely questions from the posting instead, its note now says we did not read the employer's form, where it said the hiring system does not publish one."
+    },
+    "boardSearchesReadBothSpellingsAndListMoreEmployers": {
+      "title": "Board searches read back end and backend as one word, and more employers' jobs are listed",
+      "description": "On the job board, a search for a software role now reads back end and backend, front end and frontend, full stack and full-stack, and dev ops and devops as the same word, so either spelling finds the same jobs. In such a search, developer now also finds jobs titled engineer. The board now also lists the jobs of Castelion Corporation, Aidoc, Dropzone AI, SiPearl, Upscale AI and Mythic, read from the hiring system each of them posts on."
+    },
+    "companyPagesSayWhenAFigureCountsAWholeHiringSystem": {
+      "title": "Company pages say when a figure counts an employer's whole hiring system, and the German Austria page matches the English one",
+      "description": "Where a company page's figures count an employer's roles across its whole hiring system, the line naming the countries with the most roles now says so, and so does the median on the Pay card. A board with no name of its own is now headed with the name of its hiring system, or simply as this board, instead of with a code from its web address. On a page that brings several of an employer's boards together, the description of the actively hiring badge now says its record is for one of those boards, and names it. And the German page on CV conventions in Austria now says what the English page says: a German-style tabular CV, and formal titles such as Mag. and Dipl.-Ing. count for more than in Germany. It no longer says that references and certificates (Zeugnisse) are expected."
+    },
+    "figuresDatesReleaseNotesAndSkipLinkFollowYourLanguage": {
+      "title": "Counts, dates, the release notes and the skip link follow the language you chose, and a move to another page is announced",
+      "description": "Counts and dates on the pages you read in your language, among them the job board, company pages, the free scan and your account, are now written the way the language you chose on the site writes them, not the way your browser's language does. When you change the language, the release notes on this page now change with it. The link at the top of each page that lets keyboard and screen reader users skip to the main content now changes to your language once the site has loaded. And when you move to another page, a screen reader now reads out the new page's title, and if the link you used went away with the page you left, keyboard focus moves to the new page's main content."
+    },
+    "aUnicodeTxtResumeIsReadWhereverYouUploadOne": {
+      "title": "A .txt CV saved as Unicode text is read wherever you upload one, and the free report names your industry in one set of words",
+      "description": "A CV saved as a .txt file with a text editor's Unicode option is now read as text wherever you upload a CV on the site, among them the free scan, the job board and the page you reach after a purchase. On the free scan and on the page after a purchase, a .txt file that is still not text is refused with a message in your language. On the free report, the score at the top and the industry card now name your industry in the same words as the menu where you can correct it, and in your language. And the progress screens shown while the free scan runs and while a paid document is being written no longer name an AI model: they say what is happening, and the one for a paid document now uses your language."
+    },
+    "affiliateBannersAreTheSizeTheirLabelsSay": {
+      "title": "Affiliate banners are the size their labels say, at fixed addresses",
+      "description": "Each banner in the affiliate marketing kit is now the size its label states, as a PNG and as an SVG, at a fixed address on our site. A banner you embedded from the earlier kit still loads from its old address, now at the size its label named. The kit's newsletter template now describes the free scan by what it shows: how your file parses, and the keywords your CV is missing."
     }
   }
 }
